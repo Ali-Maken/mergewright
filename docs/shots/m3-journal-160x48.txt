@@ -25,7 +25,7 @@
 "  ●  Graft          2m ago    commit "Add OAuth provider"                  1 ref · the index · backup saved                                              undone "
 "  ●  Graft          14m ago   stage 3 files                                the index · backup saved                                                         ← u "
 "  ●  Graft          40m ago   commit "WIP on refresh"                      interrupted · 1 ref · the index                                          interrupted "
-"  ●  Graft          3h ago    discard…     failed: error: unable to unlink 'src/auth/refresh_test.rs': Permission denied · the index · the working…             "
+"  ●  Graft          3h ago    discard src/auth/refresh_test.rs       failed: error: unable to unlink 'src/auth/refresh_test.rs': Permission denied…             "
 "  ●  Graft          26h ago   stage src/api/routes.rs                      the index · backup saved                                                             "
 "  a branch deleted outside Graft and never checked out leaves no trace here                                                                                     "
 "                                                                                                                                                                "

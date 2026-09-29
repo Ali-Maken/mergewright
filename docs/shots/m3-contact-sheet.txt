@@ -637,8 +637,11 @@ what right looks like: TESTING.md § Per breakpoint, Journal row: same.
 
 m3 walk capture: m3-08-journal-after-unstage — scenario unstage-file, keys k ⏎ Space Esc J, unicode tier, 160x48
 
-UNDO JOURNAL · <scratch____________________________________________________________>
-▸ now       unstage sample.txt                           the index · backup saved                                                                           ← u
+JOURNAL · what happened in this repo, newest first
+▸ ●  Graft          now       unstage sample.txt                           the index · backup saved                                                         ← u
+  $  outside Graft  6y ago    committed "add sample.txt" on main
+  $  outside Graft  6y ago    fast-import
+  a branch deleted outside Graft and never checked out leaves no trace here
 
 
 
@@ -680,10 +683,7 @@ UNDO JOURNAL · <scratch________________________________________________________
 
 
 
-
-
-
-
+● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds
 ⏎ undo this  space command log  J/esc close
 
 ================================================================================
@@ -693,8 +693,11 @@ what right looks like: TESTING.md § Per breakpoint, Journal row: the unstage en
 
 m3 walk capture: m3-08-journal-after-unstage — scenario unstage-file, keys k ⏎ Space Esc J, unicode tier, 80x24
 
-UNDO JOURNAL · <scratch_______________________________________________________>…
-▸ now       unstage sample.txt        the index · backup saved              ← u
+JOURNAL · what happened in this repo, newest first
+▸ ●  now       unstage sample.txt     the index · backup saved              ← u
+  $  6y ago    committed "add sample.txt" on main
+  $  6y ago    fast-import
+  a branch deleted outside Graft and never checked out leaves no trace here
 
 
 
@@ -712,10 +715,7 @@ UNDO JOURNAL · <scratch_______________________________________________________>
 
 
 
-
-
-
-
+● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a…
 ⏎ undo this  space command log  J/esc close
 
 ================================================================================
@@ -1443,7 +1443,7 @@ what right looks like: Capture header: same journal, wider — judge by eye per 
 # against a fixed clock so the ages never move.
 #
 # Judge by eye:
-# - The header reads UNDO JOURNAL · <the repository's path>.
+# - The title reads JOURNAL · what happened in this repo, newest first.
 # - Newest first: the undo is the top row, the 26-hour-old stage the last.
 # - Every mark the browser has is on screen, one row each, no row with two.
 #   Not "looks right": the marks are `graft_ops`' own next_undo, next_redo
@@ -1456,15 +1456,17 @@ what right looks like: Capture header: same journal, wider — judge by eye per 
 #                  It reads interrupted, and never failed:.
 # - The discard row leads with failed: and git's own first line, and still
 #   ends with backup saved — a write that failed part-way is still undoable.
-# - The footer offers ⏎ undo this, space command log and J/esc close.
+# - The bar names what ⏎ does on the selected row (on the ← U row: ⏎ redo this),
+#   then space command log and J/esc close; the legend sits above it.
 === 160x48 ===
-"UNDO JOURNAL · /code/api                                                                                                                                        "
-"▸ now       undo: commit "Add OAuth provider"            1 ref · the index · backup saved                                                                   ← U "
-"  2m ago    commit "Add OAuth provider"                  1 ref · the index · backup saved                                                                undone "
-"  14m ago   stage 3 files                                the index · backup saved                                                                           ← u "
-"  40m ago   commit "WIP on refresh"                      interrupted · 1 ref · the index                                                            interrupted "
-"  3h ago    discard src/auth/refresh_test.rs             failed: error: unable to unlink 'src/auth/refresh_test.rs': Permission denied · the index · the workin…"
-"  26h ago   stage src/api/routes.rs                      the index · backup saved                                                                               "
+"JOURNAL · what happened in this repo, newest first                                                                                                              "
+"▸ ●  Graft          now       undo: commit "Add OAuth provider"            1 ref · the index · backup saved                                                 ← U "
+"  ●  Graft          2m ago    commit "Add OAuth provider"                  1 ref · the index · backup saved                                              undone "
+"  ●  Graft          14m ago   stage 3 files                                the index · backup saved                                                         ← u "
+"  ●  Graft          40m ago   commit "WIP on refresh"                      interrupted · 1 ref · the index                                          interrupted "
+"  ●  Graft          3h ago    discard src/auth/refresh_test.rs       failed: error: unable to unlink 'src/auth/refresh_test.rs': Permission denied…             "
+"  ●  Graft          26h ago   stage src/api/routes.rs                      the index · backup saved                                                             "
+"  a branch deleted outside Graft and never checked out leaves no trace here                                                                                     "
 "                                                                                                                                                                "
 "                                                                                                                                                                "
 "                                                                                                                                                                "
@@ -1502,14 +1504,13 @@ what right looks like: Capture header: same journal, wider — judge by eye per 
 "                                                                                                                                                                "
 "                                                                                                                                                                "
 "                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"⏎ undo this  space command log  J/esc close                                                                                                                     "
+"an operation was interrupted: commit "WIP on refresh" · J to inspect                                                                                            "
+"● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds                                                          "
+"⏎ redo this  space command log  J/esc close                                                                                                                     "
 
 ================================================================================
 docs/shots/m3-journal-80x24.txt
-what right looks like: Capture header "Judge by eye": the header reads UNDO JOURNAL · <the repository's path>.
+what right looks like: Capture header "Judge by eye": the title reads JOURNAL · what happened in this repo, newest first (24-b; was UNDO JOURNAL · <path>).
 ================================================================================
 
 # TestBackend capture (not a pty), no colour recorded. Fixture:
@@ -1518,7 +1519,7 @@ what right looks like: Capture header "Judge by eye": the header reads UNDO JOUR
 # against a fixed clock so the ages never move.
 #
 # Judge by eye:
-# - The header reads UNDO JOURNAL · <the repository's path>.
+# - The title reads JOURNAL · what happened in this repo, newest first.
 # - Newest first: the undo is the top row, the 26-hour-old stage the last.
 # - Every mark the browser has is on screen, one row each, no row with two.
 #   Not "looks right": the marks are `graft_ops`' own next_undo, next_redo
@@ -1531,15 +1532,17 @@ what right looks like: Capture header "Judge by eye": the header reads UNDO JOUR
 #                  It reads interrupted, and never failed:.
 # - The discard row leads with failed: and git's own first line, and still
 #   ends with backup saved — a write that failed part-way is still undoable.
-# - The footer offers ⏎ undo this, space command log and J/esc close.
+# - The bar names what ⏎ does on the selected row (on the ← U row: ⏎ redo this),
+#   then space command log and J/esc close; the legend sits above it.
 === 80x24 ===
-"UNDO JOURNAL · /code/api                                                        "
-"▸ now       undo: commit "Add OAuth provider" 1 ref · the index · backup sav← U "
-"  2m ago    commit "Add OAuth provider" 1 ref · the index · backup saved undone "
-"  14m ago   stage 3 files             the index · backup saved              ← u "
-"  40m ago   commit "WIP on refresh"   interrupted · 1 ref · the indeinterrupted "
-"  3h ago    discard src/auth/refresh_test.rs failed: error: unable to unlink 's…"
-"  26h ago   stage src/api/routes.rs   the index · backup saved                  "
+"JOURNAL · what happened in this repo, newest first                              "
+"▸ ●  now       undo: commit "Add…     1 ref · the index · backup…           ← U "
+"  ●  2m ago    commit "Add OAuth…     1 ref · the index · backup…        undone "
+"  ●  14m ago   stage 3 files          the index · backup saved              ← u "
+"  ●  40m ago   commit "WIP on…        interrupted · 1 ref · the…    interrupted "
+"  ●  3h ago    discard…     failed: error: unable to unlink…                    "
+"  ●  26h ago   stage…                 the index · backup saved                  "
+"  a branch deleted outside Graft and never checked out leaves no trace here     "
 "                                                                                "
 "                                                                                "
 "                                                                                "
@@ -1553,10 +1556,9 @@ what right looks like: Capture header "Judge by eye": the header reads UNDO JOUR
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"                                                                                "
-"                                                                                "
-"                                                                                "
-"⏎ undo this  space command log  J/esc close                                     "
+"an operation was interrupted: commit "WIP on refresh" · J to inspect            "
+"● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a…"
+"⏎ redo this  space command log  J/esc close                                     "
 
 ================================================================================
 docs/shots/m3-journal-expanded.txt
@@ -1571,19 +1573,21 @@ what right looks like: Capture header "Judge by eye": the cursor row is the disc
 # Judge by eye:
 # - The cursor row is the discard, marked ▸ and painted.
 # - Under it, indented: the whole failure reason, then the Command Log's one
-#   `$ git --literal-pathspecs restore …` line — the exact command that ran,
+#   `┆ git --literal-pathspecs restore …` line, under `commands Graft ran` — the exact command that ran,
 #   not a description of it.
 # - The rows below the expansion are pushed down, not overwritten.
 === 120x32 ===
-"UNDO JOURNAL · /code/api                                                                                                "
-"  now       undo: commit "Add OAuth provider"            1 ref · the index · backup saved                           ← U "
-"  2m ago    commit "Add OAuth provider"                  1 ref · the index · backup saved                        undone "
-"  14m ago   stage 3 files                                the index · backup saved                                   ← u "
-"  40m ago   commit "WIP on refresh"                      interrupted · 1 ref · the index                    interrupted "
-"▸ 3h ago    discard src/auth/refresh_test.rs             failed: error: unable to unlink 'src/auth/refresh_test.rs': Pe…"
-"    failed: error: unable to unlink 'src/auth/refresh_test.rs': Permission denied                                       "
-"    $ git --literal-pathspecs restore --worktree -- src/auth/refresh_test.rs                                            "
-"  26h ago   stage src/api/routes.rs                      the index · backup saved                                       "
+"JOURNAL · what happened in this repo, newest first                                                                      "
+"  ●  Graft          now       undo: commit "Add OAuth provider"            1 ref · the index · backup saved         ← U "
+"  ●  Graft          2m ago    commit "Add OAuth provider"                  1 ref · the index · backup saved      undone "
+"  ●  Graft          14m ago   stage 3 files                                the index · backup saved                 ← u "
+"  ●  Graft          40m ago   commit "WIP on refresh"                      interrupted · 1 ref · the index  interrupted "
+"▸ ●  Graft          3h ago    discard…     failed: error: unable to unlink 'src/auth/refresh_test.rs':…                 "
+"                              failed: error: unable to unlink 'src/auth/refresh_test.rs': Permission denied             "
+"                              commands Graft ran                                                                        "
+"                              ┆ git --literal-pathspecs restore --worktree -- src/auth/refresh_test.rs                  "
+"  ●  Graft          26h ago   stage src/api/routes.rs                      the index · backup saved                     "
+"  a branch deleted outside Graft and never checked out leaves no trace here                                             "
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
@@ -1602,11 +1606,9 @@ what right looks like: Capture header "Judge by eye": the cursor row is the disc
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"⏎ undo this  space command log  J/esc close                                                                             "
+"an operation was interrupted: commit "WIP on refresh" · J to inspect                                                    "
+"● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds                  "
+"⏎ revert to before this  space command log  J/esc close                                                                 "
 
 ================================================================================
 docs/shots/m3-stash-empty.txt
@@ -1786,13 +1788,7 @@ what right looks like: Capture header "Judge by eye": the question names the ent
 "◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                            "
 "◆    [HEAD] Commit 3␛[31m                                                                                TE 57y  0303030"
 "●    Commit 2␛[31m                                                                                       TE 57y  0202020"
-"◇    Commit 1␛[31m                                                                                       TE 57y  0101010"
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"     ╭ Undo “commit "Add OAuth provider"”? ───────────────────────────────────────────────────────────╮                 "
+"◇    ╭ Undo “commit "Add OAuth provider"”? ───────────────────────────────────────────────────────────╮  TE 57y  0101010"
 "     │ Since this commit "Add OAuth provider", the index changed;                                     │                 "
 "     │ the working tree's state after the operation was never                                         │                 "
 "     │ recorded; undo restores all of it.                                                             │                 "
@@ -1801,7 +1797,13 @@ what right looks like: Capture header "Judge by eye": the question names the ent
 "     │ undo restores the recorded state                                                               │                 "
 "     │                                                                                                │                 "
 "     │ ▸[ Stop ]   [ Undo ]                                                                           │                 "
-" y un╰────────────────────────────────────────────────────────────────────────────────────────────────╯                 "
+"     ╰────────────────────────────────────────────────────────────────────────────────────────────────╯                 "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+" y undo  ←/→ move  ⏎ choose  esc cancel                                                                                 "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
 "STAGED (1)                    fn routes()                                                                               "

@@ -213,8 +213,13 @@ fn a_refused_plan_closes_the_box_onto_js_status_row() {
     let body = after.join("\n");
     let refusal = row_of(&after, "main moved on since")
         .unwrap_or_else(|| panic!("the refusal on J's status row:\n{body}"));
-    let legend = row_of(&after, "\u{25cf} done in Graft").unwrap_or_else(|| panic!("J's legend:\n{body}"));
-    assert_eq!(refusal + 1, legend, "the status row sits above the legend:\n{body}");
+    let legend =
+        row_of(&after, "\u{25cf} done in Graft").unwrap_or_else(|| panic!("J's legend:\n{body}"));
+    assert_eq!(
+        refusal + 1,
+        legend,
+        "the status row sits above the legend:\n{body}"
+    );
     assert_eq!(after.len(), j_before.len());
     for (row, (now, was)) in after.iter().zip(&j_before).enumerate() {
         if row != refusal {

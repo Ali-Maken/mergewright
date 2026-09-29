@@ -127,16 +127,16 @@ m4 walk capture: m4-02-push-box-lease — scenario push-rejected-then-lease, key
 ●      Commit 187                                                                                                                                GF 7y   3121935
 ●      Commit 186                                                                                                                                GF 7y   fab25df
 ●      Commit 185                                                                                                                                GF 7y   09ae97c
-●      Commit 184                                                                                                                                GF 7y   49d7783
-●      ╭ Force-push main → origin/main? ──────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 7y   22d55c9
-●      │ origin/main d5ae5fd → 68c13c4 · refused if origin moved since your fetch (lease)                                                     │  GF 7y   d212b3e
-●      │ rewrites history for everyone who has d5ae5fd                                                                                        │  GF 7y   c8254c5
-●      │                                                                                                                                      │  GF 7y   e95ccd4
-●      │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0d9047e20 origin refs/heads/main:refs/heads/m… │  GF 7y   97b58e5
-●      │                                                                                                                                      │  GF 7y   1c9b7ed
-●      │ ▸[ Cancel ]   [ Force push ]                                                                                                         │  GF 7y   f93340a
-●      ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   5aaeeba
-●      Commit 175                                                                                                                                GF 7y   6be5928
+●      ╭ Force-push main → origin/main? ──────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 7y   49d7783
+●      │ origin/main d5ae5fd → 68c13c4 · refused if origin moved since your fetch (lease)                                                     │  GF 7y   22d55c9
+●      │ rewrites history for everyone who has d5ae5fd                                                                                        │  GF 7y   d212b3e
+●      │ leaves origin/main:                                                                                                                  │  GF 7y   c8254c5
+●      │ d5ae5fd  Commit 200                            Graft Fixture                                                                         │  GF 7y   e95ccd4
+●      │                                                                                                                                      │  GF 7y   97b58e5
+●      │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0d9047e20 origin refs/heads/main:refs/heads/m… │  GF 7y   1c9b7ed
+●      │                                                                                                                                      │  GF 7y   f93340a
+●      │ ▸[ Cancel ]   [ Force push ]                                                                                                         │  GF 7y   5aaeeba
+●      ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   6be5928
 ●      Commit 174                                                                                                                                GF 7y   9b67be4
 ●      Commit 173                                                                                                                                GF 7y   937d32b
 ●      Commit 172                                                                                                                                GF 7y   81be718
@@ -156,7 +156,7 @@ m4 walk capture: m4-02-push-box-lease — scenario push-rejected-then-lease, key
 ●      Commit 158                                                                                                                                GF 7y   1e28a71
 ●      Commit 157                                                                                                                                GF 7y   b57586d
 ●      Commit 156                                                                                                                                GF 7y   edc7cba
- push rejected: origin/main has moved · p pull first · P force with lease
+ ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
 docs/shots/m4-02-push-box-lease-80x24.txt
@@ -171,24 +171,24 @@ m4 walk capture: m4-02-push-box-lease — scenario push-rejected-then-lease, key
 ●─╯    Commit 199                                                   7y   13e6ab1
 ●      Commit 198                                                   7y   f5055d9
 ●      Commit 197                                                   7y   2cce853
-●      Commit 196                                                   7y   325da3f
-●      ╭ Force-push main → origin/main? ───────────────────────────────╮ 0722297
-●      │ origin/main d5ae5fd → 68c13c4 · refused if origin moved since │ b6a4a47
-●      │ your fetch (lease)                                            │ 60af0eb
-●      │ rewrites history for everyone who has d5ae5fd                 │ aceb8c5
-●      │                                                               │ 11d68ff
-●      │ git push --progress --force-with-lease=refs/heads/main:d5ae5… │ 91900bd
-●      │                                                               │ cec3e93
-●      │ ▸[ Cancel ]   [ Force push ]                                  │ 0a91ece
-●      ╰───────────────────────────────────────────────────────────────╯ 3121935
-●      Commit 186                                                   7y   fab25df
+●      ╭ Force-push main → origin/main? ───────────────────────────────╮ 325da3f
+●      │ origin/main d5ae5fd → 68c13c4 · refused if origin moved since │ 0722297
+●      │ your fetch (lease)                                            │ b6a4a47
+●      │ rewrites history for everyone who has d5ae5fd                 │ 60af0eb
+●      │ leaves origin/main:                                           │ aceb8c5
+●      │ d5ae5fd  Commit 200                            Graft Fixture  │ 11d68ff
+●      │                                                               │ 91900bd
+●      │ git push --progress --force-with-lease=refs/heads/main:d5ae5… │ cec3e93
+●      │                                                               │ 0a91ece
+●      │ ▸[ Cancel ]   [ Force push ]                                  │ 3121935
+●      ╰───────────────────────────────────────────────────────────────╯ fab25df
 ●      Commit 185                                                   7y   09ae97c
 ●      Commit 184                                                   7y   49d7783
 ●      Commit 183                                                   7y   22d55c9
 ●      Commit 182                                                   7y   d212b3e
 ●      Commit 181                                                   7y   c8254c5
 ●      Commit 180                                                   7y   e95ccd4
- push rejected: origin/main has moved · p pull first · P force with lease
+ ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
 docs/shots/m4-03-credential-masked-160x48.txt
@@ -544,15 +544,18 @@ m4 walk capture: m4-06-rejected-sticky — scenario push-lease-refused-stale, ke
 
 ================================================================================
 docs/shots/m4-07-journal-remote-rows-160x48.txt
-what right looks like: TESTING.md § Per breakpoint, Journal row: push `not undoable — origin has it · <a> → <b>`; pull `1 ref · the index · the working tree · backup saved  ← u`; fetch `remote-tracking refs · not undoable`.
+what right looks like: TESTING.md § Per breakpoint, Journal row: `●  Graft` rows — push `not undoable — origin has it · <a> → <b>`; pull `1 ref · the index · the working tree · backup saved  ← u`; fetch `remote-tracking refs · not undoable`; then `$  outside Graft` rows (24-b).
 ================================================================================
 
 m4 walk capture: m4-07-journal-remote-rows — scenario journal-rows, keys J, unicode tier, 160x48
 
-UNDO JOURNAL · <scratch________________________________________________________________>
-▸ now       push main → origin/main                      not undoable — origin has it · 7be74b5 → 76cd189
-  now       pull origin/main                             1 ref · the index · the working tree · backup saved                                                ← u
-  now       fetch all remotes                            remote-tracking refs · not undoable
+JOURNAL · what happened in this repo, newest first
+▸ ●  Graft          now       push main → origin/main                      not undoable — origin has it · 7be74b5 → 76cd189
+  ●  Graft          now       pull origin/main                             1 ref · the index · the working tree · backup saved                              ← u
+  ●  Graft          now       fetch all remotes                            remote-tracking refs · not undoable
+  $  outside Graft  6y ago    committed "ours" on main
+  $  outside Graft  6y ago    clone: from <scratch______________________________________________________________________>
+  a branch deleted outside Graft and never checked out leaves no trace here
 
 
 
@@ -592,23 +595,23 @@ UNDO JOURNAL · <scratch________________________________________________________
 
 
 
-
-
-
-
-⏎ undo this  space command log  J/esc close
+● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds
+⏎ revert to before this  space command log  J/esc close
 
 ================================================================================
 docs/shots/m4-07-journal-remote-rows-80x24.txt
-what right looks like: TESTING.md § Per breakpoint, Journal row: three rows; push reads `not undoable — origin has it · <a> → …`; pull reads `1 ref · the index · the working tree ·← u` (`backup saved` is under the `← u` mark).
+what right looks like: TESTING.md § Per breakpoint, Journal row: three `●` rows, their summaries in one column; push reads `push main →…  not undoable — origin has it…` (its verdict is long, so its description gives way), pull `1 ref · the index · the…  ← u`, fetch `remote-tracking refs · not…` — the rest of a summary is what 80 columns cuts (24-b); then the repo's `$` rows.
 ================================================================================
 
 m4 walk capture: m4-07-journal-remote-rows — scenario journal-rows, keys J, unicode tier, 80x24
 
-UNDO JOURNAL · <scratch_______________________________________________________>…
-▸ now       push main → origin/main   not undoable — origin has it · 7be74b5 → …
-  now       pull origin/main          1 ref · the index · the working tree ·← u
-  now       fetch all remotes         remote-tracking refs · not undoable
+JOURNAL · what happened in this repo, newest first
+▸ ●  now       push main →…           not undoable — origin has it…
+  ●  now       pull origin/main       1 ref · the index · the…              ← u
+  ●  now       fetch all remotes      remote-tracking refs · not…
+  $  6y ago    committed "ours" on main
+  $  6y ago    clone: from…
+  a branch deleted outside Graft and never checked out leaves no trace here
 
 
 
@@ -624,11 +627,8 @@ UNDO JOURNAL · <scratch_______________________________________________________>
 
 
 
-
-
-
-
-⏎ undo this  space command log  J/esc close
+● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a…
+⏎ revert to before this  space command log  J/esc close
 
 ================================================================================
 docs/shots/m4-08-undo-after-push-160x48.txt
@@ -1005,22 +1005,22 @@ what right looks like: Capture header "Judge by eye": the lease box names the ti
 "◇    Commit 1␛[31m                                                                                       TE 57y  0101010"
 "                                                                                                                        "
 "                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
 "     ╭ Force-push main → origin/main? ────────────────────────────────────────────────────────────────╮                 "
 "     │ origin/main 9f8e7d6 → 0303030 · refused if origin moved since your fetch (lease)               │                 "
 "     │ rewrites history for everyone who has 9f8e7d6                                                  │                 "
+"     │ nothing on origin/main is lost                                                                 │                 "
 "     │                                                                                                │                 "
 "     │ git push --progress --force-with-lease=refs/heads/main:9f8e7d6c5b4a39281706f5e4d3c2b1a0987654… │                 "
 "     │                                                                                                │                 "
 "     │ ▸[ Cancel ]   [ Force push ]                                                                   │                 "
 "     ╰────────────────────────────────────────────────────────────────────────────────────────────────╯                 "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
 " ←/→ move  ⏎ choose  esc cancel                                                                                         "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "

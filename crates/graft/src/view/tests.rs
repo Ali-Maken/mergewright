@@ -2862,7 +2862,10 @@ fn capture_m3_journal() {
     for (columns, rows) in [(160_u16, 48_u16), (80, 24)] {
         let state = journal_state(columns, rows);
         let screen = draw(&state, columns, rows);
-        assert!(screen.contains("JOURNAL · what happened in this repo"), "{screen}");
+        assert!(
+            screen.contains("JOURNAL · what happened in this repo"),
+            "{screen}"
+        );
         assert!(screen.contains("← u"), "{screen}");
         assert!(screen.contains("← U"), "{screen}");
         assert!(screen.contains("undone"), "{screen}");

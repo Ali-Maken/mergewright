@@ -21,12 +21,12 @@
 #   then space command log and J/esc close; the legend sits above it.
 === 80x24 ===
 "JOURNAL · what happened in this repo, newest first                              "
-"▸ ●  now       undo: commit "Add…  1 ref · the index · backup saved         ← U "
-"  ●  2m ago    commit "Add OAuth…  1 ref · the index · backup saved      undone "
+"▸ ●  now       undo: commit "Add…     1 ref · the index · backup…           ← U "
+"  ●  2m ago    commit "Add OAuth…     1 ref · the index · backup…        undone "
 "  ●  14m ago   stage 3 files          the index · backup saved              ← u "
-"  ●  40m ago   commit "WIP on…      interrupted · 1 ref · the index interrupted "
+"  ●  40m ago   commit "WIP on…        interrupted · 1 ref · the…    interrupted "
 "  ●  3h ago    discard…     failed: error: unable to unlink…                    "
-"  ●  26h ago   stage src/api/routes.rs the index · backup saved                 "
+"  ●  26h ago   stage…                 the index · backup saved                  "
 "  a branch deleted outside Graft and never checked out leaves no trace here     "
 "                                                                                "
 "                                                                                "

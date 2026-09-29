@@ -7,13 +7,17 @@
 //!
 //! Also writes J's captures (`docs/shots/m7/journal-*.txt`,
 //! `put-back-landed-187x50.txt`).
+#![allow(
+    clippy::expect_used,
+    reason = "a test fixture that cannot be built has nothing to test; the panic names why"
+)]
 
 use std::path::{Path, PathBuf};
 
 use graft::session::Clock;
 use graft::update::AppState;
 use graft_core::event::KeyCode;
-use graft_fixtures::lost_work::{self, Graft, LostWork};
+use graft_fixtures::lost_work::{self, Commits, Graft, LostWork};
 use graft_git::repo::RepoHandle;
 use graft_git::run::Stop;
 use graft_ops::apply::{Context, apply};
@@ -26,7 +30,7 @@ use crate::captures::{check_shot, frame_at};
 
 /// The instant every frame is drawn at, and every entry the app writes is
 /// stamped with: a minute after the fixture's last step.
-const NOW: i64 = lost_work::END + 60;
+pub(crate) const NOW: i64 = lost_work::END + 60;
 
 /// Graft's own operations at the fixture's Graft points, run through the
 /// same `graft_ops` calls the app's jobs make (`graft-ops`'
@@ -86,22 +90,22 @@ impl Graft for AppOps {
 }
 
 /// The fixture, built with the app's operations.
-fn lost_work() -> LostWork {
+pub(crate) fn lost_work() -> LostWork {
     LostWork::build(&mut AppOps).unwrap_or_else(|why| panic!("the fixture builds: {why}"))
 }
 
 /// The frame at `columns`×`rows`, drawn at [`NOW`].
-fn drawn(state: &AppState, columns: u16, rows: u16) -> Vec<String> {
+pub(crate) fn drawn(state: &AppState, columns: u16, rows: u16) -> Vec<String> {
     frame_at(state, columns, rows, Some(Clock::Fixed(NOW)))
 }
 
 /// The frame as one string, for a failure message or a capture.
-fn text(frame: &[String]) -> String {
+pub(crate) fn text(frame: &[String]) -> String {
     format!("{}\n", frame.join("\n"))
 }
 
 /// The app open on the fixture, its launch read answered.
-fn opened(repo: &Path) -> (App, AppState) {
+pub(crate) fn opened(repo: &Path) -> (App, AppState) {
     let (app, state) = App::open_with_clock(repo, Clock::Fixed(NOW));
     let state = app.pump(state, "the launch read", |state| {
         state.journal.reading.is_none()
@@ -152,7 +156,7 @@ fn confirm(route: &mut Route, app: &App, state: &AppState, what: &str) -> AppSta
 }
 
 /// The selected row of J's frame: the one marked `▸`.
-fn selected_row(frame: &[String]) -> &str {
+pub(crate) fn selected_row(frame: &[String]) -> &str {
     frame
         .iter()
         .find(|row| row.starts_with('▸'))
@@ -211,27 +215,26 @@ fn the_three_lost_work_journeys_git_clock_pinned() {
     let commits = fixture.commits().clone();
     let (app, state) = opened(repo);
 
-    // 13 · `lost-to-shell-reset`: J ⏎ y. The ✗ row under the reset is
-    // preselected (F1), so no key moves to it.
-    let mut route = Route::new("lost-to-shell-reset");
-    let state = open_j(&mut route, &app, &state);
-    let frame = drawn(&state, 187, 50);
-    assert!(
-        selected_row(&frame).contains(lost_work::LOST_ON_MAIN)
-            && selected_row(&frame).contains("✗ lost"),
-        "D's ✗ row is preselected:\n{}",
-        text(&frame)
-    );
+    let state = journey_13(&app, &state, repo, &commits);
+    let state = journey_14(&app, &state, repo, &commits);
+    let state = journey_15_refused(&app, &state);
+    let state = journey_15(&app, &state, repo);
+    drop(state);
+    app.close();
+}
+
+/// J's captures of the list as journey 13 finds it, at each width.
+fn j_captures(app: &App, state: &AppState) {
     for (columns, rows) in [(187, 50), (100, 30), (187, 24)] {
         check_shot(
             &format!("m7/journal-{columns}x{rows}.txt"),
-            &text(&drawn(&state, columns, rows)),
+            &text(&drawn(state, columns, rows)),
         );
     }
     // At 140 there is no `git:` column: the selected `$` row's subject is
     // drawn under it. `k` onto the reset's row, on a copy — the journey
     // itself stays on the `✗` row.
-    let on_the_reset = app.key(&state, KeyCode::Char('k'));
+    let on_the_reset = app.key(state, KeyCode::Char('k'));
     let frame = drawn(&on_the_reset, 140, 40);
     let body = text(&frame);
     let reset = frame
@@ -243,8 +246,24 @@ fn the_three_lost_work_journeys_git_clock_pinned() {
         "its subject under it:\n{body}"
     );
     check_shot("m7/journal-140x40.txt", &body);
-    let state = enter_to_the_box(&mut route, &app, &state);
-    let state = confirm(&mut route, &app, &state, "13");
+}
+
+/// Journey 13, from the graph to its landing.
+fn journey_13(app: &App, state: &AppState, repo: &Path, commits: &Commits) -> AppState {
+    // 13 · `lost-to-shell-reset`: J ⏎ y. The ✗ row under the reset is
+    // preselected (F1), so no key moves to it.
+    let mut route = Route::new("lost-to-shell-reset");
+    let state = open_j(&mut route, app, state);
+    let frame = drawn(&state, 187, 50);
+    assert!(
+        selected_row(&frame).contains(lost_work::LOST_ON_MAIN)
+            && selected_row(&frame).contains("✗ lost"),
+        "D's ✗ row is preselected:\n{}",
+        text(&frame)
+    );
+    j_captures(app, &state);
+    let state = enter_to_the_box(&mut route, app, &state);
+    let state = confirm(&mut route, app, &state, "13");
     route.within_count();
     assert_eq!(rev(repo, "refs/heads/main"), commits.d, "main is back on D");
     let state = app.pump(state, "the graph re-read with D on it", |state| {
@@ -252,42 +271,63 @@ fn the_three_lost_work_journeys_git_clock_pinned() {
             .iter()
             .any(|row| row.contains(lost_work::LOST_ON_MAIN) && !row.contains("put back ✓"))
     });
-    let state = crate::captures::settled_frame(&app, state);
+    let state = crate::captures::settled_frame(app, state);
     let landed = drawn(&state, 187, 50);
     let body = text(&landed);
     assert!(body.contains("↺ put back"), "the put-back tag:\n{body}");
-    assert!(body.contains("○ main was here"), "the was-here tag:\n{body}");
+    assert!(
+        body.contains("○ main was here"),
+        "the was-here tag:\n{body}"
+    );
     assert!(body.contains('✓'), "the ✓ line:\n{body}");
     check_shot("m7/put-back-landed-187x50.txt", &body);
 
+    state
+}
+
+/// Journey 14, from the graph to its landing.
+fn journey_14(app: &App, state: &AppState, repo: &Path, commits: &Commits) -> AppState {
     // 14 · `deleted-branch-back`: J n ⏎ y. D is on main again, so its ✗
     // row is gone and nothing is preselected; `n` finds E's.
     let mut route = Route::new("deleted-branch-back");
-    let state = open_j(&mut route, &app, &state);
+    let state = open_j(&mut route, app, state);
     let frame = drawn(&state, 120, 40);
     let body = text(&frame);
     assert!(
-        frame.iter().any(|row| row.contains("●  Graft") && row.contains("put main back")),
+        frame
+            .iter()
+            .any(|row| row.contains("●  Graft") && row.contains("put main back")),
         "the put-back's own ● row:\n{body}"
     );
     assert!(
-        !body.contains(&commits.d[..7]),
+        !frame
+            .iter()
+            .any(|row| row.contains("✗ lost") && row.contains(&commits.d[..7])),
         "D's ✗ row is gone:\n{body}"
     );
     check_shot("m7/journal-after-put-back-120x40.txt", &body);
-    let state = route.press(&app, &state, "n", KeyCode::Char('n'));
+    let state = route.press(app, &state, "n", KeyCode::Char('n'));
     let frame = drawn(&state, 187, 50);
     assert!(
         selected_row(&frame).contains(lost_work::LOST_ON_SPIKE),
         "n lands on E's ✗ row:\n{}",
         text(&frame)
     );
-    let state = enter_to_the_box(&mut route, &app, &state);
-    let state = confirm(&mut route, &app, &state, "14");
+    let state = enter_to_the_box(&mut route, app, &state);
+    let state = confirm(&mut route, app, &state, "14");
     route.within_count();
-    assert_eq!(rev(repo, "refs/heads/spike"), commits.e, "spike is back on E");
+    assert_eq!(
+        rev(repo, "refs/heads/spike"),
+        commits.e,
+        "spike is back on E"
+    );
     assert_eq!(rev(repo, "refs/heads/main"), commits.d, "main untouched");
 
+    state
+}
+
+/// Journey 15 on the fixture as built: refused, J left up.
+fn journey_15_refused(app: &App, state: &AppState) -> AppState {
     // 15 · `edit-in-undo-backup`: J n ⏎ y. E is on spike again; `n` finds
     // his edit the forced undo replaced.
     //
@@ -298,49 +338,57 @@ fn the_three_lost_work_journeys_git_clock_pinned() {
     // status row, J still up. The note's count assumes a clean file — an
     // open question for the planner (ticket 24 NOTES 24-b).
     let mut refused = Route::new("edit-in-undo-backup");
-    let state = open_j(&mut refused, &app, &state);
-    let state = refused.press(&app, &state, "n", KeyCode::Char('n'));
+    let state = open_j(&mut refused, app, state);
+    let state = refused.press(app, &state, "n", KeyCode::Char('n'));
     let frame = drawn(&state, 187, 50);
     assert!(
         selected_row(&frame).contains("your edit to src/a.rs"),
         "n lands on the lost edit's row:\n{}",
         text(&frame)
     );
-    let state = refused.press(&app, &state, "⏎", KeyCode::Enter);
+    let state = refused.press(app, &state, "⏎", KeyCode::Enter);
     let state = app.pump(state, "the plan refused", |state| {
         matches!(state.status, graft::update::Status::Sticky { .. })
     });
     let frame = drawn(&state, 187, 50);
     let body = text(&frame);
-    assert!(state.journal.shown && state.preview.is_none(), "J up, no box:\n{body}");
+    assert!(
+        state.journal.shown && state.preview.is_none(),
+        "J up, no box:\n{body}"
+    );
     let status_row = frame.len() - 3;
     assert!(
-        frame[status_row].contains("src/a.rs has unsaved edits · c commits or S stashes them first"),
+        frame[status_row]
+            .contains("src/a.rs has unsaved edits · c commits or S stashes them first"),
         "the refusal on J's status row, above the legend:\n{body}"
     );
     let state = app.key(&state, KeyCode::Escape);
     let state = app.key(&state, KeyCode::Escape);
     assert!(!state.journal.shown, "esc closed J");
 
+    state
+}
+
+/// Journey 15 once the file is clean.
+fn journey_15(app: &App, state: &AppState, repo: &Path) -> AppState {
     // The shell drops the discarded edit (setup, not counted): with the file
     // clean, the journey runs as the note counts it.
     git(repo, &["checkout", "--", lost_work::EDITED]);
     let mut route = Route::new("edit-in-undo-backup");
-    let state = open_j(&mut route, &app, &state);
-    let state = route.press(&app, &state, "n", KeyCode::Char('n'));
+    let state = open_j(&mut route, app, state);
+    let state = route.press(app, &state, "n", KeyCode::Char('n'));
     let frame = drawn(&state, 187, 50);
     assert!(
         selected_row(&frame).contains("your edit to src/a.rs"),
         "n lands on the lost edit's row:\n{}",
         text(&frame)
     );
-    let state = enter_to_the_box(&mut route, &app, &state);
-    let state = confirm(&mut route, &app, &state, "15");
+    let state = enter_to_the_box(&mut route, app, &state);
+    let state = confirm(&mut route, app, &state, "15");
     route.within_count();
     let on_disk = std::fs::read(repo.join(lost_work::EDITED)).expect("src/a.rs is on disk");
     assert_eq!(on_disk, lost_work::LOST_EDIT, "his edit is back on disk");
-    drop(state);
-    app.close();
+    state
 }
 
 /// A `●` row expanded with `space`: its commands under `commands Graft

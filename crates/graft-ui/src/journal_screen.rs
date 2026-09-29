@@ -515,52 +515,15 @@ fn row_pieces(row: &JournalRowView, selected: bool, columns: Columns, width: usi
 }
 
 /// The words of a `●` or `$` row, and what stands at their right.
-fn words_pieces(row: &JournalRowView, columns: Columns, width: usize, words_x: usize) -> Vec<Piece> {
+fn words_pieces(
+    row: &JournalRowView,
+    columns: Columns,
+    width: usize,
+    words_x: usize,
+) -> Vec<Piece> {
     let room = width.saturating_sub(words_x);
     match row.kind {
-        RowKind::Graft => {
-            // The summaries line up under each other, which is what makes
-            // the list scannable; the description's column is capped so a
-            // long one does not push every summary off a wide screen.
-            let room = room.saturating_sub(MARK);
-            let summary = row.summary.as_str();
-            let words = if summary.is_empty() {
-                row.description.as_str().to_owned()
-            } else {
-                // The verdict is what must survive a short row (m4
-                // acceptance review M2: `in progress — c continue  a
-                // abort`, `not undoable`): the description gives way
-                // first, cut at a word, down to a floor it keeps.
-                const FLOOR: usize = 12;
-                let before_summary = room.saturating_sub(summary.width() + 1).max(FLOOR);
-                let column = room.saturating_sub(30).min(44).min(before_summary);
-                format!(
-                    "{} {summary}",
-                    pad(
-                        &cut_at_word(row.description.as_str(), before_summary),
-                        column
-                    ),
-                )
-            };
-            let mut pieces = vec![Piece {
-                x: words_x,
-                text: cut_at_word(&words, room),
-                ink: Ink::Text,
-            }];
-            let mark = row.mark.label();
-            if !mark.is_empty() {
-                pieces.push(Piece {
-                    x: width.saturating_sub(mark.width() + 1),
-                    text: mark.to_owned(),
-                    ink: if row.mark == RowMark::Interrupted {
-                        Ink::Warning
-                    } else {
-                        Ink::Text
-                    },
-                });
-            }
-            pieces
-        }
+        RowKind::Graft => graft_pieces(row, room, width, words_x),
         RowKind::Outside => match (&row.git_subject, columns.git) {
             (Some(subject), true) => {
                 let words_room = room.saturating_sub(1).min(WORDS_BEFORE_GIT);
@@ -586,6 +549,56 @@ fn words_pieces(row: &JournalRowView, columns: Columns, width: usize, words_x: u
         },
         RowKind::Lost | RowKind::LostEdit => Vec::new(),
     }
+}
+
+/// A `●` row's description and summary, and its mark at the right edge.
+fn graft_pieces(row: &JournalRowView, room: usize, width: usize, words_x: usize) -> Vec<Piece> {
+    // The summaries line up under each other, which is what makes
+    // the list scannable; the description's column is capped so a
+    // long one does not push every summary off a wide screen.
+    let room = room.saturating_sub(MARK);
+    let summary = row.summary.as_str();
+    let words = if summary.is_empty() {
+        row.description.as_str().to_owned()
+    } else {
+        // The verdict — the summary's first clause — is what must
+        // survive a short row (m4 acceptance review M2: `in progress —
+        // c continue  a abort`, `not undoable — origin has it`): where
+        // it would not fit, that row's description gives way, cut at a
+        // word, down to a floor it keeps. The rest of the summary (`2
+        // refs · the index …`) is what a short row loses first, so every
+        // other row keeps the shared column. (+ 2: the space before the
+        // summary, and the `…` a cut after the verdict ends with.)
+        const FLOOR: usize = 12;
+        let verdict = summary.split(" · ").next().unwrap_or(summary).width();
+        let column = room
+            .saturating_sub(30)
+            .min(44)
+            .min(room.saturating_sub(verdict + 2))
+            .max(FLOOR);
+        format!(
+            "{} {summary}",
+            pad(&cut_at_word(row.description.as_str(), column), column),
+        )
+    };
+    let mut pieces = vec![Piece {
+        x: words_x,
+        text: cut_at_word(&words, room),
+        ink: Ink::Text,
+    }];
+    let mark = row.mark.label();
+    if !mark.is_empty() {
+        pieces.push(Piece {
+            x: width.saturating_sub(mark.width() + 1),
+            text: mark.to_owned(),
+            ink: if row.mark == RowMark::Interrupted {
+                Ink::Warning
+            } else {
+                Ink::Text
+            },
+        });
+    }
+    pieces
 }
 
 /// `git: "reset: moving to HEAD~1"`.
@@ -632,6 +645,44 @@ fn under_pieces(
     lines
 }
 
+impl JournalScreen<'_> {
+    /// From the bottom up: the bar, the legend, the status row. The rows
+    /// scroll in what is left; these stay (J1, at 24 rows too). Returns the
+    /// row above the last one drawn.
+    fn draw_bottom(&self, area: Rect, buf: &mut Buffer) -> u16 {
+        let muted = foreground(self.theme, Token::TextMuted);
+        let width = usize::from(area.width);
+        let mut bottom = area.bottom().saturating_sub(1);
+        if !self.view.box_open {
+            set_text(buf, area.x, bottom, area, &self.footer(width), muted);
+        }
+        let ready = self.view.status == JournalStatus::Ready;
+        if ready && area.height >= 4 {
+            bottom = bottom.saturating_sub(1);
+            set_text(
+                buf,
+                area.x,
+                bottom,
+                area,
+                &cut_at_word(LEGEND, width),
+                muted,
+            );
+        }
+        if let Some(status) = &self.view.status_row
+            && area.height >= 5
+        {
+            bottom = bottom.saturating_sub(1);
+            let ink = if status.problem {
+                foreground(self.theme, Token::Warning)
+            } else {
+                muted
+            };
+            set_text(buf, area.x, bottom, area, &status.words, ink);
+        }
+        bottom
+    }
+}
+
 impl Widget for JournalScreen<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         if area.is_empty() {
@@ -650,28 +701,7 @@ impl Widget for JournalScreen<'_> {
         if area.height == 1 {
             return;
         }
-        // From the bottom up: the bar, the legend, the status row. The rows
-        // scroll in what is left; these stay (J1, at 24 rows too).
-        let mut bottom = area.bottom().saturating_sub(1);
-        if !self.view.box_open {
-            set_text(buf, area.x, bottom, area, &self.footer(width), muted);
-        }
-        let ready = self.view.status == JournalStatus::Ready;
-        if ready && area.height >= 4 {
-            bottom = bottom.saturating_sub(1);
-            set_text(buf, area.x, bottom, area, &cut_at_word(LEGEND, width), muted);
-        }
-        if let Some(status) = &self.view.status_row
-            && area.height >= 5
-        {
-            bottom = bottom.saturating_sub(1);
-            let ink = if status.problem {
-                foreground(self.theme, Token::Warning)
-            } else {
-                muted
-            };
-            set_text(buf, area.x, bottom, area, &status.words, ink);
-        }
+        let bottom = self.draw_bottom(area, buf);
         let body = Rect {
             x: area.x,
             y: area.y.saturating_add(1),
@@ -792,7 +822,11 @@ mod tests {
                 summary: sanitize("remote-tracking refs · not undoable"),
                 ..row("2m ago", "fetch all remotes", RowMark::None)
             },
-            outside("5m ago", "reset main 1 commit back", "reset: moving to HEAD~1"),
+            outside(
+                "5m ago",
+                "reset main 1 commit back",
+                "reset: moving to HEAD~1",
+            ),
             lost(
                 "9a8b7c6 \"Add rate limiter\" · was main's tip · no branch holds it",
                 1,
@@ -836,8 +870,14 @@ mod tests {
         let mut rows = vec![row("2m ago", "commit \"x\"", RowMark::NextUndo)];
         rows[0].expanded = true;
         let grid = draw(&view(rows, JournalStatus::Ready), 60, 10);
-        assert!(grid[2].trim_start().starts_with(COMMANDS_HEADING), "{grid:?}");
-        assert!(grid[3].trim_start().starts_with("┆ git commit -F -"), "{grid:?}");
+        assert!(
+            grid[2].trim_start().starts_with(COMMANDS_HEADING),
+            "{grid:?}"
+        );
+        assert!(
+            grid[3].trim_start().starts_with("┆ git commit -F -"),
+            "{grid:?}"
+        );
         assert!(
             !grid.iter().any(|line| line.contains("$ git")),
             "no `$` in the log: {grid:?}"
@@ -939,7 +979,9 @@ mod tests {
         assert!(grid[2].contains("outside Graft"), "{grid:?}");
         assert!(!grid[2].contains("git:"), "{grid:?}");
         assert!(
-            grid[3].trim_start().starts_with("git: \"reset: moving to HEAD~1\""),
+            grid[3]
+                .trim_start()
+                .starts_with("git: \"reset: moving to HEAD~1\""),
             "{grid:?}"
         );
         assert!(
@@ -968,7 +1010,11 @@ mod tests {
     fn at_24_rows_the_frame_stays_and_the_rows_scroll() {
         let mut rows = Vec::new();
         for n in 0..30 {
-            rows.push(row(&format!("{n}m ago"), &format!("stage file{n}"), RowMark::None));
+            rows.push(row(
+                &format!("{n}m ago"),
+                &format!("stage file{n}"),
+                RowMark::None,
+            ));
         }
         let mut view = view(rows, JournalStatus::Ready);
         view.selected = 29;
