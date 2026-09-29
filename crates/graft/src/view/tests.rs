@@ -2820,7 +2820,7 @@ const JOURNAL_HEADER: &str = "\
 # against a fixed clock so the ages never move.
 #
 # Judge by eye:
-# - The header reads UNDO JOURNAL · <the repository's path>.
+# - The title reads JOURNAL · what happened in this repo, newest first.
 # - Newest first: the undo is the top row, the 26-hour-old stage the last.
 # - Every mark the browser has is on screen, one row each, no row with two.
 #   Not \"looks right\": the marks are `graft_ops`' own next_undo, next_redo
@@ -2833,7 +2833,8 @@ const JOURNAL_HEADER: &str = "\
 #                  It reads interrupted, and never failed:.
 # - The discard row leads with failed: and git's own first line, and still
 #   ends with backup saved — a write that failed part-way is still undoable.
-# - The footer offers ⏎ undo this, space command log and J/esc close.
+# - The bar names what ⏎ does on the selected row (on the ← U row: ⏎ redo this),
+#   then space command log and J/esc close; the legend sits above it.
 ";
 
 const JOURNAL_EXPANDED_HEADER: &str = "\
@@ -2845,7 +2846,7 @@ const JOURNAL_EXPANDED_HEADER: &str = "\
 # Judge by eye:
 # - The cursor row is the discard, marked ▸ and painted.
 # - Under it, indented: the whole failure reason, then the Command Log's one
-#   `$ git --literal-pathspecs restore …` line — the exact command that ran,
+#   `┆ git --literal-pathspecs restore …` line, under `commands Graft ran` — the exact command that ran,
 #   not a description of it.
 # - The rows below the expansion are pushed down, not overwritten.
 ";
@@ -2861,7 +2862,10 @@ fn capture_m3_journal() {
     for (columns, rows) in [(160_u16, 48_u16), (80, 24)] {
         let state = journal_state(columns, rows);
         let screen = draw(&state, columns, rows);
-        assert!(screen.contains("UNDO JOURNAL"), "{screen}");
+        assert!(
+            screen.contains("JOURNAL · what happened in this repo"),
+            "{screen}"
+        );
         assert!(screen.contains("← u"), "{screen}");
         assert!(screen.contains("← U"), "{screen}");
         assert!(screen.contains("undone"), "{screen}");

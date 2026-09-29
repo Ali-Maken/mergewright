@@ -143,3 +143,128 @@ fn u_never_acts_on_outside_rows() {
         "and nothing was journaled"
     );
 }
+
+/// V8 (24-b, ruling 2026-09-29): `u` pressed in J with the cursor on a `✗` row undoes
+/// the journal's next entry and lands as `⏎` on the `← u` row does — J
+/// closed.
+#[test]
+fn u_in_j_undoes_the_next_entry_from_any_row() {
+    let (scratch, lost, left) = lost_by_the_shell();
+    let repo = scratch.path();
+
+    let (app, state) = App::open(repo);
+    let state = journal_with_every_stage(&app, state);
+    let state = app.key(&state, KeyCode::Enter);
+    let state = app.pump(state, "the put-back's plan", |state| {
+        state.preview.as_ref().is_some_and(|preview| {
+            !matches!(
+                preview.plan,
+                graft::update::detail::Loading::Idle | graft::update::detail::Loading::Pending(_)
+            )
+        })
+    });
+    let state = app.key(&state, KeyCode::Char('y'));
+    let state = app.settle_write(state, "the put-back");
+    assert_eq!(main_tip(repo), lost, "main has the lost commit again");
+
+    // The shell loses a second commit: a `✗` row newer than the put-back.
+    std::fs::write(repo.join("cache.txt"), "ttl: 5\n").expect("the scratch repo is writable");
+    git(repo, &["add", "cache.txt"]);
+    git(repo, &["commit", "-q", "-m", "Try redis cache"]);
+    let second = git(repo, &["rev-parse", "HEAD"]).trim().to_owned();
+    git(repo, &["reset", "-q", "--hard", "HEAD~1"]);
+
+    let state = journal_with_every_stage(&app, state);
+    let state = app.key(&state, KeyCode::Char('u'));
+    let state = app.settle_write(state, "the undo from J");
+    assert_eq!(main_tip(repo), left, "u took the put-back back");
+    assert_ne!(main_tip(repo), second, "u never put the ✗ row back");
+    assert!(
+        !state.journal.shown,
+        "u in J lands as ⏎ on the ← u row: J closed"
+    );
+    drop(state);
+    app.close();
+}
+
+/// `⏎ y` on J's preselected lost row, the put-back settled and the graph
+/// re-read with the lost commit on it.
+fn put_back_through_j(app: &App, state: graft::update::AppState) -> graft::update::AppState {
+    let state = journal_with_every_stage(app, state);
+    let state = app.key(&state, KeyCode::Enter);
+    let state = app.pump(state, "the put-back's plan", |state| {
+        state.preview.as_ref().is_some_and(|preview| {
+            !matches!(
+                preview.plan,
+                graft::update::detail::Loading::Idle | graft::update::detail::Loading::Pending(_)
+            )
+        })
+    });
+    let state = app.key(&state, KeyCode::Char('y'));
+    let state = app.settle_write(state, "the put-back");
+    let state = app.pump(state, "the graph with the commit back on it", |state| {
+        crate::captures::frame(state, 160, 40)
+            .iter()
+            .any(|row| row.contains("Add rate limiter") && !row.contains('\u{2713}'))
+    });
+    crate::captures::settled_frame(app, state)
+}
+
+/// After a put-back, `J` again: the put-back is a `●` row of Graft's own
+/// (`u` can take it back), and the commit it put back is no longer lost —
+/// no `✗` row.
+#[test]
+fn j_again_shows_a_graft_row_and_no_lost_row() {
+    let (scratch, lost, _left) = lost_by_the_shell();
+    let repo = scratch.path();
+    let (app, state) = App::open(repo);
+    let state = put_back_through_j(&app, state);
+    assert_eq!(main_tip(repo), lost);
+
+    let state = journal_with_every_stage(&app, state);
+    let frame = crate::captures::frame(&state, 187, 50);
+    let body = frame.join("\n");
+    assert!(
+        frame
+            .iter()
+            .any(|row| row.contains("\u{25cf}  Graft") && row.contains("put main back to")),
+        "the put-back's own \u{25cf} row:\n{body}"
+    );
+    assert!(!body.contains("\u{2717} lost"), "no \u{2717} row:\n{body}");
+    drop(state);
+    app.close();
+}
+
+/// Where a put-back lands: the graph, the commit tagged `↺ put back`, the
+/// commit the branch left tagged `○ main was here`, and the `✓` line.
+#[test]
+fn put_back_and_was_here_tags_draw() {
+    let (scratch, _lost, _left) = lost_by_the_shell();
+    let repo = scratch.path();
+    let (app, state) = App::open(repo);
+    let state = put_back_through_j(&app, state);
+    assert!(!state.journal.shown, "y closed J");
+    let frame = crate::captures::frame(&state, 160, 40);
+    let body = frame.join("\n");
+    let tagged = |needle: &str, subject: &str| {
+        frame
+            .iter()
+            .any(|row| row.contains(needle) && row.contains(subject))
+    };
+    assert!(
+        tagged("\u{21ba} put back", "Add rate limiter"),
+        "the put-back commit's tag:\n{body}"
+    );
+    assert!(
+        tagged("\u{25cb} main was here", "Correct the note"),
+        "where main was:\n{body}"
+    );
+    assert!(
+        body.contains(
+            "put back \u{2713} \u{b7} main has \"Add rate limiter\" again \u{b7} u undoes"
+        ),
+        "the \u{2713} line:\n{body}"
+    );
+    drop(state);
+    app.close();
+}

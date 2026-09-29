@@ -206,7 +206,26 @@ fn a_refused_plan_closes_the_box_onto_js_status_row() {
     );
     assert!(state.preview.is_none(), "the box closed");
     assert!(state.journal.shown, "J is still up");
-    assert_eq!(drawn(&state), j_before, "J as it was, on the same row");
+    // J as it was, on the same row — but for its status row, which now
+    // carries the refusal (24-b: J draws its own status row above the
+    // legend, where he pressed the key).
+    let after = drawn(&state);
+    let body = after.join("\n");
+    let refusal = row_of(&after, "main moved on since")
+        .unwrap_or_else(|| panic!("the refusal on J's status row:\n{body}"));
+    let legend =
+        row_of(&after, "\u{25cf} done in Graft").unwrap_or_else(|| panic!("J's legend:\n{body}"));
+    assert_eq!(
+        refusal + 1,
+        legend,
+        "the status row sits above the legend:\n{body}"
+    );
+    assert_eq!(after.len(), j_before.len());
+    for (row, (now, was)) in after.iter().zip(&j_before).enumerate() {
+        if row != refusal {
+            assert_eq!(now, was, "row {row} is J as it was:\n{body}");
+        }
+    }
     assert!(
         matches!(&state.status, graft::update::Status::Sticky { .. }),
         "the refusal is on the status J shows: {:?}",

@@ -1,4 +1,9 @@
-UNDO JOURNAL · <scratch____________________________________________________________>
+JOURNAL · what happened in this repo, newest first
+  $  outside Graft  future    fast-import                                        git: "fast-import"
+  $  outside Graft  now       reset main 1 commit back                           git: "reset: moving to HEAD~1"
+▸    └ ✗ lost       fc48213 "Add rate limiter" · was main's tip · no branch holds it
+  $  outside Graft  2m ago    committed "Add rate limiter" on main               git: "commit: Add rate limiter"
+  a branch deleted outside Graft and never checked out leaves no trace here
 
 
 
@@ -19,11 +24,6 @@ UNDO JOURNAL · <scratch________________________________________________________
 
 
 
-
-
-
-
-nothing yet — every write lands here and u takes it back
 
 
 

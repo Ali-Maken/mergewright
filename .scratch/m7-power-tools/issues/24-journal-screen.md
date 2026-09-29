@@ -1,6 +1,6 @@
 # journal-screen — `J` shows the shell's steps and the lost commits as rows; `⏎` puts one back; he lands on it
 
-Status: ready — respecified 2026-09-27 against `scouts/24.md` (main @ b90a49e4); **amended 2026-09-29** after 24-a's
+Status: **done** (24-b, 2026-09-30; journey 15 question open, NOTES 24-b) — respecified 2026-09-27 against `scouts/24.md` (main @ b90a49e4); **amended 2026-09-29** after 24-a's
 verify-first (commit 80b72040): V3, V4, V5 decided below; a part **24-0** (the drop's why) and a part **24-a2** (the
 put-back box) added. Scope unchanged. **Amended again 2026-09-29:** `u`/`U` in J are global, not swallowed (ruling at
 the end; folded into "Keys", "Decided `u`", Part B, "Touches").
@@ -423,22 +423,40 @@ Part A2 (24-a2): **done** (builder 24-a2, 2026-09-29; NOTES 24-a2 at the end)
   TESTING.md "M7: the put-back box over J"; caption row appended to `m7-contact-sheet-captions.tsv`, sheet rebuilt
   (31 captures). Colour unverified.
 
-Part B (24-b):
-- [ ] **Drawing:** `an_aborted_entry_reads_aborted_by_you` (red; M6/68, replaces the `failed: aborted` test in
+Part B (24-b): **done** (builder 24-b, 2026-09-30; NOTES 24-b at the end)
+- [x] **Drawing:** `an_aborted_entry_reads_aborted_by_you` (red; M6/68, replaces the `failed: aborted` test in
   `view/journal.rs`), `a_cut_row_cuts_at_a_word` (red; :848), `a_refusal_in_j_shows_on_its_status_row` (red; :217),
   `no_status_row_when_nothing_is_wrong`, `the_command_log_uses_the_dotted_rule` (red; replaces `journal_screen.rs`'s
   `$ git` tests), `the_bar_names_what_enter_does_on_each_row`, `no_enter_hint_on_a_step_with_neither`,
   `j_again_shows_a_graft_row_and_no_lost_row`, `put_back_and_was_here_tags_draw`,
-  `the_name_prompt_draws_over_j` (V1 left it unchecked).
-- [ ] **`u` in J (ruling at the end):** V8 in NOTES, file:line. `u_in_j_undoes_the_next_entry_from_any_row`
+  `the_name_prompt_draws_over_j` (V1 left it unchecked). — `crates/graft/src/view/journal.rs::tests::an_aborted_entry_reads_aborted_by_you`
+  (**seen red**: `failed: aborted · the index · backup saved`); `crates/graft-ui/src/journal_screen.rs::tests::a_cut_row_cuts_at_a_word` (**seen red**
+  on 24-a2's code); `crates/graft-ui/src/journal_screen.rs::tests::the_command_log_uses_the_dotted_rule` and `no_status_row_when_nothing_is_wrong`
+  (widget), red by construction only (they use 24-b's new fields; would not compile before — **not seen red**);
+  `crates/graft/tests/it/journal_screen.rs::a_refusal_in_j_shows_on_its_status_row` (**not seen red**: base had no status row to name),
+  `crates/graft/tests/it/journal_screen.rs::no_status_row_when_nothing_is_wrong` (frame), `crates/graft/tests/it/journal_screen.rs::the_bar_names_what_enter_does_on_each_row` (all 14 rows of
+  the fixture), `crates/graft/tests/it/journal_screen.rs::no_enter_hint_on_a_step_with_neither`, `crates/graft/tests/it/journal_screen.rs::the_name_prompt_draws_over_j`,
+  `crates/graft/tests/it/journal_put_back.rs::j_again_shows_a_graft_row_and_no_lost_row`, `crates/graft/tests/it/journal_put_back.rs::put_back_and_was_here_tags_draw` (the last two pass on
+  24-a's tags too — not red). All pass.
+- [x] **`u` in J (ruling at the end):** V8 in NOTES, file:line. `u_in_j_undoes_the_next_entry_from_any_row`
   (`tests/it/`: cursor on a `✗` row, `u` → the `← u` entry undone, the `✗` row's ref unchanged by `rev-parse`; lands
   as `enter_on_the_next_undo_row_is_u_and_closes_the_browser` does), `u_in_j_during_an_operation_shows_the_refusal_on_js_status_row`
   (frame: `finish or abort the <kind> first · ⇥ banner` on the status row). Not red-first: the code exists (say so).
-- [ ] **UI snapshots:** 187×50, 140×40, 100×30, and 187×24 (title, legend, status row and bar kept).
-- [ ] **Walks** (`m7_walk`), on the reordered "lost work" fixture, each landing asserted from the frame and
+  — `crates/graft/tests/it/journal_put_back.rs::u_in_j_undoes_the_next_entry_from_any_row` (**seen red** at 26bd74d2: J still shown; green after the
+  keys.rs grant); `crates/graft/tests/it/journal_screen.rs::u_in_j_during_an_operation_shows_the_refusal_on_js_status_row` (merge stop, `finish or abort
+  the merge first · ⇥ banner` on J's status row, J up; not red-first).
+- [x] **UI snapshots:** 187×50, 140×40, 100×30, and 187×24 (title, legend, status row and bar kept). —
+  `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys` writes `docs/shots/m7/journal-{187x50,140x40,100x30,187x24}.txt` (asserted
+  with `check_shot`); scrolling at 24 rows is `crates/graft-ui/src/journal_screen.rs::tests::at_24_rows_the_frame_stays_and_the_rows_scroll` (the
+  fixture's 16 rows fit 187×24).
+- [x] **Walks** (`m7_walk`), on the reordered "lost work" fixture, each landing asserted from the frame and
   `len(keys) <= noted_keys(id)`: `lost_to_shell_reset` `J ⏎ y` = 3; `deleted_branch_back` `J n ⏎ y` = 4 (after 13, as
-  F4); `edit_in_undo_backup` `J n ⏎ y` = 4. Stage 3 is a wait, not a key.
-- [ ] **Captures**, each ≤ 200 KB, each with a Right line; they lead the contact sheet (24-a2's
+  F4); `edit_in_undo_backup` `J n ⏎ y` = 4. Stage 3 is a wait, not a key. — `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`
+  (13 → 14 → 15 in one repo, `Route::within_count` each; git's clock pinned in a child process, NOTES). 13: `main`
+  = D by `rev-parse`, `↺ put back`, `○ main was here`, `✓` line. 14: `spike` = E. 15: **on the fixture as built `⏎`
+  is refused** (`src/a.rs has unsaved edits …`, on J's status row) — asserted; the counted route runs after the
+  shell drops the discarded edit (uncounted setup), and `src/a.rs` = `LOST_EDIT`. Open question in NOTES.
+- [x] **Captures**, each ≤ 200 KB, each with a Right line; they lead the contact sheet (24-a2's
   `put-back-preview-187x50.txt` among them, in journey order):
   - `docs/shots/m7/journal-187x50.txt`: `●`/`$`/`✗` rows, the preselected `✗` row, the legend, the muted last line.
   - `journal-140x40.txt`: no `git:` column; the selected `$` row's subject under it.
@@ -446,10 +464,14 @@ Part B (24-b):
   - `put-back-landed-187x50.txt`: `↺ put back`, `○ main was here`, the `✓` line.
   - `journal-after-put-back-120x40.txt`: the new `●` row; the D row gone.
   - `journal-expanded-120x40.txt`: `┆ git …` under `commands Graft ran`.
-- [ ] **Re-shot (ADR-0048):** `docs/shots/m3-journal-expanded.txt` and `docs/shots/m3-contact-sheet.txt` no longer
-  show `$ git`; name the capture test.
-- [ ] MAP.md (graft, graft-ui) entries. NOTES: the scout answers used, every J capture by file as re-shot or unchanged,
-  with why. V2: no J frame in m6 (NOTES) → no m6 re-shoot.
+  — all written by `crates/graft/tests/it/m7_walk/journal.rs` (`the_three_lost_work_journeys`, `journal_expanded_capture`), 1.2–2.7 KB each; Right lines in
+  TESTING.md "M7: the journal, J"; the 8 J rows lead `m7-contact-sheet-captions.tsv`; sheet rebuilt (38 captures,
+  114 KB). `put-back-preview-187x50.txt` re-taken with J's real rows. Colour unverified (rule 5).
+- [x] **Re-shot (ADR-0048):** `docs/shots/m3-journal-expanded.txt` and `docs/shots/m3-contact-sheet.txt` no longer
+  show `$ git`; name the capture test. — `crates/graft/src/view/tests.rs::capture_m3_journal` (grep: 0 `$ git` in
+  both); sheet rebuilt by `scripts/contact-sheet.sh m3 docs/shots`.
+- [x] MAP.md (graft, graft-ui) entries. NOTES: the scout answers used, every J capture by file as re-shot or unchanged,
+  with why. V2: no J frame in m6 (NOTES) → no m6 re-shoot. — both MAPs updated; NOTES 24-b below.
 
 ## Touches (check each; the report's **Touches:** line says how)
 - **24-0 — `DropPutBack`'s shape:** every file in 24-0's list; the build is the check for patterns, the named tests
@@ -715,3 +737,43 @@ No compaction. No scout: 24's scout plus the ticket's named sites; each read dir
 - **Verified:** the it/ tests drive the real app (real `recover_for`, real plan, real `git reset`); `main` read back
   with `rev-parse`. **Not verified:** by eye; colour; mouse clicks on `Put back` over J (the click path is the
   shared `preview_click`, untested for this box).
+
+## NOTES 24-b (builder, 2026-09-30, base 26bd74d2) — **Part B done; compacted once**
+**Compacted once** mid-ticket (after the J redraw, before the walks); nothing left over. Scout: `scouts/24b-harness.md`.
+
+- **V8 — differed; fixed under the grant** (`update/keys.rs`, conductor 2026-09-30). The probe is now
+  `journal_put_back.rs::u_in_j_undoes_the_next_entry_from_any_row` (seen red at 26bd74d2). `keys.rs`
+  `undo_key_anywhere`: **J closes after `undo::undo_key`, and only if it launched** (`commands` grew) — not before,
+  as the grant's wording said. Why: the ruling keeps a refusal on J's status row; `undo::launch` refuses by pushing
+  nothing (`update/undo.rs:255`, `in_progress_refusal`), and closing first would drop J under the refusal. `undo_key`
+  and `under_a_modal_the_landing_is_dropped` untouched (green).
+- **Deviations (from the ticket's words):** `JournalView::status_row` (not `status`: that name is the load state);
+  `JournalRowView::git_subject` is `SanitizedText`; `box_open` added (24-a2's request; `WithoutBar` removed from
+  `overlays.rs`); a `$` branch row with a new value reads `⏎ put <b> back to before this` (`put <b> back to it` reads
+  as the lost commit's); ages stay relative; `/` find not built, so not in the bar.
+- **Journey 15 — open question (planner).** On the fixture as built (22c ruling), the undo put `DISCARDED_EDIT` back on
+  disk, so `⏎` on the lost edit is refused: `graft-ops/src/operation/recover.rs:208` `Refusal::UnsavedEditsTo` (m7/23:
+  a file put-back never writes over his changes). The note's `J n ⏎ y` = 4 holds only on a clean file; the walk
+  asserts the refusal, then drops the edit in the shell (uncounted) and walks the 4 keys. Either the fixture or the
+  count/journey needs the planner's word.
+- **Walk clock.** The app stamps entries from `Clock::Fixed`; git's reflog would use the wall clock, and
+  `journal_list::steps::claim` pairs an entry with the *nearest* step moving the same ref the same way — the shell's
+  own `commit` of D, which the put-back's C → D repeats — so the put-back's record drew as a `$ … future` row. The
+  walk runs in a child with `GIT_COMMITTER_DATE` pinned (as `amend_into::capture_amend_into`). Test artefact, not a
+  product bug: a real put-back and its records share one clock.
+- **`●` row layout** (found by `m5_walk…journal_row_says_in_progress` and `set_aside::a_stop_with_edits_aside…`): the
+  summaries share one column; only a row whose *verdict* (the summary's first clause) wouldn't fit gives up
+  description room, down to 12. The rest of a summary is what narrow widths cut.
+- **Seen, not fixed (filed here):** J's status row can carry the graph's `… · J to inspect` notice while J is open
+  (`m3-journal-*`: `an operation was interrupted: … · J to inspect`) — `footer_notice` words, not J's; `⏎ revert to
+  before this` is offered on a `fetch`/`push` `●` row (not undoable) — 24-a's `enter_graft` decides, the bar follows it;
+  the legend says `✗ a commit no branch holds` while a lost-edit row also uses `✗`.
+- **Touched outside the list:** `src/view/tests.rs` (`capture_m3_journal`'s title assert and capture header only — the
+  capture's writer); `tests/it/main.rs` (module line).
+- **Every J capture:** re-shot — `m3-journal-{80x24,160x48}` (`capture_m3_journal`), `m3-journal-expanded` (same;
+  unchanged by the last layout pass), `m3-08-journal-after-unstage-{80x24,160x48}` (`pty-walk-m3.py … unstage-file`,
+  second pass clean), `m4-07-journal-remote-rows-{80x24,160x48}` (`pty-walk-m4.py … journal-rows`, second pass clean),
+  `m3-contact-sheet`, `m4-contact-sheet` (+ captions for the title and the cut), `m7/put-back-preview-187x50`.
+  Unchanged: `m5-ui-preview-time-machine-{80x24,160x48}` (the box replaces J; no J row in them, grep; test green),
+  `m5-contact-sheet-captions.tsv`. V2: no m6 J frame → no m6 re-shoot.
+- Verified by eye in the captures (text only): rows, words, alignment. **Colour unverified** (rule 5).

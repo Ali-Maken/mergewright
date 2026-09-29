@@ -20,16 +20,16 @@ pub(super) fn draw_journal(
     frame: &mut Frame,
     area: Rect,
 ) -> Option<Rect> {
-    let screen = journal_view(state, state.harness.clock.now_seconds());
-    let widget = WithoutBar {
-        inner: JournalScreen {
-            view: &screen,
-            theme: &session.theme,
-        },
-        // The put-back box over J holds every key and draws its own
-        // footer: J's bar would name keys it does not answer, as S's does
-        // under the stash box (`StashView::box_open`, review 86 M2).
-        blank: state.preview.is_some(),
+    let mut screen = journal_view(state, state.harness.clock.now_seconds());
+    // J's status row, worded by the ladder every bar uses: the problem,
+    // else the notice (m7-power-tools/24, KNOWN_GAPS M3 :217). A refusal
+    // inside J has somewhere to show; nothing wrong → no row.
+    screen.status_row = journal_status_row(state, tier_in_force(session, state), area.width);
+    // The put-back box over J names every key: J's bar is blank under it
+    // (`JournalView::box_open`), as S's is under the stash box.
+    let widget = JournalScreen {
+        view: &screen,
+        theme: &session.theme,
     };
     if state.detail.shown {
         render_overlay_with_detail(session, state, frame, widget, area, "Journal");
@@ -48,28 +48,29 @@ pub(super) fn draw_journal(
     None
 }
 
-/// An overlay screen drawn with its bottom row — its bar — left blank when
-/// `blank`: the preview box docked over it names the keys instead.
-///
-/// Here rather than a field on the journal's view because the journal's
-/// view and widget are another part's files (m7-power-tools/24-b); the
-/// stash screen does the same through `StashView::box_open`.
-struct WithoutBar<W> {
-    inner: W,
-    blank: bool,
-}
-
-impl<W: Widget> Widget for WithoutBar<W> {
-    fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
-        self.inner.render(area, buf);
-        if !self.blank || area.height == 0 {
-            return;
-        }
-        let bar = area.bottom() - 1;
-        for x in area.left()..area.right() {
-            buf[(x, bar)].set_symbol(" ");
-        }
+/// J's status row: [`draw_status_or_hints`]'s choice without the hints —
+/// the problem (warning), else the notice (muted), else no row.
+fn journal_status_row(
+    state: &AppState,
+    tier: RenderingTier,
+    width: u16,
+) -> Option<graft_ui::journal_screen::JournalStatusRow> {
+    if let Some(problem) = crate::view::status::bottom_row_problem(state) {
+        return Some(graft_ui::journal_screen::JournalStatusRow {
+            words: graft_ui::graph_screen::fit_status_line(
+                problem.reason.as_str(),
+                problem.keys.as_ref().map(SanitizedText::as_str),
+                width,
+            ),
+            problem: true,
+        });
     }
+    footer_notice(state, tier, width).map(|notice| graft_ui::journal_screen::JournalStatusRow {
+        words: graft_ui::fit::fit(notice.as_str(), usize::from(width))
+            .trim_end()
+            .to_owned(),
+        problem: false,
+    })
 }
 
 /// The stash overlay in the graph's area, and the context menu over it.

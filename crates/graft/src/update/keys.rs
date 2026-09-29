@@ -135,6 +135,18 @@ fn banner_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -
     claimed
 }
 
+/// The global `u`/`U`, on every screen. In J it lands as `⏎` on the
+/// `← u`/`← U` row does: J closes and the result is on the graph (ticket
+/// m7/24, ruling 2026-09-29) — but only once the undo is launched; a
+/// refusal stays on J's status row, where he pressed the key.
+fn undo_key_anywhere(next: &mut AppState, commands: &mut Vec<Command>, redo: bool) {
+    let asked = commands.len();
+    undo_key(next, commands, redo);
+    if next.journal.shown && commands.len() > asked {
+        super::journal::close(next, commands);
+    }
+}
+
 /// The half of [`super::core_event`] that answers a key.
 ///
 /// The detail pane answers its keys first (`Enter` opens it, ADR-0023).
@@ -212,7 +224,7 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     if !next.text_field_open()
         && let Some(redo) = is_undo_key(key)
     {
-        undo_key(next, commands, redo);
+        undo_key_anywhere(next, commands, redo);
         return;
     }
     // `Esc` while a write runs stops it — any write, not only a remote one

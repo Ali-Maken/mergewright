@@ -26,7 +26,7 @@ m3-commit-editor-refused.txt	Capture header "Judge by eye": `nothing staged` sit
 m3-commit-editor-rejected.txt	Capture header "Judge by eye": the hook's own words are on the footer row, in place of the key hints.
 m3-confirm-delete-untracked.txt	Capture header: `d` pressed with the files list focused, cursor on an untracked file — judge by eye per the file's own bullets.
 m3-confirm-discard.txt	Capture header: `d` pressed with the diff region focused, line cursor on an added line — judge by eye per the file's own bullets.
-m3-journal-80x24.txt	Capture header "Judge by eye": the header reads UNDO JOURNAL · <the repository's path>.
+m3-journal-80x24.txt	Capture header "Judge by eye": the title reads JOURNAL · what happened in this repo, newest first (24-b; was UNDO JOURNAL · <path>).
 m3-journal-160x48.txt	Capture header: same journal, wider — judge by eye per the file's own bullets.
 m3-journal-expanded.txt	Capture header "Judge by eye": the cursor row is the discard, marked ▸ and painted.
 m3-stash-empty.txt	Capture header "Judge by eye": the header reads STASHES (0) and the body says `no stashes — s stashes the working tree`.
