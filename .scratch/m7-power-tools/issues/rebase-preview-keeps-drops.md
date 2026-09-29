@@ -105,9 +105,12 @@ pub keep: bool,                                            // draws `R keep` aft
 Existing `Open` behaviour unchanged: every current `R`-on-graph test passes unedited.
 
 ## Acceptance
-- [ ] graft-ops (red first): `from_rebase_unedited_matches_the_rebase_todo` (same commits, same order, drops `Drop`,
+- [x] graft-ops (red first): `from_rebase_unedited_matches_the_rebase_todo` (same commits, same order, drops `Drop`,
       onto = `onto_tip`, line = `params.line`); `from_rebase_refuses_when_head_moved` (`Moved`);
-      `from_rebase_refuses_detached` (`NotOnABranch`).
+      `from_rebase_refuses_detached` (`NotOnABranch`). — ticked by `rewrite::plan::tests::{from_rebase_unedited_matches_the_rebase_todo,
+      from_rebase_refuses_when_head_moved, from_rebase_refuses_when_head_switched, from_rebase_refuses_detached,
+      from_rebase_keeps_the_line_as_given}` (graft-ops `src/rewrite/plan.rs`; red observed on the moved/switched/matches
+      three against a stub arm, detached and line green from the start via `head_of`/pass-through).
 - [ ] `update/preview/tests.rs`: `r_in_a_squash_merged_preview_opens_the_editor_with_drops_marked` (red first; asserts
       `Command::OpenRewrite { req: FromRebase(_) }` carrying the as-run params); `r_is_unbound_in_other_previews`
       (not-checked, no suggestion, merge preview); `r_is_unbound_when_the_rebased_branch_is_not_head`;
@@ -148,3 +151,31 @@ Medium (~50k). If it compacts, say so; split point: graft-ops arm + tests, then 
 ## Conductor note (2026-09-29)
 
 - You add the fence row yourself, in the same commit as the walk, so main never has a fence id with no walk behind it. The row goes in `docs/design-notes/m7-power-tools.md`'s `journey-counts` block, after `squash-merged-bottom`: `keep-a-suggested-drop         5     # +2 over squash-merged-bottom · no studied tool pre-suggests · motion r R p y`. That file is granted for this row only.
+
+## Handoff (builder, 2026-09-29) — blocked at the ticket's own split point
+
+Done, committed on `worktree-agent-aafbe6e54546e67cf`: graft-ops arm + tests (box 1 ticked), graft `jobs/rewrite.rs`
+exhaustive arm (`FromRebase` joins `Open`: "R is not a put-in"), graft-ops MAP. Gates workspace-wide green.
+
+**Blocked: needs three graft files not in the Files list** (grep `by_name` / `marked by its name`, 2026-09-29):
+- `crates/graft/src/update/rewrite_editor/words.rs:124` — builds `RowFacts { by_name: … }`; `RowFacts.by_name → marked:
+  Option<MarkedBy>` cannot compile without it.
+- `crates/graft/src/view/rewrite_editor.rs:134-135` — where `marked by its name` is drawn (graft view, **not** graft-ui
+  `src/rewrite_editor.rs`, which the ticket guessed); `already in <x> · p keeps it` must be drawn here.
+- `crates/graft/src/update/rewrite_editor/keys.rs:206,367` — `editor.by_name.remove(..)` on re-mark. Untouched if the
+  private set keeps its name as a `HashMap<Oid, MarkedBy>`; needed only to rename the field.
+graft-ui `src/rewrite_editor.rs`: not needed (its test at `rewrite_editor/tests.rs:49` only feeds the words in).
+
+Also found (for the next pass):
+- `src/rewrite/plan.rs` had **no** tests module; the tests are a new `#[cfg(test)] mod tests` in it (scratch repo via
+  `git`, as `absorb/judge.rs` does), not `tests/it/rewrite_plan.rs`.
+- `from_rebase` also refuses `Moved` for a drop with no row, matching `apply::engine::prepare:162-172` — otherwise the
+  unedited editor would run a todo `y` refuses.
+- **Gotcha for the walk:** in `squash_repo` every one of `feature-a`'s rows (a1 a2 a3) is a suggested drop and b1 is a
+  follower, not a row. The unedited editor is therefore `EverythingDropped` (`validate`) — `y` refuses until `p`. The
+  journey `r R p y` is fine; an "unedited `y`" check in the app is not possible on this fixture.
+- `update/keys/bound.rs`: lists hint-bar keys only (preview's bar is empty, `hints.rs:323`); not touched.
+
+Next step once granted: `Command::OpenRewrite { id, req }` (command.rs:209, runner.rs:768/1191, rewrite_editor.rs:411,
+rewrite_editor/tests.rs:215) → `open_rewrite(repos, req, …)`; base row label from a shared `line_rows` helper over
+`params.onto`; `keeps_drops` predicate; `R` in `preview_key` before the swallow (:438); footer `keep`; `MarkedBy`; walk.

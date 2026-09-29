@@ -198,6 +198,12 @@ pub enum RewriteRequest {
     /// changed its lines ([`crate::absorb::absorb_map`]); a hunk that fits
     /// none stays staged.
     Absorb,
+    /// `R` in a rebase preview: the editor on that same rebase, as `y`
+    /// would run it (`line` and `drops` filled by
+    /// [`crate::preview::plan_as_run`]): every row the rebase replays, the
+    /// suggested drops marked `drop`, onto `onto_tip`. Unedited, it runs the
+    /// rebase's own todo.
+    FromRebase(crate::operation::RebaseParams),
 }
 
 /// Why [`plan`] has no plan.
