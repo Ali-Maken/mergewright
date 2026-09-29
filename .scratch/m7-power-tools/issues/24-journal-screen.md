@@ -1,50 +1,90 @@
 # journal-screen — `J` shows the shell's steps and the lost commits as rows; `⏎` puts one back; he lands on it
 
-Status: ready — respecified 2026-09-27 against `scouts/24.md` (main @ b90a49e4). Scope unchanged.
-Build with: **Opus**, both parts. A screen over a decided list and a decided operation; every choice below is fixed
-here, and each is judged by a named test, a walk or a capture. The one structural piece (the landing target) is a
-small widening of 03's mechanism, pinned by 03's own tests → not Fable.
-Scout: done (`.scratch/m7-power-tools/scouts/24.md`). No second scout. Two items it could not confirm are
-**verify-first** steps below (rule 7): the builder checks them and writes file:line in NOTES before building on them.
-Crates and files (ADR-0051; outside this list → stop, `blocked: needs <file>`):
-- graft: `update/journal.rs` (+ tests), `update/recover.rs` (new), `jobs/journal_list.rs` (new), `jobs/runner.rs`
-  (dispatch arms only), `jobs/mod.rs` (the `Command`/`Product` variants), `update/mod.rs` (the new `Product` arms only),
-  `update/operate.rs` (`Landing`, `landing_of`, the `Done` arm), `update/banner/stop.rs` (`finished_lands_on`,
-  `HeadLanding.on`), `state.rs` (`lands`), `update/name_prompt.rs` (`open_name_prompt_with`), `view/journal.rs`,
-  `view/entries.rs` (tag read only), `tests/it/` (walks, hint bar), the m7 walk harness.
-- graft-ui: `journal_screen.rs` (+ tests), `graph_screen/mod.rs` (`RowTag` variants and their draw).
-- graft-ops, **two spots only**: `operation.rs` `describe_in`'s `DropPutBack` arm (:847 below) and `journal_list`'s
-  `words` (the `commit (initial)` row, below), each with its tests.
-- Only if verify-first V3 finds the J1 box undrawn: `update/preview.rs` and the graft-ui preview box file. Name it.
-- Docs: `docs/shots/m7/`, the m3/m4/m5 J captures it re-shoots, the contact-sheet captions, `TESTING.md` rows, MAP.md
-  (graft, graft-ui, graft-ops).
+Status: ready — respecified 2026-09-27 against `scouts/24.md` (main @ b90a49e4); **amended 2026-09-29** after 24-a's
+verify-first (commit 80b72040): V3, V4, V5 decided below; a part **24-0** (the drop's why) and a part **24-a2** (the
+put-back box) added. Scope unchanged.
+Build with:
+- **24-0: Sonnet.** Mechanical: one field added and passed through, one words arm, red test first. Every site is listed.
+- **24-a, 24-a2, 24-b: Opus.** A screen over a decided list and a decided operation; every choice is fixed here and
+  judged by a named test, a walk or a capture. The one structural piece (the landing target) is a small widening of
+  03's mechanism, pinned by 03's own tests → not Fable.
+Scout: done (`.scratch/m7-power-tools/scouts/24.md`). No second scout. ~15 merges since it: **line numbers in this
+ticket are only those 24-a's NOTES verified** (marked `(NOTES)`); everything else is named by fn, test or MAP entry —
+find it by grep.
 
-Blocked by:
-- **22** journal-list, **23** recover-op, **03 part -a** (landing; merged cad5ed86), **09** (`RowTags`) — merged.
-- **10** branch-picker (running): may generalise `return_to_journal` in `update/preview.rs` and holds the modal predicate.
-- **30j**: holds `jobs/runner.rs` (the exhaustive `Command` match) and `update/mod.rs`. 24 adds `Command` variants, so
-  it builds on 30j's exhaustive match. Not concurrent with **21c** either (also `jobs/runner.rs`).
-- **03b**: holds graft-ops `operation.rs` and graft's pull `Done` words in `update/operate.rs`.
-- **09b**, if 09b takes `operation.rs` or `update/preview.rs` (its Files allow both, conditionally). Conductor checks
-  09b's NOTES; if it took neither, 24 does not wait for it.
-- **The `lost_work` fixture order** (Ruling below; graft-fixtures + graft-ops tests, outside 24's crates). Part B's
-  walks only. Not landed → part B reports `blocked: needs graft-fixtures (lost_work order)` at the walks and stops.
-- **Not concurrent with 08** rewrite-editor: both take the m7 walk harness, the `journeys` parser, the m7 captions
-  TSV, `docs/shots/m7/` and the key route. Either order.
+## Crates and files (ADR-0051; outside a part's list → stop, `blocked: needs <file>`)
+**24-0** (drop why):
+- graft-ops: `src/operation.rs` (the `DropPutBack` variant gains `why`; `describe_in`'s and `describe`'s arms; every
+  other `DropPutBack` pattern in the file), `src/operation/tests.rs`, `src/apply/record.rs` (its `DropPutBack` pattern
+  only), `tests/it/stash_clash.rs`, `MAP.md` (the `Operation::DropPutBack` and `describe_in` entries).
+- graft: `src/update/resolver/resolved.rs` (the one constructor, :170 (NOTES), passes `clash.why`),
+  `src/update/clash.rs`, `src/update/state.rs` (its `DropPutBack` mention only), `src/update/operate/tests/edits_words.rs`
+  (:14 (NOTES)), `tests/it/m6_stash_put_back.rs` (only if it asserts a set-aside drop's words), `MAP.md`
+  (`AppState::clash_drop`, if it spells the variant).
+- Read only (V6): graft-ops `src/apply/set_aside/returned.rs`, `src/operation/stash.rs`; graft `src/view/journal.rs`,
+  `src/update/stash/tests.rs`.
+- That set is every file naming `DropPutBack` or `drop stash@{` at 802a98a2 (grep, counts only). No `docs/shots/`
+  file quotes `drop stash@{` (grep) → no capture changes.
+
+**24-a:**
+- graft: `update/journal.rs` (+ tests), `update/recover.rs` (new: `done_status`, `put_back_tags`), `jobs/journal_list.rs`
+  (new), `jobs/runner.rs` (dispatch arms only), `jobs/mod.rs` (the `Command`/`Product` variants), `update/mod.rs` (the
+  new `Product` arms only), `update/operate.rs` (`Landing`, `landing_of`, the `Done` arm), `update/banner/stop.rs`
+  (`finished_lands_on`, `HeadLanding.on`), `update/state.rs` (`lands`), `update/name_prompt.rs`
+  (`open_name_prompt_with`; the create arm closes J), `view/entries.rs` (tag read only), `tests/it/` (Part A tests),
+  `MAP.md`.
+- graft-ui: `graph_screen/mod.rs` (`RowTag` variants and their draw).
+- graft-ops: `journal_list.rs` `words` (the `commit (initial)` arm) + its test. **Not** `operation.rs` (moved to 24-0).
+
+**24-a2** (the put-back box, V3):
+- graft: `update/recover.rs` (`preview_title`, `preview_lines`, `files_words` + tests), `update/preview.rs`
+  (`preview_box`'s `Recover` arm; `confirm_preview` closes J for a `Recover` subject), `view/frame/overlays.rs` (the box
+  docked over J, as `draw_stash` docks it over S), `tests/it/` (the box tests), `MAP.md`.
+- Only if `keys_go_to_the_put_back_box_over_j` is red on 24-a's code: the one site that routes a key to J before the
+  preview. Name it in NOTES. It is `update/mod.rs` or `update/journal.rs` → allowed; anywhere else → stop, blocked.
+- graft-ui: **none.** `preview_box.rs` is used through its existing API (`lines`, `with_choices`, `again`).
+- Docs: `docs/shots/m7/put-back-preview-187x50.txt`.
+
+**24-b:**
+- graft: `view/journal.rs`, `tests/it/` (walks, hint bar, snapshots), the m7 walk harness.
+- graft-ui: `journal_screen.rs` (+ tests).
+- Docs: `docs/shots/m7/`, the m3/m4/m5 J captures it re-shoots, the contact-sheet captions, `TESTING.md` rows, MAP.md
+  (graft, graft-ui).
+
+## Blocked by
+- **22** journal-list, **23** recover-op, **03 part -a** (landing), **09** (`RowTags`) — merged.
+- **rebase-preview-keeps-drops** (building now): takes `update/preview.rs` (an `R` arm), `jobs/runner.rs` (the
+  OpenRewrite path), graft-ui `preview_box.rs` (footer `R keep` after the `again` slot), a new m7 walk. 24-a
+  (`runner.rs`), 24-a2 (`preview.rs`) and 24-b (the m7 walk harness) wait for it. 24-a2's footer uses the `again`
+  slot only; `R keep` is never set on a `Recover` box.
+- **10** branch-picker: may generalise `return_to_journal` in `update/preview.rs` and holds the modal predicate.
+- **30j**: holds `jobs/runner.rs` (the exhaustive `Command` match) and `update/mod.rs`. 24-a adds `Command` variants
+  on its exhaustive match. Not concurrent with **21c** (also `jobs/runner.rs`).
+- **03b**: holds graft-ops `operation.rs` (→ 24-0) and graft's pull `Done` words in `update/operate.rs` (→ 24-a).
+- **09b**, if it took `operation.rs` or `update/preview.rs`. Conductor checks its NOTES.
+- **The `lost_work` fixture order** (Ruling below; graft-fixtures + graft-ops tests). 24-b's walks only. Not landed →
+  24-b reports `blocked: needs graft-fixtures (lost_work order)` at the walks and stops.
+- **Not concurrent with 08** rewrite-editor: both take the m7 walk harness, the `journeys` parser, the m7 captions TSV,
+  `docs/shots/m7/` and the key route.
+- **Order:** 24-0 → 24-a (both touch graft `update/state.rs`) → 24-a2 → 24-b.
 
 Source: `docs/design-notes/m7-power-tools.md`: pass 1b "Journal"; "Pass 2b" F1, F4, F5, J1, "Where he lands" (2b),
 keymap diff (2b) §2.11, "Journey counts (2b)", "Where I'd differ (2b)" 9–10; field notes :72, :78; ADR-0044 §1–2,
 ADR-0046; review `docs/reviews/m7-22-journal-recover.md` M4.
 
-Needs (as merged; MAP lines):
+Needs (as merged; MAP entries by name):
 - graft-ops `journal_list::{read_outside, find_lost, build, words, recover_for, recover_scope, lost_edits,
-  JournalList, ListRow, OutsideRecord, OutsideStep, LostCommit, LostEdit, HeldBy, LostScan, Recover}` (MAP :330-340).
-- `Operation::Recover(RecoverParams)`, `RecoverTarget::{MoveRef, Recreate, Files}`, `FilesEffect` (MAP :63-65).
-- graft `update::banner::finished_lands_on_head`, `AppState::{lands_on_head, land_on_head, head_landing}` (MAP :136,
-  :266, :274, :378) — **there is no `land_on_result`**; this ticket widens these (below).
-- graft `update::row_tags::RowTags::{set, on, clear}` (MAP :233), `RowTag` (graft-ui `graph_screen/mod.rs:389`).
-- graft `update::switch::{switch_to, SwitchTarget}` (MAP :592-593), `update::preview::open_preview`,
-  `PreviewSubject::Operation`, `update::name_prompt::{open_name_prompt, NameKind}`.
+  JournalList, ListRow, OutsideRecord, OutsideStep, LostCommit, LostEdit, HeldBy, LostScan, Recover}`.
+- `Operation::Recover(RecoverParams)`, `RecoverTarget::{MoveRef, Recreate, Files}`, `FilesEffect`,
+  `PreviewPlan.files` (graft-ops MAP `operation`, `PreviewPlan`).
+- graft-git `ReflogRecord { refname: String, old: Option<Oid>, new: Option<Oid>, at: i64, subject: String }`
+  (`graft-git/src/reflog.rs:22-32` (NOTES)).
+- graft `update::banner::finished_lands_on_head`, `AppState::{lands_on_head, land_on_head, head_landing}` — **there is
+  no `land_on_result`**; 24-a widens these.
+- graft `update::row_tags::RowTags::{set, on, clear}`, graft-ui `graph_screen::RowTag`.
+- graft `update::switch::{switch_to, SwitchTarget}`, `update::preview::{open_preview, preview_box, confirm_preview,
+  close_preview}`, `PreviewSubject::Operation`, `update::name_prompt::{open_name_prompt, NameKind}`.
+- graft-ui `preview_box::PreviewBox::{new, with_choices}`, fields `lines`, `confirm_key`, `again`.
 
 ## Background (from KNOWN_GAPS; builders don't read it)
 Rows this ticket closes:
@@ -54,17 +94,20 @@ Rows this ticket closes:
 - **M6 usability (:847; `docs/reviews/m6-usability-2.md:181`):** the set-aside drop has two names. The done line says
   `set-aside copy dropped`; the journal's undo row says `undo: drop stash@{0}`. One name: the row reads
   `drop the set-aside copy (stash@{0})`. The done line already says `set-aside copy` and stays.
+New gap row (conductor files it): **the put-back box has no `N commits back on main` clause** (J1 mock-up). No field
+carries the count (`PreviewPlan` has `ref_moves` and `files`, 23), and `update` reads nothing. `now` / `after y` still
+show both tips.
 
-## What changed from the first spec (scout 24)
-| First spec said | Code says (scout) | Now |
+## What changed from the first spec (scout 24; history, not instructions)
+| First spec said | Code said (scout, b90a49e4) | Now |
 |---|---|---|
-| `land_on_result(state, kind, new_head)` (03) | Does not exist. 03-a gave `Operation::moves_head`, `AppState::lands_on_head: Option<JobId>`, `finished_lands_on_head` (`banner/stop.rs:91`), which seeks `refs.head()` only. 03 excludes `Recover` ("journal-screen owns its landing"). | Widen 03's mechanism to a **target**: `Landing::{Head, Commit(Oid), Changes(PathBuf)}`, decided at launch by `landing_of(op)`. `finished_lands_on_head` stays as a wrapper, so 03's and 10's callers are unchanged. |
-| `⏎` on `●` = revert-to, unchanged | `⏎` on the `← u` row runs `u` and on the `← U` row runs `U`, no preview (`update/journal.rs:272-275`, `:311-313`); older rows open `RevertTo` | **Stays.** "Unchanged" means today's behaviour. `u`/`U` are one-key and themselves undoable. Adding a preview is a behaviour change nobody asked for, and it breaks the m3 walks. The bar says so per row: `⏎ undo this` / `⏎ redo this` / `⏎ revert to before this`. |
-| :847 fixed in graft | The row's words are made in graft-ops (`operation.rs:1395`, `:1419` `describe_in`'s `DropPutBack` arm). The stash screen's `git stash drop {name}` (`update/stash.rs:505`) is the plain `d` box, a different op. | Fix in graft-ops `describe_in`, one arm. graft-ops `operation.rs` is added to the file list, so 24 waits for 03b. The stash screen is **not** touched. |
-| `b` prefilled `<b>-restored` | `open_name_prompt` has no prefill; `TextField::new("")` (`update/name_prompt.rs:157`) | New `open_name_prompt_with(state, kind, prefill)`; `open_name_prompt` calls it with `""`. No caller changes. |
-| The cursor stays on the same row (identity) | Cursor is `selected: usize`, `expanded: Option<usize>` (`update/journal.rs:24`, `:27`) | `RowKey`, an identity per row. `selected`/`expanded` become `Option<RowKey>`. The index is found at draw time. |
-| `b` lands on the new branch's tip | `BranchCreate { checkout: false }` never lands (03: `moves_head` false) | `landing_of` gives it `Commit(at)`. From the graph, `b` names the cursor's own commit, so the landing re-seeks where he already is. One rule, no J-only flag. `moves_head` is unchanged. |
-| Scout path `scouts/journal-screen.md` | `scouts/24.md` | `scouts/24.md`. |
+| `land_on_result(state, kind, new_head)` | Does not exist. 03-a gave `Operation::moves_head`, `AppState::lands_on_head`, `finished_lands_on_head` (seeks `refs.head()` only); 03 excludes `Recover`. | Widen to a **target**: `Landing::{Head, Commit(Oid), Changes(PathBuf)}` by `landing_of(op)`. `finished_lands_on_head` stays as a wrapper. |
+| `⏎` on `●` = revert-to | `⏎` on the `← u` row runs `u`, on `← U` runs `U`, no preview; older rows open `RevertTo` | **Stays.** Bar per row: `⏎ undo this` / `⏎ redo this` / `⏎ revert to before this`. |
+| :847 fixed in graft | Words made in graft-ops `describe_in`; `DropPutBack` carries no why (V4) | **24-0** adds `why: PutBackWhy`; `describe_in` reads it. Stash screen untouched. |
+| `b` prefilled `<b>-restored` | `open_name_prompt` has no prefill | `open_name_prompt_with(state, kind, prefill)`; `open_name_prompt` calls it with `""`. |
+| Cursor keeps its row | `selected: usize`, `expanded: Option<usize>` | `RowKey`; both become `Option<RowKey>`. |
+| `b` lands on the new tip | `BranchCreate { checkout: false }` never lands | `landing_of` gives it `Commit(at)`. `moves_head` unchanged. |
+| The J1 box | Not drawn (V3) | **24-a2** builds it in graft over the existing `PreviewBox`, docked over J. |
 
 ## Decided (the note; not open)
 - **Stages:** `J` opens at once with the `●` rows (stage 1), as today.
@@ -84,8 +127,17 @@ Rows this ticket closes:
     holds`.
   - The muted last line: `a branch deleted outside Graft and never checked out leaves no trace here`.
   - **The first commit's record** (22b's question): git's `commit (initial): Start the api` reads
-    `committed "Start the api" on main`, the same words as any commit. `commit (initial)` is a commit. Made in
-    graft-ops `journal_list::words` (one arm).
+    `committed "Start the api" on main`. Made in graft-ops `journal_list::words` (one arm).
+- **A `$` row's identity and its commit (V5).** `ReflogRecord.old` and `.new` are both `Option<Oid>`. The key is all
+  four stable fields: `RowKey::Outside { refname, old, new, at }` (`old` in it: two records of one ref in one second can
+  share `new`). The row's commit, for `b`: `new`, else `old`.
+  - **A row with no `new`** (git recorded the ref ending at nothing): drawn as any `$` row — glyph, source, time,
+    `words()`'s words (git's subject when its table has none), `git: "<subject>"`. Nothing hidden, nothing added.
+  - `⏎` on it: the `RecoverFor` job, as every `$` row; `recover_for` decides what, the screen adds no rule.
+  - The bar, from the row alone: `old` is `Some` and `refname` is a branch → `⏎ make <b> again`; otherwise no `⏎`
+    hint (`⏎` still asks `recover_for`, and its refusal goes to the status row). Why: the bar never promises what the
+    row can't name (UX checklist 16).
+  - `b` on it: at `old`. Neither `old` nor `new` → status row `this step names no commit`.
 - **Breakpoints (J1):**
 
   | Width | Columns |
@@ -95,8 +147,7 @@ Rows this ticket closes:
   | <120 | no source word (the legend carries it) |
 
   At 24 rows the title, legend, status row (when shown) and bar stay, and the rows scroll.
-- **The command log** of an expanded `●` row: `┆ git …` lines under `commands Graft ran` (was `    $ git …`,
-  `graft-ui/journal_screen.rs:283`).
+- **The command log** of an expanded `●` row: `┆ git …` lines under `commands Graft ran` (was `    $ git …`).
 - **Keys (§2.11, keymap diff 2b):**
 
   | Key | Does |
@@ -104,21 +155,48 @@ Rows this ticket closes:
   | `j`/`k`, `↑`/`↓` | move |
   | `⏎` on the `← u` / `← U` `●` row | `u` / `U`, as today (no preview) |
   | `⏎` on an older `●` | revert-to, as today (`PreviewSubject::RevertTo`, `→ ⏎`, ADR-0044 §2) |
-  | `⏎` on `✗` / `$` / lost edit | the `RecoverFor` job (`recover_scope` facts, then `recover_for`). `Run(params)` → `open_preview(PreviewSubject::Operation { op: Recover(params), opened_by: "⏎" }, return_to_journal: true)`; `y` confirms (ADR-0044 §1). `OfferBranch` → no preview; J's status row shows `<why> · b makes <name> at <sha7>`. `Err(refusal)` → the status row, its words |
+  | `⏎` on `✗` / `$` / lost edit | the `RecoverFor` job (`recover_scope` facts, then `recover_for`). `Run(params)` → `open_preview(PreviewSubject::Operation { op: Recover(params), opened_by: "⏎" }, return_to_journal: false)` with **J left shown** under the box (V3); `y` confirms (ADR-0044 §1). `OfferBranch` → no preview; J's status row shows `<why> · b makes <name> at <sha7>`. `Err(refusal)` → the status row, its words |
   | `⏎` on a `$` switch row | `switch_to(state, SwitchTarget::Branch(<from>), "⏎", next_id)` (the M7 switch rule) |
-  | `b` | on any row with a commit: `open_name_prompt_with(NameKind::Branch { at, checkout: false }, prefill)`, prefill `<b>-restored` when the last `recover_for` on this row offered it, else `""`. On a lost-edit row: status row `a lost edit has no commit · ⏎ puts it back` |
+  | `b` | on any row with a commit (`✗`: its tip; `$`: as V5 above): `open_name_prompt_with(NameKind::Branch { at, checkout: false }, prefill)`, prefill `<b>-restored` when the last `recover_for` on this row offered it, else `""`. On a lost-edit row: status row `a lost edit has no commit · ⏎ puts it back` |
   | `/`, `n`/`N` | find; next/previous match. With no find active, next/previous `✗` row |
   | `Space` | as today (the command log), keyed by `RowKey` |
   | `Esc`/`J` | close |
 
   Every other key stays swallowed. The bar is per row, from the row alone (no facts): `⏎ undo this` / `⏎ redo this` /
   `⏎ revert to before this` / `⏎ put <b> back to it` / `⏎ make <b> again` / `⏎ put your edit back` /
-  `⏎ switch back to <b>`.
-- **The preview box** is the note's J1 box, exactly: `now` / `after y` / `your files:` / `u undoes it`, and `y put it
-  back  esc cancel`. `Esc` → J on the same `RowKey` (`close_preview`, `return_to_journal`). A `Refused` answer → J
-  back, the refusal on its status row.
-- **The name prompt from J:** J hides under it, as the stash overlay does (`stash.shown = false`,
-  `update/name_prompt.rs:434`). `Esc` → J on the same `RowKey`. `⏎` creating → J closed, the landing below.
+  `⏎ switch back to <b>`, or none (V5).
+- **The put-back box (V3; 24-a2).** Not drawn today (NOTES V3). Built in graft, drawn with graft-ui's existing
+  `PreviewBox`; **docked over J, J shown above it**, the way the stash box docks over S (`draw_stash`). Why over J and
+  not over the graph: the graph cannot show a commit no branch holds, so the picture is the box's lines; and `Esc` is
+  then J, untouched, on the same `RowKey`.
+  - **Title:** `Preview: put main back to 9a8b7c6 "Add rate limiter"` / `Preview: make spike again at 4d5e6f7 "<subject>"`
+    / `Preview: put back your edit to src/a.rs` (`+N more`). Subject unknown → the quoted part is left out (the sha7
+    is already there).
+  - **Lines** (labels padded to 10 columns):
+    - MoveRef: `now       main → 3d4e5f6  Add metrics endpoint` (`expected`) / `after y   main → 9a8b7c6  Add rate
+      limiter` (`to`).
+    - Recreate: `now       spike is gone` / `after y   spike → 4d5e6f7  <subject>`.
+    - Files: no `now`/`after y` lines (no ref moves); the files line says it.
+    - Then `your files: …` from `PreviewPlan.files`: `Unchanged { not_checked_out }` → `your files: unchanged
+      (<not_checked_out>)`; `Changes { come_back, go, set_aside }` → the clauses that apply, joined by ` · `:
+      `<p> comes back` / `<p> +N more come back`; `<p> goes` / `<p> +N more go`; `1 unsaved file set aside, put back
+      after` / `N unsaved files set aside, put back after`; none apply → `your files: unchanged`. `files` is `None` →
+      no line (never invented).
+    - Last: `u undoes it`.
+    - Subjects: the resident history rows, then J's list `LostCommit.subject`; unknown → the sha7 alone, never blank.
+  - **Footer and buttons:** `again = Some(("y", "put it back"))`, `confirm_key = false`, `with_choices(["Cancel",
+    "Put back"])`, as the stash box sets `y apply`. The footer is the widget's widest fitting rung (`y put it back
+    ←→ choose  ⏎ act  esc cancel` down to `y put it back  esc cancel`). **Differs from the J1 mock-up**, which shows
+    no buttons row: every other preview has one (ADR-0038 §1, cursor on `Cancel`), and the same box must act the same
+    way everywhere (UX consistency; m6 usability, `⏎` vs `y`). No graft-ui change.
+  - **Keys:** the box is modal over J: `y` confirms, `esc` cancels, `←`/`→`/`⏎` choose and act; J takes none of them.
+  - `y` → the box closes **and J closes** (the landing is on the graph). `esc` → the box closes; J is as it was, same
+    `RowKey`. A `Refused` answer → the box closes (`preview_produced`), the refusal on J's status row.
+  - The `N commits back on main` clause is **not drawn** (Background: new gap row).
+- **The name prompt from J (V1 corrected).** V1 found the stash overlay **stays shown** under its prompt
+  (`update/stash.rs:238-251` (NOTES)) and hides only when `⏎` creates (`name_prompt.rs:428` (NOTES); shown again if the
+  preview fails, `:444` (NOTES)). J does the same: J stays shown under the prompt; `Esc` clears the prompt
+  (`name_prompt.rs:263` (NOTES)) → J as it was, same `RowKey`; `⏎` creating → J closed, the landing below.
 - **Landings** (via `landing_of` and `finished_lands_on`):
   - **MoveRef:** the graph, cursor on `to`, detail pane on it; `to` tagged `↺ put back`, `expected` (the old tip)
     `○ main was here`. Status `✓ put back · main has "<subject>" again · u undoes`. Not checked out → still lands on
@@ -135,47 +213,61 @@ Rows this ticket closes:
 - **Status row in `J`:** one line under the rows. It shows `AppState::status`'s problem, else its notice, the way
   `draw_status_or_hints` picks them, **only while there is one** (status rule). Refusals inside J set
   `AppState::status` as everywhere else; nothing J-private.
-- **:847:** `describe_in`'s `DropPutBack` arm reads `drop the set-aside copy (stash@{n})` when the drop is a
-  set-aside's (`PutBackWhy::SetAside`); a popped stash's drop keeps `drop stash@{n}` (its done line says
-  `stash@{0} dropped`). Entries already on disk keep their recorded words (descriptions are stored at `apply`); say
-  so in NOTES.
+- **:847 (V4; 24-0).** `Operation::DropPutBack { stash }` has no why (`graft-ops/src/operation.rs:156-159` (NOTES));
+  its one constructor has `clash.why` and drops it (`graft/src/update/resolver/resolved.rs:170` (NOTES)). **Add the
+  field**, don't drop the fix. Cost of dropping it: every set-aside clash he finishes keeps two names for one stash
+  (done line `set-aside copy`, J's row `drop stash@{0}`), the confusion the m6 usability walk filed. Cost of adding
+  it: ~10 files, mostly `..` in patterns; no format change.
+  - `DropPutBack { stash: Oid, why: PutBackWhy }`. `describe_in`: `SetAside` → `drop the set-aside copy (stash@{n})`;
+    `Pop` / `Apply` → `drop stash@{n}` (a pop's done line says `stash@{0} dropped`). `describe` (not listed):
+    `SetAside` → `drop the set-aside copy (<short id>)`, else `drop stash <short id>` as today.
+  - **Journal format:** unchanged if `Operation` is not serialised (the entry stores kind `StashDrop` and the
+    description string, MAP `DropPutBack`, `describe_in`). V6 checks. If it **is** serialised: `why:
+    Option<PutBackWhy>` with `#[serde(default, skip_serializing_if = "Option::is_none")]`; `None` reads `drop
+    stash@{n}`.
+  - Entries already on disk keep their recorded words (descriptions are stored at `apply`); say so in NOTES.
 
 ## Verify first (rule 7: file:line into NOTES before building on it)
-- **V1** Whether `J` stays shown under the name prompt today, and what the stash overlay's `b` does on `Esc`
-  (`update/stash.rs:238-251`, `update/name_prompt.rs:434`, `:446-448`). Build J's behaviour to "Decided" above either
-  way. Write the finding down.
-- **V2** Any J frame under m6: grep `docs/shots/m6/` and the m6 captions TSV for `UNDO JOURNAL` and the old footer.
-  The scout found none. List the result in NOTES before the re-shoot list is final.
-- **V3** Whether a `PreviewSubject::Operation` holding `Operation::Recover` already draws the J1 box (`now` /
-  `after y` / `your files:` from `FilesEffect`). Check 23's NOTES and graft's preview draw. Undrawn → it's in scope,
-  in the conditional files above. Name them.
-- **V4** Whether `DropPutBack` carries its `PutBackWhy`. It doesn't → stop, report `blocked: DropPutBack has no why`
-  with the line. Don't infer it from the stash message.
-- **V5** `ReflogRecord`'s fields (via `OutsideStep.record`): which ones make `RowKey::Outside` stable across a
-  re-read. Use its own field names.
+- **V1–V5: done** (24-a NOTES below). Their results are folded into "Decided".
+- **V6 (24-0)** Each `drop stash@{` in the read-only files above: a git command, a pop's words, or a set-aside's
+  words? file:line each. A set-aside's words made anywhere but `describe`/`describe_in` → stop, `blocked: a second
+  source of the drop's words`. And whether `Operation` derives `Serialize` (file:line); pick the journal-format branch
+  above by it.
+- **V7 (24-a2)** How `draw_stash` docks the box over S and what it does with S's bar (file:line). J copies it; name
+  the site.
 
 ## Read first
-- This ticket, then `scouts/24.md` (all).
+- This ticket, then `scouts/24.md` (all; its line numbers are b90a49e4's).
 - The note: pass 1b "Journal"; "Pass 2b" F1, F5, J1, keymap diff (2b) §2.11, "Journey counts (2b)", "Where he lands"
   (2b).
 - `docs/design/02-keymap.md` §2.11, §2.3b (`y`); `docs/design/01-view-mockups.md` §1.10.
 - `docs/research/ux-principles.md` §3.1, §3.6, checklist 3, 16–17.
-- 22's, 23's, 03's (Decided, Handoff) and 09's NOTES.
-- `crates/graft/MAP.md` :136, :188, :221, :232-233, :264-274, :365-378, :444-460, :495-500, :530-541, :592-596.
-  `crates/graft-ops/MAP.md` :59-66, :330-340. `crates/graft-ui/MAP.md`: `journal_screen`, `graph_screen` `RowTag`.
+- 22's, 23's, 03's (Decided, Handoff) and 09's NOTES; 24-0: 23's NOTES only.
+- `crates/graft/MAP.md` sections: `update`, `update::row_tags`, `update::operate`, `update::banner`,
+  `update::preview`, `update::journal`, `update::clash`, `update::name_prompt`, `update::switch`, `view` (`frame`
+  children, `journal_view`), `jobs`. `crates/graft-ops/MAP.md`: `Operation::DropPutBack`, `describe_in`,
+  `RecoverTarget`, `Operation::Recover`, `FilesEffect`, `PreviewPlan`, `journal_list`. `crates/graft-ui/MAP.md`:
+  `journal_screen`, `graph_screen` `RowTag`, `preview_box`.
 
 ## Signatures (exact; visibility as written)
 ```rust
-// graft::update::journal
+// ── 24-0 ── graft-ops::operation
+Operation::DropPutBack { stash: Oid, why: PutBackWhy }   // was { stash: Oid }; or why: Option<PutBackWhy> (V6)
+// describe_in / describe: signatures unchanged; arms as "Decided" :847.
+// graft::update::resolver::resolved — the constructor: DropPutBack { stash: clash.stash, why: clash.why }
+
+// ── 24-a ── graft::update::journal
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum RowKey {
     Graft(EntryId),
-    Outside { reference: String, new: Oid, time: i64 }, // from OutsideStep.record; V5 names the real fields
-    Lost(Oid),                                          // the lost run's tip
-    LostEdit(EntryId),                                  // LostEdit.entry
+    Outside { refname: String, old: Option<Oid>, new: Option<Oid>, at: i64 }, // OutsideStep.record's own fields (V5)
+    Lost(Oid),                                                              // the lost run's tip
+    LostEdit(EntryId),                                                      // LostEdit.entry
 }
 pub(crate) fn row_key(list: &JournalList, index: usize) -> Option<RowKey>;
 pub(crate) fn index_of(list: &JournalList, key: &RowKey) -> Option<usize>;
+/// The commit `b` names on a row: ✗ its tip; $ `new`, else `old`; ● as today; lost edit None.
+pub(crate) fn row_commit(list: &JournalList, index: usize) -> Option<Oid>;
 /// The Ruling below. Pure: no state, no terminal.
 pub(crate) fn preselect(list: &JournalList, is_fetch: impl Fn(EntryId) -> bool) -> Option<usize>;
 // JournalState: `selected: usize` → `cursor: Option<RowKey>`; `expanded: Option<usize>` → `Option<RowKey>`;
@@ -215,87 +307,128 @@ pub fn open_name_prompt_with(state: &mut AppState, kind: NameKind, prefill: &str
 
 // graft-ui::graph_screen
 pub enum RowTag { Changed, PutBack, WasHere { branch: String } }   // `↺ put back`, `○ <branch> was here`
-// graft-ui::journal_screen
+
+// ── 24-a2 ── graft::update::recover
+pub(crate) fn preview_title(params: &RecoverParams, subject_of: impl Fn(Oid) -> Option<String>) -> String;
+/// now / after y / your files / u undoes it. Plain strings; `preview_box` sanitises them into PreviewBox.lines.
+pub(crate) fn preview_lines(params: &RecoverParams, files: Option<&FilesEffect>,
+                            subject_of: impl Fn(Oid) -> Option<String>) -> Vec<String>;
+pub(crate) fn files_words(effect: &FilesEffect) -> String; // "your files: …"
+// update::preview::preview_box: a Recover arm (title, lines, choices, again); confirm_preview: Recover → journal hidden.
+
+// ── 24-b ── graft-ui::journal_screen
 pub enum RowKind { Graft, Outside, Lost, LostEdit }
 // JournalRowView gains: kind: RowKind, git_subject: Option<String>, under: Option<usize>
 pub struct JournalStatusRow { pub words: String, pub problem: bool }
 // JournalView gains: title_suffix: Option<String>, status: Option<JournalStatusRow>, enter_words: Option<String>
 pub fn cut_at_word(text: &str, width: usize) -> String; // reuse an existing graft-ui word-cut if one exists; name it
-// graft-ops (unchanged signatures): describe_in's DropPutBack arm; journal_list::words' `commit (initial)` arm.
+// graft-ops (24-a, unchanged signature): journal_list::words' `commit (initial)` arm.
 ```
 
 ## Acceptance (name the verifying test at tick time; **(red)** = write it, see it fail on today's code, then build)
-Part A:
-- [ ] **Verify-first:** V1–V5 in NOTES, each with file:line.
+Part 0 (24-0):
+- [ ] **V6** in NOTES, file:line.
+- [ ] `a_stash_drop_has_one_name` (red; graft-ops): `SetAside` at 0 → `drop the set-aside copy (stash@{0})`; `Pop` →
+  `drop stash@{0}`; not listed → `describe()`'s words per why.
+- [ ] `the_drop_after_a_clash_carries_its_why` (red; graft, `resolved.rs`'s tests or `edits_words.rs`): a set-aside
+  clash finished builds `why: SetAside`; a pop clash `why: Pop`.
+- [ ] Green, named: `stash_clash.rs`, `m6_stash_put_back`, `set_aside.rs`, the journal round-trip tests. If the
+  serde branch was taken: `an_old_drop_line_reads_as_before` (red).
+
+Part A (24-a):
+- [ ] **Verify-first:** V1–V5 in NOTES (done, 80b72040).
 - [ ] **Identity:** `the_cursor_stays_on_its_row_when_outside_rows_arrive` (red),
   `the_cursor_stays_on_its_row_when_lost_rows_arrive` (red), `a_vanished_row_falls_to_the_newest`,
-  `space_expands_by_row_not_by_index` (red).
+  `space_expands_by_row_not_by_index` (red), `two_steps_of_one_ref_in_one_second_are_two_rows`.
 - [ ] **Stages:** `j_opens_with_graft_rows_at_once`, `outside_rows_arrive_second`,
   `lost_rows_arrive_third_and_the_title_says_while`, `a_failed_scan_says_why_in_the_title`.
 - [ ] **Preselect** (Ruling): `the_newest_lost_row_is_preselected` (red), `a_fetch_above_does_not_stop_the_preselect`,
   `no_preselect_when_a_graft_row_is_newer`, `a_lost_row_under_a_graft_row_is_never_preselected`,
   `no_preselect_after_a_key`, `n_goes_to_the_next_lost_row`.
 - [ ] **Enter:** `enter_on_the_next_undo_row_is_u_as_before`, `enter_on_the_next_redo_row_is_redo_as_before`,
-  `enter_on_a_graft_row_is_the_revert_as_before`, `enter_on_a_lost_commit_opens_the_put_back_preview` (red),
-  `enter_on_a_gone_branch_opens_make_it_again`, `enter_on_an_outside_row_puts_that_ref_back`,
+  `enter_on_a_graft_row_is_the_revert_as_before`, `enter_on_a_lost_commit_opens_the_put_back_preview` (red; J still
+  shown), `enter_on_a_gone_branch_opens_make_it_again`, `enter_on_an_outside_row_puts_that_ref_back`,
   `enter_on_a_switch_row_switches_back`, `enter_on_a_lost_edit_puts_the_file_back`,
   `esc_on_the_put_back_preview_returns_to_j_on_the_same_row`, `moved_on_shows_the_words_and_b_prefills_the_name`,
-  `b_on_any_row_opens_the_name_prompt`, `esc_on_the_name_prompt_returns_to_j_on_the_same_row`,
-  `open_name_prompt_with_prefills_and_ctrl_u_clears`.
+  `b_on_any_row_opens_the_name_prompt`, `b_on_a_step_with_no_new_names_its_old`,
+  `b_on_a_step_with_no_commit_says_so`, `esc_on_the_name_prompt_returns_to_j_on_the_same_row`,
+  `creating_from_j_closes_j`, `open_name_prompt_with_prefills_and_ctrl_u_clears`.
 - [ ] **Landing:** `landing_of_names_every_kind`,
   `put_back_lands_on_the_restored_commit_with_tags_and_words` (red),
   `a_put_back_of_an_unchecked_branch_lands_on_the_restored_commit_not_head`,
   `a_file_put_back_lands_on_the_changes_pane_on_the_file`, `b_from_j_lands_on_the_new_branch`,
   `b_from_the_graph_lands_where_it_was`, `the_tags_clear_on_the_next_operation`, `u_undoes_the_put_back`,
-  `u_never_acts_on_outside_rows`. 03's landing tests and 10's landing tests green, named.
-- [ ] **Carried:** `a_stash_drop_has_one_name` (red; graft-ops), `the_first_commit_reads_committed` (red; graft-ops),
-  `a_refusal_in_j_sets_the_status` (red).
+  `u_never_acts_on_outside_rows`. 03's and 10's landing tests green, named.
+- [ ] **Carried:** `the_first_commit_reads_committed` (red; graft-ops), `a_refusal_in_j_sets_the_status` (red).
 
-Part B:
-- [ ] **Drawing:** `an_aborted_entry_reads_aborted_by_you` (red; M6/68, replaces `view/journal.rs` test :488),
-  `a_cut_row_cuts_at_a_word` (red; :848), `a_refusal_in_j_shows_on_its_status_row` (red; :217),
-  `no_status_row_when_nothing_is_wrong`, `the_command_log_uses_the_dotted_rule` (red; replaces
-  `journal_screen.rs` :425/:435), `the_bar_names_what_enter_does_on_each_row`, `j_again_shows_a_graft_row_and_no_lost_row`,
-  `put_back_and_was_here_tags_draw`.
+Part A2 (24-a2):
+- [ ] **V7** in NOTES, file:line.
+- [ ] **Words:** `the_put_back_box_says_now_and_after` (red; J1's MoveRef lines),
+  `the_box_says_unchanged_when_not_checked_out`, `a_make_again_box_says_the_branch_is_gone`,
+  `a_file_put_back_box_says_only_your_files`, `the_box_names_the_sha_when_the_subject_is_unknown`,
+  `files_words_joins_the_clauses_that_apply` (one case per clause, the `+N more` plural, none → `unchanged`),
+  `no_files_line_when_the_plan_has_none`.
+- [ ] **Box:** `the_box_footer_is_y_put_it_back` (`again`, `confirm_key` false, choices `Cancel`/`Put back`, cursor 0),
+  `keys_go_to_the_put_back_box_over_j` (red: `j` moves nothing in J, `y` confirms), `y_on_the_put_back_box_closes_j`
+  (red), `a_refused_plan_closes_the_box_onto_js_status_row`, `the_put_back_box_draws_over_j` (render: J's title row
+  above, the box at the bottom, J's rows between).
+- [ ] Green, named: the stash box's tests (`draw_stash`'s), every `preview_box` test in graft, 10's
+  `return_to_journal` tests, rebase-preview-keeps-drops' `R` tests.
+- [ ] **Capture** `docs/shots/m7/put-back-preview-187x50.txt` (≤ 200 KB) from `the_put_back_box_draws_over_j`, Right
+  line: `J's rows above; the box titled "Preview: put main back to <sha7> "<subject>""; now / after y / your files: /
+  u undoes it; footer starts "y put it back"`.
+
+Part B (24-b):
+- [ ] **Drawing:** `an_aborted_entry_reads_aborted_by_you` (red; M6/68, replaces the `failed: aborted` test in
+  `view/journal.rs`), `a_cut_row_cuts_at_a_word` (red; :848), `a_refusal_in_j_shows_on_its_status_row` (red; :217),
+  `no_status_row_when_nothing_is_wrong`, `the_command_log_uses_the_dotted_rule` (red; replaces `journal_screen.rs`'s
+  `$ git` tests), `the_bar_names_what_enter_does_on_each_row`, `no_enter_hint_on_a_step_with_neither`,
+  `j_again_shows_a_graft_row_and_no_lost_row`, `put_back_and_was_here_tags_draw`,
+  `the_name_prompt_draws_over_j` (V1 left it unchecked).
 - [ ] **UI snapshots:** 187×50, 140×40, 100×30, and 187×24 (title, legend, status row and bar kept).
 - [ ] **Walks** (`m7_walk`), on the reordered "lost work" fixture, each landing asserted from the frame and
   `len(keys) <= noted_keys(id)`: `lost_to_shell_reset` `J ⏎ y` = 3; `deleted_branch_back` `J n ⏎ y` = 4 (after 13, as
   F4); `edit_in_undo_backup` `J n ⏎ y` = 4. Stage 3 is a wait, not a key.
-- [ ] **Captures**, each ≤ 200 KB, each with a Right line; they lead the contact sheet:
+- [ ] **Captures**, each ≤ 200 KB, each with a Right line; they lead the contact sheet (24-a2's
+  `put-back-preview-187x50.txt` among them, in journey order):
   - `docs/shots/m7/journal-187x50.txt`: `●`/`$`/`✗` rows, the preselected `✗` row, the legend, the muted last line.
   - `journal-140x40.txt`: no `git:` column; the selected `$` row's subject under it.
   - `journal-100x30.txt`: no source word.
-  - `put-back-preview-187x50.txt`: the box with `now` / `after y` / `your files:`.
   - `put-back-landed-187x50.txt`: `↺ put back`, `○ main was here`, the `✓` line.
   - `journal-after-put-back-120x40.txt`: the new `●` row; the D row gone.
   - `journal-expanded-120x40.txt`: `┆ git …` under `commands Graft ran`.
 - [ ] **Re-shot (ADR-0048):** `docs/shots/m3-journal-expanded.txt` and `docs/shots/m3-contact-sheet.txt` no longer
   show `$ git`; name the capture test.
-- [ ] MAP.md (graft, graft-ui, graft-ops) entries. NOTES: V1–V5, the scout answers used, every J capture by file as
-  re-shot or unchanged, with why.
+- [ ] MAP.md (graft, graft-ui) entries. NOTES: the scout answers used, every J capture by file as re-shot or unchanged,
+  with why. V2: no J frame in m6 (NOTES) → no m6 re-shoot.
 
 ## Touches (check each; the report's **Touches:** line says how)
+- **24-0 — `DropPutBack`'s shape:** every file in 24-0's list; the build is the check for patterns, the named tests
+  for words. `AppState::clash_drop` (graft MAP) reads the variant: its tests green. CONTEXT.md already has "set-aside
+  copy"; check. The stash screen's `d` (`git stash drop`, a different op): its snapshot unchanged.
 - **03's landing** (`lands_on_head` → `lands`, `HeadLanding.on`): every reader of the field, the harness `settled` and
   prelude ("no key while a landing is owed"), `resumed`'s `--continue` landing, the m6 `LandedOnHead` wait. Check:
   grep `lands_on_head`/`land_on_head`/`head_landing`, 03's tests, m6 journeys green.
 - **10's picker landing** (via `moves_head` → `Landing::Head`): its tests green.
-- **Graph `b`** now owes a landing on its own commit: m5 walks using `b` green (they wait on the owed landing).
-- **The revert-to and `u`/`U` rows:** unchanged. Check: `tests/it/preview.rs:453`, `undo_by_key.rs`,
-  `undo_over_drift.rs`, `m3_walk.rs` `journal_and_reads` (:1486) green.
+- **Graph `b`** now owes a landing on its own commit: m5 walks using `b` green.
+- **The revert-to and `u`/`U` rows:** unchanged. Check: the `RevertTo` preview tests in `tests/it/preview.rs`,
+  `undo_by_key.rs`, `undo_over_drift.rs`, `m3_walk.rs` `journal_and_reads` green.
 - **Every reader of `JournalState::selected`/`expanded`:** grep; each moved to `RowKey`.
-- **The name prompt:** existing callers (`open_from_graph`, stash `b`, any 10 added) unchanged; their tests green.
-- **The preview's `return_to_journal`** (and 10's generalisation, if made): the journal and stash `Esc`-back tests.
-- **Row tags:** `RowTag` matches in graft-ui and `view/entries.rs:348`; 09's tag tests (`amend_into/tests.rs:600-680`).
-- **`jobs/runner.rs`:** the new arms in 30j's exhaustive match; no catch-all added.
-- **graft-ops `describe_in`:** tests asserting `drop stash@{`; m6 walks and captions quoting the old undo row
-  (`m6_stash_put_back`, `set_aside.rs`). CONTEXT.md already has "set-aside copy"; check.
+- **The name prompt:** existing callers (`open_from_graph`, stash `b`, any 10 added) unchanged; their tests green. The
+  create arm's new J close: stash `b`'s tests green (it closes S, not J).
+- **The preview** (24-a2): `preview_box`'s other arms (the stash box, `take_title_of`, rebase-preview-keeps-drops'
+  `R` arm), `confirm_preview`'s other subjects, `return_to_journal` (and 10's generalisation) — their tests green;
+  `R keep` never set on a `Recover` box.
+- **`view/frame/overlays.rs`** (24-a2): J's and S's draws; the stash-over-S tests and J snapshots green.
+- **Row tags:** `RowTag` matches in graft-ui and `view/entries.rs`; 09's tag tests (`amend_into/tests.rs`).
+- **`jobs/runner.rs`:** the new arms in 30j's exhaustive match; no catch-all added; rebase-preview-keeps-drops'
+  OpenRewrite arm untouched.
 - **graft-ops `words`:** 22's `lost_work` tests that quote `commit (initial)`.
-- **Hint-bar tests** (`tests/it/hint_bar.rs:524-590`): the per-row bar, updated and named.
+- **Hint-bar tests** (`tests/it/hint_bar.rs`, the J rows): the per-row bar, updated and named.
 - **J captures** (scout Q6): m3-journal-80x24, m3-journal-160x48, m3-journal-expanded,
   m3-08-journal-after-unstage-{80x24,160x48}, m4-07-journal-remote-rows-{80x24,160x48},
-  m5-ui-preview-time-machine-{160x48,80x24}, m3-contact-sheet, m5-contact-sheet-captions.tsv, plus V2's m6 result.
-  The legend, footer and command log change them; each re-shot or said unchanged with why.
-- **The stash screen:** not touched (:847 is the journal row only). Check: its snapshot unchanged.
+  m5-ui-preview-time-machine-{160x48,80x24}, m3-contact-sheet, m5-contact-sheet-captions.tsv. m6: none (V2). Each
+  re-shot or said unchanged with why.
 
 ## Ruling (planner, 2026-09-26) — F1's preselect; review `docs/reviews/m7-22-journal-recover.md` M4
 When stage 3 lands and no key has been pressed since `J`, the cursor moves to **the newest `✗` row that sits under a
@@ -321,14 +454,16 @@ are given by the 2b keymap diff; take no other key.
 workspace-wide.
 
 ## Size
-Two parts, one context each, **A then B**; the conductor dispatches them as two groups.
-- **24-a** (~70k): verify-first, `RowKey` and the cursor, stages and jobs, preselect, keys, `RecoverFor`,
-  `Landing`/`landing_of`/`finished_lands_on`, `update/recover.rs`, `RowTag` variants and their draw,
-  `open_name_prompt_with`, the two graft-ops arms, and Part A's tests.
+Four parts, one context each, **0 → A → A2 → B**; the conductor dispatches them as four groups.
+- **24-0** (~25k, Sonnet): V6, the `why` field through every site, both `describe` arms, Part 0's tests.
+- **24-a** (~65k): `RowKey` (V5) and the cursor, stages and jobs, preselect, keys, `RecoverFor`,
+  `Landing`/`landing_of`/`finished_lands_on`, `update/recover.rs` (`done_status`, `put_back_tags`), `RowTag` variants
+  and their draw, `open_name_prompt_with` and J under the prompt, the `words` arm, Part A's tests.
+- **24-a2** (~30k): V7, the put-back box (words, `preview_box` arm, over J, key order, `y` closes J), its capture.
 - **24-b** (~70k): `view/journal.rs` and `journal_screen` (`RowKind`, breakpoints, legend, status row, per-row bar,
-  command log, `cut_at_word`, aborted words), snapshots, walks, captures, and the old J captures re-shot. Needs 24-a
+  command log, `cut_at_word`, aborted words), snapshots, walks, captures, and the old J captures re-shot. Needs 24-a2
   merged and the fixture order.
-If either compacts, say so; the conductor splits the rest.
+If any compacts, say so; the conductor splits the rest.
 
 ## NOTES (builder 24-a, 2026-09-29, base a91ae83c) — **blocked at V4**
 Verify-first done; nothing built. V4 hits the ticket's own stop condition.
@@ -353,5 +488,10 @@ Verify-first done; nothing built. V4 hits the ticket's own stop condition.
   so the signature's `Outside { reference, new: Oid, time }` must be `Outside { refname: String, old: Option<Oid>,
   new: Option<Oid>, at: i64 }` (`old` added: two records of one ref in one second can share `new`).
 
-Next step (after the conductor rules on V4): build 24-a as specified; the V4 arm either gets its field (another
-ticket, or 24-a's Files widened to `resolved.rs` + `edits_words.rs`) or is dropped from 24-a.
+## Planner ruling (2026-09-29) on V3–V5 — folded into "Decided", "Files", "Signatures", "Size" above
+- **V4:** add `why` (part 24-0, Sonnet). Dropping the fix leaves two names for one drop on every set-aside clash.
+- **V3:** 24-a2 builds the box in graft on the existing `PreviewBox`, docked over J; graft-ui `preview_box.rs` is
+  **not** in scope. Buttons kept (differs from the mock-up; consistency). No `N commits back` clause (gap row).
+- **V5:** `RowKey::Outside { refname, old, new, at }`, the builder's proposal. A row with no `new` draws as any `$`
+  row; `⏎` asks `recover_for`; the bar says `⏎ make <b> again` only when `old` is a branch's; `b` names `old`.
+- **V1 correction:** J stays shown under the name prompt (the stash's real behaviour), closes on create.
