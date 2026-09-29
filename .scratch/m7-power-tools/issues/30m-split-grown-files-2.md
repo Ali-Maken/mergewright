@@ -2,7 +2,7 @@
 
 Status: ready
 Build with: Sonnet. Pure moves; no behaviour change (as 30h).
-Blocked by: 07d, 08-b, 24-b, 30l (all edit these files). Dispatch right before 26.
+Blocked by: 07d, 08-b, 24-b, 30l, 30n (all edit these files). Dispatch right before 26.
 Scout: none. Seams from the review (`docs/reviews/m7-10-to-07c.md` Major 4). Read ARCHITECTURE.md; use `codebase-design`.
 Files: graft `src/update/banner.rs` (→ `banner/rewrite.rs`, `banner/continue_in_git.rs`), `update/banner/stop.rs`,
 `update/preview.rs` (→ `preview/take.rs` …), `update/commit_editor.rs` (edit-stop amend → child), `update/operate.rs`;
