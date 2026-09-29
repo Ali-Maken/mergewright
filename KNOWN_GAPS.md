@@ -1018,3 +1018,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r08rk-m9 | Some "red first" boxes (rebase-keeps-drops' 7 graft tests) not seen red; mutation-checked instead (review m9, :244) | **unverified** | M7 |
 | M7/r08rk-m11 | 08-a Q3: bar hides `R` on default-chain rows but `R` still opens and `plan` decides, vs R1 (ticket 08 NOTES :388-389; review m11, :259) | **unverified** (question) | M7 |
 | M7/r08rk-q3 | `r` and `R` side by side in the preview footer, opposite outcomes; a missed Shift confirms the drop (`u` recovers). Keymap §2.3b decided it → usability walk (review Q3, :299) | **unverified** (question) | M7 |
+| M7/30n-unborn | Two refusals for one state: `Refusal::UnbornHead` (amend/stash words) and 30n's `Refusal::HeadUnborn` (graft-ops operation.rs; 30n NOTES). Merge into one name | **broken** (naming) | M7 |
