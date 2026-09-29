@@ -178,7 +178,9 @@ fn planned(
             absorb_words(&map, &subjects)
         }
         // `R`'s editor plans its own; it never reaches this job.
-        RewriteRequest::Open { .. } => return Err("R is not a put-in".to_owned()),
+        RewriteRequest::Open { .. } | RewriteRequest::FromRebase(_) => {
+            return Err("R is not a put-in".to_owned());
+        }
     };
     let offsets = offsets(&params);
     Ok(RewritePlanned::Plan(Box::new(PlannedPutIn {

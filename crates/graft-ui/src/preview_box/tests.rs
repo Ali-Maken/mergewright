@@ -405,6 +405,58 @@ fn a_revert_preview_draws_the_old_footer() {
     assert_eq!(footer_label(&view, 200), FOOTER);
 }
 
+// ── `R keep` (rebase-preview-keeps-drops) ────────────────────────────────
+
+fn r_opened_keeps() -> PreviewBox {
+    let mut view = rebase_view();
+    view.confirm_key = true;
+    view.again = Some((sanitize_line("r"), sanitize_line("rebase")));
+    view.keep = true;
+    view
+}
+
+#[test]
+fn footer_names_r_keep_when_live() {
+    let bottom = rows(&r_opened_keeps(), &theme(), 120, 12)
+        .pop()
+        .expect("a row");
+    assert!(
+        bottom.contains("y confirm  r rebase  R keep  ←→ choose  ⏎ act  esc cancel"),
+        "{bottom:?}"
+    );
+}
+
+#[test]
+fn footer_omits_r_keep_otherwise() {
+    let mut view = r_opened_keeps();
+    view.keep = false;
+    for width in 0..=200 {
+        assert!(!footer_label(&view, width).contains('R'), "at {width}");
+    }
+    let bottom = rows(&view, &theme(), 120, 12).pop().expect("a row");
+    assert!(
+        bottom.contains("y confirm  r rebase  ←→ choose  ⏎ act  esc cancel"),
+        "{bottom:?}"
+    );
+}
+
+#[test]
+fn footer_r_keep_whole_or_absent_at_80() {
+    let view = r_opened_keeps();
+    // Every inner width a box up to 80 columns can have: `R keep` is in
+    // the label whole, or `R` is not in it at all — never cut.
+    for inner in 0..=80 {
+        let label = footer_label(&view, inner);
+        assert!(
+            label.contains("R keep") || !label.contains('R'),
+            "at {inner}: {label:?}"
+        );
+    }
+    // At 80 columns the whole footer fits.
+    let bottom = rows(&view, &theme(), 80, 12).pop().expect("a row");
+    assert!(bottom.contains("R keep"), "{bottom:?}");
+}
+
 /// Review 86, m3: a refused box with only `Close` has nothing to choose
 /// between; its footer is `esc back`, as the stash note's refusal state says.
 #[test]

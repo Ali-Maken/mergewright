@@ -2840,6 +2840,16 @@ Walks: `cargo nextest run --workspace -E 'test(/m7_walk::rewrite_editor/) | test
 - Capture `m7/rewrite-refused-fork-120x40.txt` — right: status `feature-b and feature-c are both built on yours · Graft moves one line`; no overlay.
 - Not proven by the walk: colour (the bold action word, the dim notes) — unverified (rule 5). The `$EDITOR` handover from the `r` field is unit-tested only (08-a).
 
+## M7: a squash-merged bottom, and keeping a suggested drop (m7-power-tools/05b, rebase-preview-keeps-drops)
+
+Walks: `cargo nextest run --workspace -E 'test(/m7_walk::rebase_line/)'`. Fixture: `feature-a` (a1 a2 a3) squash-merged into `main` as `Add OAuth (#42)`, `feature-b` (b1) built on it; the keep walk adds one commit on `main` taking a3's change back out.
+
+- `keep-a-suggested-drop`: cursor to `main`, `r R p y`, 5 keys, fenced (`keep_a_suggested_drop`). After it `main..feature-a` is `a3` alone, its parent `main`'s tip as `R` saw it (a1, a2 dropped); `feature-b^` is the new `feature-a`; `u` puts every branch back at its pre-`y` tip, by name.
+- Capture `m7/rebase-squash-merged-preview-120x40.txt` — right: the `already in main:` row ends `· dropped · R to keep them`; the footer reads `y confirm  r rebase  R keep  ←→ choose  ⏎ act  esc cancel` (`capture_rebase_line`).
+- Capture `m7/rebase-keep-drops-editor-120x40.txt`, after `R`, before `p` — right: each suggested row shows the drop action and `already in main · p keeps it`; no row says `marked by its name`; the last row is `─ main` at the squash commit (`onto_tip`); the cursor `▸` on the newest drop, a3 (`capture_keep_drops_editor`). Unedited, every row is dropped, so AFTER reads `every commit dropped` and the bar has no `y rewrite` until `p`.
+- `R` is live, in the row and the footer, only in a rebase preview of `HEAD`'s branch whose plan suggests drops (`r_is_unbound_in_other_previews`, `r_is_unbound_when_the_rebased_branch_is_not_head`).
+- Not proven: colour of the muted subjects and notes — unverified (rule 5).
+
 ## M7: stops during a rewrite (m7-power-tools/07c, 07d)
 
 Walks: `cargo nextest run --workspace -E 'test(rewrite_stops) | test(continue_in_git) | test(hands_over)'`.

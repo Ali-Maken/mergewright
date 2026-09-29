@@ -2,7 +2,9 @@
 //! opens on.
 //!
 //! `graft_ops::rewrite::plan` with `Open { from }` gives the rows (autosquash
-//! rows already marked and moved) and the line of branches that follow. The
+//! rows already marked and moved) and the line of branches that follow;
+//! with `FromRebase` (`R` in a rebase preview, rebase-preview-keeps-drops)
+//! the rebase's own todo, its suggested drops marked. The
 //! editor also needs every row's **whole** message — the squash group's
 //! message block is built from them with `default_message`, and a reword's
 //! field is prefilled from them — and the base row it draws under his rows.
@@ -32,8 +34,9 @@ pub enum RewriteOpened {
 /// Everything the editor opens with.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OpenedRewrite {
-    /// `plan(Open { from })` as returned: autosquash rows marked and moved,
-    /// a squash group's message already `default_message`'s.
+    /// `plan(req)` as returned: for `Open`, autosquash rows marked and
+    /// moved, a squash group's message already `default_message`'s; for
+    /// `FromRebase`, the rebase's rows, its drops marked.
     pub params: RewriteParams,
     /// Every row's whole message, keyed by its commit: read with
     /// `graft_git::history::read_commit`, the read the detail pane's commit
@@ -50,9 +53,11 @@ pub struct BaseRow {
     pub oid: Oid,
     /// Its subject line.
     pub subject: String,
-    /// The upstream's short name when `onto` is where his branch left it,
-    /// else the default branch's when it is where his branch left that,
-    /// else `onto`'s short sha.
+    /// `Open`: the upstream's short name when `onto` is where his branch
+    /// left it, else the default branch's when it is where his branch left
+    /// that, else `onto`'s short sha. `FromRebase`: the name the preview's
+    /// `already in <x>:` row uses for the rebase's `onto`
+    /// (`preview::onto_label`).
     pub label: String,
 }
 
@@ -61,16 +66,20 @@ pub struct BaseRow {
 ///
 /// # Errors
 /// A read failed (the words the status line shows).
-pub(super) fn open(repos: &RepoStore, from: Oid, stop: &dyn Stop) -> Result<RewriteOpened, String> {
+pub(super) fn open(
+    repos: &RepoStore,
+    req: &RewriteRequest,
+    stop: &dyn Stop,
+) -> Result<RewriteOpened, String> {
     let default = repos
         .branches()
         .map_err(|error| error.to_string())?
         .default_branch()
         .cloned();
-    open_rewrite(repos, from, default.as_ref(), stop)
+    open_rewrite(repos, req, default.as_ref(), stop)
 }
 
-/// Plans `Open { from }` and reads the messages and the base row.
+/// Plans `req` and reads the messages and the base row.
 ///
 /// `RewriteError::Refused` → [`RewriteOpened::Refused`]; `Facts` → `Err` with
 /// its `explain()`; `Stopped` → `Err("stopped")`, as `jobs/rewrite.rs`'s
@@ -80,7 +89,7 @@ pub(super) fn open(repos: &RepoStore, from: Oid, stop: &dyn Stop) -> Result<Rewr
 /// A read failed.
 pub(crate) fn open_rewrite(
     repos: &RepoStore,
-    from: Oid,
+    req: &RewriteRequest,
     default_branch: Option<&RefName>,
     stop: &dyn Stop,
 ) -> Result<RewriteOpened, String> {
@@ -89,19 +98,25 @@ pub(crate) fn open_rewrite(
     let git = system_git().map_err(|error| error.to_string())?.version();
     let facts = graft_ops::facts::read_facts(&handle, git, stop, &FactsScope::default())
         .map_err(|error| error.explain())?;
-    let request = RewriteRequest::Open { from };
-    let params =
-        match graft_ops::rewrite::plan(&handle, &git, &request, &facts, default_branch, stop) {
-            Ok(params) => params,
-            Err(RewriteError::Refused(refusal)) => return Ok(RewriteOpened::Refused(refusal)),
-            Err(RewriteError::Facts(error)) => return Err(error.explain()),
-            Err(RewriteError::Stopped) => return Err("stopped".to_owned()),
-        };
+    let params = match graft_ops::rewrite::plan(&handle, &git, req, &facts, default_branch, stop) {
+        Ok(params) => params,
+        Err(RewriteError::Refused(refusal)) => return Ok(RewriteOpened::Refused(refusal)),
+        Err(RewriteError::Facts(error)) => return Err(error.explain()),
+        Err(RewriteError::Stopped) => return Err("stopped".to_owned()),
+    };
     let mut whole = HashMap::with_capacity(params.todo.len());
     for row in &params.todo {
         whole.insert(row.commit, message_of(&handle, row.commit)?);
     }
-    let base = base_row(&handle, &params, default_branch)?;
+    let label = match req {
+        RewriteRequest::FromRebase(rebase) => {
+            Some(crate::update::preview::onto_label(&rebase.onto))
+        }
+        RewriteRequest::Open { .. } | RewriteRequest::AmendInto { .. } | RewriteRequest::Absorb => {
+            base_label(&handle, &params, default_branch)?
+        }
+    };
+    let base = base_row(&handle, &params, label)?;
     Ok(RewriteOpened::Editor(Box::new(OpenedRewrite {
         params,
         whole,
@@ -116,17 +131,18 @@ fn message_of(handle: &RepoHandle, commit: Oid) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&read.message).into_owned())
 }
 
-/// The base row: `onto`, its subject, and the name it is known by.
+/// The base row: `onto`, its subject, and the name it is known by (`label`,
+/// else its short sha).
 fn base_row(
     handle: &RepoHandle,
     params: &RewriteParams,
-    default_branch: Option<&RefName>,
+    label: Option<String>,
 ) -> Result<BaseRow, String> {
     let onto = params.onto;
     let read = graft_git::history::read_commit(handle, onto)
         .map_err(|error| format!("couldn't read {}: {error}", short(onto)))?;
     let subject = String::from_utf8_lossy(read.subject()).into_owned();
-    let label = base_label(handle, params, default_branch)?.unwrap_or_else(|| short(onto));
+    let label = label.unwrap_or_else(|| short(onto));
     Ok(BaseRow {
         oid: onto,
         subject,

@@ -765,14 +765,14 @@ impl<S: JobEvents> JobRunner<S> {
 
     /// Reads what the rewrite editor opens on (`R`, m7-power-tools/08),
     /// under an id `update` chose. A read: `Esc` cancels it.
-    fn open_rewrite(&self, id: JobId, from: graft_core::oid::Oid) {
+    fn open_rewrite(&self, id: JobId, req: graft_ops::rewrite::RewriteRequest) {
         let repos = Arc::clone(&self.repos);
         self.queue_as(id, Some(Task::OpenRewrite), move |_| {
             Box::new(move |cancel: &Cancel| {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                let opened = super::rewrite_open::open(&repos, from, cancel);
+                let opened = super::rewrite_open::open(&repos, &req, cancel);
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
@@ -1188,7 +1188,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::ReadCommitTemplate(id) => self.read_commit_template(id),
             Command::ReadHeadMessage(id) => self.read_head_message(id),
             Command::PlanRewrite { id, request, head } => self.plan_rewrite(id, request, head),
-            Command::OpenRewrite { id, from } => self.open_rewrite(id, from),
+            Command::OpenRewrite { id, req } => self.open_rewrite(id, req),
             Command::ResolveRowTags(id, offsets) => self.resolve_row_tags(id, offsets),
             Command::Operate(id, op) => self.operate(id, op),
             Command::Resume(id, what) => self.resume(id, what),

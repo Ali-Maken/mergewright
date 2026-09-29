@@ -25,8 +25,9 @@ use std::sync::Arc;
 use graft_core::job::JobId;
 use graft_core::oid::Oid;
 use graft_git::diff::FileList;
+use graft_ops::operation::RebaseParams;
 use graft_ops::rewrite::{
-    RewriteParams, SquashGroup, TodoAction, TodoLine, TodoProblem, squash_groups,
+    RewriteParams, RewriteRequest, SquashGroup, TodoAction, TodoLine, TodoProblem, squash_groups,
 };
 use graft_ui::text_input::TextField;
 
@@ -51,8 +52,9 @@ pub(crate) use keys::{rewrite_key, rewrite_mouse};
 pub(crate) struct RewriteState {
     /// The open read in flight.
     pub(crate) opening: Option<JobId>,
-    /// The row `R` was pressed on, for the cursor once the read answers.
-    opening_from: Option<Oid>,
+    /// Where `R` was pressed, for the cursor and the marks' reason once the
+    /// read answers.
+    opening_from: Option<OpenedFrom>,
     /// The editor on screen: `Some` exactly while `GraphOverlay::Rewrite`.
     pub(crate) editor: Option<Box<RewriteEditor>>,
     /// After `y`, until the write answers (ruling 6).
@@ -61,6 +63,27 @@ pub(crate) struct RewriteState {
     /// (or their cancellation) still arrive, and are dropped here rather
     /// than reaching a handler that shares their product.
     stale: HashSet<JobId>,
+}
+
+/// Where the editor was opened from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum OpenedFrom {
+    /// `R` on the graph, on this row: the cursor opens on it.
+    Row(Oid),
+    /// `R` in a rebase preview (rebase-preview-keeps-drops): the rows are
+    /// that rebase's, the suggested drops pre-marked; the cursor opens on
+    /// the newest of them.
+    Rebase,
+}
+
+/// Why a row came up already marked, before any key of his.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum MarkedBy {
+    /// A `fixup!`/`squash!` subject (autosquash): `marked by its name`.
+    Name,
+    /// A rebase preview's suggested drop, already in the base:
+    /// `already in <base> · p keeps it`.
+    AlreadyIn,
 }
 
 /// One open editor.
@@ -75,9 +98,10 @@ pub(crate) struct RewriteEditor {
     /// His rows, oldest first, as git runs them; the screen shows them
     /// reversed.
     todo: Vec<TodoLine>,
-    /// Rows `plan` marked at open (a `fixup!`/`squash!` subject) that he has
-    /// not re-marked since: `marked by its name`.
-    by_name: HashSet<Oid>,
+    /// Rows that came up marked (a `fixup!`/`squash!` subject, or a rebase's
+    /// suggested drop) that he has not re-marked since, and why. Any mark
+    /// of his removes the row: the words are for marks he did not make.
+    by_name: HashMap<Oid, MarkedBy>,
     /// Rows he moved: `↕ moved`.
     moved: HashSet<Oid>,
     /// His message edits, by commit: a reword row's message, or a squash
@@ -184,8 +208,9 @@ pub(crate) struct RowFacts<'a> {
     pub subject: &'a str,
     /// `↕ moved`.
     pub moved: bool,
-    /// `marked by its name`.
-    pub by_name: bool,
+    /// Why it came up marked, while he has not re-marked it: `marked by its
+    /// name`, or `already in <base> · p keeps it`.
+    pub marked: Option<MarkedBy>,
     /// Its commit is the kept row of a group: `n in one` counts it and the
     /// melded rows.
     pub keeps: usize,
@@ -222,22 +247,28 @@ pub(crate) enum AfterFacts<'a> {
 }
 
 impl RewriteEditor {
-    fn new(opened: OpenedRewrite, from: Oid) -> Self {
+    fn new(opened: OpenedRewrite, from: OpenedFrom) -> Self {
         let OpenedRewrite {
             params,
             whole,
             base,
         } = opened;
         let todo = params.todo.clone();
+        let reason = match from {
+            OpenedFrom::Row(_) => MarkedBy::Name,
+            OpenedFrom::Rebase => MarkedBy::AlreadyIn,
+        };
         let by_name = todo
             .iter()
             .filter(|row| row.action != TodoAction::Pick)
-            .map(|row| row.commit)
+            .map(|row| (row.commit, reason))
             .collect();
-        let cursor = todo
-            .iter()
-            .rposition(|row| row.commit == from)
-            .map_or(0, |index| todo.len() - 1 - index);
+        let at = match from {
+            OpenedFrom::Row(from) => todo.iter().rposition(|row| row.commit == from),
+            // The newest suggested drop: `p` keeps it in one key.
+            OpenedFrom::Rebase => todo.iter().rposition(|row| row.action == TodoAction::Drop),
+        };
+        let cursor = at.map_or(0, |index| todo.len() - 1 - index);
         RewriteEditor {
             opened: params,
             whole,
@@ -406,9 +437,40 @@ pub(crate) fn open_rewrite(
     };
     let id = next_id();
     state.rewrite.opening = Some(id);
-    state.rewrite.opening_from = Some(from);
+    state.rewrite.opening_from = Some(OpenedFrom::Row(from));
     state.status = Status::Waiting(format!("reading {}\u{2026}", branch_name(state)));
-    commands.push(Command::OpenRewrite { id, from });
+    commands.push(Command::OpenRewrite {
+        id,
+        req: RewriteRequest::Open { from },
+    });
+}
+
+/// `R` in a rebase preview whose suggested drops `preview::keeps_drops`
+/// found (rebase-preview-keeps-drops): read the editor on that very rebase
+/// — `params` as its `y` would run them — its drops marked `d`, so he sees
+/// what he keeps before `y`. The preview is closed by the caller. Refused
+/// as [`open_rewrite`] is, in the same words.
+pub(crate) fn open_rewrite_from_rebase(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+    params: RebaseParams,
+) {
+    if state.rewrite.opening.is_some() || state.rewrite.editor.is_some() {
+        return;
+    }
+    if let Some(reason) = super::preview::preview_refusal(state) {
+        state.status = Status::Sticky { reason, keys: None };
+        return;
+    }
+    let id = next_id();
+    state.rewrite.opening = Some(id);
+    state.rewrite.opening_from = Some(OpenedFrom::Rebase);
+    state.status = Status::Waiting(format!("reading {}\u{2026}", branch_name(state)));
+    commands.push(Command::OpenRewrite {
+        id,
+        req: RewriteRequest::FromRebase(params),
+    });
 }
 
 /// The commit `R` opens on: the cursor's row, or `HEAD` on the uncommitted
@@ -466,7 +528,7 @@ pub(crate) fn opened(
             if matches!(state.status, Status::Waiting(_)) {
                 state.status = Status::Ready;
             }
-            let from = from.unwrap_or(opened.params.head.oid);
+            let from = from.unwrap_or(OpenedFrom::Row(opened.params.head.oid));
             let mut editor = Box::new(RewriteEditor::new(*opened, from));
             after::replan(state, &mut editor, commands, next_id);
             state.rewrite.editor = Some(editor);

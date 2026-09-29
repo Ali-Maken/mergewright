@@ -6,7 +6,7 @@ use std::process::Command as Shell;
 
 use graft_core::oid::Oid;
 use graft_ops::operation::Refusal;
-use graft_ops::rewrite::TodoAction;
+use graft_ops::rewrite::{RewriteRequest, TodoAction};
 
 use super::{RewriteOpened, open};
 use crate::repos::RepoStore;
@@ -81,7 +81,7 @@ fn open_reads_every_rows_whole_message() {
         panic!("five commits");
     };
     let store = RepoStore::new(dir.path().to_path_buf(), None);
-    let opened = open(&store, wip, &()).expect("the read works");
+    let opened = open(&store, &RewriteRequest::Open { from: wip }, &()).expect("the read works");
     let RewriteOpened::Editor(opened) = opened else {
         panic!("not refused: {opened:?}");
     };
@@ -133,7 +133,8 @@ fn open_refuses_forked_dependents_in_words() {
     commit(repo, "other.txt", "Another teammate's work");
     git(repo, &["checkout", "-q", "feature-a"]);
     let store = RepoStore::new(repo.to_path_buf(), None);
-    let opened = open(&store, oids[4], &()).expect("the read works");
+    let opened =
+        open(&store, &RewriteRequest::Open { from: oids[4] }, &()).expect("the read works");
     let RewriteOpened::Refused(refusal) = opened else {
         panic!("refused: {opened:?}");
     };

@@ -24,7 +24,7 @@ use ratatui::layout::Rect;
 use crate::update::AppState;
 use crate::update::detail::Loading;
 use crate::update::place::short;
-use crate::update::rewrite_editor::{AfterFacts, RowFacts, ViewFacts};
+use crate::update::rewrite_editor::{AfterFacts, MarkedBy, RowFacts, ViewFacts};
 
 /// `melds into the row below`: a squash or fixup row.
 const MELDS: &str = "melds into the row below";
@@ -74,7 +74,7 @@ fn view_of(facts: &ViewFacts<'_>, ascii: bool) -> RewriteEditorView {
     let mut rows: Vec<EditorRow> = facts
         .rows
         .iter()
-        .map(|row| editor_row(row, ascii))
+        .map(|row| editor_row(row, &facts.base.label, ascii))
         .collect();
     rows.push(EditorRow {
         mark: RowMark::Base {
@@ -108,8 +108,9 @@ fn view_of(facts: &ViewFacts<'_>, ascii: bool) -> RewriteEditorView {
     }
 }
 
-/// One of his rows: its mark, and what it says about itself.
-fn editor_row(row: &RowFacts<'_>, ascii: bool) -> EditorRow {
+/// One of his rows: its mark, and what it says about itself. `base` is the
+/// base row's label, which a rebase's suggested drop is already in.
+fn editor_row(row: &RowFacts<'_>, base: &str, ascii: bool) -> EditorRow {
     let mark = match row.action {
         TodoAction::Pick => RowMark::Pick,
         TodoAction::Reword => RowMark::Reword,
@@ -131,8 +132,10 @@ fn editor_row(row: &RowFacts<'_>, ascii: bool) -> EditorRow {
             TodoAction::Pick => {}
         }
     }
-    if row.by_name {
-        said.push("marked by its name".to_owned());
+    match row.marked {
+        Some(MarkedBy::Name) => said.push("marked by its name".to_owned()),
+        Some(MarkedBy::AlreadyIn) => said.push(format!("already in {base} \u{b7} p keeps it")),
+        None => {}
     }
     EditorRow {
         mark,
