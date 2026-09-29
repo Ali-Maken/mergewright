@@ -20,7 +20,7 @@ use crate::session::Clock;
 /// and each lost tip's subject — read here, because a commit no branch
 /// holds is on no graph row to take it from.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct LostFound {
+pub struct LostFound {
     /// `find_lost`'s runs.
     pub unreached: Unreached,
     /// `lost_edits`' answer.
@@ -44,10 +44,6 @@ impl LostFound {
 
 /// Stage 2: the newest [`RECORDS_CAP`] reflog records of `HEAD` and every
 /// local branch.
-#[expect(
-    dead_code,
-    reason = "the seam 24-a stopped at: its Command is not in the enum yet (ticket 24 NOTES)"
-)]
 pub(crate) fn read_outside(
     repos: &RepoStore,
     cancel: &Cancel,
@@ -60,10 +56,6 @@ pub(crate) fn read_outside(
 
 /// Stage 3: which of the events' old values nothing holds, the edits undos
 /// replaced, and the lost tips' subjects.
-#[expect(
-    dead_code,
-    reason = "the seam 24-a stopped at: its Command is not in the enum yet (ticket 24 NOTES)"
-)]
 pub(crate) fn find_lost(
     repos: &RepoStore,
     clock: Clock,
@@ -108,10 +100,6 @@ pub(crate) fn find_lost(
 /// read fresh, then `recover_for`. `Err` is the words for J's status row:
 /// `recover_for`'s refusal, or why the reads it needs failed — `Refusal` has
 /// no variant for a failed read, and the words are all the screen uses.
-#[expect(
-    dead_code,
-    reason = "the seam 24-a stopped at: its Command is not in the enum yet (ticket 24 NOTES)"
-)]
 pub(crate) fn recover_for(
     repos: &RepoStore,
     clock: Clock,

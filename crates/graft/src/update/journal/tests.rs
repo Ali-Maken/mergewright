@@ -85,7 +85,13 @@ fn capital_j_opens_the_browser_and_reads_the_journal_again() {
     let (claimed, commands) = press(&mut state, KeyCode::Char('J'));
     assert!(claimed);
     assert!(state.journal.shown);
-    assert!(matches!(commands.as_slice(), [Command::ReadJournal(_)]));
+    assert!(
+        matches!(
+            commands.as_slice(),
+            [Command::ReadJournal(_), Command::ReadOutside { .. }]
+        ),
+        "the journal again, and stage 2: {commands:?}"
+    );
 }
 
 #[test]
@@ -104,10 +110,16 @@ fn escape_closes_it_and_cancels_a_read_that_was_only_refreshing_the_list() {
         .journal
         .reading
         .expect("the open asked for a fresh read");
+    let Loading::Pending(outside) = state.journal.outside else {
+        panic!("the open asked for stage 2: {:?}", state.journal.outside);
+    };
     let (claimed, commands) = press(&mut state, KeyCode::Escape);
     assert!(claimed);
     assert!(!state.journal.shown);
-    assert_eq!(commands, vec![Command::CancelJob(refreshing)]);
+    assert_eq!(
+        commands,
+        vec![Command::CancelJob(outside), Command::CancelJob(refreshing)]
+    );
     assert_eq!(state.journal.reading, None);
 }
 
@@ -135,6 +147,9 @@ fn esc_on_a_pending_journal_read_does_not_rerequest() {
         Loading::Pending(id) => id,
         ref other => panic!("the open asked for a read with nothing behind it: {other:?}"),
     };
+    let Loading::Pending(stage_two) = state.journal.outside else {
+        panic!("the open asked for stage 2: {:?}", state.journal.outside);
+    };
 
     let (claimed, on_escape) = press(&mut state, KeyCode::Escape);
     // And then the tail of `update`, which is where the re-request was.
@@ -143,9 +158,10 @@ fn esc_on_a_pending_journal_read_does_not_rerequest() {
 
     assert!(claimed);
     assert!(!state.journal.shown, "`Esc` closes the browser");
-    assert!(
-        on_escape.is_empty(),
-        "the read the notice is waiting for is left alone: {on_escape:?}"
+    assert_eq!(
+        on_escape,
+        vec![Command::CancelJob(stage_two)],
+        "only the open browser's own read goes; the one the notice is waiting for is left alone"
     );
     assert!(
         settled.is_empty(),
@@ -390,7 +406,8 @@ fn found(tips: &[u8]) -> LostFound {
 fn outside_lands(state: &mut AppState, records: Vec<OutsideRecord>) {
     let id = JobId::new(900);
     state.journal.outside = Loading::Pending(id);
-    outside_landed(state, id, &Ok(Arc::new(records)));
+    let mut commands = Vec::new();
+    outside_landed(state, &mut commands, id, &Ok(Arc::new(records)), &mut ids());
 }
 
 /// Stage 3 lands.
@@ -436,7 +453,11 @@ fn j_opens_with_graft_rows_at_once() {
         ]
     );
     assert_eq!(state.journal.selected(), 0, "on the newest");
-    assert!(matches!(commands.as_slice(), [Command::ReadJournal(_)]));
+    let [Command::ReadJournal(_), Command::ReadOutside { id }] = commands.as_slice() else {
+        panic!("the journal again, and stage 2 asked at once: {commands:?}");
+    };
+    assert_eq!(state.journal.outside, Loading::Pending(*id));
+    assert!(state.journal.finding_lost(), "the title says it is looking");
 }
 
 #[test]
@@ -922,4 +943,246 @@ fn enter_on_a_switch_row_switches_back() {
         state.status
     );
     assert!(!state.journal.shown, "the result is on the graph");
+}
+
+// ---- 24-a remainder: the jobs dispatched ----
+
+/// Stage 2's answer to J's own `ReadOutside`, and the commands it asks.
+fn stage_two(state: &mut AppState, records: Vec<OutsideRecord>) -> Vec<Command> {
+    let Loading::Pending(id) = state.journal.outside else {
+        panic!("J asked for stage 2: {:?}", state.journal.outside);
+    };
+    let mut commands = Vec::new();
+    outside_landed(state, &mut commands, id, &Ok(Arc::new(records)), &mut ids());
+    commands
+}
+
+#[test]
+fn outside_rows_arrive_second() {
+    let mut state = opened();
+    let commands = stage_two(&mut state, shell_reset());
+    let list = state.journal.list.as_ref().expect("built");
+    assert!(
+        matches!(list.rows.first(), Some(ListRow::Outside(_))),
+        "the shell's steps joined the list: {:?}",
+        list.rows
+    );
+    // Stage 3 is asked with stage 2's own records, under the id it waits on.
+    let [Command::FindLost { id, outside }] = commands.as_slice() else {
+        panic!("stage 3 asked: {commands:?}");
+    };
+    assert_eq!(**outside, shell_reset());
+    assert_eq!(state.journal.lost, Loading::Pending(*id));
+    // A stale stage-2 answer asks nothing and changes nothing.
+    let mut after_stale = Vec::new();
+    outside_landed(
+        &mut state,
+        &mut after_stale,
+        JobId::new(77),
+        &Ok(Arc::new(Vec::new())),
+        &mut ids(),
+    );
+    assert!(after_stale.is_empty());
+}
+
+#[test]
+fn lost_rows_arrive_third_and_the_title_says_while() {
+    let mut state = opened();
+    let commands = stage_two(&mut state, shell_reset());
+    let [Command::FindLost { id, .. }] = commands.as_slice() else {
+        panic!("stage 3 asked: {commands:?}");
+    };
+    let list = state.journal.list.clone().expect("built");
+    assert_eq!(
+        list.scan,
+        LostScan::Running,
+        "the title's `finding lost commits…`"
+    );
+    assert!(state.journal.finding_lost());
+    assert!(
+        !list
+            .rows
+            .iter()
+            .any(|row| matches!(row, ListRow::Lost { .. })),
+        "no lost rows before stage 3"
+    );
+    lost_landed(&mut state, *id, &Ok(Arc::new(found(&[4]))));
+    let list = state.journal.list.clone().expect("built");
+    assert_eq!(list.scan, LostScan::Done, "nothing in the title once done");
+    assert!(!state.journal.finding_lost());
+    assert!(
+        list.rows
+            .iter()
+            .any(|row| matches!(row, ListRow::Lost { .. }))
+    );
+}
+
+#[test]
+fn a_failed_scan_says_why_in_the_title() {
+    let mut state = opened();
+    let commands = stage_two(&mut state, shell_reset());
+    let [Command::FindLost { id, .. }] = commands.as_slice() else {
+        panic!("stage 3 asked: {commands:?}");
+    };
+    lost_landed(&mut state, *id, &Err("fatal: bad object".to_owned()));
+    let list = state.journal.list.clone().expect("built");
+    assert_eq!(list.scan, LostScan::Failed("fatal: bad object".to_owned()));
+    assert!(!state.journal.finding_lost());
+
+    // Stage 2 failing is said the same way: the scan never ran, and why.
+    let mut state = opened();
+    let Loading::Pending(id) = state.journal.outside else {
+        panic!("J asked for stage 2");
+    };
+    let mut commands = Vec::new();
+    outside_landed(
+        &mut state,
+        &mut commands,
+        id,
+        &Err("fatal: reflog".to_owned()),
+        &mut ids(),
+    );
+    assert!(commands.is_empty(), "no stage 3 over records never read");
+    let list = state.journal.list.clone().expect("built");
+    assert_eq!(
+        list.scan,
+        LostScan::Failed("couldn't read git's own records: fatal: reflog".to_owned())
+    );
+}
+
+/// J open over the shell's reset, every stage in, and `⏎` pressed on the
+/// row `pick` finds: the state, the `RecoverFor` id, and the row's key.
+fn enter_on(landed: LostFound, pick: impl Fn(&ListRow) -> bool) -> (AppState, JobId, RowKey) {
+    let mut state = opened();
+    let _find = stage_two(&mut state, shell_reset());
+    lost_lands(&mut state, landed);
+    let list = state.journal.list.clone().expect("built");
+    let row = list.rows.iter().position(pick).expect("the row is listed");
+    state.journal.cursor = row_key(&list, row);
+    let (claimed, commands) = press(&mut state, KeyCode::Enter);
+    assert!(claimed);
+    let [
+        Command::RecoverFor {
+            id,
+            list: asked,
+            row: asked_row,
+        },
+    ] = commands.as_slice()
+    else {
+        panic!(
+            "⏎ asks what the row puts back: {commands:?} {:?}",
+            state.status
+        );
+    };
+    assert!(
+        Arc::ptr_eq(asked, &list),
+        "the list on screen, not a rebuilt one"
+    );
+    assert_eq!(*asked_row, row);
+    let key = row_key(&list, row).expect("a row");
+    assert_eq!(state.journal.recovering, Some((*id, key.clone())));
+    assert!(state.journal.shown, "J stays while it is asked");
+    (state, *id, key)
+}
+
+/// `recover_for`'s `Run` answered, and the preview it opened over J.
+fn answered_run(state: &mut AppState, id: JobId, target: &graft_ops::operation::RecoverTarget) {
+    let mut commands = Vec::new();
+    recover_answered(
+        state,
+        &mut commands,
+        id,
+        &Ok(Recover::Run(graft_ops::operation::RecoverParams {
+            target: target.clone(),
+            because: "reset: moving to HEAD~1".to_owned(),
+        })),
+        &mut ids(),
+    );
+    let preview = state.preview.as_ref().expect("the put-back's preview");
+    assert!(
+        matches!(
+            &preview.subject,
+            crate::update::preview::PreviewSubject::Operation { op, opened_by: "\u{23ce}" }
+                if matches!(&**op, Operation::Recover(params) if params.target == *target)
+        ),
+        "{:?}",
+        preview.subject
+    );
+    assert!(state.journal.shown, "J stays under it");
+    assert!(state.operating.is_none(), "y confirms; nothing runs yet");
+}
+
+#[test]
+fn enter_on_a_lost_commit_asks_what_it_puts_back() {
+    let (mut state, id, key) = enter_on(found(&[4]), |row| matches!(row, ListRow::Lost { .. }));
+    assert_eq!(key, RowKey::Lost(oid(4)));
+    answered_run(
+        &mut state,
+        id,
+        &graft_ops::operation::RecoverTarget::MoveRef {
+            name: "main".to_owned(),
+            to: oid(4),
+            expected: oid(3),
+        },
+    );
+}
+
+#[test]
+fn enter_on_a_gone_branch_opens_make_it_again() {
+    let (mut state, id, _) = enter_on(found(&[4]), |row| matches!(row, ListRow::Lost { .. }));
+    answered_run(
+        &mut state,
+        id,
+        &graft_ops::operation::RecoverTarget::Recreate {
+            name: "spike".to_owned(),
+            at: oid(4),
+        },
+    );
+}
+
+#[test]
+fn enter_on_an_outside_row_puts_that_ref_back() {
+    let (mut state, id, key) = enter_on(
+        found(&[]),
+        |row| matches!(row, ListRow::Outside(step) if step.record.refname == "refs/heads/main"),
+    );
+    assert!(matches!(key, RowKey::Outside { .. }), "{key:?}");
+    answered_run(
+        &mut state,
+        id,
+        &graft_ops::operation::RecoverTarget::MoveRef {
+            name: "main".to_owned(),
+            to: oid(4),
+            expected: oid(3),
+        },
+    );
+}
+
+#[test]
+fn enter_on_a_lost_edit_puts_the_file_back() {
+    let mut lost = found(&[]);
+    lost.edits = vec![LostEdit {
+        entry: newest_entry(),
+        backup_tree: oid(8),
+        paths: vec!["src/a.rs".into()],
+    }];
+    let (mut state, id, key) = enter_on(lost, |row| matches!(row, ListRow::LostEdit { .. }));
+    assert_eq!(key, RowKey::LostEdit(newest_entry()));
+    answered_run(
+        &mut state,
+        id,
+        &graft_ops::operation::RecoverTarget::Files {
+            entry: newest_entry(),
+            backup_tree: oid(8),
+            paths: vec!["src/a.rs".into()],
+        },
+    );
+}
+
+#[test]
+fn closing_j_cancels_a_put_back_still_being_asked() {
+    let (mut state, id, _) = enter_on(found(&[4]), |row| matches!(row, ListRow::Lost { .. }));
+    let (_, commands) = press(&mut state, KeyCode::Escape);
+    assert!(commands.contains(&Command::CancelJob(id)), "{commands:?}");
+    assert_eq!(state.journal.recovering, None);
 }

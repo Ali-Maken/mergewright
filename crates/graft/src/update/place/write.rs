@@ -7,6 +7,11 @@ use crate::update::events::Command;
 /// a tool that edits files. Exhaustive on purpose, no `_` arm: a new
 /// `Command` stops this compiling until it is classified.
 #[must_use]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one line per `Command` variant, exhaustive with no `_` arm on purpose (above); \
+              shortening it means a catch-all that would classify a new write as a read"
+)]
 pub fn is_write(command: &Command) -> bool {
     match command {
         Command::Operate(..)
@@ -49,6 +54,9 @@ pub fn is_write(command: &Command) -> bool {
         | Command::BuildMap(..)
         | Command::PlanPreview(..)
         | Command::ReadJournal(..)
+        | Command::ReadOutside { .. }
+        | Command::FindLost { .. }
+        | Command::RecoverFor { .. }
         | Command::ReadStashes(..)
         | Command::ReadSwitchList(..)
         | Command::ReadIndexState { .. }

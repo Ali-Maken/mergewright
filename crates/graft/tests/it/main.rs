@@ -35,6 +35,7 @@ mod heavy;
 mod hint_bar;
 mod history_place;
 mod idle_advance;
+mod journal_put_back;
 mod land_on_result;
 mod lane_cap;
 mod m3_walk;

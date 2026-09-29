@@ -241,3 +241,42 @@ fn the_tags_clear_on_the_next_operation() {
     assert_eq!(state.row_tags.on(oid(4)), None);
     assert_eq!(state.row_tags.on(oid(3)), None);
 }
+
+/// `b` in J, a name, `⏎`: J closes, the branch is made, and the cursor
+/// lands on the commit it was made at — not on `HEAD`.
+#[test]
+fn b_from_j_lands_on_the_new_branch() {
+    let mut state = on_the_graph();
+    state.journal.shown = true;
+    assert!(crate::update::name_prompt::open_name_prompt_with(
+        &mut state,
+        crate::update::name_prompt::NameKind::Branch {
+            at: oid(3),
+            checkout: false,
+        },
+        "spike-restored",
+    ));
+    let mut next_id = ids();
+    let mut commands = Vec::new();
+    crate::update::name_prompt::name_prompt_key(
+        &mut state,
+        &mut commands,
+        graft_core::event::KeyPress::plain(graft_core::event::KeyCode::Enter),
+        &mut next_id,
+    );
+    assert!(!state.journal.shown, "J closed on create");
+    let id = state.operating.expect("the branch is being made");
+    assert_eq!(state.lands, Some((id, Landing::Commit(oid(3)))));
+    let _refresh = operated(
+        &mut state,
+        id,
+        Operated::Done(applied("created", Refresh::Everything)),
+        &mut next_id,
+    );
+    let _seek = refresh_lands(&mut state);
+    assert_eq!(
+        cursor_commit(&state),
+        Some(oid(3)),
+        "on the new branch's commit"
+    );
+}

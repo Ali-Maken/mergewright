@@ -180,6 +180,12 @@ pub enum Task {
     /// Read the undo journal, closing anything a previous run left open
     /// (m3-working-tree-undo-and-stash/06).
     ReadJournal,
+    /// J's stage 2, git's reflog records (m7-power-tools/24).
+    ReadOutside,
+    /// J's stage 3, the lost commits and edits (m7-power-tools/24).
+    FindLost,
+    /// What `⏎` on a J row puts back (m7-power-tools/24).
+    RecoverFor,
     /// Draw a Ghost Preview: plan what an operation would do, and read the
     /// commits it points at that are not on screen
     /// (m5-history-and-ghost-preview/08).
@@ -435,6 +441,15 @@ pub enum Product {
     /// `Arc`: the journal browser holds it across frames, never copied per
     /// event (m3-working-tree-undo-and-stash/06).
     Journal(Result<std::sync::Arc<crate::jobs::undo::JournalRead>, String>),
+    /// J's stage 2 answered (`Command::ReadOutside`): the reflog records, or
+    /// why they could not be read. `Arc`: the list holds them across frames.
+    Outside(Result<std::sync::Arc<Vec<graft_ops::journal_list::OutsideRecord>>, String>),
+    /// J's stage 3 answered (`Command::FindLost`), or why the scan failed —
+    /// the title says so (m7-power-tools/24).
+    LostFound(Result<std::sync::Arc<crate::jobs::journal_list::LostFound>, String>),
+    /// What `⏎` on a J row puts back (`Command::RecoverFor`); `Err` is the
+    /// status row's words, a refusal or a failed read.
+    RecoverFor(Result<graft_ops::journal_list::Recover, String>),
     /// The stash list, `stash@{0}` first, or why it could not be read.
     /// `Arc` for the same reason as [`Product::Journal`]: the overlay holds
     /// it across frames (m3-working-tree-undo-and-stash/06).

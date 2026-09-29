@@ -207,6 +207,13 @@ impl JournalState {
         matches!(&self.expanded, Some(RowKey::Graft(open)) if open == id)
     }
 
+    /// Stage 2 or stage 3 is still out: the title says `finding lost
+    /// commits…` while this holds (J1).
+    #[must_use]
+    pub fn finding_lost(&self) -> bool {
+        matches!(self.outside, Loading::Pending(_)) || matches!(self.lost, Loading::Pending(_))
+    }
+
     fn rows(&self) -> usize {
         self.list.as_ref().map_or(0, |list| list.rows.len())
     }
@@ -367,38 +374,41 @@ pub(super) fn journal_event(
 
 /// Stage 2 landed: git's reflog records. The `$` rows join the list; the
 /// cursor keeps its row. Stale answers are dropped by id.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the seam 24-a stopped at: its Command is not in the enum yet (ticket 24 NOTES)"
-    )
-)]
 pub(crate) fn outside_landed(
     state: &mut AppState,
+    commands: &mut Vec<Command>,
     id: JobId,
     result: &Result<Arc<Vec<OutsideRecord>>, String>,
+    next_id: &mut impl FnMut() -> JobId,
 ) {
     if state.journal.outside != Loading::Pending(id) {
         return;
     }
-    state.journal.outside = match result {
-        Ok(records) => Loading::Ready(Arc::clone(records)),
-        Err(why) => Loading::Failed(why.clone()),
-    };
+    match result {
+        Ok(records) => {
+            state.journal.outside = Loading::Ready(Arc::clone(records));
+            // Stage 3 looks for what nothing holds among these records' old
+            // values too, so it waits for them.
+            let id = next_id();
+            state.journal.lost = Loading::Pending(id);
+            commands.push(Command::FindLost {
+                id,
+                outside: Arc::clone(records),
+            });
+        }
+        Err(why) => {
+            state.journal.outside = Loading::Failed(why.clone());
+            // No scan over records never read: the title says why there
+            // are no lost rows rather than claiming there are none.
+            state.journal.lost = Loading::Failed(format!("couldn't read git's own records: {why}"));
+        }
+    }
     rebuild(state);
 }
 
 /// Stage 3 landed: the lost commits and edits. The `✗` rows join the list
 /// under their events, and the preselect runs (ruling 2026-09-26). A failed
 /// scan is said in the title (`LostScan::Failed`), never dropped.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the seam 24-a stopped at: its Command is not in the enum yet (ticket 24 NOTES)"
-    )
-)]
 pub(crate) fn lost_landed(
     state: &mut AppState,
     id: JobId,
@@ -421,13 +431,6 @@ pub(crate) fn lost_landed(
 /// `OfferBranch` opens nothing: the status says why and what `b` makes, and
 /// `b` on the row prefills the name. A refusal (`Err`, already worded) is
 /// the status line's.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the seam 24-a stopped at: its Command is not in the enum yet (ticket 24 NOTES)"
-    )
-)]
 pub(crate) fn recover_answered(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -498,10 +501,8 @@ pub(super) fn journal_key(
 }
 
 /// `J`: the browser opens at once on what is on hand — stage 1, the `●`
-/// rows, on the newest — and the journal is read again.
-///
-/// The reflog read (stage 2) is not asked here yet: its command is the seam
-/// 24-a stopped at (ticket NOTES).
+/// rows, on the newest — the journal is read again, and stage 2 (git's
+/// reflog records) is asked; its answer asks stage 3 ([`outside_landed`]).
 pub(crate) fn journal_enter(
     state: &mut AppState,
     next_id: &mut impl FnMut() -> JobId,
@@ -522,7 +523,11 @@ pub(crate) fn journal_enter(
     rebuild(state);
     // Read it fresh: another Graft on the same worktree may have appended
     // since the last read.
-    state.journal.read(next_id)
+    let mut commands = state.journal.read(next_id);
+    let id = next_id();
+    state.journal.outside = Loading::Pending(id);
+    commands.push(Command::ReadOutside { id });
+    commands
 }
 
 /// The browser's own keys.
@@ -702,11 +707,23 @@ fn enter(next: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl Fn
                 close(next, commands);
             }
         }
-        // The `RecoverFor` job's command is the seam 24-a stopped at
-        // (ticket NOTES): nothing is asked yet, so the key says so rather
-        // than doing nothing.
+        // What it puts back needs the refs read fresh, off the loop; the
+        // answer lands in `recover_answered`. A second `⏎` replaces the
+        // first, whose answer is then stale by id.
         Some(ListRow::Outside(_) | ListRow::Lost { .. } | ListRow::LostEdit { .. }) => {
-            next.status = Status::sticky("putting this back is not built yet");
+            let Some(key) = row_key(&list, index) else {
+                return;
+            };
+            if let Some((stale, _)) = next.journal.recovering.take() {
+                commands.push(Command::CancelJob(stale));
+            }
+            let id = next_id();
+            next.journal.recovering = Some((id, key));
+            commands.push(Command::RecoverFor {
+                id,
+                list,
+                row: index,
+            });
         }
         None => {}
     }
