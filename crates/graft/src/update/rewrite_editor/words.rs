@@ -2,7 +2,7 @@
 
 use graft_ops::rewrite::{TodoAction, TodoProblem, squash_groups};
 
-use super::{After, AfterFacts, MarkedBy, MessageFacts, RewriteEditor, Right, RowFacts, ViewFacts};
+use super::*;
 use crate::update::state::Status;
 
 /// `p s f d e r`, a move, onto the base row (R1).
@@ -21,7 +21,7 @@ pub(super) fn invalid(editor: &RewriteEditor, problem: &TodoProblem) -> String {
     let arrived = *problem == TodoProblem::EverythingDropped
         && editor.todo.iter().all(|row| {
             row.action == TodoAction::Drop
-                && editor.by_name.get(&row.commit) == Some(&MarkedBy::AlreadyIn)
+                && editor.marked_by.get(&row.commit) == Some(&MarkedBy::AlreadyIn)
         });
     if arrived {
         NOTHING_KEPT_YET.to_owned()
@@ -143,7 +143,7 @@ fn rows(editor: &RewriteEditor) -> Vec<RowFacts<'_>> {
                 commit: row.commit,
                 subject,
                 moved: editor.moved.contains(&row.commit),
-                marked: editor.by_name.get(&row.commit).copied(),
+                marked: editor.marked_by.get(&row.commit).copied(),
                 keeps,
                 problem,
             }
@@ -173,4 +173,84 @@ fn messages(editor: &RewriteEditor) -> Vec<MessageFacts> {
         }
     }
     out
+}
+
+/// What the view (`view::rewrite_editor`) reads to draw the editor: everything on screen, in the
+/// screen's order, and nothing it has to work out again.
+#[derive(Debug)]
+pub(crate) struct ViewFacts<'a> {
+    /// His branch's short name (`feature-a`).
+    pub branch: &'a str,
+    /// How many commits since it left the base, as opened.
+    pub since: usize,
+    /// His rows, newest first.
+    pub rows: Vec<RowFacts<'a>>,
+    /// The row under his.
+    pub base: &'a BaseRow,
+    /// The cursor: an index into `rows`, or `rows.len()` on the base row.
+    pub cursor: usize,
+    /// `r`'s field: its screen row, text and caret (a char index).
+    pub field: Option<(usize, &'a str, usize)>,
+    /// One block per squash group or reword, newest kept row first: what
+    /// the rewrite will write.
+    pub messages: Vec<MessageFacts>,
+    /// The AFTER side.
+    pub after: AfterFacts<'a>,
+    /// `Some` while `⏎` shows a row's changes instead of AFTER.
+    pub changes: Option<(Oid, &'a Loading<Arc<FileList>>)>,
+    /// Below 120 columns: the AFTER side is up instead of the rows.
+    pub narrow_shows_right: bool,
+    /// A refusal in words, above the bar.
+    pub notice: Option<&'a str>,
+    /// The `$EDITOR` handover is out: the terminal is away.
+    pub handing_over: bool,
+}
+
+/// One of his rows.
+#[derive(Debug)]
+pub(crate) struct RowFacts<'a> {
+    /// Its action now.
+    pub action: TodoAction,
+    /// Its commit.
+    pub commit: Oid,
+    /// Its subject as it stands (a reword's edited subject).
+    pub subject: &'a str,
+    /// `↕ moved`.
+    pub moved: bool,
+    /// Why it came up marked, while he has not re-marked it: `marked by its
+    /// name`, or `already in <base> · p keeps it`.
+    pub marked: Option<MarkedBy>,
+    /// Its commit is the kept row of a group: `n in one` counts it and the
+    /// melded rows.
+    pub keeps: usize,
+    /// What is wrong with it (`nothing below to meld into`), drawn `✗`.
+    pub problem: Option<String>,
+}
+
+/// One message the rewrite will write.
+#[derive(Debug)]
+pub(crate) struct MessageFacts {
+    /// The kept (or reworded) row.
+    pub kept: Oid,
+    /// Its subject, for the label's `r on "<subject>"`.
+    pub kept_subject: String,
+    /// A squash group's (`MESSAGE of the squashed commit`) or a reword's.
+    pub squashed: bool,
+    /// The whole message.
+    pub text: String,
+}
+
+/// The AFTER side's state.
+#[derive(Debug)]
+pub(crate) enum AfterFacts<'a> {
+    /// `checking…`.
+    Checking,
+    /// The read failed.
+    Failed(&'a str),
+    /// The plan refused.
+    Refused(&'a str),
+    /// The todo cannot run: the problem's words.
+    Invalid(String),
+    /// The plan: its ghosts, forecast and `published`.
+    Ready(&'a Planned),
 }

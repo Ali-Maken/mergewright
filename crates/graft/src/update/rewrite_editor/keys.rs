@@ -202,8 +202,9 @@ fn mark(
     let row = &mut editor.todo[index];
     row.action = action;
     let commit = row.commit;
-    // His own mark now, not the one its name gave it.
-    editor.by_name.remove(&commit);
+    // His own mark now, not the one it came up with (its name, or the
+    // rebase's suggested drop).
+    editor.marked_by.remove(&commit);
     editor.cursor = (editor.cursor + 1).min(editor.todo.len().saturating_sub(1));
     after::replan(state, editor, commands, next_id);
 }
@@ -364,7 +365,7 @@ pub(super) fn keep_message(
     };
     if editor.group_of(index).is_none() {
         editor.todo[index].action = TodoAction::Reword;
-        editor.by_name.remove(&field.commit);
+        editor.marked_by.remove(&field.commit);
     }
     editor.edits.insert(field.commit, message);
     after::replan(state, editor, commands, next_id);
