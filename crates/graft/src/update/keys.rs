@@ -212,7 +212,15 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     if !next.text_field_open()
         && let Some(redo) = is_undo_key(key)
     {
+        let asked = commands.len();
         undo_key(next, commands, redo);
+        // In J, `u`/`U` land as `⏎` on the `← u`/`← U` row does: J closes
+        // and the result is on the graph (ticket m7/24, ruling 2026-09-29).
+        // Only once the undo is launched — a refusal stays on J's status
+        // row, where he pressed the key.
+        if next.journal.shown && commands.len() > asked {
+            super::journal::close(next, commands);
+        }
         return;
     }
     // `Esc` while a write runs stops it — any write, not only a remote one

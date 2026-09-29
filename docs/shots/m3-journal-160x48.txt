@@ -4,7 +4,7 @@
 # against a fixed clock so the ages never move.
 #
 # Judge by eye:
-# - The header reads UNDO JOURNAL · <the repository's path>.
+# - The title reads JOURNAL · what happened in this repo, newest first.
 # - Newest first: the undo is the top row, the 26-hour-old stage the last.
 # - Every mark the browser has is on screen, one row each, no row with two.
 #   Not "looks right": the marks are `graft_ops`' own next_undo, next_redo
@@ -17,15 +17,17 @@
 #                  It reads interrupted, and never failed:.
 # - The discard row leads with failed: and git's own first line, and still
 #   ends with backup saved — a write that failed part-way is still undoable.
-# - The footer offers ⏎ undo this, space command log and J/esc close.
+# - The bar names what ⏎ does on the selected row (on the ← U row: ⏎ redo this),
+#   then space command log and J/esc close; the legend sits above it.
 === 160x48 ===
-"UNDO JOURNAL · /code/api                                                                                                                                        "
-"▸ now       undo: commit "Add OAuth provider"            1 ref · the index · backup saved                                                                   ← U "
-"  2m ago    commit "Add OAuth provider"                  1 ref · the index · backup saved                                                                undone "
-"  14m ago   stage 3 files                                the index · backup saved                                                                           ← u "
-"  40m ago   commit "WIP on refresh"                      interrupted · 1 ref · the index                                                            interrupted "
-"  3h ago    discard src/auth/refresh_test.rs             failed: error: unable to unlink 'src/auth/refresh_test.rs': Permission denied · the index · the workin…"
-"  26h ago   stage src/api/routes.rs                      the index · backup saved                                                                               "
+"JOURNAL · what happened in this repo, newest first                                                                                                              "
+"▸ ●  Graft          now       undo: commit "Add OAuth provider"            1 ref · the index · backup saved                                                 ← U "
+"  ●  Graft          2m ago    commit "Add OAuth provider"                  1 ref · the index · backup saved                                              undone "
+"  ●  Graft          14m ago   stage 3 files                                the index · backup saved                                                         ← u "
+"  ●  Graft          40m ago   commit "WIP on refresh"                      interrupted · 1 ref · the index                                          interrupted "
+"  ●  Graft          3h ago    discard…     failed: error: unable to unlink 'src/auth/refresh_test.rs': Permission denied · the index · the working…             "
+"  ●  Graft          26h ago   stage src/api/routes.rs                      the index · backup saved                                                             "
+"  a branch deleted outside Graft and never checked out leaves no trace here                                                                                     "
 "                                                                                                                                                                "
 "                                                                                                                                                                "
 "                                                                                                                                                                "
@@ -63,7 +65,6 @@
 "                                                                                                                                                                "
 "                                                                                                                                                                "
 "                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"⏎ undo this  space command log  J/esc close                                                                                                                     "
+"an operation was interrupted: commit "WIP on refresh" · J to inspect                                                                                            "
+"● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds                                                          "
+"⏎ redo this  space command log  J/esc close                                                                                                                     "
