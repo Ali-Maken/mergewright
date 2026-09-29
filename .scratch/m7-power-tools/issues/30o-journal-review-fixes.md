@@ -578,7 +578,7 @@ moves it onto the `✗` row before `u`; the test still proves `u` undoes the new
 - m7 `journal-expanded-120x40`, m3 `m3-journal-expanded`: `⏎ revert to before this  / find  space command log …`; `m3-journal-{80x24,160x48}`: `⏎ redo this  / find  space command log …`.
 - m4 `m4-07-journal-remote-rows-{80x24,160x48}`: `⏎ revert to before this  space command log` → `/ find  space command log` — **also 30o-b's Minor 4** (the selected row is a push; no `⏎`): that pty capture was stale since 30o-b (pty walks are not in nextest).
 - m3-08 and m4-07 re-shot with the pty scripts (`GRAFT_UPDATE_SHOTS=1 … pty-walk-m3.py/pty-walk-m4.py <size> <scenario>`), then re-run without update: settled, match.
-- Sheets rebuilt: m7 (`--captions-order`, 124k), m3 (131k), m4 (117k); no home paths (grep `/Users/`). TSV and TESTING rows quoting J's bar updated (2 each).
+- Sheets rebuilt: m7 (`--captions-order`, 124k), m3 (131k), m4 (117k); no home paths (grep for the home prefix). TSV and TESTING rows quoting J's bar updated (2 each).
 
 **Hint catalogue:** `HintContext::Journal` (`graft-ui/src/graph_screen/hints/lists.rs:62`, `⏎ revert  esc close`) is not J's drawn bar (J draws its own footer); left unchanged. `the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows` green.
 
