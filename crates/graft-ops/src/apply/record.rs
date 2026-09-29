@@ -375,7 +375,7 @@ pub(super) fn pins_for(op: &Operation) -> Vec<Oid> {
     match op {
         Operation::StashPop { commit, .. } | Operation::StashDrop { commit, .. } => vec![*commit],
         // Finishing a clash drops the stash: `u` stores it back (ADR-0045 §3).
-        Operation::DropPutBack { stash } => vec![*stash],
+        Operation::DropPutBack { stash, .. } => vec![*stash],
         // The stash `stash branch` drops: undo stores it back (m5/07).
         Operation::BranchFromStash(params) => vec![params.commit],
         // The commit objects written from the index: nothing but the entry

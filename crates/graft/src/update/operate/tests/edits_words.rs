@@ -13,6 +13,7 @@ use super::*;
 fn put_back() -> Operation {
     Operation::DropPutBack {
         stash: graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes"),
+        why: graft_core::journal::PutBackWhy::SetAside,
     }
 }
 
@@ -159,5 +160,47 @@ fn the_clause_is_kept_whole_at_80() {
         assert!(line.chars().count() <= 80, "{line}");
         assert!(line.ends_with(&format!(" \u{b7} {keys}")), "{line}");
         assert!(line.contains('\u{2026}'), "the failure is cut: {line}");
+    }
+}
+
+/// 24-0: the last clashed file done launches the drop with the clash's
+/// why, so the journal row can name a set-aside's copy as the done line
+/// does. A set-aside clash → `why: SetAside`; a pop clash → `why: Pop`.
+#[test]
+fn the_drop_after_a_clash_carries_its_why() {
+    use graft_core::journal::PutBackWhy;
+    use graft_ops::clash::StashClash;
+
+    use crate::update::{ClashState, LiveOrigin};
+
+    for why in [PutBackWhy::SetAside, PutBackWhy::Pop] {
+        let entry = crate::update::clash::tests::pop_entry();
+        let stash = entry.pins[0];
+        let mut state = AppState {
+            clash: Some(ClashState {
+                clash: StashClash {
+                    entry: entry.id.clone(),
+                    stash,
+                    index: Some(0),
+                    why,
+                },
+                origin: LiveOrigin::ThisRun,
+            }),
+            ..AppState::default()
+        };
+        let mut commands = Vec::new();
+        crate::update::resolver::close_after_last(&mut state, &mut commands, &mut ids());
+        let launched: Vec<&Operation> = commands
+            .iter()
+            .filter_map(|command| match command {
+                Command::Operate(_, op) => Some(op.as_ref()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            launched,
+            [&Operation::DropPutBack { stash, why }],
+            "{why:?}"
+        );
     }
 }

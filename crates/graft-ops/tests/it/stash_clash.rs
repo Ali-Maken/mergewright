@@ -177,7 +177,14 @@ fn drop_put_back_drops_by_commit_id_not_position() {
     repo.git(&["stash", "push", "-q", "-u", "-m", "on top"]);
     let on_top = repo.git(&["rev-parse", "stash@{0}"]);
 
-    let entry = run(&repo, &Operation::DropPutBack { stash: stashed }, NOW);
+    let entry = run(
+        &repo,
+        &Operation::DropPutBack {
+            stash: stashed,
+            why: PutBackWhy::Pop,
+        },
+        NOW,
+    );
 
     assert_eq!(stash_commits(&repo), [on_top], "only the put-back went");
     assert_eq!(entry.kind, OperationKind::StashDrop);
@@ -202,7 +209,14 @@ fn drop_put_back_is_described_by_its_position_in_the_facts() {
     repo.write("other.txt", b"stashed on top\n");
     repo.git(&["stash", "push", "-q", "-u", "-m", "on top"]);
 
-    let entry = run(&repo, &Operation::DropPutBack { stash: stashed }, NOW);
+    let entry = run(
+        &repo,
+        &Operation::DropPutBack {
+            stash: stashed,
+            why: PutBackWhy::Pop,
+        },
+        NOW,
+    );
 
     assert_eq!(entry.description, "drop stash@{1}");
     let written = journal_entries(&repo)
@@ -220,7 +234,14 @@ fn drop_put_back_refuses_when_the_stash_is_gone() {
     let (repo, stashed) = about_to_pop_a_conflict();
     repo.git(&["stash", "drop", "-q"]);
 
-    let outcome = try_run(&repo, &Operation::DropPutBack { stash: stashed }, NOW);
+    let outcome = try_run(
+        &repo,
+        &Operation::DropPutBack {
+            stash: stashed,
+            why: PutBackWhy::Pop,
+        },
+        NOW,
+    );
 
     assert!(
         matches!(outcome, Err(ApplyError::Refused(Refusal::NoSuchStash))),
@@ -251,7 +272,14 @@ fn undo_of_drop_put_back_stores_it_again() {
     let (repo, stashed) = about_to_pop_a_conflict();
     let listed = stash_list(&repo);
 
-    run(&repo, &Operation::DropPutBack { stash: stashed }, NOW);
+    run(
+        &repo,
+        &Operation::DropPutBack {
+            stash: stashed,
+            why: PutBackWhy::Pop,
+        },
+        NOW,
+    );
     assert_eq!(stash_commits(&repo), Vec::<String>::new());
 
     run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));

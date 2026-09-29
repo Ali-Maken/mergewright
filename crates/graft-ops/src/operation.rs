@@ -26,7 +26,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use graft_core::error::RefNameRule;
-use graft_core::journal::{HeadRef, OperationKind, Touches};
+use graft_core::journal::{HeadRef, OperationKind, PutBackWhy, Touches};
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 use graft_git::remote::{Remote, TrackedUpstream};
@@ -156,6 +156,9 @@ pub enum Operation {
     DropPutBack {
         /// The stash's commit.
         stash: Oid,
+        /// Why it was put back: a set-aside's copy is named as such, so the
+        /// done line and the journal row give one name for one drop.
+        why: PutBackWhy,
     },
     /// A put-back from the journal's list (ADR-0046 §3, m7-power-tools/23):
     /// a branch moved back, a deleted branch made again, or an edit an undo
@@ -1436,7 +1439,10 @@ impl Operation {
     #[must_use]
     pub fn describe_in(&self, facts: &RepoFacts) -> String {
         match self {
-            Self::DropPutBack { stash } => match stash::position_of(*stash, facts) {
+            Self::DropPutBack { stash, why } => match stash::position_of(*stash, facts) {
+                Ok(index) if *why == PutBackWhy::SetAside => {
+                    format!("drop the set-aside copy (stash@{{{index}}})")
+                }
                 Ok(index) => format!("drop stash@{{{index}}}"),
                 // Not listed: `check` refuses before anything is written,
                 // so this line is never journaled.
@@ -1462,7 +1468,11 @@ impl Operation {
             Self::StashApply { index, .. } => format!("apply stash@{{{index}}}"),
             Self::StashPop { index, .. } => format!("pop stash@{{{index}}}"),
             Self::StashDrop { index, .. } => format!("drop stash@{{{index}}}"),
-            Self::DropPutBack { stash } => format!("drop stash {}", history::short(*stash)),
+            Self::DropPutBack {
+                stash,
+                why: PutBackWhy::SetAside,
+            } => format!("drop the set-aside copy ({})", history::short(*stash)),
+            Self::DropPutBack { stash, .. } => format!("drop stash {}", history::short(*stash)),
             Self::Fetch(params) => remote::describe_fetch(params),
             Self::Pull(params) => remote::describe_pull(params),
             Self::Push(params) => remote::describe_push(params),
@@ -1573,7 +1583,7 @@ impl Operation {
                 stash::check_apply(*index, *commit, facts)
             }
             Self::StashDrop { index, commit } => stash::find(*index, *commit, facts).map(|_| ()),
-            Self::DropPutBack { stash } => stash::position_of(*stash, facts).map(|_| ()),
+            Self::DropPutBack { stash, .. } => stash::position_of(*stash, facts).map(|_| ()),
             Self::Fetch(params) => remote::check_fetch(params, facts),
             Self::Pull(params) => remote::check_pull(params, facts),
             Self::Push(params) => remote::check_push(params, facts),
@@ -1611,7 +1621,7 @@ impl Operation {
             Self::StashApply { index, .. } => vec![stash::plan_at("apply", *index, true)],
             Self::StashPop { index, .. } => vec![stash::plan_at("pop", *index, true)],
             Self::StashDrop { index, .. } => vec![stash::plan_at("drop", *index, false)],
-            Self::DropPutBack { stash } => vec![stash::plan_drop_by_commit(*stash, facts)],
+            Self::DropPutBack { stash, .. } => vec![stash::plan_drop_by_commit(*stash, facts)],
             Self::Fetch(params) => remote::plan_fetch(params),
             Self::Pull(params) => remote::plan_pull(params),
             Self::Push(params) => remote::plan_push(params),

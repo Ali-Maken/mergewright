@@ -167,7 +167,10 @@ pub(crate) fn close_after_last(
             state.status = crate::update::clash::kept_status(clash.index);
             return;
         }
-        let drop = graft_ops::operation::Operation::DropPutBack { stash: clash.stash };
+        let drop = graft_ops::operation::Operation::DropPutBack {
+            stash: clash.stash,
+            why: clash.why,
+        };
         match crate::update::operate::launch(state, commands, drop, next_id) {
             Ok(()) => state.clash_drop = state.operating.map(|id| (id, clash.index, clash.why)),
             // Unreachable: the stage that brought us here has just answered,
