@@ -40,14 +40,15 @@ pub fn journal_view(state: &AppState, now_seconds: i64) -> JournalView {
         (Loading::Ready(_), _) => (Vec::new(), JournalStatus::Empty),
     };
     let selected = state.journal.selected().min(rows.len().saturating_sub(1));
-    let enter_words = match status {
-        JournalStatus::Ready => state
-            .journal
-            .list
-            .as_deref()
-            .and_then(|list| enter_words(list, state, selected)),
+    let ready_list = match status {
+        JournalStatus::Ready => state.journal.list.as_deref(),
         JournalStatus::Loading | JournalStatus::Empty | JournalStatus::Failed(_) => None,
     };
+    let enter_words = ready_list.and_then(|list| enter_words(list, state, selected));
+    // `b new branch here` only where `b` has a commit to name: the same
+    // `row_commit` the key reads (m7/30o Minor 2).
+    let branch_here =
+        ready_list.is_some_and(|list| crate::update::journal::row_commit(list, selected).is_some());
     JournalView {
         location,
         rows,
@@ -56,6 +57,7 @@ pub fn journal_view(state: &AppState, now_seconds: i64) -> JournalView {
         title_suffix: title_suffix(state),
         status_row: None,
         enter_words,
+        branch_here,
         box_open: state.preview.is_some(),
     }
 }
@@ -196,8 +198,9 @@ fn graft_row(
 /// it is a run. No subject known → the sha7 alone, never an empty `""`.
 fn lost_words(commit: &LostCommit) -> String {
     let mut words = short(commit.run.tip);
-    if !commit.subject.is_empty() {
-        words.push_str(&format!(" \"{}\"", commit.subject));
+    // Not read (m7/30o Minor 5): the sha7 alone, no quotes around nothing.
+    if let Some(subject) = &commit.subject {
+        words.push_str(&format!(" \"{subject}\""));
     }
     match &commit.held_by {
         HeldBy::Branch { name, gone: false } => {
@@ -248,6 +251,11 @@ fn enter_words(list: &JournalList, state: &AppState, index: usize) -> Option<Str
             if state.live_entries.contains(id) {
                 return None;
             }
+            // A step Graft doesn't undo (a fetch, a push): `⏎` has nothing
+            // to go back to there, so no promise (m7/30o Minor 4).
+            if crate::update::journal::not_undone_kind(entry).is_some() {
+                return None;
+            }
             if Some(id) == marks.next_undo {
                 "⏎ undo this".to_owned()
             } else if Some(id) == marks.next_redo {
@@ -290,18 +298,20 @@ fn enter_words(list: &JournalList, state: &AppState, index: usize) -> Option<Str
 }
 
 /// The branch a shell switch left, for the bar: `checkout: moving from
-/// main to spike` → `main`; a detached start is its sha7. The same parse
-/// `update::journal` switches by.
+/// main to spike` → `main`; a detached start is its sha7. Worded from
+/// `update::journal::switched_from`'s answer, the one parse `⏎` switches
+/// by (m7/30o Minor 1), so the bar and the key cannot read it apart.
 fn switched_from(subject: &str) -> Option<String> {
-    let (from, _) = subject
-        .strip_prefix("checkout: moving from ")?
-        .split_once(" to ")?;
-    let hex = (from.len() == 40 || from.len() == 64) && from.bytes().all(|b| b.is_ascii_hexdigit());
-    Some(if hex {
-        from.chars().take(7).collect()
-    } else {
-        from.to_owned()
-    })
+    use crate::update::switch::SwitchTarget;
+    match crate::update::journal::switched_from(subject)? {
+        SwitchTarget::Branch(name) => {
+            Some(name.strip_prefix("refs/heads/").unwrap_or(&name).to_owned())
+        }
+        SwitchTarget::Detached(oid) => Some(short(oid)),
+        // The parse makes neither: a reflog subject names no remote to
+        // track and no branch to make. Nothing to name, so no hint.
+        SwitchTarget::Track { .. } | SwitchTarget::NewBranch { .. } => None,
+    }
 }
 
 /// `2m ago`, from the same cascade the graph's date column uses, so two

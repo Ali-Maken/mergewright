@@ -1440,7 +1440,10 @@ what right looks like: Capture header: same journal, wider — judge by eye per 
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_m3_journal in crates/graft/src/view/tests.rs (asserted; regenerate
 # on purpose). `J` on a scripted journal of six entries, drawn
-# against a fixed clock so the ages never move.
+# against a fixed clock so the ages never move. Opened as `J` opens it,
+# so this is J's first frame: the shell's steps are still being read
+# (the title ends finding lost commits…), and the bottom line has no
+# interrupted-entry notice — looking at J is what it asked for.
 #
 # Judge by eye:
 # - The title reads JOURNAL · what happened in this repo, newest first.
@@ -1459,7 +1462,7 @@ what right looks like: Capture header: same journal, wider — judge by eye per 
 # - The bar names what ⏎ does on the selected row (on the ← U row: ⏎ redo this),
 #   then space command log and J/esc close; the legend sits above it.
 === 160x48 ===
-"JOURNAL · what happened in this repo, newest first                                                                                                              "
+"JOURNAL · what happened in this repo, newest first · finding lost commits…                                                                                      "
 "▸ ●  Graft          now       undo: commit "Add OAuth provider"            1 ref · the index · backup saved                                                 ← U "
 "  ●  Graft          2m ago    commit "Add OAuth provider"                  1 ref · the index · backup saved                                              undone "
 "  ●  Graft          14m ago   stage 3 files                                the index · backup saved                                                         ← u "
@@ -1504,7 +1507,7 @@ what right looks like: Capture header: same journal, wider — judge by eye per 
 "                                                                                                                                                                "
 "                                                                                                                                                                "
 "                                                                                                                                                                "
-"an operation was interrupted: commit "WIP on refresh" · J to inspect                                                                                            "
+"                                                                                                                                                                "
 "● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds                                                          "
 "⏎ redo this  space command log  J/esc close                                                                                                                     "
 
@@ -1516,7 +1519,10 @@ what right looks like: Capture header "Judge by eye": the title reads JOURNAL ·
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_m3_journal in crates/graft/src/view/tests.rs (asserted; regenerate
 # on purpose). `J` on a scripted journal of six entries, drawn
-# against a fixed clock so the ages never move.
+# against a fixed clock so the ages never move. Opened as `J` opens it,
+# so this is J's first frame: the shell's steps are still being read
+# (the title ends finding lost commits…), and the bottom line has no
+# interrupted-entry notice — looking at J is what it asked for.
 #
 # Judge by eye:
 # - The title reads JOURNAL · what happened in this repo, newest first.
@@ -1535,7 +1541,7 @@ what right looks like: Capture header "Judge by eye": the title reads JOURNAL ·
 # - The bar names what ⏎ does on the selected row (on the ← U row: ⏎ redo this),
 #   then space command log and J/esc close; the legend sits above it.
 === 80x24 ===
-"JOURNAL · what happened in this repo, newest first                              "
+"JOURNAL · what happened in this repo, newest first · finding lost commits…      "
 "▸ ●  now       undo: commit "Add…     1 ref · the index · backup…           ← U "
 "  ●  2m ago    commit "Add OAuth…     1 ref · the index · backup…        undone "
 "  ●  14m ago   stage 3 files          the index · backup saved              ← u "
@@ -1556,7 +1562,7 @@ what right looks like: Capture header "Judge by eye": the title reads JOURNAL ·
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"an operation was interrupted: commit "WIP on refresh" · J to inspect            "
+"                                                                                "
 "● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a…"
 "⏎ redo this  space command log  J/esc close                                     "
 
@@ -1577,7 +1583,7 @@ what right looks like: Capture header "Judge by eye": the cursor row is the disc
 #   not a description of it.
 # - The rows below the expansion are pushed down, not overwritten.
 === 120x32 ===
-"JOURNAL · what happened in this repo, newest first                                                                      "
+"JOURNAL · what happened in this repo, newest first · finding lost commits…                                              "
 "  ●  Graft          now       undo: commit "Add OAuth provider"            1 ref · the index · backup saved         ← U "
 "  ●  Graft          2m ago    commit "Add OAuth provider"                  1 ref · the index · backup saved      undone "
 "  ●  Graft          14m ago   stage 3 files                                the index · backup saved                 ← u "
@@ -1606,7 +1612,7 @@ what right looks like: Capture header "Judge by eye": the cursor row is the disc
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-"an operation was interrupted: commit "WIP on refresh" · J to inspect                                                    "
+"                                                                                                                        "
 "● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds                  "
 "⏎ revert to before this  space command log  J/esc close                                                                 "
 

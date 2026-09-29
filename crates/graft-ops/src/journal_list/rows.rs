@@ -118,8 +118,7 @@ pub(super) fn assemble(
             if let Some((event, hint)) = place(&olds, run.tip) {
                 under[event].push(LostCommit {
                     run: *run,
-                    subject: (lost.subject_of)(run.tip)
-                        .unwrap_or_else(|| "(its subject could not be read)".to_owned()),
+                    subject: (lost.subject_of)(run.tip),
                     held_by: held_by(hint, lost.branch_exists),
                 });
             }

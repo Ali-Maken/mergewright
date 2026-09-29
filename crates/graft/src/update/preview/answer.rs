@@ -2,10 +2,11 @@
 
 use super::{
     AppState, Arc, BadgeOverlay, Command, HISTORY_CANNOT_STOP, HashMap, JobId, Loading, Operation,
-    Planned, PreviewBox, PreviewFailure, PreviewState, PreviewSubject, Row, SliceError, Status,
-    badges_for_preview, build_slice, choice_at, closing_box, enter, footer_keys, keeps_drops_here,
-    planning_title, preview_box_rect, put_back_box, put_in_words, ready_box, sanitize_line, short,
-    stash_box, stash_put_back, stash_put_back_op, take_title_of, with_cursor,
+    PUT_BACK_CANNOT_STOP, Planned, PreviewBox, PreviewFailure, PreviewState, PreviewSubject, Row,
+    SliceError, Status, badges_for_preview, build_slice, choice_at, closing_box, enter,
+    footer_keys, keeps_drops_here, planning_title, preview_box_rect, put_back_box, put_in_words,
+    ready_box, sanitize_line, short, stash_box, stash_put_back, stash_put_back_op, take_title_of,
+    with_cursor,
 };
 
 /// A click while the preview is open.
@@ -223,13 +224,14 @@ pub fn confirm_preview(
             // stop, so `launch` — not the history ops' `launch_unstoppable`,
             // whose `Esc` words name a rebase's banner.
             //
-            // A put-back confirmed over J closes J too: it lands on the
-            // graph, on what came back (m7-power-tools/24-a2). J was left
-            // shown under the box (`return_to_journal` false), so nothing
-            // else would close it.
-            if matches!(*op, Operation::Recover(_)) {
-                crate::update::journal::close(state, commands);
-            }
+            // A put-back confirmed over J closes J too, once it has
+            // launched: it lands on the graph, on what came back
+            // (m7-power-tools/24-a2). J was left shown under the box
+            // (`return_to_journal` false), so nothing else would close it.
+            // Refused, he stays on J with the refusal on its status row
+            // (m7/30o Minor 7). Its `Esc` words are its own: a put-back
+            // has no banner (`PUT_BACK_CANNOT_STOP`).
+            let put_back = matches!(*op, Operation::Recover(_));
             let launched = if stash_put_back_op(&op).is_some() {
                 crate::update::operate::launch(state, commands, *op, next_id)
             } else {
@@ -237,11 +239,18 @@ pub fn confirm_preview(
                     state,
                     commands,
                     *op,
-                    HISTORY_CANNOT_STOP,
+                    if put_back {
+                        PUT_BACK_CANNOT_STOP
+                    } else {
+                        HISTORY_CANNOT_STOP
+                    },
                     Some(opened_by),
                     next_id,
                 )
             };
+            if put_back && launched.is_ok() {
+                crate::update::journal::close(state, commands);
+            }
             crate::update::operate::say_if_refused(state, launched);
         }
         PreviewSubject::RevertTo(entry) => {

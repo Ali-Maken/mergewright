@@ -242,9 +242,9 @@ pub(super) fn subject_in(state: &AppState, oid: Oid) -> Option<String> {
             .rows
             .iter()
             .find_map(|row| match row {
-                ListRow::Lost { commit, .. } if commit.run.tip == oid => {
-                    Some(commit.subject.clone())
-                }
+                // Unread (`None`) is unknown here too: the caller's words
+                // fall back to the sha7 (`subject_of`).
+                ListRow::Lost { commit, .. } if commit.run.tip == oid => commit.subject.clone(),
                 _ => None,
             })
     })

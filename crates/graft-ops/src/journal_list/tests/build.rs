@@ -146,7 +146,37 @@ fn a_lost_run_sits_under_the_event_that_lost_it() {
             gone: false
         }
     );
-    assert_eq!(commit.subject, "subject 4");
+    assert_eq!(commit.subject.as_deref(), Some("subject 4"));
+}
+
+/// m7/30o Minor 5: a tip whose subject could not be read carries `None`,
+/// not a placeholder sentence the screen would quote as if git had said it.
+#[test]
+fn an_unreadable_subject_is_none() {
+    let outside = [
+        record("HEAD", 4, 3, 1005, "reset: moving to HEAD~1"),
+        record("refs/heads/main", 4, 3, 1005, "reset: moving to HEAD~1"),
+    ];
+    let found = lost(&[run(4, 0)]);
+    let unread = |_: graft_core::oid::Oid| None;
+    let exists = |_: &str| true;
+    let built = build(
+        &[],
+        &outside,
+        Some(&found),
+        &unread,
+        &exists,
+        &[],
+        LostScan::Done,
+    );
+    let Some(ListRow::Lost { commit, .. }) = built
+        .rows
+        .iter()
+        .find(|row| matches!(row, ListRow::Lost { .. }))
+    else {
+        panic!("a lost row: {built:?}");
+    };
+    assert_eq!(commit.subject, None);
 }
 
 #[test]

@@ -601,7 +601,7 @@ fn lost_row(event: usize, tip: u8) -> ListRow {
                 tip: oid(tip),
                 under: 0,
             },
-            subject: format!("subject {tip}"),
+            subject: Some(format!("subject {tip}")),
             held_by: HeldBy::Head,
         },
     }
@@ -706,7 +706,18 @@ fn b_on_a_step_with_no_new_names_its_old() {
 
 #[test]
 fn b_on_a_step_with_no_commit_says_so() {
+    // A `$` step whose record names no commit (m7/30o Minor 3: a `●` row
+    // now says where `b` works instead).
     let mut state = opened();
+    state.journal.list = Some(Arc::new(JournalList {
+        rows: vec![ListRow::Outside(graft_ops::journal_list::OutsideStep {
+            record: record("refs/heads/main", 0, 0, 1005, "update by push").record,
+            words: "moved main".to_owned(),
+            folded: 0,
+        })],
+        scan: LostScan::Done,
+    }));
+    state.journal.cursor = row_key(state.journal.list.as_ref().expect("set"), 0);
     press(&mut state, KeyCode::Char('b'));
     assert!(state.name_prompt.is_none());
     assert_eq!(state.status, Status::sticky("this step names no commit"));
@@ -1186,3 +1197,6 @@ fn closing_j_cancels_a_put_back_still_being_asked() {
     assert!(commands.contains(&Command::CancelJob(id)), "{commands:?}");
     assert_eq!(state.journal.recovering, None);
 }
+
+mod minors;
+mod one_u;

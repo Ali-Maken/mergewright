@@ -2798,7 +2798,6 @@ fn journal_state(columns: u16, rows: u16) -> AppState {
     state.repo_path = std::path::PathBuf::from("/code/api");
     state.harness.clock = crate::session::Clock::Fixed(JOURNAL_NOW);
     state.detail.shown = false;
-    state.journal.shown = true;
     state.journal.entries = crate::update::detail::Loading::Ready(std::sync::Arc::new(
         crate::jobs::undo::JournalRead {
             entries: journal_entries(),
@@ -2807,9 +2806,25 @@ fn journal_state(columns: u16, rows: u16) -> AppState {
             interrupted_edits: Vec::new(),
         },
     ));
-    // As the read's landing does (`journal_event`): J's rows are built
-    // from the entries (m7-power-tools/24).
-    crate::update::journal::rebuild(&mut state);
+    // Opened as `J` opens it (m7/30o Minor 6), not by setting `shown`: the
+    // notice is taken up and the rows are built from the entries read
+    // before. The re-read and stage 2 it asks for never land here, so the
+    // capture is J's first frame.
+    let mut next = 0_u64;
+    let commands = crate::update::journal::journal_enter(&mut state, &mut || {
+        next += 1;
+        graft_core::job::JobId::new(next)
+    });
+    assert!(
+        matches!(
+            commands.as_slice(),
+            [
+                crate::update::Command::ReadJournal(_),
+                crate::update::Command::ReadOutside { .. }
+            ]
+        ),
+        "{commands:?}"
+    );
     state
 }
 
@@ -2817,7 +2832,10 @@ const JOURNAL_HEADER: &str = "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_m3_journal in crates/graft/src/view/tests.rs (asserted; regenerate
 # on purpose). `J` on a scripted journal of six entries, drawn
-# against a fixed clock so the ages never move.
+# against a fixed clock so the ages never move. Opened as `J` opens it,
+# so this is J's first frame: the shell's steps are still being read
+# (the title ends finding lost commits…), and the bottom line has no
+# interrupted-entry notice — looking at J is what it asked for.
 #
 # Judge by eye:
 # - The title reads JOURNAL · what happened in this repo, newest first.
@@ -2870,6 +2888,9 @@ fn capture_m3_journal() {
         assert!(screen.contains("← U"), "{screen}");
         assert!(screen.contains("undone"), "{screen}");
         assert!(screen.contains("interrupted"), "{screen}");
+        // Opened as `J` opens it (m7/30o Minor 6): looking at J is what
+        // the interrupted-entry notice asked for, so it is not on screen.
+        assert!(!screen.contains("J to inspect"), "{screen}");
         shots.check(
             format!(
                 "{}/../../docs/shots/m3-journal-{columns}x{rows}.txt",

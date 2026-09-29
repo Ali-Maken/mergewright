@@ -139,6 +139,10 @@ pub struct JournalView {
     /// What `⏎` does on the selected row (`⏎ undo this`), or `None` when
     /// the row alone cannot name it.
     pub enter_words: Option<String>,
+    /// `b` has a commit to name on the selected row: the bar offers
+    /// `b new branch here` only then (graft's `row_commit`, the function
+    /// `b` itself reads).
+    pub branch_here: bool,
     /// A box is docked over the browser and names the keys: the bar is
     /// left blank, as the stash list's is under its box.
     pub box_open: bool,

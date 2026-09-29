@@ -213,10 +213,11 @@ impl JournalScreen<'_> {
         if let Some(enter) = &self.view.enter_words {
             keys.push(enter);
         }
-        match row.map(|row| row.kind) {
-            Some(RowKind::Outside | RowKind::Lost) => keys.push("b new branch here"),
-            Some(RowKind::Graft) => keys.push("space command log"),
-            Some(RowKind::LostEdit) | None => {}
+        if self.view.branch_here {
+            keys.push("b new branch here");
+        }
+        if row.is_some_and(|row| row.kind == RowKind::Graft) {
+            keys.push("space command log");
         }
         keys.push(close);
         while keys.len() > 1 && keys.join("  ").width() > width {

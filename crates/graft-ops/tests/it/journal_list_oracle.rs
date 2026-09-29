@@ -133,7 +133,9 @@ pub(crate) fn lines(list: &JournalList, entries: &[JournalEntry]) -> Vec<String>
                     }
                     HeldBy::Head => "HEAD".to_owned(),
                 };
-                format!("✗ {} · {held} · under {event}", commit.subject)
+                // `the_list` reads every lost tip (it panics otherwise).
+                let subject = commit.subject.as_deref().expect("the oracle read it");
+                format!("✗ {subject} · {held} · under {event}")
             }
             ListRow::LostEdit { event, .. } => format!("✗ edit under {event}"),
         })
