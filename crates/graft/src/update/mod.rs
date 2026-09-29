@@ -43,6 +43,7 @@ pub mod place;
 mod prelude;
 pub mod preview;
 pub mod radar;
+pub(crate) mod recover;
 mod relaunch;
 pub mod remote;
 pub mod resolver;
@@ -356,6 +357,19 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         AppEvent::Produced(id, product @ Product::Journal(_)) => {
             journal_answer(next, commands, id, &product);
         }
+        AppEvent::Produced(id, Product::Outside(result)) => {
+            let mut local_jobs = next.local_jobs;
+            journal::outside_landed(next, commands, id, &result, &mut || local_jobs.next_id());
+            next.local_jobs = local_jobs;
+        }
+        AppEvent::Produced(id, Product::LostFound(result)) => {
+            journal::lost_landed(next, id, &result);
+        }
+        AppEvent::Produced(id, Product::RecoverFor(result)) => {
+            let mut local_jobs = next.local_jobs;
+            journal::recover_answered(next, commands, id, &result, &mut || local_jobs.next_id());
+            next.local_jobs = local_jobs;
+        }
         AppEvent::Produced(id, Product::Remotes(result)) => {
             remote::remotes_arrived(next, id, result);
         }
@@ -537,6 +551,9 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::Operate
         | Task::Undo
         | Task::ReadJournal
+        | Task::ReadOutside
+        | Task::FindLost
+        | Task::RecoverFor
         | Task::PlanPreview
         | Task::RevertTo
         | Task::ReadStashes
@@ -888,6 +905,11 @@ fn stash_only_answered(
 
 /// A fact about the repository beside the graph arrived: the system git
 /// check, the refs, or the working tree counts. `answer` routes only those.
+#[expect(
+    clippy::too_many_lines,
+    reason = "the not-a-fact arm names every other `Product`, exhaustively and with no \
+              catch-all, for the same reason `answer` does"
+)]
 fn took_fact(
     next: &mut AppState,
     commands: &mut Vec<Command>,
@@ -935,6 +957,9 @@ fn took_fact(
         | Product::Operated(_)
         | Product::Undone(_)
         | Product::Journal(_)
+        | Product::Outside(_)
+        | Product::LostFound(_)
+        | Product::RecoverFor(_)
         | Product::Preview(_)
         | Product::RevertedTo(_)
         | Product::Stashes(_)

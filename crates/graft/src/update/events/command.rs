@@ -156,6 +156,34 @@ pub enum Command {
     /// browser never shows an entry that is waiting for a process that is
     /// gone (m3-working-tree-undo-and-stash/06).
     ReadJournal(JobId),
+    /// J's stage 2: git's reflog records of `HEAD` and every local branch,
+    /// the `$` rows (`jobs::journal_list::read_outside`, m7-power-tools/24).
+    /// Cancelled when J closes first.
+    ReadOutside {
+        /// The id the answer comes back under.
+        id: JobId,
+    },
+    /// J's stage 3: what nothing holds any more among the journal's and the
+    /// records' old values, and the edits undos replaced — the `✗` rows
+    /// (`jobs::journal_list::find_lost`, m7-power-tools/24). Asked once stage
+    /// 2 has answered, with its records.
+    FindLost {
+        /// The id the answer comes back under.
+        id: JobId,
+        /// Stage 2's records, whose old values are candidates too.
+        outside: std::sync::Arc<Vec<graft_ops::journal_list::OutsideRecord>>,
+    },
+    /// `⏎` on a `✗`, `$` or lost-edit row in J: read the facts
+    /// `recover_scope` names, then ask `recover_for` what `list.rows[row]`
+    /// puts back (`jobs::journal_list::recover_for`, m7-power-tools/24).
+    RecoverFor {
+        /// The id the answer comes back under.
+        id: JobId,
+        /// The list as it was on screen when `⏎` was pressed.
+        list: std::sync::Arc<graft_ops::journal_list::JournalList>,
+        /// The row `⏎` was pressed on, an index into `list.rows`.
+        row: usize,
+    },
     /// Read the stash list, under an id `update` chose. Asked for when the
     /// `S` overlay opens and again after every write, because any of them
     /// may have moved `refs/stash` (m3-working-tree-undo-and-stash/06).

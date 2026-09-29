@@ -45,7 +45,6 @@ use super::state::{AppState, Status};
 
 mod stop;
 
-pub(super) use stop::finished_lands_on_head;
 pub(super) use stop::land_in_resolver;
 use stop::stopped_again;
 pub use stop::{
@@ -57,6 +56,7 @@ pub(super) use stop::{
     edit_stop_lands_on_head, refs_answered, relaunch_lands_on_head, walk_started,
 };
 pub(crate) use stop::{edit_stop_of, progress_unread, read_rewrite_stop, stop_takes_focus};
+pub(super) use stop::{finished_lands_on, finished_lands_on_head, lands_on_changes};
 
 /// The banner's word for an operation, as the header draws it.
 ///

@@ -11,6 +11,7 @@ use graft_git::state::{InProgress, InProgressDetail};
 
 use super::{STUCK_KEYS, banner_focusable, unmerged_paths};
 use crate::update::events::Command;
+use crate::update::operate::Landing;
 use crate::update::state::{AppState, Status};
 
 /// Where a stopped rewrite is (m7-power-tools/07b): the step and rows
@@ -156,6 +157,23 @@ pub(crate) fn progress_unread(stop: &crate::update::state::Stop) -> Option<Strin
 /// away when the fresh walk replaces them (`update::history_started`
 /// reanchors on whatever the old walk had selected).
 pub(in crate::update) fn finished_lands_on_head(state: &mut AppState, commands: &[Command]) {
+    finished_lands_on(state, commands, Landing::Head);
+}
+
+/// [`finished_lands_on_head`], landing on `on` (m7-power-tools/24): `HEAD`,
+/// or one commit — a put-back's restored commit, a new branch's tip — once
+/// the same two reads are in, so the row is sought in the fresh walk.
+///
+/// `Changes` is [`lands_on_changes`]'s: it waits on the file list, not on
+/// these reads, so here it owes nothing.
+pub(in crate::update) fn finished_lands_on(
+    state: &mut AppState,
+    commands: &[Command],
+    on: Landing,
+) {
+    if matches!(on, Landing::Changes(_)) {
+        return;
+    }
     state.detail.focus = graft_ui::detail::DetailFocus::Graph;
     let refs = commands.iter().find_map(|command| match command {
         Command::ReadRefs(id) => Some(*id),
@@ -168,7 +186,37 @@ pub(in crate::update) fn finished_lands_on_head(state: &mut AppState, commands: 
     // A scope that re-reads neither has nothing to land on: the cursor
     // stays where it is rather than waiting on reads never asked for.
     state.land_on_head = refs.is_some() && walk.is_some();
-    state.head_landing = crate::update::state::HeadLanding { refs, walk };
+    state.head_landing = crate::update::state::HeadLanding { refs, walk, on };
+}
+
+/// An edit put back lands on the changes pane, its cursor on `path` under
+/// UNSTAGED, where the edit now is (m7-power-tools/24). The same
+/// [`KeptCursor`] shape `relaunch::land_on_the_work` uses, so the cursor goes
+/// on when the list arrives, not before: `path` is a path, the list is a
+/// job.
+///
+/// [`KeptCursor`]: crate::update::detail::KeptCursor
+pub(in crate::update) fn lands_on_changes(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    path: std::path::PathBuf,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    // The pane follows the selection at the tail of every update, so the
+    // selection has to be the working-tree row.
+    state.on_working_tree = true;
+    let spec = crate::update::detail::DetailSpec::WorkingTree;
+    if state.detail.shown && state.detail.spec == Some(spec) {
+        commands.extend(state.detail.refresh(next_id));
+    } else {
+        commands.extend(state.detail.open(spec, next_id));
+    }
+    state.detail.kept_cursor = Some(crate::update::detail::KeptCursor {
+        path: path.into_os_string().into_encoded_bytes(),
+        section: Some(graft_ui::detail::WorkingTreeSection::Unstaged),
+        position: 0,
+        body: 0,
+    });
 }
 
 /// At a rewrite's `edit` stop the graph gets the keyboard with its cursor
@@ -199,7 +247,11 @@ pub(in crate::update) fn relaunch_lands_on_head(state: &mut AppState, commands: 
         None
     };
     state.land_on_head = true;
-    state.head_landing = crate::update::state::HeadLanding { refs, walk };
+    state.head_landing = crate::update::state::HeadLanding {
+        refs,
+        walk,
+        on: Landing::Head,
+    };
     land_on_head(state, commands);
 }
 
@@ -241,11 +293,19 @@ pub(in crate::update) fn walk_started(state: &mut AppState, commands: &mut Vec<C
 /// Takes `commands` because `seek` returns a request the walk must be sent.
 /// Nothing while either read is still out.
 fn land_on_head(state: &mut AppState, commands: &mut Vec<Command>) {
-    if !state.land_on_head || state.head_landing != crate::update::state::HeadLanding::default() {
+    let landing = &state.head_landing;
+    if !state.land_on_head || landing.refs.is_some() || landing.walk.is_some() {
         return;
     }
     state.land_on_head = false;
-    let Some(head) = state.refs.as_ref().and_then(|refs| refs.head()) else {
+    let on = std::mem::take(&mut state.head_landing.on);
+    let target = match on {
+        Landing::Commit(commit) => Some(commit),
+        Landing::Head => state.refs.as_ref().and_then(|refs| refs.head()),
+        // Never owed here (`finished_lands_on`).
+        Landing::Changes(_) => None,
+    };
+    let Some(head) = target else {
         // An unborn `HEAD` has no row: nothing to land on.
         return;
     };

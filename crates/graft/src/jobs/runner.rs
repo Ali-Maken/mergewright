@@ -1026,6 +1026,54 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
+    /// J's stage 2 (m7-power-tools/24): git's reflog records.
+    fn read_outside(&self, id: JobId) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::ReadOutside), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::Outside(super::journal_list::read_outside(
+                    &repos, cancel,
+                )))
+            })
+        });
+    }
+
+    /// J's stage 3 (m7-power-tools/24): the lost commits and edits, over
+    /// stage 2's records.
+    fn find_lost(&self, id: JobId, outside: Arc<Vec<graft_ops::journal_list::OutsideRecord>>) {
+        let repos = Arc::clone(&self.repos);
+        let clock = self.clock;
+        self.queue_as(id, Some(Task::FindLost), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::LostFound(super::journal_list::find_lost(
+                    &repos, clock, &outside, cancel,
+                )))
+            })
+        });
+    }
+
+    /// What `⏎` on `list.rows[row]` in J puts back (m7-power-tools/24).
+    fn recover_for(&self, id: JobId, list: Arc<graft_ops::journal_list::JournalList>, row: usize) {
+        let repos = Arc::clone(&self.repos);
+        let clock = self.clock;
+        self.queue_as(id, Some(Task::RecoverFor), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::RecoverFor(super::journal_list::recover_for(
+                    &repos, clock, &list, row, cancel,
+                )))
+            })
+        });
+    }
+
     /// Reads the stash list for the `S` overlay, under an id `update`
     /// already chose.
     fn read_stashes(&self, id: JobId) {
@@ -1195,6 +1243,9 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::Undo(id, force) => self.run_undo(id, false, force),
             Command::Redo(id, force) => self.run_undo(id, true, force),
             Command::ReadJournal(id) => self.read_journal(id),
+            Command::ReadOutside { id } => self.read_outside(id),
+            Command::FindLost { id, outside } => self.find_lost(id, outside),
+            Command::RecoverFor { id, list, row } => self.recover_for(id, list, row),
             Command::PlanPreview(id, request) => self.plan_preview(id, request),
             Command::RevertTo(id, target, force) => self.run_revert_to(id, target, force),
             Command::ReadStashes(id) => self.read_stashes(id),

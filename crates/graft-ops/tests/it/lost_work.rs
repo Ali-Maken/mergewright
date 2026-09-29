@@ -142,8 +142,8 @@ fn the_lost_work_fixture_draws_every_row_in_place() {
             "$ committed \"Add rate limiter\" on main",
             "$ committed \"Add metrics endpoint\" on main",
             "$ committed \"Add request logging\" on main",
-            // Not in the J1 table, so git's own words (`an_unknown_subject_is_gits_own`).
-            "$ commit (initial): Start the api",
+            // The first commit reads as any commit (`the_first_commit_reads_committed`).
+            "$ committed \"Start the api\" on main",
         ]
     );
 }
