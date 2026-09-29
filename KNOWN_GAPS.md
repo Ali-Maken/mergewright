@@ -1032,3 +1032,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/30o-a-row | After a lost-edit put-back, the `✗` lost-edit row's disappearance from J is not checked (30o-a NOTES) | **unverified** | M7 |
 | M7/30o-a-15red | Walk 15 not re-run red; red evidence is the removed refusal test (30o-a NOTES) | **unverified** | M7 |
 | M7/30o-b-lease | After `u` from J on a pushed commit, `Esc` on the lease box returns to the graph, not J; the re-push choice closes J (30o-b NOTES). Consistent with ⏎? usability walk | **unverified** (question) | M7 |
+| M7/30o-c-paste | Paste goes into J's find; blame's find drops pastes — same field, different behaviour (30o-c NOTES) | **broken** (consistency) | M7 |
+| M7/30o-c-nN | In J with no find of its own, an active graph search takes `n`/`N` instead of the `✗`-row jump (pre-existing; 30o-c NOTES) | **unverified** (question) | M7 |
+| M7/30o-c-red | `hits` tests and the `u`-is-text trap red by mutation only; `esc_while_typing` green on HEAD (30o-c NOTES) | **unverified** | M7 |
