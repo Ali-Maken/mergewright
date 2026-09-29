@@ -505,6 +505,10 @@ pub enum Refusal {
     UpstreamChanged,
     /// `HEAD` is no longer on the branch the app read.
     BranchChanged,
+    /// `HEAD` names a branch with no commit yet (an orphan branch): a
+    /// history operation has nothing to act on. Not `BranchChanged`: `HEAD`
+    /// did not move, and looking again cannot help.
+    HeadUnborn,
     /// A force-push whose lease names a commit the local tracking ref is not
     /// at: fetched since the box was read, or never fetched at all. Refused
     /// before git runs, so work the user has not looked at is never
@@ -913,6 +917,7 @@ impl Refusal {
             Self::BranchChanged => {
                 "HEAD moved to another branch since it was read — look again".to_owned()
             }
+            Self::HeadUnborn => "HEAD has no commit yet · c makes the first one".to_owned(),
             Self::LeaseStale { remote_side } => format!(
                 "force-push refused: {remote_side} is not where the box said \
                  (fetched since, or never fetched) · f to fetch, then look"

@@ -148,7 +148,7 @@ what right looks like: Tickets 05b + rebase-preview-keeps-drops: `r` on `main`'s
 
 ================================================================================
 docs/shots/m7/rebase-keep-drops-editor-120x40.txt
-what right looks like: Ticket rebase-preview-keeps-drops: after `R`, before `p`. Each suggested row shows the drop action and `already in main · p keeps it`; no row says `marked by its name`; the last row is `─ main` at the squash commit; the cursor `▸` on the newest drop, a3. Unedited, every row is dropped, so AFTER reads `every commit dropped` and the bar has no `y rewrite` until `p`. Colour unverified (rule 5).
+what right looks like: Ticket rebase-preview-keeps-drops: after `R`, before `p`. Each suggested row shows the drop action and `already in main · p keeps it`; no row says `marked by its name`; the last row is `─ main` at the squash commit; the cursor `▸` on the newest drop, a3. Unedited, every row is dropped, so AFTER (line 10) reads `nothing kept yet · p keeps a commit` and the bar has no `y rewrite` until `p`. Colour unverified (rule 5).
 ================================================================================
 
 REWRITE feature-a · 3 commits since it left main · newest first · nothing written until y
@@ -160,7 +160,7 @@ REWRITE feature-a · 3 commits since it left main · newest first · nothing wri
 
  AFTER y · not written yet
 
- every commit dropped · the branch would be its base again
+ nothing kept yet · p keeps a commit
 
 
 

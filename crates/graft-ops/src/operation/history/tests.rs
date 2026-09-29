@@ -633,6 +633,21 @@ fn head_on_another_branch_refuses_branch_changed() {
     );
 }
 
+/// An orphan branch: `HEAD` did not move, it has no commit yet
+/// (review 08..rebase-keeps-drops m3). Every `head_is` caller says so.
+#[test]
+fn head_is_refuses_an_unborn_head_as_head_unborn() {
+    let mut f = facts();
+    f.head = HeadRef::Unborn("refs/heads/orphan".to_owned());
+    assert_eq!(
+        super::head_is(&tip(MAIN, 0x0a), &f),
+        Err(Refusal::HeadUnborn)
+    );
+    for op in [merge(), rebase(), pick(), revert(), reset(ResetMode::Mixed)] {
+        assert_eq!(op.check(&f), Err(Refusal::HeadUnborn), "{}", op.describe());
+    }
+}
+
 /// Flipped by m6-conflicts/73 (ADR-0045 §4): a rebase or checkout over
 /// changed tracked files sets them aside instead of refusing. A branch from
 /// a stash still refuses. Flipped again by m7-power-tools/10b: a new branch

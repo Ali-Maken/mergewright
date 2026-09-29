@@ -546,6 +546,12 @@ fn capture_keep_drops_editor() {
         "{body}"
     );
     assert!(!body.contains("marked by its name"), "{body}");
+    // Arrival is not a refusal (30n Q1): where he is and the next key.
+    assert!(
+        body.contains("nothing kept yet \u{b7} p keeps a commit"),
+        "{body}"
+    );
+    assert!(!body.contains("every commit dropped"), "{body}");
     drop(state);
     app.close();
 }

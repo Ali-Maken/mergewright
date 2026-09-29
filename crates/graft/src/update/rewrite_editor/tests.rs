@@ -314,12 +314,14 @@ pub(crate) fn open_an_editor(state: &mut AppState) {
 /// `can_start` forms.
 pub(crate) fn open_an_editor_planned(state: &mut AppState, can_start: bool) {
     let mut editor = an_editor();
-    if can_start {
-        editor.after = After::Ready {
+    editor.after = if can_start {
+        After::Ready {
             planned: a_planned(None),
             asked: editor.opened.clone(),
-        };
-    }
+        }
+    } else {
+        After::Invalid(TodoProblem::EverythingDropped)
+    };
     state.rewrite.editor = Some(editor);
 }
 
@@ -375,16 +377,32 @@ fn capital_r_on_the_uncommitted_row_opens_on_head() {
     assert_eq!(open_job(&commands).map(|(_, from)| from), Some(oid(5)));
 }
 
+/// 30n Q2: the newest `R` wins. The read out is cancelled (its answer
+/// dropped by id, as `Esc` drops it) and the new one starts.
 #[test]
-fn a_second_capital_r_while_reading_starts_nothing() {
-    let (state, _) = press(&on_screen(0), 'R');
-    let (again, commands) = press(&state, 'R');
-    assert!(open_job(&commands).is_none(), "{commands:?}");
-    assert_eq!(again.rewrite.opening, state.rewrite.opening);
+fn r_on_the_graph_while_a_read_is_out_restarts_it() {
+    let (state, commands) = press(&on_screen(0), 'R');
+    let (first, _) = open_job(&commands).expect("R reads");
+    let (state, _) = press(&state, 'j');
+    let (state, commands) = press(&state, 'R');
+    assert!(cancels(&commands, first), "{commands:?}");
+    let (second, from) = open_job(&commands).expect("the second R reads");
+    assert_ne!(second, first);
+    assert_eq!(from, oid(4), "on the row he is on now");
+    assert_eq!(state.rewrite.opening, Some(second));
+    assert_eq!(
+        state.status,
+        Status::Waiting("reading feature\u{2026}".to_owned())
+    );
+
+    let (state, _) = answer(&state, first, opened_answer(opened_with(four_picks())));
+    assert!(state.rewrite.editor.is_none(), "the old answer is dropped");
+    let (state, _) = answer(&state, second, opened_answer(opened_with(four_picks())));
+    assert_eq!(ed(&state).cursor, 1, "the cursor on commit 4's row");
 }
 
 #[test]
-fn esc_while_reading_cancels_the_open() {
+fn esc_while_reading_still_cancels() {
     let (state, commands) = press(&on_screen(0), 'R');
     let (id, _) = open_job(&commands).expect("R reads");
     let (state, commands) = plain(&state, KeyCode::Escape);
@@ -548,6 +566,25 @@ fn a_bottom_squash_is_refused_in_words() {
         ed(&state).notice.as_deref(),
         Some("nothing below to meld into")
     );
+}
+
+/// 30n m5: `new` claims nothing it did not read. A todo that can run is
+/// drawn checking until its first plan answers.
+#[test]
+fn a_new_editor_claims_nothing_before_its_first_plan() {
+    let editor = RewriteEditor::new(opened_with(four_picks()), OpenedFrom::Row(oid(5)));
+    assert_ne!(editor.after, After::Invalid(TodoProblem::EverythingDropped));
+    assert!(
+        matches!(editor.view_facts().after, AfterFacts::Checking),
+        "{:?}",
+        editor.view_facts().after
+    );
+}
+
+#[test]
+fn a_new_all_drop_editor_is_invalid_from_the_start() {
+    let editor = RewriteEditor::new(opened_with(all_dropped()), OpenedFrom::Row(oid(5)));
+    assert_eq!(editor.after, After::Invalid(TodoProblem::EverythingDropped));
 }
 
 #[test]
@@ -1275,8 +1312,23 @@ fn rebase_todo() -> Vec<TodoLine> {
     ]
 }
 
+/// Every row a suggested drop: HEAD's branch is the squash-merged one.
+fn all_dropped() -> Vec<TodoLine> {
+    vec![
+        line(TodoAction::Drop, 2, "Add OAuth callback"),
+        line(TodoAction::Drop, 3, "Handle expired tokens"),
+        line(TodoAction::Drop, 4, "wip: tests"),
+        line(TodoAction::Drop, 5, "wip"),
+    ]
+}
+
 /// `R` in a rebase preview, answered: the editor is up.
 fn editor_from_rebase() -> AppState {
+    editor_from_rebase_with(rebase_todo())
+}
+
+/// `R` in a rebase preview, answered with `todo`: the editor is up.
+fn editor_from_rebase_with(todo: Vec<TodoLine>) -> AppState {
     let mut state = on_screen(0);
     let mut commands = Vec::new();
     let mut next = {
@@ -1304,7 +1356,7 @@ fn editor_from_rebase() -> AppState {
         state.status,
         Status::Waiting("reading feature\u{2026}".to_owned())
     );
-    answer(&state, id, opened_answer(opened_with(rebase_todo()))).0
+    answer(&state, id, opened_answer(opened_with(todo))).0
 }
 
 /// The notes the view draws on his rows, newest first.
@@ -1392,4 +1444,164 @@ fn autosquash_rows_still_read_marked_by_its_name() {
         "{drawn:?}"
     );
     assert_eq!(ed(&state).view_facts().cursor, 0, "on the row R was on");
+}
+
+// ── arrival from a rebase with every row dropped (30n Q1) ────────────────
+
+const NOTHING_KEPT_YET: &str = "nothing kept yet \u{b7} p keeps a commit";
+const EVERY_COMMIT_DROPPED: &str = "every commit dropped \u{b7} the branch would be its base again";
+
+fn after_words(state: &AppState) -> String {
+    match ed(state).view_facts().after {
+        AfterFacts::Invalid(words) => words,
+        other => panic!("an invalid todo, not {other:?}"),
+    }
+}
+
+#[test]
+fn an_unedited_rebase_editor_says_nothing_kept_yet() {
+    let state = editor_from_rebase_with(all_dropped());
+    assert_eq!(after_words(&state), NOTHING_KEPT_YET);
+    assert!(
+        matches!(
+            crate::view::rewrite_editor::rewrite_context(&state),
+            Some(graft_ui::graph_screen::HintContext::RewriteEditor {
+                can_start: false,
+                ..
+            })
+        ),
+        "no `y rewrite` in the bar"
+    );
+
+    // `y` stays refused, in the same words.
+    let (state, commands) = press(&state, 'y');
+    assert!(operate_job(&commands).is_none(), "{commands:?}");
+    assert_eq!(ed(&state).notice.as_deref(), Some(NOTHING_KEPT_YET));
+    assert!(!after_words(&state).contains("every commit dropped"));
+}
+
+/// Once he marks one of those rows himself, every drop is his choice.
+#[test]
+fn a_drop_he_marks_again_reads_every_commit_dropped() {
+    let state = editor_from_rebase_with(all_dropped());
+    // `p` keeps the newest and moves one older; `k` back; `d` his own drop.
+    let (state, _) = press(&state, 'p');
+    let (state, _) = press(&state, 'k');
+    let (state, _) = press(&state, 'd');
+    assert_eq!(actions(&state), [TodoAction::Drop; 4]);
+    assert_eq!(after_words(&state), EVERY_COMMIT_DROPPED);
+    let (state, _) = press(&state, 'y');
+    assert_eq!(ed(&state).notice.as_deref(), Some(EVERY_COMMIT_DROPPED));
+}
+
+#[test]
+fn an_open_editor_with_every_row_dropped_keeps_its_words() {
+    let (mut state, _) = editor_up(0);
+    for _ in 0..4 {
+        state = press(&state, 'd').0;
+    }
+    assert_eq!(after_words(&state), EVERY_COMMIT_DROPPED);
+}
+
+// ── the open race (30n Q2) ───────────────────────────────────────────────
+
+fn preview_ids() -> impl FnMut() -> JobId {
+    let mut n = 5000;
+    move || {
+        n += 1;
+        JobId::new(n)
+    }
+}
+
+/// A keep-drops rebase preview over [`a_rebase_with_drops`] on `state`.
+fn with_a_keep_drops_preview(mut state: AppState) -> AppState {
+    crate::update::preview::tests::land_a_keep_drops_preview(
+        &mut state,
+        Operation::Rebase(a_rebase_with_drops()),
+        &mut preview_ids(),
+    );
+    state
+}
+
+fn from_rebase_job(commands: &[Command]) -> Option<JobId> {
+    commands.iter().find_map(|command| match command {
+        Command::OpenRewrite {
+            id,
+            req: RewriteRequest::FromRebase(_),
+        } => Some(*id),
+        _ => None,
+    })
+}
+
+#[test]
+fn r_in_a_preview_while_a_read_is_out_opens_on_the_rebase() {
+    let (state, commands) = press(&on_screen(0), 'R');
+    let (first, _) = open_job(&commands).expect("R reads");
+    let state = with_a_keep_drops_preview(state);
+
+    let (state, commands) = press(&state, 'R');
+    assert!(cancels(&commands, first), "{commands:?}");
+    let second = from_rebase_job(&commands).expect("a FromRebase read");
+    assert!(state.preview.is_none(), "the preview closes");
+    assert_eq!(state.rewrite.opening, Some(second));
+
+    let (state, _) = answer(&state, first, opened_answer(opened_with(four_picks())));
+    assert!(state.rewrite.editor.is_none(), "the old answer is dropped");
+    let (state, _) = answer(&state, second, opened_answer(opened_with(rebase_todo())));
+    let marked: Vec<_> = ed(&state)
+        .view_facts()
+        .rows
+        .iter()
+        .map(|row| row.marked)
+        .collect();
+    assert_eq!(
+        marked,
+        [
+            None,
+            Some(MarkedBy::AlreadyIn),
+            Some(MarkedBy::AlreadyIn),
+            Some(MarkedBy::AlreadyIn)
+        ]
+    );
+}
+
+#[test]
+fn an_answer_under_a_preview_does_not_open_the_editor() {
+    let (state, commands) = press(&on_screen(0), 'R');
+    let (id, _) = open_job(&commands).expect("R reads");
+    let state = with_a_keep_drops_preview(state);
+
+    let (state, _) = answer(&state, id, opened_answer(opened_with(four_picks())));
+    assert!(state.preview.is_some(), "the preview is still up");
+    assert!(state.rewrite.editor.is_none());
+    assert!(state.rewrite.opening.is_none());
+    let said = Status::Sticky {
+        reason: "rewrite editor not opened \u{b7} another box was open".to_owned(),
+        keys: Some("R opens it".to_owned()),
+    };
+    assert_eq!(state.status, said);
+
+    // Hidden under the box, not cleared: he reads it when he closes it.
+    let (state, _) = plain(&state, KeyCode::Escape);
+    assert!(state.preview.is_none());
+    assert_eq!(state.status, said);
+}
+
+#[test]
+fn an_answer_under_a_preview_from_a_rebase_names_r_then_r() {
+    let state = with_a_keep_drops_preview(on_screen(0));
+    let (state, commands) = press(&state, 'R');
+    let id = from_rebase_job(&commands).expect("a FromRebase read");
+    let state = with_a_keep_drops_preview(state);
+
+    let (state, _) = answer(&state, id, opened_answer(opened_with(rebase_todo())));
+    assert!(state.preview.is_some());
+    assert!(state.rewrite.editor.is_none());
+    assert_eq!(
+        state.status,
+        Status::Sticky {
+            reason: "rewrite editor not opened \u{b7} another box was open".to_owned(),
+            keys: Some("r then R opens it".to_owned()),
+        }
+    );
 }

@@ -807,6 +807,14 @@ fn describe_reads_like_the_browser_line() {
 }
 
 #[test]
+fn head_unborn_says_there_is_no_commit_and_the_key_that_makes_one() {
+    assert_eq!(
+        Refusal::HeadUnborn.explain(),
+        "HEAD has no commit yet \u{b7} c makes the first one"
+    );
+}
+
+#[test]
 fn every_refusal_explains_itself_in_one_actionable_sentence() {
     let all = [
         Refusal::Bare,

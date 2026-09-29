@@ -1550,6 +1550,40 @@ fn landed(
     state
 }
 
+/// A preview over the rebase `op` opened on `state` (opener `r`) and
+/// landed with [`a_drop_suggestion`] and `op` as its as-run op: where the
+/// rebased branch is `HEAD`'s, `R` is live in it. For the rewrite editor's
+/// open-race tests (30n Q2), which bring their own screen and ids.
+pub(crate) fn land_a_keep_drops_preview(
+    state: &mut AppState,
+    op: Operation,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let mut commands = Vec::new();
+    assert!(open_preview(
+        state,
+        &mut commands,
+        PreviewSubject::Operation {
+            op: Box::new(op.clone()),
+            opened_by: "r",
+        },
+        false,
+        next_id
+    ));
+    let mut plan = a_plan();
+    plan.already_in = Some(a_drop_suggestion());
+    let id = state.preview.as_ref().expect("a preview is open").job;
+    preview_produced(
+        state,
+        id,
+        Ok(Arc::new(Planned {
+            plan,
+            anchors: Vec::new(),
+            runs: Some(Box::new(op)),
+        })),
+    );
+}
+
 fn opened_rewrites(commands: &[Command]) -> Vec<&graft_ops::rewrite::RewriteRequest> {
     commands
         .iter()
@@ -1650,6 +1684,27 @@ fn r_is_unbound_in_other_previews() {
             "{case}"
         );
     }
+}
+
+/// The undrawable box (`preview cannot be drawn here: … · esc`) names no
+/// `R`, so `R` does nothing there: key, row and footer agree (review
+/// 08..rebase-keeps-drops m1).
+#[test]
+fn r_is_unbound_when_the_preview_cannot_be_drawn() {
+    let mut state = landed(
+        feature_checked_out(),
+        "r",
+        a_squash_merged_rebase(),
+        Some(a_drop_suggestion()),
+    );
+    state.preview.as_mut().expect("open").undrawable = Some(oid(200));
+
+    let commands = press_r(&mut state);
+
+    assert!(opened_rewrites(&commands).is_empty(), "{commands:?}");
+    assert!(state.preview.is_some(), "swallowed, the box stays");
+    assert!(state.rewrite.opening.is_none());
+    assert!(!preview_box(&state).expect("a box").keep);
 }
 
 #[test]

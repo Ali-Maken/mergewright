@@ -1188,7 +1188,7 @@ fn o_on_an_unborn_head_says_check_picks_words() {
     assert!(state.preview.is_none());
     assert_eq!(
         state.status,
-        sticky("HEAD moved to another branch since it was read \u{2014} look again")
+        sticky("HEAD has no commit yet \u{b7} c makes the first one")
     );
 }
 

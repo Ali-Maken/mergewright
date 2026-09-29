@@ -909,3 +909,26 @@ fn a_group_that_has_gone_leaves_the_fresh_lists_own_cursor() {
     assert_eq!(files.cursor, 1);
     assert_eq!(files.selected_section(), Some(WorkingTreeSection::Staged));
 }
+
+/// 30n m6: `Ctrl+A` with nothing stageable says so; it never fell through
+/// to anything (it has no other meaning on the pane).
+#[test]
+fn ctrl_a_with_nothing_to_stage_says_so() {
+    let mut state = AppState {
+        detail: pane_on(&[(WorkingTreeSection::Unstaged, &["a.rs"][..])], 1, 0),
+        ..AppState::default()
+    };
+    state.detail.focus = DetailFocus::Files;
+    state.working_tree = Some(Arc::new(graft_git::status::WorkingTreeStatus::default()));
+    let mut commands = Vec::new();
+    let ctrl_a = KeyPress {
+        code: KeyCode::Char('a'),
+        modifiers: graft_core::event::Modifiers::CONTROL,
+    };
+    assert!(keys::detail_key(&mut state, &mut commands, ctrl_a));
+    assert!(commands.is_empty(), "{commands:?}");
+    assert_eq!(
+        state.status,
+        crate::update::state::Status::sticky("nothing to stage")
+    );
+}
