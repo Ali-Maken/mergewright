@@ -1,0 +1,30 @@
+JOURNAL · what happened in this repo, newest first
+  ●  now       fetch origin                         remote-tracking refs · not undoable
+  $  4m ago    reset main 1 commit back
+▸    └ ✗ lost  a65d7e4 "Add rate limiter" · was main's tip · no branch holds it
+  $  8m ago    switch from spike to main
+     └ ✗ lost  419e109 "Try redis cache" · was spike's tip · spike is gone
+  $  24m ago   committed "Try redis cache" on spike
+  $  27m ago   switch from main to spike
+  ●  28m ago   undo: discard src/a.rs       the index · the working tree · backup saved         ← U
+     └ ✗ lost  your edit to src/a.rs · replaced by this undo · kept in its backup
+  ●  29m ago   discard src/a.rs             the index · the working tree · backup saved      undone
+  $  30m ago   committed "Add rate limiter" on main
+  $  31m ago   committed "Add metrics endpoint" on main
+  $  32m ago   committed "Add request logging" on main
+  $  33m ago   committed "Start the api" on main
+  a branch deleted outside Graft and never checked out leaves no trace here
+
+
+
+
+
+
+
+
+
+
+
+
+● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch…
+⏎ put main back to it  b new branch here  J/esc close
