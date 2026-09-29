@@ -451,17 +451,17 @@ Amended 2026-09-26 (user: "86 yes"; usability walk 2 C): `Enter` and `p` open a 
 | Key | Action |
 |---|---|
 | `↑ ↓`, `j k` | Move |
-| `Enter` | Per row: `●` revert to just before it (Ghost Preview, `→ ⏎`, unchanged); `$` put that ref back to before it; `✗` put back what held the commit, or a lost edit's file (Ghost Preview, `y`) (M7) |
-| `b` | New branch at the row's commit (name prompt; prefilled `<branch>-restored` when the row names one) (M7) |
-| `/` | Find a row (M7) |
+| `Enter` | Per row: `●` revert to just before it (Ghost Preview, `→ ⏎`, unchanged; none on a step Graft doesn't undo, such as a fetch); `$` put that ref back to before it, and on a switch row switch back to the branch it left; `✗` put back what held the commit, or a lost edit's file, replacing what is in that file now (Ghost Preview, `y`; `u` brings it back) (M7) |
+| `b` | New branch at a `$` or `✗` row's commit (name prompt; prefilled `<branch>-restored` when the row names one); on a `●` row it says so (M7) |
+| `/` | Find a row by the words that name it, as blame's find (§2.8): `Enter` keeps it, `Esc` drops it (M7) |
 | `n` / `N` | Next / previous match; with no find, next / previous `✗` row (M7) |
 | `u` / `U` | Undo / redo, global as everywhere (§2.2): the journal's next entry (the `← u` / `← U` row), whatever row the cursor is on; never a `$` or `✗` row. Lands as `Enter` on that row (M7) |
-| `Esc` | Close |
+| `Esc`, `J` | Close (a find first: `Esc` drops it) |
 
 The cursor opens on the newest `✗` row under a `$` row, when that `$` row is
 newer than every `●` row except a fetch, until a key is pressed; a `✗` under a
 `●` is never preselected, `n` reaches it (M7). Amended 2026-09-26 (M7 pass 2b;
-ADR-0048; F1 amended after review M4); u/U in the browser ruled global 2026-09-29 (m7 24-a question).
+ADR-0048; F1 amended after review M4); u/U in the browser ruled global 2026-09-29 (m7 24-a question). Amended 2026-09-30 (m7 30o: Enter on switch and fetch rows, a lost edit put back over the file as it is, b on ● rows, J closes, / as blame's).
 
 ### 2.17 History (M7)
 

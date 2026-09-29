@@ -1027,3 +1027,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r24-m12 | NOTES of 24-0, 24-a2, 24-b, 30n carry no Touches line; hint_bar.rs J-bar tests untouched though 24-b listed them (minor 12) | **unverified** | M7 |
 | M7/r24-m14 | `find_lost` drops a failed subject read (jobs/journal_list.rs:78-84), surfacing only as the row placeholder (minor 14; tied to 30o's minor 5 fix) | **broken** (minor) | M7 |
 | M7/r24-q1 | `R` on graph then `J` during the read: J's status row shows `rewrite editor not opened · another box was open` (rewrite_editor.rs:552; review Q1). Intended? | **unverified** (question) | M7 |
+| M7/24-legend | J legend `● done in Graft: u can undo it` is also shown for a fetch row `u` can't undo; legend's `✗` covers lost edits too (24-b NOTES; 30o out of scope) | **broken** (words) | M7 |
