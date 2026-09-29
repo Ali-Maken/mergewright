@@ -1,7 +1,7 @@
 # rebase-preview-keeps-drops — `R` in a rebase preview opens the rewrite editor with the suggested drops marked
 
-Status: draft
-Blocked by: 24-b (shares `update/preview.rs`, `jobs/runner.rs`, the m7 walk harness and `docs/shots/m7`; 24 is
+Status: ready (conductor 2026-09-29: built before 24, which is being respecced; 24 waits for this)
+Blocked by: none now — 24 re-sequenced after this ticket (shares `update/preview.rs`, `jobs/runner.rs`, the m7 walk harness and `docs/shots/m7`; 24 is
 building now). 05, 05b, 08, 08-b are merged.
 Build with: Opus. One new request arm on an established planner, a second entry into 08's overlay, one footer key.
 The correctness anchor is a single test (unedited editor = the rebase's own todo), judgeable from the diff. No
