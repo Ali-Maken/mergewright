@@ -269,17 +269,17 @@ pub fn with_reflog_of(scale: &Scale, records: usize, lost: usize) -> Result<Refl
   `scripts/contact-sheet.sh m3 docs/shots` (relative paths).
 
 ### Acceptance
-- [ ] **Minor 2.** In `journey_15`, beside the state asserts, add asserts from the frame after `y`:
+- [x] **Minor 2.** (`m7_walk::journal::the_three_lost_work_journeys` via `j_closed_and_pane_shown`; mutation: J forced open on journey 15's landed state → red at journal.rs:396 "J is closed in the frame"; restored) In `journey_15`, beside the state asserts, add asserts from the frame after `y`:
   - no row holds `JOURNAL ·`;
   - the frame holds the pane's header `UNCOMMITTED · 1 unstaged` and `UNSTAGED (1)` (as in
     `put-back-edit-landed-187x50.txt`).
   - Not red-first. Check by mutation: make `confirm` skip J's close, see the new assert fail, then restore. Say so.
-- [ ] **Minor 3.** `esc_while_typing_puts_the_cursor_back` is renamed `esc_while_typing_closes_the_prompt_only`, with
+- [x] **Minor 3.** (grep: 0 old name in `crates/`, `TESTING.md`; MAP.md never named it) `esc_while_typing_puts_the_cursor_back` is renamed `esc_while_typing_closes_the_prompt_only`, with
   the body unchanged. Grep: 0 of the old name in `crates/` and `TESTING.md`. Ticket NOTES are history; leave them.
-- [ ] **Minor 6.** The comment reads, in substance: this entry is the hint catalogue's `Journal` slot; J draws its own
+- [x] **Minor 6.** (`the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows` green in full nextest) The comment reads, in substance: this entry is the hint catalogue's `Journal` slot; J draws its own
   bar (`journal_screen`), which also answers `b`, `/`, `n`, `N`, `u`, `U`, `space`.
   `the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows` is green.
-- [ ] **Minor 7 (R5).**
+- [x] **Minor 7 (R5).** (`view::tests::capture_m3_journal`; red seen first at tests.rs:2900 before the stages were answered; grep 0 `finding lost commits` in `docs/shots/m3-*`; sheet 131445 B)
   - `capture_m3_journal` answers stage 2 with an empty `Ready` through `outside_landed`, asserts the `FindLost` command
     it returns, and answers that with an empty `LostFound` through `lost_landed`.
   - (red on today's fixture) the frame's title row holds no `finding lost commits`.
@@ -287,12 +287,20 @@ pub fn with_reflog_of(scale: &Scale, records: usize, lost: usize) -> Result<Refl
     finding lost commits…)" and says the stages were answered empty, so the title is settled.
   - Grep: 0 `finding lost commits` in `docs/shots/m3-*`. The m3 sheet is rebuilt, ≤ 200 KB. Diff the title lines in
     NOTES.
-- [ ] Gates workspace-wide.
+- [x] Gates workspace-wide. (fmt, clippy, doc clean; nextest 4916/4917 — the 1 red is `published_repo` on `docs/reviews/m7-30m-30o.md:16`, pre-existing on 7c1ee6e7, outside 30p-c)
 
 ### Touches
 - **Other J captures:** m3-08 and m4-07 are pty walks over a real repo, not this fixture, so they are unchanged. Check
   with a full nextest run and `git status` over `docs/shots`.
 - **`journal_state`'s other users** (grep): every one stays green.
+
+### NOTES 30p-c (builder, 2026-09-30)
+- No scout (ticket: none for c). No compaction.
+- Minor 7 answered in `journal_state` (its only user is `capture_m3_journal`, grep: 2 calls). Title diff, all three captures:
+  `- JOURNAL · what happened in this repo, newest first · finding lost commits…` → `+ JOURNAL · what happened in this repo, newest first`.
+- Touches: m3-08/m4-07 unchanged (`git status docs/shots`: only the four m3 J files); hint comment only, no key change.
+- Pre-existing red, not mine: `published_repo::nothing_a_commit_would_carry_names_this_machine` → `docs/reviews/m7-30m-30o.md:16` home path. Fix: `cargo run -q -p graft-fixtures -- redact docs/reviews/m7-30m-30o.md`.
+- Colour unverified (captures record none).
 
 ## Part 30p-d (conditional, only on OVER): J's hits computed once per find and once per rebuild
 

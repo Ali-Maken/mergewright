@@ -2808,8 +2808,8 @@ fn journal_state(columns: u16, rows: u16) -> AppState {
     ));
     // Opened as `J` opens it (m7/30o Minor 6), not by setting `shown`: the
     // notice is taken up and the rows are built from the entries read
-    // before. The re-read and stage 2 it asks for never land here, so the
-    // capture is J's first frame.
+    // before. The re-read it asks for never lands here; stages 2 and 3 are
+    // answered empty below (m7/30p Minor 7), so the title is settled.
     let mut next = 0_u64;
     let commands = crate::update::journal::journal_enter(&mut state, &mut || {
         next += 1;
@@ -2825,6 +2825,38 @@ fn journal_state(columns: u16, rows: u16) -> AppState {
         ),
         "{commands:?}"
     );
+    let Some(crate::update::Command::ReadOutside { id: outside }) = commands.last() else {
+        unreachable!("matched above: {commands:?}")
+    };
+    let mut asked = Vec::new();
+    crate::update::journal::outside_landed(
+        &mut state,
+        &mut asked,
+        *outside,
+        &Ok(std::sync::Arc::new(Vec::new())),
+        &mut || {
+            next += 1;
+            graft_core::job::JobId::new(next)
+        },
+    );
+    let [crate::update::Command::FindLost { id: lost, outside }] = asked.as_slice() else {
+        panic!("stage 2 asks for stage 3: {asked:?}")
+    };
+    assert!(outside.is_empty(), "{asked:?}");
+    crate::update::journal::lost_landed(
+        &mut state,
+        *lost,
+        &Ok(std::sync::Arc::new(crate::jobs::journal_list::LostFound {
+            unreached: graft_git::history_reads::Unreached {
+                lost: Vec::new(),
+                checked: 0,
+                capped: false,
+            },
+            edits: Vec::new(),
+            scan: graft_ops::journal_list::LostScan::Done,
+            subjects: Vec::new(),
+        })),
+    );
     state
 }
 
@@ -2833,9 +2865,9 @@ const JOURNAL_HEADER: &str = "\
 # capture_m3_journal in crates/graft/src/view/tests.rs (asserted; regenerate
 # on purpose). `J` on a scripted journal of six entries, drawn
 # against a fixed clock so the ages never move. Opened as `J` opens it,
-# so this is J's first frame: the shell's steps are still being read
-# (the title ends finding lost commits…), and the bottom line has no
-# interrupted-entry notice — looking at J is what it asked for.
+# and the shell's steps and the lost-commit scan answered empty, so the
+# title is settled. The bottom line has no interrupted-entry notice —
+# looking at J is what it asked for.
 #
 # Judge by eye:
 # - The title reads JOURNAL · what happened in this repo, newest first.
@@ -2891,6 +2923,13 @@ fn capture_m3_journal() {
         // Opened as `J` opens it (m7/30o Minor 6): looking at J is what
         // the interrupted-entry notice asked for, so it is not on screen.
         assert!(!screen.contains("J to inspect"), "{screen}");
+        // Stages 2 and 3 answered empty (m7/30p Minor 7): the title is
+        // settled, not frozen on its loading state.
+        let title = screen
+            .lines()
+            .find(|line| line.contains("JOURNAL ·"))
+            .expect("J's title row is drawn");
+        assert!(!title.contains("finding lost commits"), "{screen}");
         shots.check(
             format!(
                 "{}/../../docs/shots/m3-journal-{columns}x{rows}.txt",

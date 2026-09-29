@@ -156,6 +156,19 @@ fn confirm(route: &mut Route, app: &App, state: &AppState, what: &str) -> AppSta
     crate::captures::settled_frame(app, state)
 }
 
+/// Walk 15's landing, read from the frame (review m7-30m-30o Minor 2): J
+/// closed (no `JOURNAL ·` title row) and the changes pane's header drawn.
+fn j_closed_and_pane_shown(landed: &[String], body: &str) {
+    assert!(
+        !landed.iter().any(|row| row.contains("JOURNAL ·")),
+        "J is closed in the frame:\n{body}"
+    );
+    assert!(
+        body.contains("UNCOMMITTED · 1 unstaged") && body.contains("UNSTAGED (1)"),
+        "the changes pane's header is drawn:\n{body}"
+    );
+}
+
 /// The selected row of J's frame: the one marked `▸`.
 pub(crate) fn selected_row(frame: &[String]) -> &str {
     frame
@@ -391,6 +404,7 @@ fn journey_15(app: &App, state: &AppState, repo: &Path) -> AppState {
     // diff beside it is that file's, which the pane draws for the file under
     // its cursor — the lost edit's `2` added.
     assert!(state.detail.shown, "the changes pane is shown:\n{body}");
+    j_closed_and_pane_shown(&landed, &body);
     assert!(
         state.detail.selected_entry().is_some(),
         "its cursor is on a file:\n{body}"

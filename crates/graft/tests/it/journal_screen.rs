@@ -425,7 +425,7 @@ fn enter_keeps_the_find_and_n_steps_the_hits() {
 /// cursor never moved (`place::keys::prompt_key`), so there is nothing to
 /// put back. J's the same: the cursor is where it was at `/`.
 #[test]
-fn esc_while_typing_puts_the_cursor_back() {
+fn esc_while_typing_closes_the_prompt_only() {
     let fixture = lost_work();
     let (app, state) = opened(fixture.work());
     let state = in_j(&app, &state);
