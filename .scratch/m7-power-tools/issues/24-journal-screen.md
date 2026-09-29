@@ -715,3 +715,37 @@ No compaction. No scout: 24's scout plus the ticket's named sites; each read dir
 - **Verified:** the it/ tests drive the real app (real `recover_for`, real plan, real `git reset`); `main` read back
   with `rev-parse`. **Not verified:** by eye; colour; mouse clicks on `Put back` over J (the click path is the
   shared `preview_click`, untested for this box).
+
+## NOTES 24-b (builder, 2026-09-30, base 26bd74d2) — **blocked at V8: needs `update/keys.rs`**
+No compaction. Nothing built: V8 is the ticket's stop condition ("Differs → stop"). Scout: `scouts/24b-harness.md`
+(harness only; kept for the resumed part).
+
+- **V8 — differs (observed, not only read).**
+  - `u` in J: `crates/graft/src/update/keys.rs:212-216` — the global `is_undo_key` arm calls `undo::undo_key` and
+    returns. Nothing on that path closes J (`journal.shown = false` is set only at `update/journal.rs:664` (`close`),
+    `:801` (time machine), `preview.rs:822`, `name_prompt.rs:313`; grep).
+  - `⏎` on the `← u` row: `crates/graft/src/update/journal.rs:809-810` — `close(next, commands)` **then**
+    `undo::undo_key` (pinned by `update/journal/tests.rs:207`
+    `enter_on_the_next_undo_row_is_u_and_closes_the_browser`).
+  - So after `u` in J, J stays shown over the result, and the undo's landing is dropped under it — the code says so
+    on purpose: `update/undo.rs:1665-1670` `under_a_modal_the_landing_is_dropped` ("`u` works under the journal
+    browser … the landing is dropped").
+  - **Probe run** (real pool, real git, `.scratch/m7-power-tools/probes/24b-v8-u-in-j.rs`, the ticket's
+    `u_in_j_undoes_the_next_entry_from_any_row`): put-back via `J ⏎ y`, then the shell loses a second commit, `J`,
+    stages land, `u`. Result: `main` back to before the put-back ✓ (rev-parse), the `✗` row not put back ✓, **J still
+    shown ✗** (`assert!(!state.journal.shown)` failed, :182 of the probe as appended). Not committed in `tests/it/`
+    (red by design); append it to `journal_put_back.rs` to re-run.
+- **What unblocks it (conductor/planner's call, not built):** in the `is_undo_key` arm, close J before
+  `undo_key` when `journal.shown` (as `journal.rs:809` does), or have `undo::undo_key` do it. Either is outside 24-b's
+  files. Cost of leaving it: `u` in J undoes but leaves him in J, with no landing on the graph — unlike `⏎` on the same
+  row (UX consistency, the ruling's own reason). `under_a_modal_the_landing_is_dropped` would need its J half
+  re-read against the ruling (it asserts the landing is dropped under J).
+- **Remaining 24-b (all of Part B), unchanged:** drawing, snapshots, walks, captures, re-shots, MAP. Nothing in it
+  depends on V8 except the two `u` tests; the conductor may split them off and resume the rest.
+- **Scout findings to carry** (`scouts/24b-harness.md`): journey ids are kebab-case (`lost-to-shell-reset` 3,
+  `deleted-branch-back` 4, `edit-in-undo-backup` 4; note :1260-1271), not the ticket's snake_case. The app tests
+  (`journal_put_back.rs`, `put_back_box.rs`) do **not** use `graft_fixtures::lost_work`; they build a Trivial repo +
+  commit + `reset --hard`. `lost_work::Graft` (fetch / discard / `undo_forced`) is implemented only in graft-ops'
+  `tests/it/lost_work.rs:25,55` — the walks need an app-side impl (driving the real app's fetch/discard/undo).
+  Captures: `check_shot`, rewritten with `GRAFT_UPDATE_SHOTS=1`. Unconfirmed: which code writes the `m3-08` / `m4-07`
+  J captures (`coverage.rs:232` only checks they exist).
