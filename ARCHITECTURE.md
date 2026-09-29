@@ -147,7 +147,7 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 - **Changing `o` (take the cursor commit, previewed; m7-power-tools/11)** →
   `app/src/update/keys.rs` for the key, `app/src/update/context_menu/`
   (`slots.rs`, `verbs.rs`) for menu slot 2 and its dim refusal,
-  `app/src/update/preview.rs` for the preview, `graft-ui/src/context_menu.rs`
+  `app/src/update/preview/take.rs` for the preview, `graft-ui/src/context_menu.rs`
   for the drawn label.
 - **Changing the still-to-apply list (m7-power-tools/07c)** →
   `graft-ui/src/still_to_apply.rs`; the graph screen places it

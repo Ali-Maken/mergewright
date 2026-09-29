@@ -41,9 +41,18 @@ use super::state::{AppState, Status};
 
 mod after;
 mod keys;
+mod open;
+mod routing;
 #[cfg(test)]
 pub(crate) mod tests;
 mod words;
+
+use open::cancel_opening;
+pub(crate) use open::{field_open, open_rewrite, open_rewrite_from_rebase, opened};
+pub(crate) use routing::{
+    after_planned, files_listed, job_ended, message_returned, owns, write_answered,
+};
+pub(crate) use words::{AfterFacts, RowFacts, ViewFacts};
 
 pub(crate) use keys::{rewrite_key, rewrite_mouse};
 
@@ -101,7 +110,7 @@ pub(crate) struct RewriteEditor {
     /// Rows that came up marked (a `fixup!`/`squash!` subject, or a rebase's
     /// suggested drop) that he has not re-marked since, and why. Any mark
     /// of his removes the row: the words are for marks he did not make.
-    by_name: HashMap<Oid, MarkedBy>,
+    marked_by: HashMap<Oid, MarkedBy>,
     /// Rows he moved: `↕ moved`.
     moved: HashSet<Oid>,
     /// His message edits, by commit: a reword row's message, or a squash
@@ -170,86 +179,6 @@ enum Right {
     },
 }
 
-/// What the view (`view::rewrite_editor`) reads to draw the editor: everything on screen, in the
-/// screen's order, and nothing it has to work out again.
-#[derive(Debug)]
-pub(crate) struct ViewFacts<'a> {
-    /// His branch's short name (`feature-a`).
-    pub branch: &'a str,
-    /// How many commits since it left the base, as opened.
-    pub since: usize,
-    /// His rows, newest first.
-    pub rows: Vec<RowFacts<'a>>,
-    /// The row under his.
-    pub base: &'a BaseRow,
-    /// The cursor: an index into `rows`, or `rows.len()` on the base row.
-    pub cursor: usize,
-    /// `r`'s field: its screen row, text and caret (a char index).
-    pub field: Option<(usize, &'a str, usize)>,
-    /// One block per squash group or reword, newest kept row first: what
-    /// the rewrite will write.
-    pub messages: Vec<MessageFacts>,
-    /// The AFTER side.
-    pub after: AfterFacts<'a>,
-    /// `Some` while `⏎` shows a row's changes instead of AFTER.
-    pub changes: Option<(Oid, &'a Loading<Arc<FileList>>)>,
-    /// Below 120 columns: the AFTER side is up instead of the rows.
-    pub narrow_shows_right: bool,
-    /// A refusal in words, above the bar.
-    pub notice: Option<&'a str>,
-    /// The `$EDITOR` handover is out: the terminal is away.
-    pub handing_over: bool,
-}
-
-/// One of his rows.
-#[derive(Debug)]
-pub(crate) struct RowFacts<'a> {
-    /// Its action now.
-    pub action: TodoAction,
-    /// Its commit.
-    pub commit: Oid,
-    /// Its subject as it stands (a reword's edited subject).
-    pub subject: &'a str,
-    /// `↕ moved`.
-    pub moved: bool,
-    /// Why it came up marked, while he has not re-marked it: `marked by its
-    /// name`, or `already in <base> · p keeps it`.
-    pub marked: Option<MarkedBy>,
-    /// Its commit is the kept row of a group: `n in one` counts it and the
-    /// melded rows.
-    pub keeps: usize,
-    /// What is wrong with it (`nothing below to meld into`), drawn `✗`.
-    pub problem: Option<String>,
-}
-
-/// One message the rewrite will write.
-#[derive(Debug)]
-pub(crate) struct MessageFacts {
-    /// The kept (or reworded) row.
-    pub kept: Oid,
-    /// Its subject, for the label's `r on "<subject>"`.
-    pub kept_subject: String,
-    /// A squash group's (`MESSAGE of the squashed commit`) or a reword's.
-    pub squashed: bool,
-    /// The whole message.
-    pub text: String,
-}
-
-/// The AFTER side's state.
-#[derive(Debug)]
-pub(crate) enum AfterFacts<'a> {
-    /// `checking…`.
-    Checking,
-    /// The read failed.
-    Failed(&'a str),
-    /// The plan refused.
-    Refused(&'a str),
-    /// The todo cannot run: the problem's words.
-    Invalid(String),
-    /// The plan: its ghosts, forecast and `published`.
-    Ready(&'a Planned),
-}
-
 impl RewriteEditor {
     fn new(opened: OpenedRewrite, from: OpenedFrom) -> Self {
         let OpenedRewrite {
@@ -262,7 +191,7 @@ impl RewriteEditor {
             OpenedFrom::Row(_) => MarkedBy::Name,
             OpenedFrom::Rebase => MarkedBy::AlreadyIn,
         };
-        let by_name = todo
+        let marked_by = todo
             .iter()
             .filter(|row| row.action != TodoAction::Pick)
             .map(|row| (row.commit, reason))
@@ -283,7 +212,7 @@ impl RewriteEditor {
             whole,
             base,
             todo,
-            by_name,
+            marked_by,
             moved: HashSet::new(),
             edits: HashMap::new(),
             cursor,
@@ -409,324 +338,6 @@ impl RewriteEditor {
     /// Everything the view draws (`view::rewrite_editor`).
     pub(crate) fn view_facts(&self) -> ViewFacts<'_> {
         words::view_facts(self)
-    }
-}
-
-/// Is the editor's `r` field open (`AppState::text_field_open`)?
-pub(crate) fn field_open(state: &AppState) -> bool {
-    state
-        .rewrite
-        .editor
-        .as_ref()
-        .is_some_and(|editor| editor.field.is_some())
-}
-
-// ── opening ────────────────────────────────────────────────────────────
-
-/// `R` on the graph: read what the editor opens on, for the cursor's row
-/// (`HEAD`'s on the uncommitted row). A write running or git part-way
-/// through refuses in the preview's words (one wording, H4). A read already
-/// out is cancelled and this one starts: the newest `R` is his intent
-/// (30n Q2).
-pub(crate) fn open_rewrite(
-    state: &mut AppState,
-    commands: &mut Vec<Command>,
-    next_id: &mut impl FnMut() -> JobId,
-) {
-    if state.rewrite.editor.is_some() {
-        return;
-    }
-    if let Some(reason) = super::preview::preview_refusal(state) {
-        state.status = Status::Sticky { reason, keys: None };
-        return;
-    }
-    let Some(from) = cursor_commit(state) else {
-        state.status =
-            Status::Waiting("still reading the refs \u{2014} try again in a moment".to_owned());
-        return;
-    };
-    cancel_opening(state, commands);
-    let id = next_id();
-    state.rewrite.opening = Some(id);
-    state.rewrite.opening_from = Some(OpenedFrom::Row(from));
-    state.status = Status::Waiting(format!("reading {}\u{2026}", branch_name(state)));
-    commands.push(Command::OpenRewrite {
-        id,
-        req: RewriteRequest::Open { from },
-    });
-}
-
-/// `R` in a rebase preview whose suggested drops `preview::keeps_drops`
-/// found (rebase-preview-keeps-drops): read the editor on that very rebase
-/// — `params` as its `y` would run them — its drops marked `d`, so he sees
-/// what he keeps before `y`. The preview is closed by the caller. Refused
-/// as [`open_rewrite`] is, in the same words; a read already out is
-/// cancelled and this one starts, as there.
-pub(crate) fn open_rewrite_from_rebase(
-    state: &mut AppState,
-    commands: &mut Vec<Command>,
-    next_id: &mut impl FnMut() -> JobId,
-    params: RebaseParams,
-) {
-    if state.rewrite.editor.is_some() {
-        return;
-    }
-    if let Some(reason) = super::preview::preview_refusal(state) {
-        state.status = Status::Sticky { reason, keys: None };
-        return;
-    }
-    cancel_opening(state, commands);
-    let id = next_id();
-    state.rewrite.opening = Some(id);
-    state.rewrite.opening_from = Some(OpenedFrom::Rebase);
-    state.status = Status::Waiting(format!("reading {}\u{2026}", branch_name(state)));
-    commands.push(Command::OpenRewrite {
-        id,
-        req: RewriteRequest::FromRebase(params),
-    });
-}
-
-/// The commit `R` opens on: the cursor's row, or `HEAD` on the uncommitted
-/// row. `None` while the history or the refs it needs are unread.
-fn cursor_commit(state: &AppState) -> Option<Oid> {
-    if state.on_working_tree {
-        return state.refs.as_deref()?.head();
-    }
-    Some(state.history.as_ref()?.selected()?.commit.id)
-}
-
-/// His branch's short name, for `reading feature-a…`.
-fn branch_name(state: &AppState) -> String {
-    state
-        .refs
-        .as_deref()
-        .and_then(super::preview::current_branch)
-        .map_or_else(
-            || "your branch".to_owned(),
-            |tip| super::preview::short_name_of(&tip.name),
-        )
-}
-
-/// `Esc` while the read is out, or a newer `R`: cancel it (its answer is
-/// dropped by id) and clear its line. `true` when there was one.
-fn cancel_opening(state: &mut AppState, commands: &mut Vec<Command>) -> bool {
-    let Some(id) = state.rewrite.opening.take() else {
-        return false;
-    };
-    state.rewrite.opening_from = None;
-    commands.push(Command::CancelJob(id));
-    state.rewrite.stale.insert(id);
-    if matches!(state.status, Status::Waiting(_)) {
-        state.status = Status::Ready;
-    }
-    true
-}
-
-/// Why an answered read did not open the editor: a box took the keys while
-/// it was out (30n Q2). Hidden, not cleared, while that box owns the
-/// bottom row; he reads it when he closes the box.
-const NOT_OPENED: &str = "rewrite editor not opened \u{b7} another box was open";
-
-/// The open read answered: the overlay, a refusal on the status line, or
-/// the failure. The overlay never opens over another box — a modal with
-/// the keys, or another overlay (`edit_stop::no_box_is_up`): the answer is
-/// dropped and the status says how to open it again.
-pub(crate) fn opened(
-    state: &mut AppState,
-    commands: &mut Vec<Command>,
-    id: JobId,
-    answer: Result<RewriteOpened, String>,
-    next_id: &mut impl FnMut() -> JobId,
-) {
-    if state.rewrite.stale.remove(&id) || state.rewrite.opening != Some(id) {
-        return;
-    }
-    state.rewrite.opening = None;
-    let from = state.rewrite.opening_from.take();
-    match answer {
-        Ok(RewriteOpened::Editor(opened)) => {
-            if matches!(state.status, Status::Waiting(_)) {
-                state.status = Status::Ready;
-            }
-            let from = from.unwrap_or(OpenedFrom::Row(opened.params.head.oid));
-            if !crate::update::keys::edit_stop::no_box_is_up(state) {
-                let keys = match from {
-                    OpenedFrom::Row(_) => "R opens it",
-                    OpenedFrom::Rebase => "r then R opens it",
-                };
-                state.status = Status::Sticky {
-                    reason: NOT_OPENED.to_owned(),
-                    keys: Some(keys.to_owned()),
-                };
-                return;
-            }
-            let mut editor = Box::new(RewriteEditor::new(*opened, from));
-            after::replan(state, &mut editor, commands, next_id);
-            state.rewrite.editor = Some(editor);
-        }
-        Ok(RewriteOpened::Refused(refusal)) => {
-            state.status = Status::sticky(refusal.explain());
-        }
-        Err(why) => {
-            state.status = Status::Failed(format!("couldn't open the rewrite editor: {why}"));
-        }
-    }
-}
-
-// ── routing ────────────────────────────────────────────────────────────
-
-/// Is `id` the open read, the AFTER plan, the `⏎` file list or the
-/// `$EDITOR` handover of the live editor — or one a closed or superseded
-/// editor left in flight, whose answer is dropped here?
-pub(crate) fn owns(state: &AppState, id: JobId) -> bool {
-    let rewrite = &state.rewrite;
-    rewrite.opening == Some(id)
-        || rewrite.stale.contains(&id)
-        || rewrite
-            .editor
-            .as_ref()
-            .is_some_and(|editor| editor.jobs().any(|job| job == id))
-}
-
-/// The AFTER plan answered. Only the live editor's current plan is kept.
-pub(crate) fn after_planned(
-    state: &mut AppState,
-    id: JobId,
-    answer: Result<Arc<Planned>, PreviewFailure>,
-) {
-    if state.rewrite.stale.remove(&id) {
-        return;
-    }
-    let Some(editor) = state.rewrite.editor.as_mut() else {
-        return;
-    };
-    let After::Pending { job, asked } = &editor.after else {
-        return;
-    };
-    if *job != id {
-        return;
-    }
-    let asked = asked.clone();
-    editor.after = match answer {
-        Ok(planned) => After::Ready { planned, asked },
-        Err(PreviewFailure::Refused(refusal)) => {
-            let op = graft_ops::operation::Operation::Rewrite(asked);
-            After::Refused(words::status_words(&super::operate::refusal_status(
-                &op, &refusal,
-            )))
-        }
-        Err(PreviewFailure::Failed(why)) => After::Failed(why),
-    };
-}
-
-/// `⏎`'s file list answered.
-pub(crate) fn files_listed(state: &mut AppState, id: JobId, answer: Result<Arc<FileList>, String>) {
-    if state.rewrite.stale.remove(&id) {
-        return;
-    }
-    let Some(editor) = state.rewrite.editor.as_mut() else {
-        return;
-    };
-    if let Right::Changes { files, .. } = &mut editor.right
-        && *files == Loading::Pending(id)
-    {
-        *files = match answer {
-            Ok(list) => Loading::Ready(list),
-            Err(why) => Loading::Failed(why),
-        };
-    }
-}
-
-/// `$EDITOR` came back with the whole message (`Ctrl+E` in the field): it
-/// becomes the row's message, as `⏎` in the field would, and replans.
-pub(crate) fn message_returned(
-    state: &mut AppState,
-    commands: &mut Vec<Command>,
-    id: JobId,
-    answer: Result<String, String>,
-    next_id: &mut impl FnMut() -> JobId,
-) {
-    if state.rewrite.stale.remove(&id) {
-        return;
-    }
-    let Some(mut editor) = state.rewrite.editor.take() else {
-        return;
-    };
-    let ours = editor
-        .field
-        .as_ref()
-        .is_some_and(|field| field.handover == Some(id));
-    if ours {
-        match answer {
-            Ok(text) => {
-                let message = format!("{}\n", text.trim_end_matches('\n'));
-                keys::keep_message(state, &mut editor, message, commands, next_id);
-            }
-            Err(why) => {
-                if let Some(field) = editor.field.as_mut() {
-                    field.handover = None;
-                }
-                editor.notice = Some(why);
-            }
-        }
-    }
-    state.rewrite.editor = Some(editor);
-}
-
-/// A job ended with no answer (cancelled, or failed as a job): whatever
-/// waited on it stops waiting, in words where it was the user's.
-pub(crate) fn job_ended(state: &mut AppState, id: JobId, why: &str) {
-    if state.rewrite.stale.remove(&id) {
-        return;
-    }
-    if state.rewrite.opening == Some(id) {
-        state.rewrite.opening = None;
-        state.rewrite.opening_from = None;
-        if matches!(state.status, Status::Waiting(_)) {
-            state.status = Status::Ready;
-        }
-        return;
-    }
-    let Some(editor) = state.rewrite.editor.as_mut() else {
-        return;
-    };
-    if matches!(&editor.after, After::Pending { job, .. } if *job == id) {
-        editor.after = After::Failed(why.to_owned());
-    }
-    if let Right::Changes { files, .. } = &mut editor.right
-        && *files == Loading::Pending(id)
-    {
-        *files = Loading::Failed(why.to_owned());
-    }
-    if let Some(field) = editor.field.as_mut()
-        && field.handover == Some(id)
-    {
-        field.handover = None;
-        editor.notice = Some(why.to_owned());
-    }
-}
-
-/// The write `y` launched answered (`operate::operated`, first): a refusal
-/// brings the editor back with the words on its notice row (R1 "Refused at
-/// apply: stays in the editor"); anything else — done, stopped, failed —
-/// ends it.
-pub(crate) fn write_answered(state: &mut AppState, answer: &Operated) {
-    let Some(mut editor) = state.rewrite.launched.take() else {
-        return;
-    };
-    if let Operated::Failed {
-        refused: Some(refusal),
-        ..
-    } = answer
-    {
-        let op = match &editor.after {
-            After::Ready { asked, .. } => graft_ops::operation::Operation::Rewrite(asked.clone()),
-            _ => graft_ops::operation::Operation::Rewrite(editor.opened.clone()),
-        };
-        editor.notice = Some(words::status_words(&super::operate::refusal_status(
-            &op, refusal,
-        )));
-        state.rewrite.editor = Some(editor);
     }
 }
 

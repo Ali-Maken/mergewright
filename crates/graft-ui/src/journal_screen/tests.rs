@@ -1,0 +1,357 @@
+use graft_core::capabilities::ColorDepth;
+use graft_term::sanitize::sanitize;
+use ratatui::Terminal;
+use ratatui::backend::TestBackend;
+
+use super::*;
+use crate::test_support::terminal as test_capabilities;
+use crate::theme::ThemeKind;
+
+fn theme() -> Theme {
+    Theme::new(
+        ThemeKind::Dark,
+        &test_capabilities(ColorDepth::TrueColor, false),
+    )
+}
+
+fn row(age: &str, description: &str, mark: RowMark) -> JournalRowView {
+    JournalRowView {
+        age: sanitize(age),
+        description: sanitize(description),
+        summary: sanitize("backup saved"),
+        mark,
+        commands: vec![sanitize("git commit -F -")],
+        ..JournalRowView::default()
+    }
+}
+
+fn outside(age: &str, words: &str, subject: &str) -> JournalRowView {
+    JournalRowView {
+        age: sanitize(age),
+        description: sanitize(words),
+        kind: RowKind::Outside,
+        git_subject: Some(sanitize(subject)),
+        ..JournalRowView::default()
+    }
+}
+
+fn lost(words: &str, under: usize) -> JournalRowView {
+    JournalRowView {
+        description: sanitize(words),
+        kind: RowKind::Lost,
+        under: Some(under),
+        ..JournalRowView::default()
+    }
+}
+
+/// The drawn grid, one string per line, trailing blanks trimmed.
+fn draw(view: &JournalView, width: u16, height: u16) -> Vec<String> {
+    let theme = theme();
+    let mut terminal =
+        Terminal::new(TestBackend::new(width, height)).expect("the test backend starts");
+    terminal
+        .draw(|frame| {
+            frame.render_widget(
+                JournalScreen {
+                    view,
+                    theme: &theme,
+                },
+                frame.area(),
+            );
+        })
+        .expect("the widget draws");
+    let buffer = terminal.backend().buffer().clone();
+    (0..height)
+        .map(|y| {
+            (0..width)
+                .map(|x| buffer[(x, y)].symbol())
+                .collect::<String>()
+                .trim_end()
+                .to_owned()
+        })
+        .collect()
+}
+
+fn view(rows: Vec<JournalRowView>, status: JournalStatus) -> JournalView {
+    JournalView {
+        location: sanitize("~/code/api"),
+        rows,
+        selected: 0,
+        status,
+        title_suffix: None,
+        status_row: None,
+        enter_words: None,
+        box_open: false,
+    }
+}
+
+/// J1's mock-up rows: a fetch, the shell's reset with its lost commit
+/// under it, a shell switch with the lost spike tip, Graft's switch.
+fn mock_rows() -> Vec<JournalRowView> {
+    vec![
+        JournalRowView {
+            summary: sanitize("remote-tracking refs · not undoable"),
+            ..row("2m ago", "fetch all remotes", RowMark::None)
+        },
+        outside(
+            "5m ago",
+            "reset main 1 commit back",
+            "reset: moving to HEAD~1",
+        ),
+        lost(
+            "9a8b7c6 \"Add rate limiter\" · was main's tip · no branch holds it",
+            1,
+        ),
+        outside(
+            "9m ago",
+            "switch from spike to main",
+            "checkout: moving from spike to main",
+        ),
+        lost(
+            "4d5e6f7 \"Try redis cache\" · was spike's tip · spike is gone",
+            3,
+        ),
+        row("40m ago", "switch from main to spike", RowMark::NextUndo),
+    ]
+}
+
+#[test]
+fn the_next_undo_row_says_so_in_text_not_in_colour() {
+    let view = view(
+        vec![
+            row("2m ago", "commit \"Add OAuth\"", RowMark::NextUndo),
+            row("1h ago", "stage src/a.rs", RowMark::None),
+        ],
+        JournalStatus::Ready,
+    );
+    let grid = draw(&view, 60, 8);
+    assert!(grid[0].starts_with("JOURNAL · "), "{grid:?}");
+    assert!(grid[1].contains("2m ago"), "{grid:?}");
+    assert!(grid[1].contains("← u"), "{grid:?}");
+    assert!(
+        !grid[2].contains('←'),
+        "only the next one is marked: {grid:?}"
+    );
+}
+
+/// J1: the Command Log is `┆ git …` under `commands Graft ran` — `$`
+/// means only "outside Graft" (UX §3.6). Replaces the `$ git` tests.
+#[test]
+fn the_command_log_uses_the_dotted_rule() {
+    let mut rows = vec![row("2m ago", "commit \"x\"", RowMark::NextUndo)];
+    rows[0].expanded = true;
+    let grid = draw(&view(rows, JournalStatus::Ready), 60, 10);
+    assert!(
+        grid[2].trim_start().starts_with(COMMANDS_HEADING),
+        "{grid:?}"
+    );
+    assert!(
+        grid[3].trim_start().starts_with("┆ git commit -F -"),
+        "{grid:?}"
+    );
+    assert!(
+        !grid.iter().any(|line| line.contains("$ git")),
+        "no `$` in the log: {grid:?}"
+    );
+}
+
+#[test]
+fn an_aborted_rows_reason_is_shown_in_full_when_it_is_expanded() {
+    let mut rows = vec![row("2m ago", "commit \"x\"", RowMark::NextUndo)];
+    rows[0].expanded = true;
+    rows[0].failure = Some(sanitize("failed: hook rejected the commit"));
+    let grid = draw(&view(rows, JournalStatus::Ready), 60, 10);
+    assert!(grid[2].contains("failed: hook rejected"), "{grid:?}");
+    assert!(grid[3].contains(COMMANDS_HEADING), "{grid:?}");
+    assert!(grid[4].contains("┆ git commit"), "{grid:?}");
+}
+
+#[test]
+fn an_empty_journal_says_what_will_fill_it() {
+    let grid = draw(&view(Vec::new(), JournalStatus::Empty), 70, 8);
+    assert!(grid.iter().any(|line| line.contains(EMPTY)), "{grid:?}");
+}
+
+#[test]
+fn a_failed_read_shows_the_reason_rather_than_an_empty_list() {
+    let status = JournalStatus::Failed(sanitize("line 3: unexpected end of input"));
+    let grid = draw(&view(Vec::new(), status), 70, 8);
+    assert!(
+        grid.iter()
+            .any(|line| line.contains("line 3: unexpected end of input")),
+        "{grid:?}"
+    );
+}
+
+#[test]
+fn a_one_row_terminal_draws_the_header_and_nothing_else() {
+    let view = view(
+        vec![row("2m ago", "commit \"x\"", RowMark::NextUndo)],
+        JournalStatus::Ready,
+    );
+    for height in [1, 2, 3] {
+        let grid = draw(&view, 40, height);
+        assert!(grid[0].starts_with("JOURNAL"), "{grid:?}");
+    }
+}
+
+/// :848: a row too long for its room is cut at a word with `…`, never
+/// run into the mark (`the woundone`).
+#[test]
+fn a_cut_row_cuts_at_a_word() {
+    let mut long = row("2m ago", "undo: discard the wound", RowMark::Undone);
+    long.summary = sanitize("the index · the working tree · backup saved");
+    let grid = draw(&view(vec![long], JournalStatus::Ready), 70, 8);
+    let line = &grid[1];
+    assert!(line.contains('…'), "{line:?}");
+    assert!(line.ends_with("undone"), "{line:?}");
+    let before_mark = line.trim_end_matches("undone").trim_end();
+    assert!(before_mark.ends_with('…'), "cut before the mark: {line:?}");
+    let kept = before_mark.trim_end_matches('…');
+    assert!(
+        kept.ends_with(|c: char| c.is_alphanumeric()) && !kept.ends_with(' '),
+        "{line:?}"
+    );
+}
+
+#[test]
+fn cut_at_word_keeps_whole_words_and_says_where_it_cut() {
+    assert_eq!(cut_at_word("put main back", 20), "put main back");
+    assert_eq!(cut_at_word("put main back to it", 12), "put main…");
+    assert_eq!(cut_at_word("unbreakable", 5), "unbr…");
+    assert_eq!(cut_at_word("a   b   c", 6), "a   b…");
+}
+
+/// J1's breakpoints: at 180 and wider every column, the `git:` column
+/// on `$` rows; the `✗` row indented `└ ✗ lost` under its event.
+#[test]
+fn at_180_every_column_is_drawn() {
+    let mut view = view(mock_rows(), JournalStatus::Ready);
+    view.selected = 2;
+    let grid = draw(&view, 187, 14);
+    assert!(grid[1].contains("●  Graft"), "{grid:?}");
+    assert!(grid[2].contains("$  outside Graft"), "{grid:?}");
+    assert!(
+        grid[2].contains("git: \"reset: moving to HEAD~1\""),
+        "{grid:?}"
+    );
+    assert!(grid[3].starts_with("▸    └ ✗ lost"), "{grid:?}");
+    assert!(grid[3].contains("9a8b7c6 \"Add rate limiter\""), "{grid:?}");
+    assert!(grid.iter().any(|line| line.contains(LEGEND)), "{grid:?}");
+    assert!(grid.iter().any(|line| line.contains(NO_TRACE)), "{grid:?}");
+}
+
+/// 120–179: no `git:` column; the selected `$` row shows it under it.
+#[test]
+fn at_140_the_selected_shell_rows_subject_is_under_it() {
+    let mut view = view(mock_rows(), JournalStatus::Ready);
+    view.selected = 1;
+    let grid = draw(&view, 140, 14);
+    assert!(grid[2].contains("outside Graft"), "{grid:?}");
+    assert!(!grid[2].contains("git:"), "{grid:?}");
+    assert!(
+        grid[3]
+            .trim_start()
+            .starts_with("git: \"reset: moving to HEAD~1\""),
+        "{grid:?}"
+    );
+    assert!(
+        !grid.iter().any(|line| line.contains("checkout: moving")),
+        "only the selected row's: {grid:?}"
+    );
+}
+
+/// Under 120: no source word; the legend carries it.
+#[test]
+fn under_120_there_is_no_source_word() {
+    let view = view(mock_rows(), JournalStatus::Ready);
+    let grid = draw(&view, 100, 14);
+    assert!(!grid[1].contains("Graft"), "{grid:?}");
+    assert!(!grid[2].contains("outside Graft"), "{grid:?}");
+    assert!(grid[2].contains("$  5m ago"), "{grid:?}");
+    assert!(
+        grid.iter().any(|line| line.starts_with("● done in Graft")),
+        "{grid:?}"
+    );
+}
+
+/// At 24 rows the title, the legend, the status row and the bar stay;
+/// the rows scroll so the cursor's row is on screen.
+#[test]
+fn at_24_rows_the_frame_stays_and_the_rows_scroll() {
+    let mut rows = Vec::new();
+    for n in 0..30 {
+        rows.push(row(
+            &format!("{n}m ago"),
+            &format!("stage file{n}"),
+            RowMark::None,
+        ));
+    }
+    let mut view = view(rows, JournalStatus::Ready);
+    view.selected = 29;
+    view.status_row = Some(JournalStatusRow {
+        words: "nothing to undo".to_owned(),
+        problem: true,
+    });
+    view.enter_words = Some("⏎ revert to before this".to_owned());
+    let grid = draw(&view, 187, 24);
+    assert!(grid[0].starts_with("JOURNAL"), "{grid:?}");
+    assert!(grid[23].starts_with("⏎ revert to before this"), "{grid:?}");
+    assert!(grid[22].starts_with("● done in Graft"), "{grid:?}");
+    assert_eq!(grid[21], "nothing to undo", "{grid:?}");
+    assert!(
+        grid[20].starts_with("▸ ") && grid[20].contains("stage file29"),
+        "the cursor's row is on screen: {grid:?}"
+    );
+}
+
+/// The status rule: no status row, no line for it.
+#[test]
+fn no_status_row_when_nothing_is_wrong() {
+    let view = view(mock_rows(), JournalStatus::Ready);
+    let grid = draw(&view, 187, 14);
+    assert!(grid[12].starts_with("● done in Graft"), "{grid:?}");
+    assert!(
+        grid[11].is_empty() || grid[11].contains(NO_TRACE),
+        "{grid:?}"
+    );
+}
+
+/// The bar is per row: `⏎`'s words for this row, `b` where the row
+/// names a commit, the log where there is one.
+#[test]
+fn the_bar_follows_the_selected_row() {
+    let mut view = view(mock_rows(), JournalStatus::Ready);
+    view.selected = 2;
+    view.enter_words = Some("⏎ put main back to it".to_owned());
+    let grid = draw(&view, 187, 14);
+    assert_eq!(
+        grid[13],
+        "⏎ put main back to it  b new branch here  J/esc close"
+    );
+    view.selected = 0;
+    view.enter_words = None;
+    let grid = draw(&view, 187, 14);
+    assert_eq!(grid[13], "space command log  J/esc close");
+}
+
+/// A box docked over J names the keys; J's bar is blank under it.
+#[test]
+fn the_bar_is_blank_while_a_box_is_open() {
+    let mut view = view(mock_rows(), JournalStatus::Ready);
+    view.box_open = true;
+    view.enter_words = Some("⏎ undo this".to_owned());
+    let grid = draw(&view, 187, 14);
+    assert!(grid[13].is_empty(), "{grid:?}");
+}
+
+#[test]
+fn the_title_says_while_the_scan_runs() {
+    let mut view = view(mock_rows(), JournalStatus::Ready);
+    view.title_suffix = Some("finding lost commits…".to_owned());
+    let grid = draw(&view, 187, 14);
+    assert_eq!(
+        grid[0],
+        "JOURNAL · what happened in this repo, newest first · finding lost commits…"
+    );
+}
