@@ -279,3 +279,4 @@ Rows whose expiry was M6, closed with the evidence named inline. Re-expired and 
 | M7/03b-count | Pull journey row in fence | closed 2026-09-28: design note Journeys row 17 + fence `pull-current-branch 1` (researcher, 1de4dafb) |
 | M7/10-cp-walk | cherry-pick-other-branch walk | closed 2026-09-28: 11 `m7_walk/picker.rs::cherry_pick_other_branch` = 6 (9bf4c9eb) |
 | M6/71, M6/u2 (cherry-pick 4 keys), M7/r0921-min | closed 2026-09-28: slot 2 dims on HEAD/merges and `o y` = 2 (11, 9bf4c9eb); `C` picker (10); 07b and 30k landed (review m7-10-to-07c Minor 6) |
+| M7/r24-m14 | `find_lost`'s Err arm now explicit and names where the failure shows (30o-b; review m7-30m-30o minor 4) | closed 2026-09-30 |

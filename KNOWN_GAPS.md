@@ -1025,7 +1025,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r24-m9 | J widget text fields are `String` not `SanitizedText` (journal_screen.rs:137,155,160; callers do sanitise; minor 9) | **broken** (types) | M7 |
 | M7/r24-m10 | ARCHITECTURE.md journal-browser entry misses M7 modules: update::recover, jobs::journal_list, ops::journal_list, Landing (minor 10) | **broken** (doc) | M7 |
 | M7/r24-m12 | NOTES of 24-0, 24-a2, 24-b, 30n carry no Touches line; hint_bar.rs J-bar tests untouched though 24-b listed them (minor 12) | **unverified** | M7 |
-| M7/r24-m14 | `find_lost` drops a failed subject read (jobs/journal_list.rs:78-84), surfacing only as the row placeholder (minor 14; tied to 30o's minor 5 fix) | **broken** (minor) | M7 |
 | M7/r24-q1 | `R` on graph then `J` during the read: J's status row shows `rewrite editor not opened · another box was open` (rewrite_editor.rs:552; review Q1). Intended? | **unverified** (question) | M7 |
 | M7/24-legend | J legend `● done in Graft: u can undo it` is also shown for a fetch row `u` can't undo; legend's `✗` covers lost edits too (24-b NOTES; 30o out of scope) | **broken** (words) | M7 |
 | M7/30m-left | Still over ~400 lines after 30m: graft `update/keys.rs` 438, graft-ui `hints/lists.rs` 485, `update/preview.rs` 423, `operate/outcome.rs` 420 (30m NOTES) | **broken** (6.2) | M8 |
@@ -1035,3 +1034,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/30o-c-paste | Paste goes into J's find; blame's find drops pastes — same field, different behaviour (30o-c NOTES) | **broken** (consistency) | M7 |
 | M7/30o-c-nN | In J with no find of its own, an active graph search takes `n`/`N` instead of the `✗`-row jump (pre-existing; 30o-c NOTES) | **unverified** (question) | M7 |
 | M7/30o-c-red | `hits` tests and the `u`-is-text trap red by mutation only; `esc_while_typing` green on HEAD (30o-c NOTES) | **unverified** | M7 |
+| M7/r30o-m3 | Files 30m just split are over ~400 again: graft-ui `journal_screen.rs` 429, `update/journal/keys.rs` 402, `update/keys.rs` 446, `update/preview.rs` 429 (review M3, docs/reviews/m7-30m-30o.md); with 30m-left | **broken** (6.2) | M8 |
+| M7/r30o-m5 | 30o-a NOTES have no Touches line (review minor 5) | **unverified** | M7 |
+| M7/r30o-q2 | Should a `$` row on a remote-tracking ref be found by the short name J draws? `names` strips only `refs/heads/` (review Q2) | **unverified** (question) | M7 |
