@@ -8,8 +8,11 @@
 //!   tip still at `expected`.
 //! - `Recreate`: `branch <name> <at>`.
 //! - `Files`: `restore --source=<backup tree> --worktree -- <paths>`. The
-//!   index is untouched, and a path with his own changes is refused rather
-//!   than set aside: the edit *is* the file.
+//!   index is untouched. A path with his own changes is written over, not
+//!   refused or set aside (the edit *is* the file): the entry's
+//!   before-snapshot keeps what it replaced, and the preview names it
+//!   (`FilesEffect::Changes::replaced`, m7/30o R1). An ignored file there,
+//!   which the snapshot can't hold, is refused by `in_the_way`.
 //!
 //! `u` is the generic inverse from the entry's before-fields: the branch
 //! back to `expected`, the made branch deleted, the files back from this
@@ -110,6 +113,12 @@ pub enum FilesEffect {
         go: Vec<PathBuf>,
         /// How many changed files of his are set aside and put back after.
         set_aside: usize,
+        /// His changed files the write goes over: `what's in src/a.rs now is
+        /// replaced`. A file put-back's paths changed against `HEAD`
+        /// (staged, unstaged or untracked); its entry's before-snapshot
+        /// keeps them, so `u` brings them back (m7/30o R1). Empty for every
+        /// other put-back.
+        replaced: Vec<PathBuf>,
     },
 }
 
@@ -160,8 +169,8 @@ pub(super) fn describe(params: &RecoverParams) -> String {
 }
 
 /// The branch still where the list saw it (the compare-and-swap, before
-/// anything runs), the commit not held again, the name free, his files not
-/// in the way.
+/// anything runs), the commit not held again, the name free, a file
+/// put-back with something to put back.
 pub(super) fn check(params: &RecoverParams, facts: &RepoFacts) -> Result<(), Refusal> {
     match &params.target {
         RecoverTarget::MoveRef { name, to, expected } => {
@@ -189,23 +198,16 @@ pub(super) fn check(params: &RecoverParams, facts: &RepoFacts) -> Result<(), Ref
             new_ref(&branch_ref(name), name, facts)
         }
         RecoverTarget::Files { paths, .. } => {
+            // His changes at these paths are written over, not refused:
+            // the entry's before-snapshot keeps them (tracked content and
+            // untracked files), so `u` brings them back, and the preview
+            // names them (`FilesEffect::Changes::replaced`, m7/30o R1). An
+            // ignored file there the snapshot can't hold: `in_the_way`
+            // refuses that, in the preview and again at `y`.
             if paths.is_empty() {
-                return Err(Refusal::NoPutBack(NoPutBack::Nothing));
-            }
-            // Staged, unstaged or untracked: the restore writes over the
-            // file on disk, so any of the three would be lost by it.
-            let changed: Vec<PathBuf> = facts
-                .status
-                .entries
-                .iter()
-                .filter(|entry| entry.is_staged() || entry.is_unstaged() || entry.untracked)
-                .filter(|entry| paths.contains(&entry.path))
-                .map(|entry| entry.path.clone())
-                .collect();
-            if changed.is_empty() {
-                Ok(())
+                Err(Refusal::NoPutBack(NoPutBack::Nothing))
             } else {
-                Err(Refusal::UnsavedEditsTo { paths: changed })
+                Ok(())
             }
         }
     }

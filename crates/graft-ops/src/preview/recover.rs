@@ -66,6 +66,7 @@ pub(super) fn recover(
                 come_back,
                 go,
                 set_aside: 0,
+                replaced: changed_now(paths, facts),
             });
         }
     }
@@ -95,6 +96,7 @@ fn reset_effect(
             come_back,
             go,
             set_aside,
+            replaced: Vec::new(),
         }),
     ))
 }
@@ -111,6 +113,23 @@ fn set_aside_count(params: &RecoverParams, facts: &RepoFacts) -> usize {
     crate::operation::Operation::Recover(params.clone())
         .sets_aside(facts)
         .map_or(0, |aside| aside.files)
+}
+
+/// Which of `paths` he has changed against `HEAD` — staged, unstaged or
+/// untracked — in `paths`' order: what a file put-back writes over, and its
+/// entry's before-snapshot keeps (m7/30o R1). An ignored file there never
+/// gets here: `in_the_way` refused it first.
+fn changed_now(paths: &[PathBuf], facts: &RepoFacts) -> Vec<PathBuf> {
+    paths
+        .iter()
+        .filter(|path| {
+            facts.status.entries.iter().any(|entry| {
+                entry.path == **path
+                    && (entry.is_staged() || entry.is_unstaged() || entry.untracked)
+            })
+        })
+        .cloned()
+        .collect()
 }
 
 /// Present afterwards → comes back; absent → goes.

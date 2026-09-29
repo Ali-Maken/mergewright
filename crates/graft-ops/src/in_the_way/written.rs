@@ -13,7 +13,8 @@ use super::reads::{diff_tree, head, listed, names, parents_of, unborn};
 use super::replay::replayed_paths;
 use crate::facts::FactsError;
 use crate::operation::{
-    CheckoutTarget, Operation, RecoverTarget, RepoFacts, ResetMode, ResetTarget, branch_ref,
+    CheckoutTarget, Operation, RecoverParams, RecoverTarget, RepoFacts, ResetMode, ResetTarget,
+    branch_ref,
 };
 
 /// Every path the operation writes. `Ok(None)` = the kind writes no path
@@ -45,6 +46,13 @@ pub(super) fn written_paths(
             Some(tip) => incoming(repo, facts, tip, stop)?,
             None => BTreeSet::new(),
         },
+        // A file put-back writes exactly its paths. Tracked ones drop out
+        // in `blocking`; what is left is his, untracked or ignored (m7/30o
+        // R1: `refused` lets the untracked through, the snapshot keeps them).
+        Operation::Recover(RecoverParams {
+            target: RecoverTarget::Files { paths, .. },
+            ..
+        }) => paths.iter().cloned().collect(),
         Operation::Reset(_) | Operation::Recover(_) => match hard_reset_to(op, facts) {
             Some(to) => hard_reset(repo, to, stop)?,
             None => return Ok(None),
@@ -65,10 +73,9 @@ pub(super) fn written_paths(
 }
 
 /// Where a `reset --hard` lands: a hard reset's target, or a put-back of
-/// the checked-out branch. `None` for a soft or mixed reset, a put-back of
-/// a branch not checked out (an `update-ref` writes no file) and a file
-/// put-back (it writes only paths the backup holds, over his edits `check`
-/// already refuses).
+/// the checked-out branch. `None` for a soft or mixed reset and a put-back
+/// of a branch not checked out (an `update-ref` writes no file). A file
+/// put-back never gets here: `written_paths` answers it with its paths.
 fn hard_reset_to(op: &Operation, facts: &RepoFacts) -> Option<Oid> {
     match op {
         Operation::Reset(params) => match &params.target {

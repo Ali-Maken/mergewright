@@ -803,13 +803,6 @@ pub enum Refusal {
     },
     /// The row has no put-back of its own, and why.
     NoPutBack(NoPutBack),
-    /// A file put-back over files with changes of his own — staged,
-    /// unstaged or untracked: the restore would write over them, and there
-    /// is no set-aside here, since the edit *is* the file (m7/23).
-    UnsavedEditsTo {
-        /// The files in the way.
-        paths: Vec<PathBuf>,
-    },
     /// Files git doesn't keep stand where the operation would write its own
     /// (ADR-0049): git would write over them, and the backup can't hold an
     /// ignored one. Read by [`crate::in_the_way::blocking`], in the preview
@@ -1088,13 +1081,6 @@ impl Refusal {
                 format!("this step made {name} · there was nothing before it to go back to")
             }
             Self::NoPutBack(NoPutBack::Nothing) => "nothing here to put back".to_owned(),
-            Self::UnsavedEditsTo { paths } => {
-                let verb = if paths.len() == 1 { "has" } else { "have" };
-                format!(
-                    "{} {verb} unsaved edits · c commits or S stashes them first",
-                    name_paths(paths)
-                )
-            }
             Self::InTheWay {
                 doing,
                 ignored,

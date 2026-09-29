@@ -156,8 +156,9 @@ pub(crate) fn preview_lines(
 
 /// `your files: …` from the plan's [`FilesEffect`]: `unchanged (main isn't
 /// checked out)`, or the clauses that apply joined by ` · ` —
-/// `src/a.rs comes back`, `src/b.rs +2 more go`, `1 unsaved file set
-/// aside, put back after` — and `unchanged` when none does.
+/// `src/a.rs comes back`, `src/b.rs +2 more go`, `what's in src/a.rs now
+/// is replaced`, `1 unsaved file set aside, put back after` — and
+/// `unchanged` when none does.
 pub(crate) fn files_words(effect: &FilesEffect) -> String {
     let clauses = match effect {
         FilesEffect::Unchanged { not_checked_out } => {
@@ -167,10 +168,12 @@ pub(crate) fn files_words(effect: &FilesEffect) -> String {
             come_back,
             go,
             set_aside,
+            replaced,
         } => {
             let mut clauses: Vec<String> = [
                 listed(come_back, "comes back", "come back"),
                 listed(go, "goes", "go"),
+                replaced_words(replaced),
             ]
             .into_iter()
             .flatten()
@@ -187,6 +190,17 @@ pub(crate) fn files_words(effect: &FilesEffect) -> String {
         return "your files: unchanged".to_owned();
     }
     format!("your files: {}", clauses.join(" \u{b7} "))
+}
+
+/// `what's in src/a.rs now is replaced` / `what's in src/a.rs +N more now
+/// is replaced` (m7/30o R1): his changes a file put-back writes over. No
+/// key named: the box's last line is already `u undoes it`.
+fn replaced_words(paths: &[std::path::PathBuf]) -> Option<String> {
+    let first = paths.first()?.to_string_lossy();
+    Some(match paths.len() {
+        1 => format!("what's in {first} now is replaced"),
+        count => format!("what's in {first} +{} more now is replaced", count - 1),
+    })
 }
 
 /// `<p> comes back` / `<p> +N more come back`; `None` for no paths.

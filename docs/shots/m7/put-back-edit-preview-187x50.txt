@@ -1,0 +1,50 @@
+JOURNAL · what happened in this repo, newest first
+  ●  Graft          now       made spike again at 419e109 (the shell's…    1 ref                                                                                                       ← u
+  ●  Graft          now       put main back to a65d7e4 (the shell's reset) 2 refs · the index · the working tree · backup saved
+  ●  Graft          now       fetch origin                                 remote-tracking refs · not undoable
+  $  outside Graft  4m ago    reset main 1 commit back                           git: "reset: moving to HEAD~1"
+  $  outside Graft  8m ago    switch from spike to main                          git: "checkout: moving from spike to main"
+  $  outside Graft  24m ago   committed "Try redis cache" on spike               git: "commit: Try redis cache"
+  $  outside Graft  27m ago   switch from main to spike                          git: "checkout: moving from main to spike"
+  ●  Graft          28m ago   undo: discard src/a.rs                       the index · the working tree · backup saved
+▸    └ ✗ lost       your edit to src/a.rs · replaced by this undo · kept in its backup
+  ●  Graft          29m ago   discard src/a.rs                             the index · the working tree · backup saved                                                              undone
+  $  outside Graft  30m ago   committed "Add rate limiter" on main               git: "commit: Add rate limiter"
+  $  outside Graft  31m ago   committed "Add metrics endpoint" on main           git: "commit: Add metrics endpoint"
+  $  outside Graft  32m ago   committed "Add request logging" on main            git: "commit: Add request logging"
+  $  outside Graft  33m ago   committed "Start the api" on main                  git: "commit (initial): Start the api"
+  a branch deleted outside Graft and never checked out leaves no trace here
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: put back your edit to src/a.rs ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ your files: src/a.rs comes back · what's in src/a.rs now is replaced                                                                                                                    │
+│ u undoes it                                                                                                                                                                             │
+│ git --literal-pathspecs restore --source=9955b078873890a8ba809d90f81a2df856c4b2ad --worktree -- src/a.rs                                                                                │
+│ ▸[ Cancel ]   [ Put back ]                                                                                                                                                              │
+╰ y put it back  ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
