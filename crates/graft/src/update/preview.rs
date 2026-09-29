@@ -23,6 +23,7 @@
 //! one operation two ways.
 
 mod line_rows;
+pub(crate) use line_rows::onto_label;
 pub mod slice;
 
 use std::collections::{HashMap, HashSet};
@@ -34,9 +35,10 @@ use graft_core::job::JobId;
 use graft_core::journal::EntryId;
 use graft_core::oid::Oid;
 use graft_graph::row::Row;
-use graft_ops::operation::{Operation, PickParams, Source, Tip};
+use graft_ops::operation::{Operation, PickParams, RebaseParams, Source, Tip};
 use graft_ops::preview::{
-    ConflictForecast, GhostCommit, HeadMove, PreviewPlan, RefMove, Target, UndoNote, WorktreeEffect,
+    ConflictForecast, DropSuggestion, GhostCommit, HeadMove, PreviewPlan, RefMove, Target,
+    UndoNote, WorktreeEffect,
 };
 use graft_term::{SanitizedText, sanitize_line};
 use graft_ui::preview_box::{PREVIEW_MIN, PreviewBox, preview_rows};
@@ -425,6 +427,16 @@ pub fn preview_key(
         confirm_by_key(state, commands, next_id);
         return true;
     }
+    if key.code == KeyCode::Char('R') && !key.modifiers.control && !key.modifiers.alt {
+        // `R` keeps a suggested drop: the rewrite editor on this very
+        // rebase, its drops marked. Live only where `keeps_drops` says;
+        // anywhere else swallowed like every other key.
+        if let Some(params) = keeps_drops_here(state).cloned() {
+            close_preview(state, commands);
+            super::rewrite_editor::open_rewrite_from_rebase(state, commands, next_id, params);
+        }
+        return true;
+    }
     match key.code {
         KeyCode::Left => preview.cursor = preview.cursor.saturating_sub(1),
         KeyCode::Right | KeyCode::Tab | KeyCode::BackTab => {
@@ -456,6 +468,34 @@ fn confirm_key(key: KeyPress, opened_by: &str) -> bool {
     again == opened_by
 }
 
+/// The rebase `R` opens the rewrite editor on from this preview
+/// (rebase-preview-keeps-drops): `Some` exactly when `subject` is a rebase
+/// whose plan suggests drops (`already_in` is `Drop`) and whose as-run op
+/// carries them, of the branch `HEAD` is on (`head_branch`, a full ref
+/// name). The key, the `R to keep them` row and the footer's `R keep` all
+/// ask this, so none of them names a key the others would not answer.
+pub(crate) fn keeps_drops<'a>(
+    subject: &'a PreviewSubject,
+    plan: &PreviewPlan,
+    head_branch: Option<&str>,
+) -> Option<&'a RebaseParams> {
+    let Some(Operation::Rebase(params)) = subject.operation() else {
+        return None;
+    };
+    let suggested = matches!(plan.already_in, Some(DropSuggestion::Drop(_)));
+    (suggested && !params.drops.is_empty() && head_branch == Some(params.branch.name.as_str()))
+        .then_some(params)
+}
+
+/// [`keeps_drops`] for the open preview: its landed plan, and the branch
+/// `HEAD` is on as the refs read it. `None` while the plan is out.
+fn keeps_drops_here(state: &AppState) -> Option<&RebaseParams> {
+    let preview = state.preview.as_ref()?;
+    let planned = preview.planned()?;
+    let head = state.refs.as_deref().and_then(current_branch)?;
+    keeps_drops(&preview.subject, &planned.plan, Some(&head.name))
+}
+
 /// A confirm key: `Confirm` wherever the cursor is, but only over a picture
 /// that is on screen, landed and able to act. Otherwise swallowed, and the
 /// box stays open — unlike `Enter` on `Cancel`, a confirm key never closes
@@ -484,10 +524,14 @@ fn confirm_by_key(
 /// planning, where the key is waiting for the picture rather than dead. A
 /// closing box and a can't-act plan name neither (`02-keymap.md:111`,
 /// review m6-amend-11-12 Minor 1).
-fn footer_keys(mut view: PreviewBox, preview: &PreviewState) -> PreviewBox {
+///
+/// `keep` draws `R keep` after them, exactly when `R` is live
+/// ([`keeps_drops`]).
+fn footer_keys(mut view: PreviewBox, preview: &PreviewState, keep: bool) -> PreviewBox {
     if !(preview.acts() || preview.planning()) {
         return view;
     }
+    view.keep = keep;
     // A stash put-back names its confirm by its verb, `y apply` / `y pop`
     // (m6-conflicts/86), through the same footer slot `m merge` uses. `y`
     // is the key either way (`confirm_key`); the opening key is never a
@@ -862,6 +906,7 @@ pub fn preview_box(state: &AppState) -> Option<PreviewBox> {
                 ready_box(
                     &planned.plan,
                     preview.subject.operation(),
+                    keeps_drops_here(state).is_some(),
                     preview.clipped,
                     state.size.columns,
                 )
@@ -872,7 +917,8 @@ pub fn preview_box(state: &AppState) -> Option<PreviewBox> {
     if let Some(title) = preview.subject.operation().and_then(take_title_of) {
         view.title = sanitize_line(&format!("Preview: {title}"));
     }
-    let view = put_in_words(footer_keys(view, preview), state, preview);
+    let keep = keeps_drops_here(state).is_some();
+    let view = put_in_words(footer_keys(view, preview, keep), state, preview);
     Some(with_cursor(view, preview.cursor))
 }
 
@@ -1027,10 +1073,11 @@ fn closing_box(line: &str, subject: &PreviewSubject) -> PreviewBox {
 
 /// The box for a plan that landed, for a frame `columns` wide. `op` is the
 /// operation it was planned for, when it is one: a rebase or rewrite draws
-/// its line (m7/05).
+/// its line (m7/05). `keeps`: `R` is live, and the already-in row says so.
 fn ready_box(
     plan: &PreviewPlan,
     op: Option<&Operation>,
+    keeps: bool,
     clipped: usize,
     columns: u16,
 ) -> PreviewBox {
@@ -1040,7 +1087,7 @@ fn ready_box(
     } else {
         PreviewBox::new(title)
     };
-    view.lines = plan_lines(plan, op, clipped, columns);
+    view.lines = plan_lines(plan, op, keeps, clipped, columns);
     view.commands = plan
         .commands
         .iter()
@@ -1127,6 +1174,7 @@ fn planning_title(subject: &PreviewSubject) -> String {
 fn plan_lines(
     plan: &PreviewPlan,
     op: Option<&Operation>,
+    keeps: bool,
     clipped: usize,
     columns: u16,
 ) -> Vec<SanitizedText> {
@@ -1137,7 +1185,7 @@ fn plan_lines(
     } else {
         lines.extend(plan.ref_moves.iter().map(|moved| ref_line(plan, moved)));
     }
-    lines.extend(line_rows::already_in_row(plan, op));
+    lines.extend(line_rows::already_in_row(plan, op, keeps));
     lines.extend(head_line(plan));
     lines.push(worktree_line(&plan.worktree));
     // The edits a rebase or checkout sets aside and puts back after
@@ -1635,9 +1683,7 @@ fn build(which: HistoryKey, current: Tip, source: Source, tip: Oid) -> Operation
             source_tip: tip,
             ff: graft_ops::operation::FastForward::Default,
         }),
-        HistoryKey::Rebase => Operation::Rebase(graft_ops::operation::RebaseParams::new(
-            current, source, tip,
-        )),
+        HistoryKey::Rebase => Operation::Rebase(RebaseParams::new(current, source, tip)),
     }
 }
 

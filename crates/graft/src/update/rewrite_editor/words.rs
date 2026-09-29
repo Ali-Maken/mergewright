@@ -121,7 +121,7 @@ fn rows(editor: &RewriteEditor) -> Vec<RowFacts<'_>> {
                 commit: row.commit,
                 subject,
                 moved: editor.moved.contains(&row.commit),
-                by_name: editor.by_name.contains(&row.commit),
+                marked: editor.by_name.get(&row.commit).copied(),
                 keeps,
                 problem,
             }

@@ -2,15 +2,16 @@
 //! (m7-power-tools/05b): from his branch, the cursor to `main`, `r`, `y`.
 //! The whole line moves as the preview drew it; a bottom branch main already
 //! has (squash-merged) is dropped. A fork is refused before `y`, on the
-//! graph, in words naming both branches.
+//! graph, in words naming both branches. And `keep-a-suggested-drop`
+//! (rebase-preview-keeps-drops): `r R p y` keeps one suggested drop.
 //!
 //! The fixtures are built here, dated so `main`'s tip sorts second, one
 //! row under the cursor's start on the top row: the motion is one key.
 
 use std::path::Path;
 
-use graft::update::AppState;
 use graft::update::detail::Loading;
+use graft::update::{AppState, GraphOverlay};
 use graft_core::event::KeyCode;
 use graft_ops::preview::{PreviewPlan, Target};
 
@@ -81,6 +82,21 @@ pub fn squash_repo() -> tempfile::TempDir {
     git(repo, &["switch", "-q", "main"], 5);
     git(repo, &["merge", "-q", "--squash", "feature-a"], 5);
     git(repo, &["commit", "-q", "-m", "Add OAuth (#42)"], 5);
+    finish(repo);
+    dir
+}
+
+/// [`squash_repo`], and then `main` takes a3's change back out ("Remove
+/// a3"). The squash still matches every commit of `feature-a` (it is
+/// unchanged), so a1–a3 are still suggested as drops; but a3's change is no
+/// longer on `main`, so keeping it re-applies clean and non-empty (ticket
+/// Decided 6). Rows: b1, "Remove a3" (main), the squash, a3, …
+pub fn squash_revert_repo() -> tempfile::TempDir {
+    let dir = squash_repo();
+    let repo = dir.path();
+    git(repo, &["switch", "-q", "main"], 5);
+    git(repo, &["rm", "-q", "a3.txt"], 5);
+    git(repo, &["commit", "-q", "-m", "Remove a3"], 5);
     finish(repo);
     dir
 }
@@ -325,8 +341,9 @@ fn r_over_a_fork_lands_on_the_graph_with_the_words() {
 /// Right: the line's box has a `branches:` label and three rows bottom
 /// first, the two above his marked `built on yours · follows`; the squash
 /// box has `already in main: feature-a's 3 commits match <sha7> "Add OAuth
-/// (#42)" · dropped`, no `R`, one ghost (b1); the fork leaves the graph
-/// with the status line naming feature-b and feature-c.
+/// (#42)" · dropped · R to keep them`, one ghost (b1), and its footer reads
+/// `y confirm  r rebase  R keep  ←→ choose  ⏎ act  esc cancel`; the fork
+/// leaves the graph with the status line naming feature-b and feature-c.
 #[test]
 fn capture_rebase_line() {
     type Fixture = fn() -> tempfile::TempDir;
@@ -351,6 +368,7 @@ fn capture_rebase_line() {
         match name {
             "m7/rebase-line-preview-187x50.txt" => {
                 assert!(body.contains("branches: feature-a "), "{body}");
+                assert!(!body.contains("R keep"), "no suggestion, no key: {body}");
                 assert_eq!(
                     body.matches("built on yours \u{b7} follows").count(),
                     2,
@@ -363,14 +381,171 @@ fn capture_rebase_line() {
                     "{body}"
                 );
                 assert!(
-                    body.contains("\"Add OAuth (#42)\" \u{b7} dropped"),
+                    body.contains("\"Add OAuth (#42)\" \u{b7} dropped \u{b7} R to keep them"),
                     "{body}"
                 );
-                assert!(!body.contains(" R to keep"), "{body}");
+                assert!(
+                    body.contains("y confirm  r rebase  R keep  ←→ choose  ⏎ act  esc cancel"),
+                    "{body}"
+                );
             }
-            _ => assert!(body.contains("feature-b and feature-c"), "{body}"),
+            _ => {
+                assert!(body.contains("feature-b and feature-c"), "{body}");
+                assert!(!body.contains("R keep"), "{body}");
+            }
         }
         drop(state);
         app.close();
     }
+}
+
+// ── `keep-a-suggested-drop` (rebase-preview-keeps-drops) ─────────────────
+
+/// The rewrite editor is up (opened by `R` in the preview) and nothing on
+/// it is still reading or checking.
+fn editor_settled(state: &AppState, columns: u16, rows: u16) -> bool {
+    let screen = frame(state, columns, rows);
+    state.graph_overlay() == Some(GraphOverlay::Rewrite)
+        && screen.contains("REWRITE ")
+        && !screen.contains("checking\u{2026}")
+}
+
+/// `R` in the squash-merged preview: the preview closes and the editor
+/// opens on that rebase, its drops marked.
+fn keep_key(
+    app: &App,
+    state: &AppState,
+    route: &mut Vec<&'static str>,
+    columns: u16,
+    rows: u16,
+) -> AppState {
+    route.push("R");
+    let state = app.key(state, KeyCode::Char('R'));
+    assert!(state.preview.is_none(), "`R` closes the preview");
+    app.pump(state, "the editor opened from the rebase", |state| {
+        editor_settled(state, columns, rows)
+    })
+}
+
+/// Every local branch and its tip, by name.
+fn branch_tips(repo: &Path) -> String {
+    git(
+        repo,
+        &[
+            "for-each-ref",
+            "--format=%(refname) %(objectname)",
+            "refs/heads",
+        ],
+        0,
+    )
+}
+
+/// `keep-a-suggested-drop`: the cursor to main, `r`, `R`, `p`, `y`. The
+/// editor opens on the rebase with a1–a3 marked `d` and the cursor on a3;
+/// `p` keeps a3; `y` lands feature-a as a3 alone on main (a1, a2 dropped),
+/// feature-b following. `u` puts every branch back where it was.
+#[test]
+fn keep_a_suggested_drop() {
+    let dir = squash_revert_repo();
+    let repo = dir.path();
+    let (app, state) = open(repo, 120, 40);
+    let mut route = Vec::new();
+    let state = cursor_to_main(&app, state, &mut route);
+    let state = r(&app, &state, &mut route);
+    let onto_tip = read(repo, "main");
+    let screen = frame(&state, 120, 40);
+    assert!(screen.contains("R to keep them"), "{screen}");
+
+    let state = keep_key(&app, &state, &mut route, 120, 40);
+    let screen = frame(&state, 120, 40);
+    assert_eq!(
+        screen.matches("already in main \u{b7} p keeps it").count(),
+        3,
+        "{screen}"
+    );
+    let cursor_line = screen
+        .lines()
+        .find(|line| line.contains('\u{25b8}'))
+        .unwrap_or_else(|| panic!("a cursor row: {screen}"));
+    assert!(cursor_line.contains(" a3"), "on the newest drop: {screen}");
+
+    let state = letter_replanned(&app, &state, &mut route, 'p', "p", 120, 40);
+    let before = branch_tips(repo);
+    let state = y(&app, &state, &mut route);
+    within("keep-a-suggested-drop", &route);
+
+    // feature-a: a3 alone, straight on main's tip as `R` saw it.
+    let above: Vec<String> = git(repo, &["log", "--format=%s", "main..feature-a"], 0)
+        .lines()
+        .map(str::to_owned)
+        .collect();
+    assert_eq!(
+        above,
+        ["a3"],
+        "the kept commit, and none of the other drops"
+    );
+    assert_eq!(read(repo, "feature-a^"), onto_tip, "parent = main's tip");
+    assert!(
+        repo.join("a3.txt").exists(),
+        "a3 re-applied, not empty (main took it out)"
+    );
+    // feature-b follows, on the new feature-a.
+    assert_eq!(read(repo, "feature-b^"), read(repo, "feature-a"));
+    assert_eq!(
+        git(repo, &["log", "-1", "--format=%s", "feature-b"], 0).trim(),
+        "b1"
+    );
+
+    let state = app.key(&state, KeyCode::Char('u'));
+    let state = app.settle_write(state, "the undo");
+    for line in before.lines() {
+        let (name, tip) = line
+            .split_once(' ')
+            .unwrap_or_else(|| panic!("a ref line: {line}"));
+        assert_eq!(read(repo, name), tip, "`u` puts {name} back");
+    }
+    drop(state);
+    app.close();
+}
+
+/// A letter in the editor, and its replan landed.
+fn letter_replanned(
+    app: &App,
+    state: &AppState,
+    route: &mut Vec<&'static str>,
+    key: char,
+    name: &'static str,
+    columns: u16,
+    rows: u16,
+) -> AppState {
+    route.push(name);
+    let state = app.key(state, KeyCode::Char(key));
+    app.pump(state, "the replan", |state| {
+        editor_settled(state, columns, rows)
+    })
+}
+
+/// The editor as `R` opens it from the squash-merged preview, before `p`
+/// (rule 6: the user judges it; colour unverified). Right: each suggested
+/// row shows 08's drop action and `already in main · p keeps it`; no row
+/// says `marked by its name`; the last row is `─ main` at `onto_tip`; the
+/// cursor `▸` is on the newest drop (a3).
+#[test]
+fn capture_keep_drops_editor() {
+    let dir = squash_repo();
+    let (app, state) = open(dir.path(), 120, 40);
+    let mut route = Vec::new();
+    let state = cursor_to_main(&app, state, &mut route);
+    let state = r(&app, &state, &mut route);
+    let state = keep_key(&app, &state, &mut route, 120, 40);
+    let body = frame(&state, 120, 40);
+    crate::captures::check_shot("m7/rebase-keep-drops-editor-120x40.txt", &body);
+    assert_eq!(
+        body.matches("already in main \u{b7} p keeps it").count(),
+        3,
+        "{body}"
+    );
+    assert!(!body.contains("marked by its name"), "{body}");
+    drop(state);
+    app.close();
 }

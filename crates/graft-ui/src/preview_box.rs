@@ -45,9 +45,10 @@ const FOOTER: &str = "←→ choose  ⏎ act  esc cancel";
 const BACK_ONLY: &str = "esc back";
 
 /// The widest footer rung whose padded label fits `inner` cells:
-/// `y confirm  m merge  ←→ choose  ⏎ act  esc cancel`, then without the
-/// arrows, then without the verb, then plain [`FOOTER`]. Parts whose field
-/// is off are left out of every rung.
+/// `y confirm  r rebase  R keep  ←→ choose  ⏎ act  esc cancel`, then
+/// without the arrows, then without the verb, then without `R keep`, then
+/// plain [`FOOTER`]. Parts whose field is off are left out of every rung;
+/// each part is whole or absent, never cut.
 pub(crate) fn footer_label(view: &PreviewBox, inner: usize) -> String {
     if view.back_only {
         return BACK_ONLY.to_owned();
@@ -69,15 +70,18 @@ pub(crate) fn footer_label(view: &PreviewBox, inner: usize) -> String {
         return FOOTER.to_owned();
     }
     let again = again.as_deref();
+    let keep = view.keep.then_some("R keep");
     let rungs = [
         join(&[
             confirm,
             again,
+            keep,
             Some("←→ choose"),
             Some("⏎ act"),
             Some("esc cancel"),
         ]),
-        join(&[confirm, again, Some("⏎ act"), Some("esc cancel")]),
+        join(&[confirm, again, keep, Some("⏎ act"), Some("esc cancel")]),
+        join(&[confirm, keep, Some("⏎ act"), Some("esc cancel")]),
         join(&[confirm, Some("⏎ act"), Some("esc cancel")]),
     ];
     rungs
@@ -120,6 +124,10 @@ pub struct PreviewBox {
     /// The opening verb, when pressing it again confirms: `("m", "merge")`
     /// or `("r", "rebase")`; `None` for every other opener.
     pub again: Option<(SanitizedText, SanitizedText)>,
+    /// Draw `R keep` right after the `again` slot: `R` opens the rewrite
+    /// editor on this rebase with its suggested drops marked
+    /// (rebase-preview-keeps-drops). Whole or absent, never cut.
+    pub keep: bool,
     /// A refusal with nothing to choose between: the footer is `esc back`
     /// alone, no `←→ choose  ⏎ act` over a single `Close` (review 86, m3;
     /// the stash note's refusal state). Set for the stash put-back's
@@ -143,6 +151,7 @@ impl PreviewBox {
             planning: false,
             confirm_key: false,
             again: None,
+            keep: false,
             back_only: false,
         }
     }

@@ -827,6 +827,7 @@ absorb-staged                 4     # +1 · jj 1, git-absorb 2 · motion . ⏎ y
 amend-with-dependents         2     # +1 · jj 0, Graphite 1 · a y
 rebase-line-onto-main         3     # +2 · Graphite/Git Town 1 · motion r y
 squash-merged-bottom          3     # +2 · Graphite 1 (forge) · motion r y
+keep-a-suggested-drop         5     # +2 over squash-merged-bottom · no studied tool pre-suggests · motion r R p y
 rewrite-stop-to-first-file    0     # lazygit +1 · lands on the resolver
 edit-stop-lands               0     # lands on the graph at the stopped commit
 edit-stop-amend-continue      3     # after his edit · space a c

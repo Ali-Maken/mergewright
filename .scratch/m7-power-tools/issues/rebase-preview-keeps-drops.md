@@ -1,6 +1,6 @@
 # rebase-preview-keeps-drops — `R` in a rebase preview opens the rewrite editor with the suggested drops marked
 
-Status: ready (conductor 2026-09-29: built before 24, which is being respecced; 24 waits for this)
+Status: done (builder 2026-09-29; the three graft files outside the Files list granted by the conductor mid-build)
 Blocked by: none now — 24 re-sequenced after this ticket (shares `update/preview.rs`, `jobs/runner.rs`, the m7 walk harness and `docs/shots/m7`; 24 is
 building now). 05, 05b, 08, 08-b are merged.
 Build with: Opus. One new request arm on an established planner, a second entry into 08's overlay, one footer key.
@@ -111,25 +111,38 @@ Existing `Open` behaviour unchanged: every current `R`-on-graph test passes uned
       from_rebase_refuses_when_head_moved, from_rebase_refuses_when_head_switched, from_rebase_refuses_detached,
       from_rebase_keeps_the_line_as_given}` (graft-ops `src/rewrite/plan.rs`; red observed on the moved/switched/matches
       three against a stub arm, detached and line green from the start via `head_of`/pass-through).
-- [ ] `update/preview/tests.rs`: `r_in_a_squash_merged_preview_opens_the_editor_with_drops_marked` (red first; asserts
+- [x] `update/preview/tests.rs`: `r_in_a_squash_merged_preview_opens_the_editor_with_drops_marked` (red first; asserts
       `Command::OpenRewrite { req: FromRebase(_) }` carrying the as-run params); `r_is_unbound_in_other_previews`
       (not-checked, no suggestion, merge preview); `r_is_unbound_when_the_rebased_branch_is_not_head`;
-      `the_row_names_r_only_when_live` (row ends `· dropped · R to keep them` iff live).
-- [ ] `update/rewrite_editor` tests: `seeded_drops_read_already_in_and_p_clears_it`; `cursor_opens_on_the_newest_drop`;
-      `autosquash_rows_still_read_marked_by_its_name`.
-- [ ] `preview_box` tests: `footer_names_r_keep_when_live`, `footer_omits_r_keep_otherwise`,
-      `footer_r_keep_whole_or_absent_at_80`.
-- [ ] Walk `m7_walk/rebase_line.rs::keep_a_suggested_drop` (journey `keep-a-suggested-drop`, ≤ 5 keys): `motion r R p y`.
+      `the_row_names_r_only_when_live` (row ends `· dropped · R to keep them` iff live). — ticked by
+      `update::preview::tests::{r_in_a_squash_merged_preview_opens_the_editor_with_drops_marked,
+      r_is_unbound_in_other_previews (+ a suggestion with no drops), r_is_unbound_when_the_rebased_branch_is_not_head,
+      the_row_names_r_only_when_live}`. Red **not** observed first (written with the code); mutation-checked instead:
+      `keeps_drops` ignoring `already_in` fails `r_is_unbound_in_other_previews`.
+- [x] `update/rewrite_editor` tests: `seeded_drops_read_already_in_and_p_clears_it`; `cursor_opens_on_the_newest_drop`;
+      `autosquash_rows_still_read_marked_by_its_name`. — ticked by `update::rewrite_editor::tests::{those three}` (they
+      read the drawn notes through `view::rewrite_editor::rewrite_view`). Red not observed first; mutation-checked: seeding
+      `MarkedBy::Name` from a rebase fails `seeded_drops_read_already_in_and_p_clears_it`.
+- [x] `preview_box` tests: `footer_names_r_keep_when_live`, `footer_omits_r_keep_otherwise`,
+      `footer_r_keep_whole_or_absent_at_80`. — ticked by `graft-ui preview_box::tests::{those three}`; red observed
+      (two failed before the ladder change; `omits` passes trivially without the field set).
+- [x] Walk `m7_walk/rebase_line.rs::keep_a_suggested_drop` (journey `keep-a-suggested-drop`, ≤ 5 keys): `motion r R p y`.
       After `y`: the rebased branch's tip chain above `onto_tip` holds the kept commit (by subject, parent = main's
       tip) and none of the other drops; `u` puts every branch of the line back at its pre-`y` tip, asserted per branch
-      by name.
-- [ ] Capture re-taken: `docs/shots/m7/rebase-squash-merged-preview-120x40.txt`. **Right:** the `already in main:` row
+      by name. — ticked by `m7_walk::rebase_line::keep_a_suggested_drop` (fixture `squash_revert_repo`: `squash_repo` +
+      `Remove a3` on main; asserts `main..feature-a` = `[a3]`, `feature-a^` = main's tip, `a3.txt` present,
+      `feature-b^` = `feature-a`, then every `refs/heads/*` back after `u`; `within` against the fence row added here).
+- [x] Capture re-taken (`capture_rebase_line`, asserts both strings): `docs/shots/m7/rebase-squash-merged-preview-120x40.txt`. **Right:** the `already in main:` row
       ends `· dropped · R to keep them`; the footer reads `y confirm  r rebase  R keep  ←→ choose  ⏎ act  esc cancel`.
-- [ ] Capture new: `docs/shots/m7/rebase-keep-drops-editor-120x40.txt`, taken after `R`, before `p`. **Right:** each
+- [x] Capture new (`capture_keep_drops_editor`; asserts 3× `already in main · p keeps it`, no `marked by its name`;
+      base row and cursor read from the file by me, not asserted): `docs/shots/m7/rebase-keep-drops-editor-120x40.txt`, taken after `R`, before `p`. **Right:** each
       suggested row shows 08's drop action and `already in main · p keeps it`; no row says `marked by its name`; the last
       row is `─ main` at `onto_tip`; cursor `▸` on the newest drop. Subject muting's colour **unverified** (rule 5).
-- [ ] TESTING.md: 05's squash-merged row's "right" updated to the two lines above; one new row for the editor capture.
-- [ ] MAP.md for all three crates: the new arm, the command's `req`, `keeps_drops`, `MarkedBy`, footer `keep`.
+- [x] TESTING.md: 05's squash-merged row's "right" updated to the two lines above; one new row for the editor capture.
+      — **05 had no row in TESTING.md**; added section `M7: a squash-merged bottom, and keeping a suggested drop` with
+      the journey, both captures (each naming its test) and the liveness rule. Docs only; no test.
+- [x] MAP.md for all three crates: the new arm, the command's `req`, `keeps_drops`, `MarkedBy`, footer `keep`. — docs
+      only (graft-ops rewrite, graft `jobs::rewrite_open`/`update::rewrite_editor`/`update::preview`, graft-ui `preview_box`).
 
 ## Touches (each checked, reported on the **Touches:** line)
 - Every `RewriteRequest` match (graft-ops `plan.rs:75-79`, graft `jobs/rewrite.rs:158-181`): exhaustive arm added.
@@ -152,7 +165,28 @@ Medium (~50k). If it compacts, say so; split point: graft-ops arm + tests, then 
 
 - You add the fence row yourself, in the same commit as the walk, so main never has a fence id with no walk behind it. The row goes in `docs/design-notes/m7-power-tools.md`'s `journey-counts` block, after `squash-merged-bottom`: `keep-a-suggested-drop         5     # +2 over squash-merged-bottom · no studied tool pre-suggests · motion r R p y`. That file is granted for this row only.
 
-## Handoff (builder, 2026-09-29) — blocked at the ticket's own split point
+## NOTES (builder, 2026-09-29, final)
+
+Not compacted. Scout used (`.scratch/m7-power-tools/scouts/rebase-keeps-drops.md`).
+
+**Spec defects (for the planner):**
+- **Files list incomplete.** The build needed `crates/graft/src/update/rewrite_editor/words.rs` (builds `RowFacts`) and
+  `crates/graft/src/view/rewrite_editor.rs` (draws `marked by its name`; the ticket guessed graft-ui). Blocked, then
+  granted by the conductor. `keys.rs` was granted but **not** edited: the private map kept the name `by_name`
+  (now `HashMap<Oid, MarkedBy>`), so its two `.remove(..)` calls stand unchanged.
+- Also edited, as the tests module of a listed file: `crates/graft/src/jobs/rewrite_open/tests.rs` (two call sites,
+  `open(&store, &RewriteRequest::Open { from }, …)`).
+- `plan.rs` had no tests module (new `#[cfg(test)] mod tests`); TESTING.md had no 05 squash-merged row (added a section).
+
+**Deviations from Signatures (small):** `keeps_drops(.., head_branch: Option<&str>)` (full ref name, as `Tip.name`)
+not `Option<&RefName>`; `open_rewrite_from_rebase(state, commands, next_id, params)` returns nothing and pushes into
+`commands`, like `open_rewrite`; `open_rewrite(repos, req: &RewriteRequest, ..)` by reference.
+
+**Behaviour to know:** on the squash fixture the unedited editor has every row dropped, so AFTER reads
+`every commit dropped` and `y` is refused until `p` (capture shows it). `R` needs the plan landed and HEAD's branch.
+`from_rebase` refuses `Moved` for a drop with no row (as the engine does at `y`).
+
+## Handoff (builder, 2026-09-29) — blocked at the ticket's own split point (superseded by NOTES above)
 
 Done, committed on `worktree-agent-aafbe6e54546e67cf`: graft-ops arm + tests (box 1 ticked), graft `jobs/rewrite.rs`
 exhaustive arm (`FromRebase` joins `Open`: "R is not a put-in"), graft-ops MAP. Gates workspace-wide green.

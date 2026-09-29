@@ -3,9 +3,9 @@
 //! `onto`, when the replay may stop at a step, and when a branch it moves is
 //! on its upstream.
 //!
-//! Words exactly as the note's, but for the keep key: `· R to keep them`
-//! waits for `rebase-preview-keeps-drops`, which binds it. A row naming an
-//! unbound key is false.
+//! Words exactly as the note's. The keep key's `· R to keep them` is drawn
+//! only while `R` is live (`preview::keeps_drops`): a row naming an unbound
+//! key is false.
 
 use graft_ops::operation::{Operation, Source};
 use graft_ops::preview::{ConflictForecast, DropSuggestion, PreviewPlan};
@@ -40,17 +40,29 @@ pub(super) fn ref_rows(plan: &PreviewPlan) -> Vec<String> {
         .collect()
 }
 
+/// The name a rebase's `onto` goes by in words: `main` for a branch, the
+/// short sha for a bare commit. The `already in <x>:` row and the rewrite
+/// editor's base row opened from it (`R`) both say it, so they agree.
+pub(crate) fn onto_label(onto: &Source) -> String {
+    match onto {
+        Source::Branch(name) => String::from_utf8_lossy(&slice::short_of(name)).into_owned(),
+        Source::Commit(oid) => short(*oid),
+    }
+}
+
 /// `already in main: feature-a's 3 commits match 2a1f0e9 "Add OAuth (#42)"
-/// · dropped`, or `already in main: not checked (<why>)`. `None` when the
-/// check found nothing, or for any operation but a rebase.
-pub(super) fn already_in_row(plan: &PreviewPlan, op: Option<&Operation>) -> Option<String> {
+/// · dropped`, `… · dropped · R to keep them` when `keeps` (`R` is live),
+/// or `already in main: not checked (<why>)`. `None` when the check found
+/// nothing, or for any operation but a rebase.
+pub(super) fn already_in_row(
+    plan: &PreviewPlan,
+    op: Option<&Operation>,
+    keeps: bool,
+) -> Option<String> {
     let Some(Operation::Rebase(params)) = op else {
         return None;
     };
-    let onto = match &params.onto {
-        Source::Branch(name) => String::from_utf8_lossy(&slice::short_of(name)).into_owned(),
-        Source::Commit(oid) => short(*oid),
-    };
+    let onto = onto_label(&params.onto);
     match plan.already_in.as_ref()? {
         DropSuggestion::Drop(found) => {
             let branch = String::from_utf8_lossy(&slice::short_of(&String::from_utf8_lossy(
@@ -59,10 +71,11 @@ pub(super) fn already_in_row(plan: &PreviewPlan, op: Option<&Operation>) -> Opti
             .into_owned();
             let count = found.commits.len();
             Some(format!(
-                "already in {onto}: {branch}'s {count} {} match {} \"{}\" \u{b7} dropped",
+                "already in {onto}: {branch}'s {count} {} match {} \"{}\" \u{b7} dropped{}",
                 if count == 1 { "commit" } else { "commits" },
                 short(found.matches),
-                found.subject
+                found.subject,
+                if keeps { " \u{b7} R to keep them" } else { "" }
             ))
         }
         DropSuggestion::NotChecked(why) => Some(format!("already in {onto}: not checked ({why})")),

@@ -30,11 +30,11 @@
 │ 1 commit replayed                                                                                                    │
 │ branches: feature-a 1dc69fb → 51f3dc8                                                                                │
 │           feature-b f41bc43 → 1 new commit · built on yours · follows                                                │
-│ already in main: feature-a's 3 commits match 51f3dc8 "Add OAuth (#42)" · dropped                                     │
+│ already in main: feature-a's 3 commits match 51f3dc8 "Add OAuth (#42)" · dropped · R to keep them                    │
 │ working tree: 4 files updated                                                                                        │
 │ no conflicts expected                                                                                                │
 │ undo: u takes this back                                                                                              │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop main feature-b                                            │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
-╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────╯
+╰ y confirm  r rebase  R keep  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────╯
 

@@ -15,10 +15,13 @@ use graft_git::diff::{DiffSpec, FileList};
 use graft_git::repo::HeadState;
 use graft_graph::Row;
 use graft_ops::operation::{Operation, Refusal, RewriteKey, Tip};
-use graft_ops::rewrite::{BranchLine, RewriteParams, TodoAction, TodoLine, TodoProblem};
+use graft_ops::operation::{RebaseParams, Source};
+use graft_ops::rewrite::{
+    BranchLine, RewriteParams, RewriteRequest, TodoAction, TodoLine, TodoProblem,
+};
 use graft_ui::text_input::TextField;
 
-use super::{After, AfterFacts, Field, RewriteEditor, words};
+use super::{After, AfterFacts, Field, MarkedBy, OpenedFrom, RewriteEditor, words};
 use crate::history::{HistoryUpdate, Window};
 use crate::jobs::operate::Operated;
 use crate::jobs::rewrite_open::{BaseRow, OpenedRewrite, RewriteOpened};
@@ -212,7 +215,10 @@ fn four_picks() -> Vec<TodoLine> {
 
 fn open_job(commands: &[Command]) -> Option<(JobId, Oid)> {
     commands.iter().find_map(|command| match command {
-        Command::OpenRewrite { id, from } => Some((*id, *from)),
+        Command::OpenRewrite {
+            id,
+            req: RewriteRequest::Open { from },
+        } => Some((*id, *from)),
         _ => None,
     })
 }
@@ -292,7 +298,10 @@ fn actions(state: &AppState) -> Vec<TodoAction> {
 /// An editor over [`four_picks`], cursor on `HEAD`, with no job out: for
 /// the sweeps elsewhere that only need one standing.
 pub(crate) fn an_editor() -> Box<RewriteEditor> {
-    Box::new(RewriteEditor::new(opened_with(four_picks()), oid(5)))
+    Box::new(RewriteEditor::new(
+        opened_with(four_picks()),
+        OpenedFrom::Row(oid(5)),
+    ))
 }
 
 /// Stand an editor on `state`.
@@ -498,15 +507,15 @@ fn autosquash_rows_open_marked_by_their_name() {
     let marked: Vec<_> = facts
         .rows
         .iter()
-        .map(|row| (row.commit, row.by_name))
+        .map(|row| (row.commit, row.marked))
         .collect();
     assert_eq!(
         marked,
         [
-            (oid(5), false),
-            (oid(3), false),
-            (oid(4), true),
-            (oid(2), false)
+            (oid(5), None),
+            (oid(3), None),
+            (oid(4), Some(MarkedBy::Name)),
+            (oid(2), None)
         ]
     );
     assert_eq!(facts.rows[3].keeps, 2, "2 in one");
@@ -515,7 +524,7 @@ fn autosquash_rows_open_marked_by_their_name() {
     let (state, _) = press(&state, 'j');
     let (state, _) = press(&state, 'j');
     let (state, _) = press(&state, 's');
-    assert!(!ed(&state).view_facts().rows[2].by_name);
+    assert_eq!(ed(&state).view_facts().rows[2].marked, None);
 }
 
 #[test]
@@ -1236,4 +1245,151 @@ fn the_bar_hides_capital_r_on_default_branch_rows() {
     .expect("badges");
     detached.refs = Some(Arc::new(refs));
     assert!(!bar_offers_r(&detached), "HEAD on no branch");
+}
+
+// ── opened from a rebase preview (rebase-preview-keeps-drops) ────────────
+
+/// The rebase of `feature` (5) onto `main` (1), commits 2, 3 and 4
+/// suggested as drops.
+fn a_rebase_with_drops() -> RebaseParams {
+    let mut params = RebaseParams::new(
+        Tip {
+            name: "refs/heads/feature".to_owned(),
+            oid: oid(5),
+        },
+        Source::Branch("refs/heads/main".to_owned()),
+        oid(1),
+    );
+    params.drops = vec![oid(2), oid(3), oid(4)];
+    params
+}
+
+/// `FromRebase`'s rows for [`a_rebase_with_drops`]: oldest first, the
+/// three drops then 5 kept.
+fn rebase_todo() -> Vec<TodoLine> {
+    vec![
+        line(TodoAction::Drop, 2, "Add OAuth callback"),
+        line(TodoAction::Drop, 3, "Handle expired tokens"),
+        line(TodoAction::Drop, 4, "wip: tests"),
+        line(TodoAction::Pick, 5, "wip"),
+    ]
+}
+
+/// `R` in a rebase preview, answered: the editor is up.
+fn editor_from_rebase() -> AppState {
+    let mut state = on_screen(0);
+    let mut commands = Vec::new();
+    let mut next = {
+        let mut n = 1000;
+        move || {
+            n += 1;
+            JobId::new(n)
+        }
+    };
+    super::open_rewrite_from_rebase(&mut state, &mut commands, &mut next, a_rebase_with_drops());
+    let id = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::OpenRewrite {
+                id,
+                req: RewriteRequest::FromRebase(params),
+            } => {
+                assert_eq!(params, &a_rebase_with_drops(), "the params as given");
+                Some(*id)
+            }
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("a FromRebase read: {commands:?}"));
+    assert_eq!(
+        state.status,
+        Status::Waiting("reading feature\u{2026}".to_owned())
+    );
+    answer(&state, id, opened_answer(opened_with(rebase_todo()))).0
+}
+
+/// The notes the view draws on his rows, newest first.
+fn notes(state: &AppState) -> Vec<Option<String>> {
+    let view = crate::view::rewrite_editor::rewrite_view(state, false).expect("the editor's view");
+    view.rows
+        .iter()
+        .take(view.rows.len() - 1)
+        .map(|row| row.note.as_ref().map(|note| note.as_str().to_owned()))
+        .collect()
+}
+
+#[test]
+fn seeded_drops_read_already_in_and_p_clears_it() {
+    let state = editor_from_rebase();
+    let marked: Vec<_> = ed(&state)
+        .view_facts()
+        .rows
+        .iter()
+        .map(|row| (row.commit, row.action, row.marked))
+        .collect();
+    assert_eq!(
+        marked,
+        [
+            (oid(5), TodoAction::Pick, None),
+            (oid(4), TodoAction::Drop, Some(MarkedBy::AlreadyIn)),
+            (oid(3), TodoAction::Drop, Some(MarkedBy::AlreadyIn)),
+            (oid(2), TodoAction::Drop, Some(MarkedBy::AlreadyIn)),
+        ]
+    );
+    let seeded = Some("left out \u{b7} already in main \u{b7} p keeps it".to_owned());
+    assert_eq!(
+        notes(&state),
+        [None, seeded.clone(), seeded.clone(), seeded.clone()]
+    );
+
+    // `p` on the newest drop (the cursor's): a plain pick, the words go.
+    let (state, _) = press(&state, 'p');
+    assert_eq!(
+        actions(&state),
+        [
+            TodoAction::Drop,
+            TodoAction::Drop,
+            TodoAction::Pick,
+            TodoAction::Pick
+        ]
+    );
+    assert_eq!(notes(&state), [None, None, seeded.clone(), seeded]);
+
+    // `d` pressed again is his own mark: no words.
+    let (state, _) = press(&state, 'k');
+    let (state, _) = press(&state, 'd');
+    assert_eq!(ed(&state).view_facts().rows[1].marked, None);
+    assert_eq!(notes(&state)[1].as_deref(), Some("left out"));
+}
+
+#[test]
+fn cursor_opens_on_the_newest_drop() {
+    let state = editor_from_rebase();
+    let facts = ed(&state).view_facts();
+    assert_eq!(facts.cursor, 1, "row 1 is commit 4, the newest drop");
+    assert_eq!(facts.rows[facts.cursor].commit, oid(4));
+}
+
+#[test]
+fn autosquash_rows_still_read_marked_by_its_name() {
+    let todo = vec![
+        line(TodoAction::Pick, 2, "Add OAuth callback"),
+        line(TodoAction::Fixup, 4, "fixup! Add OAuth callback"),
+        line(TodoAction::Pick, 3, "Handle expired tokens"),
+        line(TodoAction::Pick, 5, "wip"),
+    ];
+    let (state, _) = editor_with(0, todo);
+    let drawn = notes(&state);
+    assert_eq!(
+        drawn[2].as_deref(),
+        Some("melds into the row below \u{b7} marked by its name"),
+        "{drawn:?}"
+    );
+    assert!(
+        drawn
+            .iter()
+            .flatten()
+            .all(|note| !note.contains("already in")),
+        "{drawn:?}"
+    );
+    assert_eq!(ed(&state).view_facts().cursor, 0, "on the row R was on");
 }

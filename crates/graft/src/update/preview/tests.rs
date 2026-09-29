@@ -1372,7 +1372,7 @@ fn a_line_plan() -> PreviewPlan {
 }
 
 fn drawn(plan: &PreviewPlan, op: &Operation, columns: u16) -> Vec<String> {
-    plan_lines(plan, Some(op), 0, columns)
+    plan_lines(plan, Some(op), false, 0, columns)
         .iter()
         .map(|line| line.as_str().to_owned())
         .collect()
@@ -1423,8 +1423,8 @@ fn already_in_row_says_dropped() {
             short(oid(9))
         )
     );
-    // `R` to keep them is bound by a later ticket; a row naming an unbound
-    // key would be false.
+    // Not live here (drawn with `keeps` off): a row naming an unbound key
+    // would be false.
     assert!(!row.contains(" R "), "{row}");
 }
 
@@ -1481,4 +1481,231 @@ fn cut_order_never_cuts_a_branch_name() {
             .any(|line| line == "on origin: feature \u{b7} P will need force after"),
         "{lines:#?}"
     );
+}
+
+// ── `R` keeps a suggested drop (rebase-preview-keeps-drops) ──────────────
+
+/// `feature` (at `oid(3)`) checked out, `main` at `oid(2)`.
+fn feature_checked_out() -> RefBadges {
+    built(
+        &[
+            (name(b"refs/heads/main"), oid(2)),
+            (name(b"refs/heads/feature"), oid(3)),
+        ],
+        &HeadState::Branch(name(b"refs/heads/feature")),
+    )
+}
+
+/// `a_rebase` as the job completed it: `oid(3)` suggested as a drop.
+fn a_squash_merged_rebase() -> Operation {
+    let mut op = a_rebase();
+    if let Operation::Rebase(params) = &mut op {
+        params.drops = vec![oid(3)];
+    }
+    op
+}
+
+fn a_drop_suggestion() -> DropSuggestion {
+    DropSuggestion::Drop(AlreadyIn {
+        branch: RefName::new("refs/heads/feature").expect("a ref name"),
+        commits: vec![oid(3)],
+        matches: oid(9),
+        subject: "Add OAuth (#42)".to_owned(),
+    })
+}
+
+/// A preview opened by `opener` over `op`, on `refs`, answered with a plan
+/// carrying `suggestion` and `op` as the op `y` runs.
+fn landed(
+    refs: RefBadges,
+    opener: &'static str,
+    op: Operation,
+    suggestion: Option<DropSuggestion>,
+) -> AppState {
+    let mut state = on_screen();
+    state.refs = Some(Arc::new(refs));
+    let mut commands = Vec::new();
+    assert!(open_preview(
+        &mut state,
+        &mut commands,
+        PreviewSubject::Operation {
+            op: Box::new(op.clone()),
+            opened_by: opener,
+        },
+        false,
+        &mut ids()
+    ));
+    let mut plan = a_plan();
+    plan.already_in = suggestion;
+    let id = state.preview.as_ref().expect("a preview is open").job;
+    preview_produced(
+        &mut state,
+        id,
+        Ok(Arc::new(Planned {
+            plan,
+            anchors: Vec::new(),
+            runs: Some(Box::new(op)),
+        })),
+    );
+    state
+}
+
+fn opened_rewrites(commands: &[Command]) -> Vec<&graft_ops::rewrite::RewriteRequest> {
+    commands
+        .iter()
+        .filter_map(|command| match command {
+            Command::OpenRewrite { req, .. } => Some(req),
+            _ => None,
+        })
+        .collect()
+}
+
+fn press_r(state: &mut AppState) -> Vec<Command> {
+    let mut commands = Vec::new();
+    assert!(preview_key(state, &mut commands, char_key('R'), &mut ids()));
+    commands
+}
+
+#[test]
+fn r_in_a_squash_merged_preview_opens_the_editor_with_drops_marked() {
+    let op = a_squash_merged_rebase();
+    let mut state = landed(
+        feature_checked_out(),
+        "r",
+        op.clone(),
+        Some(a_drop_suggestion()),
+    );
+
+    let commands = press_r(&mut state);
+
+    let Operation::Rebase(params) = op else {
+        panic!("a rebase");
+    };
+    assert_eq!(
+        opened_rewrites(&commands),
+        [&graft_ops::rewrite::RewriteRequest::FromRebase(params)],
+        "the as-run params, drops and all: {commands:?}"
+    );
+    assert!(state.preview.is_none(), "the preview closes");
+    assert!(state.rewrite.opening.is_some(), "the editor's read is out");
+    assert!(
+        matches!(&state.status, Status::Waiting(words) if words == "reading feature\u{2026}"),
+        "{:?}",
+        state.status
+    );
+}
+
+#[test]
+fn r_is_unbound_in_other_previews() {
+    let merge = Operation::Merge(MergeParams {
+        source: Source::Branch("refs/heads/main".to_owned()),
+        into: Tip {
+            name: "refs/heads/feature".to_owned(),
+            oid: oid(3),
+        },
+        source_tip: oid(2),
+        ff: FastForward::Default,
+    });
+    let cases = vec![
+        (
+            "not checked",
+            landed(
+                feature_checked_out(),
+                "r",
+                a_squash_merged_rebase(),
+                Some(DropSuggestion::NotChecked("an old version".to_owned())),
+            ),
+        ),
+        (
+            "no suggestion",
+            landed(feature_checked_out(), "r", a_squash_merged_rebase(), None),
+        ),
+        (
+            "a suggestion but no drops",
+            landed(
+                feature_checked_out(),
+                "r",
+                a_rebase(),
+                Some(a_drop_suggestion()),
+            ),
+        ),
+        (
+            "a merge",
+            landed(feature_checked_out(), "m", merge, Some(a_drop_suggestion())),
+        ),
+    ];
+    for (case, mut state) in cases {
+        let commands = press_r(&mut state);
+        assert!(
+            opened_rewrites(&commands).is_empty(),
+            "{case}: {commands:?}"
+        );
+        assert!(state.preview.is_some(), "{case}: swallowed, the box stays");
+        let view = preview_box(&state).expect("a box");
+        assert!(!view.keep, "{case}: no `R keep` in the footer");
+        assert!(
+            view.lines
+                .iter()
+                .all(|line| !line.as_str().contains("R to keep")),
+            "{case}"
+        );
+    }
+}
+
+#[test]
+fn r_is_unbound_when_the_rebased_branch_is_not_head() {
+    let main_checked_out = built(
+        &[
+            (name(b"refs/heads/main"), oid(2)),
+            (name(b"refs/heads/feature"), oid(3)),
+        ],
+        &HeadState::Branch(name(b"refs/heads/main")),
+    );
+    let mut state = landed(
+        main_checked_out,
+        "r",
+        a_squash_merged_rebase(),
+        Some(a_drop_suggestion()),
+    );
+
+    let commands = press_r(&mut state);
+
+    assert!(opened_rewrites(&commands).is_empty(), "{commands:?}");
+    assert!(state.preview.is_some());
+    assert!(!preview_box(&state).expect("a box").keep);
+}
+
+#[test]
+fn the_row_names_r_only_when_live() {
+    let row_of = |state: &AppState| {
+        preview_box(state)
+            .expect("a box")
+            .lines
+            .iter()
+            .map(|line| line.as_str().to_owned())
+            .find(|line| line.starts_with("already in main: "))
+            .expect("an already-in row")
+    };
+    let live = landed(
+        feature_checked_out(),
+        "r",
+        a_squash_merged_rebase(),
+        Some(a_drop_suggestion()),
+    );
+    let row = row_of(&live);
+    assert!(
+        row.ends_with("\u{b7} dropped \u{b7} R to keep them"),
+        "{row}"
+    );
+    assert!(preview_box(&live).expect("a box").keep, "and the footer");
+
+    let not_live = landed(
+        feature_checked_out(),
+        "r",
+        a_rebase(),
+        Some(a_drop_suggestion()),
+    );
+    let row = row_of(&not_live);
+    assert!(row.ends_with("\u{b7} dropped"), "{row}");
+    assert!(!preview_box(&not_live).expect("a box").keep);
 }
