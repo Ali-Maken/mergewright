@@ -58,7 +58,9 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
             lines,
         } => blame_bar(*finding, *ignore_file, *lines),
         HintContext::History { rows, on_file } => history_place_list(*rows, *on_file),
-        // Keymap §2.11: the journal browser answers `⏎` and `Esc` only.
+        // The hint catalogue's `Journal` slot. J draws its own bar
+        // (`journal_screen`), which also answers `b`, `/`, `n`, `N`, `u`,
+        // `U` and `space`.
         HintContext::Journal => vec![hint("⏎", "revert"), hint("esc", "close")],
         HintContext::Stash => stash_list(),
         // Keymap §2.3a: the Map view answers `Enter`, the movement keys and
