@@ -1029,3 +1029,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r24-q1 | `R` on graph then `J` during the read: J's status row shows `rewrite editor not opened · another box was open` (rewrite_editor.rs:552; review Q1). Intended? | **unverified** (question) | M7 |
 | M7/24-legend | J legend `● done in Graft: u can undo it` is also shown for a fetch row `u` can't undo; legend's `✗` covers lost edits too (24-b NOTES; 30o out of scope) | **broken** (words) | M7 |
 | M7/30m-left | Still over ~400 lines after 30m: graft `update/keys.rs` 438, graft-ui `hints/lists.rs` 485, `update/preview.rs` 423, `operate/outcome.rs` 420 (30m NOTES) | **broken** (6.2) | M8 |
+| M7/30o-a-row | After a lost-edit put-back, the `✗` lost-edit row's disappearance from J is not checked (30o-a NOTES) | **unverified** | M7 |
+| M7/30o-a-15red | Walk 15 not re-run red; red evidence is the removed refusal test (30o-a NOTES) | **unverified** | M7 |
