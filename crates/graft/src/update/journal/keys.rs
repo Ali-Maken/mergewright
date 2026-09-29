@@ -1,6 +1,9 @@
 //! The journal screen's keys: move, next lost, branch here, close, `Enter`.
 
-use super::*;
+use super::{
+    AppState, Command, EntryId, JobId, KeyCode, KeyPress, ListRow, Loading, Oid, OperationKind,
+    Status, rebuild, row_commit, row_key,
+};
 
 /// `J`, and every key while the browser is open. `true` when the key was
 /// this view's, so the caller sends it nowhere else — the same shape as
@@ -221,7 +224,11 @@ pub(in crate::update) fn close(next: &mut AppState, commands: &mut Vec<Command>)
 /// - `$` switch: switch back to the branch it left (the M7 switch rule).
 /// - any other `$`, `✗` or lost edit: ask what it puts back
 ///   (`recover_for`), answered in [`recover_answered`].
-pub(super) fn enter(next: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl FnMut() -> JobId) {
+pub(super) fn enter(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
     let Some(list) = next.journal.list.clone() else {
         return;
     };

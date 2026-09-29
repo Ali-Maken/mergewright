@@ -1,6 +1,6 @@
 //! A journal entry's summary words: what it did, how it ended, and why it failed.
 
-use super::*;
+use super::{EntryStatus, JournalEntry, OperationKind};
 
 /// The reason an entry closed by his own `--abort` carries
 /// (`graft_ops::apply::resume`, `went_through`).

@@ -142,12 +142,7 @@ fn a_clashed_pop_reads_as_a_normal_row_and_its_drop_as_a_stash_drop() {
 }
 
 /// A remote entry: `refs` touched, no index, no tree, no backup.
-fn remote_entry(
-    n: i64,
-    kind: OperationKind,
-    description: &str,
-    refs: Vec<String>,
-) -> JournalEntry {
+fn remote_entry(n: i64, kind: OperationKind, description: &str, refs: Vec<String>) -> JournalEntry {
     let mut entry = entry(n, kind, description);
     entry.touches = Touches {
         refs,

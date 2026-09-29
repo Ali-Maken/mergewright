@@ -21,10 +21,10 @@ use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 use unicode_width::UnicodeWidthStr;
 
-mod view;
 mod pieces;
-pub use view::{RowMark, RowKind, JournalRowView, JournalStatus, JournalStatusRow, JournalView};
+mod view;
 use pieces::{row_pieces, under_pieces};
+pub use view::{JournalRowView, JournalStatus, JournalStatusRow, JournalView, RowKind, RowMark};
 
 /// The browser itself. Carries the theme like every other screen; the
 /// caller paints the surface underneath.

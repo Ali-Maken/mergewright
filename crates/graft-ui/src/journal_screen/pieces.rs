@@ -1,10 +1,18 @@
 //! A journal row cut into pieces: glyph, source, age, words, mark, and the line under it.
 
-use super::*;
+use super::{
+    AGE, COMMANDS_HEADING, CURSOR, Columns, GLYPH, Ink, JournalRowView, MARK, Piece, RowKind,
+    RowMark, SOURCE, SanitizedText, UnicodeWidthStr, WORDS_BEFORE_GIT, cut_at_word, pad,
+};
 
 /// A row's own line: cursor, glyph, source word, age, words, and a `●`
 /// row's mark or a `$` row's `git:` column.
-pub(super) fn row_pieces(row: &JournalRowView, selected: bool, columns: Columns, width: usize) -> Vec<Piece> {
+pub(super) fn row_pieces(
+    row: &JournalRowView,
+    selected: bool,
+    columns: Columns,
+    width: usize,
+) -> Vec<Piece> {
     let cursor = if selected { "▸ " } else { "  " };
     let mut pieces = vec![Piece {
         x: 0,
@@ -103,7 +111,12 @@ pub(super) fn words_pieces(
 }
 
 /// A `●` row's description and summary, and its mark at the right edge.
-pub(super) fn graft_pieces(row: &JournalRowView, room: usize, width: usize, words_x: usize) -> Vec<Piece> {
+pub(super) fn graft_pieces(
+    row: &JournalRowView,
+    room: usize,
+    width: usize,
+    words_x: usize,
+) -> Vec<Piece> {
     // The summaries line up under each other, which is what makes
     // the list scannable; the description's column is capped so a
     // long one does not push every summary off a wide screen.

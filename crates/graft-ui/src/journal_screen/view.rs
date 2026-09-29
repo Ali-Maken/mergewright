@@ -1,6 +1,6 @@
 //! The journal screen's view types: the rows, the status row and the whole view the app hands it.
 
-use super::*;
+use super::SanitizedText;
 
 /// What a row is to `u` and `U`, in words rather than colour.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

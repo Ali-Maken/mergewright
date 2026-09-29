@@ -1,6 +1,9 @@
 //! The journal's answers: an event, a landing outside Graft, lost commits, a recover.
 
-use super::*;
+use super::{
+    AppState, Arc, Command, JobId, Loading, LostFound, Operation, OutsideRecord, Product, Recover,
+    Status, rebuild,
+};
 
 /// `Product::Journal` landed. Stale answers are dropped by id, the same way
 /// every other `Loading` field drops them.
@@ -149,7 +152,10 @@ pub(crate) fn recover_answered(
         Ok(Recover::OfferBranch { at, name, why }) => {
             state.status = Status::Sticky {
                 reason: why.clone(),
-                keys: Some(format!("b makes {name} at {}", crate::update::place::short(*at))),
+                keys: Some(format!(
+                    "b makes {name} at {}",
+                    crate::update::place::short(*at)
+                )),
             };
             state.journal.offered = Some((row, name.clone()));
         }
