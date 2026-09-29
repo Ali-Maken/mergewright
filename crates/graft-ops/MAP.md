@@ -366,3 +366,8 @@ The journal and git's reflog as one list: `●` Graft, `$` the shell, `✗` lost
 - `preview.rs` keeps the plan types, `plan` and `blank`; children: `as_run.rs` (`plan_as_run`, `checked`, `fold`, `refuse_in_the_way`), `ghost.rs` (`ghost_oid`, `sha1`), `identity.rs` (`identity_now`, ident parsing), `landing.rs` (`Landing`, `Replay`, `worktree`, `forecast_one`, `is_ancestor`), `revert_to.rs` (`plan_revert_to`). All re-exported at `preview::`.
 - `preview/kinds.rs` keeps merge, cherry-pick, revert, reset; children `kinds/rebase.rs` (rebase and its line's ghosts/followers) and `kinds/refs.rs` (checkout, branch/tag create, delete, branch from stash, push, `head_tip`).
 - `restore.rs` keeps `RestoreError` and `execute*`; children `restore/outcome.rs` (`Ran`, `run_plan`, `outcome_of`, the failure words), `restore/ref_names.rs` (`check_ref_names`), `restore/tests.rs`.
+
+## File layout (m7-power-tools/30m: pure moves, public paths unchanged)
+
+- `preview.rs` → `preview/effects.rs` (`PreviewPlan`, `Target`, `GhostCommit`, `RefMove`, `HeadMove`, `WorktreeEffect`, `ConflictForecast`, `UndoNote`, `PreviewError`, `FORECAST_CAP`), re-exported from `preview`.
+- `rewrite/plan.rs` inline tests → `rewrite/plan/tests.rs`.
