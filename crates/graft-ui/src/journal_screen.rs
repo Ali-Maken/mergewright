@@ -24,7 +24,9 @@ use unicode_width::UnicodeWidthStr;
 mod pieces;
 mod view;
 use pieces::{row_pieces, under_pieces};
-pub use view::{JournalRowView, JournalStatus, JournalStatusRow, JournalView, RowKind, RowMark};
+pub use view::{
+    JournalFindView, JournalRowView, JournalStatus, JournalStatusRow, JournalView, RowKind, RowMark,
+};
 
 /// The browser itself. Carries the theme like every other screen; the
 /// caller paints the surface underneath.
@@ -196,6 +198,18 @@ impl JournalScreen<'_> {
             title.push_str(" · ");
             title.push_str(suffix);
         }
+        // The kept find, worded as blame's `FindTitle` tail
+        // (`blame::title`): the same words for the same key.
+        if let Some(find) = &self.view.find {
+            match find.at {
+                Some(at) if find.of > 0 => title.push_str(&format!(
+                    " · find \"{}\" {at} of {}",
+                    find.query.as_str(),
+                    find.of
+                )),
+                _ => title.push_str(&format!(" · find \"{}\" · no match", find.query.as_str())),
+            }
+        }
         title
     }
 
@@ -215,6 +229,12 @@ impl JournalScreen<'_> {
         }
         if self.view.branch_here {
             keys.push("b new branch here");
+        }
+        // As blame's bar (`hints::blame_place_list`): `/ find` always,
+        // `n N match` after it while a find is kept.
+        keys.push("/ find");
+        if self.view.find.is_some() {
+            keys.push("n N match");
         }
         if row.is_some_and(|row| row.kind == RowKind::Graft) {
             keys.push("space command log");
@@ -323,7 +343,19 @@ impl JournalScreen<'_> {
         let muted = foreground(self.theme, Token::TextMuted);
         let width = usize::from(area.width);
         let mut bottom = area.bottom().saturating_sub(1);
-        if !self.view.box_open {
+        if let Some(typed) = &self.view.find_prompt {
+            // The `/` prompt in place of the bar, in text ink, as blame's
+            // (`view::frame::overlays`'s blame bar).
+            let prompt = fit(&format!("/{}", typed.as_str()), width);
+            set_text(
+                buf,
+                area.x,
+                bottom,
+                area,
+                &prompt,
+                foreground(self.theme, Token::Text),
+            );
+        } else if !self.view.box_open {
             set_text(buf, area.x, bottom, area, &self.footer(width), muted);
         }
         let ready = self.view.status == JournalStatus::Ready;

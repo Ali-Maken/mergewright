@@ -11,7 +11,9 @@ use graft_core::journal::{EntryStatus, JournalEntry, OperationKind};
 use graft_ops::journal_list::{HeldBy, JournalList, ListRow, LostCommit, LostEdit, LostScan};
 use graft_term::sanitize::{sanitize, sanitize_line};
 use graft_ui::graph_screen::columns::relative_date;
-use graft_ui::journal_screen::{JournalRowView, JournalStatus, JournalView, RowKind, RowMark};
+use graft_ui::journal_screen::{
+    JournalFindView, JournalRowView, JournalStatus, JournalView, RowKind, RowMark,
+};
 
 use crate::update::AppState;
 use crate::update::detail::Loading;
@@ -59,7 +61,21 @@ pub fn journal_view(state: &AppState, now_seconds: i64) -> JournalView {
         enter_words,
         branch_here,
         box_open: state.preview.is_some(),
+        find: find_view(state),
+        find_prompt: state.journal.find.typing.as_deref().map(sanitize_line),
     }
+}
+
+/// The kept `/` find for the title (m7-power-tools/30o-c): its words and
+/// which hit the cursor is at, counted as blame's `FindTitle` is.
+fn find_view(state: &AppState) -> Option<JournalFindView> {
+    let query = state.journal.find.kept.as_deref()?;
+    let (at, of) = crate::update::journal::find::count(&state.journal)?;
+    Some(JournalFindView {
+        query: sanitize_line(query),
+        at: (of > 0).then_some(at),
+        of,
+    })
 }
 
 /// J1's title words for the lost-commit scan: while it runs, capped, or

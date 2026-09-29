@@ -48,6 +48,8 @@ pub(crate) fn journal_enter(
     journal.touched = false;
     journal.offered = None;
     journal.recovering = None;
+    // A find belongs to one look at J: it opens without one.
+    journal.find = super::find::JournalFind::default();
     journal.outside = Loading::Idle;
     journal.lost = Loading::Idle;
     // Looking at the browser is what the interrupted-entry notice asks

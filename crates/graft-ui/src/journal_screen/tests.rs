@@ -83,6 +83,8 @@ fn view(rows: Vec<JournalRowView>, status: JournalStatus) -> JournalView {
         enter_words: None,
         branch_here: false,
         box_open: false,
+        find: None,
+        find_prompt: None,
     }
 }
 
@@ -329,13 +331,13 @@ fn the_bar_follows_the_selected_row() {
     let grid = draw(&view, 187, 14);
     assert_eq!(
         grid[13],
-        "⏎ put main back to it  b new branch here  J/esc close"
+        "⏎ put main back to it  b new branch here  / find  J/esc close"
     );
     view.selected = 0;
     view.enter_words = None;
     view.branch_here = false;
     let grid = draw(&view, 187, 14);
-    assert_eq!(grid[13], "space command log  J/esc close");
+    assert_eq!(grid[13], "/ find  space command log  J/esc close");
 }
 
 /// `b new branch here` is drawn from `branch_here` alone (m7/30o Minor 2):
@@ -346,7 +348,7 @@ fn the_bar_offers_b_only_where_b_names_a_commit() {
     view.selected = 2;
     view.enter_words = Some("⏎ put main back to it".to_owned());
     let grid = draw(&view, 187, 14);
-    assert_eq!(grid[13], "⏎ put main back to it  J/esc close");
+    assert_eq!(grid[13], "⏎ put main back to it  / find  J/esc close");
 }
 
 /// A box docked over J names the keys; J's bar is blank under it.
@@ -368,4 +370,60 @@ fn the_title_says_while_the_scan_runs() {
         grid[0],
         "JOURNAL · what happened in this repo, newest first · finding lost commits…"
     );
+}
+
+/// J's find (m7-power-tools/30o-c) on the title row, as blame's
+/// `FindTitle` tail: `find "<q>" <at> of <of>`, or `· no match`.
+#[test]
+fn a_kept_find_ends_the_title_as_blames_does() {
+    let mut view = view(mock_rows(), JournalStatus::Ready);
+    view.find = Some(JournalFindView {
+        query: sanitize("spike"),
+        at: Some(1),
+        of: 2,
+    });
+    let grid = draw(&view, 187, 14);
+    assert_eq!(
+        grid[0],
+        "JOURNAL · what happened in this repo, newest first · find \"spike\" 1 of 2"
+    );
+    view.find = Some(JournalFindView {
+        query: sanitize("zzz"),
+        at: None,
+        of: 0,
+    });
+    let grid = draw(&view, 187, 14);
+    assert!(
+        grid[0].ends_with(" · find \"zzz\" · no match"),
+        "{}",
+        grid[0]
+    );
+}
+
+/// The bar as blame's (`blame_place_list`): `/ find` always, `n N match`
+/// after it while a find is kept.
+#[test]
+fn the_bar_offers_n_n_only_with_a_find_kept() {
+    let mut view = view(mock_rows(), JournalStatus::Ready);
+    view.selected = 2;
+    view.enter_words = Some("⏎ put main back to it".to_owned());
+    view.find = Some(JournalFindView {
+        query: sanitize("spike"),
+        at: Some(1),
+        of: 2,
+    });
+    let grid = draw(&view, 187, 14);
+    assert_eq!(
+        grid[13],
+        "⏎ put main back to it  / find  n N match  J/esc close"
+    );
+}
+
+/// While he types, the prompt stands where the bar was, as blame's.
+#[test]
+fn typing_draws_the_prompt_in_place_of_the_bar() {
+    let mut view = view(mock_rows(), JournalStatus::Ready);
+    view.find_prompt = Some(sanitize("spi"));
+    let grid = draw(&view, 187, 14);
+    assert_eq!(grid[13], "/spi");
 }

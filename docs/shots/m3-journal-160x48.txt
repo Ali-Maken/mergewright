@@ -70,4 +70,4 @@
 "                                                                                                                                                                "
 "                                                                                                                                                                "
 "● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds                                                          "
-"⏎ redo this  space command log  J/esc close                                                                                                                     "
+"⏎ redo this  / find  space command log  J/esc close                                                                                                             "
