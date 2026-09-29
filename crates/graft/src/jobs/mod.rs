@@ -74,6 +74,7 @@ pub(crate) mod commit_message;
 pub(crate) mod conflict;
 pub(crate) mod detail;
 mod finish;
+pub(crate) mod journal_list;
 mod kinds;
 mod map;
 pub(crate) mod operate;

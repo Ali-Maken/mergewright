@@ -1341,7 +1341,7 @@ fn every_field_spelled_out() -> AppState {
         clash_index: crate::update::state::IndexRead::Unknown,
         land_on_head: false,
         head_landing: crate::update::HeadLanding::default(),
-        lands_on_head: None,
+        lands: None,
         line_landing: None,
         trail: super::place::Trail::default(),
         live_landing_owed: false,
@@ -3300,6 +3300,7 @@ fn settled_waits_for_an_owed_landing() {
     state.head_landing = crate::update::HeadLanding {
         refs: Some(JobId::new(50)),
         walk: Some(JobId::new(51)),
+        ..crate::update::HeadLanding::default()
     };
 
     let (state, _) = update(&state, working_tree_read(JobId::new(10)));
@@ -5045,6 +5046,8 @@ fn overlay_over(mut state: AppState, overlay: Shown) -> AppState {
                 live: Vec::new(),
                 interrupted_edits: Vec::new(),
             }));
+            // As the read's landing does (m7-power-tools/24).
+            crate::update::journal::rebuild(&mut state);
         }
         Shown::Stash => {
             state.stash.shown = true;

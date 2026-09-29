@@ -101,5 +101,5 @@ fn operated_takes_staging_not_kept_as_done_with_its_line() {
         staging_not_kept_status("checkout fix", &paths(&["base.txt"]), 187)
     );
     assert!(state.land_on_head, "lands as Done does");
-    assert_eq!(state.lands_on_head, None);
+    assert_eq!(state.lands, None);
 }

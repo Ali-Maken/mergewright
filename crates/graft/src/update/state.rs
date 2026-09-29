@@ -328,10 +328,10 @@ pub struct AppState {
     /// answer stale ([`crate::update::clash::refresh_and_land`]).
     pub(crate) clash_index: IndexRead,
     /// A `--continue` finished (`resumed` → `Done`), or a write whose launch
-    /// said it moves `HEAD` did ([`AppState::lands_on_head`]): the graph cursor goes
-    /// to the new `HEAD` once the refresh that answer issued has both the
-    /// fresh refs and the fresh walk ([`AppState::head_landing`]). Spent by
-    /// `banner::land_on_head`.
+    /// owed a landing did ([`AppState::lands`]): the graph cursor goes to
+    /// the new `HEAD` — or the commit [`HeadLanding::on`] names — once the
+    /// refresh that answer issued has both the fresh refs and the fresh walk
+    /// ([`AppState::head_landing`]). Spent by `banner::land_on_head`.
     pub land_on_head: bool,
     /// The two reads [`AppState::land_on_head`] waits on, each `Some` until
     /// it has answered. Ids, not "the next answer": a refs read from before
@@ -339,13 +339,15 @@ pub struct AppState {
     /// `HEAD`. `Command::ReadRefs` carries an id `update` chose for exactly
     /// this (the refs answer had no id guard before).
     pub head_landing: HeadLanding,
-    /// The write in `operating` whose finish moves `HEAD`
-    /// (`Operation::moves_head`), so its `Done` owes the same landing as a
-    /// `--continue` ([`AppState::land_on_head`], m7-power-tools/03). Decided
-    /// at launch from the operation, never guessed from the answer. Beside
-    /// `operating` rather than inside it, as `resuming` is: `operating` is
-    /// a bare id read in hundreds of places.
-    pub(crate) lands_on_head: Option<JobId>,
+    /// The write in `operating` whose finish owes a landing, and where
+    /// (`operate::landing_of`): `HEAD` for one that moves it, the restored
+    /// commit or the changes pane for a put-back, the new tip for a branch
+    /// made without switching (m7-power-tools/03, /24). Its `Done` spends it
+    /// as a `--continue` does ([`AppState::land_on_head`]). Decided at launch
+    /// from the operation, never guessed from the answer. Beside `operating`
+    /// rather than inside it, as `resuming` is: `operating` is a bare id read
+    /// in hundreds of places.
+    pub(crate) lands: Option<(JobId, super::operate::Landing)>,
     /// A `show_line` still waiting on the graph's seek, the file list or the
     /// diff (`update::detail::show_line`, m7-power-tools/20b). Moved on by
     /// `update::detail::advance` after every event; dropped by a key or
@@ -958,14 +960,19 @@ pub(crate) enum IndexRead {
     Read(Result<graft_core::journal::IndexState, String>),
 }
 
-/// The reads a pending [`AppState::land_on_head`] still waits on.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// The reads a pending [`AppState::land_on_head`] still waits on, and the
+/// row it lands on.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct HeadLanding {
     /// The refresh's refs read, until it answers.
     pub refs: Option<JobId>,
     /// The refresh's history walk, until it — or a walk a later refresh put
     /// in its place — starts (`banner::walk_started`).
     pub walk: Option<JobId>,
+    /// Where the cursor goes: `HEAD` (the fresh refs' answer) or one commit
+    /// (m7-power-tools/24). `Changes` never waits here: it lands on the
+    /// changes pane at once (`banner::finished_lands_on`).
+    pub(crate) on: super::operate::Landing,
 }
 
 /// Which commits only a stash reaches (`graft_git::history_reads::only_in_stash`,

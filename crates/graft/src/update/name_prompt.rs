@@ -145,6 +145,13 @@ pub(crate) fn refusal_words(state: &AppState) -> Option<String> {
 /// editor or git's credential question all own the keyboard, and a second
 /// box over one of them would take keys the first is still waiting for.
 pub fn open_name_prompt(state: &mut AppState, kind: NameKind) -> bool {
+    open_name_prompt_with(state, kind, "")
+}
+
+/// [`open_name_prompt`] with `prefill` already typed, cursor after it
+/// (m7-power-tools/24: J's `b` on a row whose `⏎` offered
+/// `<branch>-restored`). `Ctrl+U` clears it as it clears anything typed.
+pub fn open_name_prompt_with(state: &mut AppState, kind: NameKind, prefill: &str) -> bool {
     if state.preview.is_some()
         || state.confirm.is_some()
         || state.commit_editor.is_some()
@@ -154,7 +161,7 @@ pub fn open_name_prompt(state: &mut AppState, kind: NameKind) -> bool {
     }
     state.name_prompt = Some(NamePrompt {
         kind,
-        field: TextField::new(""),
+        field: TextField::new(prefill),
         refusal: None,
     });
     true
@@ -298,6 +305,17 @@ pub fn name_prompt_paste(state: &mut AppState, text: &str) -> bool {
 /// already taken, and pressing `Enter` harder will not change that — so the
 /// box stays exactly as it is, refusal and all.
 fn create(state: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl FnMut() -> JobId) {
+    make(state, commands, next_id);
+    // Made (the prompt is gone and nothing put it back): J, open under the
+    // prompt since its `b` (V1), closes — the landing is on the graph
+    // (m7-power-tools/24). A refusal keeps both.
+    if state.name_prompt.is_none() && state.journal.shown {
+        super::journal::close(state, commands);
+    }
+}
+
+/// [`create`]'s work: launch the write, or put the prompt back refused.
+fn make(state: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl FnMut() -> JobId) {
     let Some(prompt) = state.name_prompt.as_ref() else {
         return;
     };

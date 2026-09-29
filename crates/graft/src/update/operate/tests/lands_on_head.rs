@@ -88,7 +88,7 @@ fn a_done_write_that_moves_head_owes_the_landing_on_its_refresh() {
             "waits on this refresh's refs"
         );
         assert_eq!(state.head_landing.walk, walk, "and on its walk");
-        assert_eq!(state.lands_on_head, None, "spent by the answer");
+        assert_eq!(state.lands, None, "spent by the answer");
     }
 }
 
@@ -114,9 +114,12 @@ fn a_write_that_died_owes_no_landing() {
     let mut commands = Vec::new();
     launch(&mut state, &mut commands, commit(), &mut next_id).expect("no write is running");
     let id = state.operating.expect("the launch took the slot");
-    assert_eq!(state.lands_on_head, Some(id));
+    assert_eq!(
+        state.lands,
+        Some((id, crate::update::operate::Landing::Head))
+    );
     let _refresh = write_job_ended(&mut state, id, &mut next_id);
-    assert_eq!(state.lands_on_head, None);
+    assert_eq!(state.lands, None);
     assert!(!state.land_on_head);
 }
 
@@ -139,5 +142,5 @@ fn only_done_lands() {
         &mut next_id,
     );
     assert!(!state.land_on_head);
-    assert_eq!(state.lands_on_head, None);
+    assert_eq!(state.lands, None);
 }

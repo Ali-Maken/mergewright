@@ -2807,6 +2807,9 @@ fn journal_state(columns: u16, rows: u16) -> AppState {
             interrupted_edits: Vec::new(),
         },
     ));
+    // As the read's landing does (`journal_event`): J's rows are built
+    // from the entries (m7-power-tools/24).
+    crate::update::journal::rebuild(&mut state);
     state
 }
 

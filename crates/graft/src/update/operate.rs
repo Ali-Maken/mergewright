@@ -45,7 +45,7 @@ pub(super) fn write_job_ended(
     }
     state.operating = None;
     // A write that died without answering owes no landing.
-    state.lands_on_head = None;
+    state.lands = None;
     // A resume that died without answering: nothing will ever take it.
     if state
         .resuming
@@ -137,8 +137,8 @@ fn launch_with(
     let id = next_id();
     claim_write(next, id)?;
     // Decided here, from what was asked, so `Done` never guesses the kind
-    // from its answer (m7-power-tools/03).
-    next.lands_on_head = op.moves_head().then_some(id);
+    // from its answer (m7-power-tools/03, /24).
+    next.lands = landing_of(&op).map(|on| (id, on));
     next.status = Status::Busy(super::remote::busy_text(&op));
     super::remote::launched(
         next,
@@ -150,6 +150,69 @@ fn launch_with(
     );
     commands.push(Command::Operate(id, Box::new(op)));
     Ok(())
+}
+
+/// Where a finished write puts him (m7-power-tools/03, /24): the graph on
+/// `HEAD`, the graph on one commit, or the changes pane on one file.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) enum Landing {
+    /// The graph, cursor on the new `HEAD`, as a `--continue` lands.
+    #[default]
+    Head,
+    /// The graph, cursor on this commit: a put-back's restored commit, a new
+    /// branch's tip.
+    Commit(graft_core::oid::Oid),
+    /// The changes pane, cursor on this file: an edit put back.
+    Changes(PathBuf),
+}
+
+/// The landing `op`'s `Done` owes, decided from what was asked.
+///
+/// `Head` iff it moves `HEAD` ([`Operation::moves_head`]); a put-back on
+/// what it restores; a branch made without switching on its tip; nothing
+/// otherwise. Every kind is named, so a new one has to choose.
+pub(crate) fn landing_of(op: &Operation) -> Option<Landing> {
+    use graft_ops::operation::RecoverTarget;
+    if op.moves_head() {
+        return Some(Landing::Head);
+    }
+    match op {
+        Operation::Recover(params) => match &params.target {
+            RecoverTarget::MoveRef { to, .. } => Some(Landing::Commit(*to)),
+            RecoverTarget::Recreate { at, .. } => Some(Landing::Commit(*at)),
+            RecoverTarget::Files { paths, .. } => paths.first().cloned().map(Landing::Changes),
+        },
+        // `checkout: true` moved `HEAD` and returned above.
+        Operation::BranchCreate(params) => Some(Landing::Commit(params.at)),
+        Operation::Commit(_)
+        | Operation::Amend(_)
+        | Operation::Merge(_)
+        | Operation::Rebase(_)
+        | Operation::Rewrite(_)
+        | Operation::CherryPick(_)
+        | Operation::Revert(_)
+        | Operation::Pull(_)
+        | Operation::Checkout(_)
+        | Operation::BranchFromStash(_)
+        | Operation::FinishMerge(_)
+        | Operation::Reset(_)
+        | Operation::Stage(_)
+        | Operation::Unstage(_)
+        | Operation::Discard(_)
+        | Operation::StashPush(_)
+        | Operation::StashApply { .. }
+        | Operation::StashPop { .. }
+        | Operation::StashDrop { .. }
+        | Operation::Fetch(_)
+        | Operation::Push(_)
+        | Operation::BranchDelete(_)
+        | Operation::TagCreate(_)
+        | Operation::TagDelete(_)
+        | Operation::ResolveWholeFile(_)
+        | Operation::RestartConflict(_)
+        | Operation::AbortMerge(_)
+        | Operation::DropPutBack { .. } => None,
+    }
 }
 
 /// A write is already running: every other write key is refused
@@ -905,6 +968,10 @@ fn done_status(
             keys: Some(super::switch::GOES_BACK.to_owned()),
         };
     }
+    // A put-back from the journal names what came back (m7-power-tools/24).
+    if let Some(Operation::Recover(params)) = launched_op {
+        return super::recover::done_status(params, |oid| super::recover::subject_in(state, oid));
+    }
     // A one-commit cherry-pick (`o`, or slot 2's `⏎`) lands in `o`'s words
     // (m7-power-tools/11; the journal keeps git's `cherry-pick …`).
     if let Some(Operation::CherryPick(params)) = launched_op
@@ -991,12 +1058,12 @@ pub(crate) fn staging_not_kept_status(what: &str, paths: &[PathBuf], columns: u1
 }
 
 /// What a write that ran leaves behind whatever its line says: the editor
-/// closed, the scope re-read, and the cursor on the new `HEAD` when the
-/// launch asked for it.
+/// closed, the scope re-read, and the cursor where the launch said it lands
+/// ([`landing_of`]).
 fn landed(
     state: &mut AppState,
     applied: &graft_ops::apply::Applied,
-    lands_on_head: bool,
+    lands: Option<Landing>,
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
     // The write the editor was open for landed, so the editor and
@@ -1004,12 +1071,17 @@ fn landed(
     // (m3-working-tree-undo-and-stash/05). A failure leaves both
     // alone: the message is what the user has to fix.
     super::commit_editor::committed(state);
-    let commands = refresh_scope(state, applied.refresh, next_id);
+    let mut commands = refresh_scope(state, applied.refresh, next_id);
     // A write that moved `HEAD` lands the cursor on its new row once
     // this refresh's refs and walk are in, exactly as a `--continue`
-    // does (UX §3.1, m7-power-tools/03).
-    if lands_on_head {
-        super::banner::finished_lands_on_head(state, &commands);
+    // does (UX §3.1, m7-power-tools/03); a put-back on what it restored
+    // (m7-power-tools/24).
+    match lands {
+        Some(Landing::Changes(path)) => {
+            super::banner::lands_on_changes(state, &mut commands, path, next_id);
+        }
+        Some(on) => super::banner::finished_lands_on(state, &commands, on),
+        None => {}
     }
     commands
 }
@@ -1087,6 +1159,15 @@ fn launched_op(state: &AppState, id: JobId) -> Option<Operation> {
         .and_then(|running| running.op.clone())
 }
 
+/// Where write `id`'s answer lands, spent: what its launch said
+/// ([`landing_of`]), when the launch was this write's.
+fn owed_landing(state: &mut AppState, id: JobId) -> Option<Landing> {
+    state
+        .lands
+        .take()
+        .and_then(|(launched, on)| (launched == id).then_some(on))
+}
+
 /// An operate job answered. Stale answers (a job that is not the one
 /// `AppState::operating` is waiting for) are dropped. `Operated::Incomplete`
 /// still refreshes — the write happened even though part of its after-state
@@ -1106,7 +1187,7 @@ pub fn operated(
     // After the guard above: only the write it launched is its answer.
     super::rewrite_editor::write_answered(state, &outcome);
     state.operating = None;
-    let lands_on_head = state.lands_on_head.take() == Some(id);
+    let lands = owed_landing(state, id);
     // A write that finished before `Esc`'s stop reached it answers here as
     // usual; the cancel it outran is over.
     state.remote.cancelling = None;
@@ -1127,8 +1208,9 @@ pub fn operated(
                 clash_drop,
                 &applied,
             );
-            let mut commands = landed(state, &applied, lands_on_head, next_id);
+            let mut commands = landed(state, &applied, lands, next_id);
             super::amend_into::landed(state, launched_op.as_ref(), &mut commands, next_id);
+            super::recover::tag_rows(state, launched_op.as_ref());
             commands
         }
         // It ran and was read back; only the staging did not come back
@@ -1139,7 +1221,8 @@ pub fn operated(
                 .and_then(super::switch::landed_words)
                 .unwrap_or_else(|| done_what(state, remote_op.as_ref(), &applied));
             let status = staging_not_kept_status(&what, &paths, state.size.columns);
-            let mut commands = landed(state, &applied, lands_on_head, next_id);
+            let mut commands = landed(state, &applied, lands, next_id);
+            super::recover::tag_rows(state, launched_op.as_ref());
             // A put-in landed all the same: its commits are tagged and its
             // words spent (review m7-09-to-21c, Minor 1). Its `Done` line
             // gives way to the staging failure, which must be seen.
@@ -2872,6 +2955,7 @@ mod tests {
     }
 
     mod edits_words;
+    mod landing;
     mod lands_on_head;
     mod one_write;
     mod staging_not_kept;

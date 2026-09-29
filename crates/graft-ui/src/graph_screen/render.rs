@@ -216,7 +216,7 @@ impl GraphScreen<'_> {
         // emphasis, as every other blank cell of the row does.
         draw_cell(buf, x + used, y, TAG_GAP, "", style);
         let tag_style = style.patch(foreground(self.theme, Token::Accent));
-        draw_cell(buf, x + used + TAG_GAP, y, tag_width, tag, tag_style);
+        draw_cell(buf, x + used + TAG_GAP, y, tag_width, &tag, tag_style);
         let after = x + used + TAG_GAP + tag_width;
         draw_cell(buf, after, y, (x + width).saturating_sub(after), "", style);
     }
@@ -474,7 +474,11 @@ fn badges_width(entry: &GraphEntry<'_>, icons: Icons, columns: &Columns) -> u16 
 /// The row tag's words when [`GraphScreen::draw_subject`] draws them in a
 /// subject column of `width` cells: `None` for an untagged row, or when
 /// fewer than [`TAG_MIN_SUBJECT`] cells would be left for the subject.
-fn drawn_tag(entry: &GraphEntry<'_>, ascii: bool, width: u16) -> Option<&'static str> {
+fn drawn_tag<'e>(
+    entry: &'e GraphEntry<'_>,
+    ascii: bool,
+    width: u16,
+) -> Option<std::borrow::Cow<'e, str>> {
     let tag = entry.tag.as_ref()?.words(ascii);
     let tag_width = u16::try_from(tag.width()).unwrap_or(u16::MAX);
     (width.saturating_sub(tag_width.saturating_add(TAG_GAP)) >= TAG_MIN_SUBJECT).then_some(tag)

@@ -31,7 +31,7 @@ pub fn journal_view(state: &AppState, now_seconds: i64) -> JournalView {
             JournalStatus::Ready,
         ),
     };
-    let selected = state.journal.selected.min(rows_end(&rows));
+    let selected = state.journal.selected_graft_row().min(rows_end(&rows));
     JournalView {
         location,
         rows,
@@ -47,7 +47,7 @@ fn rows_end(rows: &[JournalRowView]) -> usize {
 }
 
 /// Newest first, which is the order the browser lists them in and the order
-/// `JournalState::selected` indexes.
+/// `JournalState::selected_graft_row` indexes.
 fn rows_for(entries: &[JournalEntry], state: &AppState, now_seconds: i64) -> Vec<JournalRowView> {
     let next_undo = graft_ops::journal::next_undo(entries).map(|entry| &entry.id);
     let next_redo = graft_ops::journal::next_redo(entries).map(|entry| &entry.id);
@@ -75,7 +75,6 @@ fn rows_for(entries: &[JournalEntry], state: &AppState, now_seconds: i64) -> Vec
             } else {
                 RowMark::None
             };
-            let newest_first = entries.len() - 1 - index;
             JournalRowView {
                 age: sanitize(&age(entry.at_unix_ms, now_seconds)),
                 description: sanitize(&entry.description),
@@ -83,7 +82,7 @@ fn rows_for(entries: &[JournalEntry], state: &AppState, now_seconds: i64) -> Vec
                 mark,
                 commands: entry.commands.iter().map(|line| sanitize(line)).collect(),
                 failure: failure(entry, is_live).map(|line| sanitize(&line)),
-                expanded: state.journal.expanded == Some(newest_first),
+                expanded: state.journal.is_expanded(&entry.id),
             }
         })
         .collect()

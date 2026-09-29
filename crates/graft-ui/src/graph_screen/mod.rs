@@ -335,11 +335,19 @@ pub struct GraphEntry<'a> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RowTag {
     /// `✎ changed` (ASCII `~ changed`): a commit a rewrite just changed.
-    /// Journal-screen (24) adds `PutBack` and `WasHere { branch }`.
     Changed,
     /// `HEAD · stopped here`: the commit a rewrite's `edit` stop handed him
     /// (m7-power-tools/07b), on `HEAD`'s row while the stop lasts.
     StoppedHere,
+    /// `↺ put back` (ASCII `put back`): the commit a put-back from the
+    /// journal brought back (m7-power-tools/24).
+    PutBack,
+    /// `○ <branch> was here` (ASCII `<branch> was here`): the tip a put-back
+    /// moved `branch` off (m7-power-tools/24).
+    WasHere {
+        /// The branch, short name, already sanitised by the caller.
+        branch: String,
+    },
 }
 
 impl RowTag {
@@ -347,13 +355,22 @@ impl RowTag {
     /// draws in: `ascii` is `GraphView::ascii`, the switch the marker glyph
     /// mirrors too (badges' `Icons` has no ASCII form).
     #[must_use]
-    pub fn words(&self, ascii: bool) -> &'static str {
+    pub fn words(&self, ascii: bool) -> std::borrow::Cow<'_, str> {
+        use std::borrow::Cow;
         match (self, ascii) {
-            (RowTag::Changed, false) => "\u{270e} changed",
-            (RowTag::Changed, true) => "~ changed",
+            (RowTag::Changed, false) => Cow::Borrowed("\u{270e} changed"),
+            (RowTag::Changed, true) => Cow::Borrowed("~ changed"),
             // `·` is drawn in both tiers: the ASCII tier swaps glyphs, not
             // the middle dot every status line already uses.
-            (RowTag::StoppedHere, _) => "HEAD \u{b7} stopped here",
+            (RowTag::StoppedHere, _) => Cow::Borrowed("HEAD \u{b7} stopped here"),
+            // The ASCII tier has no arrow or ring that reads as these, so
+            // it says the words alone rather than borrow a graph glyph.
+            (RowTag::PutBack, false) => Cow::Borrowed("\u{21ba} put back"),
+            (RowTag::PutBack, true) => Cow::Borrowed("put back"),
+            (RowTag::WasHere { branch }, false) => {
+                Cow::Owned(format!("\u{25cb} {branch} was here"))
+            }
+            (RowTag::WasHere { branch }, true) => Cow::Owned(format!("{branch} was here")),
         }
     }
 }

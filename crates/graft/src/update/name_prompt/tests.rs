@@ -439,3 +439,50 @@ fn a_fetch_in_flight_refuses_inside_the_stash_branch_prompt() {
 }
 
 mod in_flight;
+
+/// m7-power-tools/24-a: J's `b` on a row whose `⏎` offered a name opens
+/// with it typed, cursor after it; `Ctrl+U` clears it like anything typed.
+#[test]
+fn open_name_prompt_with_prefills_and_ctrl_u_clears() {
+    let mut state = fixture();
+    let kind = NameKind::Branch {
+        at: oid(2),
+        checkout: false,
+    };
+    assert!(open_name_prompt_with(&mut state, kind, "main-restored"));
+    assert_eq!(typed(&state), "main-restored");
+    let field = &state.name_prompt.as_ref().expect("open").field;
+    assert_eq!(field.cursor(), field.len(), "the cursor is after the name");
+    let (state, _) = press(&state, control('u'));
+    assert_eq!(typed(&state), "");
+}
+
+/// J open under the prompt (its `b`): a made branch closes J — the
+/// landing is on the graph — and a refused name keeps both.
+#[test]
+fn creating_from_j_closes_j() {
+    let mut state = fixture();
+    state.journal.shown = true;
+    let kind = NameKind::Branch {
+        at: oid(2),
+        checkout: false,
+    };
+    assert!(open_name_prompt_with(&mut state, kind.clone(), "main"));
+    let (refused, _) = press(&state, key(KeyCode::Enter));
+    assert!(refused.name_prompt.is_some(), "main exists: refused");
+    assert!(refused.journal.shown, "J stays under a refusal");
+
+    assert!(open_name_prompt_with(&mut state, kind, "main-restored"));
+    let (after, commands) = press(&state, key(KeyCode::Enter));
+    assert!(after.name_prompt.is_none());
+    assert!(!after.journal.shown, "J closed");
+    assert!(
+        commands.iter().any(|command| matches!(
+            command,
+            Command::Operate(_, op)
+                if matches!(op.as_ref(), Operation::BranchCreate(params)
+                    if params.name == "main-restored" && params.at == oid(2))
+        )),
+        "{commands:?}"
+    );
+}

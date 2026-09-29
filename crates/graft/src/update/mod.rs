@@ -43,6 +43,7 @@ pub mod place;
 mod prelude;
 pub mod preview;
 pub mod radar;
+pub(crate) mod recover;
 mod relaunch;
 pub mod remote;
 pub mod resolver;
