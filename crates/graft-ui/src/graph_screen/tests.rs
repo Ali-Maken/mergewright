@@ -2506,3 +2506,29 @@ fn the_stopped_here_tag_draws_after_the_subject() {
         "{lines:#?}"
     );
 }
+
+/// m7-power-tools/24: a put-back's two tags, `↺ put back` on the restored
+/// commit and `○ <branch> was here` on the tip it replaced, after the
+/// subject as every tag is; the ASCII tier drops the glyphs.
+#[test]
+fn put_back_and_was_here_tags_draw_after_the_subject() {
+    let rows = linear(3);
+    let mut tagged = view(&rows, WalkView::Complete { rows: 3 }, 1);
+    tagged.rows[0].tag = Some(RowTag::PutBack);
+    tagged.rows[1].tag = Some(RowTag::WasHere {
+        branch: "main".to_owned(),
+    });
+    let lines = text(&draw(&tagged, 120, 6));
+    assert!(
+        lines[1].contains("Commit 3  \u{21ba} put back"),
+        "{lines:#?}"
+    );
+    assert!(
+        lines[2].contains("Commit 2  \u{25cb} main was here"),
+        "{lines:#?}"
+    );
+    tagged.ascii = true;
+    let lines = text(&draw(&tagged, 120, 6));
+    assert!(lines[1].contains("Commit 3  put back"), "{lines:#?}");
+    assert!(lines[2].contains("Commit 2  main was here"), "{lines:#?}");
+}

@@ -336,15 +336,18 @@ Part 0 (24-0): **done** (builder 24-0, 2026-09-29; NOTES 24-0 at the end)
   branch not taken (V6). — full workspace `cargo nextest run`, 4765/4765 passed, includes all four.
 
 Part A (24-a):
-- [ ] **Verify-first:** V1–V5 in NOTES (done, 80b72040).
-- [ ] **Identity:** `the_cursor_stays_on_its_row_when_outside_rows_arrive` (red),
+- [x] **Verify-first:** V1–V5 in NOTES (done, 80b72040). — NOTES "builder 24-a, base a91ae83c".
+- [x] **Identity:** `the_cursor_stays_on_its_row_when_outside_rows_arrive` (red),
   `the_cursor_stays_on_its_row_when_lost_rows_arrive` (red), `a_vanished_row_falls_to_the_newest`,
-  `space_expands_by_row_not_by_index` (red), `two_steps_of_one_ref_in_one_second_are_two_rows`.
+  `space_expands_by_row_not_by_index` (red), `two_steps_of_one_ref_in_one_second_are_two_rows`. — all five in
+  `crates/graft/src/update/journal/tests.rs`, pass; driven through `outside_landed`/`lost_landed` (the handlers; the
+  jobs are not dispatched yet, NOTES). **Not red-first** (NOTES): mutation-checked instead.
 - [ ] **Stages:** `j_opens_with_graft_rows_at_once`, `outside_rows_arrive_second`,
   `lost_rows_arrive_third_and_the_title_says_while`, `a_failed_scan_says_why_in_the_title`.
-- [ ] **Preselect** (Ruling): `the_newest_lost_row_is_preselected` (red), `a_fetch_above_does_not_stop_the_preselect`,
+- [x] **Preselect** (Ruling): `the_newest_lost_row_is_preselected` (red), `a_fetch_above_does_not_stop_the_preselect`,
   `no_preselect_when_a_graft_row_is_newer`, `a_lost_row_under_a_graft_row_is_never_preselected`,
-  `no_preselect_after_a_key`, `n_goes_to_the_next_lost_row`.
+  `no_preselect_after_a_key`, `n_goes_to_the_next_lost_row`. — all six in `update/journal/tests.rs`, pass. Not red-first
+  (NOTES).
 - [ ] **Enter:** `enter_on_the_next_undo_row_is_u_as_before`, `enter_on_the_next_redo_row_is_redo_as_before`,
   `enter_on_a_graft_row_is_the_revert_as_before`, `enter_on_a_lost_commit_opens_the_put_back_preview` (red; J still
   shown), `enter_on_a_gone_branch_opens_make_it_again`, `enter_on_an_outside_row_puts_that_ref_back`,
@@ -509,3 +512,68 @@ Verify-first done; nothing built. V4 hits the ticket's own stop condition.
 - **Scout:** none; ticket names every site, grep at be89c351 matched. `update/clash.rs`, `update/state.rs`,
   `m6_stash_put_back.rs`, graft `MAP.md` needed no change (state keeps `PutBackWhy` beside the job id;
   `m6_stash_put_back.rs:483` asserts a pop's undo words).
+
+## NOTES 24-a (builder, 2026-09-29, base db5ac0fc) — **partial: blocked at the job seam; compacted once**
+**Compacted mid-ticket** (context ran out once; resumed from the summary). Conductor: split the rest as below.
+
+**Blocked: needs `crates/graft/src/update/events/command.rs`** (held by rebase-preview-keeps-drops), plus
+`update/events.rs` (`Task`/`Product`) and `event_loop/label.rs` — none in 24-a's list. The Files list says the
+`Command`/`Product` variants go in `jobs/mod.rs`; they do not live there (`Command` is `update/events/command.rs`,
+`Product`/`Task` `update/events.rs`). Signatures wanted:
+- `Command::ReadOutside { id: JobId }` → `Product::Outside(Result<Arc<Vec<OutsideRecord>>, String>)`
+- `Command::FindLost { id: JobId, outside: Arc<Vec<OutsideRecord>> }` → `Product::LostFound(Result<Arc<jobs::journal_list::LostFound>, String>)`
+- `Command::RecoverFor { id: JobId, list: Arc<JournalList>, row: usize }` → `Product::RecoverFor(Result<Recover, String>)`
+
+**Exact next step:** add the three variants + labels; dispatch in `jobs/runner.rs` to `jobs::journal_list::{read_outside,
+find_lost, recover_for}`; route the products in `update/mod.rs` to `journal::{outside_landed, lost_landed,
+recover_answered}` (on `outside` Ready → ask `FindLost`); in `journal_enter` set `outside = Pending(id)` and push
+`ReadOutside`; in `journal::enter`'s `Outside | Lost | LostEdit` arm replace the placeholder
+`"putting this back is not built yet"` with `recovering = Some((id, key))` + `RecoverFor`. Then remove the six
+`expect(dead_code)` markers (they say "the seam 24-a stopped at"). Then write `outside_rows_arrive_second`,
+`enter_on_a_gone_branch_opens_make_it_again`, `enter_on_an_outside_row_puts_that_ref_back`,
+`enter_on_a_lost_edit_puts_the_file_back` (key → command), and the Landing box's `b_from_j_lands_on_the_new_branch`,
+`u_undoes_the_put_back`, `u_never_acts_on_outside_rows` (need the jobs / `it/` walks).
+
+**Built and tested (unit, scripted state; nothing observed in a running app):**
+- graft-ops `words`: `commit (initial): X` → `committed "X" on main` (`the_first_commit_reads_committed`, red first).
+  `tests/it/lost_work.rs`'s last line updated to match (Touches: "its test").
+- graft-ui `RowTag::PutBack` / `WasHere { branch }` + draw (`put_back_and_was_here_tags_draw_after_the_subject`).
+- `update::journal`: RowKey cursor/expanded, `rebuild` per stage, `preselect`, `n`/`N`, `b` (prefill from `offered`),
+  `⏎` on a `$` switch row → `switch_into`, `recover_answered` (Run → preview with J shown; OfferBranch → sticky + `b`
+  prefill; Err → sticky). Tests in `update/journal/tests.rs` (34, incl. the 12 old ones adjusted to RowKey).
+- `update::recover`: `done_status`, `put_back_tags`, `tag_rows`, `subject_in` (`update/recover/tests.rs`, 6).
+- Landing: `operate::Landing`/`landing_of`, `AppState::lands`, `HeadLanding::on`, `banner::finished_lands_on` /
+  `lands_on_changes` (`update/operate/tests/landing.rs`, 6: `landing_of_names_every_kind`,
+  `put_back_lands_on_the_restored_commit_with_tags_and_words`,
+  `a_put_back_of_an_unchecked_branch_lands_on_the_restored_commit_not_head`,
+  `a_file_put_back_lands_on_the_changes_pane_on_the_file`, `b_from_the_graph_lands_where_it_was`,
+  `the_tags_clear_on_the_next_operation`). 03's `lands_on_head.rs` and 10's landing tests green (full nextest).
+- `open_name_prompt_with`; create from J closes J (`open_name_prompt_with_prefills_and_ctrl_u_clears`,
+  `creating_from_j_closes_j`, `esc_on_the_name_prompt_returns_to_j_on_the_same_row`).
+- Also written, pass, **not ticked** (their box needs the dispatch): `j_opens_with_graft_rows_at_once`,
+  `enter_on_a_switch_row_switches_back`, `enter_on_a_lost_commit_opens_the_put_back_preview` and
+  `esc_on_the_put_back_preview_returns_to_j_on_the_same_row` (via `recover_answered`, not the key),
+  `moved_on_shows_the_words_and_b_prefills_the_name`, `b_on_any_row_opens_the_name_prompt`,
+  `b_on_a_step_with_no_new_names_its_old`, `b_on_a_step_with_no_commit_says_so`, `a_refusal_in_j_sets_the_status`.
+  The old `enter_on_the_next_undo_row_is_u_and_closes_the_browser` / `..._redo_..._is_still_capital_u` /
+  `enter_on_an_older_row_opens_a_preview_of_reverting_to_it` cover the three "as before" names, under their old names.
+
+**Red-first: not kept.** The graft-side code was written before its tests (only `the_first_commit_reads_committed` and the
+RowTag test ran red). Instead, a mutation (cursor always falls to row 0; preselect off) failed 7 of the journal tests;
+the landing tests start the cursor on `0x05` and assert `0x04`/`0x03`/`0x02`, so they fail unless the seek happens.
+
+**Deviations (say if wrong):** `recover_for` job returns `Result<Recover, String>` (`Refusal` has no failed-read
+variant); `LostFound.subjects` added (a lost tip is on no graph row); `JournalState.recovering` added (stale `⏎`
+answers dropped by id); `open_name_prompt_with` returns `bool` like `open_name_prompt`; `finished_lands_on` keeps
+`&[Command]`, `Changes` goes through `lands_on_changes`; `row_commit` of a `●` row is `None` (`b` says "this step names
+no commit"); the Done tick follows `what` (`put back ✓ · main has "S" again · u undoes`, `Status::Done`'s order); `/`
+find in J not built; `LostScan::Running` while stage 3 was not asked.
+
+**Files outside the list (all forced by a changed signature or a fixture that bypassed the new path):**
+`view/journal.rs` (24-b's: `selected`/`expanded` now `selected_graft_row()`/`is_expanded`, 3 lines),
+`update/tests.rs` + `view/tests.rs` (fixtures set `journal.entries` directly → now call `journal::rebuild`, as
+`journal_event` does; `capture_m3_journal`'s shots re-checked **unchanged**), `update/banner.rs` (one re-export line),
+`update/name_prompt/tests.rs`, `update/operate/tests/{lands_on_head,staging_not_kept}.rs` (`lands` rename),
+graft-ui `graph_screen/render.rs` + `tests.rs`, graft-ops `tests/it/lost_work.rs`.
+
+**Scout:** 24's (`.scratch/m7-power-tools/scouts/24.md`), plus targeted reads; no new scout.

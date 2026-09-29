@@ -15,7 +15,7 @@ use crate::operation::short;
 ///
 /// | git's subject | Words |
 /// |---|---|
-/// | `commit: <s>` | `committed "<s>" on <b>` |
+/// | `commit: <s>`, `commit (initial): <s>` | `committed "<s>" on <b>` |
 /// | `commit (amend): <s>` | `amended "<s>" on <b>` |
 /// | `reset: moving to …` | `reset <b> <N> commits back`, else `moved <b> to <sha7>` |
 /// | `checkout: moving from a to b` | `switch from a to b` |
@@ -37,7 +37,10 @@ pub(super) fn words_on(
     onto: Option<&str>,
 ) -> String {
     let subject = record.subject.as_str();
-    if let Some(said) = subject.strip_prefix("commit: ") {
+    if let Some(said) = subject
+        .strip_prefix("commit: ")
+        .or_else(|| subject.strip_prefix("commit (initial): "))
+    {
         return format!("committed \"{said}\" on {branch}");
     }
     if let Some(said) = subject.strip_prefix("commit (amend): ") {

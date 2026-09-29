@@ -122,11 +122,27 @@ fn a_cherry_pick_is_taken_onto_the_branch() {
     );
 }
 
+/// 22b's question: the first commit's record reads as any commit does
+/// (m7/24 "Decided", rows).
+#[test]
+fn the_first_commit_reads_committed() {
+    assert_eq!(
+        said(
+            "refs/heads/main",
+            0,
+            4,
+            "commit (initial): Start the api",
+            None
+        ),
+        r#"committed "Start the api" on main"#
+    );
+}
+
 #[test]
 fn an_unknown_subject_is_gits_own() {
     assert_eq!(
-        said("refs/heads/main", 3, 4, "commit (initial): first", None),
-        "commit (initial): first"
+        said("refs/heads/main", 3, 4, "commit (merge): Merge spike", None),
+        "commit (merge): Merge spike"
     );
     assert_eq!(
         said("refs/heads/main", 3, 4, "graft undo", None),
