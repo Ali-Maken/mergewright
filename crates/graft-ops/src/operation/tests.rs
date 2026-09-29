@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use graft_core::commit::Timestamp;
-use graft_core::journal::{HeadRef, OperationKind, Touches};
+use graft_core::journal::{HeadRef, OperationKind, PutBackWhy, Touches};
 use graft_core::oid::Oid;
 use graft_git::run::GitArg;
 use graft_git::stash::StashEntry;
@@ -1236,7 +1236,13 @@ fn working_tree_cases() -> Vec<(Operation, bool)> {
             },
             false,
         ),
-        (Operation::DropPutBack { stash: oid(1) }, false),
+        (
+            Operation::DropPutBack {
+                stash: oid(1),
+                why: PutBackWhy::Pop,
+            },
+            false,
+        ),
         (
             resolve("p.rs", Side::Ours, UnmergedHow::DeletedByThem),
             false,
@@ -1755,5 +1761,43 @@ fn rebase_tips_pin_every_branch_of_the_line() {
         Err(Refusal::Moved {
             name: "refs/heads/feature-c".to_owned()
         })
+    );
+}
+
+/// 24-0 (m6 usability :847): a set-aside's drop has one name — the done
+/// line says `set-aside copy`, so the journal row says it too; a pop's or
+/// an apply's drop reads as every other stash drop. Not listed in the
+/// facts → `describe()`'s words, by the same why.
+#[test]
+fn a_stash_drop_has_one_name() {
+    let facts = facts();
+    let at_zero = facts.stashes[0].commit;
+    let drop = |why| Operation::DropPutBack {
+        stash: at_zero,
+        why,
+    };
+    assert_eq!(
+        drop(PutBackWhy::SetAside).describe_in(&facts),
+        "drop the set-aside copy (stash@{0})"
+    );
+    assert_eq!(drop(PutBackWhy::Pop).describe_in(&facts), "drop stash@{0}");
+    assert_eq!(
+        drop(PutBackWhy::Apply).describe_in(&facts),
+        "drop stash@{0}"
+    );
+
+    let unlisted = oid(0x77);
+    let short = super::short(unlisted);
+    let gone = |why| Operation::DropPutBack {
+        stash: unlisted,
+        why,
+    };
+    assert_eq!(
+        gone(PutBackWhy::SetAside).describe_in(&facts),
+        format!("drop the set-aside copy ({short})")
+    );
+    assert_eq!(
+        gone(PutBackWhy::Pop).describe_in(&facts),
+        format!("drop stash {short}")
     );
 }

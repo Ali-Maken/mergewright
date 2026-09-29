@@ -326,14 +326,14 @@ pub fn cut_at_word(text: &str, width: usize) -> String; // reuse an existing gra
 ```
 
 ## Acceptance (name the verifying test at tick time; **(red)** = write it, see it fail on today's code, then build)
-Part 0 (24-0):
-- [ ] **V6** in NOTES, file:line.
-- [ ] `a_stash_drop_has_one_name` (red; graft-ops): `SetAside` at 0 → `drop the set-aside copy (stash@{0})`; `Pop` →
-  `drop stash@{0}`; not listed → `describe()`'s words per why.
-- [ ] `the_drop_after_a_clash_carries_its_why` (red; graft, `resolved.rs`'s tests or `edits_words.rs`): a set-aside
-  clash finished builds `why: SetAside`; a pop clash `why: Pop`.
-- [ ] Green, named: `stash_clash.rs`, `m6_stash_put_back`, `set_aside.rs`, the journal round-trip tests. If the
-  serde branch was taken: `an_old_drop_line_reads_as_before` (red).
+Part 0 (24-0): **done** (builder 24-0, 2026-09-29; NOTES 24-0 at the end)
+- [x] **V6** in NOTES, file:line. — NOTES 24-0.
+- [x] `a_stash_drop_has_one_name` (red; graft-ops): `SetAside` at 0 → `drop the set-aside copy (stash@{0})`; `Pop` →
+  `drop stash@{0}`; not listed → `describe()`'s words per why. — `graft-ops/src/operation/tests.rs::a_stash_drop_has_one_name`
+- [x] `the_drop_after_a_clash_carries_its_why` (red; graft, `resolved.rs`'s tests or `edits_words.rs`): a set-aside
+  clash finished builds `why: SetAside`; a pop clash `why: Pop`. — `graft/src/update/operate/tests/edits_words.rs::the_drop_after_a_clash_carries_its_why`
+- [x] Green, named: `stash_clash.rs`, `m6_stash_put_back`, `set_aside.rs`, the journal round-trip tests. Serde
+  branch not taken (V6). — full workspace `cargo nextest run`, 4765/4765 passed, includes all four.
 
 Part A (24-a):
 - [ ] **Verify-first:** V1–V5 in NOTES (done, 80b72040).
@@ -495,3 +495,17 @@ Verify-first done; nothing built. V4 hits the ticket's own stop condition.
 - **V5:** `RowKey::Outside { refname, old, new, at }`, the builder's proposal. A row with no `new` draws as any `$`
   row; `⏎` asks `recover_for`; the bar says `⏎ make <b> again` only when `old` is a branch's; `b` names `old`.
 - **V1 correction:** J stays shown under the name prompt (the stash's real behaviour), closes on create.
+
+## NOTES 24-0 (builder, 2026-09-29, base be89c351)
+- **V6.** `Operation` derives only `Clone, Debug, PartialEq, Eq` (`graft-ops/src/operation.rs:58`), not `Serialize` →
+  non-Option branch: `why: PutBackWhy`. Journal format unchanged. Entries already on disk keep their recorded words
+  (`apply` stores the description string); an old set-aside drop still reads `drop stash@{n}`.
+- **V6 `drop stash@{` sites (read-only files):** `graft-ops/src/apply/set_aside/returned.rs:180-194` a command
+  (`stash drop stash@{at}`); `graft-ops/src/operation/stash.rs:85` a command (plan doc); `graft/src/view/journal.rs:347,357`
+  a test fixture's given description (a pop's `StashDrop`), not made; `graft/src/update/stash/tests.rs:397` a command.
+  No second source of a set-aside's words.
+- **Red:** both tests written against the new signature; on old code they do not compile (no `why` field) — red by
+  construction, not separately run red.
+- **Scout:** none; ticket names every site, grep at be89c351 matched. `update/clash.rs`, `update/state.rs`,
+  `m6_stash_put_back.rs`, graft `MAP.md` needed no change (state keeps `PutBackWhy` beside the job id;
+  `m6_stash_put_back.rs:483` asserts a pop's undo words).
