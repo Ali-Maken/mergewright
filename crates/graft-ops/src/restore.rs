@@ -21,6 +21,7 @@
 //! `git` each step actually runs is the `steps` module.
 
 mod outcome;
+mod raw;
 mod ref_names;
 mod rollback;
 mod steps;
