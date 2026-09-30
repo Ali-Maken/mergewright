@@ -24,9 +24,8 @@ use std::alloc::{GlobalAlloc, Layout, System};
 use graft::history::{History, Phase};
 use graft::jobs::{Dispatch, JobRunner, Shutdown};
 use graft::repos::RepoStore;
-use graft::update::{AppEvent, AppState, Command, Size, update};
+use graft::update::{AppEvent, AppState, Size, update};
 use graft_core::event::{Event, KeyCode, KeyPress};
-use graft_git::history::Order;
 
 // ---------------------------------------------------------------- allocator
 
@@ -99,20 +98,12 @@ fn run(repo: &std::path::Path) -> Result<(), String> {
     let (sender, events) = mpsc::channel();
     let store = Arc::new(RepoStore::new(repo.to_path_buf(), None));
     let jobs = JobRunner::start(sender, 4, Arc::clone(&store)).map_err(|why| why.to_string())?;
-    for command in [
-        Command::OpenRepository,
-        Command::CheckSystemGit,
-        Command::ReadHistory(Order::Topological),
-        Command::ReadRefs,
-        Command::ReadWorkingTree,
-    ] {
+    // The app's own opening (m7/12e): the reads now carry the `JobId`s the
+    // state awaits, so they are asked through `update::opening`.
+    let (mut state, commands) = graft::update::opening(repo.to_path_buf(), SIZE);
+    for command in commands {
         jobs.dispatch(command);
     }
-    let mut state = AppState {
-        repo_path: repo.to_path_buf(),
-        size: SIZE,
-        ..AppState::default()
-    };
 
     let painted = |h: &History| h.window.as_ref().is_some_and(|w| !w.rows.is_empty());
     state = pump(&jobs, &events, state, painted)?;
