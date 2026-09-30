@@ -1,6 +1,6 @@
 # m7-acceptance — "you can rewrite, trace and recover history without leaving the app": every M7 journey walked and counted
 
-Status: partial (2026-10-01) — findings F-recover, F-guard, 9 pty drifts; see NOTES
+Status: done (2026-10-01) — every box ticked after 26b re-run 2 (`scripts/m7-accept.sh` rc=0); see 26b NOTES "Re-run 2"
 Blocked by: every M7 ticket 01–25 (and 02b, 04b)
 Blocked by: every other M7 ticket:
 - 01-error-rows-resume-restore, 02-rewrite-engine (+02b), 03-land-on-result, 04-slow-key-cause (+04b),
@@ -90,22 +90,27 @@ Needs: every signature above, as built. Each walk calls the app through the exis
 - `TESTING.md`: the M6 acceptance section (as the format model) and "Times I left".
 
 ## Acceptance (name the verifying test at tick time; spot-check your own ticks)
-- [ ] `scripts/m7-accept.sh` exists; it exits 0 on the finished milestone and non-zero when one walk's count is lowered
+- [x] `scripts/m7-accept.sh` exists; it exits 0 on the finished milestone and non-zero when one walk's count is lowered
       in a scratch copy (show it, then revert; say so in NOTES).
       **Half:** the red side shown (NOTES "Red demonstration": rc=1, `1 over`, `pull::pull_current_branch` red). It
       does **not** exit 0: F-recover, F-guard and 9 pty drifts (NOTES). Not ticked.
       **26b re-run (2026-10-01):** still rc=1 — `accept: 29 journeys walked, 29 at or under count, 0 over`, but step 1
       has 1 FAIL (recover, now at its last step) and step 2 1 drift (m4-03 80x24, a pulse race). Not ticked; 26b NOTES.
+      **26b re-run 2 (main `a3901dee`): rc=0** (`docs/perf/m7-accept.txt`: steps 1–4 green, `29 at or under count,
+      0 over`). Ticked.
 - [x] `every_m7_journey_id_has_a_walk` green (`m7_walk::every_m7_journey_id_has_a_walk`, PASS in `accept/nextest.txt`);
       all **29** ids (the note grew from 26) listed in NOTES with their test names.
-- [ ] Promise scenarios green: `promise_rewrite_without_leaving` ✓ and `promise_trace_without_leaving` ✓ (both PASS);
+- [x] Promise scenarios green: `promise_rewrite_without_leaving` ✓ and `promise_trace_without_leaving` ✓ (both PASS);
       `promise_recover_without_leaving` **red** (F-recover). Not ticked.
       **26b re-run:** the `u` byte assert (`recover.rs:103`) now holds; red at `recover.rs:123` (step 4's put-back of the
       lost edit writes CRLF). Not ticked; 26b NOTES.
-- [ ] Every m3–m7 pty walk passes in compare mode (step 2): **red**, 9 of 13 runs drifted (NOTES "pty compare"). Not
+      **26b re-run 2:** all three PASS in `accept/nextest.txt` (`m7_walk::promise::{rewrite,trace,recover}::…`); byte
+      asserts `recover.rs:103` and `:123` hold. Ticked.
+- [x] Every m3–m7 pty walk passes in compare mode (step 2): **red**, 9 of 13 runs drifted (NOTES "pty compare"). Not
       ticked. Captures re-shot by tickets: `scouts/26-gap-rows.md` §3, as named in each ticket.
       **26b re-run:** 13 runs, 1 drifted (`m4-03-credential-masked-80x24.txt` :14, the field's pulse `◦`); the same walk
       re-run 3× clean. Not ticked; 26b NOTES.
+      **26b re-run 2:** `2 pty: 13 runs (m3–m6 × sizes), 0 drifted or failed`; `accept/pty-diffs/` empty. Ticked.
 - [x] **`TESTING.md` "M7 acceptance"** checklist: 29 journey entries + Rewrite, Trace, Recover and the 80-column guard;
       each names its test (the command), keys vs best tool, a Right line taken from its test's asserts (a scout checked
       each claim against file:line). Colour: one statement covers every entry, `colour: unverified (rule 5)`.
