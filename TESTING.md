@@ -2986,20 +2986,21 @@ carrier (words, glyphs, cursor row), never colour.
   no block, no overlay; `feature-a~2:tokens.txt` holds the edit; `feature-b^` = `feature-a`.
 - [ ] **Trace** · `B ^ Esc L ⏎ Esc Esc Esc` = **8** · `promise::trace::promise_trace_without_leaving`. **Right:** `B`
   from line 22: the cursor row's trailer names Lina. `^`: title `before <sha7>`, cursor on Tom's line 20. `Esc`: back
-  on her blame, line 22. `L`: Lina's row selected; the file pane's range ruled `┃`, one row `┃  18 +`, line 19 drawn
-  as context. `⏎`: the graph cursor on her commit. `Esc Esc Esc`: the diff pane, line cursor on 22 of
+  on her blame, line 22. `L`: Lina's row selected; the file pane's range ruled `┃`, her added lines (18, 21, 22)
+  marked `+` — the walk asserts one row `┃  18 +` and line 19 drawn as context. `⏎`: the graph cursor on her commit. `Esc Esc Esc`: the diff pane, line cursor on 22 of
   `src/auth/session.rs`, focus in the diff, graph cursor on `main` as at the start.
 - [ ] **Recover** · `J ⏎ y` (3), `u` (1), `J n ⏎ y` (4), `J n ⏎ y` (4), `J n ⏎ y` (4) = **16** (26's ruling) ·
   `promise::recover::promise_recover_without_leaving`, with `core.autocrlf=true` and LF working files. **Right:**
   after `J ⏎ y` main on D; after `u` main off D and **every working file byte-equal** to before (`src/a.rs`, LF,
   included); then main on D again, spike on E, and `src/a.rs` holds his lost edit.
-  **Fails today (2026-10-01):** after the put-back `src/a.rs` is CRLF, and `u` leaves it CRLF. Filed by 26.
+  **Fails today (2026-10-01, 26b):** the `u` step now holds (30s); the last step fails — `J n ⏎ y` writes his lost
+  edit to `src/a.rs` in CRLF, where he had LF (`recover.rs:123`; the write is `git restore --source=… --worktree`,
+  `graft-ops/src/operation/recover.rs:239-247`). Gap `M7/30q-putback-fwd`.
 - [ ] **Guard at 80 columns** (review 28 Q2) · `C <branch> ⏎` over an ignored
   `src/services/authentication/providers/oauth2/callbacks/session-cache.json`, branch
   `feature/sara-long-running-oauth-token-refresh-rework` ·
   `promise::guard::guard_refusal_at_80_names_the_file_and_the_next_step`. **Right:** still on `main`; the bottom row
-  at 80 columns shows `session-cache.json` and `move it aside first`. **Fails today (2026-10-01):** it reads
-  `src/services/authentication/providers/oauth2/callbacks/session-c… · esc dismiss`. Filed by 26.
+  at 80 columns shows `session-cache.json` and `move it aside first`. Green since 30t/30t-b (2026-10-01, 26b's run).
 
 ### Coverage, captures, perf
 

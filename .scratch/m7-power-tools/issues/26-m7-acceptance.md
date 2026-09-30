@@ -66,7 +66,8 @@ Needs: every signature above, as built. Each walk calls the app through the exis
   - **Trace:** the "session" fixture.
     1. From the diff pane on line 22: `B`. The trailer names Lina.
     2. `^`: before Lina's commit, cursor on the old line.
-    3. `Esc`, then `L`: the function's history; Lina's row selected; the file pane marks line 19 `+`.
+    3. `Esc`, then `L`: the function's history; Lina's row selected; the file pane marks her added lines `+` (in the
+       fixture: 18, 21, 22). (Amended 2026-10-01, planner's Q-trace ruling in 26b: was "line 19"; the fixture stays.)
     4. `⏎`: the graph on that commit.
     5. `Esc Esc Esc`: back to the diff pane, same line, same graph cursor.
   - **Recover:** the "lost work" fixture.
@@ -93,12 +94,18 @@ Needs: every signature above, as built. Each walk calls the app through the exis
       in a scratch copy (show it, then revert; say so in NOTES).
       **Half:** the red side shown (NOTES "Red demonstration": rc=1, `1 over`, `pull::pull_current_branch` red). It
       does **not** exit 0: F-recover, F-guard and 9 pty drifts (NOTES). Not ticked.
+      **26b re-run (2026-10-01):** still rc=1 — `accept: 29 journeys walked, 29 at or under count, 0 over`, but step 1
+      has 1 FAIL (recover, now at its last step) and step 2 1 drift (m4-03 80x24, a pulse race). Not ticked; 26b NOTES.
 - [x] `every_m7_journey_id_has_a_walk` green (`m7_walk::every_m7_journey_id_has_a_walk`, PASS in `accept/nextest.txt`);
       all **29** ids (the note grew from 26) listed in NOTES with their test names.
 - [ ] Promise scenarios green: `promise_rewrite_without_leaving` ✓ and `promise_trace_without_leaving` ✓ (both PASS);
       `promise_recover_without_leaving` **red** (F-recover). Not ticked.
+      **26b re-run:** the `u` byte assert (`recover.rs:103`) now holds; red at `recover.rs:123` (step 4's put-back of the
+      lost edit writes CRLF). Not ticked; 26b NOTES.
 - [ ] Every m3–m7 pty walk passes in compare mode (step 2): **red**, 9 of 13 runs drifted (NOTES "pty compare"). Not
       ticked. Captures re-shot by tickets: `scouts/26-gap-rows.md` §3, as named in each ticket.
+      **26b re-run:** 13 runs, 1 drifted (`m4-03-credential-masked-80x24.txt` :14, the field's pulse `◦`); the same walk
+      re-run 3× clean. Not ticked; 26b NOTES.
 - [x] **`TESTING.md` "M7 acceptance"** checklist: 29 journey entries + Rewrite, Trace, Recover and the 80-column guard;
       each names its test (the command), keys vs best tool, a Right line taken from its test's asserts (a scout checked
       each claim against file:line). Colour: one statement covers every entry, `colour: unverified (rule 5)`.
@@ -295,3 +302,9 @@ Stay open:
 - The script exits 0 only when those close; re-run `scripts/m7-accept.sh` then and tick the first, third and fourth
   boxes.
 - `scripts/contact-sheet.sh` has no m7 promise (its header says `NOT RECORDED`).
+
+### 26b (2026-10-01) — continuation, see `26b-m7-acceptance-finish.md` NOTES
+- Merged into main's base with 30s, 30t, 30t-b, 30u, 30v (no conflicts). Q-trace: Decided step 3 amended per the
+  planner's ruling; Q-push: gates exist, tests PASS (26b NOTES). The m7 promise is in `scripts/contact-sheet.sh`.
+- Still open: F-recover moved — `u` now byte-exact; the lost edit's put-back (`J n ⏎ y`) writes CRLF
+  (`M7/30q-putback-fwd`). F-guard closed. pty: one race (m4-03 80x24 pulse). Boxes 1, 3, 4 stay unticked.
