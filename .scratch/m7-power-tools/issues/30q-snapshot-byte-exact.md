@@ -282,8 +282,8 @@ Step::RestoreWorktree { tree: Oid, paths: PathScope, raw: Option<Oid> }
   no numbers. The release run is the conductor's.
 
 ### Acceptance
-- [ ] Example and script exist, and the smoke run exits 0 (NOTES).
-- [ ] Clippy with `--all-targets` is green (it compiles the example). Gates workspace-wide.
+- [x] Example and script exist, and the smoke run exits 0 (NOTES). — debug `snapshot_cost 2 50` exit 0, last line `snapshot_cost: done`; case flags raw=none,none,kept (NOTES 30q-c).
+- [x] Clippy with `--all-targets` is green (it compiles the example). Gates workspace-wide. — fmt, clippy -D warnings, nextest 4944/4944, test --doc: all green, workspace-wide.
 - [ ] On OVER: the conductor files the follow-up. The gate is not relaxed in this ticket.
 
 ## Gates
@@ -431,3 +431,15 @@ observed reds.
   operation (`PrepareError::Snapshot`) instead of running it without a backup: M3's direction, but an operation that
   ran before can now refuse in such a repo. No test covers a failing filter; a question for 30q-b/30q-c or a gap row.
 - Perf: every snapshot-taking operation now runs `raw_record`; 30q-c measures it. UI, keymap, captures, words: none.
+
+### 30q-c (2026-09-30, builder; no scout: two new files modelled on named ones)
+- No existing snapshot-cost example (grep `worktree_tree`/`snapshot::take` under `crates/*/examples`, `scripts/`: none;
+  `scripts/m3-snapshot-cost.sh` times the git commands, not `take`). New `crates/graft-ops/examples/snapshot_cost.rs`.
+- **Fixture deviation:** no graft-fixtures `Scale` reaches 5 000 files: `Scale` grows commits; its final tree is three
+  files (`synthetic.rs`, "three small files however long the history is"). The example builds its own 5 000-file LF
+  repo per case in a temp dir, as m3-snapshot-cost.sh does.
+- `raw_record` is timed apart on the `worktree_tree` `take` just returned, so `take`'s own time includes one
+  `raw_record` too.
+- Smoke: debug, `snapshot_cost 2 50` (2 runs, 50 files, not full size), exit 0. No numbers read. Release run is the
+  conductor's: `scripts/m7-30q-perf.sh` → `docs/perf/30q-snapshot.txt`. Script syntax-checked (`bash -n`) only; not run.
+- Touches: graft-ops MAP.md (Examples section added). No src, no test, no public item changed.
