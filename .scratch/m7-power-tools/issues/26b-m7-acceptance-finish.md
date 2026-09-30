@@ -1,6 +1,6 @@
 # m7-acceptance-finish — 26's continuation: re-run the walk after the fixes, tick 1/3/4, the sheets and the promise header
 
-Status: partial (2026-10-01) — the walk still fails on the product (F-recover moved to step 4; one pty race); see NOTES
+Status: done (2026-10-01, re-run 2 on main `a3901dee`) — `scripts/m7-accept.sh` rc=0; see NOTES "Re-run 2"
 Build with: **Fable.** It is the acceptance ticket (26) finishing: it judges the whole milestone against the promise and
 a false tick is Critical. Doesn't count against the milestone's Fable build expectation.
 Needs: `f-recover-set-aside-bytes`, `f-guard-refusal-at-80`, `captures-reshoot-named`, `captures-verify-questions`,
@@ -53,15 +53,22 @@ Out: fixing anything a walk finds (a finding goes to NOTES, the conductor files 
 failure is a failing ticket); the release perf run (`docs/perf/m7-review-release.txt`, done).
 
 ## Acceptance (name the verifying test at tick time; spot-check your own ticks and say how many held)
-- [ ] 26 box 1: `scripts/m7-accept.sh` exits 0 (the run's last line and `rc`); the red side is 26's "Red
-      demonstration", already shown. **Not met:** rc=1 (`accept/run.txt`; NOTES "Run").
-- [ ] 26 box 3: `promise_rewrite_without_leaving`, `promise_trace_without_leaving`, `promise_recover_without_leaving`
+- [x] 26 box 1: `scripts/m7-accept.sh` exits 0 (the run's last line and `rc`); the red side is 26's "Red
+      demonstration", already shown. First run: rc=1 (NOTES "Run"). **Re-run 2 (main `a3901dee`): rc=0**; last lines
+      `accept: 29 journeys walked, 29 at or under count, 0 over` / `summary: docs/perf/m7-accept.txt`.
+- [x] 26 box 3: `promise_rewrite_without_leaving`, `promise_trace_without_leaving`, `promise_recover_without_leaving`
       PASS in `accept/nextest.txt`; the recover one's byte asserts present (quote the assert's file:line).
       **Not met:** rewrite and trace PASS; recover FAIL at `recover.rs:123`. Its byte asserts are present and the `u`
       one holds (`recover.rs:103` `assert_bytes(repo, &reset_state)`, helper :145-158). NOTES "F-recover".
-- [ ] 26 box 4: every m3–m6 pty walk green in compare mode (step 2's summary line; `accept/pty-diffs/` empty).
+      **Re-run 2: met.** `accept/nextest.txt` PASS: `m7_walk::promise::rewrite::promise_rewrite_without_leaving`,
+      `…::trace::promise_trace_without_leaving`, `…::recover::promise_recover_without_leaving`. Byte asserts in
+      `crates/graft/tests/it/m7_walk/promise/recover.rs`: :103 `assert_bytes(repo, &reset_state)` (the `u` step), :123
+      `assert_eq!(on_disk, lost_work::LOST_EDIT, "his edit is back on disk")` (step 4); fixture built under
+      `core.autocrlf=true`.
+- [x] 26 box 4: every m3–m6 pty walk green in compare mode (step 2's summary line; `accept/pty-diffs/` empty).
       A file `captures-verify` stopped on and nobody fixed → box 4 stays unticked, the file named.
       **Not met:** `2 pty: 13 runs (m3–m6 × sizes), 1 drifted or failed`; `pty-diffs/m4-80x24.txt`. NOTES "pty".
+      **Re-run 2: met.** `2 pty: 13 runs (m3–m6 × sizes), 0 drifted or failed`; `ls -A accept/pty-diffs/ | wc -l` = 0.
 - [x] Q-trace: the ticket line and `TESTING.md` Trace entry say "her added lines (18, 21, 22)"; `git diff` shows no
       change under `crates/`. (`grep -n '18, 21, 22'` → `26-m7-acceptance.md:70`, `TESTING.md:2989`; `git diff --stat
       crates/` empty.)
@@ -185,3 +192,36 @@ the conductor's message said to). Both tickets' NOTES kept as they were.
 - Crates and the walk harness: `git diff --stat crates/` empty.
 - 26's ticket: Decided step 3; a 26b line under boxes 1, 3, 4 (still unticked); a NOTES pointer.
 - Spot-check of my own ticks: 5 of 5 re-checked against the command named (grep, wc, git diff) — held.
+
+## NOTES — Re-run 2 (builder, 2026-10-01, main `a3901dee`)
+
+No compaction. No scout: one script run plus greps; the only source read is the recover walk's asserts.
+Base: main with 26, 26b part 1, 30s, 30t, 30t-b, 30u, 30v, 30w, 30w-b merged. No product, walk or capture change here.
+
+### Run
+- `CARGO_TARGET_DIR=<worktree>/target scripts/m7-accept.sh` → **rc=0**: `1 nextest: … 73 tests run: 73 passed, 4946
+  skipped · rc=0` · `2 pty: 13 runs (m3–m6 × sizes), 0 drifted or failed` · `3 sheet: … every file ≤ 200 KB: yes` ·
+  `4 perf: 3 files, 0 missing, 0 lines say missed` · `accept: 29 journeys walked, 29 at or under count, 0 over`.
+- Workspace fmt/clippy/nextest/doc not re-run: this commit changes no Rust (only `docs/perf/m7-accept.txt` and the two
+  tickets). The conductor's log at `a3901dee` records them green; I did not observe that run.
+- Nothing loosened: `git diff db4392e7 HEAD -- crates/graft/tests/it/m7_walk/promise/recover.rs` removes no
+  `assert`/`within_count`/`TOTAL` line; 30w's change there moves `core.autocrlf=true` from after the fixture build into
+  `build(&[("core.autocrlf", "true")])`.
+- Captures: no `docs/shots/` file changed after the run (`git status --short`: only the perf summary), so no sheet
+  rebuilt.
+- m4-03 80x24 pulse: clean in this one run (30w-b normalised the masked pulse). One clean run does not prove the race
+  gone; 30w-b's tests are the evidence for that.
+
+### Rows closed (in addition to "Rows closed" above)
+- `M7/30q-putback-fwd` — Recover step 4 (`recover.rs:123`) PASS: the LF lost edit comes back LF under
+  `core.autocrlf=true`. **Caveat:** 30w moved autocrlf into the fixture build, so the case 30s V5 saw (autocrlf set
+  after the build, entry with `worktree_raw_before: None`) is no longer what this walk exercises. Not checked whether
+  30w's own tests cover it → close for the from-the-start case; the set-later case stays open unless 30w names a test.
+- M6/77 row 2: now also by the Recover scenario (step 4 PASS).
+- The m4-03 pulse question: pty step clean this run; close on 30w-b's tests, not on this run alone.
+
+### Still open
+- `M7/30q-drift-eol`, f-guard's resize limit, 30i's `M7/13b-120`, 30s's two gap candidates: not exercised here.
+- Colour everywhere (rule 5) and every capture's look (rule 6): unverified, not broken.
+- Spot-check of my ticks: 6 of 6 (3 here, 3 in 26) re-read against the run's summary lines and `accept/nextest.txt` —
+  held.
