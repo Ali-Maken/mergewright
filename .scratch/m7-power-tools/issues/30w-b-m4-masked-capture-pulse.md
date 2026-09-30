@@ -1,6 +1,6 @@
 # m4-masked-capture-pulse — the masked-field captures stop comparing a coin flip
 
-Status: ready
+Status: done
 Build with: **Sonnet.** A harness script and two caption rows; the cause is read from two MAP lines and confirmed by
 source lines and repeated runs before any change. No product code.
 Needs: none (no crate code). Base: **26b's branch with `main` merged** — 26b split `m4-contact-sheet-captions.tsv`
@@ -50,12 +50,38 @@ The planner's reading (docs only, **unverified** — V1/V2 check it): it is not 
 - `docs/shots/m4-contact-sheet*.txt`: rebuilt by `scripts/contact-sheet.sh` (≤ 200 KB each).
 
 ## Acceptance (name the verifying command at tick time)
-- [ ] V1, V2 in NOTES.
-- [ ] Masked scenario 10× in compare mode after the change: 0 `DRIFTED` (the run file's count).
-- [ ] The "no `•`" check (:227) and the password check still run on the **drawn** frame, before the rewrite: show the
-      order in the diff.
-- [ ] Every m4 capture at 80x24 and 160x48 in compare mode: all `settled`, none drifted.
-- [ ] `grep -c '◦' docs/shots/m4-03-credential-masked-*.txt` = 0; each file's diff is one note line.
+- [x] V1, V2 in NOTES. — `### Verify` below.
+- [x] Masked scenario 10× in compare mode after the change: 0 `DRIFTED` (the run file's count). — 10× `pty-walk-m4.py 80x24
+      wrong-password-then-right`: `DRIFTED` 0; 10/10 lines `2298 bytes, <masked note>`.
+- [x] The "no `•`" check (:227) and the password check still run on the **drawn** frame, before the rewrite: show the
+      order in the diff. — SECRETS loop and `"•" not in frame` read `frame` first; `re.sub` runs after, just before
+      `write_capture` (see the `pty-walk-m4.py` hunk).
+- [x] Every m4 capture at 80x24 and 160x48 in compare mode: all `settled`, none drifted. — `pty-walk-m4.py 80x24` and
+      `160x48`, no scenario args: exit 0 both, 8 lines each, `DRIFTED` 0. Lines not reading `settled` carry notes only (the
+      masked note; pre-existing m4-01/02-160x48 over-8 KB soft-cap notes).
+- [x] `grep -c '◦' docs/shots/m4-03-credential-masked-*.txt` = 0; each file's diff is one note line. — grep 0/0;
+      `git diff docs/shots/m4-03-*`: one `+(the field's first glyph …)` line each.
+
+## NOTES
+Scout: none — ~10-line harness edit, lines read directly.
+
+### Verify
+- V1 holds. `crates/graft/src/jobs/runner.rs:886` `pulse_seed: super::askpass::pulse_seed()`; `jobs/askpass.rs:64-70` draws
+  it via `getrandom::fill` (clock-parity fallback). `grep -rn pulse_seed crates/graft/examples/` printed nothing.
+- V2 holds. 10× `pty-walk-m4.py 80x24 wrong-password-then-right`, compare mode: 5 DRIFTED, 5 settled. All 5 drifts:
+  `line 14, column 8`, committed `▏••••••••`, drawn `▏◦•••••••`. No other cell.
+
+### Other changes
+- Worktree was on `main`, not 26b's base: merged `141a00d1` (26b) per Base. A `wip` commit before the merge holds the
+  script edit.
+- Captions: the 80x24 masked row had no pulse parenthetical; it gained the normalised one. Sheet rebuilt, 116092 bytes.
+- Pulse pinned by graft-ui `text_input/tests.rs`: `every_keystroke_visibly_changes_the_masked_row` (:413),
+  `masked_prompt_draws_only_glyphs` (:318), `masked_field_at_the_ascii_tier_draws_stars` (:331).
+
+### Touches
+- `pty-walk-m5.py:315` has the masked check but no masked capture (`ls docs/shots | grep -c masked` = 2, both m4-03): unchanged.
+- TESTING.md masked row "a field of `•` only" still true; not edited. `scripts/m7-accept.sh` unchanged.
+- No Rust changed; `cargo fmt --check` ok.
 
 ## Touches
 - Other pty scripts with a masked capture (`grep -ln masked .scratch/*/pty-walk-*.py scripts/`): name each; one that

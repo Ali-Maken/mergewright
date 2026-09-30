@@ -39,7 +39,7 @@ target directory that holds it:
     cargo build -q -p graft-fixtures --bin graft-fixtures
     GRAFT_TARGET=target python3 .scratch/m4-remotes/pty-walk-m4.py 80x24
 """
-import fcntl, os, pty, select, signal, struct, subprocess, sys, tempfile, termios, time
+import fcntl, os, pty, re, select, signal, struct, subprocess, sys, tempfile, termios, time
 
 import pyte
 
@@ -227,6 +227,15 @@ for stem, scenario, on_screen, keys, when in CAPTURES:
         if "masked" in stem and "•" not in frame:
             print(f"{stem}-{SIZE}: the masked field shows no `•`")
             failed = True
+        if "masked" in stem:
+            # After the checks above, which read the drawn frame. The field's
+            # first glyph is the keystroke pulse, seeded at random per prompt
+            # by the running app (jobs/askpass.rs pulse_seed) so it cannot
+            # encode the length: a coin flip, not a layout fact. Normalised
+            # like the writer's port and temp-path redaction.
+            frame = re.sub("[•◦]{8}", "••••••••", frame)
+            notes.append("the field's first glyph is the keystroke pulse, random "
+                         "per prompt by design — ADR-0038 §2; drawn here as •")
         if not write_capture(stem, scenario, keys, frame, notes):
             failed = True
     run.end()

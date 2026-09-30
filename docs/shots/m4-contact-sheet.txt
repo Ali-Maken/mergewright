@@ -192,10 +192,11 @@ m4 walk capture: m4-02-push-box-lease — scenario push-rejected-then-lease, key
 
 ================================================================================
 docs/shots/m4-03-credential-masked-160x48.txt
-what right looks like: TESTING.md § Per breakpoint, Credential prompt (masked) row: same. (A run can catch the field's pulse, one `◦` among the `•` — ADR-0038; the settled frame has none.) (Re-taken 2026-09-25, m6-conflicts/63: the graph's cursor-row gutter `▏`.)
+what right looks like: TESTING.md § Per breakpoint, Credential prompt (masked) row: same. (The field's first glyph is the keystroke pulse, random per prompt by design — ADR-0038 §2; the capture script normalises it to `•`.) (Re-taken 2026-09-25, m6-conflicts/63: the graph's cursor-row gutter `▏`.)
 ================================================================================
 
 m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right, keys P → ⏎, unicode tier, 160x48
+(the field's first glyph is the keystroke pulse, random per prompt by design — ADR-0038 §2; drawn here as •)
 
  graft <scratch________________________________________________________________>  184 rows so far
 ◆ ▏ⓘ [◆ main ↑1] ours                                                                                                                            GF 6y   271d772
@@ -248,10 +249,11 @@ m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right,
 
 ================================================================================
 docs/shots/m4-03-credential-masked-80x24.txt
-what right looks like: TESTING.md § Per breakpoint, Credential prompt (masked) row: `Credentials — 127.0.0.1:<port>`, `Password for 'http://tester@127.0.0.1:<port>':`, a field of `•` only, `typed here only · never stored by Graft`, `⏎ send  ⌃U clear  esc cancel push main → origin/main` on the box's bottom border; the bottom row `⏎ send  esc cancel`. (Re-taken 2026-09-25, m6-conflicts/63: the graph's cursor-row gutter `▏`; re-taken 2026-10-01, m7-power-tools-30u: the border names its push, m6-conflicts-78.)
+what right looks like: TESTING.md § Per breakpoint, Credential prompt (masked) row: `Credentials — 127.0.0.1:<port>`, `Password for 'http://tester@127.0.0.1:<port>':`, a field of `•` only, `typed here only · never stored by Graft`, `⏎ send  ⌃U clear  esc cancel push main → origin/main` on the box's bottom border; the bottom row `⏎ send  esc cancel`. (The field's first glyph is the keystroke pulse, random per prompt by design — ADR-0038 §2; the capture script normalises it to `•`.) (Re-taken 2026-09-25, m6-conflicts/63: the graph's cursor-row gutter `▏`; re-taken 2026-10-01, m7-power-tools-30u: the border names its push, m6-conflicts-78.)
 ================================================================================
 
 m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right, keys P → ⏎, unicode tier, 80x24
+(the field's first glyph is the keystroke pulse, random per prompt by design — ADR-0038 §2; drawn here as •)
 
  graft <scratch_______________________________________________________________>…
 ◆ ▏ⓘ [◆ main ↑1] ours                                               6y   271d772
