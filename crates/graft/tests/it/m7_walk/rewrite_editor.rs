@@ -39,7 +39,7 @@ fn commit(repo: &Path, file: &str, subject: &str, body: &str, hour: u8) {
 /// `main` (m1) ← `feature-a`: "Add OAuth callback", its `fixup!`, "Handle
 /// expired tokens", "wip: tests", "wip" ← `feature-b` (b1). HEAD on
 /// `feature-a`.
-fn mock_repo() -> tempfile::TempDir {
+pub(super) fn mock_repo() -> tempfile::TempDir {
     let dir = tempfile::tempdir().unwrap_or_else(|why| panic!("a temporary directory: {why}"));
     let repo = dir.path();
     git(repo, &["init", "-q", "-b", "main"], 0);
@@ -69,11 +69,11 @@ fn mock_repo() -> tempfile::TempDir {
     dir
 }
 
-fn read(repo: &Path, rev: &str) -> String {
+pub(super) fn read(repo: &Path, rev: &str) -> String {
     git(repo, &["rev-parse", rev], 0).trim().to_owned()
 }
 
-fn subjects(repo: &Path, range: &str) -> Vec<String> {
+pub(super) fn subjects(repo: &Path, range: &str) -> Vec<String> {
     git(repo, &["log", "--format=%s", range], 0)
         .lines()
         .map(str::to_owned)
@@ -82,7 +82,7 @@ fn subjects(repo: &Path, range: &str) -> Vec<String> {
 
 /// Every branch and where it points. The engine's own safety refs
 /// (`refs/graft/backup/…`, written by each rewrite) are not his refs.
-fn every_ref(repo: &Path) -> String {
+pub(super) fn every_ref(repo: &Path) -> String {
     git(
         repo,
         &[
@@ -94,7 +94,7 @@ fn every_ref(repo: &Path) -> String {
     )
 }
 
-fn selected(state: &AppState) -> Option<String> {
+pub(super) fn selected(state: &AppState) -> Option<String> {
     state
         .history
         .as_ref()
@@ -103,7 +103,7 @@ fn selected(state: &AppState) -> Option<String> {
 }
 
 /// The cursor onto `rev`'s row, placed: these keys are not the journey's.
-fn place_on(app: &App, state: AppState, repo: &Path, rev: &str) -> AppState {
+pub(super) fn place_on(app: &App, state: AppState, repo: &Path, rev: &str) -> AppState {
     let want = read(repo, rev);
     let mut state = state;
     let mut up = true;
@@ -122,7 +122,7 @@ fn place_on(app: &App, state: AppState, repo: &Path, rev: &str) -> AppState {
 
 /// `R`: the editor is up and its first AFTER plan landed (`y rewrite` on
 /// the bar).
-fn capital_r(
+pub(super) fn capital_r(
     app: &App,
     state: &AppState,
     route: &mut Vec<&'static str>,
@@ -157,7 +157,7 @@ fn letter(
 }
 
 /// A letter that replans, and its plan landed.
-fn replanned(
+pub(super) fn replanned(
     app: &App,
     state: &AppState,
     route: &mut Vec<&'static str>,
@@ -178,13 +178,13 @@ fn y(app: &App, state: &AppState, route: &mut Vec<&'static str>) -> AppState {
     app.settle_write(state, "the rewrite")
 }
 
-fn undo(app: &App, state: &AppState) -> AppState {
+pub(super) fn undo(app: &App, state: &AppState) -> AppState {
     let state = app.key(state, KeyCode::Char('u'));
     app.settle_write(state, "the undo")
 }
 
 /// The message block's lines as drawn: every line after the `┊` gutter.
-fn message_shown(screen: &str) -> Vec<String> {
+pub(super) fn message_shown(screen: &str) -> Vec<String> {
     screen
         .lines()
         .filter_map(|line| line.split_once('\u{250a}'))

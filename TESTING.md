@@ -106,7 +106,7 @@ stays visible.
 | 2026-09-23 · walk | Keep one side of a whole file | Until M6: `git checkout --ours`/`--theirs` + `git add`. M6: **0** — `o`/`t` in the resolver (`every-whole-file-shape`, `crlf-and-no-final-newline-survive`) | m6-conflicts |
 | 2026-09-23 · walk | Accept a delete | Until M6: `git rm`. M6: **0** — `t` on the card (`every-whole-file-shape`) | m6-conflicts |
 | 2026-09-23 · walk | Finish a merge **begun in the shell** (a `git pull` that conflicted, resolved in Graft) | M6: **0** — `c y` on the banner (P4, P12; `crates/graft/tests/it/resolver/shell_begun.rs::c_y_finishes_a_shell_begun_merge`), or `y` in the summary the last file opened (`m5_walk::every_scenario::journey_b_whole_two_files`). Was: the shell, ruling F5 (`graft-ops/src/operation.rs:581-585`). | closed (m6-conflicts, shell_begun::c_y_finishes_a_shell_begun_merge) |
-| 2026-09-23 · walk | Start a file over **after `⏎`**, inside an operation | **0** in a merge Graft began — open the done file, `d y` (m6-conflicts/28; words and `y` m7-power-tools/17; walk `crates/graft/tests/it/m7_walk.rs::restart_after_done`). Still refused in a merge begun in the shell (no stages kept), in words: `git can't bring back the conflict in <file>: <reason>`. | ready to close (m7-power-tools/17; the conductor closes) |
+| 2026-09-23 · walk | Start a file over **after `⏎`**, inside an operation | **0** in a merge Graft began — open the done file, `d y` (m6-conflicts/28; words and `y` m7-power-tools/17; walk `crates/graft/tests/it/m7_walk.rs::restart_after_done`). Still refused in a merge begun in the shell (no stages kept), in words: `git can't bring back the conflict in <file>: <reason>`. | closed (m7-power-tools/17, 26; `m7_walk::restart_after_done`) |
 | 2026-09-23 · walk | A submodule conflict | Still the shell — no resolver shape for it. Expires M7 | open (M7) |
 | 2026-09-23 · walk | A rename/rename conflict | Still the shell — no resolver shape for it. Expires M7 | open (M7) |
 | 2026-09-23 · walk | A file with a custom `conflict-marker-size` | Still the shell — the parser reads git's default seven-character markers and refuses others in words (`graft-git/src/conflict.rs:345`). Expires M7 | open (M7) |
@@ -2919,3 +2919,93 @@ Walks: `cargo nextest run --workspace -E 'test(rewrite_stops) | test(continue_in
 - Capture `m7/rewrite-edit-stop-80x24.txt` — right: `REBASING  step 3 of 12` whole; no `change files` hint; six `pick` rows then `+1 more` (7 pending, 6 drawn); the follower row `feature-b (Sara): 2 commits follow, on top` is drawn (`capture_edit_stop_sizes`).
 - Capture `m7/rewrite-edit-stop-120x40.txt` — right: `pick a2` then `feature-b` and `feature-c` follower rows; bar `⇥ banner  a amend it  c continue`, then `space` and `⏎` bare (the width ladder). Reads `1 commit follow` — a grammar defect in graft-ui's follower line, open.
 - Colour unverified.
+
+## M7 acceptance (m7-power-tools/26)
+
+Promise: **you can rewrite, trace and recover history without leaving the app.** One command walks it:
+
+```sh
+scripts/m7-accept.sh    # raw: .scratch/m7-power-tools/accept/ · summary: docs/perf/m7-accept.txt · exits non-zero on any failure
+```
+
+Steps: (1) `cargo nextest` on `m7_walk::*` (every journey walk, `every_m7_journey_id_has_a_walk`, the promise
+scenarios, every in-process M7 capture), `journey_counts_match_the_note` and `hint_bar::*`; (2) every m3–m6 pty walk
+in compare mode at every size its captures exist at (M7 has no pty walk; its captures are compared in step 1);
+(3) the contact sheet `docs/shots/m7/m7-contact-sheet*.txt`, journal first; (4) the perf summary lines of
+`m7-04-slow-key.txt`, `lost-commit-cost.txt`, `trace-readers.txt`, verbatim; (5) `accept: <n> journeys walked, <n> at
+or under count, <n> over`.
+
+One entry alone: `cargo nextest run --workspace -E 'test(=m7_walk::<test>)'`, `<test>` as named in the entry. Each walk
+reads its count from the note's fences (`docs/design-notes/m7-power-tools.md` :823 and :1262, 29 ids, as of
+2026-09-30) and fails over it. Counts are keys; `motion` is the one key that reaches the row. Best tool in brackets,
+from the fence comments. **colour: unverified (rule 5)** for every entry below: each check reads the colourless
+carrier (words, glyphs, cursor row), never colour.
+
+### Journeys (pass 2a fence)
+
+- [ ] `squash-last-three` · `R s s y` = 4 (Tower ~3, JetBrains ~4, lazygit ~5) · `rewrite_editor::squash_last_three`. **Right:** `main..feature-a` reads `Handle expired tokens`, `Add OAuth callback`; feature-a's message is the one the editor showed; `feature-b^` = `feature-a`; the cursor on the new HEAD; `u` restores every branch.
+- [ ] `swap-adjacent` · `R Alt+↑ y` = 3 (lazygit 1–2) · `rewrite_editor::swap_adjacent`. **Right:** `main..feature-a` starts `wip: tests`, `wip`; `u` restores every branch.
+- [ ] `fix-into-older` · `motion a y` = 3 (JetBrains ~2, git-absorb 2) · `amend_into::fix_into_older`. **Right:** `feature-a~1` ("Add OAuth callback") shows `+auth 5 fixed` in `src/auth.rs`; nothing staged; `feature-a` is `Handle expired tokens` replayed; `u` puts every branch and the index back.
+- [ ] `absorb-staged` · `motion . ⏎ y` = 4 (jj 1, git-absorb 2) · `amend_into::absorb_staged`. **Right:** the menu opens on absorb; `feature-a~1` gains `+auth 5 fixed`, `feature-a` gains `+tokens 5 fixed`; the README `+more` line stays staged; `u` puts every branch and the index back.
+- [ ] `amend-with-dependents` · `a y` = 2 (jj 0, Graphite 1) · `amend_into::amend_with_dependents`. **Right:** `a` opens the preview, not the editor; `feature-a` shows `+tokens 9 fixed`; `feature-b~1` = `feature-a`; nothing staged; `u` puts refs and index back.
+- [ ] `rebase-line-onto-main` · `motion r y` = 3 (Graphite/Git Town 1) · `rebase_line::r_y_moves_the_line`. **Right:** the plan moves feature-a, feature-b, feature-c in that order; each lands where its ghosts were drawn; `feature-a~2` = `main`.
+- [ ] `squash-merged-bottom` · `motion r y` = 3 (Graphite 1) · `rebase_line::r_y_drops_the_squash_merged_branch`. **Right:** the only ghost is `b1`; feature-a = main; `feature-b^` = main.
+- [ ] `keep-a-suggested-drop` · `motion r R p y` = 5 · `rebase_line::keep_a_suggested_drop`. **Right:** `R to keep them` offered; three rows read `already in main · p keeps it`, cursor on a3; after `p y`, `main..feature-a` is `a3` alone, `a3.txt` present; `feature-b^` = feature-a, subject `b1`; `u` puts every branch back.
+- [ ] `rewrite-stop-to-first-file` · 0 keys (lazygit +1) · `rewrite_stops::rewrite_stop_to_first_file`. **Right:** the resolver open on `shared.txt`; the banner reads `step 3 of 5` and `feature-b, branch 2 of 3`.
+- [ ] `edit-stop-lands` · 0 keys · `rewrite_stops::edit_stop_lands`. **Right:** the graph has the keyboard; the cursor row reads `stopped here`; still to apply: `a2`, followers `feature-b` (1), `feature-c` (1).
+- [ ] `edit-stop-amend-continue` · `space a c` = 3 · `rewrite_stops::edit_stop_amend_continue`. **Right:** the bar offers `space stage`; `space` stages `a1.txt`; `a` amends the stopped commit in place; after `c` no rebase in progress, `feature-a~1:a1.txt` reads `a1, fixed`, `feature-b~1` = feature-a.
+- [ ] `abort-from-a-chain-stop` · `esc a y` = 3 (lazygit 3) · `rewrite_stops::abort_from_a_chain_stop`. **Right:** `Esc` closes the resolver onto the banner; `a` asks first; after `y` no rebase, feature-a/-b/-c back where they were, HEAD on feature-a, status `aborted: rebase feature-a onto main`.
+- [ ] `restart-after-done` · `motion d y` = 3 · `restart_after_done` (in `m7_walk.rs`; "Times I left" :109). **Right:** `shared.rs` marked done (no stages); click it, `d` asks, `y` runs; then the index holds the stop's three stages again and `shared.rs` has one `<<<<<<< ` line.
+- [ ] `switch-named-branch` · `C <type> ⏎` = 3 (best 3) · `picker::switch_named_branch`. **Right:** no preview; HEAD `refs/heads/login-page`; cursor on its row; status line `on login-page ✓ · u goes back`; `u` back on main.
+- [ ] `switch-back` · `C ⏎` = 2 (lazygit 3) · `picker::switch_back`. **Right:** HEAD `refs/heads/feature-a`, status `on feature-a`, cursor on its row; `u` back on main.
+- [ ] `switch-with-edits` · `C <type> ⏎ y` = 4 (lazygit/JetBrains 4) · `picker::switch_with_edits`. **Right:** the preview first; HEAD on login-page; both edits back; staged split kept, no stash; status `on login-page` · `your edits are back`; `u` back on main, split as before.
+- [ ] `cherry-pick-in-view` · `motion o y` = 3 (best 2 + reaching) · `picker::cherry_pick_in_view`. **Right:** preview titled `Preview: take <sha7> "fix the bug" onto main`; one commit on main, `fix.txt` present, `base.txt` edit back; status `took "fix the bug" onto main ✓ · your edits are back · u undoes`; `u` removes it.
+- [ ] `cherry-pick-other-branch` · `C <type> ⇥ motion o y` = 6 · `picker::cherry_pick_other_branch`. **Right:** `⇥` puts the cursor on login-page's tip; one commit on main, `fix.txt` present, `typo.txt` absent; status `took "fix the bug"`; cursor on main; `u` removes it.
+- [ ] `pr-contents` · `x motion` = 2 (GitHub 2–3) · `pr_contents::pr_contents`. **Right:** the pane compares main → feature-a; the header reads `changes on feature-a since it left main · 3 commits`.
+- [ ] `pull-current-branch` · `p` = 1 (lazygit 1, VS Code 1 click) · `pull::pull_current_branch` (walk added by 26). **Right:** HEAD fast-forwarded to origin's tip; the cursor on it; status `pulled origin/main`; tree clean, no stash.
+
+### Journeys (pass 2b fence)
+
+- [ ] `blame-line-to-commit` · `B ⏎` = 2 (tig/Magit/GitHub 2) · `blame::blame_line_to_commit`. **Right:** blame cursor on line 22, author Lina; `⏎` lands on Lina's commit, `src/session.rs` line 21, focus in the diff; graph cursor on her commit.
+- [ ] `commit-back-to-blame` · `Esc` = 1 · `blame::commit_back_to_blame`. **Right:** blame of `src/auth/session.rs` back on screen, cursor on line 22.
+- [ ] `blame-who-at-line` · `j` = 1 (GitLens 0) · `blame::blame_who_at_line`. **Right:** from Tom's line 21, `j` to line 22; exactly one trailer, on the cursor row, naming Lina; no Tom trailer.
+- [ ] `blame-line-before` · `B ^` = 2 (tig/Magit/GitHub 2) · `blame::blame_line_before`. **Right:** title `before <sha7 of Lina's>`; two places stacked; cursor on line 20, Tom, `if resp.status() == 401 {`.
+- [ ] `function-history` · `B L` = 2 (GitLens ~2, JetBrains ~5) · `history::function_history`. **Right:** `HISTORY · ` header; a function range holding line 22; Lina's commit selected, her file loaded, the range located in it.
+- [ ] `file-history` · `F` = 1 (JetBrains ~2, lazygit ~3) · `history::file_history`. **Right:** `HISTORY · ` header; path `src/auth/session.rs`; 6 rows, one renamed from `src/session.rs`; newest selected, file at top.
+- [ ] `lost-to-shell-reset` · `J ⏎ y` = 3 (jj 3–4, GitUp 5) · `journal::the_three_lost_work_journeys`. **Right:** the `✗ lost` "Add rate limiter" row preselected; after `y` main back on it; graph shows `↺ put back`, `○ main was here`, a `✓` line.
+- [ ] `deleted-branch-back` · `J n ⏎ y` = 4 (jj 3–4, GitUp 5) · same test. **Right:** `n` lands on "Try redis cache"'s `✗` row; after `y` spike back on it, cursor and `↺ put back` on its row; bottom `spike is back at "Try redis cache" ✓ … u undoes`; main untouched.
+- [ ] `edit-in-undo-backup` · `J n ⏎ y` = 4 (today: the shell) · same test. **Right:** `n` lands on `your edit to src/a.rs`; box says `what's in src/a.rs now is replaced`; after `y` changes pane on `src/a.rs`, bottom `your edit to src/a.rs is back ✓ … u undoes`; edit on disk; `u` restores the replaced copy.
+
+### Promise scenarios (one fixture each; no shell step after it is built)
+
+- [ ] **Rewrite** · `R s s y` (4), `u` (1), `R e y` (3, makes the edit stop; counted), his edit (0), `space a c` (3) =
+  **11** · `promise::rewrite::promise_rewrite_without_leaving`. **Right:** after `y`, `main..feature-a` reads
+  `Handle expired tokens`, `Add OAuth callback`; both branches' trees unchanged; `feature-b^` = `feature-a`; the
+  written message is the one the editor showed, first line `Handle expired tokens` (the kept row). After `u` every
+  branch as before. At the stop HEAD is "Handle expired tokens" with the still-to-apply block drawn. After `c` no stop,
+  no block, no overlay; `feature-a~2:tokens.txt` holds the edit; `feature-b^` = `feature-a`.
+- [ ] **Trace** · `B ^ Esc L ⏎ Esc Esc Esc` = **8** · `promise::trace::promise_trace_without_leaving`. **Right:** `B`
+  from line 22: the cursor row's trailer names Lina. `^`: title `before <sha7>`, cursor on Tom's line 20. `Esc`: back
+  on her blame, line 22. `L`: Lina's row selected; the file pane's range ruled `┃`, one row `┃  18 +`, line 19 drawn
+  as context. `⏎`: the graph cursor on her commit. `Esc Esc Esc`: the diff pane, line cursor on 22 of
+  `src/auth/session.rs`, focus in the diff, graph cursor on `main` as at the start.
+- [ ] **Recover** · `J ⏎ y` (3), `u` (1), `J n ⏎ y` (4), `J n ⏎ y` (4), `J n ⏎ y` (4) = **16** (26's ruling) ·
+  `promise::recover::promise_recover_without_leaving`, with `core.autocrlf=true` and LF working files. **Right:**
+  after `J ⏎ y` main on D; after `u` main off D and **every working file byte-equal** to before (`src/a.rs`, LF,
+  included); then main on D again, spike on E, and `src/a.rs` holds his lost edit.
+  **Fails today (2026-10-01):** after the put-back `src/a.rs` is CRLF, and `u` leaves it CRLF. Filed by 26.
+- [ ] **Guard at 80 columns** (review 28 Q2) · `C <branch> ⏎` over an ignored
+  `src/services/authentication/providers/oauth2/callbacks/session-cache.json`, branch
+  `feature/sara-long-running-oauth-token-refresh-rework` ·
+  `promise::guard::guard_refusal_at_80_names_the_file_and_the_next_step`. **Right:** still on `main`; the bottom row
+  at 80 columns shows `session-cache.json` and `move it aside first`. **Fails today (2026-10-01):** it reads
+  `src/services/authentication/providers/oauth2/callbacks/session-c… · esc dismiss`. Filed by 26.
+
+### Coverage, captures, perf
+
+- [ ] Every id of both fences has a walk: `m7_walk::every_m7_journey_id_has_a_walk` (id → test table `WALKS` in
+  `crates/graft/tests/it/m7_walk.rs`).
+- [ ] Every m3–m6 pty capture matches in compare mode (script step 2).
+- [ ] Contact sheet `docs/shots/m7/m7-contact-sheet*.txt`: every M7 capture under its Right line, the journal's first,
+  each file ≤ 200 KB. Judged by eye by the user only (rule 6).
+- [ ] `docs/perf/m7-accept.txt` holds the three perf files' summary lines verbatim; a `missed` stays `missed`.
