@@ -13,6 +13,7 @@ use crate::clash::Clash;
 use crate::facts::FactsError;
 use crate::journal::JournalError;
 use crate::operation::{Refusal, RemoteNames};
+use crate::restore::RestoreError;
 use crate::snapshot::SnapshotError;
 
 use super::{Applied, PrepareError, remote};
@@ -276,6 +277,42 @@ pub enum AfterState {
         /// The staged paths whose staging did not come back.
         paths: Vec<PathBuf>,
     },
+    /// A set-aside put-back brought his edits back in git's encoding, and
+    /// writing his own bytes over them failed (m7-power-tools/30s). The entry
+    /// is `Committed` and `S` dropped; `u` does not rewrite these bytes, and
+    /// the words carry no `u` clause for that reason. The exact bytes stay in
+    /// the before-snapshot's `raw/` tree, pinned by the backup (ADR-0052).
+    #[error("{}", not_as_they_were_words(error, *files))]
+    NotAsTheyWere {
+        /// The failure: [`RestoreError::WriteRaw`] names the first path that
+        /// failed; anything else is the check that finds which paths to write.
+        error: RestoreError,
+        /// How many paths the raw step was to write (1 → the singular words;
+        /// 0 when the check itself failed).
+        files: usize,
+    },
+}
+
+/// A failed raw step's words (Ruling 2026-10-01 §1): the path named as
+/// [`AfterState::StagingNotKept`] names its paths, the error's own words
+/// never re-worded, and no `u` clause.
+pub(super) fn not_as_they_were_words(error: &RestoreError, files: usize) -> String {
+    match error {
+        RestoreError::WriteRaw { path, source } if files <= 1 => format!(
+            "your edits are back · {} not written back as it was: {source} · its exact bytes are in \
+             the backup",
+            path.display()
+        ),
+        RestoreError::WriteRaw { path, source } => format!(
+            "your edits are back · not all written back as they were: {}: {source} · their exact \
+             bytes are in the backup",
+            path.display()
+        ),
+        other => format!(
+            "your edits are back · not written back as they were: {other} · their exact bytes are \
+             in the backup"
+        ),
+    }
 }
 
 /// `your edits are back · staging not kept: <first>[ +N more] · u undoes it,
@@ -406,5 +443,51 @@ pub(crate) fn as_apply_error(why: SnapshotError) -> ApplyError {
     match why {
         SnapshotError::Stopped => ApplyError::Stopped,
         other => ApplyError::Snapshot(other),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn denied(path: &str) -> RestoreError {
+        RestoreError::WriteRaw {
+            path: PathBuf::from(path),
+            source: std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied"),
+        }
+    }
+
+    /// Ruling 2026-10-01 §1: the three wordings, exact. One path names it;
+    /// more than one names the first that failed; a failed check carries
+    /// its own words. No `u` clause in any.
+    #[test]
+    fn not_as_they_were_says_the_edits_are_back_and_where_the_bytes_are() {
+        let one = AfterState::NotAsTheyWere {
+            error: denied("src/a.rs"),
+            files: 1,
+        };
+        assert_eq!(
+            one.to_string(),
+            "your edits are back · src/a.rs not written back as it was: denied · its exact bytes \
+             are in the backup"
+        );
+        let more = AfterState::NotAsTheyWere {
+            error: denied("src/b.rs"),
+            files: 3,
+        };
+        assert_eq!(
+            more.to_string(),
+            "your edits are back · not all written back as they were: src/b.rs: denied · their \
+             exact bytes are in the backup"
+        );
+        let check = AfterState::NotAsTheyWere {
+            error: RestoreError::Run(RunError::Unparsable("hash-object printed \"?\"".to_owned())),
+            files: 0,
+        };
+        assert_eq!(
+            check.to_string(),
+            "your edits are back · not written back as they were: git's output did not parse as \
+             expected: hash-object printed \"?\" · their exact bytes are in the backup"
+        );
     }
 }

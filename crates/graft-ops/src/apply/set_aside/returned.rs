@@ -8,7 +8,7 @@ use graft_git::run::{GitArg, GitInvocation, RunError};
 
 use crate::facts::FactsError;
 
-use super::put_back::{self, PutBackRan};
+use super::put_back::{self, HisBytes, NotAsTheyWere, PutBackRan};
 use super::{
     Context, EditsAt, listed_at, reason_for, rebuild, short, staging_clause, where_listed,
 };
@@ -18,7 +18,12 @@ pub(super) enum Returned {
     /// Put back with nothing unmerged, and `S` dropped. `unstaged`: the
     /// staged paths whose staging did not come back (git could not reinstate
     /// the index, [`PutBackRan::Unstaged`]); empty when the index came back.
-    Back { unstaged: Vec<PathBuf> },
+    /// `raw`: the raw step's failure — the edits are back, not as he left
+    /// them (m7-power-tools/30s).
+    Back {
+        unstaged: Vec<PathBuf>,
+        raw: Option<NotAsTheyWere>,
+    },
     /// Put back with these paths unmerged; `S` kept.
     Clashed(Vec<PathBuf>),
     /// `S` kept for another reason.
@@ -29,11 +34,13 @@ pub(super) enum Returned {
 pub(super) enum Kept {
     /// git failed: the apply (nothing came back), or the drop after a clean
     /// apply (`back`: the edits are in the tree **and** in the list;
-    /// `unstaged` as [`Returned::Back`]'s).
+    /// `unstaged` and `raw` as [`Returned::Back`]'s, `raw` `None` unless
+    /// `back`).
     Git {
         error: RunError,
         back: bool,
         unstaged: Vec<PathBuf>,
+        raw: Option<NotAsTheyWere>,
     },
     /// The status could not be read after the apply, so whether it clashed
     /// is unknown; `S` is not dropped on a guess.
@@ -44,14 +51,18 @@ pub(super) enum Kept {
     Unlisted {
         why: FactsError,
         unstaged: Vec<PathBuf>,
+        raw: Option<NotAsTheyWere>,
     },
 }
 
 impl Kept {
-    pub(super) fn into_error(self) -> Result<RunError, FactsError> {
+    /// git's error or the read that failed, and the raw step's failure when
+    /// the edits are back.
+    pub(super) fn into_error(self) -> (Result<RunError, FactsError>, Option<NotAsTheyWere>) {
         match self {
-            Kept::Git { error, .. } => Ok(error),
-            Kept::Unread(why) | Kept::Unlisted { why, .. } => Err(why),
+            Kept::Git { error, raw, .. } => (Ok(error), raw),
+            Kept::Unread(why) => (Err(why), None),
+            Kept::Unlisted { why, raw, .. } => (Err(why), raw),
         }
     }
 
@@ -93,6 +104,7 @@ impl Kept {
                 error,
                 back: true,
                 unstaged,
+                ..
             } => format!(
                 "your edits are back, and the set-aside copy could not be dropped: {} · {}{}",
                 reason_for(error),
@@ -108,7 +120,7 @@ impl Kept {
             ),
             // The list is what could not be read, so the copy is named by
             // its commit rather than by a second read of the same list.
-            Kept::Unlisted { why, unstaged } => format!(
+            Kept::Unlisted { why, unstaged, .. } => format!(
                 "your edits are back; the set-aside copy could not be found to drop ({why}) · \
                  it is stash commit {}{}",
                 short(stash),
@@ -126,10 +138,17 @@ impl Kept {
 /// with `--index`, falling back to a plain apply when git cannot reinstate
 /// the index (ADR-0045 §4 step 6, amended 2026-09-26 b). `S` is the listed
 /// copy either way, and the one dropped.
+///
+/// After a clean apply, his own bytes from `his` go back over what git wrote
+/// (the raw step, [`put_back::run_put_back`]), and `S` is dropped **whatever
+/// that step returned**: it holds the same content in git's encoding, no
+/// byte the disk lacks, so keeping it would only be a false hint (Ruling
+/// 2026-10-01 §1).
 pub(super) fn put_back(
-    ctx: &Context<'_>,
+    ctx: &mut Context<'_>,
     stash: Oid,
     index_base: Option<Oid>,
+    his: Option<HisBytes>,
     commands: &mut Vec<String>,
 ) -> Returned {
     let input = match index_base {
@@ -141,32 +160,35 @@ pub(super) fn put_back(
                     error,
                     back: false,
                     unstaged: Vec::new(),
+                    raw: None,
                 });
             }
         },
         None => stash,
     };
-    let unstaged = match put_back::run_put_back(ctx, input, commands) {
-        Ok(PutBackRan::Whole) => Vec::new(),
-        Ok(PutBackRan::Unstaged { paths }) => paths,
+    let (unstaged, raw) = match put_back::run_put_back(ctx, input, his, commands) {
+        Ok(PutBackRan::Whole { raw }) => (Vec::new(), raw),
+        Ok(PutBackRan::Unstaged { paths, raw }) => (paths, raw),
         Ok(PutBackRan::Clashed { paths }) => return Returned::Clashed(paths),
         Ok(PutBackRan::Failed { error }) => {
             return Returned::Kept(Kept::Git {
                 error,
                 back: false,
                 unstaged: Vec::new(),
+                raw: None,
             });
         }
         Err(why) => return Returned::Kept(Kept::Unread(why)),
     };
     match drop_by_id(ctx, stash, commands) {
-        Ok(()) => Returned::Back { unstaged },
+        Ok(()) => Returned::Back { unstaged, raw },
         Err(Dropped::Git(error)) => Returned::Kept(Kept::Git {
             error,
             back: true,
             unstaged,
+            raw,
         }),
-        Err(Dropped::Unlisted(why)) => Returned::Kept(Kept::Unlisted { why, unstaged }),
+        Err(Dropped::Unlisted(why)) => Returned::Kept(Kept::Unlisted { why, unstaged, raw }),
     }
 }
 

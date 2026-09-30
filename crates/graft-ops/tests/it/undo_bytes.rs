@@ -17,7 +17,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use graft_core::journal::{EntryStatus, HeadRef, PutBackWhy};
 use graft_core::oid::Oid;
 use graft_git::run::Stop;
-use graft_ops::apply::ApplyError;
+use graft_ops::apply::{AfterState, ApplyError};
 use graft_ops::operation::{
     CheckoutParams, CheckoutTarget, OnEdits, Operation, RecoverParams, RecoverTarget, StashParams,
     StashScope, Target,
@@ -488,10 +488,70 @@ fn a_set_aside_put_back_keeps_an_lf_file_under_autocrlf() {
     assert_bytes(&repo, "src/a.rs", WORKING, "after the put-back");
     assert_eq!(
         repo.git(&["status", "--porcelain"]),
-        "M src/a.rs",
-        "unstaged, as it was"
+        " M src/a.rs",
+        "unstaged (a blank index column), as it was"
     );
     assert_eq!(stash_commits(&repo), Vec::<Oid>::new(), "S is dropped");
+}
+
+/// A name git quotes (a space, a non-ASCII byte, and a leading `"`, which
+/// `--stdin-paths` would otherwise read as the start of a quoted name) gets
+/// his bytes back all the same: `hash-object` reads it C-quoted.
+#[test]
+fn a_set_aside_put_back_keeps_an_lf_file_with_a_quoted_name() {
+    let name = "\"é q\".rs";
+    let repo = TempRepo::init();
+    repo.git(&["config", "core.autocrlf", "true"]);
+    repo.write(name, COMMITTED);
+    repo.commit_all("first");
+    repo.write("b.txt", b"b\n");
+    repo.commit_all("second");
+    let (op, second) = shell_reset_then(&repo, |repo| repo.write(name, WORKING));
+    run(&repo, &op, NOW);
+    assert_eq!(id(&repo, "refs/heads/main"), second, "main is on second");
+    assert_bytes(&repo, name, WORKING, "after the put-back");
+}
+
+/// The put-back's raw step cannot land (a file already at its temporary's
+/// name, as `a_raw_write_that_cannot_land_fails_u_and_names_the_path` sets
+/// it up): the operation stands, `Committed`; `S` is dropped; his edit is on
+/// disk in git's encoding; and the answer says so first, naming the path,
+/// with no `u` clause (Ruling 2026-10-01 §1).
+#[test]
+fn a_put_back_whose_raw_step_cannot_land_says_so_and_drops_s() {
+    let (repo, op, second) = reset_off_second_with_an_lf_edit();
+    let in_the_way = format!("src/a.rs.graft-raw-{}", std::process::id());
+    repo.write(&in_the_way, b"");
+
+    let Err(ApplyError::AfterState { applied, unread }) = try_run(&repo, &op, NOW) else {
+        panic!("the raw step's failure was not reported");
+    };
+    assert_eq!(applied.entry.status, EntryStatus::Committed);
+    assert!(
+        matches!(
+            unread.as_slice(),
+            [AfterState::NotAsTheyWere {
+                error: RestoreError::WriteRaw { path, .. },
+                files: 1,
+            }] if path == &PathBuf::from("src/a.rs")
+        ),
+        "{unread:?}"
+    );
+    let words = unread[0].to_string();
+    assert!(
+        words.starts_with("your edits are back · src/a.rs not written back as it was: ")
+            && words.ends_with(" · its exact bytes are in the backup"),
+        "{words}"
+    );
+    assert_eq!(id(&repo, "refs/heads/main"), second, "main is on second");
+    assert_eq!(stash_commits(&repo), Vec::<Oid>::new(), "S is dropped");
+    assert_ne!(repo.read("src/a.rs"), WORKING, "git's encoding, not his");
+    assert_eq!(content(&repo.read("src/a.rs")), WORKING, "his edit is back");
+    assert_eq!(
+        repo.read(&in_the_way),
+        b"",
+        "the file in the way is untouched"
+    );
 }
 
 /// A second kind that sets aside: a checkout of `other`, which does not

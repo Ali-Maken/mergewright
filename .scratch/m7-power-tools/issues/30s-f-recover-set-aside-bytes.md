@@ -1,6 +1,7 @@
 # f-recover — the set-aside put-back gives back his bytes, so `J ⏎ y` then `u` holds an LF file under autocrlf
 
-Status: blocked (verify done, move committed, tests red; the fix needs files outside the list — NOTES `### Blocked`)
+Status: done (2026-10-01) — built per **Ruling 2026-10-01**; NOTES `### Built` (the session compacted once, before the
+build; nothing remains).
 Build with: **Opus, `builder-opus-xhigh`.** Undo territory and the M3 promise ("you cannot lose work"); the cause is
 not confirmed, so the builder verifies before it builds, and real-git byte tests judge it. Not Fable: the fix and its
 signatures are fixed below; no structural choice is left.
@@ -32,6 +33,7 @@ Runs concurrently with: `f-guard-refusal-at-80` (graft-ops too; disjoint files),
   **Unverified**; step V4 checks it by grep.
 
 ## Files (exact; outside this list → stop, `blocked: needs <file>`)
+**Superseded by Ruling 2026-10-01 §4.**
 - graft-ops:
   - `src/apply/set_aside/put_back.rs` (the call after a clean apply);
   - `src/restore/steps.rs` (`write_raw` and `batch_blobs` moved **out**, nothing else);
@@ -62,6 +64,7 @@ Runs concurrently with: `f-guard-refusal-at-80` (graft-ops too; disjoint files),
   this line. No committed test for it.
 
 ## Signatures
+**Amended by Ruling 2026-10-01 §2–§3** (`same_content_paths`'s return type and parameters; the failure bullet below).
 ```rust
 // crates/graft-ops/src/restore/raw.rs (new). First commit: `write_raw` and `batch_blobs` moved here from
 // restore/steps.rs unchanged (a pure move; every test green; steps.rs shrinks). Visibility pub(crate).
@@ -83,8 +86,9 @@ pub(crate) fn same_content_paths(/* write_raw's leading params */, raw: Oid, tre
 - `worktree_before`/`worktree_raw_before` are the running operation's own entry (the pending line `begin` wrote).
   Reach them through the put-back's existing context; if that needs a journal or shape change → **stop**,
   `blocked: the put-back cannot see the entry's raw tree`.
-- A failed raw write fails the put-back through its existing failure path (the one a clash takes; name it in NOTES),
-  worded `could not write <path> back as it was: <io> · u restores the backup`. Never logged and carried on (rule 3).
+- ~~A failed raw write fails the put-back through its existing failure path (the one a clash takes; name it in NOTES),
+  worded `could not write <path> back as it was: <io> · u restores the backup`.~~ **Replaced by Ruling 2026-10-01 §1.**
+  Never logged and carried on (rule 3) still holds.
 - A relaunch that resumes a put-back (30d) goes through the same function, reading the entry from the journal. Check it
   (grep the callers of the put-back); if it does not, say so in NOTES.
 
@@ -94,24 +98,37 @@ Each test: `core.autocrlf=true`; committed `src/a.rs`; `W = b"pub fn a() -> u32 
 - [x] V1–V5 in NOTES, each with its command and output. (NOTES `### Verify`; V1 is
       `undo_bytes::u_after_a_set_aside_put_back_brings_back_an_lf_file_under_autocrlf`, red; V2/V3/V5 scratch probes
       printed and removed; V4 the grep named there.)
-- [ ] (red) `undo_bytes::u_after_a_set_aside_put_back_brings_back_an_lf_file_under_autocrlf`: Recover `MoveRef` of the
+- [x] (red) `undo_bytes::u_after_a_set_aside_put_back_brings_back_an_lf_file_under_autocrlf`: Recover `MoveRef` of the
       checked-out branch over the dirty tree (the scenario's `J ⏎ y`; copy its shape from 26's `promise/recover.rs`), then
-      `u`. After `u`: `W`.
-- [ ] (red) `undo_bytes::a_set_aside_put_back_keeps_an_lf_file_under_autocrlf`: the same operation. After it: `W`.
-- [ ] (red) `undo_bytes::a_switch_with_edits_keeps_an_lf_file_under_autocrlf`: a `Checkout` of another branch that
+      `u`. After `u`: `W`. (Red at :478 before, NOTES `### Done`; green now, that test.)
+- [x] (red) `undo_bytes::a_set_aside_put_back_keeps_an_lf_file_under_autocrlf`: the same operation. After it: `W`.
+      (Red at :488 before; green now, that test — its porcelain expectation corrected, NOTES `### Built`.)
+- [x] (red) `undo_bytes::a_switch_with_edits_keeps_an_lf_file_under_autocrlf`: a `Checkout` of another branch that
       does not touch `src/a.rs`, over the dirty tree. After it: `W`; after `u`: `W`. (A second set-aside kind.)
-- [ ] `undo_bytes::a_put_back_that_merges_into_a_changed_file_writes_no_raw`: the target branch changes `src/a.rs`
+      (Red at :519 before; green now, that test.)
+- [x] `undo_bytes::a_put_back_that_merges_into_a_changed_file_writes_no_raw`: the target branch changes `src/a.rs`
       elsewhere in the file, so the put-back merges his edit into new content. His raw bytes are **not** written: the
       file holds the target's change and his (content asserted, not bytes); `u` gives `W`. Guard; red not expected.
-- [ ] `undo_bytes::a_clashed_put_back_writes_no_raw`: the put-back clashes (S kept). No raw write; the conflict is as
-      today (compare with the existing clash test's asserts). Guard.
-- [ ] `undo_bytes::a_set_aside_under_a_one_way_clean_filter_keeps_the_stripped_lines`: 30q-a's `strip` filter,
+      (Green, that test; red at :565 when the content check is removed, NOTES mutations.)
+- [x] `undo_bytes::a_clashed_put_back_writes_no_raw`: the put-back clashes (S kept). No raw write; the conflict is as
+      today (compare with the existing clash test's asserts). Guard. (Green, that test.)
+- [x] `undo_bytes::a_set_aside_under_a_one_way_clean_filter_keeps_the_stripped_lines`: 30q-a's `strip` filter,
       `nb.txt` with `#out 42`, set aside and put back. After the operation, `nb.txt` holds `#out 42`. (red)
-- [ ] Mutation: `write_raw` skipped in the put-back → the three red tests red again. Restored; said in NOTES.
-- [ ] Unchanged and green in the full run (name them): every `undo_bytes::` and `snapshot_raw::` test; every
+      (Red at :630 before; green now, that test.)
+- [x] Mutation: `write_raw` skipped in the put-back → the ~~three~~ **four** red tests red again. Restored; said in NOTES.
+      (The four above red at `undo_bytes.rs:428`, 14 others green; restored run 18/18 — NOTES `### Built`, mutations.)
+- [x] Added: `undo_bytes::a_set_aside_put_back_keeps_an_lf_file_with_a_quoted_name` (a name starting `"`, with a
+      space and `é`: C-quoting is load-bearing — red when unquoted) and
+      `undo_bytes::a_put_back_whose_raw_step_cannot_land_says_so_and_drops_s` (§1 end to end); `restore::raw::tests::a_path_is_c_quoted_for_stdin_paths`.
+- [x] Unchanged and green in the full run (name them): every `undo_bytes::` and `snapshot_raw::` test; every
       `set_aside` test; `recover::` 30p-a's seven and test 6; `undo_cancel::`; graft `m3_walk::every_scenario::`,
-      `m7_walk::journal::the_three_lost_work_journeys`.
-- [ ] MAP.md: `restore::raw` (`write_raw`, `same_content_paths`), the put-back's raw step. Gates workspace-wide.
+      `m7_walk::journal::the_three_lost_work_journeys`. (Workspace `cargo nextest run --no-fail-fast`: 4992 run,
+      4992 passed, 5 skipped, 0 failed — every one of these in it: `tests/it/{undo_bytes,snapshot_raw,set_aside,set_aside_kill,recover,undo_cancel}.rs`,
+      graft `tests/it/m3_walk.rs`, `m7_walk/journal.rs`; journal golden line `journal::tests::a_line_without_raw_parses_as_none_and_renders_unchanged` included.)
+- [x] MAP.md: `restore::raw` (`write_raw`, `same_content_paths`), the put-back's raw step. Gates workspace-wide.
+      (MAP.md `## restore` intro + file list, `apply` set-aside line; fmt --check, clippy --all-targets -D warnings,
+      nextest 4992/4992, test --doc all ok, workspace-wide.)
+- Further ticks: Ruling 2026-10-01 §6.
 
 ## Touches (each on the report's **Touches:** line, with how it was checked)
 - Every kind that sets aside (grep the put-back's callers: checkout, branch create+checkout, merge, pull (03b), rebase,
@@ -125,16 +142,123 @@ Each test: `core.autocrlf=true`; committed `src/a.rs`; `W = b"pub fn a() -> u32 
   `back as it was`: none expected).
 - KNOWN_GAPS (conductor's): `M7/30q-setaside` closes on green; `M7/30q-putback-fwd` from V5; `M7/30q-drift-eol`
   unchanged.
+- More: Ruling 2026-10-01 §6.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all
 workspace-wide.
 
 ## Size
-~60k. If it compacts after the verify, say so; the conductor splits the build.
+~60k. If it compacts after the verify, say so; the conductor splits the build. Remaining after the ruling: ~35k.
 
 ## Rules
 Worktree only; `CARGO_TARGET_DIR` in the worktree. Never read `PROGRESS.md` or `KNOWN_GAPS.md` (rows restated above).
+
+## Ruling 2026-10-01 (planner) — the block in NOTES `### Blocked`
+The builder's three facts are taken as its NOTES state them (the planner reads no source). Its proposal is **accepted,
+amended** as below.
+
+### §1. A failed raw step: a completed write with one aspect not kept
+The `StagingNotKept` shape (ADR-0045 amendment (b)), not a failed put-back.
+- **Covers** `same_content_paths` failing (nothing written raw) and `write_raw` failing (it stops at its first failed
+  path; later paths are left as git wrote them).
+- **State.** `stash apply` clean and the status read clean → raw step (stop swapped to `&()`) → drop `S` by id
+  **whatever the raw step returned** → entry `Committed` → `ApplyError::AfterState { applied, unread }` with
+  `AfterState::NotAsTheyWere` **first** in `unread`. A failed drop adds `SetAsideKept` after it, as today. After the
+  fallback, `StagingNotKept` follows it in `unread`.
+- **Rejected: the existing failure path** (`PutBackRan::Failed` → `Aborted`, `EditsAt::Stash`). His content is on disk;
+  "your edits are in stash@{n}" would send him to the wrong place (NOTES Blocked fact 3).
+- **Rejected: keeping `S`.** It holds the same content in git's encoding: no bytes the disk lacks, and a false hint.
+- **Words (new product words, decided here).** `<path>` shown as `StagingNotKept` shows its paths; `<io>`/`<error>` the
+  error's own Display, never re-worded:
+  - one path to write: `your edits are back · <path> not written back as it was: <io> · its exact bytes are in the backup`
+  - more than one: `your edits are back · not all written back as they were: <path>: <io> · their exact bytes are in the backup`
+  - the check failed (not `WriteRaw`): `your edits are back · not written back as they were: <error> · their exact bytes are in the backup`
+  - **No `u` clause**, because of the next bullet. If `ApplyError::AfterState`'s `explain` appends a `u` clause to every
+    `unread`, **stop**: `blocked: AfterState explain adds a u clause (error.rs:<line>)` — do not change other variants.
+- **What `u` does from there.** It undoes the operation as for any `Committed` set-aside entry (ref, `HEAD`, index,
+  content). It does **not** rewrite the path: its cleaned content is equal before and after, so `ChangedBetween` leaves
+  it (the Why's reading), and a raw write that failed on its first path leaves exactly `main`'s state, where V1 saw `u`
+  keep CRLF (`undo_bytes.rs:453`, NOTES V1). The exact bytes stay in the before commit's `raw/` tree, pinned by the
+  backup (V2). No in-app route reaches them (V5: `J`'s `Files` writes git's encoding). Not fixed here: a `u` that
+  writes raw bytes outside its scope needs a journal field naming the paths the operation failed to write, which this
+  ticket's Rules forbid. → Conductor: gap row `M7/30s-raw-fail`, **unverified** (no test produces a real io failure),
+  naming both facts.
+- **Where he lands.** graft unchanged: the answer is `Operated::Incomplete` (the app maps only a lone `StagingNotKept`
+  to its own arm; graft MAP `Operated`), which refreshes and shows the `error` string. Read-only, record in NOTES with
+  the line: (a) whether `update/operate.rs`'s `operated` `Incomplete` arm lands the cursor on the new `HEAD` as `Done`
+  does; (b) whether `resumed`'s `Incomplete` arm shows `error` or only `resumed_words` (graft MAP: "takes the same
+  words"). If (b) drops it, a resumed rebase's raw failure shows as a clean tick: a **question** to the conductor with
+  the line, not a fix here (it covers every `AfterState` on a resume).
+
+### §2. The variant
+```rust
+// crates/graft-ops/src/apply/error.rs
+pub enum AfterState {
+    // … today's variants, unchanged …
+    /// A set-aside put-back brought his edits back in git's encoding, and writing his own bytes over them failed.
+    /// The entry is `Committed` and `S` dropped; `u` does not rewrite these bytes. `files`: how many paths the raw
+    /// step was to write (1 → the singular words).
+    NotAsTheyWere { error: RestoreError, files: usize },
+}
+```
+If `RestoreError` is not reachable as a public type where `AfterState` is, hold `{ path: Option<PathBuf>, error:
+String, files: usize }` built from its fields and Display; say which in NOTES.
+
+### §3. Signatures (amend `## Signatures`)
+```rust
+// restore/raw.rs — Vec<Vec<u8>> accepted: write_raw's own path type, no round trip through PathBuf.
+pub(crate) fn same_content_paths(ctx: &mut Context<'_>, raw: Oid, tree: Oid, commands: /* write_raw's type */)
+    -> Result<Vec<Vec<u8>>, RestoreError>;
+// restore.rs
+pub(crate) use raw::{same_content_paths, write_raw};
+
+// apply/set_aside/put_back.rs — `None` when either entry field is `None` (+0 spawns).
+pub(super) struct HisBytes { pub(super) raw: Oid, pub(super) tree: Oid }
+fn run_put_back(ctx: &mut Context<'_>, /* today's */, his: Option<HisBytes>, /* today's */) -> PutBackRan;
+// apply/set_aside/returned.rs
+fn put_back(ctx: &mut Context<'_>, /* today's */, his: Option<HisBytes>) -> /* today's */;
+// apply/set_aside.rs `close`: builds HisBytes from pending.entry, passes &mut ctx.
+```
+- Visibilities as today. The raw step runs after **either** clean apply (`Whole`, the fallback's `Unstaged`), before
+  the drop; never on `Clashed`/`Failed`. Stop swapped to `&()`: reuse `restore/rollback.rs` `uncancellable` only if
+  reachable as it is, else the same swap inline in `put_back.rs`.
+- Its reads go on the Command Log exactly as `u`'s `write_raw` logs its own: one rule for both.
+- How the raw failure travels (a field on `PutBackRan`/`Returned`, or a variant) is the builder's, inside §4's files.
+
+### §4. Files (replaces `## Files`), graft-ops only
+- `src/apply/set_aside/put_back.rs`; `src/apply/set_aside/returned.rs`; `src/apply/set_aside.rs` (the `close` call
+  site and the `&mut` it passes, nothing else); `src/apply/set_aside/answer.rs` (the raw failure into `unread`,
+  nothing else); `src/apply/error.rs` (the variant, its words, its tests; no other variant's words change).
+- `src/restore/raw.rs`, `src/restore.rs`, `src/restore/steps.rs` (the move, done).
+- `src/apply/resume.rs` only if its `close` call must change (it should not; `close` already holds `&mut`); name it.
+- `tests/it/undo_bytes.rs`; `MAP.md`.
+- Not: `src/undo*.rs`, `src/snapshot*`, the journal types, `restore/rollback.rs`, `operation/recover.rs`, anything in
+  graft. An exhaustive `match` on `AfterState` in graft that stops compiling → **stop**, `blocked: needs <graft
+  file:line>`.
+
+### §5. V5 is a gap, not this ticket
+Different write (`operation/recover.rs:238-245`, `restore --source`), different raw source (the lost edit's own earlier
+entry, not the running one), and the observed case had no raw bytes (`worktree_raw_before: None`). → Conductor:
+`M7/30q-putback-fwd` **broken** as observed (NOTES V5), "with raw kept: unverified"; the follow-up reuses `restore::raw`.
+V4's two questions (`stash push` then `pop` across operations; `stage.rs:188-196` `apply -R`) go to the conductor as
+questions.
+
+### §6. Added ticks and touches
+- [x] `error.rs` test: the three wordings, exact strings. (`apply::error::tests::not_as_they_were_says_the_edits_are_back_and_where_the_bytes_are`.)
+- [x] The mapping, at the seam in `returned.rs`/`answer.rs` tests with a built `RestoreError::WriteRaw`: a clean
+      put-back whose raw step failed → `ApplyError::AfterState`, `unread[0]` `NotAsTheyWere`, entry `Committed`, `S`
+      dropped. No failure hook in production code; end-to-end **unverified**, said in NOTES.
+      (`apply::set_aside::answer::tests::a_clean_put_back_whose_raw_step_failed_is_committed_not_as_they_were_first`
+      — Committed, `[NotAsTheyWere, StagingNotKept]` and alone; `…::an_unlisted_drop_after_a_failed_raw_step_reports_both_raw_first`;
+      `…::a_git_failure_after_a_failed_raw_step_carries_its_words`. `S` dropped and end to end **verified** with no hook:
+      `undo_bytes::a_put_back_whose_raw_step_cannot_land_says_so_and_drops_s`, NOTES `### Built`.)
+- [x] NOTES: §1's two graft reads, each with its line. (NOTES `### Built`, "§1's graft reads".)
+- [x] MAP.md: `AfterState::NotAsTheyWere`; the `apply` set-aside line gains the raw step. (MAP.md `apply` set-aside
+      line, new `AfterState::NotAsTheyWere` line, `## restore` intro and the file list.)
+- Touches: graft `jobs/operate.rs:369` lone-`StagingNotKept` mapping unchanged (grep); graft exhaustive matches on
+  `AfterState` (grep); `docs/shots` has no `back as it was` / `as they were` (grep). ADR-0045 gets an amendment line
+  for the raw step and the words: the conductor's.
 
 ## NOTES
 
@@ -252,3 +376,71 @@ exactly. So: `S` dropped as on a clean put-back; a new `AfterState::NotAsTheyWer
 - Set-aside kinds, all through `apply.rs:383`/`resume.rs:443` → `close` → `run_put_back` (`operation.rs:1323-1340`):
   `Rebase`, `Rewrite`, `CherryPick`, `Pull` (overlapping), `Checkout` (`OnEdits::SetAside`), `BranchCreate`
   (checkout + `SetAside`, not at `HEAD`), `Recover` (`MoveRef` checked out). Not `Merge` (the ticket lists it).
+
+### Built after the ruling (2026-10-01) — **this session compacted once** (after the block, before the build)
+- **Shape.** `put_back.rs`: `HisBytes { raw, tree }`; `NotAsTheyWere { error: RestoreError, files }` (crate-private
+  carrier); `run_put_back(ctx: &mut Context, stash, his: Option<HisBytes>, commands)`; the raw step `as_they_were`
+  runs after each clean read (`Whole { raw }`, `Unstaged { paths, raw }`), stop swapped to `&()` inline
+  (`rollback.rs`'s `uncancellable` is private to a file not granted), `same_content_paths` then `write_raw` (skipped
+  when no path qualifies). `returned.rs`: `put_back(ctx: &mut, stash, index_base, his, commands)` — `his` before
+  `commands` (crate convention: `commands` last); drops `S` whatever `raw` is; `raw` rides on `Returned::Back`,
+  `Kept::Git` (`None` unless `back`), `Kept::Unlisted`; `Kept::into_error` returns `(error, raw)`. `answer.rs`:
+  `Outcome::Back`/`Kept` carry `raw`; `NotAsTheyWere` inserted at 0 **after** `StagingNotKept`/`SetAsideKept`, so it is
+  first. `error.rs`: `AfterState::NotAsTheyWere { error: RestoreError, files }` — `RestoreError` reachable, so §2's
+  fallback shape was not needed; words from `not_as_they_were_words`, `path.display()` as `staging_named` does.
+- **§1 stop check:** `ApplyError::AfterState`'s `explain` adds no `u` clause — it falls to `other.to_string()`
+  (`error.rs` `explain`, the `other =>` arm) = `"{description}: {joined unread}"`. No stop.
+- **Deviations (builder's calls, for the reviewer):**
+  1. `set_aside.rs` beyond the call site: (a) the journal-failure arm of `close` puts the raw words first in
+     `ApplyError::Journal.kept` (`Outcome::raw_words`), since that arm drops `unread` and the failure would otherwise
+     be swallowed (rule 3); (b) its `Outcome::Back` patterns gain `..`; (c) one module-doc sentence for step 6.
+  2. `answer.rs` beyond `unread`: an `ApplyError::Git` answer (the operation failed but the edits came back, or the
+     drop failed with a git error) has no `unread`, so the raw words ride on git's line after `; ` (`with_raw`, via
+     `appended`) — rule 3. Like the staging clause, they ride only on an `Exited` error; a non-`Exited` one (git gone,
+     a kill between the operation and the drop) loses them: **gap candidate**, unverified, for the conductor.
+     `status_for` (the `Aborted` reason) does not carry them — as for the `Committed` case, the after-state is not
+     journaled. One pattern in `status_for` gains `..`.
+  3. `c_quoted` and its unit test in `raw.rs` (the C quoting the ruling's §3 implies but does not name).
+- **End-to-end raw failure is verified, not only at the seam.** The ruling expected no test could produce a real io
+  failure; `a_raw_write_that_cannot_land_fails_u_and_names_the_path` already does (a file at the temporary's name,
+  `write_his_bytes`' `create_new`), with no hook in production code. The same setup through the put-back:
+  `undo_bytes::a_put_back_whose_raw_step_cannot_land_says_so_and_drops_s` → `ApplyError::AfterState`, entry
+  `Committed`, `unread == [NotAsTheyWere { WriteRaw { src/a.rs }, files: 1 }]`, words start
+  `your edits are back · src/a.rs not written back as it was: ` and end ` · its exact bytes are in the backup`,
+  `main` on `second`, `S` dropped, `src/a.rs` is `W` in CRLF, the file in the way untouched. The check-failed
+  wording was also seen end to end, in the quoting mutation below (git's own 128 exit, carried verbatim).
+- **Mutations (each restored; the restored run green):**
+  - `write_raw` skipped in the put-back (`as_they_were`'s first arm made always-`None`) → the four red tests red
+    again, each at `assert_bytes` (`undo_bytes.rs:428`): `u_after_a_set_aside_put_back…`, `a_set_aside_put_back_keeps…`,
+    `a_switch_with_edits_keeps…`, `a_set_aside_under_a_one_way_clean_filter…`; the other 14 `undo_bytes::` green.
+  - the content check removed (`same_content_paths` keeps every path) → `a_put_back_that_merges_into_a_changed_file_writes_no_raw`
+    red at `undo_bytes.rs:565`: the guard guards.
+  - the `--stdin-paths` line written unquoted → `a_set_aside_put_back_keeps_an_lf_file_with_a_quoted_name` red:
+    `your edits are back · not written back as they were: \`git hash-object --stdin-paths\` failed (128): fatal: could
+    not open 'é q' for reading: No such file or directory · their exact bytes are in the backup`.
+- **One test expectation fixed:** `a_set_aside_put_back_keeps_an_lf_file_under_autocrlf` asserted porcelain
+  `"M src/a.rs"`; git prints `" M src/a.rs"` (blank index column = unstaged, what the test means). A test typo, not
+  behaviour: the bytes assert above it passed on the first run with the fix.
+- **§1's graft reads (read-only):**
+  - (a) `update/operate/outcome.rs:390-391` `operated`'s `Incomplete` → `incomplete_answered` (:11) → `incomplete`
+    (:26-40): sets the sticky `"<description> — could not confirm it fully: <error>"` (:32-35), `commit_editor::committed`,
+    then `refresh_scope` (:39) **only**. It does **not** land the cursor as `Done` does (`done_answered` :336
+    `landed(state, applied, lands, …)`, `lands` from `owed_landing` :361) and does not tag recovered rows
+    (`recover::tag_rows` :338). So a `J ⏎ y` whose raw step failed refreshes but leaves the cursor where it was.
+    **Question for the conductor** (graft, not this ticket; it covers every `Incomplete`).
+  - (b) `update/banner/resume.rs:157-158` `resumed`'s `Incomplete` → `resumed_incomplete` (:297-310): shows `error`
+    — `"{what} — could not confirm it fully: {error}"` (:306-308) — so a resumed rebase's raw failure is **not** a
+    clean tick. It calls `refresh_scope` (:309) but not `finished_lands_on_head` (which `resumed_done` does, :358).
+  - Both prefix graft's own `could not confirm it fully:` to the ruling's words; the words themselves arrive intact
+    (`jobs/operate.rs:373-380` joins `unread` with `; `).
+- **Touches, checked:** callers of `run_put_back`/`returned::put_back` only `returned.rs`/`set_aside.rs` (grep);
+  `close` from `apply.rs:383` and `resume.rs:443`, `resume.rs` unchanged (compiles, not in the diff); graft
+  `jobs/operate.rs:369` lone-`StagingNotKept` mapping unchanged, its `_` arm (:373) takes `NotAsTheyWere` to
+  `Incomplete`; no exhaustive `AfterState` match anywhere (grep `AfterState::` in graft: :369 only; workspace clippy
+  compiles every crate); `docs/shots` has no `back as it was`/`as they were` (grep: none); journal: no new field;
+  Command Log: +3 spawns (`ls-tree` ×2, `hash-object`) +2 when a path qualifies (`ls-tree`, `cat-file`), only when
+  `worktree_raw_before` is `Some` (+0 otherwise); ADR-0045 amendment line: the conductor's.
+- **Not verified:** a resumed rebase under autocrlf (the same `close`, `resume.rs:443`; the Pending line carries
+  `worktree_raw_before`, `journal/lines.rs:55`) — no test; the raw failure after a failed drop / failed operation
+  end to end (seam tests only); relaunch (`apply/recover.rs`) runs no put-back, so a put-back killed before its raw
+  step leaves git's encoding on disk — gap candidate, unverified.
