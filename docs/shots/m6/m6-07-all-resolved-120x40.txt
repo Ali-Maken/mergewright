@@ -1,6 +1,6 @@
 m6 walk capture: m6-07-all-resolved — scenario rebase-stops-twice-resolved-twice, keys ⏎ t ⏎, unicode tier, 120x40
 
-REBASING step 1 of 2
+REBASING  step 1 of 2 · pick 0104e16 feature writes
 files · all done ✓   ▸ shared.txt · done ✓
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ▸ shared.txt · done ✓ · d starts it over

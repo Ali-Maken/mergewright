@@ -20,7 +20,7 @@ m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and
 │ working tree: 2 files updated                                                │
 │ no conflicts expected                                                        │
 │ undo: u takes this back                                                      │
-│ git rebase --no-update-refs --no-autostash main                              │
+│ git rebase -i --no-update-refs --no-autostash --empty=drop main              │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │
 ╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────╯
 
