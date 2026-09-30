@@ -141,3 +141,14 @@ than every `●` except a fetch. The lost-work fixture changes order first (24's
 
 ## Carry (conductor, 2026-09-26): review 28 Q2
 Add a scenario: a guard refusal at 80 columns with a long branch name and a deep path. **Right:** the file name and the next step are both visible on the status line.
+
+## Carry (conductor, 2026-09-30)
+- Every ticket after 25 is merged too (24 a/b, 30a–30r, rebase-keeps-drops, 12e/12g). Journeys and "Where he lands" rows
+  were amended since 2026-09-26 (e.g. put-back of a lost edit, u/U in J, keymap §2.11): count against the note **as it
+  is now**; where a scenario's count differs from the note, the note wins unless the note is wrong — then say so as a
+  question with the line, don't change the note.
+- Re-take the m6-25 pty captures and rebuild the m5 and m6 contact sheets (review 10..07c M3); resolve TESTING.md's pty
+  SHA (`401cfbe` vs `fbb2394`) by reading which commit the captures were taken at — cite it.
+- Byte-exact `u` (30q/30r) is in the promise "you cannot lose work": the Recover scenario's `u` steps must compare bytes,
+  including one LF file under `core.autocrlf=true`.
+- Release perf this milestone is already run by the conductor (`docs/perf/m7-review-release.txt`, 17/17); don't re-run it.
