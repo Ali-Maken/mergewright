@@ -1,7 +1,7 @@
 m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflict, keys , unicode tier, 160x48
 
  graft <scratch____________________________________________________________>    MERGING      UNCOMMITTED · 1 staged
-◌   ▏  Uncommitted changes (2 unmerged, 1 staged)                                            diff vs HEAD 1e78110
+◌   ▏  Uncommitted changes (2 unmerged, 1 staged)                                            diff vs HEAD a301516
   ●  ⓘ [feature] feature's readme                                               6y   1e78110
   ●    feature's notes                                                          6y   d69867a
   ●    feature drops gone                                                       6y   35c2d1e

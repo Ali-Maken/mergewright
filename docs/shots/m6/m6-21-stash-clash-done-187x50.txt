@@ -6,7 +6,7 @@ m6 walk capture: m6-21-stash-clash-done — scenario stash-pop-clash-to-done, ke
 ●    Correct the note                                                                        GF 7y   a82960b Contained in: main
 ●    Add the first note                                                                      GF 7y   fadcfb3
 ◇    Add a readme                                                                            GF 7y   64ded19 M notes.md                                                               +1 −1
-
+                                                                                                             ▎
                                                                                                                1     - base
                                                                                                                    1 + committed
 

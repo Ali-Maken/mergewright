@@ -74,6 +74,16 @@ STABLE, CAP, APPEAR, EXIT_GRACE = 1.5, 40.0, 90.0, 10.0
 # nothing).
 SECRETS = ["correct-horse-battery-staple", "hunter2"]
 SOFT_CAP, HARD_CAP = 8 * 1024, 200 * 1024
+# A capture whose expected text is up before the frame it is for
+# (m7-power-tools/30v). The pull's `have diverged` sticky lands while the
+# graph re-reads the history the pull's own fetch brought: the rows blank
+# (`reading history…`), the sticky draws, and ~5 ms later the new graph does
+# — so the frame at the sticky's first draw was half a reload, and which half
+# was a race (the committed file had the sticky over the pre-fetch graph, 26's
+# run the sticky over blank rows). The frame this capture is for also has the
+# fetched commit drawn (`fixture.rs` `diverged`, its `commit_on_remote`);
+# nothing is drawn after it. A frame condition, not a longer wait.
+DRAWN_TOO = {"m5-11-diverged-pull-sticky": "the teammate's commit"}
 
 config_home = tempfile.mkdtemp(prefix="graft-walk-m5-")
 os.makedirs(os.path.join(config_home, "graft"))
@@ -85,6 +95,7 @@ os.makedirs(f"{TARGET}/pty-walk-m5", exist_ok=True)
 # Kitty graphics query, the colour query); see pty-gallery-m2.py. Reset the
 # model at each alternate-screen entry, drop string sequences before feeding.
 ALT_SCREEN = b"\x1b[?1049h"
+SYNC_BEGIN, SYNC_END = b"\x1b[?2026h", b"\x1b[?2026l"
 STRING_OPENERS = (b"\x1b_", b"\x1b]", b"\x1bP")
 ST = b"\x1b\\"
 
@@ -117,6 +128,8 @@ class Run:
         self.screen = pyte.Screen(COLS, ROWS)
         self.stream = pyte.ByteStream(self.screen)
         self.pending = b""
+        self.mid_frame = False
+        self.tail = b""
         self.master, slave = pty.openpty()
         fcntl.ioctl(self.master, termios.TIOCSWINSZ, struct.pack("HHHH", ROWS, COLS, 0, 0))
         self.pid = os.fork()
@@ -155,6 +168,17 @@ class Run:
             return False
         self.raw.write(chunk)
         self.feed(chunk)
+        # Inside a frame or between frames: graft wraps each frame in DEC
+        # 2026 synchronized output (`event_loop/running.rs:27-31`). The last
+        # few bytes of the previous chunk ride along so a marker split across
+        # two reads is still seen.
+        seen = self.tail + chunk
+        begin, end = seen.rfind(SYNC_BEGIN), seen.rfind(SYNC_END)
+        if begin > end:
+            self.mid_frame = True
+        elif end > begin:
+            self.mid_frame = False
+        self.tail = seen[-(len(SYNC_BEGIN) - 1):]
         return True
 
     def text(self):
@@ -171,6 +195,17 @@ class Run:
             self.pump(0.01)
         return string in self.text()
 
+    def wait_for_whole(self, string, seconds):
+        """`wait_for`, but only on a whole frame: `string` alone can land
+        while the rest of its frame is still arriving (30v: the first
+        m5-11 re-shoot had the fetched commit drawn and the rows under it
+        blank)."""
+        start = time.monotonic()
+        while ((self.mid_frame or string not in self.text())
+               and time.monotonic() - start < seconds):
+            self.pump(0.01)
+        return not self.mid_frame and string in self.text()
+
     def wait_quiet(self, stable, cap):
         start = time.monotonic()
         last = start
@@ -179,7 +214,6 @@ class Run:
                 last = time.monotonic()
 
     def end(self):
-        self.raw.close()
         try:
             os.kill(self.pid, signal.SIGTERM)
         except ProcessLookupError:
@@ -187,6 +221,13 @@ class Run:
         # A run that does not leave on SIGTERM within EXIT_GRACE is killed,
         # and said so: the pull-diverged capture sat in this wait for 13
         # minutes on 2026-09-21 (finding in the ticket, not hidden here).
+        #
+        # The pty is read while we wait, as a terminal reads it. That wait
+        # was this script's own doing (m7-power-tools/30v): nothing read the
+        # master after the frame was taken, so a run still drawing filled
+        # the pty's buffer, its main thread blocked in `write` mid-frame
+        # (`sample` on the stuck process), and the loop never took the
+        # SIGTERM wake. Read, it leaves within 0.02 s (30v NOTES).
         start = time.monotonic()
         while time.monotonic() - start < EXIT_GRACE:
             try:
@@ -195,7 +236,7 @@ class Run:
                 pid = self.pid
             if pid:
                 break
-            time.sleep(0.05)
+            self.pump(0.05)
         else:
             print(f"{self.scenario}-{SIZE}: not gone {EXIT_GRACE:.0f} s after SIGTERM — killed")
             try:
@@ -203,6 +244,7 @@ class Run:
                 os.waitpid(self.pid, 0)
             except (ProcessLookupError, ChildProcessError):
                 pass
+        self.raw.close()
         os.close(self.master)
 
 
@@ -245,10 +287,15 @@ for stem, scenario, on_screen, keys, when in CAPTURES:
         continue
     run = Run(scenario)
     seen = run.wait_for(on_screen, APPEAR)
+    drawn_too = DRAWN_TOO.get(stem)
+    if seen and drawn_too:
+        run.wait_for_whole(drawn_too, APPEAR)
     if when == "settled":
         run.wait_quiet(STABLE, CAP)
     frame = run.text()
     notes = []
+    if drawn_too and drawn_too not in frame:
+        notes.append(f"`{drawn_too}` is not on screen when the frame was taken")
     if on_screen not in frame:
         if "preview" in stem:
             print(f"{stem}-{SIZE}: `{on_screen}` is not on screen — a preview capture "

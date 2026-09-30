@@ -2103,7 +2103,7 @@ What each capture shows; 120x40 is `not run` except for the banner.
 | Too small (`m5-05-preview-too-small`, 38x10 only) | `preview needs 40x12 · esc closes` on the last row, the ghost rows still drawn above | — | — |
 | Stopped merge (`m5-06-stop-lands-in-resolver`) | The stop lands in the resolver (m6-conflicts/18): `MERGING` on the header row, the file strip `▸ shared.txt`, the identity row `▸ shared.txt · 1 conflict · 1 open`, the bar starting `o yours` (`Esc` is the way to the banner) | the same | the same |
 | Branch-row hint bar (`m5-07-branch-row-hints`) | after `r` then `Esc` on `main` from `feature`: no box, `m merge  r rebase  ⏎ open  . more` then bare keys | not run | `m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  . more  /  q …` — **`q quit` is a bare `q` at 160 since `b` and `t` went live; the user decides whether the tail is too long** |
-| Diverged pull (`m5-11-diverged-pull-sticky`) | `main and origin/main have diverged · m merge it  r rebase onto it` on the footer, `[◆ main ↑1]` and `[origin/main]` one row apart | not run | same |
+| Diverged pull (`m5-11-diverged-pull-sticky`) | `main and origin/main have diverged · m merge it  r rebase onto it` on the footer, `[◆ main ↑1 ↓1]` and `[origin/main] the teammate's commit` one row apart (the frame after the pull's fetch is drawn, m7-power-tools/30v) | not run | same |
 
 ### Per terminal: walk the history group
 

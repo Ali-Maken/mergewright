@@ -1,10 +1,10 @@
 m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relaunch, keys ⏎ o, unicode tier, 80x24
 (the capture run was sent SIGKILL after its keys; this is the real graft binary relaunched on the scratch it left)
 
-REBASING step 1 of 2
+REBASING  step 1 of 2 · pick c3b01ea feature writes
 Graph  [Detail]
 UNCOMMITTED
-diff vs HEAD 2e2d51c
+diff vs HEAD b0eb655
 
 CONFLICTS (1)
   shared.txt                                                       both modified
