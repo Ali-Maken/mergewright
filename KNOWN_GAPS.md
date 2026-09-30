@@ -1050,3 +1050,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/30t-resize | A refusal's chosen rung (30t) is kept across a terminal resize: widening does not bring the fuller words back until the next refusal (30t NOTES) | **unverified** | M8 |
 | M7/30s-raw-fail | If writing the exact bytes back after a set-aside put-back fails (`AfterState::NotAsTheyWere`), `u` undoes the operation but the file keeps git's line endings — reasoned from `undo_bytes.rs:453` (30s V1), not seen end to end | **unverified** | M8 |
 | M7/30v-m6-end | `scripts/pty-walk-m6.py` `Run::end` has the same unread-pty wait that hung m5-11 (30v: graft blocks in `write`, misses SIGTERM); never hung so far — latent | **unverified** | M8 |
+| M7/30s-incomplete-land | Question: graft's `Operated::Incomplete` answer (`NotAsTheyWere`) does not land the cursor or tag recovered rows, unlike the complete answer (`graft/src/update/operate/outcome.rs:26-40` vs `:336-338`); nor does it drop `error` (30s NOTES) | **unverified** | M8 |
+| M7/30s-git-exited | A raw-write failure rides on git's error line only for `RunError::Exited`; other `ApplyError::Git` kinds do not carry it (30s deviation, NOTES) | **unverified** | M8 |
+| M7/30s-resume | Set-aside put-back raw step across resume and relaunch not verified (30s NOTES) | **unverified** | M8 |
