@@ -30,6 +30,7 @@ fn entry(id: i64, kind: OperationKind, description: &str) -> JournalEntry {
         index_after: Some(IndexState::Merged(oid(2))),
         worktree_before: None,
         worktree_after: None,
+        worktree_raw_before: None,
         backup_ref: Some("refs/graft/backup/main/x".to_owned()),
         pins: Vec::new(),
         commands: vec!["git add -- src/a.rs".to_owned()],

@@ -10,10 +10,19 @@
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
+use graft_core::journal::{EntryId, JournalEntry};
 use graft_core::oid::Oid;
+use graft_ops::operation::{Operation, Target};
 use graft_ops::snapshot;
 
-use crate::support::{Never, TempRepo};
+use crate::support::{NOW, Never, TempRepo, run};
+
+/// `HEAD`'s commit, `None` while unborn.
+fn head_of(repo: &TempRepo) -> Option<Oid> {
+    repo.try_git(&["rev-parse", "-q", "--verify", "HEAD"])
+        .ok()
+        .map(|hex| Oid::from_hex(&hex).expect("HEAD is an id"))
+}
 
 /// `raw_record` over the repository as it stands: the worktree tree first,
 /// as `take` has it, then `HEAD` (absent when unborn). The scratch directory
@@ -23,11 +32,7 @@ fn raw_of(repo: &TempRepo) -> Option<Oid> {
     let scratch = repo.path().join(".git/graft");
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let tree = snapshot::worktree_tree(&handle, &scratch, &Never).expect("the worktree tree");
-    let head = repo
-        .try_git(&["rev-parse", "-q", "--verify", "HEAD"])
-        .ok()
-        .map(|hex| Oid::from_hex(&hex).expect("HEAD is an id"));
-    let raw = snapshot::raw_record(&handle, &scratch, &Never, head, tree)
+    let raw = snapshot::raw_record(&handle, &scratch, &Never, head_of(repo), tree)
         .expect("the raw record is taken");
     let left: Vec<PathBuf> = std::fs::read_dir(&scratch)
         .expect("the scratch reads")
@@ -35,6 +40,40 @@ fn raw_of(repo: &TempRepo) -> Option<Oid> {
         .collect();
     assert!(left.is_empty(), "the scratch is left empty: {left:?}");
     raw
+}
+
+/// The before-snapshot, as `begin` takes it.
+fn taken(repo: &TempRepo) -> snapshot::Snapshot {
+    let handle = repo.open();
+    let scratch = repo.path().join(".git/graft");
+    std::fs::create_dir_all(&scratch).expect("the scratch is made");
+    let id = EntryId::new(NOW, [7; 10]);
+    let head = head_of(repo);
+    snapshot::take(&handle, &scratch, &id, "main", "probe", &[], head, &Never)
+        .expect("the snapshot is taken")
+}
+
+/// The names at the top of a backup commit's tree, in git's order.
+fn top_names(repo: &TempRepo, commit: Oid) -> Vec<String> {
+    repo.git(&["ls-tree", "--name-only", &commit.to_string()])
+        .lines()
+        .map(str::to_owned)
+        .collect()
+}
+
+/// Stage `path` through `apply` (a full-scope operation, so a before-snapshot
+/// is taken), and hand back the entry and its pending line as written.
+fn staged(repo: &TempRepo, path: &str) -> (JournalEntry, String) {
+    let entry = run(
+        repo,
+        &Operation::Stage(Target::Paths(vec![PathBuf::from(path)])),
+        NOW,
+    );
+    let journal = std::fs::read_to_string(repo.path().join(".git/graft/undo-journal.jsonl"))
+        .expect("the journal reads");
+    let pending = journal.lines().next().expect("a pending line").to_owned();
+    assert!(pending.contains("\"status\":\"pending\""), "{pending}");
+    (entry, pending)
 }
 
 /// `git <args>`'s stdout as bytes, untrimmed.
@@ -87,7 +126,8 @@ fn symlink(repo: &TempRepo, path: &str, to: &str) {
 }
 
 /// No attributes, `core.autocrlf=false` (the scratch repo's own config), two
-/// changed files: git converts nothing, so nothing is kept.
+/// changed files: git converts nothing, so nothing is kept. The backup commit
+/// keeps today's layout and the pending line today's keys.
 #[test]
 fn a_snapshot_with_nothing_to_convert_keeps_nothing_raw() {
     let repo = TempRepo::init();
@@ -98,6 +138,14 @@ fn a_snapshot_with_nothing_to_convert_keeps_nothing_raw() {
     repo.write("b.rs", b"b changed\r\n");
 
     assert_eq!(raw_of(&repo), None);
+
+    let snapshot = taken(&repo);
+    assert_eq!(snapshot.worktree_raw, None);
+    assert_eq!(top_names(&repo, snapshot.commit), ["index", "worktree"]);
+
+    let (entry, pending) = staged(&repo, "a.rs");
+    assert_eq!(entry.worktree_raw_before, None);
+    assert!(!pending.contains("worktree_raw_before"), "{pending}");
 }
 
 /// `core.autocrlf=true`: only the changed LF files are kept. The CRLF file
@@ -130,6 +178,25 @@ fn a_snapshot_keeps_raw_only_what_would_not_round_trip() {
     );
     assert_eq!(kept(&repo, raw, "l.rs"), repo.read("l.rs"));
     assert_eq!(kept(&repo, raw, "run.sh"), repo.read("run.sh"));
+
+    // `take` joins it as `raw/` beside an unchanged `worktree/`.
+    let snapshot = taken(&repo);
+    assert_eq!(snapshot.worktree_raw, Some(raw));
+    assert_eq!(
+        top_names(&repo, snapshot.commit),
+        ["index", "raw", "worktree"]
+    );
+    let at = |name: &str| repo.git(&["rev-parse", &format!("{}:{name}", snapshot.commit)]);
+    assert_eq!(at("raw"), raw.to_string());
+    assert_eq!(at("worktree"), snapshot.worktree_tree.to_string());
+
+    // `begin` records it on the pending line.
+    let (entry, pending) = staged(&repo, "c.rs");
+    assert_eq!(entry.worktree_raw_before, Some(raw));
+    assert!(
+        pending.contains(&format!("\"worktree_raw_before\":\"{raw}\"")),
+        "{pending}"
+    );
 }
 
 /// A clean filter that throws a line away and a smudge that is `cat`: the

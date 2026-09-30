@@ -65,7 +65,8 @@ fn take_backup(repo: &TempRepo) -> snapshot::Snapshot {
     let scratch = repo.path().join(".git/graft");
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let id = EntryId::new(NOW, [3; 10]);
-    snapshot::take(&handle, &scratch, &id, "main", "probe", &[], &Never)
+    let head = Some(Oid::from_hex(&repo.git(&["rev-parse", "HEAD"])).expect("HEAD is an id"));
+    snapshot::take(&handle, &scratch, &id, "main", "probe", &[], head, &Never)
         .expect("the snapshot is taken")
 }
 

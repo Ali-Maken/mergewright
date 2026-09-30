@@ -53,6 +53,7 @@ pub(crate) fn pop_entry() -> JournalEntry {
         index_after: Some(IndexState::Unmerged { unmerged: oid(2) }),
         worktree_before: None,
         worktree_after: None,
+        worktree_raw_before: None,
         backup_ref: None,
         pins: vec![oid(STASH)],
         commands: Vec::new(),

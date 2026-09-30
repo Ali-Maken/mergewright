@@ -897,6 +897,7 @@ mod tests {
                 index_after: None,
                 worktree_before: None,
                 worktree_after: None,
+                worktree_raw_before: None,
                 backup_ref: None,
                 pins: Vec::new(),
                 commands: Vec::new(),
@@ -1558,6 +1559,7 @@ mod tests {
             // entry `u` can no longer reach is not one to announce.
             worktree_before: Some(oid(3)),
             worktree_after: None,
+            worktree_raw_before: None,
             backup_ref: Some("refs/graft/backup/main/x".to_owned()),
             pins: Vec::new(),
             commands: Vec::new(),

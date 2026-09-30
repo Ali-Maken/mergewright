@@ -40,6 +40,7 @@ fn entry(at: i64, description: &str, status: EntryStatus) -> JournalEntry {
         index_after: None,
         worktree_before: None,
         worktree_after: None,
+        worktree_raw_before: None,
         backup_ref: None,
         pins: Vec::new(),
         commands: vec!["git restore -- aborted.txt".to_owned()],

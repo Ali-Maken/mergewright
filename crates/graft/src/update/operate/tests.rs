@@ -32,6 +32,7 @@ fn applied(description: &str, refresh: Refresh) -> graft_ops::apply::Applied {
             index_after: None,
             worktree_before: None,
             worktree_after: None,
+            worktree_raw_before: None,
             backup_ref: None,
             pins: Vec::new(),
             commands: Vec::new(),

@@ -19,7 +19,8 @@
 //! The two trees are joined by `mktree` into `{ index/, worktree/ }` and
 //! committed under `refs/graft/backup/<worktree>/<ulid>` (ADR-0010's
 //! namespacing, its Correction's `<ulid>`), so both stay reachable and a
-//! restore reads each by name.
+//! restore reads each by name. A before-snapshot adds `raw/` beside them when
+//! it keeps bytes git would not give back (ADR-0052).
 //!
 //! Taking a snapshot lives here. Its other concerns are submodules, each
 //! public item re-exported so every `snapshot::` path reads as before:
@@ -70,8 +71,12 @@ pub struct Snapshot {
     pub index: IndexState,
     /// Tracked working-tree content plus untracked files.
     pub worktree_tree: Oid,
-    /// `{ index/ | unmerged/ → the index state, worktree/ → worktree_tree }`,
-    /// committed.
+    /// The bytes on disk of the uncommitted files git's checkout of
+    /// `worktree_tree` would not give back ([`raw_record`], ADR-0052);
+    /// `None` when there are none.
+    pub worktree_raw: Option<Oid>,
+    /// `{ index/ | unmerged/ → the index state, raw/ → worktree_raw when
+    /// kept, worktree/ → worktree_tree }`, committed.
     pub commit: Oid,
 }
 
@@ -217,6 +222,15 @@ pub fn worktree_tree(
 /// One index copy serves both trees: `write-tree` gives the index tree, then
 /// `add -A` over the same copy and a second `write-tree` gives the worktree
 /// tree. Two copies would pay the stat walk twice for nothing.
+///
+/// `head` is `HEAD`'s commit (`None` while unborn): the files that differ
+/// from it are the ones [`raw_record`] may keep raw, joined as `raw/` beside
+/// `worktree/` only when it keeps any, so a snapshot with nothing to keep is
+/// laid out exactly as every backup commit since M3.
+// Eight: the backup's name (`id`, `worktree`), its message (`label`), what it
+// keeps alive (`parents`) and what counts as uncommitted (`head`) are each the
+// caller's to say, and a struct for one caller would only rename them.
+#[allow(clippy::too_many_arguments)]
 pub fn take(
     repo: &RepoHandle,
     scratch: &Path,
@@ -224,23 +238,19 @@ pub fn take(
     worktree: &str,
     label: &str,
     parents: &[Oid],
+    head: Option<Oid>,
     stop: &dyn Stop,
 ) -> Result<Snapshot, SnapshotError> {
     let (index, worktree_tree) = both_trees(repo, scratch, stop)?;
-    let commit = commit_trees(
-        repo,
-        Some(index),
-        Some(worktree_tree),
-        id,
-        label,
-        parents,
-        stop,
-    )?;
+    let worktree_raw = raw_record(repo, scratch, stop, head, worktree_tree)?;
+    let joined = mktree(repo, Some(index), Some(worktree_tree), worktree_raw, stop)?;
+    let commit = commit_joined(repo, joined, id, label, parents, stop)?;
     let name = backup_ref_name(worktree, id);
     update_ref(repo, &name, commit, stop)?;
     Ok(Snapshot {
         index,
         worktree_tree,
+        worktree_raw,
         commit,
     })
 }
@@ -329,6 +339,9 @@ pub(crate) fn conflicted_paths(
 /// it is the stage tree, **never both**. A merged commit's layout is therefore
 /// byte-identical to every backup ref written since M3, and the shape is
 /// readable from the commit alone rather than only from the journal.
+///
+/// It never holds a `raw/` tree: only [`take`]'s before-snapshot keeps one
+/// (ADR-0052, "only before").
 pub fn commit_trees(
     repo: &RepoHandle,
     index: Option<IndexState>,
@@ -338,7 +351,19 @@ pub fn commit_trees(
     parents: &[Oid],
     stop: &dyn Stop,
 ) -> Result<Oid, SnapshotError> {
-    let joined = mktree(repo, index, worktree_tree, stop)?;
+    let joined = mktree(repo, index, worktree_tree, None, stop)?;
+    commit_joined(repo, joined, id, label, parents, stop)
+}
+
+/// A backup commit over a joined tree, with the message every backup carries.
+fn commit_joined(
+    repo: &RepoHandle,
+    joined: Oid,
+    id: &EntryId,
+    label: &str,
+    parents: &[Oid],
+    stop: &dyn Stop,
+) -> Result<Oid, SnapshotError> {
     commit_tree(repo, joined, parents, &format!("graft {id} {label}"), stop)
 }
 
