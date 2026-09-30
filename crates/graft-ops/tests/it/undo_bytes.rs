@@ -14,11 +14,18 @@
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use graft_core::journal::{EntryStatus, HeadRef, PutBackWhy};
+use graft_core::oid::Oid;
 use graft_git::run::Stop;
-use graft_ops::operation::{Operation, StashParams, StashScope, Target};
+use graft_ops::apply::ApplyError;
+use graft_ops::operation::{
+    CheckoutParams, CheckoutTarget, OnEdits, Operation, RecoverParams, RecoverTarget, StashParams,
+    StashScope, Target,
+};
 use graft_ops::restore::{self, RestoreError};
 use graft_ops::undo::{self, Step, UndoError};
 
+use crate::set_aside::{set_aside_of, stash_commits};
 use crate::support::{NOW, TempRepo, context, journal_for, run, run_redo, run_undo, try_run};
 
 /// What `HEAD` holds at `src/a.rs`.
@@ -403,4 +410,222 @@ fn a_cancelled_undo_rolls_back_to_his_lf_bytes_under_autocrlf() {
         "the roll-back gave back his bytes, not {:?}",
         String::from_utf8_lossy(&repo.read("src/a.rs"))
     );
+}
+
+// ── the set-aside put-back (m7-power-tools/30s) ─────────────────────────
+//
+// `stash apply` writes his content back in git's encoding; the put-back
+// then writes his own bytes over each path whose content came back as it
+// was (`restore::raw::same_content_paths`).
+
+fn id(repo: &TempRepo, rev: &str) -> Oid {
+    Oid::from_hex(&repo.git(&["rev-parse", rev])).expect("an object id")
+}
+
+/// `path` on disk is `bytes`, byte for byte; shown as text when not.
+fn assert_bytes(repo: &TempRepo, path: &str, bytes: &[u8], when: &str) {
+    let on_disk = repo.read(path);
+    assert!(
+        on_disk == bytes,
+        "{when}: {path} is {:?}, not {:?}",
+        String::from_utf8_lossy(&on_disk),
+        String::from_utf8_lossy(bytes)
+    );
+}
+
+/// The shell's `reset --hard HEAD~1`, then `edit` over the tree: `J ⏎ y`'s
+/// start (26's `promise/recover.rs`). The `MoveRef` that puts `main` back
+/// on the tip the reset left, over his edit, and that tip.
+fn shell_reset_then(repo: &TempRepo, edit: impl FnOnce(&TempRepo)) -> (Operation, Oid) {
+    let lost = id(repo, "HEAD");
+    repo.git(&["reset", "-q", "--hard", "HEAD~1"]);
+    let reset_to = id(repo, "HEAD");
+    edit(repo);
+    let op = Operation::Recover(RecoverParams {
+        target: RecoverTarget::MoveRef {
+            name: "main".to_owned(),
+            to: lost,
+            expected: reset_to,
+        },
+        because: "the shell's reset".to_owned(),
+    });
+    (op, lost)
+}
+
+/// `core.autocrlf=true`; `main` at `first` (`src/a.rs`) then `second`
+/// (`b.txt`, so `src/a.rs` is the same on both); the shell's reset; `W` over
+/// `src/a.rs`, LF.
+fn reset_off_second_with_an_lf_edit() -> (TempRepo, Operation, Oid) {
+    let repo = TempRepo::init();
+    repo.git(&["config", "core.autocrlf", "true"]);
+    repo.write("src/a.rs", COMMITTED);
+    repo.commit_all("first");
+    repo.write("b.txt", b"b\n");
+    repo.commit_all("second");
+    let (op, second) = shell_reset_then(&repo, |repo| repo.write("src/a.rs", WORKING));
+    (repo, op, second)
+}
+
+/// The scenario's `J ⏎ y`, then `u`: `W`, byte for byte (26's F-recover).
+#[test]
+fn u_after_a_set_aside_put_back_brings_back_an_lf_file_under_autocrlf() {
+    let (repo, op, second) = reset_off_second_with_an_lf_edit();
+    run(&repo, &op, NOW);
+    assert_eq!(id(&repo, "refs/heads/main"), second, "main is on second");
+
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    assert_ne!(id(&repo, "refs/heads/main"), second, "main is off second");
+    assert_bytes(&repo, "src/a.rs", WORKING, "after u");
+}
+
+/// The same `J ⏎ y`, forward: his edit is put back as it was — LF, still
+/// unstaged, the set-aside stash dropped.
+#[test]
+fn a_set_aside_put_back_keeps_an_lf_file_under_autocrlf() {
+    let (repo, op, second) = reset_off_second_with_an_lf_edit();
+    run(&repo, &op, NOW);
+    assert_eq!(id(&repo, "refs/heads/main"), second, "main is on second");
+    assert_bytes(&repo, "src/a.rs", WORKING, "after the put-back");
+    assert_eq!(
+        repo.git(&["status", "--porcelain"]),
+        "M src/a.rs",
+        "unstaged, as it was"
+    );
+    assert_eq!(stash_commits(&repo), Vec::<Oid>::new(), "S is dropped");
+}
+
+/// A second kind that sets aside: a checkout of `other`, which does not
+/// touch `src/a.rs`, over `W`. After it `W`; after `u` `W`.
+#[test]
+fn a_switch_with_edits_keeps_an_lf_file_under_autocrlf() {
+    let repo = TempRepo::init();
+    repo.git(&["config", "core.autocrlf", "true"]);
+    repo.write("src/a.rs", COMMITTED);
+    repo.commit_all("first");
+    repo.git(&["switch", "-q", "-c", "other"]);
+    repo.write("o.txt", b"o\n");
+    repo.commit_all("other");
+    repo.git(&["switch", "-q", "main"]);
+    repo.write("src/a.rs", WORKING);
+    let op = Operation::Checkout(CheckoutParams {
+        to: CheckoutTarget::Branch("refs/heads/other".to_owned()),
+        head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+        on_edits: OnEdits::SetAside,
+    });
+
+    let entry = run(&repo, &op, NOW);
+    set_aside_of(&entry);
+    assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/other");
+    assert_bytes(&repo, "src/a.rs", WORKING, "after the checkout");
+
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/main");
+    assert_bytes(&repo, "src/a.rs", WORKING, "after u");
+}
+
+/// Seven lines, far enough apart for git to merge a change at each end.
+const SEVEN: &[u8] = b"one\ntwo\nthree\nfour\nfive\nsix\nseven\n";
+/// `second`'s change, at the top.
+const SEVEN_TOP: &[u8] = b"ONE\ntwo\nthree\nfour\nfive\nsix\nseven\n";
+/// His edit, at the bottom.
+const SEVEN_HIS: &[u8] = b"one\ntwo\nthree\nfour\nfive\nsix\nhis seven\n";
+/// Both.
+const SEVEN_BOTH: &[u8] = b"ONE\ntwo\nthree\nfour\nfive\nsix\nhis seven\n";
+
+/// `bytes` with every CRLF read as LF: content, not endings.
+fn content(bytes: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut rest = bytes;
+    while let Some((&byte, tail)) = rest.split_first() {
+        if byte == b'\r' && tail.first() == Some(&b'\n') {
+            rest = tail;
+            continue;
+        }
+        out.push(byte);
+        rest = tail;
+    }
+    out
+}
+
+/// Guard: `second` changes `src/a.rs` at the top and his edit is at the
+/// bottom, so the put-back merges his edit into new content. His raw bytes
+/// are not written over it: the file holds both changes. `u` gives `W`.
+#[test]
+fn a_put_back_that_merges_into_a_changed_file_writes_no_raw() {
+    let repo = TempRepo::init();
+    repo.git(&["config", "core.autocrlf", "true"]);
+    repo.write("src/a.rs", SEVEN);
+    repo.commit_all("first");
+    repo.write("src/a.rs", SEVEN_TOP);
+    repo.commit_all("second");
+    let (op, second) = shell_reset_then(&repo, |repo| repo.write("src/a.rs", SEVEN_HIS));
+
+    run(&repo, &op, NOW);
+    assert_eq!(id(&repo, "refs/heads/main"), second, "main is on second");
+    assert_eq!(
+        content(&repo.read("src/a.rs")),
+        SEVEN_BOTH,
+        "second's change and his: {:?}",
+        String::from_utf8_lossy(&repo.read("src/a.rs"))
+    );
+
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    assert_bytes(&repo, "src/a.rs", SEVEN_HIS, "after u");
+}
+
+/// Guard: `second` changes the line `W` changes, so the put-back clashes.
+/// As `set_aside::a_clashing_put_back_is_clashed_and_keeps_the_stash`:
+/// `Clashed { SetAside }`, the entry `Committed` with an unmerged index
+/// after, `S` kept. No raw write: the file holds git's conflict.
+#[test]
+fn a_clashed_put_back_writes_no_raw() {
+    let repo = TempRepo::init();
+    repo.git(&["config", "core.autocrlf", "true"]);
+    repo.write("src/a.rs", COMMITTED);
+    repo.commit_all("first");
+    repo.write("src/a.rs", b"pub fn a() -> u32 {\n    9\n}\n");
+    repo.commit_all("second");
+    let (op, second) = shell_reset_then(&repo, |repo| repo.write("src/a.rs", WORKING));
+
+    let (entry, clash) = match try_run(&repo, &op, NOW) {
+        Err(ApplyError::Clashed { entry, clash }) => (*entry, clash),
+        other => panic!("the put-back should clash: {other:?}"),
+    };
+    assert_eq!(clash.why, PutBackWhy::SetAside);
+    assert_eq!(clash.paths, vec![PathBuf::from("src/a.rs")]);
+    let stash = set_aside_of(&entry);
+    assert_eq!(clash.stash, stash);
+    assert_eq!(entry.status, EntryStatus::Committed);
+    assert!(entry.index_after.is_some_and(|index| index.is_unmerged()));
+    assert!(
+        !repo.git(&["ls-files", "-u"]).is_empty(),
+        "git says unmerged"
+    );
+    assert_eq!(id(&repo, "refs/heads/main"), second, "main is on second");
+    assert_eq!(stash_commits(&repo), vec![stash], "S kept");
+    let on_disk = repo.read("src/a.rs");
+    assert!(
+        on_disk.windows(7).any(|seven| seven == b"<<<<<<<") && on_disk != WORKING,
+        "git's conflict, not his bytes: {:?}",
+        String::from_utf8_lossy(&on_disk)
+    );
+}
+
+/// 30q-a's one-way clean filter (nbstripout's shape): `nb.txt` holds a line
+/// the clean filter strips. Set aside and put back, the line is still there.
+#[test]
+fn a_set_aside_under_a_one_way_clean_filter_keeps_the_stripped_lines() {
+    let repo = TempRepo::init();
+    repo.write(".git/info/attributes", b"nb.txt filter=strip\n");
+    repo.git(&["config", "filter.strip.clean", "sed '/^#out/d'"]);
+    repo.git(&["config", "filter.strip.smudge", "cat"]);
+    repo.write("nb.txt", b"cell 1\n");
+    repo.commit_all("first");
+    repo.write("b.txt", b"b\n");
+    repo.commit_all("second");
+    let (op, second) = shell_reset_then(&repo, |repo| repo.write("nb.txt", b"cell 2\n#out 42\n"));
+
+    run(&repo, &op, NOW);
+    assert_eq!(id(&repo, "refs/heads/main"), second, "main is on second");
+    assert_bytes(&repo, "nb.txt", b"cell 2\n#out 42\n", "after the put-back");
 }

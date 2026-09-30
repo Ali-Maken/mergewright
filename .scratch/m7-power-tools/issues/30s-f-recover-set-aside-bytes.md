@@ -1,6 +1,6 @@
 # f-recover — the set-aside put-back gives back his bytes, so `J ⏎ y` then `u` holds an LF file under autocrlf
 
-Status: ready
+Status: blocked (verify done, move committed, tests red; the fix needs files outside the list — NOTES `### Blocked`)
 Build with: **Opus, `builder-opus-xhigh`.** Undo territory and the M3 promise ("you cannot lose work"); the cause is
 not confirmed, so the builder verifies before it builds, and real-git byte tests judge it. Not Fable: the fix and its
 signatures are fixed below; no structural choice is left.
@@ -91,7 +91,9 @@ pub(crate) fn same_content_paths(/* write_raw's leading params */, raw: Oid, tre
 ## Acceptance (name the verifying test at tick time; **(red)** = seen failing on today's code first, line in NOTES)
 Each test: `core.autocrlf=true`; committed `src/a.rs`; `W = b"pub fn a() -> u32 {\n    4\n}\n"` written LF, uncommitted
 (30q-a's `lf_edit_under_autocrlf`). Assert with `std::fs::read`, byte for byte.
-- [ ] V1–V5 in NOTES, each with its command and output.
+- [x] V1–V5 in NOTES, each with its command and output. (NOTES `### Verify`; V1 is
+      `undo_bytes::u_after_a_set_aside_put_back_brings_back_an_lf_file_under_autocrlf`, red; V2/V3/V5 scratch probes
+      printed and removed; V4 the grep named there.)
 - [ ] (red) `undo_bytes::u_after_a_set_aside_put_back_brings_back_an_lf_file_under_autocrlf`: Recover `MoveRef` of the
       checked-out branch over the dirty tree (the scenario's `J ⏎ y`; copy its shape from 26's `promise/recover.rs`), then
       `u`. After `u`: `W`.
@@ -133,3 +135,120 @@ workspace-wide.
 
 ## Rules
 Worktree only; `CARGO_TARGET_DIR` in the worktree. Never read `PROGRESS.md` or `KNOWN_GAPS.md` (rows restated above).
+
+## NOTES
+
+### Verify (on `main` at 68810e43, before any source change; git 2.54.0)
+Repo for V1–V3 (`undo_bytes::reset_off_second_with_an_lf_edit`): `core.autocrlf=true`; `first` = `src/a.rs`
+(`COMMITTED`), `second` = `b.txt`; `reset -q --hard HEAD~1`; `W` written LF; op = `Recover MoveRef main → second`.
+
+- **V1, red — held.** `cargo nextest run -p graft-ops --test it -E 'test(u_after_a_set_aside_put_back_brings_back_an_lf_file_under_autocrlf)'`
+  → `FAIL` at `undo_bytes.rs:453`: `W is back, byte for byte, not "pub fn a() -> u32 {\r\n    4\r\n}\r\n"`.
+  Not green, so no stop.
+- **V2, the before-snapshot kept it — held.** A scratch test (removed) printed, after the op: the entry's
+  `backup_ref` (`refs/graft/backup/main/01HF7YAT…`) is the **after** commit (`graft … recover after: …`; tree
+  `index`, `worktree`, no `raw`); its first parent is the before commit (`graft … recover: …`), whose tree is
+  `index`, `raw 2997161f`, `worktree 2997161f`. `git ls-tree -r <backup_ref>^1:raw` →
+  `100644 blob f8304d84…\tsrc/a.rs`; `git cat-file blob <backup_ref>^1:raw/src/a.rs` →
+  `"pub fn a() -> u32 {\n    4\n}\n"` (`W`, LF). `entry.worktree_raw_before` = `Some(2997161f…)`, the same tree.
+  (The ticket's `<backup commit>:raw` is `<backup_ref>^1:raw`: the ref names the after commit.)
+- **V3, the put-back is the write — held, with one correction to the ticket's wording.** A debug `eprintln!` in
+  `put_back.rs` `run_put_back` around the first `apply` (scratch, reverted; `git diff --stat -- crates/graft-ops/src`
+  empty after): just before `stash apply --index`: `"pub fn a() -> u32 {\r\n    1\r\n}\r\n"`; just after:
+  `"pub fn a() -> u32 {\r\n    4\r\n}\r\n"`; after the op returned: the same. So before the call the file is not
+  `W` LF but step 4's `reset --hard` checkout of `HEAD` (CRLF, `1`); the put-back is the write that brings **his
+  content** back, and it writes it CRLF. The entry's commands after it: only `git stash drop 'stash@{0}'` (full list:
+  `stash create`, `stash store`, `reset --hard`, `reset --hard <second>`, `stash apply --index <S>`, `stash drop`).
+  No step writes `src/a.rs` after the put-back (bytes after the op = bytes just after the apply). No stop.
+- **V4, no other endings-only writer inside one operation — held (grep:
+  `grep -rn -e 'Flag("apply")' -e 'Flag("pop")' -e '"checkout-index"' -e 'Flag("restore")' -e '"read-tree"' -e 'Flag("-u")' -e StashApply -e StashPop crates/graft-ops/src`).**
+  - `apply/set_aside/put_back.rs:99` `stash apply [--index] S` — **this ticket's**: brings back his content
+    unchanged, so for such a path only the endings change within the operation.
+  - `operation/stash.rs:144-151` (`plan_at`, used `operation.rs:1612-1613`), his own `StashApply`/`StashPop`:
+    within one op the path's content changes (from the tree's to the stash's), so it is in `ChangedBetween` and
+    `u`'s `write_raw` restores it. Not endings-only. **Question (unverified):** push then pop, two operations,
+    gives his LF content back CRLF — the same family as `M7/30q-putback-fwd`, across operations.
+  - `operation/recover.rs:238-245` Recover `Files`, `restore --source=<backup_tree> --worktree`: content changes
+    (`lost_edits` only lists a path whose disk content differs from the backup). V5's path.
+  - `operation/stage.rs:188-196` discard hunk, `apply -R` on the working tree: a content change. **Question
+    (unverified):** `git apply` rewrites the whole file through the working-tree conversion, so the lines he kept
+    may change endings along with the hunk.
+  - `operation/stage.rs:222-236` `restore [--staged] --worktree [--source=HEAD]` (discard): writes `HEAD`'s or the
+    index's content, not his. `stage.rs:132,151,160` `apply --cached`/`restore --staged`: index only.
+  - `absorb/build.rs:77,92`, `absorb/judge.rs:61,66` `read-tree` + `apply --cached`: a `TempIndex`, no working tree.
+    `preview/stash.rs:244` `apply --cached --check` on an index copy: no write. `snapshot/raw.rs:254`
+    `checkout-index -a -f --prefix=<scratch>/` into a scratch dir, not the working tree.
+  - `restore/steps.rs:305,455,463` `u`'s own `RestoreWorktree`, followed by `write_raw` (30q-b).
+  - `operation/stash.rs:129`, `operation/remote.rs:317` `-u`: `stash push -u`, `push -u` — no re-apply.
+  - `apply/set_aside/rebuild.rs:62` `commit-tree` only (objects). `set_aside.rs:128` `reset --hard` clears his
+    edits into `S` (expected).
+- **V5, J's `Files` put-back forward (no fix) — observed.** A scratch test (removed) through the path of
+  `recover::u_after_a_file_put_back_brings_back_what_it_replaced` (`LostWork::build`, then
+  `git config core.autocrlf true`, then `apply` of `RecoverTarget::Files` from `lost_edits`): his lost edit
+  (`LOST_EDIT`) is `"pub fn a() -> u32 {\n    2\n}\n"` (LF); after the put-back `src/a.rs` is
+  `"pub fn a() -> u32 {\r\n    2\r\n}\r\n"` (bytes `…123, 13, 10, 32, 32, 32, 32, 50, 13, 10, 125, 13, 10`).
+  Command: `git --literal-pathspecs restore --source=9955b078… --worktree -- src/a.rs`. The entry holding the lost
+  edit has `worktree_raw_before: None` (autocrlf was set after the fixture, as 26's promise test does), so on this
+  path no raw bytes exist to give back. `M7/30q-putback-fwd` is **broken** as observed here (forward write is
+  git's encoding), for the conductor to reclassify.
+
+### Done (committed on this branch)
+- `4647a00b` the pure move: `write_raw`, `batch_blobs` and their two private helpers (`write_his_bytes`,
+  `unparsable` — used only by them), with their two unit tests, from `restore/steps.rs` to the new `restore/raw.rs`,
+  unchanged; `restore.rs` gets `mod raw;`. `steps.rs`'s `tree_entries` and `run` become `pub(super)` (raw.rs calls
+  them); nothing else in steps.rs changes. graft-ops `cargo nextest run -p graft-ops --no-fail-fast`: 950/951, the one
+  red the V1 test (then uncommitted). Clippy/fmt workspace-wide clean.
+- The six acceptance tests in `tests/it/undo_bytes.rs` (next commit, **red by design** until the fix lands), run on
+  the moved code: `nextest -E 'test(/undo_bytes::(u_after_a_set_aside|a_set_aside_put_back|a_switch_with_edits|a_put_back_that_merges|a_clashed_put_back|a_set_aside_under_a_one_way)/)'`
+  → 2 passed, 4 failed. Red lines (the panic is in `assert_bytes`, `undo_bytes.rs:428`; the calling line named):
+  - `u_after_a_set_aside_put_back_brings_back_an_lf_file_under_autocrlf` :478 `after u: src/a.rs is "…{\r\n    4\r\n}\r\n"`;
+  - `a_set_aside_put_back_keeps_an_lf_file_under_autocrlf` :488 `after the put-back: src/a.rs is "…\r\n…"`;
+  - `a_switch_with_edits_keeps_an_lf_file_under_autocrlf` :519 `after the checkout: src/a.rs is "…\r\n…"`;
+  - `a_set_aside_under_a_one_way_clean_filter_keeps_the_stripped_lines` :630 `after the put-back: nb.txt is "cell 2\n"`;
+  - guards green today, as expected: `a_put_back_that_merges_into_a_changed_file_writes_no_raw`,
+    `a_clashed_put_back_writes_no_raw` (its asserts copied from `set_aside::a_clashing_put_back_is_clashed_and_keeps_the_stash`).
+
+### Blocked — `blocked: needs apply/set_aside/returned.rs, apply/set_aside.rs, and a ruling on the failure path (answer.rs, apply/error.rs)`
+Three facts from the code make the fix leave the file list:
+1. **Two hops, not one, to reach the entry.** `put_back.rs` `run_put_back` is called by `returned.rs:149`
+   (`returned::put_back`), which is called by `set_aside.rs:255` (`close`), the only place holding `pending.entry`.
+   Passing the entry's raw/before in is one argument through **two** files (`returned.rs` signature + `set_aside.rs`
+   call). The ticket allows one caller file.
+2. **`&mut Context`, and the put-back never stops.** `write_raw` and the `tree_entries`/`run` it calls take
+   `&mut Context` and run with `ctx.stop`; `returned::put_back`/`run_put_back` take `&Context`. The put-back runs every
+   git with `&()` ("the put-back never stops", `set_aside.rs:245-247`), so the raw step must too: swap `ctx.stop` to
+   `&()` around it, as `restore/rollback.rs:170` `uncancellable` does. That needs `&mut Context` through
+   `returned::put_back` (`close` already holds `&mut`).
+3. **The existing failure path cannot carry the words.** The put-back's failure path is `PutBackRan::Failed { error:
+   RunError }` (`put_back.rs:55`) → `Kept::Git { back: false }` (`returned.rs:153-158`) → entry `Aborted`,
+   `EditsAt::Stash { n }` "your edits are in stash@{n}" (`apply/error.rs:141,166`, the app's `S p` hint). A raw write
+   fails with `RestoreError::WriteRaw { path, io }`; there is no honest `RunError` for it, and after a clean apply
+   the edits **are back on disk**, so `EditsAt::Stash` would say they are only in the stash (wrong recovery hint).
+   The clash path (`Returned::Clashed`) is for unmerged paths. Every `Kept`/`Outcome::Kept` error is
+   `Result<RunError, FactsError>` (`returned.rs:51-56`, `answer.rs:154`).
+
+**Proposed (for the planner/conductor to rule):** the raw failure is the same shape as `AfterState::StagingNotKept`
+(`apply/error.rs:269-275`): the write went through, the edits are back, one aspect was not kept, and `u` restores it
+exactly. So: `S` dropped as on a clean put-back; a new `AfterState::NotAsTheyWere(RestoreError)` (words
+`could not write <path> back as it was: <io> · u restores the backup`) first in `unread`, returned as
+`ApplyError::AfterState`; the entry `Committed`. Knock-on to check: graft `jobs/operate.rs:369` special-cases a lone
+`[AfterState::StagingNotKept]`; any exhaustive match on `AfterState` in graft.
+
+### Exact next step (once granted)
+- `raw.rs`: `pub(crate) fn same_content_paths(ctx: &mut Context<'_>, raw: Oid, tree: Oid, commands) ->
+  Result<Vec<Vec<u8>>, RestoreError>` — `tree_entries(raw, [])` → `tree_entries(tree, those)` → keep paths `tree` holds
+  and that are regular files on disk (`symlink_metadata().is_file()`; `hash-object` exits 128 on a missing path) →
+  one `git hash-object --stdin-paths`, every path C-quoted (`"…"`, `\"`, `\\`, other bytes outside 0x20–0x7e as
+  `\ooo`: measured on git 2.54.0, octal, `\n` and `\"` unquote and CRLF cleans to LF) → keep those whose hash is
+  `tree`'s blob. **Proposed deviation:** returns `write_raw`'s path type (`Vec<Vec<u8>>`), not `BTreeSet<PathBuf>`,
+  to feed `write_raw` without two conversions. `restore.rs`: `pub(crate) use raw::{same_content_paths, write_raw};`.
+- `put_back.rs`: `run_put_back(ctx: &mut Context<'_>, stash, his: Option<HisBytes>, commands)`; after **either**
+  clean apply (`Whole`, and the fallback's `Unstaged` — the plain apply re-smudges too), with `ctx.stop` swapped to
+  `&()`: `same_content_paths` then `write_raw`. Never on `Clashed`/`Failed`. `HisBytes { raw, tree }` from the
+  entry's `worktree_raw_before`/`worktree_before`, `None` when either is (`+0` spawns).
+- Then the failure path as ruled; mutation check (skip `write_raw` → the four red tests red); MAP.md; full gates.
+- Relaunch (30d): `apply/recover.rs` `recover_interrupted` does not call `run_put_back`/`close` (grep); a resumed
+  rebase goes through `resume.rs:443` → `close`, the same function — covered.
+- Set-aside kinds, all through `apply.rs:383`/`resume.rs:443` → `close` → `run_put_back` (`operation.rs:1323-1340`):
+  `Rebase`, `Rewrite`, `CherryPick`, `Pull` (overlapping), `Checkout` (`OnEdits::SetAside`), `BranchCreate`
+  (checkout + `SetAside`, not at `HEAD`), `Recover` (`MoveRef` checked out). Not `Merge` (the ticket lists it).
