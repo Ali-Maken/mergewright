@@ -73,7 +73,8 @@ The next step (`move it aside first`, `S stashes it first`) is the status line's
 2. `<path> (ignored) is in the way`
 3. `<top>/…/<name> (ignored) is in the way` — 3+ path components
 4. `…/<name> (ignored) is in the way` — 2+ path components
+5. the last of 1–4 without ` (ignored)` (30t-b) — a whole shorter sentence reads better than one cut mid-word
 
 `+N more` stays after the path; untracked-only rows drop `(ignored)`; a rung no shorter than the one before is skipped.
-`of <doing>` goes first (he just pressed that key); the file's name, what he must move, goes last. The rung is chosen
+`of <doing>` goes first (he just pressed that key); `(ignored)` goes next-to-last; the file's name, what he must move, goes last. The rung is chosen
 when the refusal is made, so a later resize keeps it.

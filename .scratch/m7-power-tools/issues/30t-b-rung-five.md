@@ -1,6 +1,6 @@
 # f-guard rung 5 — at 80 columns the in-the-way reason is never cut mid-word
 
-Status: ready
+Status: done
 Build with: **Sonnet.** One rung added to a fixed ladder; words, rule and tests are given below; no signature changes.
 Needs: 30t as merged (`Refusal::explain_rungs`, `RefusalWords`, `refusal_status(.., columns)`, the `InTheWay` arm in
 `history_refusal`, `tests/it/in_the_way_status.rs`).
@@ -45,17 +45,17 @@ None new or changed. `pub fn explain_rungs(&self) -> Vec<RefusalWords>` returns 
 `InTheWay` rows; `[0]` joined is still exactly `explain()`.
 
 ## Acceptance (name the verifying test at tick time; **(red)** = seen failing first, line in NOTES)
-- [ ] (red) graft-ops `operation::tests::in_the_way_rungs` — ignored ladders (one path, 2-component, deep, `+N more`)
+- [x] (red) graft-ops `operation::tests::in_the_way_rungs` + `in_the_way_rungs_untracked_only` (split: clippy too_many_lines) — ignored ladders (one path, 2-component, deep, `+N more`)
       end with rung 5 exactly as the table; untracked-only ladder unchanged (no rung 5); rung 0 joined == `explain()`.
-- [ ] (red) graft `in_the_way_status::a_refusal_at_80_keeps_the_file_and_the_next_step` — tightened: the bottom row,
+- [x] (red) graft `in_the_way_status::a_refusal_at_80_keeps_the_file_and_the_next_step` — tightened: the bottom row,
       trimmed, equals `…/session-cache.json is in the way · move it aside first · esc dismiss`. Red today: the row
       above.
-- [ ] graft `in_the_way_status::a_refusal_at_187_reads_as_before` and `an_untracked_file_in_the_way_names_s`
+- [x] graft `in_the_way_status::a_refusal_at_187_reads_as_before` and `an_untracked_file_in_the_way_names_s`
       unchanged, green.
-- [ ] Capture re-taken, `check_shot`. **Right:** row 24 reads
+- [x] Capture re-taken, `check_shot` in `a_refusal_at_80_keeps_the_file_and_the_next_step` (518 B). **Right:** row 24 reads
       `…/session-cache.json is in the way · move it aside first · esc dismiss`; no word cut; the only `…` is where the
       directories were left out. The look is the user's (rule 6).
-- [ ] ADR-0049 amendment and MAP.md say five rungs. Gates workspace-wide.
+- [x] ADR-0049 amendment and MAP.md say five rungs (graft-ops MAP; graft MAP quotes no ladder — grep). Gates workspace-wide: fmt, clippy, nextest 4985/4985, doc.
 
 ## Touches (each on the report's **Touches:** line, with how it was checked)
 - Callers of `explain_rungs`/`refusal_status` (grep): preview `Refused`, `history_refusal`, `write_answered`, J's
@@ -70,6 +70,12 @@ workspace-wide.
 
 ## Size
 ~15k.
+
+## NOTES
+- Red seen: `in_the_way_rungs` left had no rung 5 (`["cache.db (ignored) is in the way of switching to other", "cache.db (ignored) is in the way"]`); `a_refusal_at_80` left `…/session-cache.json (ignored) is in the w… · move it aside first · esc dismiss`.
+- No scout: ticket names the one fn; read directly.
+- Other shots matching "in the w" (m6 stash-preview-in-the-way, m3 discard/commit, 47-many-lanes, m6 sheet) are other refusals; unchanged (only the 80-col shot in git status).
+- Look of the re-take is the user's (rule 6).
 
 ## Rules
 Worktree only; `CARGO_TARGET_DIR` in the worktree. Never read `PROGRESS.md` or `KNOWN_GAPS.md`.

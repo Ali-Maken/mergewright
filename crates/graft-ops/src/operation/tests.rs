@@ -1837,13 +1837,14 @@ fn joined(words: &super::RefusalWords) -> String {
 
 #[test]
 fn in_the_way_rungs() {
-    // One component: rungs 3 and 4 need directories.
+    // One component: rungs 3 and 4 need directories; rung 5 drops `(ignored)`.
     let one = in_the_way(&["cache.db"], &[]);
     assert_eq!(
         rung_reasons(&one),
         [
             "cache.db (ignored) is in the way of switching to other",
             "cache.db (ignored) is in the way",
+            "cache.db is in the way",
         ]
     );
     // Two components: rung 3 needs three, so it is skipped.
@@ -1854,6 +1855,7 @@ fn in_the_way_rungs() {
             "build/cache.db (ignored) is in the way of switching to other",
             "build/cache.db (ignored) is in the way",
             "\u{2026}/cache.db (ignored) is in the way",
+            "\u{2026}/cache.db is in the way",
         ]
     );
     // A deep path: every rung.
@@ -1865,6 +1867,7 @@ fn in_the_way_rungs() {
             "src/services/auth/session-cache.json (ignored) is in the way",
             "src/\u{2026}/session-cache.json (ignored) is in the way",
             "\u{2026}/session-cache.json (ignored) is in the way",
+            "\u{2026}/session-cache.json is in the way",
         ]
     );
     for words in deep.explain_rungs() {
@@ -1879,13 +1882,21 @@ fn in_the_way_rungs() {
             "a/bb/c.txt (ignored) +1 more are in the way",
             "a/\u{2026}/c.txt (ignored) +1 more are in the way",
             "\u{2026}/c.txt (ignored) +1 more are in the way",
+            "\u{2026}/c.txt +1 more are in the way",
         ]
     );
     assert_eq!(
         more.explain_rungs()[0].next.as_deref(),
         Some("move them aside first")
     );
-    // Untracked only: no `(ignored)`, and `S` is the next step.
+    for refusal in [one, two, deep, more] {
+        assert_eq!(joined(&refusal.explain_rungs()[0]), refusal.explain());
+    }
+}
+
+#[test]
+fn in_the_way_rungs_untracked_only() {
+    // Untracked only: no `(ignored)`, so no rung 5, and `S` is the next step.
     let untracked = in_the_way(&[], &["notes/draft.md"]);
     assert_eq!(
         rung_reasons(&untracked),
@@ -1899,9 +1910,7 @@ fn in_the_way_rungs() {
         untracked.explain_rungs()[0].next.as_deref(),
         Some("S stashes it first")
     );
-    for refusal in [one, two, deep, more, untracked] {
-        assert_eq!(joined(&refusal.explain_rungs()[0]), refusal.explain());
-    }
+    assert_eq!(joined(&untracked.explain_rungs()[0]), untracked.explain());
 }
 
 #[test]

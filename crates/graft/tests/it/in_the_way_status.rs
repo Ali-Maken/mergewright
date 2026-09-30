@@ -105,10 +105,11 @@ fn a_refusal_at_80_keeps_the_file_and_the_next_step() {
     let body = frame.join("\n");
     let row = bottom(&frame);
     assert!(row.contains(NAME), "the file's name whole: {row:?}\n{body}");
-    assert!(
-        row.trim_end()
-            .ends_with(" \u{b7} move it aside first \u{b7} esc dismiss"),
-        "the next step whole: {row:?}\n{body}"
+    // Rung 5: `(ignored)` goes before any word is cut.
+    assert_eq!(
+        row.trim(),
+        format!("\u{2026}/{NAME} is in the way \u{b7} move it aside first \u{b7} esc dismiss"),
+        "no word cut: {row:?}\n{body}"
     );
     crate::captures::check_shot("m7/in-the-way-at-80-80x24.txt", &format!("{body}\n"));
 }

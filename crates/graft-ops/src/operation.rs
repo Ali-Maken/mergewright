@@ -1132,8 +1132,8 @@ pub struct RefusalWords {
 /// [`Refusal::InTheWay`]'s ladder. The first ignored path names the line
 /// when there is one, since an ignored file decides the next step; `+N more`
 /// counts every other path, ignored or not (the form of Recover's
-/// `put back your edit to <path> +N more`). A rung no shorter than the one
-/// before it is skipped.
+/// `put back your edit to <path> +N more`). The last rung drops `(ignored)`.
+/// A rung no shorter than the one before it is skipped.
 fn in_the_way_rungs(doing: &str, ignored: &[PathBuf], untracked: &[PathBuf]) -> Vec<RefusalWords> {
     let Some(first) = ignored.first().or(untracked.first()) else {
         return vec![RefusalWords {
@@ -1158,16 +1158,20 @@ fn in_the_way_rungs(doing: &str, ignored: &[PathBuf], untracked: &[PathBuf]) -> 
         .map(|part| part.as_os_str().to_string_lossy().into_owned())
         .collect();
     let named = |path: &str| format!("{path}{tag}{count} {verb} in the way");
-    let mut reasons = vec![
-        format!("{} of {doing}", named(&first.display().to_string())),
-        named(&first.display().to_string()),
-    ];
+    let whole = first.display().to_string();
+    let mut reasons = vec![format!("{} of {doing}", named(&whole)), named(&whole)];
+    let mut shortest = whole;
     if let [top, .., name] = components.as_slice() {
         if components.len() >= 3 {
             reasons.push(named(&format!("{top}/…/{name}")));
         }
-        reasons.push(named(&format!("…/{name}")));
+        shortest = format!("…/{name}");
+        reasons.push(named(&shortest));
     }
+    // Rung 5: `(ignored)` goes last of all. It says why git status never
+    // warned him; the file and the next step are what he acts on. Untracked
+    // rows have no tag, so this is no shorter and the rule below skips it.
+    reasons.push(format!("{shortest}{count} {verb} in the way"));
     let mut rungs: Vec<RefusalWords> = Vec::new();
     for reason in reasons {
         let shorter = rungs
