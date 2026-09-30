@@ -793,8 +793,11 @@ fn u_brings_back_a_crlf_file_under_autocrlf() {
     u_under_autocrlf_brings_back(b"pub fn a() -> u32 {\r\n    4\r\n}\r\n");
 }
 
-// 6. `u_brings_back_an_lf_file_under_autocrlf` is red and left out
-// (30p R1's stop): its body and failing line are in the ticket's NOTES.
+/// 6. `W` with LF endings only under `core.autocrlf=true`.
+#[test]
+fn u_brings_back_an_lf_file_under_autocrlf() {
+    u_under_autocrlf_brings_back(WORKING);
+}
 
 /// Test 7: `src/a.rs filter=rot`, clean and smudge both rot13.
 #[test]

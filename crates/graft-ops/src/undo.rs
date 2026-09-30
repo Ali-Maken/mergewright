@@ -62,13 +62,19 @@ pub enum Step {
         paths: IndexPaths,
     },
     /// Write `paths` of `tree` into the working tree: a path in the tree is
-    /// written, a path only in the scope's other side is removed.
+    /// written, a path only in the scope's other side is removed. Then each
+    /// of `paths` that `raw` holds gets his own bytes back (ADR-0052).
     RestoreWorktree {
         /// The recorded working-tree tree (tracked content and untracked
         /// files, §6.3).
         tree: Oid,
         /// Which paths.
         paths: PathScope,
+        /// The same snapshot's `raw/` tree: the paths whose bytes git's
+        /// checkout of `tree` would not give back, as they were on disk.
+        /// Always from the entry whose before-snapshot `tree` is, never
+        /// another's. `None`: nothing kept, or an entry older than 30q.
+        raw: Option<Oid>,
     },
     /// Make `refs/stash`'s reflog contain `commit` again: `git stash store
     /// -m <the commit's subject>` (the subject is the message git wrote —
@@ -335,6 +341,9 @@ fn generic_steps(entry: &JournalEntry) -> Result<Vec<Step>, NotInvertible> {
         steps.push(Step::RestoreWorktree {
             tree,
             paths: scope(entry.worktree_after, tree),
+            // The same entry's before-snapshot as `tree` (R3: only a
+            // before-snapshot keeps `raw/`).
+            raw: entry.worktree_raw_before,
         });
     }
     Ok(steps)

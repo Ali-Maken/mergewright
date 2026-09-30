@@ -247,6 +247,12 @@ fn reverse_of(step: &Step, before: &Before) -> Result<Step, RestoreError> {
                 field: "the working tree".to_owned(),
             })?,
             paths: paths.clone(),
+            // 30q-b seam, not done: R3 wants the restore's own `raw/` here
+            // (`worktree_raw_before` of the entry `begin` wrote), never the
+            // forward step's. `Before` is built in `restore.rs`, outside this
+            // part's files, so until it carries it a roll-back writes git's
+            // checkout of the tree, as before 30q.
+            raw: None,
         },
         Step::StashStore { commit } => Step::StashDrop { commit: *commit },
         Step::StashDrop { commit } => Step::StashStore { commit: *commit },
