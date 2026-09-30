@@ -174,7 +174,7 @@ pub fn raw_record(/* leading params unchanged */, head: Option<Oid>, worktree_tr
   Consequences first bullet, dated 2026-09-30. The counts in it are pinned by the three `snapshot_raw` spawn tests above.
 - [x] Gates workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`,
   `cargo test --doc`. **Ticked:** all four run workspace-wide, results in NOTES, "Gates".
-- [ ] **Conductor's box, last:** release run of `scripts/m7-30q-perf.sh` → `docs/perf/30q-snapshot.txt` reads `SUMMARY
+- [x] (conductor 2026-09-30, docs/perf/30q-snapshot.txt: `SUMMARY raw-record gate(case1 p50<=10ms)=ok`, raw p50 7.0 ms, 1 spawn) **Conductor’s box, last:** release run of `scripts/m7-30q-perf.sh` → `docs/perf/30q-snapshot.txt` reads `SUMMARY
   raw-record gate(case1 p50<=10ms)=ok`, with case1 `raw_spawns=1`. Red was `:11` OVER / `raw_p50_us=17354`. If it is
   OVER again, the conductor decides the next step. The gate is not relaxed.
 

@@ -1,11 +1,11 @@
-# m7-power-tools/30q the snapshot's cost — 2026-09-30T15:45:07Z
-# HEAD 9bfbe3db
+# m7-power-tools/30q the snapshot's cost — 2026-09-30T16:51:16Z
+# HEAD 732f0497
 # Apple M5, 10 cpus, Darwin 27.0.0
 # git version 2.54.0 (Apple Git-157)
-# release, graft-ops example snapshot_cost, 5000 files, 20 runs per case; exit 0, 13s
+# release, graft-ops example snapshot_cost, 5000 files, 20 runs per case; exit 0, 11s
 
-SUMMARY case1 files=5000 changed=5 autocrlf=false raw=none runs=20 take_p50_us=63285 take_p99_us=87409 raw_p50_us=17354 raw_p99_us=20081
-SUMMARY case2 files=5000 changed=0 autocrlf=false raw=none runs=20 take_p50_us=49931 take_p99_us=56509 raw_p50_us=5948 raw_p99_us=6652
-SUMMARY case3 files=5000 changed=50 autocrlf=true raw=kept runs=20 take_p50_us=100962 take_p99_us=152771 raw_p50_us=52861 raw_p99_us=67481
+SUMMARY case1 files=5000 changed=5 autocrlf=false raw=none runs=20 take_p50_us=52996 take_p99_us=84019 raw_p50_us=6993 raw_p99_us=7911 raw_spawns=1
+SUMMARY case2 files=5000 changed=0 autocrlf=false raw=none runs=20 take_p50_us=45065 take_p99_us=50531 raw_p50_us=10 raw_p99_us=107 raw_spawns=0
+SUMMARY case3 files=5000 changed=50 autocrlf=true raw=kept runs=20 take_p50_us=91313 take_p99_us=139531 raw_p50_us=42821 raw_p99_us=60620 raw_spawns=6
 snapshot_cost: done
-SUMMARY raw-record gate(case1 p50<=10ms)=OVER
+SUMMARY raw-record gate(case1 p50<=10ms)=ok

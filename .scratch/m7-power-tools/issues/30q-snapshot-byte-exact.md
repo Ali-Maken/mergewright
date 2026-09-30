@@ -318,7 +318,7 @@ Step::RestoreWorktree { tree: Oid, paths: PathScope, raw: Option<Oid> }
 ### Acceptance
 - [x] Example and script exist, and the smoke run exits 0 (NOTES). — debug `snapshot_cost 2 50` exit 0, last line `snapshot_cost: done`; case flags raw=none,none,kept (NOTES 30q-c).
 - [x] Clippy with `--all-targets` is green (it compiles the example). Gates workspace-wide. — fmt, clippy -D warnings, nextest 4944/4944, test --doc: all green, workspace-wide.
-- [ ] On OVER: the conductor files the follow-up. The gate is not relaxed in this ticket.
+- [x] (OVER 2026-09-30 → 30r filed and merged; re-run ok) On OVER: the conductor files the follow-up. The gate is not relaxed in this ticket.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run` and `cargo test --doc`, all

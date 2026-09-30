@@ -343,7 +343,7 @@ pub(crate) fn refresh_hits(journal: &mut JournalState);
   `Some((1, 2))`; green after).
 - [x] Grep: `grep -n "index_of\|kept_hits" crates/graft/src/update/journal/find.rs` → no match (exit 1); `kept_hits` is
   gone.
-- [ ] The conductor re-runs `scripts/m7-30p-perf.sh`: `gate … =ok`. It is the conductor's run, not the builder's.
+- [x] (conductor 2026-09-30, docs/perf/30p-journal-find.txt: `SUMMARY journal-find gate(p99<=16ms)=ok`, p99 9.9–10.4 ms) The conductor re-runs `scripts/m7-30p-perf.sh`: `gate … =ok`. It is the conductor's run, not the builder's.
 
 ### Touches
 - **The view:** `view/journal.rs` reads `count` only. `journal-find-187x50.txt` is byte-identical.

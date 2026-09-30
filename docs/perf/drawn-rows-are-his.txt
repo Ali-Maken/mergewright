@@ -1,0 +1,115 @@
+# 16 perf-key (REV_NOTE=16), release, conductor quiet run 2026-09-30 after 30p-d. Summary lines only; the full per-key log (~630 KB) is not committed.
+# m7-power-tools/04 slow key — 2026-09-30T17:02:36Z
+# HEAD 732f0497
+# Apple M5, 10 cpus, Darwin 27.0.0
+# release, --features heavy-tests, --test-threads=1; harness: synthetic keys, in-memory terminal
+## runs
+## plain1: summary lines
+## plain2: summary lines
+## plain3: summary lines
+## controlA: summary lines
+## controlB: summary lines
+## controlC: summary lines
+SUMMARY runs: 6 of 6 exit 0
+## spread over 3 plain runs (p50 / p99 / max, µs)
+SUMMARY spread tier=Pixel refs=FiftyThousand pane=Closed: 2403/5377/6934  2450/5561/6442  1791/5256/6959  p99 range 5256-5561 max range 6442-6959 gate(p99<=16ms)=ok
+SUMMARY spread tier=Unicode refs=FiftyThousand pane=Closed: 1819/3029/3826  1527/2978/4016  1728/2916/3842  p99 range 2916-3029 max range 3826-4016 gate(p99<=16ms)=ok
+SUMMARY spread tier=Unicode refs=FiftyThousand pane=DiffScroll: 1564/1870/4600  1543/1900/4480  1396/1781/4155  p99 range 1781-1900 max range 4155-4600 gate(p99<=16ms)=ok
+SUMMARY spread tier=Unicode refs=FiftyThousand pane=Open: 1554/1920/4537  1558/1881/4873  1428/1723/4380  p99 range 1723-1920 max range 4380-4873 gate(p99<=16ms)=ok
+SUMMARY spread tier=Unicode refs=FiftyThousand pane=Map: 969/1177/4227  988/1179/4344  991/1102/3991  p99 range 1102-1179 max range 3991-4344 gate(p99<=16ms)=ok
+SUMMARY spread tier=Pixel refs=Fixture pane=Closed: 2407/5324/6474  2465/5481/7466  1492/3576/4703  p99 range 3576-5481 max range 4703-7466 gate(p99<=16ms)=ok
+SUMMARY spread tier=Unicode refs=Fixture pane=Closed: 1555/2463/2680  1527/2465/2651  1228/2377/2565  p99 range 2377-2465 max range 2565-2680 gate(p99<=16ms)=ok
+## idle keys (first key after each pause)
+SUMMARY idle control=Plain tier=Pixel refs=FiftyThousand pane=Closed n=15 latency=2639(7042) oversleep=5014(10032) queued=27(61) drain=3(8) update=70(171) carry=2(8) draw=2406(6951) write=166(234) tail=0(1) asked=0/15 rows_out=0/15
+SUMMARY idle control=Plain tier=Unicode refs=FiftyThousand pane=Closed n=15 latency=1788(2429) oversleep=6487(10018) queued=27(49) drain=3(8) update=72(96) carry=2(3) draw=1678(2329) write=79(213) tail=0(3) asked=0/15 rows_out=0/15
+SUMMARY idle control=Plain tier=Unicode refs=FiftyThousand pane=DiffScroll n=15 latency=1728(1991) oversleep=3797(10023) queued=26(31) drain=3(6) update=73(93) carry=2(4) draw=1612(1865) write=20(26) tail=0(1) asked=0/15 rows_out=0/15
+SUMMARY idle control=Plain tier=Unicode refs=FiftyThousand pane=Open n=15 latency=1720(1924) oversleep=6219(10033) queued=27(31) drain=3(4) update=89(141) carry=2(6) draw=1599(1796) write=2(8) tail=0(0) asked=0/15 rows_out=0/15
+SUMMARY idle control=Plain tier=Unicode refs=FiftyThousand pane=Map n=15 latency=1115(1371) oversleep=7068(10029) queued=26(48) drain=3(5) update=81(108) carry=2(3) draw=1004(1259) write=2(3) tail=0(2) asked=0/15 rows_out=0/15
+SUMMARY idle control=Plain tier=Pixel refs=Fixture pane=Closed n=15 latency=3279(5999) oversleep=6453(10040) queued=25(39) drain=3(4) update=239(284) carry=2(3) draw=3046(5758) write=167(287) tail=0(0) asked=0/15 rows_out=0/15
+SUMMARY idle control=Plain tier=Unicode refs=Fixture pane=Closed n=15 latency=2142(2568) oversleep=7484(9969) queued=26(36) drain=4(5) update=229(326) carry=2(4) draw=1914(2306) write=145(203) tail=0(0) asked=0/15 rows_out=0/15
+SUMMARY idle control=NoIdle tier=Pixel refs=FiftyThousand pane=Closed n=5 latency=1493(2874) oversleep=3261(3715) queued=17(26) drain=1(3) update=32(55) carry=1(2) draw=1428(2854) write=122(158) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=NoIdle tier=Unicode refs=FiftyThousand pane=Closed n=5 latency=1940(2146) oversleep=1682(3374) queued=18(20) drain=1(2) update=28(52) carry=2(2) draw=1896(2086) write=144(195) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=NoIdle tier=Unicode refs=FiftyThousand pane=DiffScroll n=5 latency=1493(1547) oversleep=2532(4152) queued=16(20) drain=1(1) update=29(38) carry=1(2) draw=1453(1497) write=19(24) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=NoIdle tier=Unicode refs=FiftyThousand pane=Open n=5 latency=1412(1422) oversleep=3226(3919) queued=16(18) drain=0(1) update=21(23) carry=2(2) draw=1371(1380) write=1(1) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=NoIdle tier=Unicode refs=FiftyThousand pane=Map n=5 latency=990(993) oversleep=3210(4156) queued=16(19) drain=0(0) update=19(21) carry=2(2) draw=951(952) write=1(1) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=NoIdle tier=Pixel refs=Fixture pane=Closed n=5 latency=1774(2408) oversleep=3353(3731) queued=14(22) drain=0(0) update=68(118) carry=0(2) draw=1689(2334) write=97(145) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=NoIdle tier=Unicode refs=Fixture pane=Closed n=5 latency=1691(2371) oversleep=3344(3354) queued=18(21) drain=0(2) update=121(174) carry=1(2) draw=1547(2170) write=71(203) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=Busy tier=Pixel refs=FiftyThousand pane=Closed n=5 latency=566(1184) oversleep=5007(5013) queued=8(13) drain=0(1) update=19(34) carry=0(1) draw=542(1155) write=62(117) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=Busy tier=Unicode refs=FiftyThousand pane=Closed n=5 latency=341(357) oversleep=5009(5011) queued=7(9) drain=0(0) update=15(20) carry=0(1) draw=317(338) write=32(46) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=Busy tier=Unicode refs=FiftyThousand pane=DiffScroll n=5 latency=262(283) oversleep=4633(5009) queued=6(9) drain=0(0) update=11(14) carry=0(0) draw=243(258) write=5(5) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=Busy tier=Unicode refs=FiftyThousand pane=Open n=5 latency=299(432) oversleep=5013(5015) queued=7(13) drain=0(0) update=22(33) carry=1(1) draw=275(382) write=0(1) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=Busy tier=Unicode refs=FiftyThousand pane=Map n=5 latency=189(195) oversleep=5007(5012) queued=14(16) drain=0(0) update=30(31) carry=1(1) draw=142(144) write=0(1) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=Busy tier=Pixel refs=Fixture pane=Closed n=5 latency=591(1297) oversleep=5012(5012) queued=11(13) drain=0(1) update=66(69) carry=1(1) draw=542(1212) write=69(148) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=Busy tier=Unicode refs=Fixture pane=Closed n=5 latency=317(369) oversleep=5008(5009) queued=5(10) drain=0(0) update=34(48) carry=0(0) draw=279(329) write=32(44) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=NoPrefetch tier=Pixel refs=FiftyThousand pane=Closed n=5 latency=3183(5859) oversleep=5030(5040) queued=28(29) drain=3(3) update=80(83) carry=2(2) draw=3067(5744) write=208(240) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=NoPrefetch tier=Unicode refs=FiftyThousand pane=Closed n=5 latency=2226(2504) oversleep=3849(5042) queued=27(32) drain=4(4) update=85(91) carry=3(3) draw=2110(2379) write=145(213) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=NoPrefetch tier=Unicode refs=FiftyThousand pane=DiffScroll n=5 latency=1926(1961) oversleep=2199(5032) queued=27(28) drain=3(3) update=80(85) carry=2(2) draw=1805(1844) write=21(25) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=NoPrefetch tier=Unicode refs=FiftyThousand pane=Open n=5 latency=1852(1905) oversleep=4277(4303) queued=24(27) drain=3(3) update=83(87) carry=2(3) draw=1739(1784) write=2(2) tail=0(1) asked=0/5 rows_out=0/5
+SUMMARY idle control=NoPrefetch tier=Unicode refs=FiftyThousand pane=Map n=5 latency=1138(1154) oversleep=6368(10030) queued=27(34) drain=3(4) update=79(83) carry=2(2) draw=1020(1037) write=2(2) tail=0(3) asked=0/5 rows_out=0/5
+SUMMARY idle control=NoPrefetch tier=Pixel refs=Fixture pane=Closed n=5 latency=3626(6947) oversleep=5012(10038) queued=26(28) drain=3(3) update=255(266) carry=2(2) draw=3342(6657) write=180(229) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY idle control=NoPrefetch tier=Unicode refs=Fixture pane=Closed n=5 latency=2086(2598) oversleep=6462(10062) queued=29(36) drain=3(3) update=221(241) carry=2(2) draw=1826(2332) write=77(212) tail=0(0) asked=0/5 rows_out=0/5
+## scroll keys (all, for comparison)
+SUMMARY scroll control=Plain tier=Pixel refs=FiftyThousand pane=Closed n=1260 latency=2317(6959) oversleep=4054(8346) queued=16(5468) drain=1(42) update=26(1492) carry=2(47) draw=2238(6900) write=213(642) tail=0(6) asked=450/1260 rows_out=8/1260
+SUMMARY scroll control=Plain tier=Unicode refs=FiftyThousand pane=Closed n=1260 latency=1601(4016) oversleep=4177(8347) queued=18(3711) drain=1(61) update=46(244) carry=2(28) draw=1482(3086) write=123(334) tail=0(6) asked=453/1260 rows_out=13/1260
+SUMMARY scroll control=Plain tier=Unicode refs=FiftyThousand pane=DiffScroll n=1266 latency=1481(4600) oversleep=4075(8346) queued=19(4186) drain=1(42) update=50(193) carry=2(11) draw=1414(2035) write=1(100) tail=0(17) asked=0/1266 rows_out=0/1266
+SUMMARY scroll control=Plain tier=Unicode refs=FiftyThousand pane=Open n=1263 latency=1468(4873) oversleep=3447(8345) queued=18(4487) drain=1(30) update=49(190) carry=2(17) draw=1410(1981) write=1(48) tail=0(8) asked=0/1263 rows_out=0/1263
+SUMMARY scroll control=Plain tier=Unicode refs=FiftyThousand pane=Map n=1263 latency=990(4344) oversleep=3929(8345) queued=17(4056) drain=1(59) update=42(161) carry=2(16) draw=951(1323) write=1(98) tail=0(3) asked=0/1263 rows_out=0/1263
+SUMMARY scroll control=Plain tier=Unicode refs=2425 pane=JournalFind n=381 latency=6542(10853) oversleep=3391(8348) queued=16(2119) drain=1(24) update=53(537) carry=1(13) draw=6487(10733) write=21(163) tail=0(2) asked=0/381 rows_out=0/381
+SUMMARY scroll control=Plain tier=Pixel refs=Fixture pane=Closed n=1260 latency=2084(7466) oversleep=3741(8262) queued=14(2344) drain=1(21) update=65(301) carry=1(27) draw=1962(7303) write=192(509) tail=0(3) asked=450/1260 rows_out=4/1260
+SUMMARY scroll control=Plain tier=Unicode refs=Fixture pane=Closed n=1260 latency=1540(2680) oversleep=3577(8311) queued=16(968) drain=1(52) update=119(399) carry=2(40) draw=1375(2470) write=113(235) tail=0(7) asked=453/1260 rows_out=17/1260
+SUMMARY scroll control=NoIdle tier=Pixel refs=FiftyThousand pane=Closed n=420 latency=1458(7953) oversleep=3345(4182) queued=8(5020) drain=0(19) update=9(92) carry=1(15) draw=1436(7916) write=177(407) tail=0(1) asked=150/420 rows_out=0/420
+SUMMARY scroll control=NoIdle tier=Unicode refs=FiftyThousand pane=Closed n=420 latency=2036(3872) oversleep=3234(4175) queued=15(3583) drain=0(78) update=21(165) carry=2(21) draw=1986(2829) write=175(323) tail=0(3) asked=151/420 rows_out=3/420
+SUMMARY scroll control=NoIdle tier=Unicode refs=FiftyThousand pane=DiffScroll n=422 latency=1417(3912) oversleep=3161(4156) queued=16(3560) drain=0(71) update=20(81) carry=2(4) draw=1378(1621) write=1(36) tail=0(3) asked=0/422 rows_out=0/422
+SUMMARY scroll control=NoIdle tier=Unicode refs=FiftyThousand pane=Open n=421 latency=1415(4109) oversleep=3343(4179) queued=15(3762) drain=0(30) update=21(70) carry=2(8) draw=1376(1526) write=1(39) tail=0(3) asked=0/421 rows_out=0/421
+SUMMARY scroll control=NoIdle tier=Unicode refs=FiftyThousand pane=Map n=421 latency=989(4067) oversleep=3340(4182) queued=15(3788) drain=0(39) update=19(89) carry=2(5) draw=951(1062) write=1(89) tail=0(1) asked=0/421 rows_out=0/421
+SUMMARY scroll control=NoIdle tier=Unicode refs=2425 pane=JournalFind n=127 latency=4308(10528) oversleep=3324(4182) queued=15(2040) drain=0(14) update=33(493) carry=1(3) draw=4258(10468) write=15(153) tail=0(2) asked=0/127 rows_out=0/127
+SUMMARY scroll control=NoIdle tier=Pixel refs=Fixture pane=Closed n=420 latency=1720(6022) oversleep=3345(4179) queued=8(2120) drain=0(6) update=46(146) carry=1(15) draw=1639(5911) write=178(424) tail=0(1) asked=150/420 rows_out=0/420
+SUMMARY scroll control=NoIdle tier=Unicode refs=Fixture pane=Closed n=420 latency=1422(2408) oversleep=3339(4178) queued=15(511) drain=0(28) update=104(203) carry=2(21) draw=1302(2207) write=114(218) tail=0(3) asked=151/420 rows_out=1/420
+SUMMARY scroll control=Busy tier=Pixel refs=FiftyThousand pane=Closed n=420 latency=646(5625) oversleep=3333(4176) queued=3(5270) drain=0(5) update=3(17) carry=0(5) draw=636(1914) write=86(186) tail=0(0) asked=150/420 rows_out=0/420
+SUMMARY scroll control=Busy tier=Unicode refs=FiftyThousand pane=Closed n=420 latency=305(3769) oversleep=3339(4152) queued=3(3466) drain=0(14) update=3(14) carry=0(4) draw=297(440) write=42(78) tail=0(0) asked=151/420 rows_out=0/420
+SUMMARY scroll control=Busy tier=Unicode refs=FiftyThousand pane=DiffScroll n=422 latency=194(3924) oversleep=3338(4179) queued=3(3588) drain=0(7) update=3(27) carry=0(3) draw=186(580) write=0(36) tail=0(0) asked=0/422 rows_out=0/422
+SUMMARY scroll control=Busy tier=Unicode refs=FiftyThousand pane=Open n=421 latency=194(4018) oversleep=3339(4179) queued=2(3695) drain=0(5) update=3(25) carry=0(4) draw=187(560) write=0(37) tail=0(0) asked=0/421 rows_out=0/421
+SUMMARY scroll control=Busy tier=Unicode refs=FiftyThousand pane=Map n=421 latency=131(4293) oversleep=3339(4183) queued=2(4032) drain=0(15) update=3(12) carry=0(3) draw=124(250) write=0(84) tail=0(0) asked=0/421 rows_out=0/421
+SUMMARY scroll control=Busy tier=Unicode refs=2425 pane=JournalFind n=127 latency=1410(3699) oversleep=3336(3912) queued=3(2081) drain=0(3) update=6(328) carry=0(4) draw=1399(1607) write=7(217) tail=0(0) asked=0/127 rows_out=0/127
+SUMMARY scroll control=Busy tier=Pixel refs=Fixture pane=Closed n=420 latency=663(2375) oversleep=3335(4150) queued=3(2087) drain=0(2) update=19(58) carry=0(7) draw=638(1702) write=79(193) tail=0(0) asked=150/420 rows_out=0/420
+SUMMARY scroll control=Busy tier=Unicode refs=Fixture pane=Closed n=420 latency=316(793) oversleep=3339(4091) queued=3(514) drain=0(14) update=18(118) carry=0(13) draw=293(464) write=40(51) tail=0(0) asked=151/420 rows_out=0/420
+SUMMARY scroll control=NoPrefetch tier=Pixel refs=FiftyThousand pane=Closed n=420 latency=3937(8580) oversleep=3343(4178) queued=9(5222) drain=0(21) update=11(64) carry=1(15) draw=3912(8537) write=185(462) tail=0(0) asked=150/420 rows_out=1/420
+SUMMARY scroll control=NoPrefetch tier=Unicode refs=FiftyThousand pane=Closed n=420 latency=2062(4093) oversleep=3342(4177) queued=15(3776) drain=0(55) update=22(100) carry=2(21) draw=2014(2879) write=180(324) tail=0(3) asked=151/420 rows_out=1/420
+SUMMARY scroll control=NoPrefetch tier=Unicode refs=FiftyThousand pane=DiffScroll n=422 latency=1425(4369) oversleep=3334(4179) queued=15(3908) drain=0(29) update=20(150) carry=1(12) draw=1385(1580) write=1(37) tail=0(1) asked=0/422 rows_out=0/422
+SUMMARY scroll control=NoPrefetch tier=Unicode refs=FiftyThousand pane=Open n=421 latency=1439(4314) oversleep=3342(4180) queued=15(3951) drain=0(20) update=22(78) carry=2(5) draw=1398(1651) write=1(40) tail=0(3) asked=0/421 rows_out=0/421
+SUMMARY scroll control=NoPrefetch tier=Unicode refs=FiftyThousand pane=Map n=421 latency=1001(4141) oversleep=5094(8289) queued=15(3852) drain=0(25) update=20(77) carry=2(8) draw=962(1093) write=1(92) tail=0(3) asked=0/421 rows_out=0/421
+SUMMARY scroll control=NoPrefetch tier=Unicode refs=2425 pane=JournalFind n=127 latency=4275(10417) oversleep=5466(8126) queued=15(2020) drain=0(12) update=31(495) carry=1(7) draw=4200(10363) write=14(150) tail=0(1) asked=0/127 rows_out=0/127
+SUMMARY scroll control=NoPrefetch tier=Pixel refs=Fixture pane=Closed n=420 latency=4078(10623) oversleep=5464(8314) queued=10(2076) drain=0(13) update=50(204) carry=2(15) draw=4021(10481) write=183(408) tail=0(3) asked=150/420 rows_out=2/420
+SUMMARY scroll control=NoPrefetch tier=Unicode refs=Fixture pane=Closed n=420 latency=1881(2469) oversleep=5279(7829) queued=15(508) drain=0(48) update=107(339) carry=2(22) draw=1757(2258) write=130(219) tail=0(3) asked=151/420 rows_out=4/420
+## slow scroll keys (latency over 8 ms)
+SUMMARY slow control=Plain tier=Unicode refs=2425 pane=JournalFind n=90 latency=8646(10853) oversleep=4925(8098) queued=18(41) drain=1(12) update=67(159) carry=2(13) draw=8575(10733) write=22(90) tail=0(1) asked=0/90 rows_out=0/90
+SUMMARY slow control=NoIdle tier=Unicode refs=2425 pane=JournalFind n=5 latency=8915(10528) oversleep=3388(4146) queued=16(22) drain=0(9) update=37(41) carry=2(2) draw=8858(10468) write=15(17) tail=0(0) asked=0/5 rows_out=0/5
+SUMMARY slow control=NoPrefetch tier=Pixel refs=FiftyThousand pane=Closed n=3 latency=8529(8580) oversleep=3353(3363) queued=15(15) drain=0(0) update=23(24) carry=9(15) draw=8480(8537) write=285(335) tail=0(0) asked=2/3 rows_out=0/3
+SUMMARY slow control=NoPrefetch tier=Unicode refs=2425 pane=JournalFind n=3 latency=8805(10417) oversleep=6748(7122) queued=18(19) drain=0(1) update=42(62) carry=2(3) draw=8740(10363) write=13(45) tail=0(0) asked=0/3 rows_out=0/3
+SUMMARY slow control=NoPrefetch tier=Pixel refs=Fixture pane=Closed n=10 latency=9166(10623) oversleep=5407(6218) queued=15(17) drain=0(1) update=112(127) carry=7(15) draw=9026(10481) write=289(408) tail=0(0) asked=7/10 rows_out=0/10
+## key 37 (M1's slow key: j #37 of the Closed-pane scroll), every run
+SUMMARY key37 control=Plain run=plain1 tier=Pixel refs=FiftyThousand latency_us=6934 oversleep_us=5276 queued_us=16 update_us=26 carry_us=2 draw_us=6888 asked=0 rows_out=0 behind=key_36:2193
+SUMMARY key37 control=Plain run=plain1 tier=Unicode refs=FiftyThousand latency_us=2888 oversleep_us=5636 queued_us=20 update_us=58 carry_us=2 draw_us=2804 asked=0 rows_out=0 behind=key_36:1981
+SUMMARY key37 control=Plain run=plain1 tier=Pixel refs=Fixture latency_us=6473 oversleep_us=6067 queued_us=21 update_us=113 carry_us=2 draw_us=6334 asked=0 rows_out=0 behind=key_36:1837
+SUMMARY key37 control=Plain run=plain1 tier=Unicode refs=Fixture latency_us=1985 oversleep_us=4519 queued_us=19 update_us=154 carry_us=2 draw_us=1806 asked=0 rows_out=0 behind=key_36:1774
+SUMMARY key37 control=Plain run=plain2 tier=Pixel refs=FiftyThousand latency_us=5793 oversleep_us=6600 queued_us=21 update_us=57 carry_us=2 draw_us=5708 asked=0 rows_out=0 behind=key_36:1996
+SUMMARY key37 control=Plain run=plain2 tier=Unicode refs=FiftyThousand latency_us=2897 oversleep_us=1429 queued_us=17 update_us=46 carry_us=2 draw_us=2829 asked=0 rows_out=0 behind=key_36:1353
+SUMMARY key37 control=Plain run=plain2 tier=Pixel refs=Fixture latency_us=6172 oversleep_us=6399 queued_us=14 update_us=107 carry_us=2 draw_us=6046 asked=0 rows_out=0 behind=key_36:1903
+SUMMARY key37 control=Plain run=plain2 tier=Unicode refs=Fixture latency_us=1343 oversleep_us=4482 queued_us=17 update_us=137 carry_us=2 draw_us=1183 asked=0 rows_out=0 behind=key_36:1768
+SUMMARY key37 control=Plain run=plain3 tier=Pixel refs=FiftyThousand latency_us=6959 oversleep_us=3820 queued_us=21 update_us=33 carry_us=2 draw_us=6900 asked=0 rows_out=0 behind=key_36:2139
+SUMMARY key37 control=Plain run=plain3 tier=Unicode refs=FiftyThousand latency_us=2819 oversleep_us=3840 queued_us=16 update_us=28 carry_us=2 draw_us=2770 asked=0 rows_out=0 behind=key_36:1960
+SUMMARY key37 control=Plain run=plain3 tier=Pixel refs=Fixture latency_us=2619 oversleep_us=1501 queued_us=17 update_us=57 carry_us=0 draw_us=2542 asked=0 rows_out=0 behind=key_36:764
+SUMMARY key37 control=Plain run=plain3 tier=Unicode refs=Fixture latency_us=1898 oversleep_us=3252 queued_us=14 update_us=106 carry_us=1 draw_us=1774 asked=0 rows_out=0 behind=key_36:1569
+SUMMARY key37 control=NoIdle run=controlA tier=Pixel refs=FiftyThousand latency_us=7953 oversleep_us=3360 queued_us=14 update_us=19 carry_us=2 draw_us=7916 asked=0 rows_out=0 behind=key_36:2150
+SUMMARY key37 control=NoIdle run=controlA tier=Unicode refs=FiftyThousand latency_us=2769 oversleep_us=3225 queued_us=12 update_us=20 carry_us=2 draw_us=2734 asked=0 rows_out=0 behind=key_36:1880
+SUMMARY key37 control=NoIdle run=controlA tier=Pixel refs=Fixture latency_us=6022 oversleep_us=1474 queued_us=12 update_us=95 carry_us=2 draw_us=5911 asked=0 rows_out=0 behind=key_36:1903
+SUMMARY key37 control=NoIdle run=controlA tier=Unicode refs=Fixture latency_us=1985 oversleep_us=3310 queued_us=20 update_us=131 carry_us=2 draw_us=1829 asked=0 rows_out=0 behind=key_36:1626
+SUMMARY key37 control=Busy run=controlB tier=Pixel refs=FiftyThousand latency_us=1176 oversleep_us=3338 queued_us=2 update_us=3 carry_us=0 draw_us=1169 asked=0 rows_out=0 behind=key_36:287
+SUMMARY key37 control=Busy run=controlB tier=Unicode refs=FiftyThousand latency_us=411 oversleep_us=3336 queued_us=2 update_us=3 carry_us=0 draw_us=404 asked=0 rows_out=0 behind=key_36:254
+SUMMARY key37 control=Busy run=controlB tier=Pixel refs=Fixture latency_us=1013 oversleep_us=3304 queued_us=2 update_us=16 carry_us=0 draw_us=994 asked=0 rows_out=0 behind=key_36:234
+SUMMARY key37 control=Busy run=controlB tier=Unicode refs=Fixture latency_us=268 oversleep_us=3550 queued_us=3 update_us=17 carry_us=0 draw_us=245 asked=0 rows_out=0 behind=key_36:203
+SUMMARY key37 control=NoPrefetch run=controlC tier=Pixel refs=FiftyThousand latency_us=7410 oversleep_us=2315 queued_us=14 update_us=20 carry_us=1 draw_us=7372 asked=0 rows_out=0 behind=key_36:2202
+SUMMARY key37 control=NoPrefetch run=controlC tier=Unicode refs=FiftyThousand latency_us=2771 oversleep_us=3623 queued_us=16 update_us=19 carry_us=1 draw_us=2733 asked=0 rows_out=0 behind=key_36:1921
+SUMMARY key37 control=NoPrefetch run=controlC tier=Pixel refs=Fixture latency_us=4269 oversleep_us=4290 queued_us=18 update_us=111 carry_us=1 draw_us=4135 asked=0 rows_out=0 behind=key_36:1852
+SUMMARY key37 control=NoPrefetch run=controlC tier=Unicode refs=Fixture latency_us=1912 oversleep_us=5310 queued_us=15 update_us=109 carry_us=2 draw_us=1784 asked=0 rows_out=0 behind=key_36:1667
+## every idle key, and every scroll key over 10 ms (raw trace)

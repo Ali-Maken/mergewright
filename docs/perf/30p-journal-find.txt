@@ -1,33 +1,30 @@
-# m7-power-tools/30p J's find — 2026-09-30T15:44:31Z
-# HEAD 9bfbe3db
+# m7-power-tools/30p J's find — 2026-09-30T16:50:57Z
+# HEAD 732f0497
 # Apple M5, 10 cpus, Darwin 27.0.0
 # git version 2.54.0 (Apple Git-157)
 # release, --features heavy-tests, frames::journal_find, --test-threads=1; harness: synthetic keys, in-memory terminal, 187x50 Unicode
 
 ## runs
-run1 exit 101, 11s
-run2 exit 101, 10s
-run3 exit 101, 10s
+run1 exit 0, 8s
+run2 exit 0, 7s
+run3 exit 0, 7s
 
 ## run1: summary lines
-frames: tier=Unicode refs=2425 pane=JournalFind control=Plain keys=127 p50_us=2413792 p99_us=3834487 max_us=3857885 over_budget=121 hits=2000 lost_rows=425
-frames: tier=Unicode refs=2425 pane=JournalFind keys over 16ms (recorded; the gate is the p99): 121 of 127: key 6 Enter: 73.2735ms, key 7 Char('n'): 114.855792ms, key 8 Char('n'): 156.128708ms, key 9 Char('n'): 199.928625ms, key 10 Char('n'): 243.605666ms, key 11 Char('n'): 284.104666ms, key 12 Char('n'): 325.790042ms, key 13 Char('n'): 369.543292ms, key 14 Char('n'): 413.51275ms, key 15 Char('n'): 452.2285ms, key 16 Char('n'): 493.108542ms, key 17 Char('n'): 534.304ms, key 18 Char('n'): 576.205958ms, key 19 Char('n'): 617.443833ms, key 20 Char('n'): 656.98625ms, key 21 Char('n'): 698.596959ms (cut)
-panicked at crates/graft/tests/it/frames/journal_find.rs:163:5:
-test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 681 filtered out; finished in 10.60s
+frames: tier=Unicode refs=2425 pane=JournalFind control=Plain keys=127 p50_us=7516 p99_us=9864 max_us=10018 over_budget=0 hits=2000 lost_rows=425
+frames: tier=Unicode refs=2425 pane=JournalFind keys over 16ms (recorded; the gate is the p99): 0 of 127: 
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 681 filtered out; finished in 7.17s
 
 ## run2: summary lines
-frames: tier=Unicode refs=2425 pane=JournalFind control=Plain keys=127 p50_us=2318030 p99_us=3664967 max_us=3688317 over_budget=121 hits=2000 lost_rows=425
-frames: tier=Unicode refs=2425 pane=JournalFind keys over 16ms (recorded; the gate is the p99): 121 of 127: key 6 Enter: 63.551459ms, key 7 Char('n'): 102.459ms, key 8 Char('n'): 142.181375ms, key 9 Char('n'): 181.90175ms, key 10 Char('n'): 221.493542ms, key 11 Char('n'): 261.732208ms, key 12 Char('n'): 302.587417ms, key 13 Char('n'): 341.809ms, key 14 Char('n'): 382.140375ms, key 15 Char('n'): 422.182375ms, key 16 Char('n'): 462.440958ms, key 17 Char('n'): 502.245292ms, key 18 Char('n'): 542.201666ms, key 19 Char('n'): 582.144208ms, key 20 Char('n'): 622.252792ms, key 21 Char('n'): 661.649625 (cut)
-panicked at crates/graft/tests/it/frames/journal_find.rs:163:5:
-test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 681 filtered out; finished in 10.08s
+frames: tier=Unicode refs=2425 pane=JournalFind control=Plain keys=127 p50_us=7297 p99_us=10442 max_us=10985 over_budget=0 hits=2000 lost_rows=425
+frames: tier=Unicode refs=2425 pane=JournalFind keys over 16ms (recorded; the gate is the p99): 0 of 127: 
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 681 filtered out; finished in 6.98s
 
 ## run3: summary lines
-frames: tier=Unicode refs=2425 pane=JournalFind control=Plain keys=127 p50_us=2328131 p99_us=3730273 max_us=3758164 over_budget=121 hits=2000 lost_rows=425
-frames: tier=Unicode refs=2425 pane=JournalFind keys over 16ms (recorded; the gate is the p99): 121 of 127: key 6 Enter: 63.231875ms, key 7 Char('n'): 103.7735ms, key 8 Char('n'): 143.788458ms, key 9 Char('n'): 184.65475ms, key 10 Char('n'): 224.523916ms, key 11 Char('n'): 264.684ms, key 12 Char('n'): 304.925667ms, key 13 Char('n'): 344.940292ms, key 14 Char('n'): 384.245958ms, key 15 Char('n'): 424.148166ms, key 16 Char('n'): 464.333042ms, key 17 Char('n'): 503.331166ms, key 18 Char('n'): 543.221292ms, key 19 Char('n'): 582.930583ms, key 20 Char('n'): 622.731666ms, key 21 Char('n'): 662.66570 (cut)
-panicked at crates/graft/tests/it/frames/journal_find.rs:163:5:
-test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 681 filtered out; finished in 10.16s
+frames: tier=Unicode refs=2425 pane=JournalFind control=Plain keys=127 p50_us=7313 p99_us=10211 max_us=10824 over_budget=0 hits=2000 lost_rows=425
+frames: tier=Unicode refs=2425 pane=JournalFind keys over 16ms (recorded; the gate is the p99): 0 of 127: 
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 681 filtered out; finished in 6.83s
 
-SUMMARY run1 rows=2425 hits=2000 p50_us=2413792 p99_us=3834487 max_us=3857885 exit=101
-SUMMARY run2 rows=2425 hits=2000 p50_us=2318030 p99_us=3664967 max_us=3688317 exit=101
-SUMMARY run3 rows=2425 hits=2000 p50_us=2328131 p99_us=3730273 max_us=3758164 exit=101
-SUMMARY journal-find gate(p99<=16ms)=OVER
+SUMMARY run1 rows=2425 hits=2000 p50_us=7516 p99_us=9864 max_us=10018 exit=0
+SUMMARY run2 rows=2425 hits=2000 p50_us=7297 p99_us=10442 max_us=10985 exit=0
+SUMMARY run3 rows=2425 hits=2000 p50_us=7313 p99_us=10211 max_us=10824 exit=0
+SUMMARY journal-find gate(p99<=16ms)=ok
