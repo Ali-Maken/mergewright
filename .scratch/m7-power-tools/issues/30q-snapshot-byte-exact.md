@@ -1,6 +1,6 @@
 # 30q: `u` gives back his bytes, not git's re-encoding of them (KNOWN_GAPS `M7/30p-crlf`; ticket 30p R1, NOTES 30p-a test 6)
 
-Status: ready
+Status: 30q-a partial — `blocked: needs` 22 files outside its list for the `JournalEntry` field (NOTES 30q-a)
 Build with (three parts; **a, then b and c concurrent**: b and c hold disjoint files):
 - **30q-a: Opus, `builder-opus-xhigh`.** It changes the before-snapshot every undoable operation takes and adds one field to the
   journal's opening line: undo territory, persisted. Not Fable: the layout and the field are fixed in this spec (R2, R3),
@@ -133,7 +133,8 @@ pub fn raw_record(/* worktree_tree's leading params */, head: Option<Oid>, workt
 ```
 
 ### Acceptance (name the verifying test at tick time; **(red)** = seen failing on today's code first)
-- [ ] **A0, R0's premise, first, before any code** (red expected): `undo_bytes::u_after_a_discard_brings_back_an_lf_file_under_autocrlf`
+- [x] (red seen, both: `undo_bytes::u_after_a_discard_brings_back_an_lf_file_under_autocrlf` at `undo_bytes.rs:44:5`, `undo_bytes::u_after_a_stash_brings_back_an_lf_file_under_autocrlf` at `undo_bytes.rs:64:5`; file uncommitted, NOTES 30q-a)
+  **A0, R0's premise, first, before any code** (red expected): `undo_bytes::u_after_a_discard_brings_back_an_lf_file_under_autocrlf`
   (graft-ops, real git, through the same `GraftOps`/`apply`/`undo` path the recover tests use).
   - Setup: `core.autocrlf=true`. A committed `src/a.rs`, then `W` written with LF endings only.
   - Run: discard `src/a.rs`, then `u`.
@@ -162,7 +163,7 @@ pub fn raw_record(/* worktree_tree's leading params */, head: Option<Oid>, workt
 - [ ] graft-core/graft-ops journal: `a_line_without_raw_parses_as_none_and_renders_unchanged`: an existing golden
   pending line round-trips byte-identical. Also `a_line_with_raw_round_trips`.
 - [ ] ADR-0052 written. MAP.md lines as listed. Gates workspace-wide.
-- [ ] NOTES: the spawn sites `raw_record` adds, each by file:line, against R2's cost list (a code claim, line-cited).
+- [x] (NOTES 30q-a "Spawn sites", each line-cited) NOTES: the spawn sites `raw_record` adds, each by file:line, against R2's cost list (a code claim, line-cited).
 
 ### Touches (check each; say how on the **Touches:** line)
 - **`Snapshot` constructors and patterns**, and **`take`'s callers**: begin, restore's begin, `chain_backup` (which
@@ -292,3 +293,97 @@ If any part compacts, say so; the conductor splits the rest.
   - R1's five out-of-scope rows are added as **unverified**.
 
 ## NOTES (builder)
+
+### 30q-a (2026-09-30, builder Opus xhigh; no scout: the ticket names every site, re-grepped by function)
+
+**Partial. `blocked: needs` 22 files outside 30q-a's list** to add `JournalEntry.worktree_raw_before` (list below),
+one of them the debugger's. Committed at the seam: `snapshot::raw_record` (R2) with its tests, ADR-0052, MAP. Not
+built: the field, `Snapshot.worktree_raw`, `take` writing `raw/`, `begin` recording it. No compaction.
+
+**R0: red, both kinds → the cause is shared; built on.** On 8c3f4b1b, `core.autocrlf=true`, committed
+`src/a.rs`, then `W` = `pub fn a() -> u32 {\n    4\n}\n`:
+- discard, then `u`: red `crates/graft-ops/tests/it/undo_bytes.rs:44:5`; after `u` the file is `…{\r\n    4\r\n}\r\n`.
+- stash push (`All { include_untracked: false }`), then `u`: red `undo_bytes.rs:64:5`, the same CRLF bytes.
+- Before `u`, both assert the operation wrote over `W` (passed). Through `support::run` / `run_undo` (`apply`,
+  `undo::undo`, unforced).
+- The file is **uncommitted** in this worktree (`crates/graft-ops/tests/it/undo_bytes.rs`); its `mod undo_bytes;` line
+  was taken back out of `tests/it/main.rs` so the committed gates are green. 30q-b re-adds both. If the worktree is
+  gone, the body in short (imports `graft_ops::operation::{Operation, StashParams, StashScope, Target}`,
+  `crate::support::{NOW, TempRepo, run, run_undo}`):
+  ```rust
+  const COMMITTED: &[u8] = b"pub fn a() -> u32 {\n    1\n}\n";
+  const WORKING: &[u8] = b"pub fn a() -> u32 {\n    4\n}\n";
+  fn lf_edit_under_autocrlf() -> TempRepo {
+      let repo = TempRepo::init();
+      repo.git(&["config", "core.autocrlf", "true"]);
+      repo.write("src/a.rs", COMMITTED);
+      repo.commit_all("first");
+      repo.write("src/a.rs", WORKING);
+      repo
+  }
+  // each test: repo = lf_edit_under_autocrlf(); run(&repo, &op, NOW);
+  // assert_ne!(repo.read("src/a.rs"), WORKING); run_undo(&repo, NOW + 1, false).unwrap_or_else(..);
+  // assert_eq!(repo.read("src/a.rs"), WORKING, "W is back, byte for byte");
+  // op: Operation::Discard(Target::Paths(vec![PathBuf::from("src/a.rs")])), or
+  //     Operation::StashPush(StashParams { message: Some("wip".to_owned()),
+  //                          scope: StashScope::All { include_untracked: false } })
+  ```
+
+**The block (rule: outside the list → stop).** Adding the field fails E0063 (exhaustive struct literals) at, by
+`cargo check --workspace --all-targets --keep-going` with the field in place:
+- graft-ops, outside the list: `src/apply/fold.rs:151`; `src/journal_list/tests.rs:65` (**the debugger's**).
+- graft (19 files, all test code): `tests/it/undo_by_key.rs:217`, `tests/it/conflict_interim.rs:973`,
+  `src/view/tests.rs:2660`, `src/view/journal/tests.rs:14`, `src/update/undo.rs:885,1538`, `src/update/tests.rs:5461`,
+  `src/update/switch/tests.rs:351`, `src/update/rewrite_editor/tests.rs:1051`,
+  `src/update/resolver/tests/words_and_c.rs:22`, `src/update/remote/tests/lease.rs:237`,
+  `src/update/remote/tests.rs:897`, `src/update/operate/tests.rs:20`, `src/update/journal/tests.rs:22`,
+  `src/update/journal/find/tests.rs:24`, `src/update/clash/tests.rs:37`, `src/update/banner/tests.rs:57`,
+  `src/update/amend_into/tests.rs:282`, `src/jobs/undo.rs:715`, `src/jobs/operate/tests.rs:13,57`.
+- In the list (fine): `journal/lines.rs:150`, `apply/record.rs:111`, `journal/tests.rs:29,63`.
+- Each fix is one line, `worktree_raw_before: None,`. graft-ops `tests/it` has no exhaustive literal (0 errors).
+- Also outside: `take` has no `HEAD` today, and R2's `raw_record` takes it. Recommended: `take` gains
+  `head: Option<Oid>`; `begin` derives it with no spawn (`head_before`: `Detached(o)` → `Some(o)`, `Unborn` → `None`,
+  `Branch(n)` → `facts::read_refs(repo, &[n])`, in-process). Its one other caller, `tests/it/unmerged_index.rs:68`, is
+  outside the list (22nd file). Reading `HEAD` inside `take` instead needs a new `SnapshotError` variant.
+
+**Remaining (the continuation, exact):**
+1. `graft-core` `JournalEntry.worktree_raw_before` (after `worktree_after`, serde as `merge_before`), the 22 literal
+   lines above, `PendingLine` field + `of` + `into_entry` (`journal/lines.rs`).
+2. `Snapshot.worktree_raw: Option<Oid>`; `take(.., head, ..)` calls `raw::raw_record(repo, scratch, stop, head,
+   worktree_tree)` after `both_trees`; when `Some`, joins `{ index/|unmerged/, raw/, worktree/ }`. `plumbing::mktree`
+   lists only index and worktree: either it gains `raw: Option<Oid>` (plumbing.rs is listed "only for a temp index", so
+   say so) or `take` gets its own three-entry join. `commit_trees` unchanged.
+3. `begin` (`apply/record.rs:111`): `worktree_raw_before: backup.and_then(|taken| taken.worktree_raw)`.
+4. Tests still owed from the boxes: `ls-tree <commit>` lists exactly `index worktree` (none kept) / `index raw
+   worktree`; the pending line has no `worktree_raw_before` key / holds the raw tree; the two journal round-trip tests.
+   `snapshot_raw.rs`'s `raw_of` then goes through `take` (or `apply`) for those.
+
+**Spec deviation, stated (R2's mechanism, not its rule).** R2 planned one `cat-file --batch --filters`. Seen on git
+2.54 (a probe repo, `core.autocrlf=true`, blob `a\nb\n`): input `<blob> <path>\n` prints header `<oid> blob 4` then
+6 bytes `a\r\nb\r\n` — the header size is **pre-filter**, so records cannot be split. With `-z` (git 2.38+), two records
+gave one output (seen twice, in either order). `<tree>:<path>` input splits at the first space (`missing`). So question 3 checks out the
+cleaned blobs with `checkout-index -a -f --prefix=<scratch>/` from a fresh temp index (the same conversion a restore
+runs) and compares streamed. The ADR says so.
+
+**Spawn sites `raw_record` adds** (`crates/graft-ops/src/snapshot/raw.rs`), against R2's list:
+- Always (changed or not): `diff-tree -r -z --no-renames` `:114`; unborn `HEAD` instead `ls-tree -r -z` `:125`. R2: +1. ✓
+- Changed regular files: `config --get core.autocrlf` `:191`, `check-attr -z --stdin` `:229`. R2: +3 total. ✓
+- Conversion candidates: `update-index -z --index-info` (`fill_index` `:378`, called `:299`) and `checkout-index`
+  `:308`, plus a scratch copy of those files. R2 said +1 (`cat-file`): **+2**.
+- Mismatches: `hash-object -w --no-filters` `:335`, `update-index` (`:357` → `:378`), `write-tree` `:358`. R2 said
+  +2 (it left out the `update-index` a temp index needs): **+3**.
+- Worst case 8 spawns (R2: 6). Nothing calls `raw_record` yet, so no operation pays any of it today.
+
+**Tests (new, all green):** `snapshot_raw::` `a_snapshot_with_nothing_to_convert_keeps_nothing_raw`,
+`a_snapshot_keeps_raw_only_what_would_not_round_trip`, `a_one_way_clean_filter_is_kept_raw`,
+`autocrlf_input_keeps_a_crlf_file_raw`, `an_inverse_filter_keeps_nothing`, `an_unborn_head_keeps_an_lf_file_raw`,
+`a_path_with_a_newline_in_it_is_kept_raw`, `a_handle_opened_in_a_subdirectory_keeps_the_same_path` (each also asserts
+the scratch dir is left empty); unit `snapshot::raw::tests::` six (check-attr rule, torn triple, diff-tree parse).
+They assert the raw tree (`ls-tree -r`, `cat-file blob`), not the commit layout or the pending line (item 4).
+Mutation: question 3 skipped (`if true ||` before `same_bytes`) → 3 red (`keeps_raw_only…`, `unborn_head…`,
+`inverse_filter…`); restored.
+
+**Touches:** `snapshot` gains one re-export (`raw_record`) and a doc line; `Snapshot`, `take`, `commit_trees`,
+`mktree`, `plumbing.rs` unchanged (`git diff` on `src/`: `snapshot.rs` mod/re-export/doc only, new `snapshot/raw.rs`).
+No caller of `raw_record` (grep `raw_record` in `crates/`: raw.rs, snapshot.rs, tests), so no backup commit, journal
+line, drift read or `u` changes behaviour, and no operation pays its spawns. UI, keymap, captures: none.

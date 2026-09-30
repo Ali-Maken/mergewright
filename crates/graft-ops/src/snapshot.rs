@@ -25,16 +25,19 @@
 //! public item re-exported so every `snapshot::` path reads as before:
 //! `stage_tree` (an unmerged index as one tree, and back), `chain` (the
 //! backup chain under a live entry), `index_paths` (which paths two states
-//! differ on) and `plumbing` (the temporary index and the `git` they share).
+//! differ on), `raw` (the bytes git would not give back, ADR-0052) and
+//! `plumbing` (the temporary index and the `git` they share).
 
 mod chain;
 mod index_paths;
 mod plumbing;
+mod raw;
 mod stage_tree;
 
 pub use chain::{LinkKind, backup_chain, chain_backup, current_step_chain, recorded_index_state};
 pub use index_paths::index_paths_changed;
 pub(crate) use index_paths::{index_paths, tracked_paths_now};
+pub use raw::raw_record;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
