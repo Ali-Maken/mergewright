@@ -1054,3 +1054,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/30s-git-exited | A raw-write failure rides on git's error line only for `RunError::Exited`; other `ApplyError::Git` kinds do not carry it (30s deviation, NOTES) | **unverified** | M8 |
 | M7/30s-resume | Set-aside put-back raw step across resume and relaunch not verified (30s NOTES) | **unverified** | M8 |
 | M7/30w-autocrlf-later | `core.autocrlf` switched on **after** an edit was lost: the backup kept no raw bytes (none needed then), so J's put-back returns the file CRLF. ADR-0052 bound, pinned by 30w R2's test; no fallback (planner ruling 2026-10-01) | **broken** | M8 |
+| M7/30w-relaunch | Relaunch mid lost-edit put-back leaves git's encoding (raw step not re-run) — not verified (30w NOTES); `apply/error.rs` `NotAsTheyWere` doc still says set-aside only | **unverified** | M8 |
