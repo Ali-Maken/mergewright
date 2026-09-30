@@ -23,6 +23,7 @@ pub mod remote;
 pub mod repo;
 pub mod run;
 pub mod shallow;
+pub mod snapshot_reads;
 pub mod stash;
 pub mod state;
 pub mod status;

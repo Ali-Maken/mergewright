@@ -14,7 +14,9 @@
 //! Per case, `runs` timed calls of `snapshot::take` and, apart, of
 //! `snapshot::raw_record` over the same worktree tree. One line per case:
 //! `case<k> files=… changed=… raw=<kept|none> take_p50_us=… take_p99_us=…
-//! raw_p50_us=… raw_p99_us=…`, then `snapshot_cost: done`.
+//! raw_p50_us=… raw_p99_us=… raw_spawns=<n>`, then `snapshot_cost: done`.
+//! `raw_spawns` is how many `git` the last `raw_record` ran (its `commands`,
+//! m7-power-tools/30r): a count, the same on every machine.
 //!
 //! `snapshot_cost [runs files]` runs smaller (the builder's smoke run).
 
@@ -169,46 +171,69 @@ fn measure() -> Result<(), String> {
         std::fs::create_dir_all(&scratch).map_err(|why| format!("{}: {why}", scratch.display()))?;
         let head = Oid::from_hex(&git(&dir, &["rev-parse", "HEAD"])?)
             .map_err(|why| format!("HEAD of case{k}: {why}"))?;
-        let mut take_times = Vec::with_capacity(runs);
-        let mut raw_times = Vec::with_capacity(runs);
-        let mut kept = None;
-        for run in (0i64..).take(runs) {
-            let id = EntryId::new(1_700_000_000_000 + run, [k; 10]);
-            let started = Instant::now();
-            let taken = snapshot::take(
-                &repo,
-                &scratch,
-                &id,
-                "main",
-                "perf",
-                &[],
-                Some(head),
-                &Never,
-            )
-            .map_err(|why| format!("take case{k}: {why}"))?;
-            take_times.push(started.elapsed());
-            let started = Instant::now();
-            let raw =
-                snapshot::raw_record(&repo, &scratch, &Never, Some(head), taken.worktree_tree)
-                    .map_err(|why| format!("raw_record case{k}: {why}"))?;
-            raw_times.push(started.elapsed());
-            kept = Some(raw.is_some());
-        }
-        take_times.sort();
-        raw_times.sort();
-        let label = match kept {
+        let timed = time_runs(&repo, &scratch, head, k, runs)?;
+        let label = match timed.kept {
             Some(true) => "kept",
             Some(false) | None => "none",
         };
         println!(
-            "case{k} files={files} changed={} autocrlf={} raw={label} runs={runs} take_p50_us={} take_p99_us={} raw_p50_us={} raw_p99_us={}",
+            "case{k} files={files} changed={} autocrlf={} raw={label} runs={runs} take_p50_us={} take_p99_us={} raw_p50_us={} raw_p99_us={} raw_spawns={}",
             case.changed.min(files),
             case.autocrlf,
-            percentile(&take_times, 50),
-            percentile(&take_times, 99),
-            percentile(&raw_times, 50),
-            percentile(&raw_times, 99),
+            percentile(&timed.take, 50),
+            percentile(&timed.take, 99),
+            percentile(&timed.raw, 50),
+            percentile(&timed.raw, 99),
+            timed.spawns,
         );
     }
     Ok(())
+}
+
+/// One case's runs: `take` and `raw_record` times (sorted), whether the last
+/// run kept `raw/`, and how many `git` spawns its `raw_record` made.
+struct Timed {
+    take: Vec<Duration>,
+    raw: Vec<Duration>,
+    kept: Option<bool>,
+    spawns: usize,
+}
+
+fn time_runs(
+    repo: &RepoHandle,
+    scratch: &Path,
+    head: Oid,
+    k: u8,
+    runs: usize,
+) -> Result<Timed, String> {
+    let mut timed = Timed {
+        take: Vec::with_capacity(runs),
+        raw: Vec::with_capacity(runs),
+        kept: None,
+        spawns: 0,
+    };
+    for run in (0i64..).take(runs) {
+        let id = EntryId::new(1_700_000_000_000 + run, [k; 10]);
+        let started = Instant::now();
+        let taken = snapshot::take(repo, scratch, &id, "main", "perf", &[], Some(head), &Never)
+            .map_err(|why| format!("take case{k}: {why}"))?;
+        timed.take.push(started.elapsed());
+        let mut commands = Vec::new();
+        let started = Instant::now();
+        let raw = snapshot::raw_record(
+            repo,
+            scratch,
+            &Never,
+            Some(head),
+            taken.worktree_tree,
+            &mut commands,
+        )
+        .map_err(|why| format!("raw_record case{k}: {why}"))?;
+        timed.raw.push(started.elapsed());
+        timed.kept = Some(raw.is_some());
+        timed.spawns = commands.len();
+    }
+    timed.take.sort();
+    timed.raw.sort();
+    Ok(timed)
 }

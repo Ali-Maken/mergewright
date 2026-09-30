@@ -13,6 +13,7 @@ mod history_reads;
 mod run;
 mod session;
 mod shallow_history;
+mod snapshot_reads;
 mod switch_refs;
 mod trace;
 mod trace_whole;

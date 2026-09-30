@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 
 use graft_core::journal::{EntryId, JournalEntry};
 use graft_core::oid::Oid;
+use graft_ops::apply::ApplyError;
 use graft_ops::operation::{Operation, Target};
 use graft_ops::snapshot;
 
@@ -28,18 +29,44 @@ fn head_of(repo: &TempRepo) -> Option<Oid> {
 /// as `take` has it, then `HEAD` (absent when unborn). The scratch directory
 /// is left empty: nothing the record writes there survives it.
 fn raw_of(repo: &TempRepo) -> Option<Oid> {
+    recorded(repo).0
+}
+
+/// [`raw_of`], with the `git` subcommands `raw_record` ran, in order
+/// (m7-power-tools/30r: each one is a spawn, about 6 ms on the perf machine).
+fn recorded(repo: &TempRepo) -> (Option<Oid>, Vec<String>) {
     let handle = repo.open();
     let scratch = repo.path().join(".git/graft");
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let tree = snapshot::worktree_tree(&handle, &scratch, &Never).expect("the worktree tree");
-    let raw = snapshot::raw_record(&handle, &scratch, &Never, head_of(repo), tree)
-        .expect("the raw record is taken");
+    let mut commands = Vec::new();
+    let raw = snapshot::raw_record(
+        &handle,
+        &scratch,
+        &Never,
+        head_of(repo),
+        tree,
+        &mut commands,
+    )
+    .expect("the raw record is taken");
     let left: Vec<PathBuf> = std::fs::read_dir(&scratch)
         .expect("the scratch reads")
         .map(|entry| entry.expect("the entry reads").path())
         .collect();
     assert!(left.is_empty(), "the scratch is left empty: {left:?}");
-    raw
+    (raw, subcommands(&commands))
+}
+
+/// `git check-attr -z …` → `check-attr`.
+fn subcommands(commands: &[String]) -> Vec<String> {
+    commands
+        .iter()
+        .map(|line| {
+            let mut words = line.split(' ');
+            assert_eq!(words.next(), Some("git"), "{line}");
+            words.next().expect("a subcommand").to_owned()
+        })
+        .collect()
 }
 
 /// The before-snapshot, as `begin` takes it.
@@ -312,7 +339,7 @@ fn a_handle_opened_in_a_subdirectory_keeps_the_same_path() {
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let tree = snapshot::worktree_tree(&handle, &scratch, &Never).expect("the worktree tree");
     let head = Oid::from_hex(&repo.git(&["rev-parse", "HEAD"])).expect("HEAD is an id");
-    let raw = snapshot::raw_record(&handle, &scratch, &Never, Some(head), tree)
+    let raw = snapshot::raw_record(&handle, &scratch, &Never, Some(head), tree, &mut Vec::new())
         .expect("the raw record is taken")
         .expect("the file is kept");
 
@@ -323,5 +350,133 @@ fn a_handle_opened_in_a_subdirectory_keeps_the_same_path() {
     assert_eq!(
         kept(&repo, raw, "src/deep/a.rs"),
         std::fs::read(Path::new(repo.path()).join("src/deep/a.rs")).expect("the file reads")
+    );
+}
+
+// m7-power-tools/30r: what `raw_record` spawns. The gate is about one `git`
+// in the common case (`docs/perf/30q-snapshot.txt`); a count is the same on
+// every machine, where a time is not.
+
+/// Five changed files, no attributes, `core.autocrlf` unset: only
+/// `check-attr` runs (git's own answer on attributes), and nothing is kept.
+#[test]
+fn a_changed_worktree_with_nothing_to_convert_spawns_one_git() {
+    let repo = TempRepo::init();
+    repo.git(&["config", "--unset", "core.autocrlf"]);
+    let names = ["a.rs", "b.rs", "c.rs", "d.rs", "e.rs"];
+    for name in names {
+        repo.write(name, b"one\n");
+    }
+    repo.commit_all("first");
+    for name in names {
+        repo.write(name, b"one\nchanged\n");
+    }
+
+    let (raw, spawned) = recorded(&repo);
+    assert_eq!(raw, None);
+    assert_eq!(spawned, ["check-attr"]);
+}
+
+/// A worktree that matches `HEAD` asks nothing of git.
+#[test]
+fn a_clean_worktree_spawns_no_git() {
+    let repo = TempRepo::init();
+    repo.write("a.rs", b"a\n");
+    repo.write("dir/b.rs", b"b\n");
+    repo.commit_all("first");
+
+    let (raw, spawned) = recorded(&repo);
+    assert_eq!(raw, None);
+    assert!(spawned.is_empty(), "{spawned:?}");
+}
+
+/// 30q-a's `l.rs`: a changed LF file under `core.autocrlf=true`. Each of the
+/// three questions' `git` runs once, then the raw tree's three.
+#[test]
+fn a_conversion_candidate_spawns_only_what_it_must() {
+    let repo = TempRepo::init();
+    repo.git(&["config", "core.autocrlf", "true"]);
+    repo.write("l.rs", b"l\n");
+    repo.commit_all("first");
+    repo.write("l.rs", b"l\nchanged\n");
+
+    let (raw, spawned) = recorded(&repo);
+    let raw = raw.expect("the LF file is kept");
+    assert_eq!(
+        listed(&repo, raw),
+        [("100644".to_owned(), "l.rs".to_owned())]
+    );
+    assert_eq!(
+        spawned,
+        [
+            "check-attr",
+            "update-index",
+            "checkout-index",
+            "hash-object",
+            "update-index",
+            "write-tree",
+        ]
+    );
+}
+
+/// The handle is opened once for the whole run (`RepoStore`); he sets
+/// `core.autocrlf` in his shell after that. `take` must read it as git does
+/// now, not as it was at launch: a stale "off" would lose his bytes.
+#[test]
+fn autocrlf_set_after_the_handle_opened_is_honoured() {
+    let repo = TempRepo::init();
+    repo.write("l.rs", b"l\n");
+    repo.commit_all("first");
+    repo.write("l.rs", b"l\nchanged\n");
+    let handle = repo.open();
+    repo.git(&["config", "core.autocrlf", "true"]);
+
+    let scratch = repo.path().join(".git/graft");
+    std::fs::create_dir_all(&scratch).expect("the scratch is made");
+    let id = EntryId::new(NOW, [9; 10]);
+    let head = head_of(&repo);
+    let snapshot = snapshot::take(&handle, &scratch, &id, "main", "probe", &[], head, &Never)
+        .expect("the snapshot is taken");
+
+    let raw = snapshot.worktree_raw.expect("the LF file is kept raw");
+    assert_eq!(
+        listed(&repo, raw),
+        [("100644".to_owned(), "l.rs".to_owned())]
+    );
+    assert_eq!(kept(&repo, raw, "l.rs"), b"l\nchanged\n");
+}
+
+/// A tree the in-process read cannot find is `SnapshotError::Read`, never
+/// "nothing to keep"; a refused operation shows it as one line, as it does a
+/// `Run` failure (`PrepareError::Snapshot` becomes `ApplyError::Snapshot`).
+#[test]
+fn an_unreadable_tree_is_a_read_error_in_one_line() {
+    let repo = TempRepo::init();
+    repo.write("a.rs", b"a\n");
+    repo.commit_all("first");
+    let handle = repo.open();
+    let scratch = repo.path().join(".git/graft");
+    std::fs::create_dir_all(&scratch).expect("the scratch is made");
+    let missing = Oid::from_hex(&"2".repeat(40)).expect("an id");
+
+    let mut commands = Vec::new();
+    let failed = snapshot::raw_record(
+        &handle,
+        &scratch,
+        &Never,
+        head_of(&repo),
+        missing,
+        &mut commands,
+    );
+    let Err(why @ snapshot::SnapshotError::Read(_)) = failed else {
+        panic!("a read error, got {failed:?}");
+    };
+    assert!(commands.is_empty(), "{commands:?}");
+
+    let line = ApplyError::Snapshot(why).explain();
+    assert!(!line.contains('\n'), "{line}");
+    assert!(
+        line.starts_with(&format!("cannot read object {missing}: ")),
+        "{line}"
     );
 }

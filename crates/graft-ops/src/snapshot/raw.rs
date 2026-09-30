@@ -9,15 +9,18 @@
 //! paths are kept as they are on disk.
 //!
 //! Three questions, each asked only of the paths the one before let through,
-//! so a clean worktree costs one `diff-tree` and a repo that converts nothing
-//! three spawns:
+//! so a clean worktree spawns no `git` and a repo that converts nothing one
+//! (m7-power-tools/30r; every spawn is pushed to `commands`):
 //!
-//! 1. **Uncommitted?** `HEAD`'s tree against the worktree tree: added,
+//! 1. **Uncommitted?** `HEAD`'s tree against the worktree tree, read in
+//!    process (`snapshot_reads::changed_files`, `diff-tree`'s answer): added,
 //!    modified or type-changed regular files. A path that matches `HEAD` is
 //!    in history and comes back as git's own checkout writes it.
-//! 2. **Would git convert it?** `core.autocrlf` and `check-attr` on the
-//!    conversion attributes. Saying yes wrongly costs one comparison; saying
-//!    no wrongly loses his bytes, so every doubt is a yes.
+//! 2. **Would git convert it?** `core.autocrlf`, re-read from disk in process
+//!    (`snapshot_reads::autocrlf_converts`), and `check-attr` on the
+//!    conversion attributes, which stays git's: its sources are git's to
+//!    know. Saying yes wrongly costs one comparison; saying no wrongly loses
+//!    his bytes, so every doubt is a yes.
 //! 3. **Would git's checkout give it back?** The cleaned blobs checked out by
 //!    git's own `checkout-index` into scratch, then compared with the disk.
 //!    Not `cat-file --batch --filters`: its header prints the size *before*
@@ -34,9 +37,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use graft_core::oid::Oid;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
+use graft_git::snapshot_reads::{self, ReadError};
 
 use super::SnapshotError;
-use super::plumbing::{TempIndex, oid_from, path_of, split_nul, stopped, write_tree};
+use super::plumbing::{TempIndex, oid_from, path_of, stopped};
 
 /// The conversion attributes `check-attr` is asked about: any of these set
 /// means git may rewrite the file's bytes on the way in or out.
@@ -71,13 +75,15 @@ struct File {
 ///
 /// # Errors
 /// [`SnapshotError`] when a `git` step fails or prints what it should not, or
-/// a file cannot be read; `Stopped` when `stop` fires.
+/// a file cannot be read; `Read` when an in-process read (a tree, the config)
+/// fails; `Stopped` when `stop` fires.
 pub fn raw_record(
     repo: &RepoHandle,
     scratch: &Path,
     stop: &dyn Stop,
     head: Option<Oid>,
     worktree_tree: Oid,
+    commands: &mut Vec<String>,
 ) -> Result<Option<Oid>, SnapshotError> {
     // A bare repository has no working tree, so no bytes of his to keep.
     let Some(root) = repo.workdir() else {
@@ -87,125 +93,60 @@ pub fn raw_record(
     if changed.is_empty() {
         return Ok(None);
     }
-    let autocrlf = autocrlf_on(repo, stop)?;
-    let converted = converted(repo, changed, autocrlf, stop)?;
+    let autocrlf = snapshot_reads::autocrlf_converts(repo).map_err(read_failed)?;
+    let converted = converted(repo, changed, autocrlf, stop, commands)?;
     if converted.is_empty() {
         return Ok(None);
     }
-    let differ = not_given_back(repo, scratch, root, converted, stop)?;
+    let differ = not_given_back(repo, scratch, root, converted, stop, commands)?;
     if differ.is_empty() {
         return Ok(None);
     }
-    raw_tree(repo, scratch, &differ, stop).map(Some)
+    raw_tree(repo, scratch, &differ, stop, commands).map(Some)
 }
 
-/// Question 1: the regular files `worktree_tree` holds apart from `HEAD`.
-///
-/// A deletion has mode `000000` on the new side, a symlink `120000` and a
-/// submodule `160000`: none is a regular file, so the mode alone leaves them
-/// out. git filters neither a symlink nor a gitlink.
+/// `invocation`, its command line pushed to `commands` first.
+fn run_logged(
+    invocation: &GitInvocation,
+    stop: &dyn Stop,
+    commands: &mut Vec<String>,
+) -> Result<graft_git::run::GitOutput, RunError> {
+    commands.push(invocation.command_line());
+    invocation.run(stop)
+}
+
+/// Question 1: the regular files `worktree_tree` holds apart from `HEAD`,
+/// read in process: `diff-tree -r --no-renames`'s answer (unborn: every
+/// file) kept to regular files on the new side. A deletion, a symlink and a
+/// gitlink are left out: git filters neither a symlink nor a gitlink.
 fn uncommitted(
     repo: &RepoHandle,
     head: Option<Oid>,
     worktree_tree: Oid,
     stop: &dyn Stop,
 ) -> Result<Vec<File>, SnapshotError> {
-    let files = if let Some(head) = head {
-        let output = GitInvocation::new(repo)
-            .arg(GitArg::Flag("diff-tree"))
-            .arg(GitArg::Flag("-r"))
-            .arg(GitArg::Flag("-z"))
-            .arg(GitArg::Flag("--no-renames"))
-            .arg(GitArg::Oid(head))
-            .arg(GitArg::Oid(worktree_tree))
-            .run(stop)
-            .map_err(stopped)?;
-        diff_tree_files(&output.stdout)?
-    } else {
-        let output = GitInvocation::new(repo)
-            .arg(GitArg::Flag("ls-tree"))
-            .arg(GitArg::Flag("-r"))
-            .arg(GitArg::Flag("-z"))
-            .arg(GitArg::Flag("--full-tree"))
-            .arg(GitArg::Oid(worktree_tree))
-            .run(stop)
-            .map_err(stopped)?;
-        ls_tree_files(&output.stdout)?
-    };
-    Ok(files
+    let changed =
+        snapshot_reads::changed_files(repo, head, worktree_tree, stop).map_err(read_failed)?;
+    Ok(changed
         .into_iter()
-        .filter(|file| file.mode == b"100644" || file.mode == b"100755")
+        .map(|file| File {
+            mode: if file.executable {
+                b"100755".to_vec()
+            } else {
+                b"100644".to_vec()
+            },
+            oid: file.blob,
+            path: file.path,
+        })
         .collect())
 }
 
-/// `diff-tree -r -z` raw records: `:<old> <new> <old-oid> <new-oid> <S>\0`
-/// then `<path>\0`. `--no-renames` keeps it to one path per record.
-fn diff_tree_files(stdout: &[u8]) -> Result<Vec<File>, SnapshotError> {
-    let fields = split_nul(stdout);
-    let mut files = Vec::with_capacity(fields.len() / 2);
-    for pair in fields.chunks(2) {
-        let [meta, path] = pair else {
-            return Err(unreadable("diff-tree", &pair.concat()));
-        };
-        let words: Vec<&[u8]> = meta.split(|byte| *byte == b' ').collect();
-        let [_, new_mode, _, new_oid, _] = words.as_slice() else {
-            return Err(unreadable("diff-tree", meta));
-        };
-        files.push(File {
-            mode: new_mode.to_vec(),
-            oid: oid_from(new_oid, "diff-tree")?,
-            path: path.clone(),
-        });
-    }
-    Ok(files)
-}
-
-/// `ls-tree -r -z` records: `<mode> <type> <oid>\t<path>\0`.
-fn ls_tree_files(stdout: &[u8]) -> Result<Vec<File>, SnapshotError> {
-    let mut files = Vec::new();
-    for record in split_nul(stdout) {
-        let Some(tab) = record.iter().position(|byte| *byte == b'\t') else {
-            return Err(unreadable("ls-tree", &record));
-        };
-        let (head, path) = (&record[..tab], &record[tab + 1..]);
-        let words: Vec<&[u8]> = head.split(|byte| *byte == b' ').collect();
-        let [mode, _, oid] = words.as_slice() else {
-            return Err(unreadable("ls-tree", &record));
-        };
-        files.push(File {
-            mode: mode.to_vec(),
-            oid: oid_from(oid, "ls-tree")?,
-            path: path.to_vec(),
-        });
-    }
-    Ok(files)
-}
-
-/// `core.autocrlf`, as git's own reader takes it: `input` and every true
-/// value convert. Unset (exit 1) does not.
-///
-/// Only a value git reads as false is off. Anything else — `true`, `input`,
-/// a bare key, a spelling this reader does not know — is on: a wrong "on"
-/// costs question 3 a comparison, a wrong "off" loses his bytes.
-fn autocrlf_on(repo: &RepoHandle, stop: &dyn Stop) -> Result<bool, SnapshotError> {
-    let ran = GitInvocation::new(repo)
-        .arg(GitArg::Flag("config"))
-        .arg(GitArg::Flag("--get"))
-        .arg(GitArg::Flag("core.autocrlf"))
-        .run(stop);
-    match ran {
-        Ok(output) => {
-            let value = String::from_utf8_lossy(&output.stdout)
-                .trim()
-                .to_ascii_lowercase();
-            let off = matches!(value.as_str(), "false" | "no" | "off")
-                || value.parse::<i64>().is_ok_and(|number| number == 0);
-            Ok(!off)
-        }
-        // `git config --get`: exit 1 is "the key was not found", its one
-        // documented non-error failure. Unset means git converts nothing.
-        Err(RunError::Exited { status: 1, .. }) => Ok(false),
-        Err(why) => Err(stopped(why)),
+/// A read's failure as the snapshot's, the **stop kept as a stop**, so a
+/// caller can tell "you cancelled" from "the repository would not read".
+fn read_failed(why: ReadError) -> SnapshotError {
+    match why {
+        ReadError::Stopped => SnapshotError::Stopped,
+        other => SnapshotError::Read(other),
     }
 }
 
@@ -220,6 +161,7 @@ fn converted(
     files: Vec<File>,
     autocrlf: bool,
     stop: &dyn Stop,
+    commands: &mut Vec<String>,
 ) -> Result<Vec<File>, SnapshotError> {
     let mut stdin = Vec::new();
     for file in &files {
@@ -233,7 +175,7 @@ fn converted(
     for attribute in CONVERTING {
         invocation = invocation.arg(GitArg::Flag(attribute));
     }
-    let output = invocation.stdin(stdin).run(stop).map_err(stopped)?;
+    let output = run_logged(&invocation.stdin(stdin), stop, commands).map_err(stopped)?;
     let converts = converting_paths(&output.stdout, autocrlf)?;
     Ok(files
         .into_iter()
@@ -294,6 +236,7 @@ fn not_given_back(
     root: &Path,
     files: Vec<File>,
     stop: &dyn Stop,
+    commands: &mut Vec<String>,
 ) -> Result<Vec<File>, SnapshotError> {
     let index = TempIndex::fresh(scratch)?;
     fill_index(
@@ -301,18 +244,18 @@ fn not_given_back(
         &index,
         files.iter().map(|file| (file, file.oid)),
         stop,
+        commands,
     )?;
     let out = ScratchDir::new(scratch)?;
     let mut prefix = out.path().as_os_str().as_bytes().to_vec();
     prefix.push(b'/');
-    GitInvocation::new(repo)
+    let checkout = GitInvocation::new(repo)
         .env("GIT_INDEX_FILE", index.path())
         .arg(GitArg::Flag("checkout-index"))
         .arg(GitArg::Flag("-a"))
         .arg(GitArg::Flag("-f"))
-        .arg(GitArg::Glued("--prefix=", prefix))
-        .run(stop)
-        .map_err(stopped)?;
+        .arg(GitArg::Glued("--prefix=", prefix));
+    run_logged(&checkout, stop, commands).map_err(stopped)?;
     let mut differ = Vec::new();
     for file in files {
         let relative = path_of(file.path.clone());
@@ -331,6 +274,7 @@ fn raw_tree(
     scratch: &Path,
     files: &[File],
     stop: &dyn Stop,
+    commands: &mut Vec<String>,
 ) -> Result<Oid, SnapshotError> {
     let mut invocation = GitInvocation::new(repo)
         .arg(GitArg::Flag("hash-object"))
@@ -340,7 +284,7 @@ fn raw_tree(
     for file in files {
         invocation = invocation.arg(GitArg::Path(file.path.clone()));
     }
-    let output = invocation.run(stop).map_err(stopped)?;
+    let output = run_logged(&invocation, stop, commands).map_err(stopped)?;
     let printed: Vec<&[u8]> = output
         .stdout
         .split(|byte| *byte == b'\n')
@@ -354,8 +298,13 @@ fn raw_tree(
         .map(|line| oid_from(line, "hash-object"))
         .collect::<Result<_, _>>()?;
     let index = TempIndex::fresh(scratch)?;
-    fill_index(repo, &index, files.iter().zip(raw), stop)?;
-    write_tree(repo, index.path(), stop)
+    fill_index(repo, &index, files.iter().zip(raw), stop, commands)?;
+    // `plumbing::write_tree`'s invocation, logged.
+    let write = GitInvocation::new(repo)
+        .env("GIT_INDEX_FILE", index.path())
+        .arg(GitArg::Flag("write-tree"));
+    let output = run_logged(&write, stop, commands).map_err(stopped)?;
+    oid_from(&output.stdout, "write-tree")
 }
 
 /// `update-index -z --index-info` onto `index`: each file at its own path and
@@ -365,6 +314,7 @@ fn fill_index<'a>(
     index: &TempIndex,
     entries: impl IntoIterator<Item = (&'a File, Oid)>,
     stop: &dyn Stop,
+    commands: &mut Vec<String>,
 ) -> Result<(), SnapshotError> {
     let mut stdin = Vec::new();
     for (file, blob) in entries {
@@ -375,14 +325,13 @@ fn fill_index<'a>(
         stdin.extend_from_slice(&file.path);
         stdin.push(0);
     }
-    GitInvocation::new(repo)
+    let invocation = GitInvocation::new(repo)
         .env("GIT_INDEX_FILE", index.path())
         .arg(GitArg::Flag("update-index"))
         .arg(GitArg::Flag("-z"))
         .arg(GitArg::Flag("--index-info"))
-        .stdin(stdin)
-        .run(stop)
-        .map_err(stopped)?;
+        .stdin(stdin);
+    run_logged(&invocation, stop, commands).map_err(stopped)?;
     Ok(())
 }
 
@@ -513,21 +462,5 @@ mod tests {
     #[test]
     fn a_torn_triple_is_an_error() {
         assert!(converting_paths(b"a\0text\0", false).is_err());
-    }
-
-    #[test]
-    fn diff_tree_records_keep_the_new_side() {
-        let new = "1".repeat(40);
-        let stdout = format!(
-            ":100644 100755 {old} {new} M\0run.sh\0:100644 000000 {old} {zero} D\0gone\0",
-            old = "2".repeat(40),
-            zero = "0".repeat(40),
-        );
-        let files = diff_tree_files(stdout.as_bytes()).expect("the records parse");
-        assert_eq!(files.len(), 2);
-        assert_eq!(files[0].mode, b"100755");
-        assert_eq!(files[0].oid.to_string(), new);
-        assert_eq!(files[0].path, b"run.sh");
-        assert_eq!(files[1].mode, b"000000");
     }
 }
