@@ -105,6 +105,11 @@ pub enum SnapshotError {
     /// removed.
     #[error("snapshot scratch: {0}")]
     Io(#[from] std::io::Error),
+    /// An in-process read `raw_record` makes instead of a `git` spawn failed
+    /// (m7-power-tools/30r): an object or the config would not read. Never
+    /// holds `ReadError::Stopped`; a stop is [`SnapshotError::Stopped`].
+    #[error("{0}")]
+    Read(graft_git::snapshot_reads::ReadError),
     /// `git` printed something that is not an object id — or a record whose
     /// shape the parser could not read one out of.
     #[error("git printed {what} where an object id belongs: {printed}")]
@@ -242,7 +247,10 @@ pub fn take(
     stop: &dyn Stop,
 ) -> Result<Snapshot, SnapshotError> {
     let (index, worktree_tree) = both_trees(repo, scratch, stop)?;
-    let worktree_raw = raw_record(repo, scratch, stop, head, worktree_tree)?;
+    // `take`'s spawns are not journaled (it logs none of its own), so
+    // `raw_record`'s list is dropped.
+    let mut commands = Vec::new();
+    let worktree_raw = raw_record(repo, scratch, stop, head, worktree_tree, &mut commands)?;
     let joined = mktree(repo, Some(index), Some(worktree_tree), worktree_raw, stop)?;
     let commit = commit_joined(repo, joined, id, label, parents, stop)?;
     let name = backup_ref_name(worktree, id);

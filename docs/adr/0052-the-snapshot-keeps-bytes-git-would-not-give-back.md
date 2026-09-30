@@ -35,9 +35,13 @@ skips confirmations for discard, switch and reset **because** `u` is reliable.
 
 ## Consequences
 
-- Cost per undoable operation: a clean worktree +1 spawn (`diff-tree`); changed paths git does not convert +3
-  (`diff-tree`, `config`, `check-attr`); conversion candidates +2 (`update-index`, `checkout-index`) and a scratch copy of
-  those files; a mismatch +3 (`hash-object -w --no-filters`, `update-index`, `write-tree`). Measured by 30q-c.
+- Cost per undoable operation (amended 2026-09-30, m7-power-tools/30r, after 30q-c measured changed-with-no-conversion
+  over its 10 ms gate at three spawns): a clean worktree 0 spawns; changed paths git does not convert +1 (`check-attr`);
+  conversion candidates +2 (`update-index`, `checkout-index`) and a scratch copy of those files; a mismatch +3
+  (`hash-object -w --no-filters`, `update-index`, `write-tree`). The `diff-tree` and `config --get core.autocrlf` reads
+  moved in process (`graft_git::snapshot_reads`): the tree compare is exact on two tree objects, and `core.autocrlf` is
+  re-read from disk on every call, never the handle's launch-time config. `check-attr` stays git's: its attribute sources
+  are git's to know. Counts pinned by `snapshot_raw` tests; times measured by 30q-c's script.
 - `cat-file --batch --filters` was the planned smudge read; its header prints the pre-filter size (git 2.54, seen), so
   its output cannot be split. `checkout-index` runs the same conversion a restore's checkout does.
 - Not covered: J's forward put-back and the set-aside's `stash apply` (git writes those), EOL-only drift, `chain_backup`

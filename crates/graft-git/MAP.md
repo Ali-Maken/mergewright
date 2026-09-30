@@ -20,6 +20,7 @@ One line per public item. Update when a public item changes.
 - `state` (mod) — whether a merge, rebase, cherry-pick, revert or bisect is in progress (m3/01).
 - `switch_refs` (mod, `switch_refs.rs`) — every local and remote branch with tip, subject, author, date, upstream, and `@{-1}`: what the branch picker lists (m7-power-tools/10a).
 - `shallow` (mod, `shallow.rs`) — a shallow clone's cut: `<common_dir>/shallow` read once, the one reader walks, blame and trace share (m7-power-tools/32).
+- `snapshot_reads` (mod, `snapshot_reads.rs`) — the before-snapshot's in-process reads, no `git` spawn: the regular files a tree changes against `HEAD`, and `core.autocrlf` re-read from disk (m7-power-tools/30r, ADR-0052).
 - `status` (mod) — counting staged, unstaged and untracked working-tree changes.
 - `version` (mod) — running and classifying the system `git` binary's version.
 
@@ -289,6 +290,13 @@ Rule: a commit listed in `<common_dir>/shallow` has no parents — git's (`rev-l
 - `classify_failure` (fn) — `classify_failure(stderr: &[u8]) -> RemoteFailure`: pure, reads every line (`LC_ALL=C` English), rules in the order above, first match wins; unmatched → `Other` with the first `fatal:`/`error:` line (else first non-progress line) verbatim. Tests hold real git 2.54 stderr.
 - `RemoteProgress` (struct) — `phase` (lower-case, no colon), `percent`, `done`, `total`, `rate` (git's text); `brief()` → `<phase> <pct>%` / `<phase> <done>/<total>` / `<phase>`, ≤ 32 chars.
 - `parse_progress` (fn) — `parse_progress(segment: &[u8]) -> Option<RemoteProgress>`: one stderr segment; `remote: ` and its padding stripped; `None` for ref updates, `hint:`/`error:`/`fatal:`, anything else.
+
+## snapshot_reads (m7-power-tools/30r, ADR-0052)
+`raw_record`'s questions 1 and 2a in process, each giving git's own answer (a wrong "no" loses his bytes). `check-attr` stays a spawn in graft-ops.
+- `ChangedFile` (struct) — `path` (repo-relative, `/`-separated, raw bytes), `executable` (`100755`), `blob`.
+- `changed_files` (fn) — `(repo, head: Option<Oid>, to_tree, stop) -> Result<Vec<ChangedFile>, ReadError>`: the regular files `to_tree` holds apart from `head`'s tree (peeled), the set `diff-tree -r -z --no-renames` gives kept to regular files on the new side (added, modified, mode-only, type-changed into a file; never a symlink, gitlink or deletion); `None` = every regular file. Identical subtree ids skipped unread; modes canonicalised as git does. Sorted by path bytes. Tested against real `diff-tree` (`tests/it/snapshot_reads.rs`).
+- `autocrlf_converts` (fn) — `(repo) -> Result<bool, ReadError>`: `core.autocrlf` as git reads it now — the repository re-opened (`gix::open_opts`, the handle's own options plus `git_binary`, so the git installation's config is read) on every call, never the handle's launch-time config. Unset or git-false → `false`; `input`, a bare key, any true or non-boolean value → `true`. gix's installation-config lookup spawns `git config` once per process.
+- `ReadError` (enum) — `Object { oid, message }` (not found, unreadable, not a tree), `Config(String)` (the re-open failed), `Stopped`. Display one line.
 
 ## stash
 - `StashEntry` (struct) — `index` (`0` newest), `commit`, `message` (git's own reflog message), `at`, `paths` (tracked changes plus, for `-u`/`-a`, the untracked-files commit's own paths) (m3/01).
