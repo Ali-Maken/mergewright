@@ -12,7 +12,7 @@ use graft_ops::journal_list::{
 };
 
 use super::super::JournalState;
-use super::{RowKey, hits};
+use super::{count, hits, refresh_hits};
 use crate::jobs::undo::JournalRead;
 use crate::update::detail::Loading;
 
@@ -116,28 +116,20 @@ fn journal() -> JournalState {
     }
 }
 
-fn keys_at(journal: &JournalState, indices: &[usize]) -> Vec<RowKey> {
-    let list = journal.list.as_ref().expect("built");
-    indices
-        .iter()
-        .map(|&index| super::row_key(list, index).expect("a row"))
-        .collect()
-}
-
 #[test]
 fn hits_find_a_lost_subject_a_branch_and_a_path() {
     let journal = journal();
     // The lost commit's subject, any case.
-    assert_eq!(hits(&journal, "RATE limiter"), keys_at(&journal, &[2]));
+    assert_eq!(hits(&journal, "RATE limiter"), vec![2]);
     // The branch: the `$` row's ref short name, and the `✗` row it held.
-    assert_eq!(hits(&journal, "spike"), keys_at(&journal, &[1, 2]));
+    assert_eq!(hits(&journal, "spike"), vec![1, 2]);
     // The lost edit's path.
-    assert_eq!(hits(&journal, "src/a.rs"), keys_at(&journal, &[3]));
+    assert_eq!(hits(&journal, "src/a.rs"), vec![3]);
     // The sha7 of the lost commit.
-    assert_eq!(hits(&journal, "abababa"), keys_at(&journal, &[2]));
+    assert_eq!(hits(&journal, "abababa"), vec![2]);
     // A `●` row's description; git's subject on a `$` row.
-    assert_eq!(hits(&journal, "notes"), keys_at(&journal, &[0]));
-    assert_eq!(hits(&journal, "commit: try"), keys_at(&journal, &[1]));
+    assert_eq!(hits(&journal, "notes"), vec![0]);
+    assert_eq!(hits(&journal, "commit: try"), vec![1]);
 }
 
 #[test]
@@ -145,12 +137,38 @@ fn hits_skip_verdict_words() {
     let journal = journal();
     // The `●` row was aborted, and its command names `aborted.txt`: neither
     // is a word that names the row.
-    assert_eq!(hits(&journal, "aborted"), Vec::new());
+    assert_eq!(hits(&journal, "aborted"), Vec::<usize>::new());
 }
 
 #[test]
 fn a_blank_find_has_no_hits() {
     let journal = journal();
-    assert_eq!(hits(&journal, ""), Vec::new());
-    assert_eq!(hits(&journal, "   "), Vec::new());
+    assert_eq!(hits(&journal, ""), Vec::<usize>::new());
+    assert_eq!(hits(&journal, "   "), Vec::<usize>::new());
+}
+
+/// The title's count reads the hits the find worked out, not the list: a
+/// list swapped in without `refresh_hits` still counts the old hits, so
+/// the view does no recompute per frame (ticket 30p-d).
+#[test]
+fn count_reads_the_cached_hits() {
+    let mut journal = journal();
+    journal.find.kept = Some("spike".to_owned());
+    refresh_hits(&mut journal);
+    assert_eq!(count(&journal), Some((1, 2)));
+
+    // Only the `●` row is left; "spike" names none of it.
+    let rows = journal.list.as_ref().expect("built").rows[..1].to_vec();
+    journal.list = Some(Arc::new(JournalList {
+        rows,
+        scan: LostScan::Done,
+    }));
+    assert_eq!(
+        count(&journal),
+        Some((1, 2)),
+        "the cached hits, not the list"
+    );
+
+    refresh_hits(&mut journal);
+    assert_eq!(count(&journal), Some((1, 0)));
 }

@@ -273,6 +273,7 @@ fn local_branches(state: &AppState) -> std::collections::HashSet<Vec<u8>> {
 pub(crate) fn rebuild(state: &mut AppState) {
     let Loading::Ready(read) = &state.journal.entries else {
         state.journal.list = None;
+        find::refresh_hits(&mut state.journal);
         return;
     };
     let outside: &[OutsideRecord] = match &state.journal.outside {
@@ -328,6 +329,8 @@ pub(crate) fn rebuild(state: &mut AppState) {
         journal.expanded = None;
     }
     journal.list = Some(Arc::new(list));
+    // The kept find's hits are list indices: the new list moves them.
+    find::refresh_hits(journal);
 }
 
 #[cfg(test)]
