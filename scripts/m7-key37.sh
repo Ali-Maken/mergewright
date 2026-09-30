@@ -17,7 +17,7 @@
 #
 # Writes docs/perf/m7-12g-key-37.txt (or $1, relative to the repo root); a
 # second pass appends a new section. Read its SUMMARY lines. Each run records
-# `uptime` before and after and any other process over 50% CPU; a run at
+# `uptime` before and after and any process over 40% CPU (claude excluded); a run at
 # 1-minute load >= 3 or beside such a process is marked `*` and left out of
 # the conclusions, never rerun.
 #
@@ -34,7 +34,8 @@ M1=${M1:-b5380399}
 TMP=${TMPDIR:-/tmp}
 TMP=${TMP%/}
 WT=$TMP/graft-12g-wt
-export CARGO_TARGET_DIR=$TMP/graft-12g-target
+# Target inside this checkout's gitignored target/, never the shared one.
+export CARGO_TARGET_DIR=${KEY37_TARGET:-$ROOT/target/m7-key37}
 TEST=frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_unicode_tier
 WORK=$(mktemp -d)
 
@@ -66,13 +67,18 @@ git -C "$WT" apply "$ROOT/scripts/m7-key37.patch" || {
   exit 1
 }
 
+# Processes over 40% CPU other than claude (the conductor's quiet rule).
+busy() {
+  ps -Ao pcpu=,comm= | awk -v w="$1" '$1 > 40 && $0 !~ /claude/ { print "busy-" w ": " $0 }'
+}
+
 # One run: header, uptime before/after, busy processes, the test's lines.
 run() {
   local n=$1 mode=$2 status
   {
     echo "# run $n mode=$mode $(date -u +%FT%TZ)"
     echo "uptime-before: $(uptime)"
-    ps -Ao pcpu=,comm= | awk '$1 > 50 { print "busy-before: " $0 }'
+    busy before
   } >>"$WORK/runs.txt"
   if [ "$mode" = spin ]; then
     (cd "$WT" && KEY37_SPIN=1 cargo test --release --quiet -p graft --features heavy-tests --test it \
@@ -87,6 +93,7 @@ run() {
     grep -oE '[0-9]+ of [0-9]+ keys missed[^:]*' "$WORK/run.out" | sed 's/^/missed: /'
     echo "exit: $status"
     echo "uptime-after: $(uptime)"
+    busy after
   } >>"$WORK/runs.txt"
   grep -q '^KEY37' "$WORK/run.out" || {
     echo "run $n printed no KEY37 line:" >>"$WORK/runs.txt"
@@ -168,7 +175,7 @@ qp = [r for r in plain if quiet(r)]
 qs = [r for r in spin if quiet(r)]
 failed = [r["n"] for r in runs if r["key"] is None]
 print(f"{S} runs: plain={len(plain)} (quiet {len(qp)}) spin={len(spin)} (quiet {len(qs)}); "
-      f"quiet = 1-min load < 3 before and after and no other process > 50% CPU; * marks a run left out"
+      f"quiet = 1-min load < 3 before and after and no process > 40% CPU but claude; * marks a run left out"
       + (f"; NO KEY37 LINE in runs {failed}" if failed else ""))
 lat = lambda rs: [int(r["key"]["latency_us"]) for r in rs]
 print(f"{S} repro: key index {sorted({r['key']['key'] for r in runs if r['key']})}; plain quiet latency {spread(lat(qp))}; "

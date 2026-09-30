@@ -1,6 +1,6 @@
 # 12g key-37-cause — name the cause of M1's 17–18 ms key 37 (review m7-12 Major 2)
 
-Status: blocked — measuring runs need the machine quiet (stray process, see NOTES)
+Status: done 2026-09-30 — cause measured (NOTES 2026-09-30)
 Blocked by: nothing to build. **The measuring runs** wait for a quiet machine: no other cargo running (conductor
 confirms), and not overlapping 12e's perf rev.
 Crates: **none at HEAD.** Works in its own worktree at M1's commit `10138177` (detached, own `CARGO_TARGET_DIR`); that
@@ -57,14 +57,31 @@ Split by: planner, 2026-09-27. Owns KNOWN_GAPS M7/04-M2.
   (log m7.md :32/:67, KNOWN_GAPS M7/04-M2). Don't edit KNOWN_GAPS or the log.
 
 ## Acceptance (each tick names its SUMMARY line or command, inline, at tick time)
-- [ ] Reproduced (or not) on `10138177`: runs, key 37 min/median/max — cite the SUMMARY line.
-- [ ] H1 harness slack: per-run slack on key 37 — cite the line; confirmed / ruled out.
-- [ ] H2 CPU power state: spinner runs vs plain — cite the line; confirmed / ruled out.
-- [ ] H3 Graft's three frames: per-frame time — cite the line; confirmed / ruled out.
-- [ ] Parts sum to the observed within 1 ms per run, or the remainder named with its size — cite the line.
-- [ ] `bash scripts/m7-key37.sh` re-runs end to end from a clean checkout (second run's SUMMARY lines cited).
-- [ ] ADR-0021 "Amended (m7/12g)" paragraph: the cause in one sentence, each share in ms, the perf file path.
-- [ ] One line for the user at the M7 stop, in his terms: "The slow key you saw in M1 was …", with the numbers.
+- [x] Reproduced (or not) on `10138177`: runs, key 37 min/median/max — cite the SUMMARY line.
+  **Reproduced, at `b5380399` not `10138177` (Stop 2).** `SUMMARY pass3 repro`: plain quiet 11.4/12.6/17.7 ms, over
+  12 ms in 3 of 5; `SUMMARY pass2 repro`: 11.7/12.0/15.5 ms, 1 of 3. 8 quiet plain runs, 11.4–17.7 ms.
+- [x] H1 harness slack: per-run slack on key 37 — cite the line; confirmed / ruled out.
+  **A share, not the cause.** `SUMMARY pass3 H1`: quiet plain 0.5/1.8/4.3 ms (pass2 2.4/2.8/4.2), all oversleep, late 0;
+  every key's oversleep p50 3.7–3.8 / max 7.0–7.1 ms, so key 37's is ordinary.
+- [x] H2 CPU power state: spinner runs vs plain — cite the line; confirmed / ruled out.
+  **Confirmed, the main share.** `SUMMARY pass3 H2`: key 37 spin 8.4/8.5/9.0 vs plain 11.4/12.6/17.7 ms; frames spin
+  3.2/3.2/3.3 vs plain 7.7/10.9/13.4 ms (pass2: 3.2 vs 9.1/9.3/11.3). Excess 4.5–10.2 ms. Clock ramp vs core placement
+  not told apart (`powermetrics` needs root).
+- [x] H3 Graft's three frames: per-frame time — cite the line; confirmed / ruled out.
+  **A share, not the cause.** `SUMMARY pass3 H3`: 3 wakes every run; warm (spin) 3.2–3.3 ms for all three, worker
+  wait 0.0 in all 18 runs of passes 2–3. Cold they take 7.7–13.4 ms — that difference is H2's.
+- [x] Parts sum to the observed within 1 ms per run, or the remainder named with its size — cite the line.
+  `SUMMARY pass3 sum`: max 3 µs over 9 runs; `SUMMARY pass2 sum`: 4 µs over 9. Unexplained: none. (The 3.2 ms / excess
+  split inside `frames` uses the spin runs' frames as the warm cost: derived, not a separate probe.)
+- [x] `bash scripts/m7-key37.sh` re-runs end to end from a clean checkout (second run's SUMMARY lines cited).
+  Pass 3 from committed `acf40b1b`, `git status` empty, fresh worktree + target: `SUMMARY pass3 runs: plain=6 (quiet 5)
+  spin=3 (quiet 3)` and the five lines above. `bash -n` ok.
+- [x] ADR-0021 "Amended (m7/12g)" paragraph: the cause in one sentence, each share in ms, the perf file path.
+  `docs/adr/0021-time-budgets-fail-in-release-only.md` after `:56`, numbers from the pass 2–3 SUMMARY lines above.
+- [x] One line for the user at the M7 stop, in his terms: "The slow key you saw in M1 was …", with the numbers.
+  "The slow key you saw in M1 was the Mac's CPU not yet at full speed when the first row load hit: 3 ms of Graft's
+  work took 8–13 ms on the slow CPU, plus up to 4 ms of the test's own timer lateness (worst run 17.7 ms = 4.3 + 3.2 +
+  10.2); nothing in Graft waited." Source: `SUMMARY pass2/pass3 H1, H2, H3`.
 
 ## Gates
 No HEAD Rust changes, so the cargo gates don't apply at HEAD; `bash -n scripts/m7-key37.sh`. The throwaway worktree is
@@ -108,3 +125,29 @@ defaults to `M1=b5380399` and says why.
 
 Touches: at HEAD only `scripts/m7-key37.sh`, `scripts/m7-key37.patch`, `docs/perf/m7-12g-key-37.txt`, this ticket.
 `rg -n 'key 37' docs/ KNOWN_GAPS.md` still to be listed with the result.
+
+## NOTES (debugger, 2026-09-30) — measured
+
+No scout (as before). `diagnosing-bugs`. Loop: `bash scripts/m7-key37.sh`, SUMMARY lines only read.
+
+**Quiet checks.** 17:03:46Z load 1.24, top non-claude 2.7%: ran pass 2. `mediaanalysisd` (macOS) went to 157–219% at
+17:06:15Z mid-pass: runs 5–9 marked `*`, left in, left out of conclusions. 17:07:18Z still 159%: waited (polled 30 s,
+4 checks < 40%) until 17:12:56Z. Pass 3 at 17:13:46Z; run 1 at load 3.02 marked `*`. Quiet = load < 3 and no process
+> 40% but claude (script changed from 50% to the conductor's rule).
+
+**Script changes:** quiet threshold 40% (claude excluded), `busy` also after each run, target `target/m7-key37` in
+this checkout (`KEY37_TARGET` overrides). Patch unchanged.
+
+**Result (8 quiet plain, 4 quiet spin):** key 37 = slack 0.5–4.3 + Graft 3.2 + cold CPU 4.5–10.2 ms + worker 0.
+Spin runs have more slack (5.1–5.8 ms) than plain; not explained, not needed for the cause.
+Side note: a busy system daemon (runs 5–9 pass 2, `mediaanalysisd` ~150–220%) did not warm the frames (10.6–11.2 ms),
+the in-process spinner did (3.2 ms).
+
+**Throwaway worktree removed:** `git worktree list` shows only main and this one; `target/m7-key37` absent.
+
+**For the conductor — lines that now need the result** (`rg -n 'key 37' docs/ KNOWN_GAPS.md`; not edited):
+KNOWN_GAPS.md:857 (M7/04-M2, close); docs/log/m7.md:27, :64, :272; docs/reviews/m7-12.md:23, :164;
+docs/reviews/m7-04-slow-key.md:23, :69; docs/design-notes/m7-power-tools.md:792. ADR-0021:36 carries the amendment.
+
+Touches: at HEAD only `scripts/m7-key37.sh`, `docs/perf/m7-12g-key-37.txt`, ADR-0021, this ticket. No `crates/` change
+(`git diff --stat 3ead3ab8 -- crates/` empty).
