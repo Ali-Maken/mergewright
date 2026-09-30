@@ -1,0 +1,15 @@
+# m7 milestone release perf run (ADR-0021), conductor 2026-09-30T18:33:43Z, HEAD 4d7645ce; 23:33  up 13 days,  4:41, 5 users, load averages: 3.97 4.44 3.70
+frames: tier=Pixel refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=1325 p99_us=4097 max_us=6136 over_budget=0 kitty_commands=81115 bytes=323182253
+frames: tier=Unicode refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=996 p99_us=2238 max_us=3579 over_budget=0 kitty_commands=0 bytes=2070405
+frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain keys=422 p50_us=1393 p99_us=1622 max_us=3689 over_budget=0 kitty_commands=0 bytes=38455
+frames: tier=Unicode refs=FiftyThousand pane=Open control=Plain keys=421 p50_us=1406 p99_us=1630 max_us=3713 over_budget=0 kitty_commands=0 bytes=34492
+frames: tier=Unicode refs=FiftyThousand pane=Map control=Plain keys=421 p50_us=987 p99_us=1072 max_us=3563 over_budget=0 kitty_commands=0 bytes=74563
+test frames::journal_find::j_with_a_broad_find_holds_the_frame_budget ... frames: tier=Unicode refs=2425 pane=JournalFind control=Plain keys=127 p50_us=4085 p99_us=10627 max_us=10751 over_budget=0 hits=2000 lost_rows=425
+frames: tier=Pixel refs=Fixture pane=Closed control=Plain keys=420 p50_us=1349 p99_us=3244 max_us=4056 over_budget=0 kitty_commands=81117 bytes=322885425
+frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=1622 p99_us=1994 max_us=2073 over_budget=0 kitty_commands=0 bytes=1763446
+test heavy::budgets_hold_on_the_100k_fixture_with_50k_refs ... synthetic-100000-refs50000-commit-graph (commit-graph): first_paint_us=44136 bottom_ms=57 top_ms=0 rows=100000 provisional=false rss_at_paint=94437376 rss_at_bottom=107577344 peak_rss=107823104 overflow_len=0
+test heavy::budgets_hold_on_the_100k_fixture_with_a_commit_graph ... synthetic-100000-commit-graph (commit-graph): first_paint_us=14359 bottom_ms=51 top_ms=0 rows=100000 provisional=false rss_at_paint=24887296 rss_at_bottom=33030144 peak_rss=33095680 overflow_len=0
+test heavy::budgets_hold_on_the_100k_fixture_without_a_commit_graph ... synthetic-100000-no-commit-graph (no commit-graph): first_paint_us=21367 bottom_ms=626 top_ms=0 rows=100000 provisional=true rss_at_paint=28049408 rss_at_bottom=99401728 peak_rss=99401728 overflow_len=100000
+test heavy::budgets_hold_on_the_100k_realistic_fixture_with_a_commit_graph ... synthetic-100000-realistic-commit-graph (commit-graph): first_paint_us=18158 bottom_ms=54 top_ms=1 rows=100000 provisional=false rss_at_paint=27426816 rss_at_bottom=36798464 peak_rss=36929536 overflow_len=0
+test heavy::budgets_hold_on_the_100k_realistic_fixture_without_a_commit_graph ... synthetic-100000-realistic-no-commit-graph (no commit-graph): first_paint_us=20324 bottom_ms=669 top_ms=1 rows=100000 provisional=true rss_at_paint=30621696 rss_at_bottom=106496000 peak_rss=106496000 overflow_len=10000
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 667 filtered out; finished in 133.72s
