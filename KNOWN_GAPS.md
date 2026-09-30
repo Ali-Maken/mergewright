@@ -1045,3 +1045,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/30q-chain | `chain_backup` links (resolver step inside a stopped operation) keep no `raw/`; nothing restores a worktree from them today (30q R1 out of scope) | **unverified** | M7 |
 | M7/30q-smudge-name | A failing required smudge filter makes the snapshot refuse the operation (tested, 30q-b) but the refusal does not name the file; text built in graft-ops `snapshot/raw.rs` — question: name the path? | **unverified** | M8 |
 | M7/30q-steps-size | graft-ops `restore/steps.rs` 851 lines after 30q-b (was 708; 6.2 ~400); a `restore/raw.rs` split was outside the ticket | **broken** (6.2) | M8 |
+| M7/30q-case3 | Snapshot under `core.autocrlf=true` with 50 changed LF files: `raw_record` p50 53 ms, `take` p50 101 ms (docs/perf/30q-snapshot.txt); ungated — bound decided after 30r trims a spawn there (30r Proposed change) | **unverified** | M8 |
