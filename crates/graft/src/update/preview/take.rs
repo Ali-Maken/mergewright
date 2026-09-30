@@ -113,6 +113,10 @@ pub(super) fn take_operation(state: &AppState) -> Result<Operation, Status> {
     let op = Operation::CherryPick(params);
     match refused {
         Ok(()) => Ok(op),
-        Err(refusal) => Err(crate::update::operate::refusal_status(&op, &refusal)),
+        Err(refusal) => Err(crate::update::operate::refusal_status(
+            &op,
+            &refusal,
+            state.size.columns,
+        )),
     }
 }

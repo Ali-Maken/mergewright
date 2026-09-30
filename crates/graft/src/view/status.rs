@@ -73,7 +73,7 @@ pub(crate) fn done_line(what: &str, also: Option<&str>, keys: Option<&str>) -> S
 /// really does clear a `Failed`/`Sticky` status (`update::keys::key_event`),
 /// and a failure that names no key at all is the one footer ADR-0037 §4
 /// rules out — the bar must never be keyless (m5-03 review, Major 2).
-const DISMISS: &str = "esc dismiss";
+pub(crate) const DISMISS: &str = "esc dismiss";
 
 /// The graph footer's reading of [`Status`]: the same problem, but with the
 /// reason and keys kept apart so [`graft_ui::graph_screen::hints::fit_status_line`]

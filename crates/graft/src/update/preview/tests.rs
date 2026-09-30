@@ -1225,7 +1225,7 @@ fn a_refused_merge_preview_says_why_on_the_status_line() {
     };
     assert_eq!(
         state.status,
-        crate::update::operate::refusal_status(&op, &refusal)
+        crate::update::operate::refusal_status(&op, &refusal, state.size.columns)
     );
 }
 

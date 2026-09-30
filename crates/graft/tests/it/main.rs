@@ -35,6 +35,7 @@ mod heavy;
 mod hint_bar;
 mod history_place;
 mod idle_advance;
+mod in_the_way_status;
 mod journal_put_back;
 mod journal_screen;
 mod land_on_result;

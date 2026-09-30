@@ -1,6 +1,6 @@
 # f-guard — at 80 columns the in-the-way refusal keeps the file name and "move it aside first"
 
-Status: ready
+Status: done
 Build with: **Sonnet.** The words, the ladder and the signatures are fixed below; tests and one capture judge it.
 Needs: 28a/28b as merged (`Refusal::InTheWay`, `in_the_way::doing`); graft's `refusal_status`, `view::status::DISMISS`,
 `graph_screen::hints::fit_status_line`.
@@ -76,22 +76,22 @@ pub(crate) fn refusal_status(op: &Operation, refusal: &Refusal, columns: u16) ->
 ```
 
 ## Acceptance (name the verifying test at tick time; **(red)** = seen failing first, line in NOTES)
-- [ ] (red, by compile) graft-ops `operation::tests::in_the_way_rungs`: one path, a 2-component path, a deep path, `+N
+- [x] (red, by compile) graft-ops `operation::tests::in_the_way_rungs` — ticked: `operation::tests::in_the_way_rungs`: one path, a 2-component path, a deep path, `+N
       more`, untracked-only; each ladder exactly as decision 3; rung 0 joined == `explain()`.
-- [ ] graft-ops `operation::tests::every_other_refusal_has_one_rung_equal_to_explain`: one value per variant (grep the
+- [x] graft-ops `operation::tests::every_other_refusal_has_one_rung_equal_to_explain` — ticked: that test: one value per variant (grep the
       existing test that builds every `Refusal`; reuse it).
-- [ ] (red) graft `in_the_way_status::a_refusal_at_80_keeps_the_file_and_the_next_step`: 26's fixture (a long branch
+- [x] (red) graft `in_the_way_status::a_refusal_at_80_keeps_the_file_and_the_next_step` — ticked: that test: 26's fixture (a long branch
       name, an ignored deep path the switch would write), 80x24, the switch key. The bottom row holds the file's name
       whole and `move it aside first · esc dismiss` whole. Red today: the row 26 recorded.
-- [ ] graft `in_the_way_status::a_refusal_at_187_reads_as_before`: 187x50, the same refusal; the row is
+- [x] graft `in_the_way_status::a_refusal_at_187_reads_as_before` (branch `other`, see NOTES) — ticked: that test: 187x50, the same refusal; the row is
       `<path> (ignored) is in the way of <doing> · move it aside first · esc dismiss`, as today. Guard.
-- [ ] graft `in_the_way_status::an_untracked_file_in_the_way_names_s`: untracked, 80x24: `S stashes it first` whole, no
+- [x] graft `in_the_way_status::an_untracked_file_in_the_way_names_s` — ticked: that test: untracked, 80x24: `S stashes it first` whole, no
       `esc dismiss`.
-- [ ] Capture `docs/shots/m7/in-the-way-at-80-80x24.txt` (`check_shot`). **Right:** the bottom row holds the file's name
+- [x] Capture `docs/shots/m7/in-the-way-at-80-80x24.txt` — ticked: `check_shot` in `a_refusal_at_80_keeps_the_file_and_the_next_step`; look unverified (user's); **Right line not fully met, see NOTES** (`check_shot`). **Right:** the bottom row holds the file's name
       whole and `move it aside first · esc dismiss` whole; a `…` stands only where directories or `of <doing>` were left
       out. The look is the user's (rule 6).
-- [ ] graft `hint_bar::a_failure_still_names_the_key_that_clears_it` and every `hint_bar::` test green, unchanged.
-- [ ] ADR-0049 amendment; MAP.md (graft-ops `Refusal::explain_rungs`, `RefusalWords`; graft `refusal_status`'s
+- [x] graft `hint_bar::a_failure_still_names_the_key_that_clears_it` — ticked: workspace nextest 4984/4984, `hint_bar::` unchanged and every `hint_bar::` test green, unchanged.
+- [x] ADR-0049 amendment; — ticked: docs only, no test; gates fmt/clippy/nextest/doc pass; MAP.md (graft-ops `Refusal::explain_rungs`, `RefusalWords`; graft `refusal_status`'s
       `columns` and the `InTheWay` keys). Gates workspace-wide.
 
 ## Touches (each on the report's **Touches:** line, with how it was checked)
@@ -117,3 +117,18 @@ workspace-wide.
 
 ## Rules
 Worktree only; `CARGO_TARGET_DIR` in the worktree. Never read `PROGRESS.md` or `KNOWN_GAPS.md`.
+
+## NOTES (builder, 2026-10-01)
+- Red: `in_the_way_rungs` red by compile (no `explain_rungs`). The two 80-col graft tests red with 26's row
+  (`src/services/…/session-c… · esc dismiss`): the switch refuses at **write** time, `history_refusal`'s `_ => None`
+  (`failure.rs`), not via `refusal_status`. Added an `InTheWay` arm there → same `in_the_way_status`.
+- **Question for planner:** at 80 cols with 26's fixture even rung 4 (`…/session-cache.json (ignored) is in the way`,
+  59) + keys (37) > 79, so the footer cuts it: `…/session-cache.json (ignored) is in the w… · move it aside first · esc
+  dismiss`. File name and next step whole (acceptance met), but the capture's Right line (`…` only where dirs/`of
+  <doing>` left out) is not. A rung 5 would be a design change; not invented.
+- 187 guard: with 26's long branch rung 1 is 202 cells, never fits 187; the guard uses branch `other`.
+- `view::status::DISMISS` made `pub(crate)` (only change in status.rs) so keys build it.
+- `view::status::problem` (status screen, stash overlay) now reads `… · move it aside first · esc dismiss` (was without
+  `esc dismiss`); still one line.
+- Resize after refusal keeps the rung: KNOWN_GAPS row for conductor, **unverified**.
+- No scout: ticket named every line; direct greps.

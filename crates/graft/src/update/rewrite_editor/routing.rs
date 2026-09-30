@@ -27,6 +27,9 @@ pub(crate) fn after_planned(
     if state.rewrite.stale.remove(&id) {
         return;
     }
+    // The editor fills the screen, so its notice row is the terminal's
+    // width; its words join reason and keys (`status_words`).
+    let columns = state.size.columns;
     let Some(editor) = state.rewrite.editor.as_mut() else {
         return;
     };
@@ -42,7 +45,7 @@ pub(crate) fn after_planned(
         Err(PreviewFailure::Refused(refusal)) => {
             let op = graft_ops::operation::Operation::Rewrite(asked);
             After::Refused(words::status_words(
-                &crate::update::operate::refusal_status(&op, &refusal),
+                &crate::update::operate::refusal_status(&op, &refusal, columns),
             ))
         }
         Err(PreviewFailure::Failed(why)) => After::Failed(why),
@@ -154,7 +157,7 @@ pub(crate) fn write_answered(state: &mut AppState, answer: &Operated) {
             _ => graft_ops::operation::Operation::Rewrite(editor.opened.clone()),
         };
         editor.notice = Some(words::status_words(
-            &crate::update::operate::refusal_status(&op, refusal),
+            &crate::update::operate::refusal_status(&op, refusal, state.size.columns),
         ));
         state.rewrite.editor = Some(editor);
     }

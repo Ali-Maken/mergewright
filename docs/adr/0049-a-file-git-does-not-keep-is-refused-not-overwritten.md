@@ -62,3 +62,18 @@ first` (`+N more … move them aside first` for several). An untracked-only one 
 
 Rebase (`r`) keeps its row, unmodelled: git skips only when the branch already starts from `onto`, a rebase with
 nothing to do. If one is ever refused there, the refusal is on the safe side.
+
+## Amendment 2026-10-01 (26 F-guard; ticket 30t) — the words at a narrow width
+
+The next step (`move it aside first`, `S stashes it first`) is the status line's keys, kept whole (ADR-0037 §4), with
+`esc dismiss` beside a step that names no key. The reason shortens by a ladder, longest first; the first whose
+`reason · keys` fits the row wins, else the last, which the footer still cuts:
+
+1. `<path> (ignored) is in the way of <doing>` — the words above, unchanged
+2. `<path> (ignored) is in the way`
+3. `<top>/…/<name> (ignored) is in the way` — 3+ path components
+4. `…/<name> (ignored) is in the way` — 2+ path components
+
+`+N more` stays after the path; untracked-only rows drop `(ignored)`; a rung no shorter than the one before is skipped.
+`of <doing>` goes first (he just pressed that key); the file's name, what he must move, goes last. The rung is chosen
+when the refusal is made, so a later resize keeps it.
