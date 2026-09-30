@@ -333,13 +333,16 @@ pub(crate) fn refresh_hits(journal: &mut JournalState);
 ```
 
 ### Acceptance
-- [ ] **Red:** the conductor's OVER line in `docs/perf/30p-journal-find.txt`, cited.
-- [ ] Green, named: `hits_find_a_lost_subject_a_branch_and_a_path`, `hits_skip_verdict_words`,
-  `a_blank_find_has_no_hits`, `a_find_survives_rows_arriving` (the `RowKey` cursor still holds across stages),
-  `enter_keeps_the_find_and_n_steps_the_hits`, `u_typed_into_the_find_is_text`.
-- [ ] `count_reads_the_cached_hits` (red): a list rebuilt without `refresh_hits` still counts the old hits. This proves
-  the view does no recompute.
-- [ ] Grep: `index_of` is not called from `find.rs`'s `count` or `kept_hits`.
+- [x] **Red:** the conductor's OVER line in `docs/perf/30p-journal-find.txt`, cited: `:33 SUMMARY journal-find
+  gate(p99<=16ms)=OVER` (runs `:30-32`: p50 2.3–2.4 s, p99 3.7–3.8 s, 2425 rows, 2000 hits; 121 of 127 keys over,
+  from key 6 `Enter` on). Verifying test: `frames::journal_find::j_with_a_broad_find_holds_the_frame_budget`.
+- [x] Green, named (nextest, 4961/4961): `update::journal::find::tests::{hits_find_a_lost_subject_a_branch_and_a_path,
+  hits_skip_verdict_words, a_blank_find_has_no_hits}` (now assert list indices), `journal_screen::{a_find_survives_rows_arriving,
+  enter_keeps_the_find_and_n_steps_the_hits, u_typed_into_the_find_is_text}` (unchanged).
+- [x] `count_reads_the_cached_hits` (red seen on today's `count`, at its `"the cached hits, not the list"` assert: left `Some((1, 0))`, right
+  `Some((1, 2))`; green after).
+- [x] Grep: `grep -n "index_of\|kept_hits" crates/graft/src/update/journal/find.rs` → no match (exit 1); `kept_hits` is
+  gone.
 - [ ] The conductor re-runs `scripts/m7-30p-perf.sh`: `gate … =ok`. It is the conductor's run, not the builder's.
 
 ### Touches
@@ -451,3 +454,21 @@ landing function is unchanged (one caller, `operate/outcome.rs:187`). `Touches {
 **For the conductor:** R1 test 6 red → the planner's call (refuse in `check` vs fix the snapshot) and a KNOWN_GAPS
 **broken** row. R2's design-note row is yours.
 
+
+### 30p-d (2026-09-30, builder Opus; no scout agent: a short read of the three named files, as the dispatch asked)
+- **Where the per-key cost was (today's code, df0596af):** `count` (`find.rs:112-118`) ran `kept_hits` every frame
+  (`view/journal.rs:73`); `kept_hits` (`find.rs:99-107`) ran `hits` (a full list scan, `to_lowercase` per name, and for
+  each `●` row a scan of every entry, `find.rs:64-68`) and then `index_of` per hit (`journal.rs:81-83`, O(rows) with a
+  `RowKey` clone — a refname `String` — per compare): ~2000 × ~1200 clones per frame. `⏎` (`find.rs:213`) and `n`/`N`
+  (`find.rs:225`) ran `kept_hits` again. Typing a char does no hit work (the 5 typing keys are the 6 under budget),
+  and the view's only find call is `count`. So the spec's signatures fix it; not `blocked: spec`.
+- **Why the latency climbs per key** (73 ms → 700 ms by key 21, perf file): keys are sent a tick apart and each frame
+  took ~40 ms, so keys queue behind each other; the constant per-frame cost above is the cause, the climb its backlog.
+  This is reasoning from the file's numbers, **not observed** in a trace.
+- **Built:** `JournalFind.hits: Vec<usize>`; `hits` returns list indices and looks `●` descriptions up in one
+  `HashMap<&EntryId, &str>` per call; `refresh_hits` called by `⏎`, `Esc` over a kept find (clears) and both `rebuild`
+  paths (`list = None` too); `count` = `partition_point` on the cached hits; `n`/`N` read the cache. Left per frame:
+  `selected()`'s one `index_of` (O(rows), one key) — unchanged, outside this part.
+- **Not verified here:** the release gate. Conductor re-runs `scripts/m7-30p-perf.sh`.
+- `view/journal.rs` needed no edit (reads `count` only). `journal-find-187x50.txt` unchanged in `git status` after
+  nextest (`m7_walk::journal::journal_find_capture` green).

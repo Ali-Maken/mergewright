@@ -6,17 +6,21 @@
 //! bar, `⏎` keeps the find and moves the cursor to the first hit at or
 //! below the row it is on, wrapping; `n`/`N` step the kept find's hits,
 //! wrapping; `Esc` while typing closes the prompt (the cursor never moved),
-//! and `Esc` with a find kept drops it. The hits are worked out from the
-//! list each time they are asked for, so rows arriving in stages 2 and 3
-//! keep the find, and the cursor stays on its [`RowKey`].
+//! and `Esc` with a find kept drops it. The hits are worked out once per
+//! find (`⏎`) and once per list rebuild ([`refresh_hits`]), so rows
+//! arriving in stages 2 and 3 keep the find, the cursor stays on its
+//! `RowKey`, and a frame or an `n` never scans the list (30p-d).
 //!
 //! Two keys blame's prompt drops, J's takes: a paste (the ticket's
 //! acceptance) goes into the prompt. `Ctrl+U` does nothing, as in blame.
 
+use std::collections::HashMap;
+
 use graft_core::event::{KeyCode, KeyPress};
+use graft_core::journal::EntryId;
 use graft_ops::journal_list::{HeldBy, ListRow};
 
-use super::{AppState, JournalState, RowKey, row_key};
+use super::{AppState, JournalState, row_key};
 
 /// J's find: the prompt while he types, and the find `⏎` kept. Both can be
 /// up at once, as in blame: a new `/` over a kept find leaves the old one in
@@ -27,17 +31,31 @@ pub(crate) struct JournalFind {
     pub(crate) typing: Option<String>,
     /// The find `⏎` kept: `n`/`N` step its hits, the title counts them.
     pub(crate) kept: Option<String>,
+    /// Row indices into `journal.list` that hold `kept`, newest first.
+    /// Rebuilt by [`refresh_hits`] only.
+    pub(crate) hits: Vec<usize>,
 }
 
-/// Rows whose naming words hold `query`, newest first (the list's order).
-/// Blank → empty. Case-insensitive literal, folded as `search::Query` and
-/// blame's find do (`to_lowercase` on both sides).
+/// Recompute `find.hits` from `kept`. Called by `find_key` on `⏎` and by
+/// `rebuild` (the list changed under a kept find); nowhere else, so a
+/// frame or a step reads the hits without scanning the list.
+pub(crate) fn refresh_hits(journal: &mut JournalState) {
+    journal.find.hits = match &journal.find.kept {
+        Some(query) => hits(journal, query),
+        None => Vec::new(),
+    };
+}
+
+/// Rows whose naming words hold `query`, as indices into the list, newest
+/// first (the list's order). Blank → empty. Case-insensitive literal,
+/// folded as `search::Query` and blame's find do (`to_lowercase` on both
+/// sides).
 ///
 /// The naming words, per row (R4): a `●` row's description; a `$` row's
 /// plain words, git's subject and the ref's short name; a `✗` commit's
 /// sha7, subject and the branch that held it; a lost edit's paths. Never
 /// the verdict words (`aborted by you`, `failed: …`): state, not names.
-pub(crate) fn hits(journal: &JournalState, query: &str) -> Vec<RowKey> {
+pub(crate) fn hits(journal: &JournalState, query: &str) -> Vec<usize> {
     if query.trim().is_empty() {
         return Vec::new();
     }
@@ -45,26 +63,31 @@ pub(crate) fn hits(journal: &JournalState, query: &str) -> Vec<RowKey> {
         return Vec::new();
     };
     let folded = query.to_lowercase();
-    let entries = journal.newest_first();
+    // One lookup per call: a scan of the entries per `●` row made a find
+    // over a long journal rows × entries.
+    let descriptions: HashMap<&EntryId, &str> = journal
+        .newest_first()
+        .into_iter()
+        .map(|entry| (&entry.id, entry.description.as_str()))
+        .collect();
     (0..list.rows.len())
         .filter(|&index| {
-            names(&list.rows[index], &entries)
+            names(&list.rows[index], &descriptions)
                 .iter()
                 .any(|words| words.to_lowercase().contains(&folded))
         })
-        .filter_map(|index| row_key(list, index))
         .collect()
 }
 
 /// The words that name `row`.
-fn names(row: &ListRow, entries: &[&graft_core::journal::JournalEntry]) -> Vec<String> {
+fn names(row: &ListRow, descriptions: &HashMap<&EntryId, &str>) -> Vec<String> {
     match row {
         // The list is built from these very entries (`rebuild`); an id not
         // among them names nothing, as the view draws such a row blank.
-        ListRow::Graft(id) => entries
-            .iter()
-            .filter(|entry| &entry.id == id)
-            .map(|entry| entry.description.clone())
+        ListRow::Graft(id) => descriptions
+            .get(id)
+            .map(|description| (*description).to_owned())
+            .into_iter()
             .collect(),
         ListRow::Outside(step) => {
             let refname = &step.record.refname;
@@ -95,25 +118,15 @@ fn names(row: &ListRow, entries: &[&graft_core::journal::JournalEntry]) -> Vec<S
     }
 }
 
-/// The hits of the kept find, as indices into the list, newest first.
-fn kept_hits(journal: &JournalState) -> Vec<usize> {
-    let (Some(query), Some(list)) = (&journal.find.kept, &journal.list) else {
-        return Vec::new();
-    };
-    hits(journal, query)
-        .iter()
-        .filter_map(|key| super::index_of(list, key))
-        .collect()
-}
-
 /// The find's count for the title: which hit the cursor is at (the hits at
 /// or above it, at least 1, as blame's `FindTitle`) and how many. `None`
-/// with no find kept.
+/// with no find kept. Reads the cached [`JournalFind::hits`]; the list is
+/// not scanned per frame.
 pub(crate) fn count(journal: &JournalState) -> Option<(usize, usize)> {
     journal.find.kept.as_ref()?;
-    let hits = kept_hits(journal);
+    let hits = &journal.find.hits;
     let selected = journal.selected();
-    let at = hits.iter().filter(|&&at| at <= selected).count().max(1);
+    let at = hits.partition_point(|&at| at <= selected).max(1);
     Some((at, hits.len()))
 }
 
@@ -170,6 +183,7 @@ pub(crate) fn find_key(state: &mut AppState, key: KeyPress) -> bool {
         KeyCode::Escape if state.journal.find.kept.is_some() => {
             state.journal.touched = true;
             state.journal.find.kept = None;
+            refresh_hits(&mut state.journal);
             true
         }
         _ => false,
@@ -209,8 +223,9 @@ fn prompt_key(state: &mut AppState, key: KeyPress) {
             // An empty query closes the prompt: nothing to find (blame's).
             if !typed.is_empty() {
                 journal.find.kept = Some(typed);
+                refresh_hits(journal);
                 let from = journal.selected();
-                let hits = kept_hits(journal);
+                let hits = &journal.find.hits;
                 if let Some(&at) = hits.iter().find(|&&at| at >= from).or_else(|| hits.first()) {
                     move_to(journal, at);
                 }
@@ -222,7 +237,7 @@ fn prompt_key(state: &mut AppState, key: KeyPress) {
 
 /// `n`/`N`: the next (older) or previous (newer) hit, wrapping.
 fn step_find(journal: &mut JournalState, older: bool) {
-    let hits = kept_hits(journal);
+    let hits = &journal.find.hits;
     let from = journal.selected();
     let next = if older {
         hits.iter().find(|&&at| at > from).or_else(|| hits.first())
