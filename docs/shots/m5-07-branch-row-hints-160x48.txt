@@ -47,4 +47,4 @@ m5 walk capture: m5-07-branch-row-hints — scenario esc-cancels-nothing-runs, k
 
 
 
- m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  . more  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O
+ m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  . more  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C

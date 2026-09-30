@@ -25,7 +25,7 @@ m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflic
 
  merge in progress · from the shell · 2 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
 UNCOMMITTED · 1 staged
-diff vs HEAD 1e78110
+diff vs HEAD a301516
 CONFLICTS (2)
   gone.txt    deleted by them
   notes.txt     both modified

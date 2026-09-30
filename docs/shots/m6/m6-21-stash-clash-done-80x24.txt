@@ -5,7 +5,7 @@ COMMIT 8e361b5
 Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 6y · parents…
 rewrite the notes
 M notes.md                                                                 +1 −1
-
+▎
   1     - base
       1 + committed
 
