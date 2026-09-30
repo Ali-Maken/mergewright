@@ -55,6 +55,19 @@ the first key after ≥ 0.5 s idle is printed separately, not asserted. Result
 (m1-the-graph/30f): 7 of 7 counted release runs pass, worst key 14.6 ms;
 idle-wake 14 of 140 keys over 16 ms, all at 50k refs, max 19.1 ms.
 
+**Amended (m7/12g, 2026-09-30): what key 37 was made of.** Re-measured at
+M1's code (`b5380399`, harness-only patch), release, 8 quiet plain runs and 4
+quiet spinner runs: key 37 took 11.4–17.7 ms, and it is **Graft's three
+frames running on a CPU not yet up to speed**. Per run it splits exactly
+(parts within 4 µs of the latency) into harness slack 0.5–4.3 ms (the
+`recv_timeout` oversleep past the due tick, no larger than other keys'),
+Graft's three frames' own work 3.2 ms (their time with the spinner), and
+4.5–10.2 ms more for those same frames without it (7.7–13.4 ms against
+3.2–3.3 ms); the row worker added 0 ms (its answer was already queued).
+The 17.7 ms run is 4.3 + 3.2 + 10.2. Whether the slow CPU is clock ramp or
+core placement is not told apart (that needs `powermetrics`, root). Data:
+`docs/perf/m7-12g-key-37.txt` passes 2–3, script `scripts/m7-key37.sh`.
+
 ## Applied: rows on hand (m1-the-graph/30f, 2026-09-13)
 
 Not a new decision; this rule applied to one more check. `frames::`'s
