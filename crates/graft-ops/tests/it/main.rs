@@ -32,6 +32,7 @@ mod pull_set_aside;
 mod put_back_forecast;
 mod put_back_index;
 mod recover;
+mod recover_bytes;
 mod remote_ops;
 mod restart_gate;
 mod restart_whole_file;

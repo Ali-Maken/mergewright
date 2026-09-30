@@ -20,6 +20,7 @@ mod engine;
 mod error;
 mod finish_merge;
 mod fold;
+mod lost_edit;
 mod pull;
 mod record;
 mod recover;
@@ -60,7 +61,7 @@ use finish_merge::ending_a_shell_merge;
 use pull::Ahead;
 use record::{pins_for, put_back_for};
 use restart::abandon_pending;
-use run::{PlanRun, with_cleanup};
+use run::{PlanFailure, PlanRun, with_cleanup};
 
 /// What the caller has to re-read after an operation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -347,7 +348,7 @@ fn closed(
     ctx: &mut Context<'_>,
     op: &Operation,
     mut pending: Pending,
-    commands: Vec<String>,
+    mut commands: Vec<String>,
     run: PlanRun,
 ) -> Result<Applied, ApplyError> {
     let PlanRun {
@@ -401,24 +402,21 @@ fn closed(
             }
         },
     };
-    let status = match (&failure, &clash) {
-        // A clash is an outcome, not a failure: the stash's changes are in
-        // the tree with the conflicts, git kept the stash, and the entry is
-        // in force so `u` is the way back (ADR-0045 §2, §6).
-        (None, _) | (Some(_), Some(_)) => EntryStatus::Committed,
-        (Some(failed), None) => EntryStatus::Aborted {
-            reason: with_cleanup(failed.reason(), &cleanup),
-        },
-    };
+    let status = outcome_status(failure.as_ref(), clash.is_some(), &cleanup);
+    // A lost edit's put-back that went through (m7-power-tools/30w): his own
+    // bytes over git's checkout, where the backup kept them; `raw` is the
+    // step's failure. Before `finish`, so its spawns are on this entry's log.
+    let raw = lost_edit::after_put_back(ctx, op, failure.is_none(), &mut commands);
     let unread = match finish(ctx, &mut pending, status, commands) {
         Ok(unread) => unread,
         // The outcome line is what makes the entry undoable, so this is the
-        // headline — but git's own failure goes with it rather than under it.
+        // headline — but git's own failure goes with it rather than under it,
+        // and a failed raw step's words ride along, as 30s's do.
         Err(error) => {
             return Err(ApplyError::Journal {
                 error,
                 after: failure.map(|failed| failed.error),
-                kept: None,
+                kept: raw.map(|raw| raw.to_string()),
             });
         }
     };
@@ -428,11 +426,30 @@ fn closed(
         return clashed(entry, clash, unread, cleanup);
     }
     match failure {
-        None => succeeded(entry, op, unread, cleanup),
+        // The content he asked for is on disk; a failed raw step is the first
+        // thing the answer says went short (30s's `NotAsTheyWere`, unchanged).
+        None => succeeded(entry, op, raw.into_iter().chain(unread).collect(), cleanup),
         // `finish` has already put the after-state failures, if any, into the
         // entry's `Aborted` reason: git's own failure is the headline, but
         // nothing is lost behind it.
         Some(failed) => Err(failed.into_error(entry)),
+    }
+}
+
+/// The outcome a run closes its entry with: `Aborted` with git's reason when
+/// the plan failed, else `Committed`. A clash is an outcome, not a failure:
+/// the stash's changes are in the tree with the conflicts, git kept the
+/// stash, and the entry is in force so `u` is the way back (ADR-0045 §2, §6).
+fn outcome_status(
+    failure: Option<&PlanFailure>,
+    clashed: bool,
+    cleanup: &[AfterState],
+) -> EntryStatus {
+    match failure {
+        Some(failed) if !clashed => EntryStatus::Aborted {
+            reason: with_cleanup(failed.reason(), cleanup),
+        },
+        _ => EntryStatus::Committed,
     }
 }
 
