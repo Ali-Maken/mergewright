@@ -12,10 +12,14 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 
+use graft_git::run::Stop;
 use graft_ops::operation::{Operation, StashParams, StashScope, Target};
+use graft_ops::restore::{self, RestoreError};
+use graft_ops::undo::{self, Step, UndoError};
 
-use crate::support::{NOW, TempRepo, journal_for, run, run_redo, run_undo, try_run};
+use crate::support::{NOW, TempRepo, context, journal_for, run, run_redo, run_undo, try_run};
 
 /// What `HEAD` holds at `src/a.rs`.
 const COMMITTED: &[u8] = b"pub fn a() -> u32 {\n    1\n}\n";
@@ -277,5 +281,126 @@ fn a_failing_required_smudge_filter_refuses_the_operation_before_it_writes() {
     assert!(
         journal_for(&repo.open()).entries().is_empty(),
         "nothing journaled: the operation never began"
+    );
+}
+
+/// A raw write that cannot land (here: a file already at its temporary's
+/// name, which is never written over) fails `u` with the path named in its
+/// own words, and the roll-back puts back what `u` found.
+#[test]
+fn a_raw_write_that_cannot_land_fails_u_and_names_the_path() {
+    let repo = lf_edit_under_autocrlf();
+    let in_the_way = format!("src/a.rs.graft-raw-{}", std::process::id());
+    repo.write(&in_the_way, b"");
+    run(
+        &repo,
+        &Operation::Discard(Target::Paths(vec![PathBuf::from("src/a.rs")])),
+        NOW,
+    );
+    let discarded = repo.read("src/a.rs");
+
+    let Err(UndoError::Restore(why)) = run_undo(&repo, NOW + 1, false) else {
+        panic!("u wrote over a file at its temporary's name");
+    };
+    assert!(
+        matches!(&why, RestoreError::WriteRaw { path, .. } if path == &PathBuf::from("src/a.rs")),
+        "{why:?}"
+    );
+    assert!(
+        why.explain()
+            .starts_with("could not write src/a.rs back as it was: "),
+        "{}",
+        why.explain()
+    );
+    assert_eq!(
+        repo.read("src/a.rs"),
+        discarded,
+        "rolled back to what u found"
+    );
+    assert_eq!(
+        repo.read(&in_the_way),
+        b"",
+        "the file in the way is untouched"
+    );
+}
+
+/// A stop that fires, and stays fired, once `path` no longer holds `from`:
+/// keyed to the plan's own effect (the working-tree step has written it),
+/// never to a poll count (`undo_cancel.rs` sets out why).
+struct StopOnceChanged {
+    path: PathBuf,
+    from: &'static [u8],
+    fired: AtomicBool,
+}
+
+impl Stop for StopOnceChanged {
+    fn should_stop(&self) -> bool {
+        if !self.fired.load(Ordering::Relaxed)
+            && std::fs::read(&self.path).map_or(true, |now| now != self.from)
+        {
+            self.fired.store(true, Ordering::Relaxed);
+        }
+        self.fired.load(Ordering::Relaxed)
+    }
+}
+
+/// R3, the roll-back writes the restore's own `raw/`: a stash push, then his
+/// LF edit over the path it wrote. The undo (straight at `restore::execute`,
+/// so no drift rail) restores the path, and is cancelled before its last
+/// step, the `StashDrop`. The roll-back puts back what the **undo** found,
+/// his LF edit, byte for byte.
+#[test]
+fn a_cancelled_undo_rolls_back_to_his_lf_bytes_under_autocrlf() {
+    let repo = TempRepo::init();
+    repo.git(&["config", "core.autocrlf", "true"]);
+    repo.write("src/a.rs", COMMITTED);
+    repo.commit_all("first");
+    repo.write("src/a.rs", b"pub fn a() -> u32 {\r\n    2\r\n}\r\n");
+    run(
+        &repo,
+        &Operation::StashPush(StashParams {
+            message: Some("wip".to_owned()),
+            scope: StashScope::All {
+                include_untracked: false,
+            },
+        }),
+        NOW,
+    );
+    repo.write("src/a.rs", WORKING);
+
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let plan = undo::plan_undo(journal.entries()).expect("the push is undoable");
+    let worktree_step = plan
+        .steps
+        .iter()
+        .position(|step| matches!(step, Step::RestoreWorktree { .. }))
+        .expect("the plan restores the working tree");
+    assert!(
+        worktree_step + 1 < plan.steps.len(),
+        "a step follows it, so a cancel can land after it: {:?}",
+        plan.steps
+    );
+    let stop = StopOnceChanged {
+        path: repo.path().join("src/a.rs"),
+        from: WORKING,
+        fired: AtomicBool::new(false),
+    };
+    let outcome = {
+        let mut ctx = context(&handle, &mut journal, NOW + 1, &stop);
+        restore::execute(&mut ctx, &plan)
+    };
+
+    match outcome {
+        Err(RestoreError::Cancelled { rolled_back }) => {
+            assert!(rolled_back >= 1, "the working-tree step was rolled back");
+        }
+        other => panic!("expected a clean cancel: {other:?}"),
+    }
+    assert_eq!(
+        repo.read("src/a.rs"),
+        WORKING,
+        "the roll-back gave back his bytes, not {:?}",
+        String::from_utf8_lossy(&repo.read("src/a.rs"))
     );
 }

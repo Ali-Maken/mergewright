@@ -1,7 +1,7 @@
 # 30q: `u` gives back his bytes, not git's re-encoding of them (KNOWN_GAPS `M7/30p-crlf`; ticket 30p R1, NOTES 30p-a test 6)
 
-Status: 30q-a done (NOTES 30q-a; the 22 files granted by the conductor, 2026-09-30). 30q-b **partial, blocked: needs
-`crates/graft-ops/src/restore.rs`** (NOTES 30q-b: the roll-back's `raw` and the write's error variant). 30q-c open.
+Status: 30q-a done (NOTES 30q-a; the 22 files granted by the conductor, 2026-09-30). 30q-b done (NOTES 30q-b;
+`restore.rs` granted by the conductor for the roll-back's `raw` and the write's error, 2026-09-30). 30q-c open.
 Build with (three parts; **a, then b and c concurrent**: b and c hold disjoint files):
 - **30q-a: Opus, `builder-opus-xhigh`.** It changes the before-snapshot every undoable operation takes and adds one field to the
   journal's opening line: undo territory, persisted. Not Fable: the layout and the field are fixed in this spec (R2, R3),
@@ -258,7 +258,7 @@ Step::RestoreWorktree { tree: Oid, paths: PathScope, raw: Option<Oid> }
   Untracked arm, **if** a graft-ops operation removes an untracked file that `u` re-creates (grep: stash push with
   untracked, or the put-back's `go`): `u_brings_back_an_lf_untracked_file_under_autocrlf`. Else say which grep found
   none.
-- [x] (full run `cargo nextest run --workspace` 4957/4957, 5 skipped, which includes: 30p-a's seven + test 6 —
+- [x] (full run `cargo nextest run --workspace` 4960/4960, 5 skipped, which includes: 30p-a's seven + test 6 —
   `recover::u_after_a_put_back_over_a_staged_file_brings_back_both`, `…u_brings_back_a_file_a_put_back_deleted`,
   `…u_brings_back_the_exec_bit_a_put_back_replaced`, `…u_brings_back_a_symlink_a_put_back_replaced`,
   `…u_brings_back_a_crlf_file_under_autocrlf`, `…u_brings_back_a_file_under_a_clean_smudge_filter`,
@@ -276,9 +276,11 @@ Step::RestoreWorktree { tree: Oid, paths: PathScope, raw: Option<Oid> }
   red at `undo_bytes.rs:114`, "the exec bit is set: 100644"; restored, green)
   Mutation: make the write skip the exec bit → `u_brings_back_an_lf_executable_under_autocrlf` fails. Restore it and
   say so.
-- [x] (MAP: `undo::Step` `raw`, `restore::execute` the write and the roll-back's `raw: None` seam; gates: `cargo fmt
-  --check`, `cargo clippy --workspace --all-targets -D warnings`, `cargo nextest run --workspace` 4957/4957,
-  `cargo test --workspace --doc`: all pass)
+- [x] (MAP: `undo::Step` `raw`, `restore::execute` the write, the roll-back's own `worktree_raw_before` as `raw`
+  (`undo_bytes::a_cancelled_undo_rolls_back_to_his_lf_bytes_under_autocrlf`), `RestoreError::WriteRaw`
+  (`undo_bytes::a_raw_write_that_cannot_land_fails_u_and_names_the_path`,
+  `restore::steps::tests::a_failed_raw_write_names_the_path`); gates: `cargo fmt --check`, `cargo clippy --workspace
+  --all-targets -D warnings`, `cargo nextest run --workspace` 4960/4960, `cargo test --workspace --doc`: all pass)
   MAP.md. Gates workspace-wide.
 
 ### Touches (check each; say how)
@@ -466,24 +468,28 @@ observed reds.
 
 ### 30q-b (2026-09-30, builder Opus xhigh; no scout: the ticket names every site, re-grepped by name; no compaction)
 
-**Partial: `blocked: needs crates/graft-ops/src/restore.rs`.** Everything else in the part is built, green and
-committed at the seam. Two things need that file, and each is one line or one variant:
-1. **The roll-back's `raw` (R3 "the roll-back writes the restore's own").** `rollback::Before` is built as a struct
-   literal in `restore.rs` (`execute_over_drift`, `:284`), so it cannot gain a field without that file. Today
-   `reverse_of` sets `raw: None` (`rollback.rs:245`, commented as the seam): a cancelled or failed undo rolls back to
-   git's checkout of the restore's own before-tree, as before 30q. The exact next step:
-   - `rollback.rs` `Before`: `pub(super) worktree_raw: Option<Oid>` (its own `worktree_raw_before`).
-   - `restore.rs:288`: `worktree_raw: pending.entry.worktree_raw_before,` in the `Before` literal.
-   - `reverse_of`: `raw: before.worktree_raw`.
-   - Test (new, `undo_bytes.rs`): `core.autocrlf=true`; discard `src/a.rs`; his LF edit over it (drift); a forced `u`
-     **stopped after its `RestoreWorktree` step** (a `Stop` that fires on the step count, as `undo_cancel.rs`
-     `cancel_at_every_step_boundary_is_clean` does) → the roll-back gives the LF bytes back. Red with `raw: None`.
-2. **The write's own error.** `RestoreError` (in `restore.rs`) has no variant for a filesystem write. The seam
-   (`steps.rs` `not_written`) carries the failure as `RestoreError::Snapshot(SnapshotError::Io(..))`, whose words read
-   `snapshot scratch: writing <path> back: <error>`: right path and error, wrong prefix. Next step: a variant
-   `WriteRaw { path: PathBuf, source: io::Error }`, `#[error("could not write {} back: {source}", .path.display())]`,
-   and `not_written` returns it. Checked: nothing matches `RestoreError` exhaustively outside `restore*` (grep
-   `RestoreError::` in graft-ops and graft `src`: `undo/execute.rs` and graft `jobs/undo.rs` match single variants).
+**Done, in two commits.** The first (a316ca9c) stopped at the seam, `blocked: needs crates/graft-ops/src/restore.rs`
+for two things: `rollback::Before` is a struct literal in `restore.rs` (`execute_over_drift`), and `RestoreError` has no
+variant for a filesystem write. The conductor granted `restore.rs` for exactly those two (2026-09-30), and the builder
+continued in the same context:
+1. **The roll-back's `raw` (R3).** `Before.worktree_raw` (`rollback.rs`), set from the restore's own
+   `pending.entry.worktree_raw_before` (`restore.rs:299`); `reverse_of` gives `raw: before.worktree_raw`, never the
+   forward step's. Test `undo_bytes::a_cancelled_undo_rolls_back_to_his_lf_bytes_under_autocrlf`: a stash push, his LF
+   edit, then the undo plan run straight at `restore::execute` (no drift rail), stopped by a `Stop` keyed to the file
+   changing (so after `RestoreWorktree`, before `StashDrop`, the step after it; the test asserts such a step exists).
+   `Cancelled { rolled_back >= 1 }` and his LF bytes back. **Red seen** on a316ca9c (`raw: None`) at
+   `undo_bytes.rs:360`: `…{\r\n    4\r\n}\r\n`.
+2. **The write's error.** `RestoreError::WriteRaw { path, source }`, `could not write <path> back as it was: <io>`;
+   the seam's `not_written` (which borrowed `Snapshot(Io)`, reading `snapshot scratch: …`) is gone. Tests:
+   `restore::steps::tests::a_failed_raw_write_names_the_path` (the words), and
+   `undo_bytes::a_raw_write_that_cannot_land_fails_u_and_names_the_path` (end to end: a file at the temporary's name,
+   `src/a.rs.graft-raw-<pid>`, makes `create_new` refuse; `u` fails with `WriteRaw` on `src/a.rs`, the failure
+   roll-back puts back what `u` found, the file in the way is untouched). Red by compile on a316ca9c (no variant).
+   Checked first: nothing matches `RestoreError` exhaustively outside `restore*` (grep `RestoreError::` in graft-ops and
+   graft `src`: `undo/execute.rs` and graft `jobs/undo.rs` match single variants).
+3. **Not fixed, a question for the conductor:** the failing-smudge refusal's words (below). They come from
+   `snapshot/raw.rs` (`checkout-index` in `raw_record`) through `take` and `begin`: neither this part's files nor
+   `restore.rs`.
 
 **First, R3's claim: holds.** Every construction of `Step::RestoreWorktree`, by grep over `crates/`:
 - `undo.rs:341` (`generic_steps`): `tree = entry.worktree_before`, `raw = entry.worktree_raw_before`. `inverse` calls
@@ -526,12 +532,14 @@ No `worktree_after` or other tree anywhere. So no graft file changed.
 - Every snapshot-backed `u`: one executor arm, `restore/steps.rs:33`; no other disk writer under `src/restore*` (grep
   `"restore"`, `"checkout-index"`, `"clean"`, `fs::write`, `rename`, `OpenOptions` → only `steps.rs`'s four-way split
   and `write_his_bytes`). Discard, stash push, untracked discard, redo and put-back `u` observed byte-exact (tests above).
-- Roll-back: `reverse_of` carries `raw: None` (the seam above); `undo_cancel::` ten green, unchanged.
+- Roll-back: `reverse_of` carries the restore's own `raw` (above); `undo_cancel::` ten green, unchanged.
+- `RestoreError`: one variant added; graft's `jobs/undo.rs` matches single variants, so it shows through `explain()`
+  like any other failure (no word elsewhere changed).
 - Drift and `replaced`: code unchanged (`replaced.rs` matches `..`); they read cleaned trees.
 - M3 walks and captures: no word or screen change; `git status docs/shots` clean after the full run.
 - Journal/undo semantics: no new operation, kind or field; `raw` is plan data only, never journaled.
 - graft crate: no `Step::RestoreWorktree` pattern in `src` (grep): no file changed.
 - Perf: +0 spawns when `raw` is `None`; +2 per restore step when `Some`. No time claimed.
 
-**Deviation, stated:** `restore/steps.rs` was 708 lines and is now 847 (PROMPT.md 6.2: ~400). The ticket puts the write
-there; a `restore/raw.rs` would be a file outside the list. Say so if it should move.
+**Deviation, stated:** `restore/steps.rs` was 708 lines and is now 851 (PROMPT.md 6.2: ~400). The ticket puts the write
+there; a `restore/raw.rs` would be a file outside the list. The conductor gaps it for M8 (2026-09-30).

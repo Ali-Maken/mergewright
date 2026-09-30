@@ -31,6 +31,9 @@ pub(super) struct Before {
     pub(super) head: HeadRef,
     pub(super) index: Option<IndexState>,
     pub(super) worktree: Option<Oid>,
+    /// The same before-snapshot's `raw/` (ADR-0052): his bytes where git's
+    /// checkout of `worktree` would not give them back. `None`: none kept.
+    pub(super) worktree_raw: Option<Oid>,
     /// git's merge state when the restore began. `None` is a recorded state
     /// here ("not merging"), not a gap, so it never reads as `NoBefore`.
     pub(super) merge: Option<MergeState>,
@@ -247,12 +250,9 @@ fn reverse_of(step: &Step, before: &Before) -> Result<Step, RestoreError> {
                 field: "the working tree".to_owned(),
             })?,
             paths: paths.clone(),
-            // 30q-b seam, not done: R3 wants the restore's own `raw/` here
-            // (`worktree_raw_before` of the entry `begin` wrote), never the
-            // forward step's. `Before` is built in `restore.rs`, outside this
-            // part's files, so until it carries it a roll-back writes git's
-            // checkout of the tree, as before 30q.
-            raw: None,
+            // The restore's own `raw/`, beside its own tree: never the
+            // forward step's, which belongs to the operation's snapshot.
+            raw: before.worktree_raw,
         },
         Step::StashStore { commit } => Step::StashDrop { commit: *commit },
         Step::StashDrop { commit } => Step::StashStore { commit: *commit },

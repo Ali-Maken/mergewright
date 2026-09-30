@@ -375,22 +375,12 @@ fn write_raw(
             // tree, and a bare repository has none.
             None => Err(std::io::Error::other("the repository has no working tree")),
         };
-        written.map_err(|why| not_written(&relative, &why))?;
+        written.map_err(|source| RestoreError::WriteRaw {
+            path: relative,
+            source,
+        })?;
     }
     Ok(())
-}
-
-/// His bytes could not be written back at `path`.
-///
-/// 30q-b seam: a `RestoreError` variant of its own (the path and the
-/// filesystem's error) needs `restore.rs`, outside this part's files. Until
-/// then the failure rides on the snapshot's I/O variant, which keeps the
-/// error's kind and says which path.
-fn not_written(path: &std::path::Path, why: &std::io::Error) -> RestoreError {
-    RestoreError::Snapshot(snapshot::SnapshotError::Io(std::io::Error::new(
-        why.kind(),
-        format!("writing {} back: {why}", path.display()),
-    )))
 }
 
 /// `cat-file --batch`'s output cut into its `count` blobs, in order: each is
@@ -829,6 +819,20 @@ mod tests {
         assert!(batch_blobs(format!("{id} missing\n").as_bytes(), 1).is_err());
         assert!(batch_blobs(format!("{id} blob 9\nshort\n").as_bytes(), 1).is_err());
         assert!(batch_blobs(b"", 1).is_err(), "fewer blobs than asked for");
+    }
+
+    /// A raw write that fails names the path and the filesystem's reason in
+    /// its own words, not the snapshot's ("snapshot scratch: …").
+    #[test]
+    fn a_failed_raw_write_names_the_path() {
+        let error = RestoreError::WriteRaw {
+            path: PathBuf::from("src/a.rs"),
+            source: std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied"),
+        };
+        assert_eq!(
+            error.explain(),
+            "could not write src/a.rs back as it was: denied"
+        );
     }
 
     /// A merged path is one stage-0 line after its removal — the shape every
