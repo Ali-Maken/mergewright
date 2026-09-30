@@ -49,4 +49,4 @@ m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc E
 
 
 
- ⇥ banner  . explain  m merge  r rebase  ⏎ open  b branch  t tag  P push  c finish  p pull  f fetch  u undo  S stash  / search  q quit  F2 status  F3 renderer  x  +  j/k  space  1  F  H  J  y  M  O
+ ⇥ banner  c finish  . explain  m merge  r rebase  ⏎ open  b branch  t tag  P push  p pull  f fetch  u undo  S stash  / search  q quit  F2 status  F3 renderer  x  +  j/k  space  1  F  H  J  y  M  O  C
