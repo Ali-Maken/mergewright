@@ -2674,6 +2674,7 @@ fn journal_entry(
         index_after: Some(graft_core::journal::IndexState::Merged(oid(2))),
         worktree_before: Some(oid(3)),
         worktree_after: Some(oid(4)),
+        worktree_raw_before: None,
         backup_ref: Some("refs/graft/backup/main/01HF".to_owned()),
         pins: Vec::new(),
         commands: commands.iter().map(|line| (*line).to_owned()).collect(),

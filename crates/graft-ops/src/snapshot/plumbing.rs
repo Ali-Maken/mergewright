@@ -216,25 +216,27 @@ pub(super) fn add_all(
     Ok(())
 }
 
-/// `git mktree` over the two-entry listing.
+/// `git mktree` over the listing: the index side, `raw/` when the snapshot
+/// keeps one (ADR-0052), `worktree/`.
 ///
-/// `mktree` wants its entries sorted, and `index` < `unmerged` < `worktree`
-/// either way.
+/// `mktree` wants its entries sorted: `index` < `raw` < `unmerged` <
+/// `worktree`, so `raw` goes between the two spellings of the index side.
 pub(super) fn mktree(
     repo: &RepoHandle,
     index: Option<IndexState>,
     worktree_tree: Option<Oid>,
+    raw: Option<Oid>,
     stop: &dyn Stop,
 ) -> Result<Oid, SnapshotError> {
     let mut listing = String::new();
-    match index {
-        Some(IndexState::Merged(tree)) => {
-            listing.push_str(&format!("040000 tree {tree}\tindex\n"));
-        }
-        Some(IndexState::Unmerged { unmerged }) => {
-            listing.push_str(&format!("040000 tree {unmerged}\tunmerged\n"));
-        }
-        None => {}
+    if let Some(IndexState::Merged(tree)) = index {
+        listing.push_str(&format!("040000 tree {tree}\tindex\n"));
+    }
+    if let Some(raw) = raw {
+        listing.push_str(&format!("040000 tree {raw}\traw\n"));
+    }
+    if let Some(IndexState::Unmerged { unmerged }) = index {
+        listing.push_str(&format!("040000 tree {unmerged}\tunmerged\n"));
     }
     if let Some(worktree_tree) = worktree_tree {
         listing.push_str(&format!("040000 tree {worktree_tree}\tworktree\n"));

@@ -44,6 +44,7 @@ mod set_aside;
 #[cfg(unix)]
 mod set_aside_kill;
 mod shell_begun_merge;
+mod snapshot_raw;
 mod stash_clash;
 mod stash_pop_redo;
 mod stash_preview;

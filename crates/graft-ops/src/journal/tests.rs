@@ -45,6 +45,7 @@ pub(crate) fn committed(at: i64, kind: OperationKind, before: u8, after: u8) -> 
         index_after: Some(IndexState::Merged(oid(0xa0 + after))),
         worktree_before: Some(oid(0xb0 + before)),
         worktree_after: Some(oid(0xb0 + after)),
+        worktree_raw_before: None,
         backup_ref: Some(format!("refs/graft/backup/main/{}", id(at))),
         pins: vec![],
         commands: vec![format!("git {kind:?}")],
@@ -75,6 +76,7 @@ pub(crate) fn reversal(at: i64, kind: OperationKind, target: &JournalEntry) -> J
         index_after: target.index_before,
         worktree_before: target.worktree_after,
         worktree_after: target.worktree_before,
+        worktree_raw_before: None,
         backup_ref: Some(format!("refs/graft/backup/main/{}", id(at))),
         pins: vec![],
         commands: vec![],
@@ -157,6 +159,44 @@ fn three_entries_round_trip_through_two_lines_each() {
     assert!(text.contains("\"status\":\"pending\""), "{text}");
     assert!(text.contains("\"kind\":\"stash_pop\""), "{text}");
     assert!(text.contains(&format!("\"{}\"", oid(1))), "{text}");
+}
+
+/// 30q-a (ADR-0052): a pending line written before `worktree_raw_before`
+/// existed — the M5 golden's first line — reads as `None` and is written
+/// back byte for byte.
+#[test]
+fn a_line_without_raw_parses_as_none_and_renders_unchanged() {
+    let golden = include_str!("../../tests/it/goldens/m5-journal.jsonl");
+    let line = format!("{}\n", golden.lines().next().unwrap());
+    assert!(line.contains("\"status\":\"pending\""), "{line}");
+
+    let parsed = parse(line.as_bytes()).unwrap();
+    let [entry] = parsed.entries.as_slice() else {
+        panic!("one entry: {:?}", parsed.entries);
+    };
+    assert_eq!(entry.worktree_raw_before, None);
+    assert_eq!(
+        String::from_utf8(render_pending(entry).unwrap()).unwrap(),
+        line
+    );
+}
+
+/// 30q-a (ADR-0052): a kept raw tree is written on the pending line, not the
+/// outcome line, and reads back as it was.
+#[test]
+fn a_line_with_raw_round_trips() {
+    let entry = JournalEntry {
+        worktree_raw_before: Some(oid(0xc1)),
+        ..committed(10, OperationKind::Discard, 1, 2)
+    };
+    let bytes = file(std::slice::from_ref(&entry));
+    let text = String::from_utf8(bytes.clone()).unwrap();
+    let lines: Vec<&str> = text.lines().collect();
+    let key = format!("\"worktree_raw_before\":\"{}\"", oid(0xc1));
+    assert!(lines[0].contains(&key), "{}", lines[0]);
+    assert!(!lines[1].contains("worktree_raw_before"), "{}", lines[1]);
+
+    assert_eq!(parse(&bytes).unwrap().entries, vec![entry]);
 }
 
 #[test]

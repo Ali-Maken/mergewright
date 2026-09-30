@@ -88,7 +88,8 @@ pub(crate) fn begin(
         .map_err(|why| PrepareError::Facts(FactsError::MergeState(why)))?;
     let config_before = config_before(ctx, &touches.refs)?;
 
-    let backup = if snapshot::scope(&touches) == SnapshotScope::Full || !pins.is_empty() {
+    let mut backup = None;
+    if snapshot::scope(&touches) == SnapshotScope::Full || !pins.is_empty() {
         // The snapshot's parents are the pins **and** every commit the
         // entry's before-fields name: the pre-amend commit, the branch tip a
         // commit is about to move off. Both are otherwise reachable only
@@ -102,11 +103,9 @@ pub(crate) fn begin(
             &refs_before,
             merge_before.as_ref(),
         );
-        let label = format!("{}: {description}", kind_name(kind));
-        Some(take_backup(ctx, &id, &label, &parents)?)
-    } else {
-        None
-    };
+        let taken = take_backup(ctx, &id, kind, &description, &parents, &head_before)?;
+        backup = Some(taken);
+    }
 
     let entry = JournalEntry {
         backup_ref: backup.map(|_| snapshot::backup_ref_name(&ctx.worktree, &id)),
@@ -124,6 +123,7 @@ pub(crate) fn begin(
         index_after: None,
         worktree_before: backup.map(|taken| taken.worktree_tree),
         worktree_after: None,
+        worktree_raw_before: backup.and_then(|taken| taken.worktree_raw),
         pins,
         commands: Vec::new(),
         reverses,
@@ -155,23 +155,47 @@ fn config_before(
     })
 }
 
-/// The before-snapshot under this worktree's backup namespace.
+/// The before-snapshot under this worktree's backup namespace, labelled with
+/// the entry's kind and description, measured against `head_before`'s commit.
 fn take_backup(
     ctx: &Context<'_>,
     id: &EntryId,
-    label: &str,
+    kind: OperationKind,
+    description: &str,
     parents: &[Oid],
+    head_before: &HeadRef,
 ) -> Result<snapshot::Snapshot, PrepareError> {
+    let label = format!("{}: {description}", kind_name(kind));
+    let head = head_commit(ctx, head_before)?;
     snapshot::take(
         ctx.repo,
         ctx.scratch(),
         id,
         &ctx.worktree,
-        label,
+        &label,
         parents,
+        head,
         ctx.stop,
     )
     .map_err(PrepareError::Snapshot)
+}
+
+/// The commit `HEAD` names, which the snapshot measures "uncommitted"
+/// against (ADR-0052); `None` on an unborn branch. Read in-process, no spawn.
+///
+/// A branch that reads as absent here — deleted between the two reads — is
+/// taken as unborn: every file then counts as uncommitted, so the snapshot
+/// keeps more raw, never less.
+fn head_commit(ctx: &Context<'_>, head: &HeadRef) -> Result<Option<Oid>, PrepareError> {
+    match head {
+        HeadRef::Detached(commit) => Ok(Some(*commit)),
+        HeadRef::Unborn(_) => Ok(None),
+        HeadRef::Branch(name) => {
+            let mut read = facts::read_refs(ctx.repo, std::slice::from_ref(name))
+                .map_err(PrepareError::Facts)?;
+            Ok(read.remove(name).flatten())
+        }
+    }
 }
 
 /// Read the after-state, keep it reachable, write the outcome line.

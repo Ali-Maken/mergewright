@@ -287,6 +287,12 @@ pub struct JournalEntry {
     pub worktree_before: Option<Oid>,
     /// The working-tree tree after.
     pub worktree_after: Option<Oid>,
+    /// The bytes on disk before, of the uncommitted files git's own checkout
+    /// of `worktree_before` would not give back (ADR-0052): the backup
+    /// commit's `raw/` tree. `None` = nothing kept, or a line written before
+    /// the field existed; absent from its JSON either way.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub worktree_raw_before: Option<Oid>,
     /// `refs/graft/backup/<worktree>/<id>`: the commit keeping the before
     /// trees and `pins` reachable (ADR-0010).
     pub backup_ref: Option<String>,

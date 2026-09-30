@@ -48,6 +48,11 @@ pub struct PendingLine {
     pub index_before: Option<IndexState>,
     /// Working-tree tree before.
     pub worktree_before: Option<Oid>,
+    /// The raw bytes git's checkout of `worktree_before` would not give back
+    /// (ADR-0052). Left out when nothing was kept, so such a line reads
+    /// exactly as one written before the field existed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub worktree_raw_before: Option<Oid>,
     /// The backup ref, taken before the operation.
     pub backup_ref: Option<String>,
     /// Commits the inverse needs alive, known before the operation runs.
@@ -136,6 +141,7 @@ impl PendingLine {
             refs_before: entry.refs_before.clone(),
             index_before: entry.index_before,
             worktree_before: entry.worktree_before,
+            worktree_raw_before: entry.worktree_raw_before,
             backup_ref: entry.backup_ref.clone(),
             pins: entry.pins.clone(),
             reverses: entry.reverses.clone(),
@@ -162,6 +168,7 @@ impl PendingLine {
             index_after: None,
             worktree_before: self.worktree_before,
             worktree_after: None,
+            worktree_raw_before: self.worktree_raw_before,
             backup_ref: self.backup_ref,
             pins: self.pins,
             commands: Vec::new(),
