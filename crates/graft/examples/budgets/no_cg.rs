@@ -80,8 +80,11 @@ pub fn run(repo: &Path) -> Result<(), String> {
     println!("  {}", footprint_now());
 
     let layout = swap(&mut views, &view, order, last)?;
+    // `Views::promote`, the synchronous swap: the app promotes through
+    // `begin_promotion` and idle steps (m7-power-tools/12 Part C), so this
+    // lap times a path the app no longer takes (review m7-12 Minor 5).
     clock.lap(
-        "promote swap",
+        "promote swap (synchronous path, not the app's)",
         &format!("anchored at the bottom  {}", detail(&table, Some(layout))),
     )?;
     println!("  {}", footprint_now());

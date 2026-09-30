@@ -16,7 +16,9 @@
 set -u
 cd "$(dirname "$0")/.."
 label=${1:-before}
-out=docs/perf/housekeeping-02.txt
+# HEAP_SLOPE_OUT: another perf file to append to (m7-power-tools/12e); an
+# absolute path, or relative to the repo root.
+out=${HEAP_SLOPE_OUT:-docs/perf/housekeeping-02.txt}
 raw=target/heap-slope-hk02
 mkdir -p "$raw" docs/perf
 

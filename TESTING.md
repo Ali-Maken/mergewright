@@ -190,6 +190,41 @@ cannot show: the real terminal (keys are made in the test, output goes to
 memory), so a pty's wake and the terminal's own paint are not in these
 numbers.
 
+The script **exits 1** when any run failed or any `spread` line is not
+`ok` (m7-power-tools/12d): `SUMMARY runs:` counts every run's exit, and a
+spread reads `FAIL(<run> failed)` when a plain run failed, `MISSING(k of 3)`
+when a scenario printed fewer than 3 cells, then `OVER` or `ok`. A failed
+run never reads as a pass. `scripts/m7-perf-key-selftest.sh` checks this on
+canned outputs (no cargo, seconds).
+
+**The idle advance** (m7-power-tools/12) adds three readings to the same
+runs. Right looks like:
+
+- `frame_trace: … startup …` lines (with `GRAFT_FRAME_TRACE` set): every
+  wake from the first window of rows to key 1, then
+  `startup burst_after_first_paint_us=` — how long a key pressed just after
+  first paint could queue behind startup's job answers. Queued answers are
+  drawn once, not once each.
+- `SUMMARY idle_gap … idle_gap_wakes=0` for every run with idle pauses: once
+  the walk has said `LaidOut`, a 600 ms pause with no input wakes nothing
+  (the history worker is parked). `pauses_after_laid_out=N of 5` says how
+  many pauses were counted; `0 of 5` means `LaidOut` came late and the line
+  proves nothing.
+- `SUMMARY g_after_idle … latency_us=` under 16 000 and `idle_gap_wakes=0`:
+  `frames::after_idle::g_after_idle`, `G` pressed after history is laid out
+  and the app sat idle 2 s (100k cg, 50k refs, Unicode); the latency runs
+  to the frame showing the last row. Asserted in release.
+
+**Before and after the idle advance**, `scripts/m7-12-final-perf.sh`
+(~40 min) runs `g_after_idle` ×3, `scripts/heap-slope.sh` ×2 and
+`examples/budgets` on git/git ×2 on both sides — "before" is this HEAD in a
+throwaway worktree with `scripts/m7-12-no-idle-advance.patch`, run with
+`GRAFT_FRAME_NO_IDLE_ADVANCE=1` — then the heavy tier's `heavy::` and the
+release `heavy::budgets_hold`. It appends a section to
+`docs/perf/m7-12-idle-advance.txt`; read its `SUMMARY` lines. Every step
+records `uptime` and any process over 40% CPU (`SUMMARY quiet:`); a busy
+step is marked, never rerun.
+
 In the debug run above those same tests measure and print their numbers
 (`debug build, budget recorded not asserted`) without failing; so does
 `frames::`'s rows-on-hand check (`rows on hand recorded not asserted: N of M

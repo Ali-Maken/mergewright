@@ -197,16 +197,54 @@ impl Wake { pub fn label(&self) -> &'static str; }   // variant name, and the `P
     meet it, the number is recorded and the builder stops and asks; no silent threshold;
   - `idle_gap_wakes=<n>` per 600 ms gap after `LaidOut`, asserted 0;
   - `examples/budgets` `G` on git/git (`scripts/clone-git-git.sh`), before/after, recorded, not asserted.
-- [ ] `scripts/heap-slope.sh` before/after into the same perf file; slope within the recorded noise. Heavy-tier
+  **(12e) Not ticked — one sub-item fails.** Rev 4 of `docs/perf/m7-12-idle-advance.txt` (HEAD 7f9c42c9, runs
+  17:40–17:50Z, no foreign process > 40% CPU, load 5.2 → 1.6 falling off the build), per sub-item:
+  - spread gate: ✔ all 7 `SUMMARY spread … gate(p99<=16ms)=ok`; `SUMMARY runs: 6 of 6 exit 0`; script exit 0 —
+    exit status and SUMMARY agree (12d's first real release run).
+  - p99 vs m7-04 rev 2: ✘ **worse beyond its spread in 5 of 7** (e.g. Unicode 50k Closed 3147–3221 vs 2798–2838 µs;
+    Map 1195–1343 vs 431–1079); within it for both Pixel scenarios. Control D in the same run: `machine: busy=false
+    work_warm_us` 2199–6677 µs vs 1026–1738 in rev 3 — the same fixed work, no Graft code, 2–5× slower. The machine
+    was slow, as 12g found for key 37; not rerun (rule). Whether any of it is code is **not shown**.
+  - idle median: ✔ `SUMMARY idle control=Plain` medians 1155–2897 µs (inside 1.1–3.2 ms), `asked=0/15` every row.
+  - `g_after_idle`: ✔ `frames::after_idle::g_after_idle` — rev 4 `SUMMARY g_after_idle` 8156–11938 µs over 6 runs;
+    `scripts/m7-12-final-perf.sh` (18:01Z) `SUMMARY g_after_idle side=before latency_us=51051(max 52076)
+    wakes_between=201` vs `side=after 8663(max 8928) wakes_between=1`.
+  - `idle_gap_wakes`: ✔ `frames::check_idle_gaps` — every rev 4 `SUMMARY idle_gap … idle_gap_wakes=0
+    pauses_after_laid_out=5 of 5`, 42 lines; g_after_idle's 2 s gap 0 too. Reading unit-tested by
+    `frames::readings::idle_gaps_count_what_nothing_asked_for_after_laid_out`.
+  - budgets `G` on git/git (85,649 commits, cg): `SUMMARY budgets_G` before 148.1/141.1 ms, after 148.5/141.0 ms.
+  **(12e) Rev 5, the re-measure (conductor's terms: accept it only if control D is back in 1.0–1.7 ms).** HEAD
+  8024c850, 18:08–18:18Z, load 1.3–1.7, only `launchd` > 40% twice (43–45%). Control D `machine: busy=false
+  work_warm_us` **2072–4417 µs — still slow**, so rev 5 is not accepted either; box stays unticked. For the record:
+  all 7 spreads `ok`, `SUMMARY runs: 6 of 6 exit 0`; p99 still above m7-04 rev 2's spread in 5 of 7 (e.g. Unicode
+  50k Closed 2855–2887 vs 2798–2838; Map 1083–1098 vs 431–1079), within it in both Pixel scenarios; idle medians
+  1124–3316 µs, `asked=0/15`; `SUMMARY g_after_idle` 8033–10303 µs. Both revs kept in the perf file. Timestamps:
+  rev 4 2026-09-30T17:40–17:50Z, rev 5 2026-09-30T18:08–18:18Z.
+- [x] `scripts/heap-slope.sh` before/after into the same perf file; slope within the recorded noise. Heavy-tier
   peak-memory test green (named at tick time).
-- [ ] Captures: `check_shot` over all, byte-identical (no visual change is intended; a changed capture is a defect
-  here).
-- [ ] MAP.md: graft `history` gains `Views::idle_step`, `IdleWork`, `begin_promotion`, `HistoryUpdate::LaidOut`,
+  ✔ (12e) `scripts/m7-12-final-perf.sh` section of 18:21Z (HEAD 8024c850, `SUMMARY steps: 16 of 16 exit 0`,
+  `SUMMARY quiet: 16 of 16`): `SUMMARY heap_slope side=before footprint_peak=34.41,28.22 live_at_end=5.19,5.19`,
+  `side=after footprint_peak=33.86,31.31 live_at_end=5.19,5.19` B/commit — after inside before's own run-to-run
+  spread (28.2–34.4); live identical; housekeeping-02's recorded after was 31.49. (Prototype needed a compile fix
+  first: see 12e NOTES.) Heavy: `SUMMARY heavy_debug exit=0 … 12 passed` — `heavy::budgets_hold_*` (5, peak RSS),
+  `heavy::slopes_per_commit_with_a_commit_graph`, and heavy.rs:217's
+  `heavy::the_table_and_the_order_stay_at_the_commit_count_after_g_and_after_promotion ... ok`; release
+  `SUMMARY heavy_release_budgets exit=0 … 5 passed`.
+- [x] Captures: `check_shot` over all, byte-identical (no visual change is intended; a changed capture is a defect
+  here). ✔ (12e) Workspace `cargo nextest run` 4979/4979 (5 skipped) at 7f9c42c9 incl. every `check_shot`; `git
+  status` shows no `docs/shots` change.
+- [x] MAP.md: graft `history` gains `Views::idle_step`, `IdleWork`, `begin_promotion`, `HistoryUpdate::LaidOut`,
   `WindowOrder`, `History::laid_out`, and one line for `serve`'s loop; `event_loop` gains `Wake::label`. graft-graph:
   `truncate`'s line says it re-notes the kept prefix. TESTING.md "Performance": `g_after_idle`, `idle_gap_wakes`,
   the startup lines. NOTES proposes the DESIGN.md §3.6 sentence ("on the history worker whenever no request is
   waiting, to the end of history, then parked") for the conductor to apply. The conductor closes KNOWN_GAPS :149,
   :161, :169 by the test names above.
+  ✔ (12e) Checked by grep, no test: graft MAP.md `serve` :55, `Views::idle_step` :56, `begin_promotion` :57,
+  `IdleWork` :58, `WindowOrder` :59, `HistoryUpdate::LaidOut` :60, `History::laid_out` :61, `Wake::label` :894
+  (12c/12f wrote them; 12e confirmed); 12e added the `frames` submodules, `after_idle`, `idle_gaps` and the perf
+  script's exit status to the frame-trace line, and the budgets promote-swap label. graft-graph MAP.md :111
+  `StreamingLayout::truncate` "re-notes the kept prefix's fingerprint". TESTING.md heavy tier: exit status, the
+  three idle-advance readings, `scripts/m7-12-final-perf.sh`. The DESIGN §3.6 sentence is in 12e's NOTES.
 - [x] **(12c, review 04) Major 1 — the perf script never passes a failed run.** `scripts/m7-perf-key-selftest.sh`
   (canned outputs via `M7_PERF_KEY_CANNED`, no cargo): 7 cases, 21 checks. Red first on the old script: 17 of 21
   failed (a plain run exiting 101 read `gate(p99<=16ms)=ok`, script exit 0). Green after: `SUMMARY runs: FAILED 1 of
