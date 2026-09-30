@@ -89,7 +89,7 @@ pub(crate) fn refusal_status(op: &Operation, refusal: &Refusal, columns: u16) ->
       `esc dismiss`.
 - [x] Capture `docs/shots/m7/in-the-way-at-80-80x24.txt` — ticked: `check_shot` in `a_refusal_at_80_keeps_the_file_and_the_next_step`; look unverified (user's); **Right line not fully met, see NOTES** (`check_shot`). **Right:** the bottom row holds the file's name
       whole and `move it aside first · esc dismiss` whole; a `…` stands only where directories or `of <doing>` were left
-      out. The look is the user's (rule 6).
+      out. The look is the user's (rule 6). **Carried to 30t-b** (see Ruling).
 - [x] graft `hint_bar::a_failure_still_names_the_key_that_clears_it` — ticked: workspace nextest 4984/4984, `hint_bar::` unchanged and every `hint_bar::` test green, unchanged.
 - [x] ADR-0049 amendment; — ticked: docs only, no test; gates fmt/clippy/nextest/doc pass; MAP.md (graft-ops `Refusal::explain_rungs`, `RefusalWords`; graft `refusal_status`'s
       `columns` and the `InTheWay` keys). Gates workspace-wide.
@@ -132,3 +132,13 @@ Worktree only; `CARGO_TARGET_DIR` in the worktree. Never read `PROGRESS.md` or `
   `esc dismiss`); still one line.
 - Resize after refusal keeps the rung: KNOWN_GAPS row for conductor, **unverified**.
 - No scout: ticket named every line; direct greps.
+
+## Ruling (planner, 2026-10-01)
+- **Rung 5 added**, spec `30t-b-rung-five.md`: the last applicable rung minus ` (ignored)`
+  (`…/<name> is in the way`). Why: name and step are what he acts on; `(ignored)` only explains; a whole shorter
+  sentence beats `is in the w…`.
+- Cell count, from the capture's row 24: rung 4 is 44 cells + keys 36 = 80 of 79 — one short, not 96. Any name of 18+
+  cells hits it at 80 columns, so it is the common case.
+- Right line kept as written; 30t-b's capture must meet it. 30t's capture tick stands as "not fully met", carried.
+- 187 guard on branch `other`: **accepted.** The guard's point is "wide row, rung 1, words as before"; 26's branch makes
+  rung 1 longer than 187 cells, so it could never prove that.
