@@ -144,6 +144,22 @@ impl LostWork {
     /// [`LostWorkError`] if a directory cannot be made, a `git` step fails,
     /// or a Graft operation does.
     pub fn build(graft: &mut dyn Graft) -> Result<LostWork, LostWorkError> {
+        LostWork::build_with(graft, &[])
+    }
+
+    /// [`LostWork::build`], with each `(key, value)` set by `git config` in
+    /// the working repository right after `init` — after the fixture's own
+    /// local settings, so one of them may be overridden — and before the
+    /// first commit. The acceptance walk turns `core.autocrlf` on this way:
+    /// set later, the undo's backup was taken under a config that converted
+    /// nothing (ADR-0052 §2, m7-power-tools/30w R2).
+    ///
+    /// # Errors
+    /// As [`LostWork::build`]; a `git config` that fails is a `git` step.
+    pub fn build_with(
+        graft: &mut dyn Graft,
+        config: &[(&str, &str)],
+    ) -> Result<LostWork, LostWorkError> {
         let scratch = Scratch::empty("lost-work").map_err(|source| LostWorkError::Io {
             context: "creating the fixture's scratch directory".to_owned(),
             source,
@@ -153,7 +169,7 @@ impl LostWork {
         let origin = root.join("origin.git");
         let shell = Shell { work: &work };
 
-        let commits = shell_steps(&shell, graft, &root, &origin)?;
+        let commits = shell_steps(&shell, graft, &root, &origin, config)?;
         graft
             .fetch(shell.work, ms(END))
             .map_err(|why| LostWorkError::Graft { step: "fetch", why })?;
@@ -183,15 +199,19 @@ impl LostWork {
 }
 
 /// 10:12–10:42: everything the shell does, up to the stash, with Graft's
-/// discard and undo at 10:16.
+/// discard and undo at 10:16. `config` is set after the fixture's own.
 fn shell_steps(
     shell: &Shell<'_>,
     graft: &mut dyn Graft,
     root: &Path,
     origin: &Path,
+    config: &[(&str, &str)],
 ) -> Result<Commits, LostWorkError> {
     git::run_at(root, &["init", "-q", "-b", "main", "work"], &date(START))?;
     shell.harden()?;
+    for (key, value) in config {
+        shell.git(START, &["config", key, value])?;
+    }
 
     let start = shell.commit(
         at(10, 12, 0),

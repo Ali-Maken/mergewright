@@ -262,6 +262,12 @@ impl Route {
         app.key(state, code)
     }
 
+    /// The keys sent so far, in order (a promise scenario adds its
+    /// journeys' routes up).
+    pub fn keys(&self) -> &[&'static str] {
+        &self.keys
+    }
+
     /// The walk took its route; the note allows at most its count.
     pub fn within_count(&self) {
         let allowed = super::noted_keys(self.id);

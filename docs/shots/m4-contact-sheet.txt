@@ -195,7 +195,7 @@ docs/shots/m4-03-credential-masked-160x48.txt
 what right looks like: TESTING.md § Per breakpoint, Credential prompt (masked) row: same. (A run can catch the field's pulse, one `◦` among the `•` — ADR-0038; the settled frame has none.) (Re-taken 2026-09-25, m6-conflicts/63: the graph's cursor-row gutter `▏`.)
 ================================================================================
 
-m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right, keys P → ⏎, unicode tier, 160x48 · PREDATES m6-conflicts/69 and 78 (pty walk not re-run): the app now draws `⏎ send  esc cancel` on the bottom row and `esc cancel push main → origin/main` in the border (m4-credential-prompt-in-app.txt)
+m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right, keys P → ⏎, unicode tier, 160x48
 
  graft <scratch________________________________________________________________>  184 rows so far
 ◆ ▏ⓘ [◆ main ↑1] ours                                                                                                                            GF 6y   271d772
@@ -222,7 +222,7 @@ m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right,
                                             │ Password for 'http://tester@127.0.0.1:00000':                        │
                                             │ ▏••••••••                                                            │
                                             │ typed here only · never stored by Graft                              │
-                                            ╰ ⏎ send  ⌃U clear  esc cancel the push ───────────────────────────────╯
+                                            ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯
 ●    Commit 176                                                                                                                                  GF 7y   5aaeeba
 ●    Commit 175                                                                                                                                  GF 7y   6be5928
 ●    Commit 174                                                                                                                                  GF 7y   9b67be4
@@ -244,14 +244,14 @@ m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right,
 ●    Commit 158                                                                                                                                  GF 7y   1e28a71
 ●    Commit 157                                                                                                                                  GF 7y   b57586d
 ●    Commit 156                                                                                                                                  GF 7y   edc7cba
- push main → origin/main · esc cancels
+ ⏎ send  esc cancel
 
 ================================================================================
 docs/shots/m4-03-credential-masked-80x24.txt
-what right looks like: TESTING.md § Per breakpoint, Credential prompt (masked) row: `Credentials — 127.0.0.1:<port>`, `Password for 'http://tester@127.0.0.1:<port>':`, a field of `•` only, `typed here only · never stored by Graft`, `⏎ send  ⌃U clear  esc cancel the push`. (Re-taken 2026-09-25, m6-conflicts/63: the graph's cursor-row gutter `▏`.) PREDATES m6-conflicts/69 and 78, with rows 6–8: the app now draws the prompt's keys, `⏎ send  esc cancel`, on the bottom row, and the border names the push, `esc cancel push main → origin/main` (see m4-credential-prompt-in-app.txt). A pty retake is pending.
+what right looks like: TESTING.md § Per breakpoint, Credential prompt (masked) row: `Credentials — 127.0.0.1:<port>`, `Password for 'http://tester@127.0.0.1:<port>':`, a field of `•` only, `typed here only · never stored by Graft`, `⏎ send  ⌃U clear  esc cancel push main → origin/main` on the box's bottom border; the bottom row `⏎ send  esc cancel`. (Re-taken 2026-09-25, m6-conflicts/63: the graph's cursor-row gutter `▏`; re-taken 2026-10-01, m7-power-tools-30u: the border names its push, m6-conflicts-78.)
 ================================================================================
 
-m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right, keys P → ⏎, unicode tier, 80x24 · PREDATES m6-conflicts/69 and 78 (pty walk not re-run): the app now draws `⏎ send  esc cancel` on the bottom row and `esc cancel push main → origin/main` in the border (m4-credential-prompt-in-app.txt)
+m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right, keys P → ⏎, unicode tier, 80x24
 
  graft <scratch_______________________________________________________________>…
 ◆ ▏ⓘ [◆ main ↑1] ours                                               6y   271d772
@@ -266,7 +266,7 @@ m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right,
     │ Password for 'http://tester@127.0.0.1:00000':                        │
     │ ▏••••••••                                                            │
     │ typed here only · never stored by Graft                              │
-    ╰ ⏎ send  ⌃U clear  esc cancel the push ───────────────────────────────╯
+    ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯
 ●    Commit 188                                                     7y   0a91ece
 ●    Commit 187                                                     7y   3121935
 ●    Commit 186                                                     7y   fab25df
@@ -276,14 +276,14 @@ m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right,
 ●    Commit 182                                                     7y   d212b3e
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
- push main → origin/main · esc cancels
+ ⏎ send  esc cancel
 
 ================================================================================
 docs/shots/m4-04-credential-username-160x48.txt
 what right looks like: TESTING.md § Per breakpoint, Credential prompt (username) row: same. (Re-taken 2026-09-25, m6-conflicts/63: the graph's cursor-row gutter `▏`.)
 ================================================================================
 
-m4 walk capture: m4-04-credential-username — scenario username-then-password, keys P → ⏎ t e s t e r, unicode tier, 160x48 · PREDATES m6-conflicts/69 and 78 (pty walk not re-run): the app now draws `⏎ send  esc cancel` on the bottom row and `esc cancel push main → origin/main` in the border (m4-credential-prompt-in-app.txt)
+m4 walk capture: m4-04-credential-username — scenario username-then-password, keys P → ⏎ t e s t e r, unicode tier, 160x48
 
  graft <scratch________________________________________________________________>  184 rows so far
 ◆ ▏ⓘ [◆ main ↑1] ours                                                                                                                            GF 6y   271d772
@@ -310,7 +310,7 @@ m4 walk capture: m4-04-credential-username — scenario username-then-password, 
                                             │ Username for 'http://127.0.0.1:00000':                               │
                                             │ ▏tester                                                              │
                                             │ typed here only · never stored by Graft                              │
-                                            ╰ ⏎ send  ⌃U clear  esc cancel the push ───────────────────────────────╯
+                                            ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯
 ●    Commit 176                                                                                                                                  GF 7y   5aaeeba
 ●    Commit 175                                                                                                                                  GF 7y   6be5928
 ●    Commit 174                                                                                                                                  GF 7y   9b67be4
@@ -332,14 +332,14 @@ m4 walk capture: m4-04-credential-username — scenario username-then-password, 
 ●    Commit 158                                                                                                                                  GF 7y   1e28a71
 ●    Commit 157                                                                                                                                  GF 7y   b57586d
 ●    Commit 156                                                                                                                                  GF 7y   edc7cba
- push main → origin/main · esc cancels
+ ⏎ send  esc cancel
 
 ================================================================================
 docs/shots/m4-04-credential-username-80x24.txt
 what right looks like: TESTING.md § Per breakpoint, Credential prompt (username) row: `Username for 'http://127.0.0.1:<port>':`, `▏tester` in clear. (Re-taken 2026-09-25, m6-conflicts/63: the graph's cursor-row gutter `▏`.)
 ================================================================================
 
-m4 walk capture: m4-04-credential-username — scenario username-then-password, keys P → ⏎ t e s t e r, unicode tier, 80x24 · PREDATES m6-conflicts/69 and 78 (pty walk not re-run): the app now draws `⏎ send  esc cancel` on the bottom row and `esc cancel push main → origin/main` in the border (m4-credential-prompt-in-app.txt)
+m4 walk capture: m4-04-credential-username — scenario username-then-password, keys P → ⏎ t e s t e r, unicode tier, 80x24
 
  graft <scratch_______________________________________________________________>…
 ◆ ▏ⓘ [◆ main ↑1] ours                                               6y   271d772
@@ -354,7 +354,7 @@ m4 walk capture: m4-04-credential-username — scenario username-then-password, 
     │ Username for 'http://127.0.0.1:00000':                               │
     │ ▏tester                                                              │
     │ typed here only · never stored by Graft                              │
-    ╰ ⏎ send  ⌃U clear  esc cancel the push ───────────────────────────────╯
+    ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯
 ●    Commit 188                                                     7y   0a91ece
 ●    Commit 187                                                     7y   3121935
 ●    Commit 186                                                     7y   fab25df
@@ -364,7 +364,7 @@ m4 walk capture: m4-04-credential-username — scenario username-then-password, 
 ●    Commit 182                                                     7y   d212b3e
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
- push main → origin/main · esc cancels
+ ⏎ send  esc cancel
 
 ================================================================================
 docs/shots/m4-05-progress-footer-160x48.txt
