@@ -1,0 +1,50 @@
+ graft /code/api  8 commits                                                                                  UNCOMMITTED · 1 staged 1 unstaged
+◌       ▏  Uncommitted changes (1 staged, 1 unstaged)                                                        diff vs HEAD a65d7e4
+  ■        [stash@{0}] On main: tune metrics                                                 GF 3m   91dddee
+  │ ●      [origin/main] Add an ops runbook                                                  GF 14m  8c11cb0
+  │ ●      Document the api                                                                  GF 15m  ba5c9ad
+  │ │ ●  ⓘ [spike] Try redis cache                                                           GF 24m  419e109 STAGED (1)
+◆ │ │ │  ⓘ [◆ main ↑1 ↓2] Add rate limiter                                                   GF 30m  a65d7e4   ▾ src/
+●─┴─┴─╯    Add metrics endpoint                                                              GF 31m  a314d47     M a.rs                                                               +3 −1
+●          Add request logging                                                               GF 32m  6b08f9d UNSTAGED (1)
+◇          Start the api                                                                     GF 33m  8a05478   ▾ src/
+                                                                                                                 M a.rs                                                               +1 −1
+                                                                                                             ▎
+                                                                                                               1   1   pub fn a() -> u32 {
+                                                                                                               2     -     3
+                                                                                                                   2 +     2
+                                                                                                               3   3   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file · B build one (git commit-graph write --reachable) · X never here
+ your edit to src/a.rs is back ✓ · u undoes

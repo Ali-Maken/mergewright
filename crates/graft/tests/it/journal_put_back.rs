@@ -341,3 +341,162 @@ fn put_back_and_was_here_tags_draw() {
     drop(state);
     app.close();
 }
+
+/// What he staged at `src/a.rs` (graft-ops' test 1's `S`), differing from
+/// `HEAD`'s `pub fn a() {}`.
+const STAGED: &[u8] = b"pub fn a() -> u32 {\n    3\n}\n";
+/// What is on disk after staging (`W`), differing from `S`.
+const WORKING: &[u8] = b"pub fn a() -> u32 {\n    4\n}\n";
+
+/// Journey 15's precondition without walking 13 and 14 (their put-backs
+/// need the walk's pinned-clock child): `main` has D again and `spike` is
+/// back at E, by the shell, stamped between the fixture's fetch and the
+/// app's clock. With no lost commit above it, `n` from J's first row lands
+/// on the lost edit, as in walk 15.
+fn journeys_13_and_14_by_the_shell(
+    repo: &std::path::Path,
+    commits: &graft_fixtures::lost_work::Commits,
+) {
+    let at = format!("@{} +0000", graft_fixtures::lost_work::END + 30);
+    for args in [
+        vec!["merge", "-q", "--ff-only", commits.d.as_str()],
+        vec!["branch", "spike", commits.e.as_str()],
+    ] {
+        let out = std::process::Command::new("git")
+            .arg("-C")
+            .arg(repo)
+            .args(&args)
+            .env("GIT_COMMITTER_DATE", &at)
+            .output()
+            .expect("git runs");
+        assert!(
+            out.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+}
+
+/// After `⏎`: the box says the staged copy stays. Writes
+/// `put-back-staged-preview-187x50.txt`.
+fn check_staged_box(state: &graft::update::AppState) {
+    use crate::m7_walk::journal::{drawn, text};
+    let body = text(&drawn(state, 187, 50));
+    assert!(
+        body.contains("Preview: put back your edit to src/a.rs"),
+        "the box's title:\n{body}"
+    );
+    assert!(
+        body.contains(
+            "your files: src/a.rs comes back · what's in src/a.rs now is replaced · \
+             src/a.rs stays staged as you had it"
+        ),
+        "the box says the staged copy stays:\n{body}"
+    );
+    assert!(body.contains("u undoes it"), "the box's last line:\n{body}");
+    crate::captures::check_shot("m7/put-back-staged-preview-187x50.txt", &body);
+}
+
+/// After `y`: J closed, both sections, the cursor on the `UNSTAGED` row with
+/// the lost edit's diff. Writes `put-back-staged-landed-187x50.txt`.
+fn check_staged_landing(state: &graft::update::AppState) {
+    use crate::m7_walk::journal::{drawn, text};
+    let landed = drawn(state, 187, 50);
+    let body = text(&landed);
+    assert!(
+        !landed.iter().any(|row| row.contains("JOURNAL ·")),
+        "J is closed:\n{body}"
+    );
+    assert!(
+        body.contains("STAGED (1)") && body.contains("UNSTAGED (1)"),
+        "the pane holds both sections:\n{body}"
+    );
+    // The lost edit's `2` added (its diff against the index); `S`'s `3`
+    // added is the STAGED row's diff against HEAD, not shown.
+    assert!(
+        landed.iter().any(|row| row.contains("+     2")),
+        "the diff is the lost edit's:\n{body}"
+    );
+    assert!(
+        !landed.iter().any(|row| row.contains("+     3")),
+        "not the staged copy's diff:\n{body}"
+    );
+    assert_eq!(
+        state.detail.selected_section(),
+        Some(graft_ui::detail::WorkingTreeSection::Unstaged),
+        "the cursor is on the UNSTAGED row:\n{body}"
+    );
+    let bottom = landed.last().map_or("", String::as_str);
+    assert!(
+        bottom.contains("your edit to src/a.rs is back")
+            && bottom.contains('✓')
+            && bottom.contains("u undoes"),
+        "the bottom row:\n{body}"
+    );
+    crate::captures::check_shot("m7/put-back-staged-landed-187x50.txt", &body);
+}
+
+/// m7/30p R2: journey 15 over a staged file. The put-back writes the
+/// working tree only, so his staged copy stays; the box says so before `y`,
+/// and `y` lands on the file's `UNSTAGED` row, whose diff is the lost edit.
+/// Also `docs/shots/m7/put-back-staged-{preview,landed}-187x50.txt`.
+#[test]
+fn a_staged_path_put_back_lands_on_its_unstaged_row() {
+    use crate::m7_walk::blame::Route;
+    use crate::m7_walk::journal::{drawn, lost_work, opened, selected_row, text};
+    use graft_fixtures::lost_work::EDITED;
+
+    let fixture = lost_work();
+    let repo = fixture.work();
+    journeys_13_and_14_by_the_shell(repo, fixture.commits());
+    std::fs::write(repo.join(EDITED), STAGED).expect("S is written");
+    git(repo, &["add", "--", EDITED]);
+    std::fs::write(repo.join(EDITED), WORKING).expect("W is written");
+    let staged = || git(repo, &["show", &format!(":{EDITED}")]);
+    assert_eq!(staged().as_bytes(), STAGED);
+    let (app, state) = opened(repo);
+
+    let mut route = Route::new("edit-in-undo-backup");
+    let state = route.press(&app, &state, "J", KeyCode::Char('J'));
+    let state = app.pump(state, "J's stages 2 and 3", |state| {
+        !state.journal.finding_lost()
+    });
+    let state = route.press(&app, &state, "n", KeyCode::Char('n'));
+    assert!(
+        selected_row(&drawn(&state, 187, 50)).contains("your edit to src/a.rs"),
+        "n lands on the lost edit's row:\n{}",
+        text(&drawn(&state, 187, 50))
+    );
+    let state = route.press(&app, &state, "⏎", KeyCode::Enter);
+    let state = app.pump(state, "what the row puts back", |state| {
+        state
+            .preview
+            .as_ref()
+            .is_some_and(|preview| matches!(preview.plan, graft::update::detail::Loading::Ready(_)))
+    });
+    check_staged_box(&state);
+
+    let state = route.press(&app, &state, "y", KeyCode::Char('y'));
+    let state = app.settle_write(state, "the put-back");
+    let state = crate::captures::settled_frame(&app, state);
+    route.within_count();
+
+    check_staged_landing(&state);
+    assert_eq!(
+        std::fs::read(repo.join(EDITED)).expect("src/a.rs reads"),
+        graft_fixtures::lost_work::LOST_EDIT
+    );
+    assert_eq!(staged().as_bytes(), STAGED, "the index still holds S");
+
+    // Uncounted, after the journey: `u` brings back W over the same index.
+    let state = app.key(&state, KeyCode::Char('u'));
+    let state = app.settle_write(state, "the undo of the put-back");
+    assert_eq!(
+        std::fs::read(repo.join(EDITED)).expect("src/a.rs reads"),
+        WORKING,
+        "u brings back W"
+    );
+    assert_eq!(staged().as_bytes(), STAGED, "the index still holds S");
+    drop(state);
+    app.close();
+}

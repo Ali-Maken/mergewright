@@ -126,6 +126,7 @@ fn changes(come_back: &[&str], go: &[&str], set_aside: usize) -> FilesEffect {
         go: go.iter().map(PathBuf::from).collect(),
         set_aside,
         replaced: Vec::new(),
+        still_staged: Vec::new(),
     }
 }
 
@@ -262,6 +263,7 @@ fn files_words_names_what_is_replaced() {
         go: vec![],
         set_aside: 0,
         replaced: replaced.iter().map(PathBuf::from).collect(),
+        still_staged: Vec::new(),
     };
     assert_eq!(
         files_words(&replacing(&["src/a.rs"])),
@@ -276,10 +278,44 @@ fn files_words_names_what_is_replaced() {
         go: vec![PathBuf::from("b")],
         set_aside: 1,
         replaced: vec![PathBuf::from("c")],
+        still_staged: Vec::new(),
     };
     assert_eq!(
         files_words(&every),
         "your files: a comes back \u{b7} b goes \u{b7} what's in c now is replaced \u{b7} 1 unsaved file set aside, put back after"
+    );
+}
+
+/// 30p R2: a replaced path his index holds apart from `HEAD` stays staged,
+/// and the box says so. Clause order: come back · go · replaced · still
+/// staged · set aside.
+#[test]
+fn files_words_says_a_staged_path_stays_staged() {
+    let staged = |paths: &[&str]| FilesEffect::Changes {
+        come_back: vec![PathBuf::from("src/a.rs")],
+        go: vec![],
+        set_aside: 0,
+        replaced: paths.iter().map(PathBuf::from).collect(),
+        still_staged: paths.iter().map(PathBuf::from).collect(),
+    };
+    assert_eq!(
+        files_words(&staged(&["src/a.rs"])),
+        "your files: src/a.rs comes back \u{b7} what's in src/a.rs now is replaced \u{b7} src/a.rs stays staged as you had it"
+    );
+    assert_eq!(
+        files_words(&staged(&["src/a.rs", "src/b.rs", "src/c.rs"])),
+        "your files: src/a.rs comes back \u{b7} what's in src/a.rs +2 more now is replaced \u{b7} src/a.rs +2 more stay staged as you had them"
+    );
+    let every = FilesEffect::Changes {
+        come_back: vec![PathBuf::from("a")],
+        go: vec![PathBuf::from("b")],
+        set_aside: 1,
+        replaced: vec![PathBuf::from("c")],
+        still_staged: vec![PathBuf::from("c")],
+    };
+    assert_eq!(
+        files_words(&every),
+        "your files: a comes back \u{b7} b goes \u{b7} what's in c now is replaced \u{b7} c stays staged as you had it \u{b7} 1 unsaved file set aside, put back after"
     );
 }
 

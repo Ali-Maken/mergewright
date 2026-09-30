@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use graft_core::oid::Oid;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
+use graft_git::status::StatusEntry;
 
 use crate::facts::FactsError;
 use crate::operation::{FilesEffect, RecoverParams, RecoverTarget, RepoFacts, branch_ref};
@@ -66,7 +67,10 @@ pub(super) fn recover(
                 come_back,
                 go,
                 set_aside: 0,
-                replaced: changed_now(paths, facts),
+                replaced: changed_now(paths, facts, |entry| {
+                    entry.is_staged() || entry.is_unstaged() || entry.untracked
+                }),
+                still_staged: changed_now(paths, facts, StatusEntry::is_staged),
             });
         }
     }
@@ -97,6 +101,7 @@ fn reset_effect(
             go,
             set_aside,
             replaced: Vec::new(),
+            still_staged: Vec::new(),
         }),
     ))
 }
@@ -115,18 +120,24 @@ fn set_aside_count(params: &RecoverParams, facts: &RepoFacts) -> usize {
         .map_or(0, |aside| aside.files)
 }
 
-/// Which of `paths` he has changed against `HEAD` — staged, unstaged or
-/// untracked — in `paths`' order: what a file put-back writes over, and its
-/// entry's before-snapshot keeps (m7/30o R1). An ignored file there never
-/// gets here: `in_the_way` refused it first.
-fn changed_now(paths: &[PathBuf], facts: &RepoFacts) -> Vec<PathBuf> {
+/// Which of `paths` have a status entry that `changed` holds, in `paths`'
+/// order. Changed against `HEAD` at all (staged, unstaged or untracked) is
+/// what a file put-back writes over, and its entry's before-snapshot keeps
+/// (m7/30o R1); staged is what stays in the index (m7/30p R2). An ignored
+/// file there never gets here: `in_the_way` refused it first.
+fn changed_now(
+    paths: &[PathBuf],
+    facts: &RepoFacts,
+    changed: impl Fn(&StatusEntry) -> bool,
+) -> Vec<PathBuf> {
     paths
         .iter()
         .filter(|path| {
-            facts.status.entries.iter().any(|entry| {
-                entry.path == **path
-                    && (entry.is_staged() || entry.is_unstaged() || entry.untracked)
-            })
+            facts
+                .status
+                .entries
+                .iter()
+                .any(|entry| entry.path == **path && changed(entry))
         })
         .cloned()
         .collect()

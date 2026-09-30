@@ -157,7 +157,8 @@ pub(crate) fn preview_lines(
 /// `your files: …` from the plan's [`FilesEffect`]: `unchanged (main isn't
 /// checked out)`, or the clauses that apply joined by ` · ` —
 /// `src/a.rs comes back`, `src/b.rs +2 more go`, `what's in src/a.rs now
-/// is replaced`, `1 unsaved file set aside, put back after` — and
+/// is replaced`, `src/a.rs stays staged as you had it` (m7/30p R2),
+/// `1 unsaved file set aside, put back after` — and
 /// `unchanged` when none does.
 pub(crate) fn files_words(effect: &FilesEffect) -> String {
     let clauses = match effect {
@@ -169,11 +170,17 @@ pub(crate) fn files_words(effect: &FilesEffect) -> String {
             go,
             set_aside,
             replaced,
+            still_staged,
         } => {
             let mut clauses: Vec<String> = [
                 listed(come_back, "comes back", "come back"),
                 listed(go, "goes", "go"),
                 replaced_words(replaced),
+                listed(
+                    still_staged,
+                    "stays staged as you had it",
+                    "stay staged as you had them",
+                ),
             ]
             .into_iter()
             .flatten()

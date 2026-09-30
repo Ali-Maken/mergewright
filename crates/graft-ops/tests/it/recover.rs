@@ -567,6 +567,7 @@ fn the_file_put_back_names_what_it_replaces() {
             go: vec![],
             set_aside: 0,
             replaced: vec![PathBuf::from(lost_work::EDITED)],
+            still_staged: vec![],
         })
     );
 }
@@ -599,6 +600,297 @@ fn a_file_put_back_over_an_ignored_file_is_refused() {
         "o.txt (ignored) is in the way of putting back your edit · move it aside first"
     );
     assert_eq!(repo.read("o.txt"), b"his ignored o\n", "nothing written");
+}
+
+// ── `u` after a put-back, for every path kind it writes over (30p R1) ───
+//
+// The mechanism is the entry's before-snapshot (`add -A` on an index copy)
+// and `u` restoring the worktree from it. Each test observes it on real git
+// for one kind of path, byte-exact, never from a returned value.
+
+/// Run `git` in `work`; stdout as bytes, untrimmed (for `git show`).
+fn git_bytes(work: &Path, args: &[&str]) -> Vec<u8> {
+    let output = std::process::Command::new("git")
+        .arg("-C")
+        .arg(work)
+        .args(args)
+        .output()
+        .unwrap_or_else(|why| panic!("git runs: {why}"));
+    assert!(
+        output.status.success(),
+        "git {args:?} failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output.stdout
+}
+
+fn git_text(work: &Path, args: &[&str]) -> String {
+    String::from_utf8(git_bytes(work, args)).expect("git's output is UTF-8")
+}
+
+/// What he staged at `src/a.rs` (test 1's `S`): differs from `HEAD`.
+const STAGED: &[u8] = b"pub fn a() -> u32 {\n    3\n}\n";
+/// What is on disk at `src/a.rs` after staging (`W`): differs from `S`.
+const WORKING: &[u8] = b"pub fn a() -> u32 {\n    4\n}\n";
+
+/// The lost-work fixture, then `src/a.rs` staged as `S` and edited to `W`:
+/// the put-back's op, read while the lost edit is the fixture's.
+fn staged_and_edited() -> (LostWork, Operation) {
+    let fixture = LostWork::build(&mut GraftOps).expect("the fixture builds");
+    let work = fixture.work();
+    let op = the_lost_edit_put_back(work);
+    std::fs::write(work.join(lost_work::EDITED), STAGED).expect("S is written");
+    git_bytes(work, &["add", "--", lost_work::EDITED]);
+    std::fs::write(work.join(lost_work::EDITED), WORKING).expect("W is written");
+    (fixture, op)
+}
+
+/// Test 1: Index `S` ≠ `HEAD`, worktree `W` ≠ `S`: the put-back writes the
+/// worktree only, and `u` brings back `W` over the index it never touched.
+#[test]
+fn u_after_a_put_back_over_a_staged_file_brings_back_both() {
+    let (fixture, op) = staged_and_edited();
+    let work = fixture.work();
+    let staged = |at: &str| {
+        assert_eq!(
+            git_bytes(work, &["show", ":src/a.rs"]),
+            STAGED,
+            "the index holds S {at}"
+        );
+    };
+    staged("before");
+
+    apply_in(work, &op, AFTER_FIXTURE).expect("the put-back runs");
+    assert_eq!(disk(work, lost_work::EDITED), lost_work::LOST_EDIT);
+    staged("after the put-back");
+
+    undo_in(work, AFTER_FIXTURE + 1, false).expect("u runs, no drift");
+    assert_eq!(disk(work, lost_work::EDITED), WORKING, "W is back");
+    staged("after u");
+}
+
+/// Test 2: The `go` direction: his drift was a deletion of `a.txt`, which the
+/// forced undo re-created, so the backup lacks it. He then writes `W` there.
+/// The put-back removes it; `u` brings `W` back.
+#[test]
+fn u_brings_back_a_file_a_put_back_deleted() {
+    let repo = main_and_other();
+    run(&repo, &checkout_other(), NOW);
+    std::fs::remove_file(repo.path().join("a.txt")).expect("his drift: a.txt deleted");
+    let undo = run_undo(&repo, NOW + 1, true)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain()))
+        .entry;
+    assert_eq!(repo.read("a.txt"), b"a\n", "the undo re-created it");
+    repo.write("a.txt", WORKING);
+    let op = files_of(&undo, &["a.txt"]);
+    let index = repo.git(&["ls-files", "-s"]);
+
+    let plan = preview_of(&repo, &op);
+    assert_eq!(
+        plan.files,
+        Some(FilesEffect::Changes {
+            come_back: vec![],
+            go: vec![PathBuf::from("a.txt")],
+            set_aside: 0,
+            replaced: vec![PathBuf::from("a.txt")],
+            still_staged: vec![],
+        }),
+        "the preview's go holds the path"
+    );
+
+    run(&repo, &op, NOW + 2);
+    assert!(
+        std::fs::symlink_metadata(repo.path().join("a.txt")).is_err(),
+        "the put-back removed it"
+    );
+
+    run_undo(&repo, NOW + 3, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    assert_eq!(repo.read("a.txt"), WORKING, "W is back");
+    assert_eq!(
+        repo.git(&["ls-files", "-s"]),
+        index,
+        "the index is unchanged"
+    );
+}
+
+/// The fixture's put-back over `src/a.rs` as `set_up` leaves it, then `u`.
+/// The index is the same before, between and after.
+fn put_back_then_u(set_up: impl FnOnce(&Path)) -> LostWork {
+    let fixture = LostWork::build(&mut GraftOps).expect("the fixture builds");
+    let work = fixture.work();
+    let op = the_lost_edit_put_back(work);
+    set_up(work);
+    let index = git_text(work, &["ls-files", "-s"]);
+
+    apply_in(work, &op, AFTER_FIXTURE).expect("the put-back runs");
+    assert_eq!(
+        git_text(work, &["ls-files", "-s"]),
+        index,
+        "the put-back leaves the index"
+    );
+
+    undo_in(work, AFTER_FIXTURE + 1, false).expect("u runs, no drift");
+    assert_eq!(
+        git_text(work, &["ls-files", "-s"]),
+        index,
+        "u leaves the index"
+    );
+    fixture
+}
+
+/// Test 3: His file is `W`, `0o755`; the backup's is `0o644`.
+#[test]
+fn u_brings_back_the_exec_bit_a_put_back_replaced() {
+    use std::os::unix::fs::PermissionsExt;
+    let fixture = put_back_then_u(|work| {
+        let path = work.join(lost_work::EDITED);
+        std::fs::write(&path, WORKING).expect("W is written");
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))
+            .expect("the exec bit is set");
+    });
+    let path = fixture.work().join(lost_work::EDITED);
+
+    assert_eq!(std::fs::read(&path).expect("the file reads"), WORKING);
+    let mode = std::fs::symlink_metadata(&path)
+        .expect("the file is there")
+        .permissions()
+        .mode();
+    assert_eq!(mode & 0o111, 0o111, "the exec bit is back: {mode:o}");
+}
+
+/// Test 4: His path is a symlink to `b.rs`.
+#[test]
+fn u_brings_back_a_symlink_a_put_back_replaced() {
+    let fixture = put_back_then_u(|work| {
+        let path = work.join(lost_work::EDITED);
+        std::fs::remove_file(&path).expect("the file goes");
+        std::os::unix::fs::symlink("b.rs", &path).expect("the symlink is made");
+    });
+    let path = fixture.work().join(lost_work::EDITED);
+
+    let meta = std::fs::symlink_metadata(&path).expect("the path is there");
+    assert!(meta.file_type().is_symlink(), "a symlink again: {meta:?}");
+    assert_eq!(
+        std::fs::read_link(&path).expect("the link reads"),
+        PathBuf::from("b.rs")
+    );
+}
+
+/// `core.autocrlf=true`, then his file `bytes`: after the put-back and `u`,
+/// the same bytes.
+fn u_under_autocrlf_brings_back(bytes: &'static [u8]) {
+    let fixture = put_back_then_u(|work| {
+        git_bytes(work, &["config", "core.autocrlf", "true"]);
+        std::fs::write(work.join(lost_work::EDITED), bytes).expect("W is written");
+    });
+
+    assert_eq!(disk(fixture.work(), lost_work::EDITED), bytes);
+}
+
+/// Test 5: `W` with CRLF endings under `core.autocrlf=true`.
+#[test]
+fn u_brings_back_a_crlf_file_under_autocrlf() {
+    u_under_autocrlf_brings_back(b"pub fn a() -> u32 {\r\n    4\r\n}\r\n");
+}
+
+// 6. `u_brings_back_an_lf_file_under_autocrlf` is red and left out
+// (30p R1's stop): its body and failing line are in the ticket's NOTES.
+
+/// Test 7: `src/a.rs filter=rot`, clean and smudge both rot13.
+#[test]
+fn u_brings_back_a_file_under_a_clean_smudge_filter() {
+    let fixture = put_back_then_u(|work| {
+        std::fs::write(work.join(".git/info/attributes"), b"src/a.rs filter=rot\n")
+            .expect("the attributes are written");
+        let rot = "tr 'A-Za-z' 'N-ZA-Mn-za-m'";
+        git_bytes(work, &["config", "filter.rot.clean", rot]);
+        git_bytes(work, &["config", "filter.rot.smudge", rot]);
+        std::fs::write(work.join(lost_work::EDITED), WORKING).expect("W is written");
+    });
+
+    assert_eq!(disk(fixture.work(), lost_work::EDITED), WORKING);
+}
+
+/// Test 8: A tracked path deleted on disk: the put-back re-creates it, `u`
+/// removes it again, and the index never changes.
+#[test]
+fn u_after_a_put_back_that_recreates_a_deleted_file_removes_it() {
+    let fixture = put_back_then_u(|work| {
+        std::fs::remove_file(work.join(lost_work::EDITED)).expect("the file goes");
+    });
+
+    assert!(
+        std::fs::symlink_metadata(fixture.work().join(lost_work::EDITED)).is_err(),
+        "absent again"
+    );
+}
+
+/// 30p R2: the preview names the replaced paths his index holds apart from
+/// `HEAD`, so the box can say they stay staged.
+#[test]
+fn still_staged_names_the_staged_paths() {
+    let edited = || vec![PathBuf::from(lost_work::EDITED)];
+    let files_line = |work: &Path, op: &Operation| {
+        let handle = RepoHandle::open(work).expect("the fixture opens");
+        let facts =
+            read_facts(&handle, git_version(), &Never, &op.facts_scope()).expect("the facts read");
+        preview::plan(&handle, &git_version(), op, &facts, &Never)
+            .unwrap_or_else(|why| panic!("preview: {}", why.explain()))
+            .files
+    };
+
+    let (fixture, op) = staged_and_edited();
+    assert_eq!(
+        files_line(fixture.work(), &op),
+        Some(FilesEffect::Changes {
+            come_back: edited(),
+            go: vec![],
+            set_aside: 0,
+            replaced: edited(),
+            still_staged: edited(),
+        })
+    );
+
+    // The fixture as built: his copy is unstaged, nothing stays staged.
+    let fixture = LostWork::build(&mut GraftOps).expect("the fixture builds");
+    let op = the_lost_edit_put_back(fixture.work());
+    assert_eq!(
+        files_line(fixture.work(), &op),
+        Some(FilesEffect::Changes {
+            come_back: edited(),
+            go: vec![],
+            set_aside: 0,
+            replaced: edited(),
+            still_staged: vec![],
+        })
+    );
+}
+
+/// 30p R3: the copy a put-back replaces is never a lost-edit row — he chose
+/// it in the box. The lost edit's own row goes once it is back on disk, and
+/// comes back with `u`.
+#[test]
+fn a_put_back_leaves_no_lost_edit_row_and_u_brings_it_back() {
+    let fixture = LostWork::build(&mut GraftOps).expect("the fixture builds");
+    let work = fixture.work();
+    let lost_now = || {
+        let handle = RepoHandle::open(work).expect("the fixture opens");
+        let entries = journal_for(&handle).entries().to_vec();
+        lost_edits(&handle, &entries, &Never).expect("lost edits read")
+    };
+    let op = the_lost_edit_put_back(work);
+    let before = lost_now();
+
+    apply_in(work, &op, AFTER_FIXTURE).expect("the put-back runs");
+    assert_eq!(
+        lost_now(),
+        vec![],
+        "no row: not his edit, not the replaced copy"
+    );
+
+    undo_in(work, AFTER_FIXTURE + 1, false).expect("u runs, no drift");
+    assert_eq!(lost_now(), before, "the one lost edit is back");
+    assert_eq!(before.len(), 1);
 }
 
 #[test]
@@ -822,6 +1114,7 @@ fn recover_preview_lists_your_files() {
             go: vec![],
             set_aside: 1,
             replaced: vec![],
+            still_staged: vec![],
         })
     );
     assert_eq!(plan.ref_moves.len(), 1);
@@ -844,6 +1137,7 @@ fn recover_preview_lists_your_files() {
             go: vec![],
             set_aside: 0,
             replaced: vec![],
+            still_staged: vec![],
         })
     );
 }
