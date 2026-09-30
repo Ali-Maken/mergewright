@@ -14,8 +14,10 @@
 //! 6. [`close`] — `stash apply --index S`, the index read **whatever the
 //!    exit code** (ADR-0045 §7), falling back to a plain `stash apply S`
 //!    when git could not reinstate the index and wrote nothing (the
-//!    2026-09-26 b amendment, [`put_back`]); then `S` dropped by id when
-//!    nothing is unmerged; the entry's outcome decided from both. Absorb,
+//!    2026-09-26 b amendment, [`put_back`]); after a clean apply, his own
+//!    bytes over what git wrote in its encoding (the raw step, ADR-0052,
+//!    m7-power-tools/30s); then `S` dropped by id when nothing is unmerged;
+//!    the entry's outcome decided from both. Absorb,
 //!    gone through, applies `S` rebuilt on its base (06b,
 //!    `rebuild::from_index_base`).
 //!
@@ -41,6 +43,7 @@ mod rebuild;
 mod returned;
 
 use answer::{Outcome, answer, status_for};
+use put_back::HisBytes;
 use returned::{Returned, put_back};
 
 pub(super) use put_back::tracked_changed;
@@ -252,8 +255,15 @@ pub(super) fn close(
     stash: Oid,
     ended: Ended,
 ) -> Result<Applied, ApplyError> {
-    let outcome = match put_back(ctx, stash, ended.index_base, &mut commands) {
-        Returned::Back { unstaged } => Outcome::Back { unstaged },
+    // His own bytes, for the paths the put-back writes in git's encoding
+    // (the raw step, m7-power-tools/30s).
+    let his = pending
+        .entry
+        .worktree_raw_before
+        .zip(pending.entry.worktree_before)
+        .map(|(raw, tree)| HisBytes { raw, tree });
+    let outcome = match put_back(ctx, stash, ended.index_base, his, &mut commands) {
+        Returned::Back { unstaged, raw } => Outcome::Back { unstaged, raw },
         Returned::Clashed(paths) => Outcome::Clashed(paths),
         Returned::Kept(kept) => {
             // One read of the list serves the words and where the edits are.
@@ -267,8 +277,8 @@ pub(super) fn close(
             // The outcome line would have said where the edits are; the
             // error has to say it instead (73 review, m1).
             let kept = match &outcome {
-                Outcome::Back { unstaged } if unstaged.is_empty() => None,
-                Outcome::Back { unstaged } => Some(
+                Outcome::Back { unstaged, .. } if unstaged.is_empty() => None,
+                Outcome::Back { unstaged, .. } => Some(
                     AfterState::StagingNotKept {
                         paths: unstaged.clone(),
                     }
@@ -279,6 +289,12 @@ pub(super) fn close(
                     where_kept(ctx, stash)
                 )),
                 Outcome::Kept { words, .. } => Some(words.clone()),
+            };
+            // A failed raw step is in no outcome's words: first, as in
+            // `unread` (Ruling 2026-10-01 §1).
+            let kept = match (outcome.raw_words(), kept) {
+                (Some(raw), Some(kept)) => Some(format!("{raw}; {kept}")),
+                (raw, kept) => raw.or(kept),
             };
             return Err(ApplyError::Journal {
                 error,

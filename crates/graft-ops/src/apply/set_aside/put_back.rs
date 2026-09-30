@@ -12,6 +12,15 @@
 //! - anything else → [`PutBackRan::Failed`]. A second apply never runs over
 //!   a tree the first one changed: the edits would go in twice.
 //!
+//! After either clean apply, the **raw step** (m7-power-tools/30s,
+//! ADR-0052): `stash apply` writes his edits in git's encoding (CRLF for an
+//! LF file under `core.autocrlf=true`; a one-way clean filter's output), so
+//! his own bytes, kept in the before-snapshot's `raw/` tree, are written
+//! back over every path whose content is still his
+//! ([`same_content_paths`]). Never on a clash or a failure. Its failure is
+//! carried on the clean variant ([`NotAsTheyWere`]), never a reason to keep
+//! `S`: the edits are on disk either way.
+//!
 //! Absorb's rebuilt stash
 //! ([`from_index_base`](super::rebuild::from_index_base)) is one input to
 //! the same apply.
@@ -20,12 +29,34 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 use graft_core::oid::Oid;
-use graft_git::run::{GitArg, GitInvocation, RunError};
+use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::status::WorkingTreeStatus;
 
 use crate::facts::FactsError;
+use crate::restore::{RestoreError, same_content_paths, write_raw};
 
 use super::Context;
+
+/// Where his own bytes are for a put-back (ADR-0052): the entry's
+/// `worktree_raw_before` and `worktree_before`, the tree they clean into.
+/// `None` when either field is: no raw step, no spawn.
+pub(super) struct HisBytes {
+    /// The before-snapshot's `raw/` tree.
+    pub(super) raw: Oid,
+    /// The before-snapshot's working tree, as git cleans it.
+    pub(super) tree: Oid,
+}
+
+/// The raw step failed after a clean apply: his edits are back in git's
+/// encoding, not as he left them. [`crate::apply::AfterState::NotAsTheyWere`]'s
+/// fields.
+#[derive(Debug)]
+pub(crate) struct NotAsTheyWere {
+    /// Which check or write failed.
+    pub(crate) error: RestoreError,
+    /// How many paths it was to write; 0 when the check failed.
+    pub(crate) files: usize,
+}
 
 /// `apply.whitespace=nowarn` for the put-back, through `GIT_CONFIG_COUNT`
 /// (git ≥ 2.31): `stash apply --index` re-applies the index with a child
@@ -42,11 +73,16 @@ const AS_THEY_WERE: [(&str, &str); 3] = [
 /// message.
 #[derive(Debug)]
 pub(crate) enum PutBackRan {
-    /// `--index` applied clean: the staged split is as it was.
-    Whole,
+    /// `--index` applied clean: the staged split is as it was. `raw`: the
+    /// raw step's failure, if it failed.
+    Whole { raw: Option<NotAsTheyWere> },
     /// `--index` refused and wrote nothing; the plain apply ran clean.
-    /// `paths`: the staged paths whose staging did not come back.
-    Unstaged { paths: Vec<PathBuf> },
+    /// `paths`: the staged paths whose staging did not come back; `raw` as
+    /// [`PutBackRan::Whole`]'s.
+    Unstaged {
+        paths: Vec<PathBuf>,
+        raw: Option<NotAsTheyWere>,
+    },
     /// Unmerged after either apply (ADR-0045 §2).
     Clashed { paths: Vec<PathBuf> },
     /// `S` stays listed: git refused and either wrote something or refused
@@ -56,16 +92,21 @@ pub(crate) enum PutBackRan {
 }
 
 /// Step 6's apply of `stash` (`S`, or absorb's rebuilt copy), with the
-/// fallback. `Err`: the status could not be read after an apply, so whether
-/// it clashed is unknown.
+/// fallback, then the raw step from `his` after a clean one. `Err`: the
+/// status could not be read after an apply, so whether it clashed is
+/// unknown.
 pub(super) fn run_put_back(
-    ctx: &Context<'_>,
+    ctx: &mut Context<'_>,
     stash: Oid,
+    his: Option<HisBytes>,
     commands: &mut Vec<String>,
 ) -> Result<PutBackRan, FactsError> {
     let first = apply(ctx, stash, true, commands);
     match read(ctx, first)? {
-        Read::Clean => return Ok(PutBackRan::Whole),
+        Read::Clean => {
+            let raw = as_they_were(ctx, his, commands);
+            return Ok(PutBackRan::Whole { raw });
+        }
         Read::Clashed(paths) => return Ok(PutBackRan::Clashed { paths }),
         Read::Wrote(error) => return Ok(PutBackRan::Failed { error }),
         // git could not reinstate the index on this tree and wrote nothing.
@@ -82,11 +123,42 @@ pub(super) fn run_put_back(
     };
     let second = apply(ctx, stash, false, commands);
     Ok(match read(ctx, second)? {
-        Read::Clean => PutBackRan::Unstaged { paths },
+        Read::Clean => PutBackRan::Unstaged {
+            paths,
+            raw: as_they_were(ctx, his, commands),
+        },
         Read::Clashed(paths) => PutBackRan::Clashed { paths },
         // Never a third apply.
         Read::Wrote(error) | Read::WroteNothing(error) => PutBackRan::Failed { error },
     })
+}
+
+/// The raw step: his own bytes (`his.raw`) over each path the apply wrote
+/// back with his content in git's encoding. Never stopped, like the apply
+/// before it — the second half of a write already done is not cut short —
+/// so `ctx`'s stop is swapped for one that never fires and handed back on
+/// the way out. Its reads and writes go on the Command Log as `u`'s
+/// [`write_raw`] logs them.
+fn as_they_were(
+    ctx: &mut Context<'_>,
+    his: Option<HisBytes>,
+    commands: &mut Vec<String>,
+) -> Option<NotAsTheyWere> {
+    let his = his?;
+    let never: &dyn Stop = &();
+    let asked = std::mem::replace(&mut ctx.stop, never);
+    let failed = match same_content_paths(ctx, his.raw, his.tree, commands) {
+        Ok(paths) if paths.is_empty() => None,
+        Ok(paths) => write_raw(ctx, his.raw, &paths, commands)
+            .err()
+            .map(|error| NotAsTheyWere {
+                error,
+                files: paths.len(),
+            }),
+        Err(error) => Some(NotAsTheyWere { error, files: 0 }),
+    };
+    ctx.stop = asked;
+    failed
 }
 
 /// `git stash apply [--index] <stash>`, its line on the Command Log.

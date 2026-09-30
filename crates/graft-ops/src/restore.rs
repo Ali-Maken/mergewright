@@ -21,6 +21,7 @@
 //! `git` each step actually runs is the `steps` module.
 
 mod outcome;
+mod raw;
 mod ref_names;
 mod rollback;
 mod steps;
@@ -38,6 +39,7 @@ use crate::journal::JournalError;
 use crate::snapshot::SnapshotError;
 use crate::undo::{InversePlan, Replaced, Step};
 
+pub(crate) use raw::{same_content_paths, write_raw};
 use rollback::{Before, Cancelled, roll_back_after_failure, roll_back_after_stop};
 use steps::run_step;
 
