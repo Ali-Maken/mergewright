@@ -52,6 +52,7 @@ mod submodule_log;
 mod support;
 mod switch_list;
 mod switch_rule;
+mod undo_bytes;
 mod undo_cancel;
 mod undo_gate;
 mod undo_replaced;

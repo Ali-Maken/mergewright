@@ -5,19 +5,21 @@
 //! convert, then `u`, through the same `apply`/`undo` path the app uses, and
 //! reads the file back off disk byte for byte, never from a returned value.
 //!
-//! **Not registered in `main.rs` yet, on purpose.** Committed by 30q-a as
-//! R0's evidence: both tests are red on 8c3f4b1b and after 30q-a (`:44`,
-//! `:64`; `u` writes the file back with CRLF endings), because the snapshot
-//! now keeps the bytes but `RestoreWorktree` does not write them yet. 30q-b
-//! adds `mod undo_bytes;` when they go green.
+//! The first two are R0's evidence (30q-a): red on 8c3f4b1b, where `u` wrote
+//! the file back with CRLF endings. The snapshot keeps the bytes (30q-a) and
+//! `RestoreWorktree` writes them (30q-b).
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 
+use graft_git::run::Stop;
 use graft_ops::operation::{Operation, StashParams, StashScope, Target};
+use graft_ops::restore::{self, RestoreError};
+use graft_ops::undo::{self, Step, UndoError};
 
-use crate::support::{NOW, TempRepo, run, run_undo};
+use crate::support::{NOW, TempRepo, context, journal_for, run, run_redo, run_undo, try_run};
 
 /// What `HEAD` holds at `src/a.rs`.
 const COMMITTED: &[u8] = b"pub fn a() -> u32 {\n    1\n}\n";
@@ -68,4 +70,337 @@ fn u_after_a_stash_brings_back_an_lf_file_under_autocrlf() {
 
     run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
     assert_eq!(repo.read("src/a.rs"), WORKING, "W is back, byte for byte");
+}
+
+/// Discard `path`, then `u`: what is on disk after is what was before.
+fn discard_then_u(repo: &TempRepo, path: &str) {
+    let before = repo.read(path);
+    run(
+        repo,
+        &Operation::Discard(Target::Paths(vec![PathBuf::from(path)])),
+        NOW,
+    );
+    assert_ne!(repo.read(path), before, "the discard wrote over it");
+
+    run_undo(repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    assert_eq!(
+        repo.read(path),
+        before,
+        "{path} is back, byte for byte, not {:?}",
+        String::from_utf8_lossy(&repo.read(path))
+    );
+}
+
+/// `run.sh`, `0o755`, LF, changed, under `core.autocrlf=true`: the bytes and
+/// the exec bit both come back (R4: the mode is the `raw/` entry's).
+#[test]
+fn u_brings_back_an_lf_executable_under_autocrlf() {
+    use std::os::unix::fs::PermissionsExt;
+    let repo = TempRepo::init();
+    repo.git(&["config", "core.autocrlf", "true"]);
+    let exec = |bytes: &[u8]| {
+        repo.write("run.sh", bytes);
+        std::fs::set_permissions(
+            repo.path().join("run.sh"),
+            std::fs::Permissions::from_mode(0o755),
+        )
+        .expect("the exec bit is set");
+    };
+    exec(b"#!/bin/sh\necho 1\n");
+    repo.commit_all("first");
+    exec(b"#!/bin/sh\necho 4\n");
+
+    discard_then_u(&repo, "run.sh");
+    let mode = std::fs::metadata(repo.path().join("run.sh"))
+        .expect("the file is there")
+        .permissions()
+        .mode();
+    assert_eq!(mode & 0o111, 0o111, "the exec bit is set: {mode:o}");
+}
+
+/// A one-way clean filter (nbstripout's shape: clean strips, smudge is
+/// `cat`): `u` gives back the line the clean filter strips (R1).
+#[test]
+fn u_brings_back_what_a_one_way_clean_filter_strips() {
+    let repo = TempRepo::init();
+    repo.write(".git/info/attributes", b"nb.txt filter=strip\n");
+    repo.git(&["config", "filter.strip.clean", "sed '/^#out/d'"]);
+    repo.git(&["config", "filter.strip.smudge", "cat"]);
+    repo.write("nb.txt", b"cell 1\n");
+    repo.commit_all("first");
+    repo.write("nb.txt", b"cell 2\n#out 42\n");
+
+    discard_then_u(&repo, "nb.txt");
+    assert!(
+        repo.read("nb.txt").ends_with(b"#out 42\n"),
+        "the stripped line is back"
+    );
+}
+
+/// `core.autocrlf=input`: git's checkout writes LF, so a CRLF edit is kept.
+#[test]
+fn u_brings_back_a_crlf_file_under_autocrlf_input() {
+    let repo = TempRepo::init();
+    repo.git(&["config", "core.autocrlf", "input"]);
+    repo.write("src/a.rs", COMMITTED);
+    repo.commit_all("first");
+    repo.write("src/a.rs", b"pub fn a() -> u32 {\r\n    4\r\n}\r\n");
+
+    discard_then_u(&repo, "src/a.rs");
+}
+
+/// One CRLF line and one LF line under `core.autocrlf=true`: git's checkout
+/// would write every line CRLF.
+#[test]
+fn u_brings_back_mixed_endings_under_autocrlf() {
+    let repo = TempRepo::init();
+    repo.git(&["config", "core.autocrlf", "true"]);
+    repo.write("src/a.rs", COMMITTED);
+    repo.commit_all("first");
+    repo.write("src/a.rs", b"pub fn a() -> u32 {\r\n    4\n}\n");
+
+    discard_then_u(&repo, "src/a.rs");
+}
+
+/// An untracked LF file under `core.autocrlf=true`: the discard removes it
+/// (`clean`), and `u` re-creates it through the untracked arm (a temporary
+/// index and `checkout-index`), then writes his bytes.
+#[test]
+fn u_brings_back_an_lf_untracked_file_under_autocrlf() {
+    let repo = TempRepo::init();
+    repo.git(&["config", "core.autocrlf", "true"]);
+    repo.write("src/a.rs", COMMITTED);
+    repo.commit_all("first");
+    repo.write("src/new.rs", WORKING);
+
+    run(
+        &repo,
+        &Operation::Discard(Target::Paths(vec![PathBuf::from("src/new.rs")])),
+        NOW,
+    );
+    assert!(!repo.exists("src/new.rs"), "the discard removed it");
+
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    assert_eq!(repo.read("src/new.rs"), WORKING, "W is back, byte for byte");
+    assert_eq!(
+        repo.git(&["ls-files", "--", "src/new.rs"]),
+        "",
+        "still untracked"
+    );
+}
+
+/// Redo restores the `Undo` entry's own before, raw bytes included:
+/// 1. a discard;
+/// 2. his LF edit over the path it wrote (drift);
+/// 3. a forced `u`, which replaces the edit;
+/// 4. redo. After redo the path is his LF edit.
+#[test]
+fn redo_after_a_forced_undo_brings_back_an_lf_drift_under_autocrlf() {
+    let repo = TempRepo::init();
+    repo.git(&["config", "core.autocrlf", "true"]);
+    repo.write("src/a.rs", COMMITTED);
+    repo.commit_all("first");
+    let first_edit: &[u8] = b"pub fn a() -> u32 {\r\n    2\r\n}\r\n";
+    repo.write("src/a.rs", first_edit);
+
+    run(
+        &repo,
+        &Operation::Discard(Target::Paths(vec![PathBuf::from("src/a.rs")])),
+        NOW,
+    );
+    repo.write("src/a.rs", WORKING);
+
+    run_undo(&repo, NOW + 1, true).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    assert_eq!(repo.read("src/a.rs"), first_edit, "the forced u replaced W");
+
+    run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+    assert_eq!(repo.read("src/a.rs"), WORKING, "W is back, byte for byte");
+}
+
+/// R4: the index is not touched, and his bytes clean to the blob it holds.
+/// `W` staged, then a stash push takes both; after `u` git sees nothing
+/// unstaged at the path, so the raw write left no phantom edit behind.
+#[test]
+fn u_of_a_staged_lf_file_leaves_nothing_unstaged() {
+    let repo = lf_edit_under_autocrlf();
+    repo.git(&["add", "--", "src/a.rs"]);
+    let index = repo.git(&["ls-files", "-s"]);
+    run(
+        &repo,
+        &Operation::StashPush(StashParams {
+            message: Some("wip".to_owned()),
+            scope: StashScope::All {
+                include_untracked: false,
+            },
+        }),
+        NOW,
+    );
+
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    assert_eq!(repo.read("src/a.rs"), WORKING, "W is back, byte for byte");
+    assert_eq!(
+        repo.git(&["ls-files", "-s"]),
+        index,
+        "the index is as staged"
+    );
+    assert_eq!(
+        repo.git(&["diff", "--name-only"]),
+        "",
+        "nothing unstaged: clean(W) is the staged blob"
+    );
+}
+
+/// 30q-a's new failure mode, pinned: a smudge filter that is `required` and
+/// fails (git-lfs's shape, offline) on a changed file fails the
+/// before-snapshot's `raw_record`, so an operation over **another** path is
+/// refused before it writes anything, and his edit there stays.
+#[test]
+fn a_failing_required_smudge_filter_refuses_the_operation_before_it_writes() {
+    let repo = TempRepo::init();
+    repo.write(".git/info/attributes", b"nb.txt filter=broken\n");
+    repo.git(&["config", "filter.broken.clean", "cat"]);
+    repo.git(&["config", "filter.broken.smudge", "false"]);
+    repo.git(&["config", "filter.broken.required", "true"]);
+    repo.write("nb.txt", b"cell 1\n");
+    repo.write("src/a.rs", COMMITTED);
+    repo.commit_all("first");
+    repo.write("nb.txt", b"cell 2\n");
+    repo.write("src/a.rs", WORKING);
+
+    let refused = try_run(
+        &repo,
+        &Operation::Discard(Target::Paths(vec![PathBuf::from("src/a.rs")])),
+        NOW,
+    );
+    assert!(
+        refused.is_err(),
+        "the discard ran past a snapshot that could not be taken"
+    );
+    assert_eq!(repo.read("src/a.rs"), WORKING, "his edit is untouched");
+    assert_eq!(repo.read("nb.txt"), b"cell 2\n", "and so is nb.txt");
+    assert!(
+        journal_for(&repo.open()).entries().is_empty(),
+        "nothing journaled: the operation never began"
+    );
+}
+
+/// A raw write that cannot land (here: a file already at its temporary's
+/// name, which is never written over) fails `u` with the path named in its
+/// own words, and the roll-back puts back what `u` found.
+#[test]
+fn a_raw_write_that_cannot_land_fails_u_and_names_the_path() {
+    let repo = lf_edit_under_autocrlf();
+    let in_the_way = format!("src/a.rs.graft-raw-{}", std::process::id());
+    repo.write(&in_the_way, b"");
+    run(
+        &repo,
+        &Operation::Discard(Target::Paths(vec![PathBuf::from("src/a.rs")])),
+        NOW,
+    );
+    let discarded = repo.read("src/a.rs");
+
+    let Err(UndoError::Restore(why)) = run_undo(&repo, NOW + 1, false) else {
+        panic!("u wrote over a file at its temporary's name");
+    };
+    assert!(
+        matches!(&why, RestoreError::WriteRaw { path, .. } if path == &PathBuf::from("src/a.rs")),
+        "{why:?}"
+    );
+    assert!(
+        why.explain()
+            .starts_with("could not write src/a.rs back as it was: "),
+        "{}",
+        why.explain()
+    );
+    assert_eq!(
+        repo.read("src/a.rs"),
+        discarded,
+        "rolled back to what u found"
+    );
+    assert_eq!(
+        repo.read(&in_the_way),
+        b"",
+        "the file in the way is untouched"
+    );
+}
+
+/// A stop that fires, and stays fired, once `path` no longer holds `from`:
+/// keyed to the plan's own effect (the working-tree step has written it),
+/// never to a poll count (`undo_cancel.rs` sets out why).
+struct StopOnceChanged {
+    path: PathBuf,
+    from: &'static [u8],
+    fired: AtomicBool,
+}
+
+impl Stop for StopOnceChanged {
+    fn should_stop(&self) -> bool {
+        if !self.fired.load(Ordering::Relaxed)
+            && std::fs::read(&self.path).map_or(true, |now| now != self.from)
+        {
+            self.fired.store(true, Ordering::Relaxed);
+        }
+        self.fired.load(Ordering::Relaxed)
+    }
+}
+
+/// R3, the roll-back writes the restore's own `raw/`: a stash push, then his
+/// LF edit over the path it wrote. The undo (straight at `restore::execute`,
+/// so no drift rail) restores the path, and is cancelled before its last
+/// step, the `StashDrop`. The roll-back puts back what the **undo** found,
+/// his LF edit, byte for byte.
+#[test]
+fn a_cancelled_undo_rolls_back_to_his_lf_bytes_under_autocrlf() {
+    let repo = TempRepo::init();
+    repo.git(&["config", "core.autocrlf", "true"]);
+    repo.write("src/a.rs", COMMITTED);
+    repo.commit_all("first");
+    repo.write("src/a.rs", b"pub fn a() -> u32 {\r\n    2\r\n}\r\n");
+    run(
+        &repo,
+        &Operation::StashPush(StashParams {
+            message: Some("wip".to_owned()),
+            scope: StashScope::All {
+                include_untracked: false,
+            },
+        }),
+        NOW,
+    );
+    repo.write("src/a.rs", WORKING);
+
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let plan = undo::plan_undo(journal.entries()).expect("the push is undoable");
+    let worktree_step = plan
+        .steps
+        .iter()
+        .position(|step| matches!(step, Step::RestoreWorktree { .. }))
+        .expect("the plan restores the working tree");
+    assert!(
+        worktree_step + 1 < plan.steps.len(),
+        "a step follows it, so a cancel can land after it: {:?}",
+        plan.steps
+    );
+    let stop = StopOnceChanged {
+        path: repo.path().join("src/a.rs"),
+        from: WORKING,
+        fired: AtomicBool::new(false),
+    };
+    let outcome = {
+        let mut ctx = context(&handle, &mut journal, NOW + 1, &stop);
+        restore::execute(&mut ctx, &plan)
+    };
+
+    match outcome {
+        Err(RestoreError::Cancelled { rolled_back }) => {
+            assert!(rolled_back >= 1, "the working-tree step was rolled back");
+        }
+        other => panic!("expected a clean cancel: {other:?}"),
+    }
+    assert_eq!(
+        repo.read("src/a.rs"),
+        WORKING,
+        "the roll-back gave back his bytes, not {:?}",
+        String::from_utf8_lossy(&repo.read("src/a.rs"))
+    );
 }

@@ -42,9 +42,40 @@ fn restores(before: u8, after: u8, index: bool, worktree: bool) -> Vec<Step> {
         steps.push(Step::RestoreWorktree {
             tree: oid(0xb0 + before),
             paths: changed(0xb0 + after, 0xb0 + before),
+            raw: None,
         });
     }
     steps
+}
+
+/// 30q-b: `raw` comes from the entry whose `worktree_before` is `tree`,
+/// never another's. Undo: the operation's own. Redo: the `Undo` entry's own,
+/// not the operation's it reverses.
+#[test]
+fn the_worktree_restore_carries_the_raw_tree_of_its_own_entry() {
+    let raw_of = |steps: &[Step]| {
+        steps.iter().find_map(|step| match step {
+            Step::RestoreWorktree { tree, raw, .. } => Some((*tree, *raw)),
+            _ => None,
+        })
+    };
+    let mut discard = op(10, OperationKind::Discard, 1, 2);
+    discard.worktree_raw_before = Some(oid(0xc1));
+    let undo = inverse(&discard, None).unwrap();
+    assert_eq!(raw_of(&undo.steps), Some((oid(0xb1), Some(oid(0xc1)))));
+
+    let mut undone = reversal(20, OperationKind::Undo, &discard);
+    undone.worktree_raw_before = Some(oid(0xc2));
+    let redo = inverse(&undone, Some(&discard)).unwrap();
+    assert_eq!(raw_of(&redo.steps), Some((oid(0xb2), Some(oid(0xc2)))));
+
+    undone.worktree_raw_before = None;
+    let redo = inverse(&undone, Some(&discard)).unwrap();
+    assert_eq!(
+        raw_of(&redo.steps),
+        Some((oid(0xb2), None)),
+        "nothing kept by the undo: none, not the operation's"
+    );
 }
 
 /// `committed` with the touches an operation of that kind really has.
@@ -408,7 +439,8 @@ fn pending_no_backup_and_incomplete_entries_are_not_invertible() {
             },
             Step::RestoreWorktree {
                 tree: oid(0xb1),
-                paths: PathScope::Everything
+                paths: PathScope::Everything,
+                raw: None,
             },
             Step::StashStore { commit: oid(0x70) },
         ]

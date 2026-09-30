@@ -166,6 +166,16 @@ pub enum RestoreError {
     /// m6-conflicts/20).
     #[error("{0}")]
     MergeState(crate::merge_state::MergeStateError),
+    /// git wrote `path` back, but his own bytes (the snapshot's `raw/`,
+    /// ADR-0052) could not be written over it: git's version is what is on
+    /// disk there, and the backup still holds his.
+    #[error("could not write {} back as it was: {source}", .path.display())]
+    WriteRaw {
+        /// The path, relative to the working tree's root.
+        path: std::path::PathBuf,
+        /// What the filesystem said.
+        source: std::io::Error,
+    },
 }
 
 impl RestoreError {
@@ -286,6 +296,7 @@ pub(crate) fn execute_over_drift(
         head: pending.entry.head_before.clone(),
         index: pending.entry.index_before,
         worktree: pending.entry.worktree_before,
+        worktree_raw: pending.entry.worktree_raw_before,
         merge: pending.entry.merge_before.clone(),
         config: pending.entry.config_before.clone(),
     };
