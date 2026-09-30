@@ -119,6 +119,11 @@ pub enum FilesEffect {
         /// keeps them, so `u` brings them back (m7/30o R1). Empty for every
         /// other put-back.
         replaced: Vec<PathBuf>,
+        /// Those of `replaced` whose index entry differs from `HEAD`: the
+        /// put-back writes the working tree only, so his staged copy stays
+        /// (`src/a.rs stays staged as you had it`, m7/30p R2). A subset of
+        /// `replaced`; empty for every other put-back.
+        still_staged: Vec<PathBuf>,
     },
 }
 

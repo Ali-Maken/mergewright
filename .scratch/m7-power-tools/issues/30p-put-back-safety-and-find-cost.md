@@ -120,7 +120,7 @@ pub(crate) fn files_words(effect: &FilesEffect) -> String;
 ```
 
 ### Acceptance (name the verifying test at tick time; **(red)** = write it, see it fail on today's code, then build)
-- [ ] **R1, the eight premise tests** (graft-ops `tests/it/recover.rs`, real git). Each one runs a put-back, then `u`,
+- [ ] **R1, the eight premise tests** — **7 green, test 6 red (R1's stop; not ticked)**: see NOTES 30p-a. Green: `recover::u_after_a_put_back_over_a_staged_file_brings_back_both`, `u_brings_back_a_file_a_put_back_deleted`, `u_brings_back_the_exec_bit_a_put_back_replaced`, `u_brings_back_a_symlink_a_put_back_replaced`, `u_brings_back_a_crlf_file_under_autocrlf`, `u_brings_back_a_file_under_a_clean_smudge_filter`, `u_after_a_put_back_that_recreates_a_deleted_file_removes_it`. (graft-ops `tests/it/recover.rs`, real git). Each one runs a put-back, then `u`,
   through the same path as `u_after_a_file_put_back_brings_back_what_it_replaced`, and asserts with **byte-exact**
   reads (`std::fs::read`, `symlink_metadata`, `read_link`, `git ls-files -s`, `git show :<path>`). Not red-first: each
   tests an existing mechanism. A red one is R1's stop, not a build step.
@@ -142,15 +142,15 @@ pub(crate) fn files_words(effect: &FilesEffect) -> String;
   8. `u_after_a_put_back_that_recreates_a_deleted_file_removes_it`: a tracked path deleted on disk, which the put-back
      re-creates. After `u` it is absent again, and the index is unchanged throughout.
   - NOTES: one line per test, `green` or `red: <first failing line>`.
-- [ ] **R2, the field:** `still_staged_names_the_staged_paths` (red, graft-ops): for test 1's state,
+- [x] **R2, the field:** `still_staged_names_the_staged_paths` (graft-ops `tests/it/recover.rs`, green; red by compile first) (red, graft-ops): for test 1's state,
   `replaced == [src/a.rs]` and `still_staged == [src/a.rs]`. For the unstaged `lost_work` state, `still_staged` is
   empty.
-- [ ] **R2, the words** (graft `update/recover.rs` tests):
+- [x] **R2, the words** (graft `update/recover.rs` tests): `files_words_says_a_staged_path_stays_staged` seen red (tests.rs:301), then green; `files_words_names_what_is_replaced`, `files_words_joins_the_clauses_that_apply` green.
   - `files_words_says_a_staged_path_stays_staged` (red). One path:
     `… · what's in src/a.rs now is replaced · src/a.rs stays staged as you had it`. Three paths:
     `src/a.rs +2 more stay staged as you had them`.
   - Green: `files_words_names_what_is_replaced`, `files_words_joins_the_clauses_that_apply`.
-- [ ] **R2, the walk** `a_staged_path_put_back_lands_on_its_unstaged_row` (graft `tests/it/journal_put_back.rs`, real
+- [x] **R2, the walk** `a_staged_path_put_back_lands_on_its_unstaged_row` (green; landing green on today's code, NOTES) (graft `tests/it/journal_put_back.rs`, real
   git). Setup: `lost_work` as built, then test 1's state. `J n ⏎ y`, with `Route::within_count` ≤ 4. Red or green on
   today's code for the landing; say which in NOTES. Asserted **from the frame**:
   - After `⏎`: the box holds `src/a.rs stays staged as you had it`.
@@ -161,7 +161,7 @@ pub(crate) fn files_words(effect: &FilesEffect) -> String;
       `HEAD`. Name both lines in NOTES.
   - From state as well: `selected_entry()`'s section is `Unstaged`.
   - After `u` (uncounted): `src/a.rs` is `W` and `git show :src/a.rs` is `S`.
-- [ ] **R2, the captures** (written by the walk, `check_shot`, each ≤ 200 KB):
+- [x] **R2, the captures** (written by `journal_put_back::a_staged_path_put_back_lands_on_its_unstaged_row`; 3.7 KB, 2.3 KB; TSV + TESTING rows; sheet rebuilt, 131 KB) (written by the walk, `check_shot`, each ≤ 200 KB):
   - `put-back-staged-preview-187x50.txt`. **Right:** the box titled `Preview: put back your edit to src/a.rs`, with the
     line `your files: src/a.rs comes back · what's in src/a.rs now is replaced · src/a.rs stays staged as you had it`,
     then `u undoes it`. The footer starts `y put it back`.
@@ -170,13 +170,13 @@ pub(crate) fn files_words(effect: &FilesEffect) -> String;
     The cursor row is colour only (30o-a NOTES).
   - The TSV rows and TESTING rows say exactly those Right lines, plus the test name and "Colour unverified (rule 5)".
     The sheet is rebuilt.
-- [ ] **R3** `a_put_back_leaves_no_lost_edit_row_and_u_brings_it_back` (graft-ops, real git). After the put-back over
+- [x] **R3** `a_put_back_leaves_no_lost_edit_row_and_u_brings_it_back` (graft-ops `recover.rs`, green; mutation checked, NOTES) (graft-ops, real git). After the put-back over
   the changed file, `lost_edits` is empty: the lost edit's row is gone, and no row names the replaced copy. After `u`,
   `lost_edits` holds the one lost edit again. Not red-first: it pins R3. By mutation, a `lost_edits` that also scans
   `Recover` entries fails it; say so.
-- [ ] **Unchanged:** `put-back-edit-preview-187x50.txt` and `put-back-preview-187x50.txt` are byte-identical
+- [x] **Unchanged:** (`m7_walk::journal::the_three_lost_work_journeys`, `the_put_back_box_draws_over_j` green in the full nextest run, no `GRAFT_UPDATE_SHOTS`; `git status docs/shots` shows only the two new files and the sheet) `put-back-edit-preview-187x50.txt` and `put-back-preview-187x50.txt` are byte-identical
   (`the_three_lost_work_journeys`, `the_put_back_box_draws_over_j` green; walk 15's path is unstaged).
-- [ ] MAP.md (graft-ops, graft). Gates workspace-wide.
+- [x] MAP.md (graft-ops: `FilesEffect`, `lost_edits`; graft: `update::recover`, `lands_on_changes`). Gates workspace-wide (NOTES).
 
 ### Touches (check each; say how on the **Touches:** line)
 - **`FilesEffect::Changes`:** every constructor and pattern. Per review Minor 5 these are `preview/recover.rs`
@@ -395,4 +395,59 @@ a builder's context. The design note row (R2) and any KNOWN_GAPS row are the con
   (smoke test time 52-65 s, first including the 10k fixture's cold build); release unmeasured. Its OVER handling
   (a panicked plain run → FAIL) is unchanged. `with_reflog` callers: output unchanged (split test). `src/`: untouched.
 - **Pre-existing red, not this part:** `published_repo` flags `docs/reviews/m7-30m-30o.md:16` (a home path).
+
+### 30p-a (2026-09-30, builder Opus; no scout: the ticket names every site, re-grepped by function)
+
+**R1 — 7 green, 1 red. `blocked: the before-snapshot does not hold an LF file under core.autocrlf=true`.**
+- 1 `u_after_a_put_back_over_a_staged_file_brings_back_both`: green.
+- 2 `u_brings_back_a_file_a_put_back_deleted`: green (preview `go == [a.txt]`, `replaced == [a.txt]`).
+- 3 `u_brings_back_the_exec_bit_a_put_back_replaced`: green.
+- 4 `u_brings_back_a_symlink_a_put_back_replaced`: green.
+- 5 `u_brings_back_a_crlf_file_under_autocrlf`: green.
+- 6 `u_brings_back_an_lf_file_under_autocrlf`: **red: `crates/graft-ops/tests/it/recover.rs:781:5`** (the final
+  `assert_eq!(disk(..), bytes)`). The put-back ran, `u` ran **unforced with no drift**, and the index was the same
+  before/between/after (`put_back_then_u`'s asserts passed). Only the bytes differ: after `u`, `src/a.rs` is
+  `pub fn a() -> u32 {\r\n    4\r\n}\r\n`; he had `…{\n    4\n}\n`. As the planner expected: the snapshot's `add -A`
+  cleans LF to the same blob CRLF would give, and `u`'s restore smudges it to CRLF. Left out of the committed file
+  (a comment marks its place); per R1 no fix, no refusal, no `#[ignore]`. Body, to restore it verbatim:
+  ```rust
+  /// 6. `W` with LF endings only under `core.autocrlf=true`.
+  #[test]
+  fn u_brings_back_an_lf_file_under_autocrlf() {
+      u_under_autocrlf_brings_back(WORKING);
+  }
+  ```
+  (`u_under_autocrlf_brings_back` and `WORKING` are committed; test 5 uses the helper.)
+- 7 `u_brings_back_a_file_under_a_clean_smudge_filter`: green.
+- 8 `u_after_a_put_back_that_recreates_a_deleted_file_removes_it`: green (index equal before/between/after).
+- Tests 3–8 share `put_back_then_u`, which also asserts `git ls-files -s` unchanged across the put-back and `u`.
+- The op is read from `lost_edits` right after the fixture builds, before each test changes `src/a.rs`, so the kind
+  under test never decides whether the row is found.
+
+**R2.** Test 1 green, so R2 went on. `still_staged` = `changed_now(paths, facts, StatusEntry::is_staged)` — the same
+status facts `replaced` reads (`preview/recover.rs`). Every other `Changes` builder gives `Vec::new()`.
+- The words' clause is `listed(still_staged, "stays staged as you had it", "stay staged as you had them")`, between
+  replaced and set aside.
+- **The landing was already right on today's code**: `banner::lands_on_changes` sets `KeptCursor.section = Unstaged`
+  (`update/banner/stop.rs:222`). No landing change was made. Mutation: set it to `Staged` → the walk fails at
+  `journal_put_back.rs:446` ("the diff is the lost edit's"); restored.
+- Walk's two diff lines: shown `2 +     2` (the lost edit, asserted `+     2`); absent `+     3` (S's line against
+  HEAD; the unstaged diff draws it as `-     3`).
+- **Setup deviation, say so:** on the fixture as built, J preselects D's `✗` row and `n` goes to E, not the edit
+  (first run failed at `journal_put_back.rs:376`, frame showed `▸` on E). Walk 15 has 13 and 14 done first. The walk
+  therefore stands in for them by the shell (`git merge --ff-only D`, `git branch spike E`, stamped END+30 s), so its
+  J shows two `$ … now` rows on top. Their put-backs through the app need the pinned-clock child
+  (`the_three_lost_work_journeys`), which is outside this file set. After that, the lost edit is the only `✗` row and
+  preselected; `n` stays on it. Route `J n ⏎ y` = 4 (`within_count`).
+
+**R3.** Mutation: `lost_edits`' filter made `Undo | Redo | Recover` (`journal_list/edits.rs:56`) → the test fails at
+`recover.rs:884` (the "no row" assert after the put-back); restored (`git checkout` on that file).
+
+**Touches:** `FilesEffect::Changes` — grep in both crates: `preview/recover.rs` (2), graft `update/recover.rs`
+(destructure), `update/recover/tests.rs` (3), graft-ops `tests/it/recover.rs`; all compile with the field. The
+landing function is unchanged (one caller, `operate/outcome.rs:187`). `Touches { index: false }` unchanged
+(`operation/recover.rs:267`). `lost_edits` code unchanged. No key bound.
+
+**For the conductor:** R1 test 6 red → the planner's call (refuse in `check` vs fix the snapshot) and a KNOWN_GAPS
+**broken** row. R2's design-note row is yours.
 
