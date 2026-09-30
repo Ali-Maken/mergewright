@@ -162,7 +162,9 @@ pub(super) fn refused(state: &mut AppState, refusal: &graft_ops::operation::Refu
     }
     crate::update::picker::preview_closed(state);
     state.status = match &preview.subject {
-        PreviewSubject::Operation { op, .. } => crate::update::operate::refusal_status(op, refusal),
+        PreviewSubject::Operation { op, .. } => {
+            crate::update::operate::refusal_status(op, refusal, state.size.columns)
+        }
         // The time machine is planned by `plan_revert_to`, which the job
         // never maps to `Refused`; if it ever does, its sentence stands.
         PreviewSubject::RevertTo(_) => Status::sticky(refusal.explain()),

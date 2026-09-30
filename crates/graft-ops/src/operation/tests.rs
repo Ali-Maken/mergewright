@@ -1809,3 +1809,140 @@ fn a_stash_drop_has_one_name() {
         format!("drop stash {short}")
     );
 }
+
+// ---- the in-the-way ladder (m7-power-tools/30t) -----------------------------
+
+fn in_the_way(ignored: &[&str], untracked: &[&str]) -> Refusal {
+    Refusal::InTheWay {
+        doing: "switching to other".to_owned(),
+        ignored: ignored.iter().map(PathBuf::from).collect(),
+        untracked: untracked.iter().map(PathBuf::from).collect(),
+    }
+}
+
+fn rung_reasons(refusal: &Refusal) -> Vec<String> {
+    refusal
+        .explain_rungs()
+        .into_iter()
+        .map(|words| words.reason)
+        .collect()
+}
+
+fn joined(words: &super::RefusalWords) -> String {
+    match &words.next {
+        Some(next) => format!("{} \u{b7} {next}", words.reason),
+        None => words.reason.clone(),
+    }
+}
+
+#[test]
+fn in_the_way_rungs() {
+    // One component: rungs 3 and 4 need directories.
+    let one = in_the_way(&["cache.db"], &[]);
+    assert_eq!(
+        rung_reasons(&one),
+        [
+            "cache.db (ignored) is in the way of switching to other",
+            "cache.db (ignored) is in the way",
+        ]
+    );
+    // Two components: rung 3 needs three, so it is skipped.
+    let two = in_the_way(&["build/cache.db"], &[]);
+    assert_eq!(
+        rung_reasons(&two),
+        [
+            "build/cache.db (ignored) is in the way of switching to other",
+            "build/cache.db (ignored) is in the way",
+            "\u{2026}/cache.db (ignored) is in the way",
+        ]
+    );
+    // A deep path: every rung.
+    let deep = in_the_way(&["src/services/auth/session-cache.json"], &[]);
+    assert_eq!(
+        rung_reasons(&deep),
+        [
+            "src/services/auth/session-cache.json (ignored) is in the way of switching to other",
+            "src/services/auth/session-cache.json (ignored) is in the way",
+            "src/\u{2026}/session-cache.json (ignored) is in the way",
+            "\u{2026}/session-cache.json (ignored) is in the way",
+        ]
+    );
+    for words in deep.explain_rungs() {
+        assert_eq!(words.next.as_deref(), Some("move it aside first"));
+    }
+    // `+N more` stays after the path.
+    let more = in_the_way(&["a/bb/c.txt"], &["d.txt"]);
+    assert_eq!(
+        rung_reasons(&more),
+        [
+            "a/bb/c.txt (ignored) +1 more are in the way of switching to other",
+            "a/bb/c.txt (ignored) +1 more are in the way",
+            "a/\u{2026}/c.txt (ignored) +1 more are in the way",
+            "\u{2026}/c.txt (ignored) +1 more are in the way",
+        ]
+    );
+    assert_eq!(
+        more.explain_rungs()[0].next.as_deref(),
+        Some("move them aside first")
+    );
+    // Untracked only: no `(ignored)`, and `S` is the next step.
+    let untracked = in_the_way(&[], &["notes/draft.md"]);
+    assert_eq!(
+        rung_reasons(&untracked),
+        [
+            "notes/draft.md is in the way of switching to other",
+            "notes/draft.md is in the way",
+            "\u{2026}/draft.md is in the way",
+        ]
+    );
+    assert_eq!(
+        untracked.explain_rungs()[0].next.as_deref(),
+        Some("S stashes it first")
+    );
+    for refusal in [one, two, deep, more, untracked] {
+        assert_eq!(joined(&refusal.explain_rungs()[0]), refusal.explain());
+    }
+}
+
+#[test]
+fn every_other_refusal_has_one_rung_equal_to_explain() {
+    let all = [
+        Refusal::Bare,
+        Refusal::InProgress(InProgress::Merge),
+        Refusal::PathNotInState {
+            path: PathBuf::from("a"),
+        },
+        Refusal::PatchPathMismatch,
+        Refusal::PatchSideMismatch,
+        Refusal::NothingStaged,
+        Refusal::EmptySubject,
+        Refusal::UnbornHead,
+        Refusal::NothingToStash,
+        Refusal::NeedsGit {
+            feature: "stash --staged",
+            minimum: GitVersion {
+                major: 2,
+                minor: 35,
+                patch: 0,
+            },
+        },
+        Refusal::NoSuchStash,
+        Refusal::StashListChanged,
+        Refusal::TouchesChangedFiles {
+            paths: vec![PathBuf::from("a")],
+        },
+        Refusal::HeadUnborn,
+        Refusal::StashInTheWay {
+            unsaved: vec![],
+            staged: vec![],
+            untracked: vec![],
+            ignored: vec![PathBuf::from("a/b")],
+        },
+    ];
+    for refusal in all {
+        let rungs = refusal.explain_rungs();
+        assert_eq!(rungs.len(), 1, "{refusal:?}");
+        assert_eq!(rungs[0].next, None, "{refusal:?}");
+        assert_eq!(rungs[0].reason, refusal.explain(), "{refusal:?}");
+    }
+}

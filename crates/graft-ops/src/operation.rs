@@ -1085,31 +1085,102 @@ impl Refusal {
                 doing,
                 ignored,
                 untracked,
-            } => in_the_way_of(doing, ignored, untracked),
+            } => {
+                let words = in_the_way_rungs(doing, ignored, untracked).swap_remove(0);
+                match words.next {
+                    Some(next) => format!("{} · {next}", words.reason),
+                    None => words.reason,
+                }
+            }
+        }
+    }
+
+    /// Every wording of this refusal, longest first. `[0]` joined as
+    /// `reason · next` is exactly [`Refusal::explain`]. Every variant but
+    /// `InTheWay` has one rung, with no `next`. `InTheWay` has ADR-0049's
+    /// ladder (amendment, m7-power-tools/30t): `of <doing>` goes first, then
+    /// the path's middle (`<top>/…/<name>`), then all but its name
+    /// (`…/<name>`); `next` is the same on every rung, so a caller can keep
+    /// it whole as the line's keys and pick the reason that fits.
+    #[must_use]
+    pub fn explain_rungs(&self) -> Vec<RefusalWords> {
+        match self {
+            Self::InTheWay {
+                doing,
+                ignored,
+                untracked,
+            } => in_the_way_rungs(doing, ignored, untracked),
+            other => vec![RefusalWords {
+                reason: other.explain(),
+                next: None,
+            }],
         }
     }
 }
 
-/// [`Refusal::InTheWay`] in words. The first ignored path names the line
+/// One wording of a refusal: why, and what to do. `next` is `None` for every
+/// variant but [`Refusal::InTheWay`] today.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RefusalWords {
+    /// What stands in the way.
+    pub reason: String,
+    /// The next step (`move it aside first`), kept apart so the status line
+    /// can keep it whole while the reason is shortened.
+    pub next: Option<String>,
+}
+
+/// [`Refusal::InTheWay`]'s ladder. The first ignored path names the line
 /// when there is one, since an ignored file decides the next step; `+N more`
 /// counts every other path, ignored or not (the form of Recover's
-/// `put back your edit to <path> +N more`).
-fn in_the_way_of(doing: &str, ignored: &[PathBuf], untracked: &[PathBuf]) -> String {
+/// `put back your edit to <path> +N more`). A rung no shorter than the one
+/// before it is skipped.
+fn in_the_way_rungs(doing: &str, ignored: &[PathBuf], untracked: &[PathBuf]) -> Vec<RefusalWords> {
     let Some(first) = ignored.first().or(untracked.first()) else {
-        return format!("nothing is in the way of {doing}");
+        return vec![RefusalWords {
+            reason: format!("nothing is in the way of {doing}"),
+            next: None,
+        }];
     };
-    let first = first.display();
     let more = ignored.len() + untracked.len() - 1;
-    match (!ignored.is_empty(), more) {
-        (true, 0) => format!("{first} (ignored) is in the way of {doing} · move it aside first"),
-        (true, more) => format!(
-            "{first} (ignored) +{more} more are in the way of {doing} · move them aside first"
-        ),
-        (false, 0) => format!("{first} is in the way of {doing} · S stashes it first"),
-        (false, more) => {
-            format!("{first} +{more} more are in the way of {doing} · S stashes them first")
+    let is_ignored = !ignored.is_empty();
+    let tag = if is_ignored { " (ignored)" } else { "" };
+    let (count, verb, them) = match more {
+        0 => (String::new(), "is", "it"),
+        more => (format!(" +{more} more"), "are", "them"),
+    };
+    let next = if is_ignored {
+        format!("move {them} aside first")
+    } else {
+        format!("S stashes {them} first")
+    };
+    let components: Vec<String> = first
+        .components()
+        .map(|part| part.as_os_str().to_string_lossy().into_owned())
+        .collect();
+    let named = |path: &str| format!("{path}{tag}{count} {verb} in the way");
+    let mut reasons = vec![
+        format!("{} of {doing}", named(&first.display().to_string())),
+        named(&first.display().to_string()),
+    ];
+    if let [top, .., name] = components.as_slice() {
+        if components.len() >= 3 {
+            reasons.push(named(&format!("{top}/…/{name}")));
+        }
+        reasons.push(named(&format!("…/{name}")));
+    }
+    let mut rungs: Vec<RefusalWords> = Vec::new();
+    for reason in reasons {
+        let shorter = rungs
+            .last()
+            .is_none_or(|last| reason.chars().count() < last.reason.chars().count());
+        if shorter {
+            rungs.push(RefusalWords {
+                reason,
+                next: Some(next.clone()),
+            });
         }
     }
+    rungs
 }
 
 /// `src/a.rs`, `src/a.rs and src/b.rs`, `src/a.rs and 2 more files`.
