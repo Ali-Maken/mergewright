@@ -2038,7 +2038,7 @@ m6 walk capture: m6-21-stash-clash-done — scenario stash-pop-clash-to-done, ke
  every file done · stash@{0} dropped ✓ · u brings it back
 COMMIT 8e361b5 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 6y · parents cfa370c · diff vs firs…
 rewrite the notes
-M notes.md              +1 −1
+M notes.md              +1 −1 ▎
                                 1     - base
                                     1 + committed
 
@@ -2066,7 +2066,7 @@ m6 walk capture: m6-21-stash-clash-done — scenario stash-pop-clash-to-done, ke
 ●    Correct the note                                                                        GF 7y   a82960b Contained in: main
 ●    Add the first note                                                                      GF 7y   fadcfb3
 ◇    Add a readme                                                                            GF 7y   64ded19 M notes.md                                                               +1 −1
-
+                                                                                                             ▎
                                                                                                                1     - base
                                                                                                                    1 + committed
 
@@ -2123,7 +2123,7 @@ COMMIT 8e361b5
 Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 6y · parents…
 rewrite the notes
 M notes.md                                                                 +1 −1
-
+▎
   1     - base
       1 + committed
 
@@ -2567,7 +2567,7 @@ m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., un
  graft <scratch____________________________________________________________>  6 commits
   ● ▏ⓘ [fix] fix the bug                                                                                 GF 6y   401cfbe
  Checkout fix
- Cherry-pick 401cfbe
+ Cherry-pick 401cfbe (o)
  Explain
  Copy SHA (y)
  Compare with this (x)
@@ -2603,7 +2603,7 @@ m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., un
 
 
 
- . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O
+ . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  R  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 ================================================================================
 docs/shots/m6/m6-25-menu-fixed-slots-187x50.txt
@@ -2615,7 +2615,7 @@ m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., un
  graft <scratch____________________________________________________________>  6 commits
   ● ▏ⓘ [fix] fix the bug                                                                                                                                                    GF 6y   401cfbe
  Checkout fix
- Cherry-pick 401cfbe
+ Cherry-pick 401cfbe (o)
  Explain
  Copy SHA (y)
  Compare with this (x)
@@ -2661,7 +2661,7 @@ m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., un
 
 
 
- . explain  m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  / search  q quit  F2 status  F3 renderer  x  +  j/k  space  1  F  H  J  y  M  O
+ . explain  m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  / search  R rewrite  q quit  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 ================================================================================
 docs/shots/m6/m6-25-menu-fixed-slots-80x24.txt
@@ -2673,7 +2673,7 @@ m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., un
  graft <scratch____________________________________________________________>  6…
   ● ▏ⓘ [fix] fix the bug                                            6y   401cfbe
  Checkout fix
- Cherry-pick 401cfbe
+ Cherry-pick 401cfbe (o)
  Explain
  Copy SHA (y)
  Compare with this (x)
@@ -2693,7 +2693,7 @@ m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., un
 
 
 
- . explain  m merge  r rebase  ⏎  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +
+ . explain  m merge  r rebase  ⏎  b  t  P  c  p  f  u  S  /  R  q  F2  F3  x  +
 
 ================================================================================
 docs/shots/m6/set-aside-clash-preview-120x40.txt
