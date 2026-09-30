@@ -75,7 +75,7 @@ busy() {
   ps -Ao pcpu=,comm= | awk '$1 > 40 && $0 !~ /claude/ { print "BUSY: " $0 }'
 }
 
-KEEP_LINES='^frames: g_after_idle|^test result|^test .* (ok|FAILED)$|panicked|^first paint|^total/|^## |^budgets:|^heapslope:|failed'
+KEEP_LINES='^frames: g_after_idle|^test result|^test .* (ok|FAILED)$|panicked|^first paint|^total/|^## |^budgets:|^heapslope:|failed|^error'
 
 step() { # side name dir command...
   local side=$1 name=$2 dir=$3 status t0=$SECONDS
