@@ -281,3 +281,4 @@ Rows whose expiry was M6, closed with the evidence named inline. Re-expired and 
 | M6/71, M6/u2 (cherry-pick 4 keys), M7/r0921-min | closed 2026-09-28: slot 2 dims on HEAD/merges and `o y` = 2 (11, 9bf4c9eb); `C` picker (10); 07b and 30k landed (review m7-10-to-07c Minor 6) |
 | M7/r24-m14 | `find_lost`'s Err arm now explicit and names where the failure shows (30o-b; review m7-30m-30o minor 4) | closed 2026-09-30 |
 | M7/30p-crlf | `u` now writes the raw bytes back: LF under autocrlf, exec bit, one-way clean filter, input mode, mixed endings, redo, roll-back all byte-exact (30q-a/b; `undo_bytes`, `recover::u_brings_back_an_lf_file_under_autocrlf`) | closed 2026-09-30 |
+| M7/04-M2 | Key 37 cause named and measured: Graft 3.2 ms on a CPU not yet at speed (+4.5–10.2 ms) + harness slack 0.5–4.3 ms; parts sum within 4 µs (12g, docs/perf/m7-12g-key-37.txt, ADR-0021 amended). No product fix per ticket | closed 2026-09-30 |

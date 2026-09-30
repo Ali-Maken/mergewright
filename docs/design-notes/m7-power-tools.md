@@ -790,6 +790,8 @@ Ask at the end, one line: in which of the three did two different things still l
 - **Problem:**
   - A release key sits at 17–18 ms against a 16 ms budget. The cause has been unknown since M1 (`docs/log/m1.md:73`,
     key 37, a `j`), and it has been pushed four times.
+    **Named 2026-09-30 (12g, `docs/perf/m7-12g-key-37.txt`, ADR-0021 amended):** Graft's three frames (3.2 ms) run on a
+    CPU not yet at full speed (+4.5–10.2 ms), plus harness timer slack (0.5–4.3 ms); worst run 17.7 ms.
   - `docs/perf/m6-review.txt:30-46`: the first key after 600 ms idle costs 5–15 ms, even at Unicode, where idle work
     per frame is ~0.
   - `G` stays cold until run once (KNOWN_GAPS :149).
