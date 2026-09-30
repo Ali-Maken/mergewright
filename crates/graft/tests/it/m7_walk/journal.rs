@@ -116,7 +116,7 @@ pub(crate) fn opened(repo: &Path) -> (App, AppState) {
 
 /// The key `J`, counted, then every stage answered. Stage 3 is a wait, not
 /// a key (the ticket).
-fn open_j(route: &mut Route, app: &App, state: &AppState) -> AppState {
+pub(super) fn open_j(route: &mut Route, app: &App, state: &AppState) -> AppState {
     let state = route.press(app, state, "J", KeyCode::Char('J'));
     assert!(state.journal.shown, "J opened");
     assert!(state.journal.finding_lost(), "J asked for stage 2 at once");
@@ -126,7 +126,7 @@ fn open_j(route: &mut Route, app: &App, state: &AppState) -> AppState {
 }
 
 /// `⏎`, counted, then its box's plan answered.
-fn enter_to_the_box(route: &mut Route, app: &App, state: &AppState) -> AppState {
+pub(super) fn enter_to_the_box(route: &mut Route, app: &App, state: &AppState) -> AppState {
     let state = route.press(app, state, "⏎", KeyCode::Enter);
     let state = app.pump(state, "what the row puts back", |state| {
         state.preview.as_ref().is_some_and(|preview| {
@@ -149,7 +149,7 @@ fn enter_to_the_box(route: &mut Route, app: &App, state: &AppState) -> AppState 
 }
 
 /// `y`, counted, then the write settled and the graph re-read.
-fn confirm(route: &mut Route, app: &App, state: &AppState, what: &str) -> AppState {
+pub(super) fn confirm(route: &mut Route, app: &App, state: &AppState, what: &str) -> AppState {
     let state = route.press(app, state, "y", KeyCode::Char('y'));
     let state = app.settle_write(state, "the put-back");
     assert!(!state.journal.shown, "y closed J ({what})");
@@ -177,7 +177,7 @@ pub(crate) fn selected_row(frame: &[String]) -> &str {
         .map_or("", String::as_str)
 }
 
-fn rev(repo: &Path, name: &str) -> String {
+pub(super) fn rev(repo: &Path, name: &str) -> String {
     git(repo, &["rev-parse", "--verify", "-q", name])
         .trim()
         .to_owned()

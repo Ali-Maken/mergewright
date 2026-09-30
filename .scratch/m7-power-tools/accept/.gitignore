@@ -1,0 +1,5 @@
+# Raw output of scripts/m7-accept.sh (build logs, nextest and pty-walk logs).
+# Never committed: it carries machine paths, and CLAUDE.md keeps raw streams
+# out of the repo. The summary is docs/perf/m7-accept.txt.
+*
+!.gitignore

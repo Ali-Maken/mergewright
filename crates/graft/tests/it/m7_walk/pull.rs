@@ -5,9 +5,12 @@
 //! by `view::view` from the walked state (colour unverified, CLAUDE.md
 //! rule 5).
 //!
-//! The M7 note's `journey-counts` fence has no row for this journey: its
-//! count, 1, is 03's "Decided" (`Journey: pull over overlapping edits = p,
-//! 1 key`). No best-tool count: the prior-art study has no pull row.
+//! Its count, 1, is 03's "Decided" (`Journey: pull over overlapping edits =
+//! p, 1 key`); the fence has no row for the over-edits variant.
+//!
+//! `pull_current_branch` (m7-acceptance) walks the fence's own row,
+//! `pull-current-branch` (journey 17: upstream set, clean tree, `p`), read
+//! from the note.
 #![allow(
     clippy::expect_used,
     reason = "a test fixture that cannot be built has nothing to test; the panic names why"
@@ -18,7 +21,9 @@ use graft::update::Status;
 
 use crate::app_harness::{App, git};
 use crate::captures::{check_shot, frame_at, settled_frame};
-use crate::pull_over_edits::{BOTH, MINE, SHARED, his_lines, origin_ahead_over, pulled, selected};
+use crate::pull_over_edits::{
+    BOTH, MINE, SHARED, TEN, his_lines, origin_ahead_over, pulled, selected,
+};
 use crate::remote_by_key::{local, ready, rev};
 use crate::stash_clash::stash_list;
 
@@ -79,6 +84,49 @@ fn pull_ff_over_edits() {
         "{body}"
     );
     check_shot("m7/pull-over-edits-120x40.txt", &body);
+    drop(state);
+    app.close();
+}
+
+/// `pull-current-branch` (the M7 note's 2a fence; journey 17): the graph,
+/// cursor on HEAD, upstream set, a clean tree, origin one ahead. `p`, within
+/// the note's count. Lands (note "Finish" row, 03): HEAD at origin's tip,
+/// the cursor on it, `pulled origin/main` on the status line, nothing set
+/// aside.
+#[test]
+fn pull_current_branch() {
+    let remote = local();
+    let work = remote.work();
+    // The edit written back is the committed text: the tree is clean.
+    let theirs = origin_ahead_over(&remote, TEN);
+    assert_eq!(git(work, &["status", "--porcelain"]).trim(), "", "clean");
+    let (app, state) = App::open_with_clock(work, Clock::Fixed(PULL_NOW));
+    let state = app.resize(&state, 120, 40);
+    let state = ready(&app, state);
+
+    let route = ["p"];
+    let state = pulled(&app, &state);
+    let allowed = super::noted_keys("pull-current-branch");
+    assert!(
+        route.len() <= allowed,
+        "pull-current-branch took {} keys {route:?}, the note allows {allowed}",
+        route.len()
+    );
+
+    assert_eq!(rev(work, "HEAD"), theirs, "HEAD fast-forwarded");
+    assert_eq!(git(work, &["status", "--porcelain"]).trim(), "", "clean");
+    assert!(stash_list(work).is_empty(), "nothing set aside");
+    assert_eq!(
+        selected(&state).as_deref(),
+        Some(theirs.as_str()),
+        "the cursor on the new HEAD"
+    );
+    assert!(
+        matches!(&state.status, Status::Done { what, also: None, .. }
+            if what == "pulled origin/main"),
+        "{:?}",
+        state.status
+    );
     drop(state);
     app.close();
 }

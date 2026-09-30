@@ -22,7 +22,7 @@ use crate::stash_clash::stash_list;
 
 pub(crate) const SHARED: &str = "shared.txt";
 /// Ten lines: an edit at the top and one at the bottom merge.
-const TEN: &str = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n";
+pub(crate) const TEN: &str = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n";
 /// The teammate's change: the first line.
 const THEIRS: &str = "one\n2\n3\n4\n5\n6\n7\n8\n9\n10\n";
 /// His unsaved edit: the last line.
