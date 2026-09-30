@@ -1,7 +1,6 @@
 # putback-forward-bytes — `J n ⏎ y` puts a lost edit back in his own bytes, where the backup kept them
 
-Status: partial — graft-ops fix, tests 1–7 and `build_with` done; the walk blocked (`blocked: needs
-crates/graft/tests/it/m7_walk/journal.rs`, NOTES § Blocked)
+Status: done (the walk's block lifted by the conductor's grant of `m7_walk/journal.rs`, NOTES § Blocked)
 Build with: **Opus, `builder-opus-xhigh`.** Undo territory and the M3 promise ("you cannot lose work"), which the M7
 acceptance walk asserts. The cause is named by two builders but its preconditions in the walk are not confirmed, so the
 builder verifies before it builds; real-git byte tests judge it. Not Fable: the shape is fixed below, no structural
@@ -152,21 +151,21 @@ re-edits LF (`LOST`); a forced `u` of the discard writes `E1` over `LOST` (a los
       after the forced `u`; after the put-back `src/a.rs` is `LOST` in CRLF. Pins the ADR line; red not expected.
       — `recover_bytes::a_lost_edit_lost_before_autocrlf_was_set_comes_back_as_git_checks_it_out_now` (green before and after).
 - [x] Mutation: `write_back` skipped → 1, 3, 4 red again. Restored; said in NOTES with the lines. (NOTES § Mutation)
-- [ ] `promise_recover_without_leaving` PASS (workspace run), its `recover.rs:123` assert and every other assert
+- [x] `promise_recover_without_leaving` PASS (workspace run), its `recover.rs:123` assert and every other assert
       unchanged: `git diff` of the file empty, or (R2) only the build call and the config line.
-      **Not ticked: blocked** (NOTES § Blocked). `git diff` of the file is empty; the walk is still red at `:123`.
-- [ ] Unchanged and green in the full run (name them): every `recover::`, `undo_bytes::`, `snapshot_raw::`,
+      — `m7_walk::promise::recover::promise_recover_without_leaving` PASS in the workspace run (5013/5013) and alone
+      (child `promise_recover_git_clock_pinned ... ok`). Diff: build call + config line, plus the import and a rename
+      forced by them (NOTES § Blocked, "Unblocked"); no assert, count or key changed.
+- [x] Unchanged and green in the full run (name them): every `recover::`, `undo_bytes::`, `snapshot_raw::`,
       `lost_work::`, `journal_list` test; graft `m7_walk::journal::the_three_lost_work_journeys`, `m7_walk::promise::`.
-      **Not ticked: all but one.** Workspace `cargo nextest run`: 5013 run, 5012 passed, 1 failed =
-      `m7_walk::promise::recover::promise_recover_without_leaving` (`recover.rs:123`, blocked). Green in that run (counts
-      from `cargo nextest list`): `graft-ops::it recover::` 37, `undo_bytes::` 20, `snapshot_raw::` 13, `lost_work::` 3
-      (+ graft-fixtures `lost_work::tests::` 6), `journal_list` 45, `recover_bytes::` 7, `apply::lost_edit::` 2,
-      `m7_walk::journal::the_three_lost_work_journeys` 1, `m7_walk::promise::{guard,rewrite,trace}` 3.
-- [ ] MAP.md lines. Gates workspace-wide.
-      **Not ticked: gates not all green.** MAP lines done (graft-ops: `Operation::Recover` plan line, `## apply` file
-      list, new `apply`, a lost edit's raw step line; graft-fixtures: `lost_work` line). `cargo fmt --check` pass,
-      `cargo clippy --all-targets -- -D warnings` pass, `cargo test --doc` pass, `cargo nextest run` 5012/5013 (the
-      blocked walk).
+      — second workspace `cargo nextest run`: 5013 run, 5013 passed, 0 failed. In it (counts from `cargo nextest
+      list`): `graft-ops::it recover::` 37, `undo_bytes::` 20, `snapshot_raw::` 13, `lost_work::` 3 (+ graft-fixtures
+      `lost_work::tests::` 6), `journal_list` 45, `recover_bytes::` 7, `apply::lost_edit::` 2,
+      `m7_walk::journal::the_three_lost_work_journeys` 1, `m7_walk::promise::{guard,recover,rewrite,trace}` 4.
+- [x] MAP.md lines. Gates workspace-wide.
+      — MAP: graft-ops (`Operation::Recover` plan line, `## apply` file list, new "a lost edit's raw step" line),
+      graft-fixtures (`lost_work` line). Gates: `cargo fmt --check` pass, `cargo clippy --all-targets -- -D warnings`
+      pass, `cargo nextest run` 5013/5013, `cargo test --doc` 0 failures.
 
 ## Touches (each on the report's **Touches:** line, with how it was checked)
 - **The Files-view put-back is this path.** 30s V5 ran `apply(Recover(Files))`, the same plan line; V5 here lists every
@@ -277,6 +276,22 @@ test 1's `ls-tree` assert, +4 lines below `:127`.)
 Not done: `promise/recover.rs` untouched (`git diff` empty); the walk is still red at `:123`, R2's bound (V3). Whether
 steps 1–3 of the walk stay green under autocrlf-from-start is **unverified** (needs the seam).
 
+**Unblocked (conductor, 2026-10-01): `journal.rs` granted** for exactly the first seam. Done:
+- `m7_walk/journal.rs`: `pub(crate) fn lost_work_with(config) -> LostWork` (`LostWork::build_with(&mut AppOps,
+  config)`); `lost_work()` = `lost_work_with(&[])`.
+- `promise/recover.rs` diff: the import (`lost_work_with as build`), the build call
+  `build(&[("core.autocrlf", "true")])`, the `git config` line removed. **Beyond R2's two lines, and why:** `git`'s
+  import removed (unused after the config line went; `-D warnings`), and `set_autocrlf` renamed `an_lf_file` with its
+  doc rewritten — it no longer sets anything, so the old name would lie. Its assert body, every other assert, `TOTAL`
+  and every key are unchanged (`git diff` shows none).
+- **Walk end to end under autocrlf, steps 1–4:** `cargo nextest run -p graft --test it
+  m7_walk::promise::recover::promise_recover_without_leaving --no-capture` → child
+  `promise_recover_git_clock_pinned ... ok`, parent PASS (2.7 s). No step went red under the earlier config, so the R2
+  stop condition did not fire.
+- **Mutation on the walk:** `after_put_back` forced to `None` → steps 1–3 pass, step 4 red at `recover.rs:123`, left
+  `…123, 13, 10, …, 50, 13, 10, 125, 13, 10` (CRLF) vs `LOST_EDIT` LF. Restored (`git diff` of `lost_edit.rs` empty).
+  The fix is what turns the walk green, not the config move alone.
+
 ### Other
 - Relaunch: `recover_interrupted` (`apply/recover.rs`) calls no `write_raw` (grep: `write_raw(` only in
   `apply/lost_edit.rs`, `set_aside/put_back.rs:152`, `restore/steps.rs:337`), so a put-back killed between the restore
@@ -301,3 +316,5 @@ steps 1–3 of the walk stay green under autocrlf-from-start is **unverified** (
   captions), not the `NotAsTheyWere` words.
 - `apply.rs` `closed`: `outcome_status` extraction is behaviour-preserving (same truth table); every apply/stash/clash
   test green in the full run.
+- `m7_walk/journal.rs` `lost_work_with` (granted): `lost_work()` delegates with `&[]`, so its callers
+  (`journal_screen.rs`, `journal_put_back.rs`, `m7_walk/journal.rs`) build as before; all green in the 5013/5013 run.

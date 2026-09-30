@@ -23,11 +23,11 @@ use graft_fixtures::lost_work;
 
 use super::super::blame::Route;
 use super::super::journal::{
-    NOW, confirm, drawn, enter_to_the_box, lost_work as build, open_j, opened, rev, selected_row,
-    text,
+    NOW, confirm, drawn, enter_to_the_box, lost_work_with as build, open_j, opened, rev,
+    selected_row, text,
 };
 use super::tree_bytes;
-use crate::app_harness::{App, git};
+use crate::app_harness::App;
 
 /// The scenario's keys: 3 + 1 + 4 + 4 + 4.
 const TOTAL: usize = 16;
@@ -80,10 +80,10 @@ fn promise_recover_git_clock_pinned() {
     if std::env::var_os(PINNED_CHILD).is_none() {
         return;
     }
-    let fixture = build();
+    let fixture = build(&[("core.autocrlf", "true")]);
     let repo = fixture.work();
     let commits = fixture.commits().clone();
-    set_autocrlf(repo);
+    an_lf_file(repo);
     let reset_state = tree_bytes(repo);
     let (app, state) = opened(repo);
     let mut keys: Vec<&'static str> = Vec::new();
@@ -127,10 +127,11 @@ fn promise_recover_git_clock_pinned() {
     app.close();
 }
 
-/// `core.autocrlf=true`, with the working files as checked out (LF). Status
-/// stays clean: git compares them normalised.
-fn set_autocrlf(repo: &Path) {
-    git(repo, &["config", "core.autocrlf", "true"]);
+/// The working files as checked out (LF) under `core.autocrlf=true`, set
+/// before the fixture's first commit (m7-power-tools/30w R2: set later, the
+/// undo's backup was taken under a config that converted nothing, ADR-0052
+/// §2). Status stays clean: git compares them normalised.
+fn an_lf_file(repo: &Path) {
     let files = tree_bytes(repo);
     assert!(
         files

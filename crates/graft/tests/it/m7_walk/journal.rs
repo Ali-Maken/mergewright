@@ -92,7 +92,14 @@ impl Graft for AppOps {
 
 /// The fixture, built with the app's operations.
 pub(crate) fn lost_work() -> LostWork {
-    LostWork::build(&mut AppOps).unwrap_or_else(|why| panic!("the fixture builds: {why}"))
+    lost_work_with(&[])
+}
+
+/// The fixture with `config` set before its first commit
+/// (`LostWork::build_with`): the Recover walk's `core.autocrlf=true`.
+pub(crate) fn lost_work_with(config: &[(&str, &str)]) -> LostWork {
+    LostWork::build_with(&mut AppOps, config)
+        .unwrap_or_else(|why| panic!("the fixture builds: {why}"))
 }
 
 /// The frame at `columns`×`rows`, drawn at [`NOW`].
