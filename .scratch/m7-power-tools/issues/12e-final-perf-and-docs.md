@@ -1,6 +1,6 @@
 # 12e final-perf-and-docs — the rest of 12 (from 12c)
 
-Status: partial — heap slope blocked (needs prototypes/heap-slope-hk02); p99 vs m7-04 rev 2 not met on a slow machine (see NOTES)
+Status: partial — Release box unticked: control D slow in both rev 4 and rev 5 (see NOTES); all else done
 Blocked by: 12d-perf-script-and-frames-split, **12f-review-fixes** (heavy tier green and `history/views/` split before
 the perf rev; planner, 2026-09-27)
 Crates: graft (`tests/it/frames/*` scenarios, `examples/budgets`), scripts, `docs/perf/m7-12-idle-advance.txt`,
@@ -67,6 +67,18 @@ code seam was small (one new test module, two readings).
   (`Command::ReadRefs` takes a `JobId` now; 2 errors at :106). The script's step failed both sides; the perf
   section says `FAILED … heap_slope`. Next step: fix the prototype's `Command` calls, then rerun
   `scripts/m7-12-final-perf.sh` (it re-runs all steps, ~5 min).
+
+### Follow-up (conductor grant, same day)
+- `prototypes/heap-slope-hk02/src/main.rs` (commit 8024c850): the five hand-built opening commands
+  (`Command::ReadHistory(Order)`, `ReadRefs`, `ReadWorkingTree`, …, no `JobId`s) replaced by
+  `graft::update::opening(repo, SIZE)` — the app's own opening, which now allocates the `JobId`s and sets the
+  `awaiting`/`refs_read` state those reads answer to; two now-unused imports dropped. Nothing else changed. Its
+  working-tree read is now `status_read::ask`'s command instead of `ReadWorkingTree` (what the app does).
+- Heap slope ran (final-perf section 18:21Z, 16 of 16 steps ok, all quiet): before 34.41/28.22, after 33.86/31.31
+  B/commit footprint peak; live_at_end 5.19 both. Box ticked in 12.
+- Rev 5 (18:08–18:18Z, quiet by load): control D `work_warm_us` 2072–4417 µs, not back in 1.0–1.7 → per terms,
+  stopped, Release box stays unticked. Both revs kept. The machine's CPU was slow with low load both times — likely
+  power/thermal state; not verified.
 
 ### DESIGN §3.6 sentence (for the conductor; DESIGN.md not edited)
 "The history worker lays history out a chunk at a time whenever no request is waiting, to the end of history, then

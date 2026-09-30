@@ -213,11 +213,20 @@ impl Wake { pub fn label(&self) -> &'static str; }   // variant name, and the `P
     pauses_after_laid_out=5 of 5`, 42 lines; g_after_idle's 2 s gap 0 too. Reading unit-tested by
     `frames::readings::idle_gaps_count_what_nothing_asked_for_after_laid_out`.
   - budgets `G` on git/git (85,649 commits, cg): `SUMMARY budgets_G` before 148.1/141.1 ms, after 148.5/141.0 ms.
-- [ ] `scripts/heap-slope.sh` before/after into the same perf file; slope within the recorded noise. Heavy-tier
+  **(12e) Rev 5, the re-measure (conductor's terms: accept it only if control D is back in 1.0–1.7 ms).** HEAD
+  8024c850, 18:08–18:18Z, load 1.3–1.7, only `launchd` > 40% twice (43–45%). Control D `machine: busy=false
+  work_warm_us` **2072–4417 µs — still slow**, so rev 5 is not accepted either; box stays unticked. For the record:
+  all 7 spreads `ok`, `SUMMARY runs: 6 of 6 exit 0`; p99 still above m7-04 rev 2's spread in 5 of 7 (e.g. Unicode
+  50k Closed 2855–2887 vs 2798–2838; Map 1083–1098 vs 431–1079), within it in both Pixel scenarios; idle medians
+  1124–3316 µs, `asked=0/15`; `SUMMARY g_after_idle` 8033–10303 µs. Both revs kept in the perf file. Timestamps:
+  rev 4 2026-09-30T17:40–17:50Z, rev 5 2026-09-30T18:08–18:18Z.
+- [x] `scripts/heap-slope.sh` before/after into the same perf file; slope within the recorded noise. Heavy-tier
   peak-memory test green (named at tick time).
-  **(12e) Not ticked — heap slope blocked.** `prototypes/heap-slope-hk02` no longer compiles against graft
-  (`Command::ReadRefs` now takes a `JobId`, E0308/E0061 at `src/main.rs:106`); outside 12e's file set. Heavy half
-  ✔: `SUMMARY heavy_debug exit=0 … 12 passed` — `heavy::budgets_hold_*` (5, peak RSS),
+  ✔ (12e) `scripts/m7-12-final-perf.sh` section of 18:21Z (HEAD 8024c850, `SUMMARY steps: 16 of 16 exit 0`,
+  `SUMMARY quiet: 16 of 16`): `SUMMARY heap_slope side=before footprint_peak=34.41,28.22 live_at_end=5.19,5.19`,
+  `side=after footprint_peak=33.86,31.31 live_at_end=5.19,5.19` B/commit — after inside before's own run-to-run
+  spread (28.2–34.4); live identical; housekeeping-02's recorded after was 31.49. (Prototype needed a compile fix
+  first: see 12e NOTES.) Heavy: `SUMMARY heavy_debug exit=0 … 12 passed` — `heavy::budgets_hold_*` (5, peak RSS),
   `heavy::slopes_per_commit_with_a_commit_graph`, and heavy.rs:217's
   `heavy::the_table_and_the_order_stay_at_the_commit_count_after_g_and_after_promotion ... ok`; release
   `SUMMARY heavy_release_budgets exit=0 … 5 passed`.
