@@ -423,7 +423,10 @@ what right looks like: Re-taken 2026-09-25 (ticket 61): TESTING.md "Conflicts wa
 m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relaunch, keys ⏎ o, unicode tier, 120x40
 (the capture run was sent SIGKILL after its keys; this is the real graft binary relaunched on the scratch it left)
 
- graft <scratch____________________________________________________________>    REBASING step 1 of 2
+ graft <scratch__________________________________________________>…  REBASING  step 1 of 2 · pick c3b01ea feature writes
+╭ still to apply · not commits yet ────────────────────────────────────────────────────────────────────────────────────╮
+│ pick 2e2d51c feature writes again                                                                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ◌   ▏  Uncommitted changes (1 unmerged)
   ●  ⓘ [feature] feature writes again                                                                    GF 6y   2e2d51c
   ●    feature writes                                                                                    GF 6y   c3b01ea
@@ -442,13 +445,10 @@ m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relau
 
 
 
-
-
-
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
  rebase still in progress · 1 conflicted · ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph
 UNCOMMITTED
-diff vs HEAD 2e2d51c
+diff vs HEAD b0eb655
 CONFLICTS (1)                 ▎keep 1
   shared.txt    both modified   3   3   keep 2
                                 4   4   keep 3
@@ -472,10 +472,10 @@ what right looks like: Re-taken 2026-09-24 (ticket 45): The same relaunch at 80 
 m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relaunch, keys ⏎ o, unicode tier, 80x24
 (the capture run was sent SIGKILL after its keys; this is the real graft binary relaunched on the scratch it left)
 
-REBASING step 1 of 2
+REBASING  step 1 of 2 · pick c3b01ea feature writes
 Graph  [Detail]
 UNCOMMITTED
-diff vs HEAD 2e2d51c
+diff vs HEAD b0eb655
 
 CONFLICTS (1)
   shared.txt                                                       both modified
@@ -504,7 +504,7 @@ what right looks like: Re-taken 2026-09-25 (ticket 63; the finish row since tick
 
 m6 walk capture: m6-07-all-resolved — scenario rebase-stops-twice-resolved-twice, keys ⏎ t ⏎, unicode tier, 120x40
 
-REBASING step 1 of 2
+REBASING  step 1 of 2 · pick 0104e16 feature writes
 files · all done ✓   ▸ shared.txt · done ✓
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ▸ shared.txt · done ✓ · d starts it over
@@ -552,7 +552,7 @@ what right looks like: Re-taken 2026-09-25 (ticket 63): the same end state at 80
 
 m6 walk capture: m6-07-all-resolved — scenario rebase-stops-twice-resolved-twice, keys ⏎ t ⏎, unicode tier, 80x24
 
-REBASING step 1 of 2
+REBASING  step 1 of 2 · pick 0104e16 feature writes
 files · all done ✓   ▸ ✓ shared.txt
 ────────────────────────────────────────────────────────────────────────────────
 ▸ shared.txt · done ✓ · d starts it over
@@ -3170,34 +3170,4 @@ M shared.rs             +1 −1   1     - the plan
 
 
 
-
-================================================================================
-docs/shots/m6/fix-undo-shell-merge-80x24.txt
-what right looks like: (ticket 41) The same state at 80x24: the same footer words, whole (55 columns), with no `…`. Colour unverified.
-================================================================================
-
-[Graph]  Detail
- graft /code/api    MERGING
-◌      Uncommitted changes (2 staged)
-◆   ▏  [◆ main] main's take                                         2h   ddeed32
-│ ●  ⓘ [feature] the feature's take                                 2h   f43f326
-●─╯    the shared files                                             2h   b35b2f1
-●      Correct the note                                             1y   a82960b
-●      Add the first note                                           1y   fadcfb3
-◇      Add a readme                                                 1y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
- no commit-graph file · B build one · X never here
- undo: finish merge of feature ✓ · c finishes the merge
 
