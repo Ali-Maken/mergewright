@@ -1071,7 +1071,7 @@ pub fn draw_picker(frame: &mut Frame, area: Rect, view: &PickerView);           
 |---|---|---|---|
 | F1 | `J` opens on the newest row; the `✗` is 2 down | Open on the newest `✗` row whose event is newer than every `●` row, until he presses a key; otherwise on the newest row. With no find active, `n`/`N` = next/previous `✗` row | Checklist 3 (pre-select the likely answer); UX §3.1. Journey 13: 4 → 3 |
 | F2 | `F` from any row of a file | Yes: from the file's row or any line of its diff. The file pane opens scrolled to that line | the name row can be 22 rows up (H6) |
-| F3 | Blame and history mock-ups disagree on line 19 | History is right: Lina's retry commit adds line 19. The fixture follows it | one truth for the walks |
+| F3 | Blame and history mock-ups disagree on line 19 | History is right: Lina's retry commit adds line 19. The fixture follows it. **Amended 2026-10-01 (m7 26 Q-trace):** the fixture as built adds lines 18, 21 and 22 (`+3 −2`); 19 (`loop {`) is context. The fixture stays; the walks and scenario text say "her added lines (18, 21, 22)" | one truth for the walks |
 | F4 | Spike first, then main | Either order works. The walks do main (13), then spike (14) | the rules already allow both |
 | F5 | Putting back the checked-out branch changes files | The preview gains `your files:`; unsaved edits are set aside (ADR-0045 §4) | H5; rev 2 added the line |
 | F6 | Only ≥180 was drawn | 120–179 and <120 are below; captured at 140 and 100 | — |
