@@ -21,4 +21,4 @@
 
 
  no commit-graph file · B build one · X never here
- …/session-cache.json (ignored) is in the w… · move it aside first · esc dismiss
+ …/session-cache.json is in the way · move it aside first · esc dismiss
