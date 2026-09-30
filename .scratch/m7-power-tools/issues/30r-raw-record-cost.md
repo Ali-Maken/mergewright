@@ -1,6 +1,6 @@
 # 30r: `raw_record` spawns at most one `git` when nothing converts (30q-c OVER; ADR-0052 cost)
 
-Status: draft
+Status: ready
 Build with: **Opus, `builder-opus-xhigh`.** Undo territory: a wrong "no" in `raw_record` loses his bytes silently (ADR-0052
 "every doubt is a yes"). The reads move in-process, and only real-git agreement tests can judge them. Not Fable: every
 choice is fixed below and the change stays inside `raw_record`, so nothing structural is left open.
