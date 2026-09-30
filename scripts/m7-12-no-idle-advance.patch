@@ -1,0 +1,19 @@
+diff --git a/crates/graft/src/history/serve.rs b/crates/graft/src/history/serve.rs
+index 0d54a939..8410d176 100644
+--- a/crates/graft/src/history/serve.rs
++++ b/crates/graft/src/history/serve.rs
+@@ -138,6 +138,14 @@ fn next_request<S: CommitSource>(
+                 Some(Arrival::SendersGone) | None => Next::Ended(Ended::Cancelled),
+             });
+         }
++        // m7-12e "before" build only (scripts/m7-12-final-perf.sh): no idle
++        // advance, the worker waits for the next request as before m7/12b.
++        if std::env::var_os("GRAFT_FRAME_NO_IDLE_ADVANCE").is_some() {
++            return Ok(match requests.recv() {
++                Ok(first) => Next::Asked(Box::new(requests.try_iter().last().unwrap_or(first))),
++                Err(_) => Next::Ended(Ended::Cancelled),
++            });
++        }
+         match views.idle_step(&interrupted, report)? {
+             IdleWork::Advanced { .. } | IdleWork::Promoting { .. } => {}
+             IdleWork::NobodyListening => return Ok(Next::Ended(Ended::NobodyListening)),

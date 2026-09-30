@@ -55,6 +55,9 @@ pub(super) struct Run {
     /// Every non-key wake from the first window of rows to key 1's frame,
     /// and the burst's length (see [`Paced::startup`]).
     pub(super) startup: Vec<String>,
+    /// Per idle pause after `LaidOut`: the wakes nothing asked for (see
+    /// [`Paced::idle_gaps`]).
+    pub(super) idle_gaps: Vec<Vec<&'static str>>,
 }
 
 pub(super) fn scroll(
@@ -138,6 +141,7 @@ fn measured<D>(
     let by_trigger = wakes.written_by_trigger(&counted);
     let trace = wakes.trace(script(pane).len());
     let startup = wakes.startup(before_loop);
+    let idle_gaps = wakes.idle_gaps(script(pane).len());
     Ok(Run {
         latencies,
         prefetch,
@@ -148,6 +152,7 @@ fn measured<D>(
         by_trigger,
         trace,
         startup,
+        idle_gaps,
     })
 }
 
@@ -168,7 +173,7 @@ pub(super) struct StartupWake {
 /// answered, so no stray refs answer lands mid-scroll.
 ///
 /// Every event it takes is stamped ([`StartupWake`]) for the startup trace.
-fn ready_to_scroll(
+pub(super) fn ready_to_scroll(
     repo: &Path,
     tier: RenderingTier,
     refs: Refs,
@@ -229,7 +234,10 @@ fn ready_to_scroll(
 }
 
 /// A terminal of `state`'s size writing into `sink`.
-fn in_memory(sink: &Sink, state: &AppState) -> Result<Terminal<CrosstermBackend<Sink>>, String> {
+pub(super) fn in_memory(
+    sink: &Sink,
+    state: &AppState,
+) -> Result<Terminal<CrosstermBackend<Sink>>, String> {
     Terminal::with_options(
         CrosstermBackend::new(sink.clone()),
         TerminalOptions {
@@ -303,7 +311,7 @@ fn fifty_thousand(state: &AppState) -> Result<RefBadges, String> {
 
 /// A truecolour terminal that answered every probe, drawing at `tier`; at
 /// the pixel tier over Kitty, with the user's measured cell (ADR-0012).
-fn capabilities(tier: RenderingTier) -> Capabilities {
+pub(super) fn capabilities(tier: RenderingTier) -> Capabilities {
     let pixel = tier == RenderingTier::Pixel;
     Capabilities {
         tier,

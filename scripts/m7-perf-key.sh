@@ -82,7 +82,7 @@ run controlC c
     echo "## $label: summary lines"
     # `--nocapture` prints a test's first line after its name: keep from
     # the marker on. Lists of late keys are cut at 600 characters.
-    grep -oE '(frames: .*(p99_us=|idle_wake_us|keys over)|machine: |frame_trace: ).*|^test result.*|panicked.*' "$WORK/$label.out" |
+    grep -oE '(frames: .*(p99_us=|idle_wake_us|keys over|idle_gap_wakes=)|machine: |frame_trace: ).*|^test result.*|panicked.*' "$WORK/$label.out" |
       grep -v '0 passed; 0 failed' |
       awk '{ if (length($0) > 600) print substr($0, 1, 600) " (cut)"; else print }'
   done
@@ -136,6 +136,25 @@ for key, runs in spread.items():
     else:
         verdict = "ok"
     print(f"SUMMARY spread {key}: {cells}  p99 range {min(p99s)}-{max(p99s)} max range {min(maxes)}-{max(maxes)} gate(p99<=16ms)={verdict}")
+
+# m7-power-tools/12: wakes in the idle pauses once history is laid out
+# (asserted 0 by the tests), and `G` after a 2 s idle (asserted <= 16 ms).
+print()
+print("## idle gaps after LaidOut, and G after idle (m7-power-tools/12)")
+for label in ("plain1", "plain2", "plain3", "controlA", "controlB", "controlC"):
+    try:
+        lines = open(f"{work}/{label}.out", errors="replace").readlines()
+    except FileNotFoundError:
+        continue
+    for line in lines:
+        at = line.find("frames: ")
+        if at < 0 or "idle_gap_wakes=" not in line:
+            continue
+        f = fields(line[at:])
+        if "g_after_idle" in line:
+            print(f"SUMMARY g_after_idle run={label} build={f['build']} latency_us={f['latency_us']} asked={f['asked']} wakes_between={f['wakes_between']} idle_gap_wakes={f['idle_gap_wakes']} laid_out={f['laid_out']} gap_ms={f['gap_ms']}")
+        else:
+            print(f"SUMMARY idle_gap run={label} control={f['control']} tier={f['tier']} refs={f['refs']} pane={f['pane']} idle_gap_wakes={f['idle_gap_wakes']} pauses_after_laid_out={f['pauses_after_laid_out']} of 5 pause_ms={f['pause_ms']}")
 
 rows = []
 try:

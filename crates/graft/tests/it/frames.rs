@@ -33,8 +33,10 @@
 //! [`paced`] hands the loop its wakes and stamps them, [`readings`] turns
 //! the stamps into latencies and trace lines, [`sink`] is the in-memory
 //! terminal, [`verdict`] judges and prints, [`controls`] holds the perf
-//! script's controls. This file holds the scroll tests and their script.
+//! script's controls, [`after_idle`] is `G` after history is laid out and
+//! the app has sat idle. This file holds the scroll tests and their script.
 
+mod after_idle;
 mod controls;
 mod journal_find;
 mod paced;
@@ -53,7 +55,7 @@ use graft_fixtures::synthetic::{self, Scale};
 use crate::frame_trace::{FrameTrace, Gate, TRACE_VAR};
 use crate::heavy::MEASURING;
 use controls::Control;
-use run::scroll;
+use run::{Run, scroll};
 use verdict::{judge, print_details};
 
 /// PROMPT.md §6.3: input to frame under 16 ms.
@@ -289,5 +291,34 @@ fn check_scale(tier: RenderingTier, refs: Refs, scale: Scale, pane: Pane) {
         RenderingTier::Pixel => assert!(run.kitty_commands > 0, "the pixel tier drew no images"),
         _ => assert_eq!(run.kitty_commands, 0, "a text tier sent images"),
     }
+    check_idle_gaps(tier, refs, pane, control, &run);
     judge(tier, refs, pane, &run, &gate, &summary);
+}
+
+/// `idle_gap_wakes` (m7-power-tools/12): once the walk has said `LaidOut`,
+/// the history worker is parked and a pause with no input wakes nothing.
+/// Counted over each idle key's [`IDLE`] pause that began after `LaidOut`;
+/// asserted 0 in both builds (a wake is behaviour, not pace). Control A has
+/// no idle pauses, so its count is printed and not asserted.
+fn check_idle_gaps(tier: RenderingTier, refs: Refs, pane: Pane, control: Control, run: &Run) {
+    let woke: Vec<&str> = run.idle_gaps.iter().flatten().copied().collect();
+    let pause = if control == Control::NoIdle {
+        TICK
+    } else {
+        IDLE
+    };
+    println!(
+        "frames: tier={tier:?} refs={refs:?} pane={pane:?} control={control:?} idle_gap_wakes={} pauses_after_laid_out={} of {} pause_ms={} woke={woke:?}",
+        woke.len(),
+        run.idle_gaps.len(),
+        idle_wakes().len(),
+        pause.as_millis(),
+    );
+    if control != Control::NoIdle {
+        assert!(
+            woke.is_empty(),
+            "{} wakes with no input in the idle pauses after `LaidOut`: {woke:?}",
+            woke.len()
+        );
+    }
 }
