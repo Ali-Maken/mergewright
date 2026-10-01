@@ -115,7 +115,7 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 ●    Commit 158                                                                                                                                  GF 2d   1e28a71
 ●    Commit 157                                                                                                                                  GF 2d   b57586d
 ●    Commit 156                                                                                                                                  GF 2d   edc7cba
-
+●    Commit 155                                                                                                                                  GF 2d   4c8c724
  y push  ←/→ move  ⏎ choose  esc cancel
 
 
@@ -195,7 +195,7 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 ●    Commit 182                                                     2d   d212b3e
 ●    Commit 181                                                     2d   c8254c5
 ●    Commit 180                                                     2d   e95ccd4
-
+●    Commit 179                                                     2d   97b58e5
  y push  ←/→ move  ⏎ choose  esc cancel
 
 
@@ -301,7 +301,7 @@ what right looks like: Capture header "What right looks like": the same context 
 #
 
  graft /code/api  8 commits
-  ◆  ⓘ [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
+  ◆    [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
   ●    start the feature                                                                                                                         GF 2m   52f3b96
 ● │ ▏  [main] main moves again                                                                                                                   GF 3m   45fa51d
  Checkout main
@@ -346,8 +346,8 @@ what right looks like: Capture header "What right looks like": the same context 
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  . more  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+
+ m merge  r rebase  ⏎ open  o take  b branch  t tag  P push  c commit  p pull  f fetch  . more  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 ================================================================================
 docs/shots/m5-ui-context-menu-verbs-80x24.txt
@@ -409,7 +409,7 @@ what right looks like: Capture header "What right looks like": the context menu 
 #
 
  graft /code/api  8 commits
-  ◆  ⓘ [◆ feature] finish the feature                               now  8d6cd28
+  ◆    [◆ feature] finish the feature                               now  8d6cd28
   ●    start the feature                                            2m   52f3b96
 ● │ ▏  [main] main moves again                                      3m   45fa51d
  Checkout main
@@ -430,8 +430,8 @@ what right looks like: Capture header "What right looks like": the context menu 
 
 
 
- no commit-graph file · B build one · X never here
- m merge  r rebase  ⏎ open  . more  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +
+
+ m merge  r rebase  ⏎ open  . more  o  b  t  P  c  p  f  u  S  /  q  F2  F3  x
 
 ================================================================================
 docs/shots/m5-ui-credential-over-graph-160x48.txt
@@ -524,7 +524,7 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 ●    Commit 158                                                                                                                                  GF 2d   1e28a71
 ●    Commit 157                                                                                                                                  GF 2d   b57586d
 ●    Commit 156                                                                                                                                  GF 2d   edc7cba
-
+●    Commit 155                                                                                                                                  GF 2d   4c8c724
  ⏎ send  esc cancel
 
 
@@ -595,7 +595,7 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 ●    Commit 182                                                     2d   d212b3e
 ●    Commit 181                                                     2d   c8254c5
 ●    Commit 180                                                     2d   e95ccd4
-
+●    Commit 179                                                     2d   97b58e5
  ⏎ send  esc cancel
 
 
@@ -629,7 +629,7 @@ what right looks like: Capture header "What right looks like": the drag is visib
 #  - Nothing else has moved: no menu, no box, the graph unchanged.
 
  graft /code/api  8 commits
-  ◆  ⓘ [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
+  ◆    [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
   ●    start the feature                                                                                                                         GF 2m   52f3b96
 ● │ ▸  [main] main moves again                                                                                                                   GF 3m   45fa51d
 ● │    main moves on                                                                                                                             GF 4m   37926a7
@@ -674,7 +674,7 @@ what right looks like: Capture header "What right looks like": the drag is visib
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  release drop on a row  esc cancel
 
 ================================================================================
@@ -707,7 +707,7 @@ what right looks like: Capture header "What right looks like": the drag is visib
 #  - Nothing else has moved: no menu, no box, the graph unchanged.
 
  graft /code/api  8 commits
-  ◆  ⓘ [◆ feature] finish the feature                               now  8d6cd28
+  ◆    [◆ feature] finish the feature                               now  8d6cd28
   ●    start the feature                                            2m   52f3b96
 ● │ ▸  [main] main moves again                                      3m   45fa51d
 ● │    main moves on                                                4m   37926a7
@@ -728,7 +728,7 @@ what right looks like: Capture header "What right looks like": the drag is visib
 
 
 
- no commit-graph file · B build one · X never here
+
  release drop on a row  esc cancel
 
 ================================================================================
@@ -761,7 +761,7 @@ what right looks like: Capture header "What right looks like": a title row reads
 #    on, which is still readable above it.
 #
  graft /code/api  8 commits
-  ◆ ▏ⓘ [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
+  ◆ ▏  [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
   ●    start the feature                                                                                                                         GF 2m   52f3b96
 ● │    [main] main moves again                                                                                                                   GF 3m   45fa51d
  feature → main
@@ -806,8 +806,8 @@ what right looks like: Capture header "What right looks like": a title row reads
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- . explain  ⏎ open  c commit  P push  p pull  f fetch  b branch  t tag  u undo  S stash  J journal  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
+
+ ⏎ open  c commit  P push  p pull  f fetch  a amend  b branch  t tag  u undo  S stash  J journal  . more  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
 
 ================================================================================
 docs/shots/m5-ui-drop-menu-80x24.txt
@@ -839,7 +839,7 @@ what right looks like: Capture header "What right looks like": a title row reads
 #    on, which is still readable above it.
 #
  graft /code/api  8 commits
-  ◆ ▏ⓘ [◆ feature] finish the feature                               now  8d6cd28
+  ◆ ▏  [◆ feature] finish the feature                               now  8d6cd28
   ●    start the feature                                            2m   52f3b96
 ● │    [main] main moves again                                      3m   45fa51d
  feature → main
@@ -860,8 +860,8 @@ what right looks like: Capture header "What right looks like": a title row reads
 
 
 
- no commit-graph file · B build one · X never here
- . explain  ⏎ open  c commit  P  p  f  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k
+
+ ⏎ open  c commit  P push  . more  p  f  a  b  t  u  S  J  /  R  q  F2  F3  x  +
 
 ================================================================================
 docs/shots/m5-ui-ghost-rows.txt
@@ -949,7 +949,7 @@ what right looks like: Capture header "What right looks like": the box's top bor
 #    column shows beside it.
 #
  graft /code/api  8 commits
-  ◆  ⓘ [◆ feature] finish the feature                               now  8d6cd28
+  ◆    [◆ feature] finish the feature                               now  8d6cd28
   ●    start the feature                                            2m   52f3b96
 ● │ ▏  [main] main moves again                                      3m   45fa51d
 ● │    main moves on                                                4m   37926a7
@@ -962,7 +962,7 @@ what right looks like: Capture header "What right looks like": the box's top bor
           │ ( ) check out after creating · ⇥ toggles                 │
           │ exists                                                   │
           │                                                          │
-          ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+          ╰──────────────────────────────────────────────────────────╯
 
 
 
@@ -982,7 +982,8 @@ what right looks like: Capture header "What right looks like": title, typed name
 #
 # What right looks like: title, typed name field, an optional
 # (•)/( ) checkout toggle, a refusal line under the field when the
-# name is rejected, and the footer "⏎ create  ⇥ toggle  esc cancel".
+# name is rejected, and a plain bottom border: the keys are the bar's
+# (m7-power-tools/15).
 # Below 40x7 it draws one centred "too small" line and nothing else.
 
 === plain, 80x24 ===
@@ -991,7 +992,7 @@ what right looks like: Capture header "What right looks like": title, typed name
           │                                                          │
           │                                                          │
           │                                                          │
-          ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+          ╰──────────────────────────────────────────────────────────╯
 
 === with checkout option, 160x48 ===
                                                   ╭ New branch at a1b2c3d ───────────────────────────────────╮
@@ -999,7 +1000,7 @@ what right looks like: Capture header "What right looks like": title, typed name
                                                   │ (•) check out after creating · ⇥ toggles                 │
                                                   │                                                          │
                                                   │                                                          │
-                                                  ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+                                                  ╰──────────────────────────────────────────────────────────╯
 
 === refused, 80x24 ===
           ╭ New branch at a1b2c3d ───────────────────────────────────╮
@@ -1007,7 +1008,7 @@ what right looks like: Capture header "What right looks like": title, typed name
           │ ( ) check out after creating · ⇥ toggles                 │
           │ bad name: cannot start with -                            │
           │                                                          │
-          ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+          ╰──────────────────────────────────────────────────────────╯
 
 
 ================================================================================
@@ -1294,7 +1295,7 @@ what right looks like: Capture header "What right looks like": the rows on scree
 # and `redesign` — sixty commits newer than all of them — pushing
 # `old-release` far down the graph. Opened over the real job pool, the
 # cursor walked down to `old-release`'s row with `j` **at this screen
-# size** (so the viewport really is scrolled: `history.top` is 25 here,
+# size** (so the viewport really is scrolled: `history.top` is 24 here,
 # not 0 — it differs by screen, which is why each capture has its own
 # session and its own number), then `r` pressed through `update` and the
 # real `graft_ops::preview::plan` run (crates/graft/tests/it/preview.rs,
@@ -1366,10 +1367,10 @@ what right looks like: Capture header "What right looks like": the rows on scree
 │ ○      main moves on (1)                                                                                                                       GF —    —
 │ ○      main moves on (0)                                                                                                                       GF —    —
 │ ●   ▏  [old-release] cut release 1.0                                                                                                           GF 68m  3b09656
-●─╯      add the base                                                                                                                            GF 69m  ed332bc
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 5 commits replayed                                                                                                                                           │
 │ topic e7e39a7 → 5 new commits                                                                                                                                │
+│ left behind: main, redesign stay on old commits                                                                                                              │
 │ working tree: 1 file updated                                                                                                                                 │
 │ no conflicts expected                                                                                                                                        │
 │ undo: u takes this back                                                                                                                                      │
@@ -1389,7 +1390,7 @@ what right looks like: Capture header "What right looks like": the rows on scree
 # and `redesign` — sixty commits newer than all of them — pushing
 # `old-release` far down the graph. Opened over the real job pool, the
 # cursor walked down to `old-release`'s row with `j` **at this screen
-# size** (so the viewport really is scrolled: `history.top` is 49 here,
+# size** (so the viewport really is scrolled: `history.top` is 48 here,
 # not 0 — it differs by screen, which is why each capture has its own
 # session and its own number), then `r` pressed through `update` and the
 # real `graft_ops::preview::plan` run (crates/graft/tests/it/preview.rs,
@@ -1437,10 +1438,10 @@ what right looks like: Capture header "What right looks like": the rows on scree
 │ ○      main moves on (1)                                          —    —
 │ ○      main moves on (0)                                          —    —
 │ ●   ▏  [old-release] cut release 1.0                              68m  3b09656
-●─╯      add the base                                               69m  ed332bc
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────╮
 │ 5 commits replayed                                                           │
 │ topic e7e39a7 → 5 new commits                                                │
+│ left behind: main, redesign stay on old commits                              │
 │ working tree: 1 file updated                                                 │
 │ no conflicts expected                                                        │
 │ undo: u takes this back                                                      │

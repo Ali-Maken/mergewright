@@ -428,7 +428,7 @@ m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relau
 │ pick 2e2d51c feature writes again                                                                                    │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ◌   ▏  Uncommitted changes (1 unmerged)
-  ●  ⓘ [feature] feature writes again                                                                    GF 6y   2e2d51c
+  ●    [feature] feature writes again                                                                    GF 6y   2e2d51c
   ●    feature writes                                                                                    GF 6y   c3b01ea
 ◆ │  ⓘ [HEAD] [main] main rewrites it                                                                    GF 6y   b0eb655
 ●─╯    add the shared file                                                                               GF 6y   4119e0a
@@ -445,7 +445,7 @@ m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relau
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  rebase still in progress · 1 conflicted · ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph
 UNCOMMITTED
 diff vs HEAD b0eb655
@@ -832,6 +832,8 @@ what right looks like: (ticket 11) Preview opened by `m`: the box's bottom borde
 #
 
  graft /code/api  8 commits
+    │    after merge
+  ◎┈╮    [◆ feature] Merge branch 'main' into feature                                                    MA —    —
   ● │    finish the feature                                                                              GF now  8d6cd28
   ● │    start the feature                                                                               GF 2m   52f3b96
 ●─│─╯ ▏  [main] main moves again                                                                         GF 3m   45fa51d
@@ -840,8 +842,6 @@ what right looks like: (ticket 11) Preview opened by `m`: the box's bottom borde
 ●        Correct the note                                                                                GF 1y   a82960b
 ●        Add the first note                                                                              GF 1y   fadcfb3
 ◇        Add a readme                                                                                    GF 1y   64ded19
-
-
 
 
 
@@ -973,7 +973,7 @@ what right looks like: (ticket 12) After `Esc` from the resolver a stop lands in
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  ⇥ banner  c finish  m merge  . more  r  ⏎  b  t  P  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 ================================================================================
@@ -1029,7 +1029,7 @@ what right looks like: (ticket 12) The same at 187x50: the last row lists `⇥ b
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  ⇥ banner  c finish  m merge  r rebase  ⏎ open  b branch  t tag  P push  p pull  f fetch  u undo  S stash  / search  q quit  F2 stat  . more  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 ================================================================================
@@ -1040,7 +1040,7 @@ what right looks like: (ticket 12; recaptured by 24 and 61; `c finish` on a merg
  graft /code/api    MERGING
 ◌   ▏  Uncommitted changes (13 unmerged)
 ◆      [◆ main] Change every file on main                                                                GF 2h   274c7d4
-│ ●  ⓘ [feature] Change every file on feature                                                            GF 2h   9d44f42
+│ ●    [feature] Change every file on feature                                                            GF 2h   9d44f42
 ◇─╯    Add the files both sides will change                                                              GF 1y   9571fc9
 
 
@@ -1059,7 +1059,7 @@ what right looks like: (ticket 12; recaptured by 24 and 61; `c finish` on a merg
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  merge in progress · from the shell · 13 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
 UNCOMMITTED
 diff vs HEAD 274c7d4
@@ -1086,7 +1086,7 @@ what right looks like: (ticket 12; recaptured by 24 and 61; `c finish` on a merg
  graft /code/api    MERGING                                                                                  UNCOMMITTED
 ◌   ▏  Uncommitted changes (13 unmerged)                                                                     diff vs HEAD 274c7d4
 ◆      [◆ main] Change every file on main                                                    GF 2h   274c7d4
-│ ●  ⓘ [feature] Change every file on feature                                                GF 2h   9d44f42
+│ ●    [feature] Change every file on feature                                                GF 2h   9d44f42
 ◇─╯    Add the files both sides will change                                                  GF 1y   9571fc9
                                                                                                              CONFLICTS (13)
                                                                                                                added-by-them.txt                                              added by them
@@ -1131,7 +1131,7 @@ what right looks like: (ticket 12; recaptured by 24 and 61; `c finish` on a merg
 
 
 
- no commit-graph file · B build one (git commit-graph write --reachable) · X never here
+
  merge in progress · 13 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
 
 ================================================================================
@@ -1140,7 +1140,7 @@ what right looks like: (ticket 12) After `c` on a rebase: the cursor row is the 
 ================================================================================
 
  graft /code/api  3 commits
-  ◆ ▏ⓘ [◆ feature] Change every file on feature                                                          GF futu…0000000
+  ◆ ▏  [◆ feature] Change every file on feature                                                          GF futu…0000000
 ●─╯    [main] Change every file on main                                                                  GF 2h   274c7d4
 ◇      Add the files both sides will change                                                              GF 1y   9571fc9
 
@@ -1161,10 +1161,10 @@ what right looks like: (ticket 12) After `c` on a rebase: the cursor row is the 
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  rebase feature onto main ✓
 COMMIT 0000000 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:00 +0000 · 2h · parents 274c7d4 · diff vs firs…
-Change every file on feature · no upstream (feature)
+Change every file on feature
 A added-by-them.txt     +1 −0 ▎
 M both-added.txt        +4 −0       1 + renamed to a different name by each side
 M both.txt              +4 −0
@@ -1186,10 +1186,10 @@ what right looks like: (ticket 12) The same at 187x50: cursor on the rebased bra
 ================================================================================
 
  graft /code/api  3 commits                                                                                  COMMIT 0000000
-  ◆ ▏ⓘ [◆ feature] Change every file on feature                                              GF futu…0000000 Graft Fixture <fixture@example.invalid> · 2021-01-01 00:00 +0000 · 2h
+  ◆ ▏  [◆ feature] Change every file on feature                                              GF futu…0000000 Graft Fixture <fixture@example.invalid> · 2021-01-01 00:00 +0000 · 2h
 ●─╯    [main] Change every file on main                                                      GF 2h   274c7d4 parents 274c7d4 · diff vs first parent
 ◇      Add the files both sides will change                                                  GF 1y   9571fc9 Contained in: feature
-                                                                                                             no upstream (feature)
+
                                                                                                              A added-by-them.txt                                                      +1 −0
                                                                                                              M both-added.txt                                                         +4 −0
                                                                                                              M both.txt                                                               +4 −0
@@ -1233,7 +1233,7 @@ what right looks like: (ticket 12) The same at 187x50: cursor on the rebased bra
 
 
 
- no commit-graph file · B build one (git commit-graph write --reachable) · X never here
+
  rebase feature onto main ✓
 
 ================================================================================
@@ -2190,7 +2190,7 @@ what right looks like: (ticket 20) The frame after `⏎` finishing a merge begun
  graft /code/api  7 commits
 ◆─╮ ▏  [◆ main] Merge branch 'feature'                                                                   GF futu…0000000
 ● │    main's take                                                                                       GF 2h   ddeed32
-│ ●  ⓘ [feature] the feature's take                                                                      GF 2h   f43f326
+│ ●    [feature] the feature's take                                                                      GF 2h   f43f326
 ●─╯    the shared files                                                                                  GF 2h   b35b2f1
 ●      Correct the note                                                                                  GF 1y   a82960b
 ●      Add the first note                                                                                GF 1y   fadcfb3
@@ -2209,7 +2209,7 @@ what right looks like: (ticket 20) The frame after `⏎` finishing a merge begun
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  merged feature into main ✓
 COMMIT 0000000 · Graft Fixture <fixture@example.invalid> · 0000-00-00 00:00 +0000 · future · parents ddeed32, f43f326 ·…
 Merge branch 'feature' · evil merge: clean (2 files hand-resolved)
@@ -3033,7 +3033,7 @@ what right looks like: (ticket 48; `a` since ticket 52, whose `c` opens the summ
  graft /code/api    MERGING                                                                                  UNCOMMITTED · 2 staged
 ◌   ▏  Uncommitted changes (2 staged)                                                                        diff vs HEAD ddeed32
 ◆      [◆ main] main's take                                                                  GF 2h   ddeed32
-│ ●  ⓘ [feature] the feature's take                                                          GF 2h   f43f326
+│ ●    [feature] the feature's take                                                          GF 2h   f43f326
 ●─╯    the shared files                                                                      GF 2h   b35b2f1
 ●      Correct the note                                                                      GF 1y   a82960b STAGED (2)
 ●      Add the first note                                                                    GF 1y   fadcfb3   M notes.md                                                             +1 −1
@@ -3078,7 +3078,7 @@ what right looks like: (ticket 48; `a` since ticket 52, whose `c` opens the summ
 
 
 
- no commit-graph file · B build one (git commit-graph write --reachable) · X never here
+
  merge begun in the shell · ⇥ ⇥ banner, then c finishes it
 
 ================================================================================
@@ -3133,7 +3133,7 @@ what right looks like: (ticket 41) After `u` on a shell-begun finish: the header
  graft /code/api    MERGING
 ◌      Uncommitted changes (2 staged)
 ◆   ▏  [◆ main] main's take                                                                              GF 2h   ddeed32
-│ ●  ⓘ [feature] the feature's take                                                                      GF 2h   f43f326
+│ ●    [feature] the feature's take                                                                      GF 2h   f43f326
 ●─╯    the shared files                                                                                  GF 2h   b35b2f1
 ●      Correct the note                                                                                  GF 1y   a82960b
 ●      Add the first note                                                                                GF 1y   fadcfb3
@@ -3152,7 +3152,7 @@ what right looks like: (ticket 41) After `u` on a shell-begun finish: the header
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  undo: finish merge of feature ✓ · c finishes the merge
 COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
 main's take
@@ -3170,4 +3170,34 @@ M shared.rs             +1 −1   1     - the plan
 
 
 
+
+================================================================================
+docs/shots/m6/fix-undo-shell-merge-80x24.txt
+what right looks like: (ticket 41) The same state at 80x24: the same footer words, whole (55 columns), with no `…`. Colour unverified.
+================================================================================
+
+[Graph]  Detail
+ graft /code/api    MERGING
+◌      Uncommitted changes (2 staged)
+◆   ▏  [◆ main] main's take                                         2h   ddeed32
+│ ●    [feature] the feature's take                                 2h   f43f326
+●─╯    the shared files                                             2h   b35b2f1
+●      Correct the note                                             1y   a82960b
+●      Add the first note                                           1y   fadcfb3
+◇      Add a readme                                                 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ undo: finish merge of feature ✓ · c finishes the merge
 

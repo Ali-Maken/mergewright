@@ -295,7 +295,7 @@ what right looks like: Ticket 24-b (journey 13 landed): after `J ⏎ y`. The gra
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  put back ✓ · main has "Add rate limiter" again · u undoes
 
 ================================================================================
@@ -410,7 +410,7 @@ what right looks like: Ticket 30o-a (journey 15 landed, after `y`): the graph wi
   ■        [stash@{0}] On main: tune metrics                                                 GF 3m   91dddee
   │ ●      [origin/main] Add an ops runbook                                                  GF 14m  8c11cb0
   │ ●      Document the api                                                                  GF 15m  ba5c9ad
-  │ │ ●  ⓘ [spike] Try redis cache                                                           GF 24m  419e109 UNSTAGED (1)
+  │ │ ●    [spike] Try redis cache                                                           GF 24m  419e109 UNSTAGED (1)
 ◆ │ │ │  ⓘ [◆ main ↑1 ↓2] Add rate limiter                                                   GF 30m  a65d7e4   ▾ src/
 ●─┴─┴─╯    Add metrics endpoint                                                              GF 31m  a314d47     M a.rs                                                               +3 −1
 ●          Add request logging                                                               GF 32m  6b08f9d ▎
@@ -453,7 +453,7 @@ what right looks like: Ticket 30o-a (journey 15 landed, after `y`): the graph wi
 
 
 
- no commit-graph file · B build one (git commit-graph write --reachable) · X never here
+
  your edit to src/a.rs is back ✓ · u undoes
 
 ================================================================================
@@ -522,7 +522,7 @@ what right looks like: Ticket 30p-a (journey 15 over a staged file, after `y`): 
   ■        [stash@{0}] On main: tune metrics                                                 GF 3m   91dddee
   │ ●      [origin/main] Add an ops runbook                                                  GF 14m  8c11cb0
   │ ●      Document the api                                                                  GF 15m  ba5c9ad
-  │ │ ●  ⓘ [spike] Try redis cache                                                           GF 24m  419e109 STAGED (1)
+  │ │ ●    [spike] Try redis cache                                                           GF 24m  419e109 STAGED (1)
 ◆ │ │ │  ⓘ [◆ main ↑1 ↓2] Add rate limiter                                                   GF 30m  a65d7e4   ▾ src/
 ●─┴─┴─╯    Add metrics endpoint                                                              GF 31m  a314d47     M a.rs                                                               +3 −1
 ●          Add request logging                                                               GF 32m  6b08f9d UNSTAGED (1)
@@ -565,7 +565,7 @@ what right looks like: Ticket 30p-a (journey 15 over a staged file, after `y`): 
 
 
 
- no commit-graph file · B build one (git commit-graph write --reachable) · X never here
+
  your edit to src/a.rs is back ✓ · u undoes
 
 ================================================================================
@@ -697,10 +697,10 @@ what right looks like: After the merge: graph cursor `▏` (not `▸`) on the me
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  merge main into feature ✓
 COMMIT 0000000 · Graft Fixture <fixture@example.invalid> · YYYY-MM-DD hh:mm +zzzz · future · parents 8d6cd28, 45fa51d ·…
-Merge branch 'main' into feature · backward merge · no upstream (feature) · evil merge: clean
+Merge branch 'main' into feature · backward merge · evil merge: clean
 A main-one.txt          +1 −0 ▎
 A main-two.txt          +1 −0       1 + one
 
@@ -900,10 +900,10 @@ what right looks like: Ticket 05b: `r` on `main`'s row with `feature-a` checked 
 ================================================================================
 
  graft /code/api  5 commits
-  ●    ⓘ [feature-c] c1                                                                                  GF 2d   937a1e7
+  ●      [feature-c] c1                                                                                  GF 2d   937a1e7
 ● │   ▏  [main] m2                                                                                       GF 2d   fa34bcc
-│ │ ●  ⓘ [feature-b] b1                                                                                  GF 2d   8c6d354
-│ ◆─╯  ⓘ [◆ feature-a] a1                                                                                GF 2d   0395451
+│ │ ●    [feature-b] b1                                                                                  GF 2d   8c6d354
+│ ◆─╯    [◆ feature-a] a1                                                                                GF 2d   0395451
 ◇─╯      m1                                                                                              GF 2d   256d42c
 
 
@@ -954,7 +954,7 @@ what right looks like: Ticket 10b: `. ⏎` on `feature-b`'s row with the tree cl
 # cursor on the new HEAD's row (feature-b, `◆`); the status line
 # `on feature-b ✓ · u goes back`.
  graft /code/api  6 commits
-  ◆ ▏ⓘ [◆ feature-b] fix the bug                                                                         GF 3m   fbb2394
+  ◆ ▏  [◆ feature-b] fix the bug                                                                         GF 3m   fbb2394
 ● │    [main] main moves on                                                                              GF 4m   37926a7
 ●─╯    add the base                                                                                      GF 5m   ed332bc
 ●      Correct the note                                                                                  GF 1y   a82960b
@@ -991,7 +991,7 @@ what right looks like: Ticket 10b: `. ⏎` on `feature-b`'s row with the tree cl
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  on feature-b ✓ · u goes back
 
 ================================================================================
@@ -1010,12 +1010,13 @@ what right looks like: `↩ before  feature-a` first; `● local` / `◌ remote`
 # `main` last, `you're on it`; the bar `type to find  ⏎ switch to
 # it  esc close  ⇥ show it on the graph  ↑↓ row`.
  graft /code/api  6 commits
-  ● ▏ⓘ [login-page] [origin/sara/login-page] fix the bug                                                                                                                    GF 3m   fbb2394
+  ● ▏  [login-page] [origin/sara/login-page] fix the bug                                                                                                                    GF 3m   fbb2394
 ◆ │    [◆ main ⇄ origin] main moves on                                                                                                                                      GF 4m   37926a7
-●─╯  ⓘ [feature-a] add the base                                                                                                                                             GF 5m   ed332bc
+●─╯    [feature-a] add the base                                                                                                                                             GF 5m   ed332bc
 ●      Correct the note                                                                                                                                                     GF 1y   a82960b
 ●      Add the first note                                                                                                                                                   GF 1y   fadcfb3
 ◇      Add a readme                                                                                                                                                         GF 1y   64ded19
+
 
 
 
@@ -1057,7 +1058,6 @@ what right looks like: `↩ before  feature-a` first; `● local` / `◌ remote`
                   │                                                                                                                                                    │
                   │ 4 branches                                                                                                                                         │
                   └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
  type to find  ⏎ switch to it  esc close  ⇥ show it on the graph  ↑↓ row
 
 ================================================================================
@@ -1074,12 +1074,13 @@ what right looks like: Glyph, name, age only; the segment-prefix match on top. C
 # age only; `login-page` (the segment-prefix match) above
 # `origin/sara/login-page`; the footer `2 of 4 branches`.
  graft /code/api  6 commits
-  ● ▏ⓘ [login-page] [origin/sara/login-page] fix the bug                             GF 3m   fbb2394
+  ● ▏  [login-page] [origin/sara/login-page] fix the bug                             GF 3m   fbb2394
 ◆ │    [◆ main ⇄ origin] main moves on                                               GF 4m   37926a7
-●─╯  ⓘ [feature-a] add the base                                                      GF 5m   ed332bc
+●─╯    [feature-a] add the base                                                      GF 5m   ed332bc
 ●      Correct the note                                                              GF 1y   a82960b
 ●      Add the first note                                                            GF 1y   fadcfb3
 ◇      Add a readme                                                                  GF 1y   64ded19
+
 
 
 
@@ -1101,7 +1102,6 @@ what right looks like: Glyph, name, age only; the segment-prefix match on top. C
   │                                                                                              │
   │ 2 of 4 branches                                                                              │
   └──────────────────────────────────────────────────────────────────────────────────────────────┘
- no commit-graph file · B build one (git commit-graph write --reachable) · X never here
  type to find  ⏎ switch to it  esc close  ⇥ show it on the graph  ↑↓ row
 
 ================================================================================
@@ -1118,9 +1118,9 @@ what right looks like: `▸` on the new HEAD; `✓ on login-page · u goes back`
 # the new HEAD's row (login-page); the status line
 # `on login-page ✓ · u goes back`.
  graft /code/api  6 commits
-  ◆ ▏ⓘ [◆ login-page] [origin/sara/login-page] fix the bug                                               GF 3m   fbb2394
+  ◆ ▏  [◆ login-page] [origin/sara/login-page] fix the bug                                               GF 3m   fbb2394
 ● │    [main ⇄ origin] main moves on                                                                     GF 4m   37926a7
-●─╯  ⓘ [feature-a] add the base                                                                          GF 5m   ed332bc
+●─╯    [feature-a] add the base                                                                          GF 5m   ed332bc
 ●      Correct the note                                                                                  GF 1y   a82960b
 ●      Add the first note                                                                                GF 1y   fadcfb3
 ◇      Add a readme                                                                                      GF 1y   64ded19
@@ -1155,7 +1155,7 @@ what right looks like: `▸` on the new HEAD; `✓ on login-page · u goes back`
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  on login-page ✓ · u goes back
 
 ================================================================================
@@ -1172,9 +1172,9 @@ what right looks like: `✓ on sara/login-page (new, tracks origin/sara/login-pa
 # `on sara/login-page (new, tracks origin/sara/login-page) ✓ · u
 # goes back`; the cursor on the new HEAD's row.
  graft /code/api  6 commits
-  ◆ ▏ⓘ [login-page] [◆ sara/login-page] [origin/sara/… fix the bug                                       GF 3m   fbb2394
+  ◆ ▏  [login-page] [◆ sara/login-page] [origin/sara/… fix the bug                                       GF 3m   fbb2394
 ● │    [main ⇄ origin] main moves on                                                                     GF 4m   37926a7
-●─╯  ⓘ [feature-a] add the base                                                                          GF 5m   ed332bc
+●─╯    [feature-a] add the base                                                                          GF 5m   ed332bc
 ●      Correct the note                                                                                  GF 1y   a82960b
 ●      Add the first note                                                                                GF 1y   fadcfb3
 ◇      Add a readme                                                                                      GF 1y   64ded19
@@ -1209,7 +1209,7 @@ what right looks like: `✓ on sara/login-page (new, tracks origin/sara/login-pa
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  on sara/login-page (new, tracks origin/sara/login-page) ✓ · u goes back
 
 ================================================================================
@@ -1747,7 +1747,7 @@ what right looks like: Header `changes on feature-a since it left main · 3 comm
 
  graft /code/api  6 commits                                                                                  changes on feature-a since it left main · 3 commits · 2 files +2 −0
 ◆   ▏  [x base] [◆ main] Readme                                                              GF 2d   22e02fb
-│ ● ▏ⓘ [feature-a] Use token                                                                 GF 2d   a84a58c
+│ ● ▏  [feature-a] Use token                                                                 GF 2d   a84a58c
 ● │    Changelog                                                                             GF 2d   500b0e7
 │ ●    Add token                                                                             GF 2d   fcd7e09
 │ ●    Add login                                                                             GF 2d   95472aa ▾ src/
@@ -1824,7 +1824,7 @@ select a file
 
 
 
- . explain  m merge  r rebase  ⏎  space  b  t  P  c  p  f  u  /  q  F2  F3  x  +
+ m merge  r rebase  ⏎ open  . more  space  b  t  P  c  p  f  u  /  q  F2  F3  x
 
 ================================================================================
 docs/shots/m7/stash-in-history-120x40.txt
@@ -1869,7 +1869,7 @@ what right looks like: No `index on` and no `untracked files on` rows; exactly o
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
 
 ================================================================================
@@ -1899,7 +1899,7 @@ what right looks like: At 80: no `index on` and no `untracked files on` rows; ex
 
 
 
- no commit-graph file · B build one · X never here
+
  ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +
 
 ================================================================================
@@ -2373,8 +2373,8 @@ what right looks like: Commit diff, cursor on New line 2: exactly one row carrie
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- c commit  P push  <> resize  p pull  f fetch  b branch  t tag  u undo  . more  /  q  F2  F3  x  +  j/k  1  F  H  y
+
+ B blame  F history  c commit  P push  <> resize  p pull  f fetch  . more  b  t  u  /  q  F2  F3  x  +  j/k  1  H  y
 COMMIT 6944d27 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 4m · parents 9d5dd9b · diff vs firs…
 edit notes
 M notes.txt             +2 −1
@@ -2420,8 +2420,8 @@ what right looks like: Two frames: files cursor on a file row, bar has no `space
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  c commit  P push  <> resize  p pull  f fetch  b branch  t tag  . more  u  /  q  F2  F3  x  +  j/k  1  F  H  y
+
+ ⏎ open  B blame  F history  c commit  P push  <> resize  p pull  . more  f  b  t  u  /  q  F2  F3  x  +  j/k  1  H  y
 COMMIT 9d4f6c9 · Graft Fixture <fixture@example.invalid> · 2020-09-13 12:27 +0000 · 4mo · parents a82960b · diff vs fir…
 add src
 M notes.txt             +1 −1 ▎
@@ -2462,7 +2462,7 @@ M notes.txt             +1 −1 ▎
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  ⏎ open  space fold  c commit  P push  <> resize  p pull  f fetch  . more  b  t  u  /  q  F2  F3  x  +  j/k  1  F  H  y
 COMMIT 9d4f6c9 · Graft Fixture <fixture@example.invalid> · 2020-09-13 12:27 +0000 · 4mo · parents a82960b · diff vs fir…
 add src
@@ -2510,7 +2510,7 @@ Right: (a) `B ⏎` then `Tab` to the graph — the pane still open on Lina's com
 
 
 
- esc back to blame  ⏎ open  b branch  . more  r  <>  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  f
+ esc back to blame  ⏎ open  o take  . more  b  <>  r  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  f
 COMMIT 2f48ca3 · Lina <lina@example.invalid> · 2019-06-07 00:00 +0000 · 7mo · parents 47593a5 · diff vs first parent · …
 Retry refresh once on 401
 ▾ src/                        impl Session {
@@ -2829,7 +2829,7 @@ Right: (a) `B L ⏎` then `Tab` to the graph — the bar leads `esc back to hist
 
 
 
- esc back to history  ⏎ open  b branch  . more  r  <>  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H
+ esc back to history  ⏎ open  o take  . more  b  <>  r  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H
 COMMIT 2f48ca3 · Lina <lina@example.invalid> · 2019-06-07 00:00 +0000 · 7mo · parents 47593a5 · diff vs first parent · …
 Retry refresh once on 401
 ▾ src/                        impl Session {
@@ -3000,4 +3000,50 @@ what right looks like: Ticket 07d: an `edit` stop on his a3 of 5, Sara's feature
 
 
  ⇥ banner  a amend it  c continue  space stage  ⏎ open  b branch  r rebase  t tag  y sha  m merge  u undo  S stash  J journal  . more  /  q  F2  F3  x  +  j/k  1  F  H  f  p  P  M  O  C
+
+================================================================================
+docs/shots/m7/rewrite-edit-stop-120x40.txt
+what right looks like: Ticket 07b/07c/07d: the `edit` stop at 120x40: banner without the edit hint; the box with `pick a2`, then feature-b and feature-c follower rows (reads `1 commit follow`: grammar defect, open); `▏` on the stopped commit; bar `⇥ banner  a amend it  c continue`, `space` bare at this width. Colour unverified.
+================================================================================
+
+ graft /code/api    REBASING  step 1 of 4 · edit 0395451 a1 · feature-a, branch 1 of 3
+╭ still to apply · not commits yet ────────────────────────────────────────────────────────────────────────────────────╮
+│ pick 15335d9 a2                                                                                                      │
+│ feature-b (Graft Fixture): 1 commit follow, on top                                                                   │
+│ feature-c (Graft Fixture): 1 commit follow, on top                                                                   │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+  ●    [feature-c] c1                                                                                    GF 2d   1966dda
+● │    [main] m2                                                                                         GF 2d   9d9646b
+│ ●    [feature-b] b1                                                                                    GF 2d   82392de
+│ ●    [feature-a] a2                                                                                    GF 2d   15335d9
+│ ◆ ▏  [HEAD] a1  HEAD · stopped here                                                                    GF 2d   0395451
+◇─╯    m1                                                                                                GF 2d   256d42c
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⇥ banner  a amend it  c continue  . more  space  ⏎  b  r  t  y  m  u  S  J  /  q  F2  F3  x  +  j/k  1  F  H  f  p  P
 

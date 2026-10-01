@@ -1,10 +1,9 @@
 m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., unicode tier, 80x24
 
  graft <scratch____________________________________________________________>  6…
-  ● ▏ⓘ [fix] fix the bug                                            6y   401cfbe
+  ● ▏  [fix] fix the bug                                            6y   401cfbe
  Checkout fix
  Cherry-pick 401cfbe (o)
- Explain
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
@@ -23,4 +22,5 @@ m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., un
 
 
 
- . explain  m merge  r rebase  ⏎  b  t  P  c  p  f  u  S  /  R  q  F2  F3  x  +
+
+ m merge  r rebase  ⏎ open  . more  o  b  t  P  c  p  f  u  S  /  R  q  F2  F3

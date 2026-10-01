@@ -1,6 +1,8 @@
 m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, keys m, unicode tier, 80x24
 
  graft <scratch____________________________________________________________>  8…
+    │    after merge
+  ◎┈╮    [◆ main] Merge branch 'feature' into main                  —    —
   │ ● ▏  [feature] finish the feature                               6y   8d6cd28
   │ ●    start the feature                                          6y   52f3b96
 ●─╯ │    main moves again                                           6y   45fa51d
@@ -9,8 +11,6 @@ m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, 
 ●        Correct the note                                           7y   a82960b
 ●        Add the first note                                         7y   fadcfb3
 ◇        Add a readme                                               7y   64ded19
-
-
 
 
 

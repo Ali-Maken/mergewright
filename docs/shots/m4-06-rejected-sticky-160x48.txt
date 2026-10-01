@@ -47,4 +47,4 @@ m4 walk capture: m4-06-rejected-sticky — scenario push-lease-refused-stale, ke
 ●    Commit 158                                                                                                                                  GF 7y   1e28a71
 ●    Commit 157                                                                                                                                  GF 7y   b57586d
 ●    Commit 156                                                                                                                                  GF 7y   edc7cba
- push rejected: origin/main has moved · p pull first · P force with lease
+ push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease

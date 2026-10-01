@@ -225,3 +225,63 @@ Base: main with 26, 26b part 1, 30s, 30t, 30t-b, 30u, 30v, 30w, 30w-b merged. No
 - Colour everywhere (rule 5) and every capture's look (rule 6): unverified, not broken.
 - Spot-check of my ticks: 6 of 6 (3 here, 3 in 26) re-read against the run's summary lines and `accept/nextest.txt` —
   held.
+
+## NOTES — Post-fix re-run 2026-10-01 (builder, main `e08b8272`, after 36–40)
+
+No compaction. No scout: one script run, `git show`/`blame`/grep on the lines named below.
+
+### Run 1 (before re-take)
+- `scripts/m7-accept.sh` → **rc=1**: 77/77 walks, `2 pty: 13 runs, 9 drifted or failed` (m4 80x24/160x48, m5
+  80x24/160x48, m6 80x24/120x40/160x48/187x50/200x50), sheets ≤ 200 KB, perf 0 missing, 29/29 journeys.
+- **Exit code on drift: 1** (observed). `failed=1` when `pty_bad > 0` (`scripts/m7-accept.sh:98`), `exit "$failed"`
+  (:173). Not a defect.
+
+### Every hunk (24 captures, 95 changed lines; the pty-diffs show only each file's first differing line, so every
+drifted run was re-taken with `GRAFT_UPDATE_SHOTS=1` into the worktree and each line paired HEAD vs drawn)
+- **36, ⓘ column gone** — 20 lines, each a pure `ⓘ`→space change (m5-07 ×2, m6-06-120, m6-17 ×5, m6-18 ×4, m6-19 ×5,
+  m6-25 ×3). Cause: 22c3a1e7 removed the `NoUpstream` arm; `crates/graft-ops/src/mistake_radar/rules.rs:325` now
+  matches `UpstreamFacts::None` with no finding.
+- **36, knock-on of no finding** — `. explain` leaves the bar, `. more` takes its place (m6-19 ×5, m6-25 ×3: the
+  `Marked` context, `crates/graft-ui/src/graph_screen/hints/context.rs:63-66`); the menu loses `Explain` and every
+  item moves up one row (m6-25 ×3, lines 7–20: `crates/graft-ui/src/context_menu.rs:189-191`, `if marked`). Labels
+  re-fit to the freed width (`F2 stat` at 187: the user's short rung, `hints/tests.rs:526`).
+- **36, rejected-push wording (15 :774)** — m4-06 80x24 :26, 160x48 :50: `has moved · p pull first` →
+  `has commits you don't · p pull, then m or r` (`crates/graft-ops/src/apply/remote.rs:301`).
+- **36, offer only after a slow sort (15 :778)** — m6-06-relaunch-sticky-120x40 :26: the commit-graph offer row is
+  blank. `crates/graft/src/update/commit_graph.rs:19,23-25` (`SLOW_SORT` 300 ms); 36's NOTES :159 say no small
+  fixture's sort raises it now. Not the B/X focus gate: the row is absent, not keyless.
+- **37, ghosts above the top row** — m5-02-preview-merge 80x24/160x48 :4-13: the `after merge` label and the ghost
+  merge row `◎┈╮ [◆ main] Merge branch 'feature' into main` now draw above `[feature]`; the rest moves down 2.
+  `crates/graft/src/view/preview.rs:146` (`Some(below) if below < visible => unpinned(label)`, 37ca8083).
+- **40, `o take` on the bar** — m5-07 ×2, m6-25 ×3: `o take` after `⏎ open`
+  (`crates/graft-ui/src/graph_screen/hints/lists.rs:124-126`); labels after it drop to keys to fit (`u undo  S stash`
+  → `u  S` at 160; trailing `+`/`x` off at 80).
+- 37's `left behind:` row and 38's scratch-row removal: no hunk in the m3–m6 pty set.
+- **Unexplained: none.**
+
+### Re-take
+- Mechanism as 26/26b: each drifted walk re-run with `GRAFT_UPDATE_SHOTS=1` (same plan tsvs, same sizes); 24
+  captures rewritten, exactly the drifted set. Sheets rebuilt: `scripts/contact-sheet.sh m4`, `… m5`,
+  `… --captions-order m6 docs/shots/m6`; m7 by the script's step 3 (HEAD's m7 sheets lagged 36/40's m7 re-takes).
+  Largest file 179 608 B (`m6-contact-sheet-1.txt`); `NOT RECORDED` 0 in every m4–m7 sheet.
+- **Run 2: rc=0**: `1 nextest: 77 tests run: 77 passed` · `2 pty: 13 runs (m3–m6 × sizes), 0 drifted or failed` ·
+  `3 sheet: … ≤ 200 KB: yes` · `4 perf: 3 files, 0 missing, 0 lines say missed` · `accept: 29 journeys walked, 29 at
+  or under count, 0 over`; `ls -A accept/pty-diffs | wc -l` = 0.
+- Gates, workspace-wide, after the re-take: fmt 0, clippy 0, `cargo nextest run --workspace` 5061/5061 (7 skipped),
+  `cargo test --doc --workspace` 0. No file changed by them (`git status`).
+
+### Findings (conductor)
+- **Stale captions (textual)**, `docs/shots/*captions*.tsv` not edited (out of this ticket; 36 left them stale on
+  purpose): m4 tsv :11 still quotes `has moved · p pull first` and claims "the whole line" — at 80x24 the reason now
+  cuts to `has comm…` (keys kept); m6 tsv :113, :116, :117 still say the bar starts `. explain  m merge`; m6 tsv :173
+  says the menu leads `Checkout fix`, `Cherry-pick`, then `Explain`.
+- **Question:** the m4-06 80x24 reason now loses `you don't` to the `…` — 36's longer words vs the 80-column fit. A
+  wording/space call, not a defect claim.
+- **Question (timing):** m6-06-relaunch-sticky-120x40 now relies on the real `graft` binary's sort taking < 300 ms on
+  the scratch repo (`commit_graph.rs:23-25`). A loaded machine past 300 ms would draw the offer row and drift.
+- Colour and each capture's look (rules 5, 6): unverified, not broken.
+
+### Touches
+- `docs/shots/`: the 24 re-taken captures + m4, m5 (×2), m6 (×5), m7 (×2) sheets (`git status --short docs/shots`:
+  34). Captions tsvs: unchanged. `docs/perf/m7-accept.txt`: the script's summary. Crates: none (`git status` shows no
+  `crates/` path).

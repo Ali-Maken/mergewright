@@ -88,12 +88,12 @@ what right looks like: (ticket 69) The same four frames at 80x24: the same four 
 ●    Commit 182                                                     7y   d212b3e
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
- push rejected: origin/main has moved · p pull first · P force with lease
+ push rejected: origin/main has comm… · p pull, then m or r · P force with lease
 
 === frame 3: the drift box `u` opened ===
  graft /code/api  6 commits  date order, sorting…
   ◌    Uncommitted changes (1 unstaged)
-  ◆ ▏ⓘ [◆ fix] fix the bug                                          3m   fbb2394
+  ◆ ▏  [◆ fix] fix the bug                                          3m   fbb2394
 ● │    [main] main moves on                                         4m   37926a7
 ●─╯    add the base                                                 5m   ed332bc
 ●      Correct the note                                             1y   a82960b
@@ -131,7 +131,7 @@ what right looks like: (ticket 69) The same four frames at 80x24: the same four 
           │ ( ) check out after creating · ⇥ toggles                 │
           │                                                          │
           │                                                          │
-          ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+          ╰──────────────────────────────────────────────────────────╯
 ●    Commit 187                                                     7y   3121935
 ●    Commit 186                                                     7y   fab25df
 ●    Commit 185                                                     7y   09ae97c
@@ -154,9 +154,8 @@ what right looks like: (ticket 71) The `.` menu on a commit row leads with Check
 #
 # What right looks like:
 #  - Frame 1, `.` on fix's row: item 1 `Checkout fix`, item 2
-#    `Cherry-pick <sha7>`, item 3 `Explain` (the row carries the radar's
-#    "no upstream" ⓘ, a known false mark in a repository with no remote,
-#    so it is marked), then the row's own actions.
+#    `Cherry-pick <sha7>`, then the row's own actions. No `Explain` and no
+#    ⓘ: a branch with no upstream is no finding (m7-power-tools/15).
 #  - Frame 2, `.` on main's tip (checked out, no other branch): item 1
 #    `Checkout — already on main` (drawn dim: not provable here), item 2
 #    `Cherry-pick <sha7>`.
@@ -164,10 +163,9 @@ what right looks like: (ticket 71) The `.` menu on a commit row leads with Check
 == 1. `.` on fix's row ==
 
  graft /code/api  6 commits
-  ● ▏ⓘ [fix] fix the bug                                                                                 GF 3m   fbb2394
+  ● ▏  [fix] fix the bug                                                                                 GF 3m   fbb2394
  Checkout fix
  Cherry-pick fbb2394 (o)
- Explain
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
@@ -201,13 +199,14 @@ what right looks like: (ticket 71) The `.` menu on a commit row leads with Check
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  R  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+
+
+ m merge  r rebase  ⏎ open  . more  o  b  t  P  c  p  f  u  S  /  R  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 == 2. `.` on main's tip (checked out, no other branch) ==
 
  graft /code/api  6 commits
-  ●  ⓘ [fix] fix the bug                                                                                 GF 3m   fbb2394
+  ●    [fix] fix the bug                                                                                 GF 3m   fbb2394
 ◆ │ ▏  [◆ main] main moves on                                                                            GF 4m   37926a7
  Checkout — already on main
  Cherry-pick (o) — already on main
@@ -244,8 +243,8 @@ what right looks like: (ticket 71) The `.` menu on a commit row leads with Check
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  c commit  P push  p pull  . more  f  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
+
+ ⏎ open  c commit  P push  p pull  . more  f  a  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
 
 ================================================================================
 docs/shots/m6/fix-undo-drift-way-back-120x40.txt
@@ -278,7 +277,7 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The edit an undo
 === frame 1: `u` over the edit, the drift box ===
  graft /code/api  6 commits
   ◌    Uncommitted changes (1 unstaged)
-  ◆ ▏ⓘ [◆ fix] fix the bug                                                                               GF 3m   fbb2394
+  ◆ ▏  [◆ fix] fix the bug                                                                               GF 3m   fbb2394
 ● │    [main] main moves on                                                                              GF 4m   37926a7
 ●─╯    add the base                                                                                      GF 5m   ed332bc
 ●      Correct the note                                                                                  GF 1y   a82960b
@@ -319,7 +318,7 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The edit an undo
 
 === frame 2: `y`, the landing ===
  graft /code/api  6 commits
-  ● ▏ⓘ [fix] fix the bug                                                                                 GF 3m   fbb2394
+  ● ▏  [fix] fix the bug                                                                                 GF 3m   fbb2394
 ◆ │    [◆ main] main moves on                                                                            GF 4m   37926a7
 ●─╯    add the base                                                                                      GF 5m   ed332bc
 ●      Correct the note                                                                                  GF 1y   a82960b
@@ -356,13 +355,13 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The edit an undo
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  undo: checkout fix ✓ · U brings back your edit to fix.txt
 
 === frame 3: `U`, the edit back ===
  graft /code/api  6 commits
   ◌    Uncommitted changes (1 unstaged)
-  ◆ ▏ⓘ [◆ fix] fix the bug                                                                               GF 3m   fbb2394
+  ◆ ▏  [◆ fix] fix the bug                                                                               GF 3m   fbb2394
 ● │    [main] main moves on                                                                              GF 4m   37926a7
 ●─╯    add the base                                                                                      GF 5m   ed332bc
 ●      Correct the note                                                                                  GF 1y   a82960b
@@ -398,13 +397,13 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The edit an undo
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  redo: checkout fix ✓
 
 === frame 4: the time machine over an edit, `→ ⏎`, the landing ===
  graft /code/api  7 commits
-  ● ▏ⓘ [fix2] fix it again                                                                               GF 2m   84d95f8
-  ●  ⓘ [fix] fix the bug                                                                                 GF 3m   fbb2394
+  ● ▏  [fix2] fix it again                                                                               GF 2m   84d95f8
+  ●    [fix] fix the bug                                                                                 GF 3m   fbb2394
 ◆ │    [◆ main] main moves on                                                                            GF 4m   37926a7
 ●─╯    add the base                                                                                      GF 5m   ed332bc
 ●      Correct the note                                                                                  GF 1y   a82960b
@@ -440,7 +439,7 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The edit an undo
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  reverted to before “checkout fix” (2 steps) ✓ · U (2 times) brings it back
 
 ================================================================================
@@ -474,7 +473,7 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The same four fr
 === frame 1: `u` over the edit, the drift box ===
  graft /code/api  6 commits
   ◌    Uncommitted changes (1 unstaged)
-  ◆ ▏ⓘ [◆ fix] fix the bug                                          3m   fbb2394
+  ◆ ▏  [◆ fix] fix the bug                                          3m   fbb2394
 ● │    [main] main moves on                                         4m   37926a7
 ●─╯    add the base                                                 5m   ed332bc
 ●      Correct the note                                             1y   a82960b
@@ -499,7 +498,7 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The same four fr
 
 === frame 2: `y`, the landing ===
  graft /code/api  6 commits
-  ● ▏ⓘ [fix] fix the bug                                            3m   fbb2394
+  ● ▏  [fix] fix the bug                                            3m   fbb2394
 ◆ │    [◆ main] main moves on                                       4m   37926a7
 ●─╯    add the base                                                 5m   ed332bc
 ●      Correct the note                                             1y   a82960b
@@ -520,13 +519,13 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The same four fr
 
 
 
- no commit-graph file · B build one · X never here
+
  undo: checkout fix ✓ · U brings back your edit to fix.txt
 
 === frame 3: `U`, the edit back ===
  graft /code/api  6 commits
   ◌    Uncommitted changes (1 unstaged)
-  ◆ ▏ⓘ [◆ fix] fix the bug                                          3m   fbb2394
+  ◆ ▏  [◆ fix] fix the bug                                          3m   fbb2394
 ● │    [main] main moves on                                         4m   37926a7
 ●─╯    add the base                                                 5m   ed332bc
 ●      Correct the note                                             1y   a82960b
@@ -546,13 +545,13 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The same four fr
 
 
 
- no commit-graph file · B build one · X never here
+
  redo: checkout fix ✓
 
 === frame 4: the time machine over an edit, `→ ⏎`, the landing ===
  graft /code/api  7 commits
-  ● ▏ⓘ [fix2] fix it again                                          2m   84d95f8
-  ●  ⓘ [fix] fix the bug                                            3m   fbb2394
+  ● ▏  [fix2] fix it again                                          2m   84d95f8
+  ●    [fix] fix the bug                                            3m   fbb2394
 ◆ │    [◆ main] main moves on                                       4m   37926a7
 ●─╯    add the base                                                 5m   ed332bc
 ●      Correct the note                                             1y   a82960b
@@ -572,7 +571,7 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The same four fr
 
 
 
- no commit-graph file · B build one · X never here
+
  reverted to before “checkout fix” (2 steps) ✓ · U (2 times) brings it back
 
 ================================================================================
@@ -600,9 +599,8 @@ what right looks like: (ticket 78) A status that arrives under a box is held, an
 #    with its cause); one `⏎` would now create.
 # 6. `esc`: the prompt closes and the fetch's finished line shows, with its
 #    tick — it arrived under the box and was not acknowledged unseen.
-# - Frame 4's `ⓘ` on main's row is the radar's: `topic` has no upstream.
-#   Frames 5-6 are drawn the moment the fetch answers, when its refresh has
-#   thrown the radar's answer away and not yet read it again: no `ⓘ`.
+# - No `ⓘ` on any row: `topic` has no upstream, which is no finding
+#   (m7-power-tools/15).
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: `f` to nowhere, `b`, the fetch fails under the prompt ===
@@ -628,7 +626,7 @@ what right looks like: (ticket 78) A status that arrives under a box is held, an
                               │ ( ) check out after creating · ⇥ toggles                 │
                               │                                                          │
                               │                                                          │
-                              ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+                              ╰──────────────────────────────────────────────────────────╯
 ●    Commit 178                                                                                          GF 7y   1c9b7ed
 ●    Commit 177                                                                                          GF 7y   f93340a
 ●    Commit 176                                                                                          GF 7y   5aaeeba
@@ -644,7 +642,7 @@ what right looks like: (ticket 78) A status that arrives under a box is held, an
 ●    Commit 166                                                                                          GF 7y   953abf3
 ●    Commit 165                                                                                          GF 7y   49912f3
 ●    Commit 164                                                                                          GF 7y   1143b38
-
+●    Commit 163                                                                                          GF 7y   e135216
  ⏎ create  ⇥ toggle  esc cancel
 
 === frame 2: `topic ⏎`, the held failure ===
@@ -686,7 +684,7 @@ what right looks like: (ticket 78) A status that arrives under a box is held, an
 ●    Commit 166                                                                                          GF 7y   953abf3
 ●    Commit 165                                                                                          GF 7y   49912f3
 ●    Commit 164                                                                                          GF 7y   1143b38
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+●    Commit 163                                                                                          GF 7y   e135216
  fetch all remotes failed: no remote named '/graft-no-such-remote' · esc dismiss
 
 === frame 3: `esc`, the create's line ===
@@ -728,12 +726,12 @@ what right looks like: (ticket 78) A status that arrives under a box is held, an
 ●    Commit 166                                                                                          GF 7y   953abf3
 ●    Commit 165                                                                                          GF 7y   49912f3
 ●    Commit 164                                                                                          GF 7y   1143b38
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+●    Commit 163                                                                                          GF 7y   e135216
  branch topic at d5ae5fd…
 
 === frame 4: `f`, `b`, `other ⏎` while the fetch runs ===
  graft /code/api  200 commits
-◆ ▏ⓘ [◆ main ⇄ origin] [topic] Commit 200                                                                GF 7y   d5ae5fd
+◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                                                                GF 7y   d5ae5fd
 ●    Commit 199                                                                                          GF 7y   13e6ab1
 ●    Commit 198                                                                                          GF 7y   f5055d9
 ●    Commit 197                                                                                          GF 7y   2cce853
@@ -754,7 +752,7 @@ what right looks like: (ticket 78) A status that arrives under a box is held, an
                               │ ( ) check out after creating · ⇥ toggles                 │
                               │                                                          │
                               │                                                          │
-                              ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+                              ╰──────────────────────────────────────────────────────────╯
 ●    Commit 178                                                                                          GF 7y   1c9b7ed
 ●    Commit 177                                                                                          GF 7y   f93340a
 ●    Commit 176                                                                                          GF 7y   5aaeeba
@@ -770,7 +768,7 @@ what right looks like: (ticket 78) A status that arrives under a box is held, an
 ●    Commit 166                                                                                          GF 7y   953abf3
 ●    Commit 165                                                                                          GF 7y   49912f3
 ●    Commit 164                                                                                          GF 7y   1143b38
-
+●    Commit 163                                                                                          GF 7y   e135216
  wait for fetch all remotes to finish
 
 === frame 5: the fetch answers under the prompt ===
@@ -796,7 +794,7 @@ what right looks like: (ticket 78) A status that arrives under a box is held, an
                               │ ( ) check out after creating · ⇥ toggles                 │
                               │                                                          │
                               │                                                          │
-                              ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+                              ╰──────────────────────────────────────────────────────────╯
 ●    Commit 178                                                                                          GF 7y   1c9b7ed
 ●    Commit 177                                                                                          GF 7y   f93340a
 ●    Commit 176                                                                                          GF 7y   5aaeeba
@@ -812,7 +810,7 @@ what right looks like: (ticket 78) A status that arrives under a box is held, an
 ●    Commit 166                                                                                          GF 7y   953abf3
 ●    Commit 165                                                                                          GF 7y   49912f3
 ●    Commit 164                                                                                          GF 7y   1143b38
-
+●    Commit 163                                                                                          GF 7y   e135216
  ⏎ create  ⇥ toggle  esc cancel
 
 === frame 6: `esc`, the fetch's line ===
@@ -854,7 +852,7 @@ what right looks like: (ticket 78) A status that arrives under a box is held, an
 ●    Commit 166                                                                                          GF 7y   953abf3
 ●    Commit 165                                                                                          GF 7y   49912f3
 ●    Commit 164                                                                                          GF 7y   1143b38
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+●    Commit 163                                                                                          GF 7y   e135216
  fetched ✓
 
 ================================================================================
@@ -882,9 +880,8 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
 #    with its cause); one `⏎` would now create.
 # 6. `esc`: the prompt closes and the fetch's finished line shows, with its
 #    tick — it arrived under the box and was not acknowledged unseen.
-# - Frame 4's `ⓘ` on main's row is the radar's: `topic` has no upstream.
-#   Frames 5-6 are drawn the moment the fetch answers, when its refresh has
-#   thrown the radar's answer away and not yet read it again: no `ⓘ`.
+# - No `ⓘ` on any row: `topic` has no upstream, which is no finding
+#   (m7-power-tools/15).
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: `f` to nowhere, `b`, the fetch fails under the prompt ===
@@ -902,7 +899,7 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
           │ ( ) check out after creating · ⇥ toggles                 │
           │                                                          │
           │                                                          │
-          ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+          ╰──────────────────────────────────────────────────────────╯
 ●    Commit 186                                                     7y   fab25df
 ●    Commit 185                                                     7y   09ae97c
 ●    Commit 184                                                     7y   49d7783
@@ -910,7 +907,7 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
 ●    Commit 182                                                     7y   d212b3e
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
-
+●    Commit 179                                                     7y   97b58e5
  ⏎ create  ⇥ toggle  esc cancel
 
 === frame 2: `topic ⏎`, the held failure ===
@@ -936,7 +933,7 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
 ●    Commit 182                                                     7y   d212b3e
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
- no commit-graph file · B build one · X never here
+●    Commit 179                                                     7y   97b58e5
  fetch all remotes failed: no remote named '/graft-no-such-remote' · esc dismiss
 
 === frame 3: `esc`, the create's line ===
@@ -962,12 +959,12 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
 ●    Commit 182                                                     7y   d212b3e
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
- no commit-graph file · B build one · X never here
+●    Commit 179                                                     7y   97b58e5
  branch topic at d5ae5fd…
 
 === frame 4: `f`, `b`, `other ⏎` while the fetch runs ===
  graft /code/api  200 commits
-◆ ▏ⓘ [◆ main ⇄ origin] [topic] Commit 200                           7y   d5ae5fd
+◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                           7y   d5ae5fd
 ●    Commit 199                                                     7y   13e6ab1
 ●    Commit 198                                                     7y   f5055d9
 ●    Commit 197                                                     7y   2cce853
@@ -980,7 +977,7 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
           │ ( ) check out after creating · ⇥ toggles                 │
           │                                                          │
           │                                                          │
-          ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+          ╰──────────────────────────────────────────────────────────╯
 ●    Commit 186                                                     7y   fab25df
 ●    Commit 185                                                     7y   09ae97c
 ●    Commit 184                                                     7y   49d7783
@@ -988,7 +985,7 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
 ●    Commit 182                                                     7y   d212b3e
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
-
+●    Commit 179                                                     7y   97b58e5
  wait for fetch all remotes to finish
 
 === frame 5: the fetch answers under the prompt ===
@@ -1006,7 +1003,7 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
           │ ( ) check out after creating · ⇥ toggles                 │
           │                                                          │
           │                                                          │
-          ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+          ╰──────────────────────────────────────────────────────────╯
 ●    Commit 186                                                     7y   fab25df
 ●    Commit 185                                                     7y   09ae97c
 ●    Commit 184                                                     7y   49d7783
@@ -1014,7 +1011,7 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
 ●    Commit 182                                                     7y   d212b3e
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
-
+●    Commit 179                                                     7y   97b58e5
  ⏎ create  ⇥ toggle  esc cancel
 
 === frame 6: `esc`, the fetch's line ===
@@ -1040,7 +1037,7 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
 ●    Commit 182                                                     7y   d212b3e
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
- no commit-graph file · B build one · X never here
+●    Commit 179                                                     7y   97b58e5
  fetched ✓
 
 ================================================================================
@@ -1052,7 +1049,7 @@ what right looks like: (ticket 70) Every `⇥` word names where `⇥` lands. Fra
  graft /code/api    REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 ◌   ▏  Uncommitted changes (13 unmerged)
 ◆    ⓘ [HEAD] [main] Change every file on main                                                           GF 2h   274c7d4
-│ ●  ⓘ [feature] Change every file on feature                                                            GF 2h   9d44f42
+│ ●    [feature] Change every file on feature                                                            GF 2h   9d44f42
 ◇─╯    Add the files both sides will change                                                              GF 1y   9571fc9
 
 
@@ -1071,7 +1068,7 @@ what right looks like: (ticket 70) Every `⇥` word names where `⇥` lands. Fra
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  rebase still in progress · ⏎ resolve  M mergetool  e edit  <> resize  space resolved  c continue  ⇥ diff  . more
 UNCOMMITTED
 diff vs HEAD 274c7d4
@@ -1093,7 +1090,7 @@ CONFLICTS (13)                ▎
  graft /code/api    REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 ◌   ▏  Uncommitted changes (13 unmerged)
 ◆    ⓘ [HEAD] [main] Change every file on main                                                           GF 2h   274c7d4
-│ ●  ⓘ [feature] Change every file on feature                                                            GF 2h   9d44f42
+│ ●    [feature] Change every file on feature                                                            GF 2h   9d44f42
 ◇─╯    Add the files both sides will change                                                              GF 1y   9571fc9
 
 
@@ -1112,7 +1109,7 @@ CONFLICTS (13)                ▎
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  rebase in progress · ⇥ ⇥ banner, then c continue  a abort
 UNCOMMITTED
 diff vs HEAD 274c7d4
@@ -1134,7 +1131,7 @@ CONFLICTS (13)                ▎
  graft /code/api    REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 ◌   ▏  Uncommitted changes (13 unmerged)
 ◆    ⓘ [HEAD] [main] Change every file on main                                                           GF 2h   274c7d4
-│ ●  ⓘ [feature] Change every file on feature                                                            GF 2h   9d44f42
+│ ●    [feature] Change every file on feature                                                            GF 2h   9d44f42
 ◇─╯    Add the files both sides will change                                                              GF 1y   9571fc9
 
 
@@ -1153,7 +1150,7 @@ CONFLICTS (13)                ▎
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  rebase in progress · ⇥ ⇥ banner, then c continue  a abort
 UNCOMMITTED
 diff vs HEAD 274c7d4
@@ -1175,7 +1172,7 @@ CONFLICTS (13)                ▎
  graft /code/api    REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 ◌   ▏  Uncommitted changes (13 unmerged)
 ◆    ⓘ [HEAD] [main] Change every file on main                                                           GF 2h   274c7d4
-│ ●  ⓘ [feature] Change every file on feature                                                            GF 2h   9d44f42
+│ ●    [feature] Change every file on feature                                                            GF 2h   9d44f42
 ◇─╯    Add the files both sides will change                                                              GF 1y   9571fc9
 
 
@@ -1194,7 +1191,7 @@ CONFLICTS (13)                ▎
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  rebase in progress · ⇥ ⇥ banner, then c continue  a abort
 UNCOMMITTED
 diff vs HEAD 274c7d4
@@ -1216,7 +1213,7 @@ CONFLICTS (13)                ▎
  graft /code/api    MERGING
 ◌   ▏  Uncommitted changes (13 unmerged)
 ◆      [◆ main] Change every file on main                                                                GF 2h   274c7d4
-│ ●  ⓘ [feature] Change every file on feature                                                            GF 2h   9d44f42
+│ ●    [feature] Change every file on feature                                                            GF 2h   9d44f42
 ◇─╯    Add the files both sides will change                                                              GF 1y   9571fc9
 
 
@@ -1235,7 +1232,7 @@ CONFLICTS (13)                ▎
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  merge in progress · from the shell · 13 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
 UNCOMMITTED
 diff vs HEAD 274c7d4
@@ -1276,7 +1273,7 @@ CONFLICTS (13)                ▎
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ diff  . more
 UNCOMMITTED · 1 untracked
 diff vs HEAD a82960b
@@ -1587,7 +1584,7 @@ what right looks like: (ticket 72b) After `o ⏎` on the last clashed file: no `
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  every file done · stash@{0} dropped ✓ · u brings it back
 COMMIT f3742ab · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 3m · parents cfa370c · diff vs firs…
 commit over the notes
@@ -1624,6 +1621,8 @@ what right looks like: (ticket 74) `p` refused as diverged, then `r`, three file
 #    At narrow widths `put back after` may be cut; the file count may not.
 
  graft /code/api  152 rows so far
+       after rebase
+  ○    [◆ main ↑1 ↓1] ours                                                                               GF —    —
   ●    [origin/main] theirs                                                                              GF 6m   7be74b5
 ● │ ▏  ours                                                                                              GF 6m   9d3d925
 ●─╯    Commit 200                                                                                        GF 1y   d5ae5fd
@@ -1649,8 +1648,6 @@ what right looks like: (ticket 74) `p` refused as diverged, then `r`, three file
 ●      Commit 180                                                                                        GF 1y   e95ccd4
 ●      Commit 179                                                                                        GF 1y   97b58e5
 ●      Commit 178                                                                                        GF 1y   1c9b7ed
-●      Commit 177                                                                                        GF 1y   f93340a
-●      Commit 176                                                                                        GF 1y   5aaeeba
 ╭ Preview: rebase main onto origin/main ───────────────────────────────────────────────────────────────────────────────╮
 │ 1 commit replayed                                                                                                    │
 │ main 9d3d925 → 1 new commit                                                                                          │
@@ -1682,6 +1679,8 @@ what right looks like: (ticket 74, 84, 30b) The same box at 80x24: the `your edi
 #    At narrow widths `put back after` may be cut; the file count may not.
 
  graft /code/api  152 rows so far
+       after rebase
+  ○    [◆ main ↑1 ↓1] ours                                          —    —
   ●    [origin/main] theirs                                         6m   7be74b5
 ● │ ▏  ours                                                         6m   9d3d925
 ●─╯    Commit 200                                                   1y   d5ae5fd
@@ -1691,8 +1690,6 @@ what right looks like: (ticket 74, 84, 30b) The same box at 80x24: the `your edi
 ●      Commit 196                                                   1y   325da3f
 ●      Commit 195                                                   1y   0722297
 ●      Commit 194                                                   1y   b6a4a47
-●      Commit 193                                                   1y   60af0eb
-●      Commit 192                                                   1y   aceb8c5
 ╭ Preview: rebase main onto origin/main ───────────────────────────────────────╮
 │ 1 commit replayed                                                            │
 │ main 9d3d925 → 1 new commit                                                  │
@@ -1864,7 +1861,7 @@ what right looks like: (ticket 82) `S p y` clashed in notes.md, then `esc` shut 
 
 
 
- no commit-graph file · B build one · X never here
+
  stash@{0} clashed · 1 file conflicted · ⏎ changes  c commit  S stash  . more  p
 
 ================================================================================
@@ -2565,10 +2562,9 @@ what right looks like: (ticket 75) menu-checkout: `.` on fix's row, main checked
 m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., unicode tier, 120x40
 
  graft <scratch____________________________________________________________>  6 commits
-  ● ▏ⓘ [fix] fix the bug                                                                                 GF 6y   401cfbe
+  ● ▏  [fix] fix the bug                                                                                 GF 6y   401cfbe
  Checkout fix
  Cherry-pick 401cfbe (o)
- Explain
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
@@ -2603,7 +2599,8 @@ m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., un
 
 
 
- . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  R  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+
+ m merge  r rebase  ⏎ open  . more  o  b  t  P  c  p  f  u  S  /  R  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 ================================================================================
 docs/shots/m6/m6-25-menu-fixed-slots-187x50.txt
@@ -2613,10 +2610,9 @@ what right looks like: The same menu at 187x50: the same first three slots.
 m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., unicode tier, 187x50
 
  graft <scratch____________________________________________________________>  6 commits
-  ● ▏ⓘ [fix] fix the bug                                                                                                                                                    GF 6y   401cfbe
+  ● ▏  [fix] fix the bug                                                                                                                                                    GF 6y   401cfbe
  Checkout fix
  Cherry-pick 401cfbe (o)
- Explain
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
@@ -2661,7 +2657,8 @@ m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., un
 
 
 
- . explain  m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  / search  R rewrite  q quit  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+
+ m merge  r rebase  ⏎ open  o take  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  / search  R rewrite  . more  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 ================================================================================
 docs/shots/m6/m6-25-menu-fixed-slots-80x24.txt
@@ -2671,10 +2668,9 @@ what right looks like: The same menu at 80x24: the same first three slots.
 m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., unicode tier, 80x24
 
  graft <scratch____________________________________________________________>  6…
-  ● ▏ⓘ [fix] fix the bug                                            6y   401cfbe
+  ● ▏  [fix] fix the bug                                            6y   401cfbe
  Checkout fix
  Cherry-pick 401cfbe (o)
- Explain
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
@@ -2693,7 +2689,8 @@ m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., un
 
 
 
- . explain  m merge  r rebase  ⏎  b  t  P  c  p  f  u  S  /  R  q  F2  F3  x  +
+
+ m merge  r rebase  ⏎ open  . more  o  b  t  P  c  p  f  u  S  /  R  q  F2  F3
 
 ================================================================================
 docs/shots/m6/set-aside-clash-preview-120x40.txt
@@ -2763,6 +2760,7 @@ what right looks like: (ticket 85 A) `esc G` on a 200-commit history after the f
 # m6-conflicts/85 A: `esc G` on a 200-commit history (fixture `linear`), 120x40, after the first screen settled. Colour unverified (character grid only).
 # What right looks like: the header reads `200 commits`, not `stopped`; the graph pane's last rows are commits (sha, subject), not blank; the bar is the row's own keys.
  graft /code/api  200 commits
+●    Commit 038                                                                                          GF 2d   d506540
 ●    Commit 037                                                                                          GF 2d   97c4d74
 ●    Commit 036                                                                                          GF 2d   20b8b5b
 ●    Commit 035                                                                                          GF 2d   3f6038c
@@ -2800,8 +2798,7 @@ what right looks like: (ticket 85 A) `esc G` on a 200-commit history after the f
 ●    Commit 003                                                                                          GF 2d   91af090
 ●    Commit 002                                                                                          GF 2d   ace211d
 ◇ ▏  Commit 001                                                                                          GF 2d   a9a0c8e
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
+ ⏎ open  o take  b branch  . more  r  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
 
 ================================================================================
 docs/shots/m6/stash-clash-take-esc-pane-120x40.txt
@@ -2846,7 +2843,7 @@ what right looks like: (ticket 85 B) `S p y esc ⏎ o esc`: a stash pop that cla
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  stash@{0} clashed · 1 file conflicted · ⏎ resolve  M mergetool  e edit  <> resize  space resolved  c commit  . more  ⇥
 UNCOMMITTED
 diff vs HEAD f3742ab
@@ -2863,5 +2860,65 @@ CONFLICTS (1)
 
 
 
+
+
+================================================================================
+docs/shots/m6/stash-apply-preview-120x40.txt
+what right looks like: (ticket 86) `S ⏎` on a stash whose notes.md clashes with the commit made since: a box over the stash list titled `Preview: apply stash@{0}`; `working tree: notes.md`, `may conflict: notes.md`; the fate row `stash@{0} stays in the list`; `undo: u takes this back`; the git line; `▸[ Cancel ]   [ Apply ]`, the cursor on Cancel; the box edge offers `y apply`. `esc` goes back to the list on the same stash, nothing written (asserted). (ticket 87) No stash-list bar under the box: the box footer is the bar, the last row blank. Colour unverified.
+================================================================================
+
+# m6/stash-apply-preview-120x40.txt: 120x40, drawn by `view::view` from a
+# real AppState (crates/graft/tests/it/m6_stash_put_back/stash_preview.rs,
+# stash_look_and_leave_writes_nothing, asserted). Not a pty capture: a
+# character grid with no colour (CLAUDE.md rule 5, colour unverified).
+#
+# What right looks like: `S ⏎` on a stash whose notes.md clashes with the
+# commit made since.
+#  - A box over the stash list titled `Preview: apply stash@{0}`.
+#  - `working tree: notes.md`, then `may conflict: notes.md`.
+#  - The fate row: `stash@{0} stays in the list`.
+#  - The footer offers `y apply`; `esc` goes back to the list, nothing written.
+#  - No stash-list bar under the box: the box's footer is the bar, and the
+#    last row is blank (review 86, M2).
+
+STASHES (1)
+▸ stash@{0}   "WIP on main: cfa370c add the notes"             4m ago   1 file
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: apply stash@{0} ────────────────────────────────────────────────────────────────────────────────────────────╮
+│ working tree: notes.md                                                                                               │
+│ may conflict: notes.md                                                                                               │
+│ stash@{0} stays in the list                                                                                          │
+│ undo: u takes this back                                                                                              │
+│ git stash apply --index 'stash@{0}'                                                                                  │
+│ ▸[ Cancel ]   [ Apply ]                                                                                              │
+╰ y apply  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────╯
 
 

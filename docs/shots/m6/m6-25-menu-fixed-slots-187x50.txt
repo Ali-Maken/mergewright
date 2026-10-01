@@ -1,10 +1,9 @@
 m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., unicode tier, 187x50
 
  graft <scratch____________________________________________________________>  6 commits
-  ● ▏ⓘ [fix] fix the bug                                                                                                                                                    GF 6y   401cfbe
+  ● ▏  [fix] fix the bug                                                                                                                                                    GF 6y   401cfbe
  Checkout fix
  Cherry-pick 401cfbe (o)
- Explain
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
@@ -49,4 +48,5 @@ m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., un
 
 
 
- . explain  m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  / search  R rewrite  q quit  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+
+ m merge  r rebase  ⏎ open  o take  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  / search  R rewrite  . more  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
