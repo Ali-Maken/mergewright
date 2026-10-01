@@ -1,6 +1,7 @@
 # 46-scroll-strips-wiring — the app draws backdrop + emphasis; a `j` never re-sends a strip; deflate on when probed
 
-Status: partial — all wired and fast-tier green; release gate red (see NOTES)
+Status: partial — all wired and fast-tier green; release gate red (see NOTES). **Planner ruling 2026-10-01 at the end:
+the gate box moves to `scroll-strips-fold-churn`; deflate off → known gap + `scroll-kitty-without-deflate`.**
 Build with: Opus — switches the live pixel path to two layers, wires 45's deflate, and turns the held-key gate green
 at Pixel in two encodings; scout 46 found four wrong premises, so judgement is needed, not a port.
 Needs: `44-scroll-emphasis-layer` (`Backdrop`, `PlainRow<'a>`, `PlainStrip<'a>`, `Lit<'a>`, `Selection<'a>`,
@@ -150,6 +151,8 @@ pub(crate) struct KittyTransmit { /* existing: offset, id */ pub width_px: Optio
       `docs/perf/fix-scroll-held-key.txt` under `# rev strips`; the `_unicode` pair still green. Any line not `ok` →
       quote it; never loosen a budget. Red only in deflate-off or `_pixel_iterm2` → report the line and stop (the
       follow-up is cropping the emphasis to its row span — a new ticket, 44 ruling item 3).
+      **Moved** (planner ruling 2026-10-01, below): deflate on + iTerm2 + Unicode → `scroll-strips-fold-churn`;
+      deflate off → `scroll-kitty-without-deflate` (known gap). Not ticked here.
 - [x] Cost lines recorded, not asserted beyond the gate: deflate on, deflate off, iTerm2 — each `bytes_per_key`,
       `tail_ms`, emphasis width p99 in cells (from `KittyTransmit::width_px` ÷ cell width; iTerm2 from the band).
       — `held_key::held_j_stops_on_release_pixel_iterm2` + the two Kitty runs; script summary lines quoted.
@@ -236,3 +239,75 @@ No compaction. Scout used (`.scratch/m7-power-tools/scouts/46.md`).
 9. Not verified: red-at-base for the fast-tier guard; heavy `frames::` tests; colour (rule 5); exit-free of an
    emphasis id specifically (`at_the_pixel_tier_strips_are_sent_once_and_freed_on_exit` checks every transmitted id,
    which matches both layers' header, but does not assert an emphasis was among them).
+
+## Planner ruling 2026-10-01 (46 return)
+
+Answers NOTES 1–2. 46 closes on its ticked boxes when the conductor merges 92c12351; the gate box moves (above).
+NOTES 4's signature deviations are accepted: `(backdrop, f)` could not build a `PlainStrip`, and
+`Graphics::new(replies, &Capabilities)` is where the probe's value enters, as Decided 6 required. NOTES 5 is not ruled
+here: it stays a question, routed separately.
+
+### (a) `strip_transmits_held ≤ ceil(rows_scrolled/32) + 2`: wrong premise on a capped graph. Restate it; leave the fold as it is.
+- **NOTES 1 is a claim with its lines, not yet a premise.** It cites `strips.rs:348` → `rows.rs:933-937`, but it was
+  seen in one instrumented run and has no test. Rule 7: nothing is built on it until `scroll-strips-fold-churn` Step 0
+  confirms it with a test. **If Step 0 does not confirm it, the bound stands as written** and the 106 goes to
+  `debugger`.
+- **If it is confirmed, the fold following the cursor is designed behaviour.** ADR-0025 Decision 2 (user-accepted
+  2026-09-13) ranks the selected commit's column (class 3) and its thread columns (class 5) above other lanes. So on a
+  graph with more lanes than the cap, which lanes fold changes as `j` moves the thread. 42's bound assumed a strip's
+  layout never depends on the selection. ADR-0053 promised less: only that the selection's **paint** never does. On a
+  capped graph the bound guarded an invariant the design never gave.
+  - Probably class 5 (`preferred`) alone: while the cursor is on screen its column holds a node, so class 2 already
+    keeps it. Unverified; Step 0 prints which class changed.
+- **Restated invariant:** a backdrop re-sends only on a frame where the fold plan or the strip window changed, never
+  because only the paint changed (ADR-0053).
+  - Asserted in the fast tier on a capped fixture, which runs every build; the heavy gate runs only at reviews.
+  - In `held_key`, fold-aware where the harness can read the fold. Spec: `scroll-strips-fold-churn`.
+- **The user-facing budgets do not move:** `tail_ms` and `j_ms` ≤ 100, `bytes_per_frame_held` ≤ 512 KiB, and the
+  frame counts. With deflate on, the builder measured them green with the churn (27 / 33 / 0 ms, 158 KB/frame). The
+  remainder re-measures them.
+- **Rejected:**
+  1. Plan the pixel fold without `selected`/`preferred`. The tiers would then fold one graph two ways (`plan` doc;
+     m5/21's lesson, `docs/log/m5.md:269`).
+  2. Drop class 5 from the fold in both tiers. **Visible change.** While he scrolls a graph wider than the cap, his
+     selection's ancestry lanes would stay folded behind `+N` (drawn as stubs, ADR-0025 item 4) instead of opening
+     out, and lanes would stop reshuffling under the cursor. It reverses part of an ADR he accepted, so it needs his
+     OK, and nothing he has reported asks for it. Reopen only if he reports lanes jumping while he scrolls.
+  3. Hold one fold per strip set. The same visible change, applied unevenly: the thread opens out only when the set
+     changes.
+  4. Debounce the fold while keys arrive. That is a timer standing in for a cause (rule 2).
+
+### (b) Deflate off: over budget by construction. Known gap, its own ticket, no Unicode fallback.
+- **Who it hits:**
+  - Kitty-protocol terminals that don't take `o=z`.
+  - Any session after a deflate error reply (45 Decided 4).
+  - **Not his terminal:** Ghostty parses and inflates `o=z` (45 NOTES Step 0, Ghostty `d542774`
+    `graphics_command.zig:620-621`, `graphics_image.zig:629-668`). Whether his Ghostty build answers the probe yes is
+    **unverified**; his first Ghostty run after the merge settles it (field note the same day).
+  - Zed, his daily terminal, runs the Unicode tier and is unaffected. iTerm2 (PNG) is green at 17 ms.
+- **Why no wiring fix meets it:**
+  - One raw layer is about 5.8 MB, or 7.7 MB base64. That is about 190 ms at the 40 MB/s model (NOTES 2's
+    arithmetic, unverified).
+  - A `j` that moves the thread sends at least one emphasis, so deflate off misses 100 ms even with no fold churn.
+  - Meeting it needs a different emphasis shape. That is design work, not wiring.
+- **Unicode fallback rejected:**
+  - The tier follows what the terminal can draw, not a guess about speed.
+  - A fallback hides the cost instead of fixing it.
+  - It would take pixel graphs from those users on small repos, where raw is fine.
+- **Ruling:**
+  - The conductor adds a KNOWN_GAPS row marked **broken**: A tail 2775 ms; B tail/j 1483/1436 ms; 40 MB/s model;
+    MONOREPO 187×50.
+  - Ticket `scroll-kitty-without-deflate` stays parked: research first, design after.
+  - The deflate-off `_pixel` `held_key` tests keep asserting and stay red until that ticket lands, **unless the user
+    OKs printing their verdict instead of asserting it.** That counts as disabling a check, so rule 2 needs his OK.
+  - Until he answers, 47's "gate green" box cannot tick for deflate off.
+
+### Touches the conductor carries
+- 47:
+  - `:37-39` names the deflate-off `_pixel` tests as must-be-green.
+  - `:59` quotes the old bound.
+  - `:30-32` runs the pty walk with `PROFILE=kitty`. Whether that profile answers the `o=z` probe decides which path it
+    measures.
+  - 47 needs a spec-only amendment after the user answers.
+- TESTING.md "Held keys" paragraph (42) quotes the old bound. `scroll-strips-fold-churn` rewrites it.
+- KNOWN_GAPS: the row in (b).
