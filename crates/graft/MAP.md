@@ -896,7 +896,8 @@ loop, `pump`/`pump_with`), plus the pre-existing `graphics`, `redetect`,
 - `Wake` (enum) — something that wakes the loop.
 - `Wakes` (trait) — a seam so `pump` can be driven by a scripted list in tests.
 - `Wakes::waiting` (fn) — is a wake already here, never blocking; the loop asks before each idle-prefetched strip (m1-the-graph/30h). `ChannelWakes` keeps a wake it saw for `next_wake` and `unhandled_input`.
-- `Wakes::job_event_waiting` (fn) — never blocks; `false` default. Is the queued wake a job's event (`is_job_event`)? `pump` then runs it before drawing: job answers queued back to back share one frame, up to 8 ms of updates; a key is always drawn in its own pass (m7-power-tools/12). `ChannelWakes` peeks its `seen` wake.
+- `Wakes::joining_waiting` (fn) — required, never blocks. Is a wake queued, and does it `joins_frame`? `pump` then applies it in the same turn and draws once: a turn's wakes share one frame, up to 8 ms of updates; a handover command or a quit ends the turn (m7-power-tools/43). `ChannelWakes` peeks its `seen` wake.
+- `joins_frame` (fn) — `(&Wake) -> bool`: job events, keys (press/repeat), wheel scrolls. Not clicks, drags, hover, paste, resize, focus, signals or terminal wakes: those start their own turn.
 - `is_job_event` (fn) — `(&Wake) -> bool`: `Started`/`Produced`/`Progress`, or `Core::JobFinished/JobFailed/JobCancelled`; keys, mouse, resize, signals and terminal wakes are not.
 - `Wake::label` (fn) — `&'static str`: the variant and the kind inside it (`Produced::Refs`, `Progress::History::Window`), never the payload; for the `frames` startup trace (m7-power-tools/12).
 - `Wakes::mark` (fn) — `(&mut self, Phase)`, empty default: `pump` calls it as each phase of a frame ends. A timing seam for the `frames` perf harness (m7-power-tools/04); `ChannelWakes` keeps the empty default, so the product pays nothing.

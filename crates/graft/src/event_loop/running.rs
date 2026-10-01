@@ -17,7 +17,7 @@ use ratatui::backend::Backend;
 use super::graphics::{Graphics, GraphicsReplies, NoReplies};
 use super::outside::{Handover, Outside};
 use super::redetect;
-use super::{Exit, Phase, Wake, Wakes, said_by_a_job};
+use super::{Exit, Phase, Wake, Wakes};
 use crate::jobs::Dispatch;
 use crate::session::{Session, TerminalChange};
 use crate::update::{AppEvent, AppState, Command, Product, Quit, update};
@@ -58,6 +58,33 @@ where
     )
 }
 
+/// [`pump`] at the text tiers, handing back the state the loop ended on too:
+/// what a test reads to see where a turn's keys left the cursor.
+#[cfg(test)]
+pub(super) fn pump_keeping<B, W, D>(
+    terminal: &mut Terminal<B>,
+    wakes: &mut W,
+    jobs: &D,
+    session: &mut Session,
+    mut state: AppState,
+) -> (io::Result<Exit>, AppState)
+where
+    B: Backend<Error = io::Error> + Write,
+    W: Wakes,
+    D: Dispatch,
+{
+    let exit = frames(
+        terminal,
+        wakes,
+        jobs,
+        session,
+        &mut state,
+        &mut Graphics::new(NoReplies),
+        Outside::default(),
+    );
+    (exit, state)
+}
+
 /// [`pump`], with the pixel tier's images and the replies about them; every
 /// upload is freed however the loop ends.
 pub(super) fn pump_with<B, W, D, R>(
@@ -75,16 +102,20 @@ where
     D: Dispatch,
     R: GraphicsReplies,
 {
-    let exit = frames(terminal, wakes, jobs, session, state, graphics, outside);
+    let mut state = state;
+    let exit = frames(
+        terminal, wakes, jobs, session, &mut state, graphics, outside,
+    );
     let released = release(terminal, graphics);
     // When the loop itself failed, its error is the one to report; a free
     // that fails too failed writing to the same broken terminal.
     exit.and_then(|exit| released.map(|()| exit))
 }
 
-/// The most update time job answers queued back to back run before a frame
-/// shows them. Half a 60 Hz frame: a burst longer than this still draws as it
-/// goes, so the screen never sits stale behind a long queue.
+/// The most update time a turn spends on queued wakes before its frame shows
+/// them — job answers and keys alike. Half a 60 Hz frame: a burst longer than
+/// this still draws as it goes, so the screen never sits stale behind a long
+/// queue.
 const BATCH_BUDGET: Duration = Duration::from_millis(8);
 
 /// The loop's body: draw, wait, update, repeat.
@@ -93,7 +124,7 @@ fn frames<B, W, D, R>(
     wakes: &mut W,
     jobs: &D,
     session: &mut Session,
-    mut state: AppState,
+    state: &mut AppState,
     graphics: &mut Graphics<R>,
     outside: Outside<'_>,
 ) -> io::Result<Exit>
@@ -105,14 +136,14 @@ where
 {
     // Draw before waiting: the first frame must be on screen while Graft sits
     // idle waiting for the user's first key.
-    draw(terminal, session, &state, graphics)?;
+    draw(terminal, session, state, graphics)?;
     // When the first update not yet drawn began: job answers queued back to
     // back share one frame, up to `BATCH_BUDGET` of updates.
     let mut undrawn_since: Option<Instant> = None;
 
     loop {
         // Idle: nothing is waiting, so get the next page ready.
-        prefetch(session, &state, graphics, wakes);
+        prefetch(session, state, graphics, wakes);
         let Some(wake) = wakes.next_wake() else {
             // Nothing can wake the loop again. Leave as if the user had quit
             // rather than spinning on a dead channel.
@@ -136,20 +167,27 @@ where
                     });
                 }
                 if changed || replied {
-                    draw(terminal, session, &state, graphics)?;
+                    draw(terminal, session, state, graphics)?;
                     undrawn_since = None;
                 }
                 continue;
             }
         };
 
-        let from_a_job = said_by_a_job(&event);
         let began = *undrawn_since.get_or_insert_with(Instant::now);
-        let (next, commands) = update(&state, event);
-        state = next;
+        let (next, commands) = update(state, event);
+        *state = next;
         wakes.mark(Phase::Updated);
 
-        state = carry_out(terminal, session, jobs, state, outside, commands)?;
+        let (next, carried) = carry_out(
+            terminal,
+            session,
+            jobs,
+            std::mem::take(state),
+            outside,
+            commands,
+        )?;
+        *state = next;
         wakes.mark(Phase::CarriedOut);
 
         match &state.quit {
@@ -160,14 +198,16 @@ where
             None => {}
         }
 
-        // Another job answer is already queued behind this one: run it
-        // before drawing. A key is never taken this way — it waits for this
-        // frame and is drawn in its own pass, acting on the state every
-        // answer ahead of it built.
-        if from_a_job && began.elapsed() < BATCH_BUDGET && wakes.job_event_waiting() {
+        // One turn (m7-power-tools/43): while the next wake joins the frame
+        // — a job's answer, a key, a wheel scroll — apply it before drawing,
+        // so a backlog of held-key repeats is shown by one frame, not one
+        // frame each. A handover ends the turn (what follows waits for the
+        // terminal to be ours again), and so does `BATCH_BUDGET`.
+        if carried == Carried::Continue && began.elapsed() < BATCH_BUDGET && wakes.joining_waiting()
+        {
             continue;
         }
-        draw(terminal, session, &state, graphics)?;
+        draw(terminal, session, state, graphics)?;
         undrawn_since = None;
         wakes.mark(Phase::Drawn);
     }
@@ -181,19 +221,20 @@ where
 /// itself are output, not work: they need the terminal, which no worker
 /// thread may touch. Those answer straight back into `update`, and what it
 /// answers with joins the same queue.
-fn carry_out<B, D>(
+pub(super) fn carry_out<B, D>(
     terminal: &mut Terminal<B>,
     session: &Session,
     jobs: &D,
     mut state: AppState,
     outside: Outside<'_>,
     commands: Vec<Command>,
-) -> io::Result<AppState>
+) -> io::Result<(AppState, Carried)>
 where
     B: Backend<Error = io::Error> + Write,
     D: Dispatch,
 {
     let mut queue: VecDeque<Command> = commands.into();
+    let mut carried = Carried::Continue;
     while let Some(command) = queue.pop_front() {
         match command {
             // The clipboard request goes to the terminal now, and a failed
@@ -215,6 +256,7 @@ where
             | Command::OpenConflictEditor { .. }
             | Command::ContinueInGit { .. }
             | Command::Suspend) => {
+                carried = Carried::EndsBatch;
                 let answer = handed_over(outside.handover.as_ref(), command);
                 // Whatever ran out there drew over every cell, and the frame
                 // loop's own idea of the screen is now wrong.
@@ -226,7 +268,20 @@ where
             command => jobs.dispatch(command),
         }
     }
-    Ok(state)
+    if state.quit.is_some() {
+        carried = Carried::EndsBatch;
+    }
+    Ok((state, carried))
+}
+
+/// Whether the turn may take another queued wake after this one's commands.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Carried {
+    /// Nothing stops the turn here.
+    Continue,
+    /// A command handed the terminal over, or the loop is ending: the turn
+    /// ends and what is queued stays queued.
+    EndsBatch,
 }
 
 /// Carry out one of the six commands that need the terminal itself, and
