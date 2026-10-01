@@ -1,166 +1,179 @@
-# 46-scroll-strips-wiring — the app draws backdrop + emphasis; a `j` never re-sends a strip
+# 46-scroll-strips-wiring — the app draws backdrop + emphasis; a `j` never re-sends a strip; deflate on when probed
 
 Status: ready
-Build with: (blank: scout first — `view::strips`, `event_loop::graphics` are existing code)
+Build with: Opus — switches the live pixel path to two layers, wires 45's deflate, and turns the held-key gate green
+at Pixel in two encodings; scout 46 found four wrong premises, so judgement is needed, not a port.
 Needs: `44-scroll-emphasis-layer` (`Backdrop`, `PlainRow<'a>`, `PlainStrip<'a>`, `Lit<'a>`, `Selection<'a>`,
-`Emphasised`, `StripCache::{backdrop, emphasis, composited, contains_backdrop}`, `composite`; **merged only after its
-2026-10-01 return** — see its "Planner ruling (44 return)");
-`45-scroll-kitty-layer-deflate` (`Layer`, `EMPHASIS_ID_BIT`, `Place::layer`, `KittyImages::{deflating,
-is_deflating}`, `Capabilities::kitty_deflate`; and its Step 0 table with no "no" in it);
-`43-scroll-coalesce-input` merged first (shares `event_loop/running.rs`: prefetch call at `:115`).
+`Emphasised`, `StripCache::{backdrop, emphasis, composited, contains_backdrop}`, `composite`);
+`45-scroll-kitty-layer-deflate` (`Layer`, `EMPHASIS_ID_BIT`, `Place::layer`, `KittyImages::{deflating, is_deflating,
+answer}`, `Capabilities::kitty_deflate`); `42-scroll-held-key-gate` (`held_key`, `DrainSink::kitty_transmits`);
+`43-scroll-coalesce-input` **merged first** — it owns `event_loop/running.rs` (prefetch call `:115` at 2bee64aa),
+`event_loop/mod.rs`, `frames/paced.rs` while it builds.
 Blocked by: 42, 43, 44, 45
-File set: graft: `src/view/strips.rs`, `src/event_loop/graphics.rs`, `src/event_loop/running.rs` (prefetch call
-only), the `KittyImages::new` capacity site, `tests/it/pixel_scroll.rs` (new) + its `mod` line,
-`tests/it/held_key.rs` (the layer const only; root module since 42's planner ruling 2026-10-01),
-`crates/graft/MAP.md`. graft-graph: deletions in
-`src/raster.rs`, `src/raster/*.rs`, `src/raster/cache.rs`, `tests/it/strip_cache.rs`, `tests/it/emphasis_layer.rs`,
-`tests/it/snapshots/it__raster__*` (re-taken), `crates/graft-graph/MAP.md`; **plus** `Backdrop::lowest` in
-`src/raster.rs` and its tests in `tests/it/emphasis_layer.rs` (Planner ruling below). `docs/perf/fix-scroll-held-key.txt`
-(append); `scripts/fix-scroll-held-key.sh` (an env switch for the runs in the ruling's item 3 only).
-Overlap and order: last of 41–46; every file above was held by 42, 43, 44 or 45 and is free once they land.
+Scout: `.scratch/m7-power-tools/scouts/46.md` (HEAD 2bee64aa). Line numbers below are from it; re-locate by name.
+
+File set:
+- graft: `src/view/strips.rs`, `src/view/strips/tests.rs`, `src/event_loop/graphics.rs` (frame `:124`, prefetch
+  `:195`, `KittyImages::new` `:79`, `answer` `:108`), `src/event_loop/running.rs` (the prefetch call only, after 43),
+  `tests/it/pixel_scroll.rs` (new) + its `mod` line in `tests/it/main.rs`, `tests/it/held_key.rs` (layer const `:42`
+  + the variants in Decided 7), `tests/it/drain_sink.rs` (`KittyTransmit` gains two header fields, Signatures),
+  `crates/graft/MAP.md`.
+- graft-graph: `src/raster/emphasis.rs` (`Backdrop::lowest` beside `Backdrop` `:28`; `of` `:51` **stays** — deleted
+  by the follow-up), `tests/it/emphasis_layer.rs` (`lowest_backdrop_table` + the ruling-2 case only),
+  `crates/graft-graph/MAP.md` (`## raster::emphasis` one line).
+- `docs/perf/fix-scroll-held-key.txt` (append). `scripts/fix-scroll-held-key.sh` only if its summary selects tests by
+  exact name (then add the new names; no env switch, Decided 7).
+- **Not here:** deleting the old path (`RasterRow`, `Strip`, `rasterise`, `StripCache::{get, contains}`,
+  `Backdrop::of`, the legacy oracle) and porting `tests/it/raster.rs`, `raster_pixels.rs`, `benches/hot_paths.rs` →
+  `scroll-old-raster-deletion` (follow-up spec, Needs this one).
+Overlap and order: after 43 (shared `running.rs`); `held_key.rs` and `drain_sink.rs` are free once 42 merged; nothing
+else concurrent may hold `graphics.rs`, `strips.rs` or `emphasis.rs`.
 
 ## Read first
 - `docs/adr/0053-selection-paint-is-its-own-layer.md` (whole).
-- `42-scroll-held-key-gate.md` §Need, §Journeys, §Why the existing tests missed it.
-- `44-scroll-emphasis-layer.md` §Decided 2–3 (borrowed rows; `Lit.thread` stays `Option<&BTreeSet>`; no `above` in
-  the selection), §Signatures, NOTES findings 1–4, and "Planner ruling 2026-10-01 (44 return)".
-- `45-scroll-kitty-layer-deflate.md` §Decided 1, 4 and its NOTES' Step 0 table.
-- `crates/graft/MAP.md` `## view::strips` (`:67-70`), `max_lanes` (`:864`), `## event_loop` `pump` (`:909`).
-- `crates/graft-graph/MAP.md` `## raster`, `## raster::cache` (as updated by 44).
-- `crates/graft-term/MAP.md` `## kitty`, `## iterm2`.
+- Scout `.scratch/m7-power-tools/scouts/46.md` (whole, 1 page).
+- `42-scroll-held-key-gate.md` §Need, §Journeys, Decided 3–5.
+- `44-scroll-emphasis-layer.md` §Decided 2–3, §Signatures, NOTES 1–4, "Planner ruling 2026-10-01 (44 return)".
+- `45-scroll-kitty-layer-deflate.md` §Decided 1, 2, 4 and the NOTES Step 0 table.
+- `crates/graft/MAP.md`: `## view::strips` (`:67-70`); `max_lanes(state)` (`:864`; scout's `:218` is the
+  `AppState::max_lanes` field, not the fn); `Wake::Terminal` (`:84`); `pump` idle prefetch (`:86`); `pump` resize /
+  theme flush (`:913`).
+- `crates/graft-graph/MAP.md` `## raster::emphasis` (`:132-141`), `## raster::cache` (`:143-161`).
+- `crates/graft-term/MAP.md` `## kitty`, `## iterm2`; `crates/graft-core/MAP.md` `Capabilities`.
 
 ## Scope
-In: `pixel_rows` builds plain rows and per-row `Lit`s per strip and the frame's `Backdrop`; `event_loop::graphics`
-places backdrop + emphasis on Kitty (deflating when `kitty_deflate`) and composites for iTerm2; idle prefetch uses
-`contains_backdrop`/`backdrop`; `KittyImages` capacity doubled. Then **delete** the old path in graft-graph
-(`RasterRow`, old `rasterise`, old `StripCache::get`/`contains`, old `layout_hash` if unused, `Backdrop::of`, and the
-tests that exercise only them: `strip_cache.rs` `emphasis_is_part_of_the_key` (`:250`) and the test at `:493`) and
-re-take the raster snapshots.
-Out: Unicode/ASCII tiers; coalescing; Kitty encoding.
+In: `pixel_rows` computes the frame's `Backdrop` from its rows; `event_loop::graphics` places backdrop + emphasis on
+Kitty and composites for iTerm2; idle prefetch uses `contains_backdrop`/`backdrop`; Kitty image capacity doubled;
+`KittyImages` deflates when the probe said yes; the held-key gate green at Pixel with deflate on and off.
+Out: deleting the old raster path (follow-up spec); Unicode/ASCII tiers; coalescing (43); Kitty encoding (45).
 
 ## Decided
-1. **Backdrop per frame = `Backdrop::lowest` over every `Lit` of every strip in the frame** (Planner ruling item 2;
-   replaces `Backdrop::of(state.focus, thread_on_screen)`). Every strip of a frame uses the same backdrop. It changes
-   when the thread comes or goes (cursor on/off screen, 37), when Focus dims rows with no thread, and when a dimmed
-   row (stash-only, m7/16) enters or leaves the frame with no thread.
-2. **Waiting rule unchanged:** while the cursor is in the viewport and its row is missing, all strips wait (30b).
-3. **Kitty:** per strip, `Place { layer: Strip }` for the backdrop, then `Place { layer: Emphasis }` at
-   `first_column` when `Some`. **iTerm2:** `composited` only, one band per strip, as today.
-4. **Deletion is part of this ticket**, after the app is switched: nothing reads a selection inside a strip any
-   more, so the old key cannot come back by accident.
-5. **The equivalence test goes with its oracle.** `emphasis_layer::composite_matches_the_single_pass` (44) compares
-   against the live legacy `rasterise`. Before deleting it, add the case in the ruling's item 2 and quote the last
-   green run at this ticket's base in the report. Then delete the test with `rasterise`. From then the re-taken
-   snapshots pin the composite's output.
-6. **Layer count in tests** by image id: `EMPHASIS_ID_BIT` set = emphasis. `held_key.rs`'s local const
-   `EMPHASIS_ID_BIT_42` (42) is replaced by `graft_term::kitty::EMPHASIS_ID_BIT`.
+1. **Backdrop per frame = `Backdrop::lowest` over every row of every strip in the frame** (44 ruling item 2). One
+   backdrop per frame. It changes when the thread comes or goes (cursor on/off screen, 37), when Focus dims rows with
+   no thread, and when a stash-only row (m7/16) enters or leaves a frame with no thread. Nothing in graft calls
+   `Backdrop::of` (scout); it is not introduced.
+2. **Data shape: `StripRows` keeps owning its rows; the borrowed views are built per call.** No `PixelStrip`, no
+   lifetime on `PixelRows`. `StripRows::with_layers` (Signatures) replaces `with_strip` (`strips.rs:125-144`): it
+   builds a `Vec<PlainRow<'_>>` and a `Vec<Lit<'_>>` from `self.rows`, wraps them in `PlainStrip` / `Selection`, and
+   hands both to the closure. Why: a struct holding owned rows plus `PlainRow<'_>`s into them is self-referential;
+   an index into a frame-wide row vector would change the fold's ownership in `pixel_rows` for nothing — strips are
+   already contiguous and owned; a self-referencing crate is a new dependency. The closure is today's pattern, so the
+   callers (`graphics.rs:141,157,201,206,214`, `strips/tests.rs`) change shape, not structure. Cost: two `Vec`s of
+   ≤ strip-height pointers per strip per frame, against a hash and a cache lookup — not measurable; say so with the
+   fast-tier number if you have one.
+3. **`PaintedRow` (`:89-92`) keeps its fields** (`row: Row`, `ring`, `emphasis`, `thread: Option<BTreeSet>`, the
+   stubs): its selection paint becomes `Lit { emphasis, thread: self.thread.as_ref() }`, its layout `PlainRow`.
+   `StripRows.above` stays `Option<Row>` (owned); `PlainStrip.above` is `self.above.as_ref()`.
+4. **Waiting rule unchanged:** while the cursor is in the viewport and its row is missing, all strips wait (30b).
+5. **Kitty:** per strip, `Place { layer: Layer::Strip, .. }` for the backdrop, then `Place { layer: Layer::Emphasis,
+   .. }` at `first_column` when `Some`. **iTerm2:** `composited` only, one band per strip, as today. Capacity:
+   `KittyImages::new(2 * STRIPS_KEPT)` (two images per strip); `ItermImages` and `StripCache` keep `STRIPS_KEPT`
+   (`graphics.rs:31,80,81`; the cache already has an LRU per layer).
+6. **Deflate is wired here.** At the `KittyImages::new` site (`graphics.rs:79`), `.deflating(caps.kitty_deflate)`
+   from the `Capabilities` the session holds — the value the tier was settled from, never a literal. 45 left it
+   unwired, so until this lands its deflate does nothing in the app. The runtime fallback stays: every image reply
+   still reaches `KittyImages::answer` (`graphics.rs:108`).
+7. **Gate in both encodings, by parameter, not env** (42 Decided 3: env is process-global and races
+   `--test-threads=2`). `held_key` takes `run::capabilities(Tier::Pixel)` and sets the field on the value
+   (`caps.kitty_deflate = true;` — still no `Capabilities {…}` literal, 42 Decided 4). The existing `_pixel` tests run
+   deflate **off**; new `_pixel_deflate` twins run it **on**; one `_pixel_iterm2` run sets the graphics protocol to
+   iTerm2 the same way. 44 ruling item 3's "env switch" in the script is withdrawn.
+8. **Layer count in tests** by image id: `EMPHASIS_ID_BIT` set = emphasis. `held_key.rs`'s `EMPHASIS_ID_BIT_42`
+   (`:42`) is replaced by `graft_term::kitty::EMPHASIS_ID_BIT`.
+9. **Equivalence case before the follow-up deletes the oracle:** add to `emphasis_layer::
+   composite_matches_the_single_pass` (`emphasis_layer.rs:363`, oracle `legacy` `:158`) the ruling-2 case: no
+   thread, one `Dimmed` row, backdrop `lowest` (= `Faded`), `a < b` count 0, same pixel classes. Quote its green run
+   in the report; the follow-up quotes it again before deleting.
 
 ## Signatures
 ```rust
-// crates/graft-graph/src/raster.rs — new (ruling item 2); `Backdrop::of` deleted
+// crates/graft-graph/src/raster/emphasis.rs — beside `Backdrop` (:28); `of` (:51) untouched here
 impl Backdrop {
-    /// The lowest alpha any of these rows can draw at (ADR-0053 Decision 2):
-    /// `Faded` if some row has `thread: None` and `Emphasis::Dimmed`; else `OffThread` if some row has
-    /// `thread: Some(_)` (∅ included); else `Full`.
-    pub fn lowest<'a, 'b: 'a>(lits: impl IntoIterator<Item = &'a Lit<'b>>) -> Backdrop;
+    /// The lowest alpha any of these rows draws at (ADR-0053 Decision 2): `Faded` if some row has
+    /// `thread: None` and `Emphasis::Dimmed`; else `OffThread` if some row has `thread: Some(_)` (∅ included);
+    /// else `Full`. Derived from the paint, never from the features that produce it.
+    pub fn lowest<'a>(lits: impl IntoIterator<Item = Lit<'a>>) -> Backdrop;
 }
 
-// crates/graft/src/view/strips.rs — lifetimes as today's `PixelRows` holds its rows (scout names how)
-pub struct PixelRows</* as today */> {
-    pub strips: Vec<PixelStrip</* … */>>,      // was: strips of the old `Strip`
-    pub lane_columns: /* as today */, pub marker: /* as today */, pub uncommitted_on_top: bool,
-    pub backdrop: graft_graph::raster::Backdrop, // Backdrop::lowest over every strip's `lit`
+// crates/graft/src/view/strips.rs — no lifetime parameter anywhere, as today
+pub struct PixelRows {
+    pub strips: Vec<StripRows>,                      // unchanged type
+    /* lane_columns, marker, uncommitted_on_top: unchanged */
+    pub backdrop: graft_graph::raster::Backdrop,     // Backdrop::lowest over every PaintedRow of every strip
 }
-/// Owns what 44's borrowed views borrow; `PlainStrip`/`Selection` are built from it per call.
-pub struct PixelStrip</* … */> {
-    pub first_row: usize,
-    pub rows: Vec<graft_graph::raster::PlainRow</* … */>>,
-    pub lit: Vec<graft_graph::raster::Lit</* … */>>,   // one per row; `thread: None` vs `Some(∅)` as today
-    pub above: Option</* &Row, as today's Strip.above */>,
+impl PaintedRow {
+    fn plain(&self) -> graft_graph::raster::PlainRow<'_>;
+    fn lit(&self) -> graft_graph::raster::Lit<'_>;
 }
-pub fn pixel_rows(/* as today */) -> PixelRows</* … */>;
+impl StripRows {
+    /// Replaces `with_strip`; same visibility. Builds the views over `self.rows` and calls `f` once.
+    fn with_layers<R>(
+        &self,
+        backdrop: graft_graph::raster::Backdrop,
+        f: impl FnOnce(&graft_graph::raster::PlainStrip<'_>, &graft_graph::raster::Selection<'_>) -> R,
+    ) -> R;
+}
+pub fn pixel_rows(/* unchanged */) -> PixelRows;
+
+// crates/graft/tests/it/drain_sink.rs — header fields, parsed like the id (header bytes only)
+pub(crate) struct KittyTransmit { /* existing: offset, id */ pub width_px: Option<u32> /* s= */, pub deflated: bool /* o=z */ }
 ```
 `event_loop::graphics`'s private functions change freely; no new public item there.
 
 ## Acceptance (each box names its test; red first)
-- [ ] **Fast-tier guard** (gap (b)/(c) of the gate spec): on `team::TeamSpec::SMALL` at Pixel, 120×40, 20 `j` within
-      the strips already on screen transmit **0** backdrop strips (count `a=t`/`a=T` by `EMPHASIS_ID_BIT` in the frame
-      bytes), and ≥ 1 emphasis image. Red at the base commit (old path: one strip transmit per viewport strip per `j`).
-      — `tests/it/pixel_scroll.rs::j_inside_resident_strips_sends_no_strip` (new file).
-- [ ] `Backdrop::lowest` table: empty → `Full`; all `None`+`Normal` → `Full`; one `Some(∅)` → `OffThread`; one
-      `None`+`Dimmed` with or without threaded rows → `Faded`; `Some(_)`+`Dimmed` only → `OffThread`.
+- [ ] **Fast-tier guard:** `team::TeamSpec::SMALL`, Pixel, 120×40, 20 `j` within the strips on screen → **0**
+      backdrop transmits (transmit with `EMPHASIS_ID_BIT` clear), ≥ 1 emphasis transmit; deflate off and on.
+      Red at the base. — `pixel_scroll::j_inside_resident_strips_sends_no_strip`.
+- [ ] `Backdrop::lowest`: empty → `Full`; all `None`+`Normal` → `Full`; one `Some(∅)` → `OffThread`; one
+      `None`+`Dimmed`, with or without threaded rows → `Faded`; `Some(_)`+`Dimmed` only → `OffThread`.
       — `emphasis_layer::lowest_backdrop_table`.
-- [ ] **Stash-only rows keep their dimming** (44 NOTES 1; m7/16, `strips.rs:369-371` at the base): a stash-only row
-      on screen, cursor wheeled off screen → `PixelRows.backdrop == Faded`; the same window with no stash-only row on
-      screen → `Full`. — `pixel_scroll::stash_only_rows_stay_dimmed_without_a_thread`.
-- [ ] Focus `F` on, `j` ×5, `F` off: a backdrop transmit happens only on a frame whose `PixelRows.backdrop` differs
-      from the previous frame's; the test prints the backdrop per frame. 0 backdrop transmits on the `j` frames.
+- [ ] Ruling-2 equivalence case added and green (Decided 9). — `emphasis_layer::composite_matches_the_single_pass`.
+- [ ] **Stash-only rows keep their dimming** (`strips.rs:369-371`): stash-only row on screen, cursor wheeled off →
+      `PixelRows.backdrop == Faded`; same window without it → `Full`.
+      — `pixel_scroll::stash_only_rows_stay_dimmed_without_a_thread`; and
+      `view::strips::tests::a_stash_only_commit_is_dimmed_in_its_strip` (`strips/tests.rs:265`) green, ported to `lit()`.
+- [ ] Focus `F` on, `j` ×5, `F` off: a backdrop transmit only on a frame whose `PixelRows.backdrop` differs from the
+      previous one; test prints the backdrop per frame; 0 backdrop transmits on the `j` frames.
       — `pixel_scroll::focus_changes_the_backdrop_only_when_lowest_changes`.
-- [ ] Wheel moves the cursor off screen (no dimmed row on screen) → `Backdrop::Full`, no emphasis placed; back on
-      screen → `OffThread`. — `pixel_scroll::cursor_off_screen_draws_full`.
-- [ ] iTerm2 tier: one band per strip, composited; `j` re-encodes only bands whose selection changed.
+- [ ] Wheel moves the cursor off screen (no dimmed row on screen) → `Full`, no emphasis placed; back → `OffThread`.
+      — `pixel_scroll::cursor_off_screen_draws_full`.
+- [ ] iTerm2: one band per strip, composited; `j` re-encodes only bands whose selection changed.
       — `pixel_scroll::iterm2_bands_are_composites`.
-- [ ] Deflate follows the capability: `kitty_deflate` on → every transmit `o=z`; off → none.
-      — `pixel_scroll::deflate_follows_the_probe`.
-- [ ] Old path deleted: `rg 'RasterRow|fn rasterise\(|pub fn get\(|pub fn contains\(|emphasis_is_part_of_the_key|Backdrop::of'
-      crates/graft-graph crates/graft` shows no hit outside history comments (paste the command and its empty output).
-      (`\.thread\b` is not in the pattern: `Lit.thread` is the new field.)
-- [ ] Equivalence test's last green run at the base quoted, **including the ruling item 2 case**; test deleted with
-      `rasterise` (Decided 5).
-- [ ] Raster snapshots `it__raster__*` re-taken through the composite; the diff reviewed in the report (which files,
-      why each changed: expected only anti-aliased edges and lit-over-unlit crossings, ADR-0053 Consequences).
-      — the snapshot tests by name.
-- [ ] Gate goes green at Pixel (release): `held_key::held_j_stops_on_release_pixel` and
-      `held_key::j_then_journal_opens_at_once_pixel` via `scripts/fix-scroll-held-key.sh`, appended to
-      `docs/perf/fix-scroll-held-key.txt` (`# rev strips`); Unicode still green. Any item not `ok` → report the line;
-      do not loosen a budget.
-- [ ] Cost lines appended (ruling item 3), recorded, not asserted beyond the gate: Kitty with `kitty_deflate` on,
-      Kitty with it forced off, and iTerm2, each with `bytes_per_key`, `tail_ms` and the emphasis width p99 in cells.
-      — the script's summary lines, quoted.
-- [ ] Existing `frames::` Pixel scroll tests unchanged and green in the fast tier; release numbers in the perf file.
-- [ ] MAP.md: graft `view::strips` lines; graft-graph removed items deleted, `Backdrop::lowest` one line.
+- [ ] **Deflate follows the probe, in the app:** `kitty_deflate` true → every transmit `deflated`; false → none;
+      an error reply to a deflated transmit → later transmits raw (45 Decided 4, through `pump`, not `KittyImages`
+      alone). — `pixel_scroll::deflate_follows_the_probe`, `pixel_scroll::a_deflate_error_falls_back_in_the_app`.
+- [ ] **Gate green at Pixel, release, both encodings:** `held_key::{held_j_stops_on_release_pixel,
+      j_then_journal_opens_at_once_pixel, held_j_stops_on_release_pixel_deflate,
+      j_then_journal_opens_at_once_pixel_deflate}` via `scripts/fix-scroll-held-key.sh`, appended to
+      `docs/perf/fix-scroll-held-key.txt` under `# rev strips`; the `_unicode` pair still green. Any line not `ok` →
+      quote it; never loosen a budget. Red only in deflate-off or `_pixel_iterm2` → report the line and stop (the
+      follow-up is cropping the emphasis to its row span — a new ticket, 44 ruling item 3).
+- [ ] Cost lines recorded, not asserted beyond the gate: deflate on, deflate off, iTerm2 — each `bytes_per_key`,
+      `tail_ms`, emphasis width p99 in cells (from `KittyTransmit::width_px` ÷ cell width; iTerm2 from the band).
+      — `held_key::held_j_stops_on_release_pixel_iterm2` + the two Kitty runs; script summary lines quoted.
+- [ ] Existing `frames::` Pixel scroll tests unchanged and green in the fast tier.
+- [ ] MAP.md: graft `view::strips` (`with_layers`, `PixelRows::backdrop`; drop "`RasterRow::stubs`" from `:70`),
+      `pump` (`:913`) says both layers; graft-graph `Backdrop` line (`:133`) gains `lowest`.
 
 ## Touches (report each on the **Touches:** line)
-- Every caller of `pixel_rows` / `PixelRows` (grep): the hit-test (`max_lanes`, `screen_area`) reads columns, not
-  pixels — confirm unchanged.
-- The gallery and every pixel capture in `docs/shots/` (character grids show no pixels; confirm none changes: run the
-  capture tests).
-- Resize: "a resize flushes nothing and retransmits nothing" (`pump`, MAP `:909`) must still hold for both layers;
-  test or name the existing one that covers it.
-- Theme / cell-size flush: flushes every LRU (graft-graph `flush`).
-- Deflate runtime fallback (45 Decided 4): `KittyImages::answer` is still fed every reply; name the call site.
-- Uncommitted row on `HEAD` (`uncommitted_on_top`): its ring is layout; its selection paint goes in `Lit`.
-- Fold stubs (39): layout, in `PlainRow`.
-- Stash-only dimming (m7/16, `strips.rs:369-371`): now through `Lit.emphasis` + `Backdrop::lowest`; its existing tests
-  green (name them).
-- Every caller of `Backdrop::of` (grep): none may remain.
-- KNOWN_GAPS row "Focus and the ancestry highlight are bold/dim only" (Pixel half closed by ADR-0024): unchanged.
+- Callers of `pixel_rows` / `with_strip`: `graphics.rs:141,157,201,206,214`, `strips/tests.rs` (scout grep; re-run).
+- Hit-test (`max_lanes`, MAP `:864`; `screen_area`) reads columns, not pixels — confirm unchanged.
+- Resize (MAP `:913`: "flushes nothing and retransmits nothing") for both layers: name the test or add one.
+- Theme / cell-size flush: every LRU flushed, the `KittyImages` emphasis images freed too.
+- Re-detection (`Wake::Terminal`, MAP `:84`): if `pump` keeps the same `KittyImages` across a re-detect, a probe
+  answer that flips `kitty_deflate` does not reach it. Say what the code does, with the line; if it's kept, note it
+  as a question in NOTES. No setter on `KittyImages` (graft-term not in this file set).
+- Exit: every upload freed, both layers (MAP `:913`, 24c).
+- Uncommitted row on `HEAD`: ring in `PlainRow`, selection paint in `Lit`. Fold stubs (39): in `PlainRow`.
+- Pixel captures in `docs/shots/` (`tests/it/captures.rs`, `gallery.rs`, `frames/{sink,run,readings,journal_find}.rs`):
+  scout could not confirm which assert pixel bytes; run them and name any that changed.
+- KNOWN_GAPS "Focus and the ancestry highlight are bold/dim only": unchanged.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all
-workspace-wide; plus `cargo clippy --all-targets --features heavy-tests -- -D warnings`.
+workspace-wide; plus `cargo clippy --all-targets --features heavy-tests -- -D warnings`. Release runs via the script
+only.
 
 ## Size
-~70k. Split point if it compacts: `Backdrop::lowest` + switch + fast-tier tests first; deletion + snapshots + cost
-lines second.
-
-## Planner ruling 2026-10-01 (44 return)
-1. **`lit_hash` (44 NOTES 2):** kept provisionally. 44 proves it before merge (one grep + one test). If 44 reverts to
-   the derived `Hash`, this ticket changes nothing.
-2. **Stash-only dimming (44 NOTES 1, line `graft/src/view/strips.rs:369-371`):** a real gap. `Backdrop::of(focus,
-   thread_on_screen)` returns `Full` for a frame with no thread and no Focus, while stash-only rows are `Dimmed`
-   (0.3, `FADED_ALPHA`, graft-graph MAP `:127`), so they would draw at 1.0. **Fix:** the backdrop is derived from the
-   paint, never from the features that produce it. `Backdrop::lowest` (Signatures) replaces `of`, which goes. That is
-   ADR-0053's "lowest alpha in play" read from the data, so a future dimming feature cannot reopen the gap. It also
-   settles 44 NOTES 3: Focus with a thread gives `OffThread`, a narrower emphasis. Before deleting the equivalence
-   test, add a case to it: no thread, one `Dimmed` row, backdrop `lowest` (= `Faded`), with `a < b` = 0 and the same
-   pixel classes. Cost: when the cursor is off screen and a stash-only row is in view, nearly the whole strip is
-   "lit". That costs about two strips per new strip during wheel scroll, plus one re-draw when the backdrop flips.
-   It is rare and has no `j` in it (the cursor is off screen); accepted.
-3. **Emphasis cost (44 NOTES 4): acceptable, not a blocker.** The tail is bytes-bound (`scroll-lag-big-repo.txt:45`
-   vs `:53`; Kitty `:49`). The worst case adds about 0.5 ms p99 per re-drawn strip, under the 33 ms key period, and
-   p50 drops 4521 → 792 µs (`44-scroll-emphasis-layer.txt:12,14`). **Open, measured here:** with deflate off, a wide
-   thread re-sends about a strip's bytes per changed strip; on iTerm2, emphasis + composite p99 is ~7.8 ms per strip
-   against 5.0 today, and every changed band is re-sent whole. Record the three cost lines (box above). If the
-   held-key gate fails only in the deflate-off or iTerm2 run, report the line and stop. The follow-up is a new
-   ticket (crop the emphasis to its row span as well as its columns), not a looser budget.
+~65k. Split point if it compacts: `lowest` + `with_layers` + switch + fast-tier tests first; deflate wiring + gate
+variants + cost lines second.
