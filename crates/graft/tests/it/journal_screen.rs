@@ -544,6 +544,176 @@ fn u_typed_into_the_find_is_text() {
     app.close();
 }
 
+/// Set for [`squash_capture_git_clock_pinned`] by its parent.
+const SQUASH_CHILD: &str = "GRAFT_M7_38_SQUASH_PINNED_CHILD";
+
+/// `docs/shots/m7/journal-after-squash-187x44.txt` (m7/38). Right: after
+/// `R s s y` on `feature-b`, J's newest row is the `●` rewrite row; no `✗`
+/// row for git's interim "# This is a combination of 2 commits." or any
+/// squashed copy; `n` stops on none of them. Colour unverified.
+///
+/// Run in a child with git's clock pinned to J's (as
+/// `m7_walk::journal::the_three_lost_work_journeys`): the rewrite's records
+/// and the entry share one clock, and the capture's shas and ages are fixed.
+#[test]
+fn capture_journal_after_squash() {
+    let status = std::process::Command::new(std::env::current_exe().expect("the test binary"))
+        .args([
+            "--exact",
+            "journal_screen::squash_capture_git_clock_pinned",
+            "--ignored",
+            "--nocapture",
+            "--test-threads=1",
+        ])
+        .env(SQUASH_CHILD, "1")
+        .env(
+            "GIT_COMMITTER_DATE",
+            format!("@{} +0000", crate::m7_walk::journal::NOW),
+        )
+        .status()
+        .expect("the child runs");
+    assert!(
+        status.success(),
+        "the pinned-clock capture failed: {status:?}"
+    );
+}
+
+/// `git` in `repo`, dated `ago` seconds before J's clock.
+fn git_ago(repo: &std::path::Path, args: &[&str], ago: i64) -> String {
+    let date = format!("@{} +0000", crate::m7_walk::journal::NOW - ago);
+    let out = graft_fixtures::git::run_at(repo, args, &date)
+        .unwrap_or_else(|why| panic!("git {args:?}: {why}"));
+    String::from_utf8(out).unwrap_or_else(|why| panic!("git speaks utf-8 here: {why}"))
+}
+
+/// `main` (m1) ← `feature-b` (b1 b2 b3, one file each). HEAD on
+/// `feature-b`.
+fn feature_b_of_three() -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap_or_else(|why| panic!("a temporary directory: {why}"));
+    let repo = dir.path();
+    git_ago(repo, &["init", "-q", "-b", "main"], 600);
+    for (ago, name) in [(600, "m1"), (500, "b1"), (400, "b2"), (300, "b3")] {
+        if name == "b1" {
+            git_ago(repo, &["switch", "-q", "-c", "feature-b"], ago);
+        }
+        std::fs::write(repo.join(format!("{name}.txt")), format!("{name}\n"))
+            .unwrap_or_else(|why| panic!("write: {why}"));
+        git_ago(repo, &["add", "-A"], ago);
+        git_ago(repo, &["commit", "-q", "-m", name], ago);
+    }
+    git_ago(repo, &["commit-graph", "write", "--reachable"], 300);
+    dir
+}
+
+/// The rewrite editor is up with its plan in.
+fn rewrite_settled(state: &AppState) -> bool {
+    let screen = crate::m7_walk::rebase_line::frame(state, 187, 44);
+    state.graph_overlay() == Some(graft::update::GraphOverlay::Rewrite)
+        && screen.contains("REWRITE ")
+        && !screen.contains("checking\u{2026}")
+}
+
+/// `R s s y` on `feature-b` (tip `before`), run to its end: one commit
+/// where there were three, git's interim in `HEAD`'s log, and a backup ref
+/// keeping `before`.
+fn r_s_s_y(app: &App, state: &AppState, repo: &std::path::Path, before: &str) -> AppState {
+    let state = app.key(state, KeyCode::Char('R'));
+    let state = app.pump(state, "the editor and its plan", rewrite_settled);
+    let state = app.key(&state, KeyCode::Char('s'));
+    let state = app.pump(state, "the first replan", rewrite_settled);
+    let state = app.key(&state, KeyCode::Char('s'));
+    let state = app.pump(state, "the second replan", rewrite_settled);
+    let state = app.key(&state, KeyCode::Char('y'));
+    let state = app.settle_write(state, "the rewrite");
+    assert_eq!(
+        git_ago(repo, &["log", "--format=%s", "main..feature-b"], 0)
+            .lines()
+            .count(),
+        1,
+        "three commits squashed into one"
+    );
+    let head_log = git_ago(repo, &["reflog", "--format=%gs", "HEAD"], 0);
+    assert!(
+        head_log.contains("# This is a combination of 2 commits."),
+        "git wrote the interim the usability walk saw:\n{head_log}"
+    );
+    // A backup ref is a snapshot commit whose parents are the entry's pins
+    // (`graft_ops::snapshot`), not the tip itself: it keeps the pre-rewrite
+    // tip by containing it.
+    let backups = git_ago(
+        repo,
+        &[
+            "for-each-ref",
+            "--format=%(refname)",
+            "--contains",
+            before,
+            "refs/graft/backup/",
+        ],
+        0,
+    );
+    assert!(
+        !backups.trim().is_empty(),
+        "a backup ref of the rewrite holds the pre-rewrite tip {before}"
+    );
+    state
+}
+
+/// The child half of [`capture_journal_after_squash`]. Does nothing when
+/// run on its own.
+#[test]
+#[ignore = "the child of capture_journal_after_squash; runs only under it, git's clock pinned"]
+fn squash_capture_git_clock_pinned() {
+    if std::env::var_os(SQUASH_CHILD).is_none() {
+        return;
+    }
+    let dir = feature_b_of_three();
+    let repo = dir.path();
+    let before = git_ago(repo, &["rev-parse", "feature-b"], 0)
+        .trim()
+        .to_owned();
+    let (app, state) = opened(repo);
+    let state = app.resize(&state, 187, 44);
+    let state = crate::preview::opened(&app, state);
+    let state = r_s_s_y(&app, &state, repo, &before);
+
+    let state = in_j(&app, &state);
+    let frame = drawn(&state, 187, 44);
+    let body = text(&frame);
+    crate::captures::check_shot("m7/journal-after-squash-187x44.txt", &body);
+
+    assert!(
+        selected_row(&frame).contains('\u{25cf}'),
+        "the newest row, selected, is the ● rewrite row:\n{body}"
+    );
+    assert!(
+        !body.contains("# This is a combination"),
+        "no ✗ row for git's interim:\n{body}"
+    );
+    let old_tip = &before[..7];
+    let lost: Vec<&String> = frame
+        .iter()
+        .filter(|row| row.contains('\u{2717}'))
+        .collect();
+    for row in &lost {
+        assert!(
+            row.contains(old_tip) || !row.contains("lost"),
+            "the only lost commit is the pre-rewrite tip {old_tip}: {row}\n{body}"
+        );
+    }
+
+    // `n` from the top: the next `✗` is the pre-rewrite tip's, or none.
+    let moved = app.key(&state, KeyCode::Char('n'));
+    let frame = drawn(&moved, 187, 44);
+    let on = selected_row(&frame);
+    assert!(
+        on.contains('\u{25cf}') || on.contains(old_tip),
+        "`n` stops only on the pre-rewrite tip:\n{}",
+        text(&frame)
+    );
+    drop(moved);
+    app.close();
+}
+
 /// Rows arriving mid-find keep it: stage 3 lands with the find kept, the
 /// cursor stays on its row, the count takes the new `✗` hit, and nothing
 /// is preselected (`/` is a key).

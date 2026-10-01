@@ -16,6 +16,7 @@
 mod edits;
 mod recover;
 mod rows;
+mod scratch;
 mod steps;
 mod words;
 
@@ -201,9 +202,11 @@ fn back_of(repo: &RepoHandle, record: &ReflogRecord) -> Result<Option<usize>, Fa
 /// Which of the events' old values nothing holds now.
 ///
 /// The candidates are every outside record's old value and every journal
-/// entry's `refs_before` values, newest first by time, each once; the first
-/// `cap` are checked (`graft_git::history_reads::unreached`, which never
-/// counts Graft's own `refs/graft/**` as holding anything).
+/// entry's `refs_before` values, newest first by time, each once, less a
+/// finished rebase's in-between commits (`scratch::rebase_scratch`, m7/38:
+/// in the result or melded into it, not his lost work); the first `cap` are
+/// checked (`graft_git::history_reads::unreached`, which never counts
+/// Graft's own `refs/graft/**` as holding anything).
 ///
 /// # Errors
 /// [`FactsError::History`] when git's walk fails; [`FactsError::Stopped`]
@@ -234,10 +237,12 @@ fn candidates(entries: &[JournalEntry], outside: &[OutsideRecord]) -> Vec<Oid> {
     }
     // Stable: records keep their log order, entries newest first, on a tie.
     dated.sort_by_key(|(at, _)| std::cmp::Reverse(*at));
+    // Over the raw records: before `steps` drops or an entry claims any.
+    let scratch = scratch::rebase_scratch(outside.iter().map(|outside| &outside.record));
     let mut seen = std::collections::HashSet::new();
     dated
         .into_iter()
-        .filter_map(|(_, oid)| seen.insert(oid).then_some(oid))
+        .filter_map(|(_, oid)| (!scratch.contains(&oid) && seen.insert(oid)).then_some(oid))
         .collect()
 }
 
