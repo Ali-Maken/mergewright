@@ -399,6 +399,8 @@ fn y_on_that_preview_closes_the_picker() {
         put_back: None,
         already_in: None,
         published: Vec::new(),
+        left_behind: Vec::new(),
+        left_behind_more: 0,
         messages: Vec::new(),
     };
     crate::update::preview::preview_produced(

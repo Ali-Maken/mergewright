@@ -399,6 +399,109 @@ fn capture_rebase_line() {
     }
 }
 
+// ── the target on the top row (m7/37, usability M1) ─────────────────────
+
+/// `feature-a` (`mine` commits) ← `feature-b` (b1), one line; `main` moved
+/// on by m2, dated last, so `main` is the top row and the cursor starts on
+/// it. HEAD on `feature-a`. The ghosts land above the user's top row.
+fn top_row_repo(mine: usize) -> tempfile::TempDir {
+    let dir = init();
+    let repo = dir.path();
+    git(repo, &["switch", "-q", "-c", "feature-a"], 1);
+    for at in 1..=mine {
+        commit(repo, &format!("a{at}"), 1);
+    }
+    git(repo, &["switch", "-q", "-c", "feature-b"], 2);
+    commit(repo, "b1", 2);
+    git(repo, &["switch", "-q", "main"], 8);
+    commit(repo, "m2", 8);
+    finish(repo);
+    dir
+}
+
+/// The graph rows of `screen`: under the header, above the box.
+fn graph_rows(screen: &str) -> Vec<&str> {
+    screen
+        .lines()
+        .skip(1)
+        .take_while(|line| !line.starts_with('\u{256d}'))
+        .filter(|line| !line.trim().is_empty())
+        .collect()
+}
+
+/// `r` with the cursor on `main`, the top row, at this size.
+fn r_on_the_top_row(dir: &tempfile::TempDir, columns: u16, rows: u16) -> (App, AppState) {
+    let (app, state) = open(dir.path(), columns, rows);
+    let mut route = Vec::new();
+    let state = cursor_to_main(&app, state, &mut route);
+    assert_eq!(route, Vec::<&str>::new(), "main is the top row: no key");
+    assert_eq!(
+        state.history.as_ref().map(|history| history.top),
+        Some(0),
+        "scrolled to the top"
+    );
+    let state = r(&app, &state, &mut route);
+    (app, state)
+}
+
+/// Usability M1: the ghosts of a rebase onto the top row sit above the
+/// user's top row; the picture starts at their label, so they are drawn.
+#[test]
+fn a_rebase_onto_the_top_row_shows_after_rebase() {
+    let dir = top_row_repo(3);
+    let (app, state) = r_on_the_top_row(&dir, 187, 44);
+    let screen = frame(&state, 187, 44);
+    let rows = graph_rows(&screen);
+    assert!(
+        rows.first().is_some_and(|row| row.contains("after rebase")),
+        "{screen}"
+    );
+    let ghosts: Vec<&&str> = rows.iter().filter(|row| row.contains('\u{25cb}')).collect();
+    assert_eq!(ghosts.len(), 4, "a1 a2 a3 b1 as ghosts: {screen}");
+    assert!(rows.iter().any(|row| row.contains("[main] m2")), "{screen}");
+    crate::captures::check_shot("m7/rebase-preview-target-top-187x44.txt", &screen);
+    assert!(
+        screen
+            .lines()
+            .any(|line| line.contains("branches: feature-a ")
+                && line.contains("\u{2192} 3 new commits ")),
+        "{screen}"
+    );
+    assert!(
+        screen.contains("\u{2192} 4 new commits \u{b7} built on yours \u{b7} follows"),
+        "{screen}"
+    );
+    drop(state);
+    app.close();
+}
+
+/// A ghost block taller than the picture: the target is the picture's last
+/// row, the ghosts fill the rows above it, and `after rebase` is pinned to
+/// the top row.
+#[test]
+fn a_preview_too_tall_pins_its_label() {
+    let dir = top_row_repo(30);
+    let (app, state) = r_on_the_top_row(&dir, 120, 40);
+    let screen = frame(&state, 120, 40);
+    let rows = graph_rows(&screen);
+    assert!(
+        rows.first().is_some_and(|row| row.contains("after rebase")),
+        "the label on the top row: {screen}"
+    );
+    assert!(
+        rows.last().is_some_and(|row| row.contains("[main] m2")),
+        "the target on the last row: {screen}"
+    );
+    assert!(
+        rows[1..rows.len() - 1]
+            .iter()
+            .all(|row| row.contains('\u{25cb}')),
+        "ghosts between: {screen}"
+    );
+    drop(state);
+    app.close();
+}
+
 // ── `keep-a-suggested-drop` (rebase-preview-keeps-drops) ─────────────────
 
 /// The rewrite editor is up (opened by `R` in the preview) and nothing on

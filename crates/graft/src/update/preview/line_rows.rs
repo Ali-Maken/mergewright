@@ -8,7 +8,7 @@
 //! key is false.
 
 use graft_ops::operation::{Operation, Source};
-use graft_ops::preview::{ConflictForecast, DropSuggestion, PreviewPlan};
+use graft_ops::preview::{ConflictForecast, DropSuggestion, LeftBehind, PreviewPlan};
 
 use super::{ref_line, short, slice};
 
@@ -120,6 +120,59 @@ pub(super) fn forecast_rungs(plan: &PreviewPlan) -> Option<Vec<String>> {
         format!("{bare}{tail}"),
         bare,
     ])
+}
+
+/// The `left behind:` row's wordings, longest first, for `fitting_line`
+/// (m7/37): the branches off the line that stay on the old commits.
+///
+/// - one: `left behind: feature-b stays on the old dd21dca`
+/// - more: `left behind: feature-b, feature-c stay on old commits`
+///
+/// then the names alone, then the first name and `+N`. `more` (the ones
+/// past the cap, never named) rides as `+N` on every rung. Empty when
+/// nothing is left behind.
+pub(crate) fn left_behind_rungs(left: &[LeftBehind], more: usize) -> Vec<String> {
+    let Some(first) = left.first() else {
+        return Vec::new();
+    };
+    let name = |left: &LeftBehind| {
+        String::from_utf8_lossy(&slice::short_of(&String::from_utf8_lossy(
+            left.branch.as_bytes(),
+        )))
+        .into_owned()
+    };
+    let past = |n: usize| {
+        if n == 0 {
+            String::new()
+        } else {
+            format!(" +{n}")
+        }
+    };
+    let names = left.iter().map(name).collect::<Vec<_>>().join(", ");
+    let names = format!("left behind: {names}{}", past(more));
+    let full = match (left, more) {
+        ([only], 0) => format!(
+            "left behind: {} stays on the old {}",
+            name(only),
+            short(only.on)
+        ),
+        _ => format!("{names} stay on old commits"),
+    };
+    let first = format!(
+        "left behind: {}{}",
+        name(first),
+        past(left.len() - 1 + more)
+    );
+    let mut rungs = vec![full, names, first];
+    rungs.dedup();
+    rungs
+}
+
+/// The box's `left behind:` row, the longest rung that fits `columns`.
+/// `None` when nothing is left behind.
+pub(super) fn left_behind_row(plan: &PreviewPlan, columns: u16) -> Option<String> {
+    let rungs = left_behind_rungs(&plan.left_behind, plan.left_behind_more);
+    (!rungs.is_empty()).then(|| graft_ui::preview_box::fitting_line(&rungs, columns))
 }
 
 /// `on origin: feature-a · P will need force after`: the branches whose

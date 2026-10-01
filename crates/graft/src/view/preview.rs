@@ -49,11 +49,14 @@ pub(super) fn preview_entries<'a>(
     // Critical this milestone already paid for once).
     let mut drawn: Vec<GraphEntry<'a>> = Vec::with_capacity(preview.rows.len() + 1);
     let mut at_start = 0;
-    let mut at_selected = 0;
+    let mut at_selected = None;
+    // The topmost label: where it is drawn, and the ghost it stands over.
+    let mut label_at: Option<(usize, &graft_graph::row::Row)> = None;
     let mut previous_ghost = false;
     for (index, row) in preview.rows.iter().enumerate() {
         let ghost = preview.ghost_index.contains_key(&row.commit.id);
         if ghost && !previous_ghost {
+            label_at.get_or_insert((drawn.len(), row));
             drawn.push(label_entry(row, &label));
         }
         previous_ghost = ghost;
@@ -63,7 +66,7 @@ pub(super) fn preview_entries<'a>(
             at_start = drawn.len() - usize::from(ghost);
         }
         if preview.selected_row == Some(index) {
-            at_selected = drawn.len();
+            at_selected = Some(drawn.len());
         }
         drawn.push(entry(
             row,
@@ -75,33 +78,77 @@ pub(super) fn preview_entries<'a>(
         ));
     }
 
-    let start = window_start(state, preview, at_start, at_selected);
-    drawn.drain(..start.min(drawn.len()));
+    let picture = picture_start(
+        at_start,
+        label_at.map(|(at, _)| at),
+        at_selected,
+        state.graph_rows(),
+    );
+    drawn.drain(..picture.start.min(drawn.len()));
+    if picture.label_pinned
+        && let Some((_, ghost)) = label_at
+        && let Some(top) = drawn.first_mut()
+    {
+        *top = label_entry(ghost, &label);
+    }
     drawn
 }
 
-/// Where the drawn window starts inside the rows built above — `at_start`
-/// is the user's own top row and `at_selected` the row the key was pressed
-/// on, both as positions in that list rather than in
-/// [`PreviewState::rows`].
+/// Where the drawn picture starts, and whether its label is pinned to the
+/// top row ([`picture_start`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct PictureStart {
+    /// The first drawn entry on screen.
+    pub start: usize,
+    /// The outcome label is drawn on the picture's top row in place of the
+    /// entry there: the ghost block is taller than the picture, and the
+    /// label is never clipped.
+    pub label_pinned: bool,
+}
+
+/// Where the preview's picture starts in the drawn entries (labels
+/// included): `at_start` is the user's own top row, `label_at` the topmost
+/// label, `at_selected` the row the key was pressed on, `visible` the graph
+/// rows the box leaves (m7/37).
 ///
-/// The user's own top row, and never above it. The box docks over the
-/// bottom of the graph, though, so the picture is shorter than the screen
-/// those rows were scrolled on; when that would push the row the key was
-/// pressed on off the bottom, the window slides down by exactly as much as
-/// it must to keep it. A picture the user cannot find their own commit in
-/// is not a preview of anything they asked for.
-fn window_start(
-    state: &AppState,
-    preview: &PreviewState,
+/// The user's own top row, unless the box would push the row the key was
+/// pressed on off the bottom: then the picture slides down exactly as much
+/// as it must. A picture the user cannot find their own commit in is not a
+/// preview of anything they asked for.
+///
+/// Ghosts that land **above** the user's top row (a rebase onto the top
+/// row: the new commits sit over `main`) would never be drawn from there,
+/// so the picture starts at their label instead, as long as the target
+/// still fits under it. When it does not, the target is the picture's last
+/// row, the ghosts fill the rows above it, and the label is pinned to the
+/// top row so the picture still says what it is.
+pub(crate) fn picture_start(
     at_start: usize,
-    at_selected: usize,
-) -> usize {
-    if preview.selected_row.is_none() {
-        return at_start;
+    label_at: Option<usize>,
+    at_selected: Option<usize>,
+    visible: usize,
+) -> PictureStart {
+    let unpinned = |start| PictureStart {
+        start,
+        label_pinned: false,
+    };
+    let Some(selected) = at_selected else {
+        return unpinned(at_start);
+    };
+    let today = at_start.max(selected.saturating_sub(visible.saturating_sub(1)));
+    let Some(label) = label_at.filter(|label| *label < at_start) else {
+        return unpinned(today);
+    };
+    match selected.checked_sub(label) {
+        // A selection above the label is above the user's top row too:
+        // nothing here can say which rows it wants.
+        None => unpinned(today),
+        Some(below) if below < visible => unpinned(label),
+        Some(_) => PictureStart {
+            start: (selected + 1).saturating_sub(visible),
+            label_pinned: true,
+        },
     }
-    let visible = state.graph_rows();
-    at_start.max(at_selected.saturating_sub(visible.saturating_sub(1)))
 }
 
 /// The label row drawn above a run of ghosts: `after rebase`, on a row of
@@ -211,5 +258,49 @@ fn entry<'a>(
         compare_marked: false,
         marker: None,
         tag: None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{PictureStart, picture_start};
+
+    fn at(start: usize, label_pinned: bool) -> PictureStart {
+        PictureStart {
+            start,
+            label_pinned,
+        }
+    }
+
+    /// m7/37: every row of the rule, in drawn-entry positions.
+    #[test]
+    fn picture_start_table() {
+        // (at_start, label_at, at_selected, visible) → picture
+        let rows = [
+            // Label below the user's top row: today's window.
+            ((0, Some(1), Some(7), 20), at(0, false), "label below start"),
+            (
+                (3, Some(5), Some(30), 20),
+                at(11, false),
+                "below start, slid",
+            ),
+            // Label above the top row, the target fits under it.
+            ((5, Some(0), Some(5), 20), at(0, false), "label above, fits"),
+            ((5, Some(0), Some(19), 20), at(0, false), "fits exactly"),
+            // Does not fit: the target last, the label pinned.
+            ((25, Some(0), Some(25), 20), at(6, true), "does not fit"),
+            ((5, Some(0), Some(20), 20), at(1, true), "one row too many"),
+            // No ghosts, no selection: unchanged.
+            ((4, None, Some(10), 20), at(4, false), "no ghosts"),
+            ((4, None, Some(30), 20), at(11, false), "no ghosts, slid"),
+            ((4, Some(0), None, 20), at(4, false), "no selection"),
+        ];
+        for ((start, label, selected, visible), want, why) in rows {
+            assert_eq!(
+                picture_start(start, label, selected, visible),
+                want,
+                "{why}"
+            );
+        }
     }
 }

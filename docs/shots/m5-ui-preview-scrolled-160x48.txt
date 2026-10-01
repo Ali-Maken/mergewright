@@ -40,7 +40,6 @@
 #
 
  graft /code/api  70 commits
-  ●      redesign step 23                                                                                                                        GF 39m  5de8eef
   ●      redesign step 22                                                                                                                        GF 40m  7bd6716
   ●      redesign step 21                                                                                                                        GF 41m  43008f4
   ●      redesign step 20                                                                                                                        GF 42m  3ed8649
@@ -80,6 +79,7 @@
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 5 commits replayed                                                                                                                                           │
 │ topic e7e39a7 → 5 new commits                                                                                                                                │
+│ left behind: main, redesign stay on old commits                                                                                                              │
 │ working tree: 1 file updated                                                                                                                                 │
 │ no conflicts expected                                                                                                                                        │
 │ undo: u takes this back                                                                                                                                      │

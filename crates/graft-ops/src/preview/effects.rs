@@ -159,6 +159,21 @@ pub enum UndoNote {
     NotUndoable(String),
 }
 
+/// How many left-behind branches a plan names; the rest are counted
+/// ([`PreviewPlan::left_behind_more`]). Each named one costs a
+/// `merge-base`.
+pub const LEFT_BEHIND_CAP: usize = 8;
+
+/// A local branch a rewrite or rebase leaves where it is: off the line, it
+/// holds a commit the operation replaces (m7/37).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LeftBehind {
+    /// The branch, in full (`refs/heads/feature-b`).
+    pub branch: RefName,
+    /// The old commit it stays on: where it meets the line's old top.
+    pub on: Oid,
+}
+
 /// Everything the preview box and the ghost rows are drawn from.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PreviewPlan {
@@ -204,6 +219,13 @@ pub struct PreviewPlan {
     /// Branches of the line whose upstream holds a commit this rewrites:
     /// the next push of each needs force (m7/05).
     pub published: Vec<RefName>,
+    /// Local branches off the line that hold a commit this rewrites or
+    /// replays, at most [`LEFT_BEHIND_CAP`]: only the line follows
+    /// (ADR-0047 §4), and these stay on the old commits (m7/37). Empty for
+    /// every kind but a rebase or rewrite.
+    pub left_behind: Vec<LeftBehind>,
+    /// How many more such branches there are past the named ones.
+    pub left_behind_more: usize,
     /// Each resulting commit whose message Graft writes (a reword, or the
     /// kept row of a squash group), keyed by its ghost (m7/05).
     pub messages: Vec<(Target, String)>,

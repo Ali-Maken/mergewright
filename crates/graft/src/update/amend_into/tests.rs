@@ -228,6 +228,8 @@ fn a_plan() -> PreviewPlan {
         put_back: None,
         already_in: None,
         published: Vec::new(),
+        left_behind: Vec::new(),
+        left_behind_more: 0,
         messages: Vec::new(),
     }
 }

@@ -50,8 +50,8 @@ use landing::{Landing, Replay, dirty_tracked, forecast_one, worktree};
 mod effects;
 use effects::PATHS_CAP;
 pub use effects::{
-    ConflictForecast, FORECAST_CAP, GhostCommit, HeadMove, PreviewError, PreviewPlan, RefMove,
-    Target, UndoNote, WorktreeEffect,
+    ConflictForecast, FORECAST_CAP, GhostCommit, HeadMove, LEFT_BEHIND_CAP, LeftBehind,
+    PreviewError, PreviewPlan, RefMove, Target, UndoNote, WorktreeEffect,
 };
 
 #[cfg(test)]
@@ -189,6 +189,8 @@ fn blank() -> PreviewPlan {
         files: None,
         already_in: None,
         published: Vec::new(),
+        left_behind: Vec::new(),
+        left_behind_more: 0,
         messages: Vec::new(),
     }
 }

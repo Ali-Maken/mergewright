@@ -1,6 +1,6 @@
 # 37-preview-top-row-and-left-behind — the preview shows its result when the target is the top row, and names every branch a rewrite leaves on old commits
 
-Status: ready
+Status: done
 Source: usability walk `docs/reviews/m7-usability.md` M1 (ghosts above `view_start` are never drawn) and M6
 (`rewrite/dependents.rs:56-60`: only a branch whose first-parent chain reaches the tip follows; the preview is silent
 about the rest).
@@ -91,24 +91,24 @@ fn left_behind_row(/* same parameters as `published_row` (:127) */) -> Option<St
 ```
 
 ## Acceptance (each box names its test at tick time; red first where marked)
-- [ ] `picture_start_table` (`view/preview.rs` test module or `view/tests.rs`): label below start; label above, fits;
+- [x] `picture_start_table` (`view/preview.rs` `tests::picture_start_table`) (`view/preview.rs` test module or `view/tests.rs`): label below start; label above, fits;
       label above, does not fit (pinned, target last); no ghosts; no selection.
-- [ ] `a_rebase_onto_the_top_row_shows_after_rebase` (red first): cursor on `main` at row 0, `feature-a` + `feature-b`
+- [x] `a_rebase_onto_the_top_row_shows_after_rebase` (`tests/it/m7_walk/rebase_line.rs`; red first: run against HEAD's `view/preview.rs`, failed at the `after rebase` first-row assert): cursor on `main` at row 0, `feature-a` + `feature-b`
       on it, `r` → the drawn picture holds `after rebase`, every `○` row, and `main`'s row.
-- [ ] `a_preview_too_tall_pins_its_label`: a ghost block taller than the picture → target row last, `after rebase` on
+- [x] `a_preview_too_tall_pins_its_label` (`m7_walk/rebase_line.rs`, 30 commits at 120x40; red against HEAD's view too): a ghost block taller than the picture → target row last, `after rebase` on
       the top row.
-- [ ] `a_preview_with_room_is_unchanged`: target mid-screen → start unchanged (today's acceptance shot
+- [x] `a_preview_with_room_is_unchanged` — verified by the existing `m7_walk::rebase_line::capture_rebase_line`: `rebase-line-preview-187x50.txt` byte-identical (no new test; `git diff` shows it unchanged): target mid-screen → start unchanged (today's acceptance shot
       `docs/shots/m7/rebase-line-preview-187x50.txt` byte-identical).
-- [ ] graft-ops `left_behind_names_a_branch_forked_mid_chain` (red first, `tests/it/rewrite_preview.rs`): `feature-b` off
+- [x] graft-ops `left_behind_names_a_branch_forked_mid_chain` (red first — red was a compile failure, the field did not exist; `tests/it/rewrite_preview.rs`): `feature-b` off
       `feature-a~1`, `a` into `feature-a~1` → `[LeftBehind { feature-b, on: <old feature-a~1> }]`; the line's branches
       never listed.
-- [ ] graft-ops `left_behind_names_a_branch_parked_on_a_replaced_commit`, `left_behind_is_empty_for_a_clean_line`,
-      `left_behind_caps_at_eight` (10 branches → 8 named, `more` 2).
-- [ ] `left_behind_rungs_table`: one, two, ten; each rung's exact words.
-- [ ] `the_box_says_who_stays_behind` (red first): the walk's world (`a y` on `dd21dca`), the box draws
+- [x] graft-ops `left_behind_names_a_branch_parked_on_a_replaced_commit`, `left_behind_is_empty_for_a_clean_line`,
+      `left_behind_caps_at_eight` (10 branches → 8 named, `more` 2); plus `left_behind_on_a_rebase_names_the_fork` (the `r` call site). All `tests/it/rewrite_preview.rs`.
+- [x] `left_behind_rungs_table` (`update/preview/tests.rs`): one, two, ten; each rung's exact words.
+- [x] `the_box_says_who_stays_behind` (`m7_walk/rewrite_editor.rs`; red first: with `plan_lines`' row removed it failed): the walk's world (`a y` on `dd21dca`), the box draws
       `left behind: feature-b stays on the old dd21dca`; at 80 columns a shorter rung naming `feature-b` or `+N`.
-- [ ] `the_rewrite_editor_after_says_who_stays_behind` — or NOTES quotes the stop condition and what feeds `on origin:`.
-- [ ] **Captures** (re-taken by these tests):
+- [x] `the_rewrite_editor_after_says_who_stays_behind` (`m7_walk/rewrite_editor.rs`; stop condition not hit: `on origin:` there is fed from `plan.published`) — or NOTES quotes the stop condition and what feeds `on origin:`.
+- [x] **Captures** (re-taken by these tests; written by `a_rebase_onto_the_top_row_shows_after_rebase`, `the_box_says_who_stays_behind`, `the_rewrite_editor_after_says_who_stays_behind`):
       `docs/shots/m7/rebase-preview-target-top-187x44.txt` — **right:** `main` on the picture's first graph rows, the
       `after rebase` row and `○` rows for `feature-a`'s and `feature-b`'s new commits above it, box saying
       `feature-a → 3 new commits`, `feature-b → 4 new commits · built on yours · follows`.
@@ -116,9 +116,9 @@ fn left_behind_row(/* same parameters as `published_row` (:127) */) -> Option<St
       row `left behind: feature-b stays on the old dd21dca`.
       `docs/shots/m7/rewrite-editor-left-behind-187x44.txt` (if shipped) — **right:** AFTER side, the `left behind:`
       row between the `follows` rows and `on origin:`. Colour unverified.
-- [ ] MAP.md for graft-ops (`PreviewPlan` fields, `left_behind`), graft (`picture_start`, `left_behind_rungs`,
+- [x] MAP.md for graft-ops (`PreviewPlan` fields, `left_behind`), graft (`picture_start`, `left_behind_rungs`,
       rewrite editor row).
-- [ ] Gates.
+- [x] Gates: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run` (5024/5024), `cargo test --doc` — workspace-wide.
 
 ## Touches (check each; report how)
 - **`PreviewPlan` literals** — scout list: graft-ops `preview.rs:121,177`, `preview/revert_to.rs:30`,
@@ -140,3 +140,21 @@ Workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 
 ## Size
 ~60k. One context.
+
+## NOTES (builder, 2026-10-01)
+
+- Scout used (`scouts/37.md`). No compaction.
+- **Files outside the set, and why:**
+  - graft-ops `src/rewrite.rs` — one line: `pub(crate) use dependents::{left_behind, line_of};`. `rewrite::dependents` is a private module; the preview cannot reach `left_behind` otherwise.
+  - graft `update/preview.rs` — one line: `pub(crate) use line_rows::{left_behind_rungs, onto_label};`. `line_rows` is private; `view/rewrite_editor/right.rs` needs the rungs (the ticket allowed it if the build proved it).
+  - Walk tests went into `m7_walk/rebase_line.rs` and `m7_walk/rewrite_editor.rs` (two existing files). The box test lives in `rewrite_editor.rs`, beside the editor test, so they share one fixture.
+- **Deviations:** `left_behind_row(plan, columns)` takes `columns` as well as `published_row`'s `plan`: picking a rung needs the width. In the rewrite editor's AFTER there is no width at that layer, so it draws the **longest** rung and lets the widget cut the tail. The names lead the row, so a cut does not reach them.
+- **Fixture, not the walk's sha:** `dd21dca` came from the reviewer's own world. The fixture here is the same shape (`feature-b` forked off "feature a: part 1"), so its sha is `e662b82`. The tests assert against `feature-a~2`'s short id.
+- **Oldest replaced commit:** for a rewrite, the first todo row; for `r`, the first step. The todo includes rows git may skip as unnecessary picks (28c `skip_unnecessary_picks`), so a branch parked on such a row would be named. That matches the ghosts the preview already draws for those rows.
+- **Captures this change moves (re-taken, reviewed by diff):**
+  - `docs/shots/m6/fix-preview-verb-120x40.txt`, `m6/set-aside-preview-120x40.txt`, `m6/set-aside-preview-80x24.txt`: the M1 fix itself. The ghosts and `after merge`/`after rebase` above the top row are now drawn; the graph's bottom rows give way.
+  - `docs/shots/m5-ui-preview-scrolled-80x24.txt`, `m5-ui-preview-scrolled-160x48.txt`: the box gains `left behind: main, redesign stay on old commits` (rebasing `topic` onto `old-release` replays commits `main` and `redesign` hold), so the graph loses one row and the window slides by one to keep the target.
+  - `set-aside-preview-*` is written by `m6_stash_put_back.rs`, which 36 holds. Only the capture was re-taken; the test file was not edited. If 36 moves it too, re-run that test after both merge.
+- **Preview cost:** one `for-each-ref --contains` plus ≤ 8 `merge-base` per rebase/rewrite plan. Not measured.
+- **Unverified:** colour of the new row and of the pinned label (captures carry no colour). Nobody has judged the new pictures by eye yet.
+- For the conductor: the KNOWN_GAPS row about "a branch forked mid-chain follows too" (ADR-0047 §4 change) is yours, as the ticket says.

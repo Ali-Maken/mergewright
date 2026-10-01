@@ -1,0 +1,44 @@
+ graft /code/api  5 commits
+  ●      [feature-b] b1                                                                                                                                                     GF 2d   f81a2f8
+  │ ●    feature a: part 3                                                                                                                                                  GF 2d   89f73ff
+  │ ●    feature a: part 2                                                                                                                                                  GF 2d   c59a559
+  ●─╯ ▏  feature a: part 1                                                                                                                                                  GF 2d   e662b82
+  │      the result
+  │ ○    [◆ feature-a] feature a: part 3                                                                                                                                    GF —    —
+  │ ○    feature a: part 2                                                                                                                                                  GF —    —
+  │ ○    feature a: part 1                                                                                                                                                  GF —    —
+◇─┴─╯    [main] m1                                                                                                                                                          GF 2d   fb4d697
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: put your staged changes into e662b82 "feature a: part 1" ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ e662b82  feature a: part 1  gains  one.txt +1 −1                                                                                                                                        │
+│ 3 commits replayed                                                                                                                                                                      │
+│ feature-a 89f73ff → 3 new commits                                                                                                                                                       │
+│ left behind: feature-b stays on the old e662b82                                                                                                                                         │
+│ HEAD → feature-a                                                                                                                                                                        │
+│ working tree: 1 file updated                                                                                                                                                            │
+│ no conflicts expected                                                                                                                                                                   │
+│ undo: u takes this back                                                                                                                                                                 │
+│ git rebase -i --no-update-refs --no-autostash --empty=drop fb4d6972c6d67d4a304dc423eb2dd472bf384ae8                                                                                     │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                                                                                               │
+╰ y put it in  ←→ choose  ⏎ act  esc cancel ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+

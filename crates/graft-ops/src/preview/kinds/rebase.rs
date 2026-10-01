@@ -78,6 +78,8 @@ pub(in crate::preview) fn rebase(
     };
     let rewritten: Vec<Oid> = steps.iter().map(|step| step.commit).collect();
     plan.published = rewrite::published(repo, &params.line, &rewritten, onto, stop)?;
+    (plan.left_behind, plan.left_behind_more) =
+        rewrite::left_behind(repo, git, &params.line, &rewritten, stop)?;
     Ok((plan, landed))
 }
 
