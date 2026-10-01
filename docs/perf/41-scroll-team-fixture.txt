@@ -1,0 +1,5 @@
+# 41-scroll-team-fixture: fresh build into a temp dir, debug test profile
+# 2026-10-01T15:13Z Darwin arm64 git version 2.54.0 (Apple Git-157)
+TEAM-MEASURE MONOREPO: 16.32 s, 20.18 MiB, TeamStats { commits: 17700, merges: 4508, refs: 1330, most_open: 19 }
+TEAM-MEASURE SMALL: 0.21 s, 0.20 MiB, TeamStats { commits: 400, merges: 123, refs: 65, most_open: 9 }
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 16.91s

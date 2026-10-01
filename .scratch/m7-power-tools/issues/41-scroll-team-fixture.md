@@ -1,6 +1,6 @@
 # 41-scroll-team-fixture — a generated history shaped like his work repo
 
-Status: ready
+Status: done
 Build with: Sonnet — one new generator module on existing fast-import/cache plumbing; the shape is fully decided
 and every property is checked by a test that reads the repo back with git.
 Needs: none
@@ -99,21 +99,21 @@ pub(crate) fn team_key(spec: &TeamSpec) -> /* synthetic_key's return type */;
 generator's plan (the one tally not re-read; say so in the doc comment).
 
 ## Acceptance (each box names its test)
-- [ ] `MONOREPO` read back: `commits ≥ 17 694`, `refs ≥ 1 323`, `merges ≥ 2 000`, `most_open ≥ 16`; a commit-graph
+- [x] `MONOREPO` read back: `commits ≥ 17 694`, `refs ≥ 1 323`, `merges ≥ 2 000`, `most_open ≥ 16`; a commit-graph
       chain file exists (`.git/objects/info/commit-graphs/commit-graph-chain`).
       — `tests/it/team.rs::monorepo_is_his_scale` (`#[cfg(feature = "heavy-tests")]`, module added to
       `tests/it/main.rs`; the crate has one test binary, `tests/it/main.rs:1`).
-- [ ] `SMALL` read back: `commits = 400`, `refs = 65`, `merges ≥ 40`, `most_open ≥ 8`. — `team::tests::small_shape`.
-- [ ] Same spec twice into two dirs → identical `git rev-parse main` and identical `for-each-ref` output.
+- [x] `SMALL` read back: `commits = 400`, `refs = 65`, `merges ≥ 40`, `most_open ≥ 8`. — `team::tests::small_shape`.
+- [x] Same spec twice into two dirs → identical `git rev-parse main` and identical `for-each-ref` output.
       — `team::tests::build_is_deterministic` (on `SMALL`).
-- [ ] Every merge on `main` has two parents; the second parent is a `feature/*` tip or a commit on one.
+- [x] Every merge on `main` has two parents; the second parent is a `feature/*` tip or a commit on one.
       — `team::tests::main_advances_by_merges` (on `SMALL`).
-- [ ] `git fsck --strict` clean on `SMALL`. — `team::tests::small_is_fsck_clean`.
-- [ ] `borrow(&SMALL)` twice → same path, second call builds nothing; a `team-` entry never matches a `synthetic-`
+- [x] `git fsck --strict` clean on `SMALL`. — `team::tests::small_is_fsck_clean`.
+- [x] `borrow(&SMALL)` twice → same path, second call builds nothing; a `team-` entry never matches a `synthetic-`
       lookup. — `team::tests::borrow_is_cached_apart_from_synthetic`.
-- [ ] Build time and disk size of both specs recorded in this ticket's NOTES (measured by a script writing
+- [x] Build time and disk size of both specs recorded in this ticket's NOTES (measured by a script writing
       `docs/perf/41-scroll-team-fixture.txt`, not in the builder's context).
-- [ ] `MAP.md` (team module, one line per public item); `TESTING.md` fixture table gains the `team-*` cache rows.
+- [x] `MAP.md` (team module, one line per public item); `TESTING.md` fixture table gains the `team-*` cache rows.
 
 ## Touches (report each on the **Touches:** line)
 - Fixture cache directory and its cleanup: `team-` prefix vs `synthetic-` (`src/synthetic.rs:170`); grep every
@@ -131,3 +131,24 @@ workspace-wide. The heavy box runs once with `--features heavy-tests` for that t
 
 ## Size
 Small–medium (~35k).
+
+## NOTES (builder, 2026-10-01)
+No compaction. Scout used (`scouts/41.md`); its layout point taken (`tests/it/team.rs`, one binary).
+
+Ticks verified: the five `team::tests::*` pass in workspace `cargo nextest run` (5066/5066);
+`monorepo_is_his_scale` passed via `scripts/41-scroll-team-fixture.sh` (`--features heavy-tests`, 3 runs).
+
+Measured (`docs/perf/41-scroll-team-fixture.txt`; fresh build, debug test profile, arm64 mac):
+- `SMALL`: 0.11–0.22 s, 0.20 MiB. 400 commits, 123 merges, 65 refs, most_open 9.
+- `MONOREPO`: **8.1 s on the first run, 16.3 s on two later runs** (machine loaded by other builders);
+  **20.18 MiB**. Over the 15 s / 20 MiB targets on loaded runs and by 0.18 MiB on size. 17 700 commits,
+  4 508 merges, 1 330 refs, most_open 19. Size not tuned (≈3 600 one-line feature files in the work tree).
+
+Decisions the spec left open:
+- `TeamStats::refs` = every ref except `refs/heads/main` (gives SMALL exactly 65).
+- `most_open` stored in `.git/graft-team-most-open` at build so `stats(repo)` returns it.
+- Local/remote refs point at the newest branch tips (open ones included); tags on main merges spread evenly,
+  first `annotated` annotated.
+- Feature commits go to scratch ref `refs/team-scratch`, deleted before `pack-refs --all --prune`.
+- Cache dir `team-<commits>-<hex>`. `stream.rs` not edited: the stream is built in memory (MONOREPO a few MB);
+  `drain_into` is heavy-gated.
