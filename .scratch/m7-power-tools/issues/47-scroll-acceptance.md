@@ -1,6 +1,9 @@
 # 47-scroll-acceptance — held `j` stops when he lets go; `J` opens at once, at his scale, both tiers
 
-Status: built 2026-10-02. Acceptance **red on 2 boxes** (pty RSS, `g_after_idle`); both reported with lines, not fixed (out of scope). See NOTES.
+Status: built 2026-10-02. **Merges on the planner's rulings (2026-10-02, below)** once the conductor has filed the two
+gap rows and the cursor fix ticket. Two boxes stay open by ruling, not ticked: pty RSS (gap `M7/47-pixel-rss`,
+**broken**, expiry M8) and `g_after_idle` (gap `M7/47-idle-low-power`, **unverified**). Q1 is fixed before the M7 stop
+by `scroll-cursor-under-uncommitted-row`.
 Build with: Fable. Acceptance ticket: it judges whether the promise holds end to end, which no single diff shows.
 Needs: every other 41–46c ticket: `41-scroll-team-fixture`, `42-scroll-held-key-gate`, `43-scroll-coalesce-input`,
 `44-scroll-emphasis-layer`, `45-scroll-kitty-layer-deflate`, `46-scroll-strips-wiring` (`_pixel_deflate` /
@@ -99,10 +102,14 @@ M7/46-kitty-no-deflate <item>=<value>` and are not misses.
       **Not ticked — RSS miss.** Frames, tail, bytes and deflate hold (text free/500k: fal 1, tail 92/62, rss 24;
       kitty-yes free/40m: fal 1, tail 56/58, 173/171 KB per key, `deflate=yes` observed, 525/518 transmits all `o=z`). **Graft RSS 396 / 369 MB > 300** at
       kitty-yes (`SUMMARY miss pty kitty-yes-free rss_mb=396`, `kitty-yes-40m rss_mb=369`). See NOTES M2.
+      **Open by ruling 2** (gap `M7/47-pixel-rss`, broken, expiry M8; fix parked as `scroll-pixel-memory-budget`).
+      The budget stays 300 MB. Closes when that ticket's run shows ≤ 300 MB here.
 - [ ] No regression: `frames::` p99 ≤ 16 ms on every scroll, `heavy::budgets_hold` green, `g_after_idle` green.
       — those tests by name.
       **Not ticked — `frames::after_idle::g_after_idle` FAILED** (16.91 ms > 16). `frames::` otherwise 18/19 passed;
       `heavy::budgets_hold_*` 5/5 passed. See NOTES M1.
+      **Open by ruling 1** (gap `M7/47-idle-low-power`, unverified). The budget stays 16 ms. Closes, or turns
+      broken, at the M7 review's release perf run on mains with Low Power Mode off.
 - [x] Journey step counts, asserted by the walk: journey 1 = 1 key (`j` held), journey 2 = 1 key (`J`); every
       `held_key` test's key list (Unicode, raw, `_deflate`, `_iterm2`) is `j`×188, then `J` in B, nothing else.
       — `held_key::*` assert the key-list shape (42 Decided adds it; add it if missing; it is the walk's count).
@@ -127,6 +134,8 @@ M7/46-kitty-no-deflate <item>=<value>` and are not misses.
       **Ticked:** `TESTING.md` §"M7 fix: scroll on a big repo (m7-power-tools/47)" at the end of the file, one row per
       scenario naming its test (`held_key::*`, `frames::`, `heavy::budgets_hold_*`, `ghostty_shot::fix_scroll_ghostty_png`),
       plus the pty walk and journeys rows. Its own boxes stay open for the reviewer and the user.
+      The "cursor on the row shown at release" row cannot hold until `scroll-cursor-under-uncommitted-row` lands; that
+      ticket owns it (ruling 3).
 - [x] Contact sheet (ADR-0037): the milestone sheet's next section if one exists, else
       `docs/shots/m7/fix-scroll-contact.md` (say which), each capture under its "right looks like" line, plus the
       before/after table as text:
@@ -145,6 +154,8 @@ M7/46-kitty-no-deflate <item>=<value>` and are not misses.
       `GRID_OUT`, rows 39–48). **Neither shows the cursor row.** The crop is the cursor ±10, clipped to the pane, and
       the cursor sits one row below the pane (`cursor_on_screen=false`), so "cursor row matching" cannot be shown. It is
       a finding (NOTES Q1), not a crop choice. Nobody judged "looks right" (rule 6).
+      **The tick covers the files and their captions only.** The two captures are re-taken, cursor row shown, by
+      `scroll-cursor-under-uncommitted-row` (ruling 3).
 - [x] `docs/design/03-graph-layout-algorithm.md` §3.8: one paragraph after "The key": the backdrop alpha joins the
       key; the selection's paint is a second image above the strip, keyed on the strip plus the selection (ADR-0053);
       on a graph wider than the lane cap the fold follows the selection (ADR-0025), so a `j` can re-send strips — a
@@ -163,6 +174,8 @@ M7/46-kitty-no-deflate <item>=<value>` and are not misses.
   stop at once? Then `J` — does it open at once? In Zed (Unicode) and in Ghostty (Pixel).
 - In Ghostty: does the graph look like `fix-scroll-ghostty.png` (lit thread, dimmed lanes)? If it scrolls slowly
   there, say so the same day: that would mean his Ghostty fell back to raw (the known gap), not that the fix failed.
+- Ask him only after `scroll-cursor-under-uncommitted-row` lands. Before that, a held `j` on a dirty tree loses the
+  highlighted row (Q1), and he would be reporting a bug that is already known.
 
 ## Files (exact)
 - `scripts/47-scroll-acceptance.sh` (new), `scripts/scroll-lag-pty.py` (extend: fixture path, rates, RSS, `J`, the
@@ -296,3 +309,50 @@ uncommitted row (`view/entries.rs:109-113`, `view/strips.rs:211-212`), every scr
 `search.rs:147,178,198`, `map.rs:204`, `keys/actions.rs:22`, `keys/escape.rs:10`, `detail/landing.rs:147,177`,
 `preview.rs:373`, `rewrite_editor/after.rs:69`, `banner/stop.rs:319`). Not one line: fixing `:439` alone leaves the
 rest off by one. Not fixed.
+
+## Rulings (planner, 2026-10-02)
+
+**Merge: yes**, on the boxes ticked above. Before merging, the conductor files the gap rows for rulings 1 and 2 and
+files `scroll-cursor-under-uncommitted-row` (ruling 3) to build before the M7 stop. Neither open box is ticked, and
+neither budget moves. Every ticked box keeps its named test.
+
+**Ruling 1: `g_after_idle`. A gap marked unverified, not a code defect, and no change to the 16 ms budget.**
+- Evidence (debugger, `docs/perf/47-debug.txt:2,15-16`): the 12e merge's own code (8422c453) measures 16.6–17.1 ms
+  today, against 8.2–8.9 ms at 12e. A CPU-only control runs 2.07× slower than at 12g. `pmset -g` showed Low Power Mode
+  on, on battery, for every run. The attribution is **unconfirmed**: the setting was never toggled.
+- KNOWN_GAPS row `M7/47-idle-low-power`, **unverified**: "`frames::after_idle::g_after_idle` 16.6–22.9 ms > 16 ms,
+  measured only on battery with Low Power Mode on. The 12e code measures the same today. Re-measure at the M7 review's
+  release perf run." Expiry: the M7 review.
+- How it closes: the M7 review's release perf run, on mains with Low Power Mode off, runs `scripts/47-debug-idle.sh .
+  3` and the 47 script's step 2.
+  - Green → the row closes and box 6 is ticked, naming `frames::after_idle::g_after_idle` and the run's perf file.
+  - Red → the row turns **broken**, and a `debugger` bisects 8422c453..HEAD. The place to start is the history job's
+    `ShowRows` window read, about 15 of the 16.6 ms (`47-debug.txt:17`).
+- So this cannot recur unseen, `perf-machine-state-guard` (unnumbered, Sonnet) makes every release perf script record
+  the machine's power state and refuse to judge on battery or with Low Power Mode on. It runs before the M7 review.
+- **Needs the user:** mains power and Low Power Mode off for the review's perf run. That is a physical step the conductor
+  cannot take.
+
+**Ruling 2: RSS. A known gap, broken, expiry M8. The fix is parked as `scroll-pixel-memory-budget`.**
+- Why not now:
+  - The cause is structural and sits in three places: strip capacity is counted in strips, not bytes
+    (`graphics.rs:33`); evicted uploads stay pinned (`kitty/mod.rs:123`); and freed large buffers stay resident.
+  - The fix changes `StripCache`'s capacity contract and `KittyImages`' upload identity across three crates. That is a
+    signature ticket (Fable) that needs its own measurement first.
+  - It predates the scroll work. M7 cut it from 977 MB to 367–374 MB.
+  - The promise's latency items hold.
+  - Unicode, his Zed tier, is at 24 MB.
+- KNOWN_GAPS row `M7/47-pixel-rss`, **broken**: "Pixel (Kitty+deflate) Graft RSS 367–396 MB after held `j` on
+  MONOREPO 187×50; budget 300 MB (PROMPT.md 7.x peak-memory); live 171 MB (StripCache 118, evicted Kitty frames 45) +
+  166 MB freed-but-resident." Expiry M8. Box 5 stays open until that ticket's run ticks it.
+- The user is told at the stop, as a gap line. He is not asked a question. If he wants it fixed in M7, the spec is
+  ready to unpark.
+
+**Ruling 3: cursor (Q1). A defect, confirmed by a red test, fixed before the M7 stop.**
+- The spec is `scroll-cursor-under-uncommitted-row.md`, Build with Opus, scout first.
+- Cause, fixed in one place: `AppState::graph_rows()` subtracts the pinned uncommitted row, as it already does for the
+  commit-graph line, the pending block and the preview box. The views stop subtracting their own copy. Every scroller
+  is then right with no change.
+- That ticket re-takes this ticket's two captures with the cursor row shown, and owns the TESTING row "cursor on the
+  row shown at release".
+- Until it lands, the conductor does not ask the user for his daily check (see "For the user").
