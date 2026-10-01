@@ -1,6 +1,6 @@
 # 43-scroll-coalesce-input — queued keys are applied together and drawn once
 
-Status: ready
+Status: partial — all built and green; Unicode scenario B of the release gate still red (tail 105 ms > 100, frames_after_release 3 > 2)
 Build with: Sonnet — one loop rule in two files, every case named below with its test; the scout mapped every
 seam (`.scratch/m7-power-tools/scouts/43.md`).
 Needs: `42-scroll-held-key-gate` landed (its red run recorded first). No signature from another ticket.
@@ -98,23 +98,23 @@ Impls to change (method only): `ChannelWakes` (`mod.rs:186`), `ScriptedWakes` (`
 `DrainSink` (42) is not a `Wakes` impl (42 ruling 1).
 
 ## Acceptance (each box names its test; red first)
-- [ ] 20 `j` queued before the turn → exactly one frame drawn, cursor 20 rows down.
+- [x] 20 `j` queued before the turn → exactly one frame drawn, cursor 20 rows down.
       — `event_loop::tests::queued_keys_draw_once`.
-- [ ] `j j <resize> j` queued → two frames: one for `j j`, one for the resize turn (with the last `j` joining it);
+- [x] `j j <resize> j` queued → two frames: one for `j j`, one for the resize turn (with the last `j` joining it);
       final cursor 3 rows down, size the new one. — `event_loop::tests::a_resize_starts_its_own_turn`.
-- [ ] `j j <mouse click> j` → the click is handled after a frame showing `j j`.
+- [x] `j j <mouse click> j` → the click is handled after a frame showing `j j`.
       — `event_loop::tests::a_click_waits_for_the_frame_he_saw`.
-- [ ] `j j <wheel down> j` → one frame. — `event_loop::tests::a_wheel_joins_the_frame`.
-- [ ] `j j q j` → loop ends `Exit::Quit`; the trailing `j` is in `unhandled_input`; no frame drawn after the startup
+- [x] `j j <wheel down> j` → one frame. — `event_loop::tests::a_wheel_joins_the_frame`.
+- [x] `j j q j` → loop ends `Exit::Quit`; the trailing `j` is in `unhandled_input`; no frame drawn after the startup
       draw (the batch ends on `Exit` before drawing). — `event_loop::tests::a_quit_ends_the_batch`.
-- [ ] A command that hands the terminal over ends the batch; the wake after it is still queued. No scripted `Outside`
+- [x] A command that hands the terminal over ends the batch; the wake after it is still queued. No scripted `Outside`
       exists (tests use `Outside::default()`, which refuses, `running.rs:238-258`), so: a `carry_out` unit test per
       handover command returning `Carried::EndsBatch`, plus a loop test that `EndsBatch` stops taking wakes.
       — `event_loop::tests::{every_handover_ends_the_batch, a_handover_ends_the_batch}`.
-- [ ] A lone key still draws in its own turn (latency unchanged). — `event_loop::tests::a_lone_key_draws_at_once`.
-- [ ] A two-key prefix (`m m`) and a modal prompt queued together behave as when drawn between.
+- [x] A lone key still draws in its own turn (latency unchanged). — `event_loop::tests::a_lone_key_draws_at_once`.
+- [x] A two-key prefix (`m m`) and a modal prompt queued together behave as when drawn between.
       — `event_loop::tests::a_queued_prefix_runs_as_typed`.
-- [ ] **The two m7/12 tests this rule changes**, rewritten, not deleted (scout 43 item 5):
+- [x] **The two m7/12 tests this rule changes**, rewritten, not deleted (scout 43 item 5):
   - `queued_wakes_draw_once` (`tests.rs:672`): its trailing quit key now joins the job batch and the batch ends on
     `Exit` before drawing (1 frame, not 2). Change: put one non-joining wake (focus gained, or `Moved` hover — one that
     changes no state the test reads) between the last job and the quit. Assertion **unchanged: 2 frames** — the
@@ -125,18 +125,18 @@ Impls to change (method only): `ChannelWakes` (`mod.rs:186`), `ScriptedWakes` (`
     Decided 1–3; plus a new assertion that the frame which shows the jobs also shows the key's effect. Not weaker: it
     still pins exactly where the key is drawn, now to the new rule, and adds what the old one never checked.
   - Every other m7/12 test unchanged and green; name them in the report.
-- [ ] The `frames::` harness measures a key's latency from its send to the frame that showed it; a batched key's
+- [x] The `frames::` harness measures a key's latency from its send to the frame that showed it; a batched key's
       latency is to the batch's frame. Today `readings.rs:50-63` takes `drawn[index + 1]` per wake and `paced.rs`
       (`:114-116`, `:174-178` at 552efc7f) stamps one `drawn` per `next_wake`: both change so each wake maps to the
       frame drawn at the end of its turn. — new `frames::readings::a_batched_key_reads_its_batch_frame`; existing
       `frames::` tests green with unchanged budgets.
-- [ ] A `Drawn` mark still means one frame drawn, and 42's `paced.rs` accessors (per-`Drawn` `Instant` and sink
+- [x] A `Drawn` mark still means one frame drawn, and 42's `paced.rs` accessors (per-`Drawn` `Instant` and sink
       offset) keep that meaning (`held_key` reads them). — checked by the release run below.
 - [ ] Unicode half of the gate goes green in release: `held_key::held_j_stops_on_release_unicode` and
       `held_key::j_then_journal_opens_at_once_unicode`, run by `scripts/fix-scroll-held-key.sh`, appended to
       `docs/perf/fix-scroll-held-key.txt` (`# rev coalesce`). Pixel stays red until `46-scroll-strips-wiring`; record
       its numbers (expect `tail_ms` bounded near two Pixel frames, `bytes_per_frame_held` still MB).
-- [ ] `crates/graft/MAP.md`: `joins_frame`, `Wakes::joining_waiting`; the `job_event_waiting` line removed.
+- [x] `crates/graft/MAP.md`: `joins_frame`, `Wakes::joining_waiting`; the `job_event_waiting` line removed.
 
 ## Touches (report each on the **Touches:** line)
 - Every `job_event_waiting` caller and impl (grep; all replaced; three impls above).
@@ -155,3 +155,27 @@ workspace-wide; plus `cargo clippy --all-targets --features heavy-tests -- -D wa
 
 ## Size
 Medium (~45k).
+
+## NOTES (builder, 2026-10-01)
+Scout used (`scouts/43.md`; paced.rs re-located by name at 0d38d93d). No compaction.
+
+Ticks: every box names its test above; the `Drawn`-meaning box is checked by the release run (held_key read its frames;
+`frames_while_held`/`frames_after_release` counts are per `Drawn`). **Unicode box NOT ticked**: release run
+(`# rev coalesce` in `docs/perf/fix-scroll-held-key.txt`):
+- Unicode A: green (frames_after_release 2, tail 73 ms; was 109 / 3260).
+- Unicode B: red — frames_after_release 3, tail 105 ms; j_ms 25 (was 3210), frames_before_J 0. One run only; not
+  diagnosed. Suspect: `J`'s journal answer (a job event) arrives after `J`'s frame and draws a third frame.
+- Pixel A: tail 1391 ms (was 215976), frames_after_release 2. Pixel B: tail 372, j_ms 318. bytes_per_frame_held=0
+  because frames_while_held=0 (every repeat joined one turn behind the slow first frame) — 46's job.
+
+Deviations / test changes:
+- `a_key_behind_queued_wakes_joins_their_frame`: same script now asserts 1 frame (quit ends the turn undrawn);
+  the "frame shows the key" check runs the script without the quit and with `j` (unbound key has no effect).
+- Seven pre-existing tests assumed a frame per key (`[key, quit]` scripts): they now use `ScriptedWakes::spaced`
+  (each wake arrives after the frame before it) — `pixel_run`, f3 silent-terminal, `every_frame_is_wrapped…`,
+  `a_job_result_is_just_another_wake`, `copy_run`. Assertions unchanged.
+- Loop handover test needs `NoTty` backend: ratatui `clear` asks the tty for the cursor (ENXIO in tests).
+- 8 ms cap: unverified (no clock seam), as specified.
+- Not in file set, not changed: `held_key.rs` reads `written[k+1]` per wake — still valid since stamps stay one per
+  `next_wake`, and a batched wake writes 0 bytes; `after_idle.rs` uses `drawn[shown+1]` (look, not frame) if `G`'s
+  window joins a turn — possible small misread, unverified.
