@@ -49,6 +49,7 @@ fn place(frame: &Arc<RasterFrame>, first_row: usize, rows: Range<usize>, at: u16
             columns: 3,
             rows: 0,
         },
+        layer: Layer::Strip,
     }
 }
 
@@ -440,4 +441,366 @@ fn base64_matches_the_standard_alphabet_for_every_length_and_byte() {
     let mut out = Vec::new();
     base64(&bytes, &mut out);
     assert_eq!(text(&out), reference(&bytes));
+}
+
+/// A fixed run of frames: two strips, one replaced, one dropped, hide, free.
+fn pinned_run(images: &mut KittyImages) -> Vec<u8> {
+    let a = strip(2, [10, 20, 30, 255]);
+    let b = strip(1, [0, 0, 0, 0]);
+    let b2 = strip(1, [64, 32, 16, 128]);
+    let mut out = Vec::new();
+    images.frame(&[place(&a, 0, 0..2, 1), place(&b, 2, 0..1, 3)], &mut out);
+    images.frame(&[place(&a, 0, 1..2, 0), place(&b2, 2, 0..1, 2)], &mut out);
+    images.frame(&[place(&a, 0, 0..1, 4)], &mut out);
+    images.hide(&mut out);
+    images.free_all(&mut out);
+    out
+}
+
+/// `pinned_run`'s bytes as captured before layers and deflate existed
+/// (ticket 45, at e6f12848).
+const PINNED_BEFORE_DEFLATE: &str = "\u{1b}_Ga=t,f=32,t=d,i=1000,s=6,v=8,q=1,m=0;ChQe/woUHv8KFB7/ChQe/woUHv8KFB7/ChQe/woUHv8KFB7/ChQe/woUHv8KFB7/ChQe/woUHv8KFB7/ChQe/woUHv8KFB7/ChQe/woUHv8KFB7/ChQe/woUHv8KFB7/ChQe/woUHv8KFB7/ChQe/woUHv8KFB7/ChQe/woUHv8KFB7/ChQe/woUHv8KFB7/ChQe/woUHv8KFB7/ChQe/woUHv8KFB7/ChQe/woUHv8KFB7/ChQe/woUHv8KFB7/\u{1b}\\\u{1b}7\u{1b}[2;3H\u{1b}_Ga=p,i=1000,p=1,x=0,y=0,w=6,h=8,c=3,r=2,C=1,q=1\u{1b}\\\u{1b}8\u{1b}_Ga=t,f=32,t=d,i=1001,s=6,v=4,q=1,m=0;AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u{1b}\\\u{1b}7\u{1b}[4;3H\u{1b}_Ga=p,i=1001,p=1,x=0,y=0,w=6,h=4,c=3,r=1,C=1,q=1\u{1b}\\\u{1b}8\u{1b}7\u{1b}[1;3H\u{1b}_Ga=p,i=1000,p=1,x=0,y=4,w=6,h=4,c=3,r=1,C=1,q=1\u{1b}\\\u{1b}8\u{1b}_Ga=d,d=I,i=1001,q=1\u{1b}\\\u{1b}_Ga=t,f=32,t=d,i=1002,s=6,v=4,q=1,m=0;gEAggIBAIICAQCCAgEAggIBAIICAQCCAgEAggIBAIICAQCCAgEAggIBAIICAQCCAgEAggIBAIICAQCCAgEAggIBAIICAQCCAgEAggIBAIICAQCCAgEAggIBAIICAQCCA\u{1b}\\\u{1b}7\u{1b}[3;3H\u{1b}_Ga=p,i=1002,p=1,x=0,y=0,w=6,h=4,c=3,r=1,C=1,q=1\u{1b}\\\u{1b}8\u{1b}7\u{1b}[5;3H\u{1b}_Ga=p,i=1000,p=1,x=0,y=0,w=6,h=4,c=3,r=1,C=1,q=1\u{1b}\\\u{1b}8\u{1b}_Ga=d,d=i,i=1002,p=1,q=1\u{1b}\\\u{1b}_Ga=d,d=i,i=1000,p=1,q=1\u{1b}\\\u{1b}_Ga=d,d=I,i=1000,q=1\u{1b}\\\u{1b}_Ga=d,d=I,i=1002,q=1\u{1b}\\";
+
+#[test]
+fn deflate_off_is_unchanged() {
+    let out = pinned_run(&mut KittyImages::new(8).deflating(false));
+    assert_eq!(text(&out), PINNED_BEFORE_DEFLATE);
+    // Off is the default.
+    assert_eq!(
+        text(&pinned_run(&mut KittyImages::new(8))),
+        PINNED_BEFORE_DEFLATE
+    );
+}
+
+/// Standard base64 back to bytes (test-side inverse of `base64`).
+fn unbase64(text: &[u8]) -> Vec<u8> {
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut bits = 0u32;
+    let mut held = 0;
+    let mut out = Vec::new();
+    for &symbol in text.iter().filter(|&&symbol| symbol != b'=') {
+        let value = ALPHABET.iter().position(|&a| a == symbol).unwrap();
+        bits = bits << 6 | u32::try_from(value).unwrap();
+        held += 6;
+        if held >= 8 {
+            held -= 8;
+            out.push(u8::try_from(bits >> held & 0xff).unwrap());
+        }
+    }
+    out
+}
+
+/// Every transmit in `bytes`: its first chunk's control data and its whole
+/// payload, chunks joined and base64-decoded.
+fn transmits(bytes: &[u8]) -> Vec<(String, Vec<u8>)> {
+    let mut found: Vec<(String, Vec<u8>)> = Vec::new();
+    for command in text(bytes).split("\x1b_G").skip(1) {
+        let body = &command[..command.find("\x1b\\").unwrap()];
+        let (control, payload) = body.split_once(';').unwrap_or((body, ""));
+        if control.starts_with("a=t") {
+            found.push((control.to_owned(), payload.as_bytes().to_vec()));
+        } else if control.starts_with("m=") {
+            found
+                .last_mut()
+                .unwrap()
+                .1
+                .extend_from_slice(payload.as_bytes());
+        }
+    }
+    found
+        .into_iter()
+        .map(|(control, payload)| (control, unbase64(&payload)))
+        .collect()
+}
+
+fn inflate(bytes: &[u8]) -> Vec<u8> {
+    miniz_oxide::inflate::decompress_to_vec_zlib(bytes).unwrap()
+}
+
+/// `place`, as the emphasis layer over the strip at `first_row`, one column
+/// to the right.
+fn emphasis(frame: &Arc<RasterFrame>, first_row: usize, rows: Range<usize>, at: u16) -> Place<'_> {
+    let strip = place(frame, first_row, rows, at);
+    Place {
+        layer: Layer::Emphasis,
+        cells: CellRect {
+            column: 3,
+            ..strip.cells
+        },
+        ..strip
+    }
+}
+
+const FIRST_EMPHASIS: u32 = EMPHASIS_ID_BIT | FIRST_IMAGE_ID;
+
+fn base_and_glow() -> (Arc<RasterFrame>, Arc<RasterFrame>) {
+    (strip(4, [0, 0, 0, 0]), strip(4, [9, 9, 9, 9]))
+}
+
+#[test]
+fn deflated_transmit_round_trips() {
+    let frame = strip(40, [64, 32, 16, 128]);
+    let mut out = Vec::new();
+    KittyImages::new(4)
+        .deflating(true)
+        .frame(&[place(&frame, 0, 0..1, 0)], &mut out);
+    let sent = transmits(&out);
+    assert_eq!(sent.len(), 1);
+    assert_eq!(sent[0].0, "a=t,f=32,t=d,o=z,i=1000,s=6,v=160,q=1,m=0");
+    assert_eq!(inflate(&sent[0].1), straight_alpha(&frame.pixels));
+}
+
+#[test]
+fn deflated_chunks_wrap_in_tmux() {
+    // Hashed noise does not compress, so the deflated upload still chunks.
+    let pixels: Vec<u8> = (0..6 * 4000u32)
+        .flat_map(|at| {
+            let [r, g, b, _] = at.wrapping_mul(2_654_435_761).to_le_bytes();
+            [r, g, b, 255]
+        })
+        .collect();
+    let frame = Arc::new(RasterFrame {
+        width: 6,
+        height: 4000,
+        rows: 1000,
+        columns: 3,
+        pixels,
+    });
+    let places = [place(&frame, 0, 0..1, 0)];
+    let mut direct = Vec::new();
+    KittyImages::new(4)
+        .deflating(true)
+        .frame(&places, &mut direct);
+    let mut tmux = Vec::new();
+    KittyImages::new(4)
+        .deflating(true)
+        .with_transport(Transport::TmuxPassthrough)
+        .frame(&places, &mut tmux);
+
+    let sent = commands(&direct);
+    assert!(sent[0].contains("o=z"), "{sent:?}");
+    assert!(sent.iter().any(|c| c.starts_with("m=")), "{sent:?}");
+    let (forwarded, wrappers) = crate::tmux::unwrap_all(&tmux);
+    assert_eq!(forwarded, direct);
+    assert_eq!(wrappers, sent.len());
+}
+
+#[test]
+fn emphasis_sits_above_its_strip() {
+    let (base, glow) = base_and_glow();
+    let mut images = KittyImages::new(8);
+    let mut out = Vec::new();
+    // Emphasis listed first: the frame still emits every strip first.
+    images.frame(
+        &[emphasis(&glow, 0, 0..2, 1), place(&base, 0, 0..2, 1)],
+        &mut out,
+    );
+    assert_eq!(
+        commands(&out),
+        [
+            "a=t,f=32,t=d,i=1000,s=6,v=16,q=1,m=0".to_owned(),
+            "a=p,i=1000,p=1,x=0,y=0,w=6,h=8,c=3,r=2,C=1,q=1".to_owned(),
+            format!("a=t,f=32,t=d,i={FIRST_EMPHASIS},s=6,v=16,q=1,m=0"),
+            format!("a=p,i={FIRST_EMPHASIS},p=1,x=0,y=0,w=6,h=8,c=3,r=2,C=1,z=1,q=1"),
+        ]
+    );
+    assert!(text(&out).contains(&format!("\x1b7\x1b[2;4H\x1b_Ga=p,i={FIRST_EMPHASIS}")));
+}
+
+#[test]
+fn emphasis_goes_strip_stays() {
+    let (base, glow) = base_and_glow();
+    let mut images = KittyImages::new(8);
+    images.frame(
+        &[place(&base, 0, 0..2, 1), emphasis(&glow, 0, 0..2, 1)],
+        &mut Vec::new(),
+    );
+    let mut out = Vec::new();
+    images.frame(&[place(&base, 0, 0..2, 1)], &mut out);
+    assert_eq!(
+        commands(&out),
+        [
+            "a=p,i=1000,p=1,x=0,y=0,w=6,h=8,c=3,r=2,C=1,q=1".to_owned(),
+            format!("a=d,d=i,i={FIRST_EMPHASIS},p=1,q=1"),
+        ]
+    );
+}
+
+#[test]
+fn emphasis_follows_a_moved_strip() {
+    let (base, glow) = base_and_glow();
+    let mut images = KittyImages::new(8);
+    images.frame(
+        &[place(&base, 0, 0..2, 1), emphasis(&glow, 0, 0..2, 1)],
+        &mut Vec::new(),
+    );
+    let mut out = Vec::new();
+    images.frame(
+        &[emphasis(&glow, 0, 1..3, 0), place(&base, 0, 1..3, 0)],
+        &mut out,
+    );
+    assert_eq!(
+        commands(&out),
+        [
+            "a=p,i=1000,p=1,x=0,y=4,w=6,h=8,c=3,r=2,C=1,q=1".to_owned(),
+            format!("a=p,i={FIRST_EMPHASIS},p=1,x=0,y=4,w=6,h=8,c=3,r=2,C=1,z=1,q=1"),
+        ],
+        "no retransmit; the emphasis is re-placed after its strip"
+    );
+}
+
+#[test]
+fn a_deflate_error_falls_back_to_raw() {
+    let frame = strip(4, [64, 32, 16, 128]);
+    let mut images = KittyImages::new(8).deflating(true);
+    assert!(images.is_deflating());
+    images.frame(&[place(&frame, 0, 0..4, 0)], &mut Vec::new());
+
+    // ENOENT behaves as today: forgotten, retransmitted, still deflated.
+    images.answer(&replies(b"\x1b_Gi=1000;ENOENT:gone\x1b\\")[0]);
+    assert!(images.is_deflating());
+    let mut out = Vec::new();
+    images.frame(&[place(&frame, 0, 0..4, 0)], &mut out);
+    assert_eq!(
+        commands(&out)[0],
+        "a=t,f=32,t=d,o=z,i=1001,s=6,v=16,q=1,m=0"
+    );
+
+    images.answer(&replies(b"\x1b_Gi=1001;EINVAL:bad compression\x1b\\")[0]);
+    assert!(!images.is_deflating());
+    out.clear();
+    images.frame(&[place(&frame, 0, 0..4, 0)], &mut out);
+    assert_eq!(commands(&out)[0], "a=t,f=32,t=d,i=1002,s=6,v=16,q=1,m=0");
+    assert!(!text(&out).contains("o=z"));
+    assert_eq!(transmits(&out)[0].1, straight_alpha(&frame.pixels));
+}
+
+#[test]
+fn deflate_shrinks_a_sparse_strip() {
+    // 187 columns of 10×20 px cells, 20 rows: six 2-px opaque lanes on a
+    // transparent background, as a graph strip mostly is.
+    let (width, rows, cell_height) = (1870u32, 20usize, 20u32);
+    let height = u32::try_from(rows).unwrap() * cell_height;
+    let mut pixels = vec![0u8; usize::try_from(width * height * 4).unwrap()];
+    for y in 0..height {
+        for lane in 0..6u32 {
+            for x in [lane * 30 + 5, lane * 30 + 6] {
+                let at = usize::try_from((y * width + x) * 4).unwrap();
+                pixels[at..at + 4].copy_from_slice(&[200, 80, 40, 255]);
+            }
+        }
+    }
+    let frame = Arc::new(RasterFrame {
+        width,
+        height,
+        rows,
+        columns: 187,
+        pixels,
+    });
+    let places = [Place {
+        first_row: 0,
+        frame: &frame,
+        rows: 0..rows,
+        cells: CellRect {
+            column: 0,
+            row: 0,
+            columns: 187,
+            rows: 0,
+        },
+        layer: Layer::Strip,
+    }];
+    let mut raw = Vec::new();
+    KittyImages::new(2).frame(&places, &mut raw);
+    let started = std::time::Instant::now();
+    let mut deflated = Vec::new();
+    KittyImages::new(2)
+        .deflating(true)
+        .frame(&places, &mut deflated);
+    let took = started.elapsed();
+    #[expect(clippy::cast_precision_loss, reason = "a printed percentage")]
+    let percent = deflated.len() as f64 * 100.0 / raw.len() as f64;
+    println!(
+        "deflate_shrinks_a_sparse_strip: raw {} B, deflated {} B ({percent:.2}%), encode {:.3} ms",
+        raw.len(),
+        deflated.len(),
+        took.as_secs_f64() * 1000.0
+    );
+    assert!(
+        deflated.len() * 10 <= raw.len(),
+        "{} vs {}",
+        deflated.len(),
+        raw.len()
+    );
+    assert_eq!(
+        inflate(&transmits(&deflated)[0].1),
+        straight_alpha(&frame.pixels)
+    );
+}
+
+#[test]
+fn emphasis_enoent_retransmits() {
+    let (base, glow) = base_and_glow();
+    let mut images = KittyImages::new(8);
+    let places = [place(&base, 0, 0..2, 1), emphasis(&glow, 0, 0..2, 1)];
+    images.frame(&places, &mut Vec::new());
+    images.answer(&replies(format!("\x1b_Gi={FIRST_EMPHASIS};ENOENT:gone\x1b\\").as_bytes())[0]);
+    let mut out = Vec::new();
+    images.frame(&places, &mut out);
+    let sent = commands(&out);
+    assert_eq!(sent.len(), 3, "{sent:?}");
+    assert_eq!(
+        sent[1],
+        format!("a=t,f=32,t=d,i={},s=6,v=16,q=1,m=0", FIRST_EMPHASIS + 1)
+    );
+}
+
+#[test]
+fn forget_covers_emphasis() {
+    let (base, glow) = base_and_glow();
+    let mut images = KittyImages::new(8);
+    let places = [place(&base, 0, 0..2, 1), emphasis(&glow, 0, 0..2, 1)];
+    images.frame(&places, &mut Vec::new());
+    images.forget_uploads();
+    assert_eq!(images.uploaded(), 0);
+    let mut out = Vec::new();
+    images.frame(&places, &mut out);
+    assert_eq!(transmits(&out).len(), 2);
+}
+
+#[test]
+fn free_all_frees_emphasis() {
+    let (base, glow) = base_and_glow();
+    let mut images = KittyImages::new(8);
+    images.frame(
+        &[place(&base, 0, 0..2, 1), emphasis(&glow, 0, 0..2, 1)],
+        &mut Vec::new(),
+    );
+    let mut out = Vec::new();
+    images.free_all(&mut out);
+    assert_eq!(
+        commands(&out),
+        [
+            "a=d,d=I,i=1000,q=1".to_owned(),
+            format!("a=d,d=I,i={FIRST_EMPHASIS},q=1"),
+        ]
+    );
+}
+
+#[test]
+fn hide_hides_emphasis() {
+    let (base, glow) = base_and_glow();
+    let mut images = KittyImages::new(8);
+    images.frame(
+        &[place(&base, 0, 0..2, 1), emphasis(&glow, 0, 0..2, 1)],
+        &mut Vec::new(),
+    );
+    let mut out = Vec::new();
+    images.hide(&mut out);
+    assert_eq!(
+        commands(&out),
+        [
+            "a=d,d=i,i=1000,p=1,q=1".to_owned(),
+            format!("a=d,d=i,i={FIRST_EMPHASIS},p=1,q=1"),
+        ]
+    );
 }

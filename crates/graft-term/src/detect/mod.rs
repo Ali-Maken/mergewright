@@ -191,6 +191,7 @@ pub fn detect(environment: &Environment, host: &mut dyn TerminalHost) -> Capabil
         tier,
         pixel_protocol,
         kitty_graphics: graphics.kitty,
+        kitty_deflate: graphics.kitty_deflate,
         sixel: graphics.sixel,
         iterm2_images,
         // Judged against the *first* round, not the merged outcome. These two
@@ -229,6 +230,7 @@ fn unprobed(environment: &Environment) -> Capabilities {
         tier: RenderingTier::Ascii,
         pixel_protocol: None,
         kitty_graphics: Supported::Silent,
+        kitty_deflate: false,
         sixel: Supported::Silent,
         iterm2_images: false,
         kitty_keyboard: Supported::Silent,

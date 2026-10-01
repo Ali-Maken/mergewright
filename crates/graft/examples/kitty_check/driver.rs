@@ -172,6 +172,7 @@ fn frame(images: &mut KittyImages, strips: &[Arc<RasterFrame>; 2], scroll: usize
                     rows: u16::try_from(rows.len()).unwrap_or(u16::MAX),
                 },
                 rows,
+                layer: graft_term::kitty::Layer::Strip,
             }
         })
         .collect();

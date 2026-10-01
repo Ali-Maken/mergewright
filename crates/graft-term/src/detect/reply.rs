@@ -251,13 +251,27 @@ pub(crate) fn synchronized_output(reply: Reply<'_>) -> Option<bool> {
     Some(number::<u16>(fields.next()?)? != 0)
 }
 
-/// True for a Kitty graphics protocol reply (`ESC _ G … ESC \`).
+/// A Kitty graphics protocol reply (`ESC _ G i=<id>… ; message ESC \`) about
+/// image `id`: `Some(true)` for `OK`, `Some(false)` for any error, `None` for
+/// anything else, a reply about another id included.
 ///
-/// Any answer counts, exactly as ADR-0012 found: only a terminal that
-/// implements the protocol answers the `a=q` query at all, and what it says
-/// (`OK`, or an error about the dummy image) does not change that.
-pub(crate) fn kitty_graphics(reply: Reply<'_>) -> bool {
-    matches!(reply, Reply::Apc(body) if body.starts_with(b"G"))
+/// For the graphics query any answer counts, exactly as ADR-0012 found: only
+/// a terminal that implements the protocol answers `a=q` at all. For the
+/// deflate query only `OK` does. Matching by id keeps the two apart, since
+/// both go out in the same round.
+pub(crate) fn kitty_graphics_reply(reply: Reply<'_>, id: u32) -> Option<bool> {
+    let Reply::Apc(body) = reply else {
+        return None;
+    };
+    let body = body.strip_prefix(b"G")?;
+    let (control, message) = match body.iter().position(|&byte| byte == b';') {
+        Some(at) => (&body[..at], &body[at + 1..]),
+        None => (body, &b""[..]),
+    };
+    let named = control
+        .split(|&byte| byte == b',')
+        .find_map(|key| number::<u32>(key.strip_prefix(b"i=")?))?;
+    (named == id).then_some(message == b"OK")
 }
 
 /// The background colour from an `OSC 11` reply.
@@ -341,7 +355,8 @@ mod tests {
         let found = all(GHOSTTY_ROUND);
 
         assert_eq!(found.len(), 6, "{found:?}");
-        assert!(kitty_graphics(found[0]));
+        assert_eq!(kitty_graphics_reply(found[0], 31), Some(true));
+        assert_eq!(kitty_graphics_reply(found[0], 32), None);
         assert!(kitty_keyboard(found[1]));
         assert_eq!(cell_size(found[2]), Some((17, 37)));
         assert_eq!(synchronized_output(found[3]), Some(true));

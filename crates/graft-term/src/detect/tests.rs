@@ -160,6 +160,8 @@ fn a_terminal_that_answers_everything_gets_the_pixel_tier() {
             tier: RenderingTier::Pixel,
             pixel_protocol: Some(PixelProtocol::Kitty),
             kitty_graphics: Supported::Yes,
+            // The captured round predates the deflate query: no reply.
+            kitty_deflate: false,
             sixel: Supported::No,
             iterm2_images: false,
             kitty_keyboard: Supported::Yes,
@@ -842,5 +844,122 @@ mod redetection {
         requery_theme(&mut host, dark_background(), SSH_PROBE_BUDGET).expect("a fake cannot fail");
 
         assert!(within_budget(host.longest_wait(start), SSH_PROBE_BUDGET));
+    }
+}
+
+/// The `o=z` query (ticket m7/45): its own id, matched by id, same round.
+mod deflate {
+    use super::*;
+
+    const GRAPHICS_OK: &[u8] = b"\x1b_Gi=31;OK\x1b\\";
+    const DEFLATE_OK: &[u8] = b"\x1b_Gi=32;OK\x1b\\";
+    const FENCE: &[u8] = b"\x1b[?62;22c";
+
+    fn detect_with(round: &[&[u8]]) -> (Capabilities, FakeHost, Instant) {
+        let mut host = FakeHost::answering(&[&round.concat()]);
+        let start = Instant::now();
+        let capabilities = detect(&terminal(), &mut host);
+        (capabilities, host, start)
+    }
+
+    #[test]
+    fn deflate_ok_turns_it_on() {
+        let (capabilities, host, start) = detect_with(&[GRAPHICS_OK, DEFLATE_OK, FENCE]);
+        assert!(capabilities.kitty_deflate);
+        assert_eq!(capabilities.kitty_graphics, Supported::Yes);
+        // Same single write, same single deadline as before the query.
+        assert_eq!(host.written, vec![probe::full_round()]);
+        assert!(within_budget(host.longest_wait(start), LOCAL_PROBE_BUDGET));
+        let deflate_at = probe::full_round()
+            .windows(probe::KITTY_DEFLATE_QUERY.len())
+            .position(|window| window == probe::KITTY_DEFLATE_QUERY)
+            .expect("the deflate query is in the round");
+        assert!(deflate_at < probe::full_round().len() - b"\x1b[c".len());
+    }
+
+    #[test]
+    fn deflate_error_leaves_it_off() {
+        let (capabilities, ..) = detect_with(&[
+            GRAPHICS_OK,
+            b"\x1b_Gi=32;EINVAL:unknown compression\x1b\\",
+            FENCE,
+        ]);
+        assert!(!capabilities.kitty_deflate);
+        assert_eq!(capabilities.kitty_graphics, Supported::Yes);
+    }
+
+    #[test]
+    fn deflate_silence_leaves_it_off() {
+        let (capabilities, ..) = detect_with(&[GRAPHICS_OK, FENCE]);
+        assert!(!capabilities.kitty_deflate);
+        assert_eq!(capabilities.kitty_graphics, Supported::Yes);
+        let (unfenced, ..) = detect_with(&[GRAPHICS_OK, DEFLATE_OK]);
+        assert!(!unfenced.kitty_deflate, "an unfenced round proves nothing");
+    }
+
+    #[test]
+    fn replies_are_matched_by_id() {
+        let (deflate_alone, ..) = detect_with(&[DEFLATE_OK, FENCE]);
+        assert_eq!(deflate_alone.kitty_graphics, Supported::No);
+        assert!(
+            !deflate_alone.kitty_deflate,
+            "no graphics, nothing to deflate"
+        );
+
+        let (other_id, ..) = detect_with(&[b"\x1b_Gi=99;OK\x1b\\", FENCE]);
+        assert_eq!(other_id.kitty_graphics, Supported::No);
+        assert!(!other_id.kitty_deflate);
+    }
+
+    #[test]
+    fn deflate_query_payload_inflates() {
+        let query = probe::KITTY_DEFLATE_QUERY;
+        let text = std::str::from_utf8(query).unwrap();
+        let (control, rest) = text
+            .strip_prefix("\x1b_G")
+            .unwrap()
+            .split_once(';')
+            .unwrap();
+        assert_eq!(control, "i=32,s=1,v=1,a=q,t=d,f=32,o=z");
+        let payload = rest.strip_suffix("\x1b\\").unwrap();
+        let inflated = miniz_oxide::inflate::decompress_to_vec_zlib(&unbase64(payload)).unwrap();
+        assert_eq!(inflated, [0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn deflate_query_wraps_in_tmux() {
+        let mut host = FakeHost::answering(&[
+            ANSWERS_EVERYTHING,
+            &[GRAPHICS_OK, DEFLATE_OK, FENCE].concat(),
+        ])
+        .with_tmux_version("tmux 3.4\n");
+        let capabilities = detect(&inside_tmux(), &mut host);
+        assert!(capabilities.kitty_deflate);
+        let round = probe::graphics_round();
+        assert!(
+            round
+                .windows(probe::KITTY_DEFLATE_QUERY.len())
+                .any(|window| window == probe::KITTY_DEFLATE_QUERY)
+        );
+        assert_eq!(
+            host.written.get(1).map(Vec::as_slice),
+            Some(probe::tmux_passthrough(&round).as_slice())
+        );
+    }
+
+    fn unbase64(text: &str) -> Vec<u8> {
+        const ALPHABET: &[u8; 64] =
+            b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        let (mut bits, mut held, mut out) = (0u32, 0, Vec::new());
+        for symbol in text.bytes().filter(|&symbol| symbol != b'=') {
+            let value = ALPHABET.iter().position(|&a| a == symbol).unwrap();
+            bits = bits << 6 | u32::try_from(value).unwrap();
+            held += 6;
+            if held >= 8 {
+                held -= 8;
+                out.push(u8::try_from(bits >> held & 0xff).unwrap());
+            }
+        }
+        out
     }
 }

@@ -1664,6 +1664,7 @@ dependencies = [
  "graft-core",
  "graft-fixtures",
  "libc",
+ "miniz_oxide 0.8.9",
  "png",
  "proptest",
 ]

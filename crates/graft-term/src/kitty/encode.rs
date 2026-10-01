@@ -5,16 +5,37 @@ use std::io::Write as _;
 
 use graft_core::raster::RasterFrame;
 
-use super::{CellRect, Place};
+use super::{CellRect, Layer, Place};
 use crate::tmux::Transport;
 
 /// Base64 bytes per transmit chunk, the protocol's limit.
 const CHUNK: usize = 4096;
 
-/// `a=t`: the strip's straight-alpha RGBA, base64 in 4096-byte chunks.
-pub(super) fn transmit(transport: Transport, id: u32, frame: &RasterFrame, out: &mut Vec<u8>) {
-    let mut encoded = Vec::with_capacity(frame.pixels.len().div_ceil(3) * 4);
-    base64(&straight_alpha(&frame.pixels), &mut encoded);
+/// zlib level for `o=z`: the fastest, because encode time is frame budget
+/// and a graph strip is mostly runs of transparent pixels, which even the
+/// fastest level collapses.
+const DEFLATE_LEVEL: u8 = 1;
+
+/// `a=t`: the strip's straight-alpha RGBA, base64 in 4096-byte chunks;
+/// zlib-deflated first, with `o=z`, when `deflate` is on.
+pub(super) fn transmit(
+    transport: Transport,
+    id: u32,
+    frame: &RasterFrame,
+    deflate: bool,
+    out: &mut Vec<u8>,
+) {
+    let straight = straight_alpha(&frame.pixels);
+    let (payload, compression) = if deflate {
+        (
+            miniz_oxide::deflate::compress_to_vec_zlib(&straight, DEFLATE_LEVEL),
+            "o=z,",
+        )
+    } else {
+        (straight, "")
+    };
+    let mut encoded = Vec::with_capacity(payload.len().div_ceil(3) * 4);
+    base64(&payload, &mut encoded);
     let mut chunks = encoded.chunks(CHUNK).peekable();
     let mut first = true;
     // An empty strip still needs one (empty) command to say so.
@@ -23,7 +44,7 @@ pub(super) fn transmit(transport: Transport, id: u32, frame: &RasterFrame, out: 
             transport,
             out,
             format_args!(
-                "a=t,f=32,t=d,i={id},s={},v={},q=1,m=0",
+                "a=t,f=32,t=d,{compression}i={id},s={},v={},q=1,m=0",
                 frame.width, frame.height
             ),
             b"",
@@ -37,7 +58,7 @@ pub(super) fn transmit(transport: Transport, id: u32, frame: &RasterFrame, out: 
                 transport,
                 out,
                 format_args!(
-                    "a=t,f=32,t=d,i={id},s={},v={},q=1,m={more}",
+                    "a=t,f=32,t=d,{compression}i={id},s={},v={},q=1,m={more}",
                     frame.width, frame.height
                 ),
                 chunk,
@@ -80,10 +101,16 @@ pub(super) fn put_placement(transport: Transport, id: u32, place: &Place<'_>, ou
         transport,
         out,
         format_args!(
-            "a=p,i={id},p=1,x=0,y={},w={},h={},c={columns},r={rows},C=1,q=1",
+            "a=p,i={id},p=1,x=0,y={},w={},h={},c={columns},r={rows},C=1,{z}q=1",
             start.saturating_mul(cell_height),
             frame.width,
             count.saturating_mul(cell_height),
+            // Strips send no `z` at all (protocol default 0), so their bytes
+            // are what they were before layers existed.
+            z = match place.layer {
+                Layer::Strip => "",
+                Layer::Emphasis => "z=1,",
+            },
         ),
         b"",
     );
