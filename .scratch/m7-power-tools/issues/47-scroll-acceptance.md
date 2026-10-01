@@ -3,7 +3,7 @@
 Status: ready
 Build with: Fable. Acceptance ticket: it judges whether the promise holds end to end, which no single diff shows.
 Needs: every other 41–46 ticket: `41-scroll-team-fixture`, `42-scroll-held-key-gate`,
-Blocked by: 41–46, 46b
+Blocked by: 41–46, 46b, 46c
 `43-scroll-coalesce-input`, `44-scroll-emphasis-layer`, `45-scroll-kitty-layer-deflate`, `46-scroll-strips-wiring`.
 
 ## Promise
