@@ -182,6 +182,16 @@ pub(super) fn ready_to_scroll(
 ) -> Result<(JobRunner<Post>, AppState, Vec<StartupWake>), String> {
     let (jobs, mut state) = budget_run::open_into(repo, post)?;
     state.settled_tier = Some(tier);
+    if let Some((columns, rows)) = super::real_size()? {
+        let (next, commands) = update(
+            &state,
+            graft::update::AppEvent::Core(graft_core::event::Event::Resize { columns, rows }),
+        );
+        state = next;
+        for command in commands {
+            jobs.dispatch(command);
+        }
+    }
     let ready = |state: &AppState| {
         state.refs.is_some()
             && state

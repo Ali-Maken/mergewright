@@ -1,0 +1,60 @@
+# debug scroll-lag-big-repo — 2026-10-01T14:22:14Z
+# HEAD 68214f28 +uncommitted
+# Apple M5, 10 cpus; load averages: 3.59 2.69 2.24
+# repo: 17694 commits, 1323 refs, commit-graph chain: yes
+# inproc tier=unicode size=120x40 exit 0
+SUMMARY inproc tier=unicode size=120x40 j_keys=120 latency_p50=845 latency_p99=3652 update_p50=24 update_p99=86 carry_p50=1 carry_p99=12 draw_p50=799 draw_p99=3522 write_p50=172 write_p99=634 bytes_per_j_frame=11098 j_transmits=0
+  frames: real tier=Unicode keys=420 p50_us=1316 p99_us=4784 max_us=5644 over_budget=0 bytes=7349998 kitty_commands=0 peak_rss_mb=252
+  frame_trace: real startup burst_after_first_paint_us=18330 wakes=13 loop_start_us=2651
+  frames: tier=Unicode refs=Fixture trigger=Other frames=228 totals: bytes=8029 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+  frames: tier=Unicode refs=Fixture trigger=Char('j') frames=122 totals: bytes=1354075 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+  frames: tier=Unicode refs=Fixture trigger=Window frames=151 totals: bytes=57099 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+  frames: tier=Unicode refs=Fixture trigger=PageDown frames=241 totals: bytes=4745836 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+  frames: tier=Unicode refs=Fixture trigger=PageUp frames=61 totals: bytes=1158915 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+  frames: tier=Unicode refs=Fixture trigger=Char('k') frames=1 totals: bytes=2364 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+# inproc tier=unicode size=200x50 exit 0
+SUMMARY inproc tier=unicode size=200x50 j_keys=120 latency_p50=1246 latency_p99=4856 update_p50=26 update_p99=73 carry_p50=1 carry_p99=17 draw_p50=1176 draw_p99=4772 write_p50=231 write_p99=801 bytes_per_j_frame=13933 j_transmits=0
+  frames: real tier=Unicode keys=420 p50_us=1671 p99_us=5623 max_us=6654 over_budget=0 bytes=9766143 kitty_commands=0 peak_rss_mb=358
+  frame_trace: real startup burst_after_first_paint_us=19644 wakes=15 loop_start_us=1610
+  frames: tier=Unicode refs=Fixture trigger=Other frames=224 totals: bytes=7824 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+  frames: tier=Unicode refs=Fixture trigger=Char('j') frames=122 totals: bytes=1699934 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+  frames: tier=Unicode refs=Fixture trigger=Window frames=150 totals: bytes=125595 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+  frames: tier=Unicode refs=Fixture trigger=PageDown frames=241 totals: bytes=6417489 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+  frames: tier=Unicode refs=Fixture trigger=PageUp frames=61 totals: bytes=1477479 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+  frames: tier=Unicode refs=Fixture trigger=Char('k') frames=1 totals: bytes=1716 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+# inproc tier=pixel size=120x40 exit 0
+SUMMARY inproc tier=pixel size=120x40 j_keys=120 latency_p50=5677 latency_p99=11369 update_p50=23 update_p99=39 carry_p50=1 carry_p99=13 draw_p50=5657 draw_p99=11090 write_p50=292 write_p99=516 bytes_per_j_frame=6354632 j_transmits=169
+  frames: real tier=Pixel keys=420 p50_us=3700 p99_us=11052 max_us=15983 over_budget=0 bytes=2829825588 kitty_commands=691858 peak_rss_mb=3591
+  frame_trace: real startup burst_after_first_paint_us=19039 wakes=12 loop_start_us=8484
+  frames: tier=Pixel refs=Fixture trigger=Other frames=226 totals: bytes=34318 transmits=0 transmit_bytes=0 placements=393 deletes=0 frees=0
+  frames: tier=Pixel refs=Fixture trigger=Char('j') frames=122 totals: bytes=775265167 transmits=169 transmit_bytes=773293056 placements=254 deletes=2 frees=167
+  frames: tier=Pixel refs=Fixture trigger=Window frames=150 totals: bytes=22836652 transmits=9 transmit_bytes=22769198 placements=319 deletes=0 frees=9
+  frames: tier=Pixel refs=Fixture trigger=PageDown frames=241 totals: bytes=1644751157 transmits=525 transmit_bytes=1640025958 placements=527 deletes=286 frees=513
+  frames: tier=Pixel refs=Fixture trigger=PageUp frames=61 totals: bytes=374233669 transmits=125 transmit_bytes=373113940 placements=133 deletes=72 frees=125
+  frames: tier=Pixel refs=Fixture trigger=Char('k') frames=1 totals: bytes=3228659 transmits=1 transmit_bytes=3222054 placements=2 deletes=0 frees=1
+# inproc tier=pixel size=200x50 exit 0
+SUMMARY inproc tier=pixel size=200x50 j_keys=120 latency_p50=6576 latency_p99=11607 update_p50=24 update_p99=42 carry_p50=1 carry_p99=12 draw_p50=6527 draw_p99=11498 write_p50=268 write_p99=550 bytes_per_j_frame=7191989 j_transmits=186
+  frames: real tier=Pixel keys=420 p50_us=4316 p99_us=10471 max_us=16211 over_budget=1 bytes=3322357174 kitty_commands=812001 peak_rss_mb=4213
+  frame_trace: real startup burst_after_first_paint_us=16463 wakes=11 loop_start_us=8737
+  frames: tier=Pixel refs=Fixture trigger=Other frames=222 totals: bytes=33903 transmits=0 transmit_bytes=0 placements=389 deletes=0 frees=0
+  frames: tier=Pixel refs=Fixture trigger=Char('j') frames=122 totals: bytes=877422766 transmits=186 transmit_bytes=875109912 placements=274 deletes=2 frees=184
+  frames: tier=Pixel refs=Fixture trigger=Window frames=150 totals: bytes=77499251 transmits=26 transmit_bytes=77329280 placements=446 deletes=0 frees=26
+  frames: tier=Pixel refs=Fixture trigger=PageDown frames=241 totals: bytes=1950233129 transmits=601 transmit_bytes=1944402320 placements=603 deletes=361 frees=589
+  frames: tier=Pixel refs=Fixture trigger=PageUp frames=61 totals: bytes=407685612 transmits=146 transmit_bytes=406408380 placements=152 deletes=92 frees=146
+  frames: tier=Pixel refs=Fixture trigger=Char('k') frames=1 totals: bytes=939 transmits=0 transmit_bytes=0 placements=3 deletes=0 frees=0
+SUMMARY pty label=pty profile=text rate=- size=120x40 wait_s=0.3 period_ms=33 hold_s=3.0 keys=91 frames_before_keys=0 frames_while_held=165 frames_after_release=1 bytes_per_key=9666 bytes_after_release=9562 tail_ms=2 rss_mb=42 first_byte_ms=310
+SUMMARY pty label=pty profile=text rate=- size=120x40 wait_s=5.0 period_ms=33 hold_s=3.0 keys=91 frames_before_keys=16 frames_while_held=153 frames_after_release=1 bytes_per_key=10611 bytes_after_release=8915 tail_ms=1 rss_mb=42 first_byte_ms=3
+SUMMARY pty label=pty profile=text rate=- size=200x50 wait_s=0.3 period_ms=33 hold_s=3.0 keys=91 frames_before_keys=16 frames_while_held=152 frames_after_release=1 bytes_per_key=12584 bytes_after_release=13234 tail_ms=1 rss_mb=41 first_byte_ms=3
+SUMMARY pty label=pty profile=text rate=- size=200x50 wait_s=5.0 period_ms=33 hold_s=3.0 keys=91 frames_before_keys=16 frames_while_held=152 frames_after_release=1 bytes_per_key=12584 bytes_after_release=13234 tail_ms=1 rss_mb=41 first_byte_ms=3
+SUMMARY pty label=pty profile=kitty rate=- size=120x40 wait_s=0.3 period_ms=33 hold_s=3.0 keys=91 frames_before_keys=11 frames_while_held=72 frames_after_release=50 bytes_per_key=7008536 bytes_after_release=190187268 tail_ms=1261 rss_mb=662 first_byte_ms=3
+SUMMARY pty label=pty profile=kitty rate=- size=120x40 wait_s=5.0 period_ms=33 hold_s=3.0 keys=91 frames_before_keys=12 frames_while_held=71 frames_after_release=50 bytes_per_key=7008533 bytes_after_release=182891069 tail_ms=1196 rss_mb=662 first_byte_ms=2
+SUMMARY pty label=pty profile=kitty rate=- size=200x50 wait_s=0.3 period_ms=33 hold_s=3.0 keys=91 frames_before_keys=12 frames_while_held=75 frames_after_release=47 bytes_per_key=7491757 bytes_after_release=227157542 tail_ms=1491 rss_mb=703 first_byte_ms=3
+SUMMARY pty label=pty profile=kitty rate=- size=200x50 wait_s=5.0 period_ms=33 hold_s=3.0 keys=91 frames_before_keys=11 frames_while_held=72 frames_after_release=50 bytes_per_key=7491757 bytes_after_release=238356004 tail_ms=1568 rss_mb=702 first_byte_ms=2
+SUMMARY pty label=pty profile=text rate=150000 size=120x40 wait_s=0.3 period_ms=33 hold_s=3.0 keys=91 frames_before_keys=10 frames_while_held=99 frames_after_release=42 bytes_per_key=10605 bytes_after_release=498224 tail_ms=3325 rss_mb=42 first_byte_ms=2
+SUMMARY pty label=pty profile=text rate=300000 size=120x40 wait_s=0.3 period_ms=33 hold_s=3.0 keys=91 frames_before_keys=11 frames_while_held=151 frames_after_release=1 bytes_per_key=10610 bytes_after_release=8915 tail_ms=14 rss_mb=42 first_byte_ms=3
+# done 14:24:49Z
+
+## manual runs, same session (not produced by this script; recorded by hand)
+SUMMARY probe H1 (thread out of the strip cache key, crates/graft-graph/src/raster/cache.rs:295-296, env-gated, reverted): inproc tier=pixel size=120x40 j frames=122 transmits 169 -> 10, bytes per j frame 6354632 -> 375628 (45826713/122). The selection's thread in the key is what re-sends strips on `j`.
+SUMMARY rss vs keys (PROFILE=kitty, 120x40, free reader): 10 keys -> rss 120 MB, tail 217 ms; 31 keys (1 s held) -> rss 365 MB, tail 774 ms; 91 keys -> 662 MB. PROFILE=text: 41-42 MB at any count. His report: 376 MB.
+SUMMARY flake seen once (run 1 of this script, inproc unicode 120x40): "key 300 (PageDown): cursor 6998, top 6961, 0 of 38 rows on hand" (verdict.rs:62). Not reproduced in 2 later runs; PageDown, not `j`; not this bug.
