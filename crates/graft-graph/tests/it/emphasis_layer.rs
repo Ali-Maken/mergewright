@@ -2,14 +2,12 @@
 //!
 //! A strip is drawn from layout alone at one backdrop alpha; the selection's
 //! thread is a second, cropped image drawn at `(a − b) / (1 − b)` so that,
-//! composited over the strip, it gives ADR-0024's alpha `a` again. The anchor
-//! is today's single-pass `rasterise`, which this ticket leaves byte-identical:
-//! the composite must equal it wherever the emphasis layer is clear or solid,
-//! and differ only on anti-aliased edges and crossings, by at most the
-//! backdrop's alpha. Colour itself stays unverified (CLAUDE.md rule 5): the
+//! composited over the strip, it gives ADR-0024's alpha `a` again. The
+//! single pass this was once held against is gone (m7-power-tools/46b); the
+//! raster snapshots (`raster.rs`) now pin the composite's pixels. Colour itself stays unverified (CLAUDE.md rule 5): the
 //! PNGs `thread_pngs` writes are for the user's eye.
 
-use std::collections::{BTreeSet, HashSet};
+use std::collections::BTreeSet;
 use std::ops::Range;
 use std::time::Instant;
 
@@ -20,8 +18,8 @@ use graft_graph::fold::Toward;
 use graft_graph::identity::BranchIdentity;
 use graft_graph::raster::cache::{STRIP_ROWS, StripCache, lit_hash};
 use graft_graph::raster::{
-    Backdrop, Emphasis, Emphasised, Lit, Marker, PlainRow, PlainStrip, RasterRow, Ring, Selection,
-    Strip, Stub, composite, rasterise, rasterise_backdrop, rasterise_emphasis,
+    Backdrop, Emphasis, Emphasised, Lit, Marker, PlainRow, PlainStrip, Ring, Selection, Stub,
+    composite, rasterise_backdrop, rasterise_emphasis,
 };
 use graft_graph::row::Row;
 
@@ -154,33 +152,6 @@ pub(crate) fn lits(thread: &Ancestry, range: Range<usize>, backdrop: Backdrop) -
         .collect()
 }
 
-/// Today's single pass over the same rows, ring, stubs and paint.
-fn legacy(strip: &PlainStrip<'_>, lits: &[Lit<'_>]) -> RasterFrame {
-    let rows: Vec<RasterRow<'_>> = strip
-        .rows
-        .iter()
-        .zip(lits)
-        .map(|(plain, lit)| RasterRow {
-            row: plain.row,
-            ring: plain.ring,
-            emphasis: lit.emphasis,
-            thread: lit.thread,
-            stubs: plain.stubs.clone(),
-        })
-        .collect();
-    rasterise(&Strip {
-        rows: &rows,
-        above: strip.above,
-        lane_columns: strip.lane_columns,
-        marker: strip.marker,
-        cell_width: strip.cell_width,
-        cell_height: strip.cell_height,
-        palette: strip.palette,
-        muted: strip.muted,
-    })
-    .unwrap_or_else(|why| panic!("legacy rasterise: {why}"))
-}
-
 fn backdrop_of(strip: &PlainStrip<'_>, backdrop: Backdrop) -> RasterFrame {
     rasterise_backdrop(strip, backdrop).unwrap_or_else(|why| panic!("backdrop: {why}"))
 }
@@ -196,262 +167,8 @@ fn emphasis_of(strip: &PlainStrip<'_>, lits: &[Lit<'_>], backdrop: Backdrop) -> 
     .unwrap_or_else(|why| panic!("emphasis: {why}"))
 }
 
-/// ADR-0024's alpha for every element of a row, as today's pass gives it:
-/// each drawn lane column and the rail. How many fall below the backdrop
-/// (they would be overdrawn by it, so the layer split cannot express them).
-fn below_backdrop(strip: &PlainStrip<'_>, lits: &[Lit<'_>], backdrop: Backdrop) -> usize {
-    let alpha_at = |lit: &Lit<'_>, column: usize| match lit.thread {
-        Some(thread) if thread.contains(&column) => 1.0,
-        Some(_) => graft_graph::raster::OFF_THREAD_ALPHA,
-        None => match lit.emphasis {
-            Emphasis::Normal => 1.0,
-            Emphasis::Dimmed => graft_graph::raster::FADED_ALPHA,
-        },
-    };
-    let rail = |lit: &Lit<'_>| match (lit.thread, lit.emphasis) {
-        (Some(_), _) => graft_graph::raster::OFF_THREAD_ALPHA,
-        (None, Emphasis::Normal) => 1.0,
-        (None, Emphasis::Dimmed) => graft_graph::raster::FADED_ALPHA,
-    };
-    let b = backdrop.alpha();
-    strip
-        .rows
-        .iter()
-        .zip(lits)
-        .map(|(plain, lit)| {
-            let row = plain.row;
-            let lanes = (0..row.lanes.len().max(row.lane + 1))
-                .filter(|&column| column == row.lane || row.lanes[column].is_some())
-                .filter(|&column| alpha_at(lit, column) < b)
-                .count();
-            lanes + usize::from(strip.marker.is_some() && rail(lit) < b)
-        })
-        .sum()
-}
-
-/// One case's pixels, by what the emphasis layer holds there (ADR-0053
-/// Consequences, ticket 44 Decided 7).
-#[derive(Clone, Copy, Debug, Default)]
-struct Tally {
-    /// Emphasis clear: the backdrop alone, which must be the single pass.
-    clear: usize,
-    /// …of which differ from the single pass (must be 0).
-    clear_differ: usize,
-    /// Emphasis solid and the composite is the single pass.
-    solid: usize,
-    /// Emphasis solid, the single pass drew something else over the lit
-    /// element: a crossing, where the lit line is now on top.
-    crossings: usize,
-    /// The largest channel difference at a crossing.
-    crossing_max: u8,
-    /// Emphasis partly covering: an anti-aliased edge.
-    edge: usize,
-    /// The largest channel difference on an edge.
-    edge_max: u8,
-    /// Edges differing by more than `ceil(b × 255)` (must be 0).
-    edge_over: usize,
-    /// Pixels either image paints.
-    painted: usize,
-}
-
-fn tally(legacy: &RasterFrame, composite: &RasterFrame, top: Option<&Emphasised>, b: f32) -> Tally {
-    assert_eq!(
-        (legacy.width, legacy.height, legacy.columns),
-        (composite.width, composite.height, composite.columns),
-        "the composite is the single pass's size"
-    );
-    let tolerance = ceil_255(b);
-    let cell_width = legacy.width / legacy.columns.max(1);
-    // The emphasis alpha under every pixel of the strip: 0 outside the crop.
-    let mut under = vec![0u8; legacy.pixels.len() / 4];
-    if let Some(top) = top {
-        let (width, left) = (
-            top.frame.width as usize,
-            (u32::from(top.first_column) * cell_width) as usize,
-        );
-        for (y, line) in top.frame.pixels.chunks_exact(width * 4).enumerate() {
-            let at = y * legacy.width as usize + left;
-            for (x, pixel) in line.as_chunks::<4>().0.iter().enumerate() {
-                under[at + x] = pixel[3];
-            }
-        }
-    }
-    let mut tally = Tally::default();
-    let singles = legacy.pixels.as_chunks::<4>().0;
-    let boths = composite.pixels.as_chunks::<4>().0;
-    for ((single, both), &emphasis) in singles.iter().zip(boths).zip(&under) {
-        if single[3] > 0 || both[3] > 0 {
-            tally.painted += 1;
-        }
-        let difference = single
-            .iter()
-            .zip(both)
-            .map(|(&left, &right)| left.abs_diff(right))
-            .max()
-            .unwrap_or(0);
-        match emphasis {
-            0 => {
-                tally.clear += 1;
-                tally.clear_differ += usize::from(single != both);
-            }
-            255 if single == both => tally.solid += 1,
-            255 => {
-                tally.crossings += 1;
-                tally.crossing_max = tally.crossing_max.max(difference);
-            }
-            _ => {
-                tally.edge += 1;
-                tally.edge_max = tally.edge_max.max(difference);
-                tally.edge_over += usize::from(difference > tolerance);
-            }
-        }
-    }
-    tally
-}
-
-/// `ceil(b × 255)`: the most a backdrop of alpha `b` can move a channel.
-fn ceil_255(b: f32) -> u8 {
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // 0.0..=255.0.
-    let bound = (b * 255.0).ceil() as u8;
-    bound
-}
-
 fn composed(base: &RasterFrame, top: Option<&Emphasised>) -> RasterFrame {
     top.map_or_else(|| base.clone(), |top| composite(base, top))
-}
-
-/// One strip, cursor and backdrop against the single pass: the tally
-/// printed, and its exact classes asserted.
-fn one_case(
-    strip: &PlainStrip<'_>,
-    lits: &[Lit<'_>],
-    base: &RasterFrame,
-    backdrop: Backdrop,
-    label: &str,
-) -> Tally {
-    let single = legacy(strip, lits);
-    let top = emphasis_of(strip, lits, backdrop);
-    let both = composed(base, top.as_ref());
-    let tally = tally(&single, &both, top.as_ref(), backdrop.alpha());
-    eprintln!(
-        "{label}: clear {} (differ {}), solid {}, crossings {} (max {}), edge {} (max {}, over \
-         {}), painted {}",
-        tally.clear,
-        tally.clear_differ,
-        tally.solid,
-        tally.crossings,
-        tally.crossing_max,
-        tally.edge,
-        tally.edge_max,
-        tally.edge_over,
-        tally.painted,
-    );
-    assert_eq!(
-        tally.clear_differ, 0,
-        "{label}: where the emphasis is clear the composite must be the single pass"
-    );
-    assert_eq!(
-        tally.edge_over,
-        0,
-        "{label}: an edge moved more than ceil(b × 255) = {}",
-        ceil_255(backdrop.alpha())
-    );
-    tally
-}
-
-/// No thread on screen. All rows plain: the `Full` backdrop is the single
-/// pass, exactly, with no emphasis. Then 44 ruling item 2 (46 Decided 9):
-/// one `Dimmed` row (a stash-only commit), so `lowest` is `Faded`; returns
-/// that case's tally and how many elements fall below the backdrop (must
-/// be 0).
-fn no_thread(strip: &PlainStrip<'_>, label: &str) -> (Tally, usize) {
-    let none = vec![Lit::default(); strip.rows.len()];
-    assert_eq!(
-        backdrop_of(strip, Backdrop::Full),
-        legacy(strip, &none),
-        "{label}: Full is today's plain strip"
-    );
-    assert_eq!(emphasis_of(strip, &none, Backdrop::Full), None);
-
-    let label = format!("{label} one dimmed row");
-    let label = label.as_str();
-    let mut dimmed = none;
-    dimmed[strip.rows.len() / 2].emphasis = Emphasis::Dimmed;
-    let backdrop = Backdrop::lowest(dimmed.iter().copied());
-    assert_eq!(backdrop, Backdrop::Faded, "{label}");
-    let below = below_backdrop(strip, &dimmed, backdrop);
-    let base = backdrop_of(strip, backdrop);
-    (one_case(strip, &dimmed, &base, backdrop, label), below)
-}
-
-#[test]
-fn composite_matches_the_single_pass() {
-    let window = branchy();
-    assert!(
-        window.lane_columns > 8,
-        "the window is {} lanes",
-        window.lane_columns
-    );
-    assert!(window.strips().len() >= 3);
-    let threads = window.threads();
-    let (mut below, mut cases, mut repeats, mut crossings, mut painted) = (0, 0, 0, 0, 0);
-    // Every distinct paint at the snapshot cell, where a 1.5 px stroke
-    // centred on a pixel edge never covers a pixel whole; and every fourth
-    // at the user's, where strokes and nodes do, so the solid and crossing
-    // classes are exercised too (all of them would take ~20 s in debug).
-    for (cell, sample) in [(CELL, 1), (USER_CELL, 4)] {
-        for range in window.strips() {
-            let plain = window.plain(range.clone());
-            let strip = window.strip(&plain, &range, cell);
-
-            let label = format!("{}x{} strip {range:?}", cell.0, cell.1);
-            let (tally, under) = no_thread(&strip, &label);
-            below += under;
-            crossings += tally.crossings;
-            painted += tally.painted;
-            cases += 1;
-
-            for backdrop in [Backdrop::OffThread, Backdrop::Faded] {
-                let base = backdrop_of(&strip, backdrop);
-                // A cursor whose paint over this strip equals an earlier
-                // one's draws the same pixels: run each distinct paint once.
-                let mut seen = HashSet::new();
-                for (cursor, thread) in threads.iter().enumerate() {
-                    let lits = lits(thread, range.clone(), backdrop);
-                    below += below_backdrop(&strip, &lits, backdrop);
-                    if !seen.insert(lit_hash(&Selection {
-                        rows: &lits,
-                        backdrop,
-                    })) {
-                        repeats += 1;
-                        continue;
-                    }
-                    if (seen.len() - 1) % sample != 0 {
-                        continue;
-                    }
-                    let label = format!(
-                        "{}x{} strip {range:?} cursor {cursor:>2} {backdrop:?}",
-                        cell.0, cell.1
-                    );
-                    let tally = one_case(&strip, &lits, &base, backdrop, &label);
-                    crossings += tally.crossings;
-                    painted += tally.painted;
-                    cases += 1;
-                }
-            }
-        }
-    }
-    eprintln!(
-        "{cases} cases drawn ({repeats} cursors repeating an earlier paint skipped, the user's \
-         cell sampled 1 in 4): {crossings} crossing pixels of {painted} painted ({} per \
-         100 000), {below} elements below the backdrop",
-        crossings * 100_000 / painted.max(1)
-    );
-    assert_eq!(below, 0, "an element drawn below the backdrop's alpha");
-    assert!(
-        crossings * 200 <= painted,
-        "crossings are {crossings} of {painted} painted pixels, over 0.5%"
-    );
 }
 
 /// `Backdrop::lowest` reads the paint (46 Signatures): every case in its doc.
@@ -533,7 +250,7 @@ fn an_empty_thread_is_not_no_thread() {
     }
 }
 
-/// `lit_hash` leaves a threaded row's own emphasis out (cache.rs `lit_hash`,
+/// `lit_hash` leaves a threaded row's own emphasis out (cache.rs `lit_hash`):
 /// as 30b's `layout_hash`). That is sound only if, under `Some(thread)`, the
 /// emphasis reaches no pixel of the emphasis pass or the composite — else a
 /// Focus kin change would be a wrong cache hit. Flipping it on one threaded
@@ -669,7 +386,6 @@ fn emphasis_is_cropped_to_lit_columns() {
     ];
     let backdrop = Backdrop::OffThread;
     let base = backdrop_of(&strip, backdrop);
-    let single = legacy(&strip, &lits);
     let top = emphasis_of(&strip, &lits, backdrop).expect("column 4 is lit");
     let cell_width = CELL.0;
     assert!(
@@ -691,29 +407,23 @@ fn emphasis_is_cropped_to_lit_columns() {
         painted_in(top.frame.columns - 1),
         "the crop's last column is empty"
     );
-    // Nothing lit is lost: every cell column where the single pass differs
-    // from the backdrop lies inside the crop.
+    // The lit lane's own cell column lies inside the crop, and
+    // `first_column` places the image over it: composited, that column is
+    // brighter than the backdrop alone.
     let first = u32::from(top.first_column);
-    for x in 0..base.width {
-        let differs = (0..base.height).any(|y| base.pixel(x, y) != single.pixel(x, y));
-        if differs {
-            let cell = x / cell_width;
-            assert!(
-                (first..first + top.frame.columns).contains(&cell),
-                "cell column {cell} is lit but outside the crop {first}..{}",
-                first + top.frame.columns
-            );
-        }
-    }
-    // And `first_column` places it: the composite is the single pass.
-    let tally = tally(
-        &single,
-        &composite(&base, &top),
-        Some(&top),
-        backdrop.alpha(),
+    let lane_cell = 4 * graft_graph::raster::CELLS_PER_LANE;
+    assert!(
+        (first..first + top.frame.columns).contains(&lane_cell),
+        "lane 4's cell column {lane_cell} is outside the crop {first}..{}",
+        first + top.frame.columns
     );
-    assert_eq!(tally.clear_differ, 0);
-    assert_eq!(tally.edge_over, 0);
+    let both = composite(&base, &top);
+    let lit_here = (lane_cell * cell_width..(lane_cell + 1) * cell_width)
+        .any(|x| (0..base.height).any(|y| both.pixel(x, y) != base.pixel(x, y)));
+    assert!(
+        lit_here,
+        "the composite left lane 4's column as the backdrop drew it"
+    );
 }
 
 #[test]
@@ -747,10 +457,10 @@ fn no_paint_no_image() {
     assert_eq!(emphasis_of(&strip, &off, Backdrop::OffThread), None);
 }
 
-/// The PNGs for the user's eye: the same strip and cursor drawn today
-/// (`-legacy`) and as backdrop + emphasis (`-composite`), `OffThread`, at
-/// his cell, on a dark background. Right: the same lit thread in both,
-/// off-thread lanes at the same half strength, no line wider than another.
+/// The PNG for the user's eye: one strip and cursor drawn as backdrop +
+/// emphasis (`-composite`), `OffThread`, at his cell, on a dark background.
+/// Right: the lit thread at full strength, off-thread lanes at half, no line
+/// wider than another.
 /// Colour **unverified** (rule 5).
 #[test]
 fn thread_pngs() {
@@ -760,29 +470,21 @@ fn thread_pngs() {
     let plain = window.plain(range.clone());
     let strip = window.strip(&plain, &range, USER_CELL);
     let lits = lits(&threads[45], range.clone(), Backdrop::OffThread);
-    let single = legacy(&strip, &lits);
     let base = backdrop_of(&strip, Backdrop::OffThread);
     let top = emphasis_of(&strip, &lits, Backdrop::OffThread);
     let both = composed(&base, top.as_ref());
     let shots = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/shots/m7");
-    // Both checked before failing, so one regeneration writes both.
-    let drifted: Vec<String> = [(&single, "legacy"), (&both, "composite")]
-        .into_iter()
-        .filter_map(|(frame, name)| {
-            let png = on_dark(frame);
-            assert!(
-                png.len() <= 200 * 1024,
-                "fix-scroll-thread-{name}.png is {} bytes, over 200 KB",
-                png.len()
-            );
-            graft_fixtures::capture::check_bytes(
-                &shots.join(format!("fix-scroll-thread-{name}.png")),
-                &png,
-            )
-            .err()
-        })
-        .collect();
-    assert!(drifted.is_empty(), "{}", drifted.join("\n"));
+    let png = on_dark(&both);
+    assert!(
+        png.len() <= 200 * 1024,
+        "fix-scroll-thread-composite.png is {} bytes, over 200 KB",
+        png.len()
+    );
+    if let Err(drift) =
+        graft_fixtures::capture::check_bytes(&shots.join("fix-scroll-thread-composite.png"), &png)
+    {
+        panic!("{drift}");
+    }
 }
 
 /// A frame over the dark theme's background, as a PNG.
@@ -808,8 +510,7 @@ fn on_dark(frame: &RasterFrame) -> Vec<u8> {
         .unwrap_or_else(|why| panic!("encoding a PNG: {why}"))
 }
 
-/// What one cursor move costs per strip, against today's full strip: a
-/// tool, not a check. Run in release by `scripts/fix-scroll-emphasis-cost.sh`,
+/// What one cursor move costs per strip, by layer: a tool, not a check. Run in release by `scripts/fix-scroll-emphasis-cost.sh`,
 /// which writes `docs/perf/44-scroll-emphasis-layer.txt`.
 #[test]
 #[ignore = "timing tool; run in release by scripts/fix-scroll-emphasis-cost.sh"]
@@ -824,7 +525,6 @@ fn emphasis_cost() {
         let range = strip_index * STRIP_ROWS..(strip_index + 1) * STRIP_ROWS;
         let plain = window.plain(range.clone());
         let strip = window.strip(&plain, &range, USER_CELL);
-        let mut today = Vec::new();
         let mut backdrop = Vec::new();
         let mut emphasis = Vec::new();
         let mut compose = Vec::new();
@@ -838,9 +538,6 @@ fn emphasis_cost() {
             .chain(cursors)
         {
             let lits = lits(thread, range.clone(), Backdrop::OffThread);
-            let start = Instant::now();
-            std::hint::black_box(legacy(&strip, &lits));
-            today.push(start.elapsed().as_micros());
             let start = Instant::now();
             let base = std::hint::black_box(backdrop_of(&strip, Backdrop::OffThread));
             backdrop.push(start.elapsed().as_micros());
@@ -856,7 +553,6 @@ fn emphasis_cost() {
         }
         let columns = 2 * window.lane_columns;
         for (what, times) in [
-            ("today-full-strip", &mut today),
             ("backdrop", &mut backdrop),
             ("emphasis", &mut emphasis),
             ("composite", &mut compose),

@@ -16,7 +16,10 @@ use graft_fixtures::Shape;
 use graft_graph::fold::Toward;
 use graft_graph::identity::BranchIdentity;
 use graft_graph::layout::layout;
-use graft_graph::raster::{Emphasis, Marker, RasterRow, Ring, Strip, Stub, rasterise};
+use graft_graph::raster::{
+    Backdrop, Emphasis, Lit, Marker, PlainRow, PlainStrip, RasterError, Ring, Selection, Stub,
+    composite, rasterise_backdrop, rasterise_emphasis,
+};
 use graft_graph::row::Row;
 
 use super::corpus::{open_with_seeds, walk_everything};
@@ -66,8 +69,8 @@ fn width_of(rows: &[Row]) -> usize {
         .unwrap_or(0)
 }
 
-fn strip<'a>(rows: &'a [RasterRow<'a>], lane_columns: usize, cell: (u32, u32)) -> Strip<'a> {
-    Strip {
+fn strip<'a>(rows: &'a [PlainRow<'a>], lane_columns: usize, cell: (u32, u32)) -> PlainStrip<'a> {
+    PlainStrip {
         rows,
         above: None,
         lane_columns,
@@ -79,13 +82,35 @@ fn strip<'a>(rows: &'a [RasterRow<'a>], lane_columns: usize, cell: (u32, u32)) -
     }
 }
 
-fn plain(rows: &[Row]) -> Vec<RasterRow<'_>> {
-    rows.iter().map(RasterRow::plain).collect()
+fn plain(rows: &[Row]) -> Vec<PlainRow<'_>> {
+    rows.iter().map(PlainRow::of).collect()
+}
+
+/// A strip as the app shows it under a selection: the backdrop at the
+/// lowest alpha `lits` paint (`Backdrop::lowest`), with the emphasis layer
+/// composited over it when there is one (ADR-0053).
+pub(crate) fn layered(
+    strip: &PlainStrip<'_>,
+    lits: &[Lit<'_>],
+) -> Result<RasterFrame, RasterError> {
+    let backdrop = Backdrop::lowest(lits.iter().copied());
+    let base = rasterise_backdrop(strip, backdrop)?;
+    let sel = Selection {
+        rows: lits,
+        backdrop,
+    };
+    Ok(match rasterise_emphasis(strip, &sel)? {
+        Some(top) => composite(&base, &top),
+        None => base,
+    })
 }
 
 fn render(rows: &[Row], cell: (u32, u32)) -> RasterFrame {
     let raster_rows = plain(rows);
-    rasterise(&strip(&raster_rows, width_of(rows), cell))
+    // No selection: every row `Lit::default()`, so the `Full` backdrop and no
+    // emphasis layer.
+    let lits = vec![Lit::default(); rows.len()];
+    layered(&strip(&raster_rows, width_of(rows), cell), &lits)
         .unwrap_or_else(|why| panic!("rasterising a corpus strip: {why}"))
 }
 
@@ -236,15 +261,18 @@ fn lone(rows: &[Row]) -> Row {
 }
 
 fn ring_mask(row: &Row, ring: Ring, colour: Rgb) -> Vec<bool> {
-    let raster_row = [RasterRow {
+    let raster_row = [PlainRow {
         ring,
-        ..RasterRow::plain(row)
+        ..PlainRow::of(row)
     }];
     let palette = [colour];
-    let frame = rasterise(&Strip {
-        palette: &palette,
-        ..strip(&raster_row, 1, USER_CELL)
-    })
+    let frame = rasterise_backdrop(
+        &PlainStrip {
+            palette: &palette,
+            ..strip(&raster_row, 1, USER_CELL)
+        },
+        Backdrop::Full,
+    )
     .unwrap_or_else(|why| panic!("rasterising {ring:?}: {why}"));
     frame
         .pixels
@@ -291,14 +319,15 @@ fn emphasis_fades_without_thickening_the_strokes() {
     let rows = rows_of("foxtrot-merge");
     let columns = width_of(&rows);
     let draw = |emphasis| {
-        let raster_rows: Vec<RasterRow<'_>> = rows
-            .iter()
-            .map(|row| RasterRow {
+        let raster_rows = plain(&rows);
+        let lits = vec![
+            Lit {
                 emphasis,
-                ..RasterRow::plain(row)
-            })
-            .collect();
-        rasterise(&strip(&raster_rows, columns, SNAPSHOT_CELL)).unwrap()
+                thread: None,
+            };
+            rows.len()
+        ];
+        layered(&strip(&raster_rows, columns, SNAPSHOT_CELL), &lits).unwrap()
     };
     let painted = |frame: &RasterFrame| {
         frame
@@ -374,23 +403,27 @@ fn the_thread_is_alpha_not_a_wider_stroke() {
     // every lane (not a multiple of 7, so no merge arc; not the strip's own
     // edge row).
     let draw = |thread: Option<&BTreeSet<usize>>| {
-        let raster_rows: Vec<RasterRow<'_>> = rows[8..16]
-            .iter()
-            .map(|row| RasterRow {
+        let raster_rows = plain(&rows[8..16]);
+        let lits = vec![
+            Lit {
+                emphasis: Emphasis::Normal,
                 thread,
-                ..RasterRow::plain(row)
-            })
-            .collect();
-        rasterise(&Strip {
-            rows: &raster_rows,
-            above: Some(&rows[7]),
-            lane_columns,
-            marker: None,
-            cell_width: USER_CELL.0,
-            cell_height: USER_CELL.1,
-            palette: &PALETTE,
-            muted: MUTED,
-        })
+            };
+            raster_rows.len()
+        ];
+        layered(
+            &PlainStrip {
+                rows: &raster_rows,
+                above: Some(&rows[7]),
+                lane_columns,
+                marker: None,
+                cell_width: USER_CELL.0,
+                cell_height: USER_CELL.1,
+                palette: &PALETTE,
+                muted: MUTED,
+            },
+            &lits,
+        )
         .unwrap()
     };
     // Near the band's top edge: clear of the node disc drawn at its mid.
@@ -438,7 +471,7 @@ fn feature() -> BranchIdentity {
     BranchIdentity::of_name(b"feature")
 }
 
-fn folded_raster_rows(rows: &[Row], stubs: bool) -> Vec<RasterRow<'_>> {
+fn folded_raster_rows(rows: &[Row], stubs: bool) -> Vec<PlainRow<'_>> {
     let below = Stub {
         identity: topic(),
         toward: Toward::Below,
@@ -449,7 +482,7 @@ fn folded_raster_rows(rows: &[Row], stubs: bool) -> Vec<RasterRow<'_>> {
     };
     rows.iter()
         .enumerate()
-        .map(|(index, row)| RasterRow {
+        .map(|(index, row)| PlainRow {
             ring: if index == 0 {
                 Ring::Merge
             } else {
@@ -460,18 +493,21 @@ fn folded_raster_rows(rows: &[Row], stubs: bool) -> Vec<RasterRow<'_>> {
                 (true, 2) => vec![above],
                 _ => Vec::new(),
             },
-            ..RasterRow::plain(row)
+            ..PlainRow::of(row)
         })
         .collect()
 }
 
 fn folded_frame(rows: &[Row], above: Option<&Row>, stubs: bool, cell: (u32, u32)) -> RasterFrame {
     let raster_rows = folded_raster_rows(rows, stubs);
-    rasterise(&Strip {
-        above,
-        marker: Some(Marker { column: 1 }),
-        ..strip(&raster_rows, 2, cell)
-    })
+    rasterise_backdrop(
+        &PlainStrip {
+            above,
+            marker: Some(Marker { column: 1 }),
+            ..strip(&raster_rows, 2, cell)
+        },
+        Backdrop::Full,
+    )
     .unwrap_or_else(|why| panic!("rasterising the folded strip: {why}"))
 }
 
@@ -634,7 +670,7 @@ fn reports_render_time_for_a_32_row_strip() {
     let mut times: Vec<u128> = (0..9)
         .map(|_| {
             let start = Instant::now();
-            let frame = rasterise(&strip).unwrap();
+            let frame = rasterise_backdrop(&strip, Backdrop::Full).unwrap();
             assert_eq!(frame.height, 32 * USER_CELL.1);
             start.elapsed().as_micros()
         })
@@ -689,15 +725,16 @@ fn write_shots() {
             shifted
         })
         .collect();
-    let raster_rows: Vec<RasterRow<'_>> = rings
+    let raster_rows: Vec<PlainRow<'_>> = rings
         .iter()
         .zip(RINGS)
-        .map(|(row, ring)| RasterRow {
+        .map(|(row, ring)| PlainRow {
             ring,
-            ..RasterRow::plain(row)
+            ..PlainRow::of(row)
         })
         .collect();
-    let frame = rasterise(&strip(&raster_rows, RINGS.len(), USER_CELL)).unwrap();
+    let frame =
+        rasterise_backdrop(&strip(&raster_rows, RINGS.len(), USER_CELL), Backdrop::Full).unwrap();
     save(
         &frame,
         &shots.join("22-raster-rings-on-dark.png"),
@@ -724,23 +761,27 @@ fn write_shots() {
 fn write_thread_shot(shots: &std::path::Path) {
     let thread_rows = super::raster_pixels::synthetic(20, 5);
     let lit: BTreeSet<usize> = [0].into_iter().collect();
-    let raster_rows: Vec<RasterRow<'_>> = thread_rows[4..16]
-        .iter()
-        .map(|row| RasterRow {
+    let raster_rows = plain(&thread_rows[4..16]);
+    let lits = vec![
+        Lit {
+            emphasis: Emphasis::Normal,
             thread: Some(&lit),
-            ..RasterRow::plain(row)
-        })
-        .collect();
-    let thread_frame = rasterise(&Strip {
-        rows: &raster_rows,
-        above: Some(&thread_rows[3]),
-        lane_columns: width_of(&thread_rows),
-        marker: None,
-        cell_width: USER_CELL.0,
-        cell_height: USER_CELL.1,
-        palette: &PALETTE,
-        muted: MUTED,
-    })
+        };
+        raster_rows.len()
+    ];
+    let thread_frame = layered(
+        &PlainStrip {
+            rows: &raster_rows,
+            above: Some(&thread_rows[3]),
+            lane_columns: width_of(&thread_rows),
+            marker: None,
+            cell_width: USER_CELL.0,
+            cell_height: USER_CELL.1,
+            palette: &PALETTE,
+            muted: MUTED,
+        },
+        &lits,
+    )
     .unwrap_or_else(|why| panic!("thread shot: {why}"));
     save(
         &thread_frame,

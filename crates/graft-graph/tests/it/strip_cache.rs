@@ -11,7 +11,7 @@ use graft_core::oid::Oid;
 use graft_graph::identity::BranchIdentity;
 use graft_graph::layout::layout;
 use graft_graph::raster::cache::{CacheError, Flush, STRIP_ROWS, StripCache};
-use graft_graph::raster::{RasterRow, Ring, Strip, rasterise};
+use graft_graph::raster::{Backdrop, PlainRow, PlainStrip, Ring, rasterise_backdrop};
 use graft_graph::row::Row;
 use graft_graph::seeds::{BranchSeed, Seeds};
 
@@ -108,11 +108,9 @@ fn frame(
         if range.start >= end {
             continue;
         }
-        let raster_rows: Vec<RasterRow<'_>> = rows[range.start..end]
-            .iter()
-            .map(RasterRow::plain)
-            .collect();
-        let strip = Strip {
+        let raster_rows: Vec<PlainRow<'_>> =
+            rows[range.start..end].iter().map(PlainRow::of).collect();
+        let strip = PlainStrip {
             rows: &raster_rows,
             above: range.start.checked_sub(1).map(|above| &rows[above]),
             lane_columns: lanes,
@@ -123,7 +121,7 @@ fn frame(
             muted: MUTED,
         };
         let frame = cache
-            .get(range.start, &strip)
+            .backdrop(range.start, &strip, Backdrop::Full)
             .unwrap_or_else(|why| panic!("strip at row {}: {why}", range.start));
         assert_eq!(frame.rows, end - range.start);
         asked += 1;
@@ -171,8 +169,8 @@ fn scrolling_one_row_rasterises_at_most_one_new_strip_and_scrolling_back_is_a_hi
 fn a_cached_strip_is_the_strip_rasterise_draws() {
     let rows = rows(100);
     let mut cache = StripCache::new(STRIP_ROWS, 4);
-    let raster_rows: Vec<RasterRow<'_>> = rows[32..64].iter().map(RasterRow::plain).collect();
-    let strip = Strip {
+    let raster_rows: Vec<PlainRow<'_>> = rows[32..64].iter().map(PlainRow::of).collect();
+    let strip = PlainStrip {
         rows: &raster_rows,
         above: Some(&rows[31]),
         lane_columns: width_of(&rows),
@@ -182,9 +180,17 @@ fn a_cached_strip_is_the_strip_rasterise_draws() {
         palette: &PALETTE,
         muted: MUTED,
     };
-    let direct = rasterise(&strip).expect("rasterises");
-    assert_eq!(*cache.get(32, &strip).expect("miss rasterises"), direct);
-    assert_eq!(*cache.get(32, &strip).expect("hit"), direct);
+    let direct = rasterise_backdrop(&strip, Backdrop::Full).expect("rasterises");
+    assert_eq!(
+        *cache
+            .backdrop(32, &strip, Backdrop::Full)
+            .expect("miss rasterises"),
+        direct
+    );
+    assert_eq!(
+        *cache.backdrop(32, &strip, Backdrop::Full).expect("hit"),
+        direct
+    );
     assert_eq!(cache.stats().hits, 1);
 }
 
@@ -247,42 +253,6 @@ fn a_layout_change_on_one_row_invalidates_only_its_strip() {
 }
 
 #[test]
-fn emphasis_is_part_of_the_key() {
-    let rows = rows(40);
-    let mut cache = StripCache::new(STRIP_ROWS, 4);
-    let lanes = width_of(&rows);
-    let draw = |cache: &mut StripCache, dim: bool| {
-        let raster_rows: Vec<RasterRow<'_>> = rows[0..32]
-            .iter()
-            .map(|row| RasterRow {
-                emphasis: if dim {
-                    graft_graph::raster::Emphasis::Dimmed
-                } else {
-                    graft_graph::raster::Emphasis::Normal
-                },
-                ..RasterRow::plain(row)
-            })
-            .collect();
-        let strip = Strip {
-            rows: &raster_rows,
-            above: None,
-            lane_columns: lanes,
-            marker: None,
-            cell_width: CELL.0,
-            cell_height: CELL.1,
-            palette: &PALETTE,
-            muted: MUTED,
-        };
-        cache.get(0, &strip).expect("rasterises");
-    };
-    draw(&mut cache, false);
-    draw(&mut cache, true);
-    draw(&mut cache, false);
-    assert_eq!(cache.stats().rasterised, 2);
-    assert_eq!(cache.stats().hits, 1);
-}
-
-#[test]
 fn the_cache_is_bounded_and_evicts_the_least_recently_used() {
     let rows = rows(400);
     let mut cache = StripCache::new(STRIP_ROWS, 3);
@@ -308,8 +278,8 @@ fn the_cache_is_bounded_and_evicts_the_least_recently_used() {
 fn a_misaligned_or_oversized_strip_is_refused() {
     let rows = rows(100);
     let mut cache = StripCache::new(STRIP_ROWS, 4);
-    let raster_rows: Vec<RasterRow<'_>> = rows[0..33].iter().map(RasterRow::plain).collect();
-    let strip = |rows| Strip {
+    let raster_rows: Vec<PlainRow<'_>> = rows[0..33].iter().map(PlainRow::of).collect();
+    let strip = |rows| PlainStrip {
         rows,
         above: None,
         lane_columns: 2,
@@ -320,19 +290,21 @@ fn a_misaligned_or_oversized_strip_is_refused() {
         muted: MUTED,
     };
     assert!(matches!(
-        cache.get(5, &strip(&raster_rows[..27])),
+        cache.backdrop(5, &strip(&raster_rows[..27]), Backdrop::Full),
         Err(CacheError::Misaligned { .. })
     ));
     assert!(matches!(
-        cache.get(0, &strip(&raster_rows)),
+        cache.backdrop(0, &strip(&raster_rows), Backdrop::Full),
         Err(CacheError::Misaligned { .. })
     ));
     assert!(matches!(
-        cache.get(0, &strip(&raster_rows[..0])),
+        cache.backdrop(0, &strip(&raster_rows[..0]), Backdrop::Full),
         Err(CacheError::Misaligned { .. })
     ));
     assert!(matches!(
-        cache.get(0, &strip(&raster_rows[..32])).map(|_| ()),
+        cache
+            .backdrop(0, &strip(&raster_rows[..32]), Backdrop::Full)
+            .map(|_| ()),
         Ok(())
     ));
 }
@@ -372,11 +344,11 @@ fn strip_height_numbers() {
     let rows = rows(4_000);
     let lanes = 12;
     for height in [8, 16, 32, 64, 128] {
-        let raster_rows: Vec<RasterRow<'_>> = rows[1_024..1_024 + height]
+        let raster_rows: Vec<PlainRow<'_>> = rows[1_024..1_024 + height]
             .iter()
-            .map(RasterRow::plain)
+            .map(PlainRow::of)
             .collect();
-        let strip = Strip {
+        let strip = PlainStrip {
             rows: &raster_rows,
             above: Some(&rows[1_023]),
             lane_columns: lanes,
@@ -389,7 +361,7 @@ fn strip_height_numbers() {
         let mut raster: Vec<u128> = (0..15)
             .map(|_| {
                 let start = Instant::now();
-                rasterise(&strip).expect("rasterises");
+                rasterise_backdrop(&strip, Backdrop::Full).expect("rasterises");
                 start.elapsed().as_micros()
             })
             .collect();
@@ -397,7 +369,7 @@ fn strip_height_numbers() {
         let mut hit: Vec<u128> = (0..15)
             .map(|_| {
                 let start = Instant::now();
-                std::hint::black_box(graft_graph::raster::cache::layout_hash(&strip));
+                std::hint::black_box(graft_graph::raster::cache::plain_layout_hash(&strip));
                 start.elapsed().as_nanos()
             })
             .collect();
@@ -420,13 +392,13 @@ fn strip_height_numbers() {
 fn the_uncommitted_row_does_not_count_toward_the_strip_height() {
     let rows = rows(40);
     let mut cache = StripCache::new(STRIP_ROWS, 4);
-    let virtual_row = RasterRow {
+    let virtual_row = PlainRow {
         ring: Ring::Uncommitted,
-        ..RasterRow::plain(&rows[39])
+        ..PlainRow::of(&rows[39])
     };
     let mut with_virtual = vec![virtual_row.clone()];
-    with_virtual.extend(rows[0..32].iter().map(RasterRow::plain));
-    let strip = |rows| Strip {
+    with_virtual.extend(rows[0..32].iter().map(PlainRow::of));
+    let strip = |rows| PlainStrip {
         rows,
         above: None,
         lane_columns: 3,
@@ -437,18 +409,18 @@ fn the_uncommitted_row_does_not_count_toward_the_strip_height() {
         muted: MUTED,
     };
     let frame = cache
-        .get(0, &strip(&with_virtual))
+        .backdrop(0, &strip(&with_virtual), Backdrop::Full)
         .unwrap_or_else(|why| panic!("32 history rows and the virtual row: {why}"));
     assert_eq!(frame.rows, 33);
     cache
-        .get(0, &strip(&with_virtual[1..]))
+        .backdrop(0, &strip(&with_virtual[1..]), Backdrop::Full)
         .unwrap_or_else(|why| panic!("the same strip without it: {why}"));
     assert_eq!(cache.len(), 2, "with and without the virtual row key apart");
 
     let mut two_over = vec![virtual_row];
-    two_over.extend(rows[0..33].iter().map(RasterRow::plain));
+    two_over.extend(rows[0..33].iter().map(PlainRow::of));
     assert!(matches!(
-        cache.get(0, &strip(&two_over)),
+        cache.backdrop(0, &strip(&two_over), Backdrop::Full),
         Err(CacheError::Misaligned { .. })
     ));
 }
@@ -460,16 +432,16 @@ fn a_row_gaining_a_stub_changes_the_layout_hash() {
     use graft_graph::fold::Toward;
     use graft_graph::identity::BranchIdentity;
     use graft_graph::raster::Stub;
-    use graft_graph::raster::cache::layout_hash;
+    use graft_graph::raster::cache::plain_layout_hash as layout_hash;
 
     let rows = rows(32);
-    let plain: Vec<RasterRow<'_>> = rows.iter().map(RasterRow::plain).collect();
+    let plain: Vec<PlainRow<'_>> = rows.iter().map(PlainRow::of).collect();
     let mut stubbed = plain.clone();
     stubbed[5].stubs.push(Stub {
         identity: BranchIdentity::of_name(b"topic"),
         toward: Toward::Below,
     });
-    let strip = |rows| Strip {
+    let strip = |rows| PlainStrip {
         rows,
         above: None,
         lane_columns: 3,
@@ -483,59 +455,6 @@ fn a_row_gaining_a_stub_changes_the_layout_hash() {
     let mut above = stubbed.clone();
     above[5].stubs[0].toward = Toward::Above;
     assert_ne!(layout_hash(&strip(&stubbed)), layout_hash(&strip(&above)));
-}
-
-/// m1-the-graph/30b: moving the cursor toggles a row's `emphasis`, but
-/// under a thread the rasteriser draws per-column emphasis and ignores the
-/// row's own. Such a toggle must neither change the pixels nor miss the
-/// cache — before the fix every `j` re-rasterised and retransmitted a strip.
-#[test]
-fn a_threaded_rows_own_emphasis_changes_neither_pixels_nor_key() {
-    use graft_graph::raster::Emphasis;
-    use std::collections::BTreeSet;
-
-    let rows = rows(40);
-    let mut cache = StripCache::new(STRIP_ROWS, 4);
-    let lanes = width_of(&rows);
-    let lit: BTreeSet<usize> = [0].into_iter().collect();
-    let draw = |cache: &mut StripCache, cursor: Option<usize>| {
-        let raster_rows: Vec<RasterRow<'_>> = rows[0..32]
-            .iter()
-            .enumerate()
-            .map(|(index, row)| RasterRow {
-                emphasis: if cursor == Some(index) {
-                    Emphasis::Dimmed
-                } else {
-                    Emphasis::Normal
-                },
-                thread: Some(&lit),
-                ..RasterRow::plain(row)
-            })
-            .collect();
-        let strip = Strip {
-            rows: &raster_rows,
-            above: None,
-            lane_columns: lanes,
-            marker: None,
-            cell_width: CELL.0,
-            cell_height: CELL.1,
-            palette: &PALETTE,
-            muted: MUTED,
-        };
-        let pixels = graft_graph::raster::rasterise(&strip)
-            .expect("rasterises")
-            .pixels;
-        cache.get(0, &strip).expect("rasterises");
-        pixels
-    };
-    let on_row_3 = draw(&mut cache, Some(3));
-    let on_row_4 = draw(&mut cache, Some(4));
-    assert!(
-        on_row_3 == on_row_4,
-        "the row's own emphasis reached pixels"
-    );
-    assert_eq!(cache.stats().rasterised, 1, "a cursor move re-rasterised");
-    assert_eq!(cache.stats().hits, 1);
 }
 
 /// ADR-0053: a strip is drawn from layout and one backdrop alpha, so moving

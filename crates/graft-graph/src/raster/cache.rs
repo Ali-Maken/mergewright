@@ -13,15 +13,11 @@
 //! once: those change every strip, and holding the old ones only wastes
 //! memory until they age out. Scrolling never invalidates.
 //!
-//! Two paths live here until the wiring ticket (m7-power-tools/46) moves the
-//! renderer over (ADR-0053):
-//! - **layers**: [`backdrop`](StripCache::backdrop) strips keyed on layout and
-//!   one backdrop alpha — no selection, so moving the cursor never misses
-//!   one — and [`emphasis`](StripCache::emphasis) images keyed on that plus
-//!   [`lit_hash`]; [`composited`](StripCache::composited) joins the two for
-//!   a terminal that cannot layer images;
-//! - **legacy**: [`get`](StripCache::get), whose key still includes the
-//!   selection's thread.
+//! Strips are layered (ADR-0053): [`backdrop`](StripCache::backdrop) strips
+//! keyed on layout and one backdrop alpha — no selection, so moving the
+//! cursor never misses one — and [`emphasis`](StripCache::emphasis) images
+//! keyed on that plus [`lit_hash`]; [`composited`](StripCache::composited)
+//! joins the two for a terminal that cannot layer images.
 
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
@@ -33,8 +29,8 @@ use graft_core::capabilities::Rgb;
 use graft_core::raster::RasterFrame;
 
 use super::{
-    Backdrop, Emphasised, PlainStrip, RasterError, Ring, Selection, Strip, composite, rasterise,
-    rasterise_backdrop, rasterise_emphasis,
+    Backdrop, Emphasised, PlainStrip, RasterError, Ring, Selection, composite, rasterise_backdrop,
+    rasterise_emphasis,
 };
 use crate::row::Row;
 
@@ -85,9 +81,9 @@ pub enum CacheError {
 /// What the cache has done since it was made.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CacheStats {
-    /// Strip lookups (legacy and backdrop) answered from a resident strip.
+    /// Backdrop lookups answered from a resident strip.
     pub hits: u64,
-    /// Strip lookups (legacy and backdrop) that rasterised a strip.
+    /// Backdrop lookups that rasterised a strip.
     pub rasterised: u64,
     /// Entries dropped, from any layer, to stay within capacity.
     pub evicted: u64,
@@ -184,8 +180,6 @@ impl<K: Copy + Eq + Hash, V: Clone> Lru<K, V> {
 pub struct StripCache {
     strip_rows: usize,
     capacity: usize,
-    /// Legacy strips, keyed with the selection (until 46).
-    entries: Lru<StripKey, Arc<RasterFrame>>,
     /// Layout-only strips at one backdrop alpha.
     backdrops: Lru<LayerKey, Arc<RasterFrame>>,
     /// Emphasis images; `None` where the selection paints nothing above the
@@ -204,7 +198,6 @@ impl StripCache {
         StripCache {
             strip_rows: strip_rows.max(1),
             capacity: capacity.max(1),
-            entries: Lru::new(),
             backdrops: Lru::new(),
             emphases: Lru::new(),
             composites: Lru::new(),
@@ -240,44 +233,13 @@ impl StripCache {
         (first..end).map(move |index| index * strip_rows..(index + 1) * strip_rows)
     }
 
-    /// The strip starting at `first_row`, from the cache or rasterised into
-    /// it. `strip.rows` must start on a multiple of the strip height and hold
-    /// between one row and a full strip (a short one ends the history).
-    ///
-    /// A [`Ring::Uncommitted`] row is not a history row, so it does not count
-    /// toward the strip height: the strip holding `HEAD` carries the virtual
-    /// row on top of its own full strip, and stays aligned on history rows.
-    pub fn get(
-        &mut self,
-        first_row: usize,
-        strip: &Strip<'_>,
-    ) -> Result<Arc<RasterFrame>, CacheError> {
-        let key = self.key(first_row, strip)?;
-        self.clock += 1;
-        if let Some(frame) = self.entries.touch(&key, self.clock) {
-            self.stats.hits += 1;
-            return Ok(frame);
-        }
-        let frame = Arc::new(rasterise(strip)?);
-        self.stats.rasterised += 1;
-        let evicted = self
-            .entries
-            .insert(key, Arc::clone(&frame), self.clock, self.capacity);
-        self.stats.evicted += u64::from(evicted);
-        Ok(frame)
-    }
-
-    /// Is this strip already rasterised? A look, not a use: it moves neither
-    /// the counters nor the strip's place in the eviction order. A strip
-    /// [`StripCache::get`] would refuse is never there.
-    pub fn contains(&self, first_row: usize, strip: &Strip<'_>) -> bool {
-        self.key(first_row, strip)
-            .is_ok_and(|key| self.entries.contains(&key))
-    }
-
     /// The layout-only strip starting at `first_row`, drawn at `backdrop`'s
-    /// alpha, from the cache or rasterised into it. Aligned as for
-    /// [`StripCache::get`]; nothing about the selection is in its key, so a
+    /// alpha, from the cache or rasterised into it. `strip.rows` must start on
+    /// a multiple of the strip height and hold between one row and a full
+    /// strip (a short one ends the history). A [`Ring::Uncommitted`] row is
+    /// not a history row, so it does not count toward the strip height: the
+    /// strip holding `HEAD` carries the virtual row on top of its own full
+    /// strip. Nothing about the selection is in its key, so a
     /// cursor move never misses it (ADR-0053).
     pub fn backdrop(
         &mut self,
@@ -357,8 +319,9 @@ impl StripCache {
         Ok(frame)
     }
 
-    /// Is this backdrop strip already rasterised? A look, not a use, as
-    /// [`StripCache::contains`]: for idle prefetch, which draws backdrops
+    /// Is this backdrop strip already rasterised? A look, not a use: it
+    /// moves neither the counters nor the strip's place in the eviction
+    /// order. For idle prefetch, which draws backdrops
     /// only (emphasis waits for the cursor).
     pub fn contains_backdrop(
         &self,
@@ -368,24 +331,6 @@ impl StripCache {
     ) -> bool {
         self.layer_key(first_row, strip, backdrop)
             .is_ok_and(|key| self.backdrops.contains(&key))
-    }
-
-    /// The key `strip` is cached under, or why it cannot be cached.
-    fn key(&self, first_row: usize, strip: &Strip<'_>) -> Result<StripKey, CacheError> {
-        let history_rows = strip
-            .rows
-            .iter()
-            .filter(|row| row.ring != Ring::Uncommitted)
-            .count();
-        self.aligned(first_row, strip.rows.len(), history_rows)?;
-        Ok(StripKey {
-            first_row,
-            rows: strip.rows.len(),
-            layout: layout_hash(strip),
-            theme: theme_id(strip.palette, strip.muted),
-            cell_width: strip.cell_width,
-            cell_height: strip.cell_height,
-        })
     }
 
     /// The key a layout-only strip is cached under at `backdrop`.
@@ -440,16 +385,15 @@ impl StripCache {
         match why {
             Flush::Theme | Flush::CellSize | Flush::Redetection | Flush::Resize => {}
         }
-        self.entries.clear();
         self.backdrops.clear();
         self.emphases.clear();
         self.composites.clear();
         self.stats.flushes += 1;
     }
 
-    /// Strips resident: legacy and backdrop.
+    /// Backdrop strips resident.
     pub fn len(&self) -> usize {
-        self.entries.len() + self.backdrops.len()
+        self.backdrops.len()
     }
 
     /// Whether nothing is resident in any layer.
@@ -457,17 +401,13 @@ impl StripCache {
         self.len() == 0 && self.emphases.len() == 0 && self.composites.len() == 0
     }
 
-    /// Pixel bytes held by every layer: legacy strips, backdrop strips,
-    /// emphasis images and composited strips.
+    /// Pixel bytes held by every layer: backdrop strips, emphasis images and composited strips.
     pub fn resident_bytes(&self) -> usize {
         let frame = |frame: &Arc<RasterFrame>| frame.pixels.len();
         let image = |image: &Option<Arc<Emphasised>>| {
             image.as_ref().map_or(0, |image| image.frame.pixels.len())
         };
-        self.entries.bytes(frame)
-            + self.backdrops.bytes(frame)
-            + self.emphases.bytes(image)
-            + self.composites.bytes(frame)
+        self.backdrops.bytes(frame) + self.emphases.bytes(image) + self.composites.bytes(frame)
     }
 
     /// Counters since the cache was made.
@@ -476,44 +416,17 @@ impl StripCache {
     }
 }
 
-/// A hash of everything in a strip the rasteriser draws from, colours and
-/// cell size aside: per row its commit id, columns, edges, lane identities,
-/// Mistake Radar marker, ring, and emphasis (the thread's lit columns when
-/// it has one, else the row's own); the edges of the row above that
-/// reach into the strip; the strip's width and rail column. Nothing else — a
-/// commit message the rasteriser never reads does not change it.
+/// A hash of everything in a layout-only strip the rasteriser draws from,
+/// colours and cell size aside: per row its commit id, columns, edges, lane
+/// identities, Mistake Radar marker, ring and stubs; the edges of the row
+/// above that reach into the strip; the strip's width and rail column.
+/// Nothing else — a commit message the rasteriser never reads does not
+/// change it, and no selection can reach the backdrop's key.
 ///
 /// Layout is deterministic (DESIGN.md §3.7), so an evicted and rebuilt row
 /// chunk hashes the same and costs no strip-cache hit. Rust's default hasher
 /// with its fixed keys: stable within a process, which is all an in-memory
 /// cache needs.
-pub fn layout_hash(strip: &Strip<'_>) -> u64 {
-    let mut hasher = DefaultHasher::new();
-    strip.lane_columns.hash(&mut hasher);
-    strip.marker.hash(&mut hasher);
-    strip.rows.len().hash(&mut hasher);
-    for raster_row in strip.rows {
-        let row = raster_row.row;
-        row.commit.id.hash(&mut hasher);
-        hash_edges(row, &mut hasher);
-        row.marker.hash(&mut hasher);
-        raster_row.ring.hash(&mut hasher);
-        raster_row.stubs.hash(&mut hasher);
-        // Under a thread the rasteriser draws per-column emphasis and never
-        // reads the row's own, so hashing it would turn every cursor move
-        // into a miss and a retransmit with identical pixels (30b).
-        match raster_row.thread {
-            Some(thread) => thread.hash(&mut hasher),
-            None => raster_row.emphasis.hash(&mut hasher),
-        }
-        raster_row.thread.is_some().hash(&mut hasher);
-    }
-    hash_above(strip.above, &mut hasher);
-    hasher.finish()
-}
-
-/// [`layout_hash`] for a layout-only strip: the same fields, with no
-/// selection to hash — so no selection can reach the backdrop's key.
 pub fn plain_layout_hash(strip: &PlainStrip<'_>) -> u64 {
     let mut hasher = DefaultHasher::new();
     strip.lane_columns.hash(&mut hasher);
@@ -534,8 +447,8 @@ pub fn plain_layout_hash(strip: &PlainStrip<'_>) -> u64 {
 /// Hash of the selection's paint over a strip: its backdrop and, per row,
 /// what the paint draws from — the thread's lit columns when it has one,
 /// else the row's own emphasis — and whether it has one (`Some(∅)` and
-/// `None` paint differently). As [`layout_hash`] (30b), a row's own emphasis
-/// under a thread is never read, so it is not hashed: toggling it is not a
+/// `None` paint differently). Under a thread a row's own emphasis is
+/// never read, so it is not hashed: toggling it is not a
 /// new selection.
 pub fn lit_hash(sel: &Selection<'_>) -> u64 {
     let mut hasher = DefaultHasher::new();

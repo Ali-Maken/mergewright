@@ -34,7 +34,6 @@ mod node;
 mod pen;
 
 use std::cell::RefCell;
-use std::collections::BTreeSet;
 
 use graft_core::capabilities::Rgb;
 use graft_core::raster::RasterFrame;
@@ -99,79 +98,12 @@ pub struct Stub {
     pub toward: Toward,
 }
 
-/// One row to rasterise and how to paint it.
-#[derive(Clone, Debug)]
-pub struct RasterRow<'a> {
-    /// The row, in drawn columns (a `Fold::view` when anything folds).
-    pub row: &'a Row,
-    /// The node's ring style.
-    pub ring: Ring,
-    /// The whole row's emphasis when no thread is given.
-    pub emphasis: Emphasis,
-    /// Drawn columns carrying the selection's thread on this row. When set,
-    /// those columns draw at full alpha and every other column at
-    /// [`OFF_THREAD_ALPHA`], overriding `emphasis` (the Unicode tier's
-    /// bold/dim rule, ticket 16). Never a wider stroke (ADR-0024).
-    pub thread: Option<&'a BTreeSet<usize>>,
-    /// Edges into folded lanes, drawn as stubs on the node; empty when
-    /// nothing on this row folds.
-    pub stubs: Vec<Stub>,
-}
-
-impl<'a> RasterRow<'a> {
-    /// A row with the ring its parent count implies and normal emphasis.
-    pub fn plain(row: &'a Row) -> Self {
-        RasterRow {
-            row,
-            ring: Ring::of(row),
-            emphasis: Emphasis::Normal,
-            thread: None,
-            stubs: Vec::new(),
-        }
-    }
-
-    /// The row as the pen draws it.
-    fn inked(&self) -> Inked<'_> {
-        Inked {
-            row: self.row,
-            ring: self.ring,
-            stubs: &self.stubs,
-            lit: Lit {
-                emphasis: self.emphasis,
-                thread: self.thread,
-            },
-        }
-    }
-}
-
 /// The rail: the drawn column folded lanes sit behind. It carries no count
 /// (ADR-0022); the screen header says how many lanes fold.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Marker {
     /// The drawn column the rail takes (`Fold::marker`).
     pub column: usize,
-}
-
-/// Everything one strip is drawn from.
-#[derive(Clone, Copy, Debug)]
-pub struct Strip<'a> {
-    /// The strip's rows, top to bottom.
-    pub rows: &'a [RasterRow<'a>],
-    /// The row just above the strip, if any: whether the first node's lane
-    /// arrives from above depends on it.
-    pub above: Option<&'a Row>,
-    /// Lane columns the strip is wide, marker included.
-    pub lane_columns: usize,
-    /// The rail column, if anything folds.
-    pub marker: Option<Marker>,
-    /// Cell width in pixels.
-    pub cell_width: u32,
-    /// Cell height in pixels.
-    pub cell_height: u32,
-    /// Lane colours; an identity draws in `palette[identity.slot(len)]`.
-    pub palette: &'a [Rgb],
-    /// The rail's colour.
-    pub muted: Rgb,
 }
 
 /// Why a strip could not be rasterised.
@@ -205,28 +137,7 @@ pub enum RasterError {
     },
 }
 
-/// Rasterise a strip of rows into a premultiplied RGBA frame.
-pub fn rasterise(strip: &Strip<'_>) -> Result<RasterFrame, RasterError> {
-    let rows: Vec<Inked<'_>> = strip.rows.iter().map(RasterRow::inked).collect();
-    paint(&strip.look(), &rows, None)
-}
-
-impl Strip<'_> {
-    fn look(&self) -> Look<'_> {
-        Look {
-            above: self.above,
-            lane_columns: self.lane_columns,
-            marker: self.marker,
-            cell_width: self.cell_width,
-            cell_height: self.cell_height,
-            palette: self.palette,
-            muted: self.muted,
-        }
-    }
-}
-
-/// Everything a strip is drawn from except its rows: shared by today's
-/// [`Strip`] and the layout-only [`PlainStrip`].
+/// Everything a [`PlainStrip`] is drawn from except its rows.
 #[derive(Clone, Copy, Debug)]
 struct Look<'a> {
     above: Option<&'a Row>,
@@ -249,12 +160,12 @@ struct Inked<'a> {
 
 /// Draw `rows` into a premultiplied RGBA frame.
 ///
-/// `lift` is `None` for a whole strip: every element at its own alpha. For
+/// `lift` is `None` for a backdrop strip: every element at its own alpha. For
 /// an emphasis layer it is the backdrop's alpha `b`: only elements whose
 /// alpha `a` is above it are drawn, at `(a − b) / (1 − b)`, so that drawn
 /// over the backdrop they come back to `a` (ADR-0053). Either way the order
-/// and the geometry are the single pass's, so a layer holds exactly the lit
-/// part of it.
+/// and the geometry are the same, so a layer holds exactly the lit part of
+/// what one pass at each row's own paint would draw.
 fn paint(
     look: &Look<'_>,
     rows: &[Inked<'_>],

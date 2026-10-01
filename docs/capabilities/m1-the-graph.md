@@ -564,7 +564,7 @@ unverified_aspect: pixel-tier rendering at the application level in a real termi
   slower and are recorded, never asserted against the budget (ADR-0021 —
   frame budgets are a release-only promise).
 - **Proven by:**
-  `graft_graph::strip_cache::tests::a_threaded_rows_own_emphasis_changes_neither_pixels_nor_key`
+  `graft_graph::strip_cache::tests::the_selection_never_misses_a_backdrop`
   `graft::view::strips::tests::every_strip_waits_while_the_cursor_row_has_not_arrived`
   `graft::history::tests::a_request_lays_out_only_the_rows_it_names`
   `graft::history::tests::every_key_draws_from_rows_on_hand_while_the_worker_answers_a_key_late`
