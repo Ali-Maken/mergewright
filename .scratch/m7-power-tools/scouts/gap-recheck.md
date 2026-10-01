@@ -1,0 +1,5 @@
+# Gap recheck at 3b74a651 (rows u-m8, r30p-m2, r30p-m3)
+
+- **M7/u-m8: still present.** `ref_line` (`crates/graft/src/update/preview/plan_lines.rs:126-135`) gives a ghost target `new_commits_at`, which counts the target and every ghost below it in the chain (`:146-165`, loop `:154-163`). The summary `N commits replayed` is the count over the whole plan (`:91`, `:98-101`), so the two numbers still don't match. Corrected refs: `plan_lines.rs:126-135, 152-165` (summary `:91-101`).
+- **M7/r30p-m2: still present.** The doc still says `kept` is where a set-aside's edits are (`crates/graft-ops/src/apply/error.rs:42-44`, field doc `:51-52`). `crates/graft-ops/src/apply.rs:419` passes `after_failed.to_string()` there (raw step's words, comment `:413-414`). Corrected refs: `error.rs:38-52`, `apply.rs:413-419`.
+- **M7/r30p-m3: still present.** `raw_tree` (`crates/graft-ops/src/snapshot/raw.rs:191`) adds each path as an argv entry (`:198-205`). `--stdin-paths` is still used only in `crates/graft-ops/src/restore/raw.rs:103` (doc `:71`). Corrected refs: `snapshot/raw.rs:198-205`, `restore/raw.rs:71-125`.
