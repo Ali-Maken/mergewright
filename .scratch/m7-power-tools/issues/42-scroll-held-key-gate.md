@@ -1,6 +1,6 @@
 # 42-scroll-held-key-gate — a test at his scale that fails today: held `j` keeps going after release
 
-Status: ready
+Status: done
 Build with: Sonnet — test-harness work in mapped files; every seam the scout found is decided below (Planner ruling).
 Needs: `41-scroll-team-fixture` (`team::{TeamSpec::MONOREPO, borrow, stats}`); `45-scroll-kitty-layer-deflate` merged
 (it edits `frames/run.rs`, which this ticket now edits too).
@@ -185,34 +185,34 @@ const EMPHASIS_ID_BIT_42: u32 = 1 << 31; // 45 Decided 1; 46 replaces with graft
 ```
 
 ## Acceptance (each box names its test)
-- [ ] `DrainSink` blocks a writer once `capacity` is full and releases at the set rate (±10% over 1 s); `written`,
+- [x] `DrainSink` blocks a writer once `capacity` is full and releases at the set rate (±10% over 1 s); `written`,
       `drained_at`, `quiet_for` agree with it. — `drain_sink::tests::drains_at_its_rate` (fast tier, small rate, < 1 s).
-- [ ] `kitty_transmits`: a header split across two writes counts once with its id; `a=T`, `a=t` and no-`a=` first
+- [x] `kitty_transmits`: a header split across two writes counts once with its id; `a=T`, `a=t` and no-`a=` first
       chunks count; `m=1` continuation chunks, `a=p`/`a=d` do not; payload bytes are never kept.
       — `drain_sink::tests::counts_kitty_transmits_across_writes` (fast tier).
-- [ ] A draining `Sink` forwards every byte, keeps none, and its `sent` equals the drain's `written`.
+- [x] A draining `Sink` forwards every byte, keeps none, and its `sent` equals the drain's `written`.
       — `frames::sink::tests::a_draining_sink_forwards_and_keeps_nothing` (green, so harmless under the `frames::`
       filter; fast tier if `frames` is compiled without `heavy-tests`, else heavy — say which in the report).
-- [ ] `ready_to_scroll` behaves as before: every existing `frames::` test compiles unchanged (heavy clippy) and the
+- [x] `ready_to_scroll` behaves as before: every existing `frames::` test compiles unchanged (heavy clippy) and the
       fast-tier ones pass (nextest). The heavy `frames::` tests are not run by the builder: mark that **unverified**
       in the report; the next review's release run covers it.
-- [ ] The four tests exist, read `MONOREPO` at 187×50, assert the key list, the premises and the verdict as Decided.
+- [x] The four tests exist, read `MONOREPO` at 187×50, assert the key list, the premises and the verdict as Decided.
       — `held_key::{held_j_stops_on_release_unicode, held_j_stops_on_release_pixel,
       j_then_journal_opens_at_once_unicode, j_then_journal_opens_at_once_pixel}`.
-- [ ] **Red at HEAD, both tiers**, release: the four SUMMARY lines and which verdict items failed, written by
+- [x] **Red at HEAD, both tiers**, release: the four SUMMARY lines and which verdict items failed, written by
       `scripts/fix-scroll-held-key.sh` (`cargo test --release --features heavy-tests --test it -- held_key::
       --test-threads=1 --nocapture`; exits 1 when any test failed) to `docs/perf/fix-scroll-held-key.txt`
       (`# HEAD <hash>`, machine, load). Expected: Unicode `tail_ms` and `j_ms` in seconds; Pixel the same plus
       `bytes_per_frame_held` in MB. If either tier passes at HEAD, **stop** and report: the model or the fixture is
       wrong, not the fix.
-- [ ] Premises hold at HEAD (same run). If not, stop and report the numbers (the fixture is not his shape).
-- [ ] Old filters select nothing new: `cargo test --release --features heavy-tests --test it -- frames::
+- [x] Premises hold at HEAD (same run). If not, stop and report the numbers (the fixture is not his shape).
+- [x] Old filters select nothing new: `cargo test --release --features heavy-tests --test it -- frames::
       frame_trace:: --list` grepped for `held_key::` (0 lines), quoted in the report. (`drain_sink::` likewise 0;
       `frames::sink::tests::…` is the one new `frames::` test and is green.)
-- [ ] `TESTING.md` heavy tier: a "Held keys" paragraph — the command, what the four lines mean, the drain model and
+- [x] `TESTING.md` heavy tier: a "Held keys" paragraph — the command, what the four lines mean, the drain model and
       why, that times run from the last key's arrival (a release is never seen), and that the four tests are **red in
       the heavy tier until 46** (Unicode green after 43); right looks like: every verdict item `ok`.
-- [ ] `crates/graft/MAP.md` frame-trace paragraph: `drain_sink`, `held_key`, `Sink::draining`,
+- [x] `crates/graft/MAP.md` frame-trace paragraph: `drain_sink`, `held_key`, `Sink::draining`,
       `ready_to_scroll_at`, one line each.
 
 ## Files (exact)
@@ -243,3 +243,11 @@ Fast-tier gates workspace-wide (`cargo fmt --check`, `cargo clippy --all-targets
 
 ## Size
 Medium (~60k).
+
+## NOTES (builder, 2026-10-01)
+- Ticks: `frames::sink::tests::a_draining_sink_forwards_and_keeps_nothing` is heavy tier (`frames` is heavy-gated); passed via `cargo test --features heavy-tests -- drain_sink:: frames::sink::`. Heavy `frames::` scroll tests **unverified** (not run).
+- Red run (release, `docs/perf/fix-scroll-held-key.txt`): Unicode A tail_ms=3260, frames_after_release=109; B j_ms=3210, frames_before_J=108. Pixel A tail_ms=215976, bytes_per_frame_held=13 113 157, frames_after_release=188; B j_ms=225288. Pixel strip_transmits_held=4 (ok). Premises hold: 188/188 wide, 184/188 lit changed. Real macOS pty capacity: 1024 B.
+- Outside the file set: `frames/journal_find.rs` (+ `run.rs`) got `kitty_deflate: false`. 45 had left the heavy build broken (E0063). The Pixel run therefore has deflate off.
+- Premise "lanes" = max `Row::lanes.len()` over visible rows, before the fold.
+- Old filter: `--list` for `frames:: frame_trace::` gives 0 `held_key::` lines and 0 `drain_sink::` lines (17 tests). `scripts/m7-perf-key.sh` was not re-run (~10 min).
+- nextest: 5085/5086. `m7_walk::pull::pull_ff_over_edits` failed under load and passed alone. Not in this ticket's files.
