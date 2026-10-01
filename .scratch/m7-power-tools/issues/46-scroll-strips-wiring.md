@@ -157,7 +157,7 @@ pub(crate) struct KittyTransmit { /* existing: offset, id */ pub width_px: Optio
       `tail_ms`, emphasis width p99 in cells (from `KittyTransmit::width_px` ÷ cell width; iTerm2 from the band).
       — `held_key::held_j_stops_on_release_pixel_iterm2` + the two Kitty runs; script summary lines quoted.
       iTerm2's line prints `emphasis_cells_p99=none`: its band is the whole composited strip, no separate width.
-- [ ] Existing `frames::` Pixel scroll tests unchanged and green in the fast tier. — **not run**: `frames` is
+- [x] Existing `frames::` Pixel scroll tests unchanged and green in the fast tier. **Conductor, after merge (2026-10-01):** `frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_pixel_tier` and `frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_pixel_tier` green, heavy-tests, dev profile (release run is the milestone review's). — **not run**: `frames` is
       `heavy-tests` only (`tests/it/main.rs`); fast tier (`cargo nextest run`, 5113 passed) does not include it.
 - [x] MAP.md: graft `view::strips` (`with_layers`, `PixelRows::backdrop`; drop "`RasterRow::stubs`" from `:70`),
       `pump` (`:913`) says both layers; graft-graph `Backdrop` line (`:133`) gains `lowest`. — no test; files diffed.
