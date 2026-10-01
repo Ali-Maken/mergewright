@@ -506,7 +506,9 @@ impl AppState {
             CommitGraphOffer::Offered | CommitGraphOffer::Declining(_) => {
                 match self.system_git.as_ref()? {
                     GitCheck::Ran(graft_git::version::SystemGit::Supported(_)) => {
-                        Some(CommitGraphLine::Offered)
+                        Some(CommitGraphLine::Offered {
+                            keys: super::commit_graph::offer_keys_live(self),
+                        })
                     }
                     GitCheck::Ran(graft_git::version::SystemGit::TooOld { .. })
                     | GitCheck::Unavailable(_) => Some(CommitGraphLine::NoGitToBuild),
@@ -523,8 +525,11 @@ impl AppState {
 
     /// The offer can be acted on: offered, with a git new enough to build.
     pub(in crate::update) fn commit_graph_actionable(&self) -> bool {
-        self.commit_graph_line() == Some(CommitGraphLine::Offered)
-            && self.commit_graph == CommitGraphOffer::Offered
+        self.commit_graph == CommitGraphOffer::Offered
+            && matches!(
+                self.system_git,
+                Some(GitCheck::Ran(graft_git::version::SystemGit::Supported(_)))
+            )
     }
 
     /// Does the uncommitted-changes row draw at the top of the viewport this

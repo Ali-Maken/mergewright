@@ -48,9 +48,8 @@ fn header(size: &str) -> String {
 #    with its cause); one `⏎` would now create.
 # 6. `esc`: the prompt closes and the fetch's finished line shows, with its
 #    tick — it arrived under the box and was not acknowledged unseen.
-# - Frame 4's `ⓘ` on main's row is the radar's: `topic` has no upstream.
-#   Frames 5-6 are drawn the moment the fetch answers, when its refresh has
-#   thrown the radar's answer away and not yet read it again: no `ⓘ`.
+# - No `ⓘ` on any row: `topic` has no upstream, which is no finding
+#   (m7-power-tools/15).
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 "

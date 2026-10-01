@@ -5,9 +5,8 @@
 #
 # What right looks like:
 #  - Frame 1, `.` on fix's row: item 1 `Checkout fix`, item 2
-#    `Cherry-pick <sha7>`, item 3 `Explain` (the row carries the radar's
-#    "no upstream" ⓘ, a known false mark in a repository with no remote,
-#    so it is marked), then the row's own actions.
+#    `Cherry-pick <sha7>`, then the row's own actions. No `Explain` and no
+#    ⓘ: a branch with no upstream is no finding (m7-power-tools/15).
 #  - Frame 2, `.` on main's tip (checked out, no other branch): item 1
 #    `Checkout — already on main` (drawn dim: not provable here), item 2
 #    `Cherry-pick <sha7>`.
@@ -15,10 +14,9 @@
 == 1. `.` on fix's row ==
 
  graft /code/api  6 commits
-  ● ▏ⓘ [fix] fix the bug                                                                                 GF 3m   fbb2394
+  ● ▏  [fix] fix the bug                                                                                 GF 3m   fbb2394
  Checkout fix
  Cherry-pick fbb2394 (o)
- Explain
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
@@ -52,13 +50,14 @@
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  R  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+
+
+ m merge  r rebase  ⏎ open  . more  b  t  P  c  p  f  u  S  /  R  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 == 2. `.` on main's tip (checked out, no other branch) ==
 
  graft /code/api  6 commits
-  ●  ⓘ [fix] fix the bug                                                                                 GF 3m   fbb2394
+  ●    [fix] fix the bug                                                                                 GF 3m   fbb2394
 ◆ │ ▏  [◆ main] main moves on                                                                            GF 4m   37926a7
  Checkout — already on main
  Cherry-pick (o) — already on main
@@ -95,5 +94,5 @@
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  ⏎ open  c commit  P push  p pull  . more  f  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C

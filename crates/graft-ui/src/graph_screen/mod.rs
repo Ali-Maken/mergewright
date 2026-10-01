@@ -480,7 +480,11 @@ pub enum SearchLine {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CommitGraphLine {
     /// No commit-graph: `B` builds one, `X` declines for this repository.
-    Offered,
+    Offered {
+        /// The `B`/`X` keys are live and drawn: only while the graph has the
+        /// keyboard (m7-power-tools/36). Without, the row is the fact alone.
+        keys: bool,
+    },
     /// No commit-graph, and no usable git to build one with.
     NoGitToBuild,
     /// `git commit-graph write` is running.

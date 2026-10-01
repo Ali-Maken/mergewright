@@ -22,15 +22,18 @@ fn pane_bar_offers_b_blame() {
     );
 }
 
+/// m7-power-tools/36 (M3): in the pane `B` is blame (keymap §2.5), offer or
+/// not — the offer's keys live only on the graph.
 #[test]
-fn pane_bar_hides_b_while_the_offer_is_up() {
+fn the_pane_bar_keeps_b_blame_while_the_offer_is_up() {
     let mut state = pane_at(22);
     state.commit_graph = crate::update::CommitGraphOffer::Offered;
     state.system_git = Some(crate::update::GitCheck::Ran(
         graft_git::version::SystemGit::Supported(graft_git::version::GitVersion::MINIMUM),
     ));
     assert!(state.commit_graph_actionable(), "the offer is up");
-    assert!(!bar(&state).contains(&("B", "blame")), "{:?}", bar(&state));
+    assert!(blamable(&state));
+    assert!(bar(&state).contains(&("B", "blame")), "{:?}", bar(&state));
 }
 
 #[test]

@@ -177,7 +177,13 @@ fn commit_graph_wordings(line: CommitGraphLine) -> Vec<Vec<(String, bool)>> {
     let text = |words: &str| (words.to_owned(), false);
     let key = |letter: &str| (letter.to_owned(), true);
     match line {
-        CommitGraphLine::Offered => vec![
+        // Off the graph `B` is blame (keymap §2.5): the fact stays, the
+        // keys go (m7-power-tools/36, M3).
+        CommitGraphLine::Offered { keys: false } => vec![
+            vec![text(" no commit-graph file: history sorts on every open")],
+            vec![text(" no commit-graph file")],
+        ],
+        CommitGraphLine::Offered { keys: true } => vec![
             vec![
                 text(" no commit-graph file: history sorts on every open · "),
                 key("B"),
@@ -296,5 +302,43 @@ mod tests {
         let row = last_row(&shown);
         assert!(row.starts_with(" /fix_"), "{row}");
         assert!(!row.contains("merge stopped"), "{row}");
+    }
+
+    fn words(line: crate::graph_screen::CommitGraphLine, width: usize) -> String {
+        super::commit_graph_segments(line, width)
+            .into_iter()
+            .map(|(text, _)| text)
+            .collect()
+    }
+
+    /// m7-power-tools/36 (M3): off the graph `B` is blame and `X` nothing,
+    /// so the row keeps its fact and drops the keys.
+    #[test]
+    fn the_offer_row_drops_its_keys_off_the_graph() {
+        use crate::graph_screen::CommitGraphLine;
+        for width in [200, 120, 100, 80, 40] {
+            let without =
+                super::commit_graph_segments(CommitGraphLine::Offered { keys: false }, width);
+            assert!(without.iter().all(|(_, key)| !key), "{width}: {without:?}");
+            let text = words(CommitGraphLine::Offered { keys: false }, width);
+            assert!(
+                !text.contains('B') && !text.contains('X'),
+                "{width}: {text}"
+            );
+        }
+        assert_eq!(
+            words(CommitGraphLine::Offered { keys: false }, 120),
+            " no commit-graph file: history sorts on every open"
+        );
+        // With the keys: byte-identical to the words before 36.
+        assert_eq!(
+            words(CommitGraphLine::Offered { keys: true }, 120),
+            " no commit-graph file: history sorts on every open · B build one (git commit-graph \
+             write --reachable) · X never here"
+        );
+        assert_eq!(
+            words(CommitGraphLine::Offered { keys: true }, 80),
+            " no commit-graph file · B build one · X never here"
+        );
     }
 }

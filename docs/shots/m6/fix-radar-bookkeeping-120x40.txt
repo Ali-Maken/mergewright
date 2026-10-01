@@ -14,7 +14,6 @@
 #  - Frame 2, cursor on stash@{0}: no ⚠ on that row. A stash is not a
 #    merge you made, so it is never called an evil merge.
 #  - Frame 3, `.` on main's tip: the first item is not `Explain`.
-#  - Every branch here has an upstream, so no "no upstream" ⓘ either.
 #  - The rebased tip's id is zeroed: it is new every run.
 
 == 1. After `p r r` and `P`: no ⓘ on any row ==

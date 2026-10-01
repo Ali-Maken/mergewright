@@ -199,7 +199,7 @@ fn the_banner_never_takes_a_row_another_part_of_the_screen_draws() {
 
     for height in HEIGHTS {
         for banner_lines in 0..=3u16 {
-            for offer in [None, Some(CommitGraphLine::Offered)] {
+            for offer in [None, Some(CommitGraphLine::Offered { keys: true })] {
                 let mut view = screen::view(&lines, usize::from(height), 0);
                 view.banner = (0..banner_lines)
                     .map(|index| sanitize_line(&format!("banner line {index}")))

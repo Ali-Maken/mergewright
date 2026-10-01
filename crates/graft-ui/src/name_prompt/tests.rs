@@ -41,6 +41,27 @@ fn rows(view: &NamePromptView<'_>, theme: &Theme, width: u16, height: u16) -> Ve
         .collect()
 }
 
+/// m7-power-tools/15 (:856): the bar under the screen names `⏎ create`,
+/// `⇥ toggle` and `esc cancel` (`HintContext::NamePrompt`); the border drew
+/// them a second time, a line above.
+#[test]
+fn the_name_prompt_draws_keys_once() {
+    let view = NamePromptView {
+        title: sanitize_line("New branch at a1b2c3d"),
+        field: field(),
+        option: Some((sanitize_line("check out after creating"), true)),
+        refusal: None,
+    };
+    let drawn = rows(&view, &theme(), 80, 24);
+    let border = drawn
+        .iter()
+        .find(|line| line.contains('╰'))
+        .unwrap_or_else(|| panic!("no bottom border: {drawn:#?}"));
+    for words in ["create", "toggle", "esc"] {
+        assert!(!border.contains(words), "{words}: {border}");
+    }
+}
+
 #[test]
 fn draws_the_title_and_typed_name() {
     let theme = theme();
@@ -153,7 +174,8 @@ fn capture_for_docs_shots() {
          #\n\
          # What right looks like: title, typed name field, an optional\n\
          # (•)/( ) checkout toggle, a refusal line under the field when the\n\
-         # name is rejected, and the footer \"⏎ create  ⇥ toggle  esc cancel\".\n\
+         # name is rejected, and a plain bottom border: the keys are the bar's\n\
+         # (m7-power-tools/15).\n\
          # Below 40x7 it draws one centred \"too small\" line and nothing else.\n\
          \n",
     );

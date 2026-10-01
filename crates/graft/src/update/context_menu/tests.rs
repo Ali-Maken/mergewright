@@ -1087,7 +1087,6 @@ fn o_opens_the_take_preview() {
     );
     // The bar keeps every preview's `y confirm`: no verb of its own.
     assert_eq!(view.again, None);
-    assert!(!view.back_only);
 }
 
 #[test]

@@ -188,6 +188,5 @@ const HEADER: &str = "\
 #  - Frame 2, cursor on stash@{0}: no \u{26a0} on that row. A stash is not a
 #    merge you made, so it is never called an evil merge.
 #  - Frame 3, `.` on main's tip: the first item is not `Explain`.
-#  - Every branch here has an upstream, so no \"no upstream\" \u{24d8} either.
 #  - The rebased tip's id is zeroed: it is new every run.
 ";

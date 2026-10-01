@@ -71,7 +71,7 @@
  graft /code/api    MERGING
 ◌   ▏  Uncommitted changes (16 unmerged)
 ◆      [◆ main] main's take                                                                              GF 87m  80393eb
-│ ●  ⓘ [feature] the feature's take                                                                      GF 88m  38c48dd
+│ ●    [feature] the feature's take                                                                      GF 88m  38c48dd
 ●─╯    the shared files                                                                                  GF 89m  58854e9
 ●      Ship release 29                                                                                   GF 2h   b796998
 ●      Ship release 28                                                                                   GF 2h   8b1f759
@@ -90,7 +90,7 @@
 ●      Ship release 15                                                                                   GF 2h   a840fd9
 ●      Ship release 14                                                                                   GF 2h   0f8d5d6
 ●      Ship release 13                                                                                   GF 2h   78ddfac
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+●      Ship release 12                                                                                   GF 2h   9bedacc
  merge stopped · 16 files conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
 UNCOMMITTED
 diff vs HEAD 80393eb

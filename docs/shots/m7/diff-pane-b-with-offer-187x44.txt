@@ -1,0 +1,111 @@
+# m7/diff-pane-b-with-offer-187x44.txt: 187x44, drawn by `view::view` from a
+# real AppState (crates/graft/tests/it/offer_and_blame.rs,
+# b_in_the_diff_pane_blames_while_the_offer_is_up, asserted). Not a pty
+# capture: no colour (CLAUDE.md rule 5, colour unverified).
+#
+# The session fixture, no commit-graph file, the offer up (set as a slow
+# sort would). `⏎` on main, the file, `⏎` to the diff, cursor on line 22,
+# then `B`.
+#
+# What right looks like:
+#  - Frame 1: the offer row under the graph reads `no commit-graph file:
+#    history sorts on every open` with no `B`/`X`: the pane has the
+#    keyboard.
+#  - Frame 2: the blame place is open on src/auth/session.rs (the title
+#    names it), the cursor on line 22 with its who/when trailer. The place
+#    takes the screen, offer row included.
+#  - No `commit-graph written` anywhere: `B` blamed, it did not build.
+
+== 1. the diff focused, cursor on line 22, the offer up ==
+
+ graft /code/api  6 commits                                                                                  COMMIT 74f9a9e
+◌    Uncommitted changes (1 untracked)                                                                       Graft Fixture <fixture@example.invalid> · 2020-01-02 23:00 +0000 · 60m
+◆ ▏  [◆ main] Handle expired tokens                                                          GF 60m  74f9a9e parents 0a27627 · diff vs first parent
+●    Move session TTL to config                                                              PR 4mo  0a27627 Contained in: main
+●    rustfmt                                                                                 RU 5mo  b32274b
+●    Retry refresh once on 401                                                               LI 7mo  2f48ca3 A .git-blame-ignore-revs                                                 +2 −0
+●    Add token refresh                                                                       TO 10mo 47593a5 ▾ src/
+◇    Add session                                                                             AN 1y   3f6c311   ▾ auth/
+                                                                                                                 M session.rs                                                         +2 −1
+
+                                                                                                               3   4   use crate::http::{Client, Result};
+                                                                                                               4   5
+                                                                                                               5   6   pub struct Session {
+                                                                                                               6   7       token: String,
+                                                                                                             impl Session {
+                                                                                                              21  22▎              if resp.status() == 401 && attempt == 0 {
+                                                                                                              22  23                   attempt += 1;
+                                                                                                              23  24                   continue;
+                                                                                                              24  25               }
+                                                                                                              25     -             self.token = resp.token()?;
+                                                                                                                  26 +             self.token = resp.token().map_err(Expired::from)?;
+                                                                                                              26  27               return self.record_refresh(&resp, "refreshed after the …
+                                                                                                              27  28           }
+                                                                                                              28  29       }
+                                                                                                              29  30
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open
+ B blame  F history  c commit  P push  <> resize  . more  p  f  b  t  u  /  q  F2  F3  x  +  j/k  1  H  y
+
+             == 2. `B` ==
+
+ BLAME · src/auth/session.rs · as of 74f9a9e
+ skipping 1 commit listed in .git-blame-ignore-revs · i shows them
+ ─ 3f6c311 Ana     1y  Add session            │  1  use std::time::{Duration, Instant};
+ ─ 0a27627 Priya  4mo  Move session TTL to c… │  2  use crate::config::Config;
+ ─ 74f9a9e Graf…  60m  Handle expired tokens  │  3  use crate::error::Expired;
+ ┌ 3f6c311 Ana     1y  Add session            │  4  use crate::http::{Client, Result};
+ │                                            │  5
+ │                                            │  6  pub struct Session {
+ │                                            │  7      token: String,
+ │                                            │  8      refresh: String,
+ └                                            │  9      issued: Instant,
+ ─ 0a27627 Priya  4mo  Move session TTL to c… │ 10      ttl: Duration,
+ ┌ 3f6c311 Ana     1y  Add session            │ 11  }
+ │                                            │ 12
+ └                                            │ 13  impl Session {
+ ┌ 0a27627 Priya  4mo  Move session TTL to c… │ 14      pub fn new(token: String, refresh: String, config: &Config) -> Self {
+ └                                            │ 15          Session { token, refresh, issued: Instant::now(), ttl: config.session_ttl }
+ ─ 3f6c311 Ana     1y  Add session            │ 16      }
+ ┌ 47593a5 Tom   10mo  Add token refresh      │ 17      /// Refresh the token when the server says it expired.
+ └                                            │ 18      pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
+ ─ 2f48ca3 Lina   7mo  Retry refresh once on… │ 19          let mut attempt = 0;
+ ┌ 47593a5 Tom   10mo  Add token refresh      │ 20          loop {
+ └                                            │ 21              let resp = client.refresh(&self.token)?;
+ ▸ 2f48ca3 Lina   7mo  Retry refresh once on… │ 22              if resp.status() == 401 && attempt == 0 {    ◂ Lina · 7 months ago · Retry refresh once on 401 · 2f48ca3
+ └                                            │ 23                  attempt += 1;
+ ┌ 47593a5 Tom   10mo  Add token refresh      │ 24                  continue;
+ └                                            │ 25              }
+ ─ 74f9a9e Graf…  60m  Handle expired tokens  │ 26              self.token = resp.token().map_err(Expired::from)?;
+ ┌ 47593a5 Tom   10mo  Add token refresh      │ 27              return self.record_refresh(&resp, "refreshed after the server answered 401 on the first request; the retry budget is spent"
+ │                                            │ 28          }
+ └                                            │ 29      }
+ ┌ 3f6c311 Ana     1y  Add session            │ 30
+ │                                            │ 31      pub fn token(&self) -> &str {
+ │                                            │ 32          &self.token
+ │                                            │ 33      }
+ │                                            │ 34
+ │                                            │ 35      pub fn age(&self) -> Duration {
+ │                                            │ 36          self.issued.elapsed()
+ │                                            │ 37      }
+ │                                            │ 38
+ └                                            │ 39      pub fn is_expired(&self) -> bool {
+ ─ 0a27627 Priya  4mo  Move session TTL to c… │ 40          self.age() > self.ttl
+ ┌ 3f6c311 Ana     1y  Add session            │ 41      }
+ ⏎ that commit  ^ before it  L history of these lines  / find  space ages  w whitespace  i ignore list  esc back

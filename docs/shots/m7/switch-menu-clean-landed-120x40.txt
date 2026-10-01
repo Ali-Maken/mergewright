@@ -7,7 +7,7 @@
 # cursor on the new HEAD's row (feature-b, `◆`); the status line
 # `on feature-b ✓ · u goes back`.
  graft /code/api  6 commits
-  ◆ ▏ⓘ [◆ feature-b] fix the bug                                                                         GF 3m   fbb2394
+  ◆ ▏  [◆ feature-b] fix the bug                                                                         GF 3m   fbb2394
 ● │    [main] main moves on                                                                              GF 4m   37926a7
 ●─╯    add the base                                                                                      GF 5m   ed332bc
 ●      Correct the note                                                                                  GF 1y   a82960b
@@ -44,5 +44,5 @@
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  on feature-b ✓ · u goes back

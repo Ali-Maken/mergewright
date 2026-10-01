@@ -1,5 +1,5 @@
  graft /code/api  4 commits
-  ● ▏ⓘ [feature/sara-long-running-o… two on the branch              now  d79fe16
+  ● ▏  [feature/sara-long-running-o… two on the branch              now  d79fe16
 ◆─╯    [◆ main] Correct the note                                    1y   a82960b
 ●      Add the first note                                           1y   fadcfb3
 ◇      Add a readme                                                 1y   64ded19
@@ -20,5 +20,5 @@
 
 
 
- no commit-graph file · B build one · X never here
+
  …/session-cache.json is in the way · move it aside first · esc dismiss

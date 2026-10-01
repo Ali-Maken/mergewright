@@ -427,7 +427,7 @@ fn details() -> Vec<Entry> {
             vec![],
             shape("foxtrot-merge"),
             "⚠ in the marker column on the foxtrot merge; footer gains . explain",
-            "the first ⚠: ⓘ (no upstream) sat on branch tips since stop 1",
+            "the first ⚠: no ⓘ on branch tips, no upstream is no finding (m7/15)",
         ),
         stop(
             "foxtrot-merge",
@@ -467,7 +467,7 @@ fn details() -> Vec<Entry> {
             vec![],
             shape("cherry-pick-duplicates"),
             "ⓘ duplicate commit on both 'Fix the greeting' rows when the probe lands",
-            "topic's ⓘ is no upstream; the two fix rows share one finding",
+            "no ⓘ on topic's tip; the two fix rows share one finding",
         ),
         stop(
             "ref-states",

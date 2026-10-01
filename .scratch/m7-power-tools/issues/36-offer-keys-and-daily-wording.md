@@ -1,6 +1,6 @@
 # 36-offer-keys-and-daily-wording — ticket 15 built, plus `B` in the diff pane always blames
 
-Status: ready
+Status: partial — built; 3 fast-tier tests red at the seam (NOTES "Blocked")
 Source: usability walk `docs/reviews/m7-usability.md` M2 (15 never built; rows 766/768/769/770 seen) and M3 (`B` in the
 diff pane writes a commit-graph while the offer is up). **Supersedes 15**: 15's spec stays in place as the decision
 record and is read as this ticket's scope; the conductor marks 15 `superseded by <this number>`.
@@ -103,27 +103,27 @@ graft-ops: the no-upstream `Risk` variant removed (named in NOTES). graft-ui: `p
 footer from choice count. `Product::TopologicalOrder` carries the sort's `Duration`.
 
 ## Acceptance (each box names its test at tick time; red first where marked)
-- [ ] Every acceptance box of 15 ("Acceptance"), its captures as named there. Old-word tests: find them by grepping the
+- [x] Every acceptance box of 15 (see NOTES "15's boxes" for each test) ("Acceptance"), its captures as named there. Old-word tests: find them by grepping the
       old strings (`has moved`, `p pull first`, `subject empty`, the radar words), not 15's stale lines; list each in
       NOTES. `rejected_push_names_pull_then_m_or_r` in `graft-ops/src/apply/remote/tests.rs`.
       `a_single_close_box_offers_only_esc` (four callers) in `tests/it/offer_and_blame.rs`;
       `the_stash_put_back_box_is_unchanged` in `tests/it/m6_stash_put_back.rs`.
-- [ ] `b_in_the_diff_pane_blames_while_the_offer_is_up` (red first, `tests/it/offer_and_blame.rs`): offer `Offered`
+- [x] `b_in_the_diff_pane_blames_while_the_offer_is_up` (red seen with the old `claims_b` guard: pump timeout) (red first, `tests/it/offer_and_blame.rs`): offer `Offered`
       via `harness.offer_commit_graph`, `⏎` on a commit, `⇥` to the diff, `B` → a blame place opens;
       `Command::WriteCommitGraph` not emitted.
-- [ ] `the_offer_keys_answer_only_with_the_graph_focused` (`update/place/tests/hints.rs` or commit_graph's tests):
+- [x] `the_offer_keys_answer_only_with_the_graph_focused` (in `update/tests.rs` `commit_graph_offer`) (`update/place/tests/hints.rs` or commit_graph's tests):
       graph focused, `B` → `WriteCommitGraph`, `X` → `DeclineCommitGraph`; pane focused, neither emitted.
-- [ ] `the_pane_bar_keeps_b_blame_while_the_offer_is_up` (red first, `update/place/tests/hints.rs`).
-- [ ] `the_offer_row_drops_its_keys_off_the_graph`: graft half (`commit_graph_line` → `keys: false` with pane
+- [x] `the_pane_bar_keeps_b_blame_while_the_offer_is_up` (red seen with the old guard) (red first, `update/place/tests/hints.rs`).
+- [x] `the_offer_row_drops_its_keys_off_the_graph` (graft: `update/tests.rs` `commit_graph_offer`; graft-ui: `graph_screen/footer.rs` tests): graft half (`commit_graph_line` → `keys: false` with pane
       focus) in commit_graph's tests; graft-ui half (`footer.rs` tests: `keys: false` draws no `B`/`X`; `keys: true`
       byte-identical to today's words).
-- [ ] Hint guards green: `every_key_the_bar_draws_is_answered`, `every_bound_action_is_hinted_live_or_is_named_here`.
-- [ ] **Capture** `docs/shots/m7/diff-pane-b-with-offer-187x44.txt` (written by `tests/it/offer_and_blame.rs`) —
+- [x] Hint guards green (full nextest run: both pass): `every_key_the_bar_draws_is_answered`, `every_bound_action_is_hinted_live_or_is_named_here`.
+- [x] **Capture** `docs/shots/m7/diff-pane-b-with-offer-187x44.txt` (two frames, see NOTES) (written by `tests/it/offer_and_blame.rs`) —
       **right:** the blame place open on the file and line the diff cursor was on (title names the file; the who/when
       column on the cursor line), and the offer row under the graph reading `no commit-graph file: history sorts on
       every open` with no `B`/`X`; no `commit-graph written` anywhere. Colour unverified.
-- [ ] MAP.md for graft-ops, graft, graft-ui (`blamable`, `CommitGraphLine`'s `keys`, `offer_keys_live`).
-- [ ] Gates.
+- [x] MAP.md for graft-ops, graft, graft-ui (`blamable`, `CommitGraphLine`'s `keys`, `offer_keys_live`).
+- [ ] Gates. fmt, clippy, doctests pass; nextest 5024/5027 — 3 red, NOTES "Blocked".
 
 ## Touches (check each; report how)
 - Everything in 15's "Touches", re-checked at the scout's lines.
@@ -144,3 +144,37 @@ Workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 
 ## Size
 ~65k (15's ~50k + M3 ~15k). One context. Scout: no split needed.
+
+## NOTES (builder, 2026-10-01)
+
+Scout used: `scouts/36.md`, all sites matched. No compaction.
+
+### 15's boxes, each with its test
+- :774 `rejected_push_names_pull_then_m_or_r` (red first). Old-word tests updated: `graft-ops/src/apply/remote/tests.rs` (`case`, `names_survive_arrows_and_slashes`), `update/remote/tests/lease.rs` REJECTED, `update/remote/tests.rs` (~475), `view/tests/bottom_row.rs` REJECTION/_KEYS + `row.contains`, `tests/it/remote_by_key.rs` (~594), `tests/it/m4_walk/push.rs` (~344). `update/tests.rs:1413` keeps an old string as a fixture (not a word test). `:262` NonFastForward words are unchanged; they come from `RemoteFailure::NotFastForward`-type ops lines, not the push explain.
+- :776 `a_fresh_commit_editor_shows_no_refusal` (red first), `commit_with_empty_subject_says_subject_empty`, `typing_clears_subject_empty`. Old `an_empty_subject_refuses` replaced. New `CommitEditor::subject_refused` + `shown_refusal`; `refusal` stays the gate.
+- :777 `a_branch_without_upstream_has_no_finding` (red first). `Risk::NoUpstream` removed (rule, explain, view/radar, core doc). `risky_states` loses its row; `default_without_upstream_and_unborn_head_are_not_risks` kept (tests the unborn HEAD and policy-off too). `graft-ops/tests/it/mistake_radar.rs` FoxtrotMerge now `[]`. Updated: `m6_stash_put_back.rs` (finding now empty; caption), `gallery.rs` two captions, `status_under_a_box.rs` caption, `radar_bookkeeping.rs` caption line.
+- :778 `a_fast_sort_gets_no_commit_graph_offer`, `a_slow_sort_gets_the_offer`, `a_stopped_sort_gets_no_offer` (`update/tests.rs` `commit_graph_offer`). `Product::TopologicalOrder(SortedOrder { order, took })` (a struct, not a 2-tuple, so `event_loop/label.rs` needed no edit). A sort landing before the repository facts offers nothing.
+- :856 `the_name_prompt_draws_keys_once` (red first).
+- :860 `a_single_close_box_offers_only_esc` (`tests/it/offer_and_blame.rs`: one real nothing-to-do preview, re-pointed at refused / failed / undrawable), graft-ui `a_back_only_box_draws_esc_back` (red first). `the_stash_put_back_box_is_unchanged` was not added as a separate test: no stash capture moved (`git status` shows no `stash-*` put-back shot changed).
+- Captures new: `m7/commit-editor-fresh-120x40.txt`, `m7/refused-box-single-close-120x40.txt` (refusal words set on the real preview: `main has moved`), `m7/diff-pane-b-with-offer-187x44.txt` (frame 1: diff focused, row reads `no commit-graph file: history sorts on every open`, no keys; frame 2: the blame place, which covers the offer row). The offer is set on the state in that test: since :778 no small fixture's sort is slow enough to raise it.
+
+### Deviations (outside the file set, none held by 37/38)
+- `update/commit_editor/keys.rs`: the refused commit sets, and subject edits/paste clear, `subject_refused` — the only place a commit press is handled.
+- graft-ui `graph_screen/tests.rs`, `tests/pane_boundaries.rs`, `name_prompt/tests.rs`, `preview_box/tests.rs`: mechanical (`Offered { keys: true }`, flag removed from a test, new test).
+- graft tests: `update/tests.rs`, `update/history/tests.rs` (`sorted_order()`), `update/context_menu/tests.rs` (dropped `!view.back_only`), `update/place/tests/open.rs` (`b_while_the_commit_graph_offer_is_up_goes_to_the_offer` inverted to `b_in_the_pane_blames_while_the_commit_graph_offer_is_up`), `tests/it/blame_place.rs` (`a_full_clone_without_a_graph_still_offers_one` now pins the fact `Absent { declined: false }`).
+- `PreviewBox::back_only` **not removed**: `update/stash/tests.rs:329` (37's) reads it. Footer ignores it now. Follow-up after 37 merges: delete that assert line, the field (`preview_box.rs`), its default, and the setter in `boxes.rs:46`.
+- `view/tests/bottom_row.rs::rejected_push` now sets `detail.focus = Graph` (it hid the pane but left focus on Files).
+
+### Blocked (3 red, fast tier)
+- `tests/it/m7_walk/picker.rs:205` `switch_back` (37 holds it) asserts the offer row `no commit-graph file: history sorts` at open — after :778 a fast sort raises no offer. Edit: drop that assert (lines ~203-206) or set `state.commit_graph = CommitGraphOffer::Offered` first.
+- `tests/it/lane_cap.rs` both tests: the 92-column graph folded `+1 lanes` only because the false no-upstream `ⓘ` gave every topic tip a marker column (HEAD capture `m5-lane-cap-160x24.txt` line 2-3 shows `ⓘ` on each topic). Seen: baseline worktree at 63fbf7b5 passes; with the offer restored it still fails, so not the offer. 16 topics does not fold either. The fixture needs rethinking (decision for the conductor/user); capture left at HEAD.
+
+### Captures re-taken by their fast-tier tests (all others under `docs/shots/` in the commit's diff)
+m5-hints-*, m5-ui-banner-conflict-*, m5-ui-confirm/credential-over-graph-*, m5-ui-context-menu-verbs-*, m5-ui-dragging-*, m5-ui-drop-menu-*, m5-ui-name-prompt*, m5-ui-preview-scrolled-*, m6/fix-* (box-owns-the-bar, landing-*, status-under-a-box, undo-*, …), m6/menu-fixed-slots, m6/stash-clash-*, m6/esc-then-g, m7/30b-*, 30c-*, compare-since-split-*, diff-cursor-commit, in-the-way-at-80, landed-after-merge, menu-slot-two-dim, pane-bar-file-vs-directory, picker-*, put-back-*-landed, radar-not-checked*, rebase/rewrite-refused-fork, stash-in-history-*, switch-*, take-refused-merge. Several are written by m7_walk tests (37's): conductor re-runs after both merge. Contact sheets / captions.tsv not hand-edited (stale).
+
+### Touches
+- `blamable(`/`claims_b(` readers (grep): `view/rows.rs:797` bar, `place/history/open.rs:141`, `place::b_key`, `place/tests/hints.rs` — read, all green.
+- `CommitGraphLine::Offered` matches (grep): `state.rs`, `footer.rs`, graft-ui tests, `blame_place.rs`, `update/tests.rs` — all updated. `CommitGraphOffer::Offered` hits: commit_graph.rs, state.rs, place/tests, bottom_row/rungs — green.
+- Row count: `graph_rows` unchanged per state (`the_line_costs_a_graph_row_while_shown` green).
+- History place `B`, resolver `B`: their tests green in the full run.
+- Keymap doc: not edited (conductor). Journal/undo: none.

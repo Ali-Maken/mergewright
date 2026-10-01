@@ -146,7 +146,10 @@ pub fn paste(state: &mut AppState, text: &str) -> bool {
         return false;
     }
     with_editor(state, |editor| match editor.focus {
-        Field::Subject => editor.subject.insert_str(text),
+        Field::Subject => {
+            editor.subject.insert_str(text);
+            editor.subject_refused = false;
+        }
         Field::Body => editor.body.insert_str(text),
         // A toggle or the button has focus: there is no text field to put
         // this in. Claimed all the same, so it cannot fall through to a
@@ -202,9 +205,18 @@ pub(super) fn subject_key(
     with_editor(state, |editor| match key.code {
         // Nothing is below the subject but the body.
         KeyCode::Down => editor.focus = Field::Body,
-        KeyCode::Char(character) => editor.subject.insert(character),
-        KeyCode::Backspace => editor.subject.backspace(),
-        KeyCode::Delete => editor.subject.delete(),
+        KeyCode::Char(character) => {
+            editor.subject.insert(character);
+            editor.subject_refused = false;
+        }
+        KeyCode::Backspace => {
+            editor.subject.backspace();
+            editor.subject_refused = false;
+        }
+        KeyCode::Delete => {
+            editor.subject.delete();
+            editor.subject_refused = false;
+        }
         KeyCode::Left => editor.subject.left(),
         KeyCode::Right => editor.subject.right(),
         KeyCode::Home => editor.subject.home(),
@@ -286,10 +298,12 @@ pub(super) fn commit(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) 
     let status = state.working_tree.as_deref();
     let in_progress = live_operation(state);
     let tabs = refusal_tabs(state);
-    let Some(editor) = state.commit_editor.as_ref() else {
+    let Some(editor) = state.commit_editor.as_mut() else {
         return Vec::new();
     };
     if editor.refusal(status, in_progress, tabs).is_some() {
+        // From now on an empty subject is said (m7-power-tools/15, :776).
+        editor.subject_refused = true;
         return Vec::new();
     }
     let operation = editor.operation();

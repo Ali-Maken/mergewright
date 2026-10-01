@@ -53,7 +53,7 @@
 #
 
  graft /code/api  8 commits
-  ◆  ⓘ [◆ feature] finish the feature                               now  8d6cd28
+  ◆    [◆ feature] finish the feature                               now  8d6cd28
   ●    start the feature                                            2m   52f3b96
 ● │ ▏  [main] main moves again                                      3m   45fa51d
  Checkout main
@@ -74,5 +74,5 @@
 
 
 
- no commit-graph file · B build one · X never here
+
  m merge  r rebase  ⏎ open  . more  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +

@@ -59,8 +59,8 @@ pub mod switch;
 pub mod undo;
 
 pub use events::{
-    AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, TakeAt, TakeRequest, Task,
-    WholeFileAnswer,
+    AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, SortedOrder, TakeAt,
+    TakeRequest, Task, WholeFileAnswer,
 };
 pub(crate) use geometry::context_menu_area;
 pub(crate) use history::walk_is_reading;
@@ -278,8 +278,8 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         ) => {
             amend_into::answer(next, commands, id, product);
         }
-        AppEvent::Produced(id, Product::TopologicalOrder(order)) => {
-            history::sorted(next, commands, id, order);
+        AppEvent::Produced(id, Product::TopologicalOrder(sorted)) => {
+            history::sorted(next, commands, id, sorted);
         }
         AppEvent::Produced(_, Product::Repository(result)) => repository_answer(next, result),
         AppEvent::Produced(id, Product::IndexState(read)) => {

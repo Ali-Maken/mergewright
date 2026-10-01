@@ -7,7 +7,7 @@ use graft_git::history::Order;
 use graft_ui::graph_screen::OrderNotice;
 
 use crate::history::{HistoryUpdate, Promotion, Window};
-use crate::update::tests::{order, rows_for, sorting};
+use crate::update::tests::{rows_for, sorted_order, sorting};
 use crate::update::{AppEvent, Command, Product, Progress, update};
 
 /// The walk's answer to `request` over `rows`, in the order it names.
@@ -31,7 +31,7 @@ fn a_provisional_window_after_sorted_keeps_the_order_notice() {
     let (walk, sort) = (JobId::new(1), JobId::new(2));
     let (state, commands) = update(
         &sorting(walk, sort),
-        AppEvent::Produced(sort, Product::TopologicalOrder(order())),
+        AppEvent::Produced(sort, Product::TopologicalOrder(sorted_order())),
     );
     let [Command::ShowRows(to, request)] = commands.as_slice() else {
         panic!("the order goes to the walk: {commands:?}");

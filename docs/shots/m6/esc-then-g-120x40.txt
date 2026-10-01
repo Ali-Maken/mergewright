@@ -1,6 +1,7 @@
 # m6-conflicts/85 A: `esc G` on a 200-commit history (fixture `linear`), 120x40, after the first screen settled. Colour unverified (character grid only).
 # What right looks like: the header reads `200 commits`, not `stopped`; the graph pane's last rows are commits (sha, subject), not blank; the bar is the row's own keys.
  graft /code/api  200 commits
+●    Commit 038                                                                                          GF 2d   d506540
 ●    Commit 037                                                                                          GF 2d   97c4d74
 ●    Commit 036                                                                                          GF 2d   20b8b5b
 ●    Commit 035                                                                                          GF 2d   3f6038c
@@ -38,5 +39,4 @@
 ●    Commit 003                                                                                          GF 2d   91af090
 ●    Commit 002                                                                                          GF 2d   ace211d
 ◇ ▏  Commit 001                                                                                          GF 2d   a9a0c8e
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
  ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C

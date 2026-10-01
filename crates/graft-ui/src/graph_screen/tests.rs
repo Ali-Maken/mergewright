@@ -1132,7 +1132,7 @@ fn a_configured_cap_larger_than_the_screen_never_cuts_the_graph_column() {
 #[test]
 fn every_commit_graph_wording_fits_under_its_breakpoint() {
     let lines = [
-        CommitGraphLine::Offered,
+        CommitGraphLine::Offered { keys: true },
         CommitGraphLine::NoGitToBuild,
         CommitGraphLine::Writing,
         CommitGraphLine::Written { commits: 1_000_000 },
@@ -1167,7 +1167,7 @@ fn every_commit_graph_wording_fits_under_its_breakpoint() {
 /// Every wording the commit-graph line has, so the sweep below covers each
 /// variant's whole set.
 const COMMIT_GRAPH_LINES: [CommitGraphLine; 4] = [
-    CommitGraphLine::Offered,
+    CommitGraphLine::Offered { keys: true },
     CommitGraphLine::NoGitToBuild,
     CommitGraphLine::Writing,
     CommitGraphLine::Written { commits: 1_000_000 },
@@ -1317,7 +1317,7 @@ fn the_commit_graph_line_sits_above_the_hints_and_takes_a_graph_row() {
     let rows = linear(30);
     let mut shown = view(&rows, WalkView::Complete { rows: 30 }, 0);
     let without = text(&draw(&shown, 80, 10));
-    shown.commit_graph = Some(CommitGraphLine::Offered);
+    shown.commit_graph = Some(CommitGraphLine::Offered { keys: true });
     let with = text(&draw(&shown, 80, 10));
 
     assert_eq!(with[9], without[9], "the hints keep the bottom row");

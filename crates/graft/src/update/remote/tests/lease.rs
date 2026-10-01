@@ -32,7 +32,8 @@ const SENT: &str = "1111111111111111111111111111111111111111";
 /// else that moved `HEAD`).
 const MOVED: &str = "2222222222222222222222222222222222222222";
 
-const REJECTED: &str = "push rejected: origin/main has moved · p pull first · P force with lease";
+const REJECTED: &str =
+    "push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease";
 
 fn oid(hex: &str) -> Oid {
     Oid::from_hex(hex).expect("40 hex digits")

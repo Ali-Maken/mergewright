@@ -227,9 +227,9 @@ pub struct BlameState {
 }
 
 /// `B` in the detail pane: open blame at the line he is on, or say why not.
-/// Claimed on a file row, a heading or a diff line, either region — not
-/// while the commit-graph offer can be acted on (keymap §2.1). `true` when
-/// `B` was taken.
+/// Claimed on a file row, a heading or a diff line, either region — offer
+/// or not: in the pane `B` is blame (keymap §2.5, m7-power-tools/36); the
+/// offer's `B` lives only on the graph. `true` when `B` was taken.
 pub(crate) fn b_key(next: &mut AppState, commands: &mut Vec<Command>) -> bool {
     if !claims_b(next) {
         return false;
@@ -291,13 +291,12 @@ fn settle_trail(next: &mut AppState, base: Option<CompareBase>) {
     }
 }
 
-/// The pane would take `B`: shown, focused, and not under the commit-graph
-/// offer. [`b_key`]'s own guard, read by the bar (`B blame`), so the two
-/// cannot disagree.
+/// The pane would take `B`: shown and focused. [`b_key`]'s own guard, read
+/// by the bar (`B blame`), so the two cannot disagree. The commit-graph
+/// offer does not take it: its `B` answers only with the graph focused
+/// (`commit_graph::offer_keys_live`, m7-power-tools/36).
 fn claims_b(state: &AppState) -> bool {
-    state.detail.shown
-        && state.detail.focus != DetailFocus::Graph
-        && !state.commit_graph_actionable()
+    state.detail.shown && state.detail.focus != DetailFocus::Graph
 }
 
 /// `B` would answer here: the bar's `B blame` (`view::rows::hint_context`).

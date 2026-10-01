@@ -227,11 +227,6 @@ pub enum Risk {
         /// How many commits are unpushed.
         ahead: u32,
     },
-    /// A non-default branch with no upstream configured.
-    NoUpstream {
-        /// The branch's name.
-        branch: String,
-    },
 }
 
 #[cfg(test)]

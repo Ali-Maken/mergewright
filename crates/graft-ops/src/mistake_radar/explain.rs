@@ -267,18 +267,6 @@ fn explain_risk(at: Oid, risk: &Risk, short: Short) -> Explanation {
             ],
             format!("[{branch}]"),
         ),
-        Risk::NoUpstream { branch } => (
-            "NO UPSTREAM",
-            vec![
-                format!(
-                    "'{branch}' has no upstream branch: git does not know where to push \
-                     it or what to compare it with."
-                ),
-                "Ahead/behind counts and a plain `git push` need one.".into(),
-                format!("`git push -u origin {branch}` sets it on the first push."),
-            ],
-            format!("[{branch}]"),
-        ),
     };
     Explanation {
         title: title.into(),
@@ -355,9 +343,6 @@ mod tests {
             Evidence::Risk(Risk::UnpushedOnDefault {
                 branch: "main".into(),
                 ahead: 1,
-            }),
-            Evidence::Risk(Risk::NoUpstream {
-                branch: "feature".into(),
             }),
             Evidence::Evil {
                 files: vec![b"a.txt".to_vec(); 7],

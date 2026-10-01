@@ -11,8 +11,8 @@ use crate::update::AppEvent;
 
 const SIZES: [(u16, u16); 2] = [(120, 40), (80, 24)];
 
-const REJECTION: &str = "push rejected: origin/main has moved";
-const REJECTION_KEYS: &str = "p pull first · P force with lease";
+const REJECTION: &str = "push rejected: origin/main has commits you don't";
+const REJECTION_KEYS: &str = "p pull, then m or r · P force with lease";
 
 fn key(code: KeyCode) -> KeyPress {
     KeyPress {
@@ -58,6 +58,9 @@ fn rejected_push(columns: u16, rows: u16) -> AppState {
 
     let mut state = changes_pane_state(columns, rows);
     state.detail.shown = false;
+    // The pane closed hands the keyboard back to the graph (as `esc` does);
+    // the offer's keys read it (m7-power-tools/36).
+    state.detail.focus = graft_ui::detail::DetailFocus::Graph;
     state.remotes = Loading::Ready(std::sync::Arc::new(RemoteFacts {
         remotes: vec![Remote {
             name: "origin".to_owned(),
@@ -116,7 +119,10 @@ fn esc_from_the_box_brings_the_rejection_back() {
         assert!(state.confirm.is_none(), "esc closed the box");
         let row = bottom_row(&state, columns, rows);
         assert!(row.contains("push rejected"), "{columns}x{rows}: {row}");
-        assert!(row.contains("p pull first"), "{columns}x{rows}: {row}");
+        assert!(
+            row.contains("p pull, then m or r"),
+            "{columns}x{rows}: {row}"
+        );
         assert!(
             row.contains("P force with lease"),
             "{columns}x{rows}: {row}"

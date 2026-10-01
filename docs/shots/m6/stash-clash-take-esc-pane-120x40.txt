@@ -36,7 +36,7 @@
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  stash@{0} clashed · 1 file conflicted · ⏎ resolve  M mergetool  e edit  <> resize  space resolved  c commit  . more  ⇥
 UNCOMMITTED
 diff vs HEAD f3742ab

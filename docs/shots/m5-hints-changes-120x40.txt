@@ -71,7 +71,7 @@
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ diff  . more
 UNCOMMITTED · 1 unstaged
 diff vs HEAD 29a1432

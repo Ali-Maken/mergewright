@@ -55,7 +55,7 @@
 #
 
  graft /code/api  8 commits
-  ◆  ⓘ [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
+  ◆    [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
   ●    start the feature                                                                                                                         GF 2m   52f3b96
 ● │ ▏  [main] main moves again                                                                                                                   GF 3m   45fa51d
  Checkout main
@@ -100,5 +100,5 @@
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  . more  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C

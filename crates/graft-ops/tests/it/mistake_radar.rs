@@ -333,14 +333,9 @@ fn ref_shapes_flag_exactly_what_they_should() {
         );
         match shape {
             Shape::DetachedHead => assert_eq!(risks, [Risk::DetachedHead], "{shape}"),
-            Shape::RefStates => assert_eq!(risks, [], "{shape}"),
-            Shape::FoxtrotMerge => assert_eq!(
-                risks,
-                [Risk::NoUpstream {
-                    branch: "feature".into()
-                }],
-                "{shape}"
-            ),
+            // m7-power-tools/15: `feature` has no upstream, which is no
+            // longer a finding.
+            Shape::RefStates | Shape::FoxtrotMerge => assert_eq!(risks, [], "{shape}"),
             _ => {}
         }
     }

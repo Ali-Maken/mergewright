@@ -1,0 +1,52 @@
+# m7/commit-editor-fresh-120x40.txt: 120x40, drawn by `view::view` from a
+# real AppState (crates/graft/tests/it/offer_and_blame.rs,
+# capture_commit_editor_fresh, asserted). Not a pty capture: no colour
+# (CLAUDE.md rule 5, colour unverified).
+#
+# The session fixture with notes.md staged; `c`.
+#
+# What right looks like:
+#  - The commit editor, its subject empty, the cursor in it.
+#  - No `subject empty` anywhere: it is said only after Commit is pressed
+#    with an empty subject (m7-power-tools/15).
+
+COMMIT ── ⎇ main ── 1 file staged
+
+▸Subject                                                   ┊                                                        0/50
+
+ Body
+                                                                                 ┊
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
+⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel

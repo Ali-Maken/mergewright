@@ -41,8 +41,9 @@ pub(super) fn closing_box(line: &str, subject: &PreviewSubject) -> PreviewBox {
     let mut view = PreviewBox::new(sanitize_line(&planning_title(subject)))
         .with_choices(vec![sanitize_line("Close")]);
     view.lines = vec![sanitize_line(line)];
-    // The stash note's refusal state: keys `esc back` (review 86, m3).
-    // Other previews keep their footer; see the ticket's NOTES.
+    // The footer (`esc back`) follows from the one choice, in graft-ui.
+    // The flag is vestigial: kept only for a test outside this wave's
+    // files (m7-power-tools/36 NOTES), removed with it.
     view.back_only = stash_put_back(subject).is_some();
     view
 }

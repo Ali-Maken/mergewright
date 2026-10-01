@@ -23,7 +23,7 @@
 #    on, which is still readable above it.
 #
  graft /code/api  8 commits
-  ◆ ▏ⓘ [◆ feature] finish the feature                               now  8d6cd28
+  ◆ ▏  [◆ feature] finish the feature                               now  8d6cd28
   ●    start the feature                                            2m   52f3b96
 ● │    [main] main moves again                                      3m   45fa51d
  feature → main
@@ -44,5 +44,5 @@
 
 
 
- no commit-graph file · B build one · X never here
- . explain  ⏎ open  c commit  P  p  f  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k
+
+ ⏎ open  c commit  P push  . more  p  f  b  t  u  S  J  /  R  q  F2  F3  x  +

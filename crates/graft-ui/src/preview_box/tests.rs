@@ -459,10 +459,11 @@ fn footer_r_keep_whole_or_absent_at_80() {
 
 /// Review 86, m3: a refused box with only `Close` has nothing to choose
 /// between; its footer is `esc back`, as the stash note's refusal state says.
+/// Since m7-power-tools/15 (:860) the footer follows from the one choice,
+/// for every such box, with no flag to set.
 #[test]
 fn a_back_only_box_draws_esc_back() {
-    let mut view = rebase_view().with_choices(vec![sanitize_line("Close")]);
-    view.back_only = true;
+    let view = rebase_view().with_choices(vec![sanitize_line("Close")]);
     assert_eq!(footer_label(&view, 200), "esc back");
     let bottom = rows(&view, &theme(), 120, 12).pop().expect("a row");
     assert!(bottom.starts_with("╰ esc back ─"), "{bottom:?}");

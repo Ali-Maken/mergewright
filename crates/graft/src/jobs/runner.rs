@@ -535,8 +535,14 @@ impl<S: JobEvents> JobRunner<S> {
             if stop() {
                 return Outcome::Cancelled;
             }
+            let started = std::time::Instant::now();
             match history::topological_order(&repos, &stop) {
-                Ok(Some(order)) => Outcome::Produced(Product::TopologicalOrder(order)),
+                Ok(Some(order)) => {
+                    Outcome::Produced(Product::TopologicalOrder(crate::update::SortedOrder {
+                        order,
+                        took: started.elapsed(),
+                    }))
+                }
                 Ok(None) => Outcome::Cancelled,
                 Err(message) => Outcome::Failed(message),
             }
