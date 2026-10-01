@@ -2556,7 +2556,7 @@ m6 walk capture: m6-24-set-aside-done — scenario pull-rebase-dirty, keys p r r
 
 ================================================================================
 docs/shots/m6/m6-25-menu-fixed-slots-120x40.txt
-what right looks like: (ticket 75) menu-checkout: `.` on fix's row, main checked out, tree clean (the capture's `k` reaches the row). The menu leads `Checkout fix`, then `Cherry-pick 401cfbe`, then `Explain`. Not dim here: the slot dims only on HEAD's own row (colour unverified).
+what right looks like: (ticket 75) menu-checkout: `.` on fix's row, main checked out, tree clean (the capture's `k` reaches the row). The menu leads `Checkout fix`, then `Cherry-pick 401cfbe (o)`, then `Copy SHA (y)` — no `Explain`: the row carries no radar marker (m7-power-tools/36). Not dim here: the slot dims only on HEAD's own row (colour unverified).
 ================================================================================
 
 m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., unicode tier, 120x40

@@ -2294,7 +2294,7 @@ STAGED (1)
 
 ================================================================================
 docs/shots/m6/m6-19-after-esc-esc-120x40.txt
-what right looks like: TESTING.md "Conflict journeys", back-after-esc: after the stop, `Esc Esc` — the graph has the keyboard and the bottom row **starts** `⇥ banner  . explain  m merge  r rebase`: the way back to the banner leads the bar. Unicode tier; colour, the focus reverse video and the cursor block unverified.
+what right looks like: TESTING.md "Conflict journeys", back-after-esc: after the stop, `Esc Esc` — the graph has the keyboard and the bottom row **starts** `⇥ banner  c finish  m merge  . more`: the way back to the banner leads the bar. No `. explain`: the row carries no radar marker (m7-power-tools/36). Unicode tier; colour, the focus reverse video and the cursor block unverified.
 ================================================================================
 
 m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 120x40
@@ -2456,7 +2456,7 @@ m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc E
 
 ================================================================================
 docs/shots/m6/m6-19-after-esc-esc-200x50.txt
-what right looks like: The same at 200x50: the bottom row starts `⇥ banner  . explain  m merge  r rebase  ⏎ open`; `c finish`, not `c commit` (ticket 52; re-taken by 63).
+what right looks like: The same at 200x50: the bottom row starts `⇥ banner  c finish  m merge  r rebase  ⏎ open`; `c finish`, not `c commit` (ticket 52; re-taken by 63); `. more` after `F3 renderer`, no `. explain` (m7-power-tools/36).
 ================================================================================
 
 m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 200x50
@@ -2514,7 +2514,7 @@ m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc E
 
 ================================================================================
 docs/shots/m6/m6-19-after-esc-esc-80x24.txt
-what right looks like: The same at 80x24: the bottom row starts `⇥ banner  . explain  m merge`.
+what right looks like: The same at 80x24: the bottom row starts `⇥ banner  c finish  m merge  . more`.
 ================================================================================
 
 m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 80x24

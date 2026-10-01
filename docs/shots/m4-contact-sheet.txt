@@ -514,7 +514,7 @@ m4 walk capture: m4-06-rejected-sticky — scenario push-lease-refused-stale, ke
 
 ================================================================================
 docs/shots/m4-06-rejected-sticky-80x24.txt
-what right looks like: TESTING.md § Per breakpoint, Rejected sticky row: `push rejected: origin/main has moved · p pull first · P force with lease` — the whole line, both keys on it (68 columns; a remote branch name up to 22 characters still fits). (Re-taken 2026-09-25, m6-conflicts/63: the graph's cursor-row gutter `▏`.)
+what right looks like: TESTING.md § Per breakpoint, Rejected sticky row: `push rejected: origin/main has comm… · p pull, then m or r · P force with lease` — both keys whole on the line; at 80 columns the reason is cut with `…` to keep them (the full reason, `has commits you don't`, is on the 160x48 capture). (Re-taken 2026-09-25, m6-conflicts/63: the graph's cursor-row gutter `▏`. Re-taken 2026-10-01, m7-power-tools/36: the daily wording.)
 ================================================================================
 
 m4 walk capture: m4-06-rejected-sticky — scenario push-lease-refused-stale, keys P → ⏎, unicode tier, 80x24

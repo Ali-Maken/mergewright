@@ -281,6 +281,22 @@ drifted run was re-taken with `GRAFT_UPDATE_SHOTS=1` into the worktree and each 
   the scratch repo (`commit_graph.rs:23-25`). A loaded machine past 300 ms would draw the offer row and drift.
 - Colour and each capture's look (rules 5, 6): unverified, not broken.
 
+### Captions fixed (conductor's follow-up, same day)
+Each rewritten to quote its re-taken capture line for line:
+- m4 tsv :11 (`m4-06-rejected-sticky-80x24`): **36** wording, `has comm… · p pull, then m or r · P force with lease`. It
+  no longer claims "the whole line": the reason is cut with `…` at 80 columns and the keys are kept (capture :26).
+- m6 tsv :113 (`m6-19` 120x40): **36**, the row starts `⇥ banner  c finish  m merge  . more` and has no `. explain`
+  (capture :42). The old caption also left out `c finish`.
+- m6 tsv :116 (`m6-19` 200x50): **36**, `. more` after `F3 renderer` and no `. explain` (capture :52).
+- m6 tsv :117 (`m6-19` 80x24): **36**, `⇥ banner  c finish  m merge  . more` (capture :26).
+- m6 tsv :173 (`m6-25` 120x40): **36** removed `Explain`, so the menu reads `Checkout fix`, `Cherry-pick 401cfbe (o)`,
+  `Copy SHA (y)` (capture :4-6). The `(o)` comes from 40.
+- Sheets rebuilt: `scripts/contact-sheet.sh m4` and `… --captions-order m6 docs/shots/m6`. Only m4, m6-2 and m6-4
+  changed. Largest file 179 608 B; `NOT RECORDED` 0.
+- Run 3 of `m7-accept.sh`: **rc=0**, 77/77 walks, `13 runs, 0 drifted`, sheets ≤ 200 KB, perf 0 missing, 29/29 journeys.
+- Not checked here, out of the named five: other tsv rows that still contain `explain`/`Explain` are m5 :26-28 (the
+  hand-built marked context, which still has a marker) and m6 :9, :139, :141, :143.
+
 ### Touches
 - `docs/shots/`: the 24 re-taken captures + m4, m5 (×2), m6 (×5), m7 (×2) sheets (`git status --short docs/shots`:
   34). Captions tsvs: unchanged. `docs/perf/m7-accept.txt`: the script's summary. Crates: none (`git status` shows no
