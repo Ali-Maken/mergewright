@@ -1,6 +1,6 @@
 # daily-wording — a rejected push names the right keys, no `subject empty` on open, no radar finding for a branch without upstream, the commit-graph offer only after a slow sort, keys drawn once, single-`Close` boxes offer only `esc`
 
-Status: draft
+Status: superseded by 36 (planner 2026-10-01: folded; line numbers predate the preview.rs split)
 Blocked by: none
 Crates: graft-ops (`apply/remote.rs`, `mistake_radar/`), graft (`update/commit_editor.rs`, `view/commit_editor.rs`,
 `update/commit_graph.rs`, the sort job's timing, `update/preview.rs`, `view/radar.rs`, and the tests that pin the
