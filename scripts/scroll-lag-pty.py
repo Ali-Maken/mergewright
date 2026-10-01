@@ -189,6 +189,11 @@ def main():
     rss_kb = subprocess.run(
         ["ps", "-o", "rss=", "-p", str(pid)], capture_output=True, text=True
     ).stdout.strip()
+    if os.environ.get("MEM_OUT"):
+        # 47 debugger: where the resident set sits (malloc zones, allocated vs
+        # fragmented), read before Graft is killed. Never committed.
+        with open(os.environ["MEM_OUT"], "w") as out:
+            subprocess.run(["vmmap", "--summary", str(pid)], stdout=out, stderr=out)
     quit_at = time.monotonic()
     stop.set()
     thread.join()

@@ -266,3 +266,33 @@ clamps the sleep at 0. Guards now record the failure in `broken=`; nothing retri
   - `cargo clippy --all-targets -D warnings`, with and without `graft/heavy-tests`;
   - `cargo nextest run`: 5111/5111;
   - `cargo test --doc`.
+
+## NOTES (debugger, 2026-10-02)
+Record: `docs/perf/47-debug.txt` (scripts `scripts/47-debug-idle.sh`, `scripts/47-debug-rss.sh`; `scroll-lag-pty.py`
+gained `MEM_OUT=` for a `vmmap --summary` at the end). Boxes stay unticked: neither miss is fixed.
+
+**M1 `g_after_idle` — not a code regression.** The 12e merge's own code (8422c453) measures 16.6/16.7/17.1 ms today;
+HEAD 16.6–22.9 ms. A CPU-only control in the same test (`refs: badges()`) runs 10.9–11.7 ms today against 5.1–6.5 ms
+in `m7-12g-key-37.txt`/`m6-review.txt`: the machine runs ~2× slower than at 12e, and 2 × 8.3 ≈ 16.6. `pmset -g`
+showed **Low Power Mode on, on battery** for every run (and the 47 run: badges() 11.4 ms). Not toggled, so that
+attribution is unconfirmed. No file:line: nothing moved in code. To settle: rerun `scripts/47-debug-idle.sh . 3` on
+mains with Low Power Mode off. Split: the history job's `ShowRows` window answers at ~16 ms; the rest is ~1 ms.
+
+**M2 RSS — predates 41–46c, structural.** MONOREPO, Kitty, deflate yes, `j` 3 s: 0d38d93d **977 MB**; HEAD 367–374
+MB (idle without `j`: 78 → 60 MB; text tier 23–24 MB both). At the end of a HEAD run: live large blocks 170.8 MB
+(StripCache 117.8 MB = 16 backdrops + emphases at ~4.1 MB each on this wide graph; KittyImages 45.2 MB of frames the
+cache had already evicted), plus 166 MB of **freed** large blocks still resident in macOS malloc's free cache. Lines:
+`crates/graft/src/event_loop/graphics.rs:33` (`STRIPS_KEPT = 16`, counted in strips, sized for 12 lanes at ~1.9 MB a
+strip; ×2 layers since ADR-0053), `crates/graft-term/src/kitty/mod.rs:123` (`Upload::frame: Arc<RasterFrame>` keeps
+evicted pixels alive for a pointer compare). Experiment (reverted): `Weak` there cut live memory 45 MB and RSS not at
+all (369 MB): the freed buffers moved into malloc's free cache. A fix needs a byte budget for strips and/or buffer reuse,
+not a constant tweak. Not fixed.
+
+**Q1 confirmed** by a test, saved red at `.scratch/m7-power-tools/47-q1-cursor-test.patch`
+(`view::tests::held_j_keeps_the_cursor_on_screen_under_the_uncommitted_row`: after 17 `j`, cursor 17, top 0,
+graph_rows 18, 18 rows drawn, none the cursor's). Cause: the views draw `graph_rows() - 1` history rows under the
+uncommitted row (`view/entries.rs:109-113`, `view/strips.rs:211-212`), every scroller passes `graph_rows()`
+(`update/keys.rs:439` for `j`; also `keys.rs:408`, `history.rs:21,63`, `mod.rs:743,864,1039,1286`, `mouse.rs:189,209`,
+`search.rs:147,178,198`, `map.rs:204`, `keys/actions.rs:22`, `keys/escape.rs:10`, `detail/landing.rs:147,177`,
+`preview.rs:373`, `rewrite_editor/after.rs:69`, `banner/stop.rs:319`). Not one line: fixing `:439` alone leaves the
+rest off by one. Not fixed.
