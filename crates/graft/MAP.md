@@ -67,8 +67,8 @@ The read behind `R` (m7-power-tools/08). `Command::OpenRewrite { id, req: Rewrit
 ## view::strips
 - `strips` (mod) — pixel-tier rows: aligned strips covering the viewport, painted like the text tiers.
 - `pixel_rows` (fn) — this frame's strips from `AppState`: one fold across strips, uncommitted row on `HEAD`, thread/focus/cursor emphasis; strips missing rows or the row above are left out; all wait while the cursor is in the viewport and its row is missing (no thread yet, 30b); a cursor the wheel left off screen draws unlit (37).
-- `PixelRows` (struct) — `strips`, shared `lane_columns`, `marker`, `uncommitted_on_top` (history rows sit one screen row lower). Each painted row carries the fold's stubs into `RasterRow::stubs` (39).
-- `StripRows` (struct) — one strip: `first_row`; `row_count`, `uncommitted_at`, `with_strip` (hands a `Strip` to e.g. `StripCache::get`).
+- `PixelRows` (struct) — `strips`, shared `lane_columns`, `marker`, `uncommitted_on_top` (history rows sit one screen row lower), `backdrop` (`Backdrop::lowest` over every row of every strip: one per frame, ADR-0053). Each painted row carries the fold's stubs into `PlainRow::stubs` (39).
+- `StripRows` (struct) — one strip: `first_row`; `row_count`, `uncommitted_at`, `with_layers` (hands its `PlainStrip` and the `Selection` over it, at the frame's backdrop, to `StripCache::{backdrop, emphasis, composited}`).
 - `StripPaint` (struct) — `cell_width`, `cell_height`, `palette`, `muted`; `StripPaint::of(session)`.
 
 ## session
@@ -911,7 +911,7 @@ loop, `pump`/`pump_with`), plus the pre-existing `graphics`, `redetect`,
 - `ChannelWakes::new` (fn) — build the channel and the sender its producers clone.
 - `ChannelWakes::unhandled_input` (fn) — the terminal input queued after the wake that ended the loop, in order; the rest is dropped with the loop.
 - `run` (fn) — run the event loop for a session, start to `Exit`; may be called again by a wrapper (the gallery): stdin has one reader per process, and the keys this run never handled go to the next.
-- `pump` (fn) — drive the loop; testable independent of a real terminal. Draws Kitty strips at the pixel tier, drains image replies each wake, frees every upload on exit (m1-the-graph/24c). Theme/cell-size changes flush the strip cache; a resize flushes nothing and retransmits nothing — strips re-place, only changed keys rasterise (25). iTerm2 protocol: bands re-sent per frame, encoded once (25).
+- `pump` (fn) — drive the loop; testable independent of a real terminal. Draws Kitty strips at the pixel tier as two layers per strip, the layout-only backdrop and the selection's emphasis over it (ADR-0053, 46), zlib-deflated when the probe found `kitty_deflate`; drains image replies each wake (a refused deflated upload turns deflate off), frees every upload of both layers on exit (m1-the-graph/24c). Theme/cell-size changes flush every cache layer; a resize flushes nothing and retransmits nothing — both layers re-place, only changed keys rasterise (25). iTerm2 protocol: one composited band per strip, re-sent per frame, encoded once per paint (25, 46). Idle prefetch draws backdrops only.
 
 ## event_loop::outside
 Handing the terminal to another program and taking it back

@@ -4,7 +4,7 @@ use graft_core::commit::{Commit, Identity, Timestamp};
 use graft_core::oid::Oid;
 use graft_graph::layout::layout;
 use graft_graph::raster::cache::{STRIP_ROWS, StripCache};
-use graft_graph::raster::{Emphasis, Ring};
+use graft_graph::raster::{Backdrop, Emphasis, Ring};
 use graft_graph::row::Row;
 use graft_graph::seeds::Seeds;
 
@@ -40,15 +40,23 @@ fn firsts_and_lengths(rows: &PixelRows) -> Vec<(usize, usize)> {
         .collect()
 }
 
-/// Every strip is rasterised through the cache, which refuses misaligned ones.
+/// Every strip is rasterised through the cache, which refuses misaligned
+/// ones: its backdrop and the selection's emphasis over it.
 fn rasterise_all(rows: &PixelRows) {
     let paint = StripPaint::of(&session());
     let mut cache = StripCache::new(STRIP_ROWS, 8);
     for strip in &rows.strips {
-        let frame = strip
-            .with_strip(rows, &paint, |drawn| cache.get(strip.first_row, drawn))
+        let (frame, emphasis) = strip
+            .with_layers(rows, &paint, |plain, selection| {
+                let frame = cache.backdrop(strip.first_row, plain, selection.backdrop)?;
+                let emphasis = cache.emphasis(strip.first_row, plain, selection)?;
+                Ok::<_, graft_graph::raster::cache::CacheError>((frame, emphasis))
+            })
             .unwrap_or_else(|why| panic!("strip at {}: {why}", strip.first_row));
         assert_eq!(frame.rows, strip.row_count());
+        if let Some(top) = emphasis {
+            assert_eq!(top.frame.rows, strip.row_count());
+        }
     }
 }
 
@@ -109,7 +117,7 @@ fn the_uncommitted_row_sits_on_head_in_its_strip() {
 
 /// `chains` parallel lines of `length` commits under one merge at the top,
 /// laid out as a complete history in one window.
-fn fan(chains: u8, length: u8) -> History {
+pub(crate) fn fan(chains: u8, length: u8) -> History {
     let id = |chain: u8, index: u8| Oid::from_bytes(&[chain, index].repeat(10)).expect("20 bytes");
     let who = Identity {
         name: b"Test".to_vec(),
@@ -168,7 +176,7 @@ fn one_fold_spans_every_strip_and_its_marker_reaches_the_strip() {
     );
     assert!(folded.lane_columns <= 3, "{}", folded.lane_columns);
     let paint = StripPaint::of(&session());
-    folded.strips[0].with_strip(&folded, &paint, |strip| {
+    folded.strips[0].with_layers(&folded, &paint, |strip, _| {
         assert_eq!(strip.marker, Some(marker));
         assert_eq!(strip.lane_columns, folded.lane_columns);
     });
@@ -259,8 +267,9 @@ fn strips_draw_when_the_wheel_has_left_the_cursor_row_behind() {
 /// m7-power-tools/16: a commit only a stash reaches is dimmed in its strip,
 /// as its text row is; its neighbours are not. Under a selection the
 /// rasteriser draws the thread's alpha instead of the row's
-/// (`graft_graph::raster::RasterRow::alpha_at`), so the dimming shows only
-/// with no thread in play — pre-existing, the same as Focus mode's.
+/// (`graft_graph::raster::Lit::alpha_at`), so the dimming shows only
+/// with no thread in play — pre-existing, the same as Focus mode's. With
+/// none, the frame's backdrop is `Faded` for it (ADR-0053, 44 ruling 2).
 #[test]
 fn a_stash_only_commit_is_dimmed_in_its_strip() {
     let mut state = state(scrolled(history_of(40, 0), 0), 20);
@@ -278,8 +287,12 @@ fn a_stash_only_commit_is_dimmed_in_its_strip() {
 
     let strip = &rows.strips[0];
     assert_eq!(strip.first_row, 0);
-    assert_eq!(strip.rows[5].emphasis, Emphasis::Dimmed);
-    assert_eq!(strip.rows[4].emphasis, Emphasis::Normal);
-    assert_eq!(strip.rows[6].emphasis, Emphasis::Normal);
+    assert_eq!(strip.rows[5].lit().emphasis, Emphasis::Dimmed);
+    assert_eq!(strip.rows[4].lit().emphasis, Emphasis::Normal);
+    assert_eq!(strip.rows[6].lit().emphasis, Emphasis::Normal);
+    // The cursor's thread is in play and overrides the row's own dimming:
+    // nothing draws at `Faded` (`pixel_scroll::stash_only_rows_stay_dimmed_
+    // without_a_thread` has it without one).
+    assert_eq!(rows.backdrop, Backdrop::OffThread);
     rasterise_all(&rows);
 }

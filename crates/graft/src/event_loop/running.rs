@@ -47,13 +47,14 @@ where
     W: Wakes,
     D: Dispatch,
 {
+    let mut graphics = Graphics::new(NoReplies, &session.capabilities);
     pump_with(
         terminal,
         wakes,
         jobs,
         session,
         state,
-        &mut Graphics::new(NoReplies),
+        &mut graphics,
         Outside::default(),
     )
 }
@@ -73,13 +74,14 @@ where
     W: Wakes,
     D: Dispatch,
 {
+    let mut graphics = Graphics::new(NoReplies, &session.capabilities);
     let exit = frames(
         terminal,
         wakes,
         jobs,
         session,
         &mut state,
-        &mut Graphics::new(NoReplies),
+        &mut graphics,
         Outside::default(),
     );
     (exit, state)

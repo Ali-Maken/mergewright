@@ -130,12 +130,12 @@ One line per public item. Update when a public item changes.
 - `CELLS_PER_LANE` (const) — cells per lane column (2), matching the Unicode tier.
 
 ## raster::emphasis (re-exported from `raster`; ADR-0053)
-- `Backdrop` (enum) — `Full` / `OffThread` / `Faded`: the one alpha a layout-only strip draws every element at; `alpha()` (1.0 / `OFF_THREAD_ALPHA` / `FADED_ALPHA`), `of(focus, thread_on_screen)`.
+- `Backdrop` (enum) — `Full` / `OffThread` / `Faded`: the one alpha a layout-only strip draws every element at; `alpha()` (1.0 / `OFF_THREAD_ALPHA` / `FADED_ALPHA`), `of(focus, thread_on_screen)`, `lowest(lits)` (the lowest alpha the paint draws at: `Faded` for a `None`+`Dimmed` row, else `OffThread` for any threaded row, else `Full`; what the app uses). `Default` is `Full`.
 - `PlainRow` (struct) — a row as the layout draws it: `row`, `ring`, `stubs`; no selection. `PlainRow::of` — `Ring::of`, no stubs.
 - `Lit` (struct) — one row's selection paint: `emphasis`, `thread: Option<&BTreeSet>` (`None` ≠ `Some(∅)`).
 - `PlainStrip` (struct) — `Strip` with `PlainRow`s; same other fields.
 - `Selection` (struct) — `rows: &[Lit]` (one per strip row) and the frame's `backdrop`.
-- `Emphasised` (struct) — an emphasis image, `frame` cropped to whole cell columns, placed at `first_column`.
+- `Emphasised` (struct) — an emphasis image, `frame` (`Arc<RasterFrame>`, so an upload can tell it by pointer) cropped to whole cell columns, placed at `first_column`.
 - `rasterise_backdrop` (fn) — a `PlainStrip` at one backdrop alpha; `Full` is byte-identical to `rasterise` with no thread.
 - `rasterise_emphasis` (fn) — every element ADR-0024 draws above the backdrop `b`, at `(a − b) / (1 − b)`, same order and geometry as the single pass; cropped; `None` when nothing is above `b` (always under `Full`).
 - `composite` (fn) — premultiplied "over" of an `Emphasised` onto its backdrop strip (iTerm2, tests).

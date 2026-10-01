@@ -359,6 +359,31 @@ fn one_case(
     tally
 }
 
+/// No thread on screen. All rows plain: the `Full` backdrop is the single
+/// pass, exactly, with no emphasis. Then 44 ruling item 2 (46 Decided 9):
+/// one `Dimmed` row (a stash-only commit), so `lowest` is `Faded`; returns
+/// that case's tally and how many elements fall below the backdrop (must
+/// be 0).
+fn no_thread(strip: &PlainStrip<'_>, label: &str) -> (Tally, usize) {
+    let none = vec![Lit::default(); strip.rows.len()];
+    assert_eq!(
+        backdrop_of(strip, Backdrop::Full),
+        legacy(strip, &none),
+        "{label}: Full is today's plain strip"
+    );
+    assert_eq!(emphasis_of(strip, &none, Backdrop::Full), None);
+
+    let label = format!("{label} one dimmed row");
+    let label = label.as_str();
+    let mut dimmed = none;
+    dimmed[strip.rows.len() / 2].emphasis = Emphasis::Dimmed;
+    let backdrop = Backdrop::lowest(dimmed.iter().copied());
+    assert_eq!(backdrop, Backdrop::Faded, "{label}");
+    let below = below_backdrop(strip, &dimmed, backdrop);
+    let base = backdrop_of(strip, backdrop);
+    (one_case(strip, &dimmed, &base, backdrop, label), below)
+}
+
 #[test]
 fn composite_matches_the_single_pass() {
     let window = branchy();
@@ -379,14 +404,12 @@ fn composite_matches_the_single_pass() {
             let plain = window.plain(range.clone());
             let strip = window.strip(&plain, &range, cell);
 
-            // No thread on screen: the backdrop is the single pass, exactly.
-            let none = vec![Lit::default(); plain.len()];
-            assert_eq!(
-                backdrop_of(&strip, Backdrop::Full),
-                legacy(&strip, &none),
-                "strip {range:?}: Full is today's plain strip"
-            );
-            assert_eq!(emphasis_of(&strip, &none, Backdrop::Full), None);
+            let label = format!("{}x{} strip {range:?}", cell.0, cell.1);
+            let (tally, under) = no_thread(&strip, &label);
+            below += under;
+            crossings += tally.crossings;
+            painted += tally.painted;
+            cases += 1;
 
             for backdrop in [Backdrop::OffThread, Backdrop::Faded] {
                 let base = backdrop_of(&strip, backdrop);
@@ -429,6 +452,55 @@ fn composite_matches_the_single_pass() {
         crossings * 200 <= painted,
         "crossings are {crossings} of {painted} painted pixels, over 0.5%"
     );
+}
+
+/// `Backdrop::lowest` reads the paint (46 Signatures): every case in its doc.
+#[test]
+fn lowest_backdrop_table() {
+    let empty = BTreeSet::new();
+    let some = BTreeSet::from([0usize, 2]);
+    let lit = |emphasis, thread| Lit { emphasis, thread };
+    let normal = lit(Emphasis::Normal, None);
+    let dimmed = lit(Emphasis::Dimmed, None);
+    let cases: [(&str, Vec<Lit<'_>>, Backdrop); 7] = [
+        ("empty", vec![], Backdrop::Full),
+        ("all None + Normal", vec![normal; 3], Backdrop::Full),
+        (
+            "one Some(∅)",
+            vec![normal, lit(Emphasis::Normal, Some(&empty)), normal],
+            Backdrop::OffThread,
+        ),
+        (
+            "one None + Dimmed alone",
+            vec![normal, dimmed],
+            Backdrop::Faded,
+        ),
+        (
+            "None + Dimmed beside threaded rows",
+            vec![
+                lit(Emphasis::Normal, Some(&some)),
+                dimmed,
+                lit(Emphasis::Normal, Some(&empty)),
+            ],
+            Backdrop::Faded,
+        ),
+        (
+            "Some(_) + Dimmed only",
+            vec![
+                lit(Emphasis::Dimmed, Some(&some)),
+                lit(Emphasis::Dimmed, Some(&empty)),
+            ],
+            Backdrop::OffThread,
+        ),
+        (
+            "threaded rows and plain rows",
+            vec![normal, lit(Emphasis::Normal, Some(&some))],
+            Backdrop::OffThread,
+        ),
+    ];
+    for (name, lits, want) in cases {
+        assert_eq!(Backdrop::lowest(lits), want, "{name}");
+    }
 }
 
 #[test]

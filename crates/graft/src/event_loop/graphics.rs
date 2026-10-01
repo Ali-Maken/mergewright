@@ -12,12 +12,12 @@ use std::ops::Range;
 use std::sync::Arc;
 use std::time::Instant;
 
-use graft_core::capabilities::{PixelProtocol, RenderingTier};
+use graft_core::capabilities::{Capabilities, PixelProtocol, RenderingTier};
 use graft_core::raster::RasterFrame;
-use graft_graph::raster::cache::{Flush, STRIP_ROWS, StripCache};
+use graft_graph::raster::cache::{CacheError, Flush, STRIP_ROWS, StripCache};
 use graft_term::input::ReplyWaiter;
 use graft_term::iterm2::ItermImages;
-use graft_term::kitty::{self, CellRect, KittyImages, Place};
+use graft_term::kitty::{self, CellRect, KittyImages, Layer, Place};
 use graft_term::{Transport, sanitize_line};
 use graft_ui::graph_screen::GraphicsStatus;
 use ratatui::layout::Rect;
@@ -26,8 +26,10 @@ use crate::session::Session;
 use crate::update::AppState;
 use crate::view::strips::{StripPaint, pixel_rows};
 
-/// Strips kept rasterised, and images kept uploaded: a tall viewport plus a
-/// strip either side (`StripCache::capacity_for(32, 256, 64)` is 11).
+/// Strips kept rasterised (per cache layer), and iTerm2 bands kept: a tall
+/// viewport plus a strip either side (`StripCache::capacity_for(32, 256, 64)`
+/// is 11). Kitty holds two images per strip, the strip and its emphasis
+/// (ADR-0053), so twice as many.
 const STRIPS_KEPT: usize = 16;
 
 /// Where the terminal's replies about images come from.
@@ -73,10 +75,13 @@ pub struct Graphics<R> {
 }
 
 impl<R: GraphicsReplies> Graphics<R> {
-    /// Nothing uploaded yet; replies read from `replies`.
-    pub fn new(replies: R) -> Self {
+    /// Nothing uploaded yet; replies read from `replies`. Kitty uploads go
+    /// zlib-deflated when `capabilities` says the terminal takes it
+    /// (`kitty_deflate`, the probe the tier was settled from); an error
+    /// reply about one turns that off again ([`KittyImages::answer`]).
+    pub fn new(replies: R, capabilities: &Capabilities) -> Self {
         Graphics {
-            images: KittyImages::new(STRIPS_KEPT),
+            images: KittyImages::new(2 * STRIPS_KEPT).deflating(capabilities.kitty_deflate),
             bands: ItermImages::new(STRIPS_KEPT),
             strips: StripCache::new(STRIP_ROWS, STRIPS_KEPT),
             replies,
@@ -140,8 +145,9 @@ impl<R: GraphicsReplies> Graphics<R> {
         let top = state.history.as_ref().map_or(0, |history| history.top);
         let pixels = pixel_rows(state, crate::view::max_lanes(state), STRIP_ROWS);
         let paint = StripPaint::of(session);
+        let iterm2 = session.capabilities.pixel_protocol == Some(PixelProtocol::Iterm2);
 
-        let mut drawn: Vec<(usize, Arc<RasterFrame>, Range<usize>, u16)> = Vec::new();
+        let mut drawn: Vec<Drawn> = Vec::new();
         for strip in &pixels.strips {
             let lowered = pixels.uncommitted_on_top && strip.uncommitted_at().is_none();
             let Some((rows, at)) = on_screen(
@@ -154,31 +160,33 @@ impl<R: GraphicsReplies> Graphics<R> {
                 continue;
             };
             let cache = &mut self.strips;
-            match strip.with_strip(&pixels, &paint, |painted| {
-                cache.get(strip.first_row, painted)
-            }) {
-                Ok(frame) => drawn.push((strip.first_row, frame, rows, at)),
+            let layers = strip.with_layers(&pixels, &paint, |plain, selection| {
+                if iterm2 {
+                    // One band per strip: iTerm2 cannot stack images in a
+                    // cell, so the two layers are composited here (ADR-0053 5).
+                    let band = cache.composited(strip.first_row, plain, selection)?;
+                    Ok::<_, CacheError>((band, None))
+                } else {
+                    let base = cache.backdrop(strip.first_row, plain, selection.backdrop)?;
+                    let emphasis = cache.emphasis(strip.first_row, plain, selection)?;
+                    Ok((base, emphasis))
+                }
+            });
+            match layers {
+                Ok((frame, emphasis)) => drawn.push(Drawn {
+                    first_row: strip.first_row,
+                    frame,
+                    emphasis: emphasis.map(|top| (Arc::clone(&top.frame), top.first_column)),
+                    rows,
+                    at,
+                }),
                 // Shown, and the strip left out: the rest still draw.
                 Err(why) => self.status = GraphicsStatus::Failed(sanitize_line(&why.to_string())),
             }
         }
 
-        let places: Vec<Place<'_>> = drawn
-            .iter()
-            .map(|(first_row, frame, rows, at)| Place {
-                first_row: *first_row,
-                frame,
-                rows: rows.clone(),
-                cells: CellRect {
-                    column: graph.x,
-                    row: graph.y + at,
-                    columns: placed_columns(graph.width, frame.columns),
-                    rows: u16::try_from(rows.len()).unwrap_or(u16::MAX),
-                },
-                layer: graft_term::kitty::Layer::Strip,
-            })
-            .collect();
-        if session.capabilities.pixel_protocol == Some(PixelProtocol::Iterm2) {
+        let places = places(&drawn, graph);
+        if iterm2 {
             if let Err(why) = self.bands.frame(&places, out) {
                 self.status = GraphicsStatus::Failed(sanitize_line(&why.to_string()));
             }
@@ -190,8 +198,9 @@ impl<R: GraphicsReplies> Graphics<R> {
     /// Rasterise, without drawing or uploading, the first strip `state`
     /// would show that is not cached yet; then the next, until none is left
     /// or `waiting` says a wake has come. Asked before every strip, so work
-    /// already begun when a wake arrives is one strip at most. Returns the
-    /// strips rasterised.
+    /// already begun when a wake arrives is one strip at most. Backdrops
+    /// only: the emphasis follows the cursor, which a page key has not moved
+    /// yet (ADR-0053). Returns the strips rasterised.
     pub fn prefetch(
         &mut self,
         session: &Session,
@@ -203,16 +212,16 @@ impl<R: GraphicsReplies> Graphics<R> {
         let mut rasterised = 0;
         for strip in &pixels.strips {
             let cache = &mut self.strips;
-            if strip.with_strip(&pixels, &paint, |painted| {
-                cache.contains(strip.first_row, painted)
+            if strip.with_layers(&pixels, &paint, |plain, selection| {
+                cache.contains_backdrop(strip.first_row, plain, selection.backdrop)
             }) {
                 continue;
             }
             if waiting() {
                 break;
             }
-            match strip.with_strip(&pixels, &paint, |painted| {
-                cache.get(strip.first_row, painted)
+            match strip.with_layers(&pixels, &paint, |plain, selection| {
+                cache.backdrop(strip.first_row, plain, selection.backdrop)
             }) {
                 Ok(_frame) => rasterised += 1,
                 // The same failure `frame` shows when this strip comes on
@@ -251,6 +260,49 @@ impl<R: GraphicsReplies> Graphics<R> {
     pub fn release(&mut self, out: &mut Vec<u8>) {
         self.images.free_all(out);
     }
+}
+
+/// One strip this frame draws: its backdrop (or iTerm2's composited band),
+/// the emphasis over it and the strip cell column it starts on, which of
+/// its rows show, and the graph row the first of them lands on.
+struct Drawn {
+    first_row: usize,
+    frame: Arc<RasterFrame>,
+    emphasis: Option<(Arc<RasterFrame>, u16)>,
+    rows: Range<usize>,
+    at: u16,
+}
+
+/// Where each drawn strip goes in `graph`: the strip across its own columns,
+/// then its emphasis, if any, from the cell column the emphasis starts on.
+fn places(drawn: &[Drawn], graph: Rect) -> Vec<Place<'_>> {
+    let mut places = Vec::with_capacity(2 * drawn.len());
+    for strip in drawn {
+        let cells = |column: u16, columns: u32| CellRect {
+            column: graph.x + column,
+            row: graph.y + strip.at,
+            columns: placed_columns(graph.width.saturating_sub(column), columns),
+            rows: u16::try_from(strip.rows.len()).unwrap_or(u16::MAX),
+        };
+        places.push(Place {
+            first_row: strip.first_row,
+            frame: &strip.frame,
+            rows: strip.rows.clone(),
+            cells: cells(0, strip.frame.columns),
+            layer: Layer::Strip,
+        });
+        // Starting right of the graph column, none of it would show.
+        if let Some((top, column)) = strip.emphasis.as_ref().filter(|(_, c)| *c < graph.width) {
+            places.push(Place {
+                first_row: strip.first_row,
+                frame: top,
+                rows: strip.rows.clone(),
+                cells: cells(*column, top.columns),
+                layer: Layer::Emphasis,
+            });
+        }
+    }
+    places
 }
 
 /// Cells a strip is placed across: its own lane columns, never more than the

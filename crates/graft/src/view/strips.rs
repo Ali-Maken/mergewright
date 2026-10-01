@@ -4,15 +4,19 @@
 //! [`History`] pads its requests to strip boundaries when `strip_rows` is set
 //! (`history/scroll.rs`), so every strip here is a real row range and its
 //! cache key is honest. The uncommitted row, the `+N` fold, the selection's
-//! thread and the cursor all reach [`Strip`] from the same state the text
-//! tiers read. Drawing, placement and replies are not here.
+//! thread and the cursor all come from the same state the text tiers read.
+//! Each strip hands out two views (ADR-0053): its layout ([`PlainStrip`]) and
+//! the selection's paint over it ([`Selection`]), at the frame's one
+//! [`Backdrop`]. Drawing, placement and replies are not here.
 
 use std::collections::BTreeSet;
 use std::ops::Range;
 
 use graft_core::capabilities::Rgb;
 use graft_graph::fold::DrawnRow;
-use graft_graph::raster::{Emphasis, Marker, RasterRow, Ring, Strip, Stub};
+use graft_graph::raster::{
+    Backdrop, Emphasis, Lit, Marker, PlainRow, PlainStrip, Ring, Selection, Stub,
+};
 use graft_graph::row::Row;
 use graft_graph::{Fold, Kin};
 
@@ -61,14 +65,24 @@ pub struct PixelRows {
     /// The uncommitted row is on screen, above the viewport's first history
     /// row: every history row sits one screen row lower.
     pub uncommitted_on_top: bool,
+    /// The lowest alpha any row of any strip draws at
+    /// ([`Backdrop::lowest`]): every strip this frame is drawn at it, so a
+    /// cursor move that keeps it leaves every strip as it was.
+    pub backdrop: Backdrop,
 }
 
 impl PixelRows {
     /// `strips` with the width and rail `fold` draws them at.
     fn drawn_through(strips: Vec<StripRows>, fold: &Fold, uncommitted_on_top: bool) -> PixelRows {
+        let backdrop = Backdrop::lowest(
+            strips
+                .iter()
+                .flat_map(|strip| strip.rows.iter().map(PaintedRow::lit)),
+        );
         PixelRows {
             strips,
             uncommitted_on_top,
+            backdrop,
             lane_columns: fold.drawn_columns(),
             marker: fold.marker().map(|column| Marker { column }),
         }
@@ -106,6 +120,23 @@ impl PaintedRow {
             thread: None,
         }
     }
+
+    /// The row as the layout draws it.
+    fn plain(&self) -> PlainRow<'_> {
+        PlainRow {
+            row: &self.row,
+            ring: self.ring,
+            stubs: self.stubs.clone(),
+        }
+    }
+
+    /// The selection's paint on the row.
+    fn lit(&self) -> Lit<'_> {
+        Lit {
+            emphasis: self.emphasis,
+            thread: self.thread.as_ref(),
+        }
+    }
 }
 
 impl StripRows {
@@ -121,34 +152,33 @@ impl StripRows {
             .position(|painted| painted.ring == Ring::Uncommitted)
     }
 
-    /// Hands `draw` the [`Strip`] these rows make — for `StripCache::get`.
-    pub fn with_strip<R>(
+    /// Hands `draw` the strip's layout and the selection's paint over it,
+    /// at `frame`'s backdrop: for `StripCache::{backdrop, emphasis,
+    /// composited}`. The views borrow these rows; nothing is kept.
+    pub fn with_layers<R>(
         &self,
         frame: &PixelRows,
         paint: &StripPaint,
-        draw: impl FnOnce(&Strip<'_>) -> R,
+        draw: impl FnOnce(&PlainStrip<'_>, &Selection<'_>) -> R,
     ) -> R {
-        let rows: Vec<RasterRow<'_>> = self
-            .rows
-            .iter()
-            .map(|painted| RasterRow {
-                row: &painted.row,
-                ring: painted.ring,
-                emphasis: painted.emphasis,
-                thread: painted.thread.as_ref(),
-                stubs: painted.stubs.clone(),
-            })
-            .collect();
-        draw(&Strip {
-            rows: &rows,
-            above: self.above.as_ref(),
-            lane_columns: frame.lane_columns,
-            marker: frame.marker,
-            cell_width: paint.cell_width,
-            cell_height: paint.cell_height,
-            palette: &paint.palette,
-            muted: paint.muted,
-        })
+        let plain: Vec<PlainRow<'_>> = self.rows.iter().map(PaintedRow::plain).collect();
+        let lit: Vec<Lit<'_>> = self.rows.iter().map(PaintedRow::lit).collect();
+        draw(
+            &PlainStrip {
+                rows: &plain,
+                above: self.above.as_ref(),
+                lane_columns: frame.lane_columns,
+                marker: frame.marker,
+                cell_width: paint.cell_width,
+                cell_height: paint.cell_height,
+                palette: &paint.palette,
+                muted: paint.muted,
+            },
+            &Selection {
+                rows: &lit,
+                backdrop: frame.backdrop,
+            },
+        )
     }
 }
 
@@ -393,4 +423,4 @@ fn stubs_of(drawn: &DrawnRow<'_>) -> Vec<Stub> {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

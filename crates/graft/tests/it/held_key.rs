@@ -39,9 +39,8 @@ use crate::frames::paced::{Handed, Kind, Paced, Watching};
 use crate::frames::run::{capabilities, in_memory, ready_to_scroll_at};
 use crate::frames::sink::Sink;
 
-/// 45 Decided 1: an emphasis-layer image id has bit 31 set. 46 replaces
-/// this with `graft_term::kitty::EMPHASIS_ID_BIT`.
-const EMPHASIS_ID_BIT_42: u32 = 1 << 31;
+use graft_core::capabilities::PixelProtocol;
+use graft_term::kitty::EMPHASIS_ID_BIT;
 
 /// His terminal (`docs/field-notes.md:57`), `(columns, rows)`.
 const SIZE: (u16, u16) = (187, 50);
@@ -62,27 +61,70 @@ const PIXEL_RATE: u64 = 40_000_000;
 const QUIET: Duration = Duration::from_secs(1);
 /// A hang guard, not a threshold.
 const PATIENCE: Duration = Duration::from_secs(120);
+/// The cell width `capabilities` reports (`cell=17x37` in the summary).
+const CELL_WIDTH: u32 = 17;
 /// "At once" (Nielsen's 0.1 s).
 const AT_ONCE_MS: u128 = 100;
 
 #[test]
 fn held_j_stops_on_release_unicode() {
-    held(RenderingTier::Unicode, false);
+    held(RenderingTier::Unicode, false, Encoding::Raw);
 }
 
 #[test]
 fn held_j_stops_on_release_pixel() {
-    held(RenderingTier::Pixel, false);
+    held(RenderingTier::Pixel, false, Encoding::Raw);
+}
+
+#[test]
+fn held_j_stops_on_release_pixel_deflate() {
+    held(RenderingTier::Pixel, false, Encoding::Deflate);
+}
+
+#[test]
+fn held_j_stops_on_release_pixel_iterm2() {
+    held(RenderingTier::Pixel, false, Encoding::Iterm2);
 }
 
 #[test]
 fn j_then_journal_opens_at_once_unicode() {
-    held(RenderingTier::Unicode, true);
+    held(RenderingTier::Unicode, true, Encoding::Raw);
 }
 
 #[test]
 fn j_then_journal_opens_at_once_pixel() {
-    held(RenderingTier::Pixel, true);
+    held(RenderingTier::Pixel, true, Encoding::Raw);
+}
+
+#[test]
+fn j_then_journal_opens_at_once_pixel_deflate() {
+    held(RenderingTier::Pixel, true, Encoding::Deflate);
+}
+
+impl Encoding {
+    /// The harness's terminal at `tier`, sending images this way: a field
+    /// set on the value, never a `Capabilities` literal (42 Decided 4).
+    fn capabilities(self, tier: RenderingTier) -> graft_core::capabilities::Capabilities {
+        let mut caps = capabilities(tier);
+        match self {
+            Encoding::Raw => {}
+            Encoding::Deflate => caps.kitty_deflate = true,
+            Encoding::Iterm2 => caps.pixel_protocol = Some(PixelProtocol::Iterm2),
+        }
+        caps
+    }
+}
+
+/// How the pixel tier's images go out (46 Decided 7): set on the
+/// capabilities value by parameter, never by env (42 Decided 3).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Encoding {
+    /// Kitty, raw RGBA: `kitty_deflate` off.
+    Raw,
+    /// Kitty, zlib (`o=z`): `kitty_deflate` on.
+    Deflate,
+    /// iTerm2 inline images: one composited band per strip.
+    Iterm2,
 }
 
 fn keys(journal: bool) -> Vec<(KeyCode, Duration)> {
@@ -108,6 +150,12 @@ struct Reading {
     j_ms: Option<u128>,
     j_done_ms: Option<u128>,
     frames_before_j: Option<usize>,
+    /// Every byte the run wrote, per held `j` (cost line, not judged).
+    bytes_per_key: u64,
+    /// Emphasis images' width in cells, 99th percentile over the run
+    /// (`s=` / cell width); `None` with none sent.
+    emphasis_cells_p99: Option<u32>,
+    deflated_transmits: usize,
     peak_rss_mb: u64,
     /// Premises: frames judged, frames with ≥ 12 lanes, frames whose lit
     /// columns changed from the frame before.
@@ -116,13 +164,20 @@ struct Reading {
     lit_changed: usize,
 }
 
-fn held(tier: RenderingTier, journal: bool) {
+fn held(tier: RenderingTier, journal: bool, encoding: Encoding) {
     let rate = match tier {
         RenderingTier::Pixel => PIXEL_RATE,
         _ => UNICODE_RATE,
     };
-    let reading = run(tier, journal, rate).unwrap_or_else(|why| panic!("{why}"));
-    let scenario = if journal { "B" } else { "A" };
+    let reading = run(tier, journal, rate, encoding).unwrap_or_else(|why| panic!("{why}"));
+    let scenario = match (journal, tier, encoding) {
+        (false, RenderingTier::Pixel, Encoding::Deflate) => "A-deflate",
+        (false, RenderingTier::Pixel, Encoding::Iterm2) => "A-iterm2",
+        (true, RenderingTier::Pixel, Encoding::Deflate) => "B-deflate",
+        (true, RenderingTier::Pixel, Encoding::Iterm2) => "B-iterm2",
+        (false, ..) => "A",
+        (true, ..) => "B",
+    };
     let line = summary(tier, scenario, rate, &reading);
     println!("{line}");
 
@@ -159,6 +214,16 @@ fn summary(tier: RenderingTier, scenario: &str, rate: u64, reading: &Reading) ->
         (reading.j_ms, reading.j_done_ms, reading.frames_before_j)
     {
         line += &format!(" j_ms={j} j_done_ms={done} frames_before_J={before}");
+    }
+    if tier == RenderingTier::Pixel {
+        line += &format!(
+            " bytes_per_key={} emphasis_cells_p99={} deflated_transmits={}",
+            reading.bytes_per_key,
+            reading
+                .emphasis_cells_p99
+                .map_or_else(|| "none".to_owned(), |cells| cells.to_string()),
+            reading.deflated_transmits,
+        );
     }
     line += &format!(
         " peak_rss_mb={} premise_wide={}/{} premise_lit_changed={}/{}",
@@ -210,7 +275,12 @@ fn verdict(tier: RenderingTier, scenario: &str, reading: &Reading) -> Vec<String
     failed
 }
 
-fn run(tier: RenderingTier, journal: bool, rate: u64) -> Result<Reading, String> {
+fn run(
+    tier: RenderingTier,
+    journal: bool,
+    rate: u64,
+    encoding: Encoding,
+) -> Result<Reading, String> {
     let repo = team::borrow(&TeamSpec::MONOREPO).map_err(|why| format!("fixture: {why:?}"))?;
     let (post, events) = mpsc::channel::<Posted>();
     let (jobs, state, _startup) = ready_to_scroll_at(
@@ -223,7 +293,7 @@ fn run(tier: RenderingTier, journal: bool, rate: u64) -> Result<Reading, String>
     )?;
     let state = settle(&jobs, state, &events)?;
 
-    let mut session = Session::settle(&Loaded::default(), capabilities(tier));
+    let mut session = Session::settle(&Loaded::default(), encoding.capabilities(tier));
     let drain = DrainSink::new(PIPE, rate);
     let sink = Sink::draining(&drain);
     let mut terminal = in_memory(&sink, &state)?;
@@ -358,16 +428,12 @@ fn read<D>(
     let (after, tail_end) = after_release(&draws, last_j, js_frame);
     reading.frames_after_release = after;
     reading.bytes_per_frame_held = held_bytes / reading.frames_while_held.max(1) as u64;
-    for transmit in drain.kitty_transmits() {
-        if transmit.offset >= held_end {
-            break;
-        }
-        if transmit.image_id & EMPHASIS_ID_BIT_42 != 0 {
-            reading.emphasis_transmits_held += 1;
-        } else {
-            reading.strip_transmits_held += 1;
-        }
-    }
+    count_transmits(
+        drain,
+        held_end,
+        written.last().copied().unwrap_or(0),
+        &mut reading,
+    );
 
     // Tail: last j sent → the drain passing the last counted frame's last
     // byte (A: the last frame; B with none counted: `J`'s first byte).
@@ -386,6 +452,34 @@ fn read<D>(
     }
     replay(wakes, initial, &mut reading);
     Ok(reading)
+}
+
+/// Kitty transmits while held, by layer, and the run's cost lines (46):
+/// recorded, not judged. `total` is every byte the run wrote.
+fn count_transmits(drain: &DrainSink, held_end: u64, total: u64, reading: &mut Reading) {
+    let transmits = drain.kitty_transmits();
+    for transmit in &transmits {
+        if transmit.offset >= held_end {
+            break;
+        }
+        if transmit.image_id & EMPHASIS_ID_BIT != 0 {
+            reading.emphasis_transmits_held += 1;
+        } else {
+            reading.strip_transmits_held += 1;
+        }
+    }
+    // Cost lines (46): recorded, not judged.
+    reading.bytes_per_key = total / HELD as u64;
+    reading.deflated_transmits = transmits.iter().filter(|t| t.deflated).count();
+    let mut widths: Vec<u32> = transmits
+        .iter()
+        .filter(|t| t.image_id & EMPHASIS_ID_BIT != 0)
+        .filter_map(|t| t.width_px)
+        .map(|px| px / CELL_WIDTH)
+        .collect();
+    widths.sort_unstable();
+    reading.emphasis_cells_p99 =
+        (!widths.is_empty()).then(|| widths[(widths.len() * 99 / 100).min(widths.len() - 1)]);
 }
 
 /// Scenario B: the index of `J`'s frame in `handed`.
