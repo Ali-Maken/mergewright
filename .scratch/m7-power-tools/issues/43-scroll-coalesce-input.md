@@ -7,7 +7,9 @@ Needs: `42-scroll-held-key-gate` landed (its red run recorded first). No signatu
 Blocked by: 42
 File set (crate `graft`): `src/event_loop/running.rs`, `src/event_loop/mod.rs`, `src/event_loop/tests.rs`,
 `tests/it/frames/paced.rs`, `tests/it/frames/readings.rs`, `crates/graft/MAP.md`,
-`docs/perf/fix-scroll-held-key.txt` (append).
+`docs/perf/fix-scroll-held-key.txt` (append); **added 2026-10-01 (planner correction, below):**
+`tests/it/held_key.rs` (scenario B's `frames_after_release` / `tail_ms` bound only) and `TESTING.md` "Held keys"
+paragraph (those two readings' wording only).
 Overlap and order:
 - 42 before (planner ruling 2026-10-01, scout 42): 42 may widen visibility and add read-only accessors in
   `paced.rs` (per-`Drawn` `Instant` and sink offset), and adds `Sink::draining` (`frames/sink.rs`) and
@@ -18,12 +20,13 @@ Overlap and order:
   driver.rs`, some `tests/it/*`): disjoint files, may run concurrently (ADR-0051: two builders in the crate).
   If 45 lands first and adds a field, re-run the gates after merge; no file is shared.
 - 46 edits `running.rs` (prefetch call, `:115`), `crates/graft/MAP.md` and the perf file: **46 after 43**
-  (46 Blocked by 43).
+  (46 Blocked by 43). 46 also edits `held_key.rs` (layer const only): still after 43.
 - 41, 44: none.
 
 ## Read first
 - `.scratch/m7-power-tools/scouts/43.md` (whole; 1 page).
-- `42-scroll-held-key-gate.md` §Need, §Prior art, §Journeys (the pipeline sections for this fix), §Planner ruling.
+- `42-scroll-held-key-gate.md` §Need, §Prior art, §Journeys (the pipeline sections for this fix), §Planner ruling,
+  §Planner correction 2026-10-01, §Decided "Readings".
 - `.scratch/m7-power-tools/debug-scroll-lag.md` cause 2 and "Proposed fix" 2.
 - `crates/graft/MAP.md` `## event_loop` (`:888-909`; `job_event_waiting` ~`:900`), `event_loop::input`
   (`:936-937`), `event_loop::outside` (`:911-928`).
@@ -68,9 +71,10 @@ go".
 - **Graft's share:** a key that arrives while a frame is being written is applied in the next turn and shown in that
   turn's frame — never later, unless the 8 ms cap cut the batch (≈ 300 keys at `update`'s 25 µs). So from the last
   arrival: at most the frame in flight + ≤ 8 ms of updates + one draw.
-- **The gate** (42, release): `frames_after_release ≤ 2` (frames drawn after the last `j`'s arrival), `tail_ms ≤ 100`
-  (last `j` arrival → the drain passing the last frame's last byte), `j_ms ≤ 100` (`J` arrival → first byte of `J`'s
-  frame drained).
+- **The gate** (42, release): `frames_after_release ≤ 2` (frames drawn after the last `j`'s arrival; in B, before
+  `J`'s frame), `tail_ms ≤ 100` (last `j` arrival → the drain passing the last byte of the last frame so counted; in B
+  with none, → the first byte of `J`'s frame), `j_ms ≤ 100` (`J` arrival → first byte of `J`'s frame drained). Exact
+  wording: 42 §Decided "Readings".
 - The 8 ms cap itself is not timed by a test (no clock seam; no sleeps in tests): argued in the report and recorded
   as **unverified** in NOTES. The release held-key run is its only measurement.
 
@@ -132,10 +136,27 @@ Impls to change (method only): `ChannelWakes` (`mod.rs:186`), `ScriptedWakes` (`
       `frames::` tests green with unchanged budgets.
 - [ ] A `Drawn` mark still means one frame drawn, and 42's `paced.rs` accessors (per-`Drawn` `Instant` and sink
       offset) keep that meaning (`held_key` reads them). — checked by the release run below.
+- [ ] **Planner correction 2026-10-01 — scenario B's bound (continuation builder).** 42's spec never meant `J`'s own
+      frame to count in B's `frames_after_release` or `tail_ms` (42 §Planner correction). Do, in order:
+  1. **Confirm the premise first** (rule 7; the planner did not read source): `held_key.rs:342-349` counts every
+     Drawn mark after the last `j`'s send in B, and `:364-368` ends `tail_ms` at the last frame drawn, which in B is
+     `J`'s frame or later. Quote the lines in NOTES. If they do not say that, **stop**: `blocked: premise false`.
+  2. In B only: `frames_after_release` = Drawn marks after the last `j`'s send **and before `J`'s frame** (the frame
+     `j_ms` already locates: first drawn after `J` was updated; reuse that index, do not recompute it another way).
+     `tail_ms` = last `j` send → drain past the last byte of the last frame so counted; if the count is 0, → drain
+     reaching `J`'s frame's first byte. A's code path untouched. No limit changes (`≤ 2`, `≤ 100`, `j_ms ≤ 100`,
+     `frames_before_J ≤ 1`).
+  3. A fast-tier unit test of the B bound on synthetic marks (frames before `J`'s frame count, `J`'s frame and later
+     do not; the zero case ends at `J`'s first byte). — new `held_key::b_bound_stops_at_js_frame` (not
+     `heavy-tests`-gated; if `held_key` is gated whole, put the pure bound function and its test where they compile in
+     the fast tier and say where).
+  4. `TESTING.md` "Held keys" (`:186-187`): add "in B, up to `J`'s frame" to both readings. Nothing else there.
+  Ticks: the B bound — `held_key::b_bound_stops_at_js_frame`; the Unicode box below — its two release tests.
 - [ ] Unicode half of the gate goes green in release: `held_key::held_j_stops_on_release_unicode` and
       `held_key::j_then_journal_opens_at_once_unicode`, run by `scripts/fix-scroll-held-key.sh`, appended to
       `docs/perf/fix-scroll-held-key.txt` (`# rev coalesce`). Pixel stays red until `46-scroll-strips-wiring`; record
-      its numbers (expect `tail_ms` bounded near two Pixel frames, `bytes_per_frame_held` still MB).
+      its numbers (expect `tail_ms` bounded near two Pixel frames, `bytes_per_frame_held` still MB). Record B's
+      `j_done_ms` beside it (printed only; it is where `J`'s frame's drain now shows).
 - [ ] `crates/graft/MAP.md`: `joins_frame`, `Wakes::joining_waiting`; the `job_event_waiting` line removed.
 
 ## Touches (report each on the **Touches:** line)
@@ -148,6 +169,9 @@ Impls to change (method only): `ChannelWakes` (`mod.rs:186`), `ScriptedWakes` (`
 - `scripts/m7-perf-key.sh`: reads per-key lines; check a batched key still prints a line. Its `frames::` filter does
   not select `held_key::` (42 ruling 2).
 - 42's `held_key` readings and `paced.rs` accessors: read `Drawn` marks, unchanged meaning (box above).
+- B-bound correction: Pixel B readings change the same way (one code path); 46's Pixel green is judged on it. 47
+  (`47-scroll-acceptance.md:41-56`) quotes `frames_after_release` / `tail_ms` by name: its pty walk is a held-`j`
+  scenario (A-shaped), unaffected; say if you find a B-shaped use there.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all

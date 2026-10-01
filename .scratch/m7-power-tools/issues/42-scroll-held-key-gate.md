@@ -54,6 +54,15 @@ edit" list and the `frames::held_key` / `frames::drain_sink` paths.
    boundaries). Transmit = control data with `a=t` or `a=T`, or with no `a=` key and not the continuation of an `m=1`
    chunk (Kitty's default action is `t`). `held_key` splits them by frame offsets and by `EMPHASIS_ID_BIT_42`.
 
+## Planner correction 2026-10-01 (ticket 43, scenario B)
+The Readings below said `frames_after_release` counts every Drawn mark after the last `j`'s send and `tail_ms` runs
+to "the last frame". In B that swept in `J`'s own frame (and anything after it), which this spec never meant to
+budget there: Journey 1 judges `j` stopping; `J`'s frame is judged by `j_ms` and `frames_before_J`; and the time the
+terminal takes to swallow the journal's own frame is "printed, not budgeted" (Journeys; `j_done_ms` printed only).
+Counting it in `tail_ms` budgeted exactly that. **Corrected in B only** (Readings below); A unchanged; every limit
+unchanged. Not weaker: every frame between the last `j` and `J`'s frame still counts (a `j` frame drawn after `J` was
+sent counts in both `frames_after_release` and `frames_before_J`), and `J`'s frame keeps its own two limits.
+
 ## Need (his words, `docs/field-notes.md:82`)
 His work repo, 17 694 commits, 1 323 refs, first real use: "as soon as it was opened, and i did j it was slow like
 lagging i stopped pressing and it kept going … it is laggy as hell. that's why with J it didnt go instantly. it went
@@ -125,16 +134,19 @@ Out: any product code; any `impl Wakes` (owned by `43-scroll-coalesce-input`); a
   batched frame ≈ 42 KB = 84 ms Unicode; ≤ 2 × 512 KiB = 26 ms Pixel. The builder measures the real macOS pty
   capacity once (non-blocking write until `EAGAIN`) and records it beside the 16 KiB.
 - **Readings** (one `SUMMARY held_key` line per tier and scenario): `keys`, `frames_while_held`,
-  `frames_after_release` (Drawn marks after the last `j`'s send), `tail_ms` (last `j` send → the drain passing the
-  last frame's last byte), `bytes_per_frame_held` (mean), `strip_transmits_held` and `emphasis_transmits_held`
+  `frames_after_release` (Drawn marks after the last `j`'s send; **in B, only those before `J`'s frame**),
+  `tail_ms` (last `j` send → the drain passing the last byte of the last frame counted in `frames_after_release`;
+  **in B, if that count is 0, the last `j` is first shown in `J`'s frame, so → the drain reaching that frame's first
+  byte**; `J`'s frame and everything after it are judged by `j_ms`, never here — correction above),
+  `bytes_per_frame_held` (mean), `strip_transmits_held` and `emphasis_transmits_held`
   (Kitty transmits from `DrainSink::kitty_transmits`, split by image id: bit 31 set = emphasis, per
   `45-scroll-kitty-layer-deflate` Decided 1; before 45's layer half no id has it, so every transmit counts as a strip.
   Define the bit as a local const `EMPHASIS_ID_BIT_42` naming 45; 46 switches it to
   `graft_term::kitty::EMPHASIS_ID_BIT`), `rows_scrolled`, `j_ms` (B: `J` send → the drain reaching the **first** byte
-  of the first frame drawn after `J` was updated), `j_done_ms` (… its last byte; printed only), `frames_before_J`
-  (frames drawn between `J`'s send and `J`'s frame), `peak_rss_mb`. A frame's end offset is the sink's `sent()` at its
-  Drawn mark; images are written inside `draw` before Drawn (scout 42: `running.rs:389-391`, `:172`), so it includes
-  them.
+  of the first frame drawn after `J` was updated — "`J`'s frame"), `j_done_ms` (… its last byte; printed only),
+  `frames_before_J` (frames drawn between `J`'s send and `J`'s frame), `peak_rss_mb`. A frame's end offset is the
+  sink's `sent()` at its Drawn mark; images are written inside `draw` before Drawn (scout 42: `running.rs:389-391`,
+  `:172`), so it includes them.
 - **Premises** (fail the test, not the verdict, if false — they prove the fixture still has his shape): on ≥ 50% of
   scenario A's frames the graph draws ≥ 12 lanes; between consecutive frames the selection's lit columns change on
   ≥ 50% of frames (Ancestry over the window, `crates/graft-graph/MAP.md` ancestry).
@@ -199,6 +211,7 @@ const EMPHASIS_ID_BIT_42: u32 = 1 << 31; // 45 Decided 1; 46 replaces with graft
 - [x] The four tests exist, read `MONOREPO` at 187×50, assert the key list, the premises and the verdict as Decided.
       — `held_key::{held_j_stops_on_release_unicode, held_j_stops_on_release_pixel,
       j_then_journal_opens_at_once_unicode, j_then_journal_opens_at_once_pixel}`.
+      (B's `frames_after_release` / `tail_ms` bound corrected 2026-10-01, above; the fix lands in 43.)
 - [x] **Red at HEAD, both tiers**, release: the four SUMMARY lines and which verdict items failed, written by
       `scripts/fix-scroll-held-key.sh` (`cargo test --release --features heavy-tests --test it -- held_key::
       --test-threads=1 --nocapture`; exits 1 when any test failed) to `docs/perf/fix-scroll-held-key.txt`
