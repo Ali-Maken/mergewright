@@ -123,6 +123,72 @@ fn fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_map_view_open() 
     check(RenderingTier::Unicode, Refs::FiftyThousand, Pane::Map);
 }
 
+/// The scroll on a real repository no test may own (`GRAFT_REAL_REPO`, a
+/// path; `GRAFT_REAL_SIZE`, `COLSxROWS`, default 120x40; `GRAFT_REAL_TIER=pixel`, else Unicode). Manual, like the
+/// git/git budgets: `scripts/scroll-lag-big-repo.sh` runs it on a clone of
+/// the user's 17.7k-commit, 1.3k-ref repository (debug: scroll lag).
+#[test]
+#[ignore = "manual: needs GRAFT_REAL_REPO, a repository outside the test fixtures"]
+fn a_real_repository_keeps_input_to_frame_under_16_ms() {
+    let repo = std::env::var_os("GRAFT_REAL_REPO").expect("GRAFT_REAL_REPO: the repository path");
+    let tier = match std::env::var("GRAFT_REAL_TIER").as_deref() {
+        Ok("pixel") => RenderingTier::Pixel,
+        _ => RenderingTier::Unicode,
+    };
+    let control = Control::from_env().unwrap_or_else(|why| panic!("{why}"));
+    let trace = FrameTrace::from_var(std::env::var_os(TRACE_VAR));
+    let run = scroll(
+        std::path::Path::new(&repo),
+        tier,
+        Refs::Fixture,
+        Pane::Closed,
+        control,
+        trace.is_some(),
+    )
+    .unwrap_or_else(|why| panic!("{why}"));
+    if let Some(trace) = &trace {
+        let lines: Vec<String> = run
+            .trace
+            .iter()
+            .map(|line| format!("trace real {line}"))
+            .collect();
+        trace
+            .append(&lines)
+            .unwrap_or_else(|why| panic!("{TRACE_VAR}: {why}"));
+        for line in &run.startup {
+            println!("frame_trace: real {line}");
+        }
+    }
+    let (scrolled, idle) = run.latencies.split_at(script(Pane::Closed).len());
+    let gate = Gate::of(scrolled, INPUT_TO_FRAME);
+    let summary = format!(
+        "frames: real tier={tier:?} keys={} {} bytes={} kitty_commands={} peak_rss_mb={}",
+        scrolled.len(),
+        gate.line(),
+        run.bytes,
+        run.kitty_commands,
+        graft_fixtures::peak_rss().map_or(0, |bytes| bytes >> 20),
+    );
+    print_details(tier, Refs::Fixture, &run, idle);
+    judge(tier, Refs::Fixture, Pane::Closed, &run, &gate, &summary);
+}
+
+/// `GRAFT_REAL_SIZE` as `(columns, rows)`; `None` when unset.
+fn real_size() -> Result<Option<(u16, u16)>, String> {
+    let Some(text) = std::env::var_os("GRAFT_REAL_SIZE") else {
+        return Ok(None);
+    };
+    let text = text.to_string_lossy();
+    let (columns, rows) = text
+        .split_once('x')
+        .ok_or_else(|| format!("GRAFT_REAL_SIZE={text}: want COLSxROWS"))?;
+    let parse = |part: &str| {
+        part.parse::<u16>()
+            .map_err(|why| format!("GRAFT_REAL_SIZE={text}: {why}"))
+    };
+    Ok(Some((parse(columns)?, parse(rows)?)))
+}
+
 #[test]
 fn fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_pixel_tier() {
     check(RenderingTier::Pixel, Refs::FiftyThousand, Pane::Closed);
