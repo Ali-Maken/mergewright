@@ -12,6 +12,7 @@
 //! paint per row, so geometry and draw order cannot drift apart.
 
 use std::collections::BTreeSet;
+use std::sync::Arc;
 
 use graft_core::capabilities::Rgb;
 use graft_core::raster::RasterFrame;
@@ -24,9 +25,10 @@ use crate::row::Row;
 /// The one alpha a strip draws every element at: the lowest in play for the
 /// frame. It changes only when Focus toggles or a thread comes or goes,
 /// never on a cursor move.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 pub enum Backdrop {
     /// No thread on screen: everything at full alpha, no emphasis layer.
+    #[default]
     Full,
     /// A thread on screen: everything at [`OFF_THREAD_ALPHA`].
     OffThread,
@@ -43,6 +45,24 @@ impl Backdrop {
             Backdrop::OffThread => OFF_THREAD_ALPHA,
             Backdrop::Faded => FADED_ALPHA,
         }
+    }
+
+    /// The lowest alpha any of these rows draws at (ADR-0053 Decision 2):
+    /// `Faded` if some row has `thread: None` and [`Emphasis::Dimmed`];
+    /// else `OffThread` if some row has `thread: Some(_)` (∅ included);
+    /// else `Full`. Read off the paint, never off the features that made it,
+    /// so a new reason to dim a row cannot be missed here.
+    #[must_use]
+    pub fn lowest<'a>(lits: impl IntoIterator<Item = Lit<'a>>) -> Backdrop {
+        let mut lowest = Backdrop::Full;
+        for lit in lits {
+            match (lit.thread, lit.emphasis) {
+                (None, Emphasis::Dimmed) => return Backdrop::Faded,
+                (Some(_), _) => lowest = Backdrop::OffThread,
+                (None, Emphasis::Normal) => {}
+            }
+        }
+        lowest
     }
 
     /// `Faded` if `focus`, else `OffThread` if a thread is on screen, else
@@ -195,8 +215,9 @@ pub struct Selection<'a> {
 /// An emphasis image, cropped to the cell columns it touches.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Emphasised {
-    /// The image: the strip's height, `frame.columns` cells wide.
-    pub frame: RasterFrame,
+    /// The image: the strip's height, `frame.columns` cells wide. Shared,
+    /// so a terminal upload can tell this image from a new one by pointer.
+    pub frame: Arc<RasterFrame>,
     /// The strip's cell column the image's left edge sits on.
     pub first_column: u16,
 }
@@ -272,7 +293,7 @@ pub fn rasterise_emphasis(
         cell_height: strip.cell_height,
     })?;
     Ok(Some(Emphasised {
-        frame: crop(&frame, strip.cell_width, first, last),
+        frame: Arc::new(crop(&frame, strip.cell_width, first, last)),
         first_column,
     }))
 }

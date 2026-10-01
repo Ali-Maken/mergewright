@@ -190,7 +190,7 @@ fn at_pixel_tier() -> (Session, AppState) {
 fn pixel_run(wakes: Vec<Wake>, replies: Vec<Vec<u8>>) -> (Vec<String>, String) {
     let (mut terminal, recorder) = terminal(PIXEL_COLUMNS, PIXEL_ROWS);
     let (mut session, state) = at_pixel_tier();
-    let mut graphics = Graphics::new(ScriptedReplies(replies.into()));
+    let mut graphics = Graphics::new(ScriptedReplies(replies.into()), &session.capabilities);
     let exit = pump_with(
         &mut terminal,
         &mut ScriptedWakes::spaced(wakes),
@@ -228,7 +228,7 @@ fn transmitted(stream: &str) -> Vec<u32> {
 fn pixel_flushes(wakes: Vec<Wake>) -> (u64, Vec<String>) {
     let (mut terminal, recorder) = terminal(PIXEL_COLUMNS, PIXEL_ROWS);
     let (mut session, state) = at_pixel_tier();
-    let mut graphics = Graphics::new(NoReplies);
+    let mut graphics = Graphics::new(NoReplies, &session.capabilities);
     pump_with(
         &mut terminal,
         &mut ScriptedWakes::new(wakes),
@@ -253,7 +253,7 @@ fn pixel_frames(
     let (mut terminal, recorder) = terminal(PIXEL_COLUMNS, PIXEL_ROWS);
     let (mut session, mut state) = at_pixel_tier();
     session.capabilities.pixel_protocol = Some(protocol);
-    let mut graphics = Graphics::new(NoReplies);
+    let mut graphics = Graphics::new(NoReplies, &session.capabilities);
     let mut times = Vec::new();
     let started = std::time::Instant::now();
     draw(&mut terminal, &session, &state, &mut graphics).expect("memory");
@@ -360,7 +360,7 @@ fn forced_pixels_on_a_silent_terminal_attempt_kitty_and_f3_recovers() {
     let (mut session, mut state) = at_pixel_tier();
     session.capabilities.pixel_protocol = None;
     state.settled_tier = Some(session.rendering.tier);
-    let mut graphics = Graphics::new(NoReplies);
+    let mut graphics = Graphics::new(NoReplies, &session.capabilities);
     pump_with(
         &mut terminal,
         &mut ScriptedWakes::spaced(vec![key(KeyPress::plain(KeyCode::Function(3))), quit_key()]),
@@ -1173,7 +1173,7 @@ fn a_job_result_is_just_another_wake() {
 fn prefetch_run(state: AppState, wakes: Vec<Wake>, idle: Vec<usize>) -> (u64, u64) {
     let (mut terminal, _recorder) = terminal(PIXEL_COLUMNS, PIXEL_ROWS);
     let (mut session, _) = at_pixel_tier();
-    let mut graphics = Graphics::new(NoReplies);
+    let mut graphics = Graphics::new(NoReplies, &session.capabilities);
     pump_with(
         &mut terminal,
         &mut ScriptedWakes::idle(wakes, idle),
@@ -1204,7 +1204,7 @@ fn no_strip_is_prefetched_while_input_is_queued() {
     let idle = prefetch_run(scrolled_to(100), vec![quit_key()], vec![usize::MAX]);
 
     let (session, _) = at_pixel_tier();
-    let mut drawn_only = Graphics::new(NoReplies);
+    let mut drawn_only = Graphics::new(NoReplies, &session.capabilities);
     let (mut terminal, _) = terminal(PIXEL_COLUMNS, PIXEL_ROWS);
     draw(&mut terminal, &session, &scrolled_to(100), &mut drawn_only).expect("memory");
 
@@ -1244,7 +1244,7 @@ fn page_keys_find_their_strips_already_rasterised() {
     for page in [KeyCode::PageDown, KeyCode::PageUp] {
         let (session, _) = at_pixel_tier();
         let (mut terminal, _) = terminal(PIXEL_COLUMNS, PIXEL_ROWS);
-        let mut graphics = Graphics::new(NoReplies);
+        let mut graphics = Graphics::new(NoReplies, &session.capabilities);
         let state = scrolled_to(100);
         draw(&mut terminal, &session, &state, &mut graphics).expect("memory");
         let done = prefetch(
@@ -1446,3 +1446,5 @@ fn a_failed_clipboard_write_ends_the_loop_with_its_error() {
     .expect_err("the write error reaches the caller");
     assert_eq!(error.to_string(), "the terminal went away");
 }
+
+mod pixel_scroll;

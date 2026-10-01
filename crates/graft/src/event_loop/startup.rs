@@ -159,8 +159,8 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
         &config.config,
         common_dir.as_deref(),
     )?;
-    let mut graphics =
-        Graphics::new(mux.waiter()).with_transport(Transport::for_tmux(&settled.capabilities.tmux));
+    let mut graphics = Graphics::new(mux.waiter(), &settled.capabilities)
+        .with_transport(Transport::for_tmux(&settled.capabilities.tmux));
     let outcome = pump_with(
         &mut terminal,
         &mut wakes,

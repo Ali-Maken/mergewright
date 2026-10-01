@@ -21,12 +21,16 @@ const DRAIN_TICK: Duration = Duration::from_millis(1);
 /// 100 bytes. Past this the header is cut, never the count.
 const CONTROL_CAP: usize = 256;
 
-/// One Kitty transmit seen in the stream: where its `ESC _ G` began and the
-/// image id it named (`i=`; 0 when it named none).
+/// One Kitty transmit seen in the stream: where its `ESC _ G` began, the
+/// image id it named (`i=`; 0 when it named none), the image's width in
+/// pixels (`s=`) and whether its data went zlib-deflated (`o=z`). Read from
+/// the header bytes only.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct KittyTransmit {
     pub(crate) offset: u64,
     pub(crate) image_id: u32,
+    pub(crate) width_px: Option<u32>,
+    pub(crate) deflated: bool,
 }
 
 /// The pipe and its drain. Cheap to clone: every clone is the same pipe.
@@ -280,6 +284,8 @@ impl Scan {
             out.push(KittyTransmit {
                 offset: self.start,
                 image_id: value("i").and_then(|id| id.parse().ok()).unwrap_or(0),
+                width_px: value("s").and_then(|width| width.parse().ok()),
+                deflated: value("o") == Some("z"),
             });
         }
     }
@@ -355,7 +361,7 @@ mod tests {
             format!("\x1b_Gm=1;{payload}\x1b\\\x1b_Gm=0;{payload}\x1b\\"),
             "\x1b_Ga=p,i=7,p=1\x1b\\\x1b_Ga=d,d=i,i=7\x1b\\".to_owned(),
             format!("\x1b_Gf=100,i=2147483657;{payload}\x1b\\"),
-            format!("\x1b_Ga=t,i=9,q=2;{payload}\x1b\\ tail"),
+            format!("\x1b_Ga=t,f=32,o=z,i=9,s=34,v=37,q=2;{payload}\x1b\\ tail"),
         ]
         .concat()
         .into_bytes();
@@ -382,18 +388,24 @@ mod tests {
             vec![
                 KittyTransmit {
                     offset: starts[0],
-                    image_id: 7
+                    image_id: 7,
+                    width_px: None,
+                    deflated: false,
                 },
                 KittyTransmit {
                     offset: starts[5],
-                    image_id: 2_147_483_657
+                    image_id: 2_147_483_657,
+                    width_px: None,
+                    deflated: false,
                 },
                 KittyTransmit {
                     offset: starts[6],
-                    image_id: 9
+                    image_id: 9,
+                    width_px: Some(34),
+                    deflated: true,
                 },
             ],
-            "a=T, no-a first chunk, a=t; not m= continuations, a=p, a=d"
+            "a=T, no-a first chunk, a=t; not m= continuations, a=p, a=d; s= and o=z read"
         );
         wait_quiet(&sink);
     }
