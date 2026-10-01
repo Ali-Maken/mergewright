@@ -36,8 +36,27 @@ pub use reply::replies;
 
 pub(crate) use encode::{base64, straight_alpha};
 
-/// Image ids start here, clear of the ids detection's probe uses (`i=31`).
+/// Image ids start here, clear of the ids detection's probes use (`i=31`,
+/// `i=32`).
 const FIRST_IMAGE_ID: u32 = 1000;
+
+/// Bit set in every [`Layer::Emphasis`] image id and in no strip id.
+///
+/// It is the order belt for terminals that ignore `z` but stack equal-`z`
+/// images by id (Kitty's rule: lower id below), and it lets a byte-level
+/// harness tell the layers apart.
+pub const EMPHASIS_ID_BIT: u32 = 1 << 31;
+
+/// Which of the two stacked images a [`Place`] is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+pub enum Layer {
+    /// The rasterised graph strip. Placed with no `z` (protocol default 0).
+    #[default]
+    Strip,
+    /// Selection emphasis over a strip: placed with `z=1`, always after
+    /// every strip in the same frame, and with [`EMPHASIS_ID_BIT`] set.
+    Emphasis,
+}
 
 /// A rectangle of character cells, zero-based from the screen's top left.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -64,6 +83,9 @@ pub struct Place<'a> {
     pub rows: Range<usize>,
     /// Where on screen those rows go.
     pub cells: CellRect,
+    /// The strip itself, or the emphasis above it. Each layer of a slot is
+    /// its own upload.
+    pub layer: Layer,
 }
 
 /// One APC graphics reply: `ESC _ G i=…,p=…;message ESC \`.
@@ -97,9 +119,13 @@ impl GraphicsReply {
 struct Upload {
     id: u32,
     first_row: usize,
+    layer: Layer,
     frame: Arc<RasterFrame>,
     placed: bool,
     last_used: u64,
+    /// Sent with `o=z`: an error reply about it may mean the terminal
+    /// cannot inflate.
+    deflated: bool,
 }
 
 /// What Graft has uploaded to a Kitty-protocol terminal, and the commands
@@ -109,8 +135,10 @@ pub struct KittyImages {
     uploads: Vec<Upload>,
     capacity: usize,
     next_id: u32,
+    next_emphasis_id: u32,
     clock: u64,
     transport: Transport,
+    deflate: bool,
 }
 
 impl KittyImages {
@@ -123,9 +151,26 @@ impl KittyImages {
             uploads: Vec::new(),
             capacity: capacity.max(1),
             next_id: FIRST_IMAGE_ID,
+            next_emphasis_id: FIRST_IMAGE_ID | EMPHASIS_ID_BIT,
             clock: 0,
             transport: Transport::Direct,
+            deflate: false,
         }
+    }
+
+    /// Transmit with `o=z` (zlib-deflated RGBA). Off by default; turn it on
+    /// only when detection found `kitty_deflate`.
+    #[must_use]
+    pub fn deflating(mut self, on: bool) -> Self {
+        self.deflate = on;
+        self
+    }
+
+    /// Still deflating: false once an error reply about a deflated upload
+    /// turned it off for good (see [`Self::answer`]).
+    #[must_use]
+    pub fn is_deflating(&self) -> bool {
+        self.deflate
     }
 
     /// Send every command over `transport`: inside tmux, each `APC` command
@@ -146,10 +191,17 @@ impl KittyImages {
     /// Append the commands that make the screen show exactly `places`:
     /// transmit what the terminal lacks, replace each strip's placement,
     /// remove placements of strips no longer shown, evict old uploads.
+    ///
+    /// Every [`Layer::Strip`] place is emitted before any
+    /// [`Layer::Emphasis`] one, whatever order `places` lists them in, and
+    /// every shown image is re-placed each frame: so emphasis always lands
+    /// after its strip, even on a terminal that stacks by placement order.
     pub fn frame(&mut self, places: &[Place<'_>], out: &mut Vec<u8>) {
         self.clock += 1;
         let mut shown = Vec::with_capacity(places.len());
-        for place in places {
+        let strips = places.iter().filter(|place| place.layer == Layer::Strip);
+        let emphasis = places.iter().filter(|place| place.layer == Layer::Emphasis);
+        for place in strips.chain(emphasis) {
             let id = self.ensure_uploaded(place, out);
             shown.push(id);
             encode::put_placement(self.transport, id, place, out);
@@ -188,8 +240,24 @@ impl KittyImages {
 
     /// Take in one reply. An `ENOENT` about an image Graft uploaded forgets
     /// that upload, so the next frame transmits the strip again.
+    ///
+    /// Any other error about an upload that went out deflated turns
+    /// deflating off for the rest of this value's life and forgets that
+    /// upload, so it goes again raw — today's known-good encoding. One-way:
+    /// no retry, and the cost is one wasted transmit per image in flight.
     pub fn answer(&mut self, reply: &GraphicsReply) {
-        if let (true, Some(id)) = (reply.is_missing_image(), reply.image) {
+        let Some(id) = reply.image else {
+            return;
+        };
+        if reply.is_missing_image() {
+            self.uploads.retain(|upload| upload.id != id);
+        } else if reply.is_error()
+            && self
+                .uploads
+                .iter()
+                .any(|upload| upload.id == id && upload.deflated)
+        {
+            self.deflate = false;
             self.uploads.retain(|upload| upload.id != id);
         }
     }
@@ -200,7 +268,7 @@ impl KittyImages {
         if let Some(index) = self
             .uploads
             .iter()
-            .position(|u| u.first_row == place.first_row)
+            .position(|u| u.first_row == place.first_row && u.layer == place.layer)
         {
             if Arc::ptr_eq(&self.uploads[index].frame, place.frame) {
                 self.uploads[index].last_used = clock;
@@ -210,16 +278,39 @@ impl KittyImages {
             // old image can never be mistaken for one about the new.
             encode::free(self.transport, self.uploads.remove(index).id, out);
         }
-        let id = self.next_id;
-        self.next_id = self.next_id.checked_add(1).unwrap_or(FIRST_IMAGE_ID);
-        encode::transmit(self.transport, id, place.frame, out);
+        let id = self.allocate(place.layer);
+        encode::transmit(self.transport, id, place.frame, self.deflate, out);
         self.uploads.push(Upload {
             id,
             first_row: place.first_row,
+            layer: place.layer,
             frame: Arc::clone(place.frame),
             placed: false,
             last_used: clock,
+            deflated: self.deflate,
         });
+        id
+    }
+
+    /// A fresh id for `layer`: strips count up below [`EMPHASIS_ID_BIT`],
+    /// emphasis counts up above it, each wrapping back to its own start.
+    fn allocate(&mut self, layer: Layer) -> u32 {
+        let (next, start) = match layer {
+            Layer::Strip => (&mut self.next_id, FIRST_IMAGE_ID),
+            Layer::Emphasis => (&mut self.next_emphasis_id, FIRST_IMAGE_ID | EMPHASIS_ID_BIT),
+        };
+        let id = *next;
+        let after = id.wrapping_add(1);
+        *next = if (after & EMPHASIS_ID_BIT) == (start & EMPHASIS_ID_BIT) && after != 0 {
+            after
+        } else {
+            start
+        };
+        debug_assert_eq!(
+            id & EMPHASIS_ID_BIT != 0,
+            layer == Layer::Emphasis,
+            "an id's layer bit must match its layer"
+        );
         id
     }
 

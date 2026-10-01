@@ -24,7 +24,7 @@ One line per public item. Update when a public item changes.
 - `Environment` (struct) — environment hints; `Environment::from_process`.
 - `Environment::is_probeable` (fn) — whether queries may be written at all (a tty, not `TERM=dumb`).
 - `Environment::probe_budget` (fn) — the probe deadline for this terminal (local or SSH).
-- `detect` (fn) — probe the terminal and return `Capabilities`; never reads stdin itself.
+- `detect` (fn) — probe the terminal and return `Capabilities`; never reads stdin itself. Fills `kitty_deflate` from an `o=z` query (`i=32`) in the same write; replies matched by id.
 - `remeasure_cell_size` (fn) — after a resize: `CSI 16 t`, then `TIOCGWINSZ`, else the previous size marked `Assumed`.
 - `requery_theme` (fn) — on focus regain: `OSC 11`; silence returns the previous hint unchanged.
 
@@ -50,9 +50,14 @@ One line per public item. Update when a public item changes.
 - `KittyImages::hide` (fn) — remove every placement, keep data (tier dropped away from pixels).
 - `KittyImages::free_all` (fn) — delete every upload with its data; call on exit.
 - `KittyImages::forget_uploads` (fn) — after a clear or resize: retransmit everything next frame.
-- `KittyImages::answer` (fn) — take in a reply; `ENOENT` forgets that upload so it retransmits.
+- `KittyImages::answer` (fn) — take in a reply; `ENOENT` forgets that upload so it retransmits; any other error on a deflated upload turns deflating off for good and retransmits it raw.
+- `KittyImages::deflating` (fn) — builder: transmit with `o=z` (zlib RGBA). Off by default.
+- `KittyImages::is_deflating` (fn) — still deflating; false once an error reply turned it off.
 - `KittyImages::uploaded` (fn) — images the terminal holds, as far as Graft knows.
-- `Place` (struct) — one strip this frame: `first_row`, `frame` (`&Arc<RasterFrame>`), `rows` crop, `cells`.
+- `Place` (struct) — one image this frame: `first_row`, `frame` (`&Arc<RasterFrame>`), `rows` crop, `cells`, `layer`.
+- `Place::layer` (field) — `Layer::Strip` or `Layer::Emphasis`; each layer of a slot is its own upload.
+- `Layer` (enum) — `Strip` (no `z=`, default) or `Emphasis` (`z=1`, emitted after every strip, id has `EMPHASIS_ID_BIT`).
+- `EMPHASIS_ID_BIT` (const) — `1 << 31`; set in every emphasis image id, in no strip id.
 - `CellRect` (struct) — zero-based cell rectangle: `column`, `row`, `columns`, `rows` (0 = crop's rows).
 - `GraphicsReply` (struct) — `image`, `placement`, `message` (controls replaced); `is_error`, `is_missing_image`.
 - `replies` (fn) — every APC graphics reply in a byte buffer; other replies skipped.

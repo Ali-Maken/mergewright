@@ -1,0 +1,11 @@
+# m7-power-tools/45 deflate cost — 2026-10-01T15:29:41Z
+# HEAD e6f12848 +uncommitted
+# Apple M5, 10 cpus, Darwin 27.0.0
+# release, 5 runs; miniz_oxide level 1
+# uptime before: 20:29  up 14 days,  1:37, 5 users, load averages: 7.22 10.45 8.64
+# uptime after:  20:29  up 14 days,  1:37, 5 users, load averages: 7.22 10.45 8.64
+deflate_shrinks_a_sparse_strip: raw 3998208 B, deflated 33739 B (0.84%), encode 1.398 ms
+deflate_shrinks_a_sparse_strip: raw 3998208 B, deflated 33739 B (0.84%), encode 1.139 ms
+deflate_shrinks_a_sparse_strip: raw 3998208 B, deflated 33739 B (0.84%), encode 1.299 ms
+deflate_shrinks_a_sparse_strip: raw 3998208 B, deflated 33739 B (0.84%), encode 2.402 ms
+deflate_shrinks_a_sparse_strip: raw 3998208 B, deflated 33739 B (0.84%), encode 1.335 ms

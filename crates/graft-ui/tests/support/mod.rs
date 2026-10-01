@@ -27,6 +27,7 @@ pub fn themed(kind: ThemeKind, color_depth: ColorDepth, no_color: bool) -> Theme
             tier: RenderingTier::Unicode,
             pixel_protocol: None,
             kitty_graphics: Supported::No,
+            kitty_deflate: false,
             sixel: Supported::No,
             iterm2_images: false,
             kitty_keyboard: Supported::No,

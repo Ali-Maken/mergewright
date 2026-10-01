@@ -71,6 +71,7 @@ fn truecolor_terminal() -> Capabilities {
         tier: RenderingTier::Unicode,
         pixel_protocol: None,
         kitty_graphics: Supported::No,
+        kitty_deflate: false,
         sixel: Supported::No,
         iterm2_images: false,
         kitty_keyboard: Supported::No,

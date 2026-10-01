@@ -210,6 +210,10 @@ pub struct Capabilities {
     pub pixel_protocol: Option<PixelProtocol>,
     /// Answered the Kitty graphics query (`a=q`), fenced by `DA1`.
     pub kitty_graphics: Supported,
+    /// Answered `OK` to a zlib-deflated (`o=z`) `a=q` query, matched by its
+    /// own id, in a fenced round, on a terminal with Kitty graphics. `false`
+    /// wherever detection did not ask. Kitty uploads may then go deflated.
+    pub kitty_deflate: bool,
     /// `DA1` listed parameter 4.
     pub sixel: Supported,
     /// iTerm2 inline images. Environment hint only — iTerm2's inline-image

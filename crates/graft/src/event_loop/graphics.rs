@@ -175,6 +175,7 @@ impl<R: GraphicsReplies> Graphics<R> {
                     columns: placed_columns(graph.width, frame.columns),
                     rows: u16::try_from(rows.len()).unwrap_or(u16::MAX),
                 },
+                layer: graft_term::kitty::Layer::Strip,
             })
             .collect();
         if session.capabilities.pixel_protocol == Some(PixelProtocol::Iterm2) {

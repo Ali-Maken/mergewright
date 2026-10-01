@@ -8,6 +8,9 @@ use super::probe;
 /// What the terminal can draw, once tmux has had its say.
 pub(super) struct Graphics {
     pub(super) kitty: Supported,
+    /// The terminal answered `OK` to the `o=z` query in a fenced round, and
+    /// supports Kitty graphics at all.
+    pub(super) kitty_deflate: bool,
     pub(super) sixel: Supported,
     /// Whether image-protocol bytes reach a terminal that can act on them at
     /// all. False inside a tmux that will not pass them through, which is the
@@ -18,8 +21,10 @@ pub(super) struct Graphics {
 impl Graphics {
     /// Graphics as a direct probe round found them.
     pub(super) fn from(replies: &probe::ProbeReplies) -> Self {
+        let kitty = super::supported(replies.fenced().then_some(replies.kitty_graphics));
         Self {
-            kitty: super::supported(replies.fenced().then_some(replies.kitty_graphics)),
+            kitty,
+            kitty_deflate: kitty == Supported::Yes && replies.kitty_deflate,
             sixel: super::supported(replies.sixel()),
             reaches_the_terminal: true,
         }
@@ -29,6 +34,7 @@ impl Graphics {
     pub(super) fn blocked() -> Self {
         Self {
             kitty: Supported::Silent,
+            kitty_deflate: false,
             sixel: Supported::Silent,
             reaches_the_terminal: false,
         }

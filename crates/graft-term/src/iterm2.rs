@@ -257,6 +257,7 @@ mod tests {
                 rows: u16::try_from(rows.len()).unwrap(),
             },
             rows,
+            layer: crate::kitty::Layer::Strip,
         }
     }
 

@@ -18,6 +18,14 @@ use super::reply::{self, replies};
 /// A dummy 1×1 RGB image the terminal is asked about but never asked to draw.
 /// Only Kitty-protocol terminals answer at all.
 const KITTY_GRAPHICS_QUERY: &[u8] = b"\x1b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\";
+/// The graphics query's id; its reply is matched by it.
+pub(super) const KITTY_GRAPHICS_ID: u32 = 31;
+/// A dummy 1×1 RGBA image sent zlib-deflated (`o=z`): one transparent pixel,
+/// deflated then base64. `OK` means the terminal inflates `o=z` uploads.
+pub(super) const KITTY_DEFLATE_QUERY: &[u8] =
+    b"\x1b_Gi=32,s=1,v=1,a=q,t=d,f=32,o=z;eAFjYGBgAAAABAAB\x1b\\";
+/// The deflate query's id, distinct from every other probe and image id.
+pub(super) const KITTY_DEFLATE_ID: u32 = 32;
 /// Kitty keyboard protocol: report the current enhancement flags.
 const KITTY_KEYBOARD_QUERY: &[u8] = b"\x1b[?u";
 /// Report the cell size in pixels.
@@ -35,6 +43,8 @@ const DEVICE_ATTRIBUTES_QUERY: &[u8] = b"\x1b[c";
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct ProbeReplies {
     pub kitty_graphics: bool,
+    /// The deflate query came back `OK`. An error reply leaves it false.
+    pub kitty_deflate: bool,
     /// The `DA1` parameters. `Some` exactly when the fence came back.
     pub device_attributes: Option<Vec<u16>>,
     /// `(width, height)` in pixels.
@@ -60,6 +70,7 @@ impl ProbeReplies {
 pub(crate) fn full_round() -> Vec<u8> {
     [
         KITTY_GRAPHICS_QUERY,
+        KITTY_DEFLATE_QUERY,
         KITTY_KEYBOARD_QUERY,
         CELL_SIZE_QUERY,
         SYNCHRONIZED_OUTPUT_QUERY,
@@ -74,7 +85,12 @@ pub(crate) fn full_round() -> Vec<u8> {
 /// and keyboard were already answered by tmux itself, which is the layer that
 /// actually serves them (DESIGN.md §4.3).
 pub(crate) fn graphics_round() -> Vec<u8> {
-    [KITTY_GRAPHICS_QUERY, DEVICE_ATTRIBUTES_QUERY].concat()
+    [
+        KITTY_GRAPHICS_QUERY,
+        KITTY_DEFLATE_QUERY,
+        DEVICE_ATTRIBUTES_QUERY,
+    ]
+    .concat()
 }
 
 /// The cell-size query alone, fenced: what a resize re-asks (DESIGN.md §4.5).
@@ -132,7 +148,9 @@ fn parse(buffer: &[u8]) -> ProbeReplies {
         // Each query is recognised by its own reply shape, so one pass over
         // the buffer fills every field. Anything unrecognised — typeahead, a
         // reply to a query Graft never sent — falls through untouched.
-        if reply::kitty_graphics(item) {
+        if let Some(ok) = reply::kitty_graphics_reply(item, KITTY_DEFLATE_ID) {
+            found.kitty_deflate = ok;
+        } else if reply::kitty_graphics_reply(item, KITTY_GRAPHICS_ID).is_some() {
             found.kitty_graphics = true;
         } else if reply::kitty_keyboard(item) {
             found.kitty_keyboard = true;

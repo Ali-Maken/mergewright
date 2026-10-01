@@ -1,6 +1,6 @@
 # 45-scroll-kitty-layer-deflate — Kitty: a second layer above each strip, and zlib-compressed transmits
 
-Status: ready
+Status: done
 Build with: Sonnet — additive encoder and probe work in mapped files (`.scratch/m7-power-tools/scouts/45.md`); the one
 judgement call (terminal behaviour) is a gate below, not a build decision.
 Needs: none (additive; the wiring ticket places emphasis images)
@@ -106,30 +106,30 @@ impl KittyImages {
 ```
 
 ## Acceptance (each box names its test; red first)
-- [ ] Deflated transmit: `o=z` present, payload base64-decodes and inflates to the frame's exact RGBA.
+- [x] Deflated transmit: `o=z` present, payload base64-decodes and inflates to the frame's exact RGBA.
       — `kitty::tests::deflated_transmit_round_trips`.
-- [ ] Deflate off, all `Layer::Strip` → byte-identical to today's output for the same frames (today's bytes pinned
+- [x] Deflate off, all `Layer::Strip` → byte-identical to today's output for the same frames (today's bytes pinned
       before any change). — `kitty::tests::deflate_off_is_unchanged`.
-- [ ] A strip and its emphasis: emphasis placed with `z=1`, id has `EMPHASIS_ID_BIT`, emitted after its strip, at its
+- [x] A strip and its emphasis: emphasis placed with `z=1`, id has `EMPHASIS_ID_BIT`, emitted after its strip, at its
       column; dropping the emphasis next frame deletes only its placement; the strip is not re-sent; a frame that
       re-places the strip re-places the emphasis after it.
       — `kitty::tests::{emphasis_sits_above_its_strip, emphasis_goes_strip_stays, emphasis_follows_a_moved_strip}`.
-- [ ] Error reply (not `ENOENT`) to a deflated transmit → `is_deflating()` false, that image retransmitted raw next
+- [x] Error reply (not `ENOENT`) to a deflated transmit → `is_deflating()` false, that image retransmitted raw next
       frame, no `o=z` after; `ENOENT` behaves as today. — `kitty::tests::a_deflate_error_falls_back_to_raw`.
-- [ ] Deflate on a mostly-transparent 187-column strip (synthetic frame: 6 thin lanes) is ≤ 10% of raw bytes and
+- [x] Deflate on a mostly-transparent 187-column strip (synthetic frame: 6 thin lanes) is ≤ 10% of raw bytes and
       encodes in ≤ 2 ms (release, printed; recorded by `scripts/fix-scroll-deflate-cost.sh` →
       `docs/perf/45-scroll-kitty-layer-deflate.txt`; size asserted in both builds, time printed only).
       — `kitty::tests::deflate_shrinks_a_sparse_strip`.
-- [ ] Probe: `OK` to the deflate query → `kitty_deflate`; error or silence → not; graphics `OK` alone does not set
+- [x] Probe: `OK` to the deflate query → `kitty_deflate`; error or silence → not; graphics `OK` alone does not set
       deflate, deflate `OK` alone does not set graphics; no added deadline. — `detect::tests::{deflate_ok_turns_it_on,
       deflate_error_leaves_it_off, deflate_silence_leaves_it_off, replies_are_matched_by_id}` (scripted
       `TerminalHost`); the probe const inflates to 4 bytes — `detect::tests::deflate_query_payload_inflates`.
-- [ ] Inside tmux: the new query and deflated chunks go through `Transport` wrapping.
+- [x] Inside tmux: the new query and deflated chunks go through `Transport` wrapping.
       — `kitty::tests::deflated_chunks_wrap_in_tmux`, `detect::tests::deflate_query_wraps_in_tmux`.
-- [ ] `answer`, `forget_uploads`, `free_all`, `hide` cover emphasis images. — `kitty::tests::
+- [x] `answer`, `forget_uploads`, `free_all`, `hide` cover emphasis images. — `kitty::tests::
       {emphasis_enoent_retransmits, forget_covers_emphasis, free_all_frees_emphasis, hide_hides_emphasis}`.
-- [ ] Step 0 table in NOTES with quotes and links; any cell still unconfirmed named as such.
-- [ ] MAP.md (graft-term, graft-core): `Layer`, `EMPHASIS_ID_BIT`, `Place::layer`, `deflating`, `is_deflating`,
+- [x] Step 0 table in NOTES with quotes and links; any cell still unconfirmed named as such.
+- [x] MAP.md (graft-term, graft-core): `Layer`, `EMPHASIS_ID_BIT`, `Place::layer`, `deflating`, `is_deflating`,
       `kitty_deflate`.
 
 ## Dependency
@@ -151,3 +151,25 @@ workspace-wide.
 
 ## Size
 Medium (~55k).
+
+## NOTES (builder, 2026-10-01)
+Scout used: `.scratch/m7-power-tools/scouts/45.md`. No compaction.
+
+### Step 0 — terminal facts (from `docs/research/kitty-layering-deflate.md`; Ghostty clone `d542774`)
+| Fact | Kitty (spec, https://sw.kovidgoyal.net/kitty/graphics-protocol/) | Ghostty (source) |
+|---|---|---|
+| (a) `o=z` + `f=32` | confirmed: "only RFC 1950 ZLIB based deflate compression is supported, which is specified using `o=z`" (§Compression) | confirmed: `graphics_command.zig:620-621` parses `z`; `graphics_image.zig:629-668` inflates |
+| (a′) `a=q` decodes payload | **unconfirmed** (not quoted in research) | **unconfirmed** — runtime fallback (Decided 4) covers it |
+| (b) overlaps blend by alpha | confirmed: "Images placed in the same location with different z-index values will be blended if they are semi-transparent." (§z-index) | confirmed in source, not observed: `renderer/metal/shaders.zig:32-37` `blending_enabled = true`; OpenGL path not read |
+| (c) higher z above | confirmed (§z-index; equal z: lower id below) | confirmed: sort by z then id, `renderer/image.zig:503-504`; z fix in 1.2.0 |
+Also unconfirmed: the reply a capable terminal gives to an unknown `o=`. Probe + raw fallback kept. Nothing observed in a running terminal.
+
+### Ticks (tests)
+All 10 boxes ticked; tests named inline in each box above, all exist and pass (`cargo nextest run`, 5079/5079).
+- Perf box: size 0.84% of raw (asserted). Time, release, 5 runs (`docs/perf/45-scroll-kitty-layer-deflate.txt`): 1.40/1.14/1.30/**2.40**/1.34 ms — one of five over 2 ms. Time is whole `frame` call (straight alpha + deflate + base64). Printed only, per spec.
+- Dependency: `miniz_oxide` 0.8.9 (already in lock via `png`); `Cargo.lock` diff is one line, graft-term's edge. Chosen: pure Rust, one-call zlib, the version `png` already builds.
+
+### Deviations
+- Edited `crates/graft-term/src/detect/tier.rs` (not in File set): `Graphics` gains `kitty_deflate`, the only path by which the tmux re-probe's replies reach `Capabilities`. Same crate, 5 lines.
+- `kitty_deflate` also requires `kitty_graphics == Yes` (deflate `OK` alone sets nothing) — test `replies_are_matched_by_id`.
+- Literal sites edited: graft-ui `benches/row_render.rs`, `tests/support/mod.rs`, `src/test_support.rs`, `examples/graph_column.rs`; graft `src/session.rs`, `tests/it/captures.rs`, `src/event_loop/graphics.rs`, `examples/kitty_check/driver.rs`. Others use `..` (compile-checked).
