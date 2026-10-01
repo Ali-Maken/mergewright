@@ -24,6 +24,7 @@ mod credential_by_key;
 mod deadline;
 mod dependency_edges;
 mod diff_cursor;
+mod drain_sink;
 mod esc_and_the_walk;
 mod finish;
 mod frame_trace;
@@ -32,6 +33,8 @@ mod frames;
 mod gallery;
 #[cfg(feature = "heavy-tests")]
 mod heavy;
+#[cfg(feature = "heavy-tests")]
+mod held_key;
 mod hint_bar;
 mod history_place;
 mod idle_advance;

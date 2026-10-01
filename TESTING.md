@@ -166,6 +166,35 @@ million](#frames-at-a-million)).
 cargo test --release -p graft --features heavy-tests --test it -- frames:: heavy::budgets_hold --test-threads=1 --nocapture
 ```
 
+**Held keys** (m7-power-tools/42): `scripts/fix-scroll-held-key.sh` runs
+
+```sh
+cargo test --release --features heavy-tests --test it -- held_key:: --test-threads=1 --nocapture
+```
+
+and writes `docs/perf/fix-scroll-held-key.txt`. Four tests, held `j` (188
+keys, one every 16 ms) on the team fixture shaped like his work repo
+(`TeamSpec::MONOREPO`) at his 187×50, Unicode and Pixel; scenario B adds
+`J` 50 ms after the last `j`. The terminal is a `DrainSink`: a 16 KiB pipe
+drained at 500 KB/s (Unicode) or 40 MB/s (Pixel) that blocks the writer when
+full — a stress model of a terminal busy parsing, chosen so today's build
+overruns it and a fixed one has room (the real macOS pty capacity is printed
+beside it). The in-memory sink above has no back-pressure, which is why the
+`frames::` gate never saw this. Every time runs from the **last key's
+arrival** (its send): a key release never reaches the loop, so this is at
+least as strict as "after I let go". One `SUMMARY held_key` line per tier
+and scenario: `frames_after_release` (frames drawn after the last `j`),
+`tail_ms` (last `j` → the terminal swallowing the last frame),
+`bytes_per_frame_held`, `strip_transmits_held` / `emphasis_transmits_held`
+(Kitty transmits split by image id bit 31), `rows_scrolled`, and in B `j_ms`
+(`J` → the terminal reaching the journal frame's first byte), `j_done_ms`
+(printed only), `frames_before_J`; `peak_rss_mb` printed, not asserted.
+Premises (≥ 12 lanes, the selection's lit columns changing) fail the test if
+the fixture loses his shape. Counts fail in every build, times in release
+only. **These four are red in the heavy tier until 46** (Unicode green after
+43): the full heavy command above fails on them, deliberately. Right looks
+like: every `VERDICT held_key` line `ok`.
+
 **The frame gate is the p99** (m7-power-tools/04): each `frames::` scroll
 passes when its p99 input-to-frame is ≤ 16 ms; its line prints
 `p50_us= p99_us= max_us= over_budget=` every run, and every key over the

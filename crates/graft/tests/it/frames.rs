@@ -39,10 +39,10 @@
 mod after_idle;
 mod controls;
 mod journal_find;
-mod paced;
+pub(crate) mod paced;
 mod readings;
-mod run;
-mod sink;
+pub(crate) mod run;
+pub(crate) mod sink;
 mod verdict;
 
 use std::sync::PoisonError;
@@ -235,7 +235,7 @@ const ONE_MILLION_CG: Scale = Scale::of(1_000_000).with_commit_graph();
 
 /// Which badges the scroll draws.
 #[derive(Clone, Copy, Debug)]
-enum Refs {
+pub(crate) enum Refs {
     /// The fixture's own refs, as the refs job read them.
     Fixture,
     /// [`REFS`] refs in place of them (see [`fifty_thousand`]).

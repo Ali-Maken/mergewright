@@ -16,9 +16,9 @@ use super::sink::Sink;
 use crate::frame_trace::{Posted, SentLog};
 
 /// The job pool, noting the id of every `ShowRows` the loop sends.
-pub(super) struct Watching<'a, D> {
-    pub(super) inner: &'a D,
-    pub(super) asked: Mutex<Vec<u64>>,
+pub(crate) struct Watching<'a, D> {
+    pub(crate) inner: &'a D,
+    pub(crate) asked: Mutex<Vec<u64>>,
 }
 
 impl<D: Dispatch> Dispatch for Watching<'_, D> {
@@ -50,7 +50,7 @@ impl<D> Watching<'_, D> {
 
 /// What one wake was.
 #[derive(Clone, Copy, Debug)]
-pub(super) enum Kind {
+pub(crate) enum Kind {
     /// The key at this index of the script, sent by the input thread at
     /// this instant: where its latency starts.
     Key(usize, Instant),
@@ -61,8 +61,8 @@ pub(super) enum Kind {
 }
 
 /// One wake handed to the loop.
-pub(super) struct Handed {
-    pub(super) kind: Kind,
+pub(crate) struct Handed {
+    pub(crate) kind: Kind,
     /// [`Wake::label`]: what it was, without its payload.
     pub(super) label: &'static str,
     /// Just before it was sent (the input thread's or a job's send).
@@ -100,7 +100,7 @@ fn slot(phase: Phase) -> usize {
 /// the way `ChannelWakes` reads the app's (`event_loop/mod.rs`: `recv` to
 /// wait, `try_recv` to look). Every call means the loop has drawn the frame
 /// for the wake before it, so each call is stamped.
-pub(super) struct Paced<'a, D> {
+pub(crate) struct Paced<'a, D> {
     pub(super) events: &'a Receiver<Posted>,
     pub(super) keys: Vec<(KeyCode, Duration)>,
     /// Keys received so far: the index of the next one.
@@ -108,17 +108,17 @@ pub(super) struct Paced<'a, D> {
     /// When the input thread sent each key.
     pub(super) sent: SentLog,
     pub(super) watching: &'a Watching<'a, D>,
-    pub(super) handed: Vec<Handed>,
+    pub(crate) handed: Vec<Handed>,
     /// `replay[i]`: the event `handed[i]` carried, to replay through `update`.
-    pub(super) replay: Vec<AppEvent>,
+    pub(crate) replay: Vec<AppEvent>,
     /// `drawn[i]`: the frame after `handed[i - 1]` was on the terminal
     /// (`drawn[0]` is the first frame, before any wake).
-    pub(super) drawn: Vec<Instant>,
+    pub(crate) drawn: Vec<Instant>,
     /// `written[i]`: bytes the terminal had been sent when `drawn[i]` was
     /// stamped; parsed into [`Counts`] after the scroll ([`Sink::count`]).
-    pub(super) written: Vec<usize>,
+    pub(crate) written: Vec<usize>,
     pub(super) sink: Sink,
-    pub(super) failure: Option<String>,
+    pub(crate) failure: Option<String>,
     /// A wake `waiting` took off the channel to see it; handed out first.
     pub(super) seen: Option<Posted>,
     /// When the loop first looked for a wake since the last one was handed:
@@ -134,6 +134,12 @@ pub(super) struct Paced<'a, D> {
 }
 
 impl Handed {
+    /// When its frame's [`Phase::Drawn`] mark was taken; `None` if the loop
+    /// never drew it.
+    pub(crate) fn drawn_at(&self) -> Option<Instant> {
+        self.marks[slot(Phase::Drawn)]
+    }
+
     pub(super) fn kind_name(&self) -> String {
         match self.kind {
             Kind::Key(key, _) => format!("key {key}"),
@@ -144,7 +150,7 @@ impl Handed {
 }
 
 impl<'a, D> Paced<'a, D> {
-    pub(super) fn new(
+    pub(crate) fn new(
         events: &'a Receiver<Posted>,
         keys: Vec<(KeyCode, Duration)>,
         watching: &'a Watching<'a, D>,
