@@ -40,7 +40,6 @@
 #
 
  graft /code/api  70 commits
-  │ ●    finish the topic                                           63m  e7e39a7
   │ ●    start the topic                                            64m  169d215
 ●─┴─╯    [main] main moves on (2)                                   65m  107af44
 ●        main moves on (1)                                          66m  2b2b2f1
@@ -56,6 +55,7 @@
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────╮
 │ 5 commits replayed                                                           │
 │ topic e7e39a7 → 5 new commits                                                │
+│ left behind: main, redesign stay on old commits                              │
 │ working tree: 1 file updated                                                 │
 │ no conflicts expected                                                        │
 │ undo: u takes this back                                                      │

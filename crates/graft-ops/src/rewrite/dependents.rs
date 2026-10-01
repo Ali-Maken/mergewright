@@ -11,6 +11,7 @@ use graft_git::version::GitVersion;
 
 use crate::facts::FactsError;
 use crate::operation::{Refusal, Tip};
+use crate::preview::{LEFT_BEHIND_CAP, LeftBehind};
 
 use super::reads::{default_branch_of, parse_oid, ref_name, unparsable};
 use super::{BranchLine, Dependents, RewriteError};
@@ -120,6 +121,61 @@ pub fn dependents(
     let mut branches = vec![branch.clone()];
     branches.extend(found.into_iter().map(|(tip, _)| tip));
     Ok(Dependents::Line(BranchLine { branches }))
+}
+
+/// The local branches a rewrite of the line leaves on old commits (m7/37):
+/// every one holding `oldest_replaced` that is not in `line`, by name, the
+/// first [`LEFT_BEHIND_CAP`] with the old commit each stays on, and how many
+/// more there are.
+///
+/// The replaced commits are one straight chain (a merge in range is
+/// refused), so a branch holding any of them holds the oldest: one
+/// `for-each-ref --contains`. Where each stays is where it meets `old_top`,
+/// the line's top before the rewrite: one `merge-base` per named branch. A
+/// mid-chain fork meets it at the fork; a branch parked on a replaced
+/// commit (a backup at his tip) at that commit.
+///
+/// `_git` is unused: the reads are the same on every git Graft supports.
+///
+/// # Errors
+/// [`FactsError`] when a read fails, [`FactsError::Stopped`] when `stop`
+/// asks.
+pub(crate) fn left_behind(
+    repo: &RepoHandle,
+    _git: &GitVersion,
+    oldest_replaced: Oid,
+    old_top: Oid,
+    line: &[RefName],
+    stop: &dyn Stop,
+) -> Result<(Vec<LeftBehind>, usize), FactsError> {
+    let off_line: Vec<LocalBranch> = local_branches(repo, Some(oldest_replaced), stop)?
+        .into_iter()
+        .filter(|local| {
+            !line
+                .iter()
+                .any(|name| name.as_bytes() == local.name.as_bytes())
+        })
+        .collect();
+    let more = off_line.len().saturating_sub(LEFT_BEHIND_CAP);
+    let mut named = Vec::with_capacity(off_line.len().min(LEFT_BEHIND_CAP));
+    for local in off_line.into_iter().take(LEFT_BEHIND_CAP) {
+        named.push(LeftBehind {
+            branch: ref_name(&local.name)?,
+            on: merge_base(repo, local.oid, old_top, stop)?,
+        });
+    }
+    Ok((named, more))
+}
+
+/// Where `a` and `b` meet. Both hold the oldest replaced commit, so there
+/// is always one.
+fn merge_base(repo: &RepoHandle, a: Oid, b: Oid, stop: &dyn Stop) -> Result<Oid, FactsError> {
+    let output = GitInvocation::new(repo)
+        .args([GitArg::Flag("merge-base"), GitArg::Oid(a), GitArg::Oid(b)])
+        .run(stop)
+        .map_err(FactsError::of_history)?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    parse_oid(text.trim())
 }
 
 /// The commits from `tip` (excluded) up `above`'s first-parent chain, newest

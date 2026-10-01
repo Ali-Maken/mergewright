@@ -209,6 +209,14 @@ pub(super) fn after_facts(plan: &PreviewPlan, owner: &[(usize, usize)]) -> Vec<S
         };
         out.push(format!("built on yours: {} {verb}", followers.join(", ")));
     }
+    // Who does not follow (m7/37), in the preview box's words. The longest
+    // wording: this side has no width here, and the names lead the row, so
+    // the widget's cut at the tail never reaches them.
+    out.extend(
+        crate::update::preview::left_behind_rungs(&plan.left_behind, plan.left_behind_more)
+            .into_iter()
+            .next(),
+    );
     if !plan.published.is_empty() {
         let names: Vec<String> = plan
             .published

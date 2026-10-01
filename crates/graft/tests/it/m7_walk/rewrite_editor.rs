@@ -392,3 +392,116 @@ fn capture_rewrite_refused_fork() {
     drop(state);
     app.close();
 }
+
+// ── left behind (m7/37, usability M6) ───────────────────────────────────
+
+/// The walk's world: `main` (m1) ← `feature-a`: "feature a: part 1",
+/// "part 2", "part 3"; `feature-b` (b1) forked from part 1, not from
+/// `feature-a`'s tip, so it is not built on his and does not follow. HEAD
+/// on `feature-a`, a fix to part 1's file staged.
+fn forked_mid_chain_repo() -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap_or_else(|why| panic!("a temporary directory: {why}"));
+    let repo = dir.path();
+    git(repo, &["init", "-q", "-b", "main"], 0);
+    commit(repo, "readme.txt", "m1", "", 0);
+    git(repo, &["switch", "-q", "-c", "feature-a"], 1);
+    commit(repo, "one.txt", "feature a: part 1", "", 1);
+    commit(repo, "two.txt", "feature a: part 2", "", 2);
+    commit(repo, "three.txt", "feature a: part 3", "", 3);
+    git(repo, &["switch", "-q", "-c", "feature-b", "feature-a~2"], 4);
+    commit(repo, "b.txt", "b1", "", 4);
+    git(repo, &["switch", "-q", "feature-a"], 5);
+    git(repo, &["commit-graph", "write", "--reachable"], 5);
+    std::fs::write(repo.join("one.txt"), "feature a: part 1, fixed\n")
+        .unwrap_or_else(|why| panic!("write: {why}"));
+    git(repo, &["add", "one.txt"], 5);
+    dir
+}
+
+/// The short id the box names the old part 1 by.
+fn old_part_one(repo: &Path) -> String {
+    read(repo, "feature-a~2")[..7].to_owned()
+}
+
+/// `a y` on part 1 strands `feature-b` on the old part 1: the box says so
+/// before `y`, under the ref rows; at 80 columns a shorter rung still names
+/// it. Rule 6: the capture is for the user's eye; colour unverified.
+#[test]
+fn the_box_says_who_stays_behind() {
+    let dir = forked_mid_chain_repo();
+    let repo = dir.path();
+    let (app, state) = open(repo, 187, 44);
+    let state = app.pump(state, "the working tree", |state| {
+        state.working_tree.is_some()
+    });
+    let state = place_on(&app, state, repo, "feature-a~2");
+    let state = app.key(&state, KeyCode::Char('a'));
+    let state = app.pump(state, "the put-in's preview", |state| {
+        state
+            .preview
+            .as_ref()
+            .is_some_and(|preview| !preview.rows.is_empty())
+            || matches!(state.status, Status::Sticky { .. })
+    });
+    assert!(state.preview.is_some(), "the preview: {:?}", state.status);
+    let body = frame(&state, 187, 44);
+    crate::captures::check_shot("m7/amend-into-left-behind-187x44.txt", &body);
+    let lines: Vec<&str> = body.lines().collect();
+    let moved = lines
+        .iter()
+        .position(|line| line.contains("feature-a ") && line.contains("\u{2192} 3 new commits"))
+        .unwrap_or_else(|| panic!("feature-a's row: {body}"));
+    let words = format!(
+        "left behind: feature-b stays on the old {}",
+        old_part_one(repo)
+    );
+    let left = lines
+        .iter()
+        .position(|line| line.contains(&words))
+        .unwrap_or_else(|| panic!("{words:?}: {body}"));
+    assert_eq!(left, moved + 1, "right under the ref rows: {body}");
+
+    let state = app.resize(&state, 80, 40);
+    let narrow = frame(&state, 80, 40);
+    assert!(
+        narrow
+            .lines()
+            .any(|line| line.contains("left behind: feature-b")),
+        "{narrow}"
+    );
+    drop(state);
+    app.close();
+}
+
+/// The rewrite editor's AFTER side says it too, between the `follows` rows
+/// and `on origin:` (here: above the forecast; there are neither). He
+/// confirms from there as well (the M5 promise).
+#[test]
+fn the_rewrite_editor_after_says_who_stays_behind() {
+    let dir = forked_mid_chain_repo();
+    let repo = dir.path();
+    git(repo, &["restore", "--staged", "one.txt"], 5);
+    git(repo, &["checkout", "--", "one.txt"], 5);
+    let (app, state) = open(repo, 187, 44);
+    let state = place_on(&app, state, repo, "HEAD");
+    let mut route = Vec::new();
+    let state = capital_r(&app, &state, &mut route, 187, 44);
+    let body = frame(&state, 187, 44);
+    crate::captures::check_shot("m7/rewrite-editor-left-behind-187x44.txt", &body);
+    let words = format!(
+        "left behind: feature-b stays on the old {}",
+        old_part_one(repo)
+    );
+    let lines: Vec<&str> = body.lines().collect();
+    let left = lines
+        .iter()
+        .position(|line| line.contains(&words))
+        .unwrap_or_else(|| panic!("{words:?}: {body}"));
+    let forecast = lines
+        .iter()
+        .position(|line| line.contains("no conflicts expected"))
+        .unwrap_or_else(|| panic!("the forecast: {body}"));
+    assert!(left < forecast, "above the forecast: {body}");
+    drop(state);
+    app.close();
+}

@@ -29,6 +29,9 @@ pub(super) fn plan_lines(
     } else {
         lines.extend(plan.ref_moves.iter().map(|moved| ref_line(plan, moved)));
     }
+    // Who does not follow (m7/37): only the line moves (ADR-0047 §4), and
+    // a branch forked off it or parked on a commit it replaces stays put.
+    lines.extend(line_rows::left_behind_row(plan, columns));
     lines.extend(line_rows::already_in_row(plan, op, keeps));
     lines.extend(head_line(plan));
     lines.push(worktree_line(&plan.worktree));

@@ -22,8 +22,8 @@ use crate::rewrite::{
 
 use super::chain::{self, Step};
 use super::{
-    GhostCommit, HeadMove, Landing, PreviewError, PreviewPlan, RefMove, Target, WorktreeEffect,
-    blank, ghost_oid, worktree,
+    GhostCommit, HeadMove, Landing, LeftBehind, PreviewError, PreviewPlan, RefMove, Target,
+    WorktreeEffect, blank, ghost_oid, worktree,
 };
 
 pub(super) fn rewrite(
@@ -75,6 +75,8 @@ pub(super) fn rewrite(
     plan.worktree = landed_tree(repo, params, &chained.results)?;
     plan.conflicts = chained.forecast;
     plan.published = published(repo, &params.line, &commits, params.onto, stop)?;
+    (plan.left_behind, plan.left_behind_more) =
+        left_behind(repo, git, &params.line, &commits, stop)?;
     Ok(plan)
 }
 
@@ -244,6 +246,37 @@ pub(super) fn published(
         }
     }
     Ok(named)
+}
+
+/// The branches off `line` left on the old commits: those holding the
+/// oldest of `replaced` (oldest first, as the todo runs), and where each
+/// stays (`rewrite::left_behind`). Nothing when nothing is replaced.
+///
+/// # Errors
+/// [`PreviewError::Stopped`]; [`PreviewError::Facts`] when a read fails.
+pub(super) fn left_behind(
+    repo: &RepoHandle,
+    git: &GitVersion,
+    line: &BranchLine,
+    replaced: &[Oid],
+    stop: &dyn Stop,
+) -> Result<(Vec<LeftBehind>, usize), PreviewError> {
+    let (Some(oldest), Some(top)) = (replaced.first(), line.top()) else {
+        return Ok((Vec::new(), 0));
+    };
+    let names = line
+        .branches
+        .iter()
+        .map(|tip| {
+            RefName::new(tip.name.as_bytes()).map_err(|_| {
+                PreviewError::Read(RunError::Unparsable(format!(
+                    "the branch name {:?}",
+                    tip.name
+                )))
+            })
+        })
+        .collect::<Result<Vec<RefName>, PreviewError>>()?;
+    crate::rewrite::left_behind(repo, git, *oldest, top.oid, &names, stop).map_err(facts)
 }
 
 /// Whether `upstream` reaches any of `rewritten` (none of which `onto`

@@ -1,0 +1,44 @@
+ graft /code/api  6 commits
+       after rebase
+  ○    [feature-b] b1                                                                                                                                                       GF —    —
+  ○    [◆ feature-a] a3                                                                                                                                                     GF —    —
+  ○    a2                                                                                                                                                                   GF —    —
+  ○    a1                                                                                                                                                                   GF —    —
+●─╯ ▏  [main] m2                                                                                                                                                            GF 2d   2b82635
+│ ●    b1                                                                                                                                                                   GF 2d   884b0c4
+│ ●    a3                                                                                                                                                                   GF 2d   cb31bb2
+│ ●    a2                                                                                                                                                                   GF 2d   795ac31
+│ ●    a1                                                                                                                                                                   GF 2d   0395451
+◇─╯    m1                                                                                                                                                                   GF 2d   256d42c
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: rebase feature-a onto main ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 4 commits replayed                                                                                                                                                                      │
+│ branches: feature-a cb31bb2 → 3 new commits                                                                                                                                             │
+│           feature-b 884b0c4 → 4 new commits · built on yours · follows                                                                                                                  │
+│ working tree: 1 file updated                                                                                                                                                            │
+│ no conflicts expected                                                                                                                                                                   │
+│ undo: u takes this back                                                                                                                                                                 │
+│ git rebase -i --no-update-refs --no-autostash --empty=drop main feature-b                                                                                                               │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                                                                                               │
+╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
