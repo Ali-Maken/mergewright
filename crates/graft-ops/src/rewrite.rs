@@ -50,7 +50,7 @@ pub use progress::{edit_stop, progress};
 pub use todo::{default_message, squash_groups, validate};
 pub use unpushed::ABSORB_FALLBACK_DEPTH;
 
-pub(crate) use dependents::line_of;
+pub(crate) use dependents::{left_behind, line_of};
 pub(crate) use reads::{line_picks, messages_of, rebase_rows};
 pub(crate) use todo::{GitTodo, git_todo, git_words};
 

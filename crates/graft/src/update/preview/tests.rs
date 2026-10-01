@@ -125,6 +125,8 @@ pub(in crate::update) fn a_plan() -> PreviewPlan {
         put_back: None,
         already_in: None,
         published: Vec::new(),
+        left_behind: Vec::new(),
+        left_behind_more: 0,
         messages: Vec::new(),
     }
 }
@@ -146,6 +148,8 @@ fn an_empty_plan() -> PreviewPlan {
         put_back: None,
         already_in: None,
         published: Vec::new(),
+        left_behind: Vec::new(),
+        left_behind_more: 0,
         messages: Vec::new(),
     }
 }
@@ -1763,4 +1767,48 @@ fn the_row_names_r_only_when_live() {
     let row = row_of(&not_live);
     assert!(row.ends_with("\u{b7} dropped"), "{row}");
     assert!(!preview_box(&not_live).expect("a box").keep);
+}
+
+// ── left behind (m7/37) ─────────────────────────────────────────────────
+
+fn left(name: &str, on: u8) -> graft_ops::preview::LeftBehind {
+    graft_ops::preview::LeftBehind {
+        branch: RefName::new(format!("refs/heads/{name}").as_bytes()).expect("a ref name"),
+        on: Oid::from_hex(&format!("dd21dca{on:033x}")).expect("an id"),
+    }
+}
+
+/// One, two, ten: each rung's exact words, longest first.
+#[test]
+fn left_behind_rungs_table() {
+    use super::line_rows::left_behind_rungs;
+
+    assert_eq!(left_behind_rungs(&[], 0), Vec::<String>::new(), "none");
+    assert_eq!(
+        left_behind_rungs(&[left("feature-b", 1)], 0),
+        [
+            "left behind: feature-b stays on the old dd21dca",
+            "left behind: feature-b",
+        ],
+        "one"
+    );
+    assert_eq!(
+        left_behind_rungs(&[left("feature-b", 1), left("feature-c", 2)], 0),
+        [
+            "left behind: feature-b, feature-c stay on old commits",
+            "left behind: feature-b, feature-c",
+            "left behind: feature-b +1",
+        ],
+        "two"
+    );
+    let ten: Vec<_> = (0..8).map(|k| left(&format!("b{k}"), k)).collect();
+    assert_eq!(
+        left_behind_rungs(&ten, 2),
+        [
+            "left behind: b0, b1, b2, b3, b4, b5, b6, b7 +2 stay on old commits",
+            "left behind: b0, b1, b2, b3, b4, b5, b6, b7 +2",
+            "left behind: b0 +9",
+        ],
+        "ten: eight named, two counted"
+    );
 }

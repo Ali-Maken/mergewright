@@ -4,7 +4,7 @@
 # and `redesign` — sixty commits newer than all of them — pushing
 # `old-release` far down the graph. Opened over the real job pool, the
 # cursor walked down to `old-release`'s row with `j` **at this screen
-# size** (so the viewport really is scrolled: `history.top` is 48 here,
+# size** (so the viewport really is scrolled: `history.top` is 49 here,
 # not 0 — it differs by screen, which is why each capture has its own
 # session and its own number), then `r` pressed through `update` and the
 # real `graft_ops::preview::plan` run (crates/graft/tests/it/preview.rs,
@@ -40,8 +40,6 @@
 #
 
  graft /code/api  70 commits
-  ●      redesign step 00                                           62m  c6c79eb
-  │ ●    finish the topic                                           63m  e7e39a7
   │ ●    start the topic                                            64m  169d215
 ●─┴─╯    [main] main moves on (2)                                   65m  107af44
 ●        main moves on (1)                                          66m  2b2b2f1
@@ -53,9 +51,11 @@
 │ ○      main moves on (1)                                          —    —
 │ ○      main moves on (0)                                          —    —
 │ ●   ▏  [old-release] cut release 1.0                              68m  3b09656
+●─╯      add the base                                               69m  ed332bc
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────╮
 │ 5 commits replayed                                                           │
 │ topic e7e39a7 → 5 new commits                                                │
+│ left behind: main, redesign stay on old commits                              │
 │ working tree: 1 file updated                                                 │
 │ no conflicts expected                                                        │
 │ undo: u takes this back                                                      │

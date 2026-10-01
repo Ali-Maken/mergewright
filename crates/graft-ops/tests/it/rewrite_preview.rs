@@ -917,3 +917,124 @@ fn line_rows_agree_with_git() {
         drawn.conflicts
     );
 }
+
+// ── left behind (m7/37) ─────────────────────────────────────────────────
+
+/// `feature-a` a1 a2 a3 off `main`; `feature-b` b1 off `feature-a~1` (a2):
+/// forked mid-chain, so not built on his tip and not in the line. `HEAD` on
+/// `feature-a`, a new file staged for `a`.
+fn forked_mid_chain() -> TempRepo {
+    let repo = TempRepo::init();
+    commit(&repo, "m1");
+    repo.git(&["switch", "-q", "-c", "feature-a"]);
+    commit(&repo, "a1");
+    commit(&repo, "a2");
+    commit(&repo, "a3");
+    repo.git(&["switch", "-q", "-c", "feature-b", "feature-a~1"]);
+    commit(&repo, "b1");
+    repo.git(&["switch", "-q", "feature-a"]);
+    repo.write("staged.txt", b"staged\n");
+    repo.git(&["add", "staged.txt"]);
+    repo
+}
+
+/// `a` into `rev`, as the app plans it.
+fn amend_into(repo: &TempRepo, rev: &str) -> PreviewPlan {
+    let handle = repo.open();
+    let facts =
+        read_facts(&handle, git_version(), &Never, &FactsScope::default()).expect("the facts read");
+    let params = graft_ops::rewrite::plan(
+        &handle,
+        &git_version(),
+        &RewriteRequest::AmendInto {
+            target: id(repo, rev),
+        },
+        &facts,
+        None,
+        &Never,
+    )
+    .unwrap_or_else(|why| panic!("it plans: {why:?}"));
+    plan_of(repo, &Operation::Rewrite(params))
+}
+
+fn left_names(plan: &PreviewPlan) -> Vec<(String, Oid)> {
+    plan.left_behind
+        .iter()
+        .map(|left| {
+            (
+                String::from_utf8_lossy(left.branch.as_bytes()).into_owned(),
+                left.on,
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn left_behind_names_a_branch_forked_mid_chain() {
+    let repo = forked_mid_chain();
+    let a2 = id(&repo, "feature-a~1");
+    let drawn = amend_into(&repo, "feature-a~1");
+    assert_eq!(
+        left_names(&drawn),
+        [("refs/heads/feature-b".to_owned(), a2)],
+        "feature-b stays on the old a2; feature-a, the line, is never listed"
+    );
+    assert_eq!(drawn.left_behind_more, 0);
+}
+
+#[test]
+fn left_behind_names_a_branch_parked_on_a_replaced_commit() {
+    let repo = forked_mid_chain();
+    repo.git(&["branch", "backup", "feature-a"]);
+    let a3 = id(&repo, "feature-a");
+    let a2 = id(&repo, "feature-a~1");
+    let drawn = amend_into(&repo, "feature-a~1");
+    assert_eq!(
+        left_names(&drawn),
+        [
+            ("refs/heads/backup".to_owned(), a3),
+            ("refs/heads/feature-b".to_owned(), a2),
+        ],
+        "a backup at his tip stays on the old tip"
+    );
+}
+
+#[test]
+fn left_behind_is_empty_for_a_clean_line() {
+    let repo = line();
+    let (_, drawn) = completed(&repo, rebase(&repo, "feature-a"));
+    assert_eq!(
+        left_names(&drawn),
+        [],
+        "the line's branches are never listed"
+    );
+    assert_eq!(drawn.left_behind_more, 0);
+    let rewritten = plan_of(&repo, &line_onto_main(&repo, |_| {}));
+    assert_eq!(left_names(&rewritten), []);
+}
+
+#[test]
+fn left_behind_on_a_rebase_names_the_fork() {
+    let repo = forked_mid_chain();
+    repo.git(&["stash", "-q"]);
+    repo.git(&["switch", "-q", "main"]);
+    commit(&repo, "m2");
+    repo.git(&["switch", "-q", "feature-a"]);
+    let a2 = id(&repo, "feature-a~1");
+    let (_, drawn) = completed(&repo, rebase(&repo, "feature-a"));
+    assert_eq!(
+        left_names(&drawn),
+        [("refs/heads/feature-b".to_owned(), a2)]
+    );
+}
+
+#[test]
+fn left_behind_caps_at_eight() {
+    let repo = forked_mid_chain();
+    for k in 0..9 {
+        repo.git(&["branch", &format!("park-{k}"), "feature-a~1"]);
+    }
+    let drawn = amend_into(&repo, "feature-a~1");
+    assert_eq!(drawn.left_behind.len(), 8, "{:?}", left_names(&drawn));
+    assert_eq!(drawn.left_behind_more, 2, "10 branches: 8 named, 2 counted");
+}

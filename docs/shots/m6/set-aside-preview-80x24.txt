@@ -11,6 +11,8 @@
 #    At narrow widths `put back after` may be cut; the file count may not.
 
  graft /code/api  152 rows so far
+       after rebase
+  ○    [◆ main ↑1 ↓1] ours                                          —    —
   ●    [origin/main] theirs                                         6m   7be74b5
 ● │ ▏  ours                                                         6m   9d3d925
 ●─╯    Commit 200                                                   1y   d5ae5fd
@@ -20,8 +22,6 @@
 ●      Commit 196                                                   1y   325da3f
 ●      Commit 195                                                   1y   0722297
 ●      Commit 194                                                   1y   b6a4a47
-●      Commit 193                                                   1y   60af0eb
-●      Commit 192                                                   1y   aceb8c5
 ╭ Preview: rebase main onto origin/main ───────────────────────────────────────╮
 │ 1 commit replayed                                                            │
 │ main 9d3d925 → 1 new commit                                                  │

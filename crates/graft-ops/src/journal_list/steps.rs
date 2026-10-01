@@ -93,7 +93,7 @@ fn is_checkout(subject: &str) -> bool {
     subject.starts_with("checkout: moving from ")
 }
 
-fn is_rebase(subject: &str) -> bool {
+pub(super) fn is_rebase(subject: &str) -> bool {
     subject.starts_with("rebase (") || subject.starts_with("rebase -i (")
 }
 

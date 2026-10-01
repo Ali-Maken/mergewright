@@ -15,6 +15,7 @@ use std::cmp::Ordering;
 use graft_core::journal::JournalEntry;
 use graft_core::oid::Oid;
 use graft_git::history_reads::Unreached;
+use graft_git::reflog::ReflogRecord;
 
 use super::steps::{Steps, branch_short, checkout_names, is_hex_id};
 use super::words::words_on;
@@ -119,7 +120,7 @@ pub(super) fn assemble(
                 under[event].push(LostCommit {
                     run: *run,
                     subject: (lost.subject_of)(run.tip),
-                    held_by: held_by(hint, lost.branch_exists),
+                    held_by: held_by(hint, run.tip, outside, lost.branch_exists),
                 });
             }
             // A tip no event had as an old value cannot be placed. Every
@@ -205,7 +206,7 @@ fn old_values(
     olds
 }
 
-fn record_hint(record: &graft_git::reflog::ReflogRecord, on: Option<&str>) -> Hint {
+fn record_hint(record: &ReflogRecord, on: Option<&str>) -> Hint {
     if let Some(name) = branch_short(&record.refname) {
         return Hint::Branch(name.to_owned());
     }
@@ -235,12 +236,44 @@ fn place(olds: &[Vec<(Oid, Hint)>], tip: Oid) -> Option<(usize, Hint)> {
     })
 }
 
-fn held_by(hint: Hint, branch_exists: &dyn Fn(&str) -> bool) -> HeldBy {
+/// What held `tip`, by the hint. A branch only inferred from `HEAD`'s
+/// records (`Hint::On`) that exists names `tip` only if its own log ever
+/// held it (m7/38): `HEAD` on `feature-b` mid-rebase moved through commits
+/// `feature-b` never had, and "was feature-b's tip" would send `⏎` to put
+/// `feature-b` on one. A gone branch's log went with it: inferred stands.
+fn held_by(
+    hint: Hint,
+    tip: Oid,
+    outside: &[OutsideRecord],
+    branch_exists: &dyn Fn(&str) -> bool,
+) -> HeldBy {
     match hint {
+        Hint::On(name)
+            if branch_exists(&name)
+                && !branch_log_names(
+                    &format!("refs/heads/{name}"),
+                    tip,
+                    outside.iter().map(|outside| &outside.record),
+                ) =>
+        {
+            HeldBy::Head
+        }
         Hint::Branch(name) | Hint::SwitchedFrom(name) | Hint::On(name) => HeldBy::Branch {
             gone: !branch_exists(&name),
             name,
         },
         Hint::Head => HeldBy::Head,
     }
+}
+
+/// Whether `branch`'s own log (`refs/heads/<b>`, full name) names `commit`
+/// as an old or new value in `records`.
+pub(super) fn branch_log_names<'a>(
+    branch: &str,
+    commit: Oid,
+    records: impl IntoIterator<Item = &'a ReflogRecord>,
+) -> bool {
+    records.into_iter().any(|record| {
+        record.refname == branch && (record.old == Some(commit) || record.new == Some(commit))
+    })
 }
