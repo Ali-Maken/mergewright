@@ -9,6 +9,11 @@ File set (crate `graft`): `src/event_loop/running.rs`, `src/event_loop/mod.rs`, 
 `tests/it/frames/paced.rs`, `tests/it/frames/readings.rs`, `crates/graft/MAP.md`,
 `docs/perf/fix-scroll-held-key.txt` (append).
 Overlap and order:
+- 42 before (planner ruling 2026-10-01, scout 42): 42 may widen visibility and add read-only accessors in
+  `paced.rs` (per-`Drawn` `Instant` and sink offset), and adds `Sink::draining` (`frames/sink.rs`) and
+  `ready_to_scroll_at` (`frames/run.rs`). 43 owns `paced.rs` from 42's merge on: keep 42's accessors working with the
+  same meaning (`held_key` reads them). `paced.rs` line numbers below are from HEAD 552efc7f; re-locate by name.
+  `sink.rs`, `run.rs`: not in this file set.
 - 45 also edits crate `graft` (literal sites: `event_loop/graphics.rs`, `session.rs`, `examples/kitty_check/
   driver.rs`, some `tests/it/*`): disjoint files, may run concurrently (ADR-0051: two builders in the crate).
   If 45 lands first and adds a field, re-run the gates after merge; no file is shared.
@@ -18,7 +23,7 @@ Overlap and order:
 
 ## Read first
 - `.scratch/m7-power-tools/scouts/43.md` (whole; 1 page).
-- `42-scroll-held-key-gate.md` §Need, §Prior art, §Journeys (the pipeline sections for this fix).
+- `42-scroll-held-key-gate.md` §Need, §Prior art, §Journeys (the pipeline sections for this fix), §Planner ruling.
 - `.scratch/m7-power-tools/debug-scroll-lag.md` cause 2 and "Proposed fix" 2.
 - `crates/graft/MAP.md` `## event_loop` (`:888-909`; `job_event_waiting` ~`:900`), `event_loop::input`
   (`:936-937`), `event_loop::outside` (`:911-928`).
@@ -89,7 +94,8 @@ fn carry_out(/* as today */) -> (AppState, Carried);
 ```
 `is_job_event` stays (the startup trace and tests use it). `pump`'s signature is unchanged.
 Impls to change (method only): `ChannelWakes` (`mod.rs:186`), `ScriptedWakes` (`event_loop/tests.rs:94`, method
-`:111`), `Paced` (`tests/it/frames/paced.rs:302`). None in `tests/it/frame_trace.rs` (scout grep).
+`:111`), `Paced` (`tests/it/frames/paced.rs:302` at 552efc7f). None in `tests/it/frame_trace.rs` (scout grep).
+`DrainSink` (42) is not a `Wakes` impl (42 ruling 1).
 
 ## Acceptance (each box names its test; red first)
 - [ ] 20 `j` queued before the turn → exactly one frame drawn, cursor 20 rows down.
@@ -121,12 +127,13 @@ Impls to change (method only): `ChannelWakes` (`mod.rs:186`), `ScriptedWakes` (`
   - Every other m7/12 test unchanged and green; name them in the report.
 - [ ] The `frames::` harness measures a key's latency from its send to the frame that showed it; a batched key's
       latency is to the batch's frame. Today `readings.rs:50-63` takes `drawn[index + 1]` per wake and `paced.rs`
-      (`:114-116`, `:174-178`) stamps one `drawn` per `next_wake`: both change so each wake maps to the frame drawn at
-      the end of its turn. — new `frames::readings::a_batched_key_reads_its_batch_frame`; existing `frames::` tests
-      green with unchanged budgets.
-- [ ] A `Drawn` mark still means one frame drawn (42's `held_key` reads them). — checked by the release run below.
-- [ ] Unicode half of the gate goes green in release: `frames::held_key::held_j_stops_on_release_unicode` and
-      `j_then_journal_opens_at_once_unicode`, run by `scripts/fix-scroll-held-key.sh`, appended to
+      (`:114-116`, `:174-178` at 552efc7f) stamps one `drawn` per `next_wake`: both change so each wake maps to the
+      frame drawn at the end of its turn. — new `frames::readings::a_batched_key_reads_its_batch_frame`; existing
+      `frames::` tests green with unchanged budgets.
+- [ ] A `Drawn` mark still means one frame drawn, and 42's `paced.rs` accessors (per-`Drawn` `Instant` and sink
+      offset) keep that meaning (`held_key` reads them). — checked by the release run below.
+- [ ] Unicode half of the gate goes green in release: `held_key::held_j_stops_on_release_unicode` and
+      `held_key::j_then_journal_opens_at_once_unicode`, run by `scripts/fix-scroll-held-key.sh`, appended to
       `docs/perf/fix-scroll-held-key.txt` (`# rev coalesce`). Pixel stays red until `46-scroll-strips-wiring`; record
       its numbers (expect `tail_ms` bounded near two Pixel frames, `bytes_per_frame_held` still MB).
 - [ ] `crates/graft/MAP.md`: `joins_frame`, `Wakes::joining_waiting`; the `job_event_waiting` line removed.
@@ -138,8 +145,9 @@ Impls to change (method only): `ChannelWakes` (`mod.rs:186`), `ScriptedWakes` (`
 - `undrawn_since` (`:111`, `:147`, resets `:140`, `:171`): still the clock for the cap; say how the reset points move.
 - Journal/undo: no new operation; `u` queued behind `j`s runs once (test or argument).
 - Captures: none change (same frames, fewer of them only under backlog); fast-tier capture tests stay green.
-- `scripts/m7-perf-key.sh`: reads per-key lines; check a batched key still prints a line.
-- 42's `held_key` readings: read `Drawn` marks, unchanged meaning (box above).
+- `scripts/m7-perf-key.sh`: reads per-key lines; check a batched key still prints a line. Its `frames::` filter does
+  not select `held_key::` (42 ruling 2).
+- 42's `held_key` readings and `paced.rs` accessors: read `Drawn` marks, unchanged meaning (box above).
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all

@@ -10,7 +10,7 @@ Blocked by: 41–46
 On a repository his size, scrolling stops when he lets go of the key, and the next key acts at once — on both tiers.
 
 ## Read first
-- `42-scroll-held-key-gate.md` (whole: Need, Prior art, Journeys, Decided).
+- `42-scroll-held-key-gate.md` (whole: Need, Prior art, Journeys, Decided, Planner ruling).
 - `docs/adr/0053-selection-paint-is-its-own-layer.md`; `docs/adr/0021-*.md` §Decision.
 - `docs/perf/fix-scroll-held-key.txt` (SUMMARY lines only).
 - `TESTING.md` §"The heavy tier" (`:145-233`).
@@ -24,7 +24,8 @@ item is reported with its line, not fixed here.
 `scripts/47-scroll-acceptance.sh` (new) runs, in order, each writing to `docs/perf/47-scroll-acceptance.txt` and
 printing only `SUMMARY` lines and the file path (**context guard**: the helper reads summaries and paths, never raw
 output):
-1. release `frames::held_key::` (the four tests) — the gate.
+1. release `held_key::` (the four tests; a root module of the `it` test crate, outside `frames::`, per 42's planner
+   ruling 2026-10-01) — the gate.
 2. release `frames::` and `heavy::budgets_hold` — nothing else regressed (ADR-0021 run).
 3. **pty walk** with `scripts/scroll-lag-pty.py` (the debugger's; extend, do not fork) on `TeamSpec::MONOREPO` (never
    his repo), 187×50, `PROFILE=text` and `PROFILE=kitty`, `j` at 16 ms for 3 s, then `J` after 50 ms; reader rates
@@ -34,7 +35,7 @@ Exit 1 on any miss; every miss named in a `SUMMARY miss` line.
 
 ## Acceptance (each box names its test)
 - [ ] Gate green, both tiers, release: every verdict item `ok` in the four `SUMMARY held_key` lines.
-      — `frames::held_key::{held_j_stops_on_release_unicode, held_j_stops_on_release_pixel,
+      — `held_key::{held_j_stops_on_release_unicode, held_j_stops_on_release_pixel,
       j_then_journal_opens_at_once_unicode, j_then_journal_opens_at_once_pixel}`.
 - [ ] Before/after table in `docs/perf/47-scroll-acceptance.txt`, from the red run (`fix-scroll-held-key.txt`, rev
       HEAD) and this run: per tier `tail_ms`, `j_ms`, `frames_after_release`, `bytes_per_frame_held`,
@@ -46,8 +47,8 @@ Exit 1 on any miss; every miss named in a `SUMMARY miss` line.
 - [ ] No regression: `frames::` p99 ≤ 16 ms on every scroll, `heavy::budgets_hold` green, `g_after_idle` green.
       — those tests by name.
 - [ ] Journey step counts, asserted by the walk: journey 1 = 1 key (`j` held), journey 2 = 1 key (`J`); the held-key
-      test's key list is `j`×188 then `J`, nothing else. — `frames::held_key::*` assert the key-list shape (add the
-      assertion if missing; it is the walk's count).
+      test's key list is `j`×188 then `J`, nothing else. — `held_key::*` assert the key-list shape (42 Decided adds
+      it; add it if missing; it is the walk's count).
 - [ ] Fast-tier guards present and green: `pixel_scroll::j_inside_resident_strips_sends_no_strip`,
       `event_loop::tests::queued_keys_draw_once`.
 - [ ] `TESTING.md`: section "M7 fix: scroll on a big repo", one row per scenario, each naming its test and saying
@@ -81,7 +82,7 @@ Exit 1 on any miss; every miss named in a `SUMMARY miss` line.
 - `scripts/47-scroll-acceptance.sh` (new), `scripts/scroll-lag-pty.py` (extend: fixture path, rates, RSS, `J`),
   `docs/perf/47-scroll-acceptance.txt` (new), `TESTING.md`, the contact sheet file,
   `docs/design/03-graph-layout-algorithm.md` (§3.8 paragraph only).
-- `crates/graft/tests/it/frames/held_key.rs` only for the key-list assertion if missing.
+- `crates/graft/tests/it/held_key.rs` only for the key-list assertion if missing.
 
 ## Touches
 - `scripts/scroll-lag-big-repo.sh` (the debugger's, takes a copy of his repo): untouched; the acceptance never reads

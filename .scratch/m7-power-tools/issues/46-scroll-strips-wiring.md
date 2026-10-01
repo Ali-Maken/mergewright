@@ -10,7 +10,8 @@ is_deflating}`, `Capabilities::kitty_deflate`; and its Step 0 table with no "no"
 Blocked by: 42, 43, 44, 45
 File set: graft: `src/view/strips.rs`, `src/event_loop/graphics.rs`, `src/event_loop/running.rs` (prefetch call
 only), the `KittyImages::new` capacity site, `tests/it/pixel_scroll.rs` (new) + its `mod` line,
-`tests/it/frames/held_key.rs` (the layer const only), `crates/graft/MAP.md`. graft-graph: deletions in
+`tests/it/held_key.rs` (the layer const only; root module since 42's planner ruling 2026-10-01),
+`crates/graft/MAP.md`. graft-graph: deletions in
 `src/raster.rs`, `src/raster/*.rs`, `src/raster/cache.rs`, `tests/it/strip_cache.rs`, `tests/it/emphasis_layer.rs`,
 `tests/it/snapshots/it__raster__*` (re-taken), `crates/graft-graph/MAP.md`. `docs/perf/fix-scroll-held-key.txt`
 (append).
@@ -47,8 +48,8 @@ Out: Unicode/ASCII tiers; coalescing; Kitty encoding.
 5. **The equivalence test goes with its oracle.** `emphasis_layer::composite_matches_the_single_pass` (44) compares
    against the live legacy `rasterise`; when that is deleted, the test is deleted with it, after one last green run
    at this ticket's base, quoted in the report. From then the re-taken snapshots pin the composite's output.
-6. **Layer count in tests** by image id: `EMPHASIS_ID_BIT` set = emphasis. `held_key.rs`'s local const (42) is
-   replaced by `graft_term::kitty::EMPHASIS_ID_BIT`.
+6. **Layer count in tests** by image id: `EMPHASIS_ID_BIT` set = emphasis. `held_key.rs`'s local const
+   `EMPHASIS_ID_BIT_42` (42) is replaced by `graft_term::kitty::EMPHASIS_ID_BIT`.
 
 ## Signatures
 ```rust
@@ -89,8 +90,8 @@ pub fn pixel_rows(/* as today */) -> PixelRows</* … */>;
 - [ ] Raster snapshots `it__raster__*` re-taken through the composite; the diff reviewed in the report (which files,
       why each changed: expected only anti-aliased edges and lit-over-unlit crossings, ADR-0053 Consequences).
       — the snapshot tests by name.
-- [ ] Gate goes green at Pixel (release): `frames::held_key::held_j_stops_on_release_pixel` and
-      `j_then_journal_opens_at_once_pixel` via `scripts/fix-scroll-held-key.sh`, appended to
+- [ ] Gate goes green at Pixel (release): `held_key::held_j_stops_on_release_pixel` and
+      `held_key::j_then_journal_opens_at_once_pixel` via `scripts/fix-scroll-held-key.sh`, appended to
       `docs/perf/fix-scroll-held-key.txt` (`# rev strips`); Unicode still green. Any item not `ok` → report the line;
       do not loosen a budget.
 - [ ] Existing `frames::` Pixel scroll tests unchanged and green in the fast tier; release numbers in the perf file.
