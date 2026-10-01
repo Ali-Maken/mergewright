@@ -5,7 +5,7 @@
 #
 #   $1  a COPY or clone of the repository (never the user's own: Graft
 #       writes .git/graft/ in what it opens). This debug used
-#       `rsync -a` of charms-rms-backend-v3 into target/scroll-lag/, so the
+#       `rsync -a` of his work repo into target/scroll-lag/, so the
 #       working tree, node_modules and reflogs match his.
 #
 # Part 1, in-process: the release `frames::a_real_repository_...` test (the

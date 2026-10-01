@@ -1,6 +1,6 @@
 # Debug: held `j` lags and keeps playing after release (big repo)
 
-Field note 2026-10-01, charms-rms-backend-v3 (17 694 commits, 1 323 refs,
+Field note 2026-10-01, his work repo (17 694 commits, 1 323 refs,
 commit-graph chain). Debugger, 2026-10-01. Diagnosis only, no fix.
 
 Numbers: `docs/perf/scroll-lag-big-repo.txt` (SUMMARY lines), made by
