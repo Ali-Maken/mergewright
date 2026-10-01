@@ -5,8 +5,10 @@
 # docs/perf/m2-review-fix-1b.txt. Nothing here runs in an agent's context
 # (CLAUDE.md: measurement never does).
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 cd "$(dirname "$0")/.."
 out=docs/perf/m2-review-fix-1b.txt
+machine_state_begin "$out"
 raw=target/m2-fix-perf-1b
 mkdir -p "$raw" docs/perf
 : > "$out"

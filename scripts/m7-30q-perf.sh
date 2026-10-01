@@ -14,10 +14,12 @@
 # Measurement never runs in a helper's context (CLAUDE.md, Gates): the
 # conductor runs this and reads the SUMMARY lines.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 cd "$(dirname "$0")/.."
 OUT=${1:-docs/perf/30q-snapshot.txt}
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
+machine_state_begin "$OUT"
 
 cargo build --release -p graft-ops --example snapshot_cost --quiet 2>"$WORK/build.err" || {
   echo "release build failed:" >&2

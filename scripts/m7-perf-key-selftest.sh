@@ -43,6 +43,10 @@ canned_set() { # dir
 
 # Runs the perf script on a canned set; its stdout+stderr go to <case>.log.
 perf() { # case dir out
+  # Canned data measures nothing, so the machine guard (ticket 49) is fed the
+  # mains fixture: the self-test checks the script's own 0/1 contract.
+  MACHINE_STATE_PMSET_BATT=scripts/lib/machine-state-fixtures/ac-lpm-off.batt \
+  MACHINE_STATE_PMSET_G=scripts/lib/machine-state-fixtures/ac-lpm-off.g \
   M7_PERF_KEY_CANNED="$2" REV_NOTE="selftest $1" bash scripts/m7-perf-key.sh "$3" >"$WORK/$1.log" 2>&1
 }
 

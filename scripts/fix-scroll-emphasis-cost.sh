@@ -15,10 +15,12 @@
 # ~188 cells: a graph as wide as his 187-column terminal). The cell count
 # measured is printed on each line.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 cd "$(dirname "$0")/.."
 OUT=${1:-docs/perf/44-scroll-emphasis-layer.txt}
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
+machine_state_begin "$OUT"
 
 cargo test --release --quiet -p graft-graph --test it --no-run 2>"$WORK/build.err" || {
   echo "release build failed:" >&2

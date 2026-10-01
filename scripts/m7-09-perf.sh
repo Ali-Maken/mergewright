@@ -10,11 +10,13 @@
 #
 #   scripts/m7-09-perf.sh
 set -euo pipefail
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/docs/perf/09b.txt"
 TRACE="$(mktemp -d)"
 trap 'rm -rf "$TRACE"' EXIT
+machine_state_begin "$OUT"
 
 run() {
   cargo test --release --manifest-path "$ROOT/Cargo.toml" -p graft --features heavy-tests \

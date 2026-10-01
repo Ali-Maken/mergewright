@@ -8,10 +8,12 @@
 # only (target ≤ 2 ms). "encode" is the whole `KittyImages::frame` call for
 # that strip: straight alpha, deflate, base64 and chunking together.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 cd "$(dirname "$0")/.."
 OUT=${1:-docs/perf/45-scroll-kitty-layer-deflate.txt}
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
+machine_state_begin "$OUT"
 export CARGO_TARGET_DIR=${CARGO_TARGET_DIR:-$PWD/target}
 
 cargo test --release --quiet -p graft-term --lib --no-run 2>"$WORK/build.err" || {

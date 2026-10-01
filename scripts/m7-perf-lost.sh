@@ -8,11 +8,13 @@
 # Any further arguments go to the example (`<commits> <refs>`: a smaller
 # repository, to check the harness quickly).
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 cd "$(dirname "$0")/.."
 OUT=${1:-docs/perf/lost-commit-cost.txt}
 shift || true
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
+machine_state_begin "$OUT"
 
 cargo build --release --quiet -p graft-git --features heavy-tests --example lost_cost 2>"$WORK/build.err" || {
   echo "release build failed:" >&2

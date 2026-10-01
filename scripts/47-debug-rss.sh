@@ -9,10 +9,12 @@
 # profiles text and kitty (deflate answered yes), reader free. Appends
 # SUMMARY lines to docs/perf/47-debug.txt; raw stderr under target/47-debug/.
 set -uo pipefail
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 REV=${1:?rev}
 HOLD=${2:-3}
 OUT="$ROOT/docs/perf/47-debug.txt"
+machine_state_begin "$OUT"
 WORK="$ROOT/target/47-debug"
 mkdir -p "$WORK"
 export GRAFT_FIXTURES_DIR="$ROOT/target/fixtures"

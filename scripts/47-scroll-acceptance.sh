@@ -28,6 +28,7 @@
 #
 # CARGO_TARGET_DIR is honoured (default: target).
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT" || exit 2
@@ -35,6 +36,7 @@ TARGET=${CARGO_TARGET_DIR:-$ROOT/target}
 case $TARGET in /*) ;; *) TARGET=$ROOT/$TARGET ;; esac
 export CARGO_TARGET_DIR=$TARGET
 OUT=docs/perf/47-scroll-acceptance.txt
+machine_state_begin "$OUT"
 WORK=$TARGET/47-acceptance
 mkdir -p "$WORK"
 rm -f "$WORK"/*.txt

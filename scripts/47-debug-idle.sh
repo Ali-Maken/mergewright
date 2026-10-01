@@ -9,10 +9,12 @@
 # target/47-debug/<rev>.txt and SUMMARY lines to docs/perf/47-debug.txt;
 # prints the SUMMARY line only.
 set -uo pipefail
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 REV=${1:?rev}
 RUNS=${2:-3}
 OUT="$ROOT/docs/perf/47-debug.txt"
+machine_state_begin "$OUT"
 WORK="$ROOT/target/47-debug"
 mkdir -p "$WORK"
 export GRAFT_FIXTURES_DIR="$ROOT/target/fixtures"

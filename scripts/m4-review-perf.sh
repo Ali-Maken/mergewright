@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # M4 milestone review: release perf tier + heavy tier. Writes docs/perf/m4.txt.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 cd "$(dirname "$0")/.."
 OUT=docs/perf/m4.txt
+machine_state_begin "$OUT"
 {
   echo "# M4 milestone review — $(date -u +%FT%TZ)"
   echo "# HEAD $(git rev-parse --short HEAD)"
