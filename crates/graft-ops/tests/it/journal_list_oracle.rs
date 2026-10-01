@@ -433,3 +433,163 @@ fn a_graft_switch_is_one_graft_row() {
         "{shown:#?}"
     );
 }
+
+/// `<ref>`'s log, newest first, one subject per line: what the m7/38 NOTES
+/// quote.
+fn log_of(repo: &TempRepo, refname: &str) -> Vec<String> {
+    repo.git(&["reflog", "--format=%gs", refname])
+        .lines()
+        .map(str::to_owned)
+        .collect()
+}
+
+/// `git -c sequence.editor=… -c core.editor=true rebase -q -i <args>` at
+/// `at`, the todo edited by the sed `script`; whether git finished.
+fn rebase_i(repo: &TempRepo, at: i64, script: &str, args: &[&str]) -> bool {
+    let date = format!("{at} +0000");
+    let output = std::process::Command::new("git")
+        .arg("-C")
+        .arg(repo.path())
+        .arg("-c")
+        .arg(format!("sequence.editor=sed -i.bak -e '{script}'"))
+        .args(["-c", "core.editor=true", "rebase", "-q", "-i"])
+        .args(args)
+        .env("GIT_COMMITTER_DATE", &date)
+        .env("GIT_AUTHOR_DATE", &date)
+        .output()
+        .expect("git runs");
+    output.status.success()
+}
+
+/// The lost rows' subjects, newest first.
+fn lost_subjects(list: &JournalList) -> Vec<String> {
+    list.rows
+        .iter()
+        .filter_map(|row| match row {
+            ListRow::Lost { commit, .. } => commit.subject.clone(),
+            _ => None,
+        })
+        .collect()
+}
+
+/// m7/38: `rebase -i` squashing B C D into one, finished. git's interim
+/// "# This is a combination of 2 commits." is in the result: no `✗` for it.
+/// The old tip D is main's, named by the start and main's own finish.
+#[test]
+fn a_finished_squash_leaves_no_lost_row() {
+    let repo = a_to_d();
+    assert!(rebase_i(
+        &repo,
+        SHELL + 10,
+        "2,3s/^pick/squash/",
+        &["HEAD~3"]
+    ));
+    let head = log_of(&repo, "HEAD");
+    eprintln!(
+        "HEAD: {head:#?}\nmain: {:#?}",
+        log_of(&repo, "refs/heads/main")
+    );
+    // git 2.54.0. B fast-forwards (no record); C's squash is the interim.
+    assert_eq!(
+        head[..4],
+        [
+            "rebase (finish): returning to refs/heads/main",
+            "rebase (squash): B",
+            "rebase (squash): # This is a combination of 2 commits.",
+            "rebase (start): checkout HEAD~3",
+        ],
+        "{head:#?}"
+    );
+
+    let list = the_list(&repo);
+
+    let subjects = lost_subjects(&list);
+    assert!(
+        subjects.iter().all(|subject| subject == "D"),
+        "only the old tip may be lost: {subjects:#?}\n{:#?}",
+        lines(&list, &[])
+    );
+}
+
+/// The same kind of todo stopped by a conflict, then `rebase --abort`: the
+/// copies made before the stop stay lost rows — an aborted span may hold his
+/// work.
+#[test]
+fn an_aborted_rebase_keeps_its_lost_rows() {
+    let repo = TempRepo::init();
+    commit_at(&repo, SHELL, "f.txt", "A");
+    commit_at(&repo, SHELL + 1, "b.txt", "B");
+    commit_at(&repo, SHELL + 2, "c.txt", "C");
+    commit_at(&repo, SHELL + 3, "f.txt", "D");
+    git_at(&repo, SHELL + 4, &["switch", "-q", "-c", "side", "HEAD~3"]);
+    commit_at(&repo, SHELL + 5, "f.txt", "X");
+    git_at(&repo, SHELL + 6, &["switch", "-q", "main"]);
+    assert!(
+        !rebase_i(&repo, SHELL + 10, "2s/^pick/squash/", &["side"]),
+        "D conflicts with X"
+    );
+    git_at(&repo, SHELL + 11, &["rebase", "--abort"]);
+    let head = log_of(&repo, "HEAD");
+    eprintln!("HEAD: {head:#?}");
+    // git 2.54.0: `(abort)`, then the squash and the pick (both "B": the
+    // squash of C is its group's last, so it carries the final message).
+    assert_eq!(
+        head[..4],
+        [
+            "rebase (abort): returning to refs/heads/main",
+            "rebase (squash): B",
+            "rebase (pick): B",
+            "rebase (start): checkout side",
+        ],
+        "{head:#?}"
+    );
+    let squashed = id(&repo, "HEAD@{1}");
+    let picked = id(&repo, "HEAD@{2}");
+
+    let list = the_list(&repo);
+
+    let tips: Vec<Oid> = list
+        .rows
+        .iter()
+        .filter_map(|row| match row {
+            ListRow::Lost { commit, .. } => Some(commit.run.tip),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        tips.contains(&squashed),
+        "the squash stays lost: {:#?}",
+        lines(&list, &[])
+    );
+    assert!(
+        tips.contains(&picked),
+        "the pick's copy stays lost: {:#?}",
+        lines(&list, &[])
+    );
+}
+
+/// An `edit` stop, a commit E, `reset --hard HEAD~1`, continue to the
+/// finish: E was reset away by a record that is no rebase step — his lost
+/// work.
+#[test]
+fn a_reset_during_an_edit_stop_stays_lost() {
+    let repo = a_to_d();
+    assert!(rebase_i(&repo, SHELL + 10, "1s/^pick/edit/", &["HEAD~2"]));
+    commit_at(&repo, SHELL + 11, "e.txt", "E");
+    git_at(&repo, SHELL + 12, &["reset", "-q", "--hard", "HEAD~1"]);
+    git_at(
+        &repo,
+        SHELL + 13,
+        &["-c", "core.editor=true", "rebase", "--continue"],
+    );
+    eprintln!("HEAD: {:#?}", log_of(&repo, "HEAD"));
+
+    let list = the_list(&repo);
+
+    let subjects = lost_subjects(&list);
+    assert!(
+        subjects.iter().any(|subject| subject == "E"),
+        "{subjects:#?}\n{:#?}",
+        lines(&list, &[])
+    );
+}

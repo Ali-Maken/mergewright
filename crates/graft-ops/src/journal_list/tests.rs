@@ -6,6 +6,7 @@
 
 mod build;
 mod recover;
+mod scratch;
 mod words;
 
 use std::collections::BTreeMap;
