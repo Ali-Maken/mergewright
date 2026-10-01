@@ -1,6 +1,6 @@
 # 43-scroll-coalesce-input — queued keys are applied together and drawn once
 
-Status: blocked — loop built and green; Unicode scenario B red because held_key.rs (42's file) counts J's own frame as a post-release j frame. See NOTES continuation 1.
+Status: done
 Build with: Sonnet — one loop rule in two files, every case named below with its test; the scout mapped every
 seam (`.scratch/m7-power-tools/scouts/43.md`).
 Needs: `42-scroll-held-key-gate` landed (its red run recorded first). No signature from another ticket.
