@@ -4,6 +4,12 @@ Status: ready
 Build with: (blank: scout first — `tests/it/frames/` harness is existing code)
 Needs: `41-scroll-team-fixture` (`team::{TeamSpec::MONOREPO, borrow, stats}`)
 Blocked by: 41
+File set (crate `graft`): `tests/it/frames/drain_sink.rs` (new), `tests/it/frames/held_key.rs` (new),
+`tests/it/frames.rs` (`mod` lines only), `crates/graft/MAP.md`; `scripts/fix-scroll-held-key.sh`,
+`docs/perf/fix-scroll-held-key.txt`, `TESTING.md`.
+Overlap and order: 41 before (TESTING.md, fixture). 43 after (edits `paced.rs`/`readings.rs`, which this ticket only
+reads). 45 may run concurrently (disjoint `graft` files; whichever merges second re-runs the gates, since 45 adds a
+field to `Capabilities`/`Place`).
 
 This spec carries the pipeline sections for the whole fix (41–46); the others point here.
 
@@ -14,10 +20,10 @@ after a while." Daily task: scroll history to a commit, then open the journal. W
 after he lets go, and the next key waits behind it.
 
 ## Measured causes (`.scratch/m7-power-tools/debug-scroll-lag.md`, `docs/perf/scroll-lag-big-repo.txt`)
-1. Pixel: the thread is in the strip cache key (`crates/graft-graph/src/raster/cache.rs:295-296`): 6.35 MB per `j`
+1. Pixel: the thread is in the strip cache key (`crates/graft-graph/src/raster/cache.rs:294-298`): 6.35 MB per `j`
    frame (`scroll-lag-big-repo.txt:26`). Fixed by `44-scroll-emphasis-layer`, `45-scroll-kitty-layer-deflate`,
    `46-scroll-strips-wiring` (ADR-0053).
-2. Both tiers: one key, one full draw (`crates/graft/src/event_loop/running.rs:162-170`): when a frame leaves slower
+2. Both tiers: one key, one full draw (`crates/graft/src/event_loop/running.rs:163-170`): when a frame leaves slower
    than keys arrive, every queued key is still drawn after release (Unicode at a 150 KB/s drain: 42 frames, 3.3 s,
    `scroll-lag-big-repo.txt:53`). Fixed by `43-scroll-coalesce-input`.
 
@@ -32,13 +38,19 @@ after he lets go, and the next key waits behind it.
 | Commit-graph | git docs, lazygit#3965 | already read; fixture has a split chain | **take** (fixture) |
 | Cache key | gitui#2823: a per-tick value in a key misses every tick | the selection is that value | **take**: strips key on layout only (ADR-0053) |
 | Selection paint as a separate image | nothing found (GUI tools repaint a canvas; TUI tools are text) | emphasis layer | **invent**: our cost is bytes per image; a layer keeps the big image stable |
-| Compressed transmit | Kitty graphics protocol `o=z` (https://sw.kovidgoyal.net/kitty/graphics-protocol/#compression; not in the study) | deflate when the probe says yes | **take** |
+| Compressed transmit | Kitty graphics protocol `o=z` (https://sw.kovidgoyal.net/kitty/graphics-protocol/#compression; not in the study) | deflate when the probe says yes, off again on an error reply | **take** |
 
 ## Journeys (counted per `docs/research/ux-principles.md` §1.3; start: graph open on the team fixture, cursor on row 0)
 | # | Task | Steps | Best tool | Lands |
 |---|---|---|---|---|
-| 1 | scroll to a commit with held `j`, let go | 1 key (`j` held = one motion) + 1 decision (when to let go) | lazygit / tig: same, 1 | cursor on the row shown at release; **stops ≤ 100 ms after release**: no later frame moves it |
-| 2 | then open the journal | 1 key (`J`) | lazygit reflog tab `]`: 1 | journal pane **at once: its frame starts reaching the terminal ≤ 100 ms after `J`**, with nothing ahead of it but what was already in flight; no `j` frame after it |
+| 1 | scroll to a commit with held `j`, let go | 1 key (`j` held = one motion) + 1 decision (when to let go) | lazygit / tig: same, 1 | cursor on the row shown when the last repeat arrived; **stops ≤ 100 ms after the last `j` arrives**: no later frame moves it |
+| 2 | then open the journal | 1 key (`J`) | lazygit reflog tab `]`: 1 | journal pane **at once: its frame starts reaching the terminal ≤ 100 ms after `J` arrives**, with nothing ahead of it but what was already in flight; no `j` frame after it |
+
+**Timed from arrival, never from release.** A key release never reaches the loop (`crates/graft-core/src/event.rs:
+20-21`: no release variant), so Graft cannot time from it. The last `j` the loop sees is the OS's last repeat, which
+comes before the release; a bound from the last arrival is therefore at least as strict as "after I let go". In the
+test, arrival = the key's send through `KeyFeed`. Names below that say "release" (`frames_after_release`, the test
+names) keep the user's word; what they measure is the last arrival.
 
 "At once" = 100 ms: Nielsen's 0.1 s limit for a response that feels instantaneous
 (https://www.nngroup.com/articles/response-times-3-important-limits/). Graft's own share is the existing ≤ 16 ms
@@ -50,7 +62,7 @@ do not change; the fix is time.
 (a) `frames::` writes into an in-memory sink with no back-pressure (`tests/it/frames.rs:20-21`): a 6.4 MB write costs
 0.3 ms there, so keys never queue. (b) They gate per-key latency only, never bytes per key or frames drawn after the
 last key. (c) The 100k fixture is the wrong shape (0.77 MB vs 6.7 MB per key). **Closed by:** this ticket's draining
-sink, its byte and after-release gates, and the team fixture; `46-scroll-strips-wiring` and
+sink, its byte and after-last-key gates, and the team fixture; `46-scroll-strips-wiring` and
 `43-scroll-coalesce-input` add fast-tier guards (strip transmits on `j`; queued keys draw once) so a regression shows
 before a review.
 
@@ -72,11 +84,13 @@ both tiers; its SUMMARY lines; the red run at HEAD recorded. Out: any product co
 - **Readings** (one `SUMMARY held_key` line per tier and scenario): `keys`, `frames_while_held`,
   `frames_after_release` (Drawn marks after the last `j`'s send), `tail_ms` (last `j` send → the drain passing the
   last frame's last byte), `bytes_per_frame_held` (mean), `strip_transmits_held` and `emphasis_transmits_held`
-  (Kitty `a=t`/`a=T` by image role; before the fix every transmit is a strip), `rows_scrolled`, `j_ms` (B: `J` send →
-  the drain reaching the **first** byte of the first frame drawn after `J` was updated), `j_done_ms` (… its last
-  byte; printed only), `frames_before_J` (frames drawn between `J`'s send and `J`'s frame), `peak_rss_mb`. A frame's
-  end offset is recorded at its Drawn mark and must include its image commands; if graphics are written after Drawn,
-  record where they are.
+  (Kitty `a=t`/`a=T`, split by image id: bit 31 set = emphasis, per `45-scroll-kitty-layer-deflate` Decided 1;
+  before 45 no id has it, so every transmit counts as a strip. Define the bit as a local const naming 45;
+  46 switches it to `graft_term::kitty::EMPHASIS_ID_BIT`), `rows_scrolled`, `j_ms` (B: `J` send → the drain reaching
+  the **first** byte of the first frame drawn after `J` was updated), `j_done_ms` (… its last byte; printed only),
+  `frames_before_J` (frames drawn between `J`'s send and `J`'s frame), `peak_rss_mb`. A frame's end offset is
+  recorded at its Drawn mark and must include its image commands; if graphics are written after Drawn, record where
+  they are.
 - **Premises** (fail the test, not the verdict, if false — they prove the fixture still has his shape): on ≥ 50% of
   scenario A's frames the graph draws ≥ 12 lanes; between consecutive frames the selection's lit columns change on
   ≥ 50% of frames (Ancestry over the window, `crates/graft-graph/MAP.md` ancestry).
@@ -119,8 +133,9 @@ impl DrainSink {
       Expected: Unicode `tail_ms` and `j_ms` in seconds; Pixel the same plus `bytes_per_frame_held` in MB. If either
       tier passes at HEAD, **stop** and report: the model or the fixture is wrong, not the fix.
 - [ ] Premises hold at HEAD (same run). If not, stop and report the numbers (the fixture is not his shape).
-- [ ] `TESTING.md` heavy tier: a "Held keys" paragraph — what the four lines mean, the drain model and why; right
-      looks like: every verdict item `ok`. The release command already matches `frames::` (check; say so).
+- [ ] `TESTING.md` heavy tier: a "Held keys" paragraph — what the four lines mean, the drain model and why, and that
+      times run from the last key's arrival (a release is never seen); right looks like: every verdict item `ok`. The
+      release command already matches `frames::` (check; say so).
 - [ ] `crates/graft/MAP.md` frame-trace paragraph: `drain_sink`, `held_key`, one line each.
 
 ## Files (exact)
