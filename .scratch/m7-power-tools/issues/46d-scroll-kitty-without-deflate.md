@@ -1,6 +1,6 @@
 # scroll-kitty-without-deflate: Kitty images without compression, held `j` on a big repo
 
-Status: draft. **Parked** until the user answers: ship M7 with this as a known gap, or fix it first. Research comes
+Status: parked — user chose ship M7 with this as a known gap (2026-10-01); gap M7/46-kitty-no-deflate, expiry M8. Research comes
 before any design; there is no build spec yet.
 Build with: left blank. The conductor sets it after step 2 below.
 Needs: 46 merged; `46c-scroll-strips-fold-churn` merged (its fast-tier guard and the restated bound).
