@@ -1,6 +1,6 @@
 # 36-offer-keys-and-daily-wording — ticket 15 built, plus `B` in the diff pane always blames
 
-Status: partial — built; 3 fast-tier tests red at the seam (NOTES "Blocked")
+Status: done
 Source: usability walk `docs/reviews/m7-usability.md` M2 (15 never built; rows 766/768/769/770 seen) and M3 (`B` in the
 diff pane writes a commit-graph while the offer is up). **Supersedes 15**: 15's spec stays in place as the decision
 record and is read as this ticket's scope; the conductor marks 15 `superseded by <this number>`.
@@ -123,7 +123,7 @@ footer from choice count. `Product::TopologicalOrder` carries the sort's `Durati
       column on the cursor line), and the offer row under the graph reading `no commit-graph file: history sorts on
       every open` with no `B`/`X`; no `commit-graph written` anywhere. Colour unverified.
 - [x] MAP.md for graft-ops, graft, graft-ui (`blamable`, `CommitGraphLine`'s `keys`, `offer_keys_live`).
-- [ ] Gates. fmt, clippy, doctests pass; nextest 5024/5027 — 3 red, NOTES "Blocked".
+- [x] Gates. fmt, clippy, nextest (5049/5049, incl. `lane_cap::the_pane_narrows_the_graph_so_the_graph_folds_more`, `m7_walk::picker::switch_back`), doctests — Round 3.
 
 ## Touches (check each; report how)
 - Everything in 15's "Touches", re-checked at the scout's lines.
@@ -185,3 +185,10 @@ m5-hints-*, m5-ui-banner-conflict-*, m5-ui-confirm/credential-over-graph-*, m5-u
 - set-aside-preview captures (`m6_stash_put_back.rs`): re-run under GRAFT_UPDATE_SHOTS; none changed — already matching after the merge. All m6_stash_put_back tests green.
 - **lane_cap: not resolved within the ruling.** Red with fixture unchanged (`with the pane 0, without it 0`). Tried, all still 0/0: topics 14/24/30 × COLUMNS 100/120/140/180/220 (script runs, 2026-10-01). Cause: at 24 rows ~11 lanes are on screen and every one has a node on screen, which `Fold::plan` never hides; the old `+1 lanes` came from the ⓘ marker column eating width. Width and lane count cannot make a pass-through lane. Needs a fixture change outside the ruling — e.g. all topic commits first, then all merges, so the top rows open lanes whose nodes are below the screen. Fixture and `m5-lane-cap-160x24.txt` left at HEAD; both lane_cap tests red.
 - Gates: fmt, clippy, doctests pass; nextest 5047/5049 (2 lane_cap red).
+
+### Round 3 (conductor ruling: lane_cap fixture reshape approved)
+- Finding: at 24 rows the old fixture (commit, merge, commit, merge) never exercised the fold on its own: every lane on screen had a node there, and `Fold::plan` never folds those. Its `+1 lanes` came only from the false no-upstream ⓘ marker column eating width (removed by :777).
+- `lane_cap.rs` `many_lanes`: all 14 topic commits first, then the 14 merges. The top rows are merges whose lanes pass through rows with no node on them. A comment in the fixture says why. No assertion changed (`git diff` shows no `assert` line touched).
+- Red: the new fixture with `max_lanes_for` stubbed to `usize::MAX` → `with the pane 0, without it 0`. Green with it restored: `the_pane_narrows_the_graph_so_the_graph_folds_more` passes, 6 folded with the pane vs 4 without.
+- `m5-lane-cap-160x24.txt` re-taken (`+6 lanes` / `+4 lanes`); its caption's numbers updated to match.
+- Gates: fmt, clippy, doctests pass; nextest 5049/5049.
