@@ -3063,3 +3063,48 @@ carrier (words, glyphs, cursor row), never colour.
 - [ ] Contact sheet `docs/shots/m7/m7-contact-sheet*.txt`: every M7 capture under its Right line, the journal's first,
   each file ≤ 200 KB. Judged by eye by the user only (rule 6).
 - [ ] `docs/perf/m7-accept.txt` holds the three perf files' summary lines verbatim; a `missed` stays `missed`.
+
+## M7 fix: scroll on a big repo (m7-power-tools/47)
+
+Promise: **on a repository his size, scrolling stops when he lets go of the key, and the next key acts at once — on
+both tiers** (Unicode; Pixel on Kitty with deflate, Ghostty's path, and on iTerm2). One command:
+
+```sh
+scripts/47-scroll-acceptance.sh   # summary: docs/perf/47-scroll-acceptance.txt · raw: target/47-acceptance/ · exit 1 on any miss
+```
+
+Steps: (1) release `held_key::` twice — every test but the raw Kitty pair (must exit 0), then the raw pair alone,
+judged by its `VERDICT` lines against the known-gap list; (2) release `frames::` and `heavy::budgets_hold`; (3) a pty
+walk of the release binary (`scripts/scroll-lag-pty.py`) on a copy of `TeamSpec::MONOREPO`, never his repo, 187×50,
+`j` every 16 ms for 3 s then `J` 50 ms later, read free and at a fixed rate, probe answered like Zed (`text`), like
+Ghostty with deflate (`kitty` yes) and without (`kitty` no); (4) the journeys' key counts; (5) the two captures.
+Every miss is a `SUMMARY miss` line; the known gap prints `SUMMARY known_gap M7/46-kitty-no-deflate …` and is not a miss.
+What the drain models and how each field is counted: "Held keys", "The strip bound" and "Deflate off is red by
+known gap" under The heavy tier above. **Colour: unverified (rule 5)** for every row.
+
+- [ ] **Held `j`, Unicode** · `held_key::held_j_stops_on_release_unicode`; pty `text-free`, `text-500k`. **Right:**
+  `frames_after_release ≤ 2`, `tail_ms ≤ 100` at a 500 KB/s drain (in-process) and over a real pty read free and at
+  500 KB/s; the cursor on the row shown at release.
+- [ ] **Held `j`, Pixel (Kitty + deflate, iTerm2)** · `held_key::held_j_stops_on_release_pixel_deflate`,
+  `held_key::held_j_stops_on_release_pixel_iterm2`; pty `kitty-yes-free`, `kitty-yes-40m`. **Right:** the same at
+  40 MB/s, plus `bytes_per_frame_held ≤ 512 KiB` in-process and `bytes_per_key ≤ 512 KiB`, observed `deflate=yes`,
+  Graft's own `rss_mb ≤ 300` over the pty. The strip count prints `unjudged`; the invariant is guarded in the fast
+  tier (see "The strip bound").
+- [ ] **`J` after held `j`** · `held_key::j_then_journal_opens_at_once_unicode`,
+  `held_key::j_then_journal_opens_at_once_pixel_deflate`. **Right:** `frames_before_J ≤ 1`, `j_ms ≤ 100`.
+- [ ] **Kitty without deflate: red by known gap `M7/46-kitty-no-deflate`** · `held_key::held_j_stops_on_release_pixel`,
+  `held_key::j_then_journal_opens_at_once_pixel`; pty `kitty-no-free`, `kitty-no-40m` (printed, not judged).
+  **Right:** exactly three items `FAILED` and nothing else — A `tail_ms<=100`, B `tail_ms<=100`, B `j_ms<=100`
+  (2026-10-02: 2223, 655, 605 ms); every other raw item `ok`.
+- [ ] **No regression** · `frames::` (every scroll's p99 ≤ 16 ms, asserted in release), `heavy::budgets_hold_*`,
+  `frames::after_idle::g_after_idle`. **Right:** all green.
+- [ ] **Journeys** · held `j` = 1 key, `J` = 1 key; every `held_key` test asserts its key list is `j`×188 (then `J`
+  in B) and nothing else (`held_key.rs` `run`, "47's walk count"); every pty run prints `keys=188 then_J`.
+- [ ] **Ghostty-path look** · `ghostty_shot::fix_scroll_ghostty_png` → `docs/shots/m7/fix-scroll-ghostty.png`, shown
+  in `docs/shots/m7/fix-scroll-contact.md`. **Right:** the lit thread at full strength, off-thread lanes at half
+  strength, no line wider than another, the same rows as the Unicode grid (`fix-scroll-release-unicode.txt`).
+  Colour unverified; what Ghostty draws is the user's check.
+- [ ] **His daily check** (the user, not a test): open his work repo, hold `j` ~3 s, let go — does it stop at once?
+  Then `J` — does it open at once? In Zed (Unicode) and in Ghostty (Pixel); in Ghostty, does the graph look like
+  `fix-scroll-ghostty.png`? A slow scroll in Ghostty means his Ghostty fell back to raw (the known gap). His words go
+  to `docs/field-notes.md` the same day.
