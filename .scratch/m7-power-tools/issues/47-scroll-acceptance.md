@@ -1,6 +1,6 @@
 # 47-scroll-acceptance — held `j` stops when he lets go; `J` opens at once, at his scale, both tiers
 
-Status: ready (amended 2026-10-01, spec-only pass after 46 / 46c merged; was stale at old `:37-39`, `:59`)
+Status: built 2026-10-02. Acceptance **red on 2 boxes** (pty RSS, `g_after_idle`); both reported with lines, not fixed (out of scope). See NOTES.
 Build with: Fable. Acceptance ticket: it judges whether the promise holds end to end, which no single diff shows.
 Needs: every other 41–46c ticket: `41-scroll-team-fixture`, `42-scroll-held-key-gate`, `43-scroll-coalesce-input`,
 `44-scroll-emphasis-layer`, `45-scroll-kitty-layer-deflate`, `46-scroll-strips-wiring` (`_pixel_deflate` /
@@ -68,33 +68,50 @@ M7/46-kitty-no-deflate <item>=<value>` and are not misses.
   like any other item.
 
 ## Acceptance (each box names its test)
-- [ ] **Gate green, release**, every judged VERDICT item `ok` in: `held_key::{held_j_stops_on_release_unicode,
+- [x] **Gate green, release**, every judged VERDICT item `ok` in: `held_key::{held_j_stops_on_release_unicode,
       j_then_journal_opens_at_once_unicode, held_j_stops_on_release_pixel_deflate,
       j_then_journal_opens_at_once_pixel_deflate}` and the iTerm2 run (scenario `A-iterm2`; name per `held_key.rs`,
       re-locate by the `_pixel_iterm2` suffix). Strip lines read `unjudged`. — step 1(a), the script's `SUMMARY
       held_key` / `SUMMARY unjudged` lines.
-- [ ] **Deflate off red by known gap, and only there:** the raw pair fails exactly the known-gap list; every other
+      **Ticked:** the four tests above plus `held_key::held_j_stops_on_release_pixel_iterm2` (and
+      `b_bound_stops_at_js_frame`), run 1(a): `SUMMARY held_key run=a tests=6 exit=0 verdict_ok=17 verdict_failed=0`;
+      `SUMMARY unjudged strip_transmits_held lines=5`.
+- [x] **Deflate off red by known gap, and only there:** the raw pair fails exactly the known-gap list; every other
       raw item `ok` (`frames_after_release`, `frames_before_J`, `bytes_per_frame_held`). Quote the three FAILED lines
       in NOTES with their values. — step 1(b), `SUMMARY known_gap` lines.
-- [ ] **Strip invariant guarded** (replaces the old `ceil(rows_scrolled/32) + 2` row): fast tier green —
+      **Ticked:** `held_key::held_j_stops_on_release_pixel`, `held_key::j_then_journal_opens_at_once_pixel`, run 1(b):
+      exactly the three listed items FAILED, every other raw item `ok`, no `SUMMARY miss` from 1(b). Values in NOTES.
+- [x] **Strip invariant guarded** (replaces the old `ceil(rows_scrolled/32) + 2` row): fast tier green —
       `pixel_scroll::a_capped_graph_resends_strips_only_when_the_fold_changes` and
       `pixel_scroll::j_inside_resident_strips_sends_no_strip`.
-- [ ] Before/after table in `docs/perf/47-scroll-acceptance.txt`, from the red run (`fix-scroll-held-key.txt` first
+      **Ticked:** both PASS (`cargo nextest run` by name, `--status-level pass`, 2026-10-02).
+- [x] Before/after table in `docs/perf/47-scroll-acceptance.txt`, from the red run (`fix-scroll-held-key.txt` first
       block, rev HEAD) and this run. Rows: Unicode, Pixel-deflate, Pixel-iTerm2, Pixel-raw (marked known gap); per row
       `tail_ms`, `j_ms`, `frames_after_release`, `bytes_per_frame_held`, `strip_transmits_held`, `fold_changes_held`.
       The red run had no deflate or iTerm2 variant: its Pixel row is the "before" for all three Pixel rows, said so in
       the table. — the script's `SUMMARY before_after` lines.
+      **Ticked:** `SUMMARY before_after` lines (from `held_key::*` run 1(a)/(b) and the red block), also in
+      `docs/shots/m7/fix-scroll-contact.md` §3.
 - [ ] pty walk: `frames_after_release ≤ 2` and `tail_ms ≤ 100` for `text` and judged `kitty` (deflate=yes), every
       rate; kitty `bytes_per_key` ≤ 512 KiB (was 7.5 MB, `scroll-lag-big-repo.txt:51`); **Graft-process RSS ≤ 300
       MB** at both judged profiles (PROMPT.md budget; was 662–703 MB at Pixel, `:49-52`). Kitty deflate=no: printed as
       known gap with the same fields. — `scripts/scroll-lag-pty.py` `SUMMARY pty` lines, checked by the script.
+      **Not ticked — RSS miss.** Frames, tail, bytes and deflate hold (text free/500k: fal 1, tail 92/62, rss 24;
+      kitty-yes free/40m: fal 1, tail 56/58, 173/171 KB per key, `deflate=yes` observed, 525/518 transmits all `o=z`). **Graft RSS 396 / 369 MB > 300** at
+      kitty-yes (`SUMMARY miss pty kitty-yes-free rss_mb=396`, `kitty-yes-40m rss_mb=369`). See NOTES M2.
 - [ ] No regression: `frames::` p99 ≤ 16 ms on every scroll, `heavy::budgets_hold` green, `g_after_idle` green.
       — those tests by name.
-- [ ] Journey step counts, asserted by the walk: journey 1 = 1 key (`j` held), journey 2 = 1 key (`J`); every
+      **Not ticked — `frames::after_idle::g_after_idle` FAILED** (16.91 ms > 16). `frames::` otherwise 18/19 passed;
+      `heavy::budgets_hold_*` 5/5 passed. See NOTES M1.
+- [x] Journey step counts, asserted by the walk: journey 1 = 1 key (`j` held), journey 2 = 1 key (`J`); every
       `held_key` test's key list (Unicode, raw, `_deflate`, `_iterm2`) is `j`×188, then `J` in B, nothing else.
       — `held_key::*` assert the key-list shape (42 Decided adds it; add it if missing; it is the walk's count).
-- [ ] Fast-tier guard present and green: `event_loop::tests::queued_keys_draw_once`.
-- [ ] `TESTING.md`: section "M7 fix: scroll on a big repo", one row per scenario, each naming its test and saying
+      **Ticked:** the assertion exists (`crates/graft/tests/it/held_key.rs:338-350`, not edited); all `held_key::*`
+      ran past it (no `key list:` panic); `SUMMARY journeys … held_key_summaries_with_188/189_keys=7
+      pty_runs_with_j188_then_J=6/6`.
+- [x] Fast-tier guard present and green: `event_loop::tests::queued_keys_draw_once`.
+      **Ticked:** PASS (`cargo nextest run` by name).
+- [x] `TESTING.md`: section "M7 fix: scroll on a big repo", one row per scenario, each naming its test and saying
       concretely what right looks like:
       - held `j`, Unicode: `frames_after_release ≤ 2`, `tail_ms ≤ 100` at a 500 KB/s drain; cursor on the row shown at
         release.
@@ -107,7 +124,10 @@ M7/46-kitty-no-deflate <item>=<value>` and are not misses.
         strength, no line wider than another, cursor row matching the Unicode grid's. Colour **unverified** (rule 5);
         what Ghostty draws is the user's check.
       - his daily check (below).
-- [ ] Contact sheet (ADR-0037): the milestone sheet's next section if one exists, else
+      **Ticked:** `TESTING.md` §"M7 fix: scroll on a big repo (m7-power-tools/47)" at the end of the file, one row per
+      scenario naming its test (`held_key::*`, `frames::`, `heavy::budgets_hold_*`, `ghostty_shot::fix_scroll_ghostty_png`),
+      plus the pty walk and journeys rows. Its own boxes stay open for the reviewer and the user.
+- [x] Contact sheet (ADR-0037): the milestone sheet's next section if one exists, else
       `docs/shots/m7/fix-scroll-contact.md` (say which), each capture under its "right looks like" line, plus the
       before/after table as text:
       - `docs/shots/m7/fix-scroll-ghostty.png`: the Kitty+deflate frame at release, MONOREPO 187×50, as Graft sends it
@@ -119,16 +139,24 @@ M7/46-kitty-no-deflate <item>=<value>` and are not misses.
         column, same rows.
       - (The old `fix-scroll-thread-legacy.png` is gone: 46b deleted the legacy raster. 46b's re-taken snapshots pin
         the composite.)
-- [ ] `docs/design/03-graph-layout-algorithm.md` §3.8: one paragraph after "The key": the backdrop alpha joins the
+      **Ticked:** its own file, `docs/shots/m7/fix-scroll-contact.md`. The m7 sheet is text assembled from
+      `m7-contact-sheet-captions.tsv`, so a PNG cannot join it. The PNG comes from `ghostty_shot::fix_scroll_ghostty_png`
+      (9 396 B, 850×370, `capture::check_bytes`). The grid comes from the pty `text` walk (`scroll-lag-pty.py`
+      `GRID_OUT`, rows 39–48). **Neither shows the cursor row.** The crop is the cursor ±10, clipped to the pane, and
+      the cursor sits one row below the pane (`cursor_on_screen=false`), so "cursor row matching" cannot be shown. It is
+      a finding (NOTES Q1), not a crop choice. Nobody judged "looks right" (rule 6).
+- [x] `docs/design/03-graph-layout-algorithm.md` §3.8: one paragraph after "The key": the backdrop alpha joins the
       key; the selection's paint is a second image above the strip, keyed on the strip plus the selection (ADR-0053);
       on a graph wider than the lane cap the fold follows the selection (ADR-0025), so a `j` can re-send strips — a
       layout change, not paint; Kitty transmits deflated when probed, and without deflate the held-key budget is not
       met (known gap). Nothing else in DESIGN.md changes.
-- [ ] NOTES list, for the conductor's `KNOWN_GAPS.md` (builders do not edit it):
+      **Ticked:** the indented paragraph under "The key"; that is the only change in that file's diff.
+- [x] NOTES list, for the conductor's `KNOWN_GAPS.md` (builders do not edit it):
       - "scroll fix not yet tried in his terminal on his repo" — **unverified**, not broken.
       - "his Ghostty answers the `o=z` probe yes" — **unverified** (46 ruling (b)); settled by his first Ghostty run.
       - `M7/46-kitty-no-deflate`: this run's three values, for the row (it stays open; this ticket doesn't close it).
       - any verdict item that missed, with its line.
+      **Ticked:** NOTES below.
 
 ## For the user (the conductor asks; not this ticket's call)
 - Daily check, his words to `docs/field-notes.md` the same day: open his work repo, hold `j` ~3 s, let go — does it
@@ -164,3 +192,77 @@ the script.
 
 ## Size
 Medium (~50k).
+
+## NOTES (builder, 2026-10-02)
+
+**Compacted once mid-ticket** (after the measurements, before TESTING.md / gates / ticket). Nothing remains undone.
+Scout: yes, one `scout` before building (held_key harness, strips, composite path). Record:
+`docs/perf/47-scroll-acceptance.txt` (HEAD a4d1f93b + this ticket's changes, `# exit 1`). Raw output stays under
+ignored `target/47-acceptance/`.
+
+### Known gap `M7/46-kitty-no-deflate`, this run's values (for the KNOWN_GAPS row; it stays open)
+Run 1(b), `held_key::held_j_stops_on_release_pixel` / `held_key::j_then_journal_opens_at_once_pixel`:
+```
+VERDICT held_key tier=Pixel scenario=A tail_ms<=100: FAILED      tail_ms=2223
+VERDICT held_key tier=Pixel scenario=B tail_ms<=100: FAILED      tail_ms=655
+VERDICT held_key tier=Pixel scenario=B j_ms<=100: FAILED         j_ms=605
+```
+Every other raw item `ok` (frames_after_release 2, frames_before_J, bytes_per_frame_held 0). pty, printed not judged:
+kitty-no free tail 118, rss 465 MB, 1.52 MB/key; 40m tail 152, rss 487 MB. (An earlier run of this script, before the
+pty fix, printed A 2787, B 651, B 608, so the A tail varies a lot from run to run.)
+
+### Misses (two boxes red; reported, not fixed: out of scope)
+- **M1 `frames::after_idle::g_after_idle`: 16.91 ms > 16 ms** (`crates/graft/tests/it/frames/after_idle.rs:99`, the
+  assert). Rerun alone: 16.6, 16.7 and 17.0 ms; another full run: 21.4 ms. At 12e it measured 8.2–8.6 ms
+  (`docs/perf/m7-12-idle-advance.txt`). Cause **not bisected**; the regression lies somewhere between 12e and a4d1f93b.
+  The rest of `frames::` is 18/19 green and `heavy::budgets_hold_*` is 5/5.
+- **M2 Graft-process RSS at Kitty+deflate: 396 MB (free) / 369 MB (40 MB/s), over the 300 MB budget.** Measured with
+  `ps -o rss` on Graft's pid at the end of the pty run (`scripts/scroll-lag-pty.py`). It was 662–703 MB before.
+  Unicode is 24 MB on the same fixture, so the excess is on the Pixel path (strip and emphasis caches are the obvious
+  suspects; **not measured**, so this is a question, not a cause).
+
+### Q1 (filed as a question, rule 7): the cursor ends one row below the pane after held `j` when the uncommitted row shows
+- Seen: in-process (`ghostty_shot`) `top=141`, `graph_rows=48`, uncommitted row pinned on top, cursor 188, so
+  history rows 141–187 are drawn and `cursor_on_screen=false`. In the pty Unicode stream the selection-filled row is
+  present at t=−10 ms and at 500 ms, and absent from about 1000 ms through release. The fixture's working tree is
+  dirty (an untracked `corpus.ok`); his repo usually is too.
+- Probable lines (not confirmed by a test):
+  - `crates/graft/src/update/keys.rs:439`: `move_cursor` scrolls with `height = next.graph_rows()`.
+  - The view draws `graph_rows() - uncommitted` history rows: `crates/graft/src/view/strips.rs:211-212`, and
+    presumably the Unicode path's equivalent.
+  - Taken together, these keep the cursor one row past the last drawn row.
+- Effect: TESTING's "cursor on the row shown at release" cannot hold today; the captures can't show the cursor row.
+  The user would see the selection vanish while holding `j`.
+
+### For KNOWN_GAPS (conductor)
+- "scroll fix not yet tried in his terminal on his repo": **unverified**.
+- "his Ghostty answers the `o=z` probe yes": **unverified** (46 ruling (b)).
+- `M7/46-kitty-no-deflate`: values above.
+- M1, M2 and Q1 above.
+- Colour of both captures and Ghostty's own rendering: **unverified** (rules 5, 6).
+
+### Fixes made to the pty script on the way (cause, not symptom)
+`scroll-lag-pty.py`'s reader computed `time.sleep(due - now)`, which went negative under a slow drain. The
+ValueError killed the reader thread, Graft blocked on a full pty, and the main thread hung for 16 minutes. The fix
+clamps the sleep at 0. Guards now record the failure in `broken=`; nothing retries or hides it:
+- the reader is wrapped and records `reader_died_<Exc>`;
+- `send()` checks that Graft is still alive (`graft_exited_N`), that the reader is alive, and that the pty is
+  writable within 1 s (`input_blocked`).
+
+### Touches
+- `scripts/scroll-lag-big-repo.sh`: unchanged and still compatible. Its call (`:82`) passes the same positional
+  arguments, and every new behaviour is behind a new env var (`DEFLATE`, `THEN_J`, `GRID_OUT`).
+- `scripts/m7-perf-key.sh:60` selects `-- frames:: frame_trace::`. That matches no `held_key::` test (grep).
+- `scripts/fix-scroll-held-key.sh`, `docs/perf/fix-scroll-held-key.txt`: read only.
+- `crates/graft/tests/it/held_key.rs`: not edited; the key-list assertion was already at `:338-350`.
+- `crates/graft/Cargo.toml`: dev-dependency `tiny-skia` only, at graft-graph's version and features, so no new
+  package; the `Cargo.lock` change is one line. Dev-dependencies are exempt from the `dependency_edges` crate rule.
+- `crates/graft/MAP.md`: `held_key` line extended; `ghostty_shot` line added. No product API was added.
+- Privacy: `cargo run -p graft-fixtures -- redact` on the perf file, the `.txt` capture, the contact sheet, both
+  scripts and TESTING.md reported "0 of 6 files changed". One home path had already been redacted earlier and made
+  relative. No raw stream was committed.
+- Gates (workspace-wide, 2026-10-02): all green.
+  - `cargo fmt --check`;
+  - `cargo clippy --all-targets -D warnings`, with and without `graft/heavy-tests`;
+  - `cargo nextest run`: 5111/5111;
+  - `cargo test --doc`.

@@ -1,0 +1,125 @@
+# 47-scroll-acceptance (m7-power-tools/47) — 2026-10-01T20:34:11Z
+# HEAD a4d1f93b (+ uncommitted changes)
+# machine: Apple M5, 10 cpus, Darwin 27.0.0
+# load before: 1.11 1.21 1.50
+# 1a held_key judged (6): held_key::b_bound_stops_at_js_frame held_key::held_j_stops_on_release_pixel_deflate held_key::held_j_stops_on_release_pixel_iterm2 held_key::held_j_stops_on_release_unicode held_key::j_then_journal_opens_at_once_pixel_deflate held_key::j_then_journal_opens_at_once_unicode
+# 1b held_key raw pair: held_key::held_j_stops_on_release_pixel held_key::j_then_journal_opens_at_once_pixel
+# 1a
+test held_key::b_bound_stops_at_js_frame ... ok
+test held_key::held_j_stops_on_release_pixel_deflate ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=25
+SUMMARY held_key tier=Pixel scenario=A-deflate size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=120 frames_after_release=2 tail_ms=47 bytes_per_frame_held=152255 strip_transmits_held=81 emphasis_transmits_held=228 rows_scrolled=188 fold_changes_held=unread bytes_per_key=100634 emphasis_cells_p99=71 deflated_transmits=315 peak_rss_mb=344 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Pixel scenario=A-deflate frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=A-deflate bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=A-deflate strip_transmits_held=81: unjudged (fold_changes_held unread)
+VERDICT held_key tier=Pixel scenario=A-deflate tail_ms<=100: ok
+test held_key::held_j_stops_on_release_pixel_iterm2 ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=9
+SUMMARY held_key tier=Pixel scenario=A-iterm2 size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=123 frames_after_release=2 tail_ms=37 bytes_per_frame_held=132424 strip_transmits_held=0 emphasis_transmits_held=0 rows_scrolled=188 fold_changes_held=unread bytes_per_key=88632 emphasis_cells_p99=none deflated_transmits=0 peak_rss_mb=459 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Pixel scenario=A-iterm2 frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=A-iterm2 bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=A-iterm2 strip_transmits_held=0: unjudged (fold_changes_held unread)
+VERDICT held_key tier=Pixel scenario=A-iterm2 tail_ms<=100: ok
+test held_key::held_j_stops_on_release_unicode ... frames: tier=Unicode refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=8
+SUMMARY held_key tier=Unicode scenario=A size=187x50 cell=17x37 drain=500000B/s pipe=16384 keys=188 frames_while_held=98 frames_after_release=2 tail_ms=69 bytes_per_frame_held=14074 strip_transmits_held=0 emphasis_transmits_held=0 rows_scrolled=188 peak_rss_mb=459 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Unicode scenario=A frames_after_release<=2: ok
+VERDICT held_key tier=Unicode scenario=A tail_ms<=100: ok
+test held_key::j_then_journal_opens_at_once_pixel_deflate ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=16
+SUMMARY held_key tier=Pixel scenario=B-deflate size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=189 frames_while_held=120 frames_after_release=2 tail_ms=42 bytes_per_frame_held=152564 strip_transmits_held=81 emphasis_transmits_held=228 rows_scrolled=188 j_ms=2 j_done_ms=0 frames_before_J=0 fold_changes_held=unread bytes_per_key=100878 emphasis_cells_p99=71 deflated_transmits=315 peak_rss_mb=459 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Pixel scenario=B-deflate frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=B-deflate frames_before_J<=1: ok
+VERDICT held_key tier=Pixel scenario=B-deflate bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=B-deflate strip_transmits_held=81: unjudged (fold_changes_held unread)
+VERDICT held_key tier=Pixel scenario=B-deflate tail_ms<=100: ok
+VERDICT held_key tier=Pixel scenario=B-deflate j_ms<=100: ok
+test held_key::j_then_journal_opens_at_once_unicode ... frames: tier=Unicode refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=24
+SUMMARY held_key tier=Unicode scenario=B size=187x50 cell=17x37 drain=500000B/s pipe=16384 keys=189 frames_while_held=98 frames_after_release=2 tail_ms=74 bytes_per_frame_held=14190 strip_transmits_held=0 emphasis_transmits_held=0 rows_scrolled=188 j_ms=23 j_done_ms=23 frames_before_J=0 peak_rss_mb=459 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Unicode scenario=B frames_after_release<=2: ok
+VERDICT held_key tier=Unicode scenario=B frames_before_J<=1: ok
+VERDICT held_key tier=Unicode scenario=B tail_ms<=100: ok
+VERDICT held_key tier=Unicode scenario=B j_ms<=100: ok
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 711 filtered out; finished in 22.81s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 182 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 39 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 693 filtered out; finished in 0.00s
+# 1b
+test held_key::held_j_stops_on_release_pixel ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=18
+SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=0 frames_after_release=2 tail_ms=2223 bytes_per_frame_held=0 strip_transmits_held=2 emphasis_transmits_held=2 rows_scrolled=188 fold_changes_held=unread bytes_per_key=296246 emphasis_cells_p99=59 deflated_transmits=0 peak_rss_mb=135 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Pixel scenario=A frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=A strip_transmits_held=2: unjudged (fold_changes_held unread)
+VERDICT held_key tier=Pixel scenario=A tail_ms<=100: FAILED
+test held_key::j_then_journal_opens_at_once_pixel ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=15
+SUMMARY held_key tier=Pixel scenario=B size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=189 frames_while_held=0 frames_after_release=1 tail_ms=655 bytes_per_frame_held=0 strip_transmits_held=2 emphasis_transmits_held=2 rows_scrolled=188 j_ms=605 j_done_ms=601 frames_before_J=1 fold_changes_held=unread bytes_per_key=207502 emphasis_cells_p99=59 deflated_transmits=0 peak_rss_mb=169 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Pixel scenario=B frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=B frames_before_J<=1: ok
+VERDICT held_key tier=Pixel scenario=B bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=B strip_transmits_held=2: unjudged (fold_changes_held unread)
+VERDICT held_key tier=Pixel scenario=B tail_ms<=100: FAILED
+VERDICT held_key tier=Pixel scenario=B j_ms<=100: FAILED
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 715 filtered out; finished in 11.87s
+# 1a exit 0; 1b exit 101 (1b judged by VERDICT lines, not exit)
+SUMMARY held_key run=a tests=6 exit=0 verdict_ok=17 verdict_failed=0
+SUMMARY unjudged strip_transmits_held lines=5 (fold_changes_held unread; guard: pixel_scroll::a_capped_graph_resends_strips_only_when_the_fold_changes)
+SUMMARY known_gap M7/46-kitty-no-deflate tier=Pixel scenario=A tail_ms<=100 tail_ms=2223
+SUMMARY known_gap M7/46-kitty-no-deflate tier=Pixel scenario=B tail_ms<=100 tail_ms=655
+SUMMARY known_gap M7/46-kitty-no-deflate tier=Pixel scenario=B j_ms<=100 j_ms=605
+SUMMARY before_after source before=fix-scroll-held-key.txt first block (rev e0052eac, red); its Pixel row (raw Kitty, no deflate or iTerm2 variant then) is the before of all three Pixel rows; j_ms from scenario B, every other field from A; n/a = not measured
+SUMMARY before_after row=Unicode tail_ms=3260->69 j_ms=3210->23 frames_after_release=109->2 bytes_per_frame_held=10667->14074 strip_transmits_held=0->0 fold_changes_held=n/a->n/a
+SUMMARY before_after row=Pixel-deflate tail_ms=215976->47 j_ms=225288->2 frames_after_release=188->2 bytes_per_frame_held=13113157->152255 strip_transmits_held=4->81 fold_changes_held=n/a->unread
+SUMMARY before_after row=Pixel-iTerm2 tail_ms=215976->37 j_ms=225288->n/a frames_after_release=188->2 bytes_per_frame_held=13113157->132424 strip_transmits_held=4->0 fold_changes_held=n/a->unread
+SUMMARY before_after row=Pixel-raw(known-gap) tail_ms=215976->2223 j_ms=225288->605 frames_after_release=188->2 bytes_per_frame_held=13113157->0 strip_transmits_held=4->2 fold_changes_held=n/a->unread
+frames: tier=Pixel refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=4125 p99_us=6232 max_us=12823 over_budget=0 kitty_commands=160248 bytes=637082417
+frames: tier=Pixel refs=FiftyThousand pane=Closed keys over 16ms (recorded; the gate is the p99): 0 of 420: 
+frames: tier=Unicode refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=1741 p99_us=2384 max_us=6120 over_budget=0 kitty_commands=0 bytes=2062331
+frames: tier=Unicode refs=FiftyThousand pane=Closed keys over 16ms (recorded; the gate is the p99): 0 of 420: 
+frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain keys=422 p50_us=1447 p99_us=1745 max_us=5720 over_budget=0 kitty_commands=0 bytes=37932
+frames: tier=Unicode refs=FiftyThousand pane=DiffScroll keys over 16ms (recorded; the gate is the p99): 0 of 422: 
+frames: tier=Unicode refs=FiftyThousand pane=Open control=Plain keys=421 p50_us=1460 p99_us=1744 max_us=5866 over_budget=0 kitty_commands=0 bytes=34029
+frames: tier=Unicode refs=FiftyThousand pane=Open keys over 16ms (recorded; the gate is the p99): 0 of 421: 
+frames: tier=Unicode refs=FiftyThousand pane=Map control=Plain keys=421 p50_us=1008 p99_us=1115 max_us=5537 over_budget=0 kitty_commands=0 bytes=74208
+frames: tier=Unicode refs=FiftyThousand pane=Map keys over 16ms (recorded; the gate is the p99): 0 of 421: 
+frames: tier=Unicode refs=2425 pane=JournalFind keys over 16ms (recorded; the gate is the p99): 0 of 127: 
+frames: tier=Pixel refs=Fixture pane=Closed control=Plain keys=420 p50_us=4113 p99_us=6188 max_us=8009 over_budget=0 kitty_commands=160250 bytes=636785808
+frames: tier=Pixel refs=Fixture pane=Closed keys over 16ms (recorded; the gate is the p99): 0 of 420: 
+frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=1181 p99_us=1977 max_us=2095 over_budget=0 kitty_commands=0 bytes=1757653
+frames: tier=Unicode refs=Fixture pane=Closed keys over 16ms (recorded; the gate is the p99): 0 of 420: 
+test frames::a_real_repository_keeps_input_to_frame_under_16_ms ... ignored, manual: needs GRAFT_REAL_REPO, a repository outside the test fixtures
+test frames::after_idle::g_after_idle ... refs: 50000 refs, badges() 11.448ms, 25000 lookups 901.292µs (36 ns each), 25196 labels found
+test frames::controls::the_machine_alone_after_idle_and_warm ... machine: busy=false oversleep_us=4020,7855,10030,7892,7928,7889,5773,8103 tick_oversleep_us=5540,8309,8341,8342,8351,8266,8275,3982,4350,2092,4698,8346,8347,8352,6146,999,6019,8002,5331,8346,7024,8349,5402,1010,3153,8350,8345,8348,8352,8348 work_after_idle_us=4749,2358,4530,4553,4362,5140,4369,6483 work_warm_us=2965,2362,2685,2768,2735,2072,2709,2889 handoff_us=36,34,30,29,48,67,32,30
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_pixel_tier ... refs: 50000 refs, badges() 9.222209ms, 25000 lookups 869.084µs (34 ns each), 25180 labels found
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_unicode_tier ... refs: 50000 refs, badges() 9.4985ms, 25000 lookups 854.834µs (34 ns each), 25196 labels found
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_scrolling_the_diff ... refs: 50000 refs, badges() 9.177542ms, 25000 lookups 889.166µs (35 ns each), 25196 labels found
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_detail_pane_open ... refs: 50000 refs, badges() 9.232625ms, 25000 lookups 870.708µs (34 ns each), 25196 labels found
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_map_view_open ... refs: 50000 refs, badges() 9.85425ms, 25000 lookups 917.583µs (36 ns each), 25196 labels found
+test frames::journal_find::j_with_a_broad_find_holds_the_frame_budget ... frames: tier=Unicode refs=2425 pane=JournalFind control=Plain keys=127 p50_us=5051 p99_us=9516 max_us=9884 over_budget=0 hits=2000 lost_rows=425
+test frames::readings::a_batched_key_reads_its_batch_frame ... ok
+test frames::readings::idle_gaps_count_what_nothing_asked_for_after_laid_out ... ok
+test frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_pixel_tier ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=10
+test frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_unicode_tier ... frames: tier=Unicode refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=10
+test frames::sink::tests::a_draining_sink_forwards_and_keeps_nothing ... ok
+test frames::sink::the_sink_counts_after_the_run_what_parsing_each_write_counted_during_it ... ok
+test heavy::budgets_hold_on_the_100k_fixture_with_50k_refs ... synthetic-100000-refs50000-commit-graph (commit-graph): first_paint_us=70323 bottom_ms=102 top_ms=0 rows=100000 provisional=false rss_at_paint=91963392 rss_at_bottom=109002752 peak_rss=110559232 overflow_len=0
+test heavy::budgets_hold_on_the_100k_fixture_with_a_commit_graph ... synthetic-100000-commit-graph (commit-graph): first_paint_us=28119 bottom_ms=94 top_ms=0 rows=100000 provisional=false rss_at_paint=25001984 rss_at_bottom=31981568 peak_rss=32129024 overflow_len=0
+test heavy::budgets_hold_on_the_100k_fixture_without_a_commit_graph ... synthetic-100000-no-commit-graph (no commit-graph): first_paint_us=31899 bottom_ms=1141 top_ms=0 rows=100000 provisional=true rss_at_paint=27492352 rss_at_bottom=98598912 peak_rss=98598912 overflow_len=100000
+test heavy::budgets_hold_on_the_100k_realistic_fixture_with_a_commit_graph ... synthetic-100000-realistic-commit-graph (commit-graph): first_paint_us=30807 bottom_ms=95 top_ms=2 rows=100000 provisional=false rss_at_paint=27639808 rss_at_bottom=36798464 peak_rss=36913152 overflow_len=0
+test heavy::budgets_hold_on_the_100k_realistic_fixture_without_a_commit_graph ... synthetic-100000-realistic-no-commit-graph (no commit-graph): first_paint_us=33901 bottom_ms=1288 top_ms=2 rows=100000 provisional=true rss_at_paint=30507008 rss_at_bottom=105119744 peak_rss=105119744 overflow_len=100000
+test result: FAILED. 18 passed; 1 failed; 1 ignored; 0 measured; 697 filtered out; finished in 109.03s
+SUMMARY frames exit=101 passed=18 failed=1 g_after_idle_failed=1 budgets_hold_failed=0 named_ran=6 (p99 <= 16 ms asserted in release)
+SUMMARY miss frames/budgets exited 101: target/47-acceptance/frames.txt
+SUMMARY miss frames::after_idle::g_after_idle: `G` after idle took 16.91075ms, over the 16ms input-to-frame budget
+SUMMARY pty label=text-free profile=text rate=- size=187x50 wait_s=5.0 period_ms=16 hold_s=3.0 keys=188 then_J frames_before_keys=11 frames_while_held=234 frames_after_release=1 bytes_per_key=16229 bytes_after_release=44091 tail_ms=92 rss_mb=24 first_byte_ms=560 j_ms=0 frames_before_J=1 broken=no
+SUMMARY pty label=text-500k profile=text rate=500000 size=187x50 wait_s=5.0 period_ms=16 hold_s=3.0 keys=188 then_J frames_before_keys=9 frames_while_held=233 frames_after_release=1 bytes_per_key=16229 bytes_after_release=44091 tail_ms=62 rss_mb=24 first_byte_ms=4 j_ms=1 frames_before_J=1 broken=no
+SUMMARY pty label=kitty-yes-free profile=kitty rate=- size=187x50 wait_s=5.0 period_ms=16 hold_s=3.0 keys=188 then_J frames_before_keys=10 frames_while_held=204 frames_after_release=1 bytes_per_key=173343 bytes_after_release=198246 tail_ms=56 rss_mb=396 first_byte_ms=4 deflate_answer=yes transmits=525 deflated=525 deflate=yes j_ms=0 frames_before_J=1 broken=no
+SUMMARY miss pty kitty-yes-free rss_mb=396 > 300 (Graft process)
+SUMMARY pty label=kitty-yes-40m profile=kitty rate=40000000 size=187x50 wait_s=5.0 period_ms=16 hold_s=3.0 keys=188 then_J frames_before_keys=10 frames_while_held=202 frames_after_release=1 bytes_per_key=171299 bytes_after_release=198246 tail_ms=58 rss_mb=369 first_byte_ms=5 deflate_answer=yes transmits=518 deflated=518 deflate=yes j_ms=0 frames_before_J=1 broken=no
+SUMMARY miss pty kitty-yes-40m rss_mb=369 > 300 (Graft process)
+SUMMARY pty label=kitty-no-free profile=kitty rate=- size=187x50 wait_s=5.0 period_ms=16 hold_s=3.0 keys=188 then_J frames_before_keys=8 frames_while_held=18 frames_after_release=0 bytes_per_key=1519510 bytes_after_release=12665287 tail_ms=118 rss_mb=465 first_byte_ms=5 deflate_answer=no transmits=63 deflated=0 deflate=no j_ms=63 frames_before_J=0 broken=no
+SUMMARY known_gap M7/46-kitty-no-deflate pty label=kitty-no-free deflate=no frames_after_release=0 tail_ms=118 bytes_per_key=1519510 rss_mb=465
+SUMMARY pty label=kitty-no-40m profile=kitty rate=40000000 size=187x50 wait_s=5.0 period_ms=16 hold_s=3.0 keys=188 then_J frames_before_keys=8 frames_while_held=17 frames_after_release=0 bytes_per_key=1507666 bytes_after_release=16124358 tail_ms=152 rss_mb=487 first_byte_ms=4 deflate_answer=no transmits=60 deflated=0 deflate=no j_ms=97 frames_before_J=0 broken=no
+SUMMARY known_gap M7/46-kitty-no-deflate pty label=kitty-no-40m deflate=no frames_after_release=0 tail_ms=152 bytes_per_key=1507666 rss_mb=487
+SUMMARY journeys j_held=1_key J=1_key held_key_summaries_with_188/189_keys=7 pty_runs_with_j188_then_J=6/6
+SUMMARY ghostty_png bytes=9396 width_px=850 height_px=370 cursor_row=188 rows=178..188 pane_rows=38..48 cursor_on_screen=false strips=2 deflate=on
+SUMMARY capture docs/shots/m7/fix-scroll-ghostty.png exit=0 bytes=9396 width_px=850 height_px=370 cursor_row=188 rows=178..188 pane_rows=38..48 cursor_on_screen=false strips=2 deflate=on
+SUMMARY pty label=grid profile=text rate=- size=187x50 wait_s=5.0 period_ms=16 hold_s=3.0 keys=188 then_J frames_before_keys=12 frames_while_held=234 frames_after_release=1 bytes_per_key=16229 bytes_after_release=44091 tail_ms=59 rss_mb=24 first_byte_ms=664 j_ms=1 frames_before_J=1 broken=no
+SUMMARY capture docs/shots/m7/fix-scroll-release-unicode.txt rows=39:49 lines=10
+# exit 1

@@ -31,6 +31,9 @@ mod frame_trace;
 #[cfg(feature = "heavy-tests")]
 mod frames;
 mod gallery;
+/// m7-power-tools/47: `docs/shots/m7/fix-scroll-ghostty.png`, on the team fixture.
+#[cfg(feature = "heavy-tests")]
+mod ghostty_shot;
 #[cfg(feature = "heavy-tests")]
 mod heavy;
 #[cfg(feature = "heavy-tests")]

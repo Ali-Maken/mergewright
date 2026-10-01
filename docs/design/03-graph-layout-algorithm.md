@@ -385,6 +385,19 @@ tier.
   already-transmitted image ids where the protocol allows (Kitty); that's
   an encoder-internal optimisation, not part of this cache.
 - **The key:** `(strip row range, layout hash, theme id, cell size)`.
+
+  Since the M7 scroll fix (m7-power-tools/41–47) the frame's backdrop alpha
+  joins the key: every strip in a frame is drawn at the lowest alpha any of
+  its rows needs, so a cursor move that keeps it leaves every strip as it
+  was. The selection's paint (lit thread, dimmed lanes, cursor) is not in
+  the strip: it is a second image placed above it, keyed on the strip plus
+  the selection (ADR-0053), so a `j` re-sends a small emphasis image, not
+  the strip. On a graph wider than the lane cap the fold follows the
+  selection (ADR-0025), so a `j` that moves the thread can still re-send
+  every strip on screen: that is a layout change, not paint. Kitty uploads
+  go deflated (`o=z`) when the terminal answers the probe for it; without
+  deflate the held-key budget is not met (known gap
+  M7/46-kitty-no-deflate).
 - **The layout hash** is computed by the renderer from the layout-relevant
   content of the strip's rows — per row: commit id, `lane`, `incoming`,
   `outgoing`, `marker` — plus the set of pass-through lanes crossing the

@@ -79,6 +79,10 @@ serde_json = "1.0.151"
 # Config files under test go in a temporary directory, never in a real home
 # (PROMPT.md Technology; ticket 07).
 tempfile = "3.27.0"
+# `tests/it/ghostty_shot.rs` (m7-power-tools/47) writes the Ghostty-path
+# capture as a PNG over a background, as `graft-graph`'s raster tests do; the
+# same version and features as there, so no new package.
+tiny-skia = { version = "0.12", default-features = false, features = ["std", "png-format"] }
 
 [features]
 # Forwards the heavy tier to the fixture corpus, per TESTING.md, so one
