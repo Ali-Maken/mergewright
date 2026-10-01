@@ -47,6 +47,7 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("c", "commit"),       // `is_commit_key` → `commit_editor::open`
     ("a", "amend"),        // `is_commit_key`, amending
     ("a", "amend it"),     // `commit_editor::amend_at_edit_stop` (07b)
+    ("o", "take"),         // `write_key` → `preview::take_key` (m7-power-tools/11, 40)
     ("m", "merge"),        // `write_key` → `preview::history_key`, `Merge`
     ("r", "rebase"),       // `write_key` → `preview::history_key`, `Rebase`
     ("p", "pull"),         // `is_remote_key` → `remote::pull_key`

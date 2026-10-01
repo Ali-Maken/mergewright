@@ -4303,8 +4303,12 @@ fn every_swept_state_is_the_context_it_claims() {
 fn classified_form(context: &HintContext) -> Option<HintContext> {
     match context {
         // `R rewrite` is decoration on a drawn row too (08, ruling 10).
-        HintContext::BranchRow { .. } | HintContext::Marked(_) | HintContext::Rewritable(_) => {
-            Some(HintContext::PlainRow)
+        // So are `o`/`a` (m7-power-tools/40): `row_verbs` reads a drawn cursor row.
+        HintContext::BranchRow { .. }
+        | HintContext::PlainRow { .. }
+        | HintContext::Marked(_)
+        | HintContext::Rewritable(_) => {
+            Some(HintContext::PlainRow { verbs: graft_ui::graph_screen::hints::RowVerbs::NONE })
         }
         // `B` answers on a file (`blamable`), `space` folds `commit_pane`'s
         // `src/` row (`folds`), neither on its `✉ message` row
@@ -4315,7 +4319,7 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
             folds,
             ..
         } => Some(HintContext::PaneFocused {
-            row: Box::new(HintContext::PlainRow),
+            row: Box::new(HintContext::PlainRow { verbs: graft_ui::graph_screen::hints::RowVerbs::NONE }),
             opens: *opens,
             blamable: *blamable,
             folds: *folds,
@@ -4402,7 +4406,6 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Picker
         | HintContext::PaneOverOverlay { .. }
         | HintContext::WorkingTreeRow
-        | HintContext::PlainRow
         | HintContext::Banner { .. }
         | HintContext::ChangesPane { .. }
         | HintContext::Dragging
@@ -4775,7 +4778,7 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         // are painted on the row, not held in the state, and no key turns
         // on them.
         HintContext::BranchRow { .. }
-        | HintContext::PlainRow
+        | HintContext::PlainRow { .. }
         | HintContext::Marked(_)
         | HintContext::Rewritable(_)
         | HintContext::Preview => vec![merge_on_screen(walk, MERGE_ROW).0],
@@ -5746,14 +5749,6 @@ const NEVER_HINTED: &[(&str, &str, &str)] = &[
         "keymap §2.2: `Esc` backs out everywhere. The bar draws it where it is the \
          context's own key (`esc close`, `esc cancel`); clearing a stale status line \
          is not a context action",
-    ),
-    (
-        "a",
-        "amend",
-        "**open question, not a decision** (m5/33): keymap §2.3 binds `a` on the graph \
-         pane and §2.1 says the bar always shows what is active, but no hint table has \
-         ever listed it — the bar draws `c commit` alone. Filed in ticket 33; here so \
-         the walk below is honest rather than blocked",
     ),
 ];
 

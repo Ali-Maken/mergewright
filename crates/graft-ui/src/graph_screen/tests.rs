@@ -15,7 +15,7 @@ use ratatui::style::Modifier;
 use unicode_width::UnicodeWidthStr;
 
 use super::footer::{commit_graph_segments, grouped, segments_width};
-use super::hints::{HintContext, TabWord};
+use super::hints::{HintContext, RowVerbs, TabWord};
 use super::layout::walk_text;
 use super::*;
 use crate::graph_column::{GraphColumn, RowPaint};
@@ -98,7 +98,9 @@ pub(super) fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_>
         commit_graph: None,
         banner: Vec::new(),
         divider_shown: false,
-        hint_context: HintContext::PlainRow,
+        hint_context: HintContext::PlainRow {
+            verbs: RowVerbs::NONE,
+        },
         marker_column: false,
         banner_op: None,
         pending: None,
@@ -1000,7 +1002,10 @@ fn the_footer_hint_list_widens_with_the_frame() {
 fn footer_eighty_branch_row() {
     let rows = linear(3);
     let mut view = view(&rows, WalkView::Complete { rows: 3 }, 0);
-    view.hint_context = HintContext::BranchRow { current: false };
+    view.hint_context = HintContext::BranchRow {
+        current: false,
+        verbs: RowVerbs::NONE,
+    };
     let screen = text(&draw(&view, 80, 24));
     let footer = screen.last().expect("a footer row").trim_end().to_owned();
     assert_eq!(
@@ -1278,9 +1283,17 @@ fn only_the_resolver_marks_words() {
 fn every_hint_context() -> Vec<HintContext> {
     let plain = vec![
         HintContext::WorkingTreeRow,
-        HintContext::BranchRow { current: false },
-        HintContext::BranchRow { current: true },
-        HintContext::PlainRow,
+        HintContext::BranchRow {
+            current: false,
+            verbs: RowVerbs::NONE,
+        },
+        HintContext::BranchRow {
+            current: true,
+            verbs: RowVerbs::NONE,
+        },
+        HintContext::PlainRow {
+            verbs: RowVerbs::NONE,
+        },
         HintContext::Banner {
             skippable: true,
             conflicted: true,
@@ -1353,7 +1366,9 @@ fn the_explain_hint_follows_hint_context_not_the_row_marker() {
     );
 
     let mut marked = view(&rows, WalkView::Complete { rows: 2 }, 0);
-    marked.hint_context = HintContext::Marked(Box::new(HintContext::PlainRow));
+    marked.hint_context = HintContext::Marked(Box::new(HintContext::PlainRow {
+        verbs: RowVerbs::NONE,
+    }));
     let marked_screen = text(&draw(&marked, 80, 5));
     assert!(
         marked_screen[4].contains(". explain"),
@@ -1719,7 +1734,9 @@ fn capture_hint_bar_for_docs_shots() {
 
     let scenarios: [(&str, HintContext, usize, bool); 1] = [(
         "marked",
-        HintContext::Marked(Box::new(HintContext::PlainRow)),
+        HintContext::Marked(Box::new(HintContext::PlainRow {
+            verbs: RowVerbs::NONE,
+        })),
         1,
         false,
     )];
@@ -1813,17 +1830,25 @@ fn capture_the_ladder_for_docs_shots() {
         ),
         (
             "the cursor is on the tip, which carries the current branch's badge",
-            HintContext::BranchRow { current: true },
+            HintContext::BranchRow {
+                current: true,
+                verbs: RowVerbs::NONE,
+            },
             Divider::Hidden,
         ),
         (
             "the cursor is on another branch's tip",
-            HintContext::BranchRow { current: false },
+            HintContext::BranchRow {
+                current: false,
+                verbs: RowVerbs::NONE,
+            },
             Divider::Hidden,
         ),
         (
             "the cursor is on an ordinary commit row",
-            HintContext::PlainRow,
+            HintContext::PlainRow {
+                verbs: RowVerbs::NONE,
+            },
             Divider::Hidden,
         ),
         (
@@ -2096,7 +2121,7 @@ fn row_at_is_none_off_the_body() {
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination (54 → 63 in m6-conflicts/50: the confirm box
 /// once per `ConfirmYes`).
-const COVERAGE_SLOTS: usize = 102;
+const COVERAGE_SLOTS: usize = 111;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2131,12 +2156,23 @@ fn operation_live_slot(context: &HintContext) -> usize {
     }
 }
 
+/// A commit row's slot: `base` (1–3) with no verbs, else 102–110.
+fn row_slot(base: usize, verbs: RowVerbs) -> usize {
+    let combo = 2 * usize::from(verbs.amend) + usize::from(verbs.take);
+    if combo == 0 {
+        base
+    } else {
+        102 + 3 * (base - 1) + (combo - 1)
+    }
+}
+
 fn coverage_slot(context: &HintContext) -> usize {
     match context {
         HintContext::WorkingTreeRow => 0,
-        HintContext::BranchRow { current: false } => 1,
-        HintContext::BranchRow { current: true } => 2,
-        HintContext::PlainRow => 3,
+        // m7-power-tools/40: each row shape once per `RowVerbs`; the bare
+        // forms keep 1–3, the other three per shape are 102–110.
+        HintContext::BranchRow { current, verbs } => row_slot(1 + usize::from(*current), *verbs),
+        HintContext::PlainRow { verbs } => row_slot(3, *verbs),
         // Both fields are plain `bool`s, so the arm stays exhaustive.
         // `merge` is `!skippable` in every form a live operation makes
         // (m6-conflicts/70), so it takes no slot of its own.

@@ -1,7 +1,7 @@
 //! The design note's priority table: one list of hints per context, and
 //! [`TAIL`], what the whole screen answers after them.
 
-use super::{Hint, HintContext, LiveC, TabWord, hint};
+use super::{Hint, HintContext, LiveC, RowVerbs, TabWord, hint};
 
 mod resolver;
 
@@ -37,9 +37,15 @@ fn name_prompt_list(toggle: bool) -> Vec<Hint> {
 pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
     match context {
         HintContext::WorkingTreeRow => working_tree_row_list(),
-        HintContext::BranchRow { current: false } => branch_row_list(),
-        HintContext::BranchRow { current: true } => current_branch_row_list(),
-        HintContext::PlainRow => plain_row_list(),
+        HintContext::BranchRow {
+            current: false,
+            verbs,
+        } => with_verbs(branch_row_list(), *verbs),
+        HintContext::BranchRow {
+            current: true,
+            verbs,
+        } => with_verbs(current_branch_row_list(), *verbs),
+        HintContext::PlainRow { verbs } => with_verbs(plain_row_list(), *verbs),
         HintContext::Banner {
             skippable,
             conflicted,
@@ -106,6 +112,24 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         | HintContext::OperationLive { .. }
         | HintContext::Preview => Vec::new(),
     }
+}
+
+/// A commit row's list with the verbs that act on this row
+/// (m7-power-tools/40): `o take` right after `⏎ open`, `a amend` right after
+/// `c commit` (after `⏎ open` where the list has no `c commit`). Both are
+/// worked out by `graft` (`view::rows::row_verbs`), from the same checks the
+/// keys run, so the bar never hints a row the key refuses.
+fn with_verbs(mut list: Vec<Hint>, verbs: RowVerbs) -> Vec<Hint> {
+    let after = |list: &[Hint], key: &str| list.iter().position(|h| h.key == key).map(|i| i + 1);
+    if verbs.take {
+        let at = after(&list, "⏎").unwrap_or(0);
+        list.insert(at, hint("o", "take"));
+    }
+    if verbs.amend {
+        let at = after(&list, "c").or_else(|| after(&list, "⏎")).unwrap_or(0);
+        list.insert(at, hint("a", "amend"));
+    }
+    list
 }
 
 /// `R rewrite`, on a commit row of his branch (m7-power-tools/08).

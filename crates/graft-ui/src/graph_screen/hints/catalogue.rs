@@ -5,7 +5,7 @@
 use super::lists::{TAIL, context_list};
 use super::{
     BACK_TO_BLAME, BACK_TO_HISTORY, BLAME, ConfirmYes, EXPLAIN, F_HISTORY, Hint, HintContext,
-    LiveC, MORE, RESIZE, TabWord, WAY_BACK,
+    LiveC, MORE, RESIZE, RowVerbs, TabWord, WAY_BACK,
 };
 use crate::conflict_resolver::SideRoles;
 
@@ -35,11 +35,8 @@ use crate::conflict_resolver::SideRoles;
 /// not).
 #[must_use]
 pub fn every_context() -> Vec<HintContext> {
-    let plain = [
+    let mut plain = vec![
         HintContext::WorkingTreeRow,
-        HintContext::BranchRow { current: false },
-        HintContext::BranchRow { current: true },
-        HintContext::PlainRow,
         HintContext::Preview,
         HintContext::Journal,
         HintContext::Stash,
@@ -54,12 +51,28 @@ pub fn every_context() -> Vec<HintContext> {
         HintContext::Credential,
         // m7-power-tools/08: `R rewrite` on his commit rows, and the editor's
         // field.
-        HintContext::Rewritable(Box::new(HintContext::BranchRow { current: false })),
-        HintContext::Rewritable(Box::new(HintContext::BranchRow { current: true })),
-        HintContext::Rewritable(Box::new(HintContext::PlainRow)),
         HintContext::RewriteMessage,
     ];
-    let mut all: Vec<HintContext> = plain.to_vec();
+    // Each commit-row shape once per `RowVerbs` (m7-power-tools/40), bare
+    // and under `R rewrite`.
+    for verbs in RowVerbs::ALL {
+        let rows = [
+            HintContext::BranchRow {
+                current: false,
+                verbs,
+            },
+            HintContext::BranchRow {
+                current: true,
+                verbs,
+            },
+            HintContext::PlainRow { verbs },
+        ];
+        for row in rows {
+            plain.push(HintContext::Rewritable(Box::new(row.clone())));
+            plain.push(row);
+        }
+    }
+    let mut all: Vec<HintContext> = plain.clone();
     all.extend(rewrite_editor_forms());
     all.extend(banner_forms());
     all.extend(changes_pane_forms());
@@ -115,7 +128,9 @@ fn history_forms() -> Vec<HintContext> {
             rows: false,
             on_file: false,
         },
-        HintContext::BackToHistory(Box::new(HintContext::PlainRow)),
+        HintContext::BackToHistory(Box::new(HintContext::PlainRow {
+            verbs: RowVerbs::NONE,
+        })),
     ]
 }
 
@@ -140,16 +155,25 @@ fn blame_forms() -> Vec<HintContext> {
         .collect();
     let under = [
         HintContext::WorkingTreeRow,
-        HintContext::PlainRow,
-        HintContext::BranchRow { current: false },
+        HintContext::PlainRow {
+            verbs: RowVerbs::NONE,
+        },
+        HintContext::BranchRow {
+            current: false,
+            verbs: RowVerbs::NONE,
+        },
         HintContext::PaneFocused {
-            row: Box::new(HintContext::PlainRow),
+            row: Box::new(HintContext::PlainRow {
+                verbs: RowVerbs::NONE,
+            }),
             opens: false,
             blamable: true,
             folds: false,
         },
         HintContext::PaneFocused {
-            row: Box::new(HintContext::PlainRow),
+            row: Box::new(HintContext::PlainRow {
+                verbs: RowVerbs::NONE,
+            }),
             opens: true,
             blamable: false,
             folds: true,
@@ -275,9 +299,12 @@ fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
     match context {
         // `R rewrite` is drawn only while nothing is live (08, ruling 10).
         HintContext::Marked(row) if matches!(**row, HintContext::Rewritable(_)) => Vec::new(),
+        // A live operation hides `o` and `a` (graft `view::rows::live_wrapped`
+        // passes `RowVerbs::NONE`): a row with either never reaches the bar.
+        _ if has_row_verbs(context) => Vec::new(),
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
-        | HintContext::PlainRow
+        | HintContext::PlainRow { .. }
         | HintContext::Marked(_)
         | HintContext::PaneFocused { .. } => {
             // `space stage` only at an `edit` stop with the graph focused
@@ -383,6 +410,19 @@ const ALL_ROLES: [SideRoles; 6] = [
     SideRoles::SetAside,
 ];
 
+/// The cursor row inside `context` carries `o take` or `a amend`.
+fn has_row_verbs(context: &HintContext) -> bool {
+    match context {
+        HintContext::BranchRow { verbs, .. } | HintContext::PlainRow { verbs } => {
+            *verbs != RowVerbs::NONE
+        }
+        HintContext::Marked(row)
+        | HintContext::Rewritable(row)
+        | HintContext::PaneFocused { row, .. } => has_row_verbs(row),
+        _ => false,
+    }
+}
+
 /// `context` wrapped in [`HintContext::Marked`], for the contexts a Mistake
 /// Radar marker can actually reach — the cursor's own row, once
 /// `graft::view::rows::hint_context` has ruled out the working tree, the
@@ -392,9 +432,9 @@ const ALL_ROLES: [SideRoles; 6] = [
 /// Exhaustive on purpose: see [`every_context`].
 fn marked_form(context: &HintContext) -> Option<HintContext> {
     match context {
-        HintContext::BranchRow { .. } | HintContext::PlainRow | HintContext::Rewritable(_) => {
-            Some(HintContext::Marked(Box::new(context.clone())))
-        }
+        HintContext::BranchRow { .. }
+        | HintContext::PlainRow { .. }
+        | HintContext::Rewritable(_) => Some(HintContext::Marked(Box::new(context.clone()))),
         HintContext::WorkingTreeRow
         | HintContext::Banner { .. }
         | HintContext::Preview
@@ -442,7 +482,7 @@ fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
     match context {
         // `R` needs the graph's keyboard (08, ruling 10): never under a pane.
         HintContext::Marked(row) if matches!(**row, HintContext::Rewritable(_)) => Vec::new(),
-        HintContext::BranchRow { .. } | HintContext::PlainRow | HintContext::Marked(_) => {
+        HintContext::BranchRow { .. } | HintContext::PlainRow { .. } | HintContext::Marked(_) => {
             // `(opens, blamable, folds)`: the files list on a file, on a
             // directory, on neither (the `✉ message` row); the diff on a
             // line or not. Never `folds` without `opens` (only the files

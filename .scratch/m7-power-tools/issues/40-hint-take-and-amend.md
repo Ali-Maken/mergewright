@@ -119,3 +119,23 @@ Workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 
 ## Size
 ~50k. One context.
+
+## NOTES (builder, partial — handoff)
+Scout used (40.md). Not compacted.
+
+**Live-op check (rule 7):** both keys refuse during a live op, so hiding is right.
+- `o`: `keys.rs:381` → `preview::take_key` → `open_preview` → `preview_refusal` (`update/preview.rs:340-341`, called :365): any `in_progress` refuses.
+- `a`: `amend_into.rs:85` `refused_by_live_operation` (P14).
+
+**Done (compiles, new tests green):** `RowVerbs` + struct variants (graft-ui `hints/context.rs`); `with_verbs` (lists.rs); catalogue × 4 verbs, live forms only with NONE; `COVERAGE_SLOTS` 111; `take_check(id, parents, head)` + `can_take(state)` (verbs.rs; `pick_slot` reads `take_check`); `amend_blocked` (amend_into.rs, `a_key` order unchanged); `row_verbs` (rows.rs: graph focus, no live op, drawn cursor row only); `o take` in `BOUND_ACTIONS`; `a` out of `NEVER_HINTED`.
+Guard red first: "bound, and drawn on no bar in any context: `a amend`, `o take`" — now green.
+New tests green (context_menu/tests.rs): `a_commit_off_his_branch_hints_o_take`, `heads_row_has_no_o`, `a_merge_row_has_no_o`, `an_ancestor_of_head_hints_o_like_the_menu`, `heads_row_hints_a_amend`, `an_older_row_has_no_a`, `a_pending_amend_hides_a`, `a_live_op_row_hints_neither`, `the_menu_and_the_bar_agree_on_o`. Boxes NOT ticked: suite not green.
+
+**Deviations:** `take_check` takes `(id, parents, head)`, not `(state,row)`; `can_take(state)` reads the cursor row. `o take` is second only on a plain row; on a non-current branch row it follows `⏎ open` (4th).
+Files outside set touched (compile-forced by the enum shape): `graft/src/update/mod.rs` (re-export `can_take`), `graft/src/update/keys/live_c_tests.rs`, `graft-ui/tests/support/screen.rs`.
+
+**Next — 14 failures at last workspace run:**
+1. **Spec conflict:** `m5_walk::every_scenario::hints_at_80_show_three_and_more`: current-branch row at 80 cols now `⏎ open  c commit  a amend  . more` — `a amend` evicts `P push` from the floor. Needs a ranking decision (put `a` later?) from planner.
+2. Captures/goldens to retake: `view::tests::capture_m2_overview_strip`, graft-ui `capture_hint_bar_for_docs_shots`, it `hint_bar::capture_hint_bar_for_docs_shots`, `m6_stash_put_back::capture_menu_fixed_slots`, `context_menu::capture_context_menu_for_docs_shots`, `m7_walk::picker::menu_slot_two_dim_on_head`, `name_and_drag::capture_the_drop_menu_for_docs_shots`, `history_place::capture_esc_back_to_history_from_the_graph`, `blame_place::capture_esc_back_to_blame_from_the_graph`.
+3. Bar assertions in `graft/tests/it`: `hint_bar::a_plain_row_hints_the_plain_context`, `the_tip_row_hints_the_current_branch_context`, `esc_and_the_walk::esc_then_g_on_a_long_history_draws_its_last_rows`, `radar_bookkeeping::a_pull_rebase_marks_no_duplicates` — all outside the file set; not inspected.
+4. Then captures `docs/shots/m7/bar-{take,amend}-row-187x44.txt`, MAP.md rows, gates.

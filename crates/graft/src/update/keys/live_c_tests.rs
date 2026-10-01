@@ -360,7 +360,13 @@ fn no_graph_row_context_is_unwrapped_while_live() {
     let bisect = live(InProgress::Bisect, Begun::InShell, &[], Frame::Graph);
     assert_eq!(
         wrapped(&bisect),
-        Some((HintContext::PlainRow, LiveC::Refuses, false))
+        Some((
+            HintContext::PlainRow {
+                verbs: graft_ui::graph_screen::hints::RowVerbs::NONE
+            },
+            LiveC::Refuses,
+            false
+        ))
     );
     let details = live(
         InProgress::Merge,
@@ -370,12 +376,24 @@ fn no_graph_row_context_is_unwrapped_while_live() {
     );
     assert_eq!(
         wrapped(&details),
-        Some((HintContext::PlainRow, LiveC::Finish, false))
+        Some((
+            HintContext::PlainRow {
+                verbs: graft_ui::graph_screen::hints::RowVerbs::NONE
+            },
+            LiveC::Finish,
+            false
+        ))
     );
     let plain = live(InProgress::Merge, Begun::InGraft, &[], Frame::Graph);
     assert_eq!(
         wrapped(&plain),
-        Some((HintContext::PlainRow, LiveC::Finish, true))
+        Some((
+            HintContext::PlainRow {
+                verbs: graft_ui::graph_screen::hints::RowVerbs::NONE
+            },
+            LiveC::Finish,
+            true
+        ))
     );
     // The opening view, before any history lands: wrapped too.
     assert!(plain.history.is_none());
@@ -390,7 +408,12 @@ fn no_graph_row_context_is_unwrapped_while_live() {
     idle.in_progress = None;
     idle.live_entries.clear();
     assert_eq!(wrapped(&idle), None);
-    assert_eq!(bar(&idle).0, HintContext::PlainRow);
+    assert_eq!(
+        bar(&idle).0,
+        HintContext::PlainRow {
+            verbs: graft_ui::graph_screen::hints::RowVerbs::NONE
+        }
+    );
 }
 
 /// `a` is unchanged: it refuses in words in every frame, for every row of

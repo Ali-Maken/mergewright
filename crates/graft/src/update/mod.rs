@@ -58,6 +58,7 @@ mod strip;
 pub mod switch;
 pub mod undo;
 
+pub(crate) use context_menu::verbs::can_take;
 pub use events::{
     AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, SortedOrder, TakeAt,
     TakeRequest, Task, WholeFileAnswer,
