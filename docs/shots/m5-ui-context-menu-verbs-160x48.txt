@@ -101,4 +101,4 @@
 
 
 
- m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  . more  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+ m merge  r rebase  ⏎ open  o take  b branch  t tag  P push  c commit  p pull  f fetch  . more  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C

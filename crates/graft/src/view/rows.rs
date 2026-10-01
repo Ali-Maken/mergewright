@@ -705,6 +705,30 @@ pub fn resolver_context(state: &AppState) -> HintContext {
     }
 }
 
+/// The drawn cursor row's context: its first local-branch badge or plain,
+/// with its verbs, under `R rewrite` when offered and `Marked` when flagged.
+fn cursor_row_context(state: &AppState, cursor: &GraphEntry<'_>) -> HintContext {
+    let verbs = row_verbs(state);
+    let base = cursor
+        .badges
+        .iter()
+        .find_map(|badge| match badge.kind {
+            BadgeKind::Branch { current, .. } => Some(HintContext::BranchRow { current, verbs }),
+            _ => None,
+        })
+        .unwrap_or(HintContext::PlainRow { verbs });
+    let base = if rewrite_offered(state) {
+        HintContext::Rewritable(Box::new(base))
+    } else {
+        base
+    };
+    if cursor.marker.is_some() {
+        HintContext::Marked(Box::new(base))
+    } else {
+        base
+    }
+}
+
 /// The cursor row's own verbs (m7-power-tools/40), each from the check its
 /// key runs: `o take` where the `.` menu's Cherry-pick slot is live
 /// (`can_take`), `a amend` on `HEAD`'s own row while `a`'s cheap blocks are
@@ -791,29 +815,7 @@ fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
         None => HintContext::PlainRow {
             verbs: RowVerbs::NONE,
         },
-        Some(cursor) => {
-            let verbs = row_verbs(state);
-            let base = cursor
-                .badges
-                .iter()
-                .find_map(|badge| match badge.kind {
-                    BadgeKind::Branch { current, .. } => {
-                        Some(HintContext::BranchRow { current, verbs })
-                    }
-                    _ => None,
-                })
-                .unwrap_or(HintContext::PlainRow { verbs });
-            let base = if rewrite_offered(state) {
-                HintContext::Rewritable(Box::new(base))
-            } else {
-                base
-            };
-            if cursor.marker.is_some() {
-                HintContext::Marked(Box::new(base))
-            } else {
-                base
-            }
-        }
+        Some(cursor) => cursor_row_context(state, cursor),
     };
     // Last, over whichever row context came out. A focused pane leaves four
     // of the graph screen's keys doing nothing (`AppState::graph_has_focus`)

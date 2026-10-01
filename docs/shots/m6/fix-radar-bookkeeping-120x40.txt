@@ -143,4 +143,4 @@
 ●      Commit 169                                                                                        GF 7y   4926766
 ●      Commit 168                                                                                        GF 7y   0d60d60
 ●      Commit 167                                                                                        GF 7y   fa5ef1d
- ⏎ open  c commit  P push  p pull  . more  f  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
+ ⏎ open  c commit  P push  p pull  . more  f  a  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C

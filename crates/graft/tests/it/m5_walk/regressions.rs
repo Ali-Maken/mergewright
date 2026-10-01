@@ -376,6 +376,15 @@ fn bar_by(state: &AppState, marker: &str) -> Result<String, String> {
 /// **leads** them rather than ending the row). Three teaching hints and the
 /// doorway is the claim; what follows the doorway is a different one, made
 /// by `hint_bar`'s own tests.
+/// HEAD's parent: an ancestor, where the `.` menu's Cherry-pick is live, so
+/// `o take` follows `⏎ open` (m7-power-tools/40) — checked, not assumed.
+fn take_live_plain_row(state: &AppState) -> Result<(), String> {
+    check(graft::update::can_take(state), || {
+        "the parent row is not take-live".to_owned()
+    })?;
+    bar_is(state, "⏎ open  o take  b branch")
+}
+
 fn bar_is(state: &AppState, three: &str) -> Result<(), String> {
     let drawn = bar(state)?;
     let wanted = format!(" {three}  . more");
@@ -430,9 +439,7 @@ fn hints_at_80_show_three_and_more() -> Scenario {
                 bar_is(state, "⏎ open  c commit  P push")
             }),
             key(ch('j')),
-            Step::See("a plain commit row", |state| {
-                bar_is(state, "⏎ open  b branch  r rebase")
-            }),
+            Step::See("a plain commit row", take_live_plain_row),
             // A rebase that stops: the banner takes the keyboard, and a
             // rebase is the kind that can be skipped.
             Step::CursorTo("main"),

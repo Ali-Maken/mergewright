@@ -1,0 +1,6 @@
+# bar-take-row-187x44.txt: the 187-column bar (not a pty), from `view::rows::graph_view`'s context. Fixture: capture_bar_take_and_amend_rows in
+# crates/graft/src/update/context_menu/tests.rs (m7-power-tools/40). Colour unverified.
+# Right: cursor on a commit off his branch; bar reads `⏎ open  o take …`.
+#
+Rewritable(PlainRow { verbs: RowVerbs { take: true, amend: false } })
+" ⏎ open  o take  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  J journal  / search  R rewrite  q quit  . more  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C"

@@ -75,4 +75,4 @@
 
 
 
- m merge  r rebase  ⏎ open  . more  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +
+ m merge  r rebase  ⏎ open  . more  o  b  t  P  c  p  f  u  S  /  q  F2  F3  x

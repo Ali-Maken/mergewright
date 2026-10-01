@@ -1,6 +1,6 @@
 # m5-hints-marked-80x24.txt: 80x24, the GraphScreen widget
 # drawn into ratatui's TestBackend from a view model built by hand —
-# HintContext::Marked(PlainRow) on a five-row corpus. Not a pty capture and
+# HintContext::Marked(PlainRow { verbs: RowVerbs { take: false, amend: false } }) on a five-row corpus. Not a pty capture and
 # not the app: no colour is recorded (CLAUDE.md rule 5, colour ships
 # unverified), and the context is set here rather than chosen by
 # `view::rows::hint_context`. The contexts a real repository can reach

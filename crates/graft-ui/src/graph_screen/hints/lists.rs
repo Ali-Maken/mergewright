@@ -116,17 +116,24 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
 
 /// A commit row's list with the verbs that act on this row
 /// (m7-power-tools/40): `o take` right after `⏎ open`, `a amend` right after
-/// `c commit` (after `⏎ open` where the list has no `c commit`). Both are
+/// the last of `c`/`P`/`p`/`f` (after `⏎ open` where the list has none). Both are
 /// worked out by `graft` (`view::rows::row_verbs`), from the same checks the
 /// keys run, so the bar never hints a row the key refuses.
-fn with_verbs(mut list: Vec<Hint>, verbs: RowVerbs) -> Vec<Hint> {
+pub(super) fn with_verbs(mut list: Vec<Hint>, verbs: RowVerbs) -> Vec<Hint> {
     let after = |list: &[Hint], key: &str| list.iter().position(|h| h.key == key).map(|i| i + 1);
     if verbs.take {
         let at = after(&list, "⏎").unwrap_or(0);
         list.insert(at, hint("o", "take"));
     }
     if verbs.amend {
-        let at = after(&list, "c").or_else(|| after(&list, "⏎")).unwrap_or(0);
+        // After the last of the daily verbs the row holds (planner ruling
+        // 2026-10-01): `c commit`, `P push`, `p pull`, `f fetch`.
+        let at = list
+            .iter()
+            .rposition(|h| matches!(h.key, "c" | "P" | "p" | "f"))
+            .map(|i| i + 1)
+            .or_else(|| after(&list, "⏎"))
+            .unwrap_or(0);
         list.insert(at, hint("a", "amend"));
     }
     list

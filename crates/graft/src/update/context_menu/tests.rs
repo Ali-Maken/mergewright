@@ -1395,11 +1395,8 @@ fn an_ancestor_of_head_hints_o_like_the_menu() {
 #[test]
 fn heads_row_hints_a_amend() {
     let words = bar_words(&on_row(1));
-    let commit = words
-        .iter()
-        .position(|w| w == "c commit")
-        .expect("c commit");
-    assert_eq!(words[commit + 1], "a amend", "{words:?}");
+    let fetch = words.iter().position(|w| w == "f fetch").expect("f fetch");
+    assert_eq!(words[fetch + 1], "a amend", "{words:?}");
 }
 
 #[test]
@@ -1433,6 +1430,44 @@ fn a_live_op_row_hints_neither() {
     }
 }
 
+/// The two bars of m7-power-tools/40, drawn whole at 187x44.
+#[test]
+fn capture_bar_take_and_amend_rows() {
+    let shot = |state: &AppState, name: &str, right: &str| {
+        let mut sized = state.clone();
+        sized.size = crate::update::state::Size {
+            columns: 187,
+            rows: 44,
+        };
+        let context = crate::view::rows::graph_view(&sized, 0).hint_context;
+        let bar = graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
+            &context,
+            graft_ui::graph_screen::Divider::Hidden,
+            187,
+        ));
+        let screen = format!("{context:?}\n\"{bar}\"\n");
+        let header = format!(
+            "# {name}: the 187-column bar (not a pty), from `view::rows::graph_view`'s context. Fixture: \
+             capture_bar_take_and_amend_rows in\n# crates/graft/src/update/context_menu/tests.rs \
+             (m7-power-tools/40). Colour unverified.\n# Right: {right}\n#\n"
+        );
+        graft_fixtures::capture(
+            format!("{}/../../docs/shots/m7/{name}", env!("CARGO_MANIFEST_DIR")),
+            format!("{header}{screen}"),
+        );
+    };
+    shot(
+        &plain_off_branch_row(),
+        "bar-take-row-187x44.txt",
+        "cursor on a commit off his branch; bar reads `⏎ open  o take …`.",
+    );
+    shot(
+        &on_row(1),
+        "bar-amend-row-187x44.txt",
+        "cursor on HEAD's row; bar reads `⏎ open  c commit  P push  p pull  f fetch  a amend …`; no `o`.",
+    );
+}
+
 /// Every row of the fixture — `feature` off his branch, `HEAD`, an ancestor
 /// of `HEAD`, and the same first row made a merge: the predicate, the menu's
 /// slot 2 and the bar's `o` say the same thing.
@@ -1440,7 +1475,7 @@ fn a_live_op_row_hints_neither() {
 fn the_menu_and_the_bar_agree_on_o() {
     let mut merged = on_row(0);
     with_a_merge_on_row_0(&mut merged);
-    let states = [on_row(0), on_row(1), on_row(2), merged];
+    let states = vec![on_row(0), on_row(1), on_row(2), merged];
     let mut seen = Vec::new();
     for state in states {
         let can = crate::update::can_take(&state);

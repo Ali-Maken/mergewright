@@ -342,6 +342,11 @@ fn tab_banner_is_hinted_only_where_one_tab_reaches_it() {
     assert!(after.banner_focus, "`⇥` lands on the banner");
 }
 
+/// The plain row, with no verbs: all a bar with no drawn rows can say.
+const PLAIN: HintContext = HintContext::PlainRow {
+    verbs: graft_ui::graph_screen::hints::RowVerbs::NONE,
+};
+
 /// Find-and-pin 2, after decision B: no graph-row bar is left bare while an
 /// operation is live — bisect, frame 2 and the plain one-`⇥` frame are all
 /// wrapped, each with its own `tab_to_banner` — and none is wrapped with
@@ -358,43 +363,16 @@ fn no_graph_row_context_is_unwrapped_while_live() {
         _ => None,
     };
     let bisect = live(InProgress::Bisect, Begun::InShell, &[], Frame::Graph);
-    assert_eq!(
-        wrapped(&bisect),
-        Some((
-            HintContext::PlainRow {
-                verbs: graft_ui::graph_screen::hints::RowVerbs::NONE
-            },
-            LiveC::Refuses,
-            false
-        ))
-    );
+    assert_eq!(wrapped(&bisect), Some((PLAIN, LiveC::Refuses, false)));
     let details = live(
         InProgress::Merge,
         Begun::InGraft,
         &[],
         Frame::GraphWithDetails,
     );
-    assert_eq!(
-        wrapped(&details),
-        Some((
-            HintContext::PlainRow {
-                verbs: graft_ui::graph_screen::hints::RowVerbs::NONE
-            },
-            LiveC::Finish,
-            false
-        ))
-    );
+    assert_eq!(wrapped(&details), Some((PLAIN, LiveC::Finish, false)));
     let plain = live(InProgress::Merge, Begun::InGraft, &[], Frame::Graph);
-    assert_eq!(
-        wrapped(&plain),
-        Some((
-            HintContext::PlainRow {
-                verbs: graft_ui::graph_screen::hints::RowVerbs::NONE
-            },
-            LiveC::Finish,
-            true
-        ))
-    );
+    assert_eq!(wrapped(&plain), Some((PLAIN, LiveC::Finish, true)));
     // The opening view, before any history lands: wrapped too.
     assert!(plain.history.is_none());
     assert!(matches!(
@@ -408,12 +386,7 @@ fn no_graph_row_context_is_unwrapped_while_live() {
     idle.in_progress = None;
     idle.live_entries.clear();
     assert_eq!(wrapped(&idle), None);
-    assert_eq!(
-        bar(&idle).0,
-        HintContext::PlainRow {
-            verbs: graft_ui::graph_screen::hints::RowVerbs::NONE
-        }
-    );
+    assert_eq!(bar(&idle).0, PLAIN);
 }
 
 /// `a` is unchanged: it refuses in words in every frame, for every row of

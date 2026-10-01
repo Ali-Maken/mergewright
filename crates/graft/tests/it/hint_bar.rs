@@ -130,11 +130,17 @@ fn a_plain_row_hints_the_plain_context() {
     let state = app.key(&state, KeyCode::Char('j'));
 
     let bar = footer(&state, 80, 24);
+    // HEAD's parent: an ancestor, take-live like the `.` menu, so `o take`
+    // follows `⏎ open` and `r rebase` drops past `. more` (m7-power-tools/40).
+    assert!(
+        graft::update::can_take(&state),
+        "the parent row is not take-live"
+    );
     assert!(
         // `b branch` and `t tag` went live in
         // m5-history-and-ghost-preview/10, in the hint-bar design note's own
         // order for a plain row; `c commit` dropped to its bare key.
-        bar.starts_with(" ⏎ open  b branch  r rebase  . more") && !bar.ends_with(". more"),
+        bar.starts_with(" ⏎ open  o take  b branch  . more") && !bar.ends_with(". more"),
         "{bar:?}"
     );
     app.close();

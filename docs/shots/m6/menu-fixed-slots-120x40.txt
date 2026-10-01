@@ -52,7 +52,7 @@
 
 
 
- m merge  r rebase  ⏎ open  . more  b  t  P  c  p  f  u  S  /  R  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+ m merge  r rebase  ⏎ open  . more  o  b  t  P  c  p  f  u  S  /  R  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 == 2. `.` on main's tip (checked out, no other branch) ==
 
@@ -95,4 +95,4 @@
 
 
 
- ⏎ open  c commit  P push  p pull  . more  f  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
+ ⏎ open  c commit  P push  p pull  . more  f  a  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C

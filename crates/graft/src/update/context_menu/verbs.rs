@@ -177,7 +177,7 @@ pub(crate) fn take_check(id: Oid, parents: &[Oid], head: &Tip) -> Result<(), Ref
 /// The bar's `o take` on the cursor's row: a history commit (not a stash —
 /// `o` refuses one in words), a `HEAD` with a tip, and [`take_check`] clear.
 /// Never true while the walk or the refs are unread.
-pub(crate) fn can_take(state: &crate::update::state::AppState) -> bool {
+pub fn can_take(state: &crate::update::state::AppState) -> bool {
     if state.on_working_tree {
         return false;
     }

@@ -2208,3 +2208,34 @@ mod pane_space {
         }
     }
 }
+
+// m7-power-tools/40, planner ruling 1: `a amend` after the daily verbs.
+#[test]
+fn a_amend_ranks_after_push_pull_fetch() {
+    let context = HintContext::BranchRow {
+        current: true,
+        verbs: RowVerbs {
+            take: false,
+            amend: true,
+        },
+    };
+    let wide = hints_for(&context, Divider::Hidden, 1000);
+    let at = |key: &str| wide.iter().position(|h| h.key == key).expect(key);
+    assert_eq!(at("a"), at("f") + 1, "{wide:?}");
+    let narrow = hints_for(&context, Divider::Hidden, 80);
+    assert!(narrow.iter().take(3).any(|h| h.key == "P"), "{narrow:?}");
+}
+
+#[test]
+fn a_amend_follows_open_where_no_commit_or_remote_verb() {
+    let base = vec![hint("⏎", "open"), hint("b", "branch"), hint("t", "tag")];
+    let list = super::lists::with_verbs(
+        base,
+        RowVerbs {
+            take: false,
+            amend: true,
+        },
+    );
+    let keys: Vec<&str> = list.iter().map(|h| h.key).collect();
+    assert_eq!(keys, ["⏎", "a", "b", "t"]);
+}
