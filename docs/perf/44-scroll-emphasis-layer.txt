@@ -1,0 +1,16 @@
+# m7-power-tools/44 scroll emphasis layer cost — 2026-10-01T15:34:06Z
+# HEAD e6f12848 +uncommitted
+# Apple M5, 10 cpus, Darwin 27.0.0
+# release; per strip, 32 rows at 17x37; 4 rounds over the strip's 32 cursors, OffThread; p99 nearest-rank
+# uptime before: 20:34  up 14 days,  1:41, 5 users, load averages: 7.36 8.86 8.41
+# uptime after:  20:34  up 14 days,  1:41, 5 users, load averages: 7.25 8.81 8.39
+emphasis-cost: branchy 22 cells 32 rows 17x37 today-full-strip: n=128 p50=2018 µs p99=2525 µs max=2544 µs
+emphasis-cost: branchy 22 cells 32 rows 17x37 backdrop: n=128 p50=2016 µs p99=2569 µs max=2633 µs
+emphasis-cost: branchy 22 cells 32 rows 17x37 emphasis: n=128 p50=761 µs p99=1389 µs max=1455 µs
+emphasis-cost: branchy 22 cells 32 rows 17x37 composite: n=128 p50=116 µs p99=357 µs max=407 µs
+emphasis-cost: branchy emphasis width p50=4 p99=19 of 22 cells
+emphasis-cost: wide-187 190 cells 32 rows 17x37 today-full-strip: n=128 p50=4521 µs p99=4982 µs max=5981 µs
+emphasis-cost: wide-187 190 cells 32 rows 17x37 backdrop: n=128 p50=4410 µs p99=5007 µs max=5141 µs
+emphasis-cost: wide-187 190 cells 32 rows 17x37 emphasis: n=128 p50=792 µs p99=5453 µs max=5487 µs
+emphasis-cost: wide-187 190 cells 32 rows 17x37 composite: n=128 p50=507 µs p99=2353 µs max=2771 µs
+emphasis-cost: wide-187 emphasis width p50=3 p99=176 of 190 cells

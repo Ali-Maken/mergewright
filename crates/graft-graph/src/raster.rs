@@ -28,6 +28,7 @@
 //! (low colour depth only) has no pixel counterpart.
 
 pub mod cache;
+mod emphasis;
 mod geometry;
 mod node;
 mod pen;
@@ -43,6 +44,10 @@ use crate::fold::Toward;
 use crate::identity::BranchIdentity;
 use crate::row::Row;
 
+pub use emphasis::{
+    Backdrop, Emphasised, Lit, PlainRow, PlainStrip, Selection, composite, rasterise_backdrop,
+    rasterise_emphasis,
+};
 pub use node::Ring;
 
 /// Terminal cells one lane column takes, matching the Unicode tier: the
@@ -125,13 +130,16 @@ impl<'a> RasterRow<'a> {
         }
     }
 
-    /// The alpha a column draws at: full on the thread, [`OFF_THREAD_ALPHA`]
-    /// off it, or the row's own [`Emphasis`] when no thread is given.
-    fn alpha_at(&self, column: usize) -> f32 {
-        match self.thread {
-            Some(thread) if thread.contains(&column) => 1.0,
-            Some(_) => OFF_THREAD_ALPHA,
-            None => self.emphasis.alpha(),
+    /// The row as the pen draws it.
+    fn inked(&self) -> Inked<'_> {
+        Inked {
+            row: self.row,
+            ring: self.ring,
+            stubs: &self.stubs,
+            lit: Lit {
+                emphasis: self.emphasis,
+                thread: self.thread,
+            },
         }
     }
 }
@@ -186,34 +194,94 @@ pub enum RasterError {
         /// Cell height asked for.
         cell_height: u32,
     },
+    /// A selection's paint does not have one entry per strip row. A caller
+    /// bug: the selection is built from the same rows as the strip.
+    #[error("a selection of {lit} rows was given for a strip of {rows} rows")]
+    Selection {
+        /// Rows in the strip.
+        rows: usize,
+        /// Rows in the selection.
+        lit: usize,
+    },
 }
 
 /// Rasterise a strip of rows into a premultiplied RGBA frame.
 pub fn rasterise(strip: &Strip<'_>) -> Result<RasterFrame, RasterError> {
-    if strip.palette.is_empty() {
+    let rows: Vec<Inked<'_>> = strip.rows.iter().map(RasterRow::inked).collect();
+    paint(&strip.look(), &rows, None)
+}
+
+impl Strip<'_> {
+    fn look(&self) -> Look<'_> {
+        Look {
+            above: self.above,
+            lane_columns: self.lane_columns,
+            marker: self.marker,
+            cell_width: self.cell_width,
+            cell_height: self.cell_height,
+            palette: self.palette,
+            muted: self.muted,
+        }
+    }
+}
+
+/// Everything a strip is drawn from except its rows: shared by today's
+/// [`Strip`] and the layout-only [`PlainStrip`].
+#[derive(Clone, Copy, Debug)]
+struct Look<'a> {
+    above: Option<&'a Row>,
+    lane_columns: usize,
+    marker: Option<Marker>,
+    cell_width: u32,
+    cell_height: u32,
+    palette: &'a [Rgb],
+    muted: Rgb,
+}
+
+/// One row as the pen draws it: its layout and the paint it draws at.
+#[derive(Clone, Copy, Debug)]
+struct Inked<'a> {
+    row: &'a Row,
+    ring: Ring,
+    stubs: &'a [Stub],
+    lit: Lit<'a>,
+}
+
+/// Draw `rows` into a premultiplied RGBA frame.
+///
+/// `lift` is `None` for a whole strip: every element at its own alpha. For
+/// an emphasis layer it is the backdrop's alpha `b`: only elements whose
+/// alpha `a` is above it are drawn, at `(a − b) / (1 − b)`, so that drawn
+/// over the backdrop they come back to `a` (ADR-0053). Either way the order
+/// and the geometry are the single pass's, so a layer holds exactly the lit
+/// part of it.
+fn paint(
+    look: &Look<'_>,
+    rows: &[Inked<'_>],
+    lift: Option<f32>,
+) -> Result<RasterFrame, RasterError> {
+    if look.palette.is_empty() {
         return Err(RasterError::EmptyPalette);
     }
     let too_large = || RasterError::TooLarge {
-        rows: strip.rows.len(),
-        lane_columns: strip.lane_columns,
-        cell_width: strip.cell_width,
-        cell_height: strip.cell_height,
+        rows: rows.len(),
+        lane_columns: look.lane_columns,
+        cell_width: look.cell_width,
+        cell_height: look.cell_height,
     };
-    let columns = u32::try_from(strip.lane_columns)
+    let columns = u32::try_from(look.lane_columns)
         .ok()
         .and_then(|lanes| lanes.checked_mul(CELLS_PER_LANE))
         .ok_or_else(too_large)?;
-    let width = columns
-        .checked_mul(strip.cell_width)
-        .ok_or_else(too_large)?;
-    let height = u32::try_from(strip.rows.len())
+    let width = columns.checked_mul(look.cell_width).ok_or_else(too_large)?;
+    let height = u32::try_from(rows.len())
         .ok()
-        .and_then(|rows| rows.checked_mul(strip.cell_height))
+        .and_then(|count| count.checked_mul(look.cell_height))
         .ok_or_else(too_large)?;
     let frame = |pixels| RasterFrame {
         width,
         height,
-        rows: strip.rows.len(),
+        rows: rows.len(),
         columns,
         pixels,
     };
@@ -221,15 +289,14 @@ pub fn rasterise(strip: &Strip<'_>) -> Result<RasterFrame, RasterError> {
         return Ok(frame(Vec::new()));
     }
     let mut pixmap = Pixmap::new(width, height).ok_or_else(too_large)?;
-    let pen = Pen::new(strip);
+    let pen = Pen::new(look, rows, lift);
     // Edges column by column down the whole strip, so a lane passing
     // straight through many rows is one stroke, not one per row. Within any
     // one band the order is unchanged (columns left to right), and edges
     // stay confined to their band, so the pixels are the per-row drawing's.
-    let widest = strip
-        .rows
+    let widest = rows
         .iter()
-        .map(|raster_row| raster_row.row.lanes.len())
+        .map(|inked| inked.row.lanes.len())
         .max()
         .unwrap_or(0);
     for column in 0..widest {
@@ -237,12 +304,12 @@ pub fn rasterise(strip: &Strip<'_>) -> Result<RasterFrame, RasterError> {
     }
     // Then what sits on each row's node: its lane's own stubs, a folded
     // edge's tail, the rail, the node disc punched over the edges.
-    for (index, raster_row) in strip.rows.iter().enumerate() {
+    for (index, inked) in rows.iter().enumerate() {
         let above = match index.checked_sub(1) {
-            Some(previous) => Some(strip.rows[previous].row),
-            None => strip.above,
+            Some(previous) => Some(rows[previous].row),
+            None => look.above,
         };
-        pen.row(&mut pixmap, index, raster_row, above);
+        pen.row(&mut pixmap, index, inked, above);
     }
     Ok(frame(pixmap.take()))
 }
@@ -265,7 +332,11 @@ struct Ink {
 
 /// The strip's fixed geometry, shared by every row.
 struct Pen<'a> {
-    strip: &'a Strip<'a>,
+    look: &'a Look<'a>,
+    rows: &'a [Inked<'a>],
+    /// The backdrop's alpha under an emphasis layer; `None` for a whole
+    /// strip (see [`paint`]).
+    lift: Option<f32>,
     cell_width: f32,
     cell_height: f32,
     stroke: f32,
