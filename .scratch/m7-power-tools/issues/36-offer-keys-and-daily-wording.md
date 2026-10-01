@@ -178,3 +178,10 @@ m5-hints-*, m5-ui-banner-conflict-*, m5-ui-confirm/credential-over-graph-*, m5-u
 - Row count: `graph_rows` unchanged per state (`the_line_costs_a_graph_row_while_shown` green).
 - History place `B`, resolver `B`: their tests green in the full run.
 - Keymap doc: not edited (conductor). Journal/undo: none.
+
+### Round 2 (conductor, after 37/38 merged)
+- Merged main 78fb7bef: only conflicts were `m5-ui-preview-scrolled-{80x24,160x48}` captures; took main's, then re-taken by their tests.
+- `m7_walk/picker.rs` (granted): dropped the `no commit-graph file: history sorts` assert in `empty_query_box` — since :778 a fixture's fast sort raises no offer, so the row is not there to stay whole. `switch_back` green; its capture re-taken (ⓘ gone).
+- set-aside-preview captures (`m6_stash_put_back.rs`): re-run under GRAFT_UPDATE_SHOTS; none changed — already matching after the merge. All m6_stash_put_back tests green.
+- **lane_cap: not resolved within the ruling.** Red with fixture unchanged (`with the pane 0, without it 0`). Tried, all still 0/0: topics 14/24/30 × COLUMNS 100/120/140/180/220 (script runs, 2026-10-01). Cause: at 24 rows ~11 lanes are on screen and every one has a node on screen, which `Fold::plan` never hides; the old `+1 lanes` came from the ⓘ marker column eating width. Width and lane count cannot make a pass-through lane. Needs a fixture change outside the ruling — e.g. all topic commits first, then all merges, so the top rows open lanes whose nodes are below the screen. Fixture and `m5-lane-cap-160x24.txt` left at HEAD; both lane_cap tests red.
+- Gates: fmt, clippy, doctests pass; nextest 5047/5049 (2 lane_cap red).

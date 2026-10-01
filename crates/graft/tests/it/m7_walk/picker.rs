@@ -202,11 +202,6 @@ fn empty_query_box(state: &AppState) {
         rows.first().is_some_and(|row| row.contains("feature-a")),
         "`↩ before  feature-a` first:\n{text}"
     );
-    assert!(
-        text.lines()
-            .any(|line| line.starts_with(" no commit-graph file: history sorts")),
-        "the box leaves the footer's notice row whole:\n{text}"
-    );
     for words in [
         "built on main",
         "tracks origin/main",
