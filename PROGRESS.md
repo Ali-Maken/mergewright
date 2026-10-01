@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M7 pipeline step 5, rev 2 (2026-09-26).** M6 closed: 86, 87 merged, gates 3529 passed (9034b792). User trying `python3 prototypes/m7-power-tools/power.py` (rev 2: blame, history, journal). Planner pass 2a (specs for G-rewrite, G-editor, G-stops, G-daily, G-perf, G-pick, G-small) running; G-blame/G-history/G-list/G-accept wait on his rev-2 findings. Logs: `docs/log/m7.md`.
+**Current step:** **M7 CHECKPOINT (2026-10-01).** All M7 tickets + review fixes 36–40 merged; acceptance rc 0, 0 drift; gates 5061 passed (1094d198). Waiting on the user: by-eye captures, question batch, M7 judged on real use (ADR-0030). Next: M8 prior art + design pass on `continue`. Logs: `docs/log/m7.md`.
 
 **Running now:** nothing.
 

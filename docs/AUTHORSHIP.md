@@ -490,7 +490,7 @@ Totals: **3 Critical, 33 Major, 127 Minor**, across 807 counted tool uses. Major
 
 ### M6 look-and-finish, usability fixes, stash put-back (tickets 47–86)
 
-This stretch follows the 46 checkpoint (m6:321), starts from the first whole-app usability walk (m6:325), and ends with ticket 85 merged (m6:487). Ticket 86 is not built: it waits for the user's yes on the stash preview (m6:485). Ticket 62 was not built either: the user chose the built behaviour (m6:393). Counts are as logged. "Cumulative" or "total" in the log means one count across that ticket's runs; this file does not add those runs together a second time.
+This stretch follows the 46 checkpoint (m6:321), starts from the first whole-app usability walk (m6:325), and ends with ticket 85 merged (m6:487). Ticket 86 waited for the user's yes on the stash preview (m6:485); it was built after the checkpoint, below (m6:489–499). Ticket 62 was not built either: the user chose the built behaviour (m6:393). Counts are as logged. "Cumulative" or "total" in the log means one count across that ticket's runs; this file does not add those runs together a second time.
 
 | Role | Model | Detail |
 |---|---|---|
@@ -570,3 +570,62 @@ Totals: **1 Critical, 40 Major, 113 Minor**, across 1126 tool uses.
 Other counted helpers in this stretch: planner-fable **755** (71 and 70 spec fixes not counted); scouts **295** (70 and 72 not counted); researcher **219** (two runs not counted).
 
 **M6 whole milestone, counted builder tool uses as logged:** groups ≈ 3432 (m6:152) + tickets 09–46 3968 + tickets 47–85 6587 ≈ **13 987**. This sum is this file's, not the log's; the uncounted runs listed in each section are not included.
+
+### M6 close (tickets 86–87)
+
+After the M6 checkpoint the user answered "86 yes · looks fine · M7 go" (m6:489).
+
+| Ticket | Agent (model) | As logged | Tool uses |
+|---|---|---|---|
+| 86 scout | scout (Opus low) | 4 mismatches, resolved in the builder prompt (m6:492) | 17 |
+| 86 | builder-opus | 8/8 ticks named, **COMPACTED**, merged `f68f0857` (m6:494) | 205 |
+| 86 review | reviewer | 0 / 2 / 7; 25/27 ticks checked, 25 held; release perf 13/13 (m6:497) | 65 |
+| 87 (review fix) | builder-opus | 5/5 ticks named, merged `9034b792` (m6:498) | 131 |
+
+Last M6 gate line: 3529 passed, 1 skipped; "M6 closed" (m6:499). The AUTHORSHIP regen at the checkpoint was a researcher run of 9 tool uses (m6:488).
+
+## M7 Power tools
+
+Start `942c0a5a` (m7:23). Last gate line: 5061 passed, 7 skipped, after the acceptance merge `a9d2cf5f` (m7:541). Tool-use counts are the harness's, as logged in `docs/log/m7.md` (cited `m7:<line>`). Where the log gives a figure "cumulative" or "total" across runs, this file uses it once. "No count" means the log gives none.
+
+**Models.** The M7 log names agents, not models. Their models are the ones set during M6 (m6:79, m6:85): `builder-opus` is Opus medium, `builder-sonnet` is Opus low (a tier label), `builder-fable` and `planner-fable` are Opus high, `builder-opus-xhigh` is Opus xhigh, `scout` and `researcher` are Opus low. The log does not name the reviewer's or debugger's model for M7.
+
+| Role | Agent | Detail |
+|---|---|---|
+| Prior art | researcher | 5 studies: blame/line history 25, stacked branches 33, reflog 29, interactive rebase 36, branch compare/submodules 35 (m7:8–12). |
+| Prototype | builder-opus | Scenes 1–5, 44 (m7:16); rev 2, 50, merged `ca3f6e7a` (m7:21). The user walked both (m7:17, m7:21). |
+| Designed | planner-fable | Pass 1 50, note `ab516e96`, ADR-0046/0047 (m7:14); pass 1b 34 (m7:19); pass 2a 121, 17 specs, design `942c0a5a` (m7:22); pass 2b 31 after resume, 9 specs 18–26 (m7:42). |
+| Specified | planner-fable; conductor | The conductor filed 01–17 (m7:22). planner-fable wrote every respec, ruling and fix-ticket spec after that: 9 runs with no count, the rest **1614** counted in all (this file's sum over the log's lines). ADRs drafted or amended by these passes: 0048 (m7:100, m7:104), 0049 (m7:133), 0050 (m7:141), 0051 (m7:277), 0052 (m7:466). |
+| Scouts | scout | 316 counted; 11 runs with no count (17, 05 second run, 16b, 10b, 11 first run, 09, 21, 07, 24, 07d, rebase-keeps-drops). Many found the ticket's premises wrong, which sent the ticket back to the planner (e.g. m7:37, m7:95, m7:98, m7:247, m7:519, m7:529). |
+| Researcher (docs, rows) | researcher | 245 counted (5 prior-art studies and 7 doc runs); 2 runs with no count (m7:380, m7:418). It refused KNOWN_GAPS edits twice, by its definition (m7:199, m7:535). |
+| Debugger | debugger | 6 runs, 525: M7/02b + M7/04b 92 (m7:62); M7/ⓘ 79 (m7:155); 12g blocked 68 (m7:272); oracle-flake 56, not reproduced (m7:468); 12g 46 (m7:484); 30v 184 (m7:503). |
+| Built | builder-opus, builder-sonnet, builder-fable, builder-opus-xhigh | 140 counted builder entries, **16 203** tool uses, mean ≈ 116 per entry (this file's sum). Fable built 02a, 02b, 22, 22b, 26, 26b, and the post-fix acceptance and caption passes. Opus xhigh built 30q-a, 30q-b, 30r, 30s and 30w. Sonnet-tier: 17, 25, 25b, 10a, 20a, 20c, 20d, 22c, 18c, 18d, 06d, 32b, 12f, 33b, 14a, 14b, 20l, 33c, 34, 30d, 14, 20j, 10c, 01b, 30f, 20o, 30g, 30i, 21c, 30h, 30e, 07c, 30l, 24-0, 30m, 30p-c, 30q-c, 30t, 30t-b, 30u, 30w-b, 36, 39, 40. The rest are builder-opus. |
+| Reviewed | reviewer | 30 reviews and walks (usability walk included), listed below; 28 counted, **2378**. Two have no count: 10..07c (m7:417) and 30p–30w, which stalled in fuzz (m7:517). |
+
+**Not counted among builders:** 04b before the network cut (m7:35), the 10b resumed run (m7:352), 24-a's verify-first stop (m7:430), 30p-a's two stalled runs ("tools n/a", m7:464), and 14's first stop of 11 (m7:282). For 14 (m7:296), 16 (m7:313) and 21b (m7:362), the log does not say whether the final figure covers earlier runs; this file takes it as cumulative.
+
+**Model differences between spec and log:** 06f and 33 were specified Sonnet (m7:222, m7:213) and logged as builder-opus (m7:235, m7:236). 16b was dispatched as builder-sonnet (m7:318) and logged done as builder-opus (m7:344). The log gives no reason for any of the three.
+
+**Compacted:** 02a, 02b, 18, 12 part A, 22, 12c, 20b, 20 (in orientation), 20e (×2), 30, 18e, 20i, 30c, 14, 05, 13b, 10b, 21 (×2), 21b, 09 (×2), 03b, 30j, 10 (second run), 07b, 11, 07c, 08-a, 07d, 08-b, 24-a, 24-b, 30o-b, 30q-a, 30r, 26, 30s. Splits after a compaction: 02a → 02b; 12 A → 12b, 12c; 12c → 12d, 12e; 22 → 22b; 20 → 20e, 20f; 20e → 20g; 30 → 30b; 20i → 20k; 30c → 30d; 05 → 05b; 21 → 21b, 21c; 09 → 09b; 07c → 07d; 24-a → remainder; 26 → 30s, 30t, 30u, 30v, 26b (m7:30–493).
+
+**Reviews** (reviewer). Figures are Critical / Major / Minor.
+- 02: 106 tool uses, 0 / 3 / 11; 48/48 held (m7:59). 04: 53, 0 / 3 / 11; 9/9 (m7:64).
+- 22-23: 89, **1** / 4 / 9; 30/30 (m7:118). 18+19+27+10a: 95, 0 / 4 / 14; 30/30 (m7:129).
+- 06 absorb: 76, **1** / 8 / 11; 3/3 (m7:150). 28a+28b: 70, 0 / 3 / 6; 13/13 (m7:174).
+- 06b: 56, **2** / 3 / 6; 5/5 (m7:178). 06c: 78, 0 / 3 / 6; 6/6 (m7:190).
+- 28c+31: 61, 0 / 0 / 6; 12/12 (m7:198). 20e+20g: 78, 0 / 4 / 9; 11/11 (m7:206).
+- 18b+18c+18d: 85, 0 / 1 / 7; 20/22 checked, 20 held (m7:208). 30+30b+06d: 92, 0 / 1 / 8; 16/16 (m7:215).
+- 06e+20h: 64, 0 / 1 / 4; 13/14 checked held (m7:219). 18e+20f: 78, 0 / 2 / 8; 12/12 (m7:224).
+- 32+20i+merge fix: 62, 0 / 1 / 5; 27/27 (m7:226). 20a+20b+23b: 82, 0 / 1 / 3; 13/13 (m7:228).
+- 12 A–D: 94, 0 / 3 / 5; 23/23 (m7:241). 18f/06f/33/32b: 74, 0 / 2 / 6; 26/26 (m7:250).
+- 20k..20l: 70, 0 / 2 / 7; 39/39 (m7:263). 33c..34: 95, 0 / 1 / 5; 19/19 (m7:283).
+- 30c..10c: 106, 0 / 2 / 7; 29/29 (m7:306). 01a..20o: 97, 0 / 3 / 11; 12/12 by assertion (m7:343).
+- 16b..21b: 98, 0 / 3 / 12; 27/27 (m7:369). 09..21c: 131, 0 / 2 / 15; 29/29 (m7:395).
+- 10..07c: no count, 0 / 4 / 9; 17/17 (m7:417). 08..rebase-keeps-drops: 107, 0 / 3 / 11; 28/28 (m7:436).
+- 24..30n: 99, **1** / 4 / 14; 21 checked, 20 held. The Critical is a false tick on 24-b's walks (m7:447).
+- 30m..30o: 69, 0 / 3 / 7; 18/18 (m7:456).
+- Usability walk: 113, 0 / 6 / 9, plus 2 questions (m7:516). 30p–30w: no count, 0 / 3 / 6; 27/27 (m7:517).
+
+Totals (this file's sums): **5 Critical, 83 Major, 248 Minor** across 30 reviews and walks. Release perf run at the milestone review: 17/17 passed, worst p99 10.6 ms (m7:490).
+
+**Acceptance:** 26 (builder-fable) partial, 243, COMPACTED (m7:492); 26b partial 88 (m7:508), finished 24, `scripts/m7-accept.sh` rc 0, 29/29 journeys within count (m7:514). After review fixes 36–40, the re-run drifted on 9 of 13 pty runs; every changed line was traced to 36, 37 or 40 and re-taken, 51 + 81 (m7:538–540).
