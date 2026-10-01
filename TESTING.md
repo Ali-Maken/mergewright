@@ -404,6 +404,8 @@ before its rows arrived. Raw output: `target/64/{unicode,pixel}-run{1,2,3}.txt`.
 | `synthetic-100000-no-commit-graph-<hex>/` | PROMPT.md §7.1's 100k-commit repository | The heavy tier | 35 MiB, 2.1 s |
 | `synthetic-5000-realistic-no-commit-graph-<hex>/` | The realistic-commit variant's correctness fixture | The heavy tier | about 2 MiB |
 | `synthetic-100000-realistic-{no-,}commit-graph-<hex>/` | The 100k history with commit objects sized after git/git (m1/27d), for the memory budget | The heavy tier | 40 / 46 MiB |
+| `team-400-<hex>/` | `team::TeamSpec::SMALL`: a team monorepo's shape — `main` advancing by merges of short feature branches, ~10 open at once (m7/41) | The fast tier, automatically | 0.20 MiB, 0.11 s |
+| `team-17700-<hex>/` | `team::TeamSpec::MONOREPO`: the same shape at his scale — 17 700 commits, ~20 open, 1 330 packed refs, split commit-graph (m7/41) | The heavy tier | 20.2 MiB, 8–16 s |
 
 The hex is a digest of the generator's own source. Change the generator
 and the next run builds into a directory that does not exist yet, so

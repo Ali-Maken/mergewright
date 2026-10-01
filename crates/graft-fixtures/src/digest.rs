@@ -74,6 +74,28 @@ pub fn synthetic_key(scale: &str) -> Result<String, GitError> {
     Ok(format!("{hash:016x}"))
 }
 
+/// The sources that decide what the team-shaped history contains
+/// (m7-power-tools/41). Not heavy-gated: the fast tier borrows `SMALL`.
+const TEAM: &[&str] = &[
+    include_str!("team.rs"),
+    include_str!("stream.rs"),
+    include_str!("git.rs"),
+    include_str!("cache.rs"),
+    include_str!("permissions.rs"),
+];
+
+/// The team repository's cache key, folding in every field of its spec.
+pub(crate) fn team_key(spec: &crate::team::TeamSpec) -> Result<String, GitError> {
+    let mut hash = FNV_OFFSET;
+    for source in TEAM {
+        hash = fold(hash, source.as_bytes());
+    }
+    hash = fold(hash, LAYOUT_VERSION.as_bytes());
+    hash = fold(hash, format!("{spec:?}").as_bytes());
+    hash = fold(hash, git::version()?.as_bytes());
+    Ok(format!("{hash:016x}"))
+}
+
 const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
 

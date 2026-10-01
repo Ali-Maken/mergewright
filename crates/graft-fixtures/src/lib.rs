@@ -79,6 +79,7 @@ mod shapes;
 mod stream;
 #[cfg(feature = "heavy-tests")]
 pub mod synthetic;
+pub mod team;
 mod tier;
 
 use std::path::PathBuf;
@@ -94,6 +95,7 @@ pub use scratch::Scratch;
 pub use shape::Shape;
 #[cfg(feature = "heavy-tests")]
 pub use synthetic::{CommitGraph, Scale};
+pub use team::{RefMix, TeamError, TeamSpec, TeamStats};
 pub use tier::proptest_cases;
 
 /// The instant every corpus snapshot and gallery stop is viewed at, Unix
