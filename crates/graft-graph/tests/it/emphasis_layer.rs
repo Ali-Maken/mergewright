@@ -18,7 +18,7 @@ use graft_core::raster::RasterFrame;
 use graft_graph::ancestry::{Ancestry, Kin};
 use graft_graph::fold::Toward;
 use graft_graph::identity::BranchIdentity;
-use graft_graph::raster::cache::{STRIP_ROWS, lit_hash};
+use graft_graph::raster::cache::{STRIP_ROWS, StripCache, lit_hash};
 use graft_graph::raster::{
     Backdrop, Emphasis, Emphasised, Lit, Marker, PlainRow, PlainStrip, RasterRow, Ring, Selection,
     Strip, Stub, composite, rasterise, rasterise_backdrop, rasterise_emphasis,
@@ -459,6 +459,124 @@ fn an_empty_thread_is_not_no_thread() {
             "{backdrop:?}: Some(∅) and None paint alike"
         );
     }
+}
+
+/// `lit_hash` leaves a threaded row's own emphasis out (cache.rs `lit_hash`,
+/// as 30b's `layout_hash`). That is sound only if, under `Some(thread)`, the
+/// emphasis reaches no pixel of the emphasis pass or the composite — else a
+/// Focus kin change would be a wrong cache hit. Flipping it on one threaded
+/// row (its own lit set, and `Some(∅)`) must leave the hash and the emphasis
+/// bytes alike, and `StripCache::composited` for the flipped selection —
+/// drawn or a hit under the shared key — must equal the unflipped selection
+/// drawn directly. On a `thread: None` row the same flip must change the
+/// hash. The first row is always one of the flipped rows: its incoming edges
+/// come from the row above and take the first row's paint.
+#[test]
+fn a_threaded_rows_emphasis_draws_nothing() {
+    let window = branchy();
+    let threads = window.threads();
+    let cases: Vec<(Range<usize>, Backdrop)> = window
+        .strips()
+        .into_iter()
+        .flat_map(|range| [Backdrop::OffThread, Backdrop::Faded].map(|b| (range.clone(), b)))
+        .collect();
+    // One thread per (strip, backdrop): every cursor of the window in each.
+    let non_empty_flips: usize = std::thread::scope(|scope| {
+        let workers: Vec<_> = cases
+            .iter()
+            .map(|(range, backdrop)| {
+                let (window, threads) = (&window, &threads);
+                scope.spawn(move || flip_every_cursor(window, threads, range, *backdrop))
+            })
+            .collect();
+        workers
+            .into_iter()
+            .map(|worker| {
+                worker
+                    .join()
+                    .unwrap_or_else(|why| std::panic::resume_unwind(why))
+            })
+            .sum()
+    });
+    assert!(non_empty_flips > 0, "no flip was on a non-empty thread set");
+}
+
+/// The other emphasis.
+fn flipped(emphasis: Emphasis) -> Emphasis {
+    match emphasis {
+        Emphasis::Normal => Emphasis::Dimmed,
+        Emphasis::Dimmed => Emphasis::Normal,
+    }
+}
+
+/// `a_threaded_rows_emphasis_draws_nothing` over one strip and backdrop,
+/// every cursor. Returns how many flips were on a non-empty thread set.
+fn flip_every_cursor(
+    window: &Window,
+    threads: &[Ancestry],
+    range: &Range<usize>,
+    backdrop: Backdrop,
+) -> usize {
+    let plain = window.plain(range.clone());
+    let strip = window.strip(&plain, range, CELL);
+    let under = backdrop_of(&strip, backdrop);
+    let mut cache = StripCache::new(STRIP_ROWS, 4 * threads.len());
+    let empty = BTreeSet::new();
+    let hash = |rows: &[Lit<'_>]| lit_hash(&Selection { rows, backdrop });
+    let mut non_empty_flips = 0;
+    for (cursor, thread) in threads.iter().enumerate() {
+        let base = lits(thread, range.clone(), backdrop);
+        let base_emphasis = emphasis_of(&strip, &base, backdrop);
+        let middle = (cursor + 7) % base.len();
+        for row in [0, middle] {
+            for set in [base[row].thread, Some(&empty)] {
+                let mut before = base.clone();
+                before[row].thread = set;
+                let mut after = before.clone();
+                after[row].emphasis = flipped(before[row].emphasis);
+                if set.is_some_and(|set| !set.is_empty()) {
+                    non_empty_flips += 1;
+                }
+                let case =
+                    format!("strip {range:?}, cursor {cursor}, {backdrop:?}, row {row}, {set:?}");
+                assert_eq!(hash(&before), hash(&after), "{case}: lit_hash moved");
+                let before_emphasis = if before == base {
+                    base_emphasis.clone()
+                } else {
+                    emphasis_of(&strip, &before, backdrop)
+                };
+                assert_eq!(
+                    before_emphasis,
+                    emphasis_of(&strip, &after, backdrop),
+                    "{case}: emphasis bytes moved"
+                );
+                let cached = cache
+                    .composited(
+                        range.start,
+                        &strip,
+                        &Selection {
+                            rows: &after,
+                            backdrop,
+                        },
+                    )
+                    .unwrap_or_else(|why| panic!("{case}: composited: {why}"));
+                assert!(
+                    *cached == composed(&under, before_emphasis.as_ref()),
+                    "{case}: composited bytes moved"
+                );
+            }
+        }
+        let mut unthreaded = base.clone();
+        unthreaded[middle].thread = None;
+        let mut unthreaded_flipped = unthreaded.clone();
+        unthreaded_flipped[middle].emphasis = flipped(unthreaded[middle].emphasis);
+        assert_ne!(
+            hash(&unthreaded),
+            hash(&unthreaded_flipped),
+            "strip {range:?}, cursor {cursor}, {backdrop:?}: a None row's emphasis left the hash"
+        );
+    }
+    non_empty_flips
 }
 
 #[test]

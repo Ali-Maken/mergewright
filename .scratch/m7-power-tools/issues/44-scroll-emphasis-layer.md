@@ -113,7 +113,9 @@ impl StripCache {
     pub fn contains_backdrop(&self, first_row: usize, strip: &PlainStrip<'_>, backdrop: Backdrop) -> bool;
 }
 pub fn plain_layout_hash(strip: &PlainStrip<'_>) -> u64;
-/// Hash of `sel.backdrop` and every `Lit` in order (derived `Hash`: emphasis, thread presence, thread set).
+/// Hash of `sel.backdrop`, the row count, and per `Lit` in order: whether it has a thread, then the thread set if
+/// `Some` (`Some(∅)` included), else its emphasis. A threaded row's emphasis is left out: it draws nothing
+/// (`emphasis_layer::a_threaded_rows_emphasis_draws_nothing`; planner ruling 2026-10-01 item 1).
 pub fn lit_hash(sel: &Selection<'_>) -> u64;
 // CacheStats gains: emphasis_rasterised, emphasis_hits (u64)
 ```
@@ -217,3 +219,62 @@ only `strip_stats()` readers (`graft/src/event_loop/graphics.rs:239`, its tests)
 `RasterError::Selection` new variant — no exhaustive match outside graft-graph (workspace clippy/build green);
 `RasterRow::alpha_at` removed — it was private (`raster.rs:130` at HEAD), moved to `Lit::alpha_at`; `ancestry` read only;
 `core::RasterFrame` read only.
+
+## Planner ruling 2026-10-01 (44 return)
+
+**Returned for one test and one grep before merge** (item 1). Items 2 and 3 need nothing more from 44.
+Build with: Sonnet — one test over existing helpers, no design. Same worktree, same file set.
+
+1. **`lit_hash` deviation (NOTES 2): kept provisionally; not yet settled by a line.** The argument holds only if,
+   under `Some(thread)`, a row's `emphasis` reaches pixels **solely** through `Lit::alpha_at` (moved from
+   `raster.rs:130-135`, where `Some` ignores `emphasis`). The cited test pins the **legacy** `rasterise`, not
+   `rasterise_emphasis`/`composited`, which are what `lit_hash` keys. The shared `paint` may read `emphasis`
+   elsewhere (node ink, the first row's incoming edges, Decided 3). The planner reads no source, so this stays an
+   open question until shown. A wrong cache hit is possible exactly when that read exists. Before merge:
+   - [x] Paste `rg -n '\bemphasis\b' crates/graft-graph/src/raster.rs crates/graft-graph/src/raster/` and say, per
+         hit, that it is in `Lit::alpha_at`, `lit_hash`, a type or a doc. Any other read of a row's emphasis → stop.
+         — run 2026-10-01 at 80f604f3; 48 hits. Per hit:
+         - Module/use/docs/comments: `raster.rs:31,47,109,113,122,253,337`; `node.rs:74`; `pen.rs:38,56`;
+           `cache.rs:20,122,194,303,330,331,333,362,461,481,502,536,537`; `emphasis.rs:7,29,81,104,105,107,111,114,195,280,398,410`.
+         - Type fields: `raster.rs:110` (`RasterRow.emphasis`), `emphasis.rs:112` (`Lit.emphasis`).
+         - Constructions, not reads for paint: `raster.rs:127` (`RasterRow::plain`), `raster.rs:140`
+           (`RasterRow::inked` copies the field into its `Lit`), `emphasis.rs:69,73` (`Backdrop::paint`).
+         - Method names, not the field: `cache.rs:306` (`fn emphasis`), `cache.rs:349` (`self.emphasis(...)`).
+         - Hashes: `cache.rs:507` (legacy `layout_hash`, `None` arm), `cache.rs:547` (`lit_hash`, `None` arm).
+         - Reads: `emphasis.rs:125` `Lit::alpha_at`, `None` arm. **Two more reads not on the ruling's list:**
+           `emphasis.rs:135` `Lit::rail_alpha` and `emphasis.rs:144` `Lit::peak`. Both are `Lit` methods. Both read
+           `emphasis` **only when `thread` is `None`**, under the same guard as `alpha_at`: `rail_alpha` returns
+           `OFF_THREAD_ALPHA` when `is_some()` (`:132-133`), and `peak` matches `Some(_)` first (`:142-143`).
+           Every pen read goes through these three. `rg '\.lit|alpha_at|rail_alpha|peak'` lists them:
+           `pen.rs:111,152,253` (`alpha_at`), `pen.rs:295` (`rail_alpha`), `emphasis.rs:247` (`peak`),
+           and `emphasis.rs:297,305,310` (`lit_reach`: `alpha_at`/`rail_alpha`). `node.rs` takes an `Ink` and never
+           sees a `Lit`. Taken as passing, because no read happens under `Some`. Conductor: overrule if the list
+           was meant literally.
+   - [x] `emphasis_layer::a_threaded_rows_emphasis_draws_nothing`: branchy window, every strip × every cursor (8×16)
+         × `{OffThread, Faded}`. Flipping one threaded row's emphasis (`Some(non-empty)` and `Some(∅)`) between
+         `Normal` and `Dimmed` leaves `lit_hash` equal and the `rasterise_emphasis` and `StripCache::composited`
+         bytes identical. The same flip on a `thread: None` row changes `lit_hash`.
+         — `emphasis_layer::a_threaded_rows_emphasis_draws_nothing`, green, 12 s debug. It flips row 0, for the
+         incoming edges from above, and row `(cursor+7) % 32` of every case.
+         - `composited` comes from one long-lived cache per (strip, backdrop). It is compared with the unflipped
+           selection drawn directly, so a hit under the shared key is checked too.
+         - **Red first:** it could not fail against the code as built, since the property already held. Checked
+           against a mutation instead: `rail_alpha` returned `OFF_THREAD_ALPHA.max(emphasis.alpha())` under `Some`.
+           That failed at once (the emphasis-bytes assert, `emphasis_layer.rs:551` after fmt; "strip 0..32, cursor 0, OffThread, row 0, Some({0, 1}):
+           emphasis bytes moved"). The mutation was reverted; `git diff` shows `emphasis.rs` clean.
+         **Result: both green, so the deviation stands.** The signature comment for `lit_hash` (above) now says what
+         it hashes; the `cache.rs` doc already did (`:536-537`).
+   Either one fails → revert to the derived `Hash` (the signature comment). Both green → the deviation stands; fix
+   the `lit_hash` doc comment in the signature block to say what it hashes.
+2. **Stash-only dimming (NOTES 1): confirmed as a gap, fixed in 46.** The backdrop becomes the lowest alpha the
+   frame's `Lit`s can produce (`Backdrop::lowest`). That also settles NOTES 3: Focus with a thread → `OffThread`.
+   `Backdrop::of` is deleted in 46. Nothing to do here.
+3. **Cost (NOTES 4): acceptable. 44 changes nothing.** The tail is bytes-bound, not CPU-bound
+   (`docs/perf/scroll-lag-big-repo.txt`): text profile tail 2 ms (`:45`) but 3325 ms when only the byte rate is cut
+   (`:53`); Kitty sends 7.0 MB/key, 190 MB after release, 1261 ms tail (`:49`); pixel draw p99 11.1 ms (`:26`),
+   under the 33 ms key period. The worst emphasis case adds 471 µs p99 per re-drawn strip (5453 vs 4982), about
+   1.5 ms a frame over ~3 strips. That stays under the period, and p50 drops 4521 → 792. Bytes: a near-full emphasis
+   is mostly transparent, so deflate (45) takes it far below a strip. **Open:** without `o=z`, a wide thread
+   re-sends about one strip's worth of bytes per changed strip, close to today. On iTerm2, emphasis + composite p99
+   is about 7.8 ms against 5.0 ms (`44-scroll-emphasis-layer.txt:14-15`). 46 measures both; the held-key gate
+   judges them (46's ruling).
