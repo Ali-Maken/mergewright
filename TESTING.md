@@ -183,8 +183,8 @@ beside it). The in-memory sink above has no back-pressure, which is why the
 `frames::` gate never saw this. Every time runs from the **last key's
 arrival** (its send): a key release never reaches the loop, so this is at
 least as strict as "after I let go". One `SUMMARY held_key` line per tier
-and scenario: `frames_after_release` (frames drawn after the last `j`),
-`tail_ms` (last `j` → the terminal swallowing the last frame),
+and scenario: `frames_after_release` (frames drawn after the last `j`; in B, up to `J`'s frame),
+`tail_ms` (last `j` → the terminal swallowing the last frame; in B, up to `J`'s frame),
 `bytes_per_frame_held`, `strip_transmits_held` / `emphasis_transmits_held`
 (Kitty transmits split by image id bit 31), `rows_scrolled`, and in B `j_ms`
 (`J` → the terminal reaching the journal frame's first byte), `j_done_ms`

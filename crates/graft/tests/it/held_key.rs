@@ -14,6 +14,8 @@
 //! the Unicode tier green, 46 the pixel tier. Counts fail in every build;
 //! times only in release (ADR-0021). Run by `scripts/fix-scroll-held-key.sh`.
 
+include!("held_key_bound.rs");
+
 use std::collections::BTreeSet;
 use std::sync::Mutex;
 use std::sync::mpsc::{self, Receiver};
@@ -33,7 +35,7 @@ use graft_graph::Ancestry;
 use crate::drain_sink::DrainSink;
 use crate::frame_trace::{KeyFeed, Post, Posted};
 use crate::frames::Refs;
-use crate::frames::paced::{Kind, Paced, Watching};
+use crate::frames::paced::{Handed, Kind, Paced, Watching};
 use crate::frames::run::{capabilities, in_memory, ready_to_scroll_at};
 use crate::frames::sink::Sink;
 
@@ -344,10 +346,17 @@ fn read<D>(
             let end = end_of(k).ok_or("a held frame with no end offset")?;
             held_bytes += end - written[k];
             held_end = end;
-        } else {
-            reading.frames_after_release += 1;
         }
     }
+    // After release: in B only the frames before `J`'s (42 §Planner correction).
+    let js_frame = if journal {
+        Some(js_frame_index(handed)?)
+    } else {
+        None
+    };
+    let draws: Vec<_> = handed.iter().map(Handed::drawn_at).collect();
+    let (after, tail_end) = after_release(&draws, last_j, js_frame);
+    reading.frames_after_release = after;
     reading.bytes_per_frame_held = held_bytes / reading.frames_while_held.max(1) as u64;
     for transmit in drain.kitty_transmits() {
         if transmit.offset >= held_end {
@@ -360,11 +369,16 @@ fn read<D>(
         }
     }
 
-    // Tail: last j sent → the drain passing the last frame's last byte.
-    let last_byte = written.last().copied().unwrap_or(0);
+    // Tail: last j sent → the drain passing the last counted frame's last
+    // byte (A: the last frame; B with none counted: `J`'s first byte).
+    let tail_byte = match tail_end {
+        TailEnd::LastByte => written.last().copied().unwrap_or(0),
+        TailEnd::Frame(k) => end_of(k).ok_or("a counted frame with no end offset")?,
+        TailEnd::JsFirstByte => written[js_frame.ok_or("no J frame")?] + 1,
+    };
     let drained = drain
-        .drained_at(last_byte)
-        .ok_or("the drain never passed the last frame")?;
+        .drained_at(tail_byte)
+        .ok_or("the drain never passed the tail's last byte")?;
     reading.tail_ms = ms(last_j, drained);
 
     if journal {
@@ -372,6 +386,14 @@ fn read<D>(
     }
     replay(wakes, initial, &mut reading);
     Ok(reading)
+}
+
+/// Scenario B: the index of `J`'s frame in `handed`.
+fn js_frame_index(handed: &[Handed]) -> Result<usize, String> {
+    handed
+        .iter()
+        .position(|frame| matches!(frame.kind, Kind::Key(key, _) if key == HELD))
+        .ok_or_else(|| "J was never handed to the loop".to_string())
 }
 
 /// Scenario B: `J`'s frame — when its first and last byte drained, and the
@@ -385,10 +407,7 @@ fn journal_frame<D>(
 ) -> Result<(), String> {
     let handed = &wakes.handed;
     let j_sent = stamps.get(HELD).ok_or("no stamp for J")?.at;
-    let k = handed
-        .iter()
-        .position(|frame| matches!(frame.kind, Kind::Key(key, _) if key == HELD))
-        .ok_or("J was never handed to the loop")?;
+    let k = js_frame_index(handed)?;
     let start = written[k] + 1;
     let end = *written.get(k + 1).ok_or("J's frame has no end offset")?;
     let first = drain.drained_at(start).ok_or("J's frame never drained")?;

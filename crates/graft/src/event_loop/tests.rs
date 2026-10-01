@@ -82,6 +82,17 @@ impl ScriptedWakes {
         Self::idle(wakes, Vec::new())
     }
 
+    /// Each wake after the first arrives only once the turn before it is
+    /// drawn: typed one at a time, so none joins the frame ahead of it
+    /// (m7-power-tools/43) and every one gets its own.
+    fn spaced(wakes: Vec<Wake>) -> Self {
+        let count = wakes.len();
+        let idle = std::iter::once(0)
+            .chain(std::iter::repeat_n(1, count.saturating_sub(1)))
+            .collect();
+        Self::idle(wakes, idle)
+    }
+
     fn idle(wakes: Vec<Wake>, idle: Vec<usize>) -> Self {
         Self {
             remaining: wakes.into_iter().peekable(),
@@ -108,8 +119,8 @@ impl Wakes for ScriptedWakes {
         }
     }
 
-    fn job_event_waiting(&mut self) -> bool {
-        self.waiting() && self.remaining.peek().is_some_and(is_job_event)
+    fn joining_waiting(&mut self) -> bool {
+        self.waiting() && self.remaining.peek().is_some_and(joins_frame)
     }
 }
 
@@ -182,7 +193,7 @@ fn pixel_run(wakes: Vec<Wake>, replies: Vec<Vec<u8>>) -> (Vec<String>, String) {
     let mut graphics = Graphics::new(ScriptedReplies(replies.into()));
     let exit = pump_with(
         &mut terminal,
-        &mut ScriptedWakes::new(wakes),
+        &mut ScriptedWakes::spaced(wakes),
         &Recorded::default(),
         &mut session,
         state,
@@ -352,7 +363,7 @@ fn forced_pixels_on_a_silent_terminal_attempt_kitty_and_f3_recovers() {
     let mut graphics = Graphics::new(NoReplies);
     pump_with(
         &mut terminal,
-        &mut ScriptedWakes::new(vec![key(KeyPress::plain(KeyCode::Function(3))), quit_key()]),
+        &mut ScriptedWakes::spaced(vec![key(KeyPress::plain(KeyCode::Function(3))), quit_key()]),
         &Recorded::default(),
         &mut session,
         state,
@@ -621,7 +632,7 @@ fn every_frame_is_wrapped_in_a_synchronized_update() {
     let (mut terminal, recorder) = terminal(20, 3);
     // One frame before the wait, one after the resize, and none after the
     // quit — three wakes, two frames.
-    let mut wakes = ScriptedWakes::new(vec![resized(20, 3), quit_key()]);
+    let mut wakes = ScriptedWakes::spaced(vec![resized(20, 3), quit_key()]);
 
     pump(
         &mut terminal,
@@ -671,24 +682,29 @@ fn frames_for(wakes: Vec<Wake>) -> usize {
 /// frame each was most of that key's wait.
 #[test]
 fn queued_wakes_draw_once() {
-    // The frame before the wait, then one for all three answers; the quit
-    // key ends the loop before its own.
+    // The frame before the wait, then one for all three answers. Focus does
+    // not join a frame (m7-power-tools/43), so the answers are drawn before
+    // it; the quit key then joins focus's turn and ends the loop before its
+    // frame.
     assert_eq!(
         frames_for(vec![
             job_failed(1),
             job_failed(2),
             job_failed(3),
+            focus_gained(),
             quit_key()
         ]),
         2
     );
 }
 
-/// A key is never folded into the answers ahead of it: they are drawn, then
-/// the key is drawn in its own pass, then the answers behind it again.
+/// A key queued among job answers joins their turn (m7-power-tools/43):
+/// everything queued is applied, then drawn once.
 #[test]
-fn a_key_behind_queued_wakes_is_drawn_in_its_own_pass() {
-    // Before the wait; answers 1-2; the unbound key; answer 3.
+fn a_key_behind_queued_wakes_joins_their_frame() {
+    // Every wake here joins (Decided 2): answers 1-2, the key, answer 3 and
+    // the quit are one turn, and the quit ends it before its draw (Decided
+    // 3). So only the frame before the wait is written.
     assert_eq!(
         frames_for(vec![
             job_failed(1),
@@ -697,8 +713,334 @@ fn a_key_behind_queued_wakes_is_drawn_in_its_own_pass() {
             job_failed(3),
             quit_key(),
         ]),
-        4
+        1
     );
+    // Without the quit the turn's one frame is drawn, and it shows the key:
+    // the state it was drawn from has the cursor moved.
+    let (frames, state, _) = run_on_history(vec![job_failed(1), job_failed(2), j(), job_failed(3)]);
+    assert_eq!(frames, 2, "the frame before the wait and the turn's one");
+    assert_eq!(cursor(&state), 1, "the jobs' frame shows the key");
+}
+
+fn focus_gained() -> Wake {
+    Wake::Event(AppEvent::Core(Event::FocusGained))
+}
+
+fn j() -> Wake {
+    key(KeyPress::plain(KeyCode::Char('j')))
+}
+
+fn mouse(kind: graft_core::event::MouseKind) -> Wake {
+    Wake::Event(AppEvent::Core(Event::Mouse(
+        graft_core::event::MouseInput {
+            kind,
+            column: 5,
+            row: 5,
+            modifiers: graft_core::event::Modifiers::default(),
+        },
+    )))
+}
+
+/// 100 commits on the graph screen at the text tiers, cursor on row 0.
+fn on_history() -> AppState {
+    AppState {
+        history: Some(crate::view::tests::history_of(100, 0)),
+        size: Size {
+            columns: 60,
+            rows: 30,
+        },
+        ..AppState::default()
+    }
+}
+
+fn cursor(state: &AppState) -> usize {
+    state.history.as_ref().expect("history stays").cursor
+}
+
+/// Runs the loop over `wakes` from `state`: frames written (the one before
+/// the first wait included), the state it ended on, how it ended.
+fn run_from(state: AppState, wakes: Vec<Wake>) -> (usize, AppState, Exit) {
+    let (mut terminal, recorder) = terminal(60, 30);
+    let (exit, state) = super::running::pump_keeping(
+        &mut terminal,
+        &mut ScriptedWakes::new(wakes),
+        &Recorded::default(),
+        &mut session(),
+        state,
+    );
+    let exit = exit.expect("writing to memory cannot fail");
+    (
+        recorder.written().matches("\u{1b}[?2026h").count(),
+        state,
+        exit,
+    )
+}
+
+fn run_on_history(wakes: Vec<Wake>) -> (usize, AppState, Exit) {
+    run_from(on_history(), wakes)
+}
+
+#[test]
+fn queued_keys_draw_once() {
+    let (frames, state, _) = run_on_history((0..20).map(|_| j()).collect());
+    assert_eq!(frames, 2, "the frame before the wait, then one for all 20");
+    assert_eq!(cursor(&state), 20);
+}
+
+#[test]
+fn a_resize_starts_its_own_turn() {
+    let (frames, state, _) = run_on_history(vec![j(), j(), resized(70, 25), j()]);
+    // Before the wait; `j j`; the resize, with the last `j` joining its turn.
+    assert_eq!(frames, 3);
+    assert_eq!(cursor(&state), 3);
+    assert_eq!(
+        state.size,
+        Size {
+            columns: 70,
+            rows: 25
+        }
+    );
+}
+
+#[test]
+fn a_click_waits_for_the_frame_he_saw() {
+    use graft_core::event::{MouseButton, MouseKind};
+    let (frames, _, _) = run_on_history(vec![
+        j(),
+        j(),
+        mouse(MouseKind::Down(MouseButton::Left)),
+        j(),
+    ]);
+    // Before the wait; `j j`; the click's own turn (the last `j` joins it).
+    // Had the click joined, there would be two.
+    assert_eq!(frames, 3);
+}
+
+#[test]
+fn a_wheel_joins_the_frame() {
+    use graft_core::event::MouseKind;
+    let (frames, _, _) = run_on_history(vec![j(), j(), mouse(MouseKind::ScrollDown), j()]);
+    assert_eq!(
+        frames, 2,
+        "the frame before the wait, then one for all four"
+    );
+}
+
+#[test]
+fn a_quit_ends_the_batch() {
+    let (mut wakes, sender) = ChannelWakes::new();
+    for wake in [j(), j(), quit_key(), j()] {
+        sender.send(wake).expect("receiver alive");
+    }
+    drop(sender);
+    let (mut terminal, recorder) = terminal(60, 30);
+    let (exit, _) = super::running::pump_keeping(
+        &mut terminal,
+        &mut wakes,
+        &Recorded::default(),
+        &mut session(),
+        on_history(),
+    );
+    assert!(matches!(exit, Ok(Exit::Quit)), "{exit:?}");
+    assert_eq!(
+        recorder.written().matches("\u{1b}[?2026h").count(),
+        1,
+        "only the frame before the wait: the turn ends on the quit, undrawn"
+    );
+    let unhandled = wakes.unhandled_input();
+    assert_eq!(
+        unhandled.len(),
+        1,
+        "the trailing `j` is kept: {unhandled:?}"
+    );
+}
+
+/// [`terminal`] over [`NoTty`]: one a handover can clear.
+fn no_tty_terminal(columns: u16, rows: u16) -> (Terminal<NoTty>, Recorder) {
+    let recorder = Recorder::default();
+    let size = ratatui::layout::Size::new(columns, rows);
+    let terminal = Terminal::with_options(
+        NoTty(CrosstermBackend::new(recorder.clone()), size),
+        TerminalOptions {
+            viewport: Viewport::Fixed(Rect::new(0, 0, columns, rows)),
+        },
+    )
+    .expect("a fixed viewport never asks the backend for its size");
+    (terminal, recorder)
+}
+
+#[test]
+fn every_handover_ends_the_batch() {
+    use std::path::PathBuf;
+    let handovers = [
+        Command::EditCommitMessage {
+            id: graft_core::job::JobId::new(1),
+            message: "m".to_owned(),
+        },
+        Command::OpenExternalEditor {
+            path: PathBuf::from("a"),
+            line: None,
+        },
+        Command::OpenMergetool {
+            path: PathBuf::from("a"),
+        },
+        Command::OpenConflictEditor {
+            path: PathBuf::from("a"),
+        },
+        Command::ContinueInGit {
+            id: graft_core::job::JobId::new(1),
+            kind: graft_git::state::InProgress::Rebase,
+        },
+        Command::Suspend,
+    ];
+    for command in handovers {
+        let (mut terminal, _) = no_tty_terminal(20, 3);
+        let name = format!("{command:?}");
+        let (_, carried) = super::running::carry_out(
+            &mut terminal,
+            &session(),
+            &Recorded::default(),
+            on_history(),
+            Outside::default(),
+            vec![command],
+        )
+        .expect("writing to memory cannot fail");
+        assert_eq!(carried, super::running::Carried::EndsBatch, "{name}");
+    }
+    let (mut terminal, _) = terminal(20, 3);
+    let (_, carried) = super::running::carry_out(
+        &mut terminal,
+        &session(),
+        &Recorded::default(),
+        on_history(),
+        Outside::default(),
+        Vec::new(),
+    )
+    .expect("writing to memory cannot fail");
+    assert_eq!(
+        carried,
+        super::running::Carried::Continue,
+        "no command, no end"
+    );
+}
+
+/// [`terminal`]'s backend, answering the two questions crossterm would ask
+/// a tty: where the cursor is, and the size. A handover clears the screen
+/// (`carry_out`), and ratatui's `clear` asks where the cursor is first.
+struct NoTty(CrosstermBackend<Recorder>, ratatui::layout::Size);
+
+impl Write for NoTty {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0.write(buf)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Write::flush(&mut self.0)
+    }
+}
+
+impl ratatui::backend::Backend for NoTty {
+    type Error = io::Error;
+
+    fn draw<'a, I>(&mut self, content: I) -> io::Result<()>
+    where
+        I: Iterator<Item = (u16, u16, &'a ratatui::buffer::Cell)>,
+    {
+        self.0.draw(content)
+    }
+
+    fn hide_cursor(&mut self) -> io::Result<()> {
+        self.0.hide_cursor()
+    }
+
+    fn show_cursor(&mut self) -> io::Result<()> {
+        self.0.show_cursor()
+    }
+
+    fn get_cursor_position(&mut self) -> io::Result<ratatui::layout::Position> {
+        Ok(ratatui::layout::Position::ORIGIN)
+    }
+
+    fn set_cursor_position<P: Into<ratatui::layout::Position>>(
+        &mut self,
+        position: P,
+    ) -> io::Result<()> {
+        self.0.set_cursor_position(position)
+    }
+
+    fn clear(&mut self) -> io::Result<()> {
+        self.0.clear()
+    }
+
+    fn clear_region(&mut self, clear_type: ratatui::backend::ClearType) -> io::Result<()> {
+        self.0.clear_region(clear_type)
+    }
+
+    fn size(&self) -> io::Result<ratatui::layout::Size> {
+        Ok(self.1)
+    }
+
+    fn window_size(&mut self) -> io::Result<ratatui::backend::WindowSize> {
+        Ok(ratatui::backend::WindowSize {
+            columns_rows: self.1,
+            pixels: ratatui::layout::Size::default(),
+        })
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        ratatui::backend::Backend::flush(&mut self.0)
+    }
+}
+
+#[test]
+fn a_handover_ends_the_batch() {
+    let ctrl_z = key(KeyPress {
+        code: KeyCode::Char('z'),
+        modifiers: graft_core::event::Modifiers::CONTROL,
+    });
+    let state = AppState {
+        suspend_on_ctrl_z: true,
+        ..on_history()
+    };
+    let (mut terminal, recorder) = no_tty_terminal(60, 30);
+    let (exit, state) = super::running::pump_keeping(
+        &mut terminal,
+        &mut ScriptedWakes::new(vec![j(), ctrl_z, j(), j()]),
+        &Recorded::default(),
+        &mut session(),
+        state,
+    );
+    exit.expect("writing to memory cannot fail");
+    let frames = recorder.written().matches("\u{1b}[?2026h").count();
+    // Before the wait; `j Ctrl+Z` (the handover ends the turn); `j j`.
+    // Had the turn gone on, there would be two.
+    assert_eq!(frames, 3);
+    assert_eq!(cursor(&state), 3);
+}
+
+#[test]
+fn a_lone_key_draws_at_once() {
+    let (frames, state, _) = run_on_history(vec![j()]);
+    assert_eq!(frames, 2, "the frame before the wait, then the key's");
+    assert_eq!(cursor(&state), 1);
+}
+
+#[test]
+fn a_queued_prefix_runs_as_typed() {
+    let letters = ['m', 'm', '/', 'a', 'j'];
+    let press = |letter| key(KeyPress::plain(KeyCode::Char(letter)));
+    // Drawn between: each key its own `update`, from the state the last
+    // left. `update` is pure, so this is the state a frame per key showed.
+    let mut typed = on_history();
+    for wake in letters.map(press) {
+        let Wake::Event(event) = wake else {
+            unreachable!("keys only")
+        };
+        typed = update(&typed, event).0;
+    }
+    let (frames, batched, _) = run_on_history(letters.map(press).into());
+    assert_eq!(frames, 2, "all five in one turn");
+    assert_eq!(batched, typed);
 }
 
 #[test]
@@ -803,7 +1145,7 @@ fn a_command_from_update_reaches_the_job_runner() {
 #[test]
 fn a_job_result_is_just_another_wake() {
     let (mut terminal, recorder) = terminal(60, 14);
-    let mut wakes = ScriptedWakes::new(vec![
+    let mut wakes = ScriptedWakes::spaced(vec![
         Wake::Event(AppEvent::Core(Event::JobFailed(
             graft_core::job::JobId::new(1),
             graft_core::job::JobFailure::Failed("not a git repository".to_owned()),
@@ -1026,7 +1368,8 @@ fn copy_run(session: &mut Session) -> (Result<Exit, io::Error>, Recorder, String
         history: Some(history),
         ..AppState::default()
     };
-    let mut wakes = ScriptedWakes::new(vec![key(KeyPress::plain(KeyCode::Char('y'))), quit_key()]);
+    let mut wakes =
+        ScriptedWakes::spaced(vec![key(KeyPress::plain(KeyCode::Char('y'))), quit_key()]);
     let exit = pump(
         &mut terminal,
         &mut wakes,

@@ -36,7 +36,7 @@ use std::io;
 use std::path::Path;
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 
-use graft_core::event::Event;
+use graft_core::event::{Event, MouseKind};
 
 use crate::jobs::{Delivery, Dispatch, JobEvents};
 use crate::session::TerminalChange;
@@ -98,14 +98,12 @@ pub trait Wakes {
     /// goes straight to finding that out.
     fn waiting(&mut self) -> bool;
 
-    /// Is the wake already here a job's event — not a key, a signal or a
-    /// terminal change? Never blocks. The loop runs such wakes back to back
-    /// and draws once (m7-power-tools/12): nobody sees a frame per job
-    /// answer, and at startup 60-odd of them queue ahead of the first key.
-    /// A source that cannot tell says `false`, and every wake is drawn.
-    fn job_event_waiting(&mut self) -> bool {
-        false
-    }
+    /// Is a wake already here, and does it [`joins_frame`]? Never blocks.
+    /// The loop applies such wakes in the same turn as the one before and
+    /// draws once (m7-power-tools/43): keys that pile up behind a slow frame
+    /// are all shown by the next one, not one frame each. Required, with no
+    /// default: a source that skipped it would silently draw every wake.
+    fn joining_waiting(&mut self) -> bool;
 
     /// One phase of the frame for the wake just handed out has ended. A
     /// timing seam for the `frames` perf harness (m7-power-tools/04), which
@@ -209,8 +207,8 @@ impl Wakes for ChannelWakes {
         }
     }
 
-    fn job_event_waiting(&mut self) -> bool {
-        self.waiting() && self.seen.as_ref().is_some_and(is_job_event)
+    fn joining_waiting(&mut self) -> bool {
+        self.waiting() && self.seen.as_ref().is_some_and(joins_frame)
     }
 }
 
@@ -223,6 +221,28 @@ pub fn is_job_event(wake: &Wake) -> bool {
         Wake::Shutdown(_) | Wake::InputFailed(_) | Wake::Terminal(_) | Wake::TerminalFailed(_) => {
             false
         }
+    }
+}
+
+/// Can this wake be applied in the same turn as the one before it, sharing
+/// one draw? Job events, keys (presses and repeats: no release reaches the
+/// loop) and wheel scrolls. `update` is pure and runs each in order, so the
+/// state drawn is the one drawing between them would have ended on. Nothing
+/// else joins: a click, drag or hover acts on what he saw, so the frame
+/// before it is drawn first; paste, resize, focus, signals and terminal
+/// wakes start their own turn.
+#[must_use]
+pub fn joins_frame(wake: &Wake) -> bool {
+    match wake {
+        Wake::Event(AppEvent::Core(Event::Key(_))) => true,
+        Wake::Event(AppEvent::Core(Event::Mouse(mouse))) => matches!(
+            mouse.kind,
+            MouseKind::ScrollUp
+                | MouseKind::ScrollDown
+                | MouseKind::ScrollLeft
+                | MouseKind::ScrollRight
+        ),
+        wake => is_job_event(wake),
     }
 }
 

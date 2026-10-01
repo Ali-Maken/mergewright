@@ -24,6 +24,11 @@ impl<D> Paced<'_, D> {
         let keys = &self.keys;
         let mut groups: Vec<(String, usize, Counts)> = Vec::new();
         for (index, handed) in self.handed.iter().enumerate() {
+            // A wake that joined the next one's turn wrote no frame of its
+            // own: the turn's is counted once, under the wake that ended it.
+            if handed.drawn_at().is_none() {
+                continue;
+            }
             let (Some(before), Some(after)) = (counted.get(index), counted.get(index + 1)) else {
                 continue;
             };
@@ -44,8 +49,8 @@ impl<D> Paced<'_, D> {
         groups
     }
 
-    /// Each key's latency: its send → its own frame, the one drawn right
-    /// after it. A key draws from the rows on hand ([`Paced::waited`] checks
+    /// Each key's latency: its send → the frame that showed it, the one
+    /// drawn at the end of its turn (m7-power-tools/43). A key draws from the rows on hand ([`Paced::waited`] checks
     /// they were there); rows it asked for arrive later as their own frame.
     pub(super) fn latencies(&self) -> Result<Vec<Duration>, String> {
         let mut latencies = Vec::new();
@@ -54,8 +59,7 @@ impl<D> Paced<'_, D> {
                 continue;
             };
             let drawn = self
-                .drawn
-                .get(index + 1)
+                .frame_after(index)
                 .ok_or_else(|| format!("no frame was drawn after wake {index}"))?;
             latencies.push(drawn.saturating_duration_since(sent));
         }
@@ -72,17 +76,18 @@ impl<D> Paced<'_, D> {
             let Kind::Key(_, sent) = handed.kind else {
                 continue;
             };
+            let end = self.turn_end(index);
             let (Some(drawn), Some(before), Some(after)) = (
-                self.drawn.get(index + 1),
-                counted.get(index),
-                counted.get(index + 1),
+                self.frame_after(index),
+                end.and_then(|end| counted.get(end)),
+                end.and_then(|end| counted.get(end + 1)),
             ) else {
                 lines.push("no frame drawn".to_owned());
                 continue;
             };
             let previous = index.checked_sub(1).and_then(|at| {
                 let wake = self.handed.get(at)?;
-                let ended = self.drawn.get(at + 1)?;
+                let ended = self.frame_after(at)?;
                 Some(format!(
                     "{} frame {:?}",
                     wake.kind_name(),
@@ -123,11 +128,11 @@ impl<D> Paced<'_, D> {
             let Kind::Key(key, sent) = handed.kind else {
                 continue;
             };
-            let drawn = self.drawn.get(index + 1).copied();
+            let drawn = self.frame_after(index);
             let [drained, updated, carried, painted] = handed.marks;
             let behind = index.checked_sub(1).and_then(|at| {
                 let wake = self.handed.get(at)?;
-                let ended = self.drawn.get(at + 1)?;
+                let ended = self.frame_after(at)?;
                 Some(format!(
                     "{}:{}",
                     wake.kind_name().replace(' ', "_"),
@@ -373,6 +378,60 @@ fn idle_gaps_count_what_nothing_asked_for_after_laid_out() {
     assert_eq!(
         wakes.idle_gaps(1),
         vec![vec![WINDOW, "Produced::Journal"], vec![]]
+    );
+    feed.finish().expect("the input thread ends");
+}
+
+/// A key that joined the next wake's turn (m7-power-tools/43) is shown by
+/// that turn's frame: its latency runs to it, not to the look the loop took
+/// between the two, when nothing had been drawn. Fast: no fixture, no loop.
+#[test]
+fn a_batched_key_reads_its_batch_frame() {
+    use std::sync::Mutex;
+    use std::sync::mpsc;
+
+    use graft_core::event::KeyCode;
+
+    use super::paced::{Handed, Watching};
+    use super::sink::Sink;
+    use crate::frame_trace::{KeyFeed, Posted};
+
+    let (post, events) = mpsc::channel::<Posted>();
+    let feed = KeyFeed::start(Vec::new(), post).expect("an input thread with no keys");
+    let watching = Watching {
+        inner: &(),
+        asked: Mutex::new(Vec::new()),
+    };
+    let keys = vec![(KeyCode::Char('j'), Duration::ZERO); 3];
+    let mut wakes = Paced::new(&events, keys, &watching, Sink::timed(false), feed.log());
+    let sent = Instant::now();
+    let at = |ms: u64| sent + Duration::from_millis(ms);
+    // `drawn`: the `Phase::Drawn` mark, the last of `marks`.
+    let key = |key: usize, drawn: Option<Instant>| Handed {
+        kind: Kind::Key(key, sent),
+        label: "key",
+        sent,
+        at: sent,
+        due: None,
+        marks: [None, None, None, drawn],
+        asked_before: 0,
+        asked_after: 0,
+        rows_out: false,
+        wrote_before: Duration::ZERO,
+        wrote_after: Duration::ZERO,
+    };
+    // Keys 0 and 1 are one turn, drawn after key 1; key 2 is its own.
+    wakes.handed = vec![key(0, None), key(1, Some(at(40))), key(2, Some(at(70)))];
+    // The first frame; the look between keys 0 and 1 (nothing drawn); the
+    // turn's frame; key 2's.
+    wakes.drawn = vec![at(0), at(5), at(41), at(71)];
+    assert_eq!(
+        wakes.latencies().expect("every turn was drawn"),
+        vec![
+            Duration::from_millis(41),
+            Duration::from_millis(41),
+            Duration::from_millis(71)
+        ]
     );
     feed.finish().expect("the input thread ends");
 }

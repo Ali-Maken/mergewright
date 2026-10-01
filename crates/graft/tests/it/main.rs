@@ -35,6 +35,10 @@ mod gallery;
 mod heavy;
 #[cfg(feature = "heavy-tests")]
 mod held_key;
+/// Fast tier: only the pure after-release bound (`held_key_bound.rs`).
+#[cfg(not(feature = "heavy-tests"))]
+#[path = "held_key_bound.rs"]
+mod held_key;
 mod hint_bar;
 mod history_place;
 mod idle_advance;

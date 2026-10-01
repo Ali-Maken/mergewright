@@ -5,7 +5,7 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 use std::sync::{Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
-use graft::event_loop::{Phase, Wake, Wakes, is_job_event};
+use graft::event_loop::{Phase, Wake, Wakes, joins_frame};
 use graft::history::HistoryUpdate;
 use graft::jobs::Dispatch;
 use graft::update::{AppEvent, Command, Progress};
@@ -111,8 +111,12 @@ pub(crate) struct Paced<'a, D> {
     pub(crate) handed: Vec<Handed>,
     /// `replay[i]`: the event `handed[i]` carried, to replay through `update`.
     pub(crate) replay: Vec<AppEvent>,
-    /// `drawn[i]`: the frame after `handed[i - 1]` was on the terminal
-    /// (`drawn[0]` is the first frame, before any wake).
+    /// `drawn[i]`: the loop's first look for a wake after `handed[i - 1]`
+    /// (`drawn[0]`: after the first frame, before any wake). The frame
+    /// after `handed[i - 1]` was on the terminal then if that wake ended its
+    /// turn ([`Handed::drawn_at`]); a wake that joined the next one's turn
+    /// (m7-power-tools/43) had nothing drawn after it, and its frame is the
+    /// turn's ([`Paced::turn_end`]).
     pub(crate) drawn: Vec<Instant>,
     /// `written[i]`: bytes the terminal had been sent when `drawn[i]` was
     /// stamped; parsed into [`Counts`] after the scroll ([`Sink::count`]).
@@ -305,7 +309,7 @@ impl<D> Wakes for Paced<'_, D> {
     /// looks without `stamp`ing: the stamp marks a frame already drawn.
     /// Empty or hung up both answer `false` here; `next_wake` records a
     /// hang-up, as it does after `looked`.
-    fn job_event_waiting(&mut self) -> bool {
+    fn joining_waiting(&mut self) -> bool {
         if self.seen.is_none()
             && let Ok(wake) = self.events.try_recv()
         {
@@ -313,7 +317,7 @@ impl<D> Wakes for Paced<'_, D> {
         }
         self.seen
             .as_ref()
-            .is_some_and(|posted| is_job_event(&posted.wake))
+            .is_some_and(|posted| joins_frame(&posted.wake))
     }
 
     fn mark(&mut self, phase: Phase) {
@@ -331,6 +335,18 @@ impl<D> Wakes for Paced<'_, D> {
 }
 
 impl<D> Paced<'_, D> {
+    /// The wake whose turn `handed[index]` was applied in ended: the first
+    /// at or after it that the loop drew after. `None` if the loop never
+    /// drew that turn (it quit, or ran out of wakes).
+    pub(crate) fn turn_end(&self, index: usize) -> Option<usize> {
+        (index..self.handed.len()).find(|&at| self.handed[at].drawn_at().is_some())
+    }
+
+    /// `drawn[]` for the frame that showed `handed[index]`: its turn's.
+    pub(crate) fn frame_after(&self, index: usize) -> Option<Instant> {
+        self.drawn.get(self.turn_end(index)? + 1).copied()
+    }
+
     pub(super) fn looked(&mut self) -> bool {
         self.stamp();
         if self.seen.is_some() {
