@@ -1,7 +1,7 @@
 m5 walk capture: m5-07-branch-row-hints — scenario esc-cancels-nothing-runs, keys j j r Esc, unicode tier, 80x24
 
  graft <scratch____________________________________________________________>  8…
-  ◆  ⓘ [◆ feature] finish the feature                               6y   8d6cd28
+  ◆    [◆ feature] finish the feature                               6y   8d6cd28
   ●    start the feature                                            6y   52f3b96
 ● │ ▏  [main] main moves again                                      6y   45fa51d
 ● │    main moves on                                                6y   37926a7
@@ -23,4 +23,4 @@ m5 walk capture: m5-07-branch-row-hints — scenario esc-cancels-nothing-runs, k
 
 
 
- m merge  r rebase  ⏎ open  . more  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +
+ m merge  r rebase  ⏎ open  . more  o  b  t  P  c  p  f  u  S  /  q  F2  F3  x

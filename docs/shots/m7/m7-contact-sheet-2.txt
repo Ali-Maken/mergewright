@@ -16,52 +16,6 @@
 # file (docs/shots/<name>) and what right looks like for it.
 
 ================================================================================
-docs/shots/m7/rewrite-edit-stop-120x40.txt
-what right looks like: Ticket 07b/07c/07d: the `edit` stop at 120x40: banner without the edit hint; the box with `pick a2`, then feature-b and feature-c follower rows (reads `1 commit follow`: grammar defect, open); `▏` on the stopped commit; bar `⇥ banner  a amend it  c continue`, `space` bare at this width. Colour unverified.
-================================================================================
-
- graft /code/api    REBASING  step 1 of 4 · edit 0395451 a1 · feature-a, branch 1 of 3
-╭ still to apply · not commits yet ────────────────────────────────────────────────────────────────────────────────────╮
-│ pick 15335d9 a2                                                                                                      │
-│ feature-b (Graft Fixture): 1 commit follow, on top                                                                   │
-│ feature-c (Graft Fixture): 1 commit follow, on top                                                                   │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-  ●    [feature-c] c1                                                                                    GF 2d   1966dda
-● │    [main] m2                                                                                         GF 2d   9d9646b
-│ ●    [feature-b] b1                                                                                    GF 2d   82392de
-│ ●    [feature-a] a2                                                                                    GF 2d   15335d9
-│ ◆ ▏  [HEAD] a1  HEAD · stopped here                                                                    GF 2d   0395451
-◇─╯    m1                                                                                                GF 2d   256d42c
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- ⇥ banner  a amend it  c continue  . more  space  ⏎  b  r  t  y  m  u  S  J  /  q  F2  F3  x  +  j/k  1  F  H  f  p  P
-
-================================================================================
 docs/shots/m7/rewrite-edit-stop-80x24.txt
 what right looks like: Ticket 07d: the `edit` stop at 80x24, his 10 rows + Sara's 2, stopped on his a3: `REBASING  step 3 of 12` whole; no `change files` hint; six `pick` rows then `+1 more` (7 pending); the row `feature-b (Sara): 2 commits follow, on top` drawn. Colour unverified.
 ================================================================================
@@ -235,10 +189,10 @@ what right looks like: Ticket 08: `R` on HEAD (`feature-a`) with `feature-b` and
 ================================================================================
 
  graft /code/api  5 commits
-  ●    ⓘ [feature-c] c1                                                                                  GF 2d   937a1e7
+  ●      [feature-c] c1                                                                                  GF 2d   937a1e7
 ● │      [main] m2                                                                                       GF 2d   fa34bcc
-│ │ ●  ⓘ [feature-b] b1                                                                                  GF 2d   8c6d354
-│ ◆─╯ ▏ⓘ [◆ feature-a] a1                                                                                GF 2d   0395451
+│ │ ●    [feature-b] b1                                                                                  GF 2d   8c6d354
+│ ◆─╯ ▏  [◆ feature-a] a1                                                                                GF 2d   0395451
 ◇─╯      m1                                                                                              GF 2d   256d42c
 
 
@@ -343,10 +297,10 @@ what right looks like: Ticket 11: `o` on a merge commit. No preview box; the sta
 # Right: `o` on a merge commit — the status line `<sha7> is a merge ·
 # taking a merge isn't in Graft yet`; no preview box.
  graft /code/api  7 commits
-  ◉─╮ ▏ⓘ [merged] merge login-page                                                                       GF now  5c42e39
-  │ ●  ⓘ [login-page] [origin/sara/login-page] fix the bug                                               GF 3m   fbb2394
+  ◉─╮ ▏  [merged] merge login-page                                                                       GF now  5c42e39
+  │ ●    [login-page] [origin/sara/login-page] fix the bug                                               GF 3m   fbb2394
 ◆ │ │    [◆ main ⇄ origin] main moves on                                                                 GF 4m   37926a7
-●─┴─╯  ⓘ [feature-a] add the base                                                                        GF 5m   ed332bc
+●─┴─╯    [feature-a] add the base                                                                        GF 5m   ed332bc
 ●        Correct the note                                                                                GF 1y   a82960b
 ●        Add the first note                                                                              GF 1y   fadcfb3
 ◇        Add a readme                                                                                    GF 1y   64ded19
@@ -380,7 +334,7 @@ what right looks like: Ticket 11: `o` on a merge commit. No preview box; the sta
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  5c42e39 is a merge · taking a merge isn't in Graft yet · esc dismiss
 
 ================================================================================
@@ -397,7 +351,7 @@ what right looks like: Ticket 11: `.` on HEAD's row (main). Slot 1 `Checkout —
 # and slot 2 `Cherry-pick (o) — already on main`, both dim (dim
 # unverified: a capture carries no attributes), in places 1 and 2.
  graft /code/api  6 commits
-  ●  ⓘ [login-page] [origin/sara/login-page] fix the bug                                                 GF 3m   fbb2394
+  ●    [login-page] [origin/sara/login-page] fix the bug                                                 GF 3m   fbb2394
 ◆ │ ▏  [◆ main ⇄ origin] main moves on                                                                   GF 4m   37926a7
  Checkout — already on main
  Cherry-pick (o) — already on main
@@ -434,8 +388,8 @@ what right looks like: Ticket 11: `.` on HEAD's row (main). Slot 1 `Checkout —
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  c commit  P push  p pull  . more  f  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
+
+ ⏎ open  c commit  P push  p pull  . more  f  a  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
 
 ================================================================================
 docs/shots/m7/30b-staging-not-kept-187x50.txt
@@ -505,7 +459,7 @@ what right looks like: `. ⏎ y` on `fix` from `main`, staging can't come back: 
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  on fix ✓ · your edits are back · staging not kept: f.txt · u undoes it, staging included
 
 ================================================================================
@@ -550,7 +504,7 @@ what right looks like: Same switch at 80: cursor on `fix`, now HEAD; bottom row 
 
 
 
- no commit-graph file · B build one · X never here
+
  on fix ✓ · staging not kept: f.txt · u undoes it, staging included
 
 ================================================================================
@@ -579,7 +533,7 @@ what right looks like: Relaunch after a kill mid-switch: HEAD on `fix`; bottom r
  graft /code/api  6 commits
 ◌        Uncommitted changes (1 unstaged)
   ■   ▏  [stash@{0}] On main: graft: your edits, set aside for checkout fix                              MA 3m   b284137
-  │ ◆  ⓘ [◆ fix] fix changes line 7                                                                      GF 4m   f2e2ada
+  │ ◆    [◆ fix] fix changes line 7                                                                      GF 4m   f2e2ada
 ●─┴─╯    [main] add f                                                                                    GF 5m   330fea5
 ●        Correct the note                                                                                GF 1y   a82960b
 ●        Add the first note                                                                              GF 1y   fadcfb3
@@ -614,7 +568,7 @@ what right looks like: Relaunch after a kill mid-switch: HEAD on `fix`; bottom r
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  an operation was interrupted: checkout fix · your edits are back · a copy stays in stash@{0} · J to inspect
 
 ================================================================================
@@ -643,7 +597,7 @@ what right looks like: Relaunch at 80: HEAD on `fix`; bottom row whole: `interru
  graft /code/api  6 commits
 ◌        Uncommitted changes (1 unstaged)
   ■   ▏  [stash@{0}] On main: graft: your edits, set aside for che… 3m   b284137
-  │ ◆  ⓘ [◆ fix] fix changes line 7                                 4m   f2e2ada
+  │ ◆    [◆ fix] fix changes line 7                                 4m   f2e2ada
 ●─┴─╯    [main] add f                                               5m   330fea5
 ●        Correct the note                                           1y   a82960b
 ●        Add the first note                                         1y   fadcfb3
@@ -662,7 +616,7 @@ what right looks like: Relaunch at 80: HEAD on `fix`; bottom row whole: `interru
 
 
 
- no commit-graph file · B build one · X never here
+
  interrupted · your edits are back · a copy stays in stash@{0} · J to inspect
 
 ================================================================================
@@ -671,7 +625,7 @@ what right looks like: The in-the-way refusal at 80 columns (review 28 Q2): row 
 ================================================================================
 
  graft /code/api  4 commits
-  ● ▏ⓘ [feature/sara-long-running-o… two on the branch              now  d79fe16
+  ● ▏  [feature/sara-long-running-o… two on the branch              now  d79fe16
 ◆─╯    [◆ main] Correct the note                                    1y   a82960b
 ●      Add the first note                                           1y   fadcfb3
 ◇      Add a readme                                                 1y   64ded19
@@ -692,7 +646,7 @@ what right looks like: The in-the-way refusal at 80 columns (review 28 Q2): row 
 
 
 
- no commit-graph file · B build one · X never here
+
  …/session-cache.json is in the way · move it aside first · esc dismiss
 
 ================================================================================
@@ -722,8 +676,8 @@ what right looks like: Detail pane's radar block starts `radar: not checked — 
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  c commit  P push  <> resize  p pull  f fetch  b branch  t tag  . more  u  /  q  F2  F3  x  +  j/k  1  F  H  y
+
+ ⏎ open  B blame  F history  c commit  P push  <> resize  p pull  . more  f  b  t  u  /  q  F2  F3  x  +  j/k  1  H  y
 COMMIT 2c59061 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:01 +0000 · 5m · parents a82960b · diff vs firs…
 add notes · radar: not checked — commit b32274b is not in the repository · ctrl+r to try again
 M notes.txt             +1 −1 ▎
@@ -768,8 +722,8 @@ what right looks like: Evil merge, context failed: row 26 is exactly `Merge bran
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- . explain  ⏎ open  c commit  P push  <> resize  p pull  f fetch  b branch  t  u  /  q  F2  F3  x  +  j/k  1  F  H  y
+
+ B blame  F history  . explain  ⏎ open  c commit  P push  <> resize  p  f  b  t  u  /  q  F2  F3  x  +  j/k  1  H  y
 COMMIT cc1103b · Graft Fixture <fixture@example.invalid> · 2020-01-01 00:03 +0000 · 1y · parents 0631550, bd20b78 · dif…
 Merge branch 'alpha' · radar: not checked — commit b32274b is not in the repository · ctrl+r to try again · evil merge
 A alpha.txt             +1 −0 ▎

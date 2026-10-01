@@ -16,36 +16,6 @@
 # file (docs/shots/<name>) and what right looks like for it.
 
 ================================================================================
-docs/shots/m6/fix-undo-shell-merge-80x24.txt
-what right looks like: (ticket 41) The same state at 80x24: the same footer words, whole (55 columns), with no `…`. Colour unverified.
-================================================================================
-
-[Graph]  Detail
- graft /code/api    MERGING
-◌      Uncommitted changes (2 staged)
-◆   ▏  [◆ main] main's take                                         2h   ddeed32
-│ ●  ⓘ [feature] the feature's take                                 2h   f43f326
-●─╯    the shared files                                             2h   b35b2f1
-●      Correct the note                                             1y   a82960b
-●      Add the first note                                           1y   fadcfb3
-◇      Add a readme                                                 1y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
- no commit-graph file · B build one · X never here
- undo: finish merge of feature ✓ · c finishes the merge
-
-================================================================================
 docs/shots/m6/fix-every-file-done-footer-120x40.txt
 what right looks like: (ticket 41; unchanged by 60) `Esc` before the last read landed, then `c` on the banner: header `MERGING`, footer exactly `every file done ✓ · c finishes the merge`, one `✓`, nothing after `merge`. No summary opens by itself here: `Esc` cancelled it. Colour unverified.
 ================================================================================
@@ -1827,7 +1797,7 @@ m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T
 
  graft <scratch____________________________________________________________>  12 commits
 ◆─╮ ▏  [◆ main] Merge branch 'feature' into main                                                         GT 6y   9225152
-│ ●  ⓘ [feature] feature's readme                                                                        GF 6y   1e78110
+│ ●    [feature] feature's readme                                                                        GF 6y   1e78110
 │ ●    feature's notes                                                                                   GF 6y   d69867a
 │ ●    feature drops gone                                                                                GF 6y   35c2d1e
 ● │    main's notes                                                                                      GF 6y   a301516
@@ -1875,7 +1845,7 @@ m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T
 
  graft <scratch____________________________________________________________>  12 commits
 ◆─╮ ▏  [◆ main] Merge branch 'feature' into main                                                                                                 GT 6y   9225152
-│ ●  ⓘ [feature] feature's readme                                                                                                                GF 6y   1e78110
+│ ●    [feature] feature's readme                                                                                                                GF 6y   1e78110
 │ ●    feature's notes                                                                                                                           GF 6y   d69867a
 │ ●    feature drops gone                                                                                                                        GF 6y   35c2d1e
 ● │    main's notes                                                                                                                              GF 6y   a301516
@@ -1931,7 +1901,7 @@ m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T
 
  graft <scratch____________________________________________________________>  12 commits
 ◆─╮ ▏  [◆ main] Merge branch 'feature' into main                                                                                                                            GT 6y   9225152
-│ ●  ⓘ [feature] feature's readme                                                                                                                                           GF 6y   1e78110
+│ ●    [feature] feature's readme                                                                                                                                           GF 6y   1e78110
 │ ●    feature's notes                                                                                                                                                      GF 6y   d69867a
 │ ●    feature drops gone                                                                                                                                                   GF 6y   35c2d1e
 ● │    main's notes                                                                                                                                                         GF 6y   a301516
@@ -1989,7 +1959,7 @@ m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T
 
  graft <scratch____________________________________________________________>  12 commits
 ◆─╮ ▏  [◆ main] Merge branch 'feature' into main                                                                                                                                         GT 6y   9225152
-│ ●  ⓘ [feature] feature's readme                                                                                                                                                        GF 6y   1e78110
+│ ●    [feature] feature's readme                                                                                                                                                        GF 6y   1e78110
 │ ●    feature's notes                                                                                                                                                                   GF 6y   d69867a
 │ ●    feature drops gone                                                                                                                                                                GF 6y   35c2d1e
 ● │    main's notes                                                                                                                                                                      GF 6y   a301516
@@ -2047,7 +2017,7 @@ m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T
 
  graft <scratch____________________________________________________________>  1…
 ◆─╮ ▏  [◆ main] Merge branch 'feature' into main                    6y   9225152
-│ ●  ⓘ [feature] feature's readme                                   6y   1e78110
+│ ●    [feature] feature's readme                                   6y   1e78110
 │ ●    feature's notes                                              6y   d69867a
 │ ●    feature drops gone                                           6y   35c2d1e
 ● │    main's notes                                                 6y   a301516
@@ -2079,7 +2049,7 @@ m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflic
 
  graft <scratch____________________________________________________________>    MERGING
 ◌   ▏  Uncommitted changes (2 unmerged, 1 staged)
-  ●  ⓘ [feature] feature's readme                                                                        GF 6y   1e78110
+  ●    [feature] feature's readme                                                                        GF 6y   1e78110
   ●    feature's notes                                                                                   GF 6y   d69867a
   ●    feature drops gone                                                                                GF 6y   35c2d1e
 ◆ │    [◆ main] main's notes                                                                             GF 6y   a301516
@@ -2127,7 +2097,7 @@ m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflic
 
  graft <scratch____________________________________________________________>    MERGING      UNCOMMITTED · 1 staged
 ◌   ▏  Uncommitted changes (2 unmerged, 1 staged)                                            diff vs HEAD a301516
-  ●  ⓘ [feature] feature's readme                                               6y   1e78110
+  ●    [feature] feature's readme                                               6y   1e78110
   ●    feature's notes                                                          6y   d69867a
   ●    feature drops gone                                                       6y   35c2d1e
 ◆ │    [◆ main] main's notes                                                    6y   a301516 CONFLICTS (2)
@@ -2183,7 +2153,7 @@ m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflic
 
  graft <scratch____________________________________________________________>    MERGING                      UNCOMMITTED · 1 staged
 ◌   ▏  Uncommitted changes (2 unmerged, 1 staged)                                                            diff vs HEAD a301516
-  ●  ⓘ [feature] feature's readme                                                            GF 6y   1e78110
+  ●    [feature] feature's readme                                                            GF 6y   1e78110
   ●    feature's notes                                                                       GF 6y   d69867a
   ●    feature drops gone                                                                    GF 6y   35c2d1e
 ◆ │    [◆ main] main's notes                                                                 GF 6y   a301516 CONFLICTS (2)
@@ -2241,7 +2211,7 @@ m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflic
 
  graft <scratch____________________________________________________________>    MERGING                             UNCOMMITTED · 1 staged
 ◌   ▏  Uncommitted changes (2 unmerged, 1 staged)                                                                   diff vs HEAD a301516
-  ●  ⓘ [feature] feature's readme                                                                   GF 6y   1e78110
+  ●    [feature] feature's readme                                                                   GF 6y   1e78110
   ●    feature's notes                                                                              GF 6y   d69867a
   ●    feature drops gone                                                                           GF 6y   35c2d1e
 ◆ │    [◆ main] main's notes                                                                        GF 6y   a301516 CONFLICTS (2)
@@ -2324,14 +2294,14 @@ STAGED (1)
 
 ================================================================================
 docs/shots/m6/m6-19-after-esc-esc-120x40.txt
-what right looks like: TESTING.md "Conflict journeys", back-after-esc: after the stop, `Esc Esc` — the graph has the keyboard and the bottom row **starts** `⇥ banner  . explain  m merge  r rebase`: the way back to the banner leads the bar. Unicode tier; colour, the focus reverse video and the cursor block unverified.
+what right looks like: TESTING.md "Conflict journeys", back-after-esc: after the stop, `Esc Esc` — the graph has the keyboard and the bottom row **starts** `⇥ banner  c finish  m merge  . more`: the way back to the banner leads the bar. No `. explain`: the row carries no radar marker (m7-power-tools/36). Unicode tier; colour, the focus reverse video and the cursor block unverified.
 ================================================================================
 
 m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 120x40
 
  graft <scratch____________________________________________________________>    MERGING
 ◌      Uncommitted changes (2 unmerged, 1 staged)
-  ● ▏ⓘ [feature] feature's readme                                                                        GF 6y   1e78110
+  ● ▏  [feature] feature's readme                                                                        GF 6y   1e78110
   ●    feature's notes                                                                                   GF 6y   d69867a
   ●    feature drops gone                                                                                GF 6y   35c2d1e
 ◆ │    [◆ main] main's notes                                                                             GF 6y   a301516
@@ -2368,7 +2338,7 @@ m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc E
 
 
 
- ⇥ banner  c finish  . explain  m  r  ⏎  b  t  P  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+ ⇥ banner  c finish  m merge  . more  r  ⏎  b  t  P  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 ================================================================================
 docs/shots/m6/m6-19-after-esc-esc-160x48.txt
@@ -2379,7 +2349,7 @@ m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc E
 
  graft <scratch____________________________________________________________>    MERGING
 ◌      Uncommitted changes (2 unmerged, 1 staged)
-  ● ▏ⓘ [feature] feature's readme                                                                                                                GF 6y   1e78110
+  ● ▏  [feature] feature's readme                                                                                                                GF 6y   1e78110
   ●    feature's notes                                                                                                                           GF 6y   d69867a
   ●    feature drops gone                                                                                                                        GF 6y   35c2d1e
 ◆ │    [◆ main] main's notes                                                                                                                     GF 6y   a301516
@@ -2424,7 +2394,7 @@ m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc E
 
 
 
- ⇥ banner  c finish  . explain  m merge  r rebase  ⏎ open  b branch  t tag  P push  p pull  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+ ⇥ banner  c finish  m merge  r rebase  ⏎ open  b branch  t tag  P push  p pull  f fetch  . more  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 ================================================================================
 docs/shots/m6/m6-19-after-esc-esc-187x50.txt
@@ -2435,7 +2405,7 @@ m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc E
 
  graft <scratch____________________________________________________________>    MERGING
 ◌      Uncommitted changes (2 unmerged, 1 staged)
-  ● ▏ⓘ [feature] feature's readme                                                                                                                                           GF 6y   1e78110
+  ● ▏  [feature] feature's readme                                                                                                                                           GF 6y   1e78110
   ●    feature's notes                                                                                                                                                      GF 6y   d69867a
   ●    feature drops gone                                                                                                                                                   GF 6y   35c2d1e
 ◆ │    [◆ main] main's notes                                                                                                                                                GF 6y   a301516
@@ -2482,18 +2452,18 @@ m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc E
 
 
 
- ⇥ banner  c finish  . explain  m merge  r rebase  ⏎ open  b branch  t tag  P push  p pull  f fetch  u undo  S stash  / search  q quit  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+ ⇥ banner  c finish  m merge  r rebase  ⏎ open  b branch  t tag  P push  p pull  f fetch  u undo  S stash  / search  q quit  F2 stat  . more  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 ================================================================================
 docs/shots/m6/m6-19-after-esc-esc-200x50.txt
-what right looks like: The same at 200x50: the bottom row starts `⇥ banner  . explain  m merge  r rebase  ⏎ open`; `c finish`, not `c commit` (ticket 52; re-taken by 63).
+what right looks like: The same at 200x50: the bottom row starts `⇥ banner  c finish  m merge  r rebase  ⏎ open`; `c finish`, not `c commit` (ticket 52; re-taken by 63); `. more` after `F3 renderer`, no `. explain` (m7-power-tools/36).
 ================================================================================
 
 m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 200x50
 
  graft <scratch____________________________________________________________>    MERGING
 ◌      Uncommitted changes (2 unmerged, 1 staged)
-  ● ▏ⓘ [feature] feature's readme                                                                                                                                                        GF 6y   1e78110
+  ● ▏  [feature] feature's readme                                                                                                                                                        GF 6y   1e78110
   ●    feature's notes                                                                                                                                                                   GF 6y   d69867a
   ●    feature drops gone                                                                                                                                                                GF 6y   35c2d1e
 ◆ │    [◆ main] main's notes                                                                                                                                                             GF 6y   a301516
@@ -2540,18 +2510,18 @@ m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc E
 
 
 
- ⇥ banner  c finish  . explain  m merge  r rebase  ⏎ open  b branch  t tag  P push  p pull  f fetch  u undo  S stash  / search  q quit  F2 status  F3 renderer  x  +  j/k  space  1  F  H  J  y  M  O  C
+ ⇥ banner  c finish  m merge  r rebase  ⏎ open  b branch  t tag  P push  p pull  f fetch  u undo  S stash  / search  q quit  F2 status  F3 renderer  . more  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 ================================================================================
 docs/shots/m6/m6-19-after-esc-esc-80x24.txt
-what right looks like: The same at 80x24: the bottom row starts `⇥ banner  . explain  m merge`.
+what right looks like: The same at 80x24: the bottom row starts `⇥ banner  c finish  m merge  . more`.
 ================================================================================
 
 m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 80x24
 
  graft <scratch______________________________________________________>…  MERGING
 ◌      Uncommitted changes (2 unmerged, 1 staged)
-  ● ▏ⓘ [feature] feature's readme                                   6y   1e78110
+  ● ▏  [feature] feature's readme                                   6y   1e78110
   ●    feature's notes                                              6y   d69867a
   ●    feature drops gone                                           6y   35c2d1e
 ◆ │    [◆ main] main's notes                                        6y   a301516
@@ -2572,5 +2542,5 @@ m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc E
 
 
 
- ⇥ banner  c finish  . explain  m  r  ⏎  b  t  P  p  f  u  S  /  q  F2  F3  x  +
+ ⇥ banner  c finish  m merge  . more  r  ⏎  b  t  P  p  f  u  S  /  q  F2  F3  x
 

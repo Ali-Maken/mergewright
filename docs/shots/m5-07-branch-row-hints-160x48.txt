@@ -1,7 +1,7 @@
 m5 walk capture: m5-07-branch-row-hints — scenario esc-cancels-nothing-runs, keys j j r Esc, unicode tier, 160x48
 
  graft <scratch____________________________________________________________>  8 commits
-  ◆  ⓘ [◆ feature] finish the feature                                                                                                            GF 6y   8d6cd28
+  ◆    [◆ feature] finish the feature                                                                                                            GF 6y   8d6cd28
   ●    start the feature                                                                                                                         GF 6y   52f3b96
 ● │ ▏  [main] main moves again                                                                                                                   GF 6y   45fa51d
 ● │    main moves on                                                                                                                             GF 6y   37926a7
@@ -47,4 +47,4 @@ m5 walk capture: m5-07-branch-row-hints — scenario esc-cancels-nothing-runs, k
 
 
 
- m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  . more  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+ m merge  r rebase  ⏎ open  o take  b branch  t tag  P push  c commit  p pull  f fetch  . more  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C

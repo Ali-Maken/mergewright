@@ -253,7 +253,7 @@ what right looks like: the uncommitted row has no `space fold` — the cursor on
 
 
 
- no commit-graph file · B build one · X never here
+
  ⏎ changes  c commit  S stash  . more  p  P  f  u  J  /  j/k  q  F2  F3  +  1  F
 
 ================================================================================
@@ -350,7 +350,7 @@ what right looks like: the uncommitted row has no `space fold` — the same at 1
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  . more  J  /  j/k  q  F2  F3  +  1  F  H  M  O  C
 
 ================================================================================
@@ -455,7 +455,7 @@ what right looks like: the uncommitted row has no `space fold` — the same at 1
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 renderer  + lanes  . more  1  F  H  M  O  C
 
 ================================================================================
@@ -861,7 +861,7 @@ what right looks like: (ticket 57) A merge begun in the shell, the banner focuse
  graft /code/api    MERGING
 ◌   ▏  Uncommitted changes (2 unmerged)
 ◆      [◆ main] main's take                                                                              GF 2h   ddeed32
-│ ●  ⓘ [feature] the feature's take                                                                      GF 2h   f43f326
+│ ●    [feature] the feature's take                                                                      GF 2h   f43f326
 ●─╯    the shared files                                                                                  GF 2h   b35b2f1
 ●      Correct the note                                                                                  GF 1y   a82960b
 ●      Add the first note                                                                                GF 1y   fadcfb3
@@ -901,7 +901,7 @@ CONFLICTS (2)                 ▎
 === 2. → ⏎: aborted ===
  graft /code/api  6 commits
 ◆   ▏  [◆ main] main's take                                                                              GF 2h   ddeed32
-│ ●  ⓘ [feature] the feature's take                                                                      GF 2h   f43f326
+│ ●    [feature] the feature's take                                                                      GF 2h   f43f326
 ●─╯    the shared files                                                                                  GF 2h   b35b2f1
 ●      Correct the note                                                                                  GF 1y   a82960b
 ●      Add the first note                                                                                GF 1y   fadcfb3
@@ -921,7 +921,7 @@ CONFLICTS (2)                 ▎
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  abort merge of feature ✓
 COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
 main's take
@@ -943,7 +943,7 @@ M shared.rs             +1 −1   1     - the plan
  graft /code/api    MERGING
 ◌      Uncommitted changes (2 unmerged)
 ◆   ▏  [◆ main] main's take                                                                              GF 2h   ddeed32
-│ ●  ⓘ [feature] the feature's take                                                                      GF 2h   f43f326
+│ ●    [feature] the feature's take                                                                      GF 2h   f43f326
 ●─╯    the shared files                                                                                  GF 2h   b35b2f1
 ●      Correct the note                                                                                  GF 1y   a82960b
 ●      Add the first note                                                                                GF 1y   fadcfb3
@@ -962,7 +962,7 @@ M shared.rs             +1 −1   1     - the plan
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  undo: abort merge of feature ✓ · c finishes the merge
 COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
 main's take
@@ -1367,7 +1367,7 @@ what right looks like: (ticket 52) A merge begun in the shell, resolved. Frame 1
  graft /code/api    MERGING                                                                                  UNCOMMITTED · 2 staged
 ◌   ▏  Uncommitted changes (2 staged)                                                                        diff vs HEAD ddeed32
 ◆      [◆ main] main's take                                                                  GF 2h   ddeed32
-│ ●  ⓘ [feature] the feature's take                                                          GF 2h   f43f326
+│ ●    [feature] the feature's take                                                          GF 2h   f43f326
 ●─╯    the shared files                                                                      GF 2h   b35b2f1
 ●      Correct the note                                                                      GF 1y   a82960b STAGED (2)
 ●      Add the first note                                                                    GF 1y   fadcfb3   M notes.md                                                             +1 −1
@@ -1412,7 +1412,7 @@ what right looks like: (ticket 52) A merge begun in the shell, resolved. Frame 1
 
 
 
- no commit-graph file · B build one (git commit-graph write --reachable) · X never here
+
  merge in progress · space stage  d discard  c finish  <> resize  ⌃A all  e edit  ⇥ diff  . more
 --- after c ---
 MERGING
@@ -1487,7 +1487,7 @@ what right looks like: (ticket 52) The two frames that drew `c commit` mid-opera
 === 187x50 ===
  graft /code/api  6 commits
 ◆   ▏  [◆ main] main's take                                                                                                                                                 GF 2h   ddeed32
-│ ●  ⓘ [feature] the feature's take                                                                                                                                         GF 2h   f43f326
+│ ●    [feature] the feature's take                                                                                                                                         GF 2h   f43f326
 ●─╯    the shared files                                                                                                                                                     GF 2h   b35b2f1
 ●      Correct the note                                                                                                                                                     GF 1y   a82960b
 ●      Add the first note                                                                                                                                                   GF 1y   fadcfb3
@@ -1533,13 +1533,13 @@ what right looks like: (ticket 52) The two frames that drew `c commit` mid-opera
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  ⏎ open  P push  p pull  f fetch  b branch  t tag  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x compare  + lanes  j/k move  . more  space  1  F  H  y  M  O  C
 --- frame 2 ---
  graft /code/api    MERGING                                                                                  UNCOMMITTED · 2 staged
 ◌   ▏  Uncommitted changes (2 staged)                                                                        diff vs HEAD ddeed32
 ◆      [◆ main] main's take                                                                  GF 2h   ddeed32
-│ ●  ⓘ [feature] the feature's take                                                          GF 2h   f43f326
+│ ●    [feature] the feature's take                                                          GF 2h   f43f326
 ●─╯    the shared files                                                                      GF 2h   b35b2f1
 ●      Correct the note                                                                      GF 1y   a82960b STAGED (2)
 ●      Add the first note                                                                    GF 1y   fadcfb3   M notes.md                                                             +1 −1
@@ -1584,7 +1584,7 @@ what right looks like: (ticket 52) The two frames that drew `c commit` mid-opera
 
 
 
- no commit-graph file · B build one (git commit-graph write --reachable) · X never here
+
  c finish  ⏎ changes  S stash  <> resize  p pull  . more  P  f  u  J  /  j/k  q  F2  F3  +  1  F  H  M  O  C
 
 ================================================================================
@@ -1871,7 +1871,7 @@ COMMIT ── ⎇ main ── 1 file staged
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  commit "fix: x" ✓
 
 ================================================================================
@@ -1944,12 +1944,12 @@ COMMIT ── ⎇ main ── 1 file staged
 
 
 
- no commit-graph file · B build one · X never here
+
  commit "fix: x" ✓
 
 ================================================================================
 docs/shots/m6/fix-radar-bookkeeping-120x40.txt
-what right looks like: (ticket 66) A teammate pushed; you had a local commit and a stash on it; `p`, `r` `r` rebased, `P` pushed. Frame 1: no ⓘ in the marker column of any `main` row — your old commit, kept in the undo backup and under the stash, is not a copy. Frame 2, cursor on stash@{0}: no ⚠ on that row. Frame 3, `.` on main's tip: the first item is not `Explain` (since ticket 71 it is the dim `Checkout — already on main`, then `Cherry-pick <sha7>`, then `Copy SHA`). Colour unverified.
+what right looks like: (ticket 66) A teammate pushed; you had a local commit and a stash on it; `p`, `r` `r` rebased, `P` pushed. Frame 1: no ⓘ in the marker column of any `main` row — your old commit, kept in the undo backup and under the stash, is not a copy. Frame 2, cursor on stash@{0}: no ⚠ on that row. Frame 3, `.` on main's tip: the first item is not `Explain` (since ticket 71 it is the dim `Checkout — already on main`, then `Cherry-pick (o) — already on main` (m7-power-tools/11), then `Copy SHA (y)`). Colour unverified.
 ================================================================================
 
 # m6/fix-radar-bookkeeping-120x40.txt: 120x40, drawn by `view::view` from a
@@ -1968,7 +1968,6 @@ what right looks like: (ticket 66) A teammate pushed; you had a local commit and
 #  - Frame 2, cursor on stash@{0}: no ⚠ on that row. A stash is not a
 #    merge you made, so it is never called an evil merge.
 #  - Frame 3, `.` on main's tip: the first item is not `Explain`.
-#  - Every branch here has an upstream, so no "no upstream" ⓘ either.
 #  - The rebased tip's id is zeroed: it is new every run.
 
 == 1. After `p r r` and `P`: no ⓘ on any row ==
@@ -2098,7 +2097,7 @@ what right looks like: (ticket 66) A teammate pushed; you had a local commit and
 ●      Commit 169                                                                                        GF 7y   4926766
 ●      Commit 168                                                                                        GF 7y   0d60d60
 ●      Commit 167                                                                                        GF 7y   fa5ef1d
- ⏎ open  c commit  P push  p pull  . more  f  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
+ ⏎ open  c commit  P push  p pull  . more  f  a  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
 
 ================================================================================
 docs/shots/m6/fix-abort-reads-aborted-120x40.txt
@@ -2107,7 +2106,7 @@ what right looks like: (ticket 68) Graft relaunched into a rebase a killed Graft
 
  graft /code/api  3 commits
 ●      [main] Change every file on main                                                                  GF 2h   274c7d4
-│ ◆ ▏ⓘ [◆ feature] Change every file on feature                                                          GF 2h   9d44f42
+│ ◆ ▏  [◆ feature] Change every file on feature                                                          GF 2h   9d44f42
 ◇─╯    Add the files both sides will change                                                              GF 1y   9571fc9
 
 
@@ -2127,10 +2126,10 @@ what right looks like: (ticket 68) Graft relaunched into a rebase a killed Graft
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  aborted: rebase feature onto main ✓
 COMMIT 9d44f42 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:00 +0000 · 2h · parents 9571fc9 · diff vs firs…
-Change every file on feature · no upstream (feature)
+Change every file on feature
 R added-by-them.txt     +0 −0
 A both-added.txt        +1 −0
 M both.txt              +1 −1
@@ -2148,7 +2147,7 @@ M zdiff3.txt            +1 −1
 
 ================================================================================
 docs/shots/m6/fix-box-owns-the-bar-120x40.txt
-what right looks like: (ticket 69) A box owns the bottom row. Frame 1: a push rejected, then `P`: the lease box, and the bottom row is `←/→ move  ⏎ choose  esc cancel`, not the rejection line. Frame 2: `esc`: the rejection is back, `push rejected: … · p pull first · P force with lease`. Frame 3: a checkout, an edit, `u`: the drift box, bottom row `y undo  ←/→ move  ⏎ choose  esc cancel` (not `undo · esc cancels`); since ticket 77 the box also names the edit: `Undo replaces your edit to fix.txt; a backup keeps it, and U brings it back.` Frame 4: `b`, `⏎` on an empty name: the prompt stays open and the row reads `a branch needs a name`. Colour unverified.
+what right looks like: (ticket 69) A box owns the bottom row. Frame 1: a push rejected, then `P`: the lease box, and the bottom row is `←/→ move  ⏎ choose  esc cancel`, not the rejection line. Frame 2: `esc`: the rejection is back, `push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease` (wording since m7-power-tools/36). Frame 3: a checkout, an edit, `u`: the drift box, bottom row `y undo  ←/→ move  ⏎ choose  esc cancel` (not `undo · esc cancels`); since ticket 77 the box also names the edit: `Undo replaces your edit to fix.txt; a backup keeps it, and U brings it back.` Frame 4: `b`, `⏎` on an empty name: the prompt stays open and the row reads `a branch needs a name`. Colour unverified.
 ================================================================================
 
 # TestBackend capture (not a pty), 120x40, no colour recorded. Fixture:
@@ -2251,12 +2250,12 @@ what right looks like: (ticket 69) A box owns the bottom row. Frame 1: a push re
 ●    Commit 166                                                                                          GF 7y   953abf3
 ●    Commit 165                                                                                          GF 7y   49912f3
 ●    Commit 164                                                                                          GF 7y   1143b38
- push rejected: origin/main has moved · p pull first · P force with lease
+ push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease
 
 === frame 3: the drift box `u` opened ===
  graft /code/api  6 commits  date order, sorting…
   ◌    Uncommitted changes (1 unstaged)
-  ◆ ▏ⓘ [◆ fix] fix the bug                                                                               GF 3m   fbb2394
+  ◆ ▏  [◆ fix] fix the bug                                                                               GF 3m   fbb2394
 ● │    [main] main moves on                                                                              GF 4m   37926a7
 ●─╯    add the base                                                                                      GF 5m   ed332bc
 ●      Correct the note                                                                                  GF 1y   a82960b
@@ -2318,7 +2317,7 @@ what right looks like: (ticket 69) A box owns the bottom row. Frame 1: a push re
                               │ ( ) check out after creating · ⇥ toggles                 │
                               │                                                          │
                               │                                                          │
-                              ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+                              ╰──────────────────────────────────────────────────────────╯
 ●    Commit 179                                                                                          GF 7y   97b58e5
 ●    Commit 178                                                                                          GF 7y   1c9b7ed
 ●    Commit 177                                                                                          GF 7y   f93340a

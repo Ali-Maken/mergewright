@@ -2,7 +2,7 @@ m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T
 
  graft <scratch____________________________________________________________>  12 commits
 ◆─╮ ▏  [◆ main] Merge branch 'feature' into main                                                         GT 6y   9225152
-│ ●  ⓘ [feature] feature's readme                                                                        GF 6y   1e78110
+│ ●    [feature] feature's readme                                                                        GF 6y   1e78110
 │ ●    feature's notes                                                                                   GF 6y   d69867a
 │ ●    feature drops gone                                                                                GF 6y   35c2d1e
 ● │    main's notes                                                                                      GF 6y   a301516

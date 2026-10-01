@@ -1,7 +1,7 @@
-# m7-acceptance — 2026-09-30T21:39:43Z
-# HEAD a3901dee +uncommitted
+# m7-acceptance — 2026-10-01T07:06:22Z
+# HEAD b5c19986 +uncommitted
 # Darwin 27.0.0, git version 2.54.0 (Apple Git-157)
-1 nextest: Summary [  14.893s] 73 tests run: 73 passed, 4946 skipped · rc=0 · .scratch/m7-power-tools/accept/nextest.txt
+1 nextest: Summary [  13.178s] 77 tests run: 77 passed, 4991 skipped · rc=0 · .scratch/m7-power-tools/accept/nextest.txt
 2 pty: 13 runs (m3–m6 × sizes), 0 drifted or failed · .scratch/m7-power-tools/accept/pty-*.txt, .scratch/m7-power-tools/accept/pty-diffs/
 3 sheet: docs/shots/m7/m7-contact-sheet-1.txt docs/shots/m7/m7-contact-sheet-2.txt · every file ≤ 200 KB: yes
 ## perf summary lines (verbatim)
