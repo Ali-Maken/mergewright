@@ -404,9 +404,9 @@ fn closed(
     };
     let status = outcome_status(failure.as_ref(), clash.is_some(), &cleanup);
     // A lost edit's put-back that went through (m7-power-tools/30w): his own
-    // bytes over git's checkout, where the backup kept them; `raw` is the
-    // step's failure. Before `finish`, so its spawns are on this entry's log.
-    let raw = lost_edit::after_put_back(ctx, op, failure.is_none(), &mut commands);
+    // bytes over git's checkout, where the backup kept them. Before `finish`, so its spawns
+    // are on this entry's log.
+    let after_failed = lost_edit::after_put_back(ctx, op, failure.is_none(), &mut commands);
     let unread = match finish(ctx, &mut pending, status, commands) {
         Ok(unread) => unread,
         // The outcome line is what makes the entry undoable, so this is the
@@ -416,7 +416,7 @@ fn closed(
             return Err(ApplyError::Journal {
                 error,
                 after: failure.map(|failed| failed.error),
-                kept: raw.map(|raw| raw.to_string()),
+                kept: after_failed.map(|after_failed| after_failed.to_string()),
             });
         }
     };
@@ -428,7 +428,10 @@ fn closed(
     match failure {
         // The content he asked for is on disk; a failed raw step is the first
         // thing the answer says went short (30s's `NotAsTheyWere`, unchanged).
-        None => succeeded(entry, op, raw.into_iter().chain(unread).collect(), cleanup),
+        None => {
+            let went_short = after_failed.into_iter().chain(unread).collect();
+            succeeded(entry, op, went_short, cleanup)
+        }
         // `finish` has already put the after-state failures, if any, into the
         // entry's `Aborted` reason: git's own failure is the headline, but
         // nothing is lost behind it.

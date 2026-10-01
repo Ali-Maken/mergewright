@@ -18,11 +18,11 @@ pub(super) enum Returned {
     /// Put back with nothing unmerged, and `S` dropped. `unstaged`: the
     /// staged paths whose staging did not come back (git could not reinstate
     /// the index, [`PutBackRan::Unstaged`]); empty when the index came back.
-    /// `raw`: the raw step's failure — the edits are back, not as he left
+    /// `not_as_they_were`: the raw step's failure — the edits are back, not as he left
     /// them (m7-power-tools/30s).
     Back {
         unstaged: Vec<PathBuf>,
-        raw: Option<NotAsTheyWere>,
+        not_as_they_were: Option<NotAsTheyWere>,
     },
     /// Put back with these paths unmerged; `S` kept.
     Clashed(Vec<PathBuf>),
@@ -34,13 +34,13 @@ pub(super) enum Returned {
 pub(super) enum Kept {
     /// git failed: the apply (nothing came back), or the drop after a clean
     /// apply (`back`: the edits are in the tree **and** in the list;
-    /// `unstaged` and `raw` as [`Returned::Back`]'s, `raw` `None` unless
+    /// `unstaged` and `not_as_they_were` as [`Returned::Back`]'s, it `None` unless
     /// `back`).
     Git {
         error: RunError,
         back: bool,
         unstaged: Vec<PathBuf>,
-        raw: Option<NotAsTheyWere>,
+        not_as_they_were: Option<NotAsTheyWere>,
     },
     /// The status could not be read after the apply, so whether it clashed
     /// is unknown; `S` is not dropped on a guess.
@@ -51,7 +51,7 @@ pub(super) enum Kept {
     Unlisted {
         why: FactsError,
         unstaged: Vec<PathBuf>,
-        raw: Option<NotAsTheyWere>,
+        not_as_they_were: Option<NotAsTheyWere>,
     },
 }
 
@@ -60,9 +60,17 @@ impl Kept {
     /// the edits are back.
     pub(super) fn into_error(self) -> (Result<RunError, FactsError>, Option<NotAsTheyWere>) {
         match self {
-            Kept::Git { error, raw, .. } => (Ok(error), raw),
+            Kept::Git {
+                error,
+                not_as_they_were,
+                ..
+            } => (Ok(error), not_as_they_were),
             Kept::Unread(why) => (Err(why), None),
-            Kept::Unlisted { why, raw, .. } => (Err(why), raw),
+            Kept::Unlisted {
+                why,
+                not_as_they_were,
+                ..
+            } => (Err(why), not_as_they_were),
         }
     }
 
@@ -160,35 +168,45 @@ pub(super) fn put_back(
                     error,
                     back: false,
                     unstaged: Vec::new(),
-                    raw: None,
+                    not_as_they_were: None,
                 });
             }
         },
         None => stash,
     };
-    let (unstaged, raw) = match put_back::run_put_back(ctx, input, his, commands) {
-        Ok(PutBackRan::Whole { raw }) => (Vec::new(), raw),
-        Ok(PutBackRan::Unstaged { paths, raw }) => (paths, raw),
+    let (unstaged, not_as_they_were) = match put_back::run_put_back(ctx, input, his, commands) {
+        Ok(PutBackRan::Whole { not_as_they_were }) => (Vec::new(), not_as_they_were),
+        Ok(PutBackRan::Unstaged {
+            paths,
+            not_as_they_were,
+        }) => (paths, not_as_they_were),
         Ok(PutBackRan::Clashed { paths }) => return Returned::Clashed(paths),
         Ok(PutBackRan::Failed { error }) => {
             return Returned::Kept(Kept::Git {
                 error,
                 back: false,
                 unstaged: Vec::new(),
-                raw: None,
+                not_as_they_were: None,
             });
         }
         Err(why) => return Returned::Kept(Kept::Unread(why)),
     };
     match drop_by_id(ctx, stash, commands) {
-        Ok(()) => Returned::Back { unstaged, raw },
+        Ok(()) => Returned::Back {
+            unstaged,
+            not_as_they_were,
+        },
         Err(Dropped::Git(error)) => Returned::Kept(Kept::Git {
             error,
             back: true,
             unstaged,
-            raw,
+            not_as_they_were,
         }),
-        Err(Dropped::Unlisted(why)) => Returned::Kept(Kept::Unlisted { why, unstaged, raw }),
+        Err(Dropped::Unlisted(why)) => Returned::Kept(Kept::Unlisted {
+            why,
+            unstaged,
+            not_as_they_were,
+        }),
     }
 }
 

@@ -100,8 +100,11 @@ and clean — and before any undo whose inverse rewrites the working tree
    object graph that represents tracked *and* untracked content as it stood
    immediately before the operation.
 
-Undoing such an operation reads that tree back and restores working-tree
-files from it (tracked content via the ordinary index/checkout path,
+The backup also keeps `raw/`: the bytes the index/checkout path would not
+give back (an autocrlf or one-way filter conversion), hashed unfiltered
+(ADR-0052). Undoing such an operation reads that tree back and restores
+working-tree files from it (tracked content via the index/checkout path,
+then `raw/`'s bytes written byte-exact over it, as a put-back does;
 untracked content by writing the recovered blobs back to their recorded
 paths). This is exactly what closes the gap PROMPT.md calls out, and it's
 covered by the test PROMPT.md names explicitly: create an untracked file,

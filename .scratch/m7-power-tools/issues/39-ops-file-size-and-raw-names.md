@@ -1,6 +1,6 @@
 # 39-ops-file-size-and-raw-names — five graft-ops files back under 400 lines, `raw` names only bytes, and the docs describe `raw/`
 
-Status: ready
+Status: done
 Source: review `docs/reviews/m7-30p-to-30w.md` Major M1 (files over ~400 lines, PROMPT.md 6.2:436), M2 (`raw` names a
 failure and a tree), M3 (`ARCHITECTURE.md:42`, `docs/design/06-undo-journal-design.md:84-107` predate ADR-0052).
 Grouped: M1 and M2 share `set_aside/put_back.rs`, `answer.rs`, `apply.rs`; M3 names the files M1 moves.
@@ -70,18 +70,55 @@ Fns: `fn answer_not_as_they_were(not_as_they_were: NotAsTheyWere) -> /* unchange
 `fn with_not_as_they_were(..)` (was `with_raw`, signature otherwise unchanged).
 
 ## Acceptance (each box names its test at tick time)
-- [ ] `wc -l` of the five files and every new file ≤ 400, pasted in NOTES (the check: the numbers, not a test).
-- [ ] Pure move (commit a): `git diff -M --stat` shows moves; no test body changed. Named check: graft-ops suite green
+- [x] `wc -l` of the five files and every new file ≤ 400, pasted in NOTES (the check: the numbers, not a test).
+- [x] Pure move (commit a): `git diff -M --stat` shows moves; no test body changed. Named check: graft-ops suite green
       **unchanged in count** (before/after nextest totals in NOTES, after each commit).
-- [ ] Renames (commit b): `grep -nw raw crates/graft-ops/src` and `grep -n 'raw_\|_raw' crates/graft-ops/src` in NOTES,
+- [x] Renames (commit b): `grep -nw raw crates/graft-ops/src` and `grep -n 'raw_\|_raw' crates/graft-ops/src` in NOTES,
       every hit a tree or bytes (or a kept site above). Tests changed only by `use` lines and the renamed identifiers.
-- [ ] Byte-exact promise unchanged: graft-ops `tests/it/{undo_bytes,snapshot_raw,put_back_index,set_aside,
+- [x] Byte-exact promise unchanged: graft-ops `tests/it/{undo_bytes,snapshot_raw,put_back_index,set_aside,
       put_back_forecast}.rs` green, test names listed in NOTES; the M7 acceptance's raw-byte scenarios green.
-      (`journal_put_back.rs` does not exist — scout 39.md:22.)
-- [ ] Docs: the two edits quoted in NOTES; `ARCHITECTURE.md` names only files that exist (`ls` each in NOTES).
-- [ ] graft-ops MAP.md: `snapshot` file list (`raw/converted.rs`, `commit.rs`), `apply::error` (`error/words.rs`),
-      set-aside tests files, the renamed fields/fns.
-- [ ] Gates.
+      (`journal_put_back.rs` does not exist — scout 39.md:22.) — ticked by: `undo_bytes::a_put_back_whose_raw_step_cannot_land_says_so_and_drops_s`,
+      `snapshot_raw::a_snapshot_keeps_raw_only_what_would_not_round_trip` and the 90 listed in NOTES, workspace nextest 5049/5049.
+- [x] Docs: the two edits quoted in NOTES; `ARCHITECTURE.md` names only files that exist (`ls` each in NOTES). — check: `ls` (NOTES).
+- [x] graft-ops MAP.md: `snapshot` file list (`raw/converted.rs`, `commit.rs`), `apply::error` (`error/words.rs`),
+      set-aside tests files, the renamed fields/fns. — check: MAP.md:144, :203, :220 (no test; doc).
+- [x] Gates. — fmt, clippy, nextest 5049 passed, test --doc, workspace-wide.
+
+Tick 1 check: `wc -l` (NOTES). Tick 2 check: graft-ops nextest 992 before / 992 after a / 992 after b. Tick 3 check:
+the greps (NOTES) plus `answer::tests` (e.g. `a_clean_put_back_whose_raw_step_failed_is_committed_not_as_they_were_first`).
+
+## NOTES (builder, 2026-10-01)
+Scout used (39.md). Commits: 901ff6d6 (a, pure moves), 5aff82f9 (b, renames + docs). No compaction.
+
+- **Sizes** (`wc -l`): snapshot.rs 341, snapshot/raw.rs 329, raw/converted.rs 93, raw/tests.rs 55, snapshot/commit.rs 100,
+  apply/error.rs 378, error/words.rs 91, error/tests.rs 42, set_aside/put_back.rs 338, put_back/tests.rs 111,
+  set_aside/answer.rs 267, answer/tests.rs 198, returned.rs 235, set_aside.rs 385. apply.rs 708 (not split, decided).
+  `CONVERTING` and `split_nul_keeping_empty` moved with `converted` (their only users).
+- **Counts:** graft-ops nextest before 992 passed/1 skipped; after (a) 992/1; after (b) 992 listed, workspace 5049
+  passed/7 skipped. `git diff -M --stat a7fba02b 901ff6d6`: 12 files +707/−666 — moves plus `mod`/`use`/visibility
+  lines; test bodies only dedented; `use super::converted::converting_paths;` added in raw/tests.rs.
+- **Renames:** per the table, plus two it implied: `Outcome::raw_words()` → `failed_words()` (returns failure words);
+  answer test helper → `sample_not_as_they_were()`. Remaining `grep -nw raw` / `'raw_\|_raw'` hits are all trees or
+  bytes: `HisBytes.raw`, set_aside.rs:264, `Step::RestoreWorktree.raw`, restore/raw.rs, `write_raw`, `raw_record`,
+  `raw_tree`, `worktree_raw(_before)`, journal.rs `raw_lines`, git's `--raw`/`--date=raw`, `raw_diff`/`parse_raw`
+  (git's raw diff format), test fn names for the raw step.
+- **One non-mechanical change:** longer names pushed `answer()` to 66 clippy lines (limit 60) and apply.rs `closed()` to
+  61. Fix: `Outcome::Back` arm calls `back(entry, failure, ..)`, which hands the git-failed case to new private
+  `back_but_git_failed` (same `ApplyError::Git` fields, `recoverable` same expression); `closed` binds `went_short`
+  before `succeeded(..)`. Behaviour unchanged; covered by answer/tests.rs and tests/it/set_aside.rs.
+- **Byte-exact:** undo_bytes (19), snapshot_raw (13), put_back_index (15), set_aside (33), put_back_forecast (10) green in
+  the workspace run. M7 acceptance scenarios ran in the same workspace suite; not run separately.
+- **Docs:** ARCHITECTURE.md: "The snapshot writes `index/` or `unmerged/`, `worktree/`, and, when his bytes differ from
+  what git gives back, `raw/` (ADR-0052: `snapshot/raw.rs` with `snapshot/raw/converted.rs`). `restore.rs` with
+  `restore/outcome.rs` and `restore/raw.rs`, which writes `raw/` back byte-exact …". `ls`: snapshot/raw.rs,
+  snapshot/raw/converted.rs, restore/raw.rs, restore/outcome.rs all exist. Design §6.3: "The backup also keeps `raw/`:
+  the bytes the index/checkout path would not give back (an autocrlf or one-way filter conversion), hashed unfiltered
+  (ADR-0052). … (tracked content via the index/checkout path, then `raw/`'s bytes written byte-exact over it, as a
+  put-back does; …".
+- **Touches:** grep `not_as_they_were|PutBackRan|Returned::|Kept::` in crates/graft, graft-ui → only `Kept::Ignored/
+  Untracked` in graft tests/it/in_the_way_status.rs (different type). Nothing outside graft-ops edited; workspace green.
+  Re-exports unchanged: `snapshot::{commit_trees, move_backup_ref}`, crate `scratch_commit`/`stash_create_on_copy`,
+  `apply::error::{not_as_they_were_words, staging_clause, joined}`.
 
 ## Touches (check each; report how)
 - **Other crates:** none expected — renamed types are `pub(super)`. Check: workspace builds; `grep -rn
