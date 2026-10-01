@@ -1,6 +1,7 @@
 //! The layout engine's and the pixel tier's hot paths, under `criterion`
 //! (PROMPT.md §6.3, ticket m1-the-graph/30): one `StreamingLayout::advance`
-//! chunk, one strip rasterised, and a strip-cache hit and miss.
+//! chunk, one strip drawn as its layers (backdrop + emphasis + composite,
+//! ADR-0053), and a strip-cache hit and miss for the composited strip.
 //!
 //! Review-only (PROMPT.md §7.1), with short runs:
 //! `cargo bench -p graft-graph -- --warm-up-time 1 --measurement-time 3`.
@@ -11,7 +12,7 @@
     reason = "a benchmark whose input cannot be built has nothing to measure"
 )]
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::convert::Infallible;
 use std::hint::black_box;
 
@@ -25,7 +26,10 @@ use graft_graph::layout::layout;
 use graft_graph::layout::source::{CommitSource, Pull};
 use graft_graph::layout::stream::{StreamConfig, StreamingLayout};
 use graft_graph::raster::cache::{STRIP_ROWS, StripCache};
-use graft_graph::raster::{RasterRow, Strip};
+use graft_graph::raster::{
+    Backdrop, Emphasis, Lit, PlainRow, PlainStrip, Selection, composite, rasterise_backdrop,
+    rasterise_emphasis,
+};
 use graft_graph::row::Row;
 use graft_graph::seeds::{BranchSeed, Seeds};
 
@@ -187,8 +191,8 @@ fn width_of(rows: &[Row]) -> usize {
         .unwrap_or(0)
 }
 
-fn strip<'a>(rows: &'a [RasterRow<'a>], above: Option<&'a Row>, lanes: usize) -> Strip<'a> {
-    Strip {
+fn strip<'a>(rows: &'a [PlainRow<'a>], above: Option<&'a Row>, lanes: usize) -> PlainStrip<'a> {
+    PlainStrip {
         rows,
         above,
         lane_columns: lanes,
@@ -220,35 +224,48 @@ fn strips(c: &mut Criterion) {
     let rows = layout(&commits(4_000), seeds());
     let lanes = width_of(&rows);
     let first = 32 * STRIP_ROWS;
-    let raster_rows: Vec<RasterRow<'_>> = rows[first..first + STRIP_ROWS]
+    let raster_rows: Vec<PlainRow<'_>> = rows[first..first + STRIP_ROWS]
         .iter()
-        .map(RasterRow::plain)
+        .map(PlainRow::of)
         .collect();
     let above = Some(&rows[first - 1]);
+    // The cursor's thread on lane 0, as the app paints it: every row lit
+    // there, so the strip has an emphasis layer to draw and composite.
+    let lit: BTreeSet<usize> = [0].into();
+    let lits = vec![
+        Lit {
+            emphasis: Emphasis::Normal,
+            thread: Some(&lit),
+        };
+        STRIP_ROWS
+    ];
+    let sel = Selection {
+        rows: &lits,
+        backdrop: Backdrop::lowest(lits.iter().copied()),
+    };
 
-    c.bench_function("rasterise/one strip", |b| {
+    c.bench_function("layers/backdrop+emphasis+composite one strip", |b| {
         b.iter(|| {
-            black_box(graft_graph::raster::rasterise(&strip(
-                &raster_rows,
-                above,
-                lanes,
-            )))
+            let plain = strip(&raster_rows, above, lanes);
+            let base = rasterise_backdrop(&plain, sel.backdrop).expect("backdrop rasterises");
+            let top = rasterise_emphasis(&plain, &sel).expect("emphasis rasterises");
+            black_box(top.map(|top| composite(&base, &top)))
         });
     });
 
     let mut warm = StripCache::new(STRIP_ROWS, 16);
-    warm.get(first, &strip(&raster_rows, above, lanes))
+    warm.composited(first, &strip(&raster_rows, above, lanes), &sel)
         .expect("strip rasterises");
-    c.bench_function("StripCache::get/hit", |b| {
-        b.iter(|| black_box(warm.get(first, &strip(&raster_rows, above, lanes))));
+    c.bench_function("StripCache::composited/hit", |b| {
+        b.iter(|| black_box(warm.composited(first, &strip(&raster_rows, above, lanes), &sel)));
     });
 
-    c.bench_function("StripCache::get/miss", |b| {
+    c.bench_function("StripCache::composited/miss", |b| {
         b.iter_batched(
             || StripCache::new(STRIP_ROWS, 16),
             |mut cold| {
                 black_box(
-                    cold.get(first, &strip(&raster_rows, above, lanes))
+                    cold.composited(first, &strip(&raster_rows, above, lanes), &sel)
                         .map(|_| ()),
                 )
             },

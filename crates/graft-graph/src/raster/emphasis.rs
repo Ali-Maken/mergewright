@@ -8,8 +8,8 @@
 //! backdrop, at `(a − b) / (1 − b)`. Composited over the strip it gives
 //! alpha `a` again: the same look, sent as a layer that changes on its own.
 //!
-//! Both passes are the single pass's pen ([`super::paint`]) with a different
-//! paint per row, so geometry and draw order cannot drift apart.
+//! Both passes are one pen ([`super::paint`]) with a different paint per
+//! row, so geometry and draw order cannot drift apart.
 
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -65,19 +65,6 @@ impl Backdrop {
         lowest
     }
 
-    /// `Faded` if `focus`, else `OffThread` if a thread is on screen, else
-    /// `Full`.
-    #[must_use]
-    pub fn of(focus: bool, thread_on_screen: bool) -> Backdrop {
-        if focus {
-            Backdrop::Faded
-        } else if thread_on_screen {
-            Backdrop::OffThread
-        } else {
-            Backdrop::Full
-        }
-    }
-
     /// The paint that draws every element at this alpha, through the same
     /// rules as a row's own paint.
     fn paint(self) -> Lit<'static> {
@@ -97,8 +84,7 @@ impl Backdrop {
     }
 }
 
-/// A row as the layout draws it: no selection in it. Fields as
-/// [`super::RasterRow`] minus `emphasis` and `thread`.
+/// A row as the layout draws it: no selection in it.
 #[derive(Clone, Debug)]
 pub struct PlainRow<'a> {
     /// The row, in drawn columns (a `Fold::view` when anything folds).
@@ -110,7 +96,7 @@ pub struct PlainRow<'a> {
 }
 
 impl<'a> PlainRow<'a> {
-    /// `Ring::of` the row, no stubs (as `RasterRow::plain`).
+    /// `Ring::of` the row, no stubs.
     #[must_use]
     pub fn of(row: &'a Row) -> PlainRow<'a> {
         PlainRow {
@@ -122,7 +108,7 @@ impl<'a> PlainRow<'a> {
 }
 
 /// One row's selection paint: its own emphasis and the drawn columns on the
-/// selection's thread (today's `RasterRow::emphasis` and `::thread`).
+/// selection's thread.
 ///
 /// `thread: None` means "every column at `emphasis`"; `Some(∅)` means
 /// "every column off the thread", which is a different alpha.
@@ -166,7 +152,7 @@ impl Lit<'_> {
     }
 }
 
-/// Today's [`super::Strip`] with layout-only rows.
+/// Everything one strip is drawn from: layout-only rows and how they look.
 #[derive(Clone, Copy, Debug)]
 pub struct PlainStrip<'a> {
     /// The strip's rows, top to bottom.
@@ -226,7 +212,8 @@ pub struct Emphasised {
 ///
 /// # Errors
 ///
-/// As [`super::rasterise`]: an empty palette, or a strip too large.
+/// [`RasterError::EmptyPalette`], or [`RasterError::TooLarge`] for a strip
+/// too large to draw.
 pub fn rasterise_backdrop(
     strip: &PlainStrip<'_>,
     backdrop: Backdrop,
@@ -253,7 +240,7 @@ pub fn rasterise_backdrop(
 /// # Errors
 ///
 /// [`RasterError::Selection`] when `sel` does not have one entry per strip
-/// row; otherwise as [`super::rasterise`].
+/// row; otherwise as [`rasterise_backdrop`].
 pub fn rasterise_emphasis(
     strip: &PlainStrip<'_>,
     sel: &Selection<'_>,
@@ -302,8 +289,7 @@ pub fn rasterise_emphasis(
 /// `None` when it draws nothing: a bound for [`painted_cells`]' scan, so a
 /// thread a few lanes wide does not cost a scan of the whole strip. It
 /// mirrors which elements [`super::Pen`] draws above the backdrop; a column
-/// it missed would lose lit pixels, which `composite_matches_the_single_pass`
-/// would see.
+/// it missed would lose lit pixels.
 fn lit_reach(rows: &[Inked<'_>], marker: Option<Marker>, backdrop: f32) -> Option<(usize, usize)> {
     let mut reach: Option<(usize, usize)> = None;
     let mut take = |from: usize, to: usize| {
@@ -413,8 +399,7 @@ fn crop(frame: &RasterFrame, cell_width: u32, first: u32, last: u32) -> RasterFr
 }
 
 /// `top` drawn over `base` at its column offset, premultiplied "over"
-/// (ADR-0053): for iTerm2, which cannot layer two images in a cell, and for
-/// the tests that hold the layers to the single pass.
+/// (ADR-0053): for iTerm2, which cannot layer two images in a cell.
 ///
 /// `top` is the emphasis of a strip drawn as `base`, so it has `base`'s
 /// height and lies within its width; anything of it outside `base` is not

@@ -115,11 +115,7 @@ One line per public item. Update when a public item changes.
 - `fingerprint` (fn) — `fingerprint(&[RowShape]) -> Fingerprint` (row count + hash of shapes); what a pass-through leaves and a rebuild must match.
 
 ## raster
-- `rasterise` (fn) — a `Strip` in, a premultiplied `core::RasterFrame` out; pure, no cache; background never painted (ADR-0003). Folded edges: a tail from the node's right edge, half a band toward `Toward`, alpha fading to 0 short of the next column's centre.
-- `Strip` (struct) — `rows`, `above` (row before the strip), `lane_columns`, `marker`, `cell_width`/`cell_height`, `palette`, `muted`.
-- `RasterRow` (struct) — a row in drawn columns plus `ring`, `emphasis`, `thread` (drawn columns on the selection's thread), `stubs` (folded edges, drawn as one fading tail per row). Clone, no longer Copy.
-- `Stub` (struct) — `identity`, `toward` (`fold::Toward`): a folded edge for the rasteriser.
-- `RasterRow::plain` (fn) — `Ring::of` the row, normal emphasis, no thread.
+- `Stub` (struct) — `identity`, `toward` (`fold::Toward`): a folded edge for the rasteriser, drawn as a tail from the node's right edge, half a band toward `Toward`, alpha fading to 0 short of the next column's centre. Strips are drawn as layers only (`raster::emphasis`; the single-pass path went in m7/46b); background never painted (ADR-0003).
 - `Ring` (enum) — node style by shape: `Commit`, `Merge`, `Root`, `Head`, `Stash`, `Uncommitted`; `Ring::of` (fn) from parent count.
 - `Emphasis` (enum) — `Normal`, `Dimmed` (faded). Alpha only, never width: `Highlighted` removed (ADR-0024) — the ancestry thread and Focus dimming are expressed purely by alpha (`OFF_THREAD_ALPHA`, `FADED_ALPHA`), so no line, curve or ring is ever wider than another.
 - `stroke_width` (fn, pub(crate)) — `(cell_width / 8.0).clamp(1.5, 2.5)`; the one stroke width for every lane, curve and node ring in a strip.
@@ -130,32 +126,29 @@ One line per public item. Update when a public item changes.
 - `CELLS_PER_LANE` (const) — cells per lane column (2), matching the Unicode tier.
 
 ## raster::emphasis (re-exported from `raster`; ADR-0053)
-- `Backdrop` (enum) — `Full` / `OffThread` / `Faded`: the one alpha a layout-only strip draws every element at; `alpha()` (1.0 / `OFF_THREAD_ALPHA` / `FADED_ALPHA`), `of(focus, thread_on_screen)`, `lowest(lits)` (the lowest alpha the paint draws at: `Faded` for a `None`+`Dimmed` row, else `OffThread` for any threaded row, else `Full`; what the app uses). `Default` is `Full`.
+- `Backdrop` (enum) — `Full` / `OffThread` / `Faded`: the one alpha a layout-only strip draws every element at; `alpha()` (1.0 / `OFF_THREAD_ALPHA` / `FADED_ALPHA`), `lowest(lits)` (the lowest alpha the paint draws at: `Faded` for a `None`+`Dimmed` row, else `OffThread` for any threaded row, else `Full`; what the app uses). `Default` is `Full`.
 - `PlainRow` (struct) — a row as the layout draws it: `row`, `ring`, `stubs`; no selection. `PlainRow::of` — `Ring::of`, no stubs.
 - `Lit` (struct) — one row's selection paint: `emphasis`, `thread: Option<&BTreeSet>` (`None` ≠ `Some(∅)`).
-- `PlainStrip` (struct) — `Strip` with `PlainRow`s; same other fields.
+- `PlainStrip` (struct) — everything one strip is drawn from: `rows: &[PlainRow]`, `above` (row before the strip), `lane_columns`, `marker`, `cell_width`/`cell_height`, `palette`, `muted`.
 - `Selection` (struct) — `rows: &[Lit]` (one per strip row) and the frame's `backdrop`.
 - `Emphasised` (struct) — an emphasis image, `frame` (`Arc<RasterFrame>`, so an upload can tell it by pointer) cropped to whole cell columns, placed at `first_column`.
-- `rasterise_backdrop` (fn) — a `PlainStrip` at one backdrop alpha; `Full` is byte-identical to `rasterise` with no thread.
-- `rasterise_emphasis` (fn) — every element ADR-0024 draws above the backdrop `b`, at `(a − b) / (1 − b)`, same order and geometry as the single pass; cropped; `None` when nothing is above `b` (always under `Full`).
-- `composite` (fn) — premultiplied "over" of an `Emphasised` onto its backdrop strip (iTerm2, tests).
+- `rasterise_backdrop` (fn) — a `PlainStrip` in, a premultiplied `core::RasterFrame` out, every element at one backdrop alpha; pure, no cache.
+- `rasterise_emphasis` (fn) — every element ADR-0024 draws above the backdrop `b`, at `(a − b) / (1 − b)`, same order and geometry as the backdrop; cropped; `None` when nothing is above `b` (always under `Full`).
+- `composite` (fn) — premultiplied "over" of an `Emphasised` onto its backdrop strip (iTerm2, and the tests' view of a strip under a selection).
 
 ## raster::cache
-- `StripCache` (struct) — bounded LRUs of rasterised strips keyed on (row range, layout hash, theme id, cell size) (DESIGN.md §3.8). `backdrop`/`emphasis`/`composited` key on layout + backdrop (+ `lit_hash`); legacy `get`/`contains` still key on the selection until 46. Each layer its own LRU of `capacity` entries.
-- `StripCache::backdrop` (fn) — a layout-only strip at one `Backdrop`, from the cache or rasterised; counts in `hits`/`rasterised`.
+- `StripCache` (struct) — bounded LRUs of rasterised strips keyed on (row range, layout hash, theme id, cell size) (DESIGN.md §3.8). `backdrop`/`emphasis`/`composited` key on layout + backdrop (+ `lit_hash`); no selection reaches a backdrop's key. Each layer its own LRU of `capacity` entries.
+- `StripCache::backdrop` (fn) — a layout-only strip at one `Backdrop`, from the cache or rasterised; counts in `hits`/`rasterised`. Refuses a misaligned strip; an `Uncommitted` ring row does not count toward the strip height.
 - `StripCache::emphasis` (fn) — the selection's emphasis image over a strip (`None` cached too); counts in `emphasis_hits`/`emphasis_rasterised`.
 - `StripCache::composited` (fn) — iTerm2: backdrop with the emphasis drawn over, cached on (backdrop key, `lit_hash`); the backdrop itself when there is no emphasis.
 - `StripCache::contains_backdrop` (fn) — is a backdrop strip resident; a look, not a use (idle prefetch draws backdrops only).
 - `StripCache::new` / `capacity_for` (fn) — make one; strips a viewport plus buffer needs at any offset.
 - `StripCache::strips_for` (fn) — aligned strip ranges covering a viewport.
-- `StripCache::get` (fn) — a strip from the cache, rasterised on a miss; refuses a misaligned strip. An `Uncommitted` ring row does not count toward the strip height.
-- `StripCache::contains` (fn) — is a strip already rasterised; touches neither counters nor recency (idle prefetch, m1-the-graph/30h).
 - `StripCache::flush` (fn) — drop everything, every layer, on theme, cell-size, re-detection or resize.
-- `StripCache::len` (legacy + backdrop strips), `is_empty` (no layer holds anything), `resident_bytes` (all four LRUs: legacy, backdrop, emphasis, composite), `stats`, `strip_rows` (fn) — introspection.
+- `StripCache::len` (backdrop strips), `is_empty` (no layer holds anything), `resident_bytes` (all three LRUs: backdrop, emphasis, composite), `stats`, `strip_rows` (fn) — introspection.
 - `STRIP_ROWS` (const) — 32, chosen by measurement.
 - `Flush` (enum) — `Theme`, `CellSize`, `Redetection`, `Resize`.
 - `CacheError` (enum) — `Misaligned`, `Raster`.
-- `CacheStats` (struct) — `hits`, `rasterised` (legacy and backdrop strips), `evicted` (any layer), `flushes`, `emphasis_rasterised`, `emphasis_hits`.
-- `layout_hash` (fn) — hash of what the rasteriser draws from a strip (stubs included), colours and cell size aside.
-- `plain_layout_hash` (fn) — `layout_hash` for a `PlainStrip`: the same fields, no selection to hash.
-- `lit_hash` (fn) — hash of a `Selection`: backdrop, and per row the thread's columns if any else the row's emphasis, plus thread presence (a row's own emphasis under a thread is never drawn, so not hashed — as `layout_hash`, 30b).
+- `CacheStats` (struct) — `hits`, `rasterised` (backdrop strips), `evicted` (any layer), `flushes`, `emphasis_rasterised`, `emphasis_hits`.
+- `plain_layout_hash` (fn) — hash of what the rasteriser draws from a `PlainStrip` (stubs included), colours and cell size aside; no selection to hash.
+- `lit_hash` (fn) — hash of a `Selection`: backdrop, and per row the thread's columns if any else the row's emphasis, plus thread presence (a row's own emphasis under a thread is never drawn, so not hashed, 30b).

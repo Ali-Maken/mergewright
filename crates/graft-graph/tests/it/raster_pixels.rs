@@ -22,7 +22,9 @@ use graft_core::commit::{Commit, Identity, Timestamp};
 use graft_core::oid::Oid;
 use graft_graph::identity::BranchIdentity;
 use graft_graph::layout::layout;
-use graft_graph::raster::{Emphasis, Marker, RasterRow, Strip, rasterise};
+use graft_graph::raster::{
+    Backdrop, Emphasis, Lit, Marker, PlainRow, PlainStrip, rasterise_backdrop,
+};
 use graft_graph::row::Row;
 use graft_graph::seeds::{BranchSeed, Seeds};
 
@@ -122,14 +124,17 @@ fn digest(bytes: &[u8]) -> u64 {
 
 struct Case<'a> {
     name: &'static str,
-    rows: Vec<RasterRow<'a>>,
+    rows: Vec<PlainRow<'a>>,
+    /// Each row's selection paint, drawn as the backdrop plus its emphasis
+    /// layer (`raster::layered`).
+    lits: Vec<Lit<'a>>,
     above: Option<&'a Row>,
     lane_columns: usize,
     marker: Option<Marker>,
 }
 
 fn line(out: &mut String, case: &Case<'_>, cell: (u32, u32)) {
-    let frame = rasterise(&Strip {
+    let strip = PlainStrip {
         rows: &case.rows,
         above: case.above,
         lane_columns: case.lane_columns,
@@ -138,8 +143,9 @@ fn line(out: &mut String, case: &Case<'_>, cell: (u32, u32)) {
         cell_height: cell.1,
         palette: &PALETTE,
         muted: MUTED,
-    })
-    .unwrap_or_else(|why| panic!("{}: {why}", case.name));
+    };
+    let frame = super::raster::layered(&strip, &case.lits)
+        .unwrap_or_else(|why| panic!("{}: {why}", case.name));
     writeln!(
         out,
         "{} @{}x{}: {}x{} {:016x}",
@@ -164,7 +170,8 @@ fn plain<'a>(
         name,
         above: range.start.checked_sub(1).map(|above| &rows[above]),
         lane_columns: width_of(rows),
-        rows: rows[range].iter().map(RasterRow::plain).collect(),
+        lits: vec![Lit::default(); range.len()],
+        rows: rows[range].iter().map(PlainRow::of).collect(),
         marker,
     }
 }
@@ -174,10 +181,9 @@ fn plain<'a>(
 fn threaded<'a>(rows: &'a [Row], even: &'a BTreeSet<usize>, few: &'a BTreeSet<usize>) -> Case<'a> {
     Case {
         name: "wide-thread",
-        rows: rows[40..72]
-            .iter()
-            .enumerate()
-            .map(|(index, row)| RasterRow {
+        rows: rows[40..72].iter().map(PlainRow::of).collect(),
+        lits: (0..32)
+            .map(|index| Lit {
                 thread: match index % 3 {
                     0 => Some(even),
                     1 => Some(few),
@@ -188,7 +194,6 @@ fn threaded<'a>(rows: &'a [Row], even: &'a BTreeSet<usize>, few: &'a BTreeSet<us
                 } else {
                     Emphasis::Normal
                 },
-                ..RasterRow::plain(row)
             })
             .collect(),
         above: Some(&rows[39]),
@@ -213,7 +218,8 @@ fn strips_keep_every_byte() {
         .iter()
         .map(|(name, rows)| Case {
             name,
-            rows: rows.iter().map(RasterRow::plain).collect(),
+            rows: rows.iter().map(PlainRow::of).collect(),
+            lits: vec![Lit::default(); rows.len()],
             above: None,
             lane_columns: width_of(rows),
             marker: None,
@@ -246,8 +252,8 @@ fn reports_per_strip_cost() {
     use std::time::Instant;
     for (name, count, lanes) in [("chain", 64, 1), ("parallel", 64, 6), ("wide", 96, 28)] {
         let rows = synthetic(count, lanes);
-        let raster_rows: Vec<RasterRow<'_>> = rows[32..64].iter().map(RasterRow::plain).collect();
-        let strip = Strip {
+        let raster_rows: Vec<PlainRow<'_>> = rows[32..64].iter().map(PlainRow::of).collect();
+        let strip = PlainStrip {
             rows: &raster_rows,
             above: Some(&rows[31]),
             lane_columns: width_of(&rows),
@@ -260,7 +266,8 @@ fn reports_per_strip_cost() {
         let mut times: Vec<u128> = (0..31)
             .map(|_| {
                 let start = Instant::now();
-                let frame = rasterise(&strip).unwrap_or_else(|why| panic!("{name}: {why}"));
+                let frame = rasterise_backdrop(&strip, Backdrop::Full)
+                    .unwrap_or_else(|why| panic!("{name}: {why}"));
                 assert_eq!(frame.rows, 32);
                 start.elapsed().as_micros()
             })
