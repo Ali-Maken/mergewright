@@ -1,6 +1,6 @@
 # 44-scroll-emphasis-layer — strips drawn from layout only; the selection's paint as a second image
 
-Status: ready
+Status: done
 Build with: Fable (signature) — introduces the backdrop/emphasis types and cache keys 46 builds on; the alpha split
 is where a wrong approach becomes structural, and it cannot be judged from the diff (CLAUDE.md "Models").
 Needs: none (additive; `46-scroll-strips-wiring` switches callers over and deletes the old path).
@@ -124,32 +124,43 @@ Emphasis and composite entries are bounded by the same `capacity_for` count, eac
 Tests live in the `tests/it` binary: `cache.rs` has no test module, and the branchy-window helpers are integration
 helpers (`tests/it/raster_pixels.rs:97 corpus`, `:174 threaded`; `tests/it/raster.rs:50 rows_of`). Make a helper
 `pub(crate)` if another file needs it; nothing else in those files changes.
-- [ ] Moving the selection across every row of a branchy window (≥ 8 lanes, ≥ 3 strips) never changes a strip's
+- [x] Moving the selection across every row of a branchy window (≥ 8 lanes, ≥ 3 strips) never changes a strip's
       backdrop key and rasterises 0 backdrops after the first pass.
-      — `strip_cache::the_selection_never_misses_a_backdrop`.
-- [ ] Equivalence (Decided 7) over that window's strips × every cursor row × `Backdrop::{OffThread, Faded}`, and `Full`
+      — `strip_cache::the_selection_never_misses_a_backdrop` (window 96 rows × 11 lanes, 3 strips, both backdrops).
+- [x] Equivalence (Decided 7) over that window's strips × every cursor row × `Backdrop::{OffThread, Faded}`, and `Full`
       with no thread (emphasis `None`, backdrop == legacy exactly); elements with `a < b`: 0. Prints each case's
       pixel-class counts and the max edge difference. — `emphasis_layer::composite_matches_the_single_pass`.
-- [ ] `Lit::thread = Some(∅)` and `None` on the same row give different `lit_hash` and different emphasis images
+      Last run: 186 distinct paints drawn (856 repeats by `lit_hash` skipped); clear-pixel diffs 0; `a < b` 0;
+      crossings 211 px of 3.55 M painted (5 per 100 000), max diff 1; edge max 32–35 (OffThread, tol 128),
+      19–22 (Faded, tol 77). At 8×16 every cursor; at 17×37 (his cell) 1 cursor in 4 — 8×16 strokes never fully
+      cover a pixel, so the solid/crossing classes need the big cell.
+- [x] `Lit::thread = Some(∅)` and `None` on the same row give different `lit_hash` and different emphasis images
       whenever their alphas differ. — `emphasis_layer::an_empty_thread_is_not_no_thread`.
-- [ ] Emphasis is cropped to the span of lit cell columns (whole cells); `first_column` places it.
+- [x] Emphasis is cropped to the span of lit cell columns (whole cells); `first_column` places it.
       — `emphasis_layer::emphasis_is_cropped_to_lit_columns`.
-- [ ] `Backdrop::Full`, any `Lit` → `rasterise_emphasis` is `None`; `OffThread` with `Some(∅)` on every row → `None`.
+- [x] `Backdrop::Full`, any `Lit` → `rasterise_emphasis` is `None`; `OffThread` with `Some(∅)` on every row → `None`.
       — `emphasis_layer::no_paint_no_image`.
-- [ ] Back-and-forth `j`/`k` over 10 rows rasterises each distinct selection's emphasis once.
+- [x] Back-and-forth `j`/`k` over 10 rows rasterises each distinct selection's emphasis once.
       — `strip_cache::emphasis_is_cached_by_selection`.
-- [ ] `resident_bytes` counts all three LRUs. — `strip_cache::resident_bytes_counts_every_layer`.
-- [ ] Old path byte-identical: every `it__raster__*` snapshot green, none re-taken; `strip_cache.rs:250
-      emphasis_is_part_of_the_key` and `:493` green unchanged. — those tests by name.
-- [ ] Cost (release, `scripts/fix-scroll-emphasis-cost.sh` → `docs/perf/44-scroll-emphasis-layer.txt`):
+- [x] `resident_bytes` counts all three LRUs (four: the legacy one too, until 46).
+      — `strip_cache::resident_bytes_counts_every_layer`.
+- [x] Old path byte-identical: every `it__raster__*` snapshot green, none re-taken; `strip_cache.rs:250
+      emphasis_is_part_of_the_key` and `:493` green unchanged. — `raster::*` snapshot tests,
+      `raster_pixels::strips_keep_every_byte`, `strip_cache::emphasis_is_part_of_the_key`,
+      `strip_cache::a_threaded_rows_own_emphasis_changes_neither_pixels_nor_key`; `git status` shows no snapshot file
+      changed.
+- [x] Cost (release, `scripts/fix-scroll-emphasis-cost.sh` → `docs/perf/44-scroll-emphasis-layer.txt`):
       `rasterise_emphasis` p99 per strip on the test window at 187 columns, against today's full strip; recorded, not
-      asserted (the gate is the held-key test).
-- [ ] PNGs for his eye: `docs/shots/m7/fix-scroll-thread-legacy.png` and `…-composite.png`, same strip, same cursor,
-      `OffThread`, each ≤ 200 KB. — written and asserted by `emphasis_layer::thread_pngs` through
-      `graft_fixtures::capture::capture_bytes` (dev-dep present, `Cargo.toml:34`). **Right:** the same lit thread in
-      both; off-thread lanes at the same half strength; no line wider than another. Colour **unverified** (rule 5).
-- [ ] `crates/graft-graph/MAP.md`: every new item one line; `StripCache`: "`backdrop`/`emphasis`/`composited` key on
-      layout + backdrop (+ `lit_hash`); legacy `get`/`contains` still key on the selection until 46".
+      asserted (the gate is the held-key test). — ignored test `emphasis_layer::emphasis_cost`, run by the script.
+      p50/p99 µs per strip at 17×37: branchy (22 cells) today 2018/2525, emphasis 761/1389; wide-187 (190 cells)
+      today 4521/4982, emphasis 792/**5453** (p99 thread spans 176 of 190 cells — see NOTES 4).
+- [x] PNGs for his eye: `docs/shots/m7/fix-scroll-thread-legacy.png` (27 KB) and `…-composite.png` (28 KB), same
+      strip, same cursor, `OffThread`, each ≤ 200 KB. — `emphasis_layer::thread_pngs` (via `check_bytes`, so both are
+      written on update; `capture_bytes` stops at the first). **Right:** the same lit thread in both; off-thread lanes
+      at the same half strength; no line wider than another. **Not judged by me** (rule 6); colour **unverified**
+      (rule 5).
+- [x] `crates/graft-graph/MAP.md`: every new item one line; `StripCache`: "`backdrop`/`emphasis`/`composited` key on
+      layout + backdrop (+ `lit_hash`); legacy `get`/`contains` still key on the selection until 46". — read in the diff.
 
 ## Touches
 - Raster snapshots `tests/it/snapshots/it__raster__*`: untouched (box above); the wiring ticket re-takes them.
@@ -165,3 +176,44 @@ workspace-wide.
 
 ## Size
 ~65k. Split point if it compacts: backdrop + cache key (box 1) first; emphasis + composite second.
+
+## NOTES (builder, 2026-10-01)
+**Compacted once**, after all code, tests, PNGs and the perf file were done and green in graft-graph; only the
+workspace gates, this ticket and the commit remained. Nothing of the scope remains.
+
+Scout: used `.scratch/m7-power-tools/scouts/44.md`, plus my own reads of `raster.rs`, `pen.rs`, `node.rs`, `cache.rs`.
+
+How it is built: the single pass's body moved, unchanged in order, into a private `paint(look, rows, lift)`;
+`rasterise` calls it with `lift: None` (legacy, byte-identical), `rasterise_backdrop` with every row painted at the
+backdrop, `rasterise_emphasis` with `lift: Some(b)`: the pen's `tone()` maps `a > b` to `(a − b)/(1 − b)` and skips
+everything else (`debug_assert!(a >= b)`). Node discs are always punched (so lanes under a node clear exactly as
+today), ink skipped when unlit. Geometry and draw order are shared code, not a copy.
+
+Findings:
+1. **Gap for 46 (behaviour, with line):** `Backdrop::of(focus, thread_on_screen)` (the signature as specced) gives
+   `Full` when there is no thread and no Focus, but `graft/src/view/strips.rs:369-371` dims stash-only rows
+   (`Emphasis::Dimmed`, 0.3) exactly then. On the new path those rows draw at 1.0: the m7/16 stash-only dimming is
+   lost. The backdrop must be the lowest alpha in play, so 46 needs `Faded` (or a third input) when any stash-only
+   row is on screen with no thread. With a thread, `thread` overrides `emphasis`, so the dimming is moot there.
+2. **Deviation:** `lit_hash` is **not** the derived `Hash` the signature comment names. It hashes the backdrop, the
+   row count, and per row the thread set if `Some`, else the emphasis, plus `thread.is_some()`. Reason: under a thread
+   `emphasis` changes no pixel (30b; `a_threaded_rows_own_emphasis_changes_neither_pixels_nor_key`), so the derived
+   hash would miss the cache on a Focus kin change that draws nothing different. `Some(∅)` vs `None` stay distinct
+   (`an_empty_thread_is_not_no_thread`). Conductor: confirm or revert.
+3. Under Focus with a thread, the single pass never draws at 0.3 (the thread overrides), so with the `Faded` backdrop
+   every 0.5 element is "lit" too: correct pixels, a wider emphasis image. 46 could pick `OffThread` when Focus and a
+   thread are both on — a choice for 46, not made here.
+4. **Cost:** wide-187 emphasis p99 5453 µs is above today's full strip p99 4982 µs, when the thread spans 176 of 190
+   cells (a near-full-width emphasis is a second full strip). p50 is 792 vs 4521. Recorded, not asserted.
+5. The equivalence test samples the 17×37 cell at 1 cursor in 4 (debug run time 34–44 s → ~11 s); 8×16 covers every
+   distinct paint.
+
+Verified: equivalence classes per pixel against live `rasterise` (numbers in box 2); snapshots untouched. Not
+verified: how the composite looks (PNGs for the user, rule 6); colour (rule 5); anything in the app (46 wires it).
+
+Touches: `rasterise`/`get`/`contains`/`layout_hash` callers in graft (`event_loop/graphics.rs`, `view/strips.rs`) —
+unchanged signatures, legacy tests green; raster snapshots — none re-taken; `CacheStats` gains two fields — grep shows
+only `strip_stats()` readers (`graft/src/event_loop/graphics.rs:239`, its tests), no exhaustive struct literal;
+`RasterError::Selection` new variant — no exhaustive match outside graft-graph (workspace clippy/build green);
+`RasterRow::alpha_at` removed — it was private (`raster.rs:130` at HEAD), moved to `Lit::alpha_at`; `ancestry` read only;
+`core::RasterFrame` read only.

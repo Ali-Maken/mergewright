@@ -537,3 +537,171 @@ fn a_threaded_rows_own_emphasis_changes_neither_pixels_nor_key() {
     assert_eq!(cache.stats().rasterised, 1, "a cursor move re-rasterised");
     assert_eq!(cache.stats().hits, 1);
 }
+
+/// ADR-0053: a strip is drawn from layout and one backdrop alpha, so moving
+/// the cursor over every row of a branchy window — the thread changing from
+/// row to row — never misses a strip once the viewport is resident.
+#[test]
+fn the_selection_never_misses_a_backdrop() {
+    use super::emphasis_layer::{CELL, branchy, lits};
+    use graft_graph::raster::cache::plain_layout_hash;
+    use graft_graph::raster::{Backdrop, Selection};
+
+    let window = branchy();
+    let threads = window.threads();
+    let strips = window.strips();
+    assert!(strips.len() >= 3 && window.lane_columns > 8);
+    let mut cache = StripCache::new(STRIP_ROWS, 2 * strips.len());
+    let mut keys: Vec<Option<u64>> = vec![None; strips.len()];
+    for (cursor, thread) in threads.iter().enumerate() {
+        for (index, range) in strips.iter().enumerate() {
+            let plain = window.plain(range.clone());
+            let strip = window.strip(&plain, range, CELL);
+            let hash = plain_layout_hash(&strip);
+            assert_eq!(
+                *keys[index].get_or_insert(hash),
+                hash,
+                "cursor {cursor}: strip {range:?}'s layout hash moved"
+            );
+            if cursor > 0 {
+                assert!(
+                    cache.contains_backdrop(range.start, &strip, Backdrop::OffThread),
+                    "cursor {cursor}: strip {range:?} is not resident"
+                );
+            }
+            cache
+                .backdrop(range.start, &strip, Backdrop::OffThread)
+                .unwrap_or_else(|why| panic!("strip {range:?}: {why}"));
+            let lits = lits(thread, range.clone(), Backdrop::OffThread);
+            cache
+                .emphasis(
+                    range.start,
+                    &strip,
+                    &Selection {
+                        rows: &lits,
+                        backdrop: Backdrop::OffThread,
+                    },
+                )
+                .unwrap_or_else(|why| panic!("emphasis {range:?}: {why}"));
+        }
+        assert_eq!(
+            cache.stats().rasterised,
+            strips.len() as u64,
+            "cursor {cursor}: a backdrop was rasterised again"
+        );
+    }
+    assert_eq!(
+        cache.stats().hits,
+        (strips.len() * (threads.len() - 1)) as u64
+    );
+}
+
+/// Holding `j` then `k` over ten rows draws each distinct selection's
+/// emphasis once; going back over it is all hits.
+#[test]
+fn emphasis_is_cached_by_selection() {
+    use super::emphasis_layer::{CELL, branchy, lits};
+    use graft_graph::raster::cache::lit_hash;
+    use graft_graph::raster::{Backdrop, Emphasis, Selection};
+    use std::collections::HashSet;
+
+    let window = branchy();
+    let threads = window.threads();
+    let strips = window.strips();
+    let mut cache = StripCache::new(STRIP_ROWS, 64);
+    let mut seen: HashSet<(usize, u64)> = HashSet::new();
+    let mut asked = 0u64;
+    let path = (40..50).chain((40..50).rev()).chain(40..50);
+    for cursor in path {
+        for range in &strips {
+            let plain = window.plain(range.clone());
+            let strip = window.strip(&plain, range, CELL);
+            let lits = lits(&threads[cursor], range.clone(), Backdrop::Faded);
+            let selection = Selection {
+                rows: &lits,
+                backdrop: Backdrop::Faded,
+            };
+            seen.insert((range.start, lit_hash(&selection)));
+            cache
+                .emphasis(range.start, &strip, &selection)
+                .unwrap_or_else(|why| panic!("emphasis {range:?}: {why}"));
+            asked += 1;
+        }
+    }
+    let stats = cache.stats();
+    assert_eq!(stats.emphasis_rasterised, seen.len() as u64);
+    assert_eq!(stats.emphasis_hits, asked - seen.len() as u64);
+    assert!(stats.emphasis_hits > 0);
+
+    // Under a thread the paint never reads a row's own emphasis (as the
+    // legacy key, 30b): toggling it is the same selection, a hit.
+    let range = &strips[1];
+    let plain = window.plain(range.clone());
+    let strip = window.strip(&plain, range, CELL);
+    let mut lits = lits(&threads[45], range.clone(), Backdrop::OffThread);
+    let draw = |cache: &mut StripCache, rows: &[graft_graph::raster::Lit<'_>]| {
+        cache
+            .emphasis(
+                range.start,
+                &strip,
+                &Selection {
+                    rows,
+                    backdrop: Backdrop::OffThread,
+                },
+            )
+            .expect("emphasis")
+    };
+    let lit = draw(&mut cache, &lits);
+    let before = cache.stats().emphasis_rasterised;
+    lits[3].emphasis = match lits[3].emphasis {
+        Emphasis::Normal => Emphasis::Dimmed,
+        Emphasis::Dimmed => Emphasis::Normal,
+    };
+    assert_eq!(draw(&mut cache, &lits), lit, "the same paint");
+    assert_eq!(cache.stats().emphasis_rasterised, before);
+}
+
+/// Memory: every layer the cache holds counts — backdrops, emphasis images
+/// and composited strips — and a flush drops them all.
+#[test]
+fn resident_bytes_counts_every_layer() {
+    use super::emphasis_layer::{CELL, branchy, lits};
+    use graft_graph::raster::{Backdrop, Selection};
+
+    let window = branchy();
+    let threads = window.threads();
+    let strips = window.strips();
+    let mut cache = StripCache::new(STRIP_ROWS, 8);
+    let mut expected = 0;
+    for range in &strips {
+        let plain = window.plain(range.clone());
+        let strip = window.strip(&plain, range, CELL);
+        let lits = lits(&threads[40], range.clone(), Backdrop::OffThread);
+        let selection = Selection {
+            rows: &lits,
+            backdrop: Backdrop::OffThread,
+        };
+        let base = cache
+            .backdrop(range.start, &strip, Backdrop::OffThread)
+            .expect("backdrop");
+        expected += base.pixels.len();
+        if let Some(top) = cache
+            .emphasis(range.start, &strip, &selection)
+            .expect("emphasis")
+        {
+            expected += top.frame.pixels.len();
+            let composited = cache
+                .composited(range.start, &strip, &selection)
+                .expect("composited");
+            expected += composited.pixels.len();
+        }
+    }
+    assert!(
+        cache.stats().emphasis_rasterised >= 2,
+        "the thread lit at least two strips"
+    );
+    assert_eq!(cache.resident_bytes(), expected);
+    cache.flush(Flush::Theme);
+    assert_eq!(cache.resident_bytes(), 0);
+    assert!(cache.is_empty());
+}

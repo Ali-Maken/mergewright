@@ -70,8 +70,15 @@ impl NodeSize {
     }
 }
 
-/// Draw one node centred at `centre`.
-pub(super) fn draw(pixmap: &mut Pixmap, ring: Ring, centre: (f32, f32), size: NodeSize, ink: Ink) {
+/// Punch one node's disc clear, centred at `centre`, and draw the node in
+/// `ink`; with no ink (an emphasis layer leaving the node out) only punch.
+pub(super) fn draw(
+    pixmap: &mut Pixmap,
+    ring: Ring,
+    centre: (f32, f32),
+    size: NodeSize,
+    ink: Option<Ink>,
+) {
     let NodeSize {
         radius,
         ring: thickness,
@@ -82,6 +89,9 @@ pub(super) fn draw(pixmap: &mut Pixmap, ring: Ring, centre: (f32, f32), size: No
         _ => radius,
     };
     fill_circle(pixmap, centre, reach + gap, None);
+    let Some(ink) = ink else {
+        return;
+    };
     match ring {
         Ring::Commit => fill_circle(pixmap, centre, radius, Some(ink)),
         Ring::Merge => {

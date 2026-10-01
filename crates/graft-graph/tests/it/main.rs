@@ -4,6 +4,7 @@
 //! gets a module here, not a new `tests/*.rs`.
 
 mod corpus;
+mod emphasis_layer;
 mod raster;
 mod raster_pixels;
 mod streaming;
