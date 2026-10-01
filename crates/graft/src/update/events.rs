@@ -248,8 +248,8 @@ pub enum Product {
     /// as large as this one.
     WorkingTree(Result<Box<crate::working_tree::WorkingTree>, String>),
     /// Every commit in strict topological order, for the walk on screen to
-    /// promote to (ADR-0008).
-    TopologicalOrder(std::sync::Arc<[graft_core::commit_handle::CommitHandle]>),
+    /// promote to (ADR-0008), and how long the sort took.
+    TopologicalOrder(SortedOrder),
     /// The commit-graph write finished, or why it failed (the error's
     /// `Display`, git's own words in it, unsanitised).
     CommitGraph(Result<graft_git::commit_graph::Written, String>),
@@ -526,4 +526,15 @@ pub enum CommitGraphOffer {
     Failed,
     /// A harness asked for no offer (`Harness::offer_commit_graph`).
     Suppressed,
+}
+
+/// A finished topological sort: the order, and how long it took to make.
+/// The time decides the commit-graph offer (m7-power-tools/15, :778): only a
+/// sort the user had to wait for is worth a file to speed up.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SortedOrder {
+    /// Every commit in strict topological order.
+    pub order: std::sync::Arc<[graft_core::commit_handle::CommitHandle]>,
+    /// Wall time of `history::topological_order`, measured in the job.
+    pub took: core::time::Duration,
 }

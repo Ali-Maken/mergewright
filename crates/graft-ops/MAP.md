@@ -319,13 +319,13 @@ Ghost Preview's planner: what an operation *would* do, drawn before it runs. One
 - `Policy` (struct) — `Option<Severity>` per kind; `severity` / `set` (fn); `Default` = PROMPT §1.4, every kind on.
 - `Finding` (struct) — `kind`, `severity`, `at`, `evidence`.
 - `Evidence` (enum) — `Foxtrot { merge, first_parent, real_tip, branch }` (`branch` = the default branch), `Backward { merge, default_tip, into }`, `AccidentalPull { merge, branch, remote }`, `Risk(Risk)`, `Evil { files }`, `Duplicate { copies }`, `ForcePushed { remote_ref, previous, current }`.
-- `Risk` (enum) — `DetachedHead`, `UnpushedOnDefault { branch, ahead }`, `NoUpstream { branch }`.
+- `Risk` (enum) — `DetachedHead`, `UnpushedOnDefault { branch, ahead }`. (A branch with no upstream is no finding since m7-power-tools/15.)
 
 ## mistake_radar::rules
 - `MergedName` (struct) — what a git merge subject merged: `branch`, `remote`, `into`, `pull_request`.
 - `merged_branch_from_subject` (fn) — git's own merge subjects (`Merge branch 'x' [of <remote>] [into y]`, `Merge remote-tracking branch 'r/x' [into y]`, `Merge tag 't' [into y]`, `Merge pull request #N from o/x`) → `MergedName`; anything else `None`.
 - `classify_commit` (fn) — one finding per merge, foxtrot > backward > accidental pull; `None` for a non-merge or a kind the policy has off. Pure, O(1).
-- `classify_refs` (fn) — `RiskyState` findings: detached `HEAD`, default branch ahead of its upstream, non-default branch with no upstream.
+- `classify_refs` (fn) — `RiskyState` findings: detached `HEAD`, default branch ahead of its upstream.
 
 ## mistake_radar::explain
 - `Explanation` (struct) — `title` (upper case), `paragraphs` (≤ 3), `evidence` (labelled commits top→bottom), `highlight` (commits the graph keeps lit).

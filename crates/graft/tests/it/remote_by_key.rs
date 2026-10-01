@@ -591,8 +591,8 @@ fn journal_has_the_push(app: &App, state: AppState) -> AppState {
 /// The words a non-fast-forward rejection leaves.
 fn rejected_status(branch: &str) -> Status {
     Status::Sticky {
-        reason: format!("push rejected: origin/{branch} has moved"),
-        keys: Some("p pull first · P force with lease".to_owned()),
+        reason: format!("push rejected: origin/{branch} has commits you don't"),
+        keys: Some("p pull, then m or r · P force with lease".to_owned()),
     }
 }
 

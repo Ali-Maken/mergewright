@@ -1826,6 +1826,14 @@ pub(super) fn order() -> std::sync::Arc<[graft_core::commit_handle::CommitHandle
     vec![graft_core::commit_handle::CommitHandle(7)].into()
 }
 
+/// [`order`] as a sort's answer, from a sort nobody waited for.
+pub(super) fn sorted_order() -> SortedOrder {
+    SortedOrder {
+        order: order(),
+        took: std::time::Duration::ZERO,
+    }
+}
+
 /// A walk already in the order asked for has nothing to promote.
 #[test]
 fn a_walk_in_its_final_order_asks_for_no_sort() {
@@ -1848,7 +1856,7 @@ fn a_superseded_sort_is_never_applied() {
 
     let (state, commands) = update(
         &state,
-        AppEvent::Produced(old, Product::TopologicalOrder(order())),
+        AppEvent::Produced(old, Product::TopologicalOrder(sorted_order())),
     );
     assert!(commands.is_empty(), "{commands:?}");
     let history = state.history.as_ref().expect("a walk");
@@ -1856,7 +1864,7 @@ fn a_superseded_sort_is_never_applied() {
 
     let (state, commands) = update(
         &state,
-        AppEvent::Produced(new, Product::TopologicalOrder(order())),
+        AppEvent::Produced(new, Product::TopologicalOrder(sorted_order())),
     );
     let [Command::ShowRows(to, request)] = commands.as_slice() else {
         panic!("the newest order goes to the walk: {commands:?}");
@@ -1891,7 +1899,7 @@ fn esc_while_sorting_keeps_the_provisional_order_and_says_so() {
     // The sort's late answer changes nothing.
     let (state, commands) = update(
         &state,
-        AppEvent::Produced(sort, Product::TopologicalOrder(order())),
+        AppEvent::Produced(sort, Product::TopologicalOrder(sorted_order())),
     );
     assert!(commands.is_empty(), "{commands:?}");
     let (_, commands) = update(&state, core(Event::JobCancelled(sort)));
@@ -2312,11 +2320,20 @@ mod commit_graph_offer {
         GitCheck::Ran(SystemGit::Supported(GitVersion::MINIMUM))
     }
 
+    /// `state` after this run's sort, which took `took`, was taken up.
+    fn sorted_in(mut state: AppState, took: Duration) -> AppState {
+        super::commit_graph::sort_landed(&mut state, took);
+        state
+    }
+
     fn offered() -> AppState {
-        opened(
-            CommitGraphFact::Absent { declined: false },
-            supported(),
-            Harness::default(),
+        sorted_in(
+            opened(
+                CommitGraphFact::Absent { declined: false },
+                supported(),
+                Harness::default(),
+            ),
+            super::commit_graph::SLOW_SORT,
         )
     }
 
@@ -2324,7 +2341,146 @@ mod commit_graph_offer {
     fn a_missing_file_with_a_usable_git_is_offered() {
         let state = offered();
         assert_eq!(state.commit_graph, CommitGraphOffer::Offered);
-        assert_eq!(state.commit_graph_line(), Some(CommitGraphLine::Offered));
+        assert_eq!(
+            state.commit_graph_line(),
+            Some(CommitGraphLine::Offered { keys: true })
+        );
+    }
+
+    /// A walk sorting its order (`super::sorting`) in a repository with no
+    /// commit-graph file, and the sort answering after `took`.
+    fn sort_answered(took: Duration) -> AppState {
+        let (walk, sort) = (JobId::new(1), JobId::new(2));
+        let mut state = super::sorting(walk, sort);
+        let mut repository = facts("/code/api", "main");
+        repository.commit_graph = CommitGraphFact::Absent { declined: false };
+        state.system_git = Some(supported());
+        state.repository = Some(repository);
+        let (state, _) = update(
+            &state,
+            AppEvent::Produced(
+                sort,
+                Product::TopologicalOrder(SortedOrder {
+                    order: super::order(),
+                    took,
+                }),
+            ),
+        );
+        state
+    }
+
+    /// m7-power-tools/15 (:778): a sort nobody waited for is not worth a file.
+    #[test]
+    fn a_fast_sort_gets_no_commit_graph_offer() {
+        let absent = CommitGraphFact::Absent { declined: false };
+        let under = Duration::from_millis(299);
+        assert!(!super::commit_graph::offer_after_sort(&absent, under));
+        let state = sort_answered(Duration::from_millis(40));
+        assert_eq!(state.commit_graph, CommitGraphOffer::NotNeeded);
+        assert_eq!(state.commit_graph_line(), None);
+        // The facts alone, before any sort, offer nothing either.
+        let before = opened(absent, supported(), Harness::default());
+        assert_eq!(before.commit_graph, CommitGraphOffer::NotNeeded);
+    }
+
+    #[test]
+    fn a_slow_sort_gets_the_offer() {
+        let slow = super::commit_graph::SLOW_SORT;
+        assert!(super::commit_graph::offer_after_sort(
+            &CommitGraphFact::Absent { declined: false },
+            slow
+        ));
+        for fact in [
+            CommitGraphFact::Absent { declined: true },
+            CommitGraphFact::Present { commits: 5 },
+            CommitGraphFact::Shallow,
+        ] {
+            assert!(
+                !super::commit_graph::offer_after_sort(&fact, slow),
+                "{fact:?}"
+            );
+        }
+        let state = sort_answered(Duration::from_millis(900));
+        assert_eq!(state.commit_graph, CommitGraphOffer::Offered);
+        // A refresh's facts keep it up.
+        let mut repository = facts("/code/api", "main");
+        repository.commit_graph = CommitGraphFact::Absent { declined: false };
+        let (refreshed, _) = update(
+            &state,
+            AppEvent::Produced(job(9), Product::Repository(Ok(repository))),
+        );
+        assert_eq!(refreshed.commit_graph, CommitGraphOffer::Offered);
+    }
+
+    /// `Esc` kept the provisional order: the sort's late answer, however
+    /// slow, offers nothing.
+    #[test]
+    fn a_stopped_sort_gets_no_offer() {
+        let (walk, sort) = (JobId::new(1), JobId::new(2));
+        let mut state = super::sorting(walk, sort);
+        let mut repository = facts("/code/api", "main");
+        repository.commit_graph = CommitGraphFact::Absent { declined: false };
+        state.system_git = Some(supported());
+        state.repository = Some(repository);
+        let (stopped, _) = update(&state, key(KeyCode::Escape));
+        let (late, _) = update(
+            &stopped,
+            AppEvent::Produced(
+                sort,
+                Product::TopologicalOrder(SortedOrder {
+                    order: super::order(),
+                    took: Duration::from_secs(5),
+                }),
+            ),
+        );
+        assert_eq!(late.commit_graph, CommitGraphOffer::NotNeeded);
+    }
+
+    fn pane_focused(mut state: AppState) -> AppState {
+        state.detail.shown = true;
+        state.detail.focus = DetailFocus::Diff;
+        state
+    }
+
+    /// m7-power-tools/36 (M3): in the pane `B` is blame; the offer's keys
+    /// answer only while the graph has the keyboard.
+    #[test]
+    fn the_offer_keys_answer_only_with_the_graph_focused() {
+        let (_, commands) = update(&offered(), key(KeyCode::Char('B')));
+        assert_eq!(commands, vec![Command::WriteCommitGraph]);
+        let (_, commands) = update(&offered(), key(KeyCode::Char('X')));
+        assert_eq!(commands, vec![Command::DeclineCommitGraph]);
+        for focus in [DetailFocus::Files, DetailFocus::Diff] {
+            let mut state = pane_focused(offered());
+            state.detail.focus = focus;
+            assert!(!super::commit_graph::offer_keys_live(&state));
+            for letter in ['B', 'X'] {
+                let (after, commands) = update(&state, key(KeyCode::Char(letter)));
+                assert!(
+                    !commands.iter().any(|command| matches!(
+                        command,
+                        Command::WriteCommitGraph | Command::DeclineCommitGraph
+                    )),
+                    "{letter} in {focus:?}: {commands:?}"
+                );
+                assert_eq!(after.commit_graph, CommitGraphOffer::Offered, "{letter}");
+            }
+        }
+    }
+
+    #[test]
+    fn the_offer_row_drops_its_keys_off_the_graph() {
+        let state = pane_focused(offered());
+        assert_eq!(
+            state.commit_graph_line(),
+            Some(CommitGraphLine::Offered { keys: false })
+        );
+        let mut back = state;
+        back.detail.focus = DetailFocus::Graph;
+        assert_eq!(
+            back.commit_graph_line(),
+            Some(CommitGraphLine::Offered { keys: true })
+        );
     }
 
     #[test]
@@ -2424,13 +2580,16 @@ mod commit_graph_offer {
             Harness::default(),
         );
         assert_eq!(declined.commit_graph, CommitGraphOffer::NotNeeded);
-        let suppressed = opened(
-            CommitGraphFact::Absent { declined: false },
-            supported(),
-            Harness {
-                offer_commit_graph: false,
-                ..Harness::default()
-            },
+        let suppressed = sorted_in(
+            opened(
+                CommitGraphFact::Absent { declined: false },
+                supported(),
+                Harness {
+                    offer_commit_graph: false,
+                    ..Harness::default()
+                },
+            ),
+            super::commit_graph::SLOW_SORT,
         );
         assert_eq!(suppressed.commit_graph, CommitGraphOffer::Suppressed);
         assert_eq!(suppressed.commit_graph_line(), None);
@@ -2446,10 +2605,13 @@ mod commit_graph_offer {
                 patch: 0,
             })),
         ] {
-            let state = opened(
-                CommitGraphFact::Absent { declined: false },
-                git,
-                Harness::default(),
+            let state = sorted_in(
+                opened(
+                    CommitGraphFact::Absent { declined: false },
+                    git,
+                    Harness::default(),
+                ),
+                super::commit_graph::SLOW_SORT,
             );
             assert_eq!(
                 state.commit_graph_line(),

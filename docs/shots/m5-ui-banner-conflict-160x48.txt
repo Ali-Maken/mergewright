@@ -71,7 +71,7 @@
  graft /code/api    MERGING                                                                  UNCOMMITTED
 ◌   ▏  Uncommitted changes (16 unmerged)                                                     diff vs HEAD 80393eb
 ◆      [◆ main] main's take                                                     87m  80393eb
-│ ●  ⓘ [feature] the feature's take                                             88m  38c48dd
+│ ●    [feature] the feature's take                                             88m  38c48dd
 ●─╯    the shared files                                                         89m  58854e9
 ●      Ship release 29                                                          2h   b796998 CONFLICTS (16)
 ●      Ship release 28                                                          2h   8b1f759   notes.md                                            both modified
@@ -114,5 +114,5 @@
 
 
 
- no commit-graph file · B build one (git commit-graph write --reachable) · X never here
+
  merge stopped · 16 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph

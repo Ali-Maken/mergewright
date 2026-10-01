@@ -18,9 +18,8 @@
 #    with its cause); one `⏎` would now create.
 # 6. `esc`: the prompt closes and the fetch's finished line shows, with its
 #    tick — it arrived under the box and was not acknowledged unseen.
-# - Frame 4's `ⓘ` on main's row is the radar's: `topic` has no upstream.
-#   Frames 5-6 are drawn the moment the fetch answers, when its refresh has
-#   thrown the radar's answer away and not yet read it again: no `ⓘ`.
+# - No `ⓘ` on any row: `topic` has no upstream, which is no finding
+#   (m7-power-tools/15).
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: `f` to nowhere, `b`, the fetch fails under the prompt ===
@@ -38,7 +37,7 @@
           │ ( ) check out after creating · ⇥ toggles                 │
           │                                                          │
           │                                                          │
-          ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+          ╰──────────────────────────────────────────────────────────╯
 ●    Commit 186                                                     7y   fab25df
 ●    Commit 185                                                     7y   09ae97c
 ●    Commit 184                                                     7y   49d7783
@@ -46,7 +45,7 @@
 ●    Commit 182                                                     7y   d212b3e
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
-
+●    Commit 179                                                     7y   97b58e5
  ⏎ create  ⇥ toggle  esc cancel
 
 === frame 2: `topic ⏎`, the held failure ===
@@ -72,7 +71,7 @@
 ●    Commit 182                                                     7y   d212b3e
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
- no commit-graph file · B build one · X never here
+●    Commit 179                                                     7y   97b58e5
  fetch all remotes failed: no remote named '/graft-no-such-remote' · esc dismiss
 
 === frame 3: `esc`, the create's line ===
@@ -98,12 +97,12 @@
 ●    Commit 182                                                     7y   d212b3e
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
- no commit-graph file · B build one · X never here
+●    Commit 179                                                     7y   97b58e5
  branch topic at d5ae5fd…
 
 === frame 4: `f`, `b`, `other ⏎` while the fetch runs ===
  graft /code/api  200 commits
-◆ ▏ⓘ [◆ main ⇄ origin] [topic] Commit 200                           7y   d5ae5fd
+◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                           7y   d5ae5fd
 ●    Commit 199                                                     7y   13e6ab1
 ●    Commit 198                                                     7y   f5055d9
 ●    Commit 197                                                     7y   2cce853
@@ -116,7 +115,7 @@
           │ ( ) check out after creating · ⇥ toggles                 │
           │                                                          │
           │                                                          │
-          ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+          ╰──────────────────────────────────────────────────────────╯
 ●    Commit 186                                                     7y   fab25df
 ●    Commit 185                                                     7y   09ae97c
 ●    Commit 184                                                     7y   49d7783
@@ -124,7 +123,7 @@
 ●    Commit 182                                                     7y   d212b3e
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
-
+●    Commit 179                                                     7y   97b58e5
  wait for fetch all remotes to finish
 
 === frame 5: the fetch answers under the prompt ===
@@ -142,7 +141,7 @@
           │ ( ) check out after creating · ⇥ toggles                 │
           │                                                          │
           │                                                          │
-          ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+          ╰──────────────────────────────────────────────────────────╯
 ●    Commit 186                                                     7y   fab25df
 ●    Commit 185                                                     7y   09ae97c
 ●    Commit 184                                                     7y   49d7783
@@ -150,7 +149,7 @@
 ●    Commit 182                                                     7y   d212b3e
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
-
+●    Commit 179                                                     7y   97b58e5
  ⏎ create  ⇥ toggle  esc cancel
 
 === frame 6: `esc`, the fetch's line ===
@@ -176,5 +175,5 @@
 ●    Commit 182                                                     7y   d212b3e
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
- no commit-graph file · B build one · X never here
+●    Commit 179                                                     7y   97b58e5
  fetched ✓

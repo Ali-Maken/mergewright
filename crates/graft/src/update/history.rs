@@ -54,19 +54,27 @@ pub(super) fn sorted(
     next: &mut AppState,
     commands: &mut Vec<Command>,
     id: JobId,
-    order: std::sync::Arc<[graft_core::commit_handle::CommitHandle]>,
+    sorted: super::events::SortedOrder,
 ) {
     if next.promoting != Some(id) {
         return;
     }
     next.promoting = None;
     let height = next.graph_rows();
+    let mut promoted = false;
     if let Some(history) = next.history.as_mut() {
-        match (next.awaiting, history.promote(order, height)) {
-            (Some(walk), Some(request)) => commands.push(Command::ShowRows(walk, request)),
+        match (next.awaiting, history.promote(sorted.order, height)) {
+            (Some(walk), Some(request)) => {
+                commands.push(Command::ShowRows(walk, request));
+                promoted = true;
+            }
             // The walk has gone; nobody would take the order up.
             _ => history.promotion = Some(Promotion::Kept),
         }
+    }
+    // Only a sort that was taken up counts: a kept order offers nothing.
+    if promoted {
+        super::commit_graph::sort_landed(next, sorted.took);
     }
 }
 

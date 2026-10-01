@@ -205,14 +205,17 @@ fn a_shallow_clone_offers_no_commit_graph() {
     app.close();
 }
 
-/// A full clone with no commit-graph is offered one, as before 20j.
+/// A full clone with no commit-graph is one a slow sort would offer one
+/// for, as before 20j. Since m7-power-tools/15 the offer waits on a sort of
+/// 300 ms or more, which this small fixture never takes: the facts are what
+/// is pinned here, the timing in `update::tests::commit_graph_offer`.
 #[test]
 fn a_full_clone_without_a_graph_still_offers_one() {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Session);
     let (app, state) = facts_in(scratch.path());
     assert_eq!(
-        state.commit_graph_line(),
-        Some(graft_ui::graph_screen::CommitGraphLine::Offered)
+        state.repository.as_ref().map(|facts| &facts.commit_graph),
+        Some(&graft::repository::CommitGraphFact::Absent { declined: false })
     );
     app.close();
 }

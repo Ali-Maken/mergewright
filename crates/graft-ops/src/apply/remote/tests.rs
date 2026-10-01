@@ -98,8 +98,8 @@ fn case(failure: &RemoteFailure) -> (Operation, &'static [&'static str]) {
         RemoteFailure::NonFastForward => (
             push(),
             &[
-                "push rejected: origin/main has moved",
-                "p pull first",
+                "push rejected: origin/main has commits you don't",
+                "p pull, then m or r",
                 "P force with lease",
             ],
         ),
@@ -196,6 +196,18 @@ fn explain_names_each_failure() {
     }
 }
 
+/// m7-power-tools/15 (:774): a rejected push names the whole way back — pull,
+/// then merge or rebase — not a bare `p pull first`.
+#[test]
+fn rejected_push_names_pull_then_m_or_r() {
+    let (entry, names) = journaled(&push_op("main", "origin"));
+    let line = explain(&entry, &RemoteFailure::NonFastForward, &[], &names);
+    assert_eq!(
+        line,
+        "push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease"
+    );
+}
+
 #[test]
 fn short_reason_for_cancel_is_the_word() {
     assert_eq!(short(&RemoteFailure::Cancelled), "cancelled");
@@ -210,7 +222,7 @@ fn names_survive_arrows_and_slashes() {
     assert_eq!(entry.description, "push a→b → team/origin/a→b");
     let line = explain(&entry, &RemoteFailure::NonFastForward, &[], &names);
     assert!(
-        line.starts_with("push rejected: team/origin/a→b has moved"),
+        line.starts_with("push rejected: team/origin/a→b has commits you don't"),
         "{line}"
     );
 

@@ -66,6 +66,12 @@ pub struct CommitEditor {
     /// This editor was picked back up from a draft `Esc` kept, which the
     /// title says so the user knows why there is text in it.
     pub from_draft: bool,
+    /// `Commit` was pressed with an empty subject and nothing has been
+    /// typed in the subject since. Only then is `subject empty` drawn: an
+    /// empty subject on open is the start of every commit, not a mistake
+    /// (m7-power-tools/15, :776). Set by a refused commit, cleared by an
+    /// edit to the subject.
+    pub subject_refused: bool,
 }
 
 impl Default for CommitEditor {
@@ -89,6 +95,7 @@ impl CommitEditor {
             head_short: None,
             template_applied: false,
             from_draft: false,
+            subject_refused: false,
         }
     }
 
@@ -166,6 +173,43 @@ impl CommitEditor {
         in_progress: Option<(InProgress, Begun)>,
         tabs: u8,
     ) -> Option<String> {
+        self.refusal_before_subject(status, in_progress, tabs)
+            .or_else(|| self.subject_refusal())
+    }
+
+    fn subject_refusal(&self) -> Option<String> {
+        self.subject
+            .text()
+            .trim()
+            .is_empty()
+            .then(|| "subject empty".to_owned())
+    }
+
+    /// [`Self::refusal`] as the editor draws it: `subject empty` only once
+    /// `Commit` was pressed with it ([`Self::subject_refused`]). The gate
+    /// stays [`Self::refusal`] — an empty subject never commits.
+    #[must_use]
+    pub fn shown_refusal(
+        &self,
+        status: Option<&WorkingTreeStatus>,
+        in_progress: Option<(InProgress, Begun)>,
+        tabs: u8,
+    ) -> Option<String> {
+        self.refusal_before_subject(status, in_progress, tabs)
+            .or_else(|| {
+                self.subject_refused
+                    .then(|| self.subject_refusal())
+                    .flatten()
+            })
+    }
+
+    /// Every refusal but the subject's, in the order they are reported.
+    fn refusal_before_subject(
+        &self,
+        status: Option<&WorkingTreeStatus>,
+        in_progress: Option<(InProgress, Begun)>,
+        tabs: u8,
+    ) -> Option<String> {
         // Finishing an operation is the banner's (m6-conflicts/39, 48);
         // the words are `operation_refusal`'s, shared with the pane.
         if let Some(live) = in_progress {
@@ -181,9 +225,6 @@ impl CommitEditor {
                 }
                 Some(_) => {}
             }
-        }
-        if self.subject.text().trim().is_empty() {
-            return Some("subject empty".to_owned());
         }
         None
     }

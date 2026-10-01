@@ -61,5 +61,5 @@
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  on fix ✓ · your edits are back · staging not kept: f.txt · u undoes it, staging included

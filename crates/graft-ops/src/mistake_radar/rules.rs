@@ -292,8 +292,9 @@ fn accidental_pull(
 }
 
 /// The risky states: detached `HEAD`, unpushed commits on the default
-/// branch, a non-default branch with no upstream. A default branch with no
-/// upstream is not reported: a fresh `git init` is not a mistake. An unborn
+/// branch. A branch with no upstream is not reported, default or not: a
+/// fresh `git init` or a branch not pushed yet is not a mistake
+/// (m7-power-tools/15 removed the non-default rule). An unborn
 /// `HEAD` is nothing yet. All `RiskyState`, in the order given: `HEAD`
 /// first, then the branches.
 pub fn classify_refs(branches: &[BranchFacts], head: &HeadFacts, policy: &Policy) -> Vec<Finding> {
@@ -318,14 +319,6 @@ pub fn classify_refs(branches: &[BranchFacts], head: &HeadFacts, policy: &Policy
                     Risk::UnpushedOnDefault {
                         branch: b.name.to_owned(),
                         ahead,
-                    },
-                ));
-            }
-            UpstreamFacts::None if !b.is_default => {
-                findings.push(finding(
-                    b.tip,
-                    Risk::NoUpstream {
-                        branch: b.name.to_owned(),
                     },
                 ));
             }
@@ -678,14 +671,23 @@ mod tests {
                         ahead: 2
                     }
                 ),
-                (
-                    oid(2),
-                    Risk::NoUpstream {
-                        branch: "feature".into()
-                    }
-                ),
             ]
         );
+    }
+
+    /// m7-power-tools/15 (:777): a branch nobody has pushed yet is how every
+    /// branch starts, not a mistake — `P` sets its upstream when it is time.
+    #[test]
+    fn a_branch_without_upstream_has_no_finding() {
+        let branches = [BranchFacts {
+            name: "feature",
+            tip: oid(2),
+            is_default: false,
+            upstream: UpstreamFacts::None,
+        }];
+        for head in [HeadFacts::Branch("feature"), HeadFacts::Unborn] {
+            assert!(classify_refs(&branches, &head, &Policy::default()).is_empty());
+        }
     }
 
     #[test]

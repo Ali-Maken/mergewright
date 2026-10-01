@@ -31,7 +31,7 @@
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  every file done · stash@{0} dropped ✓ · u brings it back
 COMMIT f3742ab · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 3m · parents cfa370c · diff vs firs…
 commit over the notes

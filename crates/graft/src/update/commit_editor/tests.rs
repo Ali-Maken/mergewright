@@ -391,14 +391,46 @@ fn nothing_staged_refuses_and_the_button_does_nothing() {
     assert!(after.commit_editor.is_some(), "and the editor stays open");
 }
 
+fn shown_refusal(state: &AppState) -> Option<String> {
+    crate::view::commit_editor_view(state)
+        .expect("open")
+        .refusal
+        .as_deref()
+        .map(str::to_owned)
+}
+
+/// m7-power-tools/15 (:776): an empty subject is where every commit starts,
+/// not a mistake — nothing is said until `Commit` is pressed.
 #[test]
-fn an_empty_subject_refuses() {
+fn a_fresh_commit_editor_shows_no_refusal() {
     let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
-    let view = crate::view::commit_editor_view(&open).expect("open");
-    assert_eq!(
-        view.refusal.as_deref().map(str::to_owned),
-        Some("subject empty".to_owned())
-    );
+    assert_eq!(shown_refusal(&open), None);
+}
+
+#[test]
+fn commit_with_empty_subject_says_subject_empty() {
+    let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
+    for press in [key(KeyCode::Enter), control(KeyCode::Enter)] {
+        let (after, commands) = update(&open, press);
+        assert!(operate(&commands).is_none(), "{commands:?}");
+        assert_eq!(shown_refusal(&after), Some("subject empty".to_owned()));
+    }
+    // The button too.
+    let mut on_button = open.clone();
+    on_button.commit_editor.as_mut().expect("open").focus = Field::CommitButton;
+    let (after, _) = update(&on_button, key(KeyCode::Enter));
+    assert_eq!(shown_refusal(&after), Some("subject empty".to_owned()));
+}
+
+#[test]
+fn typing_clears_subject_empty() {
+    let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
+    let (refused, _) = update(&open, key(KeyCode::Enter));
+    let (typed_one, _) = update(&refused, key(KeyCode::Char('x')));
+    assert_eq!(shown_refusal(&typed_one), None);
+    // Deleting it back to empty is an edit too: still nothing said.
+    let (erased, _) = update(&typed_one, key(KeyCode::Backspace));
+    assert_eq!(shown_refusal(&erased), None);
 }
 
 /// The editor opened with `c` over `state`'s live operation. Since

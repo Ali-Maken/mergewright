@@ -472,12 +472,12 @@ fn failures_are_worded_and_remembered() {
     let params = push_params(&state).expect("an upstream");
     let op = Operation::Push(params.clone());
     let mut after = state.clone();
-    let rejected = "push rejected: origin/main has moved · p pull first · P force with lease";
+    let rejected = "push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease";
     assert_eq!(
         remote_failed(&mut after, &op, &RemoteFailure::NonFastForward, rejected),
         Status::Sticky {
-            reason: "push rejected: origin/main has moved".to_owned(),
-            keys: Some("p pull first · P force with lease".to_owned()),
+            reason: "push rejected: origin/main has commits you don't".to_owned(),
+            keys: Some("p pull, then m or r · P force with lease".to_owned()),
         }
     );
     assert_eq!(

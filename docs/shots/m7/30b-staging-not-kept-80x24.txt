@@ -35,5 +35,5 @@
 
 
 
- no commit-graph file · B build one · X never here
+
  on fix ✓ · staging not kept: f.txt · u undoes it, staging included

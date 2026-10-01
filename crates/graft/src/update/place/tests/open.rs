@@ -329,20 +329,22 @@ fn b_on_a_binary_file_says_so_and_opens_nothing() {
     refused_with(&state, "a.rs is binary · no blame");
 }
 
+/// m7-power-tools/36 (M3): in the pane `B` is blame, offer or not; the
+/// offer's `B` answers only with the graph focused.
 #[test]
-fn b_while_the_commit_graph_offer_is_up_goes_to_the_offer() {
+fn b_in_the_pane_blames_while_the_commit_graph_offer_is_up() {
     let mut state = pane_at(22);
     state.commit_graph = crate::update::CommitGraphOffer::Offered;
     state.system_git = Some(crate::update::GitCheck::Ran(
         graft_git::version::SystemGit::Supported(graft_git::version::GitVersion::MINIMUM),
     ));
     let (next, commands) = press(&state, KeyCode::Char('B'));
-    assert!(!next.trail.is_live(), "no place opened");
+    assert!(next.trail.is_live(), "a place opened");
     assert!(
-        commands
+        !commands
             .iter()
             .any(|c| matches!(c, Command::WriteCommitGraph)),
         "{commands:?}"
     );
-    assert!(!commands.iter().any(|c| matches!(c, Command::ReadBlame(..))));
+    assert_eq!(next.commit_graph, crate::update::CommitGraphOffer::Offered);
 }

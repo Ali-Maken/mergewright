@@ -2,7 +2,8 @@
 #
 # What right looks like: title, typed name field, an optional
 # (•)/( ) checkout toggle, a refusal line under the field when the
-# name is rejected, and the footer "⏎ create  ⇥ toggle  esc cancel".
+# name is rejected, and a plain bottom border: the keys are the bar's
+# (m7-power-tools/15).
 # Below 40x7 it draws one centred "too small" line and nothing else.
 
 === plain, 80x24 ===
@@ -11,7 +12,7 @@
           │                                                          │
           │                                                          │
           │                                                          │
-          ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+          ╰──────────────────────────────────────────────────────────╯
 
 === with checkout option, 160x48 ===
                                                   ╭ New branch at a1b2c3d ───────────────────────────────────╮
@@ -19,7 +20,7 @@
                                                   │ (•) check out after creating · ⇥ toggles                 │
                                                   │                                                          │
                                                   │                                                          │
-                                                  ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+                                                  ╰──────────────────────────────────────────────────────────╯
 
 === refused, 80x24 ===
           ╭ New branch at a1b2c3d ───────────────────────────────────╮
@@ -27,5 +28,5 @@
           │ ( ) check out after creating · ⇥ toggles                 │
           │ bad name: cannot start with -                            │
           │                                                          │
-          ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+          ╰──────────────────────────────────────────────────────────╯
 

@@ -77,8 +77,8 @@ pub(crate) fn space_folds(detail: &DetailState) -> bool {
 /// hidden (`⏎` landed on the graph and this pane) goes back to it before it
 /// closes the pane — graph or pane focused, once the graph's own open things
 /// are closed (`place::esc_goes_back` decides; keymap §2.1, 20i). `B`
-/// blames at the line he is on — unless the commit-graph offer can be acted
-/// on, whose `B` it is (keymap §2.1; `place::b_key` asks).
+/// blames at the line he is on, commit-graph offer or not: the offer's `B`
+/// lives only on the graph (keymap §2.5; m7-power-tools/36).
 fn place_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
     match key.code {
         KeyCode::Escape => crate::update::place::show_again(next, commands),

@@ -51,12 +51,22 @@ fn many_lanes() -> graft_fixtures::Scratch {
     let path = scratch.path();
     let base = git(path, &["rev-parse", "HEAD"]).trim().to_owned();
 
+    // Shape (m7-power-tools/36): every topic's commit first, then every
+    // merge. The top rows are then merges only, each opening a lane whose
+    // own commit sits below the screen, so lanes pass through rows with no
+    // node on them, which is what the cap can fold. The old shape (commit,
+    // merge, commit, merge) put a node on every open lane within 24 rows,
+    // and `Fold::plan` never hides those: its `+1 lanes` came only from the
+    // false no-upstream ⓘ marker column eating width, which m7/15 removed.
     for topic in 1..=14 {
         let branch = format!("topic-{topic:02}");
         git(path, &["switch", "--quiet", "-c", &branch, &base]);
         write(path, &format!("{branch}.rs"), "fn topic() {}\n");
-        commit(path, &format!("Work on {branch}"), topic * 2 - 1);
-        git(path, &["switch", "--quiet", "main"]);
+        commit(path, &format!("Work on {branch}"), topic);
+    }
+    git(path, &["switch", "--quiet", "main"]);
+    for topic in 1..=14 {
+        let branch = format!("topic-{topic:02}");
         run_at(
             path,
             &[
@@ -67,7 +77,7 @@ fn many_lanes() -> graft_fixtures::Scratch {
                 &format!("Merge branch '{branch}'"),
                 &branch,
             ],
-            topic * 2,
+            14 + topic,
         );
     }
     scratch
@@ -215,16 +225,16 @@ fn header() -> String {
      # is (m5/21 item 4).\n\
      #\n\
      # What right looks like:\n\
-     #  - **The two frames differ.** With the pane open the graph folds:\n\
-     #    the header says `+1 lanes` and a `\u{22ee}` marker column stands\n\
-     #    where the folded lane was. With the pane closed the same\n\
-     #    repository on the same terminal draws every lane and the header\n\
-     #    says nothing about lanes. That difference is the whole fix \u{2014} the\n\
-     #    two used to be identical, because both asked the screen.\n\
-     #  - One lane, not five, because `Fold::plan` never hides a column\n\
-     #    with a node on screen: most of these columns hold one. The cap\n\
-     #    decides only the lanes passing through, which is the point \u{2014} it\n\
-     #    is a budget, not a truncation.\n\
+     #  - **The two frames differ.** With the pane open the graph folds\n\
+     #    more: the header says `+6 lanes` and a `\u{22ee}` marker column\n\
+     #    stands where the folded lanes were. With the pane closed the same\n\
+     #    repository on the same terminal says `+4 lanes`: twelve lanes\n\
+     #    drawn, not eight. The two used to be identical, because both\n\
+     #    asked the screen.\n\
+     #  - The top rows are merges only, so their lanes pass through rows\n\
+     #    with no node on them: those are what the cap folds. A column with\n\
+     #    a node on screen is never folded (m7-power-tools/36 reshaped the\n\
+     #    fixture for this).\n\
      #  - With the pane open the subject column starts two cells earlier\n\
      #    and every subject is still readable.\n\
      #  - Nothing reads as an error on either frame.\n\

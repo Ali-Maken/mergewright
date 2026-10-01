@@ -98,12 +98,12 @@
 ●    Commit 166                                                                                          GF 7y   953abf3
 ●    Commit 165                                                                                          GF 7y   49912f3
 ●    Commit 164                                                                                          GF 7y   1143b38
- push rejected: origin/main has moved · p pull first · P force with lease
+ push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease
 
 === frame 3: the drift box `u` opened ===
  graft /code/api  6 commits  date order, sorting…
   ◌    Uncommitted changes (1 unstaged)
-  ◆ ▏ⓘ [◆ fix] fix the bug                                                                               GF 3m   fbb2394
+  ◆ ▏  [◆ fix] fix the bug                                                                               GF 3m   fbb2394
 ● │    [main] main moves on                                                                              GF 4m   37926a7
 ●─╯    add the base                                                                                      GF 5m   ed332bc
 ●      Correct the note                                                                                  GF 1y   a82960b
@@ -165,7 +165,7 @@
                               │ ( ) check out after creating · ⇥ toggles                 │
                               │                                                          │
                               │                                                          │
-                              ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+                              ╰──────────────────────────────────────────────────────────╯
 ●    Commit 179                                                                                          GF 7y   97b58e5
 ●    Commit 178                                                                                          GF 7y   1c9b7ed
 ●    Commit 177                                                                                          GF 7y   f93340a

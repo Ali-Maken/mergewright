@@ -24,7 +24,7 @@
 === frame 1: `u` over the edit, the drift box ===
  graft /code/api  6 commits
   ◌    Uncommitted changes (1 unstaged)
-  ◆ ▏ⓘ [◆ fix] fix the bug                                          3m   fbb2394
+  ◆ ▏  [◆ fix] fix the bug                                          3m   fbb2394
 ● │    [main] main moves on                                         4m   37926a7
 ●─╯    add the base                                                 5m   ed332bc
 ●      Correct the note                                             1y   a82960b
@@ -49,7 +49,7 @@
 
 === frame 2: `y`, the landing ===
  graft /code/api  6 commits
-  ● ▏ⓘ [fix] fix the bug                                            3m   fbb2394
+  ● ▏  [fix] fix the bug                                            3m   fbb2394
 ◆ │    [◆ main] main moves on                                       4m   37926a7
 ●─╯    add the base                                                 5m   ed332bc
 ●      Correct the note                                             1y   a82960b
@@ -70,13 +70,13 @@
 
 
 
- no commit-graph file · B build one · X never here
+
  undo: checkout fix ✓ · U brings back your edit to fix.txt
 
 === frame 3: `U`, the edit back ===
  graft /code/api  6 commits
   ◌    Uncommitted changes (1 unstaged)
-  ◆ ▏ⓘ [◆ fix] fix the bug                                          3m   fbb2394
+  ◆ ▏  [◆ fix] fix the bug                                          3m   fbb2394
 ● │    [main] main moves on                                         4m   37926a7
 ●─╯    add the base                                                 5m   ed332bc
 ●      Correct the note                                             1y   a82960b
@@ -96,13 +96,13 @@
 
 
 
- no commit-graph file · B build one · X never here
+
  redo: checkout fix ✓
 
 === frame 4: the time machine over an edit, `→ ⏎`, the landing ===
  graft /code/api  7 commits
-  ● ▏ⓘ [fix2] fix it again                                          2m   84d95f8
-  ●  ⓘ [fix] fix the bug                                            3m   fbb2394
+  ● ▏  [fix2] fix it again                                          2m   84d95f8
+  ●    [fix] fix the bug                                            3m   fbb2394
 ◆ │    [◆ main] main moves on                                       4m   37926a7
 ●─╯    add the base                                                 5m   ed332bc
 ●      Correct the note                                             1y   a82960b
@@ -122,5 +122,5 @@
 
 
 
- no commit-graph file · B build one · X never here
+
  reverted to before “checkout fix” (2 steps) ✓ · U (2 times) brings it back

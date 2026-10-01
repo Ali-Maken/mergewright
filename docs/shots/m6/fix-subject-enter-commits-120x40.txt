@@ -95,5 +95,5 @@ COMMIT ── ⎇ main ── 1 file staged
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  commit "fix: x" ✓

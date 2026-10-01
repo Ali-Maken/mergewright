@@ -1,0 +1,54 @@
+# m7/refused-box-single-close-120x40.txt: 120x40, drawn by `view::view` from
+# a real AppState (crates/graft/tests/it/offer_and_blame.rs,
+# a_single_close_box_offers_only_esc, asserted). Not a pty capture: no
+# colour (CLAUDE.md rule 5, colour unverified).
+#
+# `m` on a branch already in main, its preview then refused (the refusal's
+# words, `main has moved`, set on the real preview: a refusal from git
+# cannot be timed in a test).
+#
+# What right looks like:
+#  - The box: the refusal's line, one `[ Close ]`.
+#  - Its bottom border reads only `esc back` (review 86's words): no
+#    `←→ choose  ⏎ act  esc cancel` over a single button.
+
+ graft /code/api  6 commits
+●    Handle expired tokens                                                                               GF 7y   74f9a9e
+● ▏  Move session TTL to config                                                                          PR 7y   0a27627
+●    rustfmt                                                                                             RU 7y   b32274b
+●    Retry refresh once on 401                                                                           LI 7y   2f48ca3
+●    Add token refresh                                                                                   TO 8y   47593a5
+◇    Add session                                                                                         AN 8y   3f6c311
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: merge old into main ────────────────────────────────────────────────────────────────────────────────────────╮
+│ main has moved                                                                                                       │
+│ ▸[ Close ]                                                                                                           │
+╰ esc back ────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+

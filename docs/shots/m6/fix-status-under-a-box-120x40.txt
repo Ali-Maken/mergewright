@@ -18,9 +18,8 @@
 #    with its cause); one `⏎` would now create.
 # 6. `esc`: the prompt closes and the fetch's finished line shows, with its
 #    tick — it arrived under the box and was not acknowledged unseen.
-# - Frame 4's `ⓘ` on main's row is the radar's: `topic` has no upstream.
-#   Frames 5-6 are drawn the moment the fetch answers, when its refresh has
-#   thrown the radar's answer away and not yet read it again: no `ⓘ`.
+# - No `ⓘ` on any row: `topic` has no upstream, which is no finding
+#   (m7-power-tools/15).
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: `f` to nowhere, `b`, the fetch fails under the prompt ===
@@ -46,7 +45,7 @@
                               │ ( ) check out after creating · ⇥ toggles                 │
                               │                                                          │
                               │                                                          │
-                              ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+                              ╰──────────────────────────────────────────────────────────╯
 ●    Commit 178                                                                                          GF 7y   1c9b7ed
 ●    Commit 177                                                                                          GF 7y   f93340a
 ●    Commit 176                                                                                          GF 7y   5aaeeba
@@ -62,7 +61,7 @@
 ●    Commit 166                                                                                          GF 7y   953abf3
 ●    Commit 165                                                                                          GF 7y   49912f3
 ●    Commit 164                                                                                          GF 7y   1143b38
-
+●    Commit 163                                                                                          GF 7y   e135216
  ⏎ create  ⇥ toggle  esc cancel
 
 === frame 2: `topic ⏎`, the held failure ===
@@ -104,7 +103,7 @@
 ●    Commit 166                                                                                          GF 7y   953abf3
 ●    Commit 165                                                                                          GF 7y   49912f3
 ●    Commit 164                                                                                          GF 7y   1143b38
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+●    Commit 163                                                                                          GF 7y   e135216
  fetch all remotes failed: no remote named '/graft-no-such-remote' · esc dismiss
 
 === frame 3: `esc`, the create's line ===
@@ -146,12 +145,12 @@
 ●    Commit 166                                                                                          GF 7y   953abf3
 ●    Commit 165                                                                                          GF 7y   49912f3
 ●    Commit 164                                                                                          GF 7y   1143b38
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+●    Commit 163                                                                                          GF 7y   e135216
  branch topic at d5ae5fd…
 
 === frame 4: `f`, `b`, `other ⏎` while the fetch runs ===
  graft /code/api  200 commits
-◆ ▏ⓘ [◆ main ⇄ origin] [topic] Commit 200                                                                GF 7y   d5ae5fd
+◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                                                                GF 7y   d5ae5fd
 ●    Commit 199                                                                                          GF 7y   13e6ab1
 ●    Commit 198                                                                                          GF 7y   f5055d9
 ●    Commit 197                                                                                          GF 7y   2cce853
@@ -172,7 +171,7 @@
                               │ ( ) check out after creating · ⇥ toggles                 │
                               │                                                          │
                               │                                                          │
-                              ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+                              ╰──────────────────────────────────────────────────────────╯
 ●    Commit 178                                                                                          GF 7y   1c9b7ed
 ●    Commit 177                                                                                          GF 7y   f93340a
 ●    Commit 176                                                                                          GF 7y   5aaeeba
@@ -188,7 +187,7 @@
 ●    Commit 166                                                                                          GF 7y   953abf3
 ●    Commit 165                                                                                          GF 7y   49912f3
 ●    Commit 164                                                                                          GF 7y   1143b38
-
+●    Commit 163                                                                                          GF 7y   e135216
  wait for fetch all remotes to finish
 
 === frame 5: the fetch answers under the prompt ===
@@ -214,7 +213,7 @@
                               │ ( ) check out after creating · ⇥ toggles                 │
                               │                                                          │
                               │                                                          │
-                              ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+                              ╰──────────────────────────────────────────────────────────╯
 ●    Commit 178                                                                                          GF 7y   1c9b7ed
 ●    Commit 177                                                                                          GF 7y   f93340a
 ●    Commit 176                                                                                          GF 7y   5aaeeba
@@ -230,7 +229,7 @@
 ●    Commit 166                                                                                          GF 7y   953abf3
 ●    Commit 165                                                                                          GF 7y   49912f3
 ●    Commit 164                                                                                          GF 7y   1143b38
-
+●    Commit 163                                                                                          GF 7y   e135216
  ⏎ create  ⇥ toggle  esc cancel
 
 === frame 6: `esc`, the fetch's line ===
@@ -272,5 +271,5 @@
 ●    Commit 166                                                                                          GF 7y   953abf3
 ●    Commit 165                                                                                          GF 7y   49912f3
 ●    Commit 164                                                                                          GF 7y   1143b38
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+●    Commit 163                                                                                          GF 7y   e135216
  fetched ✓

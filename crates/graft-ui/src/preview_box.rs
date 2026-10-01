@@ -41,7 +41,8 @@ const MIN_BOX_ROWS: u16 = 4;
 /// The box's own footer, shown in its bottom border while it is open.
 const FOOTER: &str = "←→ choose  ⏎ act  esc cancel";
 
-/// The footer of a [`PreviewBox::back_only`] box.
+/// The footer of a box with one choice: nothing to choose between, so no
+/// `←→ choose  ⏎ act` (review 86's words; m7-power-tools/15, :860).
 const BACK_ONLY: &str = "esc back";
 
 /// The widest footer rung whose padded label fits `inner` cells:
@@ -50,7 +51,10 @@ const BACK_ONLY: &str = "esc back";
 /// plain [`FOOTER`]. Parts whose field is off are left out of every rung;
 /// each part is whole or absent, never cut.
 pub(crate) fn footer_label(view: &PreviewBox, inner: usize) -> String {
-    if view.back_only {
+    // From the choices, not a flag: every single-`Close` box — refused,
+    // failed, undrawable, nothing to do — had the full footer while only
+    // the stash put-back set the flag (m7-power-tools/15, :860).
+    if view.choices.len() == 1 {
         return BACK_ONLY.to_owned();
     }
     let confirm = view.confirm_key.then_some("y confirm");
@@ -128,10 +132,10 @@ pub struct PreviewBox {
     /// editor on this rebase with its suggested drops marked
     /// (rebase-preview-keeps-drops). Whole or absent, never cut.
     pub keep: bool,
-    /// A refusal with nothing to choose between: the footer is `esc back`
-    /// alone, no `←→ choose  ⏎ act` over a single `Close` (review 86, m3;
-    /// the stash note's refusal state). Set for the stash put-back's
-    /// closing boxes only.
+    /// **No longer read** (m7-power-tools/36): the footer is `esc back`
+    /// whenever the box has one choice. Still set for the stash put-back's
+    /// closing boxes only because `graft/src/update/stash/tests.rs` reads it
+    /// and that file is another ticket's this wave; removed with that read.
     pub back_only: bool,
 }
 

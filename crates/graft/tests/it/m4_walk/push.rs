@@ -341,8 +341,8 @@ fn push_rejected_then_lease() -> Scenario {
                     state,
                     &[
                         "push rejected: origin/",
-                        "has moved",
-                        "p pull first · P force with lease",
+                        "has commits you don't",
+                        "p pull, then m or r · P force with lease",
                     ],
                 )
             }),

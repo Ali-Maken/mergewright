@@ -20,10 +20,10 @@
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  merge main into feature ✓
 COMMIT 0000000 · Graft Fixture <fixture@example.invalid> · YYYY-MM-DD hh:mm +zzzz · future · parents 8d6cd28, 45fa51d ·…
-Merge branch 'main' into feature · backward merge · no upstream (feature) · evil merge: clean
+Merge branch 'main' into feature · backward merge · evil merge: clean
 A main-one.txt          +1 −0 ▎
 A main-two.txt          +1 −0       1 + one
 

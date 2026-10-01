@@ -19,7 +19,7 @@
  graft /code/api  6 commits
 ◌        Uncommitted changes (1 unstaged)
   ■   ▏  [stash@{0}] On main: graft: your edits, set aside for che… 3m   b284137
-  │ ◆  ⓘ [◆ fix] fix changes line 7                                 4m   f2e2ada
+  │ ◆    [◆ fix] fix changes line 7                                 4m   f2e2ada
 ●─┴─╯    [main] add f                                               5m   330fea5
 ●        Correct the note                                           1y   a82960b
 ●        Add the first note                                         1y   fadcfb3
@@ -38,5 +38,5 @@
 
 
 
- no commit-graph file · B build one · X never here
+
  interrupted · your edits are back · a copy stays in stash@{0} · J to inspect

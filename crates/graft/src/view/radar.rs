@@ -241,7 +241,6 @@ fn title_for(finding: &Finding) -> String {
             Evidence::Risk(Risk::UnpushedOnDefault { branch, ahead }) => {
                 format!("unpushed on default ({branch}, {ahead} ahead)")
             }
-            Evidence::Risk(Risk::NoUpstream { branch }) => format!("no upstream ({branch})"),
             // `RiskyState` only ever carries `Evidence::Risk`
             // (`graft_ops::mistake_radar::rules::classify_refs`).
             _ => "risky state".to_owned(),

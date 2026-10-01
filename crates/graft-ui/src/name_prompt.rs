@@ -191,7 +191,9 @@ impl Widget for &NamePrompt<'_> {
         buf.set_string(
             area.x,
             area.y + 5,
-            border_row('╰', '╯', "⏎ create  ⇥ toggle  esc cancel", width),
+            // No keys: the bar names them (`HintContext::NamePrompt`); drawn
+            // here too they were said twice (m7-power-tools/15, :856).
+            border_row('╰', '╯', "", width),
             foreground(self.theme, Token::TextMuted),
         );
     }

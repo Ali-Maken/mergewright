@@ -39,8 +39,8 @@ pub enum MistakeRadarKind {
     DuplicateCommit,
     /// A remote-tracking tip that is not a descendant of its previous value.
     ForcePushedRemote,
-    /// Detached HEAD, unpushed commits on the default branch, or a branch
-    /// with no upstream: a state, not a commit.
+    /// Detached HEAD or unpushed commits on the default branch: a state,
+    /// not a commit.
     RiskyState,
 }
 

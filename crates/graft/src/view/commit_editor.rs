@@ -18,7 +18,7 @@ use crate::update::commit_editor::CommitEditor;
 pub fn commit_editor_view(state: &AppState) -> Option<CommitEditorView<'static>> {
     let editor = state.commit_editor.as_ref()?;
     let busy = state.operating.is_some();
-    let refusal = editor.refusal(
+    let refusal = editor.shown_refusal(
         state.working_tree.as_deref(),
         crate::update::commit_editor::live_operation(state),
         crate::update::commit_editor::refusal_tabs(state),

@@ -1,7 +1,7 @@
  graft /code/api  7 commits
 ◆─╮ ▏  [◆ main] Merge branch 'feature'                                                                   GF futu…0000000
 ● │    main's take                                                                                       GF 2h   ddeed32
-│ ●  ⓘ [feature] the feature's take                                                                      GF 2h   f43f326
+│ ●    [feature] the feature's take                                                                      GF 2h   f43f326
 ●─╯    the shared files                                                                                  GF 2h   b35b2f1
 ●      Correct the note                                                                                  GF 1y   a82960b
 ●      Add the first note                                                                                GF 1y   fadcfb3
@@ -20,7 +20,7 @@
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  merged feature into main ✓
 COMMIT 0000000 · Graft Fixture <fixture@example.invalid> · 0000-00-00 00:00 +0000 · future · parents ddeed32, f43f326 ·…
 Merge branch 'feature' · evil merge: clean (2 files hand-resolved)
