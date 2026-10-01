@@ -136,7 +136,7 @@ Impls to change (method only): `ChannelWakes` (`mod.rs:186`), `ScriptedWakes` (`
       `frames::` tests green with unchanged budgets.
 - [x] A `Drawn` mark still means one frame drawn, and 42's `paced.rs` accessors (per-`Drawn` `Instant` and sink
       offset) keep that meaning (`held_key` reads them). — checked by the release run below.
-- [ ] **Planner correction 2026-10-01 — scenario B's bound (continuation builder).** 42's spec never meant `J`'s own
+- [x] **Planner correction 2026-10-01 — scenario B's bound (continuation builder).** 42's spec never meant `J`'s own
       frame to count in B's `frames_after_release` or `tail_ms` (42 §Planner correction). Do, in order:
   1. **Confirm the premise first** (rule 7; the planner did not read source): `held_key.rs:342-349` counts every
      Drawn mark after the last `j`'s send in B, and `:364-368` ends `tail_ms` at the last frame drawn, which in B is
@@ -152,7 +152,8 @@ Impls to change (method only): `ChannelWakes` (`mod.rs:186`), `ScriptedWakes` (`
      the fast tier and say where).
   4. `TESTING.md` "Held keys" (`:186-187`): add "in B, up to `J`'s frame" to both readings. Nothing else there.
   Ticks: the B bound — `held_key::b_bound_stops_at_js_frame`; the Unicode box below — its two release tests.
-- [ ] Unicode half of the gate goes green in release: `held_key::held_j_stops_on_release_unicode` and
+  Done (cont.2): ticked by `held_key::b_bound_stops_at_js_frame` (red on the old rule: `(4, Frame(6))` vs `(2, Frame(4))`, then green). Lives in `crates/graft/tests/it/held_key_bound.rs`: `include!`d by heavy-gated `held_key.rs`, mounted alone as `held_key` in the fast tier (`main.rs`), so the path is `held_key::…` in both. Premise confirmed at be27f5d7: `held_key.rs:342-349` `if drawn_at <= last_j {…} else { reading.frames_after_release += 1; }` over every handed frame; `:364-368` `let last_byte = written.last()…; drain.drained_at(last_byte)…; reading.tail_ms = ms(last_j, drained);` — the last frame handed, `J`'s or later in B. `J`'s frame index factored into `js_frame_index`, shared with `journal_frame` (not recomputed). A goes through the same `after_release` with no bound and `TailEnd::LastByte`: same counts and same end byte as before.
+- [x] Unicode half of the gate goes green in release (3/3 runs, `docs/perf/fix-scroll-held-key.txt` `# rev coalesce, B bound…`; ticked by `held_key::held_j_stops_on_release_unicode`, `held_key::j_then_journal_opens_at_once_unicode`; B before → after: frames_after_release 3 → 2, tail_ms 105 → 77/77/78, j_done_ms 23-25; Pixel B still red: tail_ms 718, j_ms 665, bytes_per_frame_held 22.8 MB): `held_key::held_j_stops_on_release_unicode` and
       `held_key::j_then_journal_opens_at_once_unicode`, run by `scripts/fix-scroll-held-key.sh`, appended to
       `docs/perf/fix-scroll-held-key.txt` (`# rev coalesce`). Pixel stays red until `46-scroll-strips-wiring`; record
       its numbers (expect `tail_ms` bounded near two Pixel frames, `bytes_per_frame_held` still MB). Record B's
