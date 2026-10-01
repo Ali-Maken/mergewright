@@ -36,7 +36,7 @@ mod fitting;
 mod lists;
 
 pub use catalogue::{every_context, every_hint};
-pub use context::{ConfirmYes, HintContext, LiveC, TabWord};
+pub use context::{ConfirmYes, HintContext, LiveC, RowVerbs, TabWord};
 use fitting::fit_list;
 pub use fitting::{StopWording, fit_status_line, hints_text, stopped_row, stopped_row_before_keys};
 use lists::{TAIL, context_list};
@@ -386,7 +386,7 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         HintContext::BackToHistory(inner) => led_by(BACK_TO_HISTORY, inner, divider),
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
-        | HintContext::PlainRow
+        | HintContext::PlainRow { .. }
         | HintContext::Rewritable(_)
         | HintContext::ChangesPane { .. } => (drawable(context, divider), Some(MORE)),
         // The row's own bar with its `c` said the way it acts now, and —
@@ -556,7 +556,7 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
         context,
         HintContext::WorkingTreeRow
             | HintContext::BranchRow { .. }
-            | HintContext::PlainRow
+            | HintContext::PlainRow { .. }
             | HintContext::Rewritable(_)
     );
     if rows {

@@ -96,4 +96,4 @@
 
 
 
- ⏎ open  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  J journal  . more  /  R  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
+ ⏎ open  o take  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  . more  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C

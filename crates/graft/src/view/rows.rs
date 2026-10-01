@@ -6,6 +6,7 @@ use graft_graph::fold::Keep;
 use graft_graph::row::Row;
 use graft_term::{SanitizedText, sanitize_line, sanitize_path};
 use graft_ui::graph_column::{NodeKind, RowPaint};
+use graft_ui::graph_screen::hints::RowVerbs;
 use graft_ui::graph_screen::{
     Badge, BadgeKind, Compaction, Filters, GraphEntry, GraphView, HintContext, LiveC, OrderNotice,
     ProblemLine, SHA_WIDTH, SearchLine, TabWord, WalkView, short_sha,
@@ -218,7 +219,12 @@ fn opening_view(
         divider_shown: divider_shown(state),
         // Wrapped like every graph-row bar: an operation can be live
         // before the first rows land (m6-conflicts/52).
-        hint_context: live_wrapped(state, HintContext::PlainRow),
+        hint_context: live_wrapped(
+            state,
+            HintContext::PlainRow {
+                verbs: RowVerbs::NONE,
+            },
+        ),
         // No history has arrived yet, so the radar context is never `Ready`
         // here — `state.history` is `None`, which `radar::request_context`
         // requires before it asks for one. Sticky findings from an earlier
@@ -467,7 +473,7 @@ fn live_wrapped(state: &AppState, row: HintContext) -> HintContext {
         row,
         HintContext::WorkingTreeRow
             | HintContext::BranchRow { .. }
-            | HintContext::PlainRow
+            | HintContext::PlainRow { .. }
             | HintContext::Marked(_)
             | HintContext::PaneFocused { .. }
     ) {
@@ -564,7 +570,7 @@ pub(crate) fn back_to_place(state: &AppState, context: HintContext) -> HintConte
     match context {
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
-        | HintContext::PlainRow
+        | HintContext::PlainRow { .. }
         | HintContext::Rewritable(_)
         | HintContext::Marked(_)
         | HintContext::PaneFocused { .. }
@@ -699,6 +705,55 @@ pub fn resolver_context(state: &AppState) -> HintContext {
     }
 }
 
+/// The drawn cursor row's context: its first local-branch badge or plain,
+/// with its verbs, under `R rewrite` when offered and `Marked` when flagged.
+fn cursor_row_context(state: &AppState, cursor: &GraphEntry<'_>) -> HintContext {
+    let verbs = row_verbs(state);
+    let base = cursor
+        .badges
+        .iter()
+        .find_map(|badge| match badge.kind {
+            BadgeKind::Branch { current, .. } => Some(HintContext::BranchRow { current, verbs }),
+            _ => None,
+        })
+        .unwrap_or(HintContext::PlainRow { verbs });
+    let base = if rewrite_offered(state) {
+        HintContext::Rewritable(Box::new(base))
+    } else {
+        base
+    };
+    if cursor.marker.is_some() {
+        HintContext::Marked(Box::new(base))
+    } else {
+        base
+    }
+}
+
+/// The cursor row's own verbs (m7-power-tools/40), each from the check its
+/// key runs: `o take` where the `.` menu's Cherry-pick slot is live
+/// (`can_take`), `a amend` on `HEAD`'s own row while `a`'s cheap blocks are
+/// clear (`amend_blocked`). Neither while an operation is live — `a`
+/// refuses then (P14) and so does `o` (`update::preview::preview_refusal`)
+/// — nor while a pane has the keyboard.
+fn row_verbs(state: &AppState) -> RowVerbs {
+    if !state.graph_has_focus()
+        || state.on_working_tree
+        || crate::update::commit_editor::live_operation(state).is_some()
+    {
+        return RowVerbs::NONE;
+    }
+    let on_head = state
+        .history
+        .as_ref()
+        .and_then(crate::history::History::selected)
+        .zip(state.refs.as_deref().and_then(crate::refs::RefBadges::head))
+        .is_some_and(|(row, head)| row.commit.id == head);
+    RowVerbs {
+        take: crate::update::can_take(state),
+        amend: on_head && !crate::update::amend_into::amend_blocked(state),
+    }
+}
+
 /// The footer's context for this frame (`hints::hints_for`, ADR-0037 §4):
 /// the changes pane and the working-tree row both win over anything the
 /// cursor sits on, since they are full-screen states — **the pane first**,
@@ -757,27 +812,10 @@ fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
         .iter()
         .find(|entry| entry.line.paint == RowPaint::Highlighted);
     let row = match cursor {
-        None => HintContext::PlainRow,
-        Some(cursor) => {
-            let base = cursor
-                .badges
-                .iter()
-                .find_map(|badge| match badge.kind {
-                    BadgeKind::Branch { current, .. } => Some(HintContext::BranchRow { current }),
-                    _ => None,
-                })
-                .unwrap_or(HintContext::PlainRow);
-            let base = if rewrite_offered(state) {
-                HintContext::Rewritable(Box::new(base))
-            } else {
-                base
-            };
-            if cursor.marker.is_some() {
-                HintContext::Marked(Box::new(base))
-            } else {
-                base
-            }
-        }
+        None => HintContext::PlainRow {
+            verbs: RowVerbs::NONE,
+        },
+        Some(cursor) => cursor_row_context(state, cursor),
     };
     // Last, over whichever row context came out. A focused pane leaves four
     // of the graph screen's keys doing nothing (`AppState::graph_has_focus`)

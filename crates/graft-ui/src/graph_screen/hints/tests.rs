@@ -35,9 +35,17 @@ fn all_contexts() -> Vec<HintContext> {
 fn row_contexts() -> Vec<HintContext> {
     vec![
         HintContext::WorkingTreeRow,
-        HintContext::BranchRow { current: false },
-        HintContext::BranchRow { current: true },
-        HintContext::PlainRow,
+        HintContext::BranchRow {
+            current: false,
+            verbs: RowVerbs::NONE,
+        },
+        HintContext::BranchRow {
+            current: true,
+            verbs: RowVerbs::NONE,
+        },
+        HintContext::PlainRow {
+            verbs: RowVerbs::NONE,
+        },
     ]
 }
 
@@ -84,15 +92,23 @@ fn eighty_columns_leads_with_three_and_fills_the_row() {
             [("⏎", "changes"), ("c", "commit"), ("S", "stash")],
         ),
         (
-            HintContext::BranchRow { current: false },
+            HintContext::BranchRow {
+                current: false,
+                verbs: RowVerbs::NONE,
+            },
             [("m", "merge"), ("r", "rebase"), ("⏎", "open")],
         ),
         (
-            HintContext::BranchRow { current: true },
+            HintContext::BranchRow {
+                current: true,
+                verbs: RowVerbs::NONE,
+            },
             [("⏎", "open"), ("c", "commit"), ("P", "push")],
         ),
         (
-            HintContext::PlainRow,
+            HintContext::PlainRow {
+                verbs: RowVerbs::NONE,
+            },
             // `b branch` and `t tag` went live in
             // m5-history-and-ghost-preview/10, in the places the hint-bar
             // design note had already reserved for them; `c commit` moved
@@ -181,7 +197,13 @@ fn hundred_sixty_shows_the_context_then_the_screen() {
     }
     // Wide enough for the whole tail as well: `x compare`, the one live key
     // the keymap reconciliation found with no documentation at all.
-    let wide = hints_text(&hints_for(&HintContext::PlainRow, Divider::Hidden, 200));
+    let wide = hints_text(&hints_for(
+        &HintContext::PlainRow {
+            verbs: RowVerbs::NONE,
+        },
+        Divider::Hidden,
+        200,
+    ));
     assert!(wide.contains("x compare"), "{wide:?}");
 }
 
@@ -190,7 +212,9 @@ fn hundred_sixty_shows_the_context_then_the_screen() {
 /// as one of the width tier's own, never overflows the row.
 #[test]
 fn marked_leads_with_explain_and_omits_more() {
-    let marked = HintContext::Marked(Box::new(HintContext::PlainRow));
+    let marked = HintContext::Marked(Box::new(HintContext::PlainRow {
+        verbs: RowVerbs::NONE,
+    }));
     for columns in [40, 80, 120, 160, 200] {
         let hints = hints_for(&marked, Divider::Hidden, columns);
         assert_eq!((hints[0].key, hints[0].verb), (EXPLAIN.key, EXPLAIN.verb));
@@ -200,7 +224,12 @@ fn marked_leads_with_explain_and_omits_more() {
                 .any(|h| (h.key, h.verb) == (MORE.key, MORE.verb)),
             "marked row must not also show `. more`: {hints:?}"
         );
-        let plain = drawable(&HintContext::PlainRow, Divider::Hidden);
+        let plain = drawable(
+            &HintContext::PlainRow {
+                verbs: RowVerbs::NONE,
+            },
+            Divider::Hidden,
+        );
         // Key and verb only: the ladder varies the rung, not the order.
         assert_eq!(
             hints[1..]
@@ -290,8 +319,13 @@ fn only_live(drawn: &[Hint]) -> Result<(), String> {
 #[test]
 fn the_divider_hint_follows_the_pane_not_the_context() {
     for context in [
-        HintContext::PlainRow,
-        HintContext::BranchRow { current: true },
+        HintContext::PlainRow {
+            verbs: RowVerbs::NONE,
+        },
+        HintContext::BranchRow {
+            current: true,
+            verbs: RowVerbs::NONE,
+        },
         HintContext::WorkingTreeRow,
         HintContext::ChangesPane {
             unmerged: false,
@@ -314,8 +348,13 @@ fn the_divider_hint_follows_the_pane_not_the_context() {
 #[test]
 fn the_divider_hint_is_fourth_so_the_six_key_tier_reaches_it() {
     for context in [
-        HintContext::PlainRow,
-        HintContext::BranchRow { current: true },
+        HintContext::PlainRow {
+            verbs: RowVerbs::NONE,
+        },
+        HintContext::BranchRow {
+            current: true,
+            verbs: RowVerbs::NONE,
+        },
         HintContext::WorkingTreeRow,
         HintContext::ChangesPane {
             unmerged: false,
@@ -445,7 +484,13 @@ fn uncommitted_row_has_no_fold() {
         "{:?}",
         hints_text(&working_tree)
     );
-    let plain = hints_for(&HintContext::PlainRow, Divider::Hidden, 1000);
+    let plain = hints_for(
+        &HintContext::PlainRow {
+            verbs: RowVerbs::NONE,
+        },
+        Divider::Hidden,
+        1000,
+    );
     assert!(
         plain
             .iter()
@@ -910,7 +955,7 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         }
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
-        | HintContext::PlainRow
+        | HintContext::PlainRow { .. }
         | HintContext::Rewritable(_)
         | HintContext::ChangesPane { .. } => Some(MORE),
     }
@@ -927,7 +972,10 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
 #[test]
 fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
     let with_a_tail = hints_for(
-        &HintContext::BranchRow { current: true },
+        &HintContext::BranchRow {
+            current: true,
+            verbs: RowVerbs::NONE,
+        },
         Divider::Hidden,
         80,
     );
@@ -1528,9 +1576,14 @@ fn resolver_offers_take_all() {
 #[test]
 fn operation_live_leads_with_the_way_back() {
     for row in [
-        HintContext::PlainRow,
+        HintContext::PlainRow {
+            verbs: RowVerbs::NONE,
+        },
         HintContext::WorkingTreeRow,
-        HintContext::BranchRow { current: true },
+        HintContext::BranchRow {
+            current: true,
+            verbs: RowVerbs::NONE,
+        },
         HintContext::ChangesPane {
             unmerged: true,
             live: None,
@@ -1574,7 +1627,9 @@ fn live_c_is_ranked_ahead_of_the_rows_write_keys() {
         (LiveC::Finish, "finish"),
     ] {
         let context = HintContext::OperationLive {
-            row: Box::new(HintContext::PlainRow),
+            row: Box::new(HintContext::PlainRow {
+                verbs: RowVerbs::NONE,
+            }),
             c,
             tab_to_banner: true,
             space_stages: false,
@@ -2009,9 +2064,18 @@ mod history_place {
     /// `esc back to history` leads the inner bar, which is otherwise whole.
     #[test]
     fn back_to_history_leads_the_inner_bar() {
-        let led = words(&HintContext::BackToHistory(Box::new(HintContext::PlainRow)));
+        let led = words(&HintContext::BackToHistory(Box::new(
+            HintContext::PlainRow {
+                verbs: RowVerbs::NONE,
+            },
+        )));
         assert_eq!(led.first().map(String::as_str), Some("esc back to history"));
-        assert_eq!(led[1..], words(&HintContext::PlainRow)[..]);
+        assert_eq!(
+            led[1..],
+            words(&HintContext::PlainRow {
+                verbs: RowVerbs::NONE
+            })[..]
+        );
     }
 
     /// Conductor ruling 2026-09-27: `next change` gives way first, then
@@ -2059,9 +2123,12 @@ mod pane_space {
 
     fn graph_rows() -> Vec<HintContext> {
         let mut rows = row_contexts();
-        rows.push(HintContext::Marked(Box::new(HintContext::PlainRow)));
+        rows.push(HintContext::Marked(Box::new(HintContext::PlainRow {
+            verbs: RowVerbs::NONE,
+        })));
         rows.push(HintContext::Marked(Box::new(HintContext::BranchRow {
             current: true,
+            verbs: RowVerbs::NONE,
         })));
         rows
     }
@@ -2140,4 +2207,35 @@ mod pane_space {
             }
         }
     }
+}
+
+// m7-power-tools/40, planner ruling 1: `a amend` after the daily verbs.
+#[test]
+fn a_amend_ranks_after_push_pull_fetch() {
+    let context = HintContext::BranchRow {
+        current: true,
+        verbs: RowVerbs {
+            take: false,
+            amend: true,
+        },
+    };
+    let wide = hints_for(&context, Divider::Hidden, 1000);
+    let at = |key: &str| wide.iter().position(|h| h.key == key).expect(key);
+    assert_eq!(at("a"), at("f") + 1, "{wide:?}");
+    let narrow = hints_for(&context, Divider::Hidden, 80);
+    assert!(narrow.iter().take(3).any(|h| h.key == "P"), "{narrow:?}");
+}
+
+#[test]
+fn a_amend_follows_open_where_no_commit_or_remote_verb() {
+    let base = vec![hint("⏎", "open"), hint("b", "branch"), hint("t", "tag")];
+    let list = super::lists::with_verbs(
+        base,
+        RowVerbs {
+            take: false,
+            amend: true,
+        },
+    );
+    let keys: Vec<&str> = list.iter().map(|h| h.key).collect();
+    assert_eq!(keys, ["⏎", "a", "b", "t"]);
 }

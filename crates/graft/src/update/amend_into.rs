@@ -59,6 +59,15 @@ impl AmendInto {
         is_put_in(op, &asked.params).then_some(&asked.shown)
     }
 
+    /// A plan in flight, for tests that need `a` waiting on one.
+    #[cfg(test)]
+    pub(crate) fn pending_for_test(job: JobId) -> Self {
+        Self {
+            pending: Some((job, "a")),
+            ..Self::default()
+        }
+    }
+
     /// Whether a plan is being worked out.
     #[must_use]
     pub fn checking(&self) -> bool {
@@ -85,13 +94,26 @@ pub(crate) fn a_key(
     if refused_by_live_operation(state) {
         return;
     }
-    if state.amend_into.pending.is_some() || state.commit_editor.is_some() {
+    if waiting_or_editing(state) {
         return;
     }
     match older_target(state) {
         Some(target) => put_into_older(state, commands, target, next_id),
         None => head_path(state, commands, next_id),
     }
+}
+
+/// `a`'s cheap blocks, all three (m7-power-tools/40): an operation is live
+/// (P14), an amend is already pending, or the commit editor is open. The
+/// bar's `a amend` reads this; [`a_key`] runs the same checks, in order, the
+/// live operation first so it can say why.
+pub(crate) fn amend_blocked(state: &AppState) -> bool {
+    super::commit_editor::live_operation(state).is_some() || waiting_or_editing(state)
+}
+
+/// An amend is pending or the commit editor is open: `a` does nothing.
+fn waiting_or_editing(state: &AppState) -> bool {
+    state.amend_into.pending.is_some() || state.commit_editor.is_some()
 }
 
 /// P14 first: an operation is live, and `a` (or absorb) answers as `a`

@@ -72,4 +72,4 @@
 
 
 
- ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +
+ ⏎ open  o take  b branch  . more  r  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +

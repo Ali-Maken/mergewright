@@ -3,6 +3,43 @@
 use crate::conflict_resolver::SideRoles;
 use crate::finish_summary::SummaryFocus;
 
+/// Which of a commit row's own verbs act on the cursor's row
+/// (m7-power-tools/40). `graft` works each out from the check its key runs
+/// (`update::context_menu::verbs::can_take`, `update::amend_into::amend_blocked`);
+/// the bar only places them. Default: neither — what a row gets while an
+/// operation is live.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RowVerbs {
+    /// `o take`: the `.` menu's Cherry-pick slot is live on this row.
+    pub take: bool,
+    /// `a amend`: this is `HEAD`'s row and `a`'s own blocks are clear.
+    pub amend: bool,
+}
+
+impl RowVerbs {
+    /// Neither verb.
+    pub const NONE: Self = Self {
+        take: false,
+        amend: false,
+    };
+    /// All four combinations, for the catalogue.
+    pub const ALL: [Self; 4] = [
+        Self::NONE,
+        Self {
+            take: true,
+            amend: false,
+        },
+        Self {
+            take: false,
+            amend: true,
+        },
+        Self {
+            take: true,
+            amend: true,
+        },
+    ];
+}
+
 /// Where the cursor or focus is, for the footer's hint list. `Preview` is
 /// the one context allowed an empty list (the Ghost Preview box carries its
 /// own footer); every other variant's list is non-empty by construction.
@@ -15,9 +52,14 @@ pub enum HintContext {
     BranchRow {
         /// The badge is the current branch (`HEAD`).
         current: bool,
+        /// The row verbs that act on this row (`o take`, `a amend`).
+        verbs: RowVerbs,
     },
     /// The cursor is on a row with no branch badge.
-    PlainRow,
+    PlainRow {
+        /// The row verbs that act on this row (`o take`, `a amend`).
+        verbs: RowVerbs,
+    },
     /// The cursor row carries a Mistake Radar marker: `. explain` leads,
     /// then the inner context's own list, `. more` omitted (`.` is already
     /// shown).

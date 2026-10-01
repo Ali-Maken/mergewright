@@ -2,8 +2,8 @@
 //! means (m5-history-and-ghost-preview/08, piece 6).
 //!
 //! Pure: it reads the row, the refs and the row's Mistake Radar findings and
-//! answers with a list. Nothing here touches `AppState`, opens a preview or
-//! runs anything — `.` ends in a picture, and only `Confirm` in that picture
+//! answers with a list. Nothing here writes `AppState` (only [`can_take`]
+//! reads it, for the bar), opens a preview or runs anything — `.` ends in a picture, and only `Confirm` in that picture
 //! writes (PROMPT.md §1.7).
 //!
 //! **This is where the mapping lives, and it lives here on purpose.** The
@@ -154,8 +154,7 @@ pub(super) fn pick_slot(
     here: &str,
 ) -> (HistoryVerb, Option<SanitizedText>) {
     let params = pick_params(id, subject, head);
-    let dim = params
-        .check_commit(id, id == head.oid, parents.len())
+    let dim = take_check(id, parents, head)
         .err()
         .and_then(|refusal| pick_dim_reason(&refusal));
     let label = if dim.is_some() {
@@ -164,6 +163,43 @@ pub(super) fn pick_slot(
         format!("Cherry-pick {here} (o)")
     };
     (verb(&label, Operation::CherryPick(params)), dim)
+}
+
+/// The one take predicate (m7-power-tools/40): whether `o` — and slot 2 —
+/// would take commit `id` (with `parents`) onto `head`, from facts already
+/// held. [`pick_slot`] reads its `Err` for the dim words; [`can_take`] reads
+/// it for the bar's `o take`. `o` itself runs the same `check_commit`
+/// (`update::preview::take`).
+pub(crate) fn take_check(id: Oid, parents: &[Oid], head: &Tip) -> Result<(), Refusal> {
+    pick_params(id, "", head).check_commit(id, id == head.oid, parents.len())
+}
+
+/// The bar's `o take` on the cursor's row: a history commit (not a stash —
+/// `o` refuses one in words), a `HEAD` with a tip, and [`take_check`] clear.
+/// Never true while the walk or the refs are unread.
+pub fn can_take(state: &crate::update::state::AppState) -> bool {
+    if state.on_working_tree {
+        return false;
+    }
+    let Some(row) = state
+        .history
+        .as_ref()
+        .and_then(crate::history::History::selected)
+    else {
+        return false;
+    };
+    let Some(refs) = state.refs.as_deref() else {
+        return false;
+    };
+    let id = row.commit.id;
+    if refs
+        .on(id)
+        .iter()
+        .any(|label| matches!(label, RefLabel::Stash(_)))
+    {
+        return false;
+    }
+    head_tip(refs).is_some_and(|head| take_check(id, &row.commit.parents, &head).is_ok())
 }
 
 /// Slot 2's dim reason for `o`'s refusal: `already on <b>`, or the merge

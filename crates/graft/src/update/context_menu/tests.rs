@@ -1316,3 +1316,183 @@ fn a_stash_row_menu_carries_no_o() {
         "{labels:?}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// m7-power-tools/40: `o take` and `a amend` on the bar where they act.
+// ---------------------------------------------------------------------------
+
+/// The bar drawn over `state` at 187 columns, from the drawn rows (the
+/// cursor row's badges and verbs).
+fn bar_words(state: &AppState) -> Vec<String> {
+    let mut state = state.clone();
+    state.size = crate::update::state::Size {
+        columns: 187,
+        rows: 44,
+    };
+    let context = crate::view::rows::graph_view(&state, 0).hint_context;
+    graft_ui::graph_screen::hints_for(&context, graft_ui::graph_screen::Divider::Hidden, 187)
+        .iter()
+        .map(|hint| format!("{} {}", hint.key, hint.verb))
+        .collect()
+}
+
+fn draws(state: &AppState, words: &str) -> bool {
+    bar_words(state).iter().any(|hint| hint == words)
+}
+
+/// [`on_row`] with only `main` badged: row 0 is a plain commit off his
+/// branch, no badge to lead the bar with.
+fn plain_off_branch_row() -> AppState {
+    let mut state = on_row(0);
+    let name = |full: &str| {
+        graft_core::ref_name::RefName::new(full.as_bytes().to_vec()).expect("a valid ref name")
+    };
+    state.refs = Some(std::sync::Arc::new(ref_badges(
+        &[(name("refs/heads/main"), oid(2))],
+        &graft_git::repo::HeadState::Branch(name("refs/heads/main")),
+    )));
+    state
+}
+
+fn merge_in_progress(state: &mut AppState) {
+    state.in_progress = Some(graft_git::state::InProgressDetail {
+        kind: graft_git::state::InProgress::Merge,
+        step: None,
+        head_name: None,
+        onto: None,
+        theirs: Ok(None),
+    });
+}
+
+#[test]
+fn a_commit_off_his_branch_hints_o_take() {
+    let words = bar_words(&plain_off_branch_row());
+    assert_eq!(words[..2], ["⏎ open", "o take"], "{words:?}");
+    // On a badged row off his branch, `o take` still follows `⏎ open`.
+    let words = bar_words(&on_row(0));
+    let open = words.iter().position(|w| w == "⏎ open").expect("⏎ open");
+    assert_eq!(words[open + 1], "o take", "{words:?}");
+}
+
+#[test]
+fn heads_row_has_no_o() {
+    assert!(!draws(&on_row(1), "o take"), "{:?}", bar_words(&on_row(1)));
+}
+
+#[test]
+fn a_merge_row_has_no_o() {
+    let mut state = on_row(0);
+    with_a_merge_on_row_0(&mut state);
+    assert!(!draws(&state, "o take"), "{:?}", bar_words(&state));
+}
+
+#[test]
+fn an_ancestor_of_head_hints_o_like_the_menu() {
+    let state = on_row(2);
+    assert!(draws(&state, "o take"), "{:?}", bar_words(&state));
+}
+
+#[test]
+fn heads_row_hints_a_amend() {
+    let words = bar_words(&on_row(1));
+    let fetch = words.iter().position(|w| w == "f fetch").expect("f fetch");
+    assert_eq!(words[fetch + 1], "a amend", "{words:?}");
+}
+
+#[test]
+fn an_older_row_has_no_a() {
+    for row in [0, 2] {
+        assert!(
+            !draws(&on_row(row), "a amend"),
+            "row {row}: {:?}",
+            bar_words(&on_row(row))
+        );
+    }
+}
+
+#[test]
+fn a_pending_amend_hides_a() {
+    let mut state = on_row(1);
+    state.amend_into = crate::update::amend_into::AmendInto::pending_for_test(next_id_from(&mut 0));
+    assert!(!draws(&state, "a amend"), "{:?}", bar_words(&state));
+}
+
+#[test]
+fn a_live_op_row_hints_neither() {
+    for row in [0, 1, 2] {
+        let mut state = on_row(row);
+        merge_in_progress(&mut state);
+        let words = bar_words(&state);
+        assert!(
+            !words.iter().any(|w| w == "o take" || w == "a amend"),
+            "row {row}: {words:?}"
+        );
+    }
+}
+
+/// The two bars of m7-power-tools/40, drawn whole at 187x44.
+#[test]
+fn capture_bar_take_and_amend_rows() {
+    let shot = |state: &AppState, name: &str, right: &str| {
+        let mut sized = state.clone();
+        sized.size = crate::update::state::Size {
+            columns: 187,
+            rows: 44,
+        };
+        let context = crate::view::rows::graph_view(&sized, 0).hint_context;
+        let bar = graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
+            &context,
+            graft_ui::graph_screen::Divider::Hidden,
+            187,
+        ));
+        let screen = format!("{context:?}\n\"{bar}\"\n");
+        let header = format!(
+            "# {name}: the 187-column bar (not a pty), from `view::rows::graph_view`'s context. Fixture: \
+             capture_bar_take_and_amend_rows in\n# crates/graft/src/update/context_menu/tests.rs \
+             (m7-power-tools/40). Colour unverified.\n# Right: {right}\n#\n"
+        );
+        graft_fixtures::capture(
+            format!("{}/../../docs/shots/m7/{name}", env!("CARGO_MANIFEST_DIR")),
+            format!("{header}{screen}"),
+        );
+    };
+    shot(
+        &plain_off_branch_row(),
+        "bar-take-row-187x44.txt",
+        "cursor on a commit off his branch; bar reads `⏎ open  o take …`.",
+    );
+    shot(
+        &on_row(1),
+        "bar-amend-row-187x44.txt",
+        "cursor on HEAD's row; bar reads `⏎ open  c commit  P push  p pull  f fetch  a amend …`; no `o`.",
+    );
+}
+
+/// Every row of the fixture — `feature` off his branch, `HEAD`, an ancestor
+/// of `HEAD`, and the same first row made a merge: the predicate, the menu's
+/// slot 2 and the bar's `o` say the same thing.
+#[test]
+fn the_menu_and_the_bar_agree_on_o() {
+    let mut merged = on_row(0);
+    with_a_merge_on_row_0(&mut merged);
+    let states = vec![on_row(0), on_row(1), on_row(2), merged];
+    let mut seen = Vec::new();
+    for state in states {
+        let can = crate::update::can_take(&state);
+        let mut menu = state.clone();
+        let row = menu.history.as_ref().expect("history").cursor;
+        open_for_history_row(&mut menu, row);
+        let open = menu.context_menu.as_ref().expect("menu opened");
+        let slot = open
+            .menu
+            .items
+            .iter()
+            .find(|item| item.label.as_str().starts_with("Cherry-pick"))
+            .expect("slot 2");
+        let live = slot.disabled.is_none();
+        let drawn = draws(&state, "o take");
+        assert_eq!((live, drawn), (can, can), "row {row}");
+        seen.push(can);
+    }
+    assert_eq!(seen, [true, false, true, false]);
+}

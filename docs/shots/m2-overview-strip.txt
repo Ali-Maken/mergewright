@@ -44,7 +44,7 @@
 "                                                                               █"
 "                                                                                "
 "                                                                                "
-" ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  q  F2  F3  x  +    "
+" ⏎ open  b branch  r rebase  . more  t  c  a  y  m  u  S  J  /  q  F2  F3  x  + "
 
 === ascii ===
 " graft 7 commits                                                               *"

@@ -88,4 +88,4 @@
 
 
 
- ⏎ open  c commit  P push  p pull  . more  f  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
+ ⏎ open  c commit  P push  p pull  . more  f  a  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
