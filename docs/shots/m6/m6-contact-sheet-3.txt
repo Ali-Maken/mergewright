@@ -1949,7 +1949,7 @@ COMMIT ── ⎇ main ── 1 file staged
 
 ================================================================================
 docs/shots/m6/fix-radar-bookkeeping-120x40.txt
-what right looks like: (ticket 66) A teammate pushed; you had a local commit and a stash on it; `p`, `r` `r` rebased, `P` pushed. Frame 1: no ⓘ in the marker column of any `main` row — your old commit, kept in the undo backup and under the stash, is not a copy. Frame 2, cursor on stash@{0}: no ⚠ on that row. Frame 3, `.` on main's tip: the first item is not `Explain` (since ticket 71 it is the dim `Checkout — already on main`, then `Cherry-pick <sha7>`, then `Copy SHA`). Colour unverified.
+what right looks like: (ticket 66) A teammate pushed; you had a local commit and a stash on it; `p`, `r` `r` rebased, `P` pushed. Frame 1: no ⓘ in the marker column of any `main` row — your old commit, kept in the undo backup and under the stash, is not a copy. Frame 2, cursor on stash@{0}: no ⚠ on that row. Frame 3, `.` on main's tip: the first item is not `Explain` (since ticket 71 it is the dim `Checkout — already on main`, then `Cherry-pick (o) — already on main` (m7-power-tools/11), then `Copy SHA (y)`). Colour unverified.
 ================================================================================
 
 # m6/fix-radar-bookkeeping-120x40.txt: 120x40, drawn by `view::view` from a
@@ -2147,7 +2147,7 @@ M zdiff3.txt            +1 −1
 
 ================================================================================
 docs/shots/m6/fix-box-owns-the-bar-120x40.txt
-what right looks like: (ticket 69) A box owns the bottom row. Frame 1: a push rejected, then `P`: the lease box, and the bottom row is `←/→ move  ⏎ choose  esc cancel`, not the rejection line. Frame 2: `esc`: the rejection is back, `push rejected: … · p pull first · P force with lease`. Frame 3: a checkout, an edit, `u`: the drift box, bottom row `y undo  ←/→ move  ⏎ choose  esc cancel` (not `undo · esc cancels`); since ticket 77 the box also names the edit: `Undo replaces your edit to fix.txt; a backup keeps it, and U brings it back.` Frame 4: `b`, `⏎` on an empty name: the prompt stays open and the row reads `a branch needs a name`. Colour unverified.
+what right looks like: (ticket 69) A box owns the bottom row. Frame 1: a push rejected, then `P`: the lease box, and the bottom row is `←/→ move  ⏎ choose  esc cancel`, not the rejection line. Frame 2: `esc`: the rejection is back, `push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease` (wording since m7-power-tools/36). Frame 3: a checkout, an edit, `u`: the drift box, bottom row `y undo  ←/→ move  ⏎ choose  esc cancel` (not `undo · esc cancels`); since ticket 77 the box also names the edit: `Undo replaces your edit to fix.txt; a backup keeps it, and U brings it back.` Frame 4: `b`, `⏎` on an empty name: the prompt stays open and the row reads `a branch needs a name`. Colour unverified.
 ================================================================================
 
 # TestBackend capture (not a pty), 120x40, no colour recorded. Fixture:

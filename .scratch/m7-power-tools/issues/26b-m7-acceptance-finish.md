@@ -297,6 +297,30 @@ Each rewritten to quote its re-taken capture line for line:
 - Not checked here, out of the named five: other tsv rows that still contain `explain`/`Explain` are m5 :26-28 (the
   hand-built marked context, which still has a marker) and m6 :9, :139, :141, :143.
 
+### Captions, second pass (conductor's follow-up)
+I grepped every m3–m7 caption tsv for `explain`, `ⓘ` and `no upstream`, and also for `has moved` and `pull first`.
+The hits are the rows below, plus the five fixed above. The m3 and m7 tsvs had none.
+- **Stale, fixed:**
+  - m6 :139 `fix-radar-bookkeeping`: frame 3's item 2 is `Cherry-pick (o) — already on main` (capture :110). Changed
+    by **m7-11** (2996546e). Frame 1 still holds: no `ⓘ` on main rows (capture :19).
+  - m6 :141 `fix-box-owns-the-bar`: frame 2 shows the **36** wording, `has commits you don't · p pull, then m or r`
+    (capture :101).
+  - m6 :143 `menu-fixed-slots`: **36** removed `Explain` and the no-upstream `ⓘ`. Item 3 is now `Copy SHA (y)`, and
+    item 2 is `Cherry-pick <sha7> (o)` (capture :18-20, :62-64), with the `(o)` from **m7-11**.
+  - m6 :144 `fix-undo-drift-way-back`: **36** removed the `ⓘ` the caption claimed on `fix` in frame 2 (capture :68
+    `● ▏  [fix]`).
+- **Not stale, left alone:**
+  - m5 :26-28 `m5-hints-marked-*`: the hand-built marked context still leads `. explain` (captures :47/:63/:71).
+  - m6 :9 `m6-05`: it hit on "has moved on", and all four quoted strings are in the capture.
+  - m6 :113, :116, :173: these are my pass-1 rows, which say "no `. explain`".
+- **Finding, outside my file set (crates):** two capture headers written by test code still state the old behaviour.
+  - `docs/shots/m6/fix-undo-drift-way-back-120x40.txt:13` says "its `ⓘ` is on `fix`". The header comes from
+    `crates/graft/tests/it/undo_over_drift.rs`.
+  - `docs/shots/m6/fix-box-owns-the-bar-120x40.txt:9-10` says "`p pull first`".
+  - These are textual (rule 7) and belong to whoever holds `crates/graft`.
+- The m6 sheet was rebuilt; only sheets 3 and 4 changed. The largest file is 179 608 B and `NOT RECORDED` is 0.
+- Run 4 of `m7-accept.sh`: **rc=0**, `13 runs, 0 drifted`, 77/77 walks, 29/29 journeys.
+
 ### Touches
 - `docs/shots/`: the 24 re-taken captures + m4, m5 (×2), m6 (×5), m7 (×2) sheets (`git status --short docs/shots`:
   34). Captions tsvs: unchanged. `docs/perf/m7-accept.txt`: the script's summary. Crates: none (`git status` shows no
