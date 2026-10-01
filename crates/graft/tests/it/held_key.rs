@@ -216,8 +216,10 @@ fn summary(tier: RenderingTier, scenario: &str, rate: u64, reading: &Reading) ->
         line += &format!(" j_ms={j} j_done_ms={done} frames_before_J={before}");
     }
     if tier == RenderingTier::Pixel {
+        // Frames whose fold differs from the frame before's: not readable
+        // through this harness (see `verdict`).
         line += &format!(
-            " bytes_per_key={} emphasis_cells_p99={} deflated_transmits={}",
+            " fold_changes_held=unread bytes_per_key={} emphasis_cells_p99={} deflated_transmits={}",
             reading.bytes_per_key,
             reading
                 .emphasis_cells_p99
@@ -258,10 +260,18 @@ fn verdict(tier: RenderingTier, scenario: &str, reading: &Reading) -> Vec<String
             "bytes_per_frame_held<=512KiB",
             reading.bytes_per_frame_held <= 512 * 1024,
         );
-        let strips = reading.rows_scrolled.div_ceil(32) + 2;
-        check(
-            &format!("strip_transmits_held<={strips}"),
-            reading.strip_transmits_held <= strips,
+        // The strip bound is `ceil(rows_scrolled/32) + 2 + fold_changes_held
+        // × strips_per_frame` (46c Decided 4): on a graph wider than the
+        // lane cap the fold keeps the selection's thread lanes (ADR-0025
+        // Decision 2), so a `j` may change the layout and re-send every
+        // strip. This harness cannot read the drawn fold — `Paced` hands
+        // out events and offsets, `PixelRows` has no kept-column set and
+        // the cap (`view::max_lanes`) is crate-private — so the count is
+        // printed, not judged. The invariant is guarded in the fast tier:
+        // `pixel_scroll::a_capped_graph_resends_strips_only_when_the_fold_changes`.
+        println!(
+            "VERDICT held_key tier={tier:?} scenario={scenario} strip_transmits_held={}: unjudged (fold_changes_held unread)",
+            reading.strip_transmits_held
         );
     }
     if cfg!(debug_assertions) {

@@ -1,6 +1,6 @@
 # scroll-strips-fold-churn: confirm the fold re-sends strips, then make the Pixel gate measure the right thing
 
-Status: ready
+Status: done (2026-10-01). Step 0 outcome (i); held_key case: unread.
 Build with: Opus. Step 0 is a premise check, and its result decides everything after it; reading a red result
 correctly needs judgement. The work is test-only (no signature, no structural choice), so it is not a Fable job.
 Needs: 46 merged at 92c12351 or later: `PixelRows::{backdrop, lane_columns, marker}`, `StripRows::with_layers`,
@@ -88,18 +88,18 @@ pub(crate) fn capped(/* chosen by the builder; doc comment states lanes, cap, wi
 ```
 
 ## Acceptance (each box names its test)
-- [ ] Step 0 red under the old assertion, every red frame a fold-change frame, output quoted in NOTES with the class
+- [x] Step 0 red under the old assertion, every red frame a fold-change frame, output quoted in NOTES with the class
       that changed. — `pixel_scroll::a_capped_graph_resends_strips_only_when_the_fold_changes` (red revision noted).
-- [ ] The same test green with Decided 3's (a)–(c). — same test.
-- [ ] `fixture capped` really is capped: open lanes > `max_lanes_for(width)` asserted in the test. — same test.
-- [ ] 46's `pixel_scroll::j_inside_resident_strips_sends_no_strip` still green and unchanged. — that test.
-- [ ] `held_key` Pixel verdict per Decided 4 (state which case applied). — `held_key::held_j_stops_on_release_pixel_deflate`.
-- [ ] Release gate: `_pixel_deflate` A/B, `_pixel_iterm2` and `_unicode` A/B every verdict item `ok`; deflate-off
+- [x] The same test green with Decided 3's (a)–(c). — same test.
+- [x] `fixture capped` really is capped: open lanes > `max_lanes_for(width)` asserted in the test. — same test.
+- [x] 46's `pixel_scroll::j_inside_resident_strips_sends_no_strip` still green and unchanged. — that test.
+- [x] `held_key` Pixel verdict per Decided 4 (state which case applied). — `held_key::held_j_stops_on_release_pixel_deflate`.
+- [x] Release gate: `_pixel_deflate` A/B, `_pixel_iterm2` and `_unicode` A/B every verdict item `ok`; deflate-off
       lines quoted, red. — `scripts/fix-scroll-held-key.sh` → `docs/perf/fix-scroll-held-key.txt` `# rev fold-churn`.
-- [ ] `TESTING.md` "Held keys": the restated bound and why (fold follows the selection on capped graphs, ADR-0025;
+- [x] `TESTING.md` "Held keys": the restated bound and why (fold follows the selection on capped graphs, ADR-0025;
       ADR-0053 keeps the paint out), the fast-tier guard by name, and deflate off is red by known gap.
       — no test; diff quoted.
-- [ ] `crates/graft/MAP.md` `held_key` line: `fold_changes_held`; `pixel_scroll` line names the new test.
+- [x] `crates/graft/MAP.md` `held_key` line: `fold_changes_held`; `pixel_scroll` line names the new test.
       — no test; diff.
 
 ## Touches (report each on the **Touches:** line)
@@ -115,3 +115,58 @@ through the script only.
 
 ## Size
 About 35k tokens.
+
+## NOTES (builder, 2026-10-01) — done
+
+No compaction. No scout: the ticket says none needed (46's NOTES + scout cover the files; no product code changed).
+
+**Ticks, each with its test:**
+- Step 0 red → `pixel_scroll::a_capped_graph_resends_strips_only_when_the_fold_changes`, red revision = the
+  working tree before 99cc47f4 (old assertion `red.is_empty()`), output below.
+- Green (a)–(c), capped asserted (`capped: 17 open lanes, cap 10`) → same test, 99cc47f4.
+- `pixel_scroll::j_inside_resident_strips_sends_no_strip` untouched, green (nextest 5114/5114).
+- `held_key` → `held_key::held_j_stops_on_release_pixel_deflate` (A-deflate ok, release).
+- Release gate → `docs/perf/fix-scroll-held-key.txt` `# rev fold-churn`.
+- TESTING.md / MAP.md: no test; see the 99cc47f4 diff.
+
+**Step 0 — outcome (i), premise confirmed.** Fixture `capped(16, 50, 70)` at 120×40, Kitty+deflate, 24 `j` from
+row 0. Red output (old bound: 0 backdrop transmits on any `j`):
+```
+frame 1: plan changed y, keep differs ["preferred"], kept [0, 2, 3, 4, 5, 6, 7, 8, 9], backdrop transmits 2, emphasis 2, lit changed y
+frame 2: plan changed y, keep differs ["preferred"], kept [0, 3, 4, 5, 6, 7, 8, 9, 10], backdrop transmits 2, emphasis 2, lit changed y
+...  (frames 3–15 alike: plan y, ["preferred"], 2 backdrop, 2 emphasis)
+frame 16: plan changed y, keep differs ["preferred"], kept [0, 1, 2, 3, 4, 5, 6, 7, 8], backdrop transmits 2, emphasis 2, lit changed y
+frame 17: plan changed n, keep differs [], kept [0, 1, 2, 3, 4, 5, 6, 7, 8], backdrop transmits 0, emphasis 0, lit changed n
+...  (frames 18–24 alike)
+red frames (frame, plan changed): [(1, true), (2, true), … (16, true)]
+panicked at crates/graft/src/event_loop/tests/pixel_scroll.rs:278:5: a j re-sent strips: [(1, true) … (16, true)]
+```
+Every red frame is a plan-change frame; `preferred` (class 5) is the only `Keep` class that moved; `selected` never
+did, so the planner's "probably class 5 alone" holds on this fixture. Fold plan read through `plan` itself
+(`view::strips::tests::fold_plan`, which also asserts its rebuilt `Keep` gives `plan`'s fold).
+
+**Decided 4 — case "unread".** `held_key` cannot read the drawn fold: `Paced` exposes only `handed`, `replay`,
+`drawn`, `written` (`tests/it/frames/paced.rs:111-123`); `PixelRows` has no kept-column set (`view/strips.rs:58-72`)
+and the cap `max_lanes` is `pub(crate)` (`view/mod.rs:54`). So SUMMARY prints `fold_changes_held=unread`; the strip
+line is `VERDICT … strip_transmits_held=<n>: unjudged (fold_changes_held unread)`. No product API added.
+
+**Release gate (`# rev fold-churn`, HEAD 99cc47f4, load 4.96):**
+- Pixel deflate-on: A tail 22 ms (was 27), 157 KB/frame, strips 107 (was 106), emphasis 278; B tail 37 (was 33),
+  j_ms 0, strips 108 (was 109). Every judged item ok.
+- iTerm2 A: tail 16 ms, ok. Unicode A/B: tail 78 / 76 ms, B j_ms 25, ok.
+- Deflate off, red by known gap (verdict untouched): `VERDICT held_key tier=Pixel scenario=A tail_ms<=100: FAILED`
+  (2928 ms); `scenario=B tail_ms<=100: FAILED` (1476), `j_ms<=100: FAILED` (1433).
+
+**Unverified on the capped fixture:** its unchanged-plan frames (17–24) also have an unchanged selection paint, so
+(a) there proves "nothing changed → nothing sent", not "paint changed, layout didn't → no strip". The paint-only
+case is guarded by 46's uncapped `j_inside_resident_strips_sends_no_strip`. A capped fixture with a paint-only `j`
+would close it.
+
+**Touches:**
+- 47 `:37-39` (and `:59`): asks "every verdict item ok" for the four old tests; the strip item is now unjudged and
+  the raw pair stays red. Not edited; conductor amends.
+- `scripts/m7-perf-key.sh:60` filters `frames:: frame_trace::`, selects no `held_key::` (grep).
+- `scripts/fix-scroll-held-key.sh` selects `held_key::` by prefix, not names: unchanged. It overwrites its output,
+  so the run went to scratch and was appended under the header.
+- No product code: diff stat from dc3c940a lists only pixel_scroll.rs, strips/tests.rs, held_key.rs, graft MAP.md,
+  TESTING.md, the perf txt. No capture can move.

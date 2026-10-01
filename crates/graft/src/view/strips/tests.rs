@@ -2,6 +2,8 @@
 
 use graft_core::commit::{Commit, Identity, Timestamp};
 use graft_core::oid::Oid;
+use graft_graph::Fold;
+use graft_graph::fold::Keep;
 use graft_graph::layout::layout;
 use graft_graph::raster::cache::{STRIP_ROWS, StripCache};
 use graft_graph::raster::{Backdrop, Emphasis, Ring};
@@ -159,6 +161,123 @@ pub(crate) fn fan(chains: u8, length: u8) -> History {
         phase: Phase::Complete,
         ..History::started()
     }
+}
+
+/// A graph wider than the lane cap whose fold follows the selection
+/// (ADR-0025 Decision 2, class 5): one line of `length` commits on lane 0,
+/// whose first `merges` rows are merges. Merge `i`'s second parent is the
+/// line's row `reach - i`, so its side lane opens at row `i` and closes into
+/// lane 0 at row `reach - i`: nested lanes `1..=merges`, none holding a node.
+///
+/// With the cursor on merge `i`, the thread lights the side lanes of merges
+/// `i..` (`Ancestry::columns`) and lane 0, the selected column, never
+/// changes: a `j` drops one lane from `preferred`, which is what decides
+/// which side lanes the fold keeps. At 120 columns the cap is
+/// `max_lanes_for` (10 or fewer); `merges = 16` opens 17 lanes on rows
+/// `merges..reach - merges`. Pick `reach - merges` inside the first two
+/// strips so every lane closes in the drawn window.
+pub(crate) fn capped(merges: u8, reach: u8, length: u8) -> History {
+    assert!(merges < reach - merges && reach < length, "lanes nest");
+    let id = |index: u8| Oid::from_bytes(&[0xc0, index].repeat(10)).expect("20 bytes");
+    let who = Identity {
+        name: b"Test".to_vec(),
+        email: b"test@example.invalid".to_vec(),
+        when: Timestamp {
+            seconds: 0,
+            offset_seconds: 0,
+        },
+    };
+    let commits: Vec<Commit> = (0..length)
+        .map(|index| {
+            let mut parents = Vec::new();
+            if index + 1 < length {
+                parents.push(id(index + 1));
+            }
+            if index < merges {
+                parents.push(id(reach - index));
+            }
+            Commit {
+                id: id(index),
+                parents,
+                author: who.clone(),
+                committer: who.clone(),
+                message: b"row".to_vec(),
+            }
+        })
+        .collect();
+    let rows: Vec<Row> = layout(&commits, Seeds::default());
+    History {
+        window: Some(Window {
+            request: 0,
+            first: 0,
+            laid_out: rows.len(),
+            done: true,
+            rows: rows.clone().into(),
+            promoted: false,
+        }),
+        rows: rows.len(),
+        phase: Phase::Complete,
+        ..History::started()
+    }
+}
+
+/// The fold `pixel_rows` draws `state` through and the [`Keep`] it weighed,
+/// read through `plan` itself (m7-power-tools/46c). `None` when
+/// `pixel_rows` draws nothing. No uncommitted row: the fixtures that use
+/// this have none (asserted).
+pub(crate) fn fold_plan(state: &AppState, max_lanes: usize) -> Option<(Fold, Keep)> {
+    assert!(!state.uncommitted_row_shown(), "fold_plan: no virtual row");
+    let history = state.history.as_ref()?;
+    let window = history.window.as_ref()?;
+    let first = window.first;
+    let on_hand = first..first + window.rows.len();
+    let ranges = super::strip_ranges(
+        history.top..history.top + state.graph_rows(),
+        &on_hand,
+        STRIP_ROWS,
+    );
+    if ranges.is_empty() {
+        return None;
+    }
+    let row_at = |index: usize| &window.rows[index - first];
+    let thread = super::thread(history);
+    let fold = super::plan(
+        state,
+        history,
+        thread.as_ref(),
+        &ranges,
+        None,
+        row_at,
+        max_lanes,
+    );
+
+    // The same `Keep` `plan` builds, rebuilt here to say which class moved;
+    // checked against `plan`'s fold below so the two cannot drift.
+    let indices: Vec<usize> = ranges.iter().flat_map(Clone::clone).collect();
+    let drawn: Vec<Row> = indices.iter().map(|&index| row_at(index).clone()).collect();
+    let cursor = indices.iter().position(|&index| index == history.cursor);
+    let integration = history
+        .walk
+        .as_ref()
+        .map_or(0, |walk| walk.integration.len());
+    let reserved = (1..=integration).collect();
+    let keep = super::keep_for(
+        &drawn,
+        cursor,
+        &reserved,
+        thread.as_ref().map(|thread| &thread.ancestry),
+    );
+    let cap = if state.lanes_expanded {
+        usize::MAX
+    } else {
+        max_lanes
+    };
+    assert_eq!(
+        Fold::plan(cap, &keep, &drawn),
+        fold,
+        "fold_plan's Keep is plan's"
+    );
+    Some((fold, keep))
 }
 
 #[test]

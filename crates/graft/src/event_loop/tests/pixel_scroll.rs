@@ -15,7 +15,8 @@ use graft_term::kitty::EMPHASIS_ID_BIT;
 
 use super::*;
 use crate::view::strips::pixel_rows;
-use crate::view::strips::tests::fan;
+use crate::view::strips::tests::{capped, fan, fold_plan};
+use graft_graph::fold::Keep;
 
 /// The spec's terminal for these runs (`120×40`).
 const COLUMNS: u16 = 120;
@@ -184,6 +185,131 @@ fn j_inside_resident_strips_sends_no_strip() {
             run.backdrops
         );
     }
+}
+
+/// Each state a run of `events` passes through from `state`, the first
+/// included: what `drive` draws, frame by frame.
+fn states(mut state: AppState, events: &[AppEvent]) -> Vec<AppState> {
+    let mut all = vec![state.clone()];
+    for event in events {
+        state = update(&state, event.clone()).0;
+        all.push(state.clone());
+    }
+    all
+}
+
+/// One frame's fold as `pixel_rows` plans it, and the strip window.
+#[derive(Debug, PartialEq, Eq)]
+struct Planned {
+    kept: Vec<usize>,
+    lane_columns: usize,
+    marker: Option<usize>,
+    strips: Vec<usize>,
+}
+
+/// `state`'s fold plan as drawn, and the `Keep` it weighed.
+fn planned(state: &AppState) -> (Planned, Keep) {
+    let max = crate::view::max_lanes(state);
+    let (fold, keep) = fold_plan(state, max).expect("strips draw");
+    let pixels = pixel_rows(state, max, STRIP_ROWS);
+    let planned = Planned {
+        kept: fold.kept().to_vec(),
+        lane_columns: pixels.lane_columns,
+        marker: pixels.marker.map(|marker| marker.column),
+        strips: pixels.strips.iter().map(|strip| strip.first_row).collect(),
+    };
+    (planned, keep)
+}
+
+/// Which `Keep` classes differ between two frames (ADR-0025's names).
+fn keep_differs(before: &Keep, now: &Keep) -> Vec<&'static str> {
+    let mut classes = Vec::new();
+    if now.selected != before.selected {
+        classes.push("selected");
+    }
+    if now.reserved != before.reserved {
+        classes.push("reserved");
+    }
+    if now.preferred != before.preferred {
+        classes.push("preferred");
+    }
+    classes
+}
+
+/// `capped(16, 50, 70)` at the pixel tier on Kitty with deflate, 120x40,
+/// cursor on the first merge.
+fn capped_at_pixel_tier() -> (Session, AppState) {
+    let (mut session, mut state) = at_pixel_tier();
+    session.capabilities.kitty_deflate = true;
+    let mut history = capped(16, 50, 70);
+    history.strip_rows = Some(STRIP_ROWS);
+    history.cursor = 0;
+    state.history = Some(history);
+    state.size = Size {
+        columns: COLUMNS,
+        rows: ROWS,
+    };
+    (session, state)
+}
+
+/// On a graph wider than the lane cap the fold keeps the selection's thread
+/// lanes (ADR-0025 Decision 2, `Keep::preferred`), so a `j` that moves the
+/// thread may change which lanes draw, and every strip goes again. That is
+/// layout, not paint. What ADR-0053 promises, and this guards: a backdrop is
+/// re-sent only on a frame whose fold plan or strip window changed (a), the
+/// fixture really does change the fold (b), and a changed selection paint
+/// always goes as an emphasis layer (c).
+///
+/// Step 0 (46c), the old bound "no backdrop on any j" run red first: 16 red
+/// frames (1–16), every one a plan change, `preferred` the only class that
+/// moved; frames 17–24 changed neither plan nor paint and sent nothing.
+#[test]
+fn a_capped_graph_resends_strips_only_when_the_fold_changes() {
+    let (session, state) = capped_at_pixel_tier();
+    let events = js(24);
+    let cap = crate::view::max_lanes(&state);
+    let (fold, _) = fold_plan(&state, cap).expect("strips draw");
+    let open = fold.kept().len() + fold.folded().len();
+    eprintln!("capped: {open} open lanes, cap {cap}");
+    assert!(open > cap, "capped: {open} open lanes, cap {cap}");
+
+    let walk = states(state.clone(), &events);
+    let plans: Vec<(Planned, Keep)> = walk.iter().map(planned).collect();
+    let run = drive(&session, state, events);
+
+    let mut fold_changes = 0;
+    for k in 1..run.frames.len() {
+        let sent = transmits(&run.frames[k]);
+        let backdrop = sent.iter().filter(|t| !t.is_emphasis()).count();
+        let emphasis = sent.len() - backdrop;
+        let (now, keep_now) = &plans[k];
+        let (before, keep_before) = &plans[k - 1];
+        let changed = now != before;
+        let classes = keep_differs(keep_before, keep_now);
+        let lit_changed = run.paints[k] != run.paints[k - 1];
+        eprintln!(
+            "frame {k}: plan changed {}, keep differs {classes:?}, kept {:?}, \
+             backdrop transmits {backdrop}, emphasis {emphasis}, lit changed {}",
+            if changed { "y" } else { "n" },
+            now.kept,
+            if lit_changed { "y" } else { "n" },
+        );
+        // (a) Paint alone never re-sends a backdrop (ADR-0053).
+        assert!(
+            changed || backdrop == 0,
+            "frame {k}: {backdrop} backdrops sent with the fold and strip window unchanged"
+        );
+        // (c) A changed selection paint goes as an emphasis layer.
+        assert!(
+            !lit_changed || emphasis >= 1,
+            "frame {k}: the selection's paint changed and no emphasis went"
+        );
+        if changed {
+            fold_changes += 1;
+        }
+    }
+    // (b) The fixture really is capped: the fold follows the selection.
+    assert!(fold_changes >= 1, "no j changed the fold");
 }
 
 #[test]

@@ -193,7 +193,29 @@ Premises (≥ 12 lanes, the selection's lit columns changing) fail the test if
 the fixture loses his shape. Counts fail in every build, times in release
 only. **These four are red in the heavy tier until 46** (Unicode green after
 43): the full heavy command above fails on them, deliberately. Right looks
-like: every `VERDICT held_key` line `ok`.
+like: every `VERDICT held_key` line `ok`, except the two below.
+
+**The strip bound** (m7-power-tools/46c) is `strip_transmits_held ≤
+ceil(rows_scrolled/32) + 2 + fold_changes_held × (ceil(screen_rows/32) + 1)`,
+not 42's `ceil(rows_scrolled/32) + 2`. On a graph wider than the lane cap
+(MONOREPO is) the fold keeps the selection's thread lanes (ADR-0025 Decision
+2), so a `j` that moves the thread can change which lanes draw, and every
+strip on screen goes again: a layout change, not a paint one. ADR-0053 keeps
+the paint out of the strips; it never promised the layout. `held_key` cannot
+read the drawn fold (its harness hands out events and byte offsets, not the
+fold), so it prints `fold_changes_held=unread` and a
+`strip_transmits_held=<n>: unjudged` line instead of judging the count. The
+invariant is guarded in the fast tier, every build, by
+`pixel_scroll::a_capped_graph_resends_strips_only_when_the_fold_changes`: on a
+capped fixture, a backdrop goes only on a frame whose fold plan or strip
+window changed, at least one `j` does change the fold, and a changed selection
+paint always sends an emphasis layer.
+
+**Deflate off is red by known gap** (`KNOWN_GAPS` M7/46-kitty-no-deflate): the
+raw Kitty pair (`held_j_stops_on_release_pixel`,
+`j_then_journal_opens_at_once_pixel`) misses `tail_ms` / `j_ms` ≤ 100 by
+construction (a raw layer is megabytes at the 40 MB/s model) and stays
+asserting, red, until `scroll-kitty-without-deflate` lands.
 
 **The frame gate is the p99** (m7-power-tools/04): each `frames::` scroll
 passes when its p99 input-to-frame is ≤ 16 ms; its line prints
