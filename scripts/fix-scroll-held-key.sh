@@ -8,11 +8,13 @@
 #
 # Red until 46 (Unicode green after 43): exits 1 when any test failed.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 cd "$(dirname "$0")/.."
 OUT=${1:-docs/perf/fix-scroll-held-key.txt}
 WORK=$(mktemp -d)
 LOAD=$(uptime | sed "s/.*load averages*: //")
 trap 'rm -rf "$WORK"' EXIT
+machine_state_begin "$OUT"
 
 # The real pty's buffer: non-blocking writes into a fresh pty until EAGAIN.
 pty_capacity() {

@@ -23,6 +23,7 @@
 #
 # PLAIN=6 SPIN=3 by default. KEEP=1 keeps the worktree and target dir.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 cd "$(dirname "$0")/.."
 ROOT=$(pwd)
 OUT=${1:-docs/perf/m7-12g-key-37.txt}
@@ -47,6 +48,7 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+machine_state_begin "$OUT"
 
 if [ ! -d "$WT" ]; then
   git worktree add --detach "$WT" "$M1" >/dev/null 2>"$WORK/wt.err" || {

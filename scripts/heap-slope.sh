@@ -14,11 +14,13 @@
 # peak. Both are printed, so the table says how much of the rise the live
 # accounting explains.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 cd "$(dirname "$0")/.."
 label=${1:-before}
 # HEAP_SLOPE_OUT: another perf file to append to (m7-power-tools/12e); an
 # absolute path, or relative to the repo root.
 out=${HEAP_SLOPE_OUT:-docs/perf/housekeeping-02.txt}
+machine_state_begin "$out"
 raw=target/heap-slope-hk02
 mkdir -p "$raw" docs/perf
 

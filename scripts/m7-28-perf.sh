@@ -9,9 +9,11 @@
 #
 #   scripts/m7-28-perf.sh [tracked-files]     (default 20000)
 set -euo pipefail
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/docs/perf/m7-28.txt"
+machine_state_begin "$OUT"
 export GRAFT_M728_FILES=${1:-20000}
 
 LINES=$(cargo test --release --manifest-path "$ROOT/Cargo.toml" -p graft-ops \

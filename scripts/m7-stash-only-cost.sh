@@ -10,11 +10,13 @@
 # cases (review m7-20k-to-20l). `uptime` is recorded before and after.
 # Further arguments go to the example (`<commits> <refs>`).
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 cd "$(dirname "$0")/.."
 OUT=${1:-docs/perf/stash-only-cost.txt}
 shift || true
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
+machine_state_begin "$OUT"
 
 cargo build --release --quiet -p graft-git --features heavy-tests --example stash_only_cost 2>"$WORK/build.err" || {
   echo "release build failed:" >&2

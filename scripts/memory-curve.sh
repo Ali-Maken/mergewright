@@ -17,7 +17,11 @@
 # RSS = getrusage peak (the gate); footprint = /usr/bin/time -l's
 # "peak memory footprint" (anonymous pages; excludes clean file-backed ones).
 set -euo pipefail
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 cd "$(dirname "$0")/.."
+OUT=docs/shots/m1-memory-curve.txt
+[ "${1:-}" = "--repo" ] && OUT=target/56/$3.txt
+machine_state_begin "$OUT"
 cargo build --release -p graft --example budgets
 
 cell() { # cell <repo> <label> <out>

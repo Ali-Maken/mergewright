@@ -24,6 +24,7 @@
 # process over 40% CPU (claude excluded); a step beside one is marked BUSY
 # and never rerun. KEEP=1 keeps the worktree.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 cd "$(dirname "$0")/.."
 ROOT=$(pwd)
 OUT=${1:-docs/perf/m7-12-idle-advance.txt}
@@ -44,6 +45,7 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+machine_state_begin "$OUT"
 
 [ -d "$GITGIT" ] || { echo "no git/git at $GITGIT: run scripts/clone-git-git.sh" >&2; exit 1; }
 if [ ! -d "$WT" ]; then

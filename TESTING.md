@@ -158,6 +158,8 @@ The feature alone gates heavy tests; none is `#[ignore]`d. The two 1M
 above never reaches them (see [Frames at a
 million](#frames-at-a-million)).
 
+**Exit 3 from a `scripts/` release perf run means "not judged: re-run on mains"** — neither pass nor miss. Every such script sources `scripts/lib/machine-state.sh` (m7/49), writes `SUMMARY machine ac= lowpower= os=` first in its perf file, and exits 3 on macOS when on battery or in Low Power Mode (or with `ALLOW_LOW_POWER=1`, for diagnosis).
+
 **Then the release perf run** (ADR-0021), alone, after the command above:
 
 ```sh

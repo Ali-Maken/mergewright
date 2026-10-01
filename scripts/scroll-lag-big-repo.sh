@@ -22,11 +22,13 @@
 # Part 3, a model: the text profile read at a fixed rate, to show what the
 # loop does when the terminal drains slower than keys arrive.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 cd "$(dirname "$0")/.."
 REPO=${1:?usage: scroll-lag-big-repo.sh <repo copy> [out]}
 OUT=${2:-docs/perf/scroll-lag-big-repo.txt}
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
+machine_state_begin "$OUT"
 ROOT=$PWD
 
 cargo build --release --quiet --bin graft 2>"$WORK/build.err" || { tail -20 "$WORK/build.err" >&2; exit 1; }

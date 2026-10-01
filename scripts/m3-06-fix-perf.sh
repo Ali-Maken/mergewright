@@ -3,8 +3,10 @@
 # time, with their timings, into docs/perf/m3-06-review-fix.txt. Nothing here
 # runs in an agent's context (CLAUDE.md: measurement never does).
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 cd "$(dirname "$0")/.."
 out=docs/perf/m3-06-review-fix.txt
+machine_state_begin "$out"
 raw=target/m3-06-fix-perf
 mkdir -p "$raw" docs/perf
 : > "$out"

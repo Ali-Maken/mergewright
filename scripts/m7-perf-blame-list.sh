@@ -8,11 +8,13 @@
 # Appends a block to docs/perf/18e.txt (or $2) whose last line is:
 #   blame-longfile-list p95=<ms>
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
 cd "$(dirname "$0")/.."
 GITDIR=${1:-}
 OUT=${2:-docs/perf/18e.txt}
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
+machine_state_begin "$OUT"
 
 cargo build --release --quiet -p graft-git --example blame_longfile 2>"$WORK/build.err" || {
   echo "release build failed:" >&2
