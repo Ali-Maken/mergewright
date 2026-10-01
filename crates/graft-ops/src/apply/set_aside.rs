@@ -263,7 +263,13 @@ pub(super) fn close(
         .zip(pending.entry.worktree_before)
         .map(|(raw, tree)| HisBytes { raw, tree });
     let outcome = match put_back(ctx, stash, ended.index_base, his, &mut commands) {
-        Returned::Back { unstaged, raw } => Outcome::Back { unstaged, raw },
+        Returned::Back {
+            unstaged,
+            not_as_they_were,
+        } => Outcome::Back {
+            unstaged,
+            not_as_they_were,
+        },
         Returned::Clashed(paths) => Outcome::Clashed(paths),
         Returned::Kept(kept) => {
             // One read of the list serves the words and where the edits are.
@@ -292,9 +298,9 @@ pub(super) fn close(
             };
             // A failed raw step is in no outcome's words: first, as in
             // `unread` (Ruling 2026-10-01 §1).
-            let kept = match (outcome.raw_words(), kept) {
-                (Some(raw), Some(kept)) => Some(format!("{raw}; {kept}")),
-                (raw, kept) => raw.or(kept),
+            let kept = match (outcome.failed_words(), kept) {
+                (Some(failed_words), Some(kept)) => Some(format!("{failed_words}; {kept}")),
+                (failed_words, kept) => failed_words.or(kept),
             };
             return Err(ApplyError::Journal {
                 error,

@@ -29,7 +29,7 @@ fn a_failed_operation_after_the_fallback_names_the_staging() {
     let error = answer(
         Outcome::Back {
             unstaged: f_txt(),
-            raw: None,
+            not_as_they_were: None,
         },
         entry,
         stash(),
@@ -52,7 +52,7 @@ fn a_failed_drop_after_the_fallback_names_the_staging() {
         error: exited("error: could not drop"),
         back: true,
         unstaged: f_txt(),
-        raw: None,
+        not_as_they_were: None,
     };
     let outcome = Outcome::kept(kept, &Ok(Some(0)), stash());
     let error = answer(outcome, entry, stash(), None, Vec::new()).expect_err("S kept");
@@ -65,7 +65,7 @@ fn a_failed_drop_after_the_fallback_names_the_staging() {
 }
 
 /// A raw step that failed on `src/a.rs`, one path to write.
-fn raw_failed() -> NotAsTheyWere {
+fn sample_not_as_they_were() -> NotAsTheyWere {
     NotAsTheyWere {
         error: crate::restore::RestoreError::WriteRaw {
             path: PathBuf::from("src/a.rs"),
@@ -87,7 +87,7 @@ const RAW_WORDS: &str = "your edits are back · src/a.rs not written back as it 
 fn a_clean_put_back_whose_raw_step_failed_is_committed_not_as_they_were_first() {
     let outcome = Outcome::Back {
         unstaged: f_txt(),
-        raw: Some(raw_failed()),
+        not_as_they_were: Some(sample_not_as_they_were()),
     };
     assert_eq!(
         status_for(&outcome, None, EntryStatus::Committed),
@@ -115,7 +115,7 @@ fn a_clean_put_back_whose_raw_step_failed_is_committed_not_as_they_were_first() 
     // Without the fallback, it is the one thing reported.
     let whole = Outcome::Back {
         unstaged: Vec::new(),
-        raw: Some(raw_failed()),
+        not_as_they_were: Some(sample_not_as_they_were()),
     };
     let entry = committed(1, OperationKind::Checkout, 1, 2);
     let Err(ApplyError::AfterState { unread, .. }) =
@@ -136,7 +136,7 @@ fn an_unlisted_drop_after_a_failed_raw_step_reports_both_raw_first() {
     let kept = Kept::Unlisted {
         why: FactsError::State(std::io::Error::other("the stash list is unreadable")),
         unstaged: Vec::new(),
-        raw: Some(raw_failed()),
+        not_as_they_were: Some(sample_not_as_they_were()),
     };
     let outcome = Outcome::kept(kept, &Ok(None), stash());
     let entry = committed(1, OperationKind::Checkout, 1, 2);
@@ -165,7 +165,7 @@ fn a_git_failure_after_a_failed_raw_step_carries_its_words() {
         error: exited("error: could not drop"),
         back: true,
         unstaged: Vec::new(),
-        raw: Some(raw_failed()),
+        not_as_they_were: Some(sample_not_as_they_were()),
     };
     let outcome = Outcome::kept(kept, &Ok(Some(0)), stash());
     let entry = committed(1, OperationKind::Checkout, 1, 2);
@@ -179,7 +179,7 @@ fn a_git_failure_after_a_failed_raw_step_carries_its_words() {
 
     let back = Outcome::Back {
         unstaged: Vec::new(),
-        raw: Some(raw_failed()),
+        not_as_they_were: Some(sample_not_as_they_were()),
     };
     let entry = committed(1, OperationKind::Checkout, 1, 2);
     let error = answer(

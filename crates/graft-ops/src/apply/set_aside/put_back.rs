@@ -73,15 +73,17 @@ const AS_THEY_WERE: [(&str, &str); 3] = [
 /// message.
 #[derive(Debug)]
 pub(crate) enum PutBackRan {
-    /// `--index` applied clean: the staged split is as it was. `raw`: the
+    /// `--index` applied clean: the staged split is as it was. `not_as_they_were`: the
     /// raw step's failure, if it failed.
-    Whole { raw: Option<NotAsTheyWere> },
+    Whole {
+        not_as_they_were: Option<NotAsTheyWere>,
+    },
     /// `--index` refused and wrote nothing; the plain apply ran clean.
-    /// `paths`: the staged paths whose staging did not come back; `raw` as
+    /// `paths`: the staged paths whose staging did not come back; `not_as_they_were` as
     /// [`PutBackRan::Whole`]'s.
     Unstaged {
         paths: Vec<PathBuf>,
-        raw: Option<NotAsTheyWere>,
+        not_as_they_were: Option<NotAsTheyWere>,
     },
     /// Unmerged after either apply (ADR-0045 §2).
     Clashed { paths: Vec<PathBuf> },
@@ -104,8 +106,8 @@ pub(super) fn run_put_back(
     let first = apply(ctx, stash, true, commands);
     match read(ctx, first)? {
         Read::Clean => {
-            let raw = as_they_were(ctx, his, commands);
-            return Ok(PutBackRan::Whole { raw });
+            let not_as_they_were = as_they_were(ctx, his, commands);
+            return Ok(PutBackRan::Whole { not_as_they_were });
         }
         Read::Clashed(paths) => return Ok(PutBackRan::Clashed { paths }),
         Read::Wrote(error) => return Ok(PutBackRan::Failed { error }),
@@ -125,7 +127,7 @@ pub(super) fn run_put_back(
     Ok(match read(ctx, second)? {
         Read::Clean => PutBackRan::Unstaged {
             paths,
-            raw: as_they_were(ctx, his, commands),
+            not_as_they_were: as_they_were(ctx, his, commands),
         },
         Read::Clashed(paths) => PutBackRan::Clashed { paths },
         // Never a third apply.

@@ -39,7 +39,11 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   properties: `check`, `plan`, `touches`, and `undo::inverse`). The
   execution half is `apply.rs` (the §6.2 protocol: read, check, back up,
   journal, run, journal again), `snapshot.rs` (both trees from one copy of
-  the index — never the real one), `restore.rs` with `restore/outcome.rs` (the inverse's plan loop, with
+  the index — never the real one). The snapshot writes `index/` or
+  `unmerged/`, `worktree/`, and, when his bytes differ from what git gives
+  back, `raw/` (ADR-0052: `snapshot/raw.rs` with `snapshot/raw/converted.rs`).
+  `restore.rs` with `restore/outcome.rs` and `restore/raw.rs`, which writes
+  `raw/` back byte-exact (the inverse's plan loop, with
   `restore/steps.rs` for the one `git` per step and `restore/rollback.rs` for
   putting back what a cancelled undo had already done) and
   `undo/execute.rs` (the §6.7 drift rail in front of them). **The seam

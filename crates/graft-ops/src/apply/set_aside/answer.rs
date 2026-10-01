@@ -76,7 +76,7 @@ pub(super) fn answer(
             edits,
             unstaged,
             error,
-            raw,
+            not_as_they_were,
         } => Err(match (failure, error) {
             (Some(failed), _) | (None, Ok(failed)) => ApplyError::Git {
                 entry: Box::new(entry),
@@ -85,12 +85,12 @@ pub(super) fn answer(
                 // Unknown: the words (clause included) ride on git's line,
                 // so every place that shows the error still says where they
                 // are. A failed raw step rides after either.
-                error: with_raw(
+                error: with_not_as_they_were(
                     match edits {
                         Some(_) => appended(failed, &staging_clause(&unstaged)),
                         None => naming(failed, &words),
                     },
-                    raw,
+                    not_as_they_were,
                 ),
                 recoverable,
                 edits,
@@ -102,8 +102,8 @@ pub(super) fn answer(
             (None, Err(error)) => {
                 let mut unread = unread;
                 unread.insert(0, AfterState::SetAsideKept { error, words });
-                if let Some(raw) = raw {
-                    unread.insert(0, not_as_they_were(raw));
+                if let Some(not_as_they_were) = not_as_they_were {
+                    unread.insert(0, answer_not_as_they_were(not_as_they_were));
                 }
                 ApplyError::AfterState {
                     applied: Box::new(applied(entry)),
@@ -111,19 +111,27 @@ pub(super) fn answer(
                 }
             }
         }),
-        Outcome::Back { unstaged, raw } => match failure {
-            // Put back clean and dropped: the edits are simply back. When
-            // their staging did not come back, git's line says so, as the
-            // entry's reason does (review m7-30-06d Minor 1); likewise a
-            // failed raw step.
-            Some(error) => Err(ApplyError::Git {
-                entry: Box::new(entry),
-                error: with_raw(appended(error, &staging_clause(&unstaged)), raw),
-                recoverable,
-                edits: None,
-            }),
-            None => back(entry, unstaged, raw, unread),
-        },
+        Outcome::Back {
+            unstaged,
+            not_as_they_were,
+        } => back(entry, failure, unstaged, not_as_they_were, unread),
+    }
+}
+
+/// Put back clean and dropped, but git failed after. When their staging did
+/// not come back, git's line says so, as the entry's reason does (review
+/// m7-30-06d Minor 1); likewise a failed raw step.
+fn back_but_git_failed(
+    entry: JournalEntry,
+    error: RunError,
+    unstaged: &[PathBuf],
+    not_as_they_were: Option<NotAsTheyWere>,
+) -> ApplyError {
+    ApplyError::Git {
+        recoverable: entry.worktree_before.is_some(),
+        entry: Box::new(entry),
+        error: with_not_as_they_were(appended(error, &staging_clause(unstaged)), not_as_they_were),
+        edits: None,
     }
 }
 
@@ -131,18 +139,27 @@ pub(super) fn answer(
 /// without its staging, or not as he left them, is a completed write the
 /// caller words as incomplete: [`AfterState::NotAsTheyWere`] first among
 /// what it reports, then [`AfterState::StagingNotKept`] (Ruling 2026-10-01
-/// §1).
+/// §1). `failure`: git failed after all ([`back_but_git_failed`]).
 fn back(
     entry: JournalEntry,
+    failure: Option<RunError>,
     unstaged: Vec<PathBuf>,
-    raw: Option<NotAsTheyWere>,
+    not_as_they_were: Option<NotAsTheyWere>,
     mut unread: Vec<AfterState>,
 ) -> Result<Applied, ApplyError> {
+    if let Some(error) = failure {
+        return Err(back_but_git_failed(
+            entry,
+            error,
+            &unstaged,
+            not_as_they_were,
+        ));
+    }
     if !unstaged.is_empty() {
         unread.insert(0, AfterState::StagingNotKept { paths: unstaged });
     }
-    if let Some(raw) = raw {
-        unread.insert(0, not_as_they_were(raw));
+    if let Some(not_as_they_were) = not_as_they_were {
+        unread.insert(0, answer_not_as_they_were(not_as_they_were));
     }
     if unread.is_empty() {
         return Ok(applied(entry));
@@ -158,7 +175,7 @@ pub(super) enum Outcome {
     /// As [`super::Returned::Back`].
     Back {
         unstaged: Vec<PathBuf>,
-        raw: Option<NotAsTheyWere>,
+        not_as_they_were: Option<NotAsTheyWere>,
     },
     Clashed(Vec<PathBuf>),
     Kept {
@@ -172,7 +189,7 @@ pub(super) enum Outcome {
         /// git's error, or the read that failed.
         error: Result<RunError, FactsError>,
         /// The raw step's failure, when the edits are back (not in `words`).
-        raw: Option<NotAsTheyWere>,
+        not_as_they_were: Option<NotAsTheyWere>,
     },
 }
 
@@ -183,41 +200,54 @@ impl Outcome {
         let words = kept.words(listed, stash);
         let edits = kept.edits(listed);
         let unstaged = kept.unstaged().to_vec();
-        let (error, raw) = kept.into_error();
+        let (error, not_as_they_were) = kept.into_error();
         Outcome::Kept {
             words,
             edits,
             unstaged,
             error,
-            raw,
+            not_as_they_were,
         }
     }
 
     /// A failed raw step's words, for a line with no `unread` to carry them
     /// (the outcome line not written, [`super::close`]).
-    pub(super) fn raw_words(&self) -> Option<String> {
-        let (Outcome::Back { raw: Some(raw), .. } | Outcome::Kept { raw: Some(raw), .. }) = self
+    pub(super) fn failed_words(&self) -> Option<String> {
+        let (Outcome::Back {
+            not_as_they_were: Some(not_as_they_were),
+            ..
+        }
+        | Outcome::Kept {
+            not_as_they_were: Some(not_as_they_were),
+            ..
+        }) = self
         else {
             return None;
         };
-        Some(not_as_they_were_words(&raw.error, raw.files))
+        Some(not_as_they_were_words(
+            &not_as_they_were.error,
+            not_as_they_were.files,
+        ))
     }
 }
 
 /// The raw step's failure as the after-state it is.
-pub(super) fn not_as_they_were(raw: NotAsTheyWere) -> AfterState {
+pub(super) fn answer_not_as_they_were(not_as_they_were: NotAsTheyWere) -> AfterState {
     AfterState::NotAsTheyWere {
-        error: raw.error,
-        files: raw.files,
+        error: not_as_they_were.error,
+        files: not_as_they_were.files,
     }
 }
 
 /// git's error with a failed raw step's words after it, `; `-joined as
 /// [`ApplyError::AfterState`] joins what it reports. Rides only on an
 /// `Exited` line, as [`appended`] does.
-fn with_raw(error: RunError, raw: Option<NotAsTheyWere>) -> RunError {
-    match raw {
-        Some(raw) => appended(error, &format!("; {}", not_as_they_were(raw))),
+fn with_not_as_they_were(error: RunError, not_as_they_were: Option<NotAsTheyWere>) -> RunError {
+    match not_as_they_were {
+        Some(not_as_they_were) => appended(
+            error,
+            &format!("; {}", answer_not_as_they_were(not_as_they_were)),
+        ),
         None => error,
     }
 }
