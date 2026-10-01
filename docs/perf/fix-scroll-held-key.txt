@@ -1,0 +1,35 @@
+# fix-scroll-held-key (m7-power-tools/42): held j at his scale, release
+# HEAD e0052eac (+ uncommitted changes under crates/)
+# machine: Apple M5, 10 cpus, Darwin 27.0.0
+# load before: 6.70 8.57 8.60
+# pipe model 16384 B; real macOS pty capacity (non-blocking write until EAGAIN): 1024 B
+SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=1 frames_after_release=188 tail_ms=215976 bytes_per_frame_held=13113157 strip_transmits_held=4 emphasis_transmits_held=0 rows_scrolled=188 peak_rss_mb=659 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Pixel scenario=A frames_after_release<=2: FAILED
+VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: FAILED
+VERDICT held_key tier=Pixel scenario=A strip_transmits_held<=8: ok
+VERDICT held_key tier=Pixel scenario=A tail_ms<=100: FAILED
+SUMMARY held_key tier=Unicode scenario=A size=187x50 cell=17x37 drain=500000B/s pipe=16384 keys=188 frames_while_held=131 frames_after_release=109 tail_ms=3260 bytes_per_frame_held=10667 strip_transmits_held=0 emphasis_transmits_held=0 rows_scrolled=188 peak_rss_mb=659 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Unicode scenario=A frames_after_release<=2: FAILED
+VERDICT held_key tier=Unicode scenario=A tail_ms<=100: FAILED
+SUMMARY held_key tier=Pixel scenario=B size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=189 frames_while_held=1 frames_after_release=189 tail_ms=225337 bytes_per_frame_held=13113157 strip_transmits_held=4 emphasis_transmits_held=0 rows_scrolled=188 j_ms=225288 j_done_ms=225289 frames_before_J=187 peak_rss_mb=659 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Pixel scenario=B frames_after_release<=2: FAILED
+VERDICT held_key tier=Pixel scenario=B frames_before_J<=1: FAILED
+VERDICT held_key tier=Pixel scenario=B bytes_per_frame_held<=512KiB: FAILED
+VERDICT held_key tier=Pixel scenario=B strip_transmits_held<=8: ok
+VERDICT held_key tier=Pixel scenario=B tail_ms<=100: FAILED
+VERDICT held_key tier=Pixel scenario=B j_ms<=100: FAILED
+SUMMARY held_key tier=Unicode scenario=B size=187x50 cell=17x37 drain=500000B/s pipe=16384 keys=189 frames_while_held=131 frames_after_release=112 tail_ms=3317 bytes_per_frame_held=10667 strip_transmits_held=0 emphasis_transmits_held=0 rows_scrolled=188 j_ms=3210 j_done_ms=3241 frames_before_J=108 peak_rss_mb=659 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Unicode scenario=B frames_after_release<=2: FAILED
+VERDICT held_key tier=Unicode scenario=B frames_before_J<=1: FAILED
+VERDICT held_key tier=Unicode scenario=B tail_ms<=100: FAILED
+VERDICT held_key tier=Unicode scenario=B j_ms<=100: FAILED
+test held_key::held_j_stops_on_release_pixel ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=122
+test held_key::held_j_stops_on_release_unicode ... frames: tier=Unicode refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=9
+test held_key::j_then_journal_opens_at_once_pixel ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=10
+test held_key::j_then_journal_opens_at_once_unicode ... frames: tier=Unicode refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=12
+# panic: held_key verdict failed ["frames_after_release<=2", "bytes_per_frame_held<=512KiB", "tail_ms<=100"]: SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=1 frames_after_release=188 tail_ms=215976 bytes_per_frame_held=13113157 strip_transmits_held=4 emphasis_transmits_held=0 rows_scrolled=188 peak_rss_mb=659 premise_wide=188/188 premi
+# panic: held_key verdict failed ["frames_after_release<=2", "tail_ms<=100"]: SUMMARY held_key tier=Unicode scenario=A size=187x50 cell=17x37 drain=500000B/s pipe=16384 keys=188 frames_while_held=131 frames_after_release=109 tail_ms=3260 bytes_per_frame_held=10667 strip_transmits_held=0 emphasis_transmits_held=0 rows_scrolled=188 peak_rss_mb=659 premise_wide=188/188 premise_lit_changed=184/188
+# panic: held_key verdict failed ["frames_after_release<=2", "frames_before_J<=1", "bytes_per_frame_held<=512KiB", "tail_ms<=100", "j_ms<=100"]: SUMMARY held_key tier=Pixel scenario=B size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=189 frames_while_held=1 frames_after_release=189 tail_ms=225337 bytes_per_frame_held=13113157 strip_transmits_held=4 emphasis_transmits_held=0 rows_scrolled=188 j_ms=22
+# panic: held_key verdict failed ["frames_after_release<=2", "frames_before_J<=1", "tail_ms<=100", "j_ms<=100"]: SUMMARY held_key tier=Unicode scenario=B size=187x50 cell=17x37 drain=500000B/s pipe=16384 keys=189 frames_while_held=131 frames_after_release=112 tail_ms=3317 bytes_per_frame_held=10667 strip_transmits_held=0 emphasis_transmits_held=0 rows_scrolled=188 j_ms=3210 j_done_ms=3241 frames_before_J=1
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 707 filtered out; finished in 482.85s
+# exit 101

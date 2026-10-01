@@ -160,7 +160,7 @@ fn measured<D>(
 /// and what the loop spent on it (`draw` is `None` before the loop starts:
 /// [`ready_to_scroll`] takes events in without drawing).
 #[derive(Clone, Copy)]
-pub(super) struct StartupWake {
+pub(crate) struct StartupWake {
     pub(super) label: &'static str,
     pub(super) sent: Instant,
     pub(super) recv: Instant,
@@ -180,9 +180,36 @@ pub(super) fn ready_to_scroll(
     post: Post,
     events: &Receiver<Posted>,
 ) -> Result<(JobRunner<Post>, AppState, Vec<StartupWake>), String> {
+    ready_sized(repo, tier, refs, post, events, super::real_size()?)
+}
+
+/// [`ready_to_scroll`] at `size` (`(columns, rows)`), whatever
+/// `GRAFT_REAL_SIZE` says: a parameter, never the process-wide env
+/// (m7-power-tools/42 ruling 3).
+pub(crate) fn ready_to_scroll_at(
+    repo: &Path,
+    tier: RenderingTier,
+    refs: Refs,
+    post: Post,
+    events: &Receiver<Posted>,
+    size: (u16, u16),
+) -> Result<(JobRunner<Post>, AppState, Vec<StartupWake>), String> {
+    ready_sized(repo, tier, refs, post, events, Some(size))
+}
+
+/// The one body: `size` is what `GRAFT_REAL_SIZE` gave before (`None`:
+/// the opened state's own size).
+fn ready_sized(
+    repo: &Path,
+    tier: RenderingTier,
+    refs: Refs,
+    post: Post,
+    events: &Receiver<Posted>,
+    size: Option<(u16, u16)>,
+) -> Result<(JobRunner<Post>, AppState, Vec<StartupWake>), String> {
     let (jobs, mut state) = budget_run::open_into(repo, post)?;
     state.settled_tier = Some(tier);
-    if let Some((columns, rows)) = super::real_size()? {
+    if let Some((columns, rows)) = size {
         let (next, commands) = update(
             &state,
             graft::update::AppEvent::Core(graft_core::event::Event::Resize { columns, rows }),
@@ -244,7 +271,7 @@ pub(super) fn ready_to_scroll(
 }
 
 /// A terminal of `state`'s size writing into `sink`.
-pub(super) fn in_memory(
+pub(crate) fn in_memory(
     sink: &Sink,
     state: &AppState,
 ) -> Result<Terminal<CrosstermBackend<Sink>>, String> {
@@ -321,12 +348,13 @@ fn fifty_thousand(state: &AppState) -> Result<RefBadges, String> {
 
 /// A truecolour terminal that answered every probe, drawing at `tier`; at
 /// the pixel tier over Kitty, with the user's measured cell (ADR-0012).
-pub(super) fn capabilities(tier: RenderingTier) -> Capabilities {
+pub(crate) fn capabilities(tier: RenderingTier) -> Capabilities {
     let pixel = tier == RenderingTier::Pixel;
     Capabilities {
         tier,
         pixel_protocol: pixel.then_some(PixelProtocol::Kitty),
         kitty_graphics: if pixel { Supported::Yes } else { Supported::No },
+        kitty_deflate: false,
         sixel: Supported::No,
         iterm2_images: false,
         kitty_keyboard: Supported::No,

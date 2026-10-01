@@ -4,6 +4,7 @@ use std::io::{self, Write};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
+use crate::drain_sink::DrainSink;
 use crate::frame_trace::WriteClock;
 
 /// The terminal: keeps every byte it is sent, and only copies them.
@@ -15,7 +16,7 @@ use crate::frame_trace::WriteClock;
 /// so no timed window pays for the test's own bookkeeping (m1-the-graph/30f:
 /// parsing each byte inside `write` added ~3.6 ms to every pixel page key).
 #[derive(Clone, Default)]
-pub(super) struct Sink(Arc<Mutex<Log>>);
+pub(crate) struct Sink(Arc<Mutex<Log>>);
 
 /// The bytes sent, in chunks so that growing the log never moves what is
 /// already in it (a reallocation would copy megabytes inside one frame).
@@ -25,6 +26,8 @@ struct Log {
     len: usize,
     /// Time inside `write`, read only when tracing.
     clock: WriteClock,
+    /// [`Sink::draining`]: every write goes here and no byte is kept.
+    drain: Option<Box<dyn Write + Send>>,
 }
 
 /// A new chunk's capacity, unless one write is bigger.
@@ -39,6 +42,17 @@ impl Sink {
         })))
     }
 
+    /// Writes go to `drain` (blocking while its pipe is full); no byte is kept.
+    /// `sent` and `write_spent` mean what they mean for [`Sink::timed`]; the
+    /// write time is always taken, and includes the time blocked.
+    pub(crate) fn draining(drain: &DrainSink) -> Sink {
+        Self(Arc::new(Mutex::new(Log {
+            clock: WriteClock::new(true),
+            drain: Some(Box::new(drain.writer())),
+            ..Log::default()
+        })))
+    }
+
     /// Time spent inside `write` so far; zero unless timed.
     pub(super) fn write_spent(&self) -> Duration {
         self.0
@@ -49,7 +63,7 @@ impl Sink {
     }
 
     /// Bytes sent so far.
-    pub(super) fn sent(&self) -> usize {
+    pub(crate) fn sent(&self) -> usize {
         self.0.lock().unwrap_or_else(PoisonError::into_inner).len
     }
 
@@ -57,6 +71,10 @@ impl Sink {
     /// of `marks` (byte offsets from [`Sink::sent`], in order).
     pub(super) fn count(&self, marks: &[usize]) -> (Written, Vec<Counts>) {
         let log = self.0.lock().unwrap_or_else(PoisonError::into_inner);
+        assert!(
+            log.drain.is_none(),
+            "Sink::count on a Sink::draining: it keeps no bytes (a harness bug)"
+        );
         let mut written = Written::default();
         let mut at = Vec::with_capacity(marks.len());
         let mut marks = marks.iter().peekable();
@@ -212,7 +230,17 @@ impl Written {
 impl Write for Sink {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let mut log = self.0.lock().unwrap_or_else(PoisonError::into_inner);
-        let Log { chunks, len, clock } = &mut *log;
+        let Log {
+            chunks,
+            len,
+            clock,
+            drain,
+        } = &mut *log;
+        if let Some(drain) = drain {
+            clock.time(|| drain.write_all(buf))?;
+            *len += buf.len();
+            return Ok(buf.len());
+        }
         clock.time(|| {
             let room = chunks
                 .last()
@@ -283,4 +311,30 @@ fn the_sink_counts_after_the_run_what_parsing_each_write_counted_during_it() {
         (transmits, placements, deletes, frees)
     );
     assert_eq!(format!("{counted:?}"), format!("{expected:?}"));
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Write;
+    use std::sync::PoisonError;
+
+    use super::Sink;
+    use crate::drain_sink::DrainSink;
+
+    /// A draining sink forwards every byte to the drain, keeps none, and its
+    /// `sent` is the drain's `written`.
+    #[test]
+    fn a_draining_sink_forwards_and_keeps_nothing() {
+        let drain = DrainSink::new(64, 10_000_000);
+        let mut sink = Sink::draining(&drain);
+        let stream = format!("abc\x1b_Ga=t,i=3;{}\x1b\\ end", "A".repeat(1000));
+        for piece in stream.as_bytes().chunks(37) {
+            sink.write_all(piece).unwrap_or_else(|why| panic!("{why}"));
+        }
+        assert_eq!(sink.sent(), stream.len());
+        assert_eq!(drain.written(), stream.len() as u64);
+        assert_eq!(drain.kitty_transmits().len(), 1);
+        let log = sink.0.lock().unwrap_or_else(PoisonError::into_inner);
+        assert!(log.chunks.is_empty(), "no byte kept");
+    }
 }
