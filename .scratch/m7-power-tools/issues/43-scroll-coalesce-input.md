@@ -1,6 +1,6 @@
 # 43-scroll-coalesce-input — queued keys are applied together and drawn once
 
-Status: partial — all built and green; Unicode scenario B of the release gate still red (tail 105 ms > 100, frames_after_release 3 > 2)
+Status: blocked — loop built and green; Unicode scenario B red because held_key.rs (42's file) counts J's own frame as a post-release j frame. See NOTES continuation 1.
 Build with: Sonnet — one loop rule in two files, every case named below with its test; the scout mapped every
 seam (`.scratch/m7-power-tools/scouts/43.md`).
 Needs: `42-scroll-held-key-gate` landed (its red run recorded first). No signature from another ticket.
@@ -179,3 +179,21 @@ Deviations / test changes:
 - Not in file set, not changed: `held_key.rs` reads `written[k+1]` per wake — still valid since stamps stay one per
   `next_wake`, and a batched wake writes 0 bytes; `after_idle.rs` uses `drawn[shown+1]` (look, not frame) if `G`'s
   window joins a turn — possible small misread, unverified.
+
+## NOTES (continuation 1, 2026-10-01)
+No scout (43's scout already covers the loop; this was a measurement question, answered by a temporary print). No compaction.
+
+- Repeated: `scripts/fix-scroll-held-key.sh` 3x (to scratch) + 3 direct runs: Unicode B red **every time**:
+  frames_after_release=3 each run, tail_ms 99/100/101/106/110/112/114. Unicode A green each run (2 frames, 76-79 ms).
+- Diagnosis (temporary eprintln in `held_key::read`, reverted): B's post-release frames are, by handed index,
+  k=278 j#186 (in flight when the last j arrived, +13-17 ms), k=279 j#187 (+34-48 ms), **k=282 = J's frame**:
+  J handed at k=280 (sent +49-56 ms after last j), its journal answers k=281-282 joined the turn, one frame drawn,
+  stamped on k=282 (+66-77 ms). So J + its journal answer draw **one** frame; last builder's guess (journal answer
+  draws an extra frame) is wrong. A shows the same first two frames and no third.
+- Cause: the B metrics include J. `crates/graft/tests/it/held_key.rs:342-349` counts every frame drawn after the
+  last j as "after release" — J's frame is necessarily one (J comes THEN_J = 50 ms later, `:51`). `:364-368` takes
+  tail to `written.last()`, J's frame end, so tail = 50 ms wait + J's frame (~32 ms at 500 KB/s) + jitter.
+  The loop is behaving as specified; j_ms 11-26, frames_before_J 0.
+- Fix belongs in held_key.rs (42's test, not in 43's file set): in B, count frames/tail only up to J's handed index
+  (J is judged by j_ms/j_done_ms). Not done here — changing a gate's definition needs the conductor/spec owner.
+  Box stays open.
