@@ -18,6 +18,11 @@ use crate::snapshot::SnapshotError;
 
 use super::{Applied, PrepareError, remote};
 
+mod words;
+
+pub(super) use words::{joined, not_as_they_were_words, staging_clause};
+use words::{journal_failed, staging_not_kept_words};
+
 /// Why an operation did not run, or did not finish.
 #[derive(Debug, thiserror::Error)]
 pub enum ApplyError {
@@ -293,83 +298,6 @@ pub enum AfterState {
     },
 }
 
-/// A failed raw step's words (Ruling 2026-10-01 §1): the path named as
-/// [`AfterState::StagingNotKept`] names its paths, the error's own words
-/// never re-worded, and no `u` clause.
-pub(super) fn not_as_they_were_words(error: &RestoreError, files: usize) -> String {
-    match error {
-        RestoreError::WriteRaw { path, source } if files <= 1 => format!(
-            "your edits are back · {} not written back as it was: {source} · its exact bytes are in \
-             the backup",
-            path.display()
-        ),
-        RestoreError::WriteRaw { path, source } => format!(
-            "your edits are back · not all written back as they were: {}: {source} · their exact \
-             bytes are in the backup",
-            path.display()
-        ),
-        other => format!(
-            "your edits are back · not written back as they were: {other} · their exact bytes are \
-             in the backup"
-        ),
-    }
-}
-
-/// `your edits are back · staging not kept: <first>[ +N more] · u undoes it,
-/// staging included`.
-fn staging_not_kept_words(paths: &[PathBuf]) -> String {
-    format!(
-        "your edits are back{} · u undoes it, staging included",
-        staging_clause(paths)
-    )
-}
-
-/// ` · staging not kept: <first>[ +N more]`, or nothing when the index came
-/// back. The one formatter for the clause: [`AfterState::StagingNotKept`],
-/// a kept set-aside's reason and words, and git's failure line when the
-/// fallback ran (review m7-30-06d Minor 1).
-pub(super) fn staging_clause(unstaged: &[PathBuf]) -> String {
-    if unstaged.is_empty() {
-        String::new()
-    } else {
-        format!(" · staging not kept: {}", staging_named(unstaged))
-    }
-}
-
-/// `<first>[ +N more]`: the paths whose staging did not come back.
-fn staging_named(paths: &[PathBuf]) -> String {
-    let first = paths
-        .first()
-        .map_or_else(String::new, |path| path.display().to_string());
-    match paths.len() {
-        0 | 1 => first,
-        n => format!("{first} +{} more", n - 1),
-    }
-}
-
-/// The journal failing, with git's own failure when there was one, and
-/// where a set-aside's edits are when they are not back in the tree.
-fn journal_failed(error: &JournalError, after: Option<&RunError>, kept: Option<&str>) -> String {
-    let mut line = match after {
-        Some(ran) => format!("{error} (git had already failed: {})", reason_for(ran)),
-        None => error.to_string(),
-    };
-    if let Some(kept) = kept {
-        line.push_str(" · ");
-        line.push_str(kept);
-    }
-    line
-}
-
-/// Every after-state failure on one line.
-pub(super) fn joined(unread: &[AfterState]) -> String {
-    unread
-        .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<_>>()
-        .join("; ")
-}
-
 impl ApplyError {
     /// Where a set-aside's edits are, `Some` only for a set-aside that ended
     /// other than clean or clashed (ADR-0045 §5 amended). The one place the
@@ -447,47 +375,4 @@ pub(crate) fn as_apply_error(why: SnapshotError) -> ApplyError {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn denied(path: &str) -> RestoreError {
-        RestoreError::WriteRaw {
-            path: PathBuf::from(path),
-            source: std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied"),
-        }
-    }
-
-    /// Ruling 2026-10-01 §1: the three wordings, exact. One path names it;
-    /// more than one names the first that failed; a failed check carries
-    /// its own words. No `u` clause in any.
-    #[test]
-    fn not_as_they_were_says_the_edits_are_back_and_where_the_bytes_are() {
-        let one = AfterState::NotAsTheyWere {
-            error: denied("src/a.rs"),
-            files: 1,
-        };
-        assert_eq!(
-            one.to_string(),
-            "your edits are back · src/a.rs not written back as it was: denied · its exact bytes \
-             are in the backup"
-        );
-        let more = AfterState::NotAsTheyWere {
-            error: denied("src/b.rs"),
-            files: 3,
-        };
-        assert_eq!(
-            more.to_string(),
-            "your edits are back · not all written back as they were: src/b.rs: denied · their \
-             exact bytes are in the backup"
-        );
-        let check = AfterState::NotAsTheyWere {
-            error: RestoreError::Run(RunError::Unparsable("hash-object printed \"?\"".to_owned())),
-            files: 0,
-        };
-        assert_eq!(
-            check.to_string(),
-            "your edits are back · not written back as they were: git's output did not parse as \
-             expected: hash-object printed \"?\" · their exact bytes are in the backup"
-        );
-    }
-}
+mod tests;
