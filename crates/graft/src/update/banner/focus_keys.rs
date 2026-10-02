@@ -79,9 +79,11 @@ pub(super) fn hand_the_keyboard_back(state: &mut AppState, key: KeyPress) {
 ///
 /// **Modal**: `true` for every key but `Ctrl+C`, which passes so that a
 /// terminal application never ignores it (`is_quit`'s reasoning, and §2.1's
-/// one exception). `q` is *not* excepted — `Tab` then `q` quits, and the
-/// hint bar shows `⇥ graph` the whole time. Quitting straight out of a live
-/// operation wants its own confirm, which is M8's.
+/// one exception). Plain `q` is answered here by the one quit path,
+/// `quit::asked`, which boxes first while a write runs or git is stopped
+/// (keymap §2.2; m8-polish-and-ship/13, review Major 1) — a stop, a
+/// relaunch and an undo all land on the banner, so that is where `q` is
+/// pressed.
 pub fn banner_key(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -152,6 +154,10 @@ pub fn banner_key(
                 }
             }
         }
+        // `q` quits as it does from the graph, through the same path, so the
+        // stopped or running box asks first. It used to fall into the silent
+        // arm below and read as a hang (review m8-13 Major 1).
+        KeyCode::Char('q') if plain => crate::update::quit::asked(state, key),
         // Swallowed on purpose, and **silently**: §2.1's modal rule.
         // Nothing outside the banner is live while it has focus, so `u`
         // cannot undo the entry *before* the one still running (answered
