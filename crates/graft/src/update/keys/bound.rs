@@ -155,6 +155,7 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("y", "start over"),
     ("y", "undo"),
     ("y", "redo"),
+    ("y", "quit"),   // the `q` box (`update::quit`, m8-polish-and-ship/13)
     ("⏎", "create"), // `name_prompt::name_prompt_key` → `create`
     ("⇥", "toggle"), // `name_prompt::name_prompt_key`: check out after
     ("⏎", "send"),   // `credential::credential_key`: the answer to git

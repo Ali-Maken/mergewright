@@ -179,9 +179,8 @@ fn u_after_a_stash_lands_on_head() {
 /// What right looks like (`m8-quit-while-running-80x24.txt`, ruling 4):
 /// `f` then `q` before the fetch answers — a box titled `Quit?` reading
 /// `fetch all remotes is still running · quit stops it`, `[ Cancel ]
-/// [ Quit ]` with the cursor on Cancel, the bottom row the box's keys. `→ ⏎`
-/// quits. The bar has no `y quit` yet: `y` waits on `ConfirmYes::Quit` in
-/// graft-ui (the ticket's NOTES).
+/// [ Quit ]` with the cursor on Cancel, the bottom row the box's keys led by
+/// `y quit`. `y` quits.
 /// Colour unverified.
 #[test]
 fn capture_quit_while_a_fetch_runs() {
@@ -203,8 +202,12 @@ fn capture_quit_while_a_fetch_runs() {
         "{}",
         shown.join("\n")
     );
-    let state = app.key(&state, KeyCode::Right);
-    let state = app.key(&state, KeyCode::Enter);
+    assert!(
+        shown.last().is_some_and(|bar| bar.contains("y quit")),
+        "{}",
+        shown.join("\n")
+    );
+    let state = app.press(&state, plain('y'));
     assert_eq!(state.quit, Some(graft::update::Quit::Requested));
     crate::captures::check_shot(
         "m8-quit-while-running-80x24.txt",

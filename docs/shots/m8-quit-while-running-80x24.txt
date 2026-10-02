@@ -22,4 +22,4 @@
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
 ●    Commit 179                                                     7y   97b58e5
- ←/→ move  ⏎ choose  esc cancel
+ y quit  ←/→ move  ⏎ choose  esc cancel

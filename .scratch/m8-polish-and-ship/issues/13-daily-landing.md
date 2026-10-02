@@ -1,6 +1,6 @@
 # G-daily 1 — where he lands after pull, undo, redo, a partial answer, and `q`
 
-Status: partial — all but `y` in the quit box (blocked: needs graft-ui `ConfirmYes::Quit`)
+Status: done (stopped-rebase `q` boxes pending the user's ruling)
 Build with: Opus (conductor, after scout `.scratch/m8-polish-and-ship/scouts/13-daily-landing.md`; the scout corrects two line refs)
 Blocked by: none
 Needs: none in code. Runs beside the scroll lane on **disjoint files** (ADR-0051): `update/operate*`, `update/undo.rs`,
@@ -51,21 +51,24 @@ None public. `land_after_undo` may be generalised; MAP.md records the shape.
 - [x] Incomplete answer: lands, tags, keeps its warning (test). —
       `operate::tests::landing::an_incomplete_put_back_lands_tags_and_keeps_its_warning`,
       `operate::tests::lands_on_head::an_incomplete_answer_lands_and_keeps_its_warning`
-- [ ] `q` during a fetch job → box; `y` quits and the job is cancelled; `q` with a stopped rebase → quits, relaunch
-      offers continue (tests). — **partial.** Box: `quit::tests::q_during_a_fetch_opens_the_box`; `[ Quit ]` (`→ ⏎`)
-      cancels + quits: `quit::tests::quit_from_the_box_cancels_the_fetch_and_quits`; Esc/Cancel keep both:
-      `cancel_or_esc_keeps_the_app_and_the_fetch`; Ctrl+C never boxes: `ctrl_c_during_a_fetch_quits_without_a_box`.
-      **`y` does not quit yet** (blocked, see NOTES). Stopped rebase: per conductor, follows DESIGN §2.2 literally
-      (boxes) pending the user's ruling — `quit::tests::q_with_a_stopped_rebase_boxes_pending_the_ruling`.
+- [x] `q` during a fetch job → box; `y` quits and the job is cancelled; `q` with a stopped rebase → quits, relaunch
+      offers continue (tests). — Box: `quit::tests::q_during_a_fetch_opens_the_box`; `y` quits + cancels:
+      `quit::tests::y_quits_from_the_box_and_cancels_the_fetch` and `daily_landing::capture_quit_while_a_fetch_runs`
+      (real app, bar shows `y quit`, `y` → quit); `[ Quit ]` (`→ ⏎`): `quit::tests::quit_from_the_box_cancels_the_fetch_and_quits`;
+      Esc/Cancel keep both: `cancel_or_esc_keeps_the_app_and_the_fetch`; Ctrl+C never boxes:
+      `ctrl_c_during_a_fetch_quits_without_a_box`. **Stopped rebase deviates from this box's text**: per conductor it
+      follows DESIGN §2.2 literally (boxes) pending the user's ruling —
+      `quit::tests::q_with_a_stopped_rebase_boxes_pending_the_ruling`. Job cancel checked as the `CancelJob` command
+      emitted, not as a real process stopped by the event loop.
 - [x] Captures: `docs/shots/m8-landing-undo-120x36.txt` (`land_on_result::capture_landing_after_undo_and_redo`),
       `m8-quit-while-running-80x24.txt` (`daily_landing::capture_quit_while_a_fetch_runs`). **Colour unverified**.
 
 ## NOTES (builder, 2026-10-02)
 - Scout used: `.scratch/m8-polish-and-ship/scouts/13-daily-landing.md`. No compaction.
-- **Blocked seam:** `y` in the quit box needs `graft_ui::graph_screen::ConfirmYes::Quit` (label `"Quit"`, added to
-  `ALL`) in graft-ui, outside this ticket's crate set. `ConfirmThen::Quit` already `takes_y() == true`, so adding the
-  variant makes `y` act and the bar show `y quit` with no graft change. Then add a `y` test in `update/quit/tests.rs`
-  and re-shoot `m8-quit-while-running-80x24.txt` (its bar will gain `y quit`).
+- graft-ui (unblocked by conductor, only this): `ConfirmYes::Quit` (label `Quit`, word `quit`, in `ALL`, now 10);
+  graft-ui coverage `COVERAGE_SLOTS` 111 → 112, `confirm_slot` gives `Quit` slot 111 (63 is the changes pane's).
+  graft `update/keys/bound.rs`: `("y", "quit")` so the hint-coverage tests know `y quit` is answered.
+  Re-shot `m8-quit-while-running-80x24.txt` (bar now leads `y quit`).
 - Stopped-rebase `q`: isolated in `update/quit.rs::stopped_box`; to take the planner's proposal, return `None` there
   and flip its test.
 - Unstoppable write (`Stoppable::No`): `[ Quit ]` does not quit; `stop_write` puts why on the status row. Not tested
@@ -77,11 +80,13 @@ None public. `land_after_undo` may be generalised; MAP.md records the shape.
   `banner::resume::resumed_incomplete` (a `--continue`'s Incomplete) still does not land — ruling 3 named
   `Operated::Incomplete` only.
 - Re-shot: `docs/shots/m6/fix-undo-drift-way-back-{120x40,80x24}.txt` (cursor now on HEAD after the undo).
-  `docs/shots/m6/m6-contact-sheet-4.txt` still holds the old frame — the sheet is assembled, not tested; conductor
-  re-assembles.
-- Gates: fmt, clippy -D warnings, doc tests pass workspace-wide; nextest 5139/5140 — the one failure,
-  `graft-git conflict::tests::first_marker_line_agrees` (crate untouched here), passed on a lone rerun; flaky under
-  load, unexplained.
+  `docs/shots/m6/m6-contact-sheet-4.txt` re-assembled (`scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`);
+  besides the undo frames it picked up three `152 rows so far` → `148 rows so far`, already stale against its
+  committed source capture before this ticket.
+- Gates (final tree): fmt, clippy -D warnings, doc tests pass workspace-wide. nextest, workspace, clean
+  (no `GRAFT_UPDATE_SHOTS`): run 1 5141/5141, run 2 5141/5141 (8 skipped each). Earlier run (before the `y` change)
+  5139/5140: `graft-git conflict::tests::first_marker_line_agrees` failed once, passed alone; did not recur in
+  the two runs above. Not investigated (graft-git is another builder's); seed of the failing run not kept.
 - Known edge: an `amend_into` tag-read failure after an Incomplete replaces the sticky warning with its own
   (`amend_into::tags_resolved`), same as `StagingNotKept` today.
 

@@ -89,6 +89,24 @@ fn quit_from_the_box_cancels_the_fetch_and_quits() {
     assert_eq!(commands, [Command::CancelJob(id)]);
 }
 
+/// `y` takes `[ Quit ]` from wherever the cursor is (ADR-0044 §3): it
+/// cancels the fetch and quits, and the bar offers `y quit`.
+#[test]
+fn y_quits_from_the_box_and_cancels_the_fetch() {
+    let state = fetching();
+    let id = state.operating.expect("running");
+    let (state, _) = press(&state, plain('q'));
+    let open = state.confirm.as_ref().expect("the box");
+    assert_eq!(
+        open.yes(),
+        Some(graft_ui::graph_screen::ConfirmYes::Quit),
+        "the bar draws `y quit`"
+    );
+    let (next, commands) = press(&state, plain('y'));
+    assert_eq!(next.quit, Some(Quit::Requested));
+    assert_eq!(commands, [Command::CancelJob(id)]);
+}
+
 #[test]
 fn cancel_or_esc_keeps_the_app_and_the_fetch() {
     let state = fetching();
