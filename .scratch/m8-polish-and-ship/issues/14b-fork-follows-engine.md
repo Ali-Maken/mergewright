@@ -31,7 +31,9 @@ In: fork detection and fates; forecast per fork; `label`/`reset` sections in the
 operation tips / journal refs; ghosts and ref moves for followers in `PreviewPlan`. Every kind that reports
 `left_behind` today: `Operation::Rewrite` (`R`, `a`-into, `a` on HEAD with dependents, absorb) and `r`.
 **If the scout finds `r`'s params don't reach the todo through `RewriteParams`, `r` is split off — say so, don't guess.**
-Out: drawing the fates (3b); ADR-0047 §4's tip-fork refusal (unchanged); forks of forks (they stay, `Nested`).
+Out: drawing the fates (3b); ADR-0047 §4's tip-fork refusal (unchanged) — **including a branch started from a
+dependent's commit, which is a second dependent and stays refused (ADR-0059 §1, §5; decided 2026-10-02)**; forks of
+forks (they stay, `Nested`).
 
 ## Signatures
 ```rust
@@ -77,7 +79,14 @@ pub struct ForkSection {
       == x1's old diff; subject kept; HEAD home on `feature-a`.
 - [ ] Conflicting fork stays: x1 edits the line the amend changes. Preview: `Stays(WouldConflict{commit: x1, ..})`;
       after `y`, `git rev-parse feature-x` unchanged; the line moved.
-- [ ] Reword HEAD with a dependent (`RewordHead`) and a fork off the dependent's middle commit: fork follows (git).
+- [ ] Forks with a dependent (ADR-0059 §1, §5; corrected 2026-10-02 — the first text assumed a fork off the
+      dependent's middle follows; it is a second dependent and is refused, as today):
+      (a) `feature-b` = feature-a + b1 b2 b3 (dependent), `feature-x` = b2 + x1. Reword HEAD (`RewordHead`) → refused
+      before anything runs, words name both branches (`feature-b and feature-x are both built on yours`, ADR-0047 §4);
+      `git for-each-ref refs/heads` unchanged. No `Fork` for `feature-x` in the preview.
+      (b) Same `feature-b`; `feature-x` = c2 + x1 (off his own middle commit). `R`, reword c1, run → both follow (git):
+      `git rev-parse feature-x~1` == `git rev-parse feature-a~1`; `git merge-base --is-ancestor feature-a feature-b`;
+      `feature-b`'s three own diffs unchanged; HEAD home on `feature-a`.
 - [ ] `u` after a follow: every ref (`for-each-ref refs/heads`) equals before; one journal entry.
 - [x] Oracle (`rewrite_oracle::a_fork_follows_in_the_same_rebase`): the generated todo hand-run with `git rebase -i` gives the same trees and refs (`rewrite_oracle.rs`).
 - [ ] Verified against git: `label`/`reset` run without `--rebase-merges`; abort during a stop after a section leaves
@@ -132,6 +141,8 @@ for 3. 4) workspace gates. 5) MAP.md graft-ops. 6) commit.
 **Acceptance 3 contradicts ADR-0059 §5:** a branch forked off the dependent's middle commit is itself a dependent
 (`rewrite/dependents.rs:110-119`: any branch whose first-parent chain reaches his tip), and two dependents are refused
 (`:38-40`, `ForkedDependents`). Proposed: test the refusal, plus R + dependent + fork off his own mid-chain commit.
+**Ruled 2026-10-02 (planner):** the code and ADR-0059 §5 are right; acceptance 3 was wrong and is rewritten as (a)
+refusal + (b) follow, the builder's proposal. ADR-0059 §1/§5 now say so explicitly. No code change.
 
 **Semantics for 14c:** `PastCap` never appears in `forks` (forks past 8 are only counted in `forks_more`);
 `pending` excludes sections not yet entered, the open section's rest first; `step` total counts every pick-like row.
