@@ -85,7 +85,7 @@ The read behind `R` (m7-power-tools/08). `Command::OpenRewrite { id, req: Rewrit
 - `Wake::Terminal` (variant) — a re-detected answer changed; `pump` applies it to the session and redraws.
 - `Wake::TerminalFailed` (variant) — a re-query could not be written or read; ends the loop with the error.
 - `pump` (fn) — idle, while nothing waits, rasterises the strips `PageDown`/`PageUp` would show (30h). Now takes `&mut Session`, so re-detection can update it.
-- `input::spawn_reader` (fn) — forwards input; on `FocusGained` also asks the redetector for the theme; returns the `Forwarder`.
+- `input::spawn_reader` (fn) — forwards input; on `FocusGained` also asks the redetector for the theme; returns the `Forwarder`. Fourth arg `stamps: Option<Sender<Instant>>` (m8 G-trace): while tracing, each key/mouse event's forwarding time is sent just before the event.
 - `input::Forwarder` (struct) — the running forwarder; `finish` waits for it to end (after `InputMux::hold`, a bounded drain, never a job wait).
 - `signals::watch_resizes` (fn) — resize wakes; each also asks the redetector for the cell size.
 - `redetect::Redetector` (struct) — handle to the re-query worker; `spawn(host, cell_size, theme, budget, wakes)`, `ask(Query)`.
@@ -96,6 +96,7 @@ The read behind `R` (m7-power-tools/08). `Command::OpenRewrite { id, req: Rewrit
 - `RefBadges::on` (fn) — the refs on one commit, in drawing order.
 - `RefBadges::head` (fn) — the commit `HEAD` resolves to; `None` while unborn.
 - `RefBadges::stash` (fn) — the newest stash entry's commit.
+- `RefBadges::count` (fn) — labels over every commit; the frame trace's `refs=` (m8 G-trace).
 - `RefBadges::remotes` (fn) — `(Oid, &[u8])` per remote-tracking branch, short name (`origin/main`): what `history::preview_seeds` colours ghost lanes from (m5/08).
 - `RefBadges::tags` (fn) — `(Oid, &[u8])` per tag, short name (`v1.2.0`): what the name prompt checks a typed tag name against, so `t` can say `exists` before it runs anything (m5-history-and-ghost-preview/10).
 - `RefBadges::stashes` (fn) — `&[(Oid, usize)]`: every stash entry's commit and index, newest first, so each one gets its own badge rather than only `stash@{0}` (m3-working-tree-undo-and-stash/06).
@@ -111,6 +112,17 @@ The read behind `R` (m7-power-tools/08). `Command::OpenRewrite { id, req: Rewrit
 - `install` (fn) — install a panic hook that restores the terminal before dying.
 - `Panicked` (struct) — a panic that was caught rather than allowed to end the process.
 - `catching` (fn) — run `work`, catching a panic as `Panicked` instead of aborting.
+
+## trace (m8-polish-and-ship G-trace, `pub(crate)`)
+- `VAR` (const) — `GRAFT_PERF_TRACE`; renamed in G-rename (`TRIB_PERF_TRACE`).
+- `FrameRecord` (struct) — one drawn frame's numbers: `at_us`, `wakes`, `motions`, `queued`, `update_us`, `commands`, `draw_us`, `bytes`, `write_us`, `fence_us` (None until G-pace), `input_age_us`.
+- `Header` (struct) — tier, columns, rows, `history_rows` (laid out so far), `refs` (`RefBadges::count`), term word; written before the first frame and on change.
+- `FrameTrace` (struct) — the file; `from_env`/`from_var` (`Ok(None)` unset or empty), `writing_to`, `header`, `record` (flushed per line).
+- `term_word` (fn) — `$TERM_PROGRAM` cut to `[A-Za-z0-9._-]`, ≤32, `-` when unset.
+- `Meter` (struct), `Metered<W>` (struct) — bytes and time spent in the writes that reach the terminal; `Metered` sits under a `LineWriter`.
+- `TerminalOut` (enum) — the terminal's writer: `Plain(Stdout)` or, tracing, `Metered(LineWriter<Metered<Stdout>>)`; `for_meter`.
+- `Tracer` (struct) — the loop's side: `off`, `from_env`/`open` → `Opened { tracer, meter, stamps }`, `on`, `clock`, `took`, `updated`, `drew`, `unreported` (the failure reason, once).
+- Tests: `trace::tests` (format, header, meter, stamps, failures); `scripts/m8-trace-summary.sh` (`--self-test` on `scripts/testdata/m8-trace-sample.trace`); `scripts/m8-trace-monorepo.sh` (real pty run on MONOREPO → `docs/perf/m8-trace-monorepo.txt`).
 
 ## terminal
 - `SessionOptions` (struct) — what the session turns on at startup.
@@ -945,6 +957,7 @@ not.
 
 ## event_loop::input
 - `spawn_reader` (fn) — forward the input mux's `Inputs` into the loop's wakes, on a thread of its own.
+- `running::pump_with` gains `tracer: &mut trace::Tracer` (m8 G-trace; `Tracer::off()` in tests); `draw_traced` wraps every `draw` in `frames`, and puts a trace failure on the status row as `Status::sticky("trace: <reason>")`. Tests: `event_loop::tests::perf_trace`.
 
 ## jobs
 Internal split (m1-the-graph/71, public paths unchanged): `types` (`Outcome`,

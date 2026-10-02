@@ -25,6 +25,7 @@ use crate::jobs::{self, JobRunner, Shutdown};
 use crate::repos::RepoStore;
 use crate::session::{Session, Startup};
 use crate::terminal::{SessionOptions, TerminalSession};
+use crate::trace::{self, TerminalOut, Tracer};
 use crate::update::{AppState, Size};
 
 /// Start the re-query worker (DESIGN.md §4.5), knowing what startup settled.
@@ -102,6 +103,10 @@ fn open_session() -> io::Result<TerminalSession> {
 /// The terminal is set up before the loop and restored after it, in that
 /// order, whatever happens in between — including a panic, which the hook
 /// handles first (`crate::crash`).
+#[expect(
+    clippy::too_many_lines,
+    reason = "one ordered setup-run-teardown sequence; splitting it hides the order that matters"
+)]
 pub fn run(startup: Startup) -> io::Result<Exit> {
     // Taken apart here: `run` consumes the startup facts, and the two halves
     // are used at opposite ends of the function.
@@ -149,9 +154,17 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     let jobs = JobRunner::with_default_size(sender.clone(), repos)?;
     let redetector = start_redetector(&environment, &mux, &settled, &sender)?;
     let resizes = signals::watch_resizes(sender.clone(), redetector.clone())?;
-    let forwarder = input::spawn_reader(inputs, sender, redetector)?;
+    // The frame trace (`crate::trace`): opened before the forwarder, which
+    // stamps keys only when there is a trace to stamp them for.
+    let trace::Opened {
+        mut tracer,
+        meter,
+        stamps,
+    } = Tracer::from_env();
+    let forwarder = input::spawn_reader(inputs, sender, redetector, stamps)?;
 
     let (mut terminal, state) = terminal_and_state(
+        TerminalOut::for_meter(meter),
         &jobs,
         &repo_path,
         &settled,
@@ -180,6 +193,7 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
                 workdir: workdir.as_deref(),
             }),
         },
+        &mut tracer,
     );
     let outcome = hand_back_input(&mux, forwarder, wakes, outcome);
     // Dropped before the restore so that its own teardown (it shows the cursor
@@ -305,14 +319,15 @@ fn report_stalled_jobs_to(stderr: &mut impl Write, shutdown: Shutdown) -> io::Re
 /// options — `Policy::default()` otherwise (m2-details-and-diffs/13c;
 /// `KNOWN_GAPS` m2-details-and-diffs/13b).
 fn terminal_and_state(
+    out: TerminalOut,
     jobs: &impl jobs::Dispatch,
     repo_path: &std::path::Path,
     settled: &Session,
     harness: crate::update::Harness,
     config: &crate::config::Config,
     common_dir: Option<&std::path::Path>,
-) -> io::Result<(Terminal<RowClear<CrosstermBackend<io::Stdout>>>, AppState)> {
-    let terminal = Terminal::new(RowClear(CrosstermBackend::new(io::stdout())))?;
+) -> io::Result<(Terminal<RowClear<CrosstermBackend<TerminalOut>>>, AppState)> {
+    let terminal = Terminal::new(RowClear(CrosstermBackend::new(out)))?;
     let size = terminal.size()?;
     let size = Size {
         columns: size.width,

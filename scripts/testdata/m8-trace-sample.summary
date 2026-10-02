@@ -1,0 +1,14 @@
+header tier=unicode columns=187 rows=50 history_rows=17700 refs=1330 term=ghostty headers=2
+frames=18 span_ms=17.0 frames_per_s=1000.0
+wakes n=18 p50=1 p95=3 p99=3 max=3
+motions n=18 p50=1 p95=1 p99=1 max=1
+queued n=18 p50=1 p95=2 p99=2 max=2
+update_us n=18 p50=90 p95=180 p99=180 max=180
+commands n=18 p50=0 p95=1 p99=1 max=1
+draw_us n=18 p50=509 p95=518 p99=518 max=518
+bytes n=18 p50=9216 p95=18432 p99=18432 max=18432
+write_us n=18 p50=63 p95=126 p99=126 max=126
+fence_us n=0
+input_age_us n=15 p50=800 p95=1500 p99=1500 max=1500
+tail_ms=3.0
+power self-test

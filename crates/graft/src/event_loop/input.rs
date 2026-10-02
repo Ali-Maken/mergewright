@@ -8,6 +8,7 @@
 use std::io;
 use std::sync::mpsc::Sender;
 use std::thread::{self, JoinHandle};
+use std::time::Instant;
 
 use graft_core::event::Event;
 use graft_term::input::Inputs;
@@ -21,19 +22,34 @@ use crate::update::AppEvent;
 /// The thread blocks on the mux's queue, so an idle Graft costs nothing. It
 /// ends when the loop has gone (the wake receiver is dropped) or when the
 /// mux has stopped, whose last word is the failure the loop reports.
+///
+/// `stamps` is the frame trace's (`crate::trace`, `Some` only while tracing):
+/// each key and mouse event's forwarding time goes down it just before the
+/// event, so the loop finds the stamp waiting when it takes the event and
+/// can say how old the input was when its frame was written.
 pub fn spawn_reader(
     inputs: Inputs,
     wakes: Sender<Wake>,
     redetector: Option<Redetector>,
+    stamps: Option<Sender<Instant>>,
 ) -> io::Result<Forwarder> {
     let thread = thread::Builder::new()
         .name("graft-input-forward".to_owned())
         .spawn(move || {
+            let mut stamps = stamps;
             for input in inputs {
                 if let (Ok(Event::FocusGained), Some(redetector)) = (&input, &redetector) {
                     // Refresh-on-focus: a theme switched while Graft was in
                     // the background is re-read (DESIGN.md §4.5).
                     redetector.ask(Query::Theme);
+                }
+                if let (Ok(Event::Key(_) | Event::Mouse(_)), Some(sender)) = (&input, &stamps)
+                    && sender.send(Instant::now()).is_err()
+                {
+                    // The tracer is gone (the loop has ended). Stamping
+                    // stops; forwarding does not — keys typed after the
+                    // loop still go back to the mux (`hand_back_input`).
+                    stamps = None;
                 }
                 let wake = match input {
                     Ok(event) => Wake::Event(AppEvent::Core(event)),
