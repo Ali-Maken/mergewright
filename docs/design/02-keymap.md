@@ -196,7 +196,7 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
 | `Ctrl+Z`, `u` | Undo (ADR-0002) |
 | `Ctrl+Shift+Z`, `U` | Redo |
 | `Ctrl+R` | Manual refresh |
-| `q`, `Ctrl+C` | Quit (confirms if an operation is in progress) |
+| `q`, `Ctrl+C` | Quit. `Ctrl+C` quits at once, never boxed. `q` confirms while a write runs ("`q` while a write runs", below) or git is stopped mid-operation (§2.6a `q`) |
 | `↑ ↓ ← →` | Move selection / scroll |
 | `j k h l` | Move down/up/left/right (vim, movement only) |
 | `g` / `G` | Jump to top / bottom (vim) |
@@ -210,6 +210,27 @@ same byte sequence as `Ctrl+Z`, so Graft cannot tell the two apart on every
 terminal it targets. `U` is therefore not just a convenience alias — it's
 the binding that actually works everywhere, and the one the help overlay
 and any redo prompt should lead with.
+
+**`q` while a write runs** (M8/13 review Major 2; planner 2026-10-02; **Proposed — the user has not seen these
+words**). One box, title `Quit?`, `[ Cancel ] [ Quit ]`, Cancel first, `y` quits (§2.3c). Its line depends on
+whether the write can stop halfway:
+
+- **A write that can stop** (a fetch, an undo): `<op> is still running · quit stops it`. `y` stops it, then quits
+  (ticket 13, unchanged).
+- **A write that can't** (launched `Stoppable::No`: merge, rebase, cherry-pick, revert, the journal's time machine
+  and put-back): two lines, `<op> is still running · quit waits for it to finish` and `if it stops at a conflict or
+  fails, you stay to see it`. `y` closes the box; nothing is cancelled; the status row reads
+  `<op> · quitting when it finishes · esc stays`, and keeps it while the write's progress updates.
+  - The write **ends done**: its answer is applied and journaled first (a write with a put-back after it, such as
+    edits set aside around a rebase, ends after the put-back), then Graft quits. `u` on the next launch takes it back.
+  - The write **stops** (a conflict) **or fails or ends incomplete**: the wait is dropped, and he lands where that
+    event always lands (resolver, banner, error row), with its own words. Graft stays open.
+  - `Esc` while waiting drops the wait; the write runs on. It comes before the write's own `Esc` line and after a held
+    failure's dismiss (§2.2 `Esc`). `q` again while waiting does nothing: the status row already says it.
+- Why not a Cancel-only box: a box with no work in it is a dismiss step (ux-principles §3.1), and he would have to
+  watch for the end and press `q` again. Why not stop it: a rebase stopped halfway by a signal is the state the M3
+  promise rules out. Two keys, `q y`, the same as the fetch box (heuristic 4: one box, one `y`).
+- `Ctrl+C` is not changed by this.
 
 ### 2.3 Graph / history pane
 
@@ -346,6 +367,7 @@ approved 2026-09-23). A launch mid-operation keeps the banner. So does an undo t
 | `a` | Abort, back to where the operation started, behind a confirm box. A merge begun in the shell aborts too (`git merge --abort`), journaled, so `u` puts the merge back as it was (approved 2026-09-24) |
 | `M` | Launch the configured mergetool on the first conflicted file (§2.6) |
 | `e` | Open the first conflicted file in `$EDITOR` at its first marker (§2.4) |
+| `q` | Quit, the same `q` as §2.2, answered from the focused banner too (M8/13 Major 1). A write running (a `c` continue, say): §2.2's "`q` while a write runs" box. Git stopped, nothing running: box `<kind> is stopped · next launch offers continue or abort` today, **pending the user's ruling** (design note 2b: quit with no box). The banner's hint bar draws `q quit` **last**, and drops it first when the row is narrow, as the graph bar's tail does: `q` is bound and is not a navigation global, so it is a slot candidate (§2.1), and a stop is where he lands (P5), so the way out is shown there (heuristic 6). Planner 2026-10-02, **Proposed — not yet seen by the user** |
 | `Tab` / `Esc` | Give the keyboard back to the panes; the banner stays drawn. `Esc` never aborts (KNOWN_GAPS :549; Amended 2026-09-26 (M7, user "all yes")) |
 
 With focus given back, `M` and `e` keep working on the file under the
@@ -585,5 +607,10 @@ land; until each lands, the build still does what the doc said before.
 action id, ADR-0055; bar words-only, ADR-0058), §2.2 (`?` is help on every screen, `Ctrl+P` on everything), §2.12
 (palette and help as one widget, ADR-0056), §2.13 (`t` tour, `?` help, list keys, `q`), §2.18 (practice tour, new).
 The code follows as the M8 groups land.
+
+2026-10-02 (planner, M8/13 review Major 2 and the banner's `q`; **Proposed, the user has not seen it**): §2.2 `q` row
+and "`q` while a write runs" (a write that can't stop halfway: `q y` waits for it, then quits; stays if it stops or
+fails), §2.6a `q` row (`q` on the focused banner; `q quit` last on its bar). Spec:
+`.scratch/m8-polish-and-ship/issues/quit-waits-for-a-write.md`.
 
 ---
