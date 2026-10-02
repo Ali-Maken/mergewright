@@ -10,7 +10,7 @@ use ratatui::{TerminalOptions, Viewport};
 use super::graphics::{Graphics, GraphicsReplies, NoReplies};
 use super::headless::headless_settled;
 use super::outside::Outside;
-use super::running::{END_SYNCHRONIZED_UPDATE, draw, prefetch, pump_with};
+use super::running::{END_SYNCHRONIZED_UPDATE, Screen, draw, prefetch, pump_with};
 use super::*;
 use crate::history::Phase;
 use crate::jobs::Dispatch;
@@ -228,12 +228,14 @@ fn pixel_run(wakes: Vec<Wake>, replies: Vec<Vec<u8>>) -> (Vec<String>, String) {
     let (mut session, state) = at_pixel_tier();
     let mut graphics = Graphics::new(ScriptedReplies(replies.into()), &session.capabilities);
     let exit = pump_with(
-        &mut terminal,
+        Screen {
+            terminal: &mut terminal,
+            graphics: &mut graphics,
+        },
         &mut ScriptedWakes::spaced(wakes),
         &Recorded::default(),
         &mut session,
         state,
-        &mut graphics,
         Outside::default(),
         &mut crate::trace::Tracer::off(),
     )
@@ -267,12 +269,14 @@ fn pixel_flushes(wakes: Vec<Wake>) -> (u64, Vec<String>) {
     let (mut session, state) = at_pixel_tier();
     let mut graphics = Graphics::new(NoReplies, &session.capabilities);
     pump_with(
-        &mut terminal,
+        Screen {
+            terminal: &mut terminal,
+            graphics: &mut graphics,
+        },
         &mut ScriptedWakes::new(wakes),
         &Recorded::default(),
         &mut session,
         state,
-        &mut graphics,
         Outside::default(),
         &mut crate::trace::Tracer::off(),
     )
@@ -400,12 +404,14 @@ fn forced_pixels_on_a_silent_terminal_attempt_kitty_and_f3_recovers() {
     state.settled_tier = Some(session.rendering.tier);
     let mut graphics = Graphics::new(NoReplies, &session.capabilities);
     pump_with(
-        &mut terminal,
+        Screen {
+            terminal: &mut terminal,
+            graphics: &mut graphics,
+        },
         &mut ScriptedWakes::spaced(vec![key(KeyPress::plain(KeyCode::Function(3))), quit_key()]),
         &Recorded::default(),
         &mut session,
         state,
-        &mut graphics,
         Outside::default(),
         &mut crate::trace::Tracer::off(),
     )
@@ -1214,12 +1220,14 @@ fn prefetch_run(state: AppState, wakes: Vec<Wake>, idle: Vec<usize>) -> (u64, u6
     let (mut session, _) = at_pixel_tier();
     let mut graphics = Graphics::new(NoReplies, &session.capabilities);
     pump_with(
-        &mut terminal,
+        Screen {
+            terminal: &mut terminal,
+            graphics: &mut graphics,
+        },
         &mut ScriptedWakes::idle(wakes, idle),
         &Recorded::default(),
         &mut session,
         state,
-        &mut graphics,
         Outside::default(),
         &mut crate::trace::Tracer::off(),
     )

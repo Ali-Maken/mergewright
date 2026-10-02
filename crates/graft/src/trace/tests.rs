@@ -139,6 +139,34 @@ fn a_stamped_key_gives_its_frame_an_input_age_and_the_rest_count_as_queued() {
     assert!(!line.ends_with("input_age_us=-"), "{line}");
 }
 
+/// Review m8-01 Major 1: a frame whose first wake is a job answer still
+/// counts the keys waiting behind it.
+#[test]
+fn keys_waiting_behind_a_job_answer_count_as_queued() {
+    let file = Shared::default();
+    let (stamps, received) = mpsc::channel();
+    let mut tracer = Tracer::on(
+        FrameTrace::writing_to(Box::new(file.clone())),
+        "-".to_owned(),
+        None,
+        Some(received),
+    );
+    for _ in 0..3 {
+        stamps.send(Instant::now()).expect("receiver alive");
+    }
+    let job = Wake::Event(AppEvent::Started(
+        graft_core::job::JobId::new(1),
+        crate::update::Task::ReadHistory,
+    ));
+    tracer.took(&job);
+    tracer.took(&key_wake());
+    tracer.drew(tracer.clock(), &AppState::default());
+    let text = file.text();
+    let line = text.lines().nth(1).expect("header, then the frame");
+    assert!(line.contains(" wakes=2 motions=1 queued=3 "), "{line}");
+    assert!(!line.ends_with("input_age_us=-"), "{line}");
+}
+
 #[test]
 fn a_wheel_scroll_is_a_motion_and_a_click_is_not() {
     let file = Shared::default();

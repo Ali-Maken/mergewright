@@ -130,8 +130,12 @@ fn g_after_gap(repo: &Path, no_idle_advance: bool) -> Result<Landing, String> {
     let state = settle(&jobs, &events, state, rows, no_idle_advance)?;
     let laid_out = state.history.as_ref().and_then(|history| history.laid_out);
 
-    let mut session = Session::settle(&Loaded::default(), capabilities(TIER));
-    let sink = Sink::timed(false);
+    // His terminals answer DSR (ADR-0054): fenced, each fence answered as
+    // it is written, so no frame waits on the silent terminal's 16 ms cap.
+    let mut answering = capabilities(TIER);
+    answering.answers_dsr = true;
+    let mut session = Session::settle(&Loaded::default(), answering);
+    let sink = Sink::timed(false).answering(post.clone());
     let mut terminal = in_memory(&sink, &state)?;
     let watching = Watching {
         inner: &jobs,

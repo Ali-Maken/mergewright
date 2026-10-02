@@ -58,12 +58,14 @@ fn run(wakes: ScriptedWakes, tracer: &mut Tracer, meter: Meter) -> (Exit, String
     let mut graphics = Graphics::new(NoReplies, &session.capabilities);
     let mut wakes = wakes;
     let exit = pump_with(
-        &mut terminal,
+        Screen {
+            terminal: &mut terminal,
+            graphics: &mut graphics,
+        },
         &mut wakes,
         &Recorded::default(),
         &mut session,
         on_history(),
-        &mut graphics,
         Outside::default(),
         tracer,
     )

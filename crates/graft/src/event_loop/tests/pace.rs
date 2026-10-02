@@ -38,12 +38,14 @@ fn a_fenced_pixel_frame_is_bracketed_with_its_images_inside_then_fenced() {
     let (mut terminal, recorder) = terminal(PIXEL_COLUMNS, PIXEL_ROWS);
     let mut graphics = Graphics::new(NoReplies, &session.capabilities);
     let exit = pump_with(
-        &mut terminal,
+        Screen {
+            terminal: &mut terminal,
+            graphics: &mut graphics,
+        },
         &mut ScriptedWakes::new(vec![]),
         &Recorded::default(),
         &mut session,
         state,
-        &mut graphics,
         Outside::default(),
         &mut crate::trace::Tracer::off(),
     )

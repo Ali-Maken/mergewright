@@ -420,12 +420,14 @@ impl Tracer {
         let Some(active) = &mut self.on else { return };
         let first = active.frame.wakes == 0;
         active.frame.wakes = active.frame.wakes.saturating_add(1);
-        let Wake::Event(AppEvent::Core(event)) = wake else {
-            return;
-        };
-        let (stamped, motion) = match event {
-            Event::Key(_) => (true, true),
-            Event::Mouse(mouse) => (
+        // Drained whatever the wake: a frame that starts on a job answer
+        // still has keys waiting behind it (review m8-01 Major 1).
+        if let Some(stamps) = &active.stamps {
+            active.pending.extend(stamps.try_iter());
+        }
+        let (stamped, motion) = match wake {
+            Wake::Event(AppEvent::Core(Event::Key(_))) => (true, true),
+            Wake::Event(AppEvent::Core(Event::Mouse(mouse))) => (
                 true,
                 matches!(
                     mouse.kind,
@@ -439,9 +441,6 @@ impl Tracer {
         };
         if motion {
             active.frame.motions = active.frame.motions.saturating_add(1);
-        }
-        if let Some(stamps) = &active.stamps {
-            active.pending.extend(stamps.try_iter());
         }
         if stamped && let Some(sent) = active.pending.pop_front() {
             active.frame.oldest_input.get_or_insert(sent);

@@ -58,8 +58,8 @@ const PIPE: usize = 16 * 1024;
 const UNICODE_RATE: u64 = 500_000;
 const PIXEL_RATE: u64 = 40_000_000;
 /// A terminal that never falls behind (m8 G-pace J1: "at 40 MB/s and
-/// free"): 16 KiB drains in under 2 µs.
-const FREE_RATE: u64 = 10_000_000_000;
+/// free"): every byte drained as it is written.
+const FREE_RATE: u64 = crate::drain_sink::FREE;
 /// Done: no byte moved for this long.
 const QUIET: Duration = Duration::from_secs(1);
 /// A hang guard, not a threshold.
@@ -103,6 +103,11 @@ fn held_j_stops_on_release_unicode_free() {
 #[test]
 fn held_j_stops_on_release_pixel_free() {
     held_at(RenderingTier::Pixel, false, Encoding::Raw, FREE_RATE);
+}
+
+#[test]
+fn held_j_stops_on_release_pixel_deflate_free() {
+    held_at(RenderingTier::Pixel, false, Encoding::Deflate, FREE_RATE);
 }
 
 #[test]

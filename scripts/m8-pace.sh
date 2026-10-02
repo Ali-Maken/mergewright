@@ -33,15 +33,15 @@ tail_of() {  # tier drain scenario
   grep -E "^SUMMARY held_key tier=$1 scenario=$3 .*drain=$2B/s" "$WORK/held.out" |
     sed -E 's/.* tail_ms=([0-9]+).*/\1/' | head -1
 }
-j1_line() {  # tier drain label
+j1_line() {  # tier drain label scenario
   local ms
-  ms=$(tail_of "$1" "$2" A)
+  ms=$(tail_of "$1" "$2" "$4")
   if [ -z "$ms" ]; then
-    echo "J1 tier=$1 drain=$3 tail_ms=- verdict=no-reading"
+    echo "J1 tier=$1 scenario=$4 drain=$3 tail_ms=- verdict=no-reading"
   elif [ "$ms" -le 100 ]; then
-    echo "J1 tier=$1 drain=$3 tail_ms=$ms verdict=pass"
+    echo "J1 tier=$1 scenario=$4 drain=$3 tail_ms=$ms verdict=pass"
   else
-    echo "J1 tier=$1 drain=$3 tail_ms=$ms verdict=fail"
+    echo "J1 tier=$1 scenario=$4 drain=$3 tail_ms=$ms verdict=fail"
   fi
 }
 
@@ -54,10 +54,12 @@ j1_line() {  # tier drain label
   grep -E '^(SUMMARY|VERDICT) held_key' "$WORK/held.out"
   grep -E '^test held_key::' "$WORK/held.out"
   grep -A1 'panicked at' "$WORK/held.out" | grep -vE 'panicked at|^--' | cut -c1-400 | sed 's/^/# panic: /'
-  j1_line Unicode 40000000 40MB/s
-  j1_line Unicode 10000000000 free
-  j1_line Pixel 40000000 40MB/s
-  j1_line Pixel 10000000000 free
+  grep -E 'frames: g_after_idle' "$WORK/idle.out" | cut -c1-400
+  grep -A1 'panicked at' "$WORK/idle.out" | grep -vE 'panicked at|^--' | cut -c1-400 | sed 's/^/# idle panic: /'
+  j1_line Unicode 40000000 40MB/s A
+  j1_line Unicode 18446744073709551615 free A
+  j1_line Pixel 40000000 40MB/s A-deflate
+  j1_line Pixel 18446744073709551615 free A-deflate
   idle_us=$(grep -E 'frames: g_after_idle' "$WORK/idle.out" | sed -E 's/.* latency_us=([0-9]+).*/\1/' | head -1)
   if [ -z "$idle_us" ]; then
     echo "J3 g_after_idle latency_us=- verdict=no-reading (exit $idle)"
@@ -66,12 +68,13 @@ j1_line() {  # tier drain label
   else
     echo "J3 g_after_idle latency_us=$idle_us verdict=fail (exit $idle)"
   fi
-  # Row 1089: Kitty without deflate, Pixel at 40 MB/s, scenario A.
+  # Row 1089: Kitty without deflate, Pixel scenario A, at 40 MB/s and free.
   raw=$(tail_of Pixel 40000000 A)
-  if [ -n "$raw" ] && [ "$raw" -le 100 ]; then
-    echo "ROW 1089 kitty-no-deflate tail_ms=$raw verdict=closed-by-fixture (his terminal unverified)"
+  raw_free=$(tail_of Pixel 18446744073709551615 A)
+  if [ -n "$raw" ] && [ "$raw" -le 100 ] && [ -n "$raw_free" ] && [ "$raw_free" -le 100 ]; then
+    echo "ROW 1089 kitty-no-deflate tail_ms=$raw free_tail_ms=$raw_free verdict=closed-by-fixture (his terminal unverified)"
   else
-    echo "ROW 1089 kitty-no-deflate tail_ms=${raw:--} verdict=still-open"
+    echo "ROW 1089 kitty-no-deflate tail_ms=${raw:--} free_tail_ms=${raw_free:--} verdict=still-open"
   fi
   # Row 1095 is his feel in his terminals: the fixture can only say whether
   # the loop still writes ahead of the drain.

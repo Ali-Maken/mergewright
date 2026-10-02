@@ -49,12 +49,14 @@ where
 {
     let mut graphics = Graphics::new(NoReplies, &session.capabilities);
     pump_with(
-        terminal,
+        Screen {
+            terminal,
+            graphics: &mut graphics,
+        },
         wakes,
         jobs,
         session,
         state,
-        &mut graphics,
         Outside::default(),
         &mut Tracer::off(),
     )
@@ -77,32 +79,37 @@ where
 {
     let mut graphics = Graphics::new(NoReplies, &session.capabilities);
     let exit = frames(
-        terminal,
+        Screen {
+            terminal,
+            graphics: &mut graphics,
+        },
         wakes,
         jobs,
         session,
         &mut state,
-        &mut graphics,
         Outside::default(),
         &mut Tracer::off(),
     );
     (exit, state)
 }
 
+/// Where a frame goes: its text through `terminal`, the pixel tier's images
+/// through `graphics`. Both are one frame, inside one synchronized update and
+/// behind one fence (ADR-0054), so they travel together.
+pub(super) struct Screen<'s, B: Backend, R> {
+    pub(super) terminal: &'s mut Terminal<B>,
+    pub(super) graphics: &'s mut Graphics<R>,
+}
+
 /// [`pump`], with the pixel tier's images and the replies about them; every
 /// upload is freed however the loop ends. `tracer` writes the frame trace
 /// (`crate::trace`); [`Tracer::off`] for none.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the loop's eight collaborators; grouping them would only rename the list"
-)]
 pub(super) fn pump_with<B, W, D, R>(
-    terminal: &mut Terminal<B>,
+    screen: Screen<'_, B, R>,
     wakes: &mut W,
     jobs: &D,
     session: &mut Session,
     state: AppState,
-    graphics: &mut Graphics<R>,
     outside: Outside<'_>,
     tracer: &mut Tracer,
 ) -> io::Result<Exit>
@@ -112,9 +119,19 @@ where
     D: Dispatch,
     R: GraphicsReplies,
 {
+    let Screen { terminal, graphics } = screen;
     let mut state = state;
     let exit = frames(
-        terminal, wakes, jobs, session, &mut state, graphics, outside, tracer,
+        Screen {
+            terminal: &mut *terminal,
+            graphics: &mut *graphics,
+        },
+        wakes,
+        jobs,
+        session,
+        &mut state,
+        outside,
+        tracer,
     );
     let released = release(terminal, graphics);
     // When the loop itself failed, its error is the one to report; a free
@@ -129,17 +146,12 @@ where
 const BATCH_BUDGET: Duration = Duration::from_millis(8);
 
 /// The loop's body: draw, wait, update, repeat.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "pump_with's collaborators, passed straight through"
-)]
 fn frames<B, W, D, R>(
-    terminal: &mut Terminal<B>,
+    Screen { terminal, graphics }: Screen<'_, B, R>,
     wakes: &mut W,
     jobs: &D,
     session: &mut Session,
     state: &mut AppState,
-    graphics: &mut Graphics<R>,
     outside: Outside<'_>,
     tracer: &mut Tracer,
 ) -> io::Result<Exit>

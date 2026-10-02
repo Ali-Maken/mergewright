@@ -19,8 +19,14 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError, Weak};
 use std::thread;
 use std::time::{Duration, Instant};
 
-/// How often the drain thread wakes to empty the pipe.
+/// How often the drain thread wakes to empty the pipe. It moves at most a
+/// pipeful per tick, so a rate above `capacity / DRAIN_TICK` (16 MB/s for a
+/// 16 KiB pipe, less where a 1 ms sleep oversleeps) drains no faster.
 const DRAIN_TICK: Duration = Duration::from_millis(1);
+
+/// The rate of a terminal that never falls behind: every byte is drained as
+/// it is written, with no tick (m8 G-pace J1 "free").
+pub(crate) const FREE: u64 = u64::MAX;
 
 /// The longest Kitty control part kept while it is read; real ones are under
 /// 100 bytes. Past this the header is cut, never the count.
@@ -54,6 +60,8 @@ struct Shared {
     /// Signalled whenever the drain makes room.
     room: Condvar,
     capacity: usize,
+    /// Rate [`FREE`]: the writer drains its own bytes; there is no thread.
+    free: bool,
 }
 
 struct State {
@@ -101,7 +109,11 @@ impl DrainSink {
             answer: Mutex::new(None),
             room: Condvar::new(),
             capacity: capacity.max(1),
+            free: bytes_per_second == FREE,
         });
+        if shared.free {
+            return DrainSink(shared);
+        }
         let weak = Arc::downgrade(&shared);
         // The thread holds only a `Weak`: it stops once every handle is gone.
         let spawned = thread::Builder::new()
@@ -184,24 +196,37 @@ fn drain(shared: &Weak<Shared>, rate: u64) {
             continue;
         }
         credit -= moved as u128 * NANOS;
-        state.buffered -= moved;
-        let total = state.drained() + moved as u64;
-        state.progress.push((total, now));
-        state.last_activity = now;
-        let read = state.fences.partition_point(|&end| end <= total);
-        state.fences.drain(..read);
+        let read = drained(&mut state, moved, now);
         drop(state);
         shared.room.notify_all();
-        if read > 0
-            && let Some(answer) = shared
-                .answer
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .as_mut()
-        {
-            for _ in 0..read {
-                answer();
-            }
+        answer(&shared, read);
+    }
+}
+
+/// `moved` more bytes drained at `now`: returns how many fences that read.
+fn drained(state: &mut State, moved: usize, now: Instant) -> usize {
+    state.buffered -= moved;
+    let total = state.drained() + moved as u64;
+    state.progress.push((total, now));
+    state.last_activity = now;
+    let read = state.fences.partition_point(|&end| end <= total);
+    state.fences.drain(..read);
+    read
+}
+
+/// The terminal answers `read` fences. Never called while `state` is held.
+fn answer(shared: &Shared, read: usize) {
+    if read == 0 {
+        return;
+    }
+    if let Some(answer) = shared
+        .answer
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .as_mut()
+    {
+        for _ in 0..read {
+            answer();
         }
     }
 }
@@ -235,6 +260,11 @@ impl Write for PipeWriter {
         state.buffered += taken;
         state.written += taken as u64;
         state.last_activity = Instant::now();
+        if shared.free {
+            let read = drained(&mut state, taken, Instant::now());
+            drop(state);
+            answer(shared, read);
+        }
         Ok(taken)
     }
 
@@ -250,14 +280,16 @@ const FENCE: &[u8] = b"\x1b[5n";
 /// never occur inside a Kitty payload (base64) or text (escaped), so a plain
 /// match is exact.
 #[derive(Default)]
-struct FenceScan {
+pub(crate) struct FenceScan {
     /// How much of [`FENCE`] the last bytes matched.
     matched: usize,
     seen: u64,
 }
 
 impl FenceScan {
-    fn feed(&mut self, base: u64, bytes: &[u8], out: &mut VecDeque<u64>) {
+    /// Pushes onto `out` the offset one past each fence's last byte;
+    /// `base` is the offset of `bytes[0]`.
+    pub(crate) fn feed(&mut self, base: u64, bytes: &[u8], out: &mut VecDeque<u64>) {
         for (index, &byte) in bytes.iter().enumerate() {
             // A miss restarts the match, at this byte if it is an `ESC`.
             self.matched = if byte == FENCE[self.matched] {
