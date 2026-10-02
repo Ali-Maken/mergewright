@@ -32,12 +32,13 @@ mod emphasis;
 mod geometry;
 mod node;
 mod pen;
+mod pool;
 
 use std::cell::RefCell;
 
 use graft_core::capabilities::Rgb;
 use graft_core::raster::RasterFrame;
-use tiny_skia::Pixmap;
+use tiny_skia::{IntSize, Pixmap};
 
 use crate::fold::Toward;
 use crate::identity::BranchIdentity;
@@ -48,6 +49,7 @@ pub use emphasis::{
     rasterise_emphasis,
 };
 pub use node::Ring;
+pub use pool::RasterPool;
 
 /// Terminal cells one lane column takes, matching the Unicode tier: the
 /// lane's own cell and the gap right of it.
@@ -166,10 +168,13 @@ struct Inked<'a> {
 /// over the backdrop they come back to `a` (ADR-0053). Either way the order
 /// and the geometry are the same, so a layer holds exactly the lit part of
 /// what one pass at each row's own paint would draw.
+///
+/// The pixels go in a buffer from `pool` (m8 04).
 fn paint(
     look: &Look<'_>,
     rows: &[Inked<'_>],
     lift: Option<f32>,
+    pool: &mut RasterPool,
 ) -> Result<RasterFrame, RasterError> {
     if look.palette.is_empty() {
         return Err(RasterError::EmptyPalette);
@@ -199,7 +204,10 @@ fn paint(
     if width == 0 || height == 0 {
         return Ok(frame(Vec::new()));
     }
-    let mut pixmap = Pixmap::new(width, height).ok_or_else(too_large)?;
+    let size = IntSize::from_wh(width, height).ok_or_else(too_large)?;
+    let bytes =
+        usize::try_from(u64::from(width) * u64::from(height) * 4).map_err(|_| too_large())?;
+    let mut pixmap = Pixmap::from_vec(pool.take(bytes), size).ok_or_else(too_large)?;
     let pen = Pen::new(look, rows, lift);
     // Edges column by column down the whole strip, so a lane passing
     // straight through many rows is one stroke, not one per row. Within any

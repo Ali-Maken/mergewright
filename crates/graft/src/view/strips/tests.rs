@@ -5,7 +5,7 @@ use graft_core::oid::Oid;
 use graft_graph::Fold;
 use graft_graph::fold::Keep;
 use graft_graph::layout::layout;
-use graft_graph::raster::cache::{STRIP_ROWS, StripCache};
+use graft_graph::raster::cache::{ByteBudget, STRIP_ROWS, StripCache};
 use graft_graph::raster::{Backdrop, Emphasis, Ring};
 use graft_graph::row::Row;
 use graft_graph::seeds::Seeds;
@@ -46,7 +46,7 @@ fn firsts_and_lengths(rows: &PixelRows) -> Vec<(usize, usize)> {
 /// ones: its backdrop and the selection's emphasis over it.
 fn rasterise_all(rows: &PixelRows) {
     let paint = StripPaint::of(&session());
-    let mut cache = StripCache::new(STRIP_ROWS, 8);
+    let mut cache = StripCache::with_budget(ByteBudget(usize::MAX), 8);
     for strip in &rows.strips {
         let (frame, emphasis) = strip
             .with_layers(rows, &paint, |plain, selection| {

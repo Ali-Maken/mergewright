@@ -62,10 +62,47 @@ impl DetailState {
         spec: DetailSpec,
         next_id: &mut impl FnMut() -> JobId,
     ) -> Vec<Command> {
-        if !self.shown || self.spec == Some(spec) {
+        if !self.shown || (self.spec == Some(spec) && !self.abandoned) {
             return Vec::new();
         }
         self.load(spec, next_id)
+    }
+
+    /// A burst of moves has started (G-settle, m8-polish-and-ship/03): the
+    /// cursor has left the row the last follow was for, and the follow is
+    /// owed until it rests. Cancels everything that follow still has in
+    /// flight — the file list, the diff, "contained in", the evil probe —
+    /// so their late answers are dropped by id. The pane keeps what it has
+    /// on show. Idempotent: once nothing is pending it asks for nothing.
+    pub(crate) fn abandon(&mut self) -> Vec<Command> {
+        let mut commands = Vec::new();
+        if let Loading::Pending(id) = self.files {
+            commands.push(Command::CancelJob(id));
+            self.files = Loading::Idle;
+            self.abandoned = true;
+        }
+        if let Loading::Pending(id) = self.diff {
+            commands.push(Command::CancelJob(id));
+            self.diff = Loading::Idle;
+            self.abandoned = true;
+        }
+        commands.extend(self.cancel_contained());
+        if let Loading::Pending(id) = self.evil {
+            commands.push(Command::CancelJob(id));
+            // `Idle`, so `probe_evil` asks again if the cursor rests here.
+            self.evil = Loading::Idle;
+        }
+        commands
+    }
+
+    /// Cancel the "contained in" query in flight, and forget its
+    /// `Checking`: a later visit to that commit asks again.
+    fn cancel_contained(&mut self) -> Vec<Command> {
+        let Some((id, asked)) = self.contained_job.take() else {
+            return Vec::new();
+        };
+        self.contained.forget(|oid| *oid == asked);
+        vec![Command::CancelJob(id)]
     }
 
     /// Forget cached reads and ask again for what is on show.
@@ -173,9 +210,11 @@ impl DetailState {
     /// the pane, and threading a `&Policy` through `load`'s sixteen call
     /// sites would buy nothing.
     ///
-    /// Nothing is probed when the pane is hidden, when it is about a compare
-    /// or the working tree, or when the evil-merge kind is off: a probe is a
-    /// `git` spawn, and nothing would read its answer.
+    /// Nothing is probed when no merge is selected (the working-tree row, an
+    /// ordinary commit, a stash) or when the evil-merge kind is off: a probe
+    /// is a `git` spawn. It runs with the pane hidden too, on purpose: the
+    /// verdict marks the graph row (M2 review M3). Mid-burst it waits for
+    /// rest like the pane does (G-settle, `selection::follow_waits`).
     pub fn probe_evil(
         &mut self,
         selected: Option<Oid>,
@@ -236,6 +275,15 @@ impl DetailState {
     /// Ask for `spec`'s file list, dropping whatever was pending.
     fn load(&mut self, spec: DetailSpec, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
         let mut commands = self.cancel_pending();
+        let same_contained = matches!(
+            (spec, self.contained_job),
+            (DetailSpec::Commit(oid), Some((_, asked))) if oid == asked
+                && self.contained.get(&asked).is_some()
+        );
+        if !same_contained {
+            commands.extend(self.cancel_contained());
+        }
+        self.abandoned = false;
         let id = next_id();
         self.spec = Some(spec);
         self.files = Loading::Pending(id);
@@ -251,7 +299,9 @@ impl DetailState {
             && self.contained.get(&oid).is_none()
         {
             self.contained.insert(oid, ContainedIn::Checking);
-            commands.push(Command::ContainedIn(next_id(), oid));
+            let id = next_id();
+            self.contained_job = Some((id, oid));
+            commands.push(Command::ContainedIn(id, oid));
         }
         commands
     }
@@ -475,8 +525,14 @@ impl DetailState {
         }
     }
 
-    /// A "contained in" answer arrived; kept whatever the selection now is.
-    pub fn contained_arrived(&mut self, oid: Oid, result: Result<Contained, String>) {
+    /// A "contained in" answer arrived. Kept by commit, whatever the
+    /// selection now is — unless it is not the query in flight: one
+    /// cancelled by `load` or `abandon` is dropped by id (G-settle).
+    pub fn contained_arrived(&mut self, id: JobId, oid: Oid, result: Result<Contained, String>) {
+        if self.contained_job != Some((id, oid)) {
+            return;
+        }
+        self.contained_job = None;
         let names = |names: &[Vec<u8>]| {
             names
                 .iter()

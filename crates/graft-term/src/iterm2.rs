@@ -23,18 +23,17 @@
 
 use std::io::{self, Write as _};
 use std::ops::Range;
-use std::sync::Arc;
 
 use graft_core::raster::RasterFrame;
 
-use crate::kitty::{self, CellRect, Place};
+use crate::kitty::{self, CellRect, Place, UploadKey};
 use crate::tmux::Transport;
 
 /// One encoded band and the key it was encoded under.
 #[derive(Debug)]
 struct Band {
     first_row: usize,
-    frame: Arc<RasterFrame>,
+    key: UploadKey,
     rows: Range<usize>,
     columns: u16,
     cell_rows: u16,
@@ -138,7 +137,7 @@ impl ItermImages {
         };
         if let Some(index) = self.bands.iter().position(|band| {
             band.first_row == place.first_row
-                && Arc::ptr_eq(&band.frame, place.frame)
+                && band.key == place.key
                 && band.rows == place.rows
                 && band.columns == place.cells.columns
                 && band.cell_rows == cell_rows
@@ -161,7 +160,7 @@ impl ItermImages {
         sequence.push(0x07);
         self.bands.push(Band {
             first_row: place.first_row,
-            frame: Arc::clone(place.frame),
+            key: place.key,
             rows: place.rows.clone(),
             columns: place.cells.columns,
             cell_rows,
@@ -232,6 +231,8 @@ fn band_png(frame: &RasterFrame, rows: &Range<usize>) -> io::Result<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
 
     /// A strip of `rows` rows, 3 columns of 2×4 px cells, one colour.
@@ -249,6 +250,7 @@ mod tests {
     fn place(frame: &Arc<RasterFrame>, rows: Range<usize>, row: u16) -> Place<'_> {
         Place {
             first_row: 0,
+            key: UploadKey(Arc::as_ptr(frame) as u64),
             frame,
             cells: CellRect {
                 column: 2,

@@ -175,6 +175,7 @@ fn commit_view() -> DetailView {
             word_tint: true,
         },
         explain: None,
+        following: false,
     }
 }
 
@@ -1808,4 +1809,16 @@ fn a_submodule_row_degrades_by_its_ladder_only_80_to_187() {
         rungs_seen.len() >= 3,
         "the sweep crosses rungs: {rungs_seen:?}"
     );
+}
+
+#[test]
+fn a_pane_waiting_for_the_cursor_to_rest_ends_its_title_row_in_reading() {
+    let mut view = commit_view();
+    let layout = DetailLayout::Right { columns: 60 };
+    let still = text(&draw(&view, layout, 60, 20));
+    assert!(!still[0].contains("reading\u{2026}"), "{still:#?}");
+    view.following = true;
+    let screen = text(&draw(&view, layout, 60, 20));
+    assert!(screen[0].starts_with("COMMIT a1b2c3d"), "{screen:#?}");
+    assert!(screen[0].ends_with(" reading\u{2026}"), "{screen:#?}");
 }

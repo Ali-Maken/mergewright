@@ -1,6 +1,6 @@
 # G-settle — per-row work starts when the cursor rests
 
-Status: ready (spec revised 2026-10-02 after scout `scouts/03-settle.md`: the first spec's mechanism did not fit the code)
+Status: done (2026-10-02). Was: ready (spec revised 2026-10-02 after scout `scouts/03-settle.md`: the first spec's mechanism did not fit the code)
 Build with: Opus (conductor, after scout `scouts/03-settle.md` and planner revision; merge 04 first if 04 touched running.rs)
 Blocked by: 02 (merged)
 Needs: `pace-fence-and-sync` — `Pacer::deadline` (the loop waits on the earlier of the two deadlines); `Wakes::next_wake_by`.
@@ -105,23 +105,23 @@ pub(crate) fn follow_owed(state: &AppState) -> bool;                  // follow_
 MAP.md records them.
 
 ## Acceptance
-- [ ] `Rest` unit tests with given `Instant`s: a lone motion is not in a burst; 60 motions 16 ms apart are in a burst
+- [x] `Rest` unit tests (`event_loop::rest::tests::*`, 6 tests) with given `Instant`s: a lone motion is not in a burst; 60 motions 16 ms apart are in a burst
       from the 2nd, deadline = last + 50 ms; gaps of 90 ms give a deadline of last + 150 ms; `rest_first` is true for
       another key and false for the burst's key and for job wakes; `rested` makes the next motion a leading edge.
-- [ ] Loop test (fast tier, `event_loop/tests/settle.rs`, the `pump` seam with a counting job double): pane shown,
+- [x] Loop test (`event_loop::tests::settle::a_held_j_follows_the_first_row_and_the_row_it_rests_on_and_nothing_between`; also `rest_comes_the_quiet_window_after_the_last_key_not_before`) (fast tier, `event_loop/tests/settle.rs`, the `pump` seam with a counting job double): pane shown,
       60 `j` 16 ms apart over a range that includes a merge row. Follow commands started: one set on the first key,
       **none for keys 2–60**, exactly one set after the quiet window, for the final row. The first set's pending ids
       each get a `CancelJob` at key 2.
-- [ ] A late `ListFiles` / `ContainedIn` / `EvilProbe` answer for a row the cursor left changes nothing shown
+- [x] (`event_loop::tests::settle::a_late_file_list_for_a_row_the_cursor_left_changes_nothing_shown`, `…a_late_contained_in_…`, `…a_late_evil_verdict_…`) A late `ListFiles` / `ContainedIn` / `EvilProbe` answer for a row the cursor left changes nothing shown
       (update-level test per kind).
-- [ ] After rest, the pane shows the cursor's commit in the first frame after its `ListFiles` answer (loop test).
-- [ ] A single `j`: follow commands in the same turn as the key (loop test). `j j j ⏎` and `j j j Tab` act on the
+- [x] (`event_loop::tests::settle::after_rest_the_pane_shows_the_cursors_commit_in_the_first_frame_after_its_files`) After rest, the pane shows the cursor's commit in the first frame after its `ListFiles` answer (loop test).
+- [x] (`event_loop::tests::settle::a_single_j_follows_in_the_same_turn`, `enter_after_a_burst_acts_on_the_cursors_commit`, `tab_after_a_burst_acts_on_the_cursors_commit`) A single `j`: follow commands in the same turn as the key (loop test). `j j j ⏎` and `j j j Tab` act on the
       cursor's commit, not the pane's old one (loop test).
-- [ ] Pane hidden: no `ListFiles`/`ContainedIn` ever; `EvilProbe` only on the leading edge or at rest (loop test).
-- [ ] Existing `update` tests unchanged and green (they run with `defer_follow = false`); the gate run proves it.
-- [ ] Capture `docs/shots/m8/settle-following.txt`: a mid-burst frame. Cursor row 6+ rows below the pane's commit,
+- [x] (`event_loop::tests::settle::with_the_pane_hidden_only_the_evil_probe_runs_on_the_leading_edge_and_at_rest`) Pane hidden: no `ListFiles`/`ContainedIn` ever; `EvilProbe` only on the leading edge or at rest (loop test).
+- [x] (workspace `cargo nextest run`: 5223/5223 passed) Existing `update` tests unchanged and green (they run with `defer_follow = false`); the gate run proves it.
+- [x] (`event_loop::tests::settle::capture_the_pane_following_a_burst`) Capture `docs/shots/m8/settle-following.txt`: a mid-burst frame. Cursor row 6+ rows below the pane's commit,
       pane title ending `reading…`. Muted colour **unverified** (rule 5).
-- [ ] J1 tail ≤ 100 ms, unchanged or better: `scripts/m8-pace.sh` → `docs/perf/m8-settle.txt`, held_key summary
+- [x] (`scripts/m8-pace.sh docs/perf/m8-settle.txt`, J1 lines) J1 tail ≤ 100 ms, unchanged or better: `scripts/m8-pace.sh` → `docs/perf/m8-settle.txt`, held_key summary
       lines against `docs/perf/m8-pace.txt`.
 
 ## Touches
@@ -156,3 +156,27 @@ workspace-wide. The perf run goes through the script, never in the builder's con
 
 ## Size
 One context, ~60k tokens.
+
+## NOTES (builder, 2026-10-02)
+Scout used: `scouts/03-settle.md` (planner's), plus own reads of the named ranges. No compaction.
+
+Deviations, each for a reason:
+- **Clock seam `Wakes::now()`** (default `Instant::now()`): `Run` reads every time from it (pacer, batch budget, rest). Loop tests run on a virtual timeline (`Timed` in `tests/settle.rs`) — deterministic, no sleeps. Touches 7 `Instant::now()` sites in `running.rs` beyond the per-wake hook and the wait; 04 may conflict there (mechanical).
+- **`Rest::moved(now, Mover)`** instead of `Option<&Wake>`: the wake is consumed by `update` before the loop knows it moved; `Mover::of(&wake)` is read first.
+- **`follow_waits` holds the follow only when it would start work** (pane shown, or a merge under the cursor to probe). Pane hidden off a merge, the follow runs at once (starts nothing; cancels a running probe). Without this, every held key with the pane hidden waited for a rest that does nothing and broke `pace::three_hundred_held_keys…` (fence/frame pattern). Also never held when nothing was followed yet (`G` before its rows land, first window): keeps "a `G` is unchanged".
+- **`reading…` title needs graft-ui**: the title row is drawn in `graft-ui/src/detail_pane/header.rs`, not in `view/detail.rs`. Added `DetailView::following` + `draw_following` (+ test `a_pane_waiting_for_the_cursor_to_rest_ends_its_title_row_in_reading`, 2 fixtures). graft-ui held by no other builder.
+- Outside the file list, forced by the new variant/fields: `update/commit_graph.rs`, `update/detail/control.rs` (+ `contained_arrived` id), `event_loop/label.rs`, `update/tests.rs` (`every_field_spelled_out`).
+- `view/detail.rs`: `commit_header` now finds the pane's commit anywhere in the window (was: only the cursor's row), else mid-burst the header went blank. Once the commit leaves the window the header is empty (not seen in tests; a held key past the window edge would show it).
+- Abandoned reads draw `reading…` in the body (not `select a commit`); same spec followed again re-reads (`DetailState::abandoned`). Returning to that exact row mid-burst with only the diff pending re-lists the files (file cursor to top) — edge, accepted.
+
+`settle`'s other calls, grep: `radar::request_context` (radar.rs:330), `request_force_push_probes` (:402), `request_duplicates_probe` (:534), `refresh_ref_findings` (:196), `remote::request_at_launch` (remote.rs:372), `request_leaves` (:78), `forget_stale_divergence` (:307), `journal::request` (journal.rs:238): none reads `history.cursor`/`selected()`/`on_working_tree` — not gated. `detail::open_explain` (control.rs:118) reads `History::selected` but only on a menu choice — an input, which `rest_first` rests before. Not gated.
+
+Stale comment at `ops.rs:176` fixed (the probe runs with the pane hidden, on purpose).
+
+Perf (`docs/perf/m8-settle.txt` vs `m8-pace.txt`): J1 Unicode 40MB/s 2 ms (was 1), free 1 (1); Pixel deflate 40MB/s 36 (29), free 14 (8): all pass. Load 25–35 vs 10–22 at baseline; difference not attributable. Same three pre-existing Pixel non-deflate failures as the baseline (row 1089, 04's area). held_key runs with the pane hidden and no merges near, so this ticket barely touches J1 there.
+
+Not done / could not:
+- KNOWN_GAPS row 1093: builders may not read KNOWN_GAPS.md (CLAUDE.md); its fate is the conductor's call.
+- Real-terminal feel of rest timing (150/50 ms) unverified — only virtual-timeline tests.
+- Muted colour of `reading…` unverified (rule 5).
+- DESIGN: no wording about the pane following "every move" found (`grep -ni follow docs/design/*.md`); no Proposed change.

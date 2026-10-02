@@ -38,9 +38,16 @@ fn commands(bytes: &[u8]) -> Vec<String> {
         .collect()
 }
 
+/// The key the strip cache would give `frame`: here, its allocation, so a
+/// new `Arc` is new pixels as it was before uploads were keyed (m8 04).
+fn key_of(frame: &Arc<RasterFrame>) -> UploadKey {
+    UploadKey(Arc::as_ptr(frame) as u64)
+}
+
 fn place(frame: &Arc<RasterFrame>, first_row: usize, rows: Range<usize>, at: u16) -> Place<'_> {
     Place {
         first_row,
+        key: key_of(frame),
         frame,
         rows,
         cells: CellRect {
@@ -699,6 +706,7 @@ fn deflate_shrinks_a_sparse_strip() {
     });
     let places = [Place {
         first_row: 0,
+        key: key_of(&frame),
         frame: &frame,
         rows: 0..rows,
         cells: CellRect {
@@ -803,4 +811,93 @@ fn hide_hides_emphasis() {
             format!("a=d,d=i,i={FIRST_EMPHASIS},p=1,q=1"),
         ]
     );
+}
+
+/// m8 04: an upload is known by its key, not by the pixels it came from.
+/// Once transmitted, Kitty keeps nothing of the frame: the cache that made
+/// it is the only owner, and its eviction frees the pixels.
+#[test]
+fn an_upload_holds_no_pixels_after_transmit() {
+    let mut images = KittyImages::new(8);
+    let frame = strip(4, [10, 20, 30, 255]);
+    let mut out = Vec::new();
+    images.frame(&[place(&frame, 0, 0..4, 1)], &mut out);
+    assert_eq!(images.uploaded(), 1);
+    assert_eq!(Arc::strong_count(&frame), 1, "Kitty kept a reference");
+}
+
+/// The same key in a new allocation is the same picture: the strip cache
+/// evicted it and drew it again, and the terminal still holds it. No
+/// transmit; a different key in the same slot is a new upload.
+#[test]
+fn an_upload_is_matched_by_its_key() {
+    let mut images = KittyImages::new(8);
+    let (first, again) = (strip(4, [1, 2, 3, 255]), strip(4, [1, 2, 3, 255]));
+    let keyed = |frame, key| Place {
+        key: UploadKey(key),
+        ..place(frame, 0, 0..4, 1)
+    };
+    let mut out = Vec::new();
+    images.frame(&[keyed(&first, 7)], &mut out);
+    let mut out = Vec::new();
+    images.frame(&[keyed(&again, 7)], &mut out);
+    assert!(
+        commands(&out).iter().all(|c| !c.contains("a=t")),
+        "same key, no transmit: {:?}",
+        commands(&out)
+    );
+    let mut out = Vec::new();
+    images.frame(&[keyed(&again, 8)], &mut out);
+    assert!(commands(&out).iter().any(|c| c.contains("a=t")));
+    assert_eq!(images.uploaded(), 1, "the old one was freed");
+}
+
+/// m8 04: a transmit works in buffers kept from the last one. Two strips of
+/// one size, one sparse and one noise (which overflows the first guess at the
+/// deflated size): each sends exactly what `compress_to_vec_zlib` would, and
+/// the second makes no buffer the first did not.
+#[test]
+fn a_transmit_reuses_its_buffers_and_sends_the_same_bytes() {
+    let noise = |seed: u32| {
+        let pixels: Vec<u8> = (0..6 * 400u32)
+            .flat_map(|at| {
+                let [r, g, b, _] = (at ^ seed).wrapping_mul(2_654_435_761).to_le_bytes();
+                [r, g, b, 255]
+            })
+            .collect();
+        Arc::new(RasterFrame {
+            pixels,
+            width: 6,
+            height: 400,
+            rows: 100,
+            columns: 3,
+        })
+    };
+    let mut images = KittyImages::new(8).deflating(true);
+    let (sparse, loud, louder) = (strip(100, [0, 0, 0, 0]), noise(1), noise(2));
+    for (frame, row) in [(&sparse, 0), (&loud, 1)] {
+        let mut out = Vec::new();
+        images.frame(&[place(frame, row, 0..100, 0)], &mut out);
+        let sent: Vec<u8> = transmits(&out)
+            .into_iter()
+            .flat_map(|(_, bytes)| bytes)
+            .collect();
+        let straight = straight_alpha(&frame.pixels);
+        assert_eq!(
+            sent,
+            miniz_oxide::deflate::compress_to_vec_zlib(&straight, 1)
+        );
+    }
+    let buffers = |images: &KittyImages| {
+        let scratch = &images.scratch;
+        [
+            scratch.straight.as_ptr() as usize,
+            scratch.deflated.as_ptr() as usize,
+            scratch.encoded.as_ptr() as usize,
+        ]
+    };
+    let before = buffers(&images);
+    let mut out = Vec::new();
+    images.frame(&[place(&louder, 2, 0..100, 0)], &mut out);
+    assert_eq!(buffers(&images), before, "a new buffer for the same size");
 }

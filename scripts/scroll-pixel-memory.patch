@@ -1,0 +1,265 @@
+diff -ruN a/crates/graft/src/event_loop/graphics.rs b/crates/graft/src/event_loop/graphics.rs
+--- a/crates/graft/src/event_loop/graphics.rs	2026-10-02 22:14:30
++++ b/crates/graft/src/event_loop/graphics.rs	2026-10-02 22:16:20
+@@ -204,6 +204,13 @@
+         } else {
+             self.images.frame(&places, out);
+         }
++        crate::memstats::line(&format!(
++            "{} {} {} strip_px_w={}",
++            self.strips.mem_line(),
++            self.images.mem_line(),
++            self.bands.mem_line(),
++            drawn.first().map_or(0, |d| d.frame.width),
++        ));
+     }
+ 
+     /// Rasterise, without drawing or uploading, the first strip `state`
+diff -ruN a/crates/graft/src/lib.rs b/crates/graft/src/lib.rs
+--- a/crates/graft/src/lib.rs	2026-10-02 22:14:30
++++ b/crates/graft/src/lib.rs	2026-10-02 22:16:20
+@@ -17,6 +17,7 @@
+ pub mod jobs;
+ pub mod layout;
+ pub mod map;
++pub mod memstats;
+ pub mod refs;
+ pub mod repos;
+ pub mod repository;
+diff -ruN a/crates/graft/src/main.rs b/crates/graft/src/main.rs
+--- a/crates/graft/src/main.rs	2026-10-02 22:14:30
++++ b/crates/graft/src/main.rs	2026-10-02 22:16:20
+@@ -19,7 +19,35 @@
+ use graft::session::Startup;
+ use graft::update::Harness;
+ 
++/// MEASUREMENT ONLY (scripts/scroll-pixel-memory.patch).
++struct Counting;
++
++#[allow(unsafe_code)]
++unsafe impl std::alloc::GlobalAlloc for Counting {
++    unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {
++        graft::memstats::count(layout.size());
++        unsafe { std::alloc::System.alloc(layout) }
++    }
++    unsafe fn alloc_zeroed(&self, layout: std::alloc::Layout) -> *mut u8 {
++        graft::memstats::count(layout.size());
++        unsafe { std::alloc::System.alloc_zeroed(layout) }
++    }
++    unsafe fn dealloc(&self, ptr: *mut u8, layout: std::alloc::Layout) {
++        unsafe { std::alloc::System.dealloc(ptr, layout) }
++    }
++    unsafe fn realloc(&self, ptr: *mut u8, layout: std::alloc::Layout, new_size: usize) -> *mut u8 {
++        if new_size > layout.size() {
++            graft::memstats::count(new_size);
++        }
++        unsafe { std::alloc::System.realloc(ptr, layout, new_size) }
++    }
++}
++
++#[global_allocator]
++static COUNTING: Counting = Counting;
++
+ fn main() -> ExitCode {
++    graft::memstats::start();
+     // Settled first, before any config load, terminal probe or log line: in
+     // askpass mode (git ran Graft's own binary as its credential helper during
+     // a fetch, pull or push — design note m4, choice 2) this process must
+diff -ruN a/crates/graft/src/memstats.rs b/crates/graft/src/memstats.rs
+--- a/crates/graft/src/memstats.rs	1970-01-01 05:00:00
++++ b/crates/graft/src/memstats.rs	2026-10-02 22:16:20
+@@ -0,0 +1,53 @@
++//! MEASUREMENT ONLY (scripts/scroll-pixel-memory.patch, m8 04): counts large
++//! allocations and appends one line per pixel frame to `GRAFT_MEM_STATS`.
++//! Never committed to the source tree; the script applies it to a scratch
++//! worktree.
++
++use std::io::Write;
++use std::sync::OnceLock;
++use std::sync::atomic::{AtomicU64, Ordering};
++use std::time::Instant;
++
++/// macOS malloc serves requests above 127 KiB from its large allocator
++/// (`Malloc Large` in vmmap); every strip-sized buffer is one. The counting
++/// allocator itself is in `main.rs` (this crate forbids `unsafe`).
++pub const LARGE: usize = 127 * 1024;
++
++pub static LARGE_ALLOCS: AtomicU64 = AtomicU64::new(0);
++pub static LARGE_BYTES: AtomicU64 = AtomicU64::new(0);
++
++/// Count one allocation of `size` bytes if it is large.
++pub fn count(size: usize) {
++    if size > LARGE {
++        LARGE_ALLOCS.fetch_add(1, Ordering::Relaxed);
++        LARGE_BYTES.fetch_add(size as u64, Ordering::Relaxed);
++    }
++}
++
++static START: OnceLock<Instant> = OnceLock::new();
++
++/// Start the clock; called first thing in `main`.
++pub fn start() {
++    START.get_or_init(Instant::now);
++}
++
++/// Append `fields` after the elapsed time and the allocation counters.
++pub fn line(fields: &str) {
++    let Some(path) = std::env::var_os("GRAFT_MEM_STATS") else {
++        return;
++    };
++    let ms = START.get().map_or(0, |start| start.elapsed().as_millis());
++    let text = format!(
++        "t_ms={ms} large_allocs={} large_mb={} {fields}\n",
++        LARGE_ALLOCS.load(Ordering::Relaxed),
++        LARGE_BYTES.load(Ordering::Relaxed) >> 20,
++    );
++    if let Ok(mut file) = std::fs::OpenOptions::new()
++        .create(true)
++        .append(true)
++        .open(path)
++    {
++        // Measurement only: a lost line shows as a gap in the file.
++        let _ = file.write_all(text.as_bytes());
++    }
++}
+diff -ruN a/crates/graft-graph/src/raster/cache.rs b/crates/graft-graph/src/raster/cache.rs
+--- a/crates/graft-graph/src/raster/cache.rs	2026-10-02 22:14:30
++++ b/crates/graft-graph/src/raster/cache.rs	2026-10-02 22:32:57
+@@ -253,6 +253,16 @@
+     composites: Lru<PaintKey, Arc<RasterFrame>>,
+     clock: u64,
+     stats: CacheStats,
++    /// MEASUREMENT ONLY: composites made; and per backdrop rasterisation,
++    /// whether its first row was new, held the same key before (evicted and
++    /// drawn again) or a different key (re-keyed).
++    composited: u64,
++    seen: HashMap<usize, LayerKey>,
++    rast_new: u64,
++    rast_again: u64,
++    rast_rekeyed: u64,
++    rekeyed_layout: u64,
++    rekeyed_alpha: u64,
+ }
+ 
+ impl StripCache {
+@@ -272,6 +282,13 @@
+             composites: Lru::new(),
+             clock: 0,
+             stats: CacheStats::default(),
++            composited: 0,
++            seen: HashMap::new(),
++            rast_new: 0,
++            rast_again: 0,
++            rast_rekeyed: 0,
++            rekeyed_layout: 0,
++            rekeyed_alpha: 0,
+         }
+     }
+ 
+@@ -347,6 +364,19 @@
+         }
+         let frame = Arc::new(rasterise_backdrop_in(strip, backdrop, &mut self.pool)?);
+         self.stats.rasterised += 1;
++        match self.seen.insert(first_row, key) {
++            None => self.rast_new += 1,
++            Some(old) if old == key => self.rast_again += 1,
++            Some(old) => {
++                self.rast_rekeyed += 1;
++                if old.strip.layout != key.strip.layout {
++                    self.rekeyed_layout += 1;
++                }
++                if old.backdrop != key.backdrop {
++                    self.rekeyed_alpha += 1;
++                }
++            }
++        }
+         let weight = frame.pixels.capacity();
+         self.backdrops
+             .insert(key, Arc::clone(&frame), self.clock, weight);
+@@ -405,6 +435,7 @@
+             return Ok(base);
+         };
+         let frame = Arc::new(composite_in(&base, &top, &mut self.pool));
++        self.composited += 1;
+         let weight = frame.pixels.capacity();
+         self.composites
+             .insert(key, Arc::clone(&frame), self.clock, weight);
+@@ -591,6 +622,37 @@
+                 .map_or(0, |image| image.frame.pixels.capacity())
+         };
+         self.backdrops.bytes(frame) + self.emphases.bytes(image) + self.composites.bytes(frame)
++    }
++
++    /// MEASUREMENT ONLY (scripts/scroll-pixel-memory.patch): per layer
++    /// entries/bytes resident, rasterisations so far, the budget and floor.
++    pub fn mem_line(&self) -> String {
++        let frame = |frame: &Arc<RasterFrame>| frame.pixels.capacity();
++        let image = |image: &Option<Arc<Emphasised>>| {
++            image.as_ref().map_or(0, |image| image.frame.pixels.capacity())
++        };
++        format!(
++            "backdrop_n={} backdrop_kb={} backdrop_rast={} rast_new={} rast_again={} rast_rekeyed={} rekeyed_layout={} rekeyed_alpha={} emphasis_n={} emphasis_kb={} emphasis_rast={} composite_n={} composite_kb={} composite_rast={} resident_kb={} budget_kb={} min_strips={} minimum_wins={} buffers_allocated={}",
++            self.backdrops.len(),
++            self.backdrops.bytes(frame) >> 10,
++            self.stats.rasterised,
++            self.rast_new,
++            self.rast_again,
++            self.rast_rekeyed,
++            self.rekeyed_layout,
++            self.rekeyed_alpha,
++            self.emphases.len(),
++            self.emphases.bytes(image) >> 10,
++            self.stats.emphasis_rasterised,
++            self.composites.len(),
++            self.composites.bytes(frame) >> 10,
++            self.composited,
++            self.resident_bytes() >> 10,
++            self.budget.0 >> 10,
++            self.min_strips,
++            u8::from(self.minimum_wins),
++            self.pool.allocated(),
++        )
+     }
+ 
+     /// Counters since the cache was made.
+diff -ruN a/crates/graft-term/src/iterm2.rs b/crates/graft-term/src/iterm2.rs
+--- a/crates/graft-term/src/iterm2.rs	2026-10-02 22:14:30
++++ b/crates/graft-term/src/iterm2.rs	2026-10-02 22:16:20
+@@ -68,6 +68,13 @@
+         }
+     }
+ 
++    /// MEASUREMENT ONLY (scripts/scroll-pixel-memory.patch).
++    #[must_use]
++    pub fn mem_line(&self) -> String {
++        let seqs: usize = self.bands.iter().map(|b| b.sequence.capacity()).sum();
++        format!("bands_n={} bands_seq_kb={}", self.bands.len(), seqs >> 10)
++    }
++
+     /// Send each band's `OSC 1337` over `transport`: inside tmux, one
+     /// passthrough wrapper per band; the cursor moves and erases stay outside
+     /// it, for tmux to see.
+diff -ruN a/crates/graft-term/src/kitty/mod.rs b/crates/graft-term/src/kitty/mod.rs
+--- a/crates/graft-term/src/kitty/mod.rs	2026-10-02 22:14:30
++++ b/crates/graft-term/src/kitty/mod.rs	2026-10-02 22:16:20
+@@ -194,6 +194,20 @@
+         self
+     }
+ 
++    /// MEASUREMENT ONLY (scripts/scroll-pixel-memory.patch): uploads, and
++    /// the transmit scratch's capacity.
++    #[must_use]
++    pub fn mem_line(&self) -> String {
++        format!(
++            "uploads_n={} scratch_kb={}",
++            self.uploads.len(),
++            (self.scratch.straight.capacity()
++                + self.scratch.deflated.capacity()
++                + self.scratch.encoded.capacity())
++                >> 10
++        )
++    }
++
+     /// Images currently held by the terminal, as far as Graft knows.
+     #[must_use]
+     pub fn uploaded(&self) -> usize {

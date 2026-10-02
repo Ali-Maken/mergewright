@@ -23,7 +23,6 @@ use graft_ui::detail::{
 };
 use graft_ui::graph_screen::{SHA_WIDTH, relative_date, short_sha};
 
-use crate::history::History;
 use crate::update::AppState;
 use crate::update::detail::{DetailSpec, DetailState, Loading};
 
@@ -63,7 +62,33 @@ pub fn detail_view(state: &AppState) -> DetailView {
             word_tint: state.detail.word_tint,
         },
         explain: state.detail.explain.clone(),
+        following: following(state),
     }
+}
+
+/// The pane is behind the cursor and will catch up when it rests
+/// (G-settle): a follow is owed, and the pane is one that follows — not a
+/// compare opened from the menu, which stays put.
+fn following(state: &AppState) -> bool {
+    let fixed = state.compare_base.is_none()
+        && matches!(state.detail.spec, Some(DetailSpec::Compare { .. }));
+    state.detail.shown && !fixed && crate::update::follow_behind(state)
+}
+
+/// The row for `oid`: the cursor's, or — while the pane is behind a moving
+/// cursor (G-settle) — wherever it is in the window on hand. `None` once it
+/// has left the window.
+fn row_of(state: &AppState, oid: Oid) -> Option<&graft_graph::Row> {
+    let history = state.history.as_ref()?;
+    if let Some(row) = history.selected().filter(|row| row.commit.id == oid) {
+        return Some(row);
+    }
+    history
+        .window
+        .as_ref()?
+        .rows
+        .iter()
+        .find(|row| row.commit.id == oid)
 }
 
 /// The header before anything is selected: every field empty, subject
@@ -88,12 +113,7 @@ fn empty_header() -> DetailHeader {
 /// co-authors (parsed from the message trailers), parents and "contained in"
 /// state, all straight from the row the graph already hydrated.
 fn commit_header(state: &AppState, oid: Oid) -> DetailHeader {
-    let Some(row) = state
-        .history
-        .as_ref()
-        .and_then(History::selected)
-        .filter(|row| row.commit.id == oid)
-    else {
+    let Some(row) = row_of(state, oid) else {
         return empty_header();
     };
     let commit = &row.commit;
@@ -259,6 +279,8 @@ fn working_tree_header(state: &AppState, head: Option<Oid>) -> DetailHeader {
 /// and [`DetailState::diff`]'s own loading states.
 fn body_view(detail: &DetailState) -> BodyView {
     match &detail.files {
+        // Its read was cancelled mid-burst (G-settle): it comes again at rest.
+        Loading::Idle if detail.abandoned => BodyView::Loading(sanitize_line("reading…")),
         Loading::Idle => BodyView::Empty(sanitize_line("select a commit")),
         Loading::Pending(_) => BodyView::Loading(sanitize_line("reading…")),
         Loading::Failed(message) => {
@@ -285,6 +307,7 @@ fn body_view(detail: &DetailState) -> BodyView {
                 };
             }
             match &detail.diff {
+                Loading::Idle if detail.abandoned => BodyView::Loading(sanitize_line("reading…")),
                 Loading::Idle => BodyView::Empty(sanitize_line("select a file")),
                 Loading::Pending(_) => BodyView::Loading(sanitize_line("reading…")),
                 Loading::Failed(message) => {

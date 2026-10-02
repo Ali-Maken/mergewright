@@ -36,6 +36,11 @@ pub enum AppEvent {
     /// A running job has something to show before it ends. Always between
     /// the job's [`AppEvent::Started`] and its one ending event.
     Progress(JobId, Progress),
+    /// The cursor has rested after a burst of moves (G-settle,
+    /// m8-polish-and-ship/03): the follow `update::settle` deferred runs now,
+    /// once, for the cursor's row. Only the loop sends it
+    /// (`event_loop::rest`); nothing else happens.
+    Rested,
 }
 
 /// What a running job hands over before it ends.

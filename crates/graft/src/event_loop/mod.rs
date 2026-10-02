@@ -28,6 +28,7 @@ mod label;
 pub mod outside;
 mod pace;
 pub mod redetect;
+mod rest;
 mod row_clear;
 mod running;
 pub mod signals;
@@ -134,6 +135,15 @@ pub trait Wakes {
     /// stamps each phase to find where a slow key's time went. The real
     /// source keeps this empty default: the call compiles to nothing.
     fn mark(&mut self, _phase: Phase) {}
+
+    /// The loop's clock. Every time the loop reads — the pacer's, a batch's
+    /// budget, when the cursor last moved (`rest`) — comes from here, so a
+    /// test source can hand out wakes on a timeline of its own and the loop
+    /// sees the same one, without sleeping through it. The real source keeps
+    /// this default.
+    fn now(&self) -> Instant {
+        Instant::now()
+    }
 }
 
 /// Where the loop stands in the frame for one wake, in order. The frame
@@ -289,6 +299,8 @@ pub fn joins_frame(wake: &Wake) -> bool {
 fn said_by_a_job(event: &AppEvent) -> bool {
     match event {
         AppEvent::Started(..) | AppEvent::Produced(..) | AppEvent::Progress(..) => true,
+        // The loop's own: never in a wake.
+        AppEvent::Rested => false,
         AppEvent::Core(event) => matches!(
             event,
             Event::JobFinished(_) | Event::JobFailed(..) | Event::JobCancelled(_)

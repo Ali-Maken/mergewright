@@ -68,6 +68,7 @@ pub use events::{
 pub(crate) use geometry::context_menu_area;
 pub(crate) use history::walk_is_reading;
 pub use relaunch::LiveOrigin;
+pub(crate) use selection::{FollowKey, follow_behind, follow_key};
 pub use state::{
     AppState, Banner, CHROME_ROWS, ClashState, GraphOverlay, Harness, HeadLanding, Quit, RefsRead,
     Screen, Size, StashOnlyMarks, Status, Stop,
@@ -183,9 +184,22 @@ fn settle(next: &mut AppState, commands: &mut Vec<Command>, cursor_before: usize
     // `local_jobs` borrowed out for the closure: `follow_selection` also
     // wants `&mut next`, and the two can't overlap.
     let mut local_jobs = next.local_jobs;
-    commands.extend(selection::follow_selection(next, &mut || {
-        local_jobs.next_id()
-    }));
+    if selection::follow_waits(next) {
+        // Mid-burst (G-settle): the follow is owed until the loop says the
+        // cursor rested (`AppEvent::Rested`). What the last follow started
+        // is for a row the cursor has left: cancelled, once — after this
+        // nothing is pending, so later moves of the burst add nothing.
+        commands.extend(next.detail.abandon());
+    } else {
+        commands.extend(selection::follow_selection(next, &mut || {
+            local_jobs.next_id()
+        }));
+        next.followed = selection::follow_key(next);
+    }
+    // The other asks below do not read the cursor (G-settle grep): the
+    // radar's context and probes and the remotes are about refs, the
+    // journal about its file, and `open_explain` answers a menu choice —
+    // an input, which ends a burst before it is applied.
     radar::request_context(next, commands, &mut || local_jobs.next_id());
     radar::request_force_push_probes(next, commands, &mut || local_jobs.next_id());
     radar::request_duplicates_probe(next, commands, &mut || local_jobs.next_id());
@@ -231,6 +245,9 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             watch.drop_if_moved(next);
         }
         AppEvent::Core(event) => core_event(next, commands, event),
+        // Nothing to answer: the loop sends it with `defer_follow` off, so
+        // `settle` runs the owed follow (G-settle).
+        AppEvent::Rested => {}
         AppEvent::Started(id, task) => started(next, commands, id, &task),
         // The rewrite editor's jobs, by id, before the handlers that share
         // their products: the preview's, the detail pane's and the stash

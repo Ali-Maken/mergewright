@@ -25,7 +25,7 @@ use graft_graph::identity::BranchIdentity;
 use graft_graph::layout::layout;
 use graft_graph::layout::source::{CommitSource, Pull};
 use graft_graph::layout::stream::{StreamConfig, StreamingLayout};
-use graft_graph::raster::cache::{STRIP_ROWS, StripCache};
+use graft_graph::raster::cache::{ByteBudget, STRIP_ROWS, StripCache};
 use graft_graph::raster::{
     Backdrop, Emphasis, Lit, PlainRow, PlainStrip, Selection, composite, rasterise_backdrop,
     rasterise_emphasis,
@@ -253,7 +253,7 @@ fn strips(c: &mut Criterion) {
         });
     });
 
-    let mut warm = StripCache::new(STRIP_ROWS, 16);
+    let mut warm = StripCache::with_budget(ByteBudget(usize::MAX), 16);
     warm.composited(first, &strip(&raster_rows, above, lanes), &sel)
         .expect("strip rasterises");
     c.bench_function("StripCache::composited/hit", |b| {
@@ -262,7 +262,7 @@ fn strips(c: &mut Criterion) {
 
     c.bench_function("StripCache::composited/miss", |b| {
         b.iter_batched(
-            || StripCache::new(STRIP_ROWS, 16),
+            || StripCache::with_budget(ByteBudget(usize::MAX), 16),
             |mut cold| {
                 black_box(
                     cold.composited(first, &strip(&raster_rows, above, lanes), &sel)

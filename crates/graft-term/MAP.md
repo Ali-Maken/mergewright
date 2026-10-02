@@ -58,7 +58,8 @@ One line per public item. Update when a public item changes.
 - `KittyImages::deflating` (fn) — builder: transmit with `o=z` (zlib RGBA). Off by default.
 - `KittyImages::is_deflating` (fn) — still deflating; false once an error reply turned it off.
 - `KittyImages::uploaded` (fn) — images the terminal holds, as far as Graft knows.
-- `Place` (struct) — one image this frame: `first_row`, `frame` (`&Arc<RasterFrame>`), `rows` crop, `cells`, `layer`.
+- `Place` (struct) — one image this frame: `first_row`, `key` (`UploadKey`), `frame` (`&RasterFrame`), `rows` crop, `cells`, `layer`.
+- `UploadKey` (struct) — what an upload is known by, from the strip cache key (m8 04): the same key is the same picture, so no retransmit; an upload holds the key, never the pixels. Transmit buffers (straight alpha, deflate, base64) and the compressor are kept between uploads.
 - `Place::layer` (field) — `Layer::Strip` or `Layer::Emphasis`; each layer of a slot is its own upload.
 - `Layer` (enum) — `Strip` (no `z=`, default) or `Emphasis` (`z=1`, emitted after every strip, id has `EMPHASIS_ID_BIT`).
 - `EMPHASIS_ID_BIT` (const) — `1 << 31`; set in every emphasis image id, in no strip id.

@@ -380,8 +380,21 @@ tier.
   rows; tune in M1's performance pass). Alignment is what makes a scrolled
   viewport re-hit existing strips instead of missing on every new offset.
 - **Where it lives:** inside `graph`'s pixel renderer, as renderer-private
-  state (§8.4 — an internal seam, invisible to callers). A bounded LRU of a
-  few viewports' worth of strips. `term`'s encoder may additionally reuse
+  state (§8.4 — an internal seam, invisible to callers). Three LRUs
+  (backdrops, emphasis images, iTerm2 composites) under one **byte budget**
+  (`ByteBudget`, 96 MiB, `event_loop/graphics.rs` `STRIP_BUDGET`), evicting
+  the least recently used entry of any layer until the cache weighs no more
+  than it (m8 04). Counted strips were not a bound: a strip weighs lanes ×
+  cell, ~4.3 MB at 17×37 on MONOREPO and ~8.6 MB at 24×52, so 16 of each
+  layer was 108–216 MB. **The viewport's floor wins over the budget:**
+  each layer keeps at least `capacity_for(strip, viewport, buffer)` entries
+  whatever they weigh, so a huge cell or a tall pane can hold the cache over
+  its budget (`StripCache::minimum_wins` says when; at 24×52 it did on half
+  the frames, 113 MB). Strips are drawn into buffers lent by a `RasterPool`
+  that eviction refills, and Kitty's transmit keeps its straight-alpha,
+  deflate and base64 buffers between uploads, so a held key reuses memory
+  instead of churning malloc's large blocks; uploads are remembered by
+  `UploadKey`, not by holding the frame. `term`'s encoder may additionally reuse
   already-transmitted image ids where the protocol allows (Kitty); that's
   an encoder-internal optimisation, not part of this cache.
 - **The key:** `(strip row range, layout hash, theme id, cell size)`.

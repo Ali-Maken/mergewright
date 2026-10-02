@@ -44,7 +44,7 @@ None public. `land_after_undo` may be generalised; MAP.md records the shape.
       recreated branch's row). — real repo: `daily_landing::j20_u_and_capital_u_land_on_the_result` (commit u/U),
       `daily_landing::u_after_a_stash_lands_on_head`, `land_on_result::undo_of_a_merge_lands_on_head`,
       `land_on_result::capture_landing_after_undo_and_redo` (merge u/U); entry-level, per kind:
-      `update::undo::landing::tests::{the_branch_head_is_on_moving_lands_on_head, a_different_head_lands_on_head,
+      `update::undo::lands_on::tests::{the_branch_head_is_on_moving_lands_on_head, a_different_head_lands_on_head,
       a_branch_come_back_lands_on_its_row_and_is_tagged, a_stash_undone_lands_on_head, a_branch_gone_again_leaves_the_cursor,
       nothing_moved_leaves_the_cursor, a_branch_beats_the_stash}`. Branch delete covered at entry level only (synthetic
       journal entry), not by a real-repo walk.
@@ -89,6 +89,32 @@ None public. `land_after_undo` may be generalised; MAP.md records the shape.
   the two runs above. Not investigated (graft-git is another builder's); seed of the failing run not kept.
 - Known edge: an `amend_into` tag-read failure after an Incomplete replaces the sticky warning with its own
   (`amend_into::tags_resolved`), same as `StagingNotKept` today.
+
+## Review fixes (review `docs/reviews/m8-13-landing.md`, 2026-10-02)
+- [x] **Major 1** — `q` with the banner focused reaches `quit::asked` (`update/banner/focus_keys.rs`, arm before the
+      catch-all; stale doc replaced). Cause fix. Tests, each starting banner-focused after the way focus lands there,
+      each seen **failing** with the arm disabled (4/4 FAIL) and passing with it:
+      conflict stop — `update::quit::tests::q_on_the_banner_after_a_conflict_stop_reaches_the_quit_box`;
+      relaunch — `update::quit::tests::q_on_the_banner_after_a_relaunch_reaches_the_quit_box`;
+      undo puts a merge back — `update::undo::tests::q_on_the_banner_after_an_undo_puts_a_merge_back_reaches_the_quit_box`;
+      a write running under the focused banner — `update::quit::tests::q_on_the_banner_while_a_write_runs_names_the_write`.
+      Each asserts the box line; the first two also that `y` quits.
+- [ ] **Major 2** — **not done: a question, not a build decision.** Neither keymap §2.2 (`q` "confirms if an
+      operation is in progress"), the design note's "Where he lands" row (`q` while a write runs → `quit stops it`,
+      `y` quits) nor ruling 4 above says what `q` does while a `Stoppable::No` write (merge, rebase, cherry-pick,
+      revert, time machine, J put-back) runs. Options: (a) box `<op> runs to the end · quit when it finishes`,
+      `[ Cancel ]` only; (b) same words, `[ Quit ]` quits once the write ends (quit deferred); (c) other. Code
+      unchanged (`update/quit.rs` `running_box`, `confirmed`).
+- [x] **Major 3** — `update/undo/landing.rs` → `update/undo/lands_on.rs` (`lands_on::of`, `lands_on::came_back`);
+      `consequence::landing` keeps its name, so each name means one thing. Pure rename, no behaviour change;
+      its tests now `update::undo::lands_on::tests::*` (J20 tick above updated), passing. MAP.md row updated.
+- Touches: `banner/tests.rs::the_focused_banner_claims_every_key_but_control_c` still passes (`q` is still
+  claimed, now with a box); `daily_landing.rs:195` (`q` from the graph) unchanged; MAP.md `banner_key`,
+  `update::quit`, `undo::lands_on` rows. **Not changed, for the conductor:** keymap §2.6a's banner table does not list
+  `q` (the conductor asked for it; §2.2 needs it to apply); the focused banner's hint bar does not draw `q`
+  (graft-ui / hints, not my files) — grep `banner_list`.
+- Gates (workspace-wide): fmt --check, clippy --all-targets -D warnings, nextest 5209/5209 (9 skipped), test --doc pass.
+- Scout: none — three small, named sites; the review gave file:line for each, and I read them directly.
 
 ## Touches
 - `Operation::moves_head` callers; `undo_landing_owed`; status line priority; confirm box (`y` per M6 rule); the

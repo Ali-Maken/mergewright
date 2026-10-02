@@ -101,7 +101,7 @@ View-model types for the detail pane (m2-details-and-diffs/06); no widget. Every
 - `DiffView` (struct) — path, old path, status, hunks, `binary`, `truncated`, `untracked`.
 - `BodyView` (enum) — `Empty`, `Message`, `Loading`, `Failed`, `Diff(Arc<DiffView>)`.
 - `DetailFocus` (enum) — `Graph`, `Files`, `Diff`.
-- `DetailView` (struct) — everything the pane draws: header, files, body, body_top, focus, mode, options, explain.
+- `DetailView` (struct) — everything the pane draws: header, files, body, body_top, focus, mode, options, explain, `following` (G-settle: the title row ends in a muted `reading…`).
 - `ExplainView` (struct) — the explain panel's title, severity, paragraphs, sketch (built by `explain-panel`).
 
 ## detail_pane

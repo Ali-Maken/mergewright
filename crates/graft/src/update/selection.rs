@@ -91,6 +91,55 @@ pub fn reconcile(state: &mut AppState, cursor_before: usize) -> bool {
     }
 }
 
+/// What the pane and the evil probe follow, by identity (G-settle,
+/// m8-polish-and-ship/03): the loop compares it before and after each wake
+/// to tell a motion, so it needs no keymap knowledge.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum FollowKey {
+    /// A commit row.
+    Commit(graft_core::oid::Oid),
+    /// The uncommitted-changes row.
+    WorkingTree,
+}
+
+/// The selection [`follow_selection`] reads; `None` before the cursor's row
+/// has arrived.
+pub(crate) fn follow_key(state: &AppState) -> Option<FollowKey> {
+    state.selected_spec().and_then(|spec| match spec {
+        DetailSpec::Commit(oid) => Some(FollowKey::Commit(oid)),
+        DetailSpec::WorkingTree => Some(FollowKey::WorkingTree),
+        DetailSpec::Compare { .. } => None,
+    })
+}
+
+/// The cursor has moved off what was last followed, and the follow has not
+/// run yet.
+pub(crate) fn follow_owed(state: &AppState) -> bool {
+    follow_key(state) != state.followed
+}
+
+/// The cursor has left what was last followed, and the follow has not run:
+/// what the loop waits on for rest and the pane's `reading…` shows. Not
+/// before anything was followed — the first follow is never held.
+pub(crate) fn follow_behind(state: &AppState) -> bool {
+    state.followed.is_some() && follow_owed(state)
+}
+
+/// Does this update hold the follow back? Mid-burst (`defer_follow`, set by
+/// the loop) with the cursor off what was followed, and following would
+/// start work: the pane is shown, or the cursor is on a merge to probe.
+///
+/// Not when nothing was followed before (a `G` whose rows have just
+/// arrived, the first window at launch): there is nothing in flight to
+/// save, and the pane would sit empty until rest. Not with the pane hidden
+/// off a merge: that follow starts nothing — it only cancels a probe still
+/// running — so it runs now and leaves nothing to wait for.
+pub(crate) fn follow_waits(state: &AppState) -> bool {
+    state.defer_follow
+        && follow_behind(state)
+        && (state.detail.shown || selected_merge(state).is_some())
+}
+
 /// After any event: a shown pane follows the selection, the working-tree row
 /// included. A no-op while hidden, or when the selection did not change
 /// (`DetailState::follow`'s own check).

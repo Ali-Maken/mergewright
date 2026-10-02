@@ -1507,3 +1507,4 @@ fn a_failed_clipboard_write_ends_the_loop_with_its_error() {
 mod pace;
 mod perf_trace;
 mod pixel_scroll;
+mod settle;
