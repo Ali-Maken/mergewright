@@ -249,6 +249,13 @@ fn short_ref(full: &str) -> &str {
 }
 
 /// Note the write just launched under `id` (see [`RemoteState::running`]).
+///
+/// A write that cannot stop halfway also comes back as
+/// [`Command::Unstoppable`], which the caller queues **ahead of** the job's
+/// own command: from then on the pool lets no cancel reach it and its
+/// shutdown waits for it (m8-polish-and-ship/13b). One place, so no
+/// `Stoppable::No` launch can leave it out.
+#[must_use = "an unstoppable write's `Command::Unstoppable` goes ahead of its job"]
 pub(super) fn launched(
     state: &mut AppState,
     id: JobId,
@@ -256,7 +263,7 @@ pub(super) fn launched(
     op: Option<Operation>,
     stoppable: Stoppable,
     opened_by: Option<&'static str>,
-) {
+) -> Option<Command> {
     state.remote.running = Some(Running {
         id,
         description,
@@ -268,6 +275,7 @@ pub(super) fn launched(
     // guess: the write may be the merge or the rebase that answers it, or
     // something else that moves the same refs.
     state.remote.diverged_upstream = None;
+    matches!(stoppable, Stoppable::No(_)).then_some(Command::Unstoppable(id))
 }
 
 /// The keys a pull refused over his edits offers: they work from where he

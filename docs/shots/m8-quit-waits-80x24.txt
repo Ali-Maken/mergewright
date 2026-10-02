@@ -1,0 +1,50 @@
+=== `m m` then `q` while the merge runs ===
+ graft /code/api  8 commits
+  ◆    [◆ feature] finish the feature                               now  8d6cd28
+  ●    start the feature                                            2m   52f3b96
+● │ ▏  [main] main moves again                                      3m   45fa51d
+● │    main moves on                                                4m   37926a7
+●─╯    add the base                                                 5m   ed332bc
+●      Correct the note                                             1y   a82960b
+●      ╭ Quit? ────────────────────────────────────────────────────────╮ fadcfb3
+◇      │ merge main into feature is still running · quit waits for it  │ 64ded19
+       │ to finish                                                     │
+       │ if it stops at a conflict or fails, you stay to see it        │
+       │                                                               │
+       │                                                               │
+       │                                                               │
+       │ ▸[ Cancel ]   [ Quit ]                                        │
+       ╰───────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+ y quit  ←/→ move  ⏎ choose  esc cancel
+=== then `y`: Graft waits for git ===
+ graft /code/api  8 commits
+  ◆    [◆ feature] finish the feature                               now  8d6cd28
+  ●    start the feature                                            2m   52f3b96
+● │ ▏  [main] main moves again                                      3m   45fa51d
+● │    main moves on                                                4m   37926a7
+●─╯    add the base                                                 5m   ed332bc
+●      Correct the note                                             1y   a82960b
+●      Add the first note                                           1y   fadcfb3
+◇      Add a readme                                                 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merge main into feature · quitting when it finishes · esc stays

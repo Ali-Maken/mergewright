@@ -199,7 +199,7 @@ pub(super) fn collect_rest(
 }
 
 /// How long a child gets to clean up after `SIGTERM` before `SIGKILL`.
-const TERM_GRACE: Duration = Duration::from_secs(2);
+pub(super) const TERM_GRACE: Duration = Duration::from_secs(2);
 
 /// How often the grace period looks to see whether the child has gone.
 const TERM_POLL: Duration = Duration::from_millis(2);

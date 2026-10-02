@@ -315,10 +315,46 @@ pub fn stopped_row_before_keys(
 /// Beside the focused banner's short fixed list the reason shows. Beside a
 /// laddered row bar (after `Esc`) the ladder usually fills the row and the
 /// reason drops — accepted in the ticket.
+///
+/// One key gives way to the reason: `q quit`, last on the banner's bar
+/// (m8-13b). It is the way out he can always reach some other way, so when
+/// dropping it lets a fuller wording fit whole, it goes first.
 #[must_use]
 pub fn stopped_row(reason: &StopWording, hints: &[Hint], columns: u16) -> String {
-    /// The narrowest reason worth drawing.
-    const MIN_REASON: usize = 12;
+    if let Some((last, rest)) = hints.split_last()
+        && last.key == QUIT_YIELDS.key
+        && fullest_whole(reason, rest, columns) < fullest_whole(reason, hints, columns)
+    {
+        return stopped_row_as_given(reason, rest, columns);
+    }
+    stopped_row_as_given(reason, hints, columns)
+}
+
+/// The key that gives way to the stop's reason (see [`stopped_row`]).
+const QUIT_YIELDS: Hint = super::hint("q", "quit");
+
+/// The narrowest reason worth drawing.
+const MIN_REASON: usize = 12;
+
+/// Which of the reason's wordings, fullest first, fits whole beside
+/// `hints` — its index, or past the last when none does (or none is drawn
+/// at all). Smaller is fuller.
+fn fullest_whole(reason: &StopWording, hints: &[Hint], columns: u16) -> usize {
+    let room = usize::from(columns)
+        .saturating_sub(text_width(&hints_text(hints)))
+        .saturating_sub(3);
+    let wordings = std::iter::once(&reason.full).chain(&reason.shorter);
+    if room < MIN_REASON {
+        return usize::MAX;
+    }
+    wordings
+        .map(SanitizedText::as_str)
+        .position(|wording| text_width(wording) <= room)
+        .unwrap_or(usize::MAX)
+}
+
+/// [`stopped_row`] with the bar exactly as given.
+fn stopped_row_as_given(reason: &StopWording, hints: &[Hint], columns: u16) -> String {
     let bar = hints_text(hints);
     // `bar` carries its own leading space; the row adds one before the
     // reason and ` ·` between the two, three cells in all.

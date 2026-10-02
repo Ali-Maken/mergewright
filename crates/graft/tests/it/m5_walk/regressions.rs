@@ -399,20 +399,21 @@ fn bar_is(state: &AppState, three: &str) -> Result<(), String> {
     })
 }
 
-/// The focused banner's bar: all seven of `hints::banner_list`'s hints and
+/// The focused banner's bar: all eight of `hints::banner_list`'s hints and
 /// no `. more`, because they fit. `⏎ resolve` joined them in
-/// m6-conflicts/04 and leads the list (design note, Proposed change 2a).
+/// m6-conflicts/04 and leads the list (design note, Proposed change 2a);
+/// `q quit` joined last in m8-13b.
 fn the_banners_whole_list(state: &AppState) -> Result<(), String> {
     check(state.banner_focus, || {
         "⇥ did not take the banner's keyboard back".to_owned()
     })?;
     let drawn = bar_by(state, "c continue")?;
-    let wanted = " ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph";
+    let wanted = " ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph  q quit";
     check(drawn.trim_end() == wanted, || {
         format!("the banner's bar is {drawn:?}, not {wanted:?}")
     })?;
     check(!drawn.contains(". more"), || {
-        "the banner's seven hints fit at 80: nothing is left over".to_owned()
+        "the banner's eight hints fit at 80: nothing is left over".to_owned()
     })
 }
 

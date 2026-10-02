@@ -4,7 +4,7 @@
 //! [`super::runner::JobRunner`] is the seam callers see; everything here is
 //! what it is built from.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
@@ -25,30 +25,81 @@ pub(super) struct Assignment {
 
 /// The jobs that have been submitted and are not over yet, so that a
 /// cancellation can find its token.
+///
+/// Some of them must never be cancelled: a write that cannot stop halfway
+/// (`update::remote::Stoppable::No` — a merge, a rebase, a `--continue`, the
+/// journal's time machine). Cancelling one SIGTERMs git part-way through and
+/// leaves its state on disk with the journal entry `Pending`
+/// (m8-polish-and-ship/13b). Those are marked [`Live::unstoppable`]: no
+/// cancel reaches them, not one by id and not shutdown's, and shutdown waits
+/// for them to end instead ([`Live::wait_for_unstoppable`]).
 #[derive(Default)]
 pub(super) struct Live {
-    tokens: Mutex<HashMap<JobId, Cancel>>,
+    jobs: Mutex<Jobs>,
+    /// Signalled whenever a job is over, for [`Live::wait_for_unstoppable`].
+    ended: Condvar,
+}
+
+#[derive(Default)]
+struct Jobs {
+    tokens: HashMap<JobId, Cancel>,
+    /// Marked before or after the job is registered — the mark is by id, so
+    /// either order holds. Removed when the job is over.
+    unstoppable: HashSet<JobId>,
 }
 
 impl Live {
     pub(super) fn register(&self, id: JobId, cancel: Cancel) {
-        self.lock().insert(id, cancel);
+        self.lock().tokens.insert(id, cancel);
     }
 
     /// Forget a job that is over. Its token is no longer anyone's business.
     pub(super) fn finish(&self, id: JobId) {
-        self.lock().remove(&id);
+        let mut jobs = self.lock();
+        jobs.tokens.remove(&id);
+        jobs.unstoppable.remove(&id);
+        drop(jobs);
+        self.ended.notify_all();
     }
 
+    /// Mark `id` as a job no cancel may reach (the type doc).
+    pub(super) fn unstoppable(&self, id: JobId) {
+        self.lock().unstoppable.insert(id);
+    }
+
+    /// Cancel `id`, unless it is [`Live::unstoppable`]. `update` never asks
+    /// that (`stop_write` refuses in words); this is the floor under it.
     pub(super) fn cancel(&self, id: JobId) {
-        if let Some(token) = self.lock().get(&id) {
+        let jobs = self.lock();
+        if jobs.unstoppable.contains(&id) {
+            return;
+        }
+        if let Some(token) = jobs.tokens.get(&id) {
             token.cancel();
         }
     }
 
+    /// Cancel every job but the [`Live::unstoppable`] ones.
     pub(super) fn cancel_all(&self) {
-        for token in self.lock().values() {
-            token.cancel();
+        let jobs = self.lock();
+        for (id, token) in &jobs.tokens {
+            if !jobs.unstoppable.contains(id) {
+                token.cancel();
+            }
+        }
+    }
+
+    /// Block until no unstoppable job is live. **No bound**: such a job
+    /// ends when git does, and cutting it off is the very thing this
+    /// exists to prevent. A job is live from submit to its event, so one
+    /// still queued is waited for too: it runs, since nothing cancelled it.
+    pub(super) fn wait_for_unstoppable(&self) {
+        let mut jobs = self.lock();
+        while jobs.tokens.keys().any(|id| jobs.unstoppable.contains(id)) {
+            jobs = self
+                .ended
+                .wait(jobs)
+                .unwrap_or_else(PoisonError::into_inner);
         }
     }
 
@@ -56,8 +107,8 @@ impl Live {
     /// touch the map — so poisoning can only mean a panic somewhere that left
     /// the map itself intact. Refusing to cancel jobs because of that would
     /// turn one bug into a hang.
-    fn lock(&self) -> MutexGuard<'_, HashMap<JobId, Cancel>> {
-        self.tokens.lock().unwrap_or_else(PoisonError::into_inner)
+    fn lock(&self) -> MutexGuard<'_, Jobs> {
+        self.jobs.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
 

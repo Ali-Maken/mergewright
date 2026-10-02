@@ -23,4 +23,4 @@ STAGED (1)
 
 
 
- ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
+ ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph  q quit

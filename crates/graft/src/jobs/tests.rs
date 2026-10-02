@@ -748,3 +748,178 @@ fn the_detail_reads_come_back_as_products() {
     );
     assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
 }
+
+// m8/13b: a write that cannot stop half-way is never signalled.
+
+/// A job that runs until `released`, checking its token as it goes, and
+/// records whether it ever saw a cancel.
+fn watching_job(
+    started: Sender<()>,
+    released: Receiver<()>,
+    saw_cancel: Arc<AtomicBool>,
+) -> impl FnOnce(&Cancel) -> Outcome + Send + 'static {
+    move |cancel| {
+        started.send(()).expect("the test is still listening");
+        let deadline = Instant::now() + PATIENCE;
+        while Instant::now() < deadline {
+            if cancel.is_cancelled() {
+                saw_cancel.store(true, Ordering::Release);
+            }
+            if released.try_recv().is_ok() {
+                return Outcome::Done;
+            }
+            thread::yield_now();
+        }
+        Outcome::Failed("never released".to_owned())
+    }
+}
+
+/// `Command::Unstoppable`: a cancel by id never reaches the job, which runs
+/// to its own end and answers as finished, not cancelled.
+#[test]
+fn an_unstoppable_job_ignores_a_cancel_by_id() {
+    let (runner, events) = runner(1);
+    let (started, has_started) = mpsc::channel();
+    let (release, released) = mpsc::channel();
+    let saw_cancel = Arc::new(AtomicBool::new(false));
+    let id = runner.submit(watching_job(started, released, Arc::clone(&saw_cancel)));
+    runner.dispatch(Command::Unstoppable(id));
+    has_started.recv_timeout(PATIENCE).expect("the job starts");
+
+    runner.dispatch(Command::CancelJob(id));
+    release.send(()).expect("the job is waiting");
+
+    assert_eq!(next_event(&events), Event::JobFinished(id));
+    assert!(
+        !saw_cancel.load(Ordering::Acquire),
+        "the cancel never reached it"
+    );
+    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+}
+
+/// Shutdown cancels every other job but never the unstoppable one, and
+/// returns only once that one has ended. The release comes from a stoppable
+/// job when *its* cancel lands, so the unstoppable job is still running
+/// after `cancel_all`: had shutdown cancelled it, it would have seen so.
+#[test]
+fn shutdown_waits_for_an_unstoppable_job_and_never_cancels_it() {
+    let (runner, _events) = runner(2);
+    let (started, has_started) = mpsc::channel();
+    let (release, released) = mpsc::channel();
+    let saw_cancel = Arc::new(AtomicBool::new(false));
+    let ended = Arc::new(AtomicBool::new(false));
+    let unstoppable = {
+        let job = watching_job(started, released, Arc::clone(&saw_cancel));
+        let ended = Arc::clone(&ended);
+        runner.submit(move |cancel| {
+            let outcome = job(cancel);
+            ended.store(true, Ordering::Release);
+            outcome
+        })
+    };
+    runner.dispatch(Command::Unstoppable(unstoppable));
+    has_started
+        .recv_timeout(PATIENCE)
+        .expect("the unstoppable job starts");
+    let (trigger_started, trigger_has_started) = mpsc::channel();
+    runner.submit(move |cancel| {
+        trigger_started
+            .send(())
+            .expect("the test is still listening");
+        let deadline = Instant::now() + PATIENCE;
+        while Instant::now() < deadline {
+            if cancel.is_cancelled() {
+                release.send(()).expect("the unstoppable job is waiting");
+                return Outcome::Cancelled;
+            }
+            thread::yield_now();
+        }
+        Outcome::Failed("never cancelled".to_owned())
+    });
+    trigger_has_started
+        .recv_timeout(PATIENCE)
+        .expect("the stoppable job starts");
+
+    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert!(
+        ended.load(Ordering::Acquire),
+        "shutdown returned only after the unstoppable job ended"
+    );
+    assert!(
+        !saw_cancel.load(Ordering::Acquire),
+        "shutdown never cancelled the unstoppable job"
+    );
+}
+
+/// The grace covers a git child's whole stop: SIGTERM, the wait before
+/// SIGKILL, the reap. At the old 200 ms a worker still inside that wait was
+/// abandoned with its child alive.
+#[test]
+fn the_shutdown_grace_covers_a_git_childs_stop() {
+    assert!(SHUTDOWN_GRACE > graft_git::run::STOP_WITHIN);
+}
+
+/// No git child outlives shutdown: a cancelled job's git is stopped and
+/// reaped before `shutdown` returns (`Clean` means every worker ended, and
+/// a worker ends a stopped `run` only once the child is reaped). The child
+/// is git running a shell alias that records its pid; that pid is checked
+/// gone too.
+#[test]
+fn no_git_child_outlives_shutdown() {
+    let (runner, events) = runner(1);
+    let scratch = tempfile::TempDir::with_prefix("graft-shutdown-").expect("a temp dir");
+    let pidfile = scratch.path().join("pid");
+    let store = RepoStore::new(this_repository(), None);
+    let handle = store.shared().expect("this repository opens").handle();
+    let (started, has_started) = mpsc::channel();
+    let invocation = graft_git::run::GitInvocation::new(&handle)
+        .env("GRAFT_TEST_PIDFILE", pidfile.clone())
+        .args([
+            graft_git::run::GitArg::Flag("-c"),
+            graft_git::run::GitArg::Flag(
+                "alias.graftslow=!echo $$ > \"$GRAFT_TEST_PIDFILE\"; exec sleep 30",
+            ),
+            graft_git::run::GitArg::Flag("graftslow"),
+        ]);
+    let id = runner.submit(move |cancel| {
+        started.send(()).expect("the test is still listening");
+        match invocation.run(cancel) {
+            Err(graft_git::run::RunError::Stopped) => Outcome::Cancelled,
+            other => Outcome::Failed(format!("git was not stopped: {other:?}")),
+        }
+    });
+    has_started.recv_timeout(PATIENCE).expect("the job starts");
+    let deadline = Instant::now() + PATIENCE;
+    let pid = loop {
+        if let Some(pid) = std::fs::read_to_string(&pidfile)
+            .ok()
+            .and_then(|text| text.trim().parse::<u32>().ok())
+        {
+            break pid;
+        }
+        assert!(Instant::now() < deadline, "the alias never started");
+        thread::yield_now();
+    };
+
+    assert_eq!(runner.shutdown(SHUTDOWN_GRACE), Shutdown::Clean);
+    assert_eq!(next_event(&events), Event::JobCancelled(id));
+    // The alias's shell is git's child, not ours: once git is gone it is
+    // reparented and reaped by init. The deadline is a failure bound.
+    let deadline = Instant::now() + PATIENCE;
+    while alive(pid) {
+        assert!(
+            Instant::now() < deadline,
+            "git's child {pid} outlived shutdown"
+        );
+        thread::yield_now();
+    }
+}
+
+/// Is `pid` still a process? `kill -0` sends nothing; it only asks.
+fn alive(pid: u32) -> bool {
+    std::process::Command::new("kill")
+        .args(["-0", &pid.to_string()])
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok_and(|status| status.success())
+}

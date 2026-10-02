@@ -2159,8 +2159,8 @@ and the exact git command are from the captures only.
     rebase  . more`, the uncommitted row `⏎ changes  c commit  S stash  .
     more`, the changes pane on an unmerged file `e edit  c commit  ⇥
     graph  . more`, and the focused banner `c continue  s skip  a abort
-    M mergetool  e edit  ⇥ graph` — all six, and **no `. more`**: they
-    measure 57 columns, so ADR-0039's ladder never shortens them. A
+    M mergetool  e edit  ⇥ graph  q quit` (`q quit` last since m8-13b) —
+    all of them, and **no `. more`**: they measure 65 columns, so ADR-0039's ladder never shortens them. A
     sticky line takes the footer at 80, so the banner's hints are read
     after `Esc` dismisses it and `⇥` takes the keyboard back. Looking
     wrote nothing: git is still mid-rebase with one `Pending` entry.

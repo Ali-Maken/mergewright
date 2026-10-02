@@ -1295,7 +1295,7 @@ what right looks like: Capture header "What right looks like": the rows on scree
 # and `redesign` — sixty commits newer than all of them — pushing
 # `old-release` far down the graph. Opened over the real job pool, the
 # cursor walked down to `old-release`'s row with `j` **at this screen
-# size** (so the viewport really is scrolled: `history.top` is 24 here,
+# size** (so the viewport really is scrolled: `history.top` is 30 here,
 # not 0 — it differs by screen, which is why each capture has its own
 # session and its own number), then `r` pressed through `update` and the
 # real `graft_ops::preview::plan` run (crates/graft/tests/it/preview.rs,
@@ -1390,7 +1390,7 @@ what right looks like: Capture header "What right looks like": the rows on scree
 # and `redesign` — sixty commits newer than all of them — pushing
 # `old-release` far down the graph. Opened over the real job pool, the
 # cursor walked down to `old-release`'s row with `j` **at this screen
-# size** (so the viewport really is scrolled: `history.top` is 48 here,
+# size** (so the viewport really is scrolled: `history.top` is 54 here,
 # not 0 — it differs by screen, which is why each capture has its own
 # session and its own number), then `r` pressed through `update` and the
 # real `graft_ops::preview::plan` run (crates/graft/tests/it/preview.rs,

@@ -67,6 +67,7 @@ mod preview;
 mod published_repo;
 mod pull_over_edits;
 mod put_back_box;
+mod quit_waits;
 mod radar_bookkeeping;
 mod radar_not_checked;
 mod rebase_stop_forecast;

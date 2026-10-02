@@ -333,7 +333,7 @@ fn launch(
     // repository where it started rather than half-applied — which is what
     // `UNDO_CANNOT_STOP` used to be the honest answer to.
     state.status = Status::Busy(format!("{words}{}", super::remote::ESC_HINT));
-    super::remote::launched(
+    let unstoppable = super::remote::launched(
         state,
         id,
         words.to_owned(),
@@ -341,6 +341,7 @@ fn launch(
         super::remote::Stoppable::Yes,
         None,
     );
+    debug_assert_eq!(unstoppable, None, "an undo can be stopped: no mark");
     Some(if redo {
         Command::Redo(id, force)
     } else {
@@ -499,14 +500,14 @@ pub(super) fn revert_to_forced(
     // (review 08 Minor 2).
     let description = format!("revert to before \u{201c}{what}\u{201d}");
     state.status = Status::Busy(description.clone());
-    super::remote::launched(
+    commands.extend(super::remote::launched(
         state,
         id,
         description,
         None,
         super::remote::Stoppable::No(super::preview::HISTORY_CANNOT_STOP),
         None,
-    );
+    ));
     commands.push(Command::RevertTo(id, entry, true));
 }
 
@@ -528,7 +529,8 @@ pub(super) fn reverted_to(
         return Vec::new();
     }
     state.operating = None;
-    match outcome {
+    let every_step_ran = matches!(outcome, RevertedTo::Done { .. });
+    let commands = match outcome {
         RevertedTo::Done {
             description,
             total,
@@ -587,7 +589,11 @@ pub(super) fn reverted_to(
                 Vec::new()
             }
         }
-    }
+    };
+    // Last: a `q y` waiting on this jump quits only once the answer is in
+    // place, and only when every step ran (m8/13b).
+    super::quit::write_ended(state, id, every_step_ran);
+    commands
 }
 
 /// The time machine's own drift box. Same rail, same words, but `[ Revert ]`
@@ -1697,7 +1703,10 @@ mod tests {
             "the entry's own words, not its ULID"
         );
         assert!(
-            matches!(commands.as_slice(), [Command::RevertTo(_, _, true)]),
+            matches!(
+                commands.as_slice(),
+                [Command::Unstoppable(_), Command::RevertTo(_, _, true)]
+            ),
             "{commands:?}"
         );
     }
@@ -1798,11 +1807,12 @@ mod tests {
     }
 
     /// Review m8-13 Major 1, the undo way: the banner took the keyboard
-    /// after an undo put a merge back, and `q` there reaches the quit box
-    /// (DESIGN §2.2) rather than the banner's silent catch-all. The stop
+    /// after an undo put a merge back, and `q` there reaches the quit path
+    /// rather than the banner's silent catch-all. Git stopped and nothing
+    /// running, it quits with no box (the user's ruling on 13b). The stop
     /// and relaunch ways are in `quit`'s tests.
     #[test]
-    fn q_on_the_banner_after_an_undo_puts_a_merge_back_reaches_the_quit_box() {
+    fn q_on_the_banner_after_an_undo_puts_a_merge_back_quits_with_no_box() {
         use graft_core::event::{Event, KeyCode, KeyPress};
         let (state, read) = finish_undone(AppState::default());
         let state = read_lands(&state, read, Some(graft_git::state::InProgress::Merge));
@@ -1811,19 +1821,9 @@ mod tests {
             &state,
             crate::update::AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char('q')))),
         );
-        assert_eq!(next.quit, None, "the box asks first");
+        assert_eq!(next.quit, Some(crate::update::Quit::Requested), "quits");
+        assert!(next.confirm.is_none(), "no box");
         assert!(commands.is_empty(), "{commands:?}");
-        let open = next.confirm.as_ref().expect("the quit box is up");
-        let line: Vec<&str> = open
-            .view
-            .message
-            .iter()
-            .map(graft_term::SanitizedText::as_str)
-            .collect();
-        assert_eq!(
-            line,
-            ["merge is stopped \u{b7} next launch offers continue or abort"]
-        );
     }
 
     #[test]

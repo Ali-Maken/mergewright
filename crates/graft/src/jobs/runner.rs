@@ -465,20 +465,38 @@ impl<S: JobEvents> JobRunner<S> {
             .unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Stop the pool: cancel everything, then wait up to `grace` for the
-    /// workers to notice.
+    /// Mark `id` as a write that cannot stop halfway
+    /// (`Command::Unstoppable`): no cancel reaches it, and [`shutdown`]
+    /// waits for it to end rather than signalling its git child.
+    ///
+    /// [`shutdown`]: Self::shutdown
+    pub fn unstoppable(&self, id: JobId) {
+        self.live.unstoppable(id);
+    }
+
+    /// Stop the pool: cancel every job but the unstoppable writes, wait for
+    /// those to end, then wait up to `grace` for the rest to notice.
     ///
     /// Consumes the runner, because a pool that has been shut down must not be
-    /// able to accept another job. Never blocks indefinitely — the terminal
-    /// cannot be restored until this returns, so a job that ignores its token
-    /// costs `grace` and then is abandoned rather than waited on forever.
+    /// able to accept another job.
+    ///
+    /// - An **unstoppable** write ([`Self::unstoppable`]: a merge, a rebase,
+    ///   a `--continue`) is never signalled. Shutdown waits for it, with no
+    ///   bound: git cut off half-way through a rebase is work lost (m8/13b).
+    /// - Every **other** job is cancelled. `grace` must cover a git child's
+    ///   stop — `graft_git::run::STOP_WITHIN`, SIGTERM then SIGKILL, child
+    ///   reaped — or a worker still inside that stop is abandoned with its
+    ///   child alive ([`super::SHUTDOWN_GRACE`] covers it). A job that
+    ///   ignores its token past `grace` is abandoned rather than waited on
+    ///   forever.
     #[must_use]
     pub fn shutdown(self, grace: Duration) -> Shutdown {
         self.row_requests().clear();
         self.live.cancel_all();
         // Dropping the queue is what ends a worker that is idle: its `recv`
-        // fails, and it stops.
+        // fails, and it stops. A job still queued is handed out first.
         drop(self.queue);
+        self.live.wait_for_unstoppable();
 
         let still_busy = self.alive.wait_for_all(grace);
         if still_busy > 0 {
@@ -1266,6 +1284,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::ReadRemotes(id) => self.read_remotes(id),
             Command::ReadLeaves { id, sent, expected } => self.read_leaves(id, sent, expected),
             Command::CancelJob(id) => self.cancel(id),
+            Command::Unstoppable(id) => self.unstoppable(id),
             Command::AnswerCredential(id, answer) => self.credential(id, Some(answer)),
             Command::CancelCredential(id) => self.credential(id, None),
             // The loop writes this to the terminal itself (`event_loop`).

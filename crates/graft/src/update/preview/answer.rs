@@ -263,7 +263,7 @@ pub fn confirm_preview(
                 return;
             }
             state.status = Status::Busy(description.clone());
-            crate::update::remote::launched(
+            commands.extend(crate::update::remote::launched(
                 state,
                 id,
                 description,
@@ -272,7 +272,7 @@ pub fn confirm_preview(
                 // No key to press again: the time machine is aimed from a
                 // journal row, not from a key over the graph.
                 None,
-            );
+            ));
             commands.push(Command::RevertTo(id, entry, false));
         }
     }

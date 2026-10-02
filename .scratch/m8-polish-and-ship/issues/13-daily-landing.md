@@ -94,9 +94,9 @@ None public. `land_after_undo` may be generalised; MAP.md records the shape.
 - [x] **Major 1** — `q` with the banner focused reaches `quit::asked` (`update/banner/focus_keys.rs`, arm before the
       catch-all; stale doc replaced). Cause fix. Tests, each starting banner-focused after the way focus lands there,
       each seen **failing** with the arm disabled (4/4 FAIL) and passing with it:
-      conflict stop — `update::quit::tests::q_on_the_banner_after_a_conflict_stop_reaches_the_quit_box`;
-      relaunch — `update::quit::tests::q_on_the_banner_after_a_relaunch_reaches_the_quit_box`;
-      undo puts a merge back — `update::undo::tests::q_on_the_banner_after_an_undo_puts_a_merge_back_reaches_the_quit_box`;
+      conflict stop — `update::quit::tests::q_on_the_banner_after_a_conflict_stop_quits_with_no_box`;
+      relaunch — `update::quit::tests::q_on_the_banner_after_a_relaunch_quits_with_no_box`;
+      undo puts a merge back — `update::undo::tests::q_on_the_banner_after_an_undo_puts_a_merge_back_quits_with_no_box`;
       a write running under the focused banner — `update::quit::tests::q_on_the_banner_while_a_write_runs_names_the_write`.
       Each asserts the box line; the first two also that `y` quits.
 - [ ] **Major 2** — **not done: a question, not a build decision.** Neither keymap §2.2 (`q` "confirms if an
