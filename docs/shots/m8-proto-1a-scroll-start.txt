@@ -1,0 +1,50 @@
+ SCENE 1 · scroll feel
+ Go back about two weeks, fast, and stop on the commit that says “bump deps”. Use the keyboard.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ build 1  · keyboard 1 · keyboard 2 · trackpad 1 · trackpad 2 · wheel 1 · wheel 2
+▸ ●            [main] [origin/main] Speed up ledger query                                                                                             Ali        Fri Oct 02 16:40  b46ee1d
+  ●            feat: Log slow requests                                                                                                                Ali        Fri Oct 02 16:34  a4517d6
+  ●            feat: Add healthcheck endpoint                                                                                                         Ali        Fri Oct 02 15:59  6716489
+  ●            test: Split payment service                                                                                                            Mei Chen   Fri Oct 02 15:22  e6edaf8
+  ●            Log slow requests                                                                                                                      Jonas Berg Fri Oct 02 14:08  9ec353c
+  ●            Split payment service                                                                                                                  Priya Nair Fri Oct 02 13:41  e744b24
+  ●            Remove dead feature flag                                                                                                               Ali        Fri Oct 02 12:59  f2306d4
+  ●            docs: Add audit trail                                                                                                                  Mei Chen   Fri Oct 02 12:21  9599088
+  ●            Tidy logging                                                                                                                           Sam Okafor Fri Oct 02 12:02  c3a8db5
+  ●            docs: Add pagination to invoices                                                                                                       Lina Park  Fri Oct 02 11:56  9fbd873
+  ●            Move config to env                                                                                                                     Jonas Berg Fri Oct 02 11:35  e739778
+  ●            feat: Fix rounding in invoice totals                                                                                                   Tom Ruiz   Fri Oct 02 10:55  4bb36ec
+  ●─╮          Merge pull request #8994 from acme/tax-fix                                                                                             Tom Ruiz   Fri Oct 02 10:40  607e39d
+  ● │          test: Update README                                                                                                                    Priya Nair Fri Oct 02 08:58  2a8ae16
+  ●─┼─╮        Merge pull request #8993 from acme/ledger                                                                                              Tom Ruiz   Fri Oct 02 07:09  2922071
+  ● │ │        Validate IBAN input                                                                                                                    Lina Park  Fri Oct 02 07:02  6f83f5b
+  ● │ │        Validate IBAN input                                                                                                                    Tom Ruiz   Fri Oct 02 06:53  11e9e99
+  ●─┼─┼─╮      Merge pull request #8992 from acme/refunds                                                                                             Jonas Berg Fri Oct 02 05:42  1b451e2
+  │ │ ● │      docs: Clean up migrations                                                                                                              Sam Okafor Fri Oct 02 05:00  260642c
+  ●─┼─┼─┼─╮    Merge pull request #8991 from acme/payouts                                                                                             Mei Chen   Fri Oct 02 04:56  573e304
+  │ │ ●─╯ │    refactor: Add CSV export                                                                                                               Tom Ruiz   Fri Oct 02 03:55  f707c19
+  ● │ │   │    Drop unused index                                                                                                                      Jonas Berg Fri Oct 02 03:55  c266970
+  ● │ │   │    test: Fix typo in email template                                                                                                       Ali        Thu Oct 01 23:29  1ef6a97
+  │ │ ●   │    Log slow requests                                                                                                                      Ali        Thu Oct 01 23:17  1f3cd5c
+  ● │ │   │    docs: Add pagination to invoices                                                                                                       Ali        Thu Oct 01 22:27  b9bbf49
+  ● │ │   │    refactor: Fix typo in email template                                                                                                   Ali        Thu Oct 01 21:15  39bba7f
+  ● │ │   │    Clean up migrations                                                                                                                    Sam Okafor Thu Oct 01 21:03  99c3f7d
+  │ │ ●   │    Add audit trail                                                                                                                        Sam Okafor Thu Oct 01 18:48  c1710ba
+  ● │ │   │    feat: Add CSV export                                                                                                                   Mei Chen   Thu Oct 01 18:08  8696f3b
+  ● │ │   │    fix: Refactor billing client                                                                                                           Tom Ruiz   Thu Oct 01 16:50  be4840a
+  ● │ │   │    fix: Refactor billing client                                                                                                           Mei Chen   Thu Oct 01 14:21  8c1e61d
+  │ │ │   ●    refactor: Add pagination to invoices                                                                                                   Priya Nair Thu Oct 01 10:46  4d5b153
+  │ │ │   ●    Speed up ledger query                                                                                                                  Tom Ruiz   Thu Oct 01 09:05  7c36d38
+  │ │ │   ●    feat: Rename customer fields                                                                                                           Sam Okafor Thu Oct 01 08:38  65a3456
+  │ ● │   │    refactor: Add healthcheck endpoint                                                                                                     Sam Okafor Thu Oct 01 08:10  ad0f8fd
+  ● │ │   │    Fix flaky export test                                                                                                                  Ali        Thu Oct 01 07:20  29d7ae8
+  │ │ │   ●    Make refunds idempotent                                                                                                                Jonas Berg Thu Oct 01 06:41  d44f302
+  │ │ ●   │    fix: Fix flaky export test                                                                                                             Priya Nair Thu Oct 01 06:22  feca05a
+  │ │ │   ●    docs: Add tax region table                                                                                                             Jonas Berg Thu Oct 01 05:52  3bf68be
+  ● │ │   │    docs: Handle partial refunds                                                                                                           Jonas Berg Thu Oct 01 04:17  1b1246d
+  ●─╯ │   │    test: Add retry to webhook sender                                                                                                      Lina Park  Thu Oct 01 04:10  c947a5a
+  ●   │   │    Fix typo in email template                                                                                                             Jonas Berg Thu Oct 01 04:09  75b1441
+  ●   │   │    Make refunds idempotent                                                                                                                Jonas Berg Thu Oct 01 03:06  5b89c0c
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ row 1 of 17,694 · answers the fence: yes, 0.0 ms typical · frame sync: yes · ghostty 1.3.1
+ 1 / 2 switch build · s wheel step: 3 rows · space next task · ⌫ back to the top · q quit

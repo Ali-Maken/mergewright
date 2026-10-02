@@ -1,0 +1,50 @@
+ SCENE 3 · first run and the practice tour
+ Follow the practice card.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ◇ practice · /tmp/graft-practice-7f3a  a throwaway repo, not yours
+╭─ practice 2 of 8 · commit it ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── esc leave ╮
+│ c commits what's staged · type a message, ⏎                                                                                                                         ✓ stage commit undo │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+  ◌      Uncommitted changes · greet.rs (1 staged, 1 not)                                     greet.rs
+  ●      [main] Say hello                                   Practice    1 min ago    3b9d0c2
+  │ ●    [feature] Shout the greeting                       Practice    1 min ago    e5f6a71  ▸ ✓ staged @@ fn greet @@
+  ●─╯    Add README                                         Practice    2 min ago    8c2d4b3    -    println!("hi");
+  ●      Initial commit                                     Practice    2 min ago    1f0a9e5    +    println!("Hello, {name}!");
+                                                                                                  @@ fn farewell @@
+                                                                                                +fn farewell() { println!("bye"); }
+
+                                                                                              space stage / unstage · j k between changes · esc back
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ✓ staged · c commits it
+ (the app's keys are yours to find; the card names some) · q quit

@@ -1,0 +1,50 @@
+ SCENE 3 · first run and the practice tour
+ You've never used this app before. Find somewhere safe to practise.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ◆ billing-api ~/code/billing-api · main
+
+▸ ●      [main] [origin/main] Add invoice totals                                                                                                          Ali         2 hours ago  9f2c1ab
+  ●      Fix rounding in tax lines                                                                                                                        Lina Park   5 hours ago  41d0e7c
+  ●─╮    Merge pull request #212 from acme/csv-export                                                                                                     Tom Ruiz    yesterday    c8a1f02
+  │ ●    [feature/csv] Add CSV export                                                                                                                     Tom Ruiz    yesterday    77be3d9
+  │ ●    Escape commas in CSV                                                                                                                             Tom Ruiz    2 days ago   0d4c5aa
+  ●─╯    Speed up ledger query                                                                                                                            Mei Chen    2 days ago   e19f6b4
+  ●      [v2.3.0] Validate IBAN input                                                                                                                     Ali         3 days ago   5a7d2e1
+  ●      Make refunds idempotent                                                                                                                          Priya Nair  4 days ago   b3c90f8
+  ●─╮    Merge branch 'fix/rounding'                                                                                                                      Lina Park   5 days ago   2e6f1d3
+  │ ●    [fix/rounding] Round half to even                                                                                                                Lina Park   5 days ago   9c0a4b7
+  ●─╯    Add audit trail                                                                                                                                  Sam Okafor  6 days ago   6d2b8e0
+  ●      Log slow requests                                                                                                                                Mei Chen    last week    f01c3a9
+  ●      Initial import of billing                                                                                                                        Ali         2 months ago a1b2c3d
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ first time? ? keys here · ⌃P anything · ⌃P "tour" to practise
+ (the app's keys are yours to find; the card names some) · q quit

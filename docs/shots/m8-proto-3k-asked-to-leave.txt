@@ -1,0 +1,50 @@
+ SCENE 3 · first run and the practice tour
+ Enough practice. Go back to your own work now.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ◇ practice · /tmp/graft-practice-7f3a  a throwaway repo, not yours
+╭─ practice 5 of 8 · switch branch ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── esc leave ╮
+│ C opens the branch picker · type a name, ⏎                                                                                                        ✓ stage ✓ commit ✓ undo ✓ drag switch │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+▸ ◌      Uncommitted changes · greet.rs (1 staged, 1 not)
+  ●─╮    [main] Merge feature into main                                                                                                                   you         just now     7d1e2f0
+  ● │    Say hello                                                                                                                                        Practice    1 min ago    3b9d0c2
+  │ ●    [feature] Shout the greeting                                                                                                                     Practice    1 min ago    e5f6a71
+  ●─╯    Add README                                                                                                                                       Practice    2 min ago    8c2d4b3
+  ●      Initial commit                                                                                                                                   Practice    2 min ago    1f0a9e5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ✓ merged feature into main · u takes it back
+ (the app's keys are yours to find; the card names some) · q quit

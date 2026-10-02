@@ -1,0 +1,50 @@
+ SCENE 1 · scroll feel
+ Go back about two weeks, fast, and stop on the commit that says “bump deps”. Use the keyboard.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ build 2  ✓ keyboard 1 · keyboard 2 · trackpad 1 · trackpad 2 · wheel 1 · wheel 2
+▸ ●            docs: Update README                                                                                                                    Sam Okafor Sat Sep 26 07:54  0ab890e
+  ●            refactor: Speed up ledger query                                                                                                        Jonas Berg Sat Sep 26 07:18  5516c40
+  ●            Refactor billing client                                                                                                                Sam Okafor Sat Sep 26 06:11  0488415
+  ●            Guard against empty cart                                                                                                               Ali        Sat Sep 26 05:49  efb81b0
+  ●            test: Add metrics for retries                                                                                                          Jonas Berg Sat Sep 26 05:40  2936aa4
+  ●            refactor: Add retry to webhook sender                                                                                                  Sam Okafor Sat Sep 26 04:28  d27adfd
+  ●            refactor: Add pagination to invoices                                                                                                   Priya Nair Sat Sep 26 04:05  2939ce8
+  ●            test: Split payment service                                                                                                            Sam Okafor Sat Sep 26 02:43  39129a9
+  ●            refactor: Guard against empty cart                                                                                                     Ali        Sat Sep 26 01:33  26f1ba3
+  ●            test: Clean up migrations                                                                                                              Lina Park  Sat Sep 26 00:34  1a92180
+  ●            fix: Update README                                                                                                                     Tom Ruiz   Sat Sep 26 00:31  9303c14
+  ●            Move config to env                                                                                                                     Lina Park  Fri Sep 25 19:54  7e5ca58
+  ●            Fix typo in email template                                                                                                             Lina Park  Fri Sep 25 19:35  9b79254
+  ●            test: Add healthcheck endpoint                                                                                                         Sam Okafor Fri Sep 25 16:19  f7bd3dd
+  ●            docs: Handle expired tokens                                                                                                            Jonas Berg Fri Sep 25 15:58  5b46224
+  ●            Move config to env                                                                                                                     Mei Chen   Fri Sep 25 14:12  d4ee4ae
+  ●            Add audit trail                                                                                                                        Lina Park  Fri Sep 25 13:43  0c4bcce
+  ●            Make refunds idempotent                                                                                                                Ali        Fri Sep 25 13:34  5ecebd9
+  ●            refactor: Add retry to webhook sender                                                                                                  Sam Okafor Fri Sep 25 12:53  a33172e
+  ●            feat: Make refunds idempotent                                                                                                          Sam Okafor Fri Sep 25 11:28  a45cb1d
+  ●            Log slow requests                                                                                                                      Tom Ruiz   Fri Sep 25 09:50  10b5c25
+  ●            test: Speed up ledger query                                                                                                            Sam Okafor Fri Sep 25 09:39  0dd60b7
+  ●            fix: Move config to env                                                                                                                Lina Park  Fri Sep 25 09:08  bbe495a
+  ●            test: Refactor billing client                                                                                                          Priya Nair Fri Sep 25 08:44  1b05a75
+  ●            test: Split payment service                                                                                                            Priya Nair Fri Sep 25 05:29  e365f2c
+  ●            Remove dead feature flag                                                                                                               Jonas Berg Fri Sep 25 04:25  91e5b5f
+  ●            fix: Fix rounding in invoice totals                                                                                                    Sam Okafor Fri Sep 25 02:43  e0a8cfe
+  ●            fix: Clean up migrations                                                                                                               Lina Park  Fri Sep 25 02:07  7159971
+  ●            Fix flaky export test                                                                                                                  Lina Park  Thu Sep 24 17:57  27c0513
+  ●            Remove dead feature flag                                                                                                               Ali        Thu Sep 24 17:48  cd54211
+  ●            test: Tidy logging                                                                                                                     Priya Nair Thu Sep 24 17:09  73b21aa
+  ●            refactor: Fix timezone in reports                                                                                                      Mei Chen   Thu Sep 24 16:47  ec3ae90
+  ●            Fix flaky export test                                                                                                                  Jonas Berg Thu Sep 24 15:54  e1f0c86
+  ●            fix: Move config to env                                                                                                                Priya Nair Thu Sep 24 15:34  4a55bd0
+  ●            feat: Tidy logging                                                                                                                     Mei Chen   Thu Sep 24 14:50  4f51167
+  ●            Refactor billing client                                                                                                                Lina Park  Thu Sep 24 13:23  ac15bfd
+  ●            Validate IBAN input                                                                                                                    Lina Park  Thu Sep 24 12:29  dcc9ed2
+  ●            docs: Handle partial refunds                                                                                                           Lina Park  Thu Sep 24 12:25  c64f018
+  ●─╮          Merge pull request #8891 from acme/tax-fix                                                                                             Ali        Thu Sep 24 08:49  ce38c18
+  ● │          fix: Guard against empty cart                                                                                                          Ali        Thu Sep 24 08:26  2f07ee7
+  ● │          feat: Drop unused index                                                                                                                Priya Nair Thu Sep 24 08:24  52cfba1
+  │ ●          feat: Validate IBAN input                                                                                                              Tom Ruiz   Thu Sep 24 04:36  b185afc
+  │ ●          Add pagination to invoices                                                                                                             Priya Nair Thu Sep 24 03:16  9729fb5
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ row 181 of 17,694 · answers the fence: yes, 0.0 ms typical · frame sync: yes · ghostty 1.3.1
+ 1 / 2 switch build · s wheel step: 3 rows · space next task · ⌫ back to the top · q quit
