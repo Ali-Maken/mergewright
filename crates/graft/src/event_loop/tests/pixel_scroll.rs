@@ -465,6 +465,7 @@ fn a_deflate_error_falls_back_in_the_app() {
         state,
         &mut graphics,
         Outside::default(),
+        &mut crate::trace::Tracer::off(),
     )
     .expect("writing to memory cannot fail");
     let end = String::from_utf8_lossy(END_SYNCHRONIZED_UPDATE).into_owned();

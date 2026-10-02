@@ -1,0 +1,21 @@
+# m8 G-trace builder run: MONOREPO fixture, real pty 187x50, release, Unicode (no probe answers),
+# 50 j at 33 ms after 5 s; TERM_PROGRAM=vscode (set by the pty script). 2026-10-02T14:39Z Darwin arm64
+pty label=m8-trace profile=- rate=- size=187x50 wait_s=5.0 period_ms=33 hold_s=1.65 keys=50 frames_before_keys=11 frames_while_held=60 frames_after_release=1 bytes_per_key=6830 bytes_after_release=14129 tail_ms=1 rss_mb=22 first_byte_ms=3 broken=no
+check lines ok bad_fields=0
+check frames ok trace_lines=72 pty_frames=72
+check presses ok keys_sent=50 frames_with_motions=50 motions=50
+check names ok words_checked=34 hits=0
+header tier=unicode columns=187 rows=50 history_rows=192 refs=1331 term=vscode headers=3
+frames=72 span_ms=6414.7 frames_per_s=11.1
+wakes n=72 p50=1 p95=2 p99=8 max=8
+motions n=72 p50=1 p95=1 p99=1 max=1
+queued n=72 p50=0 p95=0 p99=0 max=0
+update_us n=72 p50=34 p95=147 p99=168 max=168
+commands n=72 p50=0 p95=1 p99=3 max=3
+draw_us n=72 p50=817 p95=2882 p99=3526 max=3526
+bytes n=72 p50=5148 p95=14129 p99=38733 max=38733
+write_us n=72 p50=47 p95=126 p99=406 max=406
+fence_us n=0
+input_age_us n=50 p50=1064 p95=3397 p99=3839 max=3839
+tail_ms=0.0
+power Now drawing from 'AC Power'

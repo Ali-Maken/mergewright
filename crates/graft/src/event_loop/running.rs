@@ -20,7 +20,8 @@ use super::redetect;
 use super::{Exit, Phase, Wake, Wakes};
 use crate::jobs::Dispatch;
 use crate::session::{Session, TerminalChange};
-use crate::update::{AppEvent, AppState, Command, Product, Quit, update};
+use crate::trace::Tracer;
+use crate::update::{AppEvent, AppState, Command, Product, Quit, Status, update};
 use crate::view::{draws_pixels, view_with_graphics};
 
 /// Begin a synchronized update: the terminal buffers what follows and paints
@@ -56,6 +57,7 @@ where
         state,
         &mut graphics,
         Outside::default(),
+        &mut Tracer::off(),
     )
 }
 
@@ -83,12 +85,18 @@ where
         &mut state,
         &mut graphics,
         Outside::default(),
+        &mut Tracer::off(),
     );
     (exit, state)
 }
 
 /// [`pump`], with the pixel tier's images and the replies about them; every
-/// upload is freed however the loop ends.
+/// upload is freed however the loop ends. `tracer` writes the frame trace
+/// (`crate::trace`); [`Tracer::off`] for none.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the loop's eight collaborators; grouping them would only rename the list"
+)]
 pub(super) fn pump_with<B, W, D, R>(
     terminal: &mut Terminal<B>,
     wakes: &mut W,
@@ -97,6 +105,7 @@ pub(super) fn pump_with<B, W, D, R>(
     state: AppState,
     graphics: &mut Graphics<R>,
     outside: Outside<'_>,
+    tracer: &mut Tracer,
 ) -> io::Result<Exit>
 where
     B: Backend<Error = io::Error> + Write,
@@ -106,7 +115,7 @@ where
 {
     let mut state = state;
     let exit = frames(
-        terminal, wakes, jobs, session, &mut state, graphics, outside,
+        terminal, wakes, jobs, session, &mut state, graphics, outside, tracer,
     );
     let released = release(terminal, graphics);
     // When the loop itself failed, its error is the one to report; a free
@@ -121,6 +130,10 @@ where
 const BATCH_BUDGET: Duration = Duration::from_millis(8);
 
 /// The loop's body: draw, wait, update, repeat.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "pump_with's collaborators, passed straight through"
+)]
 fn frames<B, W, D, R>(
     terminal: &mut Terminal<B>,
     wakes: &mut W,
@@ -129,6 +142,7 @@ fn frames<B, W, D, R>(
     state: &mut AppState,
     graphics: &mut Graphics<R>,
     outside: Outside<'_>,
+    tracer: &mut Tracer,
 ) -> io::Result<Exit>
 where
     B: Backend<Error = io::Error> + Write,
@@ -138,7 +152,7 @@ where
 {
     // Draw before waiting: the first frame must be on screen while Graft sits
     // idle waiting for the user's first key.
-    draw(terminal, session, state, graphics)?;
+    draw_traced(terminal, session, state, graphics, tracer)?;
     // When the first update not yet drawn began: job answers queued back to
     // back share one frame, up to `BATCH_BUDGET` of updates.
     let mut undrawn_since: Option<Instant> = None;
@@ -151,6 +165,7 @@ where
             // rather than spinning on a dead channel.
             return Ok(Exit::Quit);
         };
+        tracer.took(&wake);
         // Replies to the frames already drawn: an `ENOENT` here makes the
         // next frame transmit that strip again.
         let replied = graphics.drain()?;
@@ -169,7 +184,7 @@ where
                     });
                 }
                 if changed || replied {
-                    draw(terminal, session, state, graphics)?;
+                    draw_traced(terminal, session, state, graphics, tracer)?;
                     undrawn_since = None;
                 }
                 continue;
@@ -177,7 +192,9 @@ where
         };
 
         let began = *undrawn_since.get_or_insert_with(Instant::now);
+        let clock = tracer.clock();
         let (next, commands) = update(state, event);
+        tracer.updated(clock, commands.len());
         *state = next;
         wakes.mark(Phase::Updated);
 
@@ -209,7 +226,7 @@ where
         {
             continue;
         }
-        draw(terminal, session, state, graphics)?;
+        draw_traced(terminal, session, state, graphics, tracer)?;
         undrawn_since = None;
         wakes.mark(Phase::Drawn);
     }
@@ -410,6 +427,37 @@ where
     backend
         .write_all(&bytes)
         .and_then(|()| Write::flush(backend))
+}
+
+/// [`draw`], with the frame's line in the trace when one is being written.
+///
+/// A trace that could not be opened, or stopped on a failed write, says so
+/// on the status row (`trace: <reason>`) — once, as a sticky failure `Esc`
+/// dismisses — and the app runs on: the trace is a measurement, never a
+/// reason to stop. The loop sets the status itself because the failure is
+/// the loop's own (its file), not an event `update` was told about.
+fn draw_traced<B, R>(
+    terminal: &mut Terminal<B>,
+    session: &Session,
+    state: &mut AppState,
+    graphics: &mut Graphics<R>,
+    tracer: &mut Tracer,
+) -> io::Result<()>
+where
+    B: Backend<Error = io::Error> + Write,
+    R: GraphicsReplies,
+{
+    if let Some(reason) = tracer.unreported() {
+        state.status = Status::sticky(format!("trace: {reason}"));
+    }
+    let began = tracer.clock();
+    draw(terminal, session, state, graphics)?;
+    tracer.drew(began, state);
+    if let Some(reason) = tracer.unreported() {
+        state.status = Status::sticky(format!("trace: {reason}"));
+        draw(terminal, session, state, graphics)?;
+    }
+    Ok(())
 }
 
 /// Draw one frame, wrapped in a synchronized update.

@@ -1,0 +1,20 @@
+header tier=unicode columns=187 rows=50 history_rows=400 refs=12 term=ghostty
+frame at_us=1000 wakes=1 motions=1 queued=1 update_us=10 commands=1 draw_us=501 bytes=1024 write_us=7 fence_us=- input_age_us=100
+header tier=unicode columns=187 rows=50 history_rows=17700 refs=1330 term=ghostty
+frame at_us=2000 wakes=1 motions=1 queued=2 update_us=20 commands=0 draw_us=502 bytes=2048 write_us=14 fence_us=- input_age_us=200
+frame at_us=3000 wakes=1 motions=1 queued=0 update_us=30 commands=1 draw_us=503 bytes=3072 write_us=21 fence_us=- input_age_us=300
+frame at_us=4000 wakes=1 motions=1 queued=1 update_us=40 commands=0 draw_us=504 bytes=4096 write_us=28 fence_us=- input_age_us=400
+frame at_us=5000 wakes=3 motions=1 queued=2 update_us=50 commands=1 draw_us=505 bytes=5120 write_us=35 fence_us=- input_age_us=500
+frame at_us=6000 wakes=1 motions=1 queued=0 update_us=60 commands=0 draw_us=506 bytes=6144 write_us=42 fence_us=- input_age_us=600
+frame at_us=7000 wakes=1 motions=1 queued=1 update_us=70 commands=1 draw_us=507 bytes=7168 write_us=49 fence_us=- input_age_us=700
+frame at_us=8000 wakes=1 motions=1 queued=2 update_us=80 commands=0 draw_us=508 bytes=8192 write_us=56 fence_us=- input_age_us=800
+frame at_us=9000 wakes=1 motions=1 queued=0 update_us=90 commands=1 draw_us=509 bytes=9216 write_us=63 fence_us=- input_age_us=900
+frame at_us=10000 wakes=3 motions=1 queued=1 update_us=100 commands=0 draw_us=510 bytes=10240 write_us=70 fence_us=- input_age_us=1000
+frame at_us=11000 wakes=1 motions=1 queued=2 update_us=110 commands=1 draw_us=511 bytes=11264 write_us=77 fence_us=- input_age_us=1100
+frame at_us=12000 wakes=1 motions=1 queued=0 update_us=120 commands=0 draw_us=512 bytes=12288 write_us=84 fence_us=- input_age_us=1200
+frame at_us=13000 wakes=1 motions=1 queued=1 update_us=130 commands=1 draw_us=513 bytes=13312 write_us=91 fence_us=- input_age_us=1300
+frame at_us=14000 wakes=1 motions=1 queued=2 update_us=140 commands=0 draw_us=514 bytes=14336 write_us=98 fence_us=- input_age_us=1400
+frame at_us=15000 wakes=3 motions=1 queued=0 update_us=150 commands=1 draw_us=515 bytes=15360 write_us=105 fence_us=- input_age_us=1500
+frame at_us=16000 wakes=1 motions=0 queued=1 update_us=160 commands=0 draw_us=516 bytes=16384 write_us=112 fence_us=- input_age_us=-
+frame at_us=17000 wakes=1 motions=0 queued=2 update_us=170 commands=1 draw_us=517 bytes=17408 write_us=119 fence_us=- input_age_us=-
+frame at_us=18000 wakes=1 motions=0 queued=0 update_us=180 commands=0 draw_us=518 bytes=18432 write_us=126 fence_us=- input_age_us=-

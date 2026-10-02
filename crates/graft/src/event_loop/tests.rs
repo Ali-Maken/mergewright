@@ -199,6 +199,7 @@ fn pixel_run(wakes: Vec<Wake>, replies: Vec<Vec<u8>>) -> (Vec<String>, String) {
         state,
         &mut graphics,
         Outside::default(),
+        &mut crate::trace::Tracer::off(),
     )
     .expect("writing to memory cannot fail");
     assert_eq!(exit, Exit::Quit);
@@ -237,6 +238,7 @@ fn pixel_flushes(wakes: Vec<Wake>) -> (u64, Vec<String>) {
         state,
         &mut graphics,
         Outside::default(),
+        &mut crate::trace::Tracer::off(),
     )
     .expect("writing to memory cannot fail");
     let end = String::from_utf8_lossy(END_SYNCHRONIZED_UPDATE).into_owned();
@@ -369,6 +371,7 @@ fn forced_pixels_on_a_silent_terminal_attempt_kitty_and_f3_recovers() {
         state,
         &mut graphics,
         Outside::default(),
+        &mut crate::trace::Tracer::off(),
     )
     .expect("writing to memory cannot fail");
     let end = String::from_utf8_lossy(END_SYNCHRONIZED_UPDATE).into_owned();
@@ -1182,6 +1185,7 @@ fn prefetch_run(state: AppState, wakes: Vec<Wake>, idle: Vec<usize>) -> (u64, u6
         state,
         &mut graphics,
         Outside::default(),
+        &mut crate::trace::Tracer::off(),
     )
     .expect("writing to memory cannot fail");
     let counters = graphics.strip_stats();
@@ -1447,4 +1451,5 @@ fn a_failed_clipboard_write_ends_the_loop_with_its_error() {
     assert_eq!(error.to_string(), "the terminal went away");
 }
 
+mod perf_trace;
 mod pixel_scroll;

@@ -64,6 +64,14 @@ impl RefBadges {
         &self.stashes
     }
 
+    /// How many labels the graph can badge, over every commit: branches,
+    /// remotes, tags and whatever else [`Self::on`] lists. The frame trace's
+    /// `refs=` (m8-polish-and-ship G-trace), a size, not a list of names.
+    #[must_use]
+    pub fn count(&self) -> usize {
+        self.by_commit.values().map(Vec::len).sum()
+    }
+
     /// Whether `id` is any stash entry's own commit (`stash@{n}`, within
     /// the list's cap of `graft_git::stash::MAX_ENTRIES`). The evil-merge
     /// probe skips these: a stash commit is a merge whose tree differs

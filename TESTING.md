@@ -3114,3 +3114,31 @@ known gap" under The heavy tier above. **Colour: unverified (rule 5)** for every
   Then `J` — does it open at once? In Zed (Unicode) and in Ghostty (Pixel); in Ghostty, does the graph look like
   `fix-scroll-ghostty.png`? A slow scroll in Ghostty means his Ghostty fell back to raw (the known gap). His words go
   to `docs/field-notes.md` the same day.
+
+## M8: how he runs the trace (m8-polish-and-ship G-trace)
+
+`GRAFT_PERF_TRACE=<file>` makes the real app write one line of numbers per drawn frame (`crates/graft/src/trace.rs`):
+where the frame's time went (`update_us`, `draw_us`, `write_us`), how many bytes it sent, how many keys it drew
+(`motions`) and how old the oldest was when it finished (`input_age_us`). **Numbers only** — no path, branch, sha
+or subject; the header's only words are the tier and `$TERM_PROGRAM`. `history_rows` is the rows laid out so far,
+not the repository's commit count. Unset, nothing is written. A file that cannot be written shows
+`trace: <reason>` on the status row and the app runs on.
+
+He runs it once per terminal, on his work repo, from the Graft checkout:
+
+```sh
+# Ghostty, full screen
+GRAFT_PERF_TRACE=$HOME/graft-trace-ghostty.txt cargo run --release -p graft -- <his repo>
+# Zed's terminal
+GRAFT_PERF_TRACE=$HOME/graft-trace-zed.txt cargo run --release -p graft -- <his repo>
+```
+
+Then: scroll the way that felt laggy (hold `j` ~3 s, let go; a wheel flick), quit with `q`, send the two files.
+`scripts/m8-trace-summary.sh <file>` turns one into `docs/perf/m8-trace-<date>.txt` (p50/p95/p99/max per field,
+frames/s, `tail_ms` from the last frame that drew a key to the last frame, `pmset` power line); `--self-test` checks
+it on `scripts/testdata/m8-trace-sample.trace`.
+
+- [x] **Builder's run** · `scripts/m8-trace-monorepo.sh` → `docs/perf/m8-trace-monorepo.txt`: MONOREPO fixture
+  over a real pty, 50 `j`; checks `lines`, `presses` (1–50 frames drew them, motions = keys sent), `names` (no subject
+  word, author, ref or path in the file). **Right:** three `ok`.
+- [ ] **His run** (the user): the two commands above; the summaries go to `docs/perf/` and feed G-trace follow-up.

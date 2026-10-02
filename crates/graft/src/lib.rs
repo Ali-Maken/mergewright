@@ -23,6 +23,7 @@ pub mod repository;
 pub mod search;
 pub mod session;
 pub mod terminal;
+pub(crate) mod trace;
 pub mod update;
 pub mod view;
 pub mod working_tree;
