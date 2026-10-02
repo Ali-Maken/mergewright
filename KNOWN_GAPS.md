@@ -1098,3 +1098,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/flaky-first-marker-line | graft-git `first_marker_line_agrees` failed once in a full nextest run (13 builder, under 3 concurrent builds), passed alone and in 2 further full runs; seed not kept. Cause unknown. | **unverified** | M8 review |
 | M8/21-22-review-minors | Minors 3–10 in `docs/reviews/m8-21-22-hygiene.md` (Minors 1–2 folded into the review-fix ticket). | **broken** (per finding) | M8 |
 | M8/askpass-refusal-wording | A refused askpass peer now reaches `close()` → `Err(PermissionDenied)`, filed by graft-ops `apply/remote.rs:128` as `AfterState::AskPass`, whose text says "could not be cleaned up" — wrong for a refusal. Screen not checked. Root-only path. | **broken** | M8 (ticket 20 words-sweep) |
+| M8/13-review-minors | 10 Minors + 1 question (200 ms shutdown vs 2 s SIGTERM grace) in `docs/reviews/m8-13-landing.md`. | **broken** (per finding) / question | M8 |
