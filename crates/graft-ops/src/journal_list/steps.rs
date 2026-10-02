@@ -93,8 +93,14 @@ fn is_checkout(subject: &str) -> bool {
     subject.starts_with("checkout: moving from ")
 }
 
+/// A record a rebase writes on `HEAD`: `rebase (<step>): …`, and
+/// `rebase: fast-forward` — the sequencer's word for a pick that moves `HEAD`
+/// without a new commit (git 2.54.0 writes it for picks after an
+/// `update-ref` line; m8-polish-and-ship/14).
 pub(super) fn is_rebase(subject: &str) -> bool {
-    subject.starts_with("rebase (") || subject.starts_with("rebase -i (")
+    ["rebase (", "rebase -i (", "rebase: ", "rebase -i: "]
+        .iter()
+        .any(|prefix| subject.starts_with(prefix))
 }
 
 /// `rebase (finish): refs/heads/<b> onto …` → `refs/heads/<b>`.

@@ -101,6 +101,11 @@ pub(super) fn history_operation(
         .ok_or_else(|| format!("{verb} needs a commit row"))?
         .commit
         .id;
+    // A stash's commit is git's internal record of set-aside edits, not
+    // something to merge or rebase onto (m8-polish-and-ship/14).
+    if refs.is_stash(selected) {
+        return Err("a stash isn't a branch · ⏎ opens it".to_owned());
+    }
     let current =
         current_branch(refs).ok_or_else(|| format!("{verb} needs a branch checked out"))?;
     let source = source_at(refs, selected);

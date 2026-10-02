@@ -890,6 +890,41 @@ fn two_branches() -> RefBadges {
     )
 }
 
+/// m8/14: `m`/`r` on a stash row would merge or rebase onto the stash's
+/// internal commit, named by sha. Refused in words; no preview opens.
+#[test]
+fn m_and_r_on_a_stash_row_are_refused_in_words() {
+    for which in [HistoryKey::Merge, HistoryKey::Rebase] {
+        let mut state = on_screen();
+        let stash_row = state
+            .history
+            .as_ref()
+            .and_then(crate::history::History::selected)
+            .expect("on_screen selects a row")
+            .commit
+            .id;
+        let refs = crate::refs::badges(
+            &[(name(b"refs/heads/main"), oid(2))],
+            &HeadState::Branch(name(b"refs/heads/main")),
+            &std::collections::HashMap::new(),
+            &[(stash_row, 0)],
+            |_, _| Ok(graft_git::history::AheadBehind::default()),
+        )
+        .expect("no ahead/behind walk can fail here");
+        state.refs = Some(Arc::new(refs));
+        let mut commands = Vec::new();
+        history_key(&mut state, &mut commands, which, &mut ids());
+        assert!(state.preview.is_none(), "{which:?} opened a preview");
+        assert!(commands.is_empty(), "{commands:?}");
+        match &state.status {
+            Status::Sticky { reason, .. } => {
+                assert_eq!(reason, "a stash isn't a branch · ⏎ opens it");
+            }
+            other => panic!("expected a problem line, got {other:?}"),
+        }
+    }
+}
+
 fn detached() -> RefBadges {
     built(
         &[(name(b"refs/heads/feature"), oid(3))],
