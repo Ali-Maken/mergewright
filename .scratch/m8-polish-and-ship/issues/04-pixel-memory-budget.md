@@ -1,6 +1,6 @@
 # G-pixel-mem — the Pixel tier stays under 300 MB on a big repo
 
-Status: partial (step 2 shape built; acceptance measurement, heavy test and design docs remain — see NOTES). Re-homes parked `.scratch/m7-power-tools/issues/50-scroll-pixel-memory-budget.md`; gap
+Status: partial (everything built and measured; three boxes wait on a quiet-machine run and a reviewer heavy run — see NOTES, continuation 1). Re-homes parked `.scratch/m7-power-tools/issues/50-scroll-pixel-memory-budget.md`; gap
 `M7/47-pixel-rss`, broken)
 Build with: Opus (conductor, after scout `scouts/04-pixel-memory.md`: capacity_for has no caller; Place has no strip key; straight_alpha allocates per transmit; heavy.rs has no Pixel variant)
 Blocked by: 02
@@ -110,3 +110,58 @@ Touches checked: `StripCache::new` callers (grep: emphasis_layer, bench, ghostty
 iTerm2 band path keyed by `paint_key` (`iterm2.rs` tests pass); `KittyImages::{answer, forget_uploads, free_all}`
 untouched in logic (kitty tests pass); `view/strips/tests.rs` one-line change only (ticket 06's `CHROME_ROWS` area
 untouched); ticket 14's files untouched.
+
+## NOTES (continuation 1, 2026-10-02)
+
+No compaction. Scout used: `scouts/04-pixel-memory.md` (read, not re-run). Load average 10–43 on 10 cpus through
+every run below (other builders compiling): **every number here is recorded, not judged** — so boxes 2, 3 and 5
+stay open, though nothing measured contradicts them.
+
+Done:
+1. `scripts/scroll-pixel-memory.patch` regenerated against the pooled cache (`1c83f5a8`, then `15d1fa0e` splitting
+   backdrop re-keys into layout / alpha); mem line gains budget, floor, `minimum_wins`, `buffers_allocated`, transmit
+   scratch. Both scripts now print the load average beside each run. Two "after" blocks + reading lines appended to
+   `docs/perf/scroll-pixel-memory-budget.txt`.
+2. 47 run (`docs/perf/47-scroll-acceptance.txt`, HEAD `1c83f5a8`, load 39 → 11): `SUMMARY pty kitty-yes-free
+   rss_mb=251`, `kitty-yes-40m rss_mb=252` (before 396 / 369 at load ~1); kitty-no 458 / 488 (known gap, printed);
+   memory script iTerm2 277 / 278. **Not ticked: taken under load.** Re-run `scripts/47-scroll-acceptance.sh` on a
+   quiet machine and tick on its `SUMMARY pty` lines.
+3. Heavy test written (`15d1fa0e`): `heavy::budgets_hold_at_pixel_on_monorepo_with_j_held_free`,
+   `heavy::budgets_hold_at_pixel_on_monorepo_with_j_held_40mb` — each runs `held_key::pixel_rss_child` (scenario A,
+   Kitty + deflate) in its own process and asserts `getrusage` peak < 300 MB. Compiles and passes clippy with
+   `--features graft/heavy-tests`; **not run** (heavy tier is not builder-run). Tick after a reviewer run.
+4. Box 5: `pixel_scroll::*` green in nextest (5232/5232). 47 held_key at load: deflate A 40 MB/s `tail_ms=34`
+   `strip_transmits_held=89` (baseline 47 / 81), free `tail_ms=7` 155; iTerm2 39 (37); J1 pty tail 62 ms. One new
+   `SUMMARY miss`: see Findings 1. Not ticked: times under load.
+5. Docs: DESIGN §3.8 (`docs/design/03-graph-layout-algorithm.md`, byte budget, floor wins, pool, `UploadKey`),
+   ADR-0053 consequences line, `TESTING.md` "The strip memory bound" after "The strip bound".
+6. KNOWN_GAPS `M7/47-pixel-rss`: not touched (builders don't). State for the conductor: **unverified**, not broken —
+   kitty-yes 251/252 MB under load; 24×52 cell 434 / 314 MB on two runs (floor wins there, see Findings 3).
+
+Answer to step 1's question (rule 7, with line): the 160 backdrop rasterisations are layout re-keys. Patch counts at
+kitty-yes: 174 held = 5 new + 11 evicted-and-redrawn + 158 re-keyed, **all 158 by layout hash, 0 by alpha**; same
+split at every cell and on iTerm2. The fold is planned every frame from the cursor and the thread
+(`crates/graft/src/view/strips.rs:347-362`, `keep_for(drawn, cursor, reserved, thread ancestry)` → `Fold::plan`;
+ADR-0025 Decision 2), so a `j` past the lane cap changes the strips' layout. By design, already named in TESTING.md
+"The strip bound". Not a cache defect.
+
+Findings:
+1. `scripts/47-scroll-acceptance.sh:69` lists the raw Kitty pair as two names; ticket 02 (`d127565a`) added
+   `held_key::held_j_stops_on_release_pixel_free` (raw, free drain, `held_key.rs:104`), which therefore lands in the
+   judged run and misses `bytes_per_frame_held<=512KiB` (13.6 MB/frame: raw by construction, known gap
+   M7/46-kitty-no-deflate). Not my file's logic; one-line fix is adding it to `RAW`. Conductor's call.
+2. Question (no line yet): the real loop's pool is not steady — `buffers_allocated` rose +19 (17×37) to +116 (9×19)
+   during the 3 s hold, where the fast test sees none over its second half. Candidates to check:
+   `raster/pool.rs:41` raises `size` when a re-keyed strip is wider, after which `pool.rs:58` drops every smaller
+   buffer given back; or an evicted frame still shared (`Arc`) is not given back. Large allocations fell to 61–69/s
+   (from 437/s), so most churn is gone, not all.
+3. At a 24×52 cell the floor (5 strips × 2 layers ≈ 113 MB) beats the 96 MB budget on half the frames, by design;
+   RSS 434 then 314 MB on two runs, Malloc Large (empty) 267 then 148 MB. If the user's cell ever reaches that, the
+   floor and freed-block retention, not the budget, decide RSS.
+4. `frames::journal_find::j_with_a_broad_find_holds_the_frame_budget` missed p99 (23.7 ms) in the 47 run, at load
+   ~20: Unicode journal find, outside this ticket; a time under load, not judged.
+
+Touches: `held_key.rs` (one child test + two consts appended; no existing fn changed), `heavy.rs` (two tests + helper
+appended); scripts (load lines; 47's logic untouched); docs above. `docs/shots/m7/fix-scroll-release-unicode.txt`
+was rewritten by the 47 run (header only) and restored — not committed. No source file in 03's or 13b's sets touched
+(`git diff --stat 938cb611..HEAD`).

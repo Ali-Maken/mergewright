@@ -437,6 +437,69 @@ fn a_wait_with_no_answer_fails_instead_of_hanging() {
     );
 }
 
+/// m8 G-pixel-mem: the Pixel tier on `TeamSpec::MONOREPO` with `j` held
+/// for 3 s (`held_key`'s scenario A, 187x50, Kitty with deflate), peak RSS
+/// under PROMPT.md §7.1's 300 MB. A terminal that never falls behind.
+#[test]
+fn budgets_hold_at_pixel_on_monorepo_with_j_held_free() {
+    check_pixel(crate::drain_sink::FREE);
+}
+
+/// As [`budgets_hold_at_pixel_on_monorepo_with_j_held_free`], behind the
+/// 40 MB/s drain model `held_key` judges at.
+#[test]
+fn budgets_hold_at_pixel_on_monorepo_with_j_held_40mb() {
+    check_pixel(40_000_000);
+}
+
+/// Runs `held_key::pixel_rss_child` in a fresh process at `rate` and asserts
+/// its peak RSS: one hold per process, as [`check`] does per fixture.
+fn check_pixel(rate: u64) {
+    use crate::held_key::{PIXEL_RSS_CHILD_RATE, PIXEL_RSS_MARK};
+    // Built here, not in the child: the child's peak is the hold's alone.
+    graft_fixtures::team::borrow(&graft_fixtures::team::TeamSpec::MONOREPO)
+        .unwrap_or_else(|why| panic!("fixture: {why:?}"));
+    let turn = MEASURING.lock().unwrap_or_else(PoisonError::into_inner);
+    let exe = std::env::current_exe()
+        .unwrap_or_else(|why| panic!("the test binary cannot find itself: {why}"));
+    let output = Command::new(exe)
+        .args([
+            "held_key::pixel_rss_child",
+            "--exact",
+            "--nocapture",
+            "--test-threads=1",
+        ])
+        .env(PIXEL_RSS_CHILD_RATE, rate.to_string())
+        .output()
+        .unwrap_or_else(|why| panic!("the test binary cannot run again: {why}"));
+    drop(turn);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        output.status.success(),
+        "the measuring child failed:\n{stdout}\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let line = stdout
+        .lines()
+        .find_map(|line| {
+            line.split_once(PIXEL_RSS_MARK)
+                .map(|(_, rest)| rest.to_owned())
+        })
+        .unwrap_or_else(|| panic!("the child printed no result:\n{stdout}"));
+    println!("SUMMARY heavy pixel_rss drain={rate}B/s{line}");
+    let peak: u64 = line
+        .split_whitespace()
+        .find_map(|pair| pair.strip_prefix("peak_rss="))
+        .and_then(|peak| peak.parse().ok())
+        .unwrap_or_else(|| panic!("no peak_rss in {line:?}"));
+    assert!(
+        peak < PEAK_RSS_LIMIT,
+        "Pixel held j: peak RSS {} MiB is over the {} MiB budget ({line})",
+        peak / (1024 * 1024),
+        PEAK_RSS_LIMIT / (1024 * 1024)
+    );
+}
+
 /// Not a test of its own: the child side of [`budget_run::gated_in_child`]
 /// (m1-the-graph/57). Without [`budget_run::CHILD_REPO_ENV`] set — any
 /// ordinary run of the tier — there is nothing for it to measure and it
