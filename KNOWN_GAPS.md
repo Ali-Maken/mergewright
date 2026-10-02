@@ -1106,3 +1106,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/raster-pool-allocs | RasterPool still allocated 19–116 new buffers during a held `j` (04 continuation); cause not found. | **unverified** | M8 review |
 | M8/02-review-minors | 7 Minors in `docs/reviews/m8-02-pace.md`; heavy: 2 raw-Kitty `held_key` red (one new in 02) + a fixture timeout under load; release perf skipped (load 9–55). | **broken** (per finding) / **unverified** (perf) | M8 review |
 | M8/14-review-minors | 9 Minors in `docs/reviews/m8-14-daily-ops.md`; doc tests unverified in that review. | **broken** (per finding) | M8 |
+| M8/13b-unbounded-wait | `q` over a `Stoppable::No` write waits with no time limit; a hung git leaves the app open until Esc. By ruling, but no ceiling. Review 13b to judge. | **unverified** | M8 |
+| M8/13b-80col-quit-hint | Banner bar drops `q quit` first at 80 cols (test-checked); user judges whether that's the right one to drop. | **unverified** | M8 |
