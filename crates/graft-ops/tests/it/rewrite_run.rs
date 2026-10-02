@@ -17,7 +17,7 @@ use graft_ops::apply::{Applied, ApplyError, Resume, recover_interrupted, resume}
 use graft_ops::facts::read_facts;
 use graft_ops::operation::{FactsScope, Operation, RebaseParams, Refusal, Source, Tip};
 use graft_ops::preview::plan_as_run;
-use graft_ops::rewrite::{RewriteRequest, TodoAction, plan};
+use graft_ops::rewrite::{RewriteRequest, TodoAction, plan, reword_head};
 
 use crate::support::{
     NOW, Never, TempRepo, context, git_version, journal_for, run, run_undo, state_of, try_run,
@@ -354,6 +354,100 @@ fn undo_puts_every_branch_in_the_line_back() {
     run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{why:?}"));
 
     assert_eq!(state_of(&repo), before);
+}
+
+// ── Reword HEAD with branches built on it (m8/14 item 1) ─────────────────
+
+/// `reword_head` on `feature-a` with `feature-b` and `feature-c` built on
+/// it, as its preview would run it.
+fn reword_a2(repo: &TempRepo, message: &str) -> Operation {
+    let handle = repo.open();
+    let facts =
+        read_facts(&handle, git_version(), &Never, &FactsScope::default()).expect("the facts read");
+    let params = reword_head(&handle, &git_version(), message, &facts, None, &Never)
+        .unwrap_or_else(|why| panic!("it plans: {why:?}"));
+    Operation::Rewrite(params)
+}
+
+#[test]
+fn reword_head_plans_one_reword_row_with_the_line() {
+    let repo = line();
+    let Operation::Rewrite(params) = reword_a2(&repo, "a2, reworded\n") else {
+        unreachable!("reword_a2 builds a rewrite")
+    };
+    assert_eq!(params.todo.len(), 1, "{:?}", params.todo);
+    assert_eq!(params.todo[0].action, TodoAction::Reword);
+    assert_eq!(params.todo[0].commit, id(&repo, "feature-a"));
+    assert_eq!(params.onto, id(&repo, "feature-a~1"));
+    assert_eq!(
+        params.messages.get(&0).map(String::as_str),
+        Some("a2, reworded\n")
+    );
+    let names: Vec<&str> = params
+        .line
+        .branches
+        .iter()
+        .map(|tip| tip.name.as_str())
+        .collect();
+    assert_eq!(names, LINE);
+    assert!(params.made.is_empty());
+}
+
+/// J19 `reword-head`, the operation half: `HEAD`'s message changes, the
+/// branches built on it follow, and `u` puts all of them back. Truth read
+/// with git.
+#[test]
+fn reword_head_rewords_moves_the_line_and_undoes_as_one() {
+    let repo = line();
+    let before = state_of(&repo);
+    let a1 = id(&repo, "feature-a~1");
+    let tree = repo.git(&["rev-parse", "feature-a^{tree}"]);
+
+    let entry = run(
+        &repo,
+        &reword_a2(&repo, "a2, reworded\n\nwith a body\n"),
+        NOW,
+    );
+
+    assert_eq!(
+        repo.git(&["log", "-1", "--format=%B", "feature-a"])
+            .trim_end(),
+        "a2, reworded\n\nwith a body"
+    );
+    assert_eq!(parent(&repo, "feature-a"), a1, "only HEAD is rewritten");
+    assert_eq!(
+        repo.git(&["rev-parse", "feature-a^{tree}"]),
+        tree,
+        "its content stays"
+    );
+    assert_eq!(parent(&repo, "feature-b"), id(&repo, "feature-a"));
+    assert_eq!(parent(&repo, "feature-c"), id(&repo, "feature-b"));
+    assert_eq!(head(&repo), "refs/heads/feature-a", "HEAD came home");
+    assert_eq!(entry.kind, OperationKind::Rewrite);
+    assert_eq!(entry.status, EntryStatus::Committed);
+
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{why:?}"));
+    assert_eq!(state_of(&repo), before);
+}
+
+/// Nothing built on `HEAD`: not a rewrite — the plain amend rewords it.
+#[test]
+fn reword_head_with_nothing_built_on_it_is_a_plain_amend() {
+    let repo = line();
+    repo.git(&["switch", "-q", "feature-c"]);
+    let handle = repo.open();
+    let facts =
+        read_facts(&handle, git_version(), &Never, &FactsScope::default()).expect("the facts read");
+    let refused = reword_head(&handle, &git_version(), "c1!\n", &facts, None, &Never);
+    assert!(
+        matches!(
+            refused,
+            Err(graft_ops::rewrite::RewriteError::Refused(
+                Refusal::PlainAmend
+            ))
+        ),
+        "{refused:?}"
+    );
 }
 
 // ── Stopped, resumed, relaunched ────────────────────────────────────────

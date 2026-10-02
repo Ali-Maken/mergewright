@@ -277,6 +277,60 @@ fn amend_into(
     })
 }
 
+/// `a` on `HEAD` with nothing staged and branches built on his: `HEAD`'s
+/// message becomes `message`, and the line follows as an amend's does
+/// (m8-polish-and-ship/14, his ruling: "let him edit the message"). One
+/// `Reword` row, its message saved in `messages` so git's editor never
+/// opens; `onto` = `HEAD^`.
+///
+/// Not a [`RewriteRequest`] variant: the app matches that enum
+/// exhaustively, and this is called from the commit editor's `⏎`, which
+/// already holds the message.
+///
+/// # Errors
+/// [`RewriteError::Refused`], in this order: not on a branch; `HEAD` is
+/// the first commit (`RootCommit`) or a merge (`MergeInRange`); the line
+/// forks, or a branch of it is checked out elsewhere; git older than 2.38;
+/// nothing built on `HEAD` (`PlainAmend`: the app's amend rewords it).
+/// [`RewriteError::Facts`] when a read fails; [`RewriteError::Stopped`].
+pub fn reword_head(
+    repo: &RepoHandle,
+    git: &GitVersion,
+    message: &str,
+    facts: &RepoFacts,
+    default_branch: Option<&RefName>,
+    stop: &dyn Stop,
+) -> Result<RewriteParams, RewriteError> {
+    let head = head_of(repo, facts, stop)?;
+    let Some(&onto) = parents_of(repo, head.oid, stop)?.first() else {
+        return Err(RewriteError::Refused(Refusal::RootCommit {
+            commit: head.oid,
+        }));
+    };
+    let range = read_range(repo, onto, head.oid, false, stop)?;
+    refuse_merges(&range)?;
+    let line = line_of(repo, git, &head, default_branch, stop)?;
+    if line.branches.len() == 1 {
+        return Err(RewriteError::Refused(Refusal::PlainAmend));
+    }
+    let mut todo: Vec<TodoLine> = range.iter().map(RangeCommit::pick).collect();
+    for row in &mut todo {
+        row.action = TodoAction::Reword;
+    }
+    let messages = (0..todo.len())
+        .map(|row| (row, message.to_owned()))
+        .collect();
+    Ok(RewriteParams {
+        head,
+        onto,
+        todo,
+        line,
+        messages,
+        made: Vec::new(),
+        index_base: None,
+    })
+}
+
 /// `a` reaches exactly the commits absorb could put a hunk into
 /// ([`your_commits`]); a target past them — an ancestor of `HEAD`, checked
 /// before — is refused by what ended the walk (06e ruling table). `HEAD`

@@ -38,6 +38,7 @@ use super::{
 };
 
 mod answer;
+mod came_back;
 mod put_back;
 mod rebuild;
 mod returned;
@@ -46,6 +47,7 @@ use answer::{Outcome, answer, status_for};
 use put_back::HisBytes;
 use returned::{Returned, put_back};
 
+pub use came_back::{came_back_from_index, came_back_words};
 pub(super) use put_back::tracked_changed;
 
 /// The message `S` is created and listed under (ADR-0045 §4 step 3).

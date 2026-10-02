@@ -45,7 +45,7 @@ mod unpushed;
 
 pub use absorb::absorb_plan_map;
 pub use dependents::dependents;
-pub use plan::plan;
+pub use plan::{plan, reword_head};
 pub use progress::{edit_stop, progress};
 pub use todo::{default_message, squash_groups, validate};
 pub use unpushed::ABSORB_FALLBACK_DEPTH;

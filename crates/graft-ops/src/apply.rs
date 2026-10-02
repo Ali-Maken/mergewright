@@ -51,6 +51,7 @@ pub use remote::RemoteHooks;
 pub use restart::{RestartPlan, RestartReadError, StageSource, restart_gate, stage_source};
 pub use resume::{Resume, resume};
 pub(crate) use resume::{live_entry, live_entry_facts};
+pub use set_aside::{came_back_from_index, came_back_words};
 
 pub(crate) use error::{as_apply_error, reason_for};
 pub(crate) use record::{Opening, Pending, PrepareError, begin, finish, kind_name};

@@ -307,7 +307,7 @@ fn lost(staged: &[(u8, PathBuf)], moved_on: &BTreeSet<PathBuf>) -> Vec<PathBuf> 
 
 /// `--name-status -z` output (`<X>\0<path>\0` pairs) → `(X, path)`, `X` the
 /// status letter (a score after it, as in `C75`, is dropped).
-fn name_status(printed: &[u8]) -> Result<Vec<(u8, PathBuf)>, RunError> {
+pub(super) fn name_status(printed: &[u8]) -> Result<Vec<(u8, PathBuf)>, RunError> {
     let mut fields = printed.split(|byte| *byte == 0).filter(|f| !f.is_empty());
     let mut staged = Vec::new();
     while let Some(status) = fields.next() {
