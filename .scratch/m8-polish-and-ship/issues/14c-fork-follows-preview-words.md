@@ -1,17 +1,27 @@
 # G-daily 3b — the preview, the rewrite editor and the banner say each fork's fate
 
-Status: draft — **blocked on his yes** to Proposed 2c, and on `fork-follows-engine`.
-Build with: (blank — brownfield, scout first)
-Needs: `fork-follows-engine`: `PreviewPlan.forks`, `Fork`, `ForkFate`, `WhyStays::words`, `RewriteProgress.fork`.
+Status: ready
+Build with: (blank — brownfield, scout first; conductor sets it after the scout)
+Blocked by: 14b
+Needs: `fork-follows-engine`: `PreviewPlan.forks`, `PreviewPlan.forks_more`, `Fork`, `ForkFate`, `WhyStays::words`,
+`RewriteProgress.fork`.
 File set: graft `update/preview/line_rows.rs`, `view/rewrite_editor/right.rs`, the banner's chain line (scout names
 the file), their tests; graft-ops `preview/effects.rs` only to delete `left_behind`/`left_behind_more` and
 `LeftBehind` once nothing reads them.
 
 ## Read first
 - `docs/design-notes/m8-polish-and-ship.md` "Pass 2c" (the words and looks)
+- `docs/adr/0059-a-branch-forked-off-a-rewritten-commit-follows-when-clean.md` §2 (fates, reasons)
 - `docs/research/ux-principles.md` §3.6 (different things look different)
 - `crates/graft/MAP.md` `update::preview` (line rows), rewrite editor, banner; `crates/graft-ops/MAP.md` `## preview`
 - Today's drawing: `update/preview/line_rows.rs:134,173`, `view/rewrite_editor/right.rs:216` (ticket 14 NOTES)
+
+## Scout questions (answer before `Build with` is set; ≤1 page, code not intent)
+1. Every reader of `left_behind` / `left_behind_more` / `LeftBehind` in the workspace (file:line), docs excluded.
+2. The shared line-row builder: its file, and each caller (rebase `r`, `R`, `a`, absorb, rewrite editor).
+3. The dependents' row look today (`built on yours`): its marker glyph and theme token; the left-behind row's.
+4. The banner's chain line: which file draws `feature-b, branch 2 of 3`, and from which `RewriteProgress` fields.
+5. Tests and captures that assert the `left behind:` words (file:line, shot paths), `TESTING.md` rows included.
 
 ## Scope
 In: one row per fork in the line rows of every rewrite/rebase preview and in the rewrite editor's right pane;

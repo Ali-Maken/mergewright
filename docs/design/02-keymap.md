@@ -196,7 +196,7 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
 | `Ctrl+Z`, `u` | Undo (ADR-0002) |
 | `Ctrl+Shift+Z`, `U` | Redo |
 | `Ctrl+R` | Manual refresh |
-| `q`, `Ctrl+C` | Quit. `Ctrl+C` quits at once, never boxed. `q` confirms while a write runs ("`q` while a write runs", below) or git is stopped mid-operation (§2.6a `q`) |
+| `q`, `Ctrl+C` | Quit. `Ctrl+C` quits at once, never boxed. `q` confirms only while a write runs ("`q` while a write runs", below). Git stopped mid-operation with nothing running: `q` quits at once, no box; the next launch keeps the banner, which offers continue or abort (§2.6a `q`; approved 2026-10-02) |
 | `↑ ↓ ← →` | Move selection / scroll |
 | `j k h l` | Move down/up/left/right (vim, movement only) |
 | `g` / `G` | Jump to top / bottom (vim) |
@@ -211,8 +211,8 @@ terminal it targets. `U` is therefore not just a convenience alias — it's
 the binding that actually works everywhere, and the one the help overlay
 and any redo prompt should lead with.
 
-**`q` while a write runs** (M8/13 review Major 2; planner 2026-10-02; **Proposed — the user has not seen these
-words**). One box, title `Quit?`, `[ Cancel ] [ Quit ]`, Cancel first, `y` quits (§2.3c). Its line depends on
+**`q` while a write runs** (M8/13 review Major 2; planner 2026-10-02; approved 2026-10-02, field notes :89). One box,
+title `Quit?`, `[ Cancel ] [ Quit ]`, Cancel first, `y` quits (§2.3c). Its line depends on
 whether the write can stop halfway:
 
 - **A write that can stop** (a fetch, an undo): `<op> is still running · quit stops it`. `y` stops it, then quits
@@ -367,7 +367,7 @@ approved 2026-09-23). A launch mid-operation keeps the banner. So does an undo t
 | `a` | Abort, back to where the operation started, behind a confirm box. A merge begun in the shell aborts too (`git merge --abort`), journaled, so `u` puts the merge back as it was (approved 2026-09-24) |
 | `M` | Launch the configured mergetool on the first conflicted file (§2.6) |
 | `e` | Open the first conflicted file in `$EDITOR` at its first marker (§2.4) |
-| `q` | Quit, the same `q` as §2.2, answered from the focused banner too (M8/13 Major 1). A write running (a `c` continue, say): §2.2's "`q` while a write runs" box. Git stopped, nothing running: box `<kind> is stopped · next launch offers continue or abort` today, **pending the user's ruling** (design note 2b: quit with no box). The banner's hint bar draws `q quit` **last**, and drops it first when the row is narrow, as the graph bar's tail does: `q` is bound and is not a navigation global, so it is a slot candidate (§2.1), and a stop is where he lands (P5), so the way out is shown there (heuristic 6). Planner 2026-10-02, **Proposed — not yet seen by the user** |
+| `q` | Quit, the same `q` as §2.2, answered from the focused banner too (M8/13 Major 1). A write running (a `c` continue, say): §2.2's "`q` while a write runs" box — a write that can't stop is waited for, then Graft quits. Git stopped, nothing running: quits at once, no box; git's stopped state stays on disk and the next launch keeps the banner, which offers continue or abort (design note 2b). The banner's hint bar draws `q quit` **last**, and drops it first when the row is narrow, as the graph bar's tail does: `q` is bound and is not a navigation global, so it is a slot candidate (§2.1), and a stop is where he lands (P5), so the way out is shown there (heuristic 6). Planner 2026-10-02; approved 2026-10-02 (field notes :89) |
 | `Tab` / `Esc` | Give the keyboard back to the panes; the banner stays drawn. `Esc` never aborts (KNOWN_GAPS :549; Amended 2026-09-26 (M7, user "all yes")) |
 
 With focus given back, `M` and `e` keep working on the file under the
@@ -608,9 +608,10 @@ action id, ADR-0055; bar words-only, ADR-0058), §2.2 (`?` is help on every scre
 (palette and help as one widget, ADR-0056), §2.13 (`t` tour, `?` help, list keys, `q`), §2.18 (practice tour, new).
 The code follows as the M8 groups land.
 
-2026-10-02 (planner, M8/13 review Major 2 and the banner's `q`; **Proposed, the user has not seen it**): §2.2 `q` row
-and "`q` while a write runs" (a write that can't stop halfway: `q y` waits for it, then quits; stays if it stops or
-fails), §2.6a `q` row (`q` on the focused banner; `q quit` last on its bar). Spec:
+2026-10-02 (planner, M8/13 review Major 2 and the banner's `q`; approved by the user 2026-10-02, field notes :89): §2.2
+`q` row and "`q` while a write runs" (a write that can't stop halfway: `q y` waits for it, then quits; stays if it
+stops or fails), §2.6a `q` row (`q` on the focused banner; `q quit` last on its bar; git stopped with nothing running:
+quits with no box, the next launch offers continue or abort). Spec:
 `.scratch/m8-polish-and-ship/issues/quit-waits-for-a-write.md`.
 
 ---

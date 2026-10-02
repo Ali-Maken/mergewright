@@ -27,7 +27,7 @@ with no shell.
 | Readable in his theme | cursor row unreadable in dark, twice (:44, :48); 3.04:1 (:50); text on it 4.28:1 (M5/44); branch label on it "dim magenta on grey, hard to read" (real-vs-mockup 6) | daily, dark |
 | Install like a real tool | runs a build from this repo today | once |
 | Two daily rulings | "pull with nothing new → cursor stays; `a` on HEAD with nothing staged → reword" (:86) | daily |
-| Fork left behind (2c) | "mid-chain branch left behind after `a` → fine until M8" (:86) — what it should do is not his yet (Proposed 2c) | with dependents |
+| Fork left behind (2c) | "mid-chain branch left behind after `a` → fine until M8" (:86); ruled 2026-10-02 (:89 item 5): it **moves too** when it moves clean, shown in the preview first | with dependents |
 
 ## Prior art (T take · R reject · I invent)
 
@@ -67,7 +67,7 @@ with no shell.
 | Man page | ripgrep `--generate man` | from our CLI table + keymap; staleness test | T |
 | Notarisation | dist doesn't | none (ADR-0057) | R (his call) |
 | Reword HEAD with a branch on it (2c) | lazygit reword, no preview (`stacked-branches` §1.9) | M7's rule: previewed when a branch is built on HEAD (keymap `a` row, :219) | T (have) |
-| **Fork off a rewritten commit** (2c, proposed) | jj: every descendant follows (`stacked-branches` §1.4); branchless `restack` + skip-on-conflict (§1.3); Graphite `sync` skips conflicting (§1.2) | follows when its replay forecasts clean, else stays and says why (ADR-0059, proposed) | T descendants · T skip-on-conflict (for forks only) |
+| **Fork off a rewritten commit** (2c, approved 2026-10-02) | jj: every descendant follows (`stacked-branches` §1.4); branchless `restack` + skip-on-conflict (§1.3); Graphite `sync` skips conflicting (§1.2) | follows when its replay forecasts clean, else stays and says why (ADR-0059, accepted) | T descendants · T skip-on-conflict (for forks only) |
 
 **Dark pick: B** (`docs/shots/m8-proto-4a-dark-a-b.txt:21-24`): cursor row vs ground **3.14** (A 3.05, floor 3.0); text
 on cursor row **5.14** (A 4.61, floor 4.5); muted text on ground **6.95** (A 6.15, floor 4.5). Blue lane on cursor row
@@ -132,7 +132,8 @@ count was wrong. Nothing built on HEAD stays 3, no preview, not in the fence (M7
 | Clone done | new repo's graph, cursor on HEAD |
 | Pull, nothing new | cursor where it was, `up to date ✓` |
 | `u` / `U` done | on HEAD if it moved, else on the first ref the entry touched (2b) |
-| `q` while a write runs | box `<op> is still running · quit stops it`, `y` quits (2b) |
+| `q` while a write runs | box `Quit?` (keymap §2.2). Can stop (fetch, undo): `<op> is still running · quit stops it`, `y` stops it, quits. Can't stop (merge, rebase, …): `quit waits for it to finish`, `y` → status row `<op> · quitting when it finishes · esc stays`; ends done → journaled, quits; stops or fails → stays, where that event lands (2b) |
+| `q`, git stopped mid-operation, nothing running | quits, no box; next launch keeps the banner: continue or abort (keymap §2.6a, 2b) |
 | On-disk rename can't finish | old names stay in force; `rename: still using the old names · <reason>` (2b) |
 
 ```journey-counts
@@ -304,24 +305,22 @@ repo. `update` calls `Keymap::translate` once before any `*_key` dispatcher. Eve
 4. The cursor-row fill excludes the graph column — ADR-0058 §2. Undo cost: every cursor-row capture and paint test.
 5. (2b) **Crate and package names stay `graft-*`** in M8: unpublished (ADR-0057), and renaming them breaks every
    `crates/graft/…:line` citation in docs and gaps. Rename before the source is published (a gap row).
-6. (2c, **proposed**, only if he says *move*) The rewrite todo gains `label`/`reset` for fork sections — ADR-0059.
+6. (2c, **approved 2026-10-02**, he said *move*) The rewrite todo gains `label`/`reset` for fork sections — ADR-0059.
    Options: one rebase with sections / a second rebase in the entry / a merge-tree replay. **One rebase**: git's stops,
    abort and kill -9 state stay the only truth (ADR-0047's reason). Undo cost: the saved-plan format (`plan.json`).
 
 ## Where I'd differ from DESIGN.md
 
 Pass-1 Proposed 1–5 approved 2026-10-02 and applied. **PROMPT.md still to edit** (handed to the conductor).
-2b, **Proposed** (conductor → user, small): keymap §2.2 `q` row "confirms if an operation is in progress" read as
-*a write is running*; a stopped git operation quits without a box (relaunch offers it back, PROMPT §9). Trade-off: one
-fewer box on a daily path vs. a quit that leaves a rebase stopped on disk — which M6 already handles.
-2c, **Proposed** (planner → user): **a branch started from one of the commits he rewrites moves onto the new commit
-when it can without conflict** (ADR-0059, proposed). Today it stays and the preview says `left behind` (m7/37). His
-word was "fine until M8" (:86) — no line of his says it should follow; ticket 14 item 2's "Ruling" is not his.
-Trade-off: no forgotten fork and no hand rebase afterwards, vs. a branch he didn't name moving (shown before `y`,
-undone by one `u`; a conflicting, pushed or elsewhere-checked-out one stays, in words). Ask him: *"You amend or
-reword a commit that another of your branches was started from. Should that branch move onto the new commit too
-(only if it moves without conflict, shown in the preview first), or stay where it is? move / stay"*. Stay → item 2
-closes as designed; drop `fork-follows-engine.md` and `fork-follows-preview-words.md`.
+2b, **resolved 2026-10-02** (field notes :89, item 1, "go ahead with your recommendation"): keymap §2.2 `q` row
+"confirms if an operation is in progress" read as *a write is running*; a stopped git operation quits without a box
+(relaunch offers continue or abort, PROMPT §9). `q` during a write that can't stop waits for it, then quits (seen, not
+overruled). Applied: keymap §2.2 and §2.6a `q` rows, dated 2026-10-02.
+2c, **resolved 2026-10-02** (field notes :89, item 5, "go ahead with your recommendation": he said *move*): **a branch
+started from one of the commits he rewrites moves onto the new commit when it can without conflict**, shown in the
+preview first (ADR-0059, accepted). Replaces m7/37's `left behind`. Trade-off as weighed: no forgotten fork and no hand
+rebase afterwards, vs. a branch he didn't name moving (shown before `y`, undone by one `u`; a conflicting, pushed or
+elsewhere-checked-out one stays, in words). Specs `fork-follows-engine.md` and `fork-follows-preview-words.md` stand.
 
 ## New UI
 
@@ -334,7 +333,7 @@ closes as designed; drop `fork-follows-engine.md` and `fork-follows-preview-word
 - **Palette sources** (`⌃P`): branches/tags/commits `⏎` seek the cursor (never switch — `C` does); files open history
   (`F`); RECENT = palette actions run this session. ≤ 8 rows per group, `+N more`.
 - Bar doorway becomes `? keys`; `.` stays bound as an ordinary candidate `. actions`.
-- (2c, if *move*) **Fork rows** in every rewrite/rebase preview and the rewrite editor's right pane: see "Pass 2c".
+- (2c) **Fork rows** in every rewrite/rebase preview and the rewrite editor's right pane: see "Pass 2c".
 
 ## Genuinely risky tickets
 
@@ -368,8 +367,8 @@ closes as designed; drop `fork-follows-engine.md` and `fork-follows-preview-word
 | 11 | G-tour | graft-ops tour, graft, graft-ui | Opus | `tour-practice-repo.md` |
 | 12a | G-daily landing | graft update operate/undo | Opus | `daily-landing.md` |
 | 12b | G-daily ops | graft-ops rewrite, graft-git, graft preview | Opus | `daily-ops-fixes.md` |
-| 12c | G-daily fork (2c, if *move*) | graft-ops rewrite + preview | (after scout) | `fork-follows-engine.md` |
-| 12d | G-daily fork words (2c, if *move*) | graft preview line rows, rewrite editor, banner | (after scout) | `fork-follows-preview-words.md` |
+| 12c | G-daily fork (2c) | graft-ops rewrite + preview | (after scout) | `fork-follows-engine.md` |
+| 12d | G-daily fork words (2c) | graft preview line rows, rewrite editor, banner | (after scout) | `fork-follows-preview-words.md` |
 | 13 | G-words | graft-ui, graft, graft-ops (words) | Sonnet | `words-sweep.md` |
 | 14a | G-hygiene code | graft-git, graft-ops raw, askpass | Opus/Sonnet | `hygiene-code.md` |
 | 14b | G-hygiene scripts | scripts, fixtures, fuzz, shots | Sonnet | `hygiene-scripts-and-fixtures.md` |
@@ -396,7 +395,7 @@ architecture review); his trace run (gates 3b); scene 1's feel.
 - **J19 = 4** (`a` edit `⏎` `y`, a branch built on HEAD). Build unchanged; the walk's "3 + the preview's `y`"
   allowance in `reword_head_with_a_line_built_on_it` should assert the fence's 4 directly (conductor: a one-line
   follow-up in ticket 14 or `accept-m8`).
-- **Fork follows — Proposed** (above). If *move*:
+- **Fork follows — approved 2026-10-02** (above; he said *move*):
   - **Problem**: "mid-chain branch left behind after `a`" (:86). **User**: him, amending or rewording on a line
     teammates' work hangs off. **Solution**: no extra step — the fork rides the same `y`.
   - **Journey**: `a` into an older commit (cursor on it, something staged), `y` → 2+1, fork included; jj 0 extra

@@ -1,20 +1,30 @@
 # G-daily 3a — a branch forked off a rewritten commit follows when clean (engine + preview data)
 
-Status: draft — **blocked on his yes** to Proposed 2c (design note "Where I'd differ"). He says *stay* → drop this
-spec and `fork-follows-preview-words.md`; ticket 14 item 2 closes as designed (the preview already names the fork).
+Status: ready
 Build with: (blank — brownfield, scout first; conductor sets it after the scout)
-Needs: none. Exposes the types `fork-follows-preview-words` draws.
+Blocked by: 14
+Needs: none (no signature from another ticket). Order: after `daily-ops-fixes` (12b; same graft-ops rewrite files).
+Exposes the types `fork-follows-preview-words` draws.
 File set: graft-ops `rewrite/` (plan, dependents, todo, saved, progress), `preview/` (effects, rewrite, chain),
 `operation/rewrite.rs`, `apply/engine.rs` (todo hand-off only), graft-ops tests. **Not** graft: `left_behind` stays
 filled (see Signatures) so the app compiles and draws as today until 3b.
 
 ## Read first
-- `docs/adr/0059-a-branch-forked-off-a-rewritten-commit-follows-when-clean.md` (whole, 1 page)
+- `docs/adr/0059-a-branch-forked-off-a-rewritten-commit-follows-when-clean.md` (whole, 1 page; Accepted 2026-10-02)
 - `docs/adr/0047-rewrite-engine-and-dependent-branches.md` §1, §2, §4
 - `docs/design-notes/m8-polish-and-ship.md` "Pass 2c"
 - `crates/graft-ops/MAP.md` `## rewrite`, `## preview` (`PreviewPlan` m7/37 fields, `ConflictForecast::StopsAt`,
   `plan_as_run`), `## operation` (`Operation::tips`), `## journal` (`touches_of`)
 - Ticket 14 NOTES "Item 2 — what it needs" (branch `worktree-agent-a67428ac4073c7eaf`)
+
+## Scout questions (answer before `Build with` is set; ≤1 page, code not intent)
+1. Does `r` (rebase onto) build its todo through `RewriteParams`, or by another path? If another, `r` splits off.
+2. Where is `LeftBehind` computed today (file:line), and which inputs does it already hold (merge-base, cap)?
+3. Which tests assert `left_behind` for a fork whose replay would be clean (list each, file:line)?
+4. Who reads `RewriteProgress` (graft banner and any other), and does any count `update-ref` lines?
+5. `plan.json`: where is it read and written, and how does an unknown/missing field behave today?
+6. Where do `Operation::tips` / `rewrite::tips` feed `check`'s `Moved` and the journal's `refs_before`/`refs_after`?
+7. Every `PreviewPlan` and `RewriteParams` literal site, by crate (the compiler list).
 
 ## Scope
 In: fork detection and fates; forecast per fork; `label`/`reset` sections in the todo; saved plan; `progress`;
