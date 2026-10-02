@@ -1467,7 +1467,7 @@ docs/shots/m7/pull-over-edits-120x40.txt
 what right looks like: Ticket 03b: `p` on the graph on `main`, origin one ahead changing line 1 of `shared.txt`, his unsaved edit to line 10. HEAD at origin's tip; `shared.txt` holds both changes, his diff lines byte-equal and still unstaged; no stash left; the cursor (`▏`) on the new HEAD's row; the line `pulled origin/main ✓ · your edits are back`. Colour unverified.
 ================================================================================
 
- graft /code/api  152 rows so far
+ graft /code/api  148 rows so far
 ◌    Uncommitted changes (1 unstaged)
 ◆ ▏  [◆ main ⇄ origin] their change                                                                      GF 60m  9110230
 ●    add shared                                                                                          GF 60m  1fdae38

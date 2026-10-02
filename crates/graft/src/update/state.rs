@@ -472,10 +472,33 @@ impl AppState {
             .unwrap_or(RenderingTier::Unicode)
     }
 
-    /// How many rows of history the graph pane shows at the current size.
-    /// Never zero, so a movement always has somewhere to go.
+    /// How many rows of history the graph pane shows at the current size:
+    /// [`Self::graph_pane_rows`] less the uncommitted row when it is pinned
+    /// on top ([`Self::uncommitted_row_pinned`]). Never zero, so a movement
+    /// always has somewhere to go. Every scroller passes this as the
+    /// viewport height and the views draw exactly this many history rows,
+    /// so the two can no longer disagree (m7-power-tools/48).
     #[must_use]
     pub fn graph_rows(&self) -> usize {
+        self.graph_pane_rows() - usize::from(self.uncommitted_row_pinned())
+    }
+
+    /// Does the uncommitted row take the graph pane's top row? It is shown
+    /// ([`Self::uncommitted_row_shown`]) and the pane has room for it and
+    /// one history row. Every place that offsets drawn rows or click rows
+    /// by the uncommitted row reads this. In a one-row pane it is false:
+    /// the single row draws the cursor's row, which is the uncommitted row
+    /// only while the cursor rests on it (m7-power-tools/48, Decided 4).
+    #[must_use]
+    pub fn uncommitted_row_pinned(&self) -> bool {
+        self.uncommitted_row_shown() && self.graph_pane_rows() >= 2
+    }
+
+    /// Rows of the graph pane: the terminal less chrome, banner,
+    /// commit-graph line, tabs, preview box and pending block. Never zero.
+    /// The mouse's bounds check reads this; scrollers do not.
+    #[must_use]
+    pub fn graph_pane_rows(&self) -> usize {
         let chrome = CHROME_ROWS
             .saturating_add(self.harness.banner_rows())
             .saturating_add(u16::from(self.commit_graph_line().is_some()))

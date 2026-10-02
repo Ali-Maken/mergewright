@@ -19,34 +19,37 @@ What it is: every strip on screen as Graft sends it to a Kitty terminal with
 deflate on — the strip backdrop with the selection's emphasis image over it,
 built through `StripCache::composited` (ADR-0053: the picture the two Kitty
 layers blend to) — stacked, cropped to the graph column (50 cells, 850 px)
-and to the pane's rows 38–47 (history rows 178–187), over a stand-in dark
+and to the pane's rows 37–47 (history rows 178–188, the cursor's the last), over a stand-in dark
 background (`#1E1E2E`), not his theme's. Drawn in-process by
 `crates/graft/tests/it/ghostty_shot.rs`; Ghostty itself never ran.
 
-**The cursor's row is not in it, and that is a finding, not a crop choice.**
-The cursor is on history row 188; with the uncommitted row on top the pane
-draws rows 141–187, so row 188 is under the last drawn row
-(`cursor_on_screen=false` in the SUMMARY line). The Unicode grid below shows
-the same. See the ticket's NOTES.
+**The cursor's row is in it** (re-taken by m7-power-tools/48). The cursor is
+on history row 188; with the uncommitted row on top the pane now draws rows
+142–188, so row 188 is the last drawn row (`cursor_on_screen=true` in the
+SUMMARY line, `docs/perf/scroll-cursor-under-uncommitted-row.txt`). Before 48
+the pane drew 141–187 and the cursor sat one row below it (47 NOTES Q1).
+Whether it *looks* like the cursor's row is the user's call (rule 6).
 
 ## 2. The Unicode tier: `fix-scroll-release-unicode.txt`
 
-**Right looks like:** the same rows as the PNG (screen rows 39–48, the pane's
-38–47), the graph column only, cut at the `⋮` divider; every lane a `│`, the
-commit dots where the PNG has them. Characters only: the lit thread's colour
-and the cursor's fill are not recorded.
+**Right looks like:** the same rows as the PNG (screen rows 38–48, history
+rows 178–188; the last, row 48, is the cursor's), the graph column only, cut
+at the `⋮` divider; every lane a `│`, the commit dots where the PNG has them.
+Characters only: the lit thread's colour and the cursor's fill are not
+recorded, so this grid cannot show which row is lit. Colour unverified.
 
 ```
-39|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● │ ⋮
-40|│ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ │ │ │ ⋮
-41|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● │ │ ⋮
-42|│ │ │ │ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ ⋮
-43|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● ⋮
-44|◉▾│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
-45|│ │ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ │ │ ⋮
-46|│ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
-47|│ │ │ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
-48|│ │ │ │ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
+38|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● │ ⋮
+39|│ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ │ │ │ ⋮
+40|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● │ │ ⋮
+41|│ │ │ │ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ ⋮
+42|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● ⋮
+43|◉▾│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
+44|│ │ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ │ │ ⋮
+45|│ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
+46|│ │ │ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
+47|│ │ │ │ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
+48|│ │ │ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ │ ⋮
 ```
 
 The PNG is drawn by the Pixel tier and this grid by the Unicode tier, from

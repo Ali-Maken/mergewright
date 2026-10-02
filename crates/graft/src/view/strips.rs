@@ -208,8 +208,11 @@ pub fn pixel_rows(state: &AppState, max_lanes: usize, strip_rows: usize) -> Pixe
         .uncommitted_row_attached()
         .then(|| history.visible(1).first())
         .flatten();
-    let uncommitted = state.uncommitted_row_shown();
-    let height = state.graph_rows().saturating_sub(usize::from(uncommitted));
+    // Pinned, not merely shown: `graph_rows` already leaves the pinned row
+    // out, so the strips cover exactly the rows the scrollers keep the
+    // cursor among (48). A one-row pane draws its history row's lanes.
+    let uncommitted = state.uncommitted_row_pinned();
+    let height = state.graph_rows();
 
     let ranges = strip_ranges(history.top..history.top + height, &on_hand, strip_rows);
     let virtual_row = uncommitted.then(|| uncommitted_row(top_row));

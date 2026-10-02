@@ -3084,7 +3084,11 @@ known gap" under The heavy tier above. **Colour: unverified (rule 5)** for every
 
 - [ ] **Held `j`, Unicode** · `held_key::held_j_stops_on_release_unicode`; pty `text-free`, `text-500k`. **Right:**
   `frames_after_release ≤ 2`, `tail_ms ≤ 100` at a 500 KB/s drain (in-process) and over a real pty read free and at
-  500 KB/s; the cursor on the row shown at release.
+  500 KB/s; the cursor on the row shown at release (m7-power-tools/48, with the tree dirty:
+  `view::tests::held_j_keeps_the_cursor_on_screen_under_the_uncommitted_row`,
+  `view::strips::tests::held_j_keeps_the_cursor_lit_under_the_uncommitted_row`,
+  `update::tests::every_cursor_key_keeps_the_cursor_drawn`; at release, `ghostty_shot::fix_scroll_ghostty_png`'s
+  `cursor_on_screen=true` in `docs/perf/scroll-cursor-under-uncommitted-row.txt`).
 - [ ] **Held `j`, Pixel (Kitty + deflate, iTerm2)** · `held_key::held_j_stops_on_release_pixel_deflate`,
   `held_key::held_j_stops_on_release_pixel_iterm2`; pty `kitty-yes-free`, `kitty-yes-40m`. **Right:** the same at
   40 MB/s, plus `bytes_per_frame_held ≤ 512 KiB` in-process and `bytes_per_key ≤ 512 KiB`, observed `deflate=yes`,

@@ -1132,6 +1132,95 @@ fn held_j_keeps_the_cursor_on_screen_under_the_uncommitted_row() {
     }
 }
 
+/// The one row a one-row pane draws: asserts it is the cursor's, and says
+/// what kind of row it is.
+fn one_row_drawn(state: &AppState) -> NodeKind {
+    let view = graph_view(state, state.harness.clock.now_seconds());
+    assert_eq!(view.rows.len(), 1, "one row drawn");
+    assert_eq!(
+        view.rows[0].line.paint,
+        RowPaint::Highlighted,
+        "the cursor's"
+    );
+    view.rows[0].line.node
+}
+
+/// Ten commits, a dirty tree, and a graph pane one row tall: the uncommitted
+/// row exists but is not pinned.
+fn one_row_dirty_pane() -> AppState {
+    let state = AppState {
+        history: Some(history_of(10, 0)),
+        refs: Some(std::sync::Arc::new(refs_with_head(Some(oid(10))))),
+        working_tree: Some(counts(1, 0, 0)),
+        // Header and footer leave the graph one row.
+        size: Size {
+            columns: 120,
+            rows: 3,
+        },
+        ..AppState::default()
+    };
+    assert_eq!(state.graph_pane_rows(), 1);
+    assert!(
+        state.uncommitted_row_shown(),
+        "the row exists: `k` reaches it"
+    );
+    assert!(!state.uncommitted_row_pinned(), "but takes no screen row");
+    assert_eq!(state.graph_rows(), 1);
+    state
+}
+
+/// m7-power-tools/48, Decided 4: a one-row graph pane with a dirty tree does
+/// not pin the uncommitted row; the one row draws the cursor's row, which is
+/// the uncommitted row only while the cursor rests on it.
+#[test]
+fn a_one_row_pane_draws_the_cursor_row() {
+    use crate::update::{AppEvent, update};
+    use graft_core::event::{Event, KeyCode, KeyPress};
+
+    let key = |state: &AppState, code: char| {
+        update(
+            state,
+            AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char(code)))),
+        )
+        .0
+    };
+    let drawn = one_row_drawn;
+    let mut state = one_row_dirty_pane();
+    for press in 1..=5 {
+        state = key(&state, 'j');
+        let history = state.history.as_ref().expect("history");
+        assert_eq!((history.cursor, history.top), (press, press));
+        assert_ne!(drawn(&state), NodeKind::Uncommitted, "after {press} `j`");
+    }
+    for _ in 0..5 {
+        state = key(&state, 'k');
+    }
+    assert_eq!(state.history.as_ref().map(|h| h.cursor), Some(0));
+    assert_ne!(drawn(&state), NodeKind::Uncommitted);
+
+    state = key(&state, 'k');
+    assert!(
+        state.on_working_tree,
+        "`k` at the top reaches the working tree"
+    );
+    assert_eq!(drawn(&state), NodeKind::Uncommitted, "drawn in the one row");
+    assert_eq!(
+        state.history.as_ref().map(|h| h.top),
+        Some(0),
+        "top untouched"
+    );
+
+    state = key(&state, 'j');
+    assert!(!state.on_working_tree);
+    let history = state.history.as_ref().expect("history");
+    assert_eq!(
+        (history.cursor, history.top),
+        (0, 0),
+        "back on the same row"
+    );
+    assert_ne!(drawn(&state), NodeKind::Uncommitted);
+}
+
 #[test]
 fn a_pinned_compare_base_marks_exactly_its_row_and_fills_the_footer() {
     let history = history_of(5, 1);

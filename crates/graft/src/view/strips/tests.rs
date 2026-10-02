@@ -415,3 +415,49 @@ fn a_stash_only_commit_is_dimmed_in_its_strip() {
     assert_eq!(rows.backdrop, Backdrop::OffThread);
     rasterise_all(&rows);
 }
+
+/// m7-power-tools/48, the pixel twin of
+/// `view::tests::held_j_keeps_the_cursor_on_screen_under_the_uncommitted_row`:
+/// held `j` with the uncommitted row pinned keeps the cursor's row in a strip
+/// and on screen — the screen row `event_loop::graphics` puts it on (one
+/// lower for the pinned row) is inside the pane, as `ghostty_shot` reads
+/// `cursor_on_screen`.
+#[test]
+fn held_j_keeps_the_cursor_lit_under_the_uncommitted_row() {
+    use crate::update::{AppEvent, update};
+    use graft_core::event::{Event, KeyCode, KeyPress};
+
+    let mut state = AppState {
+        history: Some(history_of(60, 0)),
+        refs: Some(std::sync::Arc::new(refs_with_head(Some(oid(60))))),
+        working_tree: Some(counts(1, 0, 0)),
+        ..state(history_of(60, 0), 18)
+    };
+    assert!(state.uncommitted_row_pinned());
+    for press in 1..=40 {
+        state = update(
+            &state,
+            AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char('j')))),
+        )
+        .0;
+        let pixels = pixel_rows(&state, MAX_LANES, STRIP_ROWS);
+        let history = state.history.as_ref().expect("history");
+        let cursor = history.cursor;
+        assert_eq!(cursor, press);
+        let in_strip = pixels.strips.iter().any(|strip| {
+            let history_rows = strip.rows.len() - usize::from(strip.uncommitted_at().is_some());
+            (strip.first_row..strip.first_row + history_rows).contains(&cursor)
+        });
+        assert!(in_strip, "after {press} `j`: cursor {cursor} in no strip");
+        let screen_row = cursor
+            .checked_sub(history.top)
+            .map(|offset| offset + usize::from(pixels.uncommitted_on_top));
+        let cursor_on_screen = screen_row.is_some_and(|row| row < state.graph_pane_rows());
+        assert!(
+            cursor_on_screen,
+            "after {press} `j`: cursor {cursor} top {} pane {}",
+            history.top,
+            state.graph_pane_rows()
+        );
+    }
+}

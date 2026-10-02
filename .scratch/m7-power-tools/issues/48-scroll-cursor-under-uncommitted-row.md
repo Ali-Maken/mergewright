@@ -1,6 +1,6 @@
 # scroll-cursor-under-uncommitted-row — held `j` keeps the cursor on a row the graph draws
 
-Status: ready (planner 2026-10-02, 47 ruling 3; corrected against scout `.scratch/m7-power-tools/scouts/48.md`).
+Status: done (builder 2026-10-02; was ready, planner 2026-10-02, 47 ruling 3; corrected against scout `.scratch/m7-power-tools/scouts/48.md`).
 Build before the M7 stop. Scout done (HEAD 75306603).
 Build with: Opus. The approach is decided here and a red test judges it. The work is wide (about 20 callers to
 audit) but each one is a mechanical check; the two judgement points (mouse row math, 1-row pane) are decided below.
@@ -147,36 +147,36 @@ All in `crates/graft`:
   only); `graft-graph` (no API change).
 
 ## Acceptance (each tick names its test)
-- [ ] Test-first, red commit before any fix. Apply `.scratch/m7-power-tools/47-q1-cursor-test.patch`
+- [x] Test-first, red commit before any fix (red: 9aaed92b, "after 17 `j`: cursor 17 top 0 graph_rows 18, 18 rows drawn, none of them the cursor's"; green after the fix). Apply `.scratch/m7-power-tools/47-q1-cursor-test.patch`
       (`git apply`). If it doesn't apply, re-type the same test by hand from the patch file and 47's debugger
       NOTES (80×20, 60 commits, dirty tree, 40 × `j`, cursor row among the drawn rows each press). Commit it red,
       then green: `view::tests::held_j_keeps_the_cursor_on_screen_under_the_uncommitted_row`.
-- [ ] **Every graph-pane key that moves the cursor**, table-driven, on a clean tree and on a dirty one, at 20 and 50
+- [x] **Every graph-pane key that moves the cursor** (`update::tests::every_cursor_key_keeps_the_cursor_drawn`: j/k ↓/↑ g/G Home/End PgUp/PgDn ×70 at 20 and 50 rows, clean and dirty; n/N: `update::tests::n_and_capital_n_keep_the_cursor_drawn_under_the_uncommitted_row`; landing: `update::tests::a_landing_under_the_uncommitted_row_keeps_the_cursor_drawn`), table-driven, on a clean tree and on a dirty one, at 20 and 50
       rows: the cursor's row is among the drawn rows after the key.
       - Keys: `j`/`k`, `↓`/`↑`, `g`/`G`, `Home`/`End`, `PgUp`/`PgDn`, search `n`/`N` (`docs/design/02-keymap.md`
         §2.2, `:44`, `:185`). The builder adds any other graph-pane cursor key that doc names.
       - Each key is pressed repeatedly, past the pane's edge.
       - Also covered: landing after an operation (`detail/landing.rs`), with a dirty tree.
       - New: `update::tests::every_cursor_key_keeps_the_cursor_drawn`.
-- [ ] Pixel twin: `pixel_rows` after held `j` with the uncommitted row pinned. The cursor's row is in a strip, and
+- [x] Pixel twin (`view::strips::tests::held_j_keeps_the_cursor_lit_under_the_uncommitted_row`; "lit" checked as in a strip and on screen, the way `ghostty_shot` reads `cursor_on_screen`): `pixel_rows` after held `j` with the uncommitted row pinned. The cursor's row is in a strip, and
       `cursor_on_screen` is true. New: `view::strips::tests::held_j_keeps_the_cursor_lit_under_the_uncommitted_row`.
-- [ ] Status arrival: the cursor is on the last drawn row of a clean tree, then a dirty status arrives, and the cursor
+- [x] Status arrival (`update::tests::a_dirty_tree_arriving_keeps_a_shown_cursor_shown`): the cursor is on the last drawn row of a clean tree, then a dirty status arrives, and the cursor
       is still drawn. Then wheel the cursor off screen, let another status arrive, and the cursor stays off screen.
       New: `update::tests::a_dirty_tree_arriving_keeps_a_shown_cursor_shown`.
-- [ ] Mouse, dirty tree, 80×20: clicking the last drawn history row selects that row; clicking the uncommitted row
+- [x] Mouse, dirty tree (`update::mouse::tests::click_on_the_last_row_under_the_uncommitted_row`, 120×20 so no tab strip; the 1-row click: `update::mouse::tests::a_click_in_a_one_row_pane_selects_what_is_drawn`): clicking the last drawn history row selects that row; clicking the uncommitted row
       selects the working tree; a click one row below the pane is not a graph-row hit (`graph_row_at` → `None`).
       New: `update::mouse::tests::click_on_the_last_row_under_the_uncommitted_row`.
-- [ ] 1-row pane, dirty tree (size or preview chosen so `graph_pane_rows() == 1`): `uncommitted_row_pinned()` is
+- [x] 1-row pane, dirty tree (`view::tests::a_one_row_pane_draws_the_cursor_row`) (size or preview chosen so `graph_pane_rows() == 1`): `uncommitted_row_pinned()` is
       false, `graph_rows() == 1`; held `j` keeps the cursor's history row drawn; `k` at the top onto the working
       tree draws the uncommitted row in that one row; `j` back draws the same history row. New:
       `view::tests::a_one_row_pane_draws_the_cursor_row`.
-- [ ] Fast tier `pixel_scroll::*` and `event_loop::tests::queued_keys_draw_once` green, by name.
-- [ ] 47's captures re-taken. Run `ghostty_shot::fix_scroll_ghostty_png` (heavy) and the pty `text` walk with
+- [x] Fast tier `pixel_scroll::*` (all 8 by name: `a_deflate_error_falls_back_in_the_app`, `cursor_off_screen_draws_full`, `deflate_follows_the_probe`, `focus_changes_the_backdrop_only_when_lowest_changes`, `stash_only_rows_stay_dimmed_without_a_thread`, `iterm2_bands_are_composites`, `j_inside_resident_strips_sends_no_strip`, `a_capped_graph_resends_strips_only_when_the_fold_changes`) and `event_loop::tests::queued_keys_draw_once` green, by name.
+- [x] 47's captures re-taken (`.scratch/m7-power-tools/48-recapture.sh` → `docs/perf/scroll-cursor-under-uncommitted-row.txt`: `cursor_row=188 rows=178..189 pane_rows=37..48 cursor_on_screen=true`; `ghostty_shot::fix_scroll_ghostty_png` passes against the new PNG). Run `ghostty_shot::fix_scroll_ghostty_png` (heavy) and the pty `text` walk with
       `GRID_OUT` from a script into `docs/perf/scroll-cursor-under-uncommitted-row.txt`, reading summary lines only.
       `docs/shots/m7/fix-scroll-ghostty.png` and `fix-scroll-release-unicode.txt` must each show the cursor row
       inside the crop (cursor ± 10) and print `cursor_on_screen=true`. Captions say "colour unverified". Rules 5 and
       6: nobody ticks "looks right".
-- [ ] TESTING.md 47 row "cursor on the row shown at release" names the tests above.
+- [x] TESTING.md 47 row (Held `j`, Unicode) "cursor on the row shown at release" names the tests above.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` (with and without `graft/heavy-tests`),
@@ -185,3 +185,52 @@ All in `crates/graft`:
 ## Size
 Medium-large (~60k). One crate (`graft`). If the context runs past ~80k, hand off after the red test and the
 `state.rs` / views / geometry change; the caller audit and captures go to the next context.
+
+## NOTES (builder, 2026-10-02)
+
+Scout used: `.scratch/m7-power-tools/scouts/48.md`. No compaction.
+
+**Cause fixed, not symptom.** `graph_rows()` now *is* the history rows drawn (`graph_pane_rows() − pinned`); the
+views stopped subtracting. One number, one place (`update/state.rs`).
+
+Deviations from the spec, each small:
+- `keep_cursor_in_view(before, after, commands)` takes `commands` too: after moving `top` it asks
+  `History::show` for the rows, like `show_rows`. Lives in `update/in_view.rs`, called just before
+  `keep_unseen_failure` in `update`.
+- `view::entries::uncommitted_shown` (read by `geometry::graph_row_at`, the picker anchor `geometry.rs:422`,
+  `mouse.rs` x2, `rows.rs::reveal_index`) is `pinned || (shown && on_working_tree)`, not bare `pinned`: Decided 4's
+  "a click on that row selects what is drawn there" needs the 1-row pane with the cursor on the working tree to
+  count the row as the uncommitted one. Identical to `pinned` at >= 2 pane rows.
+- `update/selection.rs:36` (Decided 4 needed it): `k` onto the working tree fires at `cursor == top` when pinned,
+  at `cursor == 0` when not. Without it, `k` in a 1-row pane flipped between the working tree and history from any
+  row (found by `a_one_row_pane_draws_the_cursor_row`, red at first).
+- Pixel tier, 1-row pane with the cursor on the working tree: the strip draws the history row's lanes while the
+  text draws the uncommitted row. Not fixed (strip insertion is keyed on `top`); a 1-row pane in pixel is a corner
+  of a corner. **Unverified**, for KNOWN_GAPS if the conductor wants it.
+
+Knock-on seen: `keep_cursor_in_view` fires whenever `graph_rows` shrinks, so opening a Ghost Preview (its box takes
+rows) now also scrolls `top` to keep the cursor. The preview's drawn frame is byte-identical
+(`preview::capture_scrolled_preview_for_docs_shots`: only the caption's `history.top` moved, 48->54 / 24->30).
+After the preview closes the graph stays scrolled by those rows, cursor still drawn.
+
+Touches:
+- `graph_rows(` callers (grep `graph_rows(` over `crates/`): keys.rs:408,439, history.rs:21,63,
+  mod.rs:743,864,1039,1286, mouse.rs:189,209, search.rs:147,178,198, map.rs:204, keys/actions.rs:22,
+  keys/escape.rs:10, detail/landing.rs:147,177, preview.rs:373, rewrite_editor/after.rs:69, banner/stop.rs:319,
+  view/strip.rs:72, view/preview.rs:85: history rows, unchanged and now right. geometry.rs:302: pane height,
+  switched to `graph_pane_rows()`. None compensated. `ghostty_shot.rs:202` crop -> `graph_pane_rows()`.
+- `uncommitted_row_shown` readers: `detail/landing.rs:111` **kept**: it refuses a working-tree landing when there
+  are no changes (the row exists), no viewport math; landing covered by the landing test. selection.rs:40,80,
+  clash.rs:163, resolver/open.rs:67 kept (row exists). mouse.rs:101,146, geometry.rs:305,422, rows.rs:312 switched
+  (via `view::entries::uncommitted_shown`). `event_loop/graphics.rs:152` reads `PixelRows::uncommitted_on_top`, now
+  `pinned`. view/entries.rs, view/strips.rs switched.
+- Status counts in a 1-row pane: unchanged; header/footer draw them, not graph rows (`CHROME_ROWS`).
+- Tests asserting `graph_rows` values: all listed passed unchanged (clean-tree fixtures); full run green.
+- Captures changed (text only, one line each): `docs/shots/m5-ui-preview-scrolled-{80x24,160x48}.txt` (caption
+  `history.top`), `docs/shots/m6/set-aside-{preview-120x40,preview-80x24,done-120x40}.txt` and
+  `docs/shots/m7/pull-over-edits-120x40.txt` (header `152 rows so far` -> `148`: the walk is asked for a viewport one
+  row shorter), `m7-contact-sheet-1.txt` (that line). Re-taken: `fix-scroll-ghostty.png`,
+  `fix-scroll-release-unicode.txt`, captions in `fix-scroll-contact.md`. **Not** re-assembled: the m5 and m6
+  contact sheets (closed milestones; they quote the old lines).
+- Keymap, journal/undo, graft-ui, graft-graph: not touched (changed files are all under `crates/graft`, docs,
+  TESTING.md, this ticket).
