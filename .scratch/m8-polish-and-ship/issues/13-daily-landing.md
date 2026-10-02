@@ -1,7 +1,7 @@
 # G-daily 1 — where he lands after pull, undo, redo, a partial answer, and `q`
 
 Status: ready
-Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: rulings below; each a landing test.
+Build with: Opus (conductor, after scout `.scratch/m8-polish-and-ship/scouts/13-daily-landing.md`; the scout corrects two line refs)
 Blocked by: none
 Needs: none in code. Runs beside the scroll lane on **disjoint files** (ADR-0051): `update/operate*`, `update/undo.rs`,
 the quit path — not the cursor-motion/detail-follow files `settle-work-at-rest` holds; the conductor checks both
