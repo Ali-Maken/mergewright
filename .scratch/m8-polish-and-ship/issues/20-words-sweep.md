@@ -67,3 +67,6 @@ None — rows carry their lines. If a line moved, find it by the quoted string a
 
 ## Size
 One context, ~55k tokens.
+
+## Conductor addition (from 21 review fix)
+- KNOWN_GAPS `M8/askpass-refusal-wording`: `apply/remote.rs:128` files an askpass refusal as `AfterState::AskPass` ("could not be cleaned up"); give a refusal its own words.
