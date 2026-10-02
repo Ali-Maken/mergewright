@@ -16,7 +16,9 @@ use graft_core::journal::{EntryStatus, HeadRef, JournalEntry, PutBack, PutBackWh
 use graft_core::oid::Oid;
 use graft_git::run::Stop;
 use graft_git::state::InProgress;
-use graft_ops::apply::{Applied, ApplyError, Resume, recover_interrupted, resume};
+use graft_ops::apply::{
+    Applied, ApplyError, Resume, came_back_from_index, came_back_words, recover_interrupted, resume,
+};
 use graft_ops::clash::live_clash;
 use graft_ops::facts::read_facts;
 use graft_ops::journal::journal_path;
@@ -198,6 +200,42 @@ pub(crate) fn journal_entries(repo: &TempRepo) -> Vec<JournalEntry> {
 
 pub(crate) fn last_entry(repo: &TempRepo) -> JournalEntry {
     journal_entries(repo).pop().expect("an entry was written")
+}
+
+/// m8/14 item 4: a staged new file he deleted from disk comes back with the
+/// put-back (git's `stash apply --index` reinstates the index entry and
+/// checks it out). Nothing is lost; the line must say it. The read names it,
+/// and only it: an added file still on disk is not "came back".
+#[test]
+fn a_staged_new_file_deleted_from_disk_is_named_as_back_from_the_index() {
+    for kind in Kind::BOTH {
+        let repo = diverged();
+        kind.start(&repo);
+        repo.write("notes.md", b"notes\n");
+        repo.write("kept.md", b"kept\n");
+        repo.git(&["add", "notes.md", "kept.md"]);
+        std::fs::remove_file(repo.path().join("notes.md")).expect("removed");
+
+        let applied = try_run(&repo, &kind.op(&repo), NOW)
+            .unwrap_or_else(|why| panic!("{kind:?}: {}", why.explain()));
+
+        assert_eq!(
+            repo.read("notes.md"),
+            b"notes\n",
+            "{kind:?}: git put it back"
+        );
+        let stash = set_aside_of(&applied.entry);
+        let before = applied.entry.worktree_before.expect("a before-snapshot");
+        let came_back = came_back_from_index(&repo.open(), stash, before)
+            .unwrap_or_else(|why| panic!("{kind:?}: {why}"));
+        assert_eq!(came_back, [PathBuf::from("notes.md")], "{kind:?}");
+        // The operation's own record carries them, for the landing line.
+        assert_eq!(applied.came_back, came_back, "{kind:?}: on Applied");
+        assert_eq!(
+            came_back_words(&came_back).as_deref(),
+            Some("notes.md came back from the index"),
+        );
+    }
 }
 
 /// The set-aside stash an entry recorded.

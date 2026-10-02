@@ -9,6 +9,7 @@ mod compare_and_stash;
 mod corpus;
 mod diff_cases;
 mod diff_fixture;
+mod equal_dates;
 mod history_reads;
 mod run;
 mod session;

@@ -77,6 +77,32 @@ fn a_clean_put_back_says_your_edits_are_back() {
     assert_eq!(clean.status, Status::done("rebase main onto origin/main"));
 }
 
+/// m8-polish-and-ship/14, item 4: a staged-new file he deleted from disk
+/// came back with the put-back (git's `stash apply --index`). The line names
+/// it after `your edits are back`, so a file back on disk is never silent.
+#[test]
+fn a_file_back_from_the_index_is_named_on_the_landing_line() {
+    let mut done = applied("rebase main onto origin/main", Refresh::Everything);
+    done.entry.put_back = Some(graft_core::journal::PutBack {
+        stash: graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes"),
+        why: graft_core::journal::PutBackWhy::SetAside,
+    });
+    done.came_back = vec![std::path::PathBuf::from("notes.md")];
+    let mut state = AppState::default();
+    let mut commands = Vec::new();
+    launch(&mut state, &mut commands, put_back(), &mut ids()).expect("nothing else is running");
+    let id = state.operating.expect("launched");
+    operated(&mut state, id, Operated::Done(done), &mut ids());
+    assert_eq!(
+        state.status,
+        Status::Done {
+            what: "rebase main onto origin/main".to_owned(),
+            also: Some("your edits are back \u{b7} notes.md came back from the index".to_owned()),
+            keys: None,
+        }
+    );
+}
+
 /// m6-conflicts/74, /84: the put-back failed for a reason other than a
 /// clash and the copy is listed: sticky, git's failure then where the edits
 /// are and the key that brings them back.

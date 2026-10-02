@@ -63,7 +63,7 @@ pub(super) fn done_status(
     if let Some(on) = launched_op.and_then(crate::update::switch::landed_words) {
         return Status::Done {
             what: on,
-            also: crate::update::clash::edits_back(&applied.entry).map(str::to_owned),
+            also: crate::update::clash::edits_back(applied),
             keys: Some(crate::update::switch::GOES_BACK.to_owned()),
         };
     }
@@ -81,13 +81,13 @@ pub(super) fn done_status(
         let onto = crate::update::preview::short_name_of(&params.head.name);
         return Status::Done {
             what: format!("took \"{}\" onto {onto}", params.subject),
-            also: crate::update::clash::edits_back(&applied.entry).map(str::to_owned),
+            also: crate::update::clash::edits_back(applied),
             keys: Some("u undoes".to_owned()),
         };
     }
     Status::Done {
         what: done_what(state, remote_op, applied),
-        also: crate::update::clash::edits_back(&applied.entry).map(str::to_owned),
+        also: crate::update::clash::edits_back(applied),
         keys: None,
     }
 }

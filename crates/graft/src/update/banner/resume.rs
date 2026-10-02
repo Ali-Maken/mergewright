@@ -274,15 +274,15 @@ pub(super) fn closing(how: &Resume, entry: &graft_core::journal::JournalEntry) -
 /// close that did not finish must not be a `Done`. Nothing else builds
 /// these words.
 #[must_use]
-pub(crate) fn resumed_words(how: &Resume, entry: &graft_core::journal::JournalEntry) -> Status {
-    match closing(how, entry) {
+pub(crate) fn resumed_words(how: &Resume, applied: &graft_ops::apply::Applied) -> Status {
+    match closing(how, &applied.entry) {
         // A rebase that set edits aside put them back as it closed: a
         // closing answer means they came back clean, and the line says so
         // after the tick — `aborted: rebase … ✓ · your edits are back`
         // (m6-conflicts/74). Nothing after it for any other entry.
         Closing::Finished(what) => Status::Done {
             what,
-            also: crate::update::clash::edits_back(entry).map(str::to_owned),
+            also: crate::update::clash::edits_back(applied),
             keys: None,
         },
         Closing::Unfinished(reason) => Status::sticky(reason),
@@ -353,7 +353,7 @@ pub(super) fn resumed_done(
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
     crate::update::undo::operation_ended(state);
-    state.status = resumed_words(how, &applied.entry);
+    state.status = resumed_words(how, applied);
     let commands = crate::update::operate::refresh_scope(state, applied.refresh, next_id);
     finished_lands_on_head(state, &commands);
     if let Some(crate::update::finish::FinishAnswer::Merged(Some(words))) = finish {

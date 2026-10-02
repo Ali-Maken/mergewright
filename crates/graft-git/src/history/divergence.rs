@@ -91,8 +91,22 @@ pub(crate) fn count(
     paint.reach(nodes, nodes.handle(&local), LOCAL)?;
     paint.reach(nodes, nodes.handle(&upstream), UPSTREAM)?;
 
-    while paint.unshared > 0 {
-        let Some((_, id, handle)) = paint.queue.pop() else {
+    // The oldest date of a commit popped as one side's only. A shared
+    // commit still queued at that date may be its child (commits made in
+    // one second share a date; only the id orders them), so the walk goes
+    // on until the queue is older than it: the mark that child passes down
+    // can still make it shared (m8-polish-and-ship/14).
+    let mut one_sided_floor = i64::MAX;
+    loop {
+        let settled = paint.unshared == 0
+            && paint
+                .queue
+                .peek()
+                .is_none_or(|&(time, _, _)| time < one_sided_floor);
+        if settled {
+            break;
+        }
+        let Some((time, id, handle)) = paint.queue.pop() else {
             break;
         };
         let (flags, parents) = {
@@ -103,19 +117,21 @@ pub(crate) fn count(
             entry.queued = false;
             (entry.flags, entry.node.parents.clone())
         };
-        match flags {
-            BOTH => {}
-            LOCAL => {
-                counts.ahead += 1;
-                paint.unshared -= 1;
-            }
-            _ => {
-                counts.behind += 1;
-                paint.unshared -= 1;
-            }
+        if flags != BOTH {
+            paint.unshared -= 1;
+            one_sided_floor = one_sided_floor.min(time);
         }
         for parent in parents.iter() {
             paint.reach(nodes, parent, flags)?;
+        }
+    }
+    // Counted once the marks have settled, not at each pop: a commit popped
+    // as one side's only can turn out shared later (m8-polish-and-ship/14).
+    for entry in paint.seen.values() {
+        match entry.flags {
+            LOCAL => counts.ahead += 1,
+            UPSTREAM => counts.behind += 1,
+            _ => {}
         }
     }
     Ok(counts)
@@ -285,6 +301,108 @@ mod tests {
                 behind: 0
             }
         );
+    }
+
+    /// [`graph`] with every commit at the same date, as a scripted series
+    /// of commits made inside one second has: only the id breaks ties.
+    fn flat(edges: &[(u8, &[u8])]) -> MapNodes {
+        MapNodes::new(
+            edges
+                .iter()
+                .map(|&(id, parents)| {
+                    (
+                        oid(id),
+                        (
+                            parents.iter().map(|&p| oid(p)).collect(),
+                            0,
+                            Node::UNKNOWN_GENERATION,
+                        ),
+                    )
+                })
+                .collect::<HashMap<_, _>>(),
+        )
+    }
+
+    /// The answer by brute force: every commit each side reaches.
+    fn truth(edges: &[(u8, &[u8])], local: u8, upstream: u8) -> AheadBehind {
+        let parents: HashMap<u8, &[u8]> = edges.iter().copied().collect();
+        let reach = |tip: u8| {
+            let mut seen = std::collections::HashSet::new();
+            let mut stack = vec![tip];
+            while let Some(c) = stack.pop() {
+                if seen.insert(c) {
+                    stack.extend(parents[&c].iter().copied());
+                }
+            }
+            seen
+        };
+        let (l, u) = (reach(local), reach(upstream));
+        AheadBehind {
+            ahead: l.difference(&u).count(),
+            behind: u.difference(&l).count(),
+        }
+    }
+
+    /// Every pair of commits in `edges`, counted on one date, against the
+    /// brute-force answer.
+    fn assert_flat_matches_truth(edges: &[(u8, &[u8])]) {
+        let nodes = flat(edges);
+        for &(a, _) in edges {
+            for &(b, _) in edges {
+                assert_eq!(
+                    counted(&nodes, a, b),
+                    truth(edges, a, b),
+                    "{a}...{b} on one date"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn one_date_a_parent_with_the_higher_id_is_not_counted_twice() {
+        // `main ↑6 ↓1` where rev-list said `1 1` (m8/14): on one date 200
+        // pops before its child 9, as local's only, before 9 passes
+        // upstream's mark down to it.
+        //   1 ─ 200 ─ 9   local
+        //         ╲
+        //          3      upstream
+        let edges: &[(u8, &[u8])] = &[(1, &[]), (200, &[1]), (9, &[200]), (3, &[200])];
+        assert_eq!(
+            counted(&flat(edges), 9, 3),
+            AheadBehind {
+                ahead: 1,
+                behind: 1
+            }
+        );
+    }
+
+    #[test]
+    fn one_date_chains_and_forks_match_brute_force() {
+        assert_flat_matches_truth(&[
+            (10, &[]),
+            (250, &[10]),
+            (7, &[250]),
+            (180, &[7]),
+            (3, &[180]),
+            (90, &[180]),
+            (240, &[90]),
+            (5, &[3]),
+        ]);
+    }
+
+    #[test]
+    fn one_date_merges_match_brute_force() {
+        // A merge of the upstream into local, and a criss-cross.
+        assert_flat_matches_truth(&[
+            (100, &[]),
+            (2, &[100]),
+            (200, &[100]),
+            (30, &[2, 200]),
+            (230, &[200, 2]),
+            (4, &[30]),
+            (240, &[230, 4]),
+            (6, &[240]),
+        ]);
     }
 
     #[test]

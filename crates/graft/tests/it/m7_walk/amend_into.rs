@@ -328,6 +328,87 @@ fn amend_with_dependents() {
     app.close();
 }
 
+/// The M8 note's key count for journey `id`, from its fence.
+fn m8_count(id: &str) -> usize {
+    crate::m5_walk::parse_counts(
+        &std::fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../docs/design-notes/m8-polish-and-ship.md"),
+        )
+        .unwrap_or_else(|why| panic!("the M8 note: {why}")),
+    )
+    .unwrap_or_else(|why| panic!("the M8 fence: {why}"))
+    .iter()
+    .find(|row| row.id == id)
+    .and_then(|row| row.keys)
+    .unwrap_or_else(|| panic!("the M8 fence has no count for {id}"))
+}
+
+/// `reword-head` (m8-polish-and-ship/14, J19): `a` on `HEAD` with
+/// `feature-b` built on it and nothing staged opens the commit editor on
+/// `HEAD`'s message (not the `nothing staged` refusal); the edit, `⏎`, and
+/// the preview's `y` reword `HEAD` and `feature-b` follows. `u` puts both
+/// back. Truth read with git.
+///
+/// Counted as the M8 note counts it (`a <edit> ⏎`): the typing is the edit.
+/// The preview's `y` is the ruling's "previewed when dependents exist" — one
+/// past the note's 3; the ticket's NOTES ask which the count means.
+#[test]
+fn reword_head_with_a_line_built_on_it() {
+    let dir = oauth_repo(true);
+    let repo = dir.path();
+    let before_refs = refs(repo);
+    let tree = git(repo, &["rev-parse", "feature-a^{tree}"], 0);
+    let (app, state) = open(repo, 120, 40);
+    let state = cursor_to(&app, state, "Handle expired tokens", &mut Vec::new());
+    let mut route = Vec::new();
+    let state = planned(&app, &state, KeyCode::Char('a'), "a", &mut route);
+    assert!(state.preview.is_none(), "not a preview yet");
+    let editor = state
+        .commit_editor
+        .as_ref()
+        .unwrap_or_else(|| panic!("the editor: {:?}", state.status));
+    assert_eq!(editor.subject.text(), "Handle expired tokens");
+    route.push("<edit>");
+    let mut state = state;
+    for typed in " on refresh".chars() {
+        state = app.key(&state, KeyCode::Char(typed));
+    }
+    let state = planned(&app, &state, KeyCode::Enter, "⏎", &mut route);
+    assert!(state.commit_editor.is_none(), "the editor closed");
+    assert!(state.preview.is_some(), "the preview: {:?}", state.status);
+    let state = y(&app, &state, &mut route);
+    let allowed = m8_count("reword-head");
+    assert!(
+        route.len() <= allowed + 1,
+        "reword-head took {route:?}, the note allows {allowed} plus the preview's y"
+    );
+
+    assert_eq!(
+        git(repo, &["log", "-1", "--format=%s", "feature-a"], 0).trim(),
+        "Handle expired tokens on refresh"
+    );
+    assert_eq!(
+        git(repo, &["rev-parse", "feature-a^{tree}"], 0),
+        tree,
+        "only the message changed"
+    );
+    assert_eq!(
+        read(repo, "feature-b~1"),
+        read(repo, "feature-a"),
+        "feature-b followed"
+    );
+    assert_eq!(
+        git(repo, &["symbolic-ref", "HEAD"], 0).trim(),
+        "refs/heads/feature-a"
+    );
+
+    let state = u(&app, &state);
+    assert_eq!(refs(repo), before_refs, "u puts both back");
+    drop(state);
+    app.close();
+}
+
 /// Two of the three captures (rule 6: the user judges them; colour
 /// unverified).
 /// Right: the put-in box titled `Preview: put your staged changes into

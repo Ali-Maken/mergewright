@@ -593,3 +593,44 @@ fn a_reset_during_an_edit_stop_stays_lost() {
         lines(&list, &[])
     );
 }
+
+/// m8/14: a `rebase -i` whose picks after an `update-ref` line move `HEAD`
+/// without a new commit writes `rebase: fast-forward` (no brackets) between
+/// its start and finish. The run is still one rebase: one `$` row.
+#[test]
+fn a_rebase_that_fast_forwards_is_one_row() {
+    let repo = TempRepo::init();
+    commit_at(&repo, SHELL, "f.txt", "base");
+    git_at(&repo, SHELL + 1, &["switch", "-q", "-c", "fa"]);
+    commit_at(&repo, SHELL + 2, "a.txt", "A");
+    git_at(&repo, SHELL + 3, &["switch", "-q", "-c", "fb"]);
+    commit_at(&repo, SHELL + 4, "b.txt", "B");
+    commit_at(&repo, SHELL + 5, "c.txt", "C");
+    assert!(rebase_i(
+        &repo,
+        SHELL + 10,
+        "s/^pick/pick/",
+        &["--update-refs", "main"]
+    ));
+    let head = log_of(&repo, "HEAD");
+    // git 2.54.0: A is skipped (already in place), B and C fast-forward.
+    assert_eq!(
+        head[..4],
+        [
+            "rebase (finish): returning to refs/heads/fb",
+            "rebase: fast-forward",
+            "rebase: fast-forward",
+            "rebase (start): checkout main",
+        ],
+        "{head:#?}"
+    );
+
+    let list = the_list(&repo);
+
+    let rows = lines(&list, &[]);
+    assert_eq!(rows[0], "$ rebased fb onto main", "{rows:#?}");
+    assert!(
+        !rows[1].contains("rebase") && !rows[1].contains("fast-forward"),
+        "the fast-forwards fold into the rebase: {rows:#?}"
+    );
+}

@@ -256,6 +256,7 @@ fn with_not_as_they_were(error: RunError, not_as_they_were: Option<NotAsTheyWere
 /// graph is re-read.
 fn applied(entry: JournalEntry) -> Applied {
     Applied {
+        came_back: Vec::new(),
         entry,
         refresh: Refresh::Everything,
         step_backup: None,

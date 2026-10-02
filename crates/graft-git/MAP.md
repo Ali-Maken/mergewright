@@ -179,7 +179,7 @@ Files (m6-conflicts/23, pure moves; every item below is re-exported from `confli
 - `ReflogError` (enum) — why `previous_tips`, `records` or `first_parent_distance` could not read: `Unreadable(String)` (gix), `Shallow(ShallowError)` (m7/32b; `<common_dir>/shallow` unreadable, Display is `ShallowError`'s).
 - `AheadBehind` (struct) — commits only a branch has (`ahead`) and only its upstream has (`behind`).
 - `AheadBehind::in_sync` (fn) — neither side has a commit the other lacks.
-- `ahead_behind` (fn) — count how far a branch tip and its upstream tip have drifted apart.
+- `ahead_behind` (fn) — count how far a branch tip and its upstream tip have drifted apart. Counted from the settled marks after the walk, which runs on past `unshared == 0` while a queued commit is as new as the oldest one-sided pop: commits sharing one committer date are ordered only by id (m8-polish-and-ship/14; `tests/it/equal_dates.rs` against `rev-list --left-right --count`).
 - `WalkError` (enum) — why a rev-walk failed: `Tips`, `Commit(NodeError)`, `CommitGraph`, `Shallow(ShallowError)` (`<common_dir>/shallow` unreadable; never a walk that ignores it; 32).
 
 ## shallow (m7-power-tools/32)

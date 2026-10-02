@@ -51,6 +51,7 @@ pub use remote::RemoteHooks;
 pub use restart::{RestartPlan, RestartReadError, StageSource, restart_gate, stage_source};
 pub use resume::{Resume, resume};
 pub(crate) use resume::{live_entry, live_entry_facts};
+pub use set_aside::{came_back_from_index, came_back_words};
 
 pub(crate) use error::{as_apply_error, reason_for};
 pub(crate) use record::{Opening, Pending, PrepareError, begin, finish, kind_name};
@@ -105,6 +106,12 @@ pub struct Applied {
     /// after a redo) puts back (m6-conflicts/77). Empty for every operation
     /// and for a clean undo.
     pub replaced: crate::undo::Replaced,
+    /// Files a set-aside put-back brought back from the index: new files he
+    /// staged, then deleted from disk, which git's `stash apply --index`
+    /// checks out again (m8-polish-and-ship/14,
+    /// [`came_back_from_index`]). Nothing is lost; the landing line names
+    /// them. Empty for every other operation.
+    pub came_back: Vec<PathBuf>,
 }
 
 /// Everything one operation needs to run and be recorded.
@@ -573,6 +580,7 @@ fn succeeded(
         Refresh::Everything
     };
     let applied = Applied {
+        came_back: Vec::new(),
         entry,
         refresh,
         step_backup: None,
@@ -672,6 +680,7 @@ fn clashed(
     }
     Err(ApplyError::AfterState {
         applied: Box::new(Applied {
+            came_back: Vec::new(),
             entry,
             refresh: Refresh::WorkingTree,
             step_backup: None,

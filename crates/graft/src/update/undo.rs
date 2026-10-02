@@ -895,6 +895,7 @@ mod tests {
     /// two fields `undone` reads.
     fn applied(description: &str, refresh: Refresh) -> Applied {
         Applied {
+            came_back: Vec::new(),
             entry: JournalEntry {
                 id: EntryId::new(1, [0; 10]),
                 at_unix_ms: 1,

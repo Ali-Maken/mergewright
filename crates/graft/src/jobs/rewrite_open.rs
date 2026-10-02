@@ -112,9 +112,10 @@ pub(crate) fn open_rewrite(
         RewriteRequest::FromRebase(rebase) => {
             Some(crate::update::preview::onto_label(&rebase.onto))
         }
-        RewriteRequest::Open { .. } | RewriteRequest::AmendInto { .. } | RewriteRequest::Absorb => {
-            base_label(&handle, &params, default_branch)?
-        }
+        RewriteRequest::Open { .. }
+        | RewriteRequest::AmendInto { .. }
+        | RewriteRequest::Absorb
+        | RewriteRequest::RewordHead { .. } => base_label(&handle, &params, default_branch)?,
     };
     let base = base_row(&handle, &params, label)?;
     Ok(RewriteOpened::Editor(Box::new(OpenedRewrite {

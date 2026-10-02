@@ -412,9 +412,21 @@ pub(crate) fn dropped_status(index: Option<usize>, why: PutBackWhy) -> Status {
 /// `Status::Done::also`: `rebase main onto origin/main ✓ · your edits are
 /// back`. The one place the clause is worded: the op's own done line and a
 /// stopped rebase's close both take it from here.
+///
+/// A staged-new file he had deleted from disk comes back with them (git's
+/// `stash apply --index`); the clause names it, `your edits are back ·
+/// notes.md came back from the index` (m8-polish-and-ship/14).
 #[must_use]
-pub(crate) fn edits_back(entry: &JournalEntry) -> Option<&'static str> {
-    is_set_aside_entry(entry).then_some("your edits are back")
+pub(crate) fn edits_back(applied: &graft_ops::apply::Applied) -> Option<String> {
+    if !is_set_aside_entry(&applied.entry) {
+        return None;
+    }
+    Some(
+        match graft_ops::apply::came_back_words(&applied.came_back) {
+            Some(came_back) => format!("your edits are back \u{b7} {came_back}"),
+            None => "your edits are back".to_owned(),
+        },
+    )
 }
 
 /// Did `entry` set edits aside around its operation (ADR-0045 §4)?

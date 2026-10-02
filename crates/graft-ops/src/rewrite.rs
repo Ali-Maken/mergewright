@@ -204,6 +204,14 @@ pub enum RewriteRequest {
     /// suggested drops marked `drop`, onto `onto_tip`. Unedited, it runs the
     /// rebase's own todo.
     FromRebase(crate::operation::RebaseParams),
+    /// `a` on `HEAD` with nothing staged and branches built on his
+    /// (m8-polish-and-ship/14): `HEAD`'s message becomes `message`, the
+    /// commit editor's text, and the line follows. Nothing built on it is
+    /// [`Refusal::PlainAmend`](crate::operation::Refusal::PlainAmend).
+    RewordHead {
+        /// The whole new message, as the commit editor writes it.
+        message: String,
+    },
 }
 
 /// Why [`plan`] has no plan.

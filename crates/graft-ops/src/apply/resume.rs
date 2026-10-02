@@ -471,6 +471,7 @@ fn close_resume(
         });
     }
     let applied = Applied {
+        came_back: Vec::new(),
         entry,
         refresh: Refresh::Everything,
         step_backup: None,

@@ -37,6 +37,9 @@ pub struct AmendInto {
     asked: Option<Asked>,
     /// The read that finds the changed commits' new rows after a landing.
     tagging: Option<JobId>,
+    /// The `HEAD`-message read asked for a reword with a line built on it
+    /// (`RewritePlanned::RewordHead`): the editor it opens plans a rewrite.
+    reword_read: Option<JobId>,
 }
 
 /// A planned put-in, kept from the plan's answer to its landing.
@@ -66,6 +69,12 @@ impl AmendInto {
             pending: Some((job, "a")),
             ..Self::default()
         }
+    }
+
+    /// Whether the `HEAD`-message read `id` was asked for a reword with a
+    /// line built on it; taken, so it answers once.
+    pub(crate) fn reword_read_answered(&mut self, id: JobId) -> bool {
+        self.reword_read.take_if(|asked| *asked == id).is_some()
     }
 
     /// Whether a plan is being worked out.
@@ -196,6 +205,26 @@ fn head_path(
     );
 }
 
+/// The reword editor's `⏎` (m8-polish-and-ship/14): plan `HEAD`'s new
+/// `message` with the line built on it, then the preview, as an amend with
+/// dependents does. No `head`: the line was already found, and a line gone
+/// since is the plan's `PlainAmend` refusal, in words.
+pub(crate) fn reword_confirmed(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    message: String,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    start(
+        state,
+        commands,
+        (RewriteRequest::RewordHead { message }, "a"),
+        None,
+        "planning the reword\u{2026}".to_owned(),
+        next_id,
+    );
+}
+
 /// The `.` menu's absorb item on the uncommitted row.
 pub(crate) fn absorb_chosen(
     state: &mut AppState,
@@ -304,6 +333,13 @@ pub(crate) fn planned(
                 state.status = Status::Ready;
             }
             commands.extend(super::commit_editor::open(state, true, next_id));
+        }
+        Ok(RewritePlanned::RewordHead) => {
+            if matches!(state.status, Status::Waiting(_)) {
+                state.status = Status::Ready;
+            }
+            commands.extend(super::commit_editor::open(state, true, next_id));
+            state.amend_into.reword_read = state.head_message;
         }
         Err(why) => {
             state.status = Status::sticky(format!("couldn't plan the put-in: {why}"));

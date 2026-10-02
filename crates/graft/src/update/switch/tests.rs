@@ -348,6 +348,7 @@ fn an_instant_switch_refused_otherwise_keeps_the_refusal() {
 
 fn applied(kind: OperationKind, set_aside: bool) -> Applied {
     Applied {
+        came_back: Vec::new(),
         entry: JournalEntry {
             id: EntryId::new(1, [0; 10]),
             at_unix_ms: 1,
