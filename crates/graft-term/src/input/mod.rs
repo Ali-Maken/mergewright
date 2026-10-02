@@ -13,4 +13,4 @@ mod decode;
 mod gate;
 mod mux;
 
-pub use mux::{InputMux, Inputs, ReplyWaiter, SEQUENCE_TIMEOUT};
+pub use mux::{FenceAnswers, FenceListener, InputMux, Inputs, ReplyWaiter, SEQUENCE_TIMEOUT};

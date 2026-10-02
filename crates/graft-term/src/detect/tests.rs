@@ -162,6 +162,8 @@ fn a_terminal_that_answers_everything_gets_the_pixel_tier() {
             kitty_graphics: Supported::Yes,
             // The captured round predates the deflate query: no reply.
             kitty_deflate: false,
+            // ... and the DSR query (G-pace): no `CSI 0 n` in it.
+            answers_dsr: false,
             sixel: Supported::No,
             iterm2_images: false,
             kitty_keyboard: Supported::Yes,
@@ -234,6 +236,38 @@ fn silence_inside_a_fenced_round_counts_as_a_no() {
     assert_eq!(capabilities.sixel, Supported::No);
     assert_eq!(capabilities.kitty_keyboard, Supported::No);
     assert_eq!(capabilities.synchronized_output, Supported::No);
+}
+
+#[test]
+fn the_first_round_asks_for_device_status_before_the_da1_fence() {
+    let mut host = FakeHost::answering(&[ONLY_THE_FENCE]);
+
+    detect(&terminal(), &mut host);
+
+    let round = &host.written[0];
+    assert!(
+        round.ends_with(b"\x1b[5n\x1b[c"),
+        "DSR rides the same round, answered before DA1: {round:?}"
+    );
+}
+
+#[test]
+fn a_terminal_that_answers_device_status_can_be_fenced() {
+    let mut host = FakeHost::answering(&[b"\x1b[6;37;17t\x1b[0n\x1b[?62;22c"]);
+
+    let capabilities = detect(&terminal(), &mut host);
+
+    assert!(capabilities.answers_dsr);
+    assert_eq!(capabilities.probe, ProbeOutcome::Answered);
+}
+
+#[test]
+fn a_terminal_silent_on_device_status_is_never_fenced() {
+    for round in [ONLY_THE_FENCE, SAYS_NOTHING, b"\x1b[3n\x1b[?62;22c"] {
+        let capabilities = detect(&terminal(), &mut FakeHost::answering(&[round]));
+        assert!(!capabilities.answers_dsr, "{round:?}");
+    }
+    assert!(!detect(&Environment::default(), &mut FakeHost::silent()).answers_dsr);
 }
 
 #[test]

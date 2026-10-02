@@ -355,6 +355,7 @@ pub(crate) fn capabilities(tier: RenderingTier) -> Capabilities {
         pixel_protocol: pixel.then_some(PixelProtocol::Kitty),
         kitty_graphics: if pixel { Supported::Yes } else { Supported::No },
         kitty_deflate: false,
+        answers_dsr: false,
         sixel: Supported::No,
         iterm2_images: false,
         kitty_keyboard: Supported::No,

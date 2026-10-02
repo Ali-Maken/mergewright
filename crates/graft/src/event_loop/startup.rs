@@ -8,7 +8,7 @@ use std::sync::mpsc::Sender;
 use graft_core::capabilities::Supported;
 use graft_term::Transport;
 use graft_term::detect::{self, TtyHost};
-use graft_term::input::InputMux;
+use graft_term::input::{FenceAnswers, InputMux};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 
@@ -161,6 +161,12 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
         meter,
         stamps,
     } = Tracer::from_env();
+    // Fence answers (ADR-0054) wake the loop straight from the reader thread;
+    // a terminal that never answered the startup DSR is never fenced.
+    let fences = settled
+        .capabilities
+        .answers_dsr
+        .then(|| answer_fences(&mux, sender.clone()));
     let forwarder = input::spawn_reader(inputs, sender, redetector, stamps)?;
 
     let (mut terminal, state) = terminal_and_state(
@@ -195,6 +201,8 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
         },
         &mut tracer,
     );
+    // Answers from here on are for nobody; they go back to being replies.
+    drop(fences);
     let outcome = hand_back_input(&mux, forwarder, wakes, outcome);
     // Dropped before the restore so that its own teardown (it shows the cursor
     // it hid) goes out while the session is still in charge of the terminal.
@@ -219,6 +227,14 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     // on; a failure to report stalled jobs is folded in afterwards so it
     // still turns into `ExitCode::FAILURE` (main.rs) instead of vanishing.
     finish(outcome, restored).and_then(|exit| stalled_report.map(|()| exit))
+}
+
+/// Send every fence answer the mux reads to the loop as a [`Wake::Fence`],
+/// until the loop has gone.
+fn answer_fences(mux: &InputMux, wakes: Sender<Wake>) -> FenceAnswers {
+    mux.answer_fences(Box::new(move |answers| {
+        (0..answers).all(|_| wakes.send(Wake::Fence).is_ok())
+    }))
 }
 
 /// This run is done reading (ticket m1-the-graph/35c). A key typed from here

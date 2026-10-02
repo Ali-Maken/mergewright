@@ -26,6 +26,7 @@ mod headless;
 pub mod input;
 mod label;
 pub mod outside;
+mod pace;
 pub mod redetect;
 mod row_clear;
 mod running;
@@ -34,7 +35,8 @@ mod startup;
 
 use std::io;
 use std::path::Path;
-use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
+use std::time::Instant;
 
 use graft_core::event::{Event, MouseKind};
 
@@ -81,6 +83,21 @@ pub enum Wake {
     /// Writing a re-query to the terminal, or reading its reply, failed. As
     /// unrecoverable as [`Wake::InputFailed`]: the next frame would fail too.
     TerminalFailed(io::Error),
+    /// The terminal answered a frame's fence (`CSI 0 n`, ADR-0054): it has
+    /// read every byte of that frame. Releases the next frame; changes no
+    /// state.
+    Fence,
+}
+
+/// What waiting with a deadline came to.
+#[derive(Debug)]
+pub enum Waited {
+    /// Something happened before the deadline.
+    Woke(Wake),
+    /// The deadline passed and nothing happened.
+    TimedOut,
+    /// Nothing can happen again: every producer has gone.
+    Ended,
 }
 
 /// Where the loop gets its wakes.
@@ -91,6 +108,13 @@ pub trait Wakes {
     /// Block until something happens. `None` once nothing can happen again,
     /// because every producer has gone.
     fn next_wake(&mut self) -> Option<Wake>;
+
+    /// Block until something happens or `deadline` passes. The loop waits
+    /// this way while it holds a frame it may not draw yet (a fence not
+    /// answered, the 16 ms cap): the deadline is when it may. Required, with
+    /// no default: a source that blocked past the deadline would hold a
+    /// frame back until the next key.
+    fn next_wake_by(&mut self, deadline: Instant) -> Waited;
 
     /// Is a wake already here? Never blocks. The loop asks between pieces of
     /// idle work (the strips a page key would show) and stops as soon as the
@@ -164,7 +188,8 @@ impl ChannelWakes {
                 | Wake::Shutdown(_)
                 | Wake::InputFailed(_)
                 | Wake::Terminal(_)
-                | Wake::TerminalFailed(_) => None,
+                | Wake::TerminalFailed(_)
+                | Wake::Fence => None,
             })
             .collect()
     }
@@ -190,6 +215,18 @@ impl Wakes for ChannelWakes {
         // not a failure: it means both threads have ended and no wake can ever
         // arrive again. That is exactly what `None` says.
         self.receiver.recv().ok()
+    }
+
+    fn next_wake_by(&mut self, deadline: Instant) -> Waited {
+        if let Some(seen) = self.seen.take() {
+            return Waited::Woke(seen);
+        }
+        let wait = deadline.saturating_duration_since(Instant::now());
+        match self.receiver.recv_timeout(wait) {
+            Ok(wake) => Waited::Woke(wake),
+            Err(RecvTimeoutError::Timeout) => Waited::TimedOut,
+            Err(RecvTimeoutError::Disconnected) => Waited::Ended,
+        }
     }
 
     fn waiting(&mut self) -> bool {
@@ -218,9 +255,11 @@ impl Wakes for ChannelWakes {
 pub fn is_job_event(wake: &Wake) -> bool {
     match wake {
         Wake::Event(event) => said_by_a_job(event),
-        Wake::Shutdown(_) | Wake::InputFailed(_) | Wake::Terminal(_) | Wake::TerminalFailed(_) => {
-            false
-        }
+        Wake::Shutdown(_)
+        | Wake::InputFailed(_)
+        | Wake::Terminal(_)
+        | Wake::TerminalFailed(_)
+        | Wake::Fence => false,
     }
 }
 

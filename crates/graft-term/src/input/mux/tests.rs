@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use graft_core::event::{Event, KeyCode, KeyPress, Modifiers};
 
-use super::{InputMux, Inputs, ReplyWaiter, SEQUENCE_TIMEOUT};
+use super::{FenceAnswers, InputMux, Inputs, ReplyWaiter, SEQUENCE_TIMEOUT};
 
 /// Generous, because a loaded laptop must not fail these: every wait below
 /// ends as soon as its answer arrives.
@@ -231,4 +231,66 @@ fn pause_returns_only_once_the_reader_has_stopped() {
         "pause waited out its park deadline instead of being answered"
     );
     mux.resume();
+}
+
+/// A fence listener that forwards each answer count down a channel.
+fn listening(mux: &InputMux) -> (FenceAnswers, std::sync::mpsc::Receiver<usize>) {
+    let (sender, answers) = std::sync::mpsc::channel();
+    let guard = mux.answer_fences(Box::new(move |count| sender.send(count).is_ok()));
+    (guard, answers)
+}
+
+#[test]
+fn fence_answers_go_to_the_fence_listener_not_to_keys_or_waiters() {
+    let (mut terminal, mux, inputs) = started();
+    let mut waiter = mux.waiter();
+    let (_listening, answers) = listening(&mux);
+
+    terminal.write_all(b"j\x1b[0n\x1b[?62;4ck\x1b[0").unwrap();
+    // Two reads: the second answer arrives split, as a slow pty delivers it.
+    thread::sleep(SEQUENCE_TIMEOUT / 5);
+    terminal.write_all(b"n").unwrap();
+
+    assert_eq!(answers.recv_timeout(PATIENCE).unwrap(), 1);
+    assert_eq!(
+        answers.recv_timeout(PATIENCE).unwrap(),
+        1,
+        "the split one, whole"
+    );
+    assert_eq!(read_reply(&mut waiter, b"\x1b[?62;4c"), b"\x1b[?62;4c");
+    assert_eq!(next_key(&inputs), KeyCode::Char('j'));
+    assert_eq!(next_key(&inputs), KeyCode::Char('k'));
+    assert!(inputs.try_recv().is_err(), "no answer became a key");
+    let mut rest = [0u8; 16];
+    assert_eq!(
+        waiter.read(&mut rest, Instant::now()).unwrap(),
+        0,
+        "the waiter saw only its own reply"
+    );
+}
+
+#[test]
+fn with_no_fence_listener_a_fence_answer_is_an_ordinary_reply() {
+    // The startup probe asks `CSI 5 n` before any listener exists, and reads
+    // the answer through its waiter like every other reply.
+    let (mut terminal, mux, inputs) = started();
+    let mut waiter = mux.waiter();
+
+    terminal.write_all(b"\x1b[0n").unwrap();
+
+    assert_eq!(read_reply(&mut waiter, b"\x1b[0n"), b"\x1b[0n");
+    assert!(inputs.try_recv().is_err());
+}
+
+#[test]
+fn a_dropped_fence_listener_hands_answers_back_to_the_waiters() {
+    let (mut terminal, mux, _inputs) = started();
+    let mut waiter = mux.waiter();
+    let (listening, answers) = listening(&mux);
+    drop(listening);
+
+    terminal.write_all(b"\x1b[0n").unwrap();
+
+    assert_eq!(read_reply(&mut waiter, b"\x1b[0n"), b"\x1b[0n");
+    assert!(answers.try_recv().is_err());
 }

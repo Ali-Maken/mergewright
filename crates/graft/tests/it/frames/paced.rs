@@ -1,11 +1,11 @@
 //! The loop's wakes ([`Paced`]): the script's keys and the jobs' events, each
 //! stamped as the loop takes it and as its frame's phases end.
 
-use std::sync::mpsc::{Receiver, TryRecvError};
+use std::sync::mpsc::{Receiver, RecvTimeoutError, TryRecvError};
 use std::sync::{Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
-use graft::event_loop::{Phase, Wake, Wakes, joins_frame};
+use graft::event_loop::{Phase, Waited, Wake, Wakes, joins_frame};
 use graft::history::HistoryUpdate;
 use graft::jobs::Dispatch;
 use graft::update::{AppEvent, Command, Progress};
@@ -231,8 +231,19 @@ impl<'a, D> Paced<'a, D> {
         self.hand(kind, None, sent, event)
     }
 
-    /// Hands `wake` to the loop: the next script key, or a job event.
+    /// Hands `wake` to the loop: the next script key, or a job event. A
+    /// fence answer (the [`DrainSink`](crate::drain_sink::DrainSink)'s, ADR-0054)
+    /// goes straight through: it is not a wake the readings follow, and it
+    /// does not end the look the frame was stamped at.
     pub(super) fn take(&mut self, posted: Posted) -> Option<Wake> {
+        if matches!(posted.wake, Wake::Fence) {
+            return Some(Wake::Fence);
+        }
+        // A wake the readings follow: the look that stamped the frame
+        // before it is over.
+        if let Some(looked) = self.looked.take() {
+            self.prefetch.push(looked.elapsed());
+        }
         let event = match posted.wake {
             Wake::Event(AppEvent::Core(Event::Key(press))) => press,
             Wake::Event(event) => return Some(self.event(event, posted.at)),
@@ -259,9 +270,6 @@ impl<'a, D> Paced<'a, D> {
 impl<D> Wakes for Paced<'_, D> {
     fn next_wake(&mut self) -> Option<Wake> {
         self.stamp();
-        if let Some(looked) = self.looked.take() {
-            self.prefetch.push(looked.elapsed());
-        }
         if let Some(wake) = self.seen.take() {
             return self.take(wake);
         }
@@ -299,6 +307,27 @@ impl<D> Wakes for Paced<'_, D> {
         }
     }
 
+    /// As `ChannelWakes` waits for a held frame's fence: up to `deadline`.
+    /// Stamps as [`Wakes::next_wake`] does; if the answer then releases a
+    /// frame, [`Wakes::mark`] drops the stamp and the next look takes it.
+    fn next_wake_by(&mut self, deadline: Instant) -> Waited {
+        self.stamp();
+        if let Some(posted) = self.seen.take() {
+            return self.take(posted).map_or(Waited::Ended, Waited::Woke);
+        }
+        let wait = deadline.saturating_duration_since(Instant::now());
+        let posted = match self.events.recv_timeout(wait) {
+            Ok(posted) => posted,
+            Err(RecvTimeoutError::Timeout) => return Waited::TimedOut,
+            Err(RecvTimeoutError::Disconnected) => {
+                self.failure =
+                    Some("the job pool and the input thread hung up behind a fence".to_owned());
+                return Waited::Ended;
+            }
+        };
+        self.take(posted).map_or(Waited::Ended, Waited::Woke)
+    }
+
     /// A key or an event has come: the loop stops readying strips, so a
     /// key's latency counts the one strip it waited behind.
     fn waiting(&mut self) -> bool {
@@ -322,6 +351,13 @@ impl<D> Wakes for Paced<'_, D> {
 
     fn mark(&mut self, phase: Phase) {
         let now = Instant::now();
+        if phase == Phase::Drawn && self.looked.take().is_some() {
+            // A frame drawn after a look that handed nothing out (a fence
+            // answer released it, ADR-0054): that stamp predates this frame,
+            // so the next look stamps again.
+            self.drawn.pop();
+            self.written.pop();
+        }
         let after = (phase == Phase::Drawn)
             .then(|| (self.watching.asked_so_far().0, self.sink.write_spent()));
         if let Some(handed) = self.handed.last_mut() {

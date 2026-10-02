@@ -57,6 +57,9 @@ const PIPE: usize = 16 * 1024;
 /// overruns them and a fixed build has room (ticket 42 "Drain model").
 const UNICODE_RATE: u64 = 500_000;
 const PIXEL_RATE: u64 = 40_000_000;
+/// A terminal that never falls behind (m8 G-pace J1: "at 40 MB/s and
+/// free"): 16 KiB drains in under 2 µs.
+const FREE_RATE: u64 = 10_000_000_000;
 /// Done: no byte moved for this long.
 const QUIET: Duration = Duration::from_secs(1);
 /// A hang guard, not a threshold.
@@ -84,6 +87,22 @@ fn held_j_stops_on_release_pixel_deflate() {
 #[test]
 fn held_j_stops_on_release_pixel_iterm2() {
     held(RenderingTier::Pixel, false, Encoding::Iterm2);
+}
+
+/// G-pace J1 (m8-polish-and-ship/02): the paced loop at the other drains.
+#[test]
+fn held_j_stops_on_release_unicode_40mb() {
+    held_at(RenderingTier::Unicode, false, Encoding::Raw, PIXEL_RATE);
+}
+
+#[test]
+fn held_j_stops_on_release_unicode_free() {
+    held_at(RenderingTier::Unicode, false, Encoding::Raw, FREE_RATE);
+}
+
+#[test]
+fn held_j_stops_on_release_pixel_free() {
+    held_at(RenderingTier::Pixel, false, Encoding::Raw, FREE_RATE);
 }
 
 #[test]
@@ -169,6 +188,10 @@ fn held(tier: RenderingTier, journal: bool, encoding: Encoding) {
         RenderingTier::Pixel => PIXEL_RATE,
         _ => UNICODE_RATE,
     };
+    held_at(tier, journal, encoding, rate);
+}
+
+fn held_at(tier: RenderingTier, journal: bool, encoding: Encoding, rate: u64) {
     let reading = run(tier, journal, rate, encoding).unwrap_or_else(|why| panic!("{why}"));
     let scenario = match (journal, tier, encoding) {
         (false, RenderingTier::Pixel, Encoding::Deflate) => "A-deflate",
@@ -303,8 +326,9 @@ fn run(
     )?;
     let state = settle(&jobs, state, &events)?;
 
-    let mut session = Session::settle(&Loaded::default(), encoding.capabilities(tier));
+    let mut session = Session::settle(&Loaded::default(), answering(encoding, tier));
     let drain = DrainSink::new(PIPE, rate);
+    drain.answering_fences(answer_on(post.clone()));
     let sink = Sink::draining(&drain);
     let mut terminal = in_memory(&sink, &state)?;
     let watching = Watching {
@@ -354,6 +378,27 @@ fn run(
         return Err("the job pool did not stop cleanly".to_owned());
     }
     reading
+}
+
+/// The harness's terminal answers fences as it reads them (ADR-0054), so
+/// `held_key` measures the paced loop: at most one frame in the pipe.
+fn answering(encoding: Encoding, tier: RenderingTier) -> graft_core::capabilities::Capabilities {
+    let mut capabilities = encoding.capabilities(tier);
+    capabilities.answers_dsr = true;
+    capabilities
+}
+
+/// The drain's answer to a fence: a `Wake::Fence` on the loop's channel.
+fn answer_on(post: mpsc::Sender<Posted>) -> impl FnMut() + Send + 'static {
+    move || {
+        let answer = Posted {
+            at: Instant::now(),
+            wake: Wake::Fence,
+        };
+        // A failed send means the loop has ended and dropped its end:
+        // nothing waits for this answer any more.
+        if post.send(answer).is_err() {}
+    }
 }
 
 /// Pumps job events into `state` until history has laid out to the end

@@ -197,6 +197,18 @@ only. **These four are red in the heavy tier until 46** (Unicode green after
 43): the full heavy command above fails on them, deliberately. Right looks
 like: every `VERDICT held_key` line `ok`, except the two below.
 
+**Paced** (m8-polish-and-ship/02, ADR-0054): the `DrainSink` now answers
+each fence (`CSI 5 n`) once it has drained past it, and the harness's
+terminal says it answers DSR, so every `held_key` test measures the paced
+loop — at most one unanswered frame in the pipe. Three more tests run held
+`j` at the other drains J1 names: `held_j_stops_on_release_unicode_40mb`,
+`held_j_stops_on_release_unicode_free`, `held_j_stops_on_release_pixel_free`
+(free = 10 GB/s). `scripts/m8-pace.sh` runs them all plus
+`frames::after_idle::g_after_idle` and writes `docs/perf/m8-pace.txt`:
+right looks like `J1 … verdict=pass` (tail ≤ 100 ms) for Unicode and Pixel
+at 40 MB/s and free, `J3 g_after_idle … verdict=pass` (≤ 16 ms), and a
+`ROW 1089` / `ROW 1095` verdict line each.
+
 **The strip bound** (m7-power-tools/46c) is `strip_transmits_held ≤
 ceil(rows_scrolled/32) + 2 + fold_changes_held × (ceil(screen_rows/32) + 1)`,
 not 42's `ceil(rows_scrolled/32) + 2`. On a graph wider than the lane cap

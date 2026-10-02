@@ -25,7 +25,12 @@ pub(super) fn csi(bytes: &[u8]) -> Step {
     };
     let length = end + 1;
 
-    if params.first() == Some(&b'?') || final_byte == b't' || !intermediates.is_empty() {
+    // `n` is a device status report: `CSI 0 n` answers the per-frame fence
+    // (ADR-0054). No key ends in `n`, so it can only be a reply.
+    if params.first() == Some(&b'?')
+        || matches!(final_byte, b't' | b'n')
+        || !intermediates.is_empty()
+    {
         return reply(bytes, length);
     }
     match (params, final_byte) {

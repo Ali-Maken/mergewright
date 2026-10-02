@@ -19,6 +19,7 @@ impl Wake {
             Wake::InputFailed(_) => "InputFailed",
             Wake::Terminal(_) => "Terminal",
             Wake::TerminalFailed(_) => "TerminalFailed",
+            Wake::Fence => "Fence",
         }
     }
 }
@@ -217,6 +218,7 @@ mod tests {
             Wake::Shutdown(15),
             Wake::InputFailed(io::Error::other("x")),
             Wake::TerminalFailed(io::Error::other("x")),
+            Wake::Fence,
         ];
         let labels: Vec<&str> = wakes.iter().map(Wake::label).collect();
         assert_eq!(

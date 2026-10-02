@@ -34,6 +34,9 @@ const CELL_SIZE_QUERY: &[u8] = b"\x1b[16t";
 const SYNCHRONIZED_OUTPUT_QUERY: &[u8] = b"\x1b[?2026$p";
 /// Report the background colour.
 const BACKGROUND_QUERY: &[u8] = b"\x1b]11;?\x1b\\";
+/// Device status report (DSR): `CSI 0 n` back means the terminal can answer
+/// the per-frame fence (DESIGN.md §4.7, ADR-0054).
+const DEVICE_STATUS_QUERY: &[u8] = b"\x1b[5n";
 /// Primary device attributes — the fence, and the Sixel answer.
 const DEVICE_ATTRIBUTES_QUERY: &[u8] = b"\x1b[c";
 
@@ -52,6 +55,8 @@ pub(crate) struct ProbeReplies {
     pub kitty_keyboard: bool,
     pub synchronized_output: Option<bool>,
     pub background: Option<Rgb>,
+    /// The device status query came back `CSI 0 n`.
+    pub device_status: bool,
 }
 
 impl ProbeReplies {
@@ -75,6 +80,7 @@ pub(crate) fn full_round() -> Vec<u8> {
         CELL_SIZE_QUERY,
         SYNCHRONIZED_OUTPUT_QUERY,
         BACKGROUND_QUERY,
+        DEVICE_STATUS_QUERY,
         DEVICE_ATTRIBUTES_QUERY,
     ]
     .concat()
@@ -162,6 +168,8 @@ fn parse(buffer: &[u8]) -> ProbeReplies {
             found.synchronized_output = Some(state);
         } else if let Some(color) = reply::background_color(item) {
             found.background = Some(color);
+        } else if reply::device_status_ok(item) {
+            found.device_status = true;
         }
     }
     found

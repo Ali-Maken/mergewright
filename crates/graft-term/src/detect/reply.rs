@@ -227,6 +227,19 @@ pub(crate) fn kitty_keyboard(reply: Reply<'_>) -> bool {
     )
 }
 
+/// True for the "terminal OK" device status report, `CSI 0 n` — the answer
+/// to `CSI 5 n`, and to the per-frame fence (ADR-0054).
+pub(crate) fn device_status_ok(reply: Reply<'_>) -> bool {
+    matches!(
+        reply,
+        Reply::Csi {
+            params: b"0",
+            intermediates: b"",
+            final_byte: b'n',
+        }
+    )
+}
+
 /// The reported state of DEC mode 2026 (synchronized output) from a `DECRPM`
 /// reply, `CSI ? 2026 ; <state> $ y`.
 ///

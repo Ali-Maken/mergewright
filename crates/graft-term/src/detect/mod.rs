@@ -33,7 +33,7 @@ mod environment;
 mod fallback;
 mod probe;
 mod redetect;
-mod reply;
+pub(crate) mod reply;
 mod tier;
 mod tmux;
 mod tty;
@@ -192,6 +192,7 @@ pub fn detect(environment: &Environment, host: &mut dyn TerminalHost) -> Capabil
         pixel_protocol,
         kitty_graphics: graphics.kitty,
         kitty_deflate: graphics.kitty_deflate,
+        answers_dsr: replies.device_status,
         sixel: graphics.sixel,
         iterm2_images,
         // Judged against the *first* round, not the merged outcome. These two
@@ -231,6 +232,7 @@ fn unprobed(environment: &Environment) -> Capabilities {
         pixel_protocol: None,
         kitty_graphics: Supported::Silent,
         kitty_deflate: false,
+        answers_dsr: false,
         sixel: Supported::Silent,
         iterm2_images: false,
         kitty_keyboard: Supported::Silent,
