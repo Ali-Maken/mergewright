@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M7 CHECKPOINT (2026-10-01).** All M7 tickets + review fixes 36–40 merged; acceptance rc 0, 0 drift; gates 5061 passed (1094d198). Waiting on the user: by-eye captures, question batch, M7 judged on real use (ADR-0030). Next: M8 prior art + design pass on `continue`. Logs: `docs/log/m7.md`.
+**Current step:** **M7 CHECKPOINT (2026-10-02).** Scroll-lag fix 41–49 (+46b, 46c) merged; gates 5120 passed (f1beb6e6). Release fixture: Kitty+deflate tail 47 ms, Unicode 69 ms. User: "still a bit laggy but improved" (gap, question). Waiting on the user: by-eye captures, question batch. M8 starts only when the user starts it (user, 2026-10-02). Logs: `docs/log/m7.md`.
 
 **Running now:** nothing.
 
