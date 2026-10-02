@@ -72,6 +72,10 @@ pub struct CommitEditor {
     /// (m7-power-tools/15, :776). Set by a refused commit, cleared by an
     /// edit to the subject.
     pub subject_refused: bool,
+    /// Opened by `a` on `HEAD` with nothing staged and branches built on
+    /// his (m8-polish-and-ship/14): `⏎` plans a reword that the line
+    /// follows, previewed, instead of a plain amend.
+    pub reword_line: bool,
 }
 
 impl Default for CommitEditor {
@@ -96,6 +100,7 @@ impl CommitEditor {
             template_applied: false,
             from_draft: false,
             subject_refused: false,
+            reword_line: false,
         }
     }
 
@@ -349,7 +354,9 @@ pub fn head_message_arrived(
     match message {
         Ok(message) => {
             let short = head_short(state);
-            state.commit_editor = Some(CommitEditor::amend(short, &message));
+            let mut editor = CommitEditor::amend(short, &message);
+            editor.reword_line = state.amend_into.reword_read_answered(id);
+            state.commit_editor = Some(editor);
         }
         // Not swallowed: `a` did nothing, and the user is told why — an
         // unborn `HEAD` is the common reason.

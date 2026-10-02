@@ -25,6 +25,14 @@ fn entry(kind: OperationKind, description: &str, status: EntryStatus) -> Journal
     applied(kind, description, status).entry
 }
 
+/// The closing record around `entry`, nothing came back from the index.
+fn with_entry(entry: JournalEntry) -> graft_ops::apply::Applied {
+    graft_ops::apply::Applied {
+        entry,
+        ..done_applied()
+    }
+}
+
 fn aborted(reason: &str) -> EntryStatus {
     EntryStatus::Aborted {
         reason: reason.to_owned(),
@@ -185,11 +193,11 @@ fn aborting_a_stopped_rebase_says_your_edits_are_back() {
     assert_eq!(
         resumed_words(
             &Resume::Continue,
-            &set_aside_around(entry(
+            &with_entry(set_aside_around(entry(
                 OperationKind::Rebase,
                 "rebase main onto origin/main",
                 EntryStatus::Committed,
-            )),
+            ))),
         ),
         edits_back("rebase main onto origin/main")
     );
@@ -357,7 +365,7 @@ fn the_resume_words_say_what_happened() {
         ),
     ];
     for (how, entry, want) in rows {
-        let got = resumed_words(&how, &entry);
+        let got = resumed_words(&how, &with_entry(entry.clone()));
         assert_eq!(got, want, "{how:?} over {:?}", entry.status);
         if !matches!(got, Status::Done { .. }) {
             let row = bottom_row(

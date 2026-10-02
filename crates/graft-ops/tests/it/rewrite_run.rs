@@ -17,7 +17,7 @@ use graft_ops::apply::{Applied, ApplyError, Resume, recover_interrupted, resume}
 use graft_ops::facts::read_facts;
 use graft_ops::operation::{FactsScope, Operation, RebaseParams, Refusal, Source, Tip};
 use graft_ops::preview::plan_as_run;
-use graft_ops::rewrite::{RewriteRequest, TodoAction, plan, reword_head};
+use graft_ops::rewrite::{RewriteRequest, TodoAction, plan};
 
 use crate::support::{
     NOW, Never, TempRepo, context, git_version, journal_for, run, run_undo, state_of, try_run,
@@ -364,8 +364,17 @@ fn reword_a2(repo: &TempRepo, message: &str) -> Operation {
     let handle = repo.open();
     let facts =
         read_facts(&handle, git_version(), &Never, &FactsScope::default()).expect("the facts read");
-    let params = reword_head(&handle, &git_version(), message, &facts, None, &Never)
-        .unwrap_or_else(|why| panic!("it plans: {why:?}"));
+    let params = plan(
+        &handle,
+        &git_version(),
+        &RewriteRequest::RewordHead {
+            message: message.to_owned(),
+        },
+        &facts,
+        None,
+        &Never,
+    )
+    .unwrap_or_else(|why| panic!("it plans: {why:?}"));
     Operation::Rewrite(params)
 }
 
@@ -438,7 +447,16 @@ fn reword_head_with_nothing_built_on_it_is_a_plain_amend() {
     let handle = repo.open();
     let facts =
         read_facts(&handle, git_version(), &Never, &FactsScope::default()).expect("the facts read");
-    let refused = reword_head(&handle, &git_version(), "c1!\n", &facts, None, &Never);
+    let refused = plan(
+        &handle,
+        &git_version(),
+        &RewriteRequest::RewordHead {
+            message: "c1!\n".to_owned(),
+        },
+        &facts,
+        None,
+        &Never,
+    );
     assert!(
         matches!(
             refused,

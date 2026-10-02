@@ -296,6 +296,14 @@ pub enum AfterState {
         /// 0 when the check itself failed).
         files: usize,
     },
+    /// A set-aside put-back brought his edits back, and the read that names
+    /// the files that came back from the index failed
+    /// ([`came_back_from_index`](super::came_back_from_index),
+    /// m8-polish-and-ship/14). His edits are back; only the naming is
+    /// missing, so a staged-new file he had deleted may be on disk again
+    /// unannounced.
+    #[error("your edits are back · which files came back from the index could not be read: {0}")]
+    CameBackUnread(RunError),
 }
 
 impl ApplyError {

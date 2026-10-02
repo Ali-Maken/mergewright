@@ -306,6 +306,15 @@ pub(super) fn commit(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) 
         editor.subject_refused = true;
         return Vec::new();
     }
+    if editor.reword_line {
+        // A line is built on `HEAD`: the reword is a rewrite, planned and
+        // previewed like an amend with dependents (m8-polish-and-ship/14).
+        let message = editor.message();
+        state.commit_editor = None;
+        let mut commands = Vec::new();
+        crate::update::amend_into::reword_confirmed(state, &mut commands, message, next_id);
+        return commands;
+    }
     let operation = editor.operation();
     let mut commands = Vec::new();
     // Unreachable `Err`: `editor_key` answers no key but `Esc` while a

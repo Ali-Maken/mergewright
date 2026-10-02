@@ -24,6 +24,8 @@
 //! A rebase that stops at 5 leaves the entry `Pending` with `S` in the list;
 //! `resume` runs step 6 when git is done with it, whichever way.
 
+use std::path::PathBuf;
+
 use graft_core::journal::{EntryStatus, JournalEntry, PutBack, PutBackWhy};
 use graft_core::oid::Oid;
 use graft_git::run::{GitArg, GitInvocation, RunError};
@@ -278,6 +280,7 @@ pub(super) fn close(
             Outcome::kept(kept, &listed_at(ctx, stash), stash)
         }
     };
+    let came_back = read_came_back(ctx, &outcome, &pending.entry, stash);
     let status = status_for(&outcome, ended.failure.as_ref(), ended.done);
     let mut unread = match finish(ctx, &mut pending, status, commands) {
         Ok(unread) => unread,
@@ -312,7 +315,58 @@ pub(super) fn close(
         }
     };
     unread.extend(ended.unread);
-    answer(outcome, pending.entry, stash, ended.failure, unread)
+    let paths = came_back_or_unread(came_back, &mut unread);
+    with_came_back(
+        answer(outcome, pending.entry, stash, ended.failure, unread),
+        paths,
+    )
+}
+
+/// Which staged-new files git checked out again (`AD` before), for the
+/// landing line. Only when the edits are back and there is a before-snapshot
+/// to compare with; `S`'s objects outlive its drop.
+fn read_came_back(
+    ctx: &Context<'_>,
+    outcome: &Outcome,
+    entry: &JournalEntry,
+    stash: Oid,
+) -> Option<Result<Vec<PathBuf>, RunError>> {
+    match (outcome, entry.worktree_before) {
+        (Outcome::Back { .. }, Some(before)) => Some(came_back_from_index(ctx.repo, stash, before)),
+        _ => None,
+    }
+}
+
+/// The paths read, or none and the failure among what was not read.
+fn came_back_or_unread(
+    came_back: Option<Result<Vec<PathBuf>, RunError>>,
+    unread: &mut Vec<AfterState>,
+) -> Vec<PathBuf> {
+    match came_back {
+        Some(Ok(paths)) => paths,
+        Some(Err(error)) => {
+            unread.push(AfterState::CameBackUnread(error));
+            Vec::new()
+        }
+        None => Vec::new(),
+    }
+}
+
+/// `paths` onto the answer's [`Applied`], wherever it carries one.
+fn with_came_back(
+    mut result: Result<Applied, ApplyError>,
+    paths: Vec<PathBuf>,
+) -> Result<Applied, ApplyError> {
+    match &mut result {
+        Ok(applied) => applied.came_back = paths,
+        Err(ApplyError::AfterState { applied, .. }) => applied.came_back = paths,
+        // Not an error being dropped: these answers carry no `Applied` to
+        // hold the paths. A clash or a kept `S` read none (`paths` empty);
+        // `Back` after git itself failed (`back_but_git_failed`) leads with
+        // git's failure and does not name them — a known gap, ticket 14.
+        Err(_) => {}
+    }
+    result
 }
 
 /// Where `S` is, for words: `stash@{n}` when listed, else its commit.

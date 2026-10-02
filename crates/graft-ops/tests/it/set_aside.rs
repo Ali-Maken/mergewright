@@ -229,6 +229,8 @@ fn a_staged_new_file_deleted_from_disk_is_named_as_back_from_the_index() {
         let came_back = came_back_from_index(&repo.open(), stash, before)
             .unwrap_or_else(|why| panic!("{kind:?}: {why}"));
         assert_eq!(came_back, [PathBuf::from("notes.md")], "{kind:?}");
+        // The operation's own record carries them, for the landing line.
+        assert_eq!(applied.came_back, came_back, "{kind:?}: on Applied");
         assert_eq!(
             came_back_words(&came_back).as_deref(),
             Some("notes.md came back from the index"),

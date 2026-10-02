@@ -258,6 +258,7 @@ Split into files, public items unchanged (m2 review M8): `mod.rs` keeps only the
 - `amend_blocked(&AppState) -> bool` (fn, `pub(crate)`, m7-power-tools/40) — `a`'s cheap blocks: a live operation (P14), a pending plan, an open commit editor. `a_key` runs the same checks in the same order; `view::rows::row_verbs` reads this for `a amend`.
 - `AmendInto` (struct) — private fields; `shown_for(op)` (`pub(crate)`): the box words when `op` is the planned put-in; `checking()`: a plan job is in flight.
 - `a_key` (fn, `pub(crate)`) — `a`, from `update::keys::commit::commit_key`: P14's refusal while an operation is live; a second `a` while checking starts nothing; an older commit row → the staged check (`Refusal::NothingStagedFor`'s words), then `Command::PlanRewrite { AmendInto }`; `HEAD`'s row, the uncommitted row, the changes pane → today's amend (`commit_editor::open`) unless refs show another local branch, then `PlanRewrite` with `head` (`checking what's built on <branch>…`). Refs not yet read: every row takes the `HEAD` path (review m7-09..21c Minor 3).
+- `reword_confirmed` (fn, `pub(crate)`, m8-polish-and-ship/14) — the commit editor's `⏎` on a reword it was opened for (`CommitEditor::reword_line`): plans `RewriteRequest::RewordHead { message }`; the preview's `y` runs it. `AmendInto::reword_read_answered(id)` tells `head_message_arrived` the editor is that reword's.
 - `absorb_chosen` (fn, `pub(crate)`) — the `.` menu's `ContextAction::Absorb`: P14's refusal in `a`'s words while an operation is live (review m7-09..21c Minor 4), else `PlanRewrite { Absorb }`.
 - `answer` / `planned` / `tags_resolved` (fns, `pub(crate)`) — the plan's answer: the preview (`opened_by` `a` or `.`), a refusal's own words (sticky), or `NothingBuiltOnHead` → today's amend; the tag read's answer sets `RowTag::Changed`, or adds `couldn't mark the changed commit: <why>` to the landing's line.
 - `landed` (fn, `pub(crate)`) — from `operate::operated`'s `Done`: only for the very `Operation::Rewrite` planned, the status `<what> ✓ · <also> · u undoes` and `Command::ResolveRowTags`.
@@ -341,7 +342,7 @@ The commit/amend editor (m3-working-tree-undo-and-stash/05). Modal: while
 `AppState::commit_editor` is `Some`, no key reaches the screen behind it.
 Seam rule: builds a `graft_ops::operation::Operation` and a
 `Command::Operate`, never a `GitInvocation`.
-- `CommitEditor` (struct) — `subject: TextField`, `body: TextArea`, `focus: Field`, `amend`, `sign_off`, `no_verify`, `allow_empty`, `head_short`, `template_applied`, `from_draft`.
+- `CommitEditor` (struct) — `subject: TextField`, `body: TextArea`, `focus: Field`, `amend`, `sign_off`, `no_verify`, `allow_empty`, `head_short`, `template_applied`, `from_draft`, `reword_line` (m8-polish-and-ship/14: `⏎` plans a reword of `HEAD` with its line, not an amend).
 - `CommitEditor::new` / `CommitEditor::amend` (fn) — a fresh editor, or one prefilled from `HEAD`'s short id and message.
 - `CommitEditor::load_message` (fn) — replace both fields from one message (first line the subject, the rest the body); used by the template, `HEAD`'s message and `$EDITOR`'s answer alike, so the three cannot split the message differently.
 - `CommitEditor::message` (fn) — the fields back as one message: subject, a blank line, body; no trailing blank.
@@ -583,7 +584,7 @@ A stash put back that clashed (ADR-0045 §2–3, m6-conflicts/72b). **Not a `Sto
 - `stash_name` (fn, `pub(crate)`) — `stash@{n}` for a recorded clash, `None` (role alone) for a shell pop; `resolver::side_names`' stash theirs.
 - `stop_wordings` (fn, `pub(crate)`) — `(&ClashState, conflicted) -> StopLadder` (`banner::StopLadder { wordings, before_keys }`; `before_keys: true` here, false for git stops — m6-conflicts/82 M1), fullest first: `stash@{0} clashed · 1 file conflicted` (launch: `… clash from last run · …`), `… clashed · 1 conflicted`, `… clashed`, `stash clashed`. Read only by `banner::stop` (pinned by `tests/it/stop_ladder_readers.rs`).
 - `kept_status` / `dropped_status` (fns, `pub(crate)`; `dropped_status(index, why: PutBackWhy)` since m6-conflicts/74; since /84 a `SetAside` reads `every file done · set-aside copy dropped ✓ · u brings it back` — what was dropped, the stash not named, ADR-0045 §3 amended) — `every file done · stash@{0} kept` / `every file done · stash@{0} dropped` + keys `u brings it back` (`Status::Done`, tick drawn by the renderer).
-- `edits_back` (fn, `pub(crate)`) — `(&JournalEntry) -> Option<&'static str>`: `your edits are back` when the entry set edits aside; the `Status::Done::also` clause after a clean put-back (`operate::operated`, `banner::resumed_words`), m6-conflicts/74, `also` since /84.
+- `edits_back` (fn, `pub(crate)`) — `(&Applied) -> Option<String>`: `your edits are back` when the entry set edits aside, then `· notes.md came back from the index` when `Applied::came_back` names files (m8-polish-and-ship/14); the `Status::Done::also` clause after a clean put-back (`operate::operated`, `banner::resumed_words`), m6-conflicts/74, `also` since /84.
 - `is_set_aside_entry` / `is_set_aside_clash` (fns, `pub(crate)`; `set_aside_entry` / `set_aside` until m6-conflicts/84) — does this entry carry a `SetAside` put-back / is the live clash one (`resolver::side_names` → `SideRoles::SetAside`; `banner::stop` ` · edits aside`; `clashed`'s `undoes the rebase/switch too` notice), m6-conflicts/74.
 - `drops` (fn, `pub(crate)`) — `PutBackWhy` → does finishing drop the stash: `Pop`/`SetAside` yes, `Apply` no.
 
@@ -1016,7 +1017,7 @@ command), `runner` (`JobRunner`) — re-exported from `mod.rs`.
 
 ## jobs::rewrite
 The put-in's reads (m7-power-tools/09).
-- `RewritePlanned` (enum) — `Plan(Box<PlannedPutIn>)`, `Refused(Refusal)`, `NothingBuiltOnHead`; `Product::RewritePlanned`'s answer to `Command::PlanRewrite`.
+- `RewritePlanned` (enum) — `Plan(Box<PlannedPutIn>)`, `Refused(Refusal)`, `NothingBuiltOnHead`, `RewordHead` (m8-polish-and-ship/14: `a` on `HEAD` with nothing staged and a line built on it — the app opens the editor, then plans `RewriteRequest::RewordHead`); `Product::RewritePlanned`'s answer to `Command::PlanRewrite`.
 - `PlannedPutIn` (struct) — `params` (what `y` runs), `offsets` (each target's first-parent steps below `HEAD`), `words: DoneWords` (`what`, `also`), `shown: BoxWords` (`title`, `confirm`, `rows`).
 - `PUT_IT_IN` / `PUT_THEM_IN` (consts) — the confirm verbs `y` names.
 - `offsets`, `parse_numstat`, `amend_into_words`, `absorb_words`, `stays_words` (fns, `pub(crate)`) — pure: the tag offsets from a plan, and the box and landing words (one `stays staged · <why>` per `StaysWhy`).

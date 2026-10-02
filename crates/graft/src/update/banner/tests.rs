@@ -54,6 +54,7 @@ pub(super) fn done_applied() -> graft_ops::apply::Applied {
         EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches,
     };
     graft_ops::apply::Applied {
+        came_back: Vec::new(),
         entry: JournalEntry {
             id: EntryId::new(1, [0; 10]),
             at_unix_ms: 1,

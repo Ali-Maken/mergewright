@@ -647,6 +647,7 @@ mod tests {
     #[test]
     fn a_time_machine_that_stopped_part_way_re_reads_everything() {
         let applied = graft_ops::apply::Applied {
+            came_back: Vec::new(),
             entry: entry_for("undo: commit \"fix\""),
             refresh: Refresh::WorkingTree,
             step_backup: None,
@@ -688,6 +689,7 @@ mod tests {
     fn a_part_way_revert_says_how_far_it_got() {
         let stopped = UndoError::PartWay {
             done: vec![graft_ops::apply::Applied {
+                came_back: Vec::new(),
                 entry: entry_for("undo: commit \"fix\""),
                 refresh: Refresh::WorkingTree,
                 step_backup: None,

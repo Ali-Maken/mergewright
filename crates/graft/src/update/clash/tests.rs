@@ -721,6 +721,7 @@ fn a_put_back_clash_done_names_the_dropped_copy() {
     crate::update::resolver::close_after_last(&mut state, &mut commands, &mut next);
     let id = state.operating.expect("the drop is running");
     let applied = graft_ops::apply::Applied {
+        came_back: Vec::new(),
         entry: pop_entry(),
         refresh: graft_ops::apply::Refresh::Everything,
         step_backup: None,

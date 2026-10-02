@@ -29,6 +29,10 @@ pub enum RewritePlanned {
     Refused(Refusal),
     /// The `HEAD` path with nothing built on his branch: today's amend.
     NothingBuiltOnHead,
+    /// The `HEAD` path with branches built on his and nothing staged: the
+    /// commit editor on `HEAD`'s message, whose `⏎` plans
+    /// `RewriteRequest::RewordHead` (m8-polish-and-ship/14).
+    RewordHead,
 }
 
 /// A planned put-in: what `y` runs, and the words around it.
@@ -102,7 +106,17 @@ pub(super) fn plan(
             return Ok(RewritePlanned::NothingBuiltOnHead);
         }
     }
-    planned(&handle, &git, request, default.as_ref(), stop)
+    let answer = planned(&handle, &git, request, default.as_ref(), stop)?;
+    // `a` on `HEAD` with nothing staged and a line built on it: his ruling
+    // is "let him edit the message" (m8-polish-and-ship/14), not the
+    // `nothing staged` refusal an older target gets.
+    if let (Some(head), RewritePlanned::Refused(Refusal::NothingStagedFor { target })) =
+        (head, &answer)
+        && *target == head.oid
+    {
+        return Ok(RewritePlanned::RewordHead);
+    }
+    Ok(answer)
 }
 
 /// The system git's version, kept from the first successful read in this
@@ -177,6 +191,7 @@ fn planned(
             };
             absorb_words(&map, &subjects)
         }
+        RewriteRequest::RewordHead { message } => reword_words(&params, message),
         // `R`'s editor plans its own; it never reaches this job.
         RewriteRequest::Open { .. } | RewriteRequest::FromRebase(_) => {
             return Err("R is not a put-in".to_owned());
@@ -276,6 +291,29 @@ pub(crate) fn amend_into_words(
             title: format!("put your staged changes into {short} \"{subject}\""),
             confirm: PUT_IT_IN,
             rows: vec![row],
+        },
+    )
+}
+
+/// The confirm verb of a reword's box.
+pub const REWORD: &str = "reword";
+
+/// A reword of `HEAD` with a line built on it: the box names the old
+/// subject and the new one; the landing, the new one.
+pub(crate) fn reword_words(params: &RewriteParams, message: &str) -> (DoneWords, BoxWords) {
+    let new = message.lines().next().unwrap_or_default().trim();
+    let (short, old) = params.todo.last().map_or((String::new(), ""), |row| {
+        (short(row.commit), row.subject.as_str())
+    });
+    (
+        DoneWords {
+            what: format!("reworded \"{new}\""),
+            also: None,
+        },
+        BoxWords {
+            title: format!("reword {short} \"{old}\""),
+            confirm: REWORD,
+            rows: vec![format!("{short}  new message  {new}")],
         },
     )
 }
