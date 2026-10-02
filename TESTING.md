@@ -227,6 +227,21 @@ capped fixture, a backdrop goes only on a frame whose fold plan or strip
 window changed, at least one `j` does change the fold, and a changed selection
 paint always sends an emphasis layer.
 
+**The strip memory bound** (m8 04): the strip cache weighs its layers in
+bytes against one budget (`STRIP_BUDGET`, 96 MiB; DESIGN §3.8), the viewport's
+strips kept whatever they weigh. Fast tier, every build:
+`event_loop::tests::pixel_scroll::held_j_on_wide_strips_stays_within_the_byte_budget`
+(resident ≤ budget or the floor, every frame; the pool makes no new buffer over
+the second half of the hold). Heavy tier:
+`heavy::budgets_hold_at_pixel_on_monorepo_with_j_held_free` and
+`heavy::budgets_hold_at_pixel_on_monorepo_with_j_held_40mb` run `held_key`'s
+scenario A (Kitty + deflate, 187×50, 17×37 cell) in a child process of their
+own and assert its `getrusage` peak < 300 MB. Right looks like: both green, and
+a `SUMMARY heavy pixel_rss … peak_rss=` line each. Where the bytes go per layer,
+per cell size: `scripts/scroll-pixel-memory.sh` →
+`docs/perf/scroll-pixel-memory-budget.txt` (a measurement patch applied to an
+exported tree, never committed to the source).
+
 **Deflate off is red by known gap** (`KNOWN_GAPS` M7/46-kitty-no-deflate): the
 raw Kitty pair (`held_j_stops_on_release_pixel`,
 `j_then_journal_opens_at_once_pixel`) misses `tail_ms` / `j_ms` ≤ 100 by
