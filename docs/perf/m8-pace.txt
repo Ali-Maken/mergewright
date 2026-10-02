@@ -1,0 +1,83 @@
+SUMMARY machine ac=1 lowpower=0 os=darwin
+# m8-pace (m8-polish-and-ship/02): held j through the paced loop, release
+# HEAD d127565a
+# machine: Apple M5, 10 cpus, Darwin 27.0.0
+# load before: 10.61 18.67 22.78
+# the DrainSink answers each CSI 5 n once drained past; capabilities.answers_dsr = true
+SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=0 frames_after_release=2 tail_ms=2134 bytes_per_frame_held=0 strip_transmits_held=2 emphasis_transmits_held=2 rows_scrolled=188 fold_changes_held=unread bytes_per_key=297967 emphasis_cells_p99=59 deflated_transmits=0 peak_rss_mb=135 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Pixel scenario=A frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=A strip_transmits_held=2: unjudged (fold_changes_held unread)
+VERDICT held_key tier=Pixel scenario=A tail_ms<=100: FAILED
+SUMMARY held_key tier=Pixel scenario=A-deflate size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=131 frames_after_release=2 tail_ms=29 bytes_per_frame_held=157256 strip_transmits_held=93 emphasis_transmits_held=252 rows_scrolled=188 fold_changes_held=unread bytes_per_key=113023 emphasis_cells_p99=71 deflated_transmits=351 peak_rss_mb=417 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Pixel scenario=A-deflate frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=A-deflate bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=A-deflate strip_transmits_held=93: unjudged (fold_changes_held unread)
+VERDICT held_key tier=Pixel scenario=A-deflate tail_ms<=100: ok
+SUMMARY held_key tier=Pixel scenario=A-deflate size=187x50 cell=17x37 drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=230 frames_after_release=1 tail_ms=8 bytes_per_frame_held=147417 strip_transmits_held=155 emphasis_transmits_held=388 rows_scrolled=188 fold_changes_held=unread bytes_per_key=182869 emphasis_cells_p99=71 deflated_transmits=546 peak_rss_mb=417 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Pixel scenario=A-deflate frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=A-deflate bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=A-deflate strip_transmits_held=155: unjudged (fold_changes_held unread)
+VERDICT held_key tier=Pixel scenario=A-deflate tail_ms<=100: ok
+SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=81 frames_after_release=2 tail_ms=55 bytes_per_frame_held=13883521 strip_transmits_held=60 emphasis_transmits_held=173 rows_scrolled=188 fold_changes_held=unread bytes_per_key=6208433 emphasis_cells_p99=71 deflated_transmits=0 peak_rss_mb=1151 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Pixel scenario=A frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: FAILED
+VERDICT held_key tier=Pixel scenario=A strip_transmits_held=60: unjudged (fold_changes_held unread)
+VERDICT held_key tier=Pixel scenario=A tail_ms<=100: ok
+SUMMARY held_key tier=Pixel scenario=A-iterm2 size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=147 frames_after_release=2 tail_ms=20 bytes_per_frame_held=133362 strip_transmits_held=0 emphasis_transmits_held=0 rows_scrolled=188 fold_changes_held=unread bytes_per_key=106268 emphasis_cells_p99=none deflated_transmits=0 peak_rss_mb=1151 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Pixel scenario=A-iterm2 frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=A-iterm2 bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=A-iterm2 strip_transmits_held=0: unjudged (fold_changes_held unread)
+VERDICT held_key tier=Pixel scenario=A-iterm2 tail_ms<=100: ok
+SUMMARY held_key tier=Unicode scenario=A size=187x50 cell=17x37 drain=500000B/s pipe=16384 keys=188 frames_while_held=90 frames_after_release=1 tail_ms=46 bytes_per_frame_held=15286 strip_transmits_held=0 emphasis_transmits_held=0 rows_scrolled=188 peak_rss_mb=1151 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Unicode scenario=A frames_after_release<=2: ok
+VERDICT held_key tier=Unicode scenario=A tail_ms<=100: ok
+SUMMARY held_key tier=Unicode scenario=A size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=234 frames_after_release=1 tail_ms=1 bytes_per_frame_held=13223 strip_transmits_held=0 emphasis_transmits_held=0 rows_scrolled=188 peak_rss_mb=1151 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Unicode scenario=A frames_after_release<=2: ok
+VERDICT held_key tier=Unicode scenario=A tail_ms<=100: ok
+SUMMARY held_key tier=Unicode scenario=A size=187x50 cell=17x37 drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=233 frames_after_release=1 tail_ms=1 bytes_per_frame_held=13279 strip_transmits_held=0 emphasis_transmits_held=0 rows_scrolled=188 peak_rss_mb=1151 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Unicode scenario=A frames_after_release<=2: ok
+VERDICT held_key tier=Unicode scenario=A tail_ms<=100: ok
+SUMMARY held_key tier=Pixel scenario=B size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=189 frames_while_held=0 frames_after_release=1 tail_ms=630 bytes_per_frame_held=0 strip_transmits_held=2 emphasis_transmits_held=2 rows_scrolled=188 j_ms=581 j_done_ms=579 frames_before_J=1 fold_changes_held=unread bytes_per_key=209222 emphasis_cells_p99=59 deflated_transmits=0 peak_rss_mb=1151 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Pixel scenario=B frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=B frames_before_J<=1: ok
+VERDICT held_key tier=Pixel scenario=B bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=B strip_transmits_held=2: unjudged (fold_changes_held unread)
+VERDICT held_key tier=Pixel scenario=B tail_ms<=100: FAILED
+VERDICT held_key tier=Pixel scenario=B j_ms<=100: FAILED
+SUMMARY held_key tier=Pixel scenario=B-deflate size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=189 frames_while_held=120 frames_after_release=1 tail_ms=26 bytes_per_frame_held=158767 strip_transmits_held=85 emphasis_transmits_held=234 rows_scrolled=188 j_ms=1 j_done_ms=0 frames_before_J=0 fold_changes_held=unread bytes_per_key=103905 emphasis_cells_p99=71 deflated_transmits=322 peak_rss_mb=1151 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Pixel scenario=B-deflate frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=B-deflate frames_before_J<=1: ok
+VERDICT held_key tier=Pixel scenario=B-deflate bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=B-deflate strip_transmits_held=85: unjudged (fold_changes_held unread)
+VERDICT held_key tier=Pixel scenario=B-deflate tail_ms<=100: ok
+VERDICT held_key tier=Pixel scenario=B-deflate j_ms<=100: ok
+SUMMARY held_key tier=Unicode scenario=B size=187x50 cell=17x37 drain=500000B/s pipe=16384 keys=189 frames_while_held=90 frames_after_release=1 tail_ms=42 bytes_per_frame_held=15275 strip_transmits_held=0 emphasis_transmits_held=0 rows_scrolled=188 j_ms=0 j_done_ms=0 frames_before_J=0 peak_rss_mb=1151 premise_wide=188/188 premise_lit_changed=184/188
+VERDICT held_key tier=Unicode scenario=B frames_after_release<=2: ok
+VERDICT held_key tier=Unicode scenario=B frames_before_J<=1: ok
+VERDICT held_key tier=Unicode scenario=B tail_ms<=100: ok
+VERDICT held_key tier=Unicode scenario=B j_ms<=100: ok
+test held_key::b_bound_stops_at_js_frame ... ok
+test held_key::held_j_stops_on_release_pixel ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=84
+test held_key::held_j_stops_on_release_pixel_deflate ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=10
+test held_key::held_j_stops_on_release_pixel_deflate_free ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=9
+test held_key::held_j_stops_on_release_pixel_free ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=10
+test held_key::held_j_stops_on_release_pixel_iterm2 ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=9
+test held_key::held_j_stops_on_release_unicode ... frames: tier=Unicode refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=10
+test held_key::held_j_stops_on_release_unicode_40mb ... frames: tier=Unicode refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=16
+test held_key::held_j_stops_on_release_unicode_free ... frames: tier=Unicode refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=9
+test held_key::j_then_journal_opens_at_once_pixel ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=16
+test held_key::j_then_journal_opens_at_once_pixel_deflate ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=9
+test held_key::j_then_journal_opens_at_once_unicode ... frames: tier=Unicode refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=9
+# panic: held_key verdict failed ["tail_ms<=100"]: SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=0 frames_after_release=2 tail_ms=2134 bytes_per_frame_held=0 strip_transmits_held=2 emphasis_transmits_held=2 rows_scrolled=188 fold_changes_held=unread bytes_per_key=297967 emphasis_cells_p99=59 deflated_transmits=0 peak_rss_mb=135 premise
+# panic: held_key verdict failed ["bytes_per_frame_held<=512KiB"]: SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=81 frames_after_release=2 tail_ms=55 bytes_per_frame_held=13883521 strip_transmits_held=60 emphasis_transmits_held=173 rows_scrolled=188 fold_changes_held=unread bytes_per_key=6208433 emphasis_cells_p99=71 deflat
+# panic: held_key verdict failed ["tail_ms<=100", "j_ms<=100"]: SUMMARY held_key tier=Pixel scenario=B size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=189 frames_while_held=0 frames_after_release=1 tail_ms=630 bytes_per_frame_held=0 strip_transmits_held=2 emphasis_transmits_held=2 rows_scrolled=188 j_ms=581 j_done_ms=579 frames_before_J=1 fold_changes_held=unread bytes_per_key=209222 emphasis_cell
+frames: g_after_idle build=idle-advance tier=Unicode refs=FiftyThousand rows=100000 laid_out=100000 gap_ms=2000 latency_us=13176 asked=1 wakes_between=1 idle_gap_wakes=0 woke=[]
+J1 tier=Unicode scenario=A drain=40MB/s tail_ms=1 verdict=pass
+J1 tier=Unicode scenario=A drain=free tail_ms=1 verdict=pass
+J1 tier=Pixel scenario=A-deflate drain=40MB/s tail_ms=29 verdict=pass
+J1 tier=Pixel scenario=A-deflate drain=free tail_ms=8 verdict=pass
+J3 g_after_idle latency_us=13176 verdict=pass
+ROW 1089 kitty-no-deflate tail_ms=2134 free_tail_ms=55 verdict=still-open
+ROW 1095 scroll-residual-lag verdict=question-stays (fixture tails above; feel in Ghostty/VS Code/Zed is his)
+# exit held=101 idle=0
