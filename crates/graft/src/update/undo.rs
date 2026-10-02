@@ -23,7 +23,7 @@ use super::state::{AppState, Status};
 use crate::jobs::undo::{RevertedTo, Undone};
 
 mod consequence;
-mod landing;
+mod lands_on;
 
 use consequence::{applied_is_redo, done_with, landing, with_consequence, wrapped};
 
@@ -375,10 +375,10 @@ fn undid(
     // …and the cursor lands on what came back, as a finished operation's
     // does (m8-polish-and-ship/13, ruling 2): `HEAD` when it moved, else
     // the first branch the entry moved, else where it was.
-    if let Some(on) = landing::of(&applied.entry) {
+    if let Some(on) = lands_on::of(&applied.entry) {
         super::banner::finished_lands_on(state, &commands, on);
     }
-    for at in landing::came_back(&applied.entry) {
+    for at in lands_on::came_back(&applied.entry) {
         state
             .row_tags
             .set(at, graft_ui::graph_screen::RowTag::PutBack);
@@ -1793,6 +1793,35 @@ mod tests {
         assert_eq!(
             done_line_of(&state.status),
             "undo: finish merge of feature ✓ · c finishes the merge"
+        );
+    }
+
+    /// Review m8-13 Major 1, the undo way: the banner took the keyboard
+    /// after an undo put a merge back, and `q` there reaches the quit box
+    /// (DESIGN §2.2) rather than the banner's silent catch-all. The stop
+    /// and relaunch ways are in `quit`'s tests.
+    #[test]
+    fn q_on_the_banner_after_an_undo_puts_a_merge_back_reaches_the_quit_box() {
+        use graft_core::event::{Event, KeyCode, KeyPress};
+        let (state, read) = finish_undone(AppState::default());
+        let state = read_lands(&state, read, Some(graft_git::state::InProgress::Merge));
+        assert!(state.banner_focus, "the banner has the keyboard");
+        let (next, commands) = crate::update::update(
+            &state,
+            crate::update::AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char('q')))),
+        );
+        assert_eq!(next.quit, None, "the box asks first");
+        assert!(commands.is_empty(), "{commands:?}");
+        let open = next.confirm.as_ref().expect("the quit box is up");
+        let line: Vec<&str> = open
+            .view
+            .message
+            .iter()
+            .map(graft_term::SanitizedText::as_str)
+            .collect();
+        assert_eq!(
+            line,
+            ["merge is stopped \u{b7} next launch offers continue or abort"]
         );
     }
 

@@ -166,3 +166,135 @@ fn q_with_a_stopped_rebase_boxes_pending_the_ruling() {
     assert_eq!(next.quit, Some(Quit::Requested));
     assert!(commands.is_empty(), "nothing to stop: {commands:?}");
 }
+
+// ── review m8-13 Major 1: `q` from the focused banner ──
+//
+// A stop, a relaunch into one and an undo back into one all hand the
+// keyboard to the banner. `q` pressed there must reach the same quit path
+// as the graph's; it used to fall into the banner's silent catch-all. The
+// undo way lives with its fixtures, in `undo`'s tests.
+
+fn merge_detail() -> graft_git::state::InProgressDetail {
+    graft_git::state::InProgressDetail {
+        kind: graft_git::state::InProgress::Merge,
+        step: None,
+        head_name: None,
+        onto: None,
+        theirs: Ok(None),
+    }
+}
+
+/// The working-tree read `id` lands: a merge live, `paths` unmerged.
+fn merge_read(id: JobId, paths: &[&str]) -> AppEvent {
+    use graft_git::status::{StatusEntry, WorkingTreeStatus};
+    let entries = paths
+        .iter()
+        .map(|path| StatusEntry {
+            path: (*path).into(),
+            original_path: None,
+            staged: None,
+            unstaged: None,
+            untracked: false,
+            unmerged: true,
+            unmerged_how: None,
+            submodule: None,
+        })
+        .collect();
+    AppEvent::Produced(
+        id,
+        crate::update::Product::WorkingTree(Ok(Box::new(crate::working_tree::WorkingTree {
+            rewrite: None,
+            status: std::sync::Arc::new(WorkingTreeStatus { entries }),
+            in_progress: Some(merge_detail()),
+            mergetool: None,
+        }))),
+    )
+}
+
+/// `q` on the focused banner, a merge stopped: the stopped box, as from
+/// the graph (DESIGN §2.2, `stopped_box`), and `y` quits.
+fn q_boxes_from_the_banner(state: &AppState) {
+    assert!(state.banner_focus, "the banner has the keyboard");
+    assert!(
+        crate::update::banner::banner_view(state).is_some(),
+        "the banner is drawn"
+    );
+    let (next, commands) = press(state, plain('q'));
+    assert_eq!(next.quit, None, "the box asks first");
+    assert!(commands.is_empty(), "{commands:?}");
+    assert_eq!(
+        box_line(&next),
+        "merge is stopped \u{b7} next launch offers continue or abort"
+    );
+    let (next, _) = press(&next, plain('y'));
+    assert_eq!(next.quit, Some(Quit::Requested), "`y` quits");
+}
+
+/// A Graft with its history up and nothing else read.
+fn launched() -> AppState {
+    AppState {
+        history: Some(crate::view::tests::history_of(5, 0)),
+        ..AppState::default()
+    }
+}
+
+/// Way 1: a merge stops with nothing left unmerged, and the re-read it
+/// asked for lands. The stop gave the banner the keyboard.
+#[test]
+fn q_on_the_banner_after_a_conflict_stop_reaches_the_quit_box() {
+    let id = JobId::new(7);
+    let state = AppState {
+        operating: Some(id),
+        ..launched()
+    };
+    let (state, commands) = crate::update::update(
+        &state,
+        AppEvent::Produced(
+            id,
+            crate::update::Product::Operated(Box::new(
+                crate::jobs::operate::Operated::Conflicted {
+                    rewrite: None,
+                    description: "merge feature into main".to_owned(),
+                    kind: graft_git::state::InProgress::Merge,
+                    paths: Vec::new(),
+                    stalled: None,
+                    entry: graft_core::journal::EntryId::new(42, [4; 10]),
+                },
+            )),
+        ),
+    );
+    let read = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::ReadWorkingTree(id) => Some(*id),
+            _ => None,
+        })
+        .expect("the stop re-reads the working tree");
+    let (state, _) = crate::update::update(&state, merge_read(read, &[]));
+    q_boxes_from_the_banner(&state);
+}
+
+/// Way 2: Graft launched into a merge git already stopped (`relaunch`).
+#[test]
+fn q_on_the_banner_after_a_relaunch_reaches_the_quit_box() {
+    let (state, _) = crate::update::update(&launched(), merge_read(JobId::new(90), &["gone.txt"]));
+    q_boxes_from_the_banner(&state);
+}
+
+/// A write running while the banner has the keyboard (a `c` launched from
+/// it): the running box, since the write is what quitting cuts off.
+#[test]
+fn q_on_the_banner_while_a_write_runs_names_the_write() {
+    let (state, _) = crate::update::update(&launched(), merge_read(JobId::new(90), &[]));
+    let state = AppState {
+        operating: Some(JobId::new(3)),
+        ..state
+    };
+    assert!(state.banner_focus, "the banner has the keyboard");
+    let (next, _) = press(&state, plain('q'));
+    assert_eq!(next.quit, None);
+    assert_eq!(
+        box_line(&next),
+        "a write is still running \u{b7} quit stops it"
+    );
+}
