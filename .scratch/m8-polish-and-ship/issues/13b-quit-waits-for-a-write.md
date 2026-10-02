@@ -1,7 +1,7 @@
 # `q` while a write that can't stop runs: quit waits for it; `q quit` on the banner's bar
 
 Status: ready
-Build with: _(blank — scout `scouts/13b-quit.md` running; conductor sets it after)_
+Build with: Opus (conductor, after scout `scouts/13b-quit.md`)
 Blocked by: 13
 Needs: ticket 13's review fix (Major 1: `banner_key` sends `q` to `quit::asked`), merged. No other ticket's signature.
 Brownfield (ADR-0035): **scout first**. The conductor sets `Build with` after it.
@@ -115,3 +115,11 @@ workspace-wide.
 
 ## Size
 One context, ~40k tokens. Crates: graft and graft-ui (a two-file touch in graft-ui).
+
+## Conductor decision on the Question (after scout `scouts/13b-quit.md`, read not run)
+Scout: `Ctrl+C` is a key in raw mode; `quit.rs:28` quits with no box → `cancel_all` (`runner.rs:478`) → `run.rs:495` SIGTERM, SIGKILL after 2 s (`exec.rs:235`); shutdown waits 200 ms (`startup.rs:192`), so the worker is abandoned. A `Stoppable::No` write (rebase, merge) can be SIGTERMed halfway. That breaks M3 ("you cannot lose work").
+**In scope now:**
+- `Ctrl+C` during a `Stoppable::No` write behaves like `q` (the same box, the same wait). It never signals that write.
+- Shutdown never signals a `Stoppable::No` write. It waits for the write to end.
+- For stoppable jobs, shutdown waits for the stop to land (SIGTERM → exit or SIGKILL) and never abandons a child. Name the bound.
+- Acceptance: a test that a `Stoppable::No` git child is never sent a signal on `q`/`y` or `Ctrl+C` (red today for `Ctrl+C`). A test that no child outlives shutdown. Before the fix, run in a temp repo what a SIGTERMed rebase leaves on disk and in the journal, and record it in NOTES (evidence for the gap row, not a fix).
