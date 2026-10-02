@@ -4,6 +4,7 @@ Status: draft
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Fable (signature)**: it changes the event loop's
 contract every later frame depends on (structural if wrong), and smoothness on his terminals can't be judged from the
 diff or fixture tests — passes all three Fable tests.
+Scout: `.scratch/m8-polish-and-ship/scouts/frame-loop.md` — note: `CSI 0 n` is NOT routed as a reply today (decoder drops it, csi.rs:28/97).
 Needs: `trace-product-frame-trace` (`FrameRecord::fence_us`).
 
 ## Read first
