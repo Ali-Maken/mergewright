@@ -79,7 +79,7 @@ pub struct ForkSection {
       after `y`, `git rev-parse feature-x` unchanged; the line moved.
 - [ ] Reword HEAD with a dependent (`RewordHead`) and a fork off the dependent's middle commit: fork follows (git).
 - [ ] `u` after a follow: every ref (`for-each-ref refs/heads`) equals before; one journal entry.
-- [ ] Oracle: the generated todo hand-run with `git rebase -i` gives the same trees and refs (`rewrite_oracle.rs`).
+- [x] Oracle (`rewrite_oracle::a_fork_follows_in_the_same_rebase`): the generated todo hand-run with `git rebase -i` gives the same trees and refs (`rewrite_oracle.rs`).
 - [ ] Verified against git: `label`/`reset` run without `--rebase-merges`; abort during a stop after a section leaves
       the fork ref unchanged (`git rev-parse`). If either fails: stop, report, don't work around (ADR-0059 §3).
 - [ ] `progress` during a hand-run of Graft's todo with a `break` inside a section: `fork == Some("feature-x")`,
@@ -88,7 +88,7 @@ pub struct ForkSection {
       branch, ninth fork `PastCap`, forecast `NotChecked` (git < 2.40 path or cap) → never `Follows`.
 - [ ] Fork moved between preview and `y` → `Moved`, nothing written (git).
 - [ ] `plan.json` without `forks` (an older plan) reads; a stop resumed after relaunch finishes the section.
-- [ ] No fork: todo text byte-equal to today's (existing oracle tests unchanged and green).
+- [x] No fork (`rewrite::tests` todo-text tests + every `rewrite_oracle` row green, graft-ops run 2026-10-02): todo text byte-equal to today's (existing oracle tests unchanged and green).
 
 ## Touches
 - m7/37 tests asserting `left_behind` for a **clean** fork now see it follow: list each, update the expectation, say so.
@@ -104,3 +104,34 @@ pub struct ForkSection {
 
 ## Size
 One context, ~75k. If the scout finds `r` needs its own params path, split `r` off first.
+
+## Handoff (partial, 2026-10-02) — builder compacted once
+
+**Why stopped:** conductor asked me to `git checkout worktree-agent-aa4abba36c4d3ab03` (worktree had been moved to
+`review/m8-14` by a reviewer). Git refused: local changes to `crates/graft/src/update/tests.rs` would be overwritten
+(the two bases differ by 2 lines there; my edit adds one `fork: None`). Nothing committed. Backup of all WIP:
+scratchpad `14b-wip.patch` (tracked diff) + `forks.rs` (new, untracked `crates/graft-ops/src/preview/forks.rs`).
+
+**Done (uncommitted, workspace compiles):** engine + preview per ADR-0059 — `ForkSection`, `RewriteParams.forks`,
+`RewriteProgress.fork`, todo sections (label/picks/inside update-refs/update-ref/reset), `plan.json` `forks` (serde
+default, test `a_plan_saved_before_forks_reads_as_none`), progress parsing of label/reset/non-line update-refs,
+engine guard (`after_row >= rows run` → `Moved`), `Operation::tips` includes forks + inside tips, preview `Fork`/
+`ForkFate`/`WhyStays`, `PreviewPlan.forks`/`forks_more`, `plan_as_run` fixes Rewrite forks. `r` untouched (forks
+empty; KNOWN_GAPS row). graft forced sites: literals only, plus `update/amend_into.rs::is_put_in` ignores `forks`
+(test `a_put_in_carrying_forks_is_still_the_put_in`).
+
+**Test state:** graft-ops 1008/1011 pass. 3 expected failures, m7/37 expectations to update (clean fork now follows):
+`rewrite_preview.rs:973` (left_behind → [], assert feature-b in `forks` as Follows), `:986` (left_behind = [backup]
+only; a backup is not a fork), `:1032` (cap: `off_line` names 8; all 8 follow → left_behind [], left_behind_more 2,
+forks.len 8, forks_more 2).
+
+**Next exact steps:** 1) resolve the branch switch (conductor). 2) update the three tests above. 3) new
+`tests/it/fork_follows.rs` (+ `mod` in main.rs) for acceptance 1, 2, 4, 6b (abort), 7, 8, 9, 10; and the substitute
+for 3. 4) workspace gates. 5) MAP.md graft-ops. 6) commit.
+
+**Acceptance 3 contradicts ADR-0059 §5:** a branch forked off the dependent's middle commit is itself a dependent
+(`rewrite/dependents.rs:110-119`: any branch whose first-parent chain reaches his tip), and two dependents are refused
+(`:38-40`, `ForkedDependents`). Proposed: test the refusal, plus R + dependent + fork off his own mid-chain commit.
+
+**Semantics for 14c:** `PastCap` never appears in `forks` (forks past 8 are only counted in `forks_more`);
+`pending` excludes sections not yet entered, the open section's rest first; `step` total counts every pick-like row.
