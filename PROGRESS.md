@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M7 CHECKPOINT (2026-10-02).** Scroll-lag fix 41–49 (+46b, 46c) merged; gates 5120 passed (f1beb6e6). Release fixture: Kitty+deflate tail 47 ms, Unicode 69 ms. User: "still a bit laggy but improved" (gap, question). Waiting on the user: by-eye captures, question batch. M8 starts only when the user starts it (user, 2026-10-02). Logs: `docs/log/m7.md`.
+**Current step:** **M7 done (2026-10-02).** Checkpoint closed: captures approved unseen (colour, Ghostty render unverified), stop questions answered (`docs/field-notes.md`), Spotlight off for `target/`. **Next: M8 — waits for the user to start it** (user, 2026-10-02). M8 first item: scroll lag on big repos (gap M7/scroll-residual-lag). Logs: `docs/log/m7.md`.
 
 **Running now:** nothing.
 
@@ -71,7 +71,7 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 | [x] | M4 Remotes (write) | per group | Fable | Fetch, pull and push on a real remote; wrong password |
 | [x] | M5 Merge, rebase, reset, Ghost Preview (write) | per group; Fable: Ghost Preview planning | Fable | Every history change is previewed and can be undone |
 | [x] | M6 Conflict resolver (write) | per group; Fable: conflict and operation state machine | Fable | Resolve a real conflict; kill mid-rebase, relaunch |
-| [ ] | M7 Power tools (read-only) — **conditional, judged on real use** (ADR-0030) | per group | Fable | Interactive rebase, blame, line history, reflog, **branch-dependency + chain rebase** (ADR-0032) |
+| [x] | M7 Power tools (read-only) — **conditional, judged on real use** (ADR-0030) | per group | Fable | Interactive rebase, blame, line history, reflog, **branch-dependency + chain rebase** (ADR-0032) |
 | [ ] | M8 Polish, **final name**, ship (read-only) — **conditional** (ADR-0030) | per group; Fable: architecture pass over MAP.md files | Fable | Pick the name (below), then a fresh install and the first-run tour |
 
 **Who designs, specifies, builds and reviews; ticket size, context, checkpoints:** CLAUDE.md, "Standing rules". Not restated here. Fable's share was raised for M2 onward on 2026-09-13; M1 keeps its tickets and its Opus review. Record of who did what: `docs/AUTHORSHIP.md`.
