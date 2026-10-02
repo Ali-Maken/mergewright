@@ -468,6 +468,7 @@ fn conflicted_view() -> DetailView {
         mode: graft_ui::detail::DiffMode::Unified,
         options: graft_ui::detail::DiffOptionsView::default(),
         explain: None,
+        following: false,
     }
 }
 

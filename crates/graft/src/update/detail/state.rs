@@ -335,6 +335,14 @@ pub struct DetailState {
     /// re-read diff when it arrives (m7-power-tools/20b). Any other diff
     /// shown first drops it.
     pub kept_line: Option<KeptLine>,
+    /// The "contained in" query in flight, and its commit (G-settle): `load`
+    /// cancels it when the pane moves to another commit, `abandon` when a
+    /// burst starts, and `contained_arrived` drops any other id's answer.
+    pub(crate) contained_job: Option<(JobId, Oid)>,
+    /// `abandon` cancelled the spec's own reads mid-burst, so following the
+    /// same spec again reads it again instead of keeping a pane with
+    /// nothing coming.
+    pub(crate) abandoned: bool,
 }
 
 /// Where the line cursor was when the same file was read again under new
@@ -397,6 +405,8 @@ impl Default for DetailState {
             explain_highlight: Vec::new(),
             kept_cursor: None,
             kept_line: None,
+            contained_job: None,
+            abandoned: false,
         }
     }
 }

@@ -388,6 +388,9 @@ pub struct DetailView {
     pub options: DiffOptionsView,
     /// The explain panel, when open.
     pub explain: Option<ExplainView>,
+    /// The cursor has moved on and the pane will follow it once the
+    /// cursor rests (G-settle): the title row ends in a muted `reading…`.
+    pub following: bool,
 }
 
 /// A Mistake Radar explanation, as the explain panel draws it.
