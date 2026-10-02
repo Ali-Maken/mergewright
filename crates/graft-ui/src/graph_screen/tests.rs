@@ -2120,8 +2120,9 @@ fn row_at_is_none_off_the_body() {
 
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination (54 → 63 in m6-conflicts/50: the confirm box
-/// once per `ConfirmYes`).
-const COVERAGE_SLOTS: usize = 111;
+/// once per `ConfirmYes`; 111 → 112 in m8-polish-and-ship/13: `Quit`, whose
+/// place after `Redo` (63) was already the changes pane's).
+const COVERAGE_SLOTS: usize = 112;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2333,8 +2334,12 @@ fn changes_pane_slot(context: &HintContext) -> usize {
 }
 
 /// [`coverage_slot`] for the confirm box: 25 with no `y`, then one per
-/// acting button `y` takes, 54–62 (m6-conflicts/50).
+/// acting button `y` takes, 54–62 (m6-conflicts/50), and `Quit` at 111
+/// (m8-polish-and-ship/13: 63 was taken).
 fn confirm_slot(yes: Option<super::ConfirmYes>) -> usize {
+    if yes == Some(super::ConfirmYes::Quit) {
+        return 111;
+    }
     yes.map_or(25, |yes| {
         54 + super::ConfirmYes::ALL
             .iter()

@@ -19,6 +19,7 @@ mod conflict_interim;
 mod context_menu;
 mod coverage;
 mod credential_by_key;
+mod daily_landing;
 /// Shared step deadline: turns a hang into a named failure. Used by
 /// `app_harness` and `budget_run`.
 mod deadline;

@@ -9,7 +9,7 @@ use crate::history::Motion;
 use graft_ui::detail::DetailFocus;
 
 use super::events::Command;
-use super::state::{AppState, Quit, Status};
+use super::state::{AppState, Status};
 
 mod acknowledge;
 mod actions;
@@ -317,7 +317,7 @@ fn stash_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) ->
 /// The graph's own keys, once the detail pane has passed on the key.
 fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     if is_quit(key) {
-        next.quit = Some(Quit::Requested);
+        super::quit::asked(next, key);
     } else if is_refresh(key) {
         let mut local_jobs = next.local_jobs;
         refresh_key(next, commands, &mut || local_jobs.next_id());

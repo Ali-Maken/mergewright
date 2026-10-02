@@ -58,7 +58,8 @@ impl ConfirmThen {
             Self::Operate(Operation::StashDrop { .. } | Operation::Discard(_))
             | Self::Undo { .. }
             | Self::Resume(_)
-            | Self::RestartConflict { .. } => true,
+            | Self::RestartConflict { .. }
+            | Self::Quit { .. } => true,
             // `Operate(_)`: no box opens over any other operation today, so
             // `y` stays swallowed until one does and is added above on
             // purpose.
@@ -128,6 +129,12 @@ pub enum ConfirmThen {
         /// What ops' gate said the restart puts back when the box opened;
         /// ops refuses `RestartChanged` if the stages say otherwise now.
         kind: graft_ops::operation::RestartKind,
+    },
+    /// `q` while something is in progress (`update::quit`): quit, first
+    /// stopping the write `stops` names when it is still running.
+    Quit {
+        /// The running write the box named, when it named one.
+        stops: Option<JobId>,
     },
 }
 
@@ -233,6 +240,7 @@ fn act(
             // answer of whichever lost the race would be dropped
             // (m6-05 review, Major 3). `restart_box` refuses the
             // same before the box opens.
+            ConfirmThen::Quit { stops } => super::quit::confirmed(next, commands, stops),
             ConfirmThen::RestartConflict { .. } if next.operating.is_some() => {
                 next.status = Status::sticky("a write is already running");
             }

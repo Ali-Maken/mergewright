@@ -418,11 +418,14 @@ pub enum ConfirmYes {
     Undo,
     /// `[ Redo ]`, the redo drift guard.
     Redo,
+    /// `[ Quit ]`, the box `q` opens while a write runs or git is stopped
+    /// (m8-polish-and-ship/13).
+    Quit,
 }
 
 impl ConfirmYes {
     /// Every value, in declaration order: what the sweeps iterate.
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::Push,
         Self::Drop,
         Self::Discard,
@@ -432,6 +435,7 @@ impl ConfirmYes {
         Self::StartOver,
         Self::Undo,
         Self::Redo,
+        Self::Quit,
     ];
 
     /// The button's label exactly as the box draws it.
@@ -447,6 +451,7 @@ impl ConfirmYes {
             Self::StartOver => "Start over",
             Self::Undo => "Undo",
             Self::Redo => "Redo",
+            Self::Quit => "Quit",
         }
     }
 
@@ -463,6 +468,7 @@ impl ConfirmYes {
             Self::StartOver => "start over",
             Self::Undo => "undo",
             Self::Redo => "redo",
+            Self::Quit => "quit",
         }
     }
 

@@ -123,10 +123,11 @@ fn a_write_that_died_owes_no_landing() {
     assert!(!state.land_on_head);
 }
 
-/// A `Done` that fails part-way (`Incomplete`) or any non-`Done` answer
-/// arms nothing, and clears what the launch set.
+/// An `Incomplete` answer ran all the same: it lands as `Done` does
+/// (m8-polish-and-ship/13, ruling 3), spending the launch's landing, and
+/// keeps its own warning on the status row.
 #[test]
-fn only_done_lands() {
+fn an_incomplete_answer_lands_and_keeps_its_warning() {
     let mut state = AppState::default();
     let mut next_id = ids();
     let mut commands = Vec::new();
@@ -141,6 +142,13 @@ fn only_done_lands() {
         },
         &mut next_id,
     );
-    assert!(!state.land_on_head);
-    assert_eq!(state.lands, None);
+    assert!(state.land_on_head, "lands as Done does");
+    assert_eq!(state.head_landing.on, crate::update::operate::Landing::Head);
+    assert_eq!(state.lands, None, "the launch's landing is spent");
+    assert_eq!(
+        state.status,
+        crate::update::state::Status::sticky(
+            "the write \u{2014} could not confirm it fully: could not read the after-state"
+        )
+    );
 }

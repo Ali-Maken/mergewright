@@ -5,38 +5,30 @@ use super::{
     operation_failed, refresh_scope, stalled_line,
 };
 
-/// `operated`'s `Incomplete` answer. A put-in's words are over whatever its
-/// after-state says: left standing, a later write's landing could pick them
-/// up (review m7-09-to-21c, Minor 1).
+/// `operated`'s `Incomplete` answer: the write ran, only part of its
+/// after-state could not be read back. It lands and tags as a `Done` does
+/// (m8-polish-and-ship/13, ruling 3) — the write happened, so he should see
+/// its result — and keeps its own warning on the status row, sticky, over
+/// whatever line the landing would have left (a put-in's `Done` words
+/// included: they are spent here, so no later landing picks them up,
+/// review m7-09-to-21c Minor 1).
 pub(super) fn incomplete_answered(
     state: &mut AppState,
     launched_op: Option<&Operation>,
     applied: &graft_ops::apply::Applied,
     error: &str,
+    lands: Option<Landing>,
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
-    if launched_op.is_some_and(|op| state.amend_into.shown_for(op).is_some()) {
-        crate::update::amend_into::forget(state);
-    }
-    incomplete(state, applied, error, next_id)
-}
-
-/// `operated`'s `Incomplete`: the write ran, only part of its after-state
-/// could not be read back.
-pub(super) fn incomplete(
-    state: &mut AppState,
-    applied: &graft_ops::apply::Applied,
-    error: &str,
-    next_id: &mut impl FnMut() -> JobId,
-) -> Vec<Command> {
-    state.status = Status::sticky(format!(
+    let warning = Status::sticky(format!(
         "{} \u{2014} could not confirm it fully: {error}",
         applied.entry.description
     ));
-    // It ran: the same reasoning as `Done`, and leaving the editor open would
-    // invite a second commit of a message already committed.
-    crate::update::commit_editor::committed(state);
-    refresh_scope(state, applied.refresh, next_id)
+    let mut commands = landed(state, applied, lands, next_id);
+    crate::update::amend_into::landed(state, launched_op, &mut commands, next_id);
+    crate::update::recover::tag_rows(state, launched_op);
+    state.status = warning;
+    commands
 }
 
 /// The line a clean write leaves: a clash's drop words the end of the clash;
@@ -53,6 +45,9 @@ pub(super) fn done_status(
 ) -> Status {
     if let Some((index, why)) = clash_drop {
         return crate::update::clash::dropped_status(index, why);
+    }
+    if pulled_nothing(launched_op, &applied.entry) {
+        return Status::done(UP_TO_DATE);
     }
     // `a` at a rewrite's `edit` stop (07b): the stop is still live and `c`
     // is the next key.
@@ -323,7 +318,9 @@ fn clash_drop_of(
 }
 
 /// `operated`'s `Done` answer: the line `words`, then the landing, a
-/// put-in's commits tagged and recovered rows marked.
+/// put-in's commits tagged and recovered rows marked. A pull that brought
+/// nothing lands nowhere (m8-polish-and-ship/13, ruling 1): the cursor
+/// stays where he left it, and `done_status` says why nothing moved.
 fn done_answered(
     state: &mut AppState,
     words: Status,
@@ -332,11 +329,31 @@ fn done_answered(
     lands: Option<Landing>,
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
+    let lands = lands.filter(|_| !pulled_nothing(launched_op, &applied.entry));
     state.status = words;
     let mut commands = landed(state, applied, lands, next_id);
     crate::update::amend_into::landed(state, launched_op, &mut commands, next_id);
     crate::update::recover::tag_rows(state, launched_op);
     commands
+}
+
+/// What a pull that brought nothing says before its tick.
+pub(super) const UP_TO_DATE: &str = "up to date";
+
+/// A pull whose entry reads the same before and after on every field it
+/// recorded — `HEAD`, the refs, the index, the working tree. A pull never
+/// records its tracking refs (`graft_ops::apply::pull::fetch_first`), so a
+/// fetch that brought commits nobody merged still counts as nothing. An
+/// entry with no `head_after` has not said `HEAD` stayed: it lands as ever.
+fn pulled_nothing(
+    launched_op: Option<&Operation>,
+    entry: &graft_core::journal::JournalEntry,
+) -> bool {
+    matches!(launched_op, Some(Operation::Pull(_)))
+        && entry.head_after.as_ref() == Some(&entry.head_before)
+        && entry.refs_before == entry.refs_after
+        && entry.index_before == entry.index_after
+        && entry.worktree_before == entry.worktree_after
 }
 
 /// An operate job answered. Stale answers (a job that is not the one
@@ -365,16 +382,11 @@ pub fn operated(
     let launched_op = launched_op(state, id);
     let remote_op = launched_op.clone().filter(Operation::is_remote);
     let clash_drop = clash_drop_of(state, id);
+    let (launched, remote) = (launched_op.as_ref(), remote_op.as_ref());
     match outcome {
         Operated::Done(applied) => {
-            let words = done_status(
-                state,
-                remote_op.as_ref(),
-                launched_op.as_ref(),
-                clash_drop,
-                &applied,
-            );
-            done_answered(state, words, launched_op.as_ref(), &applied, lands, next_id)
+            let words = done_status(state, remote, launched, clash_drop, &applied);
+            done_answered(state, words, launched, &applied, lands, next_id)
         }
         // It ran and was read back; only the staging did not come back
         // (30b). Everything a `Done` does, with its own sticky line.
@@ -387,9 +399,14 @@ pub fn operated(
             lands,
             next_id,
         ),
-        Operated::Incomplete { applied, error } => {
-            incomplete_answered(state, launched_op.as_ref(), &applied, &error, next_id)
-        }
+        Operated::Incomplete { applied, error } => incomplete_answered(
+            state,
+            launched_op.as_ref(),
+            &applied,
+            &error,
+            lands,
+            next_id,
+        ),
         Operated::Conflicted {
             description,
             kind,

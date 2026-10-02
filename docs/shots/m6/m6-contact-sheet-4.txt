@@ -318,8 +318,8 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The edit an undo
 
 === frame 2: `y`, the landing ===
  graft /code/api  6 commits
-  ● ▏  [fix] fix the bug                                                                                 GF 3m   fbb2394
-◆ │    [◆ main] main moves on                                                                            GF 4m   37926a7
+  ●    [fix] fix the bug                                                                                 GF 3m   fbb2394
+◆ │ ▏  [◆ main] main moves on                                                                            GF 4m   37926a7
 ●─╯    add the base                                                                                      GF 5m   ed332bc
 ●      Correct the note                                                                                  GF 1y   a82960b
 ●      Add the first note                                                                                GF 1y   fadcfb3
@@ -498,8 +498,8 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The same four fr
 
 === frame 2: `y`, the landing ===
  graft /code/api  6 commits
-  ● ▏  [fix] fix the bug                                            3m   fbb2394
-◆ │    [◆ main] main moves on                                       4m   37926a7
+  ●    [fix] fix the bug                                            3m   fbb2394
+◆ │ ▏  [◆ main] main moves on                                       4m   37926a7
 ●─╯    add the base                                                 5m   ed332bc
 ●      Correct the note                                             1y   a82960b
 ●      Add the first note                                           1y   fadcfb3
@@ -1620,7 +1620,7 @@ what right looks like: (ticket 74) `p` refused as diverged, then `r`, three file
 #    after`, with no staging words: the staging comes back as he left it.
 #    At narrow widths `put back after` may be cut; the file count may not.
 
- graft /code/api  152 rows so far
+ graft /code/api  148 rows so far
        after rebase
   ○    [◆ main ↑1 ↓1] ours                                                                               GF —    —
   ●    [origin/main] theirs                                                                              GF 6m   7be74b5
@@ -1678,7 +1678,7 @@ what right looks like: (ticket 74, 84, 30b) The same box at 80x24: the `your edi
 #    after`, with no staging words: the staging comes back as he left it.
 #    At narrow widths `put back after` may be cut; the file count may not.
 
- graft /code/api  152 rows so far
+ graft /code/api  148 rows so far
        after rebase
   ○    [◆ main ↑1 ↓1] ours                                          —    —
   ●    [origin/main] theirs                                         6m   7be74b5
@@ -1782,7 +1782,7 @@ what right looks like: (ticket 74) `p r r` over three edited files, the rebase c
 #    `rebase main onto origin/main ✓ · your edits are back` (the op's own
 #    done line, as a clean-tree rebase words it, then the clause).
 
- graft /code/api  152 rows so far
+ graft /code/api  148 rows so far
 ◌    Uncommitted changes (1 staged, 2 unstaged)
 ◆ ▏  [◆ main ↑1] ours                                                                                    GF futu…0000000
 ●    [origin/main] theirs                                                                                GF 6m   7be74b5
