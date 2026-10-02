@@ -2,8 +2,7 @@
 
 Status: ready (re-homes parked `.scratch/m7-power-tools/issues/50-scroll-pixel-memory-budget.md`; gap
 `M7/47-pixel-rss`, broken)
-Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus** (note "Where I'd differ", process): measure first,
-the shape is fixed below, a script judges RSS — fails Fable test 3.
+Build with: Opus (conductor, after scout `scouts/04-pixel-memory.md`: capacity_for has no caller; Place has no strip key; straight_alpha allocates per transmit; heavy.rs has no Pixel variant)
 Blocked by: 02
 Needs: `pace-fence-and-sync` (shares `event_loop/graphics.rs` and the Kitty write path).
 
