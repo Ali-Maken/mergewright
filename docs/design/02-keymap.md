@@ -40,6 +40,9 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   what's active" — said twice below — means the bar reflects the **current
   mode**, never that every bound key appears on it. The bar has a width
   budget and a `more` affordance; it ranks by relevance at the cursor.
+  Outside modal contexts a hint is drawn with its words or not at all; what
+  does not fit is behind the doorway (M8, ADR-0058; `?` lists every key of
+  the place, §2.12).
   **Two classes never appear on it, and that is correct:**
   - **Navigation and meta globals** (§2.2): `g`/`G` top/bottom, `PgUp`/`PgDn`
     page, `Ctrl+R` refresh, `U` redo, `Esc` dismiss. They are live in every
@@ -75,6 +78,8 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   - The **branch picker** (§2.16, M7) is a text field: it claims every key
     but `Ctrl+C`; `↑`/`↓` move, `⏎` switches, `Tab` shows the branch on the
     graph, `Esc` closes. Amended 2026-09-26 (M7, user "all yes").
+  - The **palette** (§2.12, M8) is a text field the same way, whether `?` or
+    `Ctrl+P` opened it: it claims every key but `Ctrl+C`.
   - **Blame** (§2.8) and **History** (§2.17) are places (M7): full width,
     opened by `B`/`L`/`F`; each answers its own keys and the §2.2 globals,
     and none of the graph's verbs is live in them. `Esc` goes back one
@@ -98,9 +103,10 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
     they were simply never written down here. They are **not** identical:
     the Map view eats `p`, `d` and `s`; the stash answers them. So the bar
     behind one is built per overlay, not once for all three.
-  - The **first-run / empty state** (§2.13) binds `o`/`i`/`c` to
-    Open/Init/Clone — no repo is open yet, so the whole repo vocabulary
-    (`c` commit included) is off duty.
+  - The **first-run / empty state** (§2.13) binds `o`/`i`/`c`/`t` to
+    Open/Init/Clone/practice tour — no repo is open yet, so the whole repo
+    vocabulary (`c` commit, `t` tag included) is off duty. `?` is help there
+    as everywhere (M8, ADR-0056).
   - The **Ghost Preview** (§2.3b; added 2026-09-23, m6-conflicts/11). It
     already answered every key and swallowed the rest; with `m`/`r`/`y`
     confirming it now has letters of its own, so it joins this list. The
@@ -165,15 +171,26 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   own key, `o` (§2.3), and keeps the menu's second place; it dims in place with
   `o`'s refusal words (already on <b>; a merge). Labels carry their keys
   (`(o)`). `C` opens the branch picker (§2.16). On the uncommitted row the menu gains `Put staged changes into their commits (absorb)` in its first place, dimmed in place (`nothing staged`) when nothing is staged, as Checkout's on a commit row (conductor, 2026-09-27, 09b: `k . ⏎ y` = 4, note's count): `⏎` opens a preview mapping each staged hunk to its commit, `y` writes; a hunk no commit on your branch changed stays staged, in words. Amended 2026-09-26 (M7, user "all yes"). Rows carrying a stash badge keep the older order (conductor, 2026-09-25) (`docs/design-notes/m6-stash-put-back.md` New UI, Prior art "Menu order"; ADR-0045 does not cover it).
-- **Every binding is remappable** in `[keys]` in `config.toml`; Graft detects
-  and warns about remap collisions at startup rather than picking silently.
+- **Every binding is remappable** (M8, ADR-0055). Each binding has an
+  action id, `<context>.<verb>` in snake_case from this document's words
+  (`graph.merge`, `app.undo`, `operation.continue`), shown beside its key in
+  `?`; it is the config's name for it and is never renamed after release.
+  `config.toml`: `[keys.<context>] <verb> = "<chord>"` or a list of chords;
+  `"none"` unbinds. Graft translates a pressed chord to the action's default
+  chord before any pane sees it; a default whose action was moved is
+  unbound. Collisions (both actions named, defaults included), unknown
+  actions, unparsable chords and reserved chords (`Ctrl+C`) are warned
+  about at startup, never fatal: the status row reads `config: N problems ·
+  ? shows them` and `?` lists them first. Typed text in a field is never
+  remapped. Every surface that prints a key (hint bar, `?`, palette, `.`
+  labels, the tour card, the man page) spells it from the live table.
 
 ### 2.2 Global (every pane)
 
 | Key | Action |
 |---|---|
-| `Ctrl+P`, `:` | Command palette |
-| `?` | Context help for the focused pane |
+| `Ctrl+P`, `:` | Command palette, on everything (§2.12) |
+| `?` | Help for the focused place: the palette opened on its keys, an operation's keys first while one is live (§2.12; M8, ADR-0056). Every screen, the empty state included |
 | `Tab` / `Shift+Tab` | Next / previous pane |
 | `Esc` | Back out / close overlay / cancel. A failure held while a box was open (drawn with `esc dismiss` once the box closes) is dismissed first; that `Esc` cancels nothing, the next one cancels (ticket 78 Decided 1). After `⏎` from blame or history: back to it (M7, ADR-0048) |
 | `Ctrl+Z`, `u` | Undo (ADR-0002) |
@@ -477,26 +494,42 @@ width. `Esc` goes back. Added 2026-09-26 (M7 pass 2b; ADR-0048).
 | `Enter` | The selected commit in the graph, its diff on this file; `Esc` comes back |
 | `w` `v` `L` | §2.5, on the file pane (no `[` `]`: a whole file has no context to widen; m7-power-tools/21c) |
 
-### 2.12 Command palette
+### 2.12 Command palette and help (M8, ADR-0056)
+
+One widget, two ways in. **Modal** (§2.1): a text field; claims every key but `Ctrl+C`.
+
+- `?` opens it on **this place**: `IN PROGRESS` (while an operation is live), `HERE` (the focused place's keys),
+  `EVERYWHERE` (§2.2); `YOUR CONFIG` first when `[keys]` or `[theme]` had problems.
+- `Ctrl+P` / `:` open it on **everything**: actions, then branches, tags, files, commits, then recently run commands.
+  Actions include `Theme: dark`, `Theme: light`, `Theme: high contrast` (this run only) and `Practice tour`.
 
 | Key | Action |
 |---|---|
-| type | Fuzzy-filter actions, branches, tags, files and commits |
+| type | Filter by label and hidden search words (`aside` finds stash). A typed chord that is bound in this place ranks its row first |
 | `↑ ↓` | Move |
-| `Enter` | Run |
+| `Enter` | Run the row's action (as its key would, in the place `?` was opened from) |
 | `Esc` | Close |
 
 ### 2.13 First-run / empty state
 
-A separate screen (no repo is open yet), with its own small vocabulary:
+A separate screen (no repo is open yet), with its own small vocabulary (redrawn M8: §1.15, ADR-0056, ADR-0058):
 
 | Key | Action |
 |---|---|
-| `o` | Open… |
-| `i` | Init |
-| `c` | Clone… |
+| `o` | Open…: a one-field path prompt (`~` expanded, `Tab` completes a directory) |
+| `i` | Init: `git init` in this folder, behind a confirm (`y`) |
+| `c` | Clone…: a one-field URL prompt; clones into `<this folder>/<name>` and opens it |
+| `t` | Practice tour (§2.18) |
 | `Enter` (on a recent-repo row) | Open that repo |
-| `?` | Replay/skip the first-run tour |
+| `↑ ↓`, `j k` | Move in the recent list (the newest is preselected) |
+| `?` | Help (§2.12), as on every screen |
+| `q` | Quit |
+
+### 2.18 Practice tour (M8, ADR-0056)
+
+The tour claims **no key but `Esc`**, and only when nothing else on screen would take it (no box, prompt, menu,
+overlay, search or focused pane): then `Esc` leaves the practice repo and returns to where he was. Every other key is
+the app's own, spelled on the card from the live table (ADR-0055).
 
 ### 2.14 Credential prompt
 
@@ -547,5 +580,10 @@ now folded into this file.
 §2.6, §2.6a, §2.6b and §2.10 edited for P11, P12, P14–P16 and the approved
 batch items (ADR-0044). The code follows as the M6 look-and-finish specs
 land; until each lands, the build still does what the doc said before.
+
+2026-10-02 (M8 pass 2a, user approvals of the same day): §2.1 (palette modal; empty state `t`, `?`; remapping by
+action id, ADR-0055; bar words-only, ADR-0058), §2.2 (`?` is help on every screen, `Ctrl+P` on everything), §2.12
+(palette and help as one widget, ADR-0056), §2.13 (`t` tour, `?` help, list keys, `q`), §2.18 (practice tour, new).
+The code follows as the M8 groups land.
 
 ---

@@ -19,6 +19,38 @@ to the same identity (§3.4) — the shape of an accidental pull merge, where
 the "other side" is just the remote-tracking copy of the branch already
 being drawn.
 
+### 1.0 Screen chrome (M8, ADR-0058) — supersedes the borders, header and footer of §1.1–§1.3
+
+The pane layouts of §1.1–§1.3 stand (sidebar, graph, detail beside / below / tab). Their outer box, top-border
+header and bottom-border footer are replaced by the M8 mock-up's chrome (`docs/shots/m8-proto-3d-first-line.txt`,
+judged against the real app in `.scratch/m8-polish-and-ship/real-vs-mockup.md`):
+
+```
+ ◆ billing-api  ~/code/billing-api · main                                    reading 4,210 rows
+                                                                       ← blank row (≥ 30 rows tall)
+▸ ●      [main] [origin/main] Add invoice totals            Ali        2 hours ago   9f2c1ab
+  ●      Fix rounding in tax lines                          Lina Park  5 hours ago   41d0e7c
+  ●─╮    Merge pull request #212 from acme/csv-export       Tom Ruiz   yesterday     c8a1f02
+  ⋮
+─────────────────────────────────────────────────────────────────────── ← rule (≥ 30 rows tall)
+ ⏎ open · c commit · m merge · r rebase · S stash · . more
+```
+
+- **Header:** ` ◆ ` + repo name (bold, accent) + two spaces + `~`-abbreviated path (muted, cut from the **left**
+  with `…`) + ` · ` + branch (or `detached <sha7>`). Right-aligned: the informational tail (walk state, filters,
+  `gfx`, `+N lanes`); an operation banner replaces the tail as before (§1.13). No product name. In the practice repo
+  the glyph is `◇` and the path reads `practice · <tmp> · a throwaway repo, not yours` (ADR-0056).
+- **Gutter:** list rows start with two cells: the cursor glyph `▸` (accent, bold; ASCII `>`) and a gap. Header and
+  bar are indented one cell. One cell of right margin.
+- **Cursor row:** the `selection` fill runs from the marker slot to the right margin; the gutter and the graph
+  column keep the ground, so no lane disappears into the fill (KNOWN_GAPS 542). Foregrounds on the fill under 4.5:1
+  are lifted by `Theme::legible_on`. The marker slot keeps `▏` for the compare base only; a drop target draws `→`
+  (ASCII `=`).
+- **Rows ≥ 30:** blank row under the header, rule (`─`, border token) above the bar. Under 30 rows: neither.
+- **Bar:** hints joined by ` · `; outside modal contexts every hint keeps its words or is not drawn; the doorway
+  (`. more`, `? keys` once `?` is built) is always last. Problem, notice and stop lines take the bar's row as before
+  (ADR-0037 §4). Modal contexts keep their own ladders (ADR-0044 §4).
+
 ### 1.1 Main graph view — wide (160+ columns, three-column layout)
 
 ```
@@ -239,6 +271,11 @@ the user, on the M6 acceptance capture (CLAUDE.md rule 6).
 Fuzzy search over actions, branches, tags, files and commits at once, grouped
 by kind, ranked by match quality then recency.
 
+M8 (ADR-0056): the same widget is what `?` opens, filtered to the focused place (§1.16). Every action row draws its
+key in the accent first (6 cells), then the label, then the action's config id muted and right-aligned (dropped
+below 100 columns), so the palette teaches the shortcut and the config name at once. `Theme: dark / light / high
+contrast` and `Practice tour` are action rows.
+
 ### 1.7 Ghost Preview (overlaid on the graph, before confirming)
 
 ```
@@ -402,44 +439,63 @@ points at a small helper that talks back to Graft over a local socket/pipe so
 the prompt renders in-app instead of falling through to a blocked terminal
 prompt or failing silently.
 
-### 1.15 First-run / empty state
+### 1.15 First-run / empty state (redrawn M8, ADR-0056, ADR-0058)
 
 ```
-╭ ◆ graft ──────────────────────────────────────────────────────────────────╮
-│                                                                            │
-│                 This folder isn't a Git repository yet.                  │
-│                                                                            │
-│                       [ o  Open… ]   [ i  Init ]   [ c  Clone… ]         │
-│                                                                            │
-│                 Recent repos                                              │
-│                   ~/code/api                                              │
-│                   ~/code/graft                                            │
-│                                                                            │
-╰────────────────────────────────────────────────────────────────────────╯
+ <app> · no repository here
+ ~/code
+
+  o  Open…     i  Init     c  Clone…     t  practice tour
+
+  RECENT
+  ▸ payments-service    ~/code/payments-service     yesterday
+    web-dashboard       ~/code/web-dashboard        3 days ago
+    dotfiles            ~/dotfiles                  last week
+
+───────────────────────────────────────────────────────────────────────
+ o open… · i init · c clone… · t practice tour · ⏎ open the selected · ? keys · q quit
 ```
 
-A 30-second, skippable first-run tour runs the first time a real repo opens
-(not shown here — it's a sequence of four callouts pointing at the hint bar,
-the graph, the sidebar and `Ctrl+P`, dismissible with `Esc` or `?` at any
-point and never shown again unless replayed from the palette).
+- Shown when Graft starts in, or is pointed at, a folder that is not inside a repository. `<app>` is the product
+  name (one constant; renamed in M8). The second line is the folder, `~`-abbreviated; a path that does not exist
+  reads `~/foo · no such folder` there.
+- RECENT: newest first, the newest preselected, so "open what I had yesterday" is `⏎`. Name bold, path muted, age
+  muted. Empty list: the RECENT block is not drawn.
+- `o` opens a one-field path prompt (`open › ~/code/▏`, `~` expanded, `⇥` completes a directory); `i` asks
+  `Make ~/code a Git repository?` with `y`; `c` opens `clone › <url>` with `→ <cwd>/<name>` under it, progress in
+  place, errors on the prompt with the URL kept (`⏎ retry · esc cancel`).
+- A repository that cannot be opened: the screen stays, the row stays, the bar's row reads the reason.
+- Keys and options not built yet are not drawn (a key the screen does not answer is never offered).
+- The practice tour replaces the callout tour this section used to describe (ADR-0056).
 
-### 1.16 Context help overlay (`?`)
+### 1.16 Help (`?`) — the palette opened on this place (M8, ADR-0056)
+
+The separate key grid this section drew is gone. `?` opens §1.6's palette on the focused place:
 
 ```
-╭ HELP — Graph view ────────────────────────────────────────────────────────╮
-│ MOVE      ↑↓/j k  Enter open   Esc back   Tab next pane                  │
-│ ACT       c commit   m merge   r rebase   b branch   t tag   S stash     │
-│ REMOTE    f fetch   p pull   P push                                       │
-│ UNDO      ⌃Z / u undo   ⌃⇧Z / U redo                                     │
-│ FIND      / search   ⌃P command palette                                  │
-│ ITEM      . context actions for the selected row                          │
-│                                                        remap in config → │
-╰ esc close ─────────────────────────────────────────────────────────────╯
+╭─ keys here ──────────────────────────────────────────────────────────────── esc close ╮
+│ › ▏                                                                                   │
+│ IN PROGRESS                                                                           │
+│▸c     continue the rebase                                         operation.continue  │
+│ s     skip this commit                                                operation.skip  │
+│ HERE                                                                                  │
+│ m     merge the selected branch into yours                               graph.merge  │
+│ r     rebase yours onto the selected commit                             graph.rebase  │
+│ EVERYWHERE                                                                            │
+│ ⌃P    find anything (palette)                                            app.palette  │
+│ u     undo the last thing you did                                           app.undo  │
+╰───────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
-`?` always shows the keymap for whichever pane has focus — it's the same
-table as §2 below, filtered to the current context, so the hint bar and this
-overlay are never out of sync with each other or with reality.
+- Groups: `IN PROGRESS` (only while an operation is live; a key the operation takes is not listed again under
+  HERE), `HERE`, `EVERYWHERE`; `YOUR CONFIG` first when `[keys]`/`[theme]` had problems, one row each
+  (`m given to graph.fetch — merge has no key`).
+- Row: key (accent, 6 cells) · label · config id (muted, right-aligned; dropped below 100 columns). The eye lands on
+  the key column. Unbound: `—`.
+- Typing filters labels and hidden search words; a typed chord that is bound ranks its row first. `↑↓` move, `⏎`
+  runs, `esc` closes. No match: `nothing matches · esc close`.
+- Box over the focused pane, ≤ 96 columns, centred; full width under 100 columns; scrolls.
+- It reads the live key table (ADR-0055), so the bar, this list and reality cannot disagree.
 
 ### 1.17 File history (`L` from blame, `F` on a file) — M7
 

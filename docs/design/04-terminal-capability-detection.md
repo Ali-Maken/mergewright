@@ -27,7 +27,10 @@ never stalls launch.
    - Synchronized output (DEC 2026): `CSI ? 2026 $ p` (DECRQM); read the
      reported mode, purely for diagnostics — begin/end sync sequences are
      emitted unconditionally either way since an unsupported terminal just
-     ignores the unknown CSI harmlessly.
+     ignores the unknown CSI harmlessly. Each frame's text **and** image
+     commands sit inside one begin/end pair (ADR-0054).
+   - Device status (DSR): `CSI 5 n`; a `CSI 0 n` reply means the terminal can
+     answer the per-frame fence (§4.7, ADR-0054). Silence: no fence this run.
    - `OSC 11`: background colour, for the light/dark theme hint only (ADR-0003
      — never used as a paint colour).
 3. **Fall back per-query, not globally**, on silence or a malformed reply:
@@ -150,5 +153,17 @@ below it, and ADR-0016 is superseded — not edited — if the answer changes.
   distance (not naive per-channel rounding), so adjacent lanes stay
   distinguishable at any colour depth — the same colourblind-safe palette
   constraint from PROMPT.md §1.2 applies at every depth, not just truecolor.
+
+### 4.7 Frame pacing (M8, ADR-0054)
+
+The loop never writes ahead of the terminal.
+
+- Every frame is `SYNC_BEGIN` · text · image commands · `SYNC_END` · `CSI 5 n`.
+- The next frame waits for that frame's `CSI 0 n`. Wakes that arrive meanwhile are applied to state, not drawn; the
+  answer releases one frame showing the latest state.
+- A fence unanswered after 500 ms draws anyway; three in a row stop fencing for the run, and frames are then capped
+  at one per 16 ms. A terminal that did not answer the startup DSR (§4.1) never fences.
+- Wheel events applied in one turn sum into one scroll.
+- Inside tmux, tmux answers the DSR itself: the fence paces Graft against tmux, which paces its own output.
 
 ---

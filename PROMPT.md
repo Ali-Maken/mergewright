@@ -384,13 +384,13 @@ These are recorded in `KNOWN_GAPS.md` from day one rather than carried as promis
   - soft tints on added and removed lines, a stronger tint on changed words
   - a line-number gutter; hunk headers that stay pinned while scrolling
   - an optional view of whitespace and line endings
-  - image previews in the pixel tier
+  - image previews in the pixel tier (after v1, ADR-0057)
 - **Motion:** no decorative animation. Optional smooth scrolling. Zero flicker, through synchronized output and diff-based redraws.
 - **Accessibility**
   - lane colours safe for colourblind users
   - every piece of information available without colour and without hover
   - full keyboard operation
-- **Empty and first-run states:** helpful. If the folder isn't a repo, offer Init, Clone or Recent repos. A 30-second first-run tour can be skipped.
+- **Empty and first-run states:** helpful. If the folder isn't a repo, offer Init, Clone or Recent repos. A practice tour (a throwaway repo, opt-in from the palette or t on the empty state) can be left with Esc at any step (ADR-0056).
 
 ## 6. Engineering and architecture
 
