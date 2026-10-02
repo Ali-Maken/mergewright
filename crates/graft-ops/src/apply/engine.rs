@@ -153,7 +153,7 @@ pub(super) fn prepare(
     facts: &RepoFacts,
 ) -> Result<Option<Engine>, ApplyError> {
     let repo = ctx.repo;
-    let (head, onto, line, rows, messages, invocation, index_base) = match op {
+    let (head, onto, line, rows, messages, invocation, index_base, forks) = match op {
         Operation::Rebase(params) => {
             // `r` runs the line its preview drew (`preview::plan_as_run`),
             // never one found afresh: the picture and the act are one act
@@ -182,6 +182,9 @@ pub(super) fn prepare(
                 BTreeMap::new(),
                 invocation,
                 None,
+                // `r`'s forks stay, as before ADR-0059 (KNOWN_GAPS): its todo
+                // is built from `rebase_rows`, not from `RewriteParams`.
+                Vec::new(),
             )
         }
         Operation::Rewrite(params) => {
@@ -196,6 +199,7 @@ pub(super) fn prepare(
                 params.messages.clone(),
                 invocation,
                 params.index_base,
+                params.forks.clone(),
             )
         }
         _ => return Ok(None),
@@ -208,10 +212,18 @@ pub(super) fn prepare(
             .cloned()
             .unwrap_or_default()
     };
-    let todo = git_todo(&rows, &messages, &message_of, &head.name, &followers);
+    let rows_run = rows.len() + followers.iter().map(|(_, picks)| picks.len()).sum::<usize>();
+    if let Some(fork) = forks.iter().find(|fork| fork.after_row >= rows_run) {
+        // A fork point past the rows read now: the line is not the one the
+        // preview measured (its tips are `check`'s, so this is a guard).
+        return Err(ApplyError::Refused(Refusal::Moved {
+            name: fork.branch.name.clone(),
+        }));
+    }
+    let todo = git_todo(&rows, &messages, &message_of, &head.name, &followers, &forks);
     Ok(Some(Engine {
         dir: saved::dir(repo, &ctx.next_id()),
-        saved: SavedPlan::new(&head.name, &line, onto, index_base),
+        saved: SavedPlan::new(&head.name, &line, onto, index_base, &forks),
         todo,
         invocation,
         line,

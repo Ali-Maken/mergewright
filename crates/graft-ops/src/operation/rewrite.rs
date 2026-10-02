@@ -36,7 +36,9 @@ fn amended(params: &RewriteParams) -> Option<graft_core::oid::Oid> {
 }
 
 /// Every tip the rewrite is pinned to: his branch, then each branch that
-/// follows.
+/// follows — the line's, then each fork that follows and the branches on it
+/// (ADR-0059 §4). `check` refuses `Moved` over any of them, and the entry
+/// records them all, so one `u` puts every moved ref back.
 pub(super) fn tips(params: &RewriteParams) -> Vec<Tip> {
     let mut tips = vec![params.head.clone()];
     tips.extend(
@@ -47,6 +49,10 @@ pub(super) fn tips(params: &RewriteParams) -> Vec<Tip> {
             .filter(|tip| tip.name != params.head.name)
             .cloned(),
     );
+    for fork in &params.forks {
+        tips.push(fork.branch.clone());
+        tips.extend(fork.inside.iter().cloned());
+    }
     tips
 }
 

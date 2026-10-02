@@ -4,7 +4,8 @@
 //! branch of the step in the banner, and to go home after an abort.
 //!
 //! What is in it:
-//! - `plan.json` — his branch, the line of branches with their tips, `onto`.
+//! - `plan.json` — his branch, the line of branches with their tips, `onto`,
+//!   absorb's index base, the forks that follow with their tips.
 //! - `todo` — the todo git runs; `GIT_SEQUENCE_EDITOR` copies it over git's.
 //! - `messages/<full id>` — the message for the commit git asks on.
 //! - `editor` — the `GIT_EDITOR` helper: it reads the last line of
@@ -20,7 +21,7 @@ use graft_core::oid::Oid;
 use graft_git::repo::RepoHandle;
 use serde::{Deserialize, Serialize};
 
-use super::BranchLine;
+use super::{BranchLine, ForkSection};
 use super::todo::GitTodo;
 
 /// `commit.cleanup=whitespace` for every commit git makes in the rewrite,
@@ -50,10 +51,21 @@ pub(crate) struct SavedPlan {
     /// `None` — ADR-0045's put-back.
     #[serde(default)]
     pub(crate) index_base: Option<Oid>,
+    /// The forks that follow (ADR-0059 §3), in the todo's section order
+    /// (`graft-fork-<n>` is the n-th), each with its tip before. Absent in a
+    /// plan saved before ADR-0059, which reads as none.
+    #[serde(default)]
+    pub(crate) forks: Vec<(String, String)>,
 }
 
 impl SavedPlan {
-    pub(crate) fn new(home: &str, line: &BranchLine, onto: Oid, index_base: Option<Oid>) -> Self {
+    pub(crate) fn new(
+        home: &str,
+        line: &BranchLine,
+        onto: Oid,
+        index_base: Option<Oid>,
+        forks: &[ForkSection],
+    ) -> Self {
         SavedPlan {
             home: home.to_owned(),
             line: line
@@ -63,6 +75,10 @@ impl SavedPlan {
                 .collect(),
             onto: onto.to_string(),
             index_base,
+            forks: forks
+                .iter()
+                .map(|fork| (fork.branch.name.clone(), fork.branch.oid.to_string()))
+                .collect(),
         }
     }
 
@@ -191,6 +207,15 @@ mod tests {
         assert_eq!(plan.index_base, None);
     }
 
+    /// A plan saved before ADR-0059 has no `forks`: it reads as none, so a
+    /// relaunch mid-rewrite of an older Graft's plan goes on as before.
+    #[test]
+    fn a_plan_saved_before_forks_reads_as_none() {
+        let json = br#"{"home":"refs/heads/f","line":[["refs/heads/f","0000000000000000000000000000000000000002"]],"onto":"0000000000000000000000000000000000000001","index_base":null}"#;
+        let plan: SavedPlan = serde_json::from_slice(json).expect("it reads");
+        assert_eq!(plan.forks, Vec::<(String, String)>::new());
+    }
+
     #[test]
     fn the_index_base_round_trips() {
         let base = Oid::from_hex(&"ab".repeat(20)).expect("an id");
@@ -199,6 +224,7 @@ mod tests {
             line: Vec::new(),
             onto: base.to_string(),
             index_base: Some(base),
+            forks: vec![("refs/heads/x".to_owned(), base.to_string())],
         };
         let json = serde_json::to_vec(&plan).expect("it writes");
         let back: SavedPlan = serde_json::from_slice(&json).expect("it reads");

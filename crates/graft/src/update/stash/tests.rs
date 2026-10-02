@@ -175,6 +175,8 @@ fn planned_with(
         published: Vec::new(),
         left_behind: Vec::new(),
         left_behind_more: 0,
+        forks: Vec::new(),
+        forks_more: 0,
         messages: Vec::new(),
     };
     super::super::preview::preview_produced(

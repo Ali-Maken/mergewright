@@ -3836,6 +3836,8 @@ fn one_ghost_over(anchor: Oid, replayed: Oid) -> graft_ops::preview::PreviewPlan
         published: Vec::new(),
         left_behind: Vec::new(),
         left_behind_more: 0,
+        forks: Vec::new(),
+        forks_more: 0,
         messages: Vec::new(),
     }
 }
@@ -5145,6 +5147,7 @@ fn the_edit_stop_tags_head_s_row_stopped_here() {
                 branch: None,
                 begun_in_graft: true,
                 followers: Vec::new(),
+                fork: None,
             },
             edit: Some(graft_ops::rewrite::EditStop {
                 stopped: oid(3),

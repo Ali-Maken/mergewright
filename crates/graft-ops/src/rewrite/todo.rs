@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use graft_core::oid::Oid;
 
-use super::{SquashGroup, TodoAction, TodoLine, TodoProblem};
+use super::{ForkSection, SquashGroup, TodoAction, TodoLine, TodoProblem};
 
 /// Every squash group in the todo: a kept row (pick, reword or edit) and the
 /// squash and fixup rows melded into it, in todo order of the kept rows.
@@ -182,13 +182,17 @@ pub(crate) struct GitTodo {
 ///
 /// `message_of` gives a row's whole message, for a squash group with no
 /// message written ([`default_message`]). `home` is his branch's full name;
-/// `followers` each dependent's full name and commits, bottom first.
+/// `followers` each dependent's full name and commits, bottom first;
+/// `forks` the forks that follow, each replayed inline after its row
+/// ([`ForkSection`], ADR-0059 §3). No forks → the todo is the one before
+/// ADR-0059, byte for byte.
 pub(crate) fn git_todo(
     todo: &[TodoLine],
     messages: &BTreeMap<usize, String>,
     message_of: &dyn Fn(usize) -> String,
     home: &str,
     followers: &[(String, Vec<TodoLine>)],
+    forks: &[ForkSection],
 ) -> GitTodo {
     let groups = squash_groups(todo);
     let mut asked: Vec<(Oid, String)> = Vec::new();
@@ -209,7 +213,7 @@ pub(crate) fn git_todo(
         }
     }
     GitTodo {
-        text: todo_text(todo, &git_words(todo, messages), home, followers),
+        text: todo_text(todo, &git_words(todo, messages), home, followers, forks),
         messages: asked,
     }
 }
@@ -269,17 +273,20 @@ fn ungrouped(groups: &[SquashGroup], rows: usize) -> impl Iterator<Item = usize>
 }
 
 /// His rows with the words git runs them by, then the `update-ref` lines
-/// and each dependent's picks.
+/// and each dependent's picks; each fork's section right after the row it
+/// follows (rows counted his first, then the dependents', as git runs them).
 fn todo_text(
     todo: &[TodoLine],
     words: &[TodoAction],
     home: &str,
     followers: &[(String, Vec<TodoLine>)],
+    forks: &[ForkSection],
 ) -> String {
     let mut text = String::new();
     let mut actions = 0;
     for (line, word) in todo.iter().zip(words) {
         push_line(&mut text, *word, line);
+        push_sections(&mut text, forks, actions);
         actions += 1;
     }
     if !followers.is_empty() {
@@ -288,6 +295,7 @@ fn todo_text(
     for (index, (name, picks)) in followers.iter().enumerate() {
         for line in picks {
             push_line(&mut text, TodoAction::Pick, line);
+            push_sections(&mut text, forks, actions);
             actions += 1;
         }
         if index + 1 < followers.len() {
@@ -301,6 +309,39 @@ fn todo_text(
         text.push_str("noop\n");
     }
     text
+}
+
+/// The label a fork's section marks the line with: `graft-fork-<n>`, `n`
+/// its 1-based place in [`RewriteParams::forks`](super::RewriteParams).
+/// `progress` reads the prefix back.
+pub(super) const FORK_LABEL: &str = "graft-fork-";
+
+/// Every fork section that follows `row`, in order. A fork with commits of
+/// its own: `label`, its picks with an `update-ref` after each branch's tip,
+/// `update-ref` for the fork, `reset` back to the line. One with none: its
+/// `update-ref` alone, which records `HEAD` where it is. git writes every
+/// such ref only when the rebase finishes, so an abort leaves each where it
+/// was (`tests/it/fork_follows.rs`).
+fn push_sections(text: &mut String, forks: &[ForkSection], row: usize) {
+    for (index, fork) in forks.iter().enumerate() {
+        if fork.after_row != row {
+            continue;
+        }
+        if fork.picks.is_empty() {
+            text.push_str(&format!("update-ref {}\n", fork.branch.name));
+            continue;
+        }
+        let label = format!("{FORK_LABEL}{}", index + 1);
+        text.push_str(&format!("label {label}\n"));
+        for pick in &fork.picks {
+            push_line(text, TodoAction::Pick, pick);
+            for inside in fork.inside.iter().filter(|tip| tip.oid == pick.commit) {
+                text.push_str(&format!("update-ref {}\n", inside.name));
+            }
+        }
+        text.push_str(&format!("update-ref {}\n", fork.branch.name));
+        text.push_str(&format!("reset {label}\n"));
+    }
 }
 
 /// `<word> <full id> <subject>`.

@@ -31,6 +31,9 @@ pub fn plan_as_run(
     facts: &RepoFacts,
     stop: &dyn Stop,
 ) -> Result<(Operation, PreviewPlan), PreviewError> {
+    if let Operation::Rewrite(params) = op {
+        return rewrite_as_run(repo, git, params, facts, stop);
+    }
     if !matches!(op, Operation::Rebase(_)) {
         let drawn = plan(repo, git, &op, facts, stop)?;
         return Ok((op, drawn));
@@ -77,6 +80,25 @@ pub fn plan_as_run(
     let op = Operation::Rebase(params);
     let mut drawn = plan(repo, git, &op, &facts, stop)?;
     drawn.already_in = suggestion;
+    Ok((op, drawn))
+}
+
+/// A rewrite as `y` will run it (ADR-0059 §2): its forks' fates weighed
+/// once, here, and the followers' sections written into it — any it carried
+/// are weighed afresh. The picture is pinned to their tips as well, so a
+/// fork that moves before `y` is `check`'s `Moved`.
+fn rewrite_as_run(
+    repo: &RepoHandle,
+    git: &GitVersion,
+    mut params: crate::rewrite::RewriteParams,
+    facts: &RepoFacts,
+    stop: &dyn Stop,
+) -> Result<(Operation, PreviewPlan), PreviewError> {
+    params.forks = Vec::new();
+    let (mut drawn, sections) = planned(repo, git, &Operation::Rewrite(params.clone()), facts, stop)?;
+    params.forks = sections;
+    let op = Operation::Rewrite(params);
+    drawn.against = op.tips();
     Ok((op, drawn))
 }
 

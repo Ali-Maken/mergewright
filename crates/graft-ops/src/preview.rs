@@ -27,6 +27,7 @@ mod as_run;
 mod aside;
 mod chain;
 mod drops;
+mod forks;
 mod ghost;
 mod identity;
 mod kinds;
@@ -50,8 +51,8 @@ use landing::{Landing, Replay, dirty_tracked, forecast_one, worktree};
 mod effects;
 use effects::PATHS_CAP;
 pub use effects::{
-    ConflictForecast, FORECAST_CAP, GhostCommit, HeadMove, LEFT_BEHIND_CAP, LeftBehind,
-    PreviewError, PreviewPlan, RefMove, Target, UndoNote, WorktreeEffect,
+    ConflictForecast, FORECAST_CAP, Fork, ForkFate, GhostCommit, HeadMove, LEFT_BEHIND_CAP,
+    LeftBehind, PreviewError, PreviewPlan, RefMove, Target, UndoNote, WhyStays, WorktreeEffect,
 };
 
 #[cfg(test)]
@@ -105,6 +106,18 @@ pub fn plan(
     facts: &RepoFacts,
     stop: &dyn Stop,
 ) -> Result<PreviewPlan, PreviewError> {
+    planned(repo, git, op, facts, stop).map(|(drawn, _)| drawn)
+}
+
+/// [`plan`], and for a rewrite the sections of the forks that follow
+/// (ADR-0059), which `plan_as_run` puts into the operation `y` runs.
+fn planned(
+    repo: &RepoHandle,
+    git: &GitVersion,
+    op: &Operation,
+    facts: &RepoFacts,
+    stop: &dyn Stop,
+) -> Result<(PreviewPlan, Vec<crate::rewrite::ForkSection>), PreviewError> {
     if stop.should_stop() {
         return Err(PreviewError::Stopped);
     }
@@ -115,6 +128,7 @@ pub fn plan(
     // A rebase's landed commit, from its own chained forecast: what the
     // put-back is measured against (05b: drops skipped, the line replayed).
     let mut landed = None;
+    let mut sections = Vec::new();
     let mut drawn = match op {
         Operation::StashApply { index, commit } | Operation::StashPop { index, commit } => {
             let (worktree, conflicts) = stash::forecast_stash(repo, git, *index, *commit, stop)?;
@@ -130,7 +144,11 @@ pub fn plan(
             landed = his;
             drawn
         }
-        Operation::Rewrite(params) => rewrite::rewrite(repo, git, params, stop)?,
+        Operation::Rewrite(params) => {
+            let (drawn, forks) = rewrite::rewrite(repo, git, params, stop)?;
+            sections = forks;
+            drawn
+        }
         Operation::CherryPick(params) => kinds::cherry_pick(repo, git, params, stop)?,
         Operation::Revert(params) => kinds::revert(repo, git, params, stop)?,
         Operation::Reset(params) => kinds::reset(repo, params, facts)?,
@@ -166,7 +184,7 @@ pub fn plan(
         )?),
         None => None,
     };
-    Ok(drawn)
+    Ok((drawn, sections))
 }
 
 /// A plan with the fields every kind fills the same way, ready to be
@@ -191,6 +209,8 @@ fn blank() -> PreviewPlan {
         published: Vec::new(),
         left_behind: Vec::new(),
         left_behind_more: 0,
+        forks: Vec::new(),
+        forks_more: 0,
         messages: Vec::new(),
     }
 }

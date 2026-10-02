@@ -69,7 +69,7 @@ pub(super) fn base_of(
 
 /// The default branch's full name: the user's override when set, else
 /// ADR-0001's chain.
-pub(super) fn default_branch_of(
+pub(crate) fn default_branch_of(
     repo: &RepoHandle,
     user_override: Option<&RefName>,
 ) -> Result<Option<String>, FactsError> {

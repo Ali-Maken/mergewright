@@ -518,3 +518,77 @@ fn an_unsaved_edit_is_set_aside_and_put_back() {
     agree(&repo, &hand, &before);
     assert_eq!(repo.read("notes.txt"), b"notes, not saved\n");
 }
+
+// ── Forks that follow (ADR-0059) ─────────────────────────────────────────
+
+/// The params as `y` runs them: the preview's `plan_as_run`, which fixes
+/// the forks' fates and writes the followers' sections in.
+fn as_run(repo: &TempRepo, params: RewriteParams) -> RewriteParams {
+    let handle = repo.open();
+    let op = Operation::Rewrite(params);
+    let facts =
+        read_facts(&handle, git_version(), &Never, &op.facts_scope()).expect("the facts read");
+    match graft_ops::preview::plan_as_run(&handle, &git_version(), op, &facts, &Never) {
+        Ok((Operation::Rewrite(params), _)) => params,
+        Ok((other, _)) => panic!("a rewrite came back as {other:?}"),
+        Err(why) => panic!("it previews: {why:?}"),
+    }
+}
+
+/// `feature` (`f1`..`f4`) with `feature-x` forked off `f2` (`x1`, `x2`) and
+/// `feature-x-wip` at `x1`: reword `f1`, and the fork follows in the same
+/// rebase — its own commits replayed onto the new `f2`, the branch on it
+/// moved too. By hand: plain `rebase -i` (no `--rebase-merges`) on the
+/// same todo, `label`/`reset` and all (ADR-0059 §3's "verify against git").
+#[test]
+fn a_fork_follows_in_the_same_rebase() {
+    let repo = four();
+    repo.git(&["switch", "-q", "-c", "feature-x", "feature~2"]);
+    commit(&repo, "x1");
+    repo.git(&["branch", "feature-x-wip"]);
+    commit(&repo, "x2");
+    repo.git(&["switch", "-q", "feature"]);
+    let hand = repo.copy();
+    let before = outcome(&repo);
+    let message = "f1, reworded\n";
+    let mut params = open(&repo, "feature~3");
+    set(&mut params, "f1", TodoAction::Reword);
+    params
+        .messages
+        .insert(row(&params, "f1"), message.to_owned());
+    let params = as_run(&repo, params);
+    assert_eq!(params.forks.len(), 1, "{:?}", params.forks);
+
+    graft(&repo, params, &nothing);
+    let todo = format!(
+        "reword {}\npick {}\nlabel graft-fork-1\npick {}\nupdate-ref refs/heads/feature-x-wip\n\
+         pick {}\nupdate-ref refs/heads/feature-x\nreset graft-fork-1\npick {}\npick {}\n",
+        full(&hand, "feature~3"),
+        full(&hand, "feature~2"),
+        full(&hand, "feature-x~1"),
+        full(&hand, "feature-x"),
+        full(&hand, "feature~1"),
+        full(&hand, "feature"),
+    );
+    by_hand(
+        &hand,
+        &["rebase.updateRefs=false", "commit.cleanup=whitespace"],
+        "main",
+        &todo,
+        Some(message),
+        &nothing,
+    );
+
+    agree(&repo, &hand, &before);
+    for side in [&repo, &hand] {
+        assert_eq!(
+            side.git(&["rev-parse", "feature-x~2"]),
+            side.git(&["rev-parse", "feature~2"]),
+            "feature-x left the new f2"
+        );
+        assert_eq!(
+            side.git(&["rev-parse", "feature-x-wip"]),
+            side.git(&["rev-parse", "feature-x~1"])
+        );
+    }
+}
