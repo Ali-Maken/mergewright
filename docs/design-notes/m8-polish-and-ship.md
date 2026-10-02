@@ -1,12 +1,12 @@
-# M8: polish, final name and ship — pass 2a, 2026-10-02
+# M8: polish, final name and ship — pass 2b, 2026-10-02
 
-**Status: pass 2a.** Decisions recorded (his answers 2026-10-02): ADR-0054 pacing, ADR-0055 keymap, ADR-0056 help +
-tour, ADR-0057 Tributary + what ships, ADR-0058 chrome + cursor row + dark B. Specs for the scroll groups and the
-look-parity group are in `.scratch/m8-polish-and-ship/issues/`; the rest in "Pass 2b remaining". Inputs: PROMPT.md §8
+**Status: pass 2b — all specs written.** Decisions recorded (his answers 2026-10-02): ADR-0054 pacing, ADR-0055
+keymap, ADR-0056 help + tour, ADR-0057 Tributary + what ships, ADR-0058 chrome + cursor row + dark B. Specs in
+`.scratch/m8-polish-and-ship/issues/` (list: "Expected groups"). Inputs: PROMPT.md §8
 M8 row, §5, §9; research `scroll-smoothness.md`, `big-repo-scroll.md`, `themes.md`, `keymap-help-remap.md`,
 `first-run.md`, `install-docs.md`; `docs/naming-research.md`; field notes :46, :48–50, :82–86 and 2026-10-02; the
 prototype (`prototypes/m8-polish-and-ship/README.md`, `docs/shots/m8-proto-*.txt`); `real-vs-mockup.md`; MAP.md of
-graft, graft-ui, graft-term. No source read.
+graft, graft-ui, graft-term (2b: also graft-ops, graft-git headings). No source read.
 
 **Promise (M8):** *"It stays smooth on your biggest repo, looks like the mock-up, installs with one command, and teaches
 itself from inside the app."* The acceptance walk proves it: held-key and wheel tails on MONOREPO, every journey at or
@@ -44,7 +44,7 @@ with no shell.
 | Theme auto + pin | zellij, bat (`themes.md`) | OSC 11 + `ui.theme`, focus re-query | T (have) |
 | Switch theme now | zellij ToggleTheme, helix `:theme`, VS Code ⌘K⌘T | palette rows `Theme: …`, no key | T |
 | Change one colour | gitui 0.23, helix `inherits`, VS Code `colorCustomizations` | `[theme.dark] selection = "#…"` | T |
-| Contrast floor | nobody checks (lazygit #4306/#508, gitui #922) | every theme tested against fixed floors; a missing override is named | **I** (we shipped the bug, :48) |
+| Contrast floor | nobody checks (lazygit #4306/#508, gitui #922) | every theme tested against fixed floors; an override that misses one is named | **I** (we shipped the bug, :48) |
 | Per-widget attrs; file-only themes; palette-inheriting default | lazygit; gitui; bat `ansi` | — | R |
 | **Screen chrome** | the M8 mock-up (his pick, 2026-10-02); Sublime Merge / lazygit: name + branch on top, words in the bar | ADR-0058 §4, DESIGN §1.0 | T (mock-up) |
 | **Cursor row over coloured lanes** | VS Code: fill under everything; lazygit: reverse video — both hide a lane of the fill's luminance (lazygit #4306) | fill starts after the graph column; `▸` in a gutter marks the row | **I** — no flat fill clears 3:1 against twelve hues (row 542) |
@@ -72,10 +72,9 @@ on cursor row **5.14** (A 4.61, floor 4.5); muted text on ground **6.95** (A 6.1
 worst lane-3 `#AA3377` ≈ 2.97:1, as on every row today (ADR-0003 band). Ground `#14161B` unchanged. Floors as tests:
 text/bg 4.5 · text/selection 4.5 · selection/bg 3.0 · text-muted/bg **4.5** (pass 1 said 3.0; B clears 4.5).
 
-**Pipeline check after 2a.** Prior art: every new aspect has a row (chrome, empty state taken from the approved mock-up;
-fill exclusion invented, why given). Journeys: J12, J14 recounted against the empty state; J21–J23 added. Prototype
-(step 5) ran, scenes 1–4 shot; scene 1's feel (blind 1/2, wheel step) still his — the wheel step stays per event until
-then. Satisfied.
+**Pipeline check after 2b.** Prior art: every new aspect has a row. Journeys: every id in the fence has an owning spec
+and a walk (`accept-m8.md`). Prototype (step 5) ran, scenes 1–4 shot; scene 1's feel (blind 1/2, wheel step) still
+his — the wheel step stays per event until then. Satisfied.
 
 ## Journeys (steps = keys + decisions, UX §1.3; start: his repo, graph, cursor on HEAD)
 
@@ -121,6 +120,9 @@ then. Satisfied.
 | Clone fails | prompt stays, URL kept, reason + `⏎ retry · esc cancel` |
 | Clone done | new repo's graph, cursor on HEAD |
 | Pull, nothing new | cursor where it was, `up to date ✓` |
+| `u` / `U` done | on HEAD if it moved, else on the first ref the entry touched (2b) |
+| `q` while a write runs | box `<op> is still running · quit stops it`, `y` quits (2b) |
+| On-disk rename can't finish | old names stay in force; `rename: still using the old names · <reason>` (2b) |
 
 ```journey-counts
 # id                          keys  # decisions · best tool · the keys
@@ -188,9 +190,10 @@ pub struct ContrastRule { pub fg: Token, pub bg: Token, pub min: f32 }
 pub const CONTRAST_RULES: &[ContrastRule];                         // the four floors above
 pub struct ContrastMiss { pub rule: ContrastRule, pub ratio: f32 }
 impl Theme { pub fn with_overrides(self, overrides: &[(Token, Rgb)]) -> (Theme, Vec<ContrastMiss>); } // G-theme
+impl Theme { pub fn lane_muted(&self, lane: usize) -> TokenColor; }                                   // G-look polish
 
 // graft-ui::graph_screen — chrome (look-parity 5a)
-pub const APP_NAME: &str = "graft";                                // G-rename changes this line
+pub const APP_NAME: &str = "graft";                                // G-rename: "Tributary"
 pub struct HeaderView<'a> { pub repo: &'a str, pub path: &'a str, pub branch: &'a str,
     pub tail: Option<&'a str>, pub practice: bool }
 pub fn header_line(view: &HeaderView, width: u16, theme: &Theme) -> ratatui::text::Line<'static>;
@@ -201,20 +204,21 @@ pub fn spaced(rows: u16) -> bool;                                  // rows >= 30
 pub struct RecentRow { pub name: SanitizedText, pub path: SanitizedText, pub age: SanitizedText }
 pub struct EmptyStateView { pub folder: SanitizedText, pub missing: bool, pub recent: Vec<RecentRow>,
     pub cursor: usize, pub prompt: Option<EmptyPrompt>, pub problem: Option<SanitizedText> }
-pub enum EmptyPrompt { Open(FieldView), ConfirmInit }
+pub enum EmptyPrompt { Open(FieldView), ConfirmInit }               // G-first-run adds Clone(..)
 pub struct EmptyState<'a> { pub view: &'a EmptyStateView, pub theme: &'a Theme }   // Widget
 
 // graft — recents and in-process switch (5c)
 pub(crate) fn read_recent(config_dir: &Path) -> Result<Vec<PathBuf>, RecentError>;  // newest first, ≤ 20, deduped
 pub(crate) fn remember(config_dir: &Path, repo: &Path) -> Result<(), RecentError>;
-// Exit gains `Open(PathBuf)`; main re-runs startup on it (tour and clone reuse it in 2b)
+// Exit gains `Open(PathBuf)`; G-tour widens it to `Open(Open { path, cursor, practice, back })`
 
-// graft-ui::keymap (G-keymap, 2b; ADR-0055)
+// graft-ui::keymap (G-keymap; ADR-0055) — `Binding.search` added in 2b (hidden palette words)
 pub enum ContextId { Global, Graph, Changes, Diff, Resolver, Banner, Finish, Rewrite, Picker, Blame,
     History, Stash, Journal, Map, Preview, Menu, Palette, EmptyState, Tour }
 pub struct ActionId(pub &'static str);                 // "graph.merge", never renamed after release
 pub struct KeyChord { pub code: KeyName, pub ctrl: bool, pub alt: bool, pub shift: bool }
-pub struct Binding { pub action: ActionId, pub context: ContextId, pub default: &'static [KeyChord], pub label: &'static str }
+pub struct Binding { pub action: ActionId, pub context: ContextId, pub default: &'static [KeyChord],
+    pub label: &'static str, pub search: &'static [&'static str] }
 pub fn defaults() -> &'static [Binding];
 pub enum Translated { Default(KeyChord), Unbound, Pass }
 pub enum KeyWarning { UnknownAction(String), BadKey { action: String, text: String },
@@ -226,125 +230,140 @@ impl Keymap {
     pub fn in_context(&self, ctx: ContextId) -> Vec<(&Binding, &[KeyChord])>;
 }
 
-// graft-ui::palette (G-palette, 2b)
+// graft-ui::palette (G-palette)
 pub enum PaletteMode { Here(ContextId), Everything }
 pub struct PaletteRow { pub label: SanitizedText, pub key: Option<KeyLabel>, pub config: Option<ActionId>, pub kind: RowKind }
 pub struct PaletteView { pub mode: PaletteMode, pub query: FieldView, pub groups: Vec<(SanitizedText, Vec<PaletteRow>)>,
     pub cursor: usize, pub warnings: Vec<SanitizedText> }
+pub fn fuzzy_score(query: &str, text: &str) -> Option<u32>;        // one matcher (graft-core or where the scout says)
 
-// graft-ops::tour (G-tour, 2b) — never touches his repo
-pub struct PracticeRepo { pub work: PathBuf, pub remote: PathBuf }
+// graft-ops::tour (G-tour) — never touches his repo; TourTask is pub (graft words the card)
+pub struct PracticeRepo { pub root: PathBuf, pub work: PathBuf, pub remote: PathBuf }
 pub fn build_practice_repo(under: &Path) -> Result<PracticeRepo, TourError>;
-pub(crate) enum TourTask { StageHunk, Commit, Undo, StashAndBack, Branch, MergeWithPreview, ResolveConflict, Push }
+pub fn remove_practice_repo(repo: &PracticeRepo) -> Result<(), TourError>;
+pub enum TourTask { StageHunk, Commit, Undo, StashAndBack, Branch, MergeWithPreview, ResolveConflict, Push }
+pub fn tasks_done(entries: &[JournalEntry]) -> [bool; 8];
 
-// graft::cli (G-docs, 2b)
-pub struct Flag { pub long: &'static str, pub value: Option<&'static str>, pub help: &'static str }
+// graft-ops::clone (G-first-run) — not journaled
+pub fn clone(params: &CloneParams, hooks: RemoteHooks, stop: &StopFlag) -> Result<PathBuf, CloneError>;
+
+// graft::cli (G-docs) — man_page gains the config table in 2b
+pub struct Flag { pub long: &'static str, pub short: Option<char>, pub value: Option<&'static str>,
+    pub help: &'static str, pub hidden: bool }
 pub const FLAGS: &[Flag];
-pub fn man_page(flags: &[Flag], keys: &[Binding]) -> String;
+pub fn man_page(flags: &[Flag], keys: &[Binding], config: &[ConfigKeyDoc]) -> String;
+
+// graft-ops::rename (G-rename)
+pub enum OnDiskNames { New, Old }
+pub fn migrate_repo(ctx: &Context) -> Result<Migrated, (OnDiskNames, MigrateError)>;
 ```
 
 Callers: `event_loop::pump` owns `Pacer` and `FrameTrace`; the graph view builds `HeaderView`; every geometry mirror
 (`update::geometry`, mouse row math, `pane_boundaries`) reads `ScreenRows`; row painting calls `legible_on` for any fg
 drawn on `selection`; startup draws `EmptyState` when discovery finds no repo; `update` calls `Keymap::translate` once
-before any `*_key` dispatcher (2b).
+before any `*_key` dispatcher; every surface that prints a key calls `Keymap::spell`; repository open calls
+`migrate_repo` before any journal read.
 
 ## Hard-to-reverse choices (decided)
 
 1. Fence-paced frames — ADR-0054.
-2. Keymap translate-at-the-edge; `ActionId` is his config's API — ADR-0055.
-3. The name reaches disk; migrate once — ADR-0057.
+2. Keymap translate-at-the-edge; `ActionId` is his config's API — ADR-0055. A golden id list guards it.
+3. The name reaches disk; migrate once — ADR-0057. Old ref names mapped at read; nothing old deleted before read-back.
 4. The cursor-row fill excludes the graph column — ADR-0058 §2. Undo cost: every cursor-row capture and paint test.
+5. (2b) **Crate and package names stay `graft-*`** in M8: unpublished (ADR-0057), and renaming them breaks every
+   `crates/graft/…:line` citation in docs and gaps. Rename before the source is published (a gap row).
 
 ## Where I'd differ from DESIGN.md
 
-Pass-1 Proposed 1–5 approved 2026-10-02 and applied: DESIGN §1.0 (new), §1.6, §1.15, §1.16; keymap §2.1, §2.2, §2.12,
-§2.13, §2.18 (new); terminal §4.1, §4.7 (new). **PROMPT.md still to edit** (handed to the conductor). Nothing new.
-Process: parked m7/50 re-homed as `pixel-memory-budget.md`, on Opus (its spec decides the shape; a script judges RSS).
+Pass-1 Proposed 1–5 approved 2026-10-02 and applied. **PROMPT.md still to edit** (handed to the conductor).
+2b, **Proposed** (conductor → user, small): keymap §2.2 `q` row "confirms if an operation is in progress" read as
+*a write is running*; a stopped git operation quits without a box (relaunch offers it back, PROMPT §9). Trade-off: one
+fewer box on a daily path vs. a quit that leaves a rebase stopped on disk — which M6 already handles.
 
 ## New UI
 
 - Chrome and cursor row: DESIGN §1.0. Empty state: §1.15. `?`: §1.16. Palette rows: §1.6.
-- **First-launch line** (2b): status row, muted: `first time? ? keys here · ⌃P anything · ⌃P "tour" to practise`; gone
+- **First-launch line**: status row, muted: `first time? ? keys here · ⌃P anything · ⌃P "tour" to practise`; gone
   after `?`/`⌃P` once or 5 launches; a problem line wins.
-- **Tour card** (2b): top of the graph pane, 3 rows, warning border; header `◇ practice · <tmp>`.
+- **Tour card**: top of the graph pane, 3 rows, warning border; header `◇ practice · <tmp>`.
   `╭ practice 3 of 8 · undo that commit ──── esc leave ╮` / `│ u takes back the last thing you did — nothing is lost
   ✓ stage ✓ commit · undo │`. Ticks by doing; < 100 cols drops the ticks; claims no key but `Esc`.
-- Look-parity keeps the `. more` doorway; G-palette turns it into `? keys` (`every_key_the_bar_draws_is_answered`).
+- **Palette sources** (`⌃P`): branches/tags/commits `⏎` seek the cursor (never switch — `C` does); files open history
+  (`F`); RECENT = palette actions run this session. ≤ 8 rows per group, `+N more`.
+- Bar doorway becomes `? keys`; `.` stays bound as an ordinary candidate `. actions`.
 
 ## Genuinely risky tickets
 
 - **G-pace** — Fable (signature): approach decided here; a wrong loop contract is structural; smoothness on his
   terminals can't be judged from diff or fixtures. Passes all three.
-- **G-keymap** — Fable (signature): every later surface builds on it.
-- Risky, not Fable: rename migration (Opus, alone); tour repo builder (path guard); look-chrome (the row split moves
-  every geometry mirror: the scout lists them, a sweep holds them).
+- **G-keymap 1** (`keymap-table-and-translate`) — Fable (signature): every later surface builds on it.
+- Risky, not Fable: rename migration (Opus, alone); tour repo builder (path guard); look-chrome (row split moves every
+  geometry mirror); askpass peer check (hygiene-code item 1, Opus).
 - **Fable count: 2** (+ acceptance + the standing architecture pass).
 
 ## Expected groups — final order
 
 | # | Group | Crates | Model | Spec |
 |---|---|---|---|---|
-| 1 | G-trace | graft event_loop, scripts | Opus | `trace-product-frame-trace.md` |
+| 1 | G-trace | graft event_loop, scripts | Opus | `01-trace-product-frame-trace.md` |
 | 2 | G-pace | graft-term, graft-core caps, graft event_loop | **Fable (sig)** | `pace-fence-and-sync.md` |
 | 3 | G-settle | graft update, jobs | Opus | `settle-work-at-rest.md` |
+| 3b | G-trace follow-up (after his run) | graft view/update | Opus | `trace-followup-per-turn-cost.md` |
 | 4 | G-pixel-mem | graft-graph, graft-term kitty, graft graphics | Opus | `pixel-memory-budget.md` |
 | 5a | G-look chrome | graft-ui graph_screen + hints, graft view | Opus | `look-chrome-header-gutter-bar.md` |
 | 5b | G-look cursor row + dark B | graft-ui theme + graph rows | Opus | `look-cursor-row-and-dark-b.md` |
 | 5c | G-look outside repo | graft-ui empty_state, graft startup | Opus | `look-outside-repo-screen.md` |
-| 6 | G-keymap | graft-ui keymap + hints, graft config + update | **Fable (sig)** | 2b |
-| 7 | G-palette | graft-ui palette, graft update | Opus | 2b |
-| 8 | G-bar | graft-ui hints, graft view | Opus | 2b |
-| 9 | G-theme | graft-ui theme, graft config | Opus | 2b |
-| 10 | G-first-run | graft startup, graft-ui | Opus | 2b |
-| 11 | G-tour | graft-ops tour, graft, graft-ui | Opus | 2b |
-| 12 | G-daily | graft-ops, graft update | Opus | 2b |
-| 13 | G-words | graft-ui, graft, graft-ops (words) | Sonnet | 2b |
-| 14 | G-hygiene | scripts, fixtures, graft-git | Sonnet | 2b |
-| 15 | G-docs | graft cli, docs | Opus | 2b |
-| 16 | G-release | dist, CI, scripts | Opus | 2b |
+| 6a | G-keymap table | graft-ui keymap, graft config + update entry | **Fable (sig)** | `keymap-table-and-translate.md` |
+| 6b | G-keymap spell | graft-ui hints + labels, graft words | Opus | `keymap-spell-from-the-table.md` |
+| 7a | G-palette help | graft-ui palette, graft update | Opus | `palette-help-and-actions.md` |
+| 7b | G-palette find | graft update::palette, search | Opus | `palette-find-anything.md` |
+| 8 | G-bar | graft-ui hints, graft view | Opus | `bar-content-pass.md` |
+| 9a | G-theme | graft-ui theme, graft config | Opus | `theme-overrides.md` |
+| 9b | G-look polish | graft-ui theme + rows, graft view/config | Opus | `look-polish-rows.md` |
+| 10 | G-first-run | graft-ops clone, graft startup, graft-ui empty_state | Opus | `first-run-clone-and-first-launch.md` |
+| 11 | G-tour | graft-ops tour, graft, graft-ui | Opus | `tour-practice-repo.md` |
+| 12a | G-daily landing | graft update operate/undo | Opus | `daily-landing.md` |
+| 12b | G-daily ops | graft-ops rewrite, graft-git, graft preview | Opus | `daily-ops-fixes.md` |
+| 13 | G-words | graft-ui, graft, graft-ops (words) | Sonnet | `words-sweep.md` |
+| 14a | G-hygiene code | graft-git, graft-ops raw, askpass | Opus/Sonnet | `hygiene-code.md` |
+| 14b | G-hygiene scripts | scripts, fixtures, fuzz, shots | Sonnet | `hygiene-scripts-and-fixtures.md` |
+| 15 | G-docs | graft cli, README, man | Opus | `docs-readme-and-man.md` |
+| 16 | G-release | dist, CI (not pushed), scripts | Opus | `release-dist-and-matrix.md` |
 | 17 | arch pass → G-health | all | Fable review → Opus/Sonnet | `fable-architecture-pass.md` (standing) |
-| 18 | G-rename | all | Opus, alone | 2b |
-| 19 | G-accept | — | Fable | 2b |
+| 18a | G-rename migration | graft-ops, graft, graft-git | Opus, alone | `rename-on-disk-migration.md` |
+| 18b | G-rename sweep | all (names) | Sonnet, alone | `rename-names-sweep.md` |
+| 19 | G-accept | — | Fable | `accept-m8.md` |
 
-Lanes: 1→2→3; 4 after 2 (kitty, graphics). 5a→5b (same files); 5c beside 5b (disjoint files). 12 and 14 can run beside
-the scroll lane (disjoint crates). 6 after 5a/5b (hints). **Nothing is published or registered** (ADR-0057).
+Lanes: 1→2→3→3b; 4 after 2. 5a→5b; 5c beside 5b. 6a→6b→7a→7b; 8 after 7a and 12b. 9a after 5b and 6a; 9b after 9a.
+10 after 5c and 7a; 11 after 10 and 6b. 12a, 12b, 14a, 14b beside the scroll lane (disjoint files; conductor checks
+scouts). 13 after 6b and 12b. 15 after 6a, 9a, 10, 11; 16 after 15. 17 after every build; 18a → 18b → 19.
+**Nothing is published or registered** (ADR-0057).
 
-**Scout questions for 2b** (code, not intent): the `*_key` dispatchers and one entry point before them; how
-`HintContext` maps to the dispatch context; TOML crate and `[keys]` parse today; `ThemeChoice` values; OSC 11 focus
-re-query built?; is `filter_switch_rows`'s matcher reusable; every on-disk and env name containing `graft`.
+## Pass 2b — specced
 
-## Pass 2b remaining
-
-- **G-trace follow-up:** fixes the trace shows (per-turn cost vs history and ref count, cf. row 414), after his run.
-- **G-keymap** (Fable sig): table, translate, spell, `[keys.*]`, warnings, sweep test.
-- **G-palette:** `?`, `⌃P`, `:`; groups; sources; theme rows; tour row; doorway → `? keys`; rows 163, 538, 539, 553.
-- **G-bar:** 1057, 1065, 1084 (if resident, else carry), stale 840.
-- **G-theme:** `[theme.<kind>]` overrides + warnings; look rows 145 (close by design?), 156, 159, 162, 373, 557, 979, 983.
-- **G-first-run:** clone `c` (505), first-launch line (558).
-- **G-tour:** practice repo, 8 tasks, card, `t` on the empty state.
-- **G-daily, G-words, G-hygiene, G-docs, G-release:** rows below.
-- **arch pass → G-health** (standing spec exists; G-health specs follow its review).
-- **G-rename** (ADR-0057). **G-accept** (Fable): the `journey-counts` fence above, TESTING.md, shots, contact sheet.
+All items of "Pass 2b remaining" are specced (table above). Still owed by others: G-health specs (from the
+architecture review); his trace run (gates 3b); scene 1's feel.
 
 ## KNOWN_GAPS rows naming M8 (grep 2026-10-02; plus 960, 998)
 
 | Fate | Rows | Group |
 |---|---|---|
-| Fix — scroll | 1095, 1089, 1093 | 1–4 |
+| Fix — scroll | 1095, 1089, 1093; 414 (check) | 1–4, 3b |
 | Fix — look | 541, 542 | 5b |
-| Fix — help, palette, bar | 163, 538, 539, 553, 1057, 1065, 1084; stale M7 840 | 7, 8 |
-| Fix — theme | 145, 156, 159, 162, 373, 557, 979, 983 | 9 |
-| Fix — first run, tour | 558, 505 | 10, 11 |
-| Fix — daily | 960, 998, 509, 931, 1050, 1055, 1056, 1058, 1081 (check), 1083 | 12 |
-| Fix — words | 376, 402, 403, 951, 953, 1042, 1059–1063, 1066, 1067, 1072, 1086; stale M7 766 | 13 |
-| Fix — hygiene | 147, 164, 448, 959, 1000, 1045, 1049, 1068, 1069, 1074, 1076, 1077, 1087, 1090, 1091, 1094 | 14 |
-| Fix — docs, release | 224, 458, 549, 550, 551, 980 | 15, 16 |
+| Fix — help, palette, bar | 163, 538, 539, 553 (7a); 1057, 1065, 1084, 1058-bar (8); stale M7 840 (8 verifies) | 7a, 8 |
+| Fix — theme, polish | 145 (closed by design), 156, 159, 162, 373, 557, 979, 983 | 9b |
+| Fix — first run, tour | 505, 558 | 10, 11 |
+| Fix — daily | 960, 1056, 1050, 509 (12a); 998, 1083, 1058, 931, 1055, 1081 (12b) | 12a, 12b |
+| Fix — words | 376, 402, 403, 951, 953, 1042, 1059–1063, 1066, 1067, 1072, 1074, 1086; stale M7 766 | 13 |
+| Fix — hygiene | 448, 959, 1000, 1045, 1068, 1069, 1076 (14a); 147, 164, 549, 550, 1049, 1077, 1087, 1090, 1091, 1094 (14b) | 14a, 14b |
+| Fix — docs, release | 224 (15); 458, 551, 980 (16) | 15, 16 |
 | Fix — code health | 935, 985, 991, 992, 1027, 1034, 1043, 1082 | 17 |
 | M8 review run | 944, 963, 1044, 1071, 1078, 1079, 1080, 1088 | review |
 | His eye at the stop | 562 | stop |
 | Regenerated by acceptance | 1085 | 19 |
 | Close | 795, 981, 1053, 1064 | — |
 | Past v1 (ADR-0057) | 371, 372, 374, 205, 174, 248, 297–300, 866, 867, 910, 967, 976, 989, 990, 1001, 1047, 1048, 1051, 1052, 1054, 1073, 1075 | — |
+| New (2b) | crate names carry the codename; rename before the source is published | after v1 |
 
 Open item: a person's trademark search (USPTO classes 9 and 42) before anything public (ADR-0057).
 

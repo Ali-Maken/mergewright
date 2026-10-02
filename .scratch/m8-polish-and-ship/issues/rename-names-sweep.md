@@ -1,0 +1,47 @@
+# G-rename 2 — the binary is `trib`, the app says Tributary, env vars are `TRIB_*`
+
+Status: draft
+Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Sonnet, alone**: mechanical, held by a grep test.
+Needs: `rename-on-disk-migration`. Last before the acceptance ticket.
+
+## Read first
+- `docs/adr/0057-tributary-and-what-ships.md` §1–2
+- `rename-on-disk-migration`'s NOTES (the collected "G-rename list")
+- `crates/graft/MAP.md` `## cli` (`ASKPASS_SOCKET_VAR`), lib.rs examples list
+
+## Decisions (planner)
+- Binary `[[bin]] name = "trib"`; `APP_NAME = "Tributary"`; `--version` prints `trib <version>`; dist app/formula/
+  archive names `tributary`; man page `docs/man/trib.1` (`--generate-man` output's NAME line `trib`).
+- Env vars: every `GRAFT_*` read by the binary, tests and scripts → `TRIB_*` (`TRIB_PERF_TRACE`,
+  `TRIB_ASKPASS_SOCKET`, `TRIB_FRAME_TRACE`, …). The old names are not read (nothing shipped under them).
+- **Crate and package names stay `graft-*`** this milestone: they are not published (ADR-0057) and renaming them would
+  break every `crates/graft/...:line` citation in the docs and gaps. A KNOWN_GAPS row for the conductor: "crate names
+  carry the codename; rename before the source is published".
+- History documents keep their words (ADRs, logs, reviews, field notes, KNOWN_GAPS, design notes). User-facing docs
+  change: README, TESTING.md instructions, man page, `--help`. CLAUDE.md and PROMPT.md are the user's/conductor's —
+  NOTES lists the lines that would change; this ticket does not edit them.
+
+## Scope
+In: binary name, `APP_NAME`, env vars, `CARGO_BIN_EXE_*` uses, scripts calling the binary, dist names, README,
+TESTING.md commands, man page file, captures that print the name (re-shot). Out: crate names; history docs.
+
+## Signatures
+`pub const APP_NAME: &str = "Tributary";` (graft-ui). Nothing else.
+
+## Acceptance
+- [ ] Grep test: no `GRAFT_` env read and no user-visible `graft` string in non-test code of any crate (allow-list:
+      crate/module paths, `refs/graft` inside `rename`'s old-name mapping) — test named.
+- [ ] `cargo build` produces `target/debug/trib`; `trib --version`, `trib --help`, `trib --generate-man` outputs quoted.
+- [ ] Every script under `scripts/` runs the new binary name (grep quoted).
+- [ ] Captures showing the name or a `GRAFT_` var re-shot, listed in NOTES.
+- [ ] `docs/release/plan.txt` regenerated: archive and formula named `tributary`.
+
+## Touches
+- Every test using `CARGO_BIN_EXE_graft`; m3–m7 walk examples and pty scripts; askpass child env; G-pace/G-trace env
+  names; README; TESTING.md; dist metadata; MAP.md entries naming env vars or the binary.
+
+## Gates
+`cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc` — workspace-wide.
+
+## Size
+One context, ~50k tokens.
