@@ -9,7 +9,7 @@
 //!
 //! * [`Order::Topological`] is the one the graph is finally drawn in. It
 //!   needs the commit-graph file's generation numbers to emit incrementally;
-//!   see [`topological`].
+//!   see `topological`.
 //! * [`Order::CommitDate`] is the natural streaming order and needs nothing
 //!   at all. ADR-0008 makes it the first paint when there is no commit-graph
 //!   file, with the UI saying so.

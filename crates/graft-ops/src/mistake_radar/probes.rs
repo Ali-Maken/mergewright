@@ -406,7 +406,7 @@ pub(crate) fn duplicate_walk() -> [GitArg; 5] {
 }
 
 /// Commits sharing a patch-id, among the newest `window` commits reachable
-/// from a ref the user can merge ([`duplicate_walk`]).
+/// from a ref the user can merge (`duplicate_walk`).
 ///
 /// Three `git` spawns: `log --format=%H` names the window itself (and
 /// whether it covers the whole history, from whether fewer than `window`

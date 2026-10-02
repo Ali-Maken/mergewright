@@ -136,6 +136,17 @@ impl AskPassServer {
     /// # Errors
     /// The directory could not be made or the socket not bound.
     pub fn spawn(helper: PathBuf, handler: Arc<dyn AskPass>) -> io::Result<AskPassServer> {
+        Self::spawn_owned_by(helper, handler, nix::unistd::geteuid().as_raw())
+    }
+
+    /// [`spawn`](Self::spawn), serving only peers whose uid is `owner`. Real
+    /// use passes our own effective uid; a test passes another, to be
+    /// "another user" to the server without needing root.
+    fn spawn_owned_by(
+        helper: PathBuf,
+        handler: Arc<dyn AskPass>,
+        owner: u32,
+    ) -> io::Result<AskPassServer> {
         let dir = private_dir()?;
         let socket = dir.join("ask.sock");
         let listener = match UnixListener::bind(&socket) {
@@ -153,7 +164,7 @@ impl AskPassServer {
             let shared = Arc::clone(&shared);
             thread::Builder::new()
                 .name("graft-askpass".to_owned())
-                .spawn(move || listen(&listener, &handler, &shared))?
+                .spawn(move || listen(&listener, &handler, &shared, owner))?
         };
         Ok(AskPassServer {
             dir,
@@ -282,7 +293,12 @@ fn private_dir() -> io::Result<PathBuf> {
 /// set — the shutdown's wake-up, or a real helper that connected in the same
 /// moment and was queued ahead of it — is dropped unanswered: the helper sees
 /// EOF and fails, it is never given an answer by a server that is closing.
-fn listen(listener: &UnixListener, handler: &Arc<dyn AskPass>, shared: &Shared) {
+///
+/// A connection from any uid but `owner` is closed unread and unanswered,
+/// with one line on stderr: the `0700` directory already keeps other users
+/// out, so only a peer that got past it (root, or a bug in that guard) is
+/// ever refused here.
+fn listen(listener: &UnixListener, handler: &Arc<dyn AskPass>, shared: &Shared, owner: u32) {
     for stream in listener.incoming() {
         if shared.stopped() {
             drop(stream);
@@ -290,6 +306,14 @@ fn listen(listener: &UnixListener, handler: &Arc<dyn AskPass>, shared: &Shared) 
         }
         match stream {
             Ok(stream) => {
+                if let Err(refusal) = admit(peer_uid(&stream), owner) {
+                    // Graft has no log file; stderr is where the binary's
+                    // other last-resort reports go (`graft-ops`
+                    // `snapshot/raw.rs` scratch cleanup, `main.rs`).
+                    eprintln!("graft: {refusal}");
+                    drop(stream);
+                    continue;
+                }
                 if let Err(error) = serve(stream, handler, shared) {
                     // One helper's broken exchange (it hung up, sent a bad
                     // frame) is that helper's failure: it exits non-zero and
@@ -306,6 +330,63 @@ fn listen(listener: &UnixListener, handler: &Arc<dyn AskPass>, shared: &Shared) 
             }
         }
     }
+}
+
+/// Why a connection was turned away before its prompt was read.
+#[derive(Debug)]
+enum Refusal {
+    /// The peer runs as another user.
+    OtherUser { peer: u32, owner: u32 },
+    /// The peer's uid could not be read; refused rather than assumed ours.
+    Unreadable(io::Error),
+}
+
+impl fmt::Display for Refusal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Refusal::OtherUser { peer, owner } => write!(
+                f,
+                "askpass: refused a connection from uid {peer} (this server serves uid {owner})"
+            ),
+            Refusal::Unreadable(error) => write!(
+                f,
+                "askpass: refused a connection whose uid could not be read: {error}"
+            ),
+        }
+    }
+}
+
+/// Whether a peer with uid `peer` may be served by a server owned by
+/// `owner`. Fails closed: an unreadable uid is a refusal.
+fn admit(peer: io::Result<u32>, owner: u32) -> Result<(), Refusal> {
+    match peer {
+        Ok(peer) if peer == owner => Ok(()),
+        Ok(peer) => Err(Refusal::OtherUser { peer, owner }),
+        Err(error) => Err(Refusal::Unreadable(error)),
+    }
+}
+
+/// The effective uid of the process at the other end of `stream`, from the
+/// kernel: `getpeereid` on macOS and the BSDs.
+#[cfg(any(
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    target_os = "dragonfly"
+))]
+fn peer_uid(stream: &UnixStream) -> io::Result<u32> {
+    let (uid, _gid) = nix::unistd::getpeereid(stream)?;
+    Ok(uid.as_raw())
+}
+
+/// The effective uid of the process at the other end of `stream`, from the
+/// kernel: `SO_PEERCRED` on Linux and Android.
+#[cfg(any(target_os = "linux", target_os = "android"))]
+fn peer_uid(stream: &UnixStream) -> io::Result<u32> {
+    let creds = nix::sys::socket::getsockopt(stream, nix::sys::socket::sockopt::PeerCredentials)?;
+    Ok(creds.uid())
 }
 
 /// What the listener thread shares with the server that owns it.

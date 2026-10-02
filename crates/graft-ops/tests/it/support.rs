@@ -154,6 +154,22 @@ impl TempRepo {
         self.path.join(relative).exists()
     }
 
+    /// An empty file at every temporary name a raw write (`restore::raw`)
+    /// in this process may use in `dir`, so it cannot land: `.~<6 hex>` of
+    /// `pid × 16 + attempt`, attempts 0–15, as `temporary_name` builds them.
+    /// Returns their repo-relative paths, to check each is left untouched.
+    pub fn block_raw_writes_in(&self, dir: &str) -> Vec<String> {
+        let pid = std::process::id();
+        (0..16u32)
+            .map(|attempt| {
+                let n = pid.wrapping_mul(16).wrapping_add(attempt) & 0x00ff_ffff;
+                let relative = format!("{dir}/.~{n:06x}");
+                self.write(&relative, b"");
+                relative
+            })
+            .collect()
+    }
+
     /// A first commit, so `HEAD` is born.
     pub fn commit_all(&self, message: &str) {
         self.git(&["add", "-A"]);

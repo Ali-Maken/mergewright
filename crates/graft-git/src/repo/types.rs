@@ -28,15 +28,15 @@ pub enum TipsError {
 }
 
 /// Every ref and every commit they reach, read in one pass
-/// ([`RepoHandle::ref_snapshot`]).
+/// ([`RepoHandle::ref_snapshot`](crate::repo::RepoHandle::ref_snapshot)).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RefSnapshot {
-    /// What [`RepoHandle::references`] returns: every ref, sorted by name.
+    /// What [`RepoHandle::references`](crate::repo::RepoHandle::references) returns: every ref, sorted by name.
     pub refs: Vec<RefEntry>,
-    /// What [`RepoHandle::commit_tips`] returns: sorted, deduplicated, `HEAD`
+    /// What [`RepoHandle::commit_tips`](crate::repo::RepoHandle::commit_tips) returns: sorted, deduplicated, `HEAD`
     /// included.
     pub tips: Vec<Oid>,
-    /// What [`RepoHandle::peeled_references`] returns: every ref that reaches
+    /// What [`RepoHandle::peeled_references`](crate::repo::RepoHandle::peeled_references) returns: every ref that reaches
     /// a commit, with that commit, sorted by name.
     pub peeled: Vec<(RefName, Oid)>,
     /// How the pass learned its tips (m1-the-graph/58b).
@@ -52,7 +52,7 @@ pub struct RefSnapshot {
 pub struct TipStats {
     /// Refs enumerated.
     pub refs: u32,
-    /// Tips the [`KnownCommits`] table answered without a read.
+    /// Tips the [`KnownCommits`](crate::repo::KnownCommits) table answered without a read.
     pub known: u32,
     /// Annotated tag objects met (peeled from `packed-refs` or decoded).
     pub tags: u32,

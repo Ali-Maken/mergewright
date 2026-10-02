@@ -77,7 +77,7 @@ pub enum StatusError {
     /// following original-path record, or too few fields in a record.
     #[error("git status printed something Graft cannot parse: {0}")]
     Malformed(String),
-    /// `git status` printed more than [`OUTPUT_CAP`] bytes, so what came back
+    /// `git status` printed more than `OUTPUT_CAP` bytes, so what came back
     /// is a prefix of the real status. Parsing it would report a shorter,
     /// plausible-looking list of changes; saying so is the only honest
     /// answer, as `diff::read` already does for the same condition.
@@ -320,7 +320,7 @@ fn bytes_to_pathbuf(bytes: &[u8]) -> PathBuf {
 ///
 /// # Errors
 /// [`StatusError::Run`] if `git` could not be run or exited non-zero;
-/// [`StatusError::TooLarge`] if its output hit [`OUTPUT_CAP`], so only a
+/// [`StatusError::TooLarge`] if its output hit `OUTPUT_CAP`, so only a
 /// prefix of the status came back; [`StatusError::Malformed`] if it printed
 /// something [`parse_porcelain_v2`] cannot read.
 pub fn read(repo: &RepoHandle, stop: &dyn Stop) -> Result<WorkingTreeStatus, StatusError> {

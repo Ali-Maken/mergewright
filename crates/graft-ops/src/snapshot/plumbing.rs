@@ -127,6 +127,22 @@ pub(crate) fn path_of(name: Vec<u8>) -> PathBuf {
     PathBuf::from(std::ffi::OsString::from_vec(name))
 }
 
+/// `path` as one line `hash-object --stdin-paths` reads back byte for byte:
+/// in double quotes, `"` and `\` escaped, every byte outside printable ASCII
+/// as `\ooo` — git's own C quoting, which it unquotes on the way in.
+pub(crate) fn c_quoted(path: &[u8]) -> Vec<u8> {
+    let mut line = vec![b'"'];
+    for &byte in path {
+        match byte {
+            b'"' | b'\\' => line.extend([b'\\', byte]),
+            0x20..=0x7e => line.push(byte),
+            other => line.extend(format!("\\{other:03o}").bytes()),
+        }
+    }
+    line.push(b'"');
+    line
+}
+
 /// NUL-terminated records, the trailing empty one dropped.
 pub(super) fn split_nul(bytes: &[u8]) -> Vec<Vec<u8>> {
     bytes

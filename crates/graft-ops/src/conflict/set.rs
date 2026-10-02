@@ -59,7 +59,7 @@ pub enum ConflictSetError {
 ///
 /// The union, each path once, of (a) the paths unmerged now, in the status's
 /// order; (b) the `Conflicts:` list git wrote into `MERGE_MSG`, read with
-/// `core.commentChar` (see [`merge_msg`] for which kinds write it); (c) every
+/// `core.commentChar` (see `merge_msg` for which kinds write it); (c) every
 /// path held at a stage above 0 by an unmerged index state on the live
 /// entry's backup chain — the states Graft kept before each step it ran
 /// inside the operation.

@@ -116,3 +116,99 @@ fn parse(stdout: &[u8]) -> Result<SubmoduleLog, FactsError> {
 fn unparsable(what: &str) -> FactsError {
     FactsError::History(RunError::Unparsable(what.to_owned()))
 }
+
+#[cfg(test)]
+mod tests {
+    use proptest::prelude::*;
+
+    use super::*;
+
+    /// The case count for this tier: 64 fast, 1000 with `heavy-tests`
+    /// (PROMPT.md §7.1; `graft-fixtures` owns the numbers).
+    fn tier() -> ProptestConfig {
+        ProptestConfig::with_cases(graft_fixtures::proptest_cases())
+    }
+
+    /// `log` as `git log --left-right -z --format=%m%H %s` prints it, the
+    /// sides interleaved as `order` says (`true`: the next pulled-in commit).
+    fn printed(log: &SubmoduleLog, order: &[bool]) -> Vec<u8> {
+        let (mut pulled, mut rewound) = (log.pulled_in.iter(), log.rewound.iter());
+        let mut out = Vec::new();
+        let mut record = |side: u8, (id, subject): &(Oid, String)| {
+            out.push(side);
+            out.extend_from_slice(format!("{id} {subject}").as_bytes());
+            out.push(0);
+        };
+        for &take_pulled in order {
+            let next = if take_pulled {
+                pulled.next()
+            } else {
+                rewound.next()
+            };
+            if let Some(commit) = next {
+                record(if take_pulled { b'>' } else { b'<' }, commit);
+            }
+        }
+        pulled.for_each(|commit| record(b'>', commit));
+        rewound.for_each(|commit| record(b'<', commit));
+        out
+    }
+
+    fn commit() -> impl Strategy<Value = (Oid, String)> {
+        (
+            "[0-9a-f]{40}",
+            any::<String>().prop_filter("git's subject has no NUL", |s| !s.contains('\0')),
+        )
+            .prop_map(|(hex, subject)| (Oid::from_hex(&hex).unwrap(), subject))
+    }
+
+    fn log() -> impl Strategy<Value = SubmoduleLog> {
+        (
+            prop::collection::vec(commit(), 0..6),
+            prop::collection::vec(commit(), 0..6),
+        )
+            .prop_map(|(pulled_in, rewound)| SubmoduleLog { pulled_in, rewound })
+    }
+
+    proptest! {
+        #![proptest_config(tier())]
+
+        /// Any bytes at all: an answer or an error, never a panic.
+        #[test]
+        fn parse_never_panics(stdout in prop::collection::vec(any::<u8>(), 0..256)) {
+            // Either outcome is fine here: the property is "no panic".
+            let _answer_or_error = parse(&stdout);
+        }
+
+        /// Bytes shaped like git's records, junk mixed in (sides, ids,
+        /// spaces, NULs): never a panic, and whatever is accepted prints
+        /// back to bytes that parse to the same log.
+        #[test]
+        fn what_parse_accepts_round_trips(
+            parts in prop::collection::vec(
+                prop_oneof![
+                    Just(b">".to_vec()),
+                    Just(b"<".to_vec()),
+                    Just(b" ".to_vec()),
+                    Just(vec![0]),
+                    "[0-9a-f]{40}".prop_map(String::into_bytes),
+                    prop::collection::vec(any::<u8>(), 0..8),
+                ],
+                0..16,
+            )
+        ) {
+            let stdout = parts.concat();
+            if let Ok(log) = parse(&stdout) {
+                let again = parse(&printed(&log, &[])).unwrap();
+                prop_assert_eq!(again, log);
+            }
+        }
+
+        /// A log printed as git prints it, the two sides in any
+        /// interleaving, parses back to itself: each side in git's order.
+        #[test]
+        fn a_printed_log_parses_back(log in log(), order in prop::collection::vec(any::<bool>(), 0..12)) {
+            prop_assert_eq!(parse(&printed(&log, &order)).unwrap(), log);
+        }
+    }
+}

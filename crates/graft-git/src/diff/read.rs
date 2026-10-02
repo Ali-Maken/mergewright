@@ -370,7 +370,7 @@ fn untracked_file_diff(
 /// One file's full diff.
 ///
 /// An [`FileStatus::Untracked`] entry is read from the working tree as all
-/// added lines ([`untracked_file_diff`]).
+/// added lines (`untracked_file_diff`).
 ///
 /// # Errors
 /// See [`DiffError`].

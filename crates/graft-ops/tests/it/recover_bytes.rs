@@ -207,7 +207,7 @@ fn a_lost_edit_put_back_with_nothing_kept_raw_runs_no_raw_step() {
     );
 }
 
-/// A file already at `write_raw`'s temporary name (30s's setup): the
+/// A file already at every `write_raw` temporary name (30s's setup): the
 /// restore went through, the raw step cannot land. `Committed`, and the
 /// answer says so first, in 30s's words.
 #[test]
@@ -215,8 +215,7 @@ fn a_lost_edit_put_back_whose_raw_step_cannot_land_says_so() {
     let repo = committed(AUTOCRLF, &A_RS);
     lose_an_edit(&repo, &A_RS);
     let (op, _) = the_put_back(&repo, &A_RS);
-    let in_the_way = format!("{PATH}.graft-raw-{}", std::process::id());
-    repo.write(&in_the_way, b"");
+    let in_the_way = repo.block_raw_writes_in("src");
 
     let Err(ApplyError::AfterState { applied, unread }) = try_run(&repo, &op, NOW + 2) else {
         panic!("the raw step's failure was not reported");
@@ -241,11 +240,9 @@ fn a_lost_edit_put_back_whose_raw_step_cannot_land_says_so() {
         )
     );
     assert_eq!(repo.read(PATH), LOST_CRLF, "LOST's content, in git's CRLF");
-    assert_eq!(
-        repo.read(&in_the_way),
-        b"",
-        "the file in the way is untouched"
-    );
+    for path in &in_the_way {
+        assert_eq!(repo.read(path), b"", "{path}, in the way, is untouched");
+    }
 }
 
 /// R2's bound (ADR-0052): `core.autocrlf` switched on after the edit was

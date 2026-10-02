@@ -40,7 +40,7 @@ use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::snapshot_reads::{self, ReadError};
 
 use super::SnapshotError;
-use super::plumbing::{TempIndex, oid_from, path_of, stopped};
+use super::plumbing::{TempIndex, c_quoted, oid_from, path_of, stopped};
 
 mod converted;
 
@@ -187,7 +187,9 @@ fn not_given_back(
 
 /// The raw blobs (`hash-object -w --no-filters`, read from disk as they are)
 /// on a fresh temporary index at each file's own path and mode, written as
-/// a tree.
+/// a tree. The paths go on stdin, one C-quoted line each, as
+/// `restore::raw::same_content_paths` sends them: one argument per path
+/// would pass `ARG_MAX` on a large kept set and refuse every operation.
 fn raw_tree(
     repo: &RepoHandle,
     scratch: &Path,
@@ -195,14 +197,17 @@ fn raw_tree(
     stop: &dyn Stop,
     commands: &mut Vec<String>,
 ) -> Result<Oid, SnapshotError> {
-    let mut invocation = GitInvocation::new(repo)
+    let mut lines = Vec::new();
+    for file in files {
+        lines.extend(c_quoted(&file.path));
+        lines.push(b'\n');
+    }
+    let invocation = GitInvocation::new(repo)
         .arg(GitArg::Flag("hash-object"))
         .arg(GitArg::Flag("-w"))
         .arg(GitArg::Flag("--no-filters"))
-        .arg(GitArg::Separator);
-    for file in files {
-        invocation = invocation.arg(GitArg::Path(file.path.clone()));
-    }
+        .arg(GitArg::Flag("--stdin-paths"))
+        .stdin(lines);
     let output = run_logged(&invocation, stop, commands).map_err(stopped)?;
     let printed: Vec<&[u8]> = output
         .stdout

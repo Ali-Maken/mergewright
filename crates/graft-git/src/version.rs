@@ -143,13 +143,13 @@ impl SystemGit {
 ///
 /// Goes through [`GitInvocation`], in the current directory: there is no
 /// open repository yet at startup, and `--version` reads none. Its own
-/// [`Deadline`] stands in for [`Stop`] — `GitInvocation` has no built-in
+/// `Deadline` stands in for [`Stop`] — `GitInvocation` has no built-in
 /// timeout, only cancellation, and a wedged `git` here must not hang
 /// startup.
 ///
 /// # Errors
 /// [`VersionError`] if git is not on the `PATH`, could not be run, did not
-/// finish within [`DEADLINE`], exited non-zero, or printed something this
+/// finish within `DEADLINE`, exited non-zero, or printed something this
 /// function cannot read as a version.
 pub fn system_git() -> Result<SystemGit, VersionError> {
     let deadline = Deadline::starting_now(DEADLINE);

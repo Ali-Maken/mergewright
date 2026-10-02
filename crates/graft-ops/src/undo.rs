@@ -566,7 +566,7 @@ pub fn plan_redo(entries: &[JournalEntry]) -> Result<InversePlan, NotInvertible>
 /// step before it just restored.
 ///
 /// An entry `u` cannot see is skipped, by exactly the rules `u` uses. An
-/// `Undo` or `Redo` entry is stepped over ([`is_operation`]) — inverting one
+/// `Undo` or `Redo` entry is stepped over (`journal::is_operation`) — inverting one
 /// re-applies what the user undid, so a journal of `[pick, branch,
 /// undo(branch)]` reverted to the pick would have handed the branch back and
 /// written a `Redo` line nobody asked for (m5/07 review, C2). The entry it

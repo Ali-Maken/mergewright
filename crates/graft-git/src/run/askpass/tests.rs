@@ -371,3 +371,57 @@ fn a_panicking_handler_fails_its_helper_and_the_server_carries_on() {
     assert_eq!(out, b"second\n");
     server.close().expect("closes cleanly");
 }
+
+// --- Peer check (m8-polish-and-ship/21) -------------------------------------
+
+#[test]
+fn admit_takes_only_our_own_uid() {
+    assert!(admit(Ok(501), 501).is_ok(), "same uid: served");
+    assert_eq!(
+        admit(Ok(0), 501).map_err(|refusal| refusal.to_string()),
+        Err("askpass: refused a connection from uid 0 (this server serves uid 501)".to_owned()),
+        "another uid, root included, is refused"
+    );
+    assert_eq!(
+        admit(Err(io::Error::other("no creds")), 501).map_err(|refusal| refusal.to_string()),
+        Err("askpass: refused a connection whose uid could not be read: no creds".to_owned()),
+        "a peer whose uid cannot be read is refused, never assumed to be us"
+    );
+}
+
+#[test]
+fn peer_uid_of_a_real_connection_is_ours() {
+    let (ours, _theirs) = UnixStream::pair().expect("socket pair");
+    assert_eq!(
+        peer_uid(&ours).expect("peer uid readable"),
+        nix::unistd::geteuid().as_raw()
+    );
+}
+
+/// The server is told its owner is a uid this process is not, so the test
+/// process is "another user" to it: the different-uid path without root.
+#[test]
+fn a_peer_with_another_uid_is_refused_unanswered_and_never_asked() {
+    let handler = Fixed::new(Some(b"s3c"));
+    let stranger = nix::unistd::geteuid().as_raw().wrapping_add(1);
+    let server = AskPassServer::spawn_owned_by(
+        PathBuf::from("/nonexistent/graft"),
+        handler.clone(),
+        stranger,
+    )
+    .expect("server starts");
+
+    let mut out = Vec::new();
+    let result = respond(server.socket_path(), "Password for 'http://u@h':", &mut out);
+
+    assert!(
+        matches!(result, Err(RespondError::Io(_))),
+        "the refused helper sees the connection end, got {result:?}"
+    );
+    assert!(out.is_empty(), "no secret reached the refused peer");
+    assert!(
+        handler.prompts.lock().expect("test lock").is_empty(),
+        "the handler was never asked for a refused peer"
+    );
+    server.close().expect("closes cleanly after a refusal");
+}

@@ -2,7 +2,6 @@
 //! before-snapshot keeps, written file by file.
 
 use std::collections::BTreeSet;
-use std::path::PathBuf;
 
 use graft_core::oid::Oid;
 use graft_git::run::{GitArg, RunError};
@@ -97,7 +96,7 @@ pub(crate) fn same_content_paths(
     }
     let mut lines = Vec::new();
     for (path, _) in &on_disk {
-        lines.extend(c_quoted(path));
+        lines.extend(snapshot::c_quoted(path));
         lines.push(b'\n');
     }
     let args = vec![GitArg::Flag("hash-object"), GitArg::Flag("--stdin-paths")];
@@ -122,22 +121,6 @@ pub(crate) fn same_content_paths(
         .filter(|((_, blob), hash)| blob == hash)
         .map(|((path, _), _)| path)
         .collect())
-}
-
-/// `path` as one line `--stdin-paths` reads back byte for byte: in double
-/// quotes, `"` and `\` escaped, every byte outside printable ASCII as `\ooo`
-/// — git's own C quoting, which it unquotes on the way in.
-fn c_quoted(path: &[u8]) -> Vec<u8> {
-    let mut line = vec![b'"'];
-    for &byte in path {
-        match byte {
-            b'"' | b'\\' => line.extend([b'\\', byte]),
-            0x20..=0x7e => line.push(byte),
-            other => line.extend(format!("\\{other:03o}").bytes()),
-        }
-    }
-    line.push(b'"');
-    line
 }
 
 /// `cat-file --batch`'s output cut into its `count` blobs, in order: each is
@@ -167,22 +150,73 @@ fn batch_blobs(output: &[u8], count: usize) -> Result<Vec<&[u8]>, RestoreError> 
     Ok(blobs)
 }
 
+/// How many temporary names [`write_his_bytes`] tries before giving up: a
+/// clash means a file is already there (a crashed run's leftover).
+const TEMPORARY_TRIES: u32 = 16;
+
 /// Write `bytes` at `path` as git's checkout would create it — mode `0o777`
 /// or `0o666`, less the umask — through a temporary file beside it and a
 /// rename, so a crash of this process leaves git's version or his, never
 /// half of either. Not synced to disk first, like git's own checkout.
+///
+/// The temporary is a short name of its own in the same directory
+/// (`.~<6 hex>`), not `path`'s name plus a suffix, so a file name near the
+/// filesystem's limit (255 bytes) still gets one.
 fn write_his_bytes(path: &std::path::Path, bytes: &[u8], executable: bool) -> std::io::Result<()> {
+    write_his_bytes_via(
+        path,
+        bytes,
+        executable,
+        (0..TEMPORARY_TRIES).map(|attempt| temporary_name(std::process::id(), attempt)),
+    )
+}
+
+/// Attempt `attempt`'s `.~<6 hex>` name for process `pid`:
+/// `(pid × 16 + attempt) mod 2²⁴`. Fixed per process, so the 16 names a
+/// process tries are its own (two Graft processes differ unless their pids
+/// match mod 2²⁰) and a test can name them; one write's temporary is renamed
+/// away before the next write starts, so a process never clashes with
+/// itself, only with a leftover.
+fn temporary_name(pid: u32, attempt: u32) -> String {
+    let n = pid.wrapping_mul(TEMPORARY_TRIES).wrapping_add(attempt) & 0x00ff_ffff;
+    format!(".~{n:06x}")
+}
+
+/// [`write_his_bytes`] with the temporary's candidate names given: the first
+/// one free in `path`'s directory is used. A name already taken is skipped,
+/// never written over (`create_new`); all of them taken is `AlreadyExists`.
+fn write_his_bytes_via(
+    path: &std::path::Path,
+    bytes: &[u8],
+    executable: bool,
+    names: impl IntoIterator<Item = String>,
+) -> std::io::Result<()> {
     use std::io::Write;
     use std::os::unix::fs::OpenOptionsExt;
-    let mut temporary = path.as_os_str().to_owned();
-    temporary.push(format!(".graft-raw-{}", std::process::id()));
-    let temporary = PathBuf::from(temporary);
-    // `create_new`: a file already at that name is never written over.
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(if executable { 0o777 } else { 0o666 })
-        .open(&temporary)?;
+    let dir = path.parent().unwrap_or_else(|| std::path::Path::new(""));
+    let mut created = None;
+    for name in names {
+        let temporary = dir.join(name);
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(if executable { 0o777 } else { 0o666 })
+            .open(&temporary)
+        {
+            Ok(file) => {
+                created = Some((file, temporary));
+                break;
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error),
+        }
+    }
+    let Some((mut file, temporary)) = created else {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::AlreadyExists,
+            "every temporary name tried beside it is taken",
+        ));
+    };
     let written = file
         .write_all(bytes)
         .and_then(|()| std::fs::rename(&temporary, path));
@@ -226,10 +260,95 @@ mod tests {
     /// as octal, so no path can end its line early or be re-read otherwise.
     #[test]
     fn a_path_is_c_quoted_for_stdin_paths() {
+        use snapshot::c_quoted;
         assert_eq!(c_quoted(b"src/a.rs"), b"\"src/a.rs\"");
         assert_eq!(c_quoted(b"a\"b\\c"), b"\"a\\\"b\\\\c\"");
         assert_eq!(c_quoted(b"new\nline\ttab"), b"\"new\\012line\\011tab\"");
         assert_eq!(c_quoted("é".as_bytes()), b"\"\\303\\251\"");
+    }
+
+    /// A 250-byte file name: the old `<name>.graft-raw-<pid>` temporary
+    /// passed `NAME_MAX` (255) and failed every time; the short `.~<hex>` name
+    /// beside it does not. His bytes and the exec bit land, no temporary is
+    /// left behind.
+    #[test]
+    fn a_250_byte_name_is_written_through_a_short_temporary() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("n".repeat(250));
+        std::fs::write(&path, b"git's\r\n").unwrap();
+
+        write_his_bytes(&path, b"his\n", true).unwrap();
+
+        assert_eq!(std::fs::read(&path).unwrap(), b"his\n");
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode();
+        assert_eq!(mode & 0o100, 0o100, "executable: {mode:o}");
+        let names: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        assert_eq!(names.len(), 1, "no temporary left: {names:?}");
+    }
+
+    /// A temporary name already taken is skipped and the file there is left
+    /// as it was; the next name is used.
+    #[test]
+    fn a_taken_temporary_name_is_skipped_never_written_over() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("a.rs");
+        std::fs::write(&path, b"git's\r\n").unwrap();
+        std::fs::write(dir.path().join(".~000001"), b"someone's").unwrap();
+
+        write_his_bytes_via(
+            &path,
+            b"his\n",
+            false,
+            [".~000001".to_owned(), ".~000002".to_owned()],
+        )
+        .unwrap();
+
+        assert_eq!(std::fs::read(&path).unwrap(), b"his\n");
+        assert_eq!(
+            std::fs::read(dir.path().join(".~000001")).unwrap(),
+            b"someone's"
+        );
+        assert!(!dir.path().join(".~000002").exists(), "renamed away");
+    }
+
+    /// Every name taken: `AlreadyExists`, `path` untouched, nothing written
+    /// over.
+    #[test]
+    fn every_temporary_name_taken_fails_and_writes_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("a.rs");
+        std::fs::write(&path, b"git's\r\n").unwrap();
+        std::fs::write(dir.path().join(".~000001"), b"someone's").unwrap();
+
+        let failed = write_his_bytes_via(&path, b"his\n", false, [".~000001".to_owned()]);
+
+        assert_eq!(
+            failed.map_err(|error| error.kind()),
+            Err(std::io::ErrorKind::AlreadyExists)
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), b"git's\r\n");
+        assert_eq!(
+            std::fs::read(dir.path().join(".~000001")).unwrap(),
+            b"someone's"
+        );
+    }
+
+    /// A process's 16 names are `.~<6 hex>` of `pid × 16 + attempt`, all
+    /// different; the integration tests' "file in the way" helper names them
+    /// the same way.
+    #[test]
+    fn temporary_names_are_short_and_fixed_per_process() {
+        assert_eq!(temporary_name(1, 0), ".~000010");
+        assert_eq!(temporary_name(1, 15), ".~00001f");
+        assert_eq!(temporary_name(0x0123_4567, 3), ".~345673");
+        let names: std::collections::BTreeSet<String> = (0..TEMPORARY_TRIES)
+            .map(|attempt| temporary_name(99_999, attempt))
+            .collect();
+        assert_eq!(names.len(), 16);
     }
 
     /// A raw write that fails names the path and the filesystem's reason in
@@ -237,7 +356,7 @@ mod tests {
     #[test]
     fn a_failed_raw_write_names_the_path() {
         let error = RestoreError::WriteRaw {
-            path: PathBuf::from("src/a.rs"),
+            path: std::path::PathBuf::from("src/a.rs"),
             source: std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied"),
         };
         assert_eq!(

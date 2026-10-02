@@ -70,7 +70,7 @@ pub(crate) trait Nodes {
     fn rereadable(&self, handle: CommitHandle) -> bool;
 }
 
-/// Why a commit could not be reduced to a [`Node`].
+/// Why a commit could not be reduced to a `Node`.
 #[derive(Debug, thiserror::Error)]
 pub enum NodeError {
     /// A commit a ref or another commit points at is not in the repository.

@@ -10,9 +10,9 @@
 //! [`blocking`] before anything is written, so a refusal leaves no journal
 //! line.
 //!
-//! Three parts: this file (the read and its words), [`written`] and
-//! [`replay`] (the paths each kind writes, ADR-0049 §4's table) and
-//! [`disk`] (which of those his bytes stand on).
+//! Three parts: this file (the read and its words), `written` and
+//! `replay` (the paths each kind writes, ADR-0049 §4's table) and
+//! `disk` (which of those his bytes stand on).
 //!
 //! Spawns, whatever the size of the change: one for the paths the
 //! operation writes (a few more for a stash: its parents and each of its

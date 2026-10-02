@@ -29,3 +29,10 @@ workspace = true
 # classifies every commit of every shape. A dev-dependency only, so it is
 # not an internal dependency edge (ADR-0006).
 graft-fixtures.workspace = true
+# `restore::raw`'s unit tests write into a scratch directory
+# (m8-polish-and-ship/21). Same version `graft-git` ships with.
+tempfile = "3.27.0"
+# Property test for `submodule::parse` (m8-polish-and-ship/21). PROMPT.md
+# §7.1 mandates `proptest`; the fast tier caps it at 64 cases, as in
+# `graft-git`. Default features off, as there: no fork/timeout harness.
+proptest = { version = "1", default-features = false, features = ["std", "bit-set"] }

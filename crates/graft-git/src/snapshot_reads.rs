@@ -134,12 +134,33 @@ pub fn changed_files(
 /// keep theirs outside `/etc/gitconfig`. gix finds that file by running
 /// `git config` once per process; no later call spawns.
 ///
+/// Config given in the environment counts too, as it does for every git
+/// this process spawns: gix reads `GIT_CONFIG_COUNT`/`_KEY_n`/`_VALUE_n`
+/// itself; `GIT_CONFIG_PARAMETERS` (what `git -c` hands its children, set
+/// when Graft runs under git) gix does not read, so its `core.autocrlf`, if
+/// any, is passed in as a `-c` override (m8-polish-and-ship/21).
+///
 /// # Errors
-/// [`ReadError::Config`] when the repository cannot be opened again.
+/// [`ReadError::Config`] when the repository cannot be opened again, or
+/// `GIT_CONFIG_PARAMETERS` is malformed (git itself refuses to run then).
 pub fn autocrlf_converts(repo: &RepoHandle) -> Result<bool, ReadError> {
     let gix = repo.gix();
     let mut options = gix.open_options().clone();
     options.permissions.config.git_binary = true;
+    if let Some(parameters) = std::env::var_os("GIT_CONFIG_PARAMETERS") {
+        use std::os::unix::ffi::OsStrExt;
+        let pairs = config_parameters(parameters.as_bytes()).map_err(ReadError::Config)?;
+        let overrides: Vec<Vec<u8>> = pairs
+            .into_iter()
+            .filter(|(key, _)| key.eq_ignore_ascii_case(b"core.autocrlf"))
+            .map(|(_, value)| match value {
+                // A bare key: an implicit `true`, as `-c core.autocrlf` is.
+                None => b"core.autocrlf".to_vec(),
+                Some(value) => [&b"core.autocrlf="[..], &value].concat(),
+            })
+            .collect();
+        options = options.cli_overrides(overrides);
+    }
     let fresh =
         gix::open_opts(gix.git_dir(), options).map_err(|why| ReadError::Config(one_line(&why)))?;
     match fresh.config_snapshot().try_boolean("core.autocrlf") {
@@ -208,6 +229,82 @@ fn unreadable(oid: Oid, why: &dyn std::fmt::Display) -> ReadError {
         message: one_line(why),
     }
 }
+
+/// One `GIT_CONFIG_PARAMETERS` entry: the key, and its value (`None` for
+/// a bare key, an implicit `true`).
+type ConfigPair = (Vec<u8>, Option<Vec<u8>>);
+
+/// `GIT_CONFIG_PARAMETERS` as git parses it (`config.c`
+/// `parse_config_env_list`): space-separated entries, each `'key'='value'`,
+/// `'key'=` (implicit `true`), or the older `'key=value'` / `'key'`; every
+/// quoted part shell single-quoted, `'\''` and `'\!'` standing for `'`
+/// and `!`. Anything else is the error git gives ("bogus format").
+fn config_parameters(raw: &[u8]) -> Result<Vec<ConfigPair>, String> {
+    let bogus = || "bogus format in GIT_CONFIG_PARAMETERS".to_owned();
+    let mut pairs = Vec::new();
+    let mut rest = raw;
+    while !rest.is_empty() {
+        let (key, after) = single_quoted(rest).ok_or_else(bogus)?;
+        rest = after;
+        match rest.first() {
+            None | Some(b' ' | b'\t' | b'\n') => {
+                // Old style: `'key=value'`, or `'key'` bare.
+                match key.iter().position(|byte| *byte == b'=') {
+                    Some(at) => pairs.push((key[..at].to_vec(), Some(key[at + 1..].to_vec()))),
+                    None => pairs.push((key, None)),
+                }
+            }
+            Some(b'=') => {
+                rest = &rest[1..];
+                match rest.first() {
+                    Some(b'\'') => {
+                        let (value, after) = single_quoted(rest).ok_or_else(bogus)?;
+                        if !matches!(after.first(), None | Some(b' ' | b'\t' | b'\n')) {
+                            return Err(bogus());
+                        }
+                        rest = after;
+                        pairs.push((key, Some(value)));
+                    }
+                    None | Some(b' ' | b'\t' | b'\n') => pairs.push((key, None)),
+                    Some(_) => return Err(bogus()),
+                }
+            }
+            Some(_) => return Err(bogus()),
+        }
+        while let Some(b' ' | b'\t' | b'\n') = rest.first() {
+            rest = &rest[1..];
+        }
+    }
+    Ok(pairs)
+}
+
+/// One shell single-quoted word at the start of `text` (git's
+/// `sq_dequote_step`) and what follows it; `None` when `text` does not start
+/// with a quote or the word is malformed.
+fn single_quoted(text: &[u8]) -> Option<(Vec<u8>, &[u8])> {
+    let mut rest = text.strip_prefix(b"'")?;
+    let mut word = Vec::new();
+    loop {
+        let (&byte, after) = rest.split_first()?;
+        rest = after;
+        if byte != b'\'' {
+            word.push(byte);
+            continue;
+        }
+        // Out of the quotes: `\'` or `\!` then a quote resumes the word.
+        match rest {
+            [b'\\', escaped @ (b'\'' | b'!'), b'\'', after @ ..] => {
+                word.push(*escaped);
+                rest = after;
+            }
+            [b'\\', ..] => return None,
+            _ => return Some((word, rest)),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests;
 
 /// `why` on one line: the status line has one.
 fn one_line(why: &dyn std::fmt::Display) -> String {

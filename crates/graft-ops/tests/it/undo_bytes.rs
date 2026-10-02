@@ -291,14 +291,67 @@ fn a_failing_required_smudge_filter_refuses_the_operation_before_it_writes() {
     );
 }
 
-/// A raw write that cannot land (here: a file already at its temporary's
-/// name, which is never written over) fails `u` with the path named in its
-/// own words, and the roll-back puts back what `u` found.
+/// m8-polish-and-ship/21 item 3: a file whose name is 250 bytes (`NAME_MAX` is
+/// 255). The raw write's old temporary, `<name>.graft-raw-<pid>`, passed the
+/// limit and made `u` fail every time; now `u` brings his LF bytes back.
+#[test]
+fn u_brings_back_a_file_with_a_250_byte_name() {
+    let repo = TempRepo::init();
+    repo.git(&["config", "core.autocrlf", "true"]);
+    let path = format!("src/{}.rs", "n".repeat(247));
+    assert_eq!(path.len() - "src/".len(), 250);
+    repo.write(&path, COMMITTED);
+    repo.commit_all("first");
+    repo.write(&path, WORKING);
+
+    discard_then_u(&repo, &path);
+}
+
+/// m8-polish-and-ship/21 item 2: a kept set whose paths add up to over
+/// 200 000 bytes (1 000 files, 209-byte paths, each an LF edit under
+/// `core.autocrlf=true`) snapshots and restores: a stash push takes every
+/// edit, `u` brings each back byte for byte.
+#[test]
+fn u_brings_back_a_kept_set_of_over_200k_path_bytes() {
+    let repo = TempRepo::init();
+    repo.git(&["config", "core.autocrlf", "true"]);
+    let dir = format!("{}/{}", "d".repeat(100), "e".repeat(100));
+    let paths: Vec<String> = (0..1000).map(|n| format!("{dir}/{n:04}.rs")).collect();
+    let bytes: usize = paths.iter().map(String::len).sum();
+    assert!(bytes > 200_000, "{bytes} bytes of paths");
+    for path in &paths {
+        repo.write(path, COMMITTED);
+    }
+    repo.commit_all("first");
+    for path in &paths {
+        repo.write(path, WORKING);
+    }
+
+    run(
+        &repo,
+        &Operation::StashPush(StashParams {
+            message: Some("wip".to_owned()),
+            scope: StashScope::All {
+                include_untracked: false,
+            },
+        }),
+        NOW,
+    );
+    assert_ne!(repo.read(&paths[0]), WORKING, "the stash took the edits");
+
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    for path in &paths {
+        assert_eq!(repo.read(path), WORKING, "{path} is back, byte for byte");
+    }
+}
+
+/// A raw write that cannot land (here: a file already at every temporary
+/// name it may use, none of which is ever written over) fails `u` with the
+/// path named in its own words, and the roll-back puts back what `u` found.
 #[test]
 fn a_raw_write_that_cannot_land_fails_u_and_names_the_path() {
     let repo = lf_edit_under_autocrlf();
-    let in_the_way = format!("src/a.rs.graft-raw-{}", std::process::id());
-    repo.write(&in_the_way, b"");
+    let in_the_way = repo.block_raw_writes_in("src");
     run(
         &repo,
         &Operation::Discard(Target::Paths(vec![PathBuf::from("src/a.rs")])),
@@ -324,11 +377,9 @@ fn a_raw_write_that_cannot_land_fails_u_and_names_the_path() {
         discarded,
         "rolled back to what u found"
     );
-    assert_eq!(
-        repo.read(&in_the_way),
-        b"",
-        "the file in the way is untouched"
-    );
+    for path in &in_the_way {
+        assert_eq!(repo.read(path), b"", "{path}, in the way, is untouched");
+    }
 }
 
 /// A stop that fires, and stays fired, once `path` no longer holds `from`:
@@ -512,7 +563,7 @@ fn a_set_aside_put_back_keeps_an_lf_file_with_a_quoted_name() {
     assert_bytes(&repo, name, WORKING, "after the put-back");
 }
 
-/// The put-back's raw step cannot land (a file already at its temporary's
+/// The put-back's raw step cannot land (a file already at every temporary
 /// name, as `a_raw_write_that_cannot_land_fails_u_and_names_the_path` sets
 /// it up): the operation stands, `Committed`; `S` is dropped; his edit is on
 /// disk in git's encoding; and the answer says so first, naming the path,
@@ -520,8 +571,7 @@ fn a_set_aside_put_back_keeps_an_lf_file_with_a_quoted_name() {
 #[test]
 fn a_put_back_whose_raw_step_cannot_land_says_so_and_drops_s() {
     let (repo, op, second) = reset_off_second_with_an_lf_edit();
-    let in_the_way = format!("src/a.rs.graft-raw-{}", std::process::id());
-    repo.write(&in_the_way, b"");
+    let in_the_way = repo.block_raw_writes_in("src");
 
     let Err(ApplyError::AfterState { applied, unread }) = try_run(&repo, &op, NOW) else {
         panic!("the raw step's failure was not reported");
@@ -547,11 +597,9 @@ fn a_put_back_whose_raw_step_cannot_land_says_so_and_drops_s() {
     assert_eq!(stash_commits(&repo), Vec::<Oid>::new(), "S is dropped");
     assert_ne!(repo.read("src/a.rs"), WORKING, "git's encoding, not his");
     assert_eq!(content(&repo.read("src/a.rs")), WORKING, "his edit is back");
-    assert_eq!(
-        repo.read(&in_the_way),
-        b"",
-        "the file in the way is untouched"
-    );
+    for path in &in_the_way {
+        assert_eq!(repo.read(path), b"", "{path}, in the way, is untouched");
+    }
 }
 
 /// A second kind that sets aside: a checkout of `other`, which does not

@@ -40,7 +40,7 @@ pub(super) fn submodule_status(field: &[u8]) -> Result<Option<SubmoduleStatus>, 
 ///
 /// # Errors
 /// [`StatusError::Run`] if git could not be run or exited non-zero;
-/// [`StatusError::TooLarge`] past [`OUTPUT_CAP`]; [`StatusError::Malformed`]
+/// [`StatusError::TooLarge`] past `OUTPUT_CAP`; [`StatusError::Malformed`]
 /// for a line that is not `<mode> <oid> <stage>\t<path>`.
 pub fn submodules_not_set_up(
     repo: &RepoHandle,
