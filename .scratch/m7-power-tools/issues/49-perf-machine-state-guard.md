@@ -39,7 +39,7 @@ check in the script does.
 - [x] (check: `MACHINE_STATE_DRY_RUN=<file> bash scripts/<s>.sh` for all 25, `grep -c` = 1 each, docs/ untouched; real insert/exit checked by harness on this battery+LPM machine: appended block and rewritten file both get the line first, exit 3) Every sourcing script writes the `SUMMARY machine` line first in its perf file. Check with
       `grep -c '^SUMMARY machine' docs/perf/<file>` after one dry run per script, or show by `--help`/a dry-run flag
       where a full run is too heavy.
-- [ ] NOT CHECKED: shellcheck not installed (`which shellcheck` empty). `shellcheck` clean on the new file and each edited script.
+- [x] (check, conductor 2026-10-02, shellcheck 0.11.0 `-S warning`: `scripts/lib/machine-state.sh` clean; the 26 edited scripts show 2×SC2034, 20×SC2164, 1×SC2296 — identical counts on the same files at f851fdc4~1, so 49 added none; pre-existing findings → gap M7/scripts-shellcheck) `shellcheck` clean on the new file and each edited script.
 
 ## Size
 Small (~15k).
