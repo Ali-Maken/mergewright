@@ -173,6 +173,37 @@ fn put_back_lands_on_the_restored_commit_with_tags_and_words() {
     );
 }
 
+/// A put-back whose after-state could not all be read back lands and tags
+/// as its `Done` would, and its warning stays on the status row
+/// (m8-polish-and-ship/13, ruling 3).
+#[test]
+fn an_incomplete_put_back_lands_tags_and_keeps_its_warning() {
+    let mut state = on_the_graph();
+    let mut next_id = ids();
+    let mut commands = Vec::new();
+    launch(&mut state, &mut commands, move_main(), &mut next_id).expect("no write is running");
+    let id = state.operating.expect("the launch took the slot");
+    let _refresh = operated(
+        &mut state,
+        id,
+        Operated::Incomplete {
+            applied: applied("put back", Refresh::Everything),
+            error: "index unreadable".to_owned(),
+        },
+        &mut next_id,
+    );
+    assert_eq!(state.row_tags.on(oid(4)), Some(&RowTag::PutBack));
+    let warning = Status::sticky("put back \u{2014} could not confirm it fully: index unreadable");
+    assert_eq!(state.status, warning);
+    let _seek = refresh_lands(&mut state);
+    assert_eq!(
+        cursor_commit(&state),
+        Some(oid(4)),
+        "on the restored commit"
+    );
+    assert_eq!(state.status, warning, "the landing kept the warning");
+}
+
 /// `HEAD` is on another branch (no refs read here names it at all): the
 /// cursor goes to the restored commit, not wherever `HEAD` is.
 #[test]

@@ -263,26 +263,19 @@ fn a_fetch_leaves_the_cursor() {
     app.close();
 }
 
-/// `u` after a landed merge is not an `Operation`: it arms no landing of
-/// this ticket's, and keeps whatever its own is.
+/// `u` after a landed merge: `HEAD` moved back, so the undo lands on it as
+/// the merge did (m8-polish-and-ship/13, ruling 2; was "arms no landing"
+/// before M8).
 #[test]
-fn undo_keeps_its_own_landing() {
+fn undo_of_a_merge_lands_on_head() {
     let scratch = forked();
     let repo = scratch.path();
     let (app, state) = App::open(repo);
-    let state = onto_main(&app, state);
-    let state = app.key(&state, KeyCode::Char('m'));
-    let state = app.pump(state, "the preview's plan", |state| {
-        state
-            .preview
-            .as_ref()
-            .is_some_and(|preview| !preview.rows.is_empty())
-    });
-    let state = app.key(&state, KeyCode::Char('m'));
-    let state = written_and_landed(&app, state, "`git merge`");
+    let state = merged_main(&app, state);
+    let state = app.key(&state, KeyCode::Char('j'));
     let state = app.key(&state, KeyCode::Char('u'));
-    let state = app.settle_write(state, "the undo");
-    assert!(!state.land_on_head, "undo arms no HEAD landing");
+    let state = written_and_landed(&app, state, "the undo");
+    assert_on_head(&state, repo, "after undoing the merge");
     drop(state);
     app.close();
 }
@@ -436,6 +429,86 @@ fn capture_landed_after_merge() {
         .unwrap_or_else(|| panic!("no cursor row:\n{body}"));
     assert!(cursor_row.contains("Merge"), "{cursor_row}");
     crate::captures::check_shot("m7/landed-after-merge-120x40.txt", &body);
+    drop(state);
+    app.close();
+}
+
+/// `m m` on `main`'s row with `feature` checked out, run and landed.
+fn merged_main(app: &App, state: AppState) -> AppState {
+    let state = onto_main(app, state);
+    let state = app.key(&state, KeyCode::Char('m'));
+    let state = app.pump(state, "the preview's plan", |state| {
+        state
+            .preview
+            .as_ref()
+            .is_some_and(|preview| !preview.rows.is_empty())
+    });
+    let state = app.key(&state, KeyCode::Char('m'));
+    written_and_landed(app, state, "`git merge`")
+}
+
+/// What right looks like (`m8-landing-undo-120x36.txt`, J20): frame 1,
+/// `u` pressed with the cursor one row below the merge — `▏` on `HEAD`'s
+/// row (`[◆ feature]`), the merge gone, the status `undo: merge … ✓`.
+/// Frame 2, `j` then `U` — `▏` back on the redone merge, the top row. The
+/// merge is made at run time: its id is zeroed and its date redacted
+/// (widths kept). Colour unverified.
+#[test]
+fn capture_landing_after_undo_and_redo() {
+    let scratch = forked();
+    let repo = scratch.path();
+    git(repo, &["config", "user.name", "Graft Fixture"]);
+    git(repo, &["config", "user.email", "fixture@example.invalid"]);
+    let (app, state) = App::open(repo);
+    let state = merged_main(&app, app.resize(&state, 120, 36));
+    let merge = rev(repo, "HEAD");
+    let drawn = |state: &AppState| {
+        crate::captures::frame_at(
+            state,
+            120,
+            36,
+            Some(graft::session::Clock::Fixed(crate::preview::FORK_NOW)),
+        )
+    };
+
+    let state = app.key(&state, KeyCode::Char('j'));
+    let state = app.key(&state, KeyCode::Char('u'));
+    let state = written_and_landed(&app, state, "the undo");
+    assert_on_head(&state, repo, "after u");
+    let state = crate::captures::settled_frame(&app, state);
+    let undone = drawn(&state);
+
+    let state = app.key(&state, KeyCode::Char('j'));
+    let state = app.key(&state, KeyCode::Char('U'));
+    let state = written_and_landed(&app, state, "the redo");
+    assert_eq!(rev(repo, "HEAD"), merge, "the same merge is back");
+    assert_on_head(&state, repo, "after U");
+    let state = crate::captures::settled_frame(&app, state);
+    let redone = drawn(&state);
+    let cursor_row = redone
+        .iter()
+        .find(|row| row.contains('\u{258f}'))
+        .unwrap_or_else(|| panic!("no cursor row:\n{}", redone.join("\n")));
+    assert!(cursor_row.contains("Merge"), "{cursor_row}");
+
+    let mut body = format!(
+        "=== frame 1: `j` `u` — lands on HEAD ===\n{}\n\n\
+         === frame 2: `j` `U` — lands on the redone merge ===\n{}\n",
+        undone.join("\n"),
+        redone.join("\n"),
+    );
+    body = crate::captures::without_invented_id(&body, &merge);
+    let made = git(
+        repo,
+        &[
+            "log",
+            "-1",
+            "--date=format:%Y-%m-%d %H:%M %z",
+            "--format=%ad",
+        ],
+    );
+    body = body.replace(made.trim(), "YYYY-MM-DD hh:mm +zzzz");
+    crate::captures::check_shot("m8-landing-undo-120x36.txt", &body);
     drop(state);
     app.close();
 }

@@ -23,6 +23,7 @@ use super::state::{AppState, Status};
 use crate::jobs::undo::{RevertedTo, Undone};
 
 mod consequence;
+mod landing;
 
 use consequence::{applied_is_redo, done_with, landing, with_consequence, wrapped};
 
@@ -370,7 +371,19 @@ fn undid(
     // already live (a whole-file step undone inside it, m6-conflicts/57)
     // there is no landing to owe: the banner keeps whatever focus it had.
     state.undo_landing_owed = state.in_progress.is_none();
-    refresh(state, applied.refresh, next_id)
+    let commands = refresh(state, applied.refresh, next_id);
+    // …and the cursor lands on what came back, as a finished operation's
+    // does (m8-polish-and-ship/13, ruling 2): `HEAD` when it moved, else
+    // the first branch the entry moved, else where it was.
+    if let Some(on) = landing::of(&applied.entry) {
+        super::banner::finished_lands_on(state, &commands, on);
+    }
+    for at in landing::came_back(&applied.entry) {
+        state
+            .row_tags
+            .set(at, graft_ui::graph_screen::RowTag::PutBack);
+    }
+    commands
 }
 
 /// An undo or redo job answered. Stale answers — a job that is not the one
