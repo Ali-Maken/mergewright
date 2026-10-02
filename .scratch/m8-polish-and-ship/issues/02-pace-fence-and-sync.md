@@ -131,3 +131,31 @@ One context, ~70k tokens. If the scout finds DEC 2026 not wrapping image command
   by settling owed fences before a handover, no pty test); feel in his terminals.
 - Test change: `the_ui_thread_never_waits_on_a_job` now allows `recv_timeout` only as `self.receiver.recv_timeout`
   (the wake channel, used by `next_wake_by`), not on any job.
+
+## Review fixes (builder, 2026-10-02; `docs/reviews/m8-02-pace.md`)
+- **M1, cause fixed.** `Pacer::answered` (`event_loop/pace.rs`) now ends the run of timeouts on *any* answer, not only
+  on catching up; "three timeouts in a row" = three with no answer between (ADR-0054 wording holds, no spec change).
+  A terminal answering 600 ms late stays fenced, one frame per timeout. Tests:
+  `pace::tests::a_terminal_answering_every_fence_late_stays_fenced` (reproduced the review's 0/500/1000/1500/1516…
+  before the fix) and, through the loop, `tests::pace::a_terminal_answering_every_fence_600_ms_late_stays_fenced`.
+  Module doc corrected. Cost to him: a terminal slower than 500 ms keeps up to ~delay/500 + 1 frames in flight
+  instead of falling to 16 ms frames.
+- **M2, tests added through the real loop** on a virtual timeline (`tests/pace.rs` `Line`: keys at instants, each
+  written fence answered after a set delay or never, `Wakes::now` = the line's clock; no sleeping, no seam needed):
+  `a_handover_takes_the_owed_fence_answer_first_and_holds_what_came_meanwhile` (order: Ctrl+Z, j held, fence@100,
+  handover@100, draw at once, then j), `a_handover_with_no_answer_coming_goes_ahead_at_the_fence_timeout` (handover
+  at exactly 500 ms), `a_fenced_terminal_that_never_answers_is_drawn_per_timeout_then_unfenced` (frames at
+  0/500/1000/1500 fenced, then unfenced ≥ 16 ms apart). Checked red: removing `settle_fences` fails both handover
+  tests; reverting M1 fails the 600 ms one. The handover runs with `Outside::default()` (refused in words), so the
+  real `$EDITOR` path past `carry_out` is still not exercised.
+- **M3, split.** `running.rs` 791 → 201 lines: `running/turn.rs` (389, `Run`; `turn` split into `idle`/`paced`, `take`
+  into `fence_answered`/`terminal_changed`/`input`, the dead `Wake::Fence` arm now just the exhaustive one),
+  `running/carry.rs` (171), `running/frame.rs` (126). `mux.rs` 458 → 389: fence slot, lease and routing in
+  `input/mux/fence.rs` (86). Child modules, so `event_loop/mod.rs` and `input/mod.rs` are untouched; old paths
+  re-exported. Behaviour unchanged: the whole suite is the check. `startup.rs` (564) not split — outside this file set.
+- **Paused at** (2026-10-02, conductor's request, CPU). Done: M1, M2 (committed `47fbbf96`), M3 split (this WIP
+  commit). fmt ok; workspace clippy `-D warnings` ok. Workspace nextest: 4457/5287 run, 4452 passed, **5 failed**
+  (only one name captured by my filter: `graft::it remote_by_key::capture_fix_plain_box_after_rebase`; unknown
+  whether pre-existing or from this diff — the split moves no behaviour, but not verified). In flight: nothing.
+  Next: rerun `cargo nextest run --workspace --no-fail-fast` capturing every FAIL name; check each against `main`
+  (8cd1e93f); then `cargo test --doc`; then final commit and report.
