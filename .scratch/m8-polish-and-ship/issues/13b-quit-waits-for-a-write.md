@@ -1,6 +1,6 @@
 # `q` while a write that can't stop runs: quit waits for it; `q quit` on the banner's bar
 
-Status: ready
+Status: done
 Build with: Opus (conductor, after scout `scouts/13b-quit.md`)
 Blocked by: 13
 Needs: ticket 13's review fix (Major 1: `banner_key` sends `q` to `quit::asked`), merged. No other ticket's signature.
@@ -83,26 +83,62 @@ pub(crate) fn drop_wait(state: &mut AppState) -> bool;
 
 ## Acceptance
 Each tick names its test inline.
-- [ ] `q` during a `Stoppable::No` write (a merge) → box `Quit?`, lines exactly `<desc> is still running · quit
+- [x] `q` during a `Stoppable::No` write (a merge) → box `Quit?`, lines exactly `<desc> is still running · quit
       waits for it to finish` and `if it stops at a conflict or fails, you stay to see it`, buttons
       `[ Cancel ] [ Quit ]`, cursor on Cancel, bar leads `y quit`.
-- [ ] `y` → box closed, app running, no `CancelJob` emitted, status `<desc> · quitting when it finishes · esc stays`.
-- [ ] Then the write answers done → app quits; the write's journal entry exists (read the journal after the quit).
-- [ ] Answers stopped at a conflict → no quit; resolver open on the first conflicted file; wait gone (a later done
-      write does not quit).
-- [ ] Answers failed → no quit; the failure's own words on the status row.
-- [ ] Answers incomplete → no quit; its warning kept.
-- [ ] `Esc` while waiting → wait dropped, write runs on, then answers done → no quit.
-- [ ] A progress update while waiting keeps the waiting words.
-- [ ] `q` during a `Stoppable::Yes` write is unchanged: ticket 13's `quit::tests` still pass, names listed.
-- [ ] `q` on the focused banner with a `c` continue running → this box (extends
-      `q_on_the_banner_while_a_write_runs_names_the_write`).
-- [ ] Banner bar: `q quit` is the last hint at 187 columns. At 80 columns it is dropped before any other banner hint.
-      graft-ui hints test.
-- [ ] Captures (colour **unverified**): `docs/shots/m8-quit-waits-80x24.txt` (the box over a running merge, then
+      — `update::quit::tests::q_during_a_merge_says_quit_waits_for_it`
+- [x] `y` → box closed, app running, no `CancelJob` emitted, status `<desc> · quitting when it finishes · esc stays`.
+      — `update::quit::tests::y_over_a_merge_waits_and_cancels_nothing`; real pool: `it::quit_waits::quit_mid_merge_waits_for_git_then_quits`
+- [x] Then the write answers done → app quits; the write's journal entry exists (read the journal after the quit).
+      — `update::quit::tests::the_merge_ending_done_quits`; journal read from disk, entry `Committed`:
+      `it::quit_waits::quit_mid_merge_waits_for_git_then_quits`
+- [x] Answers stopped at a conflict → no quit; resolver open on the first conflicted file; wait gone (a later done
+      write does not quit). — `update::quit::tests::the_merge_stopping_at_a_conflict_stays_in_the_resolver`
+- [x] Answers failed → no quit; the failure's own words on the status row.
+      — `update::quit::tests::the_merge_failing_stays_with_its_words`
+- [x] Answers incomplete → no quit; its warning kept. — `update::quit::tests::the_merge_ending_incomplete_stays_with_its_warning`
+- [x] `Esc` while waiting → wait dropped, write runs on, then answers done → no quit.
+      — `update::quit::tests::esc_while_waiting_drops_the_wait`, `esc_dismisses_a_held_failure_before_the_wait`,
+      `esc_on_the_banner_drops_the_wait`
+- [x] A progress update while waiting keeps the waiting words. — `update::quit::tests::progress_while_waiting_keeps_the_waiting_words`
+- [x] `q` during a `Stoppable::Yes` write is unchanged: ticket 13's `quit::tests` still pass, names listed.
+      — `q_with_nothing_running_quits`, `q_during_a_fetch_opens_the_box`, `quit_from_the_box_cancels_the_fetch_and_quits`,
+      `y_quits_from_the_box_and_cancels_the_fetch`, `cancel_or_esc_keeps_the_app_and_the_fetch`,
+      `quit_after_the_write_ended_cancels_nothing`, `ctrl_c_during_a_fetch_quits_without_a_box`,
+      `q_on_the_banner_while_a_write_runs_names_the_write` (all `update::quit::tests`, passing)
+- [x] `q` on the focused banner with a `c` continue running → this box (extends
+      `q_on_the_banner_while_a_write_runs_names_the_write`). — `update::quit::tests::q_on_the_banner_while_its_continue_runs_waits_for_it`,
+      then `a_continue_ending_done_quits`, `a_continue_stopping_again_stays`; the revert path:
+      `a_revert_ending_done_quits`, `a_revert_failing_part_way_stays`
+- [x] Banner bar: `q quit` is the last hint at 187 columns. At 80 columns it is dropped before any other banner hint.
+      graft-ui hints test. — `graft-ui graph_screen::hints::tests::q_quit_is_the_banner_bars_last_hint_and_first_dropped`
+      (every width 20–187, four banner shapes), `q_quit_gives_way_to_the_stop_reason`; the dispatcher anchor
+      `update::banner::tests::every_hint_the_focused_banner_draws_is_answered_by_banner_key` now presses `q`
+- [x] Captures (colour **unverified**): `docs/shots/m8-quit-waits-80x24.txt` (the box over a running merge, then
       the waiting status row); `docs/shots/m8-banner-bar-q-187x50.txt` and `-80x24.txt` (focused banner after a
       conflict stop). A capture drawn from a synthetic running state, as `capture_quit_while_a_fetch_runs` is, says so.
-- [ ] Stale captures re-shot and contact sheets re-assembled; list them.
+      — `it::quit_waits::capture_quit_waits` (a real merge, real pool, its answer not pumped between the keys — the
+      same method as `capture_quit_while_a_fetch_runs`; not synthetic state), `it::conflict_interim::capture_banner_bar_with_q`.
+      TestBackend grids, not pty.
+- [x] Stale captures re-shot and contact sheets re-assembled; list them. — test-checked (`GRAFT_UPDATE_SHOTS=1`, then a
+      clean run green): `m5-ui-banner-conflict-120x40`, `m6/fix-landing-b-launch-{120x40,187x50}`,
+      `m6/fix-tab-words-{120x40,80x24}`. pty walk (`.scratch/m6-conflicts/pty-walk-m6.py`, real binary):
+      `m6/m6-06-relaunch-sticky-{80x24,120x40}` (SIGKILL confirmed by the script), `m6/m6-18-launch-shell-begun-{80x24,120x40,160x48,187x50}`;
+      `-200x50` re-run and settled (unchanged: `q quit` gives way there). Sheets re-assembled: `m5-contact-sheet-{1,2}`,
+      `m6/m6-contact-sheet-{1,2,4}`. Captions: 9 rows in `m6-contact-sheet-captions.tsv`, 1 in `m5-…-captions.tsv`;
+      TESTING.md scenario 49. `m8-quit-while-running-80x24.txt` unchanged (its test passes).
+- [x] **Ruling (user, 2026-10-02):** git stopped and nothing running → `q` quits, no box; relaunch offers continue.
+      — `update::quit::tests::q_with_a_stopped_rebase_quits_without_a_box`, `q_on_the_banner_after_a_conflict_stop_quits_with_no_box`,
+      `q_on_the_banner_after_a_relaunch_quits_with_no_box`, `update::undo::tests::q_on_the_banner_after_an_undo_puts_a_merge_back_quits_with_no_box`;
+      quit then relaunch on a real repository: `it::conflict_interim::q_at_a_stop_quits_and_the_relaunch_offers_continue`
+- [x] **Conductor decision:** `Ctrl+C` over a `Stoppable::No` write boxes like `q`, never signals it (red before the
+      fix: both tests below failed with the old `Ctrl+C` path restored) — `update::quit::tests::ctrl_c_during_a_merge_boxes_like_q_and_signals_nothing`,
+      `ctrl_c_over_the_waiting_box_does_not_quit`; real pool: `it::quit_waits::ctrl_c_mid_merge_boxes_and_never_cancels`.
+      Shutdown never signals it and waits: `jobs::tests::shutdown_waits_for_an_unstoppable_job_and_never_cancels_it`,
+      `an_unstoppable_job_ignores_a_cancel_by_id` (both red with `Live::unstoppable` made a no-op),
+      `it::quit_waits::shutdown_mid_merge_lets_it_land` (red with `cancel_all` cancelling everything: HEAD had 2 parents).
+      No child outlives shutdown: `jobs::tests::no_git_child_outlives_shutdown` (a real git child's pid checked gone
+      with `kill -0`), `the_shutdown_grace_covers_a_git_childs_stop`.
 
 ## Question (out of scope, no line verified: rule 7)
 `Ctrl+C` during a `Stoppable::No` write. The review says `shutdown` cancels every job (`event_loop/startup.rs:205`,
@@ -123,3 +159,56 @@ Scout: `Ctrl+C` is a key in raw mode; `quit.rs:28` quits with no box → `cancel
 - Shutdown never signals a `Stoppable::No` write. It waits for the write to end.
 - For stoppable jobs, shutdown waits for the stop to land (SIGTERM → exit or SIGKILL) and never abandons a child. Name the bound.
 - Acceptance: a test that a `Stoppable::No` git child is never sent a signal on `q`/`y` or `Ctrl+C` (red today for `Ctrl+C`). A test that no child outlives shutdown. Before the fix, run in a temp repo what a SIGTERMed rebase leaves on disk and in the journal, and record it in NOTES (evidence for the gap row, not a fix).
+
+## NOTES (builder, 2026-10-02)
+
+**Context compacted once, mid-ticket.** Nothing remains undone from scope; the list below is what a reviewer should know.
+
+How it works (cause, not symptom): `remote::launched` returns `Command::Unstoppable(id)` for a `Stoppable::No` write and
+every launch site queues it ahead of the job command. The pool's `Live` keeps an unstoppable set; `cancel`/`cancel_all`
+skip it; `JobRunner::shutdown` cancels the rest, then waits for unstoppable jobs **with no bound**, then up to
+`SHUTDOWN_GRACE` for the rest. `SHUTDOWN_GRACE` = `graft_git::run::STOP_WITHIN` (`POLL` + `TERM_GRACE`, 2.05 s) + 500 ms
+= 2.55 s, up from 200 ms; paid only when a git child is slow to take SIGTERM. Before, a worker still in the 2 s
+SIGTERM→SIGKILL wait was abandoned with its child alive.
+
+**What a SIGTERMed rebase leaves** (observed, git 2.54, temp repo, `git rebase main` of 40 commits with a `post-commit`
+hook sleeping 0.1 s, SIGTERM at 1.5 s): exit 143; detached HEAD at the 10th replayed commit; the branch ref unchanged;
+`.git/rebase-merge/` left (`done` 10 lines, `git-rebase-todo` 30); `AUTO_MERGE`, `ORIG_HEAD` present; no `.lock` files;
+`git status`: "interactive rebase in progress". **Journal: read, not observed** — `graft-ops/src/apply/engine.rs:118-125`
+gives a `PlanRun` with a rebase still in progress the failure `Stopped`, no cleanup; `restore/outcome.rs:134` comments on
+a SIGTERMed step. Recoverable by `--continue`/`--abort`, but the user would land on a stop he never caused.
+
+Signature deviation: `AppState::quit_when_done` is `Option<QuitWait { job, line }>`, not `Option<JobId>` — the
+waiting line is kept with the wait so `shown_status` can draw it over progress updates (scope 4). `QuitThen`/`QuitWait`
+are `pub` inside the private `quit` module (`private_interfaces` lint), so crate-private in effect.
+
+`q quit` gives way: `stopped_row` (graft-ui `hints/fitting.rs`) drops a trailing `q quit` whenever that lets a fuller
+stop wording fit whole. Without it, adding `q quit` cost the conflict count at the 108 cells the changes pane leaves at
+187 columns (`stopped_row_keeps_the_count_whole_at_108_cells` went red). This is one named key (`QUIT_YIELDS`), a
+deliberate rule, not a general one — flagged for the reviewer.
+
+Knock-ons and open points:
+- **Unbounded wait at shutdown** if a `Stoppable::No` write hangs (a hook waiting on input). Shutdown runs before the
+  terminal is restored, so Graft would look frozen. No bound by decision (cutting it off is the defect); a gap row with
+  a "still waiting for <op>" line is the natural follow-up. Unverified in practice.
+- A `Stoppable::No` job still **queued** when shutdown starts is waited for and runs (nothing cancelled it). A stalled
+  reader ahead of it on a full pool would delay it. Read, not observed.
+- `Ctrl+C` over `Stoppable::No` now boxes: keymap §2.2/§2.6a and the "never boxed" wording are the planner's to update
+  (conductor's instruction; DESIGN files untouched).
+- At 80 columns the quit box wraps its first line after `quit waits for it` (`m8-quit-waits-80x24.txt`): for the user's
+  eye.
+- `?` help (§2.12): no `IN PROGRESS`/`HERE` list exists in the code (grep), so nothing to add `q` to.
+- `m5-contact-sheet-2` also picked up an unrelated, already-committed capture change (`history.top is 24 → 30`,
+  `48 → 54`): the sheet was stale against its source; re-assembly fixed it.
+- No m8 contact sheet or captions file exists yet; the three new captures wait for the acceptance ticket's sheet.
+- Ticket 13's three banner-quit test names changed (`…reaches_the_quit_box` → `…quits_with_no_box`); ticket 13's
+  ticks updated to the new names.
+
+Touches: ticket 03's files (`event_loop/{rest,running,mod}.rs`, `update/{mod,selection}.rs`, `update/detail/*`) not
+edited (git status). Ticket 04's `event_loop/graphics.rs` not edited. Edited outside `quit.rs`: `update/state.rs`
+(field + `shown_status`), `update/tests.rs` (one initialiser line), `place/write.rs` (the exhaustive arm), the four
+launch sites, the three answer paths, `remote/in_flight.rs` and `banner/focus_keys.rs` (`Esc`), `jobs/{pool,runner,mod}.rs`,
+`graft-git` `run.rs`/`run/exec.rs` (`STOP_WITHIN`, `TERM_GRACE` to `pub(super)`). Journal/undo: no new entry kind; the
+quit waits for the write's own entry (`it::quit_waits` reads it `Committed`).
+
+Scout: `scouts/13b-quit.md` (used).

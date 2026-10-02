@@ -93,7 +93,7 @@ fn a_box_opened_by_an_answer_ends_its_own_busy() {
         "commit one",
         &mut ids(),
     );
-    let [Command::RevertTo(id, ..)] = commands.as_slice() else {
+    let [Command::Unstoppable(_), Command::RevertTo(id, ..)] = commands.as_slice() else {
         panic!("{commands:?}")
     };
     assert!(matches!(state.status, Status::Busy(_)));

@@ -1273,6 +1273,7 @@ fn a_bare_r_asks_for_nothing() {
 fn every_field_spelled_out() -> AppState {
     AppState {
         quit: None,
+        quit_when_done: None,
         harness: Harness::default(),
         status: Status::Failed("earlier".to_owned()),
         unseen: Some(Status::sticky("arrived under a box")),

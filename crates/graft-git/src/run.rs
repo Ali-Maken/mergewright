@@ -50,6 +50,14 @@ mod exec;
 /// The longest the runner goes without asking [`Stop`].
 const POLL: Duration = Duration::from_millis(50);
 
+/// The longest a [`GitInvocation::run`] takes to return once its [`Stop`]
+/// says stop, child reaped: one [`POLL`] to notice, then `SIGTERM` and a
+/// grace before `SIGKILL` (`exec::TERM_GRACE`, 2 s).
+///
+/// A caller that must not leave a git child behind — the app's shutdown —
+/// waits at least this long for a stopped job before giving up on it.
+pub const STOP_WITHIN: Duration = POLL.saturating_add(exec::TERM_GRACE);
+
 /// The default output cap: 64 MiB.
 pub(crate) const DEFAULT_CAP: usize = 64 * 1024 * 1024;
 

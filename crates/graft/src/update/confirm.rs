@@ -130,11 +130,11 @@ pub enum ConfirmThen {
         /// ops refuses `RestartChanged` if the stages say otherwise now.
         kind: graft_ops::operation::RestartKind,
     },
-    /// `q` while something is in progress (`update::quit`): quit, first
-    /// stopping the write `stops` names when it is still running.
+    /// `q` while something is in progress (`update::quit`): quit now, stop
+    /// the running write first, or wait for one that cannot stop.
     Quit {
-        /// The running write the box named, when it named one.
-        stops: Option<JobId>,
+        /// What `[ Quit ]` does (`update::quit::QuitThen`).
+        then: super::quit::QuitThen,
     },
 }
 
@@ -240,7 +240,7 @@ fn act(
             // answer of whichever lost the race would be dropped
             // (m6-05 review, Major 3). `restart_box` refuses the
             // same before the box opens.
-            ConfirmThen::Quit { stops } => super::quit::confirmed(next, commands, stops),
+            ConfirmThen::Quit { then } => super::quit::confirmed(next, commands, then),
             ConfirmThen::RestartConflict { .. } if next.operating.is_some() => {
                 next.status = Status::sticky("a write is already running");
             }

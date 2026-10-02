@@ -21,7 +21,7 @@
 
 
 
- merge in progress · from the shell · 13 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
+ merge in progress · from the shell · 13 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph  q quit
 UNCOMMITTED
 diff vs HEAD 274c7d4
 CONFLICTS (13)                ▎

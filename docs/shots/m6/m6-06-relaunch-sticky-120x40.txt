@@ -24,7 +24,7 @@ m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relau
 
 
 
- rebase still in progress · 1 conflicted · ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph
+ rebase still in progress · 1 conflicted · ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph  q quit
 UNCOMMITTED
 diff vs HEAD b0eb655
 CONFLICTS (1)                 ▎keep 1

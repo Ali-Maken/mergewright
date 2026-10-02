@@ -35,6 +35,12 @@ pub(in crate::update) fn stop_write(state: &mut AppState, commands: &mut Vec<Com
     let Some(id) = state.operating else {
         return false;
     };
+    // Graft waiting to quit on this write (`q y`, m8/13b): `Esc` drops the
+    // wait and nothing more; the write runs on, and the next `Esc` is the
+    // write's own.
+    if crate::update::quit::drop_wait(state) {
+        return true;
+    }
     // A write that cannot be stopped safely keeps running, and the line says
     // so rather than leaving `Esc` looking ignored. `Busy` is drawn with a
     // trailing `…`, which is right here: it really is still going.

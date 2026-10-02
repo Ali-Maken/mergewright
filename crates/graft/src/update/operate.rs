@@ -154,14 +154,14 @@ fn launch_with(
     // from its answer (m7-power-tools/03, /24).
     next.lands = landing_of(&op).map(|on| (id, on));
     next.status = Status::Busy(super::remote::busy_text(&op));
-    super::remote::launched(
+    commands.extend(super::remote::launched(
         next,
         id,
         op.describe(),
         Some(op.clone()),
         stoppable,
         opened_by,
-    );
+    ));
     commands.push(Command::Operate(id, Box::new(op)));
     Ok(())
 }

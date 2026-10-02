@@ -432,7 +432,7 @@ fn the_banner_draws_its_own_keys_and_no_doorway() {
             Divider::Shown,
             80,
         )),
-        " ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph"
+        " ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph  q quit"
     );
     assert_eq!(
         hints_text(&hints_for(
@@ -444,7 +444,7 @@ fn the_banner_draws_its_own_keys_and_no_doorway() {
             Divider::Shown,
             80,
         )),
-        " ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph"
+        " ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph  q quit"
     );
     assert_eq!(
         hints_text(&hints_for(
@@ -456,8 +456,71 @@ fn the_banner_draws_its_own_keys_and_no_doorway() {
             Divider::Shown,
             80,
         )),
-        " c continue  s skip  a abort  ⇥ graph"
+        " c continue  s skip  a abort  ⇥ graph  q quit"
     );
+}
+
+/// m8-13b: `q quit` is the banner bar's last hint at the user's 187
+/// columns, and at every width it is the first to go — whenever it is
+/// drawn, every other banner key is drawn too, and never at a shorter rung
+/// than it.
+#[test]
+fn q_quit_is_the_banner_bars_last_hint_and_first_dropped() {
+    for (skippable, conflicted, merge) in [
+        (true, true, false),
+        (false, true, true),
+        (true, false, false),
+        (false, false, true),
+    ] {
+        let context = HintContext::Banner {
+            skippable,
+            conflicted,
+            merge,
+        };
+        let full = context_list(&context);
+        let wide = hints_for(&context, Divider::Hidden, 187);
+        assert_eq!(wide.last().map(|h| (h.key, h.verb)), Some(("q", "quit")));
+        assert_eq!(wide.len(), full.len(), "187 draws them all");
+        for columns in 20u16..=187 {
+            let drawn = hints_for(&context, Divider::Hidden, columns);
+            if drawn.iter().any(|h| h.key == "q") {
+                assert_eq!(
+                    drawn.len(),
+                    full.len(),
+                    "{columns}: `q` drawn while another key was dropped: {}",
+                    hints_text(&drawn)
+                );
+            }
+        }
+    }
+}
+
+/// m8-13b: beside the stop's reason, `q quit` gives way before the reason
+/// loses a word — at the 108 cells the changes pane leaves at 187 columns,
+/// the conflict count stays and `q` goes.
+#[test]
+fn q_quit_gives_way_to_the_stop_reason() {
+    let context = HintContext::Banner {
+        skippable: false,
+        conflicted: true,
+        merge: false,
+    };
+    let hints = hints_for(&context, Divider::Hidden, 108);
+    assert_eq!(hints.last().map(|h| h.key), Some("q"), "the bar has room");
+    let why = StopWording::new(
+        reason("merge in progress · 13 files conflicted"),
+        vec![reason("merge in progress")],
+    );
+    let row = stopped_row(&why, &hints, 108);
+    assert_eq!(
+        row,
+        " merge in progress · 13 files conflicted · \u{23ce} resolve  c continue  a abort  \
+         M mergetool  e edit  \u{21e5} graph"
+    );
+    // With room for both, both are drawn.
+    let row = stopped_row(&why, &hints_for(&context, Divider::Hidden, 160), 160);
+    assert!(row.ends_with("  q quit"), "{row}");
+    assert!(row.contains("13 files conflicted"), "{row}");
 }
 
 /// Every non-`Preview`, non-`Marked` context list is drawn in the order the
@@ -1464,7 +1527,7 @@ fn unmerged_rows_lead_with_resolve() {
     });
     assert_eq!(
         hints_text(&banner_plain),
-        " ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph"
+        " ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph  q quit"
     );
 
     let banner_skippable = context_list(&HintContext::Banner {
@@ -1474,7 +1537,7 @@ fn unmerged_rows_lead_with_resolve() {
     });
     assert_eq!(
         hints_text(&banner_skippable),
-        " ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph"
+        " ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph  q quit"
     );
 
     // `conflicted: false` drops `⏎ resolve` along with `M`/`e`: nothing is
@@ -1750,7 +1813,12 @@ fn stopped_row_keeps_the_count_whole_at_108_cells() {
         row.starts_with(" merge in progress · 13 files conflicted ·"),
         "{row}"
     );
-    assert!(row.ends_with(&hints_text(&hints)), "{row}");
+    // `q quit`, last, gave way to the count (m8-13b).
+    assert_eq!(hints.last().map(|h| h.key), Some("q"));
+    assert!(
+        row.ends_with(&hints_text(&hints[..hints.len() - 1])),
+        "{row}"
+    );
     assert!(row.width() <= 108, "{row}");
     // Every width: the count is either all there or not there at all, and
     // nothing but the last wording is ever cut.

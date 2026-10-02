@@ -24,4 +24,4 @@ CONFLICTS (1)
 
 
 
- ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph
+ ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph  q quit

@@ -122,7 +122,7 @@ CONFLICTS (13)
 
 
 
- ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
+ ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph  q quit
 --- frame 6: an untracked `new.txt`: the row reads `new`, not `bin` (its body is n1's open half)
 Graph  [Detail]
 UNCOMMITTED · 1 untracked

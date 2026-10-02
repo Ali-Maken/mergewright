@@ -370,6 +370,21 @@ pub fn operated(
     if state.operating != Some(id) {
         return Vec::new();
     }
+    let done = matches!(outcome, Operated::Done(_));
+    let commands = operated_answer(state, id, outcome, next_id);
+    // Last: a `q y` waiting on this write quits only once the answer is in
+    // place, and only on `Done` (m8/13b).
+    crate::update::quit::write_ended(state, id, done);
+    commands
+}
+
+/// [`operated`]'s answer, for the write `AppState::operating` waits on.
+fn operated_answer(
+    state: &mut AppState,
+    id: JobId,
+    outcome: Operated,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
     // The rewrite editor's `y` (m7-power-tools/08, ruling 6): a refusal
     // brings the editor back with the words, any other answer ends it.
     // After the guard above: only the write it launched is its answer.

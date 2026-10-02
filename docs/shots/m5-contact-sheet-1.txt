@@ -2570,7 +2570,7 @@ what right looks like: Capture header "What right looks like": the two frames di
 
 ================================================================================
 docs/shots/m5-ui-banner-conflict-120x40.txt
-what right looks like: Capture header "What right looks like": the banner `MERGING` (no `⚠`, no filename) shares the header row with the repository path since the pane and graph are both on screen at this width; the changes pane opens with `CONFLICTS (16)` above `STAGED`/`UNSTAGED`, each conflicted file listed once, with no `reading…` left over. Footer teaches only `c continue`, `a abort`, `M mergetool`, `e edit`, `⇥ graph`, and the working-tree row reads `Uncommitted changes (16 unmerged)`.
+what right looks like: Re-taken 2026-10-02 (m8-13b: `q quit` joins the banner's bar, last). Capture header "What right looks like": the banner `MERGING` (no `⚠`, no filename) shares the header row with the repository path since the pane and graph are both on screen at this width; the changes pane opens with `CONFLICTS (16)` above `STAGED`/`UNSTAGED`, each conflicted file listed once, with no `reading…` left over. Footer teaches only `c continue`, `a abort`, `M mergetool`, `e edit`, `⇥ graph`, and the working-tree row reads `Uncommitted changes (16 unmerged)`.
 ================================================================================
 
 # m5-ui-banner-conflict-120x40.txt: 120x40, drawn by `view::view`
@@ -2666,7 +2666,7 @@ what right looks like: Capture header "What right looks like": the banner `MERGI
 ●      Ship release 14                                                                                   GF 2h   0f8d5d6
 ●      Ship release 13                                                                                   GF 2h   78ddfac
 ●      Ship release 12                                                                                   GF 2h   9bedacc
- merge stopped · 16 files conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
+ merge stopped · 16 files conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph  q quit
 UNCOMMITTED
 diff vs HEAD 80393eb
 CONFLICTS (16)                ▎

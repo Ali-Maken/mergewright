@@ -47,4 +47,4 @@
 
 
 
- merge in progress · 13 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
+ merge in progress · 13 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph  q quit
