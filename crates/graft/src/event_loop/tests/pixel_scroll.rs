@@ -10,7 +10,7 @@
 
 use graft_core::capabilities::{PixelProtocol, RenderingTier};
 use graft_graph::raster::Backdrop;
-use graft_graph::raster::cache::{STRIP_ROWS, lit_hash};
+use graft_graph::raster::cache::{ByteBudget, STRIP_ROWS, lit_hash};
 use graft_term::kitty::EMPHASIS_ID_BIT;
 
 use super::*;
@@ -185,6 +185,64 @@ fn j_inside_resident_strips_sends_no_strip() {
             run.backdrops
         );
     }
+}
+
+/// m8 04: held `j` down a wide graph (13 lanes, 241 rows, past seven
+/// strips) under a budget of about three strips: after every frame the
+/// cache weighs no more than its budget, or holds only the viewport's
+/// strips when those alone weigh more.
+#[test]
+fn held_j_on_wide_strips_stays_within_the_byte_budget() {
+    let (mut session, mut state) = at_pixel_tier();
+    session.capabilities.pixel_protocol = Some(PixelProtocol::Kitty);
+    let mut history = fan(12, 20);
+    history.strip_rows = Some(STRIP_ROWS);
+    state.history = Some(history);
+    state.size = Size {
+        columns: COLUMNS,
+        rows: ROWS,
+    };
+    let (mut terminal, _recorder) = terminal(COLUMNS, ROWS);
+    let first = {
+        let mut probe = Graphics::new(NoReplies, &session.capabilities);
+        draw(&mut terminal, &session, &state, &mut probe).expect("memory");
+        probe.strip_budget_report().0
+    };
+    assert!(first > 0, "premise: the first frame drew strips");
+    let budget = ByteBudget(first * 3 / 2);
+    let mut graphics = Graphics::new(NoReplies, &session.capabilities).with_strip_budget(budget);
+    draw(&mut terminal, &session, &state, &mut graphics).expect("memory");
+    let mut evicted_while_held = false;
+    let mut warm = None;
+    for (index, event) in js(230).into_iter().enumerate() {
+        if index == 115 {
+            warm = Some(graphics.strip_stats());
+        }
+        state = update(&state, event).0;
+        draw(&mut terminal, &session, &state, &mut graphics).expect("memory");
+        let (resident, minimum_wins) = graphics.strip_budget_report();
+        assert!(
+            resident <= budget.0 || minimum_wins,
+            "{resident} bytes resident over a {} byte budget",
+            budget.0
+        );
+        evicted_while_held |= graphics.strip_stats().evicted > 0;
+    }
+    let top = state.history.as_ref().map_or(0, |history| history.top);
+    assert!(
+        top > 4 * STRIP_ROWS,
+        "premise: j scrolled past strips ({top})"
+    );
+    assert!(evicted_while_held, "premise: the budget bound");
+    let (warm, last) = (warm.expect("230 events"), graphics.strip_stats());
+    assert!(
+        last.rasterised + last.emphasis_rasterised > warm.rasterised + warm.emphasis_rasterised,
+        "premise: strips were drawn in the second half"
+    );
+    assert_eq!(
+        last.buffers_allocated, warm.buffers_allocated,
+        "steady state draws into evicted buffers"
+    );
 }
 
 /// Each state a run of `events` passes through from `state`, the first

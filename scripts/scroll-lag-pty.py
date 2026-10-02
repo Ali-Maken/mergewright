@@ -11,6 +11,10 @@ Env:
                  (VS Code, Zed): Unicode tier.
   PROFILE=kitty  answer like Ghostty, Kitty graphics yes, the user's 17x37
                  cell (ADR-0012): Pixel tier.
+  PROFILE=iterm2 (m8 04) TERM_PROGRAM=iTerm.app 3.5, cell size answered:
+                 Pixel tier over iTerm2 inline images (no probe to answer).
+  CELL=<w>x<h>    (m8 04) answer the cell-size query with this cell instead
+                 of the user's 17x37: a narrower or wider graph in pixels.
   (unset)        no answers; the probe times out; Unicode (COLORTERM=truecolor).
   DEFLATE=yes|no (PROFILE=kitty only, m7-power-tools/47) answer the `o=z`
                  probe (i=32) `OK` or with an error. Unset: no answer, the
@@ -77,6 +81,11 @@ def main():
     rate = float(os.environ["RATE"]) if os.environ.get("RATE") else None
     deflate = os.environ.get("DEFLATE")
     then_j = float(os.environ["THEN_J"]) if os.environ.get("THEN_J") else None
+    if os.environ.get("CELL"):
+        w, h = os.environ["CELL"].split("x")
+        for i, (query, _, who) in enumerate(REPLIES):
+            if query == b"\x1b[16t":
+                REPLIES[i] = (query, f"\x1b[6;{h};{w}t".encode(), who)
 
     def answers(who):
         if who == "any":
@@ -90,6 +99,8 @@ def main():
         os.chdir(repo)
         env = dict(os.environ)
         env.update(TERM="xterm-256color", COLORTERM="truecolor", TERM_PROGRAM="vscode")
+        if profile == "iterm2":
+            env.update(TERM_PROGRAM="iTerm.app", TERM_PROGRAM_VERSION="3.5.0")
         os.execve(binary, [binary], env)
     fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
 

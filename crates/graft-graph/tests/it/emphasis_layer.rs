@@ -16,7 +16,7 @@ use graft_core::raster::RasterFrame;
 use graft_graph::ancestry::{Ancestry, Kin};
 use graft_graph::fold::Toward;
 use graft_graph::identity::BranchIdentity;
-use graft_graph::raster::cache::{STRIP_ROWS, StripCache, lit_hash};
+use graft_graph::raster::cache::{ByteBudget, STRIP_ROWS, StripCache, lit_hash};
 use graft_graph::raster::{
     Backdrop, Emphasis, Emphasised, Lit, Marker, PlainRow, PlainStrip, Ring, Selection, Stub,
     composite, rasterise_backdrop, rasterise_emphasis,
@@ -309,7 +309,7 @@ fn flip_every_cursor(
     let plain = window.plain(range.clone());
     let strip = window.strip(&plain, range, CELL);
     let under = backdrop_of(&strip, backdrop);
-    let mut cache = StripCache::new(STRIP_ROWS, 4 * threads.len());
+    let mut cache = StripCache::with_budget(ByteBudget(usize::MAX), 4 * threads.len());
     let empty = BTreeSet::new();
     let hash = |rows: &[Lit<'_>]| lit_hash(&Selection { rows, backdrop });
     let mut non_empty_flips = 0;

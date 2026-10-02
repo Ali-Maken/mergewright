@@ -164,6 +164,8 @@ fn frame(images: &mut KittyImages, strips: &[Arc<RasterFrame>; 2], scroll: usize
             let row = if index == 0 { 1 } else { 1 + ROWS - scroll };
             Place {
                 first_row: index * ROWS,
+                // Two fixed strips: the slot is what each picture is.
+                key: graft_term::kitty::UploadKey(index as u64),
                 frame: strip,
                 cells: CellRect {
                     column: 2,

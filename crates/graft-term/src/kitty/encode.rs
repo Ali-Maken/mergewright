@@ -1,9 +1,13 @@
 //! Byte-level encoding: strips and placements to Kitty graphics protocol
 //! commands, pure functions over a caller's output buffer.
 
+use std::fmt;
 use std::io::Write as _;
 
 use graft_core::raster::RasterFrame;
+use miniz_oxide::deflate::core::{
+    CompressorOxide, TDEFLFlush, TDEFLStatus, compress, create_comp_flags_from_zip_params,
+};
 
 use super::{CellRect, Layer, Place};
 use crate::tmux::Transport;
@@ -16,26 +20,59 @@ const CHUNK: usize = 4096;
 /// fastest level collapses.
 const DEFLATE_LEVEL: u8 = 1;
 
+/// The buffers one transmit works in, kept for the next (m8 04): each is
+/// strip-sized, and making them afresh for every upload was a large
+/// allocation churn malloc kept resident.
+#[derive(Default)]
+pub(super) struct Scratch {
+    pub(super) straight: Vec<u8>,
+    pub(super) deflated: Vec<u8>,
+    pub(super) encoded: Vec<u8>,
+    /// Made on the first deflated upload, reset for each after.
+    compressor: Option<Box<CompressorOxide>>,
+}
+
+impl fmt::Debug for Scratch {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("Scratch")
+            .field("straight", &self.straight.capacity())
+            .field("deflated", &self.deflated.capacity())
+            .field("encoded", &self.encoded.capacity())
+            .finish_non_exhaustive()
+    }
+}
+
 /// `a=t`: the strip's straight-alpha RGBA, base64 in 4096-byte chunks;
-/// zlib-deflated first, with `o=z`, when `deflate` is on.
+/// zlib-deflated first, with `o=z`, when `deflate` is on. Whether it went
+/// deflated: only if the compressor fails does a `deflate` upload go raw.
 pub(super) fn transmit(
     transport: Transport,
     id: u32,
     frame: &RasterFrame,
     deflate: bool,
+    scratch: &mut Scratch,
     out: &mut Vec<u8>,
-) {
-    let straight = straight_alpha(&frame.pixels);
-    let (payload, compression) = if deflate {
-        (
-            miniz_oxide::deflate::compress_to_vec_zlib(&straight, DEFLATE_LEVEL),
-            "o=z,",
-        )
-    } else {
-        (straight, "")
+) -> bool {
+    straight_alpha_into(&frame.pixels, &mut scratch.straight);
+    let deflated = deflate && {
+        let compressor = scratch.compressor.get_or_insert_with(|| {
+            Box::new(CompressorOxide::new(create_comp_flags_from_zip_params(
+                DEFLATE_LEVEL.into(),
+                1,
+                0,
+            )))
+        });
+        deflate_into(compressor, &scratch.straight, &mut scratch.deflated)
     };
-    let mut encoded = Vec::with_capacity(payload.len().div_ceil(3) * 4);
-    base64(&payload, &mut encoded);
+    let (payload, compression) = if deflated {
+        (&scratch.deflated, "o=z,")
+    } else {
+        (&scratch.straight, "")
+    };
+    let encoded = &mut scratch.encoded;
+    encoded.clear();
+    base64(payload, encoded);
     let mut chunks = encoded.chunks(CHUNK).peekable();
     let mut first = true;
     // An empty strip still needs one (empty) command to say so.
@@ -49,7 +86,7 @@ pub(super) fn transmit(
             ),
             b"",
         );
-        return;
+        return deflated;
     }
     while let Some(chunk) = chunks.next() {
         let more = u8::from(chunks.peek().is_some());
@@ -66,6 +103,36 @@ pub(super) fn transmit(
             first = false;
         } else {
             write_command(transport, out, format_args!("m={more}"), chunk);
+        }
+    }
+    deflated
+}
+
+/// zlib-deflate `input` into `output` with `compressor`, both reused from
+/// the last upload. `false` if the compressor reports a failure, which
+/// `miniz_oxide` documents as a bug in itself: the caller sends raw instead,
+/// a correct picture at a higher byte cost.
+fn deflate_into(compressor: &mut CompressorOxide, input: &[u8], output: &mut Vec<u8>) -> bool {
+    compressor.reset();
+    output.clear();
+    output.resize((input.len() / 2).max(64), 0);
+    let (mut input, mut at) = (input, 0);
+    loop {
+        let (status, read, wrote) =
+            compress(compressor, input, &mut output[at..], TDEFLFlush::Finish);
+        at += wrote;
+        match status {
+            TDEFLStatus::Done => {
+                output.truncate(at);
+                return true;
+            }
+            TDEFLStatus::Okay if read <= input.len() => {
+                input = &input[read..];
+                if output.len() - at < 30 {
+                    output.resize(output.len() * 2, 0);
+                }
+            }
+            _ => return false,
         }
     }
 }
@@ -153,7 +220,15 @@ fn write_command(
 /// and opaque ink (alpha 255), which need no division; only antialiased edges
 /// pay for one per channel.
 pub(crate) fn straight_alpha(pixels: &[u8]) -> Vec<u8> {
-    let mut straight = vec![0; pixels.len() / 4 * 4];
+    let mut straight = Vec::new();
+    straight_alpha_into(pixels, &mut straight);
+    straight
+}
+
+/// [`straight_alpha`] into `straight`, reusing its buffer.
+fn straight_alpha_into(pixels: &[u8], straight: &mut Vec<u8>) {
+    straight.clear();
+    straight.resize(pixels.len() / 4 * 4, 0);
     for (to, &[red, green, blue, alpha]) in straight
         .as_chunks_mut::<4>()
         .0
@@ -176,7 +251,6 @@ pub(crate) fn straight_alpha(pixels: &[u8]) -> Vec<u8> {
             }
         };
     }
-    straight
 }
 
 /// Standard base64 with padding, appended to `out`.
