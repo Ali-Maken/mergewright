@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M7 done (2026-10-02).** Checkpoint closed: captures approved unseen (colour, Ghostty render unverified), stop questions answered (`docs/field-notes.md`), Spotlight off for `target/`. **Next: M8 — waits for the user to start it** (user, 2026-10-02). M8 first item: scroll lag on big repos (gap M7/scroll-residual-lag). Logs: `docs/log/m7.md`.
+**Current step:** **M8 started (user, 2026-10-02).** Pipeline step 2: five prior-art studies running. Logs: `docs/log/m8.md`.
 
 **Running now:** nothing.
 
@@ -108,7 +108,7 @@ The original text stands below as the brief's reasoning.
 
 ## Session log
 
-Live at [docs/log/m3.md](docs/log/m3.md) — the current milestone's log
+Live at [docs/log/m8.md](docs/log/m8.md) — the current milestone's log
 (moved out, housekeeping/01 continuation 1, 2026-09-18, to keep this file
 under 10 KB). Finished milestones: [docs/log/m0.md](docs/log/m0.md),
 [docs/log/m1.md](docs/log/m1.md), [docs/log/m2.md](docs/log/m2.md).
