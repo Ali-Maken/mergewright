@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M8.** Note pass 1 committed (6bc9b7b3). Prototype being built; then the user tries it, then planner pass 2 (specs). Questions with the user: name, notarise, scope cut. Logs: `docs/log/m8.md`.
+**Current step:** **M8.** Research (6244e3e0), note pass 1 (6bc9b7b3), prototype (aefc0b76) done. User approved 2026-10-02 (field-notes, last line): look-parity group after scroll (`.scratch/m8-polish-and-ship/real-vs-mockup.md`), note's Proposed changes 1–5, name Tributary/`trib`, no notarising. **Next: dispatch `planner-fable` pass 2** — ADRs + DESIGN.md/PROMPT.md edits for the approved changes, pick dark A/B by contrast, then all group specs (note §Expected groups + look-parity group); `?`-does-nothing on graph goes to a scout question first. Still with the user: scene 1 scroll-feel run on his laptop (`python3 prototypes/m8-polish-and-ship/polish.py 1` in Ghostty, Zed, VS Code); one timing run after the scroll group. Logs: `docs/log/m8.md`.
 
 **Running now:** nothing.
 
