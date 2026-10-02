@@ -1,8 +1,8 @@
 # ADR-0059 — A branch forked off a rewritten commit follows when its replay is clean
 
 Date: 2026-10-02
-Status: **proposed** (planner, M8 spec-only pass 2c). Needs his yes: design note `m8-polish-and-ship.md`,
-"Where I'd differ", 2c. Until then ADR-0047 stands unchanged and a fork stays, named `left behind` (m7/37).
+Status: **Accepted**, 2026-10-02 (field notes :89, item 5: "go ahead with your recommendation" — the branch moves too
+when it moves clean, shown in the preview first). Design note `m8-polish-and-ship.md`, "Where I'd differ", 2c.
 Amends: ADR-0047 §1 (todo vocabulary) and §4 (scope of "never a fork").
 
 ## Context
@@ -18,7 +18,7 @@ Amends: ADR-0047 §1 (todo vocabulary) and §4 (scope of "never a fork").
   The study's §4 :210 rejects skip-on-conflict **for the line he asked to rewrite** (a stop there belongs on M6's
   conflict screen). A fork is not what he asked to rewrite: skipping it, in words, is the branchless/Graphite answer.
 
-## Decision (if he says yes)
+## Decision
 
 ### 1. What a fork is
 A local branch F such that: F is not in the line; F's tip is not in the replayed range; `at = merge-base(F, old top)`
@@ -62,4 +62,4 @@ the old top, which stays a backup as ADR-0047 §4's dependents rule has it.
 - **merge-tree + commit-tree replay of F** (no stop possible, since only clean forks follow): ADR-0047's rejected
   replay loop by another name; hooks, empty-commit and committer rules would differ from git's rebase.
 - **Every fork follows, conflicts stop** (jj-like without stored conflicts): a stop in a branch he never named.
-- **Leave it as is**: the alternative if he says *stay*. Then item 2 closes as designed and the specs drop.
+- **Leave it as is**: the alternative had he said *stay*. Then item 2 would have closed as designed and the specs dropped.
