@@ -113,6 +113,40 @@ fn a_reply_split_across_two_reads_is_one_reply() {
 }
 
 #[test]
+fn a_fence_answer_is_a_reply_never_a_key() {
+    // ADR-0054: `CSI 0 n` answers the per-frame fence. It goes to the reply
+    // path whole, and the keys either side of it survive.
+    assert_eq!(
+        decode_all(&[b"j\x1b[0nk"]),
+        vec![
+            one(KeyCode::Char('j'), Modifiers::NONE),
+            reply(b"\x1b[0n"),
+            one(KeyCode::Char('k'), Modifiers::NONE),
+        ]
+    );
+}
+
+#[test]
+fn a_fence_answer_split_across_reads_is_one_reply() {
+    let mut decoder = Decoder::new();
+    let mut out = Vec::new();
+    decoder.feed(b"\x1b[0", &mut out);
+    assert!(out.is_empty(), "held until it finishes");
+    decoder.feed(b"n\x1b[", &mut out);
+    decoder.feed(b"0n", &mut out);
+
+    assert_eq!(out, vec![reply(b"\x1b[0n"), reply(b"\x1b[0n")]);
+    let answers: usize = out
+        .iter()
+        .map(|item| match item {
+            Decoded::Reply(bytes) => crate::pace::fence_answers(bytes),
+            Decoded::Event(_) => 0,
+        })
+        .sum();
+    assert_eq!(answers, 2);
+}
+
+#[test]
 fn every_probe_reply_shape_is_a_reply_and_keys_between_them_survive_in_order() {
     let decoded = decode_all(&[
         b"a\x1b_Gi=31;OK\x1b\\b\x1b[6;16;8tc\x1b[?1ud\x1b[?2026;2$ye\x1b]11;rgb:0000/0000/0000\x07f\x1b[?62;4c",

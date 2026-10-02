@@ -16,8 +16,8 @@
 //! A header line goes out before the first frame and again whenever one of
 //! its numbers changes (the history grows while it loads; a resize); the
 //! summariser (`scripts/m8-trace-summary.sh`) reads the last. `-` is "not
-//! measured": `fence_us` until G-pace, `input_age_us` on a frame no input
-//! drew.
+//! measured": `fence_us` on a frame no fence answer released (unfenced, the
+//! first frame, a timeout), `input_age_us` on a frame no input drew.
 //!
 //! Off, the loop pays one `Option` check per hook ([`Tracer::off`]) and the
 //! terminal's writer is the plain `Stdout` (`event_loop::startup`); on, the
@@ -75,7 +75,10 @@ pub(crate) struct FrameRecord {
     /// Time inside the terminal writer's `write`/`flush` — blocked on the
     /// pty when the terminal reads slower than Graft writes.
     pub write_us: u32,
-    /// Waiting for the terminal's answer to the frame's fence (G-pace).
+    /// How long the terminal took to answer the fence before this frame
+    /// (G-pace, ADR-0054): the previous frame's write to its `CSI 0 n`, i.e.
+    /// how long the terminal took to read it. The last answer since the
+    /// frame before; `None` when none came (unfenced, or drawn on a timeout).
     pub fence_us: Option<u32>,
     /// The oldest applied input's age when its frame finished writing,
     /// from when the input thread forwarded it.
@@ -336,6 +339,7 @@ struct Counting {
     update: Duration,
     commands: u16,
     oldest_input: Option<Instant>,
+    fence: Option<Duration>,
 }
 
 impl Tracer {
@@ -416,12 +420,14 @@ impl Tracer {
         let Some(active) = &mut self.on else { return };
         let first = active.frame.wakes == 0;
         active.frame.wakes = active.frame.wakes.saturating_add(1);
-        let Wake::Event(AppEvent::Core(event)) = wake else {
-            return;
-        };
-        let (stamped, motion) = match event {
-            Event::Key(_) => (true, true),
-            Event::Mouse(mouse) => (
+        // Drained whatever the wake: a frame that starts on a job answer
+        // still has keys waiting behind it (review m8-01 Major 1).
+        if let Some(stamps) = &active.stamps {
+            active.pending.extend(stamps.try_iter());
+        }
+        let (stamped, motion) = match wake {
+            Wake::Event(AppEvent::Core(Event::Key(_))) => (true, true),
+            Wake::Event(AppEvent::Core(Event::Mouse(mouse))) => (
                 true,
                 matches!(
                     mouse.kind,
@@ -435,9 +441,6 @@ impl Tracer {
         };
         if motion {
             active.frame.motions = active.frame.motions.saturating_add(1);
-        }
-        if let Some(stamps) = &active.stamps {
-            active.pending.extend(stamps.try_iter());
         }
         if stamped && let Some(sent) = active.pending.pop_front() {
             active.frame.oldest_input.get_or_insert(sent);
@@ -455,6 +458,16 @@ impl Tracer {
         active.frame.update += began.elapsed();
         let commands = u16::try_from(commands).unwrap_or(u16::MAX);
         active.frame.commands = active.frame.commands.saturating_add(commands);
+    }
+
+    /// The terminal answered a fence; `waited` is how long that fence
+    /// waited (`None`: no fence was waiting for it). Not a wake in the
+    /// frame's count: it carries no input and no job.
+    pub(crate) fn fenced(&mut self, waited: Option<Duration>) {
+        let (Some(active), Some(waited)) = (&mut self.on, waited) else {
+            return;
+        };
+        active.frame.fence = Some(waited);
     }
 
     /// A frame began drawing at `began` and is written. Writes its line (and
@@ -480,7 +493,7 @@ impl Tracer {
             draw_us: micros(now.duration_since(began).saturating_sub(write)),
             bytes: u32::try_from(bytes).unwrap_or(u32::MAX),
             write_us: micros(write),
-            fence_us: None,
+            fence_us: frame.fence.map(micros),
             input_age_us: frame
                 .oldest_input
                 .map(|sent| micros(now.duration_since(sent))),

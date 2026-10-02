@@ -6,7 +6,9 @@
 //! replies to whoever asked (`input`). Image encoders turn a `core::RasterFrame` into
 //! protocol bytes (DESIGN.md §8.2): Kitty (`kitty`) and iTerm2 (`iterm2`),
 //! carried through tmux by `tmux`. `clipboard` builds the OSC 52 copy
-//! request. No Sixel encoder (ADR-0016). Depends only on `core`.
+//! request. `pace` holds the frame's DEC 2026 bracket and its fence, the
+//! device-status request whose answer says the terminal has read the frame
+//! (ADR-0054). No Sixel encoder (ADR-0016). Depends only on `core`.
 // `deny`, not `forbid`, and this is the only crate where that is true.
 // Reading the terminal's window size and waiting on its file descriptor are
 // two libc calls with no safe equivalent in the standard library; ADR-0013
@@ -22,8 +24,10 @@ pub mod detect;
 pub mod input;
 pub mod iterm2;
 pub mod kitty;
+pub mod pace;
 pub mod sanitize;
 pub mod tmux;
 
+pub use pace::{SYNC_BEGIN, SYNC_END, fence_answers, write_fence};
 pub use sanitize::{SanitizedText, sanitize, sanitize_line, sanitize_path, sanitize_path_bytes};
 pub use tmux::{Transport, tmux_passthrough};

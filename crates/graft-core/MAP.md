@@ -15,6 +15,7 @@ One line per public item. Update when a public item changes.
 - `TmuxStatus` (enum) — whether Graft is inside tmux and the outer terminal is reachable.
 - `ProbeOutcome` (enum) — what became of the probe round: answered, timed out, skipped.
 - `Capabilities` (struct) — everything detection established about the terminal.
+- `Capabilities::answers_dsr` (field) — the terminal answered the startup device-status request (`CSI 5 n` → `CSI 0 n`), so frames may be fenced (ADR-0054); `false` wherever not probed. Inside tmux it is tmux answering.
 - `Capabilities::kitty_deflate` (field) — the terminal answered `OK` to an `o=z` query (fenced, Kitty graphics on); `false` wherever not probed.
 
 ## commit

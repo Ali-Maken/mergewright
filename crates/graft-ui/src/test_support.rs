@@ -26,6 +26,7 @@ pub(crate) fn terminal(color_depth: ColorDepth, no_color: bool) -> Capabilities 
         pixel_protocol: None,
         kitty_graphics: Supported::No,
         kitty_deflate: false,
+        answers_dsr: false,
         sixel: Supported::No,
         iterm2_images: false,
         kitty_keyboard: Supported::No,

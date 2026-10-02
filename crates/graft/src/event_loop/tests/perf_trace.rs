@@ -58,12 +58,14 @@ fn run(wakes: ScriptedWakes, tracer: &mut Tracer, meter: Meter) -> (Exit, String
     let mut graphics = Graphics::new(NoReplies, &session.capabilities);
     let mut wakes = wakes;
     let exit = pump_with(
-        &mut terminal,
+        Screen {
+            terminal: &mut terminal,
+            graphics: &mut graphics,
+        },
         &mut wakes,
         &Recorded::default(),
         &mut session,
         on_history(),
-        &mut graphics,
         Outside::default(),
         tracer,
     )
@@ -155,7 +157,10 @@ fn fifty_j_presses_write_one_line_per_drawn_frame_every_field_parseable() {
             let mut expected = FIELDS.to_vec();
             expected.sort_unstable();
             assert_eq!(names, expected, "{label}");
-            assert!(field(frame, "fence_us").is_none(), "no fence before G-pace");
+            assert!(
+                field(frame, "fence_us").is_none(),
+                "unfenced: the test terminal never answered DSR"
+            );
         }
         // One line per drawn frame: as many lines as synchronized updates
         // ended on the terminal.

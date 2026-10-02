@@ -458,12 +458,14 @@ fn a_deflate_error_falls_back_in_the_app() {
     );
     let j = || key(KeyPress::plain(KeyCode::Char('j')));
     pump_with(
-        &mut terminal,
+        Screen {
+            terminal: &mut terminal,
+            graphics: &mut graphics,
+        },
         &mut ScriptedWakes::spaced(vec![j(), j(), quit_key()]),
         &Recorded::default(),
         &mut session,
         state,
-        &mut graphics,
         Outside::default(),
         &mut crate::trace::Tracer::off(),
     )

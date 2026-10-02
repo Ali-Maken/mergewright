@@ -56,9 +56,10 @@ pub(super) fn run_headless(
             Wake::Event(event) => event,
             Wake::Shutdown(signal) => return Ok(Exit::Signal(signal)),
             Wake::InputFailed(error) | Wake::TerminalFailed(error) => return Err(error),
-            // Headless runs start no redetector, so nothing sends this; and
-            // plain text has no cell size or theme to change if it did.
-            Wake::Terminal(_) => continue,
+            // Headless runs start no redetector and no fence listener, so
+            // nothing sends these; and plain text has no cell size or theme
+            // to change, and is never paced, if one did.
+            Wake::Terminal(_) | Wake::Fence => continue,
         };
 
         let (next, commands) = update(&state, event);

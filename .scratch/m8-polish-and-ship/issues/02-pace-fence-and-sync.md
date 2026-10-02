@@ -1,6 +1,6 @@
 # G-pace — the loop never writes ahead of the terminal
 
-Status: ready
+Status: done
 Build with: Fable (signature) (conductor, after scout `scouts/frame-loop.md`)
 Scout: `.scratch/m8-polish-and-ship/scouts/frame-loop.md` — note: `CSI 0 n` is NOT routed as a reply today (decoder drops it, csi.rs:28/97).
 Blocked by: 01
@@ -50,18 +50,41 @@ impl Pacer {
 ```
 
 ## Acceptance
-- [ ] `Pacer` unit tests: answered → may draw; unanswered < 500 ms → may not; 500 ms → may; 3 misses → unfenced and
-      `may_draw` false within 16 ms of the last frame; an answer after give-up does not re-enable (tests named at tick).
-- [ ] `fence_answers` counts `CSI 0 n` amid other replies and split across reads (test).
-- [ ] A `CSI 0 n` reaching the input decoder is never a key (test: no `Msg` for it).
-- [ ] Frame bytes: every frame starts `SYNC_BEGIN`, ends `SYNC_END` then `CSI 5 n` when fenced; image commands sit
-      inside the pair (test over a Pixel fixture frame).
-- [ ] Never more than one unanswered frame: a sink that answers only on demand sees ≤ 1 outstanding fence over 300 held
-      `j` (test).
-- [ ] Wheel: 10 wheel events in one turn → one scroll of 10× step, one frame (test).
-- [ ] J1: `held_key` tails ≤ 100 ms after release, Unicode and Pixel, at 40 MB/s drain and free; J3 `g_after_idle`
-      still ≤ 16 ms. Script `docs/perf/m8-pace.txt` (summary lines); row 1089/1095 verdicts stated there.
-- [ ] Silent terminal (no DSR answer at startup) → no fence written, behaviour as before plus the 16 ms cap (test).
+- [x] `Pacer` unit tests: answered → may draw; unanswered < 500 ms → may not; 500 ms → may; 3 misses → unfenced and
+      `may_draw` false within 16 ms of the last frame; an answer after give-up does not re-enable —
+      `event_loop::pace::tests::{an_answered_fence_lets_the_next_frame_draw_at_once,
+      an_unanswered_fence_holds_the_next_frame_until_its_timeout, three_timeouts_in_a_row_stop_fencing_and_cap_frames_at_16_ms,
+      an_answer_after_giving_up_does_not_fence_again}` (+ `a_late_answer_is_the_oldest_fences_not_the_newest`,
+      `an_answer_in_between_resets_the_run_of_timeouts`, `forgetting_after_a_handover_waits_for_nothing`).
+- [x] `fence_answers` counts `CSI 0 n` amid other replies and split across reads — `graft_term::pace::tests::
+      {fence_answers_are_counted_amid_other_replies_and_keys, an_answer_cut_off_at_the_end_is_not_counted_until_it_is_whole}`;
+      split across reads in the decoder: `input::decode::tests::a_fence_answer_split_across_reads_is_one_reply`.
+- [x] A `CSI 0 n` reaching the input decoder is never a key — `input::decode::tests::a_fence_answer_is_a_reply_never_a_key`;
+      routed to the fence listener, not keys or waiters: `input::mux::tests::fence_answers_go_to_the_fence_listener_not_to_keys_or_waiters`.
+- [x] Frame bytes: `SYNC_BEGIN` … images … `SYNC_END` then `CSI 5 n` when fenced, over a Pixel (Kitty) fixture frame —
+      `event_loop::tests::pace::a_fenced_pixel_frame_is_bracketed_with_its_images_inside_then_fenced`. iTerm2 bytes
+      not asserted by this test (same `draw_frame` path).
+- [x] ≤ 1 outstanding fence over 300 held `j`, sink answering only on demand —
+      `event_loop::tests::pace::three_hundred_held_keys_never_put_two_frames_in_the_pipe` (also: every key applied in order,
+      < 150 frames, every frame fenced, a frame after the last key).
+- [x] Wheel: 10 wheel events in one turn → `top` moves 10 × 3 lines, one frame —
+      `event_loop::tests::pace::ten_wheel_events_in_one_turn_scroll_ten_steps_in_one_frame`. See NOTES: applied per event
+      in `update`, drawn once; not summed inside `update`.
+- [x] J1 / J3 — `scripts/m8-pace.sh` → `docs/perf/m8-pace.txt` (release, HEAD d127565a, mains power):
+      `J1 Unicode 40MB/s tail 1 ms, free 1 ms`; `J1 Pixel (Kitty+deflate) 40MB/s 29 ms, free 8 ms` — all pass;
+      `J3 g_after_idle 13.2 ms` pass. Tests: `held_key::held_j_stops_on_release_{unicode_40mb,unicode_free,pixel_deflate,
+      pixel_deflate_free}`, `frames::after_idle::g_after_idle`. Row verdicts in the file: **1089 still open**,
+      **1095 stays a question** (NOTES).
+- [x] Silent terminal → no fence written, frames ≥ 16 ms apart —
+      `event_loop::tests::pace::a_silent_terminal_gets_no_fence_and_frames_at_least_16_ms_apart`; detection:
+      `detect::tests::a_terminal_silent_on_device_status_is_never_fenced`; pacer:
+      `pace::tests::a_silent_terminal_is_capped_from_the_start_and_never_fenced`.
+- [x] Review m8-01 Major 1: `queued` counts keys behind a frame's first job wake —
+      `trace::tests::keys_waiting_behind_a_job_answer_count_as_queued` (failed before the fix: `queued=0`; passes after).
+- [x] Review m8-01 Major 2: no `too_many_arguments` / `too_many_lines` allow left in `event_loop/` (`grep -rn
+      "too_many" crates/graft/src/event_loop/` empty); `running::Screen { terminal, graphics }` takes `pump_with`/`frames`
+      to 7 args; `startup::run` split into `listen`, `outside`, `wind_down`. Verified by the gate
+      `cargo clippy --workspace --all-targets -- -D warnings` (clean) and the 5161-test nextest run.
 
 ## Touches
 - `event_loop::pump`, `joins_frame` (turn window kept), `ReplyWaiter` / reply routing, input decoder, graphics writes
@@ -83,3 +106,28 @@ impl Pacer {
 
 ## Size
 One context, ~70k tokens. If the scout finds DEC 2026 not wrapping image commands, that fix stays here.
+
+## NOTES (builder, 2026-10-02)
+- **Compacted once** mid-ticket. Nothing remains open from the ticket's scope except the wheel item below.
+- Scouts: `scouts/frame-loop.md` (given) and `scouts/pace-harness.md` (mine, harness).
+- Deviations from Signatures: `Pacer::answered` returns `Option<Duration>` (feeds `fence_us`); added `fenced`,
+  `owed`, `forget`; `sent_at` is a `VecDeque` (a timeout can leave two fences owed, answered oldest first).
+  `Wakes` gains required `next_wake_by(deadline) -> Waited`. `pump_with` now takes a `Screen` (Major 2).
+- Wheel: **not summed inside `update`** — that is `update/mouse.rs`, held by ticket 13. The observable (one frame,
+  10× step) holds because wheel wakes join one turn. If per-event `update` cost matters, the change is
+  `update::mouse::wheel` taking a notch count; blocked on ticket 13's files.
+- Row 1089 (Kitty without deflate): still open, cause is bytes, not write-ahead. Raw at 40 MB/s: `tail 2134 ms`,
+  `frames_while_held=0` — one raw frame is ~28 MB (`bytes_per_key` 298k), and the ticked `DrainSink` moves at most
+  16 KiB per 1 ms tick (≤ 16 MB/s whatever the rate), so one frame takes ~2 s to drain. At a free drain raw tails in
+  55 ms but fails `bytes_per_frame_held<=512KiB`. The three red `held_key` tests are all raw Kitty (the known gap):
+  `held_j_stops_on_release_pixel`, `held_j_stops_on_release_pixel_free`, `j_then_journal_opens_at_once_pixel`. Pacing cannot shrink a frame; that is G-pixel-mem / 46d.
+- Row 1095: stays a question. The fixture tails pass; his feel in Ghostty / VS Code / Zed is his to judge.
+- Harness finding: the ticked drain's "40 MB/s" is ≤ 16 MB/s in fact (pipe/tick). Not changed: it would move
+  every earlier reading. Noted in TESTING.md.
+- `g_after_idle` now runs fenced with an in-memory sink that answers at once (his terminals answer DSR). Unfenced,
+  the 16 ms cap delays a frame that follows within 16 ms (measured 24–36 ms before the change). Baseline at the
+  parent commit, same day: 12.5–14.6 ms (3 runs); this branch 10.8–13.4 ms (5 runs).
+- Unverified: tmux (answers DSR itself — documented on `answers_dsr`); a fence answer reaching `$EDITOR` (mitigated
+  by settling owed fences before a handover, no pty test); feel in his terminals.
+- Test change: `the_ui_thread_never_waits_on_a_job` now allows `recv_timeout` only as `self.receiver.recv_timeout`
+  (the wake channel, used by `next_wake_by`), not on any job.

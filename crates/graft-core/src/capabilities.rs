@@ -214,6 +214,11 @@ pub struct Capabilities {
     /// own id, in a fenced round, on a terminal with Kitty graphics. `false`
     /// wherever detection did not ask. Kitty uploads may then go deflated.
     pub kitty_deflate: bool,
+    /// Answered the startup device status query (`CSI 5 n` → `CSI 0 n`).
+    /// Only then does every frame end with a fence the loop waits on
+    /// (DESIGN.md §4.7, ADR-0054); `false` wherever not probed. Inside tmux,
+    /// tmux answers it itself.
+    pub answers_dsr: bool,
     /// `DA1` listed parameter 4.
     pub sixel: Supported,
     /// iTerm2 inline images. Environment hint only — iTerm2's inline-image

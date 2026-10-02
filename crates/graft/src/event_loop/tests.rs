@@ -10,7 +10,7 @@ use ratatui::{TerminalOptions, Viewport};
 use super::graphics::{Graphics, GraphicsReplies, NoReplies};
 use super::headless::headless_settled;
 use super::outside::Outside;
-use super::running::{END_SYNCHRONIZED_UPDATE, draw, prefetch, pump_with};
+use super::running::{END_SYNCHRONIZED_UPDATE, Screen, draw, prefetch, pump_with};
 use super::*;
 use crate::history::Phase;
 use crate::jobs::Dispatch;
@@ -70,10 +70,20 @@ impl Dispatch for Recorded {
 ///
 /// Every scripted wake is already queued, so `waiting` says `true` —
 /// unless `idle` says how many times it answers `false` first.
+///
+/// Time is real only where the loop waits with a deadline (the pacer's,
+/// ADR-0054): a wake that was not there at first (`idle[i] > 0`) arrives
+/// after the frame before it is drawn, so `next_wake_by` lets the deadline
+/// pass instead of handing it over early; so does an empty script.
 struct ScriptedWakes {
     remaining: std::iter::Peekable<std::vec::IntoIter<Wake>>,
     /// `idle[i]`: `waiting` calls that find nothing before wake `i`.
     idle: std::collections::VecDeque<usize>,
+    /// `later[i]`: wake `i` arrives only once a frame is drawn after the
+    /// wake before it was taken (`idle[i]` was not 0).
+    later: std::collections::VecDeque<bool>,
+    /// A frame was drawn since the last wake was taken.
+    drawn: bool,
     asked: usize,
 }
 
@@ -96,16 +106,36 @@ impl ScriptedWakes {
     fn idle(wakes: Vec<Wake>, idle: Vec<usize>) -> Self {
         Self {
             remaining: wakes.into_iter().peekable(),
+            later: idle.iter().map(|&looks| looks > 0).collect(),
             idle: idle.into(),
+            drawn: false,
             asked: 0,
         }
+    }
+
+    fn hand_out(&mut self) -> Option<Wake> {
+        self.idle.pop_front();
+        self.later.pop_front();
+        self.drawn = false;
+        self.remaining.next()
     }
 }
 
 impl Wakes for ScriptedWakes {
     fn next_wake(&mut self) -> Option<Wake> {
-        self.idle.pop_front();
-        self.remaining.next()
+        self.hand_out()
+    }
+
+    fn next_wake_by(&mut self, deadline: std::time::Instant) -> Waited {
+        let arrived = self.remaining.peek().is_some()
+            && (self.drawn || !self.later.front().copied().unwrap_or(false));
+        if !arrived {
+            // Nothing comes before the deadline: let it pass, as the
+            // channel's `recv_timeout` would.
+            std::thread::sleep(deadline.saturating_duration_since(std::time::Instant::now()));
+            return Waited::TimedOut;
+        }
+        self.hand_out().map_or(Waited::Ended, Waited::Woke)
     }
 
     fn waiting(&mut self) -> bool {
@@ -121,6 +151,12 @@ impl Wakes for ScriptedWakes {
 
     fn joining_waiting(&mut self) -> bool {
         self.waiting() && self.remaining.peek().is_some_and(joins_frame)
+    }
+
+    fn mark(&mut self, phase: super::Phase) {
+        if phase == super::Phase::Drawn {
+            self.drawn = true;
+        }
     }
 }
 
@@ -192,12 +228,14 @@ fn pixel_run(wakes: Vec<Wake>, replies: Vec<Vec<u8>>) -> (Vec<String>, String) {
     let (mut session, state) = at_pixel_tier();
     let mut graphics = Graphics::new(ScriptedReplies(replies.into()), &session.capabilities);
     let exit = pump_with(
-        &mut terminal,
+        Screen {
+            terminal: &mut terminal,
+            graphics: &mut graphics,
+        },
         &mut ScriptedWakes::spaced(wakes),
         &Recorded::default(),
         &mut session,
         state,
-        &mut graphics,
         Outside::default(),
         &mut crate::trace::Tracer::off(),
     )
@@ -231,12 +269,14 @@ fn pixel_flushes(wakes: Vec<Wake>) -> (u64, Vec<String>) {
     let (mut session, state) = at_pixel_tier();
     let mut graphics = Graphics::new(NoReplies, &session.capabilities);
     pump_with(
-        &mut terminal,
+        Screen {
+            terminal: &mut terminal,
+            graphics: &mut graphics,
+        },
         &mut ScriptedWakes::new(wakes),
         &Recorded::default(),
         &mut session,
         state,
-        &mut graphics,
         Outside::default(),
         &mut crate::trace::Tracer::off(),
     )
@@ -364,12 +404,14 @@ fn forced_pixels_on_a_silent_terminal_attempt_kitty_and_f3_recovers() {
     state.settled_tier = Some(session.rendering.tier);
     let mut graphics = Graphics::new(NoReplies, &session.capabilities);
     pump_with(
-        &mut terminal,
+        Screen {
+            terminal: &mut terminal,
+            graphics: &mut graphics,
+        },
         &mut ScriptedWakes::spaced(vec![key(KeyPress::plain(KeyCode::Function(3))), quit_key()]),
         &Recorded::default(),
         &mut session,
         state,
-        &mut graphics,
         Outside::default(),
         &mut crate::trace::Tracer::off(),
     )
@@ -1178,12 +1220,14 @@ fn prefetch_run(state: AppState, wakes: Vec<Wake>, idle: Vec<usize>) -> (u64, u6
     let (mut session, _) = at_pixel_tier();
     let mut graphics = Graphics::new(NoReplies, &session.capabilities);
     pump_with(
-        &mut terminal,
+        Screen {
+            terminal: &mut terminal,
+            graphics: &mut graphics,
+        },
         &mut ScriptedWakes::idle(wakes, idle),
         &Recorded::default(),
         &mut session,
         state,
-        &mut graphics,
         Outside::default(),
         &mut crate::trace::Tracer::off(),
     )
@@ -1316,12 +1360,21 @@ fn the_ui_thread_never_waits_on_a_job() {
         .split_once("#[cfg(test)]")
         .expect("this module has a test section");
 
-    for forbidden in [".join()", "recv_timeout", "wait_timeout", "thread::sleep"] {
+    for forbidden in [".join()", "wait_timeout", "thread::sleep"] {
         assert!(
             !code.contains(forbidden),
             "the loop must never wait on a job, but it mentions `{forbidden}`"
         );
     }
+    // One timed wait is allowed: on the loop's own wake channel, which any
+    // key, job or signal ends, while the pacer holds a frame (ADR-0054). It
+    // is `recv` with a deadline, not a wait on any one job.
+    let timed = code.matches("recv_timeout").count();
+    let on_the_wake_channel = code.matches("self.receiver.recv_timeout").count();
+    assert_eq!(
+        timed, on_the_wake_channel,
+        "the loop must never wait on a job: a `recv_timeout` not on the wake channel"
+    );
 }
 
 #[test]
@@ -1451,5 +1504,6 @@ fn a_failed_clipboard_write_ends_the_loop_with_its_error() {
     assert_eq!(error.to_string(), "the terminal went away");
 }
 
+mod pace;
 mod perf_trace;
 mod pixel_scroll;

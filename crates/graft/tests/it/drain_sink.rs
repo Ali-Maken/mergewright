@@ -8,14 +8,25 @@
 //!
 //! Kitty transmits are found as the bytes pass ([`DrainSink::kitty_transmits`]),
 //! from the command headers only, across write boundaries.
+//!
+//! It can answer the loop's fences (ADR-0054) as a terminal does
+//! ([`DrainSink::answering_fences`]): each `CSI 5 n` is answered once the
+//! drain has passed its last byte, never when it is written.
 
+use std::collections::VecDeque;
 use std::io::{self, Write};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError, Weak};
 use std::thread;
 use std::time::{Duration, Instant};
 
-/// How often the drain thread wakes to empty the pipe.
+/// How often the drain thread wakes to empty the pipe. It moves at most a
+/// pipeful per tick, so a rate above `capacity / DRAIN_TICK` (16 MB/s for a
+/// 16 KiB pipe, less where a 1 ms sleep oversleeps) drains no faster.
 const DRAIN_TICK: Duration = Duration::from_millis(1);
+
+/// The rate of a terminal that never falls behind: every byte is drained as
+/// it is written, with no tick (m8 G-pace J1 "free").
+pub(crate) const FREE: u64 = u64::MAX;
 
 /// The longest Kitty control part kept while it is read; real ones are under
 /// 100 bytes. Past this the header is cut, never the count.
@@ -37,11 +48,20 @@ pub(crate) struct KittyTransmit {
 #[derive(Clone)]
 pub(crate) struct DrainSink(Arc<Shared>);
 
+/// What the terminal does when the drain reads a fence: sends the loop its
+/// answer.
+pub(crate) type Answer = Box<dyn FnMut() + Send>;
+
 struct Shared {
     state: Mutex<State>,
+    /// Set by [`DrainSink::answering_fences`]; called by the drain thread,
+    /// never while `state` is held.
+    answer: Mutex<Option<Answer>>,
     /// Signalled whenever the drain makes room.
     room: Condvar,
     capacity: usize,
+    /// Rate [`FREE`]: the writer drains its own bytes; there is no thread.
+    free: bool,
 }
 
 struct State {
@@ -55,6 +75,9 @@ struct State {
     last_activity: Instant,
     scan: Scan,
     transmits: Vec<KittyTransmit>,
+    fence: FenceScan,
+    /// Offsets one past each fence's last byte, not yet drained past.
+    fences: VecDeque<u64>,
 }
 
 impl State {
@@ -80,10 +103,17 @@ impl DrainSink {
                 last_activity: Instant::now(),
                 scan: Scan::default(),
                 transmits: Vec::new(),
+                fence: FenceScan::default(),
+                fences: VecDeque::new(),
             }),
+            answer: Mutex::new(None),
             room: Condvar::new(),
             capacity: capacity.max(1),
+            free: bytes_per_second == FREE,
         });
+        if shared.free {
+            return DrainSink(shared);
+        }
         let weak = Arc::downgrade(&shared);
         // The thread holds only a `Weak`: it stops once every handle is gone.
         let spawned = thread::Builder::new()
@@ -122,6 +152,17 @@ impl DrainSink {
         state.buffered == 0 && state.last_activity.elapsed() >= quiet
     }
 
+    /// Answer every fence (`CSI 5 n`) from now on: `answer` runs on the
+    /// drain thread once per fence, when the drain passes its last byte.
+    pub(crate) fn answering_fences(&self, answer: impl FnMut() + Send + 'static) {
+        *self.0.answer.lock().unwrap_or_else(PoisonError::into_inner) = Some(Box::new(answer));
+    }
+
+    /// Fences written so far.
+    pub(crate) fn fences_written(&self) -> u64 {
+        lock(&self.0).fence.seen
+    }
+
     /// Every Kitty transmit seen so far, in stream order.
     pub(crate) fn kitty_transmits(&self) -> Vec<KittyTransmit> {
         lock(&self.0).transmits.clone()
@@ -155,12 +196,38 @@ fn drain(shared: &Weak<Shared>, rate: u64) {
             continue;
         }
         credit -= moved as u128 * NANOS;
-        state.buffered -= moved;
-        let total = state.drained() + moved as u64;
-        state.progress.push((total, now));
-        state.last_activity = now;
+        let read = drained(&mut state, moved, now);
         drop(state);
         shared.room.notify_all();
+        answer(&shared, read);
+    }
+}
+
+/// `moved` more bytes drained at `now`: returns how many fences that read.
+fn drained(state: &mut State, moved: usize, now: Instant) -> usize {
+    state.buffered -= moved;
+    let total = state.drained() + moved as u64;
+    state.progress.push((total, now));
+    state.last_activity = now;
+    let read = state.fences.partition_point(|&end| end <= total);
+    state.fences.drain(..read);
+    read
+}
+
+/// The terminal answers `read` fences. Never called while `state` is held.
+fn answer(shared: &Shared, read: usize) {
+    if read == 0 {
+        return;
+    }
+    if let Some(answer) = shared
+        .answer
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .as_mut()
+    {
+        for _ in 0..read {
+            answer();
+        }
     }
 }
 
@@ -184,17 +251,58 @@ impl Write for PipeWriter {
             written,
             scan,
             transmits,
+            fence,
+            fences,
             ..
         } = &mut *state;
         scan.feed(*written, &buf[..taken], transmits);
+        fence.feed(*written, &buf[..taken], fences);
         state.buffered += taken;
         state.written += taken as u64;
         state.last_activity = Instant::now();
+        if shared.free {
+            let read = drained(&mut state, taken, Instant::now());
+            drop(state);
+            answer(shared, read);
+        }
         Ok(taken)
     }
 
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
+    }
+}
+
+/// The loop's fence (`graft_term::write_fence`).
+const FENCE: &[u8] = b"\x1b[5n";
+
+/// Finds fences as the bytes pass, across write boundaries. A fence's bytes
+/// never occur inside a Kitty payload (base64) or text (escaped), so a plain
+/// match is exact.
+#[derive(Default)]
+pub(crate) struct FenceScan {
+    /// How much of [`FENCE`] the last bytes matched.
+    matched: usize,
+    seen: u64,
+}
+
+impl FenceScan {
+    /// Pushes onto `out` the offset one past each fence's last byte;
+    /// `base` is the offset of `bytes[0]`.
+    pub(crate) fn feed(&mut self, base: u64, bytes: &[u8], out: &mut VecDeque<u64>) {
+        for (index, &byte) in bytes.iter().enumerate() {
+            // A miss restarts the match, at this byte if it is an `ESC`.
+            self.matched = if byte == FENCE[self.matched] {
+                self.matched + 1
+            } else {
+                usize::from(byte == FENCE[0])
+            };
+            if self.matched == FENCE.len() {
+                self.matched = 0;
+                self.seen += 1;
+                out.push_back(base + index as u64 + 1);
+            }
+        }
     }
 }
 
@@ -408,5 +516,50 @@ mod tests {
             "a=T, no-a first chunk, a=t; not m= continuations, a=p, a=d; s= and o=z read"
         );
         wait_quiet(&sink);
+    }
+
+    /// A fence is answered once the drain has passed its last byte, never
+    /// when written; one cut across two writes is still one fence; a cursor
+    /// move that starts like one is not.
+    #[test]
+    fn answers_each_fence_once_drained_past() {
+        let sink = DrainSink::new(64, 20_000);
+        let answers = Arc::new(Mutex::new(Vec::new()));
+        let log = Arc::clone(&answers);
+        sink.answering_fences(move || {
+            log.lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .push(Instant::now());
+        });
+        let mut writer = sink.writer();
+        let filler = "x".repeat(400);
+        let stream = [
+            format!("{filler}\x1b[5;1H\x1b["),
+            format!("5n{filler}"),
+            "\x1b[5n".to_owned(),
+        ];
+        let mut ends = Vec::new();
+        for part in &stream {
+            writer
+                .write_all(part.as_bytes())
+                .unwrap_or_else(|why| panic!("{why}"));
+            if part.contains("5n") {
+                ends.push(sink.written());
+            }
+        }
+        let ends = [ends[0] - filler.len() as u64, ends[1]];
+        wait_quiet(&sink);
+        assert_eq!(sink.fences_written(), 2);
+        let answered = answers
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        assert_eq!(answered.len(), 2, "one answer per fence");
+        for (at, end) in answered.iter().zip(ends) {
+            let passed = sink
+                .drained_at(end)
+                .unwrap_or_else(|| panic!("drained past {end}"));
+            assert!(*at >= passed, "answered only once read");
+        }
     }
 }

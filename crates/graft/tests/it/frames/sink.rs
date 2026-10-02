@@ -1,11 +1,15 @@
 //! The in-memory terminal ([`Sink`]) and the parse of what it was sent.
 
+use std::collections::VecDeque;
 use std::io::{self, Write};
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex, PoisonError};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
-use crate::drain_sink::DrainSink;
-use crate::frame_trace::WriteClock;
+use graft::event_loop::Wake;
+
+use crate::drain_sink::{DrainSink, FenceScan};
+use crate::frame_trace::{Posted, WriteClock};
 
 /// The terminal: keeps every byte it is sent, and only copies them.
 ///
@@ -28,6 +32,9 @@ struct Log {
     clock: WriteClock,
     /// [`Sink::draining`]: every write goes here and no byte is kept.
     drain: Option<Box<dyn Write + Send>>,
+    /// [`Sink::answering`]: fences found as they are written, answered at
+    /// once on the loop's channel.
+    answer: Option<(FenceScan, Sender<Posted>)>,
 }
 
 /// A new chunk's capacity, unless one write is bigger.
@@ -51,6 +58,16 @@ impl Sink {
             drain: Some(Box::new(drain.writer())),
             ..Log::default()
         })))
+    }
+
+    /// Answers every fence (`CSI 5 n`) the moment it is written, as a
+    /// terminal that keeps up does (ADR-0054): a `Wake::Fence` on `post`.
+    /// Without it the loop sees a terminal that never answers DSR, and caps
+    /// frames at one per 16 ms.
+    pub(super) fn answering(self, post: Sender<Posted>) -> Self {
+        self.0.lock().unwrap_or_else(PoisonError::into_inner).answer =
+            Some((FenceScan::default(), post));
+        self
     }
 
     /// Time spent inside `write` so far; zero unless timed.
@@ -235,7 +252,21 @@ impl Write for Sink {
             len,
             clock,
             drain,
+            answer,
         } = &mut *log;
+        if let Some((scan, post)) = answer {
+            let mut fences = VecDeque::new();
+            scan.feed(*len as u64, buf, &mut fences);
+            for _ in fences {
+                let fence = Posted {
+                    at: Instant::now(),
+                    wake: Wake::Fence,
+                };
+                // A failed send means the loop has ended and dropped its
+                // end: nothing waits for this answer any more.
+                if post.send(fence).is_err() {}
+            }
+        }
         if let Some(drain) = drain {
             clock.time(|| drain.write_all(buf))?;
             *len += buf.len();

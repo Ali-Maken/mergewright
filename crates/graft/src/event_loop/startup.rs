@@ -8,7 +8,7 @@ use std::sync::mpsc::Sender;
 use graft_core::capabilities::Supported;
 use graft_term::Transport;
 use graft_term::detect::{self, TtyHost};
-use graft_term::input::InputMux;
+use graft_term::input::{FenceAnswers, InputMux, Inputs};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 
@@ -17,7 +17,7 @@ use super::headless::run_headless;
 use super::outside::{Handover, Outside};
 use super::redetect::Redetector;
 use super::row_clear::RowClear;
-use super::running::pump_with;
+use super::running::{Screen, pump_with};
 use super::{ChannelWakes, Exit, Wake, input, opening_repository, signals};
 
 use crate::crash;
@@ -103,10 +103,6 @@ fn open_session() -> io::Result<TerminalSession> {
 /// The terminal is set up before the loop and restored after it, in that
 /// order, whatever happens in between — including a panic, which the hook
 /// handles first (`crate::crash`).
-#[expect(
-    clippy::too_many_lines,
-    reason = "one ordered setup-run-teardown sequence; splitting it hides the order that matters"
-)]
 pub fn run(startup: Startup) -> io::Result<Exit> {
     // Taken apart here: `run` consumes the startup facts, and the two halves
     // are used at opposite ends of the function.
@@ -154,17 +150,15 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     let jobs = JobRunner::with_default_size(sender.clone(), repos)?;
     let redetector = start_redetector(&environment, &mux, &settled, &sender)?;
     let resizes = signals::watch_resizes(sender.clone(), redetector.clone())?;
-    // The frame trace (`crate::trace`): opened before the forwarder, which
-    // stamps keys only when there is a trace to stamp them for.
-    let trace::Opened {
+    let Listening {
+        forwarder,
         mut tracer,
-        meter,
-        stamps,
-    } = Tracer::from_env();
-    let forwarder = input::spawn_reader(inputs, sender, redetector, stamps)?;
+        out,
+        fences,
+    } = listen(&mux, inputs, sender, redetector, &settled)?;
 
     let (mut terminal, state) = terminal_and_state(
-        TerminalOut::for_meter(meter),
+        out,
         &jobs,
         &repo_path,
         &settled,
@@ -175,26 +169,19 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     let mut graphics = Graphics::new(mux.waiter(), &settled.capabilities)
         .with_transport(Transport::for_tmux(&settled.capabilities.tmux));
     let outcome = pump_with(
-        &mut terminal,
+        Screen {
+            terminal: &mut terminal,
+            graphics: &mut graphics,
+        },
         &mut wakes,
         &jobs,
         &mut settled,
         state,
-        &mut graphics,
-        Outside {
-            common_dir: common_dir.as_deref(),
-            handover: Some(Handover {
-                session: &session,
-                mux: &mux,
-                // The common directory, not the worktree's own:
-                // `crate::layout` already keeps Graft's files there, and the
-                // message file is written and read back within one key press.
-                git_dir: common_dir.as_deref(),
-                workdir: workdir.as_deref(),
-            }),
-        },
+        outside(&session, &mux, common_dir.as_deref(), workdir.as_deref()),
         &mut tracer,
     );
+    // Answers from here on are for nobody; they go back to being replies.
+    drop(fences);
     let outcome = hand_back_input(&mux, forwarder, wakes, outcome);
     // Dropped before the restore so that its own teardown (it shows the cursor
     // it hid) goes out while the session is still in charge of the terminal.
@@ -203,13 +190,87 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     // Stop the pool before the terminal goes back, so that a job still writing
     // its result cannot outlive the screen it was writing for.
     let shutdown = jobs.shutdown(jobs::SHUTDOWN_GRACE);
+    wind_down(&session, shutdown, [signals, resizes], outcome)
+}
 
+/// What the loop may reach outside itself: the repository's directories,
+/// and the terminal to hand to `$EDITOR` or a mergetool.
+fn outside<'a>(
+    session: &'a TerminalSession,
+    mux: &'a InputMux,
+    common_dir: Option<&'a std::path::Path>,
+    workdir: Option<&'a std::path::Path>,
+) -> Outside<'a> {
+    Outside {
+        common_dir,
+        handover: Some(Handover {
+            session,
+            mux,
+            // The common directory, not the worktree's own: `crate::layout`
+            // already keeps Graft's files there, and the message file is
+            // written and read back within one key press.
+            git_dir: common_dir,
+            workdir,
+        }),
+    }
+}
+
+/// The loop's input side: the key forwarder, the frame trace and the fence
+/// listener.
+struct Listening {
+    forwarder: input::Forwarder,
+    tracer: Tracer,
+    /// The terminal's writer, metered when tracing.
+    out: TerminalOut,
+    /// Held for the loop's life; `None` when the terminal is never fenced.
+    fences: Option<FenceAnswers>,
+}
+
+/// Start forwarding input to the loop. The frame trace (`crate::trace`) is
+/// opened first: the forwarder stamps keys only when there is a trace to
+/// stamp them for. Fence answers (ADR-0054) wake the loop straight from the
+/// reader thread; a terminal that never answered the startup DSR is never
+/// fenced.
+fn listen(
+    mux: &InputMux,
+    inputs: Inputs,
+    sender: Sender<Wake>,
+    redetector: Option<Redetector>,
+    settled: &Session,
+) -> io::Result<Listening> {
+    let trace::Opened {
+        tracer,
+        meter,
+        stamps,
+    } = Tracer::from_env();
+    let fences = settled
+        .capabilities
+        .answers_dsr
+        .then(|| answer_fences(mux, sender.clone()));
+    let forwarder = input::spawn_reader(inputs, sender, redetector, stamps)?;
+    Ok(Listening {
+        forwarder,
+        tracer,
+        out: TerminalOut::for_meter(meter),
+        fences,
+    })
+}
+
+/// The run is over and the pool stopped: end the signal threads, give the
+/// terminal back, and pick the error the process exits on.
+fn wind_down(
+    session: &TerminalSession,
+    shutdown: Shutdown,
+    watchers: [signal_hook::iterator::Handle; 2],
+    outcome: io::Result<Exit>,
+) -> io::Result<Exit> {
     // Let the signal threads end. The mux's reader is the process's, not
     // this run's (it is blocked waiting on the terminal until the user
     // types), so it is left to die with the process. It holds nothing that
     // matters.
-    signals.close();
-    resizes.close();
+    for watcher in watchers {
+        watcher.close();
+    }
 
     // Restore explicitly rather than leaving it to `Drop`, so a restore
     // failure can be returned instead of merely printed.
@@ -219,6 +280,14 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     // on; a failure to report stalled jobs is folded in afterwards so it
     // still turns into `ExitCode::FAILURE` (main.rs) instead of vanishing.
     finish(outcome, restored).and_then(|exit| stalled_report.map(|()| exit))
+}
+
+/// Send every fence answer the mux reads to the loop as a [`Wake::Fence`],
+/// until the loop has gone.
+fn answer_fences(mux: &InputMux, wakes: Sender<Wake>) -> FenceAnswers {
+    mux.answer_fences(Box::new(move |answers| {
+        (0..answers).all(|_| wakes.send(Wake::Fence).is_ok())
+    }))
 }
 
 /// This run is done reading (ticket m1-the-graph/35c). A key typed from here

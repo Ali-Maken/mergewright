@@ -7,6 +7,7 @@ One line per public item. Update when a public item changes.
 - `input` (mod) — the one reader of stdin: keys to events, replies to waiters.
 - `iterm2` (mod) — iTerm2 inline images (OSC 1337): bands re-sent per frame, PNG encoded once per (strip, crop, cells).
 - `kitty` (mod) — Kitty graphics protocol: strips to bytes, error replies back (ADR-0012 rules).
+- `pace` (mod) — the frame's bracket and fence (ADR-0054, m8 G-pace). Re-exported: `SYNC_BEGIN`/`SYNC_END` (DEC 2026 begin/end bytes), `write_fence` (writes `CSI 5 n`, no flush), `fence_answers` (count of `CSI 0 n` in reply bytes).
 - `sanitize` (mod) — repo-derived text made safe to draw.
 - `tmux` (mod) — getting image sequences through tmux: the DCS passthrough wrapper.
 - `Transport`, `tmux_passthrough` (re-exports) — see `tmux`.
@@ -24,7 +25,7 @@ One line per public item. Update when a public item changes.
 - `Environment` (struct) — environment hints; `Environment::from_process`.
 - `Environment::is_probeable` (fn) — whether queries may be written at all (a tty, not `TERM=dumb`).
 - `Environment::probe_budget` (fn) — the probe deadline for this terminal (local or SSH).
-- `detect` (fn) — probe the terminal and return `Capabilities`; never reads stdin itself. Fills `kitty_deflate` from an `o=z` query (`i=32`) in the same write; replies matched by id.
+- `detect` (fn) — probe the terminal and return `Capabilities`; never reads stdin itself. Fills `kitty_deflate` from an `o=z` query (`i=32`) in the same write; replies matched by id. Fills `answers_dsr` from a `CSI 5 n` in the first round, before the DA1 fence (m8 G-pace); no new round.
 - `remeasure_cell_size` (fn) — after a resize: `CSI 16 t`, then `TIOCGWINSZ`, else the previous size marked `Assumed`.
 - `requery_theme` (fn) — on focus regain: `OSC 11`; silence returns the previous hint unchanged.
 
@@ -40,6 +41,9 @@ One line per public item. Update when a public item changes.
 - `ReplyWaiter` (struct) — terminal replies for one asker, as raw bytes.
 - `ReplyWaiter::read` (fn) — copy reply bytes into a buffer, waiting until a deadline; `Ok(0)` when none came.
 - `Inputs` (type) — `Receiver<io::Result<Event>>`: key/mouse/paste/focus events in arrival order; an `Err` is the last item.
+- `InputMux::answer_fences` (fn) — `(FenceListener) -> FenceAnswers`: replies holding a fence answer (`CSI 0 n`) go to the listener (called on the reader thread with the count), not to waiters; a listener returning `false` is removed (m8 G-pace).
+- `FenceListener` (type) — `Box<dyn FnMut(usize) -> bool + Send>`.
+- `FenceAnswers` (struct, `#[must_use]`) — the listener's lease: dropping it removes that listener, and fence answers are ordinary replies again.
 - `SEQUENCE_TIMEOUT` (const) — 50 ms an unfinished escape sequence waits before it is read as keys (lone `Esc`).
 
 ## kitty

@@ -36,8 +36,57 @@ pub type Inputs = Receiver<io::Result<Event>>;
 #[derive(Debug, Clone)]
 pub struct InputMux {
     waiters: Arc<Mutex<Vec<Sender<Vec<u8>>>>>,
+    fence: Arc<Mutex<FenceSlot>>,
     outlet: Arc<Mutex<Outlet>>,
     gate: Arc<Gate>,
+}
+
+/// Told how many fence answers (`CSI 0 n`) one reply held; `false` once
+/// nobody is listening any more, which takes it out of the slot.
+pub type FenceListener = Box<dyn FnMut(usize) -> bool + Send>;
+
+/// Where fence answers go while a loop paces its frames (ADR-0054): one
+/// listener at most, the run that installed it last.
+#[derive(Default)]
+struct FenceSlot {
+    listener: Option<(u64, FenceListener)>,
+    installed: u64,
+}
+
+impl std::fmt::Debug for FenceSlot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FenceSlot")
+            .field("listening", &self.listener.as_ref().map(|(id, _)| *id))
+            .field("installed", &self.installed)
+            .finish()
+    }
+}
+
+impl FenceSlot {
+    fn lock(slot: &Mutex<Self>) -> std::sync::MutexGuard<'_, Self> {
+        // Every change under the lock is one assignment, so a panic while it
+        // was held (a listener's own) cannot have left it half-changed.
+        slot.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+}
+
+/// The fence listener's lifetime: dropping it stops fence answers reaching
+/// the listener, and they go back to being ordinary replies.
+#[derive(Debug)]
+#[must_use = "dropping it at once uninstalls the listener"]
+pub struct FenceAnswers {
+    slot: Arc<Mutex<FenceSlot>>,
+    id: u64,
+}
+
+impl Drop for FenceAnswers {
+    fn drop(&mut self) {
+        let mut slot = FenceSlot::lock(&self.slot);
+        // A later run may have installed its own since; that one stays.
+        if slot.listener.as_ref().is_some_and(|(id, _)| *id == self.id) {
+            slot.listener = None;
+        }
+    }
 }
 
 /// Where decoded events go: the current [`Inputs`], or a queue for the next
@@ -103,18 +152,22 @@ impl InputMux {
         let (gate, wake) = Gate::new()?;
         let mux = Self {
             waiters: Arc::new(Mutex::new(Vec::new())),
+            fence: Arc::new(Mutex::new(FenceSlot::default())),
             outlet: Arc::new(Mutex::new(Outlet {
                 sender: Some(sender),
                 held: Vec::new(),
             })),
             gate: Arc::new(gate),
         };
-        let waiters = Arc::clone(&mux.waiters);
-        let outlet = Arc::clone(&mux.outlet);
+        let routes = Routes {
+            waiters: Arc::clone(&mux.waiters),
+            fence: Arc::clone(&mux.fence),
+            outlet: Arc::clone(&mux.outlet),
+        };
         let gate = Arc::clone(&mux.gate);
         thread::Builder::new()
             .name("graft-input".to_owned())
-            .spawn(move || read_until_done(File::from(input), &waiters, &outlet, &gate, &wake))?;
+            .spawn(move || read_until_done(File::from(input), &routes, &gate, &wake))?;
         Ok((mux, inputs))
     }
 
@@ -199,6 +252,25 @@ impl InputMux {
             pending: Vec::new(),
         }
     }
+
+    /// Send every fence answer (`CSI 0 n`, ADR-0054) to `listener` instead
+    /// of to the waiters, until the returned guard is dropped or the
+    /// listener says `false`. Called from the reader thread, so it must not
+    /// block: a channel send is the intended body.
+    ///
+    /// Before a listener is installed, a fence answer is a reply like any
+    /// other — the startup probe reads its `CSI 5 n` answer through a
+    /// waiter. A later call replaces the listener (the run that paces now).
+    pub fn answer_fences(&self, listener: FenceListener) -> FenceAnswers {
+        let mut slot = FenceSlot::lock(&self.fence);
+        slot.installed += 1;
+        let id = slot.installed;
+        slot.listener = Some((id, listener));
+        FenceAnswers {
+            slot: Arc::clone(&self.fence),
+            id,
+        }
+    }
 }
 
 /// Terminal replies for one asker, as the bytes the terminal sent.
@@ -229,13 +301,14 @@ impl ReplyWaiter {
     }
 }
 
-fn read_until_done(
-    mut input: File,
-    waiters: &Mutex<Vec<Sender<Vec<u8>>>>,
-    outlet: &Mutex<Outlet>,
-    gate: &Gate,
-    wake: &OwnedFd,
-) {
+/// Where the reader thread sends what it decoded.
+struct Routes {
+    waiters: Arc<Mutex<Vec<Sender<Vec<u8>>>>>,
+    fence: Arc<Mutex<FenceSlot>>,
+    outlet: Arc<Mutex<Outlet>>,
+}
+
+fn read_until_done(mut input: File, routes: &Routes, gate: &Gate, wake: &OwnedFd) {
     let fd = input.as_raw_fd();
     let wake_fd = wake.as_raw_fd();
     let mut decoder = Decoder::new();
@@ -282,11 +355,11 @@ fn read_until_done(
                 }
             },
         };
-        route(&mut finished, waiters, outlet);
+        route(&mut finished, routes);
         if let Some(error) = failure {
             // Delivered, not retried: there is no input any more, and this
             // is the reader's last word.
-            Outlet::lock(outlet).deliver(Err(error));
+            Outlet::lock(&routes.outlet).deliver(Err(error));
             break;
         }
     }
@@ -298,16 +371,16 @@ fn read_until_done(
     gate.reader_finished();
 }
 
-/// Send each decoded item where it goes.
-fn route(
-    decoded: &mut Vec<Decoded>,
-    waiters: &Mutex<Vec<Sender<Vec<u8>>>>,
-    outlet: &Mutex<Outlet>,
-) {
+/// Send each decoded item where it goes: events to the outlet, fence
+/// answers to the fence listener when there is one, other replies to every
+/// waiter.
+fn route(decoded: &mut Vec<Decoded>, routes: &Routes) {
     for item in decoded.drain(..) {
         match item {
-            Decoded::Event(event) => Outlet::lock(outlet).deliver(Ok(event)),
-            Decoded::Reply(bytes) => waiters
+            Decoded::Event(event) => Outlet::lock(&routes.outlet).deliver(Ok(event)),
+            Decoded::Reply(bytes) if to_fence_listener(&bytes, &routes.fence) => {}
+            Decoded::Reply(bytes) => routes
+                .waiters
                 .lock()
                 // Only pushed to or filtered; see `InputMux::waiter`.
                 .unwrap_or_else(PoisonError::into_inner)
@@ -315,6 +388,26 @@ fn route(
                 .retain(|waiter| waiter.send(bytes.clone()).is_ok()),
         }
     }
+}
+
+/// Hand a reply holding fence answers to the listener; `false` when it holds
+/// none, or nobody is listening (it then goes to the waiters as before).
+fn to_fence_listener(reply: &[u8], fence: &Mutex<FenceSlot>) -> bool {
+    let answers = crate::pace::fence_answers(reply);
+    if answers == 0 {
+        return false;
+    }
+    let mut slot = FenceSlot::lock(fence);
+    let Some((_, listener)) = slot.listener.as_mut() else {
+        return false;
+    };
+    if listener(answers) {
+        return true;
+    }
+    // Its loop has gone. The answer was for that loop's frame; nobody else
+    // asked, so it is dropped with the listener.
+    slot.listener = None;
+    true
 }
 
 /// Wait until the terminal `fd` has something to read, the self-pipe `wake`
