@@ -13,6 +13,14 @@
 //! once: those change every strip, and holding the old ones only wastes
 //! memory until they age out. Scrolling never invalidates.
 //!
+//! The cache is bounded by bytes, not by a count ([`ByteBudget`]): a strip
+//! weighs lanes × cell size, which is 1 MB on one repo and 8 MB on another.
+//! One budget covers all three layers, and the least recently used entry of
+//! any layer goes first. Under it sits a floor, the strips the viewport needs
+//! ([`StripCache::keep_at_least`]): a cache that cannot hold the viewport
+//! rasterises and resends every strip every frame, so the floor wins over the
+//! budget and [`StripCache::minimum_wins`] says when it did.
+//!
 //! Strips are layered (ADR-0053): [`backdrop`](StripCache::backdrop) strips
 //! keyed on layout and one backdrop alpha — no selection, so moving the
 //! cursor never misses one — and [`emphasis`](StripCache::emphasis) images
@@ -42,6 +50,15 @@ use crate::row::Row;
 /// doubles the bytes every miss must encode and send, and the rows a one-row
 /// layout change redraws.
 pub const STRIP_ROWS: usize = 32;
+
+/// The pixel bytes the strip cache may hold across its three layers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ByteBudget(pub usize);
+
+/// The least an entry weighs, whatever its pixels: an emphasis lookup that
+/// paints nothing caches `None`, which holds no pixels but must not make the
+/// cache unbounded. A narrow strip (two lanes at an 8×16 cell) weighs 64 KiB.
+const ENTRY_FLOOR: usize = 64 * 1024;
 
 /// Why every strip was thrown away.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -119,42 +136,73 @@ struct LayerKey {
 /// [`lit_hash`].
 type PaintKey = (LayerKey, u64);
 
-/// A bounded map whose least recently used entry goes first. A linear scan
-/// to evict: capacity is a few viewports of strips, a dozen or so, where a
-/// scan beats keeping an ordered index up to date on every hit.
+/// A map that knows each entry's weight and last use, so the cache can
+/// drop its least recently used. A linear scan to find that one: a layer
+/// holds a few viewports of strips, a dozen or so, where a scan beats
+/// keeping an ordered index up to date on every hit.
 #[derive(Debug)]
 struct Lru<K, V> {
-    entries: HashMap<K, (V, u64)>,
+    entries: HashMap<K, Entry<V>>,
+    /// Sum of every entry's weight.
+    weight: usize,
+}
+
+#[derive(Debug)]
+struct Entry<V> {
+    value: V,
+    last_used: u64,
+    weight: usize,
 }
 
 impl<K: Copy + Eq + Hash, V: Clone> Lru<K, V> {
     fn new() -> Self {
         Lru {
             entries: HashMap::new(),
+            weight: 0,
         }
     }
 
     /// The value under `key`, marked used at `now`.
     fn touch(&mut self, key: &K, now: u64) -> Option<V> {
-        self.entries.get_mut(key).map(|(value, last_used)| {
-            *last_used = now;
-            value.clone()
+        self.entries.get_mut(key).map(|entry| {
+            entry.last_used = now;
+            entry.value.clone()
         })
     }
 
-    /// Insert at `now`, first evicting the least recently used entry when
-    /// `capacity` are held. Whether one was evicted.
-    fn insert(&mut self, key: K, value: V, now: u64, capacity: usize) -> bool {
-        let evicted = self.entries.len() >= capacity && {
-            let oldest = self
-                .entries
-                .iter()
-                .min_by_key(|(_, (_, last_used))| *last_used)
-                .map(|(key, _)| *key);
-            oldest.is_some_and(|key| self.entries.remove(&key).is_some())
+    /// Insert at `now`, weighing `weight` (never less than [`ENTRY_FLOOR`]).
+    fn insert(&mut self, key: K, value: V, now: u64, weight: usize) {
+        let weight = weight.max(ENTRY_FLOOR);
+        let entry = Entry {
+            value,
+            last_used: now,
+            weight,
         };
-        self.entries.insert(key, (value, now));
-        evicted
+        if let Some(old) = self.entries.insert(key, entry) {
+            self.weight -= old.weight;
+        }
+        self.weight += weight;
+    }
+
+    /// When the least recently used entry was last used.
+    fn oldest(&self) -> Option<u64> {
+        self.entries.values().map(|entry| entry.last_used).min()
+    }
+
+    /// Drop the least recently used entry. Whether there was one.
+    fn evict_oldest(&mut self) -> bool {
+        let oldest = self
+            .entries
+            .iter()
+            .min_by_key(|(_, entry)| entry.last_used)
+            .map(|(key, _)| *key);
+        match oldest.and_then(|key| self.entries.remove(&key)) {
+            Some(entry) => {
+                self.weight -= entry.weight;
+                true
+            }
+            None => false,
+        }
     }
 
     fn contains(&self, key: &K) -> bool {
@@ -163,7 +211,7 @@ impl<K: Copy + Eq + Hash, V: Clone> Lru<K, V> {
 
     /// The bytes every value holds, by `size`.
     fn bytes(&self, size: impl Fn(&V) -> usize) -> usize {
-        self.entries.values().map(|(value, _)| size(value)).sum()
+        self.entries.values().map(|entry| size(&entry.value)).sum()
     }
 
     fn len(&self) -> usize {
@@ -172,14 +220,28 @@ impl<K: Copy + Eq + Hash, V: Clone> Lru<K, V> {
 
     fn clear(&mut self) {
         self.entries.clear();
+        self.weight = 0;
     }
 }
 
-/// A bounded LRU of rasterised strips, private to the pixel renderer.
+/// The layer an eviction takes from.
+#[derive(Clone, Copy)]
+enum Layer {
+    Backdrops,
+    Emphases,
+    Composites,
+}
+
+/// Rasterised strips in three layers under one [`ByteBudget`], private to
+/// the pixel renderer.
 #[derive(Debug)]
 pub struct StripCache {
     strip_rows: usize,
-    capacity: usize,
+    budget: ByteBudget,
+    /// Entries each layer keeps whatever the budget: the viewport's strips.
+    min_strips: usize,
+    /// The last eviction pass stopped at the floor while still over budget.
+    minimum_wins: bool,
     /// Layout-only strips at one backdrop alpha.
     backdrops: Lru<LayerKey, Arc<RasterFrame>>,
     /// Emphasis images; `None` where the selection paints nothing above the
@@ -192,12 +254,16 @@ pub struct StripCache {
 }
 
 impl StripCache {
-    /// A cache of `strip_rows`-row strips holding at most `capacity` of them
-    /// in each layer. Both are raised to at least 1.
-    pub fn new(strip_rows: usize, capacity: usize) -> Self {
+    /// A cache of [`STRIP_ROWS`]-row strips holding at most `budget` pixel
+    /// bytes across its layers, but never fewer than `min_strips` entries in
+    /// a layer (raised to at least 1): the viewport's strips, from
+    /// [`capacity_for`](Self::capacity_for).
+    pub fn with_budget(budget: ByteBudget, min_strips: usize) -> Self {
         StripCache {
-            strip_rows: strip_rows.max(1),
-            capacity: capacity.max(1),
+            strip_rows: STRIP_ROWS,
+            budget,
+            min_strips: min_strips.max(1),
+            minimum_wins: false,
             backdrops: Lru::new(),
             emphases: Lru::new(),
             composites: Lru::new(),
@@ -213,6 +279,29 @@ impl StripCache {
         // A window of `n` rows touches at most ceil(n / strip) + 1 aligned
         // strips when it straddles a boundary.
         (viewport_rows + 2 * buffer_rows).div_ceil(strip_rows) + 1
+    }
+
+    /// The viewport changed size: keep at least `min_strips` entries in each
+    /// layer from now on (raised to at least 1).
+    pub fn keep_at_least(&mut self, min_strips: usize) {
+        self.min_strips = min_strips.max(1);
+        self.shrink();
+    }
+
+    /// The floor [`keep_at_least`](Self::keep_at_least) last set.
+    pub fn min_strips(&self) -> usize {
+        self.min_strips
+    }
+
+    /// The byte budget the cache was made with.
+    pub fn budget(&self) -> ByteBudget {
+        self.budget
+    }
+
+    /// True when the floor held the cache over its budget the last time it
+    /// had to make room: the viewport's strips weigh more than the budget.
+    pub fn minimum_wins(&self) -> bool {
+        self.minimum_wins
     }
 
     /// Rows per strip.
@@ -255,10 +344,10 @@ impl StripCache {
         }
         let frame = Arc::new(rasterise_backdrop(strip, backdrop)?);
         self.stats.rasterised += 1;
-        let evicted = self
-            .backdrops
-            .insert(key, Arc::clone(&frame), self.clock, self.capacity);
-        self.stats.evicted += u64::from(evicted);
+        let weight = frame.pixels.len();
+        self.backdrops
+            .insert(key, Arc::clone(&frame), self.clock, weight);
+        self.shrink();
         Ok(frame)
     }
 
@@ -282,10 +371,9 @@ impl StripCache {
         }
         let image = rasterise_emphasis(strip, sel)?.map(Arc::new);
         self.stats.emphasis_rasterised += 1;
-        let evicted = self
-            .emphases
-            .insert(key, image.clone(), self.clock, self.capacity);
-        self.stats.evicted += u64::from(evicted);
+        let weight = image.as_ref().map_or(0, |image| image.frame.pixels.len());
+        self.emphases.insert(key, image.clone(), self.clock, weight);
+        self.shrink();
         Ok(image)
     }
 
@@ -312,11 +400,55 @@ impl StripCache {
             return Ok(base);
         };
         let frame = Arc::new(composite(&base, &top));
-        let evicted = self
-            .composites
-            .insert(key, Arc::clone(&frame), self.clock, self.capacity);
-        self.stats.evicted += u64::from(evicted);
+        let weight = frame.pixels.len();
+        self.composites
+            .insert(key, Arc::clone(&frame), self.clock, weight);
+        self.shrink();
         Ok(frame)
+    }
+
+    /// Evict least recently used entries, from any layer holding more than
+    /// the floor, until the cache weighs no more than its budget.
+    fn shrink(&mut self) {
+        self.minimum_wins = false;
+        while self.weight() > self.budget.0 {
+            let floor = self.min_strips;
+            let candidates = [
+                (
+                    Layer::Backdrops,
+                    self.backdrops.len(),
+                    self.backdrops.oldest(),
+                ),
+                (Layer::Emphases, self.emphases.len(), self.emphases.oldest()),
+                (
+                    Layer::Composites,
+                    self.composites.len(),
+                    self.composites.oldest(),
+                ),
+            ];
+            let victim = candidates
+                .into_iter()
+                .filter(|(_, len, _)| *len > floor)
+                .filter_map(|(layer, _, oldest)| oldest.map(|oldest| (layer, oldest)))
+                .min_by_key(|(_, oldest)| *oldest)
+                .map(|(layer, _)| layer);
+            let evicted = match victim {
+                Some(Layer::Backdrops) => self.backdrops.evict_oldest(),
+                Some(Layer::Emphases) => self.emphases.evict_oldest(),
+                Some(Layer::Composites) => self.composites.evict_oldest(),
+                None => false,
+            };
+            if !evicted {
+                self.minimum_wins = true;
+                return;
+            }
+            self.stats.evicted += 1;
+        }
+    }
+
+    /// What every layer weighs, floors included.
+    fn weight(&self) -> usize {
+        self.backdrops.weight + self.emphases.weight + self.composites.weight
     }
 
     /// Is this backdrop strip already rasterised? A look, not a use: it
@@ -388,6 +520,7 @@ impl StripCache {
         self.backdrops.clear();
         self.emphases.clear();
         self.composites.clear();
+        self.minimum_wins = false;
         self.stats.flushes += 1;
     }
 

@@ -10,7 +10,7 @@ use graft_core::commit::{Commit, Identity, Timestamp};
 use graft_core::oid::Oid;
 use graft_graph::identity::BranchIdentity;
 use graft_graph::layout::layout;
-use graft_graph::raster::cache::{CacheError, Flush, STRIP_ROWS, StripCache};
+use graft_graph::raster::cache::{ByteBudget, CacheError, Flush, STRIP_ROWS, StripCache};
 use graft_graph::raster::{Backdrop, PlainRow, PlainStrip, Ring, rasterise_backdrop};
 use graft_graph::row::Row;
 use graft_graph::seeds::{BranchSeed, Seeds};
@@ -85,6 +85,12 @@ fn rows(count: usize) -> Vec<Row> {
     layout(&commits, seeds)
 }
 
+/// A cache whose byte budget never binds: what a test about keys and hits
+/// needs. Eviction is the budget tests' business.
+fn roomy(min_strips: usize) -> StripCache {
+    StripCache::with_budget(ByteBudget(usize::MAX), min_strips)
+}
+
 fn width_of(rows: &[Row]) -> usize {
     rows.iter()
         .map(|row| row.lanes.len().max(row.lane + 1))
@@ -131,7 +137,7 @@ fn frame(
 
 #[test]
 fn strips_are_aligned_to_the_strip_height() {
-    let cache = StripCache::new(32, 8);
+    let cache = roomy(8);
     let ranges: Vec<_> = cache.strips_for(40..70).collect();
     assert_eq!(ranges, vec![32..64, 64..96]);
     assert_eq!(cache.strips_for(0..0).count(), 0);
@@ -141,7 +147,7 @@ fn strips_are_aligned_to_the_strip_height() {
 #[test]
 fn scrolling_one_row_rasterises_at_most_one_new_strip_and_scrolling_back_is_a_hit() {
     let rows = rows(400);
-    let mut cache = StripCache::new(STRIP_ROWS, 16);
+    let mut cache = roomy(16);
     frame(&mut cache, &rows, 0..50, &PALETTE, CELL);
     assert_eq!(cache.stats().rasterised, 2);
     for top in 1..=200 {
@@ -168,7 +174,7 @@ fn scrolling_one_row_rasterises_at_most_one_new_strip_and_scrolling_back_is_a_hi
 #[test]
 fn a_cached_strip_is_the_strip_rasterise_draws() {
     let rows = rows(100);
-    let mut cache = StripCache::new(STRIP_ROWS, 4);
+    let mut cache = roomy(4);
     let raster_rows: Vec<PlainRow<'_>> = rows[32..64].iter().map(PlainRow::of).collect();
     let strip = PlainStrip {
         rows: &raster_rows,
@@ -197,14 +203,14 @@ fn a_cached_strip_is_the_strip_rasterise_draws() {
 #[test]
 fn a_theme_change_flushes_and_misses() {
     let rows = rows(100);
-    let mut cache = StripCache::new(STRIP_ROWS, 8);
+    let mut cache = roomy(8);
     frame(&mut cache, &rows, 0..50, &PALETTE, CELL);
     cache.flush(Flush::Theme);
     assert_eq!(cache.len(), 0);
     assert_eq!(cache.resident_bytes(), 0);
     assert_eq!(cache.stats().flushes, 1);
     // Even without the flush, a different palette is a different key.
-    let mut unflushed = StripCache::new(STRIP_ROWS, 8);
+    let mut unflushed = roomy(8);
     frame(&mut unflushed, &rows, 0..50, &PALETTE, CELL);
     frame(&mut unflushed, &rows, 0..50, &OTHER_PALETTE, CELL);
     assert_eq!(unflushed.stats().rasterised, 4);
@@ -213,7 +219,7 @@ fn a_theme_change_flushes_and_misses() {
 #[test]
 fn a_cell_size_change_is_a_different_key() {
     let rows = rows(100);
-    let mut cache = StripCache::new(STRIP_ROWS, 8);
+    let mut cache = roomy(8);
     frame(&mut cache, &rows, 0..50, &PALETTE, CELL);
     frame(&mut cache, &rows, 0..50, &PALETTE, USER_CELL);
     assert_eq!(cache.stats().rasterised, 4);
@@ -227,7 +233,7 @@ fn a_cell_size_change_is_a_different_key() {
 #[test]
 fn a_layout_change_on_one_row_invalidates_only_its_strip() {
     let original = rows(200);
-    let mut cache = StripCache::new(STRIP_ROWS, 16);
+    let mut cache = roomy(16);
     frame(&mut cache, &original, 0..160, &PALETTE, CELL);
     assert_eq!(cache.stats().rasterised, 5);
     let mut changed = original.clone();
@@ -252,10 +258,16 @@ fn a_layout_change_on_one_row_invalidates_only_its_strip() {
     assert_eq!(cache.stats().rasterised, 7);
 }
 
+/// The bytes one full backdrop strip of `rows` weighs at `cell`.
+fn strip_bytes(rows: &[Row], cell: (u32, u32)) -> usize {
+    STRIP_ROWS * cell.1 as usize * width_of(rows) * 2 * cell.0 as usize * 4
+}
+
 #[test]
-fn the_cache_is_bounded_and_evicts_the_least_recently_used() {
+fn the_cache_is_bounded_by_bytes_and_evicts_the_least_recently_used() {
     let rows = rows(400);
-    let mut cache = StripCache::new(STRIP_ROWS, 3);
+    let budget = ByteBudget(3 * strip_bytes(&rows, CELL));
+    let mut cache = StripCache::with_budget(budget, 1);
     frame(&mut cache, &rows, 0..32, &PALETTE, CELL);
     frame(&mut cache, &rows, 32..64, &PALETTE, CELL);
     frame(&mut cache, &rows, 64..96, &PALETTE, CELL);
@@ -263,6 +275,8 @@ fn the_cache_is_bounded_and_evicts_the_least_recently_used() {
     frame(&mut cache, &rows, 96..128, &PALETTE, CELL); // evicts 32..64
     assert_eq!(cache.len(), 3);
     assert_eq!(cache.stats().evicted, 1);
+    assert!(cache.resident_bytes() <= budget.0);
+    assert!(!cache.minimum_wins());
     let before = cache.stats().rasterised;
     frame(&mut cache, &rows, 0..32, &PALETTE, CELL);
     assert_eq!(cache.stats().rasterised, before, "0..32 was recently used");
@@ -274,10 +288,53 @@ fn the_cache_is_bounded_and_evicts_the_least_recently_used() {
     );
 }
 
+/// The same budget holds more narrow strips than wide ones: the cache
+/// weighs strips, it does not count them.
+#[test]
+fn a_budget_holds_more_small_strips_than_big_ones() {
+    let rows = rows(400);
+    let budget = ByteBudget(6 * strip_bytes(&rows, CELL));
+    let mut small = StripCache::with_budget(budget, 1);
+    let mut big = StripCache::with_budget(budget, 1);
+    for top in (0..320).step_by(STRIP_ROWS) {
+        frame(&mut small, &rows, top..top + STRIP_ROWS, &PALETTE, CELL);
+        frame(&mut big, &rows, top..top + STRIP_ROWS, &PALETTE, USER_CELL);
+    }
+    assert_eq!(small.len(), 6);
+    assert!(big.len() < small.len(), "{} user-cell strips", big.len());
+    assert!(!big.is_empty());
+    assert!(small.resident_bytes() <= budget.0 && big.resident_bytes() <= budget.0);
+}
+
+/// A budget too small for the viewport would resend every strip every
+/// frame. The viewport's minimum wins, and says so.
+#[test]
+fn the_viewport_minimum_wins_over_a_budget_too_small() {
+    let rows = rows(400);
+    let mut cache = StripCache::with_budget(ByteBudget(1), 2);
+    frame(&mut cache, &rows, 0..64, &PALETTE, CELL);
+    assert_eq!(cache.len(), 2, "both viewport strips stay");
+    assert!(cache.minimum_wins());
+    let before = cache.stats().rasterised;
+    frame(&mut cache, &rows, 0..64, &PALETTE, CELL);
+    assert_eq!(cache.stats().rasterised, before, "the viewport is all hits");
+    frame(&mut cache, &rows, 64..96, &PALETTE, CELL);
+    assert_eq!(cache.len(), 2);
+    // The viewport grows: the minimum follows it.
+    cache.keep_at_least(3);
+    frame(&mut cache, &rows, 0..96, &PALETTE, CELL);
+    assert_eq!(cache.len(), 3);
+    assert_eq!(cache.min_strips(), 3);
+    // A roomy budget: the minimum is not what holds them.
+    let mut roomy = StripCache::with_budget(ByteBudget(usize::MAX), 2);
+    frame(&mut roomy, &rows, 0..64, &PALETTE, CELL);
+    assert!(!roomy.minimum_wins());
+}
+
 #[test]
 fn a_misaligned_or_oversized_strip_is_refused() {
     let rows = rows(100);
-    let mut cache = StripCache::new(STRIP_ROWS, 4);
+    let mut cache = roomy(4);
     let raster_rows: Vec<PlainRow<'_>> = rows[0..33].iter().map(PlainRow::of).collect();
     let strip = |rows| PlainStrip {
         rows,
@@ -315,7 +372,8 @@ fn resident_bytes_for_a_viewport_plus_buffer() {
     // either side: the most the renderer keeps resident.
     let rows = rows(1_000);
     let capacity = StripCache::capacity_for(STRIP_ROWS, 60, STRIP_ROWS);
-    let mut cache = StripCache::new(STRIP_ROWS, capacity);
+    // No room past the minimum: exactly the viewport and its buffer stay.
+    let mut cache = StripCache::with_budget(ByteBudget(0), capacity);
     for top in (0..600).step_by(7) {
         frame(&mut cache, &rows, top..top + 60, &PALETTE, USER_CELL);
     }
@@ -391,7 +449,7 @@ fn strip_height_numbers() {
 #[test]
 fn the_uncommitted_row_does_not_count_toward_the_strip_height() {
     let rows = rows(40);
-    let mut cache = StripCache::new(STRIP_ROWS, 4);
+    let mut cache = roomy(4);
     let virtual_row = PlainRow {
         ring: Ring::Uncommitted,
         ..PlainRow::of(&rows[39])
@@ -470,7 +528,7 @@ fn the_selection_never_misses_a_backdrop() {
     let threads = window.threads();
     let strips = window.strips();
     assert!(strips.len() >= 3 && window.lane_columns > 8);
-    let mut cache = StripCache::new(STRIP_ROWS, 2 * strips.len());
+    let mut cache = roomy(2 * strips.len());
     let mut keys: Vec<Option<u64>> = vec![None; strips.len()];
     for (cursor, thread) in threads.iter().enumerate() {
         for (index, range) in strips.iter().enumerate() {
@@ -527,7 +585,7 @@ fn emphasis_is_cached_by_selection() {
     let window = branchy();
     let threads = window.threads();
     let strips = window.strips();
-    let mut cache = StripCache::new(STRIP_ROWS, 64);
+    let mut cache = roomy(64);
     let mut seen: HashSet<(usize, u64)> = HashSet::new();
     let mut asked = 0u64;
     let path = (40..50).chain((40..50).rev()).chain(40..50);
@@ -590,7 +648,7 @@ fn resident_bytes_counts_every_layer() {
     let window = branchy();
     let threads = window.threads();
     let strips = window.strips();
-    let mut cache = StripCache::new(STRIP_ROWS, 8);
+    let mut cache = roomy(8);
     let mut expected = 0;
     for range in &strips {
         let plain = window.plain(range.clone());

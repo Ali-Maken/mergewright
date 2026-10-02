@@ -31,7 +31,7 @@ use graft::view::strips::{PixelRows, StripPaint, pixel_rows};
 use graft_core::capabilities::RenderingTier;
 use graft_core::event::{Event, KeyCode, KeyPress};
 use graft_fixtures::team::{self, TeamSpec};
-use graft_graph::raster::cache::{STRIP_ROWS, StripCache};
+use graft_graph::raster::cache::{ByteBudget, STRIP_ROWS, StripCache};
 
 use crate::frame_trace::{Post, Posted};
 use crate::frames::Refs;
@@ -239,7 +239,7 @@ struct Stack {
 }
 
 fn stack(frame: &PixelRows, paint: &StripPaint) -> Result<Stack, String> {
-    let mut cache = StripCache::new(STRIP_ROWS, frame.strips.len().max(1));
+    let mut cache = StripCache::with_budget(ByteBudget(usize::MAX), frame.strips.len());
     let mut drawn = Vec::new();
     let mut pixels = Vec::new();
     let mut width = None;

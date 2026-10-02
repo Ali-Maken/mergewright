@@ -14,7 +14,7 @@ use std::time::Instant;
 
 use graft_core::capabilities::{Capabilities, PixelProtocol, RenderingTier};
 use graft_core::raster::RasterFrame;
-use graft_graph::raster::cache::{CacheError, Flush, STRIP_ROWS, StripCache};
+use graft_graph::raster::cache::{ByteBudget, CacheError, Flush, STRIP_ROWS, StripCache};
 use graft_term::input::ReplyWaiter;
 use graft_term::iterm2::ItermImages;
 use graft_term::kitty::{self, CellRect, KittyImages, Layer, Place};
@@ -26,11 +26,21 @@ use crate::session::Session;
 use crate::update::AppState;
 use crate::view::strips::{StripPaint, pixel_rows};
 
-/// Strips kept rasterised (per cache layer), and iTerm2 bands kept: a tall
-/// viewport plus a strip either side (`StripCache::capacity_for(32, 256, 64)`
-/// is 11). Kitty holds two images per strip, the strip and its emphasis
-/// (ADR-0053), so twice as many.
+/// Images the terminal keeps for us, and iTerm2 bands kept: a tall viewport
+/// plus a strip either side (`StripCache::capacity_for(32, 256, 64)` is 11).
+/// Kitty holds two images per strip, the strip and its emphasis (ADR-0053),
+/// so twice as many. The terminal holds those pixels, not Graft.
 const STRIPS_KEPT: usize = 16;
+
+/// Pixel bytes the strip cache keeps across its layers (m8 04,
+/// `docs/perf/scroll-pixel-memory-budget.txt`). A strip weighs lanes × cell:
+/// on MONOREPO at the user's 17×37 cell a backdrop is ~4.3 MB and its
+/// emphasis ~2.4 MB, so this keeps ~14 strips of both; at a 24×52 cell, ~7.
+/// The viewport's strips stay whatever they weigh (`keep_at_least`).
+const STRIP_BUDGET: ByteBudget = ByteBudget(96 << 20);
+
+/// Rows kept above and below the viewport, on top of its own strips.
+const BUFFER_ROWS: usize = STRIP_ROWS;
 
 /// Where the terminal's replies about images come from.
 pub trait GraphicsReplies {
@@ -83,7 +93,10 @@ impl<R: GraphicsReplies> Graphics<R> {
         Graphics {
             images: KittyImages::new(2 * STRIPS_KEPT).deflating(capabilities.kitty_deflate),
             bands: ItermImages::new(STRIPS_KEPT),
-            strips: StripCache::new(STRIP_ROWS, STRIPS_KEPT),
+            strips: StripCache::with_budget(
+                STRIP_BUDGET,
+                StripCache::capacity_for(STRIP_ROWS, 0, BUFFER_ROWS),
+            ),
             replies,
             status: GraphicsStatus::Ok,
         }
@@ -142,6 +155,11 @@ impl<R: GraphicsReplies> Graphics<R> {
             self.bands.hide(out);
             return;
         };
+        self.strips.keep_at_least(StripCache::capacity_for(
+            STRIP_ROWS,
+            usize::from(graph.height),
+            BUFFER_ROWS,
+        ));
         let top = state.history.as_ref().map_or(0, |history| history.top);
         let pixels = pixel_rows(state, crate::view::max_lanes(state), STRIP_ROWS);
         let paint = StripPaint::of(session);
@@ -248,6 +266,21 @@ impl<R: GraphicsReplies> Graphics<R> {
     #[cfg(test)]
     pub fn strip_stats(&self) -> graft_graph::raster::cache::CacheStats {
         self.strips.stats()
+    }
+
+    /// The same, with the strip cache held to `budget`, for tests.
+    #[cfg(test)]
+    #[must_use]
+    pub fn with_strip_budget(mut self, budget: ByteBudget) -> Self {
+        self.strips = StripCache::with_budget(budget, self.strips.min_strips());
+        self
+    }
+
+    /// The strip cache's bytes and whether the viewport's floor held it
+    /// over budget, for tests.
+    #[cfg(test)]
+    pub fn strip_budget_report(&self) -> (usize, bool) {
+        (self.strips.resident_bytes(), self.strips.minimum_wins())
     }
 
     /// PNG encodes on the iTerm2 tier, for tests.
