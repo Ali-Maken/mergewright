@@ -1,0 +1,85 @@
+== look.py 2026-09-24T21:41:15 ==
+task log:
+  20:49:54 pause 6.6s
+  20:49:54 key o
+  20:50:00 pause 6.7s
+  20:50:00 key u
+  20:50:02 key c
+  20:50:03 key c
+  20:50:03 key c
+  20:50:05 key Esc
+  20:50:09 pause 3.8s
+  20:50:09 key O
+  20:50:11 key n
+  20:50:12 key N
+  20:50:15 pause 3.6s
+  20:50:15 key d
+  20:50:17 key d
+  20:50:18 key d
+  20:50:18 key d
+  20:50:18 key d
+  20:50:19 key j
+  20:50:20 key k
+  20:50:20 key j
+  20:50:20 key k
+  20:50:21 key t
+  20:50:25 pause 4.3s
+  20:50:25 key N
+  20:50:31 pause 6.1s
+  20:50:31 key T
+  20:50:32 key T
+  20:50:34 key t
+  20:50:35 key t
+  20:50:43 pause 7.4s
+  20:50:43 key k
+  20:50:43 key j
+  20:50:45 key ⏎
+  20:50:45 event: last file done
+  20:50:45 event: summary open
+  20:50:54 pause 8.8s
+  20:50:54 FIRST KEY after “last file done”: k
+  20:50:54 FIRST KEY after “summary open”: k
+  20:50:54 key k
+  20:50:54 key j
+  20:50:54 key k
+  20:50:54 key j
+  20:50:54 key k
+  20:50:55 key j
+  20:50:55 key k
+  20:50:55 key j
+  20:50:55 key k
+  20:50:55 key j
+  20:50:55 key k
+  20:50:55 key j
+  20:50:55 key k
+  20:50:56 key j
+  20:50:56 key k
+  20:50:59 pause 3.5s
+  20:50:59 key k
+  20:50:59 key k
+  20:51:00 key k
+  20:51:00 key j
+  20:51:00 key j
+  20:51:01 key ⏎
+  20:51:02 key j
+  20:51:02 key k
+  20:51:03 key ↑
+  20:51:03 key ↑
+  20:51:03 key ←
+  20:51:04 key →
+  20:51:04 key ↓
+  20:51:04 key ↓
+  20:51:04 key →
+  20:51:04 key ↑
+  20:51:04 key ↓
+  20:51:04 key ←
+  20:51:05 key ↑
+  20:51:05 key →
+  20:51:05 key ←
+  20:51:05 key →
+  20:51:06 key y
+  20:51:06 event: committed
+  20:51:06 task over: the commit landed
+picks:
+  (none marked)
+

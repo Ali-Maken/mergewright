@@ -1,7 +1,7 @@
 # `q` while a write that can't stop runs: quit waits for it; `q quit` on the banner's bar
 
 Status: ready
-Build with: Opus (conductor: quit path + running git writes; no separate scout — the review and 13 fix name the lines; the Question is answered by the builder with lines)
+Build with: _(blank — scout `scouts/13b-quit.md` running; conductor sets it after)_
 Blocked by: 13
 Needs: ticket 13's review fix (Major 1: `banner_key` sends `q` to `quit::asked`), merged. No other ticket's signature.
 Brownfield (ADR-0035): **scout first**. The conductor sets `Build with` after it.
