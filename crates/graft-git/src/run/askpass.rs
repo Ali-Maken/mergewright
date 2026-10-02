@@ -19,22 +19,29 @@
 //! prompt length + prompt bytes (at most 4 KiB); the server replies `u8`
 //! status (`0` answer, `1` cancelled) + `u32` big-endian length + answer.
 
+mod peer;
+mod secret;
+mod shared;
+mod wire;
+
+pub use secret::Secret;
+pub use wire::{RespondError, respond};
+
+#[cfg(test)]
+use secret::wipe;
+use shared::{Reply, Shared, Wake};
+use wire::{read_prompt, write_reply};
+
 use std::fmt;
-use std::io::{self, Read, Write};
+use std::io;
 use std::os::unix::fs::DirBuilderExt;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::sync::mpsc::{self, Sender};
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::mpsc;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
-/// The longest prompt the server reads; a longer one closes the connection.
-const PROMPT_MAX: u32 = 4 * 1024;
-
-/// The longest answer [`respond`] accepts.
-const ANSWER_MAX: u32 = 64 * 1024;
 
 /// How long the server waits for a connected helper to send its prompt.
 const PROMPT_WAIT: Duration = Duration::from_secs(5);
@@ -48,62 +55,12 @@ const REPLY_WAIT: Duration = Duration::from_secs(5);
 #[cfg(test)]
 const REPLY_WAIT: Duration = Duration::from_millis(300);
 
-const ANSWER: u8 = 0;
-const CANCELLED: u8 = 1;
-
 /// Answers git's credential prompts. Called on the server's own thread, and
 /// may block until the user answers.
 pub trait AskPass: Send + Sync {
     /// The answer to `prompt` (`Password for 'https://host':`), or `None`
     /// when the user cancels.
     fn ask(&self, prompt: &str) -> Option<Secret>;
-}
-
-/// A credential in memory: never printed, never cloned, zeroed on drop.
-///
-/// Zeroing is best effort: it covers this value's own allocation (all of
-/// its capacity), not copies made before it was built — build it straight
-/// from the typed bytes.
-pub struct Secret(Vec<u8>);
-
-impl Secret {
-    /// Takes ownership of `bytes`.
-    #[must_use]
-    pub fn new(bytes: Vec<u8>) -> Secret {
-        Secret(bytes)
-    }
-
-    /// The bytes, for the one place that must send them.
-    #[must_use]
-    pub fn expose(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-impl Drop for Secret {
-    fn drop(&mut self) {
-        wipe(&mut self.0);
-    }
-}
-
-impl fmt::Debug for Secret {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("Secret(…)")
-    }
-}
-
-/// Overwrites the whole allocation with zeros, spare capacity included.
-///
-/// The crate forbids `unsafe`, so this is not `ptr::write_volatile`; instead
-/// `black_box` makes the zeroed buffer observable, which stops the compiler
-/// from dropping the writes as dead stores before the free.
-fn wipe(bytes: &mut Vec<u8>) {
-    let capacity = bytes.capacity();
-    bytes.clear();
-    // `resize` within capacity never reallocates, so this writes zeros over
-    // every byte the allocation holds.
-    bytes.resize(capacity, 0);
-    std::hint::black_box(&bytes[..]);
 }
 
 /// The Graft end of the socket: listens, hands each prompt to the handler,
@@ -196,7 +153,9 @@ impl AskPassServer {
     /// The listener could not be woken: it is still running, and the socket
     /// and directory are left in place (removing the socket would make it
     /// unwakeable for good). Otherwise the first step that failed; later
-    /// steps are still attempted.
+    /// steps are still attempted. Last, a peer of another uid was refused
+    /// (`PermissionDenied`: the first refusal and the count) — reported here,
+    /// never written to the terminal the TUI owns.
     pub fn close(mut self) -> io::Result<()> {
         self.shutdown()
     }
@@ -241,6 +200,7 @@ impl AskPassServer {
         );
         note(std::fs::remove_file(&self.socket));
         note(std::fs::remove_dir(&self.dir));
+        note(self.shared.refusals());
         first.map_or(Ok(()), Err)
     }
 }
@@ -295,7 +255,7 @@ fn private_dir() -> io::Result<PathBuf> {
 /// EOF and fails, it is never given an answer by a server that is closing.
 ///
 /// A connection from any uid but `owner` is closed unread and unanswered,
-/// with one line on stderr: the `0700` directory already keeps other users
+/// recorded for [`close`](AskPassServer::close) to report: the `0700` directory already keeps other users
 /// out, so only a peer that got past it (root, or a bug in that guard) is
 /// ever refused here.
 fn listen(listener: &UnixListener, handler: &Arc<dyn AskPass>, shared: &Shared, owner: u32) {
@@ -306,11 +266,9 @@ fn listen(listener: &UnixListener, handler: &Arc<dyn AskPass>, shared: &Shared, 
         }
         match stream {
             Ok(stream) => {
-                if let Err(refusal) = admit(peer_uid(&stream), owner) {
-                    // Graft has no log file; stderr is where the binary's
-                    // other last-resort reports go (`graft-ops`
-                    // `snapshot/raw.rs` scratch cleanup, `main.rs`).
-                    eprintln!("graft: {refusal}");
+                if let Err(refusal) = peer::admit(peer::peer_uid(&stream), owner) {
+                    // Never written to stderr: the TUI owns the terminal.
+                    shared.refuse(&refusal);
                     drop(stream);
                     continue;
                 }
@@ -328,137 +286,6 @@ fn listen(listener: &UnixListener, handler: &Arc<dyn AskPass>, shared: &Shared, 
                 // or dropped connection.
                 drop(error);
             }
-        }
-    }
-}
-
-/// Why a connection was turned away before its prompt was read.
-#[derive(Debug)]
-enum Refusal {
-    /// The peer runs as another user.
-    OtherUser { peer: u32, owner: u32 },
-    /// The peer's uid could not be read; refused rather than assumed ours.
-    Unreadable(io::Error),
-}
-
-impl fmt::Display for Refusal {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Refusal::OtherUser { peer, owner } => write!(
-                f,
-                "askpass: refused a connection from uid {peer} (this server serves uid {owner})"
-            ),
-            Refusal::Unreadable(error) => write!(
-                f,
-                "askpass: refused a connection whose uid could not be read: {error}"
-            ),
-        }
-    }
-}
-
-/// Whether a peer with uid `peer` may be served by a server owned by
-/// `owner`. Fails closed: an unreadable uid is a refusal.
-fn admit(peer: io::Result<u32>, owner: u32) -> Result<(), Refusal> {
-    match peer {
-        Ok(peer) if peer == owner => Ok(()),
-        Ok(peer) => Err(Refusal::OtherUser { peer, owner }),
-        Err(error) => Err(Refusal::Unreadable(error)),
-    }
-}
-
-/// The effective uid of the process at the other end of `stream`, from the
-/// kernel: `getpeereid` on macOS and the BSDs.
-#[cfg(any(
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "freebsd",
-    target_os = "netbsd",
-    target_os = "openbsd",
-    target_os = "dragonfly"
-))]
-fn peer_uid(stream: &UnixStream) -> io::Result<u32> {
-    let (uid, _gid) = nix::unistd::getpeereid(stream)?;
-    Ok(uid.as_raw())
-}
-
-/// The effective uid of the process at the other end of `stream`, from the
-/// kernel: `SO_PEERCRED` on Linux and Android.
-#[cfg(any(target_os = "linux", target_os = "android"))]
-fn peer_uid(stream: &UnixStream) -> io::Result<u32> {
-    let creds = nix::sys::socket::getsockopt(stream, nix::sys::socket::sockopt::PeerCredentials)?;
-    Ok(creds.uid())
-}
-
-/// What the listener thread shares with the server that owns it.
-#[derive(Default)]
-struct Shared {
-    /// Set once by shutdown; never cleared.
-    stop: AtomicBool,
-    /// The exchange waiting on its handler, if one is: shutdown sends it
-    /// [`Wake::Stop`], so it returns at once rather than whenever the handler
-    /// does. `serve` checks `stop` and registers here under one lock, so a
-    /// shutdown cannot fall between the check and the registration.
-    waiting: Mutex<Option<Sender<Wake>>>,
-}
-
-impl Shared {
-    fn stopped(&self) -> bool {
-        self.stop.load(Ordering::SeqCst)
-    }
-
-    /// Set `stop`, then wake the exchange waiting on its handler, if any.
-    fn stop(&self) {
-        self.stop.store(true, Ordering::SeqCst);
-        if let Some(waiting) = self.waiting().take()
-            && let Err(unheard) = waiting.send(Wake::Stop)
-        {
-            // Safe to ignore: the exchange already ended (its answer came
-            // first), so there is no one left to wake.
-            drop(unheard);
-        }
-    }
-
-    /// The slot. A poisoned lock still holds a whole `Option<Sender>` — the
-    /// only writes are `take` and a plain assignment — so it is used as is.
-    fn waiting(&self) -> MutexGuard<'_, Option<Sender<Wake>>> {
-        self.waiting.lock().unwrap_or_else(PoisonError::into_inner)
-    }
-}
-
-/// What ends an exchange's wait on its handler.
-enum Wake {
-    /// The handler answered (`None`: the user cancelled).
-    Answer(Option<Secret>),
-    /// The server is shutting down.
-    Stop,
-    /// The handler panicked before answering.
-    Panicked,
-}
-
-/// The handler thread's end of an exchange: sends the answer once or, if the
-/// thread unwinds first, [`Wake::Panicked`] from `Drop` — the listener is
-/// never left waiting on a handler that is gone.
-struct Reply(Option<Sender<Wake>>);
-
-impl Reply {
-    fn send(mut self, answer: Option<Secret>) {
-        if let Some(wake) = self.0.take()
-            && let Err(unwanted) = wake.send(Wake::Answer(answer))
-        {
-            // The listener stopped waiting (shutdown): drop the answer,
-            // which zeroes it.
-            drop(unwanted);
-        }
-    }
-}
-
-impl Drop for Reply {
-    fn drop(&mut self) {
-        if let Some(wake) = self.0.take()
-            && let Err(unheard) = wake.send(Wake::Panicked)
-        {
-            // Safe to ignore: the listener stopped waiting (shutdown).
-            drop(unheard);
         }
     }
 }
@@ -505,102 +332,6 @@ fn serve(mut stream: UnixStream, handler: &Arc<dyn AskPass>, shared: &Shared) ->
         // happen; reported rather than assumed.
         Err(mpsc::RecvError) => Err(io::Error::other("the askpass wait lost every sender")),
     }
-}
-
-fn read_prompt(stream: &mut UnixStream) -> io::Result<String> {
-    let mut len = [0u8; 4];
-    stream.read_exact(&mut len)?;
-    let len = u32::from_be_bytes(len);
-    if len > PROMPT_MAX {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "askpass prompt over 4 KiB",
-        ));
-    }
-    let mut prompt = vec![0; len as usize];
-    stream.read_exact(&mut prompt)?;
-    Ok(String::from_utf8_lossy(&prompt).into_owned())
-}
-
-fn write_reply(stream: &mut UnixStream, reply: Option<&Secret>) -> io::Result<()> {
-    let Some(secret) = reply else {
-        stream.write_all(&[CANCELLED, 0, 0, 0, 0])?;
-        return stream.flush();
-    };
-    let len = u32::try_from(secret.expose().len())
-        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "answer too long"))?;
-    let mut header = [ANSWER, 0, 0, 0, 0];
-    header[1..].copy_from_slice(&len.to_be_bytes());
-    stream.write_all(&header)?;
-    // Written straight from the secret: no copy to wipe.
-    stream.write_all(secret.expose())?;
-    stream.flush()
-}
-
-/// Why the helper half could not answer git.
-#[derive(Debug)]
-pub enum RespondError {
-    /// Talking to the socket failed, or Graft went away mid-question.
-    Io(io::Error),
-    /// The user cancelled; the helper should exit non-zero.
-    Cancelled,
-    /// The server sent something this helper cannot read.
-    Protocol(&'static str),
-}
-
-impl fmt::Display for RespondError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            RespondError::Io(error) => write!(f, "askpass: {error}"),
-            RespondError::Cancelled => f.write_str("askpass: cancelled"),
-            RespondError::Protocol(what) => write!(f, "askpass: {what}"),
-        }
-    }
-}
-
-impl std::error::Error for RespondError {}
-
-impl From<io::Error> for RespondError {
-    fn from(error: io::Error) -> Self {
-        RespondError::Io(error)
-    }
-}
-
-/// The helper half, run by Graft's binary in askpass mode: sends `prompt` to
-/// the server at `socket`, writes the answer and a newline to `out` (git
-/// reads the helper's stdout). Nothing else is written anywhere.
-///
-/// # Errors
-/// [`RespondError::Cancelled`] when the user cancelled; `Io` or `Protocol`
-/// when the exchange failed. Either way the helper should exit non-zero.
-pub fn respond(socket: &Path, prompt: &str, out: &mut dyn Write) -> Result<(), RespondError> {
-    let prompt = prompt.as_bytes();
-    let len = u32::try_from(prompt.len())
-        .ok()
-        .filter(|len| *len <= PROMPT_MAX)
-        .ok_or(RespondError::Protocol("prompt over 4 KiB"))?;
-    let mut stream = UnixStream::connect(socket)?;
-    stream.write_all(&len.to_be_bytes())?;
-    stream.write_all(prompt)?;
-    stream.flush()?;
-    let mut header = [0u8; 5];
-    stream.read_exact(&mut header)?;
-    let [status, len @ ..] = header;
-    match status {
-        CANCELLED => return Err(RespondError::Cancelled),
-        ANSWER => {}
-        _ => return Err(RespondError::Protocol("unknown askpass status")),
-    }
-    let len = u32::from_be_bytes(len);
-    if len > ANSWER_MAX {
-        return Err(RespondError::Protocol("askpass answer over 64 KiB"));
-    }
-    let mut answer = Secret::new(vec![0; len as usize]);
-    stream.read_exact(&mut answer.0)?;
-    out.write_all(answer.expose())?;
-    out.write_all(b"\n")?;
-    out.flush()?;
-    Ok(())
 }
 
 #[cfg(test)]

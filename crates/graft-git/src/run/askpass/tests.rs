@@ -1,8 +1,11 @@
+use std::io::{Read, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::sync::Mutex;
 use std::sync::mpsc::{Receiver, Sender};
 use std::time::Instant;
 
+use super::peer::{admit, peer_uid};
+use super::wire::PROMPT_MAX;
 use super::*;
 
 /// Answers every prompt with a fixed reply, and remembers the prompts.
@@ -423,5 +426,18 @@ fn a_peer_with_another_uid_is_refused_unanswered_and_never_asked() {
         handler.prompts.lock().expect("test lock").is_empty(),
         "the handler was never asked for a refused peer"
     );
-    server.close().expect("closes cleanly after a refusal");
+    respond(server.socket_path(), "again", &mut Vec::new()).expect_err("refused again");
+    let reported = server
+        .close()
+        .expect_err("close reports the refusals")
+        .to_string();
+    assert_eq!(
+        reported,
+        format!(
+            "askpass: refused a connection from uid {} (this server serves uid {stranger}); \
+             2 refused in all",
+            nix::unistd::geteuid().as_raw()
+        ),
+        "the first refusal and the count reach the caller, not the terminal"
+    );
 }

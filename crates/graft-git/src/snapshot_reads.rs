@@ -234,48 +234,57 @@ fn unreadable(oid: Oid, why: &dyn std::fmt::Display) -> ReadError {
 /// a bare key, an implicit `true`).
 type ConfigPair = (Vec<u8>, Option<Vec<u8>>);
 
-/// `GIT_CONFIG_PARAMETERS` as git parses it (`config.c`
-/// `parse_config_env_list`): space-separated entries, each `'key'='value'`,
-/// `'key'=` (implicit `true`), or the older `'key=value'` / `'key'`; every
-/// quoted part shell single-quoted, `'\''` and `'\!'` standing for `'`
-/// and `!`. Anything else is the error git gives ("bogus format").
+/// `GIT_CONFIG_PARAMETERS` split as git splits it (`config.c`
+/// `parse_config_env_list`): entries separated by [`is_git_space`], each
+/// `'key'='value'`, `'key'=` (implicit `true`), or the older `'key=value'` /
+/// `'key'`; every quoted part shell single-quoted, `'\''` and `'\!'` standing
+/// for `'` and `!`. Anything else is the error git gives ("bogus format").
+/// Key validation (empty, no section, padded) is left to git, which refuses
+/// such a key on every spawn anyway.
 fn config_parameters(raw: &[u8]) -> Result<Vec<ConfigPair>, String> {
     let bogus = || "bogus format in GIT_CONFIG_PARAMETERS".to_owned();
     let mut pairs = Vec::new();
     let mut rest = raw;
     while !rest.is_empty() {
         let (key, after) = single_quoted(rest).ok_or_else(bogus)?;
-        rest = after;
-        match rest.first() {
-            None | Some(b' ' | b'\t' | b'\n') => {
-                // Old style: `'key=value'`, or `'key'` bare.
-                match key.iter().position(|byte| *byte == b'=') {
-                    Some(at) => pairs.push((key[..at].to_vec(), Some(key[at + 1..].to_vec()))),
-                    None => pairs.push((key, None)),
-                }
-            }
-            Some(b'=') => {
-                rest = &rest[1..];
-                match rest.first() {
-                    Some(b'\'') => {
-                        let (value, after) = single_quoted(rest).ok_or_else(bogus)?;
-                        if !matches!(after.first(), None | Some(b' ' | b'\t' | b'\n')) {
-                            return Err(bogus());
-                        }
-                        rest = after;
-                        pairs.push((key, Some(value)));
-                    }
-                    None | Some(b' ' | b'\t' | b'\n') => pairs.push((key, None)),
-                    Some(_) => return Err(bogus()),
-                }
-            }
-            Some(_) => return Err(bogus()),
-        }
-        while let Some(b' ' | b'\t' | b'\n') = rest.first() {
-            rest = &rest[1..];
-        }
+        let (pair, after) = match after.split_first() {
+            Some((b'=', value)) => new_style(key, value).ok_or_else(bogus)?,
+            _ if ends_entry(after) => (old_style(key), after),
+            _ => return Err(bogus()),
+        };
+        pairs.push(pair);
+        rest = &after[after.iter().take_while(|byte| is_git_space(**byte)).count()..];
     }
     Ok(pairs)
+}
+
+/// git's `isspace` (its own table, not the C locale's): space, `\t`, `\n`,
+/// `\r`. Not `\v` or `\f`.
+fn is_git_space(byte: u8) -> bool {
+    matches!(byte, b' ' | b'\t' | b'\n' | b'\r')
+}
+
+/// Whether an entry may end here: at the end, or at a separator.
+fn ends_entry(rest: &[u8]) -> bool {
+    rest.first().is_none_or(|byte| is_git_space(*byte))
+}
+
+/// `'key'=` already read up to the `=`; `rest` follows it: `'value'`, or
+/// nothing (implicit `true`). `None` is bogus.
+fn new_style(key: Vec<u8>, rest: &[u8]) -> Option<(ConfigPair, &[u8])> {
+    if ends_entry(rest) {
+        return Some(((key, None), rest));
+    }
+    let (value, after) = single_quoted(rest)?;
+    ends_entry(after).then_some(((key, Some(value)), after))
+}
+
+/// The old `'key=value'`, split at its first `=`, or `'key'` bare.
+fn old_style(word: Vec<u8>) -> ConfigPair {
+    match word.iter().position(|byte| *byte == b'=') {
+        Some(at) => (word[..at].to_vec(), Some(word[at + 1..].to_vec())),
+        None => (word, None),
+    }
 }
 
 /// One shell single-quoted word at the start of `text` (git's
