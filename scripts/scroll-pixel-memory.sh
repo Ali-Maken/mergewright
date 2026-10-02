@@ -29,6 +29,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OUT="$ROOT/docs/perf/scroll-pixel-memory-budget.txt"
 . "$ROOT/scripts/lib/machine-state.sh"
 machine_state_begin "$OUT"
+load() { echo "SUMMARY load $1 $(uptime | sed 's/.*load averages*: //') (other builds on this machine: a number under load is recorded, not judged)" | tee -a "$OUT"; }
 REV=${1:-HEAD}
 WORK="$ROOT/target/mem-instr"
 SRC="$WORK/src"
@@ -85,14 +86,19 @@ try:
             empty = m.group(1)
 except FileNotFoundError:
     pass
+peak_mb = max(int(l["resident_kb"]) for l in lines) >> 10
+wins = sum(int(l.get("minimum_wins", 0)) for l in lines)
 print(
     f"SUMMARY mem rev={rev} label={label} cell={cell} strip_px_w={end['strip_px_w']}"
     f" backdrop={end['backdrop_n']}/{int(end['backdrop_kb'])>>10}MB rast_held={held('backdrop_rast')}"
+    f"(new={held('rast_new')},again={held('rast_again')},rekeyed={held('rast_rekeyed')})"
     f" emphasis={end['emphasis_n']}/{int(end['emphasis_kb'])>>10}MB rast_held={held('emphasis_rast')}"
     f" composite={end['composite_n']}/{int(end['composite_kb'])>>10}MB rast_held={held('composite_rast')}"
-    f" cache_mb={int(end['resident_kb'])>>10}"
-    f" uploads={end['uploads_n']}/{int(end['uploads_kb'])>>10}MB"
-    f" bands={end['bands_n']}/{int(end['bands_frame_kb'])>>10}MB+seq{int(end['bands_seq_kb'])>>10}MB"
+    f" cache_mb={int(end['resident_kb'])>>10} cache_peak_mb={peak_mb} budget_mb={int(end['budget_kb'])>>10}"
+    f" min_strips={end['min_strips']} minimum_wins_frames={wins}/{len(lines)}"
+    f" buffers_allocated={end['buffers_allocated']}(held+{held('buffers_allocated')})"
+    f" uploads={end['uploads_n']} scratch_mb={int(end['scratch_kb'])>>10}"
+    f" bands={end['bands_n']}/seq{int(end['bands_seq_kb'])>>10}MB"
     f" large_allocs_per_held_s={held('large_allocs')/hold:.0f} large_mb_per_held_s={held('large_mb')/hold:.0f}"
     f" malloc_large_empty_resident={empty} rss_mb={pf.get('rss_mb','?')}"
     f" transmits={pf.get('transmits','-')} deflate={pf.get('deflate','-')} broken={pf.get('broken','?')}"
@@ -100,8 +106,10 @@ print(
 PY
 }
 
+load before
 run kitty-yes kitty yes 17x37
 run kitty-yes-narrow kitty yes 9x19
 run kitty-yes-wide kitty yes 24x52
 run kitty-no kitty no 17x37
 run iterm2 iterm2 - 17x37 "$CONFIG"
+load after
