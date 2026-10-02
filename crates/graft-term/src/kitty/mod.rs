@@ -148,6 +148,8 @@ pub struct KittyImages {
     clock: u64,
     transport: Transport,
     deflate: bool,
+    /// Buffers a transmit works in, kept for the next.
+    scratch: encode::Scratch,
 }
 
 impl KittyImages {
@@ -164,6 +166,7 @@ impl KittyImages {
             clock: 0,
             transport: Transport::Direct,
             deflate: false,
+            scratch: encode::Scratch::default(),
         }
     }
 
@@ -288,7 +291,14 @@ impl KittyImages {
             encode::free(self.transport, self.uploads.remove(index).id, out);
         }
         let id = self.allocate(place.layer);
-        encode::transmit(self.transport, id, place.frame, self.deflate, out);
+        let deflated = encode::transmit(
+            self.transport,
+            id,
+            place.frame,
+            self.deflate,
+            &mut self.scratch,
+            out,
+        );
         self.uploads.push(Upload {
             id,
             first_row: place.first_row,
@@ -296,7 +306,7 @@ impl KittyImages {
             key: place.key,
             placed: false,
             last_used: clock,
-            deflated: self.deflate,
+            deflated,
         });
         id
     }

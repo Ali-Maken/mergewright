@@ -137,18 +137,23 @@ One line per public item. Update when a public item changes.
 - `composite` (fn) — premultiplied "over" of an `Emphasised` onto its backdrop strip (iTerm2, and the tests' view of a strip under a selection).
 
 ## raster::cache
-- `StripCache` (struct) — bounded LRUs of rasterised strips keyed on (row range, layout hash, theme id, cell size) (DESIGN.md §3.8). `backdrop`/`emphasis`/`composited` key on layout + backdrop (+ `lit_hash`); no selection reaches a backdrop's key. Each layer its own LRU of `capacity` entries.
+- `StripCache` (struct) — bounded LRUs of rasterised strips keyed on (row range, layout hash, theme id, cell size) (DESIGN.md §3.8). `backdrop`/`emphasis`/`composited` key on layout + backdrop (+ `lit_hash`); no selection reaches a backdrop's key. One byte budget across the three LRUs (m8 04): over it, the globally least recently used entry of any layer goes, but never below the viewport floor `min_strips` per layer; a cached `None` emphasis weighs a 64 KiB floor.
 - `StripCache::backdrop` (fn) — a layout-only strip at one `Backdrop`, from the cache or rasterised; counts in `hits`/`rasterised`. Refuses a misaligned strip; an `Uncommitted` ring row does not count toward the strip height.
 - `StripCache::emphasis` (fn) — the selection's emphasis image over a strip (`None` cached too); counts in `emphasis_hits`/`emphasis_rasterised`.
 - `StripCache::composited` (fn) — iTerm2: backdrop with the emphasis drawn over, cached on (backdrop key, `lit_hash`); the backdrop itself when there is no emphasis.
 - `StripCache::contains_backdrop` (fn) — is a backdrop strip resident; a look, not a use (idle prefetch draws backdrops only).
-- `StripCache::new` / `capacity_for` (fn) — make one; strips a viewport plus buffer needs at any offset.
+- `ByteBudget` (struct) — bytes the strip cache may hold across its layers.
+- `StripCache::with_budget` / `capacity_for` (fn) — make one held to a `ByteBudget` with a `min_strips` floor (replaces `new`); strips a viewport plus buffer needs at any offset.
+- `StripCache::keep_at_least` (fn) — raise (or set) the viewport floor; the caller passes `capacity_for` each frame.
+- `StripCache::min_strips` / `budget` / `minimum_wins` (fn) — the floor, the budget, and whether the floor held the cache over budget since the last flush (printed by the perf script).
+- `StripCache::backdrop_key` / `paint_key` (fn) — one `u64` for a backdrop's / a selection's paint cache key: the upload key the terminal side matches on, so a re-rasterised strip is not retransmitted.
+- `RasterPool` (struct, `raster::pool`) — strip-sized pixel buffers lent to the rasteriser; the cache's evictions give them back (`Arc::try_unwrap`), so held keys allocate no new large blocks. `take`, `give`, `flush`, `allocated`.
 - `StripCache::strips_for` (fn) — aligned strip ranges covering a viewport.
 - `StripCache::flush` (fn) — drop everything, every layer, on theme, cell-size, re-detection or resize.
 - `StripCache::len` (backdrop strips), `is_empty` (no layer holds anything), `resident_bytes` (all three LRUs: backdrop, emphasis, composite), `stats`, `strip_rows` (fn) — introspection.
 - `STRIP_ROWS` (const) — 32, chosen by measurement.
 - `Flush` (enum) — `Theme`, `CellSize`, `Redetection`, `Resize`.
 - `CacheError` (enum) — `Misaligned`, `Raster`.
-- `CacheStats` (struct) — `hits`, `rasterised` (backdrop strips), `evicted` (any layer), `flushes`, `emphasis_rasterised`, `emphasis_hits`.
+- `CacheStats` (struct) — `hits`, `rasterised` (backdrop strips), `evicted` (any layer), `flushes`, `emphasis_rasterised`, `emphasis_hits`, `buffers_allocated` (pool buffers ever made).
 - `plain_layout_hash` (fn) — hash of what the rasteriser draws from a `PlainStrip` (stubs included), colours and cell size aside; no selection to hash.
 - `lit_hash` (fn) — hash of a `Selection`: backdrop, and per row the thread's columns if any else the row's emphasis, plus thread presence (a row's own emphasis under a thread is never drawn, so not hashed, 30b).

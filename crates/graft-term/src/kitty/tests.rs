@@ -851,3 +851,53 @@ fn an_upload_is_matched_by_its_key() {
     assert!(commands(&out).iter().any(|c| c.contains("a=t")));
     assert_eq!(images.uploaded(), 1, "the old one was freed");
 }
+
+/// m8 04: a transmit works in buffers kept from the last one. Two strips of
+/// one size, one sparse and one noise (which overflows the first guess at the
+/// deflated size): each sends exactly what `compress_to_vec_zlib` would, and
+/// the second makes no buffer the first did not.
+#[test]
+fn a_transmit_reuses_its_buffers_and_sends_the_same_bytes() {
+    let noise = |seed: u32| {
+        let pixels: Vec<u8> = (0..6 * 400u32)
+            .flat_map(|at| {
+                let [r, g, b, _] = (at ^ seed).wrapping_mul(2_654_435_761).to_le_bytes();
+                [r, g, b, 255]
+            })
+            .collect();
+        Arc::new(RasterFrame {
+            pixels,
+            width: 6,
+            height: 400,
+            rows: 100,
+            columns: 3,
+        })
+    };
+    let mut images = KittyImages::new(8).deflating(true);
+    let (sparse, loud, louder) = (strip(100, [0, 0, 0, 0]), noise(1), noise(2));
+    for (frame, row) in [(&sparse, 0), (&loud, 1)] {
+        let mut out = Vec::new();
+        images.frame(&[place(frame, row, 0..100, 0)], &mut out);
+        let sent: Vec<u8> = transmits(&out)
+            .into_iter()
+            .flat_map(|(_, bytes)| bytes)
+            .collect();
+        let straight = straight_alpha(&frame.pixels);
+        assert_eq!(
+            sent,
+            miniz_oxide::deflate::compress_to_vec_zlib(&straight, 1)
+        );
+    }
+    let buffers = |images: &KittyImages| {
+        let scratch = &images.scratch;
+        [
+            scratch.straight.as_ptr() as usize,
+            scratch.deflated.as_ptr() as usize,
+            scratch.encoded.as_ptr() as usize,
+        ]
+    };
+    let before = buffers(&images);
+    let mut out = Vec::new();
+    images.frame(&[place(&louder, 2, 0..100, 0)], &mut out);
+    assert_eq!(buffers(&images), before, "a new buffer for the same size");
+}

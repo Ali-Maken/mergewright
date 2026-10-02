@@ -36,10 +36,8 @@ use std::sync::Arc;
 use graft_core::capabilities::Rgb;
 use graft_core::raster::RasterFrame;
 
-use super::{
-    Backdrop, Emphasised, PlainStrip, RasterError, Ring, Selection, composite, rasterise_backdrop,
-    rasterise_emphasis,
-};
+use super::emphasis::{composite_in, rasterise_backdrop_in, rasterise_emphasis_in};
+use super::{Backdrop, Emphasised, PlainStrip, RasterError, RasterPool, Ring, Selection};
 use crate::row::Row;
 
 /// Rows per strip. Measured at the user's 17×37 px cell with 12 lanes in a
@@ -111,6 +109,9 @@ pub struct CacheStats {
     /// Emphasis lookups answered from a resident image (or a resident "no
     /// image").
     pub emphasis_hits: u64,
+    /// Pixel buffers the cache's [`RasterPool`] has made. A full cache
+    /// draws into evicted strips' buffers, so held keys stop raising it.
+    pub buffers_allocated: u64,
 }
 
 /// Exactly what a strip's pixels depend on.
@@ -189,20 +190,16 @@ impl<K: Copy + Eq + Hash, V: Clone> Lru<K, V> {
         self.entries.values().map(|entry| entry.last_used).min()
     }
 
-    /// Drop the least recently used entry. Whether there was one.
-    fn evict_oldest(&mut self) -> bool {
+    /// Drop the least recently used entry, and hand it back.
+    fn evict_oldest(&mut self) -> Option<V> {
         let oldest = self
             .entries
             .iter()
             .min_by_key(|(_, entry)| entry.last_used)
             .map(|(key, _)| *key);
-        match oldest.and_then(|key| self.entries.remove(&key)) {
-            Some(entry) => {
-                self.weight -= entry.weight;
-                true
-            }
-            None => false,
-        }
+        let entry = oldest.and_then(|key| self.entries.remove(&key))?;
+        self.weight -= entry.weight;
+        Some(entry.value)
     }
 
     fn contains(&self, key: &K) -> bool {
@@ -218,8 +215,11 @@ impl<K: Copy + Eq + Hash, V: Clone> Lru<K, V> {
         self.entries.len()
     }
 
-    fn clear(&mut self) {
-        self.entries.clear();
+    /// Drop every entry, handing each value to `give`.
+    fn clear(&mut self, mut give: impl FnMut(V)) {
+        for (_, entry) in self.entries.drain() {
+            give(entry.value);
+        }
         self.weight = 0;
     }
 }
@@ -242,6 +242,8 @@ pub struct StripCache {
     min_strips: usize,
     /// The last eviction pass stopped at the floor while still over budget.
     minimum_wins: bool,
+    /// Buffers strips are drawn in; evictions give them back.
+    pool: RasterPool,
     /// Layout-only strips at one backdrop alpha.
     backdrops: Lru<LayerKey, Arc<RasterFrame>>,
     /// Emphasis images; `None` where the selection paints nothing above the
@@ -264,6 +266,7 @@ impl StripCache {
             budget,
             min_strips: min_strips.max(1),
             minimum_wins: false,
+            pool: RasterPool::new(),
             backdrops: Lru::new(),
             emphases: Lru::new(),
             composites: Lru::new(),
@@ -342,9 +345,9 @@ impl StripCache {
             self.stats.hits += 1;
             return Ok(frame);
         }
-        let frame = Arc::new(rasterise_backdrop(strip, backdrop)?);
+        let frame = Arc::new(rasterise_backdrop_in(strip, backdrop, &mut self.pool)?);
         self.stats.rasterised += 1;
-        let weight = frame.pixels.len();
+        let weight = frame.pixels.capacity();
         self.backdrops
             .insert(key, Arc::clone(&frame), self.clock, weight);
         self.shrink();
@@ -369,9 +372,11 @@ impl StripCache {
             self.stats.emphasis_hits += 1;
             return Ok(image);
         }
-        let image = rasterise_emphasis(strip, sel)?.map(Arc::new);
+        let image = rasterise_emphasis_in(strip, sel, &mut self.pool)?.map(Arc::new);
         self.stats.emphasis_rasterised += 1;
-        let weight = image.as_ref().map_or(0, |image| image.frame.pixels.len());
+        let weight = image
+            .as_ref()
+            .map_or(0, |image| image.frame.pixels.capacity());
         self.emphases.insert(key, image.clone(), self.clock, weight);
         self.shrink();
         Ok(image)
@@ -399,8 +404,8 @@ impl StripCache {
         let Some(top) = self.emphasis(first_row, strip, sel)? else {
             return Ok(base);
         };
-        let frame = Arc::new(composite(&base, &top));
-        let weight = frame.pixels.len();
+        let frame = Arc::new(composite_in(&base, &top, &mut self.pool));
+        let weight = frame.pixels.capacity();
         self.composites
             .insert(key, Arc::clone(&frame), self.clock, weight);
         self.shrink();
@@ -433,11 +438,21 @@ impl StripCache {
                 .min_by_key(|(_, oldest)| *oldest)
                 .map(|(layer, _)| layer);
             let evicted = match victim {
-                Some(Layer::Backdrops) => self.backdrops.evict_oldest(),
-                Some(Layer::Emphases) => self.emphases.evict_oldest(),
-                Some(Layer::Composites) => self.composites.evict_oldest(),
-                None => false,
-            };
+                Some(Layer::Backdrops) => self
+                    .backdrops
+                    .evict_oldest()
+                    .map(|f| give_frame(&mut self.pool, f)),
+                Some(Layer::Emphases) => self
+                    .emphases
+                    .evict_oldest()
+                    .map(|i| give_image(&mut self.pool, i)),
+                Some(Layer::Composites) => self
+                    .composites
+                    .evict_oldest()
+                    .map(|f| give_frame(&mut self.pool, f)),
+                None => None,
+            }
+            .is_some();
             if !evicted {
                 self.minimum_wins = true;
                 return;
@@ -546,9 +561,11 @@ impl StripCache {
         match why {
             Flush::Theme | Flush::CellSize | Flush::Redetection | Flush::Resize => {}
         }
-        self.backdrops.clear();
-        self.emphases.clear();
-        self.composites.clear();
+        // Not given to the pool: strips may be another size now.
+        self.backdrops.clear(drop);
+        self.emphases.clear(drop);
+        self.composites.clear(drop);
+        self.pool.flush();
         self.minimum_wins = false;
         self.stats.flushes += 1;
     }
@@ -563,18 +580,25 @@ impl StripCache {
         self.len() == 0 && self.emphases.len() == 0 && self.composites.len() == 0
     }
 
-    /// Pixel bytes held by every layer: backdrop strips, emphasis images and composited strips.
+    /// Pixel bytes held by every layer: backdrop strips, emphasis images
+    /// and composited strips. Their buffers' capacity, which is what they
+    /// hold: a pooled buffer is made at the full strip size.
     pub fn resident_bytes(&self) -> usize {
-        let frame = |frame: &Arc<RasterFrame>| frame.pixels.len();
+        let frame = |frame: &Arc<RasterFrame>| frame.pixels.capacity();
         let image = |image: &Option<Arc<Emphasised>>| {
-            image.as_ref().map_or(0, |image| image.frame.pixels.len())
+            image
+                .as_ref()
+                .map_or(0, |image| image.frame.pixels.capacity())
         };
         self.backdrops.bytes(frame) + self.emphases.bytes(image) + self.composites.bytes(frame)
     }
 
     /// Counters since the cache was made.
     pub fn stats(&self) -> CacheStats {
-        self.stats
+        CacheStats {
+            buffers_allocated: self.pool.allocated(),
+            ..self.stats
+        }
     }
 }
 
@@ -624,6 +648,22 @@ pub fn lit_hash(sel: &Selection<'_>) -> u64 {
         lit.thread.is_some().hash(&mut hasher);
     }
     hasher.finish()
+}
+
+/// An evicted strip's buffer back to `pool`, when nothing else holds the
+/// strip. A frame still drawing it keeps it, and its buffer is freed when
+/// that frame drops it: a lost reuse, not a leak.
+fn give_frame(pool: &mut RasterPool, frame: Arc<RasterFrame>) {
+    if let Ok(frame) = Arc::try_unwrap(frame) {
+        pool.give(frame.pixels);
+    }
+}
+
+/// [`give_frame`] for an evicted emphasis entry; "no image" holds no buffer.
+fn give_image(pool: &mut RasterPool, image: Option<Arc<Emphasised>>) {
+    if let Some(Ok(image)) = image.map(Arc::try_unwrap) {
+        give_frame(pool, image.frame);
+    }
 }
 
 /// A cache key hashed to one number, for an upload to be known by.

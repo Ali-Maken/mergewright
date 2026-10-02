@@ -331,6 +331,34 @@ fn the_viewport_minimum_wins_over_a_budget_too_small() {
     assert!(!roomy.minimum_wins());
 }
 
+/// m8 04: scrolling on past the budget draws each new strip into a buffer
+/// an evicted one gave back, so a held key stops making large buffers once
+/// the cache is full: the churn malloc kept resident is gone.
+#[test]
+fn a_full_cache_draws_into_evicted_buffers() {
+    let rows = rows(1_000);
+    let budget = ByteBudget(4 * strip_bytes(&rows, USER_CELL));
+    let mut cache = StripCache::with_budget(budget, 2);
+    for top in 0..300 {
+        frame(&mut cache, &rows, top..top + 50, &PALETTE, USER_CELL);
+    }
+    let warm = cache.stats();
+    for top in 300..900 {
+        frame(&mut cache, &rows, top..top + 50, &PALETTE, USER_CELL);
+    }
+    let held = cache.stats();
+    assert!(
+        held.rasterised - warm.rasterised >= 15,
+        "premise: new strips were drawn"
+    );
+    assert!(held.evicted > warm.evicted, "premise: the budget bound");
+    assert_eq!(
+        held.buffers_allocated, warm.buffers_allocated,
+        "a full cache made a new buffer"
+    );
+    assert!(cache.resident_bytes() <= budget.0);
+}
+
 #[test]
 fn a_misaligned_or_oversized_strip_is_refused() {
     let rows = rows(100);
@@ -639,7 +667,8 @@ fn emphasis_is_cached_by_selection() {
 }
 
 /// Memory: every layer the cache holds counts — backdrops, emphasis images
-/// and composited strips — and a flush drops them all.
+/// and composited strips, each by the buffer it holds (m8 04: pooled
+/// buffers are made at the full strip size) — and a flush drops them all.
 #[test]
 fn resident_bytes_counts_every_layer() {
     use super::emphasis_layer::{CELL, branchy, lits};
@@ -661,16 +690,16 @@ fn resident_bytes_counts_every_layer() {
         let base = cache
             .backdrop(range.start, &strip, Backdrop::OffThread)
             .expect("backdrop");
-        expected += base.pixels.len();
+        expected += base.pixels.capacity();
         if let Some(top) = cache
             .emphasis(range.start, &strip, &selection)
             .expect("emphasis")
         {
-            expected += top.frame.pixels.len();
+            expected += top.frame.pixels.capacity();
             let composited = cache
                 .composited(range.start, &strip, &selection)
                 .expect("composited");
-            expected += composited.pixels.len();
+            expected += composited.pixels.capacity();
         }
     }
     assert!(

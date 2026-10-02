@@ -18,7 +18,8 @@ use graft_core::capabilities::Rgb;
 use graft_core::raster::RasterFrame;
 
 use super::{
-    Emphasis, FADED_ALPHA, Inked, Look, Marker, OFF_THREAD_ALPHA, RasterError, Ring, Stub, paint,
+    Emphasis, FADED_ALPHA, Inked, Look, Marker, OFF_THREAD_ALPHA, RasterError, RasterPool, Ring,
+    Stub, paint,
 };
 use crate::row::Row;
 
@@ -201,8 +202,8 @@ pub struct Selection<'a> {
 /// An emphasis image, cropped to the cell columns it touches.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Emphasised {
-    /// The image: the strip's height, `frame.columns` cells wide. Shared,
-    /// so a terminal upload can tell this image from a new one by pointer.
+    /// The image: the strip's height, `frame.columns` cells wide. Shared
+    /// between the strip cache and the frame drawing it.
     pub frame: Arc<RasterFrame>,
     /// The strip's cell column the image's left edge sits on.
     pub first_column: u16,
@@ -218,6 +219,15 @@ pub fn rasterise_backdrop(
     strip: &PlainStrip<'_>,
     backdrop: Backdrop,
 ) -> Result<RasterFrame, RasterError> {
+    rasterise_backdrop_in(strip, backdrop, &mut RasterPool::new())
+}
+
+/// [`rasterise_backdrop`], drawn in a buffer from `pool`.
+pub(super) fn rasterise_backdrop_in(
+    strip: &PlainStrip<'_>,
+    backdrop: Backdrop,
+    pool: &mut RasterPool,
+) -> Result<RasterFrame, RasterError> {
     let lit = backdrop.paint();
     let rows: Vec<Inked<'_>> = strip
         .rows
@@ -229,7 +239,7 @@ pub fn rasterise_backdrop(
             lit,
         })
         .collect();
-    paint(&strip.look(), &rows, None)
+    paint(&strip.look(), &rows, None, pool)
 }
 
 /// The selection's paint over a strip drawn at `sel.backdrop`: every element
@@ -244,6 +254,16 @@ pub fn rasterise_backdrop(
 pub fn rasterise_emphasis(
     strip: &PlainStrip<'_>,
     sel: &Selection<'_>,
+) -> Result<Option<Emphasised>, RasterError> {
+    rasterise_emphasis_in(strip, sel, &mut RasterPool::new())
+}
+
+/// [`rasterise_emphasis`], drawn in a buffer from `pool` and cropped in
+/// place; a buffer that ends up holding nothing goes back.
+pub(super) fn rasterise_emphasis_in(
+    strip: &PlainStrip<'_>,
+    sel: &Selection<'_>,
+    pool: &mut RasterPool,
 ) -> Result<Option<Emphasised>, RasterError> {
     if sel.rows.len() != strip.rows.len() {
         return Err(RasterError::Selection {
@@ -269,8 +289,9 @@ pub fn rasterise_emphasis(
     let Some(reach) = lit_reach(&rows, strip.marker, backdrop) else {
         return Ok(None);
     };
-    let frame = paint(&strip.look(), &rows, Some(backdrop))?;
+    let frame = paint(&strip.look(), &rows, Some(backdrop), pool)?;
     let Some((first, last)) = painted_cells(&frame, strip.cell_width, reach) else {
+        pool.give(frame.pixels);
         return Ok(None);
     };
     let first_column = u16::try_from(first).map_err(|_| RasterError::TooLarge {
@@ -280,7 +301,7 @@ pub fn rasterise_emphasis(
         cell_height: strip.cell_height,
     })?;
     Ok(Some(Emphasised {
-        frame: Arc::new(crop(&frame, strip.cell_width, first, last)),
+        frame: Arc::new(crop(frame, strip.cell_width, first, last)),
         first_column,
     }))
 }
@@ -379,16 +400,21 @@ fn painted_cells(
     Some((cell_of(left)?, cell_of(right - 1)?))
 }
 
-/// Cell columns `first..=last` of `frame`.
-fn crop(frame: &RasterFrame, cell_width: u32, first: u32, last: u32) -> RasterFrame {
+/// Cell columns `first..=last` of `frame`, in its own buffer: each line
+/// moves left to where the cropped image's line goes, which is never right
+/// of where it was, then the buffer is cut to the cropped size.
+fn crop(frame: RasterFrame, cell_width: u32, first: u32, last: u32) -> RasterFrame {
     let columns = last - first + 1;
     let width = columns * cell_width;
     let bytes = |pixels: u32| pixels as usize * 4;
     let (stride, left, span) = (bytes(frame.width), bytes(first * cell_width), bytes(width));
-    let mut pixels = Vec::with_capacity(span * frame.height as usize);
-    for line in frame.pixels.chunks_exact(stride) {
-        pixels.extend_from_slice(&line[left..left + span]);
+    let mut pixels = frame.pixels;
+    let lines = frame.height as usize;
+    for line in 0..lines {
+        let from = line * stride + left;
+        pixels.copy_within(from..from + span, line * span);
     }
+    pixels.truncate(span * lines);
     RasterFrame {
         width,
         height: frame.height,
@@ -406,7 +432,24 @@ fn crop(frame: &RasterFrame, cell_width: u32, first: u32, last: u32) -> RasterFr
 /// drawn.
 #[must_use]
 pub fn composite(base: &RasterFrame, top: &Emphasised) -> RasterFrame {
-    let mut out = base.clone();
+    composite_in(base, top, &mut RasterPool::new())
+}
+
+/// [`composite`], drawn in a buffer from `pool`.
+pub(super) fn composite_in(
+    base: &RasterFrame,
+    top: &Emphasised,
+    pool: &mut RasterPool,
+) -> RasterFrame {
+    let mut pixels = pool.take(base.pixels.len());
+    pixels.copy_from_slice(&base.pixels);
+    let mut out = RasterFrame {
+        width: base.width,
+        height: base.height,
+        rows: base.rows,
+        columns: base.columns,
+        pixels,
+    };
     let Some(cell_width) = base.width.checked_div(base.columns) else {
         return out;
     };

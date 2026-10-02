@@ -213,7 +213,11 @@ fn held_j_on_wide_strips_stays_within_the_byte_budget() {
     let mut graphics = Graphics::new(NoReplies, &session.capabilities).with_strip_budget(budget);
     draw(&mut terminal, &session, &state, &mut graphics).expect("memory");
     let mut evicted_while_held = false;
-    for event in js(230) {
+    let mut warm = None;
+    for (index, event) in js(230).into_iter().enumerate() {
+        if index == 115 {
+            warm = Some(graphics.strip_stats());
+        }
         state = update(&state, event).0;
         draw(&mut terminal, &session, &state, &mut graphics).expect("memory");
         let (resident, minimum_wins) = graphics.strip_budget_report();
@@ -230,6 +234,15 @@ fn held_j_on_wide_strips_stays_within_the_byte_budget() {
         "premise: j scrolled past strips ({top})"
     );
     assert!(evicted_while_held, "premise: the budget bound");
+    let (warm, last) = (warm.expect("230 events"), graphics.strip_stats());
+    assert!(
+        last.rasterised + last.emphasis_rasterised > warm.rasterised + warm.emphasis_rasterised,
+        "premise: strips were drawn in the second half"
+    );
+    assert_eq!(
+        last.buffers_allocated, warm.buffers_allocated,
+        "steady state draws into evicted buffers"
+    );
 }
 
 /// Each state a run of `events` passes through from `state`, the first
