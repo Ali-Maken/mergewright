@@ -18,3 +18,5 @@ SUMMARY idle split (HEAD, instrumented, removed): G handed 0.9-1.5 ms after send
 SUMMARY rss end-of-run vmmap HEAD kitty hold 3 s: footprint 358.7M; Malloc Large live 170.8M (34 regions); Malloc Large (empty) resident 166.1M; DefaultMallocZone allocated 179.8M
 SUMMARY rss held (HEAD, instrumented, removed): StripCache 16 backdrops + emphases = 117.8 MB (~4.1 MB per backdrop strip, emphasis up to 4.07 MB); KittyImages 12 uploads 57.7 MB, 45.2 MB of it frames the cache had already evicted
 SUMMARY rss experiment uploads hold Weak (reverted): rss 369 MB (was 367-374); live Malloc Large 124.7M, Malloc Large (empty) 214.2M: freed strip buffers stay resident in malloc's large free cache
+SUMMARY machine ac=1 lowpower=0 os=darwin
+SUMMARY idle rev=worktree runs=3 latency_us=10958,8486,8426 2026-10-02T05:29:16Z

@@ -104,7 +104,10 @@ M7/46-kitty-no-deflate <item>=<value>` and are not misses.
       kitty-yes (`SUMMARY miss pty kitty-yes-free rss_mb=396`, `kitty-yes-40m rss_mb=369`). See NOTES M2.
       **Open by ruling 2** (gap `M7/47-pixel-rss`, broken, expiry M8; fix parked as `scroll-pixel-memory-budget`).
       The budget stays 300 MB. Closes when that ticket's run shows ≤ 300 MB here.
-- [ ] No regression: `frames::` p99 ≤ 16 ms on every scroll, `heavy::budgets_hold` green, `g_after_idle` green.
+- [x] No regression: `frames::` p99 ≤ 16 ms on every scroll, `heavy::budgets_hold` green, `g_after_idle` green.
+      **Ticked by conductor 2026-10-02 per ruling 1:** `frames::after_idle::g_after_idle` re-run on mains, LPM off
+      (`SUMMARY machine ac=1 lowpower=0`), `scripts/47-debug-idle.sh . 3` → 10.96 / 8.49 / 8.43 ms, all ≤ 16;
+      `docs/perf/47-debug.txt` (2026-10-02T05:29:16Z). Other items as below (18/19 + 5/5 at 47).
       — those tests by name.
       **Not ticked — `frames::after_idle::g_after_idle` FAILED** (16.91 ms > 16). `frames::` otherwise 18/19 passed;
       `heavy::budgets_hold_*` 5/5 passed. See NOTES M1.
