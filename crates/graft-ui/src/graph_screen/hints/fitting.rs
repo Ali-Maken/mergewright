@@ -52,7 +52,12 @@ struct Step {
 /// 190 columns nothing but the bare-key rung fitted and 80, 120 and 160
 /// drew the same keys-with-no-verbs bar this ADR had already rejected
 /// (ADR-0039's third amendment, which corrects its second).
-fn ladder(list: &[Hint], floor: usize) -> Vec<Step> {
+///
+/// [`Words::Only`] (ADR-0058 §4, every bar outside a modal context) skips
+/// the bare-key rung: step 3 places each remaining hint at its floor rung —
+/// with its words — and step 5 raises it to its full verb. A hint that does
+/// not fit with its words is not drawn; the doorway reaches it.
+fn ladder(list: &[Hint], floor: usize, words: Words) -> Vec<Step> {
     let mut steps = Vec::new();
     for (index, hint) in list.iter().enumerate().take(floor) {
         if hint.rungs().contains(&Rung::Short) {
@@ -63,6 +68,23 @@ fn ladder(list: &[Hint], floor: usize) -> Vec<Step> {
         }
     }
     let rest = || list.iter().enumerate().skip(floor);
+    if words == Words::Only {
+        for (index, hint) in rest() {
+            steps.push(Step {
+                index,
+                rung: hint.floor_rung(),
+            });
+        }
+        for (index, hint) in rest() {
+            if hint.floor_rung() != Rung::Full {
+                steps.push(Step {
+                    index,
+                    rung: Rung::Full,
+                });
+            }
+        }
+        return steps;
+    }
     for (index, _) in rest() {
         steps.push(Step {
             index,
@@ -93,7 +115,21 @@ fn ladder(list: &[Hint], floor: usize) -> Vec<Step> {
 /// to the doorway hint alone, shrunk rung by rung until it fits, or to
 /// nothing — never a bar the footer has to cut, which is the one outcome
 /// the ADR forbids.
-pub(super) fn fit_list(list: &[Hint], trailer: Option<Hint>, columns: u16) -> Vec<Hint> {
+pub(super) fn fit_list(
+    list: &[Hint],
+    trailer: Option<Hint>,
+    columns: u16,
+    words: Words,
+) -> Vec<Hint> {
+    // Stamped before anything is measured, so the ladder measures the very
+    // separator `hints_text` will draw.
+    let stamp = |hint: Hint| Hint {
+        words_only: words == Words::Only,
+        ..hint
+    };
+    let list: Vec<Hint> = list.iter().copied().map(stamp).collect();
+    let list = list.as_slice();
+    let trailer = trailer.map(stamp);
     let room = usize::from(columns);
     let floor = list.len().min(3);
     // One slot per list entry, `None` until a step places it; a later step
@@ -106,9 +142,9 @@ pub(super) fn fit_list(list: &[Hint], trailer: Option<Hint>, columns: u16) -> Ve
         .collect();
     let drawn = |slots: &[Option<Hint>]| slots.iter().flatten().copied().collect::<Vec<_>>();
     if !fits(&drawn(&slots), trailer, room) {
-        return below_the_floor(list, trailer, room);
+        return below_the_floor(list, trailer, room, words);
     }
-    for Step { index, rung } in ladder(list, floor) {
+    for Step { index, rung } in ladder(list, floor, words) {
         let mut candidate = slots.clone();
         candidate[index] = Some(list[index].at(rung));
         if !fits(&drawn(&candidate), trailer, room) {
@@ -167,12 +203,16 @@ fn place_doorway(mut drawn: Vec<Hint>, trailer: Option<Hint>) -> Vec<Hint> {
 /// `.` the caller put into the list itself ([`HintContext::Marked`]'s
 /// `. explain`). A context with neither is modal and swallows `.` — the
 /// focused banner — so it has no doorway and goes straight to nothing.
-fn below_the_floor(list: &[Hint], trailer: Option<Hint>, room: usize) -> Vec<Hint> {
+fn below_the_floor(list: &[Hint], trailer: Option<Hint>, room: usize, words: Words) -> Vec<Hint> {
     let doorway = trailer.or_else(|| list.first().copied().filter(|hint| hint.key == "."));
     let Some(doorway) = doorway else {
         return Vec::new();
     };
-    for rung in doorway.rungs().iter().rev() {
+    let rungs = doorway
+        .rungs()
+        .iter()
+        .filter(|rung| words == Words::Keys || **rung != Rung::Key);
+    for rung in rungs.rev() {
         let row = vec![doorway.at(*rung)];
         if text_width(&hints_text(&row)) <= room {
             return row;
@@ -185,17 +225,40 @@ fn text_width(text: &str) -> usize {
     text.width()
 }
 
-/// `hints` as the footer draws them: `" ⏎ open  c commit  P push  u  S"` — a
-/// leading space (matching the footer's other slots, all built the same
-/// way), two spaces between hints, and each hint at its own
-/// [`Rung`](Hint::rung). A hint built straight from the table is `Rung::Full`,
-/// so a list that never went through [`hints_for`] reads exactly as it
-/// always did.
+/// Whether a bar may draw a hint at its bare key (ADR-0058 §4).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Words {
+    /// Outside modal contexts: a hint is drawn with its words or not at all.
+    Only,
+    /// Modal contexts (the resolver, the banner, boxes, prompts, overlays):
+    /// ADR-0044 §4's ladder, bare keys included — there the keys are the
+    /// point.
+    Keys,
+}
+
+/// Between two hints on the bar (DESIGN.md §1.0).
+pub const HINT_SEPARATOR: &str = " \u{b7} ";
+
+/// Between two hints in a modal bar, where bare keys may run together.
+const KEYS_SEPARATOR: &str = "  ";
+
+/// `hints` as the footer draws them: `" ⏎ open · c commit · . more"` — a
+/// leading space (the bar's one cell of indent, matching the footer's other
+/// slots), [`HINT_SEPARATOR`] between the hints of a words-only bar
+/// ([`Hint::words_only`]) and two spaces between a modal bar's, and each hint
+/// at its own [`Rung`](Hint::rung). A hint built straight from the table is
+/// `Rung::Full`, so a list that never went through [`hints_for`] reads
+/// exactly as it always did.
 #[must_use]
 pub fn hints_text(hints: &[Hint]) -> String {
+    let separator = if hints.iter().any(|hint| hint.words_only) {
+        HINT_SEPARATOR
+    } else {
+        KEYS_SEPARATOR
+    };
     let mut line = String::new();
     for hint in hints {
-        line.push_str(if line.is_empty() { " " } else { "  " });
+        line.push_str(if line.is_empty() { " " } else { separator });
         line.push_str(&hint.text());
     }
     line
@@ -278,10 +341,13 @@ pub fn stopped_row_before_keys(
     columns: u16,
 ) -> String {
     let (list, trailer) = super::whole_bar(context, divider);
+    let words_only = super::words_for(context) == Words::Only;
+    let stamp = |hint: Hint| Hint { words_only, ..hint };
+    let trailer = trailer.map(stamp);
     let floor: Vec<Hint> = list
         .iter()
         .take(3)
-        .map(|hint| hint.at(hint.floor_rung()))
+        .map(|hint| stamp(hint.at(hint.floor_rung())))
         .collect();
     for wording in reason.fullest_first() {
         // ` ` before the reason and ` ·` after it: three cells.

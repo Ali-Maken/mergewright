@@ -1,9 +1,10 @@
 == the files cursor on a file row: no `space` ==
- graft /code/api  4 commits
-◆ ▏  [◆ main] add src                                                                                    GF 4mo  9d4f6c9
-●    Correct the note                                                                                    GF 1y   a82960b
-●    Add the first note                                                                                  GF 1y   fadcfb3
-◇    Add a readme                                                                                        GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     4 commits
+
+  ◆ ▏  [◆ main] add src                                                                                 GF 4mo  9d4f6c9
+  ●    Correct the note                                                                                 GF 1y   a82960b
+  ●    Add the first note                                                                               GF 1y   fadcfb3
+  ◇    Add a readme                                                                                     GF 1y   64ded19
 
 
 
@@ -20,9 +21,8 @@
 
 
 
-
-
- ⏎ open  B blame  F history  c commit  P push  <> resize  p pull  . more  f  b  t  u  /  q  F2  F3  x  +  j/k  1  H  y
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · B blame · F history · c commit · P push · <> resize · p pull · f fetch · b branch · t tag · u undo · . more
 COMMIT 9d4f6c9 · Graft Fixture <fixture@example.invalid> · 2020-09-13 12:27 +0000 · 4mo · parents a82960b · diff vs fir…
 add src
 M notes.txt             +1 −1 ▎
@@ -41,11 +41,12 @@ M notes.txt             +1 −1 ▎
 
 
 == the files cursor on the `src/` directory row: `space fold` ==
- graft /code/api  4 commits
-◆ ▏  [◆ main] add src                                                                                    GF 4mo  9d4f6c9
-●    Correct the note                                                                                    GF 1y   a82960b
-●    Add the first note                                                                                  GF 1y   fadcfb3
-◇    Add a readme                                                                                        GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     4 commits
+
+  ◆ ▏  [◆ main] add src                                                                                 GF 4mo  9d4f6c9
+  ●    Correct the note                                                                                 GF 1y   a82960b
+  ●    Add the first note                                                                               GF 1y   fadcfb3
+  ◇    Add a readme                                                                                     GF 1y   64ded19
 
 
 
@@ -62,9 +63,8 @@ M notes.txt             +1 −1 ▎
 
 
 
-
-
- ⏎ open  space fold  c commit  P push  <> resize  p pull  f fetch  . more  b  t  u  /  q  F2  F3  x  +  j/k  1  F  H  y
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · space fold · c commit · P push · <> resize · p pull · f fetch · b branch · t tag · u undo · / search · . more
 COMMIT 9d4f6c9 · Graft Fixture <fixture@example.invalid> · 2020-09-13 12:27 +0000 · 4mo · parents a82960b · diff vs fir…
 add src
 M notes.txt             +1 −1 select a file

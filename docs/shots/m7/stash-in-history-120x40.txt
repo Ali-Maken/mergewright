@@ -1,10 +1,11 @@
- graft /code/api  6 commits
-  ■ ▏  [stash@{0}] On topic: wip                                                                         GF 3m   65a77a9
-  □    [only in stash@{0}] topic base                                                                    GF 4m   b9451c7
-◆─╯    [◆ main] add notes                                                                                GF 5m   2c59061
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     6 commits
+
+    ■ ▏  [stash@{0}] On topic: wip                                                                      GF 3m   65a77a9
+    □    [only in stash@{0}] topic base                                                                 GF 4m   b9451c7
+  ◆─╯    [◆ main] add notes                                                                             GF 5m   2c59061
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -35,6 +36,5 @@
 
 
 
-
-
- ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · . more

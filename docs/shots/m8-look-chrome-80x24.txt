@@ -1,0 +1,26 @@
+m8-polish-and-ship/06 at 80x24: what right looks like — the first row is ` ◆ <repo>  ~/<path> · <branch>` with the walk state right-aligned; list rows start two cells in and stop one short of the edge; the bar joins its hints with ` · ` and ends `. more`; from 30 rows a blank row sits under the header and a `─` rule over the bar. Colour unverified (rule 5).
+
+ ◆ api  ~/code/api · main                      10 commits  date order, sorting…
+    ●     ▏  three: in progress                                    7y   0683985
+  ◉─│─╮      Merge branch 'feature/two'                            7y   5202e1c
+  │ │ ●      two: finish                                           7y   e30e870
+  │ │ ●      two: start                                            7y   40034e4
+  ◉─│─│─╮    Merge branch 'feature/one'                            7y   3a97003
+  │ │ │ ●    one: finish                                           7y   fdb311f
+  │ │ │ ●    one: start                                            7y   bba225a
+  ●─┴─╯ │    Add b.txt                                             7y   de95041
+  ●─────╯    Add a.txt                                             7y   21b16b9
+  ◇          Add a readme                                          7y   daa5167
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · . more

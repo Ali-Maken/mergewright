@@ -32,54 +32,54 @@
 
 == `u` after a push: the one box with three real answers ==
 
- graft /code/api  152 rows so far
-◆ ▏  [◆ main ⇄ origin] to push                                      now  0000000
-●    Commit 200                                                     7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    ╭ Undo after a push ──────────────────────────────────────────────╮ 325da3f
-●    │ commit "to push" is on origin/main                              │ 0722297
-●    │ undo works on your local branch only                            │ b6a4a47
-●    │ Re-push old tip rewrites origin/main, which others may have     │ 60af0eb
-●    │ already pulled                                                  │ aceb8c5
-●    │                                                                 │ 11d68ff
-●    │                                                                 │ 91900bd
-●    │                                                                 │ cec3e93
-●    │ ▸[ Cancel ]   [ Undo locally ]   [ Re-push old tip ]            │ 0a91ece
-●    ╰─────────────────────────────────────────────────────────────────╯ 3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
+ ◆ api  ~/code/api · main                                       144 rows so far
+  ◆ ▏  [◆ main ⇄ origin] to push                                   now  0000000
+  ●    Commit 200                                                  7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    ╭ Undo after a push ────────────────────────────────────────────────────╮
+  ●    │ commit "to push" is on origin/main                                    │
+  ●    │ undo works on your local branch only                                  │
+  ●    │ Re-push old tip rewrites origin/main, which others may have already   │
+  ●    │ pulled                                                                │
+  ●    │                                                                       │
+  ●    │                                                                       │
+  ●    │                                                                       │
+  ●    │ ▸[ Cancel ]   [ Undo locally ]   [ Re-push old tip ]                  │
+  ●    ╰───────────────────────────────────────────────────────────────────────╯
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
  ←/→ move  ⏎ choose  esc cancel
 
 == `[ Re-push old tip ]`: its own second box, before the remote moves ==
 
- graft /code/api  152 rows so far
-◆ ▏  [◆ main ⇄ origin] to push                                      now  0000000
-●    Commit 200                                                     7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    ╭ Re-push old tip d5ae5fd → origin/main? ─────────────────────────╮ 325da3f
-●    │ origin/main 0000000 → d5ae5fd · refused if origin moved since   │ 0722297
-●    │ your fetch (lease)                                              │ b6a4a47
-●    │ rewrites history for everyone who has 0000000                   │ 60af0eb
-●    │ your local branch keeps every commit it has                     │ aceb8c5
-●    │                                                                 │ 11d68ff
-●    │ git push --progress --force-with-lease=refs/heads/main:0000000… │ 91900bd
-●    │                                                                 │ cec3e93
-●    │ ▸[ Cancel ]   [ Re-push ]                                       │ 0a91ece
-●    ╰─────────────────────────────────────────────────────────────────╯ 3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
+ ◆ api  ~/code/api · main                                       144 rows so far
+  ◆ ▏  [◆ main ⇄ origin] to push                                   now  0000000
+  ●    Commit 200                                                  7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    ╭ Re-push old tip d5ae5fd → origin/main? ───────────────────────────────╮
+  ●    │ origin/main 0000000 → d5ae5fd · refused if origin moved since your    │
+  ●    │ fetch (lease)                                                         │
+  ●    │ rewrites history for everyone who has 0000000                         │
+  ●    │ your local branch keeps every commit it has                           │
+  ●    │                                                                       │
+  ●    │ git push --progress --force-with-lease=refs/heads/main:0000000000000… │
+  ●    │                                                                       │
+  ●    │ ▸[ Cancel ]   [ Re-push ]                                             │
+  ●    ╰───────────────────────────────────────────────────────────────────────╯
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
  ←/→ move  ⏎ choose  esc cancel

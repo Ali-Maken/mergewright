@@ -12,14 +12,14 @@
 # - The pane body reads "reading…": no file-list job runs in a capture, so
 #   the diff never arrives. Only the header line is what this shot is about.
 #
-" graft 3 commits                                                                                    "
-"◉─╮    Merge branch 'feature'                                                        TE 57y  0303030"
-"● │ ▏ⓘ Ship the release notes                                                        TE 57y  0202020"
-"◇─╯    Start the feature branch                                                      TE 57y  0101010"
+"                                                                                          3 commits "
+"  ◉─╮    Merge branch 'feature'                                                     TE 57y  0303030 "
+"  ● │ ▏ⓘ Ship the release notes                                                     TE 57y  0202020 "
+"  ◇─╯    Start the feature branch                                                   TE 57y  0101010 "
 "                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "
-" . explain  ⏎ open  b branch  r rebase  <>  t  c  y  m  u  /  q  F2  F3  x  +  j/k  1  F  H  f  p  P"
+" . explain · ⏎ open · b branch · r rebase · <> resize · t tag · c commit · y sha · m merge · u undo "
 "COMMIT 0202020 · Test <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y · parents 0101010 · dif…"
 "Ship the release notes · duplicate commit                                                           "
 "                              reading…                                                              "

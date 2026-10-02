@@ -18,15 +18,15 @@
 
 == 1. the diff focused, cursor on line 22, the offer up ==
 
- graft /code/api  6 commits                                                                                  COMMIT 74f9a9e
-◌    Uncommitted changes (1 untracked)                                                                       Graft Fixture <fixture@example.invalid> · 2020-01-02 23:00 +0000 · 60m
-◆ ▏  [◆ main] Handle expired tokens                                                          GF 60m  74f9a9e parents 0a27627 · diff vs first parent
-●    Move session TTL to config                                                              PR 4mo  0a27627 Contained in: main
-●    rustfmt                                                                                 RU 5mo  b32274b
-●    Retry refresh once on 401                                                               LI 7mo  2f48ca3 A .git-blame-ignore-revs                                                 +2 −0
-●    Add token refresh                                                                       TO 10mo 47593a5 ▾ src/
-◇    Add session                                                                             AN 1y   3f6c311   ▾ auth/
-                                                                                                                 M session.rs                                                         +2 −1
+ ◆ api  ~/code/api · main                                                                         6 commits  COMMIT 74f9a9e
+                                                                                                             Graft Fixture <fixture@example.invalid> · 2020-01-02 23:00 +0000 · 60m
+  ◌    Uncommitted changes (1 untracked)                                                                     parents 0a27627 · diff vs first parent
+  ◆ ▏  [◆ main] Handle expired tokens                                                       GF 60m  74f9a9e  Contained in: main
+  ●    Move session TTL to config                                                           PR 4mo  0a27627
+  ●    rustfmt                                                                              RU 5mo  b32274b  A .git-blame-ignore-revs                                                 +2 −0
+  ●    Retry refresh once on 401                                                            LI 7mo  2f48ca3  ▾ src/
+  ●    Add token refresh                                                                    TO 10mo 47593a5    ▾ auth/
+  ◇    Add session                                                                          AN 1y   3f6c311      M session.rs                                                         +2 −1
 
                                                                                                                3   4   use crate::http::{Client, Result};
                                                                                                                4   5
@@ -59,9 +59,9 @@
 
 
 
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────
  no commit-graph file: history sorts on every open
- B blame  F history  c commit  P push  <> resize  . more  p  f  b  t  u  /  q  F2  F3  x  +  j/k  1  H  y
+ B blame · F history · c commit · P push · <> resize · p pull · f fetch · b branch · t tag · . more
 
              == 2. `B` ==
 

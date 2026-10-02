@@ -17,74 +17,74 @@
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: the lease box over a rejected push ===
- graft /code/api  152 rows so far
-◆ ▏ⓘ [◆ main ↑1] ours                                               6y   739071c
-●    [origin/main] Commit 200                                       7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    ╭ Force-push main → origin/main? ─────────────────────────────────╮ 325da3f
-●    │ origin/main d5ae5fd → 739071c · refused if origin moved since   │ 0722297
-●    │ your fetch (lease)                                              │ b6a4a47
-●    │ rewrites history for everyone who has d5ae5fd                   │ 60af0eb
-●    │ nothing on origin/main is lost                                  │ aceb8c5
-●    │                                                                 │ 11d68ff
-●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd… │ 91900bd
-●    │                                                                 │ cec3e93
-●    │ ▸[ Cancel ]   [ Force push ]                                    │ 0a91ece
-●    ╰─────────────────────────────────────────────────────────────────╯ 3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
+ ◆ api  ~/code/api · main                                       144 rows so far
+  ◆ ▏ⓘ [◆ main ↑1] ours                                            6y   739071c
+  ●    [origin/main] Commit 200                                    7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    ╭ Force-push main → origin/main? ───────────────────────────────────────╮
+  ●    │ origin/main d5ae5fd → 739071c · refused if origin moved since your    │
+  ●    │ fetch (lease)                                                         │
+  ●    │ rewrites history for everyone who has d5ae5fd                         │
+  ●    │ nothing on origin/main is lost                                        │
+  ●    │                                                                       │
+  ●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365b… │
+  ●    │                                                                       │
+  ●    │ ▸[ Cancel ]   [ Force push ]                                          │
+  ●    ╰───────────────────────────────────────────────────────────────────────╯
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
  ←/→ move  ⏎ choose  esc cancel
 
 === frame 2: `esc`, the rejection back ===
- graft /code/api  152 rows so far
-◆ ▏ⓘ [◆ main ↑1] ours                                               6y   739071c
-●    [origin/main] Commit 200                                       7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    Commit 195                                                     7y   0722297
-●    Commit 194                                                     7y   b6a4a47
-●    Commit 193                                                     7y   60af0eb
-●    Commit 192                                                     7y   aceb8c5
-●    Commit 191                                                     7y   11d68ff
-●    Commit 190                                                     7y   91900bd
-●    Commit 189                                                     7y   cec3e93
-●    Commit 188                                                     7y   0a91ece
-●    Commit 187                                                     7y   3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
- push rejected: origin/main has comm… · p pull, then m or r · P force with lease
+ ◆ api  ~/code/api · main                                       144 rows so far
+  ◆ ▏ⓘ [◆ main ↑1] ours                                            6y   739071c
+  ●    [origin/main] Commit 200                                    7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    Commit 196                                                  7y   325da3f
+  ●    Commit 195                                                  7y   0722297
+  ●    Commit 194                                                  7y   b6a4a47
+  ●    Commit 193                                                  7y   60af0eb
+  ●    Commit 192                                                  7y   aceb8c5
+  ●    Commit 191                                                  7y   11d68ff
+  ●    Commit 190                                                  7y   91900bd
+  ●    Commit 189                                                  7y   cec3e93
+  ●    Commit 188                                                  7y   0a91ece
+  ●    Commit 187                                                  7y   3121935
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
+ push rejected: origin/main has com… · p pull, then m or r · P force with lease
 
 === frame 3: the drift box `u` opened ===
- graft /code/api  6 commits  date order, sorting…
-  ◌    Uncommitted changes (1 unstaged)
-  ◆ ▏  [◆ fix] fix the bug                                          3m   fbb2394
-● │    [main] main moves on                                         4m   37926a7
-●─╯    add the base                                                 5m   ed332bc
-●      Correct the note                                             1y   a82960b
-●      Add the first note                                           1y   fadcfb3
-◇      ╭ Undo “checkout fix”? ─────────────────────────────────────────╮ 64ded19
-       │ Since this checkout fix, the working tree changed.            │
-       │ Undo replaces your edit to fix.txt; a backup keeps it, and U  │
-       │ brings it back.                                               │
-       │                                                               │
-       │ undo restores the recorded state                              │
-       │                                                               │
-       │ ▸[ Stop ]   [ Undo ]                                          │
-       ╰───────────────────────────────────────────────────────────────╯
+ ◆ api  ~/code/api · fix                        6 commits  date order, sorting…
+    ◌    Uncommitted changes (1 unstaged)
+    ◆ ▏  [◆ fix] fix the bug                                       3m   fbb2394
+  ● │    [main] main moves on                                      4m   37926a7
+  ●─╯    add the base                                              5m   ed332bc
+  ●      Correct the note                                          1y   a82960b
+  ●      Add the first note                                        1y   fadcfb3
+  ◇   ╭ Undo “checkout fix”? ──────────────────────────────────────────────────╮
+      │ Since this checkout fix, the working tree changed.                     │
+      │ Undo replaces your edit to fix.txt; a backup keeps it, and U           │
+      │ brings it back.                                                        │
+      │                                                                        │
+      │ undo restores the recorded state                                       │
+      │                                                                        │
+      │ ▸[ Stop ]   [ Undo ]                                                   │
+      ╰────────────────────────────────────────────────────────────────────────╯
 
 
 
@@ -95,27 +95,27 @@
  y undo  ←/→ move  ⏎ choose  esc cancel
 
 === frame 4: `b`, `⏎` on an empty name ===
- graft /code/api  152 rows so far
-◆ ▏ⓘ [◆ main ↑1] ours                                               6y   739071c
-●    [origin/main] Commit 200                                       7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    Commit 195                                                     7y   0722297
-●    Commit 194                                                     7y   b6a4a47
+ ◆ api  ~/code/api · main                                       144 rows so far
+  ◆ ▏ⓘ [◆ main ↑1] ours                                            6y   739071c
+  ●    [origin/main] Commit 200                                    7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    Commit 196                                                  7y   325da3f
+  ●    Commit 195                                                  7y   0722297
+  ●    Commit 194                                                  7y   b6a4a47
           ╭ New branch at 739071c ───────────────────────────────────╮
           │ ▏                                                        │
           │ ( ) check out after creating · ⇥ toggles                 │
           │                                                          │
           │                                                          │
           ╰──────────────────────────────────────────────────────────╯
-●    Commit 187                                                     7y   3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
+  ●    Commit 187                                                  7y   3121935
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
  a branch needs a name

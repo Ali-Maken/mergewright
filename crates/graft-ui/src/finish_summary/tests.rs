@@ -481,6 +481,7 @@ fn footer_spans_take_the_first_key_from_the_hint() {
             state: HintState::Live,
             rung: Rung::Full,
             keeps_words: false,
+            words_only: false,
         },
         Hint {
             key: "esc",
@@ -488,6 +489,7 @@ fn footer_spans_take_the_first_key_from_the_hint() {
             state: HintState::Live,
             rung: Rung::Key,
             keeps_words: false,
+            words_only: false,
         },
     ];
     assert_eq!(

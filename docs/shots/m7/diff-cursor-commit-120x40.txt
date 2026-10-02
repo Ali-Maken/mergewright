@@ -1,9 +1,10 @@
- graft /code/api  5 commits
-◆ ▏  [◆ main] edit notes                                                                                 GF 4m   6944d27
-●    add notes                                                                                           GF 5m   9d5dd9b
-●    Correct the note                                                                                    GF 1y   a82960b
-●    Add the first note                                                                                  GF 1y   fadcfb3
-◇    Add a readme                                                                                        GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     5 commits
+
+  ◆ ▏  [◆ main] edit notes                                                                              GF 4m   6944d27
+  ●    add notes                                                                                        GF 5m   9d5dd9b
+  ●    Correct the note                                                                                 GF 1y   a82960b
+  ●    Add the first note                                                                               GF 1y   fadcfb3
+  ◇    Add a readme                                                                                     GF 1y   64ded19
 
 
 
@@ -19,9 +20,8 @@
 
 
 
-
-
- B blame  F history  c commit  P push  <> resize  p pull  f fetch  . more  b  t  u  /  q  F2  F3  x  +  j/k  1  H  y
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ B blame · F history · c commit · P push · <> resize · p pull · f fetch · b branch · t tag · u undo · / search · . more
 COMMIT 6944d27 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 4m · parents 9d5dd9b · diff vs firs…
 edit notes
 M notes.txt             +2 −1

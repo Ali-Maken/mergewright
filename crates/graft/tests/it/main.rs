@@ -50,6 +50,7 @@ mod in_the_way_status;
 mod journal_put_back;
 mod journal_screen;
 mod land_on_result;
+mod look_chrome;
 mod lane_cap;
 mod m3_walk;
 mod m4_walk;

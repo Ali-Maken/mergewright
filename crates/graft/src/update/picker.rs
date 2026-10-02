@@ -254,9 +254,11 @@ fn show_on_graph(state: &mut AppState, commands: &mut Vec<Command>) {
 pub fn picker_box_in(state: &AppState, pane: (u16, u16, u16, u16)) -> (u16, u16, u16, u16) {
     let (x, y, width, height) = pane;
     let above = super::geometry::rows_above_graph(state);
-    // The footer's rows (`CHROME_ROWS` less the header) and the
-    // commit-graph offer's line above them, when it shows.
-    let below = (super::CHROME_ROWS - super::geometry::HEADER_ROWS)
+    // The footer's rows (the chrome less the header and the gap under
+    // it: the bar, and the rule from 30 rows) and the commit-graph offer's
+    // line above them, when it shows.
+    let below = (graft_ui::graph_screen::chrome_rows(state.size.rows)
+        - super::geometry::header_rows(state))
         + u16::from(state.commit_graph_line().is_some());
     graft_ui::picker::picker_box((x, y + above, width, height.saturating_sub(above + below)))
 }

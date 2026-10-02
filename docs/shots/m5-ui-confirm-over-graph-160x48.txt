@@ -34,8 +34,8 @@
 # above, below and beside the frame.
 #
 # What survives beside it, read back out of the frame below rather
-# than written here by hand — on the widest such row, `●` is
-# left of the border and `GF 2d   c8254c5` is right of it.
+# than written here by hand — on the widest such row, `  ●` is
+# left of the border and `GF 2d   d212b3e` is right of it.
 #
 # The 3-choice box `u` opens once the work is on a remote (ADR-0038
 # §4) stands on this same corpus and is in
@@ -47,52 +47,52 @@
 
 == `P`: the push confirm, on the graph ==
 
- graft /code/api  200 commits
-◆ ▏ⓘ [◆ main ↑1] Commit 200                                                                                                                      GF 2d   d5ae5fd
-●    [origin/main] Commit 199                                                                                                                    GF 2d   13e6ab1
-●    Commit 198                                                                                                                                  GF 2d   f5055d9
-●    Commit 197                                                                                                                                  GF 2d   2cce853
-●    Commit 196                                                                                                                                  GF 2d   325da3f
-●    Commit 195                                                                                                                                  GF 2d   0722297
-●    Commit 194                                                                                                                                  GF 2d   b6a4a47
-●    Commit 193                                                                                                                                  GF 2d   60af0eb
-●    Commit 192                                                                                                                                  GF 2d   aceb8c5
-●    Commit 191                                                                                                                                  GF 2d   11d68ff
-●    Commit 190                                                                                                                                  GF 2d   91900bd
-●    Commit 189                                                                                                                                  GF 2d   cec3e93
-●    Commit 188                                                                                                                                  GF 2d   0a91ece
-●    Commit 187                                                                                                                                  GF 2d   3121935
-●    Commit 186                                                                                                                                  GF 2d   fab25df
-●    Commit 185                                                                                                                                  GF 2d   09ae97c
-●    Commit 184                                                                                                                                  GF 2d   49d7783
-●    Commit 183                                                                                                                                  GF 2d   22d55c9
-●    Commit 182                                                                                                                                  GF 2d   d212b3e
-●    ╭ Push main → origin/main ───────────────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 2d   c8254c5
-●    │ 1 commit · can't be undone from here — origin keeps what you send                                                                      │  GF 2d   e95ccd4
-●    │                                                                                                                                        │  GF 2d   97b58e5
-●    │ git push --progress origin refs/heads/main:refs/heads/main                                                                             │  GF 2d   1c9b7ed
-●    │                                                                                                                                        │  GF 2d   f93340a
-●    │ ▸[ Cancel ]   [ Push ]                                                                                                                 │  GF 2d   5aaeeba
-●    ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 2d   6be5928
-●    Commit 174                                                                                                                                  GF 2d   9b67be4
-●    Commit 173                                                                                                                                  GF 2d   937d32b
-●    Commit 172                                                                                                                                  GF 2d   81be718
-●    Commit 171                                                                                                                                  GF 2d   57b8196
-●    Commit 170                                                                                                                                  GF 2d   8ea98be
-●    Commit 169                                                                                                                                  GF 2d   4926766
-●    Commit 168                                                                                                                                  GF 2d   0d60d60
-●    Commit 167                                                                                                                                  GF 2d   fa5ef1d
-●    Commit 166                                                                                                                                  GF 2d   953abf3
-●    Commit 165                                                                                                                                  GF 2d   49912f3
-●    Commit 164                                                                                                                                  GF 2d   1143b38
-●    Commit 163                                                                                                                                  GF 2d   e135216
-●    Commit 162                                                                                                                                  GF 2d   6ddbc37
-●    Commit 161                                                                                                                                  GF 2d   4b6f375
-●    Commit 160                                                                                                                                  GF 2d   545bf13
-●    Commit 159                                                                                                                                  GF 2d   a1a658c
-●    Commit 158                                                                                                                                  GF 2d   1e28a71
-●    Commit 157                                                                                                                                  GF 2d   b57586d
-●    Commit 156                                                                                                                                  GF 2d   edc7cba
-●    Commit 155                                                                                                                                  GF 2d   4c8c724
+ ◆ api  /code/api · main                                                                                                                            200 commits
+
+  ◆ ▏ⓘ [◆ main ↑1] Commit 200                                                                                                                   GF 2d   d5ae5fd
+  ●    [origin/main] Commit 199                                                                                                                 GF 2d   13e6ab1
+  ●    Commit 198                                                                                                                               GF 2d   f5055d9
+  ●    Commit 197                                                                                                                               GF 2d   2cce853
+  ●    Commit 196                                                                                                                               GF 2d   325da3f
+  ●    Commit 195                                                                                                                               GF 2d   0722297
+  ●    Commit 194                                                                                                                               GF 2d   b6a4a47
+  ●    Commit 193                                                                                                                               GF 2d   60af0eb
+  ●    Commit 192                                                                                                                               GF 2d   aceb8c5
+  ●    Commit 191                                                                                                                               GF 2d   11d68ff
+  ●    Commit 190                                                                                                                               GF 2d   91900bd
+  ●    Commit 189                                                                                                                               GF 2d   cec3e93
+  ●    Commit 188                                                                                                                               GF 2d   0a91ece
+  ●    Commit 187                                                                                                                               GF 2d   3121935
+  ●    Commit 186                                                                                                                               GF 2d   fab25df
+  ●    Commit 185                                                                                                                               GF 2d   09ae97c
+  ●    Commit 184                                                                                                                               GF 2d   49d7783
+  ●    Commit 183                                                                                                                               GF 2d   22d55c9
+  ●    ╭ Push main → origin/main ────────────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 2d   d212b3e
+  ●    │ 1 commit · can't be undone from here — origin keeps what you send                                                                   │  GF 2d   c8254c5
+  ●    │                                                                                                                                     │  GF 2d   e95ccd4
+  ●    │ git push --progress origin refs/heads/main:refs/heads/main                                                                          │  GF 2d   97b58e5
+  ●    │                                                                                                                                     │  GF 2d   1c9b7ed
+  ●    │ ▸[ Cancel ]   [ Push ]                                                                                                              │  GF 2d   f93340a
+  ●    ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 2d   5aaeeba
+  ●    Commit 175                                                                                                                               GF 2d   6be5928
+  ●    Commit 174                                                                                                                               GF 2d   9b67be4
+  ●    Commit 173                                                                                                                               GF 2d   937d32b
+  ●    Commit 172                                                                                                                               GF 2d   81be718
+  ●    Commit 171                                                                                                                               GF 2d   57b8196
+  ●    Commit 170                                                                                                                               GF 2d   8ea98be
+  ●    Commit 169                                                                                                                               GF 2d   4926766
+  ●    Commit 168                                                                                                                               GF 2d   0d60d60
+  ●    Commit 167                                                                                                                               GF 2d   fa5ef1d
+  ●    Commit 166                                                                                                                               GF 2d   953abf3
+  ●    Commit 165                                                                                                                               GF 2d   49912f3
+  ●    Commit 164                                                                                                                               GF 2d   1143b38
+  ●    Commit 163                                                                                                                               GF 2d   e135216
+  ●    Commit 162                                                                                                                               GF 2d   6ddbc37
+  ●    Commit 161                                                                                                                               GF 2d   4b6f375
+  ●    Commit 160                                                                                                                               GF 2d   545bf13
+  ●    Commit 159                                                                                                                               GF 2d   a1a658c
+  ●    Commit 158                                                                                                                               GF 2d   1e28a71
+  ●    Commit 157                                                                                                                               GF 2d   b57586d
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  y push  ←/→ move  ⏎ choose  esc cancel
 

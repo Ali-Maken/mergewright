@@ -1,27 +1,27 @@
- graft 81 commits
-●      Commit 81                                                                                         TE 57y  5151515
-●      Commit 80                                                                                         TE 57y  5050505
-●      Commit 79                                                                                         TE 57y  4f4f4f4
-●      Commit 78                                                                                         TE 57y  4e4e4e4
-◉─╮    Commit 77                                                                                         TE 57y  4d4d4d4
-● │    Commit 76                                                                                         TE 57y  4c4c4c4
-●─╯    Commit 75                                                                                         TE 57y  4b4b4b4
-●      Commit 74                                                                                         TE 57y  4a4a4a4
-●   ▏  Commit 73                                                                                         TE 57y  4949494
-●      Commit 72                                                                                         TE 57y  4848484
-●      Commit 71                                                                                         TE 57y  4747474
-◉─╮    Commit 70                                                                                         TE 57y  4646464
-● │    Commit 69                                                                                         TE 57y  4545454
-●─╯    Commit 68                                                                                         TE 57y  4444444
-●      Commit 67                                                                                         TE 57y  4343434
-●      Commit 66                                                                                         TE 57y  4242424
-●      Commit 65                                                                                         TE 57y  4141414
-●      Commit 64                                                                                         TE 57y  4040404
-◉─╮    Commit 63                                                                                         TE 57y  3f3f3f3
-● │    Commit 62                                                                                         TE 57y  3e3e3e3
-●─╯    Commit 61                                                                                         TE 57y  3d3d3d3
-●      Commit 60                                                                                         TE 57y  3c3c3c3
- ⏎ open  b branch  r rebase  . more  <>  t  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
+                                                                                                             81 commits
+
+  ●      Commit 81                                                                                      TE 57y  5151515
+  ●      Commit 80                                                                                      TE 57y  5050505
+  ●      Commit 79                                                                                      TE 57y  4f4f4f4
+  ●      Commit 78                                                                                      TE 57y  4e4e4e4
+  ◉─╮    Commit 77                                                                                      TE 57y  4d4d4d4
+  ● │    Commit 76                                                                                      TE 57y  4c4c4c4
+  ●─╯    Commit 75                                                                                      TE 57y  4b4b4b4
+  ●      Commit 74                                                                                      TE 57y  4a4a4a4
+  ●   ▏  Commit 73                                                                                      TE 57y  4949494
+  ●      Commit 72                                                                                      TE 57y  4848484
+  ●      Commit 71                                                                                      TE 57y  4747474
+  ◉─╮    Commit 70                                                                                      TE 57y  4646464
+  ● │    Commit 69                                                                                      TE 57y  4545454
+  ●─╯    Commit 68                                                                                      TE 57y  4444444
+  ●      Commit 67                                                                                      TE 57y  4343434
+  ●      Commit 66                                                                                      TE 57y  4242424
+  ●      Commit 65                                                                                      TE 57y  4141414
+  ●      Commit 64                                                                                      TE 57y  4040404
+  ◉─╮    Commit 63                                                                                      TE 57y  3f3f3f3
+  ● │    Commit 62                                                                                      TE 57y  3e3e3e3
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · b branch · r rebase · <> resize · t tag · c commit · y sha · m merge · u undo · S stash · J journal · . more
 COMMIT 5050505 · Test <test@example.invalid> · 1970-01-01 00:01 +0000 · 57y · parents 4f4f4f4 · diff vs first p reading…
 Commit 80
                               reading…

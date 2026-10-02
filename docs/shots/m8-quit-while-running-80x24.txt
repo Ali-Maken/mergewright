@@ -1,25 +1,25 @@
 === `f` then `q` while the fetch runs ===
- graft /code/api  200 commits
-◆ ▏  [◆ main ⇄ origin] Commit 200                                   7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    Commit 195                                                     7y   0722297
-●    Commit 194                                                     7y   b6a4a47
-●    ╭ Quit? ──────────────────────────────────────────────────────────╮ 60af0eb
-●    │ fetch all remotes is still running · quit stops it              │ aceb8c5
-●    │                                                                 │ 11d68ff
-●    │                                                                 │ 91900bd
-●    │                                                                 │ cec3e93
-●    │ ▸[ Cancel ]   [ Quit ]                                          │ 0a91ece
-●    ╰─────────────────────────────────────────────────────────────────╯ 3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
-●    Commit 179                                                     7y   97b58e5
+ ◆ api  ~/code/api · main                                           200 commits
+  ◆ ▏  [◆ main ⇄ origin] Commit 200                                7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    Commit 196                                                  7y   325da3f
+  ●    Commit 195                                                  7y   0722297
+  ●    Commit 194                                                  7y   b6a4a47
+  ●    ╭ Quit? ────────────────────────────────────────────────────────────────╮
+  ●    │ fetch all remotes is still running · quit stops it                    │
+  ●    │                                                                       │
+  ●    │                                                                       │
+  ●    │                                                                       │
+  ●    │ ▸[ Cancel ]   [ Quit ]                                                │
+  ●    ╰───────────────────────────────────────────────────────────────────────╯
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
+  ●    Commit 179                                                  7y   97b58e5
  y quit  ←/→ move  ⏎ choose  esc cancel

@@ -6,9 +6,10 @@
 # Right: `.` on HEAD's row (main) — slot 1 `Checkout — already on main`
 # and slot 2 `Cherry-pick (o) — already on main`, both dim (dim
 # unverified: a capture carries no attributes), in places 1 and 2.
- graft /code/api  6 commits
-  ●    [login-page] [origin/sara/login-page] fix the bug                                                 GF 3m   fbb2394
-◆ │ ▏  [◆ main ⇄ origin] main moves on                                                                   GF 4m   37926a7
+ ◆ api  ~/code/api · main                                                                                     6 commits
+
+    ●    [login-page] [origin/sara/login-page] fix the bug                                              GF 3m   fbb2394
+  ◆ │ ▏  [◆ main ⇄ origin] main moves on                                                                GF 4m   37926a7
  Checkout — already on main
  Cherry-pick (o) — already on main
  Copy SHA (y)
@@ -43,6 +44,5 @@
 
 
 
-
-
- ⏎ open  c commit  P push  p pull  . more  f  a  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · . more

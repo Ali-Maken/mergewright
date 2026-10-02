@@ -209,7 +209,10 @@ pub fn preview_rows(view: &PreviewBox, _width: u16) -> u16 {
 }
 
 /// Where the box goes in `frame`: docked to the bottom, at its own height
-/// ([`preview_rows`]), with the frame's last row left to the screen footer.
+/// ([`preview_rows`]), with the frame's last row left to the screen footer
+/// — and, from 30 rows, the rule above it too
+/// ([`crate::graph_screen::spaced`], ADR-0058 §4), so the box never stands
+/// on the line that separates the rows from the bar.
 ///
 /// When the **frame** is smaller than [`PREVIEW_MIN`] this returns the one
 /// row the "preview needs 40x12" message takes instead, still above the
@@ -219,7 +222,8 @@ pub fn preview_rows(view: &PreviewBox, _width: u16) -> u16 {
 #[must_use]
 pub fn preview_box_area(frame: Rect, view: &PreviewBox) -> Rect {
     let footer_row = u16::from(frame.height > 1);
-    let usable = frame.height.saturating_sub(footer_row);
+    let rule_row = u16::from(crate::graph_screen::spaced(frame.height));
+    let usable = frame.height.saturating_sub(footer_row + rule_row);
     let height = if frame.width < PREVIEW_MIN.0 || frame.height < PREVIEW_MIN.1 {
         usable.min(1)
     } else {

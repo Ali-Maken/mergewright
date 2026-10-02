@@ -1,15 +1,16 @@
- graft /code/api    REBASING  step 1 of 4 · edit 0395451 a1 · feature-a, branch 1 of 3
+ ◆ api  ~/code/api · detached 0395451                REBASING  step 1 of 4 · edit 0395451 a1 · feature-a, branch 1 of 3
+
 ╭ still to apply · not commits yet ────────────────────────────────────────────────────────────────────────────────────╮
 │ pick 15335d9 a2                                                                                                      │
 │ feature-b (Graft Fixture): 1 commit follow, on top                                                                   │
 │ feature-c (Graft Fixture): 1 commit follow, on top                                                                   │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-  ●    [feature-c] c1                                                                                    GF 2d   1966dda
-● │    [main] m2                                                                                         GF 2d   9d9646b
-│ ●    [feature-b] b1                                                                                    GF 2d   82392de
-│ ●    [feature-a] a2                                                                                    GF 2d   15335d9
-│ ◆ ▏  [HEAD] a1  HEAD · stopped here                                                                    GF 2d   0395451
-◇─╯    m1                                                                                                GF 2d   256d42c
+    ●    [feature-c] c1                                                                                 GF 2d   1966dda
+  ● │    [main] m2                                                                                      GF 2d   9d9646b
+  │ ●    [feature-b] b1                                                                                 GF 2d   82392de
+  │ ●    [feature-a] a2                                                                                 GF 2d   15335d9
+  │ ◆ ▏  [HEAD] a1  HEAD · stopped here                                                                 GF 2d   0395451
+  ◇─╯    m1                                                                                             GF 2d   256d42c
 
 
 
@@ -35,6 +36,5 @@
 
 
 
-
-
- ⇥ banner  a amend it  c continue  . more  space  ⏎  b  r  t  y  m  u  S  J  /  q  F2  F3  x  +  j/k  1  F  H  f  p  P
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · r rebase · t tag · y sha · m merge · . more

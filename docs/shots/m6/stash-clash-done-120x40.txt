@@ -9,12 +9,13 @@
 #  - The status row, under the graph, reads
 #    `every file done · stash@{0} dropped ✓ · u brings it back`.
 
- graft /code/api  5 commits
-◆ ▏  [◆ main] commit over the notes                                                                      GF 3m   f3742ab
-●    add the notes                                                                                       GF 5m   cfa370c
-●    Correct the note                                                                                    GF 1y   a82960b
-●    Add the first note                                                                                  GF 1y   fadcfb3
-◇    Add a readme                                                                                        GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     5 commits
+
+  ◆ ▏  [◆ main] commit over the notes                                                                   GF 3m   f3742ab
+  ●    add the notes                                                                                    GF 5m   cfa370c
+  ●    Correct the note                                                                                 GF 1y   a82960b
+  ●    Add the first note                                                                               GF 1y   fadcfb3
+  ◇    Add a readme                                                                                     GF 1y   64ded19
 
 
 
@@ -30,8 +31,7 @@
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  every file done · stash@{0} dropped ✓ · u brings it back
 COMMIT f3742ab · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 3m · parents cfa370c · diff vs firs…
 commit over the notes

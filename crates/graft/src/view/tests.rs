@@ -181,7 +181,10 @@ fn a_harness_banner_sits_under_the_header_with_the_tier_and_costs_rows() {
     assert_eq!(state.graph_rows(), 2, "header, two banner rows, footer");
     let screen = draw(&state, 80, 6);
     let lines: Vec<&str> = screen.lines().collect();
-    assert!(lines[0].contains(" graft"), "{screen}");
+    // The header names the repository, never the product (ADR-0058 §4);
+    // with none open here, its walk state is what shows it is the header.
+    assert!(lines[0].contains("5 commits"), "{screen}");
+    assert!(!lines[0].contains("graft"), "{screen}");
     assert!(
         lines[1].contains("gallery 6/23 · foxtrot-merge · ] next · unicode"),
         "the title carries the tier in force: {screen}"
@@ -4493,15 +4496,19 @@ fn the_confirm_box_keeps_the_graph_beside_it_and_starts_on_the_subject_column() 
         // every colour depth rather than only at Palette16. Counting those
         // made this read 2 instead of 4 and fail — the box had not moved.
         // So they are skipped by name.
+        // The graph glyph sits after the two-cell gutter (ADR-0058 §4).
+        let past_glyph = usize::from(graft_ui::graph_screen::GUTTER) + 1;
         let subject_x = without
             .iter()
             .filter(|row| row.concat().contains("Commit"))
             .filter_map(|row| {
-                row.iter().skip(1).position(|cell| {
+                row.iter().skip(past_glyph).position(|cell| {
                     cell.trim() != "" && !matches!(cell.as_str(), "▏" | "▸" | "⚠" | "ⓘ")
                 })
             })
-            .map(|index| u16::try_from(index + 1).expect("a screen is narrower than u16::MAX"))
+            .map(|index| {
+                u16::try_from(index + past_glyph).expect("a screen is narrower than u16::MAX")
+            })
             .min()
             .expect("the graph draws subjects");
 

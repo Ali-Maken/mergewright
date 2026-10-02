@@ -49,13 +49,14 @@
 # one state photographed at three sizes is a picture of at most one of
 # them.
 
- graft /code/api  5 commits  date order, sorting…
-◌ ▏  Uncommitted changes (1 unstaged)
-◆    [◆ main] add second                                                                                                                         GF 8m   29a1432
-●    add first                                                                                                                                   GF 9m   3d9496e
-●    Correct the note                                                                                                                            GF 1y   a82960b
-●    Add the first note                                                                                                                          GF 1y   fadcfb3
-◇    Add a readme                                                                                                                                GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                                       5 commits  date order, sorting…
+
+  ◌ ▏  Uncommitted changes (1 unstaged)
+  ◆    [◆ main] add second                                                                                                                      GF 8m   29a1432
+  ●    add first                                                                                                                                GF 9m   3d9496e
+  ●    Correct the note                                                                                                                         GF 1y   a82960b
+  ●    Add the first note                                                                                                                       GF 1y   fadcfb3
+  ◇    Add a readme                                                                                                                             GF 1y   64ded19
 
 
 
@@ -94,6 +95,5 @@
 
 
 
-
-
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 renderer  + lanes  . more  1  F  H  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · J journal · / search · j/k move · q quit · F2 stat · F3 rend · + lane · 1 first · . more

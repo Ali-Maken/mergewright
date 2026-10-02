@@ -6,13 +6,14 @@
 # Right: `. ⏎` on feature-b's row, the tree clean — no preview box; the
 # cursor on the new HEAD's row (feature-b, `◆`); the status line
 # `on feature-b ✓ · u goes back`.
- graft /code/api  6 commits
-  ◆ ▏  [◆ feature-b] fix the bug                                                                         GF 3m   fbb2394
-● │    [main] main moves on                                                                              GF 4m   37926a7
-●─╯    add the base                                                                                      GF 5m   ed332bc
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · feature-b                                                                                6 commits
+
+    ◆ ▏  [◆ feature-b] fix the bug                                                                      GF 3m   fbb2394
+  ● │    [main] main moves on                                                                           GF 4m   37926a7
+  ●─╯    add the base                                                                                   GF 5m   ed332bc
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -43,6 +44,5 @@
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  on feature-b ✓ · u goes back

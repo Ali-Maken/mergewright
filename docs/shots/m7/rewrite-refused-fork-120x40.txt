@@ -1,9 +1,10 @@
- graft /code/api  5 commits
-  ●      [feature-c] c1                                                                                  GF 2d   937a1e7
-● │      [main] m2                                                                                       GF 2d   fa34bcc
-│ │ ●    [feature-b] b1                                                                                  GF 2d   8c6d354
-│ ◆─╯ ▏  [◆ feature-a] a1                                                                                GF 2d   0395451
-◇─╯      m1                                                                                              GF 2d   256d42c
+ ◆ api  ~/code/api · feature-a                                                                                5 commits
+
+    ●      [feature-c] c1                                                                               GF 2d   937a1e7
+  ● │      [main] m2                                                                                    GF 2d   fa34bcc
+  │ │ ●    [feature-b] b1                                                                               GF 2d   8c6d354
+  │ ◆─╯ ▏  [◆ feature-a] a1                                                                             GF 2d   0395451
+  ◇─╯      m1                                                                                           GF 2d   256d42c
 
 
 
@@ -35,6 +36,5 @@
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  feature-b and feature-c are both built on yours · Graft moves one line · esc dismiss

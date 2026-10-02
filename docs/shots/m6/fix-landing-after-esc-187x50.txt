@@ -1,11 +1,12 @@
- graft /code/api    MERGING
-◌      Uncommitted changes (2 unmerged)
-◆      [◆ main] main's take                                                                                                                                                 GF 2h   ddeed32
-│ ● ▏  [feature] the feature's take                                                                                                                                         GF 2h   f43f326
-●─╯    the shared files                                                                                                                                                     GF 2h   b35b2f1
-●      Correct the note                                                                                                                                                     GF 1y   a82960b
-●      Add the first note                                                                                                                                                   GF 1y   fadcfb3
-◇      Add a readme                                                                                                                                                         GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                                                                                          MERGING
+
+  ◌      Uncommitted changes (2 unmerged)
+  ◆      [◆ main] main's take                                                                                                                                              GF 2h   ddeed32
+  │ ● ▏  [feature] the feature's take                                                                                                                                      GF 2h   f43f326
+  ●─╯    the shared files                                                                                                                                                  GF 2h   b35b2f1
+  ●      Correct the note                                                                                                                                                  GF 1y   a82960b
+  ●      Add the first note                                                                                                                                                GF 1y   fadcfb3
+  ◇      Add a readme                                                                                                                                                      GF 1y   64ded19
 
 
 
@@ -45,6 +46,5 @@
 
 
 
-
-
- ⇥ banner  c finish  m merge  r rebase  ⏎ open  b branch  t tag  P push  p pull  f fetch  u undo  S stash  / search  q quit  F2 stat  . more  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⇥ banner · c finish · m merge · r rebase · ⏎ open · b branch · t tag · P push · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · F3 rend · x compare · + lane · . more

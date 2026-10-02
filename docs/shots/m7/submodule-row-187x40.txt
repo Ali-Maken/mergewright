@@ -1,10 +1,10 @@
- graft /code/api  4 commits                                                                                  UNCOMMITTED · 1 unstaged
-◌ ▏  Uncommitted changes (1 unstaged)                                                                        diff vs HEAD f48cdbe
-◆    [◆ main] add parser                                                                     GT 24h  f48cdbe
-●    Correct the note                                                                        GF 2d   a82960b
-●    Add the first note                                                                      GF 2d   fadcfb3
-◇    Add a readme                                                                            GF 2d   64ded19 UNSTAGED (1)
-                                                                                                               ▣ libs/parser  submodule · pointer moved ca07ea9 → efdd295 · changed inside
+ ◆ api  /code/api · main                                                                          4 commits  UNCOMMITTED · 1 unstaged
+                                                                                                             diff vs HEAD f48cdbe
+  ◌ ▏  Uncommitted changes (1 unstaged)
+  ◆    [◆ main] add parser                                                                  GT 24h  f48cdbe
+  ●    Correct the note                                                                     GF 2d   a82960b
+  ●    Add the first note                                                                   GF 2d   fadcfb3  UNSTAGED (1)
+  ◇    Add a readme                                                                         GF 2d   64ded19    ▣ libs/parser  submodule · pointer moved ca07ea9 → efdd295 · changed inside
                                                                                                              libs/parser · submodule · ca07ea9 → efdd295
                                                                                                              changed inside
                                                                                                              + efdd295 parser 3
@@ -36,5 +36,5 @@
 
 
 
-
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ diff  . more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ diff · . more

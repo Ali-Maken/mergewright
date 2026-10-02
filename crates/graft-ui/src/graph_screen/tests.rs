@@ -54,7 +54,13 @@ pub(super) fn linear(count: u8) -> Vec<Row> {
 
 pub(super) fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
     GraphView {
-        location: Some(sanitize_line("/code/api")),
+        location: Some(Location {
+            repo: sanitize_line("api"),
+            path: sanitize_line("/code/api"),
+            branch: sanitize_line("main"),
+            practice: false,
+        }),
+        spaced: false,
         walk,
         problem: None,
         rows: rows
@@ -107,6 +113,17 @@ pub(super) fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_>
     }
 }
 
+/// A [`Location`] for `path`: the repository named by its last component,
+/// on `main`.
+pub(super) fn at(path: &str) -> Location {
+    Location {
+        repo: sanitize_line(path.rsplit('/').next().unwrap_or(path)),
+        path: sanitize_line(path),
+        branch: sanitize_line("main"),
+        practice: false,
+    }
+}
+
 pub(super) fn draw(view: &GraphView<'_>, columns: u16, rows: u16) -> Terminal<TestBackend> {
     let theme = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::TrueColor, false));
     let mut terminal = Terminal::new(TestBackend::new(columns, rows)).expect("test backend opens");
@@ -125,6 +142,68 @@ pub(super) fn text(terminal: &Terminal<TestBackend>) -> Vec<String> {
                 .collect::<String>()
         })
         .collect()
+}
+
+/// ADR-0058 §4: from 30 rows a blank row under the header and a rule above
+/// the bar; under 30, neither. The list gets what the chrome leaves.
+#[test]
+fn spaced_chrome_starts_at_30_rows() {
+    assert!(!spaced(29));
+    assert!(spaced(30));
+    for (rows, chrome) in [(24u16, 2u16), (29, 2), (30, 4), (50, 4)] {
+        assert_eq!(chrome_rows(rows), chrome, "{rows}");
+        let history = linear(60);
+        let mut shown = view(&history, WalkView::Complete { rows: 60 }, 0);
+        shown.spaced = spaced(rows);
+        let carve = screen_rows(&shown, Rect::new(0, 0, 80, rows));
+        assert_eq!(carve.body.height, rows - chrome, "{rows}: list rows");
+        assert_eq!(carve.gap.height, u16::from(spaced(rows)), "{rows}");
+        assert_eq!(carve.rule.height, u16::from(spaced(rows)), "{rows}");
+        let screen = text(&draw(&shown, 80, rows));
+        if spaced(rows) {
+            assert!(screen[1].trim().is_empty(), "{rows}: blank under the header: {screen:#?}");
+            let rule = &screen[usize::from(rows) - 2];
+            assert!(rule.chars().all(|c| c == '\u{2500}'), "{rows}: rule: {rule:?}");
+            assert!(screen[2].contains("Commit 60"), "{rows}: {screen:#?}");
+        } else {
+            assert!(screen[1].contains("Commit 60"), "{rows}: {screen:#?}");
+            assert!(!screen.iter().any(|row| row.contains('\u{2500}')), "{rows}");
+        }
+    }
+}
+
+/// ADR-0058 §4: every list row starts after a two-cell gutter and stops a
+/// cell short of the right edge; the header and the bar are indented one.
+#[test]
+fn list_rows_keep_a_two_cell_gutter_and_a_right_margin() {
+    let rows = linear(3);
+    let shown = view(&rows, WalkView::Complete { rows: 3 }, 0);
+    for columns in [40u16, 80, 120] {
+        let carve = screen_rows(&shown, Rect::new(0, 0, columns, 8));
+        assert_eq!((carve.body.x, carve.body.width), (2, columns - 3), "{columns}");
+        let screen = text(&draw(&shown, columns, 8));
+        for row in &screen[1..4] {
+            assert!(row.starts_with("  "), "{columns}: {row:?}");
+            assert!(row.ends_with(' '), "{columns}: {row:?}");
+        }
+        assert!(screen[0].starts_with(" \u{25c6} api"), "{columns}: {:?}", screen[0]);
+        assert!(screen[7].starts_with(" \u{23ce} open"), "{columns}: {:?}", screen[7]);
+    }
+}
+
+/// DESIGN.md §1.0: the operation banner replaces the header's tail, right
+/// of the repository's name and path.
+#[test]
+fn the_banner_takes_the_tails_place_on_the_right() {
+    let rows = linear(2);
+    let mut shown = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    shown.banner_op = Some(rebase_banner(Some((3, 7)), None));
+    let header = text(&draw(&shown, 120, 6))[0].clone();
+    assert!(header.starts_with(" \u{25c6} api  /code/api \u{b7} main"), "{header:?}");
+    assert!(header.trim_end().ends_with("REBASING step 3 of 7"), "{header:?}");
+    assert!(!header.contains("commits"), "{header:?}");
+    assert_eq!(header.width(), 120);
+    assert!(header.ends_with(' '), "one cell of margin: {header:?}");
 }
 
 #[test]
@@ -308,15 +387,16 @@ fn a_jump_in_progress_says_how_far_it_has_got_and_how_to_back_out() {
 
 /// A stopped walk says so, and names the key that starts a new one when the
 /// header has room: the widest of three wordings that fits after the
-/// location (m6-conflicts/85 A2). A 46-column location and the brand leave
-/// 65 columns for the words at 120, 25 at 80 and 15 at 70.
+/// repository's name (m6-conflicts/85 A2; since ADR-0058 the tail's room is
+/// what the name leaves — the path gives way to it). A 45-cell name leaves
+/// 69 columns for the words at 120, 29 at 80 and 14 at 65.
 #[test]
 fn the_stopped_header_keeps_the_widest_wording_that_fits() {
     let rows = linear(2);
     let location = format!("/{}", "r".repeat(45));
     let header = |columns: u16| {
         let mut stopped = view(&rows, WalkView::Cancelled { laid_out: 500 }, 0);
-        stopped.location = Some(sanitize_line(&location));
+        stopped.location = Some(at(&location));
         text(&draw(&stopped, columns, 5))[0].clone()
     };
 
@@ -331,7 +411,7 @@ fn the_stopped_header_keeps_the_widest_wording_that_fits() {
         !narrow.contains("reloads") && !narrow.contains('…'),
         "{narrow}"
     );
-    let narrower = header(70);
+    let narrower = header(65);
     assert!(narrower.trim_end().ends_with("stopped"), "{narrower}");
     assert!(!narrower.contains("stopped at"), "{narrower}");
 }
@@ -672,9 +752,10 @@ fn with_no_color_the_cursor_row_keeps_its_rule_and_dimmed_rows_stay_faint() {
     assert!(buffer[(10, 3)].modifier.contains(Modifier::DIM));
 }
 
-/// The first `count` cells of a screen line.
+/// The first `count` cells of a list row, after its two-cell gutter
+/// (ADR-0058 §4).
 fn cells(line: &str, count: usize) -> String {
-    line.chars().take(count).collect()
+    line.chars().skip(usize::from(GUTTER)).take(count).collect()
 }
 
 /// The twelve merge rows of a twelve-topic history: thirteen columns open,
@@ -908,13 +989,14 @@ fn the_pixel_tier_leaves_the_graph_column_blank_at_the_same_width() {
     let drawn = text(&draw(&text_tier, 40, 6));
     let blank = text(&draw(&pixel_tier, 40, 6));
 
-    assert_eq!(graph, Rect::new(0, 1, graph.width, 4), "every body row");
+    // Body rows sit inside the two-cell gutter (ADR-0058 §4).
+    assert_eq!(graph, Rect::new(2, 1, graph.width, 4), "every body row");
     assert!(graph.width > 0);
     assert_eq!(
         GraphScreen::new(&pixel_tier, &theme).graph_area(area),
         graph
     );
-    let columns = usize::from(graph.width);
+    let columns = usize::from(graph.x + graph.width);
     let split = |line: &str| -> (String, String) {
         (
             line.chars().take(columns).collect(),
@@ -961,7 +1043,7 @@ fn footer_at(columns: u16) -> String {
 /// of the rows overflows (`view()`'s default context).
 #[test]
 fn the_footer_hint_list_widens_with_the_frame() {
-    let at = |columns| footer_at(columns).split("  ").count();
+    let at = |columns| footer_at(columns).split(" · ").count();
     assert!(at(80) >= 4, "{}", footer_at(80));
     assert!(
         at(120) > at(80),
@@ -998,6 +1080,10 @@ fn the_footer_hint_list_widens_with_the_frame() {
 /// `j/k` fell off the end of the row to make room. Which of those two rows is better is the user's call by eye
 /// (`docs/shots/m5-hints-ladder.txt`, CLAUDE.md rule 6); what this test pins
 /// is that the leading verbs survive at 80 columns.
+///
+/// Words only since m8-polish-and-ship/06 (ADR-0058 §4): a row context's
+/// bar draws no bare key; what does not fit as words is behind `. more`,
+/// which ends the bar, and hints are joined by ` · `.
 #[test]
 fn footer_eighty_branch_row() {
     let rows = linear(3);
@@ -1010,7 +1096,7 @@ fn footer_eighty_branch_row() {
     let footer = screen.last().expect("a footer row").trim_end().to_owned();
     assert_eq!(
         footer,
-        " m merge  r rebase  ⏎ open  . more  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +"
+        " m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · . more"
     );
 }
 
@@ -1051,7 +1137,7 @@ fn the_changes_pane_hints_replace_the_row_context() {
         .to_owned();
     assert_eq!(
         unmerged_footer,
-        " ⏎ resolve  M mergetool  e edit  space resolved  c commit  ⇥ graph  . more"
+        " ⏎ resolve · M mergetool · e edit · space resolved · c commit · ⇥ graph · . more"
     );
     assert!(
         !unmerged_footer.contains("space stage"),
@@ -1067,8 +1153,9 @@ fn lanes_that_fit_matches_graph_widths_half_screen_bound() {
     // Half of 8 columns is 4 cells, one lane at 2 cells each — but the rail
     // always fits alongside lane 0, so the floor is 2, not 1.
     assert_eq!(lanes_that_fit(8), 2);
-    // Half of 80 columns is 40 cells, 20 lanes at 2 cells each.
-    assert_eq!(lanes_that_fit(80), 20);
+    // 80 columns less the gutter and margin is 77; half of that is 38
+    // cells, 19 lanes at 2 cells each (ADR-0058 §4).
+    assert_eq!(lanes_that_fit(80), 19);
 }
 
 #[test]
@@ -1083,11 +1170,11 @@ fn max_lanes_for_follows_the_width_breakpoints_when_unconfigured() {
 #[test]
 fn max_lanes_for_clamps_a_configured_value_to_what_the_screen_holds() {
     assert_eq!(max_lanes_for(80, Some(30)), lanes_that_fit(80));
-    assert_eq!(max_lanes_for(80, Some(30)), 20);
+    assert_eq!(max_lanes_for(80, Some(30)), 19);
 }
 
 /// A history wide enough that its open columns exceed even the screen's own
-/// bound at 80 columns (more than `lanes_that_fit(80) == 20`).
+/// bound at 80 columns (more than `lanes_that_fit(80) == 19`).
 fn very_wide_merges() -> Vec<Row> {
     let mut rows = wide_history(30);
     rows.truncate(30);
@@ -1118,19 +1205,20 @@ fn a_configured_cap_larger_than_the_screen_never_cuts_the_graph_column() {
     let rows = very_wide_merges();
     let mut view = view(&rows, WalkView::Complete { rows: rows.len() }, 0);
     let cap = max_lanes_for(80, Some(30));
-    assert_eq!(cap, 20, "clamped to what 80 columns can hold");
+    assert_eq!(cap, 19, "clamped to what 80 columns can hold");
     view.compaction = Compaction::at(cap);
     let screen = text(&draw(&view, 80, 24));
 
-    // 20 lanes (rail included) at 2 cells each is 40 cells — exactly the
-    // half-screen bound `graph_width` enforces, so the column is not cut.
+    // 19 lanes (rail included) at 2 cells each is 38 cells — exactly the
+    // half-of-the-body bound `graph_width` enforces, so the column is not
+    // cut. The body starts after the two-cell gutter.
     assert!(screen[1].contains('⋮'), "no rail drawn: {screen:#?}");
     let rail_at = screen[1]
         .chars()
         .position(|c| c == '⋮')
         .expect("rail is drawn");
     // The rail is the last drawn column: column (cap - 1), 2 cells wide.
-    assert_eq!(rail_at, (cap - 1) * 2, "{screen:#?}");
+    assert_eq!(rail_at, (cap - 1) * 2 + 2, "{screen:#?}");
     assert!(rail_at <= 40, "cut past the half-screen bound: {screen:#?}");
 }
 
@@ -1471,7 +1559,7 @@ fn banner_line_with_a_step_counts_it() {
 fn banner_line_keeps_step_i_of_n_at_80_columns() {
     let rows = linear(2);
     let mut screen = view(&rows, WalkView::Complete { rows: 2 }, 0);
-    screen.location = Some(sanitize_line("~/code/api"));
+    screen.location = Some(at("~/code/api"));
     let mut banner = rebase_banner(Some((3, 7)), None);
     banner.rewrite = Some(crate::graph_screen::RewriteBannerView {
         action: "edit".to_owned(),
@@ -1540,7 +1628,7 @@ fn the_banner_replaces_the_header_slot_and_reverses_when_focused() {
 fn a_long_location_is_cut_before_the_banner_is() {
     let rows = linear(2);
     let mut long = view(&rows, WalkView::Complete { rows: 2 }, 0);
-    long.location = Some(sanitize_line(
+    long.location = Some(at(
         "/media/archive/work/customers/acme/services/billing-api",
     ));
     let banner = rebase_banner(Some((3, 7)), Some("src/auth/token.rs"));
@@ -1658,7 +1746,7 @@ fn capture_for_docs_shots() {
          \n",
     );
     let mut long_path = with_banner.clone();
-    long_path.location = Some(sanitize_line(
+    long_path.location = Some(at(
         "/media/archive/work/customers/acme/services/billing-api",
     ));
     for (label, w, view) in [

@@ -3,4 +3,4 @@
 # Right: cursor on a commit off his branch; bar reads `⏎ open  o take …`.
 #
 Rewritable(PlainRow { verbs: RowVerbs { take: true, amend: false } })
-" ⏎ open  o take  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  J journal  / search  R rewrite  q quit  . more  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C"
+" ⏎ open · o take · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · R rewrite · q quit · F2 stat · F3 rend · x compare · . more"

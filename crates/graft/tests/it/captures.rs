@@ -87,7 +87,22 @@ pub fn frame(state: &AppState, columns: u16, rows: u16) -> Vec<String> {
 /// this machine's temp-path length, so the same file could not be drawn on
 /// Linux (M5 groups 12/13 review, m2). Two captures were fixed that way, one
 /// at a time; doing it here is what makes it true of all of them.
+///
+/// Since m8-polish-and-ship/06 the header writes a path under `$HOME` as
+/// `~/…` (ADR-0058 §4, J22), so the path is put under this machine's home:
+/// every machine then draws `~/code/api`. With no `HOME` at all it stays
+/// `/code/api`, and the header draws that.
 const CAPTURE_REPO_PATH: &str = "/code/api";
+
+/// [`CAPTURE_REPO_PATH`] under `$HOME`, when there is one.
+fn capture_repo_path() -> std::path::PathBuf {
+    match std::env::var_os("HOME") {
+        Some(home) if std::path::Path::new(&home).parent().is_some() => {
+            std::path::Path::new(&home).join(CAPTURE_REPO_PATH.trim_start_matches('/'))
+        }
+        _ => std::path::PathBuf::from(CAPTURE_REPO_PATH),
+    }
+}
 
 /// [`frame`], with the instant its relative dates are drawn against. `None`
 /// is the wall clock; a capture that must not age passes
@@ -104,7 +119,7 @@ pub fn frame_at(state: &AppState, columns: u16, rows: u16, clock: Option<Clock>)
         state.harness.clock = clock;
     }
     if let Some(repository) = &mut state.repository {
-        repository.path = std::path::PathBuf::from(CAPTURE_REPO_PATH);
+        repository.path = capture_repo_path();
     }
     let mut terminal = ratatui::Terminal::new(ratatui::backend::TestBackend::new(columns, rows))
         .expect("test backend opens");

@@ -6,13 +6,14 @@
 # Right: `C sara ⏎` on `origin/sara/login-page` — the status line
 # `on sara/login-page (new, tracks origin/sara/login-page) ✓ · u
 # goes back`; the cursor on the new HEAD's row.
- graft /code/api  6 commits
-  ◆ ▏  [login-page] [◆ sara/login-page] [origin/sara/… fix the bug                                       GF 3m   fbb2394
-● │    [main ⇄ origin] main moves on                                                                     GF 4m   37926a7
-●─╯    [feature-a] add the base                                                                          GF 5m   ed332bc
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · sara/login-page                                                                          6 commits
+
+    ◆ ▏  [login-page] [◆ sara/login-page] [origin/sara… fix the bug                                     GF 3m   fbb2394
+  ● │    [main ⇄ origin] main moves on                                                                  GF 4m   37926a7
+  ●─╯    [feature-a] add the base                                                                       GF 5m   ed332bc
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -43,6 +44,5 @@
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  on sara/login-page (new, tracks origin/sara/login-page) ✓ · u goes back

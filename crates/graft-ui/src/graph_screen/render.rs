@@ -36,7 +36,19 @@ impl Widget for GraphScreen<'_> {
             buf.set_line(
                 area.x,
                 chrome.header.y,
-                &self.header(width, folded_lanes),
+                &self.header(area.width, folded_lanes),
+                area.width,
+            );
+        }
+        if chrome.rule.height > 0 {
+            // The whole row, as the mock-up draws it; `-` at the ASCII tier,
+            // which has no box-drawing glyphs.
+            let glyph = if self.view.ascii { "-" } else { "\u{2500}" };
+            let rule = glyph.repeat(usize::from(area.width));
+            buf.set_line(
+                area.x,
+                chrome.rule.y,
+                &Line::styled(rule, foreground(self.theme, Token::Border)),
                 area.width,
             );
         }
@@ -69,9 +81,11 @@ impl Widget for GraphScreen<'_> {
             self.body(body, rows, applied.as_ref(), buf);
         }
 
+        // One cell of right margin on the bottom rows, as on every other.
+        let bar_width = width.saturating_sub(usize::from(super::RIGHT_MARGIN)).max(1);
         if chrome.footer.height > 0 {
-            let (text, token) = self.footer_line(body, rows, applied.as_ref(), width);
-            let footer = Line::styled(fit(&text, width), foreground(self.theme, token));
+            let (text, token) = self.footer_line(body, rows, applied.as_ref(), bar_width);
+            let footer = Line::styled(fit(&text, bar_width), foreground(self.theme, token));
             buf.set_line(area.x, chrome.footer.y, &footer, area.width);
         }
         if let Some(line) = self.view.commit_graph
@@ -80,7 +94,7 @@ impl Widget for GraphScreen<'_> {
             buf.set_line(
                 area.x,
                 chrome.offer.y,
-                &self.commit_graph_line(line, width),
+                &self.commit_graph_line(line, bar_width),
                 area.width,
             );
         }

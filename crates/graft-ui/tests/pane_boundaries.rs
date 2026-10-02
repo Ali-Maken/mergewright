@@ -849,10 +849,10 @@ fn the_row_columns_are_the_ones_the_rows_are_drawn_to() {
             "{width}: boundaries must be ascending and deduped: {boundaries:?}"
         );
         // Seven columns at most (graph, marker, subject, gap, author, date,
-        // sha) means eight boundaries at most. A denser list would let the
-        // snap stop in the middle of a column.
+        // sha) plus the gutter (ADR-0058 §4) means nine boundaries at most. A denser list would let the snap
+        // stop in the middle of a column.
         assert!(
-            boundaries.len() <= 8,
+            boundaries.len() <= 9,
             "{width}: {} boundaries is more than the columns there are: {boundaries:?}",
             boundaries.len()
         );

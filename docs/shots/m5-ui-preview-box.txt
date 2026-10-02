@@ -81,7 +81,6 @@ m merge  r rebase  screen footer
 
 
 
-
 ╭ Preview: rebase feature/auth onto main ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 2 commits replayed · feature/auth 7f6e5d4 → ghost                                                                                                            │
 │ working tree: 3 files updated · may conflict: src/auth.rs                                                                                                    │
@@ -89,6 +88,7 @@ m merge  r rebase  screen footer
 │ git rebase refs/heads/main                                                                                                                                   │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
 ╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
 m merge  r rebase  screen footer
 
 === planning, docked in 80x24 ===

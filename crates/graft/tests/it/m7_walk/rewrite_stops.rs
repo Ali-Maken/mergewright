@@ -178,8 +178,10 @@ fn click_under_the_block(columns: u16, rows: u16) {
         Some("m1"),
         "the row drawn at {row}: {shot}"
     );
-    // The body is every row from under the block to above the footer.
-    let body = usize::from(rows) - 1 - (bottom + 1);
+    // The body is every row from under the block to above the footer — and
+    // above the rule, from 30 rows (ADR-0058 §4).
+    let rule = usize::from(graft_ui::graph_screen::spaced(rows));
+    let body = usize::from(rows) - 1 - rule - (bottom + 1);
     assert_eq!(state.graph_rows(), body, "{columns}x{rows}: {shot}");
     drop(clicked);
     app.close();

@@ -1,11 +1,12 @@
- graft /code/api  6 commits
-◌    Uncommitted changes (1 untracked)
-◆    [◆ main] Handle expired tokens                                                                      GF 60m  74f9a9e
-●    Move session TTL to config                                                                          PR 4mo  0a27627
-●    rustfmt                                                                                             RU 5mo  b32274b
-● ▏  Retry refresh once on 401                                                                           LI 7mo  2f48ca3
-●    Add token refresh                                                                                   TO 10mo 47593a5
-◇    Add session                                                                                         AN 1y   3f6c311
+ ◆ api  ~/code/api · main                                                                                     6 commits
+
+  ◌    Uncommitted changes (1 untracked)
+  ◆    [◆ main] Handle expired tokens                                                                   GF 60m  74f9a9e
+  ●    Move session TTL to config                                                                       PR 4mo  0a27627
+  ●    rustfmt                                                                                          RU 5mo  b32274b
+  ● ▏  Retry refresh once on 401                                                                        LI 7mo  2f48ca3
+  ●    Add token refresh                                                                                TO 10mo 47593a5
+  ◇    Add session                                                                                      AN 1y   3f6c311
 
 
 
@@ -19,8 +20,7 @@
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  compare base 0a27627 set aside · it comes back when you leave blame
 COMMIT 2f48ca3 · Lina <lina@example.invalid> · 2019-06-07 00:00 +0000 · 7mo · parents 47593a5 · diff vs first parent · …
 Retry refresh once on 401

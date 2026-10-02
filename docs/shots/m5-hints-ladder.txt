@@ -46,23 +46,23 @@
 
 --- the cursor is on the uncommitted-changes row
 [······························ 80 cells of bar ·······························]
- ⏎ changes  c commit  S stash  . more  p  P  f  u  J  /  j/k  q  F2  F3  +  1  F
+ ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · . more
 
 --- the cursor is on the tip, which carries the current branch's badge
 [······························ 80 cells of bar ·······························]
- ⏎ open  c commit  P push  . more  p  f  b  t  u  S  J  /  q  F2  F3  x  +  j/k
+ ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · . more
 
 --- the cursor is on another branch's tip
 [······························ 80 cells of bar ·······························]
- m merge  r rebase  ⏎ open  . more  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +
+ m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · . more
 
 --- the cursor is on an ordinary commit row
 [······························ 80 cells of bar ·······························]
- ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  q  F2  F3  x  +
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · . more
 
 --- the changes pane has focus, the divider draggable
 [······························ 80 cells of bar ·······························]
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
+ space stage · d discard · c commit · <> resize · ⌃A all · e edit · . more
 
 --- the undo journal browser has focus
 [······························ 80 cells of bar ·······························]
@@ -72,23 +72,23 @@
 
 --- the cursor is on the uncommitted-changes row
 [·················································· 120 cells of bar ··················································]
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  . more  J  /  j/k  q  F2  F3  +  1  F  H  M  O  C
+ ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · J journal · / search · j/k move · q quit · . more
 
 --- the cursor is on the tip, which carries the current branch's badge
 [·················································· 120 cells of bar ··················································]
- ⏎ open  c commit  P push  p pull  f fetch  . more  b  t  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
+ ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · . more
 
 --- the cursor is on another branch's tip
 [·················································· 120 cells of bar ··················································]
- m merge  r rebase  ⏎ open  . more  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+ m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · . more
 
 --- the cursor is on an ordinary commit row
 [·················································· 120 cells of bar ··················································]
- ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · . more
 
 --- the changes pane has focus, the divider draggable
 [·················································· 120 cells of bar ··················································]
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
+ space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ graph · . more
 
 --- the undo journal browser has focus
 [·················································· 120 cells of bar ··················································]
@@ -98,23 +98,23 @@
 
 --- the cursor is on the uncommitted-changes row
 [······································································ 160 cells of bar ······································································]
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 renderer  + lanes  . more  1  F  H  M  O  C
+ ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · J journal · / search · j/k move · q quit · F2 stat · F3 rend · + lane · 1 first · . more
 
 --- the cursor is on the tip, which carries the current branch's badge
 [······································································ 160 cells of bar ······································································]
- ⏎ open  c commit  P push  p pull  f fetch  b branch  t tag  u undo  S stash  J journal  / search  q quit  . more  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
+ ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · . more
 
 --- the cursor is on another branch's tip
 [······································································ 160 cells of bar ······································································]
- m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  . more  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+ m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · F3 rend · . more
 
 --- the cursor is on an ordinary commit row
 [······································································ 160 cells of bar ······································································]
- ⏎ open  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  J journal  . more  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · . more
 
 --- the changes pane has focus, the divider draggable
 [······································································ 160 cells of bar ······································································]
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
+ space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ graph · . more
 
 --- the undo journal browser has focus
 [······································································ 160 cells of bar ······································································]

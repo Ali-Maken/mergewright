@@ -8,8 +8,9 @@ use ratatui::text::{Line, Span};
 use unicode_width::UnicodeWidthStr;
 
 use super::{
-    AUTHOR_BREAKPOINT, AUTHOR_WIDTH, Filters, GraphEntry, GraphScreen, GraphView, GraphicsStatus,
-    MARKER_WIDTH, OrderNotice, SHA_WIDTH, SUBJECT_GAP, WHEN_WIDTH, WalkView, banner_line,
+    AUTHOR_BREAKPOINT, AUTHOR_WIDTH, Filters, GUTTER, GraphEntry, GraphScreen, GraphView,
+    GraphicsStatus, HeaderView, MARKER_WIDTH, OrderNotice, RIGHT_MARGIN, SHA_WIDTH, SUBJECT_GAP,
+    WHEN_WIDTH, WalkView, banner_line, header_line, tail_room,
 };
 use crate::fit::fit;
 use crate::graph_column::{CELLS_PER_LANE, GraphColumn};
@@ -26,9 +27,12 @@ use crate::theme::Token;
 /// ones rather than special-casing each size.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ScreenRows {
-    /// The header's row: the brand, the location, the walk or the operation
-    /// banner.
+    /// The header's row: the repository, its path and branch, and the walk
+    /// or the operation banner.
     pub header: Rect,
+    /// The blank row under the header ([`GraphView::spaced`](super::GraphView::spaced));
+    /// zero-height below 30 rows.
+    pub gap: Rect,
     /// The rows [`GraphView::banner`](super::GraphView::banner) takes under
     /// the header, clipped to what is free above the rest of the chrome.
     pub banner: Rect,
@@ -37,8 +41,13 @@ pub struct ScreenRows {
     /// what the banner leaves, so the graph keeps the other half; zero when
     /// there is nothing pending or no room for a box of three rows.
     pub pending: Rect,
-    /// The rows the commit rows are drawn in.
+    /// The rows the commit rows are drawn in: inside the two-cell gutter on
+    /// the left and the one-cell margin on the right (ADR-0058 §4).
     pub body: Rect,
+    /// The `─` rule between the rows and the bottom chrome
+    /// ([`GraphView::spaced`](super::GraphView::spaced)); zero-height below
+    /// 30 rows.
+    pub rule: Rect,
     /// The commit-graph offer's row, directly above the hint bar.
     pub offer: Rect,
     /// The hint bar's row: the screen's last.
@@ -91,7 +100,18 @@ impl<'a> GraphScreen<'a> {
             return Vec::new();
         }
         let (body, rows, applied) = self.body_layout(area);
-        Columns::compute(body, graph_width(body, rows, applied.as_ref())).boundaries(body)
+        let mut xs =
+            Columns::compute(body, graph_width(body, rows, applied.as_ref())).boundaries(body);
+        // The gutter and the margin are blank cells beside the rows, so the
+        // frame's own edges are boundaries (ADR-0058 §4). The body's right
+        // edge is not: [`snap_to_columns`] rests a right edge one cell
+        // before a boundary inside the frame, which there is the SHA's last
+        // cell — the margin beyond it is what the frame's edge reaches.
+        xs.retain(|x| *x != body.right() || body.right() == area.right());
+        xs.extend([area.x, area.right()]);
+        xs.sort_unstable();
+        xs.dedup();
+        xs
     }
 
     /// The rows' rectangle, the rows that fit in it, and the fold they are
@@ -102,123 +122,84 @@ impl<'a> GraphScreen<'a> {
 
     /// The header line; `folded_lanes` is how many lanes the drawn fold
     /// hides behind the rail (0 when nothing folds or lanes are expanded).
-    pub(super) fn header(&self, width: usize, folded_lanes: usize) -> Line<'static> {
-        let muted = foreground(self.theme, Token::TextMuted);
-        let brand = " graft ".len().min(width);
-        let mut spans = vec![Span::styled(
-            fit(" graft ", brand),
-            foreground(self.theme, Token::Accent),
-        )];
-        let mut used = brand;
-
-        // The operation banner takes the rest of the header — the walk
-        // state, filters, order notice and graphics status all answer "is
-        // history still loading", which is not the question mid-operation
-        // (DESIGN.md §1.13, ADR-0038 §3). `focused` reverses the slot so a
-        // conflict landing is noticed without a click.
-        //
-        // Its room comes out **before** the location's. The location used to
-        // take what it liked and hand the banner the remainder, so a long
-        // repository path (every capture's scratch repo, and plenty of real
-        // checkouts) cut the banner to `MERG…` — the state gone, and the
-        // banner is the urgent half. A path cut with an `…` still says
-        // where you are (m5/16, review C1).
-        let banner = self.view.banner_op.as_ref().map(|banner| {
-            // The banner's own room: what the brand leaves, less its two
-            // leading spaces. A rewrite's words ladder down to it (07b).
-            let room = width.saturating_sub(used).saturating_sub(2);
-            let room = u16::try_from(room).unwrap_or(u16::MAX);
-            let text = format!("  {}", banner_line(banner, room));
-            let mut style = foreground(self.theme, Token::Warning);
-            if banner.focused {
-                style = style.add_modifier(ratatui::style::Modifier::REVERSED);
-            }
-            (text, style)
-        });
-        let reserved = banner
-            .as_ref()
-            .map_or(0, |(text, _)| text_width(text))
-            .min(width.saturating_sub(used));
-        let location = self.view.location.as_ref().map(|path| format!("{path}  "));
-        // What the location leaves for the walk's words, which pick the
-        // widest of their wordings that fits (`walk_text_within`). No banner
-        // reserves room on this path: with one, the walk is not drawn.
-        let walk_room = width
-            .saturating_sub(used)
-            .saturating_sub(location.as_deref().map_or(0, text_width));
-
-        let mut push =
-            |text: String, style: Style, reserved: usize, spans: &mut Vec<Span<'static>>| {
-                let room = width.saturating_sub(used).saturating_sub(reserved);
-                if room == 0 {
-                    return;
+    pub(super) fn header(&self, width: u16, folded_lanes: usize) -> Line<'static> {
+        let location = self.view.location.as_ref();
+        let mut header = HeaderView {
+            repo: location.map_or("", |at| at.repo.as_str()),
+            path: location.map_or("", |at| at.path.as_str()),
+            branch: location.map_or("", |at| at.branch.as_str()),
+            tail: None,
+            practice: location.is_some_and(|at| at.practice),
+        };
+        // The tail's room comes out before the path's: `header_line` cuts
+        // the path first, so a long checkout path never cuts the banner to
+        // `MERG…` — the state gone, and the banner is the urgent half
+        // (m5/16, review C1).
+        let room = usize::from(tail_room(&header, width));
+        header.tail = Some(match &self.view.banner_op {
+            // The operation banner takes the tail's place — the walk state,
+            // filters, order notice and graphics status all answer "is
+            // history still loading", which is not the question
+            // mid-operation (DESIGN.md §1.13, ADR-0038 §3). `focused`
+            // reverses it so a conflict landing is noticed without a click.
+            Some(banner) => {
+                let room16 = u16::try_from(room).unwrap_or(u16::MAX);
+                let mut style = foreground(self.theme, Token::Warning);
+                if banner.focused {
+                    style = style.add_modifier(ratatui::style::Modifier::REVERSED);
                 }
-                let text = fit(&text, room.min(text_width(&text)));
-                used += text_width(&text);
-                spans.push(Span::styled(text, style));
-            };
-        if let Some(location) = location {
-            push(
-                location,
-                foreground(self.theme, Token::Text),
-                reserved,
-                &mut spans,
-            );
-        }
-        if let Some((text, style)) = banner {
-            push(text, style, 0, &mut spans);
-            return Line::from(spans);
-        }
-        self.push_walk_status(folded_lanes, walk_room, muted, &mut push, &mut spans);
-        Line::from(spans)
+                Line::from(Span::styled(banner_line(banner, room16), style))
+            }
+            None => Line::from(self.walk_status(folded_lanes, room)),
+        });
+        header_line(&header, width, self.theme)
     }
 
     /// The walk state, filters, order notice and graphics status — the
-    /// header's informational tail when no operation banner takes its place.
-    fn push_walk_status(
-        &self,
-        folded_lanes: usize,
-        walk_room: usize,
-        muted: Style,
-        push: &mut impl FnMut(String, Style, usize, &mut Vec<Span<'static>>),
-        spans: &mut Vec<Span<'static>>,
-    ) {
-        let (walk, token) = walk_text_within(&self.view.walk, walk_room);
-        push(walk, foreground(self.theme, token), 0, spans);
+    /// header's informational tail when no operation banner takes its place
+    /// — in that order, each cut with `…` to what the parts before it left
+    /// of `room`, so a failure is shortened, never silently dropped while
+    /// any cell is free.
+    fn walk_status(&self, folded_lanes: usize, room: usize) -> Vec<Span<'static>> {
+        let muted = foreground(self.theme, Token::TextMuted);
+        let (walk, token) = walk_text_within(&self.view.walk, room);
+        let mut used = 0;
+        let mut spans = Vec::new();
+        let mut push = |text: String, style: Style| {
+            let left = room.saturating_sub(used);
+            if left == 0 {
+                return;
+            }
+            let text = fit(&text, left.min(text_width(&text)));
+            used += text_width(&text);
+            spans.push(Span::styled(text, style));
+        };
+        push(walk, foreground(self.theme, token));
         let filters = left_out(self.view.filters, folded_lanes);
         if !filters.is_empty() {
-            push(
-                format!("  {filters}"),
-                foreground(self.theme, Token::Accent),
-                0,
-                spans,
-            );
+            push(format!("  {filters}"), foreground(self.theme, Token::Accent));
         }
         if matches!(self.view.walk, WalkView::Jumping { .. }) {
-            push("  Esc cancels".to_owned(), muted, 0, spans);
+            push("  Esc cancels".to_owned(), muted);
         }
         match self.view.order {
-            Some(OrderNotice::Sorting) => {
-                push("  date order, sorting…".to_owned(), muted, 0, spans);
-            }
+            Some(OrderNotice::Sorting) => push("  date order, sorting…".to_owned(), muted),
             Some(OrderNotice::Provisional) => push(
                 "  order stays provisional (date)".to_owned(),
                 foreground(self.theme, Token::Warning),
-                0,
-                spans,
             ),
             None => {}
         }
         match &self.view.graphics {
-            Some(GraphicsStatus::Ok) => push("  gfx ok".to_owned(), muted, 0, spans),
+            Some(GraphicsStatus::Ok) => push("  gfx ok".to_owned(), muted),
             Some(GraphicsStatus::Failed(message)) => push(
                 format!("  gfx: {message}"),
                 foreground(self.theme, Token::Warning),
-                0,
-                spans,
             ),
             None => {}
         }
+        drop(push);
+        spans
     }
 }
 
@@ -257,19 +238,38 @@ pub fn screen_rows(view: &GraphView<'_>, area: Rect) -> ScreenRows {
         height: u16::from(area.height > 1),
         ..area
     };
-    let top = header.bottom().min(footer.y);
-    let free = footer.y.saturating_sub(top);
+    // The blank row and the rule (ADR-0058 §4) are only drawn where the
+    // terminal is tall enough that the list can spare them, so they are
+    // carved before anything that could compete for a row.
+    let spaced = view.spaced && area.height >= 4;
+    let gap = Rect {
+        y: header.bottom(),
+        height: u16::from(spaced),
+        ..area
+    };
+    let rule_floor = footer.y;
+    let top = gap.bottom().min(footer.y);
+    let free = footer
+        .y
+        .saturating_sub(top)
+        .saturating_sub(u16::from(spaced));
     let banner = Rect {
         y: top,
         height: banner_rows(view).min(free),
         ..area
     };
     let offer = Rect {
-        y: footer.y.saturating_sub(1),
+        y: rule_floor.saturating_sub(1),
         height: u16::from(view.commit_graph.is_some() && free > banner.height),
         ..area
     };
-    let body_floor = if offer.height > 0 { offer.y } else { footer.y };
+    let above_offer = if offer.height > 0 { offer.y } else { rule_floor };
+    let rule = Rect {
+        y: above_offer.saturating_sub(1),
+        height: u16::from(spaced),
+        ..area
+    };
+    let body_floor = if spaced { rule.y } else { above_offer };
     let left = body_floor.saturating_sub(banner.bottom());
     let wanted = view
         .pending
@@ -285,19 +285,41 @@ pub fn screen_rows(view: &GraphView<'_>, area: Rect) -> ScreenRows {
         },
         ..area
     };
+    // The gutter and the margin come off only where the row can afford
+    // them: a screen a few cells wide keeps what it has.
     let body = Rect {
+        x: area.x + inset(area.width).0,
         y: pending.bottom(),
+        width: body_width(area.width),
         height: body_floor.saturating_sub(pending.bottom()),
-        ..area
     };
     ScreenRows {
         header,
+        gap,
         banner,
         pending,
         body,
+        rule,
         offer,
         footer,
     }
+}
+
+/// The cells a row of `columns` keeps left and right of its content: the
+/// gutter and the margin (ADR-0058 §4), or none on a screen too narrow to
+/// spare them.
+fn inset(columns: u16) -> (u16, u16) {
+    if columns > GUTTER + RIGHT_MARGIN {
+        (GUTTER, RIGHT_MARGIN)
+    } else {
+        (0, 0)
+    }
+}
+
+/// The cells a list row of a screen `columns` wide has for its content.
+fn body_width(columns: u16) -> u16 {
+    let (left, right) = inset(columns);
+    columns - left - right
 }
 
 /// [`GraphScreen::body_layout`] as a plain function of the view.
@@ -412,9 +434,11 @@ pub(super) fn graph_width(area: Rect, rows: &[GraphEntry<'_>], fold: Option<&Fol
 /// same half-screen bound `graph_width` draws to, and the same cell cost per
 /// lane, so a fold planned to this cap never gets cut by the column it is
 /// drawn into (ADR-0025 decision 3).
+/// `columns` is the screen's (or the graph pane's) width; the gutter and
+/// the margin come off it first, as they do for the rows.
 #[must_use]
 pub fn lanes_that_fit(columns: u16) -> usize {
-    let lanes = column_budget(columns) / CELLS_PER_LANE;
+    let lanes = column_budget(body_width(columns)) / CELLS_PER_LANE;
     usize::from(lanes).max(2)
 }
 
@@ -550,7 +574,9 @@ impl Columns {
         right -= when_width;
         let when_x = right;
 
-        let show_author = area.width >= AUTHOR_BREAKPOINT;
+        // The breakpoint is the row's whole width (DESIGN.md §1.2/§1.3);
+        // `area` is the body, inside the gutter and the margin.
+        let show_author = area.width + GUTTER + RIGHT_MARGIN >= AUTHOR_BREAKPOINT;
         let author_width = if show_author {
             AUTHOR_WIDTH.min(right.saturating_sub(content_x))
         } else {

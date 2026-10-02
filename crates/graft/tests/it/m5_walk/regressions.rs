@@ -382,20 +382,19 @@ fn take_live_plain_row(state: &AppState) -> Result<(), String> {
     check(graft::update::can_take(state), || {
         "the parent row is not take-live".to_owned()
     })?;
-    bar_is(state, "⏎ open  o take  b branch")
+    bar_is(state, "⏎ open · o take · b branch")
 }
 
 fn bar_is(state: &AppState, three: &str) -> Result<(), String> {
     let drawn = bar(state)?;
-    let wanted = format!(" {three}  . more");
+    let wanted = format!(" {three} · ");
     check(drawn.starts_with(&wanted), || {
         format!("the bar is {drawn:?}, which does not open {wanted:?}")
     })?;
-    // And nothing else is taught before the doorway: the prefix above is
-    // the whole of the bar up to `. more`.
-    let before = drawn.split(". more").next().unwrap_or_default();
-    check(before == format!(" {three}  "), || {
-        format!("the bar teaches {before:?} before `. more`")
+    // Words only since m8-polish-and-ship/06 (ADR-0058 §4): the rest of the
+    // row goes on more whole hints, and the doorway is last.
+    check(drawn.trim_end().ends_with(" · . more"), || {
+        format!("the bar {drawn:?} does not end with its doorway")
     })
 }
 
@@ -436,7 +435,7 @@ fn hints_at_80_show_three_and_more() -> Scenario {
         steps: vec![
             Step::WaitFor(Wait::Ready),
             Step::See("the current branch's row", |state| {
-                bar_is(state, "⏎ open  c commit  P push")
+                bar_is(state, "⏎ open · c commit · P push")
             }),
             key(ch('j')),
             Step::See("a plain commit row", take_live_plain_row),
@@ -472,7 +471,7 @@ fn hints_at_80_show_three_and_more() -> Scenario {
                 // (m6-conflicts/52), and is ranked right after the way
                 // back, above the row's own keys (review m7-10-to-07c
                 // Minor 7, m7-power-tools/07d).
-                bar_is(state, "⇥ banner  c continue  ⏎ changes")
+                bar_is(state, "⇥ banner · c continue · ⏎ changes")
             }),
             key(KeyCode::Enter),
             Step::WaitFor(Wait::ChangesPane),

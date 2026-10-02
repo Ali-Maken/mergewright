@@ -16,8 +16,10 @@ use crate::session::Clock;
 
 use super::events::{CommitGraphOffer, GitCheck};
 
-/// Screen rows that are not the graph: one line of header above it and one of
-/// status below. The graph screen (DESIGN.md §1.3) draws within this.
+/// Screen rows that are not the graph below 30 rows: one line of header above
+/// it and one of status below. From 30 rows a blank row and a rule join them
+/// (`graft_ui::graph_screen::chrome_rows`, ADR-0058 §4), which is what
+/// [`AppState::graph_pane_rows`] reads.
 pub const CHROME_ROWS: u16 = graft_ui::graph_screen::CHROME_ROWS;
 
 /// Everything Graft knows, as one value.
@@ -507,7 +509,7 @@ impl AppState {
     /// The mouse's bounds check reads this; scrollers do not.
     #[must_use]
     pub fn graph_pane_rows(&self) -> usize {
-        let chrome = CHROME_ROWS
+        let chrome = graft_ui::graph_screen::chrome_rows(self.size.rows)
             .saturating_add(self.harness.banner_rows())
             .saturating_add(u16::from(self.commit_graph_line().is_some()))
             // Below 100 columns with the graph as the tab shown, the
