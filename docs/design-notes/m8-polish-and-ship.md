@@ -37,7 +37,7 @@ with no shell.
 | **Never let the terminal fall behind** | nothing found | DSR fence per frame (ADR-0054) | **I** — studies cover input batching, not output pacing |
 | Atomic frames | DEC 2026 (§3) | text **and** image commands inside one pair | T |
 | Wheel bursts | lazygit 2 rows/event, zellij per event (§2) | a turn's wheel events sum; per-event step unchanged until scene 1's verdict | T step · I sum |
-| Per-row work while moving | VS Code: scroll moves an offset (§1) | detail follow, radar probe, emphasis start at rest; stale ones cancelled | T (extended) |
+| Per-row work while moving | VS Code: scroll moves an offset (§1) | detail follow, radar probe start at rest; stale ones cancelled; emphasis (per-frame drawing) judged in 05 (03 revision) | T (extended) |
 | Kitty uploads | re-place by id, `d=p` (§3) | have (m7/46) | T (have) |
 | Kitty Unicode placeholders | yazi; WezTerm doesn't render | — | R |
 | Measure where he is | gitui #2823 | opt-in `GRAFT_PERF_TRACE`, numbers only | I (rule 1, :84) |
@@ -173,6 +173,25 @@ impl Pacer {
 }
 // Wake gains `Fence`.
 
+// graft::event_loop::rest (pub(crate), G-settle, revised after its scout) — when the cursor has stopped.
+// Rest is time since the last motion, not "a frame with nothing queued": paced frames go idle between key repeats.
+pub(crate) const BURST_GAP: Duration = Duration::from_millis(150);   // closer motions are one burst
+pub(crate) const QUIET_MIN: Duration = Duration::from_millis(50);
+pub(crate) struct Rest { /* last, gaps: [Duration; 4], the burst's key */ }
+impl Rest {
+    pub(crate) fn new() -> Rest;
+    pub(crate) fn in_burst(&self, now: Instant) -> bool;              // loop writes AppState::defer_follow from it
+    pub(crate) fn moved(&mut self, now: Instant, by: Option<&Wake>);  // the wake just applied changed FollowKey
+    pub(crate) fn rest_first(&self, wake: &Wake) -> bool;             // another input while owed: Rested before it
+    pub(crate) fn deadline(&self) -> Option<Instant>;                 // last + clamp(2 × widest gap, QUIET_MIN, BURST_GAP)
+    pub(crate) fn rested(&mut self);                                  // next motion is a leading edge
+}
+// graft::update — AppEvent gains `Rested`; AppState gains `defer_follow: bool` (loop-written, false in unit tests)
+// and `followed: Option<FollowKey>`.
+pub(crate) enum FollowKey { Commit(Oid), WorkingTree }
+pub(crate) fn follow_key(state: &AppState) -> Option<FollowKey>;
+pub(crate) fn follow_owed(state: &AppState) -> bool;
+
 // graft::trace (G-trace) — GRAFT_PERF_TRACE=<file>; the test-only GRAFT_FRAME_TRACE is untouched
 pub(crate) struct FrameRecord { pub wakes: u16, pub motions: u16, pub queued: u16, pub update_us: u32,
     pub commands: u16, pub draw_us: u32, pub bytes: u32, pub write_us: u32, pub fence_us: Option<u32>,
@@ -258,11 +277,13 @@ pub enum OnDiskNames { New, Old }
 pub fn migrate_repo(ctx: &Context) -> Result<Migrated, (OnDiskNames, MigrateError)>;
 ```
 
-Callers: `event_loop::pump` owns `Pacer` and `FrameTrace`; the graph view builds `HeaderView`; every geometry mirror
-(`update::geometry`, mouse row math, `pane_boundaries`) reads `ScreenRows`; row painting calls `legible_on` for any fg
-drawn on `selection`; startup draws `EmptyState` when discovery finds no repo; `update` calls `Keymap::translate` once
-before any `*_key` dispatcher; every surface that prints a key calls `Keymap::spell`; repository open calls
-`migrate_repo` before any journal read.
+Callers: `event_loop::pump` owns `Pacer`, `Rest` and `FrameTrace`, and waits on the earlier of `Pacer::deadline` and
+`Rest::deadline`. `update::settle` gates the detail follow and the evil probe on `defer_follow`/`follow_owed`, and
+`AppEvent::Rested` runs them. Thread emphasis stays per-frame paint and is not gated (G-settle Out). The graph view
+builds `HeaderView`. Every geometry mirror (`update::geometry`, mouse row math, `pane_boundaries`) reads `ScreenRows`.
+Row painting calls `legible_on` for any fg drawn on `selection`. Startup draws `EmptyState` when discovery finds no
+repo. `update` calls `Keymap::translate` once before any `*_key` dispatcher. Every surface that prints a key calls
+`Keymap::spell`. Repository open calls `migrate_repo` before any journal read.
 
 ## Hard-to-reverse choices (decided)
 
