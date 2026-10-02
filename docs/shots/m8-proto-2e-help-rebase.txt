@@ -1,0 +1,50 @@
+ SCENE 2 · finding keys
+ Your rebase stopped. How do you go on?
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ◆ billing-api  ~/code/billing-api · main
+ REBASE paused · 3 of 5 · stopped to edit 9f2c1ab Add invoice totals · nothing conflicts
+                                             ╭─ keys here ─────────────────────────────────────────────────────────────────────── esc close ╮
+  ◌      Uncommitted changes · none          │ › ▏                                                                                          │
+▸ ●      [main] [origin/main] Add invoice tot│ IN PROGRESS                                                                                  │             Ali         2 hours ago  9f2c1ab
+  ●      Fix rounding in tax lines           │▸c     continue the rebase                                                 operation.continue │             Lina Park   5 hours ago  41d0e7c
+  ●─╮    Merge pull request #212 from acme/cs│ s     skip this commit                                                        operation.skip │             Tom Ruiz    yesterday    c8a1f02
+  │ ●    [feature/csv] Add CSV export        │ a     abort: back to where it started                                        operation.abort │             Tom Ruiz    yesterday    77be3d9
+  │ ●    Escape commas in CSV                │ ⏎     open the stopped commit                                                 operation.open │             Tom Ruiz    2 days ago   0d4c5aa
+  ●─╯    Speed up ledger query               │ e     open the file in your editor                                            operation.edit │             Mei Chen    2 days ago   e19f6b4
+  ●      [v2.3.0] Validate IBAN input        │ HERE                                                                                         │             Ali         3 days ago   5a7d2e1
+  ●      Make refunds idempotent             │ m     merge the selected branch into yours                                       graph.merge │             Priya Nair  4 days ago   b3c90f8
+  ●─╮    Merge branch 'fix/rounding'         │ r     rebase yours onto the selected commit                                     graph.rebase │             Lina Park   5 days ago   2e6f1d3
+  │ ●    [fix/rounding] Round half to even   │ b     new branch here                                                           graph.branch │             Lina Park   5 days ago   9c0a4b7
+  ●─╯    Add audit trail                     │ t     new tag here                                                                 graph.tag │             Sam Okafor  6 days ago   6d2b8e0
+  ●      Log slow requests                   │ x     compare: mark this commit, then pick another                             graph.compare │             Mei Chen    last week    f01c3a9
+  ●      Initial import of billing           │ S     stash…                                                                     graph.stash │             Ali         2 months ago a1b2c3d
+                                             │ C     switch branch (branch picker)                                      graph.branch_picker │
+                                             │ o     take this commit onto yours (cherry-pick)                            graph.cherry_pick │
+                                             │ R     rewrite: squash, reorder, edit                                           graph.rewrite │
+                                             │ f     fetch                                                                      graph.fetch │
+                                             │ p     pull                                                                        graph.pull │
+                                             │ P     push                                                                        graph.push │
+                                             │ ⏎     open the commit                                                             graph.open │
+                                             │ y     copy the commit id                                                      graph.copy_sha │
+                                             │ e     open in your editor                                                         graph.edit │
+                                             │ M     map of all branches                                                          graph.map │
+                                             │ F     focus on this commit                                                       graph.focus │
+                                             │ 1     first-parent view                                                   graph.first_parent │
+                                             │ EVERYWHERE                                                                                   │
+                                             │ ⌃P    find anything (palette)                                                    app.palette │
+                                             │ ?     keys here                                                                     app.help │
+                                             │ u     undo the last thing you did                                                   app.undo │
+                                             │ U     redo                                                                          app.redo │
+                                             │ /     find in this list                                                             app.find │
+                                             │ .     actions for the selected row                                                  app.menu │
+                                             │ ⇥     next pane                                                                app.next_pane │
+                                             │ q     quit                                                                          app.quit │
+                                             │                                                                                              │
+                                             ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ✓ Done. Next task.
+ (the app's keys are yours to find) · q quit

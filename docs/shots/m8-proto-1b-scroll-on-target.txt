@@ -1,0 +1,50 @@
+ SCENE 1 · scroll feel
+ Go back about two weeks, fast, and stop on the commit that says “bump deps”. Use the keyboard.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ build 1  · keyboard 1 · keyboard 2 · trackpad 1 · trackpad 2 · wheel 1 · wheel 2
+  ●     │      Add CSV export                                                                                                                         Jonas Berg Sat Sep 19 21:19  a937a93
+  ●     │      Add healthcheck endpoint                                                                                                               Sam Okafor Sat Sep 19 21:18  86809d2
+  ●     │      docs: Add tax region table                                                                                                             Sam Okafor Sat Sep 19 20:16  cb30ff2
+  │     ●      Guard against empty cart                                                                                                               Jonas Berg Sat Sep 19 19:32  8d55d01
+  ●     │      test: Refactor billing client                                                                                                          Sam Okafor Sat Sep 19 19:17  cdf75d2
+  ●     │      Fix timezone in reports                                                                                                                Mei Chen   Sat Sep 19 17:57  7ac3d77
+  ●     │      fix: Remove dead feature flag                                                                                                          Ali        Sat Sep 19 16:43  bccdbc4
+  ●─╮   │      Merge pull request #8834 from acme/refunds                                                                                             Tom Ruiz   Sat Sep 19 16:41  fe22906
+  │ ●   │      refactor: Refactor billing client                                                                                                      Mei Chen   Sat Sep 19 15:10  e28faca
+  │ ●   │      test: Guard against empty cart                                                                                                         Mei Chen   Sat Sep 19 14:34  c8613d0
+  ● │   │      test: Add CSV export                                                                                                                   Ali        Sat Sep 19 13:07  7ce2eca
+  ● │   │      Fix rounding in invoice totals                                                                                                         Jonas Berg Sat Sep 19 12:55  2289ed9
+  │ │   ●      refactor: Rename customer fields                                                                                                       Lina Park  Sat Sep 19 12:44  0f63ff7
+  ● │   │      test: Add pagination to invoices                                                                                                       Ali        Sat Sep 19 11:42  d55348a
+  │ ●   │      feat: Validate IBAN input                                                                                                              Sam Okafor Sat Sep 19 11:30  7cac4d3
+  ● │   │      Guard against empty cart                                                                                                               Jonas Berg Sat Sep 19 10:16  1cc010d
+  │ │   ●      Split payment service                                                                                                                  Sam Okafor Sat Sep 19 10:01  8b091cc
+  │ ●   │      Tidy logging                                                                                                                           Tom Ruiz   Sat Sep 19 09:57  7363dc0
+  ● │   │      Add tax region table                                                                                                                   Ali        Sat Sep 19 09:43  16e19e1
+  │ ●   │      test: Tidy logging                                                                                                                     Tom Ruiz   Sat Sep 19 08:19  f3ea42d
+  │ │   ●      refactor: Fix typo in email template                                                                                                   Lina Park  Sat Sep 19 07:34  ef3b59b
+  ● │   │      docs: Drop unused index                                                                                                                Mei Chen   Sat Sep 19 07:26  3367eb4
+  ● │   │      Handle partial refunds                                                                                                                 Priya Nair Sat Sep 19 05:56  ff141de
+  ● │   │      Add CSV export                                                                                                                         Ali        Sat Sep 19 03:27  6fb9176
+  ● │   │      Add metrics for retries                                                                                                                Lina Park  Sat Sep 19 02:45  70e3357
+  ●─┼─╮ │      Merge pull request #8825 from acme/refunds                                                                                             Ali        Sat Sep 19 02:26  7551eeb
+  │ ● │ │      test: Move config to env                                                                                                               Sam Okafor Sat Sep 19 02:05  7df0f56
+  ● │ │ │      Add CSV export                                                                                                                         Tom Ruiz   Fri Sep 18 22:29  dbc022d
+  ● │ │ │      test: Handle partial refunds                                                                                                           Tom Ruiz   Fri Sep 18 22:20  f43912f
+  ● │ │ │      Move config to env                                                                                                                     Priya Nair Fri Sep 18 21:56  78e005a
+  ● │ │ │      refactor: Fix rounding in invoice totals                                                                                               Jonas Berg Fri Sep 18 20:48  68de973
+  ● │ │ │      Log slow requests                                                                                                                      Priya Nair Fri Sep 18 20:27  cffeb5d
+  │ ● │ │      docs: Update README                                                                                                                    Sam Okafor Fri Sep 18 19:56  fbab7dc
+  ●─┼─┼─┼─╮    Merge pull request #8821 from acme/tax-fix                                                                                             Jonas Berg Fri Sep 18 19:46  a5fdb11
+  ● │ │ │ │    refactor: Validate IBAN input                                                                                                          Sam Okafor Fri Sep 18 19:44  6f81036
+  ● │ │ │ │    test: Add CSV export                                                                                                                   Lina Park  Fri Sep 18 19:02  b32a281
+  ● │ │ │ │    test: Log slow requests                                                                                                                Sam Okafor Fri Sep 18 18:53  1e0a3c0
+  ● │ │ │ │    fix: Add CSV export                                                                                                                    Tom Ruiz   Fri Sep 18 18:26  bd05b37
+  ● │ │ │ │    refactor: Handle expired tokens                                                                                                        Sam Okafor Fri Sep 18 18:13  dd683e3
+  │ │ │ │ ●    test: Handle partial refunds                                                                                                           Lina Park  Fri Sep 18 16:38  4db7087
+  │ │ │ ● │    test: Refactor billing client                                                                                                          Lina Park  Fri Sep 18 16:17  cc12a39
+  │ │ │ ● │    feat: Fix timezone in reports                                                                                                          Tom Ruiz   Fri Sep 18 15:40  9574eb7
+▸ ● │ │ │ │    chore: bump deps                                                                                                                       Ali        Fri Sep 18 12:09  58bba6e
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ row 368 of 17,694 · answers the fence: yes, 0.0 ms typical · frame sync: yes · ghostty 1.3.1
+ 1 / 2 switch build · s wheel step: 3 rows · space next task · ⌫ back to the top · q quit

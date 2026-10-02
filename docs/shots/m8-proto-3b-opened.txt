@@ -1,0 +1,50 @@
+ SCENE 3 · first run and the practice tour
+ Get a copy of this project onto your machine: https://github.com/acme/billing-api.git
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ◆ payments-service ~/code/payments-service · main
+
+▸ ●      [main] [origin/main] Retry declined cards once                                                                                                   Ali         yesterday    3e8d1f0
+  ●      Add 3-D Secure fallback                                                                                                                          Ali         yesterday    c19a7b2
+  ●─╮    Merge pull request #88 from acme/payouts                                                                                                         Priya Nair  2 days ago   8b0e4c1
+  │ ●    [payouts] Batch payouts nightly                                                                                                                  Priya Nair  3 days ago   4f7a2d9
+  ●─╯    Split payment service                                                                                                                            Ali         4 days ago   d2c6e88
+  ●      Initial commit                                                                                                                                   Ali         3 months ago 00a9f1e
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ first time? ? keys here · ⌃P anything · ⌃P "tour" to practise
+ (the app's keys are yours to find; the card names some) · q quit

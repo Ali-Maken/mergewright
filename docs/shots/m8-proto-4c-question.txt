@@ -1,0 +1,48 @@
+ SCENE 4 · themes, by eye
+ Which dark reads better?
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  dark A · ground darker                                                                       dark B · text brighter
+  ◆ billing-api · main                                                                         ◆ billing-api · main
+   ◌      Uncommitted changes · 3 files                                                         ◌      Uncommitted changes · 3 files
+   ●      [main] [origin/main] Add invoice totals           Ali         2 hours ago  9f2c1ab    ●      [main] [origin/main] Add invoice totals           Ali         2 hours ago  9f2c1ab
+   ●      Fix rounding in tax lines                         Lina Park   5 hours ago  41d0e7c    ●      Fix rounding in tax lines                         Lina Park   5 hours ago  41d0e7c
+ ▸ ●─╮    Merge pull request #212 from acme/csv-export      Tom Ruiz    yesterday    c8a1f02  ▸ ●─╮    Merge pull request #212 from acme/csv-export      Tom Ruiz    yesterday    c8a1f02
+   │ ●    [feature/csv] Add CSV export                      Tom Ruiz    yesterday    77be3d9    │ ●    [feature/csv] Add CSV export                      Tom Ruiz    yesterday    77be3d9
+   │ ●    Escape commas in CSV                              Tom Ruiz    2 days ago   0d4c5aa    │ ●    Escape commas in CSV                              Tom Ruiz    2 days ago   0d4c5aa
+   ●─╯    Speed up ledger query                             Mei Chen    2 days ago   e19f6b4    ●─╯    Speed up ledger query                             Mei Chen    2 days ago   e19f6b4
+
+   ours    let total = round(sum);                                                              ours    let total = round(sum);
+   theirs  let total = sum.round(2);                                                            theirs  let total = sum.round(2);
+   open    <<<<<<< choose a side                                                                open    <<<<<<< choose a side
+   + fn farewell() { … }                                                                        + fn farewell() { … }
+   - println!("hi");                                                                            - println!("hi");
+   3 files · 2 hours ago · ? keys here                                                          3 files · 2 hours ago · ? keys here
+
+   cursor row vs ground      3.05:1 ≥ floor 3.0                                                 cursor row vs ground      3.14:1 ≥ floor 3.0
+   text on cursor row        4.61:1 ≥ floor 4.5                                                 text on cursor row        5.14:1 ≥ floor 4.5
+   blue lane on cursor row   1.33:1 < floor 3.0                                                 blue lane on cursor row   1.20:1 < floor 3.0
+   grey text on ground       6.15:1 ≥ floor 4.5                                                 grey text on ground       6.95:1 ≥ floor 4.5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ QUESTION  Which dark reads better?
+     1  dark A (ground darker)     2  dark B (text brighter)     3  no difference
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

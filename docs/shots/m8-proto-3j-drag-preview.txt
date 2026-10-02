@@ -1,0 +1,50 @@
+ SCENE 3 · first run and the practice tour
+ Follow the practice card.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ◇ practice · /tmp/graft-practice-7f3a  a throwaway repo, not yours
+╭─ practice 4 of 8 · merge by dragging ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── esc leave ╮
+│ drag the feature badge onto main with the mouse · y goes ahead                                                                                             ✓ stage ✓ commit ✓ undo drag │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+▸ ◌      Uncommitted changes · greet.rs (1 staged, 1 not)
+  ●      [main] Say hello                                    ╭─ Merge feature into main ─────────────────────────── preview ╮                             Practice    1 min ago    3b9d0c2
+  │ ●    [feature] Shout the greeting                        │  main gains 1 commit: Shout the greeting                     │                             Practice    1 min ago    e5f6a71
+  ●─╯    Add README                                          │  no conflicts · u takes it back                              │                             Practice    2 min ago    8c2d4b3
+  ●      Initial commit                                      │                                                              │                             Practice    2 min ago    1f0a9e5
+                                                             │  y go ahead · esc cancel                                     │
+                                                             ╰──────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ✓ undone: commit “Greet by name” · your change is back, staged · U redoes
+ (the app's keys are yours to find; the card names some) · q quit
