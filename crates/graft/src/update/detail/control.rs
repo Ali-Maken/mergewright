@@ -38,8 +38,8 @@ pub(crate) fn detail_event(next: &mut AppState, commands: &mut Vec<Command>, eve
         AppEvent::Produced(id, Product::FileDiff(key, result)) => {
             detail.diff_arrived(id, key, result);
         }
-        AppEvent::Produced(_, Product::ContainedIn(oid, result)) => {
-            detail.contained_arrived(oid, result);
+        AppEvent::Produced(id, Product::ContainedIn(oid, result)) => {
+            detail.contained_arrived(id, oid, result);
         }
         AppEvent::Produced(id, Product::EvilProbe(oid, verdict)) => {
             detail.evil_probed(id, oid, verdict);
@@ -48,7 +48,8 @@ pub(crate) fn detail_event(next: &mut AppState, commands: &mut Vec<Command>, eve
         AppEvent::Started(..)
         | AppEvent::Produced(..)
         | AppEvent::Progress(..)
-        | AppEvent::Core(_) => {}
+        | AppEvent::Core(_)
+        | AppEvent::Rested => {}
     }
 }
 

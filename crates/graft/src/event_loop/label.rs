@@ -30,6 +30,7 @@ fn event_label(event: &AppEvent) -> &'static str {
         AppEvent::Started(_, task) => task_label(task),
         AppEvent::Produced(_, product) => product_label(product),
         AppEvent::Progress(_, progress) => progress_label(progress),
+        AppEvent::Rested => "Rested",
     }
 }
 

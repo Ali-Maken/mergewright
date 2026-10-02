@@ -440,6 +440,14 @@ pub struct AppState {
     /// Tags rows carry after their subject until the next write starts —
     /// `✎ changed` after a put-in (m7-power-tools/09).
     pub row_tags: super::row_tags::RowTags,
+    /// The cursor is mid-burst (G-settle): `settle` records a moved
+    /// selection as owed instead of following it. Written only by the event
+    /// loop, before each update (`event_loop::rest`); `false` everywhere
+    /// else, so a test driving `update` directly sees every move followed.
+    pub(crate) defer_follow: bool,
+    /// What the pane and the evil probe last followed. Differs from
+    /// `super::follow_key` while a follow is owed.
+    pub(crate) followed: Option<super::FollowKey>,
 }
 
 /// The screens Graft can show.

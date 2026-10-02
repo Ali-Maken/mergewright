@@ -289,4 +289,32 @@ pub(crate) fn render_header(
         let style = if index == 0 { title_style } else { text_style };
         draw_line(buf, area, offset, line, style);
     }
+    if view.following {
+        draw_following(area, theme, buf);
+    }
+}
+
+/// What the title row ends in while the pane waits for the cursor to rest.
+pub(crate) const FOLLOWING: &str = "reading\u{2026}";
+
+/// `reading…`, muted, at the title row's right end — over the title's tail
+/// when the row is too narrow for both.
+fn draw_following(area: Rect, theme: &Theme, buf: &mut Buffer) {
+    let width = FOLLOWING.width();
+    let Ok(cells) = u16::try_from(width) else {
+        return;
+    };
+    if area.width <= cells || area.height == 0 {
+        return;
+    }
+    let x = area.x + area.width - cells;
+    // One blank cell before it, so it never reads as part of the title.
+    buf.set_stringn(x - 1, area.y, " ", 1, foreground(theme, Token::TextMuted));
+    buf.set_stringn(
+        x,
+        area.y,
+        FOLLOWING,
+        width,
+        foreground(theme, Token::TextMuted),
+    );
 }

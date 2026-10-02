@@ -1369,6 +1369,8 @@ fn every_field_spelled_out() -> AppState {
             );
             tags
         },
+        defer_follow: true,
+        followed: Some(super::FollowKey::WorkingTree),
     }
 }
 
