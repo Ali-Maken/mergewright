@@ -116,78 +116,25 @@ pub(super) fn forks(
         crate::rewrite::off_line(repo, oldest.commit, top.oid, &names, stop).map_err(facts)?;
     found.more = more;
 
-    let line_tips: HashSet<Oid> = rewritten.line.iter().map(|tip| tip.oid).collect();
-    let mut candidates = Vec::new();
-    for branch in &off {
-        let backup = branch.tip == branch.at && line_tips.contains(&branch.tip);
-        if backup {
-            continue;
-        }
-        let own =
-            crate::rewrite::own_commits(repo, branch.at, branch.tip, stop).map_err(facts)?;
-        candidates.push(Candidate {
-            off: branch.clone(),
-            own,
-        });
-    }
-    candidates.sort_by(|a, b| {
-        b.count()
-            .cmp(&a.count())
-            .then_with(|| a.off.branch.as_bytes().cmp(b.off.branch.as_bytes()))
-    });
-
+    let candidates = candidates_of(repo, &off, rewritten.line, stop)?;
     let weigh = Weigh::read(repo, rewritten, &candidates, stop)?;
-    let mut moving: HashMap<Oid, RefName> = HashMap::new();
-    let mut claimed: HashSet<usize> = HashSet::new();
-    let mut follows: HashSet<Vec<u8>> = HashSet::new();
+    let env = Env {
+        repo,
+        git,
+        rewritten,
+        stop,
+    };
+    let mut fates = Fates::default();
     for index in 0..candidates.len() {
-        if claimed.contains(&index) {
+        if fates.claimed.contains(&index) {
             continue;
         }
         let candidate = &candidates[index];
         let after_row = weigh.after_row(rewritten, candidate.off.at);
-        let fate = weigh.fate(repo, git, rewritten, candidate, after_row, &moving, stop)?;
+        let fate = weigh.fate(&env, candidate, after_row, &fates.moving)?;
         if let (ForkFate::Follows { .. }, Some(after_row)) = (&fate, after_row) {
-            let own = candidate.commits();
-            let inside: Vec<(usize, Tip)> = candidates
-                .iter()
-                .enumerate()
-                .filter(|(other, _)| *other != index && !claimed.contains(other))
-                .filter(|(_, other)| own.contains(&other.off.tip))
-                .map(|(other, branch)| (other, tip_of(&branch.off)))
-                .collect();
-            for commit in &own {
-                moving.insert(*commit, candidate.off.branch.clone());
-            }
-            follows.insert(candidate.off.branch.as_bytes().to_vec());
-            let mut inside_tips = Vec::new();
-            for (other, tip) in inside {
-                claimed.insert(other);
-                follows.insert(tip.name.as_bytes().to_vec());
-                inside_tips.push(tip);
-            }
-            // Bottom up, as the picks run.
-            inside_tips.sort_by_key(|tip| own.iter().position(|commit| *commit == tip.oid));
-            found.sections.push(ForkSection {
-                after_row,
-                branch: tip_of(&candidate.off),
-                picks: own
-                    .iter()
-                    .map(|commit| {
-                        let summary = weigh.info.get(commit).ok_or_else(|| {
-                            PreviewError::Read(RunError::Unparsable(format!(
-                                "rev-list did not list {commit}"
-                            )))
-                        })?;
-                        Ok(TodoLine {
-                            action: TodoAction::Pick,
-                            commit: *commit,
-                            subject: summary.subject.clone(),
-                        })
-                    })
-                    .collect::<Result<Vec<TodoLine>, PreviewError>>()?,
-                inside: inside_tips,
-            });
+            let section = fates.follow(&candidates, index, after_row, &weigh.info)?;
+            found.sections.push(section);
         }
         found.drawn.push(Fork {
             branch: candidate.off.branch.clone(),
@@ -204,16 +151,125 @@ pub(super) fn forks(
             fork.branch.as_bytes().to_vec(),
         )
     });
-    found.left_behind = off
-        .into_iter()
-        .filter(|branch| !follows.contains(branch.branch.as_bytes()))
-        .map(|branch| LeftBehind {
-            branch: branch.branch,
-            on: branch.at,
-        })
-        .collect();
+    found.left_behind = fates.left_behind(off);
     found.info = weigh.info;
     Ok(found)
+}
+
+/// The branches off the line weighed as forks, longest first (then by
+/// name): every one but a backup — no commits of its own, parked at a tip
+/// of the line.
+fn candidates_of(
+    repo: &RepoHandle,
+    off: &[OffLine],
+    line: &[Tip],
+    stop: &dyn Stop,
+) -> Result<Vec<Candidate>, PreviewError> {
+    let line_tips: HashSet<Oid> = line.iter().map(|tip| tip.oid).collect();
+    let mut candidates = Vec::new();
+    for branch in off {
+        let backup = branch.tip == branch.at && line_tips.contains(&branch.tip);
+        if backup {
+            continue;
+        }
+        let own = crate::rewrite::own_commits(repo, branch.at, branch.tip, stop).map_err(facts)?;
+        candidates.push(Candidate {
+            off: branch.clone(),
+            own,
+        });
+    }
+    candidates.sort_by(|a, b| {
+        b.count()
+            .cmp(&a.count())
+            .then_with(|| a.off.branch.as_bytes().cmp(b.off.branch.as_bytes()))
+    });
+    Ok(candidates)
+}
+
+/// The reads a fate is weighed with.
+struct Env<'a> {
+    repo: &'a RepoHandle,
+    git: &'a GitVersion,
+    rewritten: &'a Rewritten<'a>,
+    stop: &'a dyn Stop,
+}
+
+/// The fates fixed so far, as the candidates are weighed longest first.
+#[derive(Default)]
+struct Fates {
+    /// Each follower commit -> the fork that moves it.
+    moving: HashMap<Oid, RefName>,
+    /// Candidates moved as a branch on a follower: not weighed again.
+    claimed: HashSet<usize>,
+    /// Every branch that moves, full name: the followers and those on them.
+    follows: HashSet<Vec<u8>>,
+}
+
+impl Fates {
+    /// Every branch named off the line but those that move.
+    fn left_behind(&self, off: Vec<OffLine>) -> Vec<LeftBehind> {
+        off.into_iter()
+            .filter(|branch| !self.follows.contains(branch.branch.as_bytes()))
+            .map(|branch| LeftBehind {
+                branch: branch.branch,
+                on: branch.at,
+            })
+            .collect()
+    }
+
+    /// `candidates[index]` follows from `after_row`: its commits claimed,
+    /// the branches on them moved with it. Returns its section.
+    fn follow(
+        &mut self,
+        candidates: &[Candidate],
+        index: usize,
+        after_row: usize,
+        info: &HashMap<Oid, CommitSummary>,
+    ) -> Result<ForkSection, PreviewError> {
+        let candidate = &candidates[index];
+        let own = candidate.commits();
+        let inside: Vec<(usize, Tip)> = candidates
+            .iter()
+            .enumerate()
+            .filter(|(other, _)| *other != index && !self.claimed.contains(other))
+            .filter(|(_, other)| own.contains(&other.off.tip))
+            .map(|(other, branch)| (other, tip_of(&branch.off)))
+            .collect();
+        for commit in &own {
+            self.moving.insert(*commit, candidate.off.branch.clone());
+        }
+        self.follows
+            .insert(candidate.off.branch.as_bytes().to_vec());
+        let mut inside_tips = Vec::new();
+        for (other, tip) in inside {
+            self.claimed.insert(other);
+            self.follows.insert(tip.name.as_bytes().to_vec());
+            inside_tips.push(tip);
+        }
+        // Bottom up, as the picks run.
+        inside_tips.sort_by_key(|tip| own.iter().position(|commit| *commit == tip.oid));
+        let picks = own
+            .iter()
+            .map(|commit| {
+                let summary = info.get(commit).ok_or_else(|| {
+                    PreviewError::Read(RunError::Unparsable(format!(
+                        "rev-list did not list {commit}"
+                    )))
+                })?;
+                Ok(TodoLine {
+                    action: TodoAction::Pick,
+                    commit: *commit,
+                    subject: summary.subject.clone(),
+                })
+            })
+            .collect::<Result<Vec<TodoLine>, PreviewError>>()?;
+        Ok(ForkSection {
+            after_row,
+            branch: tip_of(&candidate.off),
+            picks,
+            inside: inside_tips,
+        })
+    }
 }
 
 /// What every fate is weighed with, read once for all the forks.
@@ -277,13 +333,10 @@ impl Weigh {
 
     fn fate(
         &self,
-        repo: &RepoHandle,
-        git: &GitVersion,
-        rewritten: &Rewritten<'_>,
+        env: &Env<'_>,
         candidate: &Candidate,
         after_row: Option<usize>,
         moving: &HashMap<Oid, RefName>,
-        stop: &dyn Stop,
     ) -> Result<ForkFate, PreviewError> {
         let off = &candidate.off;
         let name = String::from_utf8_lossy(off.branch.as_bytes()).into_owned();
@@ -309,7 +362,7 @@ impl Weigh {
         };
         let commits: Vec<Oid> = own.iter().map(|(commit, _)| *commit).collect();
         if let Some(upstream) = self.upstreams.get(&name)
-            && holds_any(repo, upstream, off.at, &commits, stop)?
+            && holds_any(env.repo, upstream, off.at, &commits, env.stop)?
         {
             return Ok(ForkFate::Stays(WhyStays::Pushed {
                 upstream: ref_name(upstream)?,
@@ -318,43 +371,56 @@ impl Weigh {
         if let Some(on) = commits.iter().find_map(|commit| moving.get(commit)) {
             return Ok(ForkFate::Stays(WhyStays::Nested { on: on.clone() }));
         }
-        let base = match &rewritten.chained.forecast {
-            ConflictForecast::StopsAt { step, .. } if *step <= after_row + 1 => {
-                return Ok(ForkFate::Stays(WhyStays::StopsBelow));
-            }
-            ConflictForecast::NotChecked(why) => {
-                return Ok(ForkFate::Stays(WhyStays::NotChecked(why.clone())));
-            }
-            _ => rewritten.chained.results.get(after_row).copied().flatten(),
-        };
-        let (Some(base), Some(onto)) = (base, rewritten.tip_after.get(after_row).copied()) else {
-            return Ok(ForkFate::Stays(WhyStays::NotChecked(
-                "the rewrite's forecast did not reach it".to_owned(),
-            )));
-        };
-        let steps: Vec<Step> = own
-            .iter()
-            .map(|(commit, parent)| Step {
-                commit: *commit,
-                parent: Some(*parent),
-                replays: true,
-            })
-            .collect();
-        let replayed = chain::chain(repo, git, base, &steps, stop)?;
-        Ok(match replayed.forecast {
-            ConflictForecast::Clean => ForkFate::Follows { onto },
-            ConflictForecast::StopsAt { commit, paths, .. } => {
-                ForkFate::Stays(WhyStays::WouldConflict { commit, paths })
-            }
-            ConflictForecast::NotChecked(why) => ForkFate::Stays(WhyStays::NotChecked(why)),
-            // The chained replay never answers `Likely`; were it to, a
-            // conflict forecast is no clean bill.
-            ConflictForecast::Likely { paths } => ForkFate::Stays(WhyStays::WouldConflict {
-                commit: commits.first().copied().unwrap_or(off.at),
-                paths,
-            }),
-        })
+        replayed_fate(env, own, after_row, off.at)
     }
+}
+
+/// Whether a fork's own commits (`own`: commit, parent) replay clean onto
+/// the result of `after_row`, as the chained forecast reaches it. A
+/// forecast hole is never read as clean.
+fn replayed_fate(
+    env: &Env<'_>,
+    own: &[(Oid, Oid)],
+    after_row: usize,
+    at: Oid,
+) -> Result<ForkFate, PreviewError> {
+    let chained = env.rewritten.chained;
+    let base = match &chained.forecast {
+        ConflictForecast::StopsAt { step, .. } if *step <= after_row + 1 => {
+            return Ok(ForkFate::Stays(WhyStays::StopsBelow));
+        }
+        ConflictForecast::NotChecked(why) => {
+            return Ok(ForkFate::Stays(WhyStays::NotChecked(why.clone())));
+        }
+        _ => chained.results.get(after_row).copied().flatten(),
+    };
+    let (Some(base), Some(onto)) = (base, env.rewritten.tip_after.get(after_row).copied()) else {
+        return Ok(ForkFate::Stays(WhyStays::NotChecked(
+            "the rewrite's forecast did not reach it".to_owned(),
+        )));
+    };
+    let steps: Vec<Step> = own
+        .iter()
+        .map(|(commit, parent)| Step {
+            commit: *commit,
+            parent: Some(*parent),
+            replays: true,
+        })
+        .collect();
+    let replayed = chain::chain(env.repo, env.git, base, &steps, env.stop)?;
+    Ok(match replayed.forecast {
+        ConflictForecast::Clean => ForkFate::Follows { onto },
+        ConflictForecast::StopsAt { commit, paths, .. } => {
+            ForkFate::Stays(WhyStays::WouldConflict { commit, paths })
+        }
+        ConflictForecast::NotChecked(why) => ForkFate::Stays(WhyStays::NotChecked(why)),
+        // The chained replay never answers `Likely`; were it to, a
+        // conflict forecast is no clean bill.
+        ConflictForecast::Likely { paths } => ForkFate::Stays(WhyStays::WouldConflict {
+            commit: own.first().map_or(at, |(commit, _)| *commit),
+            paths,
+        }),
+    })
 }
 
 /// Each candidate's upstream, full names: one `for-each-ref`.
@@ -389,9 +455,8 @@ fn tip_of(off: &OffLine) -> Tip {
 }
 
 fn ref_name(name: &str) -> Result<RefName, PreviewError> {
-    RefName::new(name.as_bytes()).map_err(|_| {
-        PreviewError::Read(RunError::Unparsable(format!("the branch name {name:?}")))
-    })
+    RefName::new(name.as_bytes())
+        .map_err(|_| PreviewError::Read(RunError::Unparsable(format!("the branch name {name:?}"))))
 }
 
 fn facts(why: FactsError) -> PreviewError {

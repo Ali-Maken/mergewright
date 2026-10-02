@@ -61,10 +61,7 @@ pub fn progress(repo: &RepoHandle, stop: &dyn Stop) -> Result<Option<RewriteProg
     let head_name = head_name.trim();
 
     let done_rows: Vec<&TodoLine> = commits(&done).collect();
-    let counted = (
-        done_rows.len(),
-        done_rows.len() + commits(&to_do).count(),
-    );
+    let counted = (done_rows.len(), done_rows.len() + commits(&to_do).count());
     let current = done_rows.last().map(|line| (*line).clone());
     let section = open_section(&done);
     let fork = section.and_then(|label| fork_of(label, &done, &to_do));
@@ -90,7 +87,9 @@ pub fn progress(repo: &RepoHandle, stop: &dyn Stop) -> Result<Option<RewriteProg
         _ => None,
     };
     let followers = match (plan, &branch) {
-        (Some(plan), Some((_, index, _))) => followers(repo, plan, *index, &to_do, section.is_some(), stop)?,
+        (Some(plan), Some((_, index, _))) => {
+            followers(repo, plan, *index, &to_do, section.is_some(), stop)?
+        }
         _ => Vec::new(),
     };
     Ok(Some(RewriteProgress {
@@ -143,7 +142,7 @@ fn fork_of(label: &str, done: &[Row], to_do: &[Row]) -> Option<String> {
             Row::UpdateRef(name) => Some(name),
             _ => None,
         })
-        .last()
+        .next_back()
         .map(|name| name.strip_prefix("refs/heads/").unwrap_or(name).to_owned())
 }
 

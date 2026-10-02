@@ -95,7 +95,8 @@ fn rewrite_as_run(
     stop: &dyn Stop,
 ) -> Result<(Operation, PreviewPlan), PreviewError> {
     params.forks = Vec::new();
-    let (mut drawn, sections) = planned(repo, git, &Operation::Rewrite(params.clone()), facts, stop)?;
+    let (mut drawn, sections) =
+        planned(repo, git, &Operation::Rewrite(params.clone()), facts, stop)?;
     params.forks = sections;
     let op = Operation::Rewrite(params);
     drawn.against = op.tips();

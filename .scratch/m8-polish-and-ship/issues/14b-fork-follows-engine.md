@@ -74,12 +74,12 @@ pub struct ForkSection {
 ```
 
 ## Acceptance (truth read with git, never with Graft's own reads)
-- [ ] Clean fork follows: `main─c1─c2─c3` (`feature-a`, HEAD), `feature-x` = c2 + x1 (other file); stage a change,
+- [x] Clean fork follows (`fork_follows::a_clean_fork_follows_an_amend_into`): `main─c1─c2─c3` (`feature-a`, HEAD), `feature-x` = c2 + x1 (other file); stage a change,
       `a` into c1, run. `git rev-parse feature-x~1` == `git rev-parse feature-a~1`; `git diff feature-x~1 feature-x`
       == x1's old diff; subject kept; HEAD home on `feature-a`.
-- [ ] Conflicting fork stays: x1 edits the line the amend changes. Preview: `Stays(WouldConflict{commit: x1, ..})`;
+- [x] Conflicting fork stays (`fork_follows::a_conflicting_fork_stays_and_the_line_moves`): x1 edits the line the amend changes. Preview: `Stays(WouldConflict{commit: x1, ..})`;
       after `y`, `git rev-parse feature-x` unchanged; the line moved.
-- [ ] Forks with a dependent (ADR-0059 §1, §5; corrected 2026-10-02 — the first text assumed a fork off the
+- [x] Forks with a dependent (`fork_follows::a_branch_off_a_dependents_middle_is_refused_as_a_second_dependent` (a), `fork_follows::a_dependent_and_a_fork_off_his_middle_both_follow` (b)) (ADR-0059 §1, §5; corrected 2026-10-02 — the first text assumed a fork off the
       dependent's middle follows; it is a second dependent and is refused, as today):
       (a) `feature-b` = feature-a + b1 b2 b3 (dependent), `feature-x` = b2 + x1. Reword HEAD (`RewordHead`) → refused
       before anything runs, words name both branches (`feature-b and feature-x are both built on yours`, ADR-0047 §4);
@@ -87,16 +87,16 @@ pub struct ForkSection {
       (b) Same `feature-b`; `feature-x` = c2 + x1 (off his own middle commit). `R`, reword c1, run → both follow (git):
       `git rev-parse feature-x~1` == `git rev-parse feature-a~1`; `git merge-base --is-ancestor feature-a feature-b`;
       `feature-b`'s three own diffs unchanged; HEAD home on `feature-a`.
-- [ ] `u` after a follow: every ref (`for-each-ref refs/heads`) equals before; one journal entry.
+- [x] `u` after a follow (`fork_follows::undo_after_a_follow_puts_every_ref_back`): every ref (`for-each-ref refs/heads`) equals before; one journal entry.
 - [x] Oracle (`rewrite_oracle::a_fork_follows_in_the_same_rebase`): the generated todo hand-run with `git rebase -i` gives the same trees and refs (`rewrite_oracle.rs`).
-- [ ] Verified against git: `label`/`reset` run without `--rebase-merges`; abort during a stop after a section leaves
+- [x] Verified against git (`rewrite_oracle::a_fork_follows_in_the_same_rebase` — plain `rebase -i`, no `--rebase-merges`, engine flags `operation/history.rs:790-795`; `fork_follows::an_abort_at_a_stop_after_a_section_leaves_the_fork`): `label`/`reset` run without `--rebase-merges`; abort during a stop after a section leaves
       the fork ref unchanged (`git rev-parse`). If either fails: stop, report, don't work around (ADR-0059 §3).
-- [ ] `progress` during a hand-run of Graft's todo with a `break` inside a section: `fork == Some("feature-x")`,
+- [x] `progress` during a hand-run (`fork_follows::progress_inside_a_section_names_the_fork`) of Graft's todo with a `break` inside a section: `fork == Some("feature-x")`,
       `step` equals the pick-like rows of `rebase-merge/done`.
-- [ ] Stays reasons each tested: pushed (upstream holds x1), elsewhere (worktree), merge in `at..F`, nested, default
+- [x] Stays reasons each tested (`fork_follows::a_pushed_fork_stays`, `a_fork_checked_out_elsewhere_stays`, `a_fork_with_a_merge_stays`, `a_fork_of_a_fork_stays_nested`, `the_default_branch_stays`, `the_ninth_fork_is_past_the_cap_and_stays`, `an_unchecked_forecast_never_follows`): pushed (upstream holds x1), elsewhere (worktree), merge in `at..F`, nested, default
       branch, ninth fork `PastCap`, forecast `NotChecked` (git < 2.40 path or cap) → never `Follows`.
-- [ ] Fork moved between preview and `y` → `Moved`, nothing written (git).
-- [ ] `plan.json` without `forks` (an older plan) reads; a stop resumed after relaunch finishes the section.
+- [x] (`fork_follows::a_fork_moved_after_the_preview_is_refused_moved`) Fork moved between preview and `y` → `Moved`, nothing written (git).
+- [x] (`rewrite::saved::tests::a_plan_saved_before_forks_reads_as_none`, `fork_follows::a_stop_resumed_after_relaunch_finishes_the_section`) `plan.json` without `forks` (an older plan) reads; a stop resumed after relaunch finishes the section.
 - [x] No fork (`rewrite::tests` todo-text tests + every `rewrite_oracle` row green, graft-ops run 2026-10-02): todo text byte-equal to today's (existing oracle tests unchanged and green).
 
 ## Touches
@@ -146,3 +146,30 @@ refusal + (b) follow, the builder's proposal. ADR-0059 §1/§5 now say so explic
 
 **Semantics for 14c:** `PastCap` never appears in `forks` (forks past 8 are only counted in `forks_more`);
 `pending` excludes sections not yet entered, the open section's rest first; `step` total counts every pick-like row.
+
+## Paused at (2026-10-02, continuation 1, conductor pause for CPU) — no compaction
+
+**Done:** 3 m7/37 tests updated (`rewrite_preview.rs` `left_behind_names_a_branch_forked_mid_chain`,
+`..._parked_on_a_replaced_commit`, `left_behind_caps_at_eight`; each cites ADR-0059 line 27-28/34/36). New
+`tests/it/fork_follows.rs`, 16 tests, all pass (ticks above name them). Clippy too-many-lines refactors in
+`apply/engine.rs`, `preview.rs` (`kind_plan`), `preview/rewrite.rs` (`steps_of`, `draw_forks`), `preview/forks.rs`
+(`Env`, `Fates`, `candidates_of`, `replayed_fate`), `progress.rs` (`next_back`). MAP.md graft-ops updated.
+
+**Last gates:** fmt ok; doctests ok; clippy FAILS only in graft: `update/confirm.rs:78` `large_enum_variant` —
+`RewriteParams` grew 232→256 bytes (`forks: Vec`), so `ConfirmThen::Operate(Operation)` crossed clippy's 200-byte
+variant gap (second variant 48). nextest workspace: 4944/5270 run, 6 failed, 9 skipped (run cut at a 600 s
+filter; named: `graft::it m7_walk::rewrite_editor::the_box_says_who_stays_behind`,
+`the_rewrite_editor_after_says_who_stays_behind` — the other 4 names not captured; rerun to list).
+
+**Question for the conductor (two scope breaks, both in graft, outside my set):**
+1. Clippy: options — (a) box `ConfirmThen::Operate` (21 sites, 11 graft files); (b) `#[expect(large_enum_variant)]`
+   on `ConfirmThen` (1 line); (c) `forks: Box<[ForkSection]>` in graft-ops (exactly at the 200 threshold: fragile;
+   deviates from the Signatures). Recommend (a).
+2. The m7 walk tests: the fixture fork (`feature-b` off part 1, own file) now follows cleanly, so the app no longer
+   draws `left behind: feature-b` and the two captures (`docs/shots/m7/amend-into-left-behind-187x44.txt`,
+   `rewrite-editor-left-behind-187x44.txt`) change. The ticket's Touches said "unchanged by 3a" — wrong, because
+   `left_behind` is now filled from Stays forks only (as Signatures ask). Belongs to 14c (draw fates, retake captures)
+   or a fixture change making the fork stay (a conflict works for `a`, not for a no-edit `R`).
+
+**Next step:** conductor rules on 1 and 2; then rerun `cargo nextest run --workspace --no-fail-fast` and list the
+other 4 failures; gates; commit `m8-14b: ...`.

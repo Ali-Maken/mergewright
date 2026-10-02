@@ -31,8 +31,8 @@ use crate::operation::{
 };
 use crate::rewrite::saved::{self, CLEANUP, SavedPlan};
 use crate::rewrite::{
-    BranchLine, GitTodo, RewriteError, TodoAction, TodoLine, git_todo, line_of, line_picks,
-    messages_of, rebase_rows, squash_groups,
+    BranchLine, ForkSection, GitTodo, RewriteError, TodoAction, TodoLine, git_todo, line_of,
+    line_picks, messages_of, rebase_rows, squash_groups,
 };
 
 use super::run::PlanRun;
@@ -136,6 +136,54 @@ impl Engine {
     }
 }
 
+/// `r`'s rows: `rebase_rows`, each of `params.drops` marked `drop`.
+///
+/// # Errors
+/// [`ApplyError::Refused`] (`Moved`) when a drop is not among the rows;
+/// [`ApplyError::Facts`] when the read fails.
+fn rebase_rows_dropped(
+    ctx: &Context<'_>,
+    params: &RebaseParams,
+) -> Result<Vec<TodoLine>, ApplyError> {
+    let mut rows =
+        rebase_rows(ctx.repo, params.onto_tip, params.branch.oid, ctx.stop).map_err(facts_error)?;
+    for dropped in &params.drops {
+        let Some(row) = rows.iter_mut().find(|row| row.commit == *dropped) else {
+            // A drop with no row: the branch is not what the preview
+            // measured.
+            return Err(ApplyError::Refused(Refusal::Moved {
+                name: params.branch.name.clone(),
+            }));
+        };
+        row.action = TodoAction::Drop;
+    }
+    Ok(rows)
+}
+
+/// Every fork section's point is a row run now (ADR-0059 §3).
+///
+/// # Errors
+/// [`ApplyError::Refused`] (`Moved`) naming the fork when its point is past
+/// the rows read now: the line is not the one the preview measured (its
+/// tips are `check`'s, so this is a guard).
+fn fork_points_hold(
+    rows: &[TodoLine],
+    followers: &[(String, Vec<TodoLine>)],
+    forks: &[ForkSection],
+) -> Result<(), ApplyError> {
+    let rows_run = rows.len()
+        + followers
+            .iter()
+            .map(|(_, picks)| picks.len())
+            .sum::<usize>();
+    match forks.iter().find(|fork| fork.after_row >= rows_run) {
+        Some(fork) => Err(ApplyError::Refused(Refusal::Moved {
+            name: fork.branch.name.clone(),
+        })),
+        None => Ok(()),
+    }
+}
+
 /// `Some` for the two operations the engine runs, with everything read that
 /// running them needs; `None` for every other operation.
 ///
@@ -159,18 +207,7 @@ pub(super) fn prepare(
             // never one found afresh: the picture and the act are one act
             // (hard choice 3). A line that changed since is refused.
             line_holds(ctx, params)?;
-            let mut rows = rebase_rows(repo, params.onto_tip, params.branch.oid, ctx.stop)
-                .map_err(facts_error)?;
-            for dropped in &params.drops {
-                let Some(row) = rows.iter_mut().find(|row| row.commit == *dropped) else {
-                    // A drop with no row: the branch is not what the preview
-                    // measured.
-                    return Err(ApplyError::Refused(Refusal::Moved {
-                        name: params.branch.name.clone(),
-                    }));
-                };
-                row.action = TodoAction::Drop;
-            }
+            let rows = rebase_rows_dropped(ctx, params)?;
             let line = params.line.clone();
             let top = top_of(&line).map(|top| short_ref(&top.name).to_owned());
             let invocation = rebase_invocation(source_arg(&params.onto), top.as_deref(), ctx.git);
@@ -212,15 +249,15 @@ pub(super) fn prepare(
             .cloned()
             .unwrap_or_default()
     };
-    let rows_run = rows.len() + followers.iter().map(|(_, picks)| picks.len()).sum::<usize>();
-    if let Some(fork) = forks.iter().find(|fork| fork.after_row >= rows_run) {
-        // A fork point past the rows read now: the line is not the one the
-        // preview measured (its tips are `check`'s, so this is a guard).
-        return Err(ApplyError::Refused(Refusal::Moved {
-            name: fork.branch.name.clone(),
-        }));
-    }
-    let todo = git_todo(&rows, &messages, &message_of, &head.name, &followers, &forks);
+    fork_points_hold(&rows, &followers, &forks)?;
+    let todo = git_todo(
+        &rows,
+        &messages,
+        &message_of,
+        &head.name,
+        &followers,
+        &forks,
+    );
     Ok(Some(Engine {
         dir: saved::dir(repo, &ctx.next_id()),
         saved: SavedPlan::new(&head.name, &line, onto, index_base, &forks),

@@ -46,23 +46,16 @@ pub(super) fn rewrite(
         .collect();
     let commits: Vec<Oid> = rows.iter().map(|line| line.commit).collect();
     let info = chain::summaries(repo, &commits, stop)?;
-    let steps: Vec<Step> = rows
-        .iter()
-        .map(|line| Step {
-            commit: line.commit,
-            parent: info
-                .get(&line.commit)
-                .and_then(|it| it.parents.first().copied()),
-            replays: line.action != TodoAction::Drop,
-        })
-        .collect();
-    let chained = chain::chain(repo, git, params.onto, &steps, stop)?;
+    let chained = chain::chain(repo, git, params.onto, &steps_of(&rows, &info), stop)?;
     let messages = written_messages(repo, params, stop)?;
 
     let mut plan = blank();
     // Row → what the line is after it, for the forks' bases.
     let mut tip_after = draw_his_rows(&mut plan, params, &info, &messages)?;
-    let his_tip = tip_after.last().copied().unwrap_or(Target::Real(params.onto));
+    let his_tip = tip_after
+        .last()
+        .copied()
+        .unwrap_or(Target::Real(params.onto));
     plan.ref_moves.push(RefMove {
         name: params.head.name.clone(),
         from: Some(params.head.oid),
@@ -80,30 +73,53 @@ pub(super) fn rewrite(
             to: Some(below),
         });
     }
-    let found = forks::forks(
-        repo,
-        git,
-        &Rewritten {
-            his: &params.todo,
-            rows: &rows,
-            line: &params.line.branches,
-            tip_after: &tip_after,
-            chained: &chained,
-        },
-        stop,
-    )?;
-    for section in &found.sections {
-        draw_fork(&mut plan, section, &tip_after, &found.info)?;
-    }
+    let rewritten = Rewritten {
+        his: &params.todo,
+        rows: &rows,
+        line: &params.line.branches,
+        tip_after: &tip_after,
+        chained: &chained,
+    };
+    let sections = draw_forks(repo, git, &mut plan, &rewritten, stop)?;
     plan.head = Some(HeadMove::ToBranch(params.head.name.clone()));
     plan.worktree = landed_tree(repo, params, &chained.results)?;
     plan.conflicts = chained.forecast;
     plan.published = published(repo, &params.line, &commits, params.onto, stop)?;
+    Ok((plan, sections))
+}
+
+/// Each row as the chained forecast replays it.
+fn steps_of(rows: &[&TodoLine], info: &HashMap<Oid, CommitSummary>) -> Vec<Step> {
+    rows.iter()
+        .map(|line| Step {
+            commit: line.commit,
+            parent: info
+                .get(&line.commit)
+                .and_then(|it| it.parents.first().copied()),
+            replays: line.action != TodoAction::Drop,
+        })
+        .collect()
+}
+
+/// The rewrite's forks weighed (ADR-0059) and drawn: each follower's ghosts
+/// and ref moves, every fate, and the branches left behind. Returns the
+/// followers' sections.
+fn draw_forks(
+    repo: &RepoHandle,
+    git: &GitVersion,
+    plan: &mut PreviewPlan,
+    rewritten: &Rewritten<'_>,
+    stop: &dyn Stop,
+) -> Result<Vec<ForkSection>, PreviewError> {
+    let found = forks::forks(repo, git, rewritten, stop)?;
+    for section in &found.sections {
+        draw_fork(plan, section, rewritten.tip_after, &found.info)?;
+    }
     plan.left_behind = found.left_behind;
     plan.left_behind_more = found.more;
     plan.forks = found.drawn;
     plan.forks_more = found.more;
-    Ok((plan, found.sections))
+    Ok(found.sections)
 }
 
 /// A fork that follows: a ghost per pick on the result of its row, and a

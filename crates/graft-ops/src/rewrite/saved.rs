@@ -21,8 +21,8 @@ use graft_core::oid::Oid;
 use graft_git::repo::RepoHandle;
 use serde::{Deserialize, Serialize};
 
-use super::{BranchLine, ForkSection};
 use super::todo::GitTodo;
+use super::{BranchLine, ForkSection};
 
 /// `commit.cleanup=whitespace` for every commit git makes in the rewrite,
 /// through `GIT_CONFIG_COUNT` (git ≥ 2.31): a message Graft hands over is

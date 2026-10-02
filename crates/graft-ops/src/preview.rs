@@ -125,11 +125,47 @@ fn planned(
     // ADR-0049: a file git doesn't keep, where the write puts one of its
     // own, is refused before any forecast — and again by `apply` at `y`.
     refuse_in_the_way(repo, op, facts, stop)?;
-    // A rebase's landed commit, from its own chained forecast: what the
-    // put-back is measured against (05b: drops skipped, the line replayed).
+    let (mut drawn, landed, sections) = kind_plan(repo, git, op, facts, stop)?;
+    drawn.description = op.describe();
+    drawn.commands = op
+        .plan(facts)
+        .iter()
+        .map(Invocation::command_line)
+        .collect();
+    drawn.against = op.tips();
+    drawn.set_aside = op
+        .sets_aside(facts)
+        .map(|aside| aside::shown_aside(op, facts, aside));
+    // Only with edits aside: a clean tree spawns nothing more.
+    drawn.put_back = match drawn.set_aside {
+        Some(_) => Some(put_back::forecast(
+            repo,
+            git,
+            op,
+            facts,
+            &drawn.conflicts,
+            landed,
+            stop,
+        )?),
+        None => None,
+    };
+    Ok((drawn, sections))
+}
+
+/// The kind's own picture, before the fields every kind fills the same way;
+/// a rebase's landed commit, from its own chained forecast — what the
+/// put-back is measured against (05b: drops skipped, the line replayed);
+/// and a rewrite's follower sections (ADR-0059).
+fn kind_plan(
+    repo: &RepoHandle,
+    git: &GitVersion,
+    op: &Operation,
+    facts: &RepoFacts,
+    stop: &dyn Stop,
+) -> Result<(PreviewPlan, Option<Oid>, Vec<crate::rewrite::ForkSection>), PreviewError> {
     let mut landed = None;
     let mut sections = Vec::new();
-    let mut drawn = match op {
+    let drawn = match op {
         Operation::StashApply { index, commit } | Operation::StashPop { index, commit } => {
             let (worktree, conflicts) = stash::forecast_stash(repo, git, *index, *commit, stop)?;
             PreviewPlan {
@@ -161,30 +197,7 @@ fn planned(
         Operation::Recover(params) => recover::recover(repo, params, facts, stop)?,
         other => return Err(PreviewError::Refused(Refusal::NotPreviewable(other.kind()))),
     };
-    drawn.description = op.describe();
-    drawn.commands = op
-        .plan(facts)
-        .iter()
-        .map(Invocation::command_line)
-        .collect();
-    drawn.against = op.tips();
-    drawn.set_aside = op
-        .sets_aside(facts)
-        .map(|aside| aside::shown_aside(op, facts, aside));
-    // Only with edits aside: a clean tree spawns nothing more.
-    drawn.put_back = match drawn.set_aside {
-        Some(_) => Some(put_back::forecast(
-            repo,
-            git,
-            op,
-            facts,
-            &drawn.conflicts,
-            landed,
-            stop,
-        )?),
-        None => None,
-    };
-    Ok((drawn, sections))
+    Ok((drawn, landed, sections))
 }
 
 /// A plan with the fields every kind fills the same way, ready to be
