@@ -465,6 +465,35 @@ impl StripCache {
             .is_ok_and(|key| self.backdrops.contains(&key))
     }
 
+    /// What the backdrop strip at `first_row` is, as one number: the key
+    /// it is cached under. Equal keys are equal pixels, so an upload of the
+    /// strip is known by it (m8 04), and a strip evicted and drawn again is
+    /// still the image the terminal holds.
+    pub fn backdrop_key(
+        &self,
+        first_row: usize,
+        strip: &PlainStrip<'_>,
+        backdrop: Backdrop,
+    ) -> Result<u64, CacheError> {
+        let key = self.layer_key(first_row, strip, backdrop)?;
+        Ok(one_number(&key))
+    }
+
+    /// The same for the selection's paint over that strip: its emphasis
+    /// image, or iTerm2's composited band.
+    pub fn paint_key(
+        &self,
+        first_row: usize,
+        strip: &PlainStrip<'_>,
+        sel: &Selection<'_>,
+    ) -> Result<u64, CacheError> {
+        let key: PaintKey = (
+            self.layer_key(first_row, strip, sel.backdrop)?,
+            lit_hash(sel),
+        );
+        Ok(one_number(&key))
+    }
+
     /// The key a layout-only strip is cached under at `backdrop`.
     fn layer_key(
         &self,
@@ -594,6 +623,13 @@ pub fn lit_hash(sel: &Selection<'_>) -> u64 {
         }
         lit.thread.is_some().hash(&mut hasher);
     }
+    hasher.finish()
+}
+
+/// A cache key hashed to one number, for an upload to be known by.
+fn one_number(key: &impl Hash) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    key.hash(&mut hasher);
     hasher.finish()
 }
 

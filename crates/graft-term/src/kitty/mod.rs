@@ -23,7 +23,6 @@
 //! writes under the same stdout lock as the text frame.
 
 use std::ops::Range;
-use std::sync::Arc;
 
 use graft_core::raster::RasterFrame;
 
@@ -71,14 +70,23 @@ pub struct CellRect {
     pub rows: u16,
 }
 
+/// What a picture is, for the upload cache: equal keys in one slot are
+/// equal pixels. The strip cache's own key for the strip or layer (layout,
+/// theme, cell size, backdrop, selection), so a strip the cache evicted and
+/// drew again is still the image the terminal holds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct UploadKey(pub u64);
+
 /// One strip to show this frame: which rows of it, and in which cells.
 #[derive(Clone, Debug)]
 pub struct Place<'a> {
     /// The history row the strip starts on; identifies the strip's slot.
     pub first_row: usize,
-    /// The rasterised strip. A different `Arc` for the same slot means the
+    /// What the pixels are. A different key for the same slot means the
     /// pixels changed and the strip is transmitted again.
-    pub frame: &'a Arc<RasterFrame>,
+    pub key: UploadKey,
+    /// The rasterised strip; read only to transmit it.
+    pub frame: &'a RasterFrame,
     /// Rows of the strip to show, counted from the strip's own first row.
     pub rows: Range<usize>,
     /// Where on screen those rows go.
@@ -114,13 +122,14 @@ impl GraphicsReply {
     }
 }
 
-/// An image the terminal holds for us.
+/// An image the terminal holds for us. Its pixels are the terminal's; Graft
+/// keeps only what they were.
 #[derive(Debug)]
 struct Upload {
     id: u32,
     first_row: usize,
     layer: Layer,
-    frame: Arc<RasterFrame>,
+    key: UploadKey,
     placed: bool,
     last_used: u64,
     /// Sent with `o=z`: an error reply about it may mean the terminal
@@ -270,7 +279,7 @@ impl KittyImages {
             .iter()
             .position(|u| u.first_row == place.first_row && u.layer == place.layer)
         {
-            if Arc::ptr_eq(&self.uploads[index].frame, place.frame) {
+            if self.uploads[index].key == place.key {
                 self.uploads[index].last_used = clock;
                 return self.uploads[index].id;
             }
@@ -284,7 +293,7 @@ impl KittyImages {
             id,
             first_row: place.first_row,
             layer: place.layer,
-            frame: Arc::clone(place.frame),
+            key: place.key,
             placed: false,
             last_used: clock,
             deflated: self.deflate,
