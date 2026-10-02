@@ -99,3 +99,24 @@ One context, ~50k tokens.
   graft-fixtures, graft-graph and graft-term are clean. That needs a follow-up ticket for whoever holds those
   crates.
 - No compaction.
+
+## Review fixes (docs/reviews/m8-21-22-hygiene.md, 2026-10-02)
+- [x] **Major 1** — peer check moved to `run/askpass/peer.rs` (`Refusal`, `admit`, both `peer_uid`). To get
+  `askpass.rs` under 400 (607 → 338) three more separable units moved too: `askpass/secret.rs` (`Secret`, `wipe`),
+  `askpass/wire.rs` (frame constants, `read_prompt`, `write_reply`, `respond`, `RespondError`),
+  `askpass/shared.rs` (`Shared`, `Wake`, `Reply`). Public paths unchanged (re-exported). Tests: all 16 askpass
+  tests unchanged and green, incl. `admit_takes_only_our_own_uid`, `peer_uid_of_a_real_connection_is_ours`.
+- [x] **Major 2** — `config_parameters` flattened to one `match` in a `while` (depth 2); `new_style`, `old_style`,
+  `ends_entry` lifted; whitespace named once in `is_git_space`. Tests: the existing `snapshot_reads::tests`
+  (`new_style_pairs_parse`, `old_style_pairs_parse`, `escaped_quotes_and_bangs_unquote`,
+  `malformed_parameters_are_an_error`) green.
+- [x] **Minor 1** — no `eprintln!`. The listener records the refusal in `Shared` (first refusal's text + count:
+  bounded under a flood; poisoned lock used as is, no panic). `AskPassServer::close` returns it as
+  `Err(PermissionDenied, "askpass: refused … ; N refused in all")` after its cleanup. Where it goes: graft-ops
+  `apply/remote.rs:128-131` already pushes a `close` error into `AfterState::AskPass` — the existing after-state
+  report path. Test: `a_peer_with_another_uid_is_refused_unanswered_and_never_asked` (now asserts the close error
+  and count). Red-before not run: the old `close` returned `Ok` there by its own assertion.
+  **Knock-on, outside crate set:** `AfterState::AskPass`'s text (`graft-ops/src/apply/error.rs:219`) says "socket
+  could not be cleaned up", which misdescribes a refusal. Rendering on the status row not checked by me.
+- [x] **Minor 2** — `\r` is a separator (via `is_git_space`); `\v` still bogus; doc softened ("key validation left
+  to git"). Test: `snapshot_reads::tests::carriage_return_separates_like_git`, seen failing before the fix.

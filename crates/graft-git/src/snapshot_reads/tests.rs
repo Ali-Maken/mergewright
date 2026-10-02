@@ -68,3 +68,23 @@ fn malformed_parameters_are_an_error() {
         );
     }
 }
+
+/// git's `isspace` takes `\r` as a separator, as it does space, `\t` and
+/// `\n` (git 2.54: `'core.autocrlf'='true'\r` reads `true`); `\v` stays bogus.
+#[test]
+fn carriage_return_separates_like_git() {
+    for raw in [
+        &b"'core.autocrlf'='true'\r"[..],
+        b"'core.autocrlf'='true'\r'core.bare'",
+        b"'core.autocrlf'=\r",
+        b"'core.autocrlf=true'\r\n",
+    ] {
+        let pairs = config_parameters(raw).map(|pairs| pairs.into_iter().next());
+        assert!(
+            matches!(&pairs, Ok(Some((key, _))) if key == b"core.autocrlf"),
+            "{:?} -> {pairs:?}",
+            String::from_utf8_lossy(raw)
+        );
+    }
+    assert!(config_parameters(b"'core.autocrlf'='true'\x0b").is_err());
+}
