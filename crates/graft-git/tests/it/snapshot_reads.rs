@@ -538,3 +538,151 @@ fn a_config_change_after_the_handle_opened_is_seen() {
     git_ok(&dir, &["config", "core.autocrlf", "true"]);
     assert!(autocrlf_converts(&handle).expect("the config reads again"));
 }
+
+// ---------------------------------------------------------------------------
+// autocrlf_converts, config sources outside the repository
+// (m8-polish-and-ship/21 items 4 and 5)
+//
+// The in-process read sees the test process's own environment, and the
+// workspace denies `unsafe` (so no `set_var`): each case runs the ignored
+// child below in a fresh copy of this test binary, with a fully controlled
+// config environment, and compares Graft's answer with git's under it.
+
+const CHILD_REPO: &str = "GRAFT_AUTOCRLF_CHILD_REPO";
+const CHILD_OUT: &str = "GRAFT_AUTOCRLF_CHILD_OUT";
+
+/// The child half: Graft's read and git's, `graft git` in `CHILD_OUT`.
+#[test]
+#[ignore = "run by autocrlf_in(), in an environment it controls"]
+fn child_reads_autocrlf() {
+    let repo = PathBuf::from(std::env::var_os(CHILD_REPO).expect("the parent names the repo"));
+    let out = PathBuf::from(std::env::var_os(CHILD_OUT).expect("the parent names the output"));
+    let graft = autocrlf_converts(&open(&repo)).expect("the config reads");
+    let git = git_reads_autocrlf(&repo);
+    std::fs::write(out, format!("{graft} {git}")).expect("the answer is written");
+}
+
+/// `(graft, git)` for a repository with no `core.autocrlf` of its own, in a
+/// process whose only config outside the repository comes from `env`:
+/// `HOME` and `XDG_CONFIG_HOME` point at an empty directory, the global file
+/// is `/dev/null` and the system file is off, unless `env` says otherwise.
+fn autocrlf_in(env: &[(&str, String)]) -> (bool, bool) {
+    let (root, dir) = fresh("repo");
+    let home = root.path().join("home");
+    std::fs::create_dir_all(&home).unwrap_or_else(|why| panic!("the home is made: {why}"));
+    let out = root.path().join("out");
+    let binary = std::env::current_exe().unwrap_or_else(|why| panic!("the test binary: {why}"));
+    let mut child = Command::new(binary);
+    child
+        .args([
+            "--exact",
+            "snapshot_reads::child_reads_autocrlf",
+            "--ignored",
+            "--test-threads=1",
+        ])
+        .env("HOME", &home)
+        .env("XDG_CONFIG_HOME", &home)
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env_remove("GIT_CONFIG_SYSTEM")
+        .env_remove("GIT_CONFIG_COUNT")
+        .env_remove("GIT_CONFIG_PARAMETERS")
+        .env(CHILD_REPO, &dir)
+        .env(CHILD_OUT, &out);
+    for (key, value) in env {
+        child.env(key, value);
+    }
+    let output = child
+        .output()
+        .unwrap_or_else(|why| panic!("the child runs: {why}"));
+    assert!(
+        output.status.success(),
+        "the child failed: {}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let answer = std::fs::read_to_string(&out)
+        .unwrap_or_else(|why| panic!("the child wrote its answer: {why}"));
+    let (graft, git) = answer
+        .split_once(' ')
+        .unwrap_or_else(|| panic!("two answers: {answer:?}"));
+    (graft == "true", git == "true")
+}
+
+/// A config file holding `core.autocrlf = <value>`, kept alive with the
+/// returned directory.
+fn config_file(value: &str) -> (tempfile::TempDir, String) {
+    let dir = tempfile::tempdir().unwrap_or_else(|why| panic!("a temp directory: {why}"));
+    let file = dir.path().join("gitconfig");
+    std::fs::write(&file, format!("[core]\n\tautocrlf = {value}\n"))
+        .unwrap_or_else(|why| panic!("the file writes: {why}"));
+    let path = file.to_string_lossy().into_owned();
+    (dir, path)
+}
+
+/// Item 4: the global file (`GIT_CONFIG_GLOBAL`), both values, the system
+/// file off. Graft and git agree, and both see the value.
+#[test]
+fn autocrlf_from_the_global_config_is_read_isolated() {
+    for (value, expected) in [("true", true), ("false", false)] {
+        let (_keep, global) = config_file(value);
+        let read = autocrlf_in(&[("GIT_CONFIG_GLOBAL", global)]);
+        assert_eq!(read, (expected, expected), "global {value}: (graft, git)");
+    }
+}
+
+/// Item 4: the system file (`GIT_CONFIG_SYSTEM`), both values, the global
+/// file empty.
+#[test]
+fn autocrlf_from_the_system_config_is_read_isolated() {
+    for (value, expected) in [("true", true), ("false", false)] {
+        let (_keep, system) = config_file(value);
+        let read = autocrlf_in(&[
+            ("GIT_CONFIG_NOSYSTEM", "0".to_owned()),
+            ("GIT_CONFIG_SYSTEM", system),
+        ]);
+        assert_eq!(read, (expected, expected), "system {value}: (graft, git)");
+    }
+}
+
+/// Item 5: config given in the environment, which git (and so every git
+/// spawn) honours: `GIT_CONFIG_COUNT`/`_KEY_n`/`_VALUE_n`, and
+/// `GIT_CONFIG_PARAMETERS` (what `git -c` passes to its children).
+#[test]
+fn autocrlf_from_environment_config_agrees_with_git() {
+    for (value, expected) in [("true", true), ("false", false)] {
+        let count = autocrlf_in(&[
+            ("GIT_CONFIG_COUNT", "1".to_owned()),
+            ("GIT_CONFIG_KEY_0", "core.autocrlf".to_owned()),
+            ("GIT_CONFIG_VALUE_0", value.to_owned()),
+        ]);
+        assert_eq!(count, (expected, expected), "GIT_CONFIG_COUNT {value}");
+        let parameters = autocrlf_in(&[(
+            "GIT_CONFIG_PARAMETERS",
+            format!("'core.autocrlf'='{value}'"),
+        )]);
+        assert_eq!(
+            parameters,
+            (expected, expected),
+            "GIT_CONFIG_PARAMETERS {value}"
+        );
+        // Both set, disagreeing: git takes `GIT_CONFIG_PARAMETERS` last.
+        let both = autocrlf_in(&[
+            ("GIT_CONFIG_COUNT", "1".to_owned()),
+            ("GIT_CONFIG_KEY_0", "core.autocrlf".to_owned()),
+            ("GIT_CONFIG_VALUE_0", (!expected).to_string()),
+            (
+                "GIT_CONFIG_PARAMETERS",
+                format!("'core.autocrlf'='{value}'"),
+            ),
+        ]);
+        assert_eq!(both, (expected, expected), "both, PARAMETERS {value}");
+    }
+    let bare = autocrlf_in(&[("GIT_CONFIG_PARAMETERS", "'core.autocrlf'".to_owned())]);
+    assert_eq!(bare, (true, true), "a bare key in GIT_CONFIG_PARAMETERS");
+    let old_style = autocrlf_in(&[(
+        "GIT_CONFIG_PARAMETERS",
+        "'user.name=x' 'Core.AutoCRLF=input'".to_owned(),
+    )]);
+    assert_eq!(old_style, (true, true), "old style, mixed-case key, input");
+}

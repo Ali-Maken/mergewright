@@ -82,7 +82,7 @@ pub(super) fn hydrate(
 ///
 /// ADR-0001's last-resort rule for the default branch is "the branch that is
 /// the target of the most first-parent merges", which is this counted once
-/// per branch tip. It works on [`node`]s rather than whole commits — no
+/// per branch tip. It works on `node`s rather than whole commits — no
 /// message, no tree, no signature — because the answer only needs each
 /// commit's parent count, and on a repository with a commit-graph file that
 /// costs no object reads at all.

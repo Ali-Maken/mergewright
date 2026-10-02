@@ -10,9 +10,9 @@
 //! §8.2).
 //!
 //! Split across files by concern (m1-the-graph/74a): this file holds
-//! opening and `HEAD`; [`refs`] and [`peel`] the ref-reading methods
-//! (public queries and their private peeling helpers); [`types`] the ref
-//! and tip types and errors; [`shared`] `SharedRepo`.
+//! opening and `HEAD`; `refs` and `peel` the ref-reading methods
+//! (public queries and their private peeling helpers); `types` the ref
+//! and tip types and errors; `shared` `SharedRepo`.
 
 use std::fmt;
 use std::io;

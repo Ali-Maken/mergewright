@@ -149,10 +149,10 @@ fn find_alignment(
 }
 
 /// Gives each of `file`'s blocks the base git's `diff3` output has for it, as
-/// [`Block::reproduced`], walking both in order and comparing content only.
+/// [`Block::reproduced`](super::Block::reproduced), walking both in order and comparing content only.
 ///
 /// **Nothing this writes is rendered**: `reproduced` is not part of the
-/// file's bytes, so [`ConflictFile::render`], [`write_back`] and the line
+/// file's bytes, so [`ConflictFile::render`], [`write_back`](super::write_back) and the line
 /// numbers in [`ConflictFile::blocks`] are the same before and after. A block
 /// the file itself gave a base (a `diff3`/`zdiff3` file) keeps that base
 /// untouched, labels included.

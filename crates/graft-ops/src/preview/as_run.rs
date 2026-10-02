@@ -7,7 +7,7 @@ use super::*;
 /// entry point for an [`Operation`] (05b).
 ///
 /// A rebase (`r`) is completed here, once, and never again at `y`:
-/// 1. its line of branches ([`crate::rewrite::line_of`], `R`'s own read):
+/// 1. its line of branches (`rewrite::line_of`, `R`'s own read):
 ///    a fork, a branch of it checked out in another worktree, or git older
 ///    than 2.38 with branches following is [`PreviewError::Refused`], in
 ///    `R`'s words and order;

@@ -73,6 +73,13 @@ sha1 = "0.10"
 # `conflict::diff3_blocks` (the three stages in a scratch directory for
 # `git merge-file`). Was a dev-dependency; the same version, now shipped.
 tempfile = "3.27.0"
+# `run::askpass`: the askpass server serves only a peer with our own uid
+# (`getpeereid` on macOS/BSD, `SO_PEERCRED` on Linux; m8-polish-and-ship/21).
+# std's `UnixStream::peer_cred` is still unstable (1.98) and this crate
+# forbids `unsafe`, so the call goes through nix's safe wrappers rather than
+# raw `libc`. External, not an internal edge, so ARCHITECTURE.md's crate
+# table is unchanged; `libc`, `bitflags` and `cfg-if` are already in the tree.
+nix = { version = "0.29", default-features = false, features = ["socket", "user"] }
 
 [features]
 # Turns the heavy tier on for this crate's tests, per TESTING.md. A crate

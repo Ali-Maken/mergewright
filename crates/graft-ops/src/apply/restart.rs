@@ -215,8 +215,8 @@ impl RestartReadError {
 /// file written, and never `Journal::open` (which cuts a torn tail).
 ///
 /// The same two rules the act runs, reached directly: `check_restart` (what
-/// [`Operation::check`] asks of an unmerged path), then [`restart_source`]
-/// (what [`prepare_restart`] asks of the rest). The answer can go stale if
+/// [`Operation::check`] asks of an unmerged path), then `restart_source`
+/// (what `prepare_restart` asks of the rest). The answer can go stale if
 /// the repository changes behind the caller; the act's own refusal is the
 /// backstop — [`Refusal::RestartChanged`] when the kind the caller sends
 /// back is no longer what the stages spell.

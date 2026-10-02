@@ -322,7 +322,7 @@ pub fn changed_paths(
 
 /// The 1-indexed line number of the first line that opens a conflict block in
 /// the file at `path`, if any: an unresolved conflict marker left in a staged
-/// file. See [`opens_a_conflict`] for what counts. Plain fs read, no `git`
+/// file. See `opens_a_conflict` for what counts. Plain fs read, no `git`
 /// spawn.
 ///
 /// Reads bytes, never decodes: a conflicted file with a non-UTF-8 byte

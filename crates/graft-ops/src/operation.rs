@@ -664,7 +664,7 @@ pub enum Refusal {
     /// --merge` needs more than one stage to merge, and a one-sided shape has
     /// one. It used to reach git and come back as a raw
     /// `does not have all necessary versions` (m6 g03 review, M1);
-    /// [`conflict::check_restart`] holds the measurements.
+    /// `conflict::check_restart` holds the measurements.
     NotMarkerShape {
         /// The path.
         path: PathBuf,

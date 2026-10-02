@@ -152,7 +152,7 @@ fn stages(repo: &RepoHandle, path: &Path) -> Result<[Option<Stage>; 3], RunError
 /// `.gitattributes` conversion applied. That is what a whole-file view wants
 /// — the committed bytes — and it is *not* what the working tree holds under
 /// `eol=crlf`, `core.autocrlf` or a smudge filter; [`diff3_file`] uses the
-/// converted form ([`filtered_bytes`]) for that reason.
+/// converted form (`filtered_bytes`) for that reason.
 ///
 /// `Ok(None)` when the stage is missing — the path was added or deleted on
 /// that side — rather than a git error to parse.
@@ -238,7 +238,7 @@ const MERGE_FILE_MAX_CONFLICTS: i32 = 127;
 
 /// git's own conflict file for the path, base included: the three stages
 /// written to a scratch directory **in their working-tree form** (see
-/// [`filtered_bytes`]) and merged with `git merge-file -p --diff3`, whose
+/// `filtered_bytes`) and merged with `git merge-file -p --diff3`, whose
 /// output is what git would have written to the working tree under the
 /// `diff3` conflict style — same engine, same hunks. `None` when a stage is
 /// missing, since a whole-file shape has no blocks.
@@ -247,7 +247,7 @@ const MERGE_FILE_MAX_CONFLICTS: i32 = 127;
 /// nothing is left in the user's repository if this process dies mid-way,
 /// and a read-only checkout (the sealed test corpus among them) works too.
 /// The labels on the returned blocks are `ours`, `base`, `theirs`;
-/// [`attach_base`] compares content, never labels.
+/// [`attach_base`](super::attach_base) compares content, never labels.
 pub fn diff3_file(repo: &RepoHandle, path: &Path) -> Result<Option<ConflictFile>, Diff3Error> {
     let [Some(base), Some(ours), Some(theirs)] = stages(repo, path)? else {
         return Ok(None);

@@ -28,7 +28,7 @@
 //! and git places a context-free insertion by line number alone.
 //!
 //! Nothing here writes a ref, the index or a file. Placing hunks into
-//! commits ([`commit_pieces`]) writes objects only, for `rewrite::plan`.
+//! commits (`commit_pieces`) writes objects only, for `rewrite::plan`.
 
 use std::ops::Range;
 use std::path::PathBuf;

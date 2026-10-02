@@ -12,7 +12,7 @@
 //! **Marks on older git** (18e): git before
 //! [`crate::version::GitVersion::BLAME_PORCELAIN_MARKS`] (2.50) writes no `ignored` or
 //! `unblamable` lines in the porcelain. When a list is in effect and the
-//! porcelain carried no mark ([`marks_pass::needs_marks_pass`]), a second `git
+//! porcelain carried no mark (`marks_pass::needs_marks_pass`), a second `git
 //! blame -l -s` with the same options reads them from the human format's
 //! `?`/`*` ([`parse_marks`]), by position.
 //!

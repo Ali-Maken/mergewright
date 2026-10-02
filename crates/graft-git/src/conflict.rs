@@ -131,7 +131,7 @@ pub struct Base {
 
 /// A base [`attach_base`] worked out from the index stages, which the file on
 /// disk does not have. **Never rendered** and never counted into a line
-/// number: attaching one cannot change what [`ConflictFile::write_back`]
+/// number: attaching one cannot change what [`write_back`]
 /// would write or what [`BlockAt::first_line`] means.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Reproduced {

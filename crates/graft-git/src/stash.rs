@@ -80,7 +80,7 @@ impl From<RunError> for StashError {
     }
 }
 
-/// Every stash entry, newest first, capped at [`MAX_ENTRIES`].
+/// Every stash entry, newest first, capped at `MAX_ENTRIES`.
 ///
 /// A repository with no stashes (`refs/stash` does not exist) is `Ok(vec![])`,
 /// not an error — the same "nothing here yet" reading
@@ -132,7 +132,7 @@ pub fn list(repo: &RepoHandle, stop: &dyn Stop) -> Result<Vec<StashEntry>, Stash
 }
 
 /// Every stash commit with its index, newest first, capped at
-/// [`MAX_ENTRIES`] — the reflog and nothing else.
+/// `MAX_ENTRIES` — the reflog and nothing else.
 ///
 /// [`list`]'s cheap half, for the graph's ref badges
 /// (m3-working-tree-undo-and-stash/06): it spawns no `diff-tree`, because a

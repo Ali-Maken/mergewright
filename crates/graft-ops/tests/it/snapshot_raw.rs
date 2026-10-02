@@ -446,6 +446,54 @@ fn autocrlf_set_after_the_handle_opened_is_honoured() {
     assert_eq!(kept(&repo, raw, "l.rs"), b"l\nchanged\n");
 }
 
+/// m8-polish-and-ship/21 item 2: the raw blobs are hashed from paths fed on
+/// stdin (`hash-object --stdin-paths`), never one argument per path, so a
+/// large kept set cannot pass `ARG_MAX`. 1 000 kept files with 209-byte paths:
+/// every one is in the raw tree, and no command line `raw_record` ran is
+/// longer than 1 KiB.
+#[test]
+fn a_large_kept_set_is_hashed_from_stdin_not_the_command_line() {
+    let repo = TempRepo::init();
+    repo.git(&["config", "core.autocrlf", "true"]);
+    let dir = format!("{}/{}", "d".repeat(100), "e".repeat(100));
+    let paths: Vec<String> = (0..1000).map(|n| format!("{dir}/{n:04}.rs")).collect();
+    for path in &paths {
+        repo.write(path, b"a\n");
+    }
+    repo.commit_all("first");
+    for path in &paths {
+        repo.write(path, b"a\nchanged\n");
+    }
+
+    let handle = repo.open();
+    let scratch = repo.path().join(".git/graft");
+    std::fs::create_dir_all(&scratch).expect("the scratch is made");
+    let tree = snapshot::worktree_tree(&handle, &scratch, &Never).expect("the worktree tree");
+    let mut commands = Vec::new();
+    let raw = snapshot::raw_record(
+        &handle,
+        &scratch,
+        &Never,
+        head_of(&repo),
+        tree,
+        &mut commands,
+    )
+    .expect("the raw record is taken")
+    .expect("every path is kept");
+
+    let longest = commands.iter().map(String::len).max().unwrap_or(0);
+    assert!(longest <= 1024, "a command line of {longest} bytes");
+    assert!(
+        commands
+            .iter()
+            .any(|line| line.contains("hash-object") && line.contains("--stdin-paths")),
+        "{commands:?}"
+    );
+    let listed = listed(&repo, raw);
+    assert_eq!(listed.len(), paths.len());
+    assert_eq!(kept(&repo, raw, &paths[999]), b"a\nchanged\n");
+}
+
 /// A tree the in-process read cannot find is `SnapshotError::Read`, never
 /// "nothing to keep"; a refused operation shows it as one line, as it does a
 /// `Run` failure (`PrepareError::Snapshot` becomes `ApplyError::Snapshot`).
