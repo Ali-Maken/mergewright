@@ -1,7 +1,7 @@
 # G-daily 3a — a branch forked off a rewritten commit follows when clean (engine + preview data)
 
 Status: ready
-Build with: (blank — brownfield, scout first; conductor sets it after the scout)
+Build with: Opus (conductor, after scout `scouts/14b-fork-follows.md`; `r` builds its todo via rebase_rows apply/engine.rs:162 → splits off per this ticket's rule; m5 left-behind capture may change)
 Blocked by: 14
 Needs: none (no signature from another ticket). Order: after `daily-ops-fixes` (12b; same graft-ops rewrite files).
 Exposes the types `fork-follows-preview-words` draws.

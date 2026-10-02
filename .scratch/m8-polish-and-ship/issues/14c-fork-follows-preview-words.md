@@ -1,7 +1,7 @@
 # G-daily 3b — the preview, the rewrite editor and the banner say each fork's fate
 
 Status: ready
-Build with: (blank — brownfield, scout first; conductor sets it after the scout)
+Build with: Opus (conductor, after scout `scouts/14b-fork-follows.md`; chain line is drawn in graft-ui graph_screen/banner.rs:104 — crate set adds graft-ui)
 Blocked by: 14b
 Needs: `fork-follows-engine`: `PreviewPlan.forks`, `PreviewPlan.forks_more`, `Fork`, `ForkFate`, `WhyStays::words`,
 `RewriteProgress.fork`.
