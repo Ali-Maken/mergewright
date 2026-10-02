@@ -1,0 +1,11 @@
+# 48-recapture — 2026-10-01T21:56:56Z, HEAD 9aaed92b (+ uncommitted changes)
+SUMMARY ghostty_png bytes=10139 width_px=850 height_px=407 cursor_row=188 rows=178..189 pane_rows=37..48 cursor_on_screen=true strips=2 deflate=on
+SUMMARY miss ghostty_shot:: exited 101: target/48-recapture/shot.txt
+SUMMARY capture docs/shots/m7/fix-scroll-ghostty.png exit=101 bytes=10139 width_px=850 height_px=407 cursor_row=188 rows=178..189 pane_rows=37..48 cursor_on_screen=true strips=2 deflate=on
+SUMMARY pty label=grid profile=text rate=- size=187x50 wait_s=5.0 period_ms=16 hold_s=3.0 keys=188 then_J frames_before_keys=13 frames_while_held=234 frames_after_release=1 bytes_per_key=16687 bytes_after_release=43988 tail_ms=97 rss_mb=24 first_byte_ms=465 j_ms=1 frames_before_J=1 broken=no
+SUMMARY capture docs/shots/m7/fix-scroll-release-unicode.txt rows=38:49 lines=11
+# exit 1
+# Note (builder): the miss above is the expected drift. The run wrote the new PNG
+# (GRAFT_UPDATE_SHOTS=1) and the check failed against the committed one (9396 B, cursor
+# off screen). Re-run by hand afterwards, `cargo test --release --features heavy-tests
+# --test it -- ghostty_shot::`: 1 passed, same SUMMARY ghostty_png line as on line 2.

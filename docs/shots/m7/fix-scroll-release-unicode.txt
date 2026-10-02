@@ -1,14 +1,15 @@
-# m7-power-tools/47: the release grid, pty text walk (Unicode), TeamSpec::MONOREPO 187x50,
-# held j x188 at 16 ms; every byte before J's frame, drawn by pyte. Screen rows 39:49 (the
+# m7-power-tools/47, re-taken by 48: the release grid, pty text walk (Unicode), TeamSpec::MONOREPO
+# 187x50, held j x188 at 16 ms; every byte before J's frame, drawn by pyte. Screen rows 38:49 (the
 # PNG's rows), cut at the graph's divider. Characters only: colour, the lit thread and
 # the cursor's fill are not recorded (CLAUDE.md rule 5).
-39|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● │ ⋮
-40|│ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ │ │ │ ⋮
-41|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● │ │ ⋮
-42|│ │ │ │ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ ⋮
-43|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● ⋮
-44|◉▾│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
-45|│ │ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ │ │ ⋮
-46|│ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
-47|│ │ │ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
-48|│ │ │ │ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
+38|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● │ ⋮
+39|│ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ │ │ │ ⋮
+40|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● │ │ ⋮
+41|│ │ │ │ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ ⋮
+42|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● ⋮
+43|◉▾│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
+44|│ │ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ │ │ ⋮
+45|│ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
+46|│ │ │ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
+47|│ │ │ │ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
+48|│ │ │ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ │ ⋮

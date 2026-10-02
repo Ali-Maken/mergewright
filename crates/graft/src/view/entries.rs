@@ -100,16 +100,17 @@ pub(super) fn visible_rows<'a>(
         .uncommitted_row_attached()
         .then(|| history.visible(1).first())
         .flatten();
-    let uncommitted = state
-        .uncommitted_row_shown()
+    let uncommitted = uncommitted_shown(state)
         .then_some(state.working_tree.as_deref())
         .flatten();
-    // The virtual row takes one of the viewport's rows when it draws:
-    // `History::visible` knows nothing about it.
-    let height = if uncommitted.is_some() {
-        state.graph_rows().saturating_sub(1)
-    } else {
+    // `graph_rows` already leaves the pinned virtual row out, so this draws
+    // exactly the rows every scroller keeps the cursor among (48). The one
+    // exception is a one-row pane with the cursor on the virtual row: that
+    // row is the cursor's, so it takes the only row (Decided 4).
+    let height = if state.uncommitted_row_pinned() || uncommitted.is_none() {
         state.graph_rows()
+    } else {
+        0
     };
     // While the cursor rests on the virtual row (`AppState::on_working_tree`),
     // the highlight moves onto it and off the history cursor's row —
@@ -166,14 +167,18 @@ pub(super) fn visible_rows<'a>(
         .collect()
 }
 
-/// Does the uncommitted-changes row draw at the top of the viewport this
-/// frame? [`visible_rows`]'s own check, exposed so a mouse row (`update.rs`)
-/// can tell a click or a hover on it apart from a click on the real history
-/// row it displaces — the same working-tree and `HEAD` facts, asked the same
-/// way, off the same state.
+/// Does the uncommitted-changes row take the graph pane's top screen row
+/// this frame? [`visible_rows`]'s own check, exposed so a mouse row
+/// (`update.rs`) can tell a click or a hover on it apart from a click on the
+/// real history row it displaces — the same facts, asked the same way, off
+/// the same state.
+///
+/// Pinned ([`AppState::uncommitted_row_pinned`]), or — in a one-row pane,
+/// where it is not pinned — while the cursor rests on it, since that one row
+/// draws the cursor's row (m7-power-tools/48, Decided 4).
 #[must_use]
 pub(crate) fn uncommitted_shown(state: &AppState) -> bool {
-    state.uncommitted_row_shown()
+    state.uncommitted_row_pinned() || (state.uncommitted_row_shown() && state.on_working_tree)
 }
 
 /// The uncommitted-changes row's [`GraphEntry`]: `head_row` — `HEAD`'s row,

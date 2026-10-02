@@ -299,7 +299,9 @@ pub(super) fn graph_row_at(state: &AppState, screen_row: u16) -> Option<usize> {
     }
     let history = state.history.as_ref()?;
     let offset = usize::from(screen_row.checked_sub(rows_above_graph(state))?);
-    if offset >= state.graph_rows() {
+    // The pane, not its history rows: the uncommitted row is one of the
+    // pane's rows, and is taken off just below (48).
+    if offset >= state.graph_pane_rows() {
         return None;
     }
     let offset = if crate::view::uncommitted_shown(state) {

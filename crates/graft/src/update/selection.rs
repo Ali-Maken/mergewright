@@ -21,7 +21,8 @@ use super::state::AppState;
 /// and nothing more happens this key.
 ///
 /// Not on the row: `Up(1)` from the viewport's top row (`History::cursor ==
-/// History::top`), while the row is shown, lands on it instead of scrolling
+/// History::top`; in a one-row pane, where it is not pinned, from row 0),
+/// while the row is shown, lands on it instead of scrolling
 /// — `History` is asked for nothing. Any other motion passes through
 /// unchanged (a `g`/`PageUp` that lands on row 0 stops there; one more `k`
 /// reaches the virtual row).
@@ -33,10 +34,15 @@ use super::state::AppState;
 /// leave the row (the viewport scrolls up, the row goes with `HEAD`).
 pub fn move_from_graph(state: &mut AppState, motion: Motion) -> Option<Motion> {
     if !state.on_working_tree {
+        // Pinned, the row is drawn above the viewport's top row, so `k` from
+        // that row reaches it. In a one-row pane it is not pinned and sits
+        // above history's first row only: from any other row, `k` there
+        // would flip between it and history (m7-power-tools/48, Decided 4).
+        let pinned = state.uncommitted_row_pinned();
         let at_top = state
             .history
             .as_ref()
-            .is_some_and(|history| history.cursor == history.top);
+            .is_some_and(|history| history.cursor == if pinned { history.top } else { 0 });
         if matches!(motion, Motion::Up(1)) && at_top && state.uncommitted_row_shown() {
             state.on_working_tree = true;
             return None;

@@ -32,6 +32,7 @@ mod events;
 pub mod finish;
 mod geometry;
 mod history;
+mod in_view;
 pub mod journal;
 pub mod keys;
 pub mod map;
@@ -146,6 +147,7 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
     }
     // Any write ends the blame trail: the lines it points at may move.
     place::after_commands(&mut next, &mut commands);
+    in_view::keep_cursor_in_view(state, &mut next, &mut commands);
     keep_unseen_failure(state, &mut next);
     (next, commands)
 }

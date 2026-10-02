@@ -191,15 +191,16 @@ fn composed(state: &AppState, want: usize) -> Result<Shot, String> {
         .position(|row| *row == Some(cursor))
         .ok_or_else(|| format!("the cursor's row {cursor} is in no strip on screen"))?;
     // Strips are aligned, so they run past the screen's top and bottom: the
-    // pane draws `graph_rows` rows from the uncommitted row when it is on
-    // top, else from `top`.
+    // pane draws `graph_pane_rows` rows (the uncommitted row and the history
+    // rows under it) from the uncommitted row when it is on top, else from
+    // `top` (48).
     let pane_first = if pixels.uncommitted_on_top {
         drawn.iter().position(Option::is_none)
     } else {
         drawn.iter().position(|row| *row == Some(history.top))
     }
     .ok_or("the pane's first row is in no strip")?;
-    let pane = pane_first..(pane_first + state.graph_rows()).min(drawn.len());
+    let pane = pane_first..(pane_first + state.graph_pane_rows()).min(drawn.len());
     let shown = at.saturating_sub(AROUND).max(pane.start)..(at + AROUND + 1).min(pane.end);
     let cursor_on_screen = pane.contains(&at);
     let rows =
