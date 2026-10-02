@@ -27,6 +27,7 @@ with no shell.
 | Readable in his theme | cursor row unreadable in dark, twice (:44, :48); 3.04:1 (:50); text on it 4.28:1 (M5/44); branch label on it "dim magenta on grey, hard to read" (real-vs-mockup 6) | daily, dark |
 | Install like a real tool | runs a build from this repo today | once |
 | Two daily rulings | "pull with nothing new → cursor stays; `a` on HEAD with nothing staged → reword" (:86) | daily |
+| Fork left behind (2c) | "mid-chain branch left behind after `a` → fine until M8" (:86) — what it should do is not his yet (Proposed 2c) | with dependents |
 
 ## Prior art (T take · R reject · I invent)
 
@@ -65,6 +66,8 @@ with no shell.
 | homebrew-core; clap_mangen; completions; update notifier | all in core; ripgrep; Homebrew discourages | — | R |
 | Man page | ripgrep `--generate man` | from our CLI table + keymap; staleness test | T |
 | Notarisation | dist doesn't | none (ADR-0057) | R (his call) |
+| Reword HEAD with a branch on it (2c) | lazygit reword, no preview (`stacked-branches` §1.9) | M7's rule: previewed when a branch is built on HEAD (keymap `a` row, :219) | T (have) |
+| **Fork off a rewritten commit** (2c, proposed) | jj: every descendant follows (`stacked-branches` §1.4); branchless `restack` + skip-on-conflict (§1.3); Graphite `sync` skips conflicting (§1.2) | follows when its replay forecasts clean, else stays and says why (ADR-0059, proposed) | T descendants · T skip-on-conflict (for forks only) |
 
 **Dark pick: B** (`docs/shots/m8-proto-4a-dark-a-b.txt:21-24`): cursor row vs ground **3.14** (A 3.05, floor 3.0); text
 on cursor row **5.14** (A 4.61, floor 4.5); muted text on ground **6.95** (A 6.15, floor 4.5). Blue lane on cursor row
@@ -98,11 +101,19 @@ his — the wheel step stays per event until then. Satisfied.
 | 16 | Install | `brew install <owner>/tap/tributary`, `trib` | 2 | homebrew-core 2 |
 | 17 | Read the manual | `man trib` | 1 | ripgrep 1 |
 | 18 | Pull, nothing new | `p` | 1; cursor stays | lazygit 1 |
-| 19 | Reword HEAD, nothing staged | `a`, edit, `⏎` | 3 | lazygit 2–3 |
+| 19 | Reword HEAD, nothing staged, a branch built on it | `a`, edit, `⏎`, `y` (preview: the branch follows) | 4+2; nothing built on it: 3+1, no preview (M7's amend, unchanged) | lazygit 2–3, no preview |
 | 20 | Undo, see what came back | `u` | 1; lands on the result | GitUp 1 |
 | 21 | Make this folder a repo | `i` `y` (empty state) | 2+1 | Sublime Merge ~3 |
 | 22 | Which repo and branch am I in | read the header | 0 | VS Code status bar 0 |
 | 23 | Find the cursor row, read its branch | read the `▸` row | 0 | Sublime Merge 0 |
+
+**J19 is 4, not 3 (2c).** The 2b row counted the field-note case (:86) as the plain amend. But `a` on HEAD with
+nothing staged was refused only when a branch is built on HEAD (ticket 14 item 1) — the case where other branches
+move. There the keymap already says "previewed (`y`) only when a branch is built on HEAD" (`docs/design/02-keymap.md:219`,
+his M7 "all yes"). Kept: M5's promise and UX §2 H5 (see the result before confirming: which branches move is not on
+the editor); H4 (every history-changing preview confirms with `y`, field notes :58). UX §3.5 (undo permits fewer
+confirms) argues for 3, but the preview here shows something nothing else on screen does. The build is right; only the
+count was wrong. Nothing built on HEAD stays 3, no preview, not in the fence (M7's path, unchanged by M8).
 
 **Where he lands** (UX §3.1):
 
@@ -145,7 +156,7 @@ clone                         3     # +1 · Sublime Merge ~4 · c <url> ⏎
 which-repo-branch             0     # +0 · VS Code 0 · —
 cursor-row-branch             0     # +0 · Sublime Merge 0 · —
 pull-nothing-new              1     # +0 · lazygit 1 · p
-reword-head                   3     # +1 · lazygit 2–3 · a <edit> ⏎
+reword-head                   4     # +2 · lazygit 2–3 (no preview) · a <edit> ⏎ y (a branch built on HEAD)
 undo-see-result               1     # +0 · GitUp 1 · u
 ```
 
@@ -293,6 +304,9 @@ repo. `update` calls `Keymap::translate` once before any `*_key` dispatcher. Eve
 4. The cursor-row fill excludes the graph column — ADR-0058 §2. Undo cost: every cursor-row capture and paint test.
 5. (2b) **Crate and package names stay `graft-*`** in M8: unpublished (ADR-0057), and renaming them breaks every
    `crates/graft/…:line` citation in docs and gaps. Rename before the source is published (a gap row).
+6. (2c, **proposed**, only if he says *move*) The rewrite todo gains `label`/`reset` for fork sections — ADR-0059.
+   Options: one rebase with sections / a second rebase in the entry / a merge-tree replay. **One rebase**: git's stops,
+   abort and kill -9 state stay the only truth (ADR-0047's reason). Undo cost: the saved-plan format (`plan.json`).
 
 ## Where I'd differ from DESIGN.md
 
@@ -300,6 +314,14 @@ Pass-1 Proposed 1–5 approved 2026-10-02 and applied. **PROMPT.md still to edit
 2b, **Proposed** (conductor → user, small): keymap §2.2 `q` row "confirms if an operation is in progress" read as
 *a write is running*; a stopped git operation quits without a box (relaunch offers it back, PROMPT §9). Trade-off: one
 fewer box on a daily path vs. a quit that leaves a rebase stopped on disk — which M6 already handles.
+2c, **Proposed** (planner → user): **a branch started from one of the commits he rewrites moves onto the new commit
+when it can without conflict** (ADR-0059, proposed). Today it stays and the preview says `left behind` (m7/37). His
+word was "fine until M8" (:86) — no line of his says it should follow; ticket 14 item 2's "Ruling" is not his.
+Trade-off: no forgotten fork and no hand rebase afterwards, vs. a branch he didn't name moving (shown before `y`,
+undone by one `u`; a conflicting, pushed or elsewhere-checked-out one stays, in words). Ask him: *"You amend or
+reword a commit that another of your branches was started from. Should that branch move onto the new commit too
+(only if it moves without conflict, shown in the preview first), or stay where it is? move / stay"*. Stay → item 2
+closes as designed; drop `fork-follows-engine.md` and `fork-follows-preview-words.md`.
 
 ## New UI
 
@@ -312,6 +334,7 @@ fewer box on a daily path vs. a quit that leaves a rebase stopped on disk — wh
 - **Palette sources** (`⌃P`): branches/tags/commits `⏎` seek the cursor (never switch — `C` does); files open history
   (`F`); RECENT = palette actions run this session. ≤ 8 rows per group, `+N more`.
 - Bar doorway becomes `? keys`; `.` stays bound as an ordinary candidate `. actions`.
+- (2c, if *move*) **Fork rows** in every rewrite/rebase preview and the rewrite editor's right pane: see "Pass 2c".
 
 ## Genuinely risky tickets
 
@@ -345,6 +368,8 @@ fewer box on a daily path vs. a quit that leaves a rebase stopped on disk — wh
 | 11 | G-tour | graft-ops tour, graft, graft-ui | Opus | `tour-practice-repo.md` |
 | 12a | G-daily landing | graft update operate/undo | Opus | `daily-landing.md` |
 | 12b | G-daily ops | graft-ops rewrite, graft-git, graft preview | Opus | `daily-ops-fixes.md` |
+| 12c | G-daily fork (2c, if *move*) | graft-ops rewrite + preview | (after scout) | `fork-follows-engine.md` |
+| 12d | G-daily fork words (2c, if *move*) | graft preview line rows, rewrite editor, banner | (after scout) | `fork-follows-preview-words.md` |
 | 13 | G-words | graft-ui, graft, graft-ops (words) | Sonnet | `words-sweep.md` |
 | 14a | G-hygiene code | graft-git, graft-ops raw, askpass | Opus/Sonnet | `hygiene-code.md` |
 | 14b | G-hygiene scripts | scripts, fixtures, fuzz, shots | Sonnet | `hygiene-scripts-and-fixtures.md` |
@@ -357,7 +382,8 @@ fewer box on a daily path vs. a quit that leaves a rebase stopped on disk — wh
 
 Lanes: 1→2→3→3b; 4 after 2. 5a→5b; 5c beside 5b. 6a→6b→7a→7b; 8 after 7a and 12b. 9a after 5b and 6a; 9b after 9a.
 10 after 5c and 7a; 11 after 10 and 6b. 12a, 12b, 14a, 14b beside the scroll lane (disjoint files; conductor checks
-scouts). 13 after 6b and 12b. 15 after 6a, 9a, 10, 11; 16 after 15. 17 after every build; 18a → 18b → 19.
+scouts). 12c → 12d, after 12b, before 17. 13 after 6b and 12b. 15 after 6a, 9a, 10, 11; 16 after 15. 17 after every
+build; 18a → 18b → 19.
 **Nothing is published or registered** (ADR-0057).
 
 ## Pass 2b — specced
@@ -365,30 +391,21 @@ scouts). 13 after 6b and 12b. 15 after 6a, 9a, 10, 11; 16 after 15. 17 after eve
 All items of "Pass 2b remaining" are specced (table above). Still owed by others: G-health specs (from the
 architecture review); his trace run (gates 3b); scene 1's feel.
 
-## KNOWN_GAPS rows naming M8 (grep 2026-10-02; plus 960, 998)
+## Pass 2c — spec-only, 2026-10-02 (ticket 14's two questions)
 
-| Fate | Rows | Group |
-|---|---|---|
-| Fix — scroll | 1095, 1089, 1093; 414 (check) | 1–4, 3b |
-| Fix — look | 541, 542 | 5b |
-| Fix — help, palette, bar | 163, 538, 539, 553 (7a); 1057, 1065, 1084, 1058-bar (8); stale M7 840 (8 verifies) | 7a, 8 |
-| Fix — theme, polish | 145 (closed by design), 156, 159, 162, 373, 557, 979, 983 | 9b |
-| Fix — first run, tour | 505, 558 | 10, 11 |
-| Fix — daily | 960, 1056, 1050, 509 (12a); 998, 1083, 1058, 931, 1055, 1081 (12b) | 12a, 12b |
-| Fix — words | 376, 402, 403, 951, 953, 1042, 1059–1063, 1066, 1067, 1072, 1074, 1086; stale M7 766 | 13 |
-| Fix — hygiene | 448, 959, 1000, 1045, 1068, 1069, 1076 (14a); 147, 164, 549, 550, 1049, 1077, 1087, 1090, 1091, 1094 (14b) | 14a, 14b |
-| Fix — docs, release | 224 (15); 458, 551, 980 (16) | 15, 16 |
-| Fix — code health | 935, 985, 991, 992, 1027, 1034, 1043, 1082 | 17 |
-| M8 review run | 944, 963, 1044, 1071, 1078, 1079, 1080, 1088 | review |
-| His eye at the stop | 562 | stop |
-| Regenerated by acceptance | 1085 | 19 |
-| Close | 795, 981, 1053, 1064 | — |
-| Past v1 (ADR-0057) | 371, 372, 374, 205, 174, 248, 297–300, 866, 867, 910, 967, 976, 989, 990, 1001, 1047, 1048, 1051, 1052, 1054, 1073, 1075 | — |
-| New (2b) | crate names carry the codename; rename before the source is published | after v1 |
-
-Open item: a person's trademark search (USPTO classes 9 and 42) before anything public (ADR-0057).
-
-## Answered 2026-10-02
-
-Name Tributary / `trib`; no notarisation; Proposed 1–5 yes; look-parity group yes; dark A/B ours → B. Still owed by
-him: scene 1's feel (blind 1/2, wheel step 1 vs 3) and one `GRAFT_PERF_TRACE` run after G-trace.
+- **J19 = 4** (`a` edit `⏎` `y`, a branch built on HEAD). Build unchanged; the walk's "3 + the preview's `y`"
+  allowance in `reword_head_with_a_line_built_on_it` should assert the fence's 4 directly (conductor: a one-line
+  follow-up in ticket 14 or `accept-m8`).
+- **Fork follows — Proposed** (above). If *move*:
+  - **Problem**: "mid-chain branch left behind after `a`" (:86). **User**: him, amending or rewording on a line
+    teammates' work hangs off. **Solution**: no extra step — the fork rides the same `y`.
+  - **Journey**: `a` into an older commit (cursor on it, something staged), `y` → 2+1, fork included; jj 0 extra
+    (`stacked-branches` §1.4), branchless +1 (`git restack`, §1.3). Today: + the fork's own rebase by hand (not
+    counted here). Lands as the rewrite does today (UX §3.1); a stop inside a fork's section lands on M6's conflict
+    screen, banner `feature-x, forked at a1b2c3d`.
+  - **Fork rows** (UX §3.6): `feature-x follows · 2 commits from a1b2c3d` in the dependents' look; `feature-x stays on
+    a1b2c3d · would conflict in src/a.rs` (warning colour) or `· pushed to origin/feature-x`, `· checked out in
+    <path>`, `· has a merge`, `· the default branch`, `· not checked: <why>` (muted). Follows first, then stays,
+    oldest fork point first; `+N more stay`. No new key.
+  - Fable: neither spec meets all three tests — `fork-follows-engine` is structural (todo vocabulary), but its
+    correctness is judged from git-truth tests and the oracle. Opus after scout is the expectation; conductor's call.
