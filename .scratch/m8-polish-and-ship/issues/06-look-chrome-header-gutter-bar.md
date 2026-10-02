@@ -1,8 +1,7 @@
 # G-look 5a — header, gutter, spacing and bar like the mock-up
 
 Status: ready
-Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: the look is specified (DESIGN §1.0); risk is the
-row split reaching every geometry mirror, held by a sweep test, not judgement.
+Build with: Opus (conductor, after scout `scouts/06-look-chrome.md`: 6 header sites not graph+3; no branch/repo-name field or ~ helper; 345 captures + 25 test files go stale; runs after 04 — strips/tests.rs reads CHROME_ROWS)
 Blocked by: 02
 Needs: scroll groups merged (`pace-fence-and-sync` touches the frame write; this ticket does not). Before
 `look-cursor-row-and-dark-b` (same files).
