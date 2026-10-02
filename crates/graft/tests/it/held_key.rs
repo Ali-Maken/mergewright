@@ -622,3 +622,37 @@ fn replay<D>(wakes: &Paced<'_, D>, initial: AppState, reading: &mut Reading) {
     }
     reading.rows_scrolled = held_cursor.saturating_sub(start_cursor);
 }
+
+/// Set by `heavy::budgets_hold_at_pixel_*` for [`pixel_rss_child`]: the
+/// drain rate, bytes per second (m8 G-pixel-mem).
+pub(crate) const PIXEL_RSS_CHILD_RATE: &str = "GRAFT_PIXEL_RSS_CHILD_RATE";
+
+/// The child's result line starts with this.
+pub(crate) const PIXEL_RSS_MARK: &str = "pixel_rss:";
+
+/// Not a test of its own: the half of `heavy::budgets_hold_at_pixel_*` that
+/// runs in a fresh process, whose `getrusage` peak is this hold's alone.
+/// Scenario A at Pixel, Kitty with deflate (as Ghostty probes), at the rate
+/// in [`PIXEL_RSS_CHILD_RATE`]. Times are not judged here: `held_key`'s own
+/// tests do that. Without the variable set — any ordinary run of the tier —
+/// it returns at once.
+#[test]
+fn pixel_rss_child() {
+    let Some(rate) = std::env::var_os(PIXEL_RSS_CHILD_RATE) else {
+        return;
+    };
+    let rate: u64 = rate
+        .to_str()
+        .and_then(|rate| rate.parse().ok())
+        .unwrap_or_else(|| panic!("{PIXEL_RSS_CHILD_RATE}={rate:?} is not a rate"));
+    let reading = run(RenderingTier::Pixel, false, rate, Encoding::Deflate)
+        .unwrap_or_else(|why| panic!("{why}"));
+    let peak = graft_fixtures::peak_rss().unwrap_or_else(|why| panic!("peak RSS: {why}"));
+    println!(
+        "{PIXEL_RSS_MARK} peak_rss={peak} keys={} rows_scrolled={} strip_transmits_held={} deflated_transmits={}",
+        reading.keys,
+        reading.rows_scrolled,
+        reading.strip_transmits_held,
+        reading.deflated_transmits,
+    );
+}

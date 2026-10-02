@@ -1,4 +1,4 @@
-diff --color=auto -ruN a/crates/graft/src/event_loop/graphics.rs b/crates/graft/src/event_loop/graphics.rs
+diff -ruN a/crates/graft/src/event_loop/graphics.rs b/crates/graft/src/event_loop/graphics.rs
 --- a/crates/graft/src/event_loop/graphics.rs	2026-10-02 22:14:30
 +++ b/crates/graft/src/event_loop/graphics.rs	2026-10-02 22:16:20
 @@ -204,6 +204,13 @@
@@ -15,7 +15,7 @@ diff --color=auto -ruN a/crates/graft/src/event_loop/graphics.rs b/crates/graft/
      }
  
      /// Rasterise, without drawing or uploading, the first strip `state`
-diff --color=auto -ruN a/crates/graft/src/lib.rs b/crates/graft/src/lib.rs
+diff -ruN a/crates/graft/src/lib.rs b/crates/graft/src/lib.rs
 --- a/crates/graft/src/lib.rs	2026-10-02 22:14:30
 +++ b/crates/graft/src/lib.rs	2026-10-02 22:16:20
 @@ -17,6 +17,7 @@
@@ -26,7 +26,7 @@ diff --color=auto -ruN a/crates/graft/src/lib.rs b/crates/graft/src/lib.rs
  pub mod refs;
  pub mod repos;
  pub mod repository;
-diff --color=auto -ruN a/crates/graft/src/main.rs b/crates/graft/src/main.rs
+diff -ruN a/crates/graft/src/main.rs b/crates/graft/src/main.rs
 --- a/crates/graft/src/main.rs	2026-10-02 22:14:30
 +++ b/crates/graft/src/main.rs	2026-10-02 22:16:20
 @@ -19,7 +19,35 @@
@@ -65,7 +65,7 @@ diff --color=auto -ruN a/crates/graft/src/main.rs b/crates/graft/src/main.rs
      // Settled first, before any config load, terminal probe or log line: in
      // askpass mode (git ran Graft's own binary as its credential helper during
      // a fetch, pull or push — design note m4, choice 2) this process must
-diff --color=auto -ruN a/crates/graft/src/memstats.rs b/crates/graft/src/memstats.rs
+diff -ruN a/crates/graft/src/memstats.rs b/crates/graft/src/memstats.rs
 --- a/crates/graft/src/memstats.rs	1970-01-01 05:00:00
 +++ b/crates/graft/src/memstats.rs	2026-10-02 22:16:20
 @@ -0,0 +1,53 @@
@@ -122,10 +122,10 @@ diff --color=auto -ruN a/crates/graft/src/memstats.rs b/crates/graft/src/memstat
 +        let _ = file.write_all(text.as_bytes());
 +    }
 +}
-diff --color=auto -ruN a/crates/graft-graph/src/raster/cache.rs b/crates/graft-graph/src/raster/cache.rs
+diff -ruN a/crates/graft-graph/src/raster/cache.rs b/crates/graft-graph/src/raster/cache.rs
 --- a/crates/graft-graph/src/raster/cache.rs	2026-10-02 22:14:30
-+++ b/crates/graft-graph/src/raster/cache.rs	2026-10-02 22:16:20
-@@ -253,6 +253,14 @@
++++ b/crates/graft-graph/src/raster/cache.rs	2026-10-02 22:32:57
+@@ -253,6 +253,16 @@
      composites: Lru<PaintKey, Arc<RasterFrame>>,
      clock: u64,
      stats: CacheStats,
@@ -137,10 +137,12 @@ diff --color=auto -ruN a/crates/graft-graph/src/raster/cache.rs b/crates/graft-g
 +    rast_new: u64,
 +    rast_again: u64,
 +    rast_rekeyed: u64,
++    rekeyed_layout: u64,
++    rekeyed_alpha: u64,
  }
  
  impl StripCache {
-@@ -272,6 +280,11 @@
+@@ -272,6 +282,13 @@
              composites: Lru::new(),
              clock: 0,
              stats: CacheStats::default(),
@@ -149,22 +151,32 @@ diff --color=auto -ruN a/crates/graft-graph/src/raster/cache.rs b/crates/graft-g
 +            rast_new: 0,
 +            rast_again: 0,
 +            rast_rekeyed: 0,
++            rekeyed_layout: 0,
++            rekeyed_alpha: 0,
          }
      }
  
-@@ -347,6 +360,11 @@
+@@ -347,6 +364,19 @@
          }
          let frame = Arc::new(rasterise_backdrop_in(strip, backdrop, &mut self.pool)?);
          self.stats.rasterised += 1;
 +        match self.seen.insert(first_row, key) {
 +            None => self.rast_new += 1,
 +            Some(old) if old == key => self.rast_again += 1,
-+            Some(_) => self.rast_rekeyed += 1,
++            Some(old) => {
++                self.rast_rekeyed += 1;
++                if old.strip.layout != key.strip.layout {
++                    self.rekeyed_layout += 1;
++                }
++                if old.backdrop != key.backdrop {
++                    self.rekeyed_alpha += 1;
++                }
++            }
 +        }
          let weight = frame.pixels.capacity();
          self.backdrops
              .insert(key, Arc::clone(&frame), self.clock, weight);
-@@ -405,6 +423,7 @@
+@@ -405,6 +435,7 @@
              return Ok(base);
          };
          let frame = Arc::new(composite_in(&base, &top, &mut self.pool));
@@ -172,7 +184,7 @@ diff --color=auto -ruN a/crates/graft-graph/src/raster/cache.rs b/crates/graft-g
          let weight = frame.pixels.capacity();
          self.composites
              .insert(key, Arc::clone(&frame), self.clock, weight);
-@@ -591,6 +610,35 @@
+@@ -591,6 +622,37 @@
                  .map_or(0, |image| image.frame.pixels.capacity())
          };
          self.backdrops.bytes(frame) + self.emphases.bytes(image) + self.composites.bytes(frame)
@@ -186,13 +198,15 @@ diff --color=auto -ruN a/crates/graft-graph/src/raster/cache.rs b/crates/graft-g
 +            image.as_ref().map_or(0, |image| image.frame.pixels.capacity())
 +        };
 +        format!(
-+            "backdrop_n={} backdrop_kb={} backdrop_rast={} rast_new={} rast_again={} rast_rekeyed={} emphasis_n={} emphasis_kb={} emphasis_rast={} composite_n={} composite_kb={} composite_rast={} resident_kb={} budget_kb={} min_strips={} minimum_wins={} buffers_allocated={}",
++            "backdrop_n={} backdrop_kb={} backdrop_rast={} rast_new={} rast_again={} rast_rekeyed={} rekeyed_layout={} rekeyed_alpha={} emphasis_n={} emphasis_kb={} emphasis_rast={} composite_n={} composite_kb={} composite_rast={} resident_kb={} budget_kb={} min_strips={} minimum_wins={} buffers_allocated={}",
 +            self.backdrops.len(),
 +            self.backdrops.bytes(frame) >> 10,
 +            self.stats.rasterised,
 +            self.rast_new,
 +            self.rast_again,
 +            self.rast_rekeyed,
++            self.rekeyed_layout,
++            self.rekeyed_alpha,
 +            self.emphases.len(),
 +            self.emphases.bytes(image) >> 10,
 +            self.stats.emphasis_rasterised,
@@ -208,7 +222,7 @@ diff --color=auto -ruN a/crates/graft-graph/src/raster/cache.rs b/crates/graft-g
      }
  
      /// Counters since the cache was made.
-diff --color=auto -ruN a/crates/graft-term/src/iterm2.rs b/crates/graft-term/src/iterm2.rs
+diff -ruN a/crates/graft-term/src/iterm2.rs b/crates/graft-term/src/iterm2.rs
 --- a/crates/graft-term/src/iterm2.rs	2026-10-02 22:14:30
 +++ b/crates/graft-term/src/iterm2.rs	2026-10-02 22:16:20
 @@ -68,6 +68,13 @@
@@ -225,7 +239,7 @@ diff --color=auto -ruN a/crates/graft-term/src/iterm2.rs b/crates/graft-term/src
      /// Send each band's `OSC 1337` over `transport`: inside tmux, one
      /// passthrough wrapper per band; the cursor moves and erases stay outside
      /// it, for tmux to see.
-diff --color=auto -ruN a/crates/graft-term/src/kitty/mod.rs b/crates/graft-term/src/kitty/mod.rs
+diff -ruN a/crates/graft-term/src/kitty/mod.rs b/crates/graft-term/src/kitty/mod.rs
 --- a/crates/graft-term/src/kitty/mod.rs	2026-10-02 22:14:30
 +++ b/crates/graft-term/src/kitty/mod.rs	2026-10-02 22:16:20
 @@ -194,6 +194,20 @@

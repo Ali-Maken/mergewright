@@ -91,7 +91,7 @@ wins = sum(int(l.get("minimum_wins", 0)) for l in lines)
 print(
     f"SUMMARY mem rev={rev} label={label} cell={cell} strip_px_w={end['strip_px_w']}"
     f" backdrop={end['backdrop_n']}/{int(end['backdrop_kb'])>>10}MB rast_held={held('backdrop_rast')}"
-    f"(new={held('rast_new')},again={held('rast_again')},rekeyed={held('rast_rekeyed')})"
+    f"(new={held('rast_new')},again={held('rast_again')},rekeyed={held('rast_rekeyed')}:layout={held('rekeyed_layout')},alpha={held('rekeyed_alpha')})"
     f" emphasis={end['emphasis_n']}/{int(end['emphasis_kb'])>>10}MB rast_held={held('emphasis_rast')}"
     f" composite={end['composite_n']}/{int(end['composite_kb'])>>10}MB rast_held={held('composite_rast')}"
     f" cache_mb={int(end['resident_kb'])>>10} cache_peak_mb={peak_mb} budget_mb={int(end['budget_kb'])>>10}"
