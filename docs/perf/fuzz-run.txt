@@ -1,0 +1,4 @@
+# fuzz run — 2026-10-02T15:23:52Z, HEAD 8cb602e0, 20s per target, -timeout=10
+fuzz: line_log exit=0 wall=237s budget=20s
+fuzz: parse_file_list exit=0 wall=23s budget=20s
+fuzz: parse_porcelain_v2 exit=0 wall=23s budget=20s

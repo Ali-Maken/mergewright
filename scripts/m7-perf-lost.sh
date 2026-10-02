@@ -9,7 +9,7 @@
 # repository, to check the harness quickly).
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 OUT=${1:-docs/perf/lost-commit-cost.txt}
 shift || true
 WORK=$(mktemp -d)

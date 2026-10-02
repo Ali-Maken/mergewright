@@ -15,7 +15,7 @@
 # conductor runs this and reads the SUMMARY lines.
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 OUT=${1:-docs/perf/30q-snapshot.txt}
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT

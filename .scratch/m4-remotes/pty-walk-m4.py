@@ -52,7 +52,7 @@ CAPTURES = [line.split("\t") for line in
             subprocess.run([BIN, "--stems"], capture_output=True, text=True,
                            check=True).stdout.splitlines()]
 WANTED = set(sys.argv[2:])
-STABLE, CAP, APPEAR = 1.5, 40.0, 90.0
+STABLE, CAP, APPEAR, EXIT_GRACE = 1.5, 40.0, 90.0, 10.0
 # The walk's passwords (tests/it/m4_walk/fixture.rs: PASSWORD, WRONG). Kept here
 # rather than printed by `--stems`, which must never print a secret.
 SECRETS = ["correct-horse-battery-staple", "not-the-password"]
@@ -167,15 +167,30 @@ class Run:
                 last = time.monotonic()
 
     def end(self):
-        self.raw.close()
         try:
             os.kill(self.pid, signal.SIGTERM)
         except ProcessLookupError:
             pass
-        try:
-            os.waitpid(self.pid, 0)
-        except ChildProcessError:
-            pass
+        # The pty is read while we wait, as a terminal reads it (m5's fix,
+        # m7-power-tools/30v; m8-polish-and-ship/22): an unread master fills,
+        # graft blocks in `write` mid-frame and never takes the SIGTERM wake.
+        start = time.monotonic()
+        while time.monotonic() - start < EXIT_GRACE:
+            try:
+                pid, _ = os.waitpid(self.pid, os.WNOHANG)
+            except ChildProcessError:
+                pid = self.pid
+            if pid:
+                break
+            self.pump(0.05)
+        else:
+            print(f"{SIZE}: not gone {EXIT_GRACE:.0f} s after SIGTERM — killed")
+            try:
+                os.kill(self.pid, signal.SIGKILL)
+                os.waitpid(self.pid, 0)
+            except (ProcessLookupError, ChildProcessError):
+                pass
+        self.raw.close()
         os.close(self.master)
 
 

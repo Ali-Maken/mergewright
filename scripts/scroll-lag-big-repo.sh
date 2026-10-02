@@ -23,7 +23,7 @@
 # loop does when the terminal drains slower than keys arrive.
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 REPO=${1:?usage: scroll-lag-big-repo.sh <repo copy> [out]}
 OUT=${2:-docs/perf/scroll-lag-big-repo.txt}
 WORK=$(mktemp -d)

@@ -181,3 +181,20 @@ fn the_shared_corpus_is_read_only() {
         head_file.display()
     );
 }
+
+/// Where each ref-shaped fixture leaves `HEAD` (m8-polish-and-ship/22). The
+/// open row said `ref-states` checks out an orphan `fresh` but is built with
+/// `HEAD` on `main`: the orphan step belongs to `unborn-branch`
+/// (`shapes/refs.rs::unborn_branch`); `ref-states` ends on `main` by design.
+/// This pins all three ref shapes against the built corpus.
+#[test]
+fn each_ref_shape_leaves_head_where_its_builder_says() {
+    for (shape, want) in [
+        (Shape::RefStates, "refs/heads/main\n"),
+        (Shape::UnbornBranch, "refs/heads/fresh\n"),
+        (Shape::DetachedHead, "detached"),
+    ] {
+        let dir = graft_fixtures::borrow(shape);
+        assert_eq!(head(&dir), want, "{} HEAD", shape.name());
+    }
+}

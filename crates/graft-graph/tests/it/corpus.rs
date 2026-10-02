@@ -76,6 +76,15 @@ fn every_shape_lays_out_as_snapshotted() {
     });
 }
 
+/// Compaction's corpus shape (m8-polish-and-ship/22), in `Shape::WIDE`
+/// rather than `ALL`, so snapshotted here by name.
+#[test]
+fn many_lanes_lays_out_as_snapshotted() {
+    let shape = Shape::ManyLanes;
+    let dir = graft_fixtures::borrow(shape);
+    insta::assert_snapshot!(shape.name(), picture(shape, &dir));
+}
+
 /// Calls `visit` on every corpus shape this machine can hold.
 ///
 /// The one shape a machine may legitimately not be able to hold is the

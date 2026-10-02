@@ -2,7 +2,8 @@
 
 Runs the real binary under a pty with TERM_PROGRAM=iTerm.app and
 graph.renderer = "pixel", resizes the pty once, quits, and writes:
-  <out>.esc        every byte graft wrote
+  <out>.esc        every byte graft wrote — never commit it (raw terminal
+                   stream); commit `scripts/esc-digest.py <out>.esc` instead
   <out>.txt        per-frame summary: bands sent, PNG bytes, ESC[2J count
   <out>-band.png   the first band graft sent, decoded from its base64
 

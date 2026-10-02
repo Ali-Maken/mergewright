@@ -6,7 +6,7 @@
 #
 #   bash scripts/m7-perf-key-selftest.sh      # exit 0: every case held
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 FAILURES=0

@@ -705,13 +705,20 @@ fn reports_render_time_for_a_32_row_strip() {
 #[test]
 fn write_shots() {
     let shots = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/shots");
+    let mut regenerated = Regenerated::default();
     for name in SHAPES {
         let frame = render(&rows_of(name), USER_CELL);
-        save(&frame, &shots.join(format!("22-raster-{name}.png")), None);
+        save(
+            &frame,
+            &shots.join(format!("22-raster-{name}.png")),
+            None,
+            &mut regenerated,
+        );
         save(
             &frame,
             &shots.join(format!("22-raster-{name}-on-dark.png")),
             Some((0x1E, 0x1E, 0x2E)),
+            &mut regenerated,
         );
     }
     let row = lone(&rows_of("octopus-merge"));
@@ -739,26 +746,30 @@ fn write_shots() {
         &frame,
         &shots.join("22-raster-rings-on-dark.png"),
         Some((0x1E, 0x1E, 0x2E)),
+        &mut regenerated,
     );
     // 42: the same ring shapes, at 42's stroke width (ADR-0024).
     save(
         &frame,
         &shots.join("42-raster-rings-on-dark.png"),
         Some((0x1E, 0x1E, 0x2E)),
+        &mut regenerated,
     );
-    write_thread_shot(&shots);
+    write_thread_shot(&shots, &mut regenerated);
     // 40: folded edges as fading tails beside the dotted rail (ADR-0022).
     let rows = folded_rows();
     save(
         &folded_frame(&rows, None, true, USER_CELL),
         &shots.join("40-raster-folded-on-dark.png"),
         Some((0x1E, 0x1E, 0x2E)),
+        &mut regenerated,
     );
+    regenerated.finish();
 }
 
 /// 42: lane 0 on the selection's thread among four others — a line to
 /// follow, brighter than the rest, never a slab (ADR-0024).
-fn write_thread_shot(shots: &std::path::Path) {
+fn write_thread_shot(shots: &std::path::Path, regenerated: &mut Regenerated) {
     let thread_rows = super::raster_pixels::synthetic(20, 5);
     let lit: BTreeSet<usize> = [0].into_iter().collect();
     let raster_rows = plain(&thread_rows[4..16]);
@@ -787,10 +798,16 @@ fn write_thread_shot(shots: &std::path::Path) {
         &thread_frame,
         &shots.join("42-raster-thread-on-dark.png"),
         Some((0x1E, 0x1E, 0x2E)),
+        regenerated,
     );
 }
 
-fn save(frame: &RasterFrame, path: &std::path::Path, backdrop: Option<(u8, u8, u8)>) {
+fn save(
+    frame: &RasterFrame,
+    path: &std::path::Path,
+    backdrop: Option<(u8, u8, u8)>,
+    regenerated: &mut Regenerated,
+) {
     use tiny_skia::{Color, IntSize, Pixmap, PixmapPaint, Transform};
     let size = IntSize::from_wh(frame.width, frame.height)
         .unwrap_or_else(|| panic!("{}: an empty frame has no PNG", path.display()));
@@ -813,7 +830,7 @@ fn save(frame: &RasterFrame, path: &std::path::Path, backdrop: Option<(u8, u8, u
             canvas
         }
     };
-    check_png(&out, path);
+    check_png(&out, path, regenerated);
 }
 
 /// One rendered pixmap against the PNG committed at `path` — or, when
@@ -823,7 +840,7 @@ fn save(frame: &RasterFrame, path: &std::path::Path, backdrop: Option<(u8, u8, u
 /// about the picture rather than about the encoder. The size is compared
 /// first, so a resized strip says so instead of reporting a mismatch at pixel
 /// zero.
-fn check_png(out: &tiny_skia::Pixmap, path: &std::path::Path) {
+fn check_png(out: &tiny_skia::Pixmap, path: &std::path::Path, regenerated: &mut Regenerated) {
     let updating = graft_fixtures::updating();
     if updating {
         out.save_png(path)
@@ -859,10 +876,27 @@ fn check_png(out: &tiny_skia::Pixmap, path: &std::path::Path) {
          drawing is the right one, regenerate with GRAFT_UPDATE_SHOTS=1 and read the diff.",
         path.display()
     );
-    assert!(
-        !updating,
-        "{}: regenerated. This run is red so the change cannot pass unnoticed — read the \
-         diff under docs/shots/ and commit it if it is right.",
-        path.display()
-    );
+    // Not asserted here: one PNG's regeneration must not stop the next from
+    // being written (m8-polish-and-ship/22 — it used to panic on the first,
+    // so `GRAFT_UPDATE_SHOTS=1` rewrote one file per run). The caller fails
+    // once, after every file, through `Regenerated::finish`.
+    if updating {
+        regenerated.0.push(path.display().to_string());
+    }
+}
+
+/// The PNGs one regeneration pass rewrote; red at the end if any were.
+#[derive(Default)]
+struct Regenerated(Vec<String>);
+
+impl Regenerated {
+    fn finish(self) {
+        assert!(
+            self.0.is_empty(),
+            "regenerated {} capture(s): {}. This run is red so the change cannot pass \
+             unnoticed — read the diff under docs/shots/ and commit it if it is right.",
+            self.0.len(),
+            self.0.join(", ")
+        );
+    }
 }

@@ -9,7 +9,7 @@
 # Red until 46 (Unicode green after 43): exits 1 when any test failed.
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 OUT=${1:-docs/perf/fix-scroll-held-key.txt}
 WORK=$(mktemp -d)
 LOAD=$(uptime | sed "s/.*load averages*: //")

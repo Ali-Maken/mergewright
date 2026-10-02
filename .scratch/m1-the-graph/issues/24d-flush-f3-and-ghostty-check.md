@@ -49,7 +49,7 @@ Built:
 
 Verified:
 - Tests: resize → 1 flush, next frame retransmits; CellSize + Theme change → 2 flushes, unchanged theme → none; forced pixel with `pixel_protocol: None` transmits, F3 → `a=d,d=i`, "forced to unicode", no gfx; update: Started at Pixel pads to 32, F3 Pixel→Unicode→Ascii and `strip_rows` None; `placed_columns`. Renderer-Pixel snapshot re-accepted (blank column + `gfx ok`, intended).
-- **Real Ghostty 1.3.1**, launched by the builder (`open -na Ghostty.app --args -e …/kitty_check`): first frame (2 transmits), scroll crop, clear+retransmit, hide, free_all — every step DA1-fenced, **0 error replies**. Control step (place missing id 999999) heard exactly 1 `ENOENT`, so the fence does hear errors. Report `docs/shots/24d-kitty-check-report.txt`; raw bytes `docs/shots/24d-kitty-check.esc`; decoded `docs/shots/24d-kitty-check.esc.txt`.
+- **Real Ghostty 1.3.1**, launched by the builder (`open -na Ghostty.app --args -e …/kitty_check`): first frame (2 transmits), scroll crop, clear+retransmit, hide, free_all — every step DA1-fenced, **0 error replies**. Control step (place missing id 999999) heard exactly 1 `ENOENT`, so the fence does hear errors. Report `docs/shots/24d-kitty-check-report.txt`; raw bytes digested to `docs/shots/24d-kitty-check.esc-digest.txt` (each command's header, payload size, sha256 — the raw `.esc` was removed in m8-polish-and-ship/22: no raw terminal streams in the tree); decoded `docs/shots/24d-kitty-check.esc.txt`.
 - Not verified: the *app's* history strips in a real terminal (the check uses synthetic strips through the same encoder); how anything looks. Resize frame cost.
 
 ## Ghostty command (user, by eye)

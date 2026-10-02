@@ -43,7 +43,7 @@ What changed:
 
 Verified, and how:
 - Real Ghostty 1.3.1, `examples/kitty_check` (extended): row erase then placements only → 0 errors; full `ESC[2J` then placements only → 2/2 ENOENT. `docs/shots/25-kitty-resize-check-report.txt`.
-- pty capture of the real binary, iTerm2 tier forced (100x30 → SIGWINCH 80x30 → q): 1 band before and 1 after the resize, byte-identical, 0 `ESC[2J`, 28 ECH, 0 Kitty bytes. `docs/shots/25-iterm2-capture.txt`, `.esc`, band `25-iterm2-capture-band.png` (16x448). Script `.scratch/m1-the-graph/iterm2_capture.py`. A pty proves bytes, not pixels.
+- pty capture of the real binary, iTerm2 tier forced (100x30 → SIGWINCH 80x30 → q): 1 band before and 1 after the resize, byte-identical, 0 `ESC[2J`, 28 ECH, 0 Kitty bytes. `docs/shots/25-iterm2-capture.txt`, `.esc-digest.txt` (the raw `.esc` removed in m8-polish-and-ship/22), band `25-iterm2-capture-band.png` (16x448). Script `.scratch/m1-the-graph/iterm2_capture.py`. A pty proves bytes, not pixels.
 - Frame time, release, in-memory backend (terminal write cost excluded): Kitty first frame 8.8 ms, **resize 0.30 ms**; iTerm2 first 4.2 ms, unchanged 0.26 ms, **resize 0.25 ms**. Debug: Kitty resize 0.97 ms, iTerm2 0.77 ms. Under 16 ms as measured; real-terminal cost with write back-pressure not measured (ticket 30).
 
 Not verified:

@@ -11,7 +11,7 @@
 # Further arguments go to the example (`<commits> <refs>`).
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 OUT=${1:-docs/perf/stash-only-cost.txt}
 shift || true
 WORK=$(mktemp -d)
