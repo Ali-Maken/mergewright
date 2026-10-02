@@ -1,8 +1,9 @@
 # G-docs — README, `--help` and a man page from one table
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: the man page generator and its staleness test
 are code; the README is writing against the built app.
+Blocked by: 09, 16, 18, 19
 Needs: `keymap-table-and-translate` (`defaults()`, `Binding`), `theme-overrides`, `tour-practice-repo`,
 `first-run-clone-and-first-launch` (all documented as built). Before `release-dist-and-matrix` (the archive ships
 the man page).

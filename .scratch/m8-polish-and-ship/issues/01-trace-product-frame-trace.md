@@ -2,8 +2,8 @@
 
 Status: ready
 Build with: Opus (set after scout `.scratch/m8-polish-and-ship/scouts/frame-loop.md`; no wrong assumption found)
-Blocked by: none.
 Scout: `.scratch/m8-polish-and-ship/scouts/frame-loop.md` (read it first; it answers the Scout questions).
+Blocked by: none
 Needs: none. First in the scroll lane; G-pace adds `fence_us` to the record it defines.
 
 Why: rule 1. Green fixture gates did not match his screen (:84). Before G-settle spends effort, one run on his repo, in

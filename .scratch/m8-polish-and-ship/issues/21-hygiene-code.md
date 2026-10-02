@@ -1,8 +1,9 @@
 # G-hygiene 1 — askpass peer check, argument limits, config isolation, doc warnings
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus** for item 1 (a security check whose correctness
 is in the test, not the diff); the rest is Sonnet-sized — the conductor may split 1 off.
+Blocked by: none
 Needs: none. Crates graft-git, graft-ops (snapshot/restore raw only), graft (askpass server, if it lives there).
 
 ## Read first

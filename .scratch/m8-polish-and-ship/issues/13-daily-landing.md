@@ -1,7 +1,8 @@
 # G-daily 1 — where he lands after pull, undo, redo, a partial answer, and `q`
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: rulings below; each a landing test.
+Blocked by: none
 Needs: none in code. Runs beside the scroll lane on **disjoint files** (ADR-0051): `update/operate*`, `update/undo.rs`,
 the quit path — not the cursor-motion/detail-follow files `settle-work-at-rest` holds; the conductor checks both
 scouts' file lists before running them together.

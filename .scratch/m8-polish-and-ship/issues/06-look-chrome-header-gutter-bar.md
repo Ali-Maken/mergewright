@@ -1,8 +1,9 @@
 # G-look 5a — header, gutter, spacing and bar like the mock-up
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: the look is specified (DESIGN §1.0); risk is the
 row split reaching every geometry mirror, held by a sweep test, not judgement.
+Blocked by: 02
 Needs: scroll groups merged (`pace-fence-and-sync` touches the frame write; this ticket does not). Before
 `look-cursor-row-and-dark-b` (same files).
 

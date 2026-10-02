@@ -1,8 +1,9 @@
 # G-release — dist builds, a tap formula, an installer; Linux and git-version runs — nothing published
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: release config is small; the matrix and the
 Linux run need judgement about what was actually exercised (rule 1).
+Blocked by: 23
 Needs: `docs-readme-and-man` (`docs/man/graft.1` goes in the archive).
 
 ## Read first

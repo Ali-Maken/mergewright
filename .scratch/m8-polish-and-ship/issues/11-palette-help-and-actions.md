@@ -1,8 +1,9 @@
 # G-palette 1 — `?` and `⌃P` / `:` open one palette; actions, theme rows, your config
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: the screen is specified (DESIGN §1.6, §1.16,
 keymap §2.12); the table it reads is fixed by G-keymap.
+Blocked by: 08, 09, 10
 Needs: `keymap-table-and-translate` (`Keymap::in_context`, `spell`, `KeyWarning::words`, `context_of`,
 `AppState::config_problems`), `keymap-spell-from-the-table` (hints over `ActionId`), `look-outside-repo-screen`
 (empty state answers `?`).

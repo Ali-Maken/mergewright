@@ -1,7 +1,8 @@
 # G-hygiene 2 — scripts, fixtures and captures fit to publish
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Sonnet**: each item has its fix named.
+Blocked by: none
 Needs: none. Files: `scripts/`, `.scratch/*/pty-walk-*.py` (capture writers), `crates/graft-fixtures`, `fuzz/`,
 `docs/shots/*.esc`. Runs beside the scroll lane (disjoint).
 

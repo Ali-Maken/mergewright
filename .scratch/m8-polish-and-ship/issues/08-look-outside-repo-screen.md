@@ -1,8 +1,9 @@
 # G-look 5c — outside a repository: the mock-up's empty state
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: the screen is specified (DESIGN §1.15); the
 in-process repo switch is the one structural part, small and tested.
+Blocked by: 06
 Needs: `look-chrome-header-gutter-bar` (`APP_NAME`, bar form). Disjoint files from 5b — may run beside it.
 
 ## Read first

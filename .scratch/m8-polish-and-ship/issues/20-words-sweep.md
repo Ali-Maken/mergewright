@@ -1,8 +1,9 @@
 # G-words — sixteen lines that say something untrue, unclear or cut
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Sonnet**: every wording is decided below; each item
 is a string and a test.
+Blocked by: 10, 14
 Needs: `keymap-spell-from-the-table` (same user-facing strings), `daily-ops-fixes` (put-back words in graft-ops).
 Crates graft-ui (detail header, history), graft (view, update words), graft-ops (error words only).
 

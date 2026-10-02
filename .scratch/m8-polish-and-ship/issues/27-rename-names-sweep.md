@@ -1,7 +1,8 @@
 # G-rename 2 — the binary is `trib`, the app says Tributary, env vars are `TRIB_*`
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Sonnet, alone**: mechanical, held by a grep test.
+Blocked by: 26
 Needs: `rename-on-disk-migration`. Last before the acceptance ticket.
 
 ## Read first

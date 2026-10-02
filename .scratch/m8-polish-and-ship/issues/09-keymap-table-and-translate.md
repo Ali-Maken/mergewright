@@ -1,9 +1,10 @@
 # G-keymap 1 — one key table, remaps translated at the edge
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Fable (signature)**: `ActionId` becomes his config's
 API (never renamed after release) and every later surface (bar, `?`, palette, tour, man page) reads this table; a
 wrong table shape or a leaky translate is structural (ADR-0055).
+Blocked by: 06, 07
 Needs: none in code. Sequenced after `look-chrome-header-gutter-bar` and `look-cursor-row-and-dark-b` (lane 6).
 
 ## Read first

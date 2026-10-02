@@ -1,8 +1,9 @@
 # M8 acceptance — smooth on his biggest repo, looks like the mock-up, installs, teaches itself
 
-Status: draft
+Status: ready
 Build with: **Fable** — the acceptance ticket (CLAUDE.md); judges whether the promise holds across every group, and
 doesn't count against the Fable build expectation.
+Blocked by: 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27
 Needs: every other M8 ticket: `01-trace-product-frame-trace`, `pace-fence-and-sync`, `settle-work-at-rest`,
 `pixel-memory-budget`, `look-chrome-header-gutter-bar`, `look-cursor-row-and-dark-b`, `look-outside-repo-screen`,
 `trace-followup-per-turn-cost`, `keymap-table-and-translate`, `keymap-spell-from-the-table`,

@@ -1,7 +1,8 @@
 # G-look polish — states you can see: folded merges, faded threads, ghosts at Pixel, ignored whitespace
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: each item decided below; small, visual.
+Blocked by: 07, 16
 Needs: `theme-overrides` (same `theme` files, sequential), `look-cursor-row-and-dark-b`.
 
 ## Read first

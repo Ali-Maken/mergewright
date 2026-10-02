@@ -1,8 +1,9 @@
 # G-palette 2 — `⌃P` finds branches, tags, files, commits and what you ran
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: sources and their `⏎` are decided here; the
 widget exists.
+Blocked by: 11
 Needs: `palette-help-and-actions` (`PaletteView`, `RowKind`, `fuzzy_score`, `update::palette`).
 
 ## Read first

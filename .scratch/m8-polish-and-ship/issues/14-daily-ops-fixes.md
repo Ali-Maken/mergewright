@@ -1,8 +1,9 @@
 # G-daily 2 — reword HEAD with dependents, forks follow, stash rows refuse, honest counts
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: rewrite-plan changes are history writes;
 every one previewed and undoable as today.
+Blocked by: 13
 Needs: none in code. Crates graft-ops (rewrite, put-back words, reflog fold), graft-git (divergence), graft
 `update/preview/history.rs` only — disjoint from `daily-landing`'s files.
 

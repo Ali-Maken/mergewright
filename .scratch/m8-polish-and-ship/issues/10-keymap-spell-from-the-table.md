@@ -1,8 +1,9 @@
 # G-keymap 2 — every surface spells keys from the live table
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: the contract is fixed by `keymap-table-and-
 translate`; this is a sweep across hint tables and labels, held by a test.
+Blocked by: 06, 07, 09
 Needs: `keymap-table-and-translate` (`Keymap::spell`, `ActionId`, `defaults()`), `look-chrome-header-gutter-bar`
 (bar form), `look-cursor-row-and-dark-b` (same hints files).
 

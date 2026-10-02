@@ -1,7 +1,8 @@
 # G-settle — per-row work starts when the cursor rests
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: the rule is decided here; tests show it.
+Blocked by: 02
 Needs: `pace-fence-and-sync` (rest = a frame drawn with no motion queued; uses `Pacer`'s frame boundary).
 
 ## Read first

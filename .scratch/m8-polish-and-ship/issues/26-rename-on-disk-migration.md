@@ -1,8 +1,9 @@
 # G-rename 1 — his refs, journal and config move to the new name, once, safely
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus, alone**: it moves his live undo history; a
 migration that half-runs must leave the old names in force. Nothing builds beside it (ADR-0057 Consequences).
+Blocked by: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25
 Needs: every M8 build ticket and the G-health tickets from `fable-architecture-pass` merged. Before
 `rename-names-sweep`.
 

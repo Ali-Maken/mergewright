@@ -1,7 +1,8 @@
 # G-theme — change one colour in config; a colour that misses a floor is named
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**.
+Blocked by: 07, 09
 Needs: `look-cursor-row-and-dark-b` (`contrast`, `ContrastRule`, `CONTRAST_RULES`), `keymap-table-and-translate`
 (`AppState::config_problems`, the `config: N problems` status).
 

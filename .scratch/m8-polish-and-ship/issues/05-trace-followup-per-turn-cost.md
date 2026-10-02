@@ -1,8 +1,9 @@
 # G-trace follow-up — remove the per-frame cost that grows with history or refs
 
-Status: draft — **held until his trace run exists** (`docs/perf/m8-trace-<date>.txt` from his machine, not the
+Status: ready — **held until his trace run exists** (`docs/perf/m8-trace-<date>.txt` from his machine, not the
 builder's). No run → this ticket does not start (rule 1: green fixtures did not match his screen, :84).
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: diagnosis from numbers, a fix at the cause.
+Blocked by: 02, 03
 Needs: `settle-work-at-rest` merged (Part B of that ticket is this one); `pace-fence-and-sync` (`fence_us` filled).
 
 ## Read first

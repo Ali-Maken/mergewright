@@ -1,8 +1,9 @@
 # G-look 5b — cursor row leaves the lanes alone; dark theme B; legible text on the fill
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: values and rule decided (ADR-0058); ratios are
 asserted by tests.
+Blocked by: 06
 Needs: `look-chrome-header-gutter-bar` (the gutter cells; same files — sequential).
 
 ## Read first

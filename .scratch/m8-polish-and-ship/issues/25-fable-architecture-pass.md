@@ -1,7 +1,8 @@
 # m8-polish-and-ship — Fable architecture pass over the crate interfaces
 
-Status: draft (standing ticket; the conductor numbers it with M8's specs)
+Status: ready (standing ticket; the conductor numbers it with M8's specs)
 Build with: **Fable** — `planner-fable`. A review of interfaces, not a build; doesn't count against the Fable build expectation (CLAUDE.md, "Standing rules → Models")
+Blocked by: 02, 04, 06, 07, 08, 09, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 23
 Needs: every M8 ticket that changes public items, merged: `pace-fence-and-sync`, `pixel-memory-budget`, `look-chrome-header-gutter-bar`, `look-cursor-row-and-dark-b`, `look-outside-repo-screen`, `keymap-table-and-translate`, `keymap-spell-from-the-table`, `palette-help-and-actions`, `palette-find-anything`, `bar-content-pass`, `theme-overrides`, `look-polish-rows`, `first-run-clone-and-first-launch`, `tour-practice-repo`, `daily-ops-fixes`, `words-sweep`, `hygiene-code`, `docs-readme-and-man`. Runs before the G-health tickets it produces, `rename-on-disk-migration`, `rename-names-sweep` and the acceptance ticket, and before the M8 review.
 
 Why: before the name is chosen and the thing ships, one look at the whole system's shape from its public surface, with the source deliberately out of view, so the judgement is about interfaces rather than implementation detail.

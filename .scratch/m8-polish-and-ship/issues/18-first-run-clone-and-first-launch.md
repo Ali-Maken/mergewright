@@ -1,8 +1,9 @@
 # G-first-run — clone from the empty state; one first-launch line
 
-Status: draft
+Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: clone is a remote write outside any repo
 (askpass, progress, partial-folder cleanup); the line is small.
+Blocked by: 08, 11
 Needs: `look-outside-repo-screen` (`EmptyStateView`, `EmptyPrompt`, `Exit::Open`), `palette-help-and-actions`
 (the line names `?` and `⌃P`; "used once" means the palette opened).
 
