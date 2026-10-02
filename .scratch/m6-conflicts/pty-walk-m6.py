@@ -168,11 +168,13 @@ class Run:
         return os.WIFSIGNALED(status) and os.WTERMSIG(status) == signal.SIGKILL
 
     def end(self):
-        self.raw.close()
         try:
             os.kill(self.pid, signal.SIGTERM)
         except ProcessLookupError:
             pass
+        # The pty is read while we wait, as a terminal reads it (m5's fix,
+        # m7-power-tools/30v; m8-polish-and-ship/22): an unread master fills,
+        # graft blocks in `write` mid-frame and never takes the SIGTERM wake.
         start = time.monotonic()
         while time.monotonic() - start < EXIT_GRACE:
             try:
@@ -181,7 +183,7 @@ class Run:
                 pid = self.pid
             if pid:
                 break
-            time.sleep(0.05)
+            self.pump(0.05)
         else:
             print(f"{self.label}-{SIZE}: not gone {EXIT_GRACE:.0f} s after SIGTERM — killed")
             try:
@@ -189,6 +191,7 @@ class Run:
                 os.waitpid(self.pid, 0)
             except (ProcessLookupError, ChildProcessError):
                 pass
+        self.raw.close()
         os.close(self.master)
 
 
@@ -250,6 +253,16 @@ def relaunch(stem, scenario, on_screen, keys):
     rebase = os.path.isdir(os.path.join(repo, ".git", "rebase-merge"))
     print(f"{stem}-{SIZE}: after the kill, .git/rebase-merge present: {rebase}")
     ok = rebase
+    # The commit-graph offer is set, not raced (m8-polish-and-ship/22): the
+    # real binary offers when its history sort takes >= 300 ms
+    # (`update/commit_graph.rs` SLOW_SORT), so on a loaded machine the
+    # relaunch frame grew an offer the capture does not have. "Declined" is
+    # the state the capture shows; written where graft reads it
+    # (`graft-git` `commit_graph::offer_file`: <common dir>/graft/).
+    offer = os.path.join(repo, ".git", "graft", "commit-graph-offer")
+    os.makedirs(os.path.dirname(offer), exist_ok=True)
+    with open(offer, "w") as f:
+        f.write("declined\n")
     after = Run(f"{scenario}-relaunched", [GRAFT, repo])
     notes = ["the capture run was sent SIGKILL after its keys; this is the real graft "
              "binary relaunched on the scratch it left"]

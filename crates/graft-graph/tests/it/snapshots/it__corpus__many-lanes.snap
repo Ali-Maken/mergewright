@@ -1,0 +1,54 @@
+---
+source: crates/graft-graph/tests/it/corpus.rs
+expression: "picture(shape, &dir)"
+---
+shape: many-lanes
+order: requested Topological, in force CommitDate (provisional)
+default: main
+integration: []
+commits: 44, columns: 15
+
+* \                            52f744e  main               Merge branch 'lane-13'
+* | \                          312c240  main               Merge branch 'lane-12'
+| * |                          16edd45  lane-13            lane 13: finish
+| * |                          fc39937  lane-13            lane 13: start
+| | *                          ba41b94  lane-12            lane 12: finish
+| | *                          595e647  lane-12            lane 12: start
+| | | *                        104b6b1  lane-11            lane 11: finish
+| | | *                        f436b6b  lane-11            lane 11: start
+| | | | *                      a3b8a59  lane-10            lane 10: finish
+| | | | *                      bfed5c0  lane-10            lane 10: start
+| | | | | *                    adc0db3  lane-09            lane 9: finish
+| | | | | *                    5025693  lane-09            lane 9: start
+| | | | | | *                  05aa3ba  lane-08            lane 8: finish
+| | | | | | *                  dbc2bca  lane-08            lane 8: start
+| | | | | | | *                f9dccb0  lane-07            lane 7: finish
+| | | | | | | *                467f15f  lane-07            lane 7: start
+| | | | | | | | *              92e2e33  lane-06            lane 6: finish
+| | | | | | | | *              03bf261  lane-06            lane 6: start
+| | | | | | | | | *            ac7060d  lane-05            lane 5: finish
+| | | | | | | | | *            b42258f  lane-05            lane 5: start
+| | | | | | | | | | *          53c77f2  lane-04            lane 4: finish
+| | | | | | | | | | *          8b63689  lane-04            lane 4: start
+| | | | | | | | | | | *        cda8d83  lane-03            lane 3: finish
+| | | | | | | | | | | *        fb99f03  lane-03            lane 3: start
+| | | | | | | | | | | | *      f6c59f6  lane-02            lane 2: finish
+| | | | | | | | | | | | *      307b422  lane-02            lane 2: start
+| | | | | | | | | | | | | *    b42f848  lane-01            lane 1: finish
+| | | | | | | | | | | | | *    0e89acd  lane-01            lane 1: start
+| | | | | | | | | | | | | | *  89c9699  lane-00            lane 0: finish
+| | | | | | | | | | | | | | *  7200294  lane-00            lane 0: start
+* / | | | | | | | | | | | | |  4c77742  main               main 13
+*   / | | | | | | | | | | | |  a3fb8d4  main               main 12
+*     / | | | | | | | | | | |  054f979  main               main 11
+*       / | | | | | | | | | |  8e519c8  main               main 10
+*         / | | | | | | | | |  6e0c0e1  main               main 9
+*           / | | | | | | | |  ebf0798  main               main 8
+*             / | | | | | | |  6fe7b6b  main               main 7
+*               / | | | | | |  f095109  main               main 6
+*                 / | | | | |  b1687b1  main               main 5
+*                   / | | | |  f13d4ba  main               main 4
+*                     / | | |  3b22d22  main               main 3
+*                       / | |  bfcf03b  main               main 2
+*                         / |  e4d0080  main               main 1
+*                           /  68d5d19  main               Add the base

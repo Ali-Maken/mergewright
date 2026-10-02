@@ -100,6 +100,12 @@ pub enum Shape {
     /// In `TRACED`, not `ALL`: its untracked file leaves the working tree
     /// unclean.
     Session,
+    /// Fourteen feature branches open at once, each forked off a different
+    /// `main` commit, the top two merged back: more lanes than a window draws,
+    /// so compaction folds some behind the rail (m8-polish-and-ship/22). In
+    /// `WIDE`, not `ALL`: every `ALL` consumer (gallery stops, mistake radar,
+    /// per-crate snapshots) owes it a decision of its own.
+    ManyLanes,
 }
 
 impl Shape {
@@ -145,6 +151,10 @@ impl Shape {
     /// from `ALL` because the working tree carries an untracked file.
     pub const TRACED: &'static [Shape] = &[Shape::Session];
 
+    /// Shapes wider than a window (m8-polish-and-ship/22): compaction's
+    /// corpus. Listed apart from `ALL` for the reason on `ManyLanes`.
+    pub const WIDE: &'static [Shape] = &[Shape::ManyLanes];
+
     /// The shape's directory name inside the corpus, and the name tests and
     /// reports call it by.
     pub fn name(self) -> &'static str {
@@ -174,6 +184,7 @@ impl Shape {
             Shape::StoppedMerge => "stopped-merge",
             Shape::TwoStopRebase => "two-stop-rebase",
             Shape::Session => "session",
+            Shape::ManyLanes => "many-lanes",
         }
     }
 
@@ -183,13 +194,14 @@ impl Shape {
     }
 
     /// Every shape the corpus builds: [`Shape::ALL`], [`Shape::STOPPED`],
-    /// [`Shape::STEPPED`], then [`Shape::TRACED`].
+    /// [`Shape::STEPPED`], [`Shape::TRACED`], then [`Shape::WIDE`].
     pub fn every() -> impl Iterator<Item = Shape> {
         Shape::ALL
             .iter()
             .chain(Shape::STOPPED)
             .chain(Shape::STEPPED)
             .chain(Shape::TRACED)
+            .chain(Shape::WIDE)
             .copied()
     }
 }

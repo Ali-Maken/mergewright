@@ -16,7 +16,7 @@
 # measured is printed on each line.
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 OUT=${1:-docs/perf/44-scroll-emphasis-layer.txt}
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT

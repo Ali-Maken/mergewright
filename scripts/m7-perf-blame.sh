@@ -6,7 +6,7 @@
 #   trace-readers: blame p95=<ms> line_history p95=<ms> file_history p95=<ms>
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 OUT=${1:-docs/perf/trace-readers.txt}
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT

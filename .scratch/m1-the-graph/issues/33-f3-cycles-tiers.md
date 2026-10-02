@@ -49,7 +49,7 @@ Built:
 Verified:
 - Tests: Unicode-top toggle (and no session), Ascii-only no-op, Pixel→Unicode→Ascii→Pixel with `strip_rows`; event loop: leaving pixels frees every frame-0 id, return transmits new ids + places + `gfx ok`, every id freed by exit. Footer: every hint at 200 cols, snapshots at 80/120/200, cut on hint boundaries. Other snapshot changes are footer lines only (checked by diff).
 - pty (`.scratch/m1-the-graph/pty-tier-cycle-check.py`): 3 presses, Unicode↔ASCII (pty acks no image protocol), termios identical, exit 0. `docs/shots/33-pty-tier-cycle.txt`.
-- **Real Ghostty 1.3.1** (kitty_check, synthetic strips through the app's encoder): F3 away + back, 0 error replies, control ENOENT heard. `docs/shots/33-kitty-check-report.txt`, `.esc`, `.esc.txt`.
+- **Real Ghostty 1.3.1** (kitty_check, synthetic strips through the app's encoder): F3 away + back, 0 error replies, control ENOENT heard. `docs/shots/33-kitty-check-report.txt`, `.esc-digest.txt` (the raw `.esc` removed in m8-polish-and-ship/22), `.esc.txt`.
 - Not verified: the *app's* pixel graph cycling in a real terminal, or how anything looks.
 
 ## Ghostty command (user, by eye)

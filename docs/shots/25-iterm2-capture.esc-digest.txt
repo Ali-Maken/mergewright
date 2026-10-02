@@ -1,0 +1,5 @@
+# digest of 25-iterm2-capture.esc: 28978 bytes, 3 image commands
+kitty    1  i=31,s=1,v=1,a=q,t=d,f=24  payload=4  sha256=63c1dd951ffedf6f7fd968ad4efa39b8ed584f162f46e715114ee184f8de9201
+iterm2   2  inline=1;size=6437;width=2;height=28;preserveAspectRatio=0;doNotMoveCursor=1  payload=8584  sha256=dd56906e28a6c0e7c6dd3a1a7d3673bdf25370c68e9d9711799fd6d54b4a7f1b
+iterm2   3  inline=1;size=6437;width=2;height=28;preserveAspectRatio=0;doNotMoveCursor=1  payload=8584  sha256=dd56906e28a6c0e7c6dd3a1a7d3673bdf25370c68e9d9711799fd6d54b4a7f1b
+# other bytes: 11595  sha256=5cf4fae6a47f1a5a24501bfa6dca2fb51cbf02592f785079f7c80ea6b45df5d8

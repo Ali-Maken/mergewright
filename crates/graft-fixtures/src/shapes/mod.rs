@@ -204,5 +204,6 @@ pub fn build(shape: Shape, dir: &Path, streams: &Path) -> Result<(), BuildError>
         Shape::StoppedMerge => conflicts::stopped_merge(&site),
         Shape::TwoStopRebase => conflicts::two_stop_rebase(&site),
         Shape::Session => trace::session(&site),
+        Shape::ManyLanes => merges::many_lanes(&site),
     }
 }

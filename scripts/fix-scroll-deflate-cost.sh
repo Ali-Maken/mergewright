@@ -9,7 +9,7 @@
 # that strip: straight alpha, deflate, base64 and chunking together.
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 OUT=${1:-docs/perf/45-scroll-kitty-layer-deflate.txt}
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
