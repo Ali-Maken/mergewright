@@ -8,7 +8,9 @@
 //! key is false.
 
 use graft_ops::operation::{Operation, Source};
-use graft_ops::preview::{ConflictForecast, DropSuggestion, ForkFate, LeftBehind, PreviewPlan};
+use graft_ops::preview::{
+    ConflictForecast, DropSuggestion, Fork, ForkFate, LeftBehind, PreviewPlan, WhyStays,
+};
 
 use super::{ref_line, short, slice};
 
@@ -51,64 +53,109 @@ fn follows(plan: &PreviewPlan, name: &str) -> bool {
     })
 }
 
+/// How loud a [`ForkRow`] is (design note "Pass 2c", rulings R3/R4).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ForkTone {
+    /// A fork that follows: the dependents' look.
+    Follows,
+    /// A fork that stays because it would conflict: led by `!`, a warning.
+    Warning,
+    /// Every other branch that stays: true, nothing to act on.
+    Muted,
+}
+
+/// One row of [`fork_rows`]: its words and its tone.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct ForkRow {
+    pub(crate) text: String,
+    pub(crate) tone: ForkTone,
+}
+
 /// One row per named fork (ADR-0059 §2, design note "Pass 2c"), in the
-/// plan's order (follows first, then stays, each oldest fork point first),
-/// then `+N more stay` for the ones past the cap:
+/// plan's order (follows first, then stays, each oldest fork point first);
+/// for a rewrite (`rewrite`), each branch parked at the old tip of the
+/// line, last of the stays (ruling R1); then the count past the cap:
 ///
-/// - `feature-x follows · 2 commits from a1b2c3d`
-/// - `feature-x stays on a1b2c3d · would conflict in src/a.rs`
+/// - `feature-x follows · 2 commits from a1b2c3d` (`· from a1b2c3d` with
+///   no commits of its own)
+/// - `! feature-x stays on a1b2c3d · would conflict in src/a.rs`
+/// - `feature-x stays on a1b2c3d · the default branch`
+/// - `keep stays on a1b2c3d · on the old tip`
+/// - `+1 more stays`, `+N more stay`
 ///
-/// The name leads, so a cut at the tail never reaches it. Empty for a plan
-/// with no forks (every kind but a rewrite).
-pub(crate) fn fork_rows(plan: &PreviewPlan) -> Vec<String> {
-    let mut rows: Vec<String> = plan
-        .forks
-        .iter()
-        .map(|fork| {
-            let name = String::from_utf8_lossy(fork.branch.shorthand()).into_owned();
-            match &fork.fate {
-                ForkFate::Follows { .. } => format!(
-                    "{name} follows \u{b7} {} {} from {}",
-                    fork.commits,
-                    if fork.commits == 1 {
-                        "commit"
-                    } else {
-                        "commits"
-                    },
-                    short(fork.at)
-                ),
-                ForkFate::Stays(why) => {
-                    format!("{name} stays on {} \u{b7} {}", short(fork.at), why.words())
-                }
-            }
-        })
-        .collect();
-    if plan.forks_more > 0 {
-        rows.push(format!("+{} more stay", plan.forks_more));
+/// The name leads every row but the warning's `!`, so a cut at the tail
+/// never reaches it. Empty for a plan with no forks and no such branch
+/// (every kind but a rewrite; `r` says `left behind:` instead).
+pub(crate) fn fork_rows(plan: &PreviewPlan, rewrite: bool) -> Vec<ForkRow> {
+    let mut rows: Vec<ForkRow> = plan.forks.iter().map(fork_row).collect();
+    if rewrite {
+        rows.extend(not_forks(plan).0.into_iter().map(|left| ForkRow {
+            text: format!(
+                "{} stays on {} \u{b7} on the old tip",
+                String::from_utf8_lossy(left.branch.shorthand()),
+                short(left.on)
+            ),
+            tone: ForkTone::Muted,
+        }));
+    }
+    match plan.forks_more {
+        0 => {}
+        1 => rows.push(muted("+1 more stays".to_owned())),
+        more => rows.push(muted(format!("+{more} more stay"))),
     }
     rows
 }
 
-/// [`fork_rows`] as the box draws them: under the `branches:` label's
+fn muted(text: String) -> ForkRow {
+    ForkRow {
+        text,
+        tone: ForkTone::Muted,
+    }
+}
+
+/// One fork's row, by its fate.
+fn fork_row(fork: &Fork) -> ForkRow {
+    let name = String::from_utf8_lossy(fork.branch.shorthand()).into_owned();
+    let at = short(fork.at);
+    match &fork.fate {
+        ForkFate::Follows { .. } => ForkRow {
+            text: match fork.commits {
+                0 => format!("{name} follows \u{b7} from {at}"),
+                1 => format!("{name} follows \u{b7} 1 commit from {at}"),
+                n => format!("{name} follows \u{b7} {n} commits from {at}"),
+            },
+            tone: ForkTone::Follows,
+        },
+        ForkFate::Stays(why @ WhyStays::WouldConflict { .. }) => ForkRow {
+            text: format!("! {name} stays on {at} \u{b7} {}", why.words()),
+            tone: ForkTone::Warning,
+        },
+        ForkFate::Stays(why) => muted(format!("{name} stays on {at} \u{b7} {}", why.words())),
+    }
+}
+
+/// [`fork_rows`] as the box draws them, in words only (the box draws
+/// every line in one tone, ruling R3): under the `branches:` label's
 /// indent when the plan moves a line, flush otherwise.
-pub(super) fn fork_lines(plan: &PreviewPlan, line: bool) -> Vec<String> {
+pub(super) fn fork_lines(plan: &PreviewPlan, line: bool, rewrite: bool) -> Vec<String> {
     let indent = if line {
         " ".repeat(LABEL.len())
     } else {
         String::new()
     };
-    fork_rows(plan)
+    fork_rows(plan, rewrite)
         .into_iter()
-        .map(|row| format!("{indent}{row}"))
+        .map(|row| format!("{indent}{}", row.text))
         .collect()
 }
 
-/// The branches left on old commits that are not forks, so no
-/// [`fork_rows`] row names them: a rewrite's backup parked at a tip of the
-/// line, and every one `r` leaves (its forks never follow yet, so it has
-/// none). A rewrite's `left_behind_more` is its `forks_more`, already
-/// counted on `+N more stay`; it rides here only for a plan with no forks.
-pub(crate) fn not_forks(plan: &PreviewPlan) -> (Vec<LeftBehind>, usize) {
+/// The branches left on old commits that are not forks: a rewrite's branch
+/// parked at a tip of the line (a [`fork_rows`] row, `· on the old tip`),
+/// and every one `r` leaves (its forks never follow yet, so it has none;
+/// its `left behind:` row). A rewrite's `left_behind_more` is its
+/// `forks_more`, already counted by [`fork_rows`]; it rides here only for a
+/// plan with no forks.
+fn not_forks(plan: &PreviewPlan) -> (Vec<LeftBehind>, usize) {
     let left = plan
         .left_behind
         .iter()
@@ -258,8 +305,12 @@ pub(crate) fn left_behind_rungs(left: &[LeftBehind], more: usize) -> Vec<String>
 
 /// The box's `left behind:` row, the longest rung that fits `columns`.
 /// `None` when nothing is left behind.
-/// Only the branches [`not_forks`] keeps.
-pub(super) fn left_behind_row(plan: &PreviewPlan, columns: u16) -> Option<String> {
+/// Only the branches [`not_forks`] keeps, and never for a rewrite: its own
+/// are [`fork_rows`] rows, one vocabulary per box (ruling R1).
+pub(super) fn left_behind_row(plan: &PreviewPlan, rewrite: bool, columns: u16) -> Option<String> {
+    if rewrite {
+        return None;
+    }
     let (left, more) = not_forks(plan);
     let rungs = left_behind_rungs(&left, more);
     (!rungs.is_empty()).then(|| graft_ui::preview_box::fitting_line(&rungs, columns))

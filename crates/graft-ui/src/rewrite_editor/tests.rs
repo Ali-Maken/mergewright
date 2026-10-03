@@ -128,9 +128,23 @@ fn view() -> RewriteEditorView {
                 ),
             ],
             facts: vec![
-                sanitize_line("built on yours: feature-b (Sara, 2 commits) follows"),
-                sanitize_line("on origin: feature-a \u{b7} P will need force after"),
-                sanitize_line("no conflicts expected"),
+                AfterFact::plain(sanitize_line(
+                    "built on yours: feature-b (Sara, 2 commits) follows",
+                )),
+                AfterFact {
+                    text: sanitize_line(
+                        "! feature-c stays on 86eea6e \u{b7} would conflict in one.txt",
+                    ),
+                    tone: FactTone::Warning,
+                },
+                AfterFact {
+                    text: sanitize_line("feature-d stays on 86eea6e \u{b7} the default branch"),
+                    tone: FactTone::Muted,
+                },
+                AfterFact::plain(sanitize_line(
+                    "on origin: feature-a \u{b7} P will need force after",
+                )),
+                AfterFact::plain(sanitize_line("no conflicts expected")),
             ],
         }),
         narrow_shows_right: false,
@@ -469,4 +483,35 @@ fn text_on_the_cursor_row_is_legible() {
             "cursor {cursor}: the row is drawn ({checked})"
         );
     }
+}
+
+/// Each fact in its tone (m8/14c, ruling R4): a warning in `Warning`, a
+/// muted one in `TextMuted`, the rest in `Text`. Colour unverified in
+/// captures; this reads the buffer's style.
+#[test]
+fn each_fact_draws_in_its_tone() {
+    let view = view();
+    let theme = theme();
+    let mut terminal = Terminal::new(TestBackend::new(187, 30))
+        .unwrap_or_else(|why| panic!("a test backend always opens: {why}"));
+    terminal
+        .draw(|frame| draw_rewrite_editor(frame, frame.area(), &view, &theme))
+        .unwrap_or_else(|why| panic!("drawing into a test backend cannot fail: {why}"));
+    let buffer = terminal.backend().buffer();
+    let style_of = |needle: &str| {
+        (0..buffer.area.height)
+            .find_map(|y| {
+                let line: String = (0..buffer.area.width)
+                    .map(|x| buffer[(x, y)].symbol())
+                    .collect();
+                let at = line.find(needle)?;
+                let x = u16::try_from(line[..at].chars().count()).ok()?;
+                Some(buffer[(x, y)].style().fg)
+            })
+            .unwrap_or_else(|| panic!("{needle:?} drawn"))
+    };
+    let fg = |token| crate::paint::foreground(&theme, token).fg;
+    assert_eq!(style_of("! feature-c"), fg(Token::Warning));
+    assert_eq!(style_of("feature-d stays"), fg(Token::TextMuted));
+    assert_eq!(style_of("no conflicts expected"), fg(Token::Text));
 }

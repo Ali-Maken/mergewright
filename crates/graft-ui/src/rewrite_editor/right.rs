@@ -1,19 +1,19 @@
 //! Drawing the rewrite editor's right side and message: the after-state, the changes, the message block.
 
 use super::{
-    AfterMark, AfterRow, AfterView, Buffer, ChangesView, Glyphs, MessageBlock, Modifier, Rect,
-    RewriteEditorView, RightSide, SHORT_HEIGHT, SHORT_MESSAGE_LINES, SHORT_WIDTH, SUBJECT_MAX,
-    SUBJECT_MIN, SanitizedText, Style, Theme, Token, band, fit, foreground, put,
+    AfterFact, AfterMark, AfterRow, AfterView, Buffer, ChangesView, FactTone, Glyphs, MessageBlock,
+    Modifier, Rect, RewriteEditorView, RightSide, SHORT_HEIGHT, SHORT_MESSAGE_LINES, SHORT_WIDTH,
+    SUBJECT_MAX, SUBJECT_MIN, SanitizedText, Style, Theme, Token, band, fit, foreground, put,
 };
 
 /// One drawn line: its pieces, each in its own style.
 pub(super) type Spans = Vec<(String, Style)>;
 
 /// A landed AFTER plan: one line per row (branch, mark, subject, note),
-/// then, after a blank, its facts; a fact starting `!` is a warning.
+/// then, after a blank, its facts, each in its tone.
 pub(super) fn after_lines(
     rows: &[AfterRow],
-    facts: &[SanitizedText],
+    facts: &[AfterFact],
     theme: &Theme,
     glyphs: &Glyphs,
 ) -> Vec<Spans> {
@@ -66,15 +66,22 @@ pub(super) fn after_lines(
     if !facts.is_empty() {
         lines.push(Vec::new());
     }
-    for fact in facts {
-        let style = if fact.as_str().starts_with('!') {
-            foreground(theme, Token::Warning)
-        } else {
-            foreground(theme, Token::Text)
-        };
-        lines.push(vec![(fact.as_str().to_owned(), style)]);
-    }
+    lines.extend(facts.iter().map(|fact| {
+        vec![(
+            fact.text.as_str().to_owned(),
+            foreground(theme, tone_token(fact.tone)),
+        )]
+    }));
     lines
+}
+
+/// The theme token a fact's tone draws in.
+fn tone_token(tone: FactTone) -> Token {
+    match tone {
+        FactTone::Plain => Token::Text,
+        FactTone::Warning => Token::Warning,
+        FactTone::Muted => Token::TextMuted,
+    }
 }
 
 /// A row's changed files: path, `+added`, `-removed`, the paths padded to

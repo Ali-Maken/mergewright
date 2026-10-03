@@ -30,11 +30,13 @@ pub(super) fn plan_lines(
     } else {
         lines.extend(plan.ref_moves.iter().map(|moved| ref_line(plan, moved)));
     }
-    // Each fork's fate (ADR-0059 §2): it follows, or stays and why.
-    lines.extend(line_rows::fork_lines(plan, line));
-    // Who else does not follow (m7/37): a backup parked at a tip of the
-    // line, and every branch `r` leaves on a commit it replaces.
-    lines.extend(line_rows::left_behind_row(plan, columns));
+    // Each fork's fate (ADR-0059 §2): it follows, or stays and why; for a
+    // rewrite, a branch parked at the old tip stays too.
+    let rewrite = matches!(op, Some(Operation::Rewrite(_)));
+    lines.extend(line_rows::fork_lines(plan, line, rewrite));
+    // Who `r` does not take along (m7/37): every branch it leaves on a
+    // commit it replaces (its forks never follow yet).
+    lines.extend(line_rows::left_behind_row(plan, rewrite, columns));
     lines.extend(line_rows::already_in_row(plan, op, keeps));
     lines.extend(head_line(plan));
     lines.push(worktree_line(&plan.worktree));

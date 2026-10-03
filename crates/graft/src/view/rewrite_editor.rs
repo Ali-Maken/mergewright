@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use graft_core::oid::Oid;
 use graft_ops::preview::{ConflictForecast, PreviewPlan, Target};
 use graft_ops::rewrite::TodoAction;
-use graft_term::{SanitizedText, sanitize_line, sanitize_path_bytes};
+use graft_term::{sanitize_line, sanitize_path_bytes};
 use graft_ui::graph_screen::HintContext;
 use graft_ui::rewrite_editor::{
     AfterMark, AfterRow, AfterView, ChangesView, EditorRow, FieldView, MessageBlock, NARROW_BELOW,

@@ -2,10 +2,13 @@
 
 use super::{
     AfterFacts, AfterMark, AfterRow, AfterView, ChangesView, ConflictForecast, HashMap, Loading,
-    Oid, PreviewPlan, RightSide, RowFacts, SanitizedText, Target, TodoAction, ViewFacts,
-    sanitize_line, sanitize_path_bytes, short,
+    Oid, PreviewPlan, RightSide, RowFacts, Target, TodoAction, ViewFacts, sanitize_line,
+    sanitize_path_bytes, short,
 };
-use graft_ops::preview::{ForkFate, WhyStays};
+use graft_ops::preview::ForkFate;
+use graft_ui::rewrite_editor::{AfterFact, FactTone};
+
+use crate::update::preview::ForkTone;
 
 #[cfg(test)]
 mod tests;
@@ -177,10 +180,46 @@ pub(super) fn group_note(facts: &ViewFacts<'_>, row: &RowFacts<'_>) -> Option<St
     }
 }
 
-/// The facts under the AFTER rows: who follows, what is on origin, the
-/// conflict forecast.
-pub(super) fn after_facts(plan: &PreviewPlan, owner: &[(usize, usize)]) -> Vec<SanitizedText> {
-    let mut out = Vec::new();
+/// The facts under the AFTER rows: who follows, each fork's fate, what is
+/// on origin, the conflict forecast — each in its tone.
+pub(super) fn after_facts(plan: &PreviewPlan, owner: &[(usize, usize)]) -> Vec<AfterFact> {
+    let mut facts: Vec<AfterFact> = followers_fact(plan, owner)
+        .iter()
+        .map(|line| worded(line))
+        .collect();
+    // Each fork's fate (ADR-0059, m8/14c) in the preview box's words, and
+    // a branch parked at the old tip: the editor is always a rewrite.
+    facts.extend(
+        crate::update::preview::fork_rows(plan, true)
+            .into_iter()
+            .map(|row| AfterFact {
+                text: sanitize_line(&row.text),
+                tone: match row.tone {
+                    ForkTone::Follows => FactTone::Plain,
+                    ForkTone::Warning => FactTone::Warning,
+                    ForkTone::Muted => FactTone::Muted,
+                },
+            }),
+    );
+    facts.extend(origin_and_forecast(plan).iter().map(|line| worded(line)));
+    facts
+}
+
+/// A fact by its words: a line led by `!` warns, any other is plain.
+fn worded(line: &str) -> AfterFact {
+    AfterFact {
+        tone: if line.starts_with('!') {
+            FactTone::Warning
+        } else {
+            FactTone::Plain
+        },
+        text: sanitize_line(line),
+    }
+}
+
+/// `built on yours: feature-b (Ann, 2 commits) follows`, for the
+/// dependents (a fork that follows is not one); none without them.
+fn followers_fact(plan: &PreviewPlan, owner: &[(usize, usize)]) -> Option<String> {
     let followers: Vec<String> = plan
         .ref_moves
         .iter()
@@ -205,15 +244,20 @@ pub(super) fn after_facts(plan: &PreviewPlan, owner: &[(usize, usize)]) -> Vec<S
             }
         })
         .collect();
-    if !followers.is_empty() {
-        let verb = if followers.len() == 1 {
-            "follows"
-        } else {
-            "follow"
-        };
-        out.push(format!("built on yours: {} {verb}", followers.join(", ")));
+    if followers.is_empty() {
+        return None;
     }
-    out.extend(fork_facts(plan));
+    let verb = if followers.len() == 1 {
+        "follows"
+    } else {
+        "follow"
+    };
+    Some(format!("built on yours: {} {verb}", followers.join(", ")))
+}
+
+/// `on origin: …` when a moved branch is published, then the forecast.
+fn origin_and_forecast(plan: &PreviewPlan) -> Vec<String> {
+    let mut out = Vec::new();
     if !plan.published.is_empty() {
         let names: Vec<String> = plan
             .published
@@ -235,7 +279,7 @@ pub(super) fn after_facts(plan: &PreviewPlan, owner: &[(usize, usize)]) -> Vec<S
             format!("! may stop at step {step} of {of} \u{b7} not checked past it")
         }
     });
-    out.into_iter().map(|line| sanitize_line(&line)).collect()
+    out
 }
 
 /// Up to three paths, then `+N more`.
@@ -249,34 +293,6 @@ pub(super) fn paths_words(paths: &[std::path::PathBuf]) -> String {
         shown.push(format!("+{} more", paths.len() - 3));
     }
     shown.join(", ")
-}
-
-/// Each fork's fate (ADR-0059, m8/14c) in the preview box's words, one
-/// that would conflict a warning (`!`), any other stays row not; then who
-/// else does not follow (m7/37). The longest wording: this side has no
-/// width here, and the names lead the row, so the widget's cut at the tail
-/// never reaches them.
-fn fork_facts(plan: &PreviewPlan) -> Vec<String> {
-    let mut out = Vec::new();
-    for (fork, row) in plan
-        .forks
-        .iter()
-        .map(Some)
-        .chain(std::iter::once(None))
-        .zip(crate::update::preview::fork_rows(plan))
-    {
-        let conflicts = fork.is_some_and(|fork| {
-            matches!(fork.fate, ForkFate::Stays(WhyStays::WouldConflict { .. }))
-        });
-        out.push(if conflicts { format!("! {row}") } else { row });
-    }
-    let (left, more) = crate::update::preview::not_forks(plan);
-    out.extend(
-        crate::update::preview::left_behind_rungs(&left, more)
-            .into_iter()
-            .next(),
-    );
-    out
 }
 
 /// The note on a following branch's first AFTER row: a dependent is built

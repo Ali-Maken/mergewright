@@ -1907,12 +1907,30 @@ pub(in crate::update) fn a_forked_plan() -> PreviewPlan {
     plan
 }
 
-/// One row per fork under the line's rows, follows then stays, the rest
-/// counted; a follower is not drawn as built on his; what stays without
-/// being a fork keeps its `left behind:` row.
+/// A rewrite (`a`, `R`, absorb, reword-head, the editor all run one).
+fn a_rewrite() -> Operation {
+    Operation::Rewrite(graft_ops::rewrite::RewriteParams {
+        head: Tip {
+            name: "refs/heads/feature".to_owned(),
+            oid: oid(3),
+        },
+        onto: oid(2),
+        todo: Vec::new(),
+        line: graft_ops::rewrite::BranchLine::default(),
+        messages: std::collections::BTreeMap::new(),
+        made: Vec::new(),
+        index_base: None,
+        forks: Vec::new(),
+    })
+}
+
+/// A rewrite's box: one row per fork under the line's rows, follows then
+/// stays, the one that would conflict led by `!` (R3), the branch parked
+/// at the old tip last of the stays with no `left behind:` (R1), the rest
+/// counted; a follower is not drawn as built on his.
 #[test]
-fn the_box_draws_one_row_per_fork() {
-    let lines = drawn(&a_forked_plan(), &a_rebase(), 187);
+fn a_rewrite_box_draws_one_row_per_fork() {
+    let lines = drawn(&a_forked_plan(), &a_rewrite(), 187);
     let indent = " ".repeat("branches: ".len());
     let topic = lines
         .iter()
@@ -1922,11 +1940,15 @@ fn the_box_draws_one_row_per_fork() {
         lines[topic + 1..topic + 5],
         [
             format!("{indent}feature-x follows \u{b7} 2 commits from a1b2c3d"),
-            format!("{indent}feature-y stays on b2c3d4e \u{b7} would conflict in src/a.rs"),
-            format!("{indent}+1 more stay"),
-            "left behind: backup stays on the old c3d4e5f".to_owned(),
+            format!("{indent}! feature-y stays on b2c3d4e \u{b7} would conflict in src/a.rs"),
+            format!("{indent}backup stays on c3d4e5f \u{b7} on the old tip"),
+            format!("{indent}+1 more stays"),
         ],
         "{lines:#?}"
+    );
+    assert!(
+        !lines.iter().any(|line| line.contains("left behind")),
+        "a rewrite draws no left behind: {lines:#?}"
     );
     assert!(
         !lines
@@ -1936,24 +1958,48 @@ fn the_box_draws_one_row_per_fork() {
     );
 }
 
-/// The words, one fate at a time: singular commit, a stays reason by
-/// `WhyStays::words`, nothing for no forks.
+/// `r` keeps `left behind:` for the branch at the old tip (R1).
+#[test]
+fn a_rebase_box_keeps_left_behind() {
+    let lines = drawn(&a_forked_plan(), &a_rebase(), 187);
+    assert!(
+        lines
+            .iter()
+            .any(|line| line == "left behind: backup stays on the old c3d4e5f"),
+        "{lines:#?}"
+    );
+    assert!(
+        !lines.iter().any(|line| line.contains("on the old tip")),
+        "{lines:#?}"
+    );
+}
+
+/// The words and tones, one case at a time (R2): 0, 1 and N commits of a
+/// follower; `+1 more stays`, `+N more stay`; a stays row muted; nothing
+/// for no forks.
 #[test]
 fn fork_rows_table() {
-    use super::line_rows::fork_rows;
+    use super::line_rows::{ForkRow, fork_rows};
     use graft_ops::preview::{Fork, ForkFate, WhyStays};
 
-    let mut plan = a_plan();
-    assert_eq!(fork_rows(&plan), Vec::<String>::new(), "none");
-    plan.forks = vec![
-        Fork {
-            branch: branch("one"),
-            at: at("a1b2c3d"),
-            commits: 1,
-            fate: ForkFate::Follows {
-                onto: Target::Ghost(0),
-            },
+    let follower = |name: &str, commits| Fork {
+        branch: branch(name),
+        at: at("a1b2c3d"),
+        commits,
+        fate: ForkFate::Follows {
+            onto: Target::Ghost(0),
         },
+    };
+    let row = |text: &str, tone| ForkRow {
+        text: text.to_owned(),
+        tone,
+    };
+    let mut plan = a_plan();
+    assert_eq!(fork_rows(&plan, true), Vec::<ForkRow>::new(), "none");
+    plan.forks = vec![
+        follower("none", 0),
+        follower("one", 1),
+        follower("two", 2),
         Fork {
             branch: branch("main"),
             at: at("b2c3d4e"),
@@ -1961,11 +2007,54 @@ fn fork_rows_table() {
             fate: ForkFate::Stays(WhyStays::DefaultBranch),
         },
     ];
+    plan.forks_more = 1;
     assert_eq!(
-        fork_rows(&plan),
+        fork_rows(&plan, false),
         [
-            "one follows \u{b7} 1 commit from a1b2c3d",
-            "main stays on b2c3d4e \u{b7} the default branch",
+            row("none follows \u{b7} from a1b2c3d", ForkTone::Follows),
+            row(
+                "one follows \u{b7} 1 commit from a1b2c3d",
+                ForkTone::Follows
+            ),
+            row(
+                "two follows \u{b7} 2 commits from a1b2c3d",
+                ForkTone::Follows
+            ),
+            row(
+                "main stays on b2c3d4e \u{b7} the default branch",
+                ForkTone::Muted
+            ),
+            row("+1 more stays", ForkTone::Muted),
         ]
+    );
+    plan.forks_more = 3;
+    assert_eq!(
+        fork_rows(&plan, false).last(),
+        Some(&row("+3 more stay", ForkTone::Muted))
+    );
+}
+
+/// A fork that would conflict leads with `!`, in the warning tone (R3).
+#[test]
+fn a_conflicting_fork_row_warns() {
+    use super::line_rows::{ForkRow, fork_rows};
+    use graft_ops::preview::{Fork, ForkFate, WhyStays};
+
+    let mut plan = a_plan();
+    plan.forks = vec![Fork {
+        branch: branch("feature-y"),
+        at: at("b2c3d4e"),
+        commits: 1,
+        fate: ForkFate::Stays(WhyStays::WouldConflict {
+            commit: oid(6),
+            paths: vec![std::path::PathBuf::from("src/a.rs")],
+        }),
+    }];
+    assert_eq!(
+        fork_rows(&plan, false).first(),
+        Some(&ForkRow {
+            text: "! feature-y stays on b2c3d4e \u{b7} would conflict in src/a.rs".to_owned(),
+            tone: ForkTone::Warning
+        })
     );
 }
