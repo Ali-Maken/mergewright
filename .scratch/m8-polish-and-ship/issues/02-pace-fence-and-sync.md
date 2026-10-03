@@ -153,9 +153,10 @@ One context, ~70k tokens. If the scout finds DEC 2026 not wrapping image command
   `running/carry.rs` (171), `running/frame.rs` (126). `mux.rs` 458 → 389: fence slot, lease and routing in
   `input/mux/fence.rs` (86). Child modules, so `event_loop/mod.rs` and `input/mod.rs` are untouched; old paths
   re-exported. Behaviour unchanged: the whole suite is the check. `startup.rs` (564) not split — outside this file set.
-- **Paused at** (2026-10-02, conductor's request, CPU). Done: M1, M2 (committed `47fbbf96`), M3 split (this WIP
-  commit). fmt ok; workspace clippy `-D warnings` ok. Workspace nextest: 4457/5287 run, 4452 passed, **5 failed**
-  (only one name captured by my filter: `graft::it remote_by_key::capture_fix_plain_box_after_rebase`; unknown
-  whether pre-existing or from this diff — the split moves no behaviour, but not verified). In flight: nothing.
-  Next: rerun `cargo nextest run --workspace --no-fail-fast` capturing every FAIL name; check each against `main`
-  (8cd1e93f); then `cargo test --doc`; then final commit and report.
+- **Resumed and finished** (2026-10-03, no compaction). Split already complete in `c0ae1d7f`; nothing more moved.
+  Longest fn in `running/turn.rs` now `apply` 42 lines; `take` 28 (was 72). Gates on this branch, workspace-wide,
+  `TMPDIR=/tmp`: `cargo fmt --check` ok; `cargo clippy --workspace --all-targets -- -D warnings` ok;
+  `cargo nextest run --workspace --no-fail-fast` **5287/5287 passed**, 9 skipped (753 s, load 5.6 at start, 17–21
+  during — the pace tests held under that load, no assertion loosened); `cargo test --workspace --doc` ok (3 passed).
+  The paused run's 5 failures did not recur: environmental (long Paperclip `TMPDIR` breaking unix-socket paths and/or
+  the other builder's `pkill`), not this diff. Not checked against `main` one by one, because none reproduced.
