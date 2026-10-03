@@ -148,6 +148,48 @@ pub(crate) fn left_behind(
     line: &[RefName],
     stop: &dyn Stop,
 ) -> Result<(Vec<LeftBehind>, usize), FactsError> {
+    let (named, more) = off_line(repo, oldest_replaced, old_top, line, stop)?;
+    Ok((
+        named
+            .into_iter()
+            .map(|off| LeftBehind {
+                branch: off.branch,
+                on: off.at,
+            })
+            .collect(),
+        more,
+    ))
+}
+
+/// A local branch off the line that holds a commit the rewrite replaces:
+/// what [`left_behind`] names, with what a fork's fate is read from
+/// (ADR-0059 §1).
+#[derive(Clone, Debug)]
+pub(crate) struct OffLine {
+    /// Full name.
+    pub(crate) branch: RefName,
+    /// Its tip now.
+    pub(crate) tip: Oid,
+    /// Where it meets the line's old top: its fork point.
+    pub(crate) at: Oid,
+    /// The worktree it is checked out in, when that is not this one.
+    pub(crate) elsewhere: Option<PathBuf>,
+}
+
+/// [`left_behind`]'s reads, whole: the first [`LEFT_BEHIND_CAP`] branches
+/// off `line` holding `oldest_replaced`, in `for-each-ref` order, and how
+/// many more there are.
+///
+/// # Errors
+/// [`FactsError`] when a read fails, [`FactsError::Stopped`] when `stop`
+/// asks.
+pub(crate) fn off_line(
+    repo: &RepoHandle,
+    oldest_replaced: Oid,
+    old_top: Oid,
+    line: &[RefName],
+    stop: &dyn Stop,
+) -> Result<(Vec<OffLine>, usize), FactsError> {
     let off_line: Vec<LocalBranch> = local_branches(repo, Some(oldest_replaced), stop)?
         .into_iter()
         .filter(|local| {
@@ -157,14 +199,66 @@ pub(crate) fn left_behind(
         })
         .collect();
     let more = off_line.len().saturating_sub(LEFT_BEHIND_CAP);
+    let here = repo.workdir().map(canonical);
     let mut named = Vec::with_capacity(off_line.len().min(LEFT_BEHIND_CAP));
     for local in off_line.into_iter().take(LEFT_BEHIND_CAP) {
-        named.push(LeftBehind {
+        named.push(OffLine {
             branch: ref_name(&local.name)?,
-            on: merge_base(repo, local.oid, old_top, stop)?,
+            tip: local.oid,
+            at: merge_base(repo, local.oid, old_top, stop)?,
+            elsewhere: local
+                .worktree
+                .filter(|worktree| here.as_ref() != Some(&canonical(worktree))),
         });
     }
     Ok((named, more))
+}
+
+/// A fork's own commits, `at..tip`, each with its first parent, oldest
+/// first — or the first merge among them.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum OwnCommits {
+    /// No merge: `(commit, parent)`, oldest first.
+    Line(Vec<(Oid, Oid)>),
+    /// A merge lies in `at..tip`.
+    Merge(Oid),
+}
+
+/// One `rev-list --reverse --parents at..tip`.
+///
+/// # Errors
+/// [`FactsError`] when the read fails or does not parse;
+/// [`FactsError::Stopped`].
+pub(crate) fn own_commits(
+    repo: &RepoHandle,
+    at: Oid,
+    tip: Oid,
+    stop: &dyn Stop,
+) -> Result<OwnCommits, FactsError> {
+    let output = GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("rev-list"),
+            GitArg::Flag("--reverse"),
+            GitArg::Flag("--parents"),
+            GitArg::Oid(tip),
+            GitArg::Word(format!("^{at}")),
+        ])
+        .run(stop)
+        .map_err(FactsError::of_history)?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    let mut own = Vec::new();
+    for line in text.lines() {
+        let ids = line
+            .split_whitespace()
+            .map(parse_oid)
+            .collect::<Result<Vec<Oid>, FactsError>>()?;
+        match ids.as_slice() {
+            [commit, parent] => own.push((*commit, *parent)),
+            [commit, _, _, ..] => return Ok(OwnCommits::Merge(*commit)),
+            _ => return Err(unparsable(format!("rev-list --parents printed {line:?}"))),
+        }
+    }
+    Ok(OwnCommits::Line(own))
 }
 
 /// Where `a` and `b` meet. Both hold the oldest replaced commit, so there

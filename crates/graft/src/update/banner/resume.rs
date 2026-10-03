@@ -38,14 +38,14 @@ pub fn resume(
     }
     state.resuming = Some((id, what.clone()));
     state.status = Status::Busy(description.clone());
-    crate::update::remote::launched(
+    commands.extend(crate::update::remote::launched(
         state,
         id,
         description,
         None,
         crate::update::remote::Stoppable::No(crate::update::preview::HISTORY_CANNOT_STOP),
         None,
-    );
+    ));
     commands.push(Command::Resume(id, what));
     true
 }
@@ -146,16 +146,34 @@ pub fn resumed(
     // The finish summary's own `--continue` first: a refusal keeps the
     // summary open with git's words, and nothing below runs for it.
     let finish = crate::update::finish::resume_answered(state, id, &outcome);
-    if finish == Some(crate::update::finish::FinishAnswer::Kept) {
-        return kept_open(state, outcome, next_id);
-    }
+    let kept = finish == Some(crate::update::finish::FinishAnswer::Kept);
+    let done = !kept && matches!(outcome, Operated::Done(_));
+    let commands = if kept {
+        kept_open(state, outcome, next_id)
+    } else {
+        resumed_answer(state, &how, outcome, finish, next_id)
+    };
+    // Last: a `q y` waiting on this resume quits only once the answer is in
+    // place, and only when it ended done (m8/13b).
+    crate::update::quit::write_ended(state, id, done);
+    commands
+}
+
+/// [`resumed`]'s answer once the finish summary has had its say.
+fn resumed_answer(
+    state: &mut AppState,
+    how: &Resume,
+    outcome: Operated,
+    finish: Option<crate::update::finish::FinishAnswer>,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
     match outcome {
-        Operated::Done(applied) => resumed_done(state, &how, &applied, finish, next_id),
+        Operated::Done(applied) => resumed_done(state, how, &applied, finish, next_id),
         Operated::StagingNotKept { applied, paths } => {
-            resumed_staging_not_kept(state, &how, &applied, &paths, finish, next_id)
+            resumed_staging_not_kept(state, how, &applied, &paths, finish, next_id)
         }
         Operated::Incomplete { applied, error } => {
-            resumed_incomplete(state, &how, &applied, &error, next_id)
+            resumed_incomplete(state, how, &applied, &error, next_id)
         }
         // A rebase stopping on the *next* commit is the same entry and the
         // same banner: it stays focused, and the line says this is a second

@@ -43,7 +43,7 @@ One line per public item. Update when a public item changes.
 - `Inputs` (type) — `Receiver<io::Result<Event>>`: key/mouse/paste/focus events in arrival order; an `Err` is the last item.
 - `InputMux::answer_fences` (fn) — `(FenceListener) -> FenceAnswers`: replies holding a fence answer (`CSI 0 n`) go to the listener (called on the reader thread with the count), not to waiters; a listener returning `false` is removed (m8 G-pace).
 - `FenceListener` (type) — `Box<dyn FnMut(usize) -> bool + Send>`.
-- `FenceAnswers` (struct, `#[must_use]`) — the listener's lease: dropping it removes that listener, and fence answers are ordinary replies again.
+- `FenceAnswers` (struct, `#[must_use]`) — the listener's lease: dropping it removes that listener, and fence answers are ordinary replies again. `FenceListener`, `FenceAnswers` and the routing that hands a reply to the listener live in `input/mux/fence.rs` (review m8-02 Major 3), re-exported unchanged.
 - `SEQUENCE_TIMEOUT` (const) — 50 ms an unfinished escape sequence waits before it is read as keys (lone `Esc`).
 
 ## kitty

@@ -44,7 +44,7 @@ pub fn push_key(state: &mut AppState) -> bool {
             let view = push_box(&params, ahead, local_tip, leaves);
             state.confirm = Some(PendingConfirm {
                 view,
-                then: ConfirmThen::Operate(Operation::Push(params)),
+                then: ConfirmThen::operate(Operation::Push(params)),
             });
         }
         Err(why) => state.status = refusal(why),

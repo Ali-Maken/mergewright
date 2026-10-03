@@ -16,14 +16,25 @@ use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 
 use crate::facts::FactsError;
 
+use super::todo::FORK_LABEL;
 use super::{EditStop, Follower, RewriteProgress, TodoAction, TodoLine, saved};
 
 /// One line of a todo file git is running.
 enum Row {
     /// A row with a commit: pick, reword, edit, squash, fixup, drop.
     Commit(TodoLine),
-    /// `update-ref <ref>`: one branch of the line is done.
-    UpdateRef,
+    /// `update-ref <ref>`: a branch is done — one of the line's, or a fork's
+    /// (ADR-0059), which is no line boundary.
+    UpdateRef(String),
+    /// `label <name>`: a fork's section begins when the name is Graft's.
+    Label(String),
+    /// `reset <name>`: a fork's section ends when the name is Graft's.
+    Reset(String),
+}
+
+/// The label of a fork's section, `graft-fork-<n>`.
+fn fork_label(name: &str) -> bool {
+    name.starts_with(FORK_LABEL)
 }
 
 /// Where the rebase in progress is. `None` when no `rebase -i` is running
@@ -50,9 +61,11 @@ pub fn progress(repo: &RepoHandle, stop: &dyn Stop) -> Result<Option<RewriteProg
     let head_name = head_name.trim();
 
     let done_rows: Vec<&TodoLine> = commits(&done).collect();
-    let pending: Vec<TodoLine> = commits(&to_do).cloned().collect();
-    let counted = (done_rows.len(), done_rows.len() + pending.len());
+    let counted = (done_rows.len(), done_rows.len() + commits(&to_do).count());
     let current = done_rows.last().map(|line| (*line).clone());
+    let section = open_section(&done);
+    let fork = section.and_then(|label| fork_of(label, &done, &to_do));
+    let pending = pending(&to_do, section.is_some());
 
     let plans = saved::all(repo).map_err(FactsError::SavedPlan)?;
     let plan = plans.iter().find(|plan| plan.top() == head_name);
@@ -60,7 +73,7 @@ pub fn progress(repo: &RepoHandle, stop: &dyn Stop) -> Result<Option<RewriteProg
         Some(plan) if plan.line.len() > 1 => {
             let finished = done
                 .iter()
-                .filter(|row| matches!(row, Row::UpdateRef))
+                .filter(|row| matches!(row, Row::UpdateRef(name) if in_line(plan, name)))
                 .count();
             let index = (finished + 1).min(plan.line.len());
             let (name, _) = &plan.line[index - 1];
@@ -74,7 +87,9 @@ pub fn progress(repo: &RepoHandle, stop: &dyn Stop) -> Result<Option<RewriteProg
         _ => None,
     };
     let followers = match (plan, &branch) {
-        (Some(plan), Some((_, index, _))) => followers(repo, plan, *index, &to_do, stop)?,
+        (Some(plan), Some((_, index, _))) => {
+            followers(repo, plan, *index, &to_do, section.is_some(), stop)?
+        }
         _ => Vec::new(),
     };
     Ok(Some(RewriteProgress {
@@ -84,7 +99,73 @@ pub fn progress(repo: &RepoHandle, stop: &dyn Stop) -> Result<Option<RewriteProg
         branch,
         begun_in_graft: plan.is_some(),
         followers,
+        fork,
     }))
+}
+
+/// A branch of the saved plan's line, by full name.
+fn in_line(plan: &saved::SavedPlan, name: &str) -> bool {
+    plan.line.iter().any(|(branch, _)| branch == name)
+}
+
+/// The label of the fork section git is in: the last of Graft's `label`s
+/// in `done` with no `reset` to it after.
+fn open_section(done: &[Row]) -> Option<&str> {
+    let mut open = None;
+    for row in done {
+        match row {
+            Row::Label(name) if fork_label(name) => open = Some(name.as_str()),
+            Row::Reset(name) if open == Some(name.as_str()) => open = None,
+            _ => {}
+        }
+    }
+    open
+}
+
+/// The fork a section moves: the last `update-ref` before the section's
+/// `reset` — the todo puts the fork's own after the branches on it. Read
+/// from git's files alone, so a rebase of Graft's todo begun in the shell
+/// names it too. Short name (`feature-x`).
+fn fork_of(label: &str, done: &[Row], to_do: &[Row]) -> Option<String> {
+    let since_label = done
+        .iter()
+        .rposition(|row| matches!(row, Row::Label(name) if name == label))
+        .map_or(done, |at| &done[at..]);
+    let until_reset = to_do
+        .iter()
+        .position(|row| matches!(row, Row::Reset(name) if name == label))
+        .map_or(to_do, |at| &to_do[..at]);
+    since_label
+        .iter()
+        .chain(until_reset)
+        .filter_map(|row| match row {
+            Row::UpdateRef(name) => Some(name),
+            _ => None,
+        })
+        .next_back()
+        .map(|name| name.strip_prefix("refs/heads/").unwrap_or(name).to_owned())
+}
+
+/// The rows still to apply, oldest first: the line's, and — when git is in
+/// a fork's section (`in_section`) — that section's rest, first. The rows
+/// of a section not yet begun are not here (they are counted in `step`):
+/// they belong to neither this branch nor a follower of the line.
+fn pending(to_do: &[Row], in_section: bool) -> Vec<TodoLine> {
+    let mut inside = in_section;
+    let mut first = in_section;
+    let mut out = Vec::new();
+    for row in to_do {
+        match row {
+            Row::Label(name) if fork_label(name) => inside = true,
+            Row::Reset(name) if fork_label(name) => {
+                inside = false;
+                first = false;
+            }
+            Row::Commit(line) if !inside || first => out.push(line.clone()),
+            _ => {}
+        }
+    }
+    out
 }
 
 /// The branches of the line above branch `index` (1-based), bottom up.
@@ -99,22 +180,29 @@ fn followers(
     plan: &saved::SavedPlan,
     index: usize,
     to_do: &[Row],
+    in_section: bool,
     stop: &dyn Stop,
 ) -> Result<Vec<Follower>, FactsError> {
     let above = &plan.line[index.min(plan.line.len())..];
     if above.is_empty() {
         return Ok(Vec::new());
     }
-    // Commit rows per segment; segment 0 is this branch's.
+    // Commit rows per segment; segment 0 is this branch's. A fork's section
+    // (ADR-0059) is no one's segment: its rows and its `update-ref`s are
+    // skipped, the one git may be in already included.
     let mut segments = Vec::new();
     let mut current = 0usize;
+    let mut in_section = in_section;
     for row in to_do {
         match row {
-            Row::Commit(_) => current += 1,
-            Row::UpdateRef => {
+            Row::Label(name) if fork_label(name) => in_section = true,
+            Row::Reset(name) if fork_label(name) => in_section = false,
+            Row::Commit(_) if !in_section => current += 1,
+            Row::UpdateRef(name) if in_line(plan, name) => {
                 segments.push(current);
                 current = 0;
             }
+            _ => {}
         }
     }
     segments.push(current);
@@ -286,7 +374,7 @@ fn first_parents(
 fn commits(rows: &[Row]) -> impl Iterator<Item = &TodoLine> {
     rows.iter().filter_map(|row| match row {
         Row::Commit(line) => Some(line),
-        Row::UpdateRef => None,
+        Row::UpdateRef(_) | Row::Label(_) | Row::Reset(_) => None,
     })
 }
 
@@ -300,8 +388,8 @@ fn read_or_empty(path: &Path) -> Result<String, FactsError> {
 }
 
 /// A todo file's rows. Comments, blank lines and the lines Graft never
-/// writes (`exec`, `label`, `reset`, `break`, `noop`) are not rows the
-/// banner counts.
+/// writes (`exec`, `break`, `noop`, `merge`) are not rows; `update-ref`,
+/// `label` and `reset` are, for the boundaries they mark, never as steps.
 fn rows(repo: &RepoHandle, text: &str, stop: &dyn Stop) -> Result<Vec<Row>, FactsError> {
     let mut rows = Vec::new();
     for line in text.lines().map(str::trim) {
@@ -309,9 +397,20 @@ fn rows(repo: &RepoHandle, text: &str, stop: &dyn Stop) -> Result<Vec<Row>, Fact
             continue;
         }
         let (word, rest) = line.split_once(' ').unwrap_or((line, ""));
-        if word == "update-ref" || word == "u" {
-            rows.push(Row::UpdateRef);
-            continue;
+        match word {
+            "update-ref" | "u" => {
+                rows.push(Row::UpdateRef(rest.trim().to_owned()));
+                continue;
+            }
+            "label" | "l" => {
+                rows.push(Row::Label(rest.trim().to_owned()));
+                continue;
+            }
+            "reset" | "t" => {
+                rows.push(Row::Reset(rest.trim().to_owned()));
+                continue;
+            }
+            _ => {}
         }
         let Some(action) = TodoAction::from_word(word) else {
             continue;

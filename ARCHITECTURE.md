@@ -168,7 +168,7 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 shell they suspended to — inside the terminal Graft is drawing on. The
 six commands that do this (`EditCommitMessage`, `OpenExternalEditor`,
 `OpenMergetool`, `OpenConflictEditor`, `ContinueInGit`, `Suspend`;
-`app/src/event_loop/running.rs:212-217`) are the only ones **carried out by the frame loop rather than queued as jobs**, and
+`hands_over` in `crates/graft/src/event_loop/running/carry.rs`) are the only ones **carried out by the frame loop rather than queued as jobs**, and
 that is not a shortcut: the job pool's threads do not own the session or the
 input mux, and only the thread that owns both can give the terminal up. A job
 that tried would leave two readers on one file descriptor and the user's

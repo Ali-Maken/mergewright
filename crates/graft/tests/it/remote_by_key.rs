@@ -509,9 +509,10 @@ fn repush_lease_comes_from_the_entry() {
         .confirm
         .as_ref()
         .unwrap_or_else(|| panic!("no lease box; status {:?}", state.status));
-    let graft::update::confirm::ConfirmThen::Operate(graft_ops::operation::Operation::Push(params)) =
-        &pending.then
-    else {
+    let graft::update::confirm::ConfirmThen::Operate(op) = &pending.then else {
+        panic!("the lease box runs a push: {:?}", pending.then);
+    };
+    let graft_ops::operation::Operation::Push(params) = &**op else {
         panic!("the lease box runs a push: {:?}", pending.then);
     };
     let expected = params.lease.as_ref().map(|lease| lease.expected);

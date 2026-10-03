@@ -1273,6 +1273,7 @@ fn a_bare_r_asks_for_nothing() {
 fn every_field_spelled_out() -> AppState {
     AppState {
         quit: None,
+        quit_when_done: None,
         harness: Harness::default(),
         status: Status::Failed("earlier".to_owned()),
         unseen: Some(Status::sticky("arrived under a box")),
@@ -4700,6 +4701,7 @@ pub(super) fn operation_live_as(
                     branch: None,
                     begun_in_graft: true,
                     followers: Vec::new(),
+                    fork: None,
                 },
                 edit: Some(graft_ops::rewrite::EditStop {
                     stopped: graft_core::oid::Oid::from_bytes(&[7; 20]).expect("20 bytes"),

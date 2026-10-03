@@ -414,6 +414,10 @@ fn banner_list(skippable: bool, conflicted: bool, merge: bool) -> Vec<Hint> {
         list.push(hint("e", "edit"));
     }
     list.push(hint("⇥", "graph"));
+    // Last, so the first dropped on a narrow bar: the banner's own keys
+    // matter more than a way out he can always reach by `⇥` (m8-13b).
+    // `q` boxes from here (`graft::update::banner::banner_key`).
+    list.push(hint("q", "quit"));
     list
 }
 

@@ -1,8 +1,8 @@
 # ADR-0059 — A branch forked off a rewritten commit follows when its replay is clean
 
 Date: 2026-10-02
-Status: **proposed** (planner, M8 spec-only pass 2c). Needs his yes: design note `m8-polish-and-ship.md`,
-"Where I'd differ", 2c. Until then ADR-0047 stands unchanged and a fork stays, named `left behind` (m7/37).
+Status: **Accepted**, 2026-10-02 (field notes :89, item 5: "go ahead with your recommendation" — the branch moves too
+when it moves clean, shown in the preview first). Design note `m8-polish-and-ship.md`, "Where I'd differ", 2c.
 Amends: ADR-0047 §1 (todo vocabulary) and §4 (scope of "never a fork").
 
 ## Context
@@ -18,13 +18,17 @@ Amends: ADR-0047 §1 (todo vocabulary) and §4 (scope of "never a fork").
   The study's §4 :210 rejects skip-on-conflict **for the line he asked to rewrite** (a stop there belongs on M6's
   conflict screen). A fork is not what he asked to rewrite: skipping it, in words, is the branchless/Graphite answer.
 
-## Decision (if he says yes)
+## Decision
 
 ### 1. What a fork is
-A local branch F such that: F is not in the line; F's tip is not in the replayed range; `at = merge-base(F, old top)`
+A local branch F such that: F is not in the line; F is **not a dependent** (ADR-0047 §4: F's first-parent chain does
+not hold the rewritten branch's tip — see §5); F's tip is not in the replayed range; `at = merge-base(F, old top)`
 is a replaced commit (the existing `LeftBehind.on`); no merge lies in `at..F`. A branch **at** a replaced commit with
 no commits of its own is a fork with 0 commits and follows (git's own `--update-refs` moves it, §1.1) — except one at
 the old top, which stays a backup as ADR-0047 §4's dependents rule has it.
+
+So a fork leaves the line **below his branch's tip** (his own branch's middle). A branch leaving a dependent's middle
+is a dependent, not a fork (§5).
 
 ### 2. Fate, decided in the preview and run as previewed
 - **Follows** when all hold: the chained forecast through `at`'s row and then F's own commits is `Clean`; F is not
@@ -53,8 +57,17 @@ the old top, which stays a backup as ADR-0047 §4's dependents rule has it.
   moved ref (ADR-0047 §2 unchanged in kind).
 
 ### 5. Not changed
-- ADR-0047 §4's refusal of two lines built on the **tip** (`feature-b and feature-c are both built on yours`). Sections
-  would make it liftable; that is a separate decision, not taken here.
+- ADR-0047 §4's refusal of two lines built on the **tip** (`feature-b and feature-c are both built on yours`).
+- That refusal **includes a branch started from a dependent's commit** (say `feature-x` off `feature-b~1`, where
+  `feature-b` is built on his branch): its first-parent chain holds his tip, so it is a second dependent, not a fork,
+  and the rewrite is refused in words before anything runs, as today. Which of the two is "the line" and which "the
+  fork" is a guess, and ADR-0047 §4 says Graft never guesses. (Builder 14b found this in the dependents code; acceptance
+  3 of ticket 14b first assumed it followed, corrected 2026-10-02.)
+- His ruling (field notes :89) is about a branch started from a commit he amends — a replaced commit in his own
+  branch, below its tip. That is §1's fork and it follows. With a dependent present, such a fork still follows
+  (`at..F` does not reach his tip).
+- Sections would make the two-dependents refusal liftable (pick one as the line, the other as a section); that is a
+  separate decision, not taken here.
 
 ## Rejected
 - **A second rebase of F inside the same entry**: two git operations; an abort aborts only the running one; kill -9
@@ -62,4 +75,4 @@ the old top, which stays a backup as ADR-0047 §4's dependents rule has it.
 - **merge-tree + commit-tree replay of F** (no stop possible, since only clean forks follow): ADR-0047's rejected
   replay loop by another name; hooks, empty-commit and committer rules would differ from git's rebase.
 - **Every fork follows, conflicts stop** (jj-like without stored conflicts): a stop in a branch he never named.
-- **Leave it as is**: the alternative if he says *stay*. Then item 2 closes as designed and the specs drop.
+- **Leave it as is**: the alternative had he said *stay*. Then item 2 would have closed as designed and the specs dropped.

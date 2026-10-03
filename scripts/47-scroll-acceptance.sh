@@ -294,6 +294,7 @@ else
   miss "no release grid: the PNG test printed no pane_rows or the repo copy is missing"
 fi
 
+log "# load after: $(uptime | sed 's/.*load averages*: //')"
 log "# exit $missed"
 echo "$OUT"
 [ "$missed" -eq 0 ] || exit 1

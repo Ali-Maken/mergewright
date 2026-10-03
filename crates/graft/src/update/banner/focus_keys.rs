@@ -52,6 +52,12 @@ pub fn take_focus(state: &mut AppState, key: KeyPress) -> bool {
 /// `Esc` is not part of the cycle — it is "leave the mode" — so it puts the
 /// keyboard back where it found it.
 pub(super) fn hand_the_keyboard_back(state: &mut AppState, key: KeyPress) {
+    // Graft waiting to quit on a `c` it launched from here (m8/13b): `Esc`
+    // drops the wait, as on the graph (`remote::stop_write`), and that is
+    // all it does — the banner keeps the keyboard.
+    if key.code == KeyCode::Escape && crate::update::quit::drop_wait(state) {
+        return;
+    }
     // `Esc` dismisses a problem on the status line, as `keys::key_event`
     // does app-wide (the banner reaches the key first), and still leaves
     // the banner in the same press — one `Esc` from a refused `c` to the

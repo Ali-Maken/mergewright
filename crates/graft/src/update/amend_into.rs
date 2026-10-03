@@ -84,8 +84,11 @@ impl AmendInto {
     }
 }
 
+/// `op` is the put-in planned as `params`: the same rewrite, whatever forks
+/// the preview added to it (`plan_as_run` fills `forks`, ADR-0059).
 fn is_put_in(op: &Operation, params: &RewriteParams) -> bool {
-    matches!(op, Operation::Rewrite(launched) if launched == params)
+    matches!(op, Operation::Rewrite(launched)
+        if RewriteParams { forks: Vec::new(), ..launched.clone() } == *params)
 }
 
 /// The landing's put-back clause for a put-in: the staged edits went into

@@ -481,8 +481,8 @@ fn d_in_the_diff_region_confirms_before_discarding_the_hunk() {
     assert_eq!(pending.view.choices[1].as_str(), "Discard");
     assert!(
         matches!(
-            pending.then,
-            ConfirmThen::Operate(Operation::Discard(Target::Patch {
+            &pending.then,
+            ConfirmThen::Operate(op) if matches!(**op, Operation::Discard(Target::Patch {
                 side: PatchSide::Worktree,
                 ..
             }))
@@ -706,7 +706,7 @@ fn request_discard_names_clean_for_an_untracked_file() {
     assert_eq!(pending.view.command.as_str(), "git clean -f -- new.txt");
     assert_eq!(
         pending.then,
-        ConfirmThen::Operate(Operation::Discard(Target::Paths(vec!["new.txt".into()])))
+        ConfirmThen::operate(Operation::Discard(Target::Paths(vec!["new.txt".into()])))
     );
 }
 

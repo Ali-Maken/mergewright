@@ -22,8 +22,8 @@ use graft_ops::operation::{
     RebaseParams, Refusal, Source, Tip,
 };
 use graft_ops::preview::{
-    ConflictForecast, DropSuggestion, PreviewError, PreviewPlan, Target, plan, plan_as_run,
-    suggest_drops,
+    ConflictForecast, DropSuggestion, ForkFate, PreviewError, PreviewPlan, Target, plan,
+    plan_as_run, suggest_drops,
 };
 use graft_ops::rewrite::{BranchLine, RewriteRequest, TodoAction, progress};
 
@@ -969,15 +969,37 @@ fn left_names(plan: &PreviewPlan) -> Vec<(String, Oid)> {
         .collect()
 }
 
+fn fork_names(plan: &PreviewPlan) -> Vec<(String, Oid, bool)> {
+    plan.forks
+        .iter()
+        .map(|fork| {
+            (
+                String::from_utf8_lossy(fork.branch.as_bytes()).into_owned(),
+                fork.at,
+                matches!(fork.fate, ForkFate::Follows { .. }),
+            )
+        })
+        .collect()
+}
+
+/// m7/37 named this fork as left behind. ADR-0059 §2 (docs/adr/0059, line 34:
+/// "Follows when all hold: the chained forecast ... is `Clean`") changes the
+/// expectation: b1 touches its own file, so its replay is clean and it follows;
+/// `left_behind` keeps only the forks that stay (ticket 14b Signatures).
 #[test]
 fn left_behind_names_a_branch_forked_mid_chain() {
     let repo = forked_mid_chain();
     let a2 = id(&repo, "feature-a~1");
     let drawn = amend_into(&repo, "feature-a~1");
     assert_eq!(
+        fork_names(&drawn),
+        [("refs/heads/feature-b".to_owned(), a2, true)],
+        "feature-b's replay is clean, so it follows; feature-a, the line, is never a fork"
+    );
+    assert_eq!(
         left_names(&drawn),
-        [("refs/heads/feature-b".to_owned(), a2)],
-        "feature-b stays on the old a2; feature-a, the line, is never listed"
+        [],
+        "a fork that follows is not left behind"
     );
     assert_eq!(drawn.left_behind_more, 0);
 }
@@ -989,13 +1011,17 @@ fn left_behind_names_a_branch_parked_on_a_replaced_commit() {
     let a3 = id(&repo, "feature-a");
     let a2 = id(&repo, "feature-a~1");
     let drawn = amend_into(&repo, "feature-a~1");
+    // ADR-0059 §1 (line 27-28: "except one at the old top, which stays a
+    // backup") keeps the backup; §2 (line 34) makes feature-b, clean, follow.
     assert_eq!(
         left_names(&drawn),
-        [
-            ("refs/heads/backup".to_owned(), a3),
-            ("refs/heads/feature-b".to_owned(), a2),
-        ],
-        "a backup at his tip stays on the old tip"
+        [("refs/heads/backup".to_owned(), a3)],
+        "a backup at his tip stays on the old tip; the clean fork follows"
+    );
+    assert_eq!(
+        fork_names(&drawn),
+        [("refs/heads/feature-b".to_owned(), a2, true)],
+        "a backup is not a fork"
     );
 }
 
@@ -1035,6 +1061,16 @@ fn left_behind_caps_at_eight() {
         repo.git(&["branch", &format!("park-{k}"), "feature-a~1"]);
     }
     let drawn = amend_into(&repo, "feature-a~1");
-    assert_eq!(drawn.left_behind.len(), 8, "{:?}", left_names(&drawn));
-    assert_eq!(drawn.left_behind_more, 2, "10 branches: 8 named, 2 counted");
+    // ADR-0059 §2 (line 36: "F is among the first `LEFT_BEHIND_CAP` (8)
+    // named") lets the 8 named forks follow (each clean: 0 or 1 own commit on
+    // its own file); the 2 past the cap stay, counted, never named.
+    assert_eq!(drawn.forks.len(), 8, "{:?}", fork_names(&drawn));
+    assert!(
+        fork_names(&drawn).iter().all(|(_, _, follows)| *follows),
+        "{:?}",
+        fork_names(&drawn)
+    );
+    assert_eq!(drawn.forks_more, 2, "10 forks: 8 named, 2 counted");
+    assert_eq!(left_names(&drawn), [], "no named fork stays");
+    assert_eq!(drawn.left_behind_more, 2, "the 2 past the cap stay");
 }

@@ -34,6 +34,11 @@ pub struct AppState {
     /// terminal back — a fatal quit is reported only after that, on a terminal
     /// that is the user's again.
     pub quit: Option<Quit>,
+    /// `q y` over a write that cannot stop halfway: Graft quits once that
+    /// write ends done, and stays if it stops, fails or ends incomplete
+    /// (`update::quit`, m8-polish-and-ship/13b). Only meaningful while its
+    /// job is `operating`; [`AppState::shown_status`] draws its line then.
+    pub quit_when_done: Option<super::quit::QuitWait>,
     /// What a harness wrapping the run asked for; default in the shipped
     /// binary.
     pub harness: Harness,
@@ -904,10 +909,16 @@ impl AppState {
 
     /// What the status rungs draw once no modal owns the row: a failure
     /// that arrived under a box and was replaced before the row drew it
-    /// (`unseen`), while it stands; else `status` (m6-conflicts/78).
+    /// (`unseen`), while it stands; else the wait's own line while Graft
+    /// waits to quit (`quit_when_done`, m8/13b: drawn over `status`, so no
+    /// progress or busy line the write sends can replace it, and it is gone
+    /// the moment the wait is); else `status` (m6-conflicts/78).
     #[must_use]
     pub(crate) fn shown_status(&self) -> &Status {
-        self.unseen.as_ref().unwrap_or(&self.status)
+        self.unseen
+            .as_ref()
+            .or_else(|| super::quit::waiting(self).map(|wait| &wait.line))
+            .unwrap_or(&self.status)
     }
 }
 

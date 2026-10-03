@@ -2505,7 +2505,7 @@ fn a_narrow_bar_keeps_the_y_hint() {
     let mut push = changes_pane_state(80, 24);
     push.confirm = Some(PendingConfirm {
         view: crate::update::remote::push_box(&params, Some(1), None, None),
-        then: ConfirmThen::Operate(Operation::Push(params)),
+        then: ConfirmThen::operate(Operation::Push(params)),
     });
     assert_eq!(
         box_bar(&push, 80, 24),
@@ -3839,6 +3839,8 @@ fn one_ghost_over(anchor: Oid, replayed: Oid) -> graft_ops::preview::PreviewPlan
         published: Vec::new(),
         left_behind: Vec::new(),
         left_behind_more: 0,
+        forks: Vec::new(),
+        forks_more: 0,
         messages: Vec::new(),
     }
 }
@@ -5152,6 +5154,7 @@ fn the_edit_stop_tags_head_s_row_stopped_here() {
                 branch: None,
                 begun_in_graft: true,
                 followers: Vec::new(),
+                fork: None,
             },
             edit: Some(graft_ops::rewrite::EditStop {
                 stopped: oid(3),

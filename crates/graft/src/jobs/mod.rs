@@ -102,10 +102,17 @@ pub use types::{Cancel, Delivery, Dispatch, JobEvents, Outcome, Work};
 /// little and costs the battery.
 pub const MAX_WORKERS: usize = 4;
 
-/// How long [`JobRunner::shutdown`] waits for jobs to notice they were
-/// cancelled before it gives up on them.
+/// How long [`JobRunner::shutdown`] waits for cancelled jobs to end before
+/// it gives up on them: 2.55 s.
 ///
-/// Short on purpose. Quitting must feel immediate, and the terminal cannot be
-/// restored until the loop returns (ticket 03), so a slow shutdown shows up as
-/// a terminal that stays broken for as long as the wait.
-pub const SHUTDOWN_GRACE: Duration = Duration::from_millis(200);
+/// Long enough for a cancelled job's git child to be stopped and reaped —
+/// [`graft_git::run::STOP_WITHIN`] (a 50 ms poll, then SIGTERM and 2 s before
+/// SIGKILL) — plus half a second for a job to reach its next check outside
+/// git. It was 200 ms, which abandoned a worker still inside that 2 s wait
+/// with its git child alive (m8/13b). Most quits pay nothing for it: an idle
+/// pool, or one running reads that check their token, ends at once. Only a
+/// git child slow to take SIGTERM costs the wait, and that child is exactly
+/// what must not outlive Graft. Unstoppable writes are outside this bound
+/// altogether: shutdown waits for them to end ([`JobRunner::shutdown`]).
+pub const SHUTDOWN_GRACE: Duration =
+    graft_git::run::STOP_WITHIN.saturating_add(Duration::from_millis(500));

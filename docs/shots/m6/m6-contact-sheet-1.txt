@@ -417,7 +417,7 @@ files · 13     nofinal.txt 1/1 open         ours-deleted.txt keep?
 
 ================================================================================
 docs/shots/m6/m6-06-relaunch-sticky-120x40.txt
-what right looks like: Re-taken 2026-09-25 (ticket 61): TESTING.md "Conflicts walk", kill-9-mid-rebase-then-relaunch: the capture run took `o` on the first block of `shared.txt` (`took upstream · main` on its screen), was sent **SIGKILL** (the script's log: `died on signal 9`), and this is the real `graft` binary relaunched on what it left: `REBASING step 1 of 2` in the header; the footer `rebase still in progress · 1 conflicted · ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph` — a rung that had to shorten says the count short (ticket 61), and `from a previous run` is dropped when the keys need the room (ticket 24; the full wording is asserted from state by the walk); the changes pane on `CONFLICTS (1)` `shared.txt`, whose diff shows **one** marker block left (the other was taken before the kill).
+what right looks like: Re-taken 2026-10-02 (m8-13b: `q quit` joins the banner's bar, last; it gives way first to the stop's words). Re-taken 2026-09-25 (ticket 61): TESTING.md "Conflicts walk", kill-9-mid-rebase-then-relaunch: the capture run took `o` on the first block of `shared.txt` (`took upstream · main` on its screen), was sent **SIGKILL** (the script's log: `died on signal 9`), and this is the real `graft` binary relaunched on what it left: `REBASING step 1 of 2` in the header; the footer `rebase still in progress · 1 conflicted · ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph  q quit` — a rung that had to shorten says the count short (ticket 61), and `from a previous run` is dropped when the keys need the room (ticket 24; the full wording is asserted from state by the walk); the changes pane on `CONFLICTS (1)` `shared.txt`, whose diff shows **one** marker block left (the other was taken before the kill).
 ================================================================================
 
 m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relaunch, keys ⏎ o, unicode tier, 120x40
@@ -446,7 +446,7 @@ m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relau
 
 
 
- rebase still in progress · 1 conflicted · ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph
+ rebase still in progress · 1 conflicted · ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph  q quit
 UNCOMMITTED
 diff vs HEAD b0eb655
 CONFLICTS (1)                 ▎keep 1
@@ -466,7 +466,7 @@ CONFLICTS (1)                 ▎keep 1
 
 ================================================================================
 docs/shots/m6/m6-06-relaunch-sticky-80x24.txt
-what right looks like: Re-taken 2026-09-24 (ticket 45): The same relaunch at 80 columns: the changes pane is the whole screen (the Detail tab), `REBASING step 1 of 2` on the top row, `CONFLICTS (1)` `shared.txt` with the one marker block left, and on the bottom row the banner's keys only, `⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph` — **no words say the rebase is from a previous run** (ticket 12 accepts the reason absent at 80x24; see ticket 45 NOTES, question 1).
+what right looks like: Re-taken 2026-10-02 (m8-13b: `q quit` joins the banner's bar, last; it gives way first to the stop's words). Re-taken 2026-09-24 (ticket 45): The same relaunch at 80 columns: the changes pane is the whole screen (the Detail tab), `REBASING step 1 of 2` on the top row, `CONFLICTS (1)` `shared.txt` with the one marker block left, and on the bottom row the banner's keys only, `⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph  q quit` — **no words say the rebase is from a previous run** (ticket 12 accepts the reason absent at 80x24; see ticket 45 NOTES, question 1).
 ================================================================================
 
 m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relaunch, keys ⏎ o, unicode tier, 80x24
@@ -495,7 +495,7 @@ CONFLICTS (1)
 
 
 
- ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph
+ ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph  q quit
 
 ================================================================================
 docs/shots/m6/m6-07-all-resolved-120x40.txt
@@ -1034,7 +1034,7 @@ what right looks like: (ticket 12) The same at 187x50: the last row lists `⇥ b
 
 ================================================================================
 docs/shots/m6/fix-landing-b-launch-120x40.txt
-what right looks like: (ticket 12; recaptured by 24 and 61; `c finish` on a merge since ticket 70) Launch into a merge begun in the shell, 13 files, the pane below: the footer reads `merge in progress · from the shell · 13 conflicted · ⏎ resolve  c finish  a abort` — the origin short before it goes, the count short (ticket 61) — and the pane shows `CONFLICTS` with the cursor on its first file. Colour unverified.
+what right looks like: Re-taken 2026-10-02 (m8-13b: `q quit` joins the banner's bar, last; it gives way first to the stop's words). (ticket 12; recaptured by 24 and 61; `c finish` on a merge since ticket 70) Launch into a merge begun in the shell, 13 files, the pane below: the footer reads `merge in progress · from the shell · 13 conflicted · ⏎ resolve  c finish  a abort` — the origin short before it goes, the count short (ticket 61) — and the pane shows `CONFLICTS` with the cursor on its first file. Colour unverified.
 ================================================================================
 
  graft /code/api    MERGING
@@ -1060,7 +1060,7 @@ what right looks like: (ticket 12; recaptured by 24 and 61; `c finish` on a merg
 
 
 
- merge in progress · from the shell · 13 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
+ merge in progress · from the shell · 13 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph  q quit
 UNCOMMITTED
 diff vs HEAD 274c7d4
 CONFLICTS (13)                ▎

@@ -50,8 +50,8 @@ pub use progress::{edit_stop, progress};
 pub use todo::{default_message, squash_groups, validate};
 pub use unpushed::ABSORB_FALLBACK_DEPTH;
 
-pub(crate) use dependents::{left_behind, line_of};
-pub(crate) use reads::{line_picks, messages_of, rebase_rows};
+pub(crate) use dependents::{OffLine, OwnCommits, left_behind, line_of, off_line, own_commits};
+pub(crate) use reads::{default_branch_of, line_picks, messages_of, rebase_rows};
 pub(crate) use todo::{GitTodo, git_todo, git_words};
 
 /// What git does with one row of the todo: git's own letters, never `exec`
@@ -178,6 +178,30 @@ pub struct RewriteParams {
     /// with `--index` (ADR-0045 amendment 2026-09-26 b, which covers
     /// absorb's as one case).
     pub index_base: Option<Oid>,
+    /// The forks that follow (ADR-0059), each replayed inline at its fork
+    /// point. Filled by [`crate::preview::plan_as_run`], which fixed their
+    /// fates; empty → the todo is the one without forks, byte for byte.
+    pub forks: Vec<ForkSection>,
+}
+
+/// A fork that follows, as the todo runs it (ADR-0059 §3): right after the
+/// row that makes its new base, `label graft-fork-<n>`, its picks, an
+/// `update-ref` for each branch on it, `reset graft-fork-<n>`, and the line
+/// goes on.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ForkSection {
+    /// The row whose result is the fork's new base, counting his rows
+    /// ([`RewriteParams::todo`]) then each dependent's picks, bottom up — the
+    /// order git runs them. A squash group's last row when its fork point
+    /// is in one.
+    pub after_row: usize,
+    /// The fork, pinned at its old tip.
+    pub branch: Tip,
+    /// Its own commits (`at..branch`), oldest first, all `Pick`.
+    pub picks: Vec<TodoLine>,
+    /// The other local branches on its first-parent chain (`at..branch`),
+    /// pinned, bottom up: each moves with it.
+    pub inside: Vec<Tip>,
 }
 
 /// What the user asked to rewrite.
@@ -290,11 +314,15 @@ impl TodoProblem {
 /// Where a stopped rewrite is.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RewriteProgress {
-    /// This step and how many there are, counting only the user's rows.
+    /// This step and how many there are, counting only the user's rows:
+    /// every pick-like row, a following fork's picks included (ADR-0059 §3);
+    /// never `update-ref`, `label` or `reset`.
     pub step: (usize, usize),
     /// The row git is on.
     pub current: Option<TodoLine>,
-    /// Still to apply, oldest first.
+    /// Still to apply, oldest first: the line's rows, and the rest of the
+    /// fork section git is in ([`RewriteProgress::fork`]) first. A fork
+    /// section not yet begun is not here (it is in `step`'s count).
     pub pending: Vec<TodoLine>,
     /// The branch of the line this step belongs to: name, i, n (1-based).
     /// `Some` only when the line has more than one branch.
@@ -306,6 +334,9 @@ pub struct RewriteProgress {
     /// commits of its own still in `pending` (m7-power-tools/07d). Empty
     /// when `branch` is `None`.
     pub followers: Vec<Follower>,
+    /// The fork whose section git is in (ADR-0059 §3), short name
+    /// (`feature-x`): the step belongs to it, not to the line.
+    pub fork: Option<String>,
 }
 
 impl RewriteProgress {

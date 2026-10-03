@@ -225,9 +225,16 @@ fn continue_with_nothing_unmerged_queues_an_unstoppable_resume() {
     assert_eq!(continue_refusal(&state), None);
     let (claimed, commands) = press(&mut state, KeyCode::Char('c'));
     assert!(claimed);
-    let [Command::Resume(id, Resume::Continue)] = commands.as_slice() else {
-        panic!("expected one Resume: {commands:?}");
+    // Marked unstoppable ahead of the job, so no cancel or shutdown can
+    // signal it (m8-13b).
+    let [
+        Command::Unstoppable(marked),
+        Command::Resume(id, Resume::Continue),
+    ] = commands.as_slice()
+    else {
+        panic!("expected the mark, then one Resume: {commands:?}");
     };
+    assert_eq!(marked, id);
     assert_eq!(state.operating, Some(*id));
     assert_eq!(state.status, Status::Busy("continue rebase".to_owned()));
     let running = state.remote.running.as_ref().expect("a running record");
@@ -873,6 +880,7 @@ fn code_for(key: &str) -> KeyCode {
         "e" => KeyCode::Char('e'),
         "⏎" => KeyCode::Enter,
         "⇥" => KeyCode::Tab,
+        "q" => KeyCode::Char('q'),
         other => panic!(
             "the focused banner's hint bar draws `{other}`, which this test \
              does not know how to press — teach it what that key is meant to \
@@ -901,7 +909,13 @@ fn continued(key: &str, verb: &str, before: &AppState, after: &AppState, command
             );
         }
         _ => assert!(
-            matches!(commands, [Command::Resume(_, Resume::Continue)]),
+            matches!(
+                commands,
+                [
+                    Command::Unstoppable(_),
+                    Command::Resume(_, Resume::Continue)
+                ]
+            ),
             "`{key} {verb}` queued {commands:?}"
         ),
     }
@@ -996,6 +1010,17 @@ fn did_the_verb(verb: &str, key: &str, before: &AppState, after: &AppState, comm
             !after.banner_focus,
             "`{key} {verb}` did not give the keyboard back"
         ),
+        // Git stopped, nothing running: quit, no box, nothing written
+        // (`update::quit`, the user's ruling on 13b).
+        "quit" => {
+            assert_eq!(
+                after.quit,
+                Some(crate::update::Quit::Requested),
+                "`{key} {verb}` did not quit"
+            );
+            assert!(after.confirm.is_none(), "`{key} {verb}` opened a box");
+            assert!(commands.is_empty(), "`{key} {verb}` queued {commands:?}");
+        }
         other => panic!(
             "the focused banner's hint bar draws the verb `{other}`, which \
              this test does not check — a verb nobody checks is a verb the \

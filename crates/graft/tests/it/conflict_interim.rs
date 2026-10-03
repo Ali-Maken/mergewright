@@ -1086,6 +1086,37 @@ fn relaunch_lands_on_the_conflict() {
     app.close();
 }
 
+/// **The user's ruling on 13b.** Git stopped mid-rebase and nothing
+/// running: `q` quits at once, no box, and nothing is written — the stop
+/// stays on disk, and the next launch offers `c continue` / `a abort`.
+#[test]
+fn q_at_a_stop_quits_and_the_relaunch_offers_continue() {
+    let scratch = killed_mid_rebase();
+    let repo = scratch.path();
+    let (app, state) = App::open(repo);
+    let state = landed(&app, state);
+    assert!(state.operating.is_none(), "nothing is running");
+
+    let (state, commands) =
+        crate::app_harness::press_for_commands(&state, KeyPress::plain(KeyCode::Char('q')));
+    assert_eq!(state.quit, Some(graft::update::Quit::Requested), "quits");
+    assert!(state.confirm.is_none(), "no box");
+    assert!(commands.is_empty(), "nothing written: {commands:?}");
+    drop(state);
+    app.close();
+
+    let (app, state) = App::open(repo);
+    let state = landed(&app, state);
+    assert!(state.banner_focus, "{:?}", state.status);
+    stop_line_reads(
+        &state,
+        "rebase still in progress",
+        &["\u{23ce} resolve", "c continue", "a abort"],
+    );
+    drop(state);
+    app.close();
+}
+
 /// The same relaunch with every file resolved and staged before the kill:
 /// nothing to resolve, so no `⏎ resolve` on the line, and the pane lands on
 /// STAGED — what `c` would commit.
@@ -1755,6 +1786,55 @@ fn capture_banner_for_docs_shots() {
     }
     drop(state);
     drop(on_the_graph);
+    app.close();
+}
+
+/// What right looks like (`m8-banner-bar-q-{187x50,80x24}.txt`, m8-13b):
+/// a merge stopped at a conflict, the banner focused, the graph showing.
+/// At 187 the bottom row is the stop's words, then the banner's own keys
+/// with `q quit` **last** — `⏎ resolve  c finish  a abort  M mergetool
+/// e edit  ⇥ graph  q quit`. At 80 `q quit` is the one key gone: it gave way
+/// first, so `merge stopped` still fits before the other six. Colour
+/// unverified.
+///
+/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it conflict_interim::capture_banner_bar_with_q`.
+#[test]
+fn capture_banner_bar_with_q() {
+    let scratch = about_to_conflict();
+    let repo = scratch.path();
+    let (app, state) = App::open(repo);
+    let state = stopped_on_the_conflict(&app, state);
+    assert!(state.banner_focus, "the banner has the keyboard");
+    for (label, columns, rows, ends) in [
+        ("187x50", 187u16, 50u16, "\u{21e5} graph  q quit"),
+        ("80x24", 80, 24, "e edit  \u{21e5} graph"),
+    ] {
+        let mut shot = state.clone();
+        if let Some(facts) = shot.repository.as_mut() {
+            facts.path = std::path::PathBuf::from("/code/api");
+        }
+        let sized = app.resize(&shot, columns, rows);
+        let drawn = frame_at(&sized, columns, rows, Some(Clock::Fixed(CONFLICT_NOW)));
+        let bar = drawn.last().expect("a bottom row");
+        assert!(
+            bar.trim_end().ends_with(ends) && bar.contains("merge stopped"),
+            "{label}: the bar ends `{ends}` after the stop's words: {bar:?}"
+        );
+        check_shot(
+            &format!("m8-banner-bar-q-{label}.txt"),
+            &format!(
+                "# m8-banner-bar-q-{label}.txt: {columns}x{rows}, a merge stopped at a \
+                 conflict, the banner focused (m8-polish-and-ship/13b). Drawn by\n\
+                 # `view::view` from a real AppState over a real repository \
+                 (conflict_interim::capture_banner_bar_with_q). Not a pty capture: \
+                 no colour (rule 5).\n\
+                 # What right looks like: the bottom row reads `merge stopped \u{b7} \u{2026}` and \
+                 ends `{ends}`.\n\n{}\n",
+                drawn.join("\n")
+            ),
+        );
+    }
+    drop(state);
     app.close();
 }
 

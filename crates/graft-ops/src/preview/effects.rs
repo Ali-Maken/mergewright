@@ -174,6 +174,116 @@ pub struct LeftBehind {
     pub on: Oid,
 }
 
+/// A local branch forked off a commit a rewrite replaces (ADR-0059 §1): off
+/// the line, its tip outside the replayed range, meeting the line's old top
+/// at a replaced commit, with no merge in its own commits. Its fate is fixed
+/// in the preview and run as previewed (§2).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Fork {
+    /// The branch, in full (`refs/heads/feature-x`).
+    pub branch: RefName,
+    /// The replaced commit it leaves the line at (the old id): where it meets
+    /// the line's old top, [`LeftBehind::on`] for the same branch.
+    pub at: Oid,
+    /// Its own commits: `at..branch`.
+    pub commits: usize,
+    /// Whether it follows, and where to, or why it stays.
+    pub fate: ForkFate,
+}
+
+/// What a rewrite does with a [`Fork`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ForkFate {
+    /// Its own commits are replayed onto the new `at`, in the same rebase.
+    Follows {
+        /// What the new `at` is: the ghost of `at`'s row (or of the row
+        /// below it, when `at`'s row is dropped).
+        onto: Target,
+    },
+    /// It stays on the old commits, and why.
+    Stays(WhyStays),
+}
+
+/// Why a [`Fork`] stays where it is (ADR-0059 §2). A forecast hole is never
+/// read as clean.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum WhyStays {
+    /// One of its own commits would conflict, replayed onto the new `at`.
+    WouldConflict {
+        /// That commit.
+        commit: Oid,
+        /// The conflicting paths, in the order git named them.
+        paths: Vec<PathBuf>,
+    },
+    /// The line's own forecast stops at or below `at`'s row: nothing above
+    /// the stop is checked.
+    StopsBelow,
+    /// A merge lies in its own commits.
+    HasMerge {
+        /// The first merge found.
+        merge: Oid,
+    },
+    /// Its upstream holds one of its own commits: moving it would need a
+    /// force-push he never asked for.
+    Pushed {
+        /// The upstream, in full (`refs/remotes/origin/feature-x`).
+        upstream: RefName,
+    },
+    /// It is checked out in another worktree, which git would refuse to
+    /// move under it.
+    Elsewhere {
+        /// That worktree.
+        worktree: PathBuf,
+    },
+    /// It shares commits with another fork that follows: a fork of a fork,
+    /// which Graft does not move (ADR-0059 §2).
+    Nested {
+        /// The fork it shares commits with.
+        on: RefName,
+    },
+    /// It is the default branch.
+    DefaultBranch,
+    /// Past the first [`LEFT_BEHIND_CAP`]: the fate of every fork counted in
+    /// [`PreviewPlan::forks_more`], which is never named, so never in
+    /// [`PreviewPlan::forks`].
+    PastCap,
+    /// Its forecast was not made, and why (an old git, more than
+    /// [`FORECAST_CAP`] commits, a read that failed).
+    NotChecked(String),
+}
+
+impl WhyStays {
+    /// graft-ops' clause, no keys: `would conflict in src/a.rs`.
+    #[must_use]
+    pub fn words(&self) -> String {
+        match self {
+            Self::WouldConflict { paths, .. } => match paths.as_slice() {
+                [] => "would conflict".to_owned(),
+                [one] => format!("would conflict in {}", one.display()),
+                [first, rest @ ..] => format!(
+                    "would conflict in {} and {} more",
+                    first.display(),
+                    rest.len()
+                ),
+            },
+            Self::StopsBelow => "the rewrite stops below it".to_owned(),
+            Self::HasMerge { .. } => "has a merge".to_owned(),
+            Self::Pushed { upstream } => format!(
+                "pushed to {}",
+                String::from_utf8_lossy(upstream.shorthand())
+            ),
+            Self::Elsewhere { worktree } => format!("checked out in {}", worktree.display()),
+            Self::Nested { on } => format!(
+                "forked from {}, which moves",
+                String::from_utf8_lossy(on.shorthand())
+            ),
+            Self::DefaultBranch => "the default branch".to_owned(),
+            Self::PastCap => format!("past the first {LEFT_BEHIND_CAP}"),
+            Self::NotChecked(why) => format!("not checked: {why}"),
+        }
+    }
+}
+
 /// Everything the preview box and the ghost rows are drawn from.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PreviewPlan {
@@ -223,9 +333,21 @@ pub struct PreviewPlan {
     /// replays, at most [`LEFT_BEHIND_CAP`]: only the line follows
     /// (ADR-0047 §4), and these stay on the old commits (m7/37). Empty for
     /// every kind but a rebase or rewrite.
+    ///
+    /// Since ADR-0059 a rewrite's forks that follow are not here: it holds
+    /// the forks that stay, and a backup parked at a tip of the line (not a
+    /// fork, §1). `r` lists every such branch as before (its forks never
+    /// follow yet). Read [`PreviewPlan::forks`] for the fates.
     pub left_behind: Vec<LeftBehind>,
     /// How many more such branches there are past the named ones.
     pub left_behind_more: usize,
+    /// A rewrite's forks (ADR-0059), the first [`LEFT_BEHIND_CAP`] named,
+    /// each with its fate; in order: the ones that follow, then the ones
+    /// that stay, each oldest fork point first. Empty for every other kind,
+    /// `r` included.
+    pub forks: Vec<Fork>,
+    /// Forks past the named ones: each stays ([`WhyStays::PastCap`]).
+    pub forks_more: usize,
     /// Each resulting commit whose message Graft writes (a reword, or the
     /// kept row of a squash group), keyed by its ghost (m7/05).
     pub messages: Vec<(Target, String)>,

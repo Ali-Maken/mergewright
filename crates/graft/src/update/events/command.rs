@@ -60,6 +60,12 @@ pub enum Command {
     /// Stop a job whose result is no longer wanted. Cooperative: a job that has
     /// not started is dropped, and a running one stops at its next check.
     CancelJob(JobId),
+    /// Job `JobId` is a write that cannot stop halfway
+    /// (`update::remote::Stoppable::No`): no cancel may reach it, and the
+    /// pool's shutdown waits for it to end rather than signalling its git
+    /// child (m8-polish-and-ship/13b). Sent by `remote::launched`, ahead of
+    /// the command that queues the job.
+    Unstoppable(JobId),
     /// Hand the user's answer to the credential question job `JobId` is
     /// waiting on (m4-remotes/06). Dropped, zeroed, if the job has ended.
     AnswerCredential(JobId, crate::update::credential::Answer),
