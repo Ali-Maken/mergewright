@@ -1,0 +1,26 @@
+m8-polish-and-ship/08: what right looks like — `o` opens the boxed `open ›` prompt under the list, prefilled `~/code/` with the cursor `▏` after it; the bar row now holds only the prompt's keys `⏎ open · ⇥ complete · esc cancel`. Colour unverified (rule 5).
+
+ graft · no repository here
+ ~/code
+
+  o  Open…     i  Init
+
+  RECENT
+  ▸ payments-service    ~/code/payments-service     yesterday
+    web-dashboard       ~/code/web-dashboard        3 days ago
+    dotfiles            ~/dotfiles                  last week
+
+  ╭ open ────────────────────────────────────────────────────────────────────╮
+  │  open › ~/code/▏                                                         │
+  │                                                                          │
+  ╰──────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · ⇥ complete · esc cancel

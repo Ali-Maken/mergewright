@@ -9,7 +9,7 @@ use graft_core::capabilities::Supported;
 use graft_term::Transport;
 use graft_term::detect::{self, TtyHost};
 use graft_term::input::{FenceAnswers, InputMux, Inputs};
-use ratatui::Terminal;
+use ratatui::Terminal as Frames;
 use ratatui::backend::CrosstermBackend;
 
 use super::graphics::Graphics;
@@ -58,7 +58,7 @@ fn start_redetector(
 /// is a plain line on a plain terminal, never an alternate screen flashed for
 /// the length of the capability probe. `graph.default_branch` is ADR-0001's
 /// rule 1, so it goes where the branches are resolved.
-fn open_repository(
+pub(super) fn open_repository(
     repo_path: &std::path::Path,
     config: &crate::config::Config,
 ) -> Result<Arc<RepoStore>, String> {
@@ -98,7 +98,90 @@ fn open_session() -> io::Result<TerminalSession> {
     Ok(session)
 }
 
-/// Run Graft until the user quits or a signal says stop.
+/// The terminal Graft draws on, opened **once per process** by `main` and
+/// handed from place to place (m8-polish-and-ship/08, decision 1): the
+/// alternate screen is entered once, the capability probe asked once, the
+/// crash hook installed once, and the terminal given back once, by
+/// [`Terminal::close`]. A switch from the empty state to a repository (or,
+/// later, between repositories) keeps all of it.
+pub struct Terminal {
+    session: TerminalSession,
+    /// The process's input reader. Each place takes a fresh [`Inputs`] from
+    /// it ([`Terminal::inputs`]) and holds it back when done.
+    pub(super) mux: InputMux,
+    /// The first place's `Inputs`, from the same call that started the mux.
+    first: Option<Inputs>,
+    environment: detect::Environment,
+    /// What the one probe found.
+    pub(super) capabilities: graft_core::capabilities::Capabilities,
+}
+
+impl Terminal {
+    /// Take the terminal over: raw mode and the alternate screen, the crash
+    /// hook, the input reader, then the probe — the only caller of
+    /// [`probe`] on the `main` path.
+    ///
+    /// # Errors
+    /// The terminal could not be set up or probed.
+    pub fn open() -> io::Result<Self> {
+        let session = open_session()?;
+        // The mux owns stdin for the process (ticket m1-the-graph/20). It
+        // starts before the probe, so the probe's replies reach detection
+        // through a waiter while any key typed meanwhile is queued, in order,
+        // for the first place.
+        let (mux, inputs) = InputMux::on_stdin()?;
+        let environment = detect::Environment::from_process();
+        let capabilities = probe(&environment, &mux, &session)?;
+        Ok(Self {
+            session,
+            mux,
+            first: Some(inputs),
+            environment,
+            capabilities,
+        })
+    }
+
+    /// The `Inputs` for the place about to run: the first one, then a fresh
+    /// one from the mux each time (keys held since the last place come
+    /// first, `InputMux::inputs`).
+    pub(super) fn inputs(&mut self) -> Inputs {
+        match self.first.take() {
+            Some(inputs) => inputs,
+            None => self.mux.inputs(),
+        }
+    }
+
+    /// Give the terminal back, then report what the last place left behind:
+    /// jobs that would not stop, a restore that failed.
+    ///
+    /// # Errors
+    /// The place's own failure, or the restore's.
+    pub fn close(self, ran: Ran) -> io::Result<Exit> {
+        wind_down(&self.session, ran.shutdown, ran.outcome)
+    }
+}
+
+/// How one place ended: the loop's outcome and the job pool's shutdown.
+pub struct Ran {
+    pub(super) outcome: io::Result<Exit>,
+    pub(super) shutdown: Shutdown,
+}
+
+impl Ran {
+    /// A place that ran no jobs (the empty state).
+    pub(super) fn without_jobs(outcome: io::Result<Exit>) -> Self {
+        Self {
+            outcome,
+            shutdown: Shutdown::Clean,
+        }
+    }
+}
+
+/// Run Graft on one repository until the user quits or a signal says stop:
+/// open the terminal, run, give it back. Kept as open-run-close for the
+/// gallery and the walks, which call it again and again (each call probes
+/// again, as it always did); `main` goes through [`Terminal`] and
+/// `places::drive` instead.
 ///
 /// The terminal is set up before the loop and restored after it, in that
 /// order, whatever happens in between — including a panic, which the hook
@@ -126,17 +209,45 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
         return run_headless(&repo_path, &config, repos);
     }
 
-    let session = open_session()?;
+    let mut terminal = Terminal::open()?;
+    let ran = run_repo(
+        &mut terminal,
+        repos,
+        &repo_path,
+        &config,
+        harness,
+        Arrival::default(),
+    )?;
+    terminal.close(ran)
+}
 
-    // The mux owns stdin for the process (ticket m1-the-graph/20); this run
-    // gets its own `Inputs` from it, and a wrapper that runs again (the
-    // gallery) gets the next one (ticket 35c). It starts before the probe,
-    // so the probe's replies reach detection through a waiter while any key
-    // typed meanwhile is queued, in order, for the loop.
-    let (mux, inputs) = InputMux::on_stdin()?;
-    let environment = detect::Environment::from_process();
-    let capabilities = probe(&environment, &mux, &session)?;
-    let mut settled = Session::settle(&config, capabilities);
+/// How a repository's run begins, beyond the repository itself.
+#[derive(Debug, Default)]
+pub(super) struct Arrival {
+    /// Put on the first frame's status row (`recent: not saved · …`).
+    pub status: Option<String>,
+    /// Opened from the empty state: the cursor lands on `HEAD`'s row
+    /// (`update::lands_on_head_at_open`), not the top row.
+    pub on_head: bool,
+}
+
+/// One repository's run on an open [`Terminal`]: the job pool, the signal
+/// and resize watchers, the input forwarder and the loop. Everything it
+/// starts it stops before returning, except the terminal itself.
+///
+/// # Errors
+/// Setting the run up failed; the terminal is still the caller's.
+pub(super) fn run_repo(
+    term: &mut Terminal,
+    repos: Arc<RepoStore>,
+    repo_path: &std::path::Path,
+    config: &crate::config::Loaded,
+    harness: crate::update::Harness,
+    arrival: Arrival,
+) -> io::Result<Ran> {
+    let inputs = term.inputs();
+    let mux = &term.mux;
+    let mut settled = Session::settle(config, term.capabilities.clone());
 
     let (mut wakes, sender) = ChannelWakes::new();
     let signals = signals::watch(sender.clone())?;
@@ -148,24 +259,30 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     // root a porcelain path is joined onto (m3/05 review, Major 2).
     let workdir = repos.workdir().ok().flatten();
     let jobs = JobRunner::with_default_size(sender.clone(), repos)?;
-    let redetector = start_redetector(&environment, &mux, &settled, &sender)?;
+    let redetector = start_redetector(&term.environment, mux, &settled, &sender)?;
     let resizes = signals::watch_resizes(sender.clone(), redetector.clone())?;
     let Listening {
         forwarder,
         mut tracer,
         out,
         fences,
-    } = listen(&mux, inputs, sender, redetector, &settled)?;
+    } = listen(mux, inputs, sender, redetector, &settled)?;
 
-    let (mut terminal, state) = terminal_and_state(
+    let (mut terminal, mut state) = terminal_and_state(
         out,
         &jobs,
-        &repo_path,
+        repo_path,
         &settled,
         harness,
         &config.config,
         common_dir.as_deref(),
     )?;
+    if let Some(reason) = arrival.status {
+        state.status = crate::update::Status::Sticky { reason, keys: None };
+    }
+    if arrival.on_head {
+        crate::update::lands_on_head_at_open(&mut state);
+    }
     let mut graphics = Graphics::new(mux.waiter(), &settled.capabilities)
         .with_transport(Transport::for_tmux(&settled.capabilities.tmux));
     let outcome = pump_with(
@@ -177,12 +294,17 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
         &jobs,
         &mut settled,
         state,
-        outside(&session, &mux, common_dir.as_deref(), workdir.as_deref()),
+        outside(
+            &term.session,
+            mux,
+            common_dir.as_deref(),
+            workdir.as_deref(),
+        ),
         &mut tracer,
     );
     // Answers from here on are for nobody; they go back to being replies.
     drop(fences);
-    let outcome = hand_back_input(&mux, forwarder, wakes, outcome);
+    let outcome = hand_back_input(mux, forwarder, wakes, outcome);
     // Dropped before the restore so that its own teardown (it shows the cursor
     // it hid) goes out while the session is still in charge of the terminal.
     drop(terminal);
@@ -190,7 +312,14 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     // Stop the pool before the terminal goes back, so that a job still writing
     // its result cannot outlive the screen it was writing for.
     let shutdown = jobs.shutdown(jobs::SHUTDOWN_GRACE);
-    wind_down(&session, shutdown, [signals, resizes], outcome)
+    // Let the signal threads end. The mux's reader is the process's, not
+    // this run's (it is blocked waiting on the terminal until the user
+    // types), so it is left to die with the process. It holds nothing that
+    // matters.
+    for watcher in [signals, resizes] {
+        watcher.close();
+    }
+    Ok(Ran { outcome, shutdown })
 }
 
 /// What the loop may reach outside itself: the repository's directories,
@@ -256,22 +385,13 @@ fn listen(
     })
 }
 
-/// The run is over and the pool stopped: end the signal threads, give the
+/// The run is over, the pool stopped and the watchers closed: give the
 /// terminal back, and pick the error the process exits on.
 fn wind_down(
     session: &TerminalSession,
     shutdown: Shutdown,
-    watchers: [signal_hook::iterator::Handle; 2],
     outcome: io::Result<Exit>,
 ) -> io::Result<Exit> {
-    // Let the signal threads end. The mux's reader is the process's, not
-    // this run's (it is blocked waiting on the terminal until the user
-    // types), so it is left to die with the process. It holds nothing that
-    // matters.
-    for watcher in watchers {
-        watcher.close();
-    }
-
     // Restore explicitly rather than leaving it to `Drop`, so a restore
     // failure can be returned instead of merely printed.
     let restored = session.restore();
@@ -296,12 +416,12 @@ fn answer_fences(mux: &InputMux, wakes: Sender<Wake>) -> FenceAnswers {
 /// must step once and then quit, not step and lose the `q`. Joining the
 /// forwarder first makes the hand-back complete — it ends once `hold` drops
 /// its `Inputs` sender, after forwarding all it had.
-fn hand_back_input(
+pub(super) fn hand_back_input<T>(
     mux: &InputMux,
     forwarder: input::Forwarder,
     wakes: ChannelWakes,
-    outcome: io::Result<Exit>,
-) -> io::Result<Exit> {
+    outcome: io::Result<T>,
+) -> io::Result<T> {
     mux.hold();
     let outcome = outcome.and_then(|exit| forwarder.finish().map(|()| exit));
     mux.give_back(wakes.unhandled_input());
@@ -395,8 +515,8 @@ fn terminal_and_state(
     harness: crate::update::Harness,
     config: &crate::config::Config,
     common_dir: Option<&std::path::Path>,
-) -> io::Result<(Terminal<RowClear<CrosstermBackend<TerminalOut>>>, AppState)> {
-    let terminal = Terminal::new(RowClear(CrosstermBackend::new(out)))?;
+) -> io::Result<(Frames<RowClear<CrosstermBackend<TerminalOut>>>, AppState)> {
+    let terminal = Frames::new(RowClear(CrosstermBackend::new(out)))?;
     let size = terminal.size()?;
     let size = Size {
         columns: size.width,

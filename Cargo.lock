@@ -1586,6 +1586,7 @@ dependencies = [
  "graft-term",
  "graft-ui",
  "insta",
+ "nix",
  "ratatui",
  "serde",
  "serde_json",

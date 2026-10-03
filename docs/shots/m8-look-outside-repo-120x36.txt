@@ -1,0 +1,38 @@
+m8-polish-and-ship/08: what right looks like — started in `~/code`, which is no repository: the header says so, the folder line under it, `o Open… i Init`, then RECENT newest first with `▸` on the newest (selection fill under it), name · `~` path · age; a `─` rule over the bar row `o open… · i init · ⏎ open the selected · q quit`. No clone, no tour. Colour unverified (rule 5).
+
+ graft · no repository here
+ ~/code
+
+  o  Open…     i  Init
+
+  RECENT
+  ▸ payments-service    ~/code/payments-service     yesterday
+    web-dashboard       ~/code/web-dashboard        3 days ago
+    dotfiles            ~/dotfiles                  last week
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ o open… · i init · ⏎ open the selected · q quit

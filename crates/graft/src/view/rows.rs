@@ -223,7 +223,7 @@ fn location(facts: &RepositoryFacts, home: Option<&Path>) -> Location {
 
 /// `path` with a leading `home` written `~`, the way a shell prompt shows
 /// it. A path outside `home` (or no `home` at all) is returned whole.
-fn home_relative(path: &Path, home: Option<&Path>) -> PathBuf {
+pub(crate) fn home_relative(path: &Path, home: Option<&Path>) -> PathBuf {
     match home.and_then(|home| path.strip_prefix(home).ok()) {
         // Only a real directory counts: `HOME=/` would turn every path
         // into `~/…`, which says nothing.
