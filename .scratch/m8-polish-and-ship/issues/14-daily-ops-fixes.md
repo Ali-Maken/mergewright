@@ -167,3 +167,64 @@ Touches: `Applied` literal sites (compiler-enumerated, all updated); `AfterState
 `answer` has a catch-all → `Incomplete`; workspace builds); `edits_back`/`resumed_words` callers (grep, all
 updated, `banner/tests/resume_words.rs` passes `Applied`); `RewriteRequest` matchers (`jobs/rewrite.rs`,
 `jobs/rewrite_open.rs`, compiler); m7 walks on `a` (whole nextest green, 5190 passed). MAP.md graft-ops and graft.
+
+## Review fixes (builder, 2026-10-03) — docs/reviews/m8-14-daily-ops.md, five Majors
+
+Scout: used `.scratch/m8-polish-and-ship/scouts/14-daily-ops.md` and `14b-fork-follows.md`; no new scout
+(the review re-located every line). Session **compacted** once mid-work; nothing remains open from the five
+Majors except what is listed under Open below. All fixes are cause fixes.
+
+- [x] **Major 1 — `Esc` left `reword_line` on, so `c ⏎` planned a reword.** Cause: the reword editor was
+  closed into `commit_draft`, which `c` reopens. Now a reword editor closes into its own
+  `AmendInto::reword_draft` (`update/amend_into/reword.rs` `keep`), never `commit_draft`
+  (`commit_editor/keys.rs` `close`). Tests: `update::amend_into::tests::reword::esc_on_a_reword_then_c_commits_the_staged_changes`
+  (seen red), `esc_on_a_reword_keeps_its_text_for_the_next_a` (seen red).
+- [x] **Major 2 — `a` opened the editor before the plan's refusals; typed text lost.** Cause: `jobs/rewrite.rs`
+  answered `RewordHead` without planning it. Now `reword_or_refused` plans `RewordHead { message: "" }` first:
+  a refusal (root commit, merge, forked line, old git) is answered at `a`, no editor. Text typed into an
+  editor later refused or whose preview closes is kept (keyed on `HEAD`'s oid) and comes back on the next `a`.
+  Tests: `it::m7_walk::amend_into::a_reword_that_cannot_run_is_refused_at_a` (seen red before the
+  fix: the editor opened at `a`), `update::amend_into::tests::reword::a_refused_reword_keeps_the_typed_text_for_the_next_a`
+  (seen red), `a_closed_reword_preview_keeps_the_typed_text_for_the_next_a` (seen red),
+  `a_kept_reword_text_is_not_put_on_another_head`.
+- [x] **Major 3 — silent came-back paths.** Three: `with_came_back`'s `Err(_) => {}`; `Back` after git failed
+  (no `Applied`); the journal-write failure; and the `StagingNotKept` line. Now `came_back::read` returns
+  `CameBackUnread` on failure (never dropped), `Outcome::Back` carries `came_back` so `back_but_git_failed`
+  appends the words to git's line, `answer::unwritten_words` names them in the `Journal` error, and
+  `staging_not_kept_rungs` leads with them. Tests: graft-ops
+  `apply::set_aside::answer::tests::a_failed_operation_after_a_clean_put_back_names_what_came_back` (seen red),
+  `a_clean_put_back_carries_what_came_back_on_applied` (seen red), `it::set_aside::a_journal_failure_after_a_clean_put_back_names_what_came_back`
+  (seen red by mutation); graft `update::operate::tests::staging_not_kept::operated_staging_not_kept_names_what_came_back`
+  (seen red), `staging_not_kept_names_a_file_back_from_the_index`.
+- [x] **Major 4 — captures and the `reword_words` test.** Test: `jobs::rewrite::tests::reword_words_name_the_old_subject_and_the_new`
+  (seen red by mutating the title). Captures, each with a what-right-looks-like header, colour unverified (rule 5),
+  judged by the user (rule 6): `docs/shots/m8/reword-preview-120x40.txt` (`it::m7_walk::amend_into::reword_head_with_a_line_built_on_it`,
+  now also asserts the box text on screen), `docs/shots/m8/came-back-landed-120x40.txt`
+  (`it::m7_walk::switch::a_file_back_from_the_index_is_named_after_a_switch`, real `. ⏎ y` over a staged-new,
+  deleted `notes.md`). Both re-run stable without `GRAFT_UPDATE_SHOTS`.
+- [x] **Major 5 — files over 400 lines.** `graft-ops apply/set_aside.rs` 441 → 375 (came-back reads to
+  `came_back.rs`, `unwritten_words` to `answer.rs`); `jobs/rewrite.rs` 496 → 352 (`rewrite/words.rs`);
+  `update/amend_into.rs` 472 → 362 (`amend_into/landing.rs`, `amend_into/reword.rs`). Also, grown by this
+  round and split back: `update/commit_editor.rs` → 396 (`commit_editor/returned.rs`),
+  `update/operate/outcome.rs` 452 → 402 (`outcome/staging_not_kept.rs`; it was 452 before this round, still 2
+  over — not named by the review). Checked: `wc -l`.
+
+Gates (workspace-wide, own `CARGO_TARGET_DIR`): fmt pass, clippy `-D warnings` pass, nextest 5336 passed / 9
+skipped (captures included), doctests pass.
+
+**Touches:**
+- `staging_not_kept_status` callers: `operate/outcome.rs`, `banner/resume.rs` (both pass `&applied.came_back`),
+  their tests (`banner/tests/resume_words.rs`, `operate/tests/staging_not_kept.rs`) — grep, compiler.
+- `amend_into` re-exports (`landed`, `tags_resolved`, `write_claimed`, `keep_reword`, `kept_reword`,
+  `reword_confirmed`) used by `update/mod.rs`, `operate.rs`, `outcome.rs`, `preview/answer.rs`,
+  `commit_editor/keys.rs`, `commit_editor.rs` — compiler; `landed` now also clears `reword_draft`.
+- `commit_editor` re-exports (`editor_returned`, `template_arrived`) used by `update/mod.rs` — compiler.
+- `commit_draft` (`c`'s draft): no longer receives a reword's text — `esc_on_a_reword_then_c_commits_the_staged_changes`.
+- graft-ops `set_aside::close` / `answer` / `Outcome::Back` (all literals updated; answer tests).
+- `jobs/rewrite.rs` `plan` → one extra `rewrite::plan` per `a`-reword (facts read once, shared).
+- m7 walks on `a` and the switch walk: whole nextest green. MAP.md: graft, graft-ops.
+
+**Open (for the conductor; not changed):**
+- Journal `Aborted` reason does not name came-back files (review did not require it).
+- `outcome.rs` 402 lines (pre-existing over; shrank 50).
+- Review Minors 1-4 not done (out of this round's scope).

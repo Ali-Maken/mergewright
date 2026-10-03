@@ -673,6 +673,32 @@ fn a_journal_failure_after_a_clash_names_the_stash() {
     assert_eq!(stash_commits(&repo).len(), 1, "S kept");
 }
 
+/// The outcome line cannot be written after a clean put-back that brought
+/// a staged-new file he deleted back from the index: the error names it,
+/// since no landing line will (review m8-14 Major 3).
+#[test]
+fn a_journal_failure_after_a_clean_put_back_names_what_came_back() {
+    let repo = diverged();
+    repo.write("notes.md", b"notes\n");
+    repo.git(&["add", "notes.md"]);
+    std::fs::remove_file(repo.path().join("notes.md")).expect("removed");
+    post_checkout(
+        &repo,
+        "j=$(git rev-parse --git-path graft/undo-journal.jsonl) && rm -f \"$j\" && mkdir \"$j\"",
+    );
+    let op = checkout_to(&repo, "refs/heads/feature");
+    let error = match try_run(&repo, &op, NOW) {
+        Err(error @ ApplyError::Journal { .. }) => error,
+        other => panic!("the outcome line should fail: {other:?}"),
+    };
+    let words = error.explain();
+    assert!(
+        words.contains("notes.md came back from the index"),
+        "{words}"
+    );
+    assert_eq!(repo.read("notes.md"), b"notes\n", "git put it back");
+}
+
 /// The status cannot be read after the put-back (a config value `git
 /// status` refuses, set while the checkout runs): the error names
 /// `stash@{n}`, not only the entry's reason (73 review, m2).

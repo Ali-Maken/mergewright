@@ -14,11 +14,14 @@ use graft_core::ref_name::RefName;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, Stop};
 use graft_git::version::{GitVersion, system_git};
-use graft_ops::absorb::{AbsorbMap, StagedHunk, StaysWhy};
-use graft_ops::operation::{FactsScope, Refusal, Tip};
+use graft_ops::operation::{FactsScope, Refusal, RepoFacts, Tip};
 use graft_ops::rewrite::{Dependents, RewriteError, RewriteParams, RewriteRequest, TodoAction};
 
 use crate::repos::RepoStore;
+
+mod words;
+
+pub(crate) use words::{absorb_words, amend_into_words, reword_words};
 
 /// What planning a put-in came back with.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -106,17 +109,47 @@ pub(super) fn plan(
             return Ok(RewritePlanned::NothingBuiltOnHead);
         }
     }
-    let answer = planned(&handle, &git, request, default.as_ref(), stop)?;
+    let facts = graft_ops::facts::read_facts(&handle, git, stop, &FactsScope::default())
+        .map_err(|error| error.explain())?;
+    let answer = planned(&handle, &git, request, &facts, default.as_ref(), stop)?;
     // `a` on `HEAD` with nothing staged and a line built on it: his ruling
     // is "let him edit the message" (m8-polish-and-ship/14), not the
-    // `nothing staged` refusal an older target gets.
+    // `nothing staged` refusal an older target gets — when the reword can
+    // run at all.
     if let (Some(head), RewritePlanned::Refused(Refusal::NothingStagedFor { target })) =
         (head, &answer)
         && *target == head.oid
     {
-        return Ok(RewritePlanned::RewordHead);
+        return reword_or_refused(&handle, &git, &facts, default.as_ref(), stop);
     }
     Ok(answer)
+}
+
+/// Whether `HEAD`'s reword can run, asked of the plan before the editor
+/// opens: `nothing staged` is `AmendInto`'s first refusal, ahead of the
+/// root, merge, fork, other-worktree and git-version checks the reword's
+/// own plan makes. Answered after `⏎`, those refusals threw away the
+/// message he had typed (review m8-14 Major 2); here they are said at `a`.
+///
+/// The message is not among the plan's checks, so it is asked with none.
+/// `PlainAmend` — no line after all — is today's amend.
+fn reword_or_refused(
+    handle: &RepoHandle,
+    git: &GitVersion,
+    facts: &RepoFacts,
+    default: Option<&RefName>,
+    stop: &dyn Stop,
+) -> Result<RewritePlanned, String> {
+    let probe = RewriteRequest::RewordHead {
+        message: String::new(),
+    };
+    match graft_ops::rewrite::plan(handle, git, &probe, facts, default, stop) {
+        Ok(_) => Ok(RewritePlanned::RewordHead),
+        Err(RewriteError::Refused(Refusal::PlainAmend)) => Ok(RewritePlanned::NothingBuiltOnHead),
+        Err(RewriteError::Refused(refusal)) => Ok(RewritePlanned::Refused(refusal)),
+        Err(RewriteError::Facts(error)) => Err(error.explain()),
+        Err(RewriteError::Stopped) => Err("stopped".to_owned()),
+    }
 }
 
 /// The system git's version, kept from the first successful read in this
@@ -152,12 +185,11 @@ fn planned(
     handle: &RepoHandle,
     git: &GitVersion,
     request: &RewriteRequest,
+    facts: &RepoFacts,
     default: Option<&RefName>,
     stop: &dyn Stop,
 ) -> Result<RewritePlanned, String> {
-    let facts = graft_ops::facts::read_facts(handle, *git, stop, &FactsScope::default())
-        .map_err(|error| error.explain())?;
-    let params = match graft_ops::rewrite::plan(handle, git, request, &facts, default, stop) {
+    let params = match graft_ops::rewrite::plan(handle, git, request, facts, default, stop) {
         Ok(params) => params,
         Err(RewriteError::Refused(refusal)) => return Ok(RewritePlanned::Refused(refusal)),
         Err(RewriteError::Facts(error)) => return Err(error.explain()),
@@ -181,7 +213,7 @@ fn planned(
             amend_into_words(*target, subject, &gains)
         }
         RewriteRequest::Absorb => {
-            let map = match graft_ops::rewrite::absorb_plan_map(handle, &facts, default, stop) {
+            let map = match graft_ops::rewrite::absorb_plan_map(handle, facts, default, stop) {
                 Ok(map) => map,
                 Err(RewriteError::Refused(refusal)) => {
                     return Ok(RewritePlanned::Refused(refusal));
@@ -268,182 +300,6 @@ pub(crate) fn parse_numstat(stdout: &[u8]) -> Vec<Gain> {
             Some(Gain { path, counts })
         })
         .collect()
-}
-
-/// `a`'s box: the title naming the target, and the `gains` row.
-pub(crate) fn amend_into_words(
-    target: Oid,
-    subject: &str,
-    gains: &[Gain],
-) -> (DoneWords, BoxWords) {
-    let short = short(target);
-    let files: Vec<String> = gains.iter().map(gain_words).collect();
-    let mut row = format!("{short}  {subject}  gains");
-    if !files.is_empty() {
-        row = format!("{row}  {}", files.join(" \u{b7} "));
-    }
-    (
-        DoneWords {
-            what: format!("put into \"{subject}\""),
-            also: None,
-        },
-        BoxWords {
-            title: format!("put your staged changes into {short} \"{subject}\""),
-            confirm: PUT_IT_IN,
-            rows: vec![row],
-        },
-    )
-}
-
-/// The confirm verb of a reword's box.
-pub const REWORD: &str = "reword";
-
-/// A reword of `HEAD` with a line built on it: the box names the old
-/// subject and the new one; the landing, the new one.
-pub(crate) fn reword_words(params: &RewriteParams, message: &str) -> (DoneWords, BoxWords) {
-    let new = message.lines().next().unwrap_or_default().trim();
-    let (short, old) = params.todo.last().map_or((String::new(), ""), |row| {
-        (short(row.commit), row.subject.as_str())
-    });
-    (
-        DoneWords {
-            what: format!("reworded \"{new}\""),
-            also: None,
-        },
-        BoxWords {
-            title: format!("reword {short} \"{old}\""),
-            confirm: REWORD,
-            rows: vec![format!("{short}  new message  {new}")],
-        },
-    )
-}
-
-/// `src/auth.rs +4 −1`; `+0`/`−0` left out; a binary file by its path alone.
-fn gain_words(gain: &Gain) -> String {
-    let Some((added, removed)) = gain.counts else {
-        return gain.path.clone();
-    };
-    let mut words = gain.path.clone();
-    if added > 0 {
-        words.push_str(&format!(" +{added}"));
-    }
-    if removed > 0 {
-        words.push_str(&format!(" \u{2212}{removed}"));
-    }
-    words
-}
-
-/// `path  lines  what` rows, the first two columns padded to their widest.
-fn aligned(all: &[(String, String, String)]) -> Vec<String> {
-    // An empty map has no widest cell: no rows, so no width is used.
-    let path_width = all
-        .iter()
-        .map(|row| row.0.chars().count())
-        .max()
-        .unwrap_or(0);
-    let lines_width = all
-        .iter()
-        .map(|row| row.1.chars().count())
-        .max()
-        .unwrap_or(0);
-    all.iter()
-        .map(|(path, lines, what)| {
-            format!("{path:<path_width$}  {lines:<lines_width$}  {what}")
-                .trim_end()
-                .to_owned()
-        })
-        .collect()
-}
-
-/// Absorb's box: one row per hunk — `→ <sha>  <subject>` or `stays staged ·
-/// <why>` — in the map's order, placed first; the landing's counts.
-pub(crate) fn absorb_words(
-    map: &AbsorbMap,
-    subjects: &BTreeMap<Oid, &str>,
-) -> (DoneWords, BoxWords) {
-    let placed: Vec<(String, String, String)> = map
-        .placed
-        .iter()
-        .map(|(hunk, target)| {
-            // Empty only if the map names a commit the plan has no row for;
-            // the row still names it by its sha, so nothing is hidden.
-            let subject = subjects.get(target).copied().unwrap_or_default();
-            (
-                hunk.path.display().to_string(),
-                lines_words(hunk),
-                format!("\u{2192} {}  {subject}", short(*target)),
-            )
-        })
-        .collect();
-    let stays: Vec<(String, String, String)> = map
-        .stays
-        .iter()
-        .map(|(hunk, why)| {
-            (
-                hunk.path.display().to_string(),
-                lines_words(hunk),
-                format!("stays staged \u{b7} {}", stays_words(*why)),
-            )
-        })
-        .collect();
-    let rows = aligned(&placed.into_iter().chain(stays).collect::<Vec<_>>());
-    let hunks = map.placed.len();
-    let mut targets: Vec<Oid> = map.placed.iter().map(|(_, target)| *target).collect();
-    targets.sort_unstable();
-    targets.dedup();
-    let staying = map.stays.len();
-    (
-        DoneWords {
-            what: format!(
-                "put {hunks} {} into {} {}",
-                plural(hunks, "hunk", "hunks"),
-                targets.len(),
-                plural(targets.len(), "commit", "commits")
-            ),
-            also: (staying > 0)
-                .then(|| format!("{staying} {} staged", plural(staying, "stays", "stay"))),
-        },
-        BoxWords {
-            title: "put staged changes into the commits they belong to".to_owned(),
-            confirm: PUT_THEM_IN,
-            rows,
-        },
-    )
-}
-
-fn plural(count: usize, one: &'static str, many: &'static str) -> &'static str {
-    if count == 1 { one } else { many }
-}
-
-/// `lines 40–44`, `line 3`; a hunk that only removes lines is named by the
-/// lines it removes from `HEAD`'s file.
-fn lines_words(hunk: &StagedHunk) -> String {
-    let range = if hunk.new.is_empty() {
-        &hunk.old
-    } else {
-        &hunk.new
-    };
-    let last = range.end.saturating_sub(1).max(range.start);
-    if last == range.start {
-        format!("line {}", range.start)
-    } else {
-        format!("lines {}\u{2013}{last}", range.start)
-    }
-}
-
-/// The words after `stays staged ·`, one per [`StaysWhy`] (note R2; 06c and
-/// 06e carries).
-pub(crate) fn stays_words(why: StaysWhy) -> &'static str {
-    match why {
-        StaysWhy::NoCommitChangedIt => "no commit on your branch changed these lines",
-        StaysWhy::TwoCommitsChangedIt => "more than one commit changed these lines",
-        StaysWhy::NewFile => "a new file · no commit has it yet",
-        StaysWhy::BeforeYourBranch => "these lines are older than your branch",
-        StaysWhy::Renamed => "a renamed file stays whole",
-        StaysWhy::Submodule => "a submodule change has no lines to put in",
-        StaysWhy::OutsideYourCommits => "these lines are older than the commits absorb reaches",
-        StaysWhy::AlreadyPushed => "the commit that changed these lines is already pushed",
-    }
 }
 
 /// The first seven hex digits, as every row names a commit.

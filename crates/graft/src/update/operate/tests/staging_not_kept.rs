@@ -9,7 +9,7 @@ use graft_ops::operation::{CommitParams, Operation};
 
 use super::applied;
 use crate::jobs::operate::Operated;
-use crate::update::operate::outcome::staging_not_kept_rungs;
+use crate::update::operate::outcome::staging_not_kept::staging_not_kept_rungs;
 use crate::update::operate::{launch, operated, staging_not_kept_status};
 use crate::update::state::{AppState, Status};
 
@@ -20,7 +20,7 @@ fn paths(names: &[&str]) -> Vec<PathBuf> {
 #[test]
 fn staging_not_kept_rungs_cut_the_edits_back_clause_first() {
     assert_eq!(
-        staging_not_kept_rungs("checkout fix", &paths(&["base.txt"])),
+        staging_not_kept_rungs("checkout fix", &paths(&["base.txt"]), &[]),
         vec![
             "checkout fix \u{2713} \u{b7} your edits are back \u{b7} staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
             "checkout fix \u{2713} \u{b7} staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
@@ -28,7 +28,7 @@ fn staging_not_kept_rungs_cut_the_edits_back_clause_first() {
         ]
     );
     assert_eq!(
-        staging_not_kept_rungs("checkout fix", &paths(&["a.txt", "b.txt", "c.txt"])),
+        staging_not_kept_rungs("checkout fix", &paths(&["a.txt", "b.txt", "c.txt"]), &[]),
         vec![
             "checkout fix \u{2713} \u{b7} your edits are back \u{b7} staging not kept: a.txt +2 more \u{b7} u undoes it, staging included".to_owned(),
             "checkout fix \u{2713} \u{b7} staging not kept: a.txt +2 more \u{b7} u undoes it, staging included".to_owned(),
@@ -43,7 +43,7 @@ fn staging_not_kept_rungs_cut_the_edits_back_clause_first() {
 fn staging_not_kept_words_match_graft_ops() {
     for names in [&["f.txt"][..], &["a.txt", "b.txt", "c.txt"][..]] {
         let paths = paths(names);
-        let rungs = staging_not_kept_rungs("checkout fix", &paths);
+        let rungs = staging_not_kept_rungs("checkout fix", &paths, &[]);
         let tail = rungs[0]
             .strip_prefix("checkout fix \u{2713} \u{b7} ")
             .expect("rung 1 leads with the done words");
@@ -56,10 +56,10 @@ fn staging_not_kept_words_match_graft_ops() {
 #[test]
 fn staging_not_kept_status_picks_the_rung_that_fits() {
     let files = paths(&["base.txt"]);
-    let rungs = staging_not_kept_rungs("checkout fix", &files);
+    let rungs = staging_not_kept_rungs("checkout fix", &files, &[]);
     for (columns, rung) in [(187, 0), (80, 1), (60, 2)] {
         let Status::Sticky { reason, keys } =
-            staging_not_kept_status("checkout fix", &files, columns)
+            staging_not_kept_status("checkout fix", &files, &[], columns)
         else {
             panic!("sticky");
         };
@@ -99,8 +99,68 @@ fn operated_takes_staging_not_kept_as_done_with_its_line() {
     );
     assert_eq!(
         state.status,
-        staging_not_kept_status("checkout fix", &paths(&["base.txt"]), 187)
+        staging_not_kept_status("checkout fix", &paths(&["base.txt"]), &[], 187)
     );
     assert!(state.land_on_head, "lands as Done does");
     assert_eq!(state.lands, None);
+}
+
+/// Review m8-14 Major 3: a staged-new file he deleted came back with the
+/// put-back, and the staging of another did not. The fallback's line names
+/// the file back on disk on every rung a usable row reaches; only a last
+/// rung, for a row too narrow for it, drops it.
+#[test]
+fn staging_not_kept_names_a_file_back_from_the_index() {
+    assert_eq!(
+        staging_not_kept_rungs(
+            "checkout fix",
+            &paths(&["base.txt"]),
+            &paths(&["notes.md"])
+        ),
+        vec![
+            "checkout fix \u{2713} \u{b7} your edits are back \u{b7} notes.md came back from the index \u{b7} staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
+            "checkout fix \u{2713} \u{b7} notes.md came back from the index \u{b7} staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
+            "notes.md came back from the index \u{b7} staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
+            "staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
+        ]
+    );
+}
+
+/// `operated` reads what came back off the `Applied` it is answered with.
+#[test]
+fn operated_staging_not_kept_names_what_came_back() {
+    let mut state = AppState::default();
+    state.size.columns = 187;
+    let mut next = 300;
+    let mut next_id = move || {
+        next += 1;
+        JobId::new(next)
+    };
+    let mut commands = Vec::new();
+    let commit = Operation::Commit(CommitParams {
+        message: "m".to_owned(),
+        sign_off: false,
+        no_verify: false,
+        allow_empty: false,
+    });
+    launch(&mut state, &mut commands, commit, &mut next_id).expect("no write is running");
+    let id = state.operating.expect("launched");
+    let mut done = applied("checkout fix", Refresh::Everything);
+    done.came_back = paths(&["notes.md"]);
+    let _refresh = operated(
+        &mut state,
+        id,
+        Operated::StagingNotKept {
+            applied: done,
+            paths: paths(&["base.txt"]),
+        },
+        &mut next_id,
+    );
+    let Status::Sticky { reason, .. } = &state.status else {
+        panic!("sticky: {:?}", state.status);
+    };
+    assert!(
+        reason.contains("notes.md came back from the index"),
+        "{reason}"
+    );
 }

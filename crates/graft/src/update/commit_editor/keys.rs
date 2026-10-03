@@ -169,7 +169,10 @@ pub(super) fn with_editor(state: &mut AppState, f: impl FnOnce(&mut CommitEditor
     }
 }
 
-/// `Esc`: close, keeping a non-empty draft for the next `c` this session.
+/// `Esc`: close, keeping a non-empty draft for the next `c` this session —
+/// or, for a reword editor, for the next `a`: its mode describes `HEAD` as
+/// it was when `a` was pressed, and `c` is never a reword (review m8-14
+/// Major 1).
 pub(super) fn close(state: &mut AppState) {
     // Whatever `$EDITOR` is about to hand back belongs to an editor that is
     // no longer on screen.
@@ -177,6 +180,10 @@ pub(super) fn close(state: &mut AppState) {
     let Some(editor) = state.commit_editor.take() else {
         return;
     };
+    if editor.reword_line {
+        crate::update::amend_into::keep_reword(state, editor);
+        return;
+    }
     state.commit_draft = (!editor.is_empty()).then_some(editor);
 }
 
@@ -309,10 +316,11 @@ pub(super) fn commit(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) 
     if editor.reword_line {
         // A line is built on `HEAD`: the reword is a rewrite, planned and
         // previewed like an amend with dependents (m8-polish-and-ship/14).
-        let message = editor.message();
-        state.commit_editor = None;
+        // The editor goes with it, kept until the reword lands.
         let mut commands = Vec::new();
-        crate::update::amend_into::reword_confirmed(state, &mut commands, message, next_id);
+        if let Some(editor) = state.commit_editor.take() {
+            crate::update::amend_into::reword_confirmed(state, &mut commands, editor, next_id);
+        }
         return commands;
     }
     let operation = editor.operation();

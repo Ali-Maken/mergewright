@@ -377,6 +377,7 @@ fn reword_head_with_a_line_built_on_it() {
     let state = planned(&app, &state, KeyCode::Enter, "⏎", &mut route);
     assert!(state.commit_editor.is_none(), "the editor closed");
     assert!(state.preview.is_some(), "the preview: {:?}", state.status);
+    capture_reword_preview(&state);
     let state = y(&app, &state, &mut route);
     let allowed = m8_count("reword-head");
     assert!(
@@ -408,6 +409,36 @@ fn reword_head_with_a_line_built_on_it() {
     drop(state);
     app.close();
 }
+
+/// Review m8-14 Major 4: the reword box is on screen, not only in the state.
+fn capture_reword_preview(state: &AppState) {
+    let body = frame(state, 120, 40);
+    assert!(
+        body.contains("reword ") && body.contains("\"Handle expired tokens\""),
+        "{body}"
+    );
+    assert!(
+        body.contains("new message  Handle expired tokens on refresh"),
+        "{body}"
+    );
+    assert!(body.contains("follows"), "feature-b follows: {body}");
+    crate::captures::check_shot(
+        "m8/reword-preview-120x40.txt",
+        &format!("{REWORD_HEADER}\n{body}"),
+    );
+}
+
+const REWORD_HEADER: &str = "\
+# m8/reword-preview-120x40.txt: drawn by `view::view` from a real AppState
+# (crates/graft/tests/it/m7_walk/amend_into.rs,
+# reword_head_with_a_line_built_on_it, asserted). Not a pty capture: a
+# character grid with no colour (CLAUDE.md rule 5, colour unverified).
+#
+# Right: `a` on HEAD with nothing staged, ` on refresh` typed, `⏎` — a box
+# titled `Preview: reword <sha7> \"Handle expired tokens\"`, the row
+# `<sha7>  new message  Handle expired tokens on refresh`, feature-b marked
+# as following, `y` on the box edge. Nothing written yet.
+";
 
 /// Two of the three captures (rule 6: the user judges them; colour
 /// unverified).
@@ -761,6 +792,40 @@ fn perf_repo(fixture: Fixture) -> tempfile::TempDir {
     }
     stage_auth_fix(repo);
     dir
+}
+
+/// Review m8-14 Major 2: a reword the plan would refuse is refused at `a`,
+/// before he types anything — not after `⏎`, when his text would be lost.
+/// `HEAD` is the first commit, `feature-b` built on it, nothing staged.
+#[test]
+fn a_reword_that_cannot_run_is_refused_at_a() {
+    let dir = tempfile::tempdir().unwrap_or_else(|why| panic!("a temporary directory: {why}"));
+    let repo = dir.path();
+    git(repo, &["init", "-q", "-b", "feature-a"], 0);
+    commit(repo, "README", "readme\n", "The first commit", 0);
+    git(repo, &["switch", "-q", "-c", "feature-b"], 1);
+    commit(
+        repo,
+        "src/login.rs",
+        &ten_lines("login"),
+        "Show the login page",
+        1,
+    );
+    git(repo, &["switch", "-q", "feature-a"], 2);
+    let (app, state) = open(repo, 120, 40);
+    let state = cursor_to(&app, state, "The first commit", &mut Vec::new());
+    let state = planned(&app, &state, KeyCode::Char('a'), "a", &mut Vec::new());
+    assert!(
+        state.commit_editor.is_none(),
+        "no editor to type into: {:?}",
+        state.status
+    );
+    let Status::Sticky { reason, .. } = &state.status else {
+        panic!("a refusal in words: {:?}", state.status);
+    };
+    assert!(reason.contains("is the first commit"), "{reason}");
+    drop(state);
+    app.close();
 }
 
 /// Opened with the cursor on `HEAD`'s row (`spike`'s newer commit is the

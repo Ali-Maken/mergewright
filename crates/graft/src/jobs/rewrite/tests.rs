@@ -10,6 +10,7 @@ use graft_ops::absorb::{AbsorbMap, StagedHunk, StaysWhy};
 use graft_ops::operation::Tip;
 use graft_ops::rewrite::{BranchLine, RewriteParams, TodoAction, TodoLine};
 
+use super::words::{REWORD, lines_words};
 use super::*;
 
 fn oid(n: u8) -> Oid {
@@ -122,6 +123,30 @@ fn amend_into_words_name_the_target_and_what_it_gains() {
         ]
     );
     assert_eq!(done.what, "put into \"Add OAuth callback\"");
+    assert_eq!(done.also, None);
+}
+
+/// Review m8-14 Major 4: the reword's box and landing, pinned. The title
+/// names `HEAD` and its old subject, the one row its new subject (the
+/// message's first line, trimmed), the confirm verb `reword`; the landing
+/// the new subject.
+#[test]
+fn reword_words_name_the_old_subject_and_the_new() {
+    let mut reword = row(TodoAction::Reword, 3);
+    reword.subject = "Handle expired tokens".to_owned();
+    let plan = params(vec![reword], Vec::new());
+    let (done, shown) = reword_words(
+        &plan,
+        "  Handle expired tokens on refresh \n\nWhy it changed.\n",
+    );
+    assert_eq!(shown.title, "reword 0300000 \"Handle expired tokens\"");
+    assert_eq!(shown.confirm, REWORD);
+    assert_eq!(shown.confirm, "reword");
+    assert_eq!(
+        shown.rows,
+        vec!["0300000  new message  Handle expired tokens on refresh".to_owned()]
+    );
+    assert_eq!(done.what, "reworded \"Handle expired tokens on refresh\"");
     assert_eq!(done.also, None);
 }
 

@@ -352,9 +352,12 @@ pub(super) fn resumed_staging_not_kept(
 ) -> Vec<Command> {
     let commands = resumed_done(state, how, applied, finish, next_id);
     state.status = match &state.status {
-        Status::Done { what, .. } => {
-            crate::update::operate::staging_not_kept_status(what, paths, state.size.columns)
-        }
+        Status::Done { what, .. } => crate::update::operate::staging_not_kept_status(
+            what,
+            paths,
+            &applied.came_back,
+            state.size.columns,
+        ),
         // Anything but `Done` (an `Unfinished` sticky) is left as it is: a
         // put-back runs only on a close that finished, so no such line
         // carries staging news (review m7-30-06d Minor 7).

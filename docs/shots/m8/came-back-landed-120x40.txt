@@ -1,0 +1,50 @@
+# m8/came-back-landed-120x40.txt: drawn by `view::view` from a real AppState
+# (crates/graft/tests/it/m7_walk/switch.rs,
+# a_file_back_from_the_index_is_named_after_a_switch, asserted). Not a pty
+# capture: a character grid with no colour (CLAUDE.md rule 5, colour
+# unverified).
+#
+# Right: `. ⏎ y` to feature-b over edits, with notes.md staged new and then
+# deleted from disk — on feature-b, the status line
+# `on feature-b ✓ · your edits are back · notes.md came back from the index
+# · u goes back` (a file back on disk is never silent).
+ ◆ api  ~/code/api · feature-b                                                                                6 commits
+
+    ◌    Uncommitted changes (2 staged, 1 unstaged)
+    ◆ ▏  [◆ feature-b] fix the bug                                                                      GF 3m   fbb2394
+  ● │    [main] main moves on                                                                           GF 4m   37926a7
+  ●─╯    add the base                                                                                   GF 5m   ed332bc
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ on feature-b ✓ · your edits are back · notes.md came back from the index · u goes back
