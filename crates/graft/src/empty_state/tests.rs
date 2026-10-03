@@ -22,13 +22,13 @@ fn recent(path: &str, secs: u64) -> Recent {
 
 fn state() -> OutsideState {
     OutsideState {
-        folder: PathBuf::from("/home/me/code"),
+        folder: PathBuf::from("/me/code"),
         missing: false,
-        home: Some(PathBuf::from("/home/me")),
+        home: Some(PathBuf::from("/me")),
         recents: vec![
-            recent("/home/me/code/payments-service", 300),
-            recent("/home/me/code/web-dashboard", 200),
-            recent("/home/me/dotfiles", 100),
+            recent("/me/code/payments-service", 300),
+            recent("/me/code/web-dashboard", 200),
+            recent("/me/dotfiles", 100),
         ],
         cursor: 0,
         prompt: None,
@@ -49,7 +49,7 @@ fn enter_opens_the_selected_recent() {
     let mut s = state();
     assert_eq!(
         outside_key(&mut s, key(KeyCode::Enter)),
-        OutsideStep::Open(PathBuf::from("/home/me/code/payments-service"))
+        OutsideStep::Open(PathBuf::from("/me/code/payments-service"))
     );
 }
 
@@ -59,7 +59,7 @@ fn j_then_enter_opens_the_second() {
     assert_eq!(outside_key(&mut s, ch('j')), OutsideStep::Stay);
     assert_eq!(
         outside_key(&mut s, key(KeyCode::Enter)),
-        OutsideStep::Open(PathBuf::from("/home/me/code/web-dashboard"))
+        OutsideStep::Open(PathBuf::from("/me/code/web-dashboard"))
     );
 }
 
@@ -111,7 +111,7 @@ fn i_then_y_inits_the_folder() {
     assert_eq!(s.prompt, Some(Prompt::ConfirmInit));
     assert_eq!(
         outside_key(&mut s, ch('y')),
-        OutsideStep::Init(PathBuf::from("/home/me/code"))
+        OutsideStep::Init(PathBuf::from("/me/code"))
     );
 }
 
@@ -156,7 +156,7 @@ fn o_prefills_the_folder_and_enter_opens_what_was_typed() {
     }
     assert_eq!(
         outside_key(&mut s, key(KeyCode::Enter)),
-        OutsideStep::Open(PathBuf::from("/home/me/code/api"))
+        OutsideStep::Open(PathBuf::from("/me/code/api"))
     );
     assert_eq!(s.prompt, None);
 }
@@ -193,12 +193,15 @@ fn a_problem_clears_on_the_next_key_which_is_also_acted_on() {
 
 #[test]
 fn resolve_expands_tilde_and_relative_paths() {
-    let folder = Path::new("/home/me/code");
-    let home = Some(Path::new("/home/me"));
-    assert_eq!(resolve("~/x", folder, home), PathBuf::from("/home/me/x"));
-    assert_eq!(resolve("~", folder, home), PathBuf::from("/home/me"));
-    assert_eq!(resolve("api", folder, home), PathBuf::from("/home/me/code/api"));
-    assert_eq!(resolve("/srv/repo", folder, home), PathBuf::from("/srv/repo"));
+    let folder = Path::new("/me/code");
+    let home = Some(Path::new("/me"));
+    assert_eq!(resolve("~/x", folder, home), PathBuf::from("/me/x"));
+    assert_eq!(resolve("~", folder, home), PathBuf::from("/me"));
+    assert_eq!(resolve("api", folder, home), PathBuf::from("/me/code/api"));
+    assert_eq!(
+        resolve("/srv/repo", folder, home),
+        PathBuf::from("/srv/repo")
+    );
 }
 
 #[test]
@@ -211,15 +214,25 @@ fn tab_completes_a_directory() {
     let folder = root.path();
 
     assert_eq!(complete("we", folder, None).as_deref(), Some("web/"));
-    assert_eq!(complete("pay", folder, None), None, "two matches, no longer common start");
+    assert_eq!(
+        complete("pay", folder, None),
+        None,
+        "two matches, no longer common start"
+    );
     std::fs::create_dir(folder.join("paywall-a")).expect("dir");
     std::fs::create_dir(folder.join("paywall-b")).expect("dir");
     assert_eq!(complete("payw", folder, None).as_deref(), Some("paywall-"));
-    assert_eq!(complete("paym", folder, None).as_deref(), Some("payments-service/"));
+    assert_eq!(
+        complete("paym", folder, None).as_deref(),
+        Some("payments-service/")
+    );
     assert_eq!(complete("zz", folder, None), None);
     assert_eq!(complete(".h", folder, None).as_deref(), Some(".hidden/"));
     let absolute = format!("{}/web", folder.display());
-    assert_eq!(complete(&absolute, folder, None), Some(format!("{absolute}/")));
+    assert_eq!(
+        complete(&absolute, folder, None),
+        Some(format!("{absolute}/"))
+    );
 }
 
 #[test]
@@ -280,9 +293,7 @@ fn empty_state_bar_keys_are_answered() {
                 "⏎" => key(KeyCode::Enter),
                 "⇥" => key(KeyCode::Tab),
                 "esc" => key(KeyCode::Escape),
-                one if one.chars().count() == 1 => {
-                    ch(one.chars().next().expect("one character"))
-                }
+                one if one.chars().count() == 1 => ch(one.chars().next().expect("one character")),
                 other => panic!("{form}: a bar key this test cannot press: {other:?}"),
             };
             let mut after = start.clone();

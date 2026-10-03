@@ -48,15 +48,12 @@ fn main() -> ExitCode {
         }
     };
 
-    let startup = Startup {
-        repo_path,
-        config,
-        harness: Harness::default(),
-    };
-    match event_loop::run(startup) {
+    match start(repo_path, config) {
         // The harness is the default, so `HandedBack` cannot happen; if it
         // did, the loop stopped where it was told to, which is a success.
-        Ok(Exit::Quit | Exit::HandedBack(_)) => ExitCode::SUCCESS,
+        // `Open` is handled by `drive` and never returned; `run` never
+        // produces it.
+        Ok(Exit::Quit | Exit::HandedBack(_) | Exit::Open(_)) => ExitCode::SUCCESS,
         Ok(Exit::Signal(signal)) => {
             // Normally this does not return: the process dies of the signal.
             if let Err(error) = event_loop::signals::reraise(signal) {
@@ -75,6 +72,29 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+/// Where to start, decided before the terminal is touched
+/// (m8-polish-and-ship/08): a stdout that is not a terminal runs as it
+/// always did (outside a repository that is today's one-line error, exit 1:
+/// a pipe gets an error, not a screen); otherwise the path is located — a
+/// broken repository is still a plain line — and the terminal opened once
+/// for every place that follows.
+fn start(repo_path: std::path::PathBuf, config: config::Loaded) -> std::io::Result<Exit> {
+    use std::io::IsTerminal;
+    if !io::stdout().is_terminal() {
+        return event_loop::run(Startup {
+            repo_path,
+            config,
+            harness: Harness::default(),
+        });
+    }
+    let place = match event_loop::locate(&repo_path, &config) {
+        Ok(place) => place,
+        Err(reason) => return Ok(Exit::Fatal(reason)),
+    };
+    let terminal = event_loop::Terminal::open()?;
+    event_loop::drive(terminal, place, &config)
 }
 
 /// Say what went wrong on stderr, now that the terminal is the user's again.

@@ -148,6 +148,8 @@ struct Rows {
 /// actions and the list at 2, as §1.15 draws them.
 const HEAD_X: u16 = 1;
 const BODY_X: u16 = 2;
+/// Said after a folder that does not exist.
+const MISSING: &str = " · no such folder";
 /// The prompt box's height: border, field, a spare row, border.
 const PROMPT_HEIGHT: u16 = 4;
 
@@ -164,7 +166,9 @@ fn layout(view: &EmptyStateView, area: Rect) -> Rows {
         next += 1;
         let first = next;
         let room = rule.saturating_sub(first);
-        let shown = u16::try_from(view.recent.len()).unwrap_or(u16::MAX).min(room);
+        let shown = u16::try_from(view.recent.len())
+            .unwrap_or(u16::MAX)
+            .min(room);
         next += shown + 1;
         (Some(title), first)
     };
@@ -228,10 +232,14 @@ impl EmptyState<'_> {
         let left = width.saturating_sub(usize::from(end - x));
         buf.set_stringn(end, area.y, " · no repository here", left, self.muted());
 
+        // A long folder loses its start; its end (the folder's own name) and
+        // the reason stay.
+        let reason = if self.view.missing { cells(MISSING) } else { 0 };
+        let folder = keep_end(self.view.folder.as_str(), width.saturating_sub(reason));
         let (end, _) = buf.set_stringn(
             x,
             area.y + 1,
-            self.view.folder.as_str(),
+            &folder,
             width,
             foreground(self.theme, Token::Text),
         );
@@ -240,7 +248,7 @@ impl EmptyState<'_> {
             buf.set_stringn(
                 end,
                 area.y + 1,
-                " · no such folder",
+                MISSING,
                 left,
                 foreground(self.theme, Token::Warning),
             );
@@ -279,8 +287,7 @@ impl EmptyState<'_> {
             self.muted().add_modifier(Modifier::BOLD),
         );
         let recent = &self.view.recent;
-        let name_width = recent.iter().map(|r| cells(r.name.as_str())).max().unwrap_or(0);
-        let path_width = recent.iter().map(|r| cells(r.path.as_str())).max().unwrap_or(0);
+        let (name_width, path_width) = column_widths(recent);
         // Two cells for the cursor mark and its gap, then the columns.
         let text_x = area.x + BODY_X + 2;
         let right = area.x + area.width.saturating_sub(1);
@@ -336,28 +343,42 @@ impl EmptyState<'_> {
             return;
         }
         let border = foreground(self.theme, Token::Accent);
+        let inner = usize::from(width.saturating_sub(5));
         let (title, line) = match prompt {
             EmptyPrompt::Open { text, .. } => ("open", format!("open › {}", text.as_str())),
-            EmptyPrompt::ConfirmInit => (
-                "init",
-                format!("Make {} a Git repository?", self.view.folder.as_str()),
-            ),
+            EmptyPrompt::ConfirmInit => {
+                // A long folder loses its start, never the question `y`
+                // answers; its end (the folder's own name) stays.
+                let words = cells("Make ") + cells(" a Git repository?");
+                let folder = keep_end(self.view.folder.as_str(), inner.saturating_sub(words));
+                ("init", format!("Make {folder} a Git repository?"))
+            }
         };
         let w = usize::from(width);
         buf.set_string(x, y, border_row('╭', '╮', title, w), border);
-        buf.set_string(x, y + PROMPT_HEIGHT - 1, border_row('╰', '╯', "", w), border);
+        buf.set_string(
+            x,
+            y + PROMPT_HEIGHT - 1,
+            border_row('╰', '╯', "", w),
+            border,
+        );
         for row in 1..PROMPT_HEIGHT - 1 {
             buf.set_string(x, y + row, "│", border);
             buf.set_string(x + width - 1, y + row, "│", border);
         }
         let inner_x = x + 3;
-        let inner = usize::from(width.saturating_sub(5));
         let shown = fit(&line, inner);
         buf.set_string(inner_x, y + 1, &shown, foreground(self.theme, Token::Text));
         if let EmptyPrompt::Open { text, cursor } = prompt {
             // The cursor: `▏` past the end, the character under it reversed
             // inside the text.
-            let before = cells("open › ") + text.as_str().chars().take(*cursor).map(|c| cells(&c.to_string())).sum::<usize>();
+            let before = cells("open › ")
+                + text
+                    .as_str()
+                    .chars()
+                    .take(*cursor)
+                    .map(|c| cells(&c.to_string()))
+                    .sum::<usize>();
             if before < inner {
                 let cx = inner_x + u16::try_from(before).unwrap_or(u16::MAX);
                 if *cursor >= text.as_str().chars().count() {
@@ -386,14 +407,69 @@ impl EmptyState<'_> {
         let end_x = x + u16::try_from(width).unwrap_or(u16::MAX);
         for (index, (key, label)) in bar_keys(self.view).into_iter().enumerate() {
             if index > 0 {
-                at = buf.set_stringn(at, y, " · ", usize::from(end_x.saturating_sub(at)), self.muted()).0;
+                at = buf
+                    .set_stringn(
+                        at,
+                        y,
+                        " · ",
+                        usize::from(end_x.saturating_sub(at)),
+                        self.muted(),
+                    )
+                    .0;
             }
-            at = buf.set_stringn(at, y, key, usize::from(end_x.saturating_sub(at)), self.key()).0;
             at = buf
-                .set_stringn(at, y, format!(" {label}"), usize::from(end_x.saturating_sub(at)), self.muted())
+                .set_stringn(
+                    at,
+                    y,
+                    key,
+                    usize::from(end_x.saturating_sub(at)),
+                    self.key(),
+                )
+                .0;
+            at = buf
+                .set_stringn(
+                    at,
+                    y,
+                    format!(" {label}"),
+                    usize::from(end_x.saturating_sub(at)),
+                    self.muted(),
+                )
                 .0;
         }
     }
+}
+
+/// The widest name and the widest path: where RECENT's columns start.
+fn column_widths(recent: &[RecentRow]) -> (usize, usize) {
+    let widest = |of: fn(&RecentRow) -> &SanitizedText| {
+        recent
+            .iter()
+            .map(|row| cells(of(row).as_str()))
+            .max()
+            .unwrap_or(0)
+    };
+    (widest(|row| &row.name), widest(|row| &row.path))
+}
+
+/// `text` in at most `width` cells, cut at the start with `…` when longer.
+/// The text is already sanitized; zero-width marks ride with their base.
+fn keep_end(text: &str, width: usize) -> String {
+    if cells(text) <= width {
+        return text.to_owned();
+    }
+    let room = width.saturating_sub(1);
+    let mut kept: Vec<char> = Vec::new();
+    let mut used = 0;
+    for character in text.chars().rev() {
+        let wide = cells(&character.to_string());
+        if used + wide > room {
+            break;
+        }
+        kept.push(character);
+        used += wide;
+    }
+    kept.push('…');
+    kept.into_iter().rev().collect()
 }
 
 #[cfg(test)]

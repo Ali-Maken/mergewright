@@ -114,7 +114,12 @@ pub(crate) fn remember(
         // it as a row whose open fails with its reason, as any stale row.
         repo.to_path_buf()
     });
-    if repo.as_os_str().as_bytes().iter().any(|&b| b == b'\n' || b == b'\t') {
+    if repo
+        .as_os_str()
+        .as_bytes()
+        .iter()
+        .any(|&b| b == b'\n' || b == b'\t')
+    {
         return Err(RecentError::Unstorable(repo));
     }
     let RecentList { entries, skipped } = read_recent(config_dir)?;
@@ -159,7 +164,8 @@ fn parse(bytes: &[u8]) -> RecentList {
         list.entries.push(entry);
     }
     // Newest first even if the file was edited by hand out of order.
-    list.entries.sort_by(|a, b| b.opened.cmp(&a.opened));
+    list.entries
+        .sort_by_key(|entry| std::cmp::Reverse(entry.opened));
     list.entries.truncate(MAX_RECENT);
     list
 }
@@ -311,7 +317,10 @@ mod tests {
 
         let answer = remember(config.path(), &odd, at(100));
 
-        assert!(matches!(answer, Err(RecentError::Unstorable(_))), "{answer:?}");
+        assert!(
+            matches!(answer, Err(RecentError::Unstorable(_))),
+            "{answer:?}"
+        );
         assert!(!recent_file(config.path()).exists());
     }
 

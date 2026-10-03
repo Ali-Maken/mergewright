@@ -27,6 +27,7 @@ pub mod input;
 mod label;
 pub mod outside;
 mod pace;
+pub mod places;
 pub mod redetect;
 mod rest;
 mod row_clear;
@@ -45,8 +46,9 @@ use crate::jobs::{Delivery, Dispatch, JobEvents};
 use crate::session::TerminalChange;
 use crate::update::{AppEvent, AppState};
 
+pub use places::{OutsideStart, Place, drive, locate};
 pub use running::pump;
-pub use startup::run;
+pub use startup::{Ran, Terminal, run};
 
 /// Why the loop stopped.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -64,6 +66,11 @@ pub enum Exit {
     /// alternate screen disappears with the alternate screen, which is how a
     /// program comes to "exit without saying anything".
     Fatal(String),
+    /// Open this path next, on the same terminal (m8-polish-and-ship/08).
+    /// [`places::drive`] handles it and never returns it; [`run`], which
+    /// runs one repository and gives the terminal back, never produces it
+    /// today (the tour and clone tickets will, from the graph).
+    Open(std::path::PathBuf),
 }
 
 /// Something that wakes the loop.

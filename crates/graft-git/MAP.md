@@ -256,6 +256,8 @@ Rule: a commit listed in `<common_dir>/shallow` has no parents — git's (`rev-l
 ## run
 - `GitInvocation` (struct) — `git -C <workdir or git_dir> --no-pager <args>`; env adds `GIT_TERMINAL_PROMPT=0`, `LC_ALL=C`, `GIT_OPTIONAL_LOCKS=0`, user config kept.
 - `GitInvocation::new` / `arg` / `args` (fn) — build from typed args; the first `Path` gets a `--` before it if none was added.
+- `GitInvocation::in_folder` (fn) — m8-polish-and-ship/08: like `in_directory`, but the child's `REPO_LOCATING_ENV` variables are removed, so a stray `GIT_DIR` cannot redirect a repo-less command (`git init`).
+- `REPO_LOCATING_ENV` (const) — `GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_INDEX_FILE`, `GIT_OBJECT_DIRECTORY`: what `in_folder` scrubs.
 - `GitInvocation::env` (fn) — adds one variable to the child's environment, after the fixed ones (`GIT_INDEX_FILE`, `GIT_AUTHOR_*`, …); a later call for the same key overrides an earlier one (m3/01).
 - `GitInvocation::stdin` (fn) — bytes fed from their own thread; without it stdin is null.
 - `GitInvocation::output_cap` (fn) — max bytes kept per stream (default 64 MiB); past it the child is killed, output cut to the cap, `truncated`, still `Ok`.

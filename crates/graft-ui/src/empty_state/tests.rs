@@ -81,18 +81,15 @@ fn rows_are_as_the_mockup_at_both_sizes() {
         assert_eq!(lines[3], "  o  Open…     i  Init", "{text}");
         assert_eq!(lines[5], "  RECENT", "{text}");
         assert_eq!(
-            lines[6],
-            "  ▸ payments-service    ~/code/payments-service     yesterday",
+            lines[6], "  ▸ payments-service    ~/code/payments-service     yesterday",
             "{text}"
         );
         assert_eq!(
-            lines[7],
-            "    web-dashboard       ~/code/web-dashboard        3 days ago",
+            lines[7], "    web-dashboard       ~/code/web-dashboard        3 days ago",
             "{text}"
         );
         assert_eq!(
-            lines[8],
-            "    dotfiles            ~/dotfiles                  last week",
+            lines[8], "    dotfiles            ~/dotfiles                  last week",
             "{text}"
         );
         let rows = usize::from(rows);
@@ -102,7 +99,10 @@ fn rows_are_as_the_mockup_at_both_sizes() {
             " o open… · i init · ⏎ open the selected · q quit",
             "{text}"
         );
-        assert!(!text.contains("Clone") && !text.contains("tour"), "c/t drawn: {text}");
+        assert!(
+            !text.contains("Clone") && !text.contains("tour"),
+            "c/t drawn: {text}"
+        );
     }
 }
 
@@ -141,7 +141,11 @@ fn the_open_prompt_sits_under_the_list_with_its_own_keys() {
     let (_, lines) = draw(&view, 80, 24);
     let text = lines.join("\n");
     assert!(lines[10].starts_with("  ╭ open ─"), "{text}");
-    assert_eq!(lines[11].trim_end_matches(['│', ' ']), "  │  open › ~/code/▏", "{text}");
+    assert_eq!(
+        lines[11].trim_end_matches(['│', ' ']),
+        "  │  open › ~/code/▏",
+        "{text}"
+    );
     assert!(lines[13].starts_with("  ╰─"), "{text}");
     assert_eq!(lines[23], " ⏎ open · ⇥ complete · esc cancel", "{text}");
 }
@@ -160,6 +164,37 @@ fn the_init_confirm_names_the_folder_and_offers_y() {
         "{text}"
     );
     assert_eq!(lines[35], " y init · esc keep it", "{text}");
+}
+
+/// A missing folder too long for the row loses its start, never
+/// `· no such folder`: the reason is what the row is for.
+#[test]
+fn a_long_missing_folder_keeps_no_such_folder() {
+    let view = EmptyStateView {
+        folder: sanitize_line("/srv/builds/nightly/workspace-0042/sandboxes/projects/newthing"),
+        missing: true,
+        ..no_recents()
+    };
+    let (_, lines) = draw(&view, 60, 24);
+    let text = lines.join("\n");
+    assert!(lines[1].starts_with(" …"), "{text}");
+    assert!(lines[1].ends_with("/newthing · no such folder"), "{text}");
+}
+
+/// A folder too long for the box loses its start, not the question: what
+/// `y` answers stays readable, and the folder's own name (its end) stays.
+#[test]
+fn a_long_folder_in_the_init_confirm_keeps_the_question() {
+    let view = EmptyStateView {
+        folder: sanitize_line("/srv/builds/nightly/workspace-0042/sandboxes/projects/long/code"),
+        prompt: Some(EmptyPrompt::ConfirmInit),
+        ..no_recents()
+    };
+    let (_, lines) = draw(&view, 80, 24);
+    let text = lines.join("\n");
+    let question = lines[6].trim_end_matches(['│', ' ']);
+    assert!(question.starts_with("  │  Make …"), "{text}");
+    assert!(question.ends_with("/code a Git repository?"), "{text}");
 }
 
 #[test]

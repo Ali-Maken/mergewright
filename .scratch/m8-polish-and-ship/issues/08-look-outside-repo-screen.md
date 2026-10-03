@@ -1,6 +1,6 @@
 # G-look 5c — outside a repository: the mock-up's empty state
 
-Status: ready (re-specced 2026-10-03 after scout `.scratch/m8-polish-and-ship/scouts/08-look-outside-repo.md`)
+Status: done 2026-10-04 (re-specced 2026-10-03 after scout `.scratch/m8-polish-and-ship/scouts/08-look-outside-repo.md`)
 Build with: **Opus** — one structural move (terminal + probe hoisted out of `run`, decided below), judged by pty walks
 that count alt-screen entries and probe queries; not Fable (fails "can't be judged from tests").
 Blocked by: 06, 07 (07 shares `graft-ui/src/lib.rs`, `graft-ui/MAP.md` and the `selection` paint; build after it merges)
@@ -109,23 +109,44 @@ Parameter types (`Config`, `Startup`, the session's real names) follow what `run
 the shape: one `Terminal`, a driver, two per-place runs. Name any rename in NOTES.
 
 ## Acceptance
-- [ ] Widget tests 80×24, 120×36: rows as §1.15; RECENT hidden when empty; `⏎` hint hidden then; missing-folder line,
-      `i` absent; `c`/`t` absent; open prompt and init confirm forms.
-- [ ] `outside_key` tests: every key in Scope → its step; `i esc`, `i n` → `Stay`, nothing written.
-- [ ] Recents tests: newest first, dedup by canonical path, cap 20, unparsable counted, missing file empty, atomic
-      write (no partial file after a failed rename), `\n` path refused.
-- [ ] `init_here` tests: creates `.git` in a temp dir; missing dir → `Missing`; `GIT_DIR` set in env → still inits `dir`.
-- [ ] J14 `open-recent-outside` = 2: pty walk in a non-repo with a recents file, `⏎` → that repo's graph, cursor on
-      HEAD; `open-second-recent` = 3 (`j ⏎`). Walk counts keys against the note's fence.
-- [ ] J21 `init-here` = 2: `i y` → new repo's graph; `i esc` → empty state, no `.git` (pty).
-- [ ] Re-entry: in the J14 walk, `\e[?1049h` appears **exactly once** and the probe's first query (name it) exactly once.
-- [ ] `o` + a non-repo path → screen stays, cursor kept, bar row reads the reason (pty).
-- [ ] Non-tty stdout outside a repo → exit 1, today's stderr line, no `\e[?1049h` (kept half of `not_a_repo.rs`).
-- [ ] A test named `empty_state_bar_keys_are_answered`: every key the empty-state bar draws (each form) gets a step
-      other than "unhandled" — a sibling of `every_key_the_bar_draws_is_answered` (no `HintContext` variant: the
-      empty state has no `AppState`).
-- [ ] Captures `docs/shots/m8-look-outside-repo-120x36.txt` (with recents), `…-no-recent-80x24.txt`,
-      `…-open-prompt-80x24.txt`, beside `m8-proto-3a-empty.txt`. **Colour unverified** (rule 5).
+- [x] Widget tests 80×24, 120×36: rows as §1.15; RECENT hidden when empty; `⏎` hint hidden then; missing-folder line,
+      `i` absent; `c`/`t` absent; open prompt and init confirm forms — graft-ui `empty_state::tests::`
+      `rows_are_as_the_mockup_at_both_sizes`, `an_empty_list_draws_no_recent_block_and_no_enter_hint`,
+      `a_missing_folder_says_so_and_offers_no_init`, `the_open_prompt_sits_under_the_list_with_its_own_keys`,
+      `the_init_confirm_names_the_folder_and_offers_y` (+ `a_long_missing_folder_keeps_no_such_folder`,
+      `a_long_folder_in_the_init_confirm_keeps_the_question`, `the_cursor_row_is_on_the_selection_fill_and_legible`).
+- [x] `outside_key` tests: every key in Scope → its step; `i esc`, `i n` → `Stay`, nothing written — graft
+      `empty_state::tests::` `enter_opens_the_selected_recent`, `j_then_enter_opens_the_second`,
+      `moving_clamps_at_both_ends_like_the_branch_picker`, `q_and_ctrl_c_quit`, `i_then_y_inits_the_folder`,
+      `i_then_esc_or_n_declines_and_writes_nothing`, `o_prefills_the_folder_and_enter_opens_what_was_typed`,
+      `esc_cancels_the_open_prompt`, `tab_completes_a_directory`, `a_missing_folder_does_not_answer_i`.
+- [x] Recents tests: newest first, dedup by canonical path, cap 20, unparsable counted, missing file empty, atomic
+      write (no partial file after a failed rename), `\n` path refused — graft `recent::tests::`
+      `the_newest_comes_first`, `the_same_repository_is_listed_once_by_its_canonical_path`, `the_list_keeps_twenty`,
+      `unreadable_lines_are_skipped_and_counted_then_dropped`, `a_missing_file_is_an_empty_list`,
+      `a_failed_rename_leaves_no_partial_file`, `a_path_with_a_newline_is_refused_and_the_file_unchanged`.
+- [x] `init_here` tests: creates `.git` in a temp dir; missing dir → `Missing`; `GIT_DIR` set in env → still inits
+      `dir` — graft-ops `init::tests::` `init_here_creates_a_git_directory_in_the_folder`,
+      `a_missing_folder_is_missing_and_nothing_is_created`, `a_stray_git_dir_in_the_environment_does_not_redirect_it`
+      (seen red with the scrub removed).
+- [x] J14 `open-recent-outside` = 2: pty walk in a non-repo with a recents file, `⏎` → that repo's graph, cursor on
+      HEAD; `open-second-recent` = 3 (`j ⏎`). Walk counts keys against the note's fence —
+      `it::outside_repo::open_recent_outside_opens_the_newest_at_head_on_one_terminal`,
+      `it::outside_repo::open_second_recent_is_j_then_enter` (both seen red with the HEAD landing switched off).
+- [x] J21 `init-here` = 2: `i y` → new repo's graph; `i esc` → empty state, no `.git` (pty) —
+      `it::outside_repo::init_here_is_i_then_y`, `it::outside_repo::init_declined_writes_nothing` (`esc` and `n`).
+- [x] Re-entry: in the J14 walk, `\e[?1049h` appears **exactly once** and the probe's first query — `ESC _Gi=31,`,
+      the kitty-graphics `a=q` that opens `probe::full_round` — exactly once —
+      `it::outside_repo::open_recent_outside_opens_the_newest_at_head_on_one_terminal`.
+- [x] `o` + a non-repo path → screen stays, cursor kept, bar row reads the reason (pty) —
+      `it::outside_repo::opening_a_folder_that_is_not_a_repository_stays_and_says_why`.
+- [x] Non-tty stdout outside a repo → exit 1, today's stderr line, no `\e[?1049h` (kept half of `not_a_repo.rs`) —
+      `it::not_a_repo::off_a_terminal_a_path_that_is_not_a_repository_is_one_plain_line`; tty half
+      `it::not_a_repo::on_a_terminal_a_path_that_is_not_a_repository_shows_the_empty_state`.
+- [x] A test named `empty_state_bar_keys_are_answered` — graft `empty_state::tests::empty_state_bar_keys_are_answered`.
+- [x] Captures `docs/shots/m8-look-outside-repo-120x36.txt` (with recents), `…-no-recent-80x24.txt`,
+      `…-open-prompt-80x24.txt`, from the real binary on a pty — `it::outside_repo::outside_repo_captures`.
+      **Colour unverified** (rule 5).
 
 ## Touches (each checked, said how in the report)
 - `crates/graft/tests/it/not_a_repo.rs:9-31` — rewrite: tty half (empty state, `q` → exit 0, no stderr) + non-tty half.
@@ -152,3 +173,41 @@ the shape: one `Terminal`, a driver, two per-place runs. Name any rename in NOTE
 ## Size
 One context, ~75k tokens. If it compacts, the seam is: recents + widget + `outside_key` first; `Terminal`/`drive` +
 init + pty walks second.
+
+## NOTES (builder, 2026-10-04)
+- **Compacted once mid-ticket** (after WIP commit 684f40ac, before the pty walks). Nothing remains.
+- **User question (missing folder offers `i`?)**: built the default, no. The one switch is the
+  `KeyCode::Char('i') if !state.missing` arm in `crates/graft/src/empty_state.rs` `outside_key`; the widget and
+  `bar_keys` read the same `missing` flag. Pinned by `it::not_a_repo::on_a_terminal_a_missing_folder_says_so_and_offers_no_init`.
+- **Renames vs the spec**: `graft::outside` → `graft::empty_state` (`event_loop::outside` already exists);
+  `EmptyPrompt::Open(FieldView)` → `EmptyPrompt::Open { text, cursor }`; `Terminal::open()` takes no config (the
+  session is settled per place); `drive(Terminal, …)` consumes the terminal and closes it; `run_repo` takes an
+  `Arrival { status, on_head }`.
+- **Decision 4, mechanism only**: a failed open/init stays inside the empty-state loop (problem set, cursor untouched)
+  rather than re-entering `run_outside`, which would clear and redraw. Same visible result.
+- **graft-git repo-less entry**: `GitInvocation::in_folder` + `REPO_LOCATING_ENV` (`crates/graft-git/src/run.rs`) —
+  `in_directory` with `GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_INDEX_FILE`, `GIT_OBJECT_DIRECTORY` removed.
+- **Open lands on HEAD** (Lands row): new `update::lands_on_head_at_open` (`crates/graft/src/update/mod.rs`, after
+  `opening`) arms the existing owed landing on `opening`'s own refs read and walk. A start *inside* a repository still
+  lands on the top row, as before (`it::outside_repo::starting_inside_a_repository_remembers_it`).
+- **Hang found and fixed (cause)**: `ratatui::Terminal::clear` asks the terminal where its cursor is (`ESC [6n`) and
+  reads stdin, which the input mux owns — the switch hung. `run_outside` now clears through the backend
+  (`Backend::clear`), which writes and asks nothing. Found with `sample` on the stuck process.
+- **Long paths**: the folder line and the init question cut a long folder at its *start* (`…/code`), so
+  `· no such folder` and `a Git repository?` are never what is lost.
+- **For 19 (tour) / 18 (clone)**: `Exit::Open` is handled in `crates/graft/src/event_loop/places.rs` `drive`, the
+  `Ok(Exit::Open(next))` arm (re-`locate`s; the next repository lands on HEAD). Survives a switch: the one `Terminal`
+  (alternate screen, raw mode, `InputMux`, crash hook) and its probed capabilities; the `Loaded` config (warnings on
+  the first repository screen only). The `Session` (theme, tier) is re-settled per place from those; the keymap is
+  static. The prompt slot: `EmptyPrompt` + `PROMPT_HEIGHT` in the widget.
+- **For 26 (G-rename)**: `<config_dir>/graft/recent` joins the on-disk list (`crates/graft/src/recent.rs`
+  `recent_file`). 26 not edited.
+- **Config isolation**: `crates/graft/tests/it/pty.rs` `Pty::spawn` points `XDG_CONFIG_HOME` and `HOME` at a temp dir
+  for every pty run; it is the only Rust harness running the binary on a tty (grep `CARGO_BIN_EXE_graft`: the rest
+  use `.output()`, non-tty, which never remembers). **Not fixed, out of crate scope**: the Python pty scripts
+  (`scripts/scroll-lag-pty.py`, `.scratch/*/pty-*.py`) run the real binary on a pty without `XDG_CONFIG_HOME`; run
+  inside a repository they now add it to the real `~/.config/graft/recent`.
+- **Other `Exit::Fatal` tests** (`repo_truth.rs`, `m3_walk.rs`, `undo_over_drift.rs`, `m4_walk/run.rs`,
+  `m5_walk/{run,resolving}.rs`, `m7_walk/rewrite_editor.rs`): none names `Exit::Fatal` or not-a-repo (grep); they run
+  `event_loop::run` on fixture repositories, unchanged. The examples gained an `Exit::Open` arm that errors.
+- **Contact sheet**: no m8 contact sheet exists yet; nothing to re-assemble.

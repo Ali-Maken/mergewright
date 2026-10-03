@@ -104,7 +104,9 @@ fn list_key(state: &mut OutsideState, key: KeyPress) -> OutsideStep {
         KeyCode::Enter => state
             .recents
             .get(state.cursor)
-            .map_or(OutsideStep::Stay, |recent| OutsideStep::Open(recent.path.clone())),
+            .map_or(OutsideStep::Stay, |recent| {
+                OutsideStep::Open(recent.path.clone())
+            }),
         // Clamped at both ends, as the branch picker moves
         // (`update::picker`, `saturating_sub` / `min(last)`).
         KeyCode::Char('j') | KeyCode::Down => {
@@ -211,8 +213,9 @@ pub(crate) fn complete(typed: &str, folder: &Path, home: Option<&Path>) -> Optio
 /// The view model the widget draws, ages read against `now`.
 pub(crate) fn view(state: &OutsideState, now: SystemTime) -> EmptyStateView {
     let secs = |time: SystemTime| {
-        time.duration_since(UNIX_EPOCH)
-            .map_or(0, |since| i64::try_from(since.as_secs()).unwrap_or(i64::MAX))
+        time.duration_since(UNIX_EPOCH).map_or(0, |since| {
+            i64::try_from(since.as_secs()).unwrap_or(i64::MAX)
+        })
     };
     let home = state.home.as_deref();
     EmptyStateView {

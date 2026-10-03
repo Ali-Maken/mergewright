@@ -122,6 +122,24 @@ pub fn opening(repo_path: std::path::PathBuf, size: Size) -> (AppState, Vec<Comm
     (state, commands)
 }
 
+/// A repository opened from the empty state (m8-polish-and-ship/08, note
+/// Lands row "Open / init succeeds"): the cursor goes to `HEAD`'s row once
+/// [`opening`]'s own refs read and walk have answered — the same owed landing
+/// a `--continue` spends (`banner::land_on_head`). A start inside a
+/// repository does not call this and lands on the top row, as before.
+pub fn lands_on_head_at_open(state: &mut AppState) {
+    let refs = match state.refs_read {
+        RefsRead::Pending(id) => Some(id),
+        RefsRead::Unknown | RefsRead::Current(_) => None,
+    };
+    state.land_on_head = true;
+    state.head_landing = HeadLanding {
+        refs,
+        walk: state.awaiting,
+        on: operate::Landing::Head,
+    };
+}
+
 /// Answer one event: the new state, and the work it wants done.
 ///
 /// Takes the old state by reference and returns a new one instead of mutating

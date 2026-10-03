@@ -3,6 +3,8 @@ One line per public item. Update when a public item changes.
 
 ## lib.rs
 - `cli` (mod) — CLI argument parsing.
+- `empty_state` (mod, `pub(crate)`) — the empty state's keys and view (m8-polish-and-ship/08): `OutsideState`, `Prompt` (`Open(TextField)`, `ConfirmInit`), `OutsideStep` (`Stay`, `Open(path)`, `Init(folder)`, `Quit`), `outside_key(state, key)` (the `i` arm is gated on `!missing` — the one switch for offering init in a missing folder), `view(state, now) -> EmptyStateView`; `o`'s path resolution (`~`, relative to the folder) and `⇥` directory completion.
+- `recent` (mod, `pub(crate)`) — the recent-repository list, `<config_dir>/graft/recent`, lines `<unix secs>\t<canonical path>`, newest first, at most `MAX_RECENT` (20): `read_recent` (missing file → empty; bad lines skipped and counted), `remember` (dedup, cap, atomic temp-file + rename), `config_dir()`, `RecentError`.
 - `config` (mod) — config file loading and types.
 - `crash` (mod) — panic handling and terminal restore on crash.
 - `event_loop` (mod) — the run loop, input, signals.
@@ -90,6 +92,12 @@ The read behind `R` (m7-power-tools/08). `Command::OpenRewrite { id, req: Rewrit
 - `signals::watch_resizes` (fn) — resize wakes; each also asks the redetector for the cell size.
 - `redetect::Redetector` (struct) — handle to the re-query worker; `spawn(host, cell_size, theme, budget, wakes)`, `ask(Query)`.
 - `redetect::Query` (enum) — `CellSize` or `Theme`.
+- `Terminal` (struct, m8-polish-and-ship/08) — one terminal session for the process: crash hook, `InputMux`, one capability probe; `open()`, `close(Ran) -> io::Result<Exit>`. Every place `drive` runs shares it, so the alternate screen and the probe happen once.
+- `Ran` (struct) — a place's outcome and its job-pool shutdown; `Ran::without_jobs`.
+- `Exit::Open(PathBuf)` (variant) — a screen asks to open another place; `drive` handles it (re-`locate`s), never returns it. `run` (gallery, walks) treats it as a broken promise.
+- `places::Place` (enum) — `Repo { repos, path }` or `Outside(OutsideStart)`. `places::OutsideStart` (struct) — `folder`, `missing`, `cursor`, `problem`.
+- `places::locate(path, &Loaded) -> Result<Place, String>` (fn) — before the terminal is touched: missing path → `Outside{missing}`; `NotARepo` → `Outside`; another open error → `Err` (printed, exit 1).
+- `places::drive(Terminal, Place, &Loaded) -> io::Result<Exit>` (fn) — runs places on one terminal until one ends Graft; remembers each opened repository (tty only); config warnings on the first repository screen only; a place reached by an open lands on `HEAD` (`update::lands_on_head_at_open`). `main` uses it on a tty; off a tty it uses `run`, as before.
 
 ## refs
 - `RefBadges` (struct) — refs on every commit that has one, plus the `HEAD` and stash commits.
@@ -252,6 +260,7 @@ Split into files, public items unchanged (m2 review M8): `mod.rs` keeps only the
 - `AppState::uncommitted_row_pinned` (fn) — the uncommitted row takes the pane's top row: `uncommitted_row_shown` and `graph_pane_rows() >= 2`. Every offset of drawn or clicked rows by the uncommitted row reads this (through `view::entries::uncommitted_shown`); a one-row pane is never pinned and draws the cursor's row (48).
 - `update` (fn) — the pure state transition function. Its last step, every event, is `keep_unseen_failure(before, next)` (private): a failure replaced under a standing modal goes to `AppState::unseen`; it is dropped once `status` shows it again (m6-conflicts/78).
 - `opening` (fn) — `(PathBuf, Size) -> (AppState, Vec<Command>)`: the state Graft starts in and the jobs that fill it (open the repository, check git, walk history, read refs, read the working tree). The real loop and every integration harness go through it, because the history walk's id is minted here and `awaiting` set from it (m5-history-and-ghost-preview/05).
+- `lands_on_head_at_open` (fn, m8-polish-and-ship/08) — arms the owed `HEAD` landing on `opening`'s own refs read and walk: a repository opened from the empty state lands on `HEAD`'s row.
 
 - `AppState::amend_into` (field) — `update::amend_into::AmendInto`: the put-in plan in flight, the planned put-in its preview draws, and the tag read after it lands (m7-power-tools/09).
 - `AppState::rewrite` (field) — `update::rewrite_editor::RewriteState`: the `R` read in flight, the editor on screen, and the editor `y` launched until its write answers (m7-power-tools/08). `modal_owns_keys` is true while the editor is up; `text_field_open` while its `r` field is open.

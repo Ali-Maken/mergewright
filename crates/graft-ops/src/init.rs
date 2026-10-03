@@ -104,7 +104,10 @@ mod tests {
             .expect("the child test runs");
 
         assert!(status.success(), "the child init failed");
-        assert!(target.join(".git").is_dir(), "the folder was not made a repository");
+        assert!(
+            target.join(".git").is_dir(),
+            "the folder was not made a repository"
+        );
         assert!(!elsewhere.exists(), "GIT_DIR redirected the init");
     }
 
@@ -116,7 +119,10 @@ mod tests {
         let Some(target) = std::env::var_os("GRAFT_INIT_TARGET") else {
             return;
         };
-        assert!(std::env::var_os("GIT_DIR").is_some(), "the parent set GIT_DIR");
+        assert!(
+            std::env::var_os("GIT_DIR").is_some(),
+            "the parent set GIT_DIR"
+        );
         init_here(std::path::Path::new(&target)).expect("init succeeds");
     }
 }

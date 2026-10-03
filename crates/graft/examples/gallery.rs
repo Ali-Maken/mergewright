@@ -180,6 +180,9 @@ fn show(repo_path: PathBuf, entry: &Entry, index: usize, total: usize) -> Result
             Ok(Step::Quit)
         }
         Exit::Fatal(reason) => Err(reason),
+        // `run` gives the terminal back after one repository; only `drive`
+        // opens another place, so this would be a broken promise, said.
+        Exit::Open(path) => Err(format!("`run` asked to open {}", path.display())),
     }
 }
 
