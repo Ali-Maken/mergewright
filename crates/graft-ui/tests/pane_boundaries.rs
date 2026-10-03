@@ -38,7 +38,7 @@ use graft_ui::detail::{
 };
 use graft_ui::detail_pane::{DetailLayout, DetailPane, detail_areas, split_area};
 use graft_ui::graph_screen::{
-    BannerView, CommitGraphLine, GraphScreen, banner_line, snap_to_columns,
+    BannerView, CommitGraphLine, GraphScreen, banner_line, snap_to_columns, spaced,
 };
 use graft_ui::preview_box::{PREVIEW_MIN, PreviewBox, preview_box_area};
 use graft_ui::theme::ThemeKind;
@@ -59,8 +59,9 @@ fn widths() -> impl Iterator<Item = u16> {
 
 /// Heights the sweep covers: one below the chrome's own row budget, one
 /// where the banner and the offer between them leave almost no body, and the
-/// two the captures are taken at.
-const HEIGHTS: [u16; 5] = [3, 8, 24, 40, 48];
+/// ones the captures are taken at — 24 below the spaced chrome, 30, 36, 40,
+/// 48 and 50 at or above it (`spaced`, m8-polish-and-ship/06).
+const HEIGHTS: [u16; 8] = [3, 8, 24, 30, 36, 40, 48, 50];
 
 /// A rectangle something draws into, with a name a failure can print.
 #[derive(Clone, Copy, Debug)]
@@ -205,6 +206,7 @@ fn the_banner_never_takes_a_row_another_part_of_the_screen_draws() {
                     .map(|index| sanitize_line(&format!("banner line {index}")))
                     .collect();
                 view.commit_graph = offer;
+                view.spaced = spaced(height);
                 let screen = GraphScreen::new(&view, &theme);
                 for width in widths() {
                     let where_ = format!(
@@ -223,14 +225,25 @@ fn the_banner_never_takes_a_row_another_part_of_the_screen_draws() {
     }
 }
 
-/// The carve at one size: the five parts are disjoint, inside the screen, in
-/// reading order, and in the places the design fixes them to.
+/// The carve at one size: the parts (the blank row and the rule only when
+/// spaced) are disjoint, inside the screen, in reading order, and in the
+/// places the design fixes them to.
 fn check_carve(screen: GraphScreen<'_>, area: Rect, banner_lines: u16, where_: &str) {
     let rows = screen.screen_rows(area);
+    // Spaced chrome (m8-polish-and-ship/06): from 30 rows the blank row and
+    // the rule are carved; below, neither.
+    let chrome = u16::from(spaced(area.height));
+    assert_eq!(
+        (rows.gap.height, rows.rule.height),
+        (chrome, chrome),
+        "{where_}: the blank row and the rule"
+    );
     let drawn = panes([
         ("the header", rows.header),
+        ("the blank row under the header", rows.gap),
         ("the banner", rows.banner),
         ("the graph body", rows.body),
+        ("the rule over the bar", rows.rule),
         ("the commit-graph offer", rows.offer),
         ("the hint bar", rows.footer),
     ]);
@@ -849,8 +862,8 @@ fn the_row_columns_are_the_ones_the_rows_are_drawn_to() {
             "{width}: boundaries must be ascending and deduped: {boundaries:?}"
         );
         // Seven columns at most (graph, marker, subject, gap, author, date,
-        // sha) plus the gutter (ADR-0058 §4) means nine boundaries at most. A denser list would let the snap
-        // stop in the middle of a column.
+        // sha) plus the gutter (ADR-0058 §4) means nine boundaries at most.
+        // A denser list would let the snap stop in the middle of a column.
         assert!(
             boundaries.len() <= 9,
             "{width}: {} boundaries is more than the columns there are: {boundaries:?}",

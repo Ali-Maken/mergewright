@@ -16,6 +16,464 @@
 # file (docs/shots/<name>) and what right looks like for it.
 
 ================================================================================
+docs/shots/m6/m6-24-set-aside-done-187x50.txt
+what right looks like: The same at 187x50: the same status line and `1 staged, 2 unstaged`.
+================================================================================
+
+m6 walk capture: m6-24-set-aside-done — scenario pull-rebase-dirty, keys p r r, unicode tier, 187x50
+
+ graft <scratch________________________________________________________________>  202 commits
+◌    Uncommitted changes (1 staged, 2 unstaged)
+◆ ▏ⓘ [◆ main ↑1] ours                                                                                                                                                       GF 6y   047f22c
+●    [origin/main] the teammate's commit                                                                                                                                    GF 6y   0657dff
+●    Commit 200                                                                                                                                                             GF 7y   d5ae5fd
+●    Commit 199                                                                                                                                                             GF 7y   13e6ab1
+●    Commit 198                                                                                                                                                             GF 7y   f5055d9
+●    Commit 197                                                                                                                                                             GF 7y   2cce853
+●    Commit 196                                                                                                                                                             GF 7y   325da3f
+●    Commit 195                                                                                                                                                             GF 7y   0722297
+●    Commit 194                                                                                                                                                             GF 7y   b6a4a47
+●    Commit 193                                                                                                                                                             GF 7y   60af0eb
+●    Commit 192                                                                                                                                                             GF 7y   aceb8c5
+●    Commit 191                                                                                                                                                             GF 7y   11d68ff
+●    Commit 190                                                                                                                                                             GF 7y   91900bd
+●    Commit 189                                                                                                                                                             GF 7y   cec3e93
+●    Commit 188                                                                                                                                                             GF 7y   0a91ece
+●    Commit 187                                                                                                                                                             GF 7y   3121935
+●    Commit 186                                                                                                                                                             GF 7y   fab25df
+●    Commit 185                                                                                                                                                             GF 7y   09ae97c
+●    Commit 184                                                                                                                                                             GF 7y   49d7783
+●    Commit 183                                                                                                                                                             GF 7y   22d55c9
+●    Commit 182                                                                                                                                                             GF 7y   d212b3e
+●    Commit 181                                                                                                                                                             GF 7y   c8254c5
+●    Commit 180                                                                                                                                                             GF 7y   e95ccd4
+●    Commit 179                                                                                                                                                             GF 7y   97b58e5
+●    Commit 178                                                                                                                                                             GF 7y   1c9b7ed
+●    Commit 177                                                                                                                                                             GF 7y   f93340a
+●    Commit 176                                                                                                                                                             GF 7y   5aaeeba
+●    Commit 175                                                                                                                                                             GF 7y   6be5928
+●    Commit 174                                                                                                                                                             GF 7y   9b67be4
+●    Commit 173                                                                                                                                                             GF 7y   937d32b
+●    Commit 172                                                                                                                                                             GF 7y   81be718
+●    Commit 171                                                                                                                                                             GF 7y   57b8196
+●    Commit 170                                                                                                                                                             GF 7y   8ea98be
+●    Commit 169                                                                                                                                                             GF 7y   4926766
+●    Commit 168                                                                                                                                                             GF 7y   0d60d60
+●    Commit 167                                                                                                                                                             GF 7y   fa5ef1d
+●    Commit 166                                                                                                                                                             GF 7y   953abf3
+●    Commit 165                                                                                                                                                             GF 7y   49912f3
+●    Commit 164                                                                                                                                                             GF 7y   1143b38
+●    Commit 163                                                                                                                                                             GF 7y   e135216
+●    Commit 162                                                                                                                                                             GF 7y   6ddbc37
+●    Commit 161                                                                                                                                                             GF 7y   4b6f375
+●    Commit 160                                                                                                                                                             GF 7y   545bf13
+●    Commit 159                                                                                                                                                             GF 7y   a1a658c
+●    Commit 158                                                                                                                                                             GF 7y   1e28a71
+●    Commit 157                                                                                                                                                             GF 7y   b57586d
+●    Commit 156                                                                                                                                                             GF 7y   edc7cba
+ rebase main onto origin/main ✓ · your edits are back
+
+================================================================================
+docs/shots/m6/m6-24-set-aside-done-80x24.txt
+what right looks like: The same at 80x24: the status line whole.
+================================================================================
+
+m6 walk capture: m6-24-set-aside-done — scenario pull-rebase-dirty, keys p r r, unicode tier, 80x24
+
+ graft <scratch_______________________________________________________________>…
+◌    Uncommitted changes (1 staged, 2 unstaged)
+◆ ▏ⓘ [◆ main ↑1] ours                                               6y   047f22c
+●    [origin/main] the teammate's commit                            6y   0657dff
+●    Commit 200                                                     7y   d5ae5fd
+●    Commit 199                                                     7y   13e6ab1
+●    Commit 198                                                     7y   f5055d9
+●    Commit 197                                                     7y   2cce853
+●    Commit 196                                                     7y   325da3f
+●    Commit 195                                                     7y   0722297
+●    Commit 194                                                     7y   b6a4a47
+●    Commit 193                                                     7y   60af0eb
+●    Commit 192                                                     7y   aceb8c5
+●    Commit 191                                                     7y   11d68ff
+●    Commit 190                                                     7y   91900bd
+●    Commit 189                                                     7y   cec3e93
+●    Commit 188                                                     7y   0a91ece
+●    Commit 187                                                     7y   3121935
+●    Commit 186                                                     7y   fab25df
+●    Commit 185                                                     7y   09ae97c
+●    Commit 184                                                     7y   49d7783
+●    Commit 183                                                     7y   22d55c9
+●    Commit 182                                                     7y   d212b3e
+ rebase main onto origin/main ✓ · your edits are back
+
+================================================================================
+docs/shots/m6/m6-25-menu-fixed-slots-120x40.txt
+what right looks like: (ticket 75) menu-checkout: `.` on fix's row, main checked out, tree clean (the capture's `k` reaches the row). The menu leads `Checkout fix`, then `Cherry-pick 401cfbe (o)`, then `Copy SHA (y)` — no `Explain`: the row carries no radar marker (m7-power-tools/36). Not dim here: the slot dims only on HEAD's own row (colour unverified).
+================================================================================
+
+m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., unicode tier, 120x40
+
+ graft <scratch____________________________________________________________>  6 commits
+  ● ▏  [fix] fix the bug                                                                                 GF 6y   401cfbe
+ Checkout fix
+ Cherry-pick 401cfbe (o)
+ Copy SHA (y)
+ Compare with this (x)
+ Open details (⏎)
+ Merge fix into main (m)
+ Rebase main onto fix (r)
+ Revert 401cfbe
+ Reset main to here, mixed
+ Reset main to here, hard
+ Delete branch fix
+ Fetch (f)
+ Pull (p)
+ Push (P)
+ Undo (u)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ m merge  r rebase  ⏎ open  . more  o  b  t  P  c  p  f  u  S  /  R  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+
+================================================================================
+docs/shots/m6/m6-25-menu-fixed-slots-187x50.txt
+what right looks like: The same menu at 187x50: the same first three slots.
+================================================================================
+
+m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., unicode tier, 187x50
+
+ graft <scratch____________________________________________________________>  6 commits
+  ● ▏  [fix] fix the bug                                                                                                                                                    GF 6y   401cfbe
+ Checkout fix
+ Cherry-pick 401cfbe (o)
+ Copy SHA (y)
+ Compare with this (x)
+ Open details (⏎)
+ Merge fix into main (m)
+ Rebase main onto fix (r)
+ Revert 401cfbe
+ Reset main to here, mixed
+ Reset main to here, hard
+ Delete branch fix
+ Fetch (f)
+ Pull (p)
+ Push (P)
+ Undo (u)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ m merge  r rebase  ⏎ open  o take  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  / search  R rewrite  . more  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+
+================================================================================
+docs/shots/m6/m6-25-menu-fixed-slots-80x24.txt
+what right looks like: The same menu at 80x24: the same first three slots.
+================================================================================
+
+m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., unicode tier, 80x24
+
+ graft <scratch____________________________________________________________>  6…
+  ● ▏  [fix] fix the bug                                            6y   401cfbe
+ Checkout fix
+ Cherry-pick 401cfbe (o)
+ Copy SHA (y)
+ Compare with this (x)
+ Open details (⏎)
+ Merge fix into main (m)
+ Rebase main onto fix (r)
+ Revert 401cfbe
+ Reset main to here, mixed
+ Reset main to here, hard
+ Delete branch fix
+ Fetch (f)
+ Pull (p)
+ Push (P)
+ Undo (u)
+
+
+
+
+
+
+ m merge  r rebase  ⏎ open  . more  o  b  t  P  c  p  f  u  S  /  R  q  F2  F3
+
+================================================================================
+docs/shots/m6/set-aside-clash-preview-120x40.txt
+what right looks like: (ticket 84) `. ⏎` on main's row from fix with base.txt edited, main having changed it too: the checkout preview box with `[ Confirm ]`; under `working tree:` the row `your edits: 1 file set aside, put back after`; the conflict line `your edits may clash when put back: base.txt`; no `no conflicts expected` anywhere in the box.
+================================================================================
+
+# m6/set-aside-clash-preview-120x40.txt: drawn by `view::view` from a real
+# AppState (crates/graft/tests/it/m6_stash_put_back/set_aside.rs,
+# the_preview_warns_before_a_switch_that_clashes, asserted). Not a pty
+# capture: a character grid with no colour (CLAUDE.md rule 5, colour
+# unverified).
+#
+# What right looks like: `. ⏎` on main's row with `base.txt` edited; main
+# changed it too, so putting the edit back would clash.
+#  - The checkout preview box, `[ Confirm ]` offered.
+#  - Under `working tree:` the row `your edits: 1 file set aside, put back
+#    after`.
+#  - The conflict line `your edits may clash when put back: base.txt`; no
+#    `no conflicts expected` anywhere in the box.
+
+ ◆ api  ~/code/api · fix                                                                                      7 commits
+
+  ◆   ▏  [main] main changes the base                                                                   GF 2m   075a112
+  │ ●    [◆ fix] fix the bug                                                                            GF 3m   fbb2394
+  ● │    main moves on                                                                                  GF 4m   37926a7
+  ●─╯    add the base                                                                                   GF 5m   ed332bc
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: checkout main ──────────────────────────────────────────────────────────────────────────────────────────────╮
+│ HEAD → main                                                                                                          │
+│ working tree: 3 files updated                                                                                        │
+│ your edits: 1 file set aside, put back after                                                                         │
+│ your edits may clash when put back: base.txt                                                                         │
+│ undo: u takes this back                                                                                              │
+│ git switch main                                                                                                      │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                            │
+╰ y confirm  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+================================================================================
+docs/shots/m6/esc-then-g-120x40.txt
+what right looks like: (ticket 85 A) `esc G` on a 200-commit history after the first screen settled: the header reads `200 commits`, not `stopped`; the graph's last rows are commits (sha, subject), not blank; the bar is the row's own keys.
+================================================================================
+
+# m6-conflicts/85 A: `esc G` on a 200-commit history (fixture `linear`), 120x40, after the first screen settled. Colour unverified (character grid only).
+# What right looks like: the header reads `200 commits`, not `stopped`; the graph pane's last rows are commits (sha, subject), not blank; the bar is the row's own keys.
+ ◆ api  ~/code/api · main                                                                                   200 commits
+
+  ●    Commit 036                                                                                       GF 2d   20b8b5b
+  ●    Commit 035                                                                                       GF 2d   3f6038c
+  ●    Commit 034                                                                                       GF 2d   8e09fc2
+  ●    Commit 033                                                                                       GF 2d   6e2678c
+  ●    Commit 032                                                                                       GF 2d   5d63a1d
+  ●    Commit 031                                                                                       GF 2d   8899c30
+  ●    Commit 030                                                                                       GF 2d   37e297d
+  ●    Commit 029                                                                                       GF 2d   70dce5f
+  ●    Commit 028                                                                                       GF 2d   544a17f
+  ●    Commit 027                                                                                       GF 2d   5a0afae
+  ●    Commit 026                                                                                       GF 2d   1613860
+  ●    Commit 025                                                                                       GF 2d   9735460
+  ●    Commit 024                                                                                       GF 2d   b7af116
+  ●    Commit 023                                                                                       GF 2d   fb309b6
+  ●    Commit 022                                                                                       GF 2d   84d0a1f
+  ●    Commit 021                                                                                       GF 2d   4a23986
+  ●    Commit 020                                                                                       GF 2d   39e90f2
+  ●    Commit 019                                                                                       GF 2d   3df4ded
+  ●    Commit 018                                                                                       GF 2d   a4926c8
+  ●    Commit 017                                                                                       GF 2d   9bc97ce
+  ●    Commit 016                                                                                       GF 2d   5c44f45
+  ●    Commit 015                                                                                       GF 2d   079b1e0
+  ●    Commit 014                                                                                       GF 2d   d4c84eb
+  ●    Commit 013                                                                                       GF 2d   0569f2d
+  ●    Commit 012                                                                                       GF 2d   b52bf2e
+  ●    Commit 011                                                                                       GF 2d   72c4ed4
+  ●    Commit 010                                                                                       GF 2d   7ebc50b
+  ●    Commit 009                                                                                       GF 2d   617a1f4
+  ●    Commit 008                                                                                       GF 2d   0ebab38
+  ●    Commit 007                                                                                       GF 2d   07b6383
+  ●    Commit 006                                                                                       GF 2d   258a38c
+  ●    Commit 005                                                                                       GF 2d   af93e54
+  ●    Commit 004                                                                                       GF 2d   23e1f67
+  ●    Commit 003                                                                                       GF 2d   91af090
+  ●    Commit 002                                                                                       GF 2d   ace211d
+  ◇ ▏  Commit 001                                                                                       GF 2d   a9a0c8e
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · o take · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · . more
+
+================================================================================
+docs/shots/m6/stash-clash-take-esc-pane-120x40.txt
+what right looks like: (ticket 85 B) `S p y esc ⏎ o esc`: a stash pop that clashes in notes.md, a look at it in the changes pane, back into the resolver, `o` takes yours, `esc` back to the pane. The pane on notes.md under `CONFLICTS`; no `<<<<<<<`, `=======` or `>>>>>>>` line anywhere (yours is what HEAD holds, so no body lines is right); the header reads `diff vs HEAD f3742ab`, main's tip, not the stash's id.
+================================================================================
+
+# m6/stash-clash-take-esc-pane-120x40.txt: 120x40, drawn by `view::view`
+# from a real AppState (crates/graft/tests/it/m6_stash_put_back/pop.rs,
+# a_take_then_esc_shows_the_file_without_markers, asserted). Not a pty
+# capture: a character grid with no colour (CLAUDE.md rule 5, colour
+# unverified).
+#
+# What right looks like: `S p y esc ⏎ o esc` — a stash pop that clashes in
+# notes.md, a look at the file in the changes pane (markers shown then),
+# back into the resolver, `o` takes yours, `esc` back to the changes pane.
+#  - The changes pane on notes.md under `CONFLICTS`.
+#  - No `<<<<<<<`, `=======` or `>>>>>>>` line anywhere. Yours is what
+#    HEAD holds, so the file's diff against HEAD is empty: no body lines is
+#    right here (the test reads the pane's served diff to prove it).
+#  - The header reads `diff vs HEAD <main's sha7>` (main's tip,
+#    `commit over the notes`), not the stash's id.
+
+ ◆ api  ~/code/api · main                                                                                     6 commits
+
+  ◌   ▏  Uncommitted changes (1 unmerged)
+  ◆      [◆ main] commit over the notes                                                                 GF 3m   f3742ab
+  │ ■    [stash@{0}] WIP on main: cfa370c add the notes                                                 GF 4m   fa9e094
+  ●─╯    add the notes                                                                                  GF 5m   cfa370c
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ stash@{0} clashed · 1 file conflicted · ⏎ resolve · M mergetool · e edit · <> resize · space resolved · . more
+UNCOMMITTED
+diff vs HEAD f3742ab
+CONFLICTS (1)
+  notes.md      both modified
+
+
+
+
+
+
+
+
+
+
+
+
+
+================================================================================
+docs/shots/m6/stash-apply-preview-120x40.txt
+what right looks like: (ticket 86) `S ⏎` on a stash whose notes.md clashes with the commit made since: a box over the stash list titled `Preview: apply stash@{0}`; `working tree: notes.md`, `may conflict: notes.md`; the fate row `stash@{0} stays in the list`; `undo: u takes this back`; the git line; `▸[ Cancel ]   [ Apply ]`, the cursor on Cancel; the box edge offers `y apply`. `esc` goes back to the list on the same stash, nothing written (asserted). (ticket 87) No stash-list bar under the box: the box footer is the bar, the last row blank. Colour unverified.
+================================================================================
+
+# m6/stash-apply-preview-120x40.txt: 120x40, drawn by `view::view` from a
+# real AppState (crates/graft/tests/it/m6_stash_put_back/stash_preview.rs,
+# stash_look_and_leave_writes_nothing, asserted). Not a pty capture: a
+# character grid with no colour (CLAUDE.md rule 5, colour unverified).
+#
+# What right looks like: `S ⏎` on a stash whose notes.md clashes with the
+# commit made since.
+#  - A box over the stash list titled `Preview: apply stash@{0}`.
+#  - `working tree: notes.md`, then `may conflict: notes.md`.
+#  - The fate row: `stash@{0} stays in the list`.
+#  - The footer offers `y apply`; `esc` goes back to the list, nothing written.
+#  - No stash-list bar under the box: the box's footer is the bar, and the
+#    last row is blank (review 86, M2).
+
+STASHES (1)
+▸ stash@{0}   "WIP on main: cfa370c add the notes"             4m ago   1 file
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: apply stash@{0} ────────────────────────────────────────────────────────────────────────────────────────────╮
+│ working tree: notes.md                                                                                               │
+│ may conflict: notes.md                                                                                               │
+│ stash@{0} stays in the list                                                                                          │
+│ undo: u takes this back                                                                                              │
+│ git stash apply --index 'stash@{0}'                                                                                  │
+│ ▸[ Cancel ]   [ Apply ]                                                                                              │
+╰ y apply  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────╯
+
+
+
+================================================================================
 docs/shots/m6/stash-pop-preview-80x24.txt
 what right looks like: (ticket 86) `S p` on the same stash at 80x24: the box `Preview: pop stash@{0}` whole inside 80 columns; `may conflict: notes.md`; the fate row `stash@{0} is dropped · u brings it back`; `[ Pop ]`; the edge offers `y pop`. (ticket 87) No stash-list bar under the box.
 ================================================================================
@@ -110,10 +568,10 @@ STASHES (1)
 
 
 
-
 ╭ Preview: apply stash@{0} ────────────────────────────────────────────────────────────────────────────────────────────╮
 │ your unsaved edits to notes.md are in the way                                                                        │
 │ ▸[ Close ]                                                                                                           │
 ╰ esc back ────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
 
 

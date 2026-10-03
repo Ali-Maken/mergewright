@@ -16,6 +16,154 @@
 # file (docs/shots/<name>) and what right looks like for it.
 
 ================================================================================
+docs/shots/m6/m6-19-after-esc-esc-187x50.txt
+what right looks like: The same at 187x50: the bottom row starts `⇥ banner`; `c finish`, not `c commit` (ticket 52; re-taken by 63).
+================================================================================
+
+m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 187x50
+
+ graft <scratch____________________________________________________________>    MERGING
+◌      Uncommitted changes (2 unmerged, 1 staged)
+  ● ▏  [feature] feature's readme                                                                                                                                           GF 6y   1e78110
+  ●    feature's notes                                                                                                                                                      GF 6y   d69867a
+  ●    feature drops gone                                                                                                                                                   GF 6y   35c2d1e
+◆ │    [◆ main] main's notes                                                                                                                                                GF 6y   a301516
+● │    main changes gone                                                                                                                                                    GF 6y   fa0b4d8
+●─╯    add the readme                                                                                                                                                       GF 6y   941a7d6
+●      add notes                                                                                                                                                            GF 6y   f7b6fca
+●      add gone                                                                                                                                                             GF 6y   30036f6
+●      Correct the note                                                                                                                                                     GF 7y   a82960b
+●      Add the first note                                                                                                                                                   GF 7y   fadcfb3
+◇      Add a readme                                                                                                                                                         GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⇥ banner  c finish  m merge  r rebase  ⏎ open  b branch  t tag  P push  p pull  f fetch  u undo  S stash  / search  q quit  F2 stat  . more  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+
+================================================================================
+docs/shots/m6/m6-19-after-esc-esc-200x50.txt
+what right looks like: The same at 200x50: the bottom row starts `⇥ banner  c finish  m merge  r rebase  ⏎ open`; `c finish`, not `c commit` (ticket 52; re-taken by 63); `. more` after `F3 renderer`, no `. explain` (m7-power-tools/36).
+================================================================================
+
+m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 200x50
+
+ graft <scratch____________________________________________________________>    MERGING
+◌      Uncommitted changes (2 unmerged, 1 staged)
+  ● ▏  [feature] feature's readme                                                                                                                                                        GF 6y   1e78110
+  ●    feature's notes                                                                                                                                                                   GF 6y   d69867a
+  ●    feature drops gone                                                                                                                                                                GF 6y   35c2d1e
+◆ │    [◆ main] main's notes                                                                                                                                                             GF 6y   a301516
+● │    main changes gone                                                                                                                                                                 GF 6y   fa0b4d8
+●─╯    add the readme                                                                                                                                                                    GF 6y   941a7d6
+●      add notes                                                                                                                                                                         GF 6y   f7b6fca
+●      add gone                                                                                                                                                                          GF 6y   30036f6
+●      Correct the note                                                                                                                                                                  GF 7y   a82960b
+●      Add the first note                                                                                                                                                                GF 7y   fadcfb3
+◇      Add a readme                                                                                                                                                                      GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⇥ banner  c finish  m merge  r rebase  ⏎ open  b branch  t tag  P push  p pull  f fetch  u undo  S stash  / search  q quit  F2 status  F3 renderer  . more  x  +  j/k  space  1  F  H  J  y  M  O  C
+
+================================================================================
+docs/shots/m6/m6-19-after-esc-esc-80x24.txt
+what right looks like: The same at 80x24: the bottom row starts `⇥ banner  c finish  m merge  . more`.
+================================================================================
+
+m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 80x24
+
+ graft <scratch______________________________________________________>…  MERGING
+◌      Uncommitted changes (2 unmerged, 1 staged)
+  ● ▏  [feature] feature's readme                                   6y   1e78110
+  ●    feature's notes                                              6y   d69867a
+  ●    feature drops gone                                           6y   35c2d1e
+◆ │    [◆ main] main's notes                                        6y   a301516
+● │    main changes gone                                            6y   fa0b4d8
+●─╯    add the readme                                               6y   941a7d6
+●      add notes                                                    6y   f7b6fca
+●      add gone                                                     6y   30036f6
+●      Correct the note                                             7y   a82960b
+●      Add the first note                                           7y   fadcfb3
+◇      Add a readme                                                 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+ ⇥ banner  c finish  m merge  . more  r  ⏎  b  t  P  p  f  u  S  /  q  F2  F3  x
+
+================================================================================
 docs/shots/m6/../m5-hints-ladder.txt   (an earlier milestone's capture, changed by m6)
 what right looks like: the uncommitted row has no `space fold` — changed by M6 (a6a47ee): on the uncommitted-changes row the hint ladder no longer offers `space fold` (`space` now needs a commit row, `NEEDS_A_COMMIT` in graft-ui hints.rs); every other rung as the M5 sheet showed it — at the capture's three bar widths, 80, 120 and 160 cells.
 ================================================================================
@@ -68,23 +216,23 @@ what right looks like: the uncommitted row has no `space fold` — changed by M6
 
 --- the cursor is on the uncommitted-changes row
 [······························ 80 cells of bar ·······························]
- ⏎ changes  c commit  S stash  . more  p  P  f  u  J  /  j/k  q  F2  F3  +  1  F
+ ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · . more
 
 --- the cursor is on the tip, which carries the current branch's badge
 [······························ 80 cells of bar ·······························]
- ⏎ open  c commit  P push  . more  p  f  b  t  u  S  J  /  q  F2  F3  x  +  j/k
+ ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · . more
 
 --- the cursor is on another branch's tip
 [······························ 80 cells of bar ·······························]
- m merge  r rebase  ⏎ open  . more  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +
+ m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · . more
 
 --- the cursor is on an ordinary commit row
 [······························ 80 cells of bar ·······························]
- ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  q  F2  F3  x  +
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · . more
 
 --- the changes pane has focus, the divider draggable
 [······························ 80 cells of bar ·······························]
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
+ space stage · d discard · c commit · <> resize · ⌃A all · e edit · . more
 
 --- the undo journal browser has focus
 [······························ 80 cells of bar ·······························]
@@ -94,23 +242,23 @@ what right looks like: the uncommitted row has no `space fold` — changed by M6
 
 --- the cursor is on the uncommitted-changes row
 [·················································· 120 cells of bar ··················································]
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  . more  J  /  j/k  q  F2  F3  +  1  F  H  M  O  C
+ ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · J journal · / search · j/k move · q quit · . more
 
 --- the cursor is on the tip, which carries the current branch's badge
 [·················································· 120 cells of bar ··················································]
- ⏎ open  c commit  P push  p pull  f fetch  . more  b  t  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
+ ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · . more
 
 --- the cursor is on another branch's tip
 [·················································· 120 cells of bar ··················································]
- m merge  r rebase  ⏎ open  . more  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+ m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · . more
 
 --- the cursor is on an ordinary commit row
 [·················································· 120 cells of bar ··················································]
- ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · . more
 
 --- the changes pane has focus, the divider draggable
 [·················································· 120 cells of bar ··················································]
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
+ space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ graph · . more
 
 --- the undo journal browser has focus
 [·················································· 120 cells of bar ··················································]
@@ -120,23 +268,23 @@ what right looks like: the uncommitted row has no `space fold` — changed by M6
 
 --- the cursor is on the uncommitted-changes row
 [······································································ 160 cells of bar ······································································]
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 renderer  + lanes  . more  1  F  H  M  O  C
+ ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · J journal · / search · j/k move · q quit · F2 stat · F3 rend · + lane · 1 first · . more
 
 --- the cursor is on the tip, which carries the current branch's badge
 [······································································ 160 cells of bar ······································································]
- ⏎ open  c commit  P push  p pull  f fetch  b branch  t tag  u undo  S stash  J journal  / search  q quit  . more  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
+ ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · . more
 
 --- the cursor is on another branch's tip
 [······································································ 160 cells of bar ······································································]
- m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  . more  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+ m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · F3 rend · . more
 
 --- the cursor is on an ordinary commit row
 [······································································ 160 cells of bar ······································································]
- ⏎ open  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  J journal  . more  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · . more
 
 --- the changes pane has focus, the divider draggable
 [······································································ 160 cells of bar ······································································]
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
+ space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ graph · . more
 
 --- the undo journal browser has focus
 [······································································ 160 cells of bar ······································································]
@@ -231,13 +379,13 @@ what right looks like: the uncommitted row has no `space fold` — the cursor on
 # one state photographed at three sizes is a picture of at most one of
 # them.
 
- graft /code/api  5 commits  date order, sorting…
-◌ ▏  Uncommitted changes (1 unstaged)
-◆    [◆ main] add second                                            8m   29a1432
-●    add first                                                      9m   3d9496e
-●    Correct the note                                               1y   a82960b
-●    Add the first note                                             1y   fadcfb3
-◇    Add a readme                                                   1y   64ded19
+ ◆ api  ~/code/api · main                       5 commits  date order, sorting…
+  ◌ ▏  Uncommitted changes (1 unstaged)
+  ◆    [◆ main] add second                                         8m   29a1432
+  ●    add first                                                   9m   3d9496e
+  ●    Correct the note                                            1y   a82960b
+  ●    Add the first note                                          1y   fadcfb3
+  ◇    Add a readme                                                1y   64ded19
 
 
 
@@ -254,7 +402,7 @@ what right looks like: the uncommitted row has no `space fold` — the cursor on
 
 
 
- ⏎ changes  c commit  S stash  . more  p  P  f  u  J  /  j/k  q  F2  F3  +  1  F
+ ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · . more
 
 ================================================================================
 docs/shots/m6/../m5-hints-uncommitted-120x40.txt   (an earlier milestone's capture, changed by m6)
@@ -312,13 +460,14 @@ what right looks like: the uncommitted row has no `space fold` — the same at 1
 # one state photographed at three sizes is a picture of at most one of
 # them.
 
- graft /code/api  5 commits  date order, sorting…
-◌ ▏  Uncommitted changes (1 unstaged)
-◆    [◆ main] add second                                                                                 GF 8m   29a1432
-●    add first                                                                                           GF 9m   3d9496e
-●    Correct the note                                                                                    GF 1y   a82960b
-●    Add the first note                                                                                  GF 1y   fadcfb3
-◇    Add a readme                                                                                        GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                               5 commits  date order, sorting…
+
+  ◌ ▏  Uncommitted changes (1 unstaged)
+  ◆    [◆ main] add second                                                                              GF 8m   29a1432
+  ●    add first                                                                                        GF 9m   3d9496e
+  ●    Correct the note                                                                                 GF 1y   a82960b
+  ●    Add the first note                                                                               GF 1y   fadcfb3
+  ◇    Add a readme                                                                                     GF 1y   64ded19
 
 
 
@@ -349,9 +498,8 @@ what right looks like: the uncommitted row has no `space fold` — the same at 1
 
 
 
-
-
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  . more  J  /  j/k  q  F2  F3  +  1  F  H  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · J journal · / search · j/k move · . more
 
 ================================================================================
 docs/shots/m6/../m5-hints-uncommitted-160x48.txt   (an earlier milestone's capture, changed by m6)
@@ -409,13 +557,14 @@ what right looks like: the uncommitted row has no `space fold` — the same at 1
 # one state photographed at three sizes is a picture of at most one of
 # them.
 
- graft /code/api  5 commits  date order, sorting…
-◌ ▏  Uncommitted changes (1 unstaged)
-◆    [◆ main] add second                                                                                                                         GF 8m   29a1432
-●    add first                                                                                                                                   GF 9m   3d9496e
-●    Correct the note                                                                                                                            GF 1y   a82960b
-●    Add the first note                                                                                                                          GF 1y   fadcfb3
-◇    Add a readme                                                                                                                                GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                                       5 commits  date order, sorting…
+
+  ◌ ▏  Uncommitted changes (1 unstaged)
+  ◆    [◆ main] add second                                                                                                                      GF 8m   29a1432
+  ●    add first                                                                                                                                GF 9m   3d9496e
+  ●    Correct the note                                                                                                                         GF 1y   a82960b
+  ●    Add the first note                                                                                                                       GF 1y   fadcfb3
+  ◇    Add a readme                                                                                                                             GF 1y   64ded19
 
 
 
@@ -454,9 +603,8 @@ what right looks like: the uncommitted row has no `space fold` — the same at 1
 
 
 
-
-
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 renderer  + lanes  . more  1  F  H  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · J journal · / search · j/k move · q quit · F2 stat · F3 rend · + lane · 1 first · . more
 
 ================================================================================
 docs/shots/m6/../m4-credential-prompt-in-app.txt   (an earlier milestone's capture, changed by m6)
@@ -492,12 +640,12 @@ what right looks like: (fix F9, superseded) Every frame's bottom row is the prom
 #    open (a username is not a secret), no `•` anywhere.
 #
 === 120x40 · password · pulse seed down ===
-" graft 3 commits                                                                                                        "
-"◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                            "
-"◆    [HEAD] Commit 3␛[31m                                                                                TE 57y  0303030"
-"●    Commit 2␛[31m                                                                                       TE 57y  0202020"
-"◇    Commit 1␛[31m                                                                                       TE 57y  0101010"
+"                                                                                                              3 commits "
 "                                                                                                                        "
+"  ◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
+"  ◆    [HEAD] Commit 3␛[31m                                                                             TE 57y  0303030 "
+"  ●    Commit 2␛[31m                                                                                    TE 57y  0202020 "
+"  ◇    Commit 1␛[31m                                                                                    TE 57y  0101010 "
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
@@ -514,7 +662,7 @@ what right looks like: (fix F9, superseded) Every frame's bottom row is the prom
 "                        │ ▏◦•••••••                                                            │                        "
 "                        │ typed here only · never stored by Graft                              │                        "
 "                        ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯                        "
-"                                                                                                                        "
+"────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
 " ⏎ send  esc cancel                                                                                                     "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
@@ -534,12 +682,12 @@ what right looks like: (fix F9, superseded) Every frame's bottom row is the prom
 "                                                                                                                        "
 
 === 120x40 · the same password · pulse seed up ===
-" graft 3 commits                                                                                                        "
-"◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                            "
-"◆    [HEAD] Commit 3␛[31m                                                                                TE 57y  0303030"
-"●    Commit 2␛[31m                                                                                       TE 57y  0202020"
-"◇    Commit 1␛[31m                                                                                       TE 57y  0101010"
+"                                                                                                              3 commits "
 "                                                                                                                        "
+"  ◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
+"  ◆    [HEAD] Commit 3␛[31m                                                                             TE 57y  0303030 "
+"  ●    Commit 2␛[31m                                                                                    TE 57y  0202020 "
+"  ◇    Commit 1␛[31m                                                                                    TE 57y  0101010 "
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
@@ -556,7 +704,7 @@ what right looks like: (fix F9, superseded) Every frame's bottom row is the prom
 "                        │ ▏••••••••                                                            │                        "
 "                        │ typed here only · never stored by Graft                              │                        "
 "                        ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯                        "
-"                                                                                                                        "
+"────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
 " ⏎ send  esc cancel                                                                                                     "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
@@ -618,45 +766,45 @@ what right looks like: (ticket 47, re-taken by ticket 50) The force (lease) push
 # rejection's sticky line waits under the box (m6-conflicts/69).
 
 === after `y` (identical to before it) ===
- graft /code/api  152 rows so far
-◆ ▏ⓘ [◆ main ↑1] ours                                                                                    GF 6y   739071c
-●    [origin/main] Commit 200                                                                            GF 7y   d5ae5fd
-●    Commit 199                                                                                          GF 7y   13e6ab1
-●    Commit 198                                                                                          GF 7y   f5055d9
-●    Commit 197                                                                                          GF 7y   2cce853
-●    Commit 196                                                                                          GF 7y   325da3f
-●    Commit 195                                                                                          GF 7y   0722297
-●    Commit 194                                                                                          GF 7y   b6a4a47
-●    Commit 193                                                                                          GF 7y   60af0eb
-●    Commit 192                                                                                          GF 7y   aceb8c5
-●    Commit 191                                                                                          GF 7y   11d68ff
-●    Commit 190                                                                                          GF 7y   91900bd
-●    Commit 189                                                                                          GF 7y   cec3e93
-●    Commit 188                                                                                          GF 7y   0a91ece
-●    ╭ Force-push main → origin/main? ────────────────────────────────────────────────────────────────╮  GF 7y   3121935
-●    │ origin/main d5ae5fd → 739071c · refused if origin moved since your fetch (lease)               │  GF 7y   fab25df
-●    │ rewrites history for everyone who has d5ae5fd                                                  │  GF 7y   09ae97c
-●    │ nothing on origin/main is lost                                                                 │  GF 7y   49d7783
-●    │                                                                                                │  GF 7y   22d55c9
-●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0d9047e… │  GF 7y   d212b3e
-●    │                                                                                                │  GF 7y   c8254c5
-●    │ ▸[ Cancel ]   [ Force push ]                                                                   │  GF 7y   e95ccd4
-●    ╰────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   97b58e5
-●    Commit 178                                                                                          GF 7y   1c9b7ed
-●    Commit 177                                                                                          GF 7y   f93340a
-●    Commit 176                                                                                          GF 7y   5aaeeba
-●    Commit 175                                                                                          GF 7y   6be5928
-●    Commit 174                                                                                          GF 7y   9b67be4
-●    Commit 173                                                                                          GF 7y   937d32b
-●    Commit 172                                                                                          GF 7y   81be718
-●    Commit 171                                                                                          GF 7y   57b8196
-●    Commit 170                                                                                          GF 7y   8ea98be
-●    Commit 169                                                                                          GF 7y   4926766
-●    Commit 168                                                                                          GF 7y   0d60d60
-●    Commit 167                                                                                          GF 7y   fa5ef1d
-●    Commit 166                                                                                          GF 7y   953abf3
-●    Commit 165                                                                                          GF 7y   49912f3
-●    Commit 164                                                                                          GF 7y   1143b38
+ ◆ api  ~/code/api · main                                                                               144 rows so far
+
+  ◆ ▏ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
+  ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
+  ●    Commit 199                                                                                       GF 7y   13e6ab1
+  ●    Commit 198                                                                                       GF 7y   f5055d9
+  ●    Commit 197                                                                                       GF 7y   2cce853
+  ●    Commit 196                                                                                       GF 7y   325da3f
+  ●    Commit 195                                                                                       GF 7y   0722297
+  ●    Commit 194                                                                                       GF 7y   b6a4a47
+  ●    Commit 193                                                                                       GF 7y   60af0eb
+  ●    Commit 192                                                                                       GF 7y   aceb8c5
+  ●    Commit 191                                                                                       GF 7y   11d68ff
+  ●    Commit 190                                                                                       GF 7y   91900bd
+  ●    Commit 189                                                                                       GF 7y   cec3e93
+  ●    ╭ Force-push main → origin/main? ─────────────────────────────────────────────────────────────╮  GF 7y   0a91ece
+  ●    │ origin/main d5ae5fd → 739071c · refused if origin moved since your fetch (lease)            │  GF 7y   3121935
+  ●    │ rewrites history for everyone who has d5ae5fd                                               │  GF 7y   fab25df
+  ●    │ nothing on origin/main is lost                                                              │  GF 7y   09ae97c
+  ●    │                                                                                             │  GF 7y   49d7783
+  ●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0d90… │  GF 7y   22d55c9
+  ●    │                                                                                             │  GF 7y   d212b3e
+  ●    │ ▸[ Cancel ]   [ Force push ]                                                                │  GF 7y   c8254c5
+  ●    ╰─────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   e95ccd4
+  ●    Commit 179                                                                                       GF 7y   97b58e5
+  ●    Commit 178                                                                                       GF 7y   1c9b7ed
+  ●    Commit 177                                                                                       GF 7y   f93340a
+  ●    Commit 176                                                                                       GF 7y   5aaeeba
+  ●    Commit 175                                                                                       GF 7y   6be5928
+  ●    Commit 174                                                                                       GF 7y   9b67be4
+  ●    Commit 173                                                                                       GF 7y   937d32b
+  ●    Commit 172                                                                                       GF 7y   81be718
+  ●    Commit 171                                                                                       GF 7y   57b8196
+  ●    Commit 170                                                                                       GF 7y   8ea98be
+  ●    Commit 169                                                                                       GF 7y   4926766
+  ●    Commit 168                                                                                       GF 7y   0d60d60
+  ●    Commit 167                                                                                       GF 7y   fa5ef1d
+  ●    Commit 166                                                                                       GF 7y   953abf3
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
@@ -678,55 +826,55 @@ what right looks like: (ticket 49) A teammate pushed; `P` was rejected; `p` name
 # - The action reads `Push`, not `Force push`.
 # - Colour is unverified (CLAUDE.md rule 5).
 #
- graft /code/api  152 rows so far
-◆ ▏  [◆ main ↑1] ours                                                                                                                                                       GF now  0000000
-●    [origin/main] theirs                                                                                                                                                   GF 6y   7be74b5
-●    Commit 200                                                                                                                                                             GF 7y   d5ae5fd
-●    Commit 199                                                                                                                                                             GF 7y   13e6ab1
-●    Commit 198                                                                                                                                                             GF 7y   f5055d9
-●    Commit 197                                                                                                                                                             GF 7y   2cce853
-●    Commit 196                                                                                                                                                             GF 7y   325da3f
-●    Commit 195                                                                                                                                                             GF 7y   0722297
-●    Commit 194                                                                                                                                                             GF 7y   b6a4a47
-●    Commit 193                                                                                                                                                             GF 7y   60af0eb
-●    Commit 192                                                                                                                                                             GF 7y   aceb8c5
-●    Commit 191                                                                                                                                                             GF 7y   11d68ff
-●    Commit 190                                                                                                                                                             GF 7y   91900bd
-●    Commit 189                                                                                                                                                             GF 7y   cec3e93
-●    Commit 188                                                                                                                                                             GF 7y   0a91ece
-●    Commit 187                                                                                                                                                             GF 7y   3121935
-●    Commit 186                                                                                                                                                             GF 7y   fab25df
-●    Commit 185                                                                                                                                                             GF 7y   09ae97c
-●    Commit 184                                                                                                                                                             GF 7y   49d7783
-●    Commit 183                                                                                                                                                             GF 7y   22d55c9
-●    ╭ Push main → origin/main ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 7y   d212b3e
-●    │ 1 commit · can't be undone from here — origin keeps what you send                                                                                                 │  GF 7y   c8254c5
-●    │                                                                                                                                                                   │  GF 7y   e95ccd4
-●    │ git push --progress origin refs/heads/main:refs/heads/main                                                                                                        │  GF 7y   97b58e5
-●    │                                                                                                                                                                   │  GF 7y   1c9b7ed
-●    │ ▸[ Cancel ]   [ Push ]                                                                                                                                            │  GF 7y   f93340a
-●    ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   5aaeeba
-●    Commit 175                                                                                                                                                             GF 7y   6be5928
-●    Commit 174                                                                                                                                                             GF 7y   9b67be4
-●    Commit 173                                                                                                                                                             GF 7y   937d32b
-●    Commit 172                                                                                                                                                             GF 7y   81be718
-●    Commit 171                                                                                                                                                             GF 7y   57b8196
-●    Commit 170                                                                                                                                                             GF 7y   8ea98be
-●    Commit 169                                                                                                                                                             GF 7y   4926766
-●    Commit 168                                                                                                                                                             GF 7y   0d60d60
-●    Commit 167                                                                                                                                                             GF 7y   fa5ef1d
-●    Commit 166                                                                                                                                                             GF 7y   953abf3
-●    Commit 165                                                                                                                                                             GF 7y   49912f3
-●    Commit 164                                                                                                                                                             GF 7y   1143b38
-●    Commit 163                                                                                                                                                             GF 7y   e135216
-●    Commit 162                                                                                                                                                             GF 7y   6ddbc37
-●    Commit 161                                                                                                                                                             GF 7y   4b6f375
-●    Commit 160                                                                                                                                                             GF 7y   545bf13
-●    Commit 159                                                                                                                                                             GF 7y   a1a658c
-●    Commit 158                                                                                                                                                             GF 7y   1e28a71
-●    Commit 157                                                                                                                                                             GF 7y   b57586d
-●    Commit 156                                                                                                                                                             GF 7y   edc7cba
-●    Commit 155                                                                                                                                                             GF 7y   4c8c724
+ ◆ api  ~/code/api · main                                                                                                                                                  144 rows so far
+
+  ◆ ▏  [◆ main ↑1] ours                                                                                                                                                    GF now  0000000
+  ●    [origin/main] theirs                                                                                                                                                GF 6y   7be74b5
+  ●    Commit 200                                                                                                                                                          GF 7y   d5ae5fd
+  ●    Commit 199                                                                                                                                                          GF 7y   13e6ab1
+  ●    Commit 198                                                                                                                                                          GF 7y   f5055d9
+  ●    Commit 197                                                                                                                                                          GF 7y   2cce853
+  ●    Commit 196                                                                                                                                                          GF 7y   325da3f
+  ●    Commit 195                                                                                                                                                          GF 7y   0722297
+  ●    Commit 194                                                                                                                                                          GF 7y   b6a4a47
+  ●    Commit 193                                                                                                                                                          GF 7y   60af0eb
+  ●    Commit 192                                                                                                                                                          GF 7y   aceb8c5
+  ●    Commit 191                                                                                                                                                          GF 7y   11d68ff
+  ●    Commit 190                                                                                                                                                          GF 7y   91900bd
+  ●    Commit 189                                                                                                                                                          GF 7y   cec3e93
+  ●    Commit 188                                                                                                                                                          GF 7y   0a91ece
+  ●    Commit 187                                                                                                                                                          GF 7y   3121935
+  ●    Commit 186                                                                                                                                                          GF 7y   fab25df
+  ●    Commit 185                                                                                                                                                          GF 7y   09ae97c
+  ●    Commit 184                                                                                                                                                          GF 7y   49d7783
+  ●    ╭ Push main → origin/main ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 7y   22d55c9
+  ●    │ 1 commit · can't be undone from here — origin keeps what you send                                                                                              │  GF 7y   d212b3e
+  ●    │                                                                                                                                                                │  GF 7y   c8254c5
+  ●    │ git push --progress origin refs/heads/main:refs/heads/main                                                                                                     │  GF 7y   e95ccd4
+  ●    │                                                                                                                                                                │  GF 7y   97b58e5
+  ●    │ ▸[ Cancel ]   [ Push ]                                                                                                                                         │  GF 7y   1c9b7ed
+  ●    ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   f93340a
+  ●    Commit 176                                                                                                                                                          GF 7y   5aaeeba
+  ●    Commit 175                                                                                                                                                          GF 7y   6be5928
+  ●    Commit 174                                                                                                                                                          GF 7y   9b67be4
+  ●    Commit 173                                                                                                                                                          GF 7y   937d32b
+  ●    Commit 172                                                                                                                                                          GF 7y   81be718
+  ●    Commit 171                                                                                                                                                          GF 7y   57b8196
+  ●    Commit 170                                                                                                                                                          GF 7y   8ea98be
+  ●    Commit 169                                                                                                                                                          GF 7y   4926766
+  ●    Commit 168                                                                                                                                                          GF 7y   0d60d60
+  ●    Commit 167                                                                                                                                                          GF 7y   fa5ef1d
+  ●    Commit 166                                                                                                                                                          GF 7y   953abf3
+  ●    Commit 165                                                                                                                                                          GF 7y   49912f3
+  ●    Commit 164                                                                                                                                                          GF 7y   1143b38
+  ●    Commit 163                                                                                                                                                          GF 7y   e135216
+  ●    Commit 162                                                                                                                                                          GF 7y   6ddbc37
+  ●    Commit 161                                                                                                                                                          GF 7y   4b6f375
+  ●    Commit 160                                                                                                                                                          GF 7y   545bf13
+  ●    Commit 159                                                                                                                                                          GF 7y   a1a658c
+  ●    Commit 158                                                                                                                                                          GF 7y   1e28a71
+  ●    Commit 157                                                                                                                                                          GF 7y   b57586d
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  y push  ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
@@ -858,29 +1006,29 @@ what right looks like: (ticket 57) A merge begun in the shell, the banner focuse
 # - Colour and the focus highlight are unverified (CLAUDE.md rule 5).
 #
 === 1. a: the abort box ===
- graft /code/api    MERGING
-◌   ▏  Uncommitted changes (2 unmerged)
-◆      [◆ main] main's take                                                                              GF 2h   ddeed32
-│ ●    [feature] the feature's take                                                                      GF 2h   f43f326
-●─╯    the shared files                                                                                  GF 2h   b35b2f1
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                       MERGING
+
+  ◌   ▏  Uncommitted changes (2 unmerged)
+  ◆      [◆ main] main's take                                                                           GF 2h   ddeed32
+  │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
+  ●─╯    the shared files                                                                               GF 2h   b35b2f1
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
 
 
 
-
-       ╭ Abort the merge? ────────────────────────────────────────────────────────────────────────────╮
-       │ main goes back to before the merge                                                           │
-       │ u puts the merge back                                                                        │
-       │                                                                                              │
-       │ git merge --abort                                                                            │
-       │                                                                                              │
-       │ ▸[ Cancel ]   [ Abort ]                                                                      │
-       ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+         ╭ Abort the merge? ─────────────────────────────────────────────────────────────────────────╮
+         │ main goes back to before the merge                                                        │
+         │ u puts the merge back                                                                     │
+         │                                                                                           │
+         │ git merge --abort                                                                         │
+         │                                                                                           │
+         │ ▸[ Cancel ]   [ Abort ]                                                                   │
+─────────╰───────────────────────────────────────────────────────────────────────────────────────────╯──────────────────
  y abort  ←/→ move  ⏎ choose  esc cancel
 UNCOMMITTED
 diff vs HEAD ddeed32
@@ -899,13 +1047,14 @@ CONFLICTS (2)                 ▎
 
 
 === 2. → ⏎: aborted ===
- graft /code/api  6 commits
-◆   ▏  [◆ main] main's take                                                                              GF 2h   ddeed32
-│ ●    [feature] the feature's take                                                                      GF 2h   f43f326
-●─╯    the shared files                                                                                  GF 2h   b35b2f1
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     6 commits
+
+  ◆   ▏  [◆ main] main's take                                                                           GF 2h   ddeed32
+  │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
+  ●─╯    the shared files                                                                               GF 2h   b35b2f1
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -920,8 +1069,7 @@ CONFLICTS (2)                 ▎
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  abort merge of feature ✓
 COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
 main's take
@@ -940,14 +1088,15 @@ M shared.rs             +1 −1   1     - the plan
 
 
 === 3. u: the merge back ===
- graft /code/api    MERGING
-◌      Uncommitted changes (2 unmerged)
-◆   ▏  [◆ main] main's take                                                                              GF 2h   ddeed32
-│ ●    [feature] the feature's take                                                                      GF 2h   f43f326
-●─╯    the shared files                                                                                  GF 2h   b35b2f1
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                       MERGING
+
+  ◌      Uncommitted changes (2 unmerged)
+  ◆   ▏  [◆ main] main's take                                                                           GF 2h   ddeed32
+  │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
+  ●─╯    the shared files                                                                               GF 2h   b35b2f1
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -961,8 +1110,7 @@ M shared.rs             +1 −1   1     - the plan
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  undo: abort merge of feature ✓ · c finishes the merge
 COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
 main's take
@@ -1364,15 +1512,15 @@ what right looks like: (ticket 52) A merge begun in the shell, resolved. Frame 1
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === 187x50 ===
- graft /code/api    MERGING                                                                                  UNCOMMITTED · 2 staged
-◌   ▏  Uncommitted changes (2 staged)                                                                        diff vs HEAD ddeed32
-◆      [◆ main] main's take                                                                  GF 2h   ddeed32
-│ ●    [feature] the feature's take                                                          GF 2h   f43f326
-●─╯    the shared files                                                                      GF 2h   b35b2f1
-●      Correct the note                                                                      GF 1y   a82960b STAGED (2)
-●      Add the first note                                                                    GF 1y   fadcfb3   M notes.md                                                             +1 −1
-◇      Add a readme                                                                          GF 1y   64ded19   M shared.rs                                                            +1 −1
-                                                                                                             ▎
+ ◆ api  ~/code/api · main                                                                           MERGING  UNCOMMITTED · 2 staged
+                                                                                                             diff vs HEAD ddeed32
+  ◌   ▏  Uncommitted changes (2 staged)
+  ◆      [◆ main] main's take                                                               GF 2h   ddeed32
+  │ ●    [feature] the feature's take                                                       GF 2h   f43f326
+  ●─╯    the shared files                                                                   GF 2h   b35b2f1  STAGED (2)
+  ●      Correct the note                                                                   GF 1y   a82960b    M notes.md                                                             +1 −1
+  ●      Add the first note                                                                 GF 1y   fadcfb3    M shared.rs                                                            +1 −1
+  ◇      Add a readme                                                                       GF 1y   64ded19  ▎
                                                                                                                1     - our plan
                                                                                                                    1 + the agreed plan
 
@@ -1412,8 +1560,8 @@ what right looks like: (ticket 52) A merge begun in the shell, resolved. Frame 1
 
 
 
-
- merge in progress · space stage  d discard  c finish  <> resize  ⌃A all  e edit  ⇥ diff  . more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ merge in progress · space stage · d discard · c finish · <> resize · ⌃A all · e edit · ⇥ diff · . more
 --- after c ---
 MERGING
 ╭ Preview: finish merging feature into main ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
@@ -1485,13 +1633,14 @@ what right looks like: (ticket 52) The two frames that drew `c commit` mid-opera
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === 187x50 ===
- graft /code/api  6 commits
-◆   ▏  [◆ main] main's take                                                                                                                                                 GF 2h   ddeed32
-│ ●    [feature] the feature's take                                                                                                                                         GF 2h   f43f326
-●─╯    the shared files                                                                                                                                                     GF 2h   b35b2f1
-●      Correct the note                                                                                                                                                     GF 1y   a82960b
-●      Add the first note                                                                                                                                                   GF 1y   fadcfb3
-◇      Add a readme                                                                                                                                                         GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                                                                                        6 commits
+
+  ◆   ▏  [◆ main] main's take                                                                                                                                              GF 2h   ddeed32
+  │ ●    [feature] the feature's take                                                                                                                                      GF 2h   f43f326
+  ●─╯    the shared files                                                                                                                                                  GF 2h   b35b2f1
+  ●      Correct the note                                                                                                                                                  GF 1y   a82960b
+  ●      Add the first note                                                                                                                                                GF 1y   fadcfb3
+  ◇      Add a readme                                                                                                                                                      GF 1y   64ded19
 
 
 
@@ -1532,19 +1681,18 @@ what right looks like: (ticket 52) The two frames that drew `c commit` mid-opera
 
 
 
-
-
- ⏎ open  P push  p pull  f fetch  b branch  t tag  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x compare  + lanes  j/k move  . more  space  1  F  H  y  M  O  C
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · + lane · j/k move · space fold · . more
 --- frame 2 ---
- graft /code/api    MERGING                                                                                  UNCOMMITTED · 2 staged
-◌   ▏  Uncommitted changes (2 staged)                                                                        diff vs HEAD ddeed32
-◆      [◆ main] main's take                                                                  GF 2h   ddeed32
-│ ●    [feature] the feature's take                                                          GF 2h   f43f326
-●─╯    the shared files                                                                      GF 2h   b35b2f1
-●      Correct the note                                                                      GF 1y   a82960b STAGED (2)
-●      Add the first note                                                                    GF 1y   fadcfb3   M notes.md                                                             +1 −1
-◇      Add a readme                                                                          GF 1y   64ded19   M shared.rs                                                            +1 −1
-                                                                                                             ▎
+ ◆ api  ~/code/api · main                                                                           MERGING  UNCOMMITTED · 2 staged
+                                                                                                             diff vs HEAD ddeed32
+  ◌   ▏  Uncommitted changes (2 staged)
+  ◆      [◆ main] main's take                                                               GF 2h   ddeed32
+  │ ●    [feature] the feature's take                                                       GF 2h   f43f326
+  ●─╯    the shared files                                                                   GF 2h   b35b2f1  STAGED (2)
+  ●      Correct the note                                                                   GF 1y   a82960b    M notes.md                                                             +1 −1
+  ●      Add the first note                                                                 GF 1y   fadcfb3    M shared.rs                                                            +1 −1
+  ◇      Add a readme                                                                       GF 1y   64ded19  ▎
                                                                                                                1     - our plan
                                                                                                                    1 + the agreed plan
 
@@ -1584,8 +1732,8 @@ what right looks like: (ticket 52) The two frames that drew `c commit` mid-opera
 
 
 
-
- c finish  ⏎ changes  S stash  <> resize  p pull  . more  P  f  u  J  /  j/k  q  F2  F3  +  1  F  H  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ c finish · ⏎ changes · S stash · <> resize · p pull · P push · f fetch · u undo · J journal · . more
 
 ================================================================================
 docs/shots/m6/fix-box-takes-y-120x40.txt
@@ -1611,87 +1759,87 @@ what right looks like: (ticket 50) A teammate pushed, one local commit. Frame 1 
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: `P`, the plain push box ===
- graft /code/api  152 rows so far
-◆ ▏  [◆ main ↑1] ours                                                                                    GF 6y   739071c
-●    [origin/main] Commit 200                                                                            GF 7y   d5ae5fd
-●    Commit 199                                                                                          GF 7y   13e6ab1
-●    Commit 198                                                                                          GF 7y   f5055d9
-●    Commit 197                                                                                          GF 7y   2cce853
-●    Commit 196                                                                                          GF 7y   325da3f
-●    Commit 195                                                                                          GF 7y   0722297
-●    Commit 194                                                                                          GF 7y   b6a4a47
-●    Commit 193                                                                                          GF 7y   60af0eb
-●    Commit 192                                                                                          GF 7y   aceb8c5
-●    Commit 191                                                                                          GF 7y   11d68ff
-●    Commit 190                                                                                          GF 7y   91900bd
-●    Commit 189                                                                                          GF 7y   cec3e93
-●    Commit 188                                                                                          GF 7y   0a91ece
-●    Commit 187                                                                                          GF 7y   3121935
-●    ╭ Push main → origin/main ───────────────────────────────────────────────────────────────────────╮  GF 7y   fab25df
-●    │ 1 commit · can't be undone from here — origin keeps what you send                              │  GF 7y   09ae97c
-●    │                                                                                                │  GF 7y   49d7783
-●    │ git push --progress origin refs/heads/main:refs/heads/main                                     │  GF 7y   22d55c9
-●    │                                                                                                │  GF 7y   d212b3e
-●    │ ▸[ Cancel ]   [ Push ]                                                                         │  GF 7y   c8254c5
-●    ╰────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   e95ccd4
-●    Commit 179                                                                                          GF 7y   97b58e5
-●    Commit 178                                                                                          GF 7y   1c9b7ed
-●    Commit 177                                                                                          GF 7y   f93340a
-●    Commit 176                                                                                          GF 7y   5aaeeba
-●    Commit 175                                                                                          GF 7y   6be5928
-●    Commit 174                                                                                          GF 7y   9b67be4
-●    Commit 173                                                                                          GF 7y   937d32b
-●    Commit 172                                                                                          GF 7y   81be718
-●    Commit 171                                                                                          GF 7y   57b8196
-●    Commit 170                                                                                          GF 7y   8ea98be
-●    Commit 169                                                                                          GF 7y   4926766
-●    Commit 168                                                                                          GF 7y   0d60d60
-●    Commit 167                                                                                          GF 7y   fa5ef1d
-●    Commit 166                                                                                          GF 7y   953abf3
-●    Commit 165                                                                                          GF 7y   49912f3
-●    Commit 164                                                                                          GF 7y   1143b38
+ ◆ api  ~/code/api · main                                                                               144 rows so far
+
+  ◆ ▏  [◆ main ↑1] ours                                                                                 GF 6y   739071c
+  ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
+  ●    Commit 199                                                                                       GF 7y   13e6ab1
+  ●    Commit 198                                                                                       GF 7y   f5055d9
+  ●    Commit 197                                                                                       GF 7y   2cce853
+  ●    Commit 196                                                                                       GF 7y   325da3f
+  ●    Commit 195                                                                                       GF 7y   0722297
+  ●    Commit 194                                                                                       GF 7y   b6a4a47
+  ●    Commit 193                                                                                       GF 7y   60af0eb
+  ●    Commit 192                                                                                       GF 7y   aceb8c5
+  ●    Commit 191                                                                                       GF 7y   11d68ff
+  ●    Commit 190                                                                                       GF 7y   91900bd
+  ●    Commit 189                                                                                       GF 7y   cec3e93
+  ●    Commit 188                                                                                       GF 7y   0a91ece
+  ●    ╭ Push main → origin/main ────────────────────────────────────────────────────────────────────╮  GF 7y   3121935
+  ●    │ 1 commit · can't be undone from here — origin keeps what you send                           │  GF 7y   fab25df
+  ●    │                                                                                             │  GF 7y   09ae97c
+  ●    │ git push --progress origin refs/heads/main:refs/heads/main                                  │  GF 7y   49d7783
+  ●    │                                                                                             │  GF 7y   22d55c9
+  ●    │ ▸[ Cancel ]   [ Push ]                                                                      │  GF 7y   d212b3e
+  ●    ╰─────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   c8254c5
+  ●    Commit 180                                                                                       GF 7y   e95ccd4
+  ●    Commit 179                                                                                       GF 7y   97b58e5
+  ●    Commit 178                                                                                       GF 7y   1c9b7ed
+  ●    Commit 177                                                                                       GF 7y   f93340a
+  ●    Commit 176                                                                                       GF 7y   5aaeeba
+  ●    Commit 175                                                                                       GF 7y   6be5928
+  ●    Commit 174                                                                                       GF 7y   9b67be4
+  ●    Commit 173                                                                                       GF 7y   937d32b
+  ●    Commit 172                                                                                       GF 7y   81be718
+  ●    Commit 171                                                                                       GF 7y   57b8196
+  ●    Commit 170                                                                                       GF 7y   8ea98be
+  ●    Commit 169                                                                                       GF 7y   4926766
+  ●    Commit 168                                                                                       GF 7y   0d60d60
+  ●    Commit 167                                                                                       GF 7y   fa5ef1d
+  ●    Commit 166                                                                                       GF 7y   953abf3
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  y push  ←/→ move  ⏎ choose  esc cancel
 
 === frame 2: `y` (rejected), `P`, the lease box, then `y` ===
- graft /code/api  152 rows so far
-◆ ▏ⓘ [◆ main ↑1] ours                                                                                    GF 6y   739071c
-●    [origin/main] Commit 200                                                                            GF 7y   d5ae5fd
-●    Commit 199                                                                                          GF 7y   13e6ab1
-●    Commit 198                                                                                          GF 7y   f5055d9
-●    Commit 197                                                                                          GF 7y   2cce853
-●    Commit 196                                                                                          GF 7y   325da3f
-●    Commit 195                                                                                          GF 7y   0722297
-●    Commit 194                                                                                          GF 7y   b6a4a47
-●    Commit 193                                                                                          GF 7y   60af0eb
-●    Commit 192                                                                                          GF 7y   aceb8c5
-●    Commit 191                                                                                          GF 7y   11d68ff
-●    Commit 190                                                                                          GF 7y   91900bd
-●    Commit 189                                                                                          GF 7y   cec3e93
-●    Commit 188                                                                                          GF 7y   0a91ece
-●    ╭ Force-push main → origin/main? ────────────────────────────────────────────────────────────────╮  GF 7y   3121935
-●    │ origin/main d5ae5fd → 739071c · refused if origin moved since your fetch (lease)               │  GF 7y   fab25df
-●    │ rewrites history for everyone who has d5ae5fd                                                  │  GF 7y   09ae97c
-●    │ nothing on origin/main is lost                                                                 │  GF 7y   49d7783
-●    │                                                                                                │  GF 7y   22d55c9
-●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0d9047e… │  GF 7y   d212b3e
-●    │                                                                                                │  GF 7y   c8254c5
-●    │ ▸[ Cancel ]   [ Force push ]                                                                   │  GF 7y   e95ccd4
-●    ╰────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   97b58e5
-●    Commit 178                                                                                          GF 7y   1c9b7ed
-●    Commit 177                                                                                          GF 7y   f93340a
-●    Commit 176                                                                                          GF 7y   5aaeeba
-●    Commit 175                                                                                          GF 7y   6be5928
-●    Commit 174                                                                                          GF 7y   9b67be4
-●    Commit 173                                                                                          GF 7y   937d32b
-●    Commit 172                                                                                          GF 7y   81be718
-●    Commit 171                                                                                          GF 7y   57b8196
-●    Commit 170                                                                                          GF 7y   8ea98be
-●    Commit 169                                                                                          GF 7y   4926766
-●    Commit 168                                                                                          GF 7y   0d60d60
-●    Commit 167                                                                                          GF 7y   fa5ef1d
-●    Commit 166                                                                                          GF 7y   953abf3
-●    Commit 165                                                                                          GF 7y   49912f3
-●    Commit 164                                                                                          GF 7y   1143b38
+ ◆ api  ~/code/api · main                                                                               144 rows so far
+
+  ◆ ▏ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
+  ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
+  ●    Commit 199                                                                                       GF 7y   13e6ab1
+  ●    Commit 198                                                                                       GF 7y   f5055d9
+  ●    Commit 197                                                                                       GF 7y   2cce853
+  ●    Commit 196                                                                                       GF 7y   325da3f
+  ●    Commit 195                                                                                       GF 7y   0722297
+  ●    Commit 194                                                                                       GF 7y   b6a4a47
+  ●    Commit 193                                                                                       GF 7y   60af0eb
+  ●    Commit 192                                                                                       GF 7y   aceb8c5
+  ●    Commit 191                                                                                       GF 7y   11d68ff
+  ●    Commit 190                                                                                       GF 7y   91900bd
+  ●    Commit 189                                                                                       GF 7y   cec3e93
+  ●    ╭ Force-push main → origin/main? ─────────────────────────────────────────────────────────────╮  GF 7y   0a91ece
+  ●    │ origin/main d5ae5fd → 739071c · refused if origin moved since your fetch (lease)            │  GF 7y   3121935
+  ●    │ rewrites history for everyone who has d5ae5fd                                               │  GF 7y   fab25df
+  ●    │ nothing on origin/main is lost                                                              │  GF 7y   09ae97c
+  ●    │                                                                                             │  GF 7y   49d7783
+  ●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0d90… │  GF 7y   22d55c9
+  ●    │                                                                                             │  GF 7y   d212b3e
+  ●    │ ▸[ Cancel ]   [ Force push ]                                                                │  GF 7y   c8254c5
+  ●    ╰─────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   e95ccd4
+  ●    Commit 179                                                                                       GF 7y   97b58e5
+  ●    Commit 178                                                                                       GF 7y   1c9b7ed
+  ●    Commit 177                                                                                       GF 7y   f93340a
+  ●    Commit 176                                                                                       GF 7y   5aaeeba
+  ●    Commit 175                                                                                       GF 7y   6be5928
+  ●    Commit 174                                                                                       GF 7y   9b67be4
+  ●    Commit 173                                                                                       GF 7y   937d32b
+  ●    Commit 172                                                                                       GF 7y   81be718
+  ●    Commit 171                                                                                       GF 7y   57b8196
+  ●    Commit 170                                                                                       GF 7y   8ea98be
+  ●    Commit 169                                                                                       GF 7y   4926766
+  ●    Commit 168                                                                                       GF 7y   0d60d60
+  ●    Commit 167                                                                                       GF 7y   fa5ef1d
+  ●    Commit 166                                                                                       GF 7y   953abf3
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
@@ -1718,55 +1866,55 @@ what right looks like: (ticket 50) The same at 80x24: frame 1's bottom row reads
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: `P`, the plain push box ===
- graft /code/api  152 rows so far
-◆ ▏  [◆ main ↑1] ours                                               6y   739071c
-●    [origin/main] Commit 200                                       7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    ╭ Push main → origin/main ────────────────────────────────────────╮ 0722297
-●    │ 1 commit · can't be undone from here — origin keeps what you    │ b6a4a47
-●    │ send                                                            │ 60af0eb
-●    │                                                                 │ aceb8c5
-●    │ git push --progress origin refs/heads/main:refs/heads/main      │ 11d68ff
-●    │                                                                 │ 91900bd
-●    │ ▸[ Cancel ]   [ Push ]                                          │ cec3e93
-●    ╰─────────────────────────────────────────────────────────────────╯ 0a91ece
-●    Commit 187                                                     7y   3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
+ ◆ api  ~/code/api · main                                       144 rows so far
+  ◆ ▏  [◆ main ↑1] ours                                            6y   739071c
+  ●    [origin/main] Commit 200                                    7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    Commit 196                                                  7y   325da3f
+  ●    Commit 195                                                  7y   0722297
+  ●    ╭ Push main → origin/main ──────────────────────────────────────────────╮
+  ●    │ 1 commit · can't be undone from here — origin keeps what you send     │
+  ●    │                                                                       │
+  ●    │ git push --progress origin refs/heads/main:refs/heads/main            │
+  ●    │                                                                       │
+  ●    │ ▸[ Cancel ]   [ Push ]                                                │
+  ●    ╰───────────────────────────────────────────────────────────────────────╯
+  ●    Commit 187                                                  7y   3121935
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
  y push  ←/→ move  ⏎ choose  esc cancel
 
 === frame 2: `y` (rejected), `P`, the lease box, then `y` ===
- graft /code/api  152 rows so far
-◆ ▏ⓘ [◆ main ↑1] ours                                               6y   739071c
-●    [origin/main] Commit 200                                       7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    ╭ Force-push main → origin/main? ─────────────────────────────────╮ 325da3f
-●    │ origin/main d5ae5fd → 739071c · refused if origin moved since   │ 0722297
-●    │ your fetch (lease)                                              │ b6a4a47
-●    │ rewrites history for everyone who has d5ae5fd                   │ 60af0eb
-●    │ nothing on origin/main is lost                                  │ aceb8c5
-●    │                                                                 │ 11d68ff
-●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd… │ 91900bd
-●    │                                                                 │ cec3e93
-●    │ ▸[ Cancel ]   [ Force push ]                                    │ 0a91ece
-●    ╰─────────────────────────────────────────────────────────────────╯ 3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
+ ◆ api  ~/code/api · main                                       144 rows so far
+  ◆ ▏ⓘ [◆ main ↑1] ours                                            6y   739071c
+  ●    [origin/main] Commit 200                                    7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    ╭ Force-push main → origin/main? ───────────────────────────────────────╮
+  ●    │ origin/main d5ae5fd → 739071c · refused if origin moved since your    │
+  ●    │ fetch (lease)                                                         │
+  ●    │ rewrites history for everyone who has d5ae5fd                         │
+  ●    │ nothing on origin/main is lost                                        │
+  ●    │                                                                       │
+  ●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365b… │
+  ●    │                                                                       │
+  ●    │ ▸[ Cancel ]   [ Force push ]                                          │
+  ●    ╰───────────────────────────────────────────────────────────────────────╯
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
  ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
@@ -1833,9 +1981,10 @@ COMMIT ── ⎇ main ── 1 file staged
 ⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
 
 == frame 2: after `⏎` ==
- graft /code/api  2 commits
-◆ ▏  [◆ main] fix: x                                                                                     GT now  0000000
-◇    add sample                                                                                          GT now  0000000
+ ◆ api  ~/code/api · main                                                                                     2 commits
+
+  ◆ ▏  [◆ main] fix: x                                                                                  GT now  0000000
+  ◇    add sample                                                                                       GT now  0000000
 
 
 
@@ -1870,8 +2019,7 @@ COMMIT ── ⎇ main ── 1 file staged
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  commit "fix: x" ✓
 
 ================================================================================
@@ -1922,9 +2070,9 @@ COMMIT ── ⎇ main ── 1 file staged
 ⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
 
 == frame 2: after `⏎` ==
- graft /code/api  2 commits
-◆ ▏  [◆ main] fix: x                                                now  0000000
-◇    add sample                                                     now  0000000
+ ◆ api  ~/code/api · main                                             2 commits
+  ◆ ▏  [◆ main] fix: x                                             now  0000000
+  ◇    add sample                                                  now  0000000
 
 
 
@@ -1972,94 +2120,95 @@ what right looks like: (ticket 66) A teammate pushed; you had a local commit and
 
 == 1. After `p r r` and `P`: no ⓘ on any row ==
 
- graft /code/api  152 rows so far
-◆   ▏  [◆ main ⇄ origin] ours                                                                            GF now  0000000
-●      theirs                                                                                            GF 6y   7be74b5
-│ ■    [stash@{0}] On main: wip                                                                          GF 6y   e79bc4b
-│ □    [only in stash@{0}] ours                                                                          GF 6y   739071c
-●─╯    Commit 200                                                                                        GF 7y   d5ae5fd
-●      Commit 199                                                                                        GF 7y   13e6ab1
-●      Commit 198                                                                                        GF 7y   f5055d9
-●      Commit 197                                                                                        GF 7y   2cce853
-●      Commit 196                                                                                        GF 7y   325da3f
-●      Commit 195                                                                                        GF 7y   0722297
-●      Commit 194                                                                                        GF 7y   b6a4a47
-●      Commit 193                                                                                        GF 7y   60af0eb
-●      Commit 192                                                                                        GF 7y   aceb8c5
-●      Commit 191                                                                                        GF 7y   11d68ff
-●      Commit 190                                                                                        GF 7y   91900bd
-●      Commit 189                                                                                        GF 7y   cec3e93
-●      Commit 188                                                                                        GF 7y   0a91ece
-●      Commit 187                                                                                        GF 7y   3121935
-●      Commit 186                                                                                        GF 7y   fab25df
-●      Commit 185                                                                                        GF 7y   09ae97c
-●      Commit 184                                                                                        GF 7y   49d7783
-●      Commit 183                                                                                        GF 7y   22d55c9
-●      Commit 182                                                                                        GF 7y   d212b3e
-●      Commit 181                                                                                        GF 7y   c8254c5
-●      Commit 180                                                                                        GF 7y   e95ccd4
-●      Commit 179                                                                                        GF 7y   97b58e5
-●      Commit 178                                                                                        GF 7y   1c9b7ed
-●      Commit 177                                                                                        GF 7y   f93340a
-●      Commit 176                                                                                        GF 7y   5aaeeba
-●      Commit 175                                                                                        GF 7y   6be5928
-●      Commit 174                                                                                        GF 7y   9b67be4
-●      Commit 173                                                                                        GF 7y   937d32b
-●      Commit 172                                                                                        GF 7y   81be718
-●      Commit 171                                                                                        GF 7y   57b8196
-●      Commit 170                                                                                        GF 7y   8ea98be
-●      Commit 169                                                                                        GF 7y   4926766
-●      Commit 168                                                                                        GF 7y   0d60d60
-●      Commit 167                                                                                        GF 7y   fa5ef1d
+ ◆ api  ~/code/api · main                                                                               144 rows so far
+
+  ◆   ▏  [◆ main ⇄ origin] ours                                                                         GF now  0000000
+  ●      theirs                                                                                         GF 6y   7be74b5
+  │ ■    [stash@{0}] On main: wip                                                                       GF 6y   e79bc4b
+  │ □    [only in stash@{0}] ours                                                                       GF 6y   739071c
+  ●─╯    Commit 200                                                                                     GF 7y   d5ae5fd
+  ●      Commit 199                                                                                     GF 7y   13e6ab1
+  ●      Commit 198                                                                                     GF 7y   f5055d9
+  ●      Commit 197                                                                                     GF 7y   2cce853
+  ●      Commit 196                                                                                     GF 7y   325da3f
+  ●      Commit 195                                                                                     GF 7y   0722297
+  ●      Commit 194                                                                                     GF 7y   b6a4a47
+  ●      Commit 193                                                                                     GF 7y   60af0eb
+  ●      Commit 192                                                                                     GF 7y   aceb8c5
+  ●      Commit 191                                                                                     GF 7y   11d68ff
+  ●      Commit 190                                                                                     GF 7y   91900bd
+  ●      Commit 189                                                                                     GF 7y   cec3e93
+  ●      Commit 188                                                                                     GF 7y   0a91ece
+  ●      Commit 187                                                                                     GF 7y   3121935
+  ●      Commit 186                                                                                     GF 7y   fab25df
+  ●      Commit 185                                                                                     GF 7y   09ae97c
+  ●      Commit 184                                                                                     GF 7y   49d7783
+  ●      Commit 183                                                                                     GF 7y   22d55c9
+  ●      Commit 182                                                                                     GF 7y   d212b3e
+  ●      Commit 181                                                                                     GF 7y   c8254c5
+  ●      Commit 180                                                                                     GF 7y   e95ccd4
+  ●      Commit 179                                                                                     GF 7y   97b58e5
+  ●      Commit 178                                                                                     GF 7y   1c9b7ed
+  ●      Commit 177                                                                                     GF 7y   f93340a
+  ●      Commit 176                                                                                     GF 7y   5aaeeba
+  ●      Commit 175                                                                                     GF 7y   6be5928
+  ●      Commit 174                                                                                     GF 7y   9b67be4
+  ●      Commit 173                                                                                     GF 7y   937d32b
+  ●      Commit 172                                                                                     GF 7y   81be718
+  ●      Commit 171                                                                                     GF 7y   57b8196
+  ●      Commit 170                                                                                     GF 7y   8ea98be
+  ●      Commit 169                                                                                     GF 7y   4926766
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  pushed main → origin/main ✓
 
 == 2. Cursor on stash@{0}: no ⚠ ==
 
- graft /code/api  152 rows so far
-◆      [◆ main ⇄ origin] ours                                                                            GF now  0000000
-●      theirs                                                                                            GF 6y   7be74b5
-│ ■ ▏  [stash@{0}] On main: wip                                                                          GF 6y   e79bc4b
-│ □    [only in stash@{0}] ours                                                                          GF 6y   739071c
-●─╯    Commit 200                                                                                        GF 7y   d5ae5fd
-●      Commit 199                                                                                        GF 7y   13e6ab1
-●      Commit 198                                                                                        GF 7y   f5055d9
-●      Commit 197                                                                                        GF 7y   2cce853
-●      Commit 196                                                                                        GF 7y   325da3f
-●      Commit 195                                                                                        GF 7y   0722297
-●      Commit 194                                                                                        GF 7y   b6a4a47
-●      Commit 193                                                                                        GF 7y   60af0eb
-●      Commit 192                                                                                        GF 7y   aceb8c5
-●      Commit 191                                                                                        GF 7y   11d68ff
-●      Commit 190                                                                                        GF 7y   91900bd
-●      Commit 189                                                                                        GF 7y   cec3e93
-●      Commit 188                                                                                        GF 7y   0a91ece
-●      Commit 187                                                                                        GF 7y   3121935
-●      Commit 186                                                                                        GF 7y   fab25df
-●      Commit 185                                                                                        GF 7y   09ae97c
-●      Commit 184                                                                                        GF 7y   49d7783
-●      Commit 183                                                                                        GF 7y   22d55c9
-●      Commit 182                                                                                        GF 7y   d212b3e
-●      Commit 181                                                                                        GF 7y   c8254c5
-●      Commit 180                                                                                        GF 7y   e95ccd4
-●      Commit 179                                                                                        GF 7y   97b58e5
-●      Commit 178                                                                                        GF 7y   1c9b7ed
-●      Commit 177                                                                                        GF 7y   f93340a
-●      Commit 176                                                                                        GF 7y   5aaeeba
-●      Commit 175                                                                                        GF 7y   6be5928
-●      Commit 174                                                                                        GF 7y   9b67be4
-●      Commit 173                                                                                        GF 7y   937d32b
-●      Commit 172                                                                                        GF 7y   81be718
-●      Commit 171                                                                                        GF 7y   57b8196
-●      Commit 170                                                                                        GF 7y   8ea98be
-●      Commit 169                                                                                        GF 7y   4926766
-●      Commit 168                                                                                        GF 7y   0d60d60
-●      Commit 167                                                                                        GF 7y   fa5ef1d
- ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
+ ◆ api  ~/code/api · main                                                                               144 rows so far
+
+  ◆      [◆ main ⇄ origin] ours                                                                         GF now  0000000
+  ●      theirs                                                                                         GF 6y   7be74b5
+  │ ■ ▏  [stash@{0}] On main: wip                                                                       GF 6y   e79bc4b
+  │ □    [only in stash@{0}] ours                                                                       GF 6y   739071c
+  ●─╯    Commit 200                                                                                     GF 7y   d5ae5fd
+  ●      Commit 199                                                                                     GF 7y   13e6ab1
+  ●      Commit 198                                                                                     GF 7y   f5055d9
+  ●      Commit 197                                                                                     GF 7y   2cce853
+  ●      Commit 196                                                                                     GF 7y   325da3f
+  ●      Commit 195                                                                                     GF 7y   0722297
+  ●      Commit 194                                                                                     GF 7y   b6a4a47
+  ●      Commit 193                                                                                     GF 7y   60af0eb
+  ●      Commit 192                                                                                     GF 7y   aceb8c5
+  ●      Commit 191                                                                                     GF 7y   11d68ff
+  ●      Commit 190                                                                                     GF 7y   91900bd
+  ●      Commit 189                                                                                     GF 7y   cec3e93
+  ●      Commit 188                                                                                     GF 7y   0a91ece
+  ●      Commit 187                                                                                     GF 7y   3121935
+  ●      Commit 186                                                                                     GF 7y   fab25df
+  ●      Commit 185                                                                                     GF 7y   09ae97c
+  ●      Commit 184                                                                                     GF 7y   49d7783
+  ●      Commit 183                                                                                     GF 7y   22d55c9
+  ●      Commit 182                                                                                     GF 7y   d212b3e
+  ●      Commit 181                                                                                     GF 7y   c8254c5
+  ●      Commit 180                                                                                     GF 7y   e95ccd4
+  ●      Commit 179                                                                                     GF 7y   97b58e5
+  ●      Commit 178                                                                                     GF 7y   1c9b7ed
+  ●      Commit 177                                                                                     GF 7y   f93340a
+  ●      Commit 176                                                                                     GF 7y   5aaeeba
+  ●      Commit 175                                                                                     GF 7y   6be5928
+  ●      Commit 174                                                                                     GF 7y   9b67be4
+  ●      Commit 173                                                                                     GF 7y   937d32b
+  ●      Commit 172                                                                                     GF 7y   81be718
+  ●      Commit 171                                                                                     GF 7y   57b8196
+  ●      Commit 170                                                                                     GF 7y   8ea98be
+  ●      Commit 169                                                                                     GF 7y   4926766
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · . more
 
 == 3. `.` on main's tip: the menu does not lead with Explain ==
 
- graft /code/api  152 rows so far
-◆   ▏  [◆ main ⇄ origin] ours                                                                            GF now  0000000
+ ◆ api  ~/code/api · main                                                                               144 rows so far
+
+  ◆   ▏  [◆ main ⇄ origin] ours                                                                         GF now  0000000
  Checkout — already on main
  Cherry-pick (o) — already on main
  Copy SHA (y)
@@ -2072,42 +2221,42 @@ what right looks like: (ticket 66) A teammate pushed; you had a local commit and
  Pull (p)
  Push (P)
  Undo (u)
-●      Commit 191                                                                                        GF 7y   11d68ff
-●      Commit 190                                                                                        GF 7y   91900bd
-●      Commit 189                                                                                        GF 7y   cec3e93
-●      Commit 188                                                                                        GF 7y   0a91ece
-●      Commit 187                                                                                        GF 7y   3121935
-●      Commit 186                                                                                        GF 7y   fab25df
-●      Commit 185                                                                                        GF 7y   09ae97c
-●      Commit 184                                                                                        GF 7y   49d7783
-●      Commit 183                                                                                        GF 7y   22d55c9
-●      Commit 182                                                                                        GF 7y   d212b3e
-●      Commit 181                                                                                        GF 7y   c8254c5
-●      Commit 180                                                                                        GF 7y   e95ccd4
-●      Commit 179                                                                                        GF 7y   97b58e5
-●      Commit 178                                                                                        GF 7y   1c9b7ed
-●      Commit 177                                                                                        GF 7y   f93340a
-●      Commit 176                                                                                        GF 7y   5aaeeba
-●      Commit 175                                                                                        GF 7y   6be5928
-●      Commit 174                                                                                        GF 7y   9b67be4
-●      Commit 173                                                                                        GF 7y   937d32b
-●      Commit 172                                                                                        GF 7y   81be718
-●      Commit 171                                                                                        GF 7y   57b8196
-●      Commit 170                                                                                        GF 7y   8ea98be
-●      Commit 169                                                                                        GF 7y   4926766
-●      Commit 168                                                                                        GF 7y   0d60d60
-●      Commit 167                                                                                        GF 7y   fa5ef1d
- ⏎ open  c commit  P push  p pull  . more  f  a  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
+  ●      Commit 191                                                                                     GF 7y   11d68ff
+  ●      Commit 190                                                                                     GF 7y   91900bd
+  ●      Commit 189                                                                                     GF 7y   cec3e93
+  ●      Commit 188                                                                                     GF 7y   0a91ece
+  ●      Commit 187                                                                                     GF 7y   3121935
+  ●      Commit 186                                                                                     GF 7y   fab25df
+  ●      Commit 185                                                                                     GF 7y   09ae97c
+  ●      Commit 184                                                                                     GF 7y   49d7783
+  ●      Commit 183                                                                                     GF 7y   22d55c9
+  ●      Commit 182                                                                                     GF 7y   d212b3e
+  ●      Commit 181                                                                                     GF 7y   c8254c5
+  ●      Commit 180                                                                                     GF 7y   e95ccd4
+  ●      Commit 179                                                                                     GF 7y   97b58e5
+  ●      Commit 178                                                                                     GF 7y   1c9b7ed
+  ●      Commit 177                                                                                     GF 7y   f93340a
+  ●      Commit 176                                                                                     GF 7y   5aaeeba
+  ●      Commit 175                                                                                     GF 7y   6be5928
+  ●      Commit 174                                                                                     GF 7y   9b67be4
+  ●      Commit 173                                                                                     GF 7y   937d32b
+  ●      Commit 172                                                                                     GF 7y   81be718
+  ●      Commit 171                                                                                     GF 7y   57b8196
+  ●      Commit 170                                                                                     GF 7y   8ea98be
+  ●      Commit 169                                                                                     GF 7y   4926766
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · . more
 
 ================================================================================
 docs/shots/m6/fix-abort-reads-aborted-120x40.txt
 what right looks like: (ticket 68) Graft relaunched into a rebase a killed Graft left stopped; `a`, `y`. The graph's footer reads `aborted: rebase feature onto main ✓` (not `rebase feature onto main ✓`, which read as the rebase done); no `REBASING` in the header; the cursor on HEAD, feature's tip (`Change every file on feature`). Colour unverified.
 ================================================================================
 
- graft /code/api  3 commits
-●      [main] Change every file on main                                                                  GF 2h   274c7d4
-│ ◆ ▏  [◆ feature] Change every file on feature                                                          GF 2h   9d44f42
-◇─╯    Add the files both sides will change                                                              GF 1y   9571fc9
+ ◆ api  ~/code/api · feature                                                                                  3 commits
+
+  ●      [main] Change every file on main                                                               GF 2h   274c7d4
+  │ ◆ ▏  [◆ feature] Change every file on feature                                                       GF 2h   9d44f42
+  ◇─╯    Add the files both sides will change                                                           GF 1y   9571fc9
 
 
 
@@ -2125,8 +2274,7 @@ what right looks like: (ticket 68) Graft relaunched into a rebase a killed Graft
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  aborted: rebase feature onto main ✓
 COMMIT 9d44f42 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:00 +0000 · 2h · parents 9571fc9 · diff vs firs…
 Change every file on feature
@@ -2144,195 +2292,4 @@ M zdiff3.txt            +1 −1
 
 
 
-
-================================================================================
-docs/shots/m6/fix-box-owns-the-bar-120x40.txt
-what right looks like: (ticket 69) A box owns the bottom row. Frame 1: a push rejected, then `P`: the lease box, and the bottom row is `←/→ move  ⏎ choose  esc cancel`, not the rejection line. Frame 2: `esc`: the rejection is back, `push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease` (wording since m7-power-tools/36). Frame 3: a checkout, an edit, `u`: the drift box, bottom row `y undo  ←/→ move  ⏎ choose  esc cancel` (not `undo · esc cancels`); since ticket 77 the box also names the edit: `Undo replaces your edit to fix.txt; a backup keeps it, and U brings it back.` Frame 4: `b`, `⏎` on an empty name: the prompt stays open and the row reads `a branch needs a name`. Colour unverified.
-================================================================================
-
-# TestBackend capture (not a pty), 120x40, no colour recorded. Fixture:
-# capture_fix_box_owns_the_bar in crates/graft/tests/it/box_owns_the_bar.rs
-# (asserted). Four frames, each a box open over a status that was standing.
-#
-# What right looks like, the bottom row of each frame:
-# 1. A teammate pushed; `P` `→` `⏎` was rejected, then `P` opened the lease
-#    box: `←/→ move  ⏎ choose  esc cancel` — the box's keys, not the
-#    rejection line (which named `p`, a key the box swallows).
-# 2. `esc` on that box: the rejection is back, `push rejected: … · p pull
-#    first · P force with lease` — hidden under the box, never cleared.
-# 3. Another repository: a checkout, an edit, then `u` over the drift box:
-#    `y undo  ←/→ move  ⏎ choose  esc cancel` — not `undo · esc cancels`,
-#    the finished job's busy line.
-# 4. Back on the first: `b`, then `⏎` on the empty name: the prompt stays
-#    open, and the row reads `a branch needs a name` — the prompt's own
-#    refusal, written to the prompt, not the status line.
-# - Colour is unverified (CLAUDE.md rule 5).
-#
-=== frame 1: the lease box over a rejected push ===
- graft /code/api  152 rows so far
-◆ ▏ⓘ [◆ main ↑1] ours                                                                                    GF 6y   739071c
-●    [origin/main] Commit 200                                                                            GF 7y   d5ae5fd
-●    Commit 199                                                                                          GF 7y   13e6ab1
-●    Commit 198                                                                                          GF 7y   f5055d9
-●    Commit 197                                                                                          GF 7y   2cce853
-●    Commit 196                                                                                          GF 7y   325da3f
-●    Commit 195                                                                                          GF 7y   0722297
-●    Commit 194                                                                                          GF 7y   b6a4a47
-●    Commit 193                                                                                          GF 7y   60af0eb
-●    Commit 192                                                                                          GF 7y   aceb8c5
-●    Commit 191                                                                                          GF 7y   11d68ff
-●    Commit 190                                                                                          GF 7y   91900bd
-●    Commit 189                                                                                          GF 7y   cec3e93
-●    Commit 188                                                                                          GF 7y   0a91ece
-●    ╭ Force-push main → origin/main? ────────────────────────────────────────────────────────────────╮  GF 7y   3121935
-●    │ origin/main d5ae5fd → 739071c · refused if origin moved since your fetch (lease)               │  GF 7y   fab25df
-●    │ rewrites history for everyone who has d5ae5fd                                                  │  GF 7y   09ae97c
-●    │ nothing on origin/main is lost                                                                 │  GF 7y   49d7783
-●    │                                                                                                │  GF 7y   22d55c9
-●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0d9047e… │  GF 7y   d212b3e
-●    │                                                                                                │  GF 7y   c8254c5
-●    │ ▸[ Cancel ]   [ Force push ]                                                                   │  GF 7y   e95ccd4
-●    ╰────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   97b58e5
-●    Commit 178                                                                                          GF 7y   1c9b7ed
-●    Commit 177                                                                                          GF 7y   f93340a
-●    Commit 176                                                                                          GF 7y   5aaeeba
-●    Commit 175                                                                                          GF 7y   6be5928
-●    Commit 174                                                                                          GF 7y   9b67be4
-●    Commit 173                                                                                          GF 7y   937d32b
-●    Commit 172                                                                                          GF 7y   81be718
-●    Commit 171                                                                                          GF 7y   57b8196
-●    Commit 170                                                                                          GF 7y   8ea98be
-●    Commit 169                                                                                          GF 7y   4926766
-●    Commit 168                                                                                          GF 7y   0d60d60
-●    Commit 167                                                                                          GF 7y   fa5ef1d
-●    Commit 166                                                                                          GF 7y   953abf3
-●    Commit 165                                                                                          GF 7y   49912f3
-●    Commit 164                                                                                          GF 7y   1143b38
- ←/→ move  ⏎ choose  esc cancel
-
-=== frame 2: `esc`, the rejection back ===
- graft /code/api  152 rows so far
-◆ ▏ⓘ [◆ main ↑1] ours                                                                                    GF 6y   739071c
-●    [origin/main] Commit 200                                                                            GF 7y   d5ae5fd
-●    Commit 199                                                                                          GF 7y   13e6ab1
-●    Commit 198                                                                                          GF 7y   f5055d9
-●    Commit 197                                                                                          GF 7y   2cce853
-●    Commit 196                                                                                          GF 7y   325da3f
-●    Commit 195                                                                                          GF 7y   0722297
-●    Commit 194                                                                                          GF 7y   b6a4a47
-●    Commit 193                                                                                          GF 7y   60af0eb
-●    Commit 192                                                                                          GF 7y   aceb8c5
-●    Commit 191                                                                                          GF 7y   11d68ff
-●    Commit 190                                                                                          GF 7y   91900bd
-●    Commit 189                                                                                          GF 7y   cec3e93
-●    Commit 188                                                                                          GF 7y   0a91ece
-●    Commit 187                                                                                          GF 7y   3121935
-●    Commit 186                                                                                          GF 7y   fab25df
-●    Commit 185                                                                                          GF 7y   09ae97c
-●    Commit 184                                                                                          GF 7y   49d7783
-●    Commit 183                                                                                          GF 7y   22d55c9
-●    Commit 182                                                                                          GF 7y   d212b3e
-●    Commit 181                                                                                          GF 7y   c8254c5
-●    Commit 180                                                                                          GF 7y   e95ccd4
-●    Commit 179                                                                                          GF 7y   97b58e5
-●    Commit 178                                                                                          GF 7y   1c9b7ed
-●    Commit 177                                                                                          GF 7y   f93340a
-●    Commit 176                                                                                          GF 7y   5aaeeba
-●    Commit 175                                                                                          GF 7y   6be5928
-●    Commit 174                                                                                          GF 7y   9b67be4
-●    Commit 173                                                                                          GF 7y   937d32b
-●    Commit 172                                                                                          GF 7y   81be718
-●    Commit 171                                                                                          GF 7y   57b8196
-●    Commit 170                                                                                          GF 7y   8ea98be
-●    Commit 169                                                                                          GF 7y   4926766
-●    Commit 168                                                                                          GF 7y   0d60d60
-●    Commit 167                                                                                          GF 7y   fa5ef1d
-●    Commit 166                                                                                          GF 7y   953abf3
-●    Commit 165                                                                                          GF 7y   49912f3
-●    Commit 164                                                                                          GF 7y   1143b38
- push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease
-
-=== frame 3: the drift box `u` opened ===
- graft /code/api  6 commits  date order, sorting…
-  ◌    Uncommitted changes (1 unstaged)
-  ◆ ▏  [◆ fix] fix the bug                                                                               GF 3m   fbb2394
-● │    [main] main moves on                                                                              GF 4m   37926a7
-●─╯    add the base                                                                                      GF 5m   ed332bc
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
-
-
-
-
-
-
-
-       ╭ Undo “checkout fix”? ────────────────────────────────────────────────────────────────────────╮
-       │ Since this checkout fix, the working tree changed.                                           │
-       │ Undo replaces your edit to fix.txt; a backup keeps it, and U                                 │
-       │ brings it back.                                                                              │
-       │                                                                                              │
-       │ undo restores the recorded state                                                             │
-       │                                                                                              │
-       │ ▸[ Stop ]   [ Undo ]                                                                         │
-       ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- y undo  ←/→ move  ⏎ choose  esc cancel
-
-=== frame 4: `b`, `⏎` on an empty name ===
- graft /code/api  152 rows so far
-◆ ▏ⓘ [◆ main ↑1] ours                                                                                    GF 6y   739071c
-●    [origin/main] Commit 200                                                                            GF 7y   d5ae5fd
-●    Commit 199                                                                                          GF 7y   13e6ab1
-●    Commit 198                                                                                          GF 7y   f5055d9
-●    Commit 197                                                                                          GF 7y   2cce853
-●    Commit 196                                                                                          GF 7y   325da3f
-●    Commit 195                                                                                          GF 7y   0722297
-●    Commit 194                                                                                          GF 7y   b6a4a47
-●    Commit 193                                                                                          GF 7y   60af0eb
-●    Commit 192                                                                                          GF 7y   aceb8c5
-●    Commit 191                                                                                          GF 7y   11d68ff
-●    Commit 190                                                                                          GF 7y   91900bd
-●    Commit 189                                                                                          GF 7y   cec3e93
-●    Commit 188                                                                                          GF 7y   0a91ece
-●    Commit 187                                                                                          GF 7y   3121935
-●    Commit 186                                                                                          GF 7y   fab25df
-                              ╭ New branch at 739071c ───────────────────────────────────╮
-                              │ ▏                                                        │
-                              │ ( ) check out after creating · ⇥ toggles                 │
-                              │                                                          │
-                              │                                                          │
-                              ╰──────────────────────────────────────────────────────────╯
-●    Commit 179                                                                                          GF 7y   97b58e5
-●    Commit 178                                                                                          GF 7y   1c9b7ed
-●    Commit 177                                                                                          GF 7y   f93340a
-●    Commit 176                                                                                          GF 7y   5aaeeba
-●    Commit 175                                                                                          GF 7y   6be5928
-●    Commit 174                                                                                          GF 7y   9b67be4
-●    Commit 173                                                                                          GF 7y   937d32b
-●    Commit 172                                                                                          GF 7y   81be718
-●    Commit 171                                                                                          GF 7y   57b8196
-●    Commit 170                                                                                          GF 7y   8ea98be
-●    Commit 169                                                                                          GF 7y   4926766
-●    Commit 168                                                                                          GF 7y   0d60d60
-●    Commit 167                                                                                          GF 7y   fa5ef1d
-●    Commit 166                                                                                          GF 7y   953abf3
-●    Commit 165                                                                                          GF 7y   49912f3
-●    Commit 164                                                                                          GF 7y   1143b38
- a branch needs a name
 
