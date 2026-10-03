@@ -239,10 +239,18 @@ pub struct EmptyStateView { pub folder: SanitizedText, pub missing: bool, pub re
 pub enum EmptyPrompt { Open(FieldView), ConfirmInit }               // G-first-run adds Clone(..)
 pub struct EmptyState<'a> { pub view: &'a EmptyStateView, pub theme: &'a Theme }   // Widget
 
-// graft — recents and in-process switch (5c)
-pub(crate) fn read_recent(config_dir: &Path) -> Result<Vec<PathBuf>, RecentError>;  // newest first, ≤ 20, deduped
-pub(crate) fn remember(config_dir: &Path, repo: &Path) -> Result<(), RecentError>;
+// graft — recents, terminal and in-process switch (5c; revised 2026-10-03 after its scout: age + skipped count needed,
+// and `run` probed on every call)
+pub(crate) struct Recent { pub path: PathBuf, pub opened: SystemTime }
+pub(crate) struct RecentList { pub entries: Vec<Recent>, pub skipped: usize }      // newest first, ≤ 20, deduped
+pub(crate) fn read_recent(config_dir: &Path) -> Result<RecentList, RecentError>;
+pub(crate) fn remember(config_dir: &Path, repo: &Path, now: SystemTime) -> Result<Remembered, RecentError>;
+// event_loop::startup: `Terminal` (session + probe + crash hook) opened once by main; `Place { Repo, Outside }`;
+// `drive` loops over places and handles `Exit::Open`; `run(Startup)` stays open-run-close for the gallery and tests.
 // Exit gains `Open(PathBuf)`; G-tour widens it to `Open(Open { path, cursor, practice, back })`
+
+// graft-ops::init (5c) — not an Operation, not journaled, not undoable (no journal before it; reversing = deleting .git)
+pub fn init_here(dir: &Path) -> Result<PathBuf, InitError>;
 
 // graft-ui::keymap (G-keymap; ADR-0055) — `Binding.search` added in 2b (hidden palette words)
 pub enum ContextId { Global, Graph, Changes, Diff, Resolver, Banner, Finish, Rewrite, Picker, Blame,
@@ -356,7 +364,7 @@ elsewhere-checked-out one stays, in words). Specs `fork-follows-engine.md` and `
 | 4 | G-pixel-mem | graft-graph, graft-term kitty, graft graphics | Opus | `pixel-memory-budget.md` |
 | 5a | G-look chrome | graft-ui graph_screen + hints, graft view | Opus | `look-chrome-header-gutter-bar.md` |
 | 5b | G-look cursor row + dark B | graft-ui theme + graph rows | Opus | `look-cursor-row-and-dark-b.md` |
-| 5c | G-look outside repo | graft-ui empty_state, graft startup | Opus | `look-outside-repo-screen.md` |
+| 5c | G-look outside repo | graft-ui empty_state, graft startup + recent, graft-ops init | Opus | `look-outside-repo-screen.md` |
 | 6a | G-keymap table | graft-ui keymap, graft config + update entry | **Fable (sig)** | `keymap-table-and-translate.md` |
 | 6b | G-keymap spell | graft-ui hints + labels, graft words | Opus | `keymap-spell-from-the-table.md` |
 | 7a | G-palette help | graft-ui palette, graft update | Opus | `palette-help-and-actions.md` |
@@ -380,7 +388,8 @@ elsewhere-checked-out one stays, in words). Specs `fork-follows-engine.md` and `
 | 18b | G-rename sweep | all (names) | Sonnet, alone | `rename-names-sweep.md` |
 | 19 | G-accept | — | Fable | `accept-m8.md` |
 
-Lanes: 1→2→3→3b; 4 after 2. 5a→5b; 5c beside 5b. 6a→6b→7a→7b; 8 after 7a and 12b. 9a after 5b and 6a; 9b after 9a.
+Lanes: 1→2→3→3b; 4 after 2. 5a→5b; 5c after 5b (re-specced 2026-10-03: shares `graft-ui` `lib.rs`, MAP.md and the
+`selection` paint with 5b). 6a→6b→7a→7b; 8 after 7a and 12b. 9a after 5b and 6a; 9b after 9a.
 10 after 5c and 7a; 11 after 10 and 6b. 12a, 12b, 14a, 14b beside the scroll lane (disjoint files; conductor checks
 scouts). 12c → 12d, after 12b, before 17. 13 after 6b and 12b. 15 after 6a, 9a, 10, 11; 16 after 15. 17 after every
 build; 18a → 18b → 19.
