@@ -24,7 +24,7 @@
 === frame 1: `u` over the edit, the drift box ===
  ◆ api  ~/code/api · fix                                              6 commits
     ◌    Uncommitted changes (1 unstaged)
-    ◆ ▏  [◆ fix] fix the bug                                       3m   fbb2394
+▸   ◆    [◆ fix] fix the bug                                       3m   fbb2394
   ● │    [main] main moves on                                      4m   37926a7
   ●─╯    add the base                                              5m   ed332bc
   ●      Correct the note                                          1y   a82960b
@@ -50,7 +50,7 @@
 === frame 2: `y`, the landing ===
  ◆ api  ~/code/api · main                                             6 commits
     ●    [fix] fix the bug                                         3m   fbb2394
-  ◆ │ ▏  [◆ main] main moves on                                    4m   37926a7
+▸ ◆ │    [◆ main] main moves on                                    4m   37926a7
   ●─╯    add the base                                              5m   ed332bc
   ●      Correct the note                                          1y   a82960b
   ●      Add the first note                                        1y   fadcfb3
@@ -76,7 +76,7 @@
 === frame 3: `U`, the edit back ===
  ◆ api  ~/code/api · fix                                              6 commits
     ◌    Uncommitted changes (1 unstaged)
-    ◆ ▏  [◆ fix] fix the bug                                       3m   fbb2394
+▸   ◆    [◆ fix] fix the bug                                       3m   fbb2394
   ● │    [main] main moves on                                      4m   37926a7
   ●─╯    add the base                                              5m   ed332bc
   ●      Correct the note                                          1y   a82960b
@@ -101,7 +101,7 @@
 
 === frame 4: the time machine over an edit, `→ ⏎`, the landing ===
  ◆ api  ~/code/api · main                                             7 commits
-    ● ▏  [fix2] fix it again                                       2m   84d95f8
+▸   ●    [fix2] fix it again                                       2m   84d95f8
     ●    [fix] fix the bug                                         3m   fbb2394
   ◆ │    [◆ main] main moves on                                    4m   37926a7
   ●─╯    add the base                                              5m   ed332bc

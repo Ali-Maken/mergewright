@@ -893,7 +893,7 @@ what right looks like: Capture header: same scripted dirty tree as the 80x24/160
 === 120x40 ===
 "                                                                                                              3 commits "
 "                                                                                                                        "
-"  ◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
+"▸ ◌    Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
 "  ◆    [HEAD] Commit 3␛[31m                                                                             TE 57y  0303030 "
 "  ●    Commit 2␛[31m                                                                                    TE 57y  0202020 "
 "  ◇    Commit 1␛[31m                                                                                    TE 57y  0101010 "
@@ -961,7 +961,7 @@ what right looks like: Capture header: same scripted dirty tree as the 80x24/120
 === 160x48 ===
 "                                                                                  3 commits  UNCOMMITTED · 1 staged 2 unstaged 1 untracked                      "
 "                                                                                             diff vs HEAD 0303030                                               "
-"  ◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                                                                  "
+"▸ ◌    Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                                                                  "
 "  ◆    [HEAD] Commit 3␛[31m                                                    57y  0303030                                                                     "
 "  ●    Commit 2␛[31m                                                           57y  0202020                                                                     "
 "  ◇    Commit 1␛[31m                                                           57y  0101010  STAGED (1)                                                         "
@@ -1331,7 +1331,7 @@ what right looks like: Capture header: `d` pressed with the files list focused, 
 #
 "                                                                                                              3 commits "
 "                                                                                                                        "
-"  ◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
+"▸ ◌    Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
 "  ◆    [HEAD] Commit 3␛[31m                                                                             TE 57y  0303030 "
 "  ●    Commit 2␛[31m                                                                                    TE 57y  0202020 "
 "  ◇    Commit 1␛[31m                                                                                    TE 57y  0101010 "
@@ -1393,7 +1393,7 @@ what right looks like: Capture header: `d` pressed with the diff region focused,
 #
 "                                                                                                              3 commits "
 "                                                                                                                        "
-"  ◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
+"▸ ◌    Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
 "  ◆    [HEAD] Commit 3␛[31m                                                                             TE 57y  0303030 "
 "  ●    Commit 2␛[31m                                                                                    TE 57y  0202020 "
 "  ◇    Commit 1␛[31m                                                                                    TE 57y  0101010 "
@@ -1792,7 +1792,7 @@ what right looks like: Capture header "Judge by eye": the question names the ent
 === 120x32 ===
 "                                                                                                              3 commits "
 "                                                                                                                        "
-"  ◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
+"▸ ◌    Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
 "  ◆    [HEAD] Commit 3␛[31m                                                                             TE 57y  0303030 "
 "  ●    ╭ Undo “commit "Add OAuth provider"”? ────────────────────────────────────────────────────────╮  TE 57y  0202020 "
 "  ◇    │ Since this commit "Add OAuth provider", the index changed;                                  │  TE 57y  0101010 "

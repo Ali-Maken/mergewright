@@ -42,7 +42,7 @@ COMMIT ── ⎇ main ── 1 file staged
 
 == frame 2: after `⏎` ==
  ◆ api  ~/code/api · main                                             2 commits
-  ◆ ▏  [◆ main] fix: x                                             now  0000000
+▸ ◆    [◆ main] fix: x                                             now  0000000
   ◇    add sample                                                  now  0000000
 
 

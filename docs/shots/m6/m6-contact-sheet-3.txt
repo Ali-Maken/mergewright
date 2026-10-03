@@ -380,7 +380,7 @@ what right looks like: the uncommitted row has no `space fold` — the cursor on
 # them.
 
  ◆ api  ~/code/api · main                       5 commits  date order, sorting…
-  ◌ ▏  Uncommitted changes (1 unstaged)
+▸ ◌    Uncommitted changes (1 unstaged)
   ◆    [◆ main] add second                                         8m   29a1432
   ●    add first                                                   9m   3d9496e
   ●    Correct the note                                            1y   a82960b
@@ -462,7 +462,7 @@ what right looks like: the uncommitted row has no `space fold` — the same at 1
 
  ◆ api  ~/code/api · main                                                               5 commits  date order, sorting…
 
-  ◌ ▏  Uncommitted changes (1 unstaged)
+▸ ◌    Uncommitted changes (1 unstaged)
   ◆    [◆ main] add second                                                                              GF 8m   29a1432
   ●    add first                                                                                        GF 9m   3d9496e
   ●    Correct the note                                                                                 GF 1y   a82960b
@@ -559,7 +559,7 @@ what right looks like: the uncommitted row has no `space fold` — the same at 1
 
  ◆ api  ~/code/api · main                                                                                                       5 commits  date order, sorting…
 
-  ◌ ▏  Uncommitted changes (1 unstaged)
+▸ ◌    Uncommitted changes (1 unstaged)
   ◆    [◆ main] add second                                                                                                                      GF 8m   29a1432
   ●    add first                                                                                                                                GF 9m   3d9496e
   ●    Correct the note                                                                                                                         GF 1y   a82960b
@@ -642,7 +642,7 @@ what right looks like: (fix F9, superseded) Every frame's bottom row is the prom
 === 120x40 · password · pulse seed down ===
 "                                                                                                              3 commits "
 "                                                                                                                        "
-"  ◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
+"▸ ◌    Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
 "  ◆    [HEAD] Commit 3␛[31m                                                                             TE 57y  0303030 "
 "  ●    Commit 2␛[31m                                                                                    TE 57y  0202020 "
 "  ◇    Commit 1␛[31m                                                                                    TE 57y  0101010 "
@@ -684,7 +684,7 @@ what right looks like: (fix F9, superseded) Every frame's bottom row is the prom
 === 120x40 · the same password · pulse seed up ===
 "                                                                                                              3 commits "
 "                                                                                                                        "
-"  ◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
+"▸ ◌    Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
 "  ◆    [HEAD] Commit 3␛[31m                                                                             TE 57y  0303030 "
 "  ●    Commit 2␛[31m                                                                                    TE 57y  0202020 "
 "  ◇    Commit 1␛[31m                                                                                    TE 57y  0101010 "
@@ -768,7 +768,7 @@ what right looks like: (ticket 47, re-taken by ticket 50) The force (lease) push
 === after `y` (identical to before it) ===
  ◆ api  ~/code/api · main                                                                               144 rows so far
 
-  ◆ ▏ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
+▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
@@ -828,7 +828,7 @@ what right looks like: (ticket 49) A teammate pushed; `P` was rejected; `p` name
 #
  ◆ api  ~/code/api · main                                                                                                                                                  144 rows so far
 
-  ◆ ▏  [◆ main ↑1] ours                                                                                                                                                    GF now  0000000
+▸ ◆    [◆ main ↑1] ours                                                                                                                                                    GF now  0000000
   ●    [origin/main] theirs                                                                                                                                                GF 6y   7be74b5
   ●    Commit 200                                                                                                                                                          GF 7y   d5ae5fd
   ●    Commit 199                                                                                                                                                          GF 7y   13e6ab1
@@ -1008,7 +1008,7 @@ what right looks like: (ticket 57) A merge begun in the shell, the banner focuse
 === 1. a: the abort box ===
  ◆ api  ~/code/api · main                                                                                       MERGING
 
-  ◌   ▏  Uncommitted changes (2 unmerged)
+▸ ◌      Uncommitted changes (2 unmerged)
   ◆      [◆ main] main's take                                                                           GF 2h   ddeed32
   │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
   ●─╯    the shared files                                                                               GF 2h   b35b2f1
@@ -1049,7 +1049,7 @@ CONFLICTS (2)                 ▎
 === 2. → ⏎: aborted ===
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-  ◆   ▏  [◆ main] main's take                                                                           GF 2h   ddeed32
+▸ ◆      [◆ main] main's take                                                                           GF 2h   ddeed32
   │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
   ●─╯    the shared files                                                                               GF 2h   b35b2f1
   ●      Correct the note                                                                               GF 1y   a82960b
@@ -1091,7 +1091,7 @@ M shared.rs             +1 −1   1     - the plan
  ◆ api  ~/code/api · main                                                                                       MERGING
 
   ◌      Uncommitted changes (2 unmerged)
-  ◆   ▏  [◆ main] main's take                                                                           GF 2h   ddeed32
+▸ ◆      [◆ main] main's take                                                                           GF 2h   ddeed32
   │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
   ●─╯    the shared files                                                                               GF 2h   b35b2f1
   ●      Correct the note                                                                               GF 1y   a82960b
@@ -1514,7 +1514,7 @@ what right looks like: (ticket 52) A merge begun in the shell, resolved. Frame 1
 === 187x50 ===
  ◆ api  ~/code/api · main                                                                           MERGING  UNCOMMITTED · 2 staged
                                                                                                              diff vs HEAD ddeed32
-  ◌   ▏  Uncommitted changes (2 staged)
+▸ ◌      Uncommitted changes (2 staged)
   ◆      [◆ main] main's take                                                               GF 2h   ddeed32
   │ ●    [feature] the feature's take                                                       GF 2h   f43f326
   ●─╯    the shared files                                                                   GF 2h   b35b2f1  STAGED (2)
@@ -1635,7 +1635,7 @@ what right looks like: (ticket 52) The two frames that drew `c commit` mid-opera
 === 187x50 ===
  ◆ api  ~/code/api · main                                                                                                                                                        6 commits
 
-  ◆   ▏  [◆ main] main's take                                                                                                                                              GF 2h   ddeed32
+▸ ◆      [◆ main] main's take                                                                                                                                              GF 2h   ddeed32
   │ ●    [feature] the feature's take                                                                                                                                      GF 2h   f43f326
   ●─╯    the shared files                                                                                                                                                  GF 2h   b35b2f1
   ●      Correct the note                                                                                                                                                  GF 1y   a82960b
@@ -1686,7 +1686,7 @@ what right looks like: (ticket 52) The two frames that drew `c commit` mid-opera
 --- frame 2 ---
  ◆ api  ~/code/api · main                                                                           MERGING  UNCOMMITTED · 2 staged
                                                                                                              diff vs HEAD ddeed32
-  ◌   ▏  Uncommitted changes (2 staged)
+▸ ◌      Uncommitted changes (2 staged)
   ◆      [◆ main] main's take                                                               GF 2h   ddeed32
   │ ●    [feature] the feature's take                                                       GF 2h   f43f326
   ●─╯    the shared files                                                                   GF 2h   b35b2f1  STAGED (2)
@@ -1761,7 +1761,7 @@ what right looks like: (ticket 50) A teammate pushed, one local commit. Frame 1 
 === frame 1: `P`, the plain push box ===
  ◆ api  ~/code/api · main                                                                               144 rows so far
 
-  ◆ ▏  [◆ main ↑1] ours                                                                                 GF 6y   739071c
+▸ ◆    [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
@@ -1803,7 +1803,7 @@ what right looks like: (ticket 50) A teammate pushed, one local commit. Frame 1 
 === frame 2: `y` (rejected), `P`, the lease box, then `y` ===
  ◆ api  ~/code/api · main                                                                               144 rows so far
 
-  ◆ ▏ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
+▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
@@ -1867,7 +1867,7 @@ what right looks like: (ticket 50) The same at 80x24: frame 1's bottom row reads
 #
 === frame 1: `P`, the plain push box ===
  ◆ api  ~/code/api · main                                       144 rows so far
-  ◆ ▏  [◆ main ↑1] ours                                            6y   739071c
+▸ ◆    [◆ main ↑1] ours                                            6y   739071c
   ●    [origin/main] Commit 200                                    7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
@@ -1893,7 +1893,7 @@ what right looks like: (ticket 50) The same at 80x24: frame 1's bottom row reads
 
 === frame 2: `y` (rejected), `P`, the lease box, then `y` ===
  ◆ api  ~/code/api · main                                       144 rows so far
-  ◆ ▏ⓘ [◆ main ↑1] ours                                            6y   739071c
+▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
   ●    [origin/main] Commit 200                                    7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
@@ -1983,7 +1983,7 @@ COMMIT ── ⎇ main ── 1 file staged
 == frame 2: after `⏎` ==
  ◆ api  ~/code/api · main                                                                                     2 commits
 
-  ◆ ▏  [◆ main] fix: x                                                                                  GT now  0000000
+▸ ◆    [◆ main] fix: x                                                                                  GT now  0000000
   ◇    add sample                                                                                       GT now  0000000
 
 
@@ -2071,7 +2071,7 @@ COMMIT ── ⎇ main ── 1 file staged
 
 == frame 2: after `⏎` ==
  ◆ api  ~/code/api · main                                             2 commits
-  ◆ ▏  [◆ main] fix: x                                             now  0000000
+▸ ◆    [◆ main] fix: x                                             now  0000000
   ◇    add sample                                                  now  0000000
 
 
@@ -2122,7 +2122,7 @@ what right looks like: (ticket 66) A teammate pushed; you had a local commit and
 
  ◆ api  ~/code/api · main                                                                               144 rows so far
 
-  ◆   ▏  [◆ main ⇄ origin] ours                                                                         GF now  0000000
+▸ ◆      [◆ main ⇄ origin] ours                                                                         GF now  0000000
   ●      theirs                                                                                         GF 6y   7be74b5
   │ ■    [stash@{0}] On main: wip                                                                       GF 6y   e79bc4b
   │ □    [only in stash@{0}] ours                                                                       GF 6y   739071c
@@ -2167,7 +2167,7 @@ what right looks like: (ticket 66) A teammate pushed; you had a local commit and
 
   ◆      [◆ main ⇄ origin] ours                                                                         GF now  0000000
   ●      theirs                                                                                         GF 6y   7be74b5
-  │ ■ ▏  [stash@{0}] On main: wip                                                                       GF 6y   e79bc4b
+▸ │ ■    [stash@{0}] On main: wip                                                                       GF 6y   e79bc4b
   │ □    [only in stash@{0}] ours                                                                       GF 6y   739071c
   ●─╯    Commit 200                                                                                     GF 7y   d5ae5fd
   ●      Commit 199                                                                                     GF 7y   13e6ab1
@@ -2208,7 +2208,7 @@ what right looks like: (ticket 66) A teammate pushed; you had a local commit and
 
  ◆ api  ~/code/api · main                                                                               144 rows so far
 
-  ◆   ▏  [◆ main ⇄ origin] ours                                                                         GF now  0000000
+▸ ◆      [◆ main ⇄ origin] ours                                                                         GF now  0000000
  Checkout — already on main
  Cherry-pick (o) — already on main
  Copy SHA (y)
@@ -2255,7 +2255,7 @@ what right looks like: (ticket 68) Graft relaunched into a rebase a killed Graft
  ◆ api  ~/code/api · feature                                                                                  3 commits
 
   ●      [main] Change every file on main                                                               GF 2h   274c7d4
-  │ ◆ ▏  [◆ feature] Change every file on feature                                                       GF 2h   9d44f42
+▸ │ ◆    [◆ feature] Change every file on feature                                                       GF 2h   9d44f42
   ◇─╯    Add the files both sides will change                                                           GF 1y   9571fc9
 
 

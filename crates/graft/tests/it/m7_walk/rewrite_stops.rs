@@ -121,7 +121,7 @@ fn edit_stop_lands() {
     assert!(shot.contains(TITLE), "{shot}");
     let cursor_row = shot
         .lines()
-        .find(|line| line.contains('▏'))
+        .find(|line| line.starts_with('▸'))
         .unwrap_or_else(|| panic!("no cursor row: {shot}"));
     assert!(
         cursor_row.contains("stopped here"),

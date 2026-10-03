@@ -9,7 +9,7 @@ shape: criss-cross-merge, 16, focus, 80x24, row 4 selected
   ◆─╎─╮        Merge branch 'alpha'                                4y   e44c042
   │ ◉╌│╌╮      beta: merge alpha                                   4y   f77039c
   │ ╎ ◉─╎─╮    alpha: merge beta                                   4y   89c164d
-  │ ●─│─╎─╯ ▏  beta: work                                          4y   4cfd7d9
+▸ │ ●─│─╎─╯    beta: work                                          4y   4cfd7d9
   │ ╎ ●╌╯      alpha: work                                         4y   bd20b78
   ◇╌┴─╯        Add the base                                        4y   68d5d19
 
@@ -30,10 +30,10 @@ shape: criss-cross-merge, 16, focus, 80x24, row 4 selected
  ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · . more
 
 modifiers: graph | subject
-....b.....| .
-..bbbbb...| .
-..d.bdbdd.| .
-..d.b.bbdb| .
-..d.bbdbdb| b
-..d.b.ddd.| d
-..bbbdd...| .
+..b.......| .
+bbbbb.....| .
+d.bdbdd...| .
+d.b.bbdbb.| .
+d.bbdbdbb.| b
+d.b.ddd...| d
+bbbdd.....| .

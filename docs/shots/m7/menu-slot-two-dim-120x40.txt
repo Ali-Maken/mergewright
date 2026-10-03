@@ -9,7 +9,7 @@
  ◆ api  ~/code/api · main                                                                                     6 commits
 
     ●    [login-page] [origin/sara/login-page] fix the bug                                              GF 3m   fbb2394
-  ◆ │ ▏  [◆ main ⇄ origin] main moves on                                                                GF 4m   37926a7
+▸ ◆ │    [◆ main ⇄ origin] main moves on                                                                GF 4m   37926a7
  Checkout — already on main
  Cherry-pick (o) — already on main
  Copy SHA (y)

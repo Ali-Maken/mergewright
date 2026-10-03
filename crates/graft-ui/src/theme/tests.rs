@@ -13,7 +13,7 @@ use crate::test_support::terminal;
 
 use super::depth::{Oklab, linearize, nearest_16, nearest_256, oklab, oklab_from_linear};
 use super::lanes::LANE_HUES;
-use super::{LANE_COUNT, TINT_ALPHA, Theme, ThemeKind, Token, TokenColor, mix};
+use super::{LANE_COUNT, TINT_ALPHA, Theme, ThemeKind, Token, TokenColor, contrast, mix};
 
 const EVERY_THEME: [ThemeKind; 3] = [ThemeKind::Dark, ThemeKind::Light, ThemeKind::HighContrast];
 
@@ -408,26 +408,6 @@ fn hue(theme: &Theme, token: Token) -> Rgb {
     }
 }
 
-/// WCAG 2.1 contrast ratio, from relative luminance.
-fn contrast(left: Rgb, right: Rgb) -> f32 {
-    let luminance = |color: Rgb| {
-        0.2126 * linearize(color.red)
-            + 0.7152 * linearize(color.green)
-            + 0.0722 * linearize(color.blue)
-    };
-
-    let (lighter, darker) = {
-        let (left, right) = (luminance(left), luminance(right));
-        if left > right {
-            (left, right)
-        } else {
-            (right, left)
-        }
-    };
-
-    (lighter + 0.05) / (darker + 0.05)
-}
-
 /// m5-history-and-ghost-preview/44. `selection` is the "you are here" fill —
 /// the cursor row in the graph, the map, the stash list, the journal, and
 /// the files pane. It replaced `surface-raised` there because `surface-raised`
@@ -437,24 +417,17 @@ fn contrast(left: Rgb, right: Rgb) -> f32 {
 /// not find his own cursor row twice.
 ///
 /// `text` drawn on the selected row must also stay readable (WCAG 2.1 AA,
-/// 4.5:1) — "a selection you can see but cannot read on is not a fix". In
-/// the dark theme these two floors are **not simultaneously reachable**: `bg`
-/// (#14161B, relative luminance 0.00802) and `text` (#D7DBE0, luminance
-/// 0.70492) are only 13.01:1 apart, and splitting that into a ≥3:1 segment
-/// below `selection` and a ≥4.5:1 segment above it needs ≥13.5:1 of total
-/// room — proven by the arithmetic, not a tuning miss. `selection` here
-/// (#5A6478) was chosen to clear the reported defect's floor exactly (3:1
-/// against `bg`) and get `text` as close to 4.5:1 as that leaves room for
-/// (4.28:1). The light and high-contrast themes have enough room for both
-/// floors at once, and clear them.
+/// 4.5:1) — "a selection you can see but cannot read on is not a fix". With
+/// the old dark `text` (#D7DBE0) the two floors could not both be met (it
+/// reached 4.28:1); dark B (ADR-0058 §1) brightened `text` to #F0F2F5
+/// instead of moving the ground, and clears both (5.14:1). Every theme's
+/// floors are `CONTRAST_RULES` (`contrast::tests`); this test pins the
+/// measured numbers so a token that moves elsewhere fails loudly.
 #[test]
-fn selection_clears_the_reported_defect_and_text_stays_close_to_readable() {
-    // The floor this replaces: WCAG 1.4.11, a non-text UI indicator against
-    // its background.
+fn selection_clears_the_reported_defect_and_text_stays_readable() {
+    // WCAG 1.4.11, a non-text UI indicator against its background.
     const BG_FLOOR: f32 = 3.0;
-    // The dark theme cannot reach this at the same time as `BG_FLOOR` (see
-    // the derivation above); its achieved ratio is asserted explicitly
-    // instead of silently lowering the floor for every theme.
+    // WCAG 2.1 AA, normal text.
     const TEXT_FLOOR: f32 = 4.5;
 
     for kind in EVERY_THEME {
@@ -473,10 +446,7 @@ fn selection_clears_the_reported_defect_and_text_stays_close_to_readable() {
 
         let text_ratio = contrast(text, selection);
         let expected_text_ratio = match kind {
-            // Proven unreachable together with `BG_FLOOR` above; the real,
-            // measured number is asserted so a further regression still
-            // fails loudly even though it is already short of `TEXT_FLOOR`.
-            ThemeKind::Dark => 4.28,
+            ThemeKind::Dark => 5.14,
             ThemeKind::Light => 4.71,
             ThemeKind::HighContrast => 5.49,
         };
@@ -486,13 +456,11 @@ fn selection_clears_the_reported_defect_and_text_stays_close_to_readable() {
              a token elsewhere moved",
             kind.name()
         );
-        if kind != ThemeKind::Dark {
-            assert!(
-                text_ratio >= TEXT_FLOOR,
-                "text on selection is {text_ratio:.2}:1 in theme {} (floor {TEXT_FLOOR})",
-                kind.name()
-            );
-        }
+        assert!(
+            text_ratio >= TEXT_FLOOR,
+            "text on selection is {text_ratio:.2}:1 in theme {} (floor {TEXT_FLOOR})",
+            kind.name()
+        );
     }
 }
 
@@ -655,7 +623,8 @@ fn raster_lanes_are_truecolor_hues_at_any_depth_and_one_muted_hue_without_colour
     }
     let theme = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::TrueColor, true));
     assert_eq!(theme.raster_lanes(), vec![theme.raster_muted()]);
-    assert_eq!(theme.raster_muted(), rgb(0x8A, 0x91, 0x9C));
+    // Dark B's `text-muted` (ADR-0058 §1).
+    assert_eq!(theme.raster_muted(), rgb(0x9A, 0xA1, 0xAC));
 }
 
 // ------------------------------------------------------ conflict colours

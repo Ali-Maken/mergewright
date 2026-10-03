@@ -31,20 +31,19 @@ pub(super) type ChromeHues = [Rgb; TOKEN_COUNT];
 
 /// Dark: the default, and what an unknown terminal gets (DESIGN.md §4.1).
 ///
-/// `selection` (m5-history-and-ghost-preview/44): #5A6478 measures 3.04:1
-/// against `bg` (floor 3:1, WCAG 1.4.11) and 4.28:1 for `text` drawn on it
-/// (floor 4.5:1, WCAG 2.1 AA) — see `theme::tests` for why 4.5:1 is not
-/// reachable here at the same time as the 3:1 `bg` floor, and NOTES in the
-/// ticket for the derivation.
+/// Dark B (ADR-0058 §1): the ground he shares with his other tools, `text`
+/// brighter. `selection` #5C667B measures 3.14:1 against `bg` (floor 3:1,
+/// WCAG 1.4.11), `text` 5.14:1 on it and `text-muted` 6.95:1 on `bg` (floors
+/// 4.5:1) — every floor in `CONTRAST_RULES`, asserted in `contrast::tests`.
 pub(super) const DARK: ChromeHues = conflict(
     build(
         rgb(0x14, 0x16, 0x1B), // bg
         rgb(0x1B, 0x1E, 0x24), // surface
         rgb(0x23, 0x27, 0x30), // surface-raised
-        rgb(0x5A, 0x64, 0x78), // selection
+        rgb(0x5C, 0x66, 0x7B), // selection
         rgb(0x33, 0x39, 0x44), // border
-        rgb(0xD7, 0xDB, 0xE0), // text
-        rgb(0x8A, 0x91, 0x9C), // text-muted
+        rgb(0xF0, 0xF2, 0xF5), // text
+        rgb(0x9A, 0xA1, 0xAC), // text-muted
         rgb(0x4F, 0xA3, 0xE3), // accent
         rgb(0x5D, 0xB8, 0x7A), // added
         rgb(0xE0, 0x6C, 0x75), // removed

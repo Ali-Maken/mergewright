@@ -183,7 +183,7 @@ pub(crate) fn render_files(view: &DetailView, area: Rect, theme: &Theme, buf: &m
             break;
         }
         let style = if index == files.cursor {
-            text_style.bg(cursor_bg)
+            crate::paint::on_selection(theme, text_style).bg(cursor_bg)
         } else {
             text_style
         };

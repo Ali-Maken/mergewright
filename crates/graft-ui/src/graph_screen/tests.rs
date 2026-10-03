@@ -23,6 +23,8 @@ use crate::paint::color;
 use crate::test_support::{terminal, wide_history};
 use crate::theme::{Theme, ThemeKind, Token};
 
+mod cursor_row;
+
 fn oid(byte: u8) -> Oid {
     Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is a valid oid length")
 }
@@ -192,8 +194,14 @@ fn list_rows_keep_a_two_cell_gutter_and_a_right_margin() {
             "{columns}"
         );
         let screen = text(&draw(&shown, columns, 8));
+        // Row 1 is the cursor's: its gutter carries `▸` (ADR-0058 §2).
+        assert!(
+            screen[1].starts_with("\u{25b8} "),
+            "{columns}: {:?}",
+            screen[1]
+        );
         for row in &screen[1..4] {
-            assert!(row.starts_with("  "), "{columns}: {row:?}");
+            assert!(row.chars().nth(1) == Some(' '), "{columns}: {row:?}");
             assert!(row.ends_with(' '), "{columns}: {row:?}");
         }
         assert!(
@@ -333,7 +341,7 @@ fn terminal_caps() -> graft_core::capabilities::Capabilities {
 }
 
 #[test]
-fn at_palette16_the_cursor_row_gets_a_rule_instead_of_a_background() {
+fn at_palette16_the_cursor_row_gets_its_mark_instead_of_a_background() {
     let rows = linear(3);
     let theme = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::Palette16, false));
     let mut terminal = Terminal::new(TestBackend::new(40, 6)).expect("test backend opens");
@@ -346,14 +354,11 @@ fn at_palette16_the_cursor_row_gets_a_rule_instead_of_a_background() {
     // No usable background step at this depth: the row's fill is left
     // untouched, same as an unhighlighted row, not `selection`.
     assert_eq!(buffer[(30, 2)].bg, buffer[(30, 1)].bg, "{buffer:#?}");
-    // The marker slot carries the highlight instead, in the accent colour.
+    // The gutter's `▸` carries the highlight instead, in the accent colour
+    // (ADR-0058 §2).
     let accent = color(theme.token(Token::Accent));
-    let has_rule = (0..buffer.area.width)
-        .any(|x| buffer[(x, 2)].symbol() == "▏" && buffer[(x, 2)].fg == accent);
-    assert!(
-        has_rule,
-        "expected a Palette16 rule on the cursor row: {buffer:#?}"
-    );
+    assert_eq!(buffer[(0, 2)].symbol(), "▸", "{buffer:#?}");
+    assert_eq!(buffer[(0, 2)].fg, accent);
     assert!(!buffer[(10, 2)].modifier.is_empty()); // still bold
 }
 
@@ -364,12 +369,13 @@ fn at_palette16_the_cursor_row_gets_a_rule_instead_of_a_background() {
 /// `#232730` in the dark theme, and *"really and I mean really hard to
 /// notice which row I'm on"* is what it came to in his terminal.
 ///
-/// The rule is drawn at every depth now, so both marks are on the cursor
-/// row at `TrueColor`: the fill for terminals that show it well, and the
-/// shape for the reader — and for the black-and-white screenshot, and for
-/// the theme whose surfaces sit close together.
+/// The mark is drawn at every depth now, so both are on the cursor row at
+/// `TrueColor`: the fill for terminals that show it well, and the shape for
+/// the reader — and for the black-and-white screenshot, and for the theme
+/// whose surfaces sit close together. Since ADR-0058 the shape is `▸` in
+/// the gutter, not `▏` in the marker slot.
 #[test]
-fn at_truecolor_the_cursor_row_gets_the_rule_as_well_as_the_background() {
+fn at_truecolor_the_cursor_row_gets_its_mark_as_well_as_the_background() {
     let rows = linear(3);
     let terminal = draw(&view(&rows, WalkView::Complete { rows: 3 }, 1), 40, 6);
     let buffer = terminal.backend().buffer();
@@ -378,20 +384,18 @@ fn at_truecolor_the_cursor_row_gets_the_rule_as_well_as_the_background() {
     let accent = color(theme.token(Token::Accent));
 
     assert_eq!(buffer[(30, 2)].bg, selection, "the fill is still painted");
-    let rule = (0..buffer.area.width)
-        .find(|x| buffer[(*x, 2)].symbol() == "▏")
-        .expect("the cursor row carries the rule at TrueColor too");
     assert_eq!(
-        buffer[(rule, 2)].fg,
-        accent,
-        "the rule is the accent colour"
+        buffer[(0, 2)].symbol(),
+        "▸",
+        "the cursor's mark at TrueColor too"
     );
+    assert_eq!(buffer[(0, 2)].fg, accent, "the mark is the accent colour");
     assert!(
-        buffer[(rule, 2)].modifier.contains(Modifier::BOLD),
+        buffer[(0, 2)].modifier.contains(Modifier::BOLD),
         "and bold, so it reads against the lane glyphs beside it"
     );
     assert!(
-        !(0..buffer.area.width).any(|x| buffer[(x, 1)].symbol() == "▏"),
+        !(0..buffer.area.width).any(|x| buffer[(x, 1)].symbol() == "▸"),
         "no other row carries one"
     );
 }
@@ -538,20 +542,26 @@ fn the_marker_slot_is_the_same_width_empty_or_filled() {
 /// background alone, which is the one signal the user had already told us
 /// he could not see. A fix for "you cannot find the cursor" that switches
 /// itself off on some rows is not a fix.
+///
+/// ADR-0058: the cursor's mark is `▸` in the gutter now; the slot's first
+/// cell stays reserved (for the compare base's `▏`), and the marker still
+/// takes the second.
 #[test]
-fn a_row_with_a_marker_still_shows_the_cursor_rule() {
+fn a_row_with_a_marker_still_shows_the_cursor_mark() {
     let rows = linear(2);
     let mut filled = view(&rows, WalkView::Complete { rows: 2 }, 0);
     filled.rows[0].marker = Some(MarkerView {
         severity: Severity::Warning,
     });
     filled.marker_column = true;
+    filled.rows[0].compare_marked = true;
     let terminal = draw(&filled, 120, 5);
     let buffer = terminal.backend().buffer();
 
+    assert_eq!(buffer[(0, 1)].symbol(), "▸", "the cursor keeps its mark");
     let rule = (0..buffer.area.width)
         .find(|x| buffer[(*x, 1)].symbol() == "▏")
-        .expect("the cursor row keeps its rule beside a marker");
+        .expect("the compare base keeps its rule beside a marker");
     assert_eq!(
         buffer[(rule + 1, 1)].symbol(),
         "⚠",
@@ -757,7 +767,7 @@ fn ui_icons_changes_how_badges_render() {
 }
 
 #[test]
-fn with_no_color_the_cursor_row_keeps_its_rule_and_dimmed_rows_stay_faint() {
+fn with_no_color_the_cursor_row_keeps_its_mark_and_dimmed_rows_stay_faint() {
     let rows = linear(3);
     let theme = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::TrueColor, true));
     let mut view = view(&rows, WalkView::Complete { rows: 3 }, 1);
@@ -770,8 +780,11 @@ fn with_no_color_the_cursor_row_keeps_its_rule_and_dimmed_rows_stay_faint() {
 
     // No colour at all, so no background step and no accent: the rule's
     // shape is the highlight, and weight/faintness carry the paint.
-    let has_rule = (0..buffer.area.width).any(|x| buffer[(x, 2)].symbol() == "▏");
-    assert!(has_rule, "expected a rule on the cursor row: {buffer:#?}");
+    assert_eq!(
+        buffer[(0, 2)].symbol(),
+        "▸",
+        "the cursor's mark: {buffer:#?}"
+    );
     assert!(buffer[(10, 2)].modifier.contains(Modifier::BOLD));
     assert!(buffer[(10, 3)].modifier.contains(Modifier::DIM));
 }
@@ -1021,9 +1034,14 @@ fn the_pixel_tier_leaves_the_graph_column_blank_at_the_same_width() {
         graph
     );
     let columns = usize::from(graph.x + graph.width);
+    // The graph column alone: the gutter left of it carries the cursor's
+    // `▸` at every tier (ADR-0058 §2).
     let split = |line: &str| -> (String, String) {
         (
-            line.chars().take(columns).collect(),
+            line.chars()
+                .take(columns)
+                .skip(usize::from(graph.x))
+                .collect(),
             line.chars().skip(columns).collect(),
         )
     };

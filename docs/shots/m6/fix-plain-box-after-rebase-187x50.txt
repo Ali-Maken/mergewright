@@ -14,7 +14,7 @@
 #
  ◆ api  ~/code/api · main                                                                                                                                                  144 rows so far
 
-  ◆ ▏  [◆ main ↑1] ours                                                                                                                                                    GF now  0000000
+▸ ◆    [◆ main ↑1] ours                                                                                                                                                    GF now  0000000
   ●    [origin/main] theirs                                                                                                                                                GF 6y   7be74b5
   ●    Commit 200                                                                                                                                                          GF 7y   d5ae5fd
   ●    Commit 199                                                                                                                                                          GF 7y   13e6ab1

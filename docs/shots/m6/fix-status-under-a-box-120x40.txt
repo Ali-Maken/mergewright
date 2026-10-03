@@ -25,7 +25,7 @@
 === frame 1: `f` to nowhere, `b`, the fetch fails under the prompt ===
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-  ◆ ▏  [◆ main ⇄ origin] Commit 200                                                                     GF 7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] Commit 200                                                                     GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
   ●    Commit 197                                                                                       GF 7y   2cce853
@@ -67,7 +67,7 @@
 === frame 2: `topic ⏎`, the held failure ===
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-  ◆ ▏  [◆ main ⇄ origin] Commit 200                                                                     GF 7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] Commit 200                                                                     GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
   ●    Commit 197                                                                                       GF 7y   2cce853
@@ -109,7 +109,7 @@
 === frame 3: `esc`, the create's line ===
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-  ◆ ▏  [◆ main ⇄ origin] Commit 200                                                                     GF 7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] Commit 200                                                                     GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
   ●    Commit 197                                                                                       GF 7y   2cce853
@@ -151,7 +151,7 @@
 === frame 4: `f`, `b`, `other ⏎` while the fetch runs ===
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-  ◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                                                             GF 7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] [topic] Commit 200                                                             GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
   ●    Commit 197                                                                                       GF 7y   2cce853
@@ -193,7 +193,7 @@
 === frame 5: the fetch answers under the prompt ===
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-  ◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                                                             GF 7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] [topic] Commit 200                                                             GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
   ●    Commit 197                                                                                       GF 7y   2cce853
@@ -235,7 +235,7 @@
 === frame 6: `esc`, the fetch's line ===
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-  ◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                                                             GF 7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] [topic] Commit 200                                                             GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
   ●    Commit 197                                                                                       GF 7y   2cce853

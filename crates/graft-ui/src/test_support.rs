@@ -17,6 +17,45 @@ use graft_graph::layout::layout;
 use graft_graph::row::Row;
 use graft_graph::seeds::{BranchSeed, Seeds};
 
+/// Every non-blank cell of `buffer` drawn on `theme`'s `selection` fill has
+/// a foreground at 4.5:1 or better against it (ADR-0058 §3). Truecolor
+/// themes only. Returns how many cells it checked, so a caller can assert
+/// that the cursor row was on screen at all.
+pub(crate) fn assert_legible_on_selection(
+    buffer: &ratatui::buffer::Buffer,
+    theme: &crate::theme::Theme,
+) -> usize {
+    use crate::theme::{Token, TokenColor, contrast};
+    use graft_core::capabilities::Rgb;
+    use ratatui::style::Color;
+
+    let TokenColor::Rgb(selection) = theme.token(Token::Selection) else {
+        panic!("a truecolor theme gives selection an Rgb");
+    };
+    let fill = Color::Rgb(selection.red, selection.green, selection.blue);
+    let mut checked = 0;
+    for y in buffer.area.top()..buffer.area.bottom() {
+        for x in buffer.area.left()..buffer.area.right() {
+            let cell = &buffer[(x, y)];
+            if cell.bg != fill || cell.symbol().trim().is_empty() {
+                continue;
+            }
+            let fg = match cell.fg {
+                Color::Rgb(red, green, blue) => Rgb { red, green, blue },
+                other => panic!("({x},{y}) {:?}: fg {other:?} on the fill", cell.symbol()),
+            };
+            let ratio = contrast(fg, selection);
+            assert!(
+                ratio >= 4.5,
+                "({x},{y}) {:?} is {ratio:.2}:1 on selection",
+                cell.symbol()
+            );
+            checked += 1;
+        }
+    }
+    checked
+}
+
 /// A terminal with the given colour depth and `NO_COLOR` setting. Every other
 /// field is irrelevant to the tests that use this and is filled with something
 /// inert.

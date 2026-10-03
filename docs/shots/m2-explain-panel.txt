@@ -19,7 +19,7 @@
 #   (crates/graft/src/view/tests.rs) is what proves that behaviour.
 #
 "                                                                                  3 commits  COMMIT 0303030                                                     "
-"  ◉─╮ ▏⚠ Merge branch 'feature'                                                57y  0303030  Test <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y         "
+"▸ ◉─╮  ⚠ Merge branch 'feature'                                                57y  0303030  Test <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y         "
 "  │ ●    Ship the release notes                                                57y  0202020  parents 0101010, 0202020 · diff vs first parent                    "
 "  ◇─╯    Start the feature branch                                              57y  0101010  Contained in: checking…                                            "
 "                                                                                             foxtrot merge · evil merge: unchecked                              "

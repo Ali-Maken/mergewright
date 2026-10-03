@@ -2,7 +2,7 @@
 
     ●      Show the login page                                                                                                                                             GF 2d   04fbed6
     ●      Handle expired tokens                                                                                                                                           GF 2d   29033ed
-    ●   ▏  Add OAuth callback                                                                                                                                              GF 2d   67fda4a
+▸   ●      Add OAuth callback                                                                                                                                              GF 2d   67fda4a
     │      the result
     │ ○    [feature-b] Show the login page                                                                                                                                 GF —    —
     │ ○    [◆ feature-a] Handle expired tokens                                                                                                                             GF —    —

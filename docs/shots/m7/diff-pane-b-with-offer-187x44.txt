@@ -21,7 +21,7 @@
  ◆ api  ~/code/api · main                                                                         6 commits  COMMIT 74f9a9e
                                                                                                              Graft Fixture <fixture@example.invalid> · 2020-01-02 23:00 +0000 · 60m
   ◌    Uncommitted changes (1 untracked)                                                                     parents 0a27627 · diff vs first parent
-  ◆ ▏  [◆ main] Handle expired tokens                                                       GF 60m  74f9a9e  Contained in: main
+▸ ◆    [◆ main] Handle expired tokens                                                       GF 60m  74f9a9e  Contained in: main
   ●    Move session TTL to config                                                           PR 4mo  0a27627
   ●    rustfmt                                                                              RU 5mo  b32274b  A .git-blame-ignore-revs                                                 +2 −0
   ●    Retry refresh once on 401                                                            LI 7mo  2f48ca3  ▾ src/

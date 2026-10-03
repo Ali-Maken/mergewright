@@ -27,7 +27,7 @@ Right: (a) `B L ⏎` then `Tab` to the graph — the bar leads `esc back to hist
   ◆    [◆ main] Handle expired tokens                                                                   GF 60m  74f9a9e
   ●    Move session TTL to config                                                                       PR 4mo  0a27627
   ●    rustfmt                                                                                          RU 5mo  b32274b
-  ● ▏  Retry refresh once on 401                                                                        LI 7mo  2f48ca3
+▸ ●    Retry refresh once on 401                                                                        LI 7mo  2f48ca3
   ●    Add token refresh                                                                                TO 10mo 47593a5
   ◇    Add session                                                                                      AN 1y   3f6c311
 
@@ -176,7 +176,7 @@ what right looks like: Ticket 07d: an `edit` stop on his a3 of 5, Sara's feature
     ●    b1                                                                                                                                                                SA 2d   5a1257a
     ●    [feature-a] a5                                                                                                                                                    GF 2d   90e1a32
     ●    a4                                                                                                                                                                GF 2d   a00e43d
-    ◆ ▏  [HEAD] a3  HEAD · stopped here                                                                                                                                    GF 2d   7326de5
+▸   ◆    [HEAD] a3  HEAD · stopped here                                                                                                                                    GF 2d   7326de5
     ●    a2                                                                                                                                                                GF 2d   15335d9
     ●    a1                                                                                                                                                                GF 2d   0395451
   ◇─╯    [main] m1                                                                                                                                                         GF 2d   256d42c
@@ -232,7 +232,7 @@ what right looks like: Ticket 07b/07c/07d: the `edit` stop at 120x40: banner wit
   ● │    [main] m2                                                                                      GF 2d   9d9646b
   │ ●    [feature-b] b1                                                                                 GF 2d   82392de
   │ ●    [feature-a] a2                                                                                 GF 2d   15335d9
-  │ ◆ ▏  [HEAD] a1  HEAD · stopped here                                                                 GF 2d   0395451
+▸ │ ◆    [HEAD] a1  HEAD · stopped here                                                                 GF 2d   0395451
   ◇─╯    m1                                                                                             GF 2d   256d42c
 
 
@@ -287,7 +287,7 @@ what right looks like: Ticket 07d: the `edit` stop at 80x24, his 10 rows + Sara'
     ●    a6                                                        2d   03794c8
     ●    a5                                                        2d   90e1a32
     ●    a4                                                        2d   a00e43d
-    ◆ ▏  [HEAD] a3  HEAD · stopped here                            2d   7326de5
+▸   ◆    [HEAD] a3  HEAD · stopped here                            2d   7326de5
     ●    a2                                                        2d   15335d9
     ●    a1                                                        2d   0395451
  ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · . more
@@ -440,7 +440,7 @@ what right looks like: Ticket 08: `R` on HEAD (`feature-a`) with `feature-b` and
     ●      [feature-c] c1                                                                               GF 2d   937a1e7
   ● │      [main] m2                                                                                    GF 2d   fa34bcc
   │ │ ●    [feature-b] b1                                                                               GF 2d   8c6d354
-  │ ◆─╯ ▏  [◆ feature-a] a1                                                                             GF 2d   0395451
+▸ │ ◆─╯    [◆ feature-a] a1                                                                             GF 2d   0395451
   ◇─╯      m1                                                                                           GF 2d   256d42c
 
 
@@ -492,7 +492,7 @@ what right looks like: Ticket 11: `o` on login-page's `fix the bug`, main checke
 # put aside and back).
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-    ●   ▏  [login-page] [origin/sara/login-page] fix the bug                                            GF 3m   fbb2394
+▸   ●      [login-page] [origin/sara/login-page] fix the bug                                            GF 3m   fbb2394
     │      after cherry-pick
     │ ○    [◆ main ⇄ origin] fix the bug                                                                GF —    —
   ●─│─╯    main moves on                                                                                GF 4m   37926a7
@@ -545,7 +545,7 @@ what right looks like: Ticket 11: `o` on a merge commit. No preview box; the sta
 # taking a merge isn't in Graft yet`; no preview box.
  ◆ api  ~/code/api · main                                                                                     7 commits
 
-    ◉─╮ ▏  [merged] merge login-page                                                                    GF now  5c42e39
+▸   ◉─╮    [merged] merge login-page                                                                    GF now  5c42e39
     │ ●    [login-page] [origin/sara/login-page] fix the bug                                            GF 3m   fbb2394
   ◆ │ │    [◆ main ⇄ origin] main moves on                                                              GF 4m   37926a7
   ●─┴─╯    [feature-a] add the base                                                                     GF 5m   ed332bc
@@ -600,7 +600,7 @@ what right looks like: Ticket 11: `.` on HEAD's row (main). Slot 1 `Checkout —
  ◆ api  ~/code/api · main                                                                                     6 commits
 
     ●    [login-page] [origin/sara/login-page] fix the bug                                              GF 3m   fbb2394
-  ◆ │ ▏  [◆ main ⇄ origin] main moves on                                                                GF 4m   37926a7
+▸ ◆ │    [◆ main ⇄ origin] main moves on                                                                GF 4m   37926a7
  Checkout — already on main
  Cherry-pick (o) — already on main
  Copy SHA (y)
@@ -661,7 +661,7 @@ what right looks like: `. ⏎ y` on `fix` from `main`, staging can't come back: 
  ◆ api  ~/code/api · fix                                                                                                                                   5 commits  date order, sorting…
 
     ◌    Uncommitted changes (1 unstaged)
-    ◆ ▏  [◆ fix] fix changes line 7                                                                                                                                        GF 4m   f2e2ada
+▸   ◆    [◆ fix] fix changes line 7                                                                                                                                        GF 4m   f2e2ada
   ●─╯    [main] add f                                                                                                                                                      GF 5m   330fea5
   ●      Correct the note                                                                                                                                                  GF 1y   a82960b
   ●      Add the first note                                                                                                                                                GF 1y   fadcfb3
@@ -731,7 +731,7 @@ what right looks like: Same switch at 80: cursor on `fix`, now HEAD; bottom row 
 
  ◆ api  ~/code/api · fix                        5 commits  date order, sorting…
     ◌    Uncommitted changes (1 unstaged)
-    ◆ ▏  [◆ fix] fix changes line 7                                4m   f2e2ada
+▸   ◆    [◆ fix] fix changes line 7                                4m   f2e2ada
   ●─╯    [main] add f                                              5m   330fea5
   ●      Correct the note                                          1y   a82960b
   ●      Add the first note                                        1y   fadcfb3
@@ -780,7 +780,7 @@ what right looks like: Relaunch after a kill mid-switch: HEAD on `fix`; bottom r
  ◆ api  ~/code/api · fix                                                                                      6 commits
 
   ◌        Uncommitted changes (1 unstaged)
-    ■   ▏  [stash@{0}] On main: graft: your edits, set aside for checkout fix                           MA 3m   b284137
+▸   ■      [stash@{0}] On main: graft: your edits, set aside for checkout fix                           MA 3m   b284137
     │ ◆    [◆ fix] fix changes line 7                                                                   GF 4m   f2e2ada
   ●─┴─╯    [main] add f                                                                                 GF 5m   330fea5
   ●        Correct the note                                                                             GF 1y   a82960b
@@ -843,7 +843,7 @@ what right looks like: Relaunch at 80: HEAD on `fix`; bottom row whole: `interru
 
  ◆ api  ~/code/api · fix                                              6 commits
   ◌        Uncommitted changes (1 unstaged)
-    ■   ▏  [stash@{0}] On main: graft: your edits, set aside for … 3m   b284137
+▸   ■      [stash@{0}] On main: graft: your edits, set aside for … 3m   b284137
     │ ◆    [◆ fix] fix changes line 7                              4m   f2e2ada
   ●─┴─╯    [main] add f                                            5m   330fea5
   ●        Correct the note                                        1y   a82960b
@@ -872,7 +872,7 @@ what right looks like: The in-the-way refusal at 80 columns (review 28 Q2): row 
 ================================================================================
 
  ◆ api  ~/code/api · main                                             4 commits
-    ● ▏  [feature/sara-long-running… two on the branch             now  d79fe16
+▸   ●    [feature/sara-long-running… two on the branch             now  d79fe16
   ◆─╯    [◆ main] Correct the note                                 1y   a82960b
   ●      Add the first note                                        1y   fadcfb3
   ◇      Add a readme                                              1y   64ded19
@@ -903,7 +903,7 @@ what right looks like: Detail pane's radar block starts `radar: not checked — 
 
  ◆ api  ~/code/api · main                                                                                     4 commits
 
-  ◆ ▏  [◆ main] add notes                                                                               GF 5m   2c59061
+▸ ◆    [◆ main] add notes                                                                               GF 5m   2c59061
   ●    Correct the note                                                                                 GF 1y   a82960b
   ●    Add the first note                                                                               GF 1y   fadcfb3
   ◇    Add a readme                                                                                     GF 1y   64ded19
@@ -949,7 +949,7 @@ what right looks like: Evil merge, context failed: row 26 is exactly `Merge bran
 
  ◆ api  ~/code/api · main                                                                                     4 commits
 
-  ◆─╮ ▏⚠ [◆ main] Merge branch 'alpha'                                                                  GF 1y   cc1103b
+▸ ◆─╮  ⚠ [◆ main] Merge branch 'alpha'                                                                  GF 1y   cc1103b
   ● │    Advance main                                                                                   GF 1y   0631550
   │ ●    [alpha] alpha: work                                                                            GF 1y   bd20b78
   ◇─╯    Add the base                                                                                   GF 1y   68d5d19

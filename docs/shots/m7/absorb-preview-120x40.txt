@@ -1,6 +1,6 @@
  ◆ api  ~/code/api · feature-a                                                                                3 commits
 
-    ●   ▏  Handle expired tokens                                                                        GF 2d   29033ed
+▸   ●      Handle expired tokens                                                                        GF 2d   29033ed
     ●      Add OAuth callback                                                                           GF 2d   67fda4a
     │      the result
     │ ○    [◆ feature-a] Handle expired tokens                                                          GF —    —

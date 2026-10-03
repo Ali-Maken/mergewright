@@ -12,20 +12,20 @@
 # reason.
 #
 # What right looks like:
-#  - `main`'s row carries `▸` in the marker column: this is where the badge
-#    would land.
+#  - `main`'s row carries `→` in the marker column: this is where the badge
+#    would land (m8-polish-and-ship/07: never `▸`, the cursor's mark).
 #  - The row `feature`'s badge came off is faded — the badge is in the air,
 #    not on that row. Here that is also the row the cursor is on (the badge
 #    was picked up from under it), so the fade replaces the cursor's own
-#    `▏`: one row, one state. Drag from a row the cursor is not on and both
-#    marks are drawn, `▏` and `▸`, on different rows.
+#    gutter `▸`: one row, one state. Drag from a row the cursor is not on
+#    and both marks are drawn, gutter `▸` and slot `→`, on different rows.
 #  - The footer reads `release drop on a row  esc cancel`.
 #  - Nothing else has moved: no menu, no box, the graph unchanged.
 
  ◆ api  ~/code/api · feature                                          8 commits
     ◆    [◆ feature] finish the feature                            now  8d6cd28
     ●    start the feature                                         2m   52f3b96
-  ● │ ▸  [main] main moves again                                   3m   45fa51d
+  ● │ →  [main] main moves again                                   3m   45fa51d
   ● │    main moves on                                             4m   37926a7
   ●─╯    add the base                                              5m   ed332bc
   ●      Correct the note                                          1y   a82960b

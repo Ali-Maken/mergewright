@@ -18,7 +18,7 @@ use super::{
 use crate::fit::fit;
 use crate::graph_column::{GraphColumn, GraphLine, RowPaint};
 use crate::paint::{color, foreground};
-use crate::theme::Token;
+use crate::theme::{Token, TokenColor};
 
 impl GraphScreen<'_> {
     /// The rule over the bar (ADR-0058 §4), across the whole row as the
@@ -38,6 +38,35 @@ impl GraphScreen<'_> {
             ),
             rule.width,
         );
+    }
+}
+
+impl GraphScreen<'_> {
+    /// The banner's lines into `banner` (its carved rows): the first in the
+    /// accent, the rest as information.
+    fn banner(&self, area: Rect, banner: Rect, buf: &mut Buffer) {
+        let width = usize::from(area.width);
+        for (offset, line) in self
+            .view
+            .banner
+            .iter()
+            .take(usize::from(banner.height))
+            .enumerate()
+        {
+            let y = banner
+                .y
+                .saturating_add(u16::try_from(offset).unwrap_or(u16::MAX));
+            let token = if offset == 0 {
+                Token::Accent
+            } else {
+                Token::Info
+            };
+            let styled = Line::styled(
+                fit(&format!(" {line}"), width),
+                foreground(self.theme, token),
+            );
+            buf.set_line(area.x, y, &styled, area.width);
+        }
     }
 }
 
@@ -62,33 +91,15 @@ impl Widget for GraphScreen<'_> {
             );
         }
         self.rule(chrome.rule, buf);
-        for (offset, line) in self
-            .view
-            .banner
-            .iter()
-            .take(usize::from(chrome.banner.height))
-            .enumerate()
-        {
-            let y = chrome
-                .banner
-                .y
-                .saturating_add(u16::try_from(offset).unwrap_or(u16::MAX));
-            let token = if offset == 0 {
-                Token::Accent
-            } else {
-                Token::Info
-            };
-            let styled = Line::styled(
-                fit(&format!(" {line}"), width),
-                foreground(self.theme, token),
-            );
-            buf.set_line(area.x, y, &styled, area.width);
-        }
+        self.banner(area, chrome.banner, buf);
 
         self.pending_block(chrome.pending, buf);
 
         if body.height > 0 {
-            self.body(body, rows, applied.as_ref(), buf);
+            // Gutter cell 0, where the cursor's `▸` goes — absent on a screen
+            // too narrow to spare the gutter (`layout::inset`).
+            let gutter = (body.x >= area.x + super::GUTTER).then(|| body.x - super::GUTTER);
+            self.body(body, gutter, rows, applied.as_ref(), buf);
         }
 
         // One cell of right margin on the bottom rows, as on every other.
@@ -132,7 +143,14 @@ impl GraphScreen<'_> {
 
     /// The rows: graph, the reserved marker slot, the subject, and — when
     /// there is room — the author chip, the relative date and the short SHA.
-    fn body(&self, area: Rect, rows: &[GraphEntry<'_>], fold: Option<&Fold>, buf: &mut Buffer) {
+    fn body(
+        &self,
+        area: Rect,
+        gutter: Option<u16>,
+        rows: &[GraphEntry<'_>],
+        fold: Option<&Fold>,
+        buf: &mut Buffer,
+    ) {
         let graph_width = graph_width(area, rows, fold);
         // At the pixel tier the cells stay blank: text drawn there would sit
         // on top of the terminal's images.
@@ -154,8 +172,44 @@ impl GraphScreen<'_> {
 
         let columns = Columns::compute(area, graph_width);
         for (entry, y) in rows.iter().zip(area.top()..) {
+            if let Some(x) = gutter {
+                self.draw_gutter(entry, x, y, buf);
+            }
             self.draw_row(entry, y, area, &columns, buf);
         }
+    }
+
+    /// The cursor's `▸` (ASCII `>`) in gutter cell 0, accent and bold
+    /// (ADR-0058 §2, DESIGN §1.0): the row's mark at every depth, on the
+    /// ground, never on the fill. Cell 1 is the gap. Only the cursor row
+    /// draws one — a drop target is marked in the slot (`→`, [`row_rule`]).
+    fn draw_gutter(&self, entry: &GraphEntry<'_>, x: u16, y: u16, buf: &mut Buffer) {
+        if entry.line.paint != RowPaint::Highlighted {
+            return;
+        }
+        let mark = if self.view.ascii { ">" } else { "\u{25b8}" };
+        draw_cell(
+            buf,
+            x,
+            y,
+            1,
+            mark,
+            foreground(self.theme, Token::Accent).add_modifier(Modifier::BOLD),
+        );
+    }
+
+    /// `ink` as this row draws it: lifted to stay legible on the `selection`
+    /// fill on a cursor or drop-target row ([`Theme::on_selection`], ADR-0058
+    /// §3), as is everywhere else.
+    ///
+    /// [`Theme::on_selection`]: crate::theme::Theme::on_selection
+    fn ink(&self, entry: &GraphEntry<'_>, ink: TokenColor) -> Style {
+        let ink = if raised(entry) {
+            self.theme.on_selection(ink)
+        } else {
+            ink
+        };
+        Style::new().fg(color(ink))
     }
 
     /// One row's text columns: highlight/dim first, then the marker slot,
@@ -174,7 +228,7 @@ impl GraphScreen<'_> {
             "a Ghost Preview row never carries the pinned-compare accent or a Mistake Radar \
              marker — the caller builds ghost rows fresh, never off a real row that had one"
         );
-        let (style, trailing_style) = self.row_emphasis(entry, y, area, buf);
+        let (style, trailing_style) = self.row_emphasis(entry, y, area, columns, buf);
 
         self.draw_marker_slot(entry, y, columns, style, buf);
         let taken = self.draw_badges(entry, y, columns, style, buf);
@@ -186,7 +240,8 @@ impl GraphScreen<'_> {
             style,
             buf,
         );
-        let author_style = trailing_style.fg(color(self.theme.branch(entry.author.identity)));
+        let author_style =
+            trailing_style.patch(self.ink(entry, self.theme.branch(entry.author.identity)));
         draw_cell(
             buf,
             columns.author_x,
@@ -241,7 +296,7 @@ impl GraphScreen<'_> {
         // The gap and whatever the subject left carry the row's own
         // emphasis, as every other blank cell of the row does.
         draw_cell(buf, x + used, y, TAG_GAP, "", style);
-        let tag_style = style.patch(foreground(self.theme, Token::Accent));
+        let tag_style = style.patch(self.ink(entry, self.theme.token(Token::Accent)));
         draw_cell(buf, x + used + TAG_GAP, y, tag_width, &tag, tag_style);
         let after = x + used + TAG_GAP + tag_width;
         draw_cell(buf, after, y, (x + width).saturating_sub(after), "", style);
@@ -280,7 +335,9 @@ impl GraphScreen<'_> {
             match row_rule(entry.line.paint, entry.compare_marked, self.view.ascii) {
                 Some(rule) => (
                     rule,
-                    foreground(self.theme, Token::Accent).add_modifier(Modifier::BOLD),
+                    style
+                        .patch(self.ink(entry, self.theme.token(Token::Accent)))
+                        .add_modifier(Modifier::BOLD),
                 ),
                 // Still drawn, so the cell carries the row's own emphasis
                 // rather than whatever the buffer held before it.
@@ -288,7 +345,7 @@ impl GraphScreen<'_> {
             };
         draw_cell(buf, columns.marker_x, y, rule_width, rule, rule_style);
         let (glyph, glyph_style) = match self.marker_glyph(entry) {
-            Some((glyph, token)) => (glyph, foreground(self.theme, token)),
+            Some((glyph, token)) => (glyph, self.ink(entry, self.theme.token(token))),
             None => ("", style),
         };
         draw_cell(
@@ -337,34 +394,39 @@ impl GraphScreen<'_> {
     /// background step is skipped rather than drawn for nothing. `NO_COLOR`
     /// ([`ColorDepth::None`]) has no background step either, so it takes the
     /// same rule — uncoloured, its shape alone marks the row.
+    ///
+    /// The fill starts at the marker slot (ADR-0058 §2): the gutter and the
+    /// graph column keep the ground at every tier, so no lane on the cursor
+    /// row sinks into the fill, and a Pixel strip's transparent pixels show
+    /// the ground as on every other row. It runs to `area`'s right edge —
+    /// the body's — so the one-cell margin stays ground too.
     fn row_emphasis(
         &self,
         entry: &GraphEntry<'_>,
         y: u16,
         area: Rect,
+        columns: &Columns,
         buf: &mut Buffer,
     ) -> (Style, Style) {
-        let mut style = foreground(self.theme, Token::Text);
-        let mut trailing_style = foreground(self.theme, Token::TextMuted);
-        let raised = matches!(
-            entry.line.paint,
-            RowPaint::Highlighted | RowPaint::DropTarget
-        );
+        let mut style = self.ink(entry, self.theme.token(Token::Text));
+        let mut trailing_style = self.ink(entry, self.theme.token(Token::TextMuted));
         let no_background = matches!(
             self.theme.color_depth(),
             ColorDepth::Palette16 | ColorDepth::None
         );
 
-        if raised {
+        if raised(entry) {
             style = style.add_modifier(Modifier::BOLD);
             trailing_style = trailing_style.add_modifier(Modifier::BOLD);
             if !no_background {
                 let fill = color(self.theme.token(Token::Selection));
+                let x = columns.marker_x.min(area.right());
                 buf.set_style(
                     Rect {
+                        x,
                         y,
+                        width: area.right() - x,
                         height: 1,
-                        ..area
                     },
                     Style::new().bg(fill),
                 );
@@ -402,32 +464,36 @@ impl GraphScreen<'_> {
                 y,
                 span.end - span.start,
                 &badge.text(icons),
-                style.patch(self.badge_style(badge)),
+                style.patch(self.badge_style(entry, badge)),
             );
         }
         badges_width(entry, icons, columns)
     }
 
     /// The colour and weight one badge draws in: branches and remotes in
-    /// their lane's colour, so a badge and its line read as one thing.
-    fn badge_style(&self, badge: &Badge) -> Style {
+    /// their lane's colour, so a badge and its line read as one thing — on
+    /// the cursor row lifted to stay legible on the fill ([`Self::ink`]).
+    fn badge_style(&self, entry: &GraphEntry<'_>, badge: &Badge) -> Style {
+        let token = |token: Token| self.theme.token(token);
         match &badge.kind {
             BadgeKind::Branch {
                 identity, current, ..
             } => {
-                let style = Style::new().fg(color(self.theme.branch(*identity)));
+                let style = self.ink(entry, self.theme.branch(*identity));
                 if *current {
                     style.add_modifier(Modifier::BOLD)
                 } else {
                     style
                 }
             }
-            BadgeKind::Remote { identity } => Style::new().fg(color(self.theme.branch(*identity))),
-            BadgeKind::Tag => foreground(self.theme, Token::Warning),
-            BadgeKind::Head => foreground(self.theme, Token::Accent).add_modifier(Modifier::BOLD),
+            BadgeKind::Remote { identity } => self.ink(entry, self.theme.branch(*identity)),
+            BadgeKind::Tag => self.ink(entry, token(Token::Warning)),
+            BadgeKind::Head => self
+                .ink(entry, token(Token::Accent))
+                .add_modifier(Modifier::BOLD),
             // What only a stash holds reads in the stash's colour.
-            BadgeKind::Stash | BadgeKind::OnlyInStash(_) => foreground(self.theme, Token::Info),
-            BadgeKind::CompareBase => foreground(self.theme, Token::Accent),
+            BadgeKind::Stash | BadgeKind::OnlyInStash(_) => self.ink(entry, token(Token::Info)),
+            BadgeKind::CompareBase => self.ink(entry, token(Token::Accent)),
         }
     }
 }
@@ -542,10 +608,27 @@ fn draw_cell(buf: &mut Buffer, x: u16, y: u16, width: u16, text: &str, style: St
     buf.set_stringn(x, y, text, usize::from(width), style);
 }
 
-/// The accent rule the marker slot draws for this row, or `None` when the
+/// Whether `entry` is drawn on the `selection` fill: the cursor row, or the
+/// row a dragged badge would land on.
+fn raised(entry: &GraphEntry<'_>) -> bool {
+    matches!(
+        entry.line.paint,
+        RowPaint::Highlighted | RowPaint::DropTarget
+    )
+}
+
+/// The accent mark the marker slot draws for this row, or `None` when the
 /// slot is the row's own to leave blank.
 ///
-/// **A shape, at every colour depth** (m5-history-and-ghost-preview/35).
+/// **ADR-0058 moved the cursor's mark out of the slot**: the cursor is `▸`
+/// in the gutter ([`GraphScreen::draw_gutter`]), and the slot keeps `▏` for
+/// the pinned compare base only — on the cursor row too, so a cursor resting
+/// on the compare base still shows it. A drop target draws `→` (ASCII `=`),
+/// so a cursor and a drop target on screen together never share a glyph
+/// (m5-history-and-ghost-preview/35's rule, ADR-0058 §5).
+///
+/// History, kept because the reason still holds for the gutter glyph:
+/// **a shape, at every colour depth** (m5-history-and-ghost-preview/35).
 /// The cursor row used to be marked by `Modifier::BOLD` plus a background
 /// one step off the pane's own — `#14161B` → `#232730` in the dark theme —
 /// and nothing else, with the `▏` rule drawn only where the terminal had no
@@ -560,28 +643,28 @@ fn draw_cell(buf: &mut Buffer, x: u16, y: u16, width: u16, text: &str, style: St
 /// black and white, and it is the one cue that does not depend on the
 /// terminal's palette being kind.
 ///
-/// Three marks share the slot, and they are distinct **by shape**, so two of
-/// them on screen at once still read as two different things:
+/// The marks, distinct **by shape**, so two on screen at once still read as
+/// two different things:
 ///
-/// | Unicode | ASCII | |
-/// |---|---|---|
-/// | `▏` | `\|` | the cursor row, or the pinned compare base (`x`) |
-/// | `▸` | `>` | the row a dragged badge would land on |
+/// | Unicode | ASCII | where | |
+/// |---|---|---|---|
+/// | `▸` | `>` | gutter | the cursor row |
+/// | `▏` | `\|` | slot | the pinned compare base (`x`) |
+/// | `→` | `=` | slot | the row a dragged badge would land on |
 ///
 /// The ASCII column follows [`GraphScreen::marker_glyph`]'s switch on the
-/// same `view.ascii` flag. The compare mark took the Unicode `▏` at the
-/// ASCII tier before this — a pre-existing leak, fixed here because the
-/// rule is now one function.
+/// same `view.ascii` flag.
 ///
-/// The rule takes the **first** of the slot's two cells and a Mistake Radar
-/// marker the second, so a row can carry both (`▏⚠`) and the cursor is never
-/// the one that loses. `Ghost` and `Dimmed` rows draw no rule: a ghost is
-/// not somewhere the cursor can be, and a dimmed row is one pushed back.
+/// The mark takes the **first** of the slot's cells and a Mistake Radar
+/// marker the second, so a row can carry both (`▏⚠`). `Ghost` and `Dimmed`
+/// rows draw no drop mark: a ghost is not somewhere a badge can land, and a
+/// dimmed row is one pushed back.
 fn row_rule(paint: RowPaint, compare_marked: bool, ascii: bool) -> Option<&'static str> {
-    let cursor = if ascii { "|" } else { "\u{258f}" };
+    let compare = if ascii { "|" } else { "\u{258f}" };
     match paint {
-        RowPaint::DropTarget => Some(if ascii { ">" } else { "\u{25b8}" }),
-        RowPaint::Highlighted => Some(cursor),
-        RowPaint::Normal | RowPaint::Dimmed | RowPaint::Ghost => compare_marked.then_some(cursor),
+        RowPaint::DropTarget => Some(if ascii { "=" } else { "\u{2192}" }),
+        RowPaint::Highlighted | RowPaint::Normal | RowPaint::Dimmed | RowPaint::Ghost => {
+            compare_marked.then_some(compare)
+        }
     }
 }

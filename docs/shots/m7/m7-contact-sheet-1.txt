@@ -250,7 +250,7 @@ what right looks like: Ticket 24-b (journey 13 landed): after `J ⏎ y`. The gra
     ■      [stash@{0}] On main: tune metrics                                                                                                                               GF 3m   91dddee
     │ ●    [origin/main] Add an ops runbook                                                                                                                                GF 14m  8c11cb0
     │ ●    Document the api                                                                                                                                                GF 15m  ba5c9ad
-  ◆ │ │ ▏ⓘ [◆ main ↑1 ↓2] Add rate limiter  ↺ put back                                                                                                                     GF 30m  a65d7e4
+▸ ◆ │ │  ⓘ [◆ main ↑1 ↓2] Add rate limiter  ↺ put back                                                                                                                     GF 30m  a65d7e4
   ●─┴─╯    Add metrics endpoint  ○ main was here                                                                                                                           GF 31m  a314d47
   ●        Add request logging                                                                                                                                             GF 32m  6b08f9d
   ◇        Start the api                                                                                                                                                   GF 33m  8a05478
@@ -404,7 +404,7 @@ what right looks like: Ticket 30o-a (journey 15 landed, after `y`): the graph wi
 
  ◆ api  ~/code/api · main                                                                         8 commits  UNCOMMITTED · 1 unstaged
                                                                                                              diff vs HEAD a65d7e4
-  ◌       ▏  Uncommitted changes (1 unstaged)
+▸ ◌          Uncommitted changes (1 unstaged)
     ■        [stash@{0}] On main: tune metrics                                              GF 3m   91dddee
     │ ●      [origin/main] Add an ops runbook                                               GF 14m  8c11cb0
     │ ●      Document the api                                                               GF 15m  ba5c9ad  UNSTAGED (1)
@@ -516,7 +516,7 @@ what right looks like: Ticket 30p-a (journey 15 over a staged file, after `y`): 
 
  ◆ api  ~/code/api · main                                                                         8 commits  UNCOMMITTED · 1 staged 1 unstaged
                                                                                                              diff vs HEAD a65d7e4
-  ◌       ▏  Uncommitted changes (1 staged, 1 unstaged)
+▸ ◌          Uncommitted changes (1 staged, 1 unstaged)
     ■        [stash@{0}] On main: tune metrics                                              GF 3m   91dddee
     │ ●      [origin/main] Add an ops runbook                                               GF 14m  8c11cb0
     │ ●      Document the api                                                               GF 15m  ba5c9ad  STAGED (1)
@@ -669,12 +669,12 @@ JOURNAL · what happened in this repo, newest first · find "spike" 1 of 4
 
 ================================================================================
 docs/shots/m7/landed-after-merge-120x40.txt
-what right looks like: After the merge: graph cursor `▏` (not `▸`) on the merge row, detail pane on it, `merge main into feature ✓`; merge id zeroed, date redacted. Colour unverified (ticket 03)
+what right looks like: After the merge: graph cursor `▸` in the gutter (m8-polish-and-ship/07; was `▏` in the marker slot) on the merge row, detail pane on it, `merge main into feature ✓`; merge id zeroed, date redacted. Colour unverified (ticket 03)
 ================================================================================
 
  ◆ api  ~/code/api · feature                                                                                  9 commits
 
-    ◆─╮ ▏ⓘ [◆ feature] Merge branch 'main' into feature                                                 GF futu…0000000
+▸   ◆─╮  ⓘ [◆ feature] Merge branch 'main' into feature                                                 GF futu…0000000
     ● │    finish the feature                                                                           GF now  8d6cd28
     ● │    start the feature                                                                            GF 2m   52f3b96
   ●─│─╯    [main] main moves again                                                                      GF 3m   45fa51d
@@ -730,7 +730,7 @@ what right looks like: Ticket 05: `r` on `main`'s row with `feature` checked out
     │ ○    feature edits shared                                    —    —
     │ ○    more of the feature                                     —    —
     │ ○    start the feature                                       —    —
-  ●─│─╯ ▏  [main] main edits shared                                6m   36c271e
+▸ ●─│─╯    [main] main edits shared                                6m   36c271e
   ●─╯      add shared                                              7m   982c1d3
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────╮
 │ 5 commits replayed                                                           │
@@ -756,7 +756,7 @@ what right looks like: Ticket 05b: `r` on `main`'s row with `feature-a` checked 
     │ ○    [feature-b] b1                                                                                                                                                  GF —    —
     │ ○    [◆ feature-a] a2                                                                                                                                                GF —    —
     │ ○    a1                                                                                                                                                              GF —    —
-  ●─│─╯ ▏  [main] m2                                                                                                                                                       GF 2d   9d9646b
+▸ ●─│─╯    [main] m2                                                                                                                                                       GF 2d   9d9646b
   │ ●      b1                                                                                                                                                              GF 2d   82392de
   │ ●      a2                                                                                                                                                              GF 2d   15335d9
   │ ●      a1                                                                                                                                                              GF 2d   0395451
@@ -809,7 +809,7 @@ what right looks like: Tickets 05b + rebase-preview-keeps-drops: `r` on `main`'s
     ●      b1                                                                                           GF 2d   f41bc43
     │      after rebase
     │ ○    [feature-b] b1                                                                               GF —    —
-  ◆─│─╯ ▏  [main] [◆ feature-a] Add OAuth (#42)                                                         GF 2d   51f3dc8
+▸ ◆─│─╯    [main] [◆ feature-a] Add OAuth (#42)                                                         GF 2d   51f3dc8
   │ ●      a3                                                                                           GF 2d   1dc69fb
   │ ●      a2                                                                                           GF 2d   5c80d6b
   │ ●      a1                                                                                           GF 2d   53e9958
@@ -899,7 +899,7 @@ what right looks like: Ticket 05b: `r` on `main`'s row with `feature-a` checked 
  ◆ api  ~/code/api · feature-a                                                                                5 commits
 
     ●      [feature-c] c1                                                                               GF 2d   937a1e7
-  ● │   ▏  [main] m2                                                                                    GF 2d   fa34bcc
+▸ ● │      [main] m2                                                                                    GF 2d   fa34bcc
   │ │ ●    [feature-b] b1                                                                               GF 2d   8c6d354
   │ ◆─╯    [◆ feature-a] a1                                                                             GF 2d   0395451
   ◇─╯      m1                                                                                           GF 2d   256d42c
@@ -952,7 +952,7 @@ what right looks like: Ticket 10b: `. ⏎` on `feature-b`'s row with the tree cl
 # `on feature-b ✓ · u goes back`.
  ◆ api  ~/code/api · feature-b                                                                                6 commits
 
-    ◆ ▏  [◆ feature-b] fix the bug                                                                      GF 3m   fbb2394
+▸   ◆    [◆ feature-b] fix the bug                                                                      GF 3m   fbb2394
   ● │    [main] main moves on                                                                           GF 4m   37926a7
   ●─╯    add the base                                                                                   GF 5m   ed332bc
   ●      Correct the note                                                                               GF 1y   a82960b
@@ -1008,7 +1008,7 @@ what right looks like: `↩ before  feature-a` first; `● local` / `◌ remote`
 # it  esc close  ⇥ show it on the graph  ↑↓ row`.
  ◆ api  ~/code/api · main                                                                                                                                                        6 commits
 
-    ● ▏  [login-page] [origin/sara/login-page] fix the bug                                                                                                                 GF 3m   fbb2394
+▸   ●    [login-page] [origin/sara/login-page] fix the bug                                                                                                                 GF 3m   fbb2394
   ◆ │    [◆ main ⇄ origin] main moves on                                                                                                                                   GF 4m   37926a7
   ●─╯    [feature-a] add the base                                                                                                                                          GF 5m   ed332bc
   ●      Correct the note                                                                                                                                                  GF 1y   a82960b
@@ -1072,7 +1072,7 @@ what right looks like: Glyph, name, age only; the segment-prefix match on top. C
 # `origin/sara/login-page`; the footer `2 of 4 branches`.
  ◆ api  ~/code/api · main                                                                 6 commits
 
-    ● ▏  [login-page] [origin/sara/login-pag… fix the bug                           GF 3m   fbb2394
+▸   ●    [login-page] [origin/sara/login-pag… fix the bug                           GF 3m   fbb2394
   ◆ │    [◆ main ⇄ origin] main moves on                                            GF 4m   37926a7
   ●─╯    [feature-a] add the base                                                   GF 5m   ed332bc
   ●      Correct the note                                                           GF 1y   a82960b
@@ -1116,7 +1116,7 @@ what right looks like: `▸` on the new HEAD; `✓ on login-page · u goes back`
 # `on login-page ✓ · u goes back`.
  ◆ api  ~/code/api · login-page                                                                               6 commits
 
-    ◆ ▏  [◆ login-page] [origin/sara/login-page] fix the bug                                            GF 3m   fbb2394
+▸   ◆    [◆ login-page] [origin/sara/login-page] fix the bug                                            GF 3m   fbb2394
   ● │    [main ⇄ origin] main moves on                                                                  GF 4m   37926a7
   ●─╯    [feature-a] add the base                                                                       GF 5m   ed332bc
   ●      Correct the note                                                                               GF 1y   a82960b
@@ -1170,7 +1170,7 @@ what right looks like: `✓ on sara/login-page (new, tracks origin/sara/login-pa
 # goes back`; the cursor on the new HEAD's row.
  ◆ api  ~/code/api · sara/login-page                                                                          6 commits
 
-    ◆ ▏  [login-page] [◆ sara/login-page] [origin/sara… fix the bug                                     GF 3m   fbb2394
+▸   ◆    [login-page] [◆ sara/login-page] [origin/sara… fix the bug                                     GF 3m   fbb2394
   ● │    [main ⇄ origin] main moves on                                                                  GF 4m   37926a7
   ●─╯    [feature-a] add the base                                                                       GF 5m   ed332bc
   ●      Correct the note                                                                               GF 1y   a82960b
@@ -1227,7 +1227,7 @@ what right looks like: Ticket 10b: `b feature-c ⇥ ⏎` on HEAD's own row (`mai
  ◆ api  ~/code/api · main                                                                                     6 commits
 
     ●    [feature-b] fix the bug                                                                        GF 3m   fbb2394
-  ◆ │ ▏  [◆ main] [feature-c] main moves on                                                             GF 4m   37926a7
+▸ ◆ │    [◆ main] [feature-c] main moves on                                                             GF 4m   37926a7
   ●─╯    add the base                                                                                   GF 5m   ed332bc
   ●      Correct the note                                                                               GF 1y   a82960b
   ●      Add the first note                                                                             GF 1y   fadcfb3
@@ -1274,7 +1274,7 @@ what right looks like: Ticket 09: `j a` on "Add OAuth callback" (one row below H
 
     ●      Show the login page                                                                                                                                             GF 2d   04fbed6
     ●      Handle expired tokens                                                                                                                                           GF 2d   29033ed
-    ●   ▏  Add OAuth callback                                                                                                                                              GF 2d   67fda4a
+▸   ●      Add OAuth callback                                                                                                                                              GF 2d   67fda4a
     │      the result
     │ ○    [feature-b] Show the login page                                                                                                                                 GF —    —
     │ ○    [◆ feature-a] Handle expired tokens                                                                                                                             GF —    —
@@ -1328,7 +1328,7 @@ what right looks like: Ticket 09b: `k .` on the uncommitted row with three hunks
 
  ◆ api  ~/code/api · feature-a                                                                                3 commits
 
-    ◌ ▏  Uncommitted changes (3 staged)
+▸   ◌    Uncommitted changes (3 staged)
  Put staged changes into their commits (absorb)
  Open details (⏎)
  Fetch (f)
@@ -1374,7 +1374,7 @@ what right looks like: Ticket 09 (09b: the menu opens on absorb): `k . ⏎` over
 
  ◆ api  ~/code/api · feature-a                                                                                3 commits
 
-    ●   ▏  Handle expired tokens                                                                        GF 2d   29033ed
+▸   ●      Handle expired tokens                                                                        GF 2d   29033ed
     ●      Add OAuth callback                                                                           GF 2d   67fda4a
     │      the result
     │ ○    [◆ feature-a] Handle expired tokens                                                          GF —    —
@@ -1422,7 +1422,7 @@ what right looks like: Ticket 09: after `y` on the put-in. The cursor is on the 
 
   ◌      Uncommitted changes (1 unstaged)
     ●    [feature-b] Show the login page                                                                GF 2d   e97f835
-    ◆ ▏  [◆ feature-a] Handle expired tokens                                                            GF 2d   27fc7f5
+▸   ◆    [◆ feature-a] Handle expired tokens                                                            GF 2d   27fc7f5
     ●    Add OAuth callback  ✎ changed                                                                  GF 2d   686a2f8
   ◇─╯    [main] m1                                                                                      GF 2d   f1c72d6
 
@@ -1467,7 +1467,7 @@ what right looks like: Ticket 03b: `p` on the graph on `main`, origin one ahead 
  ◆ api  ~/code/api · main                                                                               140 rows so far
 
   ◌    Uncommitted changes (1 unstaged)
-  ◆ ▏  [◆ main ⇄ origin] their change                                                                   GF 60m  9110230
+▸ ◆    [◆ main ⇄ origin] their change                                                                   GF 60m  9110230
   ●    add shared                                                                                       GF 60m  1fdae38
   ●    Commit 200                                                                                       GF 1y   d5ae5fd
   ●    Commit 199                                                                                       GF 1y   13e6ab1
@@ -1512,7 +1512,7 @@ what right looks like: Ticket 13b: a real submodule at `libs/parser`, pointer mo
 
  ◆ api  ~/code/api · main                                                                         4 commits  UNCOMMITTED · 1 unstaged
                                                                                                              diff vs HEAD f48cdbe
-  ◌ ▏  Uncommitted changes (1 unstaged)
+▸ ◌    Uncommitted changes (1 unstaged)
   ◆    [◆ main] add parser                                                                  GT 24h  f48cdbe
   ●    Correct the note                                                                     GF 2d   a82960b
   ●    Add the first note                                                                   GF 2d   fadcfb3  UNSTAGED (1)
@@ -1558,7 +1558,7 @@ what right looks like: At 120 the `▣ libs/parser` row ends `→ ±` right-alig
 
  ◆ api  ~/code/api · main                                                                                     4 commits
 
-  ◌ ▏  Uncommitted changes (1 unstaged)
+▸ ◌    Uncommitted changes (1 unstaged)
   ◆    [◆ main] add parser                                                                              GT 24h  f48cdbe
   ●    Correct the note                                                                                 GF 2d   a82960b
   ●    Add the first note                                                                               GF 2d   fadcfb3
@@ -1604,7 +1604,7 @@ what right looks like: Diff pane lists the commits the move pulled in, held to g
 
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-  ◌ ▏  Uncommitted changes (1 unstaged)
+▸ ◌    Uncommitted changes (1 unstaged)
   ◆    [◆ main] pin the side commit                                                                     GT 24h  7c7e188
   ●    add parser                                                                                       GT 24h  f48cdbe
   ●    Correct the note                                                                                 GF 2d   a82960b
@@ -1659,7 +1659,7 @@ what right looks like: Ticket 16b: `P` after a rejected push, teammate's commits
 #
 "                                                                                                              3 commits "
 "                                                                                                                        "
-"  ◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
+"▸ ◌    Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
 "  ◆    [HEAD] Commit 3␛[31m                                                                             TE 57y  0303030 "
 "  ●    Commit 2␛[31m                                                                                    TE 57y  0202020 "
 "  ◇    ╭ Force-push main → origin/main? ─────────────────────────────────────────────────────────────╮  TE 57y  0101010 "
@@ -1745,7 +1745,7 @@ what right looks like: Header `changes on feature-a since it left main · 3 comm
  ◆ api  ~/code/api · main                                                                         6 commits  changes on feature-a since it left main · 3 commits · 2 files +2 −0
 
   ◆   ▏  [x base] [◆ main] Readme                                                           GF 2d   22e02fb
-  │ ● ▏  [feature-a] Use token                                                              GF 2d   a84a58c
+▸ │ ●    [feature-a] Use token                                                              GF 2d   a84a58c
   ● │    Changelog                                                                          GF 2d   500b0e7
   │ ●    Add token                                                                          GF 2d   fcd7e09  ▾ src/
   │ ●    Add login                                                                          GF 2d   95472aa    A login.rs                                                             +1 −0
@@ -1830,7 +1830,7 @@ what right looks like: No `index on` and no `untracked files on` rows; exactly o
 
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-    ■ ▏  [stash@{0}] On topic: wip                                                                      GF 3m   65a77a9
+▸   ■    [stash@{0}] On topic: wip                                                                      GF 3m   65a77a9
     □    [only in stash@{0}] topic base                                                                 GF 4m   b9451c7
   ◆─╯    [◆ main] add notes                                                                             GF 5m   2c59061
   ●      Correct the note                                                                               GF 1y   a82960b
@@ -1875,7 +1875,7 @@ what right looks like: At 80: no `index on` and no `untracked files on` rows; ex
 ================================================================================
 
  ◆ api  ~/code/api · main                                             6 commits
-    ■ ▏  [stash@{0}] On topic: wip                                 3m   65a77a9
+▸   ■    [stash@{0}] On topic: wip                                 3m   65a77a9
     □    [only in stash@{0}] topic base                            4m   b9451c7
   ◆─╯    [◆ main] add notes                                        5m   2c59061
   ●      Correct the note                                          1y   a82960b
@@ -2262,7 +2262,7 @@ what right looks like: After `B ⏎`: graph on Lina's commit `2f48ca3`, the diff
   ◆    [◆ main] Handle expired tokens                                                                   GF 60m  74f9a9e
   ●    Move session TTL to config                                                                       PR 4mo  0a27627
   ●    rustfmt                                                                                          RU 5mo  b32274b
-  ● ▏  Retry refresh once on 401                                                                        LI 7mo  2f48ca3
+▸ ●    Retry refresh once on 401                                                                        LI 7mo  2f48ca3
   ●    Add token refresh                                                                                TO 10mo 47593a5
   ◇    Add session                                                                                      AN 1y   3f6c311
 
@@ -2308,7 +2308,7 @@ what right looks like: After `B ⏎` with a base pinned: pane header the commit'
   ◆    [◆ main] Handle expired tokens                                                                   GF 60m  74f9a9e
   ●    Move session TTL to config                                                                       PR 4mo  0a27627
   ●    rustfmt                                                                                          RU 5mo  b32274b
-  ● ▏  Retry refresh once on 401                                                                        LI 7mo  2f48ca3
+▸ ●    Retry refresh once on 401                                                                        LI 7mo  2f48ca3
   ●    Add token refresh                                                                                TO 10mo 47593a5
   ◇    Add session                                                                                      AN 1y   3f6c311
 
@@ -2350,7 +2350,7 @@ what right looks like: Commit diff, cursor on New line 2: exactly one row carrie
 
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-  ◆ ▏  [◆ main] edit notes                                                                              GF 4m   6944d27
+▸ ◆    [◆ main] edit notes                                                                              GF 4m   6944d27
   ●    add notes                                                                                        GF 5m   9d5dd9b
   ●    Correct the note                                                                                 GF 1y   a82960b
   ●    Add the first note                                                                               GF 1y   fadcfb3
@@ -2397,7 +2397,7 @@ what right looks like: Two frames: files cursor on a file row, bar has no `space
 == the files cursor on a file row: no `space` ==
  ◆ api  ~/code/api · main                                                                                     4 commits
 
-  ◆ ▏  [◆ main] add src                                                                                 GF 4mo  9d4f6c9
+▸ ◆    [◆ main] add src                                                                                 GF 4mo  9d4f6c9
   ●    Correct the note                                                                                 GF 1y   a82960b
   ●    Add the first note                                                                               GF 1y   fadcfb3
   ◇    Add a readme                                                                                     GF 1y   64ded19
@@ -2439,7 +2439,7 @@ M notes.txt             +1 −1 ▎
 == the files cursor on the `src/` directory row: `space fold` ==
  ◆ api  ~/code/api · main                                                                                     4 commits
 
-  ◆ ▏  [◆ main] add src                                                                                 GF 4mo  9d4f6c9
+▸ ◆    [◆ main] add src                                                                                 GF 4mo  9d4f6c9
   ●    Correct the note                                                                                 GF 1y   a82960b
   ●    Add the first note                                                                               GF 1y   fadcfb3
   ◇    Add a readme                                                                                     GF 1y   64ded19
@@ -2490,7 +2490,7 @@ Right: (a) `B ⏎` then `Tab` to the graph — the pane still open on Lina's com
   ◆    [◆ main] Handle expired tokens                                                                   GF 60m  74f9a9e
   ●    Move session TTL to config                                                                       PR 4mo  0a27627
   ●    rustfmt                                                                                          RU 5mo  b32274b
-  ● ▏  Retry refresh once on 401                                                                        LI 7mo  2f48ca3
+▸ ●    Retry refresh once on 401                                                                        LI 7mo  2f48ca3
   ●    Add token refresh                                                                                TO 10mo 47593a5
   ◇    Add session                                                                                      AN 1y   3f6c311
 
@@ -2574,7 +2574,7 @@ what right looks like: Changes pane after `⏎` from blame in a partly-staged fi
 
  ◆ api  ~/code/api · main                                                                                     4 commits
 
-  ◌ ▏  Uncommitted changes (1 staged, 1 unstaged)
+▸ ◌    Uncommitted changes (1 staged, 1 unstaged)
   ◆    [◆ main] add f                                                                                   GT 24h  d45d045
   ●    Correct the note                                                                                 GF 2d   a82960b
   ●    Add the first note                                                                               GF 2d   fadcfb3

@@ -268,7 +268,9 @@ fn preview_frame_styles() {
     let plus = grid[readme]
         .find('+')
         .map_or(0, |byte| grid[readme][..byte].chars().count());
-    let added = crate::paint::color(theme.token(Token::Added));
+    // README is the cursor row: `added`, lifted to stay legible on the fill
+    // (ADR-0058 §3).
+    let added = crate::paint::color(theme.on_selection(theme.token(Token::Added)));
     let y = u16::try_from(readme).unwrap_or(0);
     assert_eq!(buf[(u16::try_from(plus).unwrap_or(0), y)].fg, added);
 }
@@ -503,4 +505,23 @@ fn footer_spans_take_the_first_key_from_the_hint() {
         footer_spans(&[], strong, muted).is_empty(),
         "no keys, no spans"
     );
+}
+
+/// ADR-0058 §3: the file list's cursor row — path, and the words tinted
+/// `ours`/`theirs`/`added`/`removed` — clears 4.5:1 on `selection` in dark B,
+/// focused or not.
+#[test]
+fn text_on_the_cursor_row_is_legible() {
+    for cursor in 0..3 {
+        for focus in [SummaryFocus::Files, SummaryFocus::Subject] {
+            let mut shown = view();
+            shown.cursor = cursor;
+            shown.focus = focus;
+            let checked = crate::test_support::assert_legible_on_selection(
+                &buffer(&shown, 120, 30),
+                &theme(),
+            );
+            assert!(checked > 5, "cursor {cursor} {focus:?}: drawn ({checked})");
+        }
+    }
 }

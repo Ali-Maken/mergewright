@@ -358,7 +358,7 @@ fn menu_item(app: &App, state: &AppState, prefix: &str) -> AppState {
     panic!("no menu item starting {prefix:?}");
 }
 
-/// What right looks like (`m7/landed-after-merge-120x40.txt`): `▏` on the
+/// What right looks like (`m7/landed-after-merge-120x40.txt`): gutter `▸` on the
 /// merge commit's row (the top row, `Merge branch 'main' into feature`),
 /// the detail pane on that commit (`COMMIT 0000000 … parents 8d6cd28,
 /// 45fa51d`), the status line `merge main into feature ✓` in today's words.
@@ -425,7 +425,7 @@ fn capture_landed_after_merge() {
     body = body.replace(made, "YYYY-MM-DD hh:mm +zzzz");
     let cursor_row = frame
         .iter()
-        .find(|row| row.contains('\u{258f}'))
+        .find(|row| row.starts_with('\u{25b8}'))
         .unwrap_or_else(|| panic!("no cursor row:\n{body}"));
     assert!(cursor_row.contains("Merge"), "{cursor_row}");
     crate::captures::check_shot("m7/landed-after-merge-120x40.txt", &body);
@@ -448,9 +448,9 @@ fn merged_main(app: &App, state: AppState) -> AppState {
 }
 
 /// What right looks like (`m8-landing-undo-120x36.txt`, J20): frame 1,
-/// `u` pressed with the cursor one row below the merge — `▏` on `HEAD`'s
+/// `u` pressed with the cursor one row below the merge — `▸` on `HEAD`'s
 /// row (`[◆ feature]`), the merge gone, the status `undo: merge … ✓`.
-/// Frame 2, `j` then `U` — `▏` back on the redone merge, the top row. The
+/// Frame 2, `j` then `U` — `▸` back on the redone merge, the top row. The
 /// merge is made at run time: its id is zeroed and its date redacted
 /// (widths kept). Colour unverified.
 #[test]
@@ -487,7 +487,7 @@ fn capture_landing_after_undo_and_redo() {
     let redone = drawn(&state);
     let cursor_row = redone
         .iter()
-        .find(|row| row.contains('\u{258f}'))
+        .find(|row| row.starts_with('\u{25b8}'))
         .unwrap_or_else(|| panic!("no cursor row:\n{}", redone.join("\n")));
     assert!(cursor_row.contains("Merge"), "{cursor_row}");
 
