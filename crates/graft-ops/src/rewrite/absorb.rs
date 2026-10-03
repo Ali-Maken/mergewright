@@ -159,6 +159,7 @@ pub(super) fn absorb(
         messages: BTreeMap::new(),
         made,
         index_base: Some(index_base),
+        forks: Vec::new(),
     })
 }
 

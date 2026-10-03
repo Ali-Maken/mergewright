@@ -194,6 +194,7 @@ fn opened_with(todo: Vec<TodoLine>) -> OpenedRewrite {
             messages: BTreeMap::new(),
             made: Vec::new(),
             index_base: None,
+            forks: Vec::new(),
         },
         whole,
         base: BaseRow {

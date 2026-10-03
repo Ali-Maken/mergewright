@@ -304,7 +304,7 @@ pub fn request_discard_at_diff_cursor(next: &mut AppState) -> bool {
     .with_labels("Cancel", "Discard");
     next.confirm = Some(PendingConfirm {
         view,
-        then: ConfirmThen::Operate(Operation::Discard(Target::Patch {
+        then: ConfirmThen::operate(Operation::Discard(Target::Patch {
             path,
             patch: patch_bytes,
             side,

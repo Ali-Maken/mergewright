@@ -38,6 +38,7 @@ fn params(todo: Vec<TodoLine>, made: Vec<Oid>) -> RewriteParams {
         messages: BTreeMap::new(),
         made,
         index_base: None,
+        forks: Vec::new(),
     }
 }
 

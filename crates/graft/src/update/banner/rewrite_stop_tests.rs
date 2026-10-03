@@ -68,6 +68,7 @@ fn read(action: TodoAction, chain: Option<(&str, usize, usize)>, edit: bool) -> 
             }),
             begun_in_graft: chain.is_some(),
             followers: Vec::new(),
+            fork: None,
         },
         edit: edit.then(|| EditStop {
             stopped: oid(3),

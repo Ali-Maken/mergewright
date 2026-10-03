@@ -69,7 +69,7 @@ fn discard_box() -> PendingConfirm {
             vec![sanitize_line("consequence")],
             sanitize_line("git restore --worktree -- a.rs"),
         ),
-        then: ConfirmThen::Operate(Operation::Discard(Target::Paths(vec!["a.rs".into()]))),
+        then: ConfirmThen::operate(Operation::Discard(Target::Paths(vec!["a.rs".into()]))),
     }
 }
 

@@ -126,6 +126,7 @@ fn from_rebase(
         messages: BTreeMap::new(),
         made: Vec::new(),
         index_base: None,
+        forks: Vec::new(),
     })
 }
 
@@ -212,6 +213,7 @@ fn open(
         messages,
         made: Vec::new(),
         index_base: None,
+        forks: Vec::new(),
     })
 }
 
@@ -277,6 +279,7 @@ fn amend_into(
         messages: BTreeMap::new(),
         made: vec![made],
         index_base: None,
+        forks: Vec::new(),
     })
 }
 
@@ -324,6 +327,7 @@ fn reword_head(
         messages,
         made: Vec::new(),
         index_base: None,
+        forks: Vec::new(),
     })
 }
 

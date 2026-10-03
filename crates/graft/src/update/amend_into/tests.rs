@@ -189,6 +189,7 @@ fn params() -> RewriteParams {
         messages: BTreeMap::new(),
         made: vec![oid(50)],
         index_base: None,
+        forks: Vec::new(),
     }
 }
 
@@ -230,6 +231,8 @@ fn a_plan() -> PreviewPlan {
         published: Vec::new(),
         left_behind: Vec::new(),
         left_behind_more: 0,
+        forks: Vec::new(),
+        forks_more: 0,
         messages: Vec::new(),
     }
 }
@@ -606,6 +609,30 @@ fn landing_words_are_done_line_shaped() {
     assert_eq!(
         crate::view::status::done_line(what, also.as_deref(), keys.as_deref()),
         "put into \"commit 2\" \u{2713} \u{b7} u undoes"
+    );
+}
+
+/// The op `y` runs carries the forks the preview found to follow
+/// (`plan_as_run`, ADR-0059): it is still the put-in planned, so its box
+/// and landing words are the put-in's.
+#[test]
+fn a_put_in_carrying_forks_is_still_the_put_in() {
+    let state = previewed();
+    let mut with_forks = params();
+    with_forks.forks.push(graft_ops::rewrite::ForkSection {
+        after_row: 1,
+        branch: Tip {
+            name: "refs/heads/feature-x".to_owned(),
+            oid: oid(9),
+        },
+        picks: Vec::new(),
+        inside: Vec::new(),
+    });
+    assert!(
+        state
+            .amend_into
+            .shown_for(&Operation::Rewrite(with_forks))
+            .is_some()
     );
 }
 

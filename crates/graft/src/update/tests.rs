@@ -4701,6 +4701,7 @@ pub(super) fn operation_live_as(
                     branch: None,
                     begun_in_graft: true,
                     followers: Vec::new(),
+                    fork: None,
                 },
                 edit: Some(graft_ops::rewrite::EditStop {
                     stopped: graft_core::oid::Oid::from_bytes(&[7; 20]).expect("20 bytes"),

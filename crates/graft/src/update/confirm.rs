@@ -44,6 +44,13 @@ impl PendingConfirm {
 }
 
 impl ConfirmThen {
+    /// A box that runs `op` once confirmed (boxes it for
+    /// [`ConfirmThen::Operate`]).
+    #[must_use]
+    pub fn operate(op: Operation) -> Self {
+        Self::Operate(Box::new(op))
+    }
+
     /// Whether `y` may confirm this box: ADR-0044 §3's rule and its three
     /// exceptions. The exceptions are the boxes whose acting choice writes
     /// to the remote or rewinds past a recorded state — the lease push (`P`
@@ -53,17 +60,19 @@ impl ConfirmThen {
     #[must_use]
     pub(crate) fn takes_y(&self) -> bool {
         match self {
-            // The force (lease) push is never `y` (P15 option (b)).
-            Self::Operate(Operation::Push(params)) => params.lease.is_none(),
-            Self::Operate(Operation::StashDrop { .. } | Operation::Discard(_))
-            | Self::Undo { .. }
+            Self::Operate(op) => match &**op {
+                // The force (lease) push is never `y` (P15 option (b)).
+                Operation::Push(params) => params.lease.is_none(),
+                Operation::StashDrop { .. } | Operation::Discard(_) => true,
+                // No box opens over any other operation today, so `y` stays
+                // swallowed until one does and is added above on purpose.
+                _ => false,
+            },
+            Self::Undo { .. }
             | Self::Resume(_)
             | Self::RestartConflict { .. }
             | Self::Quit { .. } => true,
-            // `Operate(_)`: no box opens over any other operation today, so
-            // `y` stays swallowed until one does and is added above on
-            // purpose.
-            Self::Operate(_) | Self::UndoAfterPush { .. } | Self::RevertTo { .. } => false,
+            Self::UndoAfterPush { .. } | Self::RevertTo { .. } => false,
         }
     }
 }
@@ -76,8 +85,10 @@ impl ConfirmThen {
 /// (m3-working-tree-undo-and-stash/06).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ConfirmThen {
-    /// Run this write (`d` discard, stash drop).
-    Operate(Operation),
+    /// Run this write (`d` discard, stash drop). Boxed: an [`Operation`]
+    /// carrying rewrite params dwarfs every other variant (clippy
+    /// `large_enum_variant`, m8-polish-and-ship/14b).
+    Operate(Box<Operation>),
     /// Re-run `u` (or `U`) past the drift rail the user has just read.
     Undo {
         /// `true` for `U`.
@@ -213,7 +224,7 @@ fn act(
             // while it was up) is said on the row it gave back, as `f`
             // says it (m6-conflicts/78, Decided 3).
             ConfirmThen::Operate(op) => {
-                let launched = super::operate::launch(next, commands, op, next_id);
+                let launched = super::operate::launch(next, commands, *op, next_id);
                 super::operate::say_if_refused(next, launched);
             }
             ConfirmThen::Undo { redo } => {
@@ -285,7 +296,7 @@ mod tests {
                 vec![sanitize_line("consequence")],
                 sanitize_line("git restore --worktree -- a.rs"),
             ),
-            then: ConfirmThen::Operate(Operation::Discard(Target::Paths(vec!["a.rs".into()]))),
+            then: ConfirmThen::operate(Operation::Discard(Target::Paths(vec!["a.rs".into()]))),
         }
     }
 
@@ -490,7 +501,7 @@ mod tests {
     fn lease_box() -> PendingConfirm {
         PendingConfirm {
             view: crate::update::remote::push_box(&lease_params(), Some(1), Some(oid()), None),
-            then: ConfirmThen::Operate(Operation::Push(lease_params())),
+            then: ConfirmThen::operate(Operation::Push(lease_params())),
         }
     }
 
@@ -504,7 +515,7 @@ mod tests {
             (
                 "operate.rs:514 discard a patch",
                 labelled(
-                    ConfirmThen::Operate(Operation::Discard(Target::Patch {
+                    ConfirmThen::operate(Operation::Discard(Target::Patch {
                         path: "a.rs".into(),
                         patch: b"@@".to_vec(),
                         side: graft_ops::operation::PatchSide::Worktree,
@@ -523,7 +534,7 @@ mod tests {
             (
                 "stash.rs:481 stash drop",
                 labelled(
-                    ConfirmThen::Operate(Operation::StashDrop {
+                    ConfirmThen::operate(Operation::StashDrop {
                         index: 0,
                         commit: oid(),
                     }),
@@ -610,7 +621,7 @@ mod tests {
                         Some(oid()),
                         None,
                     ),
-                    then: ConfirmThen::Operate(Operation::Push(push_params())),
+                    then: ConfirmThen::operate(Operation::Push(push_params())),
                 },
             ),
             ("remote/push_box.rs:30 lease push", lease_box()),
@@ -732,7 +743,7 @@ mod tests {
     /// is, as `y` confirms in every preview.
     #[test]
     fn y_confirms_the_push_box_from_cancel() {
-        let mut open = with_then(ConfirmThen::Operate(Operation::Push(push_params())));
+        let mut open = with_then(ConfirmThen::operate(Operation::Push(push_params())));
         open.view = open.view.clone().with_labels("Cancel", "Push");
         assert_eq!(open.view.selected(), 0, "the box opens on Cancel");
         let mut state = AppState {
@@ -759,7 +770,7 @@ mod tests {
     #[test]
     fn a_key_the_box_does_not_bind_leaves_it_open() {
         let mut state = AppState {
-            confirm: Some(with_then(ConfirmThen::Operate(Operation::Push(
+            confirm: Some(with_then(ConfirmThen::operate(Operation::Push(
                 push_params(),
             )))),
             status: Status::sticky("before"),

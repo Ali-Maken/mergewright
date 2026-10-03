@@ -488,8 +488,8 @@ fn every_push_params_caller_gets_the_plain_box_after_a_move() {
         assert!(
             matches!(
                 &after.confirm.as_ref().expect("a box").then,
-                crate::update::confirm::ConfirmThen::Operate(Operation::Push(params))
-                    if params.lease.is_none()
+                crate::update::confirm::ConfirmThen::Operate(op)
+                    if matches!(&**op, Operation::Push(params) if params.lease.is_none())
             ),
             "{caller}"
         );

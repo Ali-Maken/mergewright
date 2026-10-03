@@ -7,9 +7,10 @@ use graft_core::oid::Oid;
 
 use super::todo::autosquash;
 use super::{
-    SquashGroup, TodoAction, TodoLine, TodoProblem, default_message, git_todo, squash_groups,
-    validate,
+    ForkSection, SquashGroup, TodoAction, TodoLine, TodoProblem, default_message, git_todo,
+    squash_groups, validate,
 };
+use crate::operation::Tip;
 
 fn oid(byte: u8) -> Oid {
     Oid::from_hex(&format!("{byte:02x}").repeat(20)).expect("a hex oid")
@@ -183,6 +184,7 @@ fn the_git_todo_asks_where_git_asks_and_the_line_follows() {
             ("refs/heads/b".to_owned(), follower),
             ("refs/heads/c".to_owned(), top),
         ],
+        &[],
     );
     let expected = [
         format!("pick {} A", oid(1)),
@@ -216,6 +218,72 @@ fn an_empty_git_todo_is_a_noop() {
         &|_| String::new(),
         "refs/heads/a",
         &[],
+        &[],
     );
     assert_eq!(built.text, "noop\n");
+}
+
+fn tip(name: &str, byte: u8) -> Tip {
+    Tip {
+        name: format!("refs/heads/{name}"),
+        oid: oid(byte),
+    }
+}
+
+/// ADR-0059 §3: each fork that follows is replayed inline, right after the
+/// row that makes its new base — a squash group's last row, a dependent's
+/// pick — as `label`, its picks with an `update-ref` after each branch on
+/// it, `reset`; one with no commits of its own is its `update-ref` alone.
+#[test]
+fn a_fork_section_follows_the_row_that_makes_its_base() {
+    let todo = [row(Pick, 1, "A"), row(Fixup, 2, "A2"), row(Pick, 3, "B")];
+    let dependent = vec![row(Pick, 4, "C"), row(Pick, 5, "D")];
+    let forks = [
+        ForkSection {
+            after_row: 1,
+            branch: tip("x", 7),
+            picks: vec![row(Pick, 6, "X1"), row(Pick, 7, "X2")],
+            inside: vec![tip("x-wip", 6)],
+        },
+        ForkSection {
+            after_row: 3,
+            branch: tip("park", 4),
+            picks: Vec::new(),
+            inside: Vec::new(),
+        },
+        ForkSection {
+            after_row: 3,
+            branch: tip("y", 8),
+            picks: vec![row(Pick, 8, "Y1")],
+            inside: Vec::new(),
+        },
+    ];
+    let built = git_todo(
+        &todo,
+        &BTreeMap::new(),
+        &|_| String::new(),
+        "refs/heads/a",
+        &[("refs/heads/c".to_owned(), dependent)],
+        &forks,
+    );
+    let expected = [
+        format!("pick {} A", oid(1)),
+        format!("fixup {} A2", oid(2)),
+        "label graft-fork-1".to_owned(),
+        format!("pick {} X1", oid(6)),
+        "update-ref refs/heads/x-wip".to_owned(),
+        format!("pick {} X2", oid(7)),
+        "update-ref refs/heads/x".to_owned(),
+        "reset graft-fork-1".to_owned(),
+        format!("pick {} B", oid(3)),
+        "update-ref refs/heads/a".to_owned(),
+        format!("pick {} C", oid(4)),
+        "update-ref refs/heads/park".to_owned(),
+        "label graft-fork-3".to_owned(),
+        format!("pick {} Y1", oid(8)),
+        "update-ref refs/heads/y".to_owned(),
+        "reset graft-fork-3".to_owned(),
+        format!("pick {} D", oid(5)),
+    ];
+    assert_eq!(built.text, expected.join("\n") + "\n");
 }

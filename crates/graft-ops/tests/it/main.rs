@@ -19,6 +19,7 @@ mod edit_stop;
 mod error_rows;
 mod finish;
 mod finish_merge;
+mod fork_follows;
 mod history_ops;
 mod in_the_way;
 mod journal_list_oracle;
