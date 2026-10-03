@@ -21,4 +21,4 @@ select a file
 
 
 
- m merge  r rebase  ⏎ open  . more  space  b  t  P  c  p  f  u  /  q  F2  F3  x
+ m merge · r rebase · ⏎ open · space fold · b branch · t tag · P push · . more

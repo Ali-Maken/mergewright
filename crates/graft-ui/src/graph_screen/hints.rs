@@ -37,8 +37,10 @@ mod lists;
 
 pub use catalogue::{every_context, every_hint};
 pub use context::{ConfirmYes, HintContext, LiveC, RowVerbs, TabWord};
-use fitting::fit_list;
-pub use fitting::{StopWording, fit_status_line, hints_text, stopped_row, stopped_row_before_keys};
+pub use fitting::{
+    HINT_SEPARATOR, StopWording, fit_status_line, hints_text, stopped_row, stopped_row_before_keys,
+};
+use fitting::{Words, fit_list};
 use lists::{TAIL, context_list};
 pub use lists::{blame_place_list, history_place_list};
 
@@ -71,7 +73,7 @@ pub enum Rung {
 
 /// One hint: a key, the verb it does, whether it does it yet, and how much
 /// of it the bar drew.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug)]
 pub struct Hint {
     /// The key as it reads on screen (`m`, `⏎`, `⌃A`, `.`).
     pub key: &'static str,
@@ -91,7 +93,28 @@ pub struct Hint {
     /// (`d start over`, `esc close`) in words without hiding a key
     /// (m6-conflicts/64). Only the resolver's lists mark one.
     pub keeps_words: bool,
+    /// Drawn in a words-only bar (ADR-0058 §4): [`hints_for`] stamps every
+    /// hint of a bar outside a modal context, and [`hints_text`] then joins
+    /// them with ` · `. A modal bar's hints, and any list built straight from
+    /// a table, are joined with two spaces — a run of bare keys reads as keys,
+    /// not as a sentence. Not part of a hint's identity: equality ignores it.
+    pub words_only: bool,
 }
+
+impl PartialEq for Hint {
+    fn eq(&self, other: &Self) -> bool {
+        (self.key, self.verb, self.state, self.rung, self.keeps_words)
+            == (
+                other.key,
+                other.verb,
+                other.state,
+                other.rung,
+                other.keeps_words,
+            )
+    }
+}
+
+impl Eq for Hint {}
 
 impl Hint {
     /// The same hint, marked to keep its words ([`Hint::keeps_words`]).
@@ -208,6 +231,10 @@ fn short_form(verb: &str) -> Option<&'static str> {
         // 40-column terminal still draws it. `next` gives way first.
         "next change" => "next",
         "older·newer" => "older",
+        // The way back to a hidden place leads its bar (ADR-0058, 06): with
+        // the ` · ` separator its floor is 50 cells whole, and the narrowest
+        // bar is 47. Prefixes, so the reader still recovers the verb.
+        "back to blame" | "back to history" => "back",
         _ => return None,
     })
 }
@@ -220,6 +247,7 @@ const fn hint(key: &'static str, verb: &'static str) -> Hint {
         state: HintState::Live,
         rung: Rung::Full,
         keeps_words: false,
+        words_only: false,
     }
 }
 
@@ -241,6 +269,7 @@ const fn planned(key: &'static str, verb: &'static str) -> Hint {
         state: HintState::Planned,
         rung: Rung::Full,
         keeps_words: false,
+        words_only: false,
     }
 }
 
@@ -309,7 +338,42 @@ pub fn hints_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<H
     // `esc back` alone below it (`graft::view::finish`), so the width sweep
     // here stays monotone.
     let (list, trailer) = whole_bar(context, divider);
-    fit_list(&list, trailer, columns)
+    fit_list(&list, trailer, columns, words_for(context))
+}
+
+/// Whether `context`'s bar is words-only (ADR-0058 §4): every context that
+/// is not modal. The modal ones — the banner, a badge in the air, boxes,
+/// prompts, the overlays, the resolver, the places, the rewrite editor —
+/// keep the bare-key rung, because there the keys are the point.
+fn words_for(context: &HintContext) -> Words {
+    match context {
+        HintContext::WorkingTreeRow
+        | HintContext::BranchRow { .. }
+        | HintContext::PlainRow { .. }
+        | HintContext::Rewritable(_)
+        | HintContext::ChangesPane { .. }
+        | HintContext::Marked(_)
+        | HintContext::PaneFocused { .. } => Words::Only,
+        HintContext::BackToBlame(inner) | HintContext::BackToHistory(inner) => words_for(inner),
+        HintContext::OperationLive { row, .. } => words_for(row),
+        HintContext::Preview
+        | HintContext::Banner { .. }
+        | HintContext::Dragging
+        | HintContext::ConfirmBox { .. }
+        | HintContext::NamePrompt { .. }
+        | HintContext::Credential
+        | HintContext::Journal
+        | HintContext::Stash
+        | HintContext::Map
+        | HintContext::Picker
+        | HintContext::PaneOverOverlay { .. }
+        | HintContext::Resolver { .. }
+        | HintContext::Finish { .. }
+        | HintContext::Blame { .. }
+        | HintContext::History { .. }
+        | HintContext::RewriteEditor { .. }
+        | HintContext::RewriteMessage => Words::Keys,
+    }
 }
 
 /// The bar `context` would draw on a row with no end to it, and the doorway

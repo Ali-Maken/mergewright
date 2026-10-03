@@ -1,5 +1,6 @@
- graft /code/api  3 commits
-  ◌ ▏  Uncommitted changes (3 staged)
+ ◆ api  ~/code/api · feature-a                                                                                3 commits
+
+    ◌ ▏  Uncommitted changes (3 staged)
  Put staged changes into their commits (absorb)
  Open details (⏎)
  Fetch (f)
@@ -35,6 +36,5 @@
 
 
 
-
-
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  . more  J  /  j/k  q  F2  F3  +  1  F  H  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · J journal · / search · j/k move · . more

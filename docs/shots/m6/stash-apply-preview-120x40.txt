@@ -42,7 +42,6 @@ STASHES (1)
 
 
 
-
 ╭ Preview: apply stash@{0} ────────────────────────────────────────────────────────────────────────────────────────────╮
 │ working tree: notes.md                                                                                               │
 │ may conflict: notes.md                                                                                               │
@@ -51,4 +50,5 @@ STASHES (1)
 │ git stash apply --index 'stash@{0}'                                                                                  │
 │ ▸[ Cancel ]   [ Apply ]                                                                                              │
 ╰ y apply  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────╯
+
 

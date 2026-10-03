@@ -20,6 +20,27 @@ use crate::graph_column::{GraphColumn, GraphLine, RowPaint};
 use crate::paint::{color, foreground};
 use crate::theme::Token;
 
+impl GraphScreen<'_> {
+    /// The rule over the bar (ADR-0058 §4), across the whole row as the
+    /// mock-up draws it; `-` at the ASCII tier, which has no box-drawing
+    /// glyphs. Nothing when `rule` is zero-height (under 30 rows).
+    fn rule(&self, rule: Rect, buf: &mut Buffer) {
+        if rule.height == 0 {
+            return;
+        }
+        let glyph = if self.view.ascii { "-" } else { "\u{2500}" };
+        buf.set_line(
+            rule.x,
+            rule.y,
+            &Line::styled(
+                glyph.repeat(usize::from(rule.width)),
+                foreground(self.theme, Token::Border),
+            ),
+            rule.width,
+        );
+    }
+}
+
 impl Widget for GraphScreen<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         if area.is_empty() {
@@ -36,10 +57,11 @@ impl Widget for GraphScreen<'_> {
             buf.set_line(
                 area.x,
                 chrome.header.y,
-                &self.header(width, folded_lanes),
+                &self.header(area.width, folded_lanes),
                 area.width,
             );
         }
+        self.rule(chrome.rule, buf);
         for (offset, line) in self
             .view
             .banner
@@ -69,9 +91,13 @@ impl Widget for GraphScreen<'_> {
             self.body(body, rows, applied.as_ref(), buf);
         }
 
+        // One cell of right margin on the bottom rows, as on every other.
+        let bar_width = width
+            .saturating_sub(usize::from(super::RIGHT_MARGIN))
+            .max(1);
         if chrome.footer.height > 0 {
-            let (text, token) = self.footer_line(body, rows, applied.as_ref(), width);
-            let footer = Line::styled(fit(&text, width), foreground(self.theme, token));
+            let (text, token) = self.footer_line(body, rows, applied.as_ref(), bar_width);
+            let footer = Line::styled(fit(&text, bar_width), foreground(self.theme, token));
             buf.set_line(area.x, chrome.footer.y, &footer, area.width);
         }
         if let Some(line) = self.view.commit_graph
@@ -80,7 +106,7 @@ impl Widget for GraphScreen<'_> {
             buf.set_line(
                 area.x,
                 chrome.offer.y,
-                &self.commit_graph_line(line, width),
+                &self.commit_graph_line(line, bar_width),
                 area.width,
             );
         }

@@ -35,7 +35,9 @@ pub fn preview_box_rect(state: &AppState, view: &PreviewBox) -> Option<BoxRect> 
     // `tests::a_click_lands_on_the_button_the_widget_drew`, which renders
     // the real widget and reads the buttons back off the buffer.
     let footer_row = u16::from(height > 1);
-    let usable = height.saturating_sub(footer_row);
+    // From 30 rows the rule above the bar is not the box's either.
+    let rule_row = u16::from(graft_ui::graph_screen::spaced(height));
+    let usable = height.saturating_sub(footer_row + rule_row);
     let rows = if width < PREVIEW_MIN.0 || height < PREVIEW_MIN.1 {
         usable.min(1)
     } else {

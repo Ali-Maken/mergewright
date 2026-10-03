@@ -2,14 +2,14 @@
 # `view::view` from a real AppState over a real repository (conflict_interim::capture_banner_bar_with_q). Not a pty capture: no colour (rule 5).
 # What right looks like: the bottom row reads `merge stopped · …` and ends `e edit  ⇥ graph`.
 
- graft /code/api    MERGING
-◌      Uncommitted changes (2 unmerged)
-◆      [◆ main] main's take                                         2h   ddeed32
-│ ● ▏  [feature] the feature's take                                 2h   f43f326
-●─╯    the shared files                                             2h   b35b2f1
-●      Correct the note                                             1y   a82960b
-●      Add the first note                                           1y   fadcfb3
-◇      Add a readme                                                 1y   64ded19
+ ◆ api  ~/code/api · main                                               MERGING
+  ◌      Uncommitted changes (2 unmerged)
+  ◆      [◆ main] main's take                                      2h   ddeed32
+  │ ● ▏  [feature] the feature's take                              2h   f43f326
+  ●─╯    the shared files                                          2h   b35b2f1
+  ●      Correct the note                                          1y   a82960b
+  ●      Add the first note                                        1y   fadcfb3
+  ◇      Add a readme                                              1y   64ded19
 
 
 

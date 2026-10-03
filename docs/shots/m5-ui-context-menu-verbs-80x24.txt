@@ -52,10 +52,10 @@
 #    inside the graph pane rather than running off it.
 #
 
- graft /code/api  8 commits
-  ◆    [◆ feature] finish the feature                               now  8d6cd28
-  ●    start the feature                                            2m   52f3b96
-● │ ▏  [main] main moves again                                      3m   45fa51d
+ ◆ api  ~/code/api · feature                                          8 commits
+    ◆    [◆ feature] finish the feature                            now  8d6cd28
+    ●    start the feature                                         2m   52f3b96
+  ● │ ▏  [main] main moves again                                   3m   45fa51d
  Checkout main
  Cherry-pick 45fa51d (o)
  Copy SHA (y)
@@ -75,4 +75,4 @@
 
 
 
- m merge  r rebase  ⏎ open  . more  o  b  t  P  c  p  f  u  S  /  q  F2  F3  x
+ m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · . more

@@ -25,20 +25,19 @@
 #    box covers rows the graph never drew — no real row is hidden by it.
 #
 
- graft /code/api  8 commits
-  ●      finish the feature                                                                                                                      GF now  8d6cd28
-  ●      start the feature                                                                                                                       GF 2m   52f3b96
-  │      after rebase
-  │ ○    [◆ feature] finish the feature                                                                                                          GF —    —
-  │ ○    start the feature                                                                                                                       GF —    —
-●─│─╯ ▏  [main] main moves again                                                                                                                 GF 3m   45fa51d
-● │      main moves on                                                                                                                           GF 4m   37926a7
-●─╯      add the base                                                                                                                            GF 5m   ed332bc
-●        Correct the note                                                                                                                        GF 1y   a82960b
-●        Add the first note                                                                                                                      GF 1y   fadcfb3
-◇        Add a readme                                                                                                                            GF 1y   64ded19
+ ◆ api  ~/code/api · feature                                                                                                                          8 commits
 
-
+    ●      finish the feature                                                                                                                   GF now  8d6cd28
+    ●      start the feature                                                                                                                    GF 2m   52f3b96
+    │      after rebase
+    │ ○    [◆ feature] finish the feature                                                                                                       GF —    —
+    │ ○    start the feature                                                                                                                    GF —    —
+  ●─│─╯ ▏  [main] main moves again                                                                                                              GF 3m   45fa51d
+  ● │      main moves on                                                                                                                        GF 4m   37926a7
+  ●─╯      add the base                                                                                                                         GF 5m   ed332bc
+  ●        Correct the note                                                                                                                     GF 1y   a82960b
+  ●        Add the first note                                                                                                                   GF 1y   fadcfb3
+  ◇        Add a readme                                                                                                                         GF 1y   64ded19
 
 
 
@@ -72,4 +71,5 @@
 │ git rebase -i --no-update-refs --no-autostash --empty=drop main                                                                                              │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
 ╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

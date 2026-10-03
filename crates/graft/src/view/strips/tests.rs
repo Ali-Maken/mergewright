@@ -15,15 +15,28 @@ use crate::history::{History, Phase, Window};
 use crate::session::for_tests::session;
 use crate::update::{AppState, CHROME_ROWS, Size};
 use crate::view::tests::{counts, history_of, oid, refs_with_head};
+use graft_ui::graph_screen::chrome_rows;
 
 const MAX_LANES: usize = 12;
+
+/// A screen tall enough for exactly `graph_rows` graph rows. From 30 rows
+/// the chrome is two rows taller (gap and rule, ADR-0058 §4), so
+/// `graph_rows + CHROME_ROWS` alone would come up short there.
+fn screen_rows(graph_rows: u16) -> u16 {
+    let unspaced = graph_rows + CHROME_ROWS;
+    if unspaced - chrome_rows(unspaced) == graph_rows {
+        unspaced
+    } else {
+        graph_rows + chrome_rows(unspaced)
+    }
+}
 
 fn state(history: History, graph_rows: u16) -> AppState {
     AppState {
         history: Some(history),
         size: Size {
             columns: 80,
-            rows: graph_rows + CHROME_ROWS,
+            rows: screen_rows(graph_rows),
         },
         ..AppState::default()
     }
@@ -459,5 +472,14 @@ fn held_j_keeps_the_cursor_lit_under_the_uncommitted_row() {
             history.top,
             state.graph_pane_rows()
         );
+    }
+}
+
+/// The sizing helper itself, either side of 30 rows.
+#[test]
+fn screen_rows_gives_exactly_the_graph_rows_asked_for() {
+    for graph_rows in [10u16, 27, 28, 40, 80] {
+        let rows = screen_rows(graph_rows);
+        assert_eq!(rows - chrome_rows(rows), graph_rows, "{rows} rows");
     }
 }

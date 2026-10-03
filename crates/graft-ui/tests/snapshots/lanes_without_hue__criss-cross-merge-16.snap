@@ -4,14 +4,14 @@ expression: text
 ---
 shape: criss-cross-merge (widest), 16, 80x24, cursor on row 2
 
- graft ~/code/api  7 commits
-  ●          beta: carry on                                         4y   be27a12
-◆─╎─╮     ▏  Merge branch 'alpha'                                   4y   e44c042
-│ ◉╌│╌╮      beta: merge alpha                                      4y   f77039c
-│ ╎ ◉─╎─╮    alpha: merge beta                                      4y   89c164d
-│ ●─│─╎─╯    beta: work                                             4y   4cfd7d9
-│ ╎ ●╌╯      alpha: work                                            4y   bd20b78
-◇╌┴─╯        Add the base                                           4y   68d5d19
+ ◆ api  ~/code/api · main                                             7 commits
+    ●          beta: carry on                                      4y   be27a12
+  ◆─╎─╮     ▏  Merge branch 'alpha'                                4y   e44c042
+  │ ◉╌│╌╮      beta: merge alpha                                   4y   f77039c
+  │ ╎ ◉─╎─╮    alpha: merge beta                                   4y   89c164d
+  │ ●─│─╎─╯    beta: work                                          4y   4cfd7d9
+  │ ╎ ●╌╯      alpha: work                                         4y   bd20b78
+  ◇╌┴─╯        Add the base                                        4y   68d5d19
 
 
 
@@ -27,13 +27,13 @@ shape: criss-cross-merge (widest), 16, 80x24, cursor on row 2
 
 
 
- ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  q  F2  F3  x  +
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · . more
 
 graph colour per cell:
-..6.......
-57677.....
-5.68788...
-5.6.76866.
-5.6676866.
-5.6.788...
-56677.....
+....6.....
+..57677...
+..5.68788.
+..5.6.7686
+..5.667686
+..5.6.788.
+..56677...

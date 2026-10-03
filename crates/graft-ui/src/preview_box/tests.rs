@@ -160,7 +160,9 @@ fn a_taller_rect_still_draws_a_box_on_every_interior_row() {
 /// The box's own footer (the bottom border with `←→ choose  ⏎ act  esc
 /// cancel`) is the *last row of the area it was given*, and the screen
 /// footer row stays untouched — the docking contract in the ticket's scope
-/// item 4, through the function a caller really uses.
+/// item 4, through the function a caller really uses. From 30 rows the rule
+/// over the bar is left alone too (m8-polish-and-ship/06, ADR-0058 §4); the
+/// 24-row case is `preview_box_docks_on_the_footer_below_thirty_rows`.
 #[test]
 fn preview_box_docks_above_the_footer_row_untouched() {
     let theme = theme();
@@ -174,8 +176,8 @@ fn preview_box_docks_above_the_footer_row_untouched() {
     );
     assert_eq!(
         area.bottom(),
-        screen.bottom() - 1,
-        "the footer row is left alone"
+        screen.bottom() - 2,
+        "the footer row and the rule over it are left alone"
     );
 
     let drawn = docked(&view, &theme, 80, 40);
@@ -185,7 +187,12 @@ fn preview_box_docks_above_the_footer_row_untouched() {
         "{:?}",
         drawn[footer]
     );
-    let box_footer = footer - 1;
+    assert!(
+        drawn[footer - 1].trim().is_empty(),
+        "{:?}",
+        drawn[footer - 1]
+    );
+    let box_footer = footer - 2;
     assert!(
         drawn[box_footer].contains("choose") && drawn[box_footer].contains("cancel"),
         "expected the box's own footer on the area's last row: {:?}",
@@ -527,4 +534,14 @@ fn the_set_aside_row_draws_whole_at_80_and_120() {
             "{width}: {row}"
         );
     }
+}
+
+/// Below 30 rows there is no rule (ADR-0058 §4): the box stands right on
+/// the footer row.
+#[test]
+fn preview_box_docks_on_the_footer_below_thirty_rows() {
+    let view = rebase_view();
+    let screen = Rect::new(0, 0, 80, 24);
+    let area = preview_box_area(screen, &view);
+    assert_eq!(area.bottom(), screen.bottom() - 1, "{area:?}");
 }

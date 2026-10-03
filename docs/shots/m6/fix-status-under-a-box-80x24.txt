@@ -23,157 +23,157 @@
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: `f` to nowhere, `b`, the fetch fails under the prompt ===
- graft /code/api  200 commits
-◆ ▏  [◆ main ⇄ origin] Commit 200                                   7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    Commit 195                                                     7y   0722297
-●    Commit 194                                                     7y   b6a4a47
-●    Commit 193                                                     7y   60af0eb
+ ◆ api  ~/code/api · main                                           200 commits
+  ◆ ▏  [◆ main ⇄ origin] Commit 200                                7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    Commit 196                                                  7y   325da3f
+  ●    Commit 195                                                  7y   0722297
+  ●    Commit 194                                                  7y   b6a4a47
+  ●    Commit 193                                                  7y   60af0eb
           ╭ New branch at d5ae5fd ───────────────────────────────────╮
           │ ▏                                                        │
           │ ( ) check out after creating · ⇥ toggles                 │
           │                                                          │
           │                                                          │
           ╰──────────────────────────────────────────────────────────╯
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
-●    Commit 179                                                     7y   97b58e5
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
+  ●    Commit 179                                                  7y   97b58e5
  ⏎ create  ⇥ toggle  esc cancel
 
 === frame 2: `topic ⏎`, the held failure ===
- graft /code/api  200 commits
-◆ ▏  [◆ main ⇄ origin] Commit 200                                   7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    Commit 195                                                     7y   0722297
-●    Commit 194                                                     7y   b6a4a47
-●    Commit 193                                                     7y   60af0eb
-●    Commit 192                                                     7y   aceb8c5
-●    Commit 191                                                     7y   11d68ff
-●    Commit 190                                                     7y   91900bd
-●    Commit 189                                                     7y   cec3e93
-●    Commit 188                                                     7y   0a91ece
-●    Commit 187                                                     7y   3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
-●    Commit 179                                                     7y   97b58e5
- fetch all remotes failed: no remote named '/graft-no-such-remote' · esc dismiss
+ ◆ api  ~/code/api · main                                           200 commits
+  ◆ ▏  [◆ main ⇄ origin] Commit 200                                7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    Commit 196                                                  7y   325da3f
+  ●    Commit 195                                                  7y   0722297
+  ●    Commit 194                                                  7y   b6a4a47
+  ●    Commit 193                                                  7y   60af0eb
+  ●    Commit 192                                                  7y   aceb8c5
+  ●    Commit 191                                                  7y   11d68ff
+  ●    Commit 190                                                  7y   91900bd
+  ●    Commit 189                                                  7y   cec3e93
+  ●    Commit 188                                                  7y   0a91ece
+  ●    Commit 187                                                  7y   3121935
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
+  ●    Commit 179                                                  7y   97b58e5
+ fetch all remotes failed: no remote named '/graft-no-such-remot… · esc dismiss
 
 === frame 3: `esc`, the create's line ===
- graft /code/api  200 commits
-◆ ▏  [◆ main ⇄ origin] Commit 200                                   7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    Commit 195                                                     7y   0722297
-●    Commit 194                                                     7y   b6a4a47
-●    Commit 193                                                     7y   60af0eb
-●    Commit 192                                                     7y   aceb8c5
-●    Commit 191                                                     7y   11d68ff
-●    Commit 190                                                     7y   91900bd
-●    Commit 189                                                     7y   cec3e93
-●    Commit 188                                                     7y   0a91ece
-●    Commit 187                                                     7y   3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
-●    Commit 179                                                     7y   97b58e5
+ ◆ api  ~/code/api · main                                           200 commits
+  ◆ ▏  [◆ main ⇄ origin] Commit 200                                7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    Commit 196                                                  7y   325da3f
+  ●    Commit 195                                                  7y   0722297
+  ●    Commit 194                                                  7y   b6a4a47
+  ●    Commit 193                                                  7y   60af0eb
+  ●    Commit 192                                                  7y   aceb8c5
+  ●    Commit 191                                                  7y   11d68ff
+  ●    Commit 190                                                  7y   91900bd
+  ●    Commit 189                                                  7y   cec3e93
+  ●    Commit 188                                                  7y   0a91ece
+  ●    Commit 187                                                  7y   3121935
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
+  ●    Commit 179                                                  7y   97b58e5
  branch topic at d5ae5fd…
 
 === frame 4: `f`, `b`, `other ⏎` while the fetch runs ===
- graft /code/api  200 commits
-◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                           7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    Commit 195                                                     7y   0722297
-●    Commit 194                                                     7y   b6a4a47
-●    Commit 193                                                     7y   60af0eb
+ ◆ api  ~/code/api · main                                           200 commits
+  ◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                        7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    Commit 196                                                  7y   325da3f
+  ●    Commit 195                                                  7y   0722297
+  ●    Commit 194                                                  7y   b6a4a47
+  ●    Commit 193                                                  7y   60af0eb
           ╭ New branch at d5ae5fd ───────────────────────────────────╮
           │ ▏other                                                   │
           │ ( ) check out after creating · ⇥ toggles                 │
           │                                                          │
           │                                                          │
           ╰──────────────────────────────────────────────────────────╯
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
-●    Commit 179                                                     7y   97b58e5
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
+  ●    Commit 179                                                  7y   97b58e5
  wait for fetch all remotes to finish
 
 === frame 5: the fetch answers under the prompt ===
- graft /code/api  200 commits
-◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                           7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    Commit 195                                                     7y   0722297
-●    Commit 194                                                     7y   b6a4a47
-●    Commit 193                                                     7y   60af0eb
+ ◆ api  ~/code/api · main                                           200 commits
+  ◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                        7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    Commit 196                                                  7y   325da3f
+  ●    Commit 195                                                  7y   0722297
+  ●    Commit 194                                                  7y   b6a4a47
+  ●    Commit 193                                                  7y   60af0eb
           ╭ New branch at d5ae5fd ───────────────────────────────────╮
           │ ▏other                                                   │
           │ ( ) check out after creating · ⇥ toggles                 │
           │                                                          │
           │                                                          │
           ╰──────────────────────────────────────────────────────────╯
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
-●    Commit 179                                                     7y   97b58e5
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
+  ●    Commit 179                                                  7y   97b58e5
  ⏎ create  ⇥ toggle  esc cancel
 
 === frame 6: `esc`, the fetch's line ===
- graft /code/api  200 commits
-◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                           7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    Commit 195                                                     7y   0722297
-●    Commit 194                                                     7y   b6a4a47
-●    Commit 193                                                     7y   60af0eb
-●    Commit 192                                                     7y   aceb8c5
-●    Commit 191                                                     7y   11d68ff
-●    Commit 190                                                     7y   91900bd
-●    Commit 189                                                     7y   cec3e93
-●    Commit 188                                                     7y   0a91ece
-●    Commit 187                                                     7y   3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
-●    Commit 179                                                     7y   97b58e5
+ ◆ api  ~/code/api · main                                           200 commits
+  ◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                        7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    Commit 196                                                  7y   325da3f
+  ●    Commit 195                                                  7y   0722297
+  ●    Commit 194                                                  7y   b6a4a47
+  ●    Commit 193                                                  7y   60af0eb
+  ●    Commit 192                                                  7y   aceb8c5
+  ●    Commit 191                                                  7y   11d68ff
+  ●    Commit 190                                                  7y   91900bd
+  ●    Commit 189                                                  7y   cec3e93
+  ●    Commit 188                                                  7y   0a91ece
+  ●    Commit 187                                                  7y   3121935
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
+  ●    Commit 179                                                  7y   97b58e5
  fetched ✓

@@ -114,7 +114,7 @@ fn the_tip_row_hints_the_current_branch_context() {
 
     let bar = footer(&state, 80, 24);
     assert!(
-        bar.starts_with(" ⏎ open  c commit  P push  . more") && !bar.ends_with(". more"),
+        bar.starts_with(" ⏎ open · c commit · P push · ") && bar.ends_with(". more"),
         "{bar:?}"
     );
     app.close();
@@ -140,7 +140,7 @@ fn a_plain_row_hints_the_plain_context() {
         // `b branch` and `t tag` went live in
         // m5-history-and-ghost-preview/10, in the hint-bar design note's own
         // order for a plain row; `c commit` dropped to its bare key.
-        bar.starts_with(" ⏎ open  o take  b branch  . more") && !bar.ends_with(". more"),
+        bar.starts_with(" ⏎ open · o take · b branch · ") && bar.ends_with(". more"),
         "{bar:?}"
     );
     app.close();
@@ -158,7 +158,7 @@ fn the_uncommitted_row_hints_the_working_tree_context() {
 
     let bar = footer(&state, 80, 24);
     assert!(
-        bar.starts_with(" ⏎ changes  c commit  S stash  . more") && !bar.ends_with(". more"),
+        bar.starts_with(" ⏎ changes · c commit · S stash · ") && bar.ends_with(". more"),
         "{bar:?}"
     );
     app.close();
@@ -192,7 +192,7 @@ fn the_changes_pane_hints_the_keys_that_write() {
     for (columns, rows) in [(120u16, 40u16), (160, 48), (200, 60)] {
         let bar = hint_bar(&state, columns, rows).unwrap_or_default();
         assert!(
-            bar.starts_with(" space stage  d discard  c commit  <> resize")
+            bar.starts_with(" space stage · d discard · c commit · <> resize")
                 && bar.ends_with(". more"),
             "at {columns}x{rows}: {bar:?}"
         );
@@ -205,7 +205,7 @@ fn the_changes_pane_hints_the_keys_that_write() {
     // bar counts from its own row now (ADR-0039, 2026-09-21 amendment).
     let beside = hint_bar(&state, 160, 48).unwrap_or_default();
     let drawn = beside
-        .split("  ")
+        .split(" · ")
         .filter(|part| !part.trim().is_empty())
         .count();
     assert!(
@@ -216,7 +216,8 @@ fn the_changes_pane_hints_the_keys_that_write() {
     // (m5/14-22 review, Minor 1), so name them: 93 cells fit the changes
     // pane's whole vocabulary, in the order the tier hands it out.
     assert_eq!(
-        beside, " space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ diff  . more",
+        beside,
+        " space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ diff · . more",
         "every key the pane answers, beside the graph"
     );
 
@@ -253,7 +254,7 @@ fn the_tab_layout_draws_the_panes_own_keys() {
     );
     let bar = bar.unwrap_or_default();
     assert!(
-        bar.starts_with(" space stage  d discard  c commit"),
+        bar.starts_with(" space stage · d discard · c commit"),
         "the pane that owns the screen owns the keys: {bar:?}"
     );
     // The pane's own row, not one borrowed from a graph that is not drawn:
@@ -623,7 +624,7 @@ fn the_detail_tab_hides_the_keys_a_focused_pane_does_not_answer() {
 
     let bar = hint_bar(&diff, 80, 24).expect("the Detail tab draws a bar");
     assert_eq!(
-        bar, " c commit  P push  p pull  . more  f  b  t  u  /  q  F2  F3  x  +  j/k  1  F  H",
+        bar, " c commit · P push · p pull · f fetch · b branch · t tag · u undo · . more",
         "the bar after the filter, quoted so the change is legible in review"
     );
     assert!(

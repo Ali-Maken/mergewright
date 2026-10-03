@@ -1,12 +1,11 @@
- graft /code/api  3 commits
-  ●   ▏  Handle expired tokens                                                                           GF 2d   29033ed
-  ●      Add OAuth callback                                                                              GF 2d   67fda4a
-  │      the result
-  │ ○    [◆ feature-a] Handle expired tokens                                                             GF —    —
-  │ ○    Add OAuth callback                                                                              GF —    —
-◇─┴─╯    [main] m1                                                                                       GF 2d   f1c72d6
+ ◆ api  ~/code/api · feature-a                                                                                3 commits
 
-
+    ●   ▏  Handle expired tokens                                                                        GF 2d   29033ed
+    ●      Add OAuth callback                                                                           GF 2d   67fda4a
+    │      the result
+    │ ○    [◆ feature-a] Handle expired tokens                                                          GF —    —
+    │ ○    Add OAuth callback                                                                           GF —    —
+  ◇─┴─╯    [main] m1                                                                                    GF 2d   f1c72d6
 
 
 
@@ -37,4 +36,5 @@
 │ git rebase -i --no-update-refs --no-autostash --empty=drop f1c72d66bcb17d9d430527dddef3fd0a9a347b15                  │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
 ╰ y put them in  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

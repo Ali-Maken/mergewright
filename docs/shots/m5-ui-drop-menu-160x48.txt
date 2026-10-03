@@ -22,10 +22,11 @@
 #  - The menu opens directly under `main`'s row — the row the badge landed
 #    on, which is still readable above it.
 #
- graft /code/api  8 commits
-  ◆ ▏  [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
-  ●    start the feature                                                                                                                         GF 2m   52f3b96
-● │    [main] main moves again                                                                                                                   GF 3m   45fa51d
+ ◆ api  ~/code/api · feature                                                                                                                          8 commits
+
+    ◆ ▏  [◆ feature] finish the feature                                                                                                         GF now  8d6cd28
+    ●    start the feature                                                                                                                      GF 2m   52f3b96
+  ● │    [main] main moves again                                                                                                                GF 3m   45fa51d
  feature → main
  Merge feature into main — check out main first
  Rebase feature onto main
@@ -67,6 +68,5 @@
 
 
 
-
-
- ⏎ open  c commit  P push  p pull  f fetch  a amend  b branch  t tag  u undo  S stash  J journal  . more  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · / search · R rewrite · q quit · F2 stat · . more

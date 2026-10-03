@@ -1440,7 +1440,7 @@ fn the_hint_bar_fills_the_row_it_has_at_a_hundred_and_sixty_columns() {
         .unwrap_or_else(|| panic!("no hint bar at 160x48:\n{}", drawn.join("\n")))
         .clone();
     let hints = bar
-        .split("  ")
+        .split(" · ")
         .filter(|part| !part.trim().is_empty())
         .count();
     assert!(

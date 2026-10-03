@@ -56,8 +56,8 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 # above, below and beside the frame.
 #
 # What survives beside it, read back out of the frame below rather
-# than written here by hand — on the widest such row, `●` is
-# left of the border and `GF 2d   c8254c5` is right of it.
+# than written here by hand — on the widest such row, `  ●` is
+# left of the border and `GF 2d   d212b3e` is right of it.
 #
 # The 3-choice box `u` opens once the work is on a remote (ADR-0038
 # §4) stands on this same corpus and is in
@@ -69,53 +69,53 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 
 == `P`: the push confirm, on the graph ==
 
- graft /code/api  200 commits
-◆ ▏ⓘ [◆ main ↑1] Commit 200                                                                                                                      GF 2d   d5ae5fd
-●    [origin/main] Commit 199                                                                                                                    GF 2d   13e6ab1
-●    Commit 198                                                                                                                                  GF 2d   f5055d9
-●    Commit 197                                                                                                                                  GF 2d   2cce853
-●    Commit 196                                                                                                                                  GF 2d   325da3f
-●    Commit 195                                                                                                                                  GF 2d   0722297
-●    Commit 194                                                                                                                                  GF 2d   b6a4a47
-●    Commit 193                                                                                                                                  GF 2d   60af0eb
-●    Commit 192                                                                                                                                  GF 2d   aceb8c5
-●    Commit 191                                                                                                                                  GF 2d   11d68ff
-●    Commit 190                                                                                                                                  GF 2d   91900bd
-●    Commit 189                                                                                                                                  GF 2d   cec3e93
-●    Commit 188                                                                                                                                  GF 2d   0a91ece
-●    Commit 187                                                                                                                                  GF 2d   3121935
-●    Commit 186                                                                                                                                  GF 2d   fab25df
-●    Commit 185                                                                                                                                  GF 2d   09ae97c
-●    Commit 184                                                                                                                                  GF 2d   49d7783
-●    Commit 183                                                                                                                                  GF 2d   22d55c9
-●    Commit 182                                                                                                                                  GF 2d   d212b3e
-●    ╭ Push main → origin/main ───────────────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 2d   c8254c5
-●    │ 1 commit · can't be undone from here — origin keeps what you send                                                                      │  GF 2d   e95ccd4
-●    │                                                                                                                                        │  GF 2d   97b58e5
-●    │ git push --progress origin refs/heads/main:refs/heads/main                                                                             │  GF 2d   1c9b7ed
-●    │                                                                                                                                        │  GF 2d   f93340a
-●    │ ▸[ Cancel ]   [ Push ]                                                                                                                 │  GF 2d   5aaeeba
-●    ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 2d   6be5928
-●    Commit 174                                                                                                                                  GF 2d   9b67be4
-●    Commit 173                                                                                                                                  GF 2d   937d32b
-●    Commit 172                                                                                                                                  GF 2d   81be718
-●    Commit 171                                                                                                                                  GF 2d   57b8196
-●    Commit 170                                                                                                                                  GF 2d   8ea98be
-●    Commit 169                                                                                                                                  GF 2d   4926766
-●    Commit 168                                                                                                                                  GF 2d   0d60d60
-●    Commit 167                                                                                                                                  GF 2d   fa5ef1d
-●    Commit 166                                                                                                                                  GF 2d   953abf3
-●    Commit 165                                                                                                                                  GF 2d   49912f3
-●    Commit 164                                                                                                                                  GF 2d   1143b38
-●    Commit 163                                                                                                                                  GF 2d   e135216
-●    Commit 162                                                                                                                                  GF 2d   6ddbc37
-●    Commit 161                                                                                                                                  GF 2d   4b6f375
-●    Commit 160                                                                                                                                  GF 2d   545bf13
-●    Commit 159                                                                                                                                  GF 2d   a1a658c
-●    Commit 158                                                                                                                                  GF 2d   1e28a71
-●    Commit 157                                                                                                                                  GF 2d   b57586d
-●    Commit 156                                                                                                                                  GF 2d   edc7cba
-●    Commit 155                                                                                                                                  GF 2d   4c8c724
+ ◆ api  ~/code/api · main                                                                                                                           200 commits
+
+  ◆ ▏ⓘ [◆ main ↑1] Commit 200                                                                                                                   GF 2d   d5ae5fd
+  ●    [origin/main] Commit 199                                                                                                                 GF 2d   13e6ab1
+  ●    Commit 198                                                                                                                               GF 2d   f5055d9
+  ●    Commit 197                                                                                                                               GF 2d   2cce853
+  ●    Commit 196                                                                                                                               GF 2d   325da3f
+  ●    Commit 195                                                                                                                               GF 2d   0722297
+  ●    Commit 194                                                                                                                               GF 2d   b6a4a47
+  ●    Commit 193                                                                                                                               GF 2d   60af0eb
+  ●    Commit 192                                                                                                                               GF 2d   aceb8c5
+  ●    Commit 191                                                                                                                               GF 2d   11d68ff
+  ●    Commit 190                                                                                                                               GF 2d   91900bd
+  ●    Commit 189                                                                                                                               GF 2d   cec3e93
+  ●    Commit 188                                                                                                                               GF 2d   0a91ece
+  ●    Commit 187                                                                                                                               GF 2d   3121935
+  ●    Commit 186                                                                                                                               GF 2d   fab25df
+  ●    Commit 185                                                                                                                               GF 2d   09ae97c
+  ●    Commit 184                                                                                                                               GF 2d   49d7783
+  ●    Commit 183                                                                                                                               GF 2d   22d55c9
+  ●    ╭ Push main → origin/main ────────────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 2d   d212b3e
+  ●    │ 1 commit · can't be undone from here — origin keeps what you send                                                                   │  GF 2d   c8254c5
+  ●    │                                                                                                                                     │  GF 2d   e95ccd4
+  ●    │ git push --progress origin refs/heads/main:refs/heads/main                                                                          │  GF 2d   97b58e5
+  ●    │                                                                                                                                     │  GF 2d   1c9b7ed
+  ●    │ ▸[ Cancel ]   [ Push ]                                                                                                              │  GF 2d   f93340a
+  ●    ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 2d   5aaeeba
+  ●    Commit 175                                                                                                                               GF 2d   6be5928
+  ●    Commit 174                                                                                                                               GF 2d   9b67be4
+  ●    Commit 173                                                                                                                               GF 2d   937d32b
+  ●    Commit 172                                                                                                                               GF 2d   81be718
+  ●    Commit 171                                                                                                                               GF 2d   57b8196
+  ●    Commit 170                                                                                                                               GF 2d   8ea98be
+  ●    Commit 169                                                                                                                               GF 2d   4926766
+  ●    Commit 168                                                                                                                               GF 2d   0d60d60
+  ●    Commit 167                                                                                                                               GF 2d   fa5ef1d
+  ●    Commit 166                                                                                                                               GF 2d   953abf3
+  ●    Commit 165                                                                                                                               GF 2d   49912f3
+  ●    Commit 164                                                                                                                               GF 2d   1143b38
+  ●    Commit 163                                                                                                                               GF 2d   e135216
+  ●    Commit 162                                                                                                                               GF 2d   6ddbc37
+  ●    Commit 161                                                                                                                               GF 2d   4b6f375
+  ●    Commit 160                                                                                                                               GF 2d   545bf13
+  ●    Commit 159                                                                                                                               GF 2d   a1a658c
+  ●    Commit 158                                                                                                                               GF 2d   1e28a71
+  ●    Commit 157                                                                                                                               GF 2d   b57586d
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  y push  ←/→ move  ⏎ choose  esc cancel
 
 
@@ -160,8 +160,8 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 # above, below and beside the frame.
 #
 # What survives beside it, read back out of the frame below rather
-# than written here by hand — on the widest such row, `●` is
-# left of the border and `b6a4a47` is right of it.
+# than written here by hand — on the widest such row, `  ●` is
+# left of the border and `` is right of it.
 #
 # The 3-choice box `u` opens once the work is on a remote (ADR-0038
 # §4) stands on this same corpus and is in
@@ -173,29 +173,29 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 
 == `P`: the push confirm, on the graph ==
 
- graft /code/api  200 commits
-◆ ▏ⓘ [◆ main ↑1] Commit 200                                         2d   d5ae5fd
-●    [origin/main] Commit 199                                       2d   13e6ab1
-●    Commit 198                                                     2d   f5055d9
-●    Commit 197                                                     2d   2cce853
-●    Commit 196                                                     2d   325da3f
-●    Commit 195                                                     2d   0722297
-●    ╭ Push main → origin/main ────────────────────────────────────────╮ b6a4a47
-●    │ 1 commit · can't be undone from here — origin keeps what you    │ 60af0eb
-●    │ send                                                            │ aceb8c5
-●    │                                                                 │ 11d68ff
-●    │ git push --progress origin refs/heads/main:refs/heads/main      │ 91900bd
-●    │                                                                 │ cec3e93
-●    │ ▸[ Cancel ]   [ Push ]                                          │ 0a91ece
-●    ╰─────────────────────────────────────────────────────────────────╯ 3121935
-●    Commit 186                                                     2d   fab25df
-●    Commit 185                                                     2d   09ae97c
-●    Commit 184                                                     2d   49d7783
-●    Commit 183                                                     2d   22d55c9
-●    Commit 182                                                     2d   d212b3e
-●    Commit 181                                                     2d   c8254c5
-●    Commit 180                                                     2d   e95ccd4
-●    Commit 179                                                     2d   97b58e5
+ ◆ api  ~/code/api · main                                           200 commits
+  ◆ ▏ⓘ [◆ main ↑1] Commit 200                                      2d   d5ae5fd
+  ●    [origin/main] Commit 199                                    2d   13e6ab1
+  ●    Commit 198                                                  2d   f5055d9
+  ●    Commit 197                                                  2d   2cce853
+  ●    Commit 196                                                  2d   325da3f
+  ●    Commit 195                                                  2d   0722297
+  ●    Commit 194                                                  2d   b6a4a47
+  ●    ╭ Push main → origin/main ──────────────────────────────────────────────╮
+  ●    │ 1 commit · can't be undone from here — origin keeps what you send     │
+  ●    │                                                                       │
+  ●    │ git push --progress origin refs/heads/main:refs/heads/main            │
+  ●    │                                                                       │
+  ●    │ ▸[ Cancel ]   [ Push ]                                                │
+  ●    ╰───────────────────────────────────────────────────────────────────────╯
+  ●    Commit 186                                                  2d   fab25df
+  ●    Commit 185                                                  2d   09ae97c
+  ●    Commit 184                                                  2d   49d7783
+  ●    Commit 183                                                  2d   22d55c9
+  ●    Commit 182                                                  2d   d212b3e
+  ●    Commit 181                                                  2d   c8254c5
+  ●    Commit 180                                                  2d   e95ccd4
+  ●    Commit 179                                                  2d   97b58e5
  y push  ←/→ move  ⏎ choose  esc cancel
 
 
@@ -300,10 +300,11 @@ what right looks like: Capture header "What right looks like": the same context 
 #    sha beside it.
 #
 
- graft /code/api  8 commits
-  ◆    [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
-  ●    start the feature                                                                                                                         GF 2m   52f3b96
-● │ ▏  [main] main moves again                                                                                                                   GF 3m   45fa51d
+ ◆ api  ~/code/api · feature                                                                                                                          8 commits
+
+    ◆    [◆ feature] finish the feature                                                                                                         GF now  8d6cd28
+    ●    start the feature                                                                                                                      GF 2m   52f3b96
+  ● │ ▏  [main] main moves again                                                                                                                GF 3m   45fa51d
  Checkout main
  Cherry-pick 45fa51d (o)
  Copy SHA (y)
@@ -345,9 +346,8 @@ what right looks like: Capture header "What right looks like": the same context 
 
 
 
-
-
- m merge  r rebase  ⏎ open  o take  b branch  t tag  P push  c commit  p pull  f fetch  . more  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · . more
 
 ================================================================================
 docs/shots/m5-ui-context-menu-verbs-80x24.txt
@@ -408,10 +408,10 @@ what right looks like: Capture header "What right looks like": the context menu 
 #    inside the graph pane rather than running off it.
 #
 
- graft /code/api  8 commits
-  ◆    [◆ feature] finish the feature                               now  8d6cd28
-  ●    start the feature                                            2m   52f3b96
-● │ ▏  [main] main moves again                                      3m   45fa51d
+ ◆ api  ~/code/api · feature                                          8 commits
+    ◆    [◆ feature] finish the feature                            now  8d6cd28
+    ●    start the feature                                         2m   52f3b96
+  ● │ ▏  [main] main moves again                                   3m   45fa51d
  Checkout main
  Cherry-pick 45fa51d (o)
  Copy SHA (y)
@@ -431,7 +431,7 @@ what right looks like: Capture header "What right looks like": the context menu 
 
 
 
- m merge  r rebase  ⏎ open  . more  o  b  t  P  c  p  f  u  S  /  q  F2  F3  x
+ m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · . more
 
 ================================================================================
 docs/shots/m5-ui-credential-over-graph-160x48.txt
@@ -478,53 +478,53 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 
 == git's password question, over the push it belongs to ==
 
- graft /code/api  200 commits
-◆ ▏ⓘ [◆ main ↑1] Commit 200                                                                                                                      GF 2d   d5ae5fd
-●    [origin/main] Commit 199                                                                                                                    GF 2d   13e6ab1
-●    Commit 198                                                                                                                                  GF 2d   f5055d9
-●    Commit 197                                                                                                                                  GF 2d   2cce853
-●    Commit 196                                                                                                                                  GF 2d   325da3f
-●    Commit 195                                                                                                                                  GF 2d   0722297
-●    Commit 194                                                                                                                                  GF 2d   b6a4a47
-●    Commit 193                                                                                                                                  GF 2d   60af0eb
-●    Commit 192                                                                                                                                  GF 2d   aceb8c5
-●    Commit 191                                                                                                                                  GF 2d   11d68ff
-●    Commit 190                                                                                                                                  GF 2d   91900bd
-●    Commit 189                                                                                                                                  GF 2d   cec3e93
-●    Commit 188                                                                                                                                  GF 2d   0a91ece
-●    Commit 187                                                                                                                                  GF 2d   3121935
-●    Commit 186                                                                                                                                  GF 2d   fab25df
-●    Commit 185                                                                                                                                  GF 2d   09ae97c
-●    Commit 184                                                                                                                                  GF 2d   49d7783
-●    Commit 183                                                                                                                                  GF 2d   22d55c9
-●    Commit 182                                                                                                                                  GF 2d   d212b3e
-●    Commit 181                                                                                                                                  GF 2d   c8254c5
+ ◆ api  ~/code/api · main                                                                                                                           200 commits
+
+  ◆ ▏ⓘ [◆ main ↑1] Commit 200                                                                                                                   GF 2d   d5ae5fd
+  ●    [origin/main] Commit 199                                                                                                                 GF 2d   13e6ab1
+  ●    Commit 198                                                                                                                               GF 2d   f5055d9
+  ●    Commit 197                                                                                                                               GF 2d   2cce853
+  ●    Commit 196                                                                                                                               GF 2d   325da3f
+  ●    Commit 195                                                                                                                               GF 2d   0722297
+  ●    Commit 194                                                                                                                               GF 2d   b6a4a47
+  ●    Commit 193                                                                                                                               GF 2d   60af0eb
+  ●    Commit 192                                                                                                                               GF 2d   aceb8c5
+  ●    Commit 191                                                                                                                               GF 2d   11d68ff
+  ●    Commit 190                                                                                                                               GF 2d   91900bd
+  ●    Commit 189                                                                                                                               GF 2d   cec3e93
+  ●    Commit 188                                                                                                                               GF 2d   0a91ece
+  ●    Commit 187                                                                                                                               GF 2d   3121935
+  ●    Commit 186                                                                                                                               GF 2d   fab25df
+  ●    Commit 185                                                                                                                               GF 2d   09ae97c
+  ●    Commit 184                                                                                                                               GF 2d   49d7783
+  ●    Commit 183                                                                                                                               GF 2d   22d55c9
+  ●    Commit 182                                                                                                                               GF 2d   d212b3e
                                             ╭ Credentials — 127.0.0.1:8443 ────────────────────────────────────────╮
                                             │ Password for 'http://user@127.0.0.1:8443':                           │
                                             │ ▏◦•••••••                                                            │
                                             │ typed here only · never stored by Graft                              │
                                             ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯
-●    Commit 175                                                                                                                                  GF 2d   6be5928
-●    Commit 174                                                                                                                                  GF 2d   9b67be4
-●    Commit 173                                                                                                                                  GF 2d   937d32b
-●    Commit 172                                                                                                                                  GF 2d   81be718
-●    Commit 171                                                                                                                                  GF 2d   57b8196
-●    Commit 170                                                                                                                                  GF 2d   8ea98be
-●    Commit 169                                                                                                                                  GF 2d   4926766
-●    Commit 168                                                                                                                                  GF 2d   0d60d60
-●    Commit 167                                                                                                                                  GF 2d   fa5ef1d
-●    Commit 166                                                                                                                                  GF 2d   953abf3
-●    Commit 165                                                                                                                                  GF 2d   49912f3
-●    Commit 164                                                                                                                                  GF 2d   1143b38
-●    Commit 163                                                                                                                                  GF 2d   e135216
-●    Commit 162                                                                                                                                  GF 2d   6ddbc37
-●    Commit 161                                                                                                                                  GF 2d   4b6f375
-●    Commit 160                                                                                                                                  GF 2d   545bf13
-●    Commit 159                                                                                                                                  GF 2d   a1a658c
-●    Commit 158                                                                                                                                  GF 2d   1e28a71
-●    Commit 157                                                                                                                                  GF 2d   b57586d
-●    Commit 156                                                                                                                                  GF 2d   edc7cba
-●    Commit 155                                                                                                                                  GF 2d   4c8c724
+  ●    Commit 176                                                                                                                               GF 2d   5aaeeba
+  ●    Commit 175                                                                                                                               GF 2d   6be5928
+  ●    Commit 174                                                                                                                               GF 2d   9b67be4
+  ●    Commit 173                                                                                                                               GF 2d   937d32b
+  ●    Commit 172                                                                                                                               GF 2d   81be718
+  ●    Commit 171                                                                                                                               GF 2d   57b8196
+  ●    Commit 170                                                                                                                               GF 2d   8ea98be
+  ●    Commit 169                                                                                                                               GF 2d   4926766
+  ●    Commit 168                                                                                                                               GF 2d   0d60d60
+  ●    Commit 167                                                                                                                               GF 2d   fa5ef1d
+  ●    Commit 166                                                                                                                               GF 2d   953abf3
+  ●    Commit 165                                                                                                                               GF 2d   49912f3
+  ●    Commit 164                                                                                                                               GF 2d   1143b38
+  ●    Commit 163                                                                                                                               GF 2d   e135216
+  ●    Commit 162                                                                                                                               GF 2d   6ddbc37
+  ●    Commit 161                                                                                                                               GF 2d   4b6f375
+  ●    Commit 160                                                                                                                               GF 2d   545bf13
+  ●    Commit 159                                                                                                                               GF 2d   a1a658c
+  ●    Commit 158                                                                                                                               GF 2d   1e28a71
+  ●    Commit 157                                                                                                                               GF 2d   b57586d
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ send  esc cancel
 
 
@@ -573,29 +573,29 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 
 == git's password question, over the push it belongs to ==
 
- graft /code/api  200 commits
-◆ ▏ⓘ [◆ main ↑1] Commit 200                                         2d   d5ae5fd
-●    [origin/main] Commit 199                                       2d   13e6ab1
-●    Commit 198                                                     2d   f5055d9
-●    Commit 197                                                     2d   2cce853
-●    Commit 196                                                     2d   325da3f
-●    Commit 195                                                     2d   0722297
-●    Commit 194                                                     2d   b6a4a47
-●    Commit 193                                                     2d   60af0eb
+ ◆ api  ~/code/api · main                                           200 commits
+  ◆ ▏ⓘ [◆ main ↑1] Commit 200                                      2d   d5ae5fd
+  ●    [origin/main] Commit 199                                    2d   13e6ab1
+  ●    Commit 198                                                  2d   f5055d9
+  ●    Commit 197                                                  2d   2cce853
+  ●    Commit 196                                                  2d   325da3f
+  ●    Commit 195                                                  2d   0722297
+  ●    Commit 194                                                  2d   b6a4a47
+  ●    Commit 193                                                  2d   60af0eb
     ╭ Credentials — 127.0.0.1:8443 ────────────────────────────────────────╮
     │ Password for 'http://user@127.0.0.1:8443':                           │
     │ ▏◦•••••••                                                            │
     │ typed here only · never stored by Graft                              │
     ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯
-●    Commit 187                                                     2d   3121935
-●    Commit 186                                                     2d   fab25df
-●    Commit 185                                                     2d   09ae97c
-●    Commit 184                                                     2d   49d7783
-●    Commit 183                                                     2d   22d55c9
-●    Commit 182                                                     2d   d212b3e
-●    Commit 181                                                     2d   c8254c5
-●    Commit 180                                                     2d   e95ccd4
-●    Commit 179                                                     2d   97b58e5
+  ●    Commit 187                                                  2d   3121935
+  ●    Commit 186                                                  2d   fab25df
+  ●    Commit 185                                                  2d   09ae97c
+  ●    Commit 184                                                  2d   49d7783
+  ●    Commit 183                                                  2d   22d55c9
+  ●    Commit 182                                                  2d   d212b3e
+  ●    Commit 181                                                  2d   c8254c5
+  ●    Commit 180                                                  2d   e95ccd4
+  ●    Commit 179                                                  2d   97b58e5
  ⏎ send  esc cancel
 
 
@@ -628,15 +628,16 @@ what right looks like: Capture header "What right looks like": the drag is visib
 #  - The footer reads `release drop on a row  esc cancel`.
 #  - Nothing else has moved: no menu, no box, the graph unchanged.
 
- graft /code/api  8 commits
-  ◆    [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
-  ●    start the feature                                                                                                                         GF 2m   52f3b96
-● │ ▸  [main] main moves again                                                                                                                   GF 3m   45fa51d
-● │    main moves on                                                                                                                             GF 4m   37926a7
-●─╯    add the base                                                                                                                              GF 5m   ed332bc
-●      Correct the note                                                                                                                          GF 1y   a82960b
-●      Add the first note                                                                                                                        GF 1y   fadcfb3
-◇      Add a readme                                                                                                                              GF 1y   64ded19
+ ◆ api  ~/code/api · feature                                                                                                                          8 commits
+
+    ◆    [◆ feature] finish the feature                                                                                                         GF now  8d6cd28
+    ●    start the feature                                                                                                                      GF 2m   52f3b96
+  ● │ ▸  [main] main moves again                                                                                                                GF 3m   45fa51d
+  ● │    main moves on                                                                                                                          GF 4m   37926a7
+  ●─╯    add the base                                                                                                                           GF 5m   ed332bc
+  ●      Correct the note                                                                                                                       GF 1y   a82960b
+  ●      Add the first note                                                                                                                     GF 1y   fadcfb3
+  ◇      Add a readme                                                                                                                           GF 1y   64ded19
 
 
 
@@ -673,8 +674,7 @@ what right looks like: Capture header "What right looks like": the drag is visib
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  release drop on a row  esc cancel
 
 ================================================================================
@@ -706,15 +706,15 @@ what right looks like: Capture header "What right looks like": the drag is visib
 #  - The footer reads `release drop on a row  esc cancel`.
 #  - Nothing else has moved: no menu, no box, the graph unchanged.
 
- graft /code/api  8 commits
-  ◆    [◆ feature] finish the feature                               now  8d6cd28
-  ●    start the feature                                            2m   52f3b96
-● │ ▸  [main] main moves again                                      3m   45fa51d
-● │    main moves on                                                4m   37926a7
-●─╯    add the base                                                 5m   ed332bc
-●      Correct the note                                             1y   a82960b
-●      Add the first note                                           1y   fadcfb3
-◇      Add a readme                                                 1y   64ded19
+ ◆ api  ~/code/api · feature                                          8 commits
+    ◆    [◆ feature] finish the feature                            now  8d6cd28
+    ●    start the feature                                         2m   52f3b96
+  ● │ ▸  [main] main moves again                                   3m   45fa51d
+  ● │    main moves on                                             4m   37926a7
+  ●─╯    add the base                                              5m   ed332bc
+  ●      Correct the note                                          1y   a82960b
+  ●      Add the first note                                        1y   fadcfb3
+  ◇      Add a readme                                              1y   64ded19
 
 
 
@@ -760,10 +760,11 @@ what right looks like: Capture header "What right looks like": a title row reads
 #  - The menu opens directly under `main`'s row — the row the badge landed
 #    on, which is still readable above it.
 #
- graft /code/api  8 commits
-  ◆ ▏  [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
-  ●    start the feature                                                                                                                         GF 2m   52f3b96
-● │    [main] main moves again                                                                                                                   GF 3m   45fa51d
+ ◆ api  ~/code/api · feature                                                                                                                          8 commits
+
+    ◆ ▏  [◆ feature] finish the feature                                                                                                         GF now  8d6cd28
+    ●    start the feature                                                                                                                      GF 2m   52f3b96
+  ● │    [main] main moves again                                                                                                                GF 3m   45fa51d
  feature → main
  Merge feature into main — check out main first
  Rebase feature onto main
@@ -805,9 +806,8 @@ what right looks like: Capture header "What right looks like": a title row reads
 
 
 
-
-
- ⏎ open  c commit  P push  p pull  f fetch  a amend  b branch  t tag  u undo  S stash  J journal  . more  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · / search · R rewrite · q quit · F2 stat · . more
 
 ================================================================================
 docs/shots/m5-ui-drop-menu-80x24.txt
@@ -838,10 +838,10 @@ what right looks like: Capture header "What right looks like": a title row reads
 #  - The menu opens directly under `main`'s row — the row the badge landed
 #    on, which is still readable above it.
 #
- graft /code/api  8 commits
-  ◆ ▏  [◆ feature] finish the feature                               now  8d6cd28
-  ●    start the feature                                            2m   52f3b96
-● │    [main] main moves again                                      3m   45fa51d
+ ◆ api  ~/code/api · feature                                          8 commits
+    ◆ ▏  [◆ feature] finish the feature                            now  8d6cd28
+    ●    start the feature                                         2m   52f3b96
+  ● │    [main] main moves again                                   3m   45fa51d
  feature → main
  Merge feature into main — check out main first
  Rebase feature onto main
@@ -861,7 +861,7 @@ what right looks like: Capture header "What right looks like": a title row reads
 
 
 
- ⏎ open  c commit  P push  . more  p  f  a  b  t  u  S  J  /  R  q  F2  F3  x  +
+ ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · . more
 
 ================================================================================
 docs/shots/m5-ui-ghost-rows.txt
@@ -948,15 +948,15 @@ what right looks like: Capture header "What right looks like": the box's top bor
 #  - The box covers whole columns of the graph (ADR-0040); no half-covered
 #    column shows beside it.
 #
- graft /code/api  8 commits
-  ◆    [◆ feature] finish the feature                               now  8d6cd28
-  ●    start the feature                                            2m   52f3b96
-● │ ▏  [main] main moves again                                      3m   45fa51d
-● │    main moves on                                                4m   37926a7
-●─╯    add the base                                                 5m   ed332bc
-●      Correct the note                                             1y   a82960b
-●      Add the first note                                           1y   fadcfb3
-◇      Add a readme                                                 1y   64ded19
+ ◆ api  ~/code/api · feature                                          8 commits
+    ◆    [◆ feature] finish the feature                            now  8d6cd28
+    ●    start the feature                                         2m   52f3b96
+  ● │ ▏  [main] main moves again                                   3m   45fa51d
+  ● │    main moves on                                             4m   37926a7
+  ●─╯    add the base                                              5m   ed332bc
+  ●      Correct the note                                          1y   a82960b
+  ●      Add the first note                                        1y   fadcfb3
+  ◇      Add a readme                                              1y   64ded19
           ╭ New branch at 45fa51d ───────────────────────────────────╮
           │ ▏main                                                    │
           │ ( ) check out after creating · ⇥ toggles                 │
@@ -1099,7 +1099,6 @@ m merge  r rebase  screen footer
 
 
 
-
 ╭ Preview: rebase feature/auth onto main ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 2 commits replayed · feature/auth 7f6e5d4 → ghost                                                                                                            │
 │ working tree: 3 files updated · may conflict: src/auth.rs                                                                                                    │
@@ -1107,6 +1106,7 @@ m merge  r rebase  screen footer
 │ git rebase refs/heads/main                                                                                                                                   │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
 ╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
 m merge  r rebase  screen footer
 
 === planning, docked in 80x24 ===
@@ -1178,20 +1178,19 @@ what right looks like: Capture header "What right looks like": two ghost rows sh
 #    box covers rows the graph never drew — no real row is hidden by it.
 #
 
- graft /code/api  8 commits
-  ●      finish the feature                                                                                                                      GF now  8d6cd28
-  ●      start the feature                                                                                                                       GF 2m   52f3b96
-  │      after rebase
-  │ ○    [◆ feature] finish the feature                                                                                                          GF —    —
-  │ ○    start the feature                                                                                                                       GF —    —
-●─│─╯ ▏  [main] main moves again                                                                                                                 GF 3m   45fa51d
-● │      main moves on                                                                                                                           GF 4m   37926a7
-●─╯      add the base                                                                                                                            GF 5m   ed332bc
-●        Correct the note                                                                                                                        GF 1y   a82960b
-●        Add the first note                                                                                                                      GF 1y   fadcfb3
-◇        Add a readme                                                                                                                            GF 1y   64ded19
+ ◆ api  ~/code/api · feature                                                                                                                          8 commits
 
-
+    ●      finish the feature                                                                                                                   GF now  8d6cd28
+    ●      start the feature                                                                                                                    GF 2m   52f3b96
+    │      after rebase
+    │ ○    [◆ feature] finish the feature                                                                                                       GF —    —
+    │ ○    start the feature                                                                                                                    GF —    —
+  ●─│─╯ ▏  [main] main moves again                                                                                                              GF 3m   45fa51d
+  ● │      main moves on                                                                                                                        GF 4m   37926a7
+  ●─╯      add the base                                                                                                                         GF 5m   ed332bc
+  ●        Correct the note                                                                                                                     GF 1y   a82960b
+  ●        Add the first note                                                                                                                   GF 1y   fadcfb3
+  ◇        Add a readme                                                                                                                         GF 1y   64ded19
 
 
 
@@ -1225,6 +1224,7 @@ what right looks like: Capture header "What right looks like": two ghost rows sh
 │ git rebase -i --no-update-refs --no-autostash --empty=drop main                                                                                              │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
 ╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
 ================================================================================
@@ -1259,18 +1259,18 @@ what right looks like: Capture header "What right looks like": two ghost rows sh
 #    box covers rows the graph never drew — no real row is hidden by it.
 #
 
- graft /code/api  8 commits
-  ●      finish the feature                                         now  8d6cd28
-  ●      start the feature                                          2m   52f3b96
-  │      after rebase
-  │ ○    [◆ feature] finish the feature                             —    —
-  │ ○    start the feature                                          —    —
-●─│─╯ ▏  [main] main moves again                                    3m   45fa51d
-● │      main moves on                                              4m   37926a7
-●─╯      add the base                                               5m   ed332bc
-●        Correct the note                                           1y   a82960b
-●        Add the first note                                         1y   fadcfb3
-◇        Add a readme                                               1y   64ded19
+ ◆ api  ~/code/api · feature                                          8 commits
+    ●      finish the feature                                      now  8d6cd28
+    ●      start the feature                                       2m   52f3b96
+    │      after rebase
+    │ ○    [◆ feature] finish the feature                          —    —
+    │ ○    start the feature                                       —    —
+  ●─│─╯ ▏  [main] main moves again                                 3m   45fa51d
+  ● │      main moves on                                           4m   37926a7
+  ●─╯      add the base                                            5m   ed332bc
+  ●        Correct the note                                        1y   a82960b
+  ●        Add the first note                                      1y   fadcfb3
+  ◇        Add a readme                                            1y   64ded19
 
 
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────╮
@@ -1295,7 +1295,7 @@ what right looks like: Capture header "What right looks like": the rows on scree
 # and `redesign` — sixty commits newer than all of them — pushing
 # `old-release` far down the graph. Opened over the real job pool, the
 # cursor walked down to `old-release`'s row with `j` **at this screen
-# size** (so the viewport really is scrolled: `history.top` is 30 here,
+# size** (so the viewport really is scrolled: `history.top` is 32 here,
 # not 0 — it differs by screen, which is why each capture has its own
 # session and its own number), then `r` pressed through `update` and the
 # real `graft_ops::preview::plan` run (crates/graft/tests/it/preview.rs,
@@ -1330,43 +1330,42 @@ what right looks like: Capture header "What right looks like": the rows on scree
 #    `[ Cancel ]` comes first with the cursor on it (ADR-0038 §1).
 #
 
- graft /code/api  70 commits
-  ●      redesign step 23                                                                                                                        GF 39m  5de8eef
-  ●      redesign step 22                                                                                                                        GF 40m  7bd6716
-  ●      redesign step 21                                                                                                                        GF 41m  43008f4
-  ●      redesign step 20                                                                                                                        GF 42m  3ed8649
-  ●      redesign step 19                                                                                                                        GF 43m  7f09e2b
-  ●      redesign step 18                                                                                                                        GF 44m  15f3c2d
-  ●      redesign step 17                                                                                                                        GF 45m  f5adc23
-  ●      redesign step 16                                                                                                                        GF 46m  b451d3b
-  ●      redesign step 15                                                                                                                        GF 47m  7543dcd
-  ●      redesign step 14                                                                                                                        GF 48m  74ea4d0
-  ●      redesign step 13                                                                                                                        GF 49m  618a7de
-  ●      redesign step 12                                                                                                                        GF 50m  a7d62f1
-  ●      redesign step 11                                                                                                                        GF 51m  5f7971c
-  ●      redesign step 10                                                                                                                        GF 52m  2e71932
-  ●      redesign step 09                                                                                                                        GF 53m  15e3640
-  ●      redesign step 08                                                                                                                        GF 54m  d9ead6d
-  ●      redesign step 07                                                                                                                        GF 55m  abc4f61
-  ●      redesign step 06                                                                                                                        GF 56m  8124484
-  ●      redesign step 05                                                                                                                        GF 57m  c2d6da1
-  ●      redesign step 04                                                                                                                        GF 58m  be1a1ac
-  ●      redesign step 03                                                                                                                        GF 59m  eb40531
-  ●      redesign step 02                                                                                                                        GF 60m  a2606d6
-  ●      redesign step 01                                                                                                                        GF 61m  3533523
-  ●      redesign step 00                                                                                                                        GF 62m  c6c79eb
-  │ ●    finish the topic                                                                                                                        GF 63m  e7e39a7
-  │ ●    start the topic                                                                                                                         GF 64m  169d215
-●─┴─╯    [main] main moves on (2)                                                                                                                GF 65m  107af44
-●        main moves on (1)                                                                                                                       GF 66m  2b2b2f1
-●        main moves on (0)                                                                                                                       GF 67m  ba665c1
-│        after rebase
-│ ○      [◆ topic] finish the topic                                                                                                              GF —    —
-│ ○      start the topic                                                                                                                         GF —    —
-│ ○      main moves on (2)                                                                                                                       GF —    —
-│ ○      main moves on (1)                                                                                                                       GF —    —
-│ ○      main moves on (0)                                                                                                                       GF —    —
-│ ●   ▏  [old-release] cut release 1.0                                                                                                           GF 68m  3b09656
+ ◆ api  ~/code/api · topic                                                                                                                           70 commits
+
+    ●      redesign step 21                                                                                                                     GF 41m  43008f4
+    ●      redesign step 20                                                                                                                     GF 42m  3ed8649
+    ●      redesign step 19                                                                                                                     GF 43m  7f09e2b
+    ●      redesign step 18                                                                                                                     GF 44m  15f3c2d
+    ●      redesign step 17                                                                                                                     GF 45m  f5adc23
+    ●      redesign step 16                                                                                                                     GF 46m  b451d3b
+    ●      redesign step 15                                                                                                                     GF 47m  7543dcd
+    ●      redesign step 14                                                                                                                     GF 48m  74ea4d0
+    ●      redesign step 13                                                                                                                     GF 49m  618a7de
+    ●      redesign step 12                                                                                                                     GF 50m  a7d62f1
+    ●      redesign step 11                                                                                                                     GF 51m  5f7971c
+    ●      redesign step 10                                                                                                                     GF 52m  2e71932
+    ●      redesign step 09                                                                                                                     GF 53m  15e3640
+    ●      redesign step 08                                                                                                                     GF 54m  d9ead6d
+    ●      redesign step 07                                                                                                                     GF 55m  abc4f61
+    ●      redesign step 06                                                                                                                     GF 56m  8124484
+    ●      redesign step 05                                                                                                                     GF 57m  c2d6da1
+    ●      redesign step 04                                                                                                                     GF 58m  be1a1ac
+    ●      redesign step 03                                                                                                                     GF 59m  eb40531
+    ●      redesign step 02                                                                                                                     GF 60m  a2606d6
+    ●      redesign step 01                                                                                                                     GF 61m  3533523
+    ●      redesign step 00                                                                                                                     GF 62m  c6c79eb
+    │ ●    finish the topic                                                                                                                     GF 63m  e7e39a7
+    │ ●    start the topic                                                                                                                      GF 64m  169d215
+  ●─┴─╯    [main] main moves on (2)                                                                                                             GF 65m  107af44
+  ●        main moves on (1)                                                                                                                    GF 66m  2b2b2f1
+  ●        main moves on (0)                                                                                                                    GF 67m  ba665c1
+  │        after rebase
+  │ ○      [◆ topic] finish the topic                                                                                                           GF —    —
+  │ ○      start the topic                                                                                                                      GF —    —
+  │ ○      main moves on (2)                                                                                                                    GF —    —
+  │ ○      main moves on (1)                                                                                                                    GF —    —
+  │ ○      main moves on (0)                                                                                                                    GF —    —
+  │ ●   ▏  [old-release] cut release 1.0                                                                                                        GF 68m  3b09656
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 5 commits replayed                                                                                                                                           │
 │ topic e7e39a7 → 5 new commits                                                                                                                                │
@@ -1377,6 +1376,7 @@ what right looks like: Capture header "What right looks like": the rows on scree
 │ git rebase -i --no-update-refs --no-autostash --empty=drop old-release                                                                                       │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
 ╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
 ================================================================================
@@ -1425,19 +1425,19 @@ what right looks like: Capture header "What right looks like": the rows on scree
 #    `[ Cancel ]` comes first with the cursor on it (ADR-0038 §1).
 #
 
- graft /code/api  70 commits
-  │ ●    finish the topic                                           63m  e7e39a7
-  │ ●    start the topic                                            64m  169d215
-●─┴─╯    [main] main moves on (2)                                   65m  107af44
-●        main moves on (1)                                          66m  2b2b2f1
-●        main moves on (0)                                          67m  ba665c1
-│        after rebase
-│ ○      [◆ topic] finish the topic                                 —    —
-│ ○      start the topic                                            —    —
-│ ○      main moves on (2)                                          —    —
-│ ○      main moves on (1)                                          —    —
-│ ○      main moves on (0)                                          —    —
-│ ●   ▏  [old-release] cut release 1.0                              68m  3b09656
+ ◆ api  ~/code/api · topic                                           70 commits
+    │ ●    finish the topic                                        63m  e7e39a7
+    │ ●    start the topic                                         64m  169d215
+  ●─┴─╯    [main] main moves on (2)                                65m  107af44
+  ●        main moves on (1)                                       66m  2b2b2f1
+  ●        main moves on (0)                                       67m  ba665c1
+  │        after rebase
+  │ ○      [◆ topic] finish the topic                              —    —
+  │ ○      start the topic                                         —    —
+  │ ○      main moves on (2)                                       —    —
+  │ ○      main moves on (1)                                       —    —
+  │ ○      main moves on (0)                                       —    —
+  │ ●   ▏  [old-release] cut release 1.0                           68m  3b09656
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────╮
 │ 5 commits replayed                                                           │
 │ topic e7e39a7 → 5 new commits                                                │
@@ -1482,13 +1482,12 @@ what right looks like: Capture header "What right looks like": the journal brows
 #  - Nothing has run: this picture is a read.
 #
 
- graft /code/api  4 commits
-◆ ▏  [◆ main] add the base                                                                                                                       GT now  0000000
-●    Correct the note                                                                                                                            GF 7y   a82960b
-●    Add the first note                                                                                                                          GF 7y   fadcfb3
-◇    Add a readme                                                                                                                                GF 7y   64ded19
+ ◆ api  ~/code/api · main                                                                                                                             4 commits
 
-
+  ◆ ▏  [◆ main] add the base                                                                                                                    GT now  0000000
+  ●    Correct the note                                                                                                                         GF 7y   a82960b
+  ●    Add the first note                                                                                                                       GF 7y   fadcfb3
+  ◇    Add a readme                                                                                                                             GF 7y   64ded19
 
 
 
@@ -1529,6 +1528,7 @@ what right looks like: Capture header "What right looks like": the journal brows
 │ undo: u takes this back                                                                                                                                      │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
 ╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
 ================================================================================
@@ -1563,11 +1563,11 @@ what right looks like: Capture header "What right looks like": the journal brows
 #  - Nothing has run: this picture is a read.
 #
 
- graft /code/api  4 commits
-◆ ▏  [◆ main] add the base                                          now  0000000
-●    Correct the note                                               7y   a82960b
-●    Add the first note                                             7y   fadcfb3
-◇    Add a readme                                                   7y   64ded19
+ ◆ api  ~/code/api · main                                             4 commits
+  ◆ ▏  [◆ main] add the base                                       now  0000000
+  ●    Correct the note                                            7y   a82960b
+  ●    Add the first note                                          7y   fadcfb3
+  ◇    Add a readme                                                7y   64ded19
 
 
 
@@ -1627,55 +1627,55 @@ what right looks like: Capture header "What right looks like": the first box nam
 
 == `u` after a push: the one box with three real answers ==
 
- graft /code/api  152 rows so far
-◆ ▏  [◆ main ⇄ origin] to push                                      now  0000000
-●    Commit 200                                                     7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    ╭ Undo after a push ──────────────────────────────────────────────╮ 325da3f
-●    │ commit "to push" is on origin/main                              │ 0722297
-●    │ undo works on your local branch only                            │ b6a4a47
-●    │ Re-push old tip rewrites origin/main, which others may have     │ 60af0eb
-●    │ already pulled                                                  │ aceb8c5
-●    │                                                                 │ 11d68ff
-●    │                                                                 │ 91900bd
-●    │                                                                 │ cec3e93
-●    │ ▸[ Cancel ]   [ Undo locally ]   [ Re-push old tip ]            │ 0a91ece
-●    ╰─────────────────────────────────────────────────────────────────╯ 3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
+ ◆ api  ~/code/api · main                                       144 rows so far
+  ◆ ▏  [◆ main ⇄ origin] to push                                   now  0000000
+  ●    Commit 200                                                  7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    ╭ Undo after a push ────────────────────────────────────────────────────╮
+  ●    │ commit "to push" is on origin/main                                    │
+  ●    │ undo works on your local branch only                                  │
+  ●    │ Re-push old tip rewrites origin/main, which others may have already   │
+  ●    │ pulled                                                                │
+  ●    │                                                                       │
+  ●    │                                                                       │
+  ●    │                                                                       │
+  ●    │ ▸[ Cancel ]   [ Undo locally ]   [ Re-push old tip ]                  │
+  ●    ╰───────────────────────────────────────────────────────────────────────╯
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
  ←/→ move  ⏎ choose  esc cancel
 
 == `[ Re-push old tip ]`: its own second box, before the remote moves ==
 
- graft /code/api  152 rows so far
-◆ ▏  [◆ main ⇄ origin] to push                                      now  0000000
-●    Commit 200                                                     7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    ╭ Re-push old tip d5ae5fd → origin/main? ─────────────────────────╮ 325da3f
-●    │ origin/main 0000000 → d5ae5fd · refused if origin moved since   │ 0722297
-●    │ your fetch (lease)                                              │ b6a4a47
-●    │ rewrites history for everyone who has 0000000                   │ 60af0eb
-●    │ your local branch keeps every commit it has                     │ aceb8c5
-●    │                                                                 │ 11d68ff
-●    │ git push --progress --force-with-lease=refs/heads/main:0000000… │ 91900bd
-●    │                                                                 │ cec3e93
-●    │ ▸[ Cancel ]   [ Re-push ]                                       │ 0a91ece
-●    ╰─────────────────────────────────────────────────────────────────╯ 3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
+ ◆ api  ~/code/api · main                                       144 rows so far
+  ◆ ▏  [◆ main ⇄ origin] to push                                   now  0000000
+  ●    Commit 200                                                  7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    ╭ Re-push old tip d5ae5fd → origin/main? ───────────────────────────────╮
+  ●    │ origin/main 0000000 → d5ae5fd · refused if origin moved since your    │
+  ●    │ fetch (lease)                                                         │
+  ●    │ rewrites history for everyone who has 0000000                         │
+  ●    │ your local branch keeps every commit it has                           │
+  ●    │                                                                       │
+  ●    │ git push --progress --force-with-lease=refs/heads/main:0000000000000… │
+  ●    │                                                                       │
+  ●    │ ▸[ Cancel ]   [ Re-push ]                                             │
+  ●    ╰───────────────────────────────────────────────────────────────────────╯
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
  ←/→ move  ⏎ choose  esc cancel
 

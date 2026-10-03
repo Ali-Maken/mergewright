@@ -446,9 +446,22 @@ fn the_stop_line_words_a_clash_at_80_and_120() {
         "a clash's reason outranks the tail keys"
     );
 
-    for (columns, rows) in [(80u16, 24u16), (120, 40)] {
+    // At 80 the bar's ` · ` joins and its right margin (ADR-0058 §4,
+    // m8-polish-and-ship/06) cost the cells the fullest wording needed
+    // beside the floor, so the ladder's second rung stands there.
+    for (columns, rows, lead) in [
+        (
+            80u16,
+            24u16,
+            " stash@{0} clashed \u{b7} 1 conflicted \u{b7} ",
+        ),
+        (
+            120,
+            40,
+            " stash@{0} clashed \u{b7} 1 file conflicted \u{b7} ",
+        ),
+    ] {
         let (drawn, last) = bottom_row(&state, columns, rows);
-        let lead = " stash@{0} clashed \u{b7} 1 file conflicted \u{b7} ";
         assert!(
             drawn.iter().any(|row| row.starts_with(lead)),
             "{columns}x{rows}:\n{}",

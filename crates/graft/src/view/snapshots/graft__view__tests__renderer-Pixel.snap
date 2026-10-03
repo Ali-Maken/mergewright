@@ -2,8 +2,8 @@
 source: crates/graft/src/view/tests.rs
 expression: screen
 ---
-" graft 5 commits  gfx ok                                    "
-"     Commit 5␛[31m                              63y  0505050"
-"  ▏  Commit 4␛[31m                              63y  0404040"
-"     Commit 3␛[31m                              63y  0303030"
-" ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  / "
+"                                          5 commits  gfx ok "
+"       Commit 5␛[31m                           63y  0505050 "
+"    ▏  Commit 4␛[31m                           63y  0404040 "
+"       Commit 3␛[31m                           63y  0303030 "
+" ⏎ open · b branch · r rebase · t tag · c commit · . more   "

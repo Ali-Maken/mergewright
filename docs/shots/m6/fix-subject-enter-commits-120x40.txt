@@ -57,9 +57,10 @@ COMMIT ── ⎇ main ── 1 file staged
 ⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
 
 == frame 2: after `⏎` ==
- graft /code/api  2 commits
-◆ ▏  [◆ main] fix: x                                                                                     GT now  0000000
-◇    add sample                                                                                          GT now  0000000
+ ◆ api  ~/code/api · main                                                                                     2 commits
+
+  ◆ ▏  [◆ main] fix: x                                                                                  GT now  0000000
+  ◇    add sample                                                                                       GT now  0000000
 
 
 
@@ -94,6 +95,5 @@ COMMIT ── ⎇ main ── 1 file staged
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  commit "fix: x" ✓

@@ -49,13 +49,14 @@
 # one state photographed at three sizes is a picture of at most one of
 # them.
 
- graft /code/api  5 commits  date order, sorting…                                            COMMIT 29a1432
-◌    Uncommitted changes (1 unstaged)                                                        Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 ·…
-◆ ▏  [◆ main] add second                                                        8m   29a1432 parents 3d9496e · diff vs first parent
-●    add first                                                                  9m   3d9496e Contained in: checking…
-●    Correct the note                                                           1y   a82960b
-●    Add the first note                                                         1y   fadcfb3 reading…
-◇    Add a readme                                                               1y   64ded19
+ ◆ api  ~/code/api · main                                   5 commits  date order, sorting…  COMMIT 29a1432
+                                                                                             Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 ·…
+  ◌    Uncommitted changes (1 unstaged)                                                      parents 3d9496e · diff vs first parent
+  ◆ ▏  [◆ main] add second                                                     8m   29a1432  Contained in: checking…
+  ●    add first                                                               9m   3d9496e
+  ●    Correct the note                                                        1y   a82960b  reading…
+  ●    Add the first note                                                      1y   fadcfb3
+  ◇    Add a readme                                                            1y   64ded19
 
 
 
@@ -94,6 +95,5 @@
 
 
 
-
-
- c commit  P push  <> resize  . more  p  f  b  t  u  /  q  F2  F3  x  +  j/k  1  F  H  y
+────────────────────────────────────────────────────────────────────────────────────────────
+ c commit · P push · <> resize · p pull · f fetch · b branch · t tag · u undo · . more

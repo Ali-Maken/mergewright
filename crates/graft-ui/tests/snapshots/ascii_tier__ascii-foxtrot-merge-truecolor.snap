@@ -4,11 +4,11 @@ expression: text
 ---
 shape: foxtrot-merge, truecolor, 80x24, cursor on row 2
 
- graft ~/code/api  4 commits
-*-\    Merge branch 'main' into feature                             4y   84cc93e
-* | |  feature: work                                                4y   8fa6bfc
-| *    Advance main                                                 4y   18ca7c9
-*-/    Add the base                                                 4y   68d5d19
+ ◆ api  ~/code/api · main                                             4 commits
+  *-\    Merge branch 'main' into feature                          4y   84cc93e
+  * | |  feature: work                                             4y   8fa6bfc
+  | *    Advance main                                              4y   18ca7c9
+  *-/    Add the base                                              4y   68d5d19
 
 
 
@@ -27,4 +27,4 @@ shape: foxtrot-merge, truecolor, 80x24, cursor on row 2
 
 
 
- ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  q  F2  F3  x  +
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · . more

@@ -14,14 +14,15 @@
 #  - The header reads `diff vs HEAD <main's sha7>` (main's tip,
 #    `commit over the notes`), not the stash's id.
 
- graft /code/api  6 commits
-◌   ▏  Uncommitted changes (1 unmerged)
-◆      [◆ main] commit over the notes                                                                    GF 3m   f3742ab
-│ ■    [stash@{0}] WIP on main: cfa370c add the notes                                                    GF 4m   fa9e094
-●─╯    add the notes                                                                                     GF 5m   cfa370c
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     6 commits
+
+  ◌   ▏  Uncommitted changes (1 unmerged)
+  ◆      [◆ main] commit over the notes                                                                 GF 3m   f3742ab
+  │ ■    [stash@{0}] WIP on main: cfa370c add the notes                                                 GF 4m   fa9e094
+  ●─╯    add the notes                                                                                  GF 5m   cfa370c
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -35,9 +36,8 @@
 
 
 
-
-
- stash@{0} clashed · 1 file conflicted · ⏎ resolve  M mergetool  e edit  <> resize  space resolved  c commit  . more  ⇥
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ stash@{0} clashed · 1 file conflicted · ⏎ resolve · M mergetool · e edit · <> resize · space resolved · . more
 UNCOMMITTED
 diff vs HEAD f3742ab
 CONFLICTS (1)

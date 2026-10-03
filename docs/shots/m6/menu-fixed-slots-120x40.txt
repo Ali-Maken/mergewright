@@ -13,8 +13,9 @@
 
 == 1. `.` on fix's row ==
 
- graft /code/api  6 commits
-  ● ▏  [fix] fix the bug                                                                                 GF 3m   fbb2394
+ ◆ api  ~/code/api · main                                                                                     6 commits
+
+    ● ▏  [fix] fix the bug                                                                              GF 3m   fbb2394
  Checkout fix
  Cherry-pick fbb2394 (o)
  Copy SHA (y)
@@ -50,15 +51,15 @@
 
 
 
-
-
- m merge  r rebase  ⏎ open  . more  o  b  t  P  c  p  f  u  S  /  R  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · c commit · p pull · f fetch · u undo · . more
 
 == 2. `.` on main's tip (checked out, no other branch) ==
 
- graft /code/api  6 commits
-  ●    [fix] fix the bug                                                                                 GF 3m   fbb2394
-◆ │ ▏  [◆ main] main moves on                                                                            GF 4m   37926a7
+ ◆ api  ~/code/api · main                                                                                     6 commits
+
+    ●    [fix] fix the bug                                                                              GF 3m   fbb2394
+  ◆ │ ▏  [◆ main] main moves on                                                                         GF 4m   37926a7
  Checkout — already on main
  Cherry-pick (o) — already on main
  Copy SHA (y)
@@ -93,6 +94,5 @@
 
 
 
-
-
- ⏎ open  c commit  P push  p pull  . more  f  a  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · . more

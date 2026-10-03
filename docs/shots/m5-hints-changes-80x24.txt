@@ -72,4 +72,4 @@ reading…
 
 
 
- space stage  d discard  c commit  ⌃A all  e edit  ⇥ diff  . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · . more

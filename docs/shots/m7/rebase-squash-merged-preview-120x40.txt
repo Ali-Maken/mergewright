@@ -1,15 +1,14 @@
- graft /code/api  7 commits
-  ●      b1                                                                                              GF 2d   f41bc43
-  │      after rebase
-  │ ○    [feature-b] b1                                                                                  GF —    —
-◆─│─╯ ▏  [main] [◆ feature-a] Add OAuth (#42)                                                            GF 2d   51f3dc8
-│ ●      a3                                                                                              GF 2d   1dc69fb
-│ ●      a2                                                                                              GF 2d   5c80d6b
-│ ●      a1                                                                                              GF 2d   53e9958
-● │      m2                                                                                              GF 2d   808546f
-◇─╯      m1                                                                                              GF 2d   256d42c
+ ◆ api  ~/code/api · feature-a                                                                                7 commits
 
-
+    ●      b1                                                                                           GF 2d   f41bc43
+    │      after rebase
+    │ ○    [feature-b] b1                                                                               GF —    —
+  ◆─│─╯ ▏  [main] [◆ feature-a] Add OAuth (#42)                                                         GF 2d   51f3dc8
+  │ ●      a3                                                                                           GF 2d   1dc69fb
+  │ ●      a2                                                                                           GF 2d   5c80d6b
+  │ ●      a1                                                                                           GF 2d   53e9958
+  ● │      m2                                                                                           GF 2d   808546f
+  ◇─╯      m1                                                                                           GF 2d   256d42c
 
 
 
@@ -37,4 +36,5 @@
 │ git rebase -i --no-update-refs --no-autostash --empty=drop main feature-b                                            │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
 ╰ y confirm  r rebase  R keep  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

@@ -49,13 +49,14 @@
 # one state photographed at three sizes is a picture of at most one of
 # them.
 
- graft /code/api  5 commits
-◌ ▏  Uncommitted changes (1 unstaged)
-◆    [◆ main] add second                                                                                 GF 8m   29a1432
-●    add first                                                                                           GF 9m   3d9496e
-●    Correct the note                                                                                    GF 1y   a82960b
-●    Add the first note                                                                                  GF 1y   fadcfb3
-◇    Add a readme                                                                                        GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     5 commits
+
+  ◌ ▏  Uncommitted changes (1 unstaged)
+  ◆    [◆ main] add second                                                                              GF 8m   29a1432
+  ●    add first                                                                                        GF 9m   3d9496e
+  ●    Correct the note                                                                                 GF 1y   a82960b
+  ●    Add the first note                                                                               GF 1y   fadcfb3
+  ◇    Add a readme                                                                                     GF 1y   64ded19
 
 
 
@@ -70,9 +71,8 @@
 
 
 
-
-
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ diff  . more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ diff · . more
 UNCOMMITTED · 1 unstaged
 diff vs HEAD 29a1432
 UNSTAGED (1)                  reading…

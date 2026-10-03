@@ -1,16 +1,15 @@
- graft /code/api  5 commits
-  ●        b1                                                                                                                                                               GF 2d   f81a2f8
-  │ ●      feature a: part 3                                                                                                                                                GF 2d   89f73ff
-  │ ●      feature a: part 2                                                                                                                                                GF 2d   c59a559
-  ●─╯   ▏  feature a: part 1                                                                                                                                                GF 2d   e662b82
-  │        the result
-  │ ○      [feature-b] b1                                                                                                                                                   GF —    —
-  │ │ ○    [◆ feature-a] feature a: part 3                                                                                                                                  GF —    —
-  │ │ ○    feature a: part 2                                                                                                                                                GF —    —
-  │ ○┈╯    feature a: part 1                                                                                                                                                GF —    —
-◇─┴─╯      [main] m1                                                                                                                                                        GF 2d   fb4d697
+ ◆ api  ~/code/api · feature-a                                                                                                                                                   5 commits
 
-
+    ●        b1                                                                                                                                                            GF 2d   f81a2f8
+    │ ●      feature a: part 3                                                                                                                                             GF 2d   89f73ff
+    │ ●      feature a: part 2                                                                                                                                             GF 2d   c59a559
+    ●─╯   ▏  feature a: part 1                                                                                                                                             GF 2d   e662b82
+    │        the result
+    │ ○      [feature-b] b1                                                                                                                                                GF —    —
+    │ │ ○    [◆ feature-a] feature a: part 3                                                                                                                               GF —    —
+    │ │ ○    feature a: part 2                                                                                                                                             GF —    —
+    │ ○┈╯    feature a: part 1                                                                                                                                             GF —    —
+  ◇─┴─╯      [main] m1                                                                                                                                                     GF 2d   fb4d697
 
 
 
@@ -41,4 +40,5 @@
 │ git rebase -i --no-update-refs --no-autostash --empty=drop fb4d6972c6d67d4a304dc423eb2dd472bf384ae8                                                                                     │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                                               │
 ╰ y put it in  ←→ choose  ⏎ act  esc cancel ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

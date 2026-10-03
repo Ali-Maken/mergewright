@@ -831,19 +831,18 @@ what right looks like: (ticket 11) Preview opened by `m`: the box's bottom borde
 #  - The buttons row shows `▸[ Cancel ]`: the cursor still rests on Cancel.
 #
 
- graft /code/api  8 commits
-    │    after merge
-  ◎┈╮    [◆ feature] Merge branch 'main' into feature                                                    MA —    —
-  ● │    finish the feature                                                                              GF now  8d6cd28
-  ● │    start the feature                                                                               GF 2m   52f3b96
-●─│─╯ ▏  [main] main moves again                                                                         GF 3m   45fa51d
-● │      main moves on                                                                                   GF 4m   37926a7
-●─╯      add the base                                                                                    GF 5m   ed332bc
-●        Correct the note                                                                                GF 1y   a82960b
-●        Add the first note                                                                              GF 1y   fadcfb3
-◇        Add a readme                                                                                    GF 1y   64ded19
+ ◆ api  ~/code/api · feature                                                                                  8 commits
 
-
+      │    after merge
+    ◎┈╮    [◆ feature] Merge branch 'main' into feature                                                 MA —    —
+    ● │    finish the feature                                                                           GF now  8d6cd28
+    ● │    start the feature                                                                            GF 2m   52f3b96
+  ●─│─╯ ▏  [main] main moves again                                                                      GF 3m   45fa51d
+  ● │      main moves on                                                                                GF 4m   37926a7
+  ●─╯      add the base                                                                                 GF 5m   ed332bc
+  ●        Correct the note                                                                             GF 1y   a82960b
+  ●        Add the first note                                                                           GF 1y   fadcfb3
+  ◇        Add a readme                                                                                 GF 1y   64ded19
 
 
 
@@ -870,6 +869,7 @@ what right looks like: (ticket 11) Preview opened by `m`: the box's bottom borde
 │ git merge --no-edit --ff -m 'Merge branch '\''main'\'' into feature' main                                            │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
 ╰ y confirm  m merge  ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
 ================================================================================
@@ -889,14 +889,13 @@ what right looks like: (ticket 11) Preview opened by `b`: the box's bottom borde
 #    (no `b` in it: pressing `b` again does not confirm).
 #  - The buttons row shows `▸[ Cancel ]`.
 
- graft /code/api  5 commits
-  ● ▏  [stash@{0}] On main: wip                                                                          GF 2m   92f36bb
-◆─╯    [◆ main] [rescued] add sample                                                                     GF 2m   da91a2e
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     5 commits
 
-
+    ● ▏  [stash@{0}] On main: wip                                                                       GF 2m   92f36bb
+  ◆─╯    [◆ main] [rescued] add sample                                                                  GF 2m   da91a2e
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -928,6 +927,7 @@ what right looks like: (ticket 11) Preview opened by `b`: the box's bottom borde
 │ git stash branch rescued 'stash@{0}'                                                                                 │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
 ╰ y confirm  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
 ================================================================================
@@ -935,14 +935,15 @@ docs/shots/m6/fix-landing-after-esc-120x40.txt
 what right looks like: (ticket 12) After `Esc` from the resolver a stop lands in: the banner is shown and the last row lists `⇥ banner` first. Focus by reverse video is colour, unverified.
 ================================================================================
 
- graft /code/api    MERGING
-◌      Uncommitted changes (2 unmerged)
-◆      [◆ main] main's take                                                                              GF 2h   ddeed32
-│ ● ▏  [feature] the feature's take                                                                      GF 2h   f43f326
-●─╯    the shared files                                                                                  GF 2h   b35b2f1
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                       MERGING
+
+  ◌      Uncommitted changes (2 unmerged)
+  ◆      [◆ main] main's take                                                                           GF 2h   ddeed32
+  │ ● ▏  [feature] the feature's take                                                                   GF 2h   f43f326
+  ●─╯    the shared files                                                                               GF 2h   b35b2f1
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -972,23 +973,23 @@ what right looks like: (ticket 12) After `Esc` from the resolver a stop lands in
 
 
 
-
-
- ⇥ banner  c finish  m merge  . more  r  ⏎  b  t  P  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⇥ banner · c finish · m merge · r rebase · ⏎ open · b branch · t tag · P push · p pull · f fetch · u undo · . more
 
 ================================================================================
 docs/shots/m6/fix-landing-after-esc-187x50.txt
 what right looks like: (ticket 12) The same at 187x50: the last row lists `⇥ banner` first. Focus by reverse video is colour, unverified.
 ================================================================================
 
- graft /code/api    MERGING
-◌      Uncommitted changes (2 unmerged)
-◆      [◆ main] main's take                                                                                                                                                 GF 2h   ddeed32
-│ ● ▏  [feature] the feature's take                                                                                                                                         GF 2h   f43f326
-●─╯    the shared files                                                                                                                                                     GF 2h   b35b2f1
-●      Correct the note                                                                                                                                                     GF 1y   a82960b
-●      Add the first note                                                                                                                                                   GF 1y   fadcfb3
-◇      Add a readme                                                                                                                                                         GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                                                                                          MERGING
+
+  ◌      Uncommitted changes (2 unmerged)
+  ◆      [◆ main] main's take                                                                                                                                              GF 2h   ddeed32
+  │ ● ▏  [feature] the feature's take                                                                                                                                      GF 2h   f43f326
+  ●─╯    the shared files                                                                                                                                                  GF 2h   b35b2f1
+  ●      Correct the note                                                                                                                                                  GF 1y   a82960b
+  ●      Add the first note                                                                                                                                                GF 1y   fadcfb3
+  ◇      Add a readme                                                                                                                                                      GF 1y   64ded19
 
 
 
@@ -1028,20 +1029,20 @@ what right looks like: (ticket 12) The same at 187x50: the last row lists `⇥ b
 
 
 
-
-
- ⇥ banner  c finish  m merge  r rebase  ⏎ open  b branch  t tag  P push  p pull  f fetch  u undo  S stash  / search  q quit  F2 stat  . more  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⇥ banner · c finish · m merge · r rebase · ⏎ open · b branch · t tag · P push · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · F3 rend · x compare · + lane · . more
 
 ================================================================================
 docs/shots/m6/fix-landing-b-launch-120x40.txt
 what right looks like: Re-taken 2026-10-02 (m8-13b: `q quit` joins the banner's bar, last; it gives way first to the stop's words). (ticket 12; recaptured by 24 and 61; `c finish` on a merge since ticket 70) Launch into a merge begun in the shell, 13 files, the pane below: the footer reads `merge in progress · from the shell · 13 conflicted · ⏎ resolve  c finish  a abort` — the origin short before it goes, the count short (ticket 61) — and the pane shows `CONFLICTS` with the cursor on its first file. Colour unverified.
 ================================================================================
 
- graft /code/api    MERGING
-◌   ▏  Uncommitted changes (13 unmerged)
-◆      [◆ main] Change every file on main                                                                GF 2h   274c7d4
-│ ●    [feature] Change every file on feature                                                            GF 2h   9d44f42
-◇─╯    Add the files both sides will change                                                              GF 1y   9571fc9
+ ◆ api  ~/code/api · main                                                                                       MERGING
+
+  ◌   ▏  Uncommitted changes (13 unmerged)
+  ◆      [◆ main] Change every file on main                                                             GF 2h   274c7d4
+  │ ●    [feature] Change every file on feature                                                         GF 2h   9d44f42
+  ◇─╯    Add the files both sides will change                                                           GF 1y   9571fc9
 
 
 
@@ -1058,9 +1059,8 @@ what right looks like: Re-taken 2026-10-02 (m8-13b: `q quit` joins the banner's 
 
 
 
-
-
- merge in progress · from the shell · 13 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph  q quit
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ merge in progress · from the shell · 13 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
 UNCOMMITTED
 diff vs HEAD 274c7d4
 CONFLICTS (13)                ▎
@@ -1083,12 +1083,12 @@ docs/shots/m6/fix-landing-b-launch-187x50.txt
 what right looks like: (ticket 12; recaptured by 24 and 61; `c finish` on a merge since ticket 70) The same launch at 187x50, the pane beside the graph: the last row reads `merge in progress · 13 conflicted · ⏎ resolve  c finish` — `from the shell` needs 50 cells and the footer leaves 44 beside the bar, so the origin is dropped (accepted, ticket 61 Decisions); the count whole, never cut mid-number. The pane shows `CONFLICTS` with the cursor on its first file. Colour unverified.
 ================================================================================
 
- graft /code/api    MERGING                                                                                  UNCOMMITTED
-◌   ▏  Uncommitted changes (13 unmerged)                                                                     diff vs HEAD 274c7d4
-◆      [◆ main] Change every file on main                                                    GF 2h   274c7d4
-│ ●    [feature] Change every file on feature                                                GF 2h   9d44f42
-◇─╯    Add the files both sides will change                                                  GF 1y   9571fc9
-                                                                                                             CONFLICTS (13)
+ ◆ api  ~/code/api · main                                                                           MERGING  UNCOMMITTED
+                                                                                                             diff vs HEAD 274c7d4
+  ◌   ▏  Uncommitted changes (13 unmerged)
+  ◆      [◆ main] Change every file on main                                                 GF 2h   274c7d4
+  │ ●    [feature] Change every file on feature                                             GF 2h   9d44f42
+  ◇─╯    Add the files both sides will change                                               GF 1y   9571fc9  CONFLICTS (13)
                                                                                                                added-by-them.txt                                              added by them
                                                                                                                added-by-us.txt                                                  added by us
                                                                                                                both-added.txt                                                    both added
@@ -1131,18 +1131,19 @@ what right looks like: (ticket 12; recaptured by 24 and 61; `c finish` on a merg
 
 
 
-
- merge in progress · 13 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
+────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ merge in progress · 13 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph  q quit
 
 ================================================================================
 docs/shots/m6/fix-landing-after-continue-rebase-120x40.txt
 what right looks like: (ticket 12) After `c` on a rebase: the cursor row is the rebased branch's tip (its subject is the fixture's last replayed commit), and the last row ends `✓`. Ages read `futu…` (fixed capture clock; ids zeroed) — an artefact. Colour unverified.
 ================================================================================
 
- graft /code/api  3 commits
-  ◆ ▏  [◆ feature] Change every file on feature                                                          GF futu…0000000
-●─╯    [main] Change every file on main                                                                  GF 2h   274c7d4
-◇      Add the files both sides will change                                                              GF 1y   9571fc9
+ ◆ api  ~/code/api · feature                                                                                  3 commits
+
+    ◆ ▏  [◆ feature] Change every file on feature                                                       GF futu…0000000
+  ●─╯    [main] Change every file on main                                                               GF 2h   274c7d4
+  ◇      Add the files both sides will change                                                           GF 1y   9571fc9
 
 
 
@@ -1160,8 +1161,7 @@ what right looks like: (ticket 12) After `c` on a rebase: the cursor row is the 
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  rebase feature onto main ✓
 COMMIT 0000000 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:00 +0000 · 2h · parents 274c7d4 · diff vs firs…
 Change every file on feature
@@ -1185,11 +1185,11 @@ docs/shots/m6/fix-landing-after-continue-rebase-187x50.txt
 what right looks like: (ticket 12) The same at 187x50: cursor on the rebased branch's tip, last row ends `✓`; `futu…` ages are a capture artefact. Colour unverified.
 ================================================================================
 
- graft /code/api  3 commits                                                                                  COMMIT 0000000
-  ◆ ▏  [◆ feature] Change every file on feature                                              GF futu…0000000 Graft Fixture <fixture@example.invalid> · 2021-01-01 00:00 +0000 · 2h
-●─╯    [main] Change every file on main                                                      GF 2h   274c7d4 parents 274c7d4 · diff vs first parent
-◇      Add the files both sides will change                                                  GF 1y   9571fc9 Contained in: feature
-
+ ◆ api  ~/code/api · feature                                                                      3 commits  COMMIT 0000000
+                                                                                                             Graft Fixture <fixture@example.invalid> · 2021-01-01 00:00 +0000 · 2h
+    ◆ ▏  [◆ feature] Change every file on feature                                           GF futu…0000000  parents 274c7d4 · diff vs first parent
+  ●─╯    [main] Change every file on main                                                   GF 2h   274c7d4  Contained in: feature
+  ◇      Add the files both sides will change                                               GF 1y   9571fc9
                                                                                                              A added-by-them.txt                                                      +1 −0
                                                                                                              M both-added.txt                                                         +4 −0
                                                                                                              M both.txt                                                               +4 −0
@@ -1233,7 +1233,7 @@ what right looks like: (ticket 12) The same at 187x50: cursor on the rebased bra
 
 
 
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────
  rebase feature onto main ✓
 
 ================================================================================
@@ -2187,14 +2187,15 @@ docs/shots/m6/fix-finish-shell-merge-120x40.txt
 what right looks like: (ticket 20) The frame after `⏎` finishing a merge begun in the shell: the cursor row is the merge commit, the graph's footer row ends `merged feature into main ✓`, and the header doesn't read `MERGING`. Merge id and author date zeroed. Colour unverified.
 ================================================================================
 
- graft /code/api  7 commits
-◆─╮ ▏  [◆ main] Merge branch 'feature'                                                                   GF futu…0000000
-● │    main's take                                                                                       GF 2h   ddeed32
-│ ●    [feature] the feature's take                                                                      GF 2h   f43f326
-●─╯    the shared files                                                                                  GF 2h   b35b2f1
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     7 commits
+
+  ◆─╮ ▏  [◆ main] Merge branch 'feature'                                                                GF futu…0000000
+  ● │    main's take                                                                                    GF 2h   ddeed32
+  │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
+  ●─╯    the shared files                                                                               GF 2h   b35b2f1
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -2208,8 +2209,7 @@ what right looks like: (ticket 20) The frame after `⏎` finishing a merge begun
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  merged feature into main ✓
 COMMIT 0000000 · Graft Fixture <fixture@example.invalid> · 0000-00-00 00:00 +0000 · future · parents ddeed32, f43f326 ·…
 Merge branch 'feature' · evil merge: clean (2 files hand-resolved)
@@ -3010,194 +3010,4 @@ COMMIT ── ⎇ main ── 2 files staged
   merge begun in the shell — esc, ⇥ ⇥ banner, then c finishes it
   [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
 ⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
-
-================================================================================
-docs/shots/m6/fix-a-mid-merge-answers-in-words-187x50.txt
-what right looks like: (ticket 48; `a` since ticket 52, whose `c` opens the summary; renamed from `fix-c-…` by 63) A merge begun in the shell, resolved; the changes pane focused, `a` pressed: no commit editor is drawn; the header reads `MERGING`; the footer holds the reason `merge begun in the shell` and the keys `⇥ banner, then c finishes it`, whole. Colour unverified.
-================================================================================
-
-# TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_fix_a_mid_merge_answers_in_words in
-# crates/graft/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
-# begun in the shell, resolved; the changes pane focused, `a` pressed
-# (m6-conflicts/48; `c` there opens the finish summary since 52).
-#
-# Judge by eye:
-# - No commit editor is drawn.
-# - The header reads `MERGING`.
-# - The footer holds the reason `merge begun in the shell` and the keys
-#   `⇥ banner, then c finishes it`, the keys whole at 187 columns.
-# - Colour is unverified (CLAUDE.md rule 5).
-#
-=== 187x50 ===
- graft /code/api    MERGING                                                                                  UNCOMMITTED · 2 staged
-◌   ▏  Uncommitted changes (2 staged)                                                                        diff vs HEAD ddeed32
-◆      [◆ main] main's take                                                                  GF 2h   ddeed32
-│ ●    [feature] the feature's take                                                          GF 2h   f43f326
-●─╯    the shared files                                                                      GF 2h   b35b2f1
-●      Correct the note                                                                      GF 1y   a82960b STAGED (2)
-●      Add the first note                                                                    GF 1y   fadcfb3   M notes.md                                                             +1 −1
-◇      Add a readme                                                                          GF 1y   64ded19   M shared.rs                                                            +1 −1
-                                                                                                             ▎
-                                                                                                               1     - our plan
-                                                                                                                   1 + the agreed plan
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- merge begun in the shell · ⇥ ⇥ banner, then c finishes it
-
-================================================================================
-docs/shots/m6/fix-a-mid-merge-answers-in-words-80x24.txt
-what right looks like: (ticket 48) The same state at 80x24: the bottom row reads `merge begun in the shell · ⇥ banner, then c finishes it`, the keys whole. Colour unverified.
-================================================================================
-
-# TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_fix_a_mid_merge_answers_in_words in
-# crates/graft/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
-# begun in the shell, resolved; the changes pane focused, `a` pressed
-# (m6-conflicts/48; `c` there opens the finish summary since 52).
-#
-# Judge by eye:
-# - No commit editor is drawn.
-# - The header reads `MERGING`.
-# - The footer holds the reason `merge begun in the shell` and the keys
-#   `⇥ banner, then c finishes it`, the keys whole at 80 columns.
-# - Colour is unverified (CLAUDE.md rule 5).
-#
-=== 80x24 ===
-MERGING
-Graph  [Detail]
-UNCOMMITTED · 2 staged
-diff vs HEAD ddeed32
-
-STAGED (2)
-  M notes.md                                                               +1 −1
-  M shared.rs                                                              +1 −1
-▎
-  1     - our plan
-      1 + the agreed plan
-
-
-
-
-
-
-
-
-
-
-
-
- merge begun in the shell · ⇥ ⇥ banner, then c finishes it
-
-================================================================================
-docs/shots/m6/fix-undo-shell-merge-120x40.txt
-what right looks like: (ticket 41) After `u` on a shell-begun finish: the header reads `MERGING`; the footer row reads exactly `undo: finish merge of feature ✓ · c finishes the merge`, with one `✓`; no commit editor is drawn. Colour and focus highlight unverified.
-================================================================================
-
- graft /code/api    MERGING
-◌      Uncommitted changes (2 staged)
-◆   ▏  [◆ main] main's take                                                                              GF 2h   ddeed32
-│ ●    [feature] the feature's take                                                                      GF 2h   f43f326
-●─╯    the shared files                                                                                  GF 2h   b35b2f1
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- undo: finish merge of feature ✓ · c finishes the merge
-COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
-main's take
-M notes.md              +1 −1 ▎
-M shared.rs             +1 −1   1     - the plan
-                                    1 + our plan
-
-
-
-
-
-
-
-
-
-
-
-
-================================================================================
-docs/shots/m6/fix-undo-shell-merge-80x24.txt
-what right looks like: (ticket 41) The same state at 80x24: the same footer words, whole (55 columns), with no `…`. Colour unverified.
-================================================================================
-
-[Graph]  Detail
- graft /code/api    MERGING
-◌      Uncommitted changes (2 staged)
-◆   ▏  [◆ main] main's take                                         2h   ddeed32
-│ ●    [feature] the feature's take                                 2h   f43f326
-●─╯    the shared files                                             2h   b35b2f1
-●      Correct the note                                             1y   a82960b
-●      Add the first note                                           1y   fadcfb3
-◇      Add a readme                                                 1y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- undo: finish merge of feature ✓ · c finishes the merge
 

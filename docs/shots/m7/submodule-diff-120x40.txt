@@ -1,10 +1,11 @@
- graft /code/api  5 commits
-◌ ▏  Uncommitted changes (1 unstaged)
-◆    [◆ main] pin the side commit                                                                        GT 24h  7c7e188
-●    add parser                                                                                          GT 24h  f48cdbe
-●    Correct the note                                                                                    GF 2d   a82960b
-●    Add the first note                                                                                  GF 2d   fadcfb3
-◇    Add a readme                                                                                        GF 2d   64ded19
+ ◆ api  ~/code/api · main                                                                                     5 commits
+
+  ◌ ▏  Uncommitted changes (1 unstaged)
+  ◆    [◆ main] pin the side commit                                                                     GT 24h  7c7e188
+  ●    add parser                                                                                       GT 24h  f48cdbe
+  ●    Correct the note                                                                                 GF 2d   a82960b
+  ●    Add the first note                                                                               GF 2d   fadcfb3
+  ◇    Add a readme                                                                                     GF 2d   64ded19
 
 
 
@@ -19,9 +20,8 @@
 
 
 
-
-
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ diff  . more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ diff · . more
 UNCOMMITTED · 1 unstaged
 diff vs HEAD 7c7e188
 UNSTAGED (1)                  libs/parser · submodule · 5bdba05 → efdd295

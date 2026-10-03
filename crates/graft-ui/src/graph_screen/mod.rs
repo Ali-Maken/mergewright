@@ -19,6 +19,7 @@ pub mod badges;
 mod banner;
 pub mod columns;
 mod footer;
+mod header;
 pub mod hints;
 mod layout;
 mod render;
@@ -34,6 +35,7 @@ use graft_term::SanitizedText;
 pub use badges::{Badge, BadgeKind, Icons, Tracking};
 pub use banner::{BannerView, RewriteBannerView, banner_line};
 pub use columns::{absolute_date, initials, relative_date, relative_date_long, short_sha};
+pub use header::{APP_NAME, HeaderView, header_line, tail_room};
 pub use hints::{
     ConfirmYes, Divider, Hint, HintContext, HintState, LiveC, Rung, StopWording, TabWord,
     blame_place_list, every_context, every_hint, fit_status_line, hints_for, hints_text,
@@ -86,15 +88,64 @@ const SUBJECT_GAP: u16 = 1;
 /// width.
 pub const AUTHOR_BREAKPOINT: u16 = 100;
 
-/// Screen rows that are not graph rows: the header above, the key hints
-/// below. A harness banner ([`GraphView::banner`]) adds one row per line.
+/// Screen rows that are not graph rows on a screen under 30 rows: the header
+/// above, the key hints below. A harness banner ([`GraphView::banner`]) adds
+/// one row per line. Taller screens add a blank row and a rule
+/// ([`chrome_rows`]); read that, not this, wherever the height is known.
 pub const CHROME_ROWS: u16 = 2;
+
+/// From this many rows the chrome breathes: a blank row under the header and
+/// a rule above the bar (ADR-0058 §4). Below it the rows go to the list.
+pub const SPACED_FROM_ROWS: u16 = 30;
+
+/// Does a screen `rows` tall draw the blank row and the rule?
+#[must_use]
+pub const fn spaced(rows: u16) -> bool {
+    rows >= SPACED_FROM_ROWS
+}
+
+/// Screen rows that are not graph rows on a screen `rows` tall: the header
+/// and the bar, plus the blank row and the rule when [`spaced`].
+#[must_use]
+pub const fn chrome_rows(rows: u16) -> u16 {
+    if spaced(rows) {
+        CHROME_ROWS + 2
+    } else {
+        CHROME_ROWS
+    }
+}
+
+/// Cells left of every list row: the cursor glyph's slot and a gap
+/// (ADR-0058 §4). The glyph itself is drawn by the cursor-row ticket.
+pub const GUTTER: u16 = 2;
+
+/// Cells right of every row: one of margin.
+pub const RIGHT_MARGIN: u16 = 1;
+
+/// Where the header says the screen is: the repository, its path and the
+/// branch `HEAD` is on. Sanitised by the caller.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Location {
+    /// The repository's name: its folder.
+    pub repo: SanitizedText,
+    /// Its path, `~`-abbreviated.
+    pub path: SanitizedText,
+    /// The branch `HEAD` is on, or `detached <sha7>`.
+    pub branch: SanitizedText,
+    /// The practice repository (ADR-0056): `◇` for `◆`.
+    pub practice: bool,
+}
 
 /// Everything the graph screen draws.
 #[derive(Clone, Debug)]
 pub struct GraphView<'a> {
-    /// The repository's path, once it is open.
-    pub location: Option<SanitizedText>,
+    /// Where the screen is, once the repository is open.
+    pub location: Option<Location>,
+    /// The terminal is tall enough for the blank row and the rule
+    /// ([`spaced`] of the terminal's rows, which `graft`'s geometry mirrors
+    /// read too — not of this widget's area, which a tab strip or a pane
+    /// below can shorten).
+    pub spaced: bool,
     /// Where the history walk is.
     pub walk: WalkView,
     /// Something went wrong and has not been superseded. Takes the footer's

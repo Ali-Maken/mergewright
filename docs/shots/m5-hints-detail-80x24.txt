@@ -72,4 +72,4 @@ reading…
 
 
 
- c commit  P push  p pull  . more  f  b  t  u  /  q  F2  F3  x  +  j/k  1  F  H
+ c commit · P push · p pull · f fetch · b branch · t tag · u undo · . more

@@ -311,10 +311,12 @@ pub(super) fn footer_notice(
     // line and quieter than a failure — nothing is broken, but there is a
     // backup waiting and the user should know before they press `u`
     // (m3-working-tree-undo-and-stash/06).
-    // Picked every draw from the row's width, so a resize re-picks (30d).
-    if let Some(notice) =
-        crate::update::undo::interrupted_notice_in(state, usize::from(columns).saturating_sub(1))
-    {
+    // Picked every draw from the row's width, so a resize re-picks (30d):
+    // the row less its one-cell indent and its right margin (ADR-0058 §4).
+    let cells = usize::from(columns)
+        .saturating_sub(1)
+        .saturating_sub(usize::from(graft_ui::graph_screen::RIGHT_MARGIN));
+    if let Some(notice) = crate::update::undo::interrupted_notice_in(state, cells) {
         return Some(sanitize_line(&notice));
     }
     // Only below the terminal's own tier: `F3` clears the override when it

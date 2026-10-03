@@ -10,34 +10,33 @@
 #    after`, with no staging words: the staging comes back as he left it.
 #    At narrow widths `put back after` may be cut; the file count may not.
 
- graft /code/api  148 rows so far
-       after rebase
-  ○    [◆ main ↑1 ↓1] ours                                                                               GF —    —
-  ●    [origin/main] theirs                                                                              GF 6m   7be74b5
-● │ ▏  ours                                                                                              GF 6m   9d3d925
-●─╯    Commit 200                                                                                        GF 1y   d5ae5fd
-●      Commit 199                                                                                        GF 1y   13e6ab1
-●      Commit 198                                                                                        GF 1y   f5055d9
-●      Commit 197                                                                                        GF 1y   2cce853
-●      Commit 196                                                                                        GF 1y   325da3f
-●      Commit 195                                                                                        GF 1y   0722297
-●      Commit 194                                                                                        GF 1y   b6a4a47
-●      Commit 193                                                                                        GF 1y   60af0eb
-●      Commit 192                                                                                        GF 1y   aceb8c5
-●      Commit 191                                                                                        GF 1y   11d68ff
-●      Commit 190                                                                                        GF 1y   91900bd
-●      Commit 189                                                                                        GF 1y   cec3e93
-●      Commit 188                                                                                        GF 1y   0a91ece
-●      Commit 187                                                                                        GF 1y   3121935
-●      Commit 186                                                                                        GF 1y   fab25df
-●      Commit 185                                                                                        GF 1y   09ae97c
-●      Commit 184                                                                                        GF 1y   49d7783
-●      Commit 183                                                                                        GF 1y   22d55c9
-●      Commit 182                                                                                        GF 1y   d212b3e
-●      Commit 181                                                                                        GF 1y   c8254c5
-●      Commit 180                                                                                        GF 1y   e95ccd4
-●      Commit 179                                                                                        GF 1y   97b58e5
-●      Commit 178                                                                                        GF 1y   1c9b7ed
+ ◆ api  ~/code/api · main                                                                               140 rows so far
+
+         after rebase
+    ○    [◆ main ↑1 ↓1] ours                                                                            GF —    —
+    ●    [origin/main] theirs                                                                           GF 6m   7be74b5
+  ● │ ▏  ours                                                                                           GF 6m   9d3d925
+  ●─╯    Commit 200                                                                                     GF 1y   d5ae5fd
+  ●      Commit 199                                                                                     GF 1y   13e6ab1
+  ●      Commit 198                                                                                     GF 1y   f5055d9
+  ●      Commit 197                                                                                     GF 1y   2cce853
+  ●      Commit 196                                                                                     GF 1y   325da3f
+  ●      Commit 195                                                                                     GF 1y   0722297
+  ●      Commit 194                                                                                     GF 1y   b6a4a47
+  ●      Commit 193                                                                                     GF 1y   60af0eb
+  ●      Commit 192                                                                                     GF 1y   aceb8c5
+  ●      Commit 191                                                                                     GF 1y   11d68ff
+  ●      Commit 190                                                                                     GF 1y   91900bd
+  ●      Commit 189                                                                                     GF 1y   cec3e93
+  ●      Commit 188                                                                                     GF 1y   0a91ece
+  ●      Commit 187                                                                                     GF 1y   3121935
+  ●      Commit 186                                                                                     GF 1y   fab25df
+  ●      Commit 185                                                                                     GF 1y   09ae97c
+  ●      Commit 184                                                                                     GF 1y   49d7783
+  ●      Commit 183                                                                                     GF 1y   22d55c9
+  ●      Commit 182                                                                                     GF 1y   d212b3e
+  ●      Commit 181                                                                                     GF 1y   c8254c5
+  ●      Commit 180                                                                                     GF 1y   e95ccd4
 ╭ Preview: rebase main onto origin/main ───────────────────────────────────────────────────────────────────────────────╮
 │ 1 commit replayed                                                                                                    │
 │ main 9d3d925 → 1 new commit                                                                                          │
@@ -49,4 +48,5 @@
 │ git rebase -i --no-update-refs --no-autostash --empty=drop origin/main                                               │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
 ╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

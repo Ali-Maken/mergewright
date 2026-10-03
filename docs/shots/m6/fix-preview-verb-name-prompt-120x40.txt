@@ -10,14 +10,13 @@
 #    (no `b` in it: pressing `b` again does not confirm).
 #  - The buttons row shows `▸[ Cancel ]`.
 
- graft /code/api  5 commits
-  ● ▏  [stash@{0}] On main: wip                                                                          GF 2m   92f36bb
-◆─╯    [◆ main] [rescued] add sample                                                                     GF 2m   da91a2e
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     5 commits
 
-
+    ● ▏  [stash@{0}] On main: wip                                                                       GF 2m   92f36bb
+  ◆─╯    [◆ main] [rescued] add sample                                                                  GF 2m   da91a2e
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -49,4 +48,5 @@
 │ git stash branch rescued 'stash@{0}'                                                                                 │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
 ╰ y confirm  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

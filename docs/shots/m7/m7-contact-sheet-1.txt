@@ -15,9 +15,6 @@
 # Scroll once: each capture is delimited by a heading naming its
 # file (docs/shots/<name>) and what right looks like for it.
 
-# Unjudged in rev 2: the journal, and every no-colour carrier. Every frame below is colourless: these are what you
-# see with colour off.
-#
 ================================================================================
 docs/shots/m7/journal-187x50.txt
 what right looks like: Ticket 24-b (journey 13): `J` on the "lost work" fixture, every stage in. Title `JOURNAL · what happened in this repo, newest first`. Newest first: `●  Graft` fetch, then `$  outside Graft` steps each with its `git: "…"` column, a `└ ✗ lost` row under the reset (`a65d7e4 "Add rate limiter" · was main's tip · no branch holds it`, preselected `▸`) and under the switch (`419e109 "Try redis cache" · was spike's tip · spike is gone`), the undo `●` row marked `← U` with `└ ✗ lost  your edit to src/a.rs · replaced by this undo · kept in its backup` under it, the discard `undone`. Last list line: `a branch deleted outside Graft and never checked out leaves no trace here` (muted). No status row (nothing wrong). Legend line, then the bar `⏎ put main back to it  b new branch here  / find  J/esc close`. Test `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified (rule 5).
@@ -231,7 +228,6 @@ JOURNAL · what happened in this repo, newest first
 
 
 
-
 ╭ Preview: put main back to fc48213 "Add rate limiter" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ now       main → a82960b  Correct the note                                                                                                                                              │
 │ after y   main → fc48213  Add rate limiter                                                                                                                                              │
@@ -240,6 +236,7 @@ JOURNAL · what happened in this repo, newest first
 │ git reset --hard fc48213fadfd01fc8050e4aaa8596dfb2697b383                                                                                                                               │
 │ ▸[ Cancel ]   [ Put back ]                                                                                                                                                              │
 ╰ y put it back  ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds
 
 
 ================================================================================
@@ -247,15 +244,16 @@ docs/shots/m7/put-back-landed-187x50.txt
 what right looks like: Ticket 24-b (journey 13 landed): after `J ⏎ y`. The graph: `main` on "Add rate limiter" tagged `↺ put back`; "Add metrics endpoint" tagged `○ main was here`; the bottom row `put back ✓ · main has "Add rate limiter" again · u undoes`. The commit-graph notice above it is the fixture's (no commit-graph file), not J's. Test `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified.
 ================================================================================
 
- graft /code/api  7 commits
-◌        Uncommitted changes (1 unstaged)
-  ■      [stash@{0}] On main: tune metrics                                                                                                                                  GF 3m   91dddee
-  │ ●    [origin/main] Add an ops runbook                                                                                                                                   GF 14m  8c11cb0
-  │ ●    Document the api                                                                                                                                                   GF 15m  ba5c9ad
-◆ │ │ ▏ⓘ [◆ main ↑1 ↓2] Add rate limiter  ↺ put back                                                                                                                        GF 30m  a65d7e4
-●─┴─╯    Add metrics endpoint  ○ main was here                                                                                                                              GF 31m  a314d47
-●        Add request logging                                                                                                                                                GF 32m  6b08f9d
-◇        Start the api                                                                                                                                                      GF 33m  8a05478
+ ◆ api  ~/code/api · main                                                                                                                                                        7 commits
+
+  ◌        Uncommitted changes (1 unstaged)
+    ■      [stash@{0}] On main: tune metrics                                                                                                                               GF 3m   91dddee
+    │ ●    [origin/main] Add an ops runbook                                                                                                                                GF 14m  8c11cb0
+    │ ●    Document the api                                                                                                                                                GF 15m  ba5c9ad
+  ◆ │ │ ▏ⓘ [◆ main ↑1 ↓2] Add rate limiter  ↺ put back                                                                                                                     GF 30m  a65d7e4
+  ●─┴─╯    Add metrics endpoint  ○ main was here                                                                                                                           GF 31m  a314d47
+  ●        Add request logging                                                                                                                                             GF 32m  6b08f9d
+  ◇        Start the api                                                                                                                                                   GF 33m  8a05478
 
 
 
@@ -294,8 +292,7 @@ what right looks like: Ticket 24-b (journey 13 landed): after `J ⏎ y`. The gra
 
 
 
-
-
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  put back ✓ · main has "Add rate limiter" again · u undoes
 
 ================================================================================
@@ -391,13 +388,13 @@ JOURNAL · what happened in this repo, newest first
 
 
 
-
 ╭ Preview: put back your edit to src/a.rs ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ your files: src/a.rs comes back · what's in src/a.rs now is replaced                                                                                                                    │
 │ u undoes it                                                                                                                                                                             │
 │ git --literal-pathspecs restore --source=9955b078873890a8ba809d90f81a2df856c4b2ad --worktree -- src/a.rs                                                                                │
 │ ▸[ Cancel ]   [ Put back ]                                                                                                                                                              │
 ╰ y put it back  ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds
 
 
 ================================================================================
@@ -405,17 +402,17 @@ docs/shots/m7/put-back-edit-landed-187x50.txt
 what right looks like: Ticket 30o-a (journey 15 landed, after `y`): the graph with the changes pane open on `src/a.rs` (`▾ src/`, `M a.rs`, its diff adding the lost edit's `2`); the pane's cursor row is marked by colour only. The bottom row `your edit to src/a.rs is back ✓ · u undoes` (as `done_status` orders it). The commit-graph notice above it is the fixture's. Test `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified (rule 5).
 ================================================================================
 
- graft /code/api  8 commits                                                                                  UNCOMMITTED · 1 unstaged
-◌       ▏  Uncommitted changes (1 unstaged)                                                                  diff vs HEAD a65d7e4
-  ■        [stash@{0}] On main: tune metrics                                                 GF 3m   91dddee
-  │ ●      [origin/main] Add an ops runbook                                                  GF 14m  8c11cb0
-  │ ●      Document the api                                                                  GF 15m  ba5c9ad
-  │ │ ●    [spike] Try redis cache                                                           GF 24m  419e109 UNSTAGED (1)
-◆ │ │ │  ⓘ [◆ main ↑1 ↓2] Add rate limiter                                                   GF 30m  a65d7e4   ▾ src/
-●─┴─┴─╯    Add metrics endpoint                                                              GF 31m  a314d47     M a.rs                                                               +3 −1
-●          Add request logging                                                               GF 32m  6b08f9d ▎
-◇          Start the api                                                                     GF 33m  8a05478   1     - pub fn a() {}
-                                                                                                                   1 + pub fn a() -> u32 {
+ ◆ api  ~/code/api · main                                                                         8 commits  UNCOMMITTED · 1 unstaged
+                                                                                                             diff vs HEAD a65d7e4
+  ◌       ▏  Uncommitted changes (1 unstaged)
+    ■        [stash@{0}] On main: tune metrics                                              GF 3m   91dddee
+    │ ●      [origin/main] Add an ops runbook                                               GF 14m  8c11cb0
+    │ ●      Document the api                                                               GF 15m  ba5c9ad  UNSTAGED (1)
+    │ │ ●    [spike] Try redis cache                                                        GF 24m  419e109    ▾ src/
+  ◆ │ │ │  ⓘ [◆ main ↑1 ↓2] Add rate limiter                                                GF 30m  a65d7e4      M a.rs                                                               +3 −1
+  ●─┴─┴─╯    Add metrics endpoint                                                           GF 31m  a314d47  ▎
+  ●          Add request logging                                                            GF 32m  6b08f9d    1     - pub fn a() {}
+  ◇          Start the api                                                                  GF 33m  8a05478        1 + pub fn a() -> u32 {
                                                                                                                    2 +     2
                                                                                                                    3 + }
 
@@ -453,7 +450,7 @@ what right looks like: Ticket 30o-a (journey 15 landed, after `y`): the graph wi
 
 
 
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────
  your edit to src/a.rs is back ✓ · u undoes
 
 ================================================================================
@@ -503,13 +500,13 @@ JOURNAL · what happened in this repo, newest first
 
 
 
-
 ╭ Preview: put back your edit to src/a.rs ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ your files: src/a.rs comes back · what's in src/a.rs now is replaced · src/a.rs stays staged as you had it                                                                              │
 │ u undoes it                                                                                                                                                                             │
 │ git --literal-pathspecs restore --source=9955b078873890a8ba809d90f81a2df856c4b2ad --worktree -- src/a.rs                                                                                │
 │ ▸[ Cancel ]   [ Put back ]                                                                                                                                                              │
 ╰ y put it back  ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds
 
 
 ================================================================================
@@ -517,17 +514,17 @@ docs/shots/m7/put-back-staged-landed-187x50.txt
 what right looks like: Ticket 30p-a (journey 15 over a staged file, after `y`): the changes pane shows `STAGED (1)` and `UNSTAGED (1)`, each with `M a.rs`. The diff shown is the lost edit's (`2` added, over the staged `3`). The bottom row is `your edit to src/a.rs is back ✓ · u undoes`. The cursor row is colour only (30o-a NOTES). Test `crates/graft/tests/it/journal_put_back.rs::a_staged_path_put_back_lands_on_its_unstaged_row`. Colour unverified (rule 5).
 ================================================================================
 
- graft /code/api  8 commits                                                                                  UNCOMMITTED · 1 staged 1 unstaged
-◌       ▏  Uncommitted changes (1 staged, 1 unstaged)                                                        diff vs HEAD a65d7e4
-  ■        [stash@{0}] On main: tune metrics                                                 GF 3m   91dddee
-  │ ●      [origin/main] Add an ops runbook                                                  GF 14m  8c11cb0
-  │ ●      Document the api                                                                  GF 15m  ba5c9ad
-  │ │ ●    [spike] Try redis cache                                                           GF 24m  419e109 STAGED (1)
-◆ │ │ │  ⓘ [◆ main ↑1 ↓2] Add rate limiter                                                   GF 30m  a65d7e4   ▾ src/
-●─┴─┴─╯    Add metrics endpoint                                                              GF 31m  a314d47     M a.rs                                                               +3 −1
-●          Add request logging                                                               GF 32m  6b08f9d UNSTAGED (1)
-◇          Start the api                                                                     GF 33m  8a05478   ▾ src/
-                                                                                                                 M a.rs                                                               +1 −1
+ ◆ api  ~/code/api · main                                                                         8 commits  UNCOMMITTED · 1 staged 1 unstaged
+                                                                                                             diff vs HEAD a65d7e4
+  ◌       ▏  Uncommitted changes (1 staged, 1 unstaged)
+    ■        [stash@{0}] On main: tune metrics                                              GF 3m   91dddee
+    │ ●      [origin/main] Add an ops runbook                                               GF 14m  8c11cb0
+    │ ●      Document the api                                                               GF 15m  ba5c9ad  STAGED (1)
+    │ │ ●    [spike] Try redis cache                                                        GF 24m  419e109    ▾ src/
+  ◆ │ │ │  ⓘ [◆ main ↑1 ↓2] Add rate limiter                                                GF 30m  a65d7e4      M a.rs                                                               +3 −1
+  ●─┴─┴─╯    Add metrics endpoint                                                           GF 31m  a314d47  UNSTAGED (1)
+  ●          Add request logging                                                            GF 32m  6b08f9d    ▾ src/
+  ◇          Start the api                                                                  GF 33m  8a05478      M a.rs                                                               +1 −1
                                                                                                              ▎
                                                                                                                1   1   pub fn a() -> u32 {
                                                                                                                2     -     3
@@ -565,7 +562,7 @@ what right looks like: Ticket 30p-a (journey 15 over a staged file, after `y`): 
 
 
 
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────
  your edit to src/a.rs is back ✓ · u undoes
 
 ================================================================================
@@ -675,16 +672,17 @@ docs/shots/m7/landed-after-merge-120x40.txt
 what right looks like: After the merge: graph cursor `▏` (not `▸`) on the merge row, detail pane on it, `merge main into feature ✓`; merge id zeroed, date redacted. Colour unverified (ticket 03)
 ================================================================================
 
- graft /code/api  9 commits
-  ◆─╮ ▏ⓘ [◆ feature] Merge branch 'main' into feature                                                    GF futu…0000000
-  ● │    finish the feature                                                                              GF now  8d6cd28
-  ● │    start the feature                                                                               GF 2m   52f3b96
-●─│─╯    [main] main moves again                                                                         GF 3m   45fa51d
-● │      main moves on                                                                                   GF 4m   37926a7
-●─╯      add the base                                                                                    GF 5m   ed332bc
-●        Correct the note                                                                                GF 1y   a82960b
-●        Add the first note                                                                              GF 1y   fadcfb3
-◇        Add a readme                                                                                    GF 1y   64ded19
+ ◆ api  ~/code/api · feature                                                                                  9 commits
+
+    ◆─╮ ▏ⓘ [◆ feature] Merge branch 'main' into feature                                                 GF futu…0000000
+    ● │    finish the feature                                                                           GF now  8d6cd28
+    ● │    start the feature                                                                            GF 2m   52f3b96
+  ●─│─╯    [main] main moves again                                                                      GF 3m   45fa51d
+  ● │      main moves on                                                                                GF 4m   37926a7
+  ●─╯      add the base                                                                                 GF 5m   ed332bc
+  ●        Correct the note                                                                             GF 1y   a82960b
+  ●        Add the first note                                                                           GF 1y   fadcfb3
+  ◇        Add a readme                                                                                 GF 1y   64ded19
 
 
 
@@ -696,8 +694,7 @@ what right looks like: After the merge: graph cursor `▏` (not `▸`) on the me
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  merge main into feature ✓
 COMMIT 0000000 · Graft Fixture <fixture@example.invalid> · YYYY-MM-DD hh:mm +zzzz · future · parents 8d6cd28, 45fa51d ·…
 Merge branch 'main' into feature · backward merge · evil merge: clean
@@ -721,20 +718,20 @@ docs/shots/m7/rebase-stop-forecast-80x24.txt
 what right looks like: Ticket 05: `r` on `main`'s row with `feature` checked out, five commits, the third editing the file `main` edited. The box's forecast row reads `may stop at step 3 of 5 (pick <sha7>) · not checked past it`: at 80 columns the path and the subject are cut, the step and the commit never; `feature` is named whole in the title and its ref row. Colour unverified (rule 5).
 ================================================================================
 
- graft /code/api  10 commits
-  ●      finish the feature                                         now  880147c
-  ●      grow the feature                                           2m   51de037
-  ●      feature edits shared                                       3m   198f490
-  ●      more of the feature                                        4m   1f76547
-  ●      start the feature                                          5m   4ad1e44
-  │      after rebase
-  │ ○    [◆ feature] finish the feature                             —    —
-  │ ○    grow the feature                                           —    —
-  │ ○    feature edits shared                                       —    —
-  │ ○    more of the feature                                        —    —
-  │ ○    start the feature                                          —    —
-●─│─╯ ▏  [main] main edits shared                                   6m   36c271e
-●─╯      add shared                                                 7m   982c1d3
+ ◆ api  ~/code/api · feature                                         10 commits
+    ●      finish the feature                                      now  880147c
+    ●      grow the feature                                        2m   51de037
+    ●      feature edits shared                                    3m   198f490
+    ●      more of the feature                                     4m   1f76547
+    ●      start the feature                                       5m   4ad1e44
+    │      after rebase
+    │ ○    [◆ feature] finish the feature                          —    —
+    │ ○    grow the feature                                        —    —
+    │ ○    feature edits shared                                    —    —
+    │ ○    more of the feature                                     —    —
+    │ ○    start the feature                                       —    —
+  ●─│─╯ ▏  [main] main edits shared                                6m   36c271e
+  ●─╯      add shared                                              7m   982c1d3
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────╮
 │ 5 commits replayed                                                           │
 │ feature 880147c → 5 new commits                                              │
@@ -751,20 +748,19 @@ docs/shots/m7/rebase-line-preview-187x50.txt
 what right looks like: Ticket 05b: `r` on `main`'s row with `feature-a` checked out, `feature-b` built on it and `feature-c` on that. The box reads `4 commits replayed`, then a `branches:` label with three rows bottom first — feature-a, feature-b, feature-c — the two above his ending `built on yours · follows`; the command line ends `main feature-c` (the top). Above, four ghost rows (a1 a2 b1 c1) on `main`, each branch badge on its own ghost. Colour unverified (rule 5).
 ================================================================================
 
- graft /code/api  6 commits
-  ●      c1                                                                                                                                                                 GF 2d   1966dda
-  │      after rebase
-  │ ○    [feature-c] c1                                                                                                                                                     GF —    —
-  │ ○    [feature-b] b1                                                                                                                                                     GF —    —
-  │ ○    [◆ feature-a] a2                                                                                                                                                   GF —    —
-  │ ○    a1                                                                                                                                                                 GF —    —
-●─│─╯ ▏  [main] m2                                                                                                                                                          GF 2d   9d9646b
-│ ●      b1                                                                                                                                                                 GF 2d   82392de
-│ ●      a2                                                                                                                                                                 GF 2d   15335d9
-│ ●      a1                                                                                                                                                                 GF 2d   0395451
-◇─╯      m1                                                                                                                                                                 GF 2d   256d42c
+ ◆ api  ~/code/api · feature-a                                                                                                                                                   6 commits
 
-
+    ●      c1                                                                                                                                                              GF 2d   1966dda
+    │      after rebase
+    │ ○    [feature-c] c1                                                                                                                                                  GF —    —
+    │ ○    [feature-b] b1                                                                                                                                                  GF —    —
+    │ ○    [◆ feature-a] a2                                                                                                                                                GF —    —
+    │ ○    a1                                                                                                                                                              GF —    —
+  ●─│─╯ ▏  [main] m2                                                                                                                                                       GF 2d   9d9646b
+  │ ●      b1                                                                                                                                                              GF 2d   82392de
+  │ ●      a2                                                                                                                                                              GF 2d   15335d9
+  │ ●      a1                                                                                                                                                              GF 2d   0395451
+  ◇─╯      m1                                                                                                                                                              GF 2d   256d42c
 
 
 
@@ -800,6 +796,7 @@ what right looks like: Ticket 05b: `r` on `main`'s row with `feature-a` checked 
 │ git rebase -i --no-update-refs --no-autostash --empty=drop main feature-c                                                                                                               │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                                               │
 ╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
 ================================================================================
@@ -807,18 +804,17 @@ docs/shots/m7/rebase-squash-merged-preview-120x40.txt
 what right looks like: Tickets 05b + rebase-preview-keeps-drops: `r` on `main`'s row; `feature-a` was squash-merged into main as "Add OAuth (#42)" and `feature-b` is built on it. The box reads `1 commit replayed`, `feature-a <sha7> → <main's sha7>`, feature-b `→ 1 new commit · built on yours · follows`, then `already in main: feature-a's 3 commits match <sha7> "Add OAuth (#42)" · dropped · R to keep them`; the footer reads `y confirm  r rebase  R keep  ←→ choose  ⏎ act  esc cancel`. One ghost only, b1: no ghost for a dropped commit. Colour unverified (rule 5).
 ================================================================================
 
- graft /code/api  7 commits
-  ●      b1                                                                                              GF 2d   f41bc43
-  │      after rebase
-  │ ○    [feature-b] b1                                                                                  GF —    —
-◆─│─╯ ▏  [main] [◆ feature-a] Add OAuth (#42)                                                            GF 2d   51f3dc8
-│ ●      a3                                                                                              GF 2d   1dc69fb
-│ ●      a2                                                                                              GF 2d   5c80d6b
-│ ●      a1                                                                                              GF 2d   53e9958
-● │      m2                                                                                              GF 2d   808546f
-◇─╯      m1                                                                                              GF 2d   256d42c
+ ◆ api  ~/code/api · feature-a                                                                                7 commits
 
-
+    ●      b1                                                                                           GF 2d   f41bc43
+    │      after rebase
+    │ ○    [feature-b] b1                                                                               GF —    —
+  ◆─│─╯ ▏  [main] [◆ feature-a] Add OAuth (#42)                                                         GF 2d   51f3dc8
+  │ ●      a3                                                                                           GF 2d   1dc69fb
+  │ ●      a2                                                                                           GF 2d   5c80d6b
+  │ ●      a1                                                                                           GF 2d   53e9958
+  ● │      m2                                                                                           GF 2d   808546f
+  ◇─╯      m1                                                                                           GF 2d   256d42c
 
 
 
@@ -846,6 +842,7 @@ what right looks like: Tickets 05b + rebase-preview-keeps-drops: `r` on `main`'s
 │ git rebase -i --no-update-refs --no-autostash --empty=drop main feature-b                                            │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
 ╰ y confirm  r rebase  R keep  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
 ================================================================================
@@ -899,12 +896,13 @@ docs/shots/m7/rebase-refused-fork-120x40.txt
 what right looks like: Ticket 05b: `r` on `main`'s row with `feature-a` checked out and two branches both built on it (a fork). No box: the graph as it was, every ref where it was, and the status line reads `feature-b and feature-c are both built on yours · Graft moves one line · esc dismiss`. Colour unverified (rule 5).
 ================================================================================
 
- graft /code/api  5 commits
-  ●      [feature-c] c1                                                                                  GF 2d   937a1e7
-● │   ▏  [main] m2                                                                                       GF 2d   fa34bcc
-│ │ ●    [feature-b] b1                                                                                  GF 2d   8c6d354
-│ ◆─╯    [◆ feature-a] a1                                                                                GF 2d   0395451
-◇─╯      m1                                                                                              GF 2d   256d42c
+ ◆ api  ~/code/api · feature-a                                                                                5 commits
+
+    ●      [feature-c] c1                                                                               GF 2d   937a1e7
+  ● │   ▏  [main] m2                                                                                    GF 2d   fa34bcc
+  │ │ ●    [feature-b] b1                                                                               GF 2d   8c6d354
+  │ ◆─╯    [◆ feature-a] a1                                                                             GF 2d   0395451
+  ◇─╯      m1                                                                                           GF 2d   256d42c
 
 
 
@@ -936,8 +934,7 @@ what right looks like: Ticket 05b: `r` on `main`'s row with `feature-a` checked 
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  feature-b and feature-c are both built on yours · Graft moves one line · esc dismiss
 
 ================================================================================
@@ -953,13 +950,14 @@ what right looks like: Ticket 10b: `. ⏎` on `feature-b`'s row with the tree cl
 # Right: `. ⏎` on feature-b's row, the tree clean — no preview box; the
 # cursor on the new HEAD's row (feature-b, `◆`); the status line
 # `on feature-b ✓ · u goes back`.
- graft /code/api  6 commits
-  ◆ ▏  [◆ feature-b] fix the bug                                                                         GF 3m   fbb2394
-● │    [main] main moves on                                                                              GF 4m   37926a7
-●─╯    add the base                                                                                      GF 5m   ed332bc
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · feature-b                                                                                6 commits
+
+    ◆ ▏  [◆ feature-b] fix the bug                                                                      GF 3m   fbb2394
+  ● │    [main] main moves on                                                                           GF 4m   37926a7
+  ●─╯    add the base                                                                                   GF 5m   ed332bc
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -990,8 +988,7 @@ what right looks like: Ticket 10b: `. ⏎` on `feature-b`'s row with the tree cl
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  on feature-b ✓ · u goes back
 
 ================================================================================
@@ -1009,14 +1006,14 @@ what right looks like: `↩ before  feature-a` first; `● local` / `◌ remote`
 # main`, `tracks origin/main`, `no copy of yours yet` on the right;
 # `main` last, `you're on it`; the bar `type to find  ⏎ switch to
 # it  esc close  ⇥ show it on the graph  ↑↓ row`.
- graft /code/api  6 commits
-  ● ▏  [login-page] [origin/sara/login-page] fix the bug                                                                                                                    GF 3m   fbb2394
-◆ │    [◆ main ⇄ origin] main moves on                                                                                                                                      GF 4m   37926a7
-●─╯    [feature-a] add the base                                                                                                                                             GF 5m   ed332bc
-●      Correct the note                                                                                                                                                     GF 1y   a82960b
-●      Add the first note                                                                                                                                                   GF 1y   fadcfb3
-◇      Add a readme                                                                                                                                                         GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                                                                                        6 commits
 
+    ● ▏  [login-page] [origin/sara/login-page] fix the bug                                                                                                                 GF 3m   fbb2394
+  ◆ │    [◆ main ⇄ origin] main moves on                                                                                                                                   GF 4m   37926a7
+  ●─╯    [feature-a] add the base                                                                                                                                          GF 5m   ed332bc
+  ●      Correct the note                                                                                                                                                  GF 1y   a82960b
+  ●      Add the first note                                                                                                                                                GF 1y   fadcfb3
+  ◇      Add a readme                                                                                                                                                      GF 1y   64ded19
 
 
 
@@ -1055,9 +1052,9 @@ what right looks like: `↩ before  feature-a` first; `● local` / `◌ remote`
                   │                                                                                                                                                    │
                   │                                                                                                                                                    │
                   │                                                                                                                                                    │
-                  │                                                                                                                                                    │
                   │ 4 branches                                                                                                                                         │
                   └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  type to find  ⏎ switch to it  esc close  ⇥ show it on the graph  ↑↓ row
 
 ================================================================================
@@ -1073,14 +1070,14 @@ what right looks like: Glyph, name, age only; the segment-prefix match on top. C
 # Right: `C login` at 100 columns — each row a glyph, a name and an
 # age only; `login-page` (the segment-prefix match) above
 # `origin/sara/login-page`; the footer `2 of 4 branches`.
- graft /code/api  6 commits
-  ● ▏  [login-page] [origin/sara/login-page] fix the bug                             GF 3m   fbb2394
-◆ │    [◆ main ⇄ origin] main moves on                                               GF 4m   37926a7
-●─╯    [feature-a] add the base                                                      GF 5m   ed332bc
-●      Correct the note                                                              GF 1y   a82960b
-●      Add the first note                                                            GF 1y   fadcfb3
-◇      Add a readme                                                                  GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                 6 commits
 
+    ● ▏  [login-page] [origin/sara/login-pag… fix the bug                           GF 3m   fbb2394
+  ◆ │    [◆ main ⇄ origin] main moves on                                            GF 4m   37926a7
+  ●─╯    [feature-a] add the base                                                   GF 5m   ed332bc
+  ●      Correct the note                                                           GF 1y   a82960b
+  ●      Add the first note                                                         GF 1y   fadcfb3
+  ◇      Add a readme                                                               GF 1y   64ded19
 
 
 
@@ -1099,9 +1096,9 @@ what right looks like: Glyph, name, age only; the segment-prefix match on top. C
   │                                                                                              │
   │                                                                                              │
   │                                                                                              │
-  │                                                                                              │
   │ 2 of 4 branches                                                                              │
   └──────────────────────────────────────────────────────────────────────────────────────────────┘
+────────────────────────────────────────────────────────────────────────────────────────────────────
  type to find  ⏎ switch to it  esc close  ⇥ show it on the graph  ↑↓ row
 
 ================================================================================
@@ -1117,13 +1114,14 @@ what right looks like: `▸` on the new HEAD; `✓ on login-page · u goes back`
 # Right: `C login ⏎` on a clean tree — no preview box; the cursor on
 # the new HEAD's row (login-page); the status line
 # `on login-page ✓ · u goes back`.
- graft /code/api  6 commits
-  ◆ ▏  [◆ login-page] [origin/sara/login-page] fix the bug                                               GF 3m   fbb2394
-● │    [main ⇄ origin] main moves on                                                                     GF 4m   37926a7
-●─╯    [feature-a] add the base                                                                          GF 5m   ed332bc
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · login-page                                                                               6 commits
+
+    ◆ ▏  [◆ login-page] [origin/sara/login-page] fix the bug                                            GF 3m   fbb2394
+  ● │    [main ⇄ origin] main moves on                                                                  GF 4m   37926a7
+  ●─╯    [feature-a] add the base                                                                       GF 5m   ed332bc
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -1154,8 +1152,7 @@ what right looks like: `▸` on the new HEAD; `✓ on login-page · u goes back`
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  on login-page ✓ · u goes back
 
 ================================================================================
@@ -1171,13 +1168,14 @@ what right looks like: `✓ on sara/login-page (new, tracks origin/sara/login-pa
 # Right: `C sara ⏎` on `origin/sara/login-page` — the status line
 # `on sara/login-page (new, tracks origin/sara/login-page) ✓ · u
 # goes back`; the cursor on the new HEAD's row.
- graft /code/api  6 commits
-  ◆ ▏  [login-page] [◆ sara/login-page] [origin/sara/… fix the bug                                       GF 3m   fbb2394
-● │    [main ⇄ origin] main moves on                                                                     GF 4m   37926a7
-●─╯    [feature-a] add the base                                                                          GF 5m   ed332bc
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · sara/login-page                                                                          6 commits
+
+    ◆ ▏  [login-page] [◆ sara/login-page] [origin/sara… fix the bug                                     GF 3m   fbb2394
+  ● │    [main ⇄ origin] main moves on                                                                  GF 4m   37926a7
+  ●─╯    [feature-a] add the base                                                                       GF 5m   ed332bc
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -1208,8 +1206,7 @@ what right looks like: `✓ on sara/login-page (new, tracks origin/sara/login-pa
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  on sara/login-page (new, tracks origin/sara/login-page) ✓ · u goes back
 
 ================================================================================
@@ -1227,15 +1224,14 @@ what right looks like: Ticket 10b: `b feature-c ⇥ ⏎` on HEAD's own row (`mai
 # edits — a `Preview:` box naming the new branch, the line
 # `your edits stay as they are` (nothing is set aside at HEAD), `y` on the
 # box edge.
- graft /code/api  6 commits
-  ●    [feature-b] fix the bug                                                                           GF 3m   fbb2394
-◆ │ ▏  [◆ main] [feature-c] main moves on                                                                GF 4m   37926a7
-●─╯    add the base                                                                                      GF 5m   ed332bc
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     6 commits
 
-
+    ●    [feature-b] fix the bug                                                                        GF 3m   fbb2394
+  ◆ │ ▏  [◆ main] [feature-c] main moves on                                                             GF 4m   37926a7
+  ●─╯    add the base                                                                                   GF 5m   ed332bc
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -1266,6 +1262,7 @@ what right looks like: Ticket 10b: `b feature-c ⇥ ⏎` on HEAD's own row (`mai
 │ git switch feature-c                                                                                                 │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
 ╰ y confirm  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
 ================================================================================
@@ -1273,17 +1270,16 @@ docs/shots/m7/amend-into-preview-187x50.txt
 what right looks like: Ticket 09: `j a` on "Add OAuth callback" (one row below HEAD on `feature-a`) with a fix to `src/auth.rs` staged and `feature-b` built on `feature-a`. The box is titled `Preview: put your staged changes into <sha7> "Add OAuth callback"`; its first row reads `<sha7>  Add OAuth callback  gains  src/auth.rs +1 −1`; the branches rows end with feature-b `→ 3 new commits · built on yours · follows`; the footer reads `y put it in`. `src/tokens.rs` is also edited, not staged: the box says one thing about his edits — `your edits: 1 file set aside, put back after` (the unstaged `src/tokens.rs`; the staged fix goes into the commit, review Minor 6), then `no conflicts expected` — and never `nothing is put back` (09b). The undo line reads `undo: u takes this back`, every preview's line (09b ruling). Colour unverified (rule 5).
 ================================================================================
 
- graft /code/api  4 commits
-  ●      Show the login page                                                                                                                                                GF 2d   04fbed6
-  ●      Handle expired tokens                                                                                                                                              GF 2d   29033ed
-  ●   ▏  Add OAuth callback                                                                                                                                                 GF 2d   67fda4a
-  │      the result
-  │ ○    [feature-b] Show the login page                                                                                                                                    GF —    —
-  │ ○    [◆ feature-a] Handle expired tokens                                                                                                                                GF —    —
-  │ ○    Add OAuth callback                                                                                                                                                 GF —    —
-◇─┴─╯    [main] m1                                                                                                                                                          GF 2d   f1c72d6
+ ◆ api  ~/code/api · feature-a                                                                                                                                                   4 commits
 
-
+    ●      Show the login page                                                                                                                                             GF 2d   04fbed6
+    ●      Handle expired tokens                                                                                                                                           GF 2d   29033ed
+    ●   ▏  Add OAuth callback                                                                                                                                              GF 2d   67fda4a
+    │      the result
+    │ ○    [feature-b] Show the login page                                                                                                                                 GF —    —
+    │ ○    [◆ feature-a] Handle expired tokens                                                                                                                             GF —    —
+    │ ○    Add OAuth callback                                                                                                                                              GF —    —
+  ◇─┴─╯    [main] m1                                                                                                                                                       GF 2d   f1c72d6
 
 
 
@@ -1322,6 +1318,7 @@ what right looks like: Ticket 09: `j a` on "Add OAuth callback" (one row below H
 │ git rebase -i --no-update-refs --no-autostash --empty=drop f1c72d66bcb17d9d430527dddef3fd0a9a347b15 feature-b                                                                           │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                                               │
 ╰ y put it in  ←→ choose  ⏎ act  esc cancel ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
 ================================================================================
@@ -1329,8 +1326,9 @@ docs/shots/m7/absorb-menu-120x40.txt
 what right looks like: Ticket 09b: `k .` on the uncommitted row with three hunks staged. The cursor is on `Put staged changes into their commits (absorb)`, the first item; below it, in their old order, `Open details (⏎)`, `Fetch (f)`, `Pull (p)`, `Push (P)`, `Undo (u)`. Colour unverified (rule 5).
 ================================================================================
 
- graft /code/api  3 commits
-  ◌ ▏  Uncommitted changes (3 staged)
+ ◆ api  ~/code/api · feature-a                                                                                3 commits
+
+    ◌ ▏  Uncommitted changes (3 staged)
  Put staged changes into their commits (absorb)
  Open details (⏎)
  Fetch (f)
@@ -1366,24 +1364,22 @@ what right looks like: Ticket 09b: `k .` on the uncommitted row with three hunks
 
 
 
-
-
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  . more  J  /  j/k  q  F2  F3  +  1  F  H  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · J journal · / search · j/k move · . more
 
 ================================================================================
 docs/shots/m7/absorb-preview-120x40.txt
 what right looks like: Ticket 09 (09b: the menu opens on absorb): `k . ⏎` over three staged hunks, nothing unstaged: no `your edits:` row (the staged hunks go into commits or stay staged; nothing of his is set aside and put back, review Minor 6); `no conflicts expected`, no `nothing is put back`; `undo: u takes this back`. The box is titled `Preview: put staged changes into the commits they belong to`; rows `src/auth.rs    line 5  → <sha7>  Add OAuth callback`, `src/tokens.rs  line 5  → <sha7>  Handle expired tokens`, `README         line 2  stays staged · no commit on your branch changed these lines`, columns aligned; the footer reads `y put them in`. Colour unverified (rule 5).
 ================================================================================
 
- graft /code/api  3 commits
-  ●   ▏  Handle expired tokens                                                                           GF 2d   29033ed
-  ●      Add OAuth callback                                                                              GF 2d   67fda4a
-  │      the result
-  │ ○    [◆ feature-a] Handle expired tokens                                                             GF —    —
-  │ ○    Add OAuth callback                                                                              GF —    —
-◇─┴─╯    [main] m1                                                                                       GF 2d   f1c72d6
+ ◆ api  ~/code/api · feature-a                                                                                3 commits
 
-
+    ●   ▏  Handle expired tokens                                                                        GF 2d   29033ed
+    ●      Add OAuth callback                                                                           GF 2d   67fda4a
+    │      the result
+    │ ○    [◆ feature-a] Handle expired tokens                                                          GF —    —
+    │ ○    Add OAuth callback                                                                           GF —    —
+  ◇─┴─╯    [main] m1                                                                                    GF 2d   f1c72d6
 
 
 
@@ -1414,6 +1410,7 @@ what right looks like: Ticket 09 (09b: the menu opens on absorb): `k . ⏎` over
 │ git rebase -i --no-update-refs --no-autostash --empty=drop f1c72d66bcb17d9d430527dddef3fd0a9a347b15                  │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
 ╰ y put them in  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
 ================================================================================
@@ -1421,12 +1418,13 @@ docs/shots/m7/amend-into-landed-120x40.txt
 what right looks like: Ticket 09: after `y` on the put-in. The cursor is on the new HEAD ("Handle expired tokens", checked by the walk, not visible in text); `✎ changed` sits two cells after "Add OAuth callback" and on no other row; the uncommitted row reads `(1 unstaged)`; the status reads `put into "Add OAuth callback" ✓ · your unstaged edits are back · u undoes` (09b). The rewritten commits read `2d` like the rest, never `futu…`: the capture runs with git's clock pinned before `CORPUS_NOW` (review Minor 7), so their SHAs are the same every run and nothing is masked. Colour unverified (rule 5).
 ================================================================================
 
- graft /code/api  4 commits
-◌      Uncommitted changes (1 unstaged)
-  ●    [feature-b] Show the login page                                                                   GF 2d   e97f835
-  ◆ ▏  [◆ feature-a] Handle expired tokens                                                               GF 2d   27fc7f5
-  ●    Add OAuth callback  ✎ changed                                                                     GF 2d   686a2f8
-◇─╯    [main] m1                                                                                         GF 2d   f1c72d6
+ ◆ api  ~/code/api · feature-a                                                                                4 commits
+
+  ◌      Uncommitted changes (1 unstaged)
+    ●    [feature-b] Show the login page                                                                GF 2d   e97f835
+    ◆ ▏  [◆ feature-a] Handle expired tokens                                                            GF 2d   27fc7f5
+    ●    Add OAuth callback  ✎ changed                                                                  GF 2d   686a2f8
+  ◇─╯    [main] m1                                                                                      GF 2d   f1c72d6
 
 
 
@@ -1458,8 +1456,7 @@ what right looks like: Ticket 09: after `y` on the put-in. The cursor is on the 
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  put into "Add OAuth callback" ✓ · your unstaged edits are back · u undoes
 
 ================================================================================
@@ -1467,45 +1464,45 @@ docs/shots/m7/pull-over-edits-120x40.txt
 what right looks like: Ticket 03b: `p` on the graph on `main`, origin one ahead changing line 1 of `shared.txt`, his unsaved edit to line 10. HEAD at origin's tip; `shared.txt` holds both changes, his diff lines byte-equal and still unstaged; no stash left; the cursor (`▏`) on the new HEAD's row; the line `pulled origin/main ✓ · your edits are back`. Colour unverified.
 ================================================================================
 
- graft /code/api  148 rows so far
-◌    Uncommitted changes (1 unstaged)
-◆ ▏  [◆ main ⇄ origin] their change                                                                      GF 60m  9110230
-●    add shared                                                                                          GF 60m  1fdae38
-●    Commit 200                                                                                          GF 1y   d5ae5fd
-●    Commit 199                                                                                          GF 1y   13e6ab1
-●    Commit 198                                                                                          GF 1y   f5055d9
-●    Commit 197                                                                                          GF 1y   2cce853
-●    Commit 196                                                                                          GF 1y   325da3f
-●    Commit 195                                                                                          GF 1y   0722297
-●    Commit 194                                                                                          GF 1y   b6a4a47
-●    Commit 193                                                                                          GF 1y   60af0eb
-●    Commit 192                                                                                          GF 1y   aceb8c5
-●    Commit 191                                                                                          GF 1y   11d68ff
-●    Commit 190                                                                                          GF 1y   91900bd
-●    Commit 189                                                                                          GF 1y   cec3e93
-●    Commit 188                                                                                          GF 1y   0a91ece
-●    Commit 187                                                                                          GF 1y   3121935
-●    Commit 186                                                                                          GF 1y   fab25df
-●    Commit 185                                                                                          GF 1y   09ae97c
-●    Commit 184                                                                                          GF 1y   49d7783
-●    Commit 183                                                                                          GF 1y   22d55c9
-●    Commit 182                                                                                          GF 1y   d212b3e
-●    Commit 181                                                                                          GF 1y   c8254c5
-●    Commit 180                                                                                          GF 1y   e95ccd4
-●    Commit 179                                                                                          GF 1y   97b58e5
-●    Commit 178                                                                                          GF 1y   1c9b7ed
-●    Commit 177                                                                                          GF 1y   f93340a
-●    Commit 176                                                                                          GF 1y   5aaeeba
-●    Commit 175                                                                                          GF 1y   6be5928
-●    Commit 174                                                                                          GF 1y   9b67be4
-●    Commit 173                                                                                          GF 1y   937d32b
-●    Commit 172                                                                                          GF 1y   81be718
-●    Commit 171                                                                                          GF 1y   57b8196
-●    Commit 170                                                                                          GF 1y   8ea98be
-●    Commit 169                                                                                          GF 1y   4926766
-●    Commit 168                                                                                          GF 1y   0d60d60
-●    Commit 167                                                                                          GF 1y   fa5ef1d
-●    Commit 166                                                                                          GF 1y   953abf3
+ ◆ api  ~/code/api · main                                                                               140 rows so far
+
+  ◌    Uncommitted changes (1 unstaged)
+  ◆ ▏  [◆ main ⇄ origin] their change                                                                   GF 60m  9110230
+  ●    add shared                                                                                       GF 60m  1fdae38
+  ●    Commit 200                                                                                       GF 1y   d5ae5fd
+  ●    Commit 199                                                                                       GF 1y   13e6ab1
+  ●    Commit 198                                                                                       GF 1y   f5055d9
+  ●    Commit 197                                                                                       GF 1y   2cce853
+  ●    Commit 196                                                                                       GF 1y   325da3f
+  ●    Commit 195                                                                                       GF 1y   0722297
+  ●    Commit 194                                                                                       GF 1y   b6a4a47
+  ●    Commit 193                                                                                       GF 1y   60af0eb
+  ●    Commit 192                                                                                       GF 1y   aceb8c5
+  ●    Commit 191                                                                                       GF 1y   11d68ff
+  ●    Commit 190                                                                                       GF 1y   91900bd
+  ●    Commit 189                                                                                       GF 1y   cec3e93
+  ●    Commit 188                                                                                       GF 1y   0a91ece
+  ●    Commit 187                                                                                       GF 1y   3121935
+  ●    Commit 186                                                                                       GF 1y   fab25df
+  ●    Commit 185                                                                                       GF 1y   09ae97c
+  ●    Commit 184                                                                                       GF 1y   49d7783
+  ●    Commit 183                                                                                       GF 1y   22d55c9
+  ●    Commit 182                                                                                       GF 1y   d212b3e
+  ●    Commit 181                                                                                       GF 1y   c8254c5
+  ●    Commit 180                                                                                       GF 1y   e95ccd4
+  ●    Commit 179                                                                                       GF 1y   97b58e5
+  ●    Commit 178                                                                                       GF 1y   1c9b7ed
+  ●    Commit 177                                                                                       GF 1y   f93340a
+  ●    Commit 176                                                                                       GF 1y   5aaeeba
+  ●    Commit 175                                                                                       GF 1y   6be5928
+  ●    Commit 174                                                                                       GF 1y   9b67be4
+  ●    Commit 173                                                                                       GF 1y   937d32b
+  ●    Commit 172                                                                                       GF 1y   81be718
+  ●    Commit 171                                                                                       GF 1y   57b8196
+  ●    Commit 170                                                                                       GF 1y   8ea98be
+  ●    Commit 169                                                                                       GF 1y   4926766
+  ●    Commit 168                                                                                       GF 1y   0d60d60
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  pulled origin/main ✓ · your edits are back
 
 ================================================================================
@@ -1513,13 +1510,13 @@ docs/shots/m7/submodule-row-187x40.txt
 what right looks like: Ticket 13b: a real submodule at `libs/parser`, pointer moved and a file changed inside, 187 columns: the row reads `▣ libs/parser  submodule · pointer moved <old7> → <new7> · changed inside` in full. Colour unverified.
 ================================================================================
 
- graft /code/api  4 commits                                                                                  UNCOMMITTED · 1 unstaged
-◌ ▏  Uncommitted changes (1 unstaged)                                                                        diff vs HEAD f48cdbe
-◆    [◆ main] add parser                                                                     GT 24h  f48cdbe
-●    Correct the note                                                                        GF 2d   a82960b
-●    Add the first note                                                                      GF 2d   fadcfb3
-◇    Add a readme                                                                            GF 2d   64ded19 UNSTAGED (1)
-                                                                                                               ▣ libs/parser  submodule · pointer moved ca07ea9 → efdd295 · changed inside
+ ◆ api  ~/code/api · main                                                                         4 commits  UNCOMMITTED · 1 unstaged
+                                                                                                             diff vs HEAD f48cdbe
+  ◌ ▏  Uncommitted changes (1 unstaged)
+  ◆    [◆ main] add parser                                                                  GT 24h  f48cdbe
+  ●    Correct the note                                                                     GF 2d   a82960b
+  ●    Add the first note                                                                   GF 2d   fadcfb3  UNSTAGED (1)
+  ◇    Add a readme                                                                         GF 2d   64ded19    ▣ libs/parser  submodule · pointer moved ca07ea9 → efdd295 · changed inside
                                                                                                              libs/parser · submodule · ca07ea9 → efdd295
                                                                                                              changed inside
                                                                                                              + efdd295 parser 3
@@ -1551,20 +1548,21 @@ what right looks like: Ticket 13b: a real submodule at `libs/parser`, pointer mo
 
 
 
-
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ diff  . more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ diff · . more
 
 ================================================================================
 docs/shots/m7/submodule-row-120x40.txt
 what right looks like: At 120 the `▣ libs/parser` row ends `→ ±` right-aligned at the list's last column, no fact cut; the diff pane's second line reads `changed inside`. Colour unverified (ticket 13, re-taken 30i)
 ================================================================================
 
- graft /code/api  4 commits
-◌ ▏  Uncommitted changes (1 unstaged)
-◆    [◆ main] add parser                                                                                 GT 24h  f48cdbe
-●    Correct the note                                                                                    GF 2d   a82960b
-●    Add the first note                                                                                  GF 2d   fadcfb3
-◇    Add a readme                                                                                        GF 2d   64ded19
+ ◆ api  ~/code/api · main                                                                                     4 commits
+
+  ◌ ▏  Uncommitted changes (1 unstaged)
+  ◆    [◆ main] add parser                                                                              GT 24h  f48cdbe
+  ●    Correct the note                                                                                 GF 2d   a82960b
+  ●    Add the first note                                                                               GF 2d   fadcfb3
+  ◇    Add a readme                                                                                     GF 2d   64ded19
 
 
 
@@ -1580,9 +1578,8 @@ what right looks like: At 120 the `▣ libs/parser` row ends `→ ±` right-alig
 
 
 
-
-
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ diff  . more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ diff · . more
 UNCOMMITTED · 1 unstaged
 diff vs HEAD f48cdbe
 UNSTAGED (1)                  libs/parser · submodule · ca07ea9 → efdd295
@@ -1605,13 +1602,14 @@ docs/shots/m7/submodule-diff-120x40.txt
 what right looks like: Diff pane lists the commits the move pulled in, held to git's `log --left-right`: `+ efdd295 parser 3`, `+ 8512312 parser 2`, `− 5bdba05 side 1`; second line reads `changed inside` (30i). Colour unverified (ticket 13)
 ================================================================================
 
- graft /code/api  5 commits
-◌ ▏  Uncommitted changes (1 unstaged)
-◆    [◆ main] pin the side commit                                                                        GT 24h  7c7e188
-●    add parser                                                                                          GT 24h  f48cdbe
-●    Correct the note                                                                                    GF 2d   a82960b
-●    Add the first note                                                                                  GF 2d   fadcfb3
-◇    Add a readme                                                                                        GF 2d   64ded19
+ ◆ api  ~/code/api · main                                                                                     5 commits
+
+  ◌ ▏  Uncommitted changes (1 unstaged)
+  ◆    [◆ main] pin the side commit                                                                     GT 24h  7c7e188
+  ●    add parser                                                                                       GT 24h  f48cdbe
+  ●    Correct the note                                                                                 GF 2d   a82960b
+  ●    Add the first note                                                                               GF 2d   fadcfb3
+  ◇    Add a readme                                                                                     GF 2d   64ded19
 
 
 
@@ -1626,9 +1624,8 @@ what right looks like: Diff pane lists the commits the move pulled in, held to g
 
 
 
-
-
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ diff  . more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ diff · . more
 UNCOMMITTED · 1 unstaged
 diff vs HEAD 7c7e188
 UNSTAGED (1)                  libs/parser · submodule · 5bdba05 → efdd295
@@ -1660,29 +1657,29 @@ what right looks like: Ticket 16b: `P` after a rejected push, teammate's commits
 # then each commit's sha7, subject and author on its own row, aligned in
 # columns (subject cut with … to fit), then `+2 more`; the buttons row whole.
 #
-" graft 3 commits                                                                                                        "
-"◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                            "
-"◆    [HEAD] Commit 3␛[31m                                                                                TE 57y  0303030"
-"●    Commit 2␛[31m                                                                                       TE 57y  0202020"
-"◇    Commit 1␛[31m                                                                                       TE 57y  0101010"
-"     ╭ Force-push main → origin/main? ────────────────────────────────────────────────────────────────╮                 "
-"     │ origin/main 9f8e7d6 → 0303030 · refused if origin moved since your fetch (lease)               │                 "
-"     │ rewrites history for everyone who has 9f8e7d6                                                  │                 "
-"     │ leaves origin/main:                                                                            │                 "
-"     │ ccccccc  Fix typo in the retry docs               Sara                                         │                 "
-"     │ ddddddd  Retry the fetch when the remote hangs …  Ali Rahimi                                   │                 "
-"     │ eeeeeee  Add the fetch timeout                    Sara                                         │                 "
-"     │ +2 more                                                                                        │                 "
-"     │                                                                                                │                 "
-"     │ git push --progress --force-with-lease=refs/heads/main:9f8e7d6c5b4a39281706f5e4d3c2b1a0987654… │                 "
-"     │                                                                                                │                 "
-"     │ ▸[ Cancel ]   [ Force push ]                                                                   │                 "
-"     ╰────────────────────────────────────────────────────────────────────────────────────────────────╯                 "
+"                                                                                                              3 commits "
+"                                                                                                                        "
+"  ◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
+"  ◆    [HEAD] Commit 3␛[31m                                                                             TE 57y  0303030 "
+"  ●    Commit 2␛[31m                                                                                    TE 57y  0202020 "
+"  ◇    ╭ Force-push main → origin/main? ─────────────────────────────────────────────────────────────╮  TE 57y  0101010 "
+"       │ origin/main 9f8e7d6 → 0303030 · refused if origin moved since your fetch (lease)            │                  "
+"       │ rewrites history for everyone who has 9f8e7d6                                               │                  "
+"       │ leaves origin/main:                                                                         │                  "
+"       │ ccccccc  Fix typo in the retry docs               Sara                                      │                  "
+"       │ ddddddd  Retry the fetch when the remote hangs …  Ali Rahimi                                │                  "
+"       │ eeeeeee  Add the fetch timeout                    Sara                                      │                  "
+"       │ +2 more                                                                                     │                  "
+"       │                                                                                             │                  "
+"       │ git push --progress --force-with-lease=refs/heads/main:9f8e7d6c5b4a39281706f5e4d3c2b1a0987… │                  "
+"       │                                                                                             │                  "
+"       │ ▸[ Cancel ]   [ Force push ]                                                                │                  "
+"       ╰─────────────────────────────────────────────────────────────────────────────────────────────╯                  "
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-"                                                                                                                        "
+"────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
 " ←/→ move  ⏎ choose  esc cancel                                                                                         "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
@@ -1745,14 +1742,14 @@ docs/shots/m7/compare-since-split-187x50.txt
 what right looks like: Header `changes on feature-a since it left main · 3 commits · 2 files +2 −0`; `x base` on main's row; the file list holds only feature-a's files. Colour unverified (ticket 14)
 ================================================================================
 
- graft /code/api  6 commits                                                                                  changes on feature-a since it left main · 3 commits · 2 files +2 −0
-◆   ▏  [x base] [◆ main] Readme                                                              GF 2d   22e02fb
-│ ● ▏  [feature-a] Use token                                                                 GF 2d   a84a58c
-● │    Changelog                                                                             GF 2d   500b0e7
-│ ●    Add token                                                                             GF 2d   fcd7e09
-│ ●    Add login                                                                             GF 2d   95472aa ▾ src/
-◇─╯    root                                                                                  GF 2d   b5eff22   A login.rs                                                             +1 −0
-                                                                                                               A token.rs                                                             +1 −0
+ ◆ api  ~/code/api · main                                                                         6 commits  changes on feature-a since it left main · 3 commits · 2 files +2 −0
+
+  ◆   ▏  [x base] [◆ main] Readme                                                           GF 2d   22e02fb
+  │ ● ▏  [feature-a] Use token                                                              GF 2d   a84a58c
+  ● │    Changelog                                                                          GF 2d   500b0e7
+  │ ●    Add token                                                                          GF 2d   fcd7e09  ▾ src/
+  │ ●    Add login                                                                          GF 2d   95472aa    A login.rs                                                             +1 −0
+  ◇─╯    root                                                                               GF 2d   b5eff22    A token.rs                                                             +1 −0
                                                                                                              select a file
 
 
@@ -1793,7 +1790,7 @@ what right looks like: Header `changes on feature-a since it left main · 3 comm
 
 
 
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────
  compare base 22e02fb — move, x again clears
 
 ================================================================================
@@ -1824,20 +1821,21 @@ select a file
 
 
 
- m merge  r rebase  ⏎ open  . more  space  b  t  P  c  p  f  u  /  q  F2  F3  x
+ m merge · r rebase · ⏎ open · space fold · b branch · t tag · P push · . more
 
 ================================================================================
 docs/shots/m7/stash-in-history-120x40.txt
 what right looks like: No `index on` and no `untracked files on` rows; exactly one `◇` row with `only in stash@{0}`; the stash's own row still there. Colour unverified (ticket 16)
 ================================================================================
 
- graft /code/api  6 commits
-  ■ ▏  [stash@{0}] On topic: wip                                                                         GF 3m   65a77a9
-  □    [only in stash@{0}] topic base                                                                    GF 4m   b9451c7
-◆─╯    [◆ main] add notes                                                                                GF 5m   2c59061
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     6 commits
+
+    ■ ▏  [stash@{0}] On topic: wip                                                                      GF 3m   65a77a9
+    □    [only in stash@{0}] topic base                                                                 GF 4m   b9451c7
+  ◆─╯    [◆ main] add notes                                                                             GF 5m   2c59061
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -1868,22 +1866,21 @@ what right looks like: No `index on` and no `untracked files on` rows; exactly o
 
 
 
-
-
- ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · . more
 
 ================================================================================
 docs/shots/m7/stash-in-history-80x24.txt
 what right looks like: At 80: no `index on` and no `untracked files on` rows; exactly one `◇` row with `only in stash@{0}`; the stash's own row still there. Colour unverified (ticket 16)
 ================================================================================
 
- graft /code/api  6 commits
-  ■ ▏  [stash@{0}] On topic: wip                                    3m   65a77a9
-  □    [only in stash@{0}] topic base                               4m   b9451c7
-◆─╯    [◆ main] add notes                                           5m   2c59061
-●      Correct the note                                             1y   a82960b
-●      Add the first note                                           1y   fadcfb3
-◇      Add a readme                                                 1y   64ded19
+ ◆ api  ~/code/api · main                                             6 commits
+    ■ ▏  [stash@{0}] On topic: wip                                 3m   65a77a9
+    □    [only in stash@{0}] topic base                            4m   b9451c7
+  ◆─╯    [◆ main] add notes                                        5m   2c59061
+  ●      Correct the note                                          1y   a82960b
+  ●      Add the first note                                        1y   fadcfb3
+  ◇      Add a readme                                              1y   64ded19
 
 
 
@@ -1900,7 +1897,7 @@ what right looks like: At 80: no `index on` and no `untracked files on` rows; ex
 
 
 
- ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · . more
 
 ================================================================================
 docs/shots/m7/restart-after-done-box-120x40.txt
@@ -2259,14 +2256,15 @@ docs/shots/m7/blame-then-commit-120x40.txt
 what right looks like: After `B ⏎`: graph on Lina's commit `2f48ca3`, the diff's cursor carrier `▎` on her line 21 in its hunk, the bar leading `esc back to blame`. Colour unverified (ticket 20)
 ================================================================================
 
- graft /code/api  6 commits
-◌    Uncommitted changes (1 untracked)
-◆    [◆ main] Handle expired tokens                                                                      GF 60m  74f9a9e
-●    Move session TTL to config                                                                          PR 4mo  0a27627
-●    rustfmt                                                                                             RU 5mo  b32274b
-● ▏  Retry refresh once on 401                                                                           LI 7mo  2f48ca3
-●    Add token refresh                                                                                   TO 10mo 47593a5
-◇    Add session                                                                                         AN 1y   3f6c311
+ ◆ api  ~/code/api · main                                                                                     6 commits
+
+  ◌    Uncommitted changes (1 untracked)
+  ◆    [◆ main] Handle expired tokens                                                                   GF 60m  74f9a9e
+  ●    Move session TTL to config                                                                       PR 4mo  0a27627
+  ●    rustfmt                                                                                          RU 5mo  b32274b
+  ● ▏  Retry refresh once on 401                                                                        LI 7mo  2f48ca3
+  ●    Add token refresh                                                                                TO 10mo 47593a5
+  ◇    Add session                                                                                      AN 1y   3f6c311
 
 
 
@@ -2280,9 +2278,8 @@ what right looks like: After `B ⏎`: graph on Lina's commit `2f48ca3`, the diff
 
 
 
-
-
- esc back to blame  B blame  F history  b branch  . more  r  <>  t  c  y  m  u  /  q  F2  F3  x  +  j/k  1  H  f  p  P
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ esc back to blame · B blame · F history · b branch · r rebase · <> resize · t tag · c commit · y sha · . more
 COMMIT 2f48ca3 · Lina <lina@example.invalid> · 2019-06-07 00:00 +0000 · 7mo · parents 47593a5 · diff vs first parent · …
 Retry refresh once on 401
 ▾ src/                        impl Session {
@@ -2305,14 +2302,15 @@ docs/shots/m7/blame-then-commit-with-base-120x40.txt
 what right looks like: After `B ⏎` with a base pinned: pane header the commit's own, not `COMPARE`; status row carries the set-aside words (no `esc back to blame`); `▏` once, on Lina's row, none on the base's; no `x base`. Colour unverified (ticket 20)
 ================================================================================
 
- graft /code/api  6 commits
-◌    Uncommitted changes (1 untracked)
-◆    [◆ main] Handle expired tokens                                                                      GF 60m  74f9a9e
-●    Move session TTL to config                                                                          PR 4mo  0a27627
-●    rustfmt                                                                                             RU 5mo  b32274b
-● ▏  Retry refresh once on 401                                                                           LI 7mo  2f48ca3
-●    Add token refresh                                                                                   TO 10mo 47593a5
-◇    Add session                                                                                         AN 1y   3f6c311
+ ◆ api  ~/code/api · main                                                                                     6 commits
+
+  ◌    Uncommitted changes (1 untracked)
+  ◆    [◆ main] Handle expired tokens                                                                   GF 60m  74f9a9e
+  ●    Move session TTL to config                                                                       PR 4mo  0a27627
+  ●    rustfmt                                                                                          RU 5mo  b32274b
+  ● ▏  Retry refresh once on 401                                                                        LI 7mo  2f48ca3
+  ●    Add token refresh                                                                                TO 10mo 47593a5
+  ◇    Add session                                                                                      AN 1y   3f6c311
 
 
 
@@ -2326,8 +2324,7 @@ what right looks like: After `B ⏎` with a base pinned: pane header the commit'
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  compare base 0a27627 set aside · it comes back when you leave blame
 COMMIT 2f48ca3 · Lina <lina@example.invalid> · 2019-06-07 00:00 +0000 · 7mo · parents 47593a5 · diff vs first parent · …
 Retry refresh once on 401
@@ -2351,12 +2348,13 @@ docs/shots/m7/diff-cursor-commit-120x40.txt
 what right looks like: Commit diff, cursor on New line 2: exactly one row carries `▎`, the row `▎+ B`. Colour of the bar unverified (ticket 20b)
 ================================================================================
 
- graft /code/api  5 commits
-◆ ▏  [◆ main] edit notes                                                                                 GF 4m   6944d27
-●    add notes                                                                                           GF 5m   9d5dd9b
-●    Correct the note                                                                                    GF 1y   a82960b
-●    Add the first note                                                                                  GF 1y   fadcfb3
-◇    Add a readme                                                                                        GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     5 commits
+
+  ◆ ▏  [◆ main] edit notes                                                                              GF 4m   6944d27
+  ●    add notes                                                                                        GF 5m   9d5dd9b
+  ●    Correct the note                                                                                 GF 1y   a82960b
+  ●    Add the first note                                                                               GF 1y   fadcfb3
+  ◇    Add a readme                                                                                     GF 1y   64ded19
 
 
 
@@ -2372,9 +2370,8 @@ what right looks like: Commit diff, cursor on New line 2: exactly one row carrie
 
 
 
-
-
- B blame  F history  c commit  P push  <> resize  p pull  f fetch  . more  b  t  u  /  q  F2  F3  x  +  j/k  1  H  y
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ B blame · F history · c commit · P push · <> resize · p pull · f fetch · b branch · t tag · u undo · / search · . more
 COMMIT 6944d27 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 4m · parents 9d5dd9b · diff vs firs…
 edit notes
 M notes.txt             +2 −1
@@ -2398,11 +2395,12 @@ what right looks like: Two frames: files cursor on a file row, bar has no `space
 ================================================================================
 
 == the files cursor on a file row: no `space` ==
- graft /code/api  4 commits
-◆ ▏  [◆ main] add src                                                                                    GF 4mo  9d4f6c9
-●    Correct the note                                                                                    GF 1y   a82960b
-●    Add the first note                                                                                  GF 1y   fadcfb3
-◇    Add a readme                                                                                        GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     4 commits
+
+  ◆ ▏  [◆ main] add src                                                                                 GF 4mo  9d4f6c9
+  ●    Correct the note                                                                                 GF 1y   a82960b
+  ●    Add the first note                                                                               GF 1y   fadcfb3
+  ◇    Add a readme                                                                                     GF 1y   64ded19
 
 
 
@@ -2419,9 +2417,8 @@ what right looks like: Two frames: files cursor on a file row, bar has no `space
 
 
 
-
-
- ⏎ open  B blame  F history  c commit  P push  <> resize  p pull  . more  f  b  t  u  /  q  F2  F3  x  +  j/k  1  H  y
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · B blame · F history · c commit · P push · <> resize · p pull · f fetch · b branch · t tag · u undo · . more
 COMMIT 9d4f6c9 · Graft Fixture <fixture@example.invalid> · 2020-09-13 12:27 +0000 · 4mo · parents a82960b · diff vs fir…
 add src
 M notes.txt             +1 −1 ▎
@@ -2440,11 +2437,12 @@ M notes.txt             +1 −1 ▎
 
 
 == the files cursor on the `src/` directory row: `space fold` ==
- graft /code/api  4 commits
-◆ ▏  [◆ main] add src                                                                                    GF 4mo  9d4f6c9
-●    Correct the note                                                                                    GF 1y   a82960b
-●    Add the first note                                                                                  GF 1y   fadcfb3
-◇    Add a readme                                                                                        GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     4 commits
+
+  ◆ ▏  [◆ main] add src                                                                                 GF 4mo  9d4f6c9
+  ●    Correct the note                                                                                 GF 1y   a82960b
+  ●    Add the first note                                                                               GF 1y   fadcfb3
+  ◇    Add a readme                                                                                     GF 1y   64ded19
 
 
 
@@ -2461,9 +2459,8 @@ M notes.txt             +1 −1 ▎
 
 
 
-
-
- ⏎ open  space fold  c commit  P push  <> resize  p pull  f fetch  . more  b  t  u  /  q  F2  F3  x  +  j/k  1  F  H  y
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · space fold · c commit · P push · <> resize · p pull · f fetch · b branch · t tag · u undo · / search · . more
 COMMIT 9d4f6c9 · Graft Fixture <fixture@example.invalid> · 2020-09-13 12:27 +0000 · 4mo · parents a82960b · diff vs fir…
 add src
 M notes.txt             +1 −1 select a file
@@ -2487,14 +2484,15 @@ what right looks like: (a) `B ⏎` then `Tab` to the graph: pane open on Lina's 
 ================================================================================
 
 Right: (a) `B ⏎` then `Tab` to the graph — the pane still open on Lina's commit, the bar leads `esc back to blame`.
- graft /code/api  6 commits
-◌    Uncommitted changes (1 untracked)
-◆    [◆ main] Handle expired tokens                                                                      GF 60m  74f9a9e
-●    Move session TTL to config                                                                          PR 4mo  0a27627
-●    rustfmt                                                                                             RU 5mo  b32274b
-● ▏  Retry refresh once on 401                                                                           LI 7mo  2f48ca3
-●    Add token refresh                                                                                   TO 10mo 47593a5
-◇    Add session                                                                                         AN 1y   3f6c311
+ ◆ api  ~/code/api · main                                                                                     6 commits
+
+  ◌    Uncommitted changes (1 untracked)
+  ◆    [◆ main] Handle expired tokens                                                                   GF 60m  74f9a9e
+  ●    Move session TTL to config                                                                       PR 4mo  0a27627
+  ●    rustfmt                                                                                          RU 5mo  b32274b
+  ● ▏  Retry refresh once on 401                                                                        LI 7mo  2f48ca3
+  ●    Add token refresh                                                                                TO 10mo 47593a5
+  ◇    Add session                                                                                      AN 1y   3f6c311
 
 
 
@@ -2508,9 +2506,8 @@ Right: (a) `B ⏎` then `Tab` to the graph — the pane still open on Lina's com
 
 
 
-
-
- esc back to blame  ⏎ open  o take  . more  b  <>  r  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  f
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ esc back to blame · ⏎ open · o take · b branch · <> resize · r rebase · t tag · c commit · y sha · m merge · . more
 COMMIT 2f48ca3 · Lina <lina@example.invalid> · 2019-06-07 00:00 +0000 · 7mo · parents 47593a5 · diff vs first parent · …
 Retry refresh once on 401
 ▾ src/                        impl Session {
@@ -2575,12 +2572,13 @@ docs/shots/m7/blame-enter-partly-staged-120x40.txt
 what right looks like: Changes pane after `⏎` from blame in a partly-staged file: the Staged row selected, exactly one `▎`, on `▎+ S8`. Colour unverified (ticket 20m)
 ================================================================================
 
- graft /code/api  4 commits
-◌ ▏  Uncommitted changes (1 staged, 1 unstaged)
-◆    [◆ main] add f                                                                                      GT 24h  d45d045
-●    Correct the note                                                                                    GF 2d   a82960b
-●    Add the first note                                                                                  GF 2d   fadcfb3
-◇    Add a readme                                                                                        GF 2d   64ded19
+ ◆ api  ~/code/api · main                                                                                     4 commits
+
+  ◌ ▏  Uncommitted changes (1 staged, 1 unstaged)
+  ◆    [◆ main] add f                                                                                   GT 24h  d45d045
+  ●    Correct the note                                                                                 GF 2d   a82960b
+  ●    Add the first note                                                                               GF 2d   fadcfb3
+  ◇    Add a readme                                                                                     GF 2d   64ded19
 
 
 
@@ -2596,9 +2594,8 @@ what right looks like: Changes pane after `⏎` from blame in a partly-staged fi
 
 
 
-
-
- esc back to blame  space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ esc back to blame · space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ graph · . more
 UNCOMMITTED · 1 staged 1 unstaged
 diff vs HEAD d45d045
 STAGED (1)                    l4
@@ -2799,251 +2796,4 @@ what right looks like: `F` on `logo.bin`: file pane reads `binary · 600 B → 2
                                         │
                                         │
  j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back
-
-================================================================================
-docs/shots/m7/esc-back-to-history-from-the-graph-120x40.txt
-what right looks like: Ticket 21b: (a) `⏎` on a version, then `Tab` to the graph — the graph's bar begins `esc back to history`, never `back to blame`; (b) one `esc` — the history place again, same commit `▸`. Colour unverified.
-================================================================================
-
-Right: (a) `B L ⏎` then `Tab` to the graph — the bar leads `esc back to history`.
- graft /code/api  6 commits
-◌    Uncommitted changes (1 untracked)
-◆    [◆ main] Handle expired tokens                                                                      GF 60m  74f9a9e
-●    Move session TTL to config                                                                          PR 4mo  0a27627
-●    rustfmt                                                                                             RU 5mo  b32274b
-● ▏  Retry refresh once on 401                                                                           LI 7mo  2f48ca3
-●    Add token refresh                                                                                   TO 10mo 47593a5
-◇    Add session                                                                                         AN 1y   3f6c311
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- esc back to history  ⏎ open  o take  . more  b  <>  r  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H
-COMMIT 2f48ca3 · Lina <lina@example.invalid> · 2019-06-07 00:00 +0000 · 7mo · parents 47593a5 · diff vs first parent · …
-Retry refresh once on 401
-▾ src/                        impl Session {
-  M session.rs          +3 −2  14  14           Session { token, refresh, issued: Instant::now() }
-                               15  15       }
-                               16  16▎      /// Refresh the token when the server says it expired.
-                               17  17       pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
-                                   18 +         let mut attempt = 0;
-                               18  19           loop {
-                               19  20               let resp = client.refresh(&self.token)?;
-                               20     -             if resp.status() == 401 {
-                               21     -                 self.back_off();
-                                   21 +             if resp.status() == 401 && attempt == 0 {
-                                   22 +                 attempt += 1;
-                               22  23                   continue;
-                               23  24               }
-
-Right: (b) one `Esc` — the history place again, the same commit selected.
- HISTORY · src/auth/session.rs · fn refresh_token, lines 18–29 · 3 changes
-   74f9a9e Handle expire… GF  60m +1 −1 │ 2f48ca3 · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −2
- ▸ 2f48ca3 Retry refresh… LI  7mo +3 −2 │    16       /// Refresh the token when the server says it expired.
-   47593a5 Add token ref… TO 10mo +11   │ ┃  17       pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
-   the file starts here (47593a5 added  │ ┃  18 +         let mut attempt = 0;
-   it)                                  │ ┃  19           loop {
-                                        │ ┃  20               let resp = client.refresh(&self.token)?;
-                                        │ ┃     −             if resp.status() == 401 {
-                                        │ ┃     −                 self.back_off();
-                                        │ ┃  21 +             if resp.status() == 401 && attempt == 0 {
-                                        │ ┃  22 +                 attempt += 1;
-                                        │ ┃  23                   continue;
-                                        │ ┃  24               }
-                                        │ ┃  25               self.token = resp.token()?;
-                                        │ ┃  26               return self.record_refresh(&resp, "refreshed after the se…
-                                        │ ┃  27           }
-                                        │ ┃  28       }
-                                        │    29
-                                        │    30       pub fn token(&self)->&str { &self.token }
-                                        │    31
-                                        │    32       pub fn age(&self)->Duration { self.issued.elapsed() }
-                                        │    33
-                                        │    34       pub fn is_expired(&self) -> bool {
-                                        │    35           self.age() > SESSION_TTL
-                                        │    36       }
-                                        │    37   }
-                                        │    38
-                                        │    39   impl Drop for Session {
-                                        │    40       fn drop(&mut self) {
-                                        │    41           self.token.clear();
-                                        │    42           self.refresh.clear();
-                                        │    43       }
-                                        │    44   }
-                                        │    45
-                                        │    46   #[cfg(test)]
-                                        │    47   mod tests {
-                                        │    48       use super::*;
-                                        │    49
-                                        │    50       #[test]
- j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back
-
-================================================================================
-docs/shots/m7/rewrite-chain-stop-187x50.txt
-what right looks like: Ticket 07c: a chain rewrite stopped on a conflict. Row 1 `REBASING  step 3 of 5 · pick <sha7> b1 · feature-b, branch 2 of 3`; the resolver below on `shared.txt`. Colour unverified.
-================================================================================
-
-REBASING  step 3 of 5 · pick a05fa97 b1 · feature-b, branch 2 of 3
-FILES · 1 conflicted      │▸ shared.txt · 1 conflict · 1 open
-                          │
-▏▸ shared.txt  1 of 1 open│ upstream · main                                    │ result                                               │ yours · a05fa97 b1
-                          │▏── o take                                          ? ── 1 of 1 · open                                     ? ── t take
-                          │▏1 ours                                             ┃   ? open · o t b                                     ┃ 1 theirs
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
- o upstream  t yours  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d start over  esc close
-
-================================================================================
-docs/shots/m7/rewrite-edit-stop-187x50.txt
-what right looks like: Ticket 07d: an `edit` stop on his a3 of 5, Sara's feature-b above. `still to apply · not commits yet` boxed; his two `pick` rows only (a5, a4); `feature-b (Sara): 2 commits follow, on top`; `▏` on `[HEAD] a3  HEAD · stopped here`; bar contains `a amend it`, `c continue`, `space stage`. Colour unverified.
-================================================================================
-
- graft /code/api    REBASING  step 3 of 7 · edit 7326de5 a3 · feature-a, branch 1 of 2 · change files, space stages, a amends it, c continues · ⇥ banner
-╭ still to apply · not commits yet ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ pick 90e1a32 a5                                                                                                                                                                         │
-│ pick a00e43d a4                                                                                                                                                                         │
-│ feature-b (Sara): 2 commits follow, on top                                                                                                                                              │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-  ●    [feature-b] b2                                                                                                                                                       SA 2d   a9d179d
-  ●    b1                                                                                                                                                                   SA 2d   5a1257a
-  ●    [feature-a] a5                                                                                                                                                       GF 2d   90e1a32
-  ●    a4                                                                                                                                                                   GF 2d   a00e43d
-  ◆ ▏  [HEAD] a3  HEAD · stopped here                                                                                                                                       GF 2d   7326de5
-  ●    a2                                                                                                                                                                   GF 2d   15335d9
-  ●    a1                                                                                                                                                                   GF 2d   0395451
-◇─╯    [main] m1                                                                                                                                                            GF 2d   256d42c
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- ⇥ banner  a amend it  c continue  space stage  ⏎ open  b branch  r rebase  t tag  y sha  m merge  u undo  S stash  J journal  . more  /  q  F2  F3  x  +  j/k  1  F  H  f  p  P  M  O  C
-
-================================================================================
-docs/shots/m7/rewrite-edit-stop-120x40.txt
-what right looks like: Ticket 07b/07c/07d: the `edit` stop at 120x40: banner without the edit hint; the box with `pick a2`, then feature-b and feature-c follower rows (reads `1 commit follow`: grammar defect, open); `▏` on the stopped commit; bar `⇥ banner  a amend it  c continue`, `space` bare at this width. Colour unverified.
-================================================================================
-
- graft /code/api    REBASING  step 1 of 4 · edit 0395451 a1 · feature-a, branch 1 of 3
-╭ still to apply · not commits yet ────────────────────────────────────────────────────────────────────────────────────╮
-│ pick 15335d9 a2                                                                                                      │
-│ feature-b (Graft Fixture): 1 commit follow, on top                                                                   │
-│ feature-c (Graft Fixture): 1 commit follow, on top                                                                   │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-  ●    [feature-c] c1                                                                                    GF 2d   1966dda
-● │    [main] m2                                                                                         GF 2d   9d9646b
-│ ●    [feature-b] b1                                                                                    GF 2d   82392de
-│ ●    [feature-a] a2                                                                                    GF 2d   15335d9
-│ ◆ ▏  [HEAD] a1  HEAD · stopped here                                                                    GF 2d   0395451
-◇─╯    m1                                                                                                GF 2d   256d42c
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- ⇥ banner  a amend it  c continue  . more  space  ⏎  b  r  t  y  m  u  S  J  /  q  F2  F3  x  +  j/k  1  F  H  f  p  P
 

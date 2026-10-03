@@ -54,10 +54,11 @@
 #    sha beside it.
 #
 
- graft /code/api  8 commits
-  ◆    [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
-  ●    start the feature                                                                                                                         GF 2m   52f3b96
-● │ ▏  [main] main moves again                                                                                                                   GF 3m   45fa51d
+ ◆ api  ~/code/api · feature                                                                                                                          8 commits
+
+    ◆    [◆ feature] finish the feature                                                                                                         GF now  8d6cd28
+    ●    start the feature                                                                                                                      GF 2m   52f3b96
+  ● │ ▏  [main] main moves again                                                                                                                GF 3m   45fa51d
  Checkout main
  Cherry-pick 45fa51d (o)
  Copy SHA (y)
@@ -99,6 +100,5 @@
 
 
 
-
-
- m merge  r rebase  ⏎ open  o take  b branch  t tag  P push  c commit  p pull  f fetch  . more  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · . more

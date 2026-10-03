@@ -8,14 +8,14 @@
 # main`, `tracks origin/main`, `no copy of yours yet` on the right;
 # `main` last, `you're on it`; the bar `type to find  ⏎ switch to
 # it  esc close  ⇥ show it on the graph  ↑↓ row`.
- graft /code/api  6 commits
-  ● ▏  [login-page] [origin/sara/login-page] fix the bug                                                                                                                    GF 3m   fbb2394
-◆ │    [◆ main ⇄ origin] main moves on                                                                                                                                      GF 4m   37926a7
-●─╯    [feature-a] add the base                                                                                                                                             GF 5m   ed332bc
-●      Correct the note                                                                                                                                                     GF 1y   a82960b
-●      Add the first note                                                                                                                                                   GF 1y   fadcfb3
-◇      Add a readme                                                                                                                                                         GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                                                                                        6 commits
 
+    ● ▏  [login-page] [origin/sara/login-page] fix the bug                                                                                                                 GF 3m   fbb2394
+  ◆ │    [◆ main ⇄ origin] main moves on                                                                                                                                   GF 4m   37926a7
+  ●─╯    [feature-a] add the base                                                                                                                                          GF 5m   ed332bc
+  ●      Correct the note                                                                                                                                                  GF 1y   a82960b
+  ●      Add the first note                                                                                                                                                GF 1y   fadcfb3
+  ◇      Add a readme                                                                                                                                                      GF 1y   64ded19
 
 
 
@@ -54,7 +54,7 @@
                   │                                                                                                                                                    │
                   │                                                                                                                                                    │
                   │                                                                                                                                                    │
-                  │                                                                                                                                                    │
                   │ 4 branches                                                                                                                                         │
                   └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  type to find  ⏎ switch to it  esc close  ⇥ show it on the graph  ↑↓ row

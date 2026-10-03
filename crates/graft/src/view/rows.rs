@@ -4,16 +4,18 @@
 use graft_graph::Ancestry;
 use graft_graph::fold::Keep;
 use graft_graph::row::Row;
-use graft_term::{SanitizedText, sanitize_line, sanitize_path};
+use graft_term::{SanitizedText, sanitize_line, sanitize_path, sanitize_path_bytes};
 use graft_ui::graph_column::{NodeKind, RowPaint};
 use graft_ui::graph_screen::hints::RowVerbs;
 use graft_ui::graph_screen::{
-    Badge, BadgeKind, Compaction, Filters, GraphEntry, GraphView, HintContext, LiveC, OrderNotice,
-    ProblemLine, SHA_WIDTH, SearchLine, TabWord, WalkView, short_sha,
+    Badge, BadgeKind, Compaction, Filters, GraphEntry, GraphView, HintContext, LiveC, Location,
+    OrderNotice, ProblemLine, SHA_WIDTH, SearchLine, TabWord, WalkView, short_sha, spaced,
 };
 use std::collections::BTreeSet;
+use std::path::{Path, PathBuf};
 
 use crate::history::{History, Phase, Promotion, WalkFacts};
+use crate::repository::{Head, RepositoryFacts};
 use crate::update::{AppState, GraphOverlay};
 
 use super::entries::{Thread, thread, uncommitted_shown, visible_rows};
@@ -39,10 +41,11 @@ use super::entries::{Thread, thread, uncommitted_shown, visible_rows};
 /// eight lanes a drag landed on the wrong badge.
 #[must_use]
 pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
+    let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
     let location = state
         .repository
         .as_ref()
-        .map(|facts| sanitize_path(&facts.path));
+        .map(|facts| location(facts, home.as_deref()));
     // An open modal owns the bottom row: its own refusal is the only problem,
     // and the search, compare and stop rungs are blanked (`modal_blanked`).
     // `reveal` is not: under a box `draw_box_bars` writes the whole bar over
@@ -100,6 +103,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         commit_graph: modal_blanked(state, AppState::commit_graph_line),
         banner: super::frame::banner_lines(state),
         divider_shown: divider_shown(state),
+        spaced: spaced(state.size.rows),
         hint_context,
         // `visible_rows` (just above) has already set `radar_column_seen`
         // for any row it built with a marker, so reading it here also
@@ -188,11 +192,51 @@ fn rows_for_frame<'a>(
     (live, reveal)
 }
 
+/// Characters of a detached `HEAD`'s id the header shows (ADR-0058 §4,
+/// `detached <sha7>`).
+const HEADER_SHA: usize = 7;
+
+/// Where the header says the user is: the repository's name, its path with
+/// `home` written `~`, and the branch — or `detached <sha7>` (DESIGN.md
+/// §1.0, ADR-0058 §4). Every string is sanitised on the way.
+fn location(facts: &RepositoryFacts, home: Option<&Path>) -> Location {
+    let repo = facts.path.file_name().map_or_else(
+        || sanitize_path(&facts.path),
+        |name| sanitize_path(Path::new(name)),
+    );
+    let branch = match &facts.head {
+        Head::Branch(name) | Head::Unborn(name) => sanitize_path_bytes(name),
+        Head::Detached(id) => {
+            let hex = id.to_string();
+            sanitize_line(&format!("detached {}", &hex[..HEADER_SHA.min(hex.len())]))
+        }
+        Head::Unreadable(why) => sanitize_line(&format!("HEAD unreadable: {why}")),
+    };
+    Location {
+        repo,
+        path: sanitize_path(&home_relative(&facts.path, home)),
+        branch,
+        // The practice repository is G-tour's; nothing opens one yet.
+        practice: false,
+    }
+}
+
+/// `path` with a leading `home` written `~`, the way a shell prompt shows
+/// it. A path outside `home` (or no `home` at all) is returned whole.
+fn home_relative(path: &Path, home: Option<&Path>) -> PathBuf {
+    match home.and_then(|home| path.strip_prefix(home).ok()) {
+        // Only a real directory counts: `HOME=/` would turn every path
+        // into `~/…`, which says nothing.
+        Some(rest) if home.is_some_and(|home| home.parent().is_some()) => Path::new("~").join(rest),
+        _ => path.to_path_buf(),
+    }
+}
+
 /// The view before any history has arrived: the header says so, and there is
 /// nothing else to show.
 fn opening_view(
     state: &AppState,
-    location: Option<SanitizedText>,
+    location: Option<Location>,
     problem: Option<ProblemLine>,
 ) -> GraphView<'_> {
     GraphView {
@@ -217,6 +261,7 @@ fn opening_view(
         commit_graph: modal_blanked(state, AppState::commit_graph_line),
         banner: super::frame::banner_lines(state),
         divider_shown: divider_shown(state),
+        spaced: spaced(state.size.rows),
         // Wrapped like every graph-row bar: an operation can be live
         // before the first rows land (m6-conflicts/52).
         hint_context: live_wrapped(
@@ -982,6 +1027,56 @@ mod tests {
             footer_context(&state, &[], Some(&banner(false, Some("notes.md")))),
             hint_context(&state, &[]),
         );
+    }
+
+    fn facts(path: &str, head: Head) -> RepositoryFacts {
+        RepositoryFacts {
+            path: PathBuf::from(path),
+            bare: false,
+            head,
+            mailmap: graft_git::mailmap::Mailmap::default(),
+            commit_graph: crate::repository::CommitGraphFact::Present { commits: 1 },
+        }
+    }
+
+    /// The header's location (ADR-0058 §4, J22): the repository's own
+    /// name, its path with the home directory written `~`, and the branch.
+    #[test]
+    fn the_location_names_the_repo_its_home_path_and_its_branch() {
+        let home = Path::new("/work/ada");
+        let at = location(
+            &facts("/work/ada/code/api", Head::Branch(b"main".to_vec())),
+            Some(home),
+        );
+        assert_eq!(at.repo.as_str(), "api");
+        assert_eq!(at.path.as_str(), "~/code/api");
+        assert_eq!(at.branch.as_str(), "main");
+        assert!(!at.practice);
+
+        // Outside the home, or with none, the path is shown whole.
+        let away = location(
+            &facts("/srv/api", Head::Unborn(b"trunk".to_vec())),
+            Some(home),
+        );
+        assert_eq!(away.path.as_str(), "/srv/api");
+        assert_eq!(away.branch.as_str(), "trunk");
+        let homeless = location(&facts("/work/ada/api", Head::Unborn(b"x".to_vec())), None);
+        assert_eq!(homeless.path.as_str(), "/work/ada/api");
+        // A home of `/` would make every path `~/…`, which says nothing.
+        let root = location(
+            &facts("/srv/api", Head::Unborn(b"x".to_vec())),
+            Some(Path::new("/")),
+        );
+        assert_eq!(root.path.as_str(), "/srv/api");
+    }
+
+    /// A detached `HEAD` says so, with seven characters of its id.
+    #[test]
+    fn a_detached_head_is_named_with_seven_characters_of_its_id() {
+        let id = graft_core::oid::Oid::from_bytes(&[0xab; graft_core::oid::Oid::SHA1_BYTES])
+            .expect("20 bytes");
+        let at = location(&facts("/srv/api", Head::Detached(id)), None);
+        assert_eq!(at.branch.as_str(), "detached abababa");
     }
 
     /// With nothing unmerged the banner's `M`/`e` refuse in words, so the

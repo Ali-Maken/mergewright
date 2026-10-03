@@ -397,7 +397,7 @@ fn a_pane_hints_only_its_own_keys() {
     ));
     assert_eq!(
         pane,
-        " space stage  d discard  c commit  ⌃A all  e edit  ⇥ graph  . more"
+        " space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · . more"
     );
     let unmerged = hints_text(&hints_for(
         &HintContext::ChangesPane {
@@ -410,7 +410,7 @@ fn a_pane_hints_only_its_own_keys() {
     ));
     assert_eq!(
         unmerged,
-        " ⏎ resolve  M mergetool  e edit  space resolved  c commit  ⇥ graph  . more"
+        " ⏎ resolve · M mergetool · e edit · space resolved · c commit · ⇥ graph · . more"
     );
 }
 
@@ -531,7 +531,7 @@ fn context_lists_match_the_design_note_order() {
     let working_tree = hints_for(&HintContext::WorkingTreeRow, Divider::Hidden, 240);
     let text = hints_text(&working_tree);
     assert!(
-        text.starts_with(" ⏎ changes  c commit  S stash  p pull  P push  f fetch"),
+        text.starts_with(" ⏎ changes · c commit · S stash · p pull · P push · f fetch"),
         "{text:?}"
     );
 }
@@ -595,6 +595,11 @@ fn every_short_rung_is_the_users_own_word() {
         // Conductor ruling 2026-09-27 (21b): the history bar at 40 columns.
         ("next change", "next"),
         ("older·newer", "older"),
+        // m8 06 (ADR-0058's ` · ` separator): the way back leads its bar and
+        // its floor fits the 47-cell narrowest bar only at this prefix.
+        // Proposed by the builder, for the conductor's ruling (ticket NOTES).
+        ("back to blame", "back"),
+        ("back to history", "back"),
     ];
     for (verb, want) in table {
         assert_eq!(short_form(verb), Some(want), "`{verb}`'s short rung");
@@ -757,9 +762,17 @@ fn the_bare_keys_are_a_tail_not_a_scatter() {
 /// This is the clause the reverted rule got backwards, and the one a plain
 /// left-to-right greedy would break: greedy hands hint four its whole verb
 /// while hints five to twenty-two are not on the bar at all.
+///
+/// In a words-only bar (ADR-0058 §4) the lowest rung a tail hint is placed
+/// at is its floor rung, not its bare key; the clause is the same one rung
+/// up.
 #[test]
 fn a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn() {
     for context in all_contexts() {
+        let placed_at = |hint: &Hint| match words_for(&context) {
+            Words::Only => hint.floor_rung(),
+            Words::Keys => Rung::Key,
+        };
         for divider in [Divider::Shown, Divider::Hidden] {
             let whole = whole_list(&context, divider);
             for columns in 0..=240u16 {
@@ -768,7 +781,7 @@ fn a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn() {
                 let raised = body
                     .iter()
                     .skip(3)
-                    .find(|hint| hint.rung != Rung::Key)
+                    .find(|hint| hint.rung != placed_at(hint))
                     .map(|hint| hint.key);
                 if let Some(key) = raised {
                     assert_eq!(
@@ -848,12 +861,15 @@ fn the_three_most_relevant_never_fall_below_their_floor_rung() {
     }
 }
 
-/// A hint is dropped only when it will not fit **even at its bare key** —
-/// the last clause of ADR-0039's third amendment. At every width, adding the
-/// next hint the context has, at its key alone, would overflow the bar.
+/// A hint is dropped only when it will not fit **even at its floor rung** —
+/// the last clause of ADR-0039's third amendment, as ADR-0058 §4 restates it
+/// for a row context's words-only bar (the bare-key rung is gone there). At
+/// every width, adding the next hint the context has, with the fewest words
+/// it may draw, would overflow the bar.
 #[test]
-fn a_hint_is_dropped_only_when_its_bare_key_will_not_fit() {
+fn a_hint_is_dropped_only_when_its_words_will_not_fit() {
     for context in row_contexts() {
+        assert_eq!(words_for(&context), Words::Only, "{context:?}");
         for divider in [Divider::Shown, Divider::Hidden] {
             let whole = drawable(&context, divider);
             for columns in 40..=240u16 {
@@ -862,12 +878,17 @@ fn a_hint_is_dropped_only_when_its_bare_key_will_not_fit() {
                 if body.len() == whole.len() {
                     continue;
                 }
+                let words = |hint: Hint| Hint {
+                    words_only: true,
+                    ..hint
+                };
                 let mut with_one_more = body.clone();
-                with_one_more.push(whole[body.len()].at(Rung::Key));
-                with_one_more.push(MORE);
+                let next = whole[body.len()];
+                with_one_more.push(words(next.at(next.floor_rung())));
+                with_one_more.push(words(MORE));
                 assert!(
                     hints_text(&with_one_more).width() > usize::from(columns),
-                    "{context:?} at {columns} columns dropped `{}` with room for its key: {:?}",
+                    "{context:?} at {columns} columns dropped `{}` with room for its words: {:?}",
                     whole[body.len()].key,
                     hints_text(&hints)
                 );
@@ -1028,10 +1049,11 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
 /// doorway sits at the head of the bare keys — which is the end of the row
 /// when there are none.
 ///
-/// Asserted in one test because the point is that one rule produces both.
-/// A graph row at 80 cells has a tail of bare keys and `. more` leads it; the
-/// changes pane and the journal browser draw every hint whole at the same
-/// width, and `. more` stays last, where it always was.
+/// Since ADR-0058 §4 a row context draws no bare keys, so its doorway is
+/// last too: at 80 cells the graph row's bar is words joined by ` · `,
+/// ending in `. more`. The changes pane and the journal browser draw every
+/// hint whole at the same width, and `. more` stays last, where it always
+/// was.
 #[test]
 fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
     let with_a_tail = hints_for(
@@ -1044,12 +1066,9 @@ fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
     );
     let text = hints_text(&with_a_tail);
     assert_eq!(
-        text, " ⏎ open  c commit  P push  . more  p  f  b  t  u  S  J  /  q  F2  F3  x  +  j/k",
-        "a row context has a tail, so the doorway leads it"
-    );
-    assert!(
-        !text.ends_with(". more"),
-        "the doorway is no longer last where a tail exists: {text:?}"
+        text,
+        " ⏎ open \u{b7} c commit \u{b7} P push \u{b7} p pull \u{b7} f fetch \u{b7} b branch \u{b7} t tag \u{b7} . more",
+        "a row context draws words only, and its doorway is last"
     );
 
     for context in [
@@ -1144,31 +1163,61 @@ fn the_bar_never_draws_a_fragment_of_itself() {
     }
 }
 
-/// The floor fits at 48 cells of bar — the narrowest bar anything reachable
+/// The floor fits at 47 cells of bar — the narrowest bar anything reachable
 /// actually has.
 ///
 /// `graft_ui::detail_pane::layout`'s `RIGHT_MIN = 48` clamps the graph side
 /// of a side-by-side split, and below 100 columns the pane is a full-width
-/// tab instead, so no divider drag leaves the bar narrower than this. The
-/// 20-cell overflow the m5/27 sweep found is below anything a user can
-/// reach — this is the number that matters, and it is asserted rather than
-/// assumed (m5/28).
+/// tab instead, so no divider drag leaves the graph narrower than this; the
+/// bar keeps one cell of right margin of it (ADR-0058 §4). The 20-cell
+/// overflow the m5/27 sweep found is below anything a user can reach — this
+/// is the number that matters, and it is asserted rather than assumed
+/// (m5/28). Since ADR-0058's ` · ` separator, the back-to-a-place leads fit
+/// it only at their short rung, `esc back`.
 #[test]
-fn the_floor_fits_at_forty_eight_cells_of_bar() {
+fn the_floor_fits_at_the_narrowest_bar() {
     for context in all_contexts() {
         if context == HintContext::Preview {
             continue;
         }
         let whole = whole_list(&context, Divider::Hidden);
         let floor = whole.len().min(3);
-        let hints = hints_for(&context, Divider::Hidden, 48);
+        let hints = hints_for(&context, Divider::Hidden, 47);
         let body = without_trailer(&hints);
         assert!(
             body.len() >= floor,
-            "{context:?} cannot draw its floor of {floor} in 48 cells — that is a live \
+            "{context:?} cannot draw its floor of {floor} in 47 cells — that is a live \
              defect, not a completeness gap: {:?}",
             hints_text(&hints)
         );
+    }
+}
+
+/// ADR-0058 §4: outside modal contexts no hint is drawn at its bare key, at
+/// any width from 40 to 200, and `. more` is always last where it is drawn.
+#[test]
+fn a_words_only_bar_draws_no_bare_key_and_ends_with_its_doorway() {
+    for context in all_contexts() {
+        if words_for(&context) == Words::Keys {
+            continue;
+        }
+        for divider in [Divider::Hidden, Divider::Shown] {
+            for columns in 40u16..=200 {
+                let hints = hints_for(&context, divider, columns);
+                let text = hints_text(&hints);
+                assert!(
+                    hints.iter().all(|hint| hint.rung != Rung::Key),
+                    "{context:?} at {columns}: a bare key: {text:?}"
+                );
+                if let Some(at) = hints.iter().position(|hint| *hint == MORE) {
+                    assert_eq!(at, hints.len() - 1, "{context:?} at {columns}: {text:?}");
+                }
+                assert!(
+                    hints.len() < 2 || text.contains(" \u{b7} "),
+                    "{context:?} at {columns}: joined by ` · `: {text:?}"
+                );
+            }
+        }
     }
 }
 
@@ -1270,7 +1319,7 @@ fn resolver_hint_ladder() {
     // this exercises exactly the code `hints_for` would once the table
     // flips.
     let whole = list.clone();
-    let at_160 = fit_list(&whole, None, 160);
+    let at_160 = fit_list(&whole, None, 160, Words::Keys);
     assert_eq!(
         hints_text(&at_160),
         " o yours  t theirs  b both  ⌃O/⌃T all  O/T file  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  esc close"
@@ -1281,7 +1330,7 @@ fn resolver_hint_ladder() {
     // after review m6-amend-16 M2 made `⌃O/⌃T all` one hint, 2026-09-24).
     // Since m6-conflicts/56 `esc close` keeps its words ahead of the bare
     // keys (ADR-0044 §4), so at 80 `e` goes bare instead.
-    let at_80 = fit_list(&whole, None, 80);
+    let at_80 = fit_list(&whole, None, 80, Words::Keys);
     let text_80 = hints_text(&at_80);
     assert_eq!(
         text_80,

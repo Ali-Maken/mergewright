@@ -8,15 +8,14 @@
 # edits — a `Preview:` box naming the new branch, the line
 # `your edits stay as they are` (nothing is set aside at HEAD), `y` on the
 # box edge.
- graft /code/api  6 commits
-  ●    [feature-b] fix the bug                                                                           GF 3m   fbb2394
-◆ │ ▏  [◆ main] [feature-c] main moves on                                                                GF 4m   37926a7
-●─╯    add the base                                                                                      GF 5m   ed332bc
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     6 commits
 
-
+    ●    [feature-b] fix the bug                                                                        GF 3m   fbb2394
+  ◆ │ ▏  [◆ main] [feature-c] main moves on                                                             GF 4m   37926a7
+  ●─╯    add the base                                                                                   GF 5m   ed332bc
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -47,4 +46,5 @@
 │ git switch feature-c                                                                                                 │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
 ╰ y confirm  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

@@ -16,6 +16,13 @@ use super::state::AppState;
 /// adds its rows; see [`rows_above_graph`].
 pub(super) const HEADER_ROWS: u16 = 1;
 
+/// The header and, from 30 rows, the blank row under it
+/// (`graft_ui::graph_screen::spaced`, ADR-0058 §4): the rows the graph
+/// screen itself draws above its first graph row.
+pub(super) fn header_rows(state: &AppState) -> u16 {
+    HEADER_ROWS + u16::from(graft_ui::graph_screen::spaced(state.size.rows))
+}
+
 /// Screen rows above the first graph row: the header, any harness banner,
 /// and — below 100 columns with the graph as the tab shown — the tab
 /// strip and the operation banner's row above it
@@ -23,7 +30,7 @@ pub(super) const HEADER_ROWS: u16 = 1;
 /// still-to-apply block (`banner::pending_rows_taken`, review
 /// m7-10-to-07c Major 2).
 pub(super) fn rows_above_graph(state: &AppState) -> u16 {
-    HEADER_ROWS
+    header_rows(state)
         .saturating_add(state.harness.banner_rows())
         .saturating_add(super::banner::tab_rows_above_graph(state))
         .saturating_add(super::banner::pending_rows_taken(state))

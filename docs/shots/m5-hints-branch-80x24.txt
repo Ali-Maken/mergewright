@@ -49,13 +49,13 @@
 # one state photographed at three sizes is a picture of at most one of
 # them.
 
- graft /code/api  5 commits  date order, sorting…
-◌    Uncommitted changes (1 unstaged)
-◆ ▏  [◆ main] add second                                            8m   29a1432
-●    add first                                                      9m   3d9496e
-●    Correct the note                                               1y   a82960b
-●    Add the first note                                             1y   fadcfb3
-◇    Add a readme                                                   1y   64ded19
+ ◆ api  ~/code/api · main                       5 commits  date order, sorting…
+  ◌    Uncommitted changes (1 unstaged)
+  ◆ ▏  [◆ main] add second                                         8m   29a1432
+  ●    add first                                                   9m   3d9496e
+  ●    Correct the note                                            1y   a82960b
+  ●    Add the first note                                          1y   fadcfb3
+  ◇    Add a readme                                                1y   64ded19
 
 
 
@@ -72,4 +72,4 @@
 
 
 
- ⏎ open  c commit  P push  . more  p  f  a  b  t  u  S  J  /  R  q  F2  F3  x  +
+ ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · . more

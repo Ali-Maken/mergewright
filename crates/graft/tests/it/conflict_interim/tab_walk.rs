@@ -133,9 +133,10 @@ fn rebase_frames(columns: u16, rows: u16) -> Vec<(String, String)> {
     let mut frames = Vec::new();
 
     let one = shot(&state);
-    // The pane's bar: the row that says `c continue` (at 120x40 the pane
+    // The pane's bar: the row that says `c continue` (`c cont` at 80, where the
+    // ` · ` joins cost the cells: its short rung) (at 120x40 the pane
     // sits below the graph, so it is not the frame's last row).
-    let bar = row_with(&one, "c continue").cloned().unwrap_or_default();
+    let bar = row_with(&one, "c cont").cloned().unwrap_or_default();
     assert!(bar.contains("\u{21e5} diff"), "{bar:?}");
     assert!(!bar.contains("\u{21e5} graph"), "{bar:?}");
     frames.push((

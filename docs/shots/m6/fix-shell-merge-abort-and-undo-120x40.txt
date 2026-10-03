@@ -16,29 +16,29 @@
 # - Colour and the focus highlight are unverified (CLAUDE.md rule 5).
 #
 === 1. a: the abort box ===
- graft /code/api    MERGING
-◌   ▏  Uncommitted changes (2 unmerged)
-◆      [◆ main] main's take                                                                              GF 2h   ddeed32
-│ ●    [feature] the feature's take                                                                      GF 2h   f43f326
-●─╯    the shared files                                                                                  GF 2h   b35b2f1
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                       MERGING
+
+  ◌   ▏  Uncommitted changes (2 unmerged)
+  ◆      [◆ main] main's take                                                                           GF 2h   ddeed32
+  │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
+  ●─╯    the shared files                                                                               GF 2h   b35b2f1
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
 
 
 
-
-       ╭ Abort the merge? ────────────────────────────────────────────────────────────────────────────╮
-       │ main goes back to before the merge                                                           │
-       │ u puts the merge back                                                                        │
-       │                                                                                              │
-       │ git merge --abort                                                                            │
-       │                                                                                              │
-       │ ▸[ Cancel ]   [ Abort ]                                                                      │
-       ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+         ╭ Abort the merge? ─────────────────────────────────────────────────────────────────────────╮
+         │ main goes back to before the merge                                                        │
+         │ u puts the merge back                                                                     │
+         │                                                                                           │
+         │ git merge --abort                                                                         │
+         │                                                                                           │
+         │ ▸[ Cancel ]   [ Abort ]                                                                   │
+─────────╰───────────────────────────────────────────────────────────────────────────────────────────╯──────────────────
  y abort  ←/→ move  ⏎ choose  esc cancel
 UNCOMMITTED
 diff vs HEAD ddeed32
@@ -57,13 +57,14 @@ CONFLICTS (2)                 ▎
 
 
 === 2. → ⏎: aborted ===
- graft /code/api  6 commits
-◆   ▏  [◆ main] main's take                                                                              GF 2h   ddeed32
-│ ●    [feature] the feature's take                                                                      GF 2h   f43f326
-●─╯    the shared files                                                                                  GF 2h   b35b2f1
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                     6 commits
+
+  ◆   ▏  [◆ main] main's take                                                                           GF 2h   ddeed32
+  │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
+  ●─╯    the shared files                                                                               GF 2h   b35b2f1
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -78,8 +79,7 @@ CONFLICTS (2)                 ▎
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  abort merge of feature ✓
 COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
 main's take
@@ -98,14 +98,15 @@ M shared.rs             +1 −1   1     - the plan
 
 
 === 3. u: the merge back ===
- graft /code/api    MERGING
-◌      Uncommitted changes (2 unmerged)
-◆   ▏  [◆ main] main's take                                                                              GF 2h   ddeed32
-│ ●    [feature] the feature's take                                                                      GF 2h   f43f326
-●─╯    the shared files                                                                                  GF 2h   b35b2f1
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
+ ◆ api  ~/code/api · main                                                                                       MERGING
+
+  ◌      Uncommitted changes (2 unmerged)
+  ◆   ▏  [◆ main] main's take                                                                           GF 2h   ddeed32
+  │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
+  ●─╯    the shared files                                                                               GF 2h   b35b2f1
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
 
 
 
@@ -119,8 +120,7 @@ M shared.rs             +1 −1   1     - the plan
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  undo: abort merge of feature ✓ · c finishes the merge
 COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
 main's take

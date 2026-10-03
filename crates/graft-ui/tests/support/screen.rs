@@ -4,8 +4,8 @@ use graft_graph::identity::BranchIdentity;
 use graft_term::{sanitize_line, sanitize_path};
 use graft_ui::graph_column::{GraphLine, RowPaint};
 use graft_ui::graph_screen::{
-    AuthorChip, Compaction, Filters, GraphEntry, GraphView, HintContext, Icons, WalkView, initials,
-    relative_date, short_sha,
+    AuthorChip, Compaction, Filters, GraphEntry, GraphView, HintContext, Icons, Location, WalkView,
+    initials, relative_date, short_sha,
 };
 
 /// A fixed clock reading, so the "how long ago" column is deterministic —
@@ -18,7 +18,13 @@ const NOW: i64 = 1_700_000_000;
 /// highlighted.
 pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphView<'a> {
     GraphView {
-        location: Some(sanitize_path(std::path::Path::new("~/code/api"))),
+        location: Some(Location {
+            repo: sanitize_line("api"),
+            path: sanitize_path(std::path::Path::new("~/code/api")),
+            branch: sanitize_line("main"),
+            practice: false,
+        }),
+        spaced: false,
         problem: None,
         walk: WalkView::Complete { rows: lines.len() },
         rows: lines

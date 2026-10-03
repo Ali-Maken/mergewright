@@ -168,7 +168,9 @@ fn the_cursor_row_differs_from_its_neighbours_by_three_named_attributes() {
     //    (3:1). `Token::Selection` carries this job now; `SurfaceRaised` keeps
     //    its own, smaller step for a raised panel's background.
     let selection = color(theme.token(Token::Selection));
-    for x in [0u16, 20, 40, COLUMNS - 1] {
+    // The body's own columns: the two-cell gutter and the one-cell margin
+    // keep the pane's ground (ADR-0058 §4; where the fill starts is 5b's).
+    for x in [2u16, 20, 40, COLUMNS - 2] {
         assert_eq!(
             buffer[(x, cursor)].bg,
             selection,
