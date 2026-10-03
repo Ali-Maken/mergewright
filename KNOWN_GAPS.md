@@ -1108,6 +1108,10 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/14-review-minors | 9 Minors in `docs/reviews/m8-14-daily-ops.md`; doc tests unverified in that review. | **broken** (per finding) | M8 |
 | M8/13b-unbounded-wait | `q` over a `Stoppable::No` write waits with no time limit; a hung git leaves the app open until Esc. By ruling, but no ceiling. Review 13b to judge. | **unverified** | M8 |
 | M8/13b-80col-quit-hint | Banner bar drops `q quit` first at 80 cols (test-checked); user judges whether that's the right one to drop. | **unverified** | M8 |
+| M8/06-other-headers | Map/journal/stash/history/resolver headers keep their own header code, not restyled to 06's chrome. Needs a follow-up ticket (planner). | **broken** | M8 |
+| M8/06-back-short-form | 06 changed the `back to …` short form to `back`; not in the spec — needs a ruling (planner/words sweep 20). | **unverified** | M8 |
+| M8/06-confirm-box-covers-columns | Question (rule 7, no line): after 06, do confirm boxes cover the date/sha columns? Builder saw it, cause not traced. | **unverified** | M8 |
+| M8/06-stale-graft-headers | 214 old captures still show ` graft ` headers; no test produces them, so not re-shot. Stale until 26/27 rename or a sweep. | **broken** | M8 |
 | M8/long-tmpdir-socket | 6+ graft tests fail when `$TMPDIR` is a long path (unix-socket path limit); Paperclip runs set one. Gates pass with `TMPDIR=/tmp`. Tests should not depend on `$TMPDIR` length — cause not fixed. | **broken** | M8 |
 | M8/startup-rs-564 | `startup.rs` 564 lines, over the readability limit; outside 02's file set, not split. | **broken** | M8 |
 | M8/14c-fork-wording | A fork that follows reads "built on yours", same as a dependent — 14c to decide (question). `docs/shots/m7/*-left-behind-*` now show a follow; names stale. | **unverified** | M8 |
