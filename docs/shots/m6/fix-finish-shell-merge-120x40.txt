@@ -1,6 +1,6 @@
  ◆ api  ~/code/api · main                                                                                     7 commits
 
-  ◆─╮ ▏  [◆ main] Merge branch 'feature'                                                                GF futu…0000000
+▸ ◆─╮    [◆ main] Merge branch 'feature'                                                                GF futu…0000000
   ● │    main's take                                                                                    GF 2h   ddeed32
   │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
   ●─╯    the shared files                                                                               GF 2h   b35b2f1

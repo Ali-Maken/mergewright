@@ -9,7 +9,7 @@
     ●    b1                                                                                                                                                                SA 2d   5a1257a
     ●    [feature-a] a5                                                                                                                                                    GF 2d   90e1a32
     ●    a4                                                                                                                                                                GF 2d   a00e43d
-    ◆ ▏  [HEAD] a3  HEAD · stopped here                                                                                                                                    GF 2d   7326de5
+▸   ◆    [HEAD] a3  HEAD · stopped here                                                                                                                                    GF 2d   7326de5
     ●    a2                                                                                                                                                                GF 2d   15335d9
     ●    a1                                                                                                                                                                GF 2d   0395451
   ◇─╯    [main] m1                                                                                                                                                         GF 2d   256d42c

@@ -529,13 +529,13 @@ fn dragging_caption(columns: u16, rows: u16) -> String {
          # reason.\n\
          #\n\
          # What right looks like:\n\
-         #  - `main`'s row carries `▸` in the marker column: this is where the badge\n\
-         #    would land.\n\
+         #  - `main`'s row carries `→` in the marker column: this is where the badge\n\
+         #    would land (m8-polish-and-ship/07: never `▸`, the cursor's mark).\n\
          #  - The row `feature`'s badge came off is faded — the badge is in the air,\n\
          #    not on that row. Here that is also the row the cursor is on (the badge\n\
          #    was picked up from under it), so the fade replaces the cursor's own\n\
-         #    `▏`: one row, one state. Drag from a row the cursor is not on and both\n\
-         #    marks are drawn, `▏` and `▸`, on different rows.\n\
+         #    gutter `▸`: one row, one state. Drag from a row the cursor is not on\n\
+         #    and both marks are drawn, gutter `▸` and slot `→`, on different rows.\n\
          #  - The footer reads `release drop on a row  esc cancel`.\n\
          #  - Nothing else has moved: no menu, no box, the graph unchanged.\n"
     )

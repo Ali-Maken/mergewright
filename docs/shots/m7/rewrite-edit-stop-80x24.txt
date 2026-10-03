@@ -18,7 +18,7 @@
     ●    a6                                                        2d   03794c8
     ●    a5                                                        2d   90e1a32
     ●    a4                                                        2d   a00e43d
-    ◆ ▏  [HEAD] a3  HEAD · stopped here                            2d   7326de5
+▸   ◆    [HEAD] a3  HEAD · stopped here                            2d   7326de5
     ●    a2                                                        2d   15335d9
     ●    a1                                                        2d   0395451
  ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · . more

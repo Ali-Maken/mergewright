@@ -4,7 +4,6 @@
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::Style;
 
 use super::{
     DIFF_INDENT, ExpandedDiff, FinishScreen, ListLine, Section, SummaryFocus, SummaryState,
@@ -140,7 +139,8 @@ impl FinishScreen<'_> {
         };
         let mut style = foreground(self.theme, token);
         if cursor {
-            style = style.bg(crate::paint::color(self.theme.token(Token::Selection)));
+            style = crate::paint::on_selection(self.theme, style)
+                .bg(crate::paint::color(self.theme.token(Token::Selection)));
         }
         buf.set_string(rect.x, rect.y, fit(&line, usize::from(rect.width)), style);
         // The words take the colours that tie them back to the panes and to
@@ -164,7 +164,11 @@ impl FinishScreen<'_> {
                     width,
                     height: 1,
                 },
-                Style::new().fg(crate::paint::color(self.theme.token(token))),
+                if cursor {
+                    crate::paint::on_selection(self.theme, foreground(self.theme, token))
+                } else {
+                    foreground(self.theme, token)
+                },
             );
         }
     }

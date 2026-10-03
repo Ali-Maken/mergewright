@@ -264,7 +264,7 @@ what right looks like: (ticket 84) `. ⏎` on main's row from fix with base.txt 
 
  ◆ api  ~/code/api · fix                                                                                      7 commits
 
-  ◆   ▏  [main] main changes the base                                                                   GF 2m   075a112
+▸ ◆      [main] main changes the base                                                                   GF 2m   075a112
   │ ●    [◆ fix] fix the bug                                                                            GF 3m   fbb2394
   ● │    main moves on                                                                                  GF 4m   37926a7
   ●─╯    add the base                                                                                   GF 5m   ed332bc
@@ -347,7 +347,7 @@ what right looks like: (ticket 85 A) `esc G` on a 200-commit history after the f
   ●    Commit 004                                                                                       GF 2d   23e1f67
   ●    Commit 003                                                                                       GF 2d   91af090
   ●    Commit 002                                                                                       GF 2d   ace211d
-  ◇ ▏  Commit 001                                                                                       GF 2d   a9a0c8e
+▸ ◇    Commit 001                                                                                       GF 2d   a9a0c8e
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · o take · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · . more
 
@@ -374,7 +374,7 @@ what right looks like: (ticket 85 B) `S p y esc ⏎ o esc`: a stash pop that cla
 
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-  ◌   ▏  Uncommitted changes (1 unmerged)
+▸ ◌      Uncommitted changes (1 unmerged)
   ◆      [◆ main] commit over the notes                                                                 GF 3m   f3742ab
   │ ■    [stash@{0}] WIP on main: cfa370c add the notes                                                 GF 4m   fa9e094
   ●─╯    add the notes                                                                                  GF 5m   cfa370c

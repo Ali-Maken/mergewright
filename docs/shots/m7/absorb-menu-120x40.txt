@@ -1,6 +1,6 @@
  ◆ api  ~/code/api · feature-a                                                                                3 commits
 
-    ◌ ▏  Uncommitted changes (3 staged)
+▸   ◌    Uncommitted changes (3 staged)
  Put staged changes into their commits (absorb)
  Open details (⏎)
  Fetch (f)

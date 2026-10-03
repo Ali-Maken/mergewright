@@ -196,7 +196,8 @@ impl StashScreen<'_> {
         let on_cursor = index == self.view.selected;
         let text = foreground(self.theme, Token::Text);
         let style = if on_cursor {
-            text.bg(crate::paint::color(self.theme.token(Token::Selection)))
+            crate::paint::on_selection(self.theme, text)
+                .bg(crate::paint::color(self.theme.token(Token::Selection)))
                 .add_modifier(Modifier::BOLD)
         } else {
             text
@@ -479,6 +480,35 @@ mod tests {
                     .to_owned()
             })
             .collect()
+    }
+
+    /// ADR-0058 §3: the cursor row's text clears 4.5:1 on `selection` in
+    /// dark B.
+    #[test]
+    fn text_on_the_cursor_row_is_legible() {
+        let theme = theme();
+        let shown = view(
+            vec![
+                row("stash@{0}", "WIP on main: tidy", "2h", 3),
+                row("stash@{1}", "spike", "3d", 1),
+            ],
+            StashStatus::Ready,
+        );
+        let mut terminal = Terminal::new(TestBackend::new(100, 12)).expect("test backend");
+        terminal
+            .draw(|frame| {
+                frame.render_widget(
+                    StashScreen {
+                        view: &shown,
+                        theme: &theme,
+                    },
+                    frame.area(),
+                );
+            })
+            .expect("draws");
+        let checked =
+            crate::test_support::assert_legible_on_selection(terminal.backend().buffer(), &theme);
+        assert!(checked > 10, "the cursor row is drawn ({checked})");
     }
 
     #[test]

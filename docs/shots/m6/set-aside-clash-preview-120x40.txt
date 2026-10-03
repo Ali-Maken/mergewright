@@ -14,7 +14,7 @@
 
  ◆ api  ~/code/api · fix                                                                                      7 commits
 
-  ◆   ▏  [main] main changes the base                                                                   GF 2m   075a112
+▸ ◆      [main] main changes the base                                                                   GF 2m   075a112
   │ ●    [◆ fix] fix the bug                                                                            GF 3m   fbb2394
   ● │    main moves on                                                                                  GF 4m   37926a7
   ●─╯    add the base                                                                                   GF 5m   ed332bc

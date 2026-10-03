@@ -70,7 +70,7 @@
 
  ◆ api  ~/code/api · main                                                           MERGING  UNCOMMITTED
                                                                                              diff vs HEAD 80393eb
-  ◌   ▏  Uncommitted changes (16 unmerged)
+▸ ◌      Uncommitted changes (16 unmerged)
   ◆      [◆ main] main's take                                                  87m  80393eb
   │ ●    [feature] the feature's take                                          88m  38c48dd
   ●─╯    the shared files                                                      89m  58854e9  CONFLICTS (16)

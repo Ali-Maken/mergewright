@@ -1,6 +1,6 @@
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-  ◌ ▏  Uncommitted changes (1 unstaged)
+▸ ◌    Uncommitted changes (1 unstaged)
   ◆    [◆ main] pin the side commit                                                                     GT 24h  7c7e188
   ●    add parser                                                                                       GT 24h  f48cdbe
   ●    Correct the note                                                                                 GF 2d   a82960b

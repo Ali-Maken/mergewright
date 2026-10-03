@@ -1,6 +1,6 @@
  ◆ api  ~/code/api · main                                                                         8 commits  UNCOMMITTED · 1 unstaged
                                                                                                              diff vs HEAD a65d7e4
-  ◌       ▏  Uncommitted changes (1 unstaged)
+▸ ◌          Uncommitted changes (1 unstaged)
     ■        [stash@{0}] On main: tune metrics                                              GF 3m   91dddee
     │ ●      [origin/main] Add an ops runbook                                               GF 14m  8c11cb0
     │ ●      Document the api                                                               GF 15m  ba5c9ad  UNSTAGED (1)

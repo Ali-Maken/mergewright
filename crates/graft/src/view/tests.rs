@@ -4493,9 +4493,8 @@ fn the_confirm_box_keeps_the_graph_beside_it_and_starts_on_the_subject_column() 
         // rows that says where the column itself begins.
         //
         // The **marker slot** sits between the two and is not the subject
-        // column: it carries the Mistake Radar's `⚠`/`ⓘ` and, since
-        // m5-history-and-ghost-preview/35, the cursor row's own `▏` rule at
-        // every colour depth rather than only at Palette16. Counting those
+        // column: it carries the Mistake Radar's `⚠`/`ⓘ`, the compare base's
+        // `▏` and a drop target's `→` (m8-polish-and-ship/07). Counting those
         // made this read 2 instead of 4 and fail — the box had not moved.
         // So they are skipped by name.
         // The graph glyph sits after the two-cell gutter (ADR-0058 §4).
@@ -4505,7 +4504,7 @@ fn the_confirm_box_keeps_the_graph_beside_it_and_starts_on_the_subject_column() 
             .filter(|row| row.concat().contains("Commit"))
             .filter_map(|row| {
                 row.iter().skip(past_glyph).position(|cell| {
-                    cell.trim() != "" && !matches!(cell.as_str(), "▏" | "▸" | "⚠" | "ⓘ")
+                    cell.trim() != "" && !matches!(cell.as_str(), "▏" | "→" | "⚠" | "ⓘ")
                 })
             })
             .map(|index| {
@@ -4961,12 +4960,12 @@ fn mid_drag(columns: u16, rows: u16, over: Option<usize>) -> AppState {
 ///   `state.drag` was `Some`. This test does.
 ///
 /// Three marks are asserted, which is what 35 chose to draw:
-/// 1. the row the badge is **over** — `▸` in the accent colour, its own
+/// 1. the row the badge is **over** — `→` in the accent colour, its own
 ///    `RowPaint::DropTarget`, so it is not the cursor's mark;
 /// 2. the row the badge came **from** — dimmed, because the badge is not
 ///    there any more, it is in the user's hand. This is the one that
 ///    appears on the button *down*, before any motion;
-/// 3. the cursor row — still carrying its own `▏`, because it has not
+/// 3. the cursor row — still carrying its gutter `▸`, because it has not
 ///    moved and comes back when the badge is dropped.
 ///
 /// Plus the hint bar, which was right all along.
@@ -4992,22 +4991,26 @@ fn a_drag_in_progress_is_visible_in_the_buffer_before_the_button_comes_up() {
         + 1;
     let row_of = |history_row: usize| first + history_row;
 
-    // 1. The target row: `▸`, in the accent colour.
+    // 1. The target row: `→` in the marker slot, in the accent colour
+    //    (m8-polish-and-ship/07).
     let theme = session().theme;
-    let accent = graft_ui::paint::color(theme.token(graft_ui::theme::Token::Accent));
+    // The target row is raised onto the fill, so its accent is lifted to
+    // stay legible there (ADR-0058 §3, `Theme::on_selection`).
+    let accent =
+        graft_ui::paint::color(theme.on_selection(theme.token(graft_ui::theme::Token::Accent)));
     let target = cells(row_of(4));
     let mark = target
         .iter()
-        .position(|cell| cell.symbol() == "▸")
+        .position(|cell| cell.symbol() == "→")
         .expect("the row under the pointer is marked");
     assert_eq!(
         target[mark].fg, accent,
-        "the drop mark is drawn in the accent colour"
+        "the drop mark is drawn in the accent colour, lifted onto the fill"
     );
     // And it is *not* the cursor's mark, so the two read as two things.
     assert!(
-        !target.iter().any(|cell| cell.symbol() == "▏"),
-        "the target row does not also carry the cursor's rule"
+        !target.iter().any(|cell| cell.symbol() == "▸"),
+        "the target row does not also carry the cursor's `▸`"
     );
 
     // 2. The source row is dimmed — the mark that lands on the button down.
@@ -5037,10 +5040,11 @@ fn a_drag_in_progress_is_visible_in_the_buffer_before_the_button_comes_up() {
         grid[row_of(2)].concat()
     );
 
-    // 3. The cursor row keeps its own rule while the badge is in the air.
+    // 3. The cursor row keeps its gutter `▸` while the badge is in the air
+    //    (m8-polish-and-ship/07: the cursor's mark is the gutter's cell 0).
     let cursor = cells(row_of(1));
     assert!(
-        cursor.iter().any(|cell| cell.symbol() == "▏"),
+        cursor[0].symbol() == "▸",
         "the cursor row is still findable during a drag:\n{:?}",
         grid[row_of(1)].concat()
     );

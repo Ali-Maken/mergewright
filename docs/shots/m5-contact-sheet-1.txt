@@ -756,7 +756,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on the tip, 
  ◆ api  ~/code/api · main                                                               5 commits  date order, sorting…
 
   ◌    Uncommitted changes (1 unstaged)
-  ◆ ▏  [◆ main] add second                                                                              GF 8m   29a1432
+▸ ◆    [◆ main] add second                                                                              GF 8m   29a1432
   ●    add first                                                                                        GF 9m   3d9496e
   ●    Correct the note                                                                                 GF 1y   a82960b
   ●    Add the first note                                                                               GF 1y   fadcfb3
@@ -853,7 +853,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on the tip, 
  ◆ api  ~/code/api · main                                                                                                       5 commits  date order, sorting…
 
   ◌    Uncommitted changes (1 unstaged)
-  ◆ ▏  [◆ main] add second                                                                                                                      GF 8m   29a1432
+▸ ◆    [◆ main] add second                                                                                                                      GF 8m   29a1432
   ●    add first                                                                                                                                GF 9m   3d9496e
   ●    Correct the note                                                                                                                         GF 1y   a82960b
   ●    Add the first note                                                                                                                       GF 1y   fadcfb3
@@ -957,7 +957,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on the tip, 
 
  ◆ api  ~/code/api · main                       5 commits  date order, sorting…
   ◌    Uncommitted changes (1 unstaged)
-  ◆ ▏  [◆ main] add second                                         8m   29a1432
+▸ ◆    [◆ main] add second                                         8m   29a1432
   ●    add first                                                   9m   3d9496e
   ●    Correct the note                                            1y   a82960b
   ●    Add the first note                                          1y   fadcfb3
@@ -1038,7 +1038,7 @@ what right looks like: Capture header "Judge by eye": the changes pane is open o
 
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-  ◌ ▏  Uncommitted changes (1 unstaged)
+▸ ◌    Uncommitted changes (1 unstaged)
   ◆    [◆ main] add second                                                                              GF 8m   29a1432
   ●    add first                                                                                        GF 9m   3d9496e
   ●    Correct the note                                                                                 GF 1y   a82960b
@@ -1135,7 +1135,7 @@ what right looks like: Capture header "Judge by eye": the changes pane is open o
 
  ◆ api  ~/code/api · main                                                         5 commits  UNCOMMITTED · 1 unstaged
                                                                                              diff vs HEAD 29a1432
-  ◌ ▏  Uncommitted changes (1 unstaged)
+▸ ◌    Uncommitted changes (1 unstaged)
   ◆    [◆ main] add second                                                     8m   29a1432
   ●    add first                                                               9m   3d9496e
   ●    Correct the note                                                        1y   a82960b  UNSTAGED (1)
@@ -1322,7 +1322,7 @@ what right looks like: Capture header "Judge by eye": the pane is open on the ti
  ◆ api  ~/code/api · main                                                               5 commits  date order, sorting…
 
   ◌    Uncommitted changes (1 unstaged)
-  ◆ ▏  [◆ main] add second                                                                              GF 8m   29a1432
+▸ ◆    [◆ main] add second                                                                              GF 8m   29a1432
   ●    add first                                                                                        GF 9m   3d9496e
   ●    Correct the note                                                                                 GF 1y   a82960b
   ●    Add the first note                                                                               GF 1y   fadcfb3
@@ -1419,7 +1419,7 @@ what right looks like: Capture header "Judge by eye": the pane is open on the ti
  ◆ api  ~/code/api · main                                   5 commits  date order, sorting…  COMMIT 29a1432
                                                                                              Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 ·…
   ◌    Uncommitted changes (1 unstaged)                                                      parents 3d9496e · diff vs first parent
-  ◆ ▏  [◆ main] add second                                                     8m   29a1432  Contained in: checking…
+▸ ◆    [◆ main] add second                                                     8m   29a1432  Contained in: checking…
   ●    add first                                                               9m   3d9496e
   ●    Correct the note                                                        1y   a82960b  reading…
   ●    Add the first note                                                      1y   fadcfb3
@@ -1736,7 +1736,7 @@ what right looks like: Capture header "Judge by eye": for a marked row's hint co
 
  ◆ api  /code/api · main                                                                                      5 commits
   ●      Commit 5                                                                                       TE 2h   0505050
-  ◉─╮ ▏  Commit 4                                                                                       TE 2h   0404040
+▸ ◉─╮    Commit 4                                                                                       TE 2h   0404040
   ● │    Commit 3                                                                                       TE 2h   0303030
   ●─╯    Commit 2                                                                                       TE 2h   0202020
   ◇      Commit 1                                                                                       TE 2h   0101010
@@ -1805,7 +1805,7 @@ what right looks like: Capture header "Judge by eye": for a marked row's hint co
 
  ◆ api  /code/api · main                                                                                                                              5 commits
   ●      Commit 5                                                                                                                               TE 2h   0505050
-  ◉─╮ ▏  Commit 4                                                                                                                               TE 2h   0404040
+▸ ◉─╮    Commit 4                                                                                                                               TE 2h   0404040
   ● │    Commit 3                                                                                                                               TE 2h   0303030
   ●─╯    Commit 2                                                                                                                               TE 2h   0202020
   ◇      Commit 1                                                                                                                               TE 2h   0101010
@@ -1882,7 +1882,7 @@ what right looks like: Capture header "Judge by eye": for a marked row's hint co
 
  ◆ api  /code/api · main                                              5 commits
   ●      Commit 5                                                  2h   0505050
-  ◉─╮ ▏  Commit 4                                                  2h   0404040
+▸ ◉─╮    Commit 4                                                  2h   0404040
   ● │    Commit 3                                                  2h   0303030
   ●─╯    Commit 2                                                  2h   0202020
   ◇      Commit 1                                                  2h   0101010
@@ -1965,7 +1965,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on an ordina
 
   ◌    Uncommitted changes (1 unstaged)
   ◆    [◆ main] add second                                                                              GF 8m   29a1432
-  ● ▏  add first                                                                                        GF 9m   3d9496e
+▸ ●    add first                                                                                        GF 9m   3d9496e
   ●    Correct the note                                                                                 GF 1y   a82960b
   ●    Add the first note                                                                               GF 1y   fadcfb3
   ◇    Add a readme                                                                                     GF 1y   64ded19
@@ -2062,7 +2062,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on an ordina
 
   ◌    Uncommitted changes (1 unstaged)
   ◆    [◆ main] add second                                                                                                                      GF 8m   29a1432
-  ● ▏  add first                                                                                                                                GF 9m   3d9496e
+▸ ●    add first                                                                                                                                GF 9m   3d9496e
   ●    Correct the note                                                                                                                         GF 1y   a82960b
   ●    Add the first note                                                                                                                       GF 1y   fadcfb3
   ◇    Add a readme                                                                                                                             GF 1y   64ded19
@@ -2166,7 +2166,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on an ordina
  ◆ api  ~/code/api · main                       5 commits  date order, sorting…
   ◌    Uncommitted changes (1 unstaged)
   ◆    [◆ main] add second                                         8m   29a1432
-  ● ▏  add first                                                   9m   3d9496e
+▸ ●    add first                                                   9m   3d9496e
   ●    Correct the note                                            1y   a82960b
   ●    Add the first note                                          1y   fadcfb3
   ◇    Add a readme                                                1y   64ded19
@@ -2246,7 +2246,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on the uncom
 
  ◆ api  ~/code/api · main                                                               5 commits  date order, sorting…
 
-  ◌ ▏  Uncommitted changes (1 unstaged)
+▸ ◌    Uncommitted changes (1 unstaged)
   ◆    [◆ main] add second                                                                              GF 8m   29a1432
   ●    add first                                                                                        GF 9m   3d9496e
   ●    Correct the note                                                                                 GF 1y   a82960b
@@ -2343,7 +2343,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on the uncom
 
  ◆ api  ~/code/api · main                                                                                                       5 commits  date order, sorting…
 
-  ◌ ▏  Uncommitted changes (1 unstaged)
+▸ ◌    Uncommitted changes (1 unstaged)
   ◆    [◆ main] add second                                                                                                                      GF 8m   29a1432
   ●    add first                                                                                                                                GF 9m   3d9496e
   ●    Correct the note                                                                                                                         GF 1y   a82960b
@@ -2447,7 +2447,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on the uncom
 # them.
 
  ◆ api  ~/code/api · main                       5 commits  date order, sorting…
-  ◌ ▏  Uncommitted changes (1 unstaged)
+▸ ◌    Uncommitted changes (1 unstaged)
   ◆    [◆ main] add second                                         8m   29a1432
   ●    add first                                                   9m   3d9496e
   ●    Correct the note                                            1y   a82960b
@@ -2517,7 +2517,7 @@ what right looks like: Capture header "What right looks like": the two frames di
 == the pane open: the graph has 92 columns ==
 
  ◆ api  ~/code/api · main                                              31 commits  +6 lanes  COMMIT 33b6328
-  ◆─╮               ⋮ ▏  [◆ main] Merge branch 'topic-14'                      32m  33b6328  Graft Fixture <fixture@example.invalid> · 2021-01-01 00:28 +0000 ·…
+▸ ◆─╮               ⋮    [◆ main] Merge branch 'topic-14'                      32m  33b6328  Graft Fixture <fixture@example.invalid> · 2021-01-01 00:28 +0000 ·…
   ◉─│─╮             ⋮    Merge branch 'topic-13'                               33m  390c3c4  parents 390c3c4, a22b10e · diff vs first parent
   ◉─│─│─╮           ⋮    Merge branch 'topic-12'                               34m  0e1b7e7  Contained in: checking…
   ◉─│─│─│─╮         ⋮    Merge branch 'topic-11'                               35m  958cd77  evil merge: clean
@@ -2544,7 +2544,7 @@ what right looks like: Capture header "What right looks like": the two frames di
 == the same terminal, pane closed: the graph has all 160 ==
 
  ◆ api  ~/code/api · main                                                                                                                  31 commits  +4 lanes
-  ◆─╮                   ⋮ ▏  [◆ main] Merge branch 'topic-14'                                                                                   GF 32m  33b6328
+▸ ◆─╮                   ⋮    [◆ main] Merge branch 'topic-14'                                                                                   GF 32m  33b6328
   ◉─│─╮                 ⋮    Merge branch 'topic-13'                                                                                            GF 33m  390c3c4
   ◉─│─│─╮               ⋮    Merge branch 'topic-12'                                                                                            GF 34m  0e1b7e7
   ◉─│─│─│─╮             ⋮    Merge branch 'topic-11'                                                                                            GF 35m  958cd77
@@ -2645,7 +2645,7 @@ what right looks like: Re-taken 2026-10-02 (m8-13b: `q quit` joins the banner's 
 
  ◆ api  ~/code/api · main                                                                                       MERGING
 
-  ◌   ▏  Uncommitted changes (16 unmerged)
+▸ ◌      Uncommitted changes (16 unmerged)
   ◆      [◆ main] main's take                                                                           GF 87m  80393eb
   │ ●    [feature] the feature's take                                                                   GF 88m  38c48dd
   ●─╯    the shared files                                                                               GF 89m  58854e9
@@ -2761,7 +2761,7 @@ what right looks like: Capture header "What right looks like": the banner `MERGI
 
  ◆ api  ~/code/api · main                                                           MERGING  UNCOMMITTED
                                                                                              diff vs HEAD 80393eb
-  ◌   ▏  Uncommitted changes (16 unmerged)
+▸ ◌      Uncommitted changes (16 unmerged)
   ◆      [◆ main] main's take                                                  87m  80393eb
   │ ●    [feature] the feature's take                                          88m  38c48dd
   ●─╯    the shared files                                                      89m  58854e9  CONFLICTS (16)
@@ -2888,7 +2888,7 @@ what right looks like: Capture header "What right looks like": at 80x24 the pict
  ◆ api  ~/code/api · main                                               MERGING
   ◌      Uncommitted changes (16 unmerged)
   ◆      [◆ main] main's take                                      87m  80393eb
-  │ ● ▏  [feature] the feature's take                              88m  38c48dd
+▸ │ ●    [feature] the feature's take                              88m  38c48dd
   ●─╯    the shared files                                          89m  58854e9
   ●      Ship release 29                                           2h   b796998
   ●      Ship release 28                                           2h   8b1f759
@@ -2943,25 +2943,25 @@ what right looks like: Capture header "What right looks like": while an operatio
 
 === 80x10 ===
  ◆ api  /code/api · main                                   REBASING step 3 of 7
-  ● ▏  Commit 2                                                    2h   0202020
+▸ ●    Commit 2                                                    2h   0202020
   ◇    Commit 1                                                    2h   0101010
  ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · . more
 
 === 120x10 ===
  ◆ api  /code/api · main                                                                           REBASING step 3 of 7
-  ● ▏  Commit 2                                                                                         TE 2h   0202020
+▸ ●    Commit 2                                                                                         TE 2h   0202020
   ◇    Commit 1                                                                                         TE 2h   0101010
  ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · . more
 
 === 160x10 ===
  ◆ api  /code/api · main                                                                                                                   REBASING step 3 of 7
-  ● ▏  Commit 2                                                                                                                                 TE 2h   0202020
+▸ ●    Commit 2                                                                                                                                 TE 2h   0202020
   ◇    Commit 1                                                                                                                                 TE 2h   0101010
  ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · . more
 
 === a long path does not cut the banner, 120x10 ===
  ◆ billing-api  /media/archive/work/customers/acme/services/billing-api · main                     REBASING step 3 of 7
-  ● ▏  Commit 2                                                                                         TE 2h   0202020
+▸ ●    Commit 2                                                                                         TE 2h   0202020
   ◇    Commit 1                                                                                         TE 2h   0101010
  ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · . more
 

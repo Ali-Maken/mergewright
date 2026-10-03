@@ -1,7 +1,7 @@
  ◆ api  ~/code/api · main                                                                         6 commits  changes on feature-a since it left main · 3 commits · 2 files +2 −0
 
   ◆   ▏  [x base] [◆ main] Readme                                                           GF 2d   22e02fb
-  │ ● ▏  [feature-a] Use token                                                              GF 2d   a84a58c
+▸ │ ●    [feature-a] Use token                                                              GF 2d   a84a58c
   ● │    Changelog                                                                          GF 2d   500b0e7
   │ ●    Add token                                                                          GF 2d   fcd7e09  ▾ src/
   │ ●    Add login                                                                          GF 2d   95472aa    A login.rs                                                             +1 −0

@@ -19,7 +19,7 @@
 === frame 1: `P`, the plain push box ===
  ◆ api  ~/code/api · main                                                                               144 rows so far
 
-  ◆ ▏  [◆ main ↑1] ours                                                                                 GF 6y   739071c
+▸ ◆    [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
@@ -61,7 +61,7 @@
 === frame 2: `y` (rejected), `P`, the lease box, then `y` ===
  ◆ api  ~/code/api · main                                                                               144 rows so far
 
-  ◆ ▏ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
+▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9

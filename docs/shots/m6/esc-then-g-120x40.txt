@@ -37,6 +37,6 @@
   ●    Commit 004                                                                                       GF 2d   23e1f67
   ●    Commit 003                                                                                       GF 2d   91af090
   ●    Commit 002                                                                                       GF 2d   ace211d
-  ◇ ▏  Commit 001                                                                                       GF 2d   a9a0c8e
+▸ ◇    Commit 001                                                                                       GF 2d   a9a0c8e
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · o take · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · . more

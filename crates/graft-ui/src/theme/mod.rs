@@ -33,6 +33,7 @@
 
 mod chrome;
 mod conflict;
+mod contrast;
 mod depth;
 mod lanes;
 
@@ -48,6 +49,7 @@ use crate::syntax::SyntaxRole;
 
 use conflict::reduce_conflict;
 pub use conflict::{TINT_ALPHA, mix};
+pub use contrast::{CONTRAST_RULES, ContrastRule, contrast};
 
 /// The number of chrome tokens PROMPT.md §5 names, lanes excluded, plus
 /// [`Token::Selection`] (m5-history-and-ghost-preview/44): PROMPT.md §5 does

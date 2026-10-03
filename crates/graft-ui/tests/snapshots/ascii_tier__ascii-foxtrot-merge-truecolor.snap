@@ -6,7 +6,7 @@ shape: foxtrot-merge, truecolor, 80x24, cursor on row 2
 
  ◆ api  ~/code/api · main                                             4 commits
   *-\    Merge branch 'main' into feature                          4y   84cc93e
-  * | |  feature: work                                             4y   8fa6bfc
+> * |    feature: work                                             4y   8fa6bfc
   | *    Advance main                                              4y   18ca7c9
   *-/    Add the base                                              4y   68d5d19
 

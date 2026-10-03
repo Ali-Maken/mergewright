@@ -449,3 +449,24 @@ fn a_long_list_scrolls_to_keep_the_cursor_on_screen() {
         "the cursor's (base) row is drawn:\n{text}"
     );
 }
+
+/// ADR-0058 §3: on the cursor row's `selection` band every character — the
+/// accent `▸`, the action word, the muted sha and note, the subject — clears
+/// 4.5:1 in dark B, whichever row the cursor is on.
+#[test]
+fn text_on_the_cursor_row_is_legible() {
+    let theme = theme();
+    for cursor in 0..view().rows.len() {
+        let shown = RewriteEditorView { cursor, ..view() };
+        let mut terminal = Terminal::new(TestBackend::new(187, 40)).expect("test backend");
+        terminal
+            .draw(|frame| draw_rewrite_editor(frame, frame.area(), &shown, &theme))
+            .expect("draws");
+        let checked =
+            crate::test_support::assert_legible_on_selection(terminal.backend().buffer(), &theme);
+        assert!(
+            checked > 10,
+            "cursor {cursor}: the row is drawn ({checked})"
+        );
+    }
+}

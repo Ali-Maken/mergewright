@@ -336,8 +336,8 @@ fn journey_14(app: &App, state: &AppState, repo: &Path, commits: &Commits) -> Ap
     let state = enter_to_the_box(&mut route, app, &state);
     let state = confirm(&mut route, app, &state, "14");
     route.within_count();
-    // The landing, from the frame (30o R2). The graph's cursor rule is `▏`
-    // (graft-ui `row_rule`); the ticket's `▸` is J's.
+    // The landing, from the frame (30o R2). The graph's cursor mark is `▸`
+    // in the gutter's first cell (m8-polish-and-ship/07).
     let state = app.pump(state, "the graph re-read with E on it", |state| {
         drawn(state, 187, 50)
             .iter()
@@ -351,7 +351,7 @@ fn journey_14(app: &App, state: &AppState, repo: &Path, commits: &Commits) -> Ap
         .find(|row| row.contains(lost_work::LOST_ON_SPIKE))
         .map_or("", String::as_str);
     assert!(
-        on_e.contains('▏') && on_e.contains("↺ put back"),
+        on_e.starts_with('▸') && on_e.contains("↺ put back"),
         "the cursor and the put-back tag on E's row:\n{body}"
     );
     let bottom = landed.last().map_or("", String::as_str);

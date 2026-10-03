@@ -19,7 +19,7 @@
 === frame 1: the lease box over a rejected push ===
  ◆ api  ~/code/api · main                                                                               144 rows so far
 
-  ◆ ▏ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
+▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
@@ -61,7 +61,7 @@
 === frame 2: `esc`, the rejection back ===
  ◆ api  ~/code/api · main                                                                               144 rows so far
 
-  ◆ ▏ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
+▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
@@ -104,7 +104,7 @@
  ◆ api  ~/code/api · fix                                                                6 commits  date order, sorting…
 
     ◌    Uncommitted changes (1 unstaged)
-    ◆ ▏  [◆ fix] fix the bug                                                                            GF 3m   fbb2394
+▸   ◆    [◆ fix] fix the bug                                                                            GF 3m   fbb2394
   ● │    [main] main moves on                                                                           GF 4m   37926a7
   ●─╯    add the base                                                                                   GF 5m   ed332bc
   ●      Correct the note                                                                               GF 1y   a82960b
@@ -145,7 +145,7 @@
 === frame 4: `b`, `⏎` on an empty name ===
  ◆ api  ~/code/api · main                                                                               144 rows so far
 
-  ◆ ▏ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
+▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9

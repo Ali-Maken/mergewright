@@ -54,7 +54,8 @@ impl ResolverScreen<'_> {
         let style = if self.theme.color_depth() == graft_core::capabilities::ColorDepth::None {
             ratatui::style::Style::new().add_modifier(Modifier::REVERSED | Modifier::BOLD)
         } else {
-            foreground(self.theme, Token::Accent)
+            // `accent`, lifted to stay legible on the fill (ADR-0058 §3).
+            crate::paint::on_selection(self.theme, foreground(self.theme, Token::Accent))
                 .bg(crate::paint::color(self.theme.token(Token::Selection)))
                 .add_modifier(Modifier::BOLD)
         };

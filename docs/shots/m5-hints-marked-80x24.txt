@@ -23,7 +23,7 @@
 
  ◆ api  /code/api · main                                              5 commits
   ●      Commit 5                                                  2h   0505050
-  ◉─╮ ▏  Commit 4                                                  2h   0404040
+▸ ◉─╮    Commit 4                                                  2h   0404040
   ● │    Commit 3                                                  2h   0303030
   ●─╯    Commit 2                                                  2h   0202020
   ◇      Commit 1                                                  2h   0101010

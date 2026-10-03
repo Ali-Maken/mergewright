@@ -427,3 +427,32 @@ fn typing_draws_the_prompt_in_place_of_the_bar() {
     let grid = draw(&view, 187, 14);
     assert_eq!(grid[13], "/spi");
 }
+
+/// ADR-0058 §3: every character on the cursor row's `selection` fill clears
+/// 4.5:1 against it in dark B — the muted age and the warning words too.
+#[test]
+fn text_on_the_cursor_row_is_legible() {
+    let theme = theme();
+    for selected in 0..mock_rows().len() {
+        let mut view = view(mock_rows(), JournalStatus::Ready);
+        view.selected = selected;
+        let mut terminal = Terminal::new(TestBackend::new(187, 14)).expect("the test backend");
+        terminal
+            .draw(|frame| {
+                frame.render_widget(
+                    JournalScreen {
+                        view: &view,
+                        theme: &theme,
+                    },
+                    frame.area(),
+                );
+            })
+            .expect("the widget draws");
+        let checked =
+            crate::test_support::assert_legible_on_selection(terminal.backend().buffer(), &theme);
+        assert!(
+            checked > 5,
+            "row {selected}: the cursor row is drawn ({checked})"
+        );
+    }
+}

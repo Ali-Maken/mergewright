@@ -3,7 +3,7 @@
     ●      b1                                                                                           GF 2d   f41bc43
     │      after rebase
     │ ○    [feature-b] b1                                                                               GF —    —
-  ◆─│─╯ ▏  [main] [◆ feature-a] Add OAuth (#42)                                                         GF 2d   51f3dc8
+▸ ◆─│─╯    [main] [◆ feature-a] Add OAuth (#42)                                                         GF 2d   51f3dc8
   │ ●      a3                                                                                           GF 2d   1dc69fb
   │ ●      a2                                                                                           GF 2d   5c80d6b
   │ ●      a1                                                                                           GF 2d   53e9958

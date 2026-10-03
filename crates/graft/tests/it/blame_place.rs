@@ -347,14 +347,23 @@ fn capture_blame_then_commit_with_base_120x40() {
     let all = frame.join("\n");
     assert!(!all.contains("COMPARE"), "not the compare pane:\n{all}");
     assert!(!all.contains("x base"), "no base badge:\n{all}");
-    // `▏` marks the graph's cursor row (Lina's) in both landings; a pinned
-    // base would draw a second one, on Priya's row.
+    // Gutter `▸` marks the graph's cursor row (Lina's) in both landings
+    // (m8-polish-and-ship/07); `▏` is the compare base's alone, and a pinned
+    // base would draw it on Priya's row.
     let priya = frame
         .iter()
         .find(|row| row.contains("Move session TTL to config"))
         .unwrap_or_else(|| panic!("Priya's row in the graph:\n{all}"));
     assert!(!priya.contains('\u{258f}'), "no base mark: {priya}");
-    assert_eq!(all.matches('\u{258f}').count(), 1, "one `▏`:\n{all}");
+    assert_eq!(all.matches('\u{258f}').count(), 0, "no `▏`:\n{all}");
+    assert_eq!(
+        frame
+            .iter()
+            .filter(|row| row.starts_with('\u{25b8}'))
+            .count(),
+        1,
+        "one cursor `▸`:\n{all}"
+    );
     assert!(
         all.contains("compare base 0a27627 set aside \u{b7} it comes back when you leave blame"),
         "the set-aside words:\n{all}"

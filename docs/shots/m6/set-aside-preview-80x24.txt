@@ -14,7 +14,7 @@
          after rebase
     ○    [◆ main ↑1 ↓1] ours                                       —    —
     ●    [origin/main] theirs                                      6m   7be74b5
-  ● │ ▏  ours                                                      6m   9d3d925
+▸ ● │    ours                                                      6m   9d3d925
   ●─╯    Commit 200                                                1y   d5ae5fd
   ●      Commit 199                                                1y   13e6ab1
   ●      Commit 198                                                1y   f5055d9

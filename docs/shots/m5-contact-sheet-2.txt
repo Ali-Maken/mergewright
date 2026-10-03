@@ -71,7 +71,7 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 
  ◆ api  ~/code/api · main                                                                                                                           200 commits
 
-  ◆ ▏ⓘ [◆ main ↑1] Commit 200                                                                                                                   GF 2d   d5ae5fd
+▸ ◆  ⓘ [◆ main ↑1] Commit 200                                                                                                                   GF 2d   d5ae5fd
   ●    [origin/main] Commit 199                                                                                                                 GF 2d   13e6ab1
   ●    Commit 198                                                                                                                               GF 2d   f5055d9
   ●    Commit 197                                                                                                                               GF 2d   2cce853
@@ -174,7 +174,7 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 == `P`: the push confirm, on the graph ==
 
  ◆ api  ~/code/api · main                                           200 commits
-  ◆ ▏ⓘ [◆ main ↑1] Commit 200                                      2d   d5ae5fd
+▸ ◆  ⓘ [◆ main ↑1] Commit 200                                      2d   d5ae5fd
   ●    [origin/main] Commit 199                                    2d   13e6ab1
   ●    Commit 198                                                  2d   f5055d9
   ●    Commit 197                                                  2d   2cce853
@@ -304,7 +304,7 @@ what right looks like: Capture header "What right looks like": the same context 
 
     ◆    [◆ feature] finish the feature                                                                                                         GF now  8d6cd28
     ●    start the feature                                                                                                                      GF 2m   52f3b96
-  ● │ ▏  [main] main moves again                                                                                                                GF 3m   45fa51d
+▸ ● │    [main] main moves again                                                                                                                GF 3m   45fa51d
  Checkout main
  Cherry-pick 45fa51d (o)
  Copy SHA (y)
@@ -411,7 +411,7 @@ what right looks like: Capture header "What right looks like": the context menu 
  ◆ api  ~/code/api · feature                                          8 commits
     ◆    [◆ feature] finish the feature                            now  8d6cd28
     ●    start the feature                                         2m   52f3b96
-  ● │ ▏  [main] main moves again                                   3m   45fa51d
+▸ ● │    [main] main moves again                                   3m   45fa51d
  Checkout main
  Cherry-pick 45fa51d (o)
  Copy SHA (y)
@@ -480,7 +480,7 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 
  ◆ api  ~/code/api · main                                                                                                                           200 commits
 
-  ◆ ▏ⓘ [◆ main ↑1] Commit 200                                                                                                                   GF 2d   d5ae5fd
+▸ ◆  ⓘ [◆ main ↑1] Commit 200                                                                                                                   GF 2d   d5ae5fd
   ●    [origin/main] Commit 199                                                                                                                 GF 2d   13e6ab1
   ●    Commit 198                                                                                                                               GF 2d   f5055d9
   ●    Commit 197                                                                                                                               GF 2d   2cce853
@@ -574,7 +574,7 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 == git's password question, over the push it belongs to ==
 
  ◆ api  ~/code/api · main                                           200 commits
-  ◆ ▏ⓘ [◆ main ↑1] Commit 200                                      2d   d5ae5fd
+▸ ◆  ⓘ [◆ main ↑1] Commit 200                                      2d   d5ae5fd
   ●    [origin/main] Commit 199                                    2d   13e6ab1
   ●    Commit 198                                                  2d   f5055d9
   ●    Commit 197                                                  2d   2cce853
@@ -601,7 +601,7 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 
 ================================================================================
 docs/shots/m5-ui-dragging-160x48.txt
-what right looks like: Capture header "What right looks like": the drag is visible **before** the button comes up — `main`'s row carries `▸` in the marker column (where the badge would land), the row `feature`'s badge came off is faded (the badge is in the air, and here that row is also the cursor's, so the fade takes the place of its `▏`), and the footer reads `release drop on a row  esc cancel`. No menu and no box: nothing has been dropped yet. Colour is not in this file (rule 5) — the two marks are shapes for that reason.
+what right looks like: Capture header "What right looks like": the drag is visible **before** the button comes up — `main`'s row carries `→` in the marker column (where the badge would land; m8-polish-and-ship/07, never the cursor's `▸`), the row `feature`'s badge came off is faded (the badge is in the air, and here that row is also the cursor's, so the fade takes the place of its gutter `▸`), and the footer reads `release drop on a row  esc cancel`. No menu and no box: nothing has been dropped yet. Colour is not in this file (rule 5) — the two marks are shapes for that reason.
 ================================================================================
 
 # m5-ui-dragging-160x48.txt: drawn by `view::view` from a real
@@ -618,13 +618,13 @@ what right looks like: Capture header "What right looks like": the drag is visib
 # reason.
 #
 # What right looks like:
-#  - `main`'s row carries `▸` in the marker column: this is where the badge
-#    would land.
+#  - `main`'s row carries `→` in the marker column: this is where the badge
+#    would land (m8-polish-and-ship/07: never `▸`, the cursor's mark).
 #  - The row `feature`'s badge came off is faded — the badge is in the air,
 #    not on that row. Here that is also the row the cursor is on (the badge
 #    was picked up from under it), so the fade replaces the cursor's own
-#    `▏`: one row, one state. Drag from a row the cursor is not on and both
-#    marks are drawn, `▏` and `▸`, on different rows.
+#    gutter `▸`: one row, one state. Drag from a row the cursor is not on
+#    and both marks are drawn, gutter `▸` and slot `→`, on different rows.
 #  - The footer reads `release drop on a row  esc cancel`.
 #  - Nothing else has moved: no menu, no box, the graph unchanged.
 
@@ -632,7 +632,7 @@ what right looks like: Capture header "What right looks like": the drag is visib
 
     ◆    [◆ feature] finish the feature                                                                                                         GF now  8d6cd28
     ●    start the feature                                                                                                                      GF 2m   52f3b96
-  ● │ ▸  [main] main moves again                                                                                                                GF 3m   45fa51d
+  ● │ →  [main] main moves again                                                                                                                GF 3m   45fa51d
   ● │    main moves on                                                                                                                          GF 4m   37926a7
   ●─╯    add the base                                                                                                                           GF 5m   ed332bc
   ●      Correct the note                                                                                                                       GF 1y   a82960b
@@ -679,7 +679,7 @@ what right looks like: Capture header "What right looks like": the drag is visib
 
 ================================================================================
 docs/shots/m5-ui-dragging-80x24.txt
-what right looks like: Capture header "What right looks like": the drag is visible **before** the button comes up — `main`'s row carries `▸` in the marker column (where the badge would land), the row `feature`'s badge came off is faded (the badge is in the air, and here that row is also the cursor's, so the fade takes the place of its `▏`), and the footer reads `release drop on a row  esc cancel`. No menu and no box: nothing has been dropped yet. Colour is not in this file (rule 5) — the two marks are shapes for that reason.
+what right looks like: Capture header "What right looks like": the drag is visible **before** the button comes up — `main`'s row carries `→` in the marker column (where the badge would land; m8-polish-and-ship/07, never the cursor's `▸`), the row `feature`'s badge came off is faded (the badge is in the air, and here that row is also the cursor's, so the fade takes the place of its gutter `▸`), and the footer reads `release drop on a row  esc cancel`. No menu and no box: nothing has been dropped yet. Colour is not in this file (rule 5) — the two marks are shapes for that reason.
 ================================================================================
 
 # m5-ui-dragging-80x24.txt: drawn by `view::view` from a real
@@ -696,20 +696,20 @@ what right looks like: Capture header "What right looks like": the drag is visib
 # reason.
 #
 # What right looks like:
-#  - `main`'s row carries `▸` in the marker column: this is where the badge
-#    would land.
+#  - `main`'s row carries `→` in the marker column: this is where the badge
+#    would land (m8-polish-and-ship/07: never `▸`, the cursor's mark).
 #  - The row `feature`'s badge came off is faded — the badge is in the air,
 #    not on that row. Here that is also the row the cursor is on (the badge
 #    was picked up from under it), so the fade replaces the cursor's own
-#    `▏`: one row, one state. Drag from a row the cursor is not on and both
-#    marks are drawn, `▏` and `▸`, on different rows.
+#    gutter `▸`: one row, one state. Drag from a row the cursor is not on
+#    and both marks are drawn, gutter `▸` and slot `→`, on different rows.
 #  - The footer reads `release drop on a row  esc cancel`.
 #  - Nothing else has moved: no menu, no box, the graph unchanged.
 
  ◆ api  ~/code/api · feature                                          8 commits
     ◆    [◆ feature] finish the feature                            now  8d6cd28
     ●    start the feature                                         2m   52f3b96
-  ● │ ▸  [main] main moves again                                   3m   45fa51d
+  ● │ →  [main] main moves again                                   3m   45fa51d
   ● │    main moves on                                             4m   37926a7
   ●─╯    add the base                                              5m   ed332bc
   ●      Correct the note                                          1y   a82960b
@@ -762,7 +762,7 @@ what right looks like: Capture header "What right looks like": a title row reads
 #
  ◆ api  ~/code/api · feature                                                                                                                          8 commits
 
-    ◆ ▏  [◆ feature] finish the feature                                                                                                         GF now  8d6cd28
+▸   ◆    [◆ feature] finish the feature                                                                                                         GF now  8d6cd28
     ●    start the feature                                                                                                                      GF 2m   52f3b96
   ● │    [main] main moves again                                                                                                                GF 3m   45fa51d
  feature → main
@@ -839,7 +839,7 @@ what right looks like: Capture header "What right looks like": a title row reads
 #    on, which is still readable above it.
 #
  ◆ api  ~/code/api · feature                                          8 commits
-    ◆ ▏  [◆ feature] finish the feature                            now  8d6cd28
+▸   ◆    [◆ feature] finish the feature                            now  8d6cd28
     ●    start the feature                                         2m   52f3b96
   ● │    [main] main moves again                                   3m   45fa51d
  feature → main
@@ -951,7 +951,7 @@ what right looks like: Capture header "What right looks like": the box's top bor
  ◆ api  ~/code/api · feature                                          8 commits
     ◆    [◆ feature] finish the feature                            now  8d6cd28
     ●    start the feature                                         2m   52f3b96
-  ● │ ▏  [main] main moves again                                   3m   45fa51d
+▸ ● │    [main] main moves again                                   3m   45fa51d
   ● │    main moves on                                             4m   37926a7
   ●─╯    add the base                                              5m   ed332bc
   ●      Correct the note                                          1y   a82960b
@@ -1185,7 +1185,7 @@ what right looks like: Capture header "What right looks like": two ghost rows sh
     │      after rebase
     │ ○    [◆ feature] finish the feature                                                                                                       GF —    —
     │ ○    start the feature                                                                                                                    GF —    —
-  ●─│─╯ ▏  [main] main moves again                                                                                                              GF 3m   45fa51d
+▸ ●─│─╯    [main] main moves again                                                                                                              GF 3m   45fa51d
   ● │      main moves on                                                                                                                        GF 4m   37926a7
   ●─╯      add the base                                                                                                                         GF 5m   ed332bc
   ●        Correct the note                                                                                                                     GF 1y   a82960b
@@ -1265,7 +1265,7 @@ what right looks like: Capture header "What right looks like": two ghost rows sh
     │      after rebase
     │ ○    [◆ feature] finish the feature                          —    —
     │ ○    start the feature                                       —    —
-  ●─│─╯ ▏  [main] main moves again                                 3m   45fa51d
+▸ ●─│─╯    [main] main moves again                                 3m   45fa51d
   ● │      main moves on                                           4m   37926a7
   ●─╯      add the base                                            5m   ed332bc
   ●        Correct the note                                        1y   a82960b
@@ -1365,7 +1365,7 @@ what right looks like: Capture header "What right looks like": the rows on scree
   │ ○      main moves on (2)                                                                                                                    GF —    —
   │ ○      main moves on (1)                                                                                                                    GF —    —
   │ ○      main moves on (0)                                                                                                                    GF —    —
-  │ ●   ▏  [old-release] cut release 1.0                                                                                                        GF 68m  3b09656
+▸ │ ●      [old-release] cut release 1.0                                                                                                        GF 68m  3b09656
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 5 commits replayed                                                                                                                                           │
 │ topic e7e39a7 → 5 new commits                                                                                                                                │
@@ -1437,7 +1437,7 @@ what right looks like: Capture header "What right looks like": the rows on scree
   │ ○      main moves on (2)                                       —    —
   │ ○      main moves on (1)                                       —    —
   │ ○      main moves on (0)                                       —    —
-  │ ●   ▏  [old-release] cut release 1.0                           68m  3b09656
+▸ │ ●      [old-release] cut release 1.0                           68m  3b09656
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────╮
 │ 5 commits replayed                                                           │
 │ topic e7e39a7 → 5 new commits                                                │
@@ -1484,7 +1484,7 @@ what right looks like: Capture header "What right looks like": the journal brows
 
  ◆ api  ~/code/api · main                                                                                                                             4 commits
 
-  ◆ ▏  [◆ main] add the base                                                                                                                    GT now  0000000
+▸ ◆    [◆ main] add the base                                                                                                                    GT now  0000000
   ●    Correct the note                                                                                                                         GF 7y   a82960b
   ●    Add the first note                                                                                                                       GF 7y   fadcfb3
   ◇    Add a readme                                                                                                                             GF 7y   64ded19
@@ -1564,7 +1564,7 @@ what right looks like: Capture header "What right looks like": the journal brows
 #
 
  ◆ api  ~/code/api · main                                             4 commits
-  ◆ ▏  [◆ main] add the base                                       now  0000000
+▸ ◆    [◆ main] add the base                                       now  0000000
   ●    Correct the note                                            7y   a82960b
   ●    Add the first note                                          7y   fadcfb3
   ◇    Add a readme                                                7y   64ded19
@@ -1628,7 +1628,7 @@ what right looks like: Capture header "What right looks like": the first box nam
 == `u` after a push: the one box with three real answers ==
 
  ◆ api  ~/code/api · main                                       144 rows so far
-  ◆ ▏  [◆ main ⇄ origin] to push                                   now  0000000
+▸ ◆    [◆ main ⇄ origin] to push                                   now  0000000
   ●    Commit 200                                                  7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
@@ -1655,7 +1655,7 @@ what right looks like: Capture header "What right looks like": the first box nam
 == `[ Re-push old tip ]`: its own second box, before the remote moves ==
 
  ◆ api  ~/code/api · main                                       144 rows so far
-  ◆ ▏  [◆ main ⇄ origin] to push                                   now  0000000
+▸ ◆    [◆ main ⇄ origin] to push                                   now  0000000
   ●    Commit 200                                                  7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9

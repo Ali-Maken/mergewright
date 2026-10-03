@@ -12,7 +12,7 @@
 
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-    ● ▏  [stash@{0}] On main: wip                                                                       GF 2m   92f36bb
+▸   ●    [stash@{0}] On main: wip                                                                       GF 2m   92f36bb
   ◆─╯    [◆ main] [rescued] add sample                                                                  GF 2m   da91a2e
   ●      Correct the note                                                                               GF 1y   a82960b
   ●      Add the first note                                                                             GF 1y   fadcfb3

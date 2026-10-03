@@ -33,7 +33,7 @@
 == `u` after a push: the one box with three real answers ==
 
  ◆ api  ~/code/api · main                                       144 rows so far
-  ◆ ▏  [◆ main ⇄ origin] to push                                   now  0000000
+▸ ◆    [◆ main ⇄ origin] to push                                   now  0000000
   ●    Commit 200                                                  7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
@@ -60,7 +60,7 @@
 == `[ Re-push old tip ]`: its own second box, before the remote moves ==
 
  ◆ api  ~/code/api · main                                       144 rows so far
-  ◆ ▏  [◆ main ⇄ origin] to push                                   now  0000000
+▸ ◆    [◆ main ⇄ origin] to push                                   now  0000000
   ●    Commit 200                                                  7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9

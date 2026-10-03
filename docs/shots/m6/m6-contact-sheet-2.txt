@@ -36,7 +36,7 @@ what right looks like: (ticket 48; `a` since ticket 52, whose `c` opens the summ
 === 187x50 ===
  ◆ api  ~/code/api · main                                                                           MERGING  UNCOMMITTED · 2 staged
                                                                                                              diff vs HEAD ddeed32
-  ◌   ▏  Uncommitted changes (2 staged)
+▸ ◌      Uncommitted changes (2 staged)
   ◆      [◆ main] main's take                                                               GF 2h   ddeed32
   │ ●    [feature] the feature's take                                                       GF 2h   f43f326
   ●─╯    the shared files                                                                   GF 2h   b35b2f1  STAGED (2)
@@ -137,7 +137,7 @@ what right looks like: (ticket 41) After `u` on a shell-begun finish: the header
  ◆ api  ~/code/api · main                                                                                       MERGING
 
   ◌      Uncommitted changes (2 staged)
-  ◆   ▏  [◆ main] main's take                                                                           GF 2h   ddeed32
+▸ ◆      [◆ main] main's take                                                                           GF 2h   ddeed32
   │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
   ●─╯    the shared files                                                                               GF 2h   b35b2f1
   ●      Correct the note                                                                               GF 1y   a82960b
@@ -183,7 +183,7 @@ what right looks like: (ticket 41) The same state at 80x24: the same footer word
 [Graph]  Detail
  ◆ api  ~/code/api · main                                               MERGING
   ◌      Uncommitted changes (2 staged)
-  ◆   ▏  [◆ main] main's take                                      2h   ddeed32
+▸ ◆      [◆ main] main's take                                      2h   ddeed32
   │ ●    [feature] the feature's take                              2h   f43f326
   ●─╯    the shared files                                          2h   b35b2f1
   ●      Correct the note                                          1y   a82960b

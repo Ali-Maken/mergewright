@@ -18,7 +18,7 @@
 === 120x32 ===
 "                                                                                                              3 commits "
 "                                                                                                                        "
-"  ◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
+"▸ ◌    Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                          "
 "  ◆    [HEAD] Commit 3␛[31m                                                                             TE 57y  0303030 "
 "  ●    ╭ Undo “commit "Add OAuth provider"”? ────────────────────────────────────────────────────────╮  TE 57y  0202020 "
 "  ◇    │ Since this commit "Add OAuth provider", the index changed;                                  │  TE 57y  0101010 "

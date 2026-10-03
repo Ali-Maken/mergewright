@@ -837,7 +837,7 @@ what right looks like: (ticket 11) Preview opened by `m`: the box's bottom borde
     ◎┈╮    [◆ feature] Merge branch 'main' into feature                                                 MA —    —
     ● │    finish the feature                                                                           GF now  8d6cd28
     ● │    start the feature                                                                            GF 2m   52f3b96
-  ●─│─╯ ▏  [main] main moves again                                                                      GF 3m   45fa51d
+▸ ●─│─╯    [main] main moves again                                                                      GF 3m   45fa51d
   ● │      main moves on                                                                                GF 4m   37926a7
   ●─╯      add the base                                                                                 GF 5m   ed332bc
   ●        Correct the note                                                                             GF 1y   a82960b
@@ -891,7 +891,7 @@ what right looks like: (ticket 11) Preview opened by `b`: the box's bottom borde
 
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-    ● ▏  [stash@{0}] On main: wip                                                                       GF 2m   92f36bb
+▸   ●    [stash@{0}] On main: wip                                                                       GF 2m   92f36bb
   ◆─╯    [◆ main] [rescued] add sample                                                                  GF 2m   da91a2e
   ●      Correct the note                                                                               GF 1y   a82960b
   ●      Add the first note                                                                             GF 1y   fadcfb3
@@ -939,7 +939,7 @@ what right looks like: (ticket 12) After `Esc` from the resolver a stop lands in
 
   ◌      Uncommitted changes (2 unmerged)
   ◆      [◆ main] main's take                                                                           GF 2h   ddeed32
-  │ ● ▏  [feature] the feature's take                                                                   GF 2h   f43f326
+▸ │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
   ●─╯    the shared files                                                                               GF 2h   b35b2f1
   ●      Correct the note                                                                               GF 1y   a82960b
   ●      Add the first note                                                                             GF 1y   fadcfb3
@@ -985,7 +985,7 @@ what right looks like: (ticket 12) The same at 187x50: the last row lists `⇥ b
 
   ◌      Uncommitted changes (2 unmerged)
   ◆      [◆ main] main's take                                                                                                                                              GF 2h   ddeed32
-  │ ● ▏  [feature] the feature's take                                                                                                                                      GF 2h   f43f326
+▸ │ ●    [feature] the feature's take                                                                                                                                      GF 2h   f43f326
   ●─╯    the shared files                                                                                                                                                  GF 2h   b35b2f1
   ●      Correct the note                                                                                                                                                  GF 1y   a82960b
   ●      Add the first note                                                                                                                                                GF 1y   fadcfb3
@@ -1039,7 +1039,7 @@ what right looks like: Re-taken 2026-10-02 (m8-13b: `q quit` joins the banner's 
 
  ◆ api  ~/code/api · main                                                                                       MERGING
 
-  ◌   ▏  Uncommitted changes (13 unmerged)
+▸ ◌      Uncommitted changes (13 unmerged)
   ◆      [◆ main] Change every file on main                                                             GF 2h   274c7d4
   │ ●    [feature] Change every file on feature                                                         GF 2h   9d44f42
   ◇─╯    Add the files both sides will change                                                           GF 1y   9571fc9
@@ -1085,7 +1085,7 @@ what right looks like: (ticket 12; recaptured by 24 and 61; `c finish` on a merg
 
  ◆ api  ~/code/api · main                                                                           MERGING  UNCOMMITTED
                                                                                                              diff vs HEAD 274c7d4
-  ◌   ▏  Uncommitted changes (13 unmerged)
+▸ ◌      Uncommitted changes (13 unmerged)
   ◆      [◆ main] Change every file on main                                                 GF 2h   274c7d4
   │ ●    [feature] Change every file on feature                                             GF 2h   9d44f42
   ◇─╯    Add the files both sides will change                                               GF 1y   9571fc9  CONFLICTS (13)
@@ -1141,7 +1141,7 @@ what right looks like: (ticket 12) After `c` on a rebase: the cursor row is the 
 
  ◆ api  ~/code/api · feature                                                                                  3 commits
 
-    ◆ ▏  [◆ feature] Change every file on feature                                                       GF futu…0000000
+▸   ◆    [◆ feature] Change every file on feature                                                       GF futu…0000000
   ●─╯    [main] Change every file on main                                                               GF 2h   274c7d4
   ◇      Add the files both sides will change                                                           GF 1y   9571fc9
 
@@ -1187,7 +1187,7 @@ what right looks like: (ticket 12) The same at 187x50: cursor on the rebased bra
 
  ◆ api  ~/code/api · feature                                                                      3 commits  COMMIT 0000000
                                                                                                              Graft Fixture <fixture@example.invalid> · 2021-01-01 00:00 +0000 · 2h
-    ◆ ▏  [◆ feature] Change every file on feature                                           GF futu…0000000  parents 274c7d4 · diff vs first parent
+▸   ◆    [◆ feature] Change every file on feature                                           GF futu…0000000  parents 274c7d4 · diff vs first parent
   ●─╯    [main] Change every file on main                                                   GF 2h   274c7d4  Contained in: feature
   ◇      Add the files both sides will change                                               GF 1y   9571fc9
                                                                                                              A added-by-them.txt                                                      +1 −0
@@ -2189,7 +2189,7 @@ what right looks like: (ticket 20) The frame after `⏎` finishing a merge begun
 
  ◆ api  ~/code/api · main                                                                                     7 commits
 
-  ◆─╮ ▏  [◆ main] Merge branch 'feature'                                                                GF futu…0000000
+▸ ◆─╮    [◆ main] Merge branch 'feature'                                                                GF futu…0000000
   ● │    main's take                                                                                    GF 2h   ddeed32
   │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
   ●─╯    the shared files                                                                               GF 2h   b35b2f1
