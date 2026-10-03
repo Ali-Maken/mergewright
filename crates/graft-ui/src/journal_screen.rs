@@ -305,7 +305,7 @@ impl JournalScreen<'_> {
             Ink::Warning => foreground(self.theme, Token::Warning),
         };
         if selected {
-            style
+            crate::paint::on_selection(self.theme, style)
                 .bg(crate::paint::color(self.theme.token(Token::Selection)))
                 .add_modifier(Modifier::BOLD)
         } else {

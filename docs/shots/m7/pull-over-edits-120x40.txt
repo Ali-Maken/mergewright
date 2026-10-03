@@ -1,7 +1,7 @@
  ◆ api  ~/code/api · main                                                                               140 rows so far
 
   ◌    Uncommitted changes (1 unstaged)
-  ◆ ▏  [◆ main ⇄ origin] their change                                                                   GF 60m  9110230
+▸ ◆    [◆ main ⇄ origin] their change                                                                   GF 60m  9110230
   ●    add shared                                                                                       GF 60m  1fdae38
   ●    Commit 200                                                                                       GF 1y   d5ae5fd
   ●    Commit 199                                                                                       GF 1y   13e6ab1

@@ -159,6 +159,17 @@ fn nearest(color: Rgb, candidates: std::ops::RangeInclusive<u8>, entry: impl Fn(
     best
 }
 
+/// The colour xterm shows for any palette index: [`SYSTEM_16`]'s stand-in
+/// under 16, the fixed cube and grey ramp above. What a reduced colour is
+/// judged as when its contrast is measured (`Theme::on_selection`).
+pub(super) fn palette_entry(index: u8) -> Rgb {
+    if index < 16 {
+        SYSTEM_16[usize::from(index)]
+    } else {
+        palette_256_entry(index)
+    }
+}
+
 /// The colour xterm shows for a palette index in 16–255.
 ///
 /// 16–231 are a 6×6×6 RGB cube over the levels below; 232–255 are a grey ramp

@@ -9,7 +9,7 @@
 # put aside and back).
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-    ●   ▏  [login-page] [origin/sara/login-page] fix the bug                                            GF 3m   fbb2394
+▸   ●      [login-page] [origin/sara/login-page] fix the bug                                            GF 3m   fbb2394
     │      after cherry-pick
     │ ○    [◆ main ⇄ origin] fix the bug                                                                GF —    —
   ●─│─╯    main moves on                                                                                GF 4m   37926a7

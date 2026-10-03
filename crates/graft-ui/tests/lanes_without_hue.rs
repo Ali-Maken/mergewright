@@ -11,7 +11,7 @@ mod support;
 
 use graft_core::capabilities::ColorDepth;
 use graft_fixtures::Shape;
-use graft_ui::graph_screen::{CHROME_ROWS, GraphScreen};
+use graft_ui::graph_screen::{CHROME_ROWS, GUTTER, GraphScreen};
 use graft_ui::paint::color;
 use graft_ui::theme::{LANE_COUNT, Theme, ThemeKind};
 use ratatui::Terminal;
@@ -64,7 +64,8 @@ fn crowded_shapes_at_every_depth_below_truecolor() {
             let graph_width = laid.width().min(COLUMNS);
             let drawn = laid.rows.len().min(usize::from(ROWS - CHROME_ROWS));
             for y in (1..).take(drawn) {
-                let codes: String = (0..graph_width)
+                // The graph column starts after the two-cell gutter (ADR-0058).
+                let codes: String = (GUTTER..GUTTER + graph_width)
                     .map(|x| code(buffer[(x, y)].fg, &theme))
                     .collect();
                 text.push_str(&codes);
@@ -87,7 +88,8 @@ fn neighbouring_lanes_that_share_a_colour_never_share_a_glyph() {
             let drawn = laid.rows.len().min(usize::from(ROWS - CHROME_ROWS));
             for y in (1..).take(drawn) {
                 // Lane cells are the even ones; compare each with the next.
-                for x in (0..graph_width.saturating_sub(2)).step_by(2) {
+                // After the two-cell gutter (ADR-0058).
+                for x in (GUTTER..GUTTER + graph_width.saturating_sub(2)).step_by(2) {
                     let (left, right) = (&buffer[(x, y)], &buffer[(x + 2, y)]);
                     let straight = |s: &str| matches!(s, "│" | "╎");
                     if straight(left.symbol()) && straight(right.symbol()) && left.fg == right.fg {

@@ -27,7 +27,7 @@
 
  ◆ api  ~/code/api · main                                                                                                                             4 commits
 
-  ◆ ▏  [◆ main] add the base                                                                                                                    GT now  0000000
+▸ ◆    [◆ main] add the base                                                                                                                    GT now  0000000
   ●    Correct the note                                                                                                                         GF 7y   a82960b
   ●    Add the first note                                                                                                                       GF 7y   fadcfb3
   ◇    Add a readme                                                                                                                             GF 7y   64ded19

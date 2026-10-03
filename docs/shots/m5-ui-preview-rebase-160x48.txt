@@ -32,7 +32,7 @@
     │      after rebase
     │ ○    [◆ feature] finish the feature                                                                                                       GF —    —
     │ ○    start the feature                                                                                                                    GF —    —
-  ●─│─╯ ▏  [main] main moves again                                                                                                              GF 3m   45fa51d
+▸ ●─│─╯    [main] main moves again                                                                                                              GF 3m   45fa51d
   ● │      main moves on                                                                                                                        GF 4m   37926a7
   ●─╯      add the base                                                                                                                         GF 5m   ed332bc
   ●        Correct the note                                                                                                                     GF 1y   a82960b

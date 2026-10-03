@@ -8,7 +8,7 @@
   ● │    Commit 76                                                                                      TE 57y  4c4c4c4
   ●─╯    Commit 75                                                                                      TE 57y  4b4b4b4
   ●      Commit 74                                                                                      TE 57y  4a4a4a4
-  ●   ▏  Commit 73                                                                                      TE 57y  4949494
+▸ ●      Commit 73                                                                                      TE 57y  4949494
   ●      Commit 72                                                                                      TE 57y  4848484
   ●      Commit 71                                                                                      TE 57y  4747474
   ◉─╮    Commit 70                                                                                      TE 57y  4646464

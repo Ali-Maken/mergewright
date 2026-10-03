@@ -11,7 +11,7 @@
 
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-  ◆ ▏  [◆ main] commit over the notes                                                                   GF 3m   f3742ab
+▸ ◆    [◆ main] commit over the notes                                                                   GF 3m   f3742ab
   ●    add the notes                                                                                    GF 5m   cfa370c
   ●    Correct the note                                                                                 GF 1y   a82960b
   ●    Add the first note                                                                               GF 1y   fadcfb3

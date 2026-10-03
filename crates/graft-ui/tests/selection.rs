@@ -12,7 +12,7 @@ use graft_core::capabilities::ColorDepth;
 use graft_fixtures::Shape;
 use graft_graph::{Ancestry, Kin};
 use graft_ui::graph_column::{GraphLine, RowPaint};
-use graft_ui::graph_screen::{CHROME_ROWS, GraphScreen};
+use graft_ui::graph_screen::{CHROME_ROWS, GUTTER, GraphScreen};
 use graft_ui::theme::ThemeKind;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
@@ -76,7 +76,10 @@ fn ancestry_highlight_and_focus_on_criss_cross() {
             let graph_width = laid.width();
             for (index, row) in laid.rows.iter().enumerate() {
                 let y = u16::try_from(index).expect("few rows") + 1;
-                let graph: String = (0..graph_width).map(|x| code(&buffer, x, y)).collect();
+                // The graph column starts after the two-cell gutter (ADR-0058).
+                let graph: String = (GUTTER..GUTTER + graph_width)
+                    .map(|x| code(&buffer, x, y))
+                    .collect();
                 let subject = String::from_utf8_lossy(row.commit.subject()).into_owned();
                 let at = line_text(&buffer, y)
                     .find(&subject)
@@ -167,40 +170,19 @@ fn the_cursor_row_differs_from_its_neighbours_by_three_named_attributes() {
     //    which measured 1.21:1 against `bg` here — under the WCAG 1.4.11 floor
     //    (3:1). `Token::Selection` carries this job now; `SurfaceRaised` keeps
     //    its own, smaller step for a raised panel's background.
-    let selection = color(theme.token(Token::Selection));
-    // The body's own columns: the two-cell gutter and the one-cell margin
-    // keep the pane's ground (ADR-0058 §4; where the fill starts is 5b's).
-    for x in [2u16, 20, 40, COLUMNS - 2] {
-        assert_eq!(
-            buffer[(x, cursor)].bg,
-            selection,
-            "column {x} of the cursor row is filled with selection"
-        );
-        assert_ne!(
-            buffer[(x, above)].bg,
-            selection,
-            "column {x} of the row above is not"
-        );
-        assert_ne!(
-            buffer[(x, below)].bg,
-            selection,
-            "column {x} of the row below is not"
-        );
-    }
+    assert_the_fill(&buffer, color(theme.token(Token::Selection)), cursor);
 
-    // 2. The `▏` rule in the marker slot, in the accent colour and bold —
-    //    at TrueColor, which is what changed in 35: it used to be drawn
-    //    only where the terminal had no background to give.
+    // 2. The `▸` in gutter cell 0, in the accent colour and bold, at
+    //    TrueColor too (m5/35's shape, moved to the gutter by ADR-0058).
     let accent = color(theme.token(Token::Accent));
-    let rule = (0..COLUMNS)
-        .find(|x| buffer[(*x, cursor)].symbol() == "▏")
-        .expect("the cursor row carries the rule");
+    let rule = 0;
+    assert_eq!(buffer[(rule, cursor)].symbol(), "▸");
     assert_eq!(buffer[(rule, cursor)].fg, accent);
     assert!(buffer[(rule, cursor)].modifier.contains(Modifier::BOLD));
     for y in [above, below] {
         assert!(
-            !(0..COLUMNS).any(|x| buffer[(x, y)].symbol() == "▏"),
-            "row {y} carries no rule"
+            !(0..COLUMNS).any(|x| buffer[(x, y)].symbol() == "▸"),
+            "row {y} carries no mark"
         );
     }
 
@@ -221,6 +203,58 @@ fn the_cursor_row_differs_from_its_neighbours_by_three_named_attributes() {
     );
 }
 
+/// ADR-0058 §2: the fill starts at the marker slot, right of the graph
+/// column; the gutter, the graph column (every lane of this three-lane
+/// shape) and the one-cell margin keep the pane's ground. The rows above
+/// and below are not filled.
+#[allow(
+    clippy::expect_used,
+    reason = "a test helper: a row that is not drawn has nothing to check; the panic names it"
+)]
+fn assert_the_fill(buffer: &Buffer, selection: ratatui::style::Color, cursor: u16) {
+    let (above, below) = (cursor - 1, cursor + 1);
+    let slot = (0..COLUMNS)
+        .find(|x| buffer[(*x, cursor)].bg == selection)
+        .expect("the cursor row is filled");
+    let lanes_left_of_fill = (GUTTER..slot)
+        .filter(|x| !buffer[(*x, cursor)].symbol().trim().is_empty())
+        .count();
+    assert!(
+        lanes_left_of_fill >= 1,
+        "the graph column, with its lane glyphs, sits left of the fill"
+    );
+    for x in 0..slot {
+        assert_eq!(
+            buffer[(x, cursor)].bg,
+            buffer[(x, above)].bg,
+            "column {x} (gutter or graph) of the cursor row keeps the ground"
+        );
+    }
+    let subject = line_text(buffer, cursor).find("work").expect("subject");
+    assert!(
+        u16::try_from(line_text(buffer, cursor)[..subject].chars().count()).expect("narrow") > slot,
+        "the subject is on the fill"
+    );
+    assert_ne!(buffer[(COLUMNS - 1, cursor)].bg, selection, "the margin");
+    for x in [slot + 1, 20, 40, COLUMNS - 2] {
+        assert_eq!(
+            buffer[(x, cursor)].bg,
+            selection,
+            "column {x} of the cursor row is filled with selection"
+        );
+        assert_ne!(
+            buffer[(x, above)].bg,
+            selection,
+            "column {x} of the row above is not"
+        );
+        assert_ne!(
+            buffer[(x, below)].bg,
+            selection,
+            "column {x} of the row below is not"
+        );
+    }
+}
+
 /// The same row with no hue to spend: at `ColorDepth::None` there is no
 /// background step at all, so the **shape** has to carry it alone. This is
 /// the tick for "the cursor is still findable without hue" — and the reason
@@ -239,12 +273,13 @@ fn without_colour_the_cursor_row_is_still_marked_by_its_shape() {
         let buffer = draw(&screen::view(&lines, height, SELECTED), &theme);
         let cursor = u16::try_from(SELECTED).expect("few rows") + 1;
 
-        assert!(
-            (0..COLUMNS).any(|x| buffer[(x, cursor)].symbol() == "▏"),
-            "{depth:?}: the cursor row carries the rule"
+        assert_eq!(
+            buffer[(0, cursor)].symbol(),
+            "▸",
+            "{depth:?}: the cursor row carries the gutter mark"
         );
         assert!(
-            !(0..COLUMNS).any(|x| buffer[(x, cursor - 1)].symbol() == "▏"),
+            !(0..COLUMNS).any(|x| buffer[(x, cursor - 1)].symbol() == "▸"),
             "{depth:?}: the row above does not"
         );
         // And no background to lean on, which is the point.

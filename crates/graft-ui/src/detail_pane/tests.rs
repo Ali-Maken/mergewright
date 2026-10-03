@@ -1822,3 +1822,23 @@ fn a_pane_waiting_for_the_cursor_to_rest_ends_its_title_row_in_reading() {
     assert!(screen[0].starts_with("COMMIT a1b2c3d"), "{screen:#?}");
     assert!(screen[0].ends_with(" reading\u{2026}"), "{screen:#?}");
 }
+
+/// ADR-0058 §3: the files list's cursor row clears 4.5:1 on `selection` in
+/// dark B, whether the list has focus (accent) or not (muted).
+#[test]
+fn text_on_the_files_cursor_row_is_legible() {
+    for focus in [DetailFocus::Files, DetailFocus::Graph] {
+        let mut view = commit_view();
+        view.focus = focus;
+        let layout = DetailLayout::compute(160, 40, focus, None);
+        let terminal = draw(&view, layout, 160, 40);
+        let checked = crate::test_support::assert_legible_on_selection(
+            terminal.backend().buffer(),
+            &theme(ColorDepth::TrueColor),
+        );
+        assert!(
+            checked > 5,
+            "{focus:?}: the files cursor row is drawn ({checked})"
+        );
+    }
+}

@@ -4,6 +4,6 @@ expression: screen
 ---
 "                                                  5 commits "
 "  *    Commit 5␛[31m                           63y  0505050 "
-"  * |  Commit 4␛[31m                           63y  0404040 "
+"> *    Commit 4␛[31m                           63y  0404040 "
 "  *    Commit 3␛[31m                           63y  0303030 "
 " ⏎ open · b branch · r rebase · t tag · c commit · . more   "

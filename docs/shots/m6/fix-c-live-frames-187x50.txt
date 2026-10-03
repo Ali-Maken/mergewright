@@ -14,7 +14,7 @@
 === 187x50 ===
  ◆ api  ~/code/api · main                                                                                                                                                        6 commits
 
-  ◆   ▏  [◆ main] main's take                                                                                                                                              GF 2h   ddeed32
+▸ ◆      [◆ main] main's take                                                                                                                                              GF 2h   ddeed32
   │ ●    [feature] the feature's take                                                                                                                                      GF 2h   f43f326
   ●─╯    the shared files                                                                                                                                                  GF 2h   b35b2f1
   ●      Correct the note                                                                                                                                                  GF 1y   a82960b
@@ -65,7 +65,7 @@
 --- frame 2 ---
  ◆ api  ~/code/api · main                                                                           MERGING  UNCOMMITTED · 2 staged
                                                                                                              diff vs HEAD ddeed32
-  ◌   ▏  Uncommitted changes (2 staged)
+▸ ◌      Uncommitted changes (2 staged)
   ◆      [◆ main] main's take                                                               GF 2h   ddeed32
   │ ●    [feature] the feature's take                                                       GF 2h   f43f326
   ●─╯    the shared files                                                                   GF 2h   b35b2f1  STAGED (2)

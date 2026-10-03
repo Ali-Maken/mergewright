@@ -22,7 +22,7 @@
 === 160x48 ===
 "                                                                                  3 commits  UNCOMMITTED · 1 staged 2 unstaged 1 untracked                      "
 "                                                                                             diff vs HEAD 0303030                                               "
-"  ◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                                                                  "
+"▸ ◌    Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                                                                  "
 "  ◆    [HEAD] Commit 3␛[31m                                                    57y  0303030                                                                     "
 "  ●    Commit 2␛[31m                                                           57y  0202020                                                                     "
 "  ◇    Commit 1␛[31m                                                           57y  0101010  STAGED (1)                                                         "

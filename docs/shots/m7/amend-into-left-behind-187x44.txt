@@ -3,7 +3,7 @@
     ●        b1                                                                                                                                                            GF 2d   f81a2f8
     │ ●      feature a: part 3                                                                                                                                             GF 2d   89f73ff
     │ ●      feature a: part 2                                                                                                                                             GF 2d   c59a559
-    ●─╯   ▏  feature a: part 1                                                                                                                                             GF 2d   e662b82
+▸   ●─╯      feature a: part 1                                                                                                                                             GF 2d   e662b82
     │        the result
     │ ○      [feature-b] b1                                                                                                                                                GF —    —
     │ │ ○    [◆ feature-a] feature a: part 3                                                                                                                               GF —    —

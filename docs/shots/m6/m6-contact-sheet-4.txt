@@ -41,7 +41,7 @@ what right looks like: (ticket 69) A box owns the bottom row. Frame 1: a push re
 === frame 1: the lease box over a rejected push ===
  ◆ api  ~/code/api · main                                                                               144 rows so far
 
-  ◆ ▏ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
+▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
@@ -83,7 +83,7 @@ what right looks like: (ticket 69) A box owns the bottom row. Frame 1: a push re
 === frame 2: `esc`, the rejection back ===
  ◆ api  ~/code/api · main                                                                               144 rows so far
 
-  ◆ ▏ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
+▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
@@ -126,7 +126,7 @@ what right looks like: (ticket 69) A box owns the bottom row. Frame 1: a push re
  ◆ api  ~/code/api · fix                                                                6 commits  date order, sorting…
 
     ◌    Uncommitted changes (1 unstaged)
-    ◆ ▏  [◆ fix] fix the bug                                                                            GF 3m   fbb2394
+▸   ◆    [◆ fix] fix the bug                                                                            GF 3m   fbb2394
   ● │    [main] main moves on                                                                           GF 4m   37926a7
   ●─╯    add the base                                                                                   GF 5m   ed332bc
   ●      Correct the note                                                                               GF 1y   a82960b
@@ -167,7 +167,7 @@ what right looks like: (ticket 69) A box owns the bottom row. Frame 1: a push re
 === frame 4: `b`, `⏎` on an empty name ===
  ◆ api  ~/code/api · main                                                                               144 rows so far
 
-  ◆ ▏ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
+▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
@@ -231,7 +231,7 @@ what right looks like: (ticket 69) The same four frames at 80x24: the same four 
 #
 === frame 1: the lease box over a rejected push ===
  ◆ api  ~/code/api · main                                       144 rows so far
-  ◆ ▏ⓘ [◆ main ↑1] ours                                            6y   739071c
+▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
   ●    [origin/main] Commit 200                                    7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
@@ -257,7 +257,7 @@ what right looks like: (ticket 69) The same four frames at 80x24: the same four 
 
 === frame 2: `esc`, the rejection back ===
  ◆ api  ~/code/api · main                                       144 rows so far
-  ◆ ▏ⓘ [◆ main ↑1] ours                                            6y   739071c
+▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
   ●    [origin/main] Commit 200                                    7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
@@ -284,7 +284,7 @@ what right looks like: (ticket 69) The same four frames at 80x24: the same four 
 === frame 3: the drift box `u` opened ===
  ◆ api  ~/code/api · fix                        6 commits  date order, sorting…
     ◌    Uncommitted changes (1 unstaged)
-    ◆ ▏  [◆ fix] fix the bug                                       3m   fbb2394
+▸   ◆    [◆ fix] fix the bug                                       3m   fbb2394
   ● │    [main] main moves on                                      4m   37926a7
   ●─╯    add the base                                              5m   ed332bc
   ●      Correct the note                                          1y   a82960b
@@ -309,7 +309,7 @@ what right looks like: (ticket 69) The same four frames at 80x24: the same four 
 
 === frame 4: `b`, `⏎` on an empty name ===
  ◆ api  ~/code/api · main                                       144 rows so far
-  ◆ ▏ⓘ [◆ main ↑1] ours                                            6y   739071c
+▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
   ●    [origin/main] Commit 200                                    7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
@@ -355,7 +355,7 @@ what right looks like: (ticket 71) The `.` menu on a commit row leads with Check
 
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-    ● ▏  [fix] fix the bug                                                                              GF 3m   fbb2394
+▸   ●    [fix] fix the bug                                                                              GF 3m   fbb2394
  Checkout fix
  Cherry-pick fbb2394 (o)
  Copy SHA (y)
@@ -399,7 +399,7 @@ what right looks like: (ticket 71) The `.` menu on a commit row leads with Check
  ◆ api  ~/code/api · main                                                                                     6 commits
 
     ●    [fix] fix the bug                                                                              GF 3m   fbb2394
-  ◆ │ ▏  [◆ main] main moves on                                                                         GF 4m   37926a7
+▸ ◆ │    [◆ main] main moves on                                                                         GF 4m   37926a7
  Checkout — already on main
  Cherry-pick (o) — already on main
  Copy SHA (y)
@@ -469,7 +469,7 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The edit an undo
  ◆ api  ~/code/api · fix                                                                                      6 commits
 
     ◌    Uncommitted changes (1 unstaged)
-    ◆ ▏  [◆ fix] fix the bug                                                                            GF 3m   fbb2394
+▸   ◆    [◆ fix] fix the bug                                                                            GF 3m   fbb2394
   ● │    [main] main moves on                                                                           GF 4m   37926a7
   ●─╯    add the base                                                                                   GF 5m   ed332bc
   ●      Correct the note                                                                               GF 1y   a82960b
@@ -511,7 +511,7 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The edit an undo
  ◆ api  ~/code/api · main                                                                                     6 commits
 
     ●    [fix] fix the bug                                                                              GF 3m   fbb2394
-  ◆ │ ▏  [◆ main] main moves on                                                                         GF 4m   37926a7
+▸ ◆ │    [◆ main] main moves on                                                                         GF 4m   37926a7
   ●─╯    add the base                                                                                   GF 5m   ed332bc
   ●      Correct the note                                                                               GF 1y   a82960b
   ●      Add the first note                                                                             GF 1y   fadcfb3
@@ -553,7 +553,7 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The edit an undo
  ◆ api  ~/code/api · fix                                                                                      6 commits
 
     ◌    Uncommitted changes (1 unstaged)
-    ◆ ▏  [◆ fix] fix the bug                                                                            GF 3m   fbb2394
+▸   ◆    [◆ fix] fix the bug                                                                            GF 3m   fbb2394
   ● │    [main] main moves on                                                                           GF 4m   37926a7
   ●─╯    add the base                                                                                   GF 5m   ed332bc
   ●      Correct the note                                                                               GF 1y   a82960b
@@ -594,7 +594,7 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The edit an undo
 === frame 4: the time machine over an edit, `→ ⏎`, the landing ===
  ◆ api  ~/code/api · main                                                                                     7 commits
 
-    ● ▏  [fix2] fix it again                                                                            GF 2m   84d95f8
+▸   ●    [fix2] fix it again                                                                            GF 2m   84d95f8
     ●    [fix] fix the bug                                                                              GF 3m   fbb2394
   ◆ │    [◆ main] main moves on                                                                         GF 4m   37926a7
   ●─╯    add the base                                                                                   GF 5m   ed332bc
@@ -664,7 +664,7 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The same four fr
 === frame 1: `u` over the edit, the drift box ===
  ◆ api  ~/code/api · fix                                              6 commits
     ◌    Uncommitted changes (1 unstaged)
-    ◆ ▏  [◆ fix] fix the bug                                       3m   fbb2394
+▸   ◆    [◆ fix] fix the bug                                       3m   fbb2394
   ● │    [main] main moves on                                      4m   37926a7
   ●─╯    add the base                                              5m   ed332bc
   ●      Correct the note                                          1y   a82960b
@@ -690,7 +690,7 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The same four fr
 === frame 2: `y`, the landing ===
  ◆ api  ~/code/api · main                                             6 commits
     ●    [fix] fix the bug                                         3m   fbb2394
-  ◆ │ ▏  [◆ main] main moves on                                    4m   37926a7
+▸ ◆ │    [◆ main] main moves on                                    4m   37926a7
   ●─╯    add the base                                              5m   ed332bc
   ●      Correct the note                                          1y   a82960b
   ●      Add the first note                                        1y   fadcfb3
@@ -716,7 +716,7 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The same four fr
 === frame 3: `U`, the edit back ===
  ◆ api  ~/code/api · fix                                              6 commits
     ◌    Uncommitted changes (1 unstaged)
-    ◆ ▏  [◆ fix] fix the bug                                       3m   fbb2394
+▸   ◆    [◆ fix] fix the bug                                       3m   fbb2394
   ● │    [main] main moves on                                      4m   37926a7
   ●─╯    add the base                                              5m   ed332bc
   ●      Correct the note                                          1y   a82960b
@@ -741,7 +741,7 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The same four fr
 
 === frame 4: the time machine over an edit, `→ ⏎`, the landing ===
  ◆ api  ~/code/api · main                                             7 commits
-    ● ▏  [fix2] fix it again                                       2m   84d95f8
+▸   ●    [fix2] fix it again                                       2m   84d95f8
     ●    [fix] fix the bug                                         3m   fbb2394
   ◆ │    [◆ main] main moves on                                    4m   37926a7
   ●─╯    add the base                                              5m   ed332bc
@@ -797,7 +797,7 @@ what right looks like: (ticket 78) A status that arrives under a box is held, an
 === frame 1: `f` to nowhere, `b`, the fetch fails under the prompt ===
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-  ◆ ▏  [◆ main ⇄ origin] Commit 200                                                                     GF 7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] Commit 200                                                                     GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
   ●    Commit 197                                                                                       GF 7y   2cce853
@@ -839,7 +839,7 @@ what right looks like: (ticket 78) A status that arrives under a box is held, an
 === frame 2: `topic ⏎`, the held failure ===
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-  ◆ ▏  [◆ main ⇄ origin] Commit 200                                                                     GF 7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] Commit 200                                                                     GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
   ●    Commit 197                                                                                       GF 7y   2cce853
@@ -881,7 +881,7 @@ what right looks like: (ticket 78) A status that arrives under a box is held, an
 === frame 3: `esc`, the create's line ===
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-  ◆ ▏  [◆ main ⇄ origin] Commit 200                                                                     GF 7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] Commit 200                                                                     GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
   ●    Commit 197                                                                                       GF 7y   2cce853
@@ -923,7 +923,7 @@ what right looks like: (ticket 78) A status that arrives under a box is held, an
 === frame 4: `f`, `b`, `other ⏎` while the fetch runs ===
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-  ◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                                                             GF 7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] [topic] Commit 200                                                             GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
   ●    Commit 197                                                                                       GF 7y   2cce853
@@ -965,7 +965,7 @@ what right looks like: (ticket 78) A status that arrives under a box is held, an
 === frame 5: the fetch answers under the prompt ===
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-  ◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                                                             GF 7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] [topic] Commit 200                                                             GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
   ●    Commit 197                                                                                       GF 7y   2cce853
@@ -1007,7 +1007,7 @@ what right looks like: (ticket 78) A status that arrives under a box is held, an
 === frame 6: `esc`, the fetch's line ===
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-  ◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                                                             GF 7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] [topic] Commit 200                                                             GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
   ●    Commit 197                                                                                       GF 7y   2cce853
@@ -1077,7 +1077,7 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
 #
 === frame 1: `f` to nowhere, `b`, the fetch fails under the prompt ===
  ◆ api  ~/code/api · main                                           200 commits
-  ◆ ▏  [◆ main ⇄ origin] Commit 200                                7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] Commit 200                                7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
   ●    Commit 197                                                  7y   2cce853
@@ -1103,7 +1103,7 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
 
 === frame 2: `topic ⏎`, the held failure ===
  ◆ api  ~/code/api · main                                           200 commits
-  ◆ ▏  [◆ main ⇄ origin] Commit 200                                7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] Commit 200                                7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
   ●    Commit 197                                                  7y   2cce853
@@ -1129,7 +1129,7 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
 
 === frame 3: `esc`, the create's line ===
  ◆ api  ~/code/api · main                                           200 commits
-  ◆ ▏  [◆ main ⇄ origin] Commit 200                                7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] Commit 200                                7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
   ●    Commit 197                                                  7y   2cce853
@@ -1155,7 +1155,7 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
 
 === frame 4: `f`, `b`, `other ⏎` while the fetch runs ===
  ◆ api  ~/code/api · main                                           200 commits
-  ◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                        7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] [topic] Commit 200                        7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
   ●    Commit 197                                                  7y   2cce853
@@ -1181,7 +1181,7 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
 
 === frame 5: the fetch answers under the prompt ===
  ◆ api  ~/code/api · main                                           200 commits
-  ◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                        7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] [topic] Commit 200                        7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
   ●    Commit 197                                                  7y   2cce853
@@ -1207,7 +1207,7 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
 
 === frame 6: `esc`, the fetch's line ===
  ◆ api  ~/code/api · main                                           200 commits
-  ◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                        7y   d5ae5fd
+▸ ◆    [◆ main ⇄ origin] [topic] Commit 200                        7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
   ●    Commit 197                                                  7y   2cce853
@@ -1239,7 +1239,7 @@ what right looks like: Re-taken 2026-10-02 (m8-13b: `q quit` joins the banner's 
 --- frame 1: files focused: the bar ends `⇥ diff`
  ◆ api  ~/code/api · detached 274c7d4                 REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 
-  ◌   ▏  Uncommitted changes (13 unmerged)
+▸ ◌      Uncommitted changes (13 unmerged)
   ◆    ⓘ [HEAD] [main] Change every file on main                                                        GF 2h   274c7d4
   │ ●    [feature] Change every file on feature                                                         GF 2h   9d44f42
   ◇─╯    Add the files both sides will change                                                           GF 1y   9571fc9
@@ -1280,7 +1280,7 @@ CONFLICTS (13)                ▎
 --- frame 2: `a`: the bottom row names `⇥ ⇥ banner, then c continue  a abort`
  ◆ api  ~/code/api · detached 274c7d4                 REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 
-  ◌   ▏  Uncommitted changes (13 unmerged)
+▸ ◌      Uncommitted changes (13 unmerged)
   ◆    ⓘ [HEAD] [main] Change every file on main                                                        GF 2h   274c7d4
   │ ●    [feature] Change every file on feature                                                         GF 2h   9d44f42
   ◇─╯    Add the files both sides will change                                                           GF 1y   9571fc9
@@ -1321,7 +1321,7 @@ CONFLICTS (13)                ▎
 --- frame 3: one `⇥` (the diff): the sticky refusal still stands over the bar
  ◆ api  ~/code/api · detached 274c7d4                 REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 
-  ◌   ▏  Uncommitted changes (13 unmerged)
+▸ ◌      Uncommitted changes (13 unmerged)
   ◆    ⓘ [HEAD] [main] Change every file on main                                                        GF 2h   274c7d4
   │ ●    [feature] Change every file on feature                                                         GF 2h   9d44f42
   ◇─╯    Add the files both sides will change                                                           GF 1y   9571fc9
@@ -1362,7 +1362,7 @@ CONFLICTS (13)                ▎
 --- frame 4: a second `⇥`: the banner has the keyboard
  ◆ api  ~/code/api · detached 274c7d4                 REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 
-  ◌   ▏  Uncommitted changes (13 unmerged)
+▸ ◌      Uncommitted changes (13 unmerged)
   ◆    ⓘ [HEAD] [main] Change every file on main                                                        GF 2h   274c7d4
   │ ●    [feature] Change every file on feature                                                         GF 2h   9d44f42
   ◇─╯    Add the files both sides will change                                                           GF 1y   9571fc9
@@ -1403,7 +1403,7 @@ CONFLICTS (13)                ▎
 --- frame 5: a merge stop, the banner focused: `c finish`, not `c continue`
  ◆ api  ~/code/api · main                                                                                       MERGING
 
-  ◌   ▏  Uncommitted changes (13 unmerged)
+▸ ◌      Uncommitted changes (13 unmerged)
   ◆      [◆ main] Change every file on main                                                             GF 2h   274c7d4
   │ ●    [feature] Change every file on feature                                                         GF 2h   9d44f42
   ◇─╯    Add the files both sides will change                                                           GF 1y   9571fc9
@@ -1444,7 +1444,7 @@ CONFLICTS (13)                ▎
 --- frame 6: an untracked `new.txt`: the row reads `new`, not `bin` (its body is n1's open half)
  ◆ api  ~/code/api · main                                                                                     3 commits
 
-  ◌ ▏  Uncommitted changes (1 untracked)
+▸ ◌    Uncommitted changes (1 untracked)
   ◆    [◆ main] Correct the note                                                                        GF 1y   a82960b
   ●    Add the first note                                                                               GF 1y   fadcfb3
   ◇    Add a readme                                                                                     GF 1y   64ded19
@@ -1755,7 +1755,7 @@ what right looks like: (ticket 72b) After `o ⏎` on the last clashed file: no `
 
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-  ◆ ▏  [◆ main] commit over the notes                                                                   GF 3m   f3742ab
+▸ ◆    [◆ main] commit over the notes                                                                   GF 3m   f3742ab
   ●    add the notes                                                                                    GF 5m   cfa370c
   ●    Correct the note                                                                                 GF 1y   a82960b
   ●    Add the first note                                                                               GF 1y   fadcfb3
@@ -1816,7 +1816,7 @@ what right looks like: (ticket 74) `p` refused as diverged, then `r`, three file
          after rebase
     ○    [◆ main ↑1 ↓1] ours                                                                            GF —    —
     ●    [origin/main] theirs                                                                           GF 6m   7be74b5
-  ● │ ▏  ours                                                                                           GF 6m   9d3d925
+▸ ● │    ours                                                                                           GF 6m   9d3d925
   ●─╯    Commit 200                                                                                     GF 1y   d5ae5fd
   ●      Commit 199                                                                                     GF 1y   13e6ab1
   ●      Commit 198                                                                                     GF 1y   f5055d9
@@ -1873,7 +1873,7 @@ what right looks like: (ticket 74, 84, 30b) The same box at 80x24: the `your edi
          after rebase
     ○    [◆ main ↑1 ↓1] ours                                       —    —
     ●    [origin/main] theirs                                      6m   7be74b5
-  ● │ ▏  ours                                                      6m   9d3d925
+▸ ● │    ours                                                      6m   9d3d925
   ●─╯    Commit 200                                                1y   d5ae5fd
   ●      Commit 199                                                1y   13e6ab1
   ●      Commit 198                                                1y   f5055d9
@@ -1976,7 +1976,7 @@ what right looks like: (ticket 74) `p r r` over three edited files, the rebase c
  ◆ api  ~/code/api · main                                                                               140 rows so far
 
   ◌    Uncommitted changes (1 staged, 2 unstaged)
-  ◆ ▏  [◆ main ↑1] ours                                                                                 GF futu…0000000
+▸ ◆    [◆ main ↑1] ours                                                                                 GF futu…0000000
   ●    [origin/main] theirs                                                                             GF 6m   7be74b5
   ●    Commit 200                                                                                       GF 1y   d5ae5fd
   ●    Commit 199                                                                                       GF 1y   13e6ab1
@@ -2032,7 +2032,7 @@ what right looks like: (ticket 82) `S p y` clashed in notes.md, then `esc` shut 
 
 [Graph]  Detail
  ◆ api  ~/code/api · main                                             6 commits
-  ◌   ▏  Uncommitted changes (1 unmerged)
+▸ ◌      Uncommitted changes (1 unmerged)
   ◆      [◆ main] commit over the notes                            3m   f3742ab
   │ ■    [stash@{0}] WIP on main: cfa370c add the notes            4m   fa9e094
   ●─╯    add the notes                                             5m   cfa370c

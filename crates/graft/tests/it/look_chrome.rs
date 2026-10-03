@@ -125,6 +125,125 @@ fn every_drawn_row_is_the_row_a_click_selects_at_every_designed_size() {
     }
 }
 
+/// The frame's buffer, cells and colours, drawn with `ui.theme = theme` —
+/// [`frame_at`] with the theme chosen and the attributes kept.
+fn buffer_with(
+    state: &AppState,
+    theme: graft::config::ThemeChoice,
+    columns: u16,
+    rows: u16,
+) -> ratatui::buffer::Buffer {
+    let mut loaded = graft::config::Loaded::default();
+    loaded.config.ui.theme = theme;
+    let session = graft::session::Session::settle(&loaded, crate::captures::capabilities());
+    let mut state = state.clone();
+    state.size = graft::update::Size { columns, rows };
+    state.harness.clock = Clock::Fixed(NOW);
+    let mut terminal = ratatui::Terminal::new(ratatui::backend::TestBackend::new(columns, rows))
+        .expect("test backend opens");
+    terminal
+        .draw(|frame| graft::view::view(&session, &state, frame))
+        .expect("drawing into a test backend cannot fail");
+    terminal.backend().buffer().clone()
+}
+
+/// The cursor row `row` of `buffer`: asserts the fill starts right of the
+/// gutter and three lanes and stops one short of the edge, and returns the
+/// worst contrast of any character on it against `selection`.
+fn worst_on_the_fill(
+    buffer: &ratatui::buffer::Buffer,
+    row: u16,
+    selection: graft_core::capabilities::Rgb,
+    name: &str,
+) -> f32 {
+    use graft_core::capabilities::Rgb;
+    use ratatui::style::Color;
+
+    let columns = buffer.area.width;
+    let fill = Color::Rgb(selection.red, selection.green, selection.blue);
+    let slot = (0..columns)
+        .find(|x| buffer[(*x, row)].bg == fill)
+        .expect("the cursor row is filled");
+    // The gutter and the three lanes sit left of the fill.
+    assert!(slot >= 8, "{name}: the fill starts at {slot}");
+    assert_ne!(buffer[(columns - 1, row)].bg, fill, "{name}: the margin");
+    let mut worst = f32::INFINITY;
+    for x in slot..columns - 1 {
+        let cell = &buffer[(x, row)];
+        assert_eq!(cell.bg, fill, "{name}: x {x} is on the fill");
+        if cell.symbol().trim().is_empty() {
+            continue;
+        }
+        let Color::Rgb(red, green, blue) = cell.fg else {
+            panic!("{name}: x {x} fg {:?}", cell.fg);
+        };
+        worst = worst.min(graft_ui::theme::contrast(
+            Rgb { red, green, blue },
+            selection,
+        ));
+    }
+    worst
+}
+
+/// m8-polish-and-ship/07, J23 (0 steps) and the ticket's two captures: the
+/// cursor on `[feature/two] two: finish` — a branch badge and three lanes.
+/// The cursor row carries `▸` in the gutter, its lanes keep the ground, the
+/// fill runs from the marker slot to the margin, and every character on the
+/// fill clears 4.5:1 against it (measured from the real app's buffer, the
+/// worst ratio written into the caption). Colour unverified (rule 5): the
+/// grid is the same in both themes; the ratios are the tests' claim.
+#[test]
+fn capture_the_cursor_row_in_dark_and_light() {
+    use graft_ui::theme::{Theme, ThemeKind, Token, TokenColor};
+
+    let (columns, rows) = (120, 36);
+    let (_scratch, app, state) = opened(columns, rows);
+    let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(NOW)));
+    let y = drawn
+        .iter()
+        .position(|line| line.contains("[feature/two] two: finish"))
+        .expect("the row is drawn");
+    let row = u16::try_from(y).expect("short screen");
+    let state = app.mouse_down(&state, MouseButton::Left, 30, row);
+    assert_eq!(selected_subject(&state).as_deref(), Some("two: finish"));
+    let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(NOW)));
+    let line = &drawn[y];
+    assert!(
+        line.starts_with("\u{25b8} \u{2502} \u{2502} \u{25cf}"),
+        "{line:?}"
+    );
+    assert!(!line.contains('\u{258f}'), "no ▏ for the cursor: {line:?}");
+
+    for (name, choice, kind) in [
+        ("dark", graft::config::ThemeChoice::Dark, ThemeKind::Dark),
+        ("light", graft::config::ThemeChoice::Light, ThemeKind::Light),
+    ] {
+        let buffer = buffer_with(&state, choice, columns, rows);
+        let theme = Theme::new(kind, &crate::captures::capabilities());
+        let TokenColor::Rgb(selection) = theme.token(Token::Selection) else {
+            panic!("the capture terminal is truecolor");
+        };
+        let worst = worst_on_the_fill(&buffer, row, selection, name);
+        assert!(worst >= 4.5, "{name}: worst text on the fill {worst:.2}:1");
+        let caption = format!(
+            "m8-polish-and-ship/07, {name} theme, 120x36, cursor on `[feature/two] two: finish`: \
+             what right looks like — `▸` in the gutter's first cell; the three lanes `│ │ ●` \
+             on the ground like every other row; no `▏` in the marker slot; the fill runs from \
+             the marker slot to one cell short of the edge; the badge reads as text in its lane's \
+             hue family. Compare beside docs/shots/m8-proto-4a-dark-a-b.txt (gutter `▸`, lanes, \
+             columns line up). Measured from the app's buffer: worst character on the fill \
+             {worst:.2}:1 (floor 4.5). Colour unverified (rule 5): this grid is the same in \
+             both themes; legibility is your eye.\n\n"
+        );
+        check_shot(
+            &format!("m8-look-cursor-row-{name}-{columns}x{rows}.txt"),
+            &format!("{caption}{}\n", drawn.join("\n")),
+        );
+    }
+    drop(state);
+    app.close();
+}
+
 /// J22 (0 steps) and the ticket's captures: the first row names the
 /// repository, its `~` path and the branch, and never the product.
 #[test]

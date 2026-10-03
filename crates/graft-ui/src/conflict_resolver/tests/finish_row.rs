@@ -166,7 +166,21 @@ fn finish_row_style() {
         assert_eq!(cell.bg, selection, "the fill spans the row, x {x}");
         assert!(cell.modifier.contains(Modifier::BOLD), "x {x}");
     }
-    assert_eq!(buf[(row.x, row.y)].fg, accent);
+    // `accent`, lifted to stay legible on the fill (ADR-0058 §3).
+    assert_eq!(
+        buf[(row.x, row.y)].fg,
+        color(theme.on_selection(theme.token(crate::theme::Token::Accent)))
+    );
+    assert_ne!(
+        buf[(row.x, row.y)].fg,
+        accent,
+        "dark B's accent needs the lift"
+    );
+    let checked = crate::test_support::assert_legible_on_selection(&buf, &theme);
+    assert!(
+        checked > 20,
+        "the finish row's words are on the fill ({checked})"
+    );
 
     let bare = theme_none();
     let (buf, row) = drawn(&doc, 120, &bare);

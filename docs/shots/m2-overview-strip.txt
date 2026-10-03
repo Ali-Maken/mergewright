@@ -22,7 +22,7 @@
 
 === unicode ===
 "                                                                      7 commits●"
-"  ◆─╮   ▏  [HEAD] Merge branch 'topic-b'                           57y  0909090█"
+"▸ ◆─╮      [HEAD] Merge branch 'topic-b'                           57y  0909090█"
 "  ● │      topic-b work                                            57y  0808080█"
 "  ● │      topic-b start                                           57y  0707070█"
 "  ◉─┴─╮    Merge branch 'topic-a'                                  57y  0404040█"
@@ -48,7 +48,7 @@
 
 === ascii ===
 "                                                                      7 commits*"
-"  *-\   |  [HEAD] Merge branch 'topic-b'                           57y  0909090#"
+"> *-\      [HEAD] Merge branch 'topic-b'                           57y  0909090#"
 "  * |      topic-b work                                            57y  0808080#"
 "  * |      topic-b start                                           57y  0707070#"
 "  *-+-\    Merge branch 'topic-a'                                  57y  0404040#"

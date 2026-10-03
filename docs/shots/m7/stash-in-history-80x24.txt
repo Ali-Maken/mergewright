@@ -1,5 +1,5 @@
  ◆ api  ~/code/api · main                                             6 commits
-    ■ ▏  [stash@{0}] On topic: wip                                 3m   65a77a9
+▸   ■    [stash@{0}] On topic: wip                                 3m   65a77a9
     □    [only in stash@{0}] topic base                            4m   b9451c7
   ◆─╯    [◆ main] add notes                                        5m   2c59061
   ●      Correct the note                                          1y   a82960b

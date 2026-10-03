@@ -229,6 +229,19 @@ impl MapScreen<'_> {
         let bar_end = bar_start.saturating_add(buckets_u16).min(area.right());
         let after_tags = draw_tag_annotations(buf, area, y, bar_end, row, self.theme);
         draw_row_suffix(buf, area, y, after_tags, row, self.theme);
+        if selected && !reduced {
+            // Every foreground on the fill — name, bar, marks, tags, suffix
+            // — lifted to stay legible on it (ADR-0058 §3).
+            crate::paint::lift_on_selection(
+                buf,
+                Rect {
+                    y,
+                    height: 1,
+                    ..area
+                },
+                self.theme,
+            );
+        }
     }
 
     #[allow(clippy::too_many_arguments)]

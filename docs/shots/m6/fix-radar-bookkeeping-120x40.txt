@@ -20,7 +20,7 @@
 
  ◆ api  ~/code/api · main                                                                               144 rows so far
 
-  ◆   ▏  [◆ main ⇄ origin] ours                                                                         GF now  0000000
+▸ ◆      [◆ main ⇄ origin] ours                                                                         GF now  0000000
   ●      theirs                                                                                         GF 6y   7be74b5
   │ ■    [stash@{0}] On main: wip                                                                       GF 6y   e79bc4b
   │ □    [only in stash@{0}] ours                                                                       GF 6y   739071c
@@ -65,7 +65,7 @@
 
   ◆      [◆ main ⇄ origin] ours                                                                         GF now  0000000
   ●      theirs                                                                                         GF 6y   7be74b5
-  │ ■ ▏  [stash@{0}] On main: wip                                                                       GF 6y   e79bc4b
+▸ │ ■    [stash@{0}] On main: wip                                                                       GF 6y   e79bc4b
   │ □    [only in stash@{0}] ours                                                                       GF 6y   739071c
   ●─╯    Commit 200                                                                                     GF 7y   d5ae5fd
   ●      Commit 199                                                                                     GF 7y   13e6ab1
@@ -106,7 +106,7 @@
 
  ◆ api  ~/code/api · main                                                                               144 rows so far
 
-  ◆   ▏  [◆ main ⇄ origin] ours                                                                         GF now  0000000
+▸ ◆      [◆ main ⇄ origin] ours                                                                         GF now  0000000
  Checkout — already on main
  Cherry-pick (o) — already on main
  Copy SHA (y)

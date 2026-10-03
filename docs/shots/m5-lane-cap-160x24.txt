@@ -39,7 +39,7 @@
 == the pane open: the graph has 92 columns ==
 
  ◆ api  ~/code/api · main                                              31 commits  +6 lanes  COMMIT 33b6328
-  ◆─╮               ⋮ ▏  [◆ main] Merge branch 'topic-14'                      32m  33b6328  Graft Fixture <fixture@example.invalid> · 2021-01-01 00:28 +0000 ·…
+▸ ◆─╮               ⋮    [◆ main] Merge branch 'topic-14'                      32m  33b6328  Graft Fixture <fixture@example.invalid> · 2021-01-01 00:28 +0000 ·…
   ◉─│─╮             ⋮    Merge branch 'topic-13'                               33m  390c3c4  parents 390c3c4, a22b10e · diff vs first parent
   ◉─│─│─╮           ⋮    Merge branch 'topic-12'                               34m  0e1b7e7  Contained in: checking…
   ◉─│─│─│─╮         ⋮    Merge branch 'topic-11'                               35m  958cd77  evil merge: clean
@@ -66,7 +66,7 @@
 == the same terminal, pane closed: the graph has all 160 ==
 
  ◆ api  ~/code/api · main                                                                                                                  31 commits  +4 lanes
-  ◆─╮                   ⋮ ▏  [◆ main] Merge branch 'topic-14'                                                                                   GF 32m  33b6328
+▸ ◆─╮                   ⋮    [◆ main] Merge branch 'topic-14'                                                                                   GF 32m  33b6328
   ◉─│─╮                 ⋮    Merge branch 'topic-13'                                                                                            GF 33m  390c3c4
   ◉─│─│─╮               ⋮    Merge branch 'topic-12'                                                                                            GF 34m  0e1b7e7
   ◉─│─│─│─╮             ⋮    Merge branch 'topic-11'                                                                                            GF 35m  958cd77

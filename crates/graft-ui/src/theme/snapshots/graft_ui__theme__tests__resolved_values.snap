@@ -7,10 +7,10 @@ theme dark
   bg              #14161B     233   0
   surface         #1B1E24     234   0
   surface-raised  #232730     235   0
-  selection       #5A6478     60    8
+  selection       #5C667B     60    8
   border          #333944     237   8
-  text            #D7DBE0     253   7
-  text-muted      #8A919C     246   8
+  text            #F0F2F5     255   15
+  text-muted      #9AA1AC     247   7
   accent          #4FA3E3     75    6
   added           #5DB87A     71    2
   removed         #E06C75     167   9

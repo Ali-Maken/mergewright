@@ -5,7 +5,7 @@
     ○    [◆ feature-a] a3                                                                                                                                                  GF —    —
     ○    a2                                                                                                                                                                GF —    —
     ○    a1                                                                                                                                                                GF —    —
-  ●─╯ ▏  [main] m2                                                                                                                                                         GF 2d   2b82635
+▸ ●─╯    [main] m2                                                                                                                                                         GF 2d   2b82635
   │ ●    b1                                                                                                                                                                GF 2d   884b0c4
   │ ●    a3                                                                                                                                                                GF 2d   cb31bb2
   │ ●    a2                                                                                                                                                                GF 2d   795ac31

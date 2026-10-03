@@ -10,7 +10,7 @@
     │ ○    feature edits shared                                    —    —
     │ ○    more of the feature                                     —    —
     │ ○    start the feature                                       —    —
-  ●─│─╯ ▏  [main] main edits shared                                6m   36c271e
+▸ ●─│─╯    [main] main edits shared                                6m   36c271e
   ●─╯      add shared                                              7m   982c1d3
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────╮
 │ 5 commits replayed                                                           │

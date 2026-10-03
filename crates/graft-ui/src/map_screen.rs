@@ -205,6 +205,39 @@ mod tests {
         }
     }
 
+    /// ADR-0058 §3: on the selected row's `selection` fill, the name, the
+    /// branch-coloured bar, the tag and the radar mark clear 4.5:1 in dark B.
+    #[test]
+    fn text_on_the_cursor_row_is_legible() {
+        let theme = Theme::new(
+            ThemeKind::Dark,
+            &test_capabilities(ColorDepth::TrueColor, false),
+        );
+        for selected in 0..3 {
+            let view = MapView {
+                selected,
+                ..sample_view(false)
+            };
+            let mut terminal = Terminal::new(TestBackend::new(120, 24)).expect("test backend");
+            terminal
+                .draw(|frame| {
+                    frame.render_widget(
+                        MapScreen {
+                            view: &view,
+                            theme: &theme,
+                        },
+                        frame.area(),
+                    );
+                })
+                .expect("draws");
+            let checked = crate::test_support::assert_legible_on_selection(
+                terminal.backend().buffer(),
+                &theme,
+            );
+            assert!(checked > 5, "row {selected}: drawn ({checked})");
+        }
+    }
+
     #[test]
     fn ready_snapshot_80x24_unicode() {
         insta::assert_snapshot!(draw(&sample_view(false), 80, 24));

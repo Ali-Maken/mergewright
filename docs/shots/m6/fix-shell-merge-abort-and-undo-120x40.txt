@@ -18,7 +18,7 @@
 === 1. a: the abort box ===
  ◆ api  ~/code/api · main                                                                                       MERGING
 
-  ◌   ▏  Uncommitted changes (2 unmerged)
+▸ ◌      Uncommitted changes (2 unmerged)
   ◆      [◆ main] main's take                                                                           GF 2h   ddeed32
   │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
   ●─╯    the shared files                                                                               GF 2h   b35b2f1
@@ -59,7 +59,7 @@ CONFLICTS (2)                 ▎
 === 2. → ⏎: aborted ===
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-  ◆   ▏  [◆ main] main's take                                                                           GF 2h   ddeed32
+▸ ◆      [◆ main] main's take                                                                           GF 2h   ddeed32
   │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
   ●─╯    the shared files                                                                               GF 2h   b35b2f1
   ●      Correct the note                                                                               GF 1y   a82960b
@@ -101,7 +101,7 @@ M shared.rs             +1 −1   1     - the plan
  ◆ api  ~/code/api · main                                                                                       MERGING
 
   ◌      Uncommitted changes (2 unmerged)
-  ◆   ▏  [◆ main] main's take                                                                           GF 2h   ddeed32
+▸ ◆      [◆ main] main's take                                                                           GF 2h   ddeed32
   │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
   ●─╯    the shared files                                                                               GF 2h   b35b2f1
   ●      Correct the note                                                                               GF 1y   a82960b

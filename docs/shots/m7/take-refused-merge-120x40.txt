@@ -7,7 +7,7 @@
 # taking a merge isn't in Graft yet`; no preview box.
  ◆ api  ~/code/api · main                                                                                     7 commits
 
-    ◉─╮ ▏  [merged] merge login-page                                                                    GF now  5c42e39
+▸   ◉─╮    [merged] merge login-page                                                                    GF now  5c42e39
     │ ●    [login-page] [origin/sara/login-page] fix the bug                                            GF 3m   fbb2394
   ◆ │ │    [◆ main ⇄ origin] main moves on                                                              GF 4m   37926a7
   ●─┴─╯    [feature-a] add the base                                                                     GF 5m   ed332bc

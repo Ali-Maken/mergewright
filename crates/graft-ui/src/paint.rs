@@ -30,6 +30,47 @@ pub fn foreground(theme: &Theme, token: Token) -> Style {
     Style::new().fg(color(theme.token(token)))
 }
 
+/// `style` as drawn on the `selection` fill: its foreground lifted to stay
+/// legible there ([`Theme::on_selection`], ADR-0058 §3). For every screen
+/// that paints a cursor row; the rest of the style is kept.
+///
+/// The foreground is read back from the style, so a widget can build its
+/// styles as on any row and lift them in one place. A style with no
+/// foreground — or one in a named ANSI colour, which no theme hands out —
+/// draws `text`.
+#[must_use]
+pub fn on_selection(theme: &Theme, style: Style) -> Style {
+    style.fg(lifted(theme, style.fg))
+}
+
+/// [`on_selection`] over every cell of `area` already drawn: for a row whose
+/// pieces come from several helpers, lifted once after they have all drawn.
+pub fn lift_on_selection(
+    buf: &mut ratatui::buffer::Buffer,
+    area: ratatui::layout::Rect,
+    theme: &Theme,
+) {
+    let area = area.intersection(buf.area);
+    for y in area.top()..area.bottom() {
+        for x in area.left()..area.right() {
+            let cell = &mut buf[(x, y)];
+            cell.fg = lifted(theme, Some(cell.fg));
+        }
+    }
+}
+
+/// One foreground as drawn on the fill. `None` (no foreground set) and named
+/// ANSI colours — which no theme hands out — read as the terminal default,
+/// which [`Theme::on_selection`] turns into `text`.
+fn lifted(theme: &Theme, fg: Option<Color>) -> Color {
+    let fg = match fg {
+        Some(Color::Rgb(red, green, blue)) => TokenColor::Rgb(Rgb { red, green, blue }),
+        Some(Color::Indexed(index)) => TokenColor::Indexed(index),
+        _ => TokenColor::Default,
+    };
+    color(theme.on_selection(fg))
+}
+
 #[cfg(test)]
 mod tests {
     use graft_core::capabilities::ColorDepth;

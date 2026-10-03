@@ -51,7 +51,7 @@
   │ ○      main moves on (2)                                       —    —
   │ ○      main moves on (1)                                       —    —
   │ ○      main moves on (0)                                       —    —
-  │ ●   ▏  [old-release] cut release 1.0                           68m  3b09656
+▸ │ ●      [old-release] cut release 1.0                           68m  3b09656
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────╮
 │ 5 commits replayed                                                           │
 │ topic e7e39a7 → 5 new commits                                                │

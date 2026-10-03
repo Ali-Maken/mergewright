@@ -1,6 +1,6 @@
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-  ◆ ▏  [◆ main] edit notes                                                                              GF 4m   6944d27
+▸ ◆    [◆ main] edit notes                                                                              GF 4m   6944d27
   ●    add notes                                                                                        GF 5m   9d5dd9b
   ●    Correct the note                                                                                 GF 1y   a82960b
   ●    Add the first note                                                                               GF 1y   fadcfb3

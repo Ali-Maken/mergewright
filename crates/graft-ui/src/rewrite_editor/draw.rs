@@ -212,6 +212,18 @@ pub(super) fn draw_rows(
     }
 }
 
+/// A row's lead glyph and its style: the base's muted `─`, the cursor's
+/// accent `▸`, or a blank.
+fn lead(is_base: bool, on_cursor: bool, glyphs: &Glyphs, theme: &Theme) -> (&'static str, Style) {
+    if is_base {
+        (glyphs.base, foreground(theme, Token::TextMuted))
+    } else if on_cursor {
+        (glyphs.cursor, foreground(theme, Token::Accent))
+    } else {
+        (" ", foreground(theme, Token::Accent))
+    }
+}
+
 /// One row: `▸ squash ↓  7f6e5d4  Handle expired tokens   melds into …`.
 pub(super) fn draw_row(
     buf: &mut Buffer,
@@ -234,18 +246,7 @@ pub(super) fn draw_row(
         );
     }
     let muted = foreground(theme, Token::TextMuted);
-    let lead = if is_base {
-        glyphs.base
-    } else if on_cursor {
-        glyphs.cursor
-    } else {
-        " "
-    };
-    let lead_style = if is_base {
-        muted
-    } else {
-        foreground(theme, Token::Accent)
-    };
+    let (lead, lead_style) = lead(is_base, on_cursor, glyphs, theme);
     let mut x = put(buf, band, band.x + 1, lead, lead_style);
     x = x.max(band.x + u16::try_from(LEAD).unwrap_or(0));
     let (word, style) = action(&row.mark, glyphs, theme);
@@ -281,5 +282,10 @@ pub(super) fn draw_row(
     if x < band.right() {
         let room = usize::from(band.right() - x);
         put(buf, band, x, &fit(&note, room), muted);
+    }
+    if on_cursor {
+        // Every foreground on the band lifted to stay legible on the fill
+        // (ADR-0058 §3): the accent `▸`, the action word, sha, subject, note.
+        crate::paint::lift_on_selection(buf, band, theme);
     }
 }

@@ -1,7 +1,7 @@
 == the files cursor on a file row: no `space` ==
  ◆ api  ~/code/api · main                                                                                     4 commits
 
-  ◆ ▏  [◆ main] add src                                                                                 GF 4mo  9d4f6c9
+▸ ◆    [◆ main] add src                                                                                 GF 4mo  9d4f6c9
   ●    Correct the note                                                                                 GF 1y   a82960b
   ●    Add the first note                                                                               GF 1y   fadcfb3
   ◇    Add a readme                                                                                     GF 1y   64ded19
@@ -43,7 +43,7 @@ M notes.txt             +1 −1 ▎
 == the files cursor on the `src/` directory row: `space fold` ==
  ◆ api  ~/code/api · main                                                                                     4 commits
 
-  ◆ ▏  [◆ main] add src                                                                                 GF 4mo  9d4f6c9
+▸ ◆    [◆ main] add src                                                                                 GF 4mo  9d4f6c9
   ●    Correct the note                                                                                 GF 1y   a82960b
   ●    Add the first note                                                                               GF 1y   fadcfb3
   ◇    Add a readme                                                                                     GF 1y   64ded19

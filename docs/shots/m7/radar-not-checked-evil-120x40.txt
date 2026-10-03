@@ -1,6 +1,6 @@
  ◆ api  ~/code/api · main                                                                                     4 commits
 
-  ◆─╮ ▏⚠ [◆ main] Merge branch 'alpha'                                                                  GF 1y   cc1103b
+▸ ◆─╮  ⚠ [◆ main] Merge branch 'alpha'                                                                  GF 1y   cc1103b
   ● │    Advance main                                                                                   GF 1y   0631550
   │ ●    [alpha] alpha: work                                                                            GF 1y   bd20b78
   ◇─╯    Add the base                                                                                   GF 1y   68d5d19

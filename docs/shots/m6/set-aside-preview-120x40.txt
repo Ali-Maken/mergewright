@@ -15,7 +15,7 @@
          after rebase
     ○    [◆ main ↑1 ↓1] ours                                                                            GF —    —
     ●    [origin/main] theirs                                                                           GF 6m   7be74b5
-  ● │ ▏  ours                                                                                           GF 6m   9d3d925
+▸ ● │    ours                                                                                           GF 6m   9d3d925
   ●─╯    Commit 200                                                                                     GF 1y   d5ae5fd
   ●      Commit 199                                                                                     GF 1y   13e6ab1
   ●      Commit 198                                                                                     GF 1y   f5055d9

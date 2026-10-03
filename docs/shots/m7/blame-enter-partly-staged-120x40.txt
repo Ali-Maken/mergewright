@@ -1,6 +1,6 @@
  ◆ api  ~/code/api · main                                                                                     4 commits
 
-  ◌ ▏  Uncommitted changes (1 staged, 1 unstaged)
+▸ ◌    Uncommitted changes (1 staged, 1 unstaged)
   ◆    [◆ main] add f                                                                                   GT 24h  d45d045
   ●    Correct the note                                                                                 GF 2d   a82960b
   ●    Add the first note                                                                               GF 2d   fadcfb3

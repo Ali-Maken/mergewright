@@ -10,7 +10,7 @@ mod support;
 
 use graft_core::capabilities::ColorDepth;
 use graft_fixtures::Shape;
-use graft_ui::graph_screen::{CHROME_ROWS, GraphScreen};
+use graft_ui::graph_screen::{CHROME_ROWS, GUTTER, GraphScreen};
 use graft_ui::theme::{Theme, ThemeKind};
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
@@ -76,7 +76,15 @@ fn crowded_shapes_draw_only_the_ascii_glyph_table() {
             let graph_width = laid.width().min(COLUMNS);
             let drawn = laid.rows.len().min(usize::from(ROWS - CHROME_ROWS));
             for y in (1..).take(drawn) {
-                for x in 0..graph_width {
+                // The graph column starts after the two-cell gutter, whose
+                // cell 0 holds the cursor's `>` on the cursor row (ADR-0058).
+                let gutter = if y == 2 { ">" } else { " " };
+                assert_eq!(
+                    buffer[(0, y)].symbol(),
+                    gutter,
+                    "{shape} {name} gutter at row {y}"
+                );
+                for x in GUTTER..GUTTER + graph_width {
                     let symbol = buffer[(x, y)].symbol();
                     assert!(
                         symbol.chars().all(|ch| "*|/\\-+ ".contains(ch)),
