@@ -11,7 +11,7 @@
  ◆ api  ~/code/api · feature-a                                                                                4 commits
 
     ●      Show the login page                                                                          GF 2d   04fbed6
-    ●   ▏  Handle expired tokens                                                                        GF 2d   29033ed
+▸   ●      Handle expired tokens                                                                        GF 2d   29033ed
     │      the result
     │ ○    [feature-b] Show the login page                                                              GF —    —
     │ ○    [◆ feature-a] Handle expired tokens on refresh                                               GF —    —
