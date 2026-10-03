@@ -191,7 +191,24 @@ pub struct GitInvocation {
     env: Vec<(OsString, OsString)>,
     /// Where stderr segments go as they arrive, if anywhere.
     stderr_sink: Option<StderrSink>,
+    /// Remove [`REPO_LOCATING_ENV`] from the child's environment: set by
+    /// [`GitInvocation::in_folder`], whose command is about a folder that is
+    /// not a repository yet, so nothing inherited may point git elsewhere.
+    unset_repo_env: bool,
 }
+
+/// The variables that tell git which repository to use instead of the one
+/// it would find from its working directory. A command about a folder
+/// ([`GitInvocation::in_folder`]) runs without them: a `GIT_DIR` left in the
+/// environment by a hook or a script would otherwise make `git init` write
+/// somewhere other than the folder the user was shown.
+pub const REPO_LOCATING_ENV: [&str; 5] = [
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_COMMON_DIR",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+];
 
 /// The closure [`GitInvocation::on_stderr_line`] was given, shared so the
 /// invocation stays `Clone` (clones share one sink) and `&self` can run it.
@@ -254,6 +271,20 @@ impl GitInvocation {
             cap: DEFAULT_CAP,
             env: Vec::new(),
             stderr_sink: None,
+            unset_repo_env: false,
+        }
+    }
+
+    /// A command with no arguments yet, run in `folder`, which need not be
+    /// a repository — the one repo-less entry outside this crate
+    /// (m8-polish-and-ship/08: `git init` from the empty state). The
+    /// inherited [`REPO_LOCATING_ENV`] variables are removed, so git acts on
+    /// `folder` and nothing else.
+    #[must_use]
+    pub fn in_folder(folder: &Path) -> Self {
+        Self {
+            unset_repo_env: true,
+            ..Self::in_directory(folder)
         }
     }
 
@@ -400,6 +431,11 @@ impl GitInvocation {
             })
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        if self.unset_repo_env {
+            for key in REPO_LOCATING_ENV {
+                command.env_remove(key);
+            }
+        }
         command.spawn().map_err(|error| match error.kind() {
             io::ErrorKind::NotFound => RunError::GitNotFound,
             _ => RunError::Spawn(error),

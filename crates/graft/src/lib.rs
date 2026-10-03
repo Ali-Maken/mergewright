@@ -12,11 +12,13 @@
 pub mod cli;
 pub mod config;
 pub mod crash;
+pub(crate) mod empty_state;
 pub mod event_loop;
 pub mod history;
 pub mod jobs;
 pub mod layout;
 pub mod map;
+pub(crate) mod recent;
 pub mod refs;
 pub mod repos;
 pub mod repository;

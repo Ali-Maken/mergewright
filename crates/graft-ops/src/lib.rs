@@ -15,6 +15,7 @@ pub mod conflict;
 pub mod facts;
 pub mod finish;
 pub mod in_the_way;
+pub mod init;
 pub mod journal;
 pub mod journal_list;
 pub mod merge_state;
