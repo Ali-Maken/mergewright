@@ -38,7 +38,8 @@ with no shell.
 | **Never let the terminal fall behind** | nothing found | DSR fence per frame (ADR-0054) | **I** — studies cover input batching, not output pacing |
 | Atomic frames | DEC 2026 (§3) | text **and** image commands inside one pair | T |
 | Wheel bursts | lazygit 2 rows/event, zellij per event (§2) | a turn's wheel events sum; per-event step unchanged until scene 1's verdict | T step · I sum |
-| Per-row work while moving | VS Code: scroll moves an offset (§1) | detail follow, radar probe start at rest; stale ones cancelled; emphasis (per-frame drawing) judged in 05 (03 revision) | T (extended) |
+| Per-row work while moving: follow at once, cancel on move | lazygit `NewTask` stops the previous diff on each move; fzf `cancelPreview` then starts the new preview, no debounce (`scroll-smoothness` "Addendum: Per-row work while the cursor moves") | a burst's first motion (leading edge) follows at once; a stale detail follow or radar probe is cancelled when the cursor moves (03) | T (lazygit, fzf) |
+| Per-row work while moving: defer during a burst | nothing fits (same addendum): lazygit/fzf never defer — they spawn per move, lazygit throttling 30 ms only under load; VS Code Timeline's 500 ms trailing debounce is too slow for a held key | later motions in a burst defer the detail follow and radar probe to rest: settle = clamp(2 × widest gap, 50 ms, 150 ms); emphasis (per-frame drawing) not gated, judged in 05 (03 revision) | **I** — nothing fits, because no tool found both follows the leading edge and defers the burst; 150/50 ms come from key-repeat rates, not prior art |
 | Kitty uploads | re-place by id, `d=p` (§3) | have (m7/46) | T (have) |
 | Kitty Unicode placeholders | yazi; WezTerm doesn't render | — | R |
 | Measure where he is | gitui #2823 | opt-in `GRAFT_PERF_TRACE`, numbers only | I (rule 1, :84) |
