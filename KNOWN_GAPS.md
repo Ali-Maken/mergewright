@@ -1115,6 +1115,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/14-fix-open | After 14 review fixes: outcome.rs 402 lines (>400); journal Aborted reason doesn't name files that came back; review Minors 1–4 not done (see M8/14-review-minors). | **broken** | M8 |
 | M8/14-fix-risks | Reword text kept keyed on HEAD oid; `c`'s draft no longer gets reword text; each `a` costs one extra plan. Judge in daily use / M8 review. | **unverified** | M8 |
 | M8/preview-box-line-tone | Rewrite preview box has no per-line colour: muted/warning rows draw plain (`would conflict` leads with `!`). 14c ruling Q3. | **broken** | M8 |
+| M8/pty-scripts-real-recents | Python pty scripts don't set XDG_CONFIG_HOME, so a run writes the real `~/.config/graft/recent`. Fold into 22b (scripts hygiene). | **broken** | M8 |
+| M8/08-missing-folder-i | Missing folder: no `i` offer (default, user question open); switch is the `Char('i') if !state.missing` arm in graft/src/empty_state.rs. | **unverified** | M8 |
 | M8/long-tmpdir-socket | 6+ graft tests fail when `$TMPDIR` is a long path (unix-socket path limit); Paperclip runs set one. Gates pass with `TMPDIR=/tmp`. Tests should not depend on `$TMPDIR` length — cause not fixed. | **broken** | M8 |
 | M8/startup-rs-564 | `startup.rs` 564 lines, over the readability limit; outside 02's file set, not split. | **broken** | M8 |
 | M8/14c-fork-wording | A fork that follows reads "built on yours", same as a dependent — 14c to decide (question). `docs/shots/m7/*-left-behind-*` now show a follow; names stale. | **unverified** | M8 |
