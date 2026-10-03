@@ -200,10 +200,10 @@ const HEADER_SHA: usize = 7;
 /// `home` written `~`, and the branch — or `detached <sha7>` (DESIGN.md
 /// §1.0, ADR-0058 §4). Every string is sanitised on the way.
 fn location(facts: &RepositoryFacts, home: Option<&Path>) -> Location {
-    let repo = facts
-        .path
-        .file_name()
-        .map_or_else(|| sanitize_path(&facts.path), |name| sanitize_path(Path::new(name)));
+    let repo = facts.path.file_name().map_or_else(
+        || sanitize_path(&facts.path),
+        |name| sanitize_path(Path::new(name)),
+    );
     let branch = match &facts.head {
         Head::Branch(name) | Head::Unborn(name) => sanitize_path_bytes(name),
         Head::Detached(id) => {
@@ -227,9 +227,7 @@ fn home_relative(path: &Path, home: Option<&Path>) -> PathBuf {
     match home.and_then(|home| path.strip_prefix(home).ok()) {
         // Only a real directory counts: `HOME=/` would turn every path
         // into `~/…`, which says nothing.
-        Some(rest) if home.is_some_and(|home| home.parent().is_some()) => {
-            Path::new("~").join(rest)
-        }
+        Some(rest) if home.is_some_and(|home| home.parent().is_some()) => Path::new("~").join(rest),
         _ => path.to_path_buf(),
     }
 }
@@ -1045,9 +1043,9 @@ mod tests {
     /// name, its path with the home directory written `~`, and the branch.
     #[test]
     fn the_location_names_the_repo_its_home_path_and_its_branch() {
-        let home = Path::new("/home/ada");
+        let home = Path::new("/work/ada");
         let at = location(
-            &facts("/home/ada/code/api", Head::Branch(b"main".to_vec())),
+            &facts("/work/ada/code/api", Head::Branch(b"main".to_vec())),
             Some(home),
         );
         assert_eq!(at.repo.as_str(), "api");
@@ -1056,13 +1054,19 @@ mod tests {
         assert!(!at.practice);
 
         // Outside the home, or with none, the path is shown whole.
-        let away = location(&facts("/srv/api", Head::Unborn(b"trunk".to_vec())), Some(home));
+        let away = location(
+            &facts("/srv/api", Head::Unborn(b"trunk".to_vec())),
+            Some(home),
+        );
         assert_eq!(away.path.as_str(), "/srv/api");
         assert_eq!(away.branch.as_str(), "trunk");
-        let homeless = location(&facts("/home/ada/api", Head::Unborn(b"x".to_vec())), None);
-        assert_eq!(homeless.path.as_str(), "/home/ada/api");
+        let homeless = location(&facts("/work/ada/api", Head::Unborn(b"x".to_vec())), None);
+        assert_eq!(homeless.path.as_str(), "/work/ada/api");
         // A home of `/` would make every path `~/…`, which says nothing.
-        let root = location(&facts("/srv/api", Head::Unborn(b"x".to_vec())), Some(Path::new("/")));
+        let root = location(
+            &facts("/srv/api", Head::Unborn(b"x".to_vec())),
+            Some(Path::new("/")),
+        );
         assert_eq!(root.path.as_str(), "/srv/api");
     }
 

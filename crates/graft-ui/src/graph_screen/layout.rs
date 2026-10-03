@@ -177,7 +177,10 @@ impl<'a> GraphScreen<'a> {
         push(walk, foreground(self.theme, token));
         let filters = left_out(self.view.filters, folded_lanes);
         if !filters.is_empty() {
-            push(format!("  {filters}"), foreground(self.theme, Token::Accent));
+            push(
+                format!("  {filters}"),
+                foreground(self.theme, Token::Accent),
+            );
         }
         if matches!(self.view.walk, WalkView::Jumping { .. }) {
             push("  Esc cancels".to_owned(), muted);
@@ -198,7 +201,6 @@ impl<'a> GraphScreen<'a> {
             ),
             None => {}
         }
-        drop(push);
         spans
     }
 }
@@ -263,28 +265,18 @@ pub fn screen_rows(view: &GraphView<'_>, area: Rect) -> ScreenRows {
         height: u16::from(view.commit_graph.is_some() && free > banner.height),
         ..area
     };
-    let above_offer = if offer.height > 0 { offer.y } else { rule_floor };
+    let above_offer = if offer.height > 0 {
+        offer.y
+    } else {
+        rule_floor
+    };
     let rule = Rect {
         y: above_offer.saturating_sub(1),
         height: u16::from(spaced),
         ..area
     };
     let body_floor = if spaced { rule.y } else { above_offer };
-    let left = body_floor.saturating_sub(banner.bottom());
-    let wanted = view
-        .pending
-        .as_ref()
-        .map_or(0, crate::still_to_apply::still_to_apply_height);
-    let pending_height = wanted.min(left / 2);
-    let pending = Rect {
-        y: banner.bottom(),
-        height: if pending_height >= 3 {
-            pending_height
-        } else {
-            0
-        },
-        ..area
-    };
+    let pending = pending_rect(view, banner.bottom(), body_floor, area);
     // The gutter and the margin come off only where the row can afford
     // them: a screen a few cells wide keeps what it has.
     let body = Rect {
@@ -302,6 +294,23 @@ pub fn screen_rows(view: &GraphView<'_>, area: Rect) -> ScreenRows {
         rule,
         offer,
         footer,
+    }
+}
+
+/// The "still to apply" block under the banner: at most half the rows
+/// between `top` and `floor`, and none at all when that leaves it under the
+/// three rows it needs to say anything.
+fn pending_rect(view: &GraphView<'_>, top: u16, floor: u16, area: Rect) -> Rect {
+    let left = floor.saturating_sub(top);
+    let wanted = view
+        .pending
+        .as_ref()
+        .map_or(0, crate::still_to_apply::still_to_apply_height);
+    let height = wanted.min(left / 2);
+    Rect {
+        y: top,
+        height: if height >= 3 { height } else { 0 },
+        ..area
     }
 }
 

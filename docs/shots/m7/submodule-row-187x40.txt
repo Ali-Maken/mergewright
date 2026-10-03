@@ -1,4 +1,4 @@
- ◆ api  /code/api · main                                                                          4 commits  UNCOMMITTED · 1 unstaged
+ ◆ api  ~/code/api · main                                                                         4 commits  UNCOMMITTED · 1 unstaged
                                                                                                              diff vs HEAD f48cdbe
   ◌ ▏  Uncommitted changes (1 unstaged)
   ◆    [◆ main] add parser                                                                  GT 24h  f48cdbe

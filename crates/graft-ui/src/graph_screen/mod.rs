@@ -34,8 +34,8 @@ use graft_term::SanitizedText;
 
 pub use badges::{Badge, BadgeKind, Icons, Tracking};
 pub use banner::{BannerView, RewriteBannerView, banner_line};
-pub use header::{APP_NAME, HeaderView, header_line, tail_room};
 pub use columns::{absolute_date, initials, relative_date, relative_date_long, short_sha};
+pub use header::{APP_NAME, HeaderView, header_line, tail_room};
 pub use hints::{
     ConfirmYes, Divider, Hint, HintContext, HintState, LiveC, Rung, StopWording, TabWord,
     blame_place_list, every_context, every_hint, fit_status_line, hints_for, hints_text,

@@ -4520,18 +4520,33 @@ fn the_confirm_box_keeps_the_graph_beside_it_and_starts_on_the_subject_column() 
              {subject_x} — the box splits it",
             rect.x
         );
-        // It covers rather than clears: the SHA column is still drawn on
-        // the box's own rows.
-        let beside: String = with[usize::from(rect.y) + 1][usize::from(rect.right())..].concat();
+        // It covers rather than clears: on the box's own rows the SHA column
+        // is still drawn whole beside it — or, where the box's natural width
+        // reaches past the SHA column's gutter, the box runs to the frame's
+        // edge and covers that column whole (ADR-0040: whole columns or
+        // clear). At 80 columns that is the case since the one-cell right
+        // margin (m8-polish-and-ship/06, ADR-0058 §4) moved the SHA column
+        // a cell left of the centred 64-wide box's edge. Either way the
+        // lanes left of the box survive, which a cleared band would not.
+        let row = &with[usize::from(rect.y) + 1];
+        let beside: String = row[usize::from(rect.right())..].concat();
+        let sha_survives = beside
+            .trim()
+            .chars()
+            .filter(char::is_ascii_hexdigit)
+            .count()
+            >= 7;
+        let covers_to_the_edge = rect.right() == columns && beside.trim().is_empty();
         assert!(
-            beside
-                .trim()
-                .chars()
-                .filter(char::is_ascii_hexdigit)
-                .count()
-                >= 7,
-            "{columns}x{rows}: nothing survives right of the box — it cleared instead of \
-             covering: {beside:?}"
+            sha_survives || covers_to_the_edge,
+            "{columns}x{rows}: right of the box is neither the SHA whole nor the frame's \
+             edge: {beside:?}"
+        );
+        let left_of_box: String = row[..usize::from(rect.x)].concat();
+        assert!(
+            !left_of_box.trim().is_empty(),
+            "{columns}x{rows}: nothing survives left of the box — it cleared instead of \
+             covering: {left_of_box:?}"
         );
     }
 }

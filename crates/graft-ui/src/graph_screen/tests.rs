@@ -161,9 +161,15 @@ fn spaced_chrome_starts_at_30_rows() {
         assert_eq!(carve.rule.height, u16::from(spaced(rows)), "{rows}");
         let screen = text(&draw(&shown, 80, rows));
         if spaced(rows) {
-            assert!(screen[1].trim().is_empty(), "{rows}: blank under the header: {screen:#?}");
+            assert!(
+                screen[1].trim().is_empty(),
+                "{rows}: blank under the header: {screen:#?}"
+            );
             let rule = &screen[usize::from(rows) - 2];
-            assert!(rule.chars().all(|c| c == '\u{2500}'), "{rows}: rule: {rule:?}");
+            assert!(
+                rule.chars().all(|c| c == '\u{2500}'),
+                "{rows}: rule: {rule:?}"
+            );
             assert!(screen[2].contains("Commit 60"), "{rows}: {screen:#?}");
         } else {
             assert!(screen[1].contains("Commit 60"), "{rows}: {screen:#?}");
@@ -180,14 +186,26 @@ fn list_rows_keep_a_two_cell_gutter_and_a_right_margin() {
     let shown = view(&rows, WalkView::Complete { rows: 3 }, 0);
     for columns in [40u16, 80, 120] {
         let carve = screen_rows(&shown, Rect::new(0, 0, columns, 8));
-        assert_eq!((carve.body.x, carve.body.width), (2, columns - 3), "{columns}");
+        assert_eq!(
+            (carve.body.x, carve.body.width),
+            (2, columns - 3),
+            "{columns}"
+        );
         let screen = text(&draw(&shown, columns, 8));
         for row in &screen[1..4] {
             assert!(row.starts_with("  "), "{columns}: {row:?}");
             assert!(row.ends_with(' '), "{columns}: {row:?}");
         }
-        assert!(screen[0].starts_with(" \u{25c6} api"), "{columns}: {:?}", screen[0]);
-        assert!(screen[7].starts_with(" \u{23ce} open"), "{columns}: {:?}", screen[7]);
+        assert!(
+            screen[0].starts_with(" \u{25c6} api"),
+            "{columns}: {:?}",
+            screen[0]
+        );
+        assert!(
+            screen[7].starts_with(" \u{23ce} open"),
+            "{columns}: {:?}",
+            screen[7]
+        );
     }
 }
 
@@ -199,8 +217,14 @@ fn the_banner_takes_the_tails_place_on_the_right() {
     let mut shown = view(&rows, WalkView::Complete { rows: 2 }, 0);
     shown.banner_op = Some(rebase_banner(Some((3, 7)), None));
     let header = text(&draw(&shown, 120, 6))[0].clone();
-    assert!(header.starts_with(" \u{25c6} api  /code/api \u{b7} main"), "{header:?}");
-    assert!(header.trim_end().ends_with("REBASING step 3 of 7"), "{header:?}");
+    assert!(
+        header.starts_with(" \u{25c6} api  /code/api \u{b7} main"),
+        "{header:?}"
+    );
+    assert!(
+        header.trim_end().ends_with("REBASING step 3 of 7"),
+        "{header:?}"
+    );
     assert!(!header.contains("commits"), "{header:?}");
     assert_eq!(header.width(), 120);
     assert!(header.ends_with(' '), "one cell of margin: {header:?}");

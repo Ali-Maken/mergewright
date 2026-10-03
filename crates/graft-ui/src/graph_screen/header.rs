@@ -82,11 +82,11 @@ pub fn header_line(view: &HeaderView<'_>, width: u16, theme: &Theme) -> Line<'st
     let head_width = head.width().min(usable);
     let mut spans = vec![Span::styled(fit(&head, head_width), accent)];
 
-    let tail_width = view.tail.as_ref().map_or(0, Line::width).min(
-        usable
-            .saturating_sub(head_width)
-            .saturating_sub(TAIL_GAP),
-    );
+    let tail_width = view
+        .tail
+        .as_ref()
+        .map_or(0, Line::width)
+        .min(usable.saturating_sub(head_width).saturating_sub(TAIL_GAP));
     let gap = if tail_width > 0 { TAIL_GAP } else { 0 };
     let left_room = usable
         .saturating_sub(head_width)
@@ -207,10 +207,14 @@ mod tests {
 
     fn drawn(view: &HeaderView<'_>, width: u16) -> String {
         let line = header_line(view, width, &theme());
-        line.spans.iter().map(|span| span.content.as_ref()).collect()
+        line.spans
+            .iter()
+            .map(|span| span.content.as_ref())
+            .collect()
     }
 
-    const LONG: &str = "~/code/clients/acme/payments/services/billing/billing-api-with-a-name-that-goes-on";
+    const LONG: &str =
+        "~/code/clients/acme/payments/services/billing/billing-api-with-a-name-that-goes-on";
 
     #[test]
     fn the_header_names_the_repo_path_and_branch_and_never_the_product() {
@@ -233,10 +237,19 @@ mod tests {
                 "{width}: {row:?}"
             );
             if LONG.width() + 40 > usize::from(width) {
-                assert!(row.contains("  \u{2026}"), "{width}: cut from the left: {row:?}");
+                assert!(
+                    row.contains("  \u{2026}"),
+                    "{width}: cut from the left: {row:?}"
+                );
             }
-            assert!(row.contains("goes-on \u{b7} main"), "{width}: the path's end survives: {row:?}");
-            assert!(row.trim_end().ends_with("1,204 commits"), "{width}: {row:?}");
+            assert!(
+                row.contains("goes-on \u{b7} main"),
+                "{width}: the path's end survives: {row:?}"
+            );
+            assert!(
+                row.trim_end().ends_with("1,204 commits"),
+                "{width}: {row:?}"
+            );
         }
         // So narrow that no path is left: the name is still whole.
         let row = drawn(&header(LONG, "main", None), 22);
@@ -247,13 +260,19 @@ mod tests {
     #[test]
     fn a_detached_head_says_so_with_its_sha() {
         let row = drawn(&header("~/code/billing-api", "detached 9f2c1ab", None), 100);
-        assert!(row.contains("~/code/billing-api \u{b7} detached 9f2c1ab"), "{row:?}");
+        assert!(
+            row.contains("~/code/billing-api \u{b7} detached 9f2c1ab"),
+            "{row:?}"
+        );
     }
 
     #[test]
     fn the_tail_is_right_aligned_inside_the_margin() {
         for width in [80u16, 120, 187] {
-            let row = drawn(&header("~/code/billing-api", "main", Some("reading 4,210 rows")), width);
+            let row = drawn(
+                &header("~/code/billing-api", "main", Some("reading 4,210 rows")),
+                width,
+            );
             assert_eq!(row.width(), usize::from(width) - 1, "{width}: {row:?}");
             assert!(row.ends_with("reading 4,210 rows"), "{width}: {row:?}");
         }
@@ -261,7 +280,11 @@ mod tests {
 
     #[test]
     fn the_practice_repo_draws_a_hollow_glyph() {
-        let mut view = header("practice \u{b7} /tmp/x \u{b7} a throwaway repo, not yours", "main", None);
+        let mut view = header(
+            "practice \u{b7} /tmp/x \u{b7} a throwaway repo, not yours",
+            "main",
+            None,
+        );
         view.practice = true;
         let row = drawn(&view, 120);
         assert!(row.starts_with(" \u{25c7} billing-api"), "{row:?}");

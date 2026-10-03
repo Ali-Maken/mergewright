@@ -37,10 +37,10 @@ mod lists;
 
 pub use catalogue::{every_context, every_hint};
 pub use context::{ConfirmYes, HintContext, LiveC, RowVerbs, TabWord};
-use fitting::{Words, fit_list};
 pub use fitting::{
     HINT_SEPARATOR, StopWording, fit_status_line, hints_text, stopped_row, stopped_row_before_keys,
 };
+use fitting::{Words, fit_list};
 use lists::{TAIL, context_list};
 pub use lists::{blame_place_list, history_place_list};
 

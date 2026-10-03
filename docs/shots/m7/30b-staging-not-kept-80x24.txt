@@ -13,7 +13,7 @@
 #    edits are back` goes first, the file and `u` stay whole.
 #  - Nowhere `could not confirm`.
 
- ◆ api  /code/api · fix                         5 commits  date order, sorting…
+ ◆ api  ~/code/api · fix                        5 commits  date order, sorting…
     ◌    Uncommitted changes (1 unstaged)
     ◆ ▏  [◆ fix] fix changes line 7                                4m   f2e2ada
   ●─╯    [main] add f                                              5m   330fea5

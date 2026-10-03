@@ -17,7 +17,7 @@ use graft::update::AppState;
 use graft_core::event::MouseButton;
 
 use crate::app_harness::App;
-use crate::captures::{check_shot, frame_at, settled_frame};
+use crate::captures::{check_shot, frame_at, radar_has_answered, settled_frame};
 
 /// The sizes the ticket names: the everyday editor terminal, the mock-up's
 /// own, and a wide one.
@@ -32,12 +32,25 @@ fn opened(columns: u16, rows: u16) -> (graft_fixtures::Scratch, App, AppState) {
     let (app, state) = App::open(scratch.path());
     let state = app.resize(&state, columns, rows);
     let state = settled_frame(&app, state);
-    let state = app.pump(state, "the first rows", |state| {
+    // Rows, refs (the rows' branch badges) and the radar (its marks) each
+    // land on their own job; a frame taken before all three is a frame that
+    // differs from the next run's.
+    let state = app.pump(state, "the first rows, the refs and the radar", |state| {
         state
             .history
             .as_ref()
             .and_then(|history| history.window.as_ref())
             .is_some_and(|window| !window.rows.is_empty())
+            && state.refs.is_some()
+            && radar_has_answered(state)
+    });
+    let state = settled_frame(&app, state);
+    // `settled_frame` reads a 120-column frame, whose header may have no
+    // room for the walk's `sorting…`; read this size's own.
+    let state = app.pump(state, "nothing loading at this size", |state| {
+        frame_at(state, columns, rows, Some(Clock::Fixed(NOW)))
+            .iter()
+            .all(|row| !row.contains("reading\u{2026}") && !row.contains("sorting\u{2026}"))
     });
     (scratch, app, state)
 }

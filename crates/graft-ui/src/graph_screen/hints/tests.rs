@@ -1066,7 +1066,8 @@ fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
     );
     let text = hints_text(&with_a_tail);
     assert_eq!(
-        text, " ⏎ open \u{b7} c commit \u{b7} P push \u{b7} p pull \u{b7} f fetch \u{b7} b branch \u{b7} t tag \u{b7} . more",
+        text,
+        " ⏎ open \u{b7} c commit \u{b7} P push \u{b7} p pull \u{b7} f fetch \u{b7} b branch \u{b7} t tag \u{b7} . more",
         "a row context draws words only, and its doorway is last"
     );
 

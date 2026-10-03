@@ -1,4 +1,4 @@
- ◆ api  /code/api · feature-a                                                                                 5 commits
+ ◆ api  ~/code/api · feature-a                                                                                5 commits
 
     ●      [feature-c] c1                                                                               GF 2d   937a1e7
   ● │   ▏  [main] m2                                                                                    GF 2d   fa34bcc

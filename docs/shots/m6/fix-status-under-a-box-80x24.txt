@@ -23,7 +23,7 @@
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: `f` to nowhere, `b`, the fetch fails under the prompt ===
- ◆ api  /code/api · main                                            200 commits
+ ◆ api  ~/code/api · main                                           200 commits
   ◆ ▏  [◆ main ⇄ origin] Commit 200                                7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
@@ -49,7 +49,7 @@
  ⏎ create  ⇥ toggle  esc cancel
 
 === frame 2: `topic ⏎`, the held failure ===
- ◆ api  /code/api · main                                            200 commits
+ ◆ api  ~/code/api · main                                           200 commits
   ◆ ▏  [◆ main ⇄ origin] Commit 200                                7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
@@ -75,7 +75,7 @@
  fetch all remotes failed: no remote named '/graft-no-such-remot… · esc dismiss
 
 === frame 3: `esc`, the create's line ===
- ◆ api  /code/api · main                                            200 commits
+ ◆ api  ~/code/api · main                                           200 commits
   ◆ ▏  [◆ main ⇄ origin] Commit 200                                7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
@@ -101,7 +101,7 @@
  branch topic at d5ae5fd…
 
 === frame 4: `f`, `b`, `other ⏎` while the fetch runs ===
- ◆ api  /code/api · main                                            200 commits
+ ◆ api  ~/code/api · main                                           200 commits
   ◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                        7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
@@ -127,7 +127,7 @@
  wait for fetch all remotes to finish
 
 === frame 5: the fetch answers under the prompt ===
- ◆ api  /code/api · main                                            200 commits
+ ◆ api  ~/code/api · main                                           200 commits
   ◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                        7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
@@ -153,7 +153,7 @@
  ⏎ create  ⇥ toggle  esc cancel
 
 === frame 6: `esc`, the fetch's line ===
- ◆ api  /code/api · main                                            200 commits
+ ◆ api  ~/code/api · main                                           200 commits
   ◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                        7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9

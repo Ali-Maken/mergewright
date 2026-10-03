@@ -6,7 +6,7 @@
 # Right: `C login ⏎` on a clean tree — no preview box; the cursor on
 # the new HEAD's row (login-page); the status line
 # `on login-page ✓ · u goes back`.
- ◆ api  /code/api · login-page                                                                                6 commits
+ ◆ api  ~/code/api · login-page                                                                               6 commits
 
     ◆ ▏  [◆ login-page] [origin/sara/login-page] fix the bug                                            GF 3m   fbb2394
   ● │    [main ⇄ origin] main moves on                                                                  GF 4m   37926a7

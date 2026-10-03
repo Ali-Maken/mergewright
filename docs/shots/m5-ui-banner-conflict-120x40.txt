@@ -91,7 +91,7 @@
   ●      Ship release 15                                                                                GF 2h   a840fd9
   ●      Ship release 14                                                                                GF 2h   0f8d5d6
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- merge stopped · 16 files conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
+ merge stopped · 16 files conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph  q quit
 UNCOMMITTED
 diff vs HEAD 80393eb
 CONFLICTS (16)                ▎

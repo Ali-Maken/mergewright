@@ -20,6 +20,27 @@ use crate::graph_column::{GraphColumn, GraphLine, RowPaint};
 use crate::paint::{color, foreground};
 use crate::theme::Token;
 
+impl GraphScreen<'_> {
+    /// The rule over the bar (ADR-0058 §4), across the whole row as the
+    /// mock-up draws it; `-` at the ASCII tier, which has no box-drawing
+    /// glyphs. Nothing when `rule` is zero-height (under 30 rows).
+    fn rule(&self, rule: Rect, buf: &mut Buffer) {
+        if rule.height == 0 {
+            return;
+        }
+        let glyph = if self.view.ascii { "-" } else { "\u{2500}" };
+        buf.set_line(
+            rule.x,
+            rule.y,
+            &Line::styled(
+                glyph.repeat(usize::from(rule.width)),
+                foreground(self.theme, Token::Border),
+            ),
+            rule.width,
+        );
+    }
+}
+
 impl Widget for GraphScreen<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         if area.is_empty() {
@@ -40,18 +61,7 @@ impl Widget for GraphScreen<'_> {
                 area.width,
             );
         }
-        if chrome.rule.height > 0 {
-            // The whole row, as the mock-up draws it; `-` at the ASCII tier,
-            // which has no box-drawing glyphs.
-            let glyph = if self.view.ascii { "-" } else { "\u{2500}" };
-            let rule = glyph.repeat(usize::from(area.width));
-            buf.set_line(
-                area.x,
-                chrome.rule.y,
-                &Line::styled(rule, foreground(self.theme, Token::Border)),
-                area.width,
-            );
-        }
+        self.rule(chrome.rule, buf);
         for (offset, line) in self
             .view
             .banner
@@ -82,7 +92,9 @@ impl Widget for GraphScreen<'_> {
         }
 
         // One cell of right margin on the bottom rows, as on every other.
-        let bar_width = width.saturating_sub(usize::from(super::RIGHT_MARGIN)).max(1);
+        let bar_width = width
+            .saturating_sub(usize::from(super::RIGHT_MARGIN))
+            .max(1);
         if chrome.footer.height > 0 {
             let (text, token) = self.footer_line(body, rows, applied.as_ref(), bar_width);
             let footer = Line::styled(fit(&text, bar_width), foreground(self.theme, token));

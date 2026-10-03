@@ -486,11 +486,14 @@ fn hints_at_80_show_three_and_more() -> Scenario {
             // before m6-conflicts/52 said `c continue` for `c commit`), so
             // this is the *whole* list, not a three-and-`. more` prefix:
             // before m6-conflicts/04 three of the six were `planned()` and
-            // the bar was short enough to be the other kind.
+            // the bar was short enough to be the other kind. Since
+            // m8-polish-and-ship/06 the hints are joined with ` · ` and the
+            // bar sits inside a one-cell indent and margin, which costs the
+            // whole list its long `c continue`: `c cont` is its short form.
             Step::See("the changes pane, on an unmerged file", |state| {
                 let drawn = bar(state)?;
                 let wanted =
-                    " ⏎ resolve  M mergetool  e edit  space resolved  c continue  ⇥ diff  . more";
+                    " ⏎ resolve · M mergetool · e edit · space resolved · c cont · ⇥ diff · . more";
                 check(drawn.trim_end() == wanted, || {
                     format!("the bar is {drawn:?}, not {wanted:?}")
                 })

@@ -1,4 +1,4 @@
- ◆ api  /code/api · feature-a                                                                                 7 commits
+ ◆ api  ~/code/api · feature-a                                                                                7 commits
 
     ●      b1                                                                                           GF 2d   f41bc43
     │      after rebase

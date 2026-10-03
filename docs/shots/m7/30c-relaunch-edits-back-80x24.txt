@@ -16,7 +16,7 @@
 #  - Nowhere `edits in stash@{0}` alone, which would say the edits are
 #    only in the stash.
 
- ◆ api  /code/api · fix                                               6 commits
+ ◆ api  ~/code/api · fix                                              6 commits
   ◌        Uncommitted changes (1 unstaged)
     ■   ▏  [stash@{0}] On main: graft: your edits, set aside for … 3m   b284137
     │ ◆    [◆ fix] fix changes line 7                              4m   f2e2ada
