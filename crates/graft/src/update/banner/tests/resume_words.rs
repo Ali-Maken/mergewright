@@ -470,6 +470,7 @@ fn a_resume_whose_put_back_lost_staging_is_done_and_says_so() {
         crate::update::operate::staging_not_kept_status(
             "rebase main onto origin/main",
             &paths,
+            &[],
             lost.size.columns
         )
     );

@@ -11,10 +11,12 @@ use crate::apply::error::not_as_they_were_words;
 use crate::clash::Clash;
 use crate::facts::FactsError;
 
+use super::came_back::came_back_words;
 use super::put_back::NotAsTheyWere;
 use super::returned::Kept;
 use super::{
-    AfterState, Applied, ApplyError, EditsAt, Refresh, appended, naming, reason_for, staging_clause,
+    AfterState, Applied, ApplyError, Context, EditsAt, Refresh, appended, naming, reason_for,
+    staging_clause,
 };
 
 /// The entry's outcome status, from the put-back and the operation's own
@@ -99,22 +101,39 @@ pub(super) fn answer(
             // operation went through. The entry is journaled, so it is an
             // after-state failure carrying the words (73 review, m2), which
             // the caller refreshes after. A failed raw step comes first.
-            (None, Err(error)) => {
-                let mut unread = unread;
-                unread.insert(0, AfterState::SetAsideKept { error, words });
-                if let Some(not_as_they_were) = not_as_they_were {
-                    unread.insert(0, answer_not_as_they_were(not_as_they_were));
-                }
-                ApplyError::AfterState {
-                    applied: Box::new(applied(entry)),
-                    unread,
-                }
-            }
+            (None, Err(error)) => kept_but_unread(entry, error, words, not_as_they_were, unread),
         }),
         Outcome::Back {
             unstaged,
             not_as_they_were,
-        } => back(entry, failure, unstaged, not_as_they_were, unread),
+            came_back,
+        } => back(
+            entry,
+            failure,
+            unstaged,
+            not_as_they_were,
+            came_back,
+            unread,
+        ),
+    }
+}
+
+/// Kept, git did not fail, but a read did: the words ride as the first
+/// unread after-state, behind a failed raw step if there was one.
+fn kept_but_unread(
+    entry: JournalEntry,
+    error: FactsError,
+    words: String,
+    not_as_they_were: Option<NotAsTheyWere>,
+    mut unread: Vec<AfterState>,
+) -> ApplyError {
+    unread.insert(0, AfterState::SetAsideKept { error, words });
+    if let Some(not_as_they_were) = not_as_they_were {
+        unread.insert(0, answer_not_as_they_were(not_as_they_were));
+    }
+    ApplyError::AfterState {
+        applied: Box::new(applied(entry)),
+        unread,
     }
 }
 
@@ -125,12 +144,19 @@ fn back_but_git_failed(
     entry: JournalEntry,
     error: RunError,
     unstaged: &[PathBuf],
+    came_back: &[PathBuf],
     not_as_they_were: Option<NotAsTheyWere>,
 ) -> ApplyError {
+    // A file back from the index rides on git's line as the staging clause
+    // does: this answer has no `Applied` to carry it (review m8-14 Major 3).
+    let came_back = came_back_words(came_back)
+        .map(|words| format!(" \u{b7} {words}"))
+        .unwrap_or_default();
+    let error = appended(error, &format!("{}{came_back}", staging_clause(unstaged)));
     ApplyError::Git {
         recoverable: entry.worktree_before.is_some(),
         entry: Box::new(entry),
-        error: with_not_as_they_were(appended(error, &staging_clause(unstaged)), not_as_they_were),
+        error: with_not_as_they_were(error, not_as_they_were),
         edits: None,
     }
 }
@@ -140,11 +166,13 @@ fn back_but_git_failed(
 /// caller words as incomplete: [`AfterState::NotAsTheyWere`] first among
 /// what it reports, then [`AfterState::StagingNotKept`] (Ruling 2026-10-01
 /// §1). `failure`: git failed after all ([`back_but_git_failed`]).
+/// `came_back` goes on the `Applied` either way, for the landing line.
 fn back(
     entry: JournalEntry,
     failure: Option<RunError>,
     unstaged: Vec<PathBuf>,
     not_as_they_were: Option<NotAsTheyWere>,
+    came_back: Vec<PathBuf>,
     mut unread: Vec<AfterState>,
 ) -> Result<Applied, ApplyError> {
     if let Some(error) = failure {
@@ -152,6 +180,7 @@ fn back(
             entry,
             error,
             &unstaged,
+            &came_back,
             not_as_they_were,
         ));
     }
@@ -161,11 +190,15 @@ fn back(
     if let Some(not_as_they_were) = not_as_they_were {
         unread.insert(0, answer_not_as_they_were(not_as_they_were));
     }
+    let applied = Applied {
+        came_back,
+        ..applied(entry)
+    };
     if unread.is_empty() {
-        return Ok(applied(entry));
+        return Ok(applied);
     }
     Err(ApplyError::AfterState {
-        applied: Box::new(applied(entry)),
+        applied: Box::new(applied),
         unread,
     })
 }
@@ -176,6 +209,11 @@ pub(super) enum Outcome {
     Back {
         unstaged: Vec<PathBuf>,
         not_as_they_were: Option<NotAsTheyWere>,
+        /// Staged-new files he had deleted from disk that git checked out
+        /// again (`super::came_back`): named on every line that answers
+        /// this outcome — clean, after-state, git failure, or no outcome
+        /// line (review m8-14 Major 3).
+        came_back: Vec<PathBuf>,
     },
     Clashed(Vec<PathBuf>),
     Kept {
@@ -261,6 +299,43 @@ fn applied(entry: JournalEntry) -> Applied {
         refresh: Refresh::Everything,
         step_backup: None,
         replaced: crate::undo::Replaced::default(),
+    }
+}
+
+/// The outcome line could not be written: what it would have said about
+/// the edits, for the error to say instead (73 review, m1) — where a kept
+/// or clashed `S` is, a staging not kept, a file back from the index
+/// (review m8-14 Major 3). `None` when the edits are back with nothing to
+/// add.
+pub(super) fn unwritten_words(ctx: &Context<'_>, outcome: &Outcome, stash: Oid) -> Option<String> {
+    let kept = match outcome {
+        Outcome::Back {
+            unstaged,
+            came_back,
+            ..
+        } => {
+            let staging = (!unstaged.is_empty()).then(|| {
+                AfterState::StagingNotKept {
+                    paths: unstaged.clone(),
+                }
+                .to_string()
+            });
+            match (staging, came_back_words(came_back)) {
+                (Some(staging), Some(came_back)) => Some(format!("{staging}; {came_back}")),
+                (staging, came_back) => staging.or(came_back),
+            }
+        }
+        Outcome::Clashed(_) => Some(format!(
+            "your edits clashed when put back · {}",
+            super::where_kept(ctx, stash)
+        )),
+        Outcome::Kept { words, .. } => Some(words.clone()),
+    };
+    // A failed raw step is in no outcome's words: first, as in `unread`
+    // (Ruling 2026-10-01 §1).
+    match (outcome.failed_words(), kept) {
+        (Some(failed_words), Some(kept)) => Some(format!("{failed_words}; {kept}")),
+        (failed_words, kept) => failed_words.or(kept),
     }
 }
 

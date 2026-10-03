@@ -14,6 +14,7 @@ use graft_core::oid::Oid;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, RunError};
 
+use super::AfterState;
 use super::put_back::name_status;
 
 /// The paths staged as new in `stash` (`S^1..S^2` added) that were not in
@@ -53,6 +54,24 @@ pub fn came_back_from_index(
         .filter(|(status, path)| *status == b'D' && added.contains(path))
         .map(|(_, path)| path)
         .collect())
+}
+
+/// [`came_back_from_index`] for [`super::close`], once the edits are back:
+/// the paths, or none and the read's failure for what was not read. Nothing
+/// is read without a before-snapshot to compare with; `S`'s objects outlive
+/// its drop, so the read can follow it.
+pub(super) fn read(
+    repo: &RepoHandle,
+    stash: Oid,
+    worktree_before: Option<Oid>,
+) -> (Vec<PathBuf>, Option<AfterState>) {
+    let Some(before) = worktree_before else {
+        return (Vec::new(), None);
+    };
+    match came_back_from_index(repo, stash, before) {
+        Ok(paths) => (paths, None),
+        Err(error) => (Vec::new(), Some(AfterState::CameBackUnread(error))),
+    }
 }
 
 /// `notes.md came back from the index`, `notes.md and 2 more came back from

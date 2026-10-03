@@ -5,6 +5,10 @@ use super::{
     operation_failed, refresh_scope, stalled_line,
 };
 
+pub(crate) mod staging_not_kept;
+
+pub(crate) use staging_not_kept::staging_not_kept_status;
+
 /// `operated`'s `Incomplete` answer: the write ran, only part of its
 /// after-state could not be read back. It lands and tags as a `Done` does
 /// (m8-polish-and-ship/13, ruling 3) — the write happened, so he should see
@@ -102,60 +106,6 @@ pub(super) fn done_what(
     remote_op
         .and_then(|op| crate::update::remote::remote_done(state, op))
         .unwrap_or_else(|| applied.entry.description.clone())
-}
-
-/// The key half of every [`staging_not_kept_rungs`] wording.
-pub(super) const STAGING_UNDO: &str = "u undoes it, staging included";
-
-/// The fallback's status wordings, longest first (planner 30b, Decided 3).
-/// `what` is what `Done` would put before its tick:
-/// 1. `<what> ✓ · your edits are back · staging not kept: <paths> · u undoes it, staging included`
-/// 2. `<what> ✓ · staging not kept: <paths> · u undoes it, staging included`
-/// 3. `staging not kept: <paths> · u undoes it, staging included`
-///
-/// The cut drops `your edits are back` first: the files and the key are
-/// what he must read. `<paths>` is `<first>[ +N more]`, as graft-ops'
-/// `AfterState::StagingNotKept` words it (pinned by
-/// `staging_not_kept_words_match_graft_ops`).
-pub(crate) fn staging_not_kept_rungs(what: &str, paths: &[PathBuf]) -> Vec<String> {
-    let first = paths
-        .first()
-        .map_or_else(String::new, |path| path.display().to_string());
-    let named = match paths.len() {
-        0 | 1 => first,
-        n => format!("{first} +{} more", n - 1),
-    };
-    let lost = format!("staging not kept: {named}");
-    let done_line = crate::view::status::done_line;
-    vec![
-        done_line(
-            what,
-            Some(&format!("your edits are back \u{b7} {lost}")),
-            Some(STAGING_UNDO),
-        ),
-        done_line(what, Some(&lost), Some(STAGING_UNDO)),
-        format!("{lost} \u{b7} {STAGING_UNDO}"),
-    ]
-}
-
-/// The fallback's line for a status row `columns` wide: the longest rung
-/// that fits the row's text (the row indents one cell), else the last —
-/// `graft_ui::preview_box::fitting_line`'s rule, since the status line has
-/// no ladder of its own (30b). **Sticky**, not `Done`: `Done` clears on the
-/// next key, and this line is the only place that says the staging went.
-/// The key half rides `keys`, so the footer's own fit keeps it whole.
-pub(crate) fn staging_not_kept_status(what: &str, paths: &[PathBuf], columns: u16) -> Status {
-    // `fitting_line` measures a box `width` wide whose text is 4 cells
-    // narrower; the status row's text is `columns - 1` (it indents one
-    // cell), so the same rule is asked with the box 3 cells wider.
-    let rungs = staging_not_kept_rungs(what, paths);
-    let picked = graft_ui::preview_box::fitting_line(&rungs, columns.saturating_add(3));
-    let picked = picked.as_str();
-    let suffix = format!(" \u{b7} {STAGING_UNDO}");
-    Status::Sticky {
-        reason: picked.strip_suffix(&suffix).unwrap_or(picked).to_owned(),
-        keys: Some(STAGING_UNDO.to_owned()),
-    }
 }
 
 /// What a write that ran leaves behind whatever its line says: the editor
@@ -294,7 +244,7 @@ fn staging_not_kept_answered(
     let what = launched_op
         .and_then(crate::update::switch::landed_words)
         .unwrap_or_else(|| done_what(state, remote_op, applied));
-    let status = staging_not_kept_status(&what, paths, state.size.columns);
+    let status = staging_not_kept_status(&what, paths, &applied.came_back, state.size.columns);
     let mut commands = landed(state, applied, lands, next_id);
     crate::update::recover::tag_rows(state, launched_op);
     // A put-in landed all the same: its commits are tagged and its

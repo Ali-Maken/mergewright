@@ -30,6 +30,7 @@ fn a_failed_operation_after_the_fallback_names_the_staging() {
         Outcome::Back {
             unstaged: f_txt(),
             not_as_they_were: None,
+            came_back: Vec::new(),
         },
         entry,
         stash(),
@@ -88,6 +89,7 @@ fn a_clean_put_back_whose_raw_step_failed_is_committed_not_as_they_were_first() 
     let outcome = Outcome::Back {
         unstaged: f_txt(),
         not_as_they_were: Some(sample_not_as_they_were()),
+        came_back: Vec::new(),
     };
     assert_eq!(
         status_for(&outcome, None, EntryStatus::Committed),
@@ -116,6 +118,7 @@ fn a_clean_put_back_whose_raw_step_failed_is_committed_not_as_they_were_first() 
     let whole = Outcome::Back {
         unstaged: Vec::new(),
         not_as_they_were: Some(sample_not_as_they_were()),
+        came_back: Vec::new(),
     };
     let entry = committed(1, OperationKind::Checkout, 1, 2);
     let Err(ApplyError::AfterState { unread, .. }) =
@@ -180,6 +183,7 @@ fn a_git_failure_after_a_failed_raw_step_carries_its_words() {
     let back = Outcome::Back {
         unstaged: Vec::new(),
         not_as_they_were: Some(sample_not_as_they_were()),
+        came_back: Vec::new(),
     };
     let entry = committed(1, OperationKind::Checkout, 1, 2);
     let error = answer(
@@ -195,4 +199,67 @@ fn a_git_failure_after_a_failed_raw_step_carries_its_words() {
         line.contains(&format!("would be overwritten; {RAW_WORDS}")),
         "{line}"
     );
+}
+
+/// Review m8-14 Major 3: the operation failed after a clean put-back that
+/// brought a staged-new file back from the index. git's line leads, and
+/// the file back on disk is named after it — never silent.
+#[test]
+fn a_failed_operation_after_a_clean_put_back_names_what_came_back() {
+    let entry = committed(1, OperationKind::Checkout, 1, 2);
+    let error = answer(
+        Outcome::Back {
+            unstaged: Vec::new(),
+            not_as_they_were: None,
+            came_back: vec![PathBuf::from("notes.md")],
+        },
+        entry,
+        stash(),
+        Some(exited("error: your local changes would be overwritten")),
+        Vec::new(),
+    )
+    .expect_err("the operation failed");
+    assert!(matches!(error, ApplyError::Git { .. }), "{error:?}");
+    let line = error.explain();
+    assert!(
+        line.contains("would be overwritten \u{b7} notes.md came back from the index"),
+        "{line}"
+    );
+}
+
+/// The clean answer carries what came back on its `Applied`, for the
+/// landing line (`edits_back`), as an after-state answer does.
+#[test]
+fn a_clean_put_back_carries_what_came_back_on_applied() {
+    let came_back = vec![PathBuf::from("notes.md")];
+    let entry = committed(1, OperationKind::Checkout, 1, 2);
+    let applied = answer(
+        Outcome::Back {
+            unstaged: Vec::new(),
+            not_as_they_were: None,
+            came_back: came_back.clone(),
+        },
+        entry,
+        stash(),
+        None,
+        Vec::new(),
+    )
+    .expect("clean");
+    assert_eq!(applied.came_back, came_back);
+
+    let entry = committed(1, OperationKind::Checkout, 1, 2);
+    let Err(ApplyError::AfterState { applied, .. }) = answer(
+        Outcome::Back {
+            unstaged: f_txt(),
+            not_as_they_were: None,
+            came_back: came_back.clone(),
+        },
+        entry,
+        stash(),
+        None,
+        Vec::new(),
+    ) else {
+        panic!("staging not kept is an after-state answer");
+    };
+    assert_eq!(applied.came_back, came_back);
 }

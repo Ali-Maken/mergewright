@@ -240,6 +240,66 @@ fn switch_with_edits_via_menu() {
     app.close();
 }
 
+/// m8-polish-and-ship/14 item 4 (review m8-14 Major 4): a staged-new file
+/// he deleted from disk is checked out again by the put-back (git's
+/// `stash apply --index`), and the landing line names it. Captured (rule 6).
+#[test]
+fn a_file_back_from_the_index_is_named_after_a_switch() {
+    let scratch = main_and_feature_b();
+    let path = scratch.path();
+    edited(path);
+    std::fs::write(path.join("notes.md"), "notes\n").expect("the scratch repo is writable");
+    git(path, &["add", "--", "notes.md"]);
+    std::fs::remove_file(path.join("notes.md")).expect("notes.md was just written");
+    let (app, state) = App::open(path);
+    let state = ready_on(&app, state, &rev(path, "feature-b"));
+    let state = app.key(&state, KeyCode::Char('.'));
+    let state = app.key(&state, KeyCode::Enter);
+    assert!(state.preview.is_some(), "edits: the preview first");
+    let state = planned(&app, state);
+    let state = app.key(&state, KeyCode::Char('y'));
+    let state = settled_frame(&app, quiet(&app, app.settle_write(state, "the switch")));
+
+    assert_eq!(head(path), "refs/heads/feature-b");
+    assert_eq!(
+        read(path, "notes.md"),
+        "notes\n",
+        "git checked it out again"
+    );
+    assert_eq!(
+        state.status,
+        Status::Done {
+            what: "on feature-b".to_owned(),
+            also: Some("your edits are back \u{b7} notes.md came back from the index".to_owned()),
+            keys: Some("u goes back".to_owned()),
+        }
+    );
+    let drawn = frame_at(&state, 120, 40, Some(Clock::Fixed(FORK_NOW)));
+    let text = drawn.join("\n");
+    assert!(
+        text.contains("notes.md came back from the index"),
+        "on screen:\n{text}"
+    );
+    check_shot(
+        "m8/came-back-landed-120x40.txt",
+        &format!("{CAME_BACK_HEADER}\n{text}\n"),
+    );
+    drop(state);
+    app.close();
+}
+
+const CAME_BACK_HEADER: &str = "\
+# m8/came-back-landed-120x40.txt: drawn by `view::view` from a real AppState
+# (crates/graft/tests/it/m7_walk/switch.rs,
+# a_file_back_from_the_index_is_named_after_a_switch, asserted). Not a pty
+# capture: a character grid with no colour (CLAUDE.md rule 5, colour
+# unverified).
+#
+# Right: `. ⏎ y` to feature-b over edits, with notes.md staged new and then
+# deleted from disk — on feature-b, the status line
+# `on feature-b ✓ · your edits are back · notes.md came back from the index
+# · u goes back` (a file back on disk is never silent).";
+
 // ── `b ⇥`, with edits ────────────────────────────────────────────────────
 
 /// `b`, `name`, `⇥`, `⏎` on the cursor's row: the preview, not a refusal.

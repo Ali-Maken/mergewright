@@ -902,3 +902,5 @@ fn a_write_claimed_while_the_tags_are_read_drops_their_answer() {
     super::tags_resolved(&mut state, tagging, Ok(vec![Oid::from_sha1([2; 20])]));
     assert_eq!(state.row_tags.on(Oid::from_sha1([2; 20])), None);
 }
+
+mod reword;
