@@ -60,6 +60,10 @@ j1_line() {  # tier drain label scenario
   j1_line Unicode 18446744073709551615 free A
   j1_line Pixel 40000000 40MB/s A-deflate
   j1_line Pixel 18446744073709551615 free A-deflate
+  # m8-03 (G-settle): the pane shown over merges, the path 03 changed. Its
+  # tail is the graph's; the pane's catch-up is rest_ms on its SUMMARY line.
+  j1_line Unicode 40000000 40MB/s A-pane
+  j1_line Pixel 40000000 40MB/s A-deflate-pane
   idle_us=$(grep -E 'frames: g_after_idle' "$WORK/idle.out" | sed -E 's/.* latency_us=([0-9]+).*/\1/' | head -1)
   if [ -z "$idle_us" ]; then
     echo "J3 g_after_idle latency_us=- verdict=no-reading (exit $idle)"

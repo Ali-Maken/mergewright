@@ -58,6 +58,9 @@ pub(crate) enum Kind {
     Window(u64),
     /// Any other job event.
     Other,
+    /// No wake: the loop applied `AppEvent::Rested` itself once the cursor
+    /// rested with a follow owed (G-settle), and drew its frame.
+    Rest,
 }
 
 /// One wake handed to the loop.
@@ -149,6 +152,7 @@ impl Handed {
             Kind::Key(key, _) => format!("key {key}"),
             Kind::Window(request) => format!("window {request}"),
             Kind::Other => "other event".to_owned(),
+            Kind::Rest => "rest".to_owned(),
         }
     }
 }
@@ -351,6 +355,22 @@ impl<D> Wakes for Paced<'_, D> {
 
     fn mark(&mut self, phase: Phase) {
         let now = Instant::now();
+        let rest = phase == Phase::Updated
+            && self.handed.last().is_some_and(|handed| {
+                handed.marks[slot(Phase::Updated)].is_some() && handed.drawn_at().is_some()
+            });
+        if rest {
+            // An update with no wake handed, after the last one was applied
+            // and drawn: the loop's own `Rested` (G-settle, m8-03 review
+            // C1). Its frame is a frame of its own — written over the last
+            // wake's, the graph's last frame would end at the pane's
+            // catch-up.
+            self.stamp();
+            if let Some(looked) = self.looked.take() {
+                self.prefetch.push(looked.elapsed());
+            }
+            self.hand(Kind::Rest, None, now, AppEvent::Rested);
+        }
         if phase == Phase::Drawn && self.looked.take().is_some() {
             // A frame drawn after a look that handed nothing out (a fence
             // answer released it, ADR-0054): that stamp predates this frame,

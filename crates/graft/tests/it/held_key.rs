@@ -26,11 +26,12 @@ use graft::config::Loaded;
 use graft::event_loop::{Exit, Wake, pump};
 use graft::jobs::{Dispatch, JobRunner, Shutdown};
 use graft::session::Session;
-use graft::update::{AppState, update};
+use graft::update::{AppEvent, AppState, update};
 use graft_core::capabilities::RenderingTier;
-use graft_core::event::KeyCode;
+use graft_core::event::{Event, KeyCode, KeyPress};
 use graft_fixtures::team::{self, TeamSpec};
 use graft_graph::Ancestry;
+use graft_ui::detail::DetailFocus;
 
 use crate::drain_sink::DrainSink;
 use crate::frame_trace::{KeyFeed, Post, Posted};
@@ -110,6 +111,33 @@ fn held_j_stops_on_release_pixel_deflate_free() {
     held_at(RenderingTier::Pixel, false, Encoding::Deflate, FREE_RATE);
 }
 
+/// G-settle (m8-polish-and-ship/03, review C1/Minor 4): the path 03
+/// changed — the pane shown, following the cursor through MONOREPO's
+/// merge-rich `main`, so its reads and the evil probe are held mid-burst
+/// and run once at rest. J1 here is the graph's tail: the frames up to the
+/// rest's own (the pane catching up), which is reported apart, unjudged.
+#[test]
+fn held_j_with_the_pane_shown_stops_on_release_unicode_40mb() {
+    held_in(
+        RenderingTier::Unicode,
+        false,
+        Encoding::Raw,
+        PIXEL_RATE,
+        true,
+    );
+}
+
+#[test]
+fn held_j_with_the_pane_shown_stops_on_release_pixel_deflate() {
+    held_in(
+        RenderingTier::Pixel,
+        false,
+        Encoding::Deflate,
+        PIXEL_RATE,
+        true,
+    );
+}
+
 #[test]
 fn j_then_journal_opens_at_once_unicode() {
     held(RenderingTier::Unicode, true, Encoding::Raw);
@@ -170,6 +198,10 @@ struct Reading {
     strip_transmits_held: usize,
     emphasis_transmits_held: usize,
     rows_scrolled: usize,
+    /// Frames from the loop's own rest on (G-settle: the pane catching up),
+    /// and last `j` → their last byte drained. Reported, not judged.
+    rest_frames: usize,
+    rest_ms: Option<u128>,
     /// Scenario B only.
     j_ms: Option<u128>,
     j_done_ms: Option<u128>,
@@ -197,7 +229,12 @@ fn held(tier: RenderingTier, journal: bool, encoding: Encoding) {
 }
 
 fn held_at(tier: RenderingTier, journal: bool, encoding: Encoding, rate: u64) {
-    let reading = run(tier, journal, rate, encoding).unwrap_or_else(|why| panic!("{why}"));
+    held_in(tier, journal, encoding, rate, false);
+}
+
+/// `pane`: the detail pane open and the graph focused before the hold.
+fn held_in(tier: RenderingTier, journal: bool, encoding: Encoding, rate: u64, pane: bool) {
+    let reading = run(tier, journal, rate, encoding, pane).unwrap_or_else(|why| panic!("{why}"));
     let scenario = match (journal, tier, encoding) {
         (false, RenderingTier::Pixel, Encoding::Deflate) => "A-deflate",
         (false, RenderingTier::Pixel, Encoding::Iterm2) => "A-iterm2",
@@ -206,6 +243,12 @@ fn held_at(tier: RenderingTier, journal: bool, encoding: Encoding, rate: u64) {
         (false, ..) => "A",
         (true, ..) => "B",
     };
+    let scenario = if pane {
+        format!("{scenario}-pane")
+    } else {
+        scenario.to_owned()
+    };
+    let scenario = scenario.as_str();
     let line = summary(tier, scenario, rate, &reading);
     println!("{line}");
 
@@ -242,6 +285,9 @@ fn summary(tier: RenderingTier, scenario: &str, rate: u64, reading: &Reading) ->
         (reading.j_ms, reading.j_done_ms, reading.frames_before_j)
     {
         line += &format!(" j_ms={j} j_done_ms={done} frames_before_J={before}");
+    }
+    if let Some(rest_ms) = reading.rest_ms {
+        line += &format!(" rest_frames={} rest_ms={rest_ms}", reading.rest_frames);
     }
     if tier == RenderingTier::Pixel {
         // Frames whose fold differs from the frame before's: not readable
@@ -318,10 +364,11 @@ fn run(
     journal: bool,
     rate: u64,
     encoding: Encoding,
+    pane: bool,
 ) -> Result<Reading, String> {
     let repo = team::borrow(&TeamSpec::MONOREPO).map_err(|why| format!("fixture: {why:?}"))?;
     let (post, events) = mpsc::channel::<Posted>();
-    let (jobs, state, _startup) = ready_to_scroll_at(
+    let (jobs, mut state, _startup) = ready_to_scroll_at(
         &repo,
         tier,
         Refs::Fixture,
@@ -329,6 +376,9 @@ fn run(
         &events,
         SIZE,
     )?;
+    if pane {
+        state = open_pane(&jobs, state)?;
+    }
     let state = settle(&jobs, state, &events)?;
 
     let mut session = Session::settle(&Loaded::default(), answering(encoding, tier));
@@ -363,8 +413,21 @@ fn run(
         }
         thread::sleep(Duration::from_millis(10));
     }
+    keys_were_the_script(&script, &stamps, journal)?;
 
-    // 47's walk count: the keys sent are exactly the script.
+    let reading = read(&wakes, &drain, initial, &stamps, journal);
+    if let Shutdown::Stalled { .. } = jobs.shutdown(Duration::from_secs(10)) {
+        return Err("the job pool did not stop cleanly".to_owned());
+    }
+    reading
+}
+
+/// 47's walk count: the keys sent are exactly the script.
+fn keys_were_the_script(
+    script: &[(KeyCode, Duration)],
+    stamps: &[crate::frame_trace::Sent],
+    journal: bool,
+) -> Result<(), String> {
     let sent: Vec<KeyCode> = script.iter().map(|(code, _)| *code).collect();
     let mut want = vec![KeyCode::Char('j'); HELD];
     if journal {
@@ -377,12 +440,24 @@ fn run(
             want.len()
         ));
     }
+    Ok(())
+}
 
-    let reading = read(&wakes, &drain, initial, &stamps, journal);
-    if let Shutdown::Stalled { .. } = jobs.shutdown(Duration::from_secs(10)) {
-        return Err("the job pool did not stop cleanly".to_owned());
+/// `⏎` opens the pane on the files; `Tab` `Tab` (files → diff → graph)
+/// gives `j` back to the graph. The caller's `settle` lands the reads.
+fn open_pane(jobs: &impl Dispatch, mut state: AppState) -> Result<AppState, String> {
+    for code in [KeyCode::Enter, KeyCode::Tab, KeyCode::Tab] {
+        let (next, commands) = update(&state, AppEvent::Core(Event::Key(KeyPress::plain(code))));
+        state = next;
+        for command in commands {
+            jobs.dispatch(command);
+        }
     }
-    reading
+    if state.detail.shown && state.detail.focus == DetailFocus::Graph {
+        Ok(state)
+    } else {
+        Err("the pane did not open with the graph focused".to_owned())
+    }
 }
 
 /// The harness's terminal answers fences as it reads them (ADR-0054), so
@@ -484,9 +559,19 @@ fn read<D>(
     } else {
         None
     };
-    let draws: Vec<_> = handed.iter().map(Handed::drawn_at).collect();
+    // A (G-settle): the graph's frames end where the loop's own rest begins;
+    // `written[r]` is stamped at the rest's look, the graph's last byte.
+    let rest = (!journal).then(|| rest_after(handed, last_j)).flatten();
+    let graph_last = rest.map_or_else(|| written.last().copied().unwrap_or(0), |r| written[r]);
+    let draws: Vec<_> = handed[..rest.unwrap_or(handed.len())]
+        .iter()
+        .map(Handed::drawn_at)
+        .collect();
     let (after, tail_end) = after_release(&draws, last_j, js_frame);
     reading.frames_after_release = after;
+    if let Some(r) = rest {
+        read_rest(handed, r, drain, &written, last_j, &mut reading)?;
+    }
     reading.bytes_per_frame_held = held_bytes / reading.frames_while_held.max(1) as u64;
     count_transmits(
         drain,
@@ -498,7 +583,7 @@ fn read<D>(
     // Tail: last j sent → the drain passing the last counted frame's last
     // byte (A: the last frame; B with none counted: `J`'s first byte).
     let tail_byte = match tail_end {
-        TailEnd::LastByte => written.last().copied().unwrap_or(0),
+        TailEnd::LastByte => graph_last,
         TailEnd::Frame(k) => end_of(k).ok_or("a counted frame with no end offset")?,
         TailEnd::JsFirstByte => written[js_frame.ok_or("no J frame")?] + 1,
     };
@@ -512,6 +597,36 @@ fn read<D>(
     }
     replay(wakes, initial, &mut reading);
     Ok(reading)
+}
+
+/// The loop's own rest after the last `j` (G-settle): where the graph's
+/// frames end and the pane's catch-up begins.
+fn rest_after(handed: &[Handed], last_j: Instant) -> Option<usize> {
+    handed.iter().position(|frame| {
+        matches!(frame.kind, Kind::Rest) && frame.drawn_at().is_some_and(|at| at > last_j)
+    })
+}
+
+/// The rest's frames, from `handed[rest]` on — the pane catching up — and
+/// last `j` → their last byte drained. Reported apart, not judged.
+fn read_rest(
+    handed: &[Handed],
+    rest: usize,
+    drain: &DrainSink,
+    written: &[u64],
+    last_j: Instant,
+    reading: &mut Reading,
+) -> Result<(), String> {
+    reading.rest_frames = handed[rest..]
+        .iter()
+        .filter(|frame| frame.drawn_at().is_some())
+        .count();
+    let last = written.last().copied().unwrap_or(0);
+    let drained = drain
+        .drained_at(last)
+        .ok_or("the drain never passed the rest's last byte")?;
+    reading.rest_ms = Some(ms(last_j, drained));
+    Ok(())
 }
 
 /// Kitty transmits while held, by layer, and the run's cost lines (46):
@@ -645,7 +760,7 @@ fn pixel_rss_child() {
         .to_str()
         .and_then(|rate| rate.parse().ok())
         .unwrap_or_else(|| panic!("{PIXEL_RSS_CHILD_RATE}={rate:?} is not a rate"));
-    let reading = run(RenderingTier::Pixel, false, rate, Encoding::Deflate)
+    let reading = run(RenderingTier::Pixel, false, rate, Encoding::Deflate, false)
         .unwrap_or_else(|why| panic!("{why}"));
     let peak = graft_fixtures::peak_rss().unwrap_or_else(|why| panic!("peak RSS: {why}"));
     println!(

@@ -125,19 +125,32 @@ pub(crate) fn follow_behind(state: &AppState) -> bool {
     state.followed.is_some() && follow_owed(state)
 }
 
+/// The pane follows the cursor: it is shown, and it is not a compare opened
+/// from the menu (no base pinned), which stays put. The one answer to "does
+/// a moved cursor change what the pane reads", for [`followed`], the
+/// burst's hold ([`follow_waits`]) and the title's `reading…`
+/// (`view::detail`) alike — review M1 (m8-03): the hold once asked only
+/// `shown`, cancelled a menu compare's read, and nothing asked again.
+pub(crate) fn pane_follows(state: &AppState) -> bool {
+    let fixed = state.compare_base.is_none()
+        && matches!(state.detail.spec, Some(DetailSpec::Compare { .. }));
+    state.detail.shown && !fixed
+}
+
 /// Does this update hold the follow back? Mid-burst (`defer_follow`, set by
 /// the loop) with the cursor off what was followed, and following would
-/// start work: the pane is shown, or the cursor is on a merge to probe.
+/// start work: the pane follows the cursor ([`pane_follows`]), or the
+/// cursor is on a merge to probe.
 ///
 /// Not when nothing was followed before (a `G` whose rows have just
 /// arrived, the first window at launch): there is nothing in flight to
 /// save, and the pane would sit empty until rest. Not with the pane hidden
-/// off a merge: that follow starts nothing — it only cancels a probe still
-/// running — so it runs now and leaves nothing to wait for.
+/// (or fixed) off a merge: that follow starts nothing — it only cancels a
+/// probe still running — so it runs now and leaves nothing to wait for.
 pub(crate) fn follow_waits(state: &AppState) -> bool {
     state.defer_follow
         && follow_behind(state)
-        && (state.detail.shown || selected_merge(state).is_some())
+        && (pane_follows(state) || selected_merge(state).is_some())
 }
 
 /// After any event: a shown pane follows the selection, the working-tree row
@@ -198,7 +211,7 @@ fn selected_merge(state: &AppState) -> Option<graft_core::oid::Oid> {
 /// `follow_selection` without the evil-merge probe: what the pane itself
 /// does about a moved cursor.
 fn followed(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
-    if !state.detail.shown {
+    if !pane_follows(state) {
         return Vec::new();
     }
     if let Some(base) = state.compare_base {
@@ -234,9 +247,6 @@ fn followed(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -> Vec<Co
             _ => return Vec::new(),
         };
         return state.detail.follow(spec, next_id);
-    }
-    if matches!(state.detail.spec, Some(DetailSpec::Compare { .. })) {
-        return Vec::new();
     }
     let Some(spec) = state.selected_spec() else {
         return Vec::new();
