@@ -3,6 +3,7 @@
 //! cap on a terminal that never answers, and a turn's wheel events drawn by
 //! one frame.
 
+use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
 use graft_core::event::MouseKind;
@@ -267,4 +268,275 @@ fn ten_wheel_events_in_one_turn_scroll_ten_steps_in_one_frame() {
     let history = state.history.as_ref().expect("history stays");
     assert_eq!(history.top, 10 * 3, "ten steps of the unchanged 3 lines");
     assert_eq!(history.cursor, 0, "the wheel leaves the cursor");
+}
+
+/// What [`Line`] saw, in order: a wake it handed out, or a phase the loop
+/// marked, each at the line's clock (ms since the run began).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Seen {
+    Key(u64),
+    Fence(u64),
+    Drained,
+    Updated,
+    CarriedOut(u64),
+    Drawn(u64),
+}
+
+/// A fenced terminal on a timeline of its own (as `settle::Timed`): keys
+/// arrive at their instants; each fence the loop writes is answered
+/// `answer_after` the frame was drawn, or never when `None`; and a wait
+/// past a deadline moves the clock there instead of sleeping. Answers come
+/// in order, ahead of a key due at the same instant.
+struct Line {
+    keys: VecDeque<(Instant, Wake)>,
+    answers: VecDeque<Instant>,
+    answer_after: Option<Duration>,
+    recorder: Recorder,
+    fences_written: usize,
+    start: Instant,
+    now: Instant,
+    seen: Vec<Seen>,
+}
+
+impl Line {
+    fn new(recorder: Recorder, answer_after: Option<Duration>, keys: Vec<(u64, Wake)>) -> Self {
+        let start = Instant::now();
+        Self {
+            keys: keys
+                .into_iter()
+                .map(|(at, wake)| (start + Duration::from_millis(at), wake))
+                .collect(),
+            answers: VecDeque::new(),
+            answer_after,
+            recorder,
+            fences_written: 0,
+            start,
+            now: start,
+            seen: Vec::new(),
+        }
+    }
+
+    fn ms(&self) -> u64 {
+        u64::try_from((self.now - self.start).as_millis()).expect("a short run")
+    }
+
+    /// When the next wake is due, and whether it is a fence answer.
+    fn next_due(&self) -> Option<(Instant, bool)> {
+        let answer = self.answers.front().map(|at| (*at, true));
+        let key = self.keys.front().map(|(at, _)| (*at, false));
+        match (answer, key) {
+            (Some(answer), Some(key)) => Some(if answer.0 <= key.0 { answer } else { key }),
+            (one, other) => one.or(other),
+        }
+    }
+
+    fn hand_out(&mut self) -> Option<Wake> {
+        let (at, fence) = self.next_due()?;
+        self.now = self.now.max(at);
+        if fence {
+            self.answers.pop_front();
+            self.seen.push(Seen::Fence(self.ms()));
+            return Some(Wake::Fence);
+        }
+        self.seen.push(Seen::Key(self.ms()));
+        self.keys.pop_front().map(|(_, wake)| wake)
+    }
+
+    /// The times of every frame drawn.
+    fn drawn(&self) -> Vec<u64> {
+        self.seen
+            .iter()
+            .filter_map(|seen| match seen {
+                Seen::Drawn(at) => Some(*at),
+                _ => None,
+            })
+            .collect()
+    }
+}
+
+impl Wakes for Line {
+    fn next_wake(&mut self) -> Option<Wake> {
+        self.hand_out()
+    }
+
+    fn next_wake_by(&mut self, deadline: Instant) -> Waited {
+        if self.next_due().is_some_and(|(at, _)| at <= deadline) {
+            return self.hand_out().map_or(Waited::Ended, Waited::Woke);
+        }
+        self.now = self.now.max(deadline);
+        Waited::TimedOut
+    }
+
+    fn waiting(&mut self) -> bool {
+        self.next_due().is_some_and(|(at, _)| at <= self.now)
+    }
+
+    fn joining_waiting(&mut self) -> bool {
+        match self.next_due() {
+            Some((at, false)) if at <= self.now => {
+                self.keys.front().is_some_and(|(_, wake)| joins_frame(wake))
+            }
+            _ => false,
+        }
+    }
+
+    fn mark(&mut self, phase: super::super::Phase) {
+        use super::super::Phase;
+        let at = self.ms();
+        self.seen.push(match phase {
+            Phase::Drained => Seen::Drained,
+            Phase::Updated => Seen::Updated,
+            Phase::CarriedOut => Seen::CarriedOut(at),
+            Phase::Drawn => {
+                let written = self.recorder.written().matches(FENCE).count();
+                for _ in self.fences_written..written {
+                    if let Some(after) = self.answer_after {
+                        self.answers.push_back(self.now + after);
+                    }
+                }
+                self.fences_written = written;
+                Seen::Drawn(at)
+            }
+        });
+    }
+
+    fn now(&self) -> Instant {
+        self.now
+    }
+}
+
+fn ctrl_z() -> Wake {
+    key(KeyPress {
+        code: KeyCode::Char('z'),
+        modifiers: graft_core::event::Modifiers::CONTROL,
+    })
+}
+
+/// `Ctrl+Z` hands the terminal over (here refused in words: no terminal to
+/// hand, but the loop's settle runs all the same), with the first frame's
+/// fence owed and `j` arriving behind the key. Returns what the line saw
+/// and where the cursor ended.
+fn hand_over_with_a_fence_owed(answer_after: Option<Duration>) -> (Vec<Seen>, usize) {
+    let (mut terminal, recorder) = no_tty_terminal(60, 30);
+    let mut line = Line::new(recorder, answer_after, vec![(1, ctrl_z()), (2, j())]);
+    let state = AppState {
+        suspend_on_ctrl_z: true,
+        ..on_history()
+    };
+    let (exit, state) = super::super::running::pump_keeping(
+        &mut terminal,
+        &mut line,
+        &Recorded::default(),
+        &mut fenced(session()),
+        state,
+    );
+    assert_eq!(exit.expect("memory"), Exit::Quit);
+    (line.seen, cursor(&state))
+}
+
+/// Review m8-02 Major 2: an answer still owed when `$EDITOR` takes the
+/// terminal would be read by the editor as typing. The loop takes it
+/// first; the `j` that came meanwhile waits, and is applied after.
+#[test]
+fn a_handover_takes_the_owed_fence_answer_first_and_holds_what_came_meanwhile() {
+    let (seen, cursor) = hand_over_with_a_fence_owed(Some(Duration::from_millis(100)));
+    assert_eq!(
+        seen[..9],
+        [
+            Seen::Drawn(0),
+            Seen::Key(1), // Ctrl+Z
+            Seen::Drained,
+            Seen::Updated,
+            Seen::Key(2), // j, held back
+            Seen::Fence(100),
+            Seen::CarriedOut(100), // the handover, after the answer
+            Seen::Drawn(100),      // at once: the screen was someone else's
+            Seen::Drained,         // j, only now
+        ],
+        "{seen:?}"
+    );
+    assert_eq!(cursor, 1, "the held-back j was applied");
+}
+
+/// The same with a terminal that never answers: the handover goes ahead
+/// once the fence has timed out, not before and not never.
+#[test]
+fn a_handover_with_no_answer_coming_goes_ahead_at_the_fence_timeout() {
+    let (seen, cursor) = hand_over_with_a_fence_owed(None);
+    let timeout = u64::try_from(super::super::pace::FENCE_TIMEOUT.as_millis()).expect("ms");
+    assert_eq!(
+        seen[..7],
+        [
+            Seen::Drawn(0),
+            Seen::Key(1),
+            Seen::Drained,
+            Seen::Updated,
+            Seen::Key(2),
+            Seen::CarriedOut(timeout),
+            Seen::Drawn(timeout),
+        ],
+        "{seen:?}"
+    );
+    assert_eq!(cursor, 1);
+}
+
+/// `j` every 100 ms for `until` ms against a fenced terminal answering
+/// `answer_after` each frame. Returns the frames written and when.
+fn held_j_against(answer_after: Option<Duration>, until: u64) -> (Vec<String>, Vec<u64>) {
+    let (mut terminal, recorder) = terminal(60, 30);
+    let keys = (1..=until / 100).map(|n| (n * 100, j())).collect();
+    let mut line = Line::new(recorder.clone(), answer_after, keys);
+    let state = AppState {
+        history: Some(crate::view::tests::history_of(255, 0)),
+        ..on_history()
+    };
+    let (exit, _) = super::super::running::pump_keeping(
+        &mut terminal,
+        &mut line,
+        &Recorded::default(),
+        &mut fenced(session()),
+        state,
+    );
+    assert_eq!(exit.expect("memory"), Exit::Quit);
+    let written = recorder.written();
+    let frames = frames_of(&written).into_iter().map(str::to_owned).collect();
+    (frames, line.drawn())
+}
+
+/// Review m8-02 Major 2: the timeout and the give-up, through the loop. A
+/// fenced terminal that never answers gets a frame per timeout, three
+/// timeouts, then unfenced frames at the 16 ms cap.
+#[test]
+fn a_fenced_terminal_that_never_answers_is_drawn_per_timeout_then_unfenced() {
+    let (frames, drawn) = held_j_against(None, 2400);
+    assert_eq!(drawn[..4], [0, 500, 1000, 1500], "{drawn:?}");
+    assert!(
+        frames[..4].iter().all(|frame| frame.ends_with(FENCE)),
+        "fenced until the third timeout, whose frame still carries one"
+    );
+    assert!(frames.len() > 4, "{drawn:?}");
+    assert!(
+        frames[4..].iter().all(|frame| !frame.contains(FENCE)),
+        "no fence once given up"
+    );
+    assert!(
+        drawn[4..].windows(2).all(|pair| pair[1] - pair[0] >= 16),
+        "capped: {drawn:?}"
+    );
+}
+
+/// Review m8-02 Major 1, through the loop: a terminal answering every
+/// fence 600 ms late stays fenced for the run, a frame per timeout.
+#[test]
+fn a_terminal_answering_every_fence_600_ms_late_stays_fenced() {
+    let (frames, drawn) = held_j_against(Some(Duration::from_millis(600)), 4000);
+    assert!(frames.len() > 6, "{drawn:?}");
+    assert!(
+        frames.iter().all(|frame| frame.ends_with(FENCE)),
+        "every frame fenced: {drawn:?}"
+    );
+    assert!(
+        drawn.windows(2).all(|pair| pair[1] - pair[0] >= 100),
+        "never the 16 ms cap: {drawn:?}"
+    );
 }

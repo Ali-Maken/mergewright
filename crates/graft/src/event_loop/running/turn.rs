@@ -1,0 +1,389 @@
+//! The paced turn (ADR-0054, G-settle): one wake at a time, applied to the
+//! state; a frame drawn once the turn is over and the terminal has read the
+//! last one; wakes that come while a frame is held applied or held back in
+//! order; the fence answers owed settled before the terminal is handed over.
+
+use std::collections::VecDeque;
+use std::io::{self, Write};
+use std::time::{Duration, Instant};
+
+use graft_graph::raster::cache::Flush;
+use ratatui::Terminal;
+use ratatui::backend::Backend;
+
+use super::super::graphics::{Graphics, GraphicsReplies};
+use super::super::outside::Outside;
+use super::super::pace::{FENCE_TIMEOUT, Pacer};
+use super::super::rest::{Mover, Rest};
+use super::super::{Exit, Phase, Waited, Wake, Wakes, joins_frame};
+use super::carry::{Carried, carry_out, hands_over};
+use super::frame::draw_traced;
+use super::{Screen, prefetch};
+use crate::jobs::Dispatch;
+use crate::session::{Session, TerminalChange};
+use crate::trace::Tracer;
+use crate::update::{AppEvent, AppState, Quit, follow_behind, follow_key, update};
+
+/// The most update time a turn spends on queued wakes before its frame shows
+/// them — job answers and keys alike. Half a 60 Hz frame: a burst longer than
+/// this still draws as it goes, so the screen never sits stale behind a long
+/// queue.
+const BATCH_BUDGET: Duration = Duration::from_millis(8);
+
+/// The loop's body: draw, wait, update, repeat.
+pub(in crate::event_loop) fn frames<B, W, D, R>(
+    Screen { terminal, graphics }: Screen<'_, B, R>,
+    wakes: &mut W,
+    jobs: &D,
+    session: &mut Session,
+    state: &mut AppState,
+    outside: Outside<'_>,
+    tracer: &mut Tracer,
+) -> io::Result<Exit>
+where
+    B: Backend<Error = io::Error> + Write,
+    W: Wakes,
+    D: Dispatch,
+    R: GraphicsReplies,
+{
+    let pacer = Pacer::new(session.capabilities.answers_dsr, FENCE_TIMEOUT);
+    Run {
+        terminal,
+        wakes,
+        jobs,
+        session,
+        state,
+        graphics,
+        outside,
+        tracer,
+        pacer,
+        rest: Rest::new(),
+        undrawn_since: None,
+        deferred: VecDeque::new(),
+        now: false,
+    }
+    .run()
+}
+
+/// One run of the loop: its collaborators, and what stands between the state
+/// and the screen.
+struct Run<'r, 'o, B: Backend, W, D, R> {
+    terminal: &'r mut Terminal<B>,
+    wakes: &'r mut W,
+    jobs: &'r D,
+    session: &'r mut Session,
+    state: &'r mut AppState,
+    graphics: &'r mut Graphics<R>,
+    outside: Outside<'o>,
+    tracer: &'r mut Tracer,
+    /// When the next frame may be written (ADR-0054).
+    pacer: Pacer,
+    /// When the cursor last moved, and so when it has rested (G-settle):
+    /// mid-burst the pane's follow is owed, and the loop applies
+    /// `AppEvent::Rested` once the moves stop.
+    rest: Rest,
+    /// When the first change not yet drawn was applied; `None` while the
+    /// screen shows the state. Queued wakes share one frame, up to
+    /// `BATCH_BUDGET` of updates.
+    undrawn_since: Option<Instant>,
+    /// Wakes that came while a frame was held and may not be applied ahead
+    /// of it: a click acts on what he saw, so the frame before it is drawn
+    /// first; what came after the click waits behind it, in order.
+    deferred: VecDeque<Wake>,
+    /// The next frame goes out without waiting for the pacer: the terminal
+    /// was just handed back, and shows someone else's screen.
+    now: bool,
+}
+
+impl<B, W, D, R> Run<'_, '_, B, W, D, R>
+where
+    B: Backend<Error = io::Error> + Write,
+    W: Wakes,
+    D: Dispatch,
+    R: GraphicsReplies,
+{
+    fn run(mut self) -> io::Result<Exit> {
+        // Draw before waiting: the first frame must be on screen while Graft
+        // sits idle waiting for the user's first key.
+        self.draw()?;
+        loop {
+            if let Some(exit) = self.turn()? {
+                return Ok(exit);
+            }
+        }
+    }
+
+    /// One step: draw what is undrawn if the turn is over and the terminal
+    /// is ready for it, else take one wake. `Some` when the loop ends.
+    fn turn(&mut self) -> io::Result<Option<Exit>> {
+        let rest_at = self.rest_deadline();
+        if rest_at.is_some_and(|at| self.wakes.now() >= at) {
+            return self.rested();
+        }
+        let Some(began) = self.undrawn_since else {
+            return self.idle(rest_at);
+        };
+
+        // One turn (m7-power-tools/43): while the next wake joins the frame
+        // — a job's answer, a key, a wheel scroll — apply it before drawing,
+        // so a backlog of held-key repeats is shown by one frame, not one
+        // frame each. A handover ends the turn (what follows waits for the
+        // terminal to be ours again), and so does `BATCH_BUDGET`.
+        let elapsed = self.wakes.now().saturating_duration_since(began);
+        if !self.now && elapsed < BATCH_BUDGET && self.next_joins() {
+            let wake = match self.deferred.pop_front() {
+                Some(wake) => Some(wake),
+                None => self.wakes.next_wake(),
+            };
+            return match wake {
+                Some(wake) => self.take(wake),
+                None => Ok(Some(Exit::Quit)),
+            };
+        }
+
+        if self.now || self.pacer.may_draw(self.wakes.now()) {
+            self.draw()?;
+            return Ok(None);
+        }
+        self.paced(rest_at)
+    }
+
+    /// The screen shows the state. What was held back comes first; else,
+    /// idle: get the next page ready, then wait.
+    fn idle(&mut self, rest_at: Option<Instant>) -> io::Result<Option<Exit>> {
+        if let Some(wake) = self.deferred.pop_front() {
+            return self.take(wake);
+        }
+        // A follow is owed: wait for the next wake or for rest, which comes
+        // first. The idle work waits for the turn after.
+        if let Some(at) = rest_at {
+            return match self.wakes.next_wake_by(at) {
+                Waited::Woke(wake) => self.take(wake),
+                Waited::TimedOut => self.rested(),
+                Waited::Ended => Ok(Some(Exit::Quit)),
+            };
+        }
+        prefetch(self.session, self.state, self.graphics, self.wakes);
+        match self.wakes.next_wake() {
+            Some(wake) => self.take(wake),
+            // Nothing can wake the loop again. Leave as if the user had
+            // quit rather than spinning on a dead channel.
+            None => Ok(Some(Exit::Quit)),
+        }
+    }
+
+    /// The terminal has not read the last frame yet (ADR-0054). Wait for
+    /// it, applying what comes meanwhile; the answer, or the pacer's
+    /// deadline, releases one frame showing all of it. Rest may come first;
+    /// the next turn applies it.
+    fn paced(&mut self, rest_at: Option<Instant>) -> io::Result<Option<Exit>> {
+        let paced = self.pacer.deadline().unwrap_or_else(|| self.wakes.now());
+        let deadline = rest_at.map_or(paced, |at| at.min(paced));
+        match self.wakes.next_wake_by(deadline) {
+            Waited::TimedOut => Ok(None),
+            Waited::Ended => Ok(Some(Exit::Quit)),
+            Waited::Woke(wake) => self.held(wake),
+        }
+    }
+
+    /// Does the next wake join the frame being built? Held-back wakes are
+    /// next, ahead of anything queued after them.
+    fn next_joins(&mut self) -> bool {
+        match self.deferred.front() {
+            Some(wake) => joins_frame(wake),
+            None => self.wakes.joining_waiting(),
+        }
+    }
+
+    /// A wake that came while a frame was held: applied if it joins the
+    /// frame (and nothing is held back ahead of it), acted on at once if it
+    /// ends the loop or answers the fence, else held back until the frame
+    /// is drawn.
+    fn held(&mut self, wake: Wake) -> io::Result<Option<Exit>> {
+        let at_once = matches!(
+            wake,
+            Wake::Fence | Wake::Shutdown(_) | Wake::InputFailed(_) | Wake::TerminalFailed(_)
+        );
+        if at_once || (self.deferred.is_empty() && joins_frame(&wake)) {
+            return self.take(wake);
+        }
+        self.deferred.push_back(wake);
+        Ok(None)
+    }
+
+    /// Apply one wake. `Some` when the loop ends.
+    fn take(&mut self, wake: Wake) -> io::Result<Option<Exit>> {
+        if let Wake::Fence = wake {
+            self.fence_answered()?;
+            return Ok(None);
+        }
+        // Read before the wake is taken apart: whether it ends a burst
+        // (an input acting on the cursor's commit, G-settle), and what it
+        // is as a mover.
+        let rest_first = follow_behind(self.state) && self.rest.rest_first(&wake);
+        let mover = Mover::of(&wake);
+        self.tracer.took(&wake);
+        let replied = self.graphics.drain()?;
+        self.wakes.mark(Phase::Drained);
+
+        match wake {
+            Wake::Event(event) => self.input(event, rest_first, mover),
+            Wake::Shutdown(signal) => Ok(Some(Exit::Signal(signal))),
+            Wake::InputFailed(error) | Wake::TerminalFailed(error) => Err(error),
+            Wake::Terminal(change) => {
+                self.terminal_changed(change, replied);
+                Ok(None)
+            }
+            // Taken above.
+            Wake::Fence => Ok(None),
+        }
+    }
+
+    /// The terminal has read every frame up to the oldest fence owed.
+    fn fence_answered(&mut self) -> io::Result<()> {
+        let waited = self.pacer.answered(self.wakes.now());
+        self.tracer.fenced(waited);
+        // Replies to the frames already drawn: an `ENOENT` here makes the
+        // next frame transmit that strip again.
+        if self.graphics.drain()? {
+            self.undrawn_since.get_or_insert_with(|| self.wakes.now());
+        }
+        Ok(())
+    }
+
+    /// A re-detected cell size or theme: the strips drawn for the old one
+    /// go, and a frame is owed if anything changed or a reply asked for one.
+    fn terminal_changed(&mut self, change: TerminalChange, replied: bool) {
+        let changed = self.session.apply(change);
+        if changed {
+            self.graphics.flush(match change {
+                TerminalChange::CellSize(_) => Flush::CellSize,
+                TerminalChange::Theme(_) => Flush::Theme,
+            });
+        }
+        if changed || replied {
+            self.undrawn_since.get_or_insert_with(|| self.wakes.now());
+        }
+    }
+
+    /// An event for `update`: rest first when it ends a burst, then applied,
+    /// and the cursor's move noted for rest. `Some` when the loop ends.
+    fn input(
+        &mut self,
+        event: AppEvent,
+        rest_first: bool,
+        mover: Mover,
+    ) -> io::Result<Option<Exit>> {
+        if rest_first && let Some(exit) = self.rested()? {
+            return Ok(Some(exit));
+        }
+        // G-settle: a move within a burst is deferred, and one that changed
+        // what the pane follows is the burst's latest.
+        let now = self.wakes.now();
+        self.state.defer_follow = self.rest.in_burst(now);
+        let before = follow_key(self.state);
+        let exit = self.apply(event)?;
+        if follow_key(self.state) != before {
+            self.rest.moved(now, mover);
+        }
+        Ok(exit)
+    }
+
+    /// When a follow is owed, the moment the cursor counts as rested.
+    fn rest_deadline(&self) -> Option<Instant> {
+        if follow_behind(self.state) {
+            self.rest.deadline()
+        } else {
+            None
+        }
+    }
+
+    /// The cursor has rested: the owed follow runs, once, and the next move
+    /// is a leading edge again.
+    fn rested(&mut self) -> io::Result<Option<Exit>> {
+        self.state.defer_follow = false;
+        let exit = self.apply(AppEvent::Rested)?;
+        self.rest.rested();
+        Ok(exit)
+    }
+
+    /// Update the state with one event and carry out what it asks for.
+    /// `Some` when the loop ends.
+    fn apply(&mut self, event: AppEvent) -> io::Result<Option<Exit>> {
+        self.undrawn_since.get_or_insert_with(|| self.wakes.now());
+        let clock = self.tracer.clock();
+        let (next, commands) = update(self.state, event);
+        self.tracer.updated(clock, commands.len());
+        *self.state = next;
+        self.wakes.mark(Phase::Updated);
+        if commands.iter().any(hands_over) {
+            self.settle_fences();
+        }
+
+        let (next, carried) = carry_out(
+            self.terminal,
+            self.session,
+            self.jobs,
+            std::mem::take(self.state),
+            self.outside,
+            commands,
+        )?;
+        *self.state = next;
+        self.wakes.mark(Phase::CarriedOut);
+
+        match &self.state.quit {
+            Some(Quit::Requested) => return Ok(Some(Exit::Quit)),
+            Some(Quit::HandedBack(key)) => return Ok(Some(Exit::HandedBack(*key))),
+            // Reported by the caller, once the terminal is the user's again.
+            Some(Quit::Fatal(reason)) => return Ok(Some(Exit::Fatal(reason.clone()))),
+            None => {}
+        }
+        if carried == Carried::EndsBatch {
+            // Handed over and back: answers owed to fences may have gone to
+            // the other program, and the screen is theirs until redrawn.
+            self.pacer.forget();
+            self.now = true;
+        }
+        Ok(None)
+    }
+
+    /// Before the terminal goes to another program: take the answers still
+    /// owed to fences, up to the pacer's timeout. An answer that arrived
+    /// after the reader was paused would be read by `$EDITOR` as typing.
+    /// What else comes meanwhile is held back, in order, for after.
+    fn settle_fences(&mut self) {
+        while let Some(deadline) = self.pacer.owed() {
+            match self.wakes.next_wake_by(deadline) {
+                Waited::Woke(Wake::Fence) => {
+                    let waited = self.pacer.answered(self.wakes.now());
+                    self.tracer.fenced(waited);
+                }
+                Waited::Woke(wake) => self.deferred.push_back(wake),
+                // Unanswered: hand over anyway; `forget` follows the
+                // handover. Ended: the loop finds out at its next wait.
+                Waited::TimedOut | Waited::Ended => return,
+            }
+        }
+    }
+
+    /// Write one frame, fenced when the pacer says so.
+    fn draw(&mut self) -> io::Result<()> {
+        let fence = self.pacer.fenced();
+        let again = draw_traced(
+            self.terminal,
+            self.session,
+            self.state,
+            self.graphics,
+            self.tracer,
+            fence,
+        )?;
+        let now = self.wakes.now();
+        self.pacer.drew(now);
+        // A trace failure changed the status row after the frame was built:
+        // the next frame the pacer allows shows it.
+        self.undrawn_since = again.then_some(now);
+        self.now = false;
+        self.wakes.mark(Phase::Drawn);
+        Ok(())
+    }
+}

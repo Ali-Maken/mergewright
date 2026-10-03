@@ -3,10 +3,14 @@
 //! Every frame ends with a fence (`CSI 5 n`); the terminal answers `CSI 0 n`
 //! once it has read every byte before it. [`Pacer`] says when the loop may
 //! write the next frame: once the last fence is answered, or once it has
-//! waited [`FENCE_TIMEOUT`] for it. Three timeouts in a row and the terminal
-//! is not answering fences at all: fencing stops for the run, and frames are
-//! capped at one per [`FRAME_CAP`] instead — the same cap a terminal that
-//! never answered the startup DSR gets from the start.
+//! waited [`FENCE_TIMEOUT`] for it. Three timeouts with no answer between
+//! them and the terminal is not answering fences at all: fencing stops for
+//! the run, and frames are capped at one per [`FRAME_CAP`] instead — the
+//! same cap a terminal that never answered the startup DSR gets from the
+//! start. A terminal that answers late (a multi-MB Pixel frame over SSH) is
+//! slow, not silent: any answer ends the run of timeouts, so it stays fenced
+//! and gets at most one frame per timeout while it is behind, never one per
+//! [`FRAME_CAP`].
 //!
 //! The pacer only keeps time; the loop asks it. Wakes that arrive while a
 //! frame may not be drawn are applied to state and drawn together by the
@@ -33,8 +37,8 @@ pub(crate) struct Pacer {
     /// terminal answers in order, so an answer is always the oldest one's.
     /// More than one only after a timeout drew over an unanswered fence.
     sent_at: VecDeque<Instant>,
-    /// Frames drawn over an unanswered fence since the terminal last caught
-    /// up (every fence answered).
+    /// Frames drawn over an unanswered fence since the terminal last
+    /// answered one.
     misses: u8,
     /// Frames end with a fence. False from the start for a terminal that
     /// did not answer the startup DSR, and for good after
@@ -68,9 +72,9 @@ impl Pacer {
     }
 
     /// A frame was written at `now` — with its fence when [`Self::fenced`]
-    /// said so. Drawing over an unanswered fence is a timeout; the third in
-    /// a row stops fencing (the fence of the frame that gave up is written
-    /// but never waited for).
+    /// said so. Drawing over an unanswered fence is a timeout; the third
+    /// with no answer between stops fencing (the fence of the frame that
+    /// gave up is written but never waited for).
     pub(crate) fn drew(&mut self, now: Instant) {
         self.last_drawn = Some(now);
         if !self.fenced {
@@ -96,10 +100,10 @@ impl Pacer {
             return None;
         }
         let sent = self.sent_at.pop_front()?;
-        if self.sent_at.is_empty() {
-            // Caught up: every frame written has been read.
-            self.misses = 0;
-        }
+        // The terminal answers, however late: it is reading the frames,
+        // so the run of timeouts ends here — not only once it has caught
+        // up, which a terminal slower than the timeout never does.
+        self.misses = 0;
         Some(now.saturating_duration_since(sent))
     }
 
@@ -211,6 +215,35 @@ mod tests {
         pacer.drew(start + ms(1100));
         pacer.drew(start + ms(1600)); // a miss, but the first of a new run
         assert!(pacer.fenced());
+    }
+
+    /// Review m8-02 Major 1: a terminal that answers every fence, only
+    /// 600 ms late (Kitty without deflate over SSH), is slow, not silent.
+    /// Driven at 1 ms steps for 5 s: it stays fenced, and frames stay at
+    /// least the timeout apart rather than falling to the 16 ms cap.
+    #[test]
+    fn a_terminal_answering_every_fence_late_stays_fenced() {
+        let (mut pacer, start) = fenced();
+        let late = ms(600);
+        let mut answers = VecDeque::new();
+        let mut drawn = Vec::new();
+        for step in 0..5000 {
+            let now = start + ms(step);
+            while answers.front().is_some_and(|at| *at <= now) {
+                answers.pop_front();
+                pacer.answered(now);
+            }
+            if pacer.may_draw(now) {
+                pacer.drew(now);
+                answers.push_back(now + late);
+                drawn.push(step);
+            }
+        }
+        let first = &drawn[..drawn.len().min(8)];
+        assert!(pacer.fenced(), "frames drawn at {first:?}…");
+        for pair in drawn.windows(2) {
+            assert!(pair[1] - pair[0] >= 500, "frames drawn at {first:?}…");
+        }
     }
 
     #[test]
