@@ -23,7 +23,7 @@
 //! one operation two ways.
 
 mod line_rows;
-pub(crate) use line_rows::{left_behind_rungs, onto_label};
+pub(crate) use line_rows::{fork_rows, left_behind_rungs, not_forks, onto_label};
 pub mod slice;
 
 use std::collections::{HashMap, HashSet};

@@ -24,13 +24,16 @@ pub(super) fn plan_lines(
 ) -> Vec<SanitizedText> {
     let mut lines: Vec<String> = Vec::new();
     lines.extend(ghost_line(&plan.ghosts));
-    if line_rows::is_line(plan, op) {
+    let line = line_rows::is_line(plan, op);
+    if line {
         lines.extend(line_rows::ref_rows(plan));
     } else {
         lines.extend(plan.ref_moves.iter().map(|moved| ref_line(plan, moved)));
     }
-    // Who does not follow (m7/37): only the line moves (ADR-0047 §4), and
-    // a branch forked off it or parked on a commit it replaces stays put.
+    // Each fork's fate (ADR-0059 §2): it follows, or stays and why.
+    lines.extend(line_rows::fork_lines(plan, line));
+    // Who else does not follow (m7/37): a backup parked at a tip of the
+    // line, and every branch `r` leaves on a commit it replaces.
     lines.extend(line_rows::left_behind_row(plan, columns));
     lines.extend(line_rows::already_in_row(plan, op, keeps));
     lines.extend(head_line(plan));

@@ -5,6 +5,10 @@ use super::{
     Oid, PreviewPlan, RightSide, RowFacts, SanitizedText, Target, TodoAction, ViewFacts,
     sanitize_line, sanitize_path_bytes, short,
 };
+use graft_ops::preview::{ForkFate, WhyStays};
+
+#[cfg(test)]
+mod tests;
 
 /// The right-hand side: `⏎`'s file list, else the AFTER plan.
 pub(super) fn right_side(facts: &ViewFacts<'_>) -> RightSide {
@@ -74,7 +78,7 @@ pub(super) fn after_ready(facts: &ViewFacts<'_>, plan: &PreviewPlan) -> AfterVie
             let replayed = ghost
                 .replays
                 .and_then(|commit| rows_by_commit.get(&commit).copied());
-            let follows = branch > 0 && !labelled;
+            let follows = (branch > 0 && !labelled).then(|| follows_note(plan, &moved.name));
             let notes = ghost_notes(facts, replayed, follows, stop, at);
             rows.push(AfterRow {
                 branch: (!labelled).then(|| sanitize_line(&short_ref(&moved.name))),
@@ -103,19 +107,18 @@ pub(super) fn after_ready(facts: &ViewFacts<'_>, plan: &PreviewPlan) -> AfterVie
     }
 }
 
-/// An AFTER row's notes: `built on yours · follows` on a dependent's first
-/// row, the group it stands for, and where the forecast says git may stop.
+/// An AFTER row's notes: `follows` (`built on yours · follows` for a
+/// dependent) on a following branch's first row, the group it stands for,
+/// and where the forecast says git may stop.
 pub(super) fn ghost_notes(
     facts: &ViewFacts<'_>,
     replayed: Option<&RowFacts<'_>>,
-    follows: bool,
+    follows: Option<&str>,
     stop: Option<(usize, &[std::path::PathBuf])>,
     at: usize,
 ) -> Vec<String> {
     let mut notes = Vec::new();
-    if follows {
-        notes.push("built on yours \u{b7} follows".to_owned());
-    }
+    notes.extend(follows.map(str::to_owned));
     if let Some(row) = replayed {
         notes.extend(group_note(facts, row));
     }
@@ -183,6 +186,7 @@ pub(super) fn after_facts(plan: &PreviewPlan, owner: &[(usize, usize)]) -> Vec<S
         .iter()
         .enumerate()
         .skip(1)
+        .filter(|(_, moved)| !is_follower_fork(plan, &moved.name))
         .map(|(branch, moved)| {
             let mine: Vec<usize> = owner
                 .iter()
@@ -209,14 +213,7 @@ pub(super) fn after_facts(plan: &PreviewPlan, owner: &[(usize, usize)]) -> Vec<S
         };
         out.push(format!("built on yours: {} {verb}", followers.join(", ")));
     }
-    // Who does not follow (m7/37), in the preview box's words. The longest
-    // wording: this side has no width here, and the names lead the row, so
-    // the widget's cut at the tail never reaches them.
-    out.extend(
-        crate::update::preview::left_behind_rungs(&plan.left_behind, plan.left_behind_more)
-            .into_iter()
-            .next(),
-    );
+    out.extend(fork_facts(plan));
     if !plan.published.is_empty() {
         let names: Vec<String> = plan
             .published
@@ -252,6 +249,53 @@ pub(super) fn paths_words(paths: &[std::path::PathBuf]) -> String {
         shown.push(format!("+{} more", paths.len() - 3));
     }
     shown.join(", ")
+}
+
+/// Each fork's fate (ADR-0059, m8/14c) in the preview box's words, one
+/// that would conflict a warning (`!`), any other stays row not; then who
+/// else does not follow (m7/37). The longest wording: this side has no
+/// width here, and the names lead the row, so the widget's cut at the tail
+/// never reaches them.
+fn fork_facts(plan: &PreviewPlan) -> Vec<String> {
+    let mut out = Vec::new();
+    for (fork, row) in plan
+        .forks
+        .iter()
+        .map(Some)
+        .chain(std::iter::once(None))
+        .zip(crate::update::preview::fork_rows(plan))
+    {
+        let conflicts = fork.is_some_and(|fork| {
+            matches!(fork.fate, ForkFate::Stays(WhyStays::WouldConflict { .. }))
+        });
+        out.push(if conflicts { format!("! {row}") } else { row });
+    }
+    let (left, more) = crate::update::preview::not_forks(plan);
+    out.extend(
+        crate::update::preview::left_behind_rungs(&left, more)
+            .into_iter()
+            .next(),
+    );
+    out
+}
+
+/// The note on a following branch's first AFTER row: a dependent is built
+/// on his; a fork that follows is not (ADR-0059), and says only that it
+/// follows.
+fn follows_note(plan: &PreviewPlan, name: &str) -> &'static str {
+    if is_follower_fork(plan, name) {
+        "follows"
+    } else {
+        "built on yours \u{b7} follows"
+    }
+}
+
+/// Whether `name` (in full) is a fork that follows (ADR-0059): it moves
+/// with the line but is not built on his.
+pub(super) fn is_follower_fork(plan: &PreviewPlan, name: &str) -> bool {
+    plan.forks.iter().any(|fork| {
+        fork.branch.as_bytes() == name.as_bytes() && matches!(fork.fate, ForkFate::Follows { .. })
+    })
 }
 
 /// `refs/heads/feature-b` → `feature-b`.

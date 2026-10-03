@@ -1851,3 +1851,121 @@ fn left_behind_rungs_table() {
         "ten: eight named, two counted"
     );
 }
+
+// ── fork rows (m8/14c, ADR-0059 §2) ─────────────────────────────────────
+
+fn at(hex7: &str) -> Oid {
+    Oid::from_hex(&format!("{hex7}{}", "0".repeat(33))).expect("an id")
+}
+
+fn branch(name: &str) -> RefName {
+    RefName::new(format!("refs/heads/{name}").as_bytes()).expect("a ref name")
+}
+
+/// `a_line_plan` with two forks off it: `feature-x` follows (its ref moves
+/// with the line), `feature-y` stays because it would conflict, one more
+/// past the cap, and `backup` parked at a tip (no fork, left behind).
+pub(in crate::update) fn a_forked_plan() -> PreviewPlan {
+    use graft_ops::preview::{Fork, ForkFate, LeftBehind, WhyStays};
+    let mut plan = a_line_plan();
+    plan.ref_moves.push(RefMove {
+        name: "refs/heads/feature-x".to_owned(),
+        from: Some(oid(5)),
+        to: Some(Target::Ghost(1)),
+    });
+    plan.forks = vec![
+        Fork {
+            branch: branch("feature-x"),
+            at: at("a1b2c3d"),
+            commits: 2,
+            fate: ForkFate::Follows {
+                onto: Target::Ghost(0),
+            },
+        },
+        Fork {
+            branch: branch("feature-y"),
+            at: at("b2c3d4e"),
+            commits: 1,
+            fate: ForkFate::Stays(WhyStays::WouldConflict {
+                commit: oid(6),
+                paths: vec![std::path::PathBuf::from("src/a.rs")],
+            }),
+        },
+    ];
+    plan.forks_more = 1;
+    plan.left_behind = vec![
+        LeftBehind {
+            branch: branch("feature-y"),
+            on: at("b2c3d4e"),
+        },
+        LeftBehind {
+            branch: branch("backup"),
+            on: at("c3d4e5f"),
+        },
+    ];
+    plan.left_behind_more = 1;
+    plan
+}
+
+/// One row per fork under the line's rows, follows then stays, the rest
+/// counted; a follower is not drawn as built on his; what stays without
+/// being a fork keeps its `left behind:` row.
+#[test]
+fn the_box_draws_one_row_per_fork() {
+    let lines = drawn(&a_forked_plan(), &a_rebase(), 187);
+    let indent = " ".repeat("branches: ".len());
+    let topic = lines
+        .iter()
+        .position(|line| line.contains("topic"))
+        .unwrap_or_else(|| panic!("topic's row in {lines:#?}"));
+    assert_eq!(
+        lines[topic + 1..topic + 5],
+        [
+            format!("{indent}feature-x follows \u{b7} 2 commits from a1b2c3d"),
+            format!("{indent}feature-y stays on b2c3d4e \u{b7} would conflict in src/a.rs"),
+            format!("{indent}+1 more stay"),
+            "left behind: backup stays on the old c3d4e5f".to_owned(),
+        ],
+        "{lines:#?}"
+    );
+    assert!(
+        !lines
+            .iter()
+            .any(|line| line.contains("feature-x") && line.contains("built on yours")),
+        "a fork is not built on his: {lines:#?}"
+    );
+}
+
+/// The words, one fate at a time: singular commit, a stays reason by
+/// `WhyStays::words`, nothing for no forks.
+#[test]
+fn fork_rows_table() {
+    use super::line_rows::fork_rows;
+    use graft_ops::preview::{Fork, ForkFate, WhyStays};
+
+    let mut plan = a_plan();
+    assert_eq!(fork_rows(&plan), Vec::<String>::new(), "none");
+    plan.forks = vec![
+        Fork {
+            branch: branch("one"),
+            at: at("a1b2c3d"),
+            commits: 1,
+            fate: ForkFate::Follows {
+                onto: Target::Ghost(0),
+            },
+        },
+        Fork {
+            branch: branch("main"),
+            at: at("b2c3d4e"),
+            commits: 3,
+            fate: ForkFate::Stays(WhyStays::DefaultBranch),
+        },
+    ];
+    assert_eq!(
+        fork_rows(&plan),
+        [
+            "one follows \u{b7} 1 commit from a1b2c3d",
+            "main stays on b2c3d4e \u{b7} the default branch",
+        ]
+    );
+}

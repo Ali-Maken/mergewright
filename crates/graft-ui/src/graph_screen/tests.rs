@@ -1589,7 +1589,11 @@ fn banner_line_keeps_step_i_of_n_at_80_columns() {
         action: "edit".to_owned(),
         sha7: "5d4c3b2".to_owned(),
         subject: "wip: tests".to_owned(),
-        chain: Some(("feature-b".to_owned(), 2, 3)),
+        chain: Some(crate::graph_screen::BannerChain::Line {
+            branch: "feature-b".to_owned(),
+            index: 2,
+            of: 3,
+        }),
         edit_hint: true,
     });
     screen.banner_op = Some(banner);

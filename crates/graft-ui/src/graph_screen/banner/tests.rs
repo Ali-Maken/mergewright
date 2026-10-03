@@ -2,7 +2,7 @@
 
 use graft_term::sanitize_line;
 
-use super::{BannerView, RewriteBannerView, banner_line};
+use super::{BannerChain, BannerView, RewriteBannerView, banner_line};
 
 fn rewrite(chain: bool, edit: bool) -> BannerView {
     BannerView {
@@ -15,13 +15,39 @@ fn rewrite(chain: bool, edit: bool) -> BannerView {
             action: if edit { "edit" } else { "pick" }.to_owned(),
             sha7: "5d4c3b2".to_owned(),
             subject: "wip: tests".to_owned(),
-            chain: chain.then(|| ("feature-b".to_owned(), 2, 3)),
+            chain: chain.then(|| BannerChain::Line {
+                branch: "feature-b".to_owned(),
+                index: 2,
+                of: 3,
+            }),
             edit_hint: edit,
         }),
     }
 }
 
 const WIDE: u16 = 400;
+
+/// A stop inside a fork's section (m8/14c): the fork where the line's
+/// branch would be, dropped on the same rung as the chain words.
+#[test]
+fn a_stop_inside_a_fork_says_the_fork() {
+    let mut banner = rewrite(false, false);
+    if let Some(rewrite) = banner.rewrite.as_mut() {
+        rewrite.chain = Some(BannerChain::Fork {
+            branch: "feature-x".to_owned(),
+            at: "a1b2c3d".to_owned(),
+        });
+    }
+    assert_eq!(
+        banner_line(&banner, WIDE),
+        "REBASING  step 3 of 7 · pick 5d4c3b2 wip: tests · feature-x, forked at a1b2c3d"
+    );
+    assert_eq!(
+        banner_line(&banner, 50),
+        "REBASING  step 3 of 7 · pick 5d4c3b2",
+        "the chain words drop with the subject"
+    );
+}
 
 #[test]
 fn a_rewrite_stop_says_the_step_the_row_and_the_branch() {

@@ -33,7 +33,7 @@ use graft_graph::row::Row;
 use graft_term::SanitizedText;
 
 pub use badges::{Badge, BadgeKind, Icons, Tracking};
-pub use banner::{BannerView, RewriteBannerView, banner_line};
+pub use banner::{BannerChain, BannerView, RewriteBannerView, banner_line};
 pub use columns::{absolute_date, initials, relative_date, relative_date_long, short_sha};
 pub use header::{APP_NAME, HeaderView, header_line, tail_room};
 pub use hints::{
