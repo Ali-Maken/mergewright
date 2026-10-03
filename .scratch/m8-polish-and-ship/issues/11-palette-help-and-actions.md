@@ -3,7 +3,7 @@
 Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: the screen is specified (DESIGN §1.6, §1.16,
 keymap §2.12); the table it reads is fixed by G-keymap.
-Blocked by: 08, 09, 10
+Blocked by: 08, 09, 09b, 10
 Needs: `keymap-table-and-translate` (`Keymap::in_context`, `spell`, `KeyWarning::words`, `context_of`,
 `AppState::config_problems`), `keymap-spell-from-the-table` (hints over `ActionId`), `look-outside-repo-screen`
 (empty state answers `?`).
@@ -92,3 +92,5 @@ pub fn fuzzy_score(query: &str, text: &str) -> Option<u32>;
 
 ## Size
 One context, ~75k tokens. If the doorway re-shoot list alone is large, captures go to a Sonnet follow-up.
+
+> Conductor (2026-10-04, from the 09/09b split by planner-fable): this ticket must call `dispatch_key` (09) rather than matching keys itself.
