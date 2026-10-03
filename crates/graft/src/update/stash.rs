@@ -507,7 +507,7 @@ fn request_drop(next: &mut AppState) -> bool {
     .with_labels("Keep", "Drop");
     next.confirm = Some(PendingConfirm {
         view,
-        then: ConfirmThen::Operate(Operation::StashDrop { index, commit }),
+        then: ConfirmThen::operate(Operation::StashDrop { index, commit }),
     });
     true
 }

@@ -2502,7 +2502,7 @@ fn a_narrow_bar_keeps_the_y_hint() {
     let mut push = changes_pane_state(80, 24);
     push.confirm = Some(PendingConfirm {
         view: crate::update::remote::push_box(&params, Some(1), None, None),
-        then: ConfirmThen::Operate(Operation::Push(params)),
+        then: ConfirmThen::operate(Operation::Push(params)),
     });
     assert_eq!(
         box_bar(&push, 80, 24),

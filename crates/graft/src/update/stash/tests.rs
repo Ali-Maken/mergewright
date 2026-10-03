@@ -413,7 +413,7 @@ fn d_asks_first_and_says_it_comes_back_at_stash_zero() {
     );
     assert_eq!(
         pending.then,
-        ConfirmThen::Operate(Operation::StashDrop {
+        ConfirmThen::operate(Operation::StashDrop {
             index: 0,
             commit: oid(10),
         })

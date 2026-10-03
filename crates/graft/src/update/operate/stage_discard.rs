@@ -138,7 +138,7 @@ pub fn request_discard(next: &mut AppState) -> bool {
     .with_labels("Cancel", verb);
     next.confirm = Some(PendingConfirm {
         view,
-        then: ConfirmThen::Operate(Operation::Discard(Target::Paths(vec![path]))),
+        then: ConfirmThen::operate(Operation::Discard(Target::Paths(vec![path]))),
     });
     true
 }

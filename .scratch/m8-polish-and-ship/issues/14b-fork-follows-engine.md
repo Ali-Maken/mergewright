@@ -1,6 +1,6 @@
 # G-daily 3a — a branch forked off a rewritten commit follows when clean (engine + preview data)
 
-Status: ready
+Status: done
 Build with: Opus (conductor, after scout `scouts/14b-fork-follows.md`; `r` builds its todo via rebase_rows apply/engine.rs:162 → splits off per this ticket's rule; m5 left-behind capture may change)
 Blocked by: 14
 Needs: none (no signature from another ticket). Order: after `daily-ops-fixes` (12b; same graft-ops rewrite files).
@@ -173,3 +173,32 @@ filter; named: `graft::it m7_walk::rewrite_editor::the_box_says_who_stays_behind
 
 **Next step:** conductor rules on 1 and 2; then rerun `cargo nextest run --workspace --no-fail-fast` and list the
 other 4 failures; gates; commit `m8-14b: ...`.
+
+## Continuation 2 (2026-10-03) — no compaction; scout `scouts/14b-fork-follows.md` (from the first session) used
+
+**Conductor rulings applied:**
+1. Clippy `large_enum_variant` (`update/confirm.rs`): `ConfirmThen::Operate(Box<Operation>)` + constructor
+   `ConfirmThen::operate(op)`. 21 sites: 17 constructions renamed to `operate(..)`; pattern sites rewritten
+   (`confirm.rs` `takes_y` now matches `&**op` inside one `Operate` arm, same answers; `confirm_key` launches `*op`;
+   `operate/tests.rs`, `remote/tests/lease.rs`, `tests/it/remote_by_key.rs` deref the box). graft MAP.md updated.
+2. m7 walk: the fixture's `feature-b` (off part 1, own file) now follows. Re-shot with `GRAFT_UPDATE_SHOTS=1`:
+   `docs/shots/m7/amend-into-left-behind-187x44.txt`, `docs/shots/m7/rewrite-editor-left-behind-187x44.txt`. Diffs
+   read line by line — only the fork-follows change: feature-b's label moves off the old b1 onto a new ghost b1 on
+   the new part 1; `3 commits replayed` → `4`; `left behind: feature-b …` → `feature-b f81a2f8 → 2 new commits ·
+   built on yours · follows` (box) / `built on yours: feature-b (Graft Fixture, 1 commit) follows` (editor AFTER).
+   Tests `the_box_says_who_stays_behind`, `the_rewrite_editor_after_says_who_stays_behind` (names kept) now assert
+   the follows line in the same place and no `left behind`; unused `old_part_one` removed.
+
+**For 14c (question, not a defect):** the app words a follower fork with the dependent's phrase `built on yours`
+(capture above). ADR-0059 distinguishes a fork from a dependent; whether the words should differ is 14c's call.
+File names `*-left-behind-*` now show a follow; 14c retakes/renames.
+
+**Environment:** 6+ graft tests (`askpass_mode::*`, `box_owns_the_bar::capture_fix_box_owns_the_bar`,
+`credential_by_key::*`, `daily_landing::j18_…`) fail when `$TMPDIR` is this harness's long path (`path must be
+shorter than SUN_LEN`, askpass socket). Not this ticket; gates run with `TMPDIR=/tmp`.
+
+## Continuation 3 (2026-10-03) — gates only, no code change, no compaction
+Workspace gates on this tree (`TMPDIR=/tmp`): `cargo fmt --check` ok; `cargo clippy --all-targets -- -D warnings`
+exit 0; `cargo nextest run --workspace --no-fail-fast` 5270/5270 passed, 9 skipped (757 s); `cargo test --doc` ok.
+Captures re-read: both m7 files 4.7 KB, diff shows only the follow (feature-b ghost on new part 1, `follows` line,
+no `left behind`). Ticks 10/10 name tests.

@@ -246,7 +246,7 @@ pub(in crate::update) fn repush_chosen(state: &mut AppState, params: PushParams)
     let view = push_box(&params, head_ahead(state), local_tip, None);
     state.confirm = Some(PendingConfirm {
         view,
-        then: ConfirmThen::Operate(Operation::Push(params)),
+        then: ConfirmThen::operate(Operation::Push(params)),
     });
 }
 
