@@ -132,6 +132,25 @@ fn a_chain_stop_names_the_branch_in_the_banner() {
     );
 }
 
+/// A stop inside a fork's section (ADR-0059 §3, m8/14c) names the fork
+/// where the line form names the branch, on a line of one branch or more.
+#[test]
+fn a_stop_inside_a_fork_names_the_fork() {
+    for chain in [Some(("feature-b", 2, 3)), None] {
+        let mut stop = read(TodoAction::Pick, chain, false);
+        stop.progress.fork = Some(Box::new(graft_ops::rewrite::ForkStop {
+            name: "feature-x".to_owned(),
+            at: oid(0xa1),
+        }));
+        let state = live(Some(Ok(stop)), &["src/auth.rs"]);
+        assert_eq!(
+            words(&state),
+            "REBASING  step 2 of 5 \u{b7} pick 0303030 wip: tests \u{b7} feature-x, forked at a1a1a1a",
+            "{chain:?}"
+        );
+    }
+}
+
 #[test]
 fn a_single_branch_stop_has_no_chain_words() {
     let state = live(Some(Ok(read(TodoAction::Pick, None, false))), &["a.rs"]);

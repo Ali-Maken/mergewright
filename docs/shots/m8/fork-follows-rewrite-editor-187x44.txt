@@ -1,0 +1,44 @@
+REWRITE feature-a · 3 commits since it left main · newest first · nothing written until y       │ AFTER y · not written yet
+                                                                                                │
+   pick      bb8335d  feature a: part 3                                                         │ feature-b  ○ new    b1                 follows
+   pick      86eea6e  feature a: part 2                                                         │ feature-a  ● new    feature a: part 3
+ ▸ drop ✗    1875dfa  feature a: part 1  left out                                               │            ○ new    feature a: part 2
+ ─ main      fb4d697  m1                 stays                                                  │ main       fb4d697  m1                 unchanged
+                                                                                                │
+                                                                                                │ feature-b follows · 1 commit from 1875dfa
+                                                                                                │ ! feature-c stays on 86eea6e · would conflict in one.txt
+                                                                                                │ no conflicts expected
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+                                                                                                │
+
+ y rewrite  ⏎ changes  p pick  r reword  e edit  s squash  f fixup  d drop  alt+↑↓ move  esc cancel

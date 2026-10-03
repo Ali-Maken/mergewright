@@ -1,0 +1,44 @@
+ ◆ api  ~/code/api · feature-a                                                                                                                                                   6 commits
+
+    ●        [feature-c] c1                                                                                                                                                GF 2d   c3bb926
+    │ ●      b1                                                                                                                                                            GF 2d   c9b786e
+    │ │ ●    feature a: part 3                                                                                                                                             GF 2d   bb8335d
+    ●─│─╯    feature a: part 2                                                                                                                                             GF 2d   86eea6e
+▸   ●─╯      feature a: part 1                                                                                                                                             GF 2d   1875dfa
+    │        the result
+    │ ○      [feature-b] b1                                                                                                                                                GF —    —
+    │ │ ○    [◆ feature-a] feature a: part 3                                                                                                                               GF —    —
+    │ │ ○    feature a: part 2                                                                                                                                             GF —    —
+    │ ○┈╯    feature a: part 1                                                                                                                                             GF —    —
+  ◇─┴─╯      [main] m1                                                                                                                                                     GF 2d   fb4d697
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: put your staged changes into 1875dfa "feature a: part 1" ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 1875dfa  feature a: part 1  gains  one.txt +1 −1                                                                                                                                        │
+│ 4 commits replayed                                                                                                                                                                      │
+│ branches: feature-a bb8335d → 3 new commits                                                                                                                                             │
+│           feature-b follows · 1 commit from 1875dfa                                                                                                                                     │
+│           ! feature-c stays on 86eea6e · would conflict in one.txt                                                                                                                      │
+│ HEAD → feature-a                                                                                                                                                                        │
+│ working tree: 1 file updated                                                                                                                                                            │
+│ no conflicts expected                                                                                                                                                                   │
+│ undo: u takes this back                                                                                                                                                                 │
+│ git rebase -i --no-update-refs --no-autostash --empty=drop fb4d6972c6d67d4a304dc423eb2dd472bf384ae8                                                                                     │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                                                                                               │
+╰ y put it in  ←→ choose  ⏎ act  esc cancel ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+

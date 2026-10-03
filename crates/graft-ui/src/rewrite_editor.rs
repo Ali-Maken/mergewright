@@ -48,8 +48,8 @@ pub use layout::rewrite_row_at;
 use layout::{RowLine, band, layout, row_lines};
 use right::{draw_message, draw_right};
 pub use view::{
-    AfterMark, AfterRow, AfterView, ChangesView, EditorRow, FieldView, MessageBlock,
-    RewriteEditorView, RightSide, RowMark,
+    AfterFact, AfterMark, AfterRow, AfterView, ChangesView, EditorRow, FactTone, FieldView,
+    MessageBlock, RewriteEditorView, RightSide, RowMark,
 };
 
 #[cfg(test)]

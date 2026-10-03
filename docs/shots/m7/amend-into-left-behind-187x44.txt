@@ -32,7 +32,7 @@
 │ e662b82  feature a: part 1  gains  one.txt +1 −1                                                                                                                                        │
 │ 4 commits replayed                                                                                                                                                                      │
 │ branches: feature-a 89f73ff → 3 new commits                                                                                                                                             │
-│           feature-b f81a2f8 → 2 new commits · built on yours · follows                                                                                                                  │
+│           feature-b follows · 1 commit from e662b82                                                                                                                                     │
 │ HEAD → feature-a                                                                                                                                                                        │
 │ working tree: 1 file updated                                                                                                                                                            │
 │ no conflicts expected                                                                                                                                                                   │

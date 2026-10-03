@@ -423,7 +423,11 @@ fn progress_inside_a_section_names_the_fork() {
     let at = progress(&repo.open(), &Never)
         .expect("progress reads")
         .expect("a rebase is under way");
-    assert_eq!(at.fork.as_deref(), Some("feature-x"));
+    // Named, and where it leaves the line: c2, the old commit under x1
+    // (feature-x has not moved: git writes it when the rebase ends).
+    let fork = at.fork.as_ref().expect("inside feature-x's section");
+    assert_eq!(fork.name, "feature-x");
+    assert_eq!(fork.at, id(&repo, "feature-x~2"), "c2, old");
     let done = std::fs::read_to_string(repo.path().join(".git/rebase-merge/done"))
         .expect("git's done file reads");
     let pick_like = done

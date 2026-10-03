@@ -3,6 +3,7 @@
 
 pub mod amend_into;
 pub mod blame;
+pub mod fork_rows;
 pub mod history;
 pub mod journal;
 pub mod picker;

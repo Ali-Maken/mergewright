@@ -3800,7 +3800,7 @@ fn commits_drawn(frame: &str) -> std::collections::BTreeSet<u8> {
 
 /// A rebase plan with one ghost anchored on `anchor`, replaying `replayed`
 /// and carrying `feature`'s badge onto the ghost.
-fn one_ghost_over(anchor: Oid, replayed: Oid) -> graft_ops::preview::PreviewPlan {
+pub(super) fn one_ghost_over(anchor: Oid, replayed: Oid) -> graft_ops::preview::PreviewPlan {
     use graft_ops::preview::{
         ConflictForecast, GhostCommit, HeadMove, PreviewPlan, RefMove, Target, UndoNote,
         WorktreeEffect, ghost_oid,

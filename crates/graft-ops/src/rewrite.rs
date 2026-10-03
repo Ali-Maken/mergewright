@@ -334,9 +334,23 @@ pub struct RewriteProgress {
     /// commits of its own still in `pending` (m7-power-tools/07d). Empty
     /// when `branch` is `None`.
     pub followers: Vec<Follower>,
-    /// The fork whose section git is in (ADR-0059 §3), short name
-    /// (`feature-x`): the step belongs to it, not to the line.
-    pub fork: Option<String>,
+    /// The fork whose section git is in (ADR-0059 §3): the step belongs to
+    /// it, not to the line. `None` outside a section, and in one with no
+    /// commit of its own (nothing there can stop). Boxed: this struct sits
+    /// inline in the app's state, and 40 more bytes there took tests that
+    /// hold a few states in an array past clippy's `large_stack_arrays`.
+    pub fork: Option<Box<ForkStop>>,
+}
+
+/// The fork a stopped rewrite is replaying (m8/14c): the banner's
+/// `feature-x, forked at a1b2c3d`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ForkStop {
+    /// Short name (`feature-x`).
+    pub name: String,
+    /// The old commit it leaves the line at: its first own commit's parent
+    /// ([`crate::preview::Fork::at`]).
+    pub at: Oid,
 }
 
 impl RewriteProgress {

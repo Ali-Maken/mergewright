@@ -113,8 +113,39 @@ pub enum AfterView {
         /// The branches after `y`, top down, base last.
         rows: Vec<AfterRow>,
         /// `built on yours: …`, `on origin: …`, `no conflicts expected`.
-        facts: Vec<SanitizedText>,
+        facts: Vec<AfterFact>,
     },
+}
+
+/// One fact under the AFTER rows, and how loud it is drawn.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AfterFact {
+    /// The words; a warning's lead with `!`, its shape where colour is lost.
+    pub text: SanitizedText,
+    /// Its tone.
+    pub tone: FactTone,
+}
+
+impl AfterFact {
+    /// A fact in the plain `Text` tone.
+    #[must_use]
+    pub fn plain(text: SanitizedText) -> Self {
+        Self {
+            text,
+            tone: FactTone::Plain,
+        }
+    }
+}
+
+/// How an [`AfterFact`] is drawn (m8/14c).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FactTone {
+    /// `Text`.
+    Plain,
+    /// `Warning`: something may go wrong (`! may conflict`, `! … would conflict`).
+    Warning,
+    /// `TextMuted`: true, nothing to act on (a branch that stays for a plain reason).
+    Muted,
 }
 
 /// One AFTER row.

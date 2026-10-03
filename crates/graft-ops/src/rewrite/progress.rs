@@ -17,7 +17,7 @@ use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use crate::facts::FactsError;
 
 use super::todo::FORK_LABEL;
-use super::{EditStop, Follower, RewriteProgress, TodoAction, TodoLine, saved};
+use super::{EditStop, Follower, ForkStop, RewriteProgress, TodoAction, TodoLine, saved};
 
 /// One line of a todo file git is running.
 enum Row {
@@ -64,7 +64,10 @@ pub fn progress(repo: &RepoHandle, stop: &dyn Stop) -> Result<Option<RewriteProg
     let counted = (done_rows.len(), done_rows.len() + commits(&to_do).count());
     let current = done_rows.last().map(|line| (*line).clone());
     let section = open_section(&done);
-    let fork = section.and_then(|label| fork_of(label, &done, &to_do));
+    let fork = match section {
+        Some(label) => fork_stop(repo, label, &done, &to_do, stop)?,
+        None => None,
+    };
     let pending = pending(&to_do, section.is_some());
 
     let plans = saved::all(repo).map_err(FactsError::SavedPlan)?;
@@ -123,10 +126,18 @@ fn open_section(done: &[Row]) -> Option<&str> {
 }
 
 /// The fork a section moves: the last `update-ref` before the section's
-/// `reset` — the todo puts the fork's own after the branches on it. Read
-/// from git's files alone, so a rebase of Graft's todo begun in the shell
-/// names it too. Short name (`feature-x`).
-fn fork_of(label: &str, done: &[Row], to_do: &[Row]) -> Option<String> {
+/// `reset` — the todo puts the fork's own after the branches on it — and
+/// where it leaves the line: the parent of the section's first commit row
+/// (one `rev-parse`). Read from git's files alone, so a rebase of Graft's
+/// todo begun in the shell names it too. `None` for a section with no
+/// commit row or no `update-ref`.
+fn fork_stop(
+    repo: &RepoHandle,
+    label: &str,
+    done: &[Row],
+    to_do: &[Row],
+    stop: &dyn Stop,
+) -> Result<Option<Box<ForkStop>>, FactsError> {
     let since_label = done
         .iter()
         .rposition(|row| matches!(row, Row::Label(name) if name == label))
@@ -135,15 +146,23 @@ fn fork_of(label: &str, done: &[Row], to_do: &[Row]) -> Option<String> {
         .iter()
         .position(|row| matches!(row, Row::Reset(name) if name == label))
         .map_or(to_do, |at| &to_do[..at]);
-    since_label
-        .iter()
-        .chain(until_reset)
+    let section = || since_label.iter().chain(until_reset);
+    let name = section()
         .filter_map(|row| match row {
             Row::UpdateRef(name) => Some(name),
             _ => None,
         })
         .next_back()
-        .map(|name| name.strip_prefix("refs/heads/").unwrap_or(name).to_owned())
+        .map(|name| name.strip_prefix("refs/heads/").unwrap_or(name).to_owned());
+    let first = section().find_map(|row| match row {
+        Row::Commit(line) => Some(line.commit),
+        _ => None,
+    });
+    let (Some(name), Some(first)) = (name, first) else {
+        return Ok(None);
+    };
+    let at = resolve(repo, &format!("{first}^"), stop)?;
+    Ok(Some(Box::new(ForkStop { name, at })))
 }
 
 /// The rows still to apply, oldest first: the line's, and — when git is in

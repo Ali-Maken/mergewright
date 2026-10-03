@@ -51,13 +51,45 @@ pub struct RewriteBannerView {
     pub sha7: String,
     /// The stopped row's subject, sanitised by `graft`.
     pub subject: String,
-    /// The branch of the line this step belongs to, its place (1-based) and
-    /// how many branches the line has. `None` for a single branch and for a
-    /// rebase begun in the shell.
-    pub chain: Option<(String, usize, usize)>,
+    /// Whose step this is: a branch of the line, or a fork replayed with it.
+    /// `None` for a single branch outside a fork, and for a rebase begun in
+    /// the shell.
+    pub chain: Option<BannerChain>,
     /// An `edit` stop: adds `change files, space stages, a amends it, c
     /// continues · ⇥ banner`.
     pub edit_hint: bool,
+}
+
+/// The chain words of [`RewriteBannerView`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum BannerChain {
+    /// `feature-b, branch 2 of 3`: the branch of the line, its place
+    /// (1-based) and how many branches the line has.
+    Line {
+        /// The branch, short.
+        branch: String,
+        /// Its place, 1-based.
+        index: usize,
+        /// How many branches the line has.
+        of: usize,
+    },
+    /// `feature-x, forked at a1b2c3d` (ADR-0059 §3, m8/14c): a fork that
+    /// follows, in its section of the rebase.
+    Fork {
+        /// The fork, short.
+        branch: String,
+        /// The old commit it leaves the line at, short.
+        at: String,
+    },
+}
+
+impl BannerChain {
+    fn words(&self) -> String {
+        match self {
+            Self::Line { branch, index, of } => format!("{branch}, branch {index} of {of}"),
+            Self::Fork { branch, at } => format!("{branch}, forked at {at}"),
+        }
+    }
 }
 
 /// `banner`'s text in `width` cells (the banner's own room, after the
@@ -98,10 +130,7 @@ pub fn banner_line(banner: &BannerView, width: u16) -> String {
         base.push_str(&format!("  step {step} of {total}"));
     }
     let row = format!("{} {}", rewrite.action, rewrite.sha7);
-    let chain = rewrite
-        .chain
-        .as_ref()
-        .map(|(branch, index, of)| format!("{branch}, branch {index} of {of}"));
+    let chain = rewrite.chain.as_ref().map(BannerChain::words);
     let hint = rewrite.edit_hint.then_some(EDIT_HINT);
     // Widest first; each rung drops the next piece: the hint, the subject,
     // the chain words. Below the last, the row itself goes (`base`).

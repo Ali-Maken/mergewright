@@ -230,10 +230,23 @@ pub fn banner_view(state: &AppState) -> Option<BannerView> {
             action: row.action.word().to_owned(),
             sha7: row.commit.to_string().chars().take(7).collect(),
             subject: sanitize_line(&row.subject).as_str().to_owned(),
-            chain: progress.branch.as_ref().map(|(name, index, of)| {
-                let name = String::from_utf8_lossy(name.shorthand());
-                (sanitize_line(&name).as_str().to_owned(), *index, *of)
-            }),
+            // Inside a fork's section the step is the fork's, not the line
+            // branch's (ADR-0059 §3).
+            chain: match (&progress.fork, &progress.branch) {
+                (Some(fork), _) => Some(graft_ui::graph_screen::BannerChain::Fork {
+                    branch: sanitize_line(&fork.name).as_str().to_owned(),
+                    at: fork.at.to_string().chars().take(7).collect(),
+                }),
+                (None, Some((name, index, of))) => {
+                    let name = String::from_utf8_lossy(name.shorthand());
+                    Some(graft_ui::graph_screen::BannerChain::Line {
+                        branch: sanitize_line(&name).as_str().to_owned(),
+                        index: *index,
+                        of: *of,
+                    })
+                }
+                (None, None) => None,
+            },
             edit_hint: rewrite.edit.is_some(),
         });
     }

@@ -1,0 +1,44 @@
+ ◆ api  ~/code/api · detached c9b786e             REBASING  step 2 of 4 · edit c9b786e b1 · feature-b, forked at 1875dfa · change files, space stages, a amends it, c continues · ⇥ banner
+
+╭ still to apply · not commits yet ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ pick bb8335d feature a: part 3                                                                                                                                                          │
+│ pick 86eea6e feature a: part 2                                                                                                                                                          │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+    ●        [feature-c] c1                                                                                                                                                GF 2d   c3bb926
+▸   │ ◆      [HEAD] [feature-b] b1  HEAD · stopped here                                                                                                                    GF 2d   c9b786e
+    │ │ ●    [feature-a] feature a: part 3                                                                                                                                 GF 2d   bb8335d
+    ●─│─╯    feature a: part 2                                                                                                                                             GF 2d   86eea6e
+    ●─╯      feature a: part 1                                                                                                                                             GF 2d   1875dfa
+  ◇─╯        [main] m1                                                                                                                                                     GF 2d   fb4d697
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⇥ banner · a amend it · c continue · space stage · m merge · r rebase · ⏎ open · b branch · t tag · P push · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · . more

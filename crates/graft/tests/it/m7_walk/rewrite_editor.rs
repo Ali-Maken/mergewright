@@ -490,7 +490,7 @@ fn the_rewrite_editor_after_says_who_stays_behind() {
     let lines: Vec<&str> = body.lines().collect();
     let left = lines
         .iter()
-        .position(|line| line.contains("feature-b") && line.contains(") follows"))
+        .position(|line| line.contains("feature-b follows \u{b7} 1 commit from "))
         .unwrap_or_else(|| panic!("feature-b follows: {body}"));
     assert!(
         !body.contains("left behind"),
