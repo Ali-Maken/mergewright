@@ -1112,6 +1112,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/06-back-short-form | 06 changed the `back to …` short form to `back`; not in the spec — needs a ruling (planner/words sweep 20). | **unverified** | M8 |
 | M8/06-confirm-box-covers-columns | Question (rule 7, no line): after 06, do confirm boxes cover the date/sha columns? Builder saw it, cause not traced. | **unverified** | M8 |
 | M8/06-stale-graft-headers | 214 old captures still show ` graft ` headers; no test produces them, so not re-shot. Stale until 26/27 rename or a sweep. | **broken** | M8 |
+| M8/14-fix-open | After 14 review fixes: outcome.rs 402 lines (>400); journal Aborted reason doesn't name files that came back; review Minors 1–4 not done (see M8/14-review-minors). | **broken** | M8 |
+| M8/14-fix-risks | Reword text kept keyed on HEAD oid; `c`'s draft no longer gets reword text; each `a` costs one extra plan. Judge in daily use / M8 review. | **unverified** | M8 |
 | M8/long-tmpdir-socket | 6+ graft tests fail when `$TMPDIR` is a long path (unix-socket path limit); Paperclip runs set one. Gates pass with `TMPDIR=/tmp`. Tests should not depend on `$TMPDIR` length — cause not fixed. | **broken** | M8 |
 | M8/startup-rs-564 | `startup.rs` 564 lines, over the readability limit; outside 02's file set, not split. | **broken** | M8 |
 | M8/14c-fork-wording | A fork that follows reads "built on yours", same as a dependent — 14c to decide (question). `docs/shots/m7/*-left-behind-*` now show a follow; names stale. | **unverified** | M8 |
