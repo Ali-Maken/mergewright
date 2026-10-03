@@ -87,12 +87,21 @@ impl DetailState {
             self.abandoned = true;
         }
         commands.extend(self.cancel_contained());
-        if let Loading::Pending(id) = self.evil {
-            commands.push(Command::CancelJob(id));
-            // `Idle`, so `probe_evil` asks again if the cursor rests here.
-            self.evil = Loading::Idle;
-        }
+        commands.extend(self.abandon_probe());
         commands
+    }
+
+    /// The part of [`Self::abandon`] for a pane that does not follow the
+    /// cursor (hidden, or a compare opened from the menu): only the
+    /// evil-merge probe follows the selection there, so only it is
+    /// cancelled. The pane's own reads are for what it still shows.
+    pub(crate) fn abandon_probe(&mut self) -> Vec<Command> {
+        let Loading::Pending(id) = self.evil else {
+            return Vec::new();
+        };
+        // `Idle`, so `probe_evil` asks again if the cursor rests here.
+        self.evil = Loading::Idle;
+        vec![Command::CancelJob(id)]
     }
 
     /// Cancel the "contained in" query in flight, and forget its

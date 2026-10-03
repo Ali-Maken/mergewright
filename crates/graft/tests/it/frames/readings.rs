@@ -36,6 +36,7 @@ impl<D> Paced<'_, D> {
                 Kind::Key(key, _) => format!("{:?}", keys[key].0),
                 Kind::Window(_) => "Window".to_owned(),
                 Kind::Other => "Other".to_owned(),
+                Kind::Rest => "Rest".to_owned(),
             };
             let frame = after.minus(*before);
             match groups.iter_mut().find(|(group, ..)| *group == name) {
@@ -251,7 +252,8 @@ impl<D> Paced<'_, D> {
         let mut woke = Vec::new();
         for handed in &self.handed[range] {
             match handed.kind {
-                Kind::Key(..) => {}
+                // Neither is a job's wake: a key, and the loop's own rest.
+                Kind::Key(..) | Kind::Rest => {}
                 Kind::Window(id) if asked.contains(&id) && answered.insert(id) => {}
                 Kind::Window(_) | Kind::Other => woke.push(handed.label),
             }

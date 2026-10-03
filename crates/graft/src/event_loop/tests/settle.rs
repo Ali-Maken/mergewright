@@ -484,6 +484,84 @@ fn after_rest_the_pane_shows_the_cursors_commit_in_the_first_frame_after_its_fil
     );
 }
 
+/// The newest `ListFiles` id in `commands`.
+fn listed(commands: &[Command]) -> Option<graft_core::job::JobId> {
+    commands.iter().rev().find_map(|command| match command {
+        Command::ListFiles(id, ..) => Some(*id),
+        _ => None,
+    })
+}
+
+/// Review M1 (m8-03): a compare opened from the menu (no base pinned) does
+/// not follow the cursor, so a burst must leave its read alone. Before the
+/// fix, the second `j` cancelled the compare's file list and nothing asked
+/// again: the body said `reading…` with nothing reading.
+#[test]
+fn a_burst_leaves_a_menu_compares_pending_files_alone() {
+    let mut state = graph(0, true);
+    let compare = DetailSpec::Compare {
+        base: commit_on(20),
+        head: commit_on(10),
+    };
+    let mut ids = state.local_jobs;
+    let opened = state.detail.open(compare, &mut || ids.next_id());
+    state.local_jobs = ids;
+    // Back on the graph (`Tab`), so `j` moves the cursor.
+    state.detail.focus = graft_ui::detail::DetailFocus::Graph;
+    let id = listed(&opened).expect("the compare listed its files");
+
+    let jobs = Recorded::default();
+    let mut wakes = Timed::new(&jobs, held_j(10, Duration::from_millis(16)));
+    let (state, _) = run(state, &mut wakes);
+    assert_eq!(cursor(&state), 10);
+    let commands = jobs.commands();
+    assert!(!cancels(&commands).contains(&id), "{commands:?}");
+    assert_eq!(state.detail.spec, Some(compare));
+    assert_eq!(state.detail.files, Loading::Pending(id));
+    assert!(!state.detail.abandoned);
+    assert!(!crate::view::detail_view(&state).following);
+
+    // The answer still lands.
+    let (answered, _) = crate::update::update(
+        &state,
+        AppEvent::Produced(id, Product::Files(Ok(one_file()))),
+    );
+    assert!(matches!(answered.detail.files, Loading::Ready(_)));
+}
+
+/// Review M3 (m8-03): with a base pinned the pane follows as a compare
+/// against it — held, it asks on the leading edge and once at rest, for
+/// the row the cursor rested on.
+#[test]
+fn a_pinned_compare_follows_at_rest() {
+    let mut state = graph(0, true);
+    let base = commit_on(40);
+    state.compare_base = Some(crate::update::detail::CompareBase { oid: base, row: 40 });
+    let jobs = Recorded::default();
+    let mut wakes = Timed::new(&jobs, held_j(10, Duration::from_millis(16)));
+    let (state, _) = run(state, &mut wakes);
+    assert_eq!(cursor(&state), 10);
+    let commands = jobs.commands();
+    let handed = &wakes.handed;
+    let lists = |from: usize, to: usize| {
+        commands[from..to]
+            .iter()
+            .filter(|c| matches!(c, Command::ListFiles(..)))
+            .count()
+    };
+    assert_eq!(lists(handed[0], handed[1]), 1, "the leading edge");
+    assert_eq!(lists(handed[1], handed[9]), 0, "mid-burst");
+    assert_eq!(lists(handed[9], commands.len()), 1, "at rest");
+    assert_eq!(
+        state.detail.spec,
+        Some(DetailSpec::Compare {
+            base,
+            head: commit_on(10)
+        })
+    );
+    assert!(!follow_behind(&state));
+}
+
 /// Update-level: a burst starts with the pane following row `from`, and the
 /// state the burst left plus the first follow's commands.
 fn mid_burst(from: usize, shown: bool) -> (AppState, Vec<Command>) {

@@ -68,7 +68,7 @@ pub use events::{
 pub(crate) use geometry::context_menu_area;
 pub(crate) use history::walk_is_reading;
 pub use relaunch::LiveOrigin;
-pub(crate) use selection::{FollowKey, follow_behind, follow_key};
+pub(crate) use selection::{FollowKey, follow_behind, follow_key, pane_follows};
 pub use state::{
     AppState, Banner, CHROME_ROWS, ClashState, GraphOverlay, Harness, HeadLanding, Quit, RefsRead,
     Screen, Size, StashOnlyMarks, Status, Stop,
@@ -188,8 +188,14 @@ fn settle(next: &mut AppState, commands: &mut Vec<Command>, cursor_before: usize
         // Mid-burst (G-settle): the follow is owed until the loop says the
         // cursor rested (`AppEvent::Rested`). What the last follow started
         // is for a row the cursor has left: cancelled, once — after this
-        // nothing is pending, so later moves of the burst add nothing.
-        commands.extend(next.detail.abandon());
+        // nothing is pending, so later moves of the burst add nothing. A
+        // pane that does not follow the cursor (hidden, or a menu compare)
+        // keeps its reads: only the merge probe followed the cursor.
+        if selection::pane_follows(next) {
+            commands.extend(next.detail.abandon());
+        } else {
+            commands.extend(next.detail.abandon_probe());
+        }
     } else {
         commands.extend(selection::follow_selection(next, &mut || {
             local_jobs.next_id()

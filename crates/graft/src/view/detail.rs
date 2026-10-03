@@ -67,12 +67,10 @@ pub fn detail_view(state: &AppState) -> DetailView {
 }
 
 /// The pane is behind the cursor and will catch up when it rests
-/// (G-settle): a follow is owed, and the pane is one that follows — not a
-/// compare opened from the menu, which stays put.
+/// (G-settle): a follow is owed, and the pane is one that follows
+/// (`update::pane_follows`, the same predicate that holds the follow).
 fn following(state: &AppState) -> bool {
-    let fixed = state.compare_base.is_none()
-        && matches!(state.detail.spec, Some(DetailSpec::Compare { .. }));
-    state.detail.shown && !fixed && crate::update::follow_behind(state)
+    crate::update::pane_follows(state) && crate::update::follow_behind(state)
 }
 
 /// The row for `oid`: the cursor's, or — while the pane is behind a moving

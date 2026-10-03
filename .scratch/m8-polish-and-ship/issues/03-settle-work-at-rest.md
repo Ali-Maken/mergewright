@@ -121,8 +121,14 @@ MAP.md records them.
 - [x] (workspace `cargo nextest run`: 5223/5223 passed) Existing `update` tests unchanged and green (they run with `defer_follow = false`); the gate run proves it.
 - [x] (`event_loop::tests::settle::capture_the_pane_following_a_burst`) Capture `docs/shots/m8/settle-following.txt`: a mid-burst frame. Cursor row 6+ rows below the pane's commit,
       pane title ending `reading…`. Muted colour **unverified** (rule 5).
-- [x] (`scripts/m8-pace.sh docs/perf/m8-settle.txt`, J1 lines) J1 tail ≤ 100 ms, unchanged or better: `scripts/m8-pace.sh` → `docs/perf/m8-settle.txt`, held_key summary
-      lines against `docs/perf/m8-pace.txt`.
+- [x] (`scripts/m8-pace.sh docs/perf/m8-settle.txt`, J1 lines) J1 tail ≤ 100 ms — **held**: Pixel deflate 40 MB/s 36 ms
+      (`docs/perf/m8-settle.txt:78`), under load 25–35.
+- [ ] J1 unchanged or better — **unverified** (review C1): load 25–35 vs 10–22 at the baseline, so the numbers are not
+      evidence either way; measured at `d7ee721d`, before 04's merge; and `held_key` ran with the pane hidden, where
+      this ticket changes almost nothing. Re-measured in the M8 review's release perf run (`scripts/m8-pace.sh`), on a
+      tree with 03 and 04, at matched load. The changed path now has its own J1 lines: `held_key::held_j_with_the_pane_shown_stops_on_release_unicode_40mb`
+      and `…_pixel_deflate` (scenarios `A-pane`, `A-deflate-pane`; `j1_line` rows in the script). Not run here (heavy
+      tier, measurement belongs to the review).
 
 ## Touches
 - Detail pane follow, compare follow (`compare_followed`), the evil-merge mark on the graph row, Explain
@@ -180,3 +186,24 @@ Not done / could not:
 - Real-terminal feel of rest timing (150/50 ms) unverified — only virtual-timeline tests.
 - Muted colour of `reading…` unverified (rule 5).
 - DESIGN: no wording about the pane following "every move" found (`grep -ni follow docs/design/*.md`); no Proposed change.
+
+## NOTES (builder, review fixes C1/M1/M3, 2026-10-03)
+Scout: `scouts/03-settle.md` existed; not re-sent (fixes confined to sites the review named with lines, all re-read). No compaction.
+
+- **C1** — J1 tick split above: "≤ 100 ms" held (36 ms, `m8-settle.txt:78`); "unchanged or better" **unticked, unverified**, owed to the M8 review's release perf run. New J1 scenario for the changed path: `held_key::held_j_with_the_pane_shown_stops_on_release_{unicode_40mb,pixel_deflate}` (pane opened `⏎ Tab Tab`, held `j` down MONOREPO's merge-rich `main`), with `j1_line … A-pane` / `A-deflate-pane` in `scripts/m8-pace.sh`. **Compiled (clippy `--features heavy-tests`), never run** — heavy tier.
+  - Harness change it needed: `frames::paced` now records the loop's own `Rested` turn as a `Kind::Rest` entry (an `Updated` mark after the last wake was applied and drawn) instead of writing its frame over the last wake's. `held_key` A then ends the graph's tail at `written[rest]` and reports the pane's catch-up apart (`rest_frames`, `rest_ms`, unjudged). This also changes the **existing** A scenarios when a rest fires there (pane hidden, cursor stopping on a merge): their tail no longer includes the probe's rest frame. Consistent with J1 being about the graph (review Minor 5); the M8 review should read the A lines knowing it.
+- **M1** — one predicate `update::pane_follows` (shown, not a menu compare) read by `followed`, `follow_waits` and `view::detail::following`. Mid-burst with the pane not following, `settle` calls the new `DetailState::abandon_probe` (probe only); `abandon` cancels everything as before. Cause fix. Test `event_loop::tests::settle::a_burst_leaves_a_menu_compares_pending_files_alone` — **red before the fix** (the compare's `ListFiles` id was in the `CancelJob`s, `settle.rs:518`), green after.
+- **M3** — test `event_loop::tests::settle::a_pinned_compare_follows_at_rest`: base pinned, 10 held `j`: one `ListFiles` on the leading edge, none mid-burst, one at rest; spec `Compare { base, head: row 10 }`.
+
+Touches:
+- Pane follow / compare follow (`compare_followed`) / evil mark / Explain: `followed` refactor is equivalent (same two guards, now via `pane_follows`); covered by the settle loop tests (held `j`, pinned compare, menu compare, hidden pane probe) and the `update` selection/compare tests (160 tests matching `settle|selection|detail|compare` green). Explain: `open_explain` answers a menu choice (an input, `rest_first`), unchanged — not re-tested.
+- Hidden pane mid-burst on a merge: now cancels only the probe; files/diff/contained-in left pending (were cancelled before). `with_the_pane_hidden_only_the_evil_probe_runs_…` still green (asserts the probe cancel).
+- `AppEvent` matches: no new variant in this round (grep not needed; it compiles).
+- Frame harness (`frames::paced`, `readings`, `after_idle`, `journal_find`, `held_key`): `Kind::Rest` added to `kind_name` and `readings` groups; `unasked_wakes` skips it like a key; `journal_find` replays `Rested` as the loop applied it; `after_idle` matches only `Key`/`Window`. Fast-tier frames tests in the workspace run.
+- `trace::tests`, walk `ready`/`settled` helpers, m6/m7 acceptance captures: workspace run (below); `git status` after it shows no `docs/shots/` file rewritten.
+- `view::detail::following` (title `reading…`): same answer as before for every state (shown ∧ ¬fixed ∧ behind); capture `docs/shots/m8/settle-following.txt` not rewritten by the run.
+- MAP.md graft: `pane_follows`, `abandon_probe` added to the G-settle entry.
+- Not touched: design note, research (M2 is the researcher's), KNOWN_GAPS (conductor: Minor 6 rows).
+
+Gates (workspace, own target dir): `cargo fmt --check` ok; `cargo clippy --all-targets -- -D warnings` ok, also with `--features heavy-tests`; `cargo nextest run --workspace` 5309/5309 passed (9 skipped), 624 s; `cargo test --workspace --doc` ok (3). After the run `git status` shows nothing under `docs/shots/` rewritten.
+Not verified: the two pane-shown `held_key` scenarios have never run (heavy tier), so the `Kind::Rest` split has no test at MONOREPO scale yet. If it fails to find the rest there, the A tail falls back to the last byte, as before.
