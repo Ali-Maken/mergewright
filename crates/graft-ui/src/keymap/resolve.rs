@@ -25,16 +25,23 @@ pub struct Keymap {
     chords: Vec<Vec<KeyChord>>,
     /// The override line that set a row's chords; `None` keeps its defaults.
     line: Vec<Option<usize>>,
+    /// Each row's live chords, spelled ([`Keymap::live_labels`]): worked
+    /// out once, because every bar spells its keys many times over while
+    /// its width rule measures.
+    labels: Vec<Vec<String>>,
 }
 
 impl Default for Keymap {
     /// The table as shipped: no overrides.
     fn default() -> Self {
         let rows = defaults();
-        Self {
+        let mut map = Self {
             chords: rows.iter().map(|r| r.default.to_vec()).collect(),
             line: vec![None; rows.len()],
-        }
+            labels: Vec::new(),
+        };
+        map.relabel();
+        map
     }
 }
 
@@ -64,6 +71,7 @@ impl Keymap {
             }
         }
         warned.extend(map.collisions());
+        map.relabel();
         // Stable: within one line, the order they were found in.
         warned.sort_by_key(|(at, _)| *at);
         (map, warned.into_iter().map(|(_, w)| w).collect())
@@ -141,9 +149,10 @@ impl Keymap {
     /// was taken by another in a collision).
     #[must_use]
     pub fn spell(&self, action: &ActionId) -> KeyLabel {
-        self.live(action)
-            .first()
-            .map_or_else(|| KeyLabel("—".to_string()), KeyChord::label)
+        self.live_labels(action).first().map_or_else(
+            || KeyLabel("—".to_string()),
+            |label| KeyLabel(label.clone()),
+        )
     }
 
     /// The hint bar's and the footers' spelling of several actions: each
@@ -155,7 +164,7 @@ impl Keymap {
         join(
             actions
                 .iter()
-                .filter_map(|action| self.live(action).first().map(|c| c.label().0)),
+                .filter_map(|action| self.live_labels(action).first().cloned()),
         )
     }
 
@@ -163,16 +172,32 @@ impl Keymap {
     /// `finish.toggle_diff`); `None` when it has none.
     #[must_use]
     pub fn spell_every(&self, action: &ActionId) -> Option<String> {
-        join(self.live(action).iter().map(|c| c.label().0))
+        join(self.live_labels(action).iter().cloned())
     }
 
-    /// The action's chords that still do it: every chord it holds, less any
-    /// another action of its own context took in a collision. A text
-    /// field's rows are fixed, so all of theirs.
-    fn live(&self, action: &ActionId) -> Vec<KeyChord> {
-        let Some(row) = index_of(action.0) else {
-            return Vec::new();
-        };
+    /// The action's live chords, spelled: every chord it holds, less any
+    /// another action of its own context took in a collision. Empty when
+    /// unbound or not an action.
+    #[must_use]
+    pub fn live_labels(&self, action: &ActionId) -> &[String] {
+        index_of(action.0).map_or(&[], |row| self.labels[row].as_slice())
+    }
+
+    /// Works out [`Keymap::labels`] from the chords as they now stand.
+    fn relabel(&mut self) {
+        self.labels = (0..self.chords.len())
+            .map(|row| {
+                self.live_chords(row)
+                    .iter()
+                    .map(|chord| chord.label().0)
+                    .collect()
+            })
+            .collect();
+    }
+
+    /// Row `row`'s chords that still do it. A text field's rows are fixed,
+    /// so all of theirs.
+    fn live_chords(&self, row: usize) -> Vec<KeyChord> {
         let ctx = defaults()[row].context;
         self.chords[row]
             .iter()
@@ -316,7 +341,15 @@ fn join(labels: impl Iterator<Item = String>) -> Option<String> {
 
 /// The row index of an action id.
 fn index_of(name: &str) -> Option<usize> {
-    defaults().iter().position(|b| b.action.0 == name)
+    static ROWS: std::sync::LazyLock<std::collections::HashMap<&'static str, usize>> =
+        std::sync::LazyLock::new(|| {
+            defaults()
+                .iter()
+                .enumerate()
+                .map(|(row, b)| (b.action.0, row))
+                .collect()
+        });
+    ROWS.get(name).copied()
 }
 
 /// The rows bound in `ctx` itself.

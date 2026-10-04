@@ -37,9 +37,9 @@ pub use banner::{BannerChain, BannerView, RewriteBannerView, banner_line};
 pub use columns::{absolute_date, initials, relative_date, relative_date_long, short_sha};
 pub use header::{APP_NAME, HeaderView, header_line, tail_room};
 pub use hints::{
-    ConfirmYes, Divider, Hint, HintContext, HintState, LiveC, Rung, StopWording, TabWord,
-    blame_place_list, every_context, every_hint, fit_status_line, hints_for, hints_text,
-    stopped_row, stopped_row_before_keys,
+    ConfirmYes, Divider, Hint, HintContext, HintKey, HintState, LiveC, NOT_A_BINDING, Rung,
+    StopWording, TabWord, blame_place_list, every_context, every_hint, fit_status_line, hints_for,
+    hints_text, stopped_row, stopped_row_before_keys,
 };
 pub use layout::{
     Columns, RowLayout, ScreenRows, lanes_that_fit, max_lanes_for, row_at, row_layout, screen_rows,
@@ -139,6 +139,8 @@ pub struct Location {
 /// Everything the graph screen draws.
 #[derive(Clone, Debug)]
 pub struct GraphView<'a> {
+    /// His keymap: the footer spells every key from it (ticket m8/10).
+    pub keys: &'a crate::keymap::Keymap,
     /// Where the screen is, once the repository is open.
     pub location: Option<Location>,
     /// The terminal is tall enough for the blank row and the rule

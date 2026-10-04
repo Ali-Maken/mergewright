@@ -132,11 +132,15 @@ fn draw_history_place(
         &session.theme,
         || {
             context.map_or_else(String::new, |context| {
-                graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
-                    &context,
-                    graft_ui::graph_screen::Divider::Hidden,
-                    area.width,
-                ))
+                graft_ui::graph_screen::hints_text(
+                    &graft_ui::graph_screen::hints_for(
+                        &context,
+                        graft_ui::graph_screen::Divider::Hidden,
+                        area.width,
+                        &state.keymap,
+                    ),
+                    &state.keymap,
+                )
             })
         },
     );
@@ -191,11 +195,15 @@ pub(super) fn draw_place(
         bar,
         &session.theme,
         || {
-            graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
-                &context,
-                graft_ui::graph_screen::Divider::Hidden,
-                area.width,
-            ))
+            graft_ui::graph_screen::hints_text(
+                &graft_ui::graph_screen::hints_for(
+                    &context,
+                    graft_ui::graph_screen::Divider::Hidden,
+                    area.width,
+                    &state.keymap,
+                ),
+                &state.keymap,
+            )
         },
     );
     None
@@ -228,11 +236,15 @@ pub(super) fn draw_rewrite(
     let context = crate::view::rewrite_editor::rewrite_context(state)?;
     let bar = (area.x, area.bottom() - 1, area.width);
     draw_status_or_hints(frame, state, tier, bar, &session.theme, || {
-        graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
-            &context,
-            graft_ui::graph_screen::Divider::Hidden,
-            area.width,
-        ))
+        graft_ui::graph_screen::hints_text(
+            &graft_ui::graph_screen::hints_for(
+                &context,
+                graft_ui::graph_screen::Divider::Hidden,
+                area.width,
+                &state.keymap,
+            ),
+            &state.keymap,
+        )
     });
     None
 }

@@ -6,8 +6,9 @@ use unicode_width::UnicodeWidthStr;
 
 use graft_term::SanitizedText;
 
-use super::{Hint, Rung};
+use super::{Hint, Rung, keys::MENU};
 use crate::fit::fit;
+use crate::keymap::Keymap;
 
 /// One rung's worth of bar: one hint placed at a rung — added at its bare
 /// key (or whole, if it keeps its words), or raised to a better rung. [`ladder`] puts them in a
@@ -120,6 +121,7 @@ pub(super) fn fit_list(
     trailer: Option<Hint>,
     columns: u16,
     words: Words,
+    keys: &Keymap,
 ) -> Vec<Hint> {
     // Stamped before anything is measured, so the ladder measures the very
     // separator `hints_text` will draw.
@@ -141,13 +143,13 @@ pub(super) fn fit_list(
         .map(|(index, hint)| (index < floor).then(|| hint.at(hint.floor_rung())))
         .collect();
     let drawn = |slots: &[Option<Hint>]| slots.iter().flatten().copied().collect::<Vec<_>>();
-    if !fits(&drawn(&slots), trailer, room) {
-        return below_the_floor(list, trailer, room, words);
+    if !fits(&drawn(&slots), trailer, room, keys) {
+        return below_the_floor(list, trailer, room, words, keys);
     }
     for Step { index, rung } in ladder(list, floor, words) {
         let mut candidate = slots.clone();
         candidate[index] = Some(list[index].at(rung));
-        if !fits(&drawn(&candidate), trailer, room) {
+        if !fits(&drawn(&candidate), trailer, room, keys) {
             break;
         }
         slots = candidate;
@@ -161,10 +163,10 @@ pub(super) fn fit_list(
 /// The trailer is measured on the end wherever [`place_doorway`] will put
 /// it: [`hints_text`] separates every pair of hints the same way, so moving
 /// one hint within the row changes no cell count.
-fn fits(drawn: &[Hint], trailer: Option<Hint>, room: usize) -> bool {
+fn fits(drawn: &[Hint], trailer: Option<Hint>, room: usize, keys: &Keymap) -> bool {
     let mut measured = drawn.to_vec();
     measured.extend(trailer);
-    text_width(&hints_text(&measured)) <= room
+    text_width(&hints_text(&measured, keys)) <= room
 }
 
 /// **The doorway sits at the head of the bare keys — which is the end of
@@ -203,8 +205,14 @@ fn place_doorway(mut drawn: Vec<Hint>, trailer: Option<Hint>) -> Vec<Hint> {
 /// `.` the caller put into the list itself ([`HintContext::Marked`]'s
 /// `. explain`). A context with neither is modal and swallows `.` — the
 /// focused banner — so it has no doorway and goes straight to nothing.
-fn below_the_floor(list: &[Hint], trailer: Option<Hint>, room: usize, words: Words) -> Vec<Hint> {
-    let doorway = trailer.or_else(|| list.first().copied().filter(|hint| hint.key == "."));
+fn below_the_floor(
+    list: &[Hint],
+    trailer: Option<Hint>,
+    room: usize,
+    words: Words,
+    keys: &Keymap,
+) -> Vec<Hint> {
+    let doorway = trailer.or_else(|| list.first().copied().filter(|hint| hint.is(MENU)));
     let Some(doorway) = doorway else {
         return Vec::new();
     };
@@ -214,7 +222,7 @@ fn below_the_floor(list: &[Hint], trailer: Option<Hint>, room: usize, words: Wor
         .filter(|rung| words == Words::Keys || **rung != Rung::Key);
     for rung in rungs.rev() {
         let row = vec![doorway.at(*rung)];
-        if text_width(&hints_text(&row)) <= room {
+        if text_width(&hints_text(&row, keys)) <= room {
             return row;
         }
     }
@@ -248,18 +256,19 @@ const KEYS_SEPARATOR: &str = "  ";
 /// ([`Hint::words_only`]) and two spaces between a modal bar's, and each hint
 /// at its own [`Rung`](Hint::rung). A hint built straight from the table is
 /// `Rung::Full`, so a list that never went through [`hints_for`] reads
-/// exactly as it always did.
+/// exactly as it always did. Keys are spelled from `keys` — the keymap the
+/// list was fitted with — and a hint naming no live key is skipped.
 #[must_use]
-pub fn hints_text(hints: &[Hint]) -> String {
+pub fn hints_text(hints: &[Hint], keys: &Keymap) -> String {
     let separator = if hints.iter().any(|hint| hint.words_only) {
         HINT_SEPARATOR
     } else {
         KEYS_SEPARATOR
     };
     let mut line = String::new();
-    for hint in hints {
+    for text in hints.iter().filter_map(|hint| hint.text(keys)) {
         line.push_str(if line.is_empty() { " " } else { separator });
-        line.push_str(&hint.text());
+        line.push_str(&text);
     }
     line
 }
@@ -339,8 +348,9 @@ pub fn stopped_row_before_keys(
     context: &super::HintContext,
     divider: super::Divider,
     columns: u16,
+    keys: &Keymap,
 ) -> String {
-    let (list, trailer) = super::whole_bar(context, divider);
+    let (list, trailer) = super::spelled_bar(context, divider, keys);
     let words_only = super::words_for(context) == Words::Only;
     let stamp = |hint: Hint| Hint { words_only, ..hint };
     let trailer = trailer.map(stamp);
@@ -354,17 +364,18 @@ pub fn stopped_row_before_keys(
         let Some(room) = usize::from(columns).checked_sub(text_width(wording) + 3) else {
             continue;
         };
-        if !fits(&floor, trailer, room) {
+        if !fits(&floor, trailer, room, keys) {
             continue;
         }
         let room = u16::try_from(room).unwrap_or(u16::MAX);
-        let bar = super::hints_for(context, divider, room);
-        return format!(" {wording} ·{}", hints_text(&bar));
+        let bar = super::hints_for(context, divider, room, keys);
+        return format!(" {wording} ·{}", hints_text(&bar, keys));
     }
     stopped_row(
         reason,
-        &super::hints_for(context, divider, columns),
+        &super::hints_for(context, divider, columns, keys),
         columns,
+        keys,
     )
 }
 
@@ -386,18 +397,18 @@ pub fn stopped_row_before_keys(
 /// (m8-13b). It is the way out he can always reach some other way, so when
 /// dropping it lets a fuller wording fit whole, it goes first.
 #[must_use]
-pub fn stopped_row(reason: &StopWording, hints: &[Hint], columns: u16) -> String {
+pub fn stopped_row(reason: &StopWording, hints: &[Hint], columns: u16, keys: &Keymap) -> String {
     if let Some((last, rest)) = hints.split_last()
-        && last.key == QUIT_YIELDS.key
-        && fullest_whole(reason, rest, columns) < fullest_whole(reason, hints, columns)
+        && last.is(QUIT_YIELDS.keys)
+        && fullest_whole(reason, rest, columns, keys) < fullest_whole(reason, hints, columns, keys)
     {
-        return stopped_row_as_given(reason, rest, columns);
+        return stopped_row_as_given(reason, rest, columns, keys);
     }
-    stopped_row_as_given(reason, hints, columns)
+    stopped_row_as_given(reason, hints, columns, keys)
 }
 
 /// The key that gives way to the stop's reason (see [`stopped_row`]).
-const QUIT_YIELDS: Hint = super::hint("q", "quit");
+const QUIT_YIELDS: Hint = super::hint(super::keys::QUIT, "quit");
 
 /// The narrowest reason worth drawing.
 const MIN_REASON: usize = 12;
@@ -405,9 +416,9 @@ const MIN_REASON: usize = 12;
 /// Which of the reason's wordings, fullest first, fits whole beside
 /// `hints` — its index, or past the last when none does (or none is drawn
 /// at all). Smaller is fuller.
-fn fullest_whole(reason: &StopWording, hints: &[Hint], columns: u16) -> usize {
+fn fullest_whole(reason: &StopWording, hints: &[Hint], columns: u16, keys: &Keymap) -> usize {
     let room = usize::from(columns)
-        .saturating_sub(text_width(&hints_text(hints)))
+        .saturating_sub(text_width(&hints_text(hints, keys)))
         .saturating_sub(3);
     let wordings = std::iter::once(&reason.full).chain(&reason.shorter);
     if room < MIN_REASON {
@@ -420,8 +431,13 @@ fn fullest_whole(reason: &StopWording, hints: &[Hint], columns: u16) -> usize {
 }
 
 /// [`stopped_row`] with the bar exactly as given.
-fn stopped_row_as_given(reason: &StopWording, hints: &[Hint], columns: u16) -> String {
-    let bar = hints_text(hints);
+fn stopped_row_as_given(
+    reason: &StopWording,
+    hints: &[Hint],
+    columns: u16,
+    keys: &Keymap,
+) -> String {
+    let bar = hints_text(hints, keys);
     // `bar` carries its own leading space; the row adds one before the
     // reason and ` ·` between the two, three cells in all.
     let room = usize::from(columns)
@@ -477,6 +493,10 @@ mod tests {
     use super::super::{Divider, HintContext, hints_for};
     use super::*;
 
+    fn keys() -> &'static Keymap {
+        Keymap::shipped()
+    }
+
     /// A stash clash's ladder as `graft::update::clash::stop_wordings`
     /// writes it: this run's, then from the last run.
     fn clash_ladder(from_last_run: bool) -> StopWording {
@@ -507,7 +527,7 @@ mod tests {
     fn a_clash_reason_outranks_the_tail_keys_at_80() {
         let context = HintContext::WorkingTreeRow;
         for divider in [Divider::Hidden, Divider::Shown] {
-            let row = stopped_row_before_keys(&clash_ladder(false), &context, divider, 80);
+            let row = stopped_row_before_keys(&clash_ladder(false), &context, divider, 80, keys());
             assert!(
                 row.starts_with(" stash@{0} clashed · 1 file conflicted ·"),
                 "{divider:?}: {row:?}"
@@ -516,13 +536,14 @@ mod tests {
             let bar = row
                 .strip_prefix(" stash@{0} clashed · 1 file conflicted ·")
                 .expect("the reason leads");
-            let floor = hints_text(&hints_for(&context, divider, 80)[..1]);
+            let floor = hints_text(&hints_for(&context, divider, 80, keys())[..1], keys());
             assert!(
                 bar.starts_with(floor.as_str()),
                 "the floor leads the bar: {bar:?}"
             );
 
-            let relaunch = stopped_row_before_keys(&clash_ladder(true), &context, divider, 80);
+            let relaunch =
+                stopped_row_before_keys(&clash_ladder(true), &context, divider, 80, keys());
             assert!(
                 relaunch.starts_with(" stash@{0} clashed · 1 conflicted ·")
                     || relaunch.starts_with(" stash@{0} clash from last run · 1 file conflicted ·"),
@@ -544,9 +565,12 @@ mod tests {
         );
         assert!(!plain.is_before_keys());
         for columns in [80u16, 120, 187] {
-            let hints = hints_for(&context, Divider::Hidden, columns);
-            let row = stopped_row(&plain, &hints, columns);
-            assert!(row.ends_with(&hints_text(&hints)), "{columns}: {row:?}");
+            let hints = hints_for(&context, Divider::Hidden, columns, keys());
+            let row = stopped_row(&plain, &hints, columns, keys());
+            assert!(
+                row.ends_with(&hints_text(&hints, keys())),
+                "{columns}: {row:?}"
+            );
         }
     }
 }

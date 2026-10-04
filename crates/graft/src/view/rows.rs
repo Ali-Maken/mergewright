@@ -82,6 +82,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         banner_op,
         pending: crate::update::banner::pending_view(state),
         icons: state.icons,
+        keys: &state.keymap,
         compaction,
         filters: Filters {
             first_parent: history.view.follow == graft_graph::Follow::FirstParent,
@@ -247,6 +248,7 @@ fn opening_view(
         banner_op: None,
         pending: None,
         icons: state.icons,
+        keys: &state.keymap,
         compaction: Compaction::at(max_lanes(state)),
         filters: Filters::default(),
         reveal: None,

@@ -17,7 +17,9 @@ use graft_ui::graph_screen::every_context;
 use graft_ui::keymap::{Binding, ContextId, KeyChord, Keymap, defaults};
 
 use super::*;
-use crate::update::edge::{SharedKeymap, context_of};
+use std::sync::Arc;
+
+use crate::update::edge::context_of;
 
 /// What a press did, as far as anyone can see.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -192,7 +194,7 @@ fn free_chords() -> Vec<KeyChord> {
 
 /// Every movable action on its own free chord: the keymap, and per row the
 /// chord it moved to.
-fn swept() -> (SharedKeymap, Vec<(&'static Binding, KeyChord)>) {
+fn swept() -> (Arc<Keymap>, Vec<(&'static Binding, KeyChord)>) {
     let rows: Vec<&'static Binding> = defaults()
         .iter()
         .filter(|b| !b.context.is_text_field() && b.action.0 != "app.quit_now")
@@ -216,7 +218,7 @@ fn swept() -> (SharedKeymap, Vec<(&'static Binding, KeyChord)>) {
         .collect();
     let (map, warnings) = Keymap::with_overrides(&lines);
     assert_eq!(warnings, [], "every chord is free, so nothing collides");
-    (SharedKeymap::new(map), moved)
+    (Arc::new(map), moved)
 }
 
 /// Each fixture stands where `context_of` says it does, so the sweeps below
@@ -416,7 +418,7 @@ fn j8_a_keys_table_beside_suspend_moves_merge_and_says_one_problem() {
     assert_eq!(problems.len(), 1, "{problems:?}");
 
     let mut base = sized_to_draw(on_a_branch_row());
-    base.seed_keys(SharedKeymap::new(keymap), problems);
+    base.seed_keys(Arc::new(keymap), problems);
     let first = crate::view::tests::draw(&base, base.size.columns, base.size.rows);
     assert!(
         first.contains("config: 1 problem · ? shows them"),
@@ -453,7 +455,7 @@ fn j8_a_keys_table_beside_suspend_moves_merge_and_says_one_problem() {
 fn the_config_notice_goes_at_the_first_key_and_needs_a_problem() {
     let mut state = on_a_branch_row();
     state.seed_keys(
-        SharedKeymap::default(),
+        Arc::default(),
         vec!["graf.merge is not an action".to_owned()],
     );
     let draw = |state: &AppState| crate::view::tests::draw(state, 120, 36);
@@ -462,7 +464,7 @@ fn the_config_notice_goes_at_the_first_key_and_needs_a_problem() {
     assert!(!draw(&after).contains("config:"), "gone at the first key");
 
     let mut clean = on_a_branch_row();
-    clean.seed_keys(SharedKeymap::default(), Vec::new());
+    clean.seed_keys(Arc::default(), Vec::new());
     assert!(
         !draw(&clean).contains("config:"),
         "nothing to report, nothing said"
@@ -526,7 +528,7 @@ fn x_typed_into_every_field_is_an_x_with_merge_on_x() {
     let (map, warnings) =
         Keymap::with_overrides(&[("graph.merge".to_owned(), vec!["x".to_owned()])]);
     assert_eq!(warnings.len(), 1, "{warnings:?}");
-    let remapped = SharedKeymap::new(map);
+    let remapped = Arc::new(map);
     for (name, base) in every_field() {
         assert!(base.text_field_open(), "{name}: the field is open");
         let moved = AppState {

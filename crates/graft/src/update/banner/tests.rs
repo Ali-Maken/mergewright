@@ -5,6 +5,7 @@
 //! here is the part that is a function over plain data: which keys the
 //! modal claims, what the refusals say, and what the header draws.
 
+use crate::spelled::Spelled as _;
 use graft_core::event::{Event, Modifiers};
 use graft_git::state::{InProgress, InProgressDetail};
 use graft_git::status::{StatusEntry, WorkingTreeStatus};
@@ -1072,7 +1073,12 @@ fn every_hint_the_focused_banner_draws_is_answered_by_banner_key() {
 
         for columns in [40u16, 80, 100, 120, 160, 200] {
             for divider in [Divider::Shown, Divider::Hidden] {
-                let hints = hints_for(&context, divider, columns);
+                let hints = hints_for(
+                    &context,
+                    divider,
+                    columns,
+                    graft_ui::keymap::Keymap::shipped(),
+                );
                 assert!(
                     !hints.is_empty(),
                     "the modal banner drew no key at all at {columns} columns \
@@ -1080,13 +1086,14 @@ fn every_hint_the_focused_banner_draws_is_answered_by_banner_key() {
                 );
                 for hint in hints {
                     let mut state = base.clone();
-                    let (claimed, commands) = press(&mut state, code_for(hint.key));
+                    let (claimed, commands) = press(&mut state, code_for(hint.key()));
                     assert!(
                         claimed,
                         "`{} {}` is drawn but `banner_key` does not claim it",
-                        hint.key, hint.verb
+                        hint.key(),
+                        hint.verb
                     );
-                    did_the_verb(hint.verb, hint.key, &base, &state, &commands);
+                    did_the_verb(hint.verb, hint.key(), &base, &state, &commands);
                 }
             }
         }
@@ -1110,10 +1117,11 @@ fn the_banner_always_teaches_continue_and_abort() {
                 },
                 Divider::Shown,
                 columns,
+                graft_ui::keymap::Keymap::shipped(),
             );
             for want in [("c", "continue"), ("a", "abort")] {
                 assert!(
-                    hints.iter().any(|hint| (hint.key, hint.verb) == want),
+                    hints.iter().any(|hint| (hint.key(), hint.verb) == want),
                     "{want:?} missing at {columns} columns from {hints:?}"
                 );
             }

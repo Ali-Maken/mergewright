@@ -10,6 +10,7 @@ use super::{FinishScreen, FinishView};
 use crate::fit::fit;
 use crate::frame_box::border_row_spans;
 use crate::graph_screen::{Divider, Hint, HintContext, hints_for};
+use crate::keymap::Keymap;
 use crate::paint::foreground;
 use crate::theme::Token;
 
@@ -58,26 +59,40 @@ pub fn footer_hints(view: &FinishView<'_>, width: u16) -> Vec<Hint> {
         focus: view.focus,
         expandable: view.expandable,
     };
-    hints_for(&context, Divider::Hidden, width.saturating_sub(4))
+    hints_for(
+        &context,
+        Divider::Hidden,
+        width.saturating_sub(4),
+        view.keys,
+    )
 }
 
 /// The bottom border's words as `(text, style)` spans, built from the
 /// hints themselves: the first hint's key in `strong`, everything after it
 /// in `muted`. Spaced as `hints_text` spaces the bar, with no lead space
 /// (the border puts its own gutter there).
+/// Keys are spelled from `keys`; a hint naming no live key is skipped.
 #[must_use]
-pub fn footer_spans(hints: &[Hint], strong: Style, muted: Style) -> Vec<(String, Style)> {
-    let Some((first, others)) = hints.split_first() else {
+pub fn footer_spans(
+    hints: &[Hint],
+    keys: &Keymap,
+    strong: Style,
+    muted: Style,
+) -> Vec<(String, Style)> {
+    let mut spelled = hints
+        .iter()
+        .filter_map(|hint| hint.key_text(keys).map(|key| (hint, key)));
+    let Some((first, first_key)) = spelled.next() else {
         return Vec::new();
     };
     let mut rest = first
         .drawn_verb()
         .map_or_else(String::new, |verb| format!(" {verb}"));
-    for hint in others {
+    for text in spelled.filter_map(|(hint, _)| hint.text(keys)) {
         rest.push_str("  ");
-        rest.push_str(&hint.text());
+        rest.push_str(&text);
     }
-    vec![(first.key.to_owned(), strong), (rest, muted)]
+    vec![(first_key, strong), (rest, muted)]
 }
 
 /// The second line inside the frame.
@@ -116,7 +131,12 @@ impl FinishScreen<'_> {
             buf.set_string(frame.x, y, "│", line);
             buf.set_string(frame.right() - 1, y, "│", line);
         }
-        let spans = footer_spans(&footer_hints(self.view, frame.width), strong, muted);
+        let spans = footer_spans(
+            &footer_hints(self.view, frame.width),
+            self.view.keys,
+            strong,
+            muted,
+        );
         let spans: Vec<(&str, Style)> = spans
             .iter()
             .map(|(text, style)| (text.as_str(), *style))

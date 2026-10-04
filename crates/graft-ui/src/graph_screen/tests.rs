@@ -56,6 +56,7 @@ pub(super) fn linear(count: u8) -> Vec<Row> {
 
 pub(super) fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
     GraphView {
+        keys: crate::keymap::Keymap::shipped(),
         location: Some(Location {
             repo: sanitize_line("api"),
             path: sanitize_line("/code/api"),
@@ -1163,7 +1164,7 @@ fn the_changes_pane_hints_replace_the_row_context() {
         .trim_end()
         .to_owned();
     assert!(footer.contains("space stage"), "{footer}");
-    assert!(footer.contains("<> resize"), "{footer}");
+    assert!(footer.contains("</> resize"), "{footer}");
     assert!(!footer.contains("m merge"), "{footer}");
 
     view.hint_context = HintContext::ChangesPane {
@@ -1371,7 +1372,8 @@ fn no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows() {
         for divider in [Divider::Shown, Divider::Hidden] {
             let mut narrower = 0usize;
             for columns in 0..=240u16 {
-                let drawn = hints_for(&context, divider, columns).len();
+                let drawn =
+                    hints_for(&context, divider, columns, crate::keymap::Keymap::shipped()).len();
                 assert!(
                     drawn >= narrower,
                     "{context:?} with {divider:?}: {columns} columns draws {drawn} hints, \
@@ -1390,17 +1392,28 @@ fn no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows() {
 #[test]
 fn only_the_resolver_marks_words() {
     for context in every_hint_context() {
-        let marked: Vec<_> = hints_for(&context, Divider::Hidden, 240)
-            .into_iter()
-            .filter(|hint| hint.keeps_words)
-            .collect();
+        let marked: Vec<_> = hints_for(
+            &context,
+            Divider::Hidden,
+            240,
+            crate::keymap::Keymap::shipped(),
+        )
+        .into_iter()
+        .filter(|hint| hint.keeps_words)
+        .collect();
         if matches!(context, HintContext::Resolver { .. }) {
             assert!(
-                marked.iter().all(|hint| matches!(hint.key, "d" | "esc")),
+                marked.iter().all(|hint| matches!(
+                    hint.key_text(crate::keymap::Keymap::shipped()).as_deref(),
+                    Some("d" | "esc")
+                )),
                 "{context:?}: {marked:?}"
             );
             assert!(
-                marked.iter().any(|hint| hint.key == "esc"),
+                marked.iter().any(|hint| hint
+                    .key_text(crate::keymap::Keymap::shipped())
+                    .as_deref()
+                    == Some("esc")),
                 "{context:?}: `esc close` keeps its words"
             );
         } else {
@@ -2065,7 +2078,10 @@ fn capture_the_ladder_for_docs_shots() {
             out.push_str(&format!("--- {what}\n"));
             out.push_str(&ruler(columns));
             out.push('\n');
-            out.push_str(&hints_text(&hints_for(context, *divider, columns)));
+            out.push_str(&hints_text(
+                &hints_for(context, *divider, columns, crate::keymap::Keymap::shipped()),
+                crate::keymap::Keymap::shipped(),
+            ));
             out.push_str("\n\n");
         }
     }
@@ -2089,13 +2105,18 @@ fn capture_the_ladder_for_docs_shots() {
          \n",
     );
     for columns in [16u16, 20, 24, 27] {
-        let hints = hints_for(&HintContext::Journal, Divider::Hidden, columns);
+        let hints = hints_for(
+            &HintContext::Journal,
+            Divider::Hidden,
+            columns,
+            crate::keymap::Keymap::shipped(),
+        );
         out.push_str(&format!(
             "--- the undo journal browser has focus, {columns} cells\n"
         ));
         out.push_str(&ruler(columns));
         out.push('\n');
-        out.push_str(&hints_text(&hints));
+        out.push_str(&hints_text(&hints, crate::keymap::Keymap::shipped()));
         out.push_str("\n\n");
     }
 

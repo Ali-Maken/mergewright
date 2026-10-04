@@ -17,7 +17,7 @@ use crate::update::finish::{FinishFocus, FinishState, by_you_words};
 
 /// The summary as it draws now, or `None` when none is open.
 #[must_use]
-pub fn finish_view(state: &AppState) -> Option<FinishView<'static>> {
+pub fn finish_view(state: &AppState) -> Option<FinishView<'_>> {
     let finish = state.finish.as_ref()?;
     let parts = summary_parts(state, finish);
     Some(FinishView {
@@ -47,6 +47,7 @@ pub fn finish_view(state: &AppState) -> Option<FinishView<'static>> {
         busy: finish.committing.is_some(),
         state: parts.state,
         top: finish.top,
+        keys: &state.keymap,
     })
 }
 
@@ -213,9 +214,14 @@ pub fn finish_hints(state: &AppState, width: u16) -> Vec<graft_ui::graph_screen:
             &finish_context(state),
             graft_ui::graph_screen::Divider::Hidden,
             width,
+            &state.keymap,
         )
         .into_iter()
-        .filter(|hint| hint.key == "esc")
+        .filter(|hint| {
+            hint.is(&[graft_ui::graph_screen::HintKey::Key(
+                graft_ui::keymap::ActionId("app.back"),
+            )])
+        })
         .collect()
     }
 }

@@ -1,6 +1,17 @@
 //! The design note's priority table: one list of hints per context, and
 //! [`TAIL`], what the whole screen answers after them.
 
+use super::keys::{
+    ABORT, AMEND, BACK, BANNER_EDIT, BANNER_MERGETOOL, BRANCH, COMMIT, COMPARE, CONFIRM_CHOOSE,
+    CONFIRM_MOVE, CONFIRM_YES, CONTINUE, COPY_SHA, CREDENTIAL_SEND, DISCARD, DOWN_UP, DROP, EDIT,
+    FETCH, FIELD_EDITOR, FIELD_ENTER, FIELD_ESC, FIELD_TAB, FIND, FIRST_PARENT, FIXUP, FOCUS, FOLD,
+    HEATMAP, HIDE_STASH, IGNORE_REVS, JOURNAL, JOURNAL_REVERT, LANES, LINE_HISTORY, MAP, MERGE,
+    MERGETOOL, MOVE_ROW, NEXT_PANE, NEXT_PREV_CHANGE, NEXT_PREV_MATCH, OPEN, OVERVIEW, PARENT,
+    PICK, PICKER_ROWS, PICKER_SHOW, PICKER_SWITCH, PULL, PUSH, QUIT, REBASE, RELEASE, RENDERER,
+    REWORD, REWRITE as REWRITE_KEY, REWRITE_CHANGES, REWRITE_EDIT, REWRITE_START, SEEK, SKIP,
+    SQUASH, STAGE, STAGE_ALL, STASH, STASH_APPLY, STASH_BRANCH, STASH_DROP, STASH_POP, STATUS,
+    SWITCH, TAG, TAKE, TYPE, UNDO, WHITESPACE,
+};
 use super::{Hint, HintContext, LiveC, RowVerbs, TabWord, hint};
 
 mod resolver;
@@ -11,23 +22,23 @@ use resolver::{finish_list, resolver_context_list};
 fn confirm_box_list(yes: Option<super::ConfirmYes>) -> Vec<Hint> {
     let mut list = Vec::new();
     if let Some(yes) = yes {
-        list.push(hint("y", yes.word()));
+        list.push(hint(CONFIRM_YES, yes.word()));
     }
     list.extend([
-        hint("←/→", "move"),
-        hint("⏎", "choose"),
-        hint("esc", "cancel"),
+        hint(CONFIRM_MOVE, "move"),
+        hint(CONFIRM_CHOOSE, "choose"),
+        hint(BACK, "cancel"),
     ]);
     list
 }
 
 /// The name prompt's bar; `⇥ toggle` only where the prompt has a switch.
 fn name_prompt_list(toggle: bool) -> Vec<Hint> {
-    let mut list = vec![hint("⏎", "create")];
+    let mut list = vec![hint(FIELD_ENTER, "create")];
     if toggle {
-        list.push(hint("⇥", "toggle"));
+        list.push(hint(FIELD_TAB, "toggle"));
     }
-    list.push(hint("esc", "cancel"));
+    list.push(hint(FIELD_ESC, "cancel"));
     list
 }
 
@@ -67,12 +78,16 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         // The hint catalogue's `Journal` slot. J draws its own bar
         // (`journal_screen`), which also answers `b`, `/`, `n`, `N`, `u`,
         // `U` and `space`.
-        HintContext::Journal => vec![hint("⏎", "revert"), hint("esc", "close")],
+        HintContext::Journal => vec![hint(JOURNAL_REVERT, "revert"), hint(BACK, "close")],
         HintContext::Stash => stash_list(),
         // Keymap §2.3a: the Map view answers `Enter`, the movement keys and
         // `M`/`Esc`. `M` is left out for the reason the journal leaves `J`
         // out — one way of saying "close" is enough for a bar this short.
-        HintContext::Map => vec![hint("⏎", "seek"), hint("j/k", "move"), hint("esc", "close")],
+        HintContext::Map => vec![
+            hint(SEEK, "seek"),
+            hint(DOWN_UP, "move"),
+            hint(BACK, "close"),
+        ],
         HintContext::Picker => picker_list(),
         // Only ever drawn in the sub-100-column `Tab` layout, which has no
         // divider to drag: everywhere else the overlay draws its own footer
@@ -84,13 +99,13 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         // while a badge is in the air (`graft::update::drag::drag_cancel`).
         // Nothing else is offered because nothing else acts — every other
         // key cancels the drag and then means what it always means.
-        HintContext::Dragging => vec![hint("release", "drop on a row"), hint("esc", "cancel")],
+        HintContext::Dragging => vec![hint(RELEASE, "drop on a row"), hint(BACK, "cancel")],
         // `y` leads, as it leads the preview's keys (ADR-0044 §3.1), and
         // names the acting button's own label: it takes that button from
         // wherever the cursor is. A box `y` does not take draws no `y`.
         HintContext::ConfirmBox { yes } => confirm_box_list(*yes),
         HintContext::NamePrompt { toggle } => name_prompt_list(*toggle),
-        HintContext::Credential => vec![hint("⏎", "send"), hint("esc", "cancel")],
+        HintContext::Credential => vec![hint(CREDENTIAL_SEND, "send"), hint(FIELD_ESC, "cancel")],
         HintContext::Rewritable(row) => with_rewrite(context_list(row)),
         HintContext::RewriteEditor { narrow, can_start } => {
             rewrite_editor_list(*narrow, *can_start)
@@ -98,9 +113,9 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         // Keymap §2.7: the field is a text field; these three are what the
         // non-letter keys do (`graft::update::rewrite_editor` `field_key`).
         HintContext::RewriteMessage => vec![
-            hint("⏎", "keep"),
-            hint("⌃E", "$EDITOR"),
-            hint("esc", "drop the edit"),
+            hint(FIELD_ENTER, "keep"),
+            hint(FIELD_EDITOR, "$EDITOR"),
+            hint(FIELD_ESC, "drop the edit"),
         ],
         // All three are answered in `whole_bar` before this is reached; a
         // `RowContext` sub-enum would say so in the type, at the cost of
@@ -120,27 +135,27 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
 /// worked out by `graft` (`view::rows::row_verbs`), from the same checks the
 /// keys run, so the bar never hints a row the key refuses.
 pub(super) fn with_verbs(mut list: Vec<Hint>, verbs: RowVerbs) -> Vec<Hint> {
-    let after = |list: &[Hint], key: &str| list.iter().position(|h| h.key == key).map(|i| i + 1);
+    let after = |list: &[Hint], keys| list.iter().position(|h| h.is(keys)).map(|i| i + 1);
     if verbs.take {
-        let at = after(&list, "⏎").unwrap_or(0);
-        list.insert(at, hint("o", "take"));
+        let at = after(&list, OPEN).unwrap_or(0);
+        list.insert(at, hint(TAKE, "take"));
     }
     if verbs.amend {
         // After the last of the daily verbs the row holds (planner ruling
         // 2026-10-01): `c commit`, `P push`, `p pull`, `f fetch`.
         let at = list
             .iter()
-            .rposition(|h| matches!(h.key, "c" | "P" | "p" | "f"))
+            .rposition(|h| [COMMIT, PUSH, PULL, FETCH].contains(&h.keys))
             .map(|i| i + 1)
-            .or_else(|| after(&list, "⏎"))
+            .or_else(|| after(&list, OPEN))
             .unwrap_or(0);
-        list.insert(at, hint("a", "amend"));
+        list.insert(at, hint(AMEND, "amend"));
     }
     list
 }
 
 /// `R rewrite`, on a commit row of his branch (m7-power-tools/08).
-const REWRITE: Hint = hint("R", "rewrite");
+const REWRITE: Hint = hint(REWRITE_KEY, "rewrite");
 
 /// A commit row's list with [`REWRITE`] last among the row's own keys,
 /// ahead of the whole screen's ([`TAIL`]): a new key takes no rung from the
@@ -157,21 +172,21 @@ fn with_rewrite(mut list: Vec<Hint>) -> Vec<Hint> {
 fn rewrite_editor_list(narrow: bool, can_start: bool) -> Vec<Hint> {
     let mut list = Vec::new();
     if can_start {
-        list.push(hint("y", "rewrite"));
+        list.push(hint(REWRITE_START, "rewrite"));
     }
     if narrow {
-        list.push(hint("tab", "after"));
+        list.push(hint(NEXT_PANE, "after"));
     }
     list.extend([
-        hint("⏎", "changes"),
-        hint("p", "pick"),
-        hint("r", "reword"),
-        hint("e", "edit"),
-        hint("s", "squash"),
-        hint("f", "fixup"),
-        hint("d", "drop"),
-        hint("alt+↑↓", "move"),
-        hint("esc", "cancel"),
+        hint(REWRITE_CHANGES, "changes"),
+        hint(PICK, "pick"),
+        hint(REWORD, "reword"),
+        hint(REWRITE_EDIT, "edit"),
+        hint(SQUASH, "squash"),
+        hint(FIXUP, "fixup"),
+        hint(DROP, "drop"),
+        hint(MOVE_ROW, "move"),
+        hint(BACK, "cancel"),
     ]);
     list
 }
@@ -187,11 +202,11 @@ fn rewrite_editor_list(narrow: bool, can_start: bool) -> Vec<Hint> {
 /// the way out stays in words (ADR-0044 §4's reason).
 fn picker_list() -> Vec<Hint> {
     vec![
-        hint("type", "to find"),
-        hint("⏎", "switch to it"),
-        hint("esc", "close"),
-        hint("⇥", "show it on the graph"),
-        hint("↑↓", "row"),
+        hint(TYPE, "to find"),
+        hint(PICKER_SWITCH, "switch to it"),
+        hint(FIELD_ESC, "close"),
+        hint(PICKER_SHOW, "show it on the graph"),
+        hint(PICKER_ROWS, "row"),
     ]
 }
 
@@ -201,28 +216,32 @@ fn picker_list() -> Vec<Hint> {
 /// terminal still shows `q quit`, `x compare` and `+ lanes` — which the
 /// per-context table leaves out entirely (m5-03 review, Major 3). Whatever
 /// the context already hints is not repeated ([`drawable`] dedupes by key).
+/// `space fold`: the graph's merge fold, which a focused pane takes back
+/// (`hints::pane_focused_bar`).
+pub(super) const GRAPH_FOLD: Hint = hint(FOLD, "fold");
+
 pub(super) const TAIL: [Hint; 21] = [
-    hint("q", "quit"),
-    hint("F2", "status"),
-    hint("F3", "renderer"),
-    hint("u", "undo"),
-    hint("x", "compare"),
-    hint("+", "lanes"),
-    hint("/", "search"),
-    hint("j/k", "move"),
-    hint("space", "fold"),
-    hint("1", "first-parent"),
-    hint("F", "focus"),
-    hint("S", "stash"),
-    hint("H", "hide stash"),
-    hint("f", "fetch"),
-    hint("p", "pull"),
-    hint("P", "push"),
-    hint("J", "journal"),
-    hint("y", "sha"),
-    hint("M", "map"),
-    hint("O", "overview"),
-    hint("C", "switch"),
+    hint(QUIT, "quit"),
+    hint(STATUS, "status"),
+    hint(RENDERER, "renderer"),
+    hint(UNDO, "undo"),
+    hint(COMPARE, "compare"),
+    hint(LANES, "lanes"),
+    hint(FIND, "search"),
+    hint(DOWN_UP, "move"),
+    GRAPH_FOLD,
+    hint(FIRST_PARENT, "first-parent"),
+    hint(FOCUS, "focus"),
+    hint(STASH, "stash"),
+    hint(HIDE_STASH, "hide stash"),
+    hint(FETCH, "fetch"),
+    hint(PULL, "pull"),
+    hint(PUSH, "push"),
+    hint(JOURNAL, "journal"),
+    hint(COPY_SHA, "sha"),
+    hint(MAP, "map"),
+    hint(OVERVIEW, "overview"),
+    hint(SWITCH, "switch"),
 ];
 
 /// The blame place's bar (design note pass 2b B1; m7-power-tools/20c), in
@@ -238,19 +257,19 @@ pub(super) const TAIL: [Hint; 21] = [
 #[must_use]
 pub fn blame_place_list(finding: bool, ignore_file: bool) -> Vec<Hint> {
     let mut list = vec![
-        hint("⏎", "that commit"),
-        hint("^", "before it"),
-        hint("L", "history of these lines"),
-        hint("/", "find"),
+        hint(OPEN, "that commit"),
+        hint(PARENT, "before it"),
+        hint(LINE_HISTORY, "history of these lines"),
+        hint(FIND, "find"),
     ];
     if finding {
-        list.push(hint("n N", "match"));
+        list.push(hint(NEXT_PREV_MATCH, "match"));
     }
-    list.extend([hint("space", "ages"), hint("w", "whitespace")]);
+    list.extend([hint(HEATMAP, "ages"), hint(WHITESPACE, "whitespace")]);
     if ignore_file {
-        list.push(hint("i", "ignore list"));
+        list.push(hint(IGNORE_REVS, "ignore list"));
     }
-    list.push(hint("esc", "back"));
+    list.push(hint(BACK, "back"));
     list
 }
 
@@ -261,7 +280,7 @@ pub fn blame_place_list(finding: bool, ignore_file: bool) -> Vec<Hint> {
 fn blame_bar(finding: bool, ignore_file: bool, lines: bool) -> Vec<Hint> {
     let mut list = blame_place_list(finding, ignore_file);
     if !lines {
-        list.retain(|hint| !matches!(hint.key, "⏎" | "^" | "L" | "n N"));
+        list.retain(|hint| ![OPEN, PARENT, LINE_HISTORY, NEXT_PREV_MATCH].contains(&hint.keys));
     }
     list
 }
@@ -277,26 +296,26 @@ fn blame_bar(finding: bool, ignore_file: bool, lines: bool) -> Vec<Hint> {
 #[must_use]
 pub fn history_place_list(rows: bool, on_file: bool) -> Vec<Hint> {
     if !rows {
-        return vec![hint("esc", "back")];
+        return vec![hint(BACK, "back")];
     }
     let (moves, tab) = if on_file {
-        (hint("j/k", "scroll"), hint("⇥", "list"))
+        (hint(DOWN_UP, "scroll"), hint(NEXT_PANE, "list"))
     } else {
-        (hint("j/k", "older·newer"), hint("⇥", "file"))
+        (hint(DOWN_UP, "older·newer"), hint(NEXT_PANE, "file"))
     };
     let mut list = vec![
         moves,
         tab,
-        hint("n/N", "next change"),
-        hint("B", "blame here"),
-        hint("⏎", "that commit"),
+        hint(NEXT_PREV_CHANGE, "next change"),
+        hint(super::keys::BLAME, "blame here"),
+        hint(OPEN, "that commit"),
     ];
     // No form offers `v`, so `w` sits in the file's form, before the way
     // back (21c); it answers from either focus.
     if on_file {
-        list.push(hint("w", "whitespace"));
+        list.push(hint(WHITESPACE, "whitespace"));
     }
-    list.push(hint("esc", "back"));
+    list.push(hint(BACK, "back"));
     list
 }
 
@@ -305,73 +324,77 @@ pub fn history_place_list(rows: bool, on_file: bool) -> Vec<Hint> {
 fn pane_over_overlay_list(opens: bool) -> Vec<Hint> {
     let mut list = Vec::new();
     if opens {
-        list.push(hint("⏎", "open"));
+        list.push(hint(OPEN, "open"));
     }
-    list.extend([hint("j/k", "move"), hint("u", "undo"), hint("/", "search")]);
+    list.extend([
+        hint(DOWN_UP, "move"),
+        hint(UNDO, "undo"),
+        hint(FIND, "search"),
+    ]);
     list
 }
 
 fn working_tree_row_list() -> Vec<Hint> {
     vec![
-        hint("⏎", "changes"),
-        hint("c", "commit"),
-        hint("S", "stash"),
-        hint("p", "pull"),
-        hint("P", "push"),
-        hint("f", "fetch"),
-        hint("u", "undo"),
-        hint("J", "journal"),
-        hint("/", "search"),
-        hint("j/k", "move"),
+        hint(OPEN, "changes"),
+        hint(COMMIT, "commit"),
+        hint(STASH, "stash"),
+        hint(PULL, "pull"),
+        hint(PUSH, "push"),
+        hint(FETCH, "fetch"),
+        hint(UNDO, "undo"),
+        hint(JOURNAL, "journal"),
+        hint(FIND, "search"),
+        hint(DOWN_UP, "move"),
     ]
 }
 
 fn branch_row_list() -> Vec<Hint> {
     vec![
-        hint("m", "merge"),
-        hint("r", "rebase"),
-        hint("⏎", "open"),
-        hint("b", "branch"),
-        hint("t", "tag"),
-        hint("P", "push"),
-        hint("c", "commit"),
-        hint("p", "pull"),
-        hint("f", "fetch"),
-        hint("u", "undo"),
-        hint("S", "stash"),
-        hint("/", "search"),
+        hint(MERGE, "merge"),
+        hint(REBASE, "rebase"),
+        hint(OPEN, "open"),
+        hint(BRANCH, "branch"),
+        hint(TAG, "tag"),
+        hint(PUSH, "push"),
+        hint(COMMIT, "commit"),
+        hint(PULL, "pull"),
+        hint(FETCH, "fetch"),
+        hint(UNDO, "undo"),
+        hint(STASH, "stash"),
+        hint(FIND, "search"),
     ]
 }
 
 fn current_branch_row_list() -> Vec<Hint> {
     vec![
-        hint("⏎", "open"),
-        hint("c", "commit"),
-        hint("P", "push"),
-        hint("p", "pull"),
-        hint("f", "fetch"),
-        hint("b", "branch"),
-        hint("t", "tag"),
-        hint("u", "undo"),
-        hint("S", "stash"),
-        hint("J", "journal"),
-        hint("/", "search"),
+        hint(OPEN, "open"),
+        hint(COMMIT, "commit"),
+        hint(PUSH, "push"),
+        hint(PULL, "pull"),
+        hint(FETCH, "fetch"),
+        hint(BRANCH, "branch"),
+        hint(TAG, "tag"),
+        hint(UNDO, "undo"),
+        hint(STASH, "stash"),
+        hint(JOURNAL, "journal"),
+        hint(FIND, "search"),
     ]
 }
 
 fn plain_row_list() -> Vec<Hint> {
     vec![
-        hint("⏎", "open"),
-        hint("b", "branch"),
-        hint("r", "rebase"),
-        hint("t", "tag"),
-        hint("c", "commit"),
-        hint("y", "sha"),
-        hint("m", "merge"),
-        hint("u", "undo"),
-        hint("S", "stash"),
-        hint("J", "journal"),
-        hint("/", "search"),
+        hint(OPEN, "open"),
+        hint(BRANCH, "branch"),
+        hint(REBASE, "rebase"),
+        hint(TAG, "tag"),
+        hint(COMMIT, "commit"),
+        hint(COPY_SHA, "sha"),
+        hint(MERGE, "merge"),
+        hint(UNDO, "undo"),
+        hint(STASH, "stash"),
+        hint(JOURNAL, "journal"),
+        hint(FIND, "search"),
     ]
 }
 
@@ -379,11 +402,11 @@ fn plain_row_list() -> Vec<Hint> {
 /// named there as planned, so it is listed and not drawn.
 fn stash_list() -> Vec<Hint> {
     vec![
-        hint("⏎", "apply"),
-        hint("p", "pop"),
-        hint("d", "drop"),
-        hint("b", "branch"),
-        hint("esc", "close"),
+        hint(STASH_APPLY, "apply"),
+        hint(STASH_POP, "pop"),
+        hint(STASH_DROP, "drop"),
+        hint(STASH_BRANCH, "branch"),
+        hint(BACK, "close"),
     ]
 }
 
@@ -401,23 +424,23 @@ fn stash_list() -> Vec<Hint> {
 /// On a merge `c` opens the finish summary, so it says `c finish`
 /// (m6-conflicts/70, n2).
 fn banner_list(skippable: bool, conflicted: bool, merge: bool) -> Vec<Hint> {
-    let mut list = vec![hint("c", if merge { "finish" } else { "continue" })];
+    let mut list = vec![hint(CONTINUE, if merge { "finish" } else { "continue" })];
     if skippable {
-        list.push(hint("s", "skip"));
+        list.push(hint(SKIP, "skip"));
     }
-    list.push(hint("a", "abort"));
+    list.push(hint(ABORT, "abort"));
     if conflicted {
         // `⏎ resolve` leads (Proposed change 2a): live since
         // m6-conflicts/04, which binds it in `update::banner::banner_key`.
-        list.insert(0, hint("⏎", "resolve"));
-        list.push(hint("M", "mergetool"));
-        list.push(hint("e", "edit"));
+        list.insert(0, hint(OPEN, "resolve"));
+        list.push(hint(BANNER_MERGETOOL, "mergetool"));
+        list.push(hint(BANNER_EDIT, "edit"));
     }
-    list.push(hint("⇥", "graph"));
+    list.push(hint(NEXT_PANE, "graph"));
     // Last, so the first dropped on a narrow bar: the banner's own keys
     // matter more than a way out he can always reach by `⇥` (m8-13b).
     // `q` boxes from here (`graft::update::banner::banner_key`).
-    list.push(hint("q", "quit"));
+    list.push(hint(QUIT, "quit"));
     list
 }
 
@@ -449,10 +472,10 @@ pub(super) fn said_live(list: Vec<Hint>, c: LiveC) -> Vec<Hint> {
         LiveC::Finish | LiveC::Continue | LiveC::Refuses => Vec::new(),
     };
     said.extend(list.into_iter().filter_map(|hint| {
-        if hint.key == AMEND_IT.key && c == LiveC::ContinueAmends {
+        if hint.is(AMEND_IT.keys) && c == LiveC::ContinueAmends {
             return None;
         }
-        if hint.key != "c" {
+        if !hint.is(COMMIT) {
             return Some(hint);
         }
         match c {
@@ -471,11 +494,11 @@ pub(super) fn said_live(list: Vec<Hint>, c: LiveC) -> Vec<Hint> {
 }
 
 /// `a amend it`, at a rewrite's `edit` stop.
-const AMEND_IT: Hint = hint("a", "amend it");
+const AMEND_IT: Hint = hint(AMEND, "amend it");
 
 /// `space stage`, at a rewrite's `edit` stop on the rows where `a` amends
 /// (m7-power-tools/07d D1).
-const SPACE_STAGE: Hint = hint("space", "stage");
+const SPACE_STAGE: Hint = hint(FOLD, "stage");
 
 /// A graph row's bar while an operation is live: [`said_live`]'s list with
 /// `c` ranked first after `a amend it` — above the graph's write keys,
@@ -484,17 +507,17 @@ const SPACE_STAGE: Hint = hint("space", "stage");
 /// `space_stages`, `space stage` right after it in place of `space fold`.
 pub(super) fn said_live_on_the_graph(list: Vec<Hint>, c: LiveC, space_stages: bool) -> Vec<Hint> {
     let said = said_live(list, c);
-    let (c_hint, rest): (Vec<Hint>, Vec<Hint>) = said.into_iter().partition(|hint| hint.key == "c");
+    let (c_hint, rest): (Vec<Hint>, Vec<Hint>) = said.into_iter().partition(|hint| hint.is(COMMIT));
     let mut rest = rest.into_iter().peekable();
     let mut ranked = Vec::new();
     if c == LiveC::ContinueAmends {
-        ranked.extend(rest.next_if(|hint| hint.key == AMEND_IT.key));
+        ranked.extend(rest.next_if(|hint| hint.is(AMEND_IT.keys)));
     }
     ranked.extend(c_hint);
     if space_stages {
         ranked.push(SPACE_STAGE);
     }
-    ranked.extend(rest.filter(|hint| !(space_stages && hint.key == SPACE_STAGE.key)));
+    ranked.extend(rest.filter(|hint| !(space_stages && hint.is(SPACE_STAGE.keys))));
     ranked
 }
 
@@ -502,21 +525,21 @@ fn changes_pane_table(unmerged: bool, tab: TabWord) -> Vec<Hint> {
     if unmerged {
         vec![
             // `⏎ resolve` leads (Proposed change 2a).
-            hint("⏎", "resolve"),
-            hint("M", "mergetool"),
-            hint("e", "edit"),
-            hint("space", "resolved"),
-            hint("c", "commit"),
-            hint("⇥", tab.word()),
+            hint(OPEN, "resolve"),
+            hint(MERGETOOL, "mergetool"),
+            hint(EDIT, "edit"),
+            hint(STAGE, "resolved"),
+            hint(COMMIT, "commit"),
+            hint(NEXT_PANE, tab.word()),
         ]
     } else {
         vec![
-            hint("space", "stage"),
-            hint("d", "discard"),
-            hint("c", "commit"),
-            hint("⌃A", "all"),
-            hint("e", "edit"),
-            hint("⇥", tab.word()),
+            hint(STAGE, "stage"),
+            hint(DISCARD, "discard"),
+            hint(COMMIT, "commit"),
+            hint(STAGE_ALL, "all"),
+            hint(EDIT, "edit"),
+            hint(NEXT_PANE, tab.word()),
         ]
     }
 }

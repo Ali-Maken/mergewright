@@ -1,3 +1,4 @@
+use crate::spelled::Spelled as _;
 use graft_core::capabilities::RenderingTier;
 use graft_core::event::{Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind};
 use graft_core::job::{JobFailure, JobId};
@@ -1354,7 +1355,7 @@ fn every_field_spelled_out() -> AppState {
         commit_template: None,
         external_editor: None,
         suspend_on_ctrl_z: false,
-        keymap: super::SharedKeymap::default(),
+        keymap: std::sync::Arc::default(),
         config_problems: Vec::new(),
         config_notice: false,
         preview: None,
@@ -4121,11 +4122,17 @@ fn the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows() {
             );
             let context = crate::view::rows::pane_hint_context(&state);
             let idle = nothing_happened(&state);
-            for hint in hints_for(&context, Divider::Hidden, 80) {
-                if !answered(&state, &idle, hint.key) {
+            for hint in hints_for(
+                &context,
+                Divider::Hidden,
+                80,
+                graft_ui::keymap::Keymap::shipped(),
+            ) {
+                if !answered(&state, &idle, hint.key()) {
                     dead.push(format!(
                         "{overlay:?} (opens {opens}) draws `{} {}`",
-                        hint.key, hint.verb
+                        hint.key(),
+                        hint.verb
                     ));
                 }
             }
@@ -4167,7 +4174,12 @@ fn bar_hints(
     if matches!(bar, HintContext::Finish { .. }) {
         crate::view::finish::finish_hints(state, columns)
     } else {
-        graft_ui::graph_screen::hints_for(bar, divider, columns)
+        graft_ui::graph_screen::hints_for(
+            bar,
+            divider,
+            columns,
+            graft_ui::keymap::Keymap::shipped(),
+        )
     }
 }
 
@@ -4244,16 +4256,16 @@ fn dead_keys_in(
     for bar in &drawn {
         for hint in bar_hints(&state, bar, drawn_divider, columns) {
             assert!(
-                bound.contains(&(hint.key, hint.verb)),
+                bound.contains(&(hint.key(), hint.verb)),
                 "{bar:?} at {columns} columns hints `{} {}`, which nothing binds",
-                hint.key,
+                hint.key(),
                 hint.verb
             );
-            if pressed.contains(&(hint.key, hint.verb)) {
+            if pressed.contains(&(hint.key(), hint.verb)) {
                 continue;
             }
-            pressed.push((hint.key, hint.verb));
-            if !blind && !answered(&state, &idle, hint.key) {
+            pressed.push((hint.key(), hint.verb));
+            if !blind && !answered(&state, &idle, hint.key()) {
                 // Both names: the screen the state is, and the bar the key
                 // came off — they differ exactly when the classifier reads
                 // the state as another screen, and then which one is wrong is
@@ -4261,7 +4273,8 @@ fn dead_keys_in(
                 dead.push(format!(
                     "{context:?} ({divider:?}) at {columns} columns, bar of {bar:?}, \
                      draws `{} {}`",
-                    hint.key, hint.verb
+                    hint.key(),
+                    hint.verb
                 ));
             }
         }
@@ -5701,10 +5714,10 @@ fn every_planned_hint_is_still_unbound() {
     let live: Vec<(&str, &str)> = every_hint()
         .iter()
         .filter(|hint| hint.state == HintState::Live)
-        .map(|hint| (hint.key, hint.verb))
+        .map(|hint| (hint.key(), hint.verb))
         .collect();
     for hint in every_hint() {
-        let pair = (hint.key, hint.verb);
+        let pair = (hint.key(), hint.verb);
         match hint.state {
             HintState::Planned => {
                 if live.contains(&pair) {
@@ -5713,14 +5726,14 @@ fn every_planned_hint_is_still_unbound() {
                 assert!(
                     !bound.contains(&pair),
                     "`{} {}` is bound now: flip it to `hint(..)` in graph_screen::hints",
-                    hint.key,
+                    hint.key(),
                     hint.verb
                 );
             }
             HintState::Live => assert!(
                 bound.contains(&pair),
                 "`{} {}` is hinted as live but nothing binds it",
-                hint.key,
+                hint.key(),
                 hint.verb
             ),
         }
@@ -5782,7 +5795,7 @@ fn every_bound_action_is_hinted_live_or_is_named_here() {
     let live: Vec<(&str, &str)> = every_hint()
         .iter()
         .filter(|hint| hint.state == HintState::Live)
-        .map(|hint| (hint.key, hint.verb))
+        .map(|hint| (hint.key(), hint.verb))
         .collect();
     let exempt: Vec<(&str, &str)> = NEVER_HINTED.iter().map(|(k, v, _)| (*k, *v)).collect();
 

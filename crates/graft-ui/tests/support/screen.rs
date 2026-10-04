@@ -18,6 +18,7 @@ const NOW: i64 = 1_700_000_000;
 /// highlighted.
 pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphView<'a> {
     GraphView {
+        keys: graft_ui::keymap::Keymap::shipped(),
         location: Some(Location {
             repo: sanitize_line("api"),
             path: sanitize_path(std::path::Path::new("~/code/api")),

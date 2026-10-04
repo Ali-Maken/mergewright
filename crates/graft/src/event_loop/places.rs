@@ -22,7 +22,6 @@ use crate::empty_state::{OutsideState, OutsideStep, Prompt, outside_edge, view};
 use crate::recent::{self, Recent};
 use crate::repos::RepoStore;
 use crate::session::Session;
-use crate::update::SharedKeymap;
 use crate::update::{AppEvent, Harness};
 use crate::view::rows::home_relative;
 
@@ -198,7 +197,7 @@ fn run_outside(
     term: &mut Terminal,
     start: OutsideStart,
     config: &Loaded,
-    keymap: &SharedKeymap,
+    keymap: &std::sync::Arc<graft_ui::keymap::Keymap>,
     config_dir: Option<&Path>,
 ) -> io::Result<Outcome> {
     let settled = Session::settle(config, term.capabilities.clone());
@@ -268,7 +267,7 @@ fn outside_loop(
     state: &mut OutsideState,
     (settled, ascii): (&Session, bool),
     config: &Loaded,
-    keymap: &SharedKeymap,
+    keymap: &std::sync::Arc<graft_ui::keymap::Keymap>,
 ) -> io::Result<Outcome> {
     loop {
         let drawn = view(state, SystemTime::now());
@@ -286,7 +285,7 @@ fn outside_loop(
             return Err(io::Error::other("the terminal's input ended"));
         };
         let step = match wake {
-            Wake::Event(AppEvent::Core(Event::Key(key))) => outside_edge(state, keymap.get(), key),
+            Wake::Event(AppEvent::Core(Event::Key(key))) => outside_edge(state, keymap, key),
             Wake::Event(AppEvent::Core(Event::Paste(text))) => {
                 if let Some(Prompt::Open(field)) = &mut state.prompt {
                     field.insert_str(&text);

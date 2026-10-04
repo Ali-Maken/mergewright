@@ -3,6 +3,11 @@
 //! keys by focus. Split from `lists` so each file stays readable; the
 //! priority table itself stays there.
 
+use super::super::keys::{
+    ALL_SIDES, BACK, BASE, BOTH, DOWN_UP, FIELD_COMMIT, FIELD_EDITOR, FIELD_ENTER, FIELD_ESC,
+    FIELD_TAB, FILE_SIDES, FINISH_COMMIT, MARK_DONE, NEXT_BLOCK, NEXT_PANE, OURS, PREV_BLOCK,
+    RESOLVER_EDIT, RESOLVER_FINISH, RESOLVER_MERGETOOL, START_OVER, THEIRS, TOGGLE_DIFF,
+};
 use super::super::{Hint, HintContext, hint};
 use crate::conflict_resolver::SideRoles;
 use crate::finish_summary::SummaryFocus;
@@ -42,7 +47,7 @@ fn offering_c(mut list: Vec<Hint>, roles: SideRoles, finishable: bool) -> Vec<Hi
         } else {
             "continue"
         };
-        list.insert(0, hint("c", verb));
+        list.insert(0, hint(RESOLVER_FINISH, verb));
     }
     list
 }
@@ -70,29 +75,29 @@ fn resolver_bar(base: bool, restart: bool, whole_file: bool, roles: SideRoles) -
 /// since m6-conflicts/05 bound them (`toggle_base`, `restart_box`).
 fn resolver_list(base: bool, restart: bool, roles: SideRoles) -> Vec<Hint> {
     let mut list = vec![
-        hint("o", roles.ours()),
-        hint("t", roles.theirs()),
-        hint("b", "both"),
+        hint(OURS, roles.ours()),
+        hint(THEIRS, roles.theirs()),
+        hint(BOTH, "both"),
         // `Ctrl+O`/`Ctrl+T` as one hint (P3, user 2026-09-23; review
         // m6-amend-16 M2): `o`/`t` just before already name the roles.
-        hint("⌃O/⌃T", "all"),
-        hint("O/T", "file"),
+        hint(ALL_SIDES, "all"),
+        hint(FILE_SIDES, "file"),
     ];
     if base {
-        list.push(hint("B", "base"));
+        list.push(hint(BASE, "base"));
     }
     list.extend([
-        hint("e", "edit"),
-        hint("n", "next"),
-        hint("N", "prev"),
-        hint("⏎", "done"),
-        hint("j/k", "file"),
-        hint("M", "mergetool"),
+        hint(RESOLVER_EDIT, "edit"),
+        hint(NEXT_BLOCK, "next"),
+        hint(PREV_BLOCK, "prev"),
+        hint(MARK_DONE, "done"),
+        hint(DOWN_UP, "file"),
+        hint(RESOLVER_MERGETOOL, "mergetool"),
     ]);
     if restart {
-        list.push(hint("d", "start over").keeps_words());
+        list.push(hint(START_OVER, "start over").keeps_words());
     }
-    list.push(hint("esc", "close").keeps_words());
+    list.push(hint(BACK, "close").keeps_words());
     list
 }
 
@@ -107,12 +112,12 @@ fn resolver_list(base: bool, restart: bool, roles: SideRoles) -> Vec<Hint> {
 /// conflicted file, as it does from a document's last block.
 fn resolver_card_list(roles: SideRoles) -> Vec<Hint> {
     vec![
-        hint("o", roles.ours()),
-        hint("t", roles.theirs()),
-        hint("e", "edit"),
-        hint("n", "next"),
-        hint("M", "mergetool"),
-        hint("esc", "close").keeps_words(),
+        hint(OURS, roles.ours()),
+        hint(THEIRS, roles.theirs()),
+        hint(RESOLVER_EDIT, "edit"),
+        hint(NEXT_BLOCK, "next"),
+        hint(RESOLVER_MERGETOOL, "mergetool"),
+        hint(BACK, "close").keeps_words(),
     ]
 }
 
@@ -123,10 +128,10 @@ fn resolver_card_list(roles: SideRoles) -> Vec<Hint> {
 fn resolver_done_list(restart: bool) -> Vec<Hint> {
     let mut list = Vec::with_capacity(3);
     if restart {
-        list.push(hint("d", "start over").keeps_words());
+        list.push(hint(START_OVER, "start over").keeps_words());
     }
-    list.push(hint("e", "edit"));
-    list.push(hint("esc", "close").keeps_words());
+    list.push(hint(RESOLVER_EDIT, "edit"));
+    list.push(hint(BACK, "close").keeps_words());
     list
 }
 
@@ -143,29 +148,29 @@ fn resolver_done_list(restart: bool) -> Vec<Hint> {
 pub(super) fn finish_list(focus: SummaryFocus, expandable: bool) -> Vec<Hint> {
     match focus {
         SummaryFocus::Files if expandable => vec![
-            hint("y", "commit"),
-            hint("⏎/space", "diff"),
-            hint("j/k", "move"),
-            hint("⇥", "message"),
-            hint("esc", "back"),
+            hint(FINISH_COMMIT, "commit"),
+            hint(TOGGLE_DIFF, "diff"),
+            hint(DOWN_UP, "move"),
+            hint(NEXT_PANE, "message"),
+            hint(BACK, "back"),
         ],
         SummaryFocus::Files => vec![
-            hint("y", "commit"),
-            hint("j/k", "move"),
-            hint("⇥", "message"),
-            hint("esc", "back"),
+            hint(FINISH_COMMIT, "commit"),
+            hint(DOWN_UP, "move"),
+            hint(NEXT_PANE, "message"),
+            hint(BACK, "back"),
         ],
         SummaryFocus::Subject => vec![
-            hint("⏎", "commit"),
-            hint("⇥", "body"),
-            hint("⌃E", "$EDITOR"),
-            hint("esc", "back"),
+            hint(FIELD_ENTER, "commit"),
+            hint(FIELD_TAB, "body"),
+            hint(FIELD_EDITOR, "$EDITOR"),
+            hint(FIELD_ESC, "back"),
         ],
         SummaryFocus::Body => vec![
-            hint("⌃⏎", "commit"),
-            hint("⇥", "files"),
-            hint("⌃E", "$EDITOR"),
-            hint("esc", "back"),
+            hint(FIELD_COMMIT, "commit"),
+            hint(FIELD_TAB, "files"),
+            hint(FIELD_EDITOR, "$EDITOR"),
+            hint(FIELD_ESC, "back"),
         ],
     }
 }

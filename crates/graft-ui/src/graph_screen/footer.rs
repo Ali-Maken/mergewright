@@ -98,7 +98,8 @@ impl GraphScreen<'_> {
                     } else {
                         Divider::Hidden
                     };
-                    let hints = hints_for(&self.view.hint_context, divider, width16);
+                    let hints =
+                        hints_for(&self.view.hint_context, divider, width16, self.view.keys);
                     match &self.view.stopped {
                         // A stop is a state, not a problem: it leads the
                         // bar rather than replacing it, and never names
@@ -111,11 +112,15 @@ impl GraphScreen<'_> {
                                 &self.view.hint_context,
                                 divider,
                                 width16,
+                                self.view.keys,
                             ),
                             Token::Text,
                         ),
-                        Some(reason) => (stopped_row(reason, &hints, width16), Token::Text),
-                        None => (hints_text(&hints), Token::TextMuted),
+                        Some(reason) => (
+                            stopped_row(reason, &hints, width16, self.view.keys),
+                            Token::Text,
+                        ),
+                        None => (hints_text(&hints, self.view.keys), Token::TextMuted),
                     }
                 }
             }

@@ -29,6 +29,7 @@ fn row(path: &str, what: &str) -> SummaryRow {
 /// The ticket's fixture, built by hand: two files resolved, one combined.
 fn view<'a>() -> FinishView<'a> {
     FinishView {
+        keys: crate::keymap::Keymap::shipped(),
         names: Some((sanitize_line("feature"), sanitize_line("main"))),
         by_you: vec![
             row("gone.txt", "kept · yours · main"),
@@ -455,7 +456,9 @@ fn the_cursor_row_is_kept_on_screen() {
 /// Colour unverified (rule 5): the styles are compared as values.
 #[test]
 fn footer_spans_take_the_first_key_from_the_hint() {
-    use crate::graph_screen::{Hint, HintState, Rung, hints_text};
+    use crate::graph_screen::{Hint, HintKey, HintState, Rung, hints_text};
+    use crate::keymap::Keymap;
+    let keys = Keymap::shipped();
     let strong = Style::new().add_modifier(Modifier::BOLD);
     let muted = Style::new().add_modifier(Modifier::DIM);
     let for_each_focus = [
@@ -467,18 +470,18 @@ fn footer_spans_take_the_first_key_from_the_hint() {
         let mut view = view();
         view.focus = focus;
         let hints = footer_hints(&view, 120);
-        let spans = footer_spans(&hints, strong, muted);
+        let spans = footer_spans(&hints, keys, strong, muted);
         assert_eq!(spans.len(), 2, "{focus:?}: {spans:?}");
         assert_eq!(spans[0], (key.to_owned(), strong), "{focus:?}");
         assert_eq!(spans[1].1, muted, "{focus:?}");
         let joined: String = spans.iter().map(|(text, _)| text.as_str()).collect();
-        assert_eq!(joined, hints_text(&hints).trim_start(), "{focus:?}");
+        assert_eq!(joined, hints_text(&hints, keys).trim_start(), "{focus:?}");
     }
     // A key with a space in it stays whole: splitting at the first space
     // would have painted `⌃` alone.
     let spaced = [
         Hint {
-            key: "⌃ ⏎",
+            keys: &[HintKey::Word("⌃ ⏎")],
             verb: "commit",
             state: HintState::Live,
             rung: Rung::Full,
@@ -486,7 +489,7 @@ fn footer_spans_take_the_first_key_from_the_hint() {
             words_only: false,
         },
         Hint {
-            key: "esc",
+            keys: &[HintKey::Key(crate::keymap::ActionId("app.back"))],
             verb: "back",
             state: HintState::Live,
             rung: Rung::Key,
@@ -495,14 +498,14 @@ fn footer_spans_take_the_first_key_from_the_hint() {
         },
     ];
     assert_eq!(
-        footer_spans(&spaced, strong, muted),
+        footer_spans(&spaced, keys, strong, muted),
         vec![
             ("⌃ ⏎".to_owned(), strong),
             (" commit  esc".to_owned(), muted)
         ]
     );
     assert!(
-        footer_spans(&[], strong, muted).is_empty(),
+        footer_spans(&[], keys, strong, muted).is_empty(),
         "no keys, no spans"
     );
 }

@@ -1,6 +1,7 @@
 //! `space` at a rewrite's `edit` stop (m7-power-tools/07d D1): stage-all on
 //! the stopped row and the Uncommitted row, the fold everywhere else.
 
+use crate::spelled::Spelled as _;
 use std::sync::Arc;
 
 use graft_core::event::{Event, KeyCode, KeyPress, Modifiers};
@@ -144,7 +145,12 @@ fn space_outside_an_edit_stop_is_unchanged() {
 fn bar(state: &AppState) -> Vec<Hint> {
     let banner = crate::update::banner::banner_view(state);
     let context = crate::view::rows::footer_context(state, &[], banner.as_ref());
-    hints_for(&context, Divider::Hidden, 187)
+    hints_for(
+        &context,
+        Divider::Hidden,
+        187,
+        graft_ui::keymap::Keymap::shipped(),
+    )
 }
 
 /// The sweep (07d D1): edit stop, conflict stop, nothing live × the
@@ -167,7 +173,7 @@ fn the_bar_offers_space_stage_exactly_where_space_stages() {
                 let what = (stop, row, uncommitted, banner_focus);
                 let offered = bar(&state)
                     .iter()
-                    .any(|hint| (hint.key, hint.verb) == ("space", "stage"));
+                    .any(|hint| (hint.key(), hint.verb) == ("space", "stage"));
                 let (_, commands) = space(&state);
                 assert_eq!(offered, stages(&commands), "{what:?}: {commands:?}");
                 assert_eq!(offered, space_stages_here(&state), "{what:?}");

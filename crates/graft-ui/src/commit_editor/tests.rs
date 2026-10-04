@@ -284,6 +284,7 @@ fn the_footer_follows_focus() {
 fn ctrl_e_reads_the_same_in_both_subject_fields() {
     use crate::finish_summary::SummaryFocus;
     use crate::graph_screen::{Divider, HintContext, hints_for};
+    use crate::keymap::Keymap;
     for focus in [SummaryFocus::Subject, SummaryFocus::Body] {
         let hints = hints_for(
             &HintContext::Finish {
@@ -292,11 +293,13 @@ fn ctrl_e_reads_the_same_in_both_subject_fields() {
             },
             Divider::Hidden,
             200,
+            Keymap::shipped(),
         );
-        let ctrl_e = hints.iter().find(|hint| hint.key == "⌃E").map_or_else(
-            || panic!("{focus:?}: no ⌃E in {hints:?}"),
-            crate::graph_screen::Hint::text,
-        );
+        let ctrl_e = hints
+            .iter()
+            .filter_map(|hint| hint.text(Keymap::shipped()))
+            .find(|text| text.starts_with("⌃E "))
+            .unwrap_or_else(|| panic!("{focus:?}: no ⌃E in {hints:?}"));
         assert_eq!(ctrl_e, "⌃E $EDITOR", "{focus:?}");
         assert!(FOOTER_SUBJECT.contains(&ctrl_e), "{FOOTER_SUBJECT}");
         assert!(FOOTER_OTHER.contains(&ctrl_e), "{FOOTER_OTHER}");

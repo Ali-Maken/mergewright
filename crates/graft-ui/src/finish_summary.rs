@@ -97,6 +97,8 @@ pub enum SummaryState {
 /// Everything the summary draws.
 #[derive(Clone, Debug)]
 pub struct FinishView<'a> {
+    /// His keymap: every key the summary names is spelled from it.
+    pub keys: &'a crate::keymap::Keymap,
     /// `(from, into)`: the branch merged in and the one it lands on. `None`
     /// while the read has not landed, or when the names are not known: the
     /// title then reads `Preview: finish the merge`, never an invented name.
