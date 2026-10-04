@@ -33,6 +33,9 @@ pub(super) struct Rewritten<'a> {
     pub(super) rows: &'a [&'a TodoLine],
     /// Every branch of the line, with its tip before.
     pub(super) line: &'a [Tip],
+    /// Where the first kept row is replayed: the line's commits are
+    /// `onto..` its top.
+    pub(super) onto: Oid,
     /// Row → what the line is after it: a ghost, or `onto`.
     pub(super) tip_after: &'a [Target],
     /// The line's chained forecast over `rows`.
@@ -84,7 +87,9 @@ impl Candidate {
 /// stays, in [`Forks::left_behind`] only. A fork follows when its fork
 /// point's row is reached clean and its own commits replay clean onto that
 /// row's result, and it is not the default branch, not checked out
-/// elsewhere, not pushed, and shares no commit with a fork that follows.
+/// elsewhere, not pushed, carries no branch that is one of those (§6.1),
+/// is built on the same commits after the edit as before (§6.3), and
+/// shares no commit with a fork that follows.
 /// Weighed longest first, so a fork holding another moves it as one of the
 /// branches on it.
 ///
@@ -130,10 +135,18 @@ pub(super) fn forks(
             continue;
         }
         let candidate = &candidates[index];
+        // The branches it would carry are known before its fate: each is
+        // gated as the fork itself is (ADR-0059 §6.1).
+        let carried = fates.carried(&candidates, index);
         let after_row = weigh.after_row(rewritten, candidate.off.at);
-        let fate = weigh.fate(&env, candidate, after_row, &fates.moving)?;
+        let weighed = Weighed {
+            candidate,
+            carried: carried.iter().map(|other| &candidates[*other]).collect(),
+            after_row,
+        };
+        let fate = weigh.fate(&env, &weighed, &fates.moving)?;
         if let (ForkFate::Follows { .. }, Some(after_row)) = (&fate, after_row) {
-            let section = fates.follow(&candidates, index, after_row, &weigh.info)?;
+            let section = fates.follow(&candidates, index, &carried, after_row, &weigh.info)?;
             found.sections.push(section);
         }
         found.drawn.push(Fork {
@@ -217,23 +230,35 @@ impl Fates {
             .collect()
     }
 
+    /// The candidates `candidates[index]` carries: every other one not yet
+    /// claimed whose tip is one of its own commits.
+    fn carried(&self, candidates: &[Candidate], index: usize) -> Vec<usize> {
+        let own = candidates[index].commits();
+        candidates
+            .iter()
+            .enumerate()
+            .filter(|(other, _)| *other != index && !self.claimed.contains(other))
+            .filter(|(_, other)| own.contains(&other.off.tip))
+            .map(|(other, _)| other)
+            .collect()
+    }
+
     /// `candidates[index]` follows from `after_row`: its commits claimed,
-    /// the branches on them moved with it. Returns its section.
+    /// the branches it carries (`carried`) moved with it. Returns its
+    /// section.
     fn follow(
         &mut self,
         candidates: &[Candidate],
         index: usize,
+        carried: &[usize],
         after_row: usize,
         info: &HashMap<Oid, CommitSummary>,
     ) -> Result<ForkSection, PreviewError> {
         let candidate = &candidates[index];
         let own = candidate.commits();
-        let inside: Vec<(usize, Tip)> = candidates
+        let inside: Vec<(usize, Tip)> = carried
             .iter()
-            .enumerate()
-            .filter(|(other, _)| *other != index && !self.claimed.contains(other))
-            .filter(|(_, other)| own.contains(&other.off.tip))
-            .map(|(other, branch)| (other, tip_of(&branch.off)))
+            .map(|other| (*other, tip_of(&candidates[*other].off)))
             .collect();
         for commit in &own {
             self.moving.insert(*commit, candidate.off.branch.clone());
@@ -282,6 +307,18 @@ struct Weigh {
     upstreams: HashMap<String, String>,
     /// Every fork commit's summary.
     info: HashMap<Oid, CommitSummary>,
+    /// The line's commits before the edit, `onto..` its top on the first
+    /// parents, oldest first.
+    line: Vec<Oid>,
+}
+
+/// One fork as its fate is weighed.
+struct Weighed<'a> {
+    candidate: &'a Candidate,
+    /// The other candidates on its own commits, moved with it if it follows.
+    carried: Vec<&'a Candidate>,
+    /// The row whose result would be its new base.
+    after_row: Option<usize>,
 }
 
 impl Weigh {
@@ -303,18 +340,31 @@ impl Weigh {
                 default: None,
                 upstreams: HashMap::new(),
                 info: HashMap::new(),
+                line: Vec::new(),
             });
         }
         let default = crate::rewrite::default_branch_of(repo, None).map_err(facts)?;
         let upstreams = upstreams(repo, candidates, stop)?;
         let commits: Vec<Oid> = candidates.iter().flat_map(Candidate::commits).collect();
         let info = chain::summaries(repo, &commits, stop)?;
+        let line = match rewritten.line.last() {
+            Some(top) => line_before(repo, rewritten.onto, top.oid, stop)?,
+            None => Vec::new(),
+        };
         Ok(Self {
             row_of,
             default,
             upstreams,
             info,
+            line,
         })
+    }
+
+    /// The line's commits at or under `at`, before the edit, oldest first;
+    /// `None` when `at` is not one of them.
+    fn under(&self, at: Oid) -> Option<&[Oid]> {
+        let end = self.line.iter().position(|commit| *commit == at)?;
+        Some(&self.line[..=end])
     }
 
     /// The row whose result is the fork's new base: `at`'s own, or the last
@@ -331,22 +381,18 @@ impl Weigh {
         Some(end)
     }
 
+    /// A fork's fate. Every gate is a read with no forecast, and all run
+    /// first: a fork that fails one is never forecast (ADR-0059 §6.4).
     fn fate(
         &self,
         env: &Env<'_>,
-        candidate: &Candidate,
-        after_row: Option<usize>,
+        weighed: &Weighed<'_>,
         moving: &HashMap<Oid, RefName>,
     ) -> Result<ForkFate, PreviewError> {
+        let candidate = weighed.candidate;
         let off = &candidate.off;
-        let name = String::from_utf8_lossy(off.branch.as_bytes()).into_owned();
-        if self.default.as_deref() == Some(name.as_str()) {
-            return Ok(ForkFate::Stays(WhyStays::DefaultBranch));
-        }
-        if let Some(worktree) = &off.elsewhere {
-            return Ok(ForkFate::Stays(WhyStays::Elsewhere {
-                worktree: worktree.clone(),
-            }));
+        if let Some(why) = self.placed(candidate) {
+            return Ok(ForkFate::Stays(why));
         }
         let own = match &candidate.own {
             OwnCommits::Merge(merge) => {
@@ -354,25 +400,187 @@ impl Weigh {
             }
             OwnCommits::Line(own) => own,
         };
-        let Some(after_row) = after_row else {
+        let (Some(after_row), Some(under)) = (weighed.after_row, self.under(off.at)) else {
             return Ok(ForkFate::Stays(WhyStays::NotChecked(format!(
                 "{} is not a commit the rewrite replays",
                 crate::operation::short(off.at)
             ))));
         };
         let commits: Vec<Oid> = own.iter().map(|(commit, _)| *commit).collect();
-        if let Some(upstream) = self.upstreams.get(&name)
-            && holds_any(env.repo, upstream, off.at, &commits, env.stop)?
+        // Pushed (§6.2) is weighed in two halves around the branches it
+        // carries: a remote-tracking ref of a carried branch holds the
+        // fork's own commits too, and the words name that branch.
+        if let Some(upstream) = self.upstream_holding(env, candidate, under, &commits)? {
+            return Ok(ForkFate::Stays(WhyStays::Pushed { upstream }));
+        }
+        if let Some(why) = self.carries(env, weighed, under, &commits)? {
+            return Ok(ForkFate::Stays(why));
+        }
+        // Own commits are one first-parent chain: a ref that holds any of
+        // them holds the oldest.
+        if let Some(oldest) = commits.first()
+            && let Some(upstream) = remote_holding(env.repo, *oldest, env.stop)?
         {
-            return Ok(ForkFate::Stays(WhyStays::Pushed {
-                upstream: ref_name(upstream)?,
-            }));
+            return Ok(ForkFate::Stays(WhyStays::Pushed { upstream }));
+        }
+        if let Some(why) = self.base_change(env.rewritten, under, after_row) {
+            return Ok(ForkFate::Stays(why));
         }
         if let Some(on) = commits.iter().find_map(|commit| moving.get(commit)) {
             return Ok(ForkFate::Stays(WhyStays::Nested { on: on.clone() }));
         }
         replayed_fate(env, own, after_row, off.at)
     }
+
+    /// Where a branch is that keeps it put: the default branch, or checked
+    /// out in another worktree. No read.
+    fn placed(&self, branch: &Candidate) -> Option<WhyStays> {
+        let name = String::from_utf8_lossy(branch.off.branch.as_bytes());
+        if self.default.as_deref() == Some(name.as_ref()) {
+            return Some(WhyStays::DefaultBranch);
+        }
+        branch
+            .off
+            .elsewhere
+            .as_ref()
+            .map(|worktree| WhyStays::Elsewhere {
+                worktree: worktree.clone(),
+            })
+    }
+
+    /// `branch`'s upstream, when it holds a commit of `onto..branch`
+    /// (ADR-0059 §6.2): `under`, the line's commits at or under its fork
+    /// point, or `own`, its own commits. The other half of pushed — any
+    /// remote-tracking ref holding one of `own` — is [`remote_holding`].
+    fn upstream_holding(
+        &self,
+        env: &Env<'_>,
+        branch: &Candidate,
+        under: &[Oid],
+        own: &[Oid],
+    ) -> Result<Option<RefName>, PreviewError> {
+        let name = String::from_utf8_lossy(branch.off.branch.as_bytes());
+        let Some(upstream) = self.upstreams.get(name.as_ref()) else {
+            return Ok(None);
+        };
+        let held: Vec<Oid> = under.iter().chain(own).copied().collect();
+        if holds_any(env.repo, upstream, env.rewritten.onto, &held, env.stop)? {
+            return Ok(Some(ref_name(upstream)?));
+        }
+        Ok(None)
+    }
+
+    /// The first branch the fork carries that fails one of its gates
+    /// (ADR-0059 §6.1), as [`WhyStays::Carries`]. `own` is the fork's own
+    /// commits, oldest first.
+    fn carries(
+        &self,
+        env: &Env<'_>,
+        weighed: &Weighed<'_>,
+        under: &[Oid],
+        own: &[Oid],
+    ) -> Result<Option<WhyStays>, PreviewError> {
+        for branch in &weighed.carried {
+            let why = match self.placed(branch) {
+                Some(why) => Some(why),
+                // Its own commits are the fork's up to its tip. A
+                // remote-tracking ref holding one of them holds the fork's
+                // oldest, already weighed as the fork's own.
+                None => {
+                    let end = own.iter().position(|commit| *commit == branch.off.tip);
+                    let theirs = end.map_or(own, |end| &own[..=end]);
+                    self.upstream_holding(env, branch, under, theirs)?
+                        .map(|upstream| WhyStays::Pushed { upstream })
+                }
+            };
+            if let Some(why) = why {
+                return Ok(Some(WhyStays::Carries {
+                    branch: branch.off.branch.clone(),
+                    why: Box::new(why),
+                }));
+            }
+        }
+        Ok(None)
+    }
+
+    /// Whether following would change what the fork is built on (ADR-0059
+    /// §6.3): the line's commits at or under its fork point before the edit
+    /// (`under`) against the commits in the rows up to `after_row` — the
+    /// last row of the fork point's squash group, so every commit folded
+    /// into it counts. A commit `a` wrote from the index is not the line's
+    /// and does not count; nor does a dropped row.
+    fn base_change(
+        &self,
+        rewritten: &Rewritten<'_>,
+        under: &[Oid],
+        after_row: usize,
+    ) -> Option<WhyStays> {
+        let after: Vec<Oid> = rewritten
+            .rows
+            .iter()
+            .take(after_row + 1)
+            .filter(|row| !matches!(row.action, TodoAction::Drop))
+            .map(|row| row.commit)
+            .filter(|commit| self.line.contains(commit))
+            .collect();
+        if let Some(lost) = under.iter().find(|commit| !after.contains(commit)) {
+            return Some(WhyStays::WouldLose { commit: *lost });
+        }
+        after
+            .iter()
+            .find(|commit| !under.contains(commit))
+            .map(|gained| WhyStays::WouldGain { commit: *gained })
+    }
+}
+
+/// The line's commits before the edit, `onto..top` on the first parents,
+/// oldest first: one `rev-list`.
+fn line_before(
+    repo: &RepoHandle,
+    onto: Oid,
+    top: Oid,
+    stop: &dyn Stop,
+) -> Result<Vec<Oid>, PreviewError> {
+    let output = GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("rev-list"),
+            GitArg::Flag("--first-parent"),
+            GitArg::Flag("--reverse"),
+            GitArg::Word(top.to_string()),
+            GitArg::Word(format!("^{onto}")),
+        ])
+        .run(stop)?;
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(|line| {
+            Oid::from_hex(line.trim()).map_err(|_| {
+                PreviewError::Read(RunError::Unparsable(format!("rev-list printed {line:?}")))
+            })
+        })
+        .collect()
+}
+
+/// The first remote-tracking ref (by name, symbolic refs aside) that holds
+/// `commit`, in full: one `for-each-ref --contains`.
+fn remote_holding(
+    repo: &RepoHandle,
+    commit: Oid,
+    stop: &dyn Stop,
+) -> Result<Option<RefName>, PreviewError> {
+    let output = GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("for-each-ref"),
+            GitArg::Flag("--format=%(refname)%00%(symref)"),
+            GitArg::Word(format!("--contains={commit}")),
+            GitArg::Flag("refs/remotes"),
+        ])
+        .run(stop)?;
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter_map(|line| line.split_once('\0'))
+        .find(|(_, symref)| symref.is_empty())
+        .map(|(name, _)| ref_name(name))
+        .transpose()
 }
 
 /// Whether a fork's own commits (`own`: commit, parent) replay clean onto

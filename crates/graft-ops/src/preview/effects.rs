@@ -223,14 +223,18 @@ pub enum WhyStays {
         /// The first merge found.
         merge: Oid,
     },
-    /// Its upstream holds one of its own commits: moving it would need a
-    /// force-push he never asked for.
+    /// It is pushed (ADR-0059 §6.2): its upstream holds a commit of
+    /// `onto..F` (its fork point and the replaced commits under it
+    /// included), or any remote-tracking ref holds one of its own commits.
+    /// Moving it would need a force-push he never asked for.
     Pushed {
-        /// The upstream, in full (`refs/remotes/origin/feature-x`).
+        /// The remote-tracking ref that holds it, in full
+        /// (`refs/remotes/origin/feature-x`): its upstream, or any other.
         upstream: RefName,
     },
-    /// It is checked out in another worktree, which git would refuse to
-    /// move under it.
+    /// It is checked out in another worktree. Git would move it all the
+    /// same and leave that worktree's index and files on the old commit
+    /// (ADR-0059 §6.1): the gate is Graft's.
     Elsewhere {
         /// That worktree.
         worktree: PathBuf,
@@ -250,6 +254,27 @@ pub enum WhyStays {
     /// Its forecast was not made, and why (an old git, more than
     /// [`FORECAST_CAP`] commits, a read that failed).
     NotChecked(String),
+    /// A branch on the fork's own commits fails a gate (ADR-0059 §6.1), so
+    /// the whole fork stays. `why` is only [`Self::Elsewhere`],
+    /// [`Self::Pushed`] or [`Self::DefaultBranch`].
+    Carries {
+        /// That branch, in full.
+        branch: RefName,
+        /// The gate it fails.
+        why: Box<WhyStays>,
+    },
+    /// Following would drop a commit the fork is built on (ADR-0059 §6.3):
+    /// dropped, or moved after its fork point's row.
+    WouldLose {
+        /// That commit, as it was.
+        commit: Oid,
+    },
+    /// Following would add a commit the fork was not built on (ADR-0059
+    /// §6.3): moved to or under its fork point's row, or folded into it.
+    WouldGain {
+        /// That commit, as it was.
+        commit: Oid,
+    },
 }
 
 impl WhyStays {
@@ -280,6 +305,17 @@ impl WhyStays {
             Self::DefaultBranch => "the default branch".to_owned(),
             Self::PastCap => format!("past the first {LEFT_BEHIND_CAP}"),
             Self::NotChecked(why) => format!("not checked: {why}"),
+            Self::Carries { branch, why } => format!(
+                "{} is {}",
+                String::from_utf8_lossy(branch.shorthand()),
+                why.words()
+            ),
+            Self::WouldLose { commit } => {
+                format!("would lose {}", crate::operation::short(*commit))
+            }
+            Self::WouldGain { commit } => {
+                format!("would gain {}", crate::operation::short(*commit))
+            }
         }
     }
 }

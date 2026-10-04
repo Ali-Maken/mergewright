@@ -8,16 +8,19 @@
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use graft_core::journal::EntryStatus;
 use graft_core::oid::Oid;
+use graft_core::ref_name::RefName;
 use graft_git::version::GitVersion;
 use graft_ops::apply::{Applied, ApplyError, Resume, recover_interrupted, resume};
 use graft_ops::facts::read_facts;
 use graft_ops::operation::{FactsScope, Operation, Refusal};
 use graft_ops::preview::{ForkFate, PreviewPlan, WhyStays, plan_as_run};
-use graft_ops::rewrite::{RewriteError, RewriteParams, RewriteRequest, TodoAction, plan, progress};
+use graft_ops::rewrite::{
+    RewriteError, RewriteParams, RewriteRequest, TodoAction, TodoLine, plan, progress,
+};
 
 use crate::support::{
     NOW, Never, TempRepo, context, git_version, journal_for, run, run_undo, state_of, try_run,
@@ -635,4 +638,517 @@ fn a_stop_resumed_after_relaunch_finishes_the_section() {
     assert_eq!(id(&repo, "feature-x~1"), id(&repo, "feature-a~1"));
     assert_eq!(own_diff(&repo, "feature-x"), x1);
     assert_eq!(head(&repo), "refs/heads/feature-a", "HEAD came home");
+}
+
+// ── 14d: a fork follows only when it is safe (ADR-0059 §6) ──────────────
+
+/// A linked worktree's place, inside `.git` so the main worktree's status
+/// never lists it.
+const WT: &str = ".git/graft-wt";
+
+/// `forked()` with x2 on `feature-x` and `feature-w` at x1: `feature-x`
+/// carries `feature-w`.
+fn carrying() -> TempRepo {
+    let repo = forked();
+    repo.git(&["switch", "-q", "feature-x"]);
+    commit(&repo, "x2");
+    repo.git(&["branch", "-q", "feature-w", "feature-x~1"]);
+    repo.git(&["switch", "-q", "feature-a"]);
+    repo
+}
+
+/// A real bare repository as `origin` (inside `.git`, so it goes when the
+/// repository does).
+fn bare_origin(repo: &TempRepo) {
+    let path = repo.path().join(".git/origin.git");
+    let path = path.to_str().expect("a UTF-8 path");
+    repo.git(&["init", "-q", "--bare", path]);
+    repo.git(&["remote", "add", "origin", path]);
+}
+
+/// `git push origin <rev>:refs/heads/<branch>`, its upstream set on the
+/// local `branch` when `track`.
+fn push(repo: &TempRepo, rev: &str, branch: &str, track: bool) {
+    repo.git(&["push", "-q", "origin", &format!("{rev}:refs/heads/{branch}")]);
+    if track {
+        repo.git(&[
+            "branch",
+            "-q",
+            "--set-upstream-to",
+            &format!("origin/{branch}"),
+            branch,
+        ]);
+    }
+}
+
+fn no_move_of(drawn: &PreviewPlan, branches: &[&str]) {
+    for branch in branches {
+        let full = format!("refs/heads/{branch}");
+        assert!(
+            drawn.ref_moves.iter().all(|moved| moved.name != full),
+            "{full} moves: {:?}",
+            drawn.ref_moves
+        );
+    }
+}
+
+fn carries(why: &WhyStays) -> (String, &WhyStays) {
+    match why {
+        WhyStays::Carries { branch, why } => (
+            String::from_utf8_lossy(branch.as_bytes()).into_owned(),
+            why.as_ref(),
+        ),
+        other => panic!("expected Carries, got {other:?}"),
+    }
+}
+
+// ── M1: carried branches ────────────────────────────────────────────────
+
+#[test]
+fn a_fork_carrying_a_branch_checked_out_elsewhere_stays() {
+    let repo = carrying();
+    repo.git(&["worktree", "add", "-q", WT, "feature-w"]);
+    let refs = repo.git(&["rev-parse", "feature-x", "feature-w"]);
+    let line_was = id(&repo, "feature-a~1");
+    repo.write("c1.txt", b"c1, amended\n");
+    repo.git(&["add", "c1.txt"]);
+
+    let (op, drawn) = amend_into(&repo, "feature-a~2");
+    let why = stays(&fate_of(&drawn, "feature-x")).clone();
+    let why = &why;
+    let (branch, inner) = carries(why);
+    assert_eq!(branch, "refs/heads/feature-w");
+    assert!(matches!(inner, WhyStays::Elsewhere { .. }), "{inner:?}");
+    let words = why.words();
+    assert!(
+        words.starts_with("feature-w is checked out in ") && words.ends_with("graft-wt"),
+        "{words}"
+    );
+    no_move_of(&drawn, &["feature-x", "feature-w"]);
+    run(&repo, &op, NOW);
+
+    assert_eq!(repo.git(&["rev-parse", "feature-x", "feature-w"]), refs);
+    assert_eq!(repo.git_in(Path::new(WT), &["status", "--porcelain"]), "");
+    assert_ne!(id(&repo, "feature-a~1"), line_was, "the line moved");
+}
+
+#[test]
+fn a_fork_checked_out_elsewhere_stays_and_its_worktree_is_untouched() {
+    let repo = forked();
+    repo.git(&["worktree", "add", "-q", WT, "feature-x"]);
+    let wt_head = repo.git_in(Path::new(WT), &["rev-parse", "HEAD"]);
+    let (op, drawn) = as_run(&repo, reword_c1(&repo, &[]));
+    assert!(
+        matches!(
+            stays(&fate_of(&drawn, "feature-x")),
+            WhyStays::Elsewhere { .. }
+        ),
+        "{:?}",
+        fates(&drawn)
+    );
+    run(&repo, &op, NOW);
+    assert_eq!(repo.git_in(Path::new(WT), &["status", "--porcelain"]), "");
+    assert_eq!(repo.git_in(Path::new(WT), &["rev-parse", "HEAD"]), wt_head);
+}
+
+#[test]
+fn a_fork_carrying_a_pushed_branch_stays() {
+    let repo = carrying();
+    bare_origin(&repo);
+    push(&repo, "feature-w", "feature-w", true);
+    let refs = repo.git(&["rev-parse", "feature-x", "feature-w"]);
+
+    let (op, drawn) = as_run(&repo, reword_c1(&repo, &[]));
+    let why = stays(&fate_of(&drawn, "feature-x")).clone();
+    let why = &why;
+    let (branch, inner) = carries(why);
+    assert_eq!(branch, "refs/heads/feature-w");
+    match inner {
+        WhyStays::Pushed { upstream } => {
+            assert_eq!(upstream.as_bytes(), b"refs/remotes/origin/feature-w");
+        }
+        other => panic!("expected Pushed, got {other:?}"),
+    }
+    assert_eq!(why.words(), "feature-w is pushed to origin/feature-w");
+    run(&repo, &op, NOW);
+    assert_eq!(repo.git(&["rev-parse", "feature-x", "feature-w"]), refs);
+}
+
+#[test]
+fn a_fork_carrying_the_default_branch_stays() {
+    let repo = carrying();
+    repo.git(&["config", "init.defaultBranch", "feature-w"]);
+    let why = stays(&the_fate(&repo, "feature-x")).clone();
+    let (branch, inner) = carries(&why);
+    assert_eq!(branch, "refs/heads/feature-w");
+    assert_eq!(inner, &WhyStays::DefaultBranch);
+    assert_eq!(why.words(), "feature-w is the default branch");
+}
+
+#[test]
+fn a_fork_carrying_a_clean_branch_follows_with_it() {
+    let repo = carrying();
+    let (op, drawn) = as_run(&repo, reword_c1(&repo, &[]));
+    assert!(
+        matches!(fate_of(&drawn, "feature-x"), ForkFate::Follows { .. }),
+        "{:?}",
+        fates(&drawn)
+    );
+    run(&repo, &op, NOW);
+    assert_eq!(id(&repo, "feature-w"), id(&repo, "feature-x~1"));
+    repo.git(&["merge-base", "--is-ancestor", "feature-a~1", "feature-w"]);
+}
+
+// ── M2: pushed ──────────────────────────────────────────────────────────
+
+fn pushed_to(repo: &TempRepo, branch: &str) -> String {
+    match stays(&the_fate(repo, branch)) {
+        WhyStays::Pushed { upstream } => String::from_utf8_lossy(upstream.as_bytes()).into_owned(),
+        other => panic!("expected Pushed, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_fork_with_no_commits_whose_upstream_holds_its_fork_point_stays() {
+    let repo = forked();
+    repo.git(&["branch", "-q", "park", "feature-a~1"]);
+    bare_origin(&repo);
+    push(&repo, "park", "park", true);
+    let was = id(&repo, "park");
+    assert_eq!(pushed_to(&repo, "park"), "refs/remotes/origin/park");
+    let (op, _) = as_run(&repo, reword_c1(&repo, &[]));
+    run(&repo, &op, NOW);
+    assert_eq!(id(&repo, "park"), was, "park stayed");
+}
+
+#[test]
+fn a_fork_whose_upstream_holds_only_its_fork_point_stays() {
+    let repo = forked();
+    bare_origin(&repo);
+    push(&repo, "feature-a~1", "feature-x", true);
+    assert_eq!(pushed_to(&repo, "feature-x"), "refs/remotes/origin/feature-x");
+}
+
+#[test]
+fn a_fork_whose_upstream_holds_a_replaced_commit_under_it_stays() {
+    let repo = forked();
+    bare_origin(&repo);
+    push(&repo, "feature-a~2", "feature-x", true);
+    assert_eq!(pushed_to(&repo, "feature-x"), "refs/remotes/origin/feature-x");
+}
+
+#[test]
+fn a_fork_pushed_without_an_upstream_stays() {
+    let repo = forked();
+    bare_origin(&repo);
+    push(&repo, "feature-x", "feature-x", false);
+    assert!(
+        repo.try_git(&["rev-parse", "--abbrev-ref", "feature-x@{upstream}"])
+            .is_err(),
+        "no upstream"
+    );
+    assert_eq!(pushed_to(&repo, "feature-x"), "refs/remotes/origin/feature-x");
+}
+
+#[test]
+fn a_fork_whose_upstream_holds_only_what_is_under_onto_follows() {
+    let repo = forked();
+    bare_origin(&repo);
+    push(&repo, "main", "main", false);
+    repo.git(&["branch", "-q", "--set-upstream-to", "origin/main", "feature-x"]);
+    assert!(
+        matches!(the_fate(&repo, "feature-x"), ForkFate::Follows { .. }),
+        "upstream origin/main"
+    );
+}
+
+// ── M3: base unchanged ──────────────────────────────────────────────────
+
+/// `main` m1; `feature-a` c1..c4 (`HEAD`); `feature-x` x1 off c2.
+fn four_forked() -> TempRepo {
+    let repo = TempRepo::init();
+    commit(&repo, "m1");
+    repo.git(&["switch", "-q", "-c", "feature-a"]);
+    for name in ["c1", "c2", "c3", "c4"] {
+        commit(&repo, name);
+    }
+    repo.git(&["switch", "-q", "-c", "feature-x", "feature-a~2"]);
+    commit(&repo, "x1");
+    repo.git(&["switch", "-q", "feature-a"]);
+    repo
+}
+
+/// `R` from c1, the todo (oldest first) edited by `edit`, as `y` runs it.
+fn edited(repo: &TempRepo, edit: impl FnOnce(&mut Vec<TodoLine>)) -> (Operation, PreviewPlan) {
+    let first = repo.git(&["rev-list", "--reverse", "main..feature-a"]);
+    let first = first.lines().next().expect("feature-a has commits");
+    let mut params = planned(
+        repo,
+        &RewriteRequest::Open {
+            from: Oid::from_hex(first).expect("an id"),
+        },
+    )
+    .unwrap_or_else(|why| panic!("it plans: {why:?}"));
+    edit(&mut params.todo);
+    as_run(repo, params)
+}
+
+fn row_of(todo: &[TodoLine], subject: &str) -> usize {
+    todo.iter()
+        .position(|line| line.subject == subject)
+        .unwrap_or_else(|| panic!("{subject} is a row"))
+}
+
+fn set_action(todo: &mut [TodoLine], subject: &str, action: TodoAction) {
+    let row = row_of(todo, subject);
+    todo[row].action = action;
+}
+
+/// Move the row `subject` to sit right after the row `after`.
+fn move_after(todo: &mut Vec<TodoLine>, subject: &str, after: &str) {
+    let line = todo.remove(row_of(todo, subject));
+    let to = row_of(todo, after) + 1;
+    todo.insert(to, line);
+}
+
+fn base_why(drawn: &PreviewPlan) -> WhyStays {
+    stays(&fate_of(drawn, "feature-x")).clone()
+}
+
+#[test]
+fn dropping_the_fork_point_keeps_the_fork() {
+    let repo = four_forked();
+    let c2 = id(&repo, "feature-a~2");
+    let was = id(&repo, "feature-x");
+    let (op, drawn) = edited(&repo, |todo| set_action(todo, "c2", TodoAction::Drop));
+    let why = base_why(&drawn);
+    assert_eq!(why, WhyStays::WouldLose { commit: c2 });
+    assert_eq!(why.words(), format!("would lose {}", &c2.to_string()[..7]));
+    run(&repo, &op, NOW);
+    assert_eq!(id(&repo, "feature-x"), was, "feature-x stayed");
+    assert_eq!(repo.git(&["show", "feature-x:c2.txt"]), "c2");
+}
+
+#[test]
+fn dropping_a_commit_under_the_fork_point_keeps_the_fork() {
+    let repo = four_forked();
+    let c1 = id(&repo, "feature-a~3");
+    let (_, drawn) = edited(&repo, |todo| set_action(todo, "c1", TodoAction::Drop));
+    assert_eq!(base_why(&drawn), WhyStays::WouldLose { commit: c1 });
+}
+
+#[test]
+fn moving_a_commit_from_under_the_fork_point_keeps_the_fork() {
+    let repo = four_forked();
+    let c1 = id(&repo, "feature-a~3");
+    let (_, drawn) = edited(&repo, |todo| move_after(todo, "c1", "c2"));
+    assert_eq!(base_why(&drawn), WhyStays::WouldLose { commit: c1 });
+}
+
+#[test]
+fn moving_a_commit_under_the_fork_point_keeps_the_fork() {
+    let repo = four_forked();
+    let c3 = id(&repo, "feature-a~1");
+    let (_, drawn) = edited(&repo, |todo| move_after(todo, "c3", "c1"));
+    let why = base_why(&drawn);
+    assert_eq!(why, WhyStays::WouldGain { commit: c3 });
+    assert_eq!(why.words(), format!("would gain {}", &c3.to_string()[..7]));
+}
+
+#[test]
+fn folding_a_later_commit_into_the_fork_point_keeps_the_fork() {
+    let repo = four_forked();
+    let c3 = id(&repo, "feature-a~1");
+    let (_, drawn) = edited(&repo, |todo| {
+        move_after(todo, "c3", "c2");
+        set_action(todo, "c3", TodoAction::Fixup);
+    });
+    assert_eq!(base_why(&drawn), WhyStays::WouldGain { commit: c3 });
+}
+
+/// The edit leaves the fork's base alone: it follows, x1's change the same.
+fn follows_after(edit: impl FnOnce(&mut Vec<TodoLine>)) -> TempRepo {
+    let repo = four_forked();
+    let x1 = own_diff(&repo, "feature-x");
+    let (op, drawn) = edited(&repo, edit);
+    assert!(
+        matches!(fate_of(&drawn, "feature-x"), ForkFate::Follows { .. }),
+        "{:?}",
+        fates(&drawn)
+    );
+    run(&repo, &op, NOW);
+    assert_eq!(own_diff(&repo, "feature-x"), x1, "x1's change is the same");
+    repo
+}
+
+#[test]
+fn dropping_a_commit_above_the_fork_point_follows() {
+    let repo = follows_after(|todo| set_action(todo, "c4", TodoAction::Drop));
+    assert_eq!(id(&repo, "feature-x~1"), id(&repo, "feature-a~1"));
+}
+
+#[test]
+fn swapping_commits_above_the_fork_point_follows() {
+    let repo = follows_after(|todo| move_after(todo, "c4", "c2"));
+    assert_eq!(id(&repo, "feature-x~1"), id(&repo, "feature-a~2"));
+}
+
+#[test]
+fn folding_the_fork_point_into_the_commit_under_it_follows_onto_the_fold() {
+    let repo = four_forked();
+    let c2_tree = repo.git(&["rev-parse", "feature-a~2^{tree}"]);
+    let repo = {
+        let x1 = own_diff(&repo, "feature-x");
+        let (op, drawn) = edited(&repo, |todo| set_action(todo, "c2", TodoAction::Fixup));
+        assert!(
+            matches!(fate_of(&drawn, "feature-x"), ForkFate::Follows { .. }),
+            "{:?}",
+            fates(&drawn)
+        );
+        run(&repo, &op, NOW);
+        assert_eq!(own_diff(&repo, "feature-x"), x1);
+        repo
+    };
+    assert_eq!(id(&repo, "feature-x~1"), id(&repo, "feature-a~2"), "the fold");
+    assert_eq!(repo.git(&["rev-parse", "feature-x~1^{tree}"]), c2_tree);
+}
+
+/// `a` into the fork point itself: the fork follows onto the amended
+/// commit, its section after the fixup row — and a hand-run `rebase -i` of
+/// the same todo, `label`/`reset` and all, leaves the same trees.
+#[test]
+fn amending_the_fork_point_follows_onto_the_amended_commit() {
+    let repo = forked();
+    let x1 = own_diff(&repo, "feature-x");
+    repo.write("c1.txt", b"c1, amended\n");
+    repo.git(&["add", "c1.txt"]);
+    let hand = repo.copy();
+
+    let (op, drawn) = amend_into(&repo, "feature-a~1");
+    assert!(
+        matches!(fate_of(&drawn, "feature-x"), ForkFate::Follows { .. }),
+        "{:?}",
+        fates(&drawn)
+    );
+    let Operation::Rewrite(params) = &op else {
+        panic!("a rewrite");
+    };
+    let section = params.forks.first().expect("feature-x's section");
+    let fixup = params
+        .todo
+        .iter()
+        .position(|line| matches!(line.action, TodoAction::Fixup))
+        .expect("the staged change is a fixup row");
+    assert_eq!(section.after_row, fixup, "{:?}", params.todo);
+    run(&repo, &op, NOW);
+
+    assert_eq!(id(&repo, "feature-x~1"), id(&repo, "feature-a~1"));
+    assert_eq!(repo.git(&["show", "feature-x~1:c1.txt"]), "c1, amended");
+    assert_eq!(own_diff(&repo, "feature-x"), x1);
+
+    // By hand: the staged change as a commit, then git's own rebase.
+    hand.git(&["commit", "-q", "-m", "staged"]);
+    let staged = hand.git(&["rev-parse", "HEAD"]);
+    hand.git(&["reset", "-q", "--hard", "HEAD~1"]);
+    let todo = format!(
+        "pick {}\npick {}\nfixup {staged}\nlabel graft-fork-1\npick {}\n\
+         update-ref refs/heads/feature-x\nreset graft-fork-1\npick {}\n",
+        hand.git(&["rev-parse", "feature-a~2"]),
+        hand.git(&["rev-parse", "feature-a~1"]),
+        hand.git(&["rev-parse", "feature-x"]),
+        hand.git(&["rev-parse", "feature-a"]),
+    );
+    let todo_file = hand.path().join(".git/hand-todo");
+    std::fs::write(&todo_file, todo).expect("the todo writes");
+    let output = std::process::Command::new("git")
+        .arg("-C")
+        .arg(hand.path())
+        .args(["-c", "rebase.updateRefs=false", "rebase", "-i", "-q", "main"])
+        .env("GIT_SEQUENCE_EDITOR", format!("cp {}", todo_file.display()))
+        .output()
+        .expect("git runs");
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    for rev in [
+        "feature-a",
+        "feature-a~1",
+        "feature-a~2",
+        "feature-x",
+        "feature-x~1",
+    ] {
+        let tree = format!("{rev}^{{tree}}");
+        assert_eq!(
+            repo.git(&["rev-parse", &tree]),
+            hand.git(&["rev-parse", &tree]),
+            "{rev}'s tree"
+        );
+    }
+    assert_eq!(
+        hand.git(&["rev-parse", "feature-x~1"]),
+        hand.git(&["rev-parse", "feature-a~1"]),
+        "by hand too, feature-x left the amended c2"
+    );
+}
+
+/// A gate that fails is weighed before the forecast: a fork that would
+/// conflict and carries a branch checked out elsewhere is named by the gate
+/// (ADR-0059 §6.4). Every gate returns before `replayed_fate` in
+/// `forks.rs`, so no forecast runs for it.
+#[test]
+fn a_failed_gate_wins_over_the_forecast() {
+    let repo = forked();
+    repo.git(&["switch", "-q", "feature-x"]);
+    repo.write("shared.txt", b"x\n");
+    repo.commit_all("x2");
+    repo.git(&["branch", "-q", "feature-w", "feature-x~1"]);
+    repo.git(&["switch", "-q", "feature-a"]);
+    repo.git(&["worktree", "add", "-q", WT, "feature-w"]);
+    repo.write("shared.txt", b"amended\n");
+    repo.git(&["add", "shared.txt"]);
+    let (_, drawn) = amend_into(&repo, "feature-a~2");
+    let (branch, _) = carries(stays(&fate_of(&drawn, "feature-x")));
+    assert_eq!(branch, "refs/heads/feature-w");
+}
+
+// ── Words ───────────────────────────────────────────────────────────────
+
+#[test]
+fn the_new_reasons_read_as_words() {
+    let feature_w = RefName::new(b"refs/heads/feature-w").expect("a ref name");
+    let main = RefName::new(b"refs/heads/main").expect("a ref name");
+    let upstream = RefName::new(b"refs/remotes/origin/feature-w").expect("a ref name");
+    let commit = Oid::from_hex(&"a1b2c3d4".repeat(5)).expect("an id");
+    let table = [
+        (
+            WhyStays::Carries {
+                branch: feature_w.clone(),
+                why: Box::new(WhyStays::Elsewhere {
+                    worktree: PathBuf::from("../wt"),
+                }),
+            },
+            "feature-w is checked out in ../wt",
+        ),
+        (
+            WhyStays::Carries {
+                branch: feature_w,
+                why: Box::new(WhyStays::Pushed { upstream }),
+            },
+            "feature-w is pushed to origin/feature-w",
+        ),
+        (
+            WhyStays::Carries {
+                branch: main,
+                why: Box::new(WhyStays::DefaultBranch),
+            },
+            "main is the default branch",
+        ),
+        (WhyStays::WouldLose { commit }, "would lose a1b2c3d"),
+        (WhyStays::WouldGain { commit }, "would gain a1b2c3d"),
+    ];
+    for (why, words) in table {
+        assert_eq!(why.words(), words, "{why:?}");
+    }
 }

@@ -77,6 +77,7 @@ pub(super) fn rewrite(
         his: &params.todo,
         rows: &rows,
         line: &params.line.branches,
+        onto: params.onto,
         tip_after: &tip_after,
         chained: &chained,
     };
