@@ -72,7 +72,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ diff · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . more
 UNCOMMITTED · 1 unstaged
 diff vs HEAD 29a1432
 UNSTAGED (1)                  reading…

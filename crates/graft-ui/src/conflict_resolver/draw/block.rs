@@ -33,19 +33,27 @@ impl ResolverScreen<'_> {
         let content = Self::content_area(area);
         let names = &self.doc.names;
         let (ours, theirs) = (names.roles.ours(), names.roles.theirs());
+        // The take keys, spelled from his keymap (ticket m8/10c).
+        let take_ours = ("resolver.take_ours", ours);
+        let take_theirs = ("resolver.take_theirs", theirs);
+        let take_both = ("resolver.take_both", "both");
         let (state_word, keys) = match block.state {
-            BlockState::Open => ("open".to_owned(), format!("o {ours}  t {theirs}  b both")),
+            BlockState::Open => (
+                "open".to_owned(),
+                self.keys.key_verbs(&[take_ours, take_theirs, take_both]),
+            ),
             BlockState::Took(TakeView::Ours) => (
                 format!("took {}", names.ours),
-                format!("t {theirs}  b both"),
+                self.keys.key_verbs(&[take_theirs, take_both]),
             ),
             BlockState::Took(TakeView::Theirs) => (
                 format!("took {}", names.theirs),
-                format!("o {ours}  b both"),
+                self.keys.key_verbs(&[take_ours, take_both]),
             ),
-            BlockState::Took(TakeView::Both) => {
-                ("took both".to_owned(), format!("o {ours}  t {theirs}"))
-            }
+            BlockState::Took(TakeView::Both) => (
+                "took both".to_owned(),
+                self.keys.key_verbs(&[take_ours, take_theirs]),
+            ),
         };
         // Where the state words' coloured part starts in them, how wide it
         // is, and its hue: `open`, or the taken side's name.

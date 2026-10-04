@@ -15,6 +15,7 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::fit::fit;
 use crate::graph_screen::{initials, relative_date, relative_date_long};
+use crate::keymap::{ActionId, Keymap};
 
 /// Which revision of the file is blamed; the title's last words.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -179,9 +180,9 @@ impl Gutter {
     }
 }
 
-/// Draws the blame place into `area`.
-pub fn draw_blame(frame: &mut Frame, area: Rect, view: &BlameView) {
-    draw_into(frame.buffer_mut(), area, view);
+/// Draws the blame place into `area`, its keys spelled from `keys`.
+pub fn draw_blame(frame: &mut Frame, area: Rect, view: &BlameView, keys: &Keymap) {
+    draw_into(frame.buffer_mut(), area, view, keys);
 }
 
 /// Which row of `rows` sits at screen row `y`, for a click; `None` on the
@@ -210,7 +211,7 @@ fn body_area(area: Rect, view: &BlameView) -> Rect {
     }
 }
 
-fn draw_into(buf: &mut Buffer, area: Rect, view: &BlameView) {
+fn draw_into(buf: &mut Buffer, area: Rect, view: &BlameView, keys: &Keymap) {
     if area.is_empty() {
         return;
     }
@@ -219,7 +220,7 @@ fn draw_into(buf: &mut Buffer, area: Rect, view: &BlameView) {
         area.x,
         area.y,
         area.width,
-        &title(view),
+        &title(view, keys),
         Style::default().add_modifier(Modifier::BOLD),
     );
     if let Some(ignore) = view.ignore
@@ -230,7 +231,7 @@ fn draw_into(buf: &mut Buffer, area: Rect, view: &BlameView) {
             area.x,
             area.y + 1,
             area.width,
-            &ignore_words(ignore),
+            &ignore_words(ignore, keys),
             Style::default().add_modifier(Modifier::DIM),
         );
     }
@@ -239,7 +240,7 @@ fn draw_into(buf: &mut Buffer, area: Rect, view: &BlameView) {
         BlameBody::Reading => {}
         BlameBody::Failed(first) => {
             if body.height > 0 {
-                let words = format!(" git blame stopped: {first} · esc back");
+                let words = keys.after(&format!(" git blame stopped: {first}"), BACK, "back");
                 put(buf, body.x, body.y, body.width, &words, Style::default());
             }
         }
@@ -266,10 +267,13 @@ fn draw_into(buf: &mut Buffer, area: Rect, view: &BlameView) {
     }
 }
 
+/// `app.back`: the key every blame line names for leaving.
+const BACK: ActionId = ActionId("app.back");
+
 /// The title row, by state.
-fn title(view: &BlameView) -> String {
+fn title(view: &BlameView, keys: &Keymap) -> String {
     if view.body == BlameBody::Reading {
-        return format!(" blaming {}… · esc cancels", view.path);
+        return keys.after(&format!(" blaming {}…", view.path), BACK, "cancels");
     }
     let rev = match &view.rev {
         BlameRev::Now => "as it is now".to_owned(),
@@ -290,13 +294,25 @@ fn title(view: &BlameView) -> String {
     title
 }
 
-fn ignore_words(ignore: IgnoreLine) -> String {
+/// The ignore-revs clause; `blame.ignore_revs`' key spelled from `keys`,
+/// the `· <key> …` part left out when he left it unbound.
+fn ignore_words(ignore: IgnoreLine, keys: &Keymap) -> String {
     let count = ignore.count;
+    let key = keys.spell_keys(&[ActionId("blame.ignore_revs")]);
     if ignore.applied {
         let commits = if count == 1 { "commit" } else { "commits" };
-        format!(" skipping {count} {commits} listed in .git-blame-ignore-revs · i shows them")
+        let skipping = format!(" skipping {count} {commits} listed in .git-blame-ignore-revs");
+        match key {
+            Some(key) => format!("{skipping} \u{b7} {key} shows them"),
+            None => skipping,
+        }
     } else {
-        format!(" showing every commit · i skips the {count} in .git-blame-ignore-revs")
+        match key {
+            Some(key) => format!(
+                " showing every commit \u{b7} {key} skips the {count} in .git-blame-ignore-revs"
+            ),
+            None => " showing every commit".to_owned(),
+        }
     }
 }
 

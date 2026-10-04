@@ -15,6 +15,7 @@ use super::layout::{Columns, graph_width};
 use super::render::subject_truncated;
 use super::{CommitGraphLine, GraphEntry, GraphScreen, SearchLine};
 use crate::fit::fit;
+use crate::keymap::{ActionId, Keymap};
 use crate::paint::foreground;
 use crate::theme::Token;
 
@@ -23,7 +24,7 @@ impl GraphScreen<'_> {
     /// Cut to one info-coloured run when even the breakpoint's wording does
     /// not fit.
     pub(super) fn commit_graph_line(&self, line: CommitGraphLine, width: usize) -> Line<'static> {
-        let segments = commit_graph_segments(line, width);
+        let segments = commit_graph_segments(line, width, self.view.keys);
         let whole: String = segments.iter().map(|(text, _)| text.as_str()).collect();
         if whole.width() > width {
             return Line::styled(fit(&whole, width), foreground(self.theme, Token::Info));
@@ -86,39 +87,46 @@ impl GraphScreen<'_> {
                 if let Some(subject) = &reveal_subject {
                     (format!(" {subject}"), Token::Text)
                 } else {
-                    let width16 = u16::try_from(width).unwrap_or(u16::MAX);
-                    // The divider exists while any detail pane is open in
-                    // a *split* — a commit's as much as the changes pane's
-                    // (ADR-0028), which is why the flag is read here and not
-                    // carried inside one context (m5-03 review, Major 4).
-                    // The tab layout has no divider, and the flag says so
-                    // (m5/33).
-                    let divider = if self.view.divider_shown {
-                        Divider::Shown
-                    } else {
-                        Divider::Hidden
-                    };
-                    let hints = hints_for(&self.view.hint_context, divider, width16);
-                    match &self.view.stopped {
-                        // A stop is a state, not a problem: it leads the
-                        // bar rather than replacing it, and never names
-                        // `esc dismiss` (m6-conflicts/12).
-                        // A stash clash has no banner: its reason outranks
-                        // the bar's tail keys (review 72+72b M1).
-                        Some(reason) if reason.is_before_keys() => (
-                            stopped_row_before_keys(
-                                reason,
-                                &self.view.hint_context,
-                                divider,
-                                width16,
-                            ),
-                            Token::Text,
-                        ),
-                        Some(reason) => (stopped_row(reason, &hints, width16), Token::Text),
-                        None => (hints_text(&hints), Token::TextMuted),
-                    }
+                    self.key_line(width)
                 }
             }
+        }
+    }
+
+    /// The context's key hints, led by a stop's reason when one stands.
+    fn key_line(&self, width: usize) -> (String, Token) {
+        let width16 = u16::try_from(width).unwrap_or(u16::MAX);
+        // The divider exists while any detail pane is open in a *split* — a
+        // commit's as much as the changes pane's (ADR-0028), which is why the
+        // flag is read here and not carried inside one context (m5-03
+        // review, Major 4). The tab layout has no divider, and the flag says
+        // so (m5/33).
+        let divider = if self.view.divider_shown {
+            Divider::Shown
+        } else {
+            Divider::Hidden
+        };
+        let hints = hints_for(&self.view.hint_context, divider, width16, self.view.keys);
+        match &self.view.stopped {
+            // A stop is a state, not a problem: it leads the bar rather than
+            // replacing it, and never names `esc dismiss` (m6-conflicts/12).
+            // A stash clash has no banner: its reason outranks the bar's
+            // tail keys (review 72+72b M1).
+            Some(reason) if reason.is_before_keys() => (
+                stopped_row_before_keys(
+                    reason,
+                    &self.view.hint_context,
+                    divider,
+                    width16,
+                    self.view.keys,
+                ),
+                Token::Text,
+            ),
+            Some(reason) => (
+                stopped_row(reason, &hints, width16, self.view.keys),
+                Token::Text,
+            ),
+            None => (hints_text(&hints, self.view.keys), Token::TextMuted),
         }
     }
 }
@@ -146,8 +154,12 @@ pub(super) fn segments_width(segments: &[(String, bool)]) -> usize {
 /// fits cannot invert like that, whatever order the wordings are written in
 /// and whatever width the caller has — pinned by
 /// `no_footer_line_gets_terser_as_the_room_for_it_grows`.
-pub(super) fn commit_graph_segments(line: CommitGraphLine, width: usize) -> Vec<(String, bool)> {
-    let mut wordings = commit_graph_wordings(line);
+pub(super) fn commit_graph_segments(
+    line: CommitGraphLine,
+    width: usize,
+    keys: &Keymap,
+) -> Vec<(String, bool)> {
+    let mut wordings = commit_graph_wordings(line, keys);
     // Nothing fits: draw the narrowest anyway and let `commit_graph_line`
     // cut it. Cutting the shortest wording loses the least.
     // `unwrap_or_default()` here is index 0, not a swallowed failure: the
@@ -171,11 +183,39 @@ pub(super) fn commit_graph_segments(line: CommitGraphLine, width: usize) -> Vec<
     wordings.swap_remove(index)
 }
 
-/// Every wording the line has, in no particular order:
-/// [`commit_graph_segments`] picks between them by what fits.
-fn commit_graph_wordings(line: CommitGraphLine) -> Vec<Vec<(String, bool)>> {
+/// `<lead>` then `B build … · X never here`, each clause only while its key
+/// is bound (`graph.write_commit_graph`, `graph.decline_commit_graph`); the
+/// lead alone, separator dropped, when neither is.
+fn offer_segments(lead: &str, build: &str, keys: &Keymap) -> Vec<(String, bool)> {
     let text = |words: &str| (words.to_owned(), false);
-    let key = |letter: &str| (letter.to_owned(), true);
+    let clauses: Vec<(String, &str)> = [
+        ("graph.write_commit_graph", build),
+        ("graph.decline_commit_graph", " never here"),
+    ]
+    .into_iter()
+    .filter_map(|(id, words)| keys.spell_keys(&[ActionId(id)]).map(|key| (key, words)))
+    .collect();
+    if clauses.is_empty() {
+        return vec![text(lead)];
+    }
+    let mut segments = vec![text(&format!("{lead} · "))];
+    for (at, (key, words)) in clauses.into_iter().enumerate() {
+        if at > 0 {
+            segments.push(text(" · "));
+        }
+        segments.push((key, true));
+        segments.push(text(words));
+    }
+    segments
+}
+
+/// Every wording the line has, in no particular order:
+/// [`commit_graph_segments`] picks between them by what fits. Keys are
+/// spelled from `keys` (ticket m8/10); an unbound one's clause is left out.
+fn commit_graph_wordings(line: CommitGraphLine, keys: &Keymap) -> Vec<Vec<(String, bool)>> {
+    let text = |words: &str| (words.to_owned(), false);
+    let spell = |id: &'static str| keys.spell_keys(&[ActionId(id)]);
+    let offer = |lead: &str, build: &str| offer_segments(lead, build, keys);
     match line {
         // Off the graph `B` is blame (keymap §2.5): the fact stays, the
         // keys go (m7-power-tools/36, M3).
@@ -183,31 +223,18 @@ fn commit_graph_wordings(line: CommitGraphLine) -> Vec<Vec<(String, bool)>> {
             vec![text(" no commit-graph file: history sorts on every open")],
             vec![text(" no commit-graph file")],
         ],
+        // The spec's " never for this repo" made the widest line 125
+        // columns; "never here" keeps it inside the 120 it is drawn at.
         CommitGraphLine::Offered { keys: true } => vec![
-            vec![
-                text(" no commit-graph file: history sorts on every open · "),
-                key("B"),
-                // The spec's " never for this repo" made this line 125
-                // columns; "never here" keeps it inside the 120 it is
-                // drawn at.
-                text(" build one (git commit-graph write --reachable) · "),
-                key("X"),
-                text(" never here"),
-            ],
-            vec![
-                text(" no commit-graph file · "),
-                key("B"),
-                text(" build one (git commit-graph write --reachable) · "),
-                key("X"),
-                text(" never here"),
-            ],
-            vec![
-                text(" no commit-graph file · "),
-                key("B"),
-                text(" build one · "),
-                key("X"),
-                text(" never here"),
-            ],
+            offer(
+                " no commit-graph file: history sorts on every open",
+                " build one (git commit-graph write --reachable)",
+            ),
+            offer(
+                " no commit-graph file",
+                " build one (git commit-graph write --reachable)",
+            ),
+            offer(" no commit-graph file", " build one"),
         ],
         CommitGraphLine::NoGitToBuild => vec![
             vec![text(
@@ -222,11 +249,17 @@ fn commit_graph_wordings(line: CommitGraphLine) -> Vec<Vec<(String, bool)>> {
             vec![text(" building the commit-graph…")],
         ],
         CommitGraphLine::Written { commits } => vec![
-            vec![text(&format!(
-                " commit-graph written: {} commits · the next open sorts at once · Ctrl+R to use \
-                 it",
-                grouped(commits)
-            ))],
+            vec![text(&match spell("app.refresh") {
+                Some(refresh) => format!(
+                    " commit-graph written: {} commits · the next open sorts at once · {refresh} \
+                     to use it",
+                    grouped(commits)
+                ),
+                None => format!(
+                    " commit-graph written: {} commits · the next open sorts at once",
+                    grouped(commits)
+                ),
+            })],
             vec![text(" commit-graph written · next open sorts at once")],
         ],
     }
@@ -305,7 +338,7 @@ mod tests {
     }
 
     fn words(line: crate::graph_screen::CommitGraphLine, width: usize) -> String {
-        super::commit_graph_segments(line, width)
+        super::commit_graph_segments(line, width, crate::keymap::Keymap::shipped())
             .into_iter()
             .map(|(text, _)| text)
             .collect()
@@ -317,8 +350,11 @@ mod tests {
     fn the_offer_row_drops_its_keys_off_the_graph() {
         use crate::graph_screen::CommitGraphLine;
         for width in [200, 120, 100, 80, 40] {
-            let without =
-                super::commit_graph_segments(CommitGraphLine::Offered { keys: false }, width);
+            let without = super::commit_graph_segments(
+                CommitGraphLine::Offered { keys: false },
+                width,
+                crate::keymap::Keymap::shipped(),
+            );
             assert!(without.iter().all(|(_, key)| !key), "{width}: {without:?}");
             let text = words(CommitGraphLine::Offered { keys: false }, width);
             assert!(

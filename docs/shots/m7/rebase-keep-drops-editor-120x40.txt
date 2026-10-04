@@ -37,4 +37,4 @@ REWRITE feature-a · 3 commits since it left main · newest first · nothing wri
 
 
 
- ⏎ changes  p pick  r reword  e edit  s squash  f fixup  d drop  alt+↑↓ move  esc cancel
+ ⏎ changes  p pick  r reword  e edit  s squash  f fixup  d drop  alt+↑/↓ move  esc cancel

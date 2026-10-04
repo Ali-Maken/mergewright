@@ -1,6 +1,7 @@
 //! The resolver's keys and answers over hand-built states — the races and
 //! refusals a real repository cannot be made to hit on cue (m6-05 review).
 
+use crate::spelled::Spelled as _;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -656,9 +657,10 @@ fn bar(state: &AppState) -> Vec<String> {
         &crate::view::rows::resolver_context(state),
         Divider::Hidden,
         200,
+        graft_ui::keymap::Keymap::shipped(),
     )
     .iter()
-    .map(|hint| format!("{} {}", hint.key, hint.verb))
+    .map(|hint| format!("{} {}", hint.key(), hint.verb))
     .collect()
 }
 

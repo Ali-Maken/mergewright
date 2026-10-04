@@ -13,6 +13,7 @@ use super::state::{AppState, Status};
 
 mod acknowledge;
 mod actions;
+#[cfg(test)]
 mod bound;
 mod commit;
 pub(crate) mod edit_stop;
@@ -35,7 +36,8 @@ pub(in crate::update) use acknowledge::acknowledge;
 use acknowledge::dismiss_unseen;
 pub(in crate::update) use actions::strip_rows_for;
 use actions::{copy_selected_sha, cycle_tier, toggle_compare_selected};
-pub use bound::bound_actions;
+#[cfg(test)]
+pub(crate) use bound::bound_actions;
 use commit::commit_key;
 use escape::escape_key;
 use predicates::{

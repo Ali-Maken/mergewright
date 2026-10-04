@@ -35,6 +35,6 @@
 │ undo: u takes this back                                                                                              │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop main feature-b                                            │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
-╰ y confirm  r rebase  R keep  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────╯
+╰ y confirm  r rebase  R keep  ←/→ choose  ⏎ act  esc cancel ──────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

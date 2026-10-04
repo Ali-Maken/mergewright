@@ -288,8 +288,8 @@ fn empty_state_bar_keys_are_answered() {
     let now = UNIX_EPOCH;
     let mut checked = 0;
     for (form, start) in forms {
-        for (drawn, _label) in bar_keys(&view(&start, now)) {
-            let press = match drawn {
+        for (drawn, _label) in bar_keys(&view(&start, now), graft_ui::keymap::Keymap::shipped()) {
+            let press = match drawn.as_str() {
                 "⏎" => key(KeyCode::Enter),
                 "⇥" => key(KeyCode::Tab),
                 "esc" => key(KeyCode::Escape),

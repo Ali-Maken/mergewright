@@ -21,53 +21,53 @@ what right looks like: TESTING.md § Per breakpoint, Push box row: same lines, t
 
 m4 walk capture: m4-01-push-box-plain — scenario push-plain, keys P, unicode tier, 160x48
 
- graft <scratch________________________________________________________________>  184 rows so far
-◆ ▏ⓘ [◆ main ↑1] to push                                                                                                                         GT 6y   9809004
-●    [origin/main] Commit 200                                                                                                                    GF 7y   d5ae5fd
-●    Commit 199                                                                                                                                  GF 7y   13e6ab1
-●    Commit 198                                                                                                                                  GF 7y   f5055d9
-●    Commit 197                                                                                                                                  GF 7y   2cce853
-●    Commit 196                                                                                                                                  GF 7y   325da3f
-●    Commit 195                                                                                                                                  GF 7y   0722297
-●    Commit 194                                                                                                                                  GF 7y   b6a4a47
-●    Commit 193                                                                                                                                  GF 7y   60af0eb
-●    Commit 192                                                                                                                                  GF 7y   aceb8c5
-●    Commit 191                                                                                                                                  GF 7y   11d68ff
-●    Commit 190                                                                                                                                  GF 7y   91900bd
-●    Commit 189                                                                                                                                  GF 7y   cec3e93
-●    Commit 188                                                                                                                                  GF 7y   0a91ece
-●    Commit 187                                                                                                                                  GF 7y   3121935
-●    Commit 186                                                                                                                                  GF 7y   fab25df
-●    Commit 185                                                                                                                                  GF 7y   09ae97c
-●    Commit 184                                                                                                                                  GF 7y   49d7783
-●    Commit 183                                                                                                                                  GF 7y   22d55c9
-●    ╭ Push main → origin/main ───────────────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 7y   d212b3e
-●    │ 1 commit · can't be undone from here — origin keeps what you send                                                                      │  GF 7y   c8254c5
-●    │                                                                                                                                        │  GF 7y   e95ccd4
-●    │ git push --progress origin refs/heads/main:refs/heads/main                                                                             │  GF 7y   97b58e5
-●    │                                                                                                                                        │  GF 7y   1c9b7ed
-●    │ ▸[ Cancel ]   [ Push ]                                                                                                                 │  GF 7y   f93340a
-●    ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   5aaeeba
-●    Commit 175                                                                                                                                  GF 7y   6be5928
-●    Commit 174                                                                                                                                  GF 7y   9b67be4
-●    Commit 173                                                                                                                                  GF 7y   937d32b
-●    Commit 172                                                                                                                                  GF 7y   81be718
-●    Commit 171                                                                                                                                  GF 7y   57b8196
-●    Commit 170                                                                                                                                  GF 7y   8ea98be
-●    Commit 169                                                                                                                                  GF 7y   4926766
-●    Commit 168                                                                                                                                  GF 7y   0d60d60
-●    Commit 167                                                                                                                                  GF 7y   fa5ef1d
-●    Commit 166                                                                                                                                  GF 7y   953abf3
-●    Commit 165                                                                                                                                  GF 7y   49912f3
-●    Commit 164                                                                                                                                  GF 7y   1143b38
-●    Commit 163                                                                                                                                  GF 7y   e135216
-●    Commit 162                                                                                                                                  GF 7y   6ddbc37
-●    Commit 161                                                                                                                                  GF 7y   4b6f375
-●    Commit 160                                                                                                                                  GF 7y   545bf13
-●    Commit 159                                                                                                                                  GF 7y   a1a658c
-●    Commit 158                                                                                                                                  GF 7y   1e28a71
-●    Commit 157                                                                                                                                  GF 7y   b57586d
-●    Commit 156                                                                                                                                  GF 7y   edc7cba
+ ◆ work  /tmp/graft-capture/push-plain/graft-remote-0/work · main                                                                               176 rows so far
+
+▸ ◆  ⓘ [◆ main ↑1] to push                                                                                                                      GT 6y   9809004
+  ●    [origin/main] Commit 200                                                                                                                 GF 7y   d5ae5fd
+  ●    Commit 199                                                                                                                               GF 7y   13e6ab1
+  ●    Commit 198                                                                                                                               GF 7y   f5055d9
+  ●    Commit 197                                                                                                                               GF 7y   2cce853
+  ●    Commit 196                                                                                                                               GF 7y   325da3f
+  ●    Commit 195                                                                                                                               GF 7y   0722297
+  ●    Commit 194                                                                                                                               GF 7y   b6a4a47
+  ●    Commit 193                                                                                                                               GF 7y   60af0eb
+  ●    Commit 192                                                                                                                               GF 7y   aceb8c5
+  ●    Commit 191                                                                                                                               GF 7y   11d68ff
+  ●    Commit 190                                                                                                                               GF 7y   91900bd
+  ●    Commit 189                                                                                                                               GF 7y   cec3e93
+  ●    Commit 188                                                                                                                               GF 7y   0a91ece
+  ●    Commit 187                                                                                                                               GF 7y   3121935
+  ●    Commit 186                                                                                                                               GF 7y   fab25df
+  ●    Commit 185                                                                                                                               GF 7y   09ae97c
+  ●    Commit 184                                                                                                                               GF 7y   49d7783
+  ●    ╭ Push main → origin/main ────────────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 7y   22d55c9
+  ●    │ 1 commit · can't be undone from here — origin keeps what you send                                                                   │  GF 7y   d212b3e
+  ●    │                                                                                                                                     │  GF 7y   c8254c5
+  ●    │ git push --progress origin refs/heads/main:refs/heads/main                                                                          │  GF 7y   e95ccd4
+  ●    │                                                                                                                                     │  GF 7y   97b58e5
+  ●    │ ▸[ Cancel ]   [ Push ]                                                                                                              │  GF 7y   1c9b7ed
+  ●    ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   f93340a
+  ●    Commit 176                                                                                                                               GF 7y   5aaeeba
+  ●    Commit 175                                                                                                                               GF 7y   6be5928
+  ●    Commit 174                                                                                                                               GF 7y   9b67be4
+  ●    Commit 173                                                                                                                               GF 7y   937d32b
+  ●    Commit 172                                                                                                                               GF 7y   81be718
+  ●    Commit 171                                                                                                                               GF 7y   57b8196
+  ●    Commit 170                                                                                                                               GF 7y   8ea98be
+  ●    Commit 169                                                                                                                               GF 7y   4926766
+  ●    Commit 168                                                                                                                               GF 7y   0d60d60
+  ●    Commit 167                                                                                                                               GF 7y   fa5ef1d
+  ●    Commit 166                                                                                                                               GF 7y   953abf3
+  ●    Commit 165                                                                                                                               GF 7y   49912f3
+  ●    Commit 164                                                                                                                               GF 7y   1143b38
+  ●    Commit 163                                                                                                                               GF 7y   e135216
+  ●    Commit 162                                                                                                                               GF 7y   6ddbc37
+  ●    Commit 161                                                                                                                               GF 7y   4b6f375
+  ●    Commit 160                                                                                                                               GF 7y   545bf13
+  ●    Commit 159                                                                                                                               GF 7y   a1a658c
+  ●    Commit 158                                                                                                                               GF 7y   1e28a71
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  y push  ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
@@ -77,29 +77,29 @@ what right looks like: TESTING.md "Remotes" § Per breakpoint, Push box row: a f
 
 m4 walk capture: m4-01-push-box-plain — scenario push-plain, keys P, unicode tier, 80x24
 
- graft <scratch_______________________________________________________________>…
-◆ ▏ⓘ [◆ main ↑1] to push                                            6y   9809004
-●    [origin/main] Commit 200                                       7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    ╭ Push main → origin/main ────────────────────────────────────────╮ 0722297
-●    │ 1 commit · can't be undone from here — origin keeps what you    │ b6a4a47
-●    │ send                                                            │ 60af0eb
-●    │                                                                 │ aceb8c5
-●    │ git push --progress origin refs/heads/main:refs/heads/main      │ 11d68ff
-●    │                                                                 │ 91900bd
-●    │ ▸[ Cancel ]   [ Push ]                                          │ cec3e93
-●    ╰─────────────────────────────────────────────────────────────────╯ 0a91ece
-●    Commit 187                                                     7y   3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
+ ◆ work  …p/graft-capture/push-plain/graft-remote-0/work · main  88 rows so far
+▸ ◆  ⓘ [◆ main ↑1] to push                                         6y   9809004
+  ●    [origin/main] Commit 200                                    7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    Commit 196                                                  7y   325da3f
+  ●    Commit 195                                                  7y   0722297
+  ●    ╭ Push main → origin/main ──────────────────────────────────────────────╮
+  ●    │ 1 commit · can't be undone from here — origin keeps what you send     │
+  ●    │                                                                       │
+  ●    │ git push --progress origin refs/heads/main:refs/heads/main            │
+  ●    │                                                                       │
+  ●    │ ▸[ Cancel ]   [ Push ]                                                │
+  ●    ╰───────────────────────────────────────────────────────────────────────╯
+  ●    Commit 187                                                  7y   3121935
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
  y push  ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
@@ -109,53 +109,53 @@ what right looks like: TESTING.md § Per breakpoint, Lease box row: same. (Re-ta
 
 m4 walk capture: m4-02-push-box-lease — scenario push-rejected-then-lease, keys P → ⏎ P, unicode tier, 160x48
 
- graft <scratch________________________________________________________________>  184 rows so far
-◆   ▏ⓘ [◆ main ↑1 ↓1] amended                                                                                                                    GF 6y   68c13c4
-│ ●  ⓘ [origin/main] Commit 200                                                                                                                  GF 7y   d5ae5fd
-●─╯    Commit 199                                                                                                                                GF 7y   13e6ab1
-●      Commit 198                                                                                                                                GF 7y   f5055d9
-●      Commit 197                                                                                                                                GF 7y   2cce853
-●      Commit 196                                                                                                                                GF 7y   325da3f
-●      Commit 195                                                                                                                                GF 7y   0722297
-●      Commit 194                                                                                                                                GF 7y   b6a4a47
-●      Commit 193                                                                                                                                GF 7y   60af0eb
-●      Commit 192                                                                                                                                GF 7y   aceb8c5
-●      Commit 191                                                                                                                                GF 7y   11d68ff
-●      Commit 190                                                                                                                                GF 7y   91900bd
-●      Commit 189                                                                                                                                GF 7y   cec3e93
-●      Commit 188                                                                                                                                GF 7y   0a91ece
-●      Commit 187                                                                                                                                GF 7y   3121935
-●      Commit 186                                                                                                                                GF 7y   fab25df
-●      Commit 185                                                                                                                                GF 7y   09ae97c
-●      ╭ Force-push main → origin/main? ──────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 7y   49d7783
-●      │ origin/main d5ae5fd → 68c13c4 · refused if origin moved since your fetch (lease)                                                     │  GF 7y   22d55c9
-●      │ rewrites history for everyone who has d5ae5fd                                                                                        │  GF 7y   d212b3e
-●      │ leaves origin/main:                                                                                                                  │  GF 7y   c8254c5
-●      │ d5ae5fd  Commit 200                            Graft Fixture                                                                         │  GF 7y   e95ccd4
-●      │                                                                                                                                      │  GF 7y   97b58e5
-●      │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0d9047e20 origin refs/heads/main:refs/heads/m… │  GF 7y   1c9b7ed
-●      │                                                                                                                                      │  GF 7y   f93340a
-●      │ ▸[ Cancel ]   [ Force push ]                                                                                                         │  GF 7y   5aaeeba
-●      ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   6be5928
-●      Commit 174                                                                                                                                GF 7y   9b67be4
-●      Commit 173                                                                                                                                GF 7y   937d32b
-●      Commit 172                                                                                                                                GF 7y   81be718
-●      Commit 171                                                                                                                                GF 7y   57b8196
-●      Commit 170                                                                                                                                GF 7y   8ea98be
-●      Commit 169                                                                                                                                GF 7y   4926766
-●      Commit 168                                                                                                                                GF 7y   0d60d60
-●      Commit 167                                                                                                                                GF 7y   fa5ef1d
-●      Commit 166                                                                                                                                GF 7y   953abf3
-●      Commit 165                                                                                                                                GF 7y   49912f3
-●      Commit 164                                                                                                                                GF 7y   1143b38
-●      Commit 163                                                                                                                                GF 7y   e135216
-●      Commit 162                                                                                                                                GF 7y   6ddbc37
-●      Commit 161                                                                                                                                GF 7y   4b6f375
-●      Commit 160                                                                                                                                GF 7y   545bf13
-●      Commit 159                                                                                                                                GF 7y   a1a658c
-●      Commit 158                                                                                                                                GF 7y   1e28a71
-●      Commit 157                                                                                                                                GF 7y   b57586d
-●      Commit 156                                                                                                                                GF 7y   edc7cba
+ ◆ work  /tmp/graft-capture/push-rejected-then-lease/graft-remote-0/work · main                                                                 176 rows so far
+
+▸ ◆    ⓘ [◆ main ↑1 ↓1] amended                                                                                                                 GF 6y   68c13c4
+  │ ●  ⓘ [origin/main] Commit 200                                                                                                               GF 7y   d5ae5fd
+  ●─╯    Commit 199                                                                                                                             GF 7y   13e6ab1
+  ●      Commit 198                                                                                                                             GF 7y   f5055d9
+  ●      Commit 197                                                                                                                             GF 7y   2cce853
+  ●      Commit 196                                                                                                                             GF 7y   325da3f
+  ●      Commit 195                                                                                                                             GF 7y   0722297
+  ●      Commit 194                                                                                                                             GF 7y   b6a4a47
+  ●      Commit 193                                                                                                                             GF 7y   60af0eb
+  ●      Commit 192                                                                                                                             GF 7y   aceb8c5
+  ●      Commit 191                                                                                                                             GF 7y   11d68ff
+  ●      Commit 190                                                                                                                             GF 7y   91900bd
+  ●      Commit 189                                                                                                                             GF 7y   cec3e93
+  ●      Commit 188                                                                                                                             GF 7y   0a91ece
+  ●      Commit 187                                                                                                                             GF 7y   3121935
+  ●      Commit 186                                                                                                                             GF 7y   fab25df
+  ●      ╭ Force-push main → origin/main? ───────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 7y   09ae97c
+  ●      │ origin/main d5ae5fd → 68c13c4 · refused if origin moved since your fetch (lease)                                                  │  GF 7y   49d7783
+  ●      │ rewrites history for everyone who has d5ae5fd                                                                                     │  GF 7y   22d55c9
+  ●      │ leaves origin/main:                                                                                                               │  GF 7y   d212b3e
+  ●      │ d5ae5fd  Commit 200                            Graft Fixture                                                                      │  GF 7y   c8254c5
+  ●      │                                                                                                                                   │  GF 7y   e95ccd4
+  ●      │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0d9047e20 origin refs/heads/main:refs/head… │  GF 7y   97b58e5
+  ●      │                                                                                                                                   │  GF 7y   1c9b7ed
+  ●      │ ▸[ Cancel ]   [ Force push ]                                                                                                      │  GF 7y   f93340a
+  ●      ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   5aaeeba
+  ●      Commit 175                                                                                                                             GF 7y   6be5928
+  ●      Commit 174                                                                                                                             GF 7y   9b67be4
+  ●      Commit 173                                                                                                                             GF 7y   937d32b
+  ●      Commit 172                                                                                                                             GF 7y   81be718
+  ●      Commit 171                                                                                                                             GF 7y   57b8196
+  ●      Commit 170                                                                                                                             GF 7y   8ea98be
+  ●      Commit 169                                                                                                                             GF 7y   4926766
+  ●      Commit 168                                                                                                                             GF 7y   0d60d60
+  ●      Commit 167                                                                                                                             GF 7y   fa5ef1d
+  ●      Commit 166                                                                                                                             GF 7y   953abf3
+  ●      Commit 165                                                                                                                             GF 7y   49912f3
+  ●      Commit 164                                                                                                                             GF 7y   1143b38
+  ●      Commit 163                                                                                                                             GF 7y   e135216
+  ●      Commit 162                                                                                                                             GF 7y   6ddbc37
+  ●      Commit 161                                                                                                                             GF 7y   4b6f375
+  ●      Commit 160                                                                                                                             GF 7y   545bf13
+  ●      Commit 159                                                                                                                             GF 7y   a1a658c
+  ●      Commit 158                                                                                                                             GF 7y   1e28a71
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
@@ -165,29 +165,29 @@ what right looks like: TESTING.md § Per breakpoint, Lease box row: `╭ Force-p
 
 m4 walk capture: m4-02-push-box-lease — scenario push-rejected-then-lease, keys P → ⏎ P, unicode tier, 80x24
 
- graft <scratch_______________________________________________________________>…
-◆   ▏ⓘ [◆ main ↑1 ↓1] amended                                       6y   68c13c4
-│ ●  ⓘ [origin/main] Commit 200                                     7y   d5ae5fd
-●─╯    Commit 199                                                   7y   13e6ab1
-●      Commit 198                                                   7y   f5055d9
-●      Commit 197                                                   7y   2cce853
-●      ╭ Force-push main → origin/main? ───────────────────────────────╮ 325da3f
-●      │ origin/main d5ae5fd → 68c13c4 · refused if origin moved since │ 0722297
-●      │ your fetch (lease)                                            │ b6a4a47
-●      │ rewrites history for everyone who has d5ae5fd                 │ 60af0eb
-●      │ leaves origin/main:                                           │ aceb8c5
-●      │ d5ae5fd  Commit 200                            Graft Fixture  │ 11d68ff
-●      │                                                               │ 91900bd
-●      │ git push --progress --force-with-lease=refs/heads/main:d5ae5… │ cec3e93
-●      │                                                               │ 0a91ece
-●      │ ▸[ Cancel ]   [ Force push ]                                  │ 3121935
-●      ╰───────────────────────────────────────────────────────────────╯ fab25df
-●      Commit 185                                                   7y   09ae97c
-●      Commit 184                                                   7y   49d7783
-●      Commit 183                                                   7y   22d55c9
-●      Commit 182                                                   7y   d212b3e
-●      Commit 181                                                   7y   c8254c5
-●      Commit 180                                                   7y   e95ccd4
+ ◆ work  …e/push-rejected-then-lease/graft-remote-0/work · main  88 rows so far
+▸ ◆    ⓘ [◆ main ↑1 ↓1] amended                                    6y   68c13c4
+  │ ●  ⓘ [origin/main] Commit 200                                  7y   d5ae5fd
+  ●─╯    Commit 199                                                7y   13e6ab1
+  ●      Commit 198                                                7y   f5055d9
+  ●      Commit 197                                                7y   2cce853
+  ●   ╭ Force-push main → origin/main? ────────────────────────────────────────╮
+  ●   │ origin/main d5ae5fd → 68c13c4 · refused if origin moved since your     │
+  ●   │ fetch (lease)                                                          │
+  ●   │ rewrites history for everyone who has d5ae5fd                          │
+  ●   │ leaves origin/main:                                                    │
+  ●   │ d5ae5fd  Commit 200                            Graft Fixture           │
+  ●   │                                                                        │
+  ●   │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc… │
+  ●   │                                                                        │
+  ●   │ ▸[ Cancel ]   [ Force push ]                                           │
+  ●   ╰────────────────────────────────────────────────────────────────────────╯
+  ●      Commit 185                                                7y   09ae97c
+  ●      Commit 184                                                7y   49d7783
+  ●      Commit 183                                                7y   22d55c9
+  ●      Commit 182                                                7y   d212b3e
+  ●      Commit 181                                                7y   c8254c5
+  ●      Commit 180                                                7y   e95ccd4
  ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
@@ -198,53 +198,53 @@ what right looks like: TESTING.md § Per breakpoint, Credential prompt (masked) 
 m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right, keys P → ⏎, unicode tier, 160x48
 (the field's first glyph is the keystroke pulse, random per prompt by design — ADR-0038 §2; drawn here as •)
 
- graft <scratch________________________________________________________________>  184 rows so far
-◆ ▏ⓘ [◆ main ↑1] ours                                                                                                                            GF 6y   271d772
-●    [origin/main] Commit 200                                                                                                                    GF 7y   d5ae5fd
-●    Commit 199                                                                                                                                  GF 7y   13e6ab1
-●    Commit 198                                                                                                                                  GF 7y   f5055d9
-●    Commit 197                                                                                                                                  GF 7y   2cce853
-●    Commit 196                                                                                                                                  GF 7y   325da3f
-●    Commit 195                                                                                                                                  GF 7y   0722297
-●    Commit 194                                                                                                                                  GF 7y   b6a4a47
-●    Commit 193                                                                                                                                  GF 7y   60af0eb
-●    Commit 192                                                                                                                                  GF 7y   aceb8c5
-●    Commit 191                                                                                                                                  GF 7y   11d68ff
-●    Commit 190                                                                                                                                  GF 7y   91900bd
-●    Commit 189                                                                                                                                  GF 7y   cec3e93
-●    Commit 188                                                                                                                                  GF 7y   0a91ece
-●    Commit 187                                                                                                                                  GF 7y   3121935
-●    Commit 186                                                                                                                                  GF 7y   fab25df
-●    Commit 185                                                                                                                                  GF 7y   09ae97c
-●    Commit 184                                                                                                                                  GF 7y   49d7783
-●    Commit 183                                                                                                                                  GF 7y   22d55c9
-●    Commit 182                                                                                                                                  GF 7y   d212b3e
+ ◆ work  /tmp/graft-capture/wrong-password-then-right/graft-remote-0/work · main                                                                176 rows so far
+
+▸ ◆  ⓘ [◆ main ↑1] ours                                                                                                                         GF 6y   271d772
+  ●    [origin/main] Commit 200                                                                                                                 GF 7y   d5ae5fd
+  ●    Commit 199                                                                                                                               GF 7y   13e6ab1
+  ●    Commit 198                                                                                                                               GF 7y   f5055d9
+  ●    Commit 197                                                                                                                               GF 7y   2cce853
+  ●    Commit 196                                                                                                                               GF 7y   325da3f
+  ●    Commit 195                                                                                                                               GF 7y   0722297
+  ●    Commit 194                                                                                                                               GF 7y   b6a4a47
+  ●    Commit 193                                                                                                                               GF 7y   60af0eb
+  ●    Commit 192                                                                                                                               GF 7y   aceb8c5
+  ●    Commit 191                                                                                                                               GF 7y   11d68ff
+  ●    Commit 190                                                                                                                               GF 7y   91900bd
+  ●    Commit 189                                                                                                                               GF 7y   cec3e93
+  ●    Commit 188                                                                                                                               GF 7y   0a91ece
+  ●    Commit 187                                                                                                                               GF 7y   3121935
+  ●    Commit 186                                                                                                                               GF 7y   fab25df
+  ●    Commit 185                                                                                                                               GF 7y   09ae97c
+  ●    Commit 184                                                                                                                               GF 7y   49d7783
+  ●    Commit 183                                                                                                                               GF 7y   22d55c9
                                             ╭ Credentials — 127.0.0.1:00000 ───────────────────────────────────────╮
                                             │ Password for 'http://tester@127.0.0.1:00000':                        │
                                             │ ▏••••••••                                                            │
                                             │ typed here only · never stored by Graft                              │
                                             ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯
-●    Commit 176                                                                                                                                  GF 7y   5aaeeba
-●    Commit 175                                                                                                                                  GF 7y   6be5928
-●    Commit 174                                                                                                                                  GF 7y   9b67be4
-●    Commit 173                                                                                                                                  GF 7y   937d32b
-●    Commit 172                                                                                                                                  GF 7y   81be718
-●    Commit 171                                                                                                                                  GF 7y   57b8196
-●    Commit 170                                                                                                                                  GF 7y   8ea98be
-●    Commit 169                                                                                                                                  GF 7y   4926766
-●    Commit 168                                                                                                                                  GF 7y   0d60d60
-●    Commit 167                                                                                                                                  GF 7y   fa5ef1d
-●    Commit 166                                                                                                                                  GF 7y   953abf3
-●    Commit 165                                                                                                                                  GF 7y   49912f3
-●    Commit 164                                                                                                                                  GF 7y   1143b38
-●    Commit 163                                                                                                                                  GF 7y   e135216
-●    Commit 162                                                                                                                                  GF 7y   6ddbc37
-●    Commit 161                                                                                                                                  GF 7y   4b6f375
-●    Commit 160                                                                                                                                  GF 7y   545bf13
-●    Commit 159                                                                                                                                  GF 7y   a1a658c
-●    Commit 158                                                                                                                                  GF 7y   1e28a71
-●    Commit 157                                                                                                                                  GF 7y   b57586d
-●    Commit 156                                                                                                                                  GF 7y   edc7cba
+  ●    Commit 177                                                                                                                               GF 7y   f93340a
+  ●    Commit 176                                                                                                                               GF 7y   5aaeeba
+  ●    Commit 175                                                                                                                               GF 7y   6be5928
+  ●    Commit 174                                                                                                                               GF 7y   9b67be4
+  ●    Commit 173                                                                                                                               GF 7y   937d32b
+  ●    Commit 172                                                                                                                               GF 7y   81be718
+  ●    Commit 171                                                                                                                               GF 7y   57b8196
+  ●    Commit 170                                                                                                                               GF 7y   8ea98be
+  ●    Commit 169                                                                                                                               GF 7y   4926766
+  ●    Commit 168                                                                                                                               GF 7y   0d60d60
+  ●    Commit 167                                                                                                                               GF 7y   fa5ef1d
+  ●    Commit 166                                                                                                                               GF 7y   953abf3
+  ●    Commit 165                                                                                                                               GF 7y   49912f3
+  ●    Commit 164                                                                                                                               GF 7y   1143b38
+  ●    Commit 163                                                                                                                               GF 7y   e135216
+  ●    Commit 162                                                                                                                               GF 7y   6ddbc37
+  ●    Commit 161                                                                                                                               GF 7y   4b6f375
+  ●    Commit 160                                                                                                                               GF 7y   545bf13
+  ●    Commit 159                                                                                                                               GF 7y   a1a658c
+  ●    Commit 158                                                                                                                               GF 7y   1e28a71
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ send  esc cancel
 
 ================================================================================
@@ -255,29 +255,29 @@ what right looks like: TESTING.md § Per breakpoint, Credential prompt (masked) 
 m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right, keys P → ⏎, unicode tier, 80x24
 (the field's first glyph is the keystroke pulse, random per prompt by design — ADR-0038 §2; drawn here as •)
 
- graft <scratch_______________________________________________________________>…
-◆ ▏ⓘ [◆ main ↑1] ours                                               6y   271d772
-●    [origin/main] Commit 200                                       7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    Commit 195                                                     7y   0722297
-●    Commit 194                                                     7y   b6a4a47
+ ◆ work  …/wrong-password-then-right/graft-remote-0/work · main  88 rows so far
+▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   271d772
+  ●    [origin/main] Commit 200                                    7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    Commit 196                                                  7y   325da3f
+  ●    Commit 195                                                  7y   0722297
+  ●    Commit 194                                                  7y   b6a4a47
     ╭ Credentials — 127.0.0.1:00000 ───────────────────────────────────────╮
     │ Password for 'http://tester@127.0.0.1:00000':                        │
     │ ▏••••••••                                                            │
     │ typed here only · never stored by Graft                              │
     ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯
-●    Commit 188                                                     7y   0a91ece
-●    Commit 187                                                     7y   3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
+  ●    Commit 188                                                  7y   0a91ece
+  ●    Commit 187                                                  7y   3121935
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
  ⏎ send  esc cancel
 
 ================================================================================
@@ -287,53 +287,53 @@ what right looks like: TESTING.md § Per breakpoint, Credential prompt (username
 
 m4 walk capture: m4-04-credential-username — scenario username-then-password, keys P → ⏎ t e s t e r, unicode tier, 160x48
 
- graft <scratch________________________________________________________________>  184 rows so far
-◆ ▏ⓘ [◆ main ↑1] ours                                                                                                                            GF 6y   271d772
-●    [origin/main] Commit 200                                                                                                                    GF 7y   d5ae5fd
-●    Commit 199                                                                                                                                  GF 7y   13e6ab1
-●    Commit 198                                                                                                                                  GF 7y   f5055d9
-●    Commit 197                                                                                                                                  GF 7y   2cce853
-●    Commit 196                                                                                                                                  GF 7y   325da3f
-●    Commit 195                                                                                                                                  GF 7y   0722297
-●    Commit 194                                                                                                                                  GF 7y   b6a4a47
-●    Commit 193                                                                                                                                  GF 7y   60af0eb
-●    Commit 192                                                                                                                                  GF 7y   aceb8c5
-●    Commit 191                                                                                                                                  GF 7y   11d68ff
-●    Commit 190                                                                                                                                  GF 7y   91900bd
-●    Commit 189                                                                                                                                  GF 7y   cec3e93
-●    Commit 188                                                                                                                                  GF 7y   0a91ece
-●    Commit 187                                                                                                                                  GF 7y   3121935
-●    Commit 186                                                                                                                                  GF 7y   fab25df
-●    Commit 185                                                                                                                                  GF 7y   09ae97c
-●    Commit 184                                                                                                                                  GF 7y   49d7783
-●    Commit 183                                                                                                                                  GF 7y   22d55c9
-●    Commit 182                                                                                                                                  GF 7y   d212b3e
+ ◆ work  /tmp/graft-capture/username-then-password/graft-remote-0/work · main                                                                   176 rows so far
+
+▸ ◆  ⓘ [◆ main ↑1] ours                                                                                                                         GF 6y   271d772
+  ●    [origin/main] Commit 200                                                                                                                 GF 7y   d5ae5fd
+  ●    Commit 199                                                                                                                               GF 7y   13e6ab1
+  ●    Commit 198                                                                                                                               GF 7y   f5055d9
+  ●    Commit 197                                                                                                                               GF 7y   2cce853
+  ●    Commit 196                                                                                                                               GF 7y   325da3f
+  ●    Commit 195                                                                                                                               GF 7y   0722297
+  ●    Commit 194                                                                                                                               GF 7y   b6a4a47
+  ●    Commit 193                                                                                                                               GF 7y   60af0eb
+  ●    Commit 192                                                                                                                               GF 7y   aceb8c5
+  ●    Commit 191                                                                                                                               GF 7y   11d68ff
+  ●    Commit 190                                                                                                                               GF 7y   91900bd
+  ●    Commit 189                                                                                                                               GF 7y   cec3e93
+  ●    Commit 188                                                                                                                               GF 7y   0a91ece
+  ●    Commit 187                                                                                                                               GF 7y   3121935
+  ●    Commit 186                                                                                                                               GF 7y   fab25df
+  ●    Commit 185                                                                                                                               GF 7y   09ae97c
+  ●    Commit 184                                                                                                                               GF 7y   49d7783
+  ●    Commit 183                                                                                                                               GF 7y   22d55c9
                                             ╭ Credentials — 127.0.0.1:00000 ───────────────────────────────────────╮
                                             │ Username for 'http://127.0.0.1:00000':                               │
                                             │ ▏tester                                                              │
                                             │ typed here only · never stored by Graft                              │
                                             ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯
-●    Commit 176                                                                                                                                  GF 7y   5aaeeba
-●    Commit 175                                                                                                                                  GF 7y   6be5928
-●    Commit 174                                                                                                                                  GF 7y   9b67be4
-●    Commit 173                                                                                                                                  GF 7y   937d32b
-●    Commit 172                                                                                                                                  GF 7y   81be718
-●    Commit 171                                                                                                                                  GF 7y   57b8196
-●    Commit 170                                                                                                                                  GF 7y   8ea98be
-●    Commit 169                                                                                                                                  GF 7y   4926766
-●    Commit 168                                                                                                                                  GF 7y   0d60d60
-●    Commit 167                                                                                                                                  GF 7y   fa5ef1d
-●    Commit 166                                                                                                                                  GF 7y   953abf3
-●    Commit 165                                                                                                                                  GF 7y   49912f3
-●    Commit 164                                                                                                                                  GF 7y   1143b38
-●    Commit 163                                                                                                                                  GF 7y   e135216
-●    Commit 162                                                                                                                                  GF 7y   6ddbc37
-●    Commit 161                                                                                                                                  GF 7y   4b6f375
-●    Commit 160                                                                                                                                  GF 7y   545bf13
-●    Commit 159                                                                                                                                  GF 7y   a1a658c
-●    Commit 158                                                                                                                                  GF 7y   1e28a71
-●    Commit 157                                                                                                                                  GF 7y   b57586d
-●    Commit 156                                                                                                                                  GF 7y   edc7cba
+  ●    Commit 177                                                                                                                               GF 7y   f93340a
+  ●    Commit 176                                                                                                                               GF 7y   5aaeeba
+  ●    Commit 175                                                                                                                               GF 7y   6be5928
+  ●    Commit 174                                                                                                                               GF 7y   9b67be4
+  ●    Commit 173                                                                                                                               GF 7y   937d32b
+  ●    Commit 172                                                                                                                               GF 7y   81be718
+  ●    Commit 171                                                                                                                               GF 7y   57b8196
+  ●    Commit 170                                                                                                                               GF 7y   8ea98be
+  ●    Commit 169                                                                                                                               GF 7y   4926766
+  ●    Commit 168                                                                                                                               GF 7y   0d60d60
+  ●    Commit 167                                                                                                                               GF 7y   fa5ef1d
+  ●    Commit 166                                                                                                                               GF 7y   953abf3
+  ●    Commit 165                                                                                                                               GF 7y   49912f3
+  ●    Commit 164                                                                                                                               GF 7y   1143b38
+  ●    Commit 163                                                                                                                               GF 7y   e135216
+  ●    Commit 162                                                                                                                               GF 7y   6ddbc37
+  ●    Commit 161                                                                                                                               GF 7y   4b6f375
+  ●    Commit 160                                                                                                                               GF 7y   545bf13
+  ●    Commit 159                                                                                                                               GF 7y   a1a658c
+  ●    Commit 158                                                                                                                               GF 7y   1e28a71
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ send  esc cancel
 
 ================================================================================
@@ -343,29 +343,29 @@ what right looks like: TESTING.md § Per breakpoint, Credential prompt (username
 
 m4 walk capture: m4-04-credential-username — scenario username-then-password, keys P → ⏎ t e s t e r, unicode tier, 80x24
 
- graft <scratch_______________________________________________________________>…
-◆ ▏ⓘ [◆ main ↑1] ours                                               6y   271d772
-●    [origin/main] Commit 200                                       7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    Commit 195                                                     7y   0722297
-●    Commit 194                                                     7y   b6a4a47
+ ◆ work  …ure/username-then-password/graft-remote-0/work · main  88 rows so far
+▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   271d772
+  ●    [origin/main] Commit 200                                    7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    Commit 196                                                  7y   325da3f
+  ●    Commit 195                                                  7y   0722297
+  ●    Commit 194                                                  7y   b6a4a47
     ╭ Credentials — 127.0.0.1:00000 ───────────────────────────────────────╮
     │ Username for 'http://127.0.0.1:00000':                               │
     │ ▏tester                                                              │
     │ typed here only · never stored by Graft                              │
     ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯
-●    Commit 188                                                     7y   0a91ece
-●    Commit 187                                                     7y   3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
+  ●    Commit 188                                                  7y   0a91ece
+  ●    Commit 187                                                  7y   3121935
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
  ⏎ send  esc cancel
 
 ================================================================================
@@ -375,53 +375,53 @@ what right looks like: TESTING.md § Per breakpoint, Progress footer row: same; 
 
 m4 walk capture: m4-05-progress-footer — scenario progress-reaches-the-footer, keys f, unicode tier, 160x48
 
- graft <scratch________________________________________________________________>  200 commits
-◆ ▏  [◆ main ⇄ origin] Commit 200                                                                                                                GF 7y   d5ae5fd
-●    Commit 199                                                                                                                                  GF 7y   13e6ab1
-●    Commit 198                                                                                                                                  GF 7y   f5055d9
-●    Commit 197                                                                                                                                  GF 7y   2cce853
-●    Commit 196                                                                                                                                  GF 7y   325da3f
-●    Commit 195                                                                                                                                  GF 7y   0722297
-●    Commit 194                                                                                                                                  GF 7y   b6a4a47
-●    Commit 193                                                                                                                                  GF 7y   60af0eb
-●    Commit 192                                                                                                                                  GF 7y   aceb8c5
-●    Commit 191                                                                                                                                  GF 7y   11d68ff
-●    Commit 190                                                                                                                                  GF 7y   91900bd
-●    Commit 189                                                                                                                                  GF 7y   cec3e93
-●    Commit 188                                                                                                                                  GF 7y   0a91ece
-●    Commit 187                                                                                                                                  GF 7y   3121935
-●    Commit 186                                                                                                                                  GF 7y   fab25df
-●    Commit 185                                                                                                                                  GF 7y   09ae97c
-●    Commit 184                                                                                                                                  GF 7y   49d7783
-●    Commit 183                                                                                                                                  GF 7y   22d55c9
-●    Commit 182                                                                                                                                  GF 7y   d212b3e
-●    Commit 181                                                                                                                                  GF 7y   c8254c5
-●    Commit 180                                                                                                                                  GF 7y   e95ccd4
-●    Commit 179                                                                                                                                  GF 7y   97b58e5
-●    Commit 178                                                                                                                                  GF 7y   1c9b7ed
-●    Commit 177                                                                                                                                  GF 7y   f93340a
-●    Commit 176                                                                                                                                  GF 7y   5aaeeba
-●    Commit 175                                                                                                                                  GF 7y   6be5928
-●    Commit 174                                                                                                                                  GF 7y   9b67be4
-●    Commit 173                                                                                                                                  GF 7y   937d32b
-●    Commit 172                                                                                                                                  GF 7y   81be718
-●    Commit 171                                                                                                                                  GF 7y   57b8196
-●    Commit 170                                                                                                                                  GF 7y   8ea98be
-●    Commit 169                                                                                                                                  GF 7y   4926766
-●    Commit 168                                                                                                                                  GF 7y   0d60d60
-●    Commit 167                                                                                                                                  GF 7y   fa5ef1d
-●    Commit 166                                                                                                                                  GF 7y   953abf3
-●    Commit 165                                                                                                                                  GF 7y   49912f3
-●    Commit 164                                                                                                                                  GF 7y   1143b38
-●    Commit 163                                                                                                                                  GF 7y   e135216
-●    Commit 162                                                                                                                                  GF 7y   6ddbc37
-●    Commit 161                                                                                                                                  GF 7y   4b6f375
-●    Commit 160                                                                                                                                  GF 7y   545bf13
-●    Commit 159                                                                                                                                  GF 7y   a1a658c
-●    Commit 158                                                                                                                                  GF 7y   1e28a71
-●    Commit 157                                                                                                                                  GF 7y   b57586d
-●    Commit 156                                                                                                                                  GF 7y   edc7cba
-●    Commit 155                                                                                                                                  GF 7y   4c8c724
+ ◆ work  /tmp/graft-capture/progress-reaches-the-footer/graft-remote-0/work · main                                                                  200 commits
+
+▸ ◆    [◆ main ⇄ origin] Commit 200                                                                                                             GF 7y   d5ae5fd
+  ●    Commit 199                                                                                                                               GF 7y   13e6ab1
+  ●    Commit 198                                                                                                                               GF 7y   f5055d9
+  ●    Commit 197                                                                                                                               GF 7y   2cce853
+  ●    Commit 196                                                                                                                               GF 7y   325da3f
+  ●    Commit 195                                                                                                                               GF 7y   0722297
+  ●    Commit 194                                                                                                                               GF 7y   b6a4a47
+  ●    Commit 193                                                                                                                               GF 7y   60af0eb
+  ●    Commit 192                                                                                                                               GF 7y   aceb8c5
+  ●    Commit 191                                                                                                                               GF 7y   11d68ff
+  ●    Commit 190                                                                                                                               GF 7y   91900bd
+  ●    Commit 189                                                                                                                               GF 7y   cec3e93
+  ●    Commit 188                                                                                                                               GF 7y   0a91ece
+  ●    Commit 187                                                                                                                               GF 7y   3121935
+  ●    Commit 186                                                                                                                               GF 7y   fab25df
+  ●    Commit 185                                                                                                                               GF 7y   09ae97c
+  ●    Commit 184                                                                                                                               GF 7y   49d7783
+  ●    Commit 183                                                                                                                               GF 7y   22d55c9
+  ●    Commit 182                                                                                                                               GF 7y   d212b3e
+  ●    Commit 181                                                                                                                               GF 7y   c8254c5
+  ●    Commit 180                                                                                                                               GF 7y   e95ccd4
+  ●    Commit 179                                                                                                                               GF 7y   97b58e5
+  ●    Commit 178                                                                                                                               GF 7y   1c9b7ed
+  ●    Commit 177                                                                                                                               GF 7y   f93340a
+  ●    Commit 176                                                                                                                               GF 7y   5aaeeba
+  ●    Commit 175                                                                                                                               GF 7y   6be5928
+  ●    Commit 174                                                                                                                               GF 7y   9b67be4
+  ●    Commit 173                                                                                                                               GF 7y   937d32b
+  ●    Commit 172                                                                                                                               GF 7y   81be718
+  ●    Commit 171                                                                                                                               GF 7y   57b8196
+  ●    Commit 170                                                                                                                               GF 7y   8ea98be
+  ●    Commit 169                                                                                                                               GF 7y   4926766
+  ●    Commit 168                                                                                                                               GF 7y   0d60d60
+  ●    Commit 167                                                                                                                               GF 7y   fa5ef1d
+  ●    Commit 166                                                                                                                               GF 7y   953abf3
+  ●    Commit 165                                                                                                                               GF 7y   49912f3
+  ●    Commit 164                                                                                                                               GF 7y   1143b38
+  ●    Commit 163                                                                                                                               GF 7y   e135216
+  ●    Commit 162                                                                                                                               GF 7y   6ddbc37
+  ●    Commit 161                                                                                                                               GF 7y   4b6f375
+  ●    Commit 160                                                                                                                               GF 7y   545bf13
+  ●    Commit 159                                                                                                                               GF 7y   a1a658c
+  ●    Commit 158                                                                                                                               GF 7y   1e28a71
+  ●    Commit 157                                                                                                                               GF 7y   b57586d
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  fetch all remotes · enumerating objects · esc cancels
 
 ================================================================================
@@ -431,29 +431,29 @@ what right looks like: TESTING.md § Per breakpoint, Progress footer row: `fetch
 
 m4 walk capture: m4-05-progress-footer — scenario progress-reaches-the-footer, keys f, unicode tier, 80x24
 
- graft <scratch_______________________________________________________________>…
-◆ ▏  [◆ main ⇄ origin] Commit 200                                   7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    Commit 195                                                     7y   0722297
-●    Commit 194                                                     7y   b6a4a47
-●    Commit 193                                                     7y   60af0eb
-●    Commit 192                                                     7y   aceb8c5
-●    Commit 191                                                     7y   11d68ff
-●    Commit 190                                                     7y   91900bd
-●    Commit 189                                                     7y   cec3e93
-●    Commit 188                                                     7y   0a91ece
-●    Commit 187                                                     7y   3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
-●    Commit 179                                                     7y   97b58e5
+ ◆ work  …e/progress-reaches-the-footer/graft-remote-0/work · main  200 commits
+▸ ◆    [◆ main ⇄ origin] Commit 200                                7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    Commit 196                                                  7y   325da3f
+  ●    Commit 195                                                  7y   0722297
+  ●    Commit 194                                                  7y   b6a4a47
+  ●    Commit 193                                                  7y   60af0eb
+  ●    Commit 192                                                  7y   aceb8c5
+  ●    Commit 191                                                  7y   11d68ff
+  ●    Commit 190                                                  7y   91900bd
+  ●    Commit 189                                                  7y   cec3e93
+  ●    Commit 188                                                  7y   0a91ece
+  ●    Commit 187                                                  7y   3121935
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
+  ●    Commit 179                                                  7y   97b58e5
  fetch all remotes · enumerating objects · esc cancels
 
 ================================================================================
@@ -463,53 +463,53 @@ what right looks like: TESTING.md § Per breakpoint, Rejected sticky row: the sa
 
 m4 walk capture: m4-06-rejected-sticky — scenario push-lease-refused-stale, keys P → ⏎, unicode tier, 160x48
 
- graft <scratch________________________________________________________________>  184 rows so far
-◆ ▏ⓘ [◆ main ↑1] ours                                                                                                                            GF 6y   739071c
-●    [origin/main] Commit 200                                                                                                                    GF 7y   d5ae5fd
-●    Commit 199                                                                                                                                  GF 7y   13e6ab1
-●    Commit 198                                                                                                                                  GF 7y   f5055d9
-●    Commit 197                                                                                                                                  GF 7y   2cce853
-●    Commit 196                                                                                                                                  GF 7y   325da3f
-●    Commit 195                                                                                                                                  GF 7y   0722297
-●    Commit 194                                                                                                                                  GF 7y   b6a4a47
-●    Commit 193                                                                                                                                  GF 7y   60af0eb
-●    Commit 192                                                                                                                                  GF 7y   aceb8c5
-●    Commit 191                                                                                                                                  GF 7y   11d68ff
-●    Commit 190                                                                                                                                  GF 7y   91900bd
-●    Commit 189                                                                                                                                  GF 7y   cec3e93
-●    Commit 188                                                                                                                                  GF 7y   0a91ece
-●    Commit 187                                                                                                                                  GF 7y   3121935
-●    Commit 186                                                                                                                                  GF 7y   fab25df
-●    Commit 185                                                                                                                                  GF 7y   09ae97c
-●    Commit 184                                                                                                                                  GF 7y   49d7783
-●    Commit 183                                                                                                                                  GF 7y   22d55c9
-●    Commit 182                                                                                                                                  GF 7y   d212b3e
-●    Commit 181                                                                                                                                  GF 7y   c8254c5
-●    Commit 180                                                                                                                                  GF 7y   e95ccd4
-●    Commit 179                                                                                                                                  GF 7y   97b58e5
-●    Commit 178                                                                                                                                  GF 7y   1c9b7ed
-●    Commit 177                                                                                                                                  GF 7y   f93340a
-●    Commit 176                                                                                                                                  GF 7y   5aaeeba
-●    Commit 175                                                                                                                                  GF 7y   6be5928
-●    Commit 174                                                                                                                                  GF 7y   9b67be4
-●    Commit 173                                                                                                                                  GF 7y   937d32b
-●    Commit 172                                                                                                                                  GF 7y   81be718
-●    Commit 171                                                                                                                                  GF 7y   57b8196
-●    Commit 170                                                                                                                                  GF 7y   8ea98be
-●    Commit 169                                                                                                                                  GF 7y   4926766
-●    Commit 168                                                                                                                                  GF 7y   0d60d60
-●    Commit 167                                                                                                                                  GF 7y   fa5ef1d
-●    Commit 166                                                                                                                                  GF 7y   953abf3
-●    Commit 165                                                                                                                                  GF 7y   49912f3
-●    Commit 164                                                                                                                                  GF 7y   1143b38
-●    Commit 163                                                                                                                                  GF 7y   e135216
-●    Commit 162                                                                                                                                  GF 7y   6ddbc37
-●    Commit 161                                                                                                                                  GF 7y   4b6f375
-●    Commit 160                                                                                                                                  GF 7y   545bf13
-●    Commit 159                                                                                                                                  GF 7y   a1a658c
-●    Commit 158                                                                                                                                  GF 7y   1e28a71
-●    Commit 157                                                                                                                                  GF 7y   b57586d
-●    Commit 156                                                                                                                                  GF 7y   edc7cba
+ ◆ work  /tmp/graft-capture/push-lease-refused-stale/graft-remote-0/work · main                                                                 176 rows so far
+
+▸ ◆  ⓘ [◆ main ↑1] ours                                                                                                                         GF 6y   739071c
+  ●    [origin/main] Commit 200                                                                                                                 GF 7y   d5ae5fd
+  ●    Commit 199                                                                                                                               GF 7y   13e6ab1
+  ●    Commit 198                                                                                                                               GF 7y   f5055d9
+  ●    Commit 197                                                                                                                               GF 7y   2cce853
+  ●    Commit 196                                                                                                                               GF 7y   325da3f
+  ●    Commit 195                                                                                                                               GF 7y   0722297
+  ●    Commit 194                                                                                                                               GF 7y   b6a4a47
+  ●    Commit 193                                                                                                                               GF 7y   60af0eb
+  ●    Commit 192                                                                                                                               GF 7y   aceb8c5
+  ●    Commit 191                                                                                                                               GF 7y   11d68ff
+  ●    Commit 190                                                                                                                               GF 7y   91900bd
+  ●    Commit 189                                                                                                                               GF 7y   cec3e93
+  ●    Commit 188                                                                                                                               GF 7y   0a91ece
+  ●    Commit 187                                                                                                                               GF 7y   3121935
+  ●    Commit 186                                                                                                                               GF 7y   fab25df
+  ●    Commit 185                                                                                                                               GF 7y   09ae97c
+  ●    Commit 184                                                                                                                               GF 7y   49d7783
+  ●    Commit 183                                                                                                                               GF 7y   22d55c9
+  ●    Commit 182                                                                                                                               GF 7y   d212b3e
+  ●    Commit 181                                                                                                                               GF 7y   c8254c5
+  ●    Commit 180                                                                                                                               GF 7y   e95ccd4
+  ●    Commit 179                                                                                                                               GF 7y   97b58e5
+  ●    Commit 178                                                                                                                               GF 7y   1c9b7ed
+  ●    Commit 177                                                                                                                               GF 7y   f93340a
+  ●    Commit 176                                                                                                                               GF 7y   5aaeeba
+  ●    Commit 175                                                                                                                               GF 7y   6be5928
+  ●    Commit 174                                                                                                                               GF 7y   9b67be4
+  ●    Commit 173                                                                                                                               GF 7y   937d32b
+  ●    Commit 172                                                                                                                               GF 7y   81be718
+  ●    Commit 171                                                                                                                               GF 7y   57b8196
+  ●    Commit 170                                                                                                                               GF 7y   8ea98be
+  ●    Commit 169                                                                                                                               GF 7y   4926766
+  ●    Commit 168                                                                                                                               GF 7y   0d60d60
+  ●    Commit 167                                                                                                                               GF 7y   fa5ef1d
+  ●    Commit 166                                                                                                                               GF 7y   953abf3
+  ●    Commit 165                                                                                                                               GF 7y   49912f3
+  ●    Commit 164                                                                                                                               GF 7y   1143b38
+  ●    Commit 163                                                                                                                               GF 7y   e135216
+  ●    Commit 162                                                                                                                               GF 7y   6ddbc37
+  ●    Commit 161                                                                                                                               GF 7y   4b6f375
+  ●    Commit 160                                                                                                                               GF 7y   545bf13
+  ●    Commit 159                                                                                                                               GF 7y   a1a658c
+  ●    Commit 158                                                                                                                               GF 7y   1e28a71
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease
 
 ================================================================================
@@ -519,30 +519,30 @@ what right looks like: TESTING.md § Per breakpoint, Rejected sticky row: `push 
 
 m4 walk capture: m4-06-rejected-sticky — scenario push-lease-refused-stale, keys P → ⏎, unicode tier, 80x24
 
- graft <scratch_______________________________________________________________>…
-◆ ▏ⓘ [◆ main ↑1] ours                                               6y   739071c
-●    [origin/main] Commit 200                                       7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    Commit 195                                                     7y   0722297
-●    Commit 194                                                     7y   b6a4a47
-●    Commit 193                                                     7y   60af0eb
-●    Commit 192                                                     7y   aceb8c5
-●    Commit 191                                                     7y   11d68ff
-●    Commit 190                                                     7y   91900bd
-●    Commit 189                                                     7y   cec3e93
-●    Commit 188                                                     7y   0a91ece
-●    Commit 187                                                     7y   3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
- push rejected: origin/main has comm… · p pull, then m or r · P force with lease
+ ◆ work  …e/push-lease-refused-stale/graft-remote-0/work · main  88 rows so far
+▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
+  ●    [origin/main] Commit 200                                    7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    Commit 196                                                  7y   325da3f
+  ●    Commit 195                                                  7y   0722297
+  ●    Commit 194                                                  7y   b6a4a47
+  ●    Commit 193                                                  7y   60af0eb
+  ●    Commit 192                                                  7y   aceb8c5
+  ●    Commit 191                                                  7y   11d68ff
+  ●    Commit 190                                                  7y   91900bd
+  ●    Commit 189                                                  7y   cec3e93
+  ●    Commit 188                                                  7y   0a91ece
+  ●    Commit 187                                                  7y   3121935
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
+  ●    Commit 181                                                  7y   c8254c5
+  ●    Commit 180                                                  7y   e95ccd4
+ push rejected: origin/main has com… · p pull, then m or r · P force with lease
 
 ================================================================================
 docs/shots/m4-07-journal-remote-rows-160x48.txt
@@ -556,7 +556,7 @@ JOURNAL · what happened in this repo, newest first
   ●  Graft          now       pull origin/main                             1 ref · the index · the working tree · backup saved                              ← u
   ●  Graft          now       fetch all remotes                            remote-tracking refs · not undoable
   $  outside Graft  6y ago    committed "ours" on main
-  $  outside Graft  6y ago    clone: from <scratch______________________________________________________________________>
+  $  outside Graft  6y ago    clone: from /tmp/graft-capture/journal-rows/graft-remote-0/remote.git
   a branch deleted outside Graft and never checked out leaves no trace here
 
 
@@ -639,53 +639,53 @@ what right looks like: TESTING.md § Per breakpoint, `u` after a push row: same,
 
 m4 walk capture: m4-08-undo-after-push — scenario u-never-touches-the-remote, keys u → ⏎, unicode tier, 160x48
 
- graft <scratch________________________________________________________________>  184 rows so far
-◌      Uncommitted changes (1 staged)
-  ● ▏  [origin/main] ours                                                                                                                        GT 6y   51367fb
-◆─╯    [◆ main ↓1] theirs                                                                                                                        GF 6y   7be74b5
-●      Commit 200                                                                                                                                GF 7y   d5ae5fd
-●      Commit 199                                                                                                                                GF 7y   13e6ab1
-●      Commit 198                                                                                                                                GF 7y   f5055d9
-●      Commit 197                                                                                                                                GF 7y   2cce853
-●      Commit 196                                                                                                                                GF 7y   325da3f
-●      Commit 195                                                                                                                                GF 7y   0722297
-●      Commit 194                                                                                                                                GF 7y   b6a4a47
-●      Commit 193                                                                                                                                GF 7y   60af0eb
-●      Commit 192                                                                                                                                GF 7y   aceb8c5
-●      Commit 191                                                                                                                                GF 7y   11d68ff
-●      Commit 190                                                                                                                                GF 7y   91900bd
-●      Commit 189                                                                                                                                GF 7y   cec3e93
-●      Commit 188                                                                                                                                GF 7y   0a91ece
-●      Commit 187                                                                                                                                GF 7y   3121935
-●      Commit 186                                                                                                                                GF 7y   fab25df
-●      Commit 185                                                                                                                                GF 7y   09ae97c
-●      Commit 184                                                                                                                                GF 7y   49d7783
-●      Commit 183                                                                                                                                GF 7y   22d55c9
-●      Commit 182                                                                                                                                GF 7y   d212b3e
-●      Commit 181                                                                                                                                GF 7y   c8254c5
-●      Commit 180                                                                                                                                GF 7y   e95ccd4
-●      Commit 179                                                                                                                                GF 7y   97b58e5
-●      Commit 178                                                                                                                                GF 7y   1c9b7ed
-●      Commit 177                                                                                                                                GF 7y   f93340a
-●      Commit 176                                                                                                                                GF 7y   5aaeeba
-●      Commit 175                                                                                                                                GF 7y   6be5928
-●      Commit 174                                                                                                                                GF 7y   9b67be4
-●      Commit 173                                                                                                                                GF 7y   937d32b
-●      Commit 172                                                                                                                                GF 7y   81be718
-●      Commit 171                                                                                                                                GF 7y   57b8196
-●      Commit 170                                                                                                                                GF 7y   8ea98be
-●      Commit 169                                                                                                                                GF 7y   4926766
-●      Commit 168                                                                                                                                GF 7y   0d60d60
-●      Commit 167                                                                                                                                GF 7y   fa5ef1d
-●      Commit 166                                                                                                                                GF 7y   953abf3
-●      Commit 165                                                                                                                                GF 7y   49912f3
-●      Commit 164                                                                                                                                GF 7y   1143b38
-●      Commit 163                                                                                                                                GF 7y   e135216
-●      Commit 162                                                                                                                                GF 7y   6ddbc37
-●      Commit 161                                                                                                                                GF 7y   4b6f375
-●      Commit 160                                                                                                                                GF 7y   545bf13
-●      Commit 159                                                                                                                                GF 7y   a1a658c
-●      Commit 158                                                                                                                                GF 7y   1e28a71
+ ◆ work  /tmp/graft-capture/u-never-touches-the-remote/graft-remote-0/work · main                                                                   202 commits
+
+  ◌      Uncommitted changes (1 staged)
+    ●    [origin/main] ours                                                                                                                     GT 6y   51367fb
+▸ ◆─╯    [◆ main ↓1] theirs                                                                                                                     GF 6y   7be74b5
+  ●      Commit 200                                                                                                                             GF 7y   d5ae5fd
+  ●      Commit 199                                                                                                                             GF 7y   13e6ab1
+  ●      Commit 198                                                                                                                             GF 7y   f5055d9
+  ●      Commit 197                                                                                                                             GF 7y   2cce853
+  ●      Commit 196                                                                                                                             GF 7y   325da3f
+  ●      Commit 195                                                                                                                             GF 7y   0722297
+  ●      Commit 194                                                                                                                             GF 7y   b6a4a47
+  ●      Commit 193                                                                                                                             GF 7y   60af0eb
+  ●      Commit 192                                                                                                                             GF 7y   aceb8c5
+  ●      Commit 191                                                                                                                             GF 7y   11d68ff
+  ●      Commit 190                                                                                                                             GF 7y   91900bd
+  ●      Commit 189                                                                                                                             GF 7y   cec3e93
+  ●      Commit 188                                                                                                                             GF 7y   0a91ece
+  ●      Commit 187                                                                                                                             GF 7y   3121935
+  ●      Commit 186                                                                                                                             GF 7y   fab25df
+  ●      Commit 185                                                                                                                             GF 7y   09ae97c
+  ●      Commit 184                                                                                                                             GF 7y   49d7783
+  ●      Commit 183                                                                                                                             GF 7y   22d55c9
+  ●      Commit 182                                                                                                                             GF 7y   d212b3e
+  ●      Commit 181                                                                                                                             GF 7y   c8254c5
+  ●      Commit 180                                                                                                                             GF 7y   e95ccd4
+  ●      Commit 179                                                                                                                             GF 7y   97b58e5
+  ●      Commit 178                                                                                                                             GF 7y   1c9b7ed
+  ●      Commit 177                                                                                                                             GF 7y   f93340a
+  ●      Commit 176                                                                                                                             GF 7y   5aaeeba
+  ●      Commit 175                                                                                                                             GF 7y   6be5928
+  ●      Commit 174                                                                                                                             GF 7y   9b67be4
+  ●      Commit 173                                                                                                                             GF 7y   937d32b
+  ●      Commit 172                                                                                                                             GF 7y   81be718
+  ●      Commit 171                                                                                                                             GF 7y   57b8196
+  ●      Commit 170                                                                                                                             GF 7y   8ea98be
+  ●      Commit 169                                                                                                                             GF 7y   4926766
+  ●      Commit 168                                                                                                                             GF 7y   0d60d60
+  ●      Commit 167                                                                                                                             GF 7y   fa5ef1d
+  ●      Commit 166                                                                                                                             GF 7y   953abf3
+  ●      Commit 165                                                                                                                             GF 7y   49912f3
+  ●      Commit 164                                                                                                                             GF 7y   1143b38
+  ●      Commit 163                                                                                                                             GF 7y   e135216
+  ●      Commit 162                                                                                                                             GF 7y   6ddbc37
+  ●      Commit 161                                                                                                                             GF 7y   4b6f375
+  ●      Commit 160                                                                                                                             GF 7y   545bf13
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  undo: commit "ours" · origin/main still has it ✓
 
 ================================================================================
@@ -695,29 +695,29 @@ what right looks like: TESTING.md § Per breakpoint, `u` after a push row: `undo
 
 m4 walk capture: m4-08-undo-after-push — scenario u-never-touches-the-remote, keys u → ⏎, unicode tier, 80x24
 
- graft <scratch_______________________________________________________________>…
-◌      Uncommitted changes (1 staged)
-  ● ▏  [origin/main] ours                                           6y   51367fb
-◆─╯    [◆ main ↓1] theirs                                           6y   7be74b5
-●      Commit 200                                                   7y   d5ae5fd
-●      Commit 199                                                   7y   13e6ab1
-●      Commit 198                                                   7y   f5055d9
-●      Commit 197                                                   7y   2cce853
-●      Commit 196                                                   7y   325da3f
-●      Commit 195                                                   7y   0722297
-●      Commit 194                                                   7y   b6a4a47
-●      Commit 193                                                   7y   60af0eb
-●      Commit 192                                                   7y   aceb8c5
-●      Commit 191                                                   7y   11d68ff
-●      Commit 190                                                   7y   91900bd
-●      Commit 189                                                   7y   cec3e93
-●      Commit 188                                                   7y   0a91ece
-●      Commit 187                                                   7y   3121935
-●      Commit 186                                                   7y   fab25df
-●      Commit 185                                                   7y   09ae97c
-●      Commit 184                                                   7y   49d7783
-●      Commit 183                                                   7y   22d55c9
-●      Commit 182                                                   7y   d212b3e
+ ◆ work  …u-never-touches-the-remote/graft-remote-0/work · main  88 rows so far
+  ◌      Uncommitted changes (1 staged)
+    ●    [origin/main] ours                                        6y   51367fb
+▸ ◆─╯    [◆ main ↓1] theirs                                        6y   7be74b5
+  ●      Commit 200                                                7y   d5ae5fd
+  ●      Commit 199                                                7y   13e6ab1
+  ●      Commit 198                                                7y   f5055d9
+  ●      Commit 197                                                7y   2cce853
+  ●      Commit 196                                                7y   325da3f
+  ●      Commit 195                                                7y   0722297
+  ●      Commit 194                                                7y   b6a4a47
+  ●      Commit 193                                                7y   60af0eb
+  ●      Commit 192                                                7y   aceb8c5
+  ●      Commit 191                                                7y   11d68ff
+  ●      Commit 190                                                7y   91900bd
+  ●      Commit 189                                                7y   cec3e93
+  ●      Commit 188                                                7y   0a91ece
+  ●      Commit 187                                                7y   3121935
+  ●      Commit 186                                                7y   fab25df
+  ●      Commit 185                                                7y   09ae97c
+  ●      Commit 184                                                7y   49d7783
+  ●      Commit 183                                                7y   22d55c9
+  ●      Commit 182                                                7y   d212b3e
  undo: commit "ours" · origin/main still has it ✓
 
 ================================================================================

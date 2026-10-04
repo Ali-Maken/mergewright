@@ -1,16 +1,22 @@
 //! 20's Hints box: what the bars draw around a place.
 
 use super::*;
+use crate::spelled::Spelled as _;
 
 /// The keys the footer draws for `state`, at 200 columns.
 pub(super) fn bar(state: &AppState) -> Vec<(&'static str, &'static str)> {
     use graft_ui::graph_screen::{Divider, hints_for};
     let banner = crate::update::banner::banner_view(state);
     let context = crate::view::rows::footer_context(state, &[], banner.as_ref());
-    hints_for(&context, Divider::Hidden, 200)
-        .into_iter()
-        .map(|hint| (hint.key, hint.verb))
-        .collect()
+    hints_for(
+        &context,
+        Divider::Hidden,
+        200,
+        graft_ui::keymap::Keymap::shipped(),
+    )
+    .into_iter()
+    .map(|hint| (hint.key(), hint.verb))
+    .collect()
 }
 
 #[test]
@@ -54,8 +60,8 @@ fn graph_bar_leads_esc_back_to_blame_while_hidden() {
 fn the_place_bar_offers_n_only_while_finding() {
     let finding = place_on_screen(pane_at(22), true, false);
     let not = place_on_screen(pane_at(22), false, false);
-    assert!(bar(&finding).contains(&("n N", "match")));
-    assert!(!bar(&not).contains(&("n N", "match")));
+    assert!(bar(&finding).contains(&("n/N", "match")));
+    assert!(!bar(&not).contains(&("n/N", "match")));
     assert!(!bar(&not).contains(&("i", "ignore list")));
 }
 

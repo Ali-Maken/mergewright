@@ -2,8 +2,39 @@ use graft_term::SanitizedText;
 use unicode_width::UnicodeWidthStr;
 
 use crate::conflict_resolver::SideRoles;
+use crate::finish_summary::SummaryFocus;
 
 use super::*;
+
+/// The tests read the bar as the shipped table spells it: these shadow the
+/// keymap-taking functions with the default keymap filled in, so each test
+/// still says only what it is about.
+fn hints_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<Hint> {
+    super::hints_for(context, divider, columns, Keymap::shipped())
+}
+
+fn hints_text(hints: &[Hint]) -> String {
+    super::hints_text(hints, Keymap::shipped())
+}
+
+fn stopped_row(reason: &StopWording, hints: &[Hint], columns: u16) -> String {
+    super::stopped_row(reason, hints, columns, Keymap::shipped())
+}
+
+/// A hint's key as the shipped table spells it. Leaked — a test-only
+/// handful of short strings — so `(key, verb)` tuples compare as `&str`.
+trait Spelled {
+    fn key(&self) -> &'static str;
+}
+
+impl Spelled for Hint {
+    fn key(&self) -> &'static str {
+        let text = self
+            .key_text(Keymap::shipped())
+            .expect("every table hint names a bound key");
+        Box::leak(text.into_boxed_str())
+    }
+}
 
 /// Every context the graph footer can be in, `Preview` and `Resolver` aside.
 ///
@@ -120,7 +151,7 @@ fn eighty_columns_leads_with_three_and_fills_the_row() {
         let hints = hints_for(context, Divider::Hidden, 80);
         assert!(hints.len() >= 4, "{context:?} at 80 columns: {hints:?}");
         for (got, want) in hints.iter().zip(first_three.iter()) {
-            assert_eq!((got.key, got.verb), *want, "{context:?}: {hints:?}");
+            assert_eq!((got.key(), got.verb), *want, "{context:?}: {hints:?}");
         }
         assert_doorway_leads_the_bare_keys(&hints, &format!("{context:?} at 80 columns"));
         assert!(
@@ -175,10 +206,10 @@ fn hundred_sixty_shows_the_context_then_the_screen() {
         // By key and verb, not by whole `Hint`: the ladder leaves the tail
         // on lower rungs, and the order is what this test is about.
         assert_eq!(
-            drawn.iter().map(|h| (h.key, h.verb)).collect::<Vec<_>>(),
+            drawn.iter().map(|h| (h.key(), h.verb)).collect::<Vec<_>>(),
             own[..drawn.len()]
                 .iter()
-                .map(|h| (h.key, h.verb))
+                .map(|h| (h.key(), h.verb))
                 .collect::<Vec<_>>(),
             "{context:?} reordered its list: {hints:?}"
         );
@@ -217,11 +248,14 @@ fn marked_leads_with_explain_and_omits_more() {
     }));
     for columns in [40, 80, 120, 160, 200] {
         let hints = hints_for(&marked, Divider::Hidden, columns);
-        assert_eq!((hints[0].key, hints[0].verb), (EXPLAIN.key, EXPLAIN.verb));
+        assert_eq!(
+            (hints[0].key(), hints[0].verb),
+            (EXPLAIN.key(), EXPLAIN.verb)
+        );
         assert!(
             !hints
                 .iter()
-                .any(|h| (h.key, h.verb) == (MORE.key, MORE.verb)),
+                .any(|h| (h.key(), h.verb) == (MORE.key(), MORE.verb)),
             "marked row must not also show `. more`: {hints:?}"
         );
         let plain = drawable(
@@ -234,11 +268,11 @@ fn marked_leads_with_explain_and_omits_more() {
         assert_eq!(
             hints[1..]
                 .iter()
-                .map(|h| (h.key, h.verb))
+                .map(|h| (h.key(), h.verb))
                 .collect::<Vec<_>>(),
             plain[..hints.len() - 1]
                 .iter()
-                .map(|h| (h.key, h.verb))
+                .map(|h| (h.key(), h.verb))
                 .collect::<Vec<_>>(),
             "{hints:?}"
         );
@@ -288,7 +322,10 @@ fn no_planned_hint_is_ever_drawn() {
     // Positive control: the check the sweep uses rejects a list holding a
     // `Planned` hint, so this test can still fail even though no table row
     // is `Planned` today. (The drop itself is `drawable`'s filter.)
-    let canary = [hint("x", "live"), planned("y", "unbuilt")];
+    let canary = [
+        hint(hint_keys::COMPARE, "live"),
+        planned(hint_keys::COPY_SHA, "unbuilt"),
+    ];
     assert!(
         only_live(&canary).is_err(),
         "the check must reject a Planned hint"
@@ -308,7 +345,7 @@ fn no_planned_hint_is_ever_drawn() {
 /// `Err` naming the first drawn hint that is not [`HintState::Live`].
 fn only_live(drawn: &[Hint]) -> Result<(), String> {
     match drawn.iter().find(|hint| hint.state != HintState::Live) {
-        Some(hint) => Err(format!("{} {}", hint.key, hint.verb)),
+        Some(hint) => Err(format!("{} {}", hint.key(), hint.verb)),
         None => Ok(()),
     }
 }
@@ -333,52 +370,104 @@ fn the_divider_hint_follows_the_pane_not_the_context() {
             tab: TabWord::Graph,
         },
     ] {
-        let with = hints_text(&hints_for(&context, Divider::Shown, 200));
-        let without = hints_text(&hints_for(&context, Divider::Hidden, 200));
-        assert!(with.contains("<> resize"), "{context:?}: {with:?}");
-        assert!(!without.contains("<> resize"), "{context:?}: {without:?}");
+        // Wide enough for the whole list: since R1 resize is the last of a
+        // row's keys, so 200 columns no longer reach it on a graph row.
+        let with = hints_text(&hints_for(&context, Divider::Shown, 400));
+        let without = hints_text(&hints_for(&context, Divider::Hidden, 400));
+        assert!(with.contains("</> resize"), "{context:?}: {with:?}");
+        assert!(!without.contains("</> resize"), "{context:?}: {without:?}");
     }
 }
 
-/// And it is drawn where a pane and a graph actually fit side by side: at
-/// the six-hint tier, fourth. Appended after the context's own list instead,
-/// it sat behind ten keys and no real frame ever reached it — a hint that
-/// exists and is never drawn is the bug it was meant to fix (found by
-/// `graft::it::hint_bar::the_changes_pane_hints_the_keys_that_write`).
+/// Ruling R1 (ticket m8/10): `</> resize` is the last of the bar's own keys,
+/// so it is the first the width drops and nothing else pays for its width.
+/// Under 10's first cut it sat fourth, and one cell of its own new spelling
+/// (`<>` → `</>`) pushed `u undo` off the bar at 100 columns. The invariant
+/// over every context, every width and both dividers: a bar that draws
+/// `</> resize` draws every other hint its list holds.
+///
+/// The bar is monotone in its width by construction — `fit_list` takes the
+/// longest prefix of one fixed step order (`fitting::ladder`), so a hint
+/// drawn at one width is drawn at every wider one. Checking the narrowest
+/// width that draws resize (found by bisection) therefore covers every width
+/// above it (walking all 201 widths of every context took a minute).
 #[test]
-fn the_divider_hint_is_fourth_so_the_six_key_tier_reaches_it() {
-    for context in [
-        HintContext::PlainRow {
-            verbs: RowVerbs::NONE,
-        },
-        HintContext::BranchRow {
-            current: true,
-            verbs: RowVerbs::NONE,
-        },
-        HintContext::WorkingTreeRow,
-        HintContext::ChangesPane {
-            unmerged: false,
-            live: None,
-            tab: TabWord::Graph,
-        },
-    ] {
-        let hints = hints_for(&context, Divider::Shown, 120);
-        // Fifth, not fourth, on a graph row since `b branch` and `t tag`
-        // went live (m5-history-and-ghost-preview/10): `drawable` still
-        // inserts it fourth, and the doorway `. more` is then promoted in
-        // front of it to lead the tail. What the rule is for is that the
-        // hint is *reached* at the tier a pane and a graph first fit side
-        // by side, and it still is.
-        let at = hints
-            .iter()
-            .position(|hint| hint.key == "<>")
-            .unwrap_or_else(|| panic!("{context:?} never draws `<>`: {:?}", hints_text(&hints)));
-        assert!(
-            at <= 4,
-            "{context:?} buried `<>` at {at}: {:?}",
-            hints_text(&hints)
-        );
+fn resize_is_drawn_only_when_nothing_else_was_dropped() {
+    let keys = Keymap::shipped();
+    let mut drawn_somewhere = 0;
+    for context in every_context() {
+        for divider in [Divider::Shown, Divider::Hidden] {
+            let (list, _door) = spelled_bar(&context, divider, keys);
+            if !list.iter().any(|hint| hint.is(hint_keys::RESIZE)) {
+                continue;
+            }
+            let draws_resize = |columns: u16| {
+                hints_for(&context, divider, columns)
+                    .iter()
+                    .any(|hint| hint.is(hint_keys::RESIZE))
+            };
+            let widths: Vec<u16> = (40..=240).collect();
+            let first = widths.partition_point(|columns| !draws_resize(*columns));
+            let Some(&columns) = widths.get(first) else {
+                continue;
+            };
+            let hints = hints_for(&context, divider, columns);
+            drawn_somewhere += 1;
+            for wanted in &list {
+                assert!(
+                    hints
+                        .iter()
+                        .any(|hint| hint.keys == wanted.keys && hint.verb == wanted.verb),
+                    "{context:?} at {columns} draws `</> resize` but drops `{} {}`: {:?}",
+                    wanted.key(),
+                    wanted.verb,
+                    hints_text(&hints)
+                );
+            }
+        }
     }
+    assert!(drawn_somewhere > 0, "no bar ever drew `</> resize`");
+}
+
+/// Ruling R3 (ticket m8/10): undo visible is a test, not a hope. Each case
+/// is the context of a capture whose bar lost a hint to `</> resize`'s
+/// wider spelling under 10's first cut; with resize last (R1) each is back.
+#[test]
+fn the_hints_resize_once_pushed_off_are_drawn_again() {
+    let print =
+        |context: &HintContext, columns| hints_text(&hints_for(context, Divider::Shown, columns));
+    // `m2-duplicate-commit`, `m2-evil-merge`: a marked plain row, 100 columns.
+    let marked = HintContext::Marked(Box::new(HintContext::PlainRow {
+        verbs: RowVerbs::NONE,
+    }));
+    let bar = print(&marked, 100);
+    assert!(bar.contains("u undo"), "{marked:?} at 100: {bar:?}");
+    // `m7/diff-cursor-commit-120x40`, `m7/pane-bar-file-vs-directory-120x40`:
+    // the detail pane focused on a file (and on a directory), 120 columns.
+    for (opens, blamable, folds) in [
+        (false, true, false),
+        (true, true, false),
+        (true, false, true),
+    ] {
+        let focused = HintContext::PaneFocused {
+            row: Box::new(HintContext::BranchRow {
+                current: true,
+                verbs: RowVerbs::NONE,
+            }),
+            opens,
+            blamable,
+            folds,
+        };
+        let bar = print(&focused, 120);
+        assert!(bar.contains("/ search"), "{focused:?} at 120: {bar:?}");
+    }
+    // `m7/rewrite-editor-100x30`: the narrow editor keeps `d drop` at 100.
+    let narrow = HintContext::RewriteEditor {
+        narrow: true,
+        can_start: true,
+    };
+    let bar = hints_text(&hints_for(&narrow, Divider::Hidden, 100));
+    assert!(bar.contains("d drop"), "{narrow:?} at 100: {bar:?}");
 }
 
 /// A pane keeps to its own vocabulary: the changes pane hints the keys it
@@ -479,11 +568,11 @@ fn q_quit_is_the_banner_bars_last_hint_and_first_dropped() {
         };
         let full = context_list(&context);
         let wide = hints_for(&context, Divider::Hidden, 187);
-        assert_eq!(wide.last().map(|h| (h.key, h.verb)), Some(("q", "quit")));
+        assert_eq!(wide.last().map(|h| (h.key(), h.verb)), Some(("q", "quit")));
         assert_eq!(wide.len(), full.len(), "187 draws them all");
         for columns in 20u16..=187 {
             let drawn = hints_for(&context, Divider::Hidden, columns);
-            if drawn.iter().any(|h| h.key == "q") {
+            if drawn.iter().any(|h| h.key() == "q") {
                 assert_eq!(
                     drawn.len(),
                     full.len(),
@@ -506,7 +595,11 @@ fn q_quit_gives_way_to_the_stop_reason() {
         merge: false,
     };
     let hints = hints_for(&context, Divider::Hidden, 108);
-    assert_eq!(hints.last().map(|h| h.key), Some("q"), "the bar has room");
+    assert_eq!(
+        hints.last().map(Spelled::key),
+        Some("q"),
+        "the bar has room"
+    );
     let why = StopWording::new(
         reason("merge in progress · 13 files conflicted"),
         vec![reason("merge in progress")],
@@ -543,7 +636,7 @@ fn context_lists_match_the_design_note_order() {
 fn uncommitted_row_has_no_fold() {
     let working_tree = hints_for(&HintContext::WorkingTreeRow, Divider::Hidden, 1000);
     assert!(
-        !working_tree.iter().any(|hint| hint.key == "space"),
+        !working_tree.iter().any(|hint| hint.key() == "space"),
         "{:?}",
         hints_text(&working_tree)
     );
@@ -557,7 +650,7 @@ fn uncommitted_row_has_no_fold() {
     assert!(
         plain
             .iter()
-            .any(|hint| hint.key == "space" && hint.verb == "fold"),
+            .any(|hint| hint.key() == "space" && hint.verb == "fold"),
         "{:?}",
         hints_text(&plain)
     );
@@ -610,7 +703,7 @@ fn every_short_rung_is_the_users_own_word() {
             assert!(
                 table.contains(&(hint.verb, short)),
                 "`{} {}` has a short rung `{short}` the user's table does not give it",
-                hint.key,
+                hint.key(),
                 hint.verb
             );
         }
@@ -743,7 +836,7 @@ fn the_bare_keys_are_a_tail_not_a_scatter() {
                         assert!(
                             hint.rung == Rung::Key,
                             "{context:?} at {columns} columns draws `{}` after a bare key: {:?}",
-                            hint.text(),
+                            hint.text(Keymap::shipped()).expect("bound"),
                             hints_text(&hints)
                         );
                     }
@@ -782,7 +875,7 @@ fn a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn() {
                     .iter()
                     .skip(3)
                     .find(|hint| hint.rung != placed_at(hint))
-                    .map(|hint| hint.key);
+                    .map(Spelled::key);
                 if let Some(key) = raised {
                     assert_eq!(
                         body.len(),
@@ -854,7 +947,7 @@ fn the_three_most_relevant_never_fall_below_their_floor_rung() {
                 assert!(
                     drawn.rung >= want.floor_rung(),
                     "{context:?} at {columns} columns put `{}` below its floor rung",
-                    drawn.key
+                    drawn.key()
                 );
             }
         }
@@ -889,7 +982,7 @@ fn a_hint_is_dropped_only_when_its_words_will_not_fit() {
                 assert!(
                     hints_text(&with_one_more).width() > usize::from(columns),
                     "{context:?} at {columns} columns dropped `{}` with room for its words: {:?}",
-                    whole[body.len()].key,
+                    whole[body.len()].key(),
                     hints_text(&hints)
                 );
             }
@@ -922,15 +1015,15 @@ fn no_hint_loses_ground_as_the_room_for_it_grows() {
                 );
                 for (index, before) in narrower.iter().enumerate() {
                     assert_eq!(
-                        (wider[index].key, wider[index].verb),
-                        (before.key, before.verb),
+                        (wider[index].key(), wider[index].verb),
+                        (before.key(), before.verb),
                         "{context:?} with {divider:?} at {columns} columns reordered"
                     );
                     assert!(
                         wider[index].rung >= before.rung,
                         "{context:?} with {divider:?}: `{}` fell from {:?} to {:?} \
                          when the bar grew to {columns} columns",
-                        before.key,
+                        before.key(),
                         before.rung,
                         wider[index].rung
                     );
@@ -957,7 +1050,7 @@ fn whole_list(context: &HintContext, divider: Divider) -> Vec<Hint> {
 fn without_trailer(hints: &[Hint]) -> Vec<Hint> {
     hints
         .iter()
-        .filter(|hint| (hint.key, hint.verb) != (MORE.key, MORE.verb))
+        .filter(|hint| (hint.key(), hint.verb) != (MORE.key(), MORE.verb))
         .copied()
         .collect()
 }
@@ -972,7 +1065,7 @@ fn without_trailer(hints: &[Hint]) -> Vec<Hint> {
 fn assert_doorway_leads_the_bare_keys(hints: &[Hint], context: &str) {
     let at = hints
         .iter()
-        .position(|hint| (hint.key, hint.verb) == (MORE.key, MORE.verb))
+        .position(|hint| (hint.key(), hint.verb) == (MORE.key(), MORE.verb))
         .unwrap_or_else(|| panic!("{context}: the doorway is never dropped: {hints:?}"));
     assert!(
         hints[..at].iter().all(|hint| hint.rung != Rung::Key),
@@ -995,7 +1088,7 @@ fn assert_doorway_leads_the_bare_keys(hints: &[Hint], context: &str) {
 fn is_the_bottom_of_the_ladder(hints: &[Hint], doorway: Option<Hint>) -> bool {
     match hints {
         [] => true,
-        [only] => doorway.is_some_and(|door| (only.key, only.verb) == (door.key, door.verb)),
+        [only] => doorway.is_some_and(|door| (only.key(), only.verb) == (door.key(), door.verb)),
         _ => false,
     }
 }
@@ -1269,7 +1362,7 @@ fn document(base: bool, restart: bool) -> HintContext {
 #[test]
 fn resolver_hint_ladder() {
     let list = context_list(&document(false, false));
-    let words: Vec<(&str, &str)> = list.iter().map(|hint| (hint.key, hint.verb)).collect();
+    let words: Vec<(&str, &str)> = list.iter().map(|hint| (hint.key(), hint.verb)).collect();
     assert_eq!(
         words,
         vec![
@@ -1295,20 +1388,24 @@ fn resolver_hint_ladder() {
     let with_base = context_list(&document(true, false));
     let base_at = with_base
         .iter()
-        .position(|hint| (hint.key, hint.verb) == ("B", "base"))
+        .position(|hint| (hint.key(), hint.verb) == ("B", "base"))
         .expect("`B base` after `b both` while `base`");
     // `⌃O/⌃T` sits between (m6-conflicts/16): `B base` follows the takes
     // and `O/T file` (17).
-    assert_eq!(with_base[base_at - 3].key, "b", "`B base` follows `b both`");
-    assert_eq!(with_base[base_at - 1].key, "O/T");
+    assert_eq!(
+        with_base[base_at - 3].key(),
+        "b",
+        "`B base` follows `b both`"
+    );
+    assert_eq!(with_base[base_at - 1].key(), "O/T");
 
     let with_restart = context_list(&document(false, true));
     let restart_at = with_restart
         .iter()
-        .position(|hint| (hint.key, hint.verb) == ("d", "start over"))
+        .position(|hint| (hint.key(), hint.verb) == ("d", "start over"))
         .expect("`d start over` before `esc close` while `restart`");
     assert_eq!(
-        with_restart[restart_at + 1].key,
+        with_restart[restart_at + 1].key(),
         "esc",
         "`d start over` precedes `esc close`"
     );
@@ -1319,7 +1416,7 @@ fn resolver_hint_ladder() {
     // this exercises exactly the code `hints_for` would once the table
     // flips.
     let whole = list.clone();
-    let at_160 = fit_list(&whole, None, 160, Words::Keys);
+    let at_160 = fit_list(&whole, None, 160, Words::Keys, Keymap::shipped());
     assert_eq!(
         hints_text(&at_160),
         " o yours  t theirs  b both  ⌃O/⌃T all  O/T file  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  esc close"
@@ -1330,7 +1427,7 @@ fn resolver_hint_ladder() {
     // after review m6-amend-16 M2 made `⌃O/⌃T all` one hint, 2026-09-24).
     // Since m6-conflicts/56 `esc close` keeps its words ahead of the bare
     // keys (ADR-0044 §4), so at 80 `e` goes bare instead.
-    let at_80 = fit_list(&whole, None, 80, Words::Keys);
+    let at_80 = fit_list(&whole, None, 80, Words::Keys, Keymap::shipped());
     let text_80 = hints_text(&at_80);
     assert_eq!(
         text_80,
@@ -1352,7 +1449,7 @@ fn resolver_offers_file_keys() {
         let list = context_list(&document(base, restart));
         let at = |key: &str| {
             list.iter()
-                .position(|hint| hint.key == key)
+                .position(|hint| hint.key() == key)
                 .unwrap_or_else(|| panic!("`{key}` in {list:?}"))
         };
         assert_eq!(list[at("O/T")].verb, "file");
@@ -1378,7 +1475,7 @@ fn resolver_offers_file_keys() {
         if whole_file || done {
             assert!(
                 list.iter()
-                    .all(|hint| hint.key != "O/T" && hint.key != "j/k"),
+                    .all(|hint| hint.key() != "O/T" && hint.key() != "j/k"),
                 "neither on the card or done bar: {list:?}"
             );
         }
@@ -1531,7 +1628,7 @@ fn a_finishable_done_file_offers_c() {
             roles: SideRoles::Merge,
             finishable: true,
         });
-        let keys: Vec<&str> = list.iter().map(|hint| hint.key).collect();
+        let keys: Vec<&str> = list.iter().map(Spelled::key).collect();
         assert_eq!(keys.first(), Some(&"c"), "{keys:?}");
         assert_eq!(keys.last(), Some(&"esc"), "{keys:?}");
     }
@@ -1635,9 +1732,13 @@ fn resolver_verbs_are_role_words() {
             assert_eq!(super::short_form(word), None, "{word} has a short form");
             let short = Hint {
                 rung: Rung::Short,
-                ..hint("o", word)
+                ..hint(hint_keys::OURS, word)
             };
-            assert_eq!(short.text(), format!("o {word}"), "{word}");
+            assert_eq!(
+                short.text(Keymap::shipped()).expect("bound"),
+                format!("o {word}"),
+                "{word}"
+            );
         }
     }
 }
@@ -1657,13 +1758,16 @@ fn resolver_offers_take_all() {
             roles,
             finishable: false,
         });
-        let keys: Vec<(&str, &str)> = list.iter().map(|hint| (hint.key, hint.verb)).collect();
+        let keys: Vec<(&str, &str)> = list.iter().map(|hint| (hint.key(), hint.verb)).collect();
         let both = keys
             .iter()
             .position(|pair| *pair == ("b", "both"))
             .expect("b both");
         assert_eq!(keys[both + 1], ("⌃O/⌃T", "all"), "{roles:?}");
-        assert_eq!(list[both + 1].text(), "⌃O/⌃T all");
+        assert_eq!(
+            list[both + 1].text(Keymap::shipped()).expect("bound"),
+            "⌃O/⌃T all"
+        );
     }
 
     for (whole_file, done) in [(true, false), (false, true)] {
@@ -1675,7 +1779,7 @@ fn resolver_offers_take_all() {
             roles: SideRoles::Merge,
             finishable: false,
         });
-        assert!(other.iter().all(|hint| hint.key != "⌃O/⌃T"), "{other:?}");
+        assert!(other.iter().all(|hint| hint.key() != "⌃O/⌃T"), "{other:?}");
     }
 }
 
@@ -1712,13 +1816,13 @@ fn operation_live_leads_with_the_way_back() {
         for columns in [80, 120, 187, 200] {
             let drawn = hints_for(&context, Divider::Hidden, columns);
             assert_eq!(
-                drawn.first().map(|hint| (hint.key, hint.verb)),
+                drawn.first().map(|hint| (hint.key(), hint.verb)),
                 Some(("⇥", "banner")),
                 "{row:?} at {columns}: {}",
                 hints_text(&drawn)
             );
             assert_eq!(
-                drawn.iter().filter(|hint| hint.key == "⇥").count(),
+                drawn.iter().filter(|hint| hint.key() == "⇥").count(),
                 1,
                 "{row:?} at {columns}: `⇥` means one thing on this bar: {}",
                 hints_text(&drawn)
@@ -1748,10 +1852,10 @@ fn live_c_is_ranked_ahead_of_the_rows_write_keys() {
         };
         for columns in [120, 187] {
             let drawn = hints_for(&context, Divider::Hidden, columns);
-            let at = |key: &str| drawn.iter().position(|hint| hint.key == key);
+            let at = |key: &str| drawn.iter().position(|hint| hint.key() == key);
             let lead = if c == LiveC::ContinueAmends { 2 } else { 1 };
             assert_eq!(
-                drawn.get(lead).map(|hint| (hint.key, hint.verb)),
+                drawn.get(lead).map(|hint| (hint.key(), hint.verb)),
                 Some(("c", verb)),
                 "{c:?} at {columns}: {}",
                 hints_text(&drawn)
@@ -1863,7 +1967,7 @@ fn stopped_row_keeps_the_count_whole_at_108_cells() {
         "{row}"
     );
     // `q quit`, last, gave way to the count (m8-13b).
-    assert_eq!(hints.last().map(|h| h.key), Some("q"));
+    assert_eq!(hints.last().map(Spelled::key), Some("q"));
     assert!(
         row.ends_with(&hints_text(&hints[..hints.len() - 1])),
         "{row}"
@@ -1984,7 +2088,7 @@ fn resolver_bar_shows_every_key_at_80() {
         let keys = |columns| {
             hints_for(&context, Divider::Hidden, columns)
                 .iter()
-                .map(|hint| hint.key)
+                .map(Spelled::key)
                 .collect::<Vec<_>>()
         };
         let text = resolver_bar(roles, 80);
@@ -2010,7 +2114,10 @@ fn done_list_marks_start_over() {
         Divider::Hidden,
         240,
     );
-    let d = hints.iter().find(|hint| hint.key == "d").expect("d drawn");
+    let d = hints
+        .iter()
+        .find(|hint| hint.key() == "d")
+        .expect("d drawn");
     assert!(d.keeps_words, "{hints:?}");
 }
 
@@ -2064,7 +2171,9 @@ mod blame_place {
     use super::*;
 
     fn words(list: &[Hint]) -> Vec<String> {
-        list.iter().map(Hint::text).collect()
+        list.iter()
+            .filter_map(|hint| hint.text(Keymap::shipped()))
+            .collect()
     }
 
     #[test]
@@ -2076,7 +2185,7 @@ mod blame_place {
                 "^ before it",
                 "L history of these lines",
                 "/ find",
-                "n N match",
+                "n/N match",
                 "space ages",
                 "w whitespace",
                 "i ignore list",
@@ -2087,8 +2196,8 @@ mod blame_place {
 
     #[test]
     fn n_n_only_while_finding() {
-        assert!(!words(&blame_place_list(false, true)).contains(&"n N match".to_owned()));
-        assert!(words(&blame_place_list(true, false)).contains(&"n N match".to_owned()));
+        assert!(!words(&blame_place_list(false, true)).contains(&"n/N match".to_owned()));
+        assert!(words(&blame_place_list(true, false)).contains(&"n/N match".to_owned()));
     }
 
     #[test]
@@ -2127,7 +2236,7 @@ mod history_place {
     fn words(context: &HintContext) -> Vec<String> {
         hints_for(context, Divider::Shown, 400)
             .iter()
-            .map(Hint::text)
+            .filter_map(|hint| hint.text(Keymap::shipped()))
             .collect()
     }
 
@@ -2234,7 +2343,7 @@ mod pane_space {
     fn keys(context: &HintContext) -> Vec<(&'static str, &'static str)> {
         hints_for(context, Divider::Hidden, 400)
             .into_iter()
-            .map(|hint| (hint.key, hint.verb))
+            .map(|hint| (hint.key(), hint.verb))
             .collect()
     }
 
@@ -2337,15 +2446,19 @@ fn a_amend_ranks_after_push_pull_fetch() {
         },
     };
     let wide = hints_for(&context, Divider::Hidden, 1000);
-    let at = |key: &str| wide.iter().position(|h| h.key == key).expect(key);
+    let at = |key: &str| wide.iter().position(|h| h.key() == key).expect(key);
     assert_eq!(at("a"), at("f") + 1, "{wide:?}");
     let narrow = hints_for(&context, Divider::Hidden, 80);
-    assert!(narrow.iter().take(3).any(|h| h.key == "P"), "{narrow:?}");
+    assert!(narrow.iter().take(3).any(|h| h.key() == "P"), "{narrow:?}");
 }
 
 #[test]
 fn a_amend_follows_open_where_no_commit_or_remote_verb() {
-    let base = vec![hint("⏎", "open"), hint("b", "branch"), hint("t", "tag")];
+    let base = vec![
+        hint(hint_keys::OPEN, "open"),
+        hint(hint_keys::BRANCH, "branch"),
+        hint(hint_keys::TAG, "tag"),
+    ];
     let list = super::lists::with_verbs(
         base,
         RowVerbs {
@@ -2353,6 +2466,51 @@ fn a_amend_follows_open_where_no_commit_or_remote_verb() {
             amend: true,
         },
     );
-    let keys: Vec<&str> = list.iter().map(|h| h.key).collect();
+    let keys: Vec<&str> = list.iter().map(Spelled::key).collect();
     assert_eq!(keys, ["⏎", "a", "b", "t"]);
+}
+
+/// Ruling R4 (ticket m8/10), as the code stands: a `Fixed` key — spelled
+/// from the shipped table whatever his config says — is drawn only where
+/// the edge passes every press as typed, so the default *is* the key that
+/// acts. Those are the fields `graft::update::state::AppState::text_field_open`
+/// names (state.rs: the name prompt, the credential box, the picker, the
+/// rewrite editor's `r` field, and the finish summary while its focus is
+/// not `Files`); `graft`'s `x_typed_into_every_field_is_an_x_with_merge_on_x`
+/// holds each of them to it. Everywhere else a key follows his remap.
+///
+/// Not R4's letter: R4 has the finish Subject/Body follow a `Finish` row,
+/// on the premise that his remap acts there. It does not — `edge::key`
+/// returns before `context_of` while `text_field_open` holds, and that
+/// includes the summary's Subject and Body — so a remapped spelling there
+/// would draw a key that does nothing (ticket 10c NOTES).
+#[test]
+fn a_fixed_key_is_drawn_only_where_keys_go_on_as_typed() {
+    let typed = |context: &HintContext| match context {
+        HintContext::NamePrompt { .. }
+        | HintContext::Credential
+        | HintContext::Picker
+        | HintContext::RewriteMessage => true,
+        HintContext::Finish { focus, .. } => *focus != SummaryFocus::Files,
+        _ => false,
+    };
+    let mut fixed_drawn = 0;
+    for context in every_context() {
+        for divider in [Divider::Shown, Divider::Hidden] {
+            let (list, door) = spelled_bar(&context, divider, Keymap::shipped());
+            for hint in list.iter().chain(door.iter()) {
+                if !hint.keys.iter().any(|key| matches!(key, HintKey::Fixed(_))) {
+                    continue;
+                }
+                fixed_drawn += 1;
+                assert!(
+                    typed(&context),
+                    "{context:?} draws `{} {}` from the shipped table, but his remap acts there",
+                    hint.key(),
+                    hint.verb
+                );
+            }
+        }
+    }
+    assert!(fixed_drawn > 0, "no list draws a fixed key");
 }

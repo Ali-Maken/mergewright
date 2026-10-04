@@ -129,7 +129,7 @@ fn box_footer(frame: &[String]) -> String {
 }
 
 /// :860: every box with one `Close` — nothing to do, refused, preview
-/// failed, undrawable — has the footer `esc back`, not `←→ choose  ⏎ act`.
+/// failed, undrawable — has the footer `esc back`, not `←/→ choose  ⏎ act`.
 /// One real preview, re-pointed at each caller's state.
 #[test]
 fn a_single_close_box_offers_only_esc() {
@@ -196,7 +196,7 @@ const REFUSED_HEADER: &str = "\
 # What right looks like:
 #  - The box: the refusal's line, one `[ Close ]`.
 #  - Its bottom border reads only `esc back` (review 86's words): no
-#    `←→ choose  ⏎ act  esc cancel` over a single button.
+#    `←/→ choose  ⏎ act  esc cancel` over a single button.
 ";
 
 /// :776: the editor opened on staged work, nothing typed — no `subject

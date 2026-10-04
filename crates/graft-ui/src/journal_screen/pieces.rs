@@ -1,5 +1,7 @@
 //! A journal row cut into pieces: glyph, source, age, words, mark, and the line under it.
 
+use crate::keymap::Keymap;
+
 use super::{
     AGE, COMMANDS_HEADING, CURSOR, Columns, GLYPH, Ink, JournalRowView, MARK, Piece, RowKind,
     RowMark, SOURCE, SanitizedText, UnicodeWidthStr, WORDS_BEFORE_GIT, cut_at_word, pad,
@@ -12,6 +14,7 @@ pub(super) fn row_pieces(
     selected: bool,
     columns: Columns,
     width: usize,
+    keys: &Keymap,
 ) -> Vec<Piece> {
     let cursor = if selected { "▸ " } else { "  " };
     let mut pieces = vec![Piece {
@@ -51,7 +54,7 @@ pub(super) fn row_pieces(
                 text: row.age.as_str().to_owned(),
                 ink: Ink::Text,
             });
-            pieces.extend(words_pieces(row, columns, width, words_x));
+            pieces.extend(words_pieces(row, columns, width, words_x, keys));
         }
         RowKind::Lost | RowKind::LostEdit => {
             // `└ ✗ lost` under the event's glyph and source, the words in
@@ -79,10 +82,11 @@ pub(super) fn words_pieces(
     columns: Columns,
     width: usize,
     words_x: usize,
+    keys: &Keymap,
 ) -> Vec<Piece> {
     let room = width.saturating_sub(words_x);
     match row.kind {
-        RowKind::Graft => graft_pieces(row, room, width, words_x),
+        RowKind::Graft => graft_pieces(row, room, width, words_x, keys),
         RowKind::Outside => match (&row.git_subject, columns.git) {
             (Some(subject), true) => {
                 let words_room = room.saturating_sub(1).min(WORDS_BEFORE_GIT);
@@ -116,6 +120,7 @@ pub(super) fn graft_pieces(
     room: usize,
     width: usize,
     words_x: usize,
+    keys: &Keymap,
 ) -> Vec<Piece> {
     // The summaries line up under each other, which is what makes
     // the list scannable; the description's column is capped so a
@@ -150,11 +155,11 @@ pub(super) fn graft_pieces(
         text: cut_at_word(&words, room),
         ink: Ink::Text,
     }];
-    let mark = row.mark.label();
+    let mark = row.mark.label(keys);
     if !mark.is_empty() {
         pieces.push(Piece {
             x: width.saturating_sub(mark.width() + 1),
-            text: mark.to_owned(),
+            text: mark,
             ink: if row.mark == RowMark::Interrupted {
                 Ink::Warning
             } else {

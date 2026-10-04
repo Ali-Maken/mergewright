@@ -232,3 +232,11 @@ fn a_click_finds_the_row_drawn_on_its_line() {
     assert_eq!(row_at(10, 20, 9, 2), Some(4));
     assert_eq!(row_at(10, 20, 9, 7), Some(9));
 }
+
+/// Spell sweep (c), ticket m8/10c: the picker is a text field, so its
+/// `closes` line spells the shipped `app.back`.
+#[test]
+fn the_closing_words_spell_the_shipped_back_key() {
+    use crate::keymap::sweep::assert_shipped;
+    assert_shipped(&closes("no branches yet"), &[&["app.back"]]);
+}

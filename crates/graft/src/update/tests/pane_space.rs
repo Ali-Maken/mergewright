@@ -11,11 +11,16 @@ use graft_ui::graph_screen::hints_for;
 fn space_hints(state: &AppState) -> Vec<&'static str> {
     let banner = crate::update::banner::banner_view(state);
     let context = crate::view::rows::footer_context(state, &[], banner.as_ref());
-    hints_for(&context, Divider::Shown, 400)
-        .into_iter()
-        .filter(|hint| hint.key == "space")
-        .map(|hint| hint.verb)
-        .collect()
+    hints_for(
+        &context,
+        Divider::Shown,
+        400,
+        graft_ui::keymap::Keymap::shipped(),
+    )
+    .into_iter()
+    .filter(|hint| hint.key() == "space")
+    .map(|hint| hint.verb)
+    .collect()
 }
 
 fn files_cursor_kind(state: &AppState) -> FileRowKind {

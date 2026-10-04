@@ -33,7 +33,11 @@
 mod catalogue;
 mod context;
 mod fitting;
+mod keys;
 mod lists;
+
+use crate::keymap::{ActionId, Keymap};
+use keys as hint_keys;
 
 pub use catalogue::{every_context, every_hint};
 pub use context::{ConfirmYes, HintContext, LiveC, RowVerbs, TabWord};
@@ -71,12 +75,47 @@ pub enum Rung {
     Full,
 }
 
-/// One hint: a key, the verb it does, whether it does it yet, and how much
-/// of it the bar drew.
+/// One key a hint names (ticket m8/10, decision 1): an action spelled from
+/// his keymap, or a word that is not a binding at all ([`NOT_A_BINDING`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HintKey {
+    /// The action's first live chord (`Keymap::spell_keys`).
+    Key(ActionId),
+    /// Every live chord of one action, `/`-joined (`⏎/space`).
+    EveryChord(ActionId),
+    /// A text field's key: its default chord, which no remap moves — the
+    /// field passes every press as typed (ADR-0055). Spelled from
+    /// [`Keymap::shipped`] whatever keymap the bar is drawn with.
+    Fixed(ActionId),
+    /// A word, never a key string: one of [`NOT_A_BINDING`].
+    Word(&'static str),
+}
+
+/// The words a hint may name that are not a binding, each with why
+/// (ticket m8/10, decision 4). Everything else a hint names is a row of
+/// `keymap::defaults()`, spelled from his keymap.
+pub const NOT_A_BINDING: &[(&str, &str)] = &[
+    (
+        "type",
+        "typed text in a field: every printable key, never remapped (ADR-0055)",
+    ),
+    (
+        "release",
+        "the mouse button coming up at the end of a badge drag, not a key",
+    ),
+    (
+        "↑/↓",
+        "the branch picker's own arrows: a text field moves its rows with them while \
+         `j`/`k` type, so they are not `app.down`/`app.up`",
+    ),
+];
+
+/// One hint: the keys that do it, the verb it does, whether it does it yet,
+/// and how much of it the bar drew.
 #[derive(Clone, Copy, Debug)]
 pub struct Hint {
-    /// The key as it reads on screen (`m`, `⏎`, `⌃A`, `.`).
-    pub key: &'static str,
+    /// The keys, as actions (`app.open`) or words; drawn `/`-joined.
+    pub keys: &'static [HintKey],
     /// The verb it does (`merge`, `open`, `more`).
     pub verb: &'static str,
     /// Bound today, or still to be built.
@@ -103,14 +142,19 @@ pub struct Hint {
 
 impl PartialEq for Hint {
     fn eq(&self, other: &Self) -> bool {
-        (self.key, self.verb, self.state, self.rung, self.keeps_words)
-            == (
-                other.key,
-                other.verb,
-                other.state,
-                other.rung,
-                other.keeps_words,
-            )
+        (
+            self.keys,
+            self.verb,
+            self.state,
+            self.rung,
+            self.keeps_words,
+        ) == (
+            other.keys,
+            other.verb,
+            other.state,
+            other.rung,
+            other.keeps_words,
+        )
     }
 }
 
@@ -132,13 +176,46 @@ impl Hint {
         self
     }
 
-    /// What the bar draws for this hint at its rung, key included.
+    /// The hint's keys as `keys` spells them, `/`-joined; an unbound
+    /// action is left out, and `None` when nothing is left — the hint names
+    /// no key that acts, so it is not drawn (ticket m8/10, decision 2).
     #[must_use]
-    pub fn text(&self) -> String {
-        match self.drawn_verb() {
-            Some(verb) => format!("{} {verb}", self.key),
-            None => self.key.to_owned(),
+    pub fn key_text(&self, keys: &Keymap) -> Option<String> {
+        crate::keymap::join(self.labels(keys))
+    }
+
+    /// Each key the hint draws, one label per chord or word.
+    fn labels(&self, keys: &Keymap) -> Vec<String> {
+        let mut out = Vec::new();
+        for key in self.keys {
+            match key {
+                HintKey::Key(id) => out.extend(keys.spell_keys(&[*id])),
+                HintKey::EveryChord(id) => {
+                    out.extend(keys.live_labels(id).iter().cloned());
+                }
+                HintKey::Fixed(id) => out.extend(Keymap::shipped().spell_keys(&[*id])),
+                HintKey::Word(word) => out.push((*word).to_owned()),
+            }
         }
+        out
+    }
+
+    /// What the bar draws for this hint at its rung, key included; `None`
+    /// when [`Hint::key_text`] is.
+    #[must_use]
+    pub fn text(&self, keys: &Keymap) -> Option<String> {
+        let key = self.key_text(keys)?;
+        Some(match self.drawn_verb() {
+            Some(verb) => format!("{key} {verb}"),
+            None => key,
+        })
+    }
+
+    /// Whether this hint names exactly `keys` — how a table finds one of
+    /// its own entries (`⏎`'s, `c`'s) to place another beside it.
+    #[must_use]
+    pub fn is(&self, keys: &[HintKey]) -> bool {
+        self.keys == keys
     }
 
     /// The verb as the bar draws it at this hint's rung: `None` at
@@ -240,9 +317,9 @@ fn short_form(verb: &str) -> Option<&'static str> {
 }
 
 /// A hint whose key is bound today.
-const fn hint(key: &'static str, verb: &'static str) -> Hint {
+const fn hint(keys: &'static [HintKey], verb: &'static str) -> Hint {
     Hint {
-        key,
+        keys,
         verb,
         state: HintState::Live,
         rung: Rung::Full,
@@ -262,9 +339,9 @@ const fn hint(key: &'static str, verb: &'static str) -> Hint {
         reason = "no table has a planned entry today; the next unbuilt key uses it"
     )
 )]
-const fn planned(key: &'static str, verb: &'static str) -> Hint {
+const fn planned(keys: &'static [HintKey], verb: &'static str) -> Hint {
     Hint {
-        key,
+        keys,
         verb,
         state: HintState::Planned,
         rung: Rung::Full,
@@ -275,13 +352,13 @@ const fn planned(key: &'static str, verb: &'static str) -> Hint {
 
 /// Leads a truncated list: press `.` for the rest (the context-actions key,
 /// `docs/design/02-keymap.md` §2.1 "Rare verbs").
-const MORE: Hint = hint(".", "more");
+const MORE: Hint = hint(hint_keys::MENU, "more");
 /// Leads a marked row's list: press `.` to explain the Mistake Radar finding
 /// (m2-details-and-diffs/17, design note "Marker column").
-const EXPLAIN: Hint = hint(".", "explain");
+const EXPLAIN: Hint = hint(hint_keys::MENU, "explain");
 /// The detail pane's divider (ADR-0028): shown by every context while a
 /// pane is open, not only the changes pane (m5-03 review, Major 4).
-const RESIZE: Hint = hint("<>", "resize");
+const RESIZE: Hint = hint(hint_keys::RESIZE, "resize");
 
 /// Whether a detail pane is on screen, so its divider can be dragged.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -320,8 +397,19 @@ pub enum Divider {
 /// modal that reaches nothing, drawing it would be the dead key the ADR's
 /// own first condition rules out. The banner's list is short enough to draw
 /// whole at 80 columns, so nothing is dropped and nothing needs a doorway.
+///
+/// Keys are spelled from `keys`, his keymap (ticket m8/10): a hint whose
+/// every key is unbound is left out before the width rule runs, and so is a
+/// hint whose key an earlier hint on the same bar already draws — after a
+/// remap two actions can spell one chord, and the bar never draws a chord
+/// twice ([`spelled`]).
 #[must_use]
-pub fn hints_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<Hint> {
+pub fn hints_for(
+    context: &HintContext,
+    divider: Divider,
+    columns: u16,
+    keys: &Keymap,
+) -> Vec<Hint> {
     // The resolver below its own floor is the one context whose *keys*
     // depend on the width: under `conflict_resolver::MIN_COLUMNS` the
     // widget draws one line of text instead of the document, and the app
@@ -331,14 +419,46 @@ pub fn hints_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<H
     if matches!(context, HintContext::Resolver { .. })
         && columns < crate::conflict_resolver::MIN_COLUMNS
     {
-        return vec![hint("esc", "close")];
+        return spelled(vec![hint(hint_keys::BACK, "close")], keys);
     }
     // The finish summary has a floor too (`finish_summary::FINISH_MIN`), but
     // in both dimensions, and this is told only the width: the app draws
     // `esc back` alone below it (`graft::view::finish`), so the width sweep
     // here stays monotone.
+    let (list, trailer) = spelled_bar(context, divider, keys);
+    fit_list(&list, trailer, columns, words_for(context), keys)
+}
+
+/// [`whole_bar`] with [`spelled`] applied to the list and its doorway: the
+/// doorway goes too when `.` is unbound, or when the list already draws it.
+fn spelled_bar(
+    context: &HintContext,
+    divider: Divider,
+    keys: &Keymap,
+) -> (Vec<Hint>, Option<Hint>) {
     let (list, trailer) = whole_bar(context, divider);
-    fit_list(&list, trailer, columns, words_for(context))
+    let list = spelled(list, keys);
+    let trailer = trailer.filter(|door| {
+        spelled(list.iter().copied().chain([*door]).collect(), keys).len() > list.len()
+    });
+    (list, trailer)
+}
+
+/// `list` less every hint that names no live key, and less every hint
+/// drawing a chord an earlier hint already draws (the earlier one is the
+/// more relevant: tables put a place's own keys first).
+fn spelled(list: Vec<Hint>, keys: &Keymap) -> Vec<Hint> {
+    let mut drawn: Vec<String> = Vec::new();
+    let mut kept = Vec::new();
+    for hint in list {
+        let labels = hint.labels(keys);
+        if labels.is_empty() || labels.iter().any(|label| drawn.contains(label)) {
+            continue;
+        }
+        drawn.extend(labels);
+        kept.push(hint);
+    }
+    kept
 }
 
 /// Whether `context`'s bar is words-only (ADR-0058 §4): every context that
@@ -470,7 +590,7 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
                 return (list, trailer);
             }
             let mut led = vec![WAY_BACK];
-            led.extend(list.into_iter().filter(|hint| hint.key != WAY_BACK.key));
+            led.extend(list.into_iter().filter(|hint| !hint.is(WAY_BACK.keys)));
             (led, trailer)
         }
     }
@@ -501,7 +621,9 @@ fn pane_focused_bar(
     let mut list: Vec<Hint> = list
         .into_iter()
         .filter(|hint| {
-            !GRAPH_ONLY.contains(&hint.key) && (opens || hint.key != ENTER) && *hint != FOLD
+            !GRAPH_ONLY.contains(&hint.keys)
+                && (opens || !hint.is(hint_keys::OPEN))
+                && *hint != lists::GRAPH_FOLD
         })
         .collect();
     if blamable {
@@ -509,9 +631,9 @@ fn pane_focused_bar(
         // (`graft::update::place::f_key`, guarded on the same `blamable`),
         // so [`TAIL`]'s `F focus` goes and `F history` follows `B blame`
         // (m7-power-tools/21b).
-        list.retain(|hint| hint.key != F_HISTORY.key);
+        list.retain(|hint| !hint.is(hint_keys::FOCUS));
         // After `⏎` when it is there, else first: the pane's own key.
-        let at = usize::from(list.first().is_some_and(|hint| hint.key == ENTER));
+        let at = usize::from(list.first().is_some_and(|hint| hint.is(hint_keys::OPEN)));
         list.insert(at, BLAME);
         list.insert(at + 1, F_HISTORY);
     }
@@ -519,7 +641,7 @@ fn pane_focused_bar(
         // After `⏎` and `B` when present, else first.
         let at = list
             .iter()
-            .rposition(|hint| hint.key == ENTER || *hint == BLAME)
+            .rposition(|hint| hint.is(hint_keys::OPEN) || *hint == BLAME)
             .map_or(0, |at| at + 1);
         list.insert(at, FOLD);
     }
@@ -527,39 +649,41 @@ fn pane_focused_bar(
 }
 
 /// `B blame`: the pane's line blamed ([`HintContext::PaneFocused`]).
-const BLAME: Hint = hint("B", "blame");
+const BLAME: Hint = hint(hint_keys::BLAME, "blame");
 
 /// `space fold`: the graph's merge fold ([`TAIL`]) and, with the same word
 /// for the same act, a focused files list's directory fold
 /// ([`HintContext::PaneFocused`]'s `folds`, m7-power-tools/20h).
-const FOLD: Hint = hint("space", "fold");
+const FOLD: Hint = hint(hint_keys::FOLD_DIR, "fold");
 
 /// `esc back to blame`: the way back to a hidden blame trail
 /// ([`HintContext::BackToBlame`]).
-const BACK_TO_BLAME: Hint = hint("esc", "back to blame");
+const BACK_TO_BLAME: Hint = hint(hint_keys::BACK, "back to blame");
 
 /// `esc back to history`: the way back to a hidden history place
 /// ([`HintContext::BackToHistory`], m7-power-tools/21b).
-const BACK_TO_HISTORY: Hint = hint("esc", "back to history");
+const BACK_TO_HISTORY: Hint = hint(hint_keys::BACK, "back to history");
 
 /// `F history`: the focused pane's file traced
 /// ([`HintContext::PaneFocused`]'s `blamable`, m7-power-tools/21b).
-const F_HISTORY: Hint = hint("F", "history");
+const F_HISTORY: Hint = hint(hint_keys::FILE_HISTORY, "history");
 
 /// `⇥ banner`: the way back to a live operation's banner
 /// ([`HintContext::OperationLive`]).
-const WAY_BACK: Hint = hint("⇥", "banner");
-
-/// `Enter`, as every table spells it. Named because
-/// [`HintContext::PaneFocused`] filters on it.
-const ENTER: &str = "⏎";
+const WAY_BACK: Hint = hint(hint_keys::NEXT_PANE, "banner");
 
 /// The keys only the graph screen answers: each opens something that stands
 /// *where the graph stands*, and each is guarded on the graph having the
 /// keyboard, so each does nothing while the detail pane has it
 /// (`graft::update::state::AppState::graph_has_focus`, the one function all
 /// five handlers read).
-const GRAPH_ONLY: [&str; 5] = ["S", "J", "M", "O", "C"];
+const GRAPH_ONLY: [&[HintKey]; 5] = [
+    hint_keys::STASH,
+    hint_keys::JOURNAL,
+    hint_keys::MAP,
+    hint_keys::OVERVIEW,
+    hint_keys::SWITCH,
+];
 
 /// The keys that need a commit under the cursor, and so do nothing on the
 /// uncommitted-changes row: `y` copies a sha there is none of and `x` marks
@@ -568,12 +692,12 @@ const GRAPH_ONLY: [&str; 5] = ["S", "J", "M", "O", "C"];
 /// `toggle_compare_selected`), which the design note already said and the
 /// bar drew anyway (m5/31). `space` folds the merge under the cursor, and
 /// the uncommitted row is no merge (gap row 553).
-const NEEDS_A_COMMIT: [&str; 3] = ["y", "x", "space"];
+const NEEDS_A_COMMIT: [&[HintKey]; 3] = [hint_keys::COPY_SHA, hint_keys::COMPARE, hint_keys::FOLD];
 
 /// Every hint the footer could draw for `context`, in priority order, with
 /// the ones nothing has built yet already dropped: the context's own keys,
-/// the divider's when a pane is open, then — on the graph's row contexts
-/// only — the keys the whole screen answers ([`TAIL`]).
+/// then — on the graph's row contexts only — the keys the whole screen
+/// answers ([`TAIL`]), then the divider's when a pane is open.
 ///
 /// A pane keeps to its own list: while the changes pane, an overlay or the
 /// banner has focus it answers keys the graph does not, and the graph
@@ -589,6 +713,22 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
         .into_iter()
         .filter(|hint| hint.state == HintState::Live)
         .collect();
+    let rows = matches!(
+        context,
+        HintContext::WorkingTreeRow
+            | HintContext::BranchRow { .. }
+            | HintContext::PlainRow { .. }
+            | HintContext::Rewritable(_)
+    );
+    if rows {
+        let commits = *context != HintContext::WorkingTreeRow;
+        for extra in TAIL {
+            let dead = !commits && NEEDS_A_COMMIT.contains(&extra.keys);
+            if !dead && !list.iter().any(|hint| hint.is(extra.keys)) {
+                list.push(extra);
+            }
+        }
+    }
     if divider == Divider::Shown
         && !matches!(
             context,
@@ -607,33 +747,20 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
                 | HintContext::RewriteMessage
         )
     {
-        // Fourth, not last: appended, it sat behind ten context keys and the
-        // six-hint tier never reached it, so the hint existed and was never
-        // drawn (found by rendering a real frame —
-        // `graft::it::hint_bar::the_changes_pane_hints_the_keys_that_write`).
-        // Fourth keeps the three verbs that do work ahead of it and still
-        // shows the divider from 100 columns, which is where a pane and a
-        // graph first fit side by side.
-        list.insert(3.min(list.len()), RESIZE);
-    }
-    let rows = matches!(
-        context,
-        HintContext::WorkingTreeRow
-            | HintContext::BranchRow { .. }
-            | HintContext::PlainRow { .. }
-            | HintContext::Rewritable(_)
-    );
-    if rows {
-        let commits = *context != HintContext::WorkingTreeRow;
-        for extra in TAIL {
-            let dead = !commits && NEEDS_A_COMMIT.contains(&extra.key);
-            if !dead && !list.iter().any(|hint| hint.key == extra.key) {
-                list.push(extra);
-            }
-        }
+        // Last of the bar's own keys, after [`TAIL`] (ticket m8/10, ruling
+        // R1): a layout key earns its cell last, so it is the first the
+        // width drops and nothing else pays for its width — not `u undo`,
+        // not `/ search` (02-keymap §2.1 "ranks by relevance at the
+        // cursor"; ux-principles row 8). It used to sit fourth so the old
+        // six-hint tier would reach it; that tier is gone, and fourth let one
+        // cell of its own spelling push undo off at 100 columns.
+        list.push(RESIZE);
     }
     list
 }
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod spell_sweep;

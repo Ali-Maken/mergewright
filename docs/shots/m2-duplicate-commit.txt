@@ -19,7 +19,7 @@
 "                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "
-" . explain · ⏎ open · b branch · r rebase · <> resize · t tag · c commit · y sha · m merge · u undo "
+" . explain · ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · / search  "
 "COMMIT 0202020 · Test <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y · parents 0101010 · dif…"
 "Ship the release notes · duplicate commit                                                           "
 "                              reading…                                                              "

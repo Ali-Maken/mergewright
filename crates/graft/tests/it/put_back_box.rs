@@ -119,9 +119,8 @@ fn the_box_footer_is_y_put_it_back() {
     let view = graft::update::preview::preview_box(&state).expect("the box");
     assert_eq!(
         view.again
-            .as_ref()
-            .map(|(key, words)| (key.as_str(), words.as_str())),
-        Some(("y", "put it back"))
+            .and_then(|again| again.text(graft_ui::keymap::Keymap::shipped())),
+        Some("y put it back".to_owned())
     );
     assert!(!view.confirm_key, "no second `y confirm`");
     assert!(!view.keep, "never `R keep` on a put-back");

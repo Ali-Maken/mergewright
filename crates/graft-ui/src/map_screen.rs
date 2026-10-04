@@ -121,6 +121,8 @@ pub struct MapScreen<'a> {
     pub view: &'a MapView,
     /// The theme to draw it in.
     pub theme: &'a Theme,
+    /// His keymap: the footer's keys are spelled from it.
+    pub keys: &'a crate::keymap::Keymap,
 }
 
 #[cfg(test)]
@@ -136,6 +138,10 @@ mod tests {
     use crate::theme::ThemeKind;
 
     fn draw(view: &MapView, columns: u16, rows: u16) -> String {
+        draw_with(view, columns, rows, crate::keymap::Keymap::shipped())
+    }
+
+    fn draw_with(view: &MapView, columns: u16, rows: u16, keys: &crate::keymap::Keymap) -> String {
         let mut terminal = Terminal::new(TestBackend::new(columns, rows))
             .unwrap_or_else(|why| panic!("a test backend always opens: {why}"));
         let capabilities = test_capabilities(ColorDepth::TrueColor, false);
@@ -146,6 +152,7 @@ mod tests {
                     MapScreen {
                         view,
                         theme: &theme,
+                        keys,
                     },
                     frame.area(),
                 );
@@ -225,6 +232,7 @@ mod tests {
                         MapScreen {
                             view: &view,
                             theme: &theme,
+                            keys: crate::keymap::Keymap::shipped(),
                         },
                         frame.area(),
                     );
@@ -251,6 +259,36 @@ mod tests {
     #[test]
     fn ready_snapshot_120x40_unicode() {
         insta::assert_snapshot!(draw(&sample_view(false), 120, 40));
+    }
+
+    /// Spell sweep (c), ticket m8/10c: the footer and the loading line name
+    /// his chords, never the defaults.
+    #[test]
+    fn the_map_footer_spells_his_keys() {
+        use crate::keymap::sweep::{assert_spelled, swept};
+        let (keys, _) = swept();
+        let mut view = sample_view(false);
+        let footer = |text: String, needle: &str| {
+            text.lines()
+                .find(|line| line.contains(needle))
+                .unwrap_or_else(|| panic!("no `{needle}`:\n{text}"))
+                .to_owned()
+        };
+        assert_spelled(
+            &footer(draw_with(&view, 120, 24, &keys), "zoom to commits"),
+            &keys,
+            &[
+                &["app.down", "app.up"],
+                &["map.seek"],
+                &["map.close", "app.back"],
+            ],
+        );
+        view.status = MapStatus::Loading { done: 2, total: 5 };
+        assert_spelled(
+            &footer(draw_with(&view, 120, 24, &keys), "cancels"),
+            &keys,
+            &[&["app.back"]],
+        );
     }
 
     #[test]

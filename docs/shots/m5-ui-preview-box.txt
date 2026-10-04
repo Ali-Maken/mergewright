@@ -1,7 +1,7 @@
 # docs/shots/m5-ui-preview-box.txt — Ghost Preview box
 #
 # What right looks like: the box is docked to the bottom of the
-# screen at its own height, its own footer ("←→ choose  ⏎ act  esc
+# screen at its own height, its own footer ("←/→ choose  ⏎ act  esc
 # cancel") on its last row and the screen's own footer row below it
 # untouched. Every row between the two borders is a `│ … │` row —
 # there is no hole in the box at any size. Every choice is
@@ -38,7 +38,7 @@
 │ undo: u restores feature/auth and the tree                                   │
 │ git rebase refs/heads/main                                                   │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────╯
+╰ ←/→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────╯
 m merge  r rebase  screen footer
 
 === ready, docked in 160x48 ===
@@ -87,7 +87,7 @@ m merge  r rebase  screen footer
 │ undo: u restores feature/auth and the tree                                                                                                                   │
 │ git rebase refs/heads/main                                                                                                                                   │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╰ ←/→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 m merge  r rebase  screen footer
 
@@ -114,7 +114,7 @@ m merge  r rebase  screen footer
 │ predicting…                                                                  │
 │ git rebase refs/heads/main                                                   │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────╯
+╰ ←/→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────╯
 m merge  r rebase  screen footer
 
 === screen too small, 30x8 ===

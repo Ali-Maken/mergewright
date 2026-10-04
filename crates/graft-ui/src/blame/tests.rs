@@ -97,7 +97,7 @@ fn draw(view: &BlameView, width: u16, height: u16) -> Vec<String> {
     let mut terminal =
         Terminal::new(TestBackend::new(width, height)).expect("the test backend starts");
     terminal
-        .draw(|frame| draw_blame(frame, frame.area(), view))
+        .draw(|frame| draw_blame(frame, frame.area(), view, crate::keymap::Keymap::shipped()))
         .expect("the blame place draws");
     let buffer = terminal.backend().buffer().clone();
     (0..height)
@@ -606,4 +606,28 @@ fn snapshot_187x50_shallow() {
         "row 18 reads `▸ ^0a2762 shallow clone · can't say who`, its trailer `◂ can't say who · this clone starts at 0a27627`; 17 opens the block with the same words, 19 closes it bare; Priya nowhere.",
         snapshot(&view(&rows, SHALLOW_18), 187, 50)
     );
+}
+
+/// Spell sweep (c), ticket m8/10c: the reading title and the failed line
+/// name his `app.back`, never `esc`.
+#[test]
+fn blame_spells_its_back_key_from_his_keymap() {
+    use crate::keymap::sweep::{assert_spelled, swept};
+    let (keys, _) = swept();
+    let mut reading = view(&[], 0);
+    reading.body = BlameBody::Reading;
+    assert_spelled(&title(&reading, &keys), &keys, &[&["app.back"]]);
+    let mut failed = view(&[], 0);
+    failed.body = BlameBody::Failed("no such path");
+    let backend = TestBackend::new(80, 6);
+    let mut terminal = Terminal::new(backend).expect("the test backend starts");
+    terminal
+        .draw(|frame| draw_blame(frame, frame.area(), &failed, &keys))
+        .expect("the widget draws");
+    let text = terminal.backend().to_string();
+    let line = text
+        .lines()
+        .find(|line| line.contains("git blame stopped"))
+        .unwrap_or_else(|| panic!("{text}"));
+    assert_spelled(line, &keys, &[&["app.back"]]);
 }

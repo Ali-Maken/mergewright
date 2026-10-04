@@ -55,6 +55,7 @@ fn draw(view: &JournalView, width: u16, height: u16) -> Vec<String> {
                 JournalScreen {
                     view,
                     theme: &theme,
+                    keys: Keymap::shipped(),
                 },
                 frame.area(),
             );
@@ -172,7 +173,11 @@ fn an_aborted_rows_reason_is_shown_in_full_when_it_is_expanded() {
 #[test]
 fn an_empty_journal_says_what_will_fill_it() {
     let grid = draw(&view(Vec::new(), JournalStatus::Empty), 70, 8);
-    assert!(grid.iter().any(|line| line.contains(EMPTY)), "{grid:?}");
+    assert!(
+        grid.iter()
+            .any(|line| line.contains(&empty(Keymap::shipped()))),
+        "{grid:?}"
+    );
 }
 
 #[test]
@@ -240,7 +245,11 @@ fn at_180_every_column_is_drawn() {
     );
     assert!(grid[3].starts_with("▸    └ ✗ lost"), "{grid:?}");
     assert!(grid[3].contains("9a8b7c6 \"Add rate limiter\""), "{grid:?}");
-    assert!(grid.iter().any(|line| line.contains(LEGEND)), "{grid:?}");
+    assert!(
+        grid.iter()
+            .any(|line| line.contains(&legend(Keymap::shipped()))),
+        "{grid:?}"
+    );
     assert!(grid.iter().any(|line| line.contains(NO_TRACE)), "{grid:?}");
 }
 
@@ -296,7 +305,7 @@ fn at_24_rows_the_frame_stays_and_the_rows_scroll() {
         words: "nothing to undo".to_owned(),
         problem: true,
     });
-    view.enter_words = Some("⏎ revert to before this".to_owned());
+    view.enter_words = Some("revert to before this".to_owned());
     let grid = draw(&view, 187, 24);
     assert!(grid[0].starts_with("JOURNAL"), "{grid:?}");
     assert!(grid[23].starts_with("⏎ revert to before this"), "{grid:?}");
@@ -326,7 +335,7 @@ fn no_status_row_when_nothing_is_wrong() {
 fn the_bar_follows_the_selected_row() {
     let mut view = view(mock_rows(), JournalStatus::Ready);
     view.selected = 2;
-    view.enter_words = Some("⏎ put main back to it".to_owned());
+    view.enter_words = Some("put main back to it".to_owned());
     view.branch_here = true;
     let grid = draw(&view, 187, 14);
     assert_eq!(
@@ -346,7 +355,7 @@ fn the_bar_follows_the_selected_row() {
 fn the_bar_offers_b_only_where_b_names_a_commit() {
     let mut view = view(mock_rows(), JournalStatus::Ready);
     view.selected = 2;
-    view.enter_words = Some("⏎ put main back to it".to_owned());
+    view.enter_words = Some("put main back to it".to_owned());
     let grid = draw(&view, 187, 14);
     assert_eq!(grid[13], "⏎ put main back to it  / find  J/esc close");
 }
@@ -356,7 +365,7 @@ fn the_bar_offers_b_only_where_b_names_a_commit() {
 fn the_bar_is_blank_while_a_box_is_open() {
     let mut view = view(mock_rows(), JournalStatus::Ready);
     view.box_open = true;
-    view.enter_words = Some("⏎ undo this".to_owned());
+    view.enter_words = Some("undo this".to_owned());
     let grid = draw(&view, 187, 14);
     assert!(grid[13].is_empty(), "{grid:?}");
 }
@@ -406,7 +415,7 @@ fn a_kept_find_ends_the_title_as_blames_does() {
 fn the_bar_offers_n_n_only_with_a_find_kept() {
     let mut view = view(mock_rows(), JournalStatus::Ready);
     view.selected = 2;
-    view.enter_words = Some("⏎ put main back to it".to_owned());
+    view.enter_words = Some("put main back to it".to_owned());
     view.find = Some(JournalFindView {
         query: sanitize("spike"),
         at: Some(1),
@@ -415,7 +424,7 @@ fn the_bar_offers_n_n_only_with_a_find_kept() {
     let grid = draw(&view, 187, 14);
     assert_eq!(
         grid[13],
-        "⏎ put main back to it  / find  n N match  J/esc close"
+        "⏎ put main back to it  / find  n/N match  J/esc close"
     );
 }
 
@@ -443,6 +452,7 @@ fn text_on_the_cursor_row_is_legible() {
                     JournalScreen {
                         view: &view,
                         theme: &theme,
+                        keys: Keymap::shipped(),
                     },
                     frame.area(),
                 );
@@ -455,4 +465,43 @@ fn text_on_the_cursor_row_is_legible() {
             "row {selected}: the cursor row is drawn ({checked})"
         );
     }
+}
+
+/// Spell sweep (c), ticket m8/10c: under the sweep keymap the footer, the
+/// legend and the empty state name his chords, never the defaults.
+#[test]
+fn the_journal_spells_every_key_from_his_keymap() {
+    use crate::keymap::sweep::{assert_spelled, swept};
+    let (keys, _) = swept();
+    let mut view = view(
+        vec![row("2m", "switch", RowMark::None)],
+        JournalStatus::Ready,
+    );
+    view.enter_words = Some("revert this".to_owned());
+    view.branch_here = true;
+    view.find = Some(JournalFindView {
+        query: sanitize("x"),
+        at: Some(1),
+        of: 1,
+    });
+    let theme = theme();
+    let screen = JournalScreen {
+        view: &view,
+        theme: &theme,
+        keys: &keys,
+    };
+    assert_spelled(
+        &screen.footer(400),
+        &keys,
+        &[
+            &["journal.revert"],
+            &["journal.branch"],
+            &["app.find"],
+            &["app.next_match", "app.prev_match"],
+            &["journal.expand"],
+            &["journal.close", "app.back"],
+        ],
+    );
+    assert_spelled(&legend(&keys), &keys, &[&["app.undo"]]);
+    assert_spelled(&empty(&keys), &keys, &[&["app.undo"]]);
 }

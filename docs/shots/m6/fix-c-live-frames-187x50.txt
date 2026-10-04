@@ -112,4 +112,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
- c finish · ⏎ changes · S stash · <> resize · p pull · P push · f fetch · u undo · J journal · . more
+ c finish · ⏎ changes · S stash · p pull · P push · f fetch · u undo · J journal · / search · . more

@@ -22,7 +22,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- rebase still in progre… · ⏎ resolve · M mergetool · e edit · <> resize · space resolved · c continue · ⇥ diff · . more
+ rebase still in progr… · ⏎ resolve · M mergetool · e edit · space resolved · c continue · ⇥ diff · </> resize · . more
 UNCOMMITTED
 diff vs HEAD 274c7d4
 CONFLICTS (13)                ▎
@@ -227,7 +227,7 @@ CONFLICTS (13)                ▎
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ diff · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . more
 UNCOMMITTED · 1 untracked
 diff vs HEAD a82960b
 UNTRACKED (1)                 ▎

@@ -56,6 +56,7 @@ fn draw(view: &EmptyStateView, columns: u16, rows: u16) -> (Buffer, Vec<String>)
         view,
         theme: &theme,
         ascii: false,
+        keys: crate::keymap::Keymap::shipped(),
     })
         .render(area, &mut buffer);
     let lines = (0..rows)
@@ -226,8 +227,11 @@ fn the_cursor_row_is_on_the_selection_fill_and_legible() {
 
 #[test]
 fn bar_keys_follow_the_form() {
-    let keys = |view: &EmptyStateView| -> Vec<&str> {
-        bar_keys(view).into_iter().map(|(key, _)| key).collect()
+    let keys = |view: &EmptyStateView| -> Vec<String> {
+        bar_keys(view, crate::keymap::Keymap::shipped())
+            .into_iter()
+            .map(|(key, _)| key)
+            .collect()
     };
     assert_eq!(keys(&with_recents()), ["o", "i", "⏎", "q"]);
     assert_eq!(keys(&no_recents()), ["o", "i", "q"]);
@@ -247,4 +251,49 @@ fn ages_read_as_the_mockup() {
     assert_eq!(recent_age(now - 400 * day, now), "last year");
     assert_eq!(recent_age(now - 800 * day, now), "2 years ago");
     assert_eq!(recent_age(now + day, now), "today");
+}
+
+/// Spell sweep (c), ticket m8/10c: every form's bar names his chords,
+/// except the open prompt's — a text field, so its keys stay shipped.
+#[test]
+fn the_bar_spells_his_keys_and_the_open_prompt_the_shipped_ones() {
+    use crate::keymap::sweep::{assert_shipped, assert_spelled, swept};
+    let (keys, _) = swept();
+    let line = |view: &EmptyStateView| -> String {
+        bar_keys(view, &keys)
+            .into_iter()
+            .map(|(key, label)| format!("{key} {label}"))
+            .collect::<Vec<_>>()
+            .join("  ")
+    };
+    assert_spelled(
+        &line(&with_recents()),
+        &keys,
+        &[
+            &["empty_state.open"],
+            &["empty_state.init"],
+            &["app.open"],
+            &["app.quit"],
+        ],
+    );
+    let confirm = EmptyStateView {
+        prompt: Some(EmptyPrompt::ConfirmInit),
+        ..with_recents()
+    };
+    assert_spelled(
+        &line(&confirm),
+        &keys,
+        &[&["empty_state.confirm"], &["app.back"]],
+    );
+    let open = EmptyStateView {
+        prompt: Some(EmptyPrompt::Open {
+            text: sanitize_line("~/code"),
+            cursor: 6,
+        }),
+        ..with_recents()
+    };
+    assert_shipped(
+        &line(&open),
+        &[&["app.open"], &["app.next_pane"], &["app.back"]],
+    );
 }

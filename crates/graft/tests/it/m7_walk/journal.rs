@@ -489,7 +489,7 @@ fn journal_expanded_capture() {
 
 /// J's `/` find (m7-power-tools/30o-c): `/spike ⏎` on the "lost work"
 /// fixture. The title ends in blame's find tail, `▸` is on the first row
-/// at or below the cursor that names spike, and the bar offers `n N match`.
+/// at or below the cursor that names spike, and the bar offers `n/N match`.
 /// Also `docs/shots/m7/journal-find-187x50.txt`.
 #[test]
 fn journal_find_capture() {
@@ -517,7 +517,7 @@ fn journal_find_capture() {
     assert!(
         frame
             .last()
-            .is_some_and(|row| row.contains("/ find  n N match")),
+            .is_some_and(|row| row.contains("/ find  n/N match")),
         "the bar:\n{body}"
     );
     check_shot("m7/journal-find-187x50.txt", &body);

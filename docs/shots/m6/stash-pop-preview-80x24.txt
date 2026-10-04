@@ -32,5 +32,5 @@ STASHES (1)
 │ stash@{0} is dropped · u brings it back                                      │
 │ git stash pop --index 'stash@{0}'                                            │
 │ ▸[ Cancel ]   [ Pop ]                                                        │
-╰ y pop  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────╯
+╰ y pop  ←/→ choose  ⏎ act  esc cancel ────────────────────────────────────────╯
 

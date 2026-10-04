@@ -72,7 +72,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- c commit · P push · <> resize · p pull · f fetch · b branch · t tag · u undo · / search · q quit · F2 stat · . more
+ c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · q quit · F2 stat · F3 rend · . more
 COMMIT 29a1432 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 8m · parents 3d9496e · diff vs firs…
 add second
                               reading…

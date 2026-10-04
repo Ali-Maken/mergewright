@@ -40,11 +40,15 @@ fn bottom_row(state: &AppState, columns: u16, rows: u16) -> String {
 /// The keys the open box's bar should read at this width.
 fn box_keys(state: &AppState, columns: u16) -> String {
     let context = crate::view::rows::box_context(state).expect("a box is open");
-    graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
-        &context,
-        graft_ui::graph_screen::Divider::Hidden,
-        columns,
-    ))
+    graft_ui::graph_screen::hints_text(
+        &graft_ui::graph_screen::hints_for(
+            &context,
+            graft_ui::graph_screen::Divider::Hidden,
+            columns,
+            graft_ui::keymap::Keymap::shipped(),
+        ),
+        graft_ui::keymap::Keymap::shipped(),
+    )
     .trim()
     .to_owned()
 }

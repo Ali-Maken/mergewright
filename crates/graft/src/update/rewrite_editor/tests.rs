@@ -3,6 +3,7 @@
 //! *does* is graft-ops' and is proved against real git there and in the
 //! walks (08-b); the open read is `jobs::rewrite_open::tests`'.
 
+use crate::spelled::Spelled as _;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
@@ -1234,9 +1235,10 @@ fn bar_offers_r(state: &AppState) -> bool {
         &view.hint_context,
         graft_ui::graph_screen::Divider::Hidden,
         187,
+        graft_ui::keymap::Keymap::shipped(),
     )
     .iter()
-    .any(|hint| hint.key == "R")
+    .any(|hint| hint.key() == "R")
 }
 
 /// `main`'s first-parent chain is commit 1 alone.

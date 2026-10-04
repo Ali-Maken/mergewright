@@ -1,6 +1,6 @@
 # G-keymap 2 — every hint, label and footer spells keys from the live table
 
-Status: ready (replaced by the planner's spec-only pass 2026-10-04, after scout `scouts/10-keymap-spell.md`)
+Status: lands with 10c (remaining work done there; see 10c NOTES). Was: partial — blocked: footers (seam taken 2026-10-04). Was: ready (planner's spec-only pass 2026-10-04, after scout `scouts/10-keymap-spell.md`)
 Build with: **Opus** — the contract is fixed by 09 and the shape by this spec; a wide sweep (~200 hint calls, ~35
 footer sites) held by the spell sweep and the capture diff. Not Fable: fails "a wrong approach becomes structural"
 (the shape is decided below).
@@ -100,25 +100,25 @@ pub(crate) const NEVER_HINTED: &[(ActionId, &str /* why */)];
 `Hint::key` (the old string) is removed. Builder names other helpers; MAP.md records them.
 
 ## Acceptance
-- [ ] **Spell sweep** green (test name at tick): a keymap remapping every movable action to a distinctive free chord
+- [~] **Spell sweep** green — (a),(d) `graph_screen::hints::spell_sweep::every_bar_spells_the_remapped_chords`; (b) `…::every_menu_suffix_spells_the_remapped_chord`; (c) footers **not built** (seam). (test name at tick): a keymap remapping every movable action to a distinctive free chord
       (09's sweep set); every `every_context()` bar at 40/80/120/200 columns, every `.` menu, every footer/box above:
       (a) each drawn hint's `key_text` equals the remapped spelling — asserted on `Hint`s, not frame text; (b) menu
       suffixes likewise; (c) footers: the rendered line holds the remapped labels and no default label of a moved
       action as a whole token; (d) no chord drawn twice in one bar.
-- [ ] Unbound test: `graph.merge = "none"` → the merge hint is absent at every width, the menu row reads `Merge …`
+- [x] Unbound test (`update::tests::keymap_edge::merge_unbound_is_drawn_nowhere_and_its_menu_row_names_no_key`; "no `—`" asserted as: each context fixture draws exactly as many `—` as under the default keymap, since ghost rows draw `—` for sha/age by design): `graph.merge = "none"` → the merge hint is absent at every width, the menu row reads `Merge …`
       with no suffix, and no `—` is drawn anywhere (test name at tick).
-- [ ] **Grep test** over graft-ui user-facing string literals: no default chord label in a hint position (literal
+- [ ] **Grep test** — **not built** (seam; it would fail on the unconverted footers). over graft-ui user-facing string literals: no default chord label in a hint position (literal
       start, after the bar's two-space gap, after `· `, or as a trailing `(x)`); allow-list with a reason per entry,
       documented in the test. Test name at tick.
-- [ ] `every_key_the_bar_draws_is_answered` and `every_bound_action_is_hinted_live_or_is_named_here` green over
-      `ActionId`; `table_check` has no word exemptions.
-- [ ] Default keymap: every capture assert green. `git diff --stat main -- docs/shots` = the new shot + only the
+- [x] `every_key_the_bar_draws_is_answered` and `every_bound_action_is_hinted_live_or_is_named_here` green over
+      `ActionId` (`update::tests::every_key_the_bar_draws_is_answered`, `…::every_bound_action_is_hinted_live_or_is_named_here`, `…::every_planned_hint_is_still_unbound`); `table_check` has no word exemptions (`update::keys::table_check::every_bound_action_is_a_row`, `…::no_action_is_listed_twice`).
+- [~] Default keymap: every capture assert green (full `cargo nextest run`). Diff = the normalisations **plus width knock-ons** (NOTES, question 1), so not strictly "only". `git diff --stat main -- docs/shots` = the new shot + only the
       decision-3 normalisations; NOTES lists each changed file and its token(s), and states the check used to show the
       diff holds nothing else (e.g. a word-diff filtered for those tokens).
-- [ ] pty capture with `[keys.graph] merge = "M"`: `docs/shots/m8-keymap-remapped-120x36.txt` — bar shows `M merge`,
+- [~] Capture (in-process draw, **not pty** — deviation 4) `update::tests::keymap_edge::capture_merge_remapped_to_shift_m`, with `[keys.graph] merge = "M"`: `docs/shots/m8-keymap-remapped-120x36.txt` — bar shows `M merge`,
       `.` menu `Merge … (M)`. If the remap displaces another action, its hint is absent; NOTES names it. **Colour
       unverified** (rule 5). Looks-right is the user's.
-- [ ] MAP.md graft-ui (`HintKey`, `Hint`, `NOT_A_BINDING`, `spell_keys`, `spell_every`, every widget that now takes
+- [x] MAP.md graft-ui (for what is built; footer widgets other than `PreviewBoxWidget`/`StashScreen` still to come) (`HintKey`, `Hint`, `NOT_A_BINDING`, `spell_keys`, `spell_every`, every widget that now takes
       `&Keymap`) and graft (`AppState::keymap`, `bound_actions`, `NEVER_HINTED`; `SharedKeymap` removed).
 
 ## Touches
@@ -136,6 +136,83 @@ pub(crate) const NEVER_HINTED: &[(ActionId, &str /* why */)];
 ~90k: shape + helpers ~10k, hint tables ~35k (mechanical: key string → `ActionId` by context), footers/menus ~20k,
 tests + capture ~25k. Seam if over: land shape, hint tables, bar, menus, `bound_actions` and the sweep over bars and
 menus; commit; report `blocked: footers` — the conductor gives the graft-ui footer/box sites to an Opus follow-up.
+
+## NOTES (builder, 2026-10-04)
+
+**Compacted twice** in this session. Seam taken: shape, hint tables, bar, menus, `bound_actions` and the
+sweep over bars and menus landed, **plus** the preview box and stash footers. Report: `blocked: footers`.
+Scout used: `scouts/10-keymap-spell.md`.
+
+### Remaining for the follow-up (exact next steps)
+Pattern (as `preview_box.rs` / `stash_screen.rs`, commit 7378eebd): the widget gets `pub keys: &'a Keymap`; its
+graft caller passes `&state.keymap`; footers use `keys.key_verb(&[ActionId(..)], verb)` / `keys.after(words, id,
+verb)`; parts joined by two spaces, an unbound one left out. Text fields (`CommitEditor`, `Picker`) spell from
+`Keymap::shipped()` (decision 5 + ADR-0055: rows fixed). Sites still literal:
+- `commit_editor.rs:172,176` `FOOTER_SUBJECT`/`FOOTER_OTHER` → fns (`⌃⏎/Commit`: `Commit` is a `Word`); `:227`.
+- `picker.rs:257,259` (`esc closes`); `draw_picker` needs keys.
+- `journal_screen.rs:46,221` (`u takes it back`, legend `u can undo it`, footer `J/esc close`, `b new branch here`,
+  `/ find`, `n N match` → `n/N`, `space command log`); `journal_screen/tests.rs:418`.
+- `finish_summary.rs:182`, `finish_summary/list.rs:99`, `finish_summary/frame.rs` `preview_line`/`UNDO_LINE`.
+- `blame.rs:242,272`; `history.rs:347`; `conflict_resolver.rs:105,107` (ASCII variant uses ` - `);
+  `empty_state.rs:99,101` (find where it gets a keymap: no `AppState`); `map_screen/render.rs:131`
+  (`↑↓ select  ⏎ zoom to commits  M/Esc back` → `app.down/up`, `map.seek`, `map.close`+`app.back`);
+  `graph_screen/mod.rs:~310` (`focus (F/Esc off)`); commit-graph line `B`/`X` (`graph.write_commit_graph`,
+  `graph.decline_commit_graph`); `frame_box.rs:307,317`; check `rewrite_editor/tests.rs:389` (`<> moved`).
+- `preview_box`: the `again` part (`m merge`/`r rebase`) still arrives **spelled by graft** as `(SanitizedText,
+  SanitizedText)` — move it to an `ActionId`.
+- Then: spell sweep (c) over every footer; the grep test; re-shoot (`GRAFT_UPDATE_SHOTS=1` until stable —
+  multi-capture walks stop at the first stale file, so it takes 2–3 passes); `scripts/contact-sheet.sh` m3–m7
+  (m6/m7 `--captions-order`); MAP.md for each widget.
+- Capture check used here: pair `-`/`+` lines per hunk, apply the allowed normalisations, squash padding runs of
+  spaces/`─`, classify whole ` · ` clauses dropped; anything else is unexplained and read by eye.
+
+### Deviations (for the reviewer)
+1. **`HintKey::Fixed(ActionId)`** — fourth variant: a text field's key, spelled from `Keymap::shipped()` whatever
+   his config says (decision 5 says "spell from the table"; a remap can't move them, ADR-0055, so spelling them
+   from his map would draw a key that does not work there).
+2. **Joiner normalisations beyond decision 3**: `<>` → `</>` (resize), `n N` → `n/N`, `alt+↑↓` → `alt+↑/alt+↓`
+   (each key spelled whole by `KeyLabel`). Follow from "one joiner" but are not listed in decision 3.
+3. **Menus are spelled at construction** (`ContextMenu::for_row(.., keys)`, `with_key`), not at render
+   (decision 8). Harmless today (the keymap is fixed after startup), but `keymap_edge`'s sweep had to account for
+   it: its baseline now presses with a keymap holding each sweep chord **ahead of** the default (`both()`), so the
+   menu suffixes it builds match the remapped run's.
+4. **The remapped capture is an in-process draw**, not a pty run: `capture_merge_remapped_to_shift_m` builds the
+   keymap through `config::keymap_from` from a `[keys.graph] merge = "M"` config and draws bar + `.` menu at
+   120x36 → `docs/shots/m8-keymap-remapped-120x36.txt`. **Displaced:** `graph.map` (its `M`) — no `M map` hint is
+   drawn anywhere (asserted). **Colour unverified** (rule 5). Looks-right is the user's.
+5. `NEVER_HINTED` no longer lists `esc dismiss`: `app.back` is drawn live.
+6. Test-only `crate::spelled::Spelled` (`hint.key()`, default spelling) keeps old test literals readable.
+
+### Captures (68 files; every changed line checked)
+Check: per hunk, `-`/`+` lines paired; each old line with the normalisations applied and padding squashed must
+equal the new line. 0 unexplained except the width cases below (classified by the script, each read by eye).
+- `←/→` (preview box footer) — 29 files: m5-ui-preview-* (8), m6 fix-preview-verb*, set-aside-*, stash-apply/pop,
+  m7 absorb/amend-into/new-branch/put-back*/rebase-*/refused-box/take, m8 fork-follows-preview, reword-preview.
+- `</>` (resize) — 29 files: m2 ×4, m3-changes-pane ×2, m5-hints-* ×5, m5-lane-cap, m6 fix-c-*, fix-tab-words,
+  stash-clash-take-esc-pane, m7 blame-*/diff-*/esc-back-*/pane-bar/radar-*/submodule-*, m8 settle-following.
+- `alt+↑/alt+↓` — 6: m7 rebase-keep-drops-editor, rewrite-editor-{100x30,140x40,187x50},
+  rewrite-editor-left-behind, m8 fork-follows-rewrite-editor. `↑/↓` — m7 picker-empty-query, picker-filtered.
+  `n/N` — m7 blame-find. `⇥` — m3-stash-save (`tab scope`), m7 rewrite-editor-100x30 (`tab after`).
+- **Width knock-ons (not in the allowed list — question 1):** `</>` is one cell wider, so on full bars the ladder
+  drops a clause: `u undo` in m2-duplicate-commit, m2-evil-merge (100 cols); `/ search` in
+  m7/diff-cursor-commit-120x40, m7/pane-bar-file-vs-directory-120x40; a status cut one cell earlier in
+  m6/fix-tab-words-120x40 (`progre…` → `progr…`); m7/rewrite-editor-100x30 loses `drop` after `d`.
+- Contact sheets m3–m7 re-assembled. They also pick up earlier tickets' unassembled capture changes (the m4 sheet:
+  354 lines from m4-* captures this ticket did not touch).
+
+### Questions
+1. `</>` and `alt+↑/alt+↓` cost cells and drop `/ search` / `u undo` / `drop` at 100–120 cols. Keep the strict
+   joiner, or allow `<>`/`alt+↑↓` as a compact spelling of a pair? (ux-principles row 4 vs. the bar's width.)
+2. Finish Subject/Body keys spelled `Fixed` (text fields) — confirm.
+
+### Touches (how checked)
+- Every `hints_for`/`Hint` caller: compiler (signature change) + `every_key_the_bar_draws_is_answered`.
+- `.` menu + graft verbs: `context_menu::tests`, `verbs::tests` (`every_label_the_app_can_build`), spell sweep (b).
+- `AppState` derive chain: `SharedKeymap` deleted, `Arc<Keymap>`; `keymap_edge` sweep green.
+- Captures: 68 re-shot, script-checked above; sheets re-assembled.
+- Journal/undo: none — render only; diff against main over `crates/graft/src/update/journal*` and `crates/graft-ops`
+  is empty.
+- graft-ops / 10b words: untouched.
 
 ## Rulings after partial (planner, spec-only pass 2026-10-04)
 The builder took the seam (compacted twice; NOTES and questions on branch `worktree-agent-a3081d1d2a2f421de`). The

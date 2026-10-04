@@ -43,7 +43,7 @@
 "                                                                                                                        "
 "                                                                                                                        "
 "────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
-" space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ graph · . more                                    "
+" space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more                                   "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
 "STAGED (1)                    fn routes()                                                                               "

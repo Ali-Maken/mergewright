@@ -1,10 +1,10 @@
 //! The preview's keys: confirm, cancel, the keeps/drops toggle, `Enter` on a choice.
 
 use super::{
-    AppState, Command, DropSuggestion, HistoryKey, JobId, KeyCode, KeyPress, Modifiers, Operation,
-    PREVIEW_MIN, PreviewBox, PreviewPlan, PreviewState, PreviewSubject, RebaseParams,
-    close_preview, confirm_preview, current_branch, is_history_key, preview_box, sanitize_line,
-    stash_put_back, stash_verb,
+    Again, AppState, Command, DropSuggestion, HistoryKey, JobId, KeyCode, KeyPress, Modifiers,
+    Operation, PREVIEW_MIN, PreviewBox, PreviewPlan, PreviewState, PreviewSubject, RebaseParams,
+    close_preview, confirm_preview, current_branch, is_history_key, preview_box, stash_put_back,
+    stash_verb,
 };
 
 /// The preview's keys, while it is open.
@@ -161,21 +161,21 @@ pub(super) fn footer_keys(mut view: PreviewBox, preview: &PreviewState, keep: bo
     // is the key either way (`confirm_key`); the opening key is never a
     // confirm here — no `p p`.
     if let Some((_, pop)) = stash_put_back(&preview.subject) {
-        view.again = Some((sanitize_line("y"), sanitize_line(stash_verb(pop))));
+        view.again = Some(Again::confirm(stash_verb(pop)));
         return view;
     }
     // A put-back from J names its confirm the same way: `y put it back`
     // (m7-power-tools/24-a2), never `R keep`.
     if let Some(Operation::Recover(_)) = preview.subject.operation() {
         view.keep = false;
-        view.again = Some((sanitize_line("y"), sanitize_line("put it back")));
+        view.again = Some(Again::confirm("put it back"));
         return view;
     }
     if let PreviewSubject::Operation { opened_by, .. } = &preview.subject {
         view.confirm_key = true;
         view.again = match *opened_by {
-            "m" => Some((sanitize_line("m"), sanitize_line("merge"))),
-            "r" => Some((sanitize_line("r"), sanitize_line("rebase"))),
+            "m" => Some(Again::opening("m", "merge")),
+            "r" => Some(Again::opening("r", "rebase")),
             _ => None,
         };
     }

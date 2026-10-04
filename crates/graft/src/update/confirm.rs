@@ -719,6 +719,7 @@ mod tests {
     /// where pressing `y` closes the box.
     #[test]
     fn the_bar_offers_y_exactly_where_y_acts() {
+        use crate::spelled::Spelled as _;
         use graft_ui::graph_screen::{Divider, HintContext, hints_for};
         for (site, open) in every_box() {
             let mut state = AppState {
@@ -727,8 +728,13 @@ mod tests {
             };
             let context = crate::view::rows::box_context(&state).expect("a box is up");
             assert!(matches!(context, HintContext::ConfirmBox { .. }), "{site}");
-            let drawn = hints_for(&context, Divider::Hidden, 187);
-            let offers_y = drawn.iter().any(|hint| hint.key == "y");
+            let drawn = hints_for(
+                &context,
+                Divider::Hidden,
+                187,
+                graft_ui::keymap::Keymap::shipped(),
+            );
+            let offers_y = drawn.iter().any(|hint| hint.key() == "y");
             press(&mut state, KeyCode::Char('y'), 1);
             let acted = state.confirm.is_none();
             assert_eq!(

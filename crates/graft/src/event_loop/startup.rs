@@ -230,7 +230,7 @@ pub(super) struct Arrival {
     /// (`update::lands_on_head_at_open`), not the top row.
     pub on_head: bool,
     /// The process's one keymap (`config::keymap_from`, ADR-0055).
-    pub keymap: crate::update::SharedKeymap,
+    pub keymap: Arc<graft_ui::keymap::Keymap>,
     /// His config's problems in words — on the process's first repository
     /// screen only; empty on every later one.
     pub config_problems: Vec<String>,
@@ -242,7 +242,7 @@ impl Arrival {
     pub(super) fn first(config: &crate::config::Loaded) -> Self {
         let (keymap, config_problems) = crate::config::keymap_from(config);
         Self {
-            keymap: crate::update::SharedKeymap::new(keymap),
+            keymap: Arc::new(keymap),
             config_problems,
             ..Self::default()
         }

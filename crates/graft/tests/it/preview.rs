@@ -313,7 +313,7 @@ fn capture_fix_preview_verb_for_docs_shots() {
     app.close();
     let text = drawn.join("\n");
     assert!(
-        text.contains("y confirm  m merge  ←→ choose  ⏎ act  esc cancel"),
+        text.contains("y confirm  m merge  ←/→ choose  ⏎ act  esc cancel"),
         "{text}"
     );
     assert!(text.contains("▸[ Cancel ]"), "{text}");
@@ -327,7 +327,7 @@ fn capture_fix_preview_verb_for_docs_shots() {
          #\n\
          # What right looks like:\n\
          #  - The box's bottom border reads\n\
-         #    `y confirm  m merge  ←→ choose  ⏎ act  esc cancel`.\n\
+         #    `y confirm  m merge  ←/→ choose  ⏎ act  esc cancel`.\n\
          #  - The buttons row shows `▸[ Cancel ]`: the cursor still rests on Cancel.\n\
          #\n\n",
     );

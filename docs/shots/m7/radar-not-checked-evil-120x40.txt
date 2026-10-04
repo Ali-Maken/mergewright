@@ -21,7 +21,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- B blame · F history · . explain · ⏎ open · c commit · P push · <> resize · p pull · f fetch · b branch · t tag
+ B blame · F history · . explain · ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search
 COMMIT cc1103b · Graft Fixture <fixture@example.invalid> · 2020-01-01 00:03 +0000 · 1y · parents 0631550, bd20b78 · dif…
 Merge branch 'alpha' · radar: not checked — commit b32274b is not in the repository · ctrl+r to try again · evil merge
 A alpha.txt             +1 −0 ▎

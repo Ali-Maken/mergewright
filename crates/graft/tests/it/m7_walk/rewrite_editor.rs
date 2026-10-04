@@ -360,7 +360,7 @@ fn capture_rewrite_editor() {
             140 => assert!(body.contains("AFTER y"), "{body}"),
             _ => {
                 assert!(!body.contains("AFTER y"), "rows only: {body}");
-                assert!(body.contains("tab after"), "{body}");
+                assert!(body.contains("⇥ after"), "{body}");
             }
         }
         drop(state);

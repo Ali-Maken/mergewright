@@ -17,10 +17,13 @@ mod table;
 mod warning;
 
 #[cfg(test)]
+pub(crate) mod sweep;
+#[cfg(test)]
 mod tests;
 
 pub use chord::{ChordError, KeyChord, KeyLabel};
 pub use graft_core::event::KeyCode;
+pub(crate) use resolve::join;
 pub use resolve::{Keymap, Translated};
 pub use table::defaults;
 pub use warning::KeyWarning;

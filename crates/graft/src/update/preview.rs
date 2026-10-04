@@ -41,7 +41,7 @@ use graft_ops::preview::{
     UndoNote, WorktreeEffect,
 };
 use graft_term::{SanitizedText, sanitize_line};
-use graft_ui::preview_box::{PREVIEW_MIN, PreviewBox, preview_rows};
+use graft_ui::preview_box::{Again, PREVIEW_MIN, PreviewBox, preview_rows};
 
 mod answer;
 mod boxes;

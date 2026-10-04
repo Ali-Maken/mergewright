@@ -186,14 +186,15 @@ fn the_changes_pane_hints_the_keys_that_write() {
         "the pane opens on the uncommitted row and the cursor stays there"
     );
 
-    // Every width leads with the three keys that write, and `<> resize`
-    // sits fourth while a pane is open (m5-03 review, Major 4 — the
-    // divider hint the old list dropped).
+    // Every width leads with the three keys that write, and `</> resize`
+    // is drawn while a pane is open (m5-03 review, Major 4 — the divider
+    // hint the old list dropped), last of the bar's own keys before the
+    // doorway (m8/10c R1).
     for (columns, rows) in [(120u16, 40u16), (160, 48), (200, 60)] {
         let bar = hint_bar(&state, columns, rows).unwrap_or_default();
         assert!(
-            bar.starts_with(" space stage · d discard · c commit · <> resize")
-                && bar.ends_with(". more"),
+            bar.starts_with(" space stage · d discard · c commit · ")
+                && bar.ends_with(" · </> resize · . more"),
             "at {columns}x{rows}: {bar:?}"
         );
     }
@@ -217,7 +218,7 @@ fn the_changes_pane_hints_the_keys_that_write() {
     // pane's whole vocabulary, in the order the tier hands it out.
     assert_eq!(
         beside,
-        " space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ diff · . more",
+        " space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . more",
         "every key the pane answers, beside the graph"
     );
 
@@ -655,7 +656,7 @@ fn history_place() -> (graft_fixtures::Scratch, App, AppState) {
 }
 
 /// The history place (m7-power-tools/21b): the drawn frame's last row is
-/// the place's own bar — the list form's keys, no `. more`, no `<> resize`.
+/// the place's own bar — the list form's keys, no `. more`, no `</> resize`.
 #[test]
 fn hint_bar_history_place() {
     let (_scratch, app, state) = history_place();

@@ -62,7 +62,6 @@ pub mod switch;
 pub mod undo;
 
 pub use context_menu::verbs::can_take;
-pub use edge::SharedKeymap;
 pub use events::{
     AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, SortedOrder, TakeAt,
     TakeRequest, Task, WholeFileAnswer,

@@ -59,6 +59,7 @@ pub(super) fn draw_resolver(
             placement: placed,
             theme: &session.theme,
             ascii: tier == RenderingTier::Ascii,
+            keys: &state.keymap,
         },
         document,
     );
@@ -106,21 +107,25 @@ pub(super) fn draw_resolver_footer(
         return;
     }
     let hints = || {
-        graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
-            &crate::view::rows::resolver_context(state),
-            graft_ui::graph_screen::Divider::Hidden,
-            // Not `body.width`: the floor `hints_for` drops the resolver's
-            // keys at is a *width* one, and the rows can be short enough to
-            // put the widget below its floor at a perfectly wide screen.
-            // Asking with 0 there gives the same one-key bar the narrow case
-            // gets, so the bar never offers a key `resolver_key` is about to
-            // refuse.
-            if crate::update::resolver::fits(state) {
-                body.width
-            } else {
-                0
-            },
-        ))
+        graft_ui::graph_screen::hints_text(
+            &graft_ui::graph_screen::hints_for(
+                &crate::view::rows::resolver_context(state),
+                graft_ui::graph_screen::Divider::Hidden,
+                // Not `body.width`: the floor `hints_for` drops the resolver's
+                // keys at is a *width* one, and the rows can be short enough to
+                // put the widget below its floor at a perfectly wide screen.
+                // Asking with 0 there gives the same one-key bar the narrow case
+                // gets, so the bar never offers a key `resolver_key` is about to
+                // refuse.
+                if crate::update::resolver::fits(state) {
+                    body.width
+                } else {
+                    0
+                },
+                &state.keymap,
+            ),
+            &state.keymap,
+        )
     };
     draw_status_or_hints(
         frame,

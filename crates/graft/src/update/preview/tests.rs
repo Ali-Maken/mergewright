@@ -696,6 +696,7 @@ fn a_click_lands_on_the_button_the_widget_drew() {
     );
     Widget::render(
         &graft_ui::preview_box::PreviewBoxWidget {
+            keys: graft_ui::keymap::Keymap::shipped(),
             view: &view,
             theme: &theme,
         },

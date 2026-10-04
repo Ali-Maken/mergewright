@@ -37,9 +37,9 @@ pub use banner::{BannerChain, BannerView, RewriteBannerView, banner_line};
 pub use columns::{absolute_date, initials, relative_date, relative_date_long, short_sha};
 pub use header::{APP_NAME, HeaderView, header_line, tail_room};
 pub use hints::{
-    ConfirmYes, Divider, Hint, HintContext, HintState, LiveC, Rung, StopWording, TabWord,
-    blame_place_list, every_context, every_hint, fit_status_line, hints_for, hints_text,
-    stopped_row, stopped_row_before_keys,
+    ConfirmYes, Divider, Hint, HintContext, HintKey, HintState, LiveC, NOT_A_BINDING, Rung,
+    StopWording, TabWord, blame_place_list, every_context, every_hint, fit_status_line, hints_for,
+    hints_text, stopped_row, stopped_row_before_keys,
 };
 pub use layout::{
     Columns, RowLayout, ScreenRows, lanes_that_fit, max_lanes_for, row_at, row_layout, screen_rows,
@@ -139,6 +139,8 @@ pub struct Location {
 /// Everything the graph screen draws.
 #[derive(Clone, Debug)]
 pub struct GraphView<'a> {
+    /// His keymap: the footer spells every key from it (ticket m8/10).
+    pub keys: &'a crate::keymap::Keymap,
     /// Where the screen is, once the repository is open.
     pub location: Option<Location>,
     /// The terminal is tall enough for the blank row and the rule
@@ -292,8 +294,10 @@ pub struct Filters {
 
 impl Filters {
     /// The header's words for these filters: empty when nothing is left out.
+    /// Focus names its way out, `graph.focus` and `app.back` spelled from
+    /// `keys` (`focus (F/esc off)`), or `focus` alone when both are unbound.
     #[must_use]
-    pub fn text(self) -> String {
+    pub fn text(self, keys: &crate::keymap::Keymap) -> String {
         let mut parts = Vec::new();
         if self.first_parent {
             parts.push("first-parent".to_owned());
@@ -307,7 +311,14 @@ impl Filters {
             parts.push("stash hidden".to_owned());
         }
         if self.focused {
-            parts.push("focus (F/Esc off)".to_owned());
+            let off = [
+                crate::keymap::ActionId("graph.focus"),
+                crate::keymap::ActionId("app.back"),
+            ];
+            parts.push(match keys.spell_keys(&off) {
+                Some(off) => format!("focus ({off} off)"),
+                None => "focus".to_owned(),
+            });
         }
         parts.join(" · ")
     }

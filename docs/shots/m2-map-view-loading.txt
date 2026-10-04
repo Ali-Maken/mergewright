@@ -31,4 +31,4 @@
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"Esc cancels                                                                     "
+"esc cancels                                                                     "

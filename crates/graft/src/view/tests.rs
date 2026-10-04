@@ -5119,18 +5119,23 @@ fn the_resize_key_is_offered_only_where_there_is_a_divider_to_drag() {
         "80 columns with the pane open is the tab layout:\n{tabbed}"
     );
     assert!(
-        !tabbed.contains("<>"),
+        !tabbed.contains("</>"),
         "the tab layout has no divider, so `<>` must not be offered:\n{tabbed}"
     );
 
+    // The flag, not the frame: `</> resize` is the bar's last own key
+    // since m8/10c (R1), drawn only when nothing else had to be dropped,
+    // and a plain row's bar is longer than any real width. That rule is
+    // `hints::tests::resize_is_drawn_only_when_nothing_else_was_dropped`;
+    // this is the divider the bar is handed.
+    assert!(!crate::view::divider_shown(&state), "80 columns: tabs");
     state.size = Size {
         columns: 160,
         rows: 24,
     };
-    let split = draw(&state, 160, 24);
     assert!(
-        split.contains("<>"),
-        "160 columns is a real split, and its divider is draggable:\n{split}"
+        crate::view::divider_shown(&state),
+        "160 columns is a real split, and its divider is draggable"
     );
 }
 

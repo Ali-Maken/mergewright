@@ -273,40 +273,40 @@ fn enter_words(list: &JournalList, state: &AppState, index: usize) -> Option<Str
                 return None;
             }
             if Some(id) == marks.next_undo {
-                "⏎ undo this".to_owned()
+                "undo this".to_owned()
             } else if Some(id) == marks.next_redo {
-                "⏎ redo this".to_owned()
+                "redo this".to_owned()
             } else if matches!(entry.kind, OperationKind::Undo | OperationKind::Redo) {
                 // The time machine refuses an undo or redo row
                 // (`update::journal::enter_graft`): no promise.
                 return None;
             } else {
-                "⏎ revert to before this".to_owned()
+                "revert to before this".to_owned()
             }
         }
         ListRow::Outside(step) => {
             if let Some(from) = switched_from(&step.record.subject) {
-                format!("⏎ switch back to {from}")
+                format!("switch back to {from}")
             } else {
                 let branch = step.record.refname.strip_prefix("refs/heads/")?;
                 step.record.old?;
                 if step.record.new.is_none() {
-                    format!("⏎ make {branch} again")
+                    format!("make {branch} again")
                 } else {
-                    format!("⏎ put {branch} back to before this")
+                    format!("put {branch} back to before this")
                 }
             }
         }
         ListRow::Lost { commit, .. } => match &commit.held_by {
-            HeldBy::Branch { name, gone: false } => format!("⏎ put {name} back to it"),
-            HeldBy::Branch { name, gone: true } => format!("⏎ make {name} again"),
+            HeldBy::Branch { name, gone: false } => format!("put {name} back to it"),
+            HeldBy::Branch { name, gone: true } => format!("make {name} again"),
             HeldBy::Head => return None,
         },
         ListRow::LostEdit { edit, .. } => {
             if edit.paths.len() > 1 {
-                "⏎ put your edits back".to_owned()
+                "put your edits back".to_owned()
             } else {
-                "⏎ put your edit back".to_owned()
+                "put your edit back".to_owned()
             }
         }
     };

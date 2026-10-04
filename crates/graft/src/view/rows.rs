@@ -82,13 +82,9 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         banner_op,
         pending: crate::update::banner::pending_view(state),
         icons: state.icons,
+        keys: &state.keymap,
         compaction,
-        filters: Filters {
-            first_parent: history.view.follow == graft_graph::Follow::FirstParent,
-            folded: history.view.inclusion.folded.len(),
-            stash_hidden: !history.view.inclusion.hidden_stashes.is_empty(),
-            focused: state.focus,
-        },
+        filters: filters(state, history),
         reveal,
         order: order_notice(history),
         ascii: false,
@@ -131,6 +127,16 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
 /// drag's paint win over the dimming: the row is still one the cursor can
 /// stand on. The pixel tier reads none of this (`view::strips` paints its
 /// own rows); see the ticket's NOTES.
+/// The header's filter words: what the walk leaves out, and the focus.
+fn filters(state: &AppState, history: &History) -> Filters {
+    Filters {
+        first_parent: history.view.follow == graft_graph::Follow::FirstParent,
+        folded: history.view.inclusion.folded.len(),
+        stash_hidden: !history.view.inclusion.hidden_stashes.is_empty(),
+        focused: state.focus,
+    }
+}
+
 fn mark_stash_only(state: &AppState, rows: &mut [GraphEntry<'_>]) {
     if state.stash_only.commits.is_empty() {
         return;
@@ -247,6 +253,7 @@ fn opening_view(
         banner_op: None,
         pending: None,
         icons: state.icons,
+        keys: &state.keymap,
         compaction: Compaction::at(max_lanes(state)),
         filters: Filters::default(),
         reveal: None,

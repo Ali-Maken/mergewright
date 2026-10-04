@@ -19,6 +19,7 @@ use super::hints::{HintContext, RowVerbs, TabWord};
 use super::layout::walk_text;
 use super::*;
 use crate::graph_column::{GraphColumn, RowPaint};
+use crate::keymap::Keymap;
 use crate::paint::color;
 use crate::test_support::{terminal, wide_history};
 use crate::theme::{Theme, ThemeKind, Token};
@@ -56,6 +57,7 @@ pub(super) fn linear(count: u8) -> Vec<Row> {
 
 pub(super) fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
     GraphView {
+        keys: crate::keymap::Keymap::shipped(),
         location: Some(Location {
             repo: sanitize_line("api"),
             path: sanitize_line("/code/api"),
@@ -927,7 +929,7 @@ fn within_the_limit_there_is_nothing_to_expand_and_no_hint_says_so() {
 #[test]
 fn filters_are_named_in_the_header_only_when_something_is_left_out() {
     use super::Filters;
-    assert_eq!(Filters::default().text(), "");
+    assert_eq!(Filters::default().text(Keymap::shipped()), "");
     let all = Filters {
         first_parent: true,
         folded: 2,
@@ -935,14 +937,14 @@ fn filters_are_named_in_the_header_only_when_something_is_left_out() {
         focused: true,
     };
     assert_eq!(
-        all.text(),
-        "first-parent · 2 merges folded · stash hidden · focus (F/Esc off)"
+        all.text(Keymap::shipped()),
+        "first-parent · 2 merges folded · stash hidden · focus (F/esc off)"
     );
     let one = Filters {
         folded: 1,
         ..Filters::default()
     };
-    assert_eq!(one.text(), "1 merge folded");
+    assert_eq!(one.text(Keymap::shipped()), "1 merge folded");
 }
 
 /// A linear history like [`linear`], but the newest row's subject is
@@ -1163,7 +1165,7 @@ fn the_changes_pane_hints_replace_the_row_context() {
         .trim_end()
         .to_owned();
     assert!(footer.contains("space stage"), "{footer}");
-    assert!(footer.contains("<> resize"), "{footer}");
+    assert!(footer.contains("</> resize"), "{footer}");
     assert!(!footer.contains("m merge"), "{footer}");
 
     view.hint_context = HintContext::ChangesPane {
@@ -1275,7 +1277,7 @@ fn every_commit_graph_wording_fits_under_its_breakpoint() {
     // Each wording holds from its breakpoint up; the narrowest from 80.
     for (width, room) in [(120, 120), (100, 100), (80, 80)] {
         for line in lines {
-            let text: String = commit_graph_segments(line, width)
+            let text: String = commit_graph_segments(line, width, Keymap::shipped())
                 .into_iter()
                 .map(|(text, _)| text)
                 .collect();
@@ -1286,14 +1288,17 @@ fn every_commit_graph_wording_fits_under_its_breakpoint() {
             );
         }
     }
-    let written: String =
-        commit_graph_segments(CommitGraphLine::Written { commits: 1_000_000 }, 120)
-            .into_iter()
-            .map(|(text, _)| text)
-            .collect();
+    let written: String = commit_graph_segments(
+        CommitGraphLine::Written { commits: 1_000_000 },
+        120,
+        Keymap::shipped(),
+    )
+    .into_iter()
+    .map(|(text, _)| text)
+    .collect();
     assert_eq!(
         written,
-        " commit-graph written: 1,000,000 commits · the next open sorts at once · Ctrl+R to use it"
+        " commit-graph written: 1,000,000 commits · the next open sorts at once · ⌃R to use it"
     );
     assert_eq!(grouped(200), "200");
     assert_eq!(grouped(1_000), "1,000");
@@ -1327,7 +1332,7 @@ fn no_footer_line_gets_terser_as_the_room_for_it_grows() {
     for line in COMMIT_GRAPH_LINES {
         let mut narrower = 0usize;
         for width in 0..=240usize {
-            let drawn = segments_width(&commit_graph_segments(line, width));
+            let drawn = segments_width(&commit_graph_segments(line, width, Keymap::shipped()));
             assert!(
                 drawn >= narrower,
                 "{line:?}: {width} columns draws {drawn} cells, {} draws {narrower}",
@@ -1344,15 +1349,15 @@ fn no_footer_line_gets_terser_as_the_room_for_it_grows() {
 fn the_commit_graph_line_spends_the_room_it_is_given() {
     for line in COMMIT_GRAPH_LINES {
         // The widest the line ever gets: from there up, that is what draws.
-        let widest = segments_width(&commit_graph_segments(line, usize::MAX));
+        let widest = segments_width(&commit_graph_segments(line, usize::MAX, Keymap::shipped()));
         for width in 0..=240usize {
-            let drawn = segments_width(&commit_graph_segments(line, width));
+            let drawn = segments_width(&commit_graph_segments(line, width, Keymap::shipped()));
             if drawn > width {
                 // Overflowing is only allowed when the narrowest wording
                 // itself does not fit; `commit_graph_line` then cuts it.
                 assert_eq!(
                     drawn,
-                    segments_width(&commit_graph_segments(line, 0)),
+                    segments_width(&commit_graph_segments(line, 0, Keymap::shipped())),
                     "{line:?} at {width}: overflowed with a wording that was not the narrowest"
                 );
             }
@@ -1371,7 +1376,8 @@ fn no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows() {
         for divider in [Divider::Shown, Divider::Hidden] {
             let mut narrower = 0usize;
             for columns in 0..=240u16 {
-                let drawn = hints_for(&context, divider, columns).len();
+                let drawn =
+                    hints_for(&context, divider, columns, crate::keymap::Keymap::shipped()).len();
                 assert!(
                     drawn >= narrower,
                     "{context:?} with {divider:?}: {columns} columns draws {drawn} hints, \
@@ -1390,17 +1396,28 @@ fn no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows() {
 #[test]
 fn only_the_resolver_marks_words() {
     for context in every_hint_context() {
-        let marked: Vec<_> = hints_for(&context, Divider::Hidden, 240)
-            .into_iter()
-            .filter(|hint| hint.keeps_words)
-            .collect();
+        let marked: Vec<_> = hints_for(
+            &context,
+            Divider::Hidden,
+            240,
+            crate::keymap::Keymap::shipped(),
+        )
+        .into_iter()
+        .filter(|hint| hint.keeps_words)
+        .collect();
         if matches!(context, HintContext::Resolver { .. }) {
             assert!(
-                marked.iter().all(|hint| matches!(hint.key, "d" | "esc")),
+                marked.iter().all(|hint| matches!(
+                    hint.key_text(crate::keymap::Keymap::shipped()).as_deref(),
+                    Some("d" | "esc")
+                )),
                 "{context:?}: {marked:?}"
             );
             assert!(
-                marked.iter().any(|hint| hint.key == "esc"),
+                marked.iter().any(|hint| hint
+                    .key_text(crate::keymap::Keymap::shipped())
+                    .as_deref()
+                    == Some("esc")),
                 "{context:?}: `esc close` keeps its words"
             );
         } else {
@@ -2065,7 +2082,10 @@ fn capture_the_ladder_for_docs_shots() {
             out.push_str(&format!("--- {what}\n"));
             out.push_str(&ruler(columns));
             out.push('\n');
-            out.push_str(&hints_text(&hints_for(context, *divider, columns)));
+            out.push_str(&hints_text(
+                &hints_for(context, *divider, columns, crate::keymap::Keymap::shipped()),
+                crate::keymap::Keymap::shipped(),
+            ));
             out.push_str("\n\n");
         }
     }
@@ -2089,13 +2109,18 @@ fn capture_the_ladder_for_docs_shots() {
          \n",
     );
     for columns in [16u16, 20, 24, 27] {
-        let hints = hints_for(&HintContext::Journal, Divider::Hidden, columns);
+        let hints = hints_for(
+            &HintContext::Journal,
+            Divider::Hidden,
+            columns,
+            crate::keymap::Keymap::shipped(),
+        );
         out.push_str(&format!(
             "--- the undo journal browser has focus, {columns} cells\n"
         ));
         out.push_str(&ruler(columns));
         out.push('\n');
-        out.push_str(&hints_text(&hints));
+        out.push_str(&hints_text(&hints, crate::keymap::Keymap::shipped()));
         out.push_str("\n\n");
     }
 
@@ -2706,4 +2731,37 @@ fn put_back_and_was_here_tags_draw_after_the_subject() {
     let lines = text(&draw(&tagged, 120, 6));
     assert!(lines[1].contains("Commit 3  put back"), "{lines:#?}");
     assert!(lines[2].contains("Commit 2  main was here"), "{lines:#?}");
+}
+
+/// Spell sweep (c), ticket m8/10c: the focus filter's way out and every
+/// commit-graph wording name his chords, never `F`/`esc`/`B`/`X`/`⌃R`.
+#[test]
+fn the_filter_line_and_the_commit_graph_line_spell_his_keys() {
+    use super::Filters;
+    use crate::keymap::sweep::{assert_spelled, swept};
+    let (keys, _) = swept();
+    let focused = Filters {
+        focused: true,
+        ..Filters::default()
+    };
+    assert_spelled(&focused.text(&keys), &keys, &[&["graph.focus", "app.back"]]);
+    let text = |line: CommitGraphLine| -> String {
+        commit_graph_segments(line, 400, &keys)
+            .into_iter()
+            .map(|(words, _)| words)
+            .collect()
+    };
+    assert_spelled(
+        &text(CommitGraphLine::Offered { keys: true }),
+        &keys,
+        &[
+            &["graph.write_commit_graph"],
+            &["graph.decline_commit_graph"],
+        ],
+    );
+    assert_spelled(
+        &text(CommitGraphLine::Written { commits: 1_000_000 }),
+        &keys,
+        &[&["app.refresh"]],
+    );
 }

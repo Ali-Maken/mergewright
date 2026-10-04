@@ -38,4 +38,4 @@
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"↑↓ select  ⏎ zoom to commits  M/Esc back · +2 more · partial                    "
+"j/k select  ⏎ zoom to commits  M/esc back · +2 more · partial                   "

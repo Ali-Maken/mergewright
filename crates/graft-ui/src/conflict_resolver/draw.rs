@@ -43,6 +43,16 @@ impl ResolverScreen<'_> {
         if self.ascii { "-" } else { "\u{b7}" }
     }
 
+    /// The take keys alone, space apart (`o t b`), spelled from his keymap;
+    /// an unbound one left out.
+    pub(super) fn take_keys(&self, actions: &[&'static str]) -> String {
+        actions
+            .iter()
+            .filter_map(|action| self.keys.spell_keys(&[crate::keymap::ActionId(action)]))
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
     /// `n` right-aligned in the number column, then a space; a blank column
     /// when `None`.
     fn numbered(&self, n: Option<usize>, text: &str) -> String {

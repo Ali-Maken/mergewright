@@ -21,7 +21,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ diff · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . more
 UNCOMMITTED · 1 unstaged
 diff vs HEAD f48cdbe
 UNSTAGED (1)                  libs/parser · submodule · ca07ea9 → efdd295

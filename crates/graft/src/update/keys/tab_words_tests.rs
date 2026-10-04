@@ -128,7 +128,15 @@ fn the_diff_bar_names_the_banner_during_a_stop() {
             matches!(context, HintContext::ChangesPane { .. }),
             "{context:?}"
         );
-        hints_text(&hints_for(&context, Divider::Shown, 187))
+        hints_text(
+            &hints_for(
+                &context,
+                Divider::Shown,
+                187,
+                graft_ui::keymap::Keymap::shipped(),
+            ),
+            graft_ui::keymap::Keymap::shipped(),
+        )
     };
     let stop = Some((InProgress::Rebase, Begun::InGraft));
     let files = bar(&state(stop, true, At::Files, 187));

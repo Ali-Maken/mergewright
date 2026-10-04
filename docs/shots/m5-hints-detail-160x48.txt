@@ -96,4 +96,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────
- c commit · P push · <> resize · p pull · f fetch · b branch · t tag · u undo · . more
+ c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · . more

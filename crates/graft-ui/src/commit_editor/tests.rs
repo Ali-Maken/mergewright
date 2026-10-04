@@ -253,13 +253,14 @@ fn the_footer_follows_focus() {
             .expect("a footer row")
     };
     assert_eq!(
-        FOOTER_SUBJECT,
+        footer_subject(),
         "⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel"
     );
-    assert_eq!(footer(Field::Subject), FOOTER_SUBJECT);
-    assert_eq!(last_row(Field::Subject), FOOTER_SUBJECT);
+    assert_eq!(footer(Field::Subject), footer_subject());
+    assert_eq!(last_row(Field::Subject), footer_subject());
     assert_eq!(
-        FOOTER_OTHER, "⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel",
+        footer_other(),
+        "⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel",
         "today's footer, byte for byte"
     );
     for focus in [
@@ -270,8 +271,8 @@ fn the_footer_follows_focus() {
         Field::AllowEmpty,
         Field::CommitButton,
     ] {
-        assert_eq!(footer(focus), FOOTER_OTHER, "{focus:?}");
-        assert_eq!(last_row(focus), FOOTER_OTHER, "{focus:?}");
+        assert_eq!(footer(focus), footer_other(), "{focus:?}");
+        assert_eq!(last_row(focus), footer_other(), "{focus:?}");
     }
 }
 
@@ -284,6 +285,7 @@ fn the_footer_follows_focus() {
 fn ctrl_e_reads_the_same_in_both_subject_fields() {
     use crate::finish_summary::SummaryFocus;
     use crate::graph_screen::{Divider, HintContext, hints_for};
+    use crate::keymap::Keymap;
     for focus in [SummaryFocus::Subject, SummaryFocus::Body] {
         let hints = hints_for(
             &HintContext::Finish {
@@ -292,13 +294,42 @@ fn ctrl_e_reads_the_same_in_both_subject_fields() {
             },
             Divider::Hidden,
             200,
+            Keymap::shipped(),
         );
-        let ctrl_e = hints.iter().find(|hint| hint.key == "⌃E").map_or_else(
-            || panic!("{focus:?}: no ⌃E in {hints:?}"),
-            crate::graph_screen::Hint::text,
-        );
+        let ctrl_e = hints
+            .iter()
+            .filter_map(|hint| hint.text(Keymap::shipped()))
+            .find(|text| text.starts_with("⌃E "))
+            .unwrap_or_else(|| panic!("{focus:?}: no ⌃E in {hints:?}"));
         assert_eq!(ctrl_e, "⌃E $EDITOR", "{focus:?}");
-        assert!(FOOTER_SUBJECT.contains(&ctrl_e), "{FOOTER_SUBJECT}");
-        assert!(FOOTER_OTHER.contains(&ctrl_e), "{FOOTER_OTHER}");
+        assert!(footer_subject().contains(&ctrl_e), "{}", footer_subject());
+        assert!(footer_other().contains(&ctrl_e), "{}", footer_other());
     }
+}
+
+/// Spell sweep (c), ticket m8/10c: the editor is a text field, so both
+/// footers spell the shipped keys — they take no keymap to follow.
+#[test]
+fn the_footers_spell_the_shipped_keys() {
+    use crate::keymap::sweep::assert_shipped;
+    assert_shipped(
+        &footer_subject(),
+        &[
+            &["app.open"],
+            &["commit.next_field"],
+            &["commit.edit_outside"],
+            &["commit.sign_off"],
+            &["app.back"],
+        ],
+    );
+    assert_shipped(
+        &footer_other(),
+        &[
+            &["commit.commit"],
+            &["commit.next_field"],
+            &["commit.edit_outside"],
+            &["commit.sign_off"],
+            &["app.back"],
+        ],
+    );
 }

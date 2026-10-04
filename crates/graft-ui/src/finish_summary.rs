@@ -26,6 +26,7 @@ use ratatui::widgets::Widget;
 
 use crate::detail::{DiffView, LineKindView};
 use crate::fit::fit;
+use crate::keymap::ActionId;
 use crate::paint::foreground;
 use crate::text_input::{AreaView, AreaWidget, FieldView, FieldWidget};
 use crate::theme::{Theme, Token};
@@ -97,6 +98,8 @@ pub enum SummaryState {
 /// Everything the summary draws.
 #[derive(Clone, Debug)]
 pub struct FinishView<'a> {
+    /// His keymap: every key the summary names is spelled from it.
+    pub keys: &'a crate::keymap::Keymap,
     /// `(from, into)`: the branch merged in and the one it lands on. `None`
     /// while the read has not landed, or when the names are not known: the
     /// title then reads `Preview: finish the merge`, never an invented name.
@@ -179,7 +182,11 @@ impl Widget for &FinishScreen<'_> {
                 area.x,
                 area.y,
                 fit(
-                    &format!("finish needs {columns}x{rows} · esc back"),
+                    &self.view.keys.after(
+                        &format!("finish needs {columns}x{rows}"),
+                        crate::keymap::ActionId("app.back"),
+                        "back",
+                    ),
                     usize::from(area.width),
                 ),
                 foreground(self.theme, Token::Warning),
@@ -211,7 +218,8 @@ impl FinishScreen<'_> {
         buf.set_string(rect.x, rect.y, fit(text, usize::from(rect.width)), style);
     }
 
-    /// `MESSAGE · ⇥ edit`, the subject and the body.
+    /// `MESSAGE · ⇥ edit` (`app.next_pane` spelled from his keymap: the
+    /// list is not a text field), the subject and the body.
     fn draw_message(&self, buf: &mut Buffer, placed: &FinishLayout) {
         if placed.message.height == 0 {
             return;
@@ -219,7 +227,14 @@ impl FinishScreen<'_> {
         self.text(
             buf,
             placed.message,
-            "MESSAGE · ⇥ edit",
+            &match self
+                .view
+                .keys
+                .key_verb(&[ActionId("app.next_pane")], "edit")
+            {
+                Some(edit) => format!("MESSAGE \u{b7} {edit}"),
+                None => "MESSAGE".to_owned(),
+            },
             Token::TextMuted,
             true,
         );
@@ -245,7 +260,7 @@ mod frame;
 mod layout;
 mod list;
 
-pub use frame::{UNDO_LINE, footer_hints, footer_spans, preview_line, preview_title};
+pub use frame::{footer_hints, footer_spans, preview_line, preview_title, undo_line};
 pub use layout::{
     FinishHit, FinishLayout, ListLine, Section, fits, hit, layout, list_height, list_lines,
     max_top, top_for_cursor,

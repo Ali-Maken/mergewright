@@ -208,7 +208,7 @@ fn unread_summary_has_no_names() {
         "Preview: finish the merge"
     );
     assert_eq!(
-        graft_ui::finish_summary::preview_line(None),
+        graft_ui::finish_summary::preview_line(None, graft_ui::keymap::Keymap::shipped()),
         "1 merge commit · nothing is committed until y"
     );
 }

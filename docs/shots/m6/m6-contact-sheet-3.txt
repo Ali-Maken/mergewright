@@ -138,19 +138,19 @@ what right looks like: The same at 80x24: the bottom row starts `⇥ banner  c f
 
 m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 80x24
 
- graft <scratch______________________________________________________>…  MERGING
-◌      Uncommitted changes (2 unmerged, 1 staged)
-  ● ▏  [feature] feature's readme                                   6y   1e78110
-  ●    feature's notes                                              6y   d69867a
-  ●    feature drops gone                                           6y   35c2d1e
-◆ │    [◆ main] main's notes                                        6y   a301516
-● │    main changes gone                                            6y   fa0b4d8
-●─╯    add the readme                                               6y   941a7d6
-●      add notes                                                    6y   f7b6fca
-●      add gone                                                     6y   30036f6
-●      Correct the note                                             7y   a82960b
-●      Add the first note                                           7y   fadcfb3
-◇      Add a readme                                                 7y   64ded19
+ ◆ graft-trivial-0  …aft-capture/back-after-esc/graft-trivial-0 · main  MERGING
+  ◌      Uncommitted changes (2 unmerged, 1 staged)
+▸   ●    [feature] feature's readme                                6y   1e78110
+    ●    feature's notes                                           6y   d69867a
+    ●    feature drops gone                                        6y   35c2d1e
+  ◆ │    [◆ main] main's notes                                     6y   a301516
+  ● │    main changes gone                                         6y   fa0b4d8
+  ●─╯    add the readme                                            6y   941a7d6
+  ●      add notes                                                 6y   f7b6fca
+  ●      add gone                                                  6y   30036f6
+  ●      Correct the note                                          7y   a82960b
+  ●      Add the first note                                        7y   fadcfb3
+  ◇      Add a readme                                              7y   64ded19
 
 
 
@@ -161,7 +161,7 @@ m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc E
 
 
 
- ⇥ banner  c finish  m merge  . more  r  ⏎  b  t  P  p  f  u  S  /  q  F2  F3  x
+ ⇥ banner · c finish · m merge · r rebase · ⏎ open · b branch · t tag · . more
 
 ================================================================================
 docs/shots/m6/../m5-hints-ladder.txt   (an earlier milestone's capture, changed by m6)
@@ -232,7 +232,7 @@ what right looks like: the uncommitted row has no `space fold` — changed by M6
 
 --- the changes pane has focus, the divider draggable
 [······························ 80 cells of bar ·······························]
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · . more
 
 --- the undo journal browser has focus
 [······························ 80 cells of bar ·······························]
@@ -258,7 +258,7 @@ what right looks like: the uncommitted row has no `space fold` — changed by M6
 
 --- the changes pane has focus, the divider draggable
 [·················································· 120 cells of bar ··················································]
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ graph · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more
 
 --- the undo journal browser has focus
 [·················································· 120 cells of bar ··················································]
@@ -284,7 +284,7 @@ what right looks like: the uncommitted row has no `space fold` — changed by M6
 
 --- the changes pane has focus, the divider draggable
 [······································································ 160 cells of bar ······································································]
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ graph · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more
 
 --- the undo journal browser has focus
 [······································································ 160 cells of bar ······································································]
@@ -1561,7 +1561,7 @@ what right looks like: (ticket 52) A merge begun in the shell, resolved. Frame 1
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
- merge in progress · space stage · d discard · c finish · <> resize · ⌃A all · e edit · ⇥ diff · . more
+ merge in progress · space stage · d discard · c finish · ⌃A all · e edit · ⇥ diff · </> resize · . more
 --- after c ---
 MERGING
 ╭ Preview: finish merging feature into main ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
@@ -1733,7 +1733,7 @@ what right looks like: (ticket 52) The two frames that drew `c commit` mid-opera
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
- c finish · ⏎ changes · S stash · <> resize · p pull · P push · f fetch · u undo · J journal · . more
+ c finish · ⏎ changes · S stash · p pull · P push · f fetch · u undo · J journal · / search · . more
 
 ================================================================================
 docs/shots/m6/fix-box-takes-y-120x40.txt

@@ -342,7 +342,7 @@ fn r_over_a_fork_lands_on_the_graph_with_the_words() {
 /// first, the two above his marked `built on yours · follows`; the squash
 /// box has `already in main: feature-a's 3 commits match <sha7> "Add OAuth
 /// (#42)" · dropped · R to keep them`, one ghost (b1), and its footer reads
-/// `y confirm  r rebase  R keep  ←→ choose  ⏎ act  esc cancel`; the fork
+/// `y confirm  r rebase  R keep  ←/→ choose  ⏎ act  esc cancel`; the fork
 /// leaves the graph with the status line naming feature-b and feature-c.
 #[test]
 fn capture_rebase_line() {
@@ -385,7 +385,7 @@ fn capture_rebase_line() {
                     "{body}"
                 );
                 assert!(
-                    body.contains("y confirm  r rebase  R keep  ←→ choose  ⏎ act  esc cancel"),
+                    body.contains("y confirm  r rebase  R keep  ←/→ choose  ⏎ act  esc cancel"),
                     "{body}"
                 );
             }

@@ -22,20 +22,19 @@ what right looks like: TESTING.md § Per breakpoint, Rebase preview row: the sam
 
 m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and-plan-commands, keys j j r, unicode tier, 160x48
 
- graft <scratch____________________________________________________________>  8 commits
-  ●      finish the feature                                                                                                                      GF 6y   8d6cd28
-  ●      start the feature                                                                                                                       GF 6y   52f3b96
-  │      after rebase
-  │ ○    [◆ feature] finish the feature                                                                                                          GF —    —
-  │ ○    start the feature                                                                                                                       GF —    —
-●─│─╯ ▏  [main] main moves again                                                                                                                 GF 6y   45fa51d
-● │      main moves on                                                                                                                           GF 6y   37926a7
-●─╯      add the base                                                                                                                            GF 6y   ed332bc
-●        Correct the note                                                                                                                        GF 7y   a82960b
-●        Add the first note                                                                                                                      GF 7y   fadcfb3
-◇        Add a readme                                                                                                                            GF 7y   64ded19
+ ◆ graft-trivial-0  /tmp/graft-capture/preview-opens-with-ghosts-and-plan-commands/graft-trivial-0 · feature                                          8 commits
 
-
+    ●      finish the feature                                                                                                                   GF 6y   8d6cd28
+    ●      start the feature                                                                                                                    GF 6y   52f3b96
+    │      after rebase
+    │ ○    [◆ feature] finish the feature                                                                                                       GF —    —
+    │ ○    start the feature                                                                                                                    GF —    —
+▸ ●─│─╯    [main] main moves again                                                                                                              GF 6y   45fa51d
+  ● │      main moves on                                                                                                                        GF 6y   37926a7
+  ●─╯      add the base                                                                                                                         GF 6y   ed332bc
+  ●        Correct the note                                                                                                                     GF 7y   a82960b
+  ●        Add the first note                                                                                                                   GF 7y   fadcfb3
+  ◇        Add a readme                                                                                                                         GF 7y   64ded19
 
 
 
@@ -69,6 +68,7 @@ m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and
 │ git rebase -i --no-update-refs --no-autostash --empty=drop main                                                                                              │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
 ╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
 ================================================================================
@@ -78,18 +78,18 @@ what right looks like: TESTING.md "History" § Per breakpoint, Rebase preview ro
 
 m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and-plan-commands, keys j j r, unicode tier, 80x24
 
- graft <scratch____________________________________________________________>  8…
-  ●      finish the feature                                         6y   8d6cd28
-  ●      start the feature                                          6y   52f3b96
-  │      after rebase
-  │ ○    [◆ feature] finish the feature                             —    —
-  │ ○    start the feature                                          —    —
-●─│─╯ ▏  [main] main moves again                                    6y   45fa51d
-● │      main moves on                                              6y   37926a7
-●─╯      add the base                                               6y   ed332bc
-●        Correct the note                                           7y   a82960b
-●        Add the first note                                         7y   fadcfb3
-◇        Add a readme                                               7y   64ded19
+ ◆ graft-trivial-0  …sts-and-plan-commands/graft-trivial-0 · feature  8 commits
+    ●      finish the feature                                      6y   8d6cd28
+    ●      start the feature                                       6y   52f3b96
+    │      after rebase
+    │ ○    [◆ feature] finish the feature                          —    —
+    │ ○    start the feature                                       —    —
+▸ ●─│─╯    [main] main moves again                                 6y   45fa51d
+  ● │      main moves on                                           6y   37926a7
+  ●─╯      add the base                                            6y   ed332bc
+  ●        Correct the note                                        7y   a82960b
+  ●        Add the first note                                      7y   fadcfb3
+  ◇        Add a readme                                            7y   64ded19
 
 
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────╮
@@ -110,19 +110,18 @@ what right looks like: TESTING.md § Per breakpoint, Merge preview row: same. (R
 
 m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, keys m, unicode tier, 160x48
 
- graft <scratch____________________________________________________________>  8 commits
-    │    after merge
-  ◎┈╮    [◆ main] Merge branch 'feature' into main                                                                                               GT —    —
-  │ ● ▏  [feature] finish the feature                                                                                                            GF 6y   8d6cd28
-  │ ●    start the feature                                                                                                                       GF 6y   52f3b96
-●─╯ │    main moves again                                                                                                                        GF 6y   45fa51d
-●   │    main moves on                                                                                                                           GF 6y   37926a7
-●───╯    add the base                                                                                                                            GF 6y   ed332bc
-●        Correct the note                                                                                                                        GF 7y   a82960b
-●        Add the first note                                                                                                                      GF 7y   fadcfb3
-◇        Add a readme                                                                                                                            GF 7y   64ded19
+ ◆ graft-trivial-0  /tmp/graft-capture/merge-no-ff-ghost-equals-git/graft-trivial-0 · main                                                            8 commits
 
-
+      │    after merge
+    ◎┈╮    [◆ main] Merge branch 'feature' into main                                                                                            GT —    —
+▸   │ ●    [feature] finish the feature                                                                                                         GF 6y   8d6cd28
+    │ ●    start the feature                                                                                                                    GF 6y   52f3b96
+  ●─╯ │    main moves again                                                                                                                     GF 6y   45fa51d
+  ●   │    main moves on                                                                                                                        GF 6y   37926a7
+  ●───╯    add the base                                                                                                                         GF 6y   ed332bc
+  ●        Correct the note                                                                                                                     GF 7y   a82960b
+  ●        Add the first note                                                                                                                   GF 7y   fadcfb3
+  ◇        Add a readme                                                                                                                         GF 7y   64ded19
 
 
 
@@ -157,6 +156,7 @@ m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, 
 │ git merge --no-edit --ff -m 'Merge branch '\''feature'\'' into main' feature                                                                                 │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
 ╰ y confirm  m merge  ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
 ================================================================================
@@ -166,17 +166,17 @@ what right looks like: TESTING.md § Per breakpoint, Merge preview row: `m` on `
 
 m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, keys m, unicode tier, 80x24
 
- graft <scratch____________________________________________________________>  8…
-    │    after merge
-  ◎┈╮    [◆ main] Merge branch 'feature' into main                  —    —
-  │ ● ▏  [feature] finish the feature                               6y   8d6cd28
-  │ ●    start the feature                                          6y   52f3b96
-●─╯ │    main moves again                                           6y   45fa51d
-●   │    main moves on                                              6y   37926a7
-●───╯    add the base                                               6y   ed332bc
-●        Correct the note                                           7y   a82960b
-●        Add the first note                                         7y   fadcfb3
-◇        Add a readme                                               7y   64ded19
+ ◆ graft-trivial-0  …e-no-ff-ghost-equals-git/graft-trivial-0 · main  8 commits
+      │    after merge
+    ◎┈╮    [◆ main] Merge branch 'feature' into main               —    —
+▸   │ ●    [feature] finish the feature                            6y   8d6cd28
+    │ ●    start the feature                                       6y   52f3b96
+  ●─╯ │    main moves again                                        6y   45fa51d
+  ●   │    main moves on                                           6y   37926a7
+  ●───╯    add the base                                            6y   ed332bc
+  ●        Correct the note                                        7y   a82960b
+  ●        Add the first note                                      7y   fadcfb3
+  ◇        Add a readme                                            7y   64ded19
 
 
 
@@ -198,17 +198,16 @@ what right looks like: TESTING.md § Per breakpoint, Hard-reset preview row: sam
 
 m5 walk capture: m5-03-preview-reset-hard — scenario reset-hard-says-loses-and-u-brings-it-back, keys j j j . j j j j j j j j j ⏎, unicode tier, 160x48
 
- graft <scratch____________________________________________________________>  8 commits
-  ●    [feature] finish the feature                                                                                                              GF 6y   8d6cd28
-  ●    start the feature                                                                                                                         GF 6y   52f3b96
-● │    main moves again                                                                                                                          GF 6y   45fa51d
-◆ │ ▏  [◆ main] main moves on                                                                                                                    GF 6y   37926a7
-●─╯    add the base                                                                                                                              GF 6y   ed332bc
-●      Correct the note                                                                                                                          GF 7y   a82960b
-●      Add the first note                                                                                                                        GF 7y   fadcfb3
-◇      Add a readme                                                                                                                              GF 7y   64ded19
+ ◆ graft-trivial-0  /tmp/graft-capture/reset-hard-says-loses-and-u-brings-it-back/graft-trivial-0 · main                                              8 commits
 
-
+    ●    [feature] finish the feature                                                                                                           GF 6y   8d6cd28
+    ●    start the feature                                                                                                                      GF 6y   52f3b96
+  ● │    main moves again                                                                                                                       GF 6y   45fa51d
+▸ ◆ │    [◆ main] main moves on                                                                                                                 GF 6y   37926a7
+  ●─╯    add the base                                                                                                                           GF 6y   ed332bc
+  ●      Correct the note                                                                                                                       GF 7y   a82960b
+  ●      Add the first note                                                                                                                     GF 7y   fadcfb3
+  ◇      Add a readme                                                                                                                           GF 7y   64ded19
 
 
 
@@ -245,6 +244,7 @@ m5 walk capture: m5-03-preview-reset-hard — scenario reset-hard-says-loses-and
 │ git reset --hard 37926a7c0b3c7e1cfbcb23494d10a90449c88b64                                                                                                    │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
 ╰ y confirm  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
 ================================================================================
@@ -254,15 +254,15 @@ what right looks like: TESTING.md § Per breakpoint, Hard-reset preview row: `.`
 
 m5 walk capture: m5-03-preview-reset-hard — scenario reset-hard-says-loses-and-u-brings-it-back, keys j j j . j j j j j j j j j ⏎, unicode tier, 80x24
 
- graft <scratch____________________________________________________________>  8…
-  ●    [feature] finish the feature                                 6y   8d6cd28
-  ●    start the feature                                            6y   52f3b96
-● │    main moves again                                             6y   45fa51d
-◆ │ ▏  [◆ main] main moves on                                       6y   37926a7
-●─╯    add the base                                                 6y   ed332bc
-●      Correct the note                                             7y   a82960b
-●      Add the first note                                           7y   fadcfb3
-◇      Add a readme                                                 7y   64ded19
+ ◆ graft-trivial-0  …ses-and-u-brings-it-back/graft-trivial-0 · main  8 commits
+    ●    [feature] finish the feature                              6y   8d6cd28
+    ●    start the feature                                         6y   52f3b96
+  ● │    main moves again                                          6y   45fa51d
+▸ ◆ │    [◆ main] main moves on                                    6y   37926a7
+  ●─╯    add the base                                              6y   ed332bc
+  ●      Correct the note                                          7y   a82960b
+  ●      Add the first note                                        7y   fadcfb3
+  ◇      Add a readme                                              7y   64ded19
 
 
 
@@ -286,13 +286,12 @@ what right looks like: TESTING.md § Per breakpoint, Time machine row: same.
 
 m5 walk capture: m5-04-time-machine — scenario time-machine-three-steps, keys J j j ⏎, unicode tier, 160x48
 
- graft <scratch____________________________________________________________>  4 commits
-◆ ▏  [◆ main] add the base                                                                                                                       GF 6y   ed332bc
-●    Correct the note                                                                                                                            GF 7y   a82960b
-●    Add the first note                                                                                                                          GF 7y   fadcfb3
-◇    Add a readme                                                                                                                                GF 7y   64ded19
+ ◆ graft-trivial-0  /tmp/graft-capture/time-machine-three-steps/graft-trivial-0 · main                                                                4 commits
 
-
+▸ ◆    [◆ main] add the base                                                                                                                    GF 6y   ed332bc
+  ●    Correct the note                                                                                                                         GF 7y   a82960b
+  ●    Add the first note                                                                                                                       GF 7y   fadcfb3
+  ◇    Add a readme                                                                                                                             GF 7y   64ded19
 
 
 
@@ -333,6 +332,7 @@ m5 walk capture: m5-04-time-machine — scenario time-machine-three-steps, keys 
 │ undo: u takes this back                                                                                                                                      │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
 ╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
 ================================================================================
@@ -342,11 +342,11 @@ what right looks like: TESTING.md § Per breakpoint, Time machine row: after thr
 
 m5 walk capture: m5-04-time-machine — scenario time-machine-three-steps, keys J j j ⏎, unicode tier, 80x24
 
- graft <scratch____________________________________________________________>  4…
-◆ ▏  [◆ main] add the base                                          6y   ed332bc
-●    Correct the note                                               7y   a82960b
-●    Add the first note                                             7y   fadcfb3
-◇    Add a readme                                                   7y   64ded19
+ ◆ graft-trivial-0  …time-machine-three-steps/graft-trivial-0 · main  4 commits
+▸ ◆    [◆ main] add the base                                       6y   ed332bc
+  ●    Correct the note                                            7y   a82960b
+  ●    Add the first note                                          7y   fadcfb3
+  ◇    Add a readme                                                7y   64ded19
 
 
 
@@ -374,14 +374,14 @@ what right looks like: TESTING.md § Per breakpoint, Too small row: a 38x10 pty 
 
 m5 walk capture: m5-05-preview-too-small — scenario preview-too-small-never-confirms, keys j j r, unicode tier, 38x10
 
- graft <scratch_____________________>…
-  ●      finish the feat… 6y   8d6cd28
-  ●      start the featu… 6y   52f3b96
-  │      after rebase
-  │ ○    [◆ fea… finish … —    —
-  │ ○    start the featu… —    —
-●─│─╯ ▏  [main] main mov… 6y   45fa51d
-● │      main moves on    6y   37926a7
+ ◆ graft-trivial-0          8 commits
+    ●      finish the f… 6y   8d6cd28
+    ●      start the fe… 6y   52f3b96
+    │      after rebase
+    │ ○    [◆ f… finish… —    —
+    │ ○    start the fe… —    —
+▸ ●─│─╯    [mai… main m… 6y   45fa51d
+  ● │      main moves on 6y   37926a7
 preview needs 40x12 · esc closes
 
 
@@ -528,15 +528,16 @@ what right looks like: FOR THE USER TO DECIDE (conductor's note, not a defect): 
 
 m5 walk capture: m5-07-branch-row-hints — scenario esc-cancels-nothing-runs, keys j j r Esc, unicode tier, 160x48
 
- graft <scratch____________________________________________________________>  8 commits
-  ◆    [◆ feature] finish the feature                                                                                                            GF 6y   8d6cd28
-  ●    start the feature                                                                                                                         GF 6y   52f3b96
-● │ ▏  [main] main moves again                                                                                                                   GF 6y   45fa51d
-● │    main moves on                                                                                                                             GF 6y   37926a7
-●─╯    add the base                                                                                                                              GF 6y   ed332bc
-●      Correct the note                                                                                                                          GF 7y   a82960b
-●      Add the first note                                                                                                                        GF 7y   fadcfb3
-◇      Add a readme                                                                                                                              GF 7y   64ded19
+ ◆ graft-trivial-0  /tmp/graft-capture/esc-cancels-nothing-runs/graft-trivial-0 · feature                                                             8 commits
+
+    ◆    [◆ feature] finish the feature                                                                                                         GF 6y   8d6cd28
+    ●    start the feature                                                                                                                      GF 6y   52f3b96
+▸ ● │    [main] main moves again                                                                                                                GF 6y   45fa51d
+  ● │    main moves on                                                                                                                          GF 6y   37926a7
+  ●─╯    add the base                                                                                                                           GF 6y   ed332bc
+  ●      Correct the note                                                                                                                       GF 7y   a82960b
+  ●      Add the first note                                                                                                                     GF 7y   fadcfb3
+  ◇      Add a readme                                                                                                                           GF 7y   64ded19
 
 
 
@@ -573,9 +574,8 @@ m5 walk capture: m5-07-branch-row-hints — scenario esc-cancels-nothing-runs, k
 
 
 
-
-
- m merge  r rebase  ⏎ open  o take  b branch  t tag  P push  c commit  p pull  f fetch  . more  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · . more
 
 ================================================================================
 docs/shots/m5-07-branch-row-hints-80x24.txt
@@ -584,15 +584,15 @@ what right looks like: The hint bar for a branch row that is not checked out (`m
 
 m5 walk capture: m5-07-branch-row-hints — scenario esc-cancels-nothing-runs, keys j j r Esc, unicode tier, 80x24
 
- graft <scratch____________________________________________________________>  8…
-  ◆    [◆ feature] finish the feature                               6y   8d6cd28
-  ●    start the feature                                            6y   52f3b96
-● │ ▏  [main] main moves again                                      6y   45fa51d
-● │    main moves on                                                6y   37926a7
-●─╯    add the base                                                 6y   ed332bc
-●      Correct the note                                             7y   a82960b
-●      Add the first note                                           7y   fadcfb3
-◇      Add a readme                                                 7y   64ded19
+ ◆ graft-trivial-0  …-cancels-nothing-runs/graft-trivial-0 · feature  8 commits
+    ◆    [◆ feature] finish the feature                            6y   8d6cd28
+    ●    start the feature                                         6y   52f3b96
+▸ ● │    [main] main moves again                                   6y   45fa51d
+  ● │    main moves on                                             6y   37926a7
+  ●─╯    add the base                                              6y   ed332bc
+  ●      Correct the note                                          7y   a82960b
+  ●      Add the first note                                        7y   fadcfb3
+  ◇      Add a readme                                              7y   64ded19
 
 
 
@@ -607,7 +607,7 @@ m5 walk capture: m5-07-branch-row-hints — scenario esc-cancels-nothing-runs, k
 
 
 
- m merge  r rebase  ⏎ open  . more  o  b  t  P  c  p  f  u  S  /  q  F2  F3  x
+ m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · . more
 
 ================================================================================
 docs/shots/m5-11-diverged-pull-sticky-160x48.txt
@@ -616,53 +616,53 @@ what right looks like: TESTING.md § Per breakpoint, Diverged pull row: the same
 
 m5 walk capture: m5-11-diverged-pull-sticky — scenario pull-diverged-offers-m-and-r, keys p, unicode tier, 160x48
 
- graft <scratch________________________________________________________________>  184 rows so far
-◆   ▏ⓘ [◆ main ↑1 ↓1] ours locally                                                                                                               GF 6y   c40f17b
-│ ●    [origin/main] the teammate's commit                                                                                                       GF 6y   0657dff
-●─╯    Commit 200                                                                                                                                GF 7y   d5ae5fd
-●      Commit 199                                                                                                                                GF 7y   13e6ab1
-●      Commit 198                                                                                                                                GF 7y   f5055d9
-●      Commit 197                                                                                                                                GF 7y   2cce853
-●      Commit 196                                                                                                                                GF 7y   325da3f
-●      Commit 195                                                                                                                                GF 7y   0722297
-●      Commit 194                                                                                                                                GF 7y   b6a4a47
-●      Commit 193                                                                                                                                GF 7y   60af0eb
-●      Commit 192                                                                                                                                GF 7y   aceb8c5
-●      Commit 191                                                                                                                                GF 7y   11d68ff
-●      Commit 190                                                                                                                                GF 7y   91900bd
-●      Commit 189                                                                                                                                GF 7y   cec3e93
-●      Commit 188                                                                                                                                GF 7y   0a91ece
-●      Commit 187                                                                                                                                GF 7y   3121935
-●      Commit 186                                                                                                                                GF 7y   fab25df
-●      Commit 185                                                                                                                                GF 7y   09ae97c
-●      Commit 184                                                                                                                                GF 7y   49d7783
-●      Commit 183                                                                                                                                GF 7y   22d55c9
-●      Commit 182                                                                                                                                GF 7y   d212b3e
-●      Commit 181                                                                                                                                GF 7y   c8254c5
-●      Commit 180                                                                                                                                GF 7y   e95ccd4
-●      Commit 179                                                                                                                                GF 7y   97b58e5
-●      Commit 178                                                                                                                                GF 7y   1c9b7ed
-●      Commit 177                                                                                                                                GF 7y   f93340a
-●      Commit 176                                                                                                                                GF 7y   5aaeeba
-●      Commit 175                                                                                                                                GF 7y   6be5928
-●      Commit 174                                                                                                                                GF 7y   9b67be4
-●      Commit 173                                                                                                                                GF 7y   937d32b
-●      Commit 172                                                                                                                                GF 7y   81be718
-●      Commit 171                                                                                                                                GF 7y   57b8196
-●      Commit 170                                                                                                                                GF 7y   8ea98be
-●      Commit 169                                                                                                                                GF 7y   4926766
-●      Commit 168                                                                                                                                GF 7y   0d60d60
-●      Commit 167                                                                                                                                GF 7y   fa5ef1d
-●      Commit 166                                                                                                                                GF 7y   953abf3
-●      Commit 165                                                                                                                                GF 7y   49912f3
-●      Commit 164                                                                                                                                GF 7y   1143b38
-●      Commit 163                                                                                                                                GF 7y   e135216
-●      Commit 162                                                                                                                                GF 7y   6ddbc37
-●      Commit 161                                                                                                                                GF 7y   4b6f375
-●      Commit 160                                                                                                                                GF 7y   545bf13
-●      Commit 159                                                                                                                                GF 7y   a1a658c
-●      Commit 158                                                                                                                                GF 7y   1e28a71
-●      Commit 157                                                                                                                                GF 7y   b57586d
+ ◆ work  /tmp/graft-capture/pull-diverged-offers-m-and-r/graft-remote-0/work · main                                                             176 rows so far
+
+▸ ◆    ⓘ [◆ main ↑1 ↓1] ours locally                                                                                                            GF 6y   c40f17b
+  │ ●    [origin/main] the teammate's commit                                                                                                    GF 6y   0657dff
+  ●─╯    Commit 200                                                                                                                             GF 7y   d5ae5fd
+  ●      Commit 199                                                                                                                             GF 7y   13e6ab1
+  ●      Commit 198                                                                                                                             GF 7y   f5055d9
+  ●      Commit 197                                                                                                                             GF 7y   2cce853
+  ●      Commit 196                                                                                                                             GF 7y   325da3f
+  ●      Commit 195                                                                                                                             GF 7y   0722297
+  ●      Commit 194                                                                                                                             GF 7y   b6a4a47
+  ●      Commit 193                                                                                                                             GF 7y   60af0eb
+  ●      Commit 192                                                                                                                             GF 7y   aceb8c5
+  ●      Commit 191                                                                                                                             GF 7y   11d68ff
+  ●      Commit 190                                                                                                                             GF 7y   91900bd
+  ●      Commit 189                                                                                                                             GF 7y   cec3e93
+  ●      Commit 188                                                                                                                             GF 7y   0a91ece
+  ●      Commit 187                                                                                                                             GF 7y   3121935
+  ●      Commit 186                                                                                                                             GF 7y   fab25df
+  ●      Commit 185                                                                                                                             GF 7y   09ae97c
+  ●      Commit 184                                                                                                                             GF 7y   49d7783
+  ●      Commit 183                                                                                                                             GF 7y   22d55c9
+  ●      Commit 182                                                                                                                             GF 7y   d212b3e
+  ●      Commit 181                                                                                                                             GF 7y   c8254c5
+  ●      Commit 180                                                                                                                             GF 7y   e95ccd4
+  ●      Commit 179                                                                                                                             GF 7y   97b58e5
+  ●      Commit 178                                                                                                                             GF 7y   1c9b7ed
+  ●      Commit 177                                                                                                                             GF 7y   f93340a
+  ●      Commit 176                                                                                                                             GF 7y   5aaeeba
+  ●      Commit 175                                                                                                                             GF 7y   6be5928
+  ●      Commit 174                                                                                                                             GF 7y   9b67be4
+  ●      Commit 173                                                                                                                             GF 7y   937d32b
+  ●      Commit 172                                                                                                                             GF 7y   81be718
+  ●      Commit 171                                                                                                                             GF 7y   57b8196
+  ●      Commit 170                                                                                                                             GF 7y   8ea98be
+  ●      Commit 169                                                                                                                             GF 7y   4926766
+  ●      Commit 168                                                                                                                             GF 7y   0d60d60
+  ●      Commit 167                                                                                                                             GF 7y   fa5ef1d
+  ●      Commit 166                                                                                                                             GF 7y   953abf3
+  ●      Commit 165                                                                                                                             GF 7y   49912f3
+  ●      Commit 164                                                                                                                             GF 7y   1143b38
+  ●      Commit 163                                                                                                                             GF 7y   e135216
+  ●      Commit 162                                                                                                                             GF 7y   6ddbc37
+  ●      Commit 161                                                                                                                             GF 7y   4b6f375
+  ●      Commit 160                                                                                                                             GF 7y   545bf13
+  ●      Commit 159                                                                                                                             GF 7y   a1a658c
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  main and origin/main have diverged · m merge it  r rebase onto it
 
 ================================================================================
@@ -672,29 +672,29 @@ what right looks like: TESTING.md § Per breakpoint, Diverged pull row: `p` with
 
 m5 walk capture: m5-11-diverged-pull-sticky — scenario pull-diverged-offers-m-and-r, keys p, unicode tier, 80x24
 
- graft <scratch_______________________________________________________________>…
-◆   ▏ⓘ [◆ main ↑1 ↓1] ours locally                                  6y   c40f17b
-│ ●    [origin/main] the teammate's commit                          6y   0657dff
-●─╯    Commit 200                                                   7y   d5ae5fd
-●      Commit 199                                                   7y   13e6ab1
-●      Commit 198                                                   7y   f5055d9
-●      Commit 197                                                   7y   2cce853
-●      Commit 196                                                   7y   325da3f
-●      Commit 195                                                   7y   0722297
-●      Commit 194                                                   7y   b6a4a47
-●      Commit 193                                                   7y   60af0eb
-●      Commit 192                                                   7y   aceb8c5
-●      Commit 191                                                   7y   11d68ff
-●      Commit 190                                                   7y   91900bd
-●      Commit 189                                                   7y   cec3e93
-●      Commit 188                                                   7y   0a91ece
-●      Commit 187                                                   7y   3121935
-●      Commit 186                                                   7y   fab25df
-●      Commit 185                                                   7y   09ae97c
-●      Commit 184                                                   7y   49d7783
-●      Commit 183                                                   7y   22d55c9
-●      Commit 182                                                   7y   d212b3e
-●      Commit 181                                                   7y   c8254c5
+ ◆ work  …ll-diverged-offers-m-and-r/graft-remote-0/work · main  88 rows so far
+▸ ◆    ⓘ [◆ main ↑1 ↓1] ours locally                               6y   c40f17b
+  │ ●    [origin/main] the teammate's commit                       6y   0657dff
+  ●─╯    Commit 200                                                7y   d5ae5fd
+  ●      Commit 199                                                7y   13e6ab1
+  ●      Commit 198                                                7y   f5055d9
+  ●      Commit 197                                                7y   2cce853
+  ●      Commit 196                                                7y   325da3f
+  ●      Commit 195                                                7y   0722297
+  ●      Commit 194                                                7y   b6a4a47
+  ●      Commit 193                                                7y   60af0eb
+  ●      Commit 192                                                7y   aceb8c5
+  ●      Commit 191                                                7y   11d68ff
+  ●      Commit 190                                                7y   91900bd
+  ●      Commit 189                                                7y   cec3e93
+  ●      Commit 188                                                7y   0a91ece
+  ●      Commit 187                                                7y   3121935
+  ●      Commit 186                                                7y   fab25df
+  ●      Commit 185                                                7y   09ae97c
+  ●      Commit 184                                                7y   49d7783
+  ●      Commit 183                                                7y   22d55c9
+  ●      Commit 182                                                7y   d212b3e
+  ●      Commit 181                                                7y   c8254c5
  main and origin/main have diverged · m merge it  r rebase onto it
 
 ================================================================================
@@ -1059,7 +1059,7 @@ what right looks like: Capture header "Judge by eye": the changes pane is open o
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ diff · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . more
 UNCOMMITTED · 1 unstaged
 diff vs HEAD 29a1432
 UNSTAGED (1)                  reading…
@@ -1180,7 +1180,7 @@ what right looks like: Capture header "Judge by eye": the changes pane is open o
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ diff · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . more
 
 ================================================================================
 docs/shots/m5-hints-changes-80x24.txt
@@ -1342,7 +1342,7 @@ what right looks like: Capture header "Judge by eye": the pane is open on the ti
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- c commit · P push · <> resize · p pull · f fetch · b branch · t tag · u undo · / search · q quit · F2 stat · . more
+ c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · q quit · F2 stat · F3 rend · . more
 COMMIT 29a1432 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 8m · parents 3d9496e · diff vs firs…
 add second
                               reading…
@@ -1463,7 +1463,7 @@ what right looks like: Capture header "Judge by eye": the pane is open on the ti
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────
- c commit · P push · <> resize · p pull · f fetch · b branch · t tag · u undo · . more
+ c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · . more
 
 ================================================================================
 docs/shots/m5-hints-detail-80x24.txt
@@ -1615,7 +1615,7 @@ what right looks like: Capture header "What right looks like": the bar fills fro
 
 --- the changes pane has focus, the divider draggable
 [······························ 80 cells of bar ·······························]
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · . more
 
 --- the undo journal browser has focus
 [······························ 80 cells of bar ·······························]
@@ -1641,7 +1641,7 @@ what right looks like: Capture header "What right looks like": the bar fills fro
 
 --- the changes pane has focus, the divider draggable
 [·················································· 120 cells of bar ··················································]
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ graph · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more
 
 --- the undo journal browser has focus
 [·················································· 120 cells of bar ··················································]
@@ -1667,7 +1667,7 @@ what right looks like: Capture header "What right looks like": the bar fills fro
 
 --- the changes pane has focus, the divider draggable
 [······································································ 160 cells of bar ······································································]
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ graph · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more
 
 --- the undo journal browser has focus
 [······································································ 160 cells of bar ······································································]
@@ -2539,7 +2539,7 @@ what right looks like: Capture header "What right looks like": the two frames di
   │ │ │ │ │ │ ● │ │ ⋮    [topic-09] Work on topic-09                           51m  1d4f9e1
   │ │ │ │ │ │ │ ● │ ⋮    [topic-08] Work on topic-08                           52m  d9fef8f
   │ │ │ │ │ │ │ │ ● ⋮    [topic-07] Work on topic-07                           53m  cd808d7
- ⏎ open · B blame · F history · c commit · P push · <> resize · p pull · f fetch · . more
+ ⏎ open · B blame · F history · c commit · P push · p pull · f fetch · b branch · . more
 
 == the same terminal, pane closed: the graph has all 160 ==
 
@@ -2909,60 +2909,4 @@ what right looks like: Capture header "What right looks like": at 80x24 the pict
   ●      Ship release 13                                           2h   78ddfac
   ●      Ship release 12                                           2h   9bedacc
  merge stopped · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
-
-================================================================================
-docs/shots/m5-ui-banner.txt
-what right looks like: Capture header "What right looks like": while an operation is in progress, the header's informational tail is replaced by the state alone, e.g. `REBASING step 3 of 7` — no `⚠`, no conflicted filename or `(+N)`, and no width-tier wording, so the same state reads the same at all three sizes shown. It costs no row (there is no `[ Continue ] [ Skip ] [ Abort ]` row any more), and a long repository path is what truncates before the banner does.
-================================================================================
-
-# docs/shots/m5-ui-banner.txt — operation banner (rebase/merge/conflict)
-#
-# What right looks like: the header's informational tail is
-# replaced, while an operation is in progress, by the state and
-# nothing else — `REBASING step 3 of 7`.
-#
-# Three things it does not say (m5/20, all three the user's):
-# no `⚠` — a stopped merge is a state to finish, not a failure;
-# no conflicted filename and no `(+N)` — the changes pane already
-# lists every conflicted file under `CONFLICTS (n)`, and a 24-row
-# screen that says the same fact twice has spent a row on nothing;
-# and no width tiers — `banner_line` takes no width, so the same
-# repository in the same state reads the same in all three blocks
-# below. They are three sizes of terminal, not three wordings.
-#
-# It costs no row: the line under the header is the first graph row
-# at every width. There is no `[ Continue ] [ Skip ] [ Abort ]` row
-# any more — nothing answered a click on it and it cost a graph row
-# to teach three keys the hint bar already teaches (m5/16).
-#
-# The last block is the point: a long repository path does not cut
-# the banner. The banner's room comes out of the header first, so
-# the *path* is what an `…` would land on — and at 120 columns,
-# against a banner this short, it no longer has to: the whole path
-# and the whole banner are both there.
-
-=== 80x10 ===
- ◆ api  /code/api · main                                   REBASING step 3 of 7
-▸ ●    Commit 2                                                    2h   0202020
-  ◇    Commit 1                                                    2h   0101010
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · . more
-
-=== 120x10 ===
- ◆ api  /code/api · main                                                                           REBASING step 3 of 7
-▸ ●    Commit 2                                                                                         TE 2h   0202020
-  ◇    Commit 1                                                                                         TE 2h   0101010
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · . more
-
-=== 160x10 ===
- ◆ api  /code/api · main                                                                                                                   REBASING step 3 of 7
-▸ ●    Commit 2                                                                                                                                 TE 2h   0202020
-  ◇    Commit 1                                                                                                                                 TE 2h   0101010
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · . more
-
-=== a long path does not cut the banner, 120x10 ===
- ◆ billing-api  /media/archive/work/customers/acme/services/billing-api · main                     REBASING step 3 of 7
-▸ ●    Commit 2                                                                                         TE 2h   0202020
-  ◇    Commit 1                                                                                         TE 2h   0101010
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · . more
-
 

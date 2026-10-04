@@ -30,6 +30,7 @@ use crate::detail_pane::line_render::{
 };
 use crate::fit::fit;
 use crate::graph_screen::{initials, relative_date};
+use crate::keymap::{ActionId, Keymap};
 use crate::theme::{Theme, Token};
 
 mod file_pane;
@@ -273,12 +274,12 @@ pub fn rows_through(rows: &[HistoryRow], top: usize, index: usize) -> usize {
         .sum()
 }
 
-/// Draws the history place into `area`.
-pub fn draw_history(frame: &mut Frame, area: Rect, view: &HistoryView) {
-    draw_into(frame.buffer_mut(), area, view);
+/// Draws the history place into `area`, its keys spelled from `keys`.
+pub fn draw_history(frame: &mut Frame, area: Rect, view: &HistoryView, keys: &Keymap) {
+    draw_into(frame.buffer_mut(), area, view, keys);
 }
 
-fn draw_into(buf: &mut Buffer, area: Rect, view: &HistoryView) {
+fn draw_into(buf: &mut Buffer, area: Rect, view: &HistoryView, keys: &Keymap) {
     if area.is_empty() {
         return;
     }
@@ -287,7 +288,7 @@ fn draw_into(buf: &mut Buffer, area: Rect, view: &HistoryView) {
         area.x,
         area.y,
         area.width,
-        &title(view),
+        &title(view, keys),
         Style::default().add_modifier(Modifier::BOLD),
     );
     if area.height < 2 {
@@ -341,10 +342,14 @@ fn draw_into(buf: &mut Buffer, area: Rect, view: &HistoryView) {
 }
 
 /// The title row: the path and range, then the state.
-fn title(view: &HistoryView) -> String {
+fn title(view: &HistoryView, keys: &Keymap) -> String {
     let mut title = format!(" HISTORY \u{b7} {}", view.title);
     if view.tracing {
-        title.push_str(" \u{b7} tracing\u{2026} \u{b7} esc stops");
+        title = keys.after(
+            &format!("{title} \u{b7} tracing\u{2026}"),
+            ActionId("app.back"),
+            "stops",
+        );
     } else if let HistoryList::Rows { rows, .. } = &view.list
         && !rows.is_empty()
     {

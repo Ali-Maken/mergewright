@@ -47,5 +47,5 @@
 │ no conflicts expected                                                        │
 │ undo: u takes this back                                                      │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────╯
+╰ ←/→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────╯
 

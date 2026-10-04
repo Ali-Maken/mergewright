@@ -40,6 +40,7 @@ use ratatui::widgets::Widget;
 
 use graft_term::SanitizedText;
 
+use crate::keymap::{ActionId, Keymap};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 
@@ -102,9 +103,7 @@ const GUTTER: u16 = 2;
 /// The single line the widget draws when it has no room to draw anything
 /// else. `layout` still returns rows at this size — the app decides no key
 /// acts, this widget only decides what is legible.
-const TOO_SMALL: &str = "resolver needs 60x10 · esc closes";
-/// [`TOO_SMALL`]'s ASCII form.
-const TOO_SMALL_ASCII: &str = "resolver needs 60x10 - esc closes";
+const TOO_SMALL: &str = "resolver needs 60x10";
 /// The narrowest the resolver draws its document at; below this it draws
 /// [`TOO_SMALL`] instead.
 ///
@@ -270,6 +269,8 @@ pub struct ResolverScreen<'a> {
     pub theme: &'a Theme,
     /// Draw box-drawing glyphs with their ASCII fallback.
     pub ascii: bool,
+    /// His keymap: the too-small line's key is spelled from it.
+    pub keys: &'a Keymap,
 }
 
 impl Widget for ResolverScreen<'_> {
@@ -278,17 +279,20 @@ impl Widget for ResolverScreen<'_> {
             return;
         }
         if area.width < MIN_COLUMNS || area.height < MIN_ROWS {
-            let too_small = if self.ascii {
-                TOO_SMALL_ASCII
-            } else {
-                TOO_SMALL
+            // `resolver needs 60x10 · esc closes`; the ASCII tier's
+            // separator is ` - `. No key when `app.back` is unbound.
+            let close = self.keys.key_verb(&[ActionId("app.back")], "closes");
+            let too_small = match close {
+                Some(close) if self.ascii => format!("{TOO_SMALL} - {close}"),
+                Some(close) => format!("{TOO_SMALL} \u{b7} {close}"),
+                None => TOO_SMALL.to_owned(),
             };
             set_text(
                 buf,
                 area.x,
                 area.y,
                 area,
-                too_small,
+                &too_small,
                 foreground(self.theme, Token::TextMuted),
             );
             return;

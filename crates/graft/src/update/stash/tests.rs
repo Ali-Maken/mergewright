@@ -316,7 +316,7 @@ fn past_the_cap_the_box_says_and_more() {
 }
 
 /// Review 86, m3: a refused put-back has only `Close`; its footer is
-/// `esc back`, not `←→ choose  ⏎ act`.
+/// `esc back`, not `←/→ choose  ⏎ act`.
 #[test]
 fn a_refused_stash_box_offers_only_esc_back() {
     let mut state = open_on_screen();

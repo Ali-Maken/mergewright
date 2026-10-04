@@ -30,6 +30,7 @@ pub(super) fn draw_journal(
     let widget = JournalScreen {
         view: &screen,
         theme: &session.theme,
+        keys: &state.keymap,
     };
     if state.detail.shown {
         render_overlay_with_detail(session, state, frame, widget, area, "Journal");
@@ -87,6 +88,7 @@ pub(super) fn draw_stash(
 ) -> Option<Rect> {
     let screen = stash_view(state, state.harness.clock.now_seconds());
     let widget = StashScreen {
+        keys: &state.keymap,
         view: &screen,
         theme: &session.theme,
     };
@@ -115,7 +117,7 @@ fn draw_history_place(
     body: Rect,
 ) {
     history.view(state.harness.clock.now_seconds(), &session.theme, |view| {
-        graft_ui::history::draw_history(frame, body, view);
+        graft_ui::history::draw_history(frame, body, view, &state.keymap);
     });
     if area.height == 0 {
         return;
@@ -132,11 +134,15 @@ fn draw_history_place(
         &session.theme,
         || {
             context.map_or_else(String::new, |context| {
-                graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
-                    &context,
-                    graft_ui::graph_screen::Divider::Hidden,
-                    area.width,
-                ))
+                graft_ui::graph_screen::hints_text(
+                    &graft_ui::graph_screen::hints_for(
+                        &context,
+                        graft_ui::graph_screen::Divider::Hidden,
+                        area.width,
+                        &state.keymap,
+                    ),
+                    &state.keymap,
+                )
             })
         },
     );
@@ -167,7 +173,7 @@ pub(super) fn draw_place(
     let blame = state.trail.on_screen()?;
     let path = graft_term::sanitize::sanitize_path(&blame.path);
     blame.view(path.as_str(), state.harness.clock.now_seconds(), |view| {
-        graft_ui::blame::draw_blame(frame, body, view);
+        graft_ui::blame::draw_blame(frame, body, view, &state.keymap);
     });
     if area.height == 0 {
         return None;
@@ -191,11 +197,15 @@ pub(super) fn draw_place(
         bar,
         &session.theme,
         || {
-            graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
-                &context,
-                graft_ui::graph_screen::Divider::Hidden,
-                area.width,
-            ))
+            graft_ui::graph_screen::hints_text(
+                &graft_ui::graph_screen::hints_for(
+                    &context,
+                    graft_ui::graph_screen::Divider::Hidden,
+                    area.width,
+                    &state.keymap,
+                ),
+                &state.keymap,
+            )
         },
     );
     None
@@ -228,11 +238,15 @@ pub(super) fn draw_rewrite(
     let context = crate::view::rewrite_editor::rewrite_context(state)?;
     let bar = (area.x, area.bottom() - 1, area.width);
     draw_status_or_hints(frame, state, tier, bar, &session.theme, || {
-        graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
-            &context,
-            graft_ui::graph_screen::Divider::Hidden,
-            area.width,
-        ))
+        graft_ui::graph_screen::hints_text(
+            &graft_ui::graph_screen::hints_for(
+                &context,
+                graft_ui::graph_screen::Divider::Hidden,
+                area.width,
+                &state.keymap,
+            ),
+            &state.keymap,
+        )
     });
     None
 }
@@ -257,6 +271,7 @@ pub(super) fn draw_map(
             MapScreen {
                 view: &screen,
                 theme: &session.theme,
+                keys: &state.keymap,
             },
             area,
             "Map",
@@ -266,6 +281,7 @@ pub(super) fn draw_map(
             MapScreen {
                 view: &screen,
                 theme: &session.theme,
+                keys: &state.keymap,
             },
             area,
         );

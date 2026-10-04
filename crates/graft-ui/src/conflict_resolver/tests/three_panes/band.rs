@@ -86,6 +86,7 @@ fn draw_with(doc: &DocView, theme: &Theme, ascii: bool) -> Drawn {
         placement,
         theme,
         ascii,
+        keys: crate::keymap::Keymap::shipped(),
     }
     .render(area, &mut buf);
     let areas = resolver_areas(area, placement);

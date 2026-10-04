@@ -161,7 +161,7 @@ fn draw(view: &HistoryView, width: u16, height: u16) -> Vec<String> {
     let mut terminal =
         Terminal::new(TestBackend::new(width, height)).expect("the test backend starts");
     terminal
-        .draw(|frame| draw_history(frame, frame.area(), view))
+        .draw(|frame| draw_history(frame, frame.area(), view, crate::keymap::Keymap::shipped()))
         .expect("the history place draws");
     let buffer = terminal.backend().buffer().clone();
     (0..height)
@@ -511,4 +511,17 @@ fn history_binary_sizes_failed_140x40() {
         "the file pane reads binary · couldn't read sizes: git was stopped (dim, colour unverified); no line rows.",
         snapshot(&v, 140, 40)
     );
+}
+
+/// Spell sweep (c), ticket m8/10c: the tracing title names his `app.back`.
+#[test]
+fn history_spells_its_stop_key_from_his_keymap() {
+    use crate::keymap::sweep::{assert_spelled, swept};
+    let (keys, _) = swept();
+    let theme = theme();
+    let rows = mock_rows();
+    let hunks = lina_file();
+    let mut tracing = view(&rows, &hunks, &theme, HistoryFocus::List);
+    tracing.tracing = true;
+    assert_spelled(&title(&tracing, &keys), &keys, &[&["app.back"]]);
 }

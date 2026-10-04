@@ -7,59 +7,12 @@
 //! dispatchers below only ever see default chords. They are not edited and
 //! do not know remapping exists.
 
-use std::fmt;
-use std::sync::Arc;
-
 use graft_core::event::KeyPress;
 use graft_ui::detail::DetailFocus;
-use graft_ui::keymap::{ContextId, KeyChord, Keymap, Translated, defaults};
+use graft_ui::keymap::{ContextId, KeyChord, Translated};
 
 use super::detail::DetailSpec;
 use super::{AppState, Command};
-
-/// The process's one keymap, shared by every screen it opens.
-///
-/// A wrapper because `AppState` is `Clone + Debug + Eq` and
-/// `graft_ui::keymap::Keymap` derives none of them: cloning an `Arc` is what
-/// "one keymap per process" means anyway, and two are equal when every
-/// action has the same chords.
-#[derive(Clone, Default)]
-pub struct SharedKeymap(Arc<Keymap>);
-
-impl SharedKeymap {
-    /// Share `keymap`.
-    #[must_use]
-    pub fn new(keymap: Keymap) -> Self {
-        Self(Arc::new(keymap))
-    }
-
-    /// The keymap itself.
-    #[must_use]
-    pub fn get(&self) -> &Keymap {
-        &self.0
-    }
-}
-
-impl PartialEq for SharedKeymap {
-    fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.0, &other.0)
-            || defaults()
-                .iter()
-                .all(|row| self.0.chords(&row.action) == other.0.chords(&row.action))
-    }
-}
-
-impl Eq for SharedKeymap {}
-
-impl fmt::Debug for SharedKeymap {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let moved = defaults()
-            .iter()
-            .filter(|row| self.0.chords(&row.action) != row.default)
-            .count();
-        write!(f, "SharedKeymap({moved} moved)")
-    }
-}
 
 /// A key, from the terminal to the dispatchers (`core_event`'s `Key` arm).
 pub(super) fn key(next: &mut AppState, commands: &mut Vec<Command>, pressed: KeyPress) {
@@ -75,7 +28,7 @@ pub(super) fn key(next: &mut AppState, commands: &mut Vec<Command>, pressed: Key
         return;
     };
     let context = context_of(next);
-    match next.keymap.get().translate(context, chord) {
+    match next.keymap.translate(context, chord) {
         Translated::Pass => super::dispatch_key(next, commands, pressed),
         Translated::Default(default) => {
             super::dispatch(next, commands, default.to_press(), pressed);

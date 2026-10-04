@@ -62,7 +62,7 @@
 
 --- the changes pane has focus, the divider draggable
 [······························ 80 cells of bar ·······························]
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · . more
 
 --- the undo journal browser has focus
 [······························ 80 cells of bar ·······························]
@@ -88,7 +88,7 @@
 
 --- the changes pane has focus, the divider draggable
 [·················································· 120 cells of bar ··················································]
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ graph · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more
 
 --- the undo journal browser has focus
 [·················································· 120 cells of bar ··················································]
@@ -114,7 +114,7 @@
 
 --- the changes pane has focus, the divider draggable
 [······································································ 160 cells of bar ······································································]
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ graph · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more
 
 --- the undo journal browser has focus
 [······································································ 160 cells of bar ······································································]

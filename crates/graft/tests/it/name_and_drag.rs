@@ -595,13 +595,13 @@ fn capture_fix_preview_verb_name_prompt_for_docs_shots() {
          # grid: colour ships unverified (CLAUDE.md rule 5).\n\
          #\n\
          # What right looks like:\n\
-         #  - The box's bottom border reads `y confirm  ←→ choose  ⏎ act  esc cancel`\n\
+         #  - The box's bottom border reads `y confirm  ←/→ choose  ⏎ act  esc cancel`\n\
          #    (no `b` in it: pressing `b` again does not confirm).\n\
          #  - The buttons row shows `▸[ Cancel ]`.\n";
     let out = capture(&state, 120, 40, caption);
     app.close();
     assert!(
-        out.contains("╰ y confirm  ←→ choose  ⏎ act  esc cancel ─"),
+        out.contains("╰ y confirm  ←/→ choose  ⏎ act  esc cancel ─"),
         "{out}"
     );
     assert!(out.contains("▸[ Cancel ]"), "{out}");

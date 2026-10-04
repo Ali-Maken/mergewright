@@ -781,22 +781,22 @@ what right looks like: TESTING.md § Per breakpoint, Drift box row: a framed box
 
 m3 walk capture: m3-09-undo-drift-box — scenario undo-drift-guard, keys u, unicode tier, 80x24
 
- graft <scratch____________________________________________________________>  5…
-◌    Uncommitted changes (1 unstaged)
-◆ ▏  [◆ main] before the drift                                      6y   0dd52b5
-●    add sample.txt                                                 6y   4fcf9e9
-●    Correct the note                                               7y   a82960b
-●    Add the first note                                             7y   fadcfb3
-◇    Add a readme                                                   7y   64ded19
-     ╭ Undo “commit "before the drift"”? ──────────────────────────────╮
-     │ Since this commit "before the drift", the working tree          │
-     │ changed.                                                        │
-     │ Undo leaves your edits since as they are.                       │
-     │                                                                 │
-     │ undo restores the recorded state                                │
-     │                                                                 │
-     │ ▸[ Stop ]   [ Undo ]                                            │
-     ╰─────────────────────────────────────────────────────────────────╯
+ ◆ graft-trivial-0  …capture/undo-drift-guard/graft-trivial-0 · main  5 commits
+  ◌    Uncommitted changes (1 unstaged)
+▸ ◆    [◆ main] before the drift                                   6y   0dd52b5
+  ●    add sample.txt                                              6y   4fcf9e9
+  ●    Correct the note                                            7y   a82960b
+  ●    Add the first note                                          7y   fadcfb3
+  ◇    Add a readme                                                7y   64ded19
+       ╭ Undo “commit "before the drift"”? ────────────────────────────────────╮
+       │ Since this commit "before the drift", the working tree                │
+       │ changed.                                                              │
+       │ Undo leaves your edits since as they are.                             │
+       │                                                                       │
+       │ undo restores the recorded state                                      │
+       │                                                                       │
+       │ ▸[ Stop ]   [ Undo ]                                                  │
+       ╰───────────────────────────────────────────────────────────────────────╯
 
 
 
@@ -914,7 +914,7 @@ what right looks like: Capture header: same scripted dirty tree as the 80x24/160
 "                                                                                                                        "
 "                                                                                                                        "
 "────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
-" space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ graph · . more                                    "
+" space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more                                   "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
 "STAGED (1)                    fn routes()                                                                               "
@@ -1006,7 +1006,7 @@ what right looks like: Capture header: same scripted dirty tree as the 80x24/120
 "                                                                                                                                                                "
 "                                                                                                                                                                "
 "────────────────────────────────────────────────────────────────────────────────────────────                                                                    "
-" space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ graph · . more                                                                            "
+" space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more                                                                           "
 
 ================================================================================
 docs/shots/m3-changes-pane-80x24.txt
@@ -1765,7 +1765,7 @@ what right looks like: Capture header "Judge by eye": the message line carries w
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-"⏎ save  tab scope  esc back                                                                                             "
+"⏎ save  ⇥ scope  esc back                                                                                               "
 
 ================================================================================
 docs/shots/m3-undo-drift.txt

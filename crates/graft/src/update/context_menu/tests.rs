@@ -4,6 +4,7 @@
 //! rather than in each test file — `verbs/tests.rs` reads
 //! [`ref_badges`] from this module so the two agree on what a row's refs are.
 
+use crate::spelled::Spelled as _;
 use graft_core::event::Modifiers;
 use graft_ops::operation::Operation;
 
@@ -90,10 +91,22 @@ fn the_menu_runs_what_the_dropped_keys_run() {
 #[test]
 fn every_menu_lists_the_dropped_keys() {
     for menu in [
-        ContextMenu::for_row(false, Vec::new(), 0, None),
-        ContextMenu::for_row(true, Vec::new(), 0, None),
-        ContextMenu::for_working_tree(false),
-        ContextMenu::for_working_tree(true),
+        ContextMenu::for_row(
+            false,
+            Vec::new(),
+            0,
+            None,
+            graft_ui::keymap::Keymap::shipped(),
+        ),
+        ContextMenu::for_row(
+            true,
+            Vec::new(),
+            0,
+            None,
+            graft_ui::keymap::Keymap::shipped(),
+        ),
+        ContextMenu::for_working_tree(false, graft_ui::keymap::Keymap::shipped()),
+        ContextMenu::for_working_tree(true, graft_ui::keymap::Keymap::shipped()),
     ] {
         for action in [
             ContextAction::Fetch,
@@ -1330,10 +1343,15 @@ fn bar_words(state: &AppState) -> Vec<String> {
         rows: 44,
     };
     let context = crate::view::rows::graph_view(&state, 0).hint_context;
-    graft_ui::graph_screen::hints_for(&context, graft_ui::graph_screen::Divider::Hidden, 187)
-        .iter()
-        .map(|hint| format!("{} {}", hint.key, hint.verb))
-        .collect()
+    graft_ui::graph_screen::hints_for(
+        &context,
+        graft_ui::graph_screen::Divider::Hidden,
+        187,
+        graft_ui::keymap::Keymap::shipped(),
+    )
+    .iter()
+    .map(|hint| format!("{} {}", hint.key(), hint.verb))
+    .collect()
 }
 
 fn draws(state: &AppState, words: &str) -> bool {
@@ -1440,11 +1458,15 @@ fn capture_bar_take_and_amend_rows() {
             rows: 44,
         };
         let context = crate::view::rows::graph_view(&sized, 0).hint_context;
-        let bar = graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
-            &context,
-            graft_ui::graph_screen::Divider::Hidden,
-            187,
-        ));
+        let bar = graft_ui::graph_screen::hints_text(
+            &graft_ui::graph_screen::hints_for(
+                &context,
+                graft_ui::graph_screen::Divider::Hidden,
+                187,
+                graft_ui::keymap::Keymap::shipped(),
+            ),
+            graft_ui::keymap::Keymap::shipped(),
+        );
         let screen = format!("{context:?}\n\"{bar}\"\n");
         let header = format!(
             "# {name}: the 187-column bar (not a pty), from `view::rows::graph_view`'s context. Fixture: \

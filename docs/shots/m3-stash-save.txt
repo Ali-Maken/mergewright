@@ -42,4 +42,4 @@
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-"⏎ save  tab scope  esc back                                                                                             "
+"⏎ save  ⇥ scope  esc back                                                                                               "

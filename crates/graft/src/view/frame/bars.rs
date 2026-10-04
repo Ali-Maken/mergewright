@@ -81,11 +81,15 @@ pub(super) fn draw_box_bars(session: &Session, state: &AppState, frame: &mut Fra
             (bar.x, bar.y, bar.width),
             &session.theme,
             || {
-                graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
-                    &context,
-                    graft_ui::graph_screen::Divider::Hidden,
-                    bar.width,
-                ))
+                graft_ui::graph_screen::hints_text(
+                    &graft_ui::graph_screen::hints_for(
+                        &context,
+                        graft_ui::graph_screen::Divider::Hidden,
+                        bar.width,
+                        &state.keymap,
+                    ),
+                    &state.keymap,
+                )
             },
         );
     }
@@ -149,11 +153,15 @@ pub(super) fn draw_tab_hints(
         (left.x, left.bottom() - 1, left.width),
         theme,
         || {
-            graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
-                context,
-                graft_ui::graph_screen::Divider::Hidden,
-                left.width,
-            ))
+            graft_ui::graph_screen::hints_text(
+                &graft_ui::graph_screen::hints_for(
+                    context,
+                    graft_ui::graph_screen::Divider::Hidden,
+                    left.width,
+                    &state.keymap,
+                ),
+                &state.keymap,
+            )
         },
     );
 }
@@ -223,11 +231,15 @@ pub(super) fn draw_tab_banner(
         (left.x, area.bottom() - 1, area.width),
         theme,
         || {
-            graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
-                &crate::view::rows::banner_context(state, &banner),
-                graft_ui::graph_screen::Divider::Hidden,
-                area.width,
-            ))
+            graft_ui::graph_screen::hints_text(
+                &graft_ui::graph_screen::hints_for(
+                    &crate::view::rows::banner_context(state, &banner),
+                    graft_ui::graph_screen::Divider::Hidden,
+                    area.width,
+                    &state.keymap,
+                ),
+                &state.keymap,
+            )
         },
     );
     left

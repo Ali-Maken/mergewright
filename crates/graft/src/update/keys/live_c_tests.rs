@@ -3,6 +3,7 @@
 //! does where that acts, keeps M3a's words where it does not, and the bar
 //! says which. The real-git half is `tests/it/resolver/shell_begun.rs`.
 
+use crate::spelled::Spelled as _;
 use std::sync::Arc;
 
 use graft_core::event::{Event, KeyCode, KeyPress, Modifiers};
@@ -126,14 +127,19 @@ fn bar(state: &AppState) -> (HintContext, Vec<Hint>) {
     } else {
         Divider::Hidden
     };
-    let hints = hints_for(&context, divider, state.size.columns);
+    let hints = hints_for(
+        &context,
+        divider,
+        state.size.columns,
+        graft_ui::keymap::Keymap::shipped(),
+    );
     (context, hints)
 }
 
 fn c_hint(hints: &[Hint]) -> Option<&'static str> {
     hints
         .iter()
-        .find(|hint| hint.key == "c")
+        .find(|hint| hint.key() == "c")
         .map(|hint| hint.verb)
 }
 
@@ -323,7 +329,7 @@ fn tab_banner_is_hinted_only_where_one_tab_reaches_it() {
     let way_back = |hints: &[Hint]| {
         hints
             .iter()
-            .any(|hint| (hint.key, hint.verb) == ("⇥", "banner"))
+            .any(|hint| (hint.key(), hint.verb) == ("⇥", "banner"))
     };
 
     let details = live(
@@ -439,7 +445,7 @@ fn the_bar_over_a_box_during_a_live_operation_is_the_box_s_own() {
                     "{kind:?} {begun:?} {frame:?}"
                 );
                 assert_eq!(c_hint(&hints), None, "{kind:?} {begun:?} {frame:?}");
-                assert_eq!(hints.first().map(|hint| hint.key), Some("y"));
+                assert_eq!(hints.first().map(crate::spelled::Spelled::key), Some("y"));
             }
         }
     }

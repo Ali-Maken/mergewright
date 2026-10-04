@@ -24,6 +24,8 @@ pub mod repos;
 pub mod repository;
 pub mod search;
 pub mod session;
+#[cfg(test)]
+pub(crate) mod spelled;
 pub mod terminal;
 pub(crate) mod trace;
 pub mod update;

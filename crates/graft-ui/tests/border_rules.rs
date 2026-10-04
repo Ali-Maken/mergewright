@@ -180,6 +180,7 @@ fn the_ghost_preview_and_the_name_prompt_keep_their_rules_off_their_text() {
     preview.commands = vec![sanitize_line("git rebase --onto main feature")];
     check("the Ghost Preview box", &theme, |area, buf, theme| {
         (&PreviewBoxWidget {
+            keys: graft_ui::keymap::Keymap::shipped(),
             view: &preview,
             theme,
         })

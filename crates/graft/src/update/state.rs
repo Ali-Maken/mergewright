@@ -409,7 +409,7 @@ pub struct AppState {
     /// key (`update::edge`, ADR-0055). One per process, built from the
     /// config at startup (`config::keymap_from`); the default keymap until
     /// then and in tests.
-    pub(crate) keymap: super::SharedKeymap,
+    pub(crate) keymap: std::sync::Arc<graft_ui::keymap::Keymap>,
     /// Everything wrong with his config file, in words: the file's warnings,
     /// then the keymap's. Filled at startup on the first repository screen
     /// of the process; `?` lists them (ticket 11).
@@ -850,7 +850,11 @@ impl AppState {
     /// Seeds the process's keymap and his config's problems, and stands the
     /// bottom row's `config: N problems · ? shows them` notice up when there
     /// are any (ADR-0055). Startup's, once per repository screen.
-    pub(crate) fn seed_keys(&mut self, keymap: super::SharedKeymap, problems: Vec<String>) {
+    pub(crate) fn seed_keys(
+        &mut self,
+        keymap: std::sync::Arc<graft_ui::keymap::Keymap>,
+        problems: Vec<String>,
+    ) {
         self.keymap = keymap;
         self.config_notice = !problems.is_empty();
         self.config_problems = problems;

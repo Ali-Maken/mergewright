@@ -423,18 +423,19 @@ what right looks like: Re-taken 2026-10-02 (m8-13b: `q quit` joins the banner's 
 m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relaunch, keys ⏎ o, unicode tier, 120x40
 (the capture run was sent SIGKILL after its keys; this is the real graft binary relaunched on the scratch it left)
 
- graft <scratch__________________________________________________>…  REBASING  step 1 of 2 · pick c3b01ea feature writes
+ ◆ graft-trivial-0  …n-relaunch/graft-trivial-0 · detached b0eb655  REBASING  step 1 of 2 · pick c3b01ea feature writes
+
 ╭ still to apply · not commits yet ────────────────────────────────────────────────────────────────────────────────────╮
 │ pick 2e2d51c feature writes again                                                                                    │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-◌   ▏  Uncommitted changes (1 unmerged)
-  ●    [feature] feature writes again                                                                    GF 6y   2e2d51c
-  ●    feature writes                                                                                    GF 6y   c3b01ea
-◆ │  ⓘ [HEAD] [main] main rewrites it                                                                    GF 6y   b0eb655
-●─╯    add the shared file                                                                               GF 6y   4119e0a
-●      Correct the note                                                                                  GF 7y   a82960b
-●      Add the first note                                                                                GF 7y   fadcfb3
-◇      Add a readme                                                                                      GF 7y   64ded19
+▸ ◌      Uncommitted changes (1 unmerged)
+    ●    [feature] feature writes again                                                                 GF 6y   2e2d51c
+    ●    feature writes                                                                                 GF 6y   c3b01ea
+  ◆ │  ⓘ [HEAD] [main] main rewrites it                                                                 GF 6y   b0eb655
+  ●─╯    add the shared file                                                                            GF 6y   4119e0a
+  ●      Correct the note                                                                               GF 7y   a82960b
+  ●      Add the first note                                                                             GF 7y   fadcfb3
+  ◇      Add a readme                                                                                   GF 7y   64ded19
 
 
 
@@ -444,8 +445,7 @@ m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relau
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  rebase still in progress · 1 conflicted · ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph  q quit
 UNCOMMITTED
 diff vs HEAD b0eb655
@@ -827,7 +827,7 @@ what right looks like: (ticket 11) Preview opened by `m`: the box's bottom borde
 #
 # What right looks like:
 #  - The box's bottom border reads
-#    `y confirm  m merge  ←→ choose  ⏎ act  esc cancel`.
+#    `y confirm  m merge  ←/→ choose  ⏎ act  esc cancel`.
 #  - The buttons row shows `▸[ Cancel ]`: the cursor still rests on Cancel.
 #
 
@@ -868,7 +868,7 @@ what right looks like: (ticket 11) Preview opened by `m`: the box's bottom borde
 │ undo: u takes this back                                                                                              │
 │ git merge --no-edit --ff -m 'Merge branch '\''main'\'' into feature' main                                            │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
-╰ y confirm  m merge  ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────╯
+╰ y confirm  m merge  ←/→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -885,7 +885,7 @@ what right looks like: (ticket 11) Preview opened by `b`: the box's bottom borde
 # grid: colour ships unverified (CLAUDE.md rule 5).
 #
 # What right looks like:
-#  - The box's bottom border reads `y confirm  ←→ choose  ⏎ act  esc cancel`
+#  - The box's bottom border reads `y confirm  ←/→ choose  ⏎ act  esc cancel`
 #    (no `b` in it: pressing `b` again does not confirm).
 #  - The buttons row shows `▸[ Cancel ]`.
 
@@ -926,7 +926,7 @@ what right looks like: (ticket 11) Preview opened by `b`: the box's bottom borde
 │ undo: u takes this back                                                                                              │
 │ git stash branch rescued 'stash@{0}'                                                                                 │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
-╰ y confirm  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────╯
+╰ y confirm  ←/→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
