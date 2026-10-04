@@ -48,7 +48,7 @@ with no shell.
 | Change one colour | gitui 0.23, helix `inherits`, VS Code `colorCustomizations` | `[theme.dark] selection = "#…"` | T |
 | Contrast floor | nobody checks (lazygit #4306/#508, gitui #922) | every theme tested against fixed floors; an override that misses one is named | **I** (we shipped the bug, :48) |
 | Per-widget attrs; file-only themes; palette-inheriting default | lazygit; gitui; bat `ansi` | — | R |
-| **Screen chrome** | the M8 mock-up (his pick, 2026-10-02); Sublime Merge / lazygit: name + branch on top, words in the bar | ADR-0058 §4, DESIGN §1.0 | T (mock-up) |
+| **Screen chrome** | repo + branch on top: Magit, `Head:`/`Push:` as the status screen's first lines; words in the bar: gitui's per-panel key-hint bar, zellij's mode hints — and zellij's lesson that a full-time bar costs space users complain about (`chrome-and-empty-state` §1, verdict `:51`) | ADR-0058 §4, DESIGN §1.0; layout from the M8 mock-up (his pick, 2026-10-02) | T (Magit top, gitui/zellij bar) · gutter `▸`: **I** (next row) — nothing fits, because no studied tool marks the cursor row with a gutter glyph (§1, none found) and no flat fill clears 3:1 over twelve lanes |
 | **Cursor row over coloured lanes** | VS Code: fill under everything; lazygit: reverse video — both hide a lane of the fill's luminance (lazygit #4306) | fill starts after the graph column; `▸` in a gutter marks the row | **I** — no flat fill clears 3:1 against twelve hues (row 542) |
 | **Text on the fill** | VS Code `minimumContrastRatio` 4.5 (`themes.md`) | `Theme::legible_on`, 4.5:1 | T |
 | `?` = live keys here, grouped | lazygit `?`; #3141 (`keymap-help-remap.md`) | palette opened on this place, IN PROGRESS first (ADR-0056, DESIGN §1.16) | T |
@@ -62,7 +62,7 @@ with no shell.
 | Tour exit visible; shows his keys | zellij #5064; helix #13483 | `esc leave` every step; words from the keymap | T |
 | Undo as the tour's hook | GitUp sells undo | task 3 | **I** |
 | Tips, wizard, video | lazygit, zellij, JetBrains | — | R |
-| **Empty state** | Sublime Merge opens on clone/new; VS Code welcome recent list | mock-up §1.15: o/i/c/t + RECENT, newest preselected | T |
+| **Empty state** | lazygit `notARepository: prompt` — open a recent or init here; its users asked for the picker, not an exit (#3795, #3740); Sublime Merge: clone page + New Repository, both open the repo when done; JetBrains welcome: recents first, with a filter (`chrome-and-empty-state` §2, verdict `:65`). Lessons: a recent since deleted must not crash (lazygit #1609); clone stays findable after first use (VS Code complaint) | mock-up §1.15: o/i/c/t + RECENT, newest preselected | T (lazygit, Sublime Merge, JetBrains) |
 | Binaries, tap, installer | dist v0.33 (`install-docs` §2) | 4 targets, tap formula, curl installer | T |
 | homebrew-core; clap_mangen; completions; update notifier | all in core; ripgrep; Homebrew discourages | — | R |
 | Man page | ripgrep `--generate man` | from our CLI table + keymap; staleness test | T |

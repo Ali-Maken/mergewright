@@ -1127,6 +1127,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/14bc-review-minors | 9 Minors in `docs/reviews/m8-14bc-fork-follows.md`. | **broken** (per finding) | M8 |
 | M8/look-review-minors | 11 Minors in `docs/reviews/m8-06-08-look.md` (incl. a failed open loses the typed path, graft empty_state.rs:101/:157). | **broken** (per finding) | M8 |
 | M8/look-file-sizes | graft-ui empty_state.rs 474 (new), render.rs 670, startup.rs 704, rows.rs 984 — over 400 (PROMPT 6.2). Review look M2; split after 10. | **broken** | M8 |
+| M8/recent-deleted-folder | Outside-repo screen: ⏎ on a recent repo whose folder was deleted is untested (lazygit #1609); behaviour for the stale row (keep / mark / prune) undecided. Ask the user at the checkpoint batch. | **unverified** | M8 |
 | M8/flaky-http-remote-drop | graft-fixtures `http_remote_drop_ends_a_wedged_backend` failed once in a full run under load (14d), passes alone; crate untouched; not diagnosed. | **unverified** | M8 |
 | M8/long-tmpdir-socket | 6+ graft tests fail when `$TMPDIR` is a long path (unix-socket path limit); Paperclip runs set one. Gates pass with `TMPDIR=/tmp`. Tests should not depend on `$TMPDIR` length — cause not fixed. | **broken** | M8 |
 | M8/startup-rs-564 | `startup.rs` 564 lines, over the readability limit; outside 02's file set, not split. | **broken** | M8 |
