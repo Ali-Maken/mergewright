@@ -28,6 +28,7 @@ mod context_menu;
 pub mod credential;
 pub mod detail;
 pub mod drag;
+pub(crate) mod edge;
 mod events;
 pub mod finish;
 mod geometry;
@@ -61,6 +62,7 @@ pub mod switch;
 pub mod undo;
 
 pub use context_menu::verbs::can_take;
+pub use edge::SharedKeymap;
 pub use events::{
     AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, SortedOrder, TakeAt,
     TakeRequest, Task, WholeFileAnswer,
@@ -1071,6 +1073,54 @@ fn name_prompt_claimed(next: &mut AppState, commands: &mut Vec<Command>, key: Ke
     claimed
 }
 
+/// Run the action a **default** chord means here, as if pressed: every
+/// dispatcher, in claim order, with no remap applied. What the edge calls
+/// once it has translated a press, and what the palette (ticket 11) calls to
+/// run an action by its default chord — through the edge a moved default
+/// would be a key nobody answers. Its effects are on `state` and `commands`,
+/// as `core_event`'s `Key` arm's always were.
+pub(crate) fn dispatch_key(state: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
+    dispatch(state, commands, key, key);
+}
+
+/// [`dispatch_key`], with the press as it came off the terminal beside it:
+/// the harness's `hand_back` is a test hook, not a binding, and reads that
+/// raw press, so no remap reaches it and none can move it.
+fn dispatch(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress, raw: KeyPress) {
+    // The credential prompt before anything, the search prompt included:
+    // it opens by itself over whatever was on screen, and a password typed
+    // while the search prompt happened to be open must land in the
+    // credential field, not the search.
+    if credential::credential_key(next, commands, key) {
+        return;
+    }
+    if name_prompt_claimed(next, commands, key) {
+        return;
+    }
+    // J's own `/` find (§2.11) before the graph's search: with J up, `/`,
+    // and `n`/`N` over a kept find, are J's; its prompt takes every letter
+    // (m7-power-tools/30o-c).
+    if journal::find::find_key(next, key) {
+        return;
+    }
+    // A handed-back key is checked next, before any graph binding, so a
+    // harness can claim a key whatever the graph would do with it.
+    if next.search_prompt.is_some() || !next.harness.hand_back.contains(&raw.code) {
+        // An open search prompt takes every key. Otherwise `/`, `n` and `N`
+        // are the graph's, and a modal pane or box that is up owns them
+        // (§2.1): a `/` in a commit subject is a character, `n` in the
+        // resolver its next block (m6-conflicts/07 F1, final fix round). No
+        // modal opens over an open prompt — the prompt takes the key that
+        // would — so skipping the search here drops no text.
+        let search_answers = next.search_prompt.is_some() || !next.modal_owns_keys();
+        if !(search_answers && search::search_key(next, commands, key)) {
+            keys::key_event(next, commands, key);
+        }
+    } else {
+        next.quit = Some(Quit::HandedBack(raw.code));
+    }
+}
+
 /// The terminal changed size: every open surface re-fits.
 fn resized(next: &mut AppState, commands: &mut Vec<Command>, size: Size) {
     // Ticket 10 piece 4: a resize cancels a drag, the same as any other
@@ -1095,42 +1145,9 @@ fn resized(next: &mut AppState, commands: &mut Vec<Command>, size: Size) {
 /// The half of [`answer`] that answers the events `core` defines.
 fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
     match event {
-        // The search's keys go first: the open prompt takes every letter.
-        // A handed-back key is checked next, before any graph binding, so
-        // a harness can claim a key whatever the graph would do with it.
-        Event::Key(key) => {
-            // The credential prompt before anything, the search prompt
-            // included: it opens by itself over whatever was on screen, and
-            // a password typed while the search prompt happened to be open
-            // must land in the credential field, not the search.
-            if credential::credential_key(next, commands, key) {
-                return;
-            }
-            if name_prompt_claimed(next, commands, key) {
-                return;
-            }
-            // J's own `/` find (§2.11) before the graph's search: with J up,
-            // `/`, and `n`/`N` over a kept find, are J's; its prompt takes
-            // every letter (m7-power-tools/30o-c).
-            if journal::find::find_key(next, key) {
-                return;
-            }
-            if next.search_prompt.is_some() || !next.harness.hand_back.contains(&key.code) {
-                // An open search prompt takes every key. Otherwise `/`, `n`
-                // and `N` are the graph's, and a modal pane or box that is
-                // up owns them (§2.1): a `/` in a commit subject is a
-                // character, `n` in the resolver its next block
-                // (m6-conflicts/07 F1, final fix round). No modal opens over
-                // an open prompt — the prompt takes the key that would —
-                // so skipping the search here drops no text.
-                let search_answers = next.search_prompt.is_some() || !next.modal_owns_keys();
-                if !(search_answers && search::search_key(next, commands, key)) {
-                    keys::key_event(next, commands, key);
-                }
-            } else {
-                next.quit = Some(Quit::HandedBack(key.code));
-            }
-        }
+        // His `[keys]` remaps are applied first, at the edge, so every
+        // dispatcher below sees default chords only (ADR-0055).
+        Event::Key(key) => edge::key(next, commands, key),
         Event::Resize { columns, rows } => resized(next, commands, Size { columns, rows }),
         event @ (Event::JobFailed(id, _) | Event::JobFinished(id) | Event::JobCancelled(id))
             if search::searching(next, id) || commit_graph::commit_graph_job(next, id) =>

@@ -216,7 +216,7 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
         &repo_path,
         &config,
         harness,
-        Arrival::default(),
+        Arrival::first(&config),
     )?;
     terminal.close(ran)
 }
@@ -229,6 +229,32 @@ pub(super) struct Arrival {
     /// Opened from the empty state: the cursor lands on `HEAD`'s row
     /// (`update::lands_on_head_at_open`), not the top row.
     pub on_head: bool,
+    /// The process's one keymap (`config::keymap_from`, ADR-0055).
+    pub keymap: crate::update::SharedKeymap,
+    /// His config's problems in words — on the process's first repository
+    /// screen only; empty on every later one.
+    pub config_problems: Vec<String>,
+}
+
+impl Arrival {
+    /// The first repository screen of a process started on `config`: its
+    /// keymap, and every problem with the file.
+    pub(super) fn first(config: &crate::config::Loaded) -> Self {
+        let (keymap, config_problems) = crate::config::keymap_from(config);
+        Self {
+            keymap: crate::update::SharedKeymap::new(keymap),
+            config_problems,
+            ..Self::default()
+        }
+    }
+}
+
+/// Seeds `state` with the keymap and the config's problems, and stands the
+/// bottom row's `config: N problems` notice up when there are any.
+fn seed_keys(state: &mut AppState, keymap: crate::update::SharedKeymap, problems: Vec<String>) {
+    state.keymap = keymap;
+    state.config_notice = !problems.is_empty();
+    state.config_problems = problems;
 }
 
 /// One repository's run on an open [`Terminal`]: the job pool, the signal
@@ -277,6 +303,7 @@ pub(super) fn run_repo(
         &config.config,
         common_dir.as_deref(),
     )?;
+    seed_keys(&mut state, arrival.keymap, arrival.config_problems);
     if let Some(reason) = arrival.status {
         state.status = crate::update::Status::Sticky { reason, keys: None };
     }

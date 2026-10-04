@@ -29,6 +29,8 @@ pub(in crate::update) fn acknowledge(next: &mut AppState) {
     if matches!(next.commit_graph, CommitGraphOffer::Written { .. }) {
         next.commit_graph = CommitGraphOffer::NotNeeded;
     }
+    // `config: N problems · ? shows them` (ADR-0055): said once, at startup.
+    next.config_notice = false;
 }
 
 /// A failure that arrived under a box and is drawn now the box has closed

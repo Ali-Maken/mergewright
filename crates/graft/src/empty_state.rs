@@ -16,6 +16,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use graft_core::event::{KeyCode, KeyPress};
 use graft_term::{sanitize_line, sanitize_path};
 use graft_ui::empty_state::{EmptyPrompt, EmptyStateView, RecentRow, recent_age};
+use graft_ui::keymap::{ContextId, KeyChord, Keymap, Translated};
 use graft_ui::text_input::TextField;
 
 use crate::recent::Recent;
@@ -59,6 +60,30 @@ pub(crate) enum OutsideStep {
     Init(PathBuf),
     /// Leave Graft.
     Quit,
+}
+
+/// The empty state's edge (ADR-0055): a key, through his `[keys]` remaps,
+/// to [`outside_key`]. The open path prompt is a text field, so what is
+/// typed there goes on as typed; otherwise the press is translated in
+/// `empty_state` — a moved action's chord becomes its default, and a
+/// default whose action moved does what a key nobody answers does: clears
+/// the problem line, and nothing else. (The clone prompt, ticket 18, joins
+/// the "prompt open" check.)
+pub(crate) fn outside_edge(state: &mut OutsideState, keymap: &Keymap, key: KeyPress) -> OutsideStep {
+    if matches!(state.prompt, Some(Prompt::Open(_))) {
+        return outside_key(state, key);
+    }
+    let Some(chord) = KeyChord::from_press(&key) else {
+        return outside_key(state, key);
+    };
+    match keymap.translate(ContextId::EmptyState, chord) {
+        Translated::Pass => outside_key(state, key),
+        Translated::Default(default) => outside_key(state, default.to_press()),
+        Translated::Unbound => {
+            state.problem = None;
+            OutsideStep::Stay
+        }
+    }
 }
 
 /// Apply one key. A `problem` is cleared by any key, which is then acted on

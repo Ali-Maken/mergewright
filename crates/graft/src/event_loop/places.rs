@@ -18,7 +18,8 @@ use ratatui::backend::CrosstermBackend;
 use super::startup::{Arrival, Ran, Terminal, hand_back_input, run_repo};
 use super::{ChannelWakes, Exit, Wake, Wakes, input, signals};
 use crate::config::Loaded;
-use crate::empty_state::{OutsideState, OutsideStep, Prompt, outside_key, view};
+use crate::empty_state::{OutsideState, OutsideStep, Prompt, outside_edge, view};
+use crate::update::SharedKeymap;
 use crate::recent::{self, Recent};
 use crate::repos::RepoStore;
 use crate::session::Session;
@@ -101,13 +102,14 @@ pub fn locate(path: &Path, config: &Loaded) -> Result<Place, String> {
 pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Exit> {
     let config_dir = recent::config_dir();
     let mut place = first;
-    // Config problems are said on the first repository screen of the
-    // process, not again after a switch (ticket 08 Scope).
-    let quiet = Loaded {
-        warnings: Vec::new(),
-        ..config.clone()
-    };
-    let mut told = false;
+    // One keymap for the process, every screen it opens (ADR-0055). Config
+    // problems are said on the first repository screen of the process, not
+    // again after a switch (ticket 08 Scope); `take` leaves later ones none.
+    let Arrival {
+        keymap,
+        config_problems: mut problems,
+        ..
+    } = Arrival::first(config);
     // The first place is where Graft was started; every later one was
     // opened, and an open lands on `HEAD` (note Lands row "Open / init
     // succeeds").
@@ -116,13 +118,13 @@ pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Ex
         match place {
             Place::Repo { repos, path } => {
                 let status = remember_opened(config_dir.as_deref(), &repos, &path);
-                let shown = if told { &quiet } else { config };
-                told = true;
                 let arrival = Arrival {
                     status,
                     on_head: opened,
+                    keymap: keymap.clone(),
+                    config_problems: std::mem::take(&mut problems),
                 };
-                let ran = run_repo(&mut term, repos, &path, shown, Harness::default(), arrival)?;
+                let ran = run_repo(&mut term, repos, &path, config, Harness::default(), arrival)?;
                 match ran.outcome {
                     Ok(Exit::Open(next)) => {
                         opened = true;
@@ -142,7 +144,7 @@ pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Ex
                 }
             }
             Place::Outside(start) => {
-                match run_outside(&mut term, start, config, config_dir.as_deref()) {
+                match run_outside(&mut term, start, config, &keymap, config_dir.as_deref()) {
                     Ok(Outcome::Opened(next)) => {
                         opened = true;
                         place = next;
@@ -196,6 +198,7 @@ fn run_outside(
     term: &mut Terminal,
     start: OutsideStart,
     config: &Loaded,
+    keymap: &SharedKeymap,
     config_dir: Option<&Path>,
 ) -> io::Result<Outcome> {
     let settled = Session::settle(config, term.capabilities.clone());
@@ -219,7 +222,14 @@ fn run_outside(
     let forwarder = input::spawn_reader(inputs, sender, None, None)?;
     let mut screen = ratatui::Terminal::new(CrosstermBackend::new(io::stdout()))?;
 
-    let outcome = outside_loop(&mut screen, &mut wakes, &mut state, &settled, ascii, config);
+    let outcome = outside_loop(
+        &mut screen,
+        &mut wakes,
+        &mut state,
+        (&settled, ascii),
+        config,
+        keymap,
+    );
     for watcher in [signals, resizes] {
         watcher.close();
     }
@@ -256,9 +266,9 @@ fn outside_loop(
     screen: &mut Screen,
     wakes: &mut ChannelWakes,
     state: &mut OutsideState,
-    settled: &Session,
-    ascii: bool,
+    (settled, ascii): (&Session, bool),
     config: &Loaded,
+    keymap: &SharedKeymap,
 ) -> io::Result<Outcome> {
     loop {
         let drawn = view(state, SystemTime::now());
@@ -276,7 +286,7 @@ fn outside_loop(
             return Err(io::Error::other("the terminal's input ended"));
         };
         let step = match wake {
-            Wake::Event(AppEvent::Core(Event::Key(key))) => outside_key(state, key),
+            Wake::Event(AppEvent::Core(Event::Key(key))) => outside_edge(state, keymap.get(), key),
             Wake::Event(AppEvent::Core(Event::Paste(text))) => {
                 if let Some(Prompt::Open(field)) = &mut state.prompt {
                     field.insert_str(&text);

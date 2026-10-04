@@ -184,6 +184,12 @@ fn notes(session: &Session, state: &AppState) -> Vec<SanitizedText> {
         }
     }
 
+    notes.extend(
+        state
+            .config_problems
+            .iter()
+            .map(|problem| sanitize_line(problem)),
+    );
     notes.extend(session.notes.iter().cloned());
     notes
 }

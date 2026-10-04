@@ -319,11 +319,27 @@ pub(super) fn footer_notice(
     if let Some(notice) = crate::update::undo::interrupted_notice_in(state, cells) {
         return Some(sanitize_line(&notice));
     }
+    // His config had problems: said once, until the first key or click
+    // (ADR-0055). Zero problems draws nothing (CLAUDE.md's status rule).
+    if let Some(line) = config_notice(state) {
+        return Some(sanitize_line(&line));
+    }
     // Only below the terminal's own tier: `F3` clears the override when it
     // cycles back to the top (m1-the-graph/33).
     state
         .renderer_override
         .map(|_| sanitize_line(&format!("renderer: {} (F3 cycles)", tier_name(tier))))
+}
+
+/// `config: 1 problem · ? shows them` / `config: N problems · ? shows them`,
+/// while the startup notice stands and there is something to say.
+fn config_notice(state: &AppState) -> Option<String> {
+    let count = state.config_problems.len();
+    if !state.config_notice || count == 0 {
+        return None;
+    }
+    let noun = if count == 1 { "problem" } else { "problems" };
+    Some(format!("config: {count} {noun} · ? shows them"))
 }
 
 /// The harness banner as drawn: its title with ` · <tier>` appended for the
