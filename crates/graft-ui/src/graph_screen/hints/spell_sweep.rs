@@ -96,12 +96,13 @@ fn every_bar_spells_the_remapped_chords() {
                 bars += 1;
                 let mut drawn: Vec<String> = Vec::new();
                 for hint in hints_for(&context, divider, columns, &keys) {
-                    let want = hint
-                        .keys
-                        .iter()
-                        .map(|key| expected(key, &moved))
-                        .collect::<Vec<_>>()
-                        .join("/");
+                    // Joined as the bar joins them (R2: a repeated
+                    // `alt+` is written once — the sweep's chords all
+                    // carry one).
+                    let want = crate::keymap::join(
+                        hint.keys.iter().map(|key| expected(key, &moved)),
+                    )
+                    .unwrap_or_default();
                     let got = hint.key_text(&keys).unwrap_or_default();
                     if got != want {
                         wrong.push(format!(

@@ -181,8 +181,7 @@ impl Hint {
     /// no key that acts, so it is not drawn (ticket m8/10, decision 2).
     #[must_use]
     pub fn key_text(&self, keys: &Keymap) -> Option<String> {
-        let labels = self.labels(keys);
-        (!labels.is_empty()).then(|| labels.join("/"))
+        crate::keymap::join(self.labels(keys))
     }
 
     /// Each key the hint draws, one label per chord or word.
@@ -697,8 +696,8 @@ const NEEDS_A_COMMIT: [&[HintKey]; 3] = [hint_keys::COPY_SHA, hint_keys::COMPARE
 
 /// Every hint the footer could draw for `context`, in priority order, with
 /// the ones nothing has built yet already dropped: the context's own keys,
-/// the divider's when a pane is open, then — on the graph's row contexts
-/// only — the keys the whole screen answers ([`TAIL`]).
+/// then — on the graph's row contexts only — the keys the whole screen
+/// answers ([`TAIL`]), then the divider's when a pane is open.
 ///
 /// A pane keeps to its own list: while the changes pane, an overlay or the
 /// banner has focus it answers keys the graph does not, and the graph
@@ -714,6 +713,22 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
         .into_iter()
         .filter(|hint| hint.state == HintState::Live)
         .collect();
+    let rows = matches!(
+        context,
+        HintContext::WorkingTreeRow
+            | HintContext::BranchRow { .. }
+            | HintContext::PlainRow { .. }
+            | HintContext::Rewritable(_)
+    );
+    if rows {
+        let commits = *context != HintContext::WorkingTreeRow;
+        for extra in TAIL {
+            let dead = !commits && NEEDS_A_COMMIT.contains(&extra.keys);
+            if !dead && !list.iter().any(|hint| hint.is(extra.keys)) {
+                list.push(extra);
+            }
+        }
+    }
     if divider == Divider::Shown
         && !matches!(
             context,
@@ -732,30 +747,14 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
                 | HintContext::RewriteMessage
         )
     {
-        // Fourth, not last: appended, it sat behind ten context keys and the
-        // six-hint tier never reached it, so the hint existed and was never
-        // drawn (found by rendering a real frame —
-        // `graft::it::hint_bar::the_changes_pane_hints_the_keys_that_write`).
-        // Fourth keeps the three verbs that do work ahead of it and still
-        // shows the divider from 100 columns, which is where a pane and a
-        // graph first fit side by side.
-        list.insert(3.min(list.len()), RESIZE);
-    }
-    let rows = matches!(
-        context,
-        HintContext::WorkingTreeRow
-            | HintContext::BranchRow { .. }
-            | HintContext::PlainRow { .. }
-            | HintContext::Rewritable(_)
-    );
-    if rows {
-        let commits = *context != HintContext::WorkingTreeRow;
-        for extra in TAIL {
-            let dead = !commits && NEEDS_A_COMMIT.contains(&extra.keys);
-            if !dead && !list.iter().any(|hint| hint.is(extra.keys)) {
-                list.push(extra);
-            }
-        }
+        // Last of the bar's own keys, after [`TAIL`] (ticket m8/10, ruling
+        // R1): a layout key earns its cell last, so it is the first the
+        // width drops and nothing else pays for its width — not `u undo`,
+        // not `/ search` (02-keymap §2.1 "ranks by relevance at the
+        // cursor"; ux-principles row 8). It used to sit fourth so the old
+        // six-hint tier would reach it; that tier is gone, and fourth let one
+        // cell of its own spelling push undo off at 100 columns.
+        list.push(RESIZE);
     }
     list
 }

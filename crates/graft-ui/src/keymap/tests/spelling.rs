@@ -56,3 +56,27 @@ fn a_keymap_clones_and_compares_by_its_chords() {
     assert_ne!(moved, Keymap::default());
     assert_eq!(*Keymap::shipped(), Keymap::default());
 }
+
+/// Ruling R2 (ticket m8/10): a repeated `<word>+` modifier is written once —
+/// the rewrite editor's move pair reads `alt+↑/↓`, not `alt+↑/alt+↓`. A glyph
+/// modifier keeps its own: the resolver's `⌃O/⌃T` is unchanged.
+#[test]
+fn a_shared_modifier_word_is_written_once() {
+    let map = Keymap::default();
+    let pair = [ActionId("rewrite.move_up"), ActionId("rewrite.move_down")];
+    assert_eq!(map.spell_keys(&pair).as_deref(), Some("alt+↑/↓"));
+    let all = [
+        ActionId("resolver.all_ours"),
+        ActionId("resolver.all_theirs"),
+    ];
+    assert_eq!(map.spell_keys(&all).as_deref(), Some("⌃O/⌃T"));
+    // Only a repeat shares: a different word, or none, keeps its own.
+    assert_eq!(
+        super::super::join(["alt+x".to_owned(), "ctrl+y".to_owned(), "z".to_owned()]).as_deref(),
+        Some("alt+x/ctrl+y/z")
+    );
+    assert_eq!(
+        super::super::join(["+".to_owned(), "+".to_owned()]).as_deref(),
+        Some("+/+")
+    );
+}

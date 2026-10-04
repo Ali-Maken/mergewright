@@ -354,9 +354,40 @@ impl Keymap {
 const QUIT_NOW_ID: ActionId = ActionId("app.quit_now");
 
 /// `labels` joined with `/`, or `None` when there are none.
-fn join(labels: impl Iterator<Item = String>) -> Option<String> {
-    let joined = labels.collect::<Vec<_>>().join("/");
-    (!joined.is_empty()).then_some(joined)
+/// Labels joined with `/`, the one joiner (ux-principles row 4), with a
+/// repeated `<word>+` modifier written once (ticket m8/10, ruling R2):
+/// `alt+↑`, `alt+↓` → `alt+↑/↓`. The repeated word earns no cell (row 8).
+/// Only `+`-joined words are shared; a glyph modifier keeps its own
+/// (`⌃O/⌃T` — the resolver's spelling since m6). `None` when there are
+/// no labels.
+pub(crate) fn join(labels: impl IntoIterator<Item = String>) -> Option<String> {
+    let mut out = String::new();
+    let mut previous: Option<String> = None;
+    for label in labels {
+        let prefix = word_prefix(&label);
+        let shared = prefix.is_some() && previous.as_deref() == prefix;
+        if !out.is_empty() {
+            out.push('/');
+        }
+        match prefix {
+            Some(prefix) if shared => out.push_str(&label[prefix.len()..]),
+            _ => out.push_str(&label),
+        }
+        previous = prefix.map(str::to_owned);
+    }
+    (!out.is_empty()).then_some(out)
+}
+
+/// `label`'s modifier words with their trailing `+` (`alt+` of `alt+↑`,
+/// `ctrl+shift+` of `ctrl+shift+x`), when it has any and a key follows them.
+fn word_prefix(label: &str) -> Option<&str> {
+    let end = label.rfind('+')? + 1;
+    let prefix = &label[..end];
+    let words = prefix
+        .split('+')
+        .filter(|word| !word.is_empty())
+        .all(|word| word.chars().all(|c| c.is_ascii_alphabetic()));
+    (end > 1 && end < label.len() && words && !prefix.starts_with('+')).then_some(prefix)
 }
 
 /// The row index of an action id.

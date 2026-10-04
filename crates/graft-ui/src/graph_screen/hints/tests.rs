@@ -2,6 +2,7 @@ use graft_term::SanitizedText;
 use unicode_width::UnicodeWidthStr;
 
 use crate::conflict_resolver::SideRoles;
+use crate::finish_summary::SummaryFocus;
 
 use super::*;
 
@@ -369,52 +370,101 @@ fn the_divider_hint_follows_the_pane_not_the_context() {
             tab: TabWord::Graph,
         },
     ] {
-        let with = hints_text(&hints_for(&context, Divider::Shown, 200));
-        let without = hints_text(&hints_for(&context, Divider::Hidden, 200));
+        // Wide enough for the whole list: since R1 resize is the last of a
+        // row's keys, so 200 columns no longer reach it on a graph row.
+        let with = hints_text(&hints_for(&context, Divider::Shown, 400));
+        let without = hints_text(&hints_for(&context, Divider::Hidden, 400));
         assert!(with.contains("</> resize"), "{context:?}: {with:?}");
         assert!(!without.contains("</> resize"), "{context:?}: {without:?}");
     }
 }
 
-/// And it is drawn where a pane and a graph actually fit side by side: at
-/// the six-hint tier, fourth. Appended after the context's own list instead,
-/// it sat behind ten keys and no real frame ever reached it — a hint that
-/// exists and is never drawn is the bug it was meant to fix (found by
-/// `graft::it::hint_bar::the_changes_pane_hints_the_keys_that_write`).
+/// Ruling R1 (ticket m8/10): `</> resize` is the last of the bar's own keys,
+/// so it is the first the width drops and nothing else pays for its width.
+/// Under 10's first cut it sat fourth, and one cell of its own new spelling
+/// (`<>` → `</>`) pushed `u undo` off the bar at 100 columns. The invariant
+/// over every context, every width and both dividers: a bar that draws
+/// `</> resize` draws every other hint its list holds.
+///
+/// The bar is monotone in its width by construction — `fit_list` takes the
+/// longest prefix of one fixed step order (`fitting::ladder`), so a hint
+/// drawn at one width is drawn at every wider one. Checking the narrowest
+/// width that draws resize (found by bisection) therefore covers every width
+/// above it (walking all 201 widths of every context took a minute).
 #[test]
-fn the_divider_hint_is_fourth_so_the_six_key_tier_reaches_it() {
-    for context in [
-        HintContext::PlainRow {
-            verbs: RowVerbs::NONE,
-        },
-        HintContext::BranchRow {
-            current: true,
-            verbs: RowVerbs::NONE,
-        },
-        HintContext::WorkingTreeRow,
-        HintContext::ChangesPane {
-            unmerged: false,
-            live: None,
-            tab: TabWord::Graph,
-        },
-    ] {
-        let hints = hints_for(&context, Divider::Shown, 120);
-        // Fifth, not fourth, on a graph row since `b branch` and `t tag`
-        // went live (m5-history-and-ghost-preview/10): `drawable` still
-        // inserts it fourth, and the doorway `. more` is then promoted in
-        // front of it to lead the tail. What the rule is for is that the
-        // hint is *reached* at the tier a pane and a graph first fit side
-        // by side, and it still is.
-        let at = hints
-            .iter()
-            .position(|hint| hint.key() == "</>")
-            .unwrap_or_else(|| panic!("{context:?} never draws `<>`: {:?}", hints_text(&hints)));
-        assert!(
-            at <= 4,
-            "{context:?} buried `<>` at {at}: {:?}",
-            hints_text(&hints)
-        );
+fn resize_is_drawn_only_when_nothing_else_was_dropped() {
+    let keys = Keymap::shipped();
+    let mut drawn_somewhere = 0;
+    for context in every_context() {
+        for divider in [Divider::Shown, Divider::Hidden] {
+            let (list, _door) = spelled_bar(&context, divider, keys);
+            if !list.iter().any(|hint| hint.is(hint_keys::RESIZE)) {
+                continue;
+            }
+            let draws_resize = |columns: u16| {
+                hints_for(&context, divider, columns)
+                    .iter()
+                    .any(|hint| hint.is(hint_keys::RESIZE))
+            };
+            let widths: Vec<u16> = (40..=240).collect();
+            let first = widths.partition_point(|columns| !draws_resize(*columns));
+            let Some(&columns) = widths.get(first) else {
+                continue;
+            };
+            let hints = hints_for(&context, divider, columns);
+            drawn_somewhere += 1;
+            for wanted in &list {
+                assert!(
+                    hints
+                        .iter()
+                        .any(|hint| hint.keys == wanted.keys && hint.verb == wanted.verb),
+                    "{context:?} at {columns} draws `</> resize` but drops `{} {}`: {:?}",
+                    wanted.key(),
+                    wanted.verb,
+                    hints_text(&hints)
+                );
+            }
+        }
     }
+    assert!(drawn_somewhere > 0, "no bar ever drew `</> resize`");
+}
+
+/// Ruling R3 (ticket m8/10): undo visible is a test, not a hope. Each case
+/// is the context of a capture whose bar lost a hint to `</> resize`'s
+/// wider spelling under 10's first cut; with resize last (R1) each is back.
+#[test]
+fn the_hints_resize_once_pushed_off_are_drawn_again() {
+    let print = |context: &HintContext, columns| {
+        hints_text(&hints_for(context, Divider::Shown, columns))
+    };
+    // `m2-duplicate-commit`, `m2-evil-merge`: a marked plain row, 100 columns.
+    let marked = HintContext::Marked(Box::new(HintContext::PlainRow {
+        verbs: RowVerbs::NONE,
+    }));
+    let bar = print(&marked, 100);
+    assert!(bar.contains("u undo"), "{marked:?} at 100: {bar:?}");
+    // `m7/diff-cursor-commit-120x40`, `m7/pane-bar-file-vs-directory-120x40`:
+    // the detail pane focused on a file (and on a directory), 120 columns.
+    for (opens, blamable, folds) in [(false, true, false), (true, true, false), (true, false, true)] {
+        let focused = HintContext::PaneFocused {
+            row: Box::new(HintContext::BranchRow {
+                current: true,
+                verbs: RowVerbs::NONE,
+            }),
+            opens,
+            blamable,
+            folds,
+        };
+        let bar = print(&focused, 120);
+        assert!(bar.contains("/ search"), "{focused:?} at 120: {bar:?}");
+    }
+    // `m7/rewrite-editor-100x30`: the narrow editor keeps `d drop` at 100.
+    let narrow = HintContext::RewriteEditor {
+        narrow: true,
+        can_start: true,
+    };
+    let bar = hints_text(&hints_for(&narrow, Divider::Hidden, 100));
+    assert!(bar.contains("d drop"), "{narrow:?} at 100: {bar:?}");
 }
 
 /// A pane keeps to its own vocabulary: the changes pane hints the keys it
@@ -2415,4 +2465,49 @@ fn a_amend_follows_open_where_no_commit_or_remote_verb() {
     );
     let keys: Vec<&str> = list.iter().map(Spelled::key).collect();
     assert_eq!(keys, ["⏎", "a", "b", "t"]);
+}
+
+/// Ruling R4 (ticket m8/10), as the code stands: a `Fixed` key — spelled
+/// from the shipped table whatever his config says — is drawn only where
+/// the edge passes every press as typed, so the default *is* the key that
+/// acts. Those are the fields `graft::update::state::AppState::text_field_open`
+/// names (state.rs: the name prompt, the credential box, the picker, the
+/// rewrite editor's `r` field, and the finish summary while its focus is
+/// not `Files`); `graft`'s `x_typed_into_every_field_is_an_x_with_merge_on_x`
+/// holds each of them to it. Everywhere else a key follows his remap.
+///
+/// Not R4's letter: R4 has the finish Subject/Body follow a `Finish` row,
+/// on the premise that his remap acts there. It does not — `edge::key`
+/// returns before `context_of` while `text_field_open` holds, and that
+/// includes the summary's Subject and Body — so a remapped spelling there
+/// would draw a key that does nothing (ticket 10c NOTES).
+#[test]
+fn a_fixed_key_is_drawn_only_where_keys_go_on_as_typed() {
+    let typed = |context: &HintContext| match context {
+        HintContext::NamePrompt { .. }
+        | HintContext::Credential
+        | HintContext::Picker
+        | HintContext::RewriteMessage => true,
+        HintContext::Finish { focus, .. } => *focus != SummaryFocus::Files,
+        _ => false,
+    };
+    let mut fixed_drawn = 0;
+    for context in every_context() {
+        for divider in [Divider::Shown, Divider::Hidden] {
+            let (list, door) = spelled_bar(&context, divider, Keymap::shipped());
+            for hint in list.iter().chain(door.iter()) {
+                if !hint.keys.iter().any(|key| matches!(key, HintKey::Fixed(_))) {
+                    continue;
+                }
+                fixed_drawn += 1;
+                assert!(
+                    typed(&context),
+                    "{context:?} draws `{} {}` from the shipped table, but his remap acts there",
+                    hint.key(),
+                    hint.verb
+                );
+            }
+        }
+    }
+    assert!(fixed_drawn > 0, "no list draws a fixed key");
 }
