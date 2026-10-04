@@ -144,7 +144,7 @@ fn a_done_under_a_box_is_not_acknowledged_unseen() {
         let prompt = press(&state, KeyCode::Char('b'));
         let lease = press(&rejected_push(columns, rows), KeyCode::Char('P'));
         for (modal, mut boxed, keys) in
-            [("name prompt", prompt, "abc"), ("lease box", lease, "xyz")]
+            vec![("name prompt", prompt, "abc"), ("lease box", lease, "xyz")].into_boxed_slice()
         {
             assert!(boxed.modal_owns_bottom_row(), "{modal}: open");
             // The fetch's own `Done` comes through `operated` with a

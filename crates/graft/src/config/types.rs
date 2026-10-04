@@ -35,13 +35,20 @@ pub struct Config {
 /// undo is the thing a hand reaches for and a suspend the user did not mean
 /// looks like a crash. A user who lives in job control disagrees, and this is
 /// how they say so.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(default)]
 pub struct Keys {
     /// `keys.suspend_on_ctrl_z`: `Ctrl+Z` stops Graft the way it stops any
     /// other terminal program, instead of undoing (ADR-0002). Off by
     /// default — which is the whole point of the ADR.
     pub suspend_on_ctrl_z: bool,
+    /// `[keys.<context>] <verb> = "<chord>" | [...]` (ADR-0055): each line as
+    /// `("<context>.<verb>", chords)`, sorted by id — the `toml` table is
+    /// sorted, not in file order. Read off the raw table by `config::keys`,
+    /// not by serde; what a line means (unknown action, bad chord,
+    /// collision) is the keymap's to say (`Keymap::with_overrides`).
+    #[serde(skip)]
+    pub remaps: Vec<(String, Vec<String>)>,
 }
 
 /// `[ui]`.

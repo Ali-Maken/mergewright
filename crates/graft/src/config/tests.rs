@@ -23,6 +23,14 @@ fn config_file(text: &str) -> (TempDir, PathBuf) {
     (dir, path)
 }
 
+/// `text` written to a real file and read back by `load_from`: for tests
+/// outside this module that must not touch the file system themselves
+/// (`update`'s purity scan, `update::tests::update_cannot_reach_the_world`).
+pub(crate) fn loaded_from_a_file(text: &str) -> Loaded {
+    let (_dir, path) = config_file(text);
+    load_from(&path).expect("the file loads")
+}
+
 /// The error `load_from` produced, or a failure naming what loaded instead.
 fn load_error(path: &Path) -> ConfigError {
     match load_from(path) {
@@ -436,4 +444,95 @@ fn keys_suspend_on_ctrl_z_parses_and_defaults_off() {
     let (_dir, path) = config_file("[ui]\ntheme = \"dark\"\n");
     let loaded = load_from(&path).expect("a config without [keys] loads");
     assert!(!loaded.config.keys.suspend_on_ctrl_z);
+}
+
+/// `[keys.<context>]` sub-tables are remap lines (ADR-0055), not unknown
+/// keys; `suspend_on_ctrl_z` stays the switch beside them. Sorted by id: the
+/// `toml` table is sorted, not in file order.
+#[test]
+fn keys_sub_tables_become_remap_lines_and_warn_nothing() {
+    let (_dir, path) = config_file(
+        "[keys]\nsuspend_on_ctrl_z = true\n\
+         [keys.graph]\nmerge = \"M\"\n\
+         [keys.app]\nundo = [\"u\", \"ctrl+z\"]\n",
+    );
+    let loaded = load_from(&path).expect("sub-tables load");
+    assert_eq!(loaded.warnings, []);
+    assert!(loaded.config.keys.suspend_on_ctrl_z);
+    assert_eq!(
+        loaded.config.keys.remaps,
+        [
+            (
+                "app.undo".to_owned(),
+                vec!["u".to_owned(), "ctrl+z".to_owned()]
+            ),
+            ("graph.merge".to_owned(), vec!["M".to_owned()]),
+        ]
+    );
+}
+
+/// A value that is not a key or a list of keys is a warning naming its line,
+/// and the line is not applied. Anything but a table straight under `[keys]`,
+/// other than the switch, is still unknown.
+#[test]
+fn a_keys_value_that_is_not_text_warns_by_its_path() {
+    let (_dir, path) = config_file(
+        "[keys]\nsuspend_on_ctrll_z = true\n\
+         [keys.graph]\nmerge = 3\nrebase = [\"R\", 4]\npush = \"P\"\n",
+    );
+    let loaded = load_from(&path).expect("loads with warnings");
+    assert_eq!(
+        loaded.warnings,
+        [
+            ConfigWarning::NotAKey {
+                path: "keys.graph.merge".to_owned()
+            },
+            ConfigWarning::NotAKey {
+                path: "keys.graph.rebase".to_owned()
+            },
+            ConfigWarning::UnknownKey {
+                path: "keys.suspend_on_ctrll_z".to_owned()
+            },
+        ]
+    );
+    assert_eq!(
+        loaded.config.keys.remaps,
+        [("graph.push".to_owned(), vec!["P".to_owned()])]
+    );
+    assert_eq!(
+        loaded.warnings[0].to_string(),
+        "`keys.graph.merge` is not a key or a list of keys, ignored"
+    );
+}
+
+/// The problem words: the file's own warnings first, in their usual words,
+/// then each the keymap raised. An unknown context is passed through to the
+/// keymap, which names it.
+#[test]
+fn keymap_from_puts_file_warnings_before_key_warnings() {
+    let (_dir, path) = config_file(
+        "[ui]\nthme = \"dark\"\n\
+         [keys.graf]\nmerge = \"x\"\n",
+    );
+    let loaded = load_from(&path).expect("loads");
+    let (_keymap, problems) = keymap_from(&loaded);
+    assert_eq!(
+        problems,
+        [
+            "unknown config key `ui.thme`, ignored".to_owned(),
+            "graf.merge is not an action".to_owned(),
+        ]
+    );
+}
+
+/// No `[keys]`: the default keymap and nothing to say.
+#[test]
+fn keymap_from_a_default_config_has_no_problems() {
+    let (keymap, problems) = keymap_from(&Loaded::default());
+    assert!(problems.is_empty());
+    let merge = graft_ui::keymap::ActionId("graph.merge");
+    assert_eq!(
+        keymap.chords(&merge),
+        graft_ui::keymap::Keymap::default().chords(&merge)
+    );
 }

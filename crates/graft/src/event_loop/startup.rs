@@ -216,7 +216,7 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
         &repo_path,
         &config,
         harness,
-        Arrival::default(),
+        Arrival::first(&config),
     )?;
     terminal.close(ran)
 }
@@ -229,6 +229,24 @@ pub(super) struct Arrival {
     /// Opened from the empty state: the cursor lands on `HEAD`'s row
     /// (`update::lands_on_head_at_open`), not the top row.
     pub on_head: bool,
+    /// The process's one keymap (`config::keymap_from`, ADR-0055).
+    pub keymap: crate::update::SharedKeymap,
+    /// His config's problems in words — on the process's first repository
+    /// screen only; empty on every later one.
+    pub config_problems: Vec<String>,
+}
+
+impl Arrival {
+    /// The first repository screen of a process started on `config`: its
+    /// keymap, and every problem with the file.
+    pub(super) fn first(config: &crate::config::Loaded) -> Self {
+        let (keymap, config_problems) = crate::config::keymap_from(config);
+        Self {
+            keymap: crate::update::SharedKeymap::new(keymap),
+            config_problems,
+            ..Self::default()
+        }
+    }
 }
 
 /// One repository's run on an open [`Terminal`]: the job pool, the signal
@@ -277,6 +295,7 @@ pub(super) fn run_repo(
         &config.config,
         common_dir.as_deref(),
     )?;
+    state.seed_keys(arrival.keymap, arrival.config_problems);
     if let Some(reason) = arrival.status {
         state.status = crate::update::Status::Sticky { reason, keys: None };
     }
@@ -540,7 +559,7 @@ fn terminal_and_state(
 /// split out of `terminal_and_state` so it is testable without a real
 /// terminal (m2-details-and-diffs/13c; `KNOWN_GAPS` m2-details-and-diffs/13b).
 fn seed_config(state: &mut AppState, config: &crate::config::Config) {
-    let (diff, radar, keys) = (config.diff, &config.radar, config.keys);
+    let (diff, radar, keys) = (config.diff, &config.radar, &config.keys);
     state.detail.options = graft_git::diff::DiffOptions {
         context: diff.context,
         ignore_whitespace: diff.ignore_whitespace,
@@ -651,6 +670,7 @@ mod tests {
             &crate::config::Config {
                 keys: crate::config::Keys {
                     suspend_on_ctrl_z: true,
+                    remaps: Vec::new(),
                 },
                 ..crate::config::Config::default()
             },

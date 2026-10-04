@@ -155,21 +155,32 @@ fn undo_key_anywhere(next: &mut AppState, commands: &mut Vec<Command>, redo: boo
     next.local_jobs = local_jobs;
 }
 
+/// What every key does to the bottom row before anything answers it — the
+/// edge's unbound keys included (`edge::unanswered`). `true` when the key is
+/// spent doing it.
+///
+/// An unseen failure on the row is what a key answers first: `Esc` only
+/// dismisses it; any other key dismisses it and acts, without also
+/// acknowledging the status under it (m6-conflicts/78, Decided 1).
+pub(super) fn before_any_key(next: &mut AppState, key: &KeyPress) -> bool {
+    let unseen_shown = next.unseen.is_some() && !next.modal_owns_bottom_row();
+    if dismiss_unseen(next, key) {
+        return true;
+    }
+    if !unseen_shown {
+        acknowledge(next);
+    }
+    false
+}
+
 /// The half of [`super::core_event`] that answers a key.
 ///
 /// The detail pane answers its keys first (`Enter` opens it, ADR-0023).
 ///
 /// A blame place on screen is a modal pane (keymap §2.1, [`place_claim`]).
 pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
-    // An unseen failure on the row is what this key answers first: `Esc`
-    // only dismisses it; any other key dismisses it and acts, without also
-    // acknowledging the status under it (m6-conflicts/78, Decided 1).
-    let unseen_shown = next.unseen.is_some() && !next.modal_owns_bottom_row();
-    if dismiss_unseen(next, &key) {
+    if before_any_key(next, &key) {
         return;
-    }
-    if !unseen_shown {
-        acknowledge(next);
     }
     // The modal claims, in order, each returning `true` once it has taken
     // the key: a badge in the air is dropped by any key before that key

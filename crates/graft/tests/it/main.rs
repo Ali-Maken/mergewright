@@ -49,6 +49,7 @@ mod idle_advance;
 mod in_the_way_status;
 mod journal_put_back;
 mod journal_screen;
+mod keymap_config;
 mod land_on_result;
 mod lane_cap;
 mod look_chrome;

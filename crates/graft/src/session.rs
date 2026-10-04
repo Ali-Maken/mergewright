@@ -154,11 +154,10 @@ impl Session {
             no_color: capabilities.no_color,
         };
 
-        let mut notes: Vec<SanitizedText> = config
-            .warnings
-            .iter()
-            .map(|warning| sanitize_line(&warning.to_string()))
-            .collect();
+        // Config warnings are not notes here: with the keymap's they are the
+        // repository screen's `config_problems` (`config::keymap_from`,
+        // ADR-0055), said once on the bottom row and listed on `F2`.
+        let mut notes: Vec<SanitizedText> = Vec::new();
         // The tier row says the probe failed; only here is there room to say
         // what it failed with. An I/O error on the terminal is not something
         // to drop on the floor because Graft managed to carry on without it.
@@ -457,7 +456,9 @@ mod tests {
     }
 
     #[test]
-    fn config_warnings_become_notes_and_are_sanitised() {
+    fn config_warnings_are_not_session_notes() {
+        // m8-polish-and-ship/09b: they are `AppState::config_problems` now,
+        // drawn by `view::status::notes` (sanitised there) and the bottom row.
         let config = Loaded {
             warnings: vec![crate::config::ConfigWarning::UnknownKey {
                 path: "ui.\u{1b}[31mtheme".to_owned(),
@@ -467,11 +468,6 @@ mod tests {
 
         let session = Session::settle(&config, for_tests::capabilities());
 
-        assert_eq!(session.notes.len(), 1);
-        assert!(
-            !session.notes[0].as_str().contains('\u{1b}'),
-            "{:?}",
-            session.notes[0]
-        );
+        assert!(session.notes.is_empty(), "{:?}", session.notes);
     }
 }

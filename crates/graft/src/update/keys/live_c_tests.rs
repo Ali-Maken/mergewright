@@ -453,7 +453,9 @@ fn c_while_a_write_runs_refuses_in_words() {
     for frame in FRAMES {
         let mut state = live(InProgress::Rebase, Begun::InGraft, &[], frame);
         state.operating = Some(graft_core::job::JobId::new(7));
-        for (from, (after, commands)) in [("key", c(&state)), ("banner", from_the_banner(&state))] {
+        for (from, (after, commands)) in
+            vec![("key", c(&state)), ("banner", from_the_banner(&state))].into_boxed_slice()
+        {
             assert!(commands.is_empty(), "{frame:?} {from}: {commands:?}");
             assert_eq!(
                 after.status,

@@ -36,11 +36,13 @@
 //! DESIGN.md §2.2) is the next one due, and until it exists it loads as a
 //! warning rather than an error.
 
+mod keys;
 mod load;
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 mod types;
 
+pub(crate) use keys::keymap_from;
 pub use load::{ConfigError, ConfigWarning, Loaded, default_path, load, load_from};
 pub use types::{
     Config, DEFAULT_MAX_LANES, Diff, Graph, IconSet, Keys, Radar, RadarSetting, RendererChoice,

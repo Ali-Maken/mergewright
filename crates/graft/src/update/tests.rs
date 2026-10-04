@@ -1354,6 +1354,9 @@ fn every_field_spelled_out() -> AppState {
         commit_template: None,
         external_editor: None,
         suspend_on_ctrl_z: false,
+        keymap: super::SharedKeymap::default(),
+        config_problems: Vec::new(),
+        config_notice: false,
         preview: None,
         resolver: None,
         choices: std::collections::BTreeMap::new(),
@@ -2292,6 +2295,8 @@ fn an_open_search_prompt_keeps_a_handed_back_key_as_text() {
 }
 
 mod pane_space;
+
+mod keymap_edge;
 
 mod commit_graph_offer {
     use super::*;
