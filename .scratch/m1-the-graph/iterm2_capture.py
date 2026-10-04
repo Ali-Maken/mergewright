@@ -25,8 +25,7 @@ def winsize(fd, rows, cols):
 
 pid, fd = pty.fork()
 if pid == 0:
-    env = sandbox_env(None, TERM="xterm-256color", TERM_PROGRAM="iTerm.app", TERM_PROGRAM_VERSION="3.5.0",
-               XDG_CONFIG_HOME=home)
+    env = sandbox_env(home, TERM="xterm-256color", TERM_PROGRAM="iTerm.app", TERM_PROGRAM_VERSION="3.5.0")
     env.pop("COLORTERM", None)
     env.pop("TMUX", None)
     os.execve(graft, [graft, repo], env)

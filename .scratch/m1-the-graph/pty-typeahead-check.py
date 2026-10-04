@@ -24,6 +24,9 @@ Usage: python3 pty-typeahead-check.py <graft-binary> <repo-path> [mode]
 import fcntl, os, pty, select, signal, struct, sys, termios, time
 
 import pyte
+# Every Graft launch goes through sandbox_env (m8/22b): temp XDG_CONFIG_HOME, checked.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
+from graft_sandbox import sandbox_env  # noqa: E402
 
 BIN, REPO = sys.argv[1], sys.argv[2]
 ROWS, COLS = 24, 80
@@ -54,7 +57,7 @@ if pid == 0:
         os.dup2(slave, fd)
     os.close(master)
     os.close(slave)
-    os.execv(BIN, [BIN, REPO])
+    os.execve(BIN, [BIN, REPO], sandbox_env())
 
 screen = pyte.Screen(COLS, ROWS)
 stream = pyte.ByteStream(screen)

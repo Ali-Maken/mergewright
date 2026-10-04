@@ -55,7 +55,7 @@ BIN = f"{TARGET}/debug/examples/m5_walk"
 # lives in Rust (m5-history-and-ghost-preview/41).
 FIXTURES = os.environ.get("GRAFT_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures")
 CAPTURES = [line.split("\t") for line in
-            subprocess.run([BIN, "--stems"], capture_output=True, text=True,
+            subprocess.run([BIN, "--stems"], capture_output=True, text=True,  # sandbox-ok: --stems prints names, opens no repo
                            check=True).stdout.splitlines()]
 # `m5_walk --stems` also lists the M6 captures; those live under
 # docs/shots/m6/ and are walked by .scratch/m6-conflicts/pty-walk-m6.py.
@@ -274,7 +274,7 @@ def check_capture(stem, scenario, keys, frame, notes):
         return False
     if size > SOFT_CAP:
         notes.append(f"{size} bytes, over the 8 KB the ticket wants")
-    checked = subprocess.run([FIXTURES, "capture", path], input=body.encode(),
+    checked = subprocess.run([FIXTURES, "capture", path], input=body.encode(),  # sandbox-ok: graft-fixtures, not Graft
                              capture_output=True)
     if checked.returncode != 0:
         print(f"{path}: {size} bytes, DRIFTED")

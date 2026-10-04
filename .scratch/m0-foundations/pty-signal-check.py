@@ -4,6 +4,9 @@ Ticket 09 acceptance: after SIGINT, SIGTERM or SIGHUP the terminal must be
 byte-identical to how it was before launch.
 """
 import os, pty, signal, sys, termios, time
+# Every Graft launch goes through sandbox_env (m8/22b): temp XDG_CONFIG_HOME, checked.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
+from graft_sandbox import sandbox_env  # noqa: E402
 
 BIN = sys.argv[1]
 SIGS = {"SIGINT": signal.SIGINT, "SIGTERM": signal.SIGTERM, "SIGHUP": signal.SIGHUP}
@@ -34,7 +37,7 @@ def run(name, sig):
         os.setsid()
         os.dup2(slave, 0); os.dup2(slave, 1); os.dup2(slave, 2)
         os.close(master); os.close(slave)
-        os.execv(BIN, [BIN])
+        os.execve(BIN, [BIN], sandbox_env())
 
     # let it start, enter raw mode and draw
     time.sleep(1.5)

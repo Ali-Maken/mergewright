@@ -6,8 +6,10 @@ the user's real `~/.config/graft/recent`. `sandbox_env` returns an environment
 whose `XDG_CONFIG_HOME` is a temporary folder, and refuses (raises) when the
 result would still point at the real config folder.
 
-`scripts/check-scripts.sh` fails any Python script under `scripts/` or
-`.scratch/*/` that calls `os.execve` without going through `sandbox_env`.
+`scripts/check-sandbox.py` (run by `scripts/check-scripts.sh`) fails any
+tracked Python script that launches a program (exec*, spawn*, subprocess,
+pty.spawn, os.system...) other than a known non-Graft tool without an env
+from `sandbox_env`.
 """
 
 import os
@@ -50,7 +52,13 @@ def scratch_root(scenario):
 def sandbox_env(config_home=None, base=None, **overrides):
     """A copy of `base` (default: os.environ) with `overrides` applied and
     XDG_CONFIG_HOME set to `config_home` (a fresh temp folder when None).
-    Checked by `check_sandboxed` before it is returned."""
+    Checked by `check_sandboxed` before it is returned.
+
+    A caller's own config folder (one holding a `config.toml`) is passed as
+    `config_home`; passing XDG_CONFIG_HOME in `overrides` raises, because it
+    would be silently replaced (m8/22b, review M1)."""
+    if "XDG_CONFIG_HOME" in overrides:
+        raise ValueError("graft_sandbox: pass the config folder as config_home, not XDG_CONFIG_HOME=")
     if config_home is None:
         config_home = tempfile.mkdtemp(prefix="graft-script-config-")
     env = dict(os.environ if base is None else base)

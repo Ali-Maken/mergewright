@@ -40,7 +40,7 @@ BIN = f"{TARGET}/debug/examples/m5_walk"
 GRAFT = f"{TARGET}/debug/graft"
 FIXTURES = os.environ.get("GRAFT_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures")
 CAPTURES = [line.split("\t") for line in
-            subprocess.run([BIN, "--stems"], capture_output=True, text=True,
+            subprocess.run([BIN, "--stems"], capture_output=True, text=True,  # sandbox-ok: --stems prints names, opens no repo
                            check=True).stdout.splitlines()]
 CAPTURES = [c for c in CAPTURES if c[0].startswith("m6-")]
 WANTED = set(sys.argv[2:])
@@ -61,7 +61,7 @@ COMMIT_DATE = f"@{1_609_459_200 + 10 * 60} +0000"
 
 # Every Graft launch goes through sandbox_env (m8/22): temp XDG_CONFIG_HOME, checked.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
-from graft_sandbox import sandbox_env, scratch_root  # noqa: E402
+from graft_sandbox import check_sandboxed, sandbox_env, scratch_root  # noqa: E402
 config_home = tempfile.mkdtemp(prefix="graft-walk-m6-")
 os.makedirs(os.path.join(config_home, "graft"))
 with open(os.path.join(config_home, "graft", "config.toml"), "w") as f:
@@ -114,7 +114,7 @@ class Run:
                        GIT_AUTHOR_DATE=COMMIT_DATE, GIT_COMMITTER_DATE=COMMIT_DATE)
             env.pop("TERM_PROGRAM", None)
             env.update(extra_env or {})
-            os.execve(argv[0], argv, env)
+            os.execve(argv[0], argv, check_sandboxed(env))  # extra_env may not undo the sandbox
         os.close(slave)
         self.raw = open(f"{TARGET}/pty-walk-m6/{label}-{SIZE}.raw", "wb")
 
@@ -212,7 +212,7 @@ def check_capture(stem, scenario, keys, frame, notes):
         return False
     if size > SOFT_CAP:
         notes.append(f"{size} bytes, over 8 KB")
-    checked = subprocess.run([FIXTURES, "capture", path], input=body.encode(),
+    checked = subprocess.run([FIXTURES, "capture", path], input=body.encode(),  # sandbox-ok: graft-fixtures, not Graft
                              capture_output=True)
     if checked.returncode != 0:
         print(f"{path}: {size} bytes, DRIFTED")

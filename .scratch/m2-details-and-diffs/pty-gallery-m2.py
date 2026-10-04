@@ -28,7 +28,7 @@ TIER, SIZE = sys.argv[1], sys.argv[2]
 COLS, ROWS = (int(n) for n in SIZE.split("x"))
 BIN = "target/debug/examples/gallery"
 STEMS = [line.split(" ", 1)[1] for line in
-         subprocess.run([BIN, "--stems"], capture_output=True, text=True,
+         subprocess.run([BIN, "--stems"], capture_output=True, text=True,  # sandbox-ok: --stems prints names, opens no repo
                         check=True).stdout.splitlines()]
 WANTED = {int(n) for n in sys.argv[3:]} or set(range(1, len(STEMS) + 1))
 LAST = max(WANTED)
