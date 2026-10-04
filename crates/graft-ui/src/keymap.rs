@@ -21,8 +21,8 @@ mod tests;
 
 pub use chord::{ChordError, KeyChord, KeyLabel};
 pub use graft_core::event::KeyCode;
-pub use resolve::{Keymap, Translated};
 pub(crate) use resolve::join;
+pub use resolve::{Keymap, Translated};
 pub use table::defaults;
 pub use warning::KeyWarning;
 

@@ -15,11 +15,11 @@ use ratatui::style::Modifier;
 use unicode_width::UnicodeWidthStr;
 
 use super::footer::{commit_graph_segments, grouped, segments_width};
-use crate::keymap::Keymap;
 use super::hints::{HintContext, RowVerbs, TabWord};
 use super::layout::walk_text;
 use super::*;
 use crate::graph_column::{GraphColumn, RowPaint};
+use crate::keymap::Keymap;
 use crate::paint::color;
 use crate::test_support::{terminal, wide_history};
 use crate::theme::{Theme, ThemeKind, Token};
@@ -1288,11 +1288,14 @@ fn every_commit_graph_wording_fits_under_its_breakpoint() {
             );
         }
     }
-    let written: String =
-        commit_graph_segments(CommitGraphLine::Written { commits: 1_000_000 }, 120, Keymap::shipped())
-            .into_iter()
-            .map(|(text, _)| text)
-            .collect();
+    let written: String = commit_graph_segments(
+        CommitGraphLine::Written { commits: 1_000_000 },
+        120,
+        Keymap::shipped(),
+    )
+    .into_iter()
+    .map(|(text, _)| text)
+    .collect();
     assert_eq!(
         written,
         " commit-graph written: 1,000,000 commits · the next open sorts at once · ⌃R to use it"

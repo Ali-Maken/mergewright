@@ -590,9 +590,8 @@ fn y_launches() {
     );
     assert_eq!(
         view.again
-            .as_ref()
-            .map(|(key, verb)| (key.as_str(), verb.as_str())),
-        Some(("y", "put it in"))
+            .and_then(|again| again.text(graft_ui::keymap::Keymap::shipped())),
+        Some("y put it in".to_owned())
     );
     let (state, commands) = update(&state, key('y'));
     let (_, op) = operate_job(&commands).expect("y launches");

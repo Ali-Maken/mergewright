@@ -163,13 +163,25 @@ impl FinishScreen<'_> {
             return;
         }
         let into = self.view.names.as_ref().map(|(_, into)| into.as_str());
-        self.text(buf, rect, &preview_line(into, self.view.keys), Token::Text, false);
+        self.text(
+            buf,
+            rect,
+            &preview_line(into, self.view.keys),
+            Token::Text,
+            false,
+        );
         let second = Rect {
             y: rect.y + 1,
             height: 1,
             ..rect
         };
-        self.text(buf, second, &undo_line(self.view.keys), Token::TextMuted, false);
+        self.text(
+            buf,
+            second,
+            &undo_line(self.view.keys),
+            Token::TextMuted,
+            false,
+        );
     }
 
     /// The title's arrow at the ASCII tier.

@@ -60,7 +60,10 @@ pub fn legend(keys: &Keymap) -> String {
             format!("{undo} can undo it"),
             format!("{undo} never touches it"),
         ),
-        None => ("undo can take it back".to_owned(), "undo never touches it".to_owned()),
+        None => (
+            "undo can take it back".to_owned(),
+            "undo never touches it".to_owned(),
+        ),
     };
     format!("● done in Graft: {can} · $ done outside Graft: {never} · ✗ a commit no branch holds")
 }
@@ -240,10 +243,7 @@ impl JournalScreen<'_> {
     fn footer(&self, width: usize) -> String {
         let keys = self.keys;
         // `J` and `esc` both close: one hint, both keys (`J/esc close`).
-        let close = keys.key_verb(
-            &[ActionId("journal.close"), ActionId("app.back")],
-            "close",
-        );
+        let close = keys.key_verb(&[ActionId("journal.close"), ActionId("app.back")], "close");
         let JournalStatus::Ready = self.view.status else {
             return close.unwrap_or_default();
         };
@@ -271,7 +271,11 @@ impl JournalScreen<'_> {
         let kept = usize::from(close.is_some());
         parts.extend(close);
         while parts.len() > 1 && parts.join("  ").width() > width {
-            let drop = if parts.len() > kept + 1 { parts.len() - 1 - kept } else { 0 };
+            let drop = if parts.len() > kept + 1 {
+                parts.len() - 1 - kept
+            } else {
+                0
+            };
             parts.remove(drop);
         }
         parts.join("  ")

@@ -14,8 +14,8 @@ use ratatui::style::{Color, Modifier, Style};
 use unicode_width::UnicodeWidthStr;
 
 use crate::fit::fit;
-use crate::keymap::{ActionId, Keymap};
 use crate::graph_screen::{initials, relative_date, relative_date_long};
+use crate::keymap::{ActionId, Keymap};
 
 /// Which revision of the file is blamed; the title's last words.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -240,8 +240,7 @@ fn draw_into(buf: &mut Buffer, area: Rect, view: &BlameView, keys: &Keymap) {
         BlameBody::Reading => {}
         BlameBody::Failed(first) => {
             if body.height > 0 {
-                let words =
-                    keys.after(&format!(" git blame stopped: {first}"), BACK, "back");
+                let words = keys.after(&format!(" git blame stopped: {first}"), BACK, "back");
                 put(buf, body.x, body.y, body.width, &words, Style::default());
             }
         }

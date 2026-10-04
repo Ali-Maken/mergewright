@@ -29,8 +29,8 @@ use crate::detail_pane::line_render::{
     DiffRowStyle, draw_styled_text, gutter_style, line_style_at,
 };
 use crate::fit::fit;
-use crate::keymap::{ActionId, Keymap};
 use crate::graph_screen::{initials, relative_date};
+use crate::keymap::{ActionId, Keymap};
 use crate::theme::{Theme, Token};
 
 mod file_pane;

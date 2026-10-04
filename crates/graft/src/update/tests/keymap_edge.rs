@@ -696,6 +696,76 @@ fn merge_unbound_is_drawn_nowhere_and_its_menu_row_names_no_key() {
     }
 }
 
+/// Ticket 10c, the preview's verb slot: `r rebase` in an `r`-opened
+/// preview is `preview.confirm`'s own `r` chord, not `graph.rebase`'s.
+/// With `graph.rebase = "none"` the box still names `r rebase` — and `r`
+/// still confirms it, exactly as under the default keymap — so the part
+/// stays. Dropping `r` from `preview.confirm` is what takes it away, and
+/// then `r` does what an unanswered key does. (10c's Acceptance asked for
+/// the part to go with `graph.merge`/`graph.rebase` unbound; it would name a
+/// key that still acts as not acting — NOTES.)
+#[test]
+fn the_preview_names_its_again_key_exactly_while_it_confirms() {
+    let base = sized_to_draw(fixture(ContextId::Preview).expect("a preview"));
+    // The box's bottom border, where its keys are (`after rebase` in the
+    // ghost rows reads `r rebase` too).
+    let footer = |state: &AppState| {
+        crate::view::tests::draw(state, state.size.columns, state.size.rows)
+            .lines()
+            .find(|line| line.contains('╰'))
+            .expect("the box's bottom border")
+            .to_owned()
+    };
+    assert!(footer(&base).contains("r rebase"), "{}", footer(&base));
+    let press_r = KeyPress::plain(KeyCode::Char('r'));
+    assert_ne!(
+        seen(&base, press_r),
+        seen(&base, unanswered()),
+        "r confirms under the default keymap"
+    );
+
+    let (map, warnings) =
+        Keymap::with_overrides(&[("graph.rebase".to_owned(), vec!["none".to_owned()])]);
+    assert_eq!(warnings, []);
+    let rebase_unbound = AppState {
+        keymap: Arc::new(map),
+        ..base.clone()
+    };
+    assert!(
+        footer(&rebase_unbound).contains("r rebase"),
+        "{}",
+        footer(&rebase_unbound)
+    );
+    assert_eq!(
+        seen(&rebase_unbound, press_r),
+        seen(&base, press_r),
+        "r still confirms with graph.rebase unbound"
+    );
+
+    let (map, warnings) =
+        Keymap::with_overrides(&[("preview.confirm".to_owned(), vec!["y".to_owned()])]);
+    assert_eq!(warnings, []);
+    let confirm_on_y = AppState {
+        keymap: Arc::new(map),
+        ..base.clone()
+    };
+    assert!(
+        !footer(&confirm_on_y).contains("r rebase"),
+        "{}",
+        footer(&confirm_on_y)
+    );
+    assert!(
+        !footer(&confirm_on_y).contains('—'),
+        "{}",
+        footer(&confirm_on_y)
+    );
+    assert_eq!(
+        seen(&confirm_on_y, press_r),
+        seen(&confirm_on_y, unanswered()),
+        "r no longer confirms"
+    );
+}
+
 /// Ruling R5 (ticket m8/10): `[keys.graph] merge = "M"` is one collision —
 /// `M` was the Map's (02-keymap §2.3) — that keeps `graph.merge` and loses
 /// `graph.map`, warned at startup, never fatal.
@@ -740,19 +810,13 @@ fn capture_merge_remapped_to_shift_m() {
 
     let mut base = sized_to_draw(on_a_branch_row());
     base.seed_keys(keymap, problems);
-    let bar = crate::view::tests::draw(&base, base.size.columns, base.size.rows);
+    let draw =
+        |state: &AppState| crate::view::tests::draw(state, state.size.columns, state.size.rows);
+    // At startup the notice holds the bottom row, where the bar goes.
+    let notice = draw(&base);
     assert!(
-        bar.contains("M merge"),
-        "the bar spells merge's chord:\n{bar}"
-    );
-    assert!(
-        bar.contains("config: 1 problem · ? shows them"),
-        "the status row says the collision:\n{bar}"
-    );
-    assert!(!bar.contains("M map"), "the map lost M:\n{bar}");
-    assert!(
-        !bar.contains("m merge"),
-        "not the default it replaced:\n{bar}"
+        notice.contains("config: 1 problem · ? shows them"),
+        "the status row says the collision:\n{notice}"
     );
     let menu = update(&base, key(KeyCode::Char('.'))).0;
     assert!(
@@ -760,18 +824,31 @@ fn capture_merge_remapped_to_shift_m() {
         "{:?}",
         menu_labels(&menu)
     );
-    let menu_frame = crate::view::tests::draw(&menu, menu.size.columns, menu.size.rows);
+    let menu_frame = draw(&menu);
+    // The notice went at that first key; closing the menu shows the bar.
+    let closed = update(&menu, key(KeyCode::Escape)).0;
+    let bar = draw(&closed);
+    assert!(
+        bar.contains("M merge"),
+        "the bar spells merge's chord:\n{bar}"
+    );
+    assert!(!bar.contains("M map"), "the map lost M:\n{bar}");
+    assert!(
+        !bar.contains("m merge"),
+        "not the default it replaced:\n{bar}"
+    );
     // `docs/shots/m8-keymap-remapped-120x36.txt`. What right looks like:
-    // first frame, whole, a branch row's bar reading `M merge`, no `M map`,
-    // and the status row `config: 1 problem · ? shows them`; second, the
-    // `.` menu open on it with `Merge feature into main (M)` (the notice
-    // went at that first key).
+    // three whole frames. First, at startup: the status row
+    // `config: 1 problem · ? shows them` (it holds the bar's row until the
+    // first key). Second, the `.` menu on the branch row with
+    // `Merge feature into main (M)`. Third, the menu closed: the bar reads
+    // `M merge`, and no `M map` anywhere.
     // Colour unverified (rule 5).
     graft_fixtures::capture(
         format!(
             "{}/../../docs/shots/m8-keymap-remapped-120x36.txt",
             env!("CARGO_MANIFEST_DIR")
         ),
-        format!("{bar}\n{menu_frame}"),
+        format!("{notice}\n{menu_frame}\n{bar}"),
     );
 }

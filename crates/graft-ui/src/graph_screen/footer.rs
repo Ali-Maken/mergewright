@@ -194,10 +194,11 @@ fn commit_graph_wordings(line: CommitGraphLine, keys: &Keymap) -> Vec<Vec<(Strin
     // `<lead>` then `B build … · X never here`, each clause only while its
     // key is bound; the lead alone, separator dropped, when neither is.
     let offer = |lead: &str, build: &str| {
-        let clauses: Vec<(String, &str)> = [(write.clone(), build), (decline.clone(), " never here")]
-            .into_iter()
-            .filter_map(|(key, words)| key.map(|key| (key, words)))
-            .collect();
+        let clauses: Vec<(String, &str)> =
+            [(write.clone(), build), (decline.clone(), " never here")]
+                .into_iter()
+                .filter_map(|(key, words)| key.map(|key| (key, words)))
+                .collect();
         if clauses.is_empty() {
             return vec![text(lead)];
         }
@@ -345,12 +346,11 @@ mod tests {
     fn the_offer_row_drops_its_keys_off_the_graph() {
         use crate::graph_screen::CommitGraphLine;
         for width in [200, 120, 100, 80, 40] {
-            let without =
-                super::commit_graph_segments(
-                    CommitGraphLine::Offered { keys: false },
-                    width,
-                    crate::keymap::Keymap::shipped(),
-                );
+            let without = super::commit_graph_segments(
+                CommitGraphLine::Offered { keys: false },
+                width,
+                crate::keymap::Keymap::shipped(),
+            );
             assert!(without.iter().all(|(_, key)| !key), "{width}: {without:?}");
             let text = words(CommitGraphLine::Offered { keys: false }, width);
             assert!(

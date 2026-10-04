@@ -99,10 +99,9 @@ fn every_bar_spells_the_remapped_chords() {
                     // Joined as the bar joins them (R2: a repeated
                     // `alt+` is written once — the sweep's chords all
                     // carry one).
-                    let want = crate::keymap::join(
-                        hint.keys.iter().map(|key| expected(key, &moved)),
-                    )
-                    .unwrap_or_default();
+                    let want =
+                        crate::keymap::join(hint.keys.iter().map(|key| expected(key, &moved)))
+                            .unwrap_or_default();
                     let got = hint.key_text(&keys).unwrap_or_default();
                     if got != want {
                         wrong.push(format!(

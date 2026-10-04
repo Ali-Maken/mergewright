@@ -371,7 +371,7 @@ fn capture_for_docs_shots() {
 fn m_opened() -> PreviewBox {
     let mut view = rebase_view();
     view.confirm_key = true;
-    view.again = Some((sanitize_line("m"), sanitize_line("merge")));
+    view.again = Some(Again::opening("m", "merge"));
     view
 }
 
@@ -458,7 +458,7 @@ fn a_revert_preview_draws_the_old_footer() {
 fn r_opened_keeps() -> PreviewBox {
     let mut view = rebase_view();
     view.confirm_key = true;
-    view.again = Some((sanitize_line("r"), sanitize_line("rebase")));
+    view.again = Some(Again::opening("r", "rebase"));
     view.keep = true;
     view
 }
@@ -591,4 +591,27 @@ fn preview_box_docks_on_the_footer_below_thirty_rows() {
     let screen = Rect::new(0, 0, 80, 24);
     let area = preview_box_area(screen, &view);
     assert_eq!(area.bottom(), screen.bottom() - 1, "{area:?}");
+}
+
+/// Ticket 10c: the verb slot spells `preview.confirm`'s chord, and an
+/// opening chord only while it still confirms.
+#[test]
+fn again_names_a_confirm_chord_only_while_it_confirms() {
+    let shipped = Keymap::shipped();
+    assert_eq!(
+        Again::opening("r", "rebase").text(shipped).as_deref(),
+        Some("r rebase")
+    );
+    assert_eq!(
+        Again::confirm("apply").text(shipped).as_deref(),
+        Some("y apply")
+    );
+    let (only_y, warnings) =
+        Keymap::with_overrides(&[("preview.confirm".to_owned(), vec!["Y".to_owned()])]);
+    assert_eq!(warnings, []);
+    assert_eq!(Again::opening("r", "rebase").text(&only_y), None);
+    assert_eq!(
+        Again::confirm("apply").text(&only_y).as_deref(),
+        Some("Y apply")
+    );
 }

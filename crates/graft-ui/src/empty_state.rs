@@ -108,7 +108,8 @@ pub fn bar_keys(view: &EmptyStateView, keys: &Keymap) -> Vec<(String, &'static s
         parts
             .iter()
             .filter_map(|(action, label)| {
-                keys.spell_keys(&[ActionId(action)]).map(|key| (key, *label))
+                keys.spell_keys(&[ActionId(action)])
+                    .map(|key| (key, *label))
             })
             .collect()
     };

@@ -1,9 +1,9 @@
 //! The preview boxes that are not a plan's lines: closing, ready, stash and put-back.
 
 use super::{
-    AppState, Operation, PreviewBox, PreviewPlan, PreviewState, PreviewSubject, RecoverParams,
-    WorktreeEffect, capped_list, conflict_line, nothing_to_do, plan_lines, sanitize_line,
-    undo_line, worktree_line,
+    Again, AppState, Operation, PreviewBox, PreviewPlan, PreviewState, PreviewSubject,
+    RecoverParams, WorktreeEffect, capped_list, conflict_line, nothing_to_do, plan_lines,
+    sanitize_line, undo_line, worktree_line,
 };
 
 /// A put-in's own words over the rewrite's box (m7-power-tools/09, note
@@ -31,7 +31,7 @@ pub(super) fn put_in_words(
     }
     if preview.acts() || preview.planning() {
         view.confirm_key = false;
-        view.again = Some((sanitize_line("y"), sanitize_line(shown.confirm)));
+        view.again = Some(Again::confirm(shown.confirm));
     }
     view
 }

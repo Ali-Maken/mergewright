@@ -434,9 +434,8 @@ fn resize_is_drawn_only_when_nothing_else_was_dropped() {
 /// wider spelling under 10's first cut; with resize last (R1) each is back.
 #[test]
 fn the_hints_resize_once_pushed_off_are_drawn_again() {
-    let print = |context: &HintContext, columns| {
-        hints_text(&hints_for(context, Divider::Shown, columns))
-    };
+    let print =
+        |context: &HintContext, columns| hints_text(&hints_for(context, Divider::Shown, columns));
     // `m2-duplicate-commit`, `m2-evil-merge`: a marked plain row, 100 columns.
     let marked = HintContext::Marked(Box::new(HintContext::PlainRow {
         verbs: RowVerbs::NONE,
@@ -445,7 +444,11 @@ fn the_hints_resize_once_pushed_off_are_drawn_again() {
     assert!(bar.contains("u undo"), "{marked:?} at 100: {bar:?}");
     // `m7/diff-cursor-commit-120x40`, `m7/pane-bar-file-vs-directory-120x40`:
     // the detail pane focused on a file (and on a directory), 120 columns.
-    for (opens, blamable, folds) in [(false, true, false), (true, true, false), (true, false, true)] {
+    for (opens, blamable, folds) in [
+        (false, true, false),
+        (true, true, false),
+        (true, false, true),
+    ] {
         let focused = HintContext::PaneFocused {
             row: Box::new(HintContext::BranchRow {
                 current: true,

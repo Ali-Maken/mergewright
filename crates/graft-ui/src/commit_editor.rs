@@ -200,7 +200,11 @@ pub fn footer_other() -> String {
         ("commit.sign_off", "sign-off"),
         ("app.back", "cancel"),
     ]);
-    commit.into_iter().chain([rest]).collect::<Vec<_>>().join("  ")
+    commit
+        .into_iter()
+        .chain([rest])
+        .collect::<Vec<_>>()
+        .join("  ")
 }
 
 /// The footer for whichever field has focus. One word per key, not per mode:

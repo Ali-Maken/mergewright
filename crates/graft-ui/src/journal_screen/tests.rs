@@ -173,7 +173,11 @@ fn an_aborted_rows_reason_is_shown_in_full_when_it_is_expanded() {
 #[test]
 fn an_empty_journal_says_what_will_fill_it() {
     let grid = draw(&view(Vec::new(), JournalStatus::Empty), 70, 8);
-    assert!(grid.iter().any(|line| line.contains(&empty(Keymap::shipped()))), "{grid:?}");
+    assert!(
+        grid.iter()
+            .any(|line| line.contains(&empty(Keymap::shipped()))),
+        "{grid:?}"
+    );
 }
 
 #[test]
@@ -241,7 +245,11 @@ fn at_180_every_column_is_drawn() {
     );
     assert!(grid[3].starts_with("▸    └ ✗ lost"), "{grid:?}");
     assert!(grid[3].contains("9a8b7c6 \"Add rate limiter\""), "{grid:?}");
-    assert!(grid.iter().any(|line| line.contains(&legend(Keymap::shipped()))), "{grid:?}");
+    assert!(
+        grid.iter()
+            .any(|line| line.contains(&legend(Keymap::shipped()))),
+        "{grid:?}"
+    );
     assert!(grid.iter().any(|line| line.contains(NO_TRACE)), "{grid:?}");
 }
 
