@@ -8,7 +8,7 @@
 # (scroll residual lag). Full test output stays in a temp dir.
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 OUT=${1:-docs/perf/m8-pace.txt}
 WORK=$(mktemp -d)
 LOAD=$(uptime | sed "s/.*load averages*: //")

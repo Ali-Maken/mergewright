@@ -39,6 +39,9 @@ fn crowded_shapes_at_every_depth_below_truecolor() {
         Shape::FoxtrotMerge,
         Shape::OctopusMerge,
         Shape::Linear,
+        // Compaction's shape (m8-polish-and-ship/22): 15 columns, outside
+        // `Shape::ALL`, so `widest_shape` never picks it.
+        Shape::ManyLanes,
     ];
     let widest = widest_shape();
     if !shapes.contains(&widest) {

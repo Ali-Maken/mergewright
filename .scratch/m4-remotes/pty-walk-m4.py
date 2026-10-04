@@ -63,6 +63,9 @@ SOFT_CAP, HARD_CAP = 8 * 1024, 200 * 1024
 # (m6-conflicts/63). The wall clock made a new id each run.
 COMMIT_DATE = f"@{1_609_459_200 + 10 * 60} +0000"
 
+# Every Graft launch goes through sandbox_env (m8/22): temp XDG_CONFIG_HOME, checked.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
+from graft_sandbox import sandbox_env, scratch_root  # noqa: E402
 config_home = tempfile.mkdtemp(prefix="graft-walk-m4-")
 os.makedirs(os.path.join(config_home, "graft"))
 with open(os.path.join(config_home, "graft", "config.toml"), "w") as f:
@@ -113,7 +116,7 @@ class Run:
                 os.dup2(slave, fd)
             os.close(self.master)
             os.close(slave)
-            env = dict(os.environ, XDG_CONFIG_HOME=config_home, TERM="xterm-256color",
+            env = sandbox_env(config_home, GRAFT_SCRATCH_ROOT=scratch_root(scenario), TERM="xterm-256color",
                        GIT_AUTHOR_DATE=COMMIT_DATE, GIT_COMMITTER_DATE=COMMIT_DATE)
             env.pop("TERM_PROGRAM", None)
             os.execve(BIN, [BIN, "--capture", scenario], env)

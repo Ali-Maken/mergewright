@@ -1,18 +1,17 @@
 m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, keys m, unicode tier, 160x48
 
- graft <scratch____________________________________________________________>  8 commits
-    │    after merge
-  ◎┈╮    [◆ main] Merge branch 'feature' into main                                                                                               GT —    —
-  │ ● ▏  [feature] finish the feature                                                                                                            GF 6y   8d6cd28
-  │ ●    start the feature                                                                                                                       GF 6y   52f3b96
-●─╯ │    main moves again                                                                                                                        GF 6y   45fa51d
-●   │    main moves on                                                                                                                           GF 6y   37926a7
-●───╯    add the base                                                                                                                            GF 6y   ed332bc
-●        Correct the note                                                                                                                        GF 7y   a82960b
-●        Add the first note                                                                                                                      GF 7y   fadcfb3
-◇        Add a readme                                                                                                                            GF 7y   64ded19
+ ◆ graft-trivial-0  /tmp/graft-capture/merge-no-ff-ghost-equals-git/graft-trivial-0 · main                                                            8 commits
 
-
+      │    after merge
+    ◎┈╮    [◆ main] Merge branch 'feature' into main                                                                                            GT —    —
+▸   │ ●    [feature] finish the feature                                                                                                         GF 6y   8d6cd28
+    │ ●    start the feature                                                                                                                    GF 6y   52f3b96
+  ●─╯ │    main moves again                                                                                                                     GF 6y   45fa51d
+  ●   │    main moves on                                                                                                                        GF 6y   37926a7
+  ●───╯    add the base                                                                                                                         GF 6y   ed332bc
+  ●        Correct the note                                                                                                                     GF 7y   a82960b
+  ●        Add the first note                                                                                                                   GF 7y   fadcfb3
+  ◇        Add a readme                                                                                                                         GF 7y   64ded19
 
 
 
@@ -47,4 +46,5 @@ m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, 
 │ git merge --no-edit --ff -m 'Merge branch '\''feature'\'' into main' feature                                                                                 │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
 ╰ y confirm  m merge  ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

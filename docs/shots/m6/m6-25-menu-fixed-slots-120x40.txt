@@ -1,7 +1,8 @@
 m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., unicode tier, 120x40
 
- graft <scratch____________________________________________________________>  6 commits
-  ● ▏  [fix] fix the bug                                                                                 GF 6y   401cfbe
+ ◆ graft-trivial-0  /tmp/graft-capture/menu-checkout/graft-trivial-0 · main                                   6 commits
+
+▸   ●    [fix] fix the bug                                                                              GF 6y   401cfbe
  Checkout fix
  Cherry-pick 401cfbe (o)
  Copy SHA (y)
@@ -37,6 +38,5 @@ m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., un
 
 
 
-
-
- m merge  r rebase  ⏎ open  . more  o  b  t  P  c  p  f  u  S  /  R  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · c commit · p pull · f fetch · u undo · . more

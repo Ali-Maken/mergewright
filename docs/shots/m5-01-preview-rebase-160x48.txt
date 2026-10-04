@@ -1,19 +1,18 @@
 m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and-plan-commands, keys j j r, unicode tier, 160x48
 
- graft <scratch____________________________________________________________>  8 commits
-  ●      finish the feature                                                                                                                      GF 6y   8d6cd28
-  ●      start the feature                                                                                                                       GF 6y   52f3b96
-  │      after rebase
-  │ ○    [◆ feature] finish the feature                                                                                                          GF —    —
-  │ ○    start the feature                                                                                                                       GF —    —
-●─│─╯ ▏  [main] main moves again                                                                                                                 GF 6y   45fa51d
-● │      main moves on                                                                                                                           GF 6y   37926a7
-●─╯      add the base                                                                                                                            GF 6y   ed332bc
-●        Correct the note                                                                                                                        GF 7y   a82960b
-●        Add the first note                                                                                                                      GF 7y   fadcfb3
-◇        Add a readme                                                                                                                            GF 7y   64ded19
+ ◆ graft-trivial-0  /tmp/graft-capture/preview-opens-with-ghosts-and-plan-commands/graft-trivial-0 · feature                                          8 commits
 
-
+    ●      finish the feature                                                                                                                   GF 6y   8d6cd28
+    ●      start the feature                                                                                                                    GF 6y   52f3b96
+    │      after rebase
+    │ ○    [◆ feature] finish the feature                                                                                                       GF —    —
+    │ ○    start the feature                                                                                                                    GF —    —
+▸ ●─│─╯    [main] main moves again                                                                                                              GF 6y   45fa51d
+  ● │      main moves on                                                                                                                        GF 6y   37926a7
+  ●─╯      add the base                                                                                                                         GF 6y   ed332bc
+  ●        Correct the note                                                                                                                     GF 7y   a82960b
+  ●        Add the first note                                                                                                                   GF 7y   fadcfb3
+  ◇        Add a readme                                                                                                                         GF 7y   64ded19
 
 
 
@@ -47,4 +46,5 @@ m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and
 │ git rebase -i --no-update-refs --no-autostash --empty=drop main                                                                                              │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
 ╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

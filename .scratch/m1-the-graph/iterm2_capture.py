@@ -10,6 +10,9 @@ graph.renderer = "pixel", resizes the pty once, quits, and writes:
 A pty accepts anything: this proves what Graft emits, not what iTerm2 draws.
 """
 import base64, fcntl, os, pty, re, select, signal, struct, sys, tempfile, termios, time
+# Every Graft launch goes through sandbox_env (m8/22): temp XDG_CONFIG_HOME, checked.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
+from graft_sandbox import sandbox_env  # noqa: E402
 
 graft, repo, out = sys.argv[1], sys.argv[2], sys.argv[3]
 home = tempfile.mkdtemp()
@@ -22,7 +25,7 @@ def winsize(fd, rows, cols):
 
 pid, fd = pty.fork()
 if pid == 0:
-    env = dict(os.environ, TERM="xterm-256color", TERM_PROGRAM="iTerm.app", TERM_PROGRAM_VERSION="3.5.0",
+    env = sandbox_env(None, TERM="xterm-256color", TERM_PROGRAM="iTerm.app", TERM_PROGRAM_VERSION="3.5.0",
                XDG_CONFIG_HOME=home)
     env.pop("COLORTERM", None)
     env.pop("TMUX", None)

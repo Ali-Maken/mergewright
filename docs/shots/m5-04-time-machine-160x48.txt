@@ -1,12 +1,11 @@
 m5 walk capture: m5-04-time-machine — scenario time-machine-three-steps, keys J j j ⏎, unicode tier, 160x48
 
- graft <scratch____________________________________________________________>  4 commits
-◆ ▏  [◆ main] add the base                                                                                                                       GF 6y   ed332bc
-●    Correct the note                                                                                                                            GF 7y   a82960b
-●    Add the first note                                                                                                                          GF 7y   fadcfb3
-◇    Add a readme                                                                                                                                GF 7y   64ded19
+ ◆ graft-trivial-0  /tmp/graft-capture/time-machine-three-steps/graft-trivial-0 · main                                                                4 commits
 
-
+▸ ◆    [◆ main] add the base                                                                                                                    GF 6y   ed332bc
+  ●    Correct the note                                                                                                                         GF 7y   a82960b
+  ●    Add the first note                                                                                                                       GF 7y   fadcfb3
+  ◇    Add a readme                                                                                                                             GF 7y   64ded19
 
 
 
@@ -47,4 +46,5 @@ m5 walk capture: m5-04-time-machine — scenario time-machine-three-steps, keys 
 │ undo: u takes this back                                                                                                                                      │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
 ╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

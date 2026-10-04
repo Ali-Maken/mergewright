@@ -53,9 +53,13 @@ import select
 import struct
 import subprocess
 import sys
+import tempfile
 import termios
 import threading
 import time
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from graft_sandbox import sandbox_env  # noqa: E402
 
 BEGIN = b"\x1b[?2026h"
 QUIET = 1.5
@@ -94,10 +98,12 @@ def main():
             return False
         return who == "kitty" or who == f"deflate-{deflate}"
 
+    config_home = tempfile.mkdtemp(prefix="graft-scroll-lag-")
     pid, fd = pty.fork()
     if pid == 0:
         os.chdir(repo)
-        env = dict(os.environ)
+        # Temp config folder, checked (m8/22): never the user's real recents.
+        env = sandbox_env(config_home)
         env.update(TERM="xterm-256color", COLORTERM="truecolor", TERM_PROGRAM="vscode")
         if profile == "iterm2":
             env.update(TERM_PROGRAM="iTerm.app", TERM_PROGRAM_VERSION="3.5.0")

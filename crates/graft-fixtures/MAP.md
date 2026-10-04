@@ -20,6 +20,7 @@ Public items, one line each.
 - `Unavailable` (enum) — why one shape cannot be had on this machine.
 - `CacheError` (enum) — why the fixture cache could not be used.
 - `Scratch` (struct) — a temp copy deleted on drop; `path()`.
+- `FIXED_ROOT_VAR` (const, `GRAFT_SCRATCH_ROOT`) — when set, every `Scratch` is `<root>/graft-<prefix>-<n>` (n counts this process's scratches) instead of a random temp dir; the pty walks set it to `/tmp/graft-capture/<scenario>` so captures reproduce across machines (m8-polish-and-ship/22).
 - `measure` (fn) — run work and report its peak memory rise.
 - `peak_rss` (fn) — this process's peak resident set size.
 - `Measured` (struct) — a measurement; `rise()`.

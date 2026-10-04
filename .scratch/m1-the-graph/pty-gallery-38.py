@@ -13,6 +13,9 @@ Usage: python3 pty-gallery-38.py <unicode|ascii> <stop> [<stop> ...]
 import fcntl, os, pty, select, struct, sys, tempfile, termios, time
 
 import pyte
+# Every Graft launch goes through sandbox_env (m8/22): temp XDG_CONFIG_HOME, checked.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
+from graft_sandbox import sandbox_env  # noqa: E402
 
 TIER, STOPS = sys.argv[1], sys.argv[2:]
 TOTAL = 23
@@ -34,7 +37,7 @@ if pid == 0:
         os.dup2(slave, fd)
     os.close(master)
     os.close(slave)
-    env = dict(os.environ, XDG_CONFIG_HOME=config_home, TERM="xterm-256color")
+    env = sandbox_env(config_home, TERM="xterm-256color")
     env.pop("TERM_PROGRAM", None)
     os.execve(BIN, [BIN], env)
 
