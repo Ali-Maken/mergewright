@@ -212,3 +212,189 @@ launch sites, the three answer paths, `remote/in_flight.rs` and `banner/focus_ke
 quit waits for the write's own entry (`it::quit_waits` reads it `Committed`).
 
 Scout: `scouts/13b-quit.md` (used).
+
+## Review fixes (planner, 2026-10-04 — review `docs/reviews/m8-13b-quit.md`, Majors 1–4)
+
+Build with: **Opus** — a cause-level change to the quit and shutdown order. A wrong order breaks his terminal or cuts
+git half-way, and neither shows in a diff. Not Fable: the shape is decided below.
+Needs: none. Crate set: **graft only** (graft-git's `STOP_WITHIN` and `Stop` are used, not changed).
+Brownfield: `scouts/13b-quit.md` covers `quit.rs`, `jobs/*`, `finish/keys.rs`. Not covered: the exit order in
+`event_loop/startup.rs` (shutdown `:314` before restore `:397`, per the review) and `event_loop/signals.rs`. The
+builder reads those two from MAP first, then the lines the review names. The conductor may send a scout instead.
+
+**Pending Q1** (below). Built on its recommended default. If the user picks the alternative, only M1 items 3–5 and
+their boxes change (noted). Items 1–2, 6–10 and M2 stand either way.
+
+### Q1 for the user (one question; the conductor asks it in his words, no ticket numbers)
+"If a merge or rebase hangs (say a git hook stuck on the network) and you quit anyway, should the app **stop git where
+it is**, leaving the merge or rebase paused so the next launch offers continue or abort? Or should it **never touch
+git** and leave it running after the app has gone?"
+- **Recommended: stop it.** Offered only after 10 s of waiting, behind a box that names the cost. Why: the paused
+  state is recoverable, and it was measured (NOTES above: `.git/rebase-merge/` kept, no `.lock` files, `--continue`
+  and `--abort` both work). Leaving git running gives no way back into the app if the hook never ends. Git may also
+  die anyway at its next output line once the app's end of its pipes closes. That last point is **unverified**:
+  graft-git MAP `run` says only that stdout and stderr are drained on the app's threads.
+- Alternative (never stop it): no stop box; item 3 becomes a line saying how to leave anyway (`q` then closes the
+  app and leaves git running). Item 8's bound expiry exits without signalling. The exit line reads
+  `<bin>: git is still running <op> in the background`.
+
+### M1: a way out of a hung write, and a signal path that always gives the terminal back
+Read first (in addition): review Majors 1–2; keymap §2.2 "`q` while a write runs" (after the doc edits below);
+graft MAP `event_loop::signals`, `Exit`, `Quit`, `jobs` (`JobRunner::shutdown`, `unstoppable`, `SHUTDOWN_GRACE`),
+`rest::Rest::deadline`, `Wakes::next_wake_by`, `Wakes::now`, `TerminalSession::restore`; graft-git MAP `run`
+(`STOP_WITHIN`, `Stop`).
+
+In the app:
+1. For the first 10 s the wait stays as built (`STOP_OFFER_AFTER`). In that time, `q` or `Ctrl+C` while waiting does
+   nothing: the status row already says it.
+2. At 10 s the status row reads exactly `<op> · still running after 10 s · q stop it now · esc stays`. The text is
+   fixed, with no ticking count, so nothing wakes after this. **The loop owns the clock**: while a wait stands, it
+   stamps `since` the first turn it sees the wait (`Wakes::now`), adds `since + STOP_OFFER_AFTER` to the deadlines
+   it already waits on (`Pacer`, `Rest`, through `Wakes::next_wake_by`), and at that instant calls
+   `quit::waited_long`. `update` stays pure: no thread, no poll.
+3. After that, `q` or `Ctrl+C` opens the stop box. Title `Quit now?`. Lines `<op> is still running · a git hook may
+   be stuck` and `quit now stops it half-way · the next launch shows where it stopped`. Buttons `[ Cancel ] [ Quit ]`,
+   cursor on Cancel, `y` quits, and the bar leads `y quit` (`ConfirmYes::Quit`, so `COVERAGE_SLOTS` does not change).
+   Cancel or `Esc` closes the box, and the wait stands with its long line. A further `Esc` drops the wait (the
+   existing chain).
+4. `y` → `Command::ForceStop(job)`, then `Quit::StoppedHalfWay`. `JobRunner::force_stop` lifts the job's
+   unstoppable mark and cancels it, using the existing `run` stop: SIGTERM, SIGKILL after 2 s, reaped, all within
+   `SHUTDOWN_GRACE`. **Nothing else lifts the mark.**
+5. After the terminal is restored, stderr gets one line:
+   `<bin>: stopped <op> half-way after <n> s · <bin> here shows where it stopped`. `<bin>` is the binary's own name
+   (the man page's). `<n>` is whole seconds since `since`.
+6. Where he lands on relaunch is what recovery shows today: the banner with `c continue · a abort` for a merge, rebase,
+   cherry-pick or revert left in progress, and the edits set aside through `JournalRead::interrupted_edits`. The
+   builder **observes** both on a real repo. If the relaunch does not offer the set-aside edits, that is lost work
+   (M3): **stop and report it with lines**. Do not patch it here.
+
+Signal path (SIGTERM, SIGHUP, a SIGINT; `Exit::Signal`):
+7. On **every** exit, the terminal is restored **before** any wait that can last longer than `SHUTDOWN_GRACE`.
+   Anything that needs the terminal before the restore (Kitty frees, per `pump`) stays before it; the job wait moves
+   after it. The NOTES name the lines that moved.
+8. If a `Stoppable::No` write is running when a signal arrives:
+   - Restore the terminal.
+   - Print to stderr: `<bin>: waiting for <op> to finish (up to 60 s) · send the signal again to stop it half-way`.
+     After a hang-up nobody can read stderr, so a write error there is ignored, with a comment saying why that is safe.
+   - Wait up to `EXIT_WRITE_WAIT` = 60 s.
+   - The write ends → re-raise the signal, as today.
+   - The bound is reached, or a second watched signal arrives → `force_stop`, wait `SHUTDOWN_GRACE`, print item 5's
+     line, re-raise.
+
+   Why 60 s: a merge or rebase with ordinary hooks lands well inside it, and a hung hook does not leave an invisible
+   process for good. Why the second signal: that is how a person asks for "now", as with a second `Ctrl+C`.
+9. `JobRunner::shutdown` takes the bound and the force flag, so **no path waits without a bound**. That includes an
+   unstoppable job still **queued** behind stalled workers (review Major 1, bullet 3).
+10. Observe this, don't fix it: does a terminal hang-up's SIGHUP reach the git child directly, because it shares the
+    app's process group?
+    - Method: the real binary in a pty, a merge with a `pre-merge-commit` hook running `sleep 600`, then close the
+      pty.
+    - Record whether git or the hook got the SIGHUP, and the spawn line in `graft-git` `run/exec.rs` that sets the
+      process group, or doesn't.
+    - Put the finding in NOTES with lines. Changing how git is spawned is **out of scope**: a background process group
+      that reads the tty stops on SIGTTIN, which would be a new hang.
+
+Signatures (the `quit` module's internals may be renamed; MAP records the final shape):
+```rust
+// graft, update/quit.rs
+pub(crate) const STOP_OFFER_AFTER: Duration = Duration::from_secs(10);
+pub struct QuitWait { /* existing: job, line */ pub since: Option<Instant>, pub long: bool }
+pub(crate) fn stamp_wait(state: &mut AppState, now: Instant);   // the loop, first turn it sees the wait
+pub(crate) fn waited_long(state: &mut AppState);                // the loop, at since + STOP_OFFER_AFTER
+pub enum QuitThen { Now, Stop(JobId), WaitFor(JobId), StopNow(JobId) } // StopNow: the stop box's [ Quit ]
+
+// graft, update (Command)
+Command::ForceStop(JobId)
+
+// graft, update::Quit
+pub enum Quit { Requested, HandedBack(KeyCode), Fatal(String), StoppedHalfWay { what: String, after: Duration } }
+
+// graft, jobs
+pub const EXIT_WRITE_WAIT: Duration = Duration::from_secs(60);
+impl JobRunner {
+    /// The only path that signals a Stoppable::No job: the stop box's `y`, or the signal path's bound / second signal.
+    pub fn force_stop(&self, id: JobId);
+    pub fn shutdown(self, grace: Duration, writes: Duration, force: &dyn graft_git::run::Stop) -> Shutdown;
+}
+// Shutdown says which unstoppable jobs it force-stopped, so the exit line can name them.
+```
+
+Touches: `update/quit.rs`; `update/state.rs` (`shown_status`); `event_loop/{running,startup,signals}.rs`; `jobs/{pool,runner,mod}.rs`; `update` `Command` (each exhaustive match); `Quit` (each match: `Quit::should_quit`, the exit report); the `?` help (it lists the long-wait line's `q` if it lists status keys); captures that draw the waiting row (`m8-quit-waits-80x24.txt`: its first 10 s are unchanged, so it should still match — confirm it); `TESTING.md` quit rows; journal/undo (no new entry kind; a forced stop leaves the write's entry `Pending`, which recovery reads as live or interrupted).
+
+- [ ] Before 10 s, `q` and `Ctrl+C` while waiting change nothing: no box, same line. Virtual timeline.
+- [ ] At 10 s, on a virtual timeline (`event_loop/tests/settle.rs` `Timed`), the status row is exactly
+      `<op> · still running after 10 s · q stop it now · esc stays`. While idle, the loop's next deadline **is**
+      `since + 10 s`: nothing wakes it earlier, and nothing wakes it after.
+- [ ] After that, `q` and `Ctrl+C` each open the stop box with the exact words above. Cancel or `Esc` keeps the wait
+      and its long line. The next `Esc` drops it.
+- [ ] `y` → `ForceStop(id)` emitted exactly once, quit `StoppedHalfWay`. No other path emits `ForceStop`, and
+      `cancel` and `cancel_all` still skip a marked job (the existing `an_unstoppable_job_ignores_a_cancel_by_id`
+      still holds).
+- [ ] Real pool, real repo, a merge with a `pre-merge-commit` hook `sleep 600`, `STOP_OFFER_AFTER` injected short for
+      the test: `q y`, wait, `q y`. Then the git child is gone (`kill -0`), the app quits within `SHUTDOWN_GRACE`,
+      `.git/MERGE_HEAD` is present, there is no `*.lock` under `.git`, and the journal entry is `Pending`. Relaunch →
+      the banner offers `c continue · a abort`.
+- [ ] The same walk over a rebase with edits set aside: the relaunch offers the edits back. If it does not, stop and
+      report (item 6).
+- [ ] Exit line exactly item 5's words, on stderr, **after** the restore sequence in the terminal transcript.
+- [ ] Signal path, injected short bound: a SIGTERM with a hung unstoppable write leaves the transcript in this order:
+      restore, then the waiting line. A second SIGTERM → git child gone within `SHUTDOWN_GRACE`, item 5's line, the
+      signal re-raised (exit status). Bound expiry with no second signal does the same.
+- [ ] No unbounded wait is left. `shutdown_waits_for_an_unstoppable_job_and_never_cancels_it` is rewritten to "waits
+      up to the bound and never cancels before it". It and every new shutdown test run on a thread joined with a
+      timeout, so a regression fails instead of hanging nextest (review Minor 6).
+- [ ] Item 10's SIGHUP observation is in NOTES, with the spawn line.
+- [ ] Capture `docs/shots/m8-quit-stop-now-80x24.txt`: the long status row, then the stop box over it. Colour
+      **unverified**. Real merge and real pool, as `capture_quit_waits` does; the short `STOP_OFFER_AFTER` is stated
+      in its caption.
+- [ ] Journey count: `quit-while-write 2` (`q y`, then nothing) and `quit-stuck-write 4` (`q y`, the 10 s,
+      `q y`), each walked and counted in `it::quit_waits`. The walk fails if the keys exceed the fence (design note
+      fence, after the doc edit below).
+- [ ] MAP rows: `JobRunner::shutdown`, `force_stop`, `EXIT_WRITE_WAIT`, `SHUTDOWN_GRACE` (still the stoppable grace),
+      `Quit`, `QuitWait`, `update::quit`. Also `confirm_key` (review Major 3): "`Ctrl+C` passes through (`false`, so
+      the app quits)" becomes "passes through to `quit::asked`: quits, or over a `Stoppable::No` write boxes like
+      `q`".
+
+### M2: `Esc` on the finish summary drops the wait (a bug, cause-level)
+- [ ] In `finish_key`'s committing branch (`update/finish/keys.rs:23-25`), `Esc` calls `quit::drop_wait` first, as
+      `banner/focus_keys.rs:58` does. With no wait it stays swallowed, as today. `q` stays the summary's own key
+      (a modal pane, keymap §2.1); it is not changed here.
+- [ ] One test per modal that can be on screen while a `Stoppable::No` write runs: finish summary, resolver, rewrite
+      editor. `Ctrl+C` → box, `y` → wait, `Esc` → `quit_when_done` is `None`, the write still running, no `CancelJob`.
+      The finish-summary test is red before the fix.
+- [ ] The same three modals, after 10 s: `Ctrl+C` opens the stop box (M1 item 3). `Ctrl+C` is the only key these
+      modals pass through.
+
+### Doc edits (apply verbatim; the planner had no edit tool on this pass)
+Review Major 3 (keymap) and Major 4 (design note). The builder applies these. They are design text, not the
+builder's wording.
+- `docs/design/02-keymap.md:199`: replace `` `Ctrl+C` quits at once, never boxed. `` with
+  `` `Ctrl+C` quits at once with no box, except over a write that can't stop, where it boxes exactly like `q` and never signals that write (**Proposed**, M8/13b conductor decision 2026-10-02; not yet seen by the user). ``
+- `docs/design/02-keymap.md:233`: replace the bullet `` - `Ctrl+C` is not changed by this. `` with three bullets:
+  - `` - `Ctrl+C` over a write that can't stop does what `q` does: the same box, the same wait. Over the quit box itself it does not quit (**Proposed**, M8/13b, conductor 2026-10-02). ``
+  - `` - **A stuck write** (**Proposed**, M8/13b review fix; stopping git is pending the user's answer): after 10 s of waiting the status row reads `<op> · still running after 10 s · q stop it now · esc stays`. `q` or `Ctrl+C` then opens `Quit now?`, with the lines `<op> is still running · a git hook may be stuck` and `quit now stops it half-way · the next launch shows where it stopped`, and `[ Cancel ] [ Quit ]`; `y` quits. Before 10 s, `q` and `Ctrl+C` while waiting do nothing. Why 10 s: a merge or rebase with ordinary hooks ends inside it, and an earlier offer invites stopping a write that was about to land. The shell then reads `<bin>: stopped <op> half-way after <n> s · <bin> here shows where it stopped`. ``
+  - `` - **Quit from outside** (SIGTERM, SIGHUP; **Proposed**, M8/13b): the terminal is given back first. A write that can't stop gets up to 60 s to land, then it is stopped half-way; the same signal again stops it at once. The shell gets one line saying what was stopped. ``
+- `docs/design/02-keymap.md:289`: replace `` `Ctrl+C` passes through (quits, §2.1) `` with
+  `` `Ctrl+C` passes through to §2.2's quit (over a write that can't stop it boxes like `q`; over the quit box itself it does not quit — **Proposed**, M8/13b) ``
+- `docs/design-notes/m8-polish-and-ship.md`, Prior art table, a new row after `:71`:
+  `` | **Quit while a write runs; a write that hangs** | **no study**: nothing in `docs/research/` covers how lazygit, VS Code Git, Sublime Merge, JetBrains or gitui quit mid-merge or mid-rebase (grep `quit`, 2026-10-04; review m8-13b Major 4) | wait for it, then quit; after 10 s `q` offers to stop it half-way; a signal gives the terminal back first, then waits ≤ 60 s (keymap §2.2) | **I**. Nothing fits, because no source was read. The shape argues from ux-principles §3.1 (where he lands), heuristic 4 (one box, one `y`) and the measured half-rebase (13b NOTES). **A researcher pass is owed**: `docs/research/quit-during-operation.md` (lazygit, VS Code Git, Sublime Merge, JetBrains, gitui) | ``
+- Same note, Journeys table, after row 23:
+  `` | 24 | Quit while a merge or rebase runs | `q` `y`, then nothing: it quits when the write lands | 2+1 | no study | ``
+  `` | 25 | Quit while a git hook hangs | `q` `y`, wait 10 s, `q` `y` | 4+2 | no study | ``
+- Same note, "Where he lands" table, after the `q`-while-a-write-runs row:
+  `` | Stuck write, `q` `y` after 10 s | shell, with `<bin>: stopped <op> half-way after <n> s · <bin> here shows where it stopped`; next launch: banner `c continue · a abort` (merge, rebase, cherry-pick, revert), set-aside edits offered (13b review fix) | ``
+  `` | SIGTERM / SIGHUP while a write runs | terminal given back at once; the write lands within 60 s → exits; else it is stopped half-way, with the same line; a second signal stops it at once | ``
+- Same note, `journey-counts` fence, after `undo-see-result`:
+  ```
+  quit-while-write              2     # +1 · no study · q y (quits when the write lands)
+  quit-stuck-write              4     # +2 · no study · q y … 10 s … q y
+  ```
+
+**For the conductor, not the builder:**
+- Correct the wording of gap row `M8/13b-unbounded-wait` now. It says "a hung git leaves the app open until Esc", but
+  `Esc` does not get him out.
+- Add a gap row for the keymap's Proposed `Ctrl+C` change until he sees it.
+- Dispatch the researcher pass named in the Prior art row.
+- If `accept-m8` is already built, it owes the two new fence ids a walk.
+
+Gates: as above, workspace-wide. Size: one context, ~55k tokens; graft only.
