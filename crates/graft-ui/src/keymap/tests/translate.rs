@@ -1,30 +1,56 @@
 //! `Keymap::translate`: the edge every key press crosses (ADR-0055 §3).
 
 use super::super::{
-    ActionId, Binding, ContextId, KeyChord, KeyCode, KeyWarning, Keymap, Translated, defaults,
+    ActionId, Binding, Clash, ContextId, KeyChord, KeyCode, KeyWarning, Keymap, Translated,
+    defaults,
 };
 use super::{free_chords, line};
 
-/// The row that answers `chord` in `scope` out of the box: the first
-/// context holding it (the table never binds one chord twice in a context).
-fn default_holder(scope: &[ContextId], chord: KeyChord) -> Option<&'static Binding> {
-    scope.iter().find_map(|ctx| {
+/// The row that answers `chord` in `ctx` out of the box: its own rows,
+/// then the rows it borrows, then the first context of its scope holding
+/// it (the table never binds one chord twice in a context). 09d replaces
+/// this mirror with a behavioural oracle.
+fn default_holder(ctx: ContextId, chord: KeyChord) -> Option<&'static Binding> {
+    let own = || {
         defaults()
             .iter()
-            .find(|b| b.context == *ctx && b.default.contains(&chord))
+            .find(|b| b.context == ctx && b.default.contains(&chord))
+    };
+    let borrowed = || {
+        defaults()
+            .iter()
+            .find(|b| ctx.borrows().contains(&b.action) && b.default.contains(&chord))
+    };
+    own().or_else(borrowed).or_else(|| {
+        ctx.scope().iter().find_map(|inner| {
+            defaults()
+                .iter()
+                .find(|b| b.context == *inner && b.default.contains(&chord))
+        })
     })
 }
 
 fn in_scope(ctx: ContextId) -> impl Iterator<Item = &'static Binding> {
     defaults()
         .iter()
-        .filter(move |b| ctx.scope().contains(&b.context))
+        .filter(move |b| ctx.scope().contains(&b.context) || ctx.borrows().contains(&b.action))
 }
 
+/// Every row a line may move: not a text field's, not `⌃C`, not one that
+/// follows another's keys, not one a switch keeps off.
 fn movable() -> Vec<&'static Binding> {
     defaults()
         .iter()
-        .filter(|b| !b.context.is_text_field() && b.action.0 != "app.quit_now")
+        .filter(|b| {
+            !b.context.is_text_field()
+                && !matches!(
+                    b.action.0,
+                    "app.quit_now"
+                        | "app.suspend"
+                        | "preview.confirm_merge"
+                        | "preview.confirm_rebase"
+                )
+        })
         .collect()
 }
 
@@ -49,7 +75,7 @@ fn swept() -> (Keymap, Vec<(&'static Binding, KeyChord)>) {
         .iter()
         .map(|(b, c)| (b.action.0.to_string(), vec![c.label().0]))
         .collect();
-    let (map, warnings) = Keymap::with_overrides(&lines);
+    let (map, warnings) = Keymap::with_overrides(&lines, crate::keymap::KeySwitches::default());
     assert_eq!(warnings, [], "every chord is free, so nothing collides");
     (map, moved)
 }
@@ -60,12 +86,13 @@ fn swept() -> (Keymap, Vec<(&'static Binding, KeyChord)>) {
 fn sweep_context(map: &Keymap, ctx: ContextId, moved: &[(&Binding, KeyChord)]) -> usize {
     let scope = ctx.scope();
     let mut checked = 0;
-    for (b, to) in moved.iter().filter(|(b, _)| scope.contains(&b.context)) {
+    let reaches = |b: &Binding| scope.contains(&b.context) || ctx.borrows().contains(&b.action);
+    for (b, to) in moved.iter().filter(|(b, _)| reaches(b)) {
         let acts = b
             .default
             .iter()
             .copied()
-            .find(|d| default_holder(scope, *d).map(|h| h.action) == Some(b.action));
+            .find(|d| default_holder(ctx, *d).map(|h| h.action) == Some(b.action));
         let want = acts.map_or(Translated::Unbound, Translated::Default);
         assert_eq!(map.translate(ctx, *to), want, "{ctx:?}: {}", b.action.0);
         for d in b.default {
@@ -115,14 +142,21 @@ fn the_default_keymap_passes_every_default_everywhere() {
 
 #[test]
 fn j8_merge_on_capital_m_is_one_problem_and_acts_as_m() {
-    let (map, warnings) = Keymap::with_overrides(&[line("graph.merge", &["M"])]);
+    let (map, warnings) = Keymap::with_overrides(
+        &[line("graph.merge", &["M"])],
+        crate::keymap::KeySwitches::default(),
+    );
     assert_eq!(
         warnings,
         [KeyWarning::Collision {
-            key: KeyChord::key('M'),
-            context: ContextId::Graph,
-            kept: ActionId("graph.merge"),
-            lost: ActionId("graph.map"),
+            line: ActionId("graph.merge"),
+            places: vec![Clash {
+                key: KeyChord::key('M'),
+                context: ContextId::Graph,
+                kept: ActionId("graph.merge"),
+                lost: ActionId("graph.map"),
+                keeps: None,
+            }],
         }]
     );
     let m = KeyChord::key('m');
@@ -139,7 +173,10 @@ fn j8_merge_on_capital_m_is_one_problem_and_acts_as_m() {
 
 #[test]
 fn an_override_replaces_the_whole_default_list() {
-    let (map, _) = Keymap::with_overrides(&[line("app.down", &["n"])]);
+    let (map, _) = Keymap::with_overrides(
+        &[line("app.down", &["n"])],
+        crate::keymap::KeySwitches::default(),
+    );
     let down = KeyChord::plain(KeyCode::Down);
     let n = KeyChord::key('n');
     assert_eq!(map.translate(ContextId::Graph, down), Translated::Unbound);
@@ -149,13 +186,19 @@ fn an_override_replaces_the_whole_default_list() {
     );
     assert_eq!(map.chords(&ActionId("app.down")), [n]);
 
-    let (kept, _) = Keymap::with_overrides(&[line("app.down", &["n", "down"])]);
+    let (kept, _) = Keymap::with_overrides(
+        &[line("app.down", &["n", "down"])],
+        crate::keymap::KeySwitches::default(),
+    );
     assert_eq!(kept.translate(ContextId::Graph, down), Translated::Pass);
 }
 
 #[test]
 fn none_alone_unbinds_and_spells_a_dash() {
-    let (map, warnings) = Keymap::with_overrides(&[line("graph.push", &["none"])]);
+    let (map, warnings) = Keymap::with_overrides(
+        &[line("graph.push", &["none"])],
+        crate::keymap::KeySwitches::default(),
+    );
     assert_eq!(warnings, []);
     assert_eq!(
         map.translate(ContextId::Graph, KeyChord::key('P')),
@@ -167,7 +210,10 @@ fn none_alone_unbinds_and_spells_a_dash() {
 
 #[test]
 fn an_inner_default_keeps_a_chord_a_global_override_asked_for() {
-    let (map, _) = Keymap::with_overrides(&[line("app.undo", &["o"])]);
+    let (map, _) = Keymap::with_overrides(
+        &[line("app.undo", &["o"])],
+        crate::keymap::KeySwitches::default(),
+    );
     let o = KeyChord::key('o');
     assert_eq!(map.translate(ContextId::Resolver, o), Translated::Pass);
     assert_eq!(map.translate(ContextId::Graph, o), Translated::Pass);
@@ -185,7 +231,10 @@ fn an_inner_default_keeps_a_chord_a_global_override_asked_for() {
 fn a_shadowed_action_has_no_default_to_act_as() {
     // `diff.blame` moved: in the graph its default `B` is the commit-graph
     // offer's, so the moved key has nothing to become there.
-    let (map, _) = Keymap::with_overrides(&[line("diff.blame", &["Z"])]);
+    let (map, _) = Keymap::with_overrides(
+        &[line("diff.blame", &["Z"])],
+        crate::keymap::KeySwitches::default(),
+    );
     let z = KeyChord::key('Z');
     assert_eq!(map.translate(ContextId::Graph, z), Translated::Unbound);
     assert_eq!(
@@ -196,7 +245,10 @@ fn a_shadowed_action_has_no_default_to_act_as() {
 
 #[test]
 fn a_text_field_passes_every_key_even_a_remapped_one() {
-    let (map, _) = Keymap::with_overrides(&[line("app.back", &["x"])]);
+    let (map, _) = Keymap::with_overrides(
+        &[line("app.back", &["x"])],
+        crate::keymap::KeySwitches::default(),
+    );
     for ctx in [
         ContextId::Picker,
         ContextId::Palette,
@@ -213,7 +265,10 @@ fn a_text_field_passes_every_key_even_a_remapped_one() {
 
 #[test]
 fn spell_and_chords_follow_the_override() {
-    let (map, _) = Keymap::with_overrides(&[line("graph.merge", &["ctrl+m", "M"])]);
+    let (map, _) = Keymap::with_overrides(
+        &[line("graph.merge", &["ctrl+m", "M"])],
+        crate::keymap::KeySwitches::default(),
+    );
     let merge = ActionId("graph.merge");
     assert_eq!(map.spell(&merge).0, "⌃M");
     assert_eq!(
@@ -227,7 +282,10 @@ fn spell_and_chords_follow_the_override() {
 
 #[test]
 fn in_context_lists_a_place_own_rows_in_table_order() {
-    let (map, _) = Keymap::with_overrides(&[line("map.seek", &["s"])]);
+    let (map, _) = Keymap::with_overrides(
+        &[line("map.seek", &["s"])],
+        crate::keymap::KeySwitches::default(),
+    );
     let rows = map.in_context(ContextId::Map);
     let ids: Vec<&str> = rows.iter().map(|(b, _)| b.action.0).collect();
     assert_eq!(ids, ["map.close", "map.seek"]);

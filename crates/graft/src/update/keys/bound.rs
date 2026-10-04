@@ -135,13 +135,15 @@ const BOUND_ACTIONS: &[ActionId] = &[
     id("picker.switch"), // `picker::enter` → `switch::switch_into`
     id("picker.show"),   // `picker::show_on_graph` → `map::seek_to`
     // The confirm box (`confirm::confirm_key`).
-    id("confirm.left"),    // the cursor between choices
-    id("confirm.right"),   // the same
-    id("confirm.choose"),  // the choice under the cursor
-    id("confirm.yes"),     // the acting button (`PendingConfirm::yes`)
+    id("confirm.left"),   // the cursor between choices
+    id("confirm.right"),  // the same
+    id("confirm.choose"), // the choice under the cursor
+    // The acting button (`PendingConfirm::yes`); also the finish list's
+    // commit (`files_key` → `commit`, P12) and the rewrite editor's start
+    // (`row_key` → `after::start`) — the one confirm key (m8/09c, D3).
+    id("confirm.yes"),
     id("credential.send"), // `credential::credential_key`: the answer to git
     // The finish summary (`finish::finish_key`).
-    id("finish.commit"),       // `files_key` → `commit` (P12)
     id("finish.toggle_diff"),  // `files_key` → `toggle_diff`
     id("finish.edit_outside"), // `control_key` → `edit_outside`
     id("commit.commit"),       // `control_key` → `commit`, from any focus
@@ -153,7 +155,6 @@ const BOUND_ACTIONS: &[ActionId] = &[
     id("history.next_change"), // `history_keys::next`
     id("history.prev_change"), // the same, backward
     // The rewrite editor (`rewrite_editor::rewrite_key`).
-    id("rewrite.start"),          // `row_key` → `after::start`
     id("rewrite.toggle_changes"), // `row_key` → `toggle_changes`
     id("rewrite.pick"),           // `row_key` → `mark`
     id("rewrite.reword"),         // `row_key` → `open_field`

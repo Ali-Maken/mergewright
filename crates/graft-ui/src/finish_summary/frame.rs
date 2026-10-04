@@ -38,12 +38,12 @@ pub fn preview_title(names: Option<(&str, &str)>, width: u16) -> String {
 }
 
 /// The first line inside the frame: what lands, and that nothing does
-/// until `y` (`finish.commit`'s key, spelled from `keys`). `on <into>` only
+/// until `y` (`confirm.yes`'s key, spelled from `keys`). `on <into>` only
 /// when the branch is known.
 #[must_use]
 pub fn preview_line(into: Option<&str>, keys: &Keymap) -> String {
     let until = keys
-        .spell_keys(&[ActionId("finish.commit")])
+        .spell_keys(&[ActionId("confirm.yes")])
         .map_or_else(|| "yet".to_owned(), |key| format!("until {key}"));
     match into {
         Some(into) => format!("1 merge commit on {into} · nothing is committed {until}"),

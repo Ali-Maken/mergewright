@@ -1,7 +1,7 @@
 //! What was wrong with his `[keys]` table, in words for the status row and
 //! `?`'s `YOUR CONFIG` group. Never fatal: the graph opens as normal.
 
-use super::{ActionId, ContextId, KeyChord, Keymap, defaults};
+use super::{ActionId, ContextId, KeyChord, defaults};
 
 /// One problem with one override line.
 #[derive(Debug, PartialEq, Eq)]
@@ -15,17 +15,13 @@ pub enum KeyWarning {
         /// The text as he wrote it.
         text: String,
     },
-    /// One chord ended up on two actions in `context`: `kept` answers it
-    /// there, `lost` no longer does.
+    /// His line `line` changed what a key does somewhere: one problem per
+    /// line, naming every place (ticket m8/09c, D1).
     Collision {
-        /// The chord.
-        key: KeyChord,
-        /// Where the two meet.
-        context: ContextId,
-        /// The action that answers it there.
-        kept: ActionId,
-        /// The action that lost it there.
-        lost: ActionId,
+        /// The action his line is for.
+        line: ActionId,
+        /// Each place a key changed hands, in `ContextId::ALL` order.
+        places: Vec<Clash>,
     },
     /// `Ctrl+C` always quits: it was given to `action`, or `app.quit_now`
     /// was moved (to `key`).
@@ -37,6 +33,39 @@ pub enum KeyWarning {
     },
     /// The action lives in a text field, where keys are never remapped.
     Fixed(ActionId),
+    /// The action has no key while `switch` is off; the line is not applied.
+    SwitchOff {
+        /// The action the line was for (`app.suspend`).
+        action: ActionId,
+        /// The `[keys]` switch it needs.
+        switch: &'static str,
+    },
+    /// The action's keys are `leader`'s, never set on their own; the line
+    /// is not applied.
+    Follows {
+        /// The action the line was for (`preview.confirm_merge`).
+        action: ActionId,
+        /// Whose keys it has (`graph.merge`).
+        leader: ActionId,
+    },
+}
+
+/// One place where a key changed hands: in `context`, `kept` answers `key`
+/// and `lost` no longer does.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Clash {
+    /// The chord.
+    pub key: KeyChord,
+    /// Where it changed hands.
+    pub context: ContextId,
+    /// The action that answers it there.
+    pub kept: ActionId,
+    /// The action that lost it there.
+    pub lost: ActionId,
+    /// What `lost` still answers to there after his lines, when his line
+    /// took the key (`move down keeps ↓`); `None` when it has nothing left,
+    /// or when his own line is the one that lost.
+    pub keeps: Option<KeyChord>,
 }
 
 impl KeyWarning {
@@ -56,41 +85,72 @@ impl KeyWarning {
                 "{} can't be remapped — keys in a text field stay as they are",
                 id.0
             ),
-            Self::Collision {
-                key,
-                context,
-                kept,
-                lost,
-            } => collision_words(*key, *context, kept, lost),
+            Self::SwitchOff { action, switch } => {
+                format!("{} does nothing while {switch} is off", action.0)
+            }
+            Self::Follows { action, leader } => format!(
+                "{} can't be remapped — it is {}'s key, so move that",
+                action.0, leader.0
+            ),
+            Self::Collision { line, places } => collision_words(line, places),
         }
     }
 }
 
-/// `M given to graph.merge — map view has no key` when his override took
-/// the chord; `o given to app.undo — in the resolver o stays take ours`
-/// when his override lost it.
-fn collision_words(key: KeyChord, ctx: ContextId, kept: &ActionId, lost: &ActionId) -> String {
-    let k = key.label().0;
-    let lost_had_it = binding(lost).is_some_and(|b| b.default.contains(&key));
-    if !lost_had_it {
-        return format!(
-            "{k} given to {} — {} {k} stays {}",
-            lost.0,
-            place(ctx),
-            label(kept)
-        );
+/// `j given to graph.merge — move down keeps ↓ on the graph` when his line
+/// took the key; `o given to app.undo — on the graph o stays take, in the
+/// resolver o stays take ours` when it lost it. One clause per place; a
+/// line with several keys says each, `;` apart.
+fn collision_words(line: &ActionId, places: &[Clash]) -> String {
+    let mut keys: Vec<KeyChord> = Vec::new();
+    for clash in places {
+        if !keys.contains(&clash.key) {
+            keys.push(clash.key);
+        }
     }
-    let left = Keymap::default().left_in(lost, ctx, key);
-    let what = match left {
-        Some(other) => format!("{} keeps {}", label(lost), other.label().0),
-        None => format!("{} has no key", label(lost)),
+    keys.iter()
+        .map(|key| {
+            let clauses: Vec<String> = places
+                .iter()
+                .filter(|clash| clash.key == *key)
+                .map(|clash| clause(line, clash))
+                .collect();
+            format!(
+                "{} given to {} — {}",
+                key.label().0,
+                line.0,
+                clauses.join(", ")
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+/// One place's words: what lost the key there and what it keeps, or what
+/// kept it when his line's own row lost.
+fn clause(line: &ActionId, clash: &Clash) -> String {
+    let k = clash.key.label().0;
+    let ctx = clash.context;
+    if is_lines(&clash.lost, line) {
+        return format!("{} {k} stays {}", place(ctx), label(&clash.kept));
+    }
+    let what = match clash.keeps {
+        Some(other) => format!("{} keeps {}", label(&clash.lost), other.label().0),
+        None => format!("{} has no key", label(&clash.lost)),
     };
-    let lost_home = binding(lost).map(|b| b.context);
-    if lost_home == Some(ctx) {
-        format!("{k} given to {} — {what}", kept.0)
+    if binding(&clash.lost).map(|b| b.context) == Some(ctx) {
+        what
     } else {
-        format!("{k} given to {} — {what} {}", kept.0, place(ctx))
+        format!("{what} {}", place(ctx))
     }
+}
+
+/// Whether `action` is his line's row, or one that follows it.
+fn is_lines(action: &ActionId, line: &ActionId) -> bool {
+    action == line
+        || super::resolve::FOLLOWS
+            .iter()
+            .any(|(follower, leader)| follower == action && leader == line)
 }
 
 fn binding(action: &ActionId) -> Option<&'static super::Binding> {

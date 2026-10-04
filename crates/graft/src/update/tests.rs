@@ -2300,6 +2300,8 @@ mod pane_space;
 
 mod keymap_edge;
 
+mod keymap_rules;
+
 mod commit_graph_offer {
     use super::*;
     use crate::repository::CommitGraphFact;

@@ -23,13 +23,13 @@ use crate::update::edge::context_of;
 
 /// What a press did, as far as anyone can see.
 #[derive(Clone, Debug, PartialEq, Eq)]
-struct Seen {
+pub(super) struct Seen {
     commands: Vec<Command>,
     quit: String,
     frame: String,
 }
 
-fn seen(state: &AppState, press: KeyPress) -> Seen {
+pub(super) fn seen(state: &AppState, press: KeyPress) -> Seen {
     seen_as(state, press, &state.keymap)
 }
 
@@ -38,7 +38,7 @@ fn seen(state: &AppState, press: KeyPress) -> Seen {
 /// two keymaps draw two frames even where a press does the same thing: a
 /// sweep comparing what a remapped press does with what the default does
 /// draws both under the remapped keymap, and so compares the *doing*.
-fn seen_as(state: &AppState, press: KeyPress, keys: &Arc<Keymap>) -> Seen {
+pub(super) fn seen_as(state: &AppState, press: KeyPress, keys: &Arc<Keymap>) -> Seen {
     let (mut after, commands) = update(state, AppEvent::Core(Event::Key(press)));
     after.keymap = Arc::clone(keys);
     Seen {
@@ -50,17 +50,17 @@ fn seen_as(state: &AppState, press: KeyPress, keys: &Arc<Keymap>) -> Seen {
 
 /// A key no dispatcher answers anywhere: no binding, no arm, no field takes
 /// `F20`. What every unbound default must do instead of its old action.
-fn unanswered() -> KeyPress {
+pub(super) fn unanswered() -> KeyPress {
     KeyPress::plain(KeyCode::Function(20))
 }
 
-fn walk() -> JobId {
+pub(super) fn walk() -> JobId {
     JobId::new(701)
 }
 
 /// The merge on row 1 is `feature`'s tip, `HEAD` on `main` at row 0: a
 /// branch row, so `m`/`r` open a preview and the branch keys have a branch.
-fn on_a_branch_row() -> AppState {
+pub(super) fn on_a_branch_row() -> AppState {
     let (mut state, _) = merge_on_screen(walk(), MERGE_ROW);
     let name = |full: &str| RefName::new(full.as_bytes().to_vec()).expect("a valid ref name");
     let oid = |byte: u8| Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is an oid");
@@ -88,7 +88,7 @@ fn on_a_branch_row() -> AppState {
 /// `context_of` says that context is. `None`: `Global` (its rows are
 /// checked on the graph), `Palette` (ticket 11), `Tour` (19) and
 /// `EmptyState` (no `AppState`).
-fn fixture(ctx: ContextId) -> Option<AppState> {
+pub(super) fn fixture(ctx: ContextId) -> Option<AppState> {
     use ContextId as C;
     let state = match ctx {
         C::Graph => on_a_branch_row(),
@@ -151,7 +151,7 @@ fn fixture(ctx: ContextId) -> Option<AppState> {
 
 /// A fixture built without a terminal is 0×0, where every pane is too
 /// small to act: give it the 120×36 the frame is drawn at.
-fn sized_to_draw(mut state: AppState) -> AppState {
+pub(super) fn sized_to_draw(mut state: AppState) -> AppState {
     if state.size.columns == 0 {
         state.size = Size {
             columns: 120,
@@ -204,10 +204,21 @@ fn free_chords() -> Vec<KeyChord> {
 
 /// Every movable action on its own free chord: the keymap, and per row the
 /// chord it moved to.
-fn swept() -> (Arc<Keymap>, Vec<(&'static Binding, KeyChord)>) {
+pub(super) fn swept() -> (Arc<Keymap>, Vec<(&'static Binding, KeyChord)>) {
     let rows: Vec<&'static Binding> = defaults()
         .iter()
-        .filter(|b| !b.context.is_text_field() && b.action.0 != "app.quit_now")
+        .filter(|b| {
+            // Not a text field's, not `⌃C`, not a row whose keys follow
+            // another's, not one a switch keeps off (m8/09c).
+            !b.context.is_text_field()
+                && !matches!(
+                    b.action.0,
+                    "app.quit_now"
+                        | "app.suspend"
+                        | "preview.confirm_merge"
+                        | "preview.confirm_rebase"
+                )
+        })
         .collect();
     let free = free_chords();
     assert!(
@@ -226,7 +237,7 @@ fn swept() -> (Arc<Keymap>, Vec<(&'static Binding, KeyChord)>) {
         .iter()
         .map(|(b, chord)| (b.action.0.to_owned(), vec![chord.label().0]))
         .collect();
-    let (map, warnings) = Keymap::with_overrides(&lines);
+    let (map, warnings) = Keymap::with_overrides(&lines, graft_ui::keymap::KeySwitches::default());
     assert_eq!(warnings, [], "every chord is free, so nothing collides");
     (Arc::new(map), moved)
 }
@@ -245,14 +256,15 @@ fn both(moved: &[(&'static Binding, KeyChord)]) -> Arc<Keymap> {
             (b.action.0.to_owned(), labels)
         })
         .collect();
-    let (map, warnings) = Keymap::with_overrides(&lines);
+    let (map, warnings) = Keymap::with_overrides(&lines, graft_ui::keymap::KeySwitches::default());
     // Restating a default as an override reports the shadowing the default
     // table already has (an inner context's `⏎` over `app.open`): the inner
     // row keeps the chord, exactly as under the defaults. Anything else is a
     // real collision the sweep did not mean.
     for warning in &warnings {
         assert!(
-            matches!(warning, KeyWarning::Collision { lost, .. } if lost.0.starts_with("app.")),
+            matches!(warning, KeyWarning::Collision { places, .. }
+                if places.iter().all(|clash| clash.lost.0.starts_with("app."))),
             "{warning:?}"
         );
     }
@@ -339,6 +351,14 @@ const NOT_YET_ANSWERED: &[(&str, &str)] = &[
 /// Rows whose default does nothing *in this fixture* — the key is answered,
 /// but the fixture's data gives it nothing to change. Each says why.
 const NO_EFFECT_IN_FIXTURE: &[(&str, &str)] = &[
+    (
+        "app.suspend",
+        "no key with `suspend_on_ctrl_z` off, as the fixtures have it; `keymap_rules` pins it on",
+    ),
+    (
+        "preview.confirm_merge",
+        "preview: the fixture is `r`-opened; `m` repeats only a merge (`confirm_key`)",
+    ),
     (
         "app.next_pane",
         "graph: no pane shown to move to (`detail_key`'s `Tab if detail.shown`)",
@@ -521,7 +541,7 @@ fn the_config_notice_goes_at_the_first_key_and_needs_a_problem() {
 /// search prompt, blame's find, J's find, the stash prompt, the commit
 /// editor, the credential box, the name prompt, the picker, the rewrite
 /// editor's `r` field and the finish screen's subject.
-fn every_field() -> Vec<(&'static str, AppState)> {
+pub(super) fn every_field() -> Vec<(&'static str, AppState)> {
     let typed = |state: AppState, c: char| update(&state, key(KeyCode::Char(c))).0;
     let mut rewrite = on_a_branch_row();
     super::rewrite_editor::tests::open_an_editor_field(&mut rewrite);
@@ -571,8 +591,10 @@ fn every_field() -> Vec<(&'static str, AppState)> {
 fn x_typed_into_every_field_is_an_x_with_merge_on_x() {
     // `x` is `graph.compare`'s: merge keeps it, compare loses it — on the
     // graph `x` now merges, and still types an `x` everywhere text goes.
-    let (map, warnings) =
-        Keymap::with_overrides(&[("graph.merge".to_owned(), vec!["x".to_owned()])]);
+    let (map, warnings) = Keymap::with_overrides(
+        &[("graph.merge".to_owned(), vec!["x".to_owned()])],
+        graft_ui::keymap::KeySwitches::default(),
+    );
     assert_eq!(warnings.len(), 1, "{warnings:?}");
     let remapped = Arc::new(map);
     for (name, base) in every_field() {
@@ -646,6 +668,25 @@ fn no_bar_draws(action: ActionId, keys: &Keymap) {
     );
 }
 
+/// The bottom border of the box `⏎` opens on the `.` menu's `row`: where a
+/// box draws its keys.
+fn keys_of_the_box_opened_from_menu_row(graph: &AppState, row: usize) -> String {
+    let mut menu = update(graph, key(KeyCode::Char('.'))).0;
+    for _ in 0..row {
+        menu = update(&menu, key(KeyCode::Char('j'))).0;
+    }
+    let previewed = update(&menu, key(KeyCode::Enter)).0;
+    assert!(
+        previewed.preview.is_some(),
+        "⏎ on the row opens the preview"
+    );
+    crate::view::tests::draw(&previewed, previewed.size.columns, previewed.size.rows)
+        .lines()
+        .find(|line| line.contains('╰'))
+        .expect("the box's bottom border")
+        .to_owned()
+}
+
 /// Ticket m8/10, decision 2: `graph.merge = "none"` leaves merge unbound.
 /// No bar draws its hint at any width, the menu keeps the `Merge …` row (it
 /// acts by `⏎`) with no `(key)`, and no screen draws a `—` the default
@@ -653,8 +694,10 @@ fn no_bar_draws(action: ActionId, keys: &Keymap) {
 #[test]
 fn merge_unbound_is_drawn_nowhere_and_its_menu_row_names_no_key() {
     let merge = ActionId("graph.merge");
-    let (map, warnings) =
-        Keymap::with_overrides(&[("graph.merge".to_owned(), vec!["none".to_owned()])]);
+    let (map, warnings) = Keymap::with_overrides(
+        &[("graph.merge".to_owned(), vec!["none".to_owned()])],
+        graft_ui::keymap::KeySwitches::default(),
+    );
     assert_eq!(warnings, []);
     let unbound = Arc::new(map);
     no_bar_draws(merge, &unbound);
@@ -674,6 +717,21 @@ fn merge_unbound_is_drawn_nowhere_and_its_menu_row_names_no_key() {
         unbound_menu.contains(&"Merge feature into main".to_owned()),
         "{unbound_menu:?}"
     );
+    // m8/09c (Unbound ruling): the merge preview opened from that row draws
+    // no `m merge` part and no `—`; its confirm is `confirm.yes`'s `y`.
+    let row = unbound_menu
+        .iter()
+        .position(|label| label == "Merge feature into main")
+        .expect("the merge row");
+    let box_keys = |graph: &AppState| keys_of_the_box_opened_from_menu_row(graph, row);
+    let unbound_keys = box_keys(&moved);
+    assert!(!unbound_keys.contains("m merge"), "{unbound_keys}");
+    assert!(!unbound_keys.contains('—'), "{unbound_keys}");
+    // The ticket says `y merge`; a `.`-opened preview has no verb slot
+    // (`preview/keys.rs`, `opened_by` "."), so its confirm reads
+    // `y confirm` under the shipped keymap too (09c NOTES).
+    assert!(unbound_keys.contains("y confirm"), "{unbound_keys}");
+    assert_eq!(unbound_keys, box_keys(&base));
 
     for &ctx in ContextId::ALL {
         let Some(state) = fixture(ctx) else {
@@ -696,14 +754,12 @@ fn merge_unbound_is_drawn_nowhere_and_its_menu_row_names_no_key() {
     }
 }
 
-/// Ticket 10c, the preview's verb slot: `r rebase` in an `r`-opened
-/// preview is `preview.confirm`'s own `r` chord, not `graph.rebase`'s.
-/// With `graph.rebase = "none"` the box still names `r rebase` — and `r`
-/// still confirms it, exactly as under the default keymap — so the part
-/// stays. Dropping `r` from `preview.confirm` is what takes it away, and
-/// then `r` does what an unanswered key does. (10c's Acceptance asked for
-/// the part to go with `graph.merge`/`graph.rebase` unbound; it would name a
-/// key that still acts as not acting — NOTES.)
+/// Ticket 10c, re-pointed by 09c (Unbound ruling): `r rebase` in an
+/// `r`-opened preview is `preview.confirm_rebase`, whose chords follow
+/// `graph.rebase`'s. With `graph.rebase = "none"` the part goes, no `—` is
+/// drawn, and `r` does what an unanswered key does. A line on
+/// `preview.confirm_rebase` itself is `Follows`, not applied: the box still
+/// names `r rebase`, and `r` still confirms.
 #[test]
 fn the_preview_names_its_again_key_exactly_while_it_confirms() {
     let base = sized_to_draw(fixture(ContextId::Preview).expect("a preview"));
@@ -724,45 +780,49 @@ fn the_preview_names_its_again_key_exactly_while_it_confirms() {
         "r confirms under the default keymap"
     );
 
-    let (map, warnings) =
-        Keymap::with_overrides(&[("graph.rebase".to_owned(), vec!["none".to_owned()])]);
+    let (map, warnings) = Keymap::with_overrides(
+        &[("graph.rebase".to_owned(), vec!["none".to_owned()])],
+        graft_ui::keymap::KeySwitches::default(),
+    );
     assert_eq!(warnings, []);
     let rebase_unbound = AppState {
         keymap: Arc::new(map),
         ..base.clone()
     };
-    assert!(
-        footer(&rebase_unbound).contains("r rebase"),
-        "{}",
-        footer(&rebase_unbound)
-    );
+    let drawn = footer(&rebase_unbound);
+    assert!(!drawn.contains("r rebase"), "{drawn}");
+    assert!(!drawn.contains('—'), "{drawn}");
+    assert!(drawn.contains("y confirm"), "{drawn}");
     assert_eq!(
         seen(&rebase_unbound, press_r),
-        seen(&base, press_r),
-        "r still confirms with graph.rebase unbound"
+        seen(&rebase_unbound, unanswered()),
+        "r no longer confirms with graph.rebase unbound"
     );
 
-    let (map, warnings) =
-        Keymap::with_overrides(&[("preview.confirm".to_owned(), vec!["y".to_owned()])]);
-    assert_eq!(warnings, []);
-    let confirm_on_y = AppState {
+    let (map, warnings) = Keymap::with_overrides(
+        &[("preview.confirm_rebase".to_owned(), vec!["y".to_owned()])],
+        graft_ui::keymap::KeySwitches::default(),
+    );
+    assert_eq!(
+        warnings,
+        [KeyWarning::Follows {
+            action: ActionId("preview.confirm_rebase"),
+            leader: ActionId("graph.rebase"),
+        }]
+    );
+    let follows = AppState {
         keymap: Arc::new(map),
         ..base.clone()
     };
     assert!(
-        !footer(&confirm_on_y).contains("r rebase"),
+        footer(&follows).contains("r rebase"),
         "{}",
-        footer(&confirm_on_y)
-    );
-    assert!(
-        !footer(&confirm_on_y).contains('—'),
-        "{}",
-        footer(&confirm_on_y)
+        footer(&follows)
     );
     assert_eq!(
-        seen(&confirm_on_y, press_r),
-        seen(&confirm_on_y, unanswered()),
-        "r no longer confirms"
+        seen(&follows, press_r),
+        seen(&base, press_r),
+        "r still confirms"
     );
 }
 
@@ -772,12 +832,18 @@ fn the_preview_names_its_again_key_exactly_while_it_confirms() {
 #[test]
 fn merge_on_shift_m_is_one_collision_that_loses_the_map() {
     let loaded = crate::config::tests::loaded_from_a_file("[keys.graph]\nmerge = \"M\"\n");
-    let (_, warnings) = Keymap::with_overrides(&loaded.config.keys.remaps);
+    let (_, warnings) = Keymap::with_overrides(
+        &loaded.config.keys.remaps,
+        graft_ui::keymap::KeySwitches::default(),
+    );
     assert!(
         matches!(
             warnings.as_slice(),
-            [KeyWarning::Collision { kept, lost, .. }]
-                if *kept == ActionId("graph.merge") && *lost == ActionId("graph.map")
+            [KeyWarning::Collision { line, places }]
+                if *line == ActionId("graph.merge")
+                    && places.len() == 1
+                    && places[0].kept == ActionId("graph.merge")
+                    && places[0].lost == ActionId("graph.map")
         ),
         "{warnings:?}"
     );

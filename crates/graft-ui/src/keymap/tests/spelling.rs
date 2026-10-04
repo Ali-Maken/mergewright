@@ -19,7 +19,10 @@ fn spell_keys_joins_each_first_chord_with_a_slash() {
 
 #[test]
 fn spell_keys_leaves_an_unbound_action_out() {
-    let (map, warnings) = Keymap::with_overrides(&[line("graph.merge", &["none"])]);
+    let (map, warnings) = Keymap::with_overrides(
+        &[line("graph.merge", &["none"])],
+        crate::keymap::KeySwitches::default(),
+    );
     assert_eq!(warnings, []);
     assert_eq!(map.spell_keys(&[MERGE]), None);
     assert_eq!(map.spell_keys(&[DOWN, MERGE]).as_deref(), Some("j"));
@@ -31,7 +34,10 @@ fn spell_every_spells_every_chord_or_none() {
     let map = Keymap::default();
     assert_eq!(map.spell_every(&TOGGLE_DIFF).as_deref(), Some("⏎/space"));
     assert_eq!(map.spell_every(&DOWN).as_deref(), Some("j/↓"));
-    let (map, _) = Keymap::with_overrides(&[line("finish.toggle_diff", &["none"])]);
+    let (map, _) = Keymap::with_overrides(
+        &[line("finish.toggle_diff", &["none"])],
+        crate::keymap::KeySwitches::default(),
+    );
     assert_eq!(map.spell_every(&TOGGLE_DIFF), None);
     assert_eq!(map.spell_every(&ActionId("no.such")), None);
 }
@@ -41,7 +47,10 @@ fn spell_every_spells_every_chord_or_none() {
 /// spelled nowhere — a hint naming it would be a lie.
 #[test]
 fn a_chord_lost_in_a_collision_is_not_spelled() {
-    let (map, warnings) = Keymap::with_overrides(&[line("graph.merge", &["M"])]);
+    let (map, warnings) = Keymap::with_overrides(
+        &[line("graph.merge", &["M"])],
+        crate::keymap::KeySwitches::default(),
+    );
     assert_eq!(warnings.len(), 1, "{warnings:?}");
     assert_eq!(map.spell_keys(&[MERGE]).as_deref(), Some("M"));
     assert_eq!(map.spell_keys(&[MAP]), None);
@@ -51,7 +60,10 @@ fn a_chord_lost_in_a_collision_is_not_spelled() {
 
 #[test]
 fn a_keymap_clones_and_compares_by_its_chords() {
-    let (moved, _) = Keymap::with_overrides(&[line("graph.merge", &["M"])]);
+    let (moved, _) = Keymap::with_overrides(
+        &[line("graph.merge", &["M"])],
+        crate::keymap::KeySwitches::default(),
+    );
     assert_eq!(moved.clone(), moved);
     assert_ne!(moved, Keymap::default());
     assert_eq!(*Keymap::shipped(), Keymap::default());
