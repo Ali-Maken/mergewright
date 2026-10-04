@@ -3,6 +3,7 @@
 Date: 2026-10-02
 Status: **Accepted**, 2026-10-02 (field notes :89, item 5: "go ahead with your recommendation" — the branch moves too
 when it moves clean, shown in the preview first). Design note `m8-polish-and-ship.md`, "Where I'd differ", 2c.
+**Amended 2026-10-04** (§6; review `docs/reviews/m8-14bc-fork-follows.md` M1–M3, m9): what makes a fork not clean.
 Amends: ADR-0047 §1 (todo vocabulary) and §4 (scope of "never a fork").
 
 ## Context
@@ -32,12 +33,14 @@ is a dependent, not a fork (§5).
 
 ### 2. Fate, decided in the preview and run as previewed
 - **Follows** when all hold: the chained forecast through `at`'s row and then F's own commits is `Clean`; F is not
-  the default branch; F is not checked out in another worktree; F's upstream (if any) holds none of `at..F`; no other
-  fork leaves `at..F`; F is among the first `LEFT_BEHIND_CAP` (8) named.
+  the default branch; F is not checked out in another worktree; F is not pushed (§6.2); every branch F carries passes
+  the same three gates (§6.1); F's base is unchanged by the edit (§6.3); F does not branch off another fork's own
+  commits (that fork follows; F stays `Nested` — corrected 2026-10-04, review m9: this clause read "no other fork
+  leaves `at..F`"); F is among the first `LEFT_BEHIND_CAP` (8) named.
 - **Stays** otherwise, with the reason in words (`would conflict in <path>`, `the rewrite stops below it`, `has a
   merge`, `pushed to <upstream>`, `checked out in <path>`, `forked from <fork>, which moves`, `not checked: <why>`,
-  `the default branch`, `past the first 8`). A forecast hole is never read as clean (m5 design note hard choice 5,
-  MAP graft-ops `preview` `ConflictForecast`).
+  `the default branch`, `past the first 8`, and §6's). A forecast hole is never read as clean (m5 design note hard
+  choice 5, MAP graft-ops `preview` `ConflictForecast`).
 - `plan_as_run` fixes the fates; the op that `y` runs carries the followers. `check`'s `Moved` covers their tips.
 
 ### 3. Engine: one rebase, `label`/`reset` sections (amends ADR-0047 §1)
@@ -69,6 +72,27 @@ is a dependent, not a fork (§5).
 - Sections would make the two-dependents refusal liftable (pick one as the line, the other as a section); that is a
   separate decision, not taken here.
 
+### 6. What "clean" means beyond the forecast (amended 2026-10-04)
+His rule is "moves too **when it moves clean**". A clean textual replay is not enough: following must not move a
+branch someone else is standing on, diverge a branch from its remote, or change what the branch was built on. Any
+doubt → the fork stays and the preview says why. Staying is always safe: nothing of F moves, and he can still `r` it.
+1. **Branches F carries** (`inside`: local branches on `at..F`'s first-parent chain, F's tip included as a gate on
+   itself) each pass F's gates: not the default branch, not checked out in another worktree, not pushed (§6.2). The
+   first that fails keeps the whole fork, named: `feature-x stays on a1b2c3d · feature-w is checked out in <path>`.
+   Git does **not** refuse an `update-ref` of a branch checked out elsewhere: it moves it and leaves that worktree's
+   index and files on the old commit (hand-run, git 2.54, review M1). The gate is Graft's alone.
+2. **Pushed** means either: F's upstream holds any commit of `onto..F` (the rewrite's `onto`: so `at`, the replaced
+   commits under it, and F's own); or any `refs/remotes/*` ref holds one of F's own commits (`at..F`), upstream set
+   or not. Same rule for each carried branch. A fork with 0 commits whose upstream holds `at` therefore stays.
+   (Was: the upstream holds any of `at..F` — blind to `at` and below, review M2.)
+3. **Base unchanged.** Compare, as sets of original commits, the line's commits at or under `at` before the edit with
+   the commits in the rows up to and including `at`'s row after it (a squash/fixup group counts every commit folded
+   into it; a staged change `a` folds in is not a commit and does not count). Unequal → stays:
+   `would lose <sha7>` (a commit under F is dropped, `at` included, or moves after `at`'s row) or `would gain <sha7>`
+   (a commit after `at` moves to or under `at`'s row, a fold into it included). Equal → F follows onto the result of
+   the **last** row of `at`'s squash/fixup group, never mid-group.
+4. Order: §6's gates are reads with no forecast; a fork that fails one is never forecast.
+
 ## Rejected
 - **A second rebase of F inside the same entry**: two git operations; an abort aborts only the running one; kill -9
   recovery must know a second is owed.
@@ -76,3 +100,8 @@ is a dependent, not a fork (§5).
   replay loop by another name; hooks, empty-commit and committer rules would differ from git's rebase.
 - **Every fork follows, conflicts stop** (jj-like without stored conflicts): a stop in a branch he never named.
 - **Leave it as is**: the alternative had he said *stay*. Then item 2 would have closed as designed and the specs dropped.
+- **(§6) Follow a fork whose base changes, and say the loss** (`follows · without 1875dfa`; jj's abandon does this):
+  a teammate's branch silently loses code it was built on; one row of words is easy to miss before `y`.
+- **(§6) Follow a pushed fork and list it under `published`** (`… will need force after`): a force push nobody asked
+  for, on a branch that may be a teammate's.
+- **(§6) Follow F and leave a failing carried branch behind**: that branch would be stranded on F's old commits.
