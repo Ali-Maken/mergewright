@@ -46,7 +46,7 @@ FIXTURES = os.environ.get("GRAFT_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures"
 # the capture can be asserted, not just rewritten (m6-conflicts/63).
 COMMIT_DATE = f"@{1_609_459_200 + 10 * 60} +0000"
 CAPTURES = [line.split("\t") for line in
-            subprocess.run([BIN, "--stems"], capture_output=True, text=True,
+            subprocess.run([BIN, "--stems"], capture_output=True, text=True,  # sandbox-ok: --stems prints names, opens no repo
                            check=True).stdout.splitlines()]
 WANTED = set(sys.argv[2:])
 STABLE, CAP, APPEAR, EXIT_GRACE = 1.5, 40.0, 90.0, 10.0
@@ -194,7 +194,7 @@ def write_capture(stem, scenario, keys, frame, note):
     body += "\n" + frame + "\n"
     # The same writer as pty-walk-m4/-m5/-m6.py: redacts, compares, and
     # rewrites the file only under GRAFT_UPDATE_SHOTS=1.
-    checked = subprocess.run([FIXTURES, "capture", path], input=body.encode(),
+    checked = subprocess.run([FIXTURES, "capture", path], input=body.encode(),  # sandbox-ok: graft-fixtures, not Graft
                              capture_output=True)
     if checked.returncode != 0:
         print(f"{path}: {len(frame.encode())} bytes, DRIFTED")

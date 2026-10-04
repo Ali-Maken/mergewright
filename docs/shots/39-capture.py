@@ -7,6 +7,9 @@ appended to quit.
 """
 import os, pty, select, sys, time
 import pyte
+# Every Graft launch goes through sandbox_env (m8/22b): temp XDG_CONFIG_HOME, checked.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
+from graft_sandbox import sandbox_env  # noqa: E402
 
 repo, cols, rows, keys, out, note = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4], sys.argv[5], sys.argv[6]
 binary = os.path.join(os.path.dirname(__file__), "..", "..", "target", "release", "graft")
@@ -15,10 +18,8 @@ screen = pyte.Screen(cols, rows)
 stream = pyte.ByteStream(screen)
 pid, fd = pty.fork()
 if pid == 0:
-    os.environ["TERM"] = "xterm-256color"
-    os.environ["COLORTERM"] = "truecolor"
-    os.environ["COLUMNS"], os.environ["LINES"] = str(cols), str(rows)
-    os.execv(binary, [binary, repo])
+    env = sandbox_env(TERM="xterm-256color", COLORTERM="truecolor", COLUMNS=str(cols), LINES=str(rows))
+    os.execve(binary, [binary, repo], env)
 
 import fcntl, struct, termios
 fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))

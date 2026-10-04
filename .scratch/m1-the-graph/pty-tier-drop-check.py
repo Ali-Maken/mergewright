@@ -11,6 +11,9 @@ Usage: python3 pty-tier-drop-check.py <graft-binary> <repo-path>
 import fcntl, os, pty, select, signal, struct, sys, termios, time
 
 import pyte
+# Every Graft launch goes through sandbox_env (m8/22b): temp XDG_CONFIG_HOME, checked.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
+from graft_sandbox import sandbox_env  # noqa: E402
 
 BIN = sys.argv[1]
 REPO = sys.argv[2]
@@ -59,7 +62,7 @@ if pid == 0:
     os.dup2(slave, 2)
     os.close(master)
     os.close(slave)
-    os.execv(BIN, [BIN, REPO])
+    os.execve(BIN, [BIN, REPO], sandbox_env())
 
 screen = pyte.Screen(COLS, ROWS)
 stream = pyte.Stream(screen)

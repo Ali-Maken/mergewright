@@ -1,13 +1,20 @@
 # pty driver: run graft forced to pixel tier, send keys, record raw output.
-import os, pty, sys, time, fcntl, termios, struct, select
+import os, pty, sys, tempfile, time, fcntl, termios, struct, select
+# Every Graft launch goes through sandbox_env (m8/22b): temp XDG_CONFIG_HOME, checked.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
+from graft_sandbox import sandbox_env  # noqa: E402
 out_path, keys = sys.argv[1], sys.argv[2:]
 COLS, ROWS = 200, 45
+# Forced to the pixel tier by a temp config folder (was a hand-made /tmp/37/cfg).
+config_home = tempfile.mkdtemp(prefix="graft-37-")
+os.makedirs(os.path.join(config_home, "graft"))
+with open(os.path.join(config_home, "graft", "config.toml"), "w") as f:
+    f.write('[graph]\nrenderer = "pixel"\n')
 pid, fd = pty.fork()
 if pid == 0:
-    os.environ["XDG_CONFIG_HOME"] = "/tmp/37/cfg"
-    os.environ["TERM"] = "xterm-kitty"
-    os.execv(os.environ.get("GRAFT_BIN", "<home____________>/dev/sandbox/gitter/target/debug/graft"),
-             ["graft", os.path.expanduser("~/.cache/graft/git-git.git")])
+    os.execve(os.environ.get("GRAFT_BIN", "<home____________>/dev/sandbox/gitter/target/debug/graft"),
+              ["graft", os.path.expanduser("~/.cache/graft/git-git.git")],
+              sandbox_env(config_home, TERM="xterm-kitty"))
 fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", ROWS, COLS, COLS*10, ROWS*20))
 buf = bytearray(); marks = []; reads = []; t0 = time.time()
 def pump(secs):

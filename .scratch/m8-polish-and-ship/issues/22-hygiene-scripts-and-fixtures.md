@@ -48,7 +48,13 @@ Needs: none. Files: `scripts/`, `.scratch/*/pty-walk-*.py` (capture writers), `c
   - [x] 10 — `scripts/esc-digest.py` → `docs/shots/{24d-kitty-check,25-iterm2-capture,33-kitty-check}.esc-digest.txt` (43, 3 and 49 commands; header fields, payload size, sha256, in order); `.esc` removed; refs updated in `.scratch/m1-the-graph/issues/{24d,25,33}-*.md` and `iterm2_capture.py`. `docs/capabilities/m1-the-graph.md` and `docs/log/m1.md` name none (grep); `docs/log/m5.md:1116` and m5/41 are history, left.
 - [x] `git ls-files 'docs/shots/*.esc'` → `0`; `find docs/shots -size +200k` → empty.
 - [x] `scripts/check-scripts.sh` → `check-scripts: ok`, exit 0.
-- [x] Gap M8/pty-scripts-real-recents — every Python script that execs Graft builds its env with `scripts/graft_sandbox.py` `sandbox_env` (temp `XDG_CONFIG_HOME`, raises if unset, `~/.config`, or outside a temp dir). Fixed in all m1–m6 pty scripts, `iterm2_capture.py` and `scripts/scroll-lag-pty.py` (which inherited the caller's env — the cause). Check: `scripts/check-sandbox.py` (run by `check-scripts.sh`) fails any `.py` under `scripts/` or `.scratch/*/` with `os.execve` and no `sandbox_env`, and asserts the guard refuses the three bad envs → `check-sandbox: ok`. Observed: `~/.config/graft/recent` absent before and after the full walk run.
+- [x] Gap M8/pty-scripts-real-recents — **This tick was false as first written** (review `docs/reviews/m8-22-hygiene.md`
+  Critical 1): 14 scripts still launched Graft with the caller's env (11 m0/m1 `pty-*.py` via `os.execv`,
+  `docs/shots/{37,39,40}-*.py`), and the check below matched only the text `os.execve(`, so it could not see them.
+  Fixed in ticket 22b (`22b-sandbox-every-exec.md`): all 14 now go through `sandbox_env`; `check-sandbox.py` is an AST
+  check over every tracked `*.py` covering exec*/spawn*/subprocess/pty.spawn/os.system; verified by
+  `scripts/check-sandbox-test.py` (18 planted bad scripts fail, 7 good pass) and `check-sandbox: ok`. Original text,
+  kept for the record: every Python script that execs Graft builds its env with `scripts/graft_sandbox.py` `sandbox_env` (temp `XDG_CONFIG_HOME`, raises if unset, `~/.config`, or outside a temp dir). Fixed in all m1–m6 pty scripts, `iterm2_capture.py` and `scripts/scroll-lag-pty.py` (which inherited the caller's env — the cause). Check: `scripts/check-sandbox.py` (run by `check-scripts.sh`) fails any `.py` under `scripts/` or `.scratch/*/` with `os.execve` and no `sandbox_env`, and asserts the guard refuses the three bad envs → `check-sandbox: ok`. Observed: `~/.config/graft/recent` absent before and after the full walk run.
 
 ## NOTES (builder, 2026-10-04, continuation)
 - Scout used (same file). Not compacted.

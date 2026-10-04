@@ -8,19 +8,25 @@ keys: sent one at a time, 0.4 s apart; 'q' is appended to quit.
 Text is not drawn: the PNG shows the graph images where the terminal would
 place them, which is what the pixel tier's look is judged on.
 """
-import base64, fcntl, os, pty, re, select, struct, sys, termios, time, zlib
+import base64, fcntl, os, pty, re, select, struct, sys, tempfile, termios, time, zlib
+# Every Graft launch goes through sandbox_env (m8/22b): temp XDG_CONFIG_HOME, checked.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
+from graft_sandbox import sandbox_env  # noqa: E402
 
 repo, cols, rows, keys, out = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4], sys.argv[5]
 CELL_W, CELL_H = 17, 37
 root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 binary = os.path.join(root, "target", "release", "graft")
 
+# Forced to the pixel tier by a temp config folder (was target/40/cfg, which
+# lived outside temp and was never checked in).
+config_home = tempfile.mkdtemp(prefix="graft-40-")
+os.makedirs(os.path.join(config_home, "graft"))
+with open(os.path.join(config_home, "graft", "config.toml"), "w") as f:
+    f.write('[graph]\nrenderer = "pixel"\n')
 pid, fd = pty.fork()
 if pid == 0:
-    os.environ["TERM"] = "xterm-kitty"
-    os.environ["COLORTERM"] = "truecolor"
-    os.environ["XDG_CONFIG_HOME"] = os.path.join(root, "target", "40", "cfg")
-    os.execv(binary, [binary, repo])
+    os.execve(binary, [binary, repo], sandbox_env(config_home, TERM="xterm-kitty", COLORTERM="truecolor"))
 fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, cols * CELL_W, rows * CELL_H))
 
 buf = bytearray()
