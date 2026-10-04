@@ -762,3 +762,6 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod spell_sweep;

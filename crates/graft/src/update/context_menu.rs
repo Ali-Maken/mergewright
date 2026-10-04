@@ -64,13 +64,13 @@ pub(super) fn open_for_history_row(next: &mut AppState, row: usize) {
         // dropped keys still work, and a verb that cannot say which branch it
         // moves is one this menu is better off not offering.
         if let Some(refs) = next.refs.as_deref() {
-            slots = slots::history_slots(id, &parents, &subject, refs, &findings);
+            slots = slots::history_slots(id, &parents, &subject, refs, &findings, &next.keymap);
         }
     }
     let items = slots.menu_items();
     next.context_menu = Some(OpenMenu {
         row,
-        menu: ContextMenu::for_row(marked, items, slots.leading, slots.dim_first),
+        menu: ContextMenu::for_row(marked, items, slots.leading, slots.dim_first, &next.keymap),
         verbs: slots.verbs,
     });
 }
@@ -85,7 +85,7 @@ pub(super) fn open_for_working_tree(next: &mut AppState) {
         .is_some_and(|tree| tree.staged().next().is_some());
     next.context_menu = Some(OpenMenu {
         row: WORKING_TREE_ROW,
-        menu: ContextMenu::for_working_tree(staged),
+        menu: ContextMenu::for_working_tree(staged, &next.keymap),
         verbs: Vec::new(),
     });
 }

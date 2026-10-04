@@ -13,6 +13,7 @@ use super::verbs::{
 };
 use crate::refs::{RefBadges, RefLabel};
 use crate::update::preview::current_branch;
+use graft_ui::keymap::Keymap;
 
 /// The `.` menu's history items and where they sit:
 /// `verbs[..leading]` go above `Explain` and the row's own actions, the rest
@@ -78,6 +79,7 @@ pub(crate) fn history_slots(
     subject: &str,
     refs: &RefBadges,
     findings: &[Finding],
+    keys: &Keymap,
 ) -> Slots {
     // `HEAD` as a `Tip`: `None` only while the branch is unborn, where there
     // is no commit to operate from.
@@ -95,7 +97,7 @@ pub(crate) fn history_slots(
     let mut dimmed = None;
     let (leading, dim_first) = if is_stash_row(on) {
         verbs.extend(checkouts);
-        merge_and_rebase_verbs(&mut verbs, id, refs, current.as_ref(), &here);
+        merge_and_rebase_verbs(&mut verbs, id, refs, current.as_ref(), &here, keys);
         // No `(o)`: `o` refuses on a stash row.
         verbs.push(pick_verb(id, subject, &head, &here));
         (0, None)
@@ -117,7 +119,7 @@ pub(crate) fn history_slots(
                 }),
             ),
         };
-        let (pick, dim) = pick_slot(id, parents, subject, &head, &here);
+        let (pick, dim) = pick_slot(id, parents, subject, &head, &here, keys);
         dimmed = dim.map(|reason| (verbs.len(), reason));
         verbs.push(pick);
         // Any further Checkout items lead the rest.
@@ -125,7 +127,7 @@ pub(crate) fn history_slots(
         // `m` and `r`'s own operations, from the row the cursor is on, built
         // by the very functions those keys use — the menu teaches the
         // keyboard, so it must not mean something else.
-        merge_and_rebase_verbs(&mut verbs, id, refs, current.as_ref(), &here);
+        merge_and_rebase_verbs(&mut verbs, id, refs, current.as_ref(), &here, keys);
         slots
     };
 

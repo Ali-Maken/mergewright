@@ -29,6 +29,8 @@ use graft_ops::operation::{
     Source, Tip,
 };
 use graft_term::{SanitizedText, sanitize_line};
+use graft_ui::context_menu::with_key;
+use graft_ui::keymap::{ActionId, Keymap};
 
 #[cfg(test)]
 use super::slots::history_slots;
@@ -63,8 +65,9 @@ pub fn history_verbs(
     subject: &str,
     refs: &RefBadges,
     findings: &[Finding],
+    keys: &Keymap,
 ) -> Vec<HistoryVerb> {
-    history_slots(id, parents, subject, refs, findings).verbs
+    history_slots(id, parents, subject, refs, findings, keys).verbs
 }
 
 /// `Checkout <b>` for each local branch on the row that `HEAD` is not
@@ -152,15 +155,16 @@ pub(super) fn pick_slot(
     subject: &str,
     head: &Tip,
     here: &str,
+    keys: &Keymap,
 ) -> (HistoryVerb, Option<SanitizedText>) {
     let params = pick_params(id, subject, head);
     let dim = take_check(id, parents, head)
         .err()
         .and_then(|refusal| pick_dim_reason(&refusal));
     let label = if dim.is_some() {
-        "Cherry-pick (o)".to_owned()
+        with_key("Cherry-pick", ActionId("graph.take"), keys)
     } else {
-        format!("Cherry-pick {here} (o)")
+        with_key(&format!("Cherry-pick {here}"), ActionId("graph.take"), keys)
     };
     (verb(&label, Operation::CherryPick(params)), dim)
 }
@@ -232,6 +236,7 @@ pub(super) fn merge_and_rebase_verbs(
     refs: &RefBadges,
     current: Option<&Tip>,
     here: &str,
+    keys: &Keymap,
 ) {
     let Some(current) = current else {
         return;
@@ -246,7 +251,11 @@ pub(super) fn merge_and_rebase_verbs(
         Source::Commit(_) => here.to_owned(),
     };
     verbs.push(verb(
-        &format!("Merge {named} into {cur} (m)"),
+        &with_key(
+            &format!("Merge {named} into {cur}"),
+            ActionId("graph.merge"),
+            keys,
+        ),
         Operation::Merge(MergeParams {
             source: source.clone(),
             into: current.clone(),
@@ -255,7 +264,11 @@ pub(super) fn merge_and_rebase_verbs(
         }),
     ));
     verbs.push(verb(
-        &format!("Rebase {cur} onto {named} (r)"),
+        &with_key(
+            &format!("Rebase {cur} onto {named}"),
+            ActionId("graph.rebase"),
+            keys,
+        ),
         Operation::Rebase(RebaseParams::new(current.clone(), source, id)),
     ));
 }

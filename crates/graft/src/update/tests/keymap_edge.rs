@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use graft_core::ref_name::RefName;
 use graft_ui::finish_summary::SummaryFocus;
 use graft_ui::graph_screen::every_context;
-use graft_ui::keymap::{Binding, ContextId, KeyChord, Keymap, defaults};
+use graft_ui::keymap::{ActionId, Binding, ContextId, KeyChord, Keymap, defaults};
 
 use super::*;
 use std::sync::Arc;
@@ -560,4 +560,152 @@ fn x_typed_into_every_field_is_an_x_with_merge_on_x() {
             "{name}: the field shows the x ({before} → {after})"
         );
     }
+}
+
+/// The labels of the `.` menu open on `state`, in order.
+fn menu_labels(state: &AppState) -> Vec<String> {
+    state
+        .context_menu
+        .as_ref()
+        .expect("the menu is open")
+        .menu
+        .items
+        .iter()
+        .map(|item| item.label.as_str().to_owned())
+        .collect()
+}
+
+/// Whether `hint` names `action` as one of its keys.
+fn names(hint: &graft_ui::graph_screen::Hint, action: ActionId) -> bool {
+    use graft_ui::graph_screen::HintKey;
+    hint.keys.iter().any(|key| {
+        matches!(key, HintKey::Key(a) | HintKey::EveryChord(a) | HintKey::Fixed(a) if *a == action)
+    })
+}
+
+/// Ticket m8/10, decision 2: `graph.merge = "none"` leaves merge unbound.
+/// No bar draws its hint at any width, the menu keeps the `Merge …` row (it
+/// acts by `⏎`) with no `(key)`, and no screen draws a `—` the default
+/// keymap's does not — an unbound key is never spelled as a dash.
+#[test]
+fn merge_unbound_is_drawn_nowhere_and_its_menu_row_names_no_key() {
+    use graft_ui::graph_screen::{Divider, hints_for};
+    let merge = ActionId("graph.merge");
+    let (map, warnings) =
+        Keymap::with_overrides(&[("graph.merge".to_owned(), vec!["none".to_owned()])]);
+    assert_eq!(warnings, []);
+    let unbound = Arc::new(map);
+
+    let mut drawn_by_default = 0;
+    for context in every_context() {
+        for divider in [Divider::Shown, Divider::Hidden] {
+            for columns in [40, 80, 120, 200] {
+                drawn_by_default += hints_for(&context, divider, columns, Keymap::shipped())
+                    .iter()
+                    .filter(|hint| names(hint, merge))
+                    .count();
+                for hint in hints_for(&context, divider, columns, &unbound) {
+                    assert!(
+                        !names(&hint, merge),
+                        "{context:?} {divider:?} {columns}: `{:?} {}` drawn with merge unbound",
+                        hint.key_text(&unbound),
+                        hint.verb
+                    );
+                }
+            }
+        }
+    }
+    assert!(
+        drawn_by_default > 0,
+        "the default keymap draws `m merge` somewhere"
+    );
+
+    let base = sized_to_draw(on_a_branch_row());
+    let moved = AppState {
+        keymap: unbound.clone(),
+        ..base.clone()
+    };
+    let shipped_menu = menu_labels(&update(&base, key(KeyCode::Char('.'))).0);
+    let unbound_menu = menu_labels(&update(&moved, key(KeyCode::Char('.'))).0);
+    assert!(
+        shipped_menu.contains(&"Merge feature into main (m)".to_owned()),
+        "{shipped_menu:?}"
+    );
+    assert!(
+        unbound_menu.contains(&"Merge feature into main".to_owned()),
+        "{unbound_menu:?}"
+    );
+
+    for &ctx in ContextId::ALL {
+        let Some(state) = fixture(ctx) else {
+            continue;
+        };
+        let moved = AppState {
+            keymap: unbound.clone(),
+            ..state.clone()
+        };
+        let dashes = |state: &AppState| {
+            crate::view::tests::draw(state, state.size.columns, state.size.rows)
+                .matches('—')
+                .count()
+        };
+        assert_eq!(
+            dashes(&moved),
+            dashes(&state),
+            "{ctx:?}: a dash for an unbound key"
+        );
+    }
+}
+
+/// `[keys.graph] merge = "M"` from a config file, as `config::keymap_from`
+/// builds it: the bar on a branch row reads `M merge`, and the `.` menu's
+/// row `Merge feature into main (M)`. `M` was `graph.map`'s, so the map
+/// loses it in the collision and its `M map` hint is not drawn anywhere.
+#[test]
+fn capture_merge_remapped_to_shift_m() {
+    use graft_ui::graph_screen::{Divider, hints_for};
+    let loaded = crate::config::tests::loaded_from_a_file("[keys.graph]\nmerge = \"M\"\n");
+    let (keymap, problems) = crate::config::keymap_from(&loaded);
+    assert_eq!(problems.len(), 1, "M was the map's: {problems:?}");
+    let keymap = Arc::new(keymap);
+    for context in every_context() {
+        for hint in hints_for(&context, Divider::Shown, 200, &keymap) {
+            assert!(
+                !names(&hint, ActionId("graph.map")),
+                "{context:?}: `{:?} {}` — the map lost M",
+                hint.key_text(&keymap),
+                hint.verb
+            );
+        }
+    }
+
+    let mut base = sized_to_draw(on_a_branch_row());
+    base.seed_keys(keymap, Vec::new());
+    let bar = crate::view::tests::draw(&base, base.size.columns, base.size.rows);
+    assert!(
+        bar.contains("M merge"),
+        "the bar spells merge's chord:\n{bar}"
+    );
+    assert!(
+        !bar.contains("m merge"),
+        "not the default it replaced:\n{bar}"
+    );
+    let menu = update(&base, key(KeyCode::Char('.'))).0;
+    assert!(
+        menu_labels(&menu).contains(&"Merge feature into main (M)".to_owned()),
+        "{:?}",
+        menu_labels(&menu)
+    );
+    let menu_frame = crate::view::tests::draw(&menu, menu.size.columns, menu.size.rows);
+    // `docs/shots/m8-keymap-remapped-120x36.txt`. What right looks like:
+    // first frame, a branch row's bar reading `M merge` and no `M map`;
+    // second, the `.` menu open on it with `Merge feature into main (M)`.
+    // Colour unverified (rule 5).
+    graft_fixtures::capture(
+        format!(
+            "{}/../../docs/shots/m8-keymap-remapped-120x36.txt",
+            env!("CARGO_MANIFEST_DIR")
+        ),
+        &format!("{bar}\n{menu_frame}"),
+    );
 }

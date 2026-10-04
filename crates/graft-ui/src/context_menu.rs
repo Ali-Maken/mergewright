@@ -14,6 +14,7 @@ use ratatui::style::{Modifier, Style};
 use ratatui::widgets::Widget;
 
 use crate::fit::fit;
+use crate::keymap::{ActionId, Keymap};
 
 /// An action a context-menu item dispatches. `apply_context_action` (in the
 /// app crate) carries each one out.
@@ -100,13 +101,30 @@ pub struct ContextMenu {
 /// since none depends on which row the cursor is on.
 /// (A function rather than a `const`: [`SanitizedText`] owns its string, and
 /// only [`sanitize_line`] can make one.)
-fn always_items() -> [MenuItem; 4] {
+fn always_items(keys: &Keymap) -> [MenuItem; 4] {
     [
-        item(ContextAction::Fetch, "Fetch (f)"),
-        item(ContextAction::Pull, "Pull (p)"),
-        item(ContextAction::Push, "Push (P)"),
-        item(ContextAction::Undo, "Undo (u)"),
+        keyed_item(ContextAction::Fetch, "Fetch", "graph.fetch", keys),
+        keyed_item(ContextAction::Pull, "Pull", "graph.pull", keys),
+        keyed_item(ContextAction::Push, "Push", "graph.push", keys),
+        keyed_item(ContextAction::Undo, "Undo", "app.undo", keys),
     ]
+}
+
+/// `label (key)`, the key spelled from `keys` (ticket m8/10): the menu
+/// teaches the key his keymap gives `action`. An action he left unbound
+/// keeps its row — it acts by `⏎` or a click — and loses the suffix, since
+/// a `(key)` naming nothing would teach a key that does nothing.
+#[must_use]
+pub fn with_key(label: &str, action: ActionId, keys: &Keymap) -> String {
+    match keys.spell_keys(&[action]) {
+        Some(key) => format!("{label} ({key})"),
+        None => label.to_owned(),
+    }
+}
+
+/// [`item`], its label carrying `action`'s key ([`with_key`]).
+fn keyed_item(action: ContextAction, label: &str, key: &'static str, keys: &Keymap) -> MenuItem {
+    item(action, &with_key(label, ActionId(key), keys))
 }
 
 /// A fixed label this crate wrote itself. It still goes through
@@ -153,6 +171,8 @@ impl ContextMenu {
     /// It takes no width, so what the menu holds cannot depend on the
     /// terminal's (ADR-0039): the signature is the guarantee.
     ///
+    /// Each `(key)` is spelled from `keys` ([`with_key`]).
+    ///
     /// [`for_drop`]: ContextMenu::for_drop
     #[must_use]
     pub fn for_row(
@@ -160,6 +180,7 @@ impl ContextMenu {
         history: Vec<(SanitizedText, Option<SanitizedText>)>,
         leading: usize,
         dim_first: Option<(SanitizedText, SanitizedText)>,
+        keys: &Keymap,
     ) -> ContextMenu {
         let leading = leading.min(history.len());
         let mut items = Vec::with_capacity(9 + history.len());
@@ -189,14 +210,26 @@ impl ContextMenu {
         if marked {
             items.push(item(ContextAction::Explain, "Explain"));
         }
-        items.push(item(ContextAction::CopySha, "Copy SHA (y)"));
-        items.push(item(
-            ContextAction::CompareWithThis,
-            "Compare with this (x)",
+        items.push(keyed_item(
+            ContextAction::CopySha,
+            "Copy SHA",
+            "graph.copy_sha",
+            keys,
         ));
-        items.push(item(ContextAction::OpenDetails, "Open details (⏎)"));
+        items.push(keyed_item(
+            ContextAction::CompareWithThis,
+            "Compare with this",
+            "graph.compare",
+            keys,
+        ));
+        items.push(keyed_item(
+            ContextAction::OpenDetails,
+            "Open details",
+            "app.open",
+            keys,
+        ));
         items.extend(history);
-        items.extend(always_items());
+        items.extend(always_items(keys));
         ContextMenu {
             title: None,
             items,
@@ -212,13 +245,16 @@ impl ContextMenu {
     /// reading `nothing staged`; the cursor opens on it either way, as a
     /// commit row's opens on its dim Checkout.
     #[must_use]
-    pub fn for_working_tree(staged: bool) -> ContextMenu {
+    pub fn for_working_tree(staged: bool, keys: &Keymap) -> ContextMenu {
         let mut absorb = item(ContextAction::Absorb, ABSORB_LABEL);
         if !staged {
             absorb.disabled = Some(sanitize_line("nothing staged"));
         }
-        let mut items = vec![absorb, item(ContextAction::OpenDetails, "Open details (⏎)")];
-        items.extend(always_items());
+        let mut items = vec![
+            absorb,
+            keyed_item(ContextAction::OpenDetails, "Open details", "app.open", keys),
+        ];
+        items.extend(always_items(keys));
         ContextMenu {
             title: None,
             items,
@@ -406,7 +442,7 @@ mod tests {
     /// Major 1).
     #[test]
     fn for_row_omits_explain_when_not_marked() {
-        let menu = ContextMenu::for_row(false, Vec::new(), 0, None);
+        let menu = ContextMenu::for_row(false, Vec::new(), 0, None, Keymap::shipped());
         assert!(
             !menu
                 .items
@@ -432,7 +468,7 @@ mod tests {
 
     #[test]
     fn for_row_lists_explain_first_when_marked() {
-        let menu = ContextMenu::for_row(true, Vec::new(), 0, None);
+        let menu = ContextMenu::for_row(true, Vec::new(), 0, None, Keymap::shipped());
         assert_eq!(menu.items[0].action, ContextAction::Explain);
         assert_eq!(menu.items.len(), 8);
     }
@@ -447,7 +483,7 @@ mod tests {
     /// next time, you can skip the menu.
     #[test]
     fn every_label_names_its_key() {
-        let menu = ContextMenu::for_row(true, Vec::new(), 0, None);
+        let menu = ContextMenu::for_row(true, Vec::new(), 0, None, Keymap::shipped());
         assert_eq!(
             labels(&menu),
             vec![
@@ -476,6 +512,7 @@ mod tests {
             ],
             0,
             None,
+            Keymap::shipped(),
         );
         assert_eq!(
             menu.items
@@ -504,8 +541,8 @@ mod tests {
     #[test]
     fn a_history_index_names_the_apps_own_list_not_the_menu_row() {
         let history = vec![(sanitize_line("Merge feature into main (m)"), None)];
-        let plain = ContextMenu::for_row(false, history.clone(), 0, None);
-        let marked = ContextMenu::for_row(true, history, 0, None);
+        let plain = ContextMenu::for_row(false, history.clone(), 0, None, Keymap::shipped());
+        let marked = ContextMenu::for_row(true, history, 0, None, Keymap::shipped());
         let of = |menu: &ContextMenu| {
             menu.items
                 .iter()
@@ -524,7 +561,7 @@ mod tests {
     /// it.
     #[test]
     fn absorb_is_the_first_item_on_the_uncommitted_row() {
-        let menu = ContextMenu::for_working_tree(true);
+        let menu = ContextMenu::for_working_tree(true, Keymap::shipped());
         let absorb = &menu.items[0];
         assert_eq!(absorb.action, ContextAction::Absorb);
         assert_eq!(
@@ -540,7 +577,7 @@ mod tests {
     /// opens on its dim Checkout, and `Enter` answers with the reason.
     #[test]
     fn absorb_dims_in_first_place_with_nothing_staged() {
-        let menu = ContextMenu::for_working_tree(false);
+        let menu = ContextMenu::for_working_tree(false, Keymap::shipped());
         assert_eq!(menu.items[0].action, ContextAction::Absorb);
         assert_eq!(menu.cursor, 0);
         assert_eq!(
@@ -554,7 +591,7 @@ mod tests {
     #[test]
     fn for_working_tree_keeps_its_old_order_below_absorb() {
         for staged in [true, false] {
-            let menu = ContextMenu::for_working_tree(staged);
+            let menu = ContextMenu::for_working_tree(staged, Keymap::shipped());
             assert_eq!(
                 menu.items[1..]
                     .iter()
@@ -577,14 +614,14 @@ mod tests {
     /// reads as "no refusal", same as a real item with nothing disabled.
     #[test]
     fn selected_refusal_on_an_out_of_range_cursor_is_none_not_a_panic() {
-        let mut menu = ContextMenu::for_row(true, Vec::new(), 0, None);
+        let mut menu = ContextMenu::for_row(true, Vec::new(), 0, None, Keymap::shipped());
         menu.cursor = menu.items.len() + 5;
         assert_eq!(menu.selected_refusal(), None);
     }
 
     #[test]
     fn move_cursor_clamps_at_both_ends() {
-        let mut menu = ContextMenu::for_row(true, Vec::new(), 0, None);
+        let mut menu = ContextMenu::for_row(true, Vec::new(), 0, None, Keymap::shipped());
         menu.move_cursor(-5);
         assert_eq!(menu.cursor, 0);
         menu.move_cursor(100);
@@ -593,14 +630,14 @@ mod tests {
 
     #[test]
     fn selected_follows_cursor() {
-        let mut menu = ContextMenu::for_row(true, Vec::new(), 0, None);
+        let mut menu = ContextMenu::for_row(true, Vec::new(), 0, None, Keymap::shipped());
         menu.move_cursor(1);
         assert_eq!(menu.selected(), ContextAction::CopySha);
     }
 
     #[test]
     fn width_is_longest_label_plus_four() {
-        let menu = ContextMenu::for_row(true, Vec::new(), 0, None);
+        let menu = ContextMenu::for_row(true, Vec::new(), 0, None, Keymap::shipped());
         // "Compare with this (x)" is 21 cells, the longest label.
         assert_eq!(menu.width(), 21 + 4);
     }
@@ -614,6 +651,7 @@ mod tests {
             vec![(sanitize_line("Fix: reset main to before the merge"), None)],
             0,
             None,
+            Keymap::shipped(),
         );
         assert_eq!(menu.width(), 35 + 4);
     }
@@ -628,6 +666,7 @@ mod tests {
             vec![(sanitize_line("Checkout \u{1b}[31mevil"), None)],
             0,
             None,
+            Keymap::shipped(),
         );
         let label = menu.items[3].label.as_str();
         assert!(!label.contains('\u{1b}'), "{label:?}");
@@ -653,6 +692,7 @@ mod tests {
             )],
             0,
             None,
+            Keymap::shipped(),
         );
         assert_eq!(menu.width(), 42 + 4, "it asks for the whole label");
 
@@ -676,11 +716,14 @@ mod tests {
 
     #[test]
     fn for_working_tree_width_is_its_own_longest_label_plus_four() {
-        let menu = ContextMenu::for_working_tree(true);
+        let menu = ContextMenu::for_working_tree(true, Keymap::shipped());
         // "Put staged changes into their commits (absorb)" is 46 characters.
         assert_eq!(menu.width(), 46 + 4);
         // Dim, it carries its reason: ` — nothing staged` is 17 more.
-        assert_eq!(ContextMenu::for_working_tree(false).width(), 46 + 17 + 4);
+        assert_eq!(
+            ContextMenu::for_working_tree(false, Keymap::shipped()).width(),
+            46 + 17 + 4
+        );
     }
 
     /// m6-conflicts/71: the dim slot, then the leading verbs, then
@@ -696,6 +739,7 @@ mod tests {
             history,
             1,
             Some((sanitize_line("Checkout"), sanitize_line("already on main"))),
+            Keymap::shipped(),
         );
         assert_eq!(
             menu.items
@@ -746,6 +790,7 @@ mod tests {
             ],
             2,
             None,
+            Keymap::shipped(),
         );
         assert_eq!(
             menu.items
@@ -797,6 +842,7 @@ mod tests {
             ],
             2,
             None,
+            Keymap::shipped(),
         );
         assert_eq!(
             labels(&menu),

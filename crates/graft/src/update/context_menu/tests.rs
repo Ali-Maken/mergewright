@@ -91,10 +91,22 @@ fn the_menu_runs_what_the_dropped_keys_run() {
 #[test]
 fn every_menu_lists_the_dropped_keys() {
     for menu in [
-        ContextMenu::for_row(false, Vec::new(), 0, None),
-        ContextMenu::for_row(true, Vec::new(), 0, None),
-        ContextMenu::for_working_tree(false),
-        ContextMenu::for_working_tree(true),
+        ContextMenu::for_row(
+            false,
+            Vec::new(),
+            0,
+            None,
+            graft_ui::keymap::Keymap::shipped(),
+        ),
+        ContextMenu::for_row(
+            true,
+            Vec::new(),
+            0,
+            None,
+            graft_ui::keymap::Keymap::shipped(),
+        ),
+        ContextMenu::for_working_tree(false, graft_ui::keymap::Keymap::shipped()),
+        ContextMenu::for_working_tree(true, graft_ui::keymap::Keymap::shipped()),
     ] {
         for action in [
             ContextAction::Fetch,

@@ -71,7 +71,14 @@ const SHA3: &str = "0300000";
 )]
 fn menu_verbs_build_expected_operations() {
     let refs = main_and_feature();
-    let verbs = history_verbs(oid(3), &[oid(2)], "third", &refs, &[]);
+    let verbs = history_verbs(
+        oid(3),
+        &[oid(2)],
+        "third",
+        &refs,
+        &[],
+        graft_ui::keymap::Keymap::shipped(),
+    );
 
     assert_eq!(
         labels(&verbs),
@@ -173,7 +180,14 @@ fn menu_verbs_build_expected_operations() {
 #[test]
 fn the_merge_and_rebase_verbs_are_the_ones_m_and_r_build() {
     let refs = main_and_feature();
-    let verbs = history_verbs(oid(3), &[oid(2)], "third", &refs, &[]);
+    let verbs = history_verbs(
+        oid(3),
+        &[oid(2)],
+        "third",
+        &refs,
+        &[],
+        graft_ui::keymap::Keymap::shipped(),
+    );
     let source = source_at(&refs, oid(3));
     let current = current_branch(&refs).expect("HEAD is on main");
 
@@ -196,7 +210,14 @@ fn the_merge_and_rebase_verbs_are_the_ones_m_and_r_build() {
 #[test]
 fn a_row_with_no_branch_offers_a_detached_checkout() {
     let refs = main_and_feature();
-    let verbs = history_verbs(oid(9), &[oid(2)], "ninth", &refs, &[]);
+    let verbs = history_verbs(
+        oid(9),
+        &[oid(2)],
+        "ninth",
+        &refs,
+        &[],
+        graft_ui::keymap::Keymap::shipped(),
+    );
     assert_eq!(
         op_of(&verbs, "Checkout 0900000, detached"),
         &Operation::Checkout(CheckoutParams {
@@ -217,7 +238,14 @@ fn a_row_with_no_branch_offers_a_detached_checkout() {
 #[test]
 fn the_current_branchs_own_row_offers_neither_checkout_nor_delete_nor_merge() {
     let refs = main_and_feature();
-    let verbs = history_verbs(oid(2), &[oid(1)], "second", &refs, &[]);
+    let verbs = history_verbs(
+        oid(2),
+        &[oid(1)],
+        "second",
+        &refs,
+        &[],
+        graft_ui::keymap::Keymap::shipped(),
+    );
     let labels = labels(&verbs);
     assert_eq!(
         labels,
@@ -237,7 +265,14 @@ fn the_current_branchs_own_row_offers_neither_checkout_nor_delete_nor_merge() {
 #[test]
 fn a_merge_rows_revert_names_its_mainline() {
     let refs = main_and_feature();
-    let verbs = history_verbs(oid(3), &[oid(2), oid(4)], "merged", &refs, &[]);
+    let verbs = history_verbs(
+        oid(3),
+        &[oid(2), oid(4)],
+        "merged",
+        &refs,
+        &[],
+        graft_ui::keymap::Keymap::shipped(),
+    );
     assert_eq!(
         op_of(&verbs, "Revert 0300000, -m 1"),
         &Operation::Revert(RevertParams {
@@ -259,7 +294,14 @@ fn a_detached_head_keeps_the_verbs_that_do_not_need_a_branch() {
         &[(name("refs/heads/feature"), oid(3))],
         &HeadState::Detached(oid(2)),
     );
-    let verbs = history_verbs(oid(3), &[oid(2)], "third", &refs, &[]);
+    let verbs = history_verbs(
+        oid(3),
+        &[oid(2)],
+        "third",
+        &refs,
+        &[],
+        graft_ui::keymap::Keymap::shipped(),
+    );
     let labels = labels(&verbs);
     assert!(
         !labels.iter().any(|label| label.starts_with("Merge")),
@@ -297,7 +339,17 @@ fn a_detached_head_keeps_the_verbs_that_do_not_need_a_branch() {
 #[test]
 fn an_unborn_head_offers_no_history_verb() {
     let refs = built(&[], &HeadState::Unborn(name("refs/heads/main")));
-    assert!(history_verbs(oid(3), &[], "third", &refs, &[]).is_empty());
+    assert!(
+        history_verbs(
+            oid(3),
+            &[],
+            "third",
+            &refs,
+            &[],
+            graft_ui::keymap::Keymap::shipped()
+        )
+        .is_empty()
+    );
 }
 
 fn foxtrot(merge: Oid, first_parent: Oid, real_tip: Oid) -> Finding {
@@ -330,6 +382,7 @@ fn a_foxtrot_merge_head_is_on_offers_all_three_fixes() {
         "Merge branch 'x'",
         &refs,
         &findings,
+        graft_ui::keymap::Keymap::shipped(),
     );
     let head = main_tip();
 
@@ -376,6 +429,7 @@ fn fix_rebase_is_absent_unless_head_is_on_the_merge() {
         "Merge branch 'x'",
         &refs,
         &findings,
+        graft_ui::keymap::Keymap::shipped(),
     );
     let labels = labels(&verbs);
     assert!(!labels.contains(&"Fix: rebase instead"), "{labels:?}");
@@ -402,6 +456,7 @@ fn no_fix_item_when_the_previous_tip_is_not_a_parent() {
         "Merge branch 'x'",
         &refs,
         &findings,
+        graft_ui::keymap::Keymap::shipped(),
     );
     let labels = labels(&verbs);
     assert!(
@@ -415,7 +470,14 @@ fn no_fix_item_when_the_previous_tip_is_not_a_parent() {
 fn a_foxtrot_on_another_row_adds_nothing_here() {
     let refs = main_and_feature();
     let findings = [foxtrot(oid(8), oid(7), oid(5))];
-    let verbs = history_verbs(oid(3), &[oid(2)], "third", &refs, &findings);
+    let verbs = history_verbs(
+        oid(3),
+        &[oid(2)],
+        "third",
+        &refs,
+        &findings,
+        graft_ui::keymap::Keymap::shipped(),
+    );
     assert!(
         !labels(&verbs).iter().any(|label| label.starts_with("Fix:")),
         "{:?}",
@@ -439,7 +501,14 @@ fn an_invisible_character_in_a_ref_name_is_cleaned_out_of_the_label() {
         ],
         &HeadState::Branch(name("refs/heads/main")),
     );
-    let verbs = history_verbs(oid(3), &[oid(2)], "third", &refs, &[]);
+    let verbs = history_verbs(
+        oid(3),
+        &[oid(2)],
+        "third",
+        &refs,
+        &[],
+        graft_ui::keymap::Keymap::shipped(),
+    );
     for verb in &verbs {
         assert!(
             !verb.label.as_str().contains('\u{202e}'),
@@ -513,11 +582,32 @@ fn every_label_the_app_can_build() -> Vec<HistoryVerb> {
     let refs = main_and_feature();
     // An ordinary row with a branch on it: checkout, merge, rebase,
     // cherry-pick, revert, reset, delete branch, delete tag.
-    take(history_verbs(oid(3), &[oid(2)], "third", &refs, &[]));
+    take(history_verbs(
+        oid(3),
+        &[oid(2)],
+        "third",
+        &refs,
+        &[],
+        graft_ui::keymap::Keymap::shipped(),
+    ));
     // A row with no badge at all: the detached checkout.
-    take(history_verbs(oid(9), &[oid(2)], "ninth", &refs, &[]));
+    take(history_verbs(
+        oid(9),
+        &[oid(2)],
+        "ninth",
+        &refs,
+        &[],
+        graft_ui::keymap::Keymap::shipped(),
+    ));
     // The current branch's own row.
-    take(history_verbs(oid(2), &[oid(1)], "second", &refs, &[]));
+    take(history_verbs(
+        oid(2),
+        &[oid(1)],
+        "second",
+        &refs,
+        &[],
+        graft_ui::keymap::Keymap::shipped(),
+    ));
     // A merge row: the revert names its mainline.
     take(history_verbs(
         oid(3),
@@ -525,6 +615,7 @@ fn every_label_the_app_can_build() -> Vec<HistoryVerb> {
         "merged",
         &refs,
         &[],
+        graft_ui::keymap::Keymap::shipped(),
     ));
     // A detached `HEAD`.
     take(history_verbs(
@@ -536,6 +627,7 @@ fn every_label_the_app_can_build() -> Vec<HistoryVerb> {
             &HeadState::Detached(oid(2)),
         ),
         &[],
+        graft_ui::keymap::Keymap::shipped(),
     ));
     // A foxtrot merge `HEAD` is standing on: all three Fix… items.
     take(history_verbs(
@@ -547,6 +639,7 @@ fn every_label_the_app_can_build() -> Vec<HistoryVerb> {
             &HeadState::Branch(name("refs/heads/main")),
         ),
         &[foxtrot(oid(2), oid(7), oid(5))],
+        graft_ui::keymap::Keymap::shipped(),
     ));
 
     assert!(
@@ -717,7 +810,14 @@ fn checkout_and_cherry_pick_hold_the_first_two_slots() {
         ),
     ];
     for c in table {
-        let slots = history_slots(c.row, &c.parents, "subject", c.refs, c.findings);
+        let slots = history_slots(
+            c.row,
+            &c.parents,
+            "subject",
+            c.refs,
+            c.findings,
+            graft_ui::keymap::Keymap::shipped(),
+        );
         let got = labels(&slots.verbs);
         assert_eq!(
             slots
@@ -737,7 +837,14 @@ fn checkout_and_cherry_pick_hold_the_first_two_slots() {
         }
     }
     // Two local branches: the second `Checkout` leads the rest.
-    let slots = history_slots(oid(3), &[oid(2)], "subject", &two_on_three, &[]);
+    let slots = history_slots(
+        oid(3),
+        &[oid(2)],
+        "subject",
+        &two_on_three,
+        &[],
+        graft_ui::keymap::Keymap::shipped(),
+    );
     assert_eq!(labels(&slots.verbs)[2], "Checkout topic");
 }
 
@@ -749,7 +856,14 @@ fn checkout_and_cherry_pick_hold_the_first_two_slots() {
 fn slot_two_dims_on_head_and_on_a_merge() {
     let refs = main_and_feature();
     let dim_of = |row, parents: &[Oid]| {
-        let slots = history_slots(row, parents, "subject", &refs, &[]);
+        let slots = history_slots(
+            row,
+            parents,
+            "subject",
+            &refs,
+            &[],
+            graft_ui::keymap::Keymap::shipped(),
+        );
         let (at, reason) = slots.dimmed.clone().expect("slot 2 is dim");
         (
             slots.verbs[at].label.as_str().to_owned(),
@@ -772,7 +886,14 @@ fn slot_two_dims_on_head_and_on_a_merge() {
     // Already on the branch wins over a merge (`check_commit`'s order).
     assert_eq!(dim_of(oid(2), &[oid(1), oid(4)]).1, "already on main");
 
-    let live = history_slots(oid(3), &[oid(2)], "subject", &refs, &[]);
+    let live = history_slots(
+        oid(3),
+        &[oid(2)],
+        "subject",
+        &refs,
+        &[],
+        graft_ui::keymap::Keymap::shipped(),
+    );
     assert_eq!(live.dimmed, None);
     assert_eq!(labels(&live.verbs)[1], "Cherry-pick 0300000 (o)");
     let items = live.menu_items();
@@ -783,7 +904,14 @@ fn slot_two_dims_on_head_and_on_a_merge() {
         &[(name("refs/heads/main"), oid(2))],
         &HeadState::Detached(oid(9)),
     );
-    let slots = history_slots(oid(9), &[oid(2)], "subject", &detached, &[]);
+    let slots = history_slots(
+        oid(9),
+        &[oid(2)],
+        "subject",
+        &detached,
+        &[],
+        graft_ui::keymap::Keymap::shipped(),
+    );
     assert_eq!(
         slots.dimmed.map(|(_, reason)| reason.as_str().to_owned()),
         Some("already on HEAD".to_owned())
