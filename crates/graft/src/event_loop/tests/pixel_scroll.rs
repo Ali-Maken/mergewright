@@ -188,9 +188,12 @@ fn j_inside_resident_strips_sends_no_strip() {
 }
 
 /// m8 04: held `j` down a wide graph (13 lanes, 241 rows, past seven
-/// strips) under a budget of about three strips: after every frame the
-/// cache weighs no more than its budget, or holds only the viewport's
-/// strips when those alone weigh more.
+/// strips) under a budget of the viewport floor plus two strips — the
+/// regime the user's 17×37 cell runs in, where the budget binds and the
+/// floor does not (review Major 1: at 1.5 frames the floor won 210 of 230
+/// frames, so the budget was never what held the cache). After warm-up the
+/// cache weighs no more than its budget on every frame, the floor never
+/// wins, and evictions happen; the pool is steady.
 #[test]
 fn held_j_on_wide_strips_stays_within_the_byte_budget() {
     let (mut session, mut state) = at_pixel_tier();
@@ -203,37 +206,47 @@ fn held_j_on_wide_strips_stays_within_the_byte_budget() {
         rows: ROWS,
     };
     let (mut terminal, _recorder) = terminal(COLUMNS, ROWS);
-    let first = {
-        let mut probe = Graphics::new(NoReplies, &session.capabilities);
-        draw(&mut terminal, &session, &state, &mut probe).expect("memory");
-        probe.strip_budget_report().0
-    };
-    assert!(first > 0, "premise: the first frame drew strips");
-    let budget = ByteBudget(first * 3 / 2);
+    let (pair, floor) = strip_weight_and_floor(&mut terminal, &session, &state);
+    let budget = ByteBudget((floor + 2) * pair);
     let mut graphics = Graphics::new(NoReplies, &session.capabilities).with_strip_budget(budget);
     draw(&mut terminal, &session, &state, &mut graphics).expect("memory");
-    let mut evicted_while_held = false;
+    let mut budget_evictions = 0;
     let mut warm = None;
     for (index, event) in js(230).into_iter().enumerate() {
         if index == 115 {
             warm = Some(graphics.strip_stats());
         }
+        let evicted = graphics.strip_stats().evicted;
         state = update(&state, event).0;
         draw(&mut terminal, &session, &state, &mut graphics).expect("memory");
         let (resident, minimum_wins) = graphics.strip_budget_report();
         assert!(
-            resident <= budget.0 || minimum_wins,
-            "{resident} bytes resident over a {} byte budget",
+            !minimum_wins,
+            "j {index}: the floor ({floor} a layer) held the cache over a {} byte budget",
             budget.0
         );
-        evicted_while_held |= graphics.strip_stats().evicted > 0;
+        assert!(
+            resident <= budget.0,
+            "j {index}: {resident} bytes resident over a {} byte budget",
+            budget.0
+        );
+        if graphics.strip_stats().evicted > evicted {
+            budget_evictions += 1;
+        }
     }
     let top = state.history.as_ref().map_or(0, |history| history.top);
     assert!(
         top > 4 * STRIP_ROWS,
         "premise: j scrolled past strips ({top})"
     );
-    assert!(evicted_while_held, "premise: the budget bound");
+    assert!(
+        budget_evictions > 0,
+        "premise: the budget, not the floor, evicted"
+    );
+    eprintln!(
+        "budget {} bytes ({floor} + 2 strips of {pair}); {budget_evictions} frames evicted",
+        budget.0
+    );
     let (warm, last) = (warm.expect("230 events"), graphics.strip_stats());
     assert!(
         last.rasterised + last.emphasis_rasterised > warm.rasterised + warm.emphasis_rasterised,
@@ -243,6 +256,20 @@ fn held_j_on_wide_strips_stays_within_the_byte_budget() {
         last.buffers_allocated, warm.buffers_allocated,
         "steady state draws into evicted buffers"
     );
+}
+
+/// What a strip and its emphasis weigh together, from `state`'s first frame
+/// drawn with room to spare, and the per-layer floor that frame set.
+fn strip_weight_and_floor(
+    terminal: &mut Terminal<CrosstermBackend<Recorder>>,
+    session: &Session,
+    state: &AppState,
+) -> (usize, usize) {
+    let mut probe = Graphics::new(NoReplies, &session.capabilities);
+    draw(terminal, session, state, &mut probe).expect("memory");
+    let strips = usize::try_from(probe.strip_stats().rasterised).expect("small");
+    assert!(strips > 0, "premise: the first frame drew strips");
+    (probe.strip_budget_report().0 / strips, probe.strip_floor())
 }
 
 /// Each state a run of `events` passes through from `state`, the first

@@ -34,10 +34,12 @@ use crate::view::strips::{StripPaint, pixel_rows};
 const STRIPS_KEPT: usize = 16;
 
 /// Pixel bytes the strip cache keeps across its layers (m8 04,
-/// `docs/perf/scroll-pixel-memory-budget.txt`). A strip weighs lanes × cell:
-/// on MONOREPO at the user's 17×37 cell a backdrop is ~4.3 MB and its
-/// emphasis ~2.4 MB, so this keeps ~14 strips of both; at a 24×52 cell, ~7.
-/// The viewport's strips stay whatever they weigh (`keep_at_least`).
+/// `docs/perf/scroll-pixel-memory-budget.txt`). A strip weighs lanes × cell,
+/// and every cached entry holds a full-strip pool buffer, its emphasis image
+/// too (DESIGN §3.8): on MONOREPO at the user's 17×37 cell an entry weighs
+/// ~5.6 MB, so this keeps about 8 backdrops and 8 emphasis images; at a 24×52
+/// cell ~11.2 MB, so the viewport floor of 5 + 5 already exceeds it. The
+/// viewport's strips stay whatever they weigh (`keep_at_least`).
 const STRIP_BUDGET: ByteBudget = ByteBudget(96 << 20);
 
 /// Rows kept above and below the viewport, on top of its own strips.
@@ -274,6 +276,12 @@ impl<R: GraphicsReplies> Graphics<R> {
     #[cfg(test)]
     pub fn strip_budget_report(&self) -> (usize, bool) {
         (self.strips.resident_bytes(), self.strips.minimum_wins())
+    }
+
+    /// The viewport floor the last frame set, per layer, for tests.
+    #[cfg(test)]
+    pub fn strip_floor(&self) -> usize {
+        self.strips.min_strips()
     }
 
     /// PNG encodes on the iTerm2 tier, for tests.

@@ -393,7 +393,17 @@ tier.
   the frames, 113 MB). Strips are drawn into buffers lent by a `RasterPool`
   that eviction refills, and Kitty's transmit keeps its straight-alpha,
   deflate and base64 buffers between uploads, so a held key reuses memory
-  instead of churning malloc's large blocks; uploads are remembered by
+  instead of churning malloc's large blocks. **Every pooled buffer is one
+  size, the widest strip since the last flush**, so any spare serves any
+  draw; an emphasis image cropped to a third of its strip still holds (and
+  is weighed at) the full strip's buffer. The cost: an entry weighs a full
+  strip, so 96 MiB holds about 8 backdrops + 8 emphasis images at 17×37 on
+  MONOREPO (5.6 MB each), and at a 24×52 cell the floor (5 + 5 × 11.2 MB)
+  is over budget. Chosen over buffers sized to need (m8 04 review, Major 2):
+  tried, crops of many widths leave no spare that fits, and the fast test's
+  hold made 17–31 new buffers in 115 `j`s where one size makes none — the
+  churn the pool exists to stop. Revisit with a quiet measurement of both;
+  uploads are remembered by
   `UploadKey`, not by holding the frame. `term`'s encoder may additionally reuse
   already-transmitted image ids where the protocol allows (Kitty); that's
   an encoder-internal optimisation, not part of this cache.

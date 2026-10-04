@@ -44,12 +44,14 @@ pub struct UploadKey(pub u64);   // from the strip key; Upload keeps this, not A
       `heavy::budgets_hold_*` has none; name it at tick time).
 - [x] Fast tier: after held `j` on wide strips, `StripCache::resident_bytes() ≤` budget, and the pool allocates nothing
       new in steady state (new test): `event_loop::tests::pixel_scroll::held_j_on_wide_strips_stays_within_the_byte_budget`
-      (budget or floor every frame; `buffers_allocated` unchanged over the second 115 `j`s while strips are still drawn);
+      (since the review fixes: budget = floor + 2 strips, so the budget binds — resident ≤ budget and floor never wins
+      on every frame, evictions seen; `buffers_allocated` unchanged over the second 115 `j`s while strips are still drawn);
       cache level `strip_cache::a_full_cache_draws_into_evicted_buffers`; transmit buffers
       `kitty::tests::a_transmit_reuses_its_buffers_and_sends_the_same_bytes`.
 - [ ] `pixel_scroll::{a_capped_graph_resends_strips_only_when_the_fold_changes,
       j_inside_resident_strips_sends_no_strip}` green; 47 script's held_key verdicts and transmit counts no worse than
-      `docs/perf/47-scroll-acceptance.txt`; J1 tail still ≤ 100 ms (G-pace's file).
+      the quiet baseline `docs/perf/47-scroll-acceptance.txt` (= `453cd384:docs/perf/47-scroll-acceptance.txt`, HEAD
+      a4d1f93b, load 1.1; the script no longer writes it); J1 tail still ≤ 100 ms (G-pace's file).
 
 ## Touches
 - graft-graph `StripCache::{new, capacity_for, flush, resident_bytes}`, rasteriser output buffer.
@@ -165,3 +167,47 @@ Touches: `held_key.rs` (one child test + two consts appended; no existing fn cha
 appended); scripts (load lines; 47's logic untouched); docs above. `docs/shots/m7/fix-scroll-release-unicode.txt`
 was rewritten by the 47 run (header only) and restored — not committed. No source file in 03's or 13b's sets touched
 (`git diff --stat 938cb611..HEAD`).
+
+## Review fixes (2026-10-04, `docs/reviews/m8-04-pixel-memory.md` Majors 1–5)
+
+No compaction (one network cut-off mid-M4, resumed in the same context). Scout: `scouts/04-pixel-memory.md` re-read,
+not re-run (the five Majors name their lines). No perf measurement run.
+
+- **M1 (test, cause was the test):** `event_loop::tests::pixel_scroll::held_j_on_wide_strips_stays_within_the_byte_budget`
+  now sets budget = (per-layer floor + 2) × the first frame's strip+emphasis weight (helper `strip_weight_and_floor`,
+  test-only `Graphics::strip_floor`), and asserts on **every** frame `!minimum_wins` and `resident ≤ budget`, at least one
+  frame evicting, pool steady over the second half. Seen red two ways: budget ignored in `with_strip_budget` →
+  "j 66: 7050240 bytes resident over a 5806080 byte budget"; the old 1.5-frame budget → "j 20: the floor (5 a layer)
+  held the cache over a 2488320 byte budget" (the reviewer's number). Green as committed: 19 frames evicted. The budget
+  computation in `graphics.rs` is not wrong (floor = `capacity_for(32, rows, 32)` per layer, by design). TESTING.md
+  "The strip memory bound" updated.
+- **M2 (decision: accept the cost, docs corrected — symptom-side, not the cause):** tried sizing pooled buffers to need
+  (crop into its own buffer from the pool; best-fit within 25 %; quarter-octave classes; quarter-strip classes; 2×
+  tolerance). Each made the cached emphasis weigh its crop (a red-then-green cache test held), but the app test's hold
+  then made **16–31 new buffers in 115 `j`s** where the one-size pool makes 0: crops of many widths and short tail
+  strips leave no spare that fits. That is the churn the pool exists to stop (437 → 61–69 large allocs/s measured), so
+  I reverted to one size and corrected `graphics.rs:35-40` (≈8 + 8 entries at 17×37, floor over budget at 24×52),
+  ADR-0053 consequence line, DESIGN §3.8 (decision + why + "revisit with a quiet measurement of both"). Cost to the
+  user: about half the strips the budget could hold → more re-rasterising during long holds; RSS at big cells (M5).
+  Conductor/user call whether a measured run should pick the other side.
+- **M3:** baseline restored from `453cd384` to `docs/perf/47-scroll-acceptance.txt`; the under-load run moved to
+  `docs/perf/47-scroll-acceptance-2026-10-02-1c83f5a8.txt`; `scripts/47-scroll-acceptance.sh` writes
+  `47-scroll-acceptance-<UTC date>-<HEAD>.txt` each run and says the baseline is never written. Box 5 names the baseline.
+  Script checked with the shell only (`OUT=` line), not run.
+- **M4:** `raster/cache.rs` 705 → 354 lines; `cache/lru.rs` (184: `Lru`, `ENTRY_FLOOR`, `Layer`, `shrink`, `weight`,
+  `give_frame`/`give_image`), `cache/key.rs` (197: key types, `layer_key`, `aligned`, `backdrop_key`, `paint_key`,
+  `plain_layout_hash`, `lit_hash`, hashing helpers). Pure move; public paths unchanged (`pub use key::{lit_hash,
+  plain_layout_hash}`); graft-graph MAP.md notes the files.
+- **M5 — gap row for the conductor (unverified, not broken):** "M8/04-big-cell-rss: at a 24×52 cell on MONOREPO, RSS
+  434 MB on one of two runs (314 on the other), Malloc Large (empty) 267 MB; the viewport floor (5 + 5 entries × 11.2 MB
+  full-strip pool buffers ≈ 113 MB) exceeds the 96 MiB budget on half the frames. Taken at load 10–30. Not fixed by
+  the M2 decision (pool buffers stay full-strip); sizing emphasis buffers to their crop would bring the floor to ≈67 MB
+  but costs pool reuse (see M2). Needs a quiet run of `scripts/scroll-pixel-memory.sh` at 24×52."
+
+Touches: `StripCache` callers (graft `event_loop/graphics.rs`, bench, `emphasis_layer`, `strip_cache`, `ghostty_shot`)
+— unchanged API, workspace build + nextest green; `pool.rs`/`emphasis.rs` net unchanged (experiments reverted,
+`git diff` empty); TESTING.md two lines; DESIGN §3.8; ADR-0053; graft-graph MAP.md; graft MAP.md not changed (only a
+`#[cfg(test)]` accessor added). Did not touch `scripts/fixtures` (builder 22). Heavy-feature clippy not re-run (no heavy
+file changed).
+
+Gates: fmt ok, clippy `--workspace --all-targets -D warnings` ok, nextest 5420/5420 (10 skipped), doctests ok.
