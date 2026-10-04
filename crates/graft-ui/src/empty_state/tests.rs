@@ -252,3 +252,48 @@ fn ages_read_as_the_mockup() {
     assert_eq!(recent_age(now - 800 * day, now), "2 years ago");
     assert_eq!(recent_age(now + day, now), "today");
 }
+
+/// Spell sweep (c), ticket m8/10c: every form's bar names his chords,
+/// except the open prompt's — a text field, so its keys stay shipped.
+#[test]
+fn the_bar_spells_his_keys_and_the_open_prompt_the_shipped_ones() {
+    use crate::keymap::sweep::{assert_shipped, assert_spelled, swept};
+    let (keys, _) = swept();
+    let line = |view: &EmptyStateView| -> String {
+        bar_keys(view, &keys)
+            .into_iter()
+            .map(|(key, label)| format!("{key} {label}"))
+            .collect::<Vec<_>>()
+            .join("  ")
+    };
+    assert_spelled(
+        &line(&with_recents()),
+        &keys,
+        &[
+            &["empty_state.open"],
+            &["empty_state.init"],
+            &["app.open"],
+            &["app.quit"],
+        ],
+    );
+    let confirm = EmptyStateView {
+        prompt: Some(EmptyPrompt::ConfirmInit),
+        ..with_recents()
+    };
+    assert_spelled(
+        &line(&confirm),
+        &keys,
+        &[&["empty_state.confirm"], &["app.back"]],
+    );
+    let open = EmptyStateView {
+        prompt: Some(EmptyPrompt::Open {
+            text: sanitize_line("~/code"),
+            cursor: 6,
+        }),
+        ..with_recents()
+    };
+    assert_shipped(
+        &line(&open),
+        &[&["app.open"], &["app.next_pane"], &["app.back"]],
+    );
+}

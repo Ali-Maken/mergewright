@@ -607,3 +607,27 @@ fn snapshot_187x50_shallow() {
         snapshot(&view(&rows, SHALLOW_18), 187, 50)
     );
 }
+
+/// Spell sweep (c), ticket m8/10c: the reading title and the failed line
+/// name his `app.back`, never `esc`.
+#[test]
+fn blame_spells_its_back_key_from_his_keymap() {
+    use crate::keymap::sweep::{assert_spelled, swept};
+    let (keys, _) = swept();
+    let mut reading = view(&[], 0);
+    reading.body = BlameBody::Reading;
+    assert_spelled(&title(&reading, &keys), &keys, &[&["app.back"]]);
+    let mut failed = view(&[], 0);
+    failed.body = BlameBody::Failed("no such path");
+    let backend = TestBackend::new(80, 6);
+    let mut terminal = Terminal::new(backend).expect("the test backend starts");
+    terminal
+        .draw(|frame| draw_blame(frame, frame.area(), &failed, &keys))
+        .expect("the widget draws");
+    let text = terminal.backend().to_string();
+    let line = text
+        .lines()
+        .find(|line| line.contains("git blame stopped"))
+        .unwrap_or_else(|| panic!("{text}"));
+    assert_spelled(line, &keys, &[&["app.back"]]);
+}

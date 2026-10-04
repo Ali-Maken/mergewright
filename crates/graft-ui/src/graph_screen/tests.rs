@@ -2732,3 +2732,36 @@ fn put_back_and_was_here_tags_draw_after_the_subject() {
     assert!(lines[1].contains("Commit 3  put back"), "{lines:#?}");
     assert!(lines[2].contains("Commit 2  main was here"), "{lines:#?}");
 }
+
+/// Spell sweep (c), ticket m8/10c: the focus filter's way out and every
+/// commit-graph wording name his chords, never `F`/`esc`/`B`/`X`/`⌃R`.
+#[test]
+fn the_filter_line_and_the_commit_graph_line_spell_his_keys() {
+    use super::Filters;
+    use crate::keymap::sweep::{assert_spelled, swept};
+    let (keys, _) = swept();
+    let focused = Filters {
+        focused: true,
+        ..Filters::default()
+    };
+    assert_spelled(&focused.text(&keys), &keys, &[&["graph.focus", "app.back"]]);
+    let text = |line: CommitGraphLine| -> String {
+        commit_graph_segments(line, 400, &keys)
+            .into_iter()
+            .map(|(words, _)| words)
+            .collect()
+    };
+    assert_spelled(
+        &text(CommitGraphLine::Offered { keys: true }),
+        &keys,
+        &[
+            &["graph.write_commit_graph"],
+            &["graph.decline_commit_graph"],
+        ],
+    );
+    assert_spelled(
+        &text(CommitGraphLine::Written { commits: 1_000_000 }),
+        &keys,
+        &[&["app.refresh"]],
+    );
+}

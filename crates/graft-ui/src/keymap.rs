@@ -17,6 +17,8 @@ mod table;
 mod warning;
 
 #[cfg(test)]
+pub(crate) mod sweep;
+#[cfg(test)]
 mod tests;
 
 pub use chord::{ChordError, KeyChord, KeyLabel};

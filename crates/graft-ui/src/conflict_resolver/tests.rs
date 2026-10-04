@@ -286,6 +286,26 @@ fn draw(
     rows: u16,
     ascii: bool,
 ) -> ratatui::buffer::Buffer {
+    draw_with(
+        view,
+        laid,
+        top,
+        columns,
+        rows,
+        ascii,
+        crate::keymap::Keymap::shipped(),
+    )
+}
+
+fn draw_with(
+    view: &DocView,
+    laid: &Layout,
+    top: usize,
+    columns: u16,
+    rows: u16,
+    ascii: bool,
+    keys: &crate::keymap::Keymap,
+) -> ratatui::buffer::Buffer {
     let mut terminal = Terminal::new(TestBackend::new(columns, rows))
         .unwrap_or_else(|why| panic!("a test backend always opens: {why}"));
     let capabilities = test_capabilities(ColorDepth::TrueColor, false);
@@ -300,7 +320,7 @@ fn draw(
                     placement: Placement::Strip { rows: 0 },
                     theme: &theme,
                     ascii,
-                    keys: crate::keymap::Keymap::shipped(),
+                    keys,
                 },
                 frame.area(),
             );
@@ -738,3 +758,18 @@ fn arrangement_turns_at_180() {
 mod card_colours;
 mod finish_row;
 mod three_panes;
+
+/// Spell sweep (c), ticket m8/10c: the too-small line names his
+/// `app.back`, in both tiers.
+#[test]
+fn the_too_small_line_spells_his_back_key() {
+    use crate::keymap::sweep::{assert_spelled, swept};
+    let (keys, _) = swept();
+    let doc = three_block_doc(false);
+    let laid = layout(&doc, Arrangement::Card, 50);
+    for ascii in [false, true] {
+        let buf = draw_with(&doc, &laid, 0, 50, 8, ascii, &keys);
+        let first_row: String = (0..50).map(|x| buf[(x, 0)].symbol()).collect();
+        assert_spelled(&first_row, &keys, &[&["app.back"]]);
+    }
+}

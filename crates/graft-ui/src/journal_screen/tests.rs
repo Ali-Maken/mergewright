@@ -466,3 +466,42 @@ fn text_on_the_cursor_row_is_legible() {
         );
     }
 }
+
+/// Spell sweep (c), ticket m8/10c: under the sweep keymap the footer, the
+/// legend and the empty state name his chords, never the defaults.
+#[test]
+fn the_journal_spells_every_key_from_his_keymap() {
+    use crate::keymap::sweep::{assert_spelled, swept};
+    let (keys, _) = swept();
+    let mut view = view(
+        vec![row("2m", "switch", RowMark::None)],
+        JournalStatus::Ready,
+    );
+    view.enter_words = Some("revert this".to_owned());
+    view.branch_here = true;
+    view.find = Some(JournalFindView {
+        query: sanitize("x"),
+        at: Some(1),
+        of: 1,
+    });
+    let theme = theme();
+    let screen = JournalScreen {
+        view: &view,
+        theme: &theme,
+        keys: &keys,
+    };
+    assert_spelled(
+        &screen.footer(400),
+        &keys,
+        &[
+            &["journal.revert"],
+            &["journal.branch"],
+            &["app.find"],
+            &["app.next_match", "app.prev_match"],
+            &["journal.expand"],
+            &["journal.close", "app.back"],
+        ],
+    );
+    assert_spelled(&legend(&keys), &keys, &[&["app.undo"]]);
+    assert_spelled(&empty(&keys), &keys, &[&["app.undo"]]);
+}

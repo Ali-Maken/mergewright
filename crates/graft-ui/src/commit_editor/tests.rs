@@ -306,3 +306,30 @@ fn ctrl_e_reads_the_same_in_both_subject_fields() {
         assert!(footer_other().contains(&ctrl_e), "{}", footer_other());
     }
 }
+
+/// Spell sweep (c), ticket m8/10c: the editor is a text field, so both
+/// footers spell the shipped keys — they take no keymap to follow.
+#[test]
+fn the_footers_spell_the_shipped_keys() {
+    use crate::keymap::sweep::assert_shipped;
+    assert_shipped(
+        &footer_subject(),
+        &[
+            &["app.open"],
+            &["commit.next_field"],
+            &["commit.edit_outside"],
+            &["commit.sign_off"],
+            &["app.back"],
+        ],
+    );
+    assert_shipped(
+        &footer_other(),
+        &[
+            &["commit.commit"],
+            &["commit.next_field"],
+            &["commit.edit_outside"],
+            &["commit.sign_off"],
+            &["app.back"],
+        ],
+    );
+}

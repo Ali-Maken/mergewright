@@ -688,4 +688,60 @@ mod tests {
             assert_eq!(lines.len(), usize::from(height.max(1)));
         }
     }
+
+    /// Spell sweep (c), ticket m8/10c: the list's footer and empty state
+    /// name his chords; the save prompt, a text field, keeps the shipped
+    /// ones whatever he set.
+    #[test]
+    fn the_stash_list_spells_his_keys_and_its_prompt_the_shipped_ones() {
+        use crate::keymap::sweep::{assert_shipped, assert_spelled, swept};
+        let (keys, _) = swept();
+        let theme = theme();
+        let ready = view(vec![row("stash@{0}", "wip", "2m", 1)], StashStatus::Ready);
+        let footer = |view: &StashView<'_>| {
+            StashScreen {
+                keys: &keys,
+                view,
+                theme: &theme,
+            }
+            .footer()
+        };
+        assert_spelled(
+            &footer(&ready),
+            &keys,
+            &[
+                &["stash.apply"],
+                &["stash.pop"],
+                &["stash.save"],
+                &["stash.drop"],
+                &["stash.preview"],
+                &["app.back"],
+            ],
+        );
+        let mut empty_list = view(Vec::new(), StashStatus::Empty);
+        assert_spelled(
+            &footer(&empty_list),
+            &keys,
+            &[&["stash.save"], &["app.back"]],
+        );
+        assert_spelled(&empty(&keys), &keys, &[&["stash.save"]]);
+        empty_list.prompt = Some(StashPromptView {
+            title: sanitize("Stash the working tree"),
+            message: FieldView {
+                label: "message",
+                text: sanitize("wip"),
+                cursor: Some(3),
+                guide_at: None,
+                counter: None,
+                focused: true,
+                secret: None,
+            },
+            staged_only: true,
+            refusal: None,
+        });
+        assert_shipped(
+            &footer(&empty_list),
+            &[&["app.open"], &["app.next_pane"], &["app.back"]],
+        );
+    }
 }

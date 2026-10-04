@@ -512,3 +512,16 @@ fn history_binary_sizes_failed_140x40() {
         snapshot(&v, 140, 40)
     );
 }
+
+/// Spell sweep (c), ticket m8/10c: the tracing title names his `app.back`.
+#[test]
+fn history_spells_its_stop_key_from_his_keymap() {
+    use crate::keymap::sweep::{assert_spelled, swept};
+    let (keys, _) = swept();
+    let theme = theme();
+    let rows = mock_rows();
+    let hunks = lina_file();
+    let mut tracing = view(&rows, &hunks, &theme, HistoryFocus::List);
+    tracing.tracing = true;
+    assert_spelled(&title(&tracing, &keys), &keys, &[&["app.back"]]);
+}

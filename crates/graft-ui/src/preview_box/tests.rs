@@ -615,3 +615,26 @@ fn again_names_a_confirm_chord_only_while_it_confirms() {
         Some("Y apply")
     );
 }
+
+/// Spell sweep (c), ticket m8/10c: the footer names his chords, the
+/// `again` slot drops out (his `preview.confirm` no longer answers `r`),
+/// and the too-small line names his `app.back`.
+#[test]
+fn the_box_spells_every_key_from_his_keymap() {
+    use crate::keymap::sweep::{assert_spelled, swept};
+    let (keys, _) = swept();
+    let footer = footer_label(&r_opened_keeps(), 400, &keys);
+    assert_spelled(
+        &footer,
+        &keys,
+        &[
+            &["preview.confirm"],
+            &["preview.rewrite"],
+            &["preview.left", "preview.right"],
+            &["preview.choose"],
+            &["app.back"],
+        ],
+    );
+    assert!(!footer.contains("rebase"), "{footer}");
+    assert_spelled(&too_small(&keys), &keys, &[&["app.back"]]);
+}

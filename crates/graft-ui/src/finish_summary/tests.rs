@@ -528,3 +528,27 @@ fn text_on_the_cursor_row_is_legible() {
         }
     }
 }
+
+/// Spell sweep (c), ticket m8/10c: the too-small line, the unavailable
+/// line, the preview line and the undo line name his chords.
+#[test]
+fn the_summary_spells_every_key_from_his_keymap() {
+    use crate::keymap::sweep::{assert_spelled, swept};
+    let (keys, _) = swept();
+    let mut swept_view = view();
+    swept_view.keys = &keys;
+    assert_spelled(&draw(&swept_view, 61, 20)[0], &keys, &[&["app.back"]]);
+    swept_view.state = SummaryState::Unavailable(sanitize_line("1 still conflicted"));
+    let grid = draw(&swept_view, 120, 40);
+    let unavailable = grid
+        .iter()
+        .find(|line| line.contains("summary unavailable"))
+        .unwrap_or_else(|| panic!("{}", grid.join("\n")));
+    assert_spelled(unavailable, &keys, &[&["finish.commit"]]);
+    assert_spelled(
+        &preview_line(Some("main"), &keys),
+        &keys,
+        &[&["finish.commit"]],
+    );
+    assert_spelled(&undo_line(&keys), &keys, &[&["app.undo"]]);
+}

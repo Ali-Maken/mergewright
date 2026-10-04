@@ -9,58 +9,16 @@
 
 use std::collections::HashMap;
 
-use graft_core::event::KeyCode;
 use graft_term::sanitize_line;
 
 use super::{Divider, HintKey, every_context, hints_for};
 use crate::context_menu::ContextMenu;
-use crate::keymap::{ActionId, KeyChord, Keymap, defaults};
+use crate::keymap::sweep::swept;
+use crate::keymap::{ActionId, Keymap};
 
 /// The widths the ticket names: the narrowest a bar is drawn at, the two
 /// width-rule rungs, and a bar wide enough to hold everything.
 const WIDTHS: [u16; 4] = [40, 80, 120, 200];
-
-/// 09's sweep set: chords no default uses anywhere.
-fn free_chords() -> Vec<KeyChord> {
-    let mut out: Vec<KeyChord> = ('!'..='~')
-        .map(|c| KeyChord::alt(KeyCode::Char(c)))
-        .collect();
-    out.extend((1..=12).map(|n| KeyChord::alt(KeyCode::Function(n))));
-    out.extend(('a'..='z').map(|c| KeyChord {
-        ctrl: true,
-        ..KeyChord::alt(KeyCode::Char(c))
-    }));
-    out
-}
-
-/// Every movable action — every row but a text field's and the quit chord —
-/// on its own free chord: the keymap, and each moved action's new label.
-fn swept() -> (Keymap, HashMap<&'static str, String>) {
-    let rows: Vec<&'static str> = defaults()
-        .iter()
-        .filter(|b| !b.context.is_text_field() && b.action.0 != "app.quit_now")
-        .map(|b| b.action.0)
-        .collect();
-    let free = free_chords();
-    assert!(
-        free.len() >= rows.len(),
-        "{} free for {}",
-        free.len(),
-        rows.len()
-    );
-    let moved: HashMap<&'static str, String> = rows
-        .into_iter()
-        .zip(free)
-        .map(|(action, chord)| (action, chord.label().0))
-        .collect();
-    let lines: Vec<(String, Vec<String>)> = moved
-        .iter()
-        .map(|(action, label)| ((*action).to_owned(), vec![label.clone()]))
-        .collect();
-    let (map, warnings) = Keymap::with_overrides(&lines);
-    assert_eq!(warnings, [], "every chord is free, so nothing collides");
-    (map, moved)
-}
 
 /// What one hint key must read under the sweep: a moved action its new
 /// chord, a text field's key its default (a field passes every key as
