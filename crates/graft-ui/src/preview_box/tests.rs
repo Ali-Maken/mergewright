@@ -5,6 +5,9 @@
 use graft_term::sanitize_line;
 
 use super::*;
+
+/// The plain footer: no confirm key, no again verb.
+const FOOTER: &str = "←/→ choose  ⏎ act  esc cancel";
 use crate::test_support::terminal as test_capabilities;
 use crate::theme::ThemeKind;
 
@@ -31,7 +34,12 @@ fn rebase_view() -> PreviewBox {
 fn rows(view: &PreviewBox, theme: &Theme, width: u16, height: u16) -> Vec<String> {
     let frame = Rect::new(0, 0, width, height);
     let mut buf = Buffer::empty(frame);
-    (&PreviewBoxWidget { view, theme }).render(frame, &mut buf);
+    (&PreviewBoxWidget {
+        keys: crate::keymap::Keymap::shipped(),
+        view,
+        theme,
+    })
+        .render(frame, &mut buf);
     (0..height)
         .map(|y| {
             (0..width)
@@ -56,7 +64,12 @@ fn docked(view: &PreviewBox, theme: &Theme, width: u16, height: u16) -> Vec<Stri
         "m merge  r rebase  screen footer",
         Style::default(),
     );
-    (&PreviewBoxWidget { view, theme }).render(preview_box_area(screen, view), &mut buf);
+    (&PreviewBoxWidget {
+        keys: crate::keymap::Keymap::shipped(),
+        view,
+        theme,
+    })
+        .render(preview_box_area(screen, view), &mut buf);
     (0..height)
         .map(|y| {
             (0..width)
@@ -79,6 +92,7 @@ fn preview_box_stays_inside_its_rect() {
     let inner = Rect::new(2, 10, 60, preview_rows(&view, 60));
     let mut buf = Buffer::empty(outer);
     (&PreviewBoxWidget {
+        keys: crate::keymap::Keymap::shipped(),
         view: &view,
         theme: &theme,
     })
@@ -157,7 +171,7 @@ fn a_taller_rect_still_draws_a_box_on_every_interior_row() {
     );
 }
 
-/// The box's own footer (the bottom border with `←→ choose  ⏎ act  esc
+/// The box's own footer (the bottom border with `←/→ choose  ⏎ act  esc
 /// cancel`) is the *last row of the area it was given*, and the screen
 /// footer row stays untouched — the docking contract in the ticket's scope
 /// item 4, through the function a caller really uses. From 30 rows the rule
@@ -311,7 +325,7 @@ fn capture_for_docs_shots() {
         "# docs/shots/m5-ui-preview-box.txt — Ghost Preview box\n\
          #\n\
          # What right looks like: the box is docked to the bottom of the\n\
-         # screen at its own height, its own footer (\"←→ choose  ⏎ act  esc\n\
+         # screen at its own height, its own footer (\"←/→ choose  ⏎ act  esc\n\
          # cancel\") on its last row and the screen's own footer row below it\n\
          # untouched. Every row between the two borders is a `│ … │` row —\n\
          # there is no hole in the box at any size. Every choice is\n\
@@ -361,7 +375,7 @@ fn m_opened() -> PreviewBox {
     view
 }
 
-const RUNG_1: &str = "y confirm  m merge  ←→ choose  ⏎ act  esc cancel";
+const RUNG_1: &str = "y confirm  m merge  ←/→ choose  ⏎ act  esc cancel";
 const RUNG_2: &str = "y confirm  m merge  ⏎ act  esc cancel";
 const RUNG_3: &str = "y confirm  ⏎ act  esc cancel";
 
@@ -385,11 +399,35 @@ fn the_footer_label_shrinks_by_its_ladder() {
         (RUNG_2, width_for(RUNG_2)),
         (RUNG_3, width_for(RUNG_3)),
     ] {
-        assert_eq!(footer_label(&view, width - 2), label);
+        assert_eq!(
+            footer_label(&view, width - 2, crate::keymap::Keymap::shipped()),
+            label
+        );
     }
-    assert_eq!(footer_label(&view, width_for(RUNG_1) - 3), RUNG_2);
-    assert_eq!(footer_label(&view, width_for(RUNG_2) - 3), RUNG_3);
-    assert_eq!(footer_label(&view, width_for(RUNG_3) - 3), FOOTER);
+    assert_eq!(
+        footer_label(
+            &view,
+            width_for(RUNG_1) - 3,
+            crate::keymap::Keymap::shipped()
+        ),
+        RUNG_2
+    );
+    assert_eq!(
+        footer_label(
+            &view,
+            width_for(RUNG_2) - 3,
+            crate::keymap::Keymap::shipped()
+        ),
+        RUNG_3
+    );
+    assert_eq!(
+        footer_label(
+            &view,
+            width_for(RUNG_3) - 3,
+            crate::keymap::Keymap::shipped()
+        ),
+        FOOTER
+    );
 }
 
 #[test]
@@ -398,7 +436,7 @@ fn a_dot_opened_footer_names_only_y() {
     view.confirm_key = true;
     let bottom = rows(&view, &theme(), 120, 12).pop().expect("a row");
     assert!(
-        bottom.starts_with("╰ y confirm  ←→ choose  ⏎ act  esc cancel ─"),
+        bottom.starts_with("╰ y confirm  ←/→ choose  ⏎ act  esc cancel ─"),
         "{bottom:?}"
     );
 }
@@ -409,7 +447,10 @@ fn a_revert_preview_draws_the_old_footer() {
     let bottom = rows(&view, &theme(), 120, 12).pop().expect("a row");
     assert!(bottom.starts_with(&format!("╰ {FOOTER} ─")), "{bottom:?}");
     assert!(!bottom.contains("y confirm"), "{bottom:?}");
-    assert_eq!(footer_label(&view, 200), FOOTER);
+    assert_eq!(
+        footer_label(&view, 200, crate::keymap::Keymap::shipped()),
+        FOOTER
+    );
 }
 
 // ── `R keep` (rebase-preview-keeps-drops) ────────────────────────────────
@@ -428,7 +469,7 @@ fn footer_names_r_keep_when_live() {
         .pop()
         .expect("a row");
     assert!(
-        bottom.contains("y confirm  r rebase  R keep  ←→ choose  ⏎ act  esc cancel"),
+        bottom.contains("y confirm  r rebase  R keep  ←/→ choose  ⏎ act  esc cancel"),
         "{bottom:?}"
     );
 }
@@ -438,11 +479,14 @@ fn footer_omits_r_keep_otherwise() {
     let mut view = r_opened_keeps();
     view.keep = false;
     for width in 0..=200 {
-        assert!(!footer_label(&view, width).contains('R'), "at {width}");
+        assert!(
+            !footer_label(&view, width, crate::keymap::Keymap::shipped()).contains('R'),
+            "at {width}"
+        );
     }
     let bottom = rows(&view, &theme(), 120, 12).pop().expect("a row");
     assert!(
-        bottom.contains("y confirm  r rebase  ←→ choose  ⏎ act  esc cancel"),
+        bottom.contains("y confirm  r rebase  ←/→ choose  ⏎ act  esc cancel"),
         "{bottom:?}"
     );
 }
@@ -453,7 +497,7 @@ fn footer_r_keep_whole_or_absent_at_80() {
     // Every inner width a box up to 80 columns can have: `R keep` is in
     // the label whole, or `R` is not in it at all — never cut.
     for inner in 0..=80 {
-        let label = footer_label(&view, inner);
+        let label = footer_label(&view, inner, crate::keymap::Keymap::shipped());
         assert!(
             label.contains("R keep") || !label.contains('R'),
             "at {inner}: {label:?}"
@@ -471,7 +515,10 @@ fn footer_r_keep_whole_or_absent_at_80() {
 #[test]
 fn a_back_only_box_draws_esc_back() {
     let view = rebase_view().with_choices(vec![sanitize_line("Close")]);
-    assert_eq!(footer_label(&view, 200), "esc back");
+    assert_eq!(
+        footer_label(&view, 200, crate::keymap::Keymap::shipped()),
+        "esc back"
+    );
     let bottom = rows(&view, &theme(), 120, 12).pop().expect("a row");
     assert!(bottom.starts_with("╰ esc back ─"), "{bottom:?}");
     assert!(!bottom.contains("choose"), "{bottom:?}");

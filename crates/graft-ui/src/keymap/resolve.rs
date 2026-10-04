@@ -175,6 +175,26 @@ impl Keymap {
         join(self.live_labels(action).iter().cloned())
     }
 
+    /// A footer's `<keys> <verb>` (`esc back`, `j/k move`): the keys as
+    /// [`Keymap::spell_keys`] spells them, then the verb. `None` when every
+    /// key is unbound, so the caller leaves the clause out — a footer never
+    /// names a key that does nothing.
+    #[must_use]
+    pub fn key_verb(&self, actions: &[ActionId], verb: &str) -> Option<String> {
+        self.spell_keys(actions)
+            .map(|keys| format!("{keys} {verb}"))
+    }
+
+    /// `words` with ` · <key> <verb>` after it (`finish needs 60x20 · esc
+    /// back`), or `words` alone when the key is unbound.
+    #[must_use]
+    pub fn after(&self, words: &str, action: ActionId, verb: &str) -> String {
+        match self.key_verb(&[action], verb) {
+            Some(hint) => format!("{words} · {hint}"),
+            None => words.to_owned(),
+        }
+    }
+
     /// The action's live chords, spelled: every chord it holds, less any
     /// another action of its own context took in a collision. Empty when
     /// unbound or not an action.

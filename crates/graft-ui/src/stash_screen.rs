@@ -17,12 +17,30 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::detail::{FileListView, FileRowKind};
 use crate::fit::fit;
+use crate::keymap::{ActionId, Keymap};
 use crate::paint::foreground;
 use crate::text_input::{FieldView, FieldWidget};
 use crate::theme::{Theme, Token};
 
 /// The empty state, which is also the instruction for leaving it.
-const EMPTY: &str = "no stashes — s stashes the working tree";
+/// `no stashes — s stashes the working tree`, the key spelled from `keys`;
+/// `no stashes` alone when he left `stash.save` unbound.
+fn empty(keys: &Keymap) -> String {
+    match keys.spell_keys(&[ActionId("stash.save")]) {
+        Some(key) => format!("no stashes — {key} stashes the working tree"),
+        None => "no stashes".to_owned(),
+    }
+}
+
+/// `<keys> <verb>` pairs spelled from `keys`, two spaces apart, an unbound
+/// one left out (ticket m8/10).
+fn spelled(keys: &Keymap, parts: &[(&'static str, &str)]) -> String {
+    parts
+        .iter()
+        .filter_map(|(action, verb)| keys.key_verb(&[ActionId(action)], verb))
+        .collect::<Vec<_>>()
+        .join("  ")
+}
 
 /// One stash entry, as the overlay draws it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -99,6 +117,8 @@ pub struct StashScreen<'a> {
     pub view: &'a StashView<'a>,
     /// Resolved colours.
     pub theme: &'a Theme,
+    /// His keymap: the footer's keys are spelled from it.
+    pub keys: &'a Keymap,
 }
 
 /// `3 files` / `1 file`, because "1 files" reads as a bug in the counter.
@@ -171,19 +191,39 @@ impl StashScreen<'_> {
     }
 
     /// The keys, spelled out. `⏎ apply` first: it is what the list is for.
-    fn footer(&self) -> &'static str {
+    fn footer(&self) -> String {
         // The box over the list holds every key and draws its own footer:
         // the list's bar would name keys it does not answer (review 86, M2).
         if self.view.box_open {
-            return "";
+            return String::new();
         }
         if self.view.prompt.is_some() {
-            return "⏎ save  tab scope  esc back";
+            // A text field: its keys are its defaults whatever his config
+            // says (ADR-0055), so they spell from the shipped table.
+            return spelled(
+                Keymap::shipped(),
+                &[
+                    ("app.open", "save"),
+                    ("app.next_pane", "scope"),
+                    ("app.back", "back"),
+                ],
+            );
         }
+        let keys = self.keys;
         match self.view.status {
-            StashStatus::Ready => "⏎ apply  p pop  s save  d drop  space files  esc close",
+            StashStatus::Ready => spelled(
+                keys,
+                &[
+                    ("stash.apply", "apply"),
+                    ("stash.pop", "pop"),
+                    ("stash.save", "save"),
+                    ("stash.drop", "drop"),
+                    ("stash.preview", "files"),
+                    ("app.back", "close"),
+                ],
+            ),
             StashStatus::Loading | StashStatus::Empty | StashStatus::Failed(_) => {
-                "s save  esc close"
+                spelled(keys, &[("stash.save", "save"), ("app.back", "close")])
             }
         }
     }
@@ -374,7 +414,7 @@ impl Widget for StashScreen<'_> {
             return;
         }
         let footer_y = area.bottom().saturating_sub(1);
-        set_text(buf, area.x, footer_y, area, self.footer(), muted);
+        set_text(buf, area.x, footer_y, area, &self.footer(), muted);
         if area.height == 2 {
             return;
         }
@@ -401,7 +441,7 @@ impl Widget for StashScreen<'_> {
         match &self.view.status {
             StashStatus::Ready => {}
             StashStatus::Loading => return centred(buf, body, "reading the stash list…", muted),
-            StashStatus::Empty => return centred(buf, body, EMPTY, muted),
+            StashStatus::Empty => return centred(buf, body, &empty(self.keys), muted),
             StashStatus::Failed(why) => {
                 return centred(
                     buf,
@@ -463,6 +503,7 @@ mod tests {
             .draw(|frame| {
                 frame.render_widget(
                     StashScreen {
+                        keys: Keymap::shipped(),
                         view,
                         theme: &theme,
                     },
@@ -499,6 +540,7 @@ mod tests {
             .draw(|frame| {
                 frame.render_widget(
                     StashScreen {
+                        keys: Keymap::shipped(),
                         view: &shown,
                         theme: &theme,
                     },
@@ -533,7 +575,12 @@ mod tests {
     #[test]
     fn an_empty_list_says_what_makes_one() {
         let lines = grid(&view(Vec::new(), StashStatus::Empty), 80, 10);
-        assert!(lines.iter().any(|line| line.contains(EMPTY)), "{lines:?}");
+        assert!(
+            lines
+                .iter()
+                .any(|line| line.contains(&empty(Keymap::shipped()))),
+            "{lines:?}"
+        );
     }
 
     #[test]

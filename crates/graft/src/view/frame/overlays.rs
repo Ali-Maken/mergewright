@@ -87,6 +87,7 @@ pub(super) fn draw_stash(
 ) -> Option<Rect> {
     let screen = stash_view(state, state.harness.clock.now_seconds());
     let widget = StashScreen {
+        keys: &state.keymap,
         view: &screen,
         theme: &session.theme,
     };

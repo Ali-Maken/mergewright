@@ -18,6 +18,7 @@ use ratatui::style::Style;
 use ratatui::widgets::Widget;
 
 use crate::frame_box::{border_row, buttons_row, cells, content_row, reverse_button};
+use crate::keymap::{ActionId, Keymap};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 
@@ -35,68 +36,91 @@ pub const PREVIEW_MIN: (u16, u16) = (40, 12);
 
 /// The fewest rows a box can be: the title border, one content row, the
 /// choices row, the footer border. Given less than this the widget draws
-/// [`TOO_SMALL`] rather than a frame with nothing legible inside it.
+/// `too_small` rather than a frame with nothing legible inside it.
 const MIN_BOX_ROWS: u16 = 4;
 
-/// The box's own footer, shown in its bottom border while it is open.
-const FOOTER: &str = "←→ choose  ⏎ act  esc cancel";
+/// The box's own keys, spelled from `keys` (ticket m8/10): `←/→ choose`,
+/// `⏎ act`, `esc cancel`, `esc back`, `y confirm`, `R keep`.
+fn part(keys: &Keymap, actions: &[&'static str], verb: &str) -> Option<String> {
+    let actions: Vec<ActionId> = actions.iter().map(|name| ActionId(name)).collect();
+    keys.key_verb(&actions, verb)
+}
 
-/// The footer of a box with one choice: nothing to choose between, so no
-/// `←→ choose  ⏎ act` (review 86's words; m7-power-tools/15, :860).
-const BACK_ONLY: &str = "esc back";
+/// Parts joined by the footer's two-space gap, an unbound one left out.
+fn join(parts: &[Option<String>]) -> String {
+    parts
+        .iter()
+        .flatten()
+        .map(String::as_str)
+        .collect::<Vec<_>>()
+        .join("  ")
+}
 
 /// The widest footer rung whose padded label fits `inner` cells:
-/// `y confirm  r rebase  R keep  ←→ choose  ⏎ act  esc cancel`, then
+/// `y confirm  r rebase  R keep  ←/→ choose  ⏎ act  esc cancel`, then
 /// without the arrows, then without the verb, then without `R keep`, then
-/// plain [`FOOTER`]. Parts whose field is off are left out of every rung;
-/// each part is whole or absent, never cut.
-pub(crate) fn footer_label(view: &PreviewBox, inner: usize) -> String {
+/// the plain `←/→ choose  ⏎ act  esc cancel`. Parts whose field is off are
+/// left out of every rung; each part is whole or absent, never cut. Keys
+/// are spelled from `keys`; one he left unbound is left out like an off
+/// field.
+pub(crate) fn footer_label(view: &PreviewBox, inner: usize, keys: &Keymap) -> String {
+    let cancel = part(keys, &["app.back"], "cancel");
+    let act = part(keys, &["preview.choose"], "act");
+    let choose = part(keys, &["preview.left", "preview.right"], "choose");
+    let plain = join(&[choose.clone(), act.clone(), cancel.clone()]);
     // From the choices, not a flag: every single-`Close` box — refused,
     // failed, undrawable, nothing to do — had the full footer while only
     // the stash put-back set the flag (m7-power-tools/15, :860).
     if view.choices.len() == 1 {
-        return BACK_ONLY.to_owned();
+        return part(keys, &["app.back"], "back").unwrap_or_default();
     }
-    let confirm = view.confirm_key.then_some("y confirm");
+    let confirm = if view.confirm_key {
+        part(keys, &["preview.confirm"], "confirm")
+    } else {
+        None
+    };
     let again = view
         .again
         .as_ref()
         .map(|(key, verb)| format!("{} {}", key.as_str(), verb.as_str()));
-    let join = |parts: &[Option<&str>]| -> String {
-        parts
-            .iter()
-            .flatten()
-            .copied()
-            .collect::<Vec<_>>()
-            .join("  ")
-    };
     if confirm.is_none() && again.is_none() {
-        return FOOTER.to_owned();
+        return plain;
     }
-    let again = again.as_deref();
-    let keep = view.keep.then_some("R keep");
+    let keep = if view.keep {
+        part(keys, &["preview.rewrite"], "keep")
+    } else {
+        None
+    };
     let rungs = [
         join(&[
-            confirm,
-            again,
-            keep,
-            Some("←→ choose"),
-            Some("⏎ act"),
-            Some("esc cancel"),
+            confirm.clone(),
+            again.clone(),
+            keep.clone(),
+            choose,
+            act.clone(),
+            cancel.clone(),
         ]),
-        join(&[confirm, again, keep, Some("⏎ act"), Some("esc cancel")]),
-        join(&[confirm, keep, Some("⏎ act"), Some("esc cancel")]),
-        join(&[confirm, Some("⏎ act"), Some("esc cancel")]),
+        join(&[
+            confirm.clone(),
+            again,
+            keep.clone(),
+            act.clone(),
+            cancel.clone(),
+        ]),
+        join(&[confirm.clone(), keep, act.clone(), cancel.clone()]),
+        join(&[confirm, act, cancel]),
     ];
     rungs
         .into_iter()
         .find(|label| cells(label) + 2 <= inner)
-        .unwrap_or_else(|| FOOTER.to_owned())
+        .unwrap_or(plain)
 }
 
 /// The message drawn instead of the box when the frame is smaller than
-/// [`PREVIEW_MIN`].
-const TOO_SMALL: &str = "preview needs 40x12 · esc closes";
+/// [`PREVIEW_MIN`]: `preview needs 40x12 · esc closes`.
+fn too_small(keys: &Keymap) -> String {
+    keys.after("preview needs 40x12", ActionId("app.back"), "closes")
+}
 
 /// Everything the Ghost Preview box draws.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -246,6 +270,8 @@ pub struct PreviewBoxWidget<'a> {
     pub view: &'a PreviewBox,
     /// Colours.
     pub theme: &'a Theme,
+    /// His keymap: the footer's keys are spelled from it.
+    pub keys: &'a Keymap,
 }
 
 impl PreviewBoxWidget<'_> {
@@ -294,7 +320,7 @@ impl PreviewBoxWidget<'_> {
             border_row(
                 '╰',
                 '╯',
-                &footer_label(view, width.saturating_sub(2)),
+                &footer_label(view, width.saturating_sub(2), self.keys),
                 width,
             ),
             muted,
@@ -316,7 +342,7 @@ impl Widget for &PreviewBoxWidget<'_> {
         // 7 rows, not 12. What the widget checks is whether *this* rect can
         // hold a frame with something legible in it.
         if area.width < PREVIEW_MIN.0 || area.height < MIN_BOX_ROWS {
-            let message = crate::fit::fit(TOO_SMALL, width);
+            let message = crate::fit::fit(&too_small(self.keys), width);
             buf.set_stringn(
                 area.x,
                 area.y,

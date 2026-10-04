@@ -77,7 +77,11 @@ pub(super) fn draw_preview(
     }
     clear_and_tint(frame, rect, rect, theme);
     frame.render_widget(
-        &graft_ui::preview_box::PreviewBoxWidget { view: &view, theme },
+        &graft_ui::preview_box::PreviewBoxWidget {
+            keys: &state.keymap,
+            view: &view,
+            theme,
+        },
         rect,
     );
     Some(rect)
