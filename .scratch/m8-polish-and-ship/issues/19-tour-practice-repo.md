@@ -3,7 +3,7 @@
 Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: the risk is the path guard (never write outside
 the temp dir) and the in-process switch back; both tested. Not Fable: approach decided here, judged by tests.
-Blocked by: 06, 08, 10, 11, 18
+Blocked by: 06, 08, 10, 10c, 11, 18
 Needs: `look-outside-repo-screen` (`Exit::Open`, empty state), `look-chrome-header-gutter-bar` (`HeaderView::practice`),
 `keymap-spell-from-the-table` (card words), `palette-help-and-actions` (app rows), `first-run-clone-and-first-launch`
 (same empty-state files, sequential).

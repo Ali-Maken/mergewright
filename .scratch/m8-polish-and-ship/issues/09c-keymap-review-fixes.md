@@ -3,7 +3,7 @@
 Status: draft (planner spec-only pass, 2026-10-04, from `docs/reviews/m8-09-keymap.md` Majors 1–5)
 Build with: **Opus** — every rule below is decided here; correctness is held by named behavioural tests, not by eye.
 Not Fable: the shape is fixed (fails "a wrong approach becomes structural").
-Blocked by: 10 (holds graft-ui hints, `Keymap` derives, `update/edge.rs`)
+Blocked by: 10, 10c (holds graft-ui hints, `Keymap` derives, `update/edge.rs`)
 Needs: from 09 — `ContextId::{scope, is_text_field}`, `Keymap::{with_overrides, translate, in_context}`, `KeyWarning`;
 from 09b — `keymap_from`, `context_of`, `dispatch_key`, `outside_edge`, `edge::unanswered`; from 10 — `Arc<Keymap>` in
 `AppState`, hints keyed by `ActionId`.

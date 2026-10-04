@@ -3,7 +3,7 @@
 Status: ready (split from 10 by the planner's spec-only pass 2026-10-04; scout `scouts/10-keymap-spell.md`)
 Build with: **Sonnet** — every site is listed, the rule for each is decided below, and each is held by a remap test;
 no design judgement left. Not Fable.
-Blocked by: 10
+Blocked by: 10, 10c
 Needs: from 10 — `Keymap::{spell, spell_keys}`, `AppState::keymap: Arc<Keymap>`, the graft-ui grep test (extended
 here). From 09 — `ActionId`, `defaults()`.
 Crate set: graft (`update` word sites below) + graft-ops (word sites below). Not graft-ui.

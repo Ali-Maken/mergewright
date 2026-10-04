@@ -4,7 +4,7 @@ Status: ready
 Build with: **Opus** — brownfield across two crates (graft-ui theme, graft config + session); the theme gains a
 pre-reduction colour table and two readers move onto it; judgement on every path that builds a theme (scout:
 `.scratch/m8-polish-and-ship/scouts/16-theme-overrides.md`).
-Blocked by: 07, 09, 09b, 10 (10 shares graft `config/keys.rs`, `config/load.rs` and `keymap_from`'s problem list —
+Blocked by: 07, 09, 09b, 10, 10c (10 shares graft `config/keys.rs`, `config/load.rs` and `keymap_from`'s problem list —
 build serially, 10 first)
 Needs: `look-cursor-row-and-dark-b` (`contrast`, `ContrastRule`, `CONTRAST_RULES`, `Theme::on_selection`),
 `keymap-edge-and-config` (`AppState::config_problems`, `config_notice`, `keymap_from`).
