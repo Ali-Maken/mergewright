@@ -379,6 +379,16 @@ fn j8_a_keys_table_beside_suspend_moves_merge_and_says_one_problem() {
         first.contains("config: 1 problem · ? shows them"),
         "the bottom row says so:\n{first}"
     );
+    // `docs/shots/m8-keymap-config-problem-120x36.txt`. What right looks
+    // like: the graph as normal, the bottom row `config: 1 problem · ?
+    // shows them` (muted). Colour unverified (rule 5).
+    graft_fixtures::capture(
+        format!(
+            "{}/../../docs/shots/m8-keymap-config-problem-120x36.txt",
+            env!("CARGO_MANIFEST_DIR")
+        ),
+        &first,
+    );
 
     let (merged, _) = update(&base, AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char('M')))));
     assert!(merged.preview.is_some(), "M on a branch row opens the merge preview");

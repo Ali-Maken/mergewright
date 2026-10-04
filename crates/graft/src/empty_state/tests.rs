@@ -341,6 +341,25 @@ fn open_moved_to_capital_o_outside_a_repository() {
     assert_eq!(field.text(), "~/code/o", "typed text is never remapped");
 }
 
+/// The typed-text case of 09b outside: with `graph.merge = "x"`, `x` typed
+/// into the open prompt is an `x`.
+#[test]
+fn x_typed_into_the_open_prompt_is_an_x_with_merge_on_x() {
+    use graft_ui::keymap::Keymap;
+
+    use super::outside_edge;
+
+    let (keymap, _collision_with_compare) =
+        Keymap::with_overrides(&[("graph.merge".to_owned(), vec!["x".to_owned()])]);
+    let mut s = state();
+    outside_edge(&mut s, &keymap, ch('o'));
+    outside_edge(&mut s, &keymap, ch('x'));
+    let Some(Prompt::Open(field)) = &s.prompt else {
+        panic!("the prompt is open: {:?}", s.prompt);
+    };
+    assert_eq!(field.text(), "~/code/x");
+}
+
 /// The default keymap changes nothing outside: every key the old tests
 /// press does through the edge what it does without it.
 #[test]
