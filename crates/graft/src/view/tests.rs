@@ -5119,7 +5119,7 @@ fn the_resize_key_is_offered_only_where_there_is_a_divider_to_drag() {
         "80 columns with the pane open is the tab layout:\n{tabbed}"
     );
     assert!(
-        !tabbed.contains("<>"),
+        !tabbed.contains("</>"),
         "the tab layout has no divider, so `<>` must not be offered:\n{tabbed}"
     );
 
@@ -5129,7 +5129,7 @@ fn the_resize_key_is_offered_only_where_there_is_a_divider_to_drag() {
     };
     let split = draw(&state, 160, 24);
     assert!(
-        split.contains("<>"),
+        split.contains("</>"),
         "160 columns is a real split, and its divider is draggable:\n{split}"
     );
 }

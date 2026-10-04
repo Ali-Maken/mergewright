@@ -21,7 +21,8 @@ use crate::history::{
 };
 use crate::repository::{Head, RepositoryFacts};
 use crate::search::{Search, SearchState};
-use graft_ui::graph_screen::{CommitGraphLine, Divider, HintContext, OrderNotice};
+use graft_ui::graph_screen::{CommitGraphLine, Divider, Hint, HintContext, HintKey, OrderNotice};
+use graft_ui::keymap::{ActionId, KeyChord, Keymap};
 
 fn identity() -> Identity {
     Identity {
@@ -4128,7 +4129,7 @@ fn the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows() {
                 80,
                 graft_ui::keymap::Keymap::shipped(),
             ) {
-                if !answered(&state, &idle, hint.key()) {
+                if !answered(&state, &idle, &hint) {
                     dead.push(format!(
                         "{overlay:?} (opens {opens}) draws `{} {}`",
                         hint.key(),
@@ -4153,7 +4154,7 @@ fn dead_keys_on(
     context: &HintContext,
     divider: Divider,
     columns: u16,
-    bound: &[(&str, &str)],
+    bound: &[ActionId],
 ) -> Vec<String> {
     states_for(context, divider, columns)
         .into_iter()
@@ -4191,7 +4192,7 @@ fn dead_keys_in(
     context: &HintContext,
     divider: Divider,
     columns: u16,
-    bound: &[(&str, &str)],
+    bound: &[ActionId],
 ) -> Vec<String> {
     let state = state.clone();
     // Both bars this state can be under: the one the enum names, and the one
@@ -4252,20 +4253,25 @@ fn dead_keys_in(
     };
 
     let mut dead = Vec::new();
-    let mut pressed: Vec<(&str, &str)> = Vec::new();
+    let mut pressed: Vec<(&[HintKey], &str)> = Vec::new();
     for bar in &drawn {
         for hint in bar_hints(&state, bar, drawn_divider, columns) {
+            let unbound: Vec<&str> = actions_of(&hint)
+                .into_iter()
+                .filter(|action| !bound.contains(action))
+                .map(|action| action.0)
+                .collect();
             assert!(
-                bound.contains(&(hint.key(), hint.verb)),
-                "{bar:?} at {columns} columns hints `{} {}`, which nothing binds",
+                unbound.is_empty(),
+                "{bar:?} at {columns} columns hints `{} {}`, whose {unbound:?} nothing binds",
                 hint.key(),
                 hint.verb
             );
-            if pressed.contains(&(hint.key(), hint.verb)) {
+            if pressed.contains(&(hint.keys, hint.verb)) {
                 continue;
             }
-            pressed.push((hint.key(), hint.verb));
-            if !blind && !answered(&state, &idle, hint.key()) {
+            pressed.push((hint.keys, hint.verb));
+            if !blind && !answered(&state, &idle, &hint) {
                 // Both names: the screen the state is, and the bar the key
                 // came off — they differ exactly when the classifier reads
                 // the state as another screen, and then which one is wrong is
@@ -4516,8 +4522,8 @@ fn nothing_happened(state: &AppState) -> (AppState, Vec<Command>) {
 /// not — `update` does ambient work on every event whatever the key (the
 /// evil-merge probe re-asks for its rows), and the inert press comes back
 /// carrying that command like any other press.
-fn answered(state: &AppState, idle: &(AppState, Vec<Command>), name: &str) -> bool {
-    presses_for(name)
+fn answered(state: &AppState, idle: &(AppState, Vec<Command>), hint: &Hint) -> bool {
+    presses_for(hint)
         .into_iter()
         .any(|press| did_something(idle, &outcome(state, press)))
 }
@@ -4545,71 +4551,58 @@ enum Press {
     Release,
 }
 
-/// The presses `name` stands for. A hint naming two keys stands for both.
+/// The presses `hint` stands for: each key it names, as the shipped table
+/// binds it (ticket m8/10 — a hint names actions, so its presses are those
+/// actions' chords, not a parse of the string the bar drew). A hint naming
+/// two keys stands for both.
 ///
-/// Every spelling the hint tables use is here; anything else stops the
-/// sweep rather than being quietly passed over, because a bar entry nobody
-/// can perform is the defect this test is for.
-fn presses_for(name: &str) -> Vec<Press> {
-    let plain = |code| Press::Key(KeyPress::plain(code));
-    match name {
-        "release" => vec![Press::Release],
-        "⏎" => vec![plain(KeyCode::Enter)],
-        "esc" => vec![plain(KeyCode::Escape)],
-        "space" => vec![plain(KeyCode::Char(' '))],
-        // The history place spells `Tab` out (m7-power-tools/21b, the note's
-        // words); the same key.
-        "⇥" | "tab" => vec![plain(KeyCode::Tab)],
-        "⌃A" => vec![Press::Key(KeyPress::control(KeyCode::Char('a')))],
-        "⌃R" => vec![Press::Key(KeyPress::control(KeyCode::Char('r')))],
-        "⌃E" => vec![Press::Key(KeyPress::control(KeyCode::Char('e')))],
-        "⌃⏎" => vec![Press::Key(KeyPress::control(KeyCode::Enter))],
-        "⌃O/⌃T" => vec![
-            Press::Key(KeyPress::control(KeyCode::Char('o'))),
-            Press::Key(KeyPress::control(KeyCode::Char('t'))),
-        ],
-        "F2" => vec![plain(KeyCode::Function(2))],
-        "F3" => vec![plain(KeyCode::Function(3))],
-        "j/k" => vec![plain(KeyCode::Char('j')), plain(KeyCode::Char('k'))],
-        "⏎/space" => vec![plain(KeyCode::Enter), plain(KeyCode::Char(' '))],
-        "O/T" => vec![plain(KeyCode::Char('O')), plain(KeyCode::Char('T'))],
-        "g/G" => vec![plain(KeyCode::Char('g')), plain(KeyCode::Char('G'))],
-        "PgUp/PgDn" => vec![plain(KeyCode::PageUp), plain(KeyCode::PageDown)],
-        "<>" => vec![plain(KeyCode::Char('<')), plain(KeyCode::Char('>'))],
-        "←/→" => vec![plain(KeyCode::Left), plain(KeyCode::Right)],
-        "n N" | "n/N" => vec![plain(KeyCode::Char('n')), plain(KeyCode::Char('N'))],
-        "↑↓" => vec![plain(KeyCode::Up), plain(KeyCode::Down)],
-        // The rewrite editor's row move (keymap §2.7, m7-power-tools/08).
-        "alt+↑↓" => vec![
-            Press::Key(KeyPress {
-                code: KeyCode::Up,
-                modifiers: graft_core::event::Modifiers {
-                    alt: true,
-                    ..graft_core::event::Modifiers::default()
-                },
-            }),
-            Press::Key(KeyPress {
-                code: KeyCode::Down,
-                modifiers: graft_core::event::Modifiers {
-                    alt: true,
-                    ..graft_core::event::Modifiers::default()
-                },
-            }),
-        ],
-        // The branch picker's `type to find` (m7-power-tools/10): any letter
-        // is typing there, so one letter stands for them all.
-        "type" => vec![plain(KeyCode::Char('m'))],
-        one => {
-            let mut letters = one.chars();
-            match (letters.next(), letters.next()) {
-                (Some(letter), None) => vec![plain(KeyCode::Char(letter))],
-                _ => panic!(
-                    "the bar draws `{one}`, which this sweep cannot perform — teach \
-                     `presses_for` what it is, or it is a bar entry nobody can act on"
-                ),
+/// The words that are not keys (`graft_ui::graph_screen::NOT_A_BINDING`)
+/// are performed too; a word this sweep does not know stops it rather than
+/// being quietly passed over, because a bar entry nobody can perform is the
+/// defect this test is for.
+fn presses_for(hint: &Hint) -> Vec<Press> {
+    let shipped = Keymap::shipped();
+    let chord = |chord: &KeyChord| Press::Key(chord.to_press());
+    hint.keys
+        .iter()
+        .flat_map(|key| match key {
+            // What the bar drew: the first chord for `Key`, every one for
+            // `EveryChord`. A `Fixed` key is a text field's default.
+            HintKey::Key(action) | HintKey::Fixed(action) => shipped
+                .chords(action)
+                .first()
+                .map(chord)
+                .into_iter()
+                .collect(),
+            HintKey::EveryChord(action) => shipped.chords(action).iter().map(chord).collect(),
+            HintKey::Word("release") => vec![Press::Release],
+            // The branch picker's `type to find` (m7-power-tools/10): any
+            // letter is typing there, so one letter stands for them all.
+            HintKey::Word("type") => vec![Press::Key(KeyPress::plain(KeyCode::Char('m')))],
+            // The picker's rows (`shown_key`'s `Up`/`Down` arms).
+            HintKey::Word("↑/↓") => vec![
+                Press::Key(KeyPress::plain(KeyCode::Up)),
+                Press::Key(KeyPress::plain(KeyCode::Down)),
+            ],
+            HintKey::Word(word) => panic!(
+                "the bar draws `{word}`, which this sweep cannot perform — teach \
+                 `presses_for` what it is, or it is a bar entry nobody can act on"
+            ),
+        })
+        .collect()
+}
+
+/// The actions `hint` names: every key but a word.
+fn actions_of(hint: &Hint) -> Vec<ActionId> {
+    hint.keys
+        .iter()
+        .filter_map(|key| match key {
+            HintKey::Key(action) | HintKey::EveryChord(action) | HintKey::Fixed(action) => {
+                Some(*action)
             }
-        }
-    }
+            HintKey::Word(_) => None,
+        })
+        .collect()
 }
 
 /// `press` put through the whole of `update`, exactly as the event loop
@@ -5696,91 +5689,89 @@ fn stash_entry() -> graft_git::stash::StashEntry {
 /// here — which is how the footer learns about a verb the moment it exists
 /// (`hint-bar-redesign` scope item 6; m5-03 review, Major 6).
 ///
-/// `bound_actions` says nothing about *where* a binding is live, so a verb
-/// another context already hints as live is out of this check's reach: the
-/// banner's `e edit` (edit the conflicted file) is planned while the changes
-/// pane's `e edit` (open `$EDITOR` at the cursor) is bound, and the pair
-/// alone cannot tell them apart. Every planned verb nothing hints as live —
-/// `b branch`, `t tag`, `M mergetool`, `space resolved`, the banner's
-/// `c continue`/`s skip`/`a abort` — is checked. `m merge` and `r rebase`
-/// were on that list until m5/24: group 08 bound them and the hint tables
-/// call them live, so they are in `bound_actions` now and this test's Live
-/// half is what holds them.
+/// Over actions since m8/10: a planned hint names the row it will do, so
+/// the banner's planned `e edit` is `operation.edit` and the changes pane's
+/// bound `e edit` is `changes.edit` — two rows, told apart. An action a
+/// planned hint names that another context draws live (its key planned in
+/// one place, built in another) is held by the Live half instead.
 #[test]
 fn every_planned_hint_is_still_unbound() {
     use graft_ui::graph_screen::{HintState, every_hint};
 
     let bound = super::keys::bound_actions();
-    let live: Vec<(&str, &str)> = every_hint()
+    let live: Vec<ActionId> = every_hint()
         .iter()
         .filter(|hint| hint.state == HintState::Live)
-        .map(|hint| (hint.key(), hint.verb))
+        .flat_map(actions_of)
         .collect();
     for hint in every_hint() {
-        let pair = (hint.key(), hint.verb);
-        match hint.state {
-            HintState::Planned => {
-                if live.contains(&pair) {
-                    continue;
+        for action in actions_of(&hint) {
+            match hint.state {
+                HintState::Planned => {
+                    if live.contains(&action) {
+                        continue;
+                    }
+                    assert!(
+                        !bound.contains(&action),
+                        "`{} {}` ({}) is bound now: flip it to `hint(..)` in \
+                         graph_screen::hints",
+                        hint.key(),
+                        hint.verb,
+                        action.0
+                    );
                 }
-                assert!(
-                    !bound.contains(&pair),
-                    "`{} {}` is bound now: flip it to `hint(..)` in graph_screen::hints",
+                HintState::Live => assert!(
+                    bound.contains(&action),
+                    "`{} {}` ({}) is hinted as live but nothing binds it",
                     hint.key(),
-                    hint.verb
-                );
+                    hint.verb,
+                    action.0
+                ),
             }
-            HintState::Live => assert!(
-                bound.contains(&pair),
-                "`{} {}` is hinted as live but nothing binds it",
-                hint.key(),
-                hint.verb
-            ),
         }
     }
 }
 
-/// Bound `(key, verb)` pairs the hint bar draws **nowhere**, each with the
-/// reason it is not a defect — the named exemption list
+/// Bound actions the hint bar draws **nowhere**, each with the reason it is
+/// not a defect — the named exemption list
 /// [`every_bound_action_is_hinted_live_or_is_named_here`] walks against
 /// (m5/33, review M4).
 ///
-/// Five of the six are `docs/design/02-keymap.md` §2.2 globals: keys live in
-/// every pane, which the bar does not list because the bar lists the *focused
-/// context's* keys. The sixth is not a decided exemption and says so.
-const NEVER_HINTED: &[(&str, &str, &str)] = &[
+/// All are `docs/design/02-keymap.md` §2.2 globals: keys live in every pane,
+/// which the bar does not list because the bar lists the *focused context's*
+/// keys. (Before m8/10 the list held `esc dismiss` too; as an action that is
+/// `app.back`, which the bar draws as `esc close`/`esc cancel`.)
+const NEVER_HINTED: &[(ActionId, &str)] = &[
     (
-        "g/G",
-        "top/bottom",
+        ActionId("app.top"),
         "keymap §2.2: global movement, live in every pane",
     ),
     (
-        "PgUp/PgDn",
-        "page",
+        ActionId("app.bottom"),
         "keymap §2.2: global movement, live in every pane",
     ),
-    ("⌃R", "refresh", "keymap §2.2: global"),
     (
-        "U",
-        "redo",
+        ActionId("app.page_up"),
+        "keymap §2.2: global movement, live in every pane",
+    ),
+    (
+        ActionId("app.page_down"),
+        "keymap §2.2: global movement, live in every pane",
+    ),
+    (ActionId("app.refresh"), "keymap §2.2: global"),
+    (
+        ActionId("app.redo"),
         "keymap §2.2: global, and §2.1's Shift pair of the `u undo` the bar does draw",
-    ),
-    (
-        "esc",
-        "dismiss",
-        "keymap §2.2: `Esc` backs out everywhere. The bar draws it where it is the \
-         context's own key (`esc close`, `esc cancel`); clearing a stale status line \
-         is not a context action",
     ),
 ];
 
 /// **The converse direction** (m5/33, review M4).
 /// [`every_planned_hint_is_still_unbound`] walks the hint tables and asks
-/// whether each entry is bound; it cannot see a key that is bound and is in
-/// **no table at all**, and [`super::keys::bound_actions`] is hand-written,
-/// so that gap is real rather than theoretical.
+/// whether each entry is bound; it cannot see an action that is bound and
+/// is in **no table at all**, and [`super::keys::bound_actions`] is
+/// hand-written, so that gap is real rather than theoretical.
 ///
-/// This walks the other way: every `(key, verb)` the app binds is drawn
+/// This walks the other way: every action the app binds is drawn
 /// `HintState::Live` in some context, or is named in [`NEVER_HINTED`] with
 /// its reason. The exemption list is walked too — a row that stopped being
 /// bound, or that is drawn now, fails here rather than sitting stale.
@@ -5792,35 +5783,36 @@ fn every_bound_action_is_hinted_live_or_is_named_here() {
     // `every_hint` is the union of every context's own list plus the tail
     // and the doorway hints `whole_bar` adds, so "live in here" is "live on
     // some bar".
-    let live: Vec<(&str, &str)> = every_hint()
+    let live: Vec<ActionId> = every_hint()
         .iter()
         .filter(|hint| hint.state == HintState::Live)
-        .map(|hint| (hint.key(), hint.verb))
+        .flat_map(actions_of)
         .collect();
-    let exempt: Vec<(&str, &str)> = NEVER_HINTED.iter().map(|(k, v, _)| (*k, *v)).collect();
+    let exempt: Vec<ActionId> = NEVER_HINTED.iter().map(|(action, _)| *action).collect();
 
-    let unhinted: Vec<String> = bound
+    let unhinted: Vec<&str> = bound
         .iter()
-        .filter(|pair| !live.contains(pair) && !exempt.contains(pair))
-        .map(|(key, verb)| format!("`{key} {verb}`"))
+        .filter(|action| !live.contains(action) && !exempt.contains(action))
+        .map(|action| action.0)
         .collect();
     assert!(
         unhinted.is_empty(),
-        "bound, and drawn on no bar in any context: {}. Either hint it, or add it to \
-         NEVER_HINTED with the reason it is never drawn",
-        unhinted.join(", ")
+        "bound, and drawn on no bar in any context: {unhinted:?}. Either hint it, or add \
+         it to NEVER_HINTED with the reason it is never drawn"
     );
 
-    for (key, verb, why) in NEVER_HINTED {
+    for (action, why) in NEVER_HINTED {
         assert!(
-            bound.contains(&(*key, *verb)),
-            "`{key} {verb}` is on the never-hinted list ({why}) but nothing binds it \
-             any more — take the row off"
+            bound.contains(action),
+            "`{}` is on the never-hinted list ({why}) but nothing binds it any more — take \
+             the row off",
+            action.0
         );
         assert!(
-            !live.contains(&(*key, *verb)),
-            "`{key} {verb}` is drawn live now, so the never-hinted list is wrong \
-             about it ({why}) — take the row off"
+            !live.contains(action),
+            "`{}` is drawn live now, so the never-hinted list is wrong about it ({why}) — \
+             take the row off",
+            action.0
         );
     }
 }

@@ -60,8 +60,8 @@ fn graph_bar_leads_esc_back_to_blame_while_hidden() {
 fn the_place_bar_offers_n_only_while_finding() {
     let finding = place_on_screen(pane_at(22), true, false);
     let not = place_on_screen(pane_at(22), false, false);
-    assert!(bar(&finding).contains(&("n N", "match")));
-    assert!(!bar(&not).contains(&("n N", "match")));
+    assert!(bar(&finding).contains(&("n/N", "match")));
+    assert!(!bar(&not).contains(&("n/N", "match")));
     assert!(!bar(&not).contains(&("i", "ignore list")));
 }
 

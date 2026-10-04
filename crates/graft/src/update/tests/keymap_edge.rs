@@ -30,7 +30,17 @@ struct Seen {
 }
 
 fn seen(state: &AppState, press: KeyPress) -> Seen {
-    let (after, commands) = update(state, AppEvent::Core(Event::Key(press)));
+    seen_as(state, press, &state.keymap)
+}
+
+/// [`seen`], with the frame drawn under `keys` whatever keymap `state`
+/// presses with. Since m8/10 the bars spell their keys from the keymap, so
+/// two keymaps draw two frames even where a press does the same thing: a
+/// sweep comparing what a remapped press does with what the default does
+/// draws both under the remapped keymap, and so compares the *doing*.
+fn seen_as(state: &AppState, press: KeyPress, keys: &Arc<Keymap>) -> Seen {
+    let (mut after, commands) = update(state, AppEvent::Core(Event::Key(press)));
+    after.keymap = Arc::clone(keys);
     Seen {
         commands,
         quit: format!("{:?}", after.quit),
@@ -249,15 +259,17 @@ fn the_sweep_moves_every_action_and_every_context_follows() {
             keymap: swept.clone(),
             ..base.clone()
         };
-        let nothing = seen(&base, unanswered());
+        // `base` presses with the defaults, drawn under the sweep's keymap.
+        let nothing = seen_as(&base, unanswered(), &swept);
         let rows: Vec<&str> = rows_for(ctx).map(|b| b.action.0).collect();
         for (row, to) in moved.iter().filter(|(b, _)| rows.contains(&b.action.0)) {
             let id = row.action.0;
             let (want, unbound) = if ctx.is_text_field() {
-                (seen(&base, to.to_press()), None)
+                (seen_as(&base, to.to_press(), &swept), None)
             } else {
                 let acts = acting_default(ctx, row);
-                let want = acts.map_or_else(|| nothing.clone(), |d| seen(&base, d.to_press()));
+                let want =
+                    acts.map_or_else(|| nothing.clone(), |d| seen_as(&base, d.to_press(), &swept));
                 (want, Some(&nothing))
             };
             if seen(&remapped, to.to_press()) != want {
@@ -266,7 +278,7 @@ fn the_sweep_moves_every_action_and_every_context_follows() {
             for chord in row.default {
                 let want = match unbound {
                     Some(nothing) => nothing.clone(),
-                    None => seen(&base, chord.to_press()),
+                    None => seen_as(&base, chord.to_press(), &swept),
                 };
                 if seen(&remapped, chord.to_press()) != want {
                     failures.push(format!("{ctx:?}: {id}'s old {}", chord.label().0));

@@ -4,7 +4,7 @@
 
 use super::lists::{TAIL, context_list};
 use super::{
-    BACK_TO_BLAME, BACK_TO_HISTORY, BLAME, ConfirmYes, EXPLAIN, F_HISTORY, Hint, HintContext,
+    BACK_TO_BLAME, BACK_TO_HISTORY, BLAME, ConfirmYes, EXPLAIN, F_HISTORY, FOLD, Hint, HintContext,
     LiveC, MORE, RESIZE, RowVerbs, TabWord, WAY_BACK,
 };
 use crate::conflict_resolver::SideRoles;
@@ -532,7 +532,7 @@ fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
 }
 
 /// Every hint in every context's table, planned ones included, deduped by
-/// `(key, verb, state)` — what `graft`'s guard tests walk so that neither
+/// `(keys, verb, state)` — what `graft`'s guard tests walk so that neither
 /// half of the table can drift from what the app binds.
 #[must_use]
 pub fn every_hint() -> Vec<Hint> {
@@ -549,6 +549,10 @@ pub fn every_hint() -> Vec<Hint> {
     all.push(BACK_TO_BLAME);
     all.push(BACK_TO_HISTORY);
     all.push(F_HISTORY);
+    // A directory row's `space fold` (`diff.fold_dir`). Before m8/10 it
+    // passed as the graph's `space fold`, the same string; as an action it
+    // is its own row.
+    all.push(FOLD);
     let mut seen = Vec::new();
     all.retain(|hint| {
         let fresh = !seen.contains(hint);
