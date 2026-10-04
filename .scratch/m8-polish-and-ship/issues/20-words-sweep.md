@@ -3,8 +3,9 @@
 Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Sonnet**: every wording is decided below; each item
 is a string and a test.
-Blocked by: 10, 14
-Needs: `keymap-spell-from-the-table` (same user-facing strings), `daily-ops-fixes` (put-back words in graft-ops).
+Blocked by: 10, 10b, 14
+Needs: `keymap-spell-from-the-table` (10) and `keymap-spell-in-words` (10b) (same user-facing strings; any key a
+reworded line names stays spelled from the table — 10b's form), `daily-ops-fixes` (put-back words in graft-ops).
 Crates graft-ui (detail header, history), graft (view, update words), graft-ops (error words only).
 
 ## Read first
@@ -46,7 +47,8 @@ Crates graft-ui (detail header, history), graft (view, update words), graft-ops 
     measure what is drawn (sanitised).
 
 ## Scope
-In: 1–17. Out: any wording not listed; key spelling (done by G-keymap).
+In: 1–17. Out: any wording not listed; key spelling (done by G-keymap, 10 and 10b). A reworded line that names a key
+keeps it spelled from the table (10b's parameter or appended clause), never a literal; 10's grep test stays green.
 
 ## Signatures
 `AfterState::BackupUnread` (graft-ops, pub). Nothing else public.
@@ -57,7 +59,8 @@ In: 1–17. Out: any wording not listed; key spelling (done by G-keymap).
 
 ## Touches
 - Every capture and test asserting the old strings (grep each); J rows (11); preview line rows (10); MAP.md graft-ops
-  (`BackupUnread`), graft-ui; TESTING.md radar section.
+  (`BackupUnread`), graft-ui; TESTING.md radar section. 10b's remap-test rows for any site reworded here (items 5,
+  15, 16 at least).
 
 ## Scout questions
 None — rows carry their lines. If a line moved, find it by the quoted string and say so in NOTES.

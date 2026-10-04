@@ -221,7 +221,10 @@ impl Theme { pub fn legible_on(&self, fg: Rgb, bg: Rgb) -> Rgb; }  // ≥ 4.5:1,
 pub struct ContrastRule { pub fg: Token, pub bg: Token, pub min: f32 }
 pub const CONTRAST_RULES: &[ContrastRule];                         // the four floors above
 pub struct ContrastMiss { pub rule: ContrastRule, pub ratio: f32 }
-impl Theme { pub fn with_overrides(self, overrides: &[(Token, Rgb)]) -> (Theme, Vec<ContrastMiss>); } // G-theme
+// G-theme, revised 2026-10-04 after its scout: Theme holds only reduced colours, so overrides go in at construction,
+// before reduction; misses are a pure check on the file (all three kinds), not a by-product of building one theme.
+impl Theme { pub fn with_overrides(kind: ThemeKind, caps: &Capabilities, overrides: &[(Token, Rgb)]) -> Theme; } // new = &[]
+pub fn contrast_misses(kind: ThemeKind, overrides: &[(Token, Rgb)]) -> Vec<ContrastMiss>;                    // G-theme
 impl Theme { pub fn lane_muted(&self, lane: usize) -> TokenColor; }                                   // G-look polish
 
 // graft-ui::graph_screen — chrome (look-parity 5a)
@@ -370,7 +373,7 @@ elsewhere-checked-out one stays, in words). Specs `fork-follows-engine.md` and `
 | 7a | G-palette help | graft-ui palette, graft update | Opus | `palette-help-and-actions.md` |
 | 7b | G-palette find | graft update::palette, search | Opus | `palette-find-anything.md` |
 | 8 | G-bar | graft-ui hints, graft view | Opus | `bar-content-pass.md` |
-| 9a | G-theme | graft-ui theme, graft config | Opus | `theme-overrides.md` |
+| 9a | G-theme | graft-ui theme, graft config + session | Opus | `theme-overrides.md` |
 | 9b | G-look polish | graft-ui theme + rows, graft view/config | Opus | `look-polish-rows.md` |
 | 10 | G-first-run | graft-ops clone, graft startup, graft-ui empty_state | Opus | `first-run-clone-and-first-launch.md` |
 | 11 | G-tour | graft-ops tour, graft, graft-ui | Opus | `tour-practice-repo.md` |
@@ -389,7 +392,8 @@ elsewhere-checked-out one stays, in words). Specs `fork-follows-engine.md` and `
 | 19 | G-accept | — | Fable | `accept-m8.md` |
 
 Lanes: 1→2→3→3b; 4 after 2. 5a→5b; 5c after 5b (re-specced 2026-10-03: shares `graft-ui` `lib.rs`, MAP.md and the
-`selection` paint with 5b). 6a→6b→7a→7b; 8 after 7a and 12b. 9a after 5b and 6a; 9b after 9a.
+`selection` paint with 5b). 6a→6b→7a→7b; 8 after 7a and 12b. 9a after 5b and 6b (re-specced 2026-10-04: shares graft
+`config` files with 6b — serial); 9b after 9a.
 10 after 5c and 7a; 11 after 10 and 6b. 12a, 12b, 14a, 14b beside the scroll lane (disjoint files; conductor checks
 scouts). 12c → 12d, after 12b, before 17. 13 after 6b and 12b. 15 after 6a, 9a, 10, 11; 16 after 15. 17 after every
 build; 18a → 18b → 19.
