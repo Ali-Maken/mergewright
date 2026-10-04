@@ -159,7 +159,8 @@ impl Keymap {
 
     /// The row of `ctx` itself that keeps `chord`, by the same rule.
     fn holder(&self, ctx: ContextId, chord: KeyChord, over: Over) -> Option<usize> {
-        self.holders(ctx, chord, over).min_by_key(|row| self.rank(*row))
+        self.holders(ctx, chord, over)
+            .min_by_key(|row| self.rank(*row))
     }
 
     /// Every row of `ctx` itself holding `chord`.

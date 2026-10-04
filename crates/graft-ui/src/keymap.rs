@@ -177,7 +177,7 @@ impl ContextId {
     }
 }
 
-/// An action's name in his config: `<context>.<verb>`, snake_case
+/// An action's name in his config: `<context>.<verb>`, `snake_case`
 /// (`graph.merge`). Never renamed after release; a rename keeps the old id
 /// as an alias (ADR-0055 §2).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

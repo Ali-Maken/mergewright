@@ -73,7 +73,10 @@ fn every_scope_starts_at_its_own_place_and_ends_at_global() {
         assert_eq!(scope.first(), Some(&want_first), "{ctx:?}");
         assert_eq!(scope.last(), Some(&ContextId::Global), "{ctx:?}");
         for inner in scope {
-            assert!(!inner.is_text_field() || *inner == ctx, "{ctx:?} reaches a text field");
+            assert!(
+                !inner.is_text_field() || *inner == ctx,
+                "{ctx:?} reaches a text field"
+            );
         }
     }
 }

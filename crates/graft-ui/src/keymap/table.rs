@@ -64,7 +64,12 @@ use ContextId::{
 
 const DEFAULTS: &[Binding] = &[
     // §2.2 Global.
-    b("app.palette", Global, &[ctrl('p'), k(':')], "Command palette"),
+    b(
+        "app.palette",
+        Global,
+        &[ctrl('p'), k(':')],
+        "Command palette",
+    ),
     b("app.help", Global, &[k('?')], "Help for this place"),
     b("app.next_pane", Global, &[TAB], "Next pane"),
     b("app.prev_pane", Global, &[BACKTAB], "Previous pane"),
@@ -73,7 +78,12 @@ const DEFAULTS: &[Binding] = &[
     b("app.redo", Global, &[k('U')], "Redo"),
     b("app.refresh", Global, &[ctrl('r')], "Refresh"),
     b("app.quit", Global, &[k('q')], "Quit"),
-    b("app.quit_now", Global, &[KeyChord::QUIT_NOW], "Quit at once"),
+    b(
+        "app.quit_now",
+        Global,
+        &[KeyChord::QUIT_NOW],
+        "Quit at once",
+    ),
     b("app.down", Global, &[k('j'), DOWN], "Move down"),
     b("app.up", Global, &[k('k'), UP], "Move up"),
     b("app.top", Global, &[k('g'), HOME], "Jump to the top"),
@@ -89,7 +99,12 @@ const DEFAULTS: &[Binding] = &[
     b("graph.commit", Graph, &[k('c')], "Commit"),
     b("graph.amend", Graph, &[k('a')], "Amend"),
     b("graph.rewrite", Graph, &[k('R')], "Open the rewrite editor"),
-    b("graph.switch", Graph, &[k('C')], "Switch branch (branch picker)"),
+    b(
+        "graph.switch",
+        Graph,
+        &[k('C')],
+        "Switch branch (branch picker)",
+    ),
     b(
         "graph.take",
         Graph,
@@ -102,11 +117,31 @@ const DEFAULTS: &[Binding] = &[
         &[k('m')],
         "Merge selected branch into current",
     ),
-    b("graph.rebase", Graph, &[k('r')], "Rebase current onto selection"),
-    b("graph.branch", Graph, &[k('b')], "New branch from selected commit"),
+    b(
+        "graph.rebase",
+        Graph,
+        &[k('r')],
+        "Rebase current onto selection",
+    ),
+    b(
+        "graph.branch",
+        Graph,
+        &[k('b')],
+        "New branch from selected commit",
+    ),
     b("graph.tag", Graph, &[k('t')], "New tag at selected commit"),
-    b("graph.compare", Graph, &[k('x')], "Compare against a marked base"),
-    b("graph.lanes", Graph, &[k('+')], "Expand / collapse folded lanes"),
+    b(
+        "graph.compare",
+        Graph,
+        &[k('x')],
+        "Compare against a marked base",
+    ),
+    b(
+        "graph.lanes",
+        Graph,
+        &[k('+')],
+        "Expand / collapse folded lanes",
+    ),
     Binding {
         search: &["aside"],
         ..b("graph.stash", Graph, &[k('S')], "Stash…")
@@ -117,9 +152,19 @@ const DEFAULTS: &[Binding] = &[
     b("graph.map", Graph, &[k('M')], "Map view"),
     b("graph.focus", Graph, &[k('F')], "Focus mode"),
     b("graph.overview", Graph, &[k('O')], "Overview strip"),
-    b("graph.fold", Graph, &[SPACE], "Fold a merged branch into its merge"),
+    b(
+        "graph.fold",
+        Graph,
+        &[SPACE],
+        "Fold a merged branch into its merge",
+    ),
     b("graph.first_parent", Graph, &[k('1')], "First-parent view"),
-    b("graph.hide_stash", Graph, &[k('H')], "Hide / show the stash"),
+    b(
+        "graph.hide_stash",
+        Graph,
+        &[k('H')],
+        "Hide / show the stash",
+    ),
     b("graph.copy_sha", Graph, &[k('y')], "Copy the commit's SHA"),
     b("graph.journal", Graph, &[k('J')], "Undo journal"),
     b(
@@ -150,25 +195,45 @@ const DEFAULTS: &[Binding] = &[
     b("map.close", Map, &[k('M')], "Close the Map view"),
     b("map.seek", Map, &[ENTER], "Seek the graph to this branch"),
     // §2.3b Ghost Preview.
-    b("preview.confirm", Preview, &[k('y'), k('m'), k('r')], "Confirm"),
+    b(
+        "preview.confirm",
+        Preview,
+        &[k('y'), k('m'), k('r')],
+        "Confirm",
+    ),
     b(
         "preview.rewrite",
         Preview,
         &[k('R')],
         "Open the rewrite editor on this rebase",
     ),
-    b("preview.choose", Preview, &[ENTER], "The choice under the cursor"),
+    b(
+        "preview.choose",
+        Preview,
+        &[ENTER],
+        "The choice under the cursor",
+    ),
     b("preview.left", Preview, &[LEFT], "Choice to the left"),
     b("preview.right", Preview, &[RIGHT], "Choice to the right"),
     b("preview.cycle", Preview, &[TAB, BACKTAB], "Next choice"),
     // §2.3c Confirm box.
     b("confirm.yes", Confirm, &[k('y')], "The box's acting choice"),
-    b("confirm.choose", Confirm, &[ENTER], "The choice under the cursor"),
+    b(
+        "confirm.choose",
+        Confirm,
+        &[ENTER],
+        "The choice under the cursor",
+    ),
     b("confirm.left", Confirm, &[LEFT], "Choice to the left"),
     b("confirm.right", Confirm, &[RIGHT], "Choice to the right"),
     b("confirm.cycle", Confirm, &[TAB, BACKTAB], "Next choice"),
     // §2.4 Working tree / staging.
-    b("changes.stage", Changes, &[SPACE, k('s')], "Stage / unstage"),
+    b(
+        "changes.stage",
+        Changes,
+        &[SPACE, k('s')],
+        "Stage / unstage",
+    ),
     b("changes.stage_all", Changes, &[ctrl('a')], "Stage all"),
     b("changes.discard", Changes, &[k('d')], "Discard"),
     b("changes.edit", Changes, &[k('e')], "Open in $EDITOR"),
@@ -179,22 +244,42 @@ const DEFAULTS: &[Binding] = &[
         "Launch the mergetool on this file",
     ),
     // §2.5 Diff pane.
-    b("diff.ignore_whitespace", Diff, &[k('w')], "Ignore whitespace"),
+    b(
+        "diff.ignore_whitespace",
+        Diff,
+        &[k('w')],
+        "Ignore whitespace",
+    ),
     b("diff.word_diff", Diff, &[k('W')], "Word-diff granularity"),
-    b("diff.side_by_side", Diff, &[k('v')], "Unified / side-by-side"),
+    b(
+        "diff.side_by_side",
+        Diff,
+        &[k('v')],
+        "Unified / side-by-side",
+    ),
     b("diff.less_context", Diff, &[k('[')], "Fewer context lines"),
     b("diff.more_context", Diff, &[k(']')], "More context lines"),
     b("diff.shrink", Diff, &[k('<')], "Shrink the detail pane"),
     b("diff.grow", Diff, &[k('>')], "Grow the detail pane"),
     b("diff.load_all", Diff, &[k('L')], "Load the full file"),
-    b("diff.blame", Diff, &[k('B')], "Blame this file at this line"),
+    b(
+        "diff.blame",
+        Diff,
+        &[k('B')],
+        "Blame this file at this line",
+    ),
     b("diff.file_history", Diff, &[k('F')], "This file's history"),
     b("diff.fold_dir", Diff, &[SPACE], "Fold / unfold a directory"),
     // §2.6 Conflict resolver.
     b("resolver.take_ours", Resolver, &[k('o')], "Take ours"),
     b("resolver.take_theirs", Resolver, &[k('t')], "Take theirs"),
     b("resolver.take_both", Resolver, &[k('b')], "Take both"),
-    b("resolver.all_ours", Resolver, &[ctrl('o')], "Ours in every block"),
+    b(
+        "resolver.all_ours",
+        Resolver,
+        &[ctrl('o')],
+        "Ours in every block",
+    ),
     b(
         "resolver.all_theirs",
         Resolver,
@@ -214,13 +299,33 @@ const DEFAULTS: &[Binding] = &[
         "Theirs for the whole file, done",
     ),
     b("resolver.base", Resolver, &[k('B')], "Show / hide BASE"),
-    b("resolver.start_over", Resolver, &[k('d')], "Start this file over"),
+    b(
+        "resolver.start_over",
+        Resolver,
+        &[k('d')],
+        "Start this file over",
+    ),
     b("resolver.next_block", Resolver, &[k('n')], "Next block"),
     b("resolver.prev_block", Resolver, &[k('N')], "Previous block"),
     b("resolver.finish", Resolver, &[k('c')], "Finish"),
-    b("resolver.mark_done", Resolver, &[ENTER], "Mark this file done"),
-    b("resolver.edit", Resolver, &[k('e')], "Open $EDITOR at this block"),
-    b("resolver.mergetool", Resolver, &[k('M')], "Launch the mergetool"),
+    b(
+        "resolver.mark_done",
+        Resolver,
+        &[ENTER],
+        "Mark this file done",
+    ),
+    b(
+        "resolver.edit",
+        Resolver,
+        &[k('e')],
+        "Open $EDITOR at this block",
+    ),
+    b(
+        "resolver.mergetool",
+        Resolver,
+        &[k('M')],
+        "Launch the mergetool",
+    ),
     // §2.6a Operation banner (`⏎` is `app.open`, `q` is `app.quit`).
     b("operation.continue", Banner, &[k('c')], "Continue"),
     b("operation.skip", Banner, &[k('s')], "Skip this commit"),
@@ -286,8 +391,18 @@ const DEFAULTS: &[Binding] = &[
     b("picker.switch", Picker, &[ENTER], "Switch to it"),
     b("picker.show", Picker, &[TAB], "Show it on the graph"),
     // §2.8 Blame (`w` is `diff.ignore_whitespace`).
-    b("blame.parent", Blame, &[k('^')], "Blame the parent revision"),
-    b("blame.line_history", Blame, &[k('L')], "History of these lines"),
+    b(
+        "blame.parent",
+        Blame,
+        &[k('^')],
+        "Blame the parent revision",
+    ),
+    b(
+        "blame.line_history",
+        Blame,
+        &[k('L')],
+        "History of these lines",
+    ),
     b("blame.heatmap", Blame, &[SPACE], "Age heatmap"),
     b(
         "blame.ignore_revs",
@@ -300,7 +415,12 @@ const DEFAULTS: &[Binding] = &[
     b("stash.apply", Stash, &[ENTER], "Apply (preview)"),
     b("stash.pop", Stash, &[k('p')], "Pop (preview)"),
     b("stash.drop", Stash, &[k('d')], "Drop"),
-    b("stash.branch", Stash, &[k('b')], "New branch from this stash"),
+    b(
+        "stash.branch",
+        Stash,
+        &[k('b')],
+        "New branch from this stash",
+    ),
     b("stash.preview", Stash, &[SPACE], "Preview the diff"),
     b("stash.close", Stash, &[k('S')], "Close the stash list"),
     // §2.10 Commit message editor (a text field: fixed).
@@ -311,7 +431,12 @@ const DEFAULTS: &[Binding] = &[
         "Commit",
     ),
     b("commit.next_field", CommitEditor, &[TAB], "Next field"),
-    b("commit.prev_field", CommitEditor, &[BACKTAB], "Previous field"),
+    b(
+        "commit.prev_field",
+        CommitEditor,
+        &[BACKTAB],
+        "Previous field",
+    ),
     b(
         "commit.edit_outside",
         CommitEditor,
@@ -331,14 +456,24 @@ const DEFAULTS: &[Binding] = &[
         "Insert a co-author trailer",
     ),
     // §2.11 Undo journal browser.
-    b("journal.revert", Journal, &[ENTER], "Revert / put back (preview)"),
+    b(
+        "journal.revert",
+        Journal,
+        &[ENTER],
+        "Revert / put back (preview)",
+    ),
     b(
         "journal.branch",
         Journal,
         &[k('b')],
         "New branch at this row's commit",
     ),
-    b("journal.expand", Journal, &[SPACE], "Expand / collapse the row"),
+    b(
+        "journal.expand",
+        Journal,
+        &[SPACE],
+        "Expand / collapse the row",
+    ),
     b("journal.close", Journal, &[k('J')], "Close the journal"),
     // §2.17 History.
     b("history.next_change", History, &[k('n')], "Next change"),
@@ -356,10 +491,20 @@ const DEFAULTS: &[Binding] = &[
         &[k('y')],
         "Yes — init this folder",
     ),
-    b("empty_state.cancel", EmptyState, &[k('n')], "No — don't init"),
+    b(
+        "empty_state.cancel",
+        EmptyState,
+        &[k('n')],
+        "No — don't init",
+    ),
     // §2.14 Credential prompt (a text field: fixed).
     b("credential.send", Credential, &[ENTER], "Submit the answer"),
-    b("credential.clear", Credential, &[ctrl('u')], "Clear the field"),
+    b(
+        "credential.clear",
+        Credential,
+        &[ctrl('u')],
+        "Clear the field",
+    ),
     b(
         "credential.edit_text",
         Credential,

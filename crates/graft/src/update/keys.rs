@@ -26,6 +26,8 @@ mod refresh;
 #[cfg(test)]
 mod tab_words_tests;
 #[cfg(test)]
+mod table_check;
+#[cfg(test)]
 mod tests;
 pub(in crate::update) mod view_change;
 

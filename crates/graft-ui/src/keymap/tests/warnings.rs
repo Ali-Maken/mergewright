@@ -14,7 +14,10 @@ fn words(lines: &[(String, Vec<String>)]) -> Vec<String> {
 #[test]
 fn an_unknown_action_is_named() {
     let lines = [line("grpah.merge", &["M"])];
-    assert_eq!(warnings(&lines), [KeyWarning::UnknownAction("grpah.merge".into())]);
+    assert_eq!(
+        warnings(&lines),
+        [KeyWarning::UnknownAction("grpah.merge".into())]
+    );
     assert_eq!(words(&lines), ["grpah.merge is not an action"]);
 }
 
@@ -55,7 +58,10 @@ fn ctrl_c_is_reserved_both_ways() {
             key: KeyChord::QUIT_NOW
         }]
     );
-    assert_eq!(words(&given), ["⌃C always quits — not given to graph.merge"]);
+    assert_eq!(
+        words(&given),
+        ["⌃C always quits — not given to graph.merge"]
+    );
 
     let moved = [line("app.quit_now", &["x"])];
     assert_eq!(
@@ -65,7 +71,10 @@ fn ctrl_c_is_reserved_both_ways() {
             key: KeyChord::key('x')
         }]
     );
-    assert_eq!(words(&moved), ["⌃C always quits — app.quit_now can't move to x"]);
+    assert_eq!(
+        words(&moved),
+        ["⌃C always quits — app.quit_now can't move to x"]
+    );
 }
 
 #[test]

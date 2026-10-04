@@ -28,60 +28,75 @@ fn movable() -> Vec<&'static Binding> {
         .collect()
 }
 
-#[test]
-fn the_sweep_moves_every_action_and_every_context_follows() {
+/// The sweep's keymap: every movable action on its own free chord. Returns
+/// the map and, per movable row, the chord it moved to.
+fn swept() -> (Keymap, Vec<(&'static Binding, KeyChord)>) {
     let rows = movable();
     let free = free_chords();
-    assert!(free.len() >= rows.len(), "{} free for {}", free.len(), rows.len());
+    assert!(
+        free.len() >= rows.len(),
+        "{} free for {}",
+        free.len(),
+        rows.len()
+    );
     for b in defaults() {
         for c in b.default {
             assert!(!free.contains(c), "{} uses a sweep chord", b.action.0);
         }
     }
-    let lines: Vec<(String, Vec<String>)> = rows
+    let moved: Vec<(&'static Binding, KeyChord)> = rows.into_iter().zip(free).collect();
+    let lines: Vec<(String, Vec<String>)> = moved
         .iter()
-        .zip(&free)
         .map(|(b, c)| (b.action.0.to_string(), vec![c.label().0]))
         .collect();
     let (map, warnings) = Keymap::with_overrides(&lines);
     assert_eq!(warnings, [], "every chord is free, so nothing collides");
-    let moved_to = |b: &Binding| free[rows.iter().position(|r| r.action == b.action).unwrap()];
+    (map, moved)
+}
 
+/// One non-text context of the sweep: each action's new chord acts as the
+/// default the dispatcher answers there, and no default is live. Returns
+/// how many actions it checked.
+fn sweep_context(map: &Keymap, ctx: ContextId, moved: &[(&Binding, KeyChord)]) -> usize {
+    let scope = ctx.scope();
+    let mut checked = 0;
+    for (b, to) in moved.iter().filter(|(b, _)| scope.contains(&b.context)) {
+        let acts = b
+            .default
+            .iter()
+            .copied()
+            .find(|d| default_holder(scope, *d).map(|h| h.action) == Some(b.action));
+        let want = acts.map_or(Translated::Unbound, Translated::Default);
+        assert_eq!(map.translate(ctx, *to), want, "{ctx:?}: {}", b.action.0);
+        for d in b.default {
+            let got = map.translate(ctx, *d);
+            assert_eq!(
+                got,
+                Translated::Unbound,
+                "{ctx:?}: {} still live",
+                d.label().0
+            );
+        }
+        checked += 1;
+    }
+    checked
+}
+
+#[test]
+fn the_sweep_moves_every_action_and_every_context_follows() {
+    let (map, moved) = swept();
     let mut checked = 0;
     for &ctx in ContextId::ALL {
         if ctx.is_text_field() {
-            for b in in_scope(ctx) {
-                for c in b.default {
-                    assert_eq!(map.translate(ctx, *c), Translated::Pass, "{ctx:?} {c:?}");
-                }
+            // Typed keys stay as they are, remapped or not.
+            for c in in_scope(ctx).flat_map(|b| b.default) {
+                assert_eq!(map.translate(ctx, *c), Translated::Pass, "{ctx:?} {c:?}");
             }
-            continue;
+        } else {
+            checked += sweep_context(&map, ctx, &moved);
         }
-        let scope = ctx.scope();
-        for b in in_scope(ctx).filter(|b| b.action.0 != "app.quit_now") {
-            let acts = b
-                .default
-                .iter()
-                .copied()
-                .find(|d| default_holder(scope, *d).map(|h| h.action) == Some(b.action));
-            let want = acts.map_or(Translated::Unbound, Translated::Default);
-            assert_eq!(map.translate(ctx, moved_to(b)), want, "{ctx:?}: {}", b.action.0);
-            for d in b.default {
-                assert_eq!(
-                    map.translate(ctx, *d),
-                    Translated::Unbound,
-                    "{ctx:?}: default {} of {} is still live",
-                    d.label().0,
-                    b.action.0
-                );
-            }
-            checked += 1;
-        }
-        assert_eq!(
-            map.translate(ctx, KeyChord::QUIT_NOW),
-            Translated::Pass,
-            "{ctx:?}"
-        );
+        let quit = map.translate(ctx, KeyChord::QUIT_NOW);
+        assert_eq!(quit, Translated::Pass, "{ctx:?}");
     }
     assert!(checked > 200, "the sweep walked only {checked} pairs");
 }
@@ -112,7 +127,10 @@ fn j8_merge_on_capital_m_is_one_problem_and_acts_as_m() {
     );
     let m = KeyChord::key('m');
     let cap_m = KeyChord::key('M');
-    assert_eq!(map.translate(ContextId::Graph, cap_m), Translated::Default(m));
+    assert_eq!(
+        map.translate(ContextId::Graph, cap_m),
+        Translated::Default(m)
+    );
     assert_eq!(map.translate(ContextId::Graph, m), Translated::Unbound);
     // The changes pane's mergetool keeps `M`; the map view's close too.
     assert_eq!(map.translate(ContextId::Changes, cap_m), Translated::Pass);
@@ -125,7 +143,10 @@ fn an_override_replaces_the_whole_default_list() {
     let down = KeyChord::plain(KeyCode::Down);
     let n = KeyChord::key('n');
     assert_eq!(map.translate(ContextId::Graph, down), Translated::Unbound);
-    assert_eq!(map.translate(ContextId::Graph, n), Translated::Default(KeyChord::key('j')));
+    assert_eq!(
+        map.translate(ContextId::Graph, n),
+        Translated::Default(KeyChord::key('j'))
+    );
     assert_eq!(map.chords(&ActionId("app.down")), [n]);
 
     let (kept, _) = Keymap::with_overrides(&[line("app.down", &["n", "down"])]);
@@ -136,7 +157,10 @@ fn an_override_replaces_the_whole_default_list() {
 fn none_alone_unbinds_and_spells_a_dash() {
     let (map, warnings) = Keymap::with_overrides(&[line("graph.push", &["none"])]);
     assert_eq!(warnings, []);
-    assert_eq!(map.translate(ContextId::Graph, KeyChord::key('P')), Translated::Unbound);
+    assert_eq!(
+        map.translate(ContextId::Graph, KeyChord::key('P')),
+        Translated::Unbound
+    );
     assert_eq!(map.spell(&ActionId("graph.push")).0, "—");
     assert_eq!(map.chords(&ActionId("graph.push")), []);
 }
@@ -147,8 +171,14 @@ fn an_inner_default_keeps_a_chord_a_global_override_asked_for() {
     let o = KeyChord::key('o');
     assert_eq!(map.translate(ContextId::Resolver, o), Translated::Pass);
     assert_eq!(map.translate(ContextId::Graph, o), Translated::Pass);
-    assert_eq!(map.translate(ContextId::Banner, o), Translated::Default(KeyChord::key('u')));
-    assert_eq!(map.translate(ContextId::Graph, KeyChord::key('u')), Translated::Unbound);
+    assert_eq!(
+        map.translate(ContextId::Banner, o),
+        Translated::Default(KeyChord::key('u'))
+    );
+    assert_eq!(
+        map.translate(ContextId::Graph, KeyChord::key('u')),
+        Translated::Unbound
+    );
 }
 
 #[test]
@@ -158,7 +188,10 @@ fn a_shadowed_action_has_no_default_to_act_as() {
     let (map, _) = Keymap::with_overrides(&[line("diff.blame", &["Z"])]);
     let z = KeyChord::key('Z');
     assert_eq!(map.translate(ContextId::Graph, z), Translated::Unbound);
-    assert_eq!(map.translate(ContextId::Diff, z), Translated::Default(KeyChord::key('B')));
+    assert_eq!(
+        map.translate(ContextId::Diff, z),
+        Translated::Default(KeyChord::key('B'))
+    );
 }
 
 #[test]
@@ -171,7 +204,10 @@ fn a_text_field_passes_every_key_even_a_remapped_one() {
         ContextId::Credential,
     ] {
         assert_eq!(map.translate(ctx, KeyChord::key('x')), Translated::Pass);
-        assert_eq!(map.translate(ctx, KeyChord::plain(KeyCode::Escape)), Translated::Pass);
+        assert_eq!(
+            map.translate(ctx, KeyChord::plain(KeyCode::Escape)),
+            Translated::Pass
+        );
     }
 }
 
@@ -180,7 +216,10 @@ fn spell_and_chords_follow_the_override() {
     let (map, _) = Keymap::with_overrides(&[line("graph.merge", &["ctrl+m", "M"])]);
     let merge = ActionId("graph.merge");
     assert_eq!(map.spell(&merge).0, "⌃M");
-    assert_eq!(map.chords(&merge), [KeyChord::ctrl('m'), KeyChord::key('M')]);
+    assert_eq!(
+        map.chords(&merge),
+        [KeyChord::ctrl('m'), KeyChord::key('M')]
+    );
     assert_eq!(Keymap::default().spell(&merge).0, "m");
     assert_eq!(Keymap::default().spell(&ActionId("app.undo")).0, "u");
     assert_eq!(Keymap::default().spell(&ActionId("no.such")).0, "—");

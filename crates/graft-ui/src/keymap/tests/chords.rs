@@ -52,9 +52,19 @@ fn every_default_round_trips_through_its_label_and_its_words() {
     for b in defaults() {
         for c in b.default {
             let label = c.label().0;
-            assert_eq!(KeyChord::parse(&label), Ok(*c), "{}: label {label:?}", b.action.0);
+            assert_eq!(
+                KeyChord::parse(&label),
+                Ok(*c),
+                "{}: label {label:?}",
+                b.action.0
+            );
             let words = canonical(c);
-            assert_eq!(KeyChord::parse(&words), Ok(*c), "{}: text {words:?}", b.action.0);
+            assert_eq!(
+                KeyChord::parse(&words),
+                Ok(*c),
+                "{}: text {words:?}",
+                b.action.0
+            );
         }
     }
 }
@@ -63,7 +73,12 @@ fn every_default_round_trips_through_its_label_and_its_words() {
 fn every_default_round_trips_through_the_press_the_decoder_delivers() {
     for b in defaults() {
         for c in b.default {
-            assert_eq!(KeyChord::from_press(&c.to_press()), Some(*c), "{}", b.action.0);
+            assert_eq!(
+                KeyChord::from_press(&c.to_press()),
+                Some(*c),
+                "{}",
+                b.action.0
+            );
         }
     }
 }
@@ -119,7 +134,15 @@ fn the_ticket_list_of_words_parses() {
 #[test]
 fn text_that_names_no_key_is_an_error_carrying_the_text() {
     for text in [
-        "", "ctrl+", "none", "f13", "f0", "shift+1", "hyper+a", "ab", "ctrl+enterx",
+        "",
+        "ctrl+",
+        "none",
+        "f13",
+        "f0",
+        "shift+1",
+        "hyper+a",
+        "ab",
+        "ctrl+enterx",
     ] {
         assert_eq!(
             KeyChord::parse(text),

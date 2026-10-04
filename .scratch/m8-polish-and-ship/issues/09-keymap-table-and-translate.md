@@ -1,6 +1,6 @@
 # G-keymap 1a — one key table and its translate (graft-ui)
 
-Status: ready (re-specced 2026-10-04 after scout `scouts/09-keymap-table.md`; split: the app edge is `09b`)
+Status: done (2026-10-04; re-specced 2026-10-04 after scout `scouts/09-keymap-table.md`; split: the app edge is `09b`)
 Build with: **Fable (signature)** — `ActionId`s become his config's API (never renamed after release), the table's
 shape and the scope/resolution rule are what bar, `?`, palette, tour and man page read; wrong here is structural
 (ADR-0055). Scout used: `scouts/09-keymap-table.md`.
@@ -176,15 +176,15 @@ core's `KeyCode`; `ContextId` gains `Confirm`, `CommitEditor`, `Credential` (doc
 than silently do nothing); `scope`, `is_text_field`, `from_press`/`to_press`, `chords` added.
 
 ## Acceptance
-- [ ] NOTES: doc-only and code-only lists with §/file:line; `NOT_YET_ANSWERED` ids with their ticket.
-- [ ] Golden id list exists; its test fails on a rename (shown by a temporary edit, reverted; test named at tick).
-- [ ] Id shape and uniqueness (test).
-- [ ] Chord round-trip over every default, both directions; bad text → `BadKey` (tests).
-- [ ] Each warning kind produced and worded; `Ctrl+C` → `Reserved`; fixed row → `Fixed` (tests).
-- [ ] Pure translate sweep green over every `ContextId`, remapped and default keymaps (test named at tick).
-- [ ] J8 table-level test as in Scope 6.
-- [ ] `every_bound_key_has_a_row` green with no exemptions, or each exemption a NOTES doc question.
-- [ ] `crates/graft-ui/MAP.md` gains `keymap` (every pub item); `crates/graft/MAP.md` names `table_check`.
+- [x] NOTES: doc-only and code-only lists with §/file:line; `NOT_YET_ANSWERED` ids with their ticket. — NOTES below (a doc artefact; no test).
+- [x] Golden id list exists; its test fails on a rename (shown by a temporary edit, reverted; test named at tick). — graft-ui `keymap::tests::table::action_ids_match_the_golden_list`; `graph.rebase`→`graph.rebase_onto` made it fail with the alias message, reverted.
+- [x] Id shape and uniqueness (test). — graft-ui `keymap::tests::table::ids_are_unique_well_formed_and_prefixed_by_their_context`.
+- [x] Chord round-trip over every default, both directions; bad text → `BadKey` (tests). — graft-ui `keymap::tests::chords::every_default_round_trips_through_its_label_and_its_words`, `…_through_the_press_the_decoder_delivers`, `chords::text_that_names_no_key_is_an_error_carrying_the_text`, `warnings::a_bad_key_leaves_the_action_on_its_defaults`.
+- [x] Each warning kind produced and worded; `Ctrl+C` → `Reserved`; fixed row → `Fixed` (tests). — graft-ui `keymap::tests::warnings::an_unknown_action_is_named`, `a_bad_key_leaves_the_action_on_its_defaults`, `ctrl_c_is_reserved_both_ways`, `a_text_field_row_is_fixed`, `a_collision_his_override_wins_names_what_lost_it`, `a_collision_his_override_loses_says_what_stays`.
+- [x] Pure translate sweep green over every `ContextId`, remapped and default keymaps (test named at tick). — graft-ui `keymap::tests::translate::the_sweep_moves_every_action_and_every_context_follows` (>200 context×action pairs), `translate::the_default_keymap_passes_every_default_everywhere`.
+- [x] J8 table-level test as in Scope 6. — graft-ui `keymap::tests::translate::j8_merge_on_capital_m_is_one_problem_and_acts_as_m`.
+- [x] `every_bound_key_has_a_row` green with no exemptions, or each exemption a NOTES doc question. — graft `update::keys::table_check::every_bound_key_has_a_row`; 3 exemptions (`release`, `type`, `tab`) in NOTES; removing `app.page_up` made it fail (`PgUp (page)`), reverted.
+- [x] `crates/graft-ui/MAP.md` gains `keymap` (every pub item); `crates/graft/MAP.md` names `table_check`. — by reading (docs; no test).
 
 ## Touches
 - New module; no existing graft-ui item changes. graft: one new `#[cfg(test)]` file reading `bound_actions` (re-exported
@@ -200,3 +200,81 @@ than silently do nothing); `scope`, `is_text_field`, `from_press`/`to_press`, `c
 One context, ~110k: doc tables ~25k, chain read ~20k, rows ~15k written, module + tests ~35k. If the walk alone passes
 ~50k: land the types and the walk's NOTES, commit at the seam, report `blocked: table rows`; the conductor gives the
 rows (from NOTES) to a Sonnet follow-up.
+
+## NOTES (builder, 2026-10-04)
+
+Scouts: `scouts/09-keymap-table.md` (given) and `scouts/09-key-walk.md` (mine: every chord the dispatch matches, per
+place, file:line; paths below are `crates/graft/src/update/` unless they say otherwise). Did not compact.
+
+### Doc-only (doc row, code doesn't answer) — doc questions, not build choices
+| Row | Code | In the table? |
+|---|---|---|
+| §2.2 `?` | no handler; `place/keys.rs:27` passes it on, nothing catches it | **yes**, `app.help` → 11 |
+| §2.2 `Ctrl+P`, `:` | none | **yes**, `app.palette` → 11 |
+| §2.12 `Enter` run the row | no palette yet | **yes**, `palette.run` → 11 |
+| §2.13 `c` Clone | `../empty_state.rs:87-117` has `q o i ⏎ j k` only | **yes**, `empty_state.clone` → 18 |
+| §2.13 `t` Practice tour | same | **yes**, `empty_state.tour` → 19 |
+| §2.13 `?` | same | via `app.help` (11) |
+| §2.2 `h`/`l`, `←`/`→` move left/right | `keys/predicates.rs:35-46` `motion_for` has neither | no row |
+| §2.2 `Ctrl+Shift+Z` redo | `keys/predicates.rs:140-150` unbound on purpose (§2.2's own note) | no row (`U` is `app.redo`) |
+| §2.3 `i` / §2.4 `i` add to `.gitignore` | no arm anywhere | no row |
+| §2.3 `e`, `d`, `s` on the graph | doc says "only once the detail pane is open"; code agrees (`detail/keys.rs:247,256,262`) | as `changes.*` |
+| §2.2 `Space` (generic toggle) | answered per place, never globally | no `app.*` row: `graph.fold`, `changes.stage`, `diff.fold_dir`, `blame.heatmap`, `stash.preview`, `finish.toggle_diff`, `journal.expand` |
+
+**09b's `NOT_YET_ANSWERED`:** `app.help` (11), `app.palette` (11), `palette.run` (11), `empty_state.clone` (18),
+`empty_state.tour` (19).
+
+### Code-only (code answers, no doc row) — each is a row; doc questions for the conductor
+| Key | Where | Row |
+|---|---|---|
+| `PgUp`/`PgDn` | `keys/predicates.rs:41-42` (§2.6/§2.6b cite "§2.2" for them; §2.2 has no row) | `app.page_up`/`app.page_down` |
+| `Home`/`End` as `g`/`G` | `keys/predicates.rs:43-44` | in `app.top`/`app.bottom` |
+| `n`/`N` step a kept search | `search.rs:43-44` (§2.6 calls them graph globals; §2.2 has no row) | `app.next_match`/`app.prev_match` |
+| `J` opens the journal | `journal/keys.rs:29` (§2.11 lists `J` only as close) | `graph.journal` |
+| `F2` status, `F3` renderer | `keys/predicates.rs:63,82` | `graph.status`, `graph.renderer` |
+| `B` write / `X` decline the commit-graph offer | `commit_graph.rs:89,93` | `graph.write_commit_graph`, `graph.decline_commit_graph` |
+| `←`/`→`/`⇥`/`⇧⇥` move a preview's cursor | `preview/keys.rs:60-61` (§2.3b has none; §2.3c does for the box) | `preview.left`/`right`/`cycle` |
+| `⇧⇥` in a confirm box | `confirm.rs:170-191` | in `confirm.cycle` |
+| `S` closes the stash list | `stash.rs:204` | `stash.close` |
+| `Space` expands a journal row | `journal/keys.rs:99-107` | `journal.expand` |
+| `⇧⇥` previous field in the commit editor | `commit_editor/keys.rs:62` | `commit.prev_field` |
+| `y` / `n` on the empty state's init box | `../empty_state.rs:74-75` | `empty_state.confirm`/`cancel` |
+| `b` new branch from a stash | `stash.rs:223` — **§2.9 says "planned, not yet built"; the code built it** | `stash.branch` (doc stale) |
+
+Not rows (doc questions): the **name prompt** (`name_prompt.rs:255-286`: `⏎ create`, `⇥ toggle`, `⌃U`) has no
+`ContextId` and no doc table; its keys are text-field keys by state (09b passes them). The search, J-find, blame-find,
+stash-save and rewrite-field prompts, and the finish summary's subject/body, are text fields by state, not by context:
+their `⏎`/`Esc`/`⌃E`/`⌃←→` are not rows. `Ctrl+Z` suspends instead of undoing when `suspend_on_ctrl_z` is set
+(`keys.rs:217-223`); the table keeps `⌃Z` on `app.undo`.
+
+### Scout correction
+`09-key-walk.md` (B) says §2.6a `q` and `e` are unanswered; that row describes the finish summary. The banner answers
+both: `banner/focus_keys.rs:135` (`e`), `:166` (`q`). Checked by grep.
+
+### Decisions where the spec was silent (say if wrong)
+1. **`translate` passes every key in a text-field context** (`ContextId::is_text_field`), remapped or not. The spec's
+   Scope 5 rule would otherwise turn a letter typed in the picker into a remapped Global action (`app.back = "x"` →
+   typing `x` closes the picker). §2.12/§2.14/§2.16: "claims every key but `Ctrl+C`". The sweep asserts it.
+2. **Labels the code never spells** (none of these is in `bound_actions` or a hint): `home`, `end`, `backspace`,
+   `delete`, `insert`, `⇧⇥` (BackTab; the spelling in `finish.rs:75` and MAP.md), `⇧` before a shifted non-char key,
+   `alt+⌃X` for ctrl+alt. Everything `bound_actions` spells is taken from it (`⌃A`, `⏎`, `esc`, `space`, `PgUp`,
+   `F2`, `alt+↑`, `⇥`).
+3. **Ctrl+Shift+letter** normalises to `Char(uppercase)` + ctrl, labelled `⌃⇧C`; `⌃C` is Ctrl+c. Kitty delivers
+   `Char('C')` + control + shift (`crates/graft-term/src/input/decode/csi.rs:141-142`), which `from_press` folds and
+   `to_press` restores. **Legacy bytes can't carry it**: `0x03` is `Char('c')` + control
+   (`crates/graft-term/src/input/decode/mod.rs:170`), so §2.10's `Ctrl+Shift+C` co-author trailer quits instead
+   outside kitty (kitty is opt-in, `crates/graft/src/terminal.rs:159`). A doc/code question, not this ticket's.
+   Consequence for his config: `ctrl+P` (capital) means Ctrl+Shift+P, as a single character is case-sensitive.
+4. **A line with any problem is not applied** (bad chord, `Ctrl+C` in a list, fixed row): the action keeps its
+   defaults. Collisions are applied and resolved by the rule. An empty list is `BadKey` with text `""`.
+5. **Collisions are warned only where an override is involved**; Global vs. context default overlaps (`⏎`, `esc`…)
+   are the table's design. Text-field contexts are not checked (nothing there is remapped).
+6. **Ids from the code's verb where the doc's is a phrase**: `graph.switch` (C), `graph.take` (o), `confirm.yes`,
+   `commit.commit`. `map.close` is its own row (the ticket's J8 names it), not `graph.map` reached through scope.
+   `preview.confirm` is `[y, m, r]` (synonyms: §2.3b's `m m`/`r r`). Banner `⏎` is `app.open` (§2.4: "§2.2's global
+   open … not a new letter"); `Esc` is `app.back` in every place.
+7. No scope widened: no key in the walk is live outside the Scope 4 table.
+
+### `every_bound_key_has_a_row` exemptions (each a doc question)
+`release` (the mouse button ending a drag), `type` (picker typing), `tab` — the rewrite editor's bar spells Tab
+`tab` (`keys/bound.rs` "tab after") while everything else spells `⇥`: spelling drift for ticket 10.

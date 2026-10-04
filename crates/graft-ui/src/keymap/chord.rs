@@ -269,11 +269,11 @@ fn parse_chord(text: &str) -> Option<KeyChord> {
         held.glyph_ctrl = true;
         rest = tail;
     }
-    if rest != "⇧⇥" {
-        if let Some(tail) = rest.strip_prefix('⇧') {
-            held.shift = true;
-            rest = tail;
-        }
+    if rest != "⇧⇥"
+        && let Some(tail) = rest.strip_prefix('⇧')
+    {
+        held.shift = true;
+        rest = tail;
     }
     if rest.is_empty() {
         return None;
