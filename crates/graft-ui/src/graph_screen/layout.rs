@@ -175,7 +175,7 @@ impl<'a> GraphScreen<'a> {
             spans.push(Span::styled(text, style));
         };
         push(walk, foreground(self.theme, token));
-        let filters = left_out(self.view.filters, folded_lanes);
+        let filters = left_out(self.view.filters, folded_lanes, self.view.keys);
         if !filters.is_empty() {
             push(
                 format!("  {filters}"),
@@ -404,8 +404,8 @@ pub fn row_at<'a>(
 /// the filters, then `+N lanes` while the drawn fold hides any. The count is
 /// the screen's to say — it planned the fold — and shows only while
 /// something folds, never on a row (ADR-0022).
-fn left_out(filters: Filters, folded_lanes: usize) -> String {
-    let mut words = filters.text();
+fn left_out(filters: Filters, folded_lanes: usize, keys: &crate::keymap::Keymap) -> String {
+    let mut words = filters.text(keys);
     if folded_lanes > 0 {
         if !words.is_empty() {
             words.push_str(" · ");

@@ -15,6 +15,7 @@ use ratatui::style::Modifier;
 use unicode_width::UnicodeWidthStr;
 
 use super::footer::{commit_graph_segments, grouped, segments_width};
+use crate::keymap::Keymap;
 use super::hints::{HintContext, RowVerbs, TabWord};
 use super::layout::walk_text;
 use super::*;
@@ -928,7 +929,7 @@ fn within_the_limit_there_is_nothing_to_expand_and_no_hint_says_so() {
 #[test]
 fn filters_are_named_in_the_header_only_when_something_is_left_out() {
     use super::Filters;
-    assert_eq!(Filters::default().text(), "");
+    assert_eq!(Filters::default().text(Keymap::shipped()), "");
     let all = Filters {
         first_parent: true,
         folded: 2,
@@ -936,14 +937,14 @@ fn filters_are_named_in_the_header_only_when_something_is_left_out() {
         focused: true,
     };
     assert_eq!(
-        all.text(),
-        "first-parent · 2 merges folded · stash hidden · focus (F/Esc off)"
+        all.text(Keymap::shipped()),
+        "first-parent · 2 merges folded · stash hidden · focus (F/esc off)"
     );
     let one = Filters {
         folded: 1,
         ..Filters::default()
     };
-    assert_eq!(one.text(), "1 merge folded");
+    assert_eq!(one.text(Keymap::shipped()), "1 merge folded");
 }
 
 /// A linear history like [`linear`], but the newest row's subject is
@@ -1276,7 +1277,7 @@ fn every_commit_graph_wording_fits_under_its_breakpoint() {
     // Each wording holds from its breakpoint up; the narrowest from 80.
     for (width, room) in [(120, 120), (100, 100), (80, 80)] {
         for line in lines {
-            let text: String = commit_graph_segments(line, width)
+            let text: String = commit_graph_segments(line, width, Keymap::shipped())
                 .into_iter()
                 .map(|(text, _)| text)
                 .collect();
@@ -1288,13 +1289,13 @@ fn every_commit_graph_wording_fits_under_its_breakpoint() {
         }
     }
     let written: String =
-        commit_graph_segments(CommitGraphLine::Written { commits: 1_000_000 }, 120)
+        commit_graph_segments(CommitGraphLine::Written { commits: 1_000_000 }, 120, Keymap::shipped())
             .into_iter()
             .map(|(text, _)| text)
             .collect();
     assert_eq!(
         written,
-        " commit-graph written: 1,000,000 commits · the next open sorts at once · Ctrl+R to use it"
+        " commit-graph written: 1,000,000 commits · the next open sorts at once · ⌃R to use it"
     );
     assert_eq!(grouped(200), "200");
     assert_eq!(grouped(1_000), "1,000");
@@ -1328,7 +1329,7 @@ fn no_footer_line_gets_terser_as_the_room_for_it_grows() {
     for line in COMMIT_GRAPH_LINES {
         let mut narrower = 0usize;
         for width in 0..=240usize {
-            let drawn = segments_width(&commit_graph_segments(line, width));
+            let drawn = segments_width(&commit_graph_segments(line, width, Keymap::shipped()));
             assert!(
                 drawn >= narrower,
                 "{line:?}: {width} columns draws {drawn} cells, {} draws {narrower}",
@@ -1345,15 +1346,15 @@ fn no_footer_line_gets_terser_as_the_room_for_it_grows() {
 fn the_commit_graph_line_spends_the_room_it_is_given() {
     for line in COMMIT_GRAPH_LINES {
         // The widest the line ever gets: from there up, that is what draws.
-        let widest = segments_width(&commit_graph_segments(line, usize::MAX));
+        let widest = segments_width(&commit_graph_segments(line, usize::MAX, Keymap::shipped()));
         for width in 0..=240usize {
-            let drawn = segments_width(&commit_graph_segments(line, width));
+            let drawn = segments_width(&commit_graph_segments(line, width, Keymap::shipped()));
             if drawn > width {
                 // Overflowing is only allowed when the narrowest wording
                 // itself does not fit; `commit_graph_line` then cuts it.
                 assert_eq!(
                     drawn,
-                    segments_width(&commit_graph_segments(line, 0)),
+                    segments_width(&commit_graph_segments(line, 0, Keymap::shipped())),
                     "{line:?} at {width}: overflowed with a wording that was not the narrowest"
                 );
             }

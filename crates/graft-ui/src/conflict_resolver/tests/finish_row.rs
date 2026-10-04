@@ -76,6 +76,7 @@ fn drawn(doc: &DocView, columns: u16, theme: &Theme) -> (Buffer, Rect) {
         placement: placed,
         theme,
         ascii: false,
+        keys: crate::keymap::Keymap::shipped(),
     }
     .render(area, &mut buf);
     let row = Rect {
@@ -120,6 +121,7 @@ fn finish_row_words_by_width() {
         placement: placed,
         theme: &theme,
         ascii: false,
+        keys: crate::keymap::Keymap::shipped(),
     }
     .render(area, &mut buf);
     let row = Rect {
@@ -138,6 +140,7 @@ fn finish_row_words_by_width() {
         placement: Placement::Strip { rows: 0 },
         theme: &theme,
         ascii: false,
+        keys: crate::keymap::Keymap::shipped(),
     }
     .draw_finish_row(&mut buf, tiny, doc.finish.as_ref().expect("set"));
     let cut = text_of(

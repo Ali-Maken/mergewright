@@ -12,6 +12,7 @@ use ratatui::widgets::Widget;
 
 use super::{MapMarkView, MapRowView, MapScreen, MapStatus};
 use crate::fit::fit;
+use crate::keymap::ActionId;
 use crate::paint::{color, foreground};
 use crate::theme::{Theme, Token};
 
@@ -124,11 +125,22 @@ impl MapScreen<'_> {
 
     fn footer_line(&self) -> Line<'static> {
         let muted = foreground(self.theme, Token::TextMuted);
+        let keys = self.keys;
         if let MapStatus::Loading { .. } = self.view.status {
-            return Line::styled("Esc cancels".to_owned(), muted);
+            let cancel = keys.key_verb(&[ActionId("app.back")], "cancels");
+            return Line::styled(cancel.unwrap_or_default(), muted);
         }
+        // Spelled from his keymap (ticket m8/10): the rows move by
+        // `app.down`/`app.up` (`j/k`, the table's first chords — the Map
+        // answers both, `update::map::shown_key`), `⏎` seeks, and `M` and
+        // `esc` both close.
+        let parts = [
+            keys.key_verb(&[ActionId("app.down"), ActionId("app.up")], "select"),
+            keys.key_verb(&[ActionId("map.seek")], "zoom to commits"),
+            keys.key_verb(&[ActionId("map.close"), ActionId("app.back")], "back"),
+        ];
         let mut spans = vec![Span::styled(
-            "↑↓ select  ⏎ zoom to commits  M/Esc back".to_owned(),
+            parts.into_iter().flatten().collect::<Vec<_>>().join("  "),
             muted,
         )];
         if self.view.more > 0 {

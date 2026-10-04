@@ -300,6 +300,7 @@ fn draw(
                     placement: Placement::Strip { rows: 0 },
                     theme: &theme,
                     ascii,
+                    keys: crate::keymap::Keymap::shipped(),
                 },
                 frame.area(),
             );
@@ -410,6 +411,7 @@ fn resolver_draws_only_the_window() {
         placement: Placement::Strip { rows: 0 },
         theme: &theme,
         ascii: false,
+        keys: crate::keymap::Keymap::shipped(),
     }
     .render(sub, &mut buf);
 

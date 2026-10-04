@@ -56,6 +56,7 @@ fn draw(view: &EmptyStateView, columns: u16, rows: u16) -> (Buffer, Vec<String>)
         view,
         theme: &theme,
         ascii: false,
+        keys: crate::keymap::Keymap::shipped(),
     })
         .render(area, &mut buffer);
     let lines = (0..rows)
@@ -226,8 +227,11 @@ fn the_cursor_row_is_on_the_selection_fill_and_legible() {
 
 #[test]
 fn bar_keys_follow_the_form() {
-    let keys = |view: &EmptyStateView| -> Vec<&str> {
-        bar_keys(view).into_iter().map(|(key, _)| key).collect()
+    let keys = |view: &EmptyStateView| -> Vec<String> {
+        bar_keys(view, crate::keymap::Keymap::shipped())
+            .into_iter()
+            .map(|(key, _)| key)
+            .collect()
     };
     assert_eq!(keys(&with_recents()), ["o", "i", "⏎", "q"]);
     assert_eq!(keys(&no_recents()), ["o", "i", "q"]);

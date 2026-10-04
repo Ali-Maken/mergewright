@@ -15,6 +15,7 @@ use super::layout::{Columns, graph_width};
 use super::render::subject_truncated;
 use super::{CommitGraphLine, GraphEntry, GraphScreen, SearchLine};
 use crate::fit::fit;
+use crate::keymap::{ActionId, Keymap};
 use crate::paint::foreground;
 use crate::theme::Token;
 
@@ -23,7 +24,7 @@ impl GraphScreen<'_> {
     /// Cut to one info-coloured run when even the breakpoint's wording does
     /// not fit.
     pub(super) fn commit_graph_line(&self, line: CommitGraphLine, width: usize) -> Line<'static> {
-        let segments = commit_graph_segments(line, width);
+        let segments = commit_graph_segments(line, width, self.view.keys);
         let whole: String = segments.iter().map(|(text, _)| text.as_str()).collect();
         if whole.width() > width {
             return Line::styled(fit(&whole, width), foreground(self.theme, Token::Info));
@@ -153,8 +154,12 @@ pub(super) fn segments_width(segments: &[(String, bool)]) -> usize {
 /// fits cannot invert like that, whatever order the wordings are written in
 /// and whatever width the caller has — pinned by
 /// `no_footer_line_gets_terser_as_the_room_for_it_grows`.
-pub(super) fn commit_graph_segments(line: CommitGraphLine, width: usize) -> Vec<(String, bool)> {
-    let mut wordings = commit_graph_wordings(line);
+pub(super) fn commit_graph_segments(
+    line: CommitGraphLine,
+    width: usize,
+    keys: &Keymap,
+) -> Vec<(String, bool)> {
+    let mut wordings = commit_graph_wordings(line, keys);
     // Nothing fits: draw the narrowest anyway and let `commit_graph_line`
     // cut it. Cutting the shortest wording loses the least.
     // `unwrap_or_default()` here is index 0, not a swallowed failure: the
@@ -179,10 +184,33 @@ pub(super) fn commit_graph_segments(line: CommitGraphLine, width: usize) -> Vec<
 }
 
 /// Every wording the line has, in no particular order:
-/// [`commit_graph_segments`] picks between them by what fits.
-fn commit_graph_wordings(line: CommitGraphLine) -> Vec<Vec<(String, bool)>> {
+/// [`commit_graph_segments`] picks between them by what fits. Keys are
+/// spelled from `keys` (ticket m8/10); an unbound one's clause is left out.
+fn commit_graph_wordings(line: CommitGraphLine, keys: &Keymap) -> Vec<Vec<(String, bool)>> {
     let text = |words: &str| (words.to_owned(), false);
-    let key = |letter: &str| (letter.to_owned(), true);
+    let spell = |id: &'static str| keys.spell_keys(&[ActionId(id)]);
+    let write = spell("graph.write_commit_graph");
+    let decline = spell("graph.decline_commit_graph");
+    // `<lead>` then `B build … · X never here`, each clause only while its
+    // key is bound; the lead alone, separator dropped, when neither is.
+    let offer = |lead: &str, build: &str| {
+        let clauses: Vec<(String, &str)> = [(write.clone(), build), (decline.clone(), " never here")]
+            .into_iter()
+            .filter_map(|(key, words)| key.map(|key| (key, words)))
+            .collect();
+        if clauses.is_empty() {
+            return vec![text(lead)];
+        }
+        let mut segments = vec![text(&format!("{lead} · "))];
+        for (at, (key, words)) in clauses.into_iter().enumerate() {
+            if at > 0 {
+                segments.push(text(" · "));
+            }
+            segments.push((key, true));
+            segments.push(text(words));
+        }
+        segments
+    };
     match line {
         // Off the graph `B` is blame (keymap §2.5): the fact stays, the
         // keys go (m7-power-tools/36, M3).
@@ -190,31 +218,18 @@ fn commit_graph_wordings(line: CommitGraphLine) -> Vec<Vec<(String, bool)>> {
             vec![text(" no commit-graph file: history sorts on every open")],
             vec![text(" no commit-graph file")],
         ],
+        // The spec's " never for this repo" made the widest line 125
+        // columns; "never here" keeps it inside the 120 it is drawn at.
         CommitGraphLine::Offered { keys: true } => vec![
-            vec![
-                text(" no commit-graph file: history sorts on every open · "),
-                key("B"),
-                // The spec's " never for this repo" made this line 125
-                // columns; "never here" keeps it inside the 120 it is
-                // drawn at.
-                text(" build one (git commit-graph write --reachable) · "),
-                key("X"),
-                text(" never here"),
-            ],
-            vec![
-                text(" no commit-graph file · "),
-                key("B"),
-                text(" build one (git commit-graph write --reachable) · "),
-                key("X"),
-                text(" never here"),
-            ],
-            vec![
-                text(" no commit-graph file · "),
-                key("B"),
-                text(" build one · "),
-                key("X"),
-                text(" never here"),
-            ],
+            offer(
+                " no commit-graph file: history sorts on every open",
+                " build one (git commit-graph write --reachable)",
+            ),
+            offer(
+                " no commit-graph file",
+                " build one (git commit-graph write --reachable)",
+            ),
+            offer(" no commit-graph file", " build one"),
         ],
         CommitGraphLine::NoGitToBuild => vec![
             vec![text(
@@ -229,11 +244,17 @@ fn commit_graph_wordings(line: CommitGraphLine) -> Vec<Vec<(String, bool)>> {
             vec![text(" building the commit-graph…")],
         ],
         CommitGraphLine::Written { commits } => vec![
-            vec![text(&format!(
-                " commit-graph written: {} commits · the next open sorts at once · Ctrl+R to use \
-                 it",
-                grouped(commits)
-            ))],
+            vec![text(&match spell("app.refresh") {
+                Some(refresh) => format!(
+                    " commit-graph written: {} commits · the next open sorts at once · {refresh} \
+                     to use it",
+                    grouped(commits)
+                ),
+                None => format!(
+                    " commit-graph written: {} commits · the next open sorts at once",
+                    grouped(commits)
+                ),
+            })],
             vec![text(" commit-graph written · next open sorts at once")],
         ],
     }
@@ -312,7 +333,7 @@ mod tests {
     }
 
     fn words(line: crate::graph_screen::CommitGraphLine, width: usize) -> String {
-        super::commit_graph_segments(line, width)
+        super::commit_graph_segments(line, width, crate::keymap::Keymap::shipped())
             .into_iter()
             .map(|(text, _)| text)
             .collect()
@@ -325,7 +346,11 @@ mod tests {
         use crate::graph_screen::CommitGraphLine;
         for width in [200, 120, 100, 80, 40] {
             let without =
-                super::commit_graph_segments(CommitGraphLine::Offered { keys: false }, width);
+                super::commit_graph_segments(
+                    CommitGraphLine::Offered { keys: false },
+                    width,
+                    crate::keymap::Keymap::shipped(),
+                );
             assert!(without.iter().all(|(_, key)| !key), "{width}: {without:?}");
             let text = words(CommitGraphLine::Offered { keys: false }, width);
             assert!(

@@ -294,8 +294,10 @@ pub struct Filters {
 
 impl Filters {
     /// The header's words for these filters: empty when nothing is left out.
+    /// Focus names its way out, `graph.focus` and `app.back` spelled from
+    /// `keys` (`focus (F/esc off)`), or `focus` alone when both are unbound.
     #[must_use]
-    pub fn text(self) -> String {
+    pub fn text(self, keys: &crate::keymap::Keymap) -> String {
         let mut parts = Vec::new();
         if self.first_parent {
             parts.push("first-parent".to_owned());
@@ -309,7 +311,14 @@ impl Filters {
             parts.push("stash hidden".to_owned());
         }
         if self.focused {
-            parts.push("focus (F/Esc off)".to_owned());
+            let off = [
+                crate::keymap::ActionId("graph.focus"),
+                crate::keymap::ActionId("app.back"),
+            ];
+            parts.push(match keys.spell_keys(&off) {
+                Some(off) => format!("focus ({off} off)"),
+                None => "focus".to_owned(),
+            });
         }
         parts.join(" · ")
     }

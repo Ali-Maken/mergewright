@@ -33,6 +33,7 @@ use ratatui::widgets::Widget;
 use crate::fit::fit;
 use crate::frame_box::{border_row, cells};
 use crate::graph_screen::APP_NAME;
+use crate::keymap::{ActionId, Keymap};
 use crate::paint::{foreground, lift_on_selection};
 use crate::theme::{Theme, Token};
 
@@ -87,28 +88,53 @@ pub struct EmptyState<'a> {
     pub theme: &'a Theme,
     /// The ASCII tier: `>` for the cursor's `▸`, `-` for the rule.
     pub ascii: bool,
+    /// His keymap, built from config before the first draw: the bar's keys
+    /// are spelled from it.
+    pub keys: &'a Keymap,
 }
 
 /// The bar row's hints for `view`, as `(key, label)` pairs — the keys the
 /// screen answers in its current form, and only those. The one list the
 /// widget draws and the app's "every drawn key is answered" test reads.
+///
+/// Keys are spelled from `keys`, his keymap (ticket m8/10): the empty state
+/// translates every key but the open prompt's (`graft::empty_state::
+/// outside_edge`), and an unbound one is left out. The open prompt is a
+/// text field — it takes every press as typed — so its keys spell from the
+/// shipped table.
 #[must_use]
-pub fn bar_keys(view: &EmptyStateView) -> Vec<(&'static str, &'static str)> {
+pub fn bar_keys(view: &EmptyStateView, keys: &Keymap) -> Vec<(String, &'static str)> {
+    let spelled = |keys: &Keymap, parts: &[(&'static str, &'static str)]| {
+        parts
+            .iter()
+            .filter_map(|(action, label)| {
+                keys.spell_keys(&[ActionId(action)]).map(|key| (key, *label))
+            })
+            .collect()
+    };
     match view.prompt {
-        Some(EmptyPrompt::Open { .. }) => {
-            vec![("⏎", "open"), ("⇥", "complete"), ("esc", "cancel")]
-        }
-        Some(EmptyPrompt::ConfirmInit) => vec![("y", "init"), ("esc", "keep it")],
+        Some(EmptyPrompt::Open { .. }) => spelled(
+            Keymap::shipped(),
+            &[
+                ("app.open", "open"),
+                ("app.next_pane", "complete"),
+                ("app.back", "cancel"),
+            ],
+        ),
+        Some(EmptyPrompt::ConfirmInit) => spelled(
+            keys,
+            &[("empty_state.confirm", "init"), ("app.back", "keep it")],
+        ),
         None => {
-            let mut keys = vec![("o", "open…")];
+            let mut parts = vec![("empty_state.open", "open…")];
             if !view.missing {
-                keys.push(("i", "init"));
+                parts.push(("empty_state.init", "init"));
             }
             if !view.recent.is_empty() {
-                keys.push(("⏎", "open the selected"));
+                parts.push(("app.open", "open the selected"));
             }
-            keys.push(("q", "quit"));
-            keys
+            parts.push(("app.quit", "quit"));
+            spelled(keys, &parts)
         }
     }
 }
@@ -405,7 +431,7 @@ impl EmptyState<'_> {
         }
         let mut at = x;
         let end_x = x + u16::try_from(width).unwrap_or(u16::MAX);
-        for (index, (key, label)) in bar_keys(self.view).into_iter().enumerate() {
+        for (index, (key, label)) in bar_keys(self.view, self.keys).into_iter().enumerate() {
             if index > 0 {
                 at = buf
                     .set_stringn(

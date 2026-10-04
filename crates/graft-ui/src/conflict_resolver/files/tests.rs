@@ -310,6 +310,7 @@ fn the_column_sits_beside_the_card() {
         placement: placed,
         theme: &theme,
         ascii: false,
+        keys: crate::keymap::Keymap::shipped(),
     }
     .render(area, &mut buf);
     let first = line(&buf, 0);

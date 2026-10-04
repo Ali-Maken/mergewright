@@ -121,6 +121,8 @@ pub struct MapScreen<'a> {
     pub view: &'a MapView,
     /// The theme to draw it in.
     pub theme: &'a Theme,
+    /// His keymap: the footer's keys are spelled from it.
+    pub keys: &'a crate::keymap::Keymap,
 }
 
 #[cfg(test)]
@@ -146,6 +148,7 @@ mod tests {
                     MapScreen {
                         view,
                         theme: &theme,
+                        keys: crate::keymap::Keymap::shipped(),
                     },
                     frame.area(),
                 );
@@ -225,6 +228,7 @@ mod tests {
                         MapScreen {
                             view: &view,
                             theme: &theme,
+                            keys: crate::keymap::Keymap::shipped(),
                         },
                         frame.area(),
                     );

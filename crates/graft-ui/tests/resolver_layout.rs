@@ -148,6 +148,7 @@ fn render_in(arrangement: Arrangement, columns: u16, rows: u16) -> String {
                     placement: placed,
                     theme: &theme,
                     ascii: false,
+                    keys: graft_ui::keymap::Keymap::shipped(),
                 },
                 frame.area(),
             );

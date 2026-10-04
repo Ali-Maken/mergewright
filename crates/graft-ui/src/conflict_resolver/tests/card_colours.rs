@@ -188,6 +188,7 @@ fn card_has_no_tint_at_sixteen_colours() {
         placement: Placement::Strip { rows: 0 },
         theme: &theme,
         ascii: false,
+        keys: crate::keymap::Keymap::shipped(),
     }
     .render(buf.area, &mut buf);
     for cell in buf.content() {

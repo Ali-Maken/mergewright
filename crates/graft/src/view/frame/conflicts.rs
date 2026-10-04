@@ -59,6 +59,7 @@ pub(super) fn draw_resolver(
             placement: placed,
             theme: &session.theme,
             ascii: tier == RenderingTier::Ascii,
+            keys: &state.keymap,
         },
         document,
     );

@@ -233,6 +233,7 @@ fn paint_three(
         placement,
         theme: &theme,
         ascii: false,
+        keys: crate::keymap::Keymap::shipped(),
     }
     .render(area, &mut buf);
     buf

@@ -277,6 +277,7 @@ fn outside_loop(
                     view: &drawn,
                     theme: &settled.theme,
                     ascii,
+                    keys: keymap,
                 },
                 frame.area(),
             );

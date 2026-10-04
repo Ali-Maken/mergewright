@@ -161,7 +161,7 @@ fn draw(view: &HistoryView, width: u16, height: u16) -> Vec<String> {
     let mut terminal =
         Terminal::new(TestBackend::new(width, height)).expect("the test backend starts");
     terminal
-        .draw(|frame| draw_history(frame, frame.area(), view))
+        .draw(|frame| draw_history(frame, frame.area(), view, crate::keymap::Keymap::shipped()))
         .expect("the history place draws");
     let buffer = terminal.backend().buffer().clone();
     (0..height)

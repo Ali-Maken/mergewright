@@ -117,7 +117,7 @@ fn draw_history_place(
     body: Rect,
 ) {
     history.view(state.harness.clock.now_seconds(), &session.theme, |view| {
-        graft_ui::history::draw_history(frame, body, view);
+        graft_ui::history::draw_history(frame, body, view, &state.keymap);
     });
     if area.height == 0 {
         return;
@@ -173,7 +173,7 @@ pub(super) fn draw_place(
     let blame = state.trail.on_screen()?;
     let path = graft_term::sanitize::sanitize_path(&blame.path);
     blame.view(path.as_str(), state.harness.clock.now_seconds(), |view| {
-        graft_ui::blame::draw_blame(frame, body, view);
+        graft_ui::blame::draw_blame(frame, body, view, &state.keymap);
     });
     if area.height == 0 {
         return None;
@@ -271,6 +271,7 @@ pub(super) fn draw_map(
             MapScreen {
                 view: &screen,
                 theme: &session.theme,
+                keys: &state.keymap,
             },
             area,
             "Map",
@@ -280,6 +281,7 @@ pub(super) fn draw_map(
             MapScreen {
                 view: &screen,
                 theme: &session.theme,
+                keys: &state.keymap,
             },
             area,
         );
