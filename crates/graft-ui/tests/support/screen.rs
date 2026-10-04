@@ -14,6 +14,33 @@ use graft_ui::graph_screen::{
 /// changes between runs.
 const NOW: i64 = 1_700_000_000;
 
+/// One row as the graph draws it, highlighted when `cursor`.
+fn entry<'a>(line: &GraphLine<'a>, cursor: bool) -> GraphEntry<'a> {
+    GraphEntry {
+        badges: Vec::new(),
+        line: if cursor {
+            GraphLine {
+                paint: RowPaint::Highlighted,
+                ..line.clone()
+            }
+        } else {
+            line.clone()
+        },
+        subject: sanitize_line(&String::from_utf8_lossy(line.row.commit.subject())),
+        author: AuthorChip {
+            initials: sanitize_line(&initials(&String::from_utf8_lossy(
+                &line.row.commit.author.name,
+            ))),
+            identity: BranchIdentity::of_name(&line.row.commit.author.email),
+        },
+        when: relative_date(line.row.commit.date().seconds, NOW),
+        sha: short_sha(&line.row.commit.id.to_string(), 7),
+        compare_marked: false,
+        marker: None,
+        tag: None,
+    }
+}
+
 /// The first `height` of `lines` as a finished walk, the row at `cursor`
 /// highlighted.
 pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphView<'a> {
@@ -32,29 +59,7 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
             .iter()
             .take(height)
             .enumerate()
-            .map(|(index, line)| GraphEntry {
-                badges: Vec::new(),
-                line: if index == cursor {
-                    GraphLine {
-                        paint: RowPaint::Highlighted,
-                        ..line.clone()
-                    }
-                } else {
-                    line.clone()
-                },
-                subject: sanitize_line(&String::from_utf8_lossy(line.row.commit.subject())),
-                author: AuthorChip {
-                    initials: sanitize_line(&initials(&String::from_utf8_lossy(
-                        &line.row.commit.author.name,
-                    ))),
-                    identity: BranchIdentity::of_name(&line.row.commit.author.email),
-                },
-                when: relative_date(line.row.commit.date().seconds, NOW),
-                sha: short_sha(&line.row.commit.id.to_string(), 7),
-                compare_marked: false,
-                marker: None,
-                tag: None,
-            })
+            .map(|(index, line)| entry(line, index == cursor))
             .collect(),
         icons: Icons::Plain,
         compaction: Compaction::at(8),

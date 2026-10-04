@@ -4184,6 +4184,23 @@ fn bar_hints(
     }
 }
 
+/// Both bars `state` can be under: the one the enum names, and the one
+/// `view::rows` actually asks for when handed the state (they differ only in
+/// row decoration, but a classifier that reads the state wrongly is exactly
+/// how a live key and a drawn key come apart — so the keys it picks are
+/// pressed too).
+fn bars_for(state: &AppState, context: &HintContext) -> Vec<HintContext> {
+    let mut drawn = vec![context.clone()];
+    if classified_form(context).is_some() {
+        let banner = crate::update::banner::banner_view(state);
+        let asked = crate::view::rows::footer_context(state, &[], banner.as_ref());
+        if asked != *context {
+            drawn.push(asked);
+        }
+    }
+    drawn
+}
+
 /// [`dead_keys_on`] against one of the screens that context can be the bar
 /// for — every hint the bar draws that this screen's focused handler does
 /// nothing with.
@@ -4195,19 +4212,7 @@ fn dead_keys_in(
     bound: &[ActionId],
 ) -> Vec<String> {
     let state = state.clone();
-    // Both bars this state can be under: the one the enum names, and the one
-    // `view::rows` actually asks for when handed the state (they differ only
-    // in row decoration, but a classifier that reads the state wrongly is
-    // exactly how a live key and a drawn key come apart — so the keys it
-    // picks are pressed too).
-    let mut drawn = vec![context.clone()];
-    if classified_form(context).is_some() {
-        let banner = crate::update::banner::banner_view(&state);
-        let asked = crate::view::rows::footer_context(&state, &[], banner.as_ref());
-        if asked != *context {
-            drawn.push(asked);
-        }
-    }
+    let drawn = bars_for(&state, context);
     let idle = nothing_happened(&state);
     // Any key at all ends a drag: `update::drag::drag_key` takes `state.drag`
     // before it reads the key. So while a badge is in the air the inert key

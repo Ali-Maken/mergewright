@@ -86,44 +86,46 @@ impl GraphScreen<'_> {
                 if let Some(subject) = &reveal_subject {
                     (format!(" {subject}"), Token::Text)
                 } else {
-                    let width16 = u16::try_from(width).unwrap_or(u16::MAX);
-                    // The divider exists while any detail pane is open in
-                    // a *split* — a commit's as much as the changes pane's
-                    // (ADR-0028), which is why the flag is read here and not
-                    // carried inside one context (m5-03 review, Major 4).
-                    // The tab layout has no divider, and the flag says so
-                    // (m5/33).
-                    let divider = if self.view.divider_shown {
-                        Divider::Shown
-                    } else {
-                        Divider::Hidden
-                    };
-                    let hints =
-                        hints_for(&self.view.hint_context, divider, width16, self.view.keys);
-                    match &self.view.stopped {
-                        // A stop is a state, not a problem: it leads the
-                        // bar rather than replacing it, and never names
-                        // `esc dismiss` (m6-conflicts/12).
-                        // A stash clash has no banner: its reason outranks
-                        // the bar's tail keys (review 72+72b M1).
-                        Some(reason) if reason.is_before_keys() => (
-                            stopped_row_before_keys(
-                                reason,
-                                &self.view.hint_context,
-                                divider,
-                                width16,
-                                self.view.keys,
-                            ),
-                            Token::Text,
-                        ),
-                        Some(reason) => (
-                            stopped_row(reason, &hints, width16, self.view.keys),
-                            Token::Text,
-                        ),
-                        None => (hints_text(&hints, self.view.keys), Token::TextMuted),
-                    }
+                    self.key_line(width)
                 }
             }
+        }
+    }
+
+    /// The context's key hints, led by a stop's reason when one stands.
+    fn key_line(&self, width: usize) -> (String, Token) {
+        let width16 = u16::try_from(width).unwrap_or(u16::MAX);
+        // The divider exists while any detail pane is open in a *split* — a
+        // commit's as much as the changes pane's (ADR-0028), which is why the
+        // flag is read here and not carried inside one context (m5-03
+        // review, Major 4). The tab layout has no divider, and the flag says
+        // so (m5/33).
+        let divider = if self.view.divider_shown {
+            Divider::Shown
+        } else {
+            Divider::Hidden
+        };
+        let hints = hints_for(&self.view.hint_context, divider, width16, self.view.keys);
+        match &self.view.stopped {
+            // A stop is a state, not a problem: it leads the bar rather than
+            // replacing it, and never names `esc dismiss` (m6-conflicts/12).
+            // A stash clash has no banner: its reason outranks the bar's
+            // tail keys (review 72+72b M1).
+            Some(reason) if reason.is_before_keys() => (
+                stopped_row_before_keys(
+                    reason,
+                    &self.view.hint_context,
+                    divider,
+                    width16,
+                    self.view.keys,
+                ),
+                Token::Text,
+            ),
+            Some(reason) => (
+                stopped_row(reason, &hints, width16, self.view.keys),
+                Token::Text,
+            ),
+            None => (hints_text(&hints, self.view.keys), Token::TextMuted),
         }
     }
 }

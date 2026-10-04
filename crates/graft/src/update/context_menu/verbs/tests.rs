@@ -574,6 +574,7 @@ enum Behind {
 /// Major 3). `graft-ui` cannot depend on `graft`, so the reach belongs
 /// here, next to the labels themselves.
 fn every_label_the_app_can_build() -> Vec<HistoryVerb> {
+    let keys = graft_ui::keymap::Keymap::shipped();
     let mut all: Vec<HistoryVerb> = Vec::new();
     let mut take = |verbs: Vec<HistoryVerb>| {
         all.extend(verbs);
@@ -582,32 +583,11 @@ fn every_label_the_app_can_build() -> Vec<HistoryVerb> {
     let refs = main_and_feature();
     // An ordinary row with a branch on it: checkout, merge, rebase,
     // cherry-pick, revert, reset, delete branch, delete tag.
-    take(history_verbs(
-        oid(3),
-        &[oid(2)],
-        "third",
-        &refs,
-        &[],
-        graft_ui::keymap::Keymap::shipped(),
-    ));
+    take(history_verbs(oid(3), &[oid(2)], "third", &refs, &[], keys));
     // A row with no badge at all: the detached checkout.
-    take(history_verbs(
-        oid(9),
-        &[oid(2)],
-        "ninth",
-        &refs,
-        &[],
-        graft_ui::keymap::Keymap::shipped(),
-    ));
+    take(history_verbs(oid(9), &[oid(2)], "ninth", &refs, &[], keys));
     // The current branch's own row.
-    take(history_verbs(
-        oid(2),
-        &[oid(1)],
-        "second",
-        &refs,
-        &[],
-        graft_ui::keymap::Keymap::shipped(),
-    ));
+    take(history_verbs(oid(2), &[oid(1)], "second", &refs, &[], keys));
     // A merge row: the revert names its mainline.
     take(history_verbs(
         oid(3),
@@ -615,7 +595,7 @@ fn every_label_the_app_can_build() -> Vec<HistoryVerb> {
         "merged",
         &refs,
         &[],
-        graft_ui::keymap::Keymap::shipped(),
+        keys,
     ));
     // A detached `HEAD`.
     take(history_verbs(
@@ -627,7 +607,7 @@ fn every_label_the_app_can_build() -> Vec<HistoryVerb> {
             &HeadState::Detached(oid(2)),
         ),
         &[],
-        graft_ui::keymap::Keymap::shipped(),
+        keys,
     ));
     // A foxtrot merge `HEAD` is standing on: all three Fix… items.
     take(history_verbs(
@@ -639,7 +619,7 @@ fn every_label_the_app_can_build() -> Vec<HistoryVerb> {
             &HeadState::Branch(name("refs/heads/main")),
         ),
         &[foxtrot(oid(2), oid(7), oid(5))],
-        graft_ui::keymap::Keymap::shipped(),
+        keys,
     ));
 
     assert!(

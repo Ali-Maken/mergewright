@@ -542,7 +542,11 @@ fn q_quit_gives_way_to_the_stop_reason() {
         merge: false,
     };
     let hints = hints_for(&context, Divider::Hidden, 108);
-    assert_eq!(hints.last().map(|h| h.key()), Some("q"), "the bar has room");
+    assert_eq!(
+        hints.last().map(Spelled::key),
+        Some("q"),
+        "the bar has room"
+    );
     let why = StopWording::new(
         reason("merge in progress · 13 files conflicted"),
         vec![reason("merge in progress")],
@@ -818,7 +822,7 @@ fn a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn() {
                     .iter()
                     .skip(3)
                     .find(|hint| hint.rung != placed_at(hint))
-                    .map(|hint| hint.key());
+                    .map(Spelled::key);
                 if let Some(key) = raised {
                     assert_eq!(
                         body.len(),
@@ -1571,7 +1575,7 @@ fn a_finishable_done_file_offers_c() {
             roles: SideRoles::Merge,
             finishable: true,
         });
-        let keys: Vec<&str> = list.iter().map(|hint| hint.key()).collect();
+        let keys: Vec<&str> = list.iter().map(Spelled::key).collect();
         assert_eq!(keys.first(), Some(&"c"), "{keys:?}");
         assert_eq!(keys.last(), Some(&"esc"), "{keys:?}");
     }
@@ -1910,7 +1914,7 @@ fn stopped_row_keeps_the_count_whole_at_108_cells() {
         "{row}"
     );
     // `q quit`, last, gave way to the count (m8-13b).
-    assert_eq!(hints.last().map(|h| h.key()), Some("q"));
+    assert_eq!(hints.last().map(Spelled::key), Some("q"));
     assert!(
         row.ends_with(&hints_text(&hints[..hints.len() - 1])),
         "{row}"
@@ -2031,7 +2035,7 @@ fn resolver_bar_shows_every_key_at_80() {
         let keys = |columns| {
             hints_for(&context, Divider::Hidden, columns)
                 .iter()
-                .map(|hint| hint.key())
+                .map(Spelled::key)
                 .collect::<Vec<_>>()
         };
         let text = resolver_bar(roles, 80);
@@ -2409,6 +2413,6 @@ fn a_amend_follows_open_where_no_commit_or_remote_verb() {
             amend: true,
         },
     );
-    let keys: Vec<&str> = list.iter().map(|h| h.key()).collect();
+    let keys: Vec<&str> = list.iter().map(Spelled::key).collect();
     assert_eq!(keys, ["⏎", "a", "b", "t"]);
 }

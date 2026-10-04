@@ -445,7 +445,7 @@ fn the_bar_over_a_box_during_a_live_operation_is_the_box_s_own() {
                     "{kind:?} {begun:?} {frame:?}"
                 );
                 assert_eq!(c_hint(&hints), None, "{kind:?} {begun:?} {frame:?}");
-                assert_eq!(hints.first().map(|hint| hint.key()), Some("y"));
+                assert_eq!(hints.first().map(crate::spelled::Spelled::key), Some("y"));
             }
         }
     }

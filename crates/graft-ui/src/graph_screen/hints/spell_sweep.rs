@@ -109,7 +109,7 @@ fn every_bar_spells_the_remapped_chords() {
                             hint.verb
                         ));
                     }
-                    for key in &hint.keys[..] {
+                    for key in hint.keys {
                         let label = expected(key, &moved);
                         if !matches!(key, HintKey::Word(_)) && drawn.contains(&label) {
                             wrong.push(format!(

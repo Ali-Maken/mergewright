@@ -617,32 +617,23 @@ fn names(hint: &graft_ui::graph_screen::Hint, action: ActionId) -> bool {
     })
 }
 
-/// Ticket m8/10, decision 2: `graph.merge = "none"` leaves merge unbound.
-/// No bar draws its hint at any width, the menu keeps the `Merge …` row (it
-/// acts by `⏎`) with no `(key)`, and no screen draws a `—` the default
-/// keymap's does not — an unbound key is never spelled as a dash.
-#[test]
-fn merge_unbound_is_drawn_nowhere_and_its_menu_row_names_no_key() {
+/// No bar of any context, at any width, draws a hint naming `action` under
+/// `keys`, while the default keymap draws one somewhere.
+fn no_bar_draws(action: ActionId, keys: &Keymap) {
     use graft_ui::graph_screen::{Divider, hints_for};
-    let merge = ActionId("graph.merge");
-    let (map, warnings) =
-        Keymap::with_overrides(&[("graph.merge".to_owned(), vec!["none".to_owned()])]);
-    assert_eq!(warnings, []);
-    let unbound = Arc::new(map);
-
     let mut drawn_by_default = 0;
     for context in every_context() {
         for divider in [Divider::Shown, Divider::Hidden] {
             for columns in [40, 80, 120, 200] {
                 drawn_by_default += hints_for(&context, divider, columns, Keymap::shipped())
                     .iter()
-                    .filter(|hint| names(hint, merge))
+                    .filter(|hint| names(hint, action))
                     .count();
-                for hint in hints_for(&context, divider, columns, &unbound) {
+                for hint in hints_for(&context, divider, columns, keys) {
                     assert!(
-                        !names(&hint, merge),
-                        "{context:?} {divider:?} {columns}: `{:?} {}` drawn with merge unbound",
-                        hint.key_text(&unbound),
+                        !names(&hint, action),
+                        "{context:?} {divider:?} {columns}: `{:?} {}` drawn unbound",
+                        hint.key_text(keys),
                         hint.verb
                     );
                 }
@@ -651,8 +642,22 @@ fn merge_unbound_is_drawn_nowhere_and_its_menu_row_names_no_key() {
     }
     assert!(
         drawn_by_default > 0,
-        "the default keymap draws `m merge` somewhere"
+        "the default keymap draws it somewhere"
     );
+}
+
+/// Ticket m8/10, decision 2: `graph.merge = "none"` leaves merge unbound.
+/// No bar draws its hint at any width, the menu keeps the `Merge …` row (it
+/// acts by `⏎`) with no `(key)`, and no screen draws a `—` the default
+/// keymap's does not — an unbound key is never spelled as a dash.
+#[test]
+fn merge_unbound_is_drawn_nowhere_and_its_menu_row_names_no_key() {
+    let merge = ActionId("graph.merge");
+    let (map, warnings) =
+        Keymap::with_overrides(&[("graph.merge".to_owned(), vec!["none".to_owned()])]);
+    assert_eq!(warnings, []);
+    let unbound = Arc::new(map);
+    no_bar_draws(merge, &unbound);
 
     let base = sized_to_draw(on_a_branch_row());
     let moved = AppState {
@@ -740,6 +745,6 @@ fn capture_merge_remapped_to_shift_m() {
             "{}/../../docs/shots/m8-keymap-remapped-120x36.txt",
             env!("CARGO_MANIFEST_DIR")
         ),
-        &format!("{bar}\n{menu_frame}"),
+        format!("{bar}\n{menu_frame}"),
     );
 }
