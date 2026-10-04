@@ -1,25 +1,33 @@
 # G-keymap 1c — review fixes: a remap never takes a place's own keys; suspend is a row; one confirm id; sweeps that prove something
 
-Status: draft (planner spec-only pass, 2026-10-04, from `docs/reviews/m8-09-keymap.md` Majors 1–5)
+Status: draft (planner spec-only pass, 2026-10-04, from `docs/reviews/m8-09-keymap.md` Majors 1–5; amended 2026-10-04
+after 10c: rulings on its R4 and Unbound deviations folded in; Majors 3–4 (D4) and 10c's five allow-listed literals
+split off to `09d-keymap-sweeps-and-literals.md` — 09c alone was ~90k)
 Build with: **Opus** — every rule below is decided here; correctness is held by named behavioural tests, not by eye.
 Not Fable: the shape is fixed (fails "a wrong approach becomes structural").
-Blocked by: 10, 10c (holds graft-ui hints, `Keymap` derives, `update/edge.rs`)
+Blocked by: none (10/10c merged)
 Needs: from 09 — `ContextId::{scope, is_text_field}`, `Keymap::{with_overrides, translate, in_context}`, `KeyWarning`;
 from 09b — `keymap_from`, `context_of`, `dispatch_key`, `outside_edge`, `edge::unanswered`; from 10 — `Arc<Keymap>` in
-`AppState`, hints keyed by `ActionId`.
-Crate set: graft-ui (`keymap/*`, `tests/keymap_ids.txt`, hint lists naming the removed ids) + graft (`config/keys.rs`,
-`update/tests/keymap_edge*`, `empty_state` tests, `view/status` test).
+`AppState`, hints keyed by `ActionId`; from 10c — `HintKey::Fixed`, `preview_box`'s `again: Option<(ActionId, &'static
+str)>` and `Again`, tests `preview_box::tests::again_names_a_confirm_chord_only_while_it_confirms`,
+`update::tests::keymap_edge::the_preview_names_its_again_key_exactly_while_it_confirms`,
+`graph_screen::hints::tests::a_fixed_key_is_drawn_only_where_keys_go_on_as_typed`,
+`x_typed_into_every_field_is_an_x_with_merge_on_x`.
+Crate set: graft-ui (`keymap/*`, `tests/keymap_ids.txt`, hint lists naming the removed ids, `preview_box`) + graft
+(`config/keys.rs`, preview `again` callers, a **new** `update/tests/keymap_rules.rs` for this ticket's pinned tests —
+`keymap_edge.rs` itself is 09d's to rewrite and split). Not the five literal widgets (09d).
 
 ## Read first
-- `docs/reviews/m8-09-keymap.md` Majors 1–5 (:58–148), Minors 2, 9, 12 (:158, :192, :200)
-- This ticket's Decisions (whole). `09-keymap-table-and-translate.md` Scope 4–5 and NOTES "Decisions" 1–7
+- `docs/reviews/m8-09-keymap.md` Majors 1, 2, 5 (:58–148), Minor 9 (:192)
+- This ticket's Decisions and **Rulings on 10c** (whole). `09-keymap-table-and-translate.md` Scope 4–5 and NOTES
+  "Decisions" 1–7. `10c-keymap-spell-footers.md` NOTES "Deviations" 1–2
 - `docs/design/02-keymap.md` §2.1 bullet `.` menu (:114–121), "Every binding is remappable" (:174–186), §2.3b `y`
   row (:282), §2.3c (:289)
 - `docs/research/ux-principles.md` row 4 (:54)
-- `crates/graft-ui/MAP.md` `## keymap`; `crates/graft/MAP.md` `update::edge`, `context_of`, `dispatch_key`,
-  `AppState::suspend_on_ctrl_z`, `config_problems`
+- `crates/graft-ui/MAP.md` `## keymap`, `preview_box`; `crates/graft/MAP.md` `update::edge`, `context_of`,
+  `dispatch_key`, `AppState::suspend_on_ctrl_z`, `AppState::text_field_open`, `config_problems`
 - Source after the maps: the claim chain `crates/graft/src/update/keys.rs:210–290` (read only), `keymap/resolve.rs`,
-  `keymap/table.rs`, `update/tests/keymap_edge.rs`
+  `keymap/table.rs`, `update/state.rs:873–887` (read only), `update/preview/keys.rs:78–88`
 
 ## Decisions (planner; not the builder's)
 
@@ -70,15 +78,40 @@ the graph, changes pane, diff, … where confirm means nothing. Ids freeze at re
 - He sees, `[keys.confirm] yes = "c"`: `c` confirms every preview, box, finish list, rewrite editor and the init box;
   `y` there is unanswered; hints read `c <verb>` (10 spells from the row). One line, not five.
 - Pre-release: removed ids get no alias; NOTES says so (the golden test's alias message applies after release).
+- A borrow acts only where translate runs: inside a text field (`AppState::text_field_open`) `confirm.yes` is not
+  consulted and `y`/`c` type themselves (R4 below).
 
-**D4 — The behavioural sweep's oracle is behaviour, not a copy of `resolve`** (Major 3). Delete `acting_default`
-(`keymap_edge.rs:160–171`). Expected = what the row's default chord does under the default keymap. Which rows a
-place shadows comes from a hand-written `SHADOWED: &[(ContextId, &str /*id*/, &str /*chord*/, &str /*by id*/, &str
-/*why: § or file:line*/)]`, never computed. graft-ui's `default_holder` (`keymap/tests/translate.rs:11–17`) may stay
-for the pure sweep; the pinned D1 cases below are what catch an order bug there.
+**D4 — the behavioural sweep's oracle** moved to `09d-keymap-sweeps-and-literals.md` (verbatim there).
+
+## Rulings on 10c (planner, 2026-10-04)
+
+**R4 (10c deviation 1) — accepted; R4's second half is withdrawn.** R4's premise was wrong: it read `context_of`
+(Finish) as what acts in Subject/Body, but `AppState::text_field_open()` (`update/state.rs:873–887`, 10c's line;
+graft MAP `text_field_open`) passes every key as typed there before translate, pinned on main by
+`x_typed_into_every_field_is_an_x_with_merge_on_x`. Spelling his remap there would name a key that types a letter.
+So Subject/Body hints stay `Fixed`, spelled from the shipped keymap — the same rule as every text field (10's
+decision 5). **Answer to 10's question: yes, typed text in Subject/Body passes untranslated.** What is still
+missing is the forward half of the invariant — 10c tested "Fixed ⇒ text field", not "text field ⇒ only Fixed":
+- **Rule:** wherever `text_field_open()` is true, the bar and footer draw only `Fixed` keys and `Word`s — never a
+  `Key`/`EveryChord` (a remappable key spelled where no remap acts is a lie).
+- D3 knock-on: deleting `finish.commit` must not leave a Subject/Body hint naming `confirm.yes` (`y` types there).
+  Each Subject/Body hint names the row the field's own handler answers; the builder reads it off the handler and
+  names the line in NOTES.
+
+**Unbound (10c deviation 2) — the code reading is right; D3 makes the original acceptance true.** Today the box's
+`m merge`/`r rebase` slot is a `preview.confirm` chord (`update/preview/keys.rs:78–88`, 10c's line), so
+`graph.merge = "none"` left it correct. After D3 the slot is `preview.confirm_merge` / `preview.confirm_rebase`,
+whose chords follow `graph.merge` / `graph.rebase`. So:
+- `again` carries `preview.confirm_merge` / `preview.confirm_rebase` (not `preview.confirm`); `Again` draws the slot
+  exactly while that id has a live chord, spelled from it.
+- `graph.merge = "none"` → the merge preview (opened from the `.` menu) draws no `m merge` part and no `—`; `y merge`
+  (from `confirm.yes`) stays. `graph.merge = "M"` → the box draws `M merge`, and `M` confirms.
+- 10c's case `preview.confirm = ["y"]` is gone with the id: an override on `preview.confirm_merge` is `Follows`, not
+  applied, and the box still draws the opener's key. Re-point 10c's two `again` tests; don't delete their names.
 
 ## Scope
-In: D1–D4 as above, Minors 2, 9, 12. Out: Minors 1, 3–8, 10, 11 (conductor's); `?`/palette (11); docs (below).
+In: D1–D3 as above, Minor 9, the R4 and Unbound rulings. Out: D4, Majors 3–4, Minors 2, 8, 12, 10c's five literals
+(09d); Minors 1, 3–7, 10, 11 (conductor's); `?`/palette (11); docs (below).
 
 ## Signatures
 ```rust
@@ -99,9 +132,11 @@ pub enum KeyWarning {
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Clash { pub key: KeyChord, pub context: ContextId, pub kept: ActionId, pub lost: ActionId }
+// graft-ui::preview_box — shape unchanged from 10c; the id is now preview.confirm_merge | preview.confirm_rebase
+pub again: Option<(ActionId, &'static str /* verb: "merge" | "rebase" */)>,
 // graft::config — keymap_from passes KeySwitches { suspend_on_ctrl_z: loaded.keys.suspend_on_ctrl_z }
 ```
-`Keymap::default()` = switches off. No other new `pub` items.
+`Keymap::default()` = switches off. No other new `pub` items. 09d calls `reachable` and `borrows`.
 
 ## Acceptance (each tick names its test, at tick time)
 - [ ] **Major 1.** graft-ui: `graph.merge = "j"` → `translate(C, j) == Pass` for C in every context with `app.down`
@@ -114,31 +149,34 @@ pub struct Clash { pub key: KeyChord, pub context: ContextId, pub kept: ActionId
   `⌃Z` emits `Command::Suspend`, zero problems; switch on alone → `spell(app.undo) == "u"`; switch on +
   `suspend = "ctrl+s"` → `⌃S` suspends, `⌃Z` acts as F20; switch off + suspend line → one `SwitchOff` problem.
 - [ ] **Major 5.** Golden list edited (−4 ids, +`app.suspend`, `preview.confirm_merge`, `preview.confirm_rebase`).
-  `confirm.yes = "c"` → `c` confirms in Preview, Confirm, Finish, Rewrite and the init box fixtures, `y` acts as F20
-  there and still copies the SHA on the graph. `graph.merge = "M"` → `M` opens the preview, `M` again confirms.
-  Override on `preview.confirm_merge` → `Follows`.
-- [ ] **Major 3.** Sweep over `reachable(ctx)` for every context with a fixture (all rows, not own + Global). Overlays
-  given rows to move over; pane cursors mid-list. Every case either **acts** (default press ≠ F20) or is listed with
-  a reason (`SWALLOWED_BY_DESIGN` — Preview/Confirm/Banner swallows, §2.3c; `NO_EFFECT_IN_FIXTURE`; `SHADOWED`). A
-  listed entry that acts, or a shadow that doesn't hold, fails the test. Test prints acting/listed counts; asserts
-  acting ≥ the count at landing (written in the test with the date).
-- [ ] **Major 4.** EmptyState swept like Major 3 through `outside_edge`, three fixtures: plain, init box open (closes
-  Minor 12: `y`/`n`/`esc` under a remap), prompt open (every key typed). F2 sanitising pinned: the reviewer's probe
-  `"\u001b[31mmerge"` → F2 draws `graph.␛[31mmerge is not an action` (Minor 2).
-- [ ] `keymap_edge.rs` split under 400 lines per file (Minor 8, since it is rewritten).
-- [ ] MAP.md: graft-ui `borrows`, `KeySwitches`, `reachable`, `Clash`, new variants, removed ids; graft `keymap_from`.
+  `confirm.yes = "c"` → `c` confirms in Preview, Confirm, Finish (Files focus), Rewrite and the init box fixtures, `y`
+  acts as F20 there and still copies the SHA on the graph. `graph.merge = "M"` → `M` opens the preview, `M` again
+  confirms. Override on `preview.confirm_merge` → `Follows`.
+- [ ] **R4.** graft, through `update` + the view's hint path: (a) `confirm.yes = "c"`, finish summary, Subject focus:
+  typing `c` then `y` puts `cy` in the subject and commits nothing; Files focus: `c` commits. (b) For every fixture
+  where `text_field_open()` is true (finish Subject, finish Body, commit editor, picker, palette, credential, name
+  prompt, stash save prompt, the `r` field of the rewrite editor, search and journal find prompts — the builder
+  takes the list from `text_field_open`'s body and NOTES any it adds), the hints drawn hold no `HintKey::Key` /
+  `EveryChord`. 10c's `a_fixed_key_is_drawn_only_where_keys_go_on_as_typed` stays green.
+- [ ] **Unbound.** `graph.merge = "none"`, merge preview opened from the `.` menu → the box draws no `m merge` part and
+  no `—`; `y merge` drawn; extend 10's `merge_unbound_is_drawn_nowhere_and_its_menu_row_names_no_key`.
+  `graph.merge = "M"` → box draws `M merge`. 10c's two `again` tests re-pointed to `preview.confirm_merge` and green.
+- [ ] MAP.md: graft-ui `borrows`, `KeySwitches`, `reachable`, `Clash`, new variants, removed ids, `again`'s id;
+  graft `keymap_from`, `text_field_open` (the R4 rule).
 - [ ] Captures: default config → no capture changes. `docs/shots/m8-keymap-config-problem-120x36.txt` re-shot only if
   J8's words are drawn in it; NOTES names it. Colour unverified (rule 5).
 
 ## Touches
 - graft-ui `keymap/{resolve,table,warning}.rs`, `keymap.rs`, tests, golden list. 10's hint lists and `NEVER_HINTED` /
   `bound_actions` naming `finish.commit`, `rewrite.start`, `empty_state.confirm`, `preview.confirm` → `confirm.yes` /
-  the split rows (grep each id; NOTES lists hits). `table_check`.
+  the split rows (grep each id; NOTES lists hits). `table_check`. `preview_box` (`Again`) and its graft callers
+  (`preview/keys.rs`, `boxes.rs`, `preview.rs`, amend_into tests, put_back_box — 10c's list).
 - graft `keymap_from`, every `with_overrides` caller (grep), the edge (logic unchanged; check `Unbound` path still
-  matches), 09b's sweeps and J8 tests, `empty_state` tests.
-- Later tickets: **11** must show borrowed rows in `?` (Preview/Finish/Rewrite list `y confirm`) — conductor amends
-  11. **18** (`empty_state.clone` `c`) meets `confirm.yes` in EmptyState's order: warned, not blocked. **23** man page:
-  `app.suspend` "only with `suspend_on_ctrl_z = true`".
+  matches), 09b's J8 tests, the finish summary's Subject/Body hint list (R4).
+- `keymap_edge.rs`: tests there that name a removed id are edited in place (minimum); the rewrite and split are 09d's.
+- Later tickets: **09d** sweeps over `reachable`. **11** must show borrowed rows in `?` (Preview/Finish/Rewrite list
+  `y confirm`) — conductor amends 11. **18** (`empty_state.clone` `c`) meets `confirm.yes` in EmptyState's order:
+  warned, not blocked. **23** man page: `app.suspend` "only with `suspend_on_ctrl_z = true`".
 - Journal/undo: untouched (keys only). Mouse: not translated (unchanged).
 
 ## Conductor (not the builder's)
@@ -146,15 +184,16 @@ pub struct Clash { pub key: KeyChord, pub context: ContextId, pub kept: ActionId
   where its section is live and never over a place's own keys: a place answers its own rows and the keys it handles
   itself (movement in panes and the `.` menu) before anything it falls through to. Each line with a problem is one
   problem, naming every place it changes. `confirm.yes` is the one confirm key (§2.3b). With `suspend_on_ctrl_z`,
-  `⌃Z` is `app.suspend` and undo keeps `u`." ADR-0055: "Amended 2026-10-04 (09c): resolution order, grouped
-  warnings, `app.suspend`, one confirm id."
+  `⌃Z` is `app.suspend` and undo keeps `u`. Inside a text field no line acts: keys type themselves." ADR-0055:
+  "Amended 2026-10-04 (09c): resolution order, grouped warnings, `app.suspend`, one confirm id; a text field
+  (`text_field_open`) passes keys untranslated even inside a remappable place."
 - **KNOWN_GAPS**: `diff.word_diff` / `blame.heatmap` draw only as colour → **unverified** row (rule 5; no test can
-  close it). 09b tick 1's EmptyState part → **broken (test missing)** row until this ticket's Major 4 box is green.
+  close it). 09b tick 1's EmptyState part → **broken (test missing)** row until 09d's Major 4 box is green.
+- 10c's `[~]` R4 and Unbound boxes close when this ticket's R4 and Unbound boxes tick.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc` — workspace-wide.
 
 ## Size
-~90k: graft-ui rules + warnings + rows ~35k; graft sweeps rewrite ~40k; EmptyState + F2 ~10k. Over the line: land
-graft-ui, `keymap_from` and the Major 1/2/5 pinned tests, commit at the seam, report `blocked: sweeps`; the conductor
-gives Majors 3–4 to an Opus 09d.
+~62k: graft-ui rules + warnings + rows ~35k; Major 1/2/5 pinned tests through `update` ~18k; R4 + Unbound ~9k.
+Over the line: land graft-ui and `keymap_from`, commit at the seam, report `blocked: pinned tests`.
