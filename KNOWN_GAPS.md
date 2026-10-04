@@ -1134,6 +1134,9 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/22-manylanes-fold-unsnapshotted | ManyLanes tier snapshots show no `+N` fold (0 of 3): compaction still not snapshotted (review 22 M3). Fix after 10c (shared captures). | **unverified** | M8 |
 | M8/contact-sheets-m3-m6-stale | m3–m6 contact sheets stale after 22's 42 re-shots (review 22 M3); 10c is re-assembling sheets — check after its merge. | **broken** | M8 |
 | M8/22-review-minors | 4 Minors in `docs/reviews/m8-22-hygiene.md`. | **broken** (per finding) | M8 |
+| M8/10c-literal-keys-allowlisted | 5 user-facing literal keys allow-listed as KNOWN in `graft-ui/tests/no_literal_keys.rs` (detail pane, banner, rewrite right pane, badge): not spelled from the keymap yet. | **broken** | M8 |
+| M8/10c-r4-unbound-open | 10c R4 half (Finish Subject/Body are text fields, state.rs:873-887 — Fixed⇒text-field invariant built instead) and Unbound (box m/r are preview.confirm chords, preview/keys.rs:78-88) not met as written → 09c rules (it already owns confirm.yes and m/r following merge/rebase). | **unverified** | M8 |
+| M8/10c-captures-unjudged | 86 captures re-shot by 10/10c (key spellings, hint ranking); sheets m3/m5/m6/m7 reassembled. By eye at the stop. | **unverified** | M8 |
 | M8/flaky-http-remote-drop | graft-fixtures `http_remote_drop_ends_a_wedged_backend` failed once in a full run under load (14d), passes alone; crate untouched; not diagnosed. | **unverified** | M8 |
 | M8/long-tmpdir-socket | 6+ graft tests fail when `$TMPDIR` is a long path (unix-socket path limit); Paperclip runs set one. Gates pass with `TMPDIR=/tmp`. Tests should not depend on `$TMPDIR` length — cause not fixed. | **broken** | M8 |
 | M8/startup-rs-564 | `startup.rs` 564 lines, over the readability limit; outside 02's file set, not split. | **broken** | M8 |
