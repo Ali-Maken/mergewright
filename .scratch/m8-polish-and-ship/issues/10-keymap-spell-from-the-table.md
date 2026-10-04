@@ -213,3 +213,52 @@ equal the new line. 0 unexplained except the width cases below (classified by th
 - Journal/undo: none — render only; diff against main over `crates/graft/src/update/journal*` and `crates/graft-ops`
   is empty.
 - graft-ops / 10b words: untouched.
+
+## Rulings after partial (planner, spec-only pass 2026-10-04)
+The builder took the seam (compacted twice; NOTES and questions on branch `worktree-agent-a3081d1d2a2f421de`). The
+remainder, with the fixes below, is **`10c-keymap-spell-footers.md`**, built on the same branch; 10 lands with it.
+The NOTES and ticks on the branch stand; on merge keep both them and this section.
+
+**R1 — the bar's width (Q1). Cause: rank, not spelling.** `</> resize` is "inserted fourth when `Divider::Shown` (so
+the six-hint tier reaches it)" (graft-ui MAP, `graph_screen::hints`). The six-hint tier is gone ("No width tiers",
+same entry), so the reason is gone, and a layout key outranks `u undo` and `/ search`: one cell of resize's **own**
+new spelling (`<>` → `</>`) pushed undo off at 100 columns. Ruling: **`</> resize` is the last of the bar's own keys**
+(after `TAIL`; the doorway keeps its place). It drops first; nothing else pays for its width.
+Why: 02-keymap §2.1 "ranks by relevance at the cursor"; ux-principles §3.5 (Graft skips confirmations *because*
+undo exists) + row 6 (recognition over recall) + row 3 ("undo exists") → undo must be on screen where he works;
+row 8 (every glyph earns its cell) → a layout key earns its cell last. **Rejected as the fix:** a compact `<>`
+alone — symptom; the next one-cell change drops undo again. The strict joiner stays: `</>`; `n/N` (same width as
+`n N`, costs nothing).
+
+**R2 — a shared modifier word is written once.** `spell_keys`/`spell_every`: a label that repeats the previous
+label's `<word>+` prefix drops it: `alt+↑/alt+↓` → **`alt+↑/↓`** (7 cells; main's `alt+↑↓` was 6). Only `+`-joined
+words; glyph modifiers keep theirs (`⌃O/⌃T` unchanged — the resolver's spelling since m6). Still one joiner (row 4);
+the repeated `alt+` earns nothing (row 8). With decision 3's `tab` → `⇥` (−2), the rewrite editor's narrow bar is
+one cell narrower than main's: `d drop` comes back at 100x30. Deviation 2 stands as amended here.
+
+**R3 — undo visible is a test, not a hope.** Invariant: no bar draws `</> resize` while dropping any other hint its
+list holds. Named cases: `u undo` in the contexts of `m2-duplicate-commit` and `m2-evil-merge` at 100 columns;
+`/ search` in those of `m7/diff-cursor-commit-120x40` and `m7/pane-bar-file-vs-directory-120x40` at 120; `d drop` in
+`RewriteEditor { narrow: true, .. }` at 100. A context that still drops `u undo` at 100 after R1 is a ranking
+finding for 15: NOTES names context and width; not fixed here.
+
+**R4 — `HintKey::Fixed` (Q2; deviation 1).** Fixed is right **iff** the action's context `is_text_field()`
+(graft-ui MAP `ContextId::is_text_field`: Picker, Palette, CommitEditor, Credential). The finish summary is
+`Finish`, not a text field, and `context_of` hands its keys to Finish (graft MAP `update::edge::context_of`), so his
+remap is what acts there: its Subject/Body hints are `Key(<Finish-context id>)`, **not** `Fixed`. A key its bar
+draws with no Finish-context row (e.g. `⌃E`, `⇥`): NOTES names it; rows are not added here (the table is 09c's).
+Test: every `Fixed(id)` in every list names a text-field context.
+**Question to the conductor (no line, rule 7):** does translate pass typed text in the finish summary's Subject and
+Body? If not, a letter he remaps in `[keys.finish]` (or `confirm.yes` after 09c) acts while he types — ADR-0055
+"typed text in a field is never remapped". 09c's to check.
+
+**R5 — `M` displacing `graph.map` (Q3): not a defect.** `M` is Map's default (02-keymap §2.3 `M` | Toggle Map view;
+§2.3a `M` | Open or close the Map view). A user binding onto it is a collision, "warned at startup, never fatal: the
+status row reads `config: N problems · ? shows them`" (02-keymap §2.1 "Every binding is remappable"); the lost chord
+is not spelled (`Keymap::live_labels`, graft-ui MAP `## keymap`). So `M map` absent is right. It would be a defect
+only if the warning were missing — 10c proves it isn't: the capture becomes the **whole frame** (status row
+included), config through the startup path, plus a test that the warning is a `Collision` keeping `graph.merge` and
+losing `graph.map`. The example stays: a colliding remap shows him its cost. Deviation 4 (in-process draw, not pty)
+accepted on those terms.
+
+**R6 — blockers.** 10 lands only with 10c (same branch). 09c, 10b, 11, 15, 16, 19: `Blocked by: 10` → **10c**.

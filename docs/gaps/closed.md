@@ -286,3 +286,5 @@ Rows whose expiry was M6, closed with the evidence named inline. Re-expired and 
 | M6/rw2 (push journeys not step-counted), M6/u2 (push journeys counted but not walk-gated) | `push_journey_is_walk_gated` and `journey_rejected_push_dirty_to_pushed` pass (25b; planner Q-push ruling, 26b) | closed 2026-10-01 |
 | M7/47-idle-low-power | Closed 2026-10-02: `frames::after_idle::g_after_idle` on mains, LPM off → 10.96 / 8.49 / 8.43 ms ≤ 16 (`scripts/47-debug-idle.sh . 3`, `docs/perf/47-debug.txt` 05:29:16Z). The 16.9 ms miss was battery + Low Power Mode. |
 | M8/14bc-follow-unsafe | Closed 2026-10-04 by 14d (ADR-0059 §6 gates, 21 git-truth tests). |
+| M8/06-confirm-box-covers-columns | Closed 2026-10-04: not a defect — ADR-0040 outward snap (layout.rs:110/283/681-707), review m8-06-08-look. |
+| M8/pty-scripts-real-recents | Closed 2026-10-04 by 22 (8b9c2a66): checked temp XDG_CONFIG_HOME, check-sandbox.py. |

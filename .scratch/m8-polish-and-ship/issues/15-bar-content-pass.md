@@ -2,7 +2,7 @@
 
 Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: four small rulings below, each held by a test.
-Blocked by: 10, 11, 14
+Blocked by: 10, 10c, 11, 14
 Needs: `keymap-spell-from-the-table` (hints over `ActionId`), `palette-help-and-actions` (doorway `? keys`),
 `daily-ops-fixes` (ruling 4's refusal exists first).
 
