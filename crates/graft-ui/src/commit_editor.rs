@@ -21,6 +21,7 @@ use ratatui::style::{Modifier, Style};
 use ratatui::widgets::Widget;
 
 use crate::fit::fit;
+use crate::keymap::{ActionId, Keymap};
 use crate::paint::foreground;
 use crate::text_input::{AreaView, AreaWidget, FOCUS, FieldView, FieldWidget};
 use crate::theme::{Theme, Token};
@@ -169,18 +170,45 @@ pub struct CommitEditorScreen<'a> {
 
 /// The key hints under the editor while the subject has focus: `⏎` commits
 /// from there and `⇥` is the way to the body (m6 usability P16, pick 14).
-const FOOTER_SUBJECT: &str = "⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel";
+///
+/// The editor is a text field: every press goes on as typed whatever his
+/// config says (ADR-0055), so its keys spell from the shipped table
+/// (ticket m8/10, decision 5).
+#[must_use]
+pub fn footer_subject() -> String {
+    Keymap::shipped().key_verbs(&[
+        ("app.open", "commit"),
+        ("commit.next_field", "body"),
+        ("commit.edit_outside", "$EDITOR"),
+        ("commit.sign_off", "sign-off"),
+        ("app.back", "cancel"),
+    ])
+}
 
 /// The key hints under the editor anywhere else (design note, "Commit
-/// editor"): in the body `⏎` is a newline, so only `⌃⏎` and the button commit.
-const FOOTER_OTHER: &str = "⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel";
+/// editor"): in the body `⏎` is a newline, so only `⌃⏎` and the button
+/// commit. `Commit` is the button's name, a word, not a key.
+#[must_use]
+pub fn footer_other() -> String {
+    let keys = Keymap::shipped();
+    let commit = keys
+        .spell_keys(&[ActionId("commit.commit")])
+        .map(|key| format!("{key}/Commit commit"));
+    let rest = keys.key_verbs(&[
+        ("commit.next_field", "next"),
+        ("commit.edit_outside", "$EDITOR"),
+        ("commit.sign_off", "sign-off"),
+        ("app.back", "cancel"),
+    ]);
+    commit.into_iter().chain([rest]).collect::<Vec<_>>().join("  ")
+}
 
 /// The footer for whichever field has focus. One word per key, not per mode:
 /// the amend editor says `commit` too, as its button does.
-fn footer(focus: Field) -> &'static str {
+fn footer(focus: Field) -> String {
     match focus {
-        Field::Subject => FOOTER_SUBJECT,
-        _ => FOOTER_OTHER,
+        Field::Subject => footer_subject(),
+        _ => footer_other(),
     }
 }
 
@@ -227,7 +255,7 @@ impl Widget for &CommitEditorScreen<'_> {
                 format!("{} — esc dismisses", status.as_str()),
                 Token::Warning,
             ),
-            None => (footer(self.view.focus).to_owned(), Token::TextMuted),
+            None => (footer(self.view.focus), Token::TextMuted),
         };
         buf.set_string(
             area.x,

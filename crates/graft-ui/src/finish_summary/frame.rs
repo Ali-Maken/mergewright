@@ -10,7 +10,7 @@ use super::{FinishScreen, FinishView};
 use crate::fit::fit;
 use crate::frame_box::border_row_spans;
 use crate::graph_screen::{Divider, Hint, HintContext, hints_for};
-use crate::keymap::Keymap;
+use crate::keymap::{ActionId, Keymap};
 use crate::paint::foreground;
 use crate::theme::Token;
 
@@ -38,12 +38,16 @@ pub fn preview_title(names: Option<(&str, &str)>, width: u16) -> String {
 }
 
 /// The first line inside the frame: what lands, and that nothing does
-/// until `y`. `on <into>` only when the branch is known.
+/// until `y` (`finish.commit`'s key, spelled from `keys`). `on <into>` only
+/// when the branch is known.
 #[must_use]
-pub fn preview_line(into: Option<&str>) -> String {
+pub fn preview_line(into: Option<&str>, keys: &Keymap) -> String {
+    let until = keys
+        .spell_keys(&[ActionId("finish.commit")])
+        .map_or_else(|| "yet".to_owned(), |key| format!("until {key}"));
     match into {
-        Some(into) => format!("1 merge commit on {into} · nothing is committed until y"),
-        None => "1 merge commit · nothing is committed until y".to_owned(),
+        Some(into) => format!("1 merge commit on {into} · nothing is committed {until}"),
+        None => format!("1 merge commit · nothing is committed {until}"),
     }
 }
 
@@ -95,8 +99,15 @@ pub fn footer_spans(
     vec![(first_key, strong), (rest, muted)]
 }
 
-/// The second line inside the frame.
-pub const UNDO_LINE: &str = "undo: u takes this back";
+/// The second line inside the frame: `undo: u takes this back`, `app.undo`
+/// spelled from `keys`.
+#[must_use]
+pub fn undo_line(keys: &Keymap) -> String {
+    match keys.spell_keys(&[ActionId("app.undo")]) {
+        Some(undo) => format!("undo: {undo} takes this back"),
+        None => "undo: this can be undone".to_owned(),
+    }
+}
 
 impl FinishScreen<'_> {
     /// The rounded frame: `accent` while it has focus (`border` under a
@@ -152,13 +163,13 @@ impl FinishScreen<'_> {
             return;
         }
         let into = self.view.names.as_ref().map(|(_, into)| into.as_str());
-        self.text(buf, rect, &preview_line(into), Token::Text, false);
+        self.text(buf, rect, &preview_line(into, self.view.keys), Token::Text, false);
         let second = Rect {
             y: rect.y + 1,
             height: 1,
             ..rect
         };
-        self.text(buf, second, UNDO_LINE, Token::TextMuted, false);
+        self.text(buf, second, &undo_line(self.view.keys), Token::TextMuted, false);
     }
 
     /// The title's arrow at the ASCII tier.

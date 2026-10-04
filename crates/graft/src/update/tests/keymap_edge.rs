@@ -696,10 +696,30 @@ fn merge_unbound_is_drawn_nowhere_and_its_menu_row_names_no_key() {
     }
 }
 
-/// `[keys.graph] merge = "M"` from a config file, as `config::keymap_from`
-/// builds it: the bar on a branch row reads `M merge`, and the `.` menu's
-/// row `Merge feature into main (M)`. `M` was `graph.map`'s, so the map
-/// loses it in the collision and its `M map` hint is not drawn anywhere.
+/// Ruling R5 (ticket m8/10): `[keys.graph] merge = "M"` is one collision —
+/// `M` was the Map's (02-keymap §2.3) — that keeps `graph.merge` and loses
+/// `graph.map`, warned at startup, never fatal.
+#[test]
+fn merge_on_shift_m_is_one_collision_that_loses_the_map() {
+    let loaded = crate::config::tests::loaded_from_a_file("[keys.graph]\nmerge = \"M\"\n");
+    let (_, warnings) = Keymap::with_overrides(&loaded.config.keys.remaps);
+    assert!(
+        matches!(
+            warnings.as_slice(),
+            [KeyWarning::Collision { kept, lost, .. }]
+                if *kept == ActionId("graph.merge") && *lost == ActionId("graph.map")
+        ),
+        "{warnings:?}"
+    );
+}
+
+/// `[keys.graph] merge = "M"` from a config file, through the startup path
+/// (`config::keymap_from`, which `event_loop::startup::Arrival::first`
+/// calls, then `seed_keys` as `run_repo` does): the bar on a branch row
+/// reads `M merge`, the status row says the collision, and the `.` menu's
+/// row reads `Merge feature into main (M)`. `M` was `graph.map`'s, so the
+/// map loses it and its `M map` hint is not drawn anywhere (R5: a colliding
+/// remap shows him its cost).
 #[test]
 fn capture_merge_remapped_to_shift_m() {
     use graft_ui::graph_screen::{Divider, hints_for};
@@ -719,12 +739,17 @@ fn capture_merge_remapped_to_shift_m() {
     }
 
     let mut base = sized_to_draw(on_a_branch_row());
-    base.seed_keys(keymap, Vec::new());
+    base.seed_keys(keymap, problems);
     let bar = crate::view::tests::draw(&base, base.size.columns, base.size.rows);
     assert!(
         bar.contains("M merge"),
         "the bar spells merge's chord:\n{bar}"
     );
+    assert!(
+        bar.contains("config: 1 problem · ? shows them"),
+        "the status row says the collision:\n{bar}"
+    );
+    assert!(!bar.contains("M map"), "the map lost M:\n{bar}");
     assert!(
         !bar.contains("m merge"),
         "not the default it replaced:\n{bar}"
@@ -737,8 +762,10 @@ fn capture_merge_remapped_to_shift_m() {
     );
     let menu_frame = crate::view::tests::draw(&menu, menu.size.columns, menu.size.rows);
     // `docs/shots/m8-keymap-remapped-120x36.txt`. What right looks like:
-    // first frame, a branch row's bar reading `M merge` and no `M map`;
-    // second, the `.` menu open on it with `Merge feature into main (M)`.
+    // first frame, whole, a branch row's bar reading `M merge`, no `M map`,
+    // and the status row `config: 1 problem · ? shows them`; second, the
+    // `.` menu open on it with `Merge feature into main (M)` (the notice
+    // went at that first key).
     // Colour unverified (rule 5).
     graft_fixtures::capture(
         format!(

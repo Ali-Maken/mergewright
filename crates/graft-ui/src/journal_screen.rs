@@ -17,6 +17,7 @@ use ratatui::style::{Modifier, Style};
 use ratatui::widgets::Widget;
 
 use crate::fit::fit;
+use crate::keymap::{ActionId, Keymap};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 use unicode_width::UnicodeWidthStr;
@@ -36,14 +37,33 @@ pub struct JournalScreen<'a> {
     pub view: &'a JournalView,
     /// Resolved colours.
     pub theme: &'a Theme,
+    /// His keymap: the footer, legend and empty state spell keys from it.
+    pub keys: &'a Keymap,
 }
 
 /// The empty state, which is also an instruction: nothing is lost by there
-/// being nothing here yet.
-const EMPTY: &str = "nothing yet — every write lands here and u takes it back";
+/// being nothing here yet. `app.undo`'s key spelled from `keys`.
+fn empty(keys: &Keymap) -> String {
+    match keys.spell_keys(&[ActionId("app.undo")]) {
+        Some(undo) => format!("nothing yet — every write lands here and {undo} takes it back"),
+        None => "nothing yet — every write lands here".to_owned(),
+    }
+}
 
-/// What each glyph means, on screen for as long as the rows are (J1).
-pub const LEGEND: &str = "● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds";
+/// What each glyph means, on screen for as long as the rows are (J1), with
+/// `app.undo`'s key spelled from `keys` (`u`, or `u/⌃Z`'s first — the bar's
+/// one key per action). Unbound, the legend says it in words.
+#[must_use]
+pub fn legend(keys: &Keymap) -> String {
+    let (can, never) = match keys.spell_keys(&[ActionId("app.undo")]) {
+        Some(undo) => (
+            format!("{undo} can undo it"),
+            format!("{undo} never touches it"),
+        ),
+        None => ("undo can take it back".to_owned(), "undo never touches it".to_owned()),
+    };
+    format!("● done in Graft: {can} · $ done outside Graft: {never} · ✗ a commit no branch holds")
+}
 
 /// The list's last line, muted: what the list cannot show (`reflog.md`
 /// takeaway 12).
@@ -218,34 +238,43 @@ impl JournalScreen<'_> {
     /// where there is one, and how to close. Cut from the right, `close`
     /// kept, when the width is short.
     fn footer(&self, width: usize) -> String {
-        let close = "J/esc close";
+        let keys = self.keys;
+        // `J` and `esc` both close: one hint, both keys (`J/esc close`).
+        let close = keys.key_verb(
+            &[ActionId("journal.close"), ActionId("app.back")],
+            "close",
+        );
         let JournalStatus::Ready = self.view.status else {
-            return close.to_owned();
+            return close.unwrap_or_default();
         };
         let row = self.view.rows.get(self.view.selected);
-        let mut keys: Vec<&str> = Vec::new();
+        let mut parts: Vec<String> = Vec::new();
         if let Some(enter) = &self.view.enter_words {
-            keys.push(enter);
+            parts.extend(keys.key_verb(&[ActionId("journal.revert")], enter));
         }
         if self.view.branch_here {
-            keys.push("b new branch here");
+            parts.extend(keys.key_verb(&[ActionId("journal.branch")], "new branch here"));
         }
         // As blame's bar (`hints::blame_place_list`): `/ find` always,
-        // `n N match` after it while a find is kept.
-        keys.push("/ find");
+        // `n/N match` after it while a find is kept.
+        parts.extend(keys.key_verb(&[ActionId("app.find")], "find"));
         if self.view.find.is_some() {
-            keys.push("n N match");
+            parts.extend(keys.key_verb(
+                &[ActionId("app.next_match"), ActionId("app.prev_match")],
+                "match",
+            ));
         }
         if row.is_some_and(|row| row.kind == RowKind::Graft) {
-            keys.push("space command log");
+            parts.extend(keys.key_verb(&[ActionId("journal.expand")], "command log"));
         }
-        keys.push(close);
-        while keys.len() > 1 && keys.join("  ").width() > width {
-            // The optional middle keys go first; `⏎` and `close` stay.
-            let drop = if keys.len() > 2 { keys.len() - 2 } else { 0 };
-            keys.remove(drop);
+        // The first part and `close` stay; the optional middle goes first.
+        let kept = usize::from(close.is_some());
+        parts.extend(close);
+        while parts.len() > 1 && parts.join("  ").width() > width {
+            let drop = if parts.len() > kept + 1 { parts.len() - 1 - kept } else { 0 };
+            parts.remove(drop);
         }
-        keys.join("  ")
+        parts.join("  ")
     }
 
     /// Every body line, in order: each row and what it opens under it, then
@@ -366,7 +395,7 @@ impl JournalScreen<'_> {
                 area.x,
                 bottom,
                 area,
-                &cut_at_word(LEGEND, width),
+                &cut_at_word(&legend(self.keys), width),
                 muted,
             );
         }
@@ -416,7 +445,7 @@ impl Widget for JournalScreen<'_> {
         match &self.view.status {
             JournalStatus::Ready => self.draw_body(buf, body),
             JournalStatus::Loading => centred(buf, body, "reading the journal…", muted),
-            JournalStatus::Empty => centred(buf, body, EMPTY, muted),
+            JournalStatus::Empty => centred(buf, body, &empty(self.keys), muted),
             JournalStatus::Failed(why) => centred(
                 buf,
                 body,

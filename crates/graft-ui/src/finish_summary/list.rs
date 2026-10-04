@@ -11,6 +11,7 @@ use super::{
 };
 use crate::detail_pane::{DiffFocus, diff_body};
 use crate::fit::fit;
+use crate::keymap::ActionId;
 use crate::paint::foreground;
 use crate::text_input::FOCUS;
 use crate::theme::Token;
@@ -95,10 +96,15 @@ impl FinishScreen<'_> {
                 );
             }
             SummaryState::Unavailable(why) => {
-                let words = format!(
-                    "summary unavailable: {} · y commits with git's message",
-                    why.as_str()
-                );
+                let unavailable = format!("summary unavailable: {}", why.as_str());
+                let words = match self
+                    .view
+                    .keys
+                    .key_verb(&[ActionId("finish.commit")], "commits with git's message")
+                {
+                    Some(commit) => format!("{unavailable} · {commit}"),
+                    None => unavailable,
+                };
                 self.text(buf, rect, &words, Token::Warning, false);
             }
         }

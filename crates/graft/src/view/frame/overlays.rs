@@ -30,6 +30,7 @@ pub(super) fn draw_journal(
     let widget = JournalScreen {
         view: &screen,
         theme: &session.theme,
+        keys: &state.keymap,
     };
     if state.detail.shown {
         render_overlay_with_detail(session, state, frame, widget, area, "Journal");

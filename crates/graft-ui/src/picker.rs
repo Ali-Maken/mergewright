@@ -18,6 +18,7 @@ use ratatui::style::Modifier;
 
 use crate::fit::fit;
 use crate::frame_box::{border_row, cells, content_row};
+use crate::keymap::{ActionId, Keymap};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 
@@ -254,9 +255,9 @@ fn draw_body(buf: &mut Buffer, area: Rect, view: &PickerView, theme: &Theme) {
             let words = match body {
                 PickerBody::Reading => "reading branches\u{2026}".to_owned(),
                 PickerBody::Failed(why) => format!("can't list branches \u{b7} {}", why.as_str()),
-                PickerBody::NoBranches => "no branches yet \u{b7} esc closes".to_owned(),
+                PickerBody::NoBranches => closes("no branches yet"),
                 PickerBody::NoMatch(query) => {
-                    format!("no branch matches \"{}\" \u{b7} esc closes", query.as_str())
+                    closes(&format!("no branch matches \"{}\"", query.as_str()))
                 }
                 PickerBody::Rows { .. } => String::new(),
             };
@@ -267,6 +268,16 @@ fn draw_body(buf: &mut Buffer, area: Rect, view: &PickerView, theme: &Theme) {
             };
             buf.set_string(area.x, area.y + 2, content_row(&words, width), style);
         }
+    }
+}
+
+/// `words · esc closes`. The picker is a text field — every press goes on
+/// as typed (ADR-0055) — so its key spells from the shipped table whatever
+/// his config says (ticket m8/10, decision 5).
+fn closes(words: &str) -> String {
+    match Keymap::shipped().spell_keys(&[ActionId("app.back")]) {
+        Some(key) => format!("{words} \u{b7} {key} closes"),
+        None => words.to_owned(),
     }
 }
 

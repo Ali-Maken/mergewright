@@ -32,14 +32,9 @@ fn empty(keys: &Keymap) -> String {
     }
 }
 
-/// `<keys> <verb>` pairs spelled from `keys`, two spaces apart, an unbound
-/// one left out (ticket m8/10).
+/// `<keys> <verb>` pairs spelled from `keys` ([`Keymap::key_verbs`]).
 fn spelled(keys: &Keymap, parts: &[(&'static str, &str)]) -> String {
-    parts
-        .iter()
-        .filter_map(|(action, verb)| keys.key_verb(&[ActionId(action)], verb))
-        .collect::<Vec<_>>()
-        .join("  ")
+    keys.key_verbs(parts)
 }
 
 /// One stash entry, as the overlay draws it.

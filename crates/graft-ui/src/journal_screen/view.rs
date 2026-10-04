@@ -149,8 +149,9 @@ pub struct JournalView {
     pub title_suffix: Option<String>,
     /// The refusal or notice to show, if any.
     pub status_row: Option<JournalStatusRow>,
-    /// What `⏎` does on the selected row (`⏎ undo this`), or `None` when
-    /// the row alone cannot name it.
+    /// What `⏎` does on the selected row, the verb alone (`undo this`; the
+    /// widget spells `journal.revert`'s key in front of it from his
+    /// keymap), or `None` when the row alone cannot name it.
     pub enter_words: Option<String>,
     /// `b` has a commit to name on the selected row: the bar offers
     /// `b new branch here` only then (graft's `row_commit`, the function

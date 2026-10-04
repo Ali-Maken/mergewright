@@ -185,6 +185,18 @@ impl Keymap {
             .map(|keys| format!("{keys} {verb}"))
     }
 
+    /// A footer's `<key> <verb>` pairs, two spaces apart, each spelled by
+    /// [`Keymap::key_verb`] from one action id, an unbound one left out
+    /// (`⏎ apply  p pop  esc close`). Empty when none is bound.
+    #[must_use]
+    pub fn key_verbs(&self, parts: &[(&'static str, &str)]) -> String {
+        parts
+            .iter()
+            .filter_map(|(action, verb)| self.key_verb(&[ActionId(action)], verb))
+            .collect::<Vec<_>>()
+            .join("  ")
+    }
+
     /// `words` with ` · <key> <verb>` after it (`finish needs 60x20 · esc
     /// back`), or `words` alone when the key is unbound.
     #[must_use]

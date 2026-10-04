@@ -181,7 +181,11 @@ impl Widget for &FinishScreen<'_> {
                 area.x,
                 area.y,
                 fit(
-                    &format!("finish needs {columns}x{rows} · esc back"),
+                    &self.view.keys.after(
+                        &format!("finish needs {columns}x{rows}"),
+                        crate::keymap::ActionId("app.back"),
+                        "back",
+                    ),
                     usize::from(area.width),
                 ),
                 foreground(self.theme, Token::Warning),
@@ -247,7 +251,7 @@ mod frame;
 mod layout;
 mod list;
 
-pub use frame::{UNDO_LINE, footer_hints, footer_spans, preview_line, preview_title};
+pub use frame::{footer_hints, footer_spans, preview_line, preview_title, undo_line};
 pub use layout::{
     FinishHit, FinishLayout, ListLine, Section, fits, hit, layout, list_height, list_lines,
     max_top, top_for_cursor,
