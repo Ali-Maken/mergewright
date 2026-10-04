@@ -59,7 +59,7 @@ fn staged(paths: &[&str]) -> Arc<WorkingTreeStatus> {
 }
 
 /// A state with a working tree read and room to draw.
-fn ready(paths: &[&str]) -> AppState {
+pub(crate) fn ready(paths: &[&str]) -> AppState {
     AppState {
         working_tree: Some(staged(paths)),
         size: crate::update::Size {

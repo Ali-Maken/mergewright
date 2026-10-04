@@ -2296,6 +2296,8 @@ fn an_open_search_prompt_keeps_a_handed_back_key_as_text() {
 
 mod pane_space;
 
+mod keymap_edge;
+
 mod commit_graph_offer {
     use super::*;
     use crate::repository::CommitGraphFact;

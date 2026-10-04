@@ -393,4 +393,4 @@ fn head_short(state: &AppState) -> String {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

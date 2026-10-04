@@ -847,6 +847,15 @@ impl AppState {
         self.quit.is_some()
     }
 
+    /// Seeds the process's keymap and his config's problems, and stands the
+    /// bottom row's `config: N problems · ? shows them` notice up when there
+    /// are any (ADR-0055). Startup's, once per repository screen.
+    pub(crate) fn seed_keys(&mut self, keymap: super::SharedKeymap, problems: Vec<String>) {
+        self.keymap = keymap;
+        self.config_notice = !problems.is_empty();
+        self.config_problems = problems;
+    }
+
     /// Is a text field taking the keyboard right now?
     ///
     /// Every global binding — `u`, `U`, `Ctrl+Z`, `Esc` on a failure — asks

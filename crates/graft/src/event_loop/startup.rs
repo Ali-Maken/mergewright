@@ -249,14 +249,6 @@ impl Arrival {
     }
 }
 
-/// Seeds `state` with the keymap and the config's problems, and stands the
-/// bottom row's `config: N problems` notice up when there are any.
-fn seed_keys(state: &mut AppState, keymap: crate::update::SharedKeymap, problems: Vec<String>) {
-    state.keymap = keymap;
-    state.config_notice = !problems.is_empty();
-    state.config_problems = problems;
-}
-
 /// One repository's run on an open [`Terminal`]: the job pool, the signal
 /// and resize watchers, the input forwarder and the loop. Everything it
 /// starts it stops before returning, except the terminal itself.
@@ -303,7 +295,7 @@ pub(super) fn run_repo(
         &config.config,
         common_dir.as_deref(),
     )?;
-    seed_keys(&mut state, arrival.keymap, arrival.config_problems);
+    state.seed_keys(arrival.keymap, arrival.config_problems);
     if let Some(reason) = arrival.status {
         state.status = crate::update::Status::Sticky { reason, keys: None };
     }
