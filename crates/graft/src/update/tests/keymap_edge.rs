@@ -352,3 +352,107 @@ fn every_row_is_answered_in_its_context() {
         "listed as dead, but answered: delete the entry"
     );
 }
+
+/// Journey J8 from the file on disk: `suspend_on_ctrl_z` beside a
+/// `[keys.graph]` table, read by `config::load_from`, made a keymap by
+/// `keymap_from`, seeded as startup seeds it.
+#[test]
+fn j8_a_keys_table_beside_suspend_moves_merge_and_says_one_problem() {
+    let dir = tempfile::TempDir::new().expect("a temp dir");
+    let path = dir.path().join("config.toml");
+    std::fs::write(&path, "[keys]\nsuspend_on_ctrl_z = true\n\n[keys.graph]\nmerge = \"M\"\n")
+        .expect("write the config");
+    let loaded = crate::config::load_from(&path).expect("the file loads");
+    assert!(loaded.config.keys.suspend_on_ctrl_z, "suspend still reads true");
+    assert_eq!(
+        loaded.warnings,
+        [],
+        "no unknown-key warning for `keys.graph` or its line"
+    );
+    let (keymap, problems) = crate::config::keymap_from(&loaded);
+    assert_eq!(problems.len(), 1, "{problems:?}");
+
+    let mut base = sized_to_draw(on_a_branch_row());
+    base.seed_keys(SharedKeymap::new(keymap), problems);
+    let first = crate::view::tests::draw(&base, base.size.columns, base.size.rows);
+    assert!(
+        first.contains("config: 1 problem · ? shows them"),
+        "the bottom row says so:\n{first}"
+    );
+
+    let (merged, _) = update(&base, AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char('M')))));
+    assert!(merged.preview.is_some(), "M on a branch row opens the merge preview");
+    assert_eq!(
+        seen(&base, KeyPress::plain(KeyCode::Char('m'))),
+        seen(&base, unanswered()),
+        "m does what a key nobody answers does"
+    );
+}
+
+/// The notice is there until the first key, and never with no problems.
+#[test]
+fn the_config_notice_goes_at_the_first_key_and_needs_a_problem() {
+    let mut state = on_a_branch_row();
+    state.seed_keys(SharedKeymap::default(), vec!["graf.merge is not an action".to_owned()]);
+    let draw = |state: &AppState| crate::view::tests::draw(state, 120, 36);
+    assert!(draw(&state).contains("config: 1 problem · ? shows them"));
+    let after = update(&state, AppEvent::Core(Event::Key(unanswered()))).0;
+    assert!(!draw(&after).contains("config:"), "gone at the first key");
+
+    let mut clean = on_a_branch_row();
+    clean.seed_keys(SharedKeymap::default(), Vec::new());
+    assert!(!draw(&clean).contains("config:"), "nothing to report, nothing said");
+}
+
+/// Every text field `text_field_open` names, each open and empty: the
+/// search prompt, blame's find, J's find, the stash prompt, the commit
+/// editor, the credential box, the name prompt, the picker, the rewrite
+/// editor's `r` field and the finish screen's subject.
+fn every_field() -> Vec<(&'static str, AppState)> {
+    let typed = |state: AppState, c: char| update(&state, key(KeyCode::Char(c))).0;
+    let mut rewrite = on_a_branch_row();
+    super::rewrite_editor::tests::open_an_editor_field(&mut rewrite);
+    let fields = vec![
+        ("search", typed(on_a_branch_row(), '/')),
+        ("blame find", typed(fixture(ContextId::Blame).expect("blame"), '/')),
+        ("J find", typed(fixture(ContextId::Journal).expect("J"), '/')),
+        ("stash prompt", typed(fixture(ContextId::Stash).expect("stash"), 's')),
+        ("commit editor", fixture(ContextId::CommitEditor).expect("editor")),
+        ("credential", fixture(ContextId::Credential).expect("credential")),
+        (
+            "name prompt",
+            box_over_the_graph(walk(), &HintContext::NamePrompt { toggle: true }),
+        ),
+        ("picker", fixture(ContextId::Picker).expect("picker")),
+        ("rewrite field", rewrite),
+        ("finish subject", finish_screen_for(walk(), SummaryFocus::Subject, true)),
+    ];
+    fields
+        .into_iter()
+        .map(|(name, state)| (name, sized_to_draw(state)))
+        .collect()
+}
+
+/// ADR-0055 §2.1: typed text is never remapped. With `graph.merge = "x"`,
+/// `x` typed into each field is the letter `x` — the same press, the same
+/// result, as under the default keymap — and the field shows one more `x`.
+#[test]
+fn x_typed_into_every_field_is_an_x_with_merge_on_x() {
+    // `x` is `graph.compare`'s: merge keeps it, compare loses it — on the
+    // graph `x` now merges, and still types an `x` everywhere text goes.
+    let (map, warnings) = Keymap::with_overrides(&[("graph.merge".to_owned(), vec!["x".to_owned()])]);
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    let remapped = SharedKeymap::new(map);
+    for (name, base) in every_field() {
+        assert!(base.text_field_open(), "{name}: the field is open");
+        let moved = AppState {
+            keymap: remapped.clone(),
+            ..base.clone()
+        };
+        let press = KeyPress::plain(KeyCode::Char('x'));
+        assert_eq!(seen(&moved, press), seen(&base, press), "{name}: as under the default keymap");
+        let before = seen(&base, unanswered()).frame.matches('x').count();
+        let after = seen(&moved, press).frame.matches('x').count();
+        assert!(after > before, "{name}: the field shows the x ({before} → {after})");
+    }
+}

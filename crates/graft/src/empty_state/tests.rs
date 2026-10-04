@@ -307,3 +307,56 @@ fn empty_state_bar_keys_are_answered() {
     }
     assert_eq!(checked, 4 + 3 + 3 + 3 + 2, "every form's keys were pressed");
 }
+
+/// `[keys.empty_state] open = "O"` outside a repository
+/// (m8-polish-and-ship/09b): `O` opens the path prompt, `o` does what a key
+/// nobody answers does, and `o` typed into the prompt is an `o`.
+#[test]
+fn open_moved_to_capital_o_outside_a_repository() {
+    use graft_ui::keymap::Keymap;
+
+    use super::outside_edge;
+
+    let (keymap, warnings) =
+        Keymap::with_overrides(&[("empty_state.open".to_owned(), vec!["O".to_owned()])]);
+    assert_eq!(warnings, []);
+
+    let mut moved = state();
+    assert_eq!(outside_edge(&mut moved, &keymap, ch('o')), OutsideStep::Stay);
+    assert_eq!(moved, state(), "o: nothing, as a key nobody answers");
+    let mut unanswered = state();
+    assert_eq!(outside_key(&mut unanswered, key(KeyCode::Function(20))), OutsideStep::Stay);
+    assert_eq!(moved, unanswered);
+
+    assert_eq!(outside_edge(&mut moved, &keymap, ch('O')), OutsideStep::Stay);
+    let Some(Prompt::Open(field)) = &moved.prompt else {
+        panic!("O opens the prompt: {:?}", moved.prompt);
+    };
+    assert_eq!(field.text(), "~/code/");
+
+    outside_edge(&mut moved, &keymap, ch('o'));
+    let Some(Prompt::Open(field)) = &moved.prompt else {
+        panic!("the prompt stays open: {:?}", moved.prompt);
+    };
+    assert_eq!(field.text(), "~/code/o", "typed text is never remapped");
+}
+
+/// The default keymap changes nothing outside: every key the old tests
+/// press does through the edge what it does without it.
+#[test]
+fn the_default_keymap_outside_is_every_key_as_pressed() {
+    use graft_ui::keymap::Keymap;
+
+    use super::outside_edge;
+
+    let keymap = Keymap::default();
+    for c in ['o', 'i', 'j', 'k', 'q', 'c', 't', 'x'] {
+        let (mut through, mut direct) = (state(), state());
+        assert_eq!(
+            outside_edge(&mut through, &keymap, ch(c)),
+            outside_key(&mut direct, ch(c)),
+            "{c}"
+        );
+        assert_eq!(through, direct, "{c}");
+    }
+}
