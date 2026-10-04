@@ -16,6 +16,10 @@ pub enum Translated {
 }
 
 /// [`defaults()`] with his overrides applied, resolved per context.
+///
+/// Two keymaps are equal when every action has the same chords and the
+/// same override lines decide its collisions.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Keymap {
     /// Each row's effective chords, by index into [`defaults()`].
     chords: Vec<Vec<KeyChord>>,
@@ -123,13 +127,60 @@ impl Keymap {
         }
     }
 
-    /// The action's key as every surface prints it: its first chord, or `—`
-    /// when he unbound it (or it is not an action).
+    /// The table as shipped, built once: what a text field spells (its keys
+    /// pass untranslated, so they do what their defaults do) and what tests
+    /// spell against.
+    #[must_use]
+    pub fn shipped() -> &'static Keymap {
+        static SHIPPED: std::sync::LazyLock<Keymap> = std::sync::LazyLock::new(Keymap::default);
+        &SHIPPED
+    }
+
+    /// The action's key as `?` prints it: its first live chord, or `—`
+    /// when he unbound it (or it is not an action, or every chord it had
+    /// was taken by another in a collision).
     #[must_use]
     pub fn spell(&self, action: &ActionId) -> KeyLabel {
-        self.chords(action)
+        self.live(action)
             .first()
             .map_or_else(|| KeyLabel("—".to_string()), KeyChord::label)
+    }
+
+    /// The hint bar's and the footers' spelling of several actions: each
+    /// one's first live chord, joined with `/`, an unbound action left out
+    /// (`j/k` for `app.down`, `app.up`). `None` when none is bound — the
+    /// caller draws nothing then, never `—` (ticket m8/10, decision 2).
+    #[must_use]
+    pub fn spell_keys(&self, actions: &[ActionId]) -> Option<String> {
+        join(
+            actions
+                .iter()
+                .filter_map(|action| self.live(action).first().map(|c| c.label().0)),
+        )
+    }
+
+    /// Every live chord of one action, joined with `/` (`⏎/space` for
+    /// `finish.toggle_diff`); `None` when it has none.
+    #[must_use]
+    pub fn spell_every(&self, action: &ActionId) -> Option<String> {
+        join(self.live(action).iter().map(|c| c.label().0))
+    }
+
+    /// The action's chords that still do it: every chord it holds, less any
+    /// another action of its own context took in a collision. A text
+    /// field's rows are fixed, so all of theirs.
+    fn live(&self, action: &ActionId) -> Vec<KeyChord> {
+        let Some(row) = index_of(action.0) else {
+            return Vec::new();
+        };
+        let ctx = defaults()[row].context;
+        self.chords[row]
+            .iter()
+            .copied()
+            .filter(|chord| {
+                ctx.is_text_field() || self.holder(ctx, *chord, Over::Effective) == Some(row)
+            })
+            .collect()
     }
 
     /// The action's chords as he has them; empty when unbound or unknown.
@@ -256,6 +307,12 @@ impl Keymap {
 }
 
 const QUIT_NOW_ID: ActionId = ActionId("app.quit_now");
+
+/// `labels` joined with `/`, or `None` when there are none.
+fn join(labels: impl Iterator<Item = String>) -> Option<String> {
+    let joined = labels.collect::<Vec<_>>().join("/");
+    (!joined.is_empty()).then_some(joined)
+}
 
 /// The row index of an action id.
 fn index_of(name: &str) -> Option<usize> {
