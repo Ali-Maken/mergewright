@@ -2034,6 +2034,52 @@ fn fork_rows_table() {
     );
 }
 
+/// ADR-0059 §6's reasons (14d) are no warning: muted, no `!`.
+#[test]
+fn a_fork_kept_by_a_safety_gate_is_muted() {
+    use super::line_rows::{ForkRow, fork_rows};
+    use graft_ops::preview::{Fork, ForkFate, WhyStays};
+
+    for (why, words) in [
+        (
+            WhyStays::Carries {
+                branch: branch("feature-w"),
+                why: Box::new(WhyStays::Elsewhere {
+                    worktree: std::path::PathBuf::from("../wt"),
+                }),
+            },
+            "feature-w is checked out in ../wt",
+        ),
+        (
+            WhyStays::WouldLose {
+                commit: at("b2c3d4e"),
+            },
+            "would lose b2c3d4e",
+        ),
+        (
+            WhyStays::WouldGain {
+                commit: at("b2c3d4e"),
+            },
+            "would gain b2c3d4e",
+        ),
+    ] {
+        let mut plan = a_plan();
+        plan.forks = vec![Fork {
+            branch: branch("feature-y"),
+            at: at("b2c3d4e"),
+            commits: 1,
+            fate: ForkFate::Stays(why),
+        }];
+        assert_eq!(
+            fork_rows(&plan, false).first(),
+            Some(&ForkRow {
+                text: format!("feature-y stays on b2c3d4e \u{b7} {words}"),
+                tone: ForkTone::Muted
+            })
+        );
+    }
+}
+
 /// A fork that would conflict leads with `!`, in the warning tone (R3).
 #[test]
 fn a_conflicting_fork_row_warns() {

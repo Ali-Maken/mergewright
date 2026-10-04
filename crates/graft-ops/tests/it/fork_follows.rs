@@ -669,7 +669,12 @@ fn bare_origin(repo: &TempRepo) {
 /// `git push origin <rev>:refs/heads/<branch>`, its upstream set on the
 /// local `branch` when `track`.
 fn push(repo: &TempRepo, rev: &str, branch: &str, track: bool) {
-    repo.git(&["push", "-q", "origin", &format!("{rev}:refs/heads/{branch}")]);
+    repo.git(&[
+        "push",
+        "-q",
+        "origin",
+        &format!("{rev}:refs/heads/{branch}"),
+    ]);
     if track {
         repo.git(&[
             "branch",
@@ -826,7 +831,10 @@ fn a_fork_whose_upstream_holds_only_its_fork_point_stays() {
     let repo = forked();
     bare_origin(&repo);
     push(&repo, "feature-a~1", "feature-x", true);
-    assert_eq!(pushed_to(&repo, "feature-x"), "refs/remotes/origin/feature-x");
+    assert_eq!(
+        pushed_to(&repo, "feature-x"),
+        "refs/remotes/origin/feature-x"
+    );
 }
 
 #[test]
@@ -834,7 +842,10 @@ fn a_fork_whose_upstream_holds_a_replaced_commit_under_it_stays() {
     let repo = forked();
     bare_origin(&repo);
     push(&repo, "feature-a~2", "feature-x", true);
-    assert_eq!(pushed_to(&repo, "feature-x"), "refs/remotes/origin/feature-x");
+    assert_eq!(
+        pushed_to(&repo, "feature-x"),
+        "refs/remotes/origin/feature-x"
+    );
 }
 
 #[test]
@@ -847,7 +858,10 @@ fn a_fork_pushed_without_an_upstream_stays() {
             .is_err(),
         "no upstream"
     );
-    assert_eq!(pushed_to(&repo, "feature-x"), "refs/remotes/origin/feature-x");
+    assert_eq!(
+        pushed_to(&repo, "feature-x"),
+        "refs/remotes/origin/feature-x"
+    );
 }
 
 #[test]
@@ -855,7 +869,13 @@ fn a_fork_whose_upstream_holds_only_what_is_under_onto_follows() {
     let repo = forked();
     bare_origin(&repo);
     push(&repo, "main", "main", false);
-    repo.git(&["branch", "-q", "--set-upstream-to", "origin/main", "feature-x"]);
+    repo.git(&[
+        "branch",
+        "-q",
+        "--set-upstream-to",
+        "origin/main",
+        "feature-x",
+    ]);
     assert!(
         matches!(the_fate(&repo, "feature-x"), ForkFate::Follows { .. }),
         "upstream origin/main"
@@ -1009,7 +1029,11 @@ fn folding_the_fork_point_into_the_commit_under_it_follows_onto_the_fold() {
         assert_eq!(own_diff(&repo, "feature-x"), x1);
         repo
     };
-    assert_eq!(id(&repo, "feature-x~1"), id(&repo, "feature-a~2"), "the fold");
+    assert_eq!(
+        id(&repo, "feature-x~1"),
+        id(&repo, "feature-a~2"),
+        "the fold"
+    );
     assert_eq!(repo.git(&["rev-parse", "feature-x~1^{tree}"]), c2_tree);
 }
 
@@ -1045,33 +1069,7 @@ fn amending_the_fork_point_follows_onto_the_amended_commit() {
     assert_eq!(id(&repo, "feature-x~1"), id(&repo, "feature-a~1"));
     assert_eq!(repo.git(&["show", "feature-x~1:c1.txt"]), "c1, amended");
     assert_eq!(own_diff(&repo, "feature-x"), x1);
-
-    // By hand: the staged change as a commit, then git's own rebase.
-    hand.git(&["commit", "-q", "-m", "staged"]);
-    let staged = hand.git(&["rev-parse", "HEAD"]);
-    hand.git(&["reset", "-q", "--hard", "HEAD~1"]);
-    let todo = format!(
-        "pick {}\npick {}\nfixup {staged}\nlabel graft-fork-1\npick {}\n\
-         update-ref refs/heads/feature-x\nreset graft-fork-1\npick {}\n",
-        hand.git(&["rev-parse", "feature-a~2"]),
-        hand.git(&["rev-parse", "feature-a~1"]),
-        hand.git(&["rev-parse", "feature-x"]),
-        hand.git(&["rev-parse", "feature-a"]),
-    );
-    let todo_file = hand.path().join(".git/hand-todo");
-    std::fs::write(&todo_file, todo).expect("the todo writes");
-    let output = std::process::Command::new("git")
-        .arg("-C")
-        .arg(hand.path())
-        .args(["-c", "rebase.updateRefs=false", "rebase", "-i", "-q", "main"])
-        .env("GIT_SEQUENCE_EDITOR", format!("cp {}", todo_file.display()))
-        .output()
-        .expect("git runs");
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    amend_the_fork_point_by_hand(&hand);
     for rev in [
         "feature-a",
         "feature-a~1",
@@ -1090,6 +1088,44 @@ fn amending_the_fork_point_follows_onto_the_amended_commit() {
         hand.git(&["rev-parse", "feature-x~1"]),
         hand.git(&["rev-parse", "feature-a~1"]),
         "by hand too, feature-x left the amended c2"
+    );
+}
+
+/// By hand, in `forked()`'s copy with `c1.txt` staged: the staged change as
+/// a commit, then git's own `rebase -i` with the fixup into c2 and
+/// `feature-x`'s section after it.
+fn amend_the_fork_point_by_hand(hand: &TempRepo) {
+    hand.git(&["commit", "-q", "-m", "staged"]);
+    let staged = hand.git(&["rev-parse", "HEAD"]);
+    hand.git(&["reset", "-q", "--hard", "HEAD~1"]);
+    let todo = format!(
+        "pick {}\npick {}\nfixup {staged}\nlabel graft-fork-1\npick {}\n\
+         update-ref refs/heads/feature-x\nreset graft-fork-1\npick {}\n",
+        hand.git(&["rev-parse", "feature-a~2"]),
+        hand.git(&["rev-parse", "feature-a~1"]),
+        hand.git(&["rev-parse", "feature-x"]),
+        hand.git(&["rev-parse", "feature-a"]),
+    );
+    let todo_file = hand.path().join(".git/hand-todo");
+    std::fs::write(&todo_file, todo).expect("the todo writes");
+    let output = std::process::Command::new("git")
+        .arg("-C")
+        .arg(hand.path())
+        .args([
+            "-c",
+            "rebase.updateRefs=false",
+            "rebase",
+            "-i",
+            "-q",
+            "main",
+        ])
+        .env("GIT_SEQUENCE_EDITOR", format!("cp {}", todo_file.display()))
+        .output()
+        .expect("git runs");
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
     );
 }
 

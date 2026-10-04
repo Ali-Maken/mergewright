@@ -139,11 +139,7 @@ pub(super) fn forks(
         // gated as the fork itself is (ADR-0059 §6.1).
         let carried = fates.carried(&candidates, index);
         let after_row = weigh.after_row(rewritten, candidate.off.at);
-        let weighed = Weighed {
-            candidate,
-            carried: carried.iter().map(|other| &candidates[*other]).collect(),
-            after_row,
-        };
+        let weighed = Weighed::of(&candidates, index, &carried, after_row);
         let fate = weigh.fate(&env, &weighed, &fates.moving)?;
         if let (ForkFate::Follows { .. }, Some(after_row)) = (&fate, after_row) {
             let section = fates.follow(&candidates, index, &carried, after_row, &weigh.info)?;
@@ -321,6 +317,22 @@ struct Weighed<'a> {
     after_row: Option<usize>,
 }
 
+impl<'a> Weighed<'a> {
+    /// `candidates[index]`, carrying `candidates[carried[..]]`.
+    fn of(
+        candidates: &'a [Candidate],
+        index: usize,
+        carried: &[usize],
+        after_row: Option<usize>,
+    ) -> Self {
+        Self {
+            candidate: &candidates[index],
+            carried: carried.iter().map(|other| &candidates[*other]).collect(),
+            after_row,
+        }
+    }
+}
+
 impl Weigh {
     fn read(
         repo: &RepoHandle,
@@ -481,17 +493,16 @@ impl Weigh {
         own: &[Oid],
     ) -> Result<Option<WhyStays>, PreviewError> {
         for branch in &weighed.carried {
-            let why = match self.placed(branch) {
-                Some(why) => Some(why),
-                // Its own commits are the fork's up to its tip. A
-                // remote-tracking ref holding one of them holds the fork's
-                // oldest, already weighed as the fork's own.
-                None => {
-                    let end = own.iter().position(|commit| *commit == branch.off.tip);
-                    let theirs = end.map_or(own, |end| &own[..=end]);
-                    self.upstream_holding(env, branch, under, theirs)?
-                        .map(|upstream| WhyStays::Pushed { upstream })
-                }
+            // Its own commits are the fork's up to its tip. A
+            // remote-tracking ref holding one of them holds the fork's
+            // oldest, weighed after this as the fork's own.
+            let why = if let Some(why) = self.placed(branch) {
+                Some(why)
+            } else {
+                let end = own.iter().position(|commit| *commit == branch.off.tip);
+                let theirs = end.map_or(own, |end| &own[..=end]);
+                self.upstream_holding(env, branch, under, theirs)?
+                    .map(|upstream| WhyStays::Pushed { upstream })
             };
             if let Some(why) = why {
                 return Ok(Some(WhyStays::Carries {

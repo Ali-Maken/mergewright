@@ -53,6 +53,12 @@ the new commits. Internal term; on screen it reads `built on`. Added 2026-09-26
 (M7, user "all yes"; ADR-0047).
 _Avoid_: stacked branch, child branch (as generic terms)
 
+**Fork**:
+A local branch started from a commit in the middle of his branch (not built on
+its tip). When he rewrites that commit the fork follows if it is safe (ADR-0059
+§2, §6); on screen `follows` / `stays on <sha7> · <why>`.
+_Avoid_: left behind (except `r`), child branch
+
 **Lane**:
 A vertical column in the graph occupied by one branch's first-parent chain for
 the whole of that chain's life. The **default branch** holds lane 0 and is

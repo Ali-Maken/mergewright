@@ -130,7 +130,22 @@ fn fork_row(fork: &Fork) -> ForkRow {
             text: format!("! {name} stays on {at} \u{b7} {}", why.words()),
             tone: ForkTone::Warning,
         },
-        ForkFate::Stays(why) => muted(format!("{name} stays on {at} \u{b7} {}", why.words())),
+        // Every other reason, named so a new one is a decision: nothing
+        // would break, so no warning (`! ` is `WouldConflict`'s alone).
+        // The last three are ADR-0059 §6's gates (14d).
+        ForkFate::Stays(
+            why @ (WhyStays::StopsBelow
+            | WhyStays::HasMerge { .. }
+            | WhyStays::Pushed { .. }
+            | WhyStays::Elsewhere { .. }
+            | WhyStays::Nested { .. }
+            | WhyStays::DefaultBranch
+            | WhyStays::PastCap
+            | WhyStays::NotChecked(_)
+            | WhyStays::Carries { .. }
+            | WhyStays::WouldLose { .. }
+            | WhyStays::WouldGain { .. }),
+        ) => muted(format!("{name} stays on {at} \u{b7} {}", why.words())),
     }
 }
 
