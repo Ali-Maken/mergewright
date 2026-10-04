@@ -394,6 +394,10 @@ The journal and git's reflog as one list: `●` Graft, `$` the shell, `✗` lost
 - `preview.rs` → `preview/effects.rs` (`PreviewPlan`, `Target`, `GhostCommit`, `RefMove`, `HeadMove`, `WorktreeEffect`, `ConflictForecast`, `UndoNote`, `PreviewError`, `FORECAST_CAP`, `LeftBehind`, `LEFT_BEHIND_CAP`), re-exported from `preview`.
 - `rewrite/plan.rs` inline tests → `rewrite/plan/tests.rs`.
 
+## File layout (m8/14e: pure move, private module)
+
+- `preview/forks.rs` keeps `Rewritten`, `Forks`, `forks`, `Candidate`/`candidates_of`, `Env`, `Fates`, `Weigh::fate` (the gate order). Child `forks/gates.rs`: `Weigh` (read once per preview), `Weighed`, every gate (`placed`, `upstream_holding`, `carries`, `base_change`), the reads (`line_before`, `upstreams`, `remote_holding`) and the forecast `replayed_fate`.
+
 ## Examples
 
 - `examples/snapshot_cost.rs` (m7/30q-c) — times `snapshot::take` and `raw_record` apart on a 5 000-file repository it builds, three cases (5 changed, clean, autocrlf with 50 changed LF); run by `scripts/m7-30q-perf.sh` in release. `[runs files]` runs smaller. Each case line ends `raw_spawns=<n>`, the last `raw_record`'s `commands` length (m7/30r).
