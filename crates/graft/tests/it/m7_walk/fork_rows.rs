@@ -50,19 +50,31 @@ fn short(repo: &Path, rev: &str) -> String {
 
 /// The two fork rows, in order, at the indent of the `branches:` rows.
 fn assert_fork_rows(body: &str, repo: &Path, follows_from: &str) {
-    let lines: Vec<&str> = body.lines().collect();
-    let follows = format!("feature-b follows \u{b7} 1 commit from {follows_from}");
-    let stays = format!(
-        "feature-c stays on {} \u{b7} would conflict in one.txt",
-        short(repo, "feature-a~1")
+    assert_rows_in_order(
+        body,
+        &[
+            format!("feature-b follows \u{b7} 1 commit from {follows_from}"),
+            format!(
+                "feature-c stays on {} \u{b7} would conflict in one.txt",
+                short(repo, "feature-a~1")
+            ),
+        ],
     );
+}
+
+/// Each of `rows` on a line of its own, in this order, and no `left
+/// behind`: every branch off the line is a fork here.
+fn assert_rows_in_order(body: &str, rows: &[String]) {
+    let lines: Vec<&str> = body.lines().collect();
     let at = |words: &str| {
         lines
             .iter()
             .position(|line| line.contains(words))
             .unwrap_or_else(|| panic!("{words:?} in {body}"))
     };
-    assert!(at(&follows) < at(&stays), "follows first: {body}");
+    for pair in rows.windows(2) {
+        assert!(at(&pair[0]) < at(&pair[1]), "{pair:?} in order: {body}");
+    }
     assert!(
         !body.contains("left behind"),
         "every branch off the line is a fork here: {body}"
@@ -97,9 +109,9 @@ fn the_put_in_box_names_each_fork() {
     app.close();
 }
 
-/// `R`, then `d` on part 1: `feature-b`'s fork point is dropped, so it
-/// follows onto the row below; `feature-c`'s edit to `one.txt` now meets a
-/// line without it, so it stays.
+/// `R`, then `d` on part 2: `feature-c`'s fork point is dropped, so it
+/// stays — following would lose part 2 (ADR-0059 §6.3, 14d); `feature-b`,
+/// off part 1, is built on the same commits after and follows.
 #[test]
 fn the_rewrite_editor_names_each_fork() {
     let dir = two_forks_repo();
@@ -108,7 +120,6 @@ fn the_rewrite_editor_names_each_fork() {
     let state = place_on(&app, state, repo, "HEAD");
     let mut route = Vec::new();
     let state = capital_r(&app, &state, &mut route, 187, 44);
-    let state = app.key(&state, KeyCode::Char('j'));
     let state = app.key(&state, KeyCode::Char('j'));
     let state = replanned(
         &app,
@@ -124,7 +135,17 @@ fn the_rewrite_editor_names_each_fork() {
     );
     let body = frame(&state, 187, 44);
     crate::captures::check_shot("m8/fork-follows-rewrite-editor-187x44.txt", &body);
-    assert_fork_rows(&body, repo, &short(repo, "feature-a~2"));
+    let part_2 = short(repo, "feature-a~1");
+    assert_rows_in_order(
+        &body,
+        &[
+            format!(
+                "feature-b follows \u{b7} 1 commit from {}",
+                short(repo, "feature-a~2")
+            ),
+            format!("feature-c stays on {part_2} \u{b7} would lose {part_2}"),
+        ],
+    );
     drop(state);
     app.close();
 }

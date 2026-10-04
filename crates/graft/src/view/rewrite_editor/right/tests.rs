@@ -89,6 +89,44 @@ fn the_after_side_names_each_fork() {
     );
 }
 
+/// ADR-0059 §6's reasons draw muted, no `!` (14d).
+#[test]
+fn a_fork_kept_by_a_safety_gate_is_muted() {
+    let feature_w = graft_core::ref_name::RefName::new(b"refs/heads/feature-w").expect("a name");
+    for (why, words) in [
+        (
+            WhyStays::Carries {
+                branch: feature_w,
+                why: Box::new(WhyStays::DefaultBranch),
+            },
+            "feature-w is the default branch",
+        ),
+        (
+            WhyStays::WouldLose {
+                commit: at("b2c3d4e"),
+            },
+            "would lose b2c3d4e",
+        ),
+        (
+            WhyStays::WouldGain {
+                commit: at("b2c3d4e"),
+            },
+            "would gain b2c3d4e",
+        ),
+    ] {
+        let mut plan = forked();
+        plan.forks[1].fate = ForkFate::Stays(why);
+        let facts = facts_of(&plan);
+        assert!(
+            facts.contains(&(
+                format!("feature-y stays on b2c3d4e \u{b7} {words}"),
+                FactTone::Muted
+            )),
+            "{facts:#?}"
+        );
+    }
+}
+
 /// A stays row for any other reason is no warning: muted (R4).
 #[test]
 fn a_fork_that_stays_for_a_plain_reason_is_muted() {
