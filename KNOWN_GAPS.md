@@ -1119,6 +1119,10 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/08-missing-folder-i | Missing folder: no `i` offer (default, user question open); switch is the `Char('i') if !state.missing` arm in graft/src/empty_state.rs. | **unverified** | M8 |
 | M8/04-review-minors | 5 Minors (1 a question) in `docs/reviews/m8-04-pixel-memory.md`. | **broken** (per finding; question unverified) | M8 |
 | M8/help-shows-keys-until-11 | `? shows them` (key list in help) is promised by the 09 table but drawn only from ticket 11, which must call `dispatch_key` (09 split note). | **broken** | M8 |
+| M8/04-big-cell-rss | At a 24×52 cell on MONOREPO, RSS 434 MB on one of two runs (314 on the other), Malloc Large (empty) 267 MB; viewport floor alone exceeds the budget there. Ticket 04 NOTES. | **unverified** | M8 |
+| M8/04-pool-capacity-side | Pooled strip buffers keep max size: ~half the strips the budget could hold fit (more re-rasterising on long holds) vs right-sizing = 16–31 new buffers per 115 j. Pick a side on the M8 quiet perf run. ADR-0053, DESIGN §3.8. | **unverified** | M8 |
+| M8/m6-capture-drift | m6-21 and m6-24 at 120×40 differ run to run (async `reading…`, row count). Other walks/sizes stable on a second run. | **broken** | M8 |
+| M8/22-reshot-unjudged | 22 re-shot 42 stale m1–m6 captures (M8 header/gutter); diffs not judged by eye. Contact sheet goes to the user at the checkpoint. | **unverified** | M8 |
 | M8/long-tmpdir-socket | 6+ graft tests fail when `$TMPDIR` is a long path (unix-socket path limit); Paperclip runs set one. Gates pass with `TMPDIR=/tmp`. Tests should not depend on `$TMPDIR` length — cause not fixed. | **broken** | M8 |
 | M8/startup-rs-564 | `startup.rs` 564 lines, over the readability limit; outside 02's file set, not split. | **broken** | M8 |
 | M8/14c-fork-wording | A fork that follows reads "built on yours", same as a dependent — 14c to decide (question). `docs/shots/m7/*-left-behind-*` now show a follow; names stale. | **unverified** | M8 |
