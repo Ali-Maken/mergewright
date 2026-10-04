@@ -124,3 +124,5 @@ Return type of `dispatch_key`: whatever `core_event`'s `Event::Key` arm yields t
 One context, ~120k: config ~15k, edge + `context_of` ~25k, outside + status ~15k, fixtures and the two sweeps ~50k.
 If the fixtures alone pass ~50k, land 1–6 with J8, typed-text and outside tests, commit at the seam, and report
 `blocked: sweeps` — the conductor gives the two sweeps to an Opus follow-up.
+
+> Conductor (2026-10-04), inputs from 09 (see 09 NOTES): name prompt has no ContextId; `translate` passes every key in text-field contexts (09 builder decided, spec silent); spelling exemptions `release`, `type`, `tab` go to ticket 10; gap M8/ctrl-shift-c-legacy.
