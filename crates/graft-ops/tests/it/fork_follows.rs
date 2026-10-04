@@ -26,7 +26,7 @@ use crate::support::{
     NOW, Never, TempRepo, context, git_version, journal_for, run, run_undo, state_of, try_run,
 };
 
-fn id(repo: &TempRepo, rev: &str) -> Oid {
+pub(crate) fn id(repo: &TempRepo, rev: &str) -> Oid {
     Oid::from_hex(&repo.git(&["rev-parse", rev])).expect("a commit id")
 }
 
@@ -50,13 +50,13 @@ fn heads(repo: &TempRepo) -> String {
 }
 
 /// `git diff <rev>~1 <rev>`: a commit's own change.
-fn own_diff(repo: &TempRepo, rev: &str) -> String {
+pub(crate) fn own_diff(repo: &TempRepo, rev: &str) -> String {
     repo.git(&["diff", &format!("{rev}~1"), rev])
 }
 
 /// `main` m1; `feature-a` c1 c2 c3 off it (`HEAD`), `shared.txt` made in
 /// c1; `feature-x` x1 off c2, its own file.
-fn forked() -> TempRepo {
+pub(crate) fn forked() -> TempRepo {
     let repo = TempRepo::init();
     commit(&repo, "m1");
     repo.git(&["switch", "-q", "-c", "feature-a"]);
@@ -89,7 +89,7 @@ fn as_run_with(
     plan_as_run(&handle, git, op, &facts, &Never).unwrap_or_else(|why| panic!("it plans: {why:?}"))
 }
 
-fn as_run(repo: &TempRepo, params: RewriteParams) -> (Operation, PreviewPlan) {
+pub(crate) fn as_run(repo: &TempRepo, params: RewriteParams) -> (Operation, PreviewPlan) {
     as_run_with(repo, params, &git_version())
 }
 
@@ -107,7 +107,7 @@ fn amend_into(repo: &TempRepo, rev: &str) -> (Operation, PreviewPlan) {
 
 /// `R` from `feature-a`'s first commit, `c1` reworded, `edit` on the rows
 /// whose subject is in `edits`.
-fn reword_c1(repo: &TempRepo, edits: &[&str]) -> RewriteParams {
+pub(crate) fn reword_c1(repo: &TempRepo, edits: &[&str]) -> RewriteParams {
     let first = repo.git(&["rev-list", "--reverse", "main..feature-a"]);
     let first = first.lines().next().expect("feature-a has commits");
     let mut params = planned(
@@ -133,7 +133,7 @@ fn reword_c1(repo: &TempRepo, edits: &[&str]) -> RewriteParams {
 }
 
 /// Every fork the preview names, short name → fate.
-fn fates(drawn: &PreviewPlan) -> Vec<(String, ForkFate)> {
+pub(crate) fn fates(drawn: &PreviewPlan) -> Vec<(String, ForkFate)> {
     drawn
         .forks
         .iter()
@@ -147,7 +147,7 @@ fn fates(drawn: &PreviewPlan) -> Vec<(String, ForkFate)> {
         .collect()
 }
 
-fn fate_of(drawn: &PreviewPlan, branch: &str) -> ForkFate {
+pub(crate) fn fate_of(drawn: &PreviewPlan, branch: &str) -> ForkFate {
     fates(drawn)
         .into_iter()
         .find(|(name, _)| name == branch)
@@ -157,7 +157,7 @@ fn fate_of(drawn: &PreviewPlan, branch: &str) -> ForkFate {
         )
 }
 
-fn stays(fate: &ForkFate) -> &WhyStays {
+pub(crate) fn stays(fate: &ForkFate) -> &WhyStays {
     match fate {
         ForkFate::Stays(why) => why,
         ForkFate::Follows { .. } => panic!("it follows"),
@@ -648,7 +648,7 @@ const WT: &str = ".git/graft-wt";
 
 /// `forked()` with x2 on `feature-x` and `feature-w` at x1: `feature-x`
 /// carries `feature-w`.
-fn carrying() -> TempRepo {
+pub(crate) fn carrying() -> TempRepo {
     let repo = forked();
     repo.git(&["switch", "-q", "feature-x"]);
     commit(&repo, "x2");
@@ -659,7 +659,7 @@ fn carrying() -> TempRepo {
 
 /// A real bare repository as `origin` (inside `.git`, so it goes when the
 /// repository does).
-fn bare_origin(repo: &TempRepo) {
+pub(crate) fn bare_origin(repo: &TempRepo) {
     let path = repo.path().join(".git/origin.git");
     let path = path.to_str().expect("a UTF-8 path");
     repo.git(&["init", "-q", "--bare", path]);
@@ -668,7 +668,7 @@ fn bare_origin(repo: &TempRepo) {
 
 /// `git push origin <rev>:refs/heads/<branch>`, its upstream set on the
 /// local `branch` when `track`.
-fn push(repo: &TempRepo, rev: &str, branch: &str, track: bool) {
+pub(crate) fn push(repo: &TempRepo, rev: &str, branch: &str, track: bool) {
     repo.git(&[
         "push",
         "-q",
@@ -697,7 +697,7 @@ fn no_move_of(drawn: &PreviewPlan, branches: &[&str]) {
     }
 }
 
-fn carries(why: &WhyStays) -> (String, &WhyStays) {
+pub(crate) fn carries(why: &WhyStays) -> (String, &WhyStays) {
     match why {
         WhyStays::Carries { branch, why } => (
             String::from_utf8_lossy(branch.as_bytes()).into_owned(),

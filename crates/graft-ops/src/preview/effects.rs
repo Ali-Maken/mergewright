@@ -229,7 +229,10 @@ pub enum WhyStays {
     /// Moving it would need a force-push he never asked for.
     Pushed {
         /// The remote-tracking ref that holds it, in full
-        /// (`refs/remotes/origin/feature-x`): its upstream, or any other.
+        /// (`refs/remotes/origin/feature-x`), ADR-0059 §6.2: (a) its
+        /// remote-tracking upstream or (b) a remote ref of its own name,
+        /// holding a commit of `onto..F`; or (c) any remote ref holding an
+        /// own commit. Never a local branch.
         upstream: RefName,
     },
     /// It is checked out in another worktree. Git would move it all the
