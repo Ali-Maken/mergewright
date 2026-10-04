@@ -1,6 +1,6 @@
 # G-daily 3d — fork safety review fixes: a same-name remote is a push, a local upstream is not, `forks.rs` split
 
-Status: draft
+Status: done
 Build with: **Opus** — the rule is decided below (ADR-0059 §6.2 amendment text included); a pure-move split plus two
 read changes held by git-truth tests. Not Fable: no structural choice left; correctness is read off refs with git.
 Blocked by: none. File check vs 10c: 10c is graft-ui + graft only; 10b's graft-ops word sites are not in
@@ -89,10 +89,15 @@ fn own_name_remotes<'a>(remote_refs: &'a [RefName], branch: &RefName) -> Vec<&'a
 `forks/gates.rs` line.
 
 ## Acceptance (truth read with git, never Graft's reads; each tick names its test at tick time)
-- [ ] **M2 — split.** `forks.rs` and `forks/gates.rs` (and `reads.rs` if made) each under 400 lines (`wc -l` in
+- [x] **M2 — split.** `forks.rs` and `forks/gates.rs` (and `reads.rs` if made) each under 400 lines (`wc -l` in
       NOTES); split commit alone: nextest count identical before/after (both numbers in NOTES), clippy
       `too_many_lines` clean; MAP.md `## preview` names both files. — test: none (pure move); evidence = counts.
-- [ ] **M1 — own-name remote, no upstream** (bare remote, `R` reword c1; `feature-a` = main─c1─c2─c3, so after the
+- [x] **M1 — own-name remote, no upstream** (tests, all `fork_pushed::`: P1 `a_fork_with_no_commits_pushed_without_u_stays`;
+      P2 `a_fork_pushed_without_u_at_its_fork_point_then_built_on_stays`; carried
+      `a_fork_carrying_a_branch_pushed_without_u_below_it_stays`; P3
+      `a_fork_carrying_a_branch_pushed_without_u_at_its_tip_names_it`; controls
+      `a_fork_follows_when_only_his_line_is_pushed`, `a_fork_whose_own_name_remote_holds_only_onto_follows` (with and
+      without `-u`); unit `forks::reads::tests::own_name_*`, `a_slash_in_the_remote_name_*`) (bare remote, `R` reword c1; `feature-a` = main─c1─c2─c3, so after the
       run `feature-a~1` is c2'), in `tests/it/fork_pushed.rs`, each asserting fate, words, and after `y` the refs
       with `git rev-parse` / `merge-base --is-ancestor`:
       · P1: `park` at c2, 0 commits, `git push origin park` (no `-u`) → `Stays(Pushed { origin/park })`, words
@@ -107,12 +112,14 @@ fn own_name_remotes<'a>(remote_refs: &'a [RefName], branch: &RefName) -> Vec<&'a
         unpushed → follows; after: `git rev-parse feature-x~1` == `git rev-parse feature-a~1`.
       · Control: `origin/feature-x` = `main` (holds only `onto`) → follows; same after-check.
       Red first: P1, P2, carried fail on pre-14e code (they follow); P3 changes words only (NOTES). Names at tick.
-- [ ] **m1 — local upstream.** P4: `feature-x` = c2 + x1, `git branch --set-upstream-to feature-a feature-x` →
+- [x] **m1 — local upstream.** (tests: `fork_pushed::a_fork_tracking_a_local_branch_follows` (P4, asserts no
+      `Pushed` names `refs/heads/*`), `fork_pushed::a_fork_carrying_a_branch_tracking_a_local_branch_follows`;
+      `fork_follows::a_pushed_fork_stays` green) P4: `feature-x` = c2 + x1, `git branch --set-upstream-to feature-a feature-x` →
       `Follows`; after `y`: `git rev-parse feature-x~1` == `feature-a~1`, x1's diff unchanged. Carried `feature-w`
       (at x1, tracking `feature-a`), `feature-x` = c2 x1 x2 → follows; after: `feature-w` == `feature-x~1`. The P4
       test asserts no fork's `Pushed` names a `refs/heads/*` ref. `a_pushed_fork_stays` (`url "."` remote) still
       green — NOTES says which ref its upstream is. Red first on pre-14e code. Names at tick.
-- [ ] **ADR + docs.** ADR-0059 §6.2 replaced by the Decision's text, header line amended; `effects.rs` `Pushed` doc and
+- [x] **ADR + docs.** (doc, no test; grep result in NOTES) ADR-0059 §6.2 replaced by the Decision's text, header line amended; `effects.rs` `Pushed` doc and
       MAP.md `WhyStays`/`Pushed` line say (a)(b)(c); grep `pushed to` in `docs/` and `TESTING.md` for any row
       promising a local upstream reads pushed — none, or listed in NOTES. — doc (no test).
 
@@ -132,3 +139,30 @@ workspace-wide.
 
 ## Size
 One context, ~40k: split ~12k, rule + reads ~8k, ~9 git-truth tests on 14d's fixture ~15k, docs ~5k.
+
+## NOTES (builder, 2026-10-04)
+- **Scout:** `.scratch/m8-polish-and-ship/scouts/14d-fork-safety.md` is pre-14d (467-line file); did not suffice for
+  post-14d layout. Read `forks.rs` (686 lines) directly instead — it was the file being split. No new scout.
+- **Split (commit 67653e47, alone):** nextest 5497 passed / 10 skipped before and after (identical);
+  `clippy -W clippy::too_many_lines` no hits in `forks*`. Deviation from Signatures: `forks.rs` still 413 lines with
+  only the listed fns moved, so `Weigh`/`Weighed` structs, `Weigh::read`/`under`/`after_row` and `replayed_fate` also
+  went to `gates.rs` (`Weigh::fate`, the order, stays in `forks.rs`). After the rule, `gates.rs` reached 440, so
+  `forks/reads.rs` was made (as the ticket allows). Final `wc -l`: forks.rs 372, forks/gates.rs 284, forks/reads.rs 176.
+- **Rule:** `reads::upstreams` keeps only `refs/remotes/*` upstreams (m1); `reads::remote_refs` (one
+  `for-each-ref --format=%(refname) refs/remotes/`) + `reads::own_name_remotes` (suffix); `Weigh::upstream_holding`
+  now tries the upstream then each own-name ref (dedup), one `holds_any` (`rev-list --ignore-missing`) each.
+  `holds_any` / `rewrite.rs` not edited. Order in `Weigh::fate` unchanged: (a)+(b) for F, carried gates (a)+(b), (c).
+- **Red first:** on the split commit, 6 of 8 `fork_pushed` tests failed (P1, P2, carried, P3, both local-upstream);
+  the 2 controls passed. P3 failed on words/shape only (got F's own `Pushed { origin/feature-w }`, now `Carries`).
+- **Existing fates:** every `fork_follows` test green unchanged — no existing fate changed.
+  `a_pushed_fork_stays`' upstream is `refs/remotes/origin/feature-x` (remote `origin` url `.`, merge
+  `refs/heads/feature-x`, fetch refspec → remote-tracking), so (a) still applies.
+- **Spawns per preview** (from the code, not measured with a counter): +1 `for-each-ref` per preview with
+  candidates; +1 `rev-list` per own-name remote ref that is not already the upstream. 14d fixture (`forked()`, no
+  remote): exactly +1 spawn (the `for-each-ref`, empty output), 0 extra `rev-list`.
+- **`published`** (`preview/rewrite.rs:303-314`) still counts a local upstream (no `refs/remotes/` filter):
+  `--track feature-a` on a line branch puts it in `published`. Not changed (out of scope).
+- **Docs grep:** `pushed to` in `docs/` (minus reviews/log/ADR-0059) and `TESTING.md`: 3 hits, none promising a
+  local upstream reads pushed (design note :420 says `pushed to origin/feature-x`). `git diff --stat docs/shots`
+  empty; graft's `m7_walk` fork-row walks ran in the workspace nextest, green.
+- Gates (workspace): fmt ok, clippy ok, nextest 5507/5507 (+10 skipped), doctests ok. Not compacted.

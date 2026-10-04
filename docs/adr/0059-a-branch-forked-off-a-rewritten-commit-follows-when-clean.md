@@ -3,7 +3,7 @@
 Date: 2026-10-02
 Status: **Accepted**, 2026-10-02 (field notes :89, item 5: "go ahead with your recommendation" — the branch moves too
 when it moves clean, shown in the preview first). Design note `m8-polish-and-ship.md`, "Where I'd differ", 2c.
-**Amended 2026-10-04** (§6; review `docs/reviews/m8-14bc-fork-follows.md` M1–M3, m9): what makes a fork not clean.
+**Amended 2026-10-04** (§6; review `docs/reviews/m8-14bc-fork-follows.md` M1–M3, m9): what makes a fork not clean; §6.2 again 2026-10-04 (review m8-14d M1, m1).
 Amends: ADR-0047 §1 (todo vocabulary) and §4 (scope of "never a fork").
 
 ## Context
@@ -81,10 +81,21 @@ doubt → the fork stays and the preview says why. Staying is always safe: nothi
    first that fails keeps the whole fork, named: `feature-x stays on a1b2c3d · feature-w is checked out in <path>`.
    Git does **not** refuse an `update-ref` of a branch checked out elsewhere: it moves it and leaves that worktree's
    index and files on the old commit (hand-run, git 2.54, review M1). The gate is Graft's alone.
-2. **Pushed** means either: F's upstream holds any commit of `onto..F` (the rewrite's `onto`: so `at`, the replaced
-   commits under it, and F's own); or any `refs/remotes/*` ref holds one of F's own commits (`at..F`), upstream set
-   or not. Same rule for each carried branch. A fork with 0 commits whose upstream holds `at` therefore stays.
-   (Was: the upstream holds any of `at..F` — blind to `at` and below, review M2.)
+2. **Pushed** means any of these, for F and the same for each carried branch W (with `onto..W`):
+   a. its upstream is a remote-tracking ref (`refs/remotes/*`) and holds a commit of `onto..F` (the rewrite's
+      `onto`: so `at`, the replaced commits under it, and F's own);
+   b. a remote-tracking ref of its **own name** (`refs/remotes/<remote>/<its short name>`) holds a commit of
+      `onto..F`, upstream set or not — `git push origin F` without `-u` publishes F as surely as with it;
+   c. any `refs/remotes/*` ref holds one of F's own commits (`at..F`).
+   A ref of **another** name holding only `at` or below (his line's own `origin/feature-a`) is no sign F is pushed:
+   counting it would keep every fork. A **local** upstream (`refs/heads/*`, `--track feature-a`) is not a push: that
+   branch is weighed by its own role (line, fork, carried, dependent). Own-name match is by suffix
+   (`refs/remotes/<anything>/<short>`); a remote whose name holds `/` can make another branch's ref match — that
+   errs to staying. Not seen: a push under another name, no upstream, holding none of F's own commits; the remote
+   keeps the old commits and the journal every old tip. A fork with 0 commits whose upstream or own-name remote
+   holds `at` stays.
+   (Was, 2026-10-04: any upstream vs `onto..F`, or any remote ref vs `at..F` — blind to a same-name push without
+   `-u` holding only `at` or below, and read a local upstream as pushed; review `m8-14d-fork-safety.md` M1, m1.)
 3. **Base unchanged.** Compare, as sets of original commits, the line's commits at or under `at` before the edit with
    the commits in the rows up to and including `at`'s row after it (a squash/fixup group counts every commit folded
    into it; a staged change `a` folds in is not a commit and does not count). Unequal → stays:

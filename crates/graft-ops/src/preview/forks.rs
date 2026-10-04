@@ -8,6 +8,7 @@
 //! `Moved`). A forecast hole is never read as clean.
 
 mod gates;
+mod reads;
 
 use std::collections::{HashMap, HashSet};
 
@@ -24,7 +25,8 @@ use crate::rewrite::{ForkSection, OffLine, OwnCommits, TodoAction, TodoLine};
 
 use super::chain::Chained;
 use super::{Fork, ForkFate, LeftBehind, PreviewError, Target, WhyStays};
-use gates::{Weigh, Weighed, remote_holding, replayed_fate};
+use gates::{Weigh, Weighed, replayed_fate};
+use reads::remote_holding;
 
 /// The rewrite as the forks are measured against it.
 pub(super) struct Rewritten<'a> {
@@ -323,8 +325,10 @@ impl Weigh {
         };
         let commits: Vec<Oid> = own.iter().map(|(commit, _)| *commit).collect();
         // Pushed (§6.2) is weighed in two halves around the branches it
-        // carries: a remote-tracking ref of a carried branch holds the
-        // fork's own commits too, and the words name that branch.
+        // carries: its upstream and own-name remotes (a, b) first, then any
+        // remote holding an own commit (c) — a remote-tracking ref of a
+        // carried branch holds the fork's own commits too, and the words
+        // name that branch.
         if let Some(upstream) = self.upstream_holding(env, candidate, under, &commits)? {
             return Ok(ForkFate::Stays(WhyStays::Pushed { upstream }));
         }

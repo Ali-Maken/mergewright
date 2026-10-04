@@ -1,7 +1,7 @@
-//! The gates a fork's fate is weighed through (ADR-0059 §6), and the reads
-//! they share: where a branch is, whether it is pushed, what it carries,
-//! whether its base changes, and last the forecast of its replay.
-//! [`Weigh::fate`] (in `forks.rs`) runs them in order.
+//! The gates a fork's fate is weighed through (ADR-0059 §6): where a branch
+//! is, whether it is pushed, what it carries, whether its base changes, and
+//! last the forecast of its replay. [`Weigh::fate`] (in `forks.rs`) runs
+//! them in order; their reads are `reads.rs`'s.
 
 use std::collections::HashMap;
 
@@ -9,13 +9,14 @@ use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 use graft_git::history_reads::CommitSummary;
 use graft_git::repo::RepoHandle;
-use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
+use graft_git::run::Stop;
 
 use crate::rewrite::{TodoAction, squash_groups};
 
 use super::super::chain::{self, Step};
 use super::super::rewrite::holds_any;
 use super::super::{ConflictForecast, ForkFate, PreviewError, WhyStays};
+use super::reads::{line_before, own_name_remotes, remote_refs, upstreams};
 use super::{Candidate, Env, Rewritten, facts, ref_name};
 
 /// What every fate is weighed with, read once for all the forks.
@@ -24,8 +25,10 @@ pub(super) struct Weigh {
     pub(super) row_of: HashMap<Oid, usize>,
     /// The default branch, full name.
     default: Option<String>,
-    /// Fork → its upstream, full names.
+    /// Fork → its upstream, full names; remote-tracking ones only.
     upstreams: HashMap<String, String>,
+    /// Every remote-tracking ref, full names (ADR-0059 §6.2 b).
+    remote_refs: Vec<RefName>,
     /// Every fork commit's summary.
     pub(super) info: HashMap<Oid, CommitSummary>,
     /// The line's commits before the edit, `onto..` its top on the first
@@ -76,12 +79,14 @@ impl Weigh {
                 row_of,
                 default: None,
                 upstreams: HashMap::new(),
+                remote_refs: Vec::new(),
                 info: HashMap::new(),
                 line: Vec::new(),
             });
         }
         let default = crate::rewrite::default_branch_of(repo, None).map_err(facts)?;
         let upstreams = upstreams(repo, candidates, stop)?;
+        let remote_refs = remote_refs(repo, stop)?;
         let commits: Vec<Oid> = candidates.iter().flat_map(Candidate::commits).collect();
         let info = chain::summaries(repo, &commits, stop)?;
         let line = match rewritten.line.last() {
@@ -92,6 +97,7 @@ impl Weigh {
             row_of,
             default,
             upstreams,
+            remote_refs,
             info,
             line,
         })
@@ -134,10 +140,12 @@ impl Weigh {
             })
     }
 
-    /// `branch`'s upstream, when it holds a commit of `onto..branch`
-    /// (ADR-0059 §6.2): `under`, the line's commits at or under its fork
-    /// point, or `own`, its own commits. The other half of pushed — any
-    /// remote-tracking ref holding one of `own` — is [`remote_holding`].
+    /// The first of `branch`'s own remote-tracking refs that holds a commit
+    /// of `onto..branch` (ADR-0059 §6.2 a, b): its upstream when that is a
+    /// remote-tracking ref, then every one of its own name, upstream set or
+    /// not. `under` is the line's commits at or under its fork point, `own`
+    /// its own commits. The rest of pushed — any remote-tracking ref holding
+    /// one of `own` (c) — is `reads::remote_holding`. One `rev-list` per ref.
     pub(super) fn upstream_holding(
         &self,
         env: &Env<'_>,
@@ -146,12 +154,21 @@ impl Weigh {
         own: &[Oid],
     ) -> Result<Option<RefName>, PreviewError> {
         let name = String::from_utf8_lossy(branch.off.branch.as_bytes());
-        let Some(upstream) = self.upstreams.get(name.as_ref()) else {
-            return Ok(None);
-        };
+        let mut refs: Vec<RefName> = Vec::new();
+        if let Some(upstream) = self.upstreams.get(name.as_ref()) {
+            refs.push(ref_name(upstream)?);
+        }
+        for remote in own_name_remotes(&self.remote_refs, &branch.off.branch) {
+            if !refs.contains(remote) {
+                refs.push(remote.clone());
+            }
+        }
         let held: Vec<Oid> = under.iter().chain(own).copied().collect();
-        if holds_any(env.repo, upstream, env.rewritten.onto, &held, env.stop)? {
-            return Ok(Some(ref_name(upstream)?));
+        for remote in refs {
+            let full = String::from_utf8_lossy(remote.as_bytes());
+            if holds_any(env.repo, &full, env.rewritten.onto, &held, env.stop)? {
+                return Ok(Some(remote));
+            }
         }
         Ok(None)
     }
@@ -216,80 +233,6 @@ impl Weigh {
             .find(|commit| !under.contains(commit))
             .map(|gained| WhyStays::WouldGain { commit: *gained })
     }
-}
-
-/// The line's commits before the edit, `onto..top` on the first parents,
-/// oldest first: one `rev-list`.
-fn line_before(
-    repo: &RepoHandle,
-    onto: Oid,
-    top: Oid,
-    stop: &dyn Stop,
-) -> Result<Vec<Oid>, PreviewError> {
-    let output = GitInvocation::new(repo)
-        .args([
-            GitArg::Flag("rev-list"),
-            GitArg::Flag("--first-parent"),
-            GitArg::Flag("--reverse"),
-            GitArg::Word(top.to_string()),
-            GitArg::Word(format!("^{onto}")),
-        ])
-        .run(stop)?;
-    String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .map(|line| {
-            Oid::from_hex(line.trim()).map_err(|_| {
-                PreviewError::Read(RunError::Unparsable(format!("rev-list printed {line:?}")))
-            })
-        })
-        .collect()
-}
-
-/// The first remote-tracking ref (by name, symbolic refs aside) that holds
-/// `commit`, in full: one `for-each-ref --contains`.
-pub(super) fn remote_holding(
-    repo: &RepoHandle,
-    commit: Oid,
-    stop: &dyn Stop,
-) -> Result<Option<RefName>, PreviewError> {
-    let output = GitInvocation::new(repo)
-        .args([
-            GitArg::Flag("for-each-ref"),
-            GitArg::Flag("--format=%(refname)%00%(symref)"),
-            GitArg::Word(format!("--contains={commit}")),
-            GitArg::Flag("refs/remotes"),
-        ])
-        .run(stop)?;
-    String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .filter_map(|line| line.split_once('\0'))
-        .find(|(_, symref)| symref.is_empty())
-        .map(|(name, _)| ref_name(name))
-        .transpose()
-}
-
-/// Each candidate's upstream, full names: one `for-each-ref`.
-fn upstreams(
-    repo: &RepoHandle,
-    candidates: &[Candidate],
-    stop: &dyn Stop,
-) -> Result<HashMap<String, String>, PreviewError> {
-    let mut args = vec![
-        GitArg::Flag("for-each-ref"),
-        GitArg::Flag("--format=%(refname)%00%(upstream)"),
-    ];
-    args.extend(
-        candidates
-            .iter()
-            .map(|candidate| GitArg::Ref(candidate.off.branch.as_bytes().to_vec())),
-    );
-    let output = GitInvocation::new(repo).args(args).run(stop)?;
-    Ok(String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .filter_map(|line| line.split_once('\0'))
-        .filter(|(_, upstream)| !upstream.is_empty())
-        .map(|(name, upstream)| (name.to_owned(), upstream.to_owned()))
-        .collect())
 }
 
 /// Whether a fork's own commits (`own`: commit, parent) replay clean onto
