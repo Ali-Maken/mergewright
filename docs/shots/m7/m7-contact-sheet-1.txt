@@ -235,7 +235,7 @@ JOURNAL · what happened in this repo, newest first
 │ u undoes it                                                                                                                                                                             │
 │ git reset --hard fc48213fadfd01fc8050e4aaa8596dfb2697b383                                                                                                                               │
 │ ▸[ Cancel ]   [ Put back ]                                                                                                                                                              │
-╰ y put it back  ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╰ y put it back  ←/→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds
 
 
@@ -393,7 +393,7 @@ JOURNAL · what happened in this repo, newest first
 │ u undoes it                                                                                                                                                                             │
 │ git --literal-pathspecs restore --source=9955b078873890a8ba809d90f81a2df856c4b2ad --worktree -- src/a.rs                                                                                │
 │ ▸[ Cancel ]   [ Put back ]                                                                                                                                                              │
-╰ y put it back  ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╰ y put it back  ←/→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds
 
 
@@ -505,7 +505,7 @@ JOURNAL · what happened in this repo, newest first
 │ u undoes it                                                                                                                                                                             │
 │ git --literal-pathspecs restore --source=9955b078873890a8ba809d90f81a2df856c4b2ad --worktree -- src/a.rs                                                                                │
 │ ▸[ Cancel ]   [ Put back ]                                                                                                                                                              │
-╰ y put it back  ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╰ y put it back  ←/→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds
 
 
@@ -740,7 +740,7 @@ what right looks like: Ticket 05: `r` on `main`'s row with `feature` checked out
 │ undo: u takes this back                                                      │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop main              │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │
-╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────╯
+╰ y confirm  r rebase  ←/→ choose  ⏎ act  esc cancel ──────────────────────────╯
 
 
 ================================================================================
@@ -795,7 +795,7 @@ what right looks like: Ticket 05b: `r` on `main`'s row with `feature-a` checked 
 │ undo: u takes this back                                                                                                                                                                 │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop main feature-c                                                                                                               │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                                               │
-╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╰ y confirm  r rebase  ←/→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -841,7 +841,7 @@ what right looks like: Tickets 05b + rebase-preview-keeps-drops: `r` on `main`'s
 │ undo: u takes this back                                                                                              │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop main feature-b                                            │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
-╰ y confirm  r rebase  R keep  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────╯
+╰ y confirm  r rebase  R keep  ←/→ choose  ⏎ act  esc cancel ──────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -889,7 +889,7 @@ REWRITE feature-a · 3 commits since it left main · newest first · nothing wri
 
 
 
- ⏎ changes  p pick  r reword  e edit  s squash  f fixup  d drop  alt+↑↓ move  esc cancel
+ ⏎ changes  p pick  r reword  e edit  s squash  f fixup  d drop  alt+↑/alt+↓ move  esc cancel
 
 ================================================================================
 docs/shots/m7/rebase-refused-fork-120x40.txt
@@ -1055,7 +1055,7 @@ what right looks like: `↩ before  feature-a` first; `● local` / `◌ remote`
                   │ 4 branches                                                                                                                                         │
                   └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- type to find  ⏎ switch to it  esc close  ⇥ show it on the graph  ↑↓ row
+ type to find  ⏎ switch to it  esc close  ⇥ show it on the graph  ↑/↓ row
 
 ================================================================================
 docs/shots/m7/picker-filtered-100x30.txt
@@ -1099,7 +1099,7 @@ what right looks like: Glyph, name, age only; the segment-prefix match on top. C
   │ 2 of 4 branches                                                                              │
   └──────────────────────────────────────────────────────────────────────────────────────────────┘
 ────────────────────────────────────────────────────────────────────────────────────────────────────
- type to find  ⏎ switch to it  esc close  ⇥ show it on the graph  ↑↓ row
+ type to find  ⏎ switch to it  esc close  ⇥ show it on the graph  ↑/↓ row
 
 ================================================================================
 docs/shots/m7/switch-landed-120x40.txt
@@ -1261,7 +1261,7 @@ what right looks like: Ticket 10b: `b feature-c ⇥ ⏎` on HEAD's own row (`mai
 │ git branch feature-c 37926a7c0b3c7e1cfbcb23494d10a90449c88b64                                                        │
 │ git switch feature-c                                                                                                 │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
-╰ y confirm  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────╯
+╰ y confirm  ←/→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -1317,7 +1317,7 @@ what right looks like: Ticket 09: `j a` on "Add OAuth callback" (one row below H
 │ undo: u takes this back                                                                                                                                                                 │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop f1c72d66bcb17d9d430527dddef3fd0a9a347b15 feature-b                                                                           │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                                               │
-╰ y put it in  ←→ choose  ⏎ act  esc cancel ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╰ y put it in  ←/→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -1409,7 +1409,7 @@ what right looks like: Ticket 09 (09b: the menu opens on absorb): `k . ⏎` over
 │ undo: u takes this back                                                                                              │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop f1c72d66bcb17d9d430527dddef3fd0a9a347b15                  │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
-╰ y put them in  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────╯
+╰ y put them in  ←/→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -1549,7 +1549,7 @@ what right looks like: Ticket 13b: a real submodule at `libs/parser`, pointer mo
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ diff · . more
+ space stage · d discard · c commit · </> resize · ⌃A all · e edit · ⇥ diff · . more
 
 ================================================================================
 docs/shots/m7/submodule-row-120x40.txt
@@ -1579,7 +1579,7 @@ what right looks like: At 120 the `▣ libs/parser` row ends `→ ±` right-alig
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ diff · . more
+ space stage · d discard · c commit · </> resize · ⌃A all · e edit · ⇥ diff · . more
 UNCOMMITTED · 1 unstaged
 diff vs HEAD f48cdbe
 UNSTAGED (1)                  libs/parser · submodule · ca07ea9 → efdd295
@@ -1625,7 +1625,7 @@ what right looks like: Diff pane lists the commits the move pulled in, held to g
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ diff · . more
+ space stage · d discard · c commit · </> resize · ⌃A all · e edit · ⇥ diff · . more
 UNCOMMITTED · 1 unstaged
 diff vs HEAD 7c7e188
 UNSTAGED (1)                  libs/parser · submodule · 5bdba05 → efdd295
@@ -2137,7 +2137,7 @@ what right looks like: After `/refresh⏎ n`: `▸` on line 47, title ends `· f
  │                                            │ 45      fn drop(&mut self) {
  │                                            │ 46          self.token.clear();
  ▸         Ana                                │ 47          self.refresh.clear();    ◂ Ana · 1 year ago · Add session · 3f6c311
- ⏎ that commit  ^ before it  L history of these lines  / find  n N match  space ages  w whitespace  i ignore list  esc back
+ ⏎ that commit  ^ before it  L history of these lines  / find  n/N match  space ages  w whitespace  i ignore list  esc back
 
 ================================================================================
 docs/shots/m7/blame-long-line-187x50.txt
@@ -2279,7 +2279,7 @@ what right looks like: After `B ⏎`: graph on Lina's commit `2f48ca3`, the diff
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- esc back to blame · B blame · F history · b branch · r rebase · <> resize · t tag · c commit · y sha · . more
+ esc back to blame · B blame · F history · b branch · r rebase · </> resize · t tag · c commit · y sha · . more
 COMMIT 2f48ca3 · Lina <lina@example.invalid> · 2019-06-07 00:00 +0000 · 7mo · parents 47593a5 · diff vs first parent · …
 Retry refresh once on 401
 ▾ src/                        impl Session {
@@ -2371,7 +2371,7 @@ what right looks like: Commit diff, cursor on New line 2: exactly one row carrie
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- B blame · F history · c commit · P push · <> resize · p pull · f fetch · b branch · t tag · u undo · / search · . more
+ B blame · F history · c commit · P push · </> resize · p pull · f fetch · b branch · t tag · u undo · . more
 COMMIT 6944d27 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 4m · parents 9d5dd9b · diff vs firs…
 edit notes
 M notes.txt             +2 −1
@@ -2418,7 +2418,7 @@ what right looks like: Two frames: files cursor on a file row, bar has no `space
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · B blame · F history · c commit · P push · <> resize · p pull · f fetch · b branch · t tag · u undo · . more
+ ⏎ open · B blame · F history · c commit · P push · </> resize · p pull · f fetch · b branch · t tag · u undo · . more
 COMMIT 9d4f6c9 · Graft Fixture <fixture@example.invalid> · 2020-09-13 12:27 +0000 · 4mo · parents a82960b · diff vs fir…
 add src
 M notes.txt             +1 −1 ▎
@@ -2460,7 +2460,7 @@ M notes.txt             +1 −1 ▎
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · space fold · c commit · P push · <> resize · p pull · f fetch · b branch · t tag · u undo · / search · . more
+ ⏎ open · space fold · c commit · P push · </> resize · p pull · f fetch · b branch · t tag · u undo · . more
 COMMIT 9d4f6c9 · Graft Fixture <fixture@example.invalid> · 2020-09-13 12:27 +0000 · 4mo · parents a82960b · diff vs fir…
 add src
 M notes.txt             +1 −1 select a file
@@ -2507,7 +2507,7 @@ Right: (a) `B ⏎` then `Tab` to the graph — the pane still open on Lina's com
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- esc back to blame · ⏎ open · o take · b branch · <> resize · r rebase · t tag · c commit · y sha · m merge · . more
+ esc back to blame · ⏎ open · o take · b branch · </> resize · r rebase · t tag · c commit · y sha · m merge · . more
 COMMIT 2f48ca3 · Lina <lina@example.invalid> · 2019-06-07 00:00 +0000 · 7mo · parents 47593a5 · diff vs first parent · …
 Retry refresh once on 401
 ▾ src/                        impl Session {
@@ -2595,7 +2595,7 @@ what right looks like: Changes pane after `⏎` from blame in a partly-staged fi
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- esc back to blame · space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ graph · . more
+ esc back to blame · space stage · d discard · c commit · </> resize · ⌃A all · e edit · ⇥ graph · . more
 UNCOMMITTED · 1 staged 1 unstaged
 diff vs HEAD d45d045
 STAGED (1)                    l4

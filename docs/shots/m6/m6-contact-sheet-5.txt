@@ -80,29 +80,29 @@ what right looks like: The same at 80x24: the status line whole.
 
 m6 walk capture: m6-24-set-aside-done — scenario pull-rebase-dirty, keys p r r, unicode tier, 80x24
 
- graft <scratch_______________________________________________________________>…
-◌    Uncommitted changes (1 staged, 2 unstaged)
-◆ ▏ⓘ [◆ main ↑1] ours                                               6y   047f22c
-●    [origin/main] the teammate's commit                            6y   0657dff
-●    Commit 200                                                     7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    Commit 195                                                     7y   0722297
-●    Commit 194                                                     7y   b6a4a47
-●    Commit 193                                                     7y   60af0eb
-●    Commit 192                                                     7y   aceb8c5
-●    Commit 191                                                     7y   11d68ff
-●    Commit 190                                                     7y   91900bd
-●    Commit 189                                                     7y   cec3e93
-●    Commit 188                                                     7y   0a91ece
-●    Commit 187                                                     7y   3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
+ ◆ work  …-capture/pull-rebase-dirty/graft-remote-0/work · main  84 rows so far
+  ◌    Uncommitted changes (1 staged, 2 unstaged)
+▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   047f22c
+  ●    [origin/main] the teammate's commit                         6y   0657dff
+  ●    Commit 200                                                  7y   d5ae5fd
+  ●    Commit 199                                                  7y   13e6ab1
+  ●    Commit 198                                                  7y   f5055d9
+  ●    Commit 197                                                  7y   2cce853
+  ●    Commit 196                                                  7y   325da3f
+  ●    Commit 195                                                  7y   0722297
+  ●    Commit 194                                                  7y   b6a4a47
+  ●    Commit 193                                                  7y   60af0eb
+  ●    Commit 192                                                  7y   aceb8c5
+  ●    Commit 191                                                  7y   11d68ff
+  ●    Commit 190                                                  7y   91900bd
+  ●    Commit 189                                                  7y   cec3e93
+  ●    Commit 188                                                  7y   0a91ece
+  ●    Commit 187                                                  7y   3121935
+  ●    Commit 186                                                  7y   fab25df
+  ●    Commit 185                                                  7y   09ae97c
+  ●    Commit 184                                                  7y   49d7783
+  ●    Commit 183                                                  7y   22d55c9
+  ●    Commit 182                                                  7y   d212b3e
  rebase main onto origin/main ✓ · your edits are back
 
 ================================================================================
@@ -112,8 +112,9 @@ what right looks like: (ticket 75) menu-checkout: `.` on fix's row, main checked
 
 m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., unicode tier, 120x40
 
- graft <scratch____________________________________________________________>  6 commits
-  ● ▏  [fix] fix the bug                                                                                 GF 6y   401cfbe
+ ◆ graft-trivial-0  /tmp/graft-capture/menu-checkout/graft-trivial-0 · main                                   6 commits
+
+▸   ●    [fix] fix the bug                                                                              GF 6y   401cfbe
  Checkout fix
  Cherry-pick 401cfbe (o)
  Copy SHA (y)
@@ -149,9 +150,8 @@ m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., un
 
 
 
-
-
- m merge  r rebase  ⏎ open  . more  o  b  t  P  c  p  f  u  S  /  R  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · c commit · p pull · f fetch · u undo · . more
 
 ================================================================================
 docs/shots/m6/m6-25-menu-fixed-slots-187x50.txt
@@ -218,8 +218,8 @@ what right looks like: The same menu at 80x24: the same first three slots.
 
 m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., unicode tier, 80x24
 
- graft <scratch____________________________________________________________>  6…
-  ● ▏  [fix] fix the bug                                            6y   401cfbe
+ ◆ graft-trivial-0  …ft-capture/menu-checkout/graft-trivial-0 · main  6 commits
+▸   ●    [fix] fix the bug                                         6y   401cfbe
  Checkout fix
  Cherry-pick 401cfbe (o)
  Copy SHA (y)
@@ -241,7 +241,7 @@ m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., un
 
 
 
- m merge  r rebase  ⏎ open  . more  o  b  t  P  c  p  f  u  S  /  R  q  F2  F3
+ m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · . more
 
 ================================================================================
 docs/shots/m6/set-aside-clash-preview-120x40.txt
@@ -299,7 +299,7 @@ what right looks like: (ticket 84) `. ⏎` on main's row from fix with base.txt 
 │ undo: u takes this back                                                                                              │
 │ git switch main                                                                                                      │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
-╰ y confirm  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────╯
+╰ y confirm  ←/→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -395,7 +395,7 @@ what right looks like: (ticket 85 B) `S p y esc ⏎ o esc`: a stash pop that cla
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- stash@{0} clashed · 1 file conflicted · ⏎ resolve · M mergetool · e edit · <> resize · space resolved · . more
+ stash@{0} clashed · 1 file conflicted · ⏎ resolve · M mergetool · e edit · </> resize · space resolved · . more
 UNCOMMITTED
 diff vs HEAD f3742ab
 CONFLICTS (1)
@@ -469,7 +469,7 @@ STASHES (1)
 │ undo: u takes this back                                                                                              │
 │ git stash apply --index 'stash@{0}'                                                                                  │
 │ ▸[ Cancel ]   [ Apply ]                                                                                              │
-╰ y apply  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────╯
+╰ y apply  ←/→ choose  ⏎ act  esc cancel ──────────────────────────────────────────────────────────────────────────────╯
 
 
 
@@ -512,7 +512,7 @@ STASHES (1)
 │ stash@{0} is dropped · u brings it back                                      │
 │ git stash pop --index 'stash@{0}'                                            │
 │ ▸[ Cancel ]   [ Pop ]                                                        │
-╰ y pop  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────╯
+╰ y pop  ←/→ choose  ⏎ act  esc cancel ────────────────────────────────────────╯
 
 
 ================================================================================

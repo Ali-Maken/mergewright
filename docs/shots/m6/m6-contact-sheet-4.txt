@@ -1260,7 +1260,7 @@ what right looks like: Re-taken 2026-10-02 (m8-13b: `q quit` joins the banner's 
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- rebase still in progre… · ⏎ resolve · M mergetool · e edit · <> resize · space resolved · c continue · ⇥ diff · . more
+ rebase still in progr… · ⏎ resolve · M mergetool · e edit · </> resize · space resolved · c continue · ⇥ diff · . more
 UNCOMMITTED
 diff vs HEAD 274c7d4
 CONFLICTS (13)                ▎
@@ -1465,7 +1465,7 @@ CONFLICTS (13)                ▎
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- space stage · d discard · c commit · <> resize · ⌃A all · e edit · ⇥ diff · . more
+ space stage · d discard · c commit · </> resize · ⌃A all · e edit · ⇥ diff · . more
 UNCOMMITTED · 1 untracked
 diff vs HEAD a82960b
 UNTRACKED (1)                 ▎
@@ -1848,7 +1848,7 @@ what right looks like: (ticket 74) `p` refused as diverged, then `r`, three file
 │ 1 lane continue outside this view                                                                                    │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop origin/main                                               │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
-╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────╯
+╰ y confirm  r rebase  ←/→ choose  ⏎ act  esc cancel ──────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -1891,7 +1891,7 @@ what right looks like: (ticket 74, 84, 30b) The same box at 80x24: the `your edi
 │ 1 lane continue outside this view                                            │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop origin/main       │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │
-╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────╯
+╰ y confirm  r rebase  ←/→ choose  ⏎ act  esc cancel ──────────────────────────╯
 
 
 ================================================================================
@@ -2200,12 +2200,13 @@ what right looks like: (ticket 75) stash-pop-clash-to-done, `S p y o ⏎`: the g
 
 m6 walk capture: m6-21-stash-clash-done — scenario stash-pop-clash-to-done, keys S p y o ⏎, unicode tier, 120x40
 
- graft <scratch____________________________________________________________>  5 commits
-◆ ▏  [◆ main] rewrite the notes                                                                          GF 6y   8e361b5
-●    add the notes                                                                                       GF 6y   cfa370c
-●    Correct the note                                                                                    GF 7y   a82960b
-●    Add the first note                                                                                  GF 7y   fadcfb3
-◇    Add a readme                                                                                        GF 7y   64ded19
+ ◆ graft-trivial-0  /tmp/graft-capture/stash-pop-clash-to-done/graft-trivial-0 · main                         5 commits
+
+▸ ◆    [◆ main] rewrite the notes                                                                       GF 6y   8e361b5
+  ●    add the notes                                                                                    GF 6y   cfa370c
+  ●    Correct the note                                                                                 GF 7y   a82960b
+  ●    Add the first note                                                                               GF 7y   fadcfb3
+  ◇    Add a readme                                                                                     GF 7y   64ded19
 
 
 
@@ -2221,8 +2222,7 @@ m6 walk capture: m6-21-stash-clash-done — scenario stash-pop-clash-to-done, ke
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  every file done · stash@{0} dropped ✓ · u brings it back
 COMMIT 8e361b5 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 6y · parents cfa370c · diff vs firs…
 rewrite the notes
@@ -2338,34 +2338,33 @@ what right looks like: (ticket 75) pull-rebase-dirty, `p r` over three edited fi
 
 m6 walk capture: m6-22-set-aside-preview — scenario pull-rebase-dirty@preview, keys p r, unicode tier, 120x40
 
- graft <scratch________________________________________________________________>  152 rows so far
-●   ▏  ours                                                                                              GF 6y   b95280a
-│      after rebase
-│ ○    [◆ main ↑1 ↓1] ours                                                                               GF —    —
-│ ●    [origin/main] the teammate's commit                                                               GF 6y   0657dff
-●─╯    Commit 200                                                                                        GF 7y   d5ae5fd
-●      Commit 199                                                                                        GF 7y   13e6ab1
-●      Commit 198                                                                                        GF 7y   f5055d9
-●      Commit 197                                                                                        GF 7y   2cce853
-●      Commit 196                                                                                        GF 7y   325da3f
-●      Commit 195                                                                                        GF 7y   0722297
-●      Commit 194                                                                                        GF 7y   b6a4a47
-●      Commit 193                                                                                        GF 7y   60af0eb
-●      Commit 192                                                                                        GF 7y   aceb8c5
-●      Commit 191                                                                                        GF 7y   11d68ff
-●      Commit 190                                                                                        GF 7y   91900bd
-●      Commit 189                                                                                        GF 7y   cec3e93
-●      Commit 188                                                                                        GF 7y   0a91ece
-●      Commit 187                                                                                        GF 7y   3121935
-●      Commit 186                                                                                        GF 7y   fab25df
-●      Commit 185                                                                                        GF 7y   09ae97c
-●      Commit 184                                                                                        GF 7y   49d7783
-●      Commit 183                                                                                        GF 7y   22d55c9
-●      Commit 182                                                                                        GF 7y   d212b3e
-●      Commit 181                                                                                        GF 7y   c8254c5
-●      Commit 180                                                                                        GF 7y   e95ccd4
-●      Commit 179                                                                                        GF 7y   97b58e5
-●      Commit 178                                                                                        GF 7y   1c9b7ed
+ ◆ work  /tmp/graft-capture/pull-rebase-dirty@preview/graft-remote-0/work · main                        140 rows so far
+
+▸ ●      ours                                                                                           GF 6y   b95280a
+  │      after rebase
+  │ ○    [◆ main ↑1 ↓1] ours                                                                            GF —    —
+  │ ●    [origin/main] the teammate's commit                                                            GF 6y   0657dff
+  ●─╯    Commit 200                                                                                     GF 7y   d5ae5fd
+  ●      Commit 199                                                                                     GF 7y   13e6ab1
+  ●      Commit 198                                                                                     GF 7y   f5055d9
+  ●      Commit 197                                                                                     GF 7y   2cce853
+  ●      Commit 196                                                                                     GF 7y   325da3f
+  ●      Commit 195                                                                                     GF 7y   0722297
+  ●      Commit 194                                                                                     GF 7y   b6a4a47
+  ●      Commit 193                                                                                     GF 7y   60af0eb
+  ●      Commit 192                                                                                     GF 7y   aceb8c5
+  ●      Commit 191                                                                                     GF 7y   11d68ff
+  ●      Commit 190                                                                                     GF 7y   91900bd
+  ●      Commit 189                                                                                     GF 7y   cec3e93
+  ●      Commit 188                                                                                     GF 7y   0a91ece
+  ●      Commit 187                                                                                     GF 7y   3121935
+  ●      Commit 186                                                                                     GF 7y   fab25df
+  ●      Commit 185                                                                                     GF 7y   09ae97c
+  ●      Commit 184                                                                                     GF 7y   49d7783
+  ●      Commit 183                                                                                     GF 7y   22d55c9
+  ●      Commit 182                                                                                     GF 7y   d212b3e
+  ●      Commit 181                                                                                     GF 7y   c8254c5
+  ●      Commit 180                                                                                     GF 7y   e95ccd4
 ╭ Preview: rebase main onto origin/main ───────────────────────────────────────────────────────────────────────────────╮
 │ 1 commit replayed                                                                                                    │
 │ main b95280a → 1 new commit                                                                                          │
@@ -2377,6 +2376,7 @@ m6 walk capture: m6-22-set-aside-preview — scenario pull-rebase-dirty@preview,
 │ git rebase -i --no-update-refs --no-autostash --empty=drop origin/main                                               │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
 ╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
 ================================================================================
@@ -2444,18 +2444,18 @@ what right looks like: The same box at 80x24: the `your edits:` row whole.
 
 m6 walk capture: m6-22-set-aside-preview — scenario pull-rebase-dirty@preview, keys p r, unicode tier, 80x24
 
- graft <scratch_______________________________________________________________>…
-●   ▏  ours                                                         6y   b95280a
-│      after rebase
-│ ○    [◆ main ↑1 ↓1] ours                                          —    —
-│ ●    [origin/main] the teammate's commit                          6y   0657dff
-●─╯    Commit 200                                                   7y   d5ae5fd
-●      Commit 199                                                   7y   13e6ab1
-●      Commit 198                                                   7y   f5055d9
-●      Commit 197                                                   7y   2cce853
-●      Commit 196                                                   7y   325da3f
-●      Commit 195                                                   7y   0722297
-●      Commit 194                                                   7y   b6a4a47
+ ◆ work  …/pull-rebase-dirty@preview/graft-remote-0/work · main  84 rows so far
+▸ ●      ours                                                      6y   b95280a
+  │      after rebase
+  │ ○    [◆ main ↑1 ↓1] ours                                       —    —
+  │ ●    [origin/main] the teammate's commit                       6y   0657dff
+  ●─╯    Commit 200                                                7y   d5ae5fd
+  ●      Commit 199                                                7y   13e6ab1
+  ●      Commit 198                                                7y   f5055d9
+  ●      Commit 197                                                7y   2cce853
+  ●      Commit 196                                                7y   325da3f
+  ●      Commit 195                                                7y   0722297
+  ●      Commit 194                                                7y   b6a4a47
 ╭ Preview: rebase main onto origin/main ───────────────────────────────────────╮
 │ 1 commit replayed                                                            │
 │ main b95280a → 1 new commit                                                  │
@@ -2614,44 +2614,44 @@ what right looks like: (ticket 75) pull-rebase-dirty, `p r r`: the graph on the 
 
 m6 walk capture: m6-24-set-aside-done — scenario pull-rebase-dirty, keys p r r, unicode tier, 120x40
 
- graft <scratch________________________________________________________________>  152 rows so far
-◌    Uncommitted changes (1 staged, 2 unstaged)
-◆ ▏ⓘ [◆ main ↑1] ours                                                                                    GF 6y   047f22c
-●    [origin/main] the teammate's commit                                                                 GF 6y   0657dff
-●    Commit 200                                                                                          GF 7y   d5ae5fd
-●    Commit 199                                                                                          GF 7y   13e6ab1
-●    Commit 198                                                                                          GF 7y   f5055d9
-●    Commit 197                                                                                          GF 7y   2cce853
-●    Commit 196                                                                                          GF 7y   325da3f
-●    Commit 195                                                                                          GF 7y   0722297
-●    Commit 194                                                                                          GF 7y   b6a4a47
-●    Commit 193                                                                                          GF 7y   60af0eb
-●    Commit 192                                                                                          GF 7y   aceb8c5
-●    Commit 191                                                                                          GF 7y   11d68ff
-●    Commit 190                                                                                          GF 7y   91900bd
-●    Commit 189                                                                                          GF 7y   cec3e93
-●    Commit 188                                                                                          GF 7y   0a91ece
-●    Commit 187                                                                                          GF 7y   3121935
-●    Commit 186                                                                                          GF 7y   fab25df
-●    Commit 185                                                                                          GF 7y   09ae97c
-●    Commit 184                                                                                          GF 7y   49d7783
-●    Commit 183                                                                                          GF 7y   22d55c9
-●    Commit 182                                                                                          GF 7y   d212b3e
-●    Commit 181                                                                                          GF 7y   c8254c5
-●    Commit 180                                                                                          GF 7y   e95ccd4
-●    Commit 179                                                                                          GF 7y   97b58e5
-●    Commit 178                                                                                          GF 7y   1c9b7ed
-●    Commit 177                                                                                          GF 7y   f93340a
-●    Commit 176                                                                                          GF 7y   5aaeeba
-●    Commit 175                                                                                          GF 7y   6be5928
-●    Commit 174                                                                                          GF 7y   9b67be4
-●    Commit 173                                                                                          GF 7y   937d32b
-●    Commit 172                                                                                          GF 7y   81be718
-●    Commit 171                                                                                          GF 7y   57b8196
-●    Commit 170                                                                                          GF 7y   8ea98be
-●    Commit 169                                                                                          GF 7y   4926766
-●    Commit 168                                                                                          GF 7y   0d60d60
-●    Commit 167                                                                                          GF 7y   fa5ef1d
-●    Commit 166                                                                                          GF 7y   953abf3
+ ◆ work  /tmp/graft-capture/pull-rebase-dirty/graft-remote-0/work · main                                140 rows so far
+
+  ◌    Uncommitted changes (1 staged, 2 unstaged)
+▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF 6y   047f22c
+  ●    [origin/main] the teammate's commit                                                              GF 6y   0657dff
+  ●    Commit 200                                                                                       GF 7y   d5ae5fd
+  ●    Commit 199                                                                                       GF 7y   13e6ab1
+  ●    Commit 198                                                                                       GF 7y   f5055d9
+  ●    Commit 197                                                                                       GF 7y   2cce853
+  ●    Commit 196                                                                                       GF 7y   325da3f
+  ●    Commit 195                                                                                       GF 7y   0722297
+  ●    Commit 194                                                                                       GF 7y   b6a4a47
+  ●    Commit 193                                                                                       GF 7y   60af0eb
+  ●    Commit 192                                                                                       GF 7y   aceb8c5
+  ●    Commit 191                                                                                       GF 7y   11d68ff
+  ●    Commit 190                                                                                       GF 7y   91900bd
+  ●    Commit 189                                                                                       GF 7y   cec3e93
+  ●    Commit 188                                                                                       GF 7y   0a91ece
+  ●    Commit 187                                                                                       GF 7y   3121935
+  ●    Commit 186                                                                                       GF 7y   fab25df
+  ●    Commit 185                                                                                       GF 7y   09ae97c
+  ●    Commit 184                                                                                       GF 7y   49d7783
+  ●    Commit 183                                                                                       GF 7y   22d55c9
+  ●    Commit 182                                                                                       GF 7y   d212b3e
+  ●    Commit 181                                                                                       GF 7y   c8254c5
+  ●    Commit 180                                                                                       GF 7y   e95ccd4
+  ●    Commit 179                                                                                       GF 7y   97b58e5
+  ●    Commit 178                                                                                       GF 7y   1c9b7ed
+  ●    Commit 177                                                                                       GF 7y   f93340a
+  ●    Commit 176                                                                                       GF 7y   5aaeeba
+  ●    Commit 175                                                                                       GF 7y   6be5928
+  ●    Commit 174                                                                                       GF 7y   9b67be4
+  ●    Commit 173                                                                                       GF 7y   937d32b
+  ●    Commit 172                                                                                       GF 7y   81be718
+  ●    Commit 171                                                                                       GF 7y   57b8196
+  ●    Commit 170                                                                                       GF 7y   8ea98be
+  ●    Commit 169                                                                                       GF 7y   4926766
+  ●    Commit 168                                                                                       GF 7y   0d60d60
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  rebase main onto origin/main ✓ · your edits are back
 

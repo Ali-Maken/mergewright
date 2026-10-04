@@ -7,7 +7,7 @@
 #
 # What right looks like:
 #  - The box's bottom border reads
-#    `y confirm  m merge  ←→ choose  ⏎ act  esc cancel`.
+#    `y confirm  m merge  ←/→ choose  ⏎ act  esc cancel`.
 #  - The buttons row shows `▸[ Cancel ]`: the cursor still rests on Cancel.
 #
 
@@ -48,6 +48,6 @@
 │ undo: u takes this back                                                                                              │
 │ git merge --no-edit --ff -m 'Merge branch '\''main'\'' into feature' main                                            │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
-╰ y confirm  m merge  ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────╯
+╰ y confirm  m merge  ←/→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

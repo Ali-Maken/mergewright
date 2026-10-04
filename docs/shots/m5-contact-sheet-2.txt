@@ -16,6 +16,62 @@
 # file (docs/shots/<name>) and what right looks like for it.
 
 ================================================================================
+docs/shots/m5-ui-banner.txt
+what right looks like: Capture header "What right looks like": while an operation is in progress, the header's informational tail is replaced by the state alone, e.g. `REBASING step 3 of 7` — no `⚠`, no conflicted filename or `(+N)`, and no width-tier wording, so the same state reads the same at all three sizes shown. It costs no row (there is no `[ Continue ] [ Skip ] [ Abort ]` row any more), and a long repository path is what truncates before the banner does.
+================================================================================
+
+# docs/shots/m5-ui-banner.txt — operation banner (rebase/merge/conflict)
+#
+# What right looks like: the header's informational tail is
+# replaced, while an operation is in progress, by the state and
+# nothing else — `REBASING step 3 of 7`.
+#
+# Three things it does not say (m5/20, all three the user's):
+# no `⚠` — a stopped merge is a state to finish, not a failure;
+# no conflicted filename and no `(+N)` — the changes pane already
+# lists every conflicted file under `CONFLICTS (n)`, and a 24-row
+# screen that says the same fact twice has spent a row on nothing;
+# and no width tiers — `banner_line` takes no width, so the same
+# repository in the same state reads the same in all three blocks
+# below. They are three sizes of terminal, not three wordings.
+#
+# It costs no row: the line under the header is the first graph row
+# at every width. There is no `[ Continue ] [ Skip ] [ Abort ]` row
+# any more — nothing answered a click on it and it cost a graph row
+# to teach three keys the hint bar already teaches (m5/16).
+#
+# The last block is the point: a long repository path does not cut
+# the banner. The banner's room comes out of the header first, so
+# the *path* is what an `…` would land on — and at 120 columns,
+# against a banner this short, it no longer has to: the whole path
+# and the whole banner are both there.
+
+=== 80x10 ===
+ ◆ api  /code/api · main                                   REBASING step 3 of 7
+▸ ●    Commit 2                                                    2h   0202020
+  ◇    Commit 1                                                    2h   0101010
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · . more
+
+=== 120x10 ===
+ ◆ api  /code/api · main                                                                           REBASING step 3 of 7
+▸ ●    Commit 2                                                                                         TE 2h   0202020
+  ◇    Commit 1                                                                                         TE 2h   0101010
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · . more
+
+=== 160x10 ===
+ ◆ api  /code/api · main                                                                                                                   REBASING step 3 of 7
+▸ ●    Commit 2                                                                                                                                 TE 2h   0202020
+  ◇    Commit 1                                                                                                                                 TE 2h   0101010
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · . more
+
+=== a long path does not cut the banner, 120x10 ===
+ ◆ billing-api  /media/archive/work/customers/acme/services/billing-api · main                     REBASING step 3 of 7
+▸ ●    Commit 2                                                                                         TE 2h   0202020
+  ◇    Commit 1                                                                                         TE 2h   0101010
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · . more
+
+
+================================================================================
 docs/shots/m5-ui-confirm-over-graph-160x48.txt
 what right looks like: Capture header "What right looks like here" (ADR-0040): the push-confirm box does not clear its band — the graph rows beside it stay visible — and every surviving column is whole: the box's edges snap to row-column boundaries so there's a blank gutter column between border and SHA rather than them reading as one token, with no clipped subject and no four-character SHA tail. On the widest surviving row `●` sits left of the border and `GF 2d   c8254c5` sits right of it.
 ================================================================================
@@ -1019,7 +1075,7 @@ what right looks like: Capture header "What right looks like": the box is docked
 # docs/shots/m5-ui-preview-box.txt — Ghost Preview box
 #
 # What right looks like: the box is docked to the bottom of the
-# screen at its own height, its own footer ("←→ choose  ⏎ act  esc
+# screen at its own height, its own footer ("←/→ choose  ⏎ act  esc
 # cancel") on its last row and the screen's own footer row below it
 # untouched. Every row between the two borders is a `│ … │` row —
 # there is no hole in the box at any size. Every choice is
@@ -1056,7 +1112,7 @@ what right looks like: Capture header "What right looks like": the box is docked
 │ undo: u restores feature/auth and the tree                                   │
 │ git rebase refs/heads/main                                                   │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────╯
+╰ ←/→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────╯
 m merge  r rebase  screen footer
 
 === ready, docked in 160x48 ===
@@ -1105,7 +1161,7 @@ m merge  r rebase  screen footer
 │ undo: u restores feature/auth and the tree                                                                                                                   │
 │ git rebase refs/heads/main                                                                                                                                   │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╰ ←/→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 m merge  r rebase  screen footer
 
@@ -1132,7 +1188,7 @@ m merge  r rebase  screen footer
 │ predicting…                                                                  │
 │ git rebase refs/heads/main                                                   │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────╯
+╰ ←/→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────╯
 m merge  r rebase  screen footer
 
 === screen too small, 30x8 ===
@@ -1223,7 +1279,7 @@ what right looks like: Capture header "What right looks like": two ghost rows sh
 │ undo: u takes this back                                                                                                                                      │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop main                                                                                              │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
-╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╰ y confirm  r rebase  ←/→ choose  ⏎ act  esc cancel ──────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -1281,7 +1337,7 @@ what right looks like: Capture header "What right looks like": two ghost rows sh
 │ undo: u takes this back                                                      │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop main              │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │
-╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────╯
+╰ y confirm  r rebase  ←/→ choose  ⏎ act  esc cancel ──────────────────────────╯
 
 
 ================================================================================
@@ -1375,7 +1431,7 @@ what right looks like: Capture header "What right looks like": the rows on scree
 │ undo: u takes this back                                                                                                                                      │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop old-release                                                                                       │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
-╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╰ y confirm  r rebase  ←/→ choose  ⏎ act  esc cancel ──────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -1447,7 +1503,7 @@ what right looks like: Capture header "What right looks like": the rows on scree
 │ undo: u takes this back                                                      │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop old-release       │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │
-╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────╯
+╰ y confirm  r rebase  ←/→ choose  ⏎ act  esc cancel ──────────────────────────╯
 
 
 ================================================================================
@@ -1527,7 +1583,7 @@ what right looks like: Capture header "What right looks like": the journal brows
 │ no conflicts expected                                                                                                                                        │
 │ undo: u takes this back                                                                                                                                      │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╰ ←/→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -1585,7 +1641,7 @@ what right looks like: Capture header "What right looks like": the journal brows
 │ no conflicts expected                                                        │
 │ undo: u takes this back                                                      │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────╯
+╰ ←/→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────╯
 
 
 ================================================================================

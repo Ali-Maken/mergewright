@@ -47,6 +47,6 @@
 │ 1 lane continue outside this view                                                                                    │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop origin/main                                               │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
-╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────╯
+╰ y confirm  r rebase  ←/→ choose  ⏎ act  esc cancel ──────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

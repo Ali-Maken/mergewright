@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use graft_core::ref_name::RefName;
 use graft_ui::finish_summary::SummaryFocus;
 use graft_ui::graph_screen::every_context;
-use graft_ui::keymap::{ActionId, Binding, ContextId, KeyChord, Keymap, defaults};
+use graft_ui::keymap::{ActionId, Binding, ContextId, KeyChord, KeyWarning, Keymap, defaults};
 
 use super::*;
 use std::sync::Arc;
@@ -231,6 +231,34 @@ fn swept() -> (Arc<Keymap>, Vec<(&'static Binding, KeyChord)>) {
     (Arc::new(map), moved)
 }
 
+/// The sweep's chords *ahead of* the defaults: each action answers both and
+/// spells the new one first. The baseline presses with it, so whatever a
+/// press builds with keys already spelled in it (a `.` menu's `(key)`
+/// suffixes, spelled when the menu opens) reads as the swept keymap would
+/// spell it, while the default chord still does what it always did.
+fn both(moved: &[(&'static Binding, KeyChord)]) -> Arc<Keymap> {
+    let lines: Vec<(String, Vec<String>)> = moved
+        .iter()
+        .map(|(b, chord)| {
+            let mut labels = vec![chord.label().0];
+            labels.extend(b.default.iter().map(|d| d.label().0));
+            (b.action.0.to_owned(), labels)
+        })
+        .collect();
+    let (map, warnings) = Keymap::with_overrides(&lines);
+    // Restating a default as an override reports the shadowing the default
+    // table already has (an inner context's `⏎` over `app.open`): the inner
+    // row keeps the chord, exactly as under the defaults. Anything else is a
+    // real collision the sweep did not mean.
+    for warning in &warnings {
+        assert!(
+            matches!(warning, KeyWarning::Collision { lost, .. } if lost.0.starts_with("app.")),
+            "{warning:?}"
+        );
+    }
+    Arc::new(map)
+}
+
 /// Each fixture stands where `context_of` says it does, so the sweeps below
 /// test the context they name.
 #[test]
@@ -249,17 +277,23 @@ fn context_of_names_each_fixture() {
 #[test]
 fn the_sweep_moves_every_action_and_every_context_follows() {
     let (swept, moved) = swept();
+    let both = both(&moved);
     let mut failures = Vec::new();
     let mut checked = 0;
     for &ctx in ContextId::ALL {
-        let Some(base) = fixture(ctx) else {
+        let Some(fixture) = fixture(ctx) else {
             continue;
         };
         let remapped = AppState {
             keymap: swept.clone(),
-            ..base.clone()
+            ..fixture.clone()
         };
-        // `base` presses with the defaults, drawn under the sweep's keymap.
+        // `base` presses with the defaults (spelling the sweep's chords in
+        // anything it builds), drawn under the sweep's keymap.
+        let base = AppState {
+            keymap: both.clone(),
+            ..fixture
+        };
         let nothing = seen_as(&base, unanswered(), &swept);
         let rows: Vec<&str> = rows_for(ctx).map(|b| b.action.0).collect();
         for (row, to) in moved.iter().filter(|(b, _)| rows.contains(&b.action.0)) {

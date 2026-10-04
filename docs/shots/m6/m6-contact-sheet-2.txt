@@ -1985,19 +1985,20 @@ what right looks like: TESTING.md "Conflict journeys", a-whole-two-files: `m m o
 
 m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T y, unicode tier, 120x40
 
- graft <scratch____________________________________________________________>  12 commits
-◆─╮ ▏  [◆ main] Merge branch 'feature' into main                                                         GT 6y   9225152
-│ ●    [feature] feature's readme                                                                        GF 6y   1e78110
-│ ●    feature's notes                                                                                   GF 6y   d69867a
-│ ●    feature drops gone                                                                                GF 6y   35c2d1e
-● │    main's notes                                                                                      GF 6y   a301516
-● │    main changes gone                                                                                 GF 6y   fa0b4d8
-●─╯    add the readme                                                                                    GF 6y   941a7d6
-●      add notes                                                                                         GF 6y   f7b6fca
-●      add gone                                                                                          GF 6y   30036f6
-●      Correct the note                                                                                  GF 7y   a82960b
-●      Add the first note                                                                                GF 7y   fadcfb3
-◇      Add a readme                                                                                      GF 7y   64ded19
+ ◆ graft-trivial-0  /tmp/graft-capture/a-whole-two-files/graft-trivial-0 · main                              12 commits
+
+▸ ◆─╮    [◆ main] Merge branch 'feature' into main                                                      GT 6y   9225152
+  │ ●    [feature] feature's readme                                                                     GF 6y   1e78110
+  │ ●    feature's notes                                                                                GF 6y   d69867a
+  │ ●    feature drops gone                                                                             GF 6y   35c2d1e
+  ● │    main's notes                                                                                   GF 6y   a301516
+  ● │    main changes gone                                                                              GF 6y   fa0b4d8
+  ●─╯    add the readme                                                                                 GF 6y   941a7d6
+  ●      add notes                                                                                      GF 6y   f7b6fca
+  ●      add gone                                                                                       GF 6y   30036f6
+  ●      Correct the note                                                                               GF 7y   a82960b
+  ●      Add the first note                                                                             GF 7y   fadcfb3
+  ◇      Add a readme                                                                                   GF 7y   64ded19
 
 
 
@@ -2022,8 +2023,7 @@ m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  merged feature into main ✓
 
 ================================================================================
@@ -2205,19 +2205,19 @@ what right looks like: The same at 80x24: bottom row `merged feature into main �
 
 m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T y, unicode tier, 80x24
 
- graft <scratch____________________________________________________________>  1…
-◆─╮ ▏  [◆ main] Merge branch 'feature' into main                    6y   9225152
-│ ●    [feature] feature's readme                                   6y   1e78110
-│ ●    feature's notes                                              6y   d69867a
-│ ●    feature drops gone                                           6y   35c2d1e
-● │    main's notes                                                 6y   a301516
-● │    main changes gone                                            6y   fa0b4d8
-●─╯    add the readme                                               6y   941a7d6
-●      add notes                                                    6y   f7b6fca
-●      add gone                                                     6y   30036f6
-●      Correct the note                                             7y   a82960b
-●      Add the first note                                           7y   fadcfb3
-◇      Add a readme                                                 7y   64ded19
+ ◆ graft-trivial-0  …pture/a-whole-two-files/graft-trivial-0 · main  12 commits
+▸ ◆─╮    [◆ main] Merge branch 'feature' into main                 6y   9225152
+  │ ●    [feature] feature's readme                                6y   1e78110
+  │ ●    feature's notes                                           6y   d69867a
+  │ ●    feature drops gone                                        6y   35c2d1e
+  ● │    main's notes                                              6y   a301516
+  ● │    main changes gone                                         6y   fa0b4d8
+  ●─╯    add the readme                                            6y   941a7d6
+  ●      add notes                                                 6y   f7b6fca
+  ●      add gone                                                  6y   30036f6
+  ●      Correct the note                                          7y   a82960b
+  ●      Add the first note                                        7y   fadcfb3
+  ◇      Add a readme                                              7y   64ded19
 
 
 
@@ -2237,19 +2237,20 @@ what right looks like: Re-taken 2026-10-02 (m8-13b: `q quit` joins the banner's 
 
 m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflict, keys , unicode tier, 120x40
 
- graft <scratch____________________________________________________________>    MERGING
-◌   ▏  Uncommitted changes (2 unmerged, 1 staged)
-  ●    [feature] feature's readme                                                                        GF 6y   1e78110
-  ●    feature's notes                                                                                   GF 6y   d69867a
-  ●    feature drops gone                                                                                GF 6y   35c2d1e
-◆ │    [◆ main] main's notes                                                                             GF 6y   a301516
-● │    main changes gone                                                                                 GF 6y   fa0b4d8
-●─╯    add the readme                                                                                    GF 6y   941a7d6
-●      add notes                                                                                         GF 6y   f7b6fca
-●      add gone                                                                                          GF 6y   30036f6
-●      Correct the note                                                                                  GF 7y   a82960b
-●      Add the first note                                                                                GF 7y   fadcfb3
-◇      Add a readme                                                                                      GF 7y   64ded19
+ ◆ graft-trivial-0  /tmp/graft-capture/b-launch-to-first-conflict/graft-trivial-0 · main                        MERGING
+
+▸ ◌      Uncommitted changes (2 unmerged, 1 staged)
+    ●    [feature] feature's readme                                                                     GF 6y   1e78110
+    ●    feature's notes                                                                                GF 6y   d69867a
+    ●    feature drops gone                                                                             GF 6y   35c2d1e
+  ◆ │    [◆ main] main's notes                                                                          GF 6y   a301516
+  ● │    main changes gone                                                                              GF 6y   fa0b4d8
+  ●─╯    add the readme                                                                                 GF 6y   941a7d6
+  ●      add notes                                                                                      GF 6y   f7b6fca
+  ●      add gone                                                                                       GF 6y   30036f6
+  ●      Correct the note                                                                               GF 7y   a82960b
+  ●      Add the first note                                                                             GF 7y   fadcfb3
+  ◇      Add a readme                                                                                   GF 7y   64ded19
 
 
 
@@ -2258,8 +2259,7 @@ m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflic
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  merge in progress · from the shell · 2 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph  q quit
 UNCOMMITTED · 1 staged
 diff vs HEAD a301516
@@ -2489,19 +2489,20 @@ what right looks like: TESTING.md "Conflict journeys", back-after-esc: after the
 
 m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 120x40
 
- graft <scratch____________________________________________________________>    MERGING
-◌      Uncommitted changes (2 unmerged, 1 staged)
-  ● ▏  [feature] feature's readme                                                                        GF 6y   1e78110
-  ●    feature's notes                                                                                   GF 6y   d69867a
-  ●    feature drops gone                                                                                GF 6y   35c2d1e
-◆ │    [◆ main] main's notes                                                                             GF 6y   a301516
-● │    main changes gone                                                                                 GF 6y   fa0b4d8
-●─╯    add the readme                                                                                    GF 6y   941a7d6
-●      add notes                                                                                         GF 6y   f7b6fca
-●      add gone                                                                                          GF 6y   30036f6
-●      Correct the note                                                                                  GF 7y   a82960b
-●      Add the first note                                                                                GF 7y   fadcfb3
-◇      Add a readme                                                                                      GF 7y   64ded19
+ ◆ graft-trivial-0  /tmp/graft-capture/back-after-esc/graft-trivial-0 · main                                    MERGING
+
+  ◌      Uncommitted changes (2 unmerged, 1 staged)
+▸   ●    [feature] feature's readme                                                                     GF 6y   1e78110
+    ●    feature's notes                                                                                GF 6y   d69867a
+    ●    feature drops gone                                                                             GF 6y   35c2d1e
+  ◆ │    [◆ main] main's notes                                                                          GF 6y   a301516
+  ● │    main changes gone                                                                              GF 6y   fa0b4d8
+  ●─╯    add the readme                                                                                 GF 6y   941a7d6
+  ●      add notes                                                                                      GF 6y   f7b6fca
+  ●      add gone                                                                                       GF 6y   30036f6
+  ●      Correct the note                                                                               GF 7y   a82960b
+  ●      Add the first note                                                                             GF 7y   fadcfb3
+  ◇      Add a readme                                                                                   GF 7y   64ded19
 
 
 
@@ -2526,9 +2527,8 @@ m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc E
 
 
 
-
-
- ⇥ banner  c finish  m merge  . more  r  ⏎  b  t  P  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⇥ banner · c finish · m merge · r rebase · ⏎ open · b branch · t tag · P push · p pull · f fetch · u undo · . more
 
 ================================================================================
 docs/shots/m6/m6-19-after-esc-esc-160x48.txt

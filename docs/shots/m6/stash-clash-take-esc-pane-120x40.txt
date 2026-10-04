@@ -37,7 +37,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- stash@{0} clashed · 1 file conflicted · ⏎ resolve · M mergetool · e edit · <> resize · space resolved · . more
+ stash@{0} clashed · 1 file conflicted · ⏎ resolve · M mergetool · e edit · </> resize · space resolved · . more
 UNCOMMITTED
 diff vs HEAD f3742ab
 CONFLICTS (1)

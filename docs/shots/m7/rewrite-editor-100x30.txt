@@ -27,4 +27,4 @@ REWRITE feature-a · 5 commits since it left main · newest first · nothing wri
 
 
 
- y rewrite  tab after  ⏎ changes  p pick  r reword  e edit  s squash  f fixup  d drop  alt+↑↓  esc
+ y rewrite  ⇥ after  ⏎ changes  p pick  r reword  e edit  s squash  f fixup  d  alt+↑/alt+↓  esc

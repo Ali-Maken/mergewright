@@ -35,6 +35,6 @@
 │ undo: u takes this back                                                                                              │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop f1c72d66bcb17d9d430527dddef3fd0a9a347b15                  │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
-╰ y put them in  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────╯
+╰ y put them in  ←/→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

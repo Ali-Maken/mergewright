@@ -10,7 +10,7 @@
 # What right looks like:
 #  - The box: the refusal's line, one `[ Close ]`.
 #  - Its bottom border reads only `esc back` (review 86's words): no
-#    `←→ choose  ⏎ act  esc cancel` over a single button.
+#    `←/→ choose  ⏎ act  esc cancel` over a single button.
 
  ◆ api  ~/code/api · main                                                                                     6 commits
 

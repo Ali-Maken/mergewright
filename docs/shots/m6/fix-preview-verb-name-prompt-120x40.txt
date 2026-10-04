@@ -6,7 +6,7 @@
 # grid: colour ships unverified (CLAUDE.md rule 5).
 #
 # What right looks like:
-#  - The box's bottom border reads `y confirm  ←→ choose  ⏎ act  esc cancel`
+#  - The box's bottom border reads `y confirm  ←/→ choose  ⏎ act  esc cancel`
 #    (no `b` in it: pressing `b` again does not confirm).
 #  - The buttons row shows `▸[ Cancel ]`.
 
@@ -47,6 +47,6 @@
 │ undo: u takes this back                                                                                              │
 │ git stash branch rescued 'stash@{0}'                                                                                 │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
-╰ y confirm  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────╯
+╰ y confirm  ←/→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
