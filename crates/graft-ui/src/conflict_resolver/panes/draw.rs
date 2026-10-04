@@ -18,6 +18,13 @@ use crate::fit::fit;
 use crate::paint::foreground;
 use crate::theme::Token;
 
+/// The take actions a placeholder names, in `o t b` order.
+const TAKES: [&str; 3] = [
+    "resolver.take_ours",
+    "resolver.take_theirs",
+    "resolver.take_both",
+];
+
 /// Where a cell sits: its block (if any), its pane, and the digits that
 /// pane's number column takes.
 struct CellAt {
@@ -269,7 +276,8 @@ impl ResolverScreen<'_> {
             return if self.doc.base_shown && view.base.is_some() {
                 "base".to_owned()
             } else {
-                format!("? open {dot} o t b")
+                let keys = self.take_keys(&TAKES);
+                format!("? open {dot} {keys}")
             };
         }
         let absent = self.doc.regions.iter().find_map(|region| match region {
@@ -287,9 +295,13 @@ impl ResolverScreen<'_> {
             Pane::Yours => ours.as_ref().map_or("", |t| t.as_str()).to_owned(),
             Pane::Theirs => theirs.as_ref().map_or("", |t| t.as_str()).to_owned(),
             Pane::Result if ours.is_some() || theirs.is_some() => {
-                format!("? keep or delete {dot} o t")
+                let keys = self.take_keys(&TAKES[..2]);
+                format!("? keep or delete {dot} {keys}")
             }
-            Pane::Result => format!("? open {dot} o t"),
+            Pane::Result => {
+                let keys = self.take_keys(&TAKES[..2]);
+                format!("? open {dot} {keys}")
+            }
         }
     }
 

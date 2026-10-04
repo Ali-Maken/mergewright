@@ -231,7 +231,7 @@ fn draw_into(buf: &mut Buffer, area: Rect, view: &BlameView, keys: &Keymap) {
             area.x,
             area.y + 1,
             area.width,
-            &ignore_words(ignore),
+            &ignore_words(ignore, keys),
             Style::default().add_modifier(Modifier::DIM),
         );
     }
@@ -294,13 +294,25 @@ fn title(view: &BlameView, keys: &Keymap) -> String {
     title
 }
 
-fn ignore_words(ignore: IgnoreLine) -> String {
+/// The ignore-revs clause; `blame.ignore_revs`' key spelled from `keys`,
+/// the `· <key> …` part left out when he left it unbound.
+fn ignore_words(ignore: IgnoreLine, keys: &Keymap) -> String {
     let count = ignore.count;
+    let key = keys.spell_keys(&[ActionId("blame.ignore_revs")]);
     if ignore.applied {
         let commits = if count == 1 { "commit" } else { "commits" };
-        format!(" skipping {count} {commits} listed in .git-blame-ignore-revs · i shows them")
+        let skipping = format!(" skipping {count} {commits} listed in .git-blame-ignore-revs");
+        match key {
+            Some(key) => format!("{skipping} \u{b7} {key} shows them"),
+            None => skipping,
+        }
     } else {
-        format!(" showing every commit · i skips the {count} in .git-blame-ignore-revs")
+        match key {
+            Some(key) => format!(
+                " showing every commit \u{b7} {key} skips the {count} in .git-blame-ignore-revs"
+            ),
+            None => " showing every commit".to_owned(),
+        }
     }
 }
 

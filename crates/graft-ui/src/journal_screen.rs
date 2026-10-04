@@ -289,7 +289,7 @@ impl JournalScreen<'_> {
         for (index, row) in self.view.rows.iter().enumerate() {
             let selected = index == self.view.selected;
             lines.push(Line {
-                pieces: row_pieces(row, selected, columns, usize::from(width)),
+                pieces: row_pieces(row, selected, columns, usize::from(width), self.keys),
                 row: Some(index),
                 selected,
             });

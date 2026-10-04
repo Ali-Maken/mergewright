@@ -1,6 +1,7 @@
 //! The journal screen's view types: the rows, the status row and the whole view the app hands it.
 
 use super::SanitizedText;
+use crate::keymap::{ActionId, Keymap};
 
 /// What a row is to `u` and `U`, in words rather than colour.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -20,16 +21,21 @@ pub enum RowMark {
 }
 
 impl RowMark {
-    /// The mark as it is drawn, at the right of the row. Empty for
-    /// [`RowMark::None`], which is most rows.
+    /// The mark as it is drawn, at the right of the row: `← u`, `← U`,
+    /// the keys spelled from `keys` (`← next undo` when he left it
+    /// unbound). Empty for [`RowMark::None`], which is most rows.
     #[must_use]
-    pub fn label(self) -> &'static str {
+    pub fn label(self, keys: &Keymap) -> String {
+        let next = |action: &'static str, word: &str| match keys.spell_keys(&[ActionId(action)]) {
+            Some(key) => format!("\u{2190} {key}"),
+            None => format!("\u{2190} next {word}"),
+        };
         match self {
-            RowMark::None => "",
-            RowMark::NextUndo => "← u",
-            RowMark::NextRedo => "← U",
-            RowMark::Interrupted => "interrupted",
-            RowMark::Undone => "undone",
+            RowMark::None => String::new(),
+            RowMark::NextUndo => next("app.undo", "undo"),
+            RowMark::NextRedo => next("app.redo", "redo"),
+            RowMark::Interrupted => "interrupted".to_owned(),
+            RowMark::Undone => "undone".to_owned(),
         }
     }
 }

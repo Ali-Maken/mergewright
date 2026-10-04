@@ -53,7 +53,11 @@ impl FinishScreen<'_> {
                 ListLine::Row(index) => self.draw_row(buf, one, index, path_width),
                 ListLine::More { hidden, .. } => {
                     let indented = indent(one);
-                    let words = format!("… {hidden} more lines · ⏎ hides");
+                    let more = format!("\u{2026} {hidden} more lines");
+                    let words =
+                        self.view
+                            .keys
+                            .after(&more, ActionId("finish.toggle_diff"), "hides");
                     self.text(buf, indented, &words, Token::TextMuted, false);
                 }
                 ListLine::Diff { nth, .. } => {
@@ -117,9 +121,13 @@ impl FinishScreen<'_> {
             Section::ByGit if self.view.by_git.is_empty() => {
                 "COMBINED BY GIT ON ITS OWN · none".to_owned()
             }
-            Section::ByGit => format!(
-                "COMBINED BY GIT ON ITS OWN · {} · ⏎ shows the change",
-                self.view.by_git.len()
+            Section::ByGit => self.view.keys.after(
+                &format!(
+                    "COMBINED BY GIT ON ITS OWN \u{b7} {}",
+                    self.view.by_git.len()
+                ),
+                ActionId("finish.toggle_diff"),
+                "shows the change",
             ),
             Section::Unrecorded => format!(
                 "CHANGED BY THIS MERGE · {} · which were conflicts is not recorded",

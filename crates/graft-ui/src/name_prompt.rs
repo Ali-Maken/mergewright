@@ -158,9 +158,18 @@ impl Widget for &NamePrompt<'_> {
         );
         self.draw_field_row(area, buf, width, area.y + 1);
 
+        // A text field: its keys are the shipped ones whatever his config
+        // says (ADR-0055).
         let option_line = match &view.option {
-            Some((label, true)) => format!("(•) {} · ⇥ toggles", label.as_str()),
-            Some((label, false)) => format!("( ) {} · ⇥ toggles", label.as_str()),
+            Some((label, on)) => crate::keymap::Keymap::shipped().after(
+                &format!(
+                    "{} {}",
+                    if *on { "(\u{2022})" } else { "( )" },
+                    label.as_str()
+                ),
+                crate::keymap::ActionId("app.next_pane"),
+                "toggles",
+            ),
             None => String::new(),
         };
         buf.set_string(

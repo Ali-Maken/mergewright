@@ -26,6 +26,7 @@ use ratatui::widgets::Widget;
 
 use crate::detail::{DiffView, LineKindView};
 use crate::fit::fit;
+use crate::keymap::ActionId;
 use crate::paint::foreground;
 use crate::text_input::{AreaView, AreaWidget, FieldView, FieldWidget};
 use crate::theme::{Theme, Token};
@@ -217,7 +218,8 @@ impl FinishScreen<'_> {
         buf.set_string(rect.x, rect.y, fit(text, usize::from(rect.width)), style);
     }
 
-    /// `MESSAGE · ⇥ edit`, the subject and the body.
+    /// `MESSAGE · ⇥ edit` (`app.next_pane` spelled from his keymap: the
+    /// list is not a text field), the subject and the body.
     fn draw_message(&self, buf: &mut Buffer, placed: &FinishLayout) {
         if placed.message.height == 0 {
             return;
@@ -225,7 +227,14 @@ impl FinishScreen<'_> {
         self.text(
             buf,
             placed.message,
-            "MESSAGE · ⇥ edit",
+            &match self
+                .view
+                .keys
+                .key_verb(&[ActionId("app.next_pane")], "edit")
+            {
+                Some(edit) => format!("MESSAGE \u{b7} {edit}"),
+                None => "MESSAGE".to_owned(),
+            },
             Token::TextMuted,
             true,
         );
