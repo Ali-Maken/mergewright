@@ -222,7 +222,7 @@ Brownfield: `scouts/13b-quit.md` covers `quit.rs`, `jobs/*`, `finish/keys.rs`. N
 `event_loop/startup.rs` (shutdown `:314` before restore `:397`, per the review) and `event_loop/signals.rs`. The
 builder reads those two from MAP first, then the lines the review names. The conductor may send a scout instead.
 
-**Pending Q1** (below). Built on its recommended default. If the user picks the alternative, only M1 items 3–5 and
+**Q1 settled 2026-10-04: recommended default** (user: "whatever you think is best"; field-notes). Was pending Q1 (below). Built on its recommended default. If the user picks the alternative, only M1 items 3–5 and
 their boxes change (noted). Items 1–2, 6–10 and M2 stand either way.
 
 ### Q1 for the user (one question; the conductor asks it in his words, no ticket numbers)

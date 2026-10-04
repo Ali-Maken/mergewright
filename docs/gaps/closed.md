@@ -288,3 +288,4 @@ Rows whose expiry was M6, closed with the evidence named inline. Re-expired and 
 | M8/14bc-follow-unsafe | Closed 2026-10-04 by 14d (ADR-0059 §6 gates, 21 git-truth tests). |
 | M8/06-confirm-box-covers-columns | Closed 2026-10-04: not a defect — ADR-0040 outward snap (layout.rs:110/283/681-707), review m8-06-08-look. |
 | M8/pty-scripts-real-recents | Closed 2026-10-04 by 22 (8b9c2a66): checked temp XDG_CONFIG_HOME, check-sandbox.py. |
+| M8/08-missing-folder-i | Missing folder: no `i` offer. Closed 2026-10-04: user delegated ("whatever you think is best"); decided no — a deleted folder is more likely a moved repo than a new one; keep the default. | decided | M8 |
