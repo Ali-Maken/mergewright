@@ -1110,12 +1110,10 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/13b-80col-quit-hint | Banner bar drops `q quit` first at 80 cols (test-checked); user judges whether that's the right one to drop. | **unverified** | M8 |
 | M8/06-other-headers | Map/journal/stash/history/resolver headers keep their own header code, not restyled to 06's chrome. Needs a follow-up ticket (planner). | **broken** | M8 |
 | M8/06-back-short-form | 06 changed the `back to …` short form to `back`; not in the spec — needs a ruling (planner/words sweep 20). | **unverified** | M8 |
-| M8/06-confirm-box-covers-columns | Question (rule 7, no line): after 06, do confirm boxes cover the date/sha columns? Builder saw it, cause not traced. | **unverified** | M8 |
-| M8/06-stale-graft-headers | 214 old captures still show ` graft ` headers; no test produces them, so not re-shot. Stale until 26/27 rename or a sweep. | **broken** | M8 |
+| M8/06-stale-graft-headers | 166 old captures (was 214) still show ` graft ` headers; no test produces them, so not re-shot. Stale until 26/27 rename or a sweep. | **broken** | M8 |
 | M8/14-fix-open | After 14 review fixes: outcome.rs 402 lines (>400); journal Aborted reason doesn't name files that came back; review Minors 1–4 not done (see M8/14-review-minors). | **broken** | M8 |
 | M8/14-fix-risks | Reword text kept keyed on HEAD oid; `c`'s draft no longer gets reword text; each `a` costs one extra plan. Judge in daily use / M8 review. | **unverified** | M8 |
 | M8/preview-box-line-tone | Rewrite preview box has no per-line colour: muted/warning rows draw plain (`would conflict` leads with `!`). 14c ruling Q3. | **broken** | M8 |
-| M8/pty-scripts-real-recents | Python pty scripts don't set XDG_CONFIG_HOME, so a run writes the real `~/.config/graft/recent`. Fold into 22b (scripts hygiene). | **broken** | M8 |
 | M8/08-missing-folder-i | Missing folder: no `i` offer (default, user question open); switch is the `Char('i') if !state.missing` arm in graft/src/empty_state.rs. | **unverified** | M8 |
 | M8/04-review-minors | 5 Minors (1 a question) in `docs/reviews/m8-04-pixel-memory.md`. | **broken** (per finding; question unverified) | M8 |
 | M8/help-shows-keys-until-11 | `? shows them` (key list in help) is promised by the 09 table but drawn only from ticket 11, which must call `dispatch_key` (09 split note). | **broken** | M8 |
@@ -1127,6 +1125,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/keymap-doc-stash-b | §2.9 stash `b` is built in code but the keymap doc says planned. Doc drift (09 key walk). | **broken** | M8 |
 | M8/13b-review-minors | 7 Minors in `docs/reviews/m8-13b-quit.md`. | **broken** (per finding) | M8 |
 | M8/14bc-review-minors | 9 Minors in `docs/reviews/m8-14bc-fork-follows.md`. | **broken** (per finding) | M8 |
+| M8/look-review-minors | 11 Minors in `docs/reviews/m8-06-08-look.md` (incl. a failed open loses the typed path, graft empty_state.rs:101/:157). | **broken** (per finding) | M8 |
+| M8/look-file-sizes | graft-ui empty_state.rs 474 (new), render.rs 670, startup.rs 704, rows.rs 984 — over 400 (PROMPT 6.2). Review look M2; split after 10. | **broken** | M8 |
 | M8/flaky-http-remote-drop | graft-fixtures `http_remote_drop_ends_a_wedged_backend` failed once in a full run under load (14d), passes alone; crate untouched; not diagnosed. | **unverified** | M8 |
 | M8/long-tmpdir-socket | 6+ graft tests fail when `$TMPDIR` is a long path (unix-socket path limit); Paperclip runs set one. Gates pass with `TMPDIR=/tmp`. Tests should not depend on `$TMPDIR` length — cause not fixed. | **broken** | M8 |
 | M8/startup-rs-564 | `startup.rs` 564 lines, over the readability limit; outside 02's file set, not split. | **broken** | M8 |
