@@ -46,6 +46,12 @@ pub enum ConfigWarning {
     /// daemon, a container — and worth saying out loud, because every setting
     /// the user wrote is being ignored.
     NoConfigHome,
+    /// A `[keys.<context>]` entry whose value is neither a key nor a list of
+    /// keys (`merge = 3`), as its dotted path. The line is not applied.
+    NotAKey {
+        /// `keys.<context>.<verb>`.
+        path: String,
+    },
 }
 
 /// A warning is not a failure — nothing was prevented, and nobody can `?` on
@@ -60,6 +66,9 @@ impl fmt::Display for ConfigWarning {
                 f,
                 "neither XDG_CONFIG_HOME nor HOME is set, so no config file was read"
             ),
+            ConfigWarning::NotAKey { path } => {
+                write!(f, "`{path}` is not a key or a list of keys, ignored")
+            }
         }
     }
 }
@@ -174,15 +183,19 @@ fn parse(path: &Path, text: &str) -> Result<Loaded, ConfigError> {
         source,
     };
 
-    let config: Config = toml::from_str(text).map_err(fail)?;
+    let mut config: Config = toml::from_str(text).map_err(fail)?;
     // Can't fail once the typed parse has accepted the document; propagated
     // rather than assumed, because "can't happen" is not a reason to panic.
     let table: toml::Table = toml::from_str(text).map_err(fail)?;
 
+    let mut warnings = unknown_keys(&table);
+    let (remaps, unread) = super::keys::remaps(table.get("keys"));
+    config.keys.remaps = remaps;
+    warnings.extend(unread);
     Ok(Loaded {
         config,
         path: None,
-        warnings: unknown_keys(&table),
+        warnings,
     })
 }
 
@@ -195,7 +208,6 @@ fn parse(path: &Path, text: &str) -> Result<Loaded, ConfigError> {
 const SCHEMA: &[(&str, &[&str])] = &[
     ("diff", &["context", "ignore_whitespace", "word_tint"]),
     ("graph", &["default_branch", "max_lanes", "renderer"]),
-    ("keys", &["suspend_on_ctrl_z"]),
     (
         "radar",
         &[
@@ -216,6 +228,11 @@ fn unknown_keys(table: &toml::Table) -> Vec<ConfigWarning> {
     let mut warnings = Vec::new();
 
     for (name, value) in table {
+        // `[keys]` holds remap sub-tables beside its one switch: what is
+        // unknown or unreadable there is `keys::remaps`' to say.
+        if name == "keys" {
+            continue;
+        }
         let Some((_, known)) = SCHEMA.iter().find(|(section, _)| section == name) else {
             warnings.push(ConfigWarning::UnknownKey { path: name.clone() });
             continue;

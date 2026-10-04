@@ -540,7 +540,7 @@ fn terminal_and_state(
 /// split out of `terminal_and_state` so it is testable without a real
 /// terminal (m2-details-and-diffs/13c; `KNOWN_GAPS` m2-details-and-diffs/13b).
 fn seed_config(state: &mut AppState, config: &crate::config::Config) {
-    let (diff, radar, keys) = (config.diff, &config.radar, config.keys);
+    let (diff, radar, keys) = (config.diff, &config.radar, &config.keys);
     state.detail.options = graft_git::diff::DiffOptions {
         context: diff.context,
         ignore_whitespace: diff.ignore_whitespace,
@@ -651,6 +651,7 @@ mod tests {
             &crate::config::Config {
                 keys: crate::config::Keys {
                     suspend_on_ctrl_z: true,
+                    remaps: Vec::new(),
                 },
                 ..crate::config::Config::default()
             },
