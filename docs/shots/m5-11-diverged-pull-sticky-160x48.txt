@@ -1,50 +1,50 @@
 m5 walk capture: m5-11-diverged-pull-sticky — scenario pull-diverged-offers-m-and-r, keys p, unicode tier, 160x48
 
- graft <scratch________________________________________________________________>  184 rows so far
-◆   ▏ⓘ [◆ main ↑1 ↓1] ours locally                                                                                                               GF 6y   c40f17b
-│ ●    [origin/main] the teammate's commit                                                                                                       GF 6y   0657dff
-●─╯    Commit 200                                                                                                                                GF 7y   d5ae5fd
-●      Commit 199                                                                                                                                GF 7y   13e6ab1
-●      Commit 198                                                                                                                                GF 7y   f5055d9
-●      Commit 197                                                                                                                                GF 7y   2cce853
-●      Commit 196                                                                                                                                GF 7y   325da3f
-●      Commit 195                                                                                                                                GF 7y   0722297
-●      Commit 194                                                                                                                                GF 7y   b6a4a47
-●      Commit 193                                                                                                                                GF 7y   60af0eb
-●      Commit 192                                                                                                                                GF 7y   aceb8c5
-●      Commit 191                                                                                                                                GF 7y   11d68ff
-●      Commit 190                                                                                                                                GF 7y   91900bd
-●      Commit 189                                                                                                                                GF 7y   cec3e93
-●      Commit 188                                                                                                                                GF 7y   0a91ece
-●      Commit 187                                                                                                                                GF 7y   3121935
-●      Commit 186                                                                                                                                GF 7y   fab25df
-●      Commit 185                                                                                                                                GF 7y   09ae97c
-●      Commit 184                                                                                                                                GF 7y   49d7783
-●      Commit 183                                                                                                                                GF 7y   22d55c9
-●      Commit 182                                                                                                                                GF 7y   d212b3e
-●      Commit 181                                                                                                                                GF 7y   c8254c5
-●      Commit 180                                                                                                                                GF 7y   e95ccd4
-●      Commit 179                                                                                                                                GF 7y   97b58e5
-●      Commit 178                                                                                                                                GF 7y   1c9b7ed
-●      Commit 177                                                                                                                                GF 7y   f93340a
-●      Commit 176                                                                                                                                GF 7y   5aaeeba
-●      Commit 175                                                                                                                                GF 7y   6be5928
-●      Commit 174                                                                                                                                GF 7y   9b67be4
-●      Commit 173                                                                                                                                GF 7y   937d32b
-●      Commit 172                                                                                                                                GF 7y   81be718
-●      Commit 171                                                                                                                                GF 7y   57b8196
-●      Commit 170                                                                                                                                GF 7y   8ea98be
-●      Commit 169                                                                                                                                GF 7y   4926766
-●      Commit 168                                                                                                                                GF 7y   0d60d60
-●      Commit 167                                                                                                                                GF 7y   fa5ef1d
-●      Commit 166                                                                                                                                GF 7y   953abf3
-●      Commit 165                                                                                                                                GF 7y   49912f3
-●      Commit 164                                                                                                                                GF 7y   1143b38
-●      Commit 163                                                                                                                                GF 7y   e135216
-●      Commit 162                                                                                                                                GF 7y   6ddbc37
-●      Commit 161                                                                                                                                GF 7y   4b6f375
-●      Commit 160                                                                                                                                GF 7y   545bf13
-●      Commit 159                                                                                                                                GF 7y   a1a658c
-●      Commit 158                                                                                                                                GF 7y   1e28a71
-●      Commit 157                                                                                                                                GF 7y   b57586d
+ ◆ work  /tmp/graft-capture/pull-diverged-offers-m-and-r/graft-remote-0/work · main                                                             176 rows so far
+
+▸ ◆    ⓘ [◆ main ↑1 ↓1] ours locally                                                                                                            GF 6y   c40f17b
+  │ ●    [origin/main] the teammate's commit                                                                                                    GF 6y   0657dff
+  ●─╯    Commit 200                                                                                                                             GF 7y   d5ae5fd
+  ●      Commit 199                                                                                                                             GF 7y   13e6ab1
+  ●      Commit 198                                                                                                                             GF 7y   f5055d9
+  ●      Commit 197                                                                                                                             GF 7y   2cce853
+  ●      Commit 196                                                                                                                             GF 7y   325da3f
+  ●      Commit 195                                                                                                                             GF 7y   0722297
+  ●      Commit 194                                                                                                                             GF 7y   b6a4a47
+  ●      Commit 193                                                                                                                             GF 7y   60af0eb
+  ●      Commit 192                                                                                                                             GF 7y   aceb8c5
+  ●      Commit 191                                                                                                                             GF 7y   11d68ff
+  ●      Commit 190                                                                                                                             GF 7y   91900bd
+  ●      Commit 189                                                                                                                             GF 7y   cec3e93
+  ●      Commit 188                                                                                                                             GF 7y   0a91ece
+  ●      Commit 187                                                                                                                             GF 7y   3121935
+  ●      Commit 186                                                                                                                             GF 7y   fab25df
+  ●      Commit 185                                                                                                                             GF 7y   09ae97c
+  ●      Commit 184                                                                                                                             GF 7y   49d7783
+  ●      Commit 183                                                                                                                             GF 7y   22d55c9
+  ●      Commit 182                                                                                                                             GF 7y   d212b3e
+  ●      Commit 181                                                                                                                             GF 7y   c8254c5
+  ●      Commit 180                                                                                                                             GF 7y   e95ccd4
+  ●      Commit 179                                                                                                                             GF 7y   97b58e5
+  ●      Commit 178                                                                                                                             GF 7y   1c9b7ed
+  ●      Commit 177                                                                                                                             GF 7y   f93340a
+  ●      Commit 176                                                                                                                             GF 7y   5aaeeba
+  ●      Commit 175                                                                                                                             GF 7y   6be5928
+  ●      Commit 174                                                                                                                             GF 7y   9b67be4
+  ●      Commit 173                                                                                                                             GF 7y   937d32b
+  ●      Commit 172                                                                                                                             GF 7y   81be718
+  ●      Commit 171                                                                                                                             GF 7y   57b8196
+  ●      Commit 170                                                                                                                             GF 7y   8ea98be
+  ●      Commit 169                                                                                                                             GF 7y   4926766
+  ●      Commit 168                                                                                                                             GF 7y   0d60d60
+  ●      Commit 167                                                                                                                             GF 7y   fa5ef1d
+  ●      Commit 166                                                                                                                             GF 7y   953abf3
+  ●      Commit 165                                                                                                                             GF 7y   49912f3
+  ●      Commit 164                                                                                                                             GF 7y   1143b38
+  ●      Commit 163                                                                                                                             GF 7y   e135216
+  ●      Commit 162                                                                                                                             GF 7y   6ddbc37
+  ●      Commit 161                                                                                                                             GF 7y   4b6f375
+  ●      Commit 160                                                                                                                             GF 7y   545bf13
+  ●      Commit 159                                                                                                                             GF 7y   a1a658c
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  main and origin/main have diverged · m merge it  r rebase onto it

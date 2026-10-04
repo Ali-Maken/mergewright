@@ -1,18 +1,18 @@
 m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 80x24
 
- graft <scratch______________________________________________________>…  MERGING
-◌      Uncommitted changes (2 unmerged, 1 staged)
-  ● ▏  [feature] feature's readme                                   6y   1e78110
-  ●    feature's notes                                              6y   d69867a
-  ●    feature drops gone                                           6y   35c2d1e
-◆ │    [◆ main] main's notes                                        6y   a301516
-● │    main changes gone                                            6y   fa0b4d8
-●─╯    add the readme                                               6y   941a7d6
-●      add notes                                                    6y   f7b6fca
-●      add gone                                                     6y   30036f6
-●      Correct the note                                             7y   a82960b
-●      Add the first note                                           7y   fadcfb3
-◇      Add a readme                                                 7y   64ded19
+ ◆ graft-trivial-0  …aft-capture/back-after-esc/graft-trivial-0 · main  MERGING
+  ◌      Uncommitted changes (2 unmerged, 1 staged)
+▸   ●    [feature] feature's readme                                6y   1e78110
+    ●    feature's notes                                           6y   d69867a
+    ●    feature drops gone                                        6y   35c2d1e
+  ◆ │    [◆ main] main's notes                                     6y   a301516
+  ● │    main changes gone                                         6y   fa0b4d8
+  ●─╯    add the readme                                            6y   941a7d6
+  ●      add notes                                                 6y   f7b6fca
+  ●      add gone                                                  6y   30036f6
+  ●      Correct the note                                          7y   a82960b
+  ●      Add the first note                                        7y   fadcfb3
+  ◇      Add a readme                                              7y   64ded19
 
 
 
@@ -23,4 +23,4 @@ m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc E
 
 
 
- ⇥ banner  c finish  m merge  . more  r  ⏎  b  t  P  p  f  u  S  /  q  F2  F3  x
+ ⇥ banner · c finish · m merge · r rebase · ⏎ open · b branch · t tag · . more

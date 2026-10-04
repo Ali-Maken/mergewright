@@ -1,26 +1,26 @@
 m4 walk capture: m4-02-push-box-lease — scenario push-rejected-then-lease, keys P → ⏎ P, unicode tier, 80x24
 
- graft <scratch_______________________________________________________________>…
-◆   ▏ⓘ [◆ main ↑1 ↓1] amended                                       6y   68c13c4
-│ ●  ⓘ [origin/main] Commit 200                                     7y   d5ae5fd
-●─╯    Commit 199                                                   7y   13e6ab1
-●      Commit 198                                                   7y   f5055d9
-●      Commit 197                                                   7y   2cce853
-●      ╭ Force-push main → origin/main? ───────────────────────────────╮ 325da3f
-●      │ origin/main d5ae5fd → 68c13c4 · refused if origin moved since │ 0722297
-●      │ your fetch (lease)                                            │ b6a4a47
-●      │ rewrites history for everyone who has d5ae5fd                 │ 60af0eb
-●      │ leaves origin/main:                                           │ aceb8c5
-●      │ d5ae5fd  Commit 200                            Graft Fixture  │ 11d68ff
-●      │                                                               │ 91900bd
-●      │ git push --progress --force-with-lease=refs/heads/main:d5ae5… │ cec3e93
-●      │                                                               │ 0a91ece
-●      │ ▸[ Cancel ]   [ Force push ]                                  │ 3121935
-●      ╰───────────────────────────────────────────────────────────────╯ fab25df
-●      Commit 185                                                   7y   09ae97c
-●      Commit 184                                                   7y   49d7783
-●      Commit 183                                                   7y   22d55c9
-●      Commit 182                                                   7y   d212b3e
-●      Commit 181                                                   7y   c8254c5
-●      Commit 180                                                   7y   e95ccd4
+ ◆ work  …e/push-rejected-then-lease/graft-remote-0/work · main  88 rows so far
+▸ ◆    ⓘ [◆ main ↑1 ↓1] amended                                    6y   68c13c4
+  │ ●  ⓘ [origin/main] Commit 200                                  7y   d5ae5fd
+  ●─╯    Commit 199                                                7y   13e6ab1
+  ●      Commit 198                                                7y   f5055d9
+  ●      Commit 197                                                7y   2cce853
+  ●   ╭ Force-push main → origin/main? ────────────────────────────────────────╮
+  ●   │ origin/main d5ae5fd → 68c13c4 · refused if origin moved since your     │
+  ●   │ fetch (lease)                                                          │
+  ●   │ rewrites history for everyone who has d5ae5fd                          │
+  ●   │ leaves origin/main:                                                    │
+  ●   │ d5ae5fd  Commit 200                            Graft Fixture           │
+  ●   │                                                                        │
+  ●   │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc… │
+  ●   │                                                                        │
+  ●   │ ▸[ Cancel ]   [ Force push ]                                           │
+  ●   ╰────────────────────────────────────────────────────────────────────────╯
+  ●      Commit 185                                                7y   09ae97c
+  ●      Commit 184                                                7y   49d7783
+  ●      Commit 183                                                7y   22d55c9
+  ●      Commit 182                                                7y   d212b3e
+  ●      Commit 181                                                7y   c8254c5
+  ●      Commit 180                                                7y   e95ccd4
  ←/→ move  ⏎ choose  esc cancel

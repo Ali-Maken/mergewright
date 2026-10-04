@@ -1,0 +1,59 @@
+"""The environment every script launches Graft with (m8/22, gap M8/pty-scripts-real-recents).
+
+Graft writes `<config>/graft/recent` on every open, and reads `config.toml` from
+the same folder. A script that execs Graft with the caller's environment edits
+the user's real `~/.config/graft/recent`. `sandbox_env` returns an environment
+whose `XDG_CONFIG_HOME` is a temporary folder, and refuses (raises) when the
+result would still point at the real config folder.
+
+`scripts/check-scripts.sh` fails any Python script under `scripts/` or
+`.scratch/*/` that calls `os.execve` without going through `sandbox_env`.
+"""
+
+import os
+import tempfile
+
+
+def real_config_home(environ=None):
+    """The config folder Graft would use for this environment (XDG, else ~/.config)."""
+    environ = os.environ if environ is None else environ
+    xdg = environ.get("XDG_CONFIG_HOME")
+    if xdg:
+        return os.path.realpath(xdg)
+    return os.path.realpath(os.path.join(os.path.expanduser("~"), ".config"))
+
+
+def check_sandboxed(env):
+    """Raise unless `env`'s config folder is a temp folder, not the user's real one."""
+    xdg = env.get("XDG_CONFIG_HOME")
+    if not xdg:
+        raise RuntimeError("graft_sandbox: XDG_CONFIG_HOME unset; Graft would write ~/.config/graft/recent")
+    path = os.path.realpath(xdg)
+    if path in (real_config_home(os.environ), os.path.realpath(os.path.join(os.path.expanduser("~"), ".config"))):
+        raise RuntimeError(f"graft_sandbox: {path} is the real config folder")
+    temp = os.path.realpath(tempfile.gettempdir())
+    if not (path.startswith(temp + os.sep) or path.startswith("/private/tmp/") or path.startswith("/tmp/")):
+        raise RuntimeError(f"graft_sandbox: {path} is not under a temp folder")
+    return env
+
+
+def scratch_root(scenario):
+    """The fixed folder a walk's fixtures are copied into (m8/22 item 9).
+
+    Passed as GRAFT_SCRATCH_ROOT (graft-fixtures `FIXED_ROOT_VAR`): the
+    capture shows the repository path, and `/tmp/graft-capture/<scenario>` is
+    the same on every macOS machine, unlike a per-user $TMPDIR.
+    """
+    return f"/tmp/graft-capture/{scenario}"
+
+
+def sandbox_env(config_home=None, base=None, **overrides):
+    """A copy of `base` (default: os.environ) with `overrides` applied and
+    XDG_CONFIG_HOME set to `config_home` (a fresh temp folder when None).
+    Checked by `check_sandboxed` before it is returned."""
+    if config_home is None:
+        config_home = tempfile.mkdtemp(prefix="graft-script-config-")
+    env = dict(os.environ if base is None else base)
+    env.update(overrides)
+    env["XDG_CONFIG_HOME"] = config_home
+    return check_sandboxed(env)

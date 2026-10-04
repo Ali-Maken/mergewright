@@ -5,7 +5,7 @@ JOURNAL · what happened in this repo, newest first
   ●  Graft          now       pull origin/main                             1 ref · the index · the working tree · backup saved                              ← u
   ●  Graft          now       fetch all remotes                            remote-tracking refs · not undoable
   $  outside Graft  6y ago    committed "ours" on main
-  $  outside Graft  6y ago    clone: from <scratch______________________________________________________________________>
+  $  outside Graft  6y ago    clone: from /tmp/graft-capture/journal-rows/graft-remote-0/remote.git
   a branch deleted outside Graft and never checked out leaves no trace here
 
 

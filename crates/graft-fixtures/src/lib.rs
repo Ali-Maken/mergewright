@@ -91,7 +91,7 @@ pub use corpus::{
     CorpusError, Report, Unavailable, build_into, ensure, try_borrow, try_copy_into_temp,
 };
 pub use memory::{Footprint, Measured, MemoryError, footprint, measure, peak_rss};
-pub use scratch::Scratch;
+pub use scratch::{FIXED_ROOT_VAR, Scratch};
 pub use shape::Shape;
 #[cfg(feature = "heavy-tests")]
 pub use synthetic::{CommitGraph, Scale};

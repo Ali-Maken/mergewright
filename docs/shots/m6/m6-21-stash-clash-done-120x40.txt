@@ -1,11 +1,12 @@
 m6 walk capture: m6-21-stash-clash-done — scenario stash-pop-clash-to-done, keys S p y o ⏎, unicode tier, 120x40
 
- graft <scratch____________________________________________________________>  5 commits
-◆ ▏  [◆ main] rewrite the notes                                                                          GF 6y   8e361b5
-●    add the notes                                                                                       GF 6y   cfa370c
-●    Correct the note                                                                                    GF 7y   a82960b
-●    Add the first note                                                                                  GF 7y   fadcfb3
-◇    Add a readme                                                                                        GF 7y   64ded19
+ ◆ graft-trivial-0  /tmp/graft-capture/stash-pop-clash-to-done/graft-trivial-0 · main                         5 commits
+
+▸ ◆    [◆ main] rewrite the notes                                                                       GF 6y   8e361b5
+  ●    add the notes                                                                                    GF 6y   cfa370c
+  ●    Correct the note                                                                                 GF 7y   a82960b
+  ●    Add the first note                                                                               GF 7y   fadcfb3
+  ◇    Add a readme                                                                                     GF 7y   64ded19
 
 
 
@@ -21,8 +22,7 @@ m6 walk capture: m6-21-stash-clash-done — scenario stash-pop-clash-to-done, ke
 
 
 
-
-
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  every file done · stash@{0} dropped ✓ · u brings it back
 COMMIT 8e361b5 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 6y · parents cfa370c · diff vs firs…
 rewrite the notes
