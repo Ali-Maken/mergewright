@@ -183,35 +183,39 @@ pub(super) fn commit_graph_segments(
     wordings.swap_remove(index)
 }
 
+/// `<lead>` then `B build … · X never here`, each clause only while its key
+/// is bound (`graph.write_commit_graph`, `graph.decline_commit_graph`); the
+/// lead alone, separator dropped, when neither is.
+fn offer_segments(lead: &str, build: &str, keys: &Keymap) -> Vec<(String, bool)> {
+    let text = |words: &str| (words.to_owned(), false);
+    let clauses: Vec<(String, &str)> = [
+        ("graph.write_commit_graph", build),
+        ("graph.decline_commit_graph", " never here"),
+    ]
+    .into_iter()
+    .filter_map(|(id, words)| keys.spell_keys(&[ActionId(id)]).map(|key| (key, words)))
+    .collect();
+    if clauses.is_empty() {
+        return vec![text(lead)];
+    }
+    let mut segments = vec![text(&format!("{lead} · "))];
+    for (at, (key, words)) in clauses.into_iter().enumerate() {
+        if at > 0 {
+            segments.push(text(" · "));
+        }
+        segments.push((key, true));
+        segments.push(text(words));
+    }
+    segments
+}
+
 /// Every wording the line has, in no particular order:
 /// [`commit_graph_segments`] picks between them by what fits. Keys are
 /// spelled from `keys` (ticket m8/10); an unbound one's clause is left out.
 fn commit_graph_wordings(line: CommitGraphLine, keys: &Keymap) -> Vec<Vec<(String, bool)>> {
     let text = |words: &str| (words.to_owned(), false);
     let spell = |id: &'static str| keys.spell_keys(&[ActionId(id)]);
-    let write = spell("graph.write_commit_graph");
-    let decline = spell("graph.decline_commit_graph");
-    // `<lead>` then `B build … · X never here`, each clause only while its
-    // key is bound; the lead alone, separator dropped, when neither is.
-    let offer = |lead: &str, build: &str| {
-        let clauses: Vec<(String, &str)> =
-            [(write.clone(), build), (decline.clone(), " never here")]
-                .into_iter()
-                .filter_map(|(key, words)| key.map(|key| (key, words)))
-                .collect();
-        if clauses.is_empty() {
-            return vec![text(lead)];
-        }
-        let mut segments = vec![text(&format!("{lead} · "))];
-        for (at, (key, words)) in clauses.into_iter().enumerate() {
-            if at > 0 {
-                segments.push(text(" · "));
-            }
-            segments.push((key, true));
-            segments.push(text(words));
-        }
-        segments
-    };
+    let offer = |lead: &str, build: &str| offer_segments(lead, build, keys);
     match line {
         // Off the graph `B` is blame (keymap §2.5): the fact stays, the
         // keys go (m7-power-tools/36, M3).

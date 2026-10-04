@@ -1,6 +1,6 @@
 # G-keymap 2 — every hint, label and footer spells keys from the live table
 
-Status: partial — blocked: footers (seam taken 2026-10-04; see NOTES). Was: ready (planner's spec-only pass 2026-10-04, after scout `scouts/10-keymap-spell.md`)
+Status: lands with 10c (remaining work done there; see 10c NOTES). Was: partial — blocked: footers (seam taken 2026-10-04). Was: ready (planner's spec-only pass 2026-10-04, after scout `scouts/10-keymap-spell.md`)
 Build with: **Opus** — the contract is fixed by 09 and the shape by this spec; a wide sweep (~200 hint calls, ~35
 footer sites) held by the spell sweep and the capture diff. Not Fable: fails "a wrong approach becomes structural"
 (the shape is decided below).

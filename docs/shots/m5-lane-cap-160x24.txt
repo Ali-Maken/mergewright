@@ -61,7 +61,7 @@
   │ │ │ │ │ │ ● │ │ ⋮    [topic-09] Work on topic-09                           51m  1d4f9e1
   │ │ │ │ │ │ │ ● │ ⋮    [topic-08] Work on topic-08                           52m  d9fef8f
   │ │ │ │ │ │ │ │ ● ⋮    [topic-07] Work on topic-07                           53m  cd808d7
- ⏎ open · B blame · F history · c commit · P push · </> resize · p pull · f fetch · . more
+ ⏎ open · B blame · F history · c commit · P push · p pull · f fetch · b branch · . more
 
 == the same terminal, pane closed: the graph has all 160 ==
 

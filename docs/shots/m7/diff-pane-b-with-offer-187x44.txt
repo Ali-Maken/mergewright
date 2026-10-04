@@ -61,7 +61,7 @@
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
  no commit-graph file: history sorts on every open
- B blame · F history · c commit · P push · </> resize · p pull · f fetch · b branch · t tag · . more
+ B blame · F history · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · . more
 
              == 2. `B` ==
 

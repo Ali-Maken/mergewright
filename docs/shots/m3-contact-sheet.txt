@@ -914,7 +914,7 @@ what right looks like: Capture header: same scripted dirty tree as the 80x24/160
 "                                                                                                                        "
 "                                                                                                                        "
 "────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
-" space stage · d discard · c commit · </> resize · ⌃A all · e edit · ⇥ graph · . more                                   "
+" space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more                                   "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
 "STAGED (1)                    fn routes()                                                                               "
@@ -1006,7 +1006,7 @@ what right looks like: Capture header: same scripted dirty tree as the 80x24/120
 "                                                                                                                                                                "
 "                                                                                                                                                                "
 "────────────────────────────────────────────────────────────────────────────────────────────                                                                    "
-" space stage · d discard · c commit · </> resize · ⌃A all · e edit · ⇥ graph · . more                                                                           "
+" space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more                                                                           "
 
 ================================================================================
 docs/shots/m3-changes-pane-80x24.txt

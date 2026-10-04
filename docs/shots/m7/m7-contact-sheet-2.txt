@@ -44,7 +44,7 @@ Right: (a) `B L ⏎` then `Tab` to the graph — the bar leads `esc back to hist
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- esc back to history · ⏎ open · o take · b branch · </> resize · r rebase · t tag · c commit · y sha · m merge · . more
+ esc back to history · ⏎ open · o take · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · . more
 COMMIT 2f48ca3 · Lina <lina@example.invalid> · 2019-06-07 00:00 +0000 · 7mo · parents 47593a5 · diff vs first parent · …
 Retry refresh once on 401
 ▾ src/                        impl Session {
@@ -346,7 +346,7 @@ REWRITE feature-a · 5 commits since it left main · newest first · nothing wri
                                                                                                 │
                                                                                                 │
 
- y rewrite  ⏎ changes  p pick  r reword  e edit  s squash  f fixup  d drop  alt+↑/alt+↓ move  esc cancel
+ y rewrite  ⏎ changes  p pick  r reword  e edit  s squash  f fixup  d drop  alt+↑/↓ move  esc cancel
 
 ================================================================================
 docs/shots/m7/rewrite-editor-140x40.txt
@@ -392,7 +392,7 @@ REWRITE feature-a · 5 commits since it left main · newest first · nothing wri
 
 
 
- y rewrite  ⏎ changes  p pick  r reword  e edit  s squash  f fixup  d drop  alt+↑/alt+↓ move  esc cancel
+ y rewrite  ⏎ changes  p pick  r reword  e edit  s squash  f fixup  d drop  alt+↑/↓ move  esc cancel
 
 ================================================================================
 docs/shots/m7/rewrite-editor-100x30.txt
@@ -428,7 +428,7 @@ REWRITE feature-a · 5 commits since it left main · newest first · nothing wri
 
 
 
- y rewrite  ⇥ after  ⏎ changes  p pick  r reword  e edit  s squash  f fixup  d  alt+↑/alt+↓  esc
+ y rewrite  ⇥ after  ⏎ changes  p pick  r reword  e edit  s squash  f fixup  d drop  alt+↑/↓  esc
 
 ================================================================================
 docs/shots/m7/rewrite-refused-fork-120x40.txt
@@ -924,7 +924,7 @@ what right looks like: Detail pane's radar block starts `radar: not checked — 
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · B blame · F history · c commit · P push · </> resize · p pull · f fetch · b branch · t tag · u undo · . more
+ ⏎ open · B blame · F history · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · . more
 COMMIT 2c59061 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:01 +0000 · 5m · parents a82960b · diff vs firs…
 add notes · radar: not checked — commit b32274b is not in the repository · ctrl+r to try again
 M notes.txt             +1 −1 ▎
@@ -970,7 +970,7 @@ what right looks like: Evil merge, context failed: row 26 is exactly `Merge bran
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- B blame · F history · . explain · ⏎ open · c commit · P push · </> resize · p pull · f fetch · b branch · t tag
+ B blame · F history · . explain · ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search
 COMMIT cc1103b · Graft Fixture <fixture@example.invalid> · 2020-01-01 00:03 +0000 · 1y · parents 0631550, bd20b78 · dif…
 Merge branch 'alpha' · radar: not checked — commit b32274b is not in the repository · ctrl+r to try again · evil merge
 A alpha.txt             +1 −0 ▎

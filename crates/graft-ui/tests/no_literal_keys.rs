@@ -108,7 +108,7 @@ fn no_user_facing_literal_spells_a_default_key() {
             .unwrap_or(&file)
             .to_string_lossy()
             .replace('\\', "/");
-        for literal in literals(shipped_part(&source)) {
+        for literal in literals(&shipped_part(&source)) {
             if let Some(label) = hint_at(&literal, &labels)
                 && !ALLOWED
                     .iter()
@@ -122,7 +122,7 @@ fn no_user_facing_literal_spells_a_default_key() {
     for (path, text, _) in ALLOWED {
         let source = fs::read_to_string(root.join(path))
             .unwrap_or_else(|why| panic!("allow-list file {path}: {why}"));
-        if !literals(shipped_part(&source)).any(|literal| literal == *text) {
+        if !literals(&shipped_part(&source)).any(|literal| literal == *text) {
             stale.push(format!("{path}: {text:?}"));
         }
     }
@@ -164,7 +164,7 @@ fn rust_files(dir: &Path) -> Vec<PathBuf> {
             if name != "tests" {
                 out.extend(rust_files(&path));
             }
-        } else if name.ends_with(".rs")
+        } else if path.extension().is_some_and(|ext| ext == "rs")
             && name != "tests.rs"
             && name != "spell_sweep.rs"
             && name != "sweep.rs"
@@ -190,7 +190,7 @@ fn shipped_part(source: &str) -> String {
 
 /// The text of every `"…"` and `r#"…"#` literal in `source`: `\u{…}`
 /// decoded, other escapes left as written.
-fn literals(source: String) -> impl Iterator<Item = String> {
+fn literals(source: &str) -> impl Iterator<Item = String> {
     let chars: Vec<char> = source.chars().collect();
     let mut out = Vec::new();
     let mut i = 0;
@@ -266,13 +266,10 @@ fn hint_at(literal: &str, labels: &BTreeSet<String>) -> Option<String> {
             return Some(token.to_owned());
         }
     }
-    if let Some(inner) = literal
+    literal
         .strip_suffix(')')
         .and_then(|rest| rest.rsplit_once('('))
-    {
-        if is_label(inner.1) {
-            return Some(inner.1.to_owned());
-        }
-    }
-    None
+        .map(|(_, inner)| inner)
+        .filter(|inner| is_label(inner))
+        .map(str::to_owned)
 }

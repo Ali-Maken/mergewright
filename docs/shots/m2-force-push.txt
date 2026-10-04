@@ -24,7 +24,7 @@
 "                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "
-" . explain · ⏎ open · c commit · P push · </> resize · p pull · f fetch · b branch · t tag · u undo "
+" . explain · ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search   "
 "COMMIT 0202020 · Test <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y · parents 0101010 · dif…"
 "Ship the release notes · force-pushed remote                                                        "
 "                              reading…                                                              "

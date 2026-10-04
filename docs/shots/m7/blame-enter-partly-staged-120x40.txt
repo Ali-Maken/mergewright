@@ -21,7 +21,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- esc back to blame · space stage · d discard · c commit · </> resize · ⌃A all · e edit · ⇥ graph · . more
+ esc back to blame · space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more
 UNCOMMITTED · 1 staged 1 unstaged
 diff vs HEAD d45d045
 STAGED (1)                    l4

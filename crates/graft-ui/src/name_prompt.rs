@@ -158,20 +158,7 @@ impl Widget for &NamePrompt<'_> {
         );
         self.draw_field_row(area, buf, width, area.y + 1);
 
-        // A text field: its keys are the shipped ones whatever his config
-        // says (ADR-0055).
-        let option_line = match &view.option {
-            Some((label, on)) => crate::keymap::Keymap::shipped().after(
-                &format!(
-                    "{} {}",
-                    if *on { "(\u{2022})" } else { "( )" },
-                    label.as_str()
-                ),
-                crate::keymap::ActionId("app.next_pane"),
-                "toggles",
-            ),
-            None => String::new(),
-        };
+        let option_line = option_line(view.option.as_ref());
         buf.set_string(
             area.x,
             area.y + 2,
@@ -205,6 +192,23 @@ impl Widget for &NamePrompt<'_> {
             border_row('╰', '╯', "", width),
             foreground(self.theme, Token::TextMuted),
         );
+    }
+}
+
+/// `(•) <label> · ⇥ toggles`. A text field: its key is the shipped one
+/// whatever his config says (ADR-0055). Empty without an option.
+fn option_line(option: Option<&(SanitizedText, bool)>) -> String {
+    match option {
+        Some((label, on)) => crate::keymap::Keymap::shipped().after(
+            &format!(
+                "{} {}",
+                if *on { "(\u{2022})" } else { "( )" },
+                label.as_str()
+            ),
+            crate::keymap::ActionId("app.next_pane"),
+            "toggles",
+        ),
+        None => String::new(),
     }
 }
 

@@ -401,9 +401,9 @@ fn enter_keeps_the_find_and_n_steps_the_hits() {
         );
     };
     at(&state, 1);
-    // The keys are J's again: the bar is back, `n N match` on it.
+    // The keys are J's again: the bar is back, `n/N match` on it.
     assert!(
-        from_bottom(&frame, BAR).contains("/ find  n N match"),
+        from_bottom(&frame, BAR).contains("/ find  n/N match"),
         "{}",
         text(&frame)
     );

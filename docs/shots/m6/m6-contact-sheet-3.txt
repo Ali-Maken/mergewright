@@ -232,7 +232,7 @@ what right looks like: the uncommitted row has no `space fold` — changed by M6
 
 --- the changes pane has focus, the divider draggable
 [······························ 80 cells of bar ·······························]
- space stage · d discard · c commit · </> resize · ⌃A all · e edit · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · . more
 
 --- the undo journal browser has focus
 [······························ 80 cells of bar ·······························]
@@ -258,7 +258,7 @@ what right looks like: the uncommitted row has no `space fold` — changed by M6
 
 --- the changes pane has focus, the divider draggable
 [·················································· 120 cells of bar ··················································]
- space stage · d discard · c commit · </> resize · ⌃A all · e edit · ⇥ graph · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more
 
 --- the undo journal browser has focus
 [·················································· 120 cells of bar ··················································]
@@ -284,7 +284,7 @@ what right looks like: the uncommitted row has no `space fold` — changed by M6
 
 --- the changes pane has focus, the divider draggable
 [······································································ 160 cells of bar ······································································]
- space stage · d discard · c commit · </> resize · ⌃A all · e edit · ⇥ graph · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more
 
 --- the undo journal browser has focus
 [······································································ 160 cells of bar ······································································]
@@ -1561,7 +1561,7 @@ what right looks like: (ticket 52) A merge begun in the shell, resolved. Frame 1
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
- merge in progress · space stage · d discard · c finish · </> resize · ⌃A all · e edit · ⇥ diff · . more
+ merge in progress · space stage · d discard · c finish · ⌃A all · e edit · ⇥ diff · </> resize · . more
 --- after c ---
 MERGING
 ╭ Preview: finish merging feature into main ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
@@ -1733,7 +1733,7 @@ what right looks like: (ticket 52) The two frames that drew `c commit` mid-opera
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
- c finish · ⏎ changes · S stash · </> resize · p pull · P push · f fetch · u undo · J journal · . more
+ c finish · ⏎ changes · S stash · p pull · P push · f fetch · u undo · J journal · / search · . more
 
 ================================================================================
 docs/shots/m6/fix-box-takes-y-120x40.txt

@@ -395,7 +395,7 @@ what right looks like: (ticket 85 B) `S p y esc ⏎ o esc`: a stash pop that cla
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- stash@{0} clashed · 1 file conflicted · ⏎ resolve · M mergetool · e edit · </> resize · space resolved · . more
+ stash@{0} clashed · 1 file conflicted · ⏎ resolve · M mergetool · e edit · space resolved · c commit · ⇥ diff · . more
 UNCOMMITTED
 diff vs HEAD f3742ab
 CONFLICTS (1)

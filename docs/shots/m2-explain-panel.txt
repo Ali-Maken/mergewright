@@ -41,4 +41,4 @@
 "                                                                                                     ──╯                                                        "
 "                                                                                             first parent  0101010                                              "
 "                                                                                             Esc close                                                          "
-" . explain · ⏎ open · b branch · r rebase · </> resize · t tag · c commit · y sha · m merge                                                                     "
+" . explain · ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo                                                                         "

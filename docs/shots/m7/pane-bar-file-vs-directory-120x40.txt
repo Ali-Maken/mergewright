@@ -22,7 +22,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · B blame · F history · c commit · P push · </> resize · p pull · f fetch · b branch · t tag · u undo · . more
+ ⏎ open · B blame · F history · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · . more
 COMMIT 9d4f6c9 · Graft Fixture <fixture@example.invalid> · 2020-09-13 12:27 +0000 · 4mo · parents a82960b · diff vs fir…
 add src
 M notes.txt             +1 −1 ▎
@@ -64,7 +64,7 @@ M notes.txt             +1 −1 ▎
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · space fold · c commit · P push · </> resize · p pull · f fetch · b branch · t tag · u undo · . more
+ ⏎ open · space fold · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · q quit · . more
 COMMIT 9d4f6c9 · Graft Fixture <fixture@example.invalid> · 2020-09-13 12:27 +0000 · 4mo · parents a82960b · diff vs fir…
 add src
 M notes.txt             +1 −1 select a file
