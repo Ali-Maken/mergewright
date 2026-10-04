@@ -322,13 +322,22 @@ fn open_moved_to_capital_o_outside_a_repository() {
     assert_eq!(warnings, []);
 
     let mut moved = state();
-    assert_eq!(outside_edge(&mut moved, &keymap, ch('o')), OutsideStep::Stay);
+    assert_eq!(
+        outside_edge(&mut moved, &keymap, ch('o')),
+        OutsideStep::Stay
+    );
     assert_eq!(moved, state(), "o: nothing, as a key nobody answers");
     let mut unanswered = state();
-    assert_eq!(outside_key(&mut unanswered, key(KeyCode::Function(20))), OutsideStep::Stay);
+    assert_eq!(
+        outside_key(&mut unanswered, key(KeyCode::Function(20))),
+        OutsideStep::Stay
+    );
     assert_eq!(moved, unanswered);
 
-    assert_eq!(outside_edge(&mut moved, &keymap, ch('O')), OutsideStep::Stay);
+    assert_eq!(
+        outside_edge(&mut moved, &keymap, ch('O')),
+        OutsideStep::Stay
+    );
     let Some(Prompt::Open(field)) = &moved.prompt else {
         panic!("O opens the prompt: {:?}", moved.prompt);
     };

@@ -77,7 +77,9 @@ pub(super) fn key(next: &mut AppState, commands: &mut Vec<Command>, pressed: Key
     let context = context_of(next);
     match next.keymap.get().translate(context, chord) {
         Translated::Pass => super::dispatch_key(next, commands, pressed),
-        Translated::Default(default) => super::dispatch(next, commands, default.to_press(), pressed),
+        Translated::Default(default) => {
+            super::dispatch(next, commands, default.to_press(), pressed);
+        }
         Translated::Unbound => unanswered(next, pressed, context),
     }
 }

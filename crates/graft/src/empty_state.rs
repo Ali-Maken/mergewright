@@ -69,7 +69,11 @@ pub(crate) enum OutsideStep {
 /// default whose action moved does what a key nobody answers does: clears
 /// the problem line, and nothing else. (The clone prompt, ticket 18, joins
 /// the "prompt open" check.)
-pub(crate) fn outside_edge(state: &mut OutsideState, keymap: &Keymap, key: KeyPress) -> OutsideStep {
+pub(crate) fn outside_edge(
+    state: &mut OutsideState,
+    keymap: &Keymap,
+    key: KeyPress,
+) -> OutsideStep {
     if matches!(state.prompt, Some(Prompt::Open(_))) {
         return outside_key(state, key);
     }

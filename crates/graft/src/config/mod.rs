@@ -39,7 +39,7 @@
 mod keys;
 mod load;
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 mod types;
 
 pub(crate) use keys::keymap_from;

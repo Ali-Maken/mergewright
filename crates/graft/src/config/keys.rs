@@ -21,7 +21,9 @@ const SUSPEND: &str = "suspend_on_ctrl_z";
 /// table is sorted — the lines come out sorted by context, then verb, not in
 /// file order. The keymap ranks a collision by line, so of two lines claiming
 /// one key in one context the one whose id sorts later wins.
-pub(super) fn remaps(keys: Option<&toml::Value>) -> (Vec<(String, Vec<String>)>, Vec<ConfigWarning>) {
+pub(super) fn remaps(
+    keys: Option<&toml::Value>,
+) -> (Vec<(String, Vec<String>)>, Vec<ConfigWarning>) {
     let mut lines = Vec::new();
     let mut warnings = Vec::new();
     let Some(table) = keys.and_then(toml::Value::as_table) else {

@@ -1,6 +1,6 @@
 # G-keymap 1b — remaps translated at the app's edge, read from `[keys]`
 
-Status: ready (split from 09 on 2026-10-04, after scout `scouts/09-keymap-table.md`)
+Status: done (2026-10-04, branch `m8-09b`; builder compacted once — see NOTES)
 Build with: **Opus** — the approach and every rule are fixed by 09; correctness is judged by the behavioural sweep
 below, not by eye. Not Fable: fails "can't be judged from the diff or the tests". Scout: 09's covers this code
 (`scouts/09-keymap-table.md`); a fresh one only if `update/mod.rs` moved since eeaf6a19.
@@ -98,16 +98,23 @@ pub(crate) fn dispatch_key(state: &mut AppState, key: graft_core::event::KeyPres
 Return type of `dispatch_key`: whatever `core_event`'s `Event::Key` arm yields today; name it in MAP.md.
 
 ## Acceptance
-- [ ] Behavioural sweep green over every `ContextId` with a state (test named at tick).
-- [ ] Every-row-answered green; each exemption has a reason (test named at tick).
-- [ ] Typed-text test per field, the empty state's prompt included (tests named at tick).
-- [ ] J8 through `load_from` (test named at tick); person step stays a TESTING.md row (accept-m8's).
-- [ ] Outside remap test (named at tick).
-- [ ] `suspend_on_ctrl_z` still read: `keys_suspend_on_ctrl_z_reaches_app_state` (startup.rs:640) green.
-- [ ] Default config: every existing capture assert green, none re-blessed (the status line is absent with no problems).
-- [ ] Capture `docs/shots/m8-keymap-config-problem-120x36.txt` (pty, `[keys.graph] merge = "M"`): graph as normal,
-      bottom row `config: 1 problem · ? shows them`. **Colour unverified** (rule 5). ≤ 200 KB.
-- [ ] `crates/graft/MAP.md`: `Keys::remaps`, `keymap_from`, `context_of`, `dispatch_key`, the edge, `config_problems`.
+- [x] Behavioural sweep green over every `ContextId` with a state — `update::tests::keymap_edge::the_sweep_moves_every_action_and_every_context_follows`
+      (18 repo contexts with a fixture; asserts > 300 rows swept). `EmptyState`: `empty_state::tests::open_moved_to_capital_o_outside_a_repository`
+      + `the_default_keymap_outside_is_every_key_as_pressed` (one remap and the default identity, not a full sweep — see NOTES).
+- [x] Every-row-answered green; each exemption has a reason — `update::tests::keymap_edge::every_row_is_answered_in_its_context`
+      (`NOT_YET_ANSWERED` 5, `NO_EFFECT_IN_FIXTURE` 18; the test also fails on an exempt row that *is* answered).
+- [x] Typed-text test per field, the empty state's prompt included — `update::tests::keymap_edge::x_typed_into_every_field_is_an_x_with_merge_on_x`
+      (10 fields), `empty_state::tests::x_typed_into_the_open_prompt_is_an_x_with_merge_on_x`.
+- [x] J8 through `load_from` — `update::tests::keymap_edge::j8_a_keys_table_beside_suspend_moves_merge_and_says_one_problem`;
+      real binary over a pty: `it::keymap_config::a_keys_table_in_the_config_file_reaches_the_first_screen`. Person step stays accept-m8's.
+- [x] Outside remap test — `empty_state::tests::open_moved_to_capital_o_outside_a_repository`.
+- [x] `suspend_on_ctrl_z` still read: `event_loop::startup::tests::keys_suspend_on_ctrl_z_reaches_app_state` green (full run).
+- [x] Default config: every existing capture assert green, none re-blessed — full workspace `cargo nextest run`; `git diff --stat main -- docs/shots`
+      shows only the new file. Notice gone/absent: `update::tests::keymap_edge::the_config_notice_goes_at_the_first_key_and_needs_a_problem`.
+- [x] Capture `docs/shots/m8-keymap-config-problem-120x36.txt` (4.7 KB) — written by the J8 test above. **Not pty**: see NOTES.
+      **Colour unverified** (rule 5); muted token not checked. Looks-right is the user's call.
+- [x] `crates/graft/MAP.md`: `Keys::remaps`, `keymap_from`, `ConfigWarning::NotAKey`, `update::edge` (+ `context_of`, `SharedKeymap`),
+      `dispatch_key`, `before_any_key`, `config_problems`/`config_notice`/`seed_keys`, `outside_edge`, `places::drive`.
 
 ## Touches
 - `core_event` Key arm and every dispatcher behind it (input only; no dispatcher edited). Harness `hand_back`. Mouse
@@ -126,3 +133,60 @@ If the fixtures alone pass ~50k, land 1–6 with J8, typed-text and outside test
 `blocked: sweeps` — the conductor gives the two sweeps to an Opus follow-up.
 
 > Conductor (2026-10-04), inputs from 09 (see 09 NOTES): name prompt has no ContextId; `translate` passes every key in text-field contexts (09 builder decided, spec silent); spelling exemptions `release`, `type`, `tab` go to ticket 10; gap M8/ctrl-shift-c-legacy.
+
+## NOTES (builder, 2026-10-04)
+
+**Compacted: yes, once**, mid-build (after the edge and the sweep fixtures; before the every-row exemptions, the
+typed-text/J8/outside/notice tests, capture, MAP, gates). Nothing of scope remains; all of it landed after the compaction.
+Scout: none fresh — 09's two scouts covered the code; `update/mod.rs`'s Key arm was where the scout said.
+
+- **Order of remaps.** `toml` is built without `preserve_order` (`crates/graft/Cargo.toml:55`), so tables come out
+  sorted: `Keys::remaps` is sorted by id, not file order. A collision's winner follows that order. Said in `Keys`' doc.
+- **Typed parse.** No `deny_unknown_fields` (load.rs:178 says why); serde ignores `[keys.<ctx>]`. `remaps` is
+  `serde(skip)`, filled from the raw table by `config/keys.rs::remaps`. `SCHEMA`'s `keys` row removed and
+  `unknown_keys` skips `keys`; `keys.rs` warns a non-table straight under `[keys]` as unknown (`keys.<name>`),
+  a non-text value as the new `ConfigWarning::NotAKey { path }`.
+- **`SharedKeymap`** (`update/edge.rs`): `AppState` derives `Clone, Debug, Eq`; `graft_ui::keymap::Keymap` derives none,
+  so `AppState.keymap` is an `Arc` wrapper (equal = same Arc or same chords per row). **Proposed:** derive
+  `Clone, Debug, PartialEq, Eq` on `Keymap` in graft-ui (not my crate) and drop the wrapper's impls.
+- **`dispatch_key` signature** gains `commands`: `(&mut AppState, &mut Vec<Command>, KeyPress)` → `()` — the Key arm
+  mutates state and pushes commands; it has no return value. 11's palette calls it.
+- **`hand_back`** (`update/mod.rs:1108`): a test-harness hook that ends the run with `Quit::HandedBack(key)` on listed
+  key codes. It reads the **raw** press (`dispatch(next, commands, key, raw)`), so no remap reaches or dodges it; no
+  binding names it.
+- **`mouse.rs:91`** comment says the menu's letters are "handed back down `key_event`"; the code acts through
+  `apply_context_action`. Not edited (ticket said report only).
+- **Unbound = what F20 does** (`edge::unanswered`): `keys::before_any_key` (extracted from `key_event`: dismiss an unseen
+  failure / `acknowledge`), drop a badge drag, close the `.` menu in `Menu`. **Deviation:** a shown blame/history place
+  runs `keep_in_view` on *any* key it gets (`place_key`'s fall-through); the edge's unbound key does not reach it. In a
+  settled place that is no visible change; on a place not yet scrolled to its cursor, the first unbound key would not
+  scroll it. The sweep's Blame/History fixtures are settled by one F20 first, and say why. Cause, not symptom: the
+  alternative is calling into the place from the edge for a no-op in every real state.
+- **Text fields pass every key** (09's decision kept): the edge checks `text_field_open()` before translating, so it
+  never matters whether `translate` would. The empty state's open prompt does the same in `outside_edge`.
+- **Config warnings moved** from `Session` notes to `AppState::config_problems`: shown on F2's status screen
+  (`view::status::notes`, between git notes and session notes) and counted on the bottom row. Test renamed
+  `session::tests::config_warnings_become_notes_and_are_sanitised` → `config_warnings_are_not_session_notes` (asserts
+  notes empty). Sanitising now happens in `view::status::notes` and `bars::footer_notice` (`sanitize_line`); **no test
+  pins sanitising of a config problem on F2** — unverified.
+  `places::drive` lost its `quiet`/`told` logic: the first repository place gets the problems, later ones none.
+- **Notice priority** (`view/frame/bars.rs::footer_notice`): after `interrupted_notice`, before the hints; a bottom-row
+  problem (failure) is checked first and wins. Cleared by `acknowledge` (first key or click).
+- **`context_of` vs the chain:** followed the chain. One nuance: J/Stash/Map count only with the graph focused
+  (`keys::pane_and_overlay_key`), so a focused detail pane over an overlay is Changes/Diff.
+- **Visibility changes for tests:** `update::commit_editor::tests` and `config::tests` are `pub(crate)` (fixtures shared
+  with `keymap_edge`); `config::tests::loaded_from_a_file` writes the J8 file because `update`'s purity scan
+  (`update_cannot_reach_the_world`) forbids `std::fs` anywhere under `update/`, tests included.
+- **AppState grew** (3 fields): two existing tests tripped clippy's 16 KB local-array lint (`live_c_tests.rs:456`,
+  `bottom_row/unseen.rs:147`); now boxed slices, same assertions.
+- **Capture not pty.** A pty run reads the real clock, so ages drift and the shot could never compare. The shot is
+  drawn by the real `view` from the J8 test's state (file → `load_from` → `keymap_from` → `seed_keys`) at 120×36 with
+  the fixtures' fixed clock. The startup wiring through the real binary is asserted separately (pty test above), not
+  captured. Colour unverified.
+- **NO_EFFECT_IN_FIXTURE reasons**: 16 checked against the handler (named in each entry); `diff.word_diff` and
+  `blame.heatmap` flip state that draws only as colour, which the text frame cannot show (rule 5) — **unverified** that
+  they draw at all, only that the state flips (`detail/keys.rs:392`, `place/keys.rs:59`).
+- **Outside sweep:** only one remap + default identity over 8 keys, not every EmptyState row moved; the full sweep is
+  repo-only. Gap for the conductor if wanted.
+- Touches checked: full workspace nextest 5474/5474; `git diff main -- docs/shots`: only the new shot is mine
+  (`m8/fork-follows-rewrite-editor-187x44.txt` differs because main moved with 14d after this branch).

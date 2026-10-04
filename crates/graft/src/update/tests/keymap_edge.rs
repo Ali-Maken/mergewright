@@ -83,10 +83,9 @@ fn fixture(ctx: ContextId) -> Option<AppState> {
         C::Map => overlay_over(on_a_branch_row(), Shown::Map),
         C::Journal => overlay_over(on_a_branch_row(), Shown::Journal),
         C::Stash => overlay_over(on_a_branch_row(), Shown::Stash),
-        C::Preview => crate::update::preview::tests::opened_with(
-            crate::update::preview::tests::a_plan(),
-        )
-        .0,
+        C::Preview => {
+            crate::update::preview::tests::opened_with(crate::update::preview::tests::a_plan()).0
+        }
         C::Confirm => {
             let yes = every_context()
                 .into_iter()
@@ -109,13 +108,13 @@ fn fixture(ctx: ContextId) -> Option<AppState> {
         // it does not answer included (`place_key`'s fall-through). The
         // edge's unbound key never reaches it, so the fixture starts as the
         // loop would leave it: one key in, scrolled to its cursor.
-        C::Blame => settled(super::place::tests::place_on_screen(
+        C::Blame => settled(&super::place::tests::place_on_screen(
             commit_pane(walk(), false),
             true,
             true,
         )),
         C::History => settled(
-            history_screens(
+            &history_screens(
                 walk(),
                 &HintContext::History {
                     rows: true,
@@ -151,8 +150,8 @@ fn sized_to_draw(mut state: AppState) -> AppState {
 }
 
 /// `state` after a key nobody answers.
-fn settled(state: AppState) -> AppState {
-    update(&state, AppEvent::Core(Event::Key(unanswered()))).0
+fn settled(state: &AppState) -> AppState {
+    update(state, AppEvent::Core(Event::Key(unanswered()))).0
 }
 
 /// The default chord of `row` that acts as `row` in `ctx` out of the box:
@@ -199,7 +198,12 @@ fn swept() -> (SharedKeymap, Vec<(&'static Binding, KeyChord)>) {
         .filter(|b| !b.context.is_text_field() && b.action.0 != "app.quit_now")
         .collect();
     let free = free_chords();
-    assert!(free.len() >= rows.len(), "{} free for {}", free.len(), rows.len());
+    assert!(
+        free.len() >= rows.len(),
+        "{} free for {}",
+        free.len(),
+        rows.len()
+    );
     for b in defaults() {
         for chord in b.default {
             assert!(!free.contains(chord), "{} uses a sweep chord", b.action.0);
@@ -287,24 +291,60 @@ const NOT_YET_ANSWERED: &[(&str, &str)] = &[
 /// Rows whose default does nothing *in this fixture* — the key is answered,
 /// but the fixture's data gives it nothing to change. Each says why.
 const NO_EFFECT_IN_FIXTURE: &[(&str, &str)] = &[
-    ("app.next_pane", "graph: no pane shown to move to (`detail_key`'s `Tab if detail.shown`)"),
-    ("app.prev_pane", "graph: no pane shown to move to (`BackTab if detail.shown`)"),
+    (
+        "app.next_pane",
+        "graph: no pane shown to move to (`detail_key`'s `Tab if detail.shown`)",
+    ),
+    (
+        "app.prev_pane",
+        "graph: no pane shown to move to (`BackTab if detail.shown`)",
+    ),
     ("app.back", "graph: nothing open to back out of"),
     ("app.next_match", "graph: no search kept to step through"),
     ("app.prev_match", "graph: no search kept to step through"),
     ("graph.lanes", "graph: no lanes folded behind `+N`"),
     ("graph.hide_stash", "graph: no stash to hide"),
-    ("graph.write_commit_graph", "graph: no commit-graph offer standing (`offer_keys_live`)"),
-    ("graph.decline_commit_graph", "graph: no commit-graph offer standing (`offer_keys_live`)"),
-    ("preview.rewrite", "preview: no suggested drop to keep (`keeps_drops`)"),
+    (
+        "graph.write_commit_graph",
+        "graph: no commit-graph offer standing (`offer_keys_live`)",
+    ),
+    (
+        "graph.decline_commit_graph",
+        "graph: no commit-graph offer standing (`offer_keys_live`)",
+    ),
+    (
+        "preview.rewrite",
+        "preview: no suggested drop to keep (`keeps_drops`)",
+    ),
     ("preview.left", "preview: its cursor is already leftmost"),
-    ("confirm.left", "confirm box: its cursor is already leftmost"),
-    ("changes.mergetool", "changes: the row is not an unmerged file"),
-    ("diff.word_diff", "colour only (`word_tint`): the text frame cannot show it"),
-    ("diff.blame", "diff: no diff line under the cursor (`place::b_key`)"),
-    ("diff.fold_dir", "diff: no directory row under the cursor (`space_folds`)"),
-    ("rewrite.move_up", "rewrite editor: the cursor is on the first row"),
-    ("blame.heatmap", "colour only (`blame.heatmap`): the text frame cannot show it"),
+    (
+        "confirm.left",
+        "confirm box: its cursor is already leftmost",
+    ),
+    (
+        "changes.mergetool",
+        "changes: the row is not an unmerged file",
+    ),
+    (
+        "diff.word_diff",
+        "colour only (`word_tint`): the text frame cannot show it",
+    ),
+    (
+        "diff.blame",
+        "diff: no diff line under the cursor (`place::b_key`)",
+    ),
+    (
+        "diff.fold_dir",
+        "diff: no directory row under the cursor (`space_folds`)",
+    ),
+    (
+        "rewrite.move_up",
+        "rewrite editor: the cursor is on the first row",
+    ),
+    (
+        "blame.heatmap",
+        "colour only (`blame.heatmap`): the text frame cannot show it",
+    ),
 ];
 
 /// Default keymap: each row's default, pressed in its context's fixture,
@@ -326,9 +366,9 @@ fn every_row_is_answered_in_its_context() {
             continue;
         };
         let nothing = seen(&base, unanswered());
-        let rows = defaults()
-            .iter()
-            .filter(|b| b.context == ctx || (ctx == ContextId::Graph && b.context == ContextId::Global));
+        let rows = defaults().iter().filter(|b| {
+            b.context == ctx || (ctx == ContextId::Graph && b.context == ContextId::Global)
+        });
         for row in rows {
             let id = row.action.0;
             let Some(chord) = acting_default(ctx, row) else {
@@ -355,15 +395,18 @@ fn every_row_is_answered_in_its_context() {
 
 /// Journey J8 from the file on disk: `suspend_on_ctrl_z` beside a
 /// `[keys.graph]` table, read by `config::load_from`, made a keymap by
-/// `keymap_from`, seeded as startup seeds it.
+/// `keymap_from`, seeded as startup seeds it. (The file is written by
+/// `config::tests`: `update` names no file system, tests included.)
+/// `M` was the Map's: merge takes it, the Map loses it — the one problem.
 #[test]
 fn j8_a_keys_table_beside_suspend_moves_merge_and_says_one_problem() {
-    let dir = tempfile::TempDir::new().expect("a temp dir");
-    let path = dir.path().join("config.toml");
-    std::fs::write(&path, "[keys]\nsuspend_on_ctrl_z = true\n\n[keys.graph]\nmerge = \"M\"\n")
-        .expect("write the config");
-    let loaded = crate::config::load_from(&path).expect("the file loads");
-    assert!(loaded.config.keys.suspend_on_ctrl_z, "suspend still reads true");
+    let loaded = crate::config::tests::loaded_from_a_file(
+        "[keys]\nsuspend_on_ctrl_z = true\n\n[keys.graph]\nmerge = \"M\"\n",
+    );
+    assert!(
+        loaded.config.keys.suspend_on_ctrl_z,
+        "suspend still reads true"
+    );
     assert_eq!(
         loaded.warnings,
         [],
@@ -390,8 +433,14 @@ fn j8_a_keys_table_beside_suspend_moves_merge_and_says_one_problem() {
         &first,
     );
 
-    let (merged, _) = update(&base, AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char('M')))));
-    assert!(merged.preview.is_some(), "M on a branch row opens the merge preview");
+    let (merged, _) = update(
+        &base,
+        AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char('M')))),
+    );
+    assert!(
+        merged.preview.is_some(),
+        "M on a branch row opens the merge preview"
+    );
     assert_eq!(
         seen(&base, KeyPress::plain(KeyCode::Char('m'))),
         seen(&base, unanswered()),
@@ -403,7 +452,10 @@ fn j8_a_keys_table_beside_suspend_moves_merge_and_says_one_problem() {
 #[test]
 fn the_config_notice_goes_at_the_first_key_and_needs_a_problem() {
     let mut state = on_a_branch_row();
-    state.seed_keys(SharedKeymap::default(), vec!["graf.merge is not an action".to_owned()]);
+    state.seed_keys(
+        SharedKeymap::default(),
+        vec!["graf.merge is not an action".to_owned()],
+    );
     let draw = |state: &AppState| crate::view::tests::draw(state, 120, 36);
     assert!(draw(&state).contains("config: 1 problem · ? shows them"));
     let after = update(&state, AppEvent::Core(Event::Key(unanswered()))).0;
@@ -411,7 +463,10 @@ fn the_config_notice_goes_at_the_first_key_and_needs_a_problem() {
 
     let mut clean = on_a_branch_row();
     clean.seed_keys(SharedKeymap::default(), Vec::new());
-    assert!(!draw(&clean).contains("config:"), "nothing to report, nothing said");
+    assert!(
+        !draw(&clean).contains("config:"),
+        "nothing to report, nothing said"
+    );
 }
 
 /// Every text field `text_field_open` names, each open and empty: the
@@ -424,18 +479,36 @@ fn every_field() -> Vec<(&'static str, AppState)> {
     super::rewrite_editor::tests::open_an_editor_field(&mut rewrite);
     let fields = vec![
         ("search", typed(on_a_branch_row(), '/')),
-        ("blame find", typed(fixture(ContextId::Blame).expect("blame"), '/')),
-        ("J find", typed(fixture(ContextId::Journal).expect("J"), '/')),
-        ("stash prompt", typed(fixture(ContextId::Stash).expect("stash"), 's')),
-        ("commit editor", fixture(ContextId::CommitEditor).expect("editor")),
-        ("credential", fixture(ContextId::Credential).expect("credential")),
+        (
+            "blame find",
+            typed(fixture(ContextId::Blame).expect("blame"), '/'),
+        ),
+        (
+            "J find",
+            typed(fixture(ContextId::Journal).expect("J"), '/'),
+        ),
+        (
+            "stash prompt",
+            typed(fixture(ContextId::Stash).expect("stash"), 's'),
+        ),
+        (
+            "commit editor",
+            fixture(ContextId::CommitEditor).expect("editor"),
+        ),
+        (
+            "credential",
+            fixture(ContextId::Credential).expect("credential"),
+        ),
         (
             "name prompt",
             box_over_the_graph(walk(), &HintContext::NamePrompt { toggle: true }),
         ),
         ("picker", fixture(ContextId::Picker).expect("picker")),
         ("rewrite field", rewrite),
-        ("finish subject", finish_screen_for(walk(), SummaryFocus::Subject, true)),
+        (
+            "finish subject",
+            finish_screen_for(walk(), SummaryFocus::Subject, true),
+        ),
     ];
     fields
         .into_iter()
@@ -450,7 +523,8 @@ fn every_field() -> Vec<(&'static str, AppState)> {
 fn x_typed_into_every_field_is_an_x_with_merge_on_x() {
     // `x` is `graph.compare`'s: merge keeps it, compare loses it — on the
     // graph `x` now merges, and still types an `x` everywhere text goes.
-    let (map, warnings) = Keymap::with_overrides(&[("graph.merge".to_owned(), vec!["x".to_owned()])]);
+    let (map, warnings) =
+        Keymap::with_overrides(&[("graph.merge".to_owned(), vec!["x".to_owned()])]);
     assert_eq!(warnings.len(), 1, "{warnings:?}");
     let remapped = SharedKeymap::new(map);
     for (name, base) in every_field() {
@@ -460,9 +534,16 @@ fn x_typed_into_every_field_is_an_x_with_merge_on_x() {
             ..base.clone()
         };
         let press = KeyPress::plain(KeyCode::Char('x'));
-        assert_eq!(seen(&moved, press), seen(&base, press), "{name}: as under the default keymap");
+        assert_eq!(
+            seen(&moved, press),
+            seen(&base, press),
+            "{name}: as under the default keymap"
+        );
         let before = seen(&base, unanswered()).frame.matches('x').count();
         let after = seen(&moved, press).frame.matches('x').count();
-        assert!(after > before, "{name}: the field shows the x ({before} → {after})");
+        assert!(
+            after > before,
+            "{name}: the field shows the x ({before} → {after})"
+        );
     }
 }

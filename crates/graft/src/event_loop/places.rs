@@ -19,10 +19,10 @@ use super::startup::{Arrival, Ran, Terminal, hand_back_input, run_repo};
 use super::{ChannelWakes, Exit, Wake, Wakes, input, signals};
 use crate::config::Loaded;
 use crate::empty_state::{OutsideState, OutsideStep, Prompt, outside_edge, view};
-use crate::update::SharedKeymap;
 use crate::recent::{self, Recent};
 use crate::repos::RepoStore;
 use crate::session::Session;
+use crate::update::SharedKeymap;
 use crate::update::{AppEvent, Harness};
 use crate::view::rows::home_relative;
 

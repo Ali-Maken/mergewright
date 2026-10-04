@@ -23,6 +23,14 @@ fn config_file(text: &str) -> (TempDir, PathBuf) {
     (dir, path)
 }
 
+/// `text` written to a real file and read back by `load_from`: for tests
+/// outside this module that must not touch the file system themselves
+/// (`update`'s purity scan, `update::tests::update_cannot_reach_the_world`).
+pub(crate) fn loaded_from_a_file(text: &str) -> Loaded {
+    let (_dir, path) = config_file(text);
+    load_from(&path).expect("the file loads")
+}
+
 /// The error `load_from` produced, or a failure naming what loaded instead.
 fn load_error(path: &Path) -> ConfigError {
     match load_from(path) {
