@@ -137,6 +137,7 @@ One line per public item. Update when a public item changes.
 - `composite` (fn) — premultiplied "over" of an `Emphasised` onto its backdrop strip (iTerm2, and the tests' view of a strip under a selection).
 
 ## raster::cache
+Files (m8 04 review): `cache.rs` the cache and its lookups; `cache/lru.rs` the weighed LRU, `shrink` and buffers given back on eviction; `cache/key.rs` the keys (`layer_key`, `backdrop_key`, `paint_key`) and their hashes. Public paths unchanged.
 - `StripCache` (struct) — bounded LRUs of rasterised strips keyed on (row range, layout hash, theme id, cell size) (DESIGN.md §3.8). `backdrop`/`emphasis`/`composited` key on layout + backdrop (+ `lit_hash`); no selection reaches a backdrop's key. One byte budget across the three LRUs (m8 04): over it, the globally least recently used entry of any layer goes, but never below the viewport floor `min_strips` per layer; a cached `None` emphasis weighs a 64 KiB floor.
 - `StripCache::backdrop` (fn) — a layout-only strip at one `Backdrop`, from the cache or rasterised; counts in `hits`/`rasterised`. Refuses a misaligned strip; an `Uncommitted` ring row does not count toward the strip height.
 - `StripCache::emphasis` (fn) — the selection's emphasis image over a strip (`None` cached too); counts in `emphasis_hits`/`emphasis_rasterised`.

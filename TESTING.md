@@ -231,8 +231,11 @@ paint always sends an emphasis layer.
 bytes against one budget (`STRIP_BUDGET`, 96 MiB; DESIGN §3.8), the viewport's
 strips kept whatever they weigh. Fast tier, every build:
 `event_loop::tests::pixel_scroll::held_j_on_wide_strips_stays_within_the_byte_budget`
-(resident ≤ budget or the floor, every frame; the pool makes no new buffer over
-the second half of the hold). Heavy tier:
+(budget = the viewport floor plus two strips, so the budget binds, not the
+floor — the regime the 17×37 cell runs in: resident ≤ budget and the floor
+never wins on every frame, evictions happen, and the pool makes no new buffer
+over the second half of the hold). The floor-wins regime is the cache-level
+`strip_cache::the_viewport_minimum_wins_over_a_budget_too_small`. Heavy tier:
 `heavy::budgets_hold_at_pixel_on_monorepo_with_j_held_free` and
 `heavy::budgets_hold_at_pixel_on_monorepo_with_j_held_40mb` run `held_key`'s
 scenario A (Kitty + deflate, 187×50, 17×37 cell) in a child process of their
@@ -3101,7 +3104,7 @@ Promise: **on a repository his size, scrolling stops when he lets go of the key,
 both tiers** (Unicode; Pixel on Kitty with deflate, Ghostty's path, and on iTerm2). One command:
 
 ```sh
-scripts/47-scroll-acceptance.sh   # summary: docs/perf/47-scroll-acceptance.txt · raw: target/47-acceptance/ · exit 1 on any miss
+scripts/47-scroll-acceptance.sh   # summary: docs/perf/47-scroll-acceptance-<date>-<head>.txt (baseline: …-acceptance.txt, never rewritten) · raw: target/47-acceptance/ · exit 1 on any miss
 ```
 
 Steps: (1) release `held_key::` twice — every test but the raw Kitty pair (must exit 0), then the raw pair alone,

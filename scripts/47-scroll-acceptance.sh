@@ -7,7 +7,8 @@
 #
 #   scripts/47-scroll-acceptance.sh
 #
-# Writes docs/perf/47-scroll-acceptance.txt and prints only its SUMMARY lines
+# Writes docs/perf/47-scroll-acceptance-<UTC date>-<HEAD>.txt, a new file each
+# run, and prints only its SUMMARY lines
 # and paths. Raw test and pty output stay under $CARGO_TARGET_DIR/47-acceptance/
 # (ignored; never committed). Exit 1 on any miss, each named in a
 # `SUMMARY miss` line. Release builds only (ADR-0021).
@@ -26,6 +27,10 @@
 #      compare mode) and docs/shots/m7/fix-scroll-release-unicode.txt (one
 #      more text pty run, its release grid at the PNG's rows).
 #
+# docs/perf/47-scroll-acceptance.txt is the quiet baseline (a4d1f93b, load
+# 1.1) that later runs are compared against; this script never writes it (m8
+# 04 review, Major 3: an under-load run overwrote it once).
+#
 # CARGO_TARGET_DIR is honoured (default: target).
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/lib/machine-state.sh"  # ticket 49: battery / Low Power Mode guard
@@ -35,7 +40,7 @@ cd "$ROOT" || exit 2
 TARGET=${CARGO_TARGET_DIR:-$ROOT/target}
 case $TARGET in /*) ;; *) TARGET=$ROOT/$TARGET ;; esac
 export CARGO_TARGET_DIR=$TARGET
-OUT=docs/perf/47-scroll-acceptance.txt
+OUT=docs/perf/47-scroll-acceptance-$(date -u +%Y-%m-%d)-$(git rev-parse --short HEAD).txt
 machine_state_begin "$OUT"
 WORK=$TARGET/47-acceptance
 mkdir -p "$WORK"

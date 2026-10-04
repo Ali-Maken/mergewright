@@ -43,9 +43,10 @@ invalidation". Moving the cursor became one when ADR-0024 made the thread an alp
 ## Consequences
 
 - Two placements per strip on Kitty; `KittyImages` capacity counts both layers.
-- The emphasis layer adds ~55% to a strip's weight in Graft's memory (~4.3 MB backdrop + ~2.4 MB emphasis at 17×37
-  on MONOREPO), so the strip cache's layers share one byte budget, not a count each (m8 04, DESIGN §3.8; numbers in
-  `docs/perf/scroll-pixel-memory-budget.txt`).
+- The emphasis layer adds ~55% to a strip's pixels (~4.3 MB backdrop + ~2.4 MB emphasis at 17×37 on MONOREPO), and
+  since m8 04's buffer pool every cached entry holds a full-strip buffer, so an emphasis image weighs as much as its
+  strip (5.6 MB + 5.6 MB measured). The strip cache's layers share one byte budget, not a count each (m8 04, DESIGN
+  §3.8; numbers in `docs/perf/scroll-pixel-memory-budget.txt`).
 - Edge pixels where a lit stroke's anti-aliasing overlaps the backdrop copy differ from the single-pass raster by at
   most `b × 255` per channel; where a lit line crosses an unlit one, the lit line is now always on top. Pinned by the
   equivalence test in `fix-scroll-emphasis-layer`. Colour stays **unverified** (CLAUDE.md rule 5); the user judges the
