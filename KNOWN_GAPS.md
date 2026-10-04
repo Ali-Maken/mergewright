@@ -1131,6 +1131,9 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/09b-emptystate-sweep-partial | 09b's EmptyState sweep is partial though ticked (09b ticket :101-103); F2 config-problem sanitising untested; diff.word_diff / blame.heatmap exempt as colour-only, unverified they draw. | **broken** | M8 |
 | M8/09-review-minors | 12 Minors in `docs/reviews/m8-09-keymap.md`. | **broken** (per finding) | M8 |
 | M8/14d-review-minors | 7 Minors in `docs/reviews/m8-14d-fork-safety.md` (m1 'pushed to <local branch>' wording false, errs safe; fixed in 14e). | **broken** (per finding) | M8 |
+| M8/22-manylanes-fold-unsnapshotted | ManyLanes tier snapshots show no `+N` fold (0 of 3): compaction still not snapshotted (review 22 M3). Fix after 10c (shared captures). | **unverified** | M8 |
+| M8/contact-sheets-m3-m6-stale | m3–m6 contact sheets stale after 22's 42 re-shots (review 22 M3); 10c is re-assembling sheets — check after its merge. | **broken** | M8 |
+| M8/22-review-minors | 4 Minors in `docs/reviews/m8-22-hygiene.md`. | **broken** (per finding) | M8 |
 | M8/flaky-http-remote-drop | graft-fixtures `http_remote_drop_ends_a_wedged_backend` failed once in a full run under load (14d), passes alone; crate untouched; not diagnosed. | **unverified** | M8 |
 | M8/long-tmpdir-socket | 6+ graft tests fail when `$TMPDIR` is a long path (unix-socket path limit); Paperclip runs set one. Gates pass with `TMPDIR=/tmp`. Tests should not depend on `$TMPDIR` length — cause not fixed. | **broken** | M8 |
 | M8/startup-rs-564 | `startup.rs` 564 lines, over the readability limit; outside 02's file set, not split. | **broken** | M8 |
