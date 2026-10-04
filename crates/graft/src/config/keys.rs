@@ -7,7 +7,7 @@
 //! chord parses, what collides — is `graft_ui::keymap`'s to say, not this
 //! file's: here a line is only refused when its value is not text.
 
-use graft_ui::keymap::Keymap;
+use graft_ui::keymap::{KeySwitches, Keymap};
 
 use super::load::{ConfigWarning, Loaded};
 
@@ -68,7 +68,12 @@ fn chord_texts(value: &toml::Value) -> Option<Vec<String>> {
 /// own warnings first, in their usual words, then each the keymap raised.
 #[must_use]
 pub(crate) fn keymap_from(loaded: &Loaded) -> (Keymap, Vec<String>) {
-    let (keymap, warned) = Keymap::with_overrides(&loaded.config.keys.remaps);
+    // The switch decides the chords before his lines: with it on, `⌃Z` is
+    // `app.suspend` and undo keeps `u` (ticket m8/09c, D2).
+    let switches = KeySwitches {
+        suspend_on_ctrl_z: loaded.config.keys.suspend_on_ctrl_z,
+    };
+    let (keymap, warned) = Keymap::with_overrides(&loaded.config.keys.remaps, switches);
     let problems = loaded
         .warnings
         .iter()

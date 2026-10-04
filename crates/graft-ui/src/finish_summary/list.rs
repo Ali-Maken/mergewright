@@ -104,7 +104,7 @@ impl FinishScreen<'_> {
                 let words = match self
                     .view
                     .keys
-                    .key_verb(&[ActionId("finish.commit")], "commits with git's message")
+                    .key_verb(&[ActionId("confirm.yes")], "commits with git's message")
                 {
                     Some(commit) => format!("{unavailable} · {commit}"),
                     None => unavailable,

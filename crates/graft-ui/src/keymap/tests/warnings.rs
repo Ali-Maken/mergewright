@@ -1,10 +1,10 @@
 //! Each problem his `[keys]` table can have: produced, ordered, worded.
 
-use super::super::{ActionId, ContextId, KeyChord, KeyWarning, Keymap};
+use super::super::{ActionId, Clash, ContextId, KeyChord, KeyWarning, Keymap};
 use super::line;
 
 fn warnings(lines: &[(String, Vec<String>)]) -> Vec<KeyWarning> {
-    Keymap::with_overrides(lines).1
+    Keymap::with_overrides(lines, crate::keymap::KeySwitches::default()).1
 }
 
 fn words(lines: &[(String, Vec<String>)]) -> Vec<String> {
@@ -24,7 +24,7 @@ fn an_unknown_action_is_named() {
 #[test]
 fn a_bad_key_leaves_the_action_on_its_defaults() {
     let lines = [line("graph.merge", &["ctrl+"])];
-    let (map, got) = Keymap::with_overrides(&lines);
+    let (map, got) = Keymap::with_overrides(&lines, crate::keymap::KeySwitches::default());
     assert_eq!(
         got,
         [KeyWarning::BadKey {
@@ -80,7 +80,7 @@ fn ctrl_c_is_reserved_both_ways() {
 #[test]
 fn a_text_field_row_is_fixed() {
     let lines = [line("picker.switch", &["s"])];
-    let (map, got) = Keymap::with_overrides(&lines);
+    let (map, got) = Keymap::with_overrides(&lines, crate::keymap::KeySwitches::default());
     assert_eq!(got, [KeyWarning::Fixed(ActionId("picker.switch"))]);
     assert_eq!(
         got[0].words(),
@@ -101,35 +101,53 @@ fn a_collision_his_override_wins_names_what_lost_it() {
     );
 }
 
+/// Minor 9: one line, one problem, every place it changes named once —
+/// the places that only fall through to the graph inherit its clause.
 #[test]
-fn a_collision_his_override_loses_says_what_stays() {
+fn a_collision_his_override_loses_is_one_problem_naming_every_place() {
     let got = warnings(&[line("app.undo", &["o"])]);
-    let resolver = KeyWarning::Collision {
-        key: KeyChord::key('o'),
-        context: ContextId::Resolver,
-        kept: ActionId("resolver.take_ours"),
-        lost: ActionId("app.undo"),
+    assert_eq!(got.len(), 1, "{got:?}");
+    let KeyWarning::Collision { line: at, places } = &got[0] else {
+        panic!("{got:?}");
     };
-    assert!(got.contains(&resolver), "{got:?}");
+    assert_eq!(*at, ActionId("app.undo"));
+    let lose = |context, kept| Clash {
+        key: KeyChord::key('o'),
+        context,
+        kept: ActionId(kept),
+        lost: ActionId("app.undo"),
+        keeps: None,
+    };
     assert_eq!(
-        resolver.words(),
-        "o given to app.undo — in the resolver o stays take ours"
+        *places,
+        [
+            lose(ContextId::Graph, "graph.take"),
+            lose(ContextId::Resolver, "resolver.take_ours"),
+            lose(ContextId::EmptyState, "empty_state.open"),
+        ]
     );
-    // The graph's cherry-pick and the start screen's open keep `o` too.
-    assert_eq!(got.len(), 3, "{got:?}");
+    assert_eq!(
+        got[0].words(),
+        "o given to app.undo — on the graph o stays take this commit onto your branch \
+         (cherry-pick), in the resolver o stays take ours, on the start screen o stays open…"
+    );
 }
 
 #[test]
 fn two_overrides_on_one_chord_the_earlier_line_keeps_it() {
     let lines = [line("graph.merge", &["z"]), line("graph.rebase", &["z"])];
-    let (map, got) = Keymap::with_overrides(&lines);
+    let (map, got) = Keymap::with_overrides(&lines, crate::keymap::KeySwitches::default());
     assert_eq!(
         got,
         [KeyWarning::Collision {
-            key: KeyChord::key('z'),
-            context: ContextId::Graph,
-            kept: ActionId("graph.merge"),
-            lost: ActionId("graph.rebase"),
+            line: ActionId("graph.rebase"),
+            places: vec![Clash {
+                key: KeyChord::key('z'),
+                context: ContextId::Graph,
+                kept: ActionId("graph.merge"),
+                lost: ActionId("graph.rebase"),
+                keeps: None,
+            }],
         }]
     );
     assert_eq!(

@@ -75,6 +75,9 @@ const DEFAULTS: &[Binding] = &[
     b("app.prev_pane", Global, &[BACKTAB], "Previous pane"),
     b("app.back", Global, &[ESC], "Back out / close / cancel"),
     b("app.undo", Global, &[k('u'), ctrl('z')], "Undo"),
+    // No key out of the box: with `suspend_on_ctrl_z` it is `⌃Z`, taken off
+    // `app.undo` (`Keymap::with_overrides`, ticket m8/09c D2).
+    b("app.suspend", Global, &[], "Suspend"),
     b("app.redo", Global, &[k('U')], "Redo"),
     b("app.refresh", Global, &[ctrl('r')], "Refresh"),
     b("app.quit", Global, &[k('q')], "Quit"),
@@ -195,11 +198,20 @@ const DEFAULTS: &[Binding] = &[
     b("map.close", Map, &[k('M')], "Close the Map view"),
     b("map.seek", Map, &[ENTER], "Seek the graph to this branch"),
     // §2.3b Ghost Preview.
+    // `y` is `confirm.yes`, borrowed (`ContextId::borrows`). These two are
+    // the opening verb again; their chords follow `graph.merge`'s and
+    // `graph.rebase`'s (ticket m8/09c, D3).
     b(
-        "preview.confirm",
+        "preview.confirm_merge",
         Preview,
-        &[k('y'), k('m'), k('r')],
-        "Confirm",
+        &[k('m')],
+        "Confirm the merge (its opening key again)",
+    ),
+    b(
+        "preview.confirm_rebase",
+        Preview,
+        &[k('r')],
+        "Confirm the rebase (its opening key again)",
     ),
     b(
         "preview.rewrite",
@@ -217,7 +229,9 @@ const DEFAULTS: &[Binding] = &[
     b("preview.right", Preview, &[RIGHT], "Choice to the right"),
     b("preview.cycle", Preview, &[TAB, BACKTAB], "Next choice"),
     // §2.3c Confirm box.
-    b("confirm.yes", Confirm, &[k('y')], "The box's acting choice"),
+    // The one confirm key (§2.3b): previews, the finish list, the rewrite
+    // editor and the init box borrow it (`ContextId::borrows`).
+    b("confirm.yes", Confirm, &[k('y')], "Confirm"),
     b(
         "confirm.choose",
         Confirm,
@@ -344,12 +358,6 @@ const DEFAULTS: &[Binding] = &[
     ),
     // §2.6b Finish summary.
     b(
-        "finish.commit",
-        Finish,
-        &[k('y'), KeyChord::ctrl_code(KeyCode::Enter)],
-        "Commit",
-    ),
-    b(
         "finish.toggle_diff",
         Finish,
         &[ENTER, SPACE],
@@ -380,7 +388,6 @@ const DEFAULTS: &[Binding] = &[
         &[KeyChord::alt(KeyCode::Down)],
         "Move the row down",
     ),
-    b("rewrite.start", Rewrite, &[k('y')], "Start"),
     b(
         "rewrite.toggle_changes",
         Rewrite,
@@ -485,12 +492,6 @@ const DEFAULTS: &[Binding] = &[
     b("empty_state.init", EmptyState, &[k('i')], "Init"),
     b("empty_state.clone", EmptyState, &[k('c')], "Clone…"),
     b("empty_state.tour", EmptyState, &[k('t')], "Practice tour"),
-    b(
-        "empty_state.confirm",
-        EmptyState,
-        &[k('y')],
-        "Yes — init this folder",
-    ),
     b(
         "empty_state.cancel",
         EmptyState,

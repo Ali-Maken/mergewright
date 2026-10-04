@@ -2,6 +2,8 @@
 
 Status: accepted (planner, 2026-10-02, M8 pass 2a; design is ours, user memory "stop bringing him design decisions").
 Amends DESIGN.md §2.1's last bullet. Design note: `docs/design-notes/m8-polish-and-ship.md`, Hard-to-reverse choice 2.
+Amended 2026-10-04 (09c): resolution order, grouped warnings, `app.suspend`, one confirm id; a text field
+(`text_field_open`) passes keys untranslated even inside a remappable place.
 
 ## Context
 

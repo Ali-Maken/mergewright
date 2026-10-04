@@ -280,11 +280,7 @@ fn the_bar_spells_his_keys_and_the_open_prompt_the_shipped_ones() {
         prompt: Some(EmptyPrompt::ConfirmInit),
         ..with_recents()
     };
-    assert_spelled(
-        &line(&confirm),
-        &keys,
-        &[&["empty_state.confirm"], &["app.back"]],
-    );
+    assert_spelled(&line(&confirm), &keys, &[&["confirm.yes"], &["app.back"]]);
     let open = EmptyStateView {
         prompt: Some(EmptyPrompt::Open {
             text: sanitize_line("~/code"),

@@ -50,7 +50,10 @@ fn every_action_has_a_default_and_no_context_binds_one_chord_twice() {
     for &ctx in ContextId::ALL {
         let mut seen: Vec<(KeyChord, &str)> = Vec::new();
         for b in defaults().iter().filter(|b| b.context == ctx) {
-            assert!(!b.default.is_empty(), "{} has no default", b.action.0);
+            // `app.suspend` has a key only with `suspend_on_ctrl_z` (m8/09c, D2).
+            if b.action.0 != "app.suspend" {
+                assert!(!b.default.is_empty(), "{} has no default", b.action.0);
+            }
             for c in b.default {
                 if let Some((_, other)) = seen.iter().find(|(s, _)| s == c) {
                     panic!("{:?} on {} and {other}", c.label(), b.action.0);

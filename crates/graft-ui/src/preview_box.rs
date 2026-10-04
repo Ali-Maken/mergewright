@@ -75,7 +75,7 @@ pub(crate) fn footer_label(view: &PreviewBox, inner: usize, keys: &Keymap) -> St
         return part(keys, &["app.back"], "back").unwrap_or_default();
     }
     let confirm = if view.confirm_key {
-        part(keys, &["preview.confirm"], "confirm")
+        part(keys, &["confirm.yes"], "confirm")
     } else {
         None
     };
@@ -164,60 +164,42 @@ pub struct PreviewBox {
 
 /// The footer's verb slot: which key confirms, and the word after it.
 ///
-/// Every confirm key is a chord of one row, `preview.confirm` (`y`, `m`,
-/// `r` by default; `graft::update::preview::keys::confirm_key` takes all
-/// three). `y` confirms any operation preview; `m` and `r` confirm the one
-/// they opened. So the slot names either the action's first live chord
-/// (`chord: None` — `y apply`) or one particular default chord of it
-/// (`chord: Some("m")` — `m merge`), drawn only while that chord still
-/// does it: he can drop it from `preview.confirm`, and then the part goes
-/// (ticket m8/10, decision 2). Remapping `graph.merge` moves the key that
-/// *opens* the preview, not this one — inside the box `m` is still
-/// `preview.confirm`'s.
+/// `y` is `confirm.yes`, the one confirm key of every box (§2.3b); an `m`-
+/// or `r`-opened preview also confirms on its opening key again, which is
+/// `preview.confirm_merge` / `preview.confirm_rebase` — rows whose chords
+/// follow `graph.merge`'s / `graph.rebase`'s (ticket m8/09c, D3). So with
+/// `merge = "M"` the slot reads `M merge`, and with merge unbound it is
+/// left out. Spelled from the action's first live chord.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Again {
-    /// The action whose chord confirms: `preview.confirm`.
+    /// The action whose chord confirms.
     pub action: ActionId,
-    /// One default chord of it, by label, or `None` for its first live one.
-    pub chord: Option<&'static str>,
     /// The word after the key: `merge`, `apply`, `put it back`.
     pub verb: &'static str,
 }
 
 impl Again {
-    /// `preview.confirm`'s first live chord, then `verb` (`y apply`).
+    /// `confirm.yes`'s first live chord, then `verb` (`y apply`).
     #[must_use]
     pub fn confirm(verb: &'static str) -> Self {
         Self {
-            action: ActionId("preview.confirm"),
-            chord: None,
+            action: ActionId("confirm.yes"),
             verb,
         }
     }
 
-    /// `preview.confirm`'s default `chord` while it still confirms, then
-    /// `verb` (`m merge`).
+    /// The opening key again: `action` is `preview.confirm_merge` or
+    /// `preview.confirm_rebase` (`m merge`).
     #[must_use]
-    pub fn opening(chord: &'static str, verb: &'static str) -> Self {
-        Self {
-            action: ActionId("preview.confirm"),
-            chord: Some(chord),
-            verb,
-        }
+    pub fn opening(action: ActionId, verb: &'static str) -> Self {
+        Self { action, verb }
     }
 
-    /// `<key> <verb>` spelled from `keys`; `None` when the key no longer
-    /// confirms.
+    /// `<key> <verb>` spelled from `keys`; `None` when the action has no
+    /// live chord.
     #[must_use]
     pub fn text(&self, keys: &Keymap) -> Option<String> {
-        let key = match self.chord {
-            None => keys.spell_keys(&[self.action])?,
-            Some(chord) => keys
-                .live_labels(&self.action)
-                .iter()
-                .find(|label| label.as_str() == chord)?
-                .clone(),
-        };
+        let key = keys.spell_keys(&[self.action])?;
         Some(format!("{key} {}", self.verb))
     }
 }

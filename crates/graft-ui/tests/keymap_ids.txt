@@ -16,6 +16,7 @@ app.quit
 app.quit_now
 app.redo
 app.refresh
+app.suspend
 app.top
 app.undo
 app.up
@@ -55,11 +56,9 @@ diff.side_by_side
 diff.word_diff
 empty_state.cancel
 empty_state.clone
-empty_state.confirm
 empty_state.init
 empty_state.open
 empty_state.tour
-finish.commit
 finish.edit_outside
 finish.toggle_diff
 graph.amend
@@ -106,7 +105,8 @@ palette.run
 picker.show
 picker.switch
 preview.choose
-preview.confirm
+preview.confirm_merge
+preview.confirm_rebase
 preview.cycle
 preview.left
 preview.rewrite
@@ -134,7 +134,6 @@ rewrite.move_up
 rewrite.pick
 rewrite.reword
 rewrite.squash
-rewrite.start
 rewrite.toggle_changes
 stash.apply
 stash.branch
