@@ -59,6 +59,35 @@ const ALLOWED: &[(&str, &str, &str)] = &[
         "⌃C is the one chord no config moves (ADR-0055): the warning names it on purpose",
     ),
     (
+        "journal_screen/view.rs",
+        "← next {word}",
+        "`←` points at the row, not the left key: the mark of an unbound undo/redo",
+    ),
+    (
+        "detail_pane/header.rs",
+        "this is the compare base · x clears it",
+        "KNOWN: `graph.compare`'s default; the detail pane takes no keymap yet — outside \
+         10c's list, in its NOTES as a follow-up",
+    ),
+    (
+        "detail_pane/line_render.rs",
+        "… {more} more lines · L load all",
+        "KNOWN: a literal key; the detail pane takes no keymap yet — outside 10c's list, in \
+         its NOTES as a follow-up",
+    ),
+    (
+        "graph_screen/banner.rs",
+        "change files, space stages, a amends it, c continues · ⇥ banner",
+        "KNOWN: the banner's prose names keys (`space`, `a`, `c`, `⇥`); the banner takes no \
+         keymap yet — outside 10c's list, in its NOTES as a follow-up",
+    ),
+    (
+        "rewrite_editor/right.rs",
+        "CHANGES of {short} · ⏎ back to AFTER",
+        "KNOWN: a literal key; the rewrite editor's right pane takes no keymap yet — outside \
+         10c's list, in its NOTES as a follow-up",
+    ),
+    (
         "graph_screen/badges.rs",
         "x base",
         "KNOWN: the compare-base badge names `graph.compare`'s default; badges take no keymap \
@@ -91,7 +120,8 @@ fn no_user_facing_literal_spells_a_default_key() {
     }
     let mut stale = Vec::new();
     for (path, text, _) in ALLOWED {
-        let source = fs::read_to_string(root.join(path)).unwrap_or_default();
+        let source = fs::read_to_string(root.join(path))
+            .unwrap_or_else(|why| panic!("allow-list file {path}: {why}"));
         if !literals(shipped_part(&source)).any(|literal| literal == *text) {
             stale.push(format!("{path}: {text:?}"));
         }
@@ -158,9 +188,8 @@ fn shipped_part(source: &str) -> String {
         .join("\n")
 }
 
-/// The text of every `"…"` and `r#"…"#` literal in `source`, escapes
-/// left as written (a `\u{b7}` stays six characters: it never decides a
-/// hit, a literal `·` does).
+/// The text of every `"…"` and `r#"…"#` literal in `source`: `\u{…}`
+/// decoded, other escapes left as written.
 fn literals(source: String) -> impl Iterator<Item = String> {
     let chars: Vec<char> = source.chars().collect();
     let mut out = Vec::new();
@@ -189,6 +218,19 @@ fn literals(source: String) -> impl Iterator<Item = String> {
                 let mut text = String::new();
                 i += 1;
                 while i < chars.len() && chars[i] != '"' {
+                    // `\u{b7}` is the `·` it draws: decoded, so a hint after
+                    // an escaped separator is found too.
+                    if chars[i] == '\\' && chars.get(i + 1) == Some(&'u') {
+                        let hex: String =
+                            chars[i + 3..].iter().take_while(|c| **c != '}').collect();
+                        let decoded = u32::from_str_radix(&hex, 16)
+                            .ok()
+                            .and_then(char::from_u32)
+                            .unwrap_or_else(|| panic!("bad escape \\u{{{hex}}}"));
+                        text.push(decoded);
+                        i += 3 + hex.chars().count() + 1;
+                        continue;
+                    }
                     if chars[i] == '\\' && i + 1 < chars.len() {
                         text.push(chars[i]);
                         i += 1;
