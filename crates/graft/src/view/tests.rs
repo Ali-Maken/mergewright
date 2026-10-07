@@ -3854,7 +3854,7 @@ pub(super) fn one_ghost_over(anchor: Oid, replayed: Oid) -> graft_ops::preview::
 /// Returns the state with the preview open and its plan landed, the
 /// viewport's top row, and `id_at`: the commit id `history_of` put on an
 /// absolute row.
-fn scrolled_preview(
+pub(crate) fn scrolled_preview(
     count: u8,
     top_at: impl Fn(usize) -> usize,
     ghost_row_offset: usize,
@@ -5145,6 +5145,7 @@ fn the_resize_key_is_offered_only_where_there_is_a_divider_to_drag() {
 mod bottom_row;
 mod credential_footer;
 mod many_refs;
+mod pixel_preview;
 
 /// m7-power-tools/07b: at a rewrite's `edit` stop `HEAD`'s row is tagged
 /// `HEAD · stopped here`, from the stop itself — no other row, and no tag

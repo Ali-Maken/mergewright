@@ -2313,6 +2313,8 @@ mod keymap_words;
 
 mod palette_live;
 
+mod pixel_preview;
+
 mod commit_graph_offer {
     use super::*;
     use crate::repository::CommitGraphFact;

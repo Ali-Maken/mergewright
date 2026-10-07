@@ -85,20 +85,47 @@ pub fn tier_in_force(session: &Session, state: &AppState) -> RenderingTier {
     state.renderer_override.unwrap_or(session.rendering.tier)
 }
 
-/// Whether this frame's graph is drawn in pixels: the graph screen, at the
-/// pixel tier, over the Kitty protocol or iTerm2 inline images.
+/// The tier the graph *column* draws at: Unicode while a preview's picture
+/// is drawn and the tier in force is Pixel, else the tier in force
+/// (ADR-0060). A ghost row sits mid-strip; text ghosts over pixel lanes
+/// would be two pictures, so the whole column drops to the text renderer
+/// for as long as the picture is up. Under `F3` to ASCII it stays ASCII:
+/// `min(tier_in_force, Unicode)`.
 ///
-/// `graph.renderer = pixel` on a terminal that never acked any image
-/// protocol attempts Kitty anyway (DESIGN.md §4.2: config wins, and silence
-/// is not proof it cannot draw); `F3` drops to Unicode if nothing shows.
+/// Only the graph column reads this. Chrome — boxes, bars, the header's
+/// `gfx` field, overlays — keeps [`tier_in_force`]: the tier did not change.
 #[must_use]
-pub fn draws_pixels(session: &Session, state: &AppState) -> bool {
+pub(crate) fn graph_tier(session: &Session, state: &AppState) -> RenderingTier {
+    let tier = tier_in_force(session, state);
+    if tier == RenderingTier::Pixel && super::rows::preview_drawn(state).is_some() {
+        RenderingTier::Unicode
+    } else {
+        tier
+    }
+}
+
+/// Whether the graph screen is at the pixel tier over a protocol that can
+/// draw it — the tier in force, not the column's (`graph_tier`). Says
+/// whether the header carries the `gfx` field, which a preview leaves alone.
+fn pixel_tier_on_graph(session: &Session, state: &AppState) -> bool {
     state.screen == Screen::Graph
         && tier_in_force(session, state) == RenderingTier::Pixel
         && matches!(
             session.capabilities.pixel_protocol,
             Some(PixelProtocol::Kitty | PixelProtocol::Iterm2) | None
         )
+}
+
+/// Whether this frame's graph is drawn in pixels: the graph screen, its
+/// column at the pixel tier ([`graph_tier`]: not under a preview's
+/// picture), over the Kitty protocol or iTerm2 inline images.
+///
+/// `graph.renderer = pixel` on a terminal that never acked any image
+/// protocol attempts Kitty anyway (DESIGN.md §4.2: config wins, and silence
+/// is not proof it cannot draw); `F3` drops to Unicode if nothing shows.
+#[must_use]
+pub fn draws_pixels(session: &Session, state: &AppState) -> bool {
+    pixel_tier_on_graph(session, state) && graph_tier(session, state) == RenderingTier::Pixel
 }
 
 /// [`view`], saying `graphics` in the header when the graph is drawn in
@@ -176,8 +203,12 @@ pub fn view_with_graphics(
                 // here needs the `Session` and moves nothing: the tier's
                 // glyph set, the footer notice, the pixel rectangle.
                 let mut screen = graph_view(state, state.harness.clock.now_seconds());
+                // The column's glyph set from the column's tier; the
+                // footer's `F3` notice from the tier in force. They differ
+                // only at Pixel under a preview, where both say "not ASCII"
+                // and no override is set (ADR-0060).
+                screen.ascii = graph_tier(session, state) == RenderingTier::Ascii;
                 let tier = tier_in_force(session, state);
-                screen.ascii = tier == RenderingTier::Ascii;
                 // Only below the terminal's own tier: `F3` clears the override
                 // when it cycles back to the top (m1-the-graph/33).
                 // Fitted to the row it is drawn in: with the detail pane
@@ -188,7 +219,9 @@ pub fn view_with_graphics(
                     primary_pane_area(state, area).map_or(area.width, |graph| graph.width);
                 screen.notice = footer_notice(state, tier, footer_width);
                 screen.pixel = pixels;
-                screen.graphics = pixels.then(|| graphics.clone());
+                // By the tier in force: a preview drawing the column in text
+                // does not change what the terminal said (ADR-0060 2).
+                screen.graphics = pixel_tier_on_graph(session, state).then(|| graphics.clone());
 
                 let marks = state.strip_shown.then(|| super::strip::strip_marks(state));
                 let strip = marks.as_ref().map(|marks| (marks, screen.ascii));
