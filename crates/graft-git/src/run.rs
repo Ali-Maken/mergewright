@@ -47,15 +47,15 @@ use std::time::Duration;
 
 use graft_core::oid::Oid;
 
-use exec::{
-    Ending, Event, Graces, Pipe, StopOrder, apply, collect_rest, drain, kill, os_arg, shell_quote,
-};
+use exec::{Ending, Event, Pipe, apply, collect_rest, drain, os_arg, shell_quote};
+use stop::{Graces, StopOrder, kill};
 
 use crate::repo::RepoHandle;
 
 pub mod askpass;
 mod exec;
 mod group;
+mod stop;
 
 /// The longest the runner goes without asking [`Stop`].
 const POLL: Duration = Duration::from_millis(50);
@@ -63,19 +63,19 @@ const POLL: Duration = Duration::from_millis(50);
 /// How long a hook-first stop ([`GitInvocation::stop_hooks_first`]) leaves
 /// git alone after ending its helpers, for git to end the way it ends when a
 /// hook fails.
-pub const HOOKS_GRACE: Duration = exec::HOOKS_GRACE;
+pub const HOOKS_GRACE: Duration = stop::HOOKS_GRACE;
 
 /// The longest a [`GitInvocation::run`] takes to return once its [`Stop`]
 /// says stop, child reaped, in the worst case: one [`POLL`] to notice, a
 /// hook-first stop's [`HOOKS_GRACE`], then `SIGTERM` to the group and a
-/// grace before `SIGKILL` (`exec::TERM_GRACE`, 2 s) — 4.05 s. A default stop
+/// grace before `SIGKILL` (`stop::TERM_GRACE`, 2 s) — 4.05 s. A default stop
 /// still ends within `POLL + TERM_GRACE`, 2.05 s.
 ///
 /// A caller that must not leave a git child behind — the app's shutdown —
 /// waits at least this long for a stopped job before giving up on it.
 pub const STOP_WITHIN: Duration = POLL
     .saturating_add(HOOKS_GRACE)
-    .saturating_add(exec::TERM_GRACE);
+    .saturating_add(stop::TERM_GRACE);
 
 /// The default output cap: 64 MiB.
 pub(crate) const DEFAULT_CAP: usize = 64 * 1024 * 1024;
@@ -584,7 +584,7 @@ impl GitInvocation {
                 }
                 // How git ended is not reported: the caller reads what git
                 // left on disk, which is what decides the outcome.
-                exec::stop(child, order, &group::members, Graces::REAL)?;
+                stop::stop(child, order, &group::members, Graces::REAL)?;
                 return Err(RunError::Stopped);
             }
             if output.truncated {
