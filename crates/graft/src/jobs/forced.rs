@@ -13,6 +13,8 @@ use super::pool::Live;
 /// A forced write: its description, and its answer.
 pub(super) struct ForcedJob {
     what: String,
+    /// Whether a worker had taken it off the queue when it was forced.
+    started: bool,
     pub(super) answer: Answer,
 }
 
@@ -31,6 +33,7 @@ impl ForcedJob {
     pub(super) fn new(what: String, started: bool) -> Self {
         Self {
             what,
+            started,
             answer: if started {
                 Answer::Awaited
             } else {
@@ -115,6 +118,7 @@ impl Live {
             .map(|(id, forced)| Forced {
                 job: *id,
                 what: forced.what.clone(),
+                started: forced.started,
                 at: match forced.answer {
                     Answer::Given(at) => at,
                     Answer::Awaited => None,
@@ -136,4 +140,8 @@ pub struct Forced {
     /// no answer within [`super::FORCED_WAIT`] (the job was abandoned), or
     /// nothing to say (never run, or the stop did not reach git).
     pub at: Option<StoppedAt>,
+    /// `false`: forced while still queued, so it never ran and nothing
+    /// changed (review m8-13cd Minor 7); its exit line says it did not
+    /// start (`update::quit::not_started_line`).
+    pub started: bool,
 }

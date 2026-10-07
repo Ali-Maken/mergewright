@@ -194,7 +194,8 @@ fn relaunch_banner(repo: &Path) -> String {
 }
 
 /// Kills what the force-stop left running (the hook, item 10's question:
-/// the pool signals git's pid, not its group). By pid, never by pattern.
+/// since 13c the pool stops git's whole process group; this reaps by
+/// pidfile only what a failing test leaves behind). By pid, never by pattern.
 fn reap(pid: u32) {
     if alive(pid) {
         let status = std::process::Command::new("kill")

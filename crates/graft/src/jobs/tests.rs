@@ -931,6 +931,7 @@ fn shutdown_stops_a_write_still_running_at_its_bound_and_names_it() {
                 job: id,
                 what: "merge feature into main".to_owned(),
                 at: None,
+                started: true,
             }],
         }
     );
@@ -956,11 +957,33 @@ fn a_forced_shutdown_stops_the_write_without_waiting_out_the_bound() {
             job: id,
             what: "rebase onto main".to_owned(),
             at: None,
+            started: true,
         }]
     );
     assert_eq!(shutdown.stalled, 0);
     assert!(took < PATIENCE, "the bound was not sat out: {took:?}");
     assert!(saw_cancel.load(Ordering::Acquire));
+}
+
+/// Review m8-13cd Minor 7: a queued write forced before any worker took it
+/// is answered at once and says it never started, so its exit line reads
+/// "did not start" instead of "stopped after n s".
+#[test]
+fn a_forced_write_that_never_started_is_answered_not_started() {
+    let live = super::pool::Live::default();
+    let id = JobId::new(7);
+    live.register(id, Cancel::new());
+    live.unstoppable(id, "merge feature".to_owned());
+    live.force_stop(id);
+    assert_eq!(
+        live.wait_for_forced(Duration::ZERO),
+        vec![Forced {
+            job: id,
+            what: "merge feature".to_owned(),
+            at: None,
+            started: false,
+        }]
+    );
 }
 
 /// Review m8-13b Major 1, bullet 3: an unstoppable write still **queued**
@@ -1001,6 +1024,7 @@ fn a_queued_write_behind_a_stuck_worker_is_bounded_and_never_runs() {
             job: queued,
             what: "merge feature".to_owned(),
             at: None,
+            started: false,
         }],
         "never started, so answered at once with nothing to say"
     );
@@ -1038,6 +1062,7 @@ fn force_stop_lifts_the_mark_and_stops_the_write() {
                 job: id,
                 what: "a merge".to_owned(),
                 at: None,
+                started: true,
             }],
         },
         "nothing left to force; the forced write is named"
@@ -1112,6 +1137,7 @@ fn a_forced_job_is_waited_for_its_answer_up_to_its_bound() {
                 job: id,
                 what: "merge feature".to_owned(),
                 at: Some(paused),
+                started: true,
             }],
         }
     );
@@ -1135,6 +1161,7 @@ fn a_forced_job_is_waited_for_its_answer_up_to_its_bound() {
         job: id,
         what: "rebase onto main".to_owned(),
         at: None,
+        started: true,
     };
     assert_eq!(shutdown.forced, vec![unanswered.clone()]);
     assert_eq!(shutdown.stalled, 1, "abandoned, not waited on");

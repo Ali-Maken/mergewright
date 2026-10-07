@@ -20,8 +20,8 @@ use graft_core::job::JobId;
 use graft_term::sanitize_line;
 
 use super::signals::Watch;
-use crate::jobs::{EXIT_WRITE_WAIT, Forced, JobRunner, SHUTDOWN_GRACE, Shutdown};
-use crate::update::quit::exit_line;
+use crate::jobs::{EXIT_WRITE_WAIT, JobRunner, SHUTDOWN_GRACE, Shutdown};
+use crate::update::quit::{exit_line, not_started_line};
 
 /// The binary's own name, as the man page and the shell know it.
 const BIN: &str = env!("CARGO_PKG_NAME");
@@ -105,8 +105,20 @@ impl Pool {
         self.signals.close();
         self.resizes.close();
         if let Some(boxed) = boxed {
-            let at = answer_of(&shutdown.forced, boxed.job);
-            let line = exit_line(BIN, boxed.what, boxed.after, at, &self.undo);
+            let entry = shutdown
+                .forced
+                .iter()
+                .find(|forced| forced.job == boxed.job);
+            let line = match entry {
+                Some(forced) if !forced.started => not_started_line(BIN, boxed.what),
+                _ => exit_line(
+                    BIN,
+                    boxed.what,
+                    boxed.after,
+                    entry.and_then(|forced| forced.at),
+                    &self.undo,
+                ),
+            };
             match writeln!(stderr, "{line}").and_then(|()| stderr.flush()) {
                 // A failed write is ignored on purpose: he asked for this
                 // stop in the box, with stderr gone there is nowhere left to
@@ -120,7 +132,11 @@ impl Pool {
             if boxed.is_some_and(|boxed| boxed.job == forced.job) {
                 continue;
             }
-            let line = exit_line(BIN, &forced.what, stopped_after, forced.at, &self.undo);
+            let line = if forced.started {
+                exit_line(BIN, &forced.what, stopped_after, forced.at, &self.undo)
+            } else {
+                not_started_line(BIN, &forced.what)
+            };
             let written = writeln!(stderr, "{line}").and_then(|()| stderr.flush());
             match written {
                 Ok(()) => {}
@@ -133,15 +149,6 @@ impl Pool {
         }
         Ok(shutdown)
     }
-}
-
-/// What the forced job `job` answered: where git was left, or `None` when
-/// it was not forced here or did not answer within `jobs::FORCED_WAIT`.
-fn answer_of(forced: &[Forced], job: JobId) -> Option<graft_ops::apply::StoppedAt> {
-    forced
-        .iter()
-        .find(|forced| forced.job == job)
-        .and_then(|forced| forced.at)
 }
 
 /// `<bin>: waiting for <op> to finish (up to 60 s) · send the signal again to
