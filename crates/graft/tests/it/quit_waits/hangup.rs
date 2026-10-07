@@ -412,19 +412,31 @@ fn assert_paused(repo: &Path, merging: &Merging) {
 }
 
 /// 13d's observation, red before 13g with exit 101 after ~0.05 s: stderr on
-/// the pty, the merge's hook stuck, the master closed. Graft waits for the
-/// write instead; the second hang-up stops it, and Graft dies of `SIGHUP` as
-/// the `SIGTERM` path dies of `SIGTERM`. No crash report.
+/// the pty, the merge's hook still running, the master closed. Graft waits
+/// for the write instead; once the hook lets the merge land, Graft dies of
+/// `SIGHUP` as the `SIGTERM` path dies of `SIGTERM`. No crash report.
+///
+/// The hook holds the merge until the test lets it go, rather than hanging
+/// for good and being ended by a second `SIGHUP`. "The signal again" counts
+/// from the exit's waiting line (`exit_wait::Pool::stop_to`); a second
+/// signal that comes before the exit reaches that line is not counted. Here
+/// stderr is the dead pty, so the test cannot see the line and has no moment
+/// at which a second signal is sure to count. A fixed 2 s pause failed when
+/// the machine was loaded (13g NOTES, debugger). The second signal is tested
+/// by `a_hangup_then_a_second_hangup_leaves_the_merge_paused`, which reads
+/// the line first. The stuck hook stopped with stderr dead is tested by the
+/// heavy-tier `a_hangup_with_a_stuck_hook_is_stopped_after_the_wait_and_left_paused`.
 #[test]
 fn a_hangup_mid_write_never_exits_101() {
     let isolated = Isolated::new();
     let scratch = crate::preview::forked();
     let repo = scratch.path().canonicalize().expect("the repo resolves");
     let mut leftovers = Leftovers::default();
+    let release = repo.join(".git/release");
     let mut merging = merging(
         &isolated,
         &repo,
-        "exec sleep 600",
+        "while [ ! -e .git/release ]; do sleep 0.05; done\nexit 0",
         &Stderr::Pty,
         &mut leftovers,
     );
@@ -433,18 +445,22 @@ fn a_hangup_mid_write_never_exits_101() {
     let early = merging.session.exit_within(Duration::from_secs(2));
     assert_eq!(early, None, "the hang-up waits for the write");
     assert!(alive(merging.git), "git runs on through the wait");
-    merging.session.hang_up_again();
+    std::fs::write(&release, "").expect("the hook is let go");
     let (status, _) = merging
         .session
-        .exit_within(FORCED_WAIT + Duration::from_secs(5))
-        .expect("the second hang-up ends it");
+        .exit_within(EXIT_WRITE_WAIT)
+        .expect("the merge lands and Graft exits within the wait");
 
     assert_ne!(status.code(), Some(101), "{status:?}");
     assert_eq!(status.signal(), Some(SIGHUP), "{status:?}");
     assert_no_crash(&isolated);
     assert!(
         gone_within(merging.git, Duration::from_secs(1)),
-        "git stopped"
+        "git ended"
+    );
+    assert!(
+        gone_within(merging.hook, Duration::from_secs(1)),
+        "the hook ended"
     );
 }
 
@@ -627,20 +643,20 @@ fn relaunch_and_abort(isolated: &Isolated, repo: &Path, before: &Before) {
 
 /// The hook never ends and no second signal comes: the write gets its
 /// `EXIT_WRITE_WAIT`, then is stopped as `q y` stops it and left paused.
-/// About 60 s, so heavy tier only.
+/// Stderr is the dead pty, as a shell runs it: the forced stop's lines go
+/// nowhere and must not end the process. About 60 s, so heavy tier only.
 #[cfg(feature = "heavy-tests")]
 #[test]
 fn a_hangup_with_a_stuck_hook_is_stopped_after_the_wait_and_left_paused() {
     let isolated = Isolated::new();
     let scratch = crate::preview::forked();
     let repo = scratch.path().canonicalize().expect("the repo resolves");
-    let said = isolated.root.path().join("stderr.txt");
     let mut leftovers = Leftovers::default();
     let mut merging = merging(
         &isolated,
         &repo,
         "exec sleep 600",
-        &Stderr::File(said.clone()),
+        &Stderr::Pty,
         &mut leftovers,
     );
 
