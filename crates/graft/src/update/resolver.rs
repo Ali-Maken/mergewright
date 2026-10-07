@@ -396,10 +396,25 @@ fn undo_answered(state: &mut AppState) {
     } else if let Some(clause) = super::clash::undo_clause(state) {
         clause
     } else {
-        "esc first \u{b7} u undoes from the graph".to_owned()
+        // A sequence (W5): `esc` from the resolver's place, `u` from the
+        // graph's, where it lands him; an unbound one drops its clause.
+        [
+            state
+                .keymap
+                .key_verb(&[graft_ui::keymap::ActionId("app.back")], "first"),
+            state.keymap.key_verb(
+                &[graft_ui::keymap::ActionId("app.undo")],
+                "undoes from the graph",
+            ),
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .join(" \u{b7} ")
     };
     if let Some(open) = state.resolver.as_mut() {
-        open.notice = Some((words, false));
+        // A line that is only key clauses, every key unbound, draws nothing.
+        open.notice = (!words.is_empty()).then_some((words, false));
     }
 }
 

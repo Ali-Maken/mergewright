@@ -42,7 +42,12 @@ fn whole_file_table_through_the_keys() {
         ),
     ] {
         assert_eq!(
-            graft::update::resolver::whole_file_keys(how, binary, &names),
+            graft::update::resolver::whole_file_keys(
+                how,
+                binary,
+                &names,
+                graft_ui::keymap::Keymap::shipped(),
+            ),
             want,
             "{how:?} binary={binary}"
         );

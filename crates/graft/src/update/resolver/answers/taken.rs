@@ -121,6 +121,7 @@ pub(in crate::update::resolver) fn take_landed(
     let (bulk, side) = landed_words(state, &blocks);
     let was_bulk = bulk.is_some();
     record_landed(state, file);
+    let keys = Arc::clone(&state.keymap);
     let Some(open) = state.resolver.as_mut() else {
         return;
     };
@@ -145,17 +146,7 @@ pub(in crate::update::resolver) fn take_landed(
         ));
     }
     let settled = open_left == 0 && open.in_flight.is_none();
-    open.notice = match bulk {
-        Some((side, n)) => {
-            let blocks = if n == 1 { "block" } else { "blocks" };
-            let mut words = format!("took {side} in {n} {blocks}");
-            if settled {
-                words.push_str(&format!(" · ⏎ marks {} done", path.display()));
-            }
-            Some((words, false))
-        }
-        None => settled.then(|| (all_taken(&path), false)),
-    };
+    open.notice = landed_notice(&keys, bulk, settled, &path);
     // The new document may draw in a different number of rows: the cursor
     // block, wherever the keys put it, is kept on screen — moved as little
     // as it must, never back to the block that landed.
@@ -181,4 +172,29 @@ pub(in crate::update::resolver) fn take_landed(
     // markers and all (m6-conflicts/85 B).
     commands.extend(state.detail.file_written(&path, next_id));
     settle_landed(state, open_left, commands, next_id);
+}
+
+/// The notice a landed take leaves: a bulk take's count, and once nothing
+/// is left open or in flight, `⏎` (his key, m8/10g) to mark the file done.
+fn landed_notice(
+    keys: &graft_ui::keymap::Keymap,
+    bulk: Option<(String, usize)>,
+    settled: bool,
+    path: &std::path::Path,
+) -> Option<(String, bool)> {
+    match bulk {
+        Some((side, n)) => {
+            let blocks = if n == 1 { "block" } else { "blocks" };
+            let mut words = format!("took {side} in {n} {blocks}");
+            if settled {
+                words = keys.after(
+                    &words,
+                    graft_ui::keymap::ActionId("resolver.mark_done"),
+                    &format!("marks {} done", path.display()),
+                );
+            }
+            Some((words, false))
+        }
+        None => settled.then(|| (all_taken(path, keys), false)),
+    }
 }

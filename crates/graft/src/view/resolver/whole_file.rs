@@ -6,7 +6,9 @@ use graft_git::status::UnmergedHow;
 use graft_term::{SanitizedText, sanitize_line};
 use graft_ui::conflict_resolver::{DocView, RegionView, SideNames};
 
-use super::{Identity, file_list_view, how_words, resolver_title};
+use graft_ui::keymap::{ActionId, Keymap};
+
+use super::{Identity, file_list_view, how_words, resolver_title, start_over_words};
 use crate::update::AppState;
 use crate::update::resolver::{
     DoneShape, ResolverState, WholeFileShape, side_names, start_over_refusal, whole_file_keys,
@@ -37,9 +39,10 @@ pub(super) fn whole_file_view(
                 whole.how,
                 whole.binary,
                 &side_names(state),
+                &state.keymap,
             )),
             lines: whole_file_lines(whole),
-            note: whole_file_note(whole),
+            note: whole_file_note(whole, &state.keymap),
             ours_absent: absent_on(whole.how, Side::Ours, &names),
             theirs_absent: absent_on(whole.how, Side::Theirs, &names),
         }],
@@ -65,11 +68,17 @@ pub(super) fn done_card(state: &AppState, open: &ResolverState, done: &DoneShape
         // Text is drawn as its document, never as a card.
         DoneShape::Text { .. } => "done ✓".to_owned(),
     };
-    let restart = start_over_refusal(state).is_none();
+    let restart = start_over_refusal(state)
+        .is_none()
+        .then(|| start_over_words(&state.keymap))
+        .flatten();
     DocView {
         title: sanitize_line(&resolver_title(
             &open.path,
-            Identity::Done { unstaged, restart },
+            Identity::Done {
+                unstaged,
+                restart: restart.as_deref(),
+            },
         )),
         files: file_list_view(state),
         names: side_names(state),
@@ -78,7 +87,7 @@ pub(super) fn done_card(state: &AppState, open: &ResolverState, done: &DoneShape
             // The card offers `d` exactly where it opens the box
             // (m6-conflicts/28); otherwise it offers nothing — `e` and
             // `esc` are on the bar.
-            keys: sanitize_line(if restart { "d starts it over" } else { "" }),
+            keys: sanitize_line(restart.as_deref().unwrap_or("")),
             lines: vec![],
             note: None,
             ours_absent: None,
@@ -137,7 +146,7 @@ fn whole_file_lines(whole: &WholeFileShape) -> Vec<SanitizedText> {
 
 /// The unnumbered line under a card's text: a binary file's size in place
 /// of its bytes, or how much of a long file the card left unread.
-fn whole_file_note(whole: &WholeFileShape) -> Option<SanitizedText> {
+fn whole_file_note(whole: &WholeFileShape, keys: &Keymap) -> Option<SanitizedText> {
     let on_disk = whole.on_disk.as_ref()?;
     if whole.binary {
         return Some(sanitize_line(&format!(
@@ -146,10 +155,14 @@ fn whole_file_note(whole: &WholeFileShape) -> Option<SanitizedText> {
         )));
     }
     on_disk.cut.then(|| {
-        sanitize_line(&format!(
-            "… first {} lines of {} · e opens the whole file",
-            on_disk.head.len(),
-            size_words(on_disk.size)
+        sanitize_line(&keys.after(
+            &format!(
+                "… first {} lines of {}",
+                on_disk.head.len(),
+                size_words(on_disk.size)
+            ),
+            ActionId("resolver.edit"),
+            "opens the whole file",
         ))
     })
 }
