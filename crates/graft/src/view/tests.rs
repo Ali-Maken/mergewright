@@ -5144,6 +5144,7 @@ fn the_resize_key_is_offered_only_where_there_is_a_divider_to_drag() {
 
 mod bottom_row;
 mod credential_footer;
+mod many_refs;
 
 /// m7-power-tools/07b: at a rewrite's `edit` stop `HEAD`'s row is tagged
 /// `HEAD · stopped here`, from the stop itself — no other row, and no tag

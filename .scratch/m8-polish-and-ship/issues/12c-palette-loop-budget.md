@@ -95,3 +95,29 @@ workspace-wide. Perf runs from the script, never in the builder's context.
 
 ## Size
 One context, ~50k tokens. More than two causes → fix the larger two, file the rest for the conductor.
+
+## NOTES (builder)
+
+Scout used: `.scratch/m8-polish-and-ship/scouts/12c-palette-loop-budget.md`.
+
+### Costs found, before any change (per drawn row, per frame; N = refs on the commit)
+Counts read from the code, not timed. 10 refs vs 16 000 refs on one row:
+- `crates/graft/src/view/entries.rs:324-329` (`row_entry`): one `badge_view` per label (`entries.rs:374`: a
+  `sanitize_path_bytes`, a `BranchIdentity::of_name`, one `Badge` pushed). **10 vs 16 000** calls, a `Vec` of N.
+- `crates/graft-ui/src/graph_screen/render.rs:556-570` (`badges_width`): one `Badge::text` `String` per badge,
+  collected into a `Vec<String>`, before the half-column budget is applied. Called three times per drawn row
+  (`draw_badges` :475, `badge_spans` :530, `subject_truncated` :591 via the footer reveal) → **30 vs 48 000**
+  allocations.
+- `render.rs:533` (`badge_spans`): `Vec::with_capacity(N)`; its loop already stops at the edge. **1 alloc of 10 vs
+  16 000 slots.**
+- `crates/graft/src/view/hit.rs:42-56` (`badge_index_at`): rebuilds the whole `graph_view` → the `row_entry` cost
+  above for every row, once per mouse event (not per frame).
+- Not per frame, not fixed here: `update/radar.rs:440-455` `force_push_candidates` walks `refs.on(id)` per resident
+  row on the update side (`update_us` p95 5.4 ms, in budget); `view/preview.rs:236-237` maps every overlay label for
+  a preview row (ref-move preview only; `entry` there has no `AppState`, so no width to bound by — filed as a gap
+  below).
+- `RefBadges::on` (`refs/mod.rs:41`): a hash lookup returning a slice; the order is fixed once in `refs::badges`
+  (`refs/mod.rs:269-327`). No all-refs ordering per frame.
+
+One cause behind the first three: the row builder hands `graft-ui` every label on the commit, so every downstream
+step is O(N). Fix at the builder: take at most `badges_that_fit(screen columns)` labels.
