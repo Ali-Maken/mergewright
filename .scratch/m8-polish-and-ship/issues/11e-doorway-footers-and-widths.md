@@ -2,7 +2,7 @@
 
 Status: draft (planner spec-only pass 2026-10-08; replaces 11d's open R2 box and its NOTES finding "R1 does not reach
 the journal, stash or Map screens")
-Build with: _(blank — brownfield, ADR-0035; conductor sets after the scout.)_ Planner expects **Opus**: deletes three
+Build with: **Opus** (conductor 2026-10-08 after scout `scouts/11e-footers.md`: three variants enumerated in 4 files, uneven footer rules). Planner expects **Opus**: deletes three
 `HintContext` variants every sweep enumerates, and moves bar coverage onto the footers he actually sees — a wrong cut
 leaves a bar no test reads, which is how 11d's miss passed green. Not Fable: no signature other tickets build on;
 every change has a test oracle.
