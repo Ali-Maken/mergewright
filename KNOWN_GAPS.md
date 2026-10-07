@@ -1150,6 +1150,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/13g-places-hangup-101 | Hang-up on the places screen probably still exits 101 (not reproduced, 13g builder) | **unverified** | M8 |
 | M8/13g-double-sighup | Two SIGHUPs from one window close might skip the 60 s wait — question, no line yet (13g) | **unverified** | M8 |
 | M8/13g-banner-unjudged | 13g relaunch banner capture docs/shots/m8-hangup-relaunch-120x40.txt not judged by eye | **unverified** | M8 |
+| M8/keymap-file-sizes | Over-400 files left unsplit by 09f: hints.rs, lists.rs (held by 11c/15), stash_screen.rs, context_menu.rs, graft-ops/graft files held by 10f–10i (keymap review Major 1) | **broken** | M8 |
+| M8/help-lists-dead-keys | `?` lists keys that do nothing: pane over an overlay, Diff `M`, start-screen `n`; held by a test table, not fixed (09f) | **broken** | M8 |
 | M8/13d-open-points | 13d NOTES: `stopped_on_conflict` (graft-ops apply.rs:761) not switched (its live_entry would hold a Pending entry Q4 forbids); relaunch banner reads `c finish  a abort` vs design note `c continue · a abort`; 80x24 capture drops 'from a previous run'; forced undo jump always prints the `None` line; 13b merge-half box left unticked though 13c/13d cover it (review to confirm). | **unverified** | M8 |
 | M8/13cd-review-minors | 9 Minors + 2 Questions (Minors 2/4/7/8 and 13d points fixed in 13e/13f; 1/3/9 and Q1 stay here) in `docs/reviews/m8-13cd-stop.md`. | **broken** (per finding) | M8 |
 | M8/stop-files-over-400 | graft pool.rs 451, graft-git exec.rs 529, graft-ops apply.rs 777, resume.rs 543 (review 13cd M3) — splits in 13e/13f. | **broken** | M8 |
