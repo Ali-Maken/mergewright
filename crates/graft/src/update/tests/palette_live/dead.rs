@@ -144,7 +144,6 @@ pub(super) const DEAD_ELSEWHERE: &[(ContextId, ActionId, &str)] = &[
     (ContextId::Finish, ActionId("operation.continue"), R_IN_PROGRESS),
     (ContextId::Finish, ActionId("operation.edit"), R_IN_PROGRESS),
     (ContextId::Finish, ActionId("operation.mergetool"), R_IN_PROGRESS),
-    (ContextId::Finish, ActionId("operation.skip"), R_IN_PROGRESS),
     (ContextId::Graph, ActionId("app.back"), R_NO_EFFECT),
     (ContextId::Graph, ActionId("app.next_match"), R_NO_EFFECT),
     (ContextId::Graph, ActionId("app.next_pane"), R_NO_EFFECT),

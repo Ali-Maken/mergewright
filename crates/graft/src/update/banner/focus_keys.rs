@@ -106,20 +106,12 @@ pub fn banner_key(
     if let Some(claimed) = undo_keys(state, commands, key, next_id) {
         return claimed;
     }
+    if banner_press(state, commands, key, next_id) {
+        return true;
+    }
     let plain = !key.modifiers.control && !key.modifiers.alt;
     match key.code {
         KeyCode::Tab | KeyCode::BackTab | KeyCode::Escape => hand_the_keyboard_back(state, key),
-        KeyCode::Char('c') if plain => {
-            continue_pressed(state, commands, ReturnTo::Banner, next_id);
-        }
-        KeyCode::Char('s') if plain => skip_pressed(state),
-        KeyCode::Char('a') if plain => abort_pressed(state),
-        KeyCode::Char('M') if plain => match first_conflicted(state) {
-            Some(path) => {
-                open_mergetool(state, commands, Some(&path));
-            }
-            None => nothing_conflicted(state),
-        },
         // `⏎` opens the resolver on the first conflicted file
         // (`docs/design/02-keymap.md` §2.6a, m6-conflicts/04). It was the
         // catch-all's before, which meant the one key §2.2 gives to "open /
@@ -136,12 +128,6 @@ pub fn banner_key(
             }
             None => nothing_conflicted(state),
         },
-        KeyCode::Char('e') if plain => match first_conflicted(state) {
-            Some(path) => {
-                edit_conflict(state, commands, Some(&path));
-            }
-            None => nothing_conflicted(state),
-        },
         // `q` quits as it does from the graph, through the same path, so the
         // stopped or running box asks first. It used to fall into the silent
         // arm below and read as a hang (review m8-13 Major 1).
@@ -153,6 +139,46 @@ pub fn banner_key(
         // of conflict markers. Anything reaching here draws nothing — the
         // banner's own hint bar is what says which keys do apply.
         _ => {}
+    }
+    true
+}
+
+/// The banner's action keys (`c`, `s`, `a`, `M`, `e` — its `ContextId::Banner`
+/// rows), applied whatever `banner_focus` is; focus unchanged. `false` for
+/// any other key.
+///
+/// Callers: [`banner_key`] (focused), and `update::palette::run` for an
+/// `IN PROGRESS` row (m8/12e), which runs in the context it was spelled in —
+/// the banner's — so `a Abort` from `?` on the graph asks to abort, never
+/// reaches the graph's `a` (amend; review m8-palette-theme Major 1).
+pub(crate) fn banner_press(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    key: KeyPress,
+    next_id: &mut impl FnMut() -> JobId,
+) -> bool {
+    if key.modifiers.control || key.modifiers.alt {
+        return false;
+    }
+    match key.code {
+        KeyCode::Char('c') => {
+            continue_pressed(state, commands, ReturnTo::Banner, next_id);
+        }
+        KeyCode::Char('s') => skip_pressed(state),
+        KeyCode::Char('a') => abort_pressed(state),
+        KeyCode::Char('M') => match first_conflicted(state) {
+            Some(path) => {
+                open_mergetool(state, commands, Some(&path));
+            }
+            None => nothing_conflicted(state),
+        },
+        KeyCode::Char('e') => match first_conflicted(state) {
+            Some(path) => {
+                edit_conflict(state, commands, Some(&path));
+            }
+            None => nothing_conflicted(state),
+        },
+        _ => return false,
     }
     true
 }
