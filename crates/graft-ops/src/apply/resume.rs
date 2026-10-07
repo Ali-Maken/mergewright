@@ -8,30 +8,28 @@
 
 use std::path::PathBuf;
 
-use graft_core::journal::{EntryStatus, HeadRef, JournalEntry};
-use graft_core::oid::Oid;
-use graft_git::repo::RepoHandle;
+use graft_core::journal::JournalEntry;
 use graft_git::run::{GitArg, RunError, Stop};
 use graft_git::state::{self, InProgress};
 
-use crate::facts::{self, FactsError};
-use crate::operation::{Operation, Refusal, opens_in_progress};
+use crate::operation::{Operation, Refusal};
 use crate::snapshot;
 
+mod close;
+mod live;
 mod rewrite;
 pub(super) mod shell;
 
+use close::close_resume;
+pub(crate) use live::{live_entry, live_entry_facts};
 // `apply`'s tests read its stop mark (m8-polish-and-ship/13c).
 pub(super) use rewrite::resume_invocation;
-use rewrite::{started_on_its_line, stopped_on_edit};
+use rewrite::stopped_on_edit;
 use shell::{Target, refuse_unmerged, shell_merge};
 
 use super::engine::{go_home, plan_of, remove};
-use super::stopped::{self, BEFORE_PAUSE, Left, StoppedAt, where_stopped};
-use super::{
-    AfterState, Applied, ApplyError, Context, Pending, Refresh, apply, as_apply_error, finish,
-    reason_for, set_aside,
-};
+use super::stopped::{self, Left, StoppedAt, where_stopped};
+use super::{Applied, ApplyError, Context, apply, as_apply_error};
 
 /// How [`resume`] takes a stopped history operation on (m5/07).
 ///
@@ -58,113 +56,6 @@ pub enum Resume {
     Skip,
     /// `--abort`: back to where the operation started.
     Abort,
-}
-
-/// The newest `Pending` entry that is genuinely *this* live operation of
-/// Graft's: the entry `resume` closes and recovery leaves alone (m5/07).
-///
-/// Kind alone was not enough (m5/07 review, M7). A Graft merge entry left
-/// `Pending` by a crash *before* git ran, plus a `git merge` since started
-/// in the shell, matched on kind — and `resume(Continue)` would have
-/// finished someone else's merge and closed Graft's entry `Committed` with
-/// a before-state from a different act. Two facts git leaves behind settle
-/// it, both read here rather than assumed:
-///
-/// - **Where the operation started.** A rebase detaches `HEAD`, so its
-///   branch is `rebase-merge/head-name`; a merge, cherry-pick or revert
-///   leaves `HEAD` where it was. Either way the entry's `head_before` must
-///   equal it. A `rebase-apply` directory with no `head-name` is a `git am`,
-///   which matches no entry of Graft's at all (this also closes the group's
-///   own Minor 11).
-/// - **The branch has not moved.** A stopped merge, cherry-pick or revert
-///   has written no commit, so the branch is still where the entry recorded
-///   it. A rebase's own starting tip is in `rebase-merge/orig-head`, which
-///   `graft_git::state` does not expose, so that leg rests on `head-name`
-///   alone.
-///
-/// `ORIG_HEAD` is deliberately not used, although the review named it:
-/// verified against git 2.54, a merge and a rebase set it but a conflicted
-/// **cherry-pick and revert do not**, so requiring it would refuse two real
-/// resumes to catch one impostor.
-///
-/// A fact the entry never recorded is not evidence against it: the
-/// comparison is skipped rather than failed, which keeps a real conflict
-/// resumable.
-pub(crate) fn live_entry<'a>(
-    repo: &RepoHandle,
-    entries: &'a [JournalEntry],
-    kind: InProgress,
-    stop: &dyn Stop,
-) -> Result<Option<&'a JournalEntry>, ApplyError> {
-    live_entry_facts(repo, entries, kind, stop).map_err(|why| match why {
-        // A stop stays a stop: the callers choose their cancel path on
-        // `ApplyError::Stopped` alone.
-        FactsError::Stopped => ApplyError::Stopped,
-        other => ApplyError::Facts(other),
-    })
-}
-
-/// [`live_entry`] in the error type it actually has: every failure is a read
-/// of the repository, and the stop is [`FactsError::Stopped`]. For a caller
-/// whose own error speaks `FactsError` (m7-power-tools/01a: no catch-all arm
-/// guessing which `ApplyError` it was).
-pub(crate) fn live_entry_facts<'a>(
-    repo: &RepoHandle,
-    entries: &'a [JournalEntry],
-    kind: InProgress,
-    stop: &dyn Stop,
-) -> Result<Option<&'a JournalEntry>, FactsError> {
-    if stop.should_stop() {
-        return Err(FactsError::Stopped);
-    }
-    let detail = state::in_progress_detail_with_stop(repo, stop).map_err(|error| match error {
-        state::StateError::Io(io) => FactsError::State(io),
-    })?;
-    // The one git run in that read (the incoming commit's `rev-list`) carries
-    // a stop on `detail.theirs`, where it reads as any failure to name the
-    // commit — and nothing here uses `theirs`. Asking again is what makes a
-    // stop raised during the read a stop (m7-power-tools/01a, gap :640).
-    if stop.should_stop() {
-        return Err(FactsError::Stopped);
-    }
-    let started_on = match kind {
-        InProgress::Rebase => match detail.as_ref().and_then(|found| found.head_name.as_deref()) {
-            Some(name) => HeadRef::Branch(name.to_owned()),
-            // A `git am`, or a rebase whose state file is unreadable:
-            // nothing here can be shown to be Graft's.
-            None => return Ok(None),
-        },
-        _ => facts::head_ref(repo)?,
-    };
-    let tip_now = match (&started_on, kind) {
-        (
-            HeadRef::Branch(name),
-            InProgress::Merge | InProgress::CherryPick | InProgress::Revert,
-        ) => facts::read_refs(repo, std::slice::from_ref(name))?
-            .get(name)
-            .copied()
-            .flatten()
-            .map(|oid| (name.clone(), oid)),
-        _ => None,
-    };
-    for entry in entries.iter().rev() {
-        let candidate = entry.status == EntryStatus::Pending
-            && opens_in_progress(entry.kind) == Some(kind)
-            && match &tip_now {
-                Some((name, now)) => match entry.refs_before.get(name) {
-                    Some(Some(recorded)) => recorded == now,
-                    // Not recorded, or recorded absent: nothing to compare.
-                    _ => true,
-                },
-                None => true,
-            };
-        if candidate
-            && (entry.head_before == started_on || started_on_its_line(repo, entry, &started_on)?)
-        {
-            return Ok(Some(entry));
-        }
-    }
-    Ok(None)
 }
 
 /// The unmerged paths the status lists now.
@@ -412,132 +303,4 @@ fn still_pending(
             paths,
         }
     })
-}
-
-/// The entry's status when git went through with the resume: `--abort`
-/// closes it `Aborted("aborted")`; `Continue`, `ContinueWith` and `Skip` commit.
-fn went_through(aborting: bool) -> EntryStatus {
-    if aborting {
-        EntryStatus::Aborted {
-            reason: "aborted".to_owned(),
-        }
-    } else {
-        EntryStatus::Committed
-    }
-}
-
-/// The entry's before-commit, read from its backup ref — which still points
-/// there: `seal_after` moves it only when the outcome is written, which is
-/// now. A backup ref that is gone comes back as `BackupGone`.
-fn before_commit_of(
-    ctx: &Context<'_>,
-    entry: &JournalEntry,
-) -> Result<(Option<Oid>, Option<AfterState>), ApplyError> {
-    let before_commit = match &entry.backup_ref {
-        Some(name) => facts::read_refs(ctx.repo, std::slice::from_ref(name))
-            .map_err(ApplyError::Facts)?
-            .get(name)
-            .copied()
-            .flatten(),
-        None => None,
-    };
-    let backup_gone = entry
-        .backup_ref
-        .clone()
-        .filter(|_| before_commit.is_none())
-        .map(|name| AfterState::BackupGone { name });
-    Ok((before_commit, backup_gone))
-}
-
-/// A failed resume's `Aborted` reason. A stop reaches `close_resume` only
-/// when git did not pause the operation (`stopped_resume`'s residual), and
-/// the reason says so (m8-polish-and-ship/13c).
-fn resume_reason(error: &RunError) -> String {
-    match error {
-        RunError::Stopped => BEFORE_PAUSE.to_owned(),
-        other => reason_for(other),
-    }
-}
-
-/// git is done with the operation, one way or the other: write the outcome
-/// line the stop deferred. `aborting` is `Resume::Abort`; every other way
-/// on commits. `left` is what a rewrite's close could not tidy (its way
-/// home, its saved plan), reported beside the outcome. `index_base` is an
-/// absorb's, from its saved plan: the put-back uses it only when the
-/// rewrite went through.
-fn close_resume(
-    ctx: &mut Context<'_>,
-    entry: JournalEntry,
-    aborting: bool,
-    commands: Vec<String>,
-    failure: Option<RunError>,
-    left: Vec<AfterState>,
-    index_base: Option<Oid>,
-) -> Result<Applied, ApplyError> {
-    let (before_commit, backup_gone) = before_commit_of(ctx, &entry)?;
-    let noted: Vec<AfterState> = backup_gone.into_iter().chain(left).collect();
-    let mut pending = Pending {
-        entry,
-        before_commit,
-    };
-    // A rebase that set edits aside and stopped: git is done with it now,
-    // whichever way, so step 6 runs — onto the rebased tip, or onto the
-    // original one after `--abort` (ADR-0045 §4). `put_back` comes from the
-    // Pending line, so this holds across a relaunch.
-    if let Some(stash) = set_aside::stash_of(&pending.entry) {
-        let ended = set_aside::Ended {
-            index_base: index_base.filter(|_| failure.is_none() && !aborting),
-            failure,
-            done: went_through(aborting),
-            unread: noted,
-        };
-        return set_aside::close(ctx, pending, commands, stash, ended);
-    }
-    let status = match &failure {
-        Some(error) => EntryStatus::Aborted {
-            reason: resume_reason(error),
-        },
-        None => went_through(aborting),
-    };
-    let mut unread = match finish(ctx, &mut pending, status, commands) {
-        Ok(unread) => unread,
-        Err(error) => {
-            return Err(ApplyError::Journal {
-                error,
-                after: failure,
-                kept: None,
-            });
-        }
-    };
-    unread.extend(noted);
-    let entry = pending.entry;
-    if let Some(error) = failure {
-        let recoverable = entry.worktree_before.is_some();
-        return Err(ApplyError::Git {
-            entry: Box::new(entry),
-            error,
-            recoverable,
-            // A set-aside's resume closes through `set_aside::close`.
-            edits: None,
-            // A resume runs on its own entry: a stop it left paused is held
-            // (`stopped_resume`), never closed.
-            paused: None,
-        });
-    }
-    let applied = Applied {
-        came_back: Vec::new(),
-        stopped_at: None,
-        entry,
-        refresh: Refresh::Everything,
-        step_backup: None,
-        replaced: crate::undo::Replaced::default(),
-    };
-    if unread.is_empty() {
-        Ok(applied)
-    } else {
-        Err(ApplyError::AfterState {
-            applied: Box::new(applied),
-            unread,
-        })
-    }
 }
