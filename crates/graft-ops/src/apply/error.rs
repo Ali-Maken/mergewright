@@ -76,6 +76,12 @@ pub enum ApplyError {
         /// Where a set-aside's edits are, when the entry set edits aside and
         /// did not end in a clean put-back or a clash (ADR-0045 §5 amended).
         edits: Option<EditsAt>,
+        /// A stop that left the merge this operation runs in still paused:
+        /// finishing or aborting a merge begun in the shell, stopped with
+        /// `MERGE_HEAD` still there and `HEAD` unmoved (13d Q4). The entry
+        /// is closed all the same — Graft did not begin that merge — and
+        /// [`ApplyError::stopped_at`] says `Paused`. `None` otherwise.
+        paused: Option<InProgress>,
     },
     /// The caller asked to stop.
     #[error("stopped")]
@@ -101,7 +107,7 @@ pub enum ApplyError {
     /// design note hard choice 2 — and [`resume`](super::resume) closes it. No outcome line
     /// is written here. `paths` are the unmerged paths the status lists
     /// (m5/07).
-    #[error("{}: {} unmerged · resolve, then c continues, a aborts", entry.description, paths.len())]
+    #[error("{}", conflicted_words(entry, *kind, paths))]
     Conflicted {
         /// The entry, still `Pending`.
         entry: Box<JournalEntry>,
@@ -336,23 +342,32 @@ impl ApplyError {
     }
 
     /// Where a stop left git, for an error a stop produced
-    /// (m8-polish-and-ship/13c): [`ApplyError::Paused`] → `Paused`; a
-    /// stopped local run closed `Aborted` → `BeforePause`, `changed` when
-    /// the entry is in force (`u` has something to put back). `None` for
-    /// every other error, a stop before git ran included.
+    /// (m8-polish-and-ship/13c, 13d): [`ApplyError::Paused`] → `Paused`; a
+    /// stopped local run closed `Aborted` → `Paused` when it left the shell
+    /// merge it ran in paused (`paused`), else `BeforePause` for a kind git
+    /// can pause and `Stopped` for one it never can, `changed` when the
+    /// entry is in force (`u` has something to put back). `None` for every
+    /// other error, a stop before git ran included.
     #[must_use]
     pub fn stopped_at(&self) -> Option<StoppedAt> {
         match self {
-            ApplyError::Paused { kind, .. } => Some(StoppedAt::Paused(*kind)),
+            ApplyError::Paused { kind, .. }
+            | ApplyError::Git {
+                error: RunError::Stopped,
+                paused: Some(kind),
+                ..
+            } => Some(StoppedAt::Paused(*kind)),
             ApplyError::Git {
                 entry,
                 error: RunError::Stopped,
+                paused: None,
                 ..
-            } => Some(StoppedAt::BeforePause {
+            } => Some(StoppedAt::residual(
+                entry.kind,
                 // The entry is the journal's newest, so nothing can have
                 // reversed it yet: in force is "took effect".
-                changed: in_force(std::slice::from_ref(&**entry), &entry.id),
-            }),
+                in_force(std::slice::from_ref(&**entry), &entry.id),
+            )),
             _ => None,
         }
     }
@@ -365,6 +380,7 @@ impl ApplyError {
                 error,
                 recoverable,
                 edits,
+                paused: _,
             } => {
                 let mut line = format!("{}: {}", entry.description, reason_for(error));
                 if let Some(edits) = edits {
@@ -400,6 +416,27 @@ impl From<PrepareError> for ApplyError {
             PrepareError::Stopped => ApplyError::Stopped,
         }
     }
+}
+
+/// [`ApplyError::Conflicted`]'s words. A merge stopped with nothing
+/// unmerged was stopped by a hook that said no (`pre-merge-commit`,
+/// `prepare-commit-msg`, `commit-msg`) or by signing: there is nothing to
+/// resolve, so the words do not say there is (13d Q4b). `c` then runs
+/// `git commit`, which runs `pre-commit`, not `pre-merge-commit` — git's
+/// design, not Graft's. Outside a merge, nothing unmerged is not a hook (a
+/// rewrite's `edit` row, an empty pick): those keep the conflict's words.
+fn conflicted_words(entry: &JournalEntry, kind: InProgress, paths: &[PathBuf]) -> String {
+    if paths.is_empty() && kind == InProgress::Merge {
+        return format!(
+            "{}: a git hook stopped it · c continues, a aborts",
+            entry.description
+        );
+    }
+    format!(
+        "{}: {} unmerged · resolve, then c continues, a aborts",
+        entry.description,
+        paths.len()
+    )
 }
 
 /// One line for an `Aborted` entry's reason.

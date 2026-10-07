@@ -318,16 +318,16 @@ fn resume_args(kind: InProgress, how: Resume) -> (Vec<GitArg>, Option<Vec<u8>>) 
 
 /// The user stopped the resume's git (m8-polish-and-ship/13c): what git
 /// left decides, read as `apply` reads it. Still live → held again, the
-/// resume's line with it, and [`ApplyError::Paused`] is the answer; a merge
-/// that committed → no failure, `Landed`; otherwise the stop is the failure
-/// `close_resume` closes the entry on.
+/// resume's line with it, and [`ApplyError::Paused`] is the answer; a merge,
+/// pick or revert that committed → no failure, `Landed` (13d Q2); otherwise
+/// the stop is the failure `close_resume` closes the entry on.
 fn stopped_resume(
     ctx: &mut Context<'_>,
     kind: InProgress,
     entry: &JournalEntry,
     commands: &[String],
 ) -> Result<(Option<RunError>, Option<StoppedAt>), ApplyError> {
-    match where_stopped(ctx, Some(kind), entry.kind, entry)? {
+    match where_stopped(ctx, Some(kind), entry)? {
         Left::Paused { kind, paths } => {
             ctx.journal.hold_commands(&entry.id, commands.to_vec());
             let mut entry = entry.clone();
@@ -339,7 +339,7 @@ fn stopped_resume(
             })
         }
         Left::Landed => Ok((None, Some(StoppedAt::Landed))),
-        Left::BeforePause => Ok((Some(RunError::Stopped), None)),
+        Left::Residual => Ok((Some(RunError::Stopped), None)),
     }
 }
 
@@ -519,6 +519,9 @@ fn close_resume(
             recoverable,
             // A set-aside's resume closes through `set_aside::close`.
             edits: None,
+            // A resume runs on its own entry: a stop it left paused is held
+            // (`stopped_resume`), never closed.
+            paused: None,
         });
     }
     let applied = Applied {

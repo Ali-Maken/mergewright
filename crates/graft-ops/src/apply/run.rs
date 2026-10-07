@@ -5,6 +5,7 @@ use graft_core::journal::JournalEntry;
 use graft_git::remote::RemoteFailure;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitInvocation, RunError};
+use graft_git::state::InProgress;
 
 use crate::operation::{Invocation, RemoteNames};
 
@@ -33,6 +34,10 @@ pub(super) struct PlanFailure {
     /// (`stopped::where_stopped`, m8-polish-and-ship/13c): the entry's
     /// reason says so. Set only by [`PlanFailure::before_pause`].
     before_pause: bool,
+    /// A stop that left the merge a finish or abort of a shell merge runs
+    /// in still paused (13d Q4): the error says so. Set only by
+    /// [`PlanFailure::left_paused`].
+    paused: Option<InProgress>,
 }
 
 /// A remote operation's failure: what the whole of git's stderr said, its
@@ -50,6 +55,7 @@ impl PlanFailure {
             error,
             remote: None,
             before_pause: false,
+            paused: None,
         }
     }
 
@@ -65,6 +71,14 @@ impl PlanFailure {
     pub(super) fn before_pause(self) -> Self {
         PlanFailure {
             before_pause: true,
+            ..self
+        }
+    }
+
+    /// This stop left the shell merge it ran in paused, as it was.
+    pub(super) fn left_paused(self, kind: InProgress) -> Self {
+        PlanFailure {
+            paused: Some(kind),
             ..self
         }
     }
@@ -100,6 +114,7 @@ impl PlanFailure {
             recoverable,
             // A set-aside's failure closes through `set_aside::close`.
             edits: None,
+            paused: self.paused,
         }
     }
 }
@@ -139,6 +154,7 @@ pub(super) fn run_plan(
                     }),
                     error: failed.error,
                     before_pause: false,
+                    paused: None,
                 })
         } else {
             git.run(ctx.stop).err().map(PlanFailure::local)

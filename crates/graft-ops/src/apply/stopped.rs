@@ -11,8 +11,13 @@
 //! | git left | outcome |
 //! |---|---|
 //! | the operation's own state live, `HEAD` unmoved | [`StoppedAt::Paused`]: entry `Pending`, no outcome line |
-//! | a merge: no `MERGE_HEAD`, `HEAD` moved (stopped in `post-merge`) | [`StoppedAt::Landed`]: `Committed` |
-//! | anything else (git killed before it paused) | [`StoppedAt::BeforePause`]: `Aborted`, [`BEFORE_PAUSE`] |
+//! | the merge a finish or abort of a shell merge runs in, live, `HEAD` unmoved | [`StoppedAt::Paused`]: entry closed `Aborted` as a failed finish closes (13d Q4) |
+//! | a merge, pick or revert: its state gone, `HEAD` moved (a hook after the commit stopped) | [`StoppedAt::Landed`]: `Committed` |
+//! | anything else, for an operation git can pause (git killed before it paused) | [`StoppedAt::BeforePause`]: `Aborted`, [`BEFORE_PAUSE`] |
+//! | anything else, for one it cannot (a discard …) | [`StoppedAt::Stopped`]: `Aborted`, `git was stopped` |
+//!
+//! Which state is read is [`runs_in_progress`]: what the operation opens, or
+//! the merge a finish or abort of a shell merge runs inside.
 //!
 //! Every read here is never stopped (`&()` or no stop at all): the stop
 //! flag is already set, and a read it cancelled would leave the entry
@@ -28,7 +33,7 @@ use graft_git::state::{self, InProgress};
 use super::run::PlanFailure;
 use super::{Applied, ApplyError, Context, resume};
 use crate::facts;
-use crate::operation::Operation;
+use crate::operation::{Operation, runs_in_progress};
 
 /// The `Aborted` reason of a write git did not get to pause.
 pub(crate) const BEFORE_PAUSE: &str = "stopped before git could pause it";
@@ -39,14 +44,35 @@ pub enum StoppedAt {
     /// git paused the operation itself: the entry stays `Pending`, and the
     /// next launch offers continue or abort.
     Paused(InProgress),
-    /// The merge was already committed; a hook after it was stopped.
+    /// A merge, cherry-pick or revert had already committed; a hook after
+    /// the commit was stopped.
     Landed,
-    /// git ended before it could pause the operation. `changed`: the entry
-    /// is in force, and `u` puts the files back.
+    /// git ended before it could pause an operation that pauses (one that
+    /// opens an in-progress state). `changed`: the entry is in force, and
+    /// `u` puts the files back.
     BeforePause {
         /// Whether anything changed, so `u` has something to put back.
         changed: bool,
     },
+    /// git was stopped in an operation that never pauses (a discard, a
+    /// checkout …): there is no paused state to offer. `changed` as for
+    /// `BeforePause` (13d Q3).
+    Stopped {
+        /// Whether anything changed, so `u` has something to put back.
+        changed: bool,
+    },
+}
+
+impl StoppedAt {
+    /// The residual's answer for an entry of `kind`: `BeforePause` when
+    /// the kind could have been paused, `Stopped` when it never can.
+    pub(super) fn residual(kind: OperationKind, changed: bool) -> StoppedAt {
+        if crate::operation::opens_in_progress(kind).is_some() {
+            StoppedAt::BeforePause { changed }
+        } else {
+            StoppedAt::Stopped { changed }
+        }
+    }
 }
 
 /// What a stop left, before the entry is closed.
@@ -58,40 +84,49 @@ pub(super) enum Left {
         /// a conflict).
         paths: Vec<PathBuf>,
     },
-    /// A merge that committed before the stop reached its hook.
+    /// A merge, pick or revert that committed before the stop reached a
+    /// hook after the commit.
     Landed,
     /// The residual: git did not pause.
-    BeforePause,
+    Residual,
 }
 
-/// Reads where a stop left git. `opens` is the in-progress state the
-/// operation opens (`opens_in_progress`); `kind` the entry's kind.
+/// Reads where a stop left git. `reads` is the in-progress state the stop
+/// is read against ([`runs_in_progress`], or the live kind a resume runs).
 ///
 /// `HEAD` unmoved is part of "paused" for a merge, a cherry-pick and a
 /// revert, whose `HEAD` stays put until git commits. A rebase moves `HEAD`
 /// as it goes, so for it git's live state alone says paused — as
 /// `stopped_on_conflict` read it before 13c.
+///
+/// Landed (13d Q2) is every kind that makes one commit: a merge, a pick or
+/// a revert whose state is gone and whose `HEAD` moved. A rebase never
+/// lands here: with its state gone after a stop it cannot be told from one
+/// git ended half-way, and the residual's `u` loses nothing.
 pub(super) fn where_stopped(
     ctx: &Context<'_>,
-    opens: Option<InProgress>,
-    kind: OperationKind,
+    reads: Option<InProgress>,
     entry: &JournalEntry,
 ) -> Result<Left, ApplyError> {
     let live = state::in_progress(ctx.repo).map_err(|error| ApplyError::Facts(error.into()))?;
     let unmoved = head_unmoved(entry, head_commit(ctx.repo)?);
-    if let Some(opened) = opens
-        && live == Some(opened)
-        && (opened == InProgress::Rebase || unmoved)
-    {
+    let Some(reads) = reads else {
+        return Ok(Left::Residual);
+    };
+    if live == Some(reads) && (reads == InProgress::Rebase || unmoved) {
         return Ok(Left::Paused {
-            kind: opened,
+            kind: reads,
             paths: resume::unmerged_paths(ctx, &())?,
         });
     }
-    if kind == OperationKind::Merge && live != Some(InProgress::Merge) && !unmoved {
+    let one_commit = matches!(
+        reads,
+        InProgress::Merge | InProgress::CherryPick | InProgress::Revert
+    );
+    if one_commit && live != Some(reads) && !unmoved {
         return Ok(Left::Landed);
     }
-    Ok(Left::BeforePause)
+    Ok(Left::Residual)
 }
 
 /// The commit `HEAD` names now; `None` on an unborn branch.
@@ -146,21 +181,42 @@ pub(super) fn after_a_stop(
     entry: &JournalEntry,
     failure: Option<PlanFailure>,
 ) -> Result<Read, ApplyError> {
-    if !failure.as_ref().is_some_and(PlanFailure::stopped_locally) {
+    let Some(failure) = failure else {
         return Ok(Read::Closes {
-            failure,
+            failure: None,
+            stopped_at: None,
+        });
+    };
+    if !failure.stopped_locally() {
+        return Ok(Read::Closes {
+            failure: Some(failure),
             stopped_at: None,
         });
     }
+    let opens = op.starts_in_progress();
     Ok(
-        match where_stopped(ctx, op.starts_in_progress(), op.kind(), entry)? {
-            Left::Paused { kind, paths } => Read::Held { kind, paths },
+        match where_stopped(ctx, runs_in_progress(op.kind()), entry)? {
+            // Its own state: held, as a conflict is.
+            Left::Paused { kind, paths } if opens == Some(kind) => Read::Held { kind, paths },
+            // The shell merge a finish or abort runs in (13d Q4): the entry
+            // closes as a failed finish closes — `Aborted`, `git was
+            // stopped` — never held `Pending` for a merge Graft did not
+            // begin; the answer says the merge is still paused.
+            Left::Paused { kind, .. } => Read::Closes {
+                failure: Some(failure.left_paused(kind)),
+                stopped_at: None,
+            },
             Left::Landed => Read::Closes {
                 failure: None,
                 stopped_at: Some(StoppedAt::Landed),
             },
-            Left::BeforePause => Read::Closes {
-                failure: failure.map(PlanFailure::before_pause),
+            // 13d Q3: "before git could pause it" only where git could have.
+            Left::Residual if opens.is_some() => Read::Closes {
+                failure: Some(failure.before_pause()),
+                stopped_at: None,
+            },
+            Left::Residual => Read::Closes {
+                failure: Some(failure),
                 stopped_at: None,
             },
         },

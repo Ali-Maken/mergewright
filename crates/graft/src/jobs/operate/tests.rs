@@ -43,6 +43,7 @@ fn a_resume_git_fails_answers_failed() {
         error: RunError::GitNotFound,
         recoverable: true,
         edits: None,
+        paused: None,
     }));
     assert!(
         matches!(answered, Operated::Failed { .. }),
@@ -90,6 +91,7 @@ fn failed_checkout(head_after: Option<HeadRef>) -> ApplyError {
         error: RunError::GitNotFound,
         recoverable: true,
         edits: None,
+        paused: None,
     }
 }
 
