@@ -5,6 +5,7 @@ use graft_ops::operation::{Lease, Operation, PushParams};
 use graft_term::{SanitizedText, sanitize_line};
 use graft_ui::confirm::ConfirmView;
 use graft_ui::fit::fit;
+use graft_ui::keymap::{ActionId, Keymap};
 use unicode_width::UnicodeWidthStr;
 
 use super::{
@@ -188,7 +189,7 @@ pub(super) fn lease_key(
         .as_ref()
         .and_then(|upstream| upstream.tracking_tip)
     else {
-        return Err("f to fetch first \u{2014} nothing to lease against".to_owned());
+        return Err(nothing_to_lease(&state.keymap));
     };
     Ok(Some((sent, expected)))
 }
@@ -357,4 +358,13 @@ fn leaves_lines(remote_side: &str, leaves: &LeavesRead) -> Vec<SanitizedText> {
         )));
     }
     lines
+}
+
+/// `f to fetch first — nothing to lease against` (`graph.fetch`); unbound,
+/// `nothing to lease against`.
+pub(crate) fn nothing_to_lease(keys: &Keymap) -> String {
+    match keys.key_verb(&[ActionId("graph.fetch")], "to fetch first") {
+        Some(fetch) => format!("{fetch} \u{2014} nothing to lease against"),
+        None => "nothing to lease against".to_owned(),
+    }
 }

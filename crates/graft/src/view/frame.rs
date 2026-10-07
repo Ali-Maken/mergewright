@@ -22,7 +22,7 @@ use ratatui::style::{Modifier, Style};
 use ratatui::widgets::{Clear, Widget};
 
 use crate::session::Session;
-use crate::update::remote::ESC_HINT;
+use crate::update::remote::ends_with_esc_hint;
 use crate::update::{AppState, GraphOverlay, Screen, Status};
 
 use super::detail::detail_view;

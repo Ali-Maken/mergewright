@@ -5,6 +5,23 @@ use super::{
     Status, open_preview, short, short_name_of,
 };
 use crate::update::op_keys::OpKeys;
+use graft_ui::keymap::{ActionId, Keymap};
+
+/// `o takes a commit · this row isn't one` (`graph.take`); unbound, the
+/// fact alone.
+pub(crate) fn not_a_commit_words(keys: &Keymap) -> String {
+    match keys.key_verb(&[ActionId("graph.take")], "takes a commit") {
+        Some(takes) => format!("{takes} \u{b7} this row isn't one"),
+        None => "this row isn't one".to_owned(),
+    }
+}
+
+/// `o is waiting for the refs` (`graph.take`); unbound, `waiting for the
+/// refs` (the take was asked from the menu).
+pub(crate) fn waiting_for_refs(keys: &Keymap) -> String {
+    keys.key_verb(&[ActionId("graph.take")], "is waiting for the refs")
+        .unwrap_or_else(|| "waiting for the refs".to_owned())
+}
 
 /// A one-commit cherry-pick's title in the words `o` is named by
 /// (m7-power-tools/11): `take <sha7> "<subject>" onto <branch>`, whether it
@@ -81,7 +98,7 @@ pub(crate) fn take_key(
 /// The operation `o` names from the cursor's row, or the status saying why
 /// there is none.
 pub(super) fn take_operation(state: &AppState) -> Result<Operation, Status> {
-    let not_a_commit = || Status::sticky("o takes a commit \u{b7} this row isn't one");
+    let not_a_commit = || Status::sticky(not_a_commit_words(&state.keymap));
     if state.on_working_tree {
         return Err(not_a_commit());
     }
@@ -93,7 +110,7 @@ pub(super) fn take_operation(state: &AppState) -> Result<Operation, Status> {
     let refs = state
         .refs
         .as_deref()
-        .ok_or_else(|| Status::sticky("o is waiting for the refs"))?;
+        .ok_or_else(|| Status::sticky(waiting_for_refs(&state.keymap)))?;
     let id = row.commit.id;
     if refs
         .on(id)

@@ -5,6 +5,21 @@ use super::{
     RewriteRequest, Status, after,
 };
 use crate::update::op_keys::OpKeys;
+use graft_ui::keymap::{ActionId, Keymap};
+
+/// The keys that open the editor again after a box beat it to the screen:
+/// `R opens it` from a row (`graph.rewrite`, on the graph), `r then R
+/// opens it` from a rebase's preview (`graph.rebase`, then the preview's
+/// `preview.rewrite`; 10b W5). `None` when a key of it is unbound.
+pub(crate) fn opens_it(from_rebase: bool, keys: &Keymap) -> Option<String> {
+    let open = keys.spell_keys(&[ActionId("preview.rewrite")]);
+    if from_rebase {
+        let rebase = keys.spell_keys(&[ActionId("graph.rebase")])?;
+        Some(format!("{rebase} then {} opens it", open?))
+    } else {
+        keys.key_verb(&[ActionId("graph.rewrite")], "opens it")
+    }
+}
 
 /// Is the editor's `r` field open (`AppState::text_field_open`)?
 pub(crate) fn field_open(state: &AppState) -> bool {
@@ -144,13 +159,10 @@ pub(crate) fn opened(
             }
             let from = from.unwrap_or(OpenedFrom::Row(opened.params.head.oid));
             if !crate::update::keys::edit_stop::no_box_is_up(state) {
-                let keys = match from {
-                    OpenedFrom::Row(_) => "R opens it",
-                    OpenedFrom::Rebase => "r then R opens it",
-                };
+                let keys = opens_it(matches!(from, OpenedFrom::Rebase), &state.keymap);
                 state.status = Status::Sticky {
                     reason: NOT_OPENED.to_owned(),
-                    keys: Some(keys.to_owned()),
+                    keys,
                 };
                 return;
             }

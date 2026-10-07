@@ -340,10 +340,7 @@ pub fn preview_box(state: &AppState) -> Option<PreviewBox> {
         Loading::Ready(planned) => {
             if let Some(missing) = preview.undrawable {
                 closing_box(
-                    &format!(
-                        "preview cannot be drawn here: {} is not loaded · esc",
-                        short(missing)
-                    ),
+                    &not_loaded(&short(missing), &state.keymap),
                     &preview.subject,
                 )
             } else if let Some((index, pop)) = stash_put_back(&preview.subject) {
@@ -357,6 +354,7 @@ pub fn preview_box(state: &AppState) -> Option<PreviewBox> {
                     keeps_drops_here(state).is_some(),
                     preview.clipped,
                     state.size.columns,
+                    &state.keymap,
                 )
             }
         }
@@ -375,4 +373,14 @@ pub fn preview_box(state: &AppState) -> Option<PreviewBox> {
     let keep = keeps_drops_here(state).is_some();
     let view = put_in_words(footer_keys(view, preview, keep), state, preview);
     Some(with_cursor(view, preview.cursor))
+}
+
+/// `preview cannot be drawn here: <sha7> is not loaded · esc`: `esc`
+/// (`app.back`, in the preview) closes the box; unbound, the words alone.
+pub(crate) fn not_loaded(missing: &str, keys: &graft_ui::keymap::Keymap) -> String {
+    let words = format!("preview cannot be drawn here: {missing} is not loaded");
+    match keys.spell_keys(&[graft_ui::keymap::ActionId("app.back")]) {
+        Some(back) => format!("{words} \u{b7} {back}"),
+        None => words,
+    }
 }

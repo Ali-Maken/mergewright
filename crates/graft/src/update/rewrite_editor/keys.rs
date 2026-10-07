@@ -176,7 +176,7 @@ fn row_key(
         KeyCode::Char(letter @ ('p' | 's' | 'f' | 'd' | 'e')) => {
             mark(state, editor, commands, letter, next_id);
         }
-        KeyCode::Char('r') => open_field(editor),
+        KeyCode::Char('r') => open_field(editor, &state.keymap),
         KeyCode::Enter => toggle_changes(state, editor, commands, next_id),
         // ≥120 the AFTER side is always on screen: `Tab` is swallowed below.
         KeyCode::Tab if state.size.columns < NARROW => {

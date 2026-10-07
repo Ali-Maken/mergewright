@@ -21,6 +21,7 @@ pub(super) fn plan_lines(
     keeps: bool,
     clipped: usize,
     columns: u16,
+    keys: &graft_ui::keymap::Keymap,
 ) -> Vec<SanitizedText> {
     let mut lines: Vec<String> = Vec::new();
     lines.extend(ghost_line(&plan.ghosts));
@@ -37,7 +38,7 @@ pub(super) fn plan_lines(
     // Who `r` does not take along (m7/37): every branch it leaves on a
     // commit it replaces (its forks never follow yet).
     lines.extend(line_rows::left_behind_row(plan, rewrite, columns));
-    lines.extend(line_rows::already_in_row(plan, op, keeps));
+    lines.extend(line_rows::already_in_row(plan, op, keeps, keys));
     lines.extend(head_line(plan));
     lines.push(worktree_line(&plan.worktree));
     // The edits a rebase or checkout sets aside and puts back after
@@ -52,7 +53,7 @@ pub(super) fn plan_lines(
             columns,
         ));
     }
-    lines.extend(line_rows::published_row(plan));
+    lines.extend(line_rows::published_row(plan, keys));
     // A stop forecast cuts its paths, then its subject, then `· not
     // checked past it`, never the step (note R3).
     lines.push(match line_rows::forecast_rungs(plan) {

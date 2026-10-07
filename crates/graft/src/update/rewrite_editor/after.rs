@@ -92,7 +92,7 @@ pub(super) fn start(
             .cloned()
             .unwrap_or_else(|| Operation::Rewrite(asked.clone())),
         After::Invalid(problem) => {
-            editor.notice = Some(super::words::invalid(&editor, problem));
+            editor.notice = Some(super::words::invalid(&editor, problem, &state.keymap));
             state.rewrite.editor = Some(editor);
             return;
         }

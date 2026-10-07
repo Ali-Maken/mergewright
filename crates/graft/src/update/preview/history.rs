@@ -1,5 +1,7 @@
 //! The graph's two history keys, `m` and `r`, and the operation each builds.
 
+use graft_ui::keymap::{ActionId, Keymap};
+
 use super::{
     AppState, Command, JobId, KeyCode, KeyPress, Oid, Operation, PreviewSubject, RebaseParams,
     RefBadges, RefLabel, Source, Status, Tip, open_preview, slice,
@@ -104,7 +106,7 @@ pub(super) fn history_operation(
     // A stash's commit is git's internal record of set-aside edits, not
     // something to merge or rebase onto (m8-polish-and-ship/14).
     if refs.is_stash(selected) {
-        return Err("a stash isn't a branch · ⏎ opens it".to_owned());
+        return Err(stash_isnt_a_branch(&state.keymap));
     }
     let current =
         current_branch(refs).ok_or_else(|| format!("{verb} needs a branch checked out"))?;
@@ -175,4 +177,10 @@ pub(in crate::update) fn source_at(refs: &RefBadges, oid: Oid) -> Source {
 /// `refs/heads/main` → `main`.
 pub(in crate::update) fn short_name_of(full: &str) -> String {
     String::from_utf8_lossy(&slice::short_of(full)).into_owned()
+}
+
+/// `a stash isn't a branch · ⏎ opens it`: `⏎` on the graph's stash row
+/// opens the stash box. Unbound, the fact alone.
+pub(crate) fn stash_isnt_a_branch(keys: &Keymap) -> String {
+    keys.after("a stash isn't a branch", ActionId("app.open"), "opens it")
 }

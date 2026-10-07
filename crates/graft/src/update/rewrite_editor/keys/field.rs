@@ -7,7 +7,7 @@ use super::{
 
 /// `r`: the message field under the row, prefilled with its subject line.
 /// A melded row's message is its kept row's: `r` there says so.
-pub(super) fn open_field(editor: &mut RewriteEditor) {
+pub(super) fn open_field(editor: &mut RewriteEditor, keys: &graft_ui::keymap::Keymap) {
     let Some(index) = editor.cursor_row() else {
         editor.notice = Some(words::BASE_STAYS.to_owned());
         return;
@@ -15,7 +15,7 @@ pub(super) fn open_field(editor: &mut RewriteEditor) {
     let row = &editor.todo[index];
     if row.action.melds() {
         editor.notice = Some(match editor.melds_into(index) {
-            Some(kept) => words::melds_into(&editor.todo[kept].subject),
+            Some(kept) => words::melds_into(&editor.todo[kept].subject, keys),
             None => graft_ops::rewrite::TodoProblem::MeldsIntoNothing { row: index }.explain(),
         });
         return;

@@ -57,6 +57,7 @@ pub(super) fn ready_box(
     keeps: bool,
     clipped: usize,
     columns: u16,
+    keys: &graft_ui::keymap::Keymap,
 ) -> PreviewBox {
     let title = sanitize_line(&format!("Preview: {}", plan.description));
     let mut view = if nothing_to_do(plan) {
@@ -64,7 +65,7 @@ pub(super) fn ready_box(
     } else {
         PreviewBox::new(title)
     };
-    view.lines = plan_lines(plan, op, keeps, clipped, columns);
+    view.lines = plan_lines(plan, op, keeps, clipped, columns, keys);
     view.commands = plan
         .commands
         .iter()

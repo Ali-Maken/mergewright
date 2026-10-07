@@ -6,7 +6,7 @@ use graft_git::remote::RemoteFailure;
 use graft_ops::operation::Operation;
 
 use super::{
-    DIVERGED_KEYS, ESC_HINT, NARROW_COLUMNS, OVERWRITE_KEYS, RejectedPush, Stoppable, short_branch,
+    NARROW_COLUMNS, RejectedPush, Stoppable, diverged_keys, esc_hint, overwrite_keys, short_branch,
     short_ref, short_tracking,
 };
 use crate::refs::RefBadges;
@@ -45,7 +45,11 @@ pub(in crate::update) fn stop_write(state: &mut AppState, commands: &mut Vec<Com
     // so rather than leaving `Esc` looking ignored. `Busy` is drawn with a
     // trailing `…`, which is right here: it really is still going.
     if let Stoppable::No(why) = stoppable(state, id) {
-        state.status = Status::Busy(format!("{} {why}", running_words(state, id)));
+        state.status = Status::Busy(format!(
+            "{} {}",
+            running_words(state, id),
+            why.words(&state.keymap)
+        ));
         return true;
     }
     if state.remote.cancelling == Some(id) {
@@ -110,7 +114,11 @@ pub fn remote_progress(state: &mut AppState, id: JobId, brief: &str) {
     } else {
         brief.to_owned()
     };
-    state.status = Status::Busy(format!("{} · {brief}{ESC_HINT}", running_words(state, id)));
+    state.status = Status::Busy(format!(
+        "{} · {brief}{}",
+        running_words(state, id),
+        esc_hint(&state.keymap)
+    ));
 }
 
 /// `receiving objects 45%` → `receiving 45%`: the phase's first word and the
@@ -204,14 +212,14 @@ pub fn remote_failed(
                     short_ref(&params.branch),
                     short_tracking(&params.upstream.tracking_ref)
                 ),
-                keys: Some(DIVERGED_KEYS.to_owned()),
+                keys: diverged_keys(&state.keymap),
             }
         }
         // `ops` names his edits and no keys; the keys that get him through
         // are the app's (m6-conflicts/85 D).
         (RemoteFailure::WouldOverwrite { .. }, Operation::Pull(_)) => Status::Sticky {
             reason: explained.to_owned(),
-            keys: Some(OVERWRITE_KEYS.to_owned()),
+            keys: overwrite_keys(&state.keymap),
         },
         _ => sticky(),
     }

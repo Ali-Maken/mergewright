@@ -1416,10 +1416,17 @@ fn a_line_plan() -> PreviewPlan {
 }
 
 fn drawn(plan: &PreviewPlan, op: &Operation, columns: u16) -> Vec<String> {
-    plan_lines(plan, Some(op), false, 0, columns)
-        .iter()
-        .map(|line| line.as_str().to_owned())
-        .collect()
+    plan_lines(
+        plan,
+        Some(op),
+        false,
+        0,
+        columns,
+        graft_ui::keymap::Keymap::shipped(),
+    )
+    .iter()
+    .map(|line| line.as_str().to_owned())
+    .collect()
 }
 
 #[test]

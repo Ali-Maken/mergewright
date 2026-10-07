@@ -359,7 +359,7 @@ fn launch(
     // (m5-history-and-ghost-preview/06), so a cancelled undo leaves the
     // repository where it started rather than half-applied — which is what
     // `UNDO_CANNOT_STOP` used to be the honest answer to.
-    state.status = Status::Busy(format!("{words}{}", super::remote::ESC_HINT));
+    state.status = Status::Busy(format!("{words}{}", super::remote::esc_hint(&state.keymap)));
     let unstoppable = super::remote::launched(
         state,
         id,
@@ -1019,7 +1019,10 @@ mod tests {
         // esc_cancels_an_undo_in_flight` is the other half.
         assert_eq!(
             state.status,
-            Status::Busy(format!("undo{}", super::super::remote::ESC_HINT))
+            Status::Busy(format!(
+                "undo{}",
+                super::super::remote::esc_hint(graft_ui::keymap::Keymap::shipped())
+            ))
         );
     }
 

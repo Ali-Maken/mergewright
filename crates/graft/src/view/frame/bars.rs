@@ -296,7 +296,7 @@ pub(super) fn footer_notice(
         // A write is running. The only acknowledgement `Space` gives, and the
         // only thing that says why the other write keys do nothing meanwhile
         // (m3/04 review M3).
-        Status::Busy(description) if description.ends_with(ESC_HINT) => {
+        Status::Busy(description) if ends_with_esc_hint(description, &state.keymap) => {
             return Some(sanitize_line(description));
         }
         Status::Busy(description) => {
