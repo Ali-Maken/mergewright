@@ -1,6 +1,6 @@
 # Stop review fixes, part 1: the stop in graft-git, the splits in graft-ops
 
-Status: draft
+Status: done
 Build with: **Opus** (high, not xhigh). This is the code that signals git's process group during a write. Whether a
 stopped hook really ends can't be judged from the diff, only from a process test. It changes no journal or undo
 semantics, so it doesn't need xhigh. Not Fable: the shape stays as it is.
@@ -92,28 +92,28 @@ and the graft-ops children.
   lists only graft-git.
 
 ## Acceptance (each tick names its test or check inline)
-- [ ] Splits: the move commits come first. nextest total N before = N after (both numbers in NOTES). `exec.rs`,
+- [x] Splits (`git diff -M --stat` of 21f2db0c and 30e75ce2 shows moves only; numbers in NOTES): the move commits come first. nextest total N before = N after (both numbers in NOTES). `exec.rs`,
       `apply.rs` and `resume.rs` are each ≤ 400 production lines (`wc -l` up to `#[cfg(test)]`, in NOTES).
-- [ ] Major 3, SIGSTOP:
+- [x] Major 3, SIGSTOP (passes; **not seen red**, see NOTES):
       `run::tests::stop::the_group_stop_continues_and_ends_a_hook_stopped_by_sigstop`.
       - Hook `kill -STOP $$` under `StopOrder::Group`.
       - Before the stop, assert the hook's `ps -o stat=` starts with `T`.
       - After it: the hook's pid is gone (`kill -0` → ESRCH), the group is empty, and the stop ends within
         `STOP_WITHIN`.
       - Seen red without the SIGCONT line (NOTES).
-- [ ] Major 3, SIGTTIN: `…::the_group_stop_continues_and_ends_a_hook_stopped_by_sigttin`. Same asserts, with
+- [x] Major 3, SIGTTIN (passes; the hook does reach `T`, the test waits for it; not seen red, see NOTES): `…::the_group_stop_continues_and_ends_a_hook_stopped_by_sigttin`. Same asserts, with
       `kill -TTIN $$`. If the hook never reaches `T` (the kernel discards TTIN in an orphaned group), say so in NOTES
       with the `ps` line. Don't fake it.
-- [ ] Minor 2: `…::the_group_stop_ends_a_hook_that_ignores_term`. Hook `trap '' TERM; sleep 600`, default stop: the
+- [x] Minor 2 (seen red before the fix: `gone` failed): `…::the_group_stop_ends_a_hook_that_ignores_term`. Hook `trap '' TERM; sleep 600`, default stop: the
       hook is gone, the group is empty, the stop ends within `STOP_WITHIN`. Seen red first.
-- [ ] Minor 4: `…::hooks_first_ends_helpers_when_members_cannot_be_read_after_git_ended`. Inject `Err` on the member
+- [x] Minor 4 (seen red before the fix: `gone(helper)` failed): `…::hooks_first_ends_helpers_when_members_cannot_be_read_after_git_ended`. Inject `Err` on the member
       read after git's exit (the existing injection seam of
       `hooks_first_falls_back_to_the_group_stop_when_members_cannot_be_listed`): the helper is gone.
-- [ ] Minor 8: `…::the_hook_guard_kills_its_pid_on_drop`. Spawn `sleep 600`, write its pid, drop the guard: the pid
+- [x] Minor 8 (`the_hook_guard_kills_its_pid_on_drop` passes; grep in NOTES): `…::the_hook_guard_kills_its_pid_on_drop`. Spawn `sleep 600`, write its pid, drop the guard: the pid
       is gone. Every stop test that runs `sleep 600` holds a guard (grep in NOTES).
-- [ ] R2: `graft-ops it::finish_merge::a_hook_refusal_leaves_the_merge_in_progress` passes unchanged. The comment
+- [x] R2 (passed unchanged in the final workspace run; comment `apply/close.rs` above `starts_in_progress()`, MAP `## apply` sentence): `graft-ops it::finish_merge::a_hook_refusal_leaves_the_merge_in_progress` passes unchanged. The comment
       and the MAP sentence exist (grep in NOTES).
-- [ ] After all of this, `ps -A | grep -c "sleep 600"` reads 0 (NOTES).
+- [x] (`ps -A | grep -c "[s]leep 600"` read 0 after the final run) After all of this, `ps -A | grep -c "sleep 600"` reads 0 (NOTES).
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
@@ -126,3 +126,14 @@ the failures are only those 5 graft files, and that graft-git and graft-ops are 
 ## Size
 One context, about 70k tokens. Most of it is reading the four files. If it runs long, split at the crate seam:
 graft-git items 1–5, then graft-ops items 1 and 6.
+
+## NOTES (builder, 2026-10-07)
+- Scout: none, as the ticket says; the review named every line. Scouts 13b-review-fix / 13c-app cover the graft crate; not used.
+- Not compacted.
+- **Splits.** nextest before: 5708 passed / 10 skipped (main 923275f8). After both move commits: 5708 / 10, unchanged. Final, with the 5 new tests: 5713 / 10.
+  Production lines (up to `#[cfg(test)]`): `exec.rs` 241, `stop.rs` 381, `apply.rs` 343, `apply/close.rs` 362, `apply/guard.rs` 113, `apply/resume.rs` 307, `resume/live.rs` 121, `resume/close.rs` 142. Test files: `run/tests.rs` 257, `run/tests/stop.rs` 247, `run/tests/stop/fixture.rs` 246 (fixture split out in the build commit to keep the test file under 400; test paths unchanged).
+- **Major 3 not seen red.** STOP and TTIN tests both passed with neither the SIGCONT line nor the helper pass in place (the same run where Minor 2 and 4 were red). Read, not observed: once git dies, the group is orphaned with a stopped member, and the kernel sends it SIGHUP + SIGCONT, which ends the `sh` hook. So on macOS the SIGCONT is a backstop, not the only cure. I found no test setup where the group stays un-orphaned after git dies. TTIN: the hook does reach `T`, because git's group is not orphaned while git lives.
+- **Minor 2 / 4 design.** One helper path, `stop.rs` `after_git_ended`, used by both stops once git is reaped. It reads at once, then every 250 ms; each helper gets TERM + CONT, then SIGKILL 1 s later; anything still listed at `until` gets SIGKILL. A failed read → `kill_reaped_group` (`killpg(SIGKILL)`, `ESRCH` matched, `EPERM` commented). `group_stop` runs it inside its own `term` grace, so the 2.05 s default bound and `STOP_WITHIN` (4.05 s) are unchanged. Measured: a TERM-ignoring hook under the default stop took 1.33 s; STOP/TTIN hooks took 58–74 ms. The final SIGKILL at `until` also now applies to hook-first's own-end phase (before, helpers still listed at its bound were left). A small widening on the same path.
+- **Minor 8 guard.** `Reap` (fixture.rs) kills the hook's pid and every member still in its group (never the test's own group). grep: every `sleep 600` test holds one. `stop_at_the_hook` / `stop_once_stopped` return it; `Reap::hook` is used in the two direct `stop::stop` tests, the fallback test and the background-job test.
+- **Gates.** fmt, clippy `--all-targets`, nextest 5713/5713 and doctests all pass, workspace-wide. Heavy clippy fails only in graft: `tests/it/frames/{after_idle,journal_find,run}.rs`, `ghostty_shot.rs`, `held_key.rs` (+ `jobs/runner.rs`, cited as the callee). graft-git and graft-ops are clean (13f).
+- **Touches.** graft-ops `stops_hooks_first` / `it::stop_hooks` and graft `it::quit_waits`: all ran in the final workspace run and passed. `grep -rnw "group_stop|hooks_first" crates` → only `crates/graft-git/src/run/`. Both MAPs updated (run row, layout rows, `## apply` file list, R2 sentence). No capture, keymap, journal or undo change.
