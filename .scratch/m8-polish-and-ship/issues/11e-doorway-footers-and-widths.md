@@ -1,6 +1,6 @@
 # G-palette 1e — `? keys` on the journal, stash and Map footers (one bar per place); R2's measured widths become the spec
 
-Status: draft (planner spec-only pass 2026-10-08; replaces 11d's open R2 box and its NOTES finding "R1 does not reach
+Status: ready (conductor 2026-10-08; rulings in 11e-rulings.md) — was draft (planner spec-only pass 2026-10-08; replaces 11d's open R2 box and its NOTES finding "R1 does not reach
 the journal, stash or Map screens")
 Build with: **Opus** (conductor 2026-10-08 after scout `scouts/11e-footers.md`: three variants enumerated in 4 files, uneven footer rules). Planner expects **Opus**: deletes three
 `HintContext` variants every sweep enumerates, and moves bar coverage onto the footers he actually sees — a wrong cut
