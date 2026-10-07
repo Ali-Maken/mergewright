@@ -578,7 +578,9 @@ fn the_bar_behind_an_overlay_draws_what_the_pane_still_answers() {
     let bar = drawn.last().cloned().unwrap_or_default();
     assert_eq!(
         bar.trim_end(),
-        " ⏎ open  j/k move  u undo  / search",
+        // m8/09e: `/ search` gone — the graph's search stands down under
+        // an overlay, where its prompt would never be drawn.
+        " ⏎ open  j/k move  u undo",
         "the keys the pane and the globals still answer, quoted so the change is legible \
          in review: {drawn:?}"
     );

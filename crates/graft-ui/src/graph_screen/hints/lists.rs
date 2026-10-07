@@ -320,17 +320,14 @@ pub fn history_place_list(rows: bool, on_file: bool) -> Vec<Hint> {
 }
 
 /// [`HintContext::PaneOverOverlay`]'s list: `⏎ open` unless the diff has
-/// focus, then the pane's moves and the two verbs dispatched above it.
+/// focus, then the pane's moves and `u undo`, dispatched above it. Not
+/// `/ search`: the graph's search stands down under an overlay (m8/09e).
 fn pane_over_overlay_list(opens: bool) -> Vec<Hint> {
     let mut list = Vec::new();
     if opens {
         list.push(hint(OPEN, "open"));
     }
-    list.extend([
-        hint(DOWN_UP, "move"),
-        hint(UNDO, "undo"),
-        hint(FIND, "search"),
-    ]);
+    list.extend([hint(DOWN_UP, "move"), hint(UNDO, "undo")]);
     list
 }
 

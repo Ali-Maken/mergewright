@@ -247,3 +247,84 @@ fn n_and_capital_n_never_step_a_search_behind_a_modal() {
     }
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
 }
+
+/// The three overlays the graph's search stands down under (09e): the frame
+/// draws the overlay, not the graph screen, so a prompt opened there would
+/// never be drawn (`view::frame` `draw_map`/`draw_stash`).
+fn under_each_overlay(state: &AppState) -> Vec<(&'static str, AppState)> {
+    let mut map = state.clone();
+    map.map.shown = true;
+    let mut journal = state.clone();
+    journal.journal.shown = true;
+    let mut stash = state.clone();
+    stash.stash.shown = true;
+    vec![("Map", map), ("journal", journal), ("stash list", stash)]
+}
+
+/// An unbound key's outcome: what `/` must equal where it stands down.
+fn idle(state: &AppState) -> AppState {
+    press(state, KeyCode::Char('\u{e000}'))
+}
+
+/// 09e Defects 1–2: under the Map `/` opens no search; the state is an
+/// unbound key's.
+#[test]
+fn slash_under_the_map_opens_no_search() {
+    let mut state = on_graph();
+    state.map.shown = true;
+    let after = press(&state, KeyCode::Char('/'));
+    assert!(after.search_prompt.is_none());
+    assert_eq!(after, idle(&state));
+}
+
+/// 09e Defects 1–2: the same under the stash list.
+#[test]
+fn slash_under_the_stash_list_opens_no_search() {
+    let mut state = on_graph();
+    state.stash.shown = true;
+    let after = press(&state, KeyCode::Char('/'));
+    assert!(after.search_prompt.is_none());
+    assert_eq!(after, idle(&state));
+}
+
+/// 09e Defects 1–2: with the detail pane focused over any of the three
+/// overlays, `/` opens no search either.
+#[test]
+fn slash_from_the_pane_over_an_overlay_opens_no_search() {
+    let mut base = on_graph();
+    base.detail.focus = graft_ui::detail::DetailFocus::Files;
+    let mut wrong = Vec::new();
+    for (name, state) in under_each_overlay(&base) {
+        if press(&state, KeyCode::Char('/')).search_prompt.is_some() {
+            wrong.push(name);
+        }
+    }
+    assert!(wrong.is_empty(), "`/` opened the search under {wrong:?}");
+}
+
+/// 09e: a kept graph search does not step under an overlay (it would move
+/// the cursor of a graph that isn't shown), and steps again once closed.
+#[test]
+fn n_under_an_overlay_leaves_the_graph_where_it_was() {
+    let base = with_a_live_search(on_graph());
+    for (name, state) in under_each_overlay(&base) {
+        let after = press(&state, KeyCode::Char('n'));
+        assert_eq!(
+            after.search.as_ref().and_then(|s| s.current),
+            None,
+            "{name}: `n` stepped the hidden graph's search"
+        );
+        assert_eq!(
+            after.history.as_ref().map(|h| h.cursor),
+            state.history.as_ref().map(|h| h.cursor),
+            "{name}: the hidden cursor moved"
+        );
+    }
+    assert_eq!(
+        press(&base, KeyCode::Char('n'))
+            .search
+            .and_then(|s| s.current),
+        Some(0),
+        "closed, `n` steps"
+    );
+}

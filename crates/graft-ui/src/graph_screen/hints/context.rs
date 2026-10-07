@@ -124,9 +124,10 @@ pub enum HintContext {
     /// `update::tests::the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows`).
     ///
     /// What is left is this list: the pane's own `⏎` and `j`/`k`, and the
-    /// two verbs dispatched **before** the panes and so still live under an
-    /// overlay — `u undo` and `/ search` (`graft::update::keys::key_event`,
-    /// which answers both above `pane_and_overlay_key`).
+    /// verb dispatched **before** the panes and so still live under an
+    /// overlay — `u undo` (`graft::update::keys::key_event`, which answers
+    /// it above `pane_and_overlay_key`). Not `/ search`: the graph's search
+    /// stands down while an overlay is up (m8/09e, `graft::update::search`).
     ///
     /// The overlay's *own* verbs are not here either. `⏎` and `Esc` never
     /// reach it while the pane has focus — `detail::keys::detail_key` runs
