@@ -1,6 +1,6 @@
 # G-hygiene 2c — 09h's `?`-at-Map capture; the three hand-shot search captures; the two literals 10i could not find
 
-Status: draft (planner spec-only pass 2026-10-07; from 09h NOTES "Next (split)", 10h NOTES "Captures box OPEN", 10i
+Status: ready (conductor 2026-10-07; 11c paused, 12d after) — was draft (planner spec-only pass 2026-10-07; from 09h NOTES "Next (split)", 10h NOTES "Captures box OPEN", 10i
 NOTES "Not found in Files", KNOWN_GAPS `M8/10i-literals-not-found`)
 Build with: **Sonnet** — three decided steps; the one judgement (is a capture diff explained) has a stop rule. Not Fable.
 Blocked by: **12 merged** (met, per conductor). **Capture run serial** with 11c's and 12d's (all rewrite
