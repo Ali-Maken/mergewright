@@ -11,8 +11,9 @@ use graft_term::detect::{self, TtyHost};
 use graft_term::input::{FenceAnswers, InputMux, Inputs};
 use ratatui::Terminal as Frames;
 use ratatui::backend::CrosstermBackend;
+use signal_hook::consts::SIGHUP;
 
-use super::exit_wait::{Boxed, Pool};
+use super::exit_wait::{Boxed, Ending, Pool};
 use super::graphics::Graphics;
 use super::headless::run_headless;
 use super::outside::{Handover, Outside};
@@ -190,7 +191,7 @@ impl Ran {
     /// line can be printed while the next place owns the screen.
     pub(super) fn stop_for_the_next_place(self) -> io::Result<()> {
         match self.pool {
-            Some(pool) => pool.stop(false, None).map(drop),
+            Some(pool) => pool.stop(Ending::NextPlace, None).map(drop),
             None => Ok(()),
         }
     }
@@ -344,9 +345,10 @@ pub(super) fn run_repo(
     // Answers from here on are for nobody; they go back to being replies.
     drop(fences);
     let outcome = hand_back_input(mux, forwarder, wakes, outcome);
-    // Dropped before the restore so that its own teardown (it shows the cursor
-    // it hid) goes out while the session is still in charge of the terminal.
-    drop(terminal);
+    // Put away before the restore so that its own teardown (it shows the
+    // cursor it hid) goes out while the session is still in charge of the
+    // terminal.
+    put_away(terminal);
 
     // The pool is stopped by the caller, **after** the terminal is restored
     // (m8/13b review fix): its wait for a write that cannot stop half-way
@@ -358,6 +360,25 @@ pub(super) fn run_repo(
         outcome,
         pool: Some(Pool::new(jobs, signals, resizes, undo)),
     })
+}
+
+/// Show the cursor ratatui hid, then drop its `Terminal`.
+///
+/// ratatui's own `Drop` shows the cursor too, and `eprintln!`s when that
+/// fails. After a hang-up the terminal and stderr are the same dead pty:
+/// the show fails with `EIO`, `eprintln!` panics on its own failed write,
+/// and the process exits 101 here — before the pool is stopped, so git was
+/// left running (m8/13g, observed: `failed printing to stderr: Input/output
+/// error (os error 5)` from ratatui-core 0.1.2 `terminal.rs:483`, dropped at
+/// this call). Shown here instead, where the failure can be handled.
+fn put_away(mut terminal: Frames<RowClear<CrosstermBackend<TerminalOut>>>) {
+    if terminal.show_cursor().is_err() {
+        // Not reported here, and that is safe: the session's restore, which
+        // `wind_down` runs next, shows the cursor again and its result is the
+        // one the exit acts on. After a hang-up there is nobody to tell, and
+        // the next launch shows where git was left.
+        terminal.backend_mut().cursor_given_up();
+    }
 }
 
 /// What the loop may reach outside itself: the repository's directories,
@@ -435,7 +456,11 @@ fn wind_down(
     // Restore explicitly rather than leaving it to `Drop`, so a restore
     // failure can be returned instead of merely printed.
     let restored = session.restore();
-    let signalled = matches!(outcome, Ok(Exit::Signal(_)));
+    let ending = if matches!(outcome, Ok(Exit::Signal(_))) {
+        Ending::Signalled
+    } else {
+        Ending::Exited
+    };
     let boxed = match &outcome {
         Ok(Exit::StoppedHalfWay { job, what, after }) => Some(Boxed {
             job: *job,
@@ -445,13 +470,18 @@ fn wind_down(
         _ => None,
     };
     let stopped = pool.map_or(Ok(Shutdown::CLEAN), |pool| {
-        pool.stop(signalled, boxed.as_ref())
+        pool.stop(ending, boxed.as_ref())
     });
     let stalled_report = stopped.and_then(|shutdown| report_stalled_jobs(&shutdown));
     // `finish` already picks which of two possible errors the process exits
     // on; a failure to report stalled jobs is folded in afterwards so it
-    // still turns into `ExitCode::FAILURE` (main.rs) instead of vanishing.
-    finish(outcome, restored).and_then(|exit| stalled_report.map(|()| exit))
+    // still turns into `ExitCode::FAILURE` (main.rs) instead of vanishing —
+    // except after a hang-up, where stderr is the dead terminal: the process
+    // dies of the `SIGHUP` either way, and the words have nowhere to go.
+    finish(outcome, restored).and_then(|exit| match stalled_report {
+        Err(_nowhere_to_go) if exit == Exit::Signal(SIGHUP) => Ok(exit),
+        report => report.map(|()| exit),
+    })
 }
 
 /// Send every fence answer the mux reads to the loop as a [`Wake::Fence`],
@@ -495,6 +525,10 @@ fn finish_to(
 ) -> io::Result<Exit> {
     match (outcome, restored) {
         (Ok(exit), Ok(())) => Ok(exit),
+        // The terminal hung up (m8/13g): there is nothing left to restore,
+        // and nobody to tell that the restore was refused. The process dies
+        // of the `SIGHUP` as a `kill -HUP` makes it die, never exit 1.
+        (Ok(Exit::Signal(SIGHUP)), Err(_nothing_left_to_restore)) => Ok(Exit::Signal(SIGHUP)),
         (Ok(_), Err(restore_error)) => Err(restore_error),
         (Err(loop_error), Ok(())) => Err(loop_error),
         (Err(loop_error), Err(restore_error)) => {
@@ -569,7 +603,7 @@ fn terminal_and_state(
     config: &crate::config::Config,
     common_dir: Option<&std::path::Path>,
 ) -> io::Result<(Frames<RowClear<CrosstermBackend<TerminalOut>>>, AppState)> {
-    let terminal = Frames::new(RowClear(CrosstermBackend::new(out)))?;
+    let terminal = Frames::new(RowClear::new(CrosstermBackend::new(out)))?;
     let size = terminal.size()?;
     let size = Size {
         columns: size.width,
@@ -616,7 +650,7 @@ mod tests {
 
     use graft_core::mistake_radar::MistakeRadarKind;
 
-    use super::{AppState, Exit, Shutdown, finish_to, report_stalled_jobs_to, seed_config};
+    use super::{AppState, Exit, SIGHUP, Shutdown, finish_to, report_stalled_jobs_to, seed_config};
     use crate::config::{Radar, RadarSetting};
 
     /// A writer whose every write fails, standing in for a closed stderr.
@@ -727,6 +761,17 @@ mod tests {
 
         let err = result.expect_err("both inputs were errors");
         assert_eq!(err.to_string(), "loop failed");
+    }
+
+    /// m8/13g: after a hang-up the restore fails with `EIO` (the terminal
+    /// is gone); the exit is still the `SIGHUP`, so `main` re-raises it.
+    #[test]
+    fn finish_after_a_hangup_dies_of_it_whatever_the_restore_said() {
+        let refused = io::Error::from_raw_os_error(5);
+
+        let result = finish_to(&mut FailingWriter, Ok(Exit::Signal(SIGHUP)), Err(refused));
+
+        assert_eq!(result.expect("a hang-up exits"), Exit::Signal(SIGHUP));
     }
 
     #[test]

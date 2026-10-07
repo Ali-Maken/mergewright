@@ -68,11 +68,12 @@ impl Pool {
     /// comes again — then stop it half-way, and close the watchers. Each
     /// write stopped leaves its exit line: `boxed`, the stop box's, always.
     ///
-    /// `signalled`: the loop ended on a signal, so a write still running gets
-    /// the waiting line first (item 8 of the review fix). Lines go to
-    /// `stderr`; see [`Pool::stop_to`].
-    pub(super) fn stop(self, signalled: bool, boxed: Option<&Boxed<'_>>) -> io::Result<Shutdown> {
-        self.stop_to(&mut io::stderr(), signalled, boxed)
+    /// `ending`: when the process is ending, however it ends, a write still
+    /// running gets the waiting line first (item 8 of the 13b review fix;
+    /// any exit since 13g, review m8-13cd Minor 6). Lines go to `stderr`;
+    /// see [`Pool::stop_to`].
+    pub(super) fn stop(self, ending: Ending, boxed: Option<&Boxed<'_>>) -> io::Result<Shutdown> {
+        self.stop_to(&mut io::stderr(), ending, boxed)
     }
 
     /// [`Pool::stop`], writing to `stderr` instead of the real one — the
@@ -80,23 +81,21 @@ impl Pool {
     pub(super) fn stop_to(
         self,
         stderr: &mut impl Write,
-        signalled: bool,
+        ending: Ending,
         boxed: Option<&Boxed<'_>>,
     ) -> io::Result<Shutdown> {
         let began = Instant::now();
-        let writes = self.jobs.writes_running();
-        if signalled {
-            for what in &writes {
-                // Best-effort: after a hang-up there is no terminal left to
-                // read stderr, and the write fails. Losing the line loses
-                // words, not the wait or the stop: the exit status still
-                // carries the signal (`main` re-raises it).
-                match writeln!(stderr, "{}", waiting_line(what)).and_then(|()| stderr.flush()) {
-                    Ok(()) | Err(_) => {}
-                }
-            }
+        let signalled = ending == Ending::Signalled;
+        // Counted from before the waiting line: a signal sent once the line
+        // is read is the signal again, however soon it comes.
+        let again = if signalled {
+            self.signals.again_after_one()
+        } else {
+            self.signals.again()
+        };
+        if ending != Ending::NextPlace {
+            say_waiting(stderr, &self.jobs.writes_running());
         }
-        let again = self.signals.again();
         let shutdown = self.jobs.shutdown(SHUTDOWN_GRACE, EXIT_WRITE_WAIT, &again);
         // Let the signal threads end. The mux's reader is the process's, not
         // this run's (it is blocked waiting on the terminal until the user
@@ -151,8 +150,35 @@ impl Pool {
     }
 }
 
+/// How the run that is stopping its pool ended.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Ending {
+    /// The loop ended on a signal, or on the terminal hanging up (13g): the
+    /// process dies of it once the pool is down.
+    Signalled,
+    /// Any other end of the process: `q`, the stop box, a failure.
+    Exited,
+    /// Another place takes the screen next (`Exit::Open`): nothing may be
+    /// printed over it, so no waiting line.
+    NextPlace,
+}
+
+/// One waiting line per write still running.
+fn say_waiting(stderr: &mut impl Write, writes: &[String]) {
+    for what in writes {
+        match writeln!(stderr, "{}", waiting_line(what)).and_then(|()| stderr.flush()) {
+            Ok(()) => {}
+            // Safe to drop: after a hang-up (or with stderr closed) these
+            // words have nowhere to go. Losing the line loses words, not the
+            // wait or the stop, and the next launch shows where git was left.
+            Err(_nowhere_to_go) => {}
+        }
+    }
+}
+
 /// `<bin>: waiting for <op> to finish (up to 60 s) · send the signal again to
-/// stop it half-way` — the signal path's word before its wait.
+/// stop it half-way` — the exit's word before its wait, on any exit that
+/// leaves a write running (13g).
 #[must_use]
 pub fn waiting_line(what: &str) -> String {
     format!(
@@ -160,4 +186,92 @@ pub fn waiting_line(what: &str) -> String {
         sanitize_line(what).as_str(),
         EXIT_WRITE_WAIT.as_secs()
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::{self, Write};
+    use std::sync::Arc;
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    use signal_hook::iterator::Signals;
+
+    use super::{Ending, Pool, waiting_line};
+    use crate::jobs::{Dispatch, JobRunner, Outcome};
+    use crate::repos::RepoStore;
+    use crate::update::Command;
+
+    /// What the write's line names.
+    const MERGE: &str = "merge main into feature";
+
+    /// A pool with one unstoppable write running, which lands on its own
+    /// after `lands_after`, and watchers that watch nothing.
+    fn pool_with_a_write(lands_after: Duration) -> Pool {
+        let (sender, _wakes) = mpsc::channel();
+        let store = Arc::new(RepoStore::new(env!("CARGO_MANIFEST_DIR").into(), None));
+        let jobs = JobRunner::start(sender, 1, store).expect("a test machine starts a thread");
+        let (started, has_started) = mpsc::channel();
+        let id = jobs.submit(move |_cancel| {
+            started.send(()).expect("the test is listening");
+            std::thread::sleep(lands_after);
+            Outcome::Done
+        });
+        jobs.dispatch(Command::Unstoppable(id, MERGE.to_owned()));
+        has_started
+            .recv_timeout(Duration::from_secs(5))
+            .expect("the write starts");
+        assert_eq!(jobs.writes_running(), vec![MERGE.to_owned()]);
+        let signals = super::super::signals::unwatched().expect("a self-pipe");
+        let resizes = Signals::new::<[i32; 0], i32>([])
+            .expect("a self-pipe")
+            .handle();
+        Pool::new(jobs, signals, resizes, "u".to_owned())
+    }
+
+    /// Review m8-13cd Minor 6: the waiting line is the shell's word on any
+    /// exit that leaves a write running, not only a signalled one.
+    #[test]
+    fn a_fatal_exit_with_a_write_running_prints_the_waiting_line() {
+        let pool = pool_with_a_write(Duration::from_millis(100));
+        let mut stderr = Vec::new();
+
+        let shutdown = pool
+            .stop_to(&mut stderr, Ending::Exited, None)
+            .expect("the pool stops");
+
+        assert_eq!(
+            String::from_utf8(stderr).expect("utf-8"),
+            format!("{}\n", waiting_line(MERGE))
+        );
+        assert!(shutdown.forced.is_empty(), "the write landed");
+    }
+
+    /// A stderr that is the dead terminal: every write fails with `EIO`.
+    struct Closed;
+
+    impl Write for Closed {
+        fn write(&mut self, _: &[u8]) -> io::Result<usize> {
+            Err(io::Error::from_raw_os_error(5))
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Err(io::Error::from_raw_os_error(5))
+        }
+    }
+
+    /// m8/13g: after a hang-up the waiting line has nowhere to go; the wait
+    /// goes on, and the stop is not a failure.
+    #[test]
+    fn the_waiting_line_to_a_closed_stderr_is_not_fatal() {
+        for ending in [Ending::Exited, Ending::Signalled] {
+            let pool = pool_with_a_write(Duration::from_millis(50));
+
+            let shutdown = pool
+                .stop_to(&mut Closed, ending, None)
+                .unwrap_or_else(|error| panic!("{ending:?}: {error}"));
+
+            assert!(shutdown.forced.is_empty(), "{ending:?}: the write landed");
+        }
+    }
 }

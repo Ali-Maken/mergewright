@@ -66,6 +66,18 @@ pub fn spawn_reader(
     Ok(Forwarder { thread })
 }
 
+/// `EIO`: what a read of a terminal that has hung up fails with. The same
+/// number on macOS and Linux; `graft` has no `libc` to name it.
+const EIO: i32 = 5;
+
+/// Whether a failed terminal read is the terminal hanging up (m8/13g): the
+/// mux's end of input (a read of 0, `UnexpectedEof`) or `EIO`. Either one
+/// ends the loop as `SIGHUP` does — "Quit from outside" — whichever of the
+/// read and the signal arrives first; never a failure that waits silently.
+pub(super) fn hung_up(error: &io::Error) -> bool {
+    error.kind() == io::ErrorKind::UnexpectedEof || error.raw_os_error() == Some(EIO)
+}
+
 /// The running input forwarder, for the run that started it.
 #[derive(Debug)]
 pub struct Forwarder {

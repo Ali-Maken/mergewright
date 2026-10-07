@@ -16,18 +16,44 @@ use ratatui::layout::{Position, Size};
 
 /// `backend`, with `ClearType::All` done as one `ESC[2K` per row.
 #[derive(Debug)]
-pub struct RowClear<B>(pub B);
+pub struct RowClear<B> {
+    inner: B,
+    /// Set by [`RowClear::cursor_given_up`]: showing the cursor already
+    /// failed once and was handled, so a later ask is answered `Ok`.
+    cursor_given_up: bool,
+}
+
+impl<B> RowClear<B> {
+    /// Wrap `inner`.
+    pub const fn new(inner: B) -> Self {
+        Self {
+            inner,
+            cursor_given_up: false,
+        }
+    }
+
+    /// The caller tried to show the cursor, it failed, and the caller has
+    /// handled that (`startup::put_away`). ratatui's `Terminal` asks once
+    /// more as it drops and `eprintln!`s a failure, and `eprintln!` panics
+    /// when stderr is the same dead terminal (m8/13g: the hang-up's exit
+    /// 101, ratatui-core 0.1.2 `terminal.rs:483`). From here on the ask is
+    /// answered `Ok` without writing: the terminal it would write to has
+    /// already refused.
+    pub fn cursor_given_up(&mut self) {
+        self.cursor_given_up = true;
+    }
+}
 
 impl<B> Write for RowClear<B>
 where
     B: Write,
 {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.0.write(buf)
+        self.inner.write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.0.flush()
+        self.inner.flush()
     }
 }
 
@@ -41,27 +67,32 @@ where
     where
         I: Iterator<Item = (u16, u16, &'a Cell)>,
     {
-        self.0.draw(content)
+        self.inner.draw(content)
     }
 
     fn append_lines(&mut self, n: u16) -> io::Result<()> {
-        self.0.append_lines(n)
+        self.inner.append_lines(n)
     }
 
     fn hide_cursor(&mut self) -> io::Result<()> {
-        self.0.hide_cursor()
+        self.inner.hide_cursor()
     }
 
     fn show_cursor(&mut self) -> io::Result<()> {
-        self.0.show_cursor()
+        if self.cursor_given_up {
+            // Already failed and handled by the caller; see
+            // `RowClear::cursor_given_up`.
+            return Ok(());
+        }
+        self.inner.show_cursor()
     }
 
     fn get_cursor_position(&mut self) -> io::Result<Position> {
-        self.0.get_cursor_position()
+        self.inner.get_cursor_position()
     }
 
     fn set_cursor_position<P: Into<Position>>(&mut self, position: P) -> io::Result<()> {
-        self.0.set_cursor_position(position)
+        self.inner.set_cursor_position(position)
     }
 
     fn clear(&mut self) -> io::Result<()> {
@@ -72,9 +103,9 @@ where
     /// it; every other kind of clear goes through unchanged.
     fn clear_region(&mut self, clear_type: ClearType) -> io::Result<()> {
         if clear_type != ClearType::All {
-            return self.0.clear_region(clear_type);
+            return self.inner.clear_region(clear_type);
         }
-        let rows = self.0.size()?.height;
+        let rows = self.inner.size()?.height;
         let mut bytes = Vec::with_capacity(usize::from(rows) * 12 + 4);
         bytes.extend_from_slice(b"\x1b7");
         for row in 1..=rows {
@@ -82,20 +113,20 @@ where
             write!(bytes, "\x1b[{row};1H\x1b[2K").ok();
         }
         bytes.extend_from_slice(b"\x1b8");
-        self.0.write_all(&bytes)?;
-        Write::flush(&mut self.0)
+        self.inner.write_all(&bytes)?;
+        Write::flush(&mut self.inner)
     }
 
     fn size(&self) -> io::Result<Size> {
-        self.0.size()
+        self.inner.size()
     }
 
     fn window_size(&mut self) -> io::Result<WindowSize> {
-        self.0.window_size()
+        self.inner.window_size()
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        Backend::flush(&mut self.0)
+        Backend::flush(&mut self.inner)
     }
 }
 
@@ -175,21 +206,43 @@ mod tests {
 
     #[test]
     fn a_full_clear_erases_each_row_and_never_writes_esc_2j() {
-        let mut backend = RowClear(Screen::default());
+        let mut backend = RowClear::new(Screen::default());
         backend.clear().unwrap();
-        let written = String::from_utf8(backend.0.bytes).unwrap();
+        let written = String::from_utf8(backend.inner.bytes).unwrap();
         assert_eq!(
             written,
             "\x1b7\x1b[1;1H\x1b[2K\x1b[2;1H\x1b[2K\x1b[3;1H\x1b[2K\x1b8"
         );
-        assert!(backend.0.passed.is_empty());
+        assert!(backend.inner.passed.is_empty());
+    }
+
+    /// A screen whose cursor can no longer be shown: the terminal has
+    /// hung up.
+    struct Gone;
+
+    impl Write for Gone {
+        fn write(&mut self, _: &[u8]) -> io::Result<usize> {
+            Err(io::Error::from_raw_os_error(5))
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Err(io::Error::from_raw_os_error(5))
+        }
+    }
+
+    #[test]
+    fn a_cursor_given_up_is_not_asked_for_again() {
+        let mut backend = RowClear::new(ratatui::backend::CrosstermBackend::new(Gone));
+        assert!(backend.show_cursor().is_err(), "the dead terminal refuses");
+        backend.cursor_given_up();
+        assert!(backend.show_cursor().is_ok(), "the retry is answered");
     }
 
     #[test]
     fn other_clears_go_through() {
-        let mut backend = RowClear(Screen::default());
+        let mut backend = RowClear::new(Screen::default());
         backend.clear_region(ClearType::CurrentLine).unwrap();
-        assert_eq!(backend.0.passed, vec![ClearType::CurrentLine]);
-        assert!(backend.0.bytes.is_empty());
+        assert_eq!(backend.inner.passed, vec![ClearType::CurrentLine]);
+        assert!(backend.inner.bytes.is_empty());
     }
 }

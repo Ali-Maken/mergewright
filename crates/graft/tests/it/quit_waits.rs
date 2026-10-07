@@ -319,5 +319,6 @@ fn shutdown_mid_merge_lets_it_land() {
     assert_merged_and_journaled(repo);
 }
 
+mod hangup;
 mod signal;
 mod stuck;

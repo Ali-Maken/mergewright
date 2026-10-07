@@ -15,7 +15,7 @@ use super::super::graphics::{Graphics, GraphicsReplies};
 use super::super::outside::Outside;
 use super::super::pace::{FENCE_TIMEOUT, Pacer};
 use super::super::rest::{Mover, Rest};
-use super::super::{Exit, Phase, Waited, Wake, Wakes, joins_frame};
+use super::super::{Exit, Phase, Waited, Wake, Wakes, input, joins_frame};
 use super::carry::{Carried, carry_out, hands_over};
 use super::frame::draw_traced;
 use super::quit_clock::QuitClock;
@@ -245,6 +245,10 @@ where
         match wake {
             Wake::Event(event) => self.input(event, rest_first, mover),
             Wake::Shutdown(signal) => Ok(Some(Exit::Signal(signal))),
+            // The terminal hung up: the same exit as its `SIGHUP` (13g).
+            Wake::InputFailed(error) if input::hung_up(&error) => {
+                Ok(Some(Exit::Signal(signal_hook::consts::SIGHUP)))
+            }
             Wake::InputFailed(error) | Wake::TerminalFailed(error) => Err(error),
             Wake::Terminal(change) => {
                 self.terminal_changed(change, replied);

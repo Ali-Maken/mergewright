@@ -72,10 +72,17 @@ impl Watch {
     /// arrives **after** this call: "the signal again".
     #[must_use]
     pub fn again(&self) -> Again {
-        Again {
-            seen: Arc::clone(&self.seen),
-            at: self.seen.load(Ordering::Acquire),
-        }
+        Again::after(Arc::clone(&self.seen), 0)
+    }
+
+    /// [`Watch::again`] for a loop that ended on a signal or a hang-up: that
+    /// ending counts as one signal whether or not the watcher has counted it
+    /// yet. A hang-up can end the loop by its failed read (13g) before the
+    /// kernel's `SIGHUP` is counted, and that `SIGHUP` is the same hang-up,
+    /// not the signal again.
+    #[must_use]
+    pub fn again_after_one(&self) -> Again {
+        Again::after(Arc::clone(&self.seen), 1)
     }
 }
 
@@ -85,10 +92,30 @@ pub struct Again {
     at: usize,
 }
 
+impl Again {
+    /// Stop once `seen` passes what it holds now, or `counted`, whichever
+    /// is more.
+    fn after(seen: Arc<AtomicUsize>, counted: usize) -> Self {
+        let at = seen.load(Ordering::Acquire).max(counted);
+        Self { seen, at }
+    }
+}
+
 impl graft_git::run::Stop for Again {
     fn should_stop(&self) -> bool {
         self.seen.load(Ordering::Acquire) > self.at
     }
+}
+
+/// A watcher of no signals: a [`Watch`] for a test that must not take the
+/// process's own `SIGINT`/`SIGTERM`/`SIGHUP` away from the test runner.
+#[cfg(test)]
+pub(super) fn unwatched() -> io::Result<Watch> {
+    let signals = Signals::new::<[i32; 0], i32>([])?;
+    Ok(Watch {
+        handle: signals.handle(),
+        seen: Arc::new(AtomicUsize::new(0)),
+    })
 }
 
 /// Start watching, and wake `wakes` when one of [`WATCHED`] arrives.
@@ -177,4 +204,38 @@ pub fn watch_resizes(wakes: Sender<Wake>, redetector: Option<Redetector>) -> io:
 /// signal and reports the exit status a shell expects.
 pub fn reraise(signal: i32) -> io::Result<()> {
     signal_hook::low_level::emulate_default_handler(signal)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use graft_git::run::Stop;
+
+    use super::Again;
+
+    /// m8/13g: the loop ended on a hang-up's failed read, its `SIGHUP` not
+    /// counted yet. That `SIGHUP` arriving is the same hang-up; only the
+    /// signal after it stops the write at once.
+    #[test]
+    fn a_hangup_its_signal_not_yet_counted_waits_for_the_next() {
+        let seen = Arc::new(AtomicUsize::new(0));
+        let again = Again::after(Arc::clone(&seen), 1);
+        assert!(!again.should_stop());
+        seen.fetch_add(1, Ordering::AcqRel);
+        assert!(!again.should_stop(), "the hang-up's own SIGHUP");
+        seen.fetch_add(1, Ordering::AcqRel);
+        assert!(again.should_stop(), "the signal again");
+    }
+
+    /// Already counted: the next signal is the second.
+    #[test]
+    fn a_signal_already_counted_is_not_counted_twice() {
+        let seen = Arc::new(AtomicUsize::new(1));
+        let again = Again::after(Arc::clone(&seen), 1);
+        assert!(!again.should_stop());
+        seen.fetch_add(1, Ordering::AcqRel);
+        assert!(again.should_stop());
+    }
 }
