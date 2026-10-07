@@ -399,34 +399,42 @@ fn a_lease_must_match_the_fetched_tracking_tip() {
 #[test]
 fn refusal_text_is_the_design_notes() {
     assert_eq!(
-        Refusal::DetachedHead.explain(),
+        Refusal::DetachedHead.explain(&crate::keys::Letters),
         "HEAD is detached — check out a branch first"
     );
     assert_eq!(
-        Refusal::NoRemote.explain(),
+        Refusal::NoRemote.explain(&crate::keys::Letters),
         "no remote — add one in the shell: git remote add origin <url>"
     );
     assert_eq!(
         Refusal::NoSuchRemote {
             name: "x".to_owned()
         }
-        .explain(),
+        .explain(&crate::keys::Letters),
         "no remote named 'x'"
     );
     assert_eq!(
         Refusal::NoUpstream {
             branch: "main".to_owned()
         }
-        .explain(),
+        .explain(&crate::keys::Letters),
         "main has no upstream — P pushes and sets one"
     );
-    assert!(Refusal::UpstreamChanged.explain().contains("press p again"));
-    assert!(!Refusal::BranchChanged.explain().is_empty());
+    assert!(
+        Refusal::UpstreamChanged
+            .explain(&crate::keys::Letters)
+            .contains("press p again")
+    );
+    assert!(
+        !Refusal::BranchChanged
+            .explain(&crate::keys::Letters)
+            .is_empty()
+    );
     assert_eq!(
         Refusal::LeaseStale {
             remote_side: "origin/main".to_owned()
         }
-        .explain(),
+        .explain(&crate::keys::Letters),
         "force-push refused: origin/main is not where the box said \
          (fetched since, or never fetched) · f to fetch, then look"
     );

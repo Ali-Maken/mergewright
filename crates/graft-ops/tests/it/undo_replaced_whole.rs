@@ -92,7 +92,8 @@ fn an_index_only_whole_restore_names_the_whole_index_and_u_redo_puts_it_back() {
     assert_eq!(state_of(&repo), pre, "the box wrote nothing");
 
     // `y`.
-    let forced = run_undo(&repo, NOW + 2, true).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let forced = run_undo(&repo, NOW + 2, true)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(forced.replaced, whole_index, "the landing names the index");
     assert_eq!(
         repo.git(&["diff", "--cached", "--name-only"]),
@@ -107,6 +108,7 @@ fn an_index_only_whole_restore_names_the_whole_index_and_u_redo_puts_it_back() {
     assert_eq!(repo.read("a.rs"), b"two\n", "no file on disk was touched");
 
     // `U`: byte-exact, index and all.
-    run_redo(&repo, NOW + 3, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_redo(&repo, NOW + 3, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(state_of(&repo), pre, "U put the whole index back");
 }

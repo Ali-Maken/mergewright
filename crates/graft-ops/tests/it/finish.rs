@@ -292,7 +292,7 @@ fn an_edited_message_is_the_commit_message() {
         },
         NOW + 4,
     )
-    .unwrap_or_else(|why| panic!("{}", why.explain()));
+    .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     assert_eq!(
         applied.entry.commands.last().map(String::as_str),
@@ -322,7 +322,7 @@ fn continue_is_unchanged() {
     graft_stage(&repo, "a.txt", NOW + 1);
     graft_stage(&repo, "b.txt", NOW + 2);
     let applied = run_resume(&repo, Resume::Continue, NOW + 3)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     assert_eq!(
         applied.entry.commands.last().map(String::as_str),
@@ -361,7 +361,7 @@ fn a_message_on_a_rebase_is_refused_before_anything_runs() {
         }
     );
     assert_eq!(
-        refusal.explain(),
+        refusal.explain(&crate::support::Letters),
         "a rebase keeps each commit's own message · c continues"
     );
     assert_eq!(state_of(&repo), before, "nothing ran");
@@ -378,7 +378,7 @@ fn a_hash_line_the_user_typed_survives() {
     let repo = graft_merge_resolved();
     let message = b"Merge feature\n\n#123 fixes login\n".to_vec();
     let applied = run_resume(&repo, Resume::ContinueWith { message }, NOW + 3)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     let body = repo.git(&["log", "-1", "--format=%B"]);
     assert!(
@@ -428,7 +428,7 @@ fn an_unedited_message_lands_as_shown() {
         .unwrap_or_else(|why| panic!("{why}"))
         .message;
     let applied = run_resume(&repo, Resume::Continue, NOW + 3)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     // Byte for byte: git ends a message with exactly one newline, and the
     // summary's message already does, so no normalisation is needed.

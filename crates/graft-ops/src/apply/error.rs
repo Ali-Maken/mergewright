@@ -12,6 +12,7 @@ use graft_git::state::InProgress;
 use crate::clash::Clash;
 use crate::facts::FactsError;
 use crate::journal::{JournalError, in_force};
+use crate::keys::{KeyNames, NoKeys, OpKey, clause, continue_or_abort, then};
 use crate::operation::{Refusal, RemoteNames};
 use crate::restore::RestoreError;
 use crate::snapshot::SnapshotError;
@@ -27,7 +28,7 @@ use words::{journal_failed, staging_not_kept_words};
 #[derive(Debug, thiserror::Error)]
 pub enum ApplyError {
     /// A precondition said no. Nothing was written and nothing journaled.
-    #[error("{}", .0.explain())]
+    #[error("{}", .0.explain(&NoKeys))]
     Refused(Refusal),
     /// The repository could not be read.
     #[error("{0}")]
@@ -55,7 +56,7 @@ pub enum ApplyError {
     /// could not be read, or could not be kept reachable. The write happened,
     /// so the caller still refreshes — `applied` carries it — and `u` still
     /// works, more widely than it should.
-    #[error("{}: {}", .applied.entry.description, joined(.unread))]
+    #[error("{}: {}", .applied.entry.description, joined(.unread, &NoKeys))]
     AfterState {
         /// What ran. Boxed for the same reason as `Git`'s entry.
         applied: Box<Applied>,
@@ -89,7 +90,7 @@ pub enum ApplyError {
     /// A fetch, pull or push failed. The entry is journaled `Aborted` with
     /// the failure's short text; `failure` is what the whole of git's stderr
     /// said (a stop is `Cancelled`).
-    #[error("{}", remote::explain(.entry, .failure, .stderr_tail, .names))]
+    #[error("{}", remote::explain(.entry, .failure, .stderr_tail, .names, &NoKeys))]
     Remote {
         /// The entry, with whatever after-state could be read.
         entry: Box<JournalEntry>,
@@ -107,7 +108,7 @@ pub enum ApplyError {
     /// design note hard choice 2 — and [`resume`](super::resume) closes it. No outcome line
     /// is written here. `paths` are the unmerged paths the status lists
     /// (m5/07).
-    #[error("{}", conflicted_words(entry, *kind, paths))]
+    #[error("{}", conflicted_words(entry, *kind, paths, &NoKeys))]
     Conflicted {
         /// The entry, still `Pending`.
         entry: Box<JournalEntry>,
@@ -124,7 +125,7 @@ pub enum ApplyError {
     /// [`resume`](super::resume) continues or aborts it — found by
     /// `live_entry`, listed `live` by `recover_interrupted`. `paths` are
     /// what is unmerged now, normally none.
-    #[error("{}: stopped · the {} is paused · c continues, a aborts", entry.description, kind.name())]
+    #[error("{}", paused_words(entry, *kind, &NoKeys))]
     Paused {
         /// The entry, still `Pending`.
         entry: Box<JournalEntry>,
@@ -300,7 +301,7 @@ pub enum AfterState {
     /// nothing), so it ran without `--index`. `paths`: the staged paths
     /// whose staging did not come back. `u` restores the split exactly
     /// (ADR-0045 §6, amended 2026-09-26 b).
-    #[error("{}", staging_not_kept_words(paths))]
+    #[error("{}", staging_not_kept_words(paths, &NoKeys))]
     StagingNotKept {
         /// The staged paths whose staging did not come back.
         paths: Vec<PathBuf>,
@@ -327,6 +328,18 @@ pub enum AfterState {
     /// unannounced.
     #[error("your edits are back · which files came back from the index could not be read: {0}")]
     CameBackUnread(RunError),
+}
+
+impl AfterState {
+    /// One line, its keys spelled through `keys`. The `Display` is these
+    /// words with [`NoKeys`].
+    #[must_use]
+    pub fn explain(&self, keys: &dyn KeyNames) -> String {
+        match self {
+            AfterState::StagingNotKept { paths } => staging_not_kept_words(paths, keys),
+            other => other.to_string(),
+        }
+    }
 }
 
 impl ApplyError {
@@ -372,9 +385,19 @@ impl ApplyError {
         }
     }
 
-    /// One line for the status line.
-    pub fn explain(&self) -> String {
+    /// One line for the status line, its keys spelled through `keys` (an
+    /// unbound one's clause left out). The `Display` is these words with
+    /// [`NoKeys`].
+    pub fn explain(&self, keys: &dyn KeyNames) -> String {
         match self {
+            ApplyError::Refused(refusal) => refusal.explain(keys),
+            ApplyError::AfterState { applied, unread } => {
+                format!("{}: {}", applied.entry.description, joined(unread, keys))
+            }
+            ApplyError::Conflicted { entry, kind, paths } => {
+                conflicted_words(entry, *kind, paths, keys)
+            }
+            ApplyError::Paused { entry, kind, .. } => paused_words(entry, *kind, keys),
             ApplyError::Git {
                 entry,
                 error,
@@ -387,17 +410,19 @@ impl ApplyError {
                     line.push_str(" · ");
                     line.push_str(&edits.words());
                 }
-                if *recoverable {
-                    line.push_str(" · u restores the backup");
-                }
-                line
+                then(
+                    line,
+                    [recoverable
+                        .then(|| clause(keys, OpKey::Undo, "restores the backup"))
+                        .flatten()],
+                )
             }
             ApplyError::Remote {
                 entry,
                 failure,
                 stderr_tail,
                 names,
-            } => remote::explain(entry, failure, stderr_tail, names),
+            } => remote::explain(entry, failure, stderr_tail, names, keys),
             other => other.to_string(),
         }
     }
@@ -425,17 +450,35 @@ impl From<PrepareError> for ApplyError {
 /// `git commit`, which runs `pre-commit`, not `pre-merge-commit` — git's
 /// design, not Graft's. Outside a merge, nothing unmerged is not a hook (a
 /// rewrite's `edit` row, an empty pick): those keep the conflict's words.
-fn conflicted_words(entry: &JournalEntry, kind: InProgress, paths: &[PathBuf]) -> String {
+fn conflicted_words(
+    entry: &JournalEntry,
+    kind: InProgress,
+    paths: &[PathBuf],
+    keys: &dyn KeyNames,
+) -> String {
     if paths.is_empty() && kind == InProgress::Merge {
-        return format!(
-            "{}: a git hook stopped it · c continues, a aborts",
-            entry.description
+        return then(
+            format!("{}: a git hook stopped it", entry.description),
+            [continue_or_abort(keys)],
         );
     }
-    format!(
-        "{}: {} unmerged · resolve, then c continues, a aborts",
-        entry.description,
-        paths.len()
+    let unmerged = format!("{}: {} unmerged", entry.description, paths.len());
+    match continue_or_abort(keys) {
+        Some(keys) => format!("{unmerged} · resolve, then {keys}"),
+        None => unmerged,
+    }
+}
+
+/// [`ApplyError::Paused`]'s words: `<description>: stopped · the <kind> is
+/// paused · c continues, a aborts`.
+fn paused_words(entry: &JournalEntry, kind: InProgress, keys: &dyn KeyNames) -> String {
+    then(
+        format!(
+            "{}: stopped · the {} is paused",
+            entry.description,
+            kind.name()
+        ),
+        [continue_or_abort(keys)],
     )
 }
 

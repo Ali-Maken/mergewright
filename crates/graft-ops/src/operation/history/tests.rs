@@ -1014,18 +1014,18 @@ fn every_history_refusal_explains_itself_in_one_line() {
         },
     ];
     for refusal in all {
-        let text = refusal.explain();
+        let text = refusal.explain(&crate::keys::Letters);
         assert!(!text.is_empty() && !text.contains('\n'), "{text}");
     }
     assert_eq!(
-        Refusal::DirtyTree { count: 1 }.explain(),
+        Refusal::DirtyTree { count: 1 }.explain(&crate::keys::Letters),
         "needs a clean tree · S stashes 1 changed file first"
     );
     assert_eq!(
         Refusal::Moved {
             name: FEAT.to_owned()
         }
-        .explain(),
+        .explain(&crate::keys::Letters),
         "feat moved since the preview was drawn — press the key again"
     );
 }
@@ -1210,7 +1210,7 @@ fn picking_head_is_refused_already_on_branch() {
         })
     );
     assert_eq!(
-        refused.map_err(|why| why.explain()),
+        refused.map_err(|why| why.explain(&crate::keys::Letters)),
         Err(format!("{} is already on main", sha7(0x0a)))
     );
 }
@@ -1233,7 +1233,7 @@ fn picking_an_ancestor_is_refused_already_on_branch() {
     assert_eq!(
         detached
             .check_commit(oid(0x01), true, 1)
-            .map_err(|why| why.explain()),
+            .map_err(|why| why.explain(&crate::keys::Letters)),
         Err(format!("{} is already on HEAD", sha7(0x01)))
     );
 }
@@ -1247,7 +1247,7 @@ fn picking_a_merge_is_refused() {
     let refused = params.check_commit(oid(0x0c), false, 2);
     assert_eq!(refused, Err(Refusal::PickMerge { commit: oid(0x0c) }));
     assert_eq!(
-        refused.map_err(|why| why.explain()),
+        refused.map_err(|why| why.explain(&crate::keys::Letters)),
         Err(format!(
             "{} is a merge · taking a merge isn't in Graft yet",
             sha7(0x0c)

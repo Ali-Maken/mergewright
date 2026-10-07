@@ -78,10 +78,10 @@ fn undo_refuses_an_entry_from_before_a_live_merge() {
                 })
             ),
             "force {force}: {}",
-            refused.explain()
+            refused.explain(&crate::support::Letters)
         );
         assert_eq!(
-            refused.explain(),
+            refused.explain(&crate::support::Letters),
             "finish or abort the merge first",
             "ops' own words"
         );
@@ -118,7 +118,8 @@ fn has_topic(repo: &TempRepo) -> bool {
 fn redo_refuses_while_a_rebase_is_live() {
     let repo = two_files();
     a_graft_branch(&repo, NOW);
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert!(!has_topic(&repo), "the undo took topic back");
     assert!(
         repo.try_git(&["rebase", "feature"]).is_err(),
@@ -140,9 +141,12 @@ fn redo_refuses_while_a_rebase_is_live() {
                 })
             ),
             "force {force}: {}",
-            refused.explain()
+            refused.explain(&crate::support::Letters)
         );
-        assert_eq!(refused.explain(), "finish or abort the rebase first");
+        assert_eq!(
+            refused.explain(&crate::support::Letters),
+            "finish or abort the rebase first"
+        );
         assert_eq!(untouched(&repo), before, "force {force}: nothing written");
     }
     assert!(!has_topic(&repo), "topic stays gone");
@@ -179,12 +183,12 @@ fn revert_to_refuses_past_a_live_merge() {
                     })
                 ),
                 "{}",
-                error.explain()
+                error.explain(&crate::support::Letters)
             );
         }
         other => panic!(
             "expected the gate at the first step, got {}",
-            other.explain()
+            other.explain(&crate::support::Letters)
         ),
     }
     assert_eq!(untouched(&repo), before, "nothing written");

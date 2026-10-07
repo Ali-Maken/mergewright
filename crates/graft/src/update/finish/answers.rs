@@ -6,6 +6,7 @@ use super::{
     AppState, Arc, DiffView, FinishAnswer, FinishSummary, JobId, Loading, Operated, TextArea,
     TextField, keep_cursor_on_screen, split_message,
 };
+use crate::update::op_keys::OpKeys;
 
 /// The summary read came back.
 pub(crate) fn summary_landed(
@@ -124,7 +125,7 @@ pub(crate) fn resume_answered(
         return None;
     }
     finish.committing = None;
-    if let Some(reason) = refusal(outcome) {
+    if let Some(reason) = refusal(outcome, &state.keymap) {
         finish.notice = Some((reason, true));
         return Some(FinishAnswer::Kept);
     }
@@ -155,12 +156,12 @@ pub(crate) fn resume_answered(
 
 /// git said no to the commit and nothing moved: a hook refused it, or a
 /// precondition did. The words to show, else `None`.
-pub(super) fn refusal(outcome: &Operated) -> Option<String> {
+pub(super) fn refusal(outcome: &Operated, keys: &graft_ui::keymap::Keymap) -> Option<String> {
     match outcome {
         Operated::Failed { error, refused, .. } => Some(
             refused
                 .as_ref()
-                .map_or_else(|| error.clone(), graft_ops::operation::Refusal::explain),
+                .map_or_else(|| error.clone(), |refusal| refusal.explain(&OpKeys(keys))),
         ),
         // A `--continue` that stopped with nothing unmerged is git refusing
         // to commit (`jobs::operate::Operated::Conflicted::stalled`).

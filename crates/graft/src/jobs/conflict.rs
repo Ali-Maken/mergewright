@@ -298,8 +298,11 @@ fn start_over(handle: &RepoHandle, path: &Path, stop: &dyn Stop) -> StartOver {
     };
     match graft_ops::apply::restart_gate(handle, &facts, path) {
         Ok(Ok(plan)) => StartOver::Can { kind: plan.kind },
+        // Keyless (m8/10e): the gate refuses only `NotMarkerShape`,
+        // `NoStagesKept` and `NotUnmerged` (`apply::restart_gate`), whose
+        // words name no key, so this job holds no keymap.
         Ok(Err(refusal)) => StartOver::Cannot {
-            why: refusal.explain(),
+            why: refusal.explain(&graft_ops::keys::NoKeys),
         },
         Err(error) => could_not(error.explain()),
     }

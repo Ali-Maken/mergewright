@@ -109,7 +109,10 @@ fn live_entry_stops_when_asked() {
     let mut ctx = context(&handle, &mut journal, NOW, &stop);
     match resume(&mut ctx, Resume::Skip) {
         Err(ApplyError::Stopped) => {}
-        Err(other) => panic!("expected Stopped, got {}", other.explain()),
+        Err(other) => panic!(
+            "expected Stopped, got {}",
+            other.explain(&crate::support::Letters)
+        ),
         Ok(_) => panic!("expected Stopped, the skip ran"),
     }
 }
@@ -211,9 +214,10 @@ fn a_failed_roll_back_names_what_is_left() {
     };
     assert_eq!(applied, &vec!["refs/heads/side".to_owned()]);
     assert!(
-        why.explain().contains("refs/heads/side"),
+        why.explain(&crate::support::Letters)
+            .contains("refs/heads/side"),
         "{}",
-        why.explain()
+        why.explain(&crate::support::Letters)
     );
 }
 
@@ -354,7 +358,10 @@ fn a_failed_read_refs_in_seal_after_is_reported() {
                 "nothing was sealed on a guessed parent: {words:?}"
             );
         }
-        Err(other) => panic!("expected AfterState, got {}", other.explain()),
+        Err(other) => panic!(
+            "expected AfterState, got {}",
+            other.explain(&crate::support::Letters)
+        ),
         Ok(_) => panic!("expected AfterState: the backup ref was broken"),
     }
 }

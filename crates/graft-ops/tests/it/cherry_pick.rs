@@ -62,7 +62,7 @@ fn plan_of(repo: &TempRepo, op: &Operation) -> PreviewPlan {
     let handle = repo.open();
     let facts = read_facts(&handle, git_version(), &Never, &op.facts_scope()).expect("facts");
     preview::plan(&handle, &git_version(), op, &facts, &Never)
-        .unwrap_or_else(|why| panic!("{}", why.explain()))
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)))
 }
 
 /// An unsaved edit to the file the pick changes (line 7, the pick's line
@@ -85,7 +85,8 @@ fn picking_over_touched_unsaved_edits_sets_them_aside() {
     let before = whole(&repo);
     let status_before = porcelain(&repo);
     let main_before = id(&repo, "refs/heads/main");
-    let applied = try_run(&repo, &op, NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = try_run(&repo, &op, NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     let stash = set_aside_of(&applied.entry);
     assert!(applied.entry.pins.contains(&stash), "S is pinned");
@@ -102,10 +103,12 @@ fn picking_over_touched_unsaved_edits_sets_them_aside() {
     let after = whole(&repo);
     assert_eq!(after.1, before.1, "the stash list is as before");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(&repo), before, "u put it back exactly");
 
-    run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+    run_redo(&repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("redo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(&repo), after, "U put it forward exactly");
 }
 
@@ -145,7 +148,8 @@ fn a_pick_put_back_that_clashes_stops_as_a_clash() {
         "git says unmerged"
     );
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(&repo), before, "u put it back exactly");
 }
 
@@ -164,7 +168,8 @@ fn edits_the_pick_leaves_alone_are_set_aside_and_come_back_as_they_were() {
     let before = whole(&repo);
     let status_before = porcelain(&repo);
     let staged_before = repo.git(&["diff", "--cached", "--", "base.txt"]);
-    let applied = try_run(&repo, &op, NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = try_run(&repo, &op, NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     set_aside_of(&applied.entry);
     assert_eq!(repo.read("base.txt"), b"staged\nand unstaged\n");
     assert_eq!(
@@ -174,7 +179,8 @@ fn edits_the_pick_leaves_alone_are_set_aside_and_come_back_as_they_were() {
     assert_eq!(porcelain(&repo), status_before);
     assert_eq!(repo.git(&["log", "-1", "--format=%s"]), "fix line one");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(&repo), before, "u put it back exactly");
 }
 
@@ -247,8 +253,14 @@ fn picking_head_is_refused_in_the_preview_and_in_apply() {
     repo.write("base.txt", b"my edit\n");
     let op = take(&repo, "main");
     let words = format!("{} is already on main", sha7(&repo, "main"));
-    assert_eq!(preview_refusal(&repo, &op).explain(), words);
-    assert_eq!(apply_refusal(&repo, &op).explain(), words);
+    assert_eq!(
+        preview_refusal(&repo, &op).explain(&crate::support::Letters),
+        words
+    );
+    assert_eq!(
+        apply_refusal(&repo, &op).explain(&crate::support::Letters),
+        words
+    );
 }
 
 /// An ancestor of `HEAD`: the same refusal, in both places.
@@ -257,8 +269,14 @@ fn picking_an_ancestor_is_refused_in_the_preview_and_in_apply() {
     let repo = with_a_merge_on_side();
     let op = take(&repo, "main~1");
     let words = format!("{} is already on main", sha7(&repo, "main~1"));
-    assert_eq!(preview_refusal(&repo, &op).explain(), words);
-    assert_eq!(apply_refusal(&repo, &op).explain(), words);
+    assert_eq!(
+        preview_refusal(&repo, &op).explain(&crate::support::Letters),
+        words
+    );
+    assert_eq!(
+        apply_refusal(&repo, &op).explain(&crate::support::Letters),
+        words
+    );
 }
 
 /// A merge `HEAD` lacks: refused in both places, before git is asked.
@@ -270,8 +288,14 @@ fn picking_a_merge_is_refused_in_the_preview_and_in_apply() {
         "{} is a merge · taking a merge isn't in Graft yet",
         sha7(&repo, "side")
     );
-    assert_eq!(preview_refusal(&repo, &op).explain(), words);
-    assert_eq!(apply_refusal(&repo, &op).explain(), words);
+    assert_eq!(
+        preview_refusal(&repo, &op).explain(&crate::support::Letters),
+        words
+    );
+    assert_eq!(
+        apply_refusal(&repo, &op).explain(&crate::support::Letters),
+        words
+    );
 }
 
 /// What git itself does with `cherry-pick <an ancestor of HEAD>`: the case

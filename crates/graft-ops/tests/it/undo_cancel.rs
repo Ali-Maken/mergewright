@@ -370,7 +370,10 @@ fn cancel_between_steps_rolls_back_to_pre_undo_state() {
             *rolled_back >= 1,
             "at least the ref step was put back, not a cancel before anything ran"
         ),
-        other => panic!("expected a clean cancel, got: {}", other.explain()),
+        other => panic!(
+            "expected a clean cancel, got: {}",
+            other.explain(&crate::support::Letters)
+        ),
     }
     assert_eq!(
         state_of(&repo),
@@ -457,7 +460,7 @@ fn cancel_at_every_step_boundary_is_clean() {
                     !matches!(why, RestoreError::CancelledPartway { .. }),
                     "nothing moved the repository, so the roll-back had no reason to refuse \
                      (poll {at}): {}",
-                    why.explain()
+                    why.explain(&crate::support::Letters)
                 );
                 if matches!(&why, RestoreError::Cancelled { rolled_back } if *rolled_back > 0) {
                     rolled_something_back += 1;
@@ -547,7 +550,10 @@ fn rollback_refused_by_a_moved_ref_is_reported_not_hidden() {
     let PartWay { repo, why, .. } = cancel_part_way();
 
     let RestoreError::CancelledPartway { applied, rollback } = &why else {
-        panic!("expected a part-way cancel, got: {}", why.explain());
+        panic!(
+            "expected a part-way cancel, got: {}",
+            why.explain(&crate::support::Letters)
+        );
     };
     assert!(
         matches!(rollback.as_ref(), RestoreError::RefMoved { name } if name == "refs/heads/main"),
@@ -649,9 +655,10 @@ fn after_a_part_way_cancel_the_named_key_restores_everything() {
         "u never reaches it"
     );
     assert!(
-        why.explain().contains("U restores the backup"),
+        why.explain(&crate::support::Letters)
+            .contains("U restores the backup"),
         "the user is pointed at the key that works: {}",
-        why.explain()
+        why.explain(&crate::support::Letters)
     );
 
     // And following that instruction gets everything back — with `force`
@@ -713,7 +720,7 @@ fn a_killed_step_whose_ref_is_back_where_it_started_is_not_reversed() {
         ),
         other => panic!(
             "expected a clean cancel with nothing to reverse, got: {}",
-            other.explain()
+            other.explain(&crate::support::Letters)
         ),
     }
     assert_eq!(
@@ -760,7 +767,10 @@ fn a_ref_moved_under_a_killed_step_is_reported_not_overwritten() {
     assert!(stop.fired(), "the test's own write ran");
 
     let RestoreError::CancelledPartway { applied, rollback } = &why else {
-        panic!("expected a part-way cancel, got: {}", why.explain());
+        panic!(
+            "expected a part-way cancel, got: {}",
+            why.explain(&crate::support::Letters)
+        );
     };
     assert!(
         matches!(rollback.as_ref(), RestoreError::RefMoved { name } if name == "refs/heads/main"),
@@ -832,7 +842,10 @@ fn a_cancelled_undo_through_u_leaves_u_where_it_was() {
             *rolled_back >= 1,
             "at least the ref step was put back, not a cancel before anything ran"
         ),
-        other => panic!("a cancel with a roll-back, not: {}", other.explain()),
+        other => panic!(
+            "a cancel with a roll-back, not: {}",
+            other.explain(&crate::support::Letters)
+        ),
     }
     assert_eq!(
         state_of(&repo),

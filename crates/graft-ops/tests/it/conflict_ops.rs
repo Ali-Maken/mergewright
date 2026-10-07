@@ -368,7 +368,7 @@ fn undo_of_a_resolution_restores_the_stages() {
     assert_eq!(unmerged_lines(&repo, "both.txt"), String::new());
 
     crate::support::run_undo(&repo, NOW + 1, false)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         unmerged_lines(&repo, "both.txt"),
         stages_before,
@@ -566,7 +566,7 @@ fn a_binary_conflict_resolves_whole() {
             how: UnmergedHow::BothModified,
         }),
     )
-    .unwrap_or_else(|why| panic!("{}", why.explain()));
+    .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(applied.entry.description, "resolved pic.bin (theirs)");
 
     let after = graft_git::status::read(&handle, &()).expect("the status reads again");

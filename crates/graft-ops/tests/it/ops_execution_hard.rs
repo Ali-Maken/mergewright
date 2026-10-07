@@ -341,7 +341,8 @@ fn undoing_a_push_drops_only_the_stash_it_made() {
     );
     assert_eq!(stash_list(&repo).lines().count(), 3);
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         stash_list(&repo),
         before,
@@ -371,7 +372,8 @@ fn undoing_a_pop_puts_the_entry_back_and_the_tree_with_it() {
     assert_eq!(entry.status, EntryStatus::Committed);
     assert_eq!(stash_list(&repo).lines().count(), 1);
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         repo.git(&["rev-parse", "stash@{0}"]),
         top,
@@ -413,7 +415,8 @@ fn a_dropped_stash_survives_gc_and_comes_back() {
         "the pin kept the stash commit alive through gc"
     );
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         repo.git(&["rev-parse", "stash@{0}"]),
         top,
@@ -547,7 +550,8 @@ fn a_pop_that_conflicts_leaves_a_committed_clash_that_undo_restores() {
         "the half-applied merge really did change the tree"
     );
 
-    run_undo(&repo, NOW + 1, true).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, true)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         state_of(&repo),
         before,
@@ -567,7 +571,8 @@ fn an_operation_that_changed_nothing_never_shadows_the_one_before_it() {
     let refused = try_run(&repo, &commit(""), NOW + 1);
     assert!(refused.is_err());
 
-    run_undo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         repo.git(&["diff", "--cached", "--name-only"]),
         "",
@@ -636,7 +641,8 @@ fn an_entry_with_no_after_state_restores_the_whole_tree_after_asking() {
         other => panic!("the rail should have fired: {other:?}"),
     }
 
-    run_undo(&repo, NOW + 2, true).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 2, true)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         state_of(&repo),
         before,
@@ -714,7 +720,8 @@ fn undoing_the_first_commit_leaves_head_unborn_again() {
     assert!(matches!(entry.head_before, HeadRef::Unborn(_)));
     assert!(repo.try_git(&["rev-parse", "HEAD"]).is_ok());
 
-    run_undo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert!(
         repo.try_git(&["rev-parse", "--verify", "HEAD"]).is_err(),
         "HEAD is unborn again"
@@ -755,7 +762,7 @@ fn a_linked_worktree_keeps_its_own_journal_and_namespaced_backup_refs() {
     let entry = {
         let mut ctx = context(&handle, &mut journal, NOW, &never);
         apply(&mut ctx, &Operation::Stage(paths(&["a.rs"])))
-            .unwrap_or_else(|why| panic!("{}", why.explain()))
+            .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)))
             .entry
     };
 
@@ -847,11 +854,12 @@ fn an_index_only_operations_after_tree_survives_an_aggressive_prune() {
          even work out which paths to put back"
     );
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(state_of(&repo), before, "and the undo still puts it back");
 
     crate::support::run_redo(&repo, NOW + 2, false)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(state_of(&repo), after, "and the redo still puts it forward");
 }
 
@@ -884,7 +892,8 @@ fn an_amends_pre_amend_commit_survives_an_aggressive_prune() {
          gone after thirty days, and with it the message and the tree"
     );
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         repo.git(&["rev-parse", "HEAD"]),
         replaced,
@@ -906,7 +915,8 @@ fn a_commits_own_commit_survives_an_aggressive_prune_across_undo_and_redo() {
     let made = repo.git(&["rev-parse", "HEAD"]);
     let after = state_of(&repo);
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(state_of(&repo), before);
 
     // The branch has moved off the commit, so only a backup ref is holding
@@ -915,7 +925,7 @@ fn a_commits_own_commit_survives_an_aggressive_prune_across_undo_and_redo() {
     assert!(holds(&repo, &made), "the undone commit is still there");
 
     crate::support::run_redo(&repo, NOW + 2, false)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(state_of(&repo), after, "redo put the commit back");
 }
 
@@ -973,7 +983,8 @@ fn a_conflicted_pops_after_tree_survives_an_aggressive_prune() {
     // same unmerged index, so there is no drift to force past
     // (`conflicted_pop_undo_is_clean_without_force` proves the drift read
     // itself; this proves `u` goes through).
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(state_of(&repo), before);
 }
 
@@ -1074,7 +1085,8 @@ fn a_plan_stopped_between_invocations_is_aborted_recoverable_and_narrow() {
         entry.worktree_after.is_some(),
         "a cancelled operation still records what it left behind"
     );
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(state_of(&repo), before, "the half-done discard is undone");
 }
 

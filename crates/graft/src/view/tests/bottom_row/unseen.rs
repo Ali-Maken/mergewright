@@ -22,7 +22,7 @@ fn fetching(columns: u16, rows: u16) -> (AppState, JobId) {
     let id = commands
         .iter()
         .find_map(|command| match command {
-            Command::Operate(id, _) => Some(*id),
+            Command::Operate(id, ..) => Some(*id),
             _ => None,
         })
         .expect("the fetch launched");

@@ -3,6 +3,12 @@ use graft_git::run::RunError;
 
 use super::*;
 
+/// [`super::answer`] under the shipped keymap: these pins are about which
+/// outcome a result maps to, not the keys its words spell.
+fn answer(result: Result<Applied, ApplyError>) -> Operated {
+    super::answer(result, Keymap::shipped())
+}
+
 /// **Pin (m6-conflicts/68, rule 7).** A resume git failed part-way
 /// closes its entry `Aborted` exactly as a user's abort does
 /// (`graft_ops::apply::resume::close_resume`). It must answer `Failed`,

@@ -13,6 +13,7 @@ use graft_git::state::InProgress;
 
 use crate::apply::{Applied, Context};
 use crate::facts::{self, FactsError};
+use crate::keys::{KeyNames, OpKey};
 use crate::restore::{self, RestoreError};
 use crate::undo::{
     Drift, InversePlan, NotInvertible, RepoStateNow, drift, plan_redo, plan_revert_to, plan_undo,
@@ -68,16 +69,29 @@ pub enum UndoError {
 }
 
 impl UndoError {
-    /// One line for the status line.
-    pub fn explain(&self) -> String {
+    /// One line for the status line, its keys spelled through `keys` (an
+    /// unbound one's clause left out). The `Display` is these words with
+    /// [`NoKeys`](crate::keys::NoKeys), less the drift's `again` clause.
+    #[must_use]
+    pub fn explain(&self, keys: &dyn KeyNames) -> String {
         match self {
             UndoError::Drift { drift, direction } => {
                 let key = match direction {
-                    Direction::Undo => 'u',
-                    Direction::Redo => 'U',
+                    Direction::Undo => OpKey::Undo,
+                    Direction::Redo => OpKey::Redo,
                 };
-                format!("{} — {key} again to go ahead", drift.explain())
+                match keys.label(key) {
+                    Some(key) => format!("{} — {key} again to go ahead", drift.explain()),
+                    None => drift.explain(),
+                }
             }
+            UndoError::Restore(error) => error.explain(keys),
+            UndoError::PartWay { done, error } => format!(
+                "{} of {} steps done, then: {}",
+                done.len(),
+                done.len() + 1,
+                error.explain(keys)
+            ),
             other => other.to_string(),
         }
     }

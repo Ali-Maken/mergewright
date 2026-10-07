@@ -112,7 +112,7 @@ fn shift_t_with_every_block_taken_only_stages() {
     let stages = commands
         .iter()
         .filter(|command| {
-            matches!(command, Command::Operate(_, op) if matches!(**op, Operation::Stage(_)))
+            matches!(command, Command::Operate(_, op, ..) if matches!(**op, Operation::Stage(_)))
         })
         .count();
     let takes = commands

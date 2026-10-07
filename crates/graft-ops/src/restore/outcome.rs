@@ -17,11 +17,52 @@ pub(super) fn rollback_what(why: &RestoreError) -> String {
 }
 
 /// The journal failing, with the plan's own failure when there was one.
-pub(super) fn journal_failed(error: &JournalError, after: Option<&RestoreError>) -> String {
+pub(super) fn journal_failed(
+    error: &JournalError,
+    after: Option<&RestoreError>,
+    keys: &dyn KeyNames,
+) -> String {
     match after {
-        Some(why) => format!("{error} (the restore had already failed: {why})"),
+        Some(why) => format!(
+            "{error} (the restore had already failed: {})",
+            why.explain(keys)
+        ),
         None => error.to_string(),
     }
+}
+
+/// [`RestoreError::CancelledPartway`]'s words: `undo cancelled part-way ·
+/// <what> · U restores the backup`.
+pub(super) fn cancelled_partway_words(rollback: &RestoreError, keys: &dyn KeyNames) -> String {
+    then(
+        format!("undo cancelled part-way · {}", rollback_what(rollback)),
+        [restores_the_backup(keys)],
+    )
+}
+
+/// [`RestoreError::FailedPartway`]'s words: `<failure> · rolled back
+/// part-way · <applied> still changed: <what> · U restores the backup`.
+pub(super) fn failed_partway_words(
+    failure: &RestoreError,
+    applied: &[String],
+    rollback: &RestoreError,
+    keys: &dyn KeyNames,
+) -> String {
+    then(
+        format!(
+            "{} · rolled back part-way · {} still changed: {}",
+            failure.explain(keys),
+            applied.join(", "),
+            rollback_what(rollback)
+        ),
+        [restores_the_backup(keys)],
+    )
+}
+
+/// `U restores the backup` — `U`, not `u`, for the reason
+/// [`RestoreError::CancelledPartway`] gives.
+fn restores_the_backup(keys: &dyn KeyNames) -> Option<String> {
+    clause(keys, OpKey::Redo, "restores the backup")
 }
 
 /// Every after-state failure on one line.

@@ -55,7 +55,8 @@ fn plan_with(
 }
 
 fn plan_of(repo: &TempRepo, op: &Operation) -> PreviewPlan {
-    plan_with(repo, op, &git_version(), &Never).unwrap_or_else(|why| panic!("{}", why.explain()))
+    plan_with(repo, op, &git_version(), &Never)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)))
 }
 
 /// `main` and `feature` both change `base.txt`; the user has edited it on
@@ -318,7 +319,7 @@ fn a_rebase_with_drops_measures_the_put_back_from_where_it_lands() {
     let op = rebase_onto(&repo, "refs/heads/main");
     let facts = read_facts(&handle, git_version(), &Never, &op.facts_scope()).expect("facts");
     let (op, plan) = preview::plan_as_run(&handle, &git_version(), op, &facts, &Never)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     let Operation::Rebase(params) = &op else {
         panic!("a rebase");
     };

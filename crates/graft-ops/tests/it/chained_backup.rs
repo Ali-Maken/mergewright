@@ -129,7 +129,7 @@ fn folded_step_chains_a_backup() {
         NOW + 1,
         &Never,
     )
-    .unwrap_or_else(|why| panic!("{}", why.explain()));
+    .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     let chained = applied.step_backup.expect("the step chained a backup");
     assert_eq!(
@@ -183,7 +183,7 @@ fn a_hand_edit_is_recoverable_after_the_other_side_is_taken() {
         NOW + 1,
         &Never,
     )
-    .unwrap_or_else(|why| panic!("{}", why.explain()));
+    .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert!(
         !repo.exists("gone.txt"),
@@ -265,7 +265,8 @@ fn chain_adds_no_entries() {
             resolve("gone.txt", Side::Ours, UnmergedHow::DeletedByThem),
         ),
     ] {
-        step(&repo, &op, at, &Never).unwrap_or_else(|why| panic!("{}", why.explain()));
+        step(&repo, &op, at, &Never)
+            .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     }
 
     let after_entries = entries(&repo);
@@ -288,7 +289,8 @@ fn resume_chains_then_after_snapshot_parents_the_chain() {
         resolve("shared.txt", Side::Ours, UnmergedHow::BothModified),
         resolve("gone.txt", Side::Ours, UnmergedHow::DeletedByThem),
     ] {
-        step(&repo, &op, NOW + 1, &Never).unwrap_or_else(|why| panic!("{}", why.explain()));
+        step(&repo, &op, NOW + 1, &Never)
+            .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     }
     let after_steps = backup_tip(&repo, &entry);
 
@@ -296,7 +298,8 @@ fn resume_chains_then_after_snapshot_parents_the_chain() {
     let mut journal = journal_for(&handle);
     let never = Never;
     let mut ctx = context(&handle, &mut journal, NOW + 3, &never);
-    resume(&mut ctx, Resume::Continue).unwrap_or_else(|why| panic!("{}", why.explain()));
+    resume(&mut ctx, Resume::Continue)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     drop(journal);
 
     let sealed = backup_tip(&repo, &entry);
@@ -350,7 +353,7 @@ fn mark_resolved(repo: &TempRepo, path: &str, bytes: &[u8], at: i64) {
         at,
         &Never,
     )
-    .unwrap_or_else(|why| panic!("staging {path}: {}", why.explain()));
+    .unwrap_or_else(|why| panic!("staging {path}: {}", why.explain(&crate::support::Letters)));
 }
 
 fn restart(path: &str) -> Operation {
@@ -399,7 +402,7 @@ fn restart_after_stage_brings_the_conflict_back() {
     );
 
     let applied = step(&repo, &restart("shared.txt"), NOW + 2, &Never)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(
         unmerged_lines(&repo, "shared.txt"),
@@ -447,7 +450,7 @@ fn restart_survives_a_relaunch() {
         NOW + 1,
         &Never,
     )
-    .unwrap_or_else(|why| panic!("{}", why.explain()));
+    .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     mark_resolved(&repo, "shared.txt", b"a hand-written merge\n", NOW + 2);
     assert!(
         !resolve_undo(&repo).is_empty(),
@@ -480,7 +483,7 @@ fn restart_survives_a_relaunch() {
     );
 
     let applied = step(&repo, &restart("shared.txt"), NOW + 3, &Never)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     // The outcome first, then the mechanism: with REUC gone, the outcome
     // alone already fails if the stage tree is not what answered.
     assert_eq!(

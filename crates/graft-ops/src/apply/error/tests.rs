@@ -58,7 +58,7 @@ fn a_paused_write_says_so_and_only_a_stop_has_a_stopped_at() {
         paths: Vec::new(),
     };
     assert_eq!(
-        paused.explain(),
+        paused.explain(&crate::keys::Letters),
         "merge feature into main: stopped · the merge is paused · c continues, a aborts"
     );
     assert_eq!(
@@ -112,7 +112,7 @@ fn a_hook_rejection_with_nothing_unmerged_says_a_hook_stopped_it() {
         paths: Vec::new(),
     };
     assert_eq!(
-        rejected.explain(),
+        rejected.explain(&crate::keys::Letters),
         "merge feature into main: a git hook stopped it · c continues, a aborts"
     );
     let conflicted = ApplyError::Conflicted {
@@ -121,7 +121,7 @@ fn a_hook_rejection_with_nothing_unmerged_says_a_hook_stopped_it() {
         paths: vec![PathBuf::from("a.txt")],
     };
     assert_eq!(
-        conflicted.explain(),
+        conflicted.explain(&crate::keys::Letters),
         "merge feature into main: 1 unmerged · resolve, then c continues, a aborts",
         "a real conflict keeps its words"
     );
@@ -150,7 +150,7 @@ fn nothing_unmerged_outside_a_merge_does_not_blame_a_hook() {
             paths: Vec::new(),
         };
         assert_eq!(
-            stopped.explain(),
+            stopped.explain(&crate::keys::Letters),
             format!("{op}: 0 unmerged · resolve, then c continues, a aborts")
         );
     }

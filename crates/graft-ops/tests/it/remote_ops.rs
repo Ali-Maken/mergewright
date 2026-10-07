@@ -85,7 +85,8 @@ fn undo_in(dir: &Path, at: i64) -> Applied {
     let mut journal = journal_for(&repo);
     let never = Never;
     let mut ctx = context(&repo, &mut journal, at, &never);
-    undo::undo(&mut ctx, false).unwrap_or_else(|why| panic!("{}", why.explain()))
+    undo::undo(&mut ctx, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)))
 }
 
 fn redo_in(dir: &Path, at: i64) -> Applied {
@@ -93,7 +94,8 @@ fn redo_in(dir: &Path, at: i64) -> Applied {
     let mut journal = journal_for(&repo);
     let never = Never;
     let mut ctx = context(&repo, &mut journal, at, &never);
-    undo::redo(&mut ctx, false).unwrap_or_else(|why| panic!("{}", why.explain()))
+    undo::redo(&mut ctx, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)))
 }
 
 fn entries(dir: &Path) -> Vec<JournalEntry> {
@@ -157,8 +159,8 @@ fn fetch_moves_tracking_ref_and_journals() {
         Some(tip.clone())
     );
 
-    let applied =
-        run_in(remote.work(), &fetch_all(), NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = run_in(remote.work(), &fetch_all(), NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(
         ref_value(&remote, remote.work(), &tracking(&remote)),
@@ -184,7 +186,8 @@ fn fetch_prunes() {
     assert!(ref_value(&remote, remote.work(), "refs/remotes/origin/gone").is_some());
     git(&remote, remote.bare(), &["branch", "-D", "gone"]);
 
-    run_in(remote.work(), &fetch_all(), NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_in(remote.work(), &fetch_all(), NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(
         ref_value(&remote, remote.work(), "refs/remotes/origin/gone"),
@@ -209,7 +212,8 @@ fn fetch_allowed_in_bare() {
         remote: Some("origin".to_owned()),
         prune: false,
     });
-    let applied = run_in(&mirror, &op, NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = run_in(&mirror, &op, NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     // A bare clone has no fetch refspec: what the fetch got is FETCH_HEAD.
@@ -232,7 +236,7 @@ fn pull_fast_forwards_then_undo_keeps_tracking_ref() {
     assert!(!file.exists());
 
     let applied = run_in(remote.work(), &pull(&remote), NOW)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(
         git(&remote, remote.work(), &["rev-parse", &branch(&remote)]),
@@ -397,7 +401,7 @@ fn commit_through_apply(remote: &LocalRemote, name: &str, at: i64) -> JournalEnt
         &Operation::Stage(Target::Paths(vec![PathBuf::from(name)])),
         at,
     )
-    .unwrap_or_else(|why| panic!("{}", why.explain()));
+    .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     let commit = Operation::Commit(CommitParams {
         message: format!("add {name}"),
         sign_off: false,
@@ -405,7 +409,7 @@ fn commit_through_apply(remote: &LocalRemote, name: &str, at: i64) -> JournalEnt
         allow_empty: false,
     });
     run_in(remote.work(), &commit, at + 1)
-        .unwrap_or_else(|why| panic!("{}", why.explain()))
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)))
         .entry
 }
 
@@ -417,7 +421,7 @@ fn push_then_undo_touches_only_local() {
     let new = git(&remote, remote.work(), &["rev-parse", "HEAD"]);
 
     let applied = run_in(remote.work(), &Operation::Push(push(&remote)), NOW + 10)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(
         git(&remote, remote.bare(), &["rev-parse", &branch(&remote)]),
@@ -470,7 +474,8 @@ fn push_sets_upstream() {
     });
     assert!(op.describe().ends_with("(set upstream)"));
 
-    run_in(remote.work(), &op, NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_in(remote.work(), &op, NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(
         git(&remote, remote.work(), &["config", "branch.topic.remote"]),
@@ -533,7 +538,8 @@ fn lease_push_succeeds_after_amend() {
         ..push(&remote)
     });
 
-    run_in(remote.work(), &op, NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_in(remote.work(), &op, NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(
         git(&remote, remote.bare(), &["rev-parse", &branch(&remote)]),
@@ -615,7 +621,7 @@ fn an_up_to_date_pull_is_transparent_to_undo() {
     let before = git(&remote, remote.work(), &["rev-parse", "HEAD"]);
 
     let pulled = run_in(remote.work(), &pull(&remote), NOW + 10)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(pulled.entry.kind, OperationKind::Pull);
     assert_eq!(pulled.entry.status, EntryStatus::Committed);
@@ -660,7 +666,8 @@ fn fetch_does_not_empty_redo() {
     commit_through_apply(&remote, "local.txt", NOW);
     let undone = undo_in(remote.work(), NOW + 10);
     remote.commit_on_remote("theirs").unwrap();
-    run_in(remote.work(), &fetch_all(), NOW + 20).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_in(remote.work(), &fetch_all(), NOW + 20)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     let journal = entries(remote.work());
     assert_eq!(journal.last().map(|e| e.kind), Some(OperationKind::Fetch));
@@ -751,7 +758,7 @@ fn http_askpass_answers_and_progress_flows() {
         hooks,
         &Never,
     )
-    .unwrap_or_else(|why| panic!("{}", why.explain()));
+    .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(
         git(&remote, remote.bare(), &["rev-parse", &branch(&remote)]),
@@ -859,7 +866,7 @@ fn cancel_mid_fetch_is_clean() {
             stderr_tail: vec![],
             names: Box::new(fetch_all().remote_names().expect("a fetch has names")),
         }
-        .explain()
+        .explain(&crate::support::Letters)
         .ends_with("fetch all remotes cancelled")
     );
     assert_eq!(
@@ -928,7 +935,7 @@ fn a_local_operation_with_hooks_runs_as_before() {
     });
 
     let applied = run_hooked(remote.work(), &commit, NOW, hooks, &Never)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(applied.entry.commands, ["git commit -F - --no-verify"]);
     assert_eq!(

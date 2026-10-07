@@ -110,6 +110,7 @@ pub(crate) fn recover_for(
     list: &JournalList,
     row: usize,
     cancel: &Cancel,
+    keys: &graft_ui::keymap::Keymap,
 ) -> Result<Recover, String> {
     let unread = |why: String| format!("couldn't read what to put back: {why}");
     let entries = super::undo::journal_entries(repos, clock, cancel).map_err(unread)?;
@@ -121,5 +122,5 @@ pub(crate) fn recover_for(
     let facts = graft_ops::facts::read_facts(&repo.handle(), git, cancel, &scope)
         .map_err(|error| unread(error.to_string()))?;
     graft_ops::journal_list::recover_for(list, row, &entries, &facts)
-        .map_err(|refusal| refusal.explain())
+        .map_err(|refusal| refusal.explain(&crate::update::op_keys::OpKeys(keys)))
 }

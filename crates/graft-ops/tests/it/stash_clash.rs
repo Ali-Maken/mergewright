@@ -282,7 +282,8 @@ fn undo_of_drop_put_back_stores_it_again() {
     );
     assert_eq!(stash_commits(&repo), Vec::<String>::new());
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         stash_list(&repo),
         listed,
@@ -408,7 +409,8 @@ fn undo_of_a_clashed_pop_restores_the_tree_and_keeps_the_stash() {
     );
     assert_ne!(state_of(&repo), before, "the clash changed the tree");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(state_of(&repo), before, "the tree before the pop");
     assert_eq!(stash_list(&repo), listed, "the stash still listed, once");

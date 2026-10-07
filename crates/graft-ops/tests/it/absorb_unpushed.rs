@@ -181,7 +181,7 @@ fn absorb_with_every_commit_pushed_is_refused_in_its_own_words() {
         }
     );
     assert_eq!(
-        refusal.explain(),
+        refusal.explain(&crate::support::Letters),
         "every commit on main is already pushed · absorb only changes unpushed commits · \
          c commits them"
     );
@@ -239,7 +239,7 @@ fn a_into_below_a_remote_ref_is_already_pushed() {
 
     assert_eq!(refusal, Refusal::AlreadyPushed { commit: c2 });
     assert_eq!(
-        refusal.explain(),
+        refusal.explain(&crate::support::Letters),
         format!(
             "{} is already pushed · a only changes older commits you haven't pushed",
             &c2.to_string()[..7]
@@ -272,7 +272,7 @@ fn beyond_reach_names_the_branch() {
         }
     );
     assert_eq!(
-        refusal.explain(),
+        refusal.explain(&crate::support::Letters),
         format!(
             "{} is more than 10 commits back · on main a reaches the last 10 unpushed commits",
             &eleven_back.to_string()[..7]

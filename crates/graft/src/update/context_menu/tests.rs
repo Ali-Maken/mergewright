@@ -625,7 +625,7 @@ fn switched_at_once(state: &AppState, commands: &[Command], op: &Operation, what
     let launched: Vec<&Operation> = commands
         .iter()
         .filter_map(|command| match command {
-            Command::Operate(_, op) => Some(op.as_ref()),
+            Command::Operate(_, op, ..) => Some(op.as_ref()),
             _ => None,
         })
         .collect();

@@ -4,6 +4,7 @@ use super::{
     AppState, Command, JobId, Operated, Path, PathBuf, Resume, Status, edit_stop_lands_on_head,
     finished_lands_on_head, land_in_resolver, live, stopped_again,
 };
+use crate::update::op_keys::OpKeys;
 
 /// Queue a `--continue`/`--skip`/`--abort`.
 ///
@@ -46,7 +47,11 @@ pub fn resume(
         crate::update::remote::Stoppable::No(crate::update::preview::HISTORY_CANNOT_STOP),
         None,
     ));
-    commands.push(Command::Resume(id, what));
+    commands.push(Command::Resume(
+        id,
+        what,
+        std::sync::Arc::clone(&state.keymap),
+    ));
     true
 }
 
@@ -211,7 +216,7 @@ fn resumed_answer(
             // The operation is still live and `a` still ends it, whatever
             // this was. `graft_ops`' own words, with `a abort` as the key
             // rather than a sentence the app invented.
-            let reason = refused.map_or(error, |refusal| refusal.explain());
+            let reason = refused.map_or(error, |refusal| refusal.explain(&OpKeys(&state.keymap)));
             state.status = Status::Sticky {
                 reason,
                 keys: Some("a abort".to_owned()),

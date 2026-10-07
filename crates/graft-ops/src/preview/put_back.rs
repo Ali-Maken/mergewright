@@ -109,7 +109,7 @@ pub(super) fn forecast(
     match forecast_one(repo, git, Some(head), landed, edits, stop) {
         Ok(forecast) => Ok(forecast),
         Err(PreviewError::Stopped) => Err(PreviewError::Stopped),
-        Err(why) => Ok(not_checked(&why.explain())),
+        Err(why) => Ok(not_checked(&why.to_string())),
     }
 }
 

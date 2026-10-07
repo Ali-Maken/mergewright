@@ -162,7 +162,11 @@ fn launch_with(
         stoppable,
         opened_by,
     ));
-    commands.push(Command::Operate(id, Box::new(op)));
+    commands.push(Command::Operate(
+        id,
+        Box::new(op),
+        std::sync::Arc::clone(&next.keymap),
+    ));
     Ok(())
 }
 

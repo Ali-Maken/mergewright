@@ -145,7 +145,7 @@ fn absorb_agrees_with_the_trees(repo: &TempRepo, unsaved: &[(&str, &[u8])]) -> A
         .count();
     assert_eq!(fixups, params.made.len(), "one fixup row per commit made");
     try_run(repo, &Operation::Rewrite(params), NOW)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(subjects(repo), before.subjects, "no commit added or lost");
     assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/feature");

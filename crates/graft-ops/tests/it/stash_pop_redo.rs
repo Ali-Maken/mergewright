@@ -34,9 +34,11 @@ fn pop_conflict_undo_redo(repo: &TempRepo, index: usize, commit: Oid) -> Lists {
         "the pop should have conflicted: {failed:?}"
     );
     let popped = stash_commits(repo);
-    run_undo(repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     let undone = stash_commits(repo);
-    run_redo(repo, NOW + 2, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_redo(repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         repo.git(&["ls-files", "-u"]).lines().count(),
         3,
@@ -114,14 +116,16 @@ fn redo_of_a_clean_pop_below_the_top_drops_it_again() {
     );
     assert_eq!(repo.read("p.txt"), b"stashed\n");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         stash_commits(&repo),
         [below, on_top.clone()],
         "the undo stored it back, on top"
     );
 
-    run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_redo(&repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(stash_commits(&repo), [on_top], "the redo dropped it again");
     assert_eq!(repo.read("p.txt"), b"stashed\n", "and applied it again");
 }

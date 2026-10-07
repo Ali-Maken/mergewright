@@ -36,6 +36,7 @@ use graft_git::state::InProgress;
 use graft_git::status::{UnmergedHow, WorkingTreeStatus};
 use graft_git::version::GitVersion;
 
+use crate::keys::{KeyNames, OpKey, clause, continue_or_abort, then};
 use crate::rewrite::EditStop;
 
 pub use conflict::{OneSided, ResolveWholeParams, RestartKind, RestartParams, Side};
@@ -383,21 +384,26 @@ pub enum RewriteKey {
 }
 
 impl RewriteKey {
-    /// What the key does, as the refusal's first half.
+    /// What the key does, as the refusal's first half (`R rewrites your
+    /// branch`); `None` when he has the key unbound (W3).
     #[must_use]
-    pub fn what_it_does(self) -> &'static str {
+    pub fn what_it_does(self, keys: &dyn KeyNames) -> Option<String> {
         match self {
-            Self::Open => "R rewrites your branch",
-            Self::AmendInto => "a puts staged changes into a commit on your branch",
+            Self::Open => clause(keys, self.key(), "rewrites your branch"),
+            Self::AmendInto => clause(
+                keys,
+                self.key(),
+                "puts staged changes into a commit on your branch",
+            ),
         }
     }
 
-    /// The key itself, as a refusal names it (`a`).
+    /// The key itself, by what it does.
     #[must_use]
-    pub fn key(self) -> &'static str {
+    pub fn key(self) -> OpKey {
         match self {
-            Self::Open => "R",
-            Self::AmendInto => "a",
+            Self::Open => OpKey::Rewrite,
+            Self::AmendInto => OpKey::Amend,
         }
     }
 }
@@ -820,7 +826,8 @@ pub enum Refusal {
 
 impl Refusal {
     /// One plain sentence saying what stands in the way and what to do, naming
-    /// the shell command where a later milestone owns the fix.
+    /// the shell command where a later milestone owns the fix. Keys are
+    /// spelled through `keys`; an unbound one's clause is left out (W3).
     #[must_use]
     #[expect(
         clippy::too_many_lines,
@@ -828,7 +835,7 @@ impl Refusal {
                   ones out needed a catch-all that re-entered this function (m4/04 review \
                   Minor 7)"
     )]
-    pub fn explain(&self) -> String {
+    pub fn explain(&self, keys: &dyn KeyNames) -> String {
         match self {
             Self::Bare => "This repository has no working tree, so there is nothing here to \
                            stage, commit, discard or stash."
@@ -901,28 +908,44 @@ impl Refusal {
                 "no remote — add one in the shell: git remote add origin <url>".to_owned()
             }
             Self::NoSuchRemote { name } => format!("no remote named '{name}'"),
-            Self::NoUpstream { branch } => {
-                format!("{branch} has no upstream — P pushes and sets one")
-            }
-            Self::UpstreamChanged => {
-                "the branch's upstream changed since it was read — press p again".to_owned()
-            }
+            Self::NoUpstream { branch } => dashed(
+                format!("{branch} has no upstream"),
+                clause(keys, OpKey::Push, "pushes and sets one"),
+            ),
+            Self::UpstreamChanged => dashed(
+                "the branch's upstream changed since it was read".to_owned(),
+                keys.label(OpKey::Pull)
+                    .map(|key| format!("press {key} again")),
+            ),
             Self::BranchChanged => {
                 "HEAD moved to another branch since it was read — look again".to_owned()
             }
-            Self::HeadUnborn => "HEAD has no commit yet · c makes the first one".to_owned(),
-            Self::LeaseStale { remote_side } => format!(
-                "force-push refused: {remote_side} is not where the box said \
-                 (fetched since, or never fetched) · f to fetch, then look"
+            Self::HeadUnborn => then(
+                "HEAD has no commit yet".to_owned(),
+                [clause(keys, OpKey::Commit, "makes the first one")],
+            ),
+            Self::LeaseStale { remote_side } => then(
+                format!(
+                    "force-push refused: {remote_side} is not where the box said \
+                     (fetched since, or never fetched)"
+                ),
+                [clause(keys, OpKey::Fetch, "to fetch, then look")],
             ),
             // The history refusals, in the M5 design note's words.
             Self::Moved { name } => format!(
                 "{} moved since the preview was drawn — press the key again",
                 history::short_ref(name)
             ),
-            Self::DirtyTree { count } => format!(
-                "needs a clean tree · S stashes {count} changed {} first",
-                if *count == 1 { "file" } else { "files" }
+            Self::DirtyTree { count } => then(
+                "needs a clean tree".to_owned(),
+                [clause(
+                    keys,
+                    OpKey::Stash,
+                    &format!(
+                        "stashes {count} changed {} first",
+                        if *count == 1 { "file" } else { "files" }
+                    ),
+                )],
             ),
             Self::BadRefName { name, rule } => format!("bad name '{name}': {rule}"),
             Self::RefExists { name } => format!("{name} exists"),
@@ -966,18 +989,14 @@ impl Refusal {
                 "re-pushing an old tip rewrites the remote branch; it runs only with a lease"
                     .to_owned()
             }
-            Self::CannotSkip(kind) => {
-                format!(
-                    "a {} has nothing to skip · c continues, a aborts",
-                    kind.name()
-                )
-            }
-            Self::MessageNotHere { kind } => {
-                format!(
-                    "a {} keeps each commit's own message · c continues",
-                    kind.name()
-                )
-            }
+            Self::CannotSkip(kind) => then(
+                format!("a {} has nothing to skip", kind.name()),
+                [continue_or_abort(keys)],
+            ),
+            Self::MessageNotHere { kind } => then(
+                format!("a {} keeps each commit's own message", kind.name()),
+                [clause(keys, OpKey::Continue, "continues")],
+            ),
             Self::OctopusMerge { heads, end } => format!(
                 "this merges {heads} branches at once (an octopus merge); {}",
                 end.in_the_shell()
@@ -986,9 +1005,10 @@ impl Refusal {
                 "git set your changes aside for this merge (autostash); {}",
                 end.in_the_shell()
             ),
-            Self::NotFastForward { branch } => {
-                format!("{branch} has diverged; a fast-forward is not possible — m merges instead")
-            }
+            Self::NotFastForward { branch } => dashed(
+                format!("{branch} has diverged; a fast-forward is not possible"),
+                clause(keys, OpKey::Merge, "merges instead"),
+            ),
             // The M6 conflict refusals, in the design note's words.
             Self::NotUnmerged { path } => format!("{} is not conflicted", path.display()),
             Self::ConflictsOpen { path, open } => {
@@ -1010,7 +1030,11 @@ impl Refusal {
                 )
             }
             Self::NotOnYourBranch { commit, by } => {
-                format!("{} · {} isn't on it", by.what_it_does(), short(*commit))
+                let isnt = format!("{} isn't on it", short(*commit));
+                match by.what_it_does(keys) {
+                    Some(what) => format!("{what} · {isnt}"),
+                    None => isnt,
+                }
             }
             Self::MergeInRange { merge } => {
                 format!("can't rewrite past a merge ({})", short(*merge))
@@ -1025,13 +1049,16 @@ impl Refusal {
                 ref_words(branch),
                 worktree.display()
             ),
-            Self::NothingStagedFor { target } => {
-                format!(
-                    "nothing staged to put into {} · space stages",
-                    short(*target)
-                )
-            }
-            Self::NotOnABranch => "you're not on a branch · switch first (C)".to_owned(),
+            Self::NothingStagedFor { target } => then(
+                format!("nothing staged to put into {}", short(*target)),
+                [clause(keys, OpKey::Stage, "stages")],
+            ),
+            Self::NotOnABranch => then(
+                "you're not on a branch".to_owned(),
+                [keys
+                    .label(OpKey::Switch)
+                    .map(|key| format!("switch first ({key})"))],
+            ),
             Self::GitTooOld { need } => {
                 format!("branches built on yours can follow only with git {need} or newer")
             }
@@ -1043,27 +1070,41 @@ impl Refusal {
                 short(*commit)
             ),
             Self::BadTodo(problem) => problem.explain(),
-            Self::NothingToAbsorb => {
-                "none of your staged lines belong to a commit on your branch · c commits them"
-                    .to_owned()
-            }
-            Self::AllPushed { branch } => format!(
-                "every commit on {branch} is already pushed · absorb only changes unpushed \
-                 commits · c commits them"
+            Self::NothingToAbsorb => then(
+                "none of your staged lines belong to a commit on your branch".to_owned(),
+                [commits_them(keys)],
             ),
-            Self::NoCommitsOfItsOwn { branch } => {
-                format!("{branch} has no commits of its own yet · c commits them")
-            }
-            Self::AlreadyPushed { commit } => format!(
-                "{} is already pushed · a only changes older commits you haven't pushed",
-                short(*commit)
+            Self::AllPushed { branch } => then(
+                format!(
+                    "every commit on {branch} is already pushed · absorb only changes unpushed \
+                     commits"
+                ),
+                [commits_them(keys)],
             ),
-            Self::BeyondReach { commit, branch } => format!(
-                "{} is more than {} commits back · on {branch} a reaches the last {} unpushed \
-                 commits",
-                short(*commit),
-                crate::rewrite::ABSORB_FALLBACK_DEPTH,
-                crate::rewrite::ABSORB_FALLBACK_DEPTH
+            Self::NoCommitsOfItsOwn { branch } => then(
+                format!("{branch} has no commits of its own yet"),
+                [commits_them(keys)],
+            ),
+            Self::AlreadyPushed { commit } => then(
+                format!("{} is already pushed", short(*commit)),
+                [clause(
+                    keys,
+                    OpKey::Amend,
+                    "only changes older commits you haven't pushed",
+                )],
+            ),
+            Self::BeyondReach { commit, branch } => then(
+                format!(
+                    "{} is more than {} commits back",
+                    short(*commit),
+                    crate::rewrite::ABSORB_FALLBACK_DEPTH,
+                ),
+                [keys.label(OpKey::Amend).map(|key| {
+                    format!(
+                        "on {branch} {key} reaches the last {} unpushed commits",
+                        crate::rewrite::ABSORB_FALLBACK_DEPTH
+                    )
+                })],
             ),
             Self::MovedOnSince { name, now } => {
                 format!("{name} moved on since (now {})", short(*now))
@@ -1086,7 +1127,7 @@ impl Refusal {
                 ignored,
                 untracked,
             } => {
-                let words = in_the_way_rungs(doing, ignored, untracked).swap_remove(0);
+                let words = in_the_way_rungs(doing, ignored, untracked, keys).swap_remove(0);
                 match words.next {
                     Some(next) => format!("{} · {next}", words.reason),
                     None => words.reason,
@@ -1103,15 +1144,15 @@ impl Refusal {
     /// (`…/<name>`); `next` is the same on every rung, so a caller can keep
     /// it whole as the line's keys and pick the reason that fits.
     #[must_use]
-    pub fn explain_rungs(&self) -> Vec<RefusalWords> {
+    pub fn explain_rungs(&self, keys: &dyn KeyNames) -> Vec<RefusalWords> {
         match self {
             Self::InTheWay {
                 doing,
                 ignored,
                 untracked,
-            } => in_the_way_rungs(doing, ignored, untracked),
+            } => in_the_way_rungs(doing, ignored, untracked, keys),
             other => vec![RefusalWords {
-                reason: other.explain(),
+                reason: other.explain(keys),
                 next: None,
             }],
         }
@@ -1134,7 +1175,12 @@ pub struct RefusalWords {
 /// counts every other path, ignored or not (the form of Recover's
 /// `put back your edit to <path> +N more`). The last rung drops `(ignored)`.
 /// A rung no shorter than the one before it is skipped.
-fn in_the_way_rungs(doing: &str, ignored: &[PathBuf], untracked: &[PathBuf]) -> Vec<RefusalWords> {
+fn in_the_way_rungs(
+    doing: &str,
+    ignored: &[PathBuf],
+    untracked: &[PathBuf],
+    keys: &dyn KeyNames,
+) -> Vec<RefusalWords> {
     let Some(first) = ignored.first().or(untracked.first()) else {
         return vec![RefusalWords {
             reason: format!("nothing is in the way of {doing}"),
@@ -1148,10 +1194,11 @@ fn in_the_way_rungs(doing: &str, ignored: &[PathBuf], untracked: &[PathBuf]) -> 
         0 => (String::new(), "is", "it"),
         more => (format!(" +{more} more"), "are", "them"),
     };
+    // No `next` when the stash key is unbound (W3): the reason stands alone.
     let next = if is_ignored {
-        format!("move {them} aside first")
+        Some(format!("move {them} aside first"))
     } else {
-        format!("S stashes {them} first")
+        clause(keys, OpKey::Stash, &format!("stashes {them} first"))
     };
     let components: Vec<String> = first
         .components()
@@ -1180,7 +1227,7 @@ fn in_the_way_rungs(doing: &str, ignored: &[PathBuf], untracked: &[PathBuf]) -> 
         if shorter {
             rungs.push(RefusalWords {
                 reason,
-                next: Some(next.clone()),
+                next: next.clone(),
             });
         }
     }
@@ -1226,6 +1273,19 @@ fn in_the_way_words(
         (true, _) => sentence,
         (false, 1) => format!("{sentence} · move it aside first"),
         (false, _) => format!("{sentence} · move them aside first"),
+    }
+}
+
+/// `c commits them`.
+fn commits_them(keys: &dyn KeyNames) -> Option<String> {
+    clause(keys, OpKey::Commit, "commits them")
+}
+
+/// `words — <key clause>`, or `words` alone when the key is unbound.
+fn dashed(words: String, key: Option<String>) -> String {
+    match key {
+        Some(key) => format!("{words} — {key}"),
+        None => words,
     }
 }
 

@@ -149,7 +149,7 @@ fn entries(repo: &TempRepo) -> Vec<JournalEntry> {
 
 fn finish(repo: &TempRepo, how: Resume, at: i64) -> JournalEntry {
     run_resume(repo, how, at)
-        .unwrap_or_else(|why| panic!("{}", why.explain()))
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)))
         .entry
 }
 
@@ -172,7 +172,8 @@ fn undo_after_c_puts_back_exactly_what_was_there_before_c() {
     assert!(!merging(&repo), "c finished the merge");
     assert_ne!(records(&repo), before, "c changed something to undo");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     let after = records(&repo);
     assert_eq!(
         String::from_utf8_lossy(&after.status),
@@ -350,9 +351,11 @@ fn redo_after_undo_lands_on_the_same_merge_commit() {
     finish(&repo, Resume::Continue, NOW);
     let merge_commit = oid(&repo, "HEAD");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert!(merging(&repo), "u put the merge back");
-    run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+    run_redo(&repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("redo: {}", why.explain(&crate::support::Letters)));
 
     assert_eq!(oid(&repo, "HEAD"), merge_commit, "the same merge commit");
     assert_eq!(
@@ -374,7 +377,8 @@ fn c_again_after_undo_makes_an_equal_merge() {
     let tree = repo.git(&["rev-parse", "HEAD^{tree}"]);
     let parents = repo.git(&["log", "-1", "--format=%P"]);
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     let again = finish(&repo, Resume::Continue, NOW + 2);
 
     assert_eq!(again.kind, OperationKind::FinishMerge);
@@ -445,7 +449,7 @@ fn a_stop_before_set_merge_state_rolls_back() {
     assert!(
         matches!(why, RestoreError::Cancelled { .. }),
         "{}",
-        why.explain()
+        why.explain(&crate::support::Letters)
     );
 
     assert_eq!(oid(&repo, "HEAD"), merge_commit, "HEAD is the merge commit");
@@ -490,9 +494,12 @@ fn undo_refuses_when_a_new_merge_was_begun() {
                 })
             ),
             "force {force}: {}",
-            refused.explain()
+            refused.explain(&crate::support::Letters)
         );
-        assert_eq!(refused.explain(), "finish or abort the merge first");
+        assert_eq!(
+            refused.explain(&crate::support::Letters),
+            "finish or abort the merge first"
+        );
     }
     assert_eq!(entries(&repo).len(), count, "nothing journaled");
     assert_eq!(oid(&repo, "HEAD"), head, "nothing moved");
@@ -558,7 +565,8 @@ fn a_pull_begun_in_the_shell_finishes_the_same_way() {
     assert_eq!(oid(&repo, "HEAD^2"), fetched, "the fetched tip");
     assert!(!merging(&repo));
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(oid(&repo, "MERGE_HEAD"), fetched, "MERGE_HEAD back");
     assert_eq!(
         remote_refs(&repo),
@@ -589,7 +597,8 @@ fn merge_state_round_trips_non_utf8_bytes() {
     assert_eq!(state.merge_msg, message, "MERGE_MSG, byte for byte");
     assert_eq!(state.merge_mode, Some(mode.clone()), "MERGE_MODE");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(maybe_read(&git_path(&repo, "MERGE_MSG")), Some(message));
     assert_eq!(maybe_read(&git_path(&repo, "MERGE_MODE")), Some(mode));
 }
@@ -623,7 +632,8 @@ fn the_merge_head_commit_is_anchored() {
     std::fs::remove_file(git_path(&repo, "FETCH_HEAD")).expect("FETCH_HEAD");
     expire_and_prune(&repo);
     assert!(holds(&repo, &fetched), "gc kept MERGE_HEAD's commit");
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(repo.git(&["rev-parse", "MERGE_HEAD"]), fetched);
 }
 
@@ -646,7 +656,8 @@ fn after_u_checkout_m_still_rebuilds_the_conflict() {
     assert!(!reuc_before.is_empty(), "add recorded resolve-undo");
     finish(&repo, Resume::Continue, NOW);
     let reuc_after_c = repo.git(&["ls-files", "--resolve-undo"]);
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     let reuc_after_u = repo.git(&["ls-files", "--resolve-undo"]);
     assert_eq!(reuc_after_c, reuc_before, "c kept it");
     assert_eq!(reuc_after_u, reuc_before, "u kept it");
@@ -730,7 +741,7 @@ fn finish_refuses_while_git_holds_an_autostash() {
             "{refused:?}"
         );
         assert_eq!(
-            refused.explain(),
+            refused.explain(&crate::support::Letters),
             "git set your changes aside for this merge (autostash); finish it in the shell: \
              git commit"
         );
@@ -783,7 +794,7 @@ fn abort_refuses_while_git_holds_an_autostash() {
         "{refused:?}"
     );
     assert_eq!(
-        refused.explain(),
+        refused.explain(&crate::support::Letters),
         "git set your changes aside for this merge (autostash); abort it in the shell: git merge \
          --abort"
     );

@@ -47,7 +47,12 @@ fn staging_not_kept_words_match_graft_ops() {
         let tail = rungs[0]
             .strip_prefix("checkout fix \u{2713} \u{b7} ")
             .expect("rung 1 leads with the done words");
-        assert_eq!(tail, AfterState::StagingNotKept { paths }.to_string());
+        assert_eq!(
+            tail,
+            AfterState::StagingNotKept { paths }.explain(&crate::update::op_keys::OpKeys(
+                graft_ui::keymap::Keymap::shipped()
+            ))
+        );
     }
 }
 

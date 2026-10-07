@@ -8,6 +8,7 @@ use super::{
     ready_box, sanitize_line, short, stash_box, stash_put_back, stash_put_back_op, take_title_of,
     with_cursor,
 };
+use crate::update::op_keys::OpKeys;
 
 /// A click while the preview is open.
 ///
@@ -50,7 +51,7 @@ pub(super) fn plan_failed(state: &mut AppState, failure: PreviewFailure) {
     };
     match failure {
         PreviewFailure::Refused(refusal) if stash_put_back(&preview.subject).is_some() => {
-            preview.plan = Loading::Failed(refusal.explain());
+            preview.plan = Loading::Failed(refusal.explain(&OpKeys(&state.keymap)));
             preview.refused = true;
             preview.cursor = 0;
         }
@@ -163,11 +164,11 @@ pub(super) fn refused(state: &mut AppState, refusal: &graft_ops::operation::Refu
     crate::update::picker::preview_closed(state);
     state.status = match &preview.subject {
         PreviewSubject::Operation { op, .. } => {
-            crate::update::operate::refusal_status(op, refusal, state.size.columns)
+            crate::update::operate::refusal_status(op, refusal, state.size.columns, &state.keymap)
         }
         // The time machine is planned by `plan_revert_to`, which the job
         // never maps to `Refused`; if it ever does, its sentence stands.
-        PreviewSubject::RevertTo(_) => Status::sticky(refusal.explain()),
+        PreviewSubject::RevertTo(_) => Status::sticky(refusal.explain(&OpKeys(&state.keymap))),
     };
 }
 
@@ -273,7 +274,12 @@ pub fn confirm_preview(
                 // journal row, not from a key over the graph.
                 None,
             ));
-            commands.push(Command::RevertTo(id, entry, false));
+            commands.push(Command::RevertTo(
+                id,
+                entry,
+                false,
+                std::sync::Arc::clone(&state.keymap),
+            ));
         }
     }
 }

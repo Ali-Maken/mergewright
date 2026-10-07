@@ -7,6 +7,7 @@ use graft_git::repo::RepoHandle;
 use graft_git::run::{GitInvocation, RunError};
 use graft_git::state::InProgress;
 
+use crate::keys::NoKeys;
 use crate::operation::{Invocation, RemoteNames};
 
 use super::error::joined;
@@ -124,7 +125,8 @@ pub(super) fn with_cleanup(reason: String, cleanup: &[AfterState]) -> String {
     if cleanup.is_empty() {
         reason
     } else {
-        format!("{reason}; {}", joined(cleanup))
+        // A journal record names no key: keyless words (m8/10e).
+        format!("{reason}; {}", joined(cleanup, &NoKeys))
     }
 }
 

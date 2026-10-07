@@ -269,7 +269,9 @@ fn whole_file_card_names_theirs_without_markers() {
                     path: std::path::PathBuf::from("gone.txt"),
                     how: graft_git::status::UnmergedHow::DeletedByUs,
                 }
-                .explain(),
+                .explain(&crate::update::op_keys::OpKeys(
+                    graft_ui::keymap::Keymap::shipped(),
+                )),
             },
         });
     }
@@ -314,7 +316,9 @@ fn a_card_title_says_what_each_side_did() {
                     path: std::path::PathBuf::from("gone.txt"),
                     how: graft_git::status::UnmergedHow::DeletedByThem,
                 }
-                .explain(),
+                .explain(&crate::update::op_keys::OpKeys(
+                    graft_ui::keymap::Keymap::shipped(),
+                )),
             },
         });
         let card = resolver_view(&state, 120).expect("a card");

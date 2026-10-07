@@ -78,7 +78,7 @@ fn recreate(name: &str, at: Oid) -> Operation {
 fn refused(repo: &TempRepo, op: &Operation) -> Refusal {
     match try_run(repo, op, NOW) {
         Err(ApplyError::Refused(refusal)) => refusal,
-        Err(other) => panic!("not a refusal: {}", other.explain()),
+        Err(other) => panic!("not a refusal: {}", other.explain(&crate::support::Letters)),
         Ok(_) => panic!("ran; expected a refusal"),
     }
 }
@@ -101,7 +101,7 @@ fn preview_of(repo: &TempRepo, op: &Operation) -> PreviewPlan {
     let facts =
         read_facts(&handle, git_version(), &Never, &op.facts_scope()).expect("the facts read");
     preview::plan(&handle, &git_version(), op, &facts, &Never)
-        .unwrap_or_else(|why| panic!("preview: {}", why.explain()))
+        .unwrap_or_else(|why| panic!("preview: {}", why.explain(&crate::support::Letters)))
 }
 
 /// `feature` at two, `main` checked out at three.
@@ -143,7 +143,7 @@ fn undo_over_drift(repo: &TempRepo) -> JournalEntry {
     run(repo, &checkout_other(), NOW);
     repo.write("a.txt", HIS_EDIT);
     run_undo(repo, NOW + 1, true)
-        .unwrap_or_else(|why| panic!("undo: {}", why.explain()))
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)))
         .entry
 }
 
@@ -235,7 +235,7 @@ fn move_ref_checked_out_refuses_over_an_untracked_file_it_would_overwrite() {
     );
     match applied {
         Err(ApplyError::Refused(refusal)) => assert_eq!(refusal, in_the_way),
-        Err(other) => panic!("not a refusal: {}", other.explain()),
+        Err(other) => panic!("not a refusal: {}", other.explain(&crate::support::Letters)),
         Ok(_) => panic!("ran; expected a refusal"),
     }
 
@@ -290,7 +290,7 @@ fn move_ref_checked_out_refuses_over_an_ignored_file_it_would_overwrite() {
     );
     match applied {
         Err(ApplyError::Refused(refusal)) => assert_eq!(refusal, in_the_way),
-        Err(other) => panic!("not a refusal: {}", other.explain()),
+        Err(other) => panic!("not a refusal: {}", other.explain(&crate::support::Letters)),
         Ok(_) => panic!("ran; expected a refusal"),
     }
     assert_eq!(id(&repo, "refs/heads/main"), two, "the branch did not move");
@@ -437,7 +437,9 @@ fn apply_in(work: &Path, op: &Operation, at_ms: i64) -> Result<(), String> {
     let mut journal = journal_for(&repo);
     let never = Never;
     let mut ctx = context(&repo, &mut journal, at_ms, &never);
-    apply(&mut ctx, op).map(|_| ()).map_err(|why| why.explain())
+    apply(&mut ctx, op)
+        .map(|_| ())
+        .map_err(|why| why.explain(&crate::support::Letters))
 }
 
 fn undo_in(work: &Path, at_ms: i64, force: bool) -> Result<(), String> {
@@ -447,7 +449,7 @@ fn undo_in(work: &Path, at_ms: i64, force: bool) -> Result<(), String> {
     let mut ctx = context(&repo, &mut journal, at_ms, &never);
     undo::undo(&mut ctx, force)
         .map(|_| ())
-        .map_err(|why| why.explain())
+        .map_err(|why| why.explain(&crate::support::Letters))
 }
 
 impl Graft for GraftOps {
@@ -520,7 +522,7 @@ fn u_brings_back_an_untracked_file_a_put_back_replaced() {
     run(&repo, &checkout_other(), NOW);
     repo.write("o.txt", b"his edit to o\n");
     let undo = run_undo(&repo, NOW + 1, true)
-        .unwrap_or_else(|why| panic!("undo: {}", why.explain()))
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)))
         .entry;
     assert!(!repo.exists("o.txt"), "the undo removed it");
     repo.write("o.txt", b"his new o, untracked\n");
@@ -528,7 +530,8 @@ fn u_brings_back_an_untracked_file_a_put_back_replaced() {
     run(&repo, &files_of(&undo, &["o.txt"]), NOW + 2);
     assert_eq!(repo.read("o.txt"), b"his edit to o\n");
 
-    run_undo(&repo, NOW + 3, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 3, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(repo.read("o.txt"), b"his new o, untracked\n");
     assert_eq!(
         repo.git(&["status", "--porcelain", "--", "o.txt"]),
@@ -558,7 +561,7 @@ fn the_file_put_back_names_what_it_replaces() {
         read_facts(&handle, git_version(), &Never, &op.facts_scope()).expect("the facts read");
 
     let plan = preview::plan(&handle, &git_version(), &op, &facts, &Never)
-        .unwrap_or_else(|why| panic!("preview: {}", why.explain()));
+        .unwrap_or_else(|why| panic!("preview: {}", why.explain(&crate::support::Letters)));
 
     assert_eq!(
         plan.files,
@@ -580,7 +583,7 @@ fn a_file_put_back_over_an_ignored_file_is_refused() {
     run(&repo, &checkout_other(), NOW);
     repo.write("o.txt", b"his edit to o\n");
     let undo = run_undo(&repo, NOW + 1, true)
-        .unwrap_or_else(|why| panic!("undo: {}", why.explain()))
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)))
         .entry;
     repo.write(".git/info/exclude", b"o.txt\n");
     repo.write("o.txt", b"his ignored o\n");
@@ -596,7 +599,7 @@ fn a_file_put_back_over_an_ignored_file_is_refused() {
         }
     );
     assert_eq!(
-        refusal.explain(),
+        refusal.explain(&crate::support::Letters),
         "o.txt (ignored) is in the way of putting back your edit · move it aside first"
     );
     assert_eq!(repo.read("o.txt"), b"his ignored o\n", "nothing written");
@@ -678,7 +681,7 @@ fn u_brings_back_a_file_a_put_back_deleted() {
     run(&repo, &checkout_other(), NOW);
     std::fs::remove_file(repo.path().join("a.txt")).expect("his drift: a.txt deleted");
     let undo = run_undo(&repo, NOW + 1, true)
-        .unwrap_or_else(|why| panic!("undo: {}", why.explain()))
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)))
         .entry;
     assert_eq!(repo.read("a.txt"), b"a\n", "the undo re-created it");
     repo.write("a.txt", WORKING);
@@ -704,7 +707,8 @@ fn u_brings_back_a_file_a_put_back_deleted() {
         "the put-back removed it"
     );
 
-    run_undo(&repo, NOW + 3, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 3, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(repo.read("a.txt"), WORKING, "W is back");
     assert_eq!(
         repo.git(&["ls-files", "-s"]),
@@ -838,7 +842,7 @@ fn still_staged_names_the_staged_paths() {
         let facts =
             read_facts(&handle, git_version(), &Never, &op.facts_scope()).expect("the facts read");
         preview::plan(&handle, &git_version(), op, &facts, &Never)
-            .unwrap_or_else(|why| panic!("preview: {}", why.explain()))
+            .unwrap_or_else(|why| panic!("preview: {}", why.explain(&crate::support::Letters)))
             .files
     };
 
@@ -912,7 +916,7 @@ fn held_again_is_refused() {
         }
     );
     assert_eq!(
-        refusal.explain(),
+        refusal.explain(&crate::support::Letters),
         format!(
             "{} is on feature again · nothing to put back",
             &two.to_string()[..7]
@@ -938,7 +942,8 @@ fn assert_u_puts_back(repo: &TempRepo, op: &Operation, at: i64) {
     let before = whole_state(repo);
     run(repo, op, at);
     assert_ne!(whole_state(repo), before, "the put-back changed nothing");
-    run_undo(repo, at + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(repo, at + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(whole_state(repo), before, "u did not put it back exactly");
 }
 
@@ -987,7 +992,8 @@ fn u_after_gc_puts_the_branch_back_on_a_tip_only_the_entry_holds() {
     crate::support::expire_and_prune(&repo);
     assert!(crate::support::holds(&repo, &only.to_string()), "pinned");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(id(&repo, "refs/heads/feature"), only);
 }
 
@@ -1018,11 +1024,12 @@ fn lost_edits_finds_the_edit_an_undo_over_drift_replaced() {
 fn lost_edits_finds_the_same_after_a_redo_over_drift() {
     let repo = main_and_other();
     run(&repo, &checkout_other(), NOW);
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert!(lost(&repo).is_empty(), "a clean undo loses nothing");
     repo.write("a.txt", b"his edit on main\n");
     let forced = run_redo(&repo, NOW + 2, true)
-        .unwrap_or_else(|why| panic!("redo: {}", why.explain()))
+        .unwrap_or_else(|why| panic!("redo: {}", why.explain(&crate::support::Letters)))
         .entry;
     assert_eq!(repo.read("a.txt"), b"a on other\n", "the redo replaced it");
 
@@ -1053,7 +1060,8 @@ fn an_edit_to_a_file_the_undo_never_wrote_is_not_lost() {
     run(&repo, &checkout_other(), NOW);
     repo.write("a.txt", HIS_EDIT);
     repo.write("b.txt", b"his b\n");
-    run_undo(&repo, NOW + 1, true).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, true)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(repo.read("b.txt"), b"his b\n", "the undo left b.txt");
     repo.write("b.txt", b"his b, edited again\n");
 

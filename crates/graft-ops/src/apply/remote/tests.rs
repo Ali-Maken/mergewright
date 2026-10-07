@@ -146,7 +146,7 @@ fn would_overwrite_names_the_paths_and_no_keys() {
     let failure = RemoteFailure::WouldOverwrite {
         paths: vec!["notes.md".to_owned(), "src/a.rs".to_owned()],
     };
-    let line = explain(&entry, &failure, &[], &names);
+    let line = explain(&entry, &failure, &[], &names, &crate::keys::Letters);
     assert_eq!(
         line,
         "pull refused: your edits to notes.md, src/a.rs would be overwritten"
@@ -160,7 +160,13 @@ fn would_overwrite_names_the_paths_and_no_keys() {
 #[test]
 fn not_fast_forward_says_no_plan_shorthand() {
     let (entry, names) = journaled(&pull_op("main", "origin"));
-    let line = explain(&entry, &RemoteFailure::NotFastForward, &[], &names);
+    let line = explain(
+        &entry,
+        &RemoteFailure::NotFastForward,
+        &[],
+        &names,
+        &crate::keys::Letters,
+    );
     assert_eq!(
         line,
         "pull stopped: main and origin/main diverged \u{2014} merge or rebase"
@@ -182,13 +188,16 @@ fn explain_names_each_failure() {
             stderr_tail: tail.clone(),
             names: Box::new(names.clone()),
         };
-        let line = error.explain();
+        let line = error.explain(&crate::keys::Letters);
         for word in words {
             assert!(line.contains(word), "{failure:?}: {line:?} lacks {word:?}");
         }
-        // `Display` and `explain` are one text.
-        assert_eq!(error.to_string(), line);
-        assert_eq!(explain(&entry, &failure, &tail, &names), line);
+        // `Display` is `explain` with no keys.
+        assert_eq!(error.to_string(), error.explain(&crate::keys::NoKeys));
+        assert_eq!(
+            explain(&entry, &failure, &tail, &names, &crate::keys::Letters),
+            line
+        );
         assert!(
             !short(&failure).is_empty(),
             "{failure:?} has a short reason"
@@ -201,7 +210,13 @@ fn explain_names_each_failure() {
 #[test]
 fn rejected_push_names_pull_then_m_or_r() {
     let (entry, names) = journaled(&push_op("main", "origin"));
-    let line = explain(&entry, &RemoteFailure::NonFastForward, &[], &names);
+    let line = explain(
+        &entry,
+        &RemoteFailure::NonFastForward,
+        &[],
+        &names,
+        &crate::keys::Letters,
+    );
     assert_eq!(
         line,
         "push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease"
@@ -220,14 +235,26 @@ fn short_reason_for_cancel_is_the_word() {
 fn names_survive_arrows_and_slashes() {
     let (entry, names) = journaled(&push_op("a→b", "team/origin"));
     assert_eq!(entry.description, "push a→b → team/origin/a→b");
-    let line = explain(&entry, &RemoteFailure::NonFastForward, &[], &names);
+    let line = explain(
+        &entry,
+        &RemoteFailure::NonFastForward,
+        &[],
+        &names,
+        &crate::keys::Letters,
+    );
     assert!(
         line.starts_with("push rejected: team/origin/a→b has commits you don't"),
         "{line}"
     );
 
     let (entry, names) = journaled(&pull_op("x→y", "team/origin"));
-    let line = explain(&entry, &RemoteFailure::NotFastForward, &[], &names);
+    let line = explain(
+        &entry,
+        &RemoteFailure::NotFastForward,
+        &[],
+        &names,
+        &crate::keys::Letters,
+    );
     assert!(
         line.starts_with("pull stopped: x→y and team/origin/x→y diverged"),
         "{line}"
@@ -241,6 +268,7 @@ fn names_survive_arrows_and_slashes() {
         },
         &[],
         &names,
+        &crate::keys::Letters,
     );
     assert_eq!(line, "team/origin unreachable: h");
 }

@@ -124,7 +124,7 @@ fn dot_choose(state: &mut AppState, row: usize, label: &str) -> Vec<Command> {
 
 fn operated_op(commands: &[Command]) -> Option<&Operation> {
     commands.iter().find_map(|command| match command {
-        Command::Operate(_, op) => Some(op.as_ref()),
+        Command::Operate(_, op, ..) => Some(op.as_ref()),
         _ => None,
     })
 }

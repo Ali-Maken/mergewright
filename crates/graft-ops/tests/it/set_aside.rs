@@ -217,7 +217,7 @@ fn a_staged_new_file_deleted_from_disk_is_named_as_back_from_the_index() {
         std::fs::remove_file(repo.path().join("notes.md")).expect("removed");
 
         let applied = try_run(&repo, &kind.op(&repo), NOW)
-            .unwrap_or_else(|why| panic!("{kind:?}: {}", why.explain()));
+            .unwrap_or_else(|why| panic!("{kind:?}: {}", why.explain(&crate::support::Letters)));
 
         assert_eq!(
             repo.read("notes.md"),
@@ -350,8 +350,8 @@ fn round_trip(kind: Kind, tree: Tree) {
     assert!(op.sets_aside(&facts).is_some(), "{what}: the tree is dirty");
     let split_before = split(&repo);
 
-    let applied =
-        try_run(&repo, &op, NOW).unwrap_or_else(|why| panic!("{what}: {}", why.explain()));
+    let applied = try_run(&repo, &op, NOW)
+        .unwrap_or_else(|why| panic!("{what}: {}", why.explain(&crate::support::Letters)));
     assert_eq!(applied.entry.status, EntryStatus::Committed, "{what}");
     set_aside_of(&applied.entry);
     let after = whole(&repo);
@@ -376,10 +376,12 @@ fn round_trip(kind: Kind, tree: Tree) {
         "{what}: no staging lost ({status_before:?} → {status_after:?})"
     );
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{what}: undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{what}: undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(&repo), before, "{what}: undo put it back exactly");
 
-    run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("{what}: redo: {}", why.explain()));
+    run_redo(&repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("{what}: redo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(&repo), after, "{what}: redo put it forward exactly");
 }
 
@@ -491,7 +493,7 @@ fn a_clean_put_back_drops_the_set_aside_stash() {
         let before = stash_list(&repo);
 
         let applied = try_run(&repo, &kind.op(&repo), NOW)
-            .unwrap_or_else(|why| panic!("{kind:?}: {}", why.explain()));
+            .unwrap_or_else(|why| panic!("{kind:?}: {}", why.explain(&crate::support::Letters)));
         let entry = last_entry(&repo);
         assert_eq!(
             entry, applied.entry,
@@ -619,7 +621,7 @@ fn a_put_back_that_fails_without_conflict_keeps_the_stash() {
     let (repo, op) = put_back_refused();
     let (entry, words) = match try_run(&repo, &op, NOW) {
         Err(error @ ApplyError::Git { .. }) => {
-            let words = error.explain();
+            let words = error.explain(&crate::support::Letters);
             let ApplyError::Git { entry, .. } = error else {
                 unreachable!()
             };
@@ -649,7 +651,8 @@ fn undo_after_a_refused_put_back_restores_everything() {
     let Err(ApplyError::Git { .. }) = try_run(&repo, &op, NOW) else {
         panic!("the put-back should fail");
     };
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(&repo), before, "undo put it back exactly");
 }
 
@@ -667,7 +670,7 @@ fn a_journal_failure_after_a_clash_names_the_stash() {
         Err(error @ ApplyError::Journal { .. }) => error,
         other => panic!("the outcome line should fail: {other:?}"),
     };
-    let words = error.explain();
+    let words = error.explain(&crate::support::Letters);
     assert!(words.contains("stash@{0}"), "{words}");
     assert!(words.contains("clash"), "{words}");
     assert_eq!(stash_commits(&repo).len(), 1, "S kept");
@@ -691,7 +694,7 @@ fn a_journal_failure_after_a_clean_put_back_names_what_came_back() {
         Err(error @ ApplyError::Journal { .. }) => error,
         other => panic!("the outcome line should fail: {other:?}"),
     };
-    let words = error.explain();
+    let words = error.explain(&crate::support::Letters);
     assert!(
         words.contains("notes.md came back from the index"),
         "{words}"
@@ -709,7 +712,7 @@ fn an_unreadable_status_after_the_put_back_names_the_stash() {
     post_checkout(&repo, "git config status.showUntrackedFiles bogus");
     let op = checkout_to(&repo, "refs/heads/feature");
     let error = try_run(&repo, &op, NOW).expect_err("the status should not read");
-    let words = error.explain();
+    let words = error.explain(&crate::support::Letters);
     assert!(words.contains("stash@{0}"), "{error:?}: {words}");
     assert!(words.contains("could not be read"), "{words}");
     assert!(edit_is_somewhere(&repo, "base.txt", b"edited\n"));
@@ -729,7 +732,7 @@ fn an_unlisted_set_aside_after_a_clean_put_back_says_the_edits_are_back() {
     );
     let op = checkout_to(&repo, "refs/heads/feature");
     let error = try_run(&repo, &op, NOW).expect_err("the drop should not happen");
-    let words = error.explain();
+    let words = error.explain(&crate::support::Letters);
     assert!(
         words.contains("your edits are back; the set-aside copy could not be found to drop"),
         "{error:?}: {words}"
@@ -845,7 +848,13 @@ fn a_put_back_that_fails_without_a_clash_is_edits_in_stash() {
     // The error's own line is git's; where the edits are is `edits_at`, and
     // `explain` adds it in graft-ops' words.
     assert!(!error.to_string().contains("stash@{0}"), "{error}");
-    assert!(error.explain().contains("stash@{0}"), "{}", error.explain());
+    assert!(
+        error
+            .explain(&crate::support::Letters)
+            .contains("stash@{0}"),
+        "{}",
+        error.explain(&crate::support::Letters)
+    );
 }
 
 /// `feature` and `main` rewrite the same line of `shared.txt`, so a rebase
@@ -906,7 +915,7 @@ fn a_rebase_that_stops_keeps_the_edits_aside_until_it_ends() {
             repo.git(&["add", "shared.txt"]);
         }
         let applied = resume_with(&repo, how.clone(), NOW + 1)
-            .unwrap_or_else(|why| panic!("{how:?}: {}", why.explain()));
+            .unwrap_or_else(|why| panic!("{how:?}: {}", why.explain(&crate::support::Letters)));
         assert!(
             !repo.exists(".git/rebase-merge"),
             "{how:?}: the rebase ended"
@@ -1225,7 +1234,7 @@ fn a_stop_mid_rebase_is_held_and_abort_puts_the_edits_back() {
     assert!(edit_is_somewhere(&repo, "n.txt", b"new\n"));
 
     resume_with(&repo, Resume::Abort, NOW + 1)
-        .unwrap_or_else(|why| panic!("abort: {}", why.explain()));
+        .unwrap_or_else(|why| panic!("abort: {}", why.explain(&crate::support::Letters)));
     assert!(!repo.exists(".git/rebase-merge"), "the rebase is gone");
     assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/feature");
     assert_eq!(repo.read("base.txt"), b"edited\n", "the edit is back");
@@ -1251,8 +1260,9 @@ fn undo_after_a_stop_at_4_or_5_restores_everything() {
                 Left::expected(kind, step),
                 "{what}: the stop landed"
             );
-            run_undo(&repo, NOW + 1, false)
-                .unwrap_or_else(|why| panic!("{what}: undo: {}", why.explain()));
+            run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| {
+                panic!("{what}: undo: {}", why.explain(&crate::support::Letters))
+            });
             assert_eq!(whole(&repo), before, "{what}: undo put it back exactly");
         }
     }
@@ -1301,7 +1311,8 @@ fn undo_after_a_clashed_put_back_drops_the_duplicate_stash() {
     let Err(ApplyError::Clashed { .. }) = try_run(&repo, &op, NOW) else {
         panic!("the put-back should clash");
     };
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(
         whole(&repo),
         before,
@@ -1320,8 +1331,10 @@ fn redo_after_that_undo_stores_it_again() {
     };
     let stash = set_aside_of(&entry);
     let clashed = state_of(&repo);
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
-    run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
+    run_redo(&repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("redo: {}", why.explain(&crate::support::Letters)));
     let redone = state_of(&repo);
     assert_eq!(redone.index, clashed.index, "the unmerged index is back");
     assert_eq!(redone.files, clashed.files, "the markers are back");

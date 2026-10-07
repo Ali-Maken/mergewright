@@ -865,7 +865,7 @@ fn capital_u_on_the_banner_at_the_landing_redoes_the_finish() {
     assert!(state.banner_focus);
     let (_, commands) = press_for_commands(&state, KeyPress::plain(KeyCode::Char('U')));
     assert!(
-        matches!(commands.as_slice(), [Command::Redo(_, false)]),
+        matches!(commands.as_slice(), [Command::Redo(_, false, ..)]),
         "{commands:?}"
     );
     let state = app.key(&state, KeyCode::Char('U'));

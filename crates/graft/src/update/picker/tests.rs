@@ -169,7 +169,7 @@ fn names(state: &AppState) -> Vec<String> {
 
 fn operated(commands: &[Command]) -> Option<&Operation> {
     commands.iter().find_map(|command| match command {
-        Command::Operate(_, op) => Some(op.as_ref()),
+        Command::Operate(_, op, ..) => Some(op.as_ref()),
         _ => None,
     })
 }

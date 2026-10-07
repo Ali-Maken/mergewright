@@ -80,7 +80,7 @@ fn dot_enter_y(path: &Path) -> Operation {
     let op = commands
         .into_iter()
         .find_map(|command| match command {
-            Command::Operate(_, op) => Some(*op),
+            Command::Operate(_, op, ..) => Some(*op),
             _ => None,
         })
         .unwrap_or_else(|| panic!("`y` launched no operation: {:?}", after.status));

@@ -93,7 +93,7 @@ fn whitespace_is_absorbed_as_staged(setting: &str) {
 
     let params = planned(&repo).unwrap_or_else(|why| panic!("it plans: {why}"));
     try_run(&repo, &Operation::Rewrite(params), NOW)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(
         repo.git(&["rev-parse", "HEAD^{tree}"]),
@@ -129,7 +129,7 @@ fn a_stay_with_trailing_spaces_stays_staged(setting: &str) {
 
     let params = planned(&repo).unwrap_or_else(|why| panic!("it plans: {why}"));
     try_run(&repo, &Operation::Rewrite(params), NOW)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(
         repo.git(&["rev-parse", ":old.txt"]),

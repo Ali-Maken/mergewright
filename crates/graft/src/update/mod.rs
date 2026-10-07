@@ -39,6 +39,7 @@ pub mod keys;
 pub mod map;
 mod mouse;
 pub mod name_prompt;
+pub(crate) mod op_keys;
 pub mod operate;
 pub(crate) mod palette;
 pub mod picker;

@@ -36,6 +36,7 @@ use graft_git::run::RunError;
 use crate::apply::{AfterState, Applied, Context, Opening, Refresh, begin, finish, reason_for};
 use crate::facts::FactsError;
 use crate::journal::JournalError;
+use crate::keys::{KeyNames, NoKeys, OpKey, clause, then};
 use crate::snapshot::SnapshotError;
 use crate::undo::{InversePlan, Replaced, Step};
 
@@ -43,7 +44,10 @@ pub(crate) use raw::{same_content_paths, write_raw};
 use rollback::{Before, Cancelled, roll_back_after_failure, roll_back_after_stop};
 use steps::run_step;
 
-use outcome::{after_state, journal_failed, outcome_of, rollback_what, run_plan};
+use outcome::{
+    after_state, cancelled_partway_words, failed_partway_words, journal_failed, outcome_of,
+    run_plan,
+};
 use ref_names::check_ref_names;
 
 /// Why a restore could not be made, or could not finish.
@@ -81,7 +85,7 @@ pub enum RestoreError {
     /// The journal could not be written. When the plan had already failed,
     /// `after` carries that failure too, so it is not lost behind this one
     /// (m3/03 review, Minor 1).
-    #[error("{}", journal_failed(.error, .after.as_deref()))]
+    #[error("{}", journal_failed(.error, .after.as_deref(), &NoKeys))]
     Journal {
         /// What the journal said.
         error: JournalError,
@@ -119,7 +123,7 @@ pub enum RestoreError {
     /// puts back the state the cancelled undo started from. `ApplyError`'s
     /// forward-operation wording keeps `u`, correctly — there the aborted
     /// entry is an operation, so `next_undo` does reach it.
-    #[error("undo cancelled part-way · {} · U restores the backup", rollback_what(.rollback))]
+    #[error("{}", cancelled_partway_words(.rollback, &NoKeys))]
     CancelledPartway {
         /// What the roll-back could not put back, newest first.
         applied: Vec<String>,
@@ -140,11 +144,7 @@ pub enum RestoreError {
     /// ref holds the state the restore started from, so `U` gets it back
     /// (`U`, not `u`, for the reason [`RestoreError::CancelledPartway`]
     /// gives).
-    #[error(
-        "{failure} · rolled back part-way · {} still changed: {} · U restores the backup",
-        .applied.join(", "),
-        rollback_what(.rollback)
-    )]
+    #[error("{}", failed_partway_words(.failure, .applied, .rollback, &NoKeys))]
     FailedPartway {
         /// The step's own failure: the reason the restore did not finish.
         failure: Box<RestoreError>,
@@ -181,9 +181,23 @@ pub enum RestoreError {
 }
 
 impl RestoreError {
-    /// One line for the status line.
-    pub fn explain(&self) -> String {
-        self.to_string()
+    /// One line for the status line, its keys spelled through `keys` (an
+    /// unbound one's clause left out). The `Display` is these words with
+    /// [`NoKeys`].
+    #[must_use]
+    pub fn explain(&self, keys: &dyn KeyNames) -> String {
+        match self {
+            RestoreError::Journal { error, after } => journal_failed(error, after.as_deref(), keys),
+            RestoreError::CancelledPartway { rollback, .. } => {
+                cancelled_partway_words(rollback, keys)
+            }
+            RestoreError::FailedPartway {
+                failure,
+                applied,
+                rollback,
+            } => failed_partway_words(failure, applied, rollback, keys),
+            other => other.to_string(),
+        }
     }
 }
 

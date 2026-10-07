@@ -81,7 +81,7 @@ fn an_orphan_branch_past_ten_is_beyond_reach() {
 
     let refusal = refused(planned(&repo, &RewriteRequest::AmendInto { target: d2 }));
     assert_eq!(
-        refusal.explain(),
+        refusal.explain(&crate::support::Letters),
         format!(
             "{} is more than 10 commits back · on docs a reaches the last 10 unpushed commits",
             short(d2)

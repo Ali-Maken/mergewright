@@ -18,6 +18,7 @@ use graft_git::run::askpass::{AskPass, AskPassServer, Secret};
 use graft_git::run::{GitInvocation, RunError};
 
 use super::{AfterState, Context};
+use crate::keys::{KeyNames, OpKey, clause, either, then};
 use crate::operation::{Invocation, RemoteNames};
 
 /// What a remote operation needs from the app: somewhere to show progress
@@ -286,24 +287,37 @@ pub(crate) fn explain(
     failure: &RemoteFailure,
     stderr_tail: &[String],
     names: &RemoteNames,
+    keys: &dyn KeyNames,
 ) -> String {
     let retry = match entry.kind {
-        OperationKind::Fetch => "f",
-        OperationKind::Pull => "p",
-        _ => "P",
+        OperationKind::Fetch => OpKey::Fetch,
+        OperationKind::Pull => OpKey::Pull,
+        _ => OpKey::Push,
     };
     match failure {
         // Names the whole way back (m7-power-tools/15, :774): pull, then
         // merge or rebase what it brings, or force. No ahead/behind count:
         // `explain` has none at hand. The app splits at the first ` · `, so
         // the keys part stays whole when the reason is cut at 80 columns.
-        RemoteFailure::NonFastForward => format!(
-            "push rejected: {} has commits you don't · p pull, then m or r · P force with lease",
-            names.remote_side
-        ),
-        RemoteFailure::AuthFailed { target } => format!(
-            "{} · {retry} to try again",
-            with_target("authentication failed", target)
+        // Each key clause goes when its key is unbound (W3); `m or r` keeps
+        // the bound one, and `then …` goes with both.
+        RemoteFailure::NonFastForward => {
+            let then_land = either(
+                &[keys.label(OpKey::Merge), keys.label(OpKey::Rebase)],
+                " or ",
+            );
+            let pull = keys.label(OpKey::Pull).map(|pull| match then_land {
+                Some(land) => format!("{pull} pull, then {land}"),
+                None => format!("{pull} pull"),
+            });
+            then(
+                format!("push rejected: {} has commits you don't", names.remote_side),
+                [pull, clause(keys, OpKey::Push, "force with lease")],
+            )
+        }
+        RemoteFailure::AuthFailed { target } => then(
+            with_target("authentication failed", target),
+            [clause(keys, retry, "to try again")],
         ),
         // No plan shorthand and no shell command: the app's own line names
         // `m`/`r` wherever it knows the tip to aim them at
@@ -326,9 +340,12 @@ pub(crate) fn explain(
                 .map_or_else(|| target.clone(), str::to_owned);
             format!("{} unreachable: {said}", names.remote)
         }
-        RemoteFailure::StaleInfo => format!(
-            "push refused: {} moved since your last fetch (stale lease) · f to fetch, then look",
-            names.remote_side
+        RemoteFailure::StaleInfo => then(
+            format!(
+                "push refused: {} moved since your last fetch (stale lease)",
+                names.remote_side
+            ),
+            [clause(keys, OpKey::Fetch, "to fetch, then look")],
         ),
         RemoteFailure::RemoteRejected { reason } => {
             format!("{} rejected by the remote: {reason}", entry.description)

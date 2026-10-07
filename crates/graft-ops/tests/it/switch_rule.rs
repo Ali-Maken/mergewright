@@ -72,7 +72,7 @@ fn plan_of(repo: &TempRepo, op: &Operation) -> PreviewPlan {
     let handle = repo.open();
     let facts = read_facts(&handle, git_version(), &Never, &op.facts_scope()).expect("facts");
     preview::plan(&handle, &git_version(), op, &facts, &Never)
-        .unwrap_or_else(|why| panic!("{}", why.explain()))
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)))
 }
 
 // ── a new branch switched to over edits ─────────────────────────────────
@@ -94,7 +94,8 @@ fn switching_create_at_head_over_edits_sets_nothing_aside() {
     let before = state_of(&repo);
     let (split_before, status_before) = (split(&repo), porcelain(&repo));
     let stashes_before = stash_list(&repo);
-    let applied = try_run(&repo, &op, NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = try_run(&repo, &op, NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(applied.entry.put_back, None, "nothing was set aside");
     assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/nb");
     let after = state_of(&repo);
@@ -104,7 +105,8 @@ fn switching_create_at_head_over_edits_sets_nothing_aside() {
     assert_eq!(porcelain(&repo), status_before);
     assert_eq!(stash_list(&repo), stashes_before, "no stash made");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(state_of(&repo), before, "undo put it back exactly");
 }
 
@@ -119,7 +121,8 @@ fn switching_create_elsewhere_over_edits_sets_them_aside_and_u_restores() {
     let before = (state_of(&repo), stash_list(&repo));
     let split_before = split(&repo);
 
-    let applied = try_run(&repo, &op, NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = try_run(&repo, &op, NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     set_aside_of(&applied.entry);
     assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/nb");
     assert_eq!(repo.read("feature.txt"), b"feature\n", "on feature's tree");
@@ -129,7 +132,8 @@ fn switching_create_elsewhere_over_edits_sets_them_aside_and_u_restores() {
     assert_eq!(split(&repo), split_before, "the staged split as before");
     assert_eq!(stash_list(&repo), before.1, "no stash left");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!((state_of(&repo), stash_list(&repo)), before);
     assert!(
         repo.try_git(&["rev-parse", "--verify", "-q", "refs/heads/nb"])
@@ -211,7 +215,8 @@ fn track(repo: &TempRepo) -> Operation {
 fn track_creates_the_local_branch_tracking_the_remote() {
     let (_up, down) = remote_only();
     let op = track(&down);
-    try_run(&down, &op, NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    try_run(&down, &op, NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(down.git(&["symbolic-ref", "HEAD"]), "refs/heads/sara/x");
     assert_eq!(
         id(&down, "refs/heads/sara/x"),
@@ -246,8 +251,10 @@ fn undo_of_a_track_switch_removes_the_upstream_it_wrote() {
     let (_up, down) = remote_only();
     down.git(&["config", "branch.main.remote", "origin"]);
     down.git(&["config", "branch.main.merge", "refs/heads/main"]);
-    try_run(&down, &track(&down), NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
-    run_undo(&down, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    try_run(&down, &track(&down), NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
+    run_undo(&down, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(
         config_values(&down, "branch.sara/x.remote"),
         Vec::<String>::new(),
@@ -272,7 +279,8 @@ fn undo_of_a_track_switch_removes_the_upstream_it_wrote() {
     );
     down.git(&["branch", "-D", "sara/x"]);
 
-    run_redo(&down, NOW + 2, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+    run_redo(&down, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("redo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(config_values(&down, "branch.sara/x.remote"), ["origin"]);
     assert_eq!(
         config_values(&down, "branch.sara/x.merge"),
@@ -287,9 +295,11 @@ fn a_pre_existing_upstream_for_the_same_name_survives_undo() {
     let (_up, down) = remote_only();
     down.git(&["config", "branch.sara/x.remote", "upstream"]);
     down.git(&["config", "branch.sara/x.merge", "refs/heads/elsewhere"]);
-    try_run(&down, &track(&down), NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    try_run(&down, &track(&down), NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(config_values(&down, "branch.sara/x.remote"), ["origin"]);
-    run_undo(&down, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&down, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(config_values(&down, "branch.sara/x.remote"), ["upstream"]);
     assert_eq!(
         config_values(&down, "branch.sara/x.merge"),
@@ -304,8 +314,10 @@ fn a_pre_existing_upstream_for_the_same_name_survives_undo() {
 fn track_undo_deletes_the_branch_and_puts_head_back() {
     let (_up, down) = remote_only();
     let before = state_of(&down);
-    try_run(&down, &track(&down), NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
-    run_undo(&down, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    try_run(&down, &track(&down), NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
+    run_undo(&down, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(
         state_of(&down),
         before,

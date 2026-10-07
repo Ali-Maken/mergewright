@@ -117,7 +117,7 @@ fn preview_of(repo: &TempRepo, op: &Operation) -> PreviewPlan {
     let handle = repo.open();
     let facts = facts_for(&handle, op);
     preview::plan(&handle, &git_version(), op, &facts, &Never)
-        .unwrap_or_else(|why| panic!("preview: {}", why.explain()))
+        .unwrap_or_else(|why| panic!("preview: {}", why.explain(&crate::support::Letters)))
 }
 
 fn try_preview(repo: &TempRepo, op: &Operation) -> Result<PreviewPlan, preview::PreviewError> {
@@ -277,17 +277,18 @@ fn an_undo_or_redo_that_moves_head_rereads_the_graph() {
             head_before: HeadRef::Branch("refs/heads/main".to_owned()),
             on_edits: graft_ops::operation::OnEdits::SetAside,
         });
-        let forward = try_run(&repo, &op, NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+        let forward = try_run(&repo, &op, NOW)
+            .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
         assert_eq!(forward.refresh, Refresh::Everything, "the checkout itself");
 
-        let undone =
-            run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+        let undone = run_undo(&repo, NOW + 1, false)
+            .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
         assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/main");
         assert!(undone.entry.touches.refs.is_empty(), "the premise: no ref");
         assert_eq!(undone.refresh, Refresh::Everything, "undo moved HEAD");
 
-        let redone =
-            run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+        let redone = run_redo(&repo, NOW + 2, false)
+            .unwrap_or_else(|why| panic!("redo: {}", why.explain(&crate::support::Letters)));
         assert_ne!(
             repo.git(&["rev-parse", "--symbolic-full-name", "HEAD"]),
             "refs/heads/main"
@@ -309,8 +310,8 @@ fn an_undo_that_leaves_head_alone_rereads_the_working_tree_only() {
         )])),
         NOW,
     );
-    let undone =
-        run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    let undone = run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(undone.refresh, Refresh::WorkingTree);
 }
 
@@ -371,7 +372,8 @@ fn branch_delete_takes_its_config_and_undo_puts_it_back() {
         name: "refs/heads/feature".to_owned(),
         expected: id(&repo, "refs/heads/feature"),
     });
-    try_run(&repo, &op, NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    try_run(&repo, &op, NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         config_values(&repo, "branch.feature.remote"),
         Vec::<String>::new(),
@@ -384,14 +386,16 @@ fn branch_delete_takes_its_config_and_undo_puts_it_back() {
     );
     assert_eq!(config_values(&repo, "branch.main.remote"), ["origin"]);
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(config_values(&repo, "branch.feature.remote"), ["origin"]);
     assert_eq!(
         config_values(&repo, "branch.feature.merge"),
         ["refs/heads/feature"]
     );
 
-    run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+    run_redo(&repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("redo: {}", why.explain(&crate::support::Letters)));
     repo.git(&["branch", "feature", "HEAD"]);
     assert!(
         repo.try_git(&["rev-parse", "--abbrev-ref", "feature@{upstream}"])
@@ -468,7 +472,8 @@ fn branch_from_stash_applies_undoes_redoes() {
     // The redo leg: a stash drop, the branch re-created, `HEAD` moved and
     // the tree restored — the one inverse in this group that does all four.
     // `round_trip` cannot be used here (the stash push already holds `NOW`).
-    run_redo(&repo, NOW + 3, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+    run_redo(&repo, NOW + 3, false)
+        .unwrap_or_else(|why| panic!("redo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(
         state_of(&repo),
         after,
@@ -490,7 +495,8 @@ fn undo_to(repo: &TempRepo, at: i64) {
     let mut journal = journal_for(&handle);
     let never = Never;
     let mut ctx = context(&handle, &mut journal, at, &never);
-    undo::undo(&mut ctx, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    undo::undo(&mut ctx, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
 }
 
 // ── the ghost equals what git did ───────────────────────────────────────
@@ -1044,8 +1050,13 @@ fn box_shows_the_lines_that_run(repo: &TempRepo, op: &Operation) {
         .iter()
         .map(Invocation::command_line)
         .collect();
-    let plan = preview::plan(&handle, &git_version(), op, &facts, &Never)
-        .unwrap_or_else(|why| panic!("{}: {}", op.describe(), why.explain()));
+    let plan = preview::plan(&handle, &git_version(), op, &facts, &Never).unwrap_or_else(|why| {
+        panic!(
+            "{}: {}",
+            op.describe(),
+            why.explain(&crate::support::Letters)
+        )
+    });
     assert!(!plan.commands.is_empty(), "{}", op.describe());
     assert_eq!(
         plan.commands,
@@ -1429,7 +1440,7 @@ fn a_shell_merge_is_not_adopted_as_grafts_own_entry() {
     // aborts it as a shell-begun merge, with an `AbortMerge` entry of its
     // own — never by closing Graft's stale entry.
     let aborted = run_resume(&repo, Resume::Abort, NOW + 1)
-        .unwrap_or_else(|why| panic!("the shell's merge aborts: {}", why.explain()));
+        .unwrap_or_else(|why| panic!("the shell's merge aborts: {why}"));
     assert_eq!(aborted.entry.kind, OperationKind::AbortMerge);
     assert_ne!(aborted.entry.id, entry.id, "a new entry, not Graft's");
     let status = journal_for(&repo.open())
@@ -1726,7 +1737,8 @@ fn time_machine_reverts_in_order() {
         let mut journal = journal_for(&handle);
         let never = Never;
         let mut ctx = context(&handle, &mut journal, NOW + 10 + step, &never);
-        undo::redo(&mut ctx, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+        undo::redo(&mut ctx, false)
+            .unwrap_or_else(|why| panic!("redo: {}", why.explain(&crate::support::Letters)));
     }
     assert_eq!(
         repo.git(&["rev-parse", "refs/tags/third"]),
@@ -1864,7 +1876,7 @@ fn repush_old_tip_with_lease() {
     let mut journal = journal_for(&handle);
     let never = Never;
     let mut ctx = context(&handle, &mut journal, NOW, &never);
-    apply(&mut ctx, &op).unwrap_or_else(|why| panic!("{}", why.explain()));
+    apply(&mut ctx, &op).unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     drop(ctx);
 
     assert_eq!(
@@ -2285,7 +2297,7 @@ fn a_forced_undo_still_refuses_when_the_ref_moved_under_it() {
     assert!(
         matches!(asked, UndoError::Drift { .. }),
         "{}",
-        asked.explain()
+        asked.explain(&crate::support::Letters)
     );
     assert_eq!(
         id(&repo, "refs/heads/main"),
@@ -2303,7 +2315,7 @@ fn a_forced_undo_still_refuses_when_the_ref_moved_under_it() {
                 if name == "refs/heads/main"
         ),
         "the compare-and-swap is what refused, naming the ref: {}",
-        refused.explain()
+        refused.explain(&crate::support::Letters)
     );
     assert_eq!(
         id(&repo, "refs/heads/main"),

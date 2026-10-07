@@ -191,7 +191,7 @@ fn forecast(
             }));
         }
         Err(PreviewError::Stopped) => return Err(PreviewError::Stopped),
-        Err(why) => return Ok(not_checked(&why.explain())),
+        Err(why) => return Ok(not_checked(&why.to_string())),
     }
     if *git < MERGE_BASE_MIN {
         return Ok(not_checked("git 2.40+ needed to forecast a stash"));
@@ -206,7 +206,7 @@ fn forecast(
     match forecast_one(repo, git, Some(base), ours, stash, stop) {
         Ok(forecast) => Ok(forecast),
         Err(PreviewError::Stopped) => Err(PreviewError::Stopped),
-        Err(why) => Ok(not_checked(&why.explain())),
+        Err(why) => Ok(not_checked(&why.to_string())),
     }
 }
 

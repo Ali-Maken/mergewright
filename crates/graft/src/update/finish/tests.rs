@@ -134,7 +134,7 @@ fn resumes(commands: &[Command]) -> Vec<&Resume> {
     commands
         .iter()
         .filter_map(|command| match command {
-            Command::Resume(_, what) => Some(what),
+            Command::Resume(_, what, ..) => Some(what),
             _ => None,
         })
         .collect()

@@ -78,7 +78,8 @@ fn a_hand_edit_survives_taking_the_other_side() {
     );
     assert!(taken.backup_ref.is_some(), "with a backup of its own");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         repo.read("theirs-deleted.txt"),
         EDITED_UD,
@@ -123,7 +124,8 @@ fn a_hand_edit_survives_starting_the_file_over() {
     );
     assert!(restarted.backup_ref.is_some(), "with a backup of its own");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         repo.read("both.txt"),
         EDITED_UU,

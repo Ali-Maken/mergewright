@@ -67,15 +67,19 @@ pub(super) fn run_preview(
                         graft_ops::preview::PreviewError::Refused(refusal) => {
                             PreviewFailure::Refused(refusal)
                         }
-                        other => PreviewFailure::Failed(other.explain()),
+                        // Not a refusal, so it names no key (m8/10e).
+                        other => PreviewFailure::Failed(other.to_string()),
                     })?;
             (Some(Box::new(runs)), plan)
         }
         PreviewSubject::RevertTo(entry) => {
             let entries = super::undo::journal_entries(repos, clock, cancel)
                 .map_err(PreviewFailure::Failed)?;
+            // Keyless (m8/10e): the time machine's plan refuses only with
+            // `Refusal::CannotRevertTo` (`preview::revert_to`), whose words name no
+            // key, so this job holds no keymap.
             let plan = graft_ops::preview::plan_revert_to(&entries, entry)
-                .map_err(|why| PreviewFailure::Failed(why.explain()))?;
+                .map_err(|why| PreviewFailure::Failed(why.explain(&graft_ops::keys::NoKeys)))?;
             (None, plan)
         }
     };

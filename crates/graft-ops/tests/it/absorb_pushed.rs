@@ -115,7 +115,7 @@ fn a_into_a_pushed_commit_with_an_upstream_is_already_pushed() {
     }
     planned(&repo, &RewriteRequest::AmendInto { target: f2 }).expect("f2 plans");
     assert_eq!(
-        Refusal::AlreadyPushed { commit: f1 }.explain(),
+        Refusal::AlreadyPushed { commit: f1 }.explain(&crate::support::Letters),
         format!(
             "{} is already pushed · a only changes older commits you haven't pushed",
             short(f1)
@@ -241,7 +241,7 @@ fn a_new_branch_at_mains_tip_has_no_commits_of_its_own() {
         }
     );
     assert_eq!(
-        refusal.explain(),
+        refusal.explain(&crate::support::Letters),
         "fix has no commits of its own yet · c commits them"
     );
     assert!(matches!(
