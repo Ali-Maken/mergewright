@@ -1,0 +1,7 @@
+# m8/12c switch_refs by phase: piled fixture (40 000 branches + 10 000 tags, 3 commits), release.
+# 2026-10-07T16:48Z Darwin arm64; load at start 10.91 13.81 19.53; git 2.54.0
+switch-refs-cost: records=40001 for_each_ref_bytes=3836974 runs=10
+switch-refs-cost: phase=git for_each_ref p50_ms=929.4 p95_ms=1515.0
+switch-refs-cost: phase=previous rev_parse+check_ref_format p50_ms=11.0 p95_ms=17.2
+switch-refs-cost: phase=total switch_refs p50_ms=987.8 p95_ms=1045.6
+switch-refs-cost: phase=parse derived p50_ms=47.4

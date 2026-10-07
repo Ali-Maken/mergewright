@@ -1,22 +1,65 @@
-# m8/12 palette find: 40 000 branches + 10 000 tags, real pty 120x36, release, Unicode.
-# 2026-10-07T15:38Z Darwin arm64; pty driver exit 0
-loop_us n=52 p50=36249 p95=60739 max=74642
-check loop_p95_under_16ms FAIL
-check update_p95_under_16ms ok p95=5368
-open_to_branches_ms n=5 p50=2083.2 p95=2414.2 max=2414.2
-key_to_names_ms n=14 p50=52.2 p95=2415.9 max=2415.9
+# m8/12, 12c: palette find and held j on many refs. scripts/perf-palette.sh both
+
+## piled: 40 000 branches + 10 000 tags on 3 commits; palette, real pty 120x36, release, Unicode.
+# 2026-10-07T16:46Z Darwin arm64; load at start 11.71 15.96 21.06; pty driver exit 0
+loop_us n=51 p50=4127 p95=12929 max=13876
+check loop_p95_under_16ms ok
+check update_p95_under_16ms ok p95=2684
+open_to_branches_ms n=5 p50=779.0 p95=844.4 max=844.4
+key_to_names_ms n=14 p50=21.4 p95=790.3 max=790.3
 broken=none exited=yes status=0
 header tier=unicode columns=120 rows=36 history_rows=3 refs=50001 term=vscode headers=2
-frames=52 span_ms=19281.6 frames_per_s=2.6
-wakes n=52 p50=2 p95=10 p99=13 max=13
-motions n=52 p50=1 p95=4 p99=5 max=5
-queued n=52 p50=0 p95=3 p99=4 max=4
-update_us n=52 p50=1043 p95=5368 p99=5900 max=5900
-commands n=52 p50=1 p95=6 p99=8 max=8
-draw_us n=52 p50=30638 p95=39741 p99=49858 max=49858
-bytes n=52 p50=2740 p95=8443 p99=8443 max=8443
-write_us n=52 p50=5336 p95=24595 p99=34171 max=34171
+frames=51 span_ms=9696.0 frames_per_s=5.2
+wakes n=51 p50=2 p95=11 p99=13 max=13
+motions n=51 p50=1 p95=4 p99=5 max=5
+queued n=51 p50=0 p95=3 p99=4 max=4
+update_us n=51 p50=689 p95=2684 p99=4713 max=4713
+commands n=51 p50=1 p95=6 p99=8 max=8
+draw_us n=51 p50=668 p95=1186 p99=1586 max=1586
+bytes n=51 p50=2740 p95=8443 p99=8443 max=8443
+write_us n=51 p50=2573 p95=10710 p99=11849 max=11849
 fence_us n=0
-input_age_us n=34 p50=61035 p95=92853 p99=98893 max=98893
+input_age_us n=34 p50=22664 p95=33942 p99=34404 max=34404
 tail_ms=0.0
-power Now drawing from 'Battery Power'
+power Now drawing from 'AC Power'
+
+## piled: held j, no palette, real pty 120x36, release, Unicode.
+# 2026-10-07T16:46Z Darwin arm64; load at start 10.00 15.29 20.71; pty driver exit 0
+check held_j_draw_p95_under_16ms ok p95=1158
+header tier=unicode columns=120 rows=36 history_rows=3 refs=50001 term=vscode headers=2
+frames=173 span_ms=7794.0 frames_per_s=22.1
+wakes n=173 p50=1 p95=2 p99=10 max=15
+motions n=173 p50=1 p95=2 p99=2 max=2
+queued n=173 p50=0 p95=0 p99=0 max=0
+update_us n=173 p50=134 p95=392 p99=543 max=3447
+commands n=173 p50=0 p95=0 p99=3 max=4
+draw_us n=173 p50=450 p95=1158 p99=1823 max=9403
+bytes n=173 p50=41 p95=41 p99=1116 max=1684
+write_us n=173 p50=12 p95=29 p99=100 max=152
+fence_us n=0
+input_age_us n=169 p50=7531 p95=17326 p99=19344 max=21312
+tail_ms=0.0
+power Now drawing from 'AC Power'
+
+## with-refs: 100 000 commits, 50 000 refs spread (Scale::with_refs); palette, real pty 120x36, release, Unicode.
+# 2026-10-07T16:46Z Darwin arm64; load at start 8.35 14.39 20.19; pty driver exit 0
+loop_us n=55 p50=3364 p95=11336 max=19836
+check loop_p95_under_16ms ok
+check update_p95_under_16ms ok p95=2623
+open_to_branches_ms n=5 p50=307.3 p95=388.4 max=388.4
+key_to_names_ms n=14 p50=18.9 p95=283.9 max=283.9
+broken=none exited=yes status=0
+header tier=unicode columns=120 rows=36 history_rows=128 refs=25900 term=vscode headers=3
+frames=55 span_ms=7356.9 frames_per_s=7.3
+wakes n=55 p50=2 p95=13 p99=66 max=66
+motions n=55 p50=1 p95=4 p99=5 max=5
+queued n=55 p50=0 p95=3 p99=4 max=4
+update_us n=55 p50=416 p95=2623 p99=2830 max=2830
+commands n=55 p50=1 p95=8 p99=33 max=33
+draw_us n=55 p50=592 p95=887 p99=1493 max=1493
+bytes n=55 p50=2555 p95=7817 p99=8075 max=8075
+write_us n=55 p50=2243 p95=10230 p99=17931 max=17931
+fence_us n=0
+input_age_us n=34 p50=21659 p95=33961 p99=40402 max=40402
+tail_ms=0.0
+power Now drawing from 'AC Power'

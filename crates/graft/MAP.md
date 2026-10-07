@@ -898,7 +898,7 @@ re-exported from `mod.rs`.
 - `picker` (mod, `pub(crate)`) — `picker_view(state) -> Option<PickerView>` (m7-power-tools/10): the picker worded for `graft_ui::picker`; `None` unless shown. Kind from `current`/`is_previous`/`SwitchKind`; right column `tracks …`/`built on …`/`no copy of yours yet`; who = the author's first name; a failed read joined to one line. Drawn by `frame::boxes::draw_picker` in the graph arm after the preview and menu, at `update::picker::picker_box_in`. While shown, `rows::hint_context` answers `HintContext::Picker` (`type to find  ⏎ switch to it  esc close  ⇥ show it on the graph  ↑↓ row`).
 Internal split (m1-the-graph/72b, public paths unchanged): `frame` (tier/screen
 pick, `view`/`view_with_graphics`/`tier_in_force`/`draws_pixels`), `rows`
-(`graph_view` and its assembly), `entries` (building each `GraphEntry`,
+(`graph_view` and its assembly), `entries` (building each `GraphEntry`; a row's badges stop at `graft_ui::graph_screen::badges_that_fit(state.size.columns)`, in `refs::badges`' order, so a commit's ref count never sets a row's per-frame cost — m8-polish-and-ship/12c, guarded by `view::tests::many_refs::row_badge_work_is_bounded_by_width`, with `many_refs_row_hit_test_matches_draw` and `badge_order_unchanged`;
 `uncommitted_shown` — the uncommitted row takes the pane's top row: pinned, or a one-row pane with the cursor on it, 48), `status` (`status_view`), `detail` (`detail_view`,
 m2-details-and-diffs/07), `map` (`map_view`, m2-details-and-diffs/19),
 `journal` (`journal_view`, m3-working-tree-undo-and-stash/06), `stash`
