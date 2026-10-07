@@ -1,6 +1,7 @@
 # G-look polish 2 — folded merge `+N`, ghosts at Pixel, the whitespace tail shows only off-default
 
-Status: draft (planner spec-only pass 2026-10-07, from 17's NOTES items 2, 6 and the blame question)
+Status: ready (planner spec-only pass 2026-10-07, from 17's NOTES items 2, 6 and the blame question; decision 2
+**approved** by the user 2026-10-07, field notes :92 item 1, ADR-0060)
 Build with: _(blank — brownfield, ADR-0035; scout first.)_ Planner expects **Opus**: one new job + state + answer
 (item 2), and a tier rule on the draw path that event_loop graphics must obey (item 6). Each is held by a test; no
 choice left that the diff can't judge. Not Fable.
@@ -10,11 +11,12 @@ Needs: 17's `whitespace_tail_width` (`detail_pane/header.rs`) and title-tail tes
 count_between` (`compare.rs:66`); F3's tier machinery (`AppState::tier`, `event_loop::graphics`).
 **Crate set:** graft (jobs, update fold toggle + answer, `AppState`, `view::rows`/`view::strips`/`view::preview`,
 `event_loop::graphics`, blame title words, MAP.md) + graft-ui (`graph_column` row text, `detail_pane/header.rs`
-tail rule, MAP.md) + one sentence in `docs/design/01-view-mockups.md` §1.7. No graft-git or graft-graph change.
+tail rule, MAP.md). No graft-git or graft-graph change. DESIGN §1.7 is already amended (ADR-0060); no doc edit here.
 
 ## Read first
 - 17's **Decisions** 2, 6, 8 and **NOTES** (this ticket rules on them)
-- `docs/design/01-view-mockups.md` §1.7 (:279–295); `docs/design/03-graph-layout-algorithm.md` §3.6 last bullet
+- `docs/adr/0060-at-pixel-an-open-preview-draws-the-graph-at-unicode.md` (Decision)
+- `docs/design/01-view-mockups.md` §1.7 (:286–306, the ADR-0060 paragraph included); `docs/design/03-graph-layout-algorithm.md` §3.6 last bullet
   (:352–356, folds are an inclusion predicate), §3.8 (:371–423, strips; alpha in the key)
 - `docs/design/02-keymap.md` §2.5 (:314–325), §2.8 `w` row (:469)
 - `crates/graft-graph/MAP.md` `## inclusion` (:62–73); `crates/graft-git/MAP.md` :206–207 (`count_between`);
@@ -36,16 +38,17 @@ tail rule, MAP.md) + one sentence in `docs/design/01-view-mockups.md` §1.7. No 
    - Failure: `+?` on the row and one status line `couldn't count <sha7>'s commits: <git's reason>` (rule 3), shown
      once per merge, not per frame.
    - Shallow repo: rev-list counts what is present; accepted, no special case.
-2. **Item 6 — at Pixel, an open Ghost Preview draws the whole graph column at the Unicode tier.** 17's decision 6
+2. **Item 6 — at Pixel, an open Ghost Preview draws the whole graph column at the Unicode tier** (approved
+   2026-10-07, ADR-0060). 17's decision 6
    (text for ghost rows only, strips for real rows) is withdrawn: strips are 32-row aligned bands, so a ghost row
    mid-strip needs the strip punched, and a real lane crossing a ghost row would be half pixel, half text — §1.7 asks
    for "one continuous picture, not two separate graphs". One rule instead: `graph_tier()` = Unicode while a preview
    with ghost rows is open and `tier()` is Pixel; else `tier()`. The preview is modal and short; on close the strips
    re-place from the cache (no re-raster while the budget kept them). The header's `gfx` field and F3 keep reading
    `tier()` (the tier in force did not change). F3 during the preview: `graph_tier()` = `min(tier(), Unicode)`.
-   - DESIGN §1.7 "dashed stroke in the real renderer" → carried past v1 (pixel-rasterised ghosts). §1.7 gains one
-     sentence: "*At the Pixel tier the graph column draws at the Unicode tier while a preview is open.*" (planner
-     amendment). Builder's NOTES asks the conductor for the KNOWN_GAPS row `M8/pixel-ghosts-text`.
+   - DESIGN §1.7 "dashed stroke in the real renderer" → carried past v1 (pixel-rasterised ghosts). §1.7's sentence is
+     **applied** (ADR-0060, 2026-10-07): "*At the Pixel tier the graph column draws at the Unicode tier while a
+     preview is open.*" Builder's NOTES asks the conductor for the KNOWN_GAPS row `M8/pixel-ghosts-text`.
 3. **Whitespace tail — shown only where the screen departs from its own default.** One rule on all three screens:
    the title tail names a whitespace mode only when it differs from that screen's default. Detail and history
    (default: whitespace counted, §2.5) → `· whitespace ignored` while `w` is on, as 17 built. Blame (default:
@@ -96,8 +99,8 @@ pub fn whitespace_tail(ignored: bool, default_ignored: bool) -> Option<&'static 
 - [ ] Captures: `docs/shots/m8/polish-fold-120x36.txt`, `docs/shots/m8/polish-ghost-pixel-120x36.txt` (text layer),
       `docs/shots/m8/polish-blame-whitespace-counted-120x36.txt`; m8 contact sheet re-assembled. **Colour
       unverified** (rule 5) — the muted mark and tails.
-- [ ] §1.7 sentence; MAP.md graft (`count_folded`, `fold_counts`, `graph_tier`), graft-ui (`FoldMark`,
-      `whitespace_tail`). (doc, checked by reading)
+- [ ] §1.7 as amended by ADR-0060 matches what was built (read, NOTES says so or names the difference); MAP.md graft
+      (`count_folded`, `fold_counts`, `graph_tier`), graft-ui (`FoldMark`, `whitespace_tail`). (doc, checked by reading)
 
 ## Touches
 - Every `Inclusion::folded` insert site (grep, list in NOTES); the cursor row fill (`legible_on`); search/filter

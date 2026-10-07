@@ -8,6 +8,7 @@ M8 row, §5, §9; research `scroll-smoothness.md`, `big-repo-scroll.md`, `themes
 prototype (`prototypes/m8-polish-and-ship/README.md`, `docs/shots/m8-proto-*.txt`); `real-vs-mockup.md`; MAP.md of
 graft, graft-ui, graft-term (2b: also graft-ops, graft-git headings). No source read.
 2026-10-07, palette find (steps 3–4): `palette-find.md` → Prior art "Find" rows, J26–J32, P-find-1/2 (Where I'd differ).
+2026-10-07, approved (field notes :92): P-find-1 and P-find-2 → ADR-0061; 17b's Pixel ghosts → ADR-0060.
 
 **Promise (M8):** *"It stays smooth on your biggest repo, looks like the mock-up, installs with one command, and teaches
 itself from inside the app."* The acceptance walk proves it: held-key and wheel tails on MONOREPO, every journey at or
@@ -130,7 +131,7 @@ key (conductor: confirm that reading of step 5).
 | 28 | Commit by sha prefix | `⌃P` sha `⏎` | 3+1 | Sublime Merge 4 (`navigate_to_commit`), GitLens 4 |
 | 29 | Commit by subject words | `⌃P` words `⏎` | 3+1; +1 (`↓` run, UX §1.3) when a group above also matches | forgit 3, JetBrains/GitLens 4, lazygit 4+ |
 | 30 | Open a file's history | `⌃P` path `⏎` | 3+1 | lazygit 3 (`⌃S`), JetBrains/VS Code 4+ |
-| 31 | Run again what he ran from the palette | `⌃P` `⏎` | 2+1 (P-find-1; 3+1 by §2.12's order) | VS Code 3 (J6); JetBrains: recent files only |
+| 31 | Run again what he ran from the palette | `⌃P` `⏎` | 2+1 (P-find-1, approved 2026-10-07, ADR-0061) | VS Code 3 (J6); JetBrains: recent files only |
 | 32 | Switch to yesterday's branch | `C` name `⏎` | 3+1 (M7's picker, newest first; not walked here) | forgit 3, JetBrains 3–4, Sublime Merge 4, lazygit 4 |
 
 **J19 is 4, not 3 (2c).** The 2b row counted the field-note case (:86) as the plain amend. But `a` on HEAD with
@@ -392,7 +393,9 @@ preview first (ADR-0059, accepted). Replaces m7/37's `left behind`. Trade-off as
 rebase afterwards, vs. a branch he didn't name moving (shown before `y`, undone by one `u`; a conflicting, pushed or
 elsewhere-checked-out one stays, in words). Specs `fork-follows-engine.md` and `fork-follows-preview-words.md` stand.
 
-Palette find, **proposed 2026-10-07, not decided** (the conductor takes them to him):
+Palette find, proposed 2026-10-07, **approved 2026-10-07** (field notes :92, items 2 and 3, "your recommendation") —
+ADR-0061; applied: keymap §2.12 `Ctrl+P` line and History, view mock-ups §1.6 (drawing's recent row, M8 paragraph).
+The "Declined →" branches below and in specs 12/12b are not built.
 - **P-find-1. The empty `⌃P` box.** §2.12 opens it on "actions, then branches, tags, files, commits, then recently run
   commands". Proposed: empty → `COMMANDS RUN RECENTLY` first, then `ACTIONS`; branches, tags, files and commits only
   once he types; the empty field reads, muted, `type to find actions, branches, tags, files, commits`. Why: JetBrains
@@ -407,6 +410,12 @@ Palette find, **proposed 2026-10-07, not decided** (the conductor takes them to 
   M8 paragraph of §1.6 draws it (key, label, config id), and `⏎` asks the argument again. Why: §2.12's `Enter` runs
   "as its key would"; a stored argument makes a rerun a different action from the key's. Trade-off: rebase onto main
   again is `⌃P ⏎` and pick `main`, not `⌃P ⏎`.
+
+Pixel ghosts (17b, spec-only pass 2026-10-07), **approved 2026-10-07** (field notes :92, item 1) — ADR-0060; applied:
+view mock-ups §1.7. While a Ghost Preview is open at the Pixel tier the whole graph column draws at the Unicode tier;
+pixel dashed ghost strokes move past v1. Departs §1.7's "dashed stroke in the real renderer". Why: strips are 32-row
+bands, so text ghost rows inside them would draw a lane half pixel, half text — two pictures, which §1.7 rules out.
+Trade-off: no pixel curves while a preview is open; strips return on close, no re-raster.
 
 ## New UI
 

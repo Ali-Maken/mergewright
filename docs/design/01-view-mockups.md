@@ -264,7 +264,7 @@ the user, on the M6 acceptance capture (CLAUDE.md rule 6).
         │ BRANCHES                                                   │
         │  feature/rebase-cleanup                                    │
         │ COMMANDS RUN RECENTLY                                      │
-        │  git rebase main                                           │
+        │  Rebase current branch onto…                    r         │
         ╰ ↑↓ move  ⏎ run  esc close ─────────────────────────────────╯
 ```
 
@@ -275,6 +275,13 @@ M8 (ADR-0056): the same widget is what `?` opens, filtered to the focused place 
 key in the accent first (6 cells), then the label, then the action's config id muted and right-aligned (dropped
 below 100 columns), so the palette teaches the shortcut and the config name at once. `Theme: dark / light / high
 contrast` and `Practice tour` are action rows.
+
+M8 (ADR-0061, approved 2026-10-07): **empty box** — `⌃P` with nothing typed lists `COMMANDS RUN RECENTLY` (when any),
+then `ACTIONS`; branches, tags, files and commits appear once he types, and the empty field reads, muted, `type to
+find actions, branches, tags, files, commits`. **Recent rows** are action rows as above (key, label, config id): the
+last 8 distinct actions run from the palette this session, newest first. No argument is stored: `⏎` runs the row as
+its key would and asks for the argument again. (The drawing's last row read `git rebase main`, a command with its
+argument, until ADR-0061.)
 
 ### 1.7 Ghost Preview (overlaid on the graph, before confirming)
 
@@ -293,6 +300,10 @@ contrast` and `Practice tour` are action rows.
 Ghost nodes/edges are drawn dashed and dimmed (`┊`/`┈` stand in for a lower
 alpha, dashed stroke in the real renderer); real nodes stay solid so the
 before/after reads as one continuous picture, not two separate graphs.
+
+M8 (ADR-0060, approved 2026-10-07): at the Pixel tier the graph column draws at the Unicode tier while a preview is
+open, so ghost and real rows share one renderer and the `┊`/`┈` above is what he sees; the strips return on close.
+The header's `gfx` field still names the tier in force. A pixel dashed, low-alpha stroke is past v1.
 
 ### 1.8 Mistake Radar marker + Explain
 

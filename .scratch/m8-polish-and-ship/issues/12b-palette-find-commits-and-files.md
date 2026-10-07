@@ -1,7 +1,8 @@
 # G-palette 2b — `⌃P` finds commits and files
 
-Status: draft (spec-only pass 2026-10-07; split from 12; re-aligned the same day to `docs/research/palette-find.md`:
-step counts from the note's fence, `ReadOnce` shared with 12)
+Status: ready (spec-only pass 2026-10-07; split from 12; re-aligned the same day to `docs/research/palette-find.md`:
+step counts from the note's fence, `ReadOnce` shared with 12; P-find-1 **approved** 2026-10-07, field notes :92,
+ADR-0061)
 Build with: **Opus** — git read + two jobs on 12's contract; not Fable (judged from git-truth tests and the stale/cancel
 tests 12 established).
 Blocked by: 12 (same palette files and job). Also after 09e if 09e is not merged: this edits `update/search.rs`
@@ -14,7 +15,8 @@ private today); `place::history::open_history(state, HistoryFrom)` (update/place
 
 ## Read first
 - This spec; 12's spec (`.scratch/m8-polish-and-ship/issues/12-palette-find-anything.md`) "Decisions" and "Signatures"
-- `docs/design/01-view-mockups.md` §1.6 (257–277); `docs/design/02-keymap.md` §2.12 (528–542)
+- `docs/design/01-view-mockups.md` §1.6 (257–284); `docs/design/02-keymap.md` §2.12 (528–544)
+- `docs/adr/0061-the-empty-palette-opens-on-recent-commands-and-stores-no-arguments.md` (Decision 1)
 - `docs/design-notes/m8-polish-and-ship.md`: Prior art rows "Find: commits, how far", "Find: commit fields",
   "Find: files"; Journeys rows 28–30, "Find rows judged", "Where he lands" rows "Palette …" and "`more · /` …", the
   `journey-counts` fence; Where I'd differ P-find-1; New UI "Palette sources"
@@ -46,8 +48,9 @@ private today); `place::history::open_history(state, HistoryFrom)` (update/place
   COMMITS `searching…` (re-filtered old rows by sha + subject kept above it). Failures: `files: <reason>`,
   `commits: search failed: <reason>` — muted, in the group; other groups unaffected (H9). The cursor and
   `nothing matches` rules are 12's (placeholder → first runnable row; `nothing matches` after every source answers).
-- **Empty query**: no FILES, no COMMITS (P-find-1). If P-find-1 is declined: FILES lists its first rows (index
-  order) and COMMITS the first 9 of the walk for the empty query, both through the same jobs.
+- **Empty query**: no FILES, no COMMITS (P-find-1, approved 2026-10-07, ADR-0061). Not built — had P-find-1 been
+  declined: FILES would list its first rows (index order) and COMMITS the first 9 of the walk for the empty query,
+  both through the same jobs.
 - **Lands**: file row → history place on that path; `Esc` → graph, cursor where it was before `⌃P`. Commit row → as
   12's seek.
 - **Journeys** (note rows 28–30, fence): `seek-commit-sha` 3 (`⌃P` sha `⏎`; Sublime Merge 4, GitLens 4);
@@ -102,7 +105,7 @@ plus whatever the scout finds `Esc` needs to land on the graph.
 - [ ] `first_hits` = the first N of `scan`'s hits, same order (`palette_commit_hits_match_slash_search`); stops at 9 (`commits_job_stops_after_nine_hits`).
 - [ ] `more · / searches all of history` → palette closed, `/` search running for the query (`commits_more_row_starts_slash_search`).
 - [ ] Each query edit cancels the previous commits job; stale answer dropped (`stale_commits_answer_is_dropped`).
-- [ ] Empty query has no FILES or COMMITS rows (P-find-1) (`empty_query_has_no_files_or_commits`); declined → `empty_query_lists_first_files_and_commits` instead.
+- [ ] Empty query has no FILES or COMMITS rows (P-find-1, approved) (`empty_query_has_no_files_or_commits`). No declined-branch test (ADR-0061).
 - [ ] **Journeys, from the fence** (same mechanics as 12: pty test, fence id as a string literal, count read with
       `m5_walk::parse_counts`, fails if the key list is longer; start: graph, cursor on HEAD): `seek-commit-sha` 3
       (`walk_seek_commit_sha`); `seek-commit-words` 3, on the stated fixture (`walk_seek_commit_words`);

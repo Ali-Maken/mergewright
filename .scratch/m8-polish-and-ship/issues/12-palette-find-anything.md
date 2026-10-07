@@ -1,11 +1,12 @@
 # G-palette 2a — `⌃P` finds branches and tags; COMMANDS RUN RECENTLY; the find job
 
-Status: draft (re-spec 2026-10-07, spec-only pass; replaces the 2b spec — see "Why re-specced"; re-aligned the same
-day to `docs/research/palette-find.md` — see "Aligned to prior art")
+Status: ready (re-spec 2026-10-07, spec-only pass; replaces the 2b spec — see "Why re-specced"; re-aligned the same
+day to `docs/research/palette-find.md` — see "Aligned to prior art"; P-find-1 and P-find-2 **approved** 2026-10-07,
+field notes :92, ADR-0061)
 Build with: **Opus** — design-heavy: a per-keystroke job contract (cancel, stale drop, re-filter), cursor anchoring;
 not Fable (correctness is judged from tests: stale ids, cancel commands, HEAD unchanged).
-Blocked by: 11b (same `update/palette.rs`, `graft-ui/src/palette.rs`, palette captures). **P-find-1** (design note,
-"Where I'd differ") answered by him — build the "declined" branch below if he says no.
+Blocked by: 11b (same `update/palette.rs`, `graft-ui/src/palette.rs`, palette captures). P-find-1 and P-find-2
+**approved** 2026-10-07 (ADR-0061): build the approved branch; the "declined" branch below is not built.
 Needs: 11's `PaletteState`, `PaletteTarget`, `Group`, `rows`/`listing`, `run`, `NOTHING_MATCHES`;
 `graft_core::matcher::fuzzy_score`; `update::map::seek_to` (`pub(super)`, update/map.rs:202);
 `graft_git::switch_refs::switch_refs` (as `graft_ops::switch_list` calls it; `SwitchRefs`, `RefListing { name, tip,
@@ -29,7 +30,9 @@ when, .. }`); `refs::RefBadges::tags` (refs/mod.rs:123); `AppState::refs: Option
 - **Journeys**: J26 `seek-branch` 3, J27 `seek-tag` 3, J31 `rerun-recent` 2 — the note's `journey-counts` fence.
 
 ## Read first
-- `docs/design/01-view-mockups.md` §1.6 (lines 257–277); `docs/design/02-keymap.md` §2.12 (lines 528–542)
+- `docs/design/01-view-mockups.md` §1.6 (lines 257–284, the ADR-0061 paragraph included); `docs/design/02-keymap.md`
+  §2.12 (lines 528–544)
+- `docs/adr/0061-the-empty-palette-opens-on-recent-commands-and-stores-no-arguments.md` (Decision)
 - `docs/design-notes/m8-polish-and-ship.md`: Prior art rows "Find: …"; Journeys rows 26–32, "Find rows judged",
   "Where he lands" rows "Palette …", the `journey-counts` fence; Where I'd differ P-find-1, P-find-2; New UI
   "Palette sources"
@@ -58,9 +61,10 @@ group whose answer is for an older query shows its re-filtered rows plus a muted
 - **Group order** (§2.12): `YOUR CONFIG` (11) first when present. Typed: `ACTIONS`, `BRANCHES`, `TAGS`, (12b: `FILES`,
   `COMMITS`), `COMMANDS RUN RECENTLY`. Fixed across groups; §1.6's "then recency" applies inside groups (branches by
   tip date, recent runs newest first). `?` mode: no find groups, no recent group (§2.12).
-- **Empty query (P-find-1)**: `COMMANDS RUN RECENTLY` (if any), then `ACTIONS`; no find groups; cursor on the first
-  runnable row (11), so `⌃P ⏎` reruns the newest. The empty field draws, muted, `type to find actions, branches,
-  tags, files, commits` (graft-ui; gone on the first character). **If P-find-1 is declined**: §2.12's order —
+- **Empty query (P-find-1, approved)**: `COMMANDS RUN RECENTLY` (if any), then `ACTIONS`; no find groups; cursor on the
+  first runnable row (11), so `⌃P ⏎` reruns the newest. The empty field draws, muted, `type to find actions, branches,
+  tags, files, commits` (graft-ui; gone on the first character). **Not built (P-find-1 approved; kept for the
+  record)** — had it been declined: §2.12's order —
   `ACTIONS`, then the find groups for the empty query (the same names job, `fuzzy_score("")` = `Some(0)`, so newest
   branches first), then `COMMANDS RUN RECENTLY`; no placeholder; set the fence's `rerun-recent` to 3.
 - **Inside a group**: `fuzzy_score` (lower first). Branches: then local before remote, then newer `when`, then name
@@ -149,7 +153,7 @@ then today's path. Open in `Everything` mode → `Command::ReadPaletteBranches`;
 - [ ] Tip not laid out → `Command::ShowRows`, cursor lands when rows arrive (`branch_tip_not_laid_out_seeks_through_the_walk`).
 - [ ] `⌃P` asks one `ReadPaletteBranches`; `?` asks none; close cancels it (`palette_open_reads_branches_once`); BRANCHES `reading…` until it lands, then rows for the current query (`branches_group_reads_then_lists`); read failure reads in the group (`branch_read_failure_reads_in_branches_group`).
 - [ ] Branch order: score, local before remote, newer tip, name — same order as `filter_switch_rows` for local rows on one fixture (`branches_rank_local_then_newest_tip`, `palette_and_picker_order_branches_alike`).
-- [ ] Empty query (P-find-1) → `COMMANDS RUN RECENTLY` (if any) then `ACTIONS`, no find rows, placeholder drawn (`empty_query_lists_recent_then_actions_only`, `empty_everything_field_names_what_it_finds`). Declined → `empty_query_follows_section_2_12_order` instead.
+- [ ] Empty query (P-find-1, approved) → `COMMANDS RUN RECENTLY` (if any) then `ACTIONS`, no find rows, placeholder drawn (`empty_query_lists_recent_then_actions_only`, `empty_everything_field_names_what_it_finds`). No declined-branch test (ADR-0061).
 - [ ] `?` has neither find groups nor the recent group (`help_palette_has_no_find_groups`).
 - [ ] Recent group: header reads exactly `COMMANDS RUN RECENTLY` (`recent_group_header_is_commands_run_recently`); run stash from the palette, reopen → that group first, `⏎` opens the stash prompt (`recent_row_runs_its_key_path`); cap 8, newest first, rerun moves to front (`recent_runs_cap_and_order`).
 - [ ] Each query edit cancels the previous names job and asks one new one; close cancels it (`query_edit_cancels_the_previous_find_job`, `closing_the_palette_cancels_find_jobs`).

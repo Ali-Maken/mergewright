@@ -531,7 +531,9 @@ One widget, two ways in. **Modal** (§2.1): a text field; claims every key but `
 
 - `?` opens it on **this place**: `IN PROGRESS` (while an operation is live), `HERE` (the focused place's keys),
   `EVERYWHERE` (§2.2); `YOUR CONFIG` first when `[keys]` or `[theme]` had problems.
-- `Ctrl+P` / `:` open it on **everything**: actions, then branches, tags, files, commits, then recently run commands.
+- `Ctrl+P` / `:` open it on **everything**. Typed: actions, then branches, tags, files, commits, then recently run
+  commands. Empty: recently run commands first, then actions; the rest once he types (ADR-0061, approved 2026-10-07).
+  A recently run command is an action, run as its key would; no argument is stored (ADR-0061).
   Actions include `Theme: dark`, `Theme: light`, `Theme: high contrast` (this run only) and `Practice tour`.
 
 | Key | Action |
@@ -622,5 +624,9 @@ The code follows as the M8 groups land.
 stops or fails), §2.6a `q` row (`q` on the focused banner; `q quit` last on its bar; git stopped with nothing running:
 quits with no box, the next launch offers continue or abort). Spec:
 `.scratch/m8-polish-and-ship/issues/quit-waits-for-a-write.md`.
+
+2026-10-07 (planner, palette find P-find-1 and P-find-2; approved by the user 2026-10-07, field notes :92): §2.12
+`Ctrl+P` line (an empty box opens on recently run commands, then actions; a recent row stores no argument; ADR-0061).
+Specs: `.scratch/m8-polish-and-ship/issues/12-palette-find-anything.md`, `12b-palette-find-commits-and-files.md`.
 
 ---
