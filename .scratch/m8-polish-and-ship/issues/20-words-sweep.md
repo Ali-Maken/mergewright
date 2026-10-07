@@ -3,15 +3,18 @@
 Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Sonnet**: every wording is decided below; each item
 is a string and a test.
-Blocked by: 10, 10b, 14
-Needs: `keymap-spell-from-the-table` (10) and `keymap-spell-in-words` (10b) (same user-facing strings; any key a
-reworded line names stays spelled from the table — 10b's form), `daily-ops-fixes` (put-back words in graft-ops).
+Blocked by: 10, 10b, 10e, 10f, 10h, 14 (10b split 2026-10-07: 10e holds `apply/error.rs`, `apply/remote.rs` — items
+4, 12–16; 10f `operate/failure.rs` — item 17; 10h `update/undo.rs` — item 5)
+Needs: `keymap-spell-from-the-table` (10), `keymap-spell-in-words` (10b, the grep ratchet) and its word tickets
+10e/10f/10h (same user-facing strings; any key a reworded line names stays spelled from the table — 10b's W1, and in
+graft-ops `keys: &dyn KeyNames`), `daily-ops-fixes` (put-back words in graft-ops).
 Crates graft-ui (detail header, history), graft (view, update words), graft-ops (error words only).
 
 ## Read first
 - `CONTEXT.md` "These are our words" section (use his words, not ours)
 - `crates/graft-ui/MAP.md` `## detail` (`CompareHeader`, `RadarLine`), `## history`; `crates/graft-ops/MAP.md`
-  `## apply` (`AfterState`, `ApplyError`)
+  `## apply` (`AfterState`, `ApplyError`), `keys` (`OpKey`, `KeyNames`)
+- `10b-keymap-spell-in-words.md` **Ruling** W1–W3 (how a key in a reworded line is spelled; unbound clauses)
 
 ## Items (file:line from the open rows; the wording is decided)
 1. Compare header never shows `· N files +A −B` (`compare_header` builds SHAs only) → wire `DetailState::files`' totals.
@@ -47,8 +50,10 @@ Crates graft-ui (detail header, history), graft (view, update words), graft-ops 
     measure what is drawn (sanitised).
 
 ## Scope
-In: 1–17. Out: any wording not listed; key spelling (done by G-keymap, 10 and 10b). A reworded line that names a key
-keeps it spelled from the table (10b's parameter or appended clause), never a literal; 10's grep test stays green.
+In: 1–17. Out: any wording not listed; key spelling (done by G-keymap: 10, and 10b's split 10e–10i). A reworded line
+that names a key keeps it spelled from the table (graft: `state.keymap`, 10b W1; graft-ops: `keys: &dyn KeyNames`,
+10e), never a literal; the grep ratchet (`no_literal_keys::no_user_facing_literal_spells_a_default_key`) stays green
+— a reworded literal still listed in `tests/no_literal_keys/*` is stale: delete its row.
 
 ## Signatures
 `AfterState::BackupUnread` (graft-ops, pub). Nothing else public.
@@ -59,8 +64,9 @@ keeps it spelled from the table (10b's parameter or appended clause), never a li
 
 ## Touches
 - Every capture and test asserting the old strings (grep each); J rows (11); preview line rows (10); MAP.md graft-ops
-  (`BackupUnread`), graft-ui; TESTING.md radar section. 10b's remap-test rows for any site reworded here (items 5,
-  15, 16 at least).
+  (`BackupUnread`), graft-ui; TESTING.md radar section. The remap-test rows for any site reworded here: item 5 →
+  10h's `keymap_words::undo_journal`, items 15, 16 → 10e's `keymap_words::ops`, item 17 → 10f's
+  `keymap_words::stops` (at least).
 
 ## Scout questions
 None — rows carry their lines. If a line moved, find it by the quoted string and say so in NOTES.
