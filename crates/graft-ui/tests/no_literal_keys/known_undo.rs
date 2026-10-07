@@ -48,11 +48,6 @@ pub const ROWS: &[(&str, &str, &str)] = &[
         "{name} is dropped · u brings it back",
         "KNOWN: 10h",
     ),
-    (
-        "graft:update/quit.rs",
-        "{what} · quitting when it finishes · esc stays",
-        "KNOWN: 10h",
-    ),
     ("graft:update/recover.rs", "u undoes", "KNOWN: 10h"),
     ("graft:update/recover.rs", "u undoes it", "KNOWN: 10h"),
     ("graft:update/switch.rs", "u goes back", "KNOWN: 10h"),
