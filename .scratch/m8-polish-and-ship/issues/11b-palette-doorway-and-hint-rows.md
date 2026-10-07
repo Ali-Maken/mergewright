@@ -131,4 +131,4 @@ MAP 3k. If the re-shoot list alone exceeds ~25 files, captures go to a follow-up
   `u undo` or `/ search` was lost.
 - Touches: hint bar (every row/pane context), empty-state bar, palette mouse, mouse routing order, `BOUND_ACTIONS`,
   71 captures, 6 snapshots, 2 contact sheets, MAP.md ×2. No keymap/journal change. Literal-key grep test green.
-- No compaction.
+- **Compacted once**, after gates went green. Still to do: rulings on 553 / Marked / the overlay doorway (above).
