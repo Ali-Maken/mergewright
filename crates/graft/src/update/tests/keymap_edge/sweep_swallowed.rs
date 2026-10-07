@@ -5,11 +5,6 @@
 
 use graft_ui::keymap::ContextId;
 
-pub(super) const R_MAP: &str = "map.rs:176 the Map swallows every plain key it does not own";
-pub(super) const R_STASH: &str =
-    "stash.rs:224,226 the stash list swallows every plain key it does not own";
-pub(super) const R_JOURNAL: &str =
-    "journal/keys.rs:111,113 J swallows every plain key it does not own";
 pub(super) const R_PREVIEW: &str =
     "preview/keys.rs:69-70 the preview swallows every key but its own and ^C";
 pub(super) const R_CONFIRM: &str =
@@ -35,112 +30,18 @@ pub(super) const R_EDITOR: &str =
     "commit_editor/keys.rs:110,231 the commit editor swallows keys it does not own";
 pub(super) const R_CREDENTIAL: &str =
     "credential.rs:325-326,383-385 the credential field swallows the rest";
-pub(super) const R_SEARCH_OVERLAY: &str = "search.rs:20 graph search stands down under an overlay (§2.2 :210 find in the focused list; the prompt draws only in the graph footer)";
 pub(super) const R_MENU_CLOSE: &str =
     "context_menu.rs:155 closes the menu, as F20 does (edge.rs:50)";
 
 /// `(place, id, why)`: the place answers the key itself and does nothing
 /// with it — a box or a modal place that swallows what is not its own.
+/// The Map, the stash list and the journal are not here: what they swallow
+/// is out of their scope or in `ContextId::stands_down` (m8/09f), checked
+/// by `sweep::every_row_a_place_stands_down_is_idle_there`.
 #[rustfmt::skip]
 pub(super) const SWALLOWED_BY_DESIGN: &[(ContextId, &str, &str)] = &[
     // m8/09e: were DEFECTS; ruled idle.
-    (ContextId::Map, "app.find", R_SEARCH_OVERLAY),
-    (ContextId::Stash, "app.find", R_SEARCH_OVERLAY),
     (ContextId::Diff, "graph.map", "§2.3a :279 Map opens from the graph pane; M in the detail pane is the mergetool's (§2.4 :308)"),
-    (ContextId::Map, "graph.commit", R_MAP),
-    (ContextId::Map, "graph.amend", R_MAP),
-    (ContextId::Map, "graph.rewrite", R_MAP),
-    (ContextId::Map, "graph.switch", R_MAP),
-    (ContextId::Map, "graph.take", R_MAP),
-    (ContextId::Map, "graph.merge", R_MAP),
-    (ContextId::Map, "graph.rebase", R_MAP),
-    (ContextId::Map, "graph.branch", R_MAP),
-    (ContextId::Map, "graph.tag", R_MAP),
-    (ContextId::Map, "graph.compare", R_MAP),
-    (ContextId::Map, "graph.lanes", R_MAP),
-    (ContextId::Map, "graph.fetch", R_MAP),
-    (ContextId::Map, "graph.pull", R_MAP),
-    (ContextId::Map, "graph.push", R_MAP),
-    (ContextId::Map, "graph.focus", R_MAP),
-    (ContextId::Map, "graph.overview", R_MAP),
-    (ContextId::Map, "graph.fold", R_MAP),
-    (ContextId::Map, "graph.first_parent", R_MAP),
-    (ContextId::Map, "graph.hide_stash", R_MAP),
-    (ContextId::Map, "graph.copy_sha", R_MAP),
-    (ContextId::Map, "graph.status", R_MAP),
-    (ContextId::Map, "graph.renderer", R_MAP),
-    (ContextId::Map, "graph.write_commit_graph", R_MAP),
-    (ContextId::Map, "graph.decline_commit_graph", R_MAP),
-    (ContextId::Map, "app.next_pane", R_MAP),
-    (ContextId::Map, "app.prev_pane", R_MAP),
-    (ContextId::Map, "app.quit", R_MAP),
-    (ContextId::Map, "app.top", R_MAP),
-    (ContextId::Map, "app.bottom", R_MAP),
-    (ContextId::Map, "app.page_down", R_MAP),
-    (ContextId::Map, "app.page_up", R_MAP),
-    (ContextId::Map, "app.next_match", R_MAP),
-    (ContextId::Map, "app.prev_match", R_MAP),
-    (ContextId::Map, "app.menu", R_MAP),
-    (ContextId::Stash, "graph.commit", R_STASH),
-    (ContextId::Stash, "graph.amend", R_STASH),
-    (ContextId::Stash, "graph.rewrite", R_STASH),
-    (ContextId::Stash, "graph.switch", R_STASH),
-    (ContextId::Stash, "graph.take", R_STASH),
-    (ContextId::Stash, "graph.merge", R_STASH),
-    (ContextId::Stash, "graph.rebase", R_STASH),
-    (ContextId::Stash, "graph.tag", R_STASH),
-    (ContextId::Stash, "graph.compare", R_STASH),
-    (ContextId::Stash, "graph.lanes", R_STASH),
-    (ContextId::Stash, "graph.fetch", R_STASH),
-    (ContextId::Stash, "graph.push", R_STASH),
-    (ContextId::Stash, "graph.map", R_STASH),
-    (ContextId::Stash, "graph.focus", R_STASH),
-    (ContextId::Stash, "graph.overview", R_STASH),
-    (ContextId::Stash, "graph.first_parent", R_STASH),
-    (ContextId::Stash, "graph.hide_stash", R_STASH),
-    (ContextId::Stash, "graph.copy_sha", R_STASH),
-    (ContextId::Stash, "graph.status", R_STASH),
-    (ContextId::Stash, "graph.renderer", R_STASH),
-    (ContextId::Stash, "graph.write_commit_graph", R_STASH),
-    (ContextId::Stash, "graph.decline_commit_graph", R_STASH),
-    (ContextId::Stash, "app.quit", R_STASH),
-    (ContextId::Stash, "app.top", R_STASH),
-    (ContextId::Stash, "app.bottom", R_STASH),
-    (ContextId::Stash, "app.page_down", R_STASH),
-    (ContextId::Stash, "app.page_up", R_STASH),
-    (ContextId::Stash, "app.next_match", R_STASH),
-    (ContextId::Stash, "app.prev_match", R_STASH),
-    (ContextId::Stash, "app.menu", R_STASH),
-    (ContextId::Journal, "graph.commit", R_JOURNAL),
-    (ContextId::Journal, "graph.amend", R_JOURNAL),
-    (ContextId::Journal, "graph.rewrite", R_JOURNAL),
-    (ContextId::Journal, "graph.switch", R_JOURNAL),
-    (ContextId::Journal, "graph.take", R_JOURNAL),
-    (ContextId::Journal, "graph.merge", R_JOURNAL),
-    (ContextId::Journal, "graph.rebase", R_JOURNAL),
-    (ContextId::Journal, "graph.tag", R_JOURNAL),
-    (ContextId::Journal, "graph.compare", R_JOURNAL),
-    (ContextId::Journal, "graph.lanes", R_JOURNAL),
-    (ContextId::Journal, "graph.stash", R_JOURNAL),
-    (ContextId::Journal, "graph.fetch", R_JOURNAL),
-    (ContextId::Journal, "graph.pull", R_JOURNAL),
-    (ContextId::Journal, "graph.push", R_JOURNAL),
-    (ContextId::Journal, "graph.map", R_JOURNAL),
-    (ContextId::Journal, "graph.focus", R_JOURNAL),
-    (ContextId::Journal, "graph.overview", R_JOURNAL),
-    (ContextId::Journal, "graph.first_parent", R_JOURNAL),
-    (ContextId::Journal, "graph.hide_stash", R_JOURNAL),
-    (ContextId::Journal, "graph.copy_sha", R_JOURNAL),
-    (ContextId::Journal, "graph.status", R_JOURNAL),
-    (ContextId::Journal, "graph.renderer", R_JOURNAL),
-    (ContextId::Journal, "graph.write_commit_graph", R_JOURNAL),
-    (ContextId::Journal, "graph.decline_commit_graph", R_JOURNAL),
-    (ContextId::Journal, "app.quit", R_JOURNAL),
-    (ContextId::Journal, "app.top", R_JOURNAL),
-    (ContextId::Journal, "app.bottom", R_JOURNAL),
-    (ContextId::Journal, "app.page_down", R_JOURNAL),
-    (ContextId::Journal, "app.page_up", R_JOURNAL),
-    (ContextId::Journal, "app.menu", R_JOURNAL),
     (ContextId::Preview, "app.undo", R_PREVIEW),
     (ContextId::Preview, "app.redo", R_PREVIEW),
     (ContextId::Preview, "app.refresh", R_PREVIEW),

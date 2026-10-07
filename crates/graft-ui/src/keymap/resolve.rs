@@ -182,12 +182,14 @@ impl Keymap {
 
     /// Every row a key pressed in `ctx` may land on, in the order a chord
     /// resolves there: its own rows, then [`ContextId::borrows`], then the
-    /// rest of its scope (D1). Each row once, with its chords as he has them.
+    /// rest of its scope (D1). Each row once, with its chords as he has them;
+    /// less the rows the place stands down ([`ContextId::stands_down`]).
     #[must_use]
     pub fn reachable(&self, ctx: ContextId) -> Vec<(&Binding, &[KeyChord])> {
         reachable_rows(ctx)
             .into_iter()
             .map(|row| (&defaults()[row], self.chords[row].as_slice()))
+            .filter(|(binding, _)| !ctx.stands_down().contains(&binding.action))
             .collect()
     }
 

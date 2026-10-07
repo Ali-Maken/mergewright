@@ -206,3 +206,30 @@ fn every_reachable_row_acts_or_is_listed_and_follows_its_remap() {
         );
     }
 }
+
+/// What a place stands down (`ContextId::stands_down`, m8/09f) it answers
+/// with nothing: each default chord of each such row, pressed there, does
+/// what `F20` does. The keymap's word for "swallowed", held to the code.
+#[test]
+fn every_row_a_place_stands_down_is_idle_there() {
+    let mut pressed = 0;
+    let mut acting: Vec<String> = Vec::new();
+    for &ctx in ContextId::ALL {
+        let Some(state) = fixture(ctx) else { continue };
+        let nothing = seen(&state, unanswered());
+        for id in ctx.stands_down() {
+            let row = defaults()
+                .iter()
+                .find(|b| b.action == *id)
+                .expect("a stands-down row is in the table");
+            for chord in row.default {
+                pressed += 1;
+                if seen(&state, chord.to_press()) != nothing {
+                    acting.push(format!("{ctx:?}: {} ({})", id.0, chord.label().0));
+                }
+            }
+        }
+    }
+    assert!(pressed > 0, "some place stands a row down");
+    assert_eq!(acting, Vec::<String>::new(), "stood down, but acts");
+}

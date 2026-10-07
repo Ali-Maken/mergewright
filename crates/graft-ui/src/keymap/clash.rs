@@ -151,12 +151,14 @@ fn named(row: usize) -> ActionId {
 }
 
 /// Where `row`'s action acts: its own place, a place that borrows it, or
-/// anywhere for a `Global` one. A line losing in a place it only falls
-/// through to is not a problem (J8).
+/// anywhere for a `Global` one but where it stands down
+/// ([`ContextId::stands_down`], m8/09f). A line losing in a place it only
+/// falls through to, or one that answers it with nothing, is not a
+/// problem (J8).
 fn lives_in(row: usize, ctx: ContextId) -> bool {
     let binding = &defaults()[row];
     binding.context == ctx
-        || binding.context == ContextId::Global
+        || (binding.context == ContextId::Global && !ctx.stands_down().contains(&binding.action))
         || ctx.borrows().contains(&binding.action)
 }
 
