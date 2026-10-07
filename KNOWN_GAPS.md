@@ -1154,7 +1154,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/keymap-file-sizes | Over-400 files left unsplit by 09f: hints.rs, lists.rs (held by 11c/15), stash_screen.rs, context_menu.rs, graft-ops/graft files held by 10f–10i (keymap review Major 1) | **broken** | M8 |
 | M8/help-lists-dead-keys | `?` lists keys that do nothing: pane over an overlay, Diff `M`, start-screen `n`; held by a test table, not fixed (09f) | **broken** | M8 |
 | M8/17-colour-unverified | 17's lane fade by hue (truecolor/256) and muted whitespace tail: colour unverified (rule 5) | **unverified** | M8 |
-| M8/17-fold-count-and-pixel-ghosts | 17 item 2 built by 17b (fold `+N`); item 6 (Pixel ghosts) → 17c, ADR-0060 | **broken** | M8 |
 | M8/10f-e-edits-literal | `e edits {path}  a abort` left literal (resume.rs:75, mod.rs:511): `e` reaches 3 rows, needs W2 ruling; 2 KNOWN rows stay in known_stops.rs | **broken** | M8 |
 | M8/10f-inline-sites-unpinned | 6 key words built inside other functions (c continues, u undoes, e edit M mergetool, ⇥ to write one, u puts the merge back, diff_cursor ×2): remapped spelling untested | **unverified** | M8 |
 | M8/10f-map-tick-no-test | 10f's MAP.md box ticked with "doc, no test" — a tick naming no test | **unverified** | M8 |
@@ -1177,6 +1176,9 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/12c-ghost-rows-all-badges | Ghost Preview rows still build every badge (12c fixed graph rows only) | **broken** | M8 |
 | M8/17b-colour-unverified | 17b's muted fold `+N` and whitespace tail: colour unverified (rule 5); captures docs/shots/m8/polish-fold-120x36.txt, polish-blame-whitespace-counted-120x36.txt to judge by eye | **unverified** | M8 |
 | M8/m8-contact-sheet-missing | No m8 contact sheet/captions file exists yet (ADR-0037); 17b's box to re-assemble it left open → acceptance ticket | **unverified** | M8 |
+| M8/pixel-ghosts-text | Pixel tier: while a preview is open the graph column draws at Unicode (ADR-0060, 17c); dashed Pixel ghost strokes after v1. Not tried in a real terminal; capture docs/shots/m8/polish-ghost-pixel-120x36.txt is characters only | **unverified** | after v1 |
+| M8/wheel-scrolls-behind-preview | Mouse wheel scrolls the window behind an open preview (update/mouse.rs:85–86 → :175) — question (17c) | **unverified** | M8 |
+| M8/two-tier-sources | AppState::tier() (settled_tier) and view::tier_in_force (session.rendering.tier) can disagree — question (17b/17c scout) | **unverified** | M8 |
 | M8/http-remote-port-flaky | graft-fixtures `http_remote_frees_its_port_on_drop` failed once in 17b's loaded run, passed alone | **broken** | M8 |
 | M8/10i-diverged-both-unbound | If merge and rebase are both unbound, the diverged mark drops at once — question (10i) | **unverified** | M8 |
 | M8/10i-literals-not-found | `c commit  S stash`, `p pull first` not found in 10i's files — still to locate | **unverified** | M8 |
