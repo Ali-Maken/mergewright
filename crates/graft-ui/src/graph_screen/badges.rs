@@ -10,6 +10,8 @@
 use graft_graph::identity::BranchIdentity;
 use graft_term::SanitizedText;
 
+use crate::keymap::{ActionId, Keymap};
+
 /// Which glyphs badges draw with: `ui.icons` in the config file.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Icons {
@@ -53,7 +55,8 @@ pub enum BadgeKind {
     /// The newest stash entry.
     Stash,
     /// The pinned compare base (`x`, m7-14): not a ref, but read like one,
-    /// first on its row. Reads `x base` whatever its `name`.
+    /// first on its row. Reads `x base` whatever its `name`, `x` spelled
+    /// from `graph.compare` (`base` alone when unbound, m8/09d).
     CompareBase,
     /// A commit only stash entry `n` reaches (m7-power-tools/16): not a
     /// ref, and last on its row. Reads `only in stash@{n}` whatever its
@@ -85,9 +88,10 @@ pub enum Tracking {
 const CURRENT: &str = "◆ ";
 
 impl Badge {
-    /// The badge as it reads on screen.
+    /// The badge as it reads on screen. `keys` spells the compare base's
+    /// `x` (m8/09d).
     #[must_use]
-    pub fn text(&self, icons: Icons) -> String {
+    pub fn text(&self, icons: Icons, keys: &Keymap) -> String {
         let name = self.name.as_str();
         let body = match &self.kind {
             BadgeKind::Branch {
@@ -115,7 +119,9 @@ impl Badge {
                 Icons::Nerd => name.to_owned(),
             },
             BadgeKind::Remote { .. } | BadgeKind::Head | BadgeKind::Stash => name.to_owned(),
-            BadgeKind::CompareBase => "x base".to_owned(),
+            BadgeKind::CompareBase => keys
+                .key_verb(&[ActionId("graph.compare")], "base")
+                .unwrap_or_else(|| "base".to_owned()),
             BadgeKind::OnlyInStash(n) => format!("only in stash@{{{n}}}"),
         };
         match icons {

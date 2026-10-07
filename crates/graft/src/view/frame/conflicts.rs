@@ -80,7 +80,7 @@ pub(super) fn draw_resolver_banner(
         return area;
     }
     if let Some(banner) = crate::update::banner::banner_view(state) {
-        let line = graft_ui::graph_screen::banner_line(&banner, area.width);
+        let line = graft_ui::graph_screen::banner_line(&banner, area.width, &state.keymap);
         frame.buffer_mut().set_string(
             area.x,
             area.y,

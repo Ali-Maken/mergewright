@@ -59,6 +59,7 @@ pub(super) fn render_graph_with_detail(
                 view: &view,
                 layout: &layout,
                 theme: &session.theme,
+                keys: &state.keymap,
             },
             pane_area,
         );

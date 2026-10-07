@@ -50,7 +50,7 @@ pub(crate) fn badge_index_at(
     // with the two session overrides re-applied. See `view::rows::graph_view`.
     let view = graph_view(state, now_seconds);
     let (entry, columns) = row_at(&view, pane, row)?;
-    badge_spans(entry, &columns, view.icons)
+    badge_spans(entry, &columns, view.icons, view.keys)
         .into_iter()
         .find_map(|(span, index)| span.contains(&column).then_some(index))
 }

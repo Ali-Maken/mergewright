@@ -4,6 +4,8 @@
 
 use graft_term::SanitizedText;
 
+use crate::keymap::{ActionId, Keymap};
+
 /// The operation banner: `REBASING step 3 of 7` — the state and the step,
 /// said once ([`banner_line`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -116,8 +118,10 @@ impl BannerChain {
 /// nothing is wrong. `⚠` stays for the Mistake Radar's real findings
 /// (`GraphScreen::marker_glyph`, `OverviewStrip`, the Map screen), which is
 /// what keeps it meaning something.
+///
+/// The edit hint's keys are spelled from `keys` ([`edit_hint`], m8/09d).
 #[must_use]
-pub fn banner_line(banner: &BannerView, width: u16) -> String {
+pub fn banner_line(banner: &BannerView, width: u16, keys: &Keymap) -> String {
     let Some(rewrite) = banner.rewrite.as_ref() else {
         let mut line = String::from(banner.kind.as_str());
         if let Some((step, total)) = banner.step {
@@ -131,7 +135,7 @@ pub fn banner_line(banner: &BannerView, width: u16) -> String {
     }
     let row = format!("{} {}", rewrite.action, rewrite.sha7);
     let chain = rewrite.chain.as_ref().map(BannerChain::words);
-    let hint = rewrite.edit_hint.then_some(EDIT_HINT);
+    let hint = rewrite.edit_hint.then(|| edit_hint(keys));
     // Widest first; each rung drops the next piece: the hint, the subject,
     // the chain words. Below the last, the row itself goes (`base`).
     let rungs = [
@@ -150,7 +154,7 @@ pub fn banner_line(banner: &BannerView, width: u16) -> String {
             line.push_str(" · ");
             line.push_str(chain);
         }
-        if let Some(hint) = hint.filter(|_| with_hint) {
+        if let Some(hint) = hint.as_ref().filter(|_| with_hint) {
             line.push_str(" · ");
             line.push_str(hint);
         }
@@ -162,8 +166,22 @@ pub fn banner_line(banner: &BannerView, width: u16) -> String {
 }
 
 /// What an `edit` stop's banner adds: the graph has the keyboard, and these
-/// are the keys that finish the step.
-const EDIT_HINT: &str = "change files, space stages, a amends it, c continues · \u{21e5} banner";
+/// are the keys that finish the step — `change files, space stages, a
+/// amends it, c continues · ⇥ banner`. Each key is the graph row it is at
+/// an `edit` stop (`space` is `graph.fold`'s key, which stages there,
+/// `graft::update::keys::edit_stop`; `c` is `graph.commit`'s, the banner's
+/// `c`); an unbound one's clause is left out (m8/09d).
+fn edit_hint(keys: &Keymap) -> String {
+    let steps: Vec<String> = std::iter::once(Some("change files".to_owned()))
+        .chain([
+            keys.key_verb(&[ActionId("graph.fold")], "stages"),
+            keys.key_verb(&[ActionId("graph.amend")], "amends it"),
+            keys.key_verb(&[ActionId("graph.commit")], "continues"),
+        ])
+        .flatten()
+        .collect();
+    keys.after(&steps.join(", "), ActionId("app.next_pane"), "banner")
+}
 
 #[cfg(test)]
 mod tests;

@@ -62,9 +62,7 @@ const MOVERS: [ContextId; 8] = [
 
 /// The review's missing test: after `[keys.graph] merge = "j"`, `j` in
 /// each place that answers it does exactly what it does under the shipped
-/// keymap — it moves, never merges. (Map, Journal and Stash fixtures have
-/// nothing to move over — Major 3, 09d — so there "the same as shipped" is
-/// the claim, and it would fail if `j` opened a preview.)
+/// keymap — it moves, never merges.
 #[test]
 fn j_still_moves_in_every_place_after_merge_on_j() {
     let (keys, problems) = from_file("[keys.graph]\nmerge = \"j\"\n");
@@ -85,7 +83,14 @@ fn j_still_moves_in_every_place_after_merge_on_j() {
         assert!(after.preview.is_none(), "{ctx:?}: j opened a preview");
     }
     // Where the fixture has rows below the cursor, `j` visibly moves.
-    for ctx in [ContextId::Changes, ContextId::Diff, ContextId::Menu] {
+    for ctx in [
+        ContextId::Changes,
+        ContextId::Diff,
+        ContextId::Menu,
+        ContextId::Map,
+        ContextId::Journal,
+        ContextId::Stash,
+    ] {
         let moved = with_keys(&fixture(ctx).expect("a fixture"), &keys);
         assert_ne!(seen(&moved, j), seen(&moved, unanswered()), "{ctx:?}");
     }
@@ -321,6 +326,18 @@ fn confirm_on_c_types_in_the_subject_and_commits_from_the_files() {
 /// row; a footer sits in a box's bottom border (`╰`). Pane text is not
 /// checked: the journal's legend and blame's find header spell his undo
 /// and ignore-revs keys while their find is open (09c NOTES).
+/// Rows the sweep keymap leaves on their shipped chords (the guard's
+/// exemptions, `keymap_edge::swept`): `⌃C` is never his to move; suspend
+/// is off unless his switch is on; the two preview confirms follow merge
+/// and rebase. A text field's own rows also stay — they are what it types
+/// (R4), drawn as fixed keys.
+const UNMOVED: &[&str] = &[
+    "app.quit_now",
+    "app.suspend",
+    "preview.confirm_merge",
+    "preview.confirm_rebase",
+];
+
 #[test]
 fn a_text_field_draws_no_key_his_remap_moves() {
     let (keys, _) = swept();
@@ -332,6 +349,26 @@ fn a_text_field_draws_no_key_his_remap_moves() {
     let mut checked = 0;
     for (name, base) in fields {
         assert!(base.text_field_open(), "{name}: open");
+        // Deviation 3 guard (09d): the oracle holds only if the sweep keymap
+        // moves every row this field's place can reach off its shipped
+        // chords — a row left on one would draw unchanged and pass unseen.
+        let ctx = crate::update::edge::context_of(&base);
+        for (row, _) in keys.reachable(ctx) {
+            let kept: Vec<_> = keys
+                .chords(&row.action)
+                .iter()
+                .filter(|chord| {
+                    row.default.contains(chord)
+                        && !row.context.is_text_field()
+                        && !UNMOVED.contains(&row.action.0)
+                })
+                .collect();
+            assert!(
+                kept.is_empty(),
+                "{name} ({ctx:?}): {} keeps {kept:?}",
+                row.action.0
+            );
+        }
         let moved = with_keys(&base, &keys);
         let frame = crate::view::tests::draw(&moved, moved.size.columns, moved.size.rows);
         let lines: Vec<&str> = frame.lines().collect();
@@ -359,4 +396,40 @@ fn a_text_field_draws_no_key_his_remap_moves() {
         "{:?}",
         keys.spell(&ActionId("graph.merge"))
     );
+}
+
+// ── D7 ──────────────────────────────────────────────────────────────────
+
+/// D7 through `update` and the view: after `[keys.graph] merge = "j"` no
+/// bar draws `j` beside move — `j` merges on the graph. The graph bar and
+/// the changes pane's bar draw no move hint at all (checked by eye on this
+/// test's frames). Those that do (`hints/lists.rs` `DOWN_UP`): the Map's
+/// footer (`select`), the finish screen's files, the resolver's lists,
+/// history and the graph's overflow tail; the first two are pinned here.
+#[test]
+fn merge_on_j_spells_move_without_j() {
+    let (keys, _) = from_file("[keys.graph]\nmerge = \"j\"\n");
+    let shipped = Arc::new(Keymap::shipped().clone());
+    let places = vec![
+        ("map", fixture(ContextId::Map).expect("a fixture"), "select"),
+        (
+            "finish files",
+            sized_to_draw(finish_screen_for(walk(), SummaryFocus::Files, true)),
+            "move",
+        ),
+    ];
+    for (name, base, verb) in places {
+        let spelled = |map: &Arc<Keymap>| {
+            let state = with_keys(&base, map);
+            let frame = crate::view::tests::draw(&state, state.size.columns, state.size.rows);
+            frame
+                .lines()
+                .find(|line| line.contains(&format!("/k {verb}")))
+                .map_or_else(|| panic!("{name}: no move hint\n{frame}"), str::to_owned)
+        };
+        assert!(spelled(&shipped).contains(&format!("j/k {verb}")), "{name}");
+        let moved = spelled(&keys);
+        assert!(moved.contains(&format!("↓/k {verb}")), "{name}: {moved}");
+        assert!(!moved.contains("j/"), "{name}: {moved}");
+    }
 }
