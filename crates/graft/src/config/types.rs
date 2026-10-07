@@ -27,6 +27,10 @@ pub struct Config {
     pub radar: Radar,
     /// `[keys]`: the few bindings that are the user's to choose.
     pub keys: Keys,
+    /// `[theme.<kind>]`: his colours over a built-in theme. Read off the raw
+    /// table by `config::theme`, not by serde.
+    #[serde(skip)]
+    pub theme: super::theme::ThemeOverrides,
 }
 
 /// `[keys]`: bindings Graft cannot pick for everyone.

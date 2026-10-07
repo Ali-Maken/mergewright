@@ -52,6 +52,19 @@ pub enum ConfigWarning {
         /// `keys.<context>.<verb>`.
         path: String,
     },
+    /// A `[theme.<kind>] lane-N` line. Lane hues are fixed so no theme can
+    /// make two adjacent lanes alike (PROMPT.md §5); the line is not applied.
+    LaneColour {
+        /// `theme.<kind>.lane-N`.
+        path: String,
+    },
+    /// A `[theme.<kind>]` token whose value is not `"#RRGGBB"`. Not applied.
+    BadColour {
+        /// `theme.<kind>.<token>`.
+        path: String,
+        /// What he wrote: the text of a string, the TOML of anything else.
+        value: String,
+    },
 }
 
 /// A warning is not a failure — nothing was prevented, and nobody can `?` on
@@ -68,6 +81,12 @@ impl fmt::Display for ConfigWarning {
             ),
             ConfigWarning::NotAKey { path } => {
                 write!(f, "`{path}` is not a key or a list of keys, ignored")
+            }
+            ConfigWarning::LaneColour { path } => {
+                write!(f, "{path}: lane colours are fixed, not themeable")
+            }
+            ConfigWarning::BadColour { path, value } => {
+                write!(f, "{path}: \"{value}\" is not a #RRGGBB colour")
             }
         }
     }
@@ -192,6 +211,9 @@ fn parse(path: &Path, text: &str) -> Result<Loaded, ConfigError> {
     let (remaps, unread) = super::keys::remaps(table.get("keys"));
     config.keys.remaps = remaps;
     warnings.extend(unread);
+    let (theme, unread) = super::theme::overrides(table.get("theme"));
+    config.theme = theme;
+    warnings.extend(unread);
     Ok(Loaded {
         config,
         path: None,
@@ -230,7 +252,8 @@ fn unknown_keys(table: &toml::Table) -> Vec<ConfigWarning> {
     for (name, value) in table {
         // `[keys]` holds remap sub-tables beside its one switch: what is
         // unknown or unreadable there is `keys::remaps`' to say.
-        if name == "keys" {
+        // `[theme.<kind>]` the same: `theme::overrides` says its own.
+        if name == "keys" || name == "theme" {
             continue;
         }
         let Some((_, known)) = SCHEMA.iter().find(|(section, _)| section == name) else {

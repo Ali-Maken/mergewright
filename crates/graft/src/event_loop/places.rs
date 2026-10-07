@@ -108,7 +108,7 @@ pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Ex
         keymap,
         config_problems: mut problems,
         ..
-    } = Arrival::first(config);
+    } = Arrival::first(config, term.capabilities.no_color);
     // The first place is where Graft was started; every later one was
     // opened, and an open lands on `HEAD` (note Lands row "Open / init
     // succeeds").

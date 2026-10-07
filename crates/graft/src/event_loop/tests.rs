@@ -1508,3 +1508,4 @@ mod pace;
 mod perf_trace;
 mod pixel_scroll;
 mod settle;
+mod theme_problems;

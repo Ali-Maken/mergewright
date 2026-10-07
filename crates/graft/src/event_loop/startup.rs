@@ -210,14 +210,8 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     }
 
     let mut terminal = Terminal::open()?;
-    let ran = run_repo(
-        &mut terminal,
-        repos,
-        &repo_path,
-        &config,
-        harness,
-        Arrival::first(&config),
-    )?;
+    let arrival = Arrival::first(&config, terminal.capabilities.no_color);
+    let ran = run_repo(&mut terminal, repos, &repo_path, &config, harness, arrival)?;
     terminal.close(ran)
 }
 
@@ -238,9 +232,15 @@ pub(super) struct Arrival {
 
 impl Arrival {
     /// The first repository screen of a process started on `config`: its
-    /// keymap, and every problem with the file.
-    pub(super) fn first(config: &crate::config::Loaded) -> Self {
-        let (keymap, config_problems) = crate::config::keymap_from(config);
+    /// keymap, and every problem with the file — the file's and the keymap's
+    /// (`config::keymap_from`), then each contrast floor his `[theme.*]`
+    /// colours miss (none under `NO_COLOR`, where no colour is drawn).
+    pub(super) fn first(config: &crate::config::Loaded, no_color: bool) -> Self {
+        let (keymap, mut config_problems) = crate::config::keymap_from(config);
+        config_problems.extend(crate::config::theme_problems(
+            &config.config.theme,
+            no_color,
+        ));
         Self {
             keymap: Arc::new(keymap),
             config_problems,

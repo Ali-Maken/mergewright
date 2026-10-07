@@ -55,6 +55,32 @@ pub struct ContrastRule {
     pub min: f32,
 }
 
+/// A floor a theme with his overrides misses, and by how much
+/// ([`super::contrast_misses`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ContrastMiss {
+    /// The floor missed.
+    pub rule: ContrastRule,
+    /// The ratio the pair actually reaches.
+    pub ratio: f32,
+}
+
+impl ContrastMiss {
+    /// `selection on bg 1.0:1 — under 3.0`. The ratio is floored to one
+    /// decimal, never rounded, so a miss can never read as meeting its floor
+    /// (2.96 → `2.9:1`, not `3.0:1`).
+    #[must_use]
+    pub fn words(&self) -> String {
+        let floored = (self.ratio * 10.0).floor() / 10.0;
+        format!(
+            "{} on {} {floored:.1}:1 — under {:.1}",
+            self.rule.fg.name(),
+            self.rule.bg.name(),
+            self.rule.min
+        )
+    }
+}
+
 /// The four floors every shipped theme is tested against
 /// (`docs/design-notes/m8-polish-and-ship.md`, "Dark pick: B"): text on the
 /// ground and on the cursor row at WCAG AA, the cursor row against the ground
@@ -127,7 +153,7 @@ impl Theme {
     ///   the caller adds bold (ADR-0058 §3).
     #[must_use]
     pub fn on_selection(&self, fg: TokenColor) -> TokenColor {
-        let selection = self.kind.chrome()[Token::Selection.index()];
+        let selection = self.rgb[Token::Selection.index()];
         match (self.depth, fg) {
             (ColorDepth::TrueColor, TokenColor::Rgb(fg)) => {
                 TokenColor::Rgb(self.legible_on(fg, selection))
