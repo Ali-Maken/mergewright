@@ -413,9 +413,12 @@ fn write_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) ->
         next.local_jobs = local_jobs;
         return true;
     }
-    if is_rewrite_key(key) && next.graph_has_focus() && next.graph_overlay().is_none() {
+    if is_rewrite_key(key) && next.graph_overlay().is_none() {
         // `R` (keymap §2.3, m7-power-tools/08): the rewrite editor on the
-        // cursor's row, once its read answers.
+        // cursor's row, once its read answers. From a pane the keyboard goes
+        // to the graph first, as `S`/`J` do (m6/85, m8/09e), so `Esc` out of
+        // the editor lands on the graph with the pane still open.
+        next.detail.focus = graft_ui::detail::DetailFocus::Graph;
         let mut local_jobs = next.local_jobs;
         super::rewrite_editor::open_rewrite(next, commands, &mut || local_jobs.next_id());
         next.local_jobs = local_jobs;

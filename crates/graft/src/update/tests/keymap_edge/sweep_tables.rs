@@ -170,19 +170,3 @@ pub(super) const ONE_CHORD_IDLE: &[(ContextId, &str, &str, &str)] = &[
     (ContextId::Credential, "app.palette", "⌃P", R_CREDENTIAL),
     (ContextId::Menu, "changes.stage", "s", "no changes pane under the menu; the graph has no s"),
 ];
-
-/// `(place, id, chord, why)`: does nothing where the keymap says it is
-/// reachable — a defect, reported in the ticket (09d NOTES), not fixed
-/// here. Fixing one makes it act, and the sweep fails until it is struck.
-#[rustfmt::skip]
-pub(super) const DEFECTS: &[(ContextId, &str, &str, &str)] = &[
-    (ContextId::Map, "app.find", "/", "search.rs:20 opens the graph search behind the Map, unseen"),
-    (ContextId::Stash, "app.find", "/", "search.rs:20 opens the graph search behind the list, unseen"),
-    (ContextId::Changes, "graph.rewrite", "R", "keys.rs:405 graph focus only; scope keymap.rs:149"),
-    (ContextId::Changes, "graph.switch", "C", "picker.rs:125 graph focus only; scope keymap.rs:149"),
-    (ContextId::Changes, "graph.overview", "O", "strip.rs:17 graph focus only; scope keymap.rs:149"),
-    (ContextId::Diff, "graph.rewrite", "R", "keys.rs:405 graph focus only; scope keymap.rs:150"),
-    (ContextId::Diff, "graph.switch", "C", "picker.rs:125 graph focus only; scope keymap.rs:150"),
-    (ContextId::Diff, "graph.map", "M", "map.rs:144 graph focus only; scope keymap.rs:150"),
-    (ContextId::Diff, "graph.overview", "O", "strip.rs:17 graph focus only; scope keymap.rs:150"),
-];

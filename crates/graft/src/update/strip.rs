@@ -9,12 +9,13 @@ use graft_core::event::{KeyCode, KeyPress};
 
 use super::state::AppState;
 
-/// `O` on the graph screen (no modifier, focus on the graph, no map shown)
-/// flips [`AppState::strip_shown`]. `true` once handled, so `key_event`
-/// stops dispatching.
+/// `O` on the graph screen (no modifier, no map shown) flips
+/// [`AppState::strip_shown`], from the graph or a detail pane — it takes no
+/// keyboard, so the focus stays where it is (m8/09e). `true` once handled,
+/// so `key_event` stops dispatching.
 pub(super) fn strip_key(next: &mut AppState, key: KeyPress) -> bool {
     let plain = !key.modifiers.control && !key.modifiers.alt;
-    if !plain || next.map.shown || !next.graph_has_focus() {
+    if !plain || next.map.shown {
         return false;
     }
     if key.code == KeyCode::Char('O') {
@@ -56,11 +57,15 @@ mod tests {
         assert!(!state.strip_shown);
     }
 
+    /// m8/09e: was `o_is_ignored_off_the_graph_focus` — `O` takes no
+    /// keyboard, so it acts from a pane and leaves the focus there.
     #[test]
-    fn o_is_ignored_off_the_graph_focus() {
+    fn o_acts_off_the_graph_focus_and_keeps_it() {
         let mut state = AppState::default();
         state.detail.focus = DetailFocus::Files;
-        assert!(!strip_key(&mut state, key(KeyCode::Char('O'))));
+        assert!(strip_key(&mut state, key(KeyCode::Char('O'))));
+        assert!(state.strip_shown);
+        assert_eq!(state.detail.focus, DetailFocus::Files);
     }
 
     #[test]

@@ -212,17 +212,11 @@ fn c_opens_the_picker() {
     );
 }
 
+/// m8/09e: was `c_needs_the_graph_focused_and_nothing_over_it` — a pane's
+/// focus no longer stops `C` (`update::keys::tests::c_opens_the_picker_from_the_panes`);
+/// an overlay still does.
 #[test]
-fn c_needs_the_graph_focused_and_nothing_over_it() {
-    let mut state = fixture();
-    state.detail.focus = graft_ui::detail::DetailFocus::Files;
-    let (state, commands) = press(&state, KeyCode::Char('C'));
-    assert!(state.picker.is_none());
-    assert!(
-        !commands
-            .iter()
-            .any(|c| matches!(c, Command::ReadSwitchList(_)))
-    );
+fn c_needs_nothing_over_the_graph() {
     let mut state = fixture();
     state.journal.shown = true;
     let (state, _) = press(&state, KeyCode::Char('C'));

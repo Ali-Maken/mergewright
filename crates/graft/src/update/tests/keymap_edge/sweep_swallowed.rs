@@ -35,6 +35,7 @@ pub(super) const R_EDITOR: &str =
     "commit_editor/keys.rs:110,231 the commit editor swallows keys it does not own";
 pub(super) const R_CREDENTIAL: &str =
     "credential.rs:325-326,383-385 the credential field swallows the rest";
+pub(super) const R_SEARCH_OVERLAY: &str = "search.rs:20 graph search stands down under an overlay (§2.2 :210 find in the focused list; the prompt draws only in the graph footer)";
 pub(super) const R_MENU_CLOSE: &str =
     "context_menu.rs:155 closes the menu, as F20 does (edge.rs:50)";
 
@@ -42,6 +43,10 @@ pub(super) const R_MENU_CLOSE: &str =
 /// with it — a box or a modal place that swallows what is not its own.
 #[rustfmt::skip]
 pub(super) const SWALLOWED_BY_DESIGN: &[(ContextId, &str, &str)] = &[
+    // m8/09e: were DEFECTS; ruled idle.
+    (ContextId::Map, "app.find", R_SEARCH_OVERLAY),
+    (ContextId::Stash, "app.find", R_SEARCH_OVERLAY),
+    (ContextId::Diff, "graph.map", "§2.3a :279 Map opens from the graph pane; M in the detail pane is the mergetool's (§2.4 :308)"),
     (ContextId::Map, "graph.commit", R_MAP),
     (ContextId::Map, "graph.amend", R_MAP),
     (ContextId::Map, "graph.rewrite", R_MAP),

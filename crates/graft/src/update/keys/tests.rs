@@ -215,3 +215,84 @@ fn j_opens_the_journal_from_the_changes_pane() {
     assert!(after.journal.shown, "`j` does not close it");
     assert_eq!(after.detail, open.detail, "`j` is not the pane's");
 }
+
+/// 09e Defects 3–8: the changes pane and the diff, each over a loaded walk
+/// with the cursor on a commit row.
+fn panes_over_a_walk() -> Vec<(&'static str, AppState)> {
+    use graft_ui::detail::DetailFocus;
+    [("Changes", DetailFocus::Files), ("Diff", DetailFocus::Diff)]
+        .into_iter()
+        .map(|(name, focus)| {
+            let mut state = pane_focused();
+            state.history = Some(crate::view::tests::history_of(5, 2));
+            state.detail.focus = focus;
+            (name, state)
+        })
+        .collect()
+}
+
+/// The same state with the keyboard already on the graph (`⇥`'s end
+/// result): what `C`/`R` from a pane must equal.
+fn graph_focused(state: &AppState) -> AppState {
+    let mut graph = state.clone();
+    graph.detail.focus = graft_ui::detail::DetailFocus::Graph;
+    graph
+}
+
+/// 09e: `C` from either pane opens the picker as from the graph, the
+/// keyboard going with it; `Esc` lands on the graph, the pane still open.
+#[test]
+fn c_opens_the_picker_from_the_panes() {
+    use graft_ui::detail::DetailFocus;
+    for (name, state) in panes_over_a_walk() {
+        let (open, commands) = update(&state, key(KeyCode::Char('C')));
+        assert!(open.picker.is_some(), "{name}: the picker is open");
+        assert_eq!(open.detail.focus, DetailFocus::Graph, "{name}");
+        let (from_graph, graph_commands) = update(&graph_focused(&state), key(KeyCode::Char('C')));
+        assert_eq!(open, from_graph, "{name}: as from the graph");
+        assert_eq!(commands, graph_commands, "{name}");
+        let (closed, _) = update(&open, key(KeyCode::Escape));
+        assert!(closed.picker.is_none(), "{name}: `Esc` closes it");
+        assert_eq!(closed.detail.focus, DetailFocus::Graph, "{name}");
+        assert!(closed.detail.shown, "{name}: the pane stays open");
+    }
+}
+
+/// 09e: `R` from either pane opens the rewrite editor on the graph cursor's
+/// row — the same request and state as `⇥` to the graph then `R` — and
+/// `Esc` out of the landed editor leaves the graph focused, the pane open.
+#[test]
+fn r_opens_the_rewrite_editor_from_the_panes() {
+    use graft_ui::detail::DetailFocus;
+    for (name, state) in panes_over_a_walk() {
+        let (open, commands) = update(&state, key(KeyCode::Char('R')));
+        assert!(
+            commands
+                .iter()
+                .any(|command| matches!(command, Command::OpenRewrite { .. })),
+            "{name}: the editor's read is asked: {commands:?}"
+        );
+        assert_eq!(open.detail.focus, DetailFocus::Graph, "{name}");
+        let (from_graph, graph_commands) = update(&graph_focused(&state), key(KeyCode::Char('R')));
+        assert_eq!(open, from_graph, "{name}: as from the graph");
+        assert_eq!(commands, graph_commands, "{name}");
+
+        let mut landed = open.clone();
+        crate::update::rewrite_editor::tests::open_an_editor(&mut landed);
+        let (closed, _) = update(&landed, key(KeyCode::Escape));
+        assert!(closed.rewrite.editor.is_none(), "{name}: `Esc` closes it");
+        assert_eq!(closed.detail.focus, DetailFocus::Graph, "{name}");
+        assert!(closed.detail.shown, "{name}: the pane stays open");
+    }
+}
+
+/// 09e: `O` from either pane toggles the strip and leaves the keyboard
+/// where it was — it opens nothing that takes it.
+#[test]
+fn o_toggles_the_strip_from_the_panes() {
+    for (name, state) in panes_over_a_walk() {
+        let (after, _) = update(&state, key(KeyCode::Char('O')));
+        assert_ne!(after.strip_shown, state.strip_shown, "{name}: toggled");
+        assert_eq!(after.detail.focus, state.detail.focus, "{name}");
+    }
+}
