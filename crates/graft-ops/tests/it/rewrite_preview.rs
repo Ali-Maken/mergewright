@@ -254,7 +254,10 @@ fn where_git_stops(repo: &TempRepo, op: &Operation) -> Option<(usize, usize, Vec
             paths.sort();
             Some((at.step.0, at.step.1, paths))
         }
-        Err(other) => panic!("the run failed: {}", other.explain()),
+        Err(other) => panic!(
+            "the run failed: {}",
+            other.explain(&crate::support::Letters)
+        ),
     }
 }
 
@@ -808,7 +811,8 @@ fn a_line_whose_every_row_is_dropped() {
         Some(Some(Target::Real(id(&repo, "main"))))
     );
 
-    let applied = try_run(&repo, &op, NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = try_run(&repo, &op, NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         id(&repo, "feature-a"),
         id(&repo, "main"),
@@ -901,7 +905,10 @@ fn line_rows_agree_with_git() {
                 paths.sort();
                 Some((at.step.0, at.step.1, paths))
             }
-            Err(other) => panic!("{row}: the run failed: {}", other.explain()),
+            Err(other) => panic!(
+                "{row}: the run failed: {}",
+                other.explain(&crate::support::Letters)
+            ),
         };
         assert_eq!(forecast, git, "{row}");
     }

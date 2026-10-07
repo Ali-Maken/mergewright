@@ -50,7 +50,7 @@ pub struct Opened {
 #[derive(Debug, thiserror::Error)]
 pub enum OpenError {
     /// The path is not one the resolver can open.
-    #[error("{}", .0.explain())]
+    #[error("{}", .0.explain(&crate::keys::NoKeys))]
     Refused(Refusal),
     /// The file could not be read.
     #[error("could not read the file: {0}")]

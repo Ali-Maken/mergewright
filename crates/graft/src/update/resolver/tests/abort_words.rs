@@ -25,7 +25,7 @@ fn resolver_over_a_rebase() -> AppState {
 
 fn sent_abort(commands: &[Command]) -> Option<graft_core::job::JobId> {
     commands.iter().find_map(|command| match command {
-        Command::Resume(id, graft_ops::apply::Resume::Abort) => Some(*id),
+        Command::Resume(id, graft_ops::apply::Resume::Abort, ..) => Some(*id),
         _ => None,
     })
 }

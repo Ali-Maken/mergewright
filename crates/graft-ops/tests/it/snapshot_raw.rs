@@ -521,7 +521,7 @@ fn an_unreadable_tree_is_a_read_error_in_one_line() {
     };
     assert!(commands.is_empty(), "{commands:?}");
 
-    let line = ApplyError::Snapshot(why).explain();
+    let line = ApplyError::Snapshot(why).explain(&crate::support::Letters);
     assert!(!line.contains('\n'), "{line}");
     assert!(
         line.starts_with(&format!("cannot read object {missing}: ")),

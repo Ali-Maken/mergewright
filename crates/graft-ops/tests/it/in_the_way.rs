@@ -135,16 +135,19 @@ fn attempt(repo: &TempRepo, op: &Operation, path: &str) -> Outcome {
 
 fn preview_words(preview: &Result<PreviewPlan, PreviewError>) -> String {
     match preview {
-        Err(PreviewError::Refused(refusal)) => refusal.explain(),
-        Err(other) => format!("preview failed: {}", other.explain()),
+        Err(PreviewError::Refused(refusal)) => refusal.explain(&crate::support::Letters),
+        Err(other) => format!(
+            "preview failed: {}",
+            other.explain(&crate::support::Letters)
+        ),
         Ok(_) => "preview drew a plan".to_owned(),
     }
 }
 
 fn applied_words(applied: &Result<Applied, ApplyError>) -> String {
     match applied {
-        Err(ApplyError::Refused(refusal)) => refusal.explain(),
-        Err(other) => format!("apply failed: {}", other.explain()),
+        Err(ApplyError::Refused(refusal)) => refusal.explain(&crate::support::Letters),
+        Err(other) => format!("apply failed: {}", other.explain(&crate::support::Letters)),
         Ok(_) => "apply ran".to_owned(),
     }
 }

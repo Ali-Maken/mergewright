@@ -48,7 +48,8 @@ fn octopus_in_progress() -> TempRepo {
         checkout: false,
         on_edits: graft_ops::operation::OnEdits::Refuse,
     });
-    try_run(&repo, &create, NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    try_run(&repo, &create, NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     for branch in ["a", "b"] {
         repo.git(&["switch", "-q", "-c", branch, "main"]);
         repo.write(&format!("{branch}.txt"), format!("{branch}\n").as_bytes());
@@ -103,7 +104,7 @@ fn undo_restored(repo: &TempRepo) {
                 })
             ),
             "{}",
-            refused.explain()
+            refused.explain(&crate::support::Letters)
         );
     }
     let handle = repo.open();
@@ -111,7 +112,8 @@ fn undo_restored(repo: &TempRepo) {
     let plan = undo::plan_undo(journal.entries()).expect("topic's creation is undoable");
     let never = Never;
     let mut ctx = context(&handle, &mut journal, NOW + 1, &never);
-    restore::execute(&mut ctx, &plan).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    restore::execute(&mut ctx, &plan)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
 }
 
 fn last_entry(repo: &TempRepo) -> JournalEntry {
@@ -190,7 +192,8 @@ fn set_merge_state_writes_an_octopus_merge_head_back_byte_exact() {
     let mut journal = journal_for(&handle);
     let never = Never;
     let mut ctx = context(&handle, &mut journal, NOW + 2, &never);
-    restore::execute(&mut ctx, &plan).unwrap_or_else(|why| panic!("{}", why.explain()));
+    restore::execute(&mut ctx, &plan)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(
         merge_files(&repo),
@@ -222,12 +225,12 @@ fn c_on_an_octopus_merge_names_its_refusal() {
             })
         ),
         "{}",
-        why.explain()
+        why.explain(&crate::support::Letters)
     );
     assert!(
-        why.explain().contains("git commit"),
+        why.explain(&crate::support::Letters).contains("git commit"),
         "the words say where it is finished: {}",
-        why.explain()
+        why.explain(&crate::support::Letters)
     );
     assert_eq!(
         journal_for(&repo.open()).entries().len(),
@@ -258,10 +261,10 @@ fn abort_of_an_octopus_shell_merge_is_refused() {
             })
         ),
         "{}",
-        why.explain()
+        why.explain(&crate::support::Letters)
     );
     assert_eq!(
-        why.explain(),
+        why.explain(&crate::support::Letters),
         "this merges 2 branches at once (an octopus merge); abort it in the shell: git merge \
          --abort"
     );

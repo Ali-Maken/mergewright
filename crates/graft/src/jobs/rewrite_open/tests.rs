@@ -143,7 +143,9 @@ fn open_refuses_forked_dependents_in_words() {
         "{refusal:?}"
     );
     assert_eq!(
-        refusal.explain(),
+        refusal.explain(&crate::update::op_keys::OpKeys(
+            graft_ui::keymap::Keymap::shipped()
+        )),
         "feature-b and feature-c are both built on yours · Graft moves one line"
     );
 }

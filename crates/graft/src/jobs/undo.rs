@@ -13,10 +13,12 @@ use graft_ops::apply::{Applied, Context, Refresh};
 use graft_ops::journal::{Journal, journal_path};
 use graft_ops::restore::RestoreError;
 use graft_ops::undo::{self, Drift, NotInvertible, Replaced, UndoError};
+use graft_ui::keymap::Keymap;
 
 use super::Cancel;
 use crate::repos::RepoStore;
 use crate::session::Clock;
+use crate::update::op_keys::OpKeys;
 
 /// What one undo or redo came back with.
 ///
@@ -248,15 +250,17 @@ fn undone_from(
     redo: bool,
     description: impl FnOnce() -> String,
     redo_waiting: impl FnOnce() -> Option<String>,
+    keys: &Keymap,
 ) -> Undone {
+    let line = |error: &UndoError| error_line(error, keys);
     match error {
         UndoError::Nothing(NotInvertible::OperationLive { kind }) => Undone::OperationLive { kind },
         UndoError::Nothing(NotInvertible::NothingToUndo) if !redo => Undone::Nothing {
-            reason: error_line(&error),
+            reason: line(&error),
             redo: redo_waiting(),
         },
         UndoError::Nothing(_) => Undone::Nothing {
-            reason: error_line(&error),
+            reason: line(&error),
             redo: None,
         },
         UndoError::Drift { drift, .. } => Undone::Drift {
@@ -270,19 +274,19 @@ fn undone_from(
         // the list on screen is stale either way.
         UndoError::Restore(cancel @ RestoreError::Cancelled { .. }) => Undone::Cancelled {
             clean: true,
-            why: cancel.to_string(),
+            why: cancel.explain(&OpKeys(keys)),
             refresh: Refresh::Everything,
         },
         UndoError::Restore(cancel @ RestoreError::CancelledPartway { .. }) => Undone::Cancelled {
             clean: false,
-            why: cancel.to_string(),
+            why: cancel.explain(&OpKeys(keys)),
             refresh: Refresh::Everything,
         },
         UndoError::Restore(RestoreError::AfterState { applied, unread }) => Undone::Incomplete {
             applied: *applied,
             error: unread
                 .iter()
-                .map(ToString::to_string)
+                .map(|state| state.explain(&OpKeys(keys)))
                 .collect::<Vec<_>>()
                 .join("; "),
         },
@@ -298,18 +302,19 @@ fn undone_from(
         // steps" is meant to be worded.
         error @ UndoError::PartWay { .. } => Undone::Failed {
             refresh: refresh_after_failure(&error),
-            error: error_line(&error),
+            error: line(&error),
         },
         other => Undone::Failed {
             refresh: refresh_after_failure(&other),
-            error: error_line(&other),
+            error: line(&other),
         },
     }
 }
 
-/// One line for the status line, in `ops`' own words.
-fn error_line(error: &UndoError) -> String {
-    error.explain()
+/// One line for the status line, in `ops`' own words, its keys spelled from
+/// his keymap.
+fn error_line(error: &UndoError, keys: &Keymap) -> String {
+    error.explain(&OpKeys(keys))
 }
 
 /// A failure before anything could run: nothing on disk to re-read.
@@ -372,6 +377,7 @@ pub(super) fn run_undo(
     force: bool,
     clock: Clock,
     cancel: &Cancel,
+    keys: &Keymap,
 ) -> Undone {
     with_context(
         repos,
@@ -389,7 +395,7 @@ pub(super) fn run_undo(
             };
             match ran {
                 Ok(applied) => Undone::Done(applied),
-                Err(error) => undone_from(error, redo, || aimed_at, || redo_waiting(ctx)),
+                Err(error) => undone_from(error, redo, || aimed_at, || redo_waiting(ctx), keys),
             }
         },
         nothing_ran,
@@ -413,6 +419,7 @@ pub(super) fn run_revert_to(
     force: bool,
     clock: Clock,
     cancel: &Cancel,
+    keys: &Keymap,
 ) -> RevertedTo {
     with_context(
         repos,
@@ -462,7 +469,7 @@ pub(super) fn run_revert_to(
                         description: aimed_at,
                         done,
                         total,
-                        error: error_line(&error),
+                        error: error_line(&error, keys),
                     },
                 },
                 // No bare `Drift` arm: `revert_to` answers only `Nothing`
@@ -471,7 +478,7 @@ pub(super) fn run_revert_to(
                 // run (m6-conflicts/80, review m9).
                 Err(other) => RevertedTo::Refused {
                     description: aimed_at,
-                    error: error_line(&other),
+                    error: error_line(&other, keys),
                 },
             }
         },
@@ -623,7 +630,7 @@ mod tests {
         let kind = graft_git::state::InProgress::Merge;
         let refused = UndoError::Nothing(NotInvertible::OperationLive { kind });
         assert_eq!(
-            undone_from(refused, false, String::new, || None),
+            undone_from(refused, false, String::new, || None, Keymap::shipped()),
             Undone::OperationLive { kind }
         );
     }
@@ -701,7 +708,8 @@ mod tests {
                 graft_ops::undo::NotInvertible::NothingToUndo,
             )),
         };
-        let Undone::Failed { error, refresh } = undone_from(stopped, false, String::new, || None)
+        let Undone::Failed { error, refresh } =
+            undone_from(stopped, false, String::new, || None, Keymap::shipped())
         else {
             panic!("a part-way revert is not a drift and not a clean run")
         };
@@ -766,7 +774,14 @@ mod tests {
             |ctx| graft_ops::apply::apply(ctx, &stage).map(|_| ()),
             |why| panic!("no context: {why}"),
         )
-        .unwrap_or_else(|why| panic!("the stage runs: {}", why.explain()));
+        .unwrap_or_else(|why| {
+            panic!(
+                "the stage runs: {}",
+                why.explain(&crate::update::op_keys::OpKeys(
+                    graft_ui::keymap::Keymap::shipped()
+                ))
+            )
+        });
         let staged = || {
             std::process::Command::new("git")
                 .current_dir(repo)
@@ -779,7 +794,14 @@ mod tests {
 
         let cancel = Cancel::new();
         cancel.cancel();
-        let undone = run_undo(&store, false, false, Clock::Fixed(1_700_000_001), &cancel);
+        let undone = run_undo(
+            &store,
+            false,
+            false,
+            Clock::Fixed(1_700_000_001),
+            &cancel,
+            Keymap::shipped(),
+        );
         let Undone::Cancelled { clean, why, .. } = &undone else {
             panic!("a stop before any step is a cancel, got {undone:?}");
         };

@@ -58,8 +58,21 @@ pub(super) fn seen(state: &AppState, press: KeyPress) -> Seen {
 /// sweep comparing what a remapped press does with what the default does
 /// draws both under the remapped keymap, and so compares the *doing*.
 pub(super) fn seen_as(state: &AppState, press: KeyPress, keys: &Arc<Keymap>) -> Seen {
-    let (mut after, commands) = update(state, AppEvent::Core(Event::Key(press)));
+    let (mut after, mut commands) = update(state, AppEvent::Core(Event::Key(press)));
     after.keymap = Arc::clone(keys);
+    // A job's keymap only spells the keys its words name (m8/10e), so it
+    // is drawn under `keys` like the frame: the sweep compares the doing.
+    for command in &mut commands {
+        if let Command::Operate(.., carried)
+        | Command::Resume(.., carried)
+        | Command::Undo(.., carried)
+        | Command::Redo(.., carried)
+        | Command::RevertTo(.., carried)
+        | Command::RecoverFor { keys: carried, .. } = command
+        {
+            *carried = Arc::clone(keys);
+        }
+    }
     Seen {
         commands,
         quit: format!("{:?}", after.quit),

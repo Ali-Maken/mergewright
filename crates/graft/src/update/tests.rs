@@ -2303,6 +2303,8 @@ mod keymap_edge;
 
 mod keymap_rules;
 
+mod keymap_words;
+
 mod commit_graph_offer {
     use super::*;
     use crate::repository::CommitGraphFact;
@@ -5588,7 +5590,9 @@ pub(super) fn resolver_card_on_screen(walk: JobId) -> AppState {
                     path: std::path::PathBuf::from("gone.txt"),
                     how: graft_git::status::UnmergedHow::DeletedByThem,
                 }
-                .explain(),
+                .explain(&crate::update::op_keys::OpKeys(
+                    graft_ui::keymap::Keymap::shipped(),
+                )),
             },
         }),
         how: Some(graft_git::status::UnmergedHow::DeletedByThem),

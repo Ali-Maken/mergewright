@@ -221,7 +221,7 @@ fn a_fork_is_refused_naming_both() {
     let from = oid(&repo, "feature-a");
     let refusal = refused(plan_of(&repo, &RewriteRequest::Open { from }));
     assert_eq!(
-        refusal.explain(),
+        refusal.explain(&crate::support::Letters),
         "feature-b and feature-c are both built on yours · Graft moves one line"
     );
 }
@@ -238,7 +238,8 @@ fn a_dependent_in_another_worktree_is_refused_with_its_path() {
         "feature-b",
     ]);
     let from = oid(&repo, "feature-a");
-    let words = refused(plan_of(&repo, &RewriteRequest::Open { from })).explain();
+    let words =
+        refused(plan_of(&repo, &RewriteRequest::Open { from })).explain(&crate::support::Letters);
     std::fs::remove_dir_all(&elsewhere).expect("the other worktree clears");
     assert!(
         words.starts_with("feature-b is checked out in another worktree (")
@@ -267,7 +268,7 @@ fn a_merge_in_range_is_refused() {
     let refusal = refused(plan_of(&repo, &RewriteRequest::Open { from }));
     assert_eq!(refusal, Refusal::MergeInRange { merge });
     assert_eq!(
-        refusal.explain(),
+        refusal.explain(&crate::support::Letters),
         format!("can't rewrite past a merge ({})", &merge.to_string()[..7])
     );
 }
@@ -281,7 +282,7 @@ fn a_commit_off_your_branch_is_refused() {
     repo.git(&["switch", "-q", "feature-a"]);
     let refusal = refused(plan_of(&repo, &RewriteRequest::Open { from: off }));
     assert_eq!(
-        refusal.explain(),
+        refusal.explain(&crate::support::Letters),
         format!(
             "R rewrites your branch · {} isn't on it",
             &off.to_string()[..7]
@@ -301,7 +302,7 @@ fn a_into_a_commit_off_your_branch_is_refused_in_as_words() {
     repo.git(&["add", "staged.txt"]);
     let refusal = refused(plan_of(&repo, &RewriteRequest::AmendInto { target: off }));
     assert_eq!(
-        refusal.explain(),
+        refusal.explain(&crate::support::Letters),
         format!(
             "a puts staged changes into a commit on your branch · {} isn't on it",
             &off.to_string()[..7]
@@ -317,7 +318,7 @@ fn detached_head_is_refused() {
     let refusal = refused(plan_of(&repo, &RewriteRequest::Open { from }));
     assert_eq!(refusal, Refusal::NotOnABranch);
     assert_eq!(
-        refusal.explain(),
+        refusal.explain(&crate::support::Letters),
         "you're not on a branch · switch first (C)"
     );
 }
@@ -328,7 +329,7 @@ fn amend_into_with_nothing_staged_is_refused() {
     let target = oid(&repo, "feature-a~1");
     let refusal = refused(plan_of(&repo, &RewriteRequest::AmendInto { target }));
     assert_eq!(
-        refusal.explain(),
+        refusal.explain(&crate::support::Letters),
         format!(
             "nothing staged to put into {} · space stages",
             &target.to_string()[..7]
@@ -347,7 +348,7 @@ fn an_old_git_refuses_only_the_chain() {
     let from = oid(&repo, "feature-a");
     let refusal = refused(plan_with(&repo, &old, &RewriteRequest::Open { from }));
     assert_eq!(
-        refusal.explain(),
+        refusal.explain(&crate::support::Letters),
         "branches built on yours can follow only with git 2.38 or newer"
     );
     // The top of the line has nothing built on it: the same git rewrites it.

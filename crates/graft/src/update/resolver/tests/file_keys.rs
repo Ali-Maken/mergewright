@@ -17,7 +17,7 @@ fn stages(commands: &[Command]) -> usize {
     commands
         .iter()
         .filter(|command| {
-            matches!(command, Command::Operate(_, op)
+            matches!(command, Command::Operate(_, op, ..)
                 if matches!(**op, graft_ops::operation::Operation::Stage(_)))
         })
         .count()

@@ -55,7 +55,8 @@ fn u_after_a_discard_brings_back_an_lf_file_under_autocrlf() {
     );
     assert_ne!(repo.read("src/a.rs"), WORKING, "the discard wrote over W");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(repo.read("src/a.rs"), WORKING, "W is back, byte for byte");
 }
 
@@ -75,7 +76,8 @@ fn u_after_a_stash_brings_back_an_lf_file_under_autocrlf() {
     );
     assert_ne!(repo.read("src/a.rs"), WORKING, "the stash took W away");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(repo.read("src/a.rs"), WORKING, "W is back, byte for byte");
 }
 
@@ -89,7 +91,8 @@ fn discard_then_u(repo: &TempRepo, path: &str) {
     );
     assert_ne!(repo.read(path), before, "the discard wrote over it");
 
-    run_undo(repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(
         repo.read(path),
         before,
@@ -187,7 +190,8 @@ fn u_brings_back_an_lf_untracked_file_under_autocrlf() {
     );
     assert!(!repo.exists("src/new.rs"), "the discard removed it");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(repo.read("src/new.rs"), WORKING, "W is back, byte for byte");
     assert_eq!(
         repo.git(&["ls-files", "--", "src/new.rs"]),
@@ -217,10 +221,12 @@ fn redo_after_a_forced_undo_brings_back_an_lf_drift_under_autocrlf() {
     );
     repo.write("src/a.rs", WORKING);
 
-    run_undo(&repo, NOW + 1, true).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, true)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(repo.read("src/a.rs"), first_edit, "the forced u replaced W");
 
-    run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+    run_redo(&repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("redo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(repo.read("src/a.rs"), WORKING, "W is back, byte for byte");
 }
 
@@ -243,7 +249,8 @@ fn u_of_a_staged_lf_file_leaves_nothing_unstaged() {
         NOW,
     );
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(repo.read("src/a.rs"), WORKING, "W is back, byte for byte");
     assert_eq!(
         repo.git(&["ls-files", "-s"]),
@@ -339,7 +346,8 @@ fn u_brings_back_a_kept_set_of_over_200k_path_bytes() {
     );
     assert_ne!(repo.read(&paths[0]), WORKING, "the stash took the edits");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     for path in &paths {
         assert_eq!(repo.read(path), WORKING, "{path} is back, byte for byte");
     }
@@ -367,10 +375,10 @@ fn a_raw_write_that_cannot_land_fails_u_and_names_the_path() {
         "{why:?}"
     );
     assert!(
-        why.explain()
+        why.explain(&crate::support::Letters)
             .starts_with("could not write src/a.rs back as it was: "),
         "{}",
-        why.explain()
+        why.explain(&crate::support::Letters)
     );
     assert_eq!(
         repo.read("src/a.rs"),
@@ -524,7 +532,8 @@ fn u_after_a_set_aside_put_back_brings_back_an_lf_file_under_autocrlf() {
     run(&repo, &op, NOW);
     assert_eq!(id(&repo, "refs/heads/main"), second, "main is on second");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_ne!(id(&repo, "refs/heads/main"), second, "main is off second");
     assert_bytes(&repo, "src/a.rs", WORKING, "after u");
 }
@@ -626,7 +635,8 @@ fn a_switch_with_edits_keeps_an_lf_file_under_autocrlf() {
     assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/other");
     assert_bytes(&repo, "src/a.rs", WORKING, "after the checkout");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/main");
     assert_bytes(&repo, "src/a.rs", WORKING, "after u");
 }
@@ -677,7 +687,8 @@ fn a_put_back_that_merges_into_a_changed_file_writes_no_raw() {
         String::from_utf8_lossy(&repo.read("src/a.rs"))
     );
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_bytes(&repo, "src/a.rs", SEVEN_HIS, "after u");
 }
 

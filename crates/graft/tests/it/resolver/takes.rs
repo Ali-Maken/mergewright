@@ -218,7 +218,7 @@ fn enter_refuses_while_open() {
     assert!(
         !commands
             .iter()
-            .any(|command| matches!(command, Command::Operate(_, _))),
+            .any(|command| matches!(command, Command::Operate(..))),
         "`⏎` staged a file with conflicts still in it: {commands:?}"
     );
     let Status::Sticky { reason, keys } = &after.status else {

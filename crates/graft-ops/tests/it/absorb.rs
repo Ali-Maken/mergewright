@@ -261,7 +261,7 @@ fn absorb_with_nothing_placed_is_refused() {
     };
     assert_eq!(refusal, Refusal::NothingToAbsorb);
     assert_eq!(
-        refusal.explain(),
+        refusal.explain(&crate::support::Letters),
         "none of your staged lines belong to a commit on your branch · c commits them"
     );
 }
@@ -305,7 +305,7 @@ fn undo_after_absorb_restores_index_and_commits() {
 
     let params = planned(&repo).expect("it plans");
     try_run(&repo, &Operation::Rewrite(params), NOW)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_ne!(state_of(&repo), before, "the absorb changed something");
     run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{why:?}"));
 

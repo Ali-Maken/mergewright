@@ -269,7 +269,7 @@ fn state_on_diff(section: WorkingTreeSection, diff: FileDiff, cursor: usize) -> 
 
 /// The `Target::Patch` the one queued command carries.
 fn queued_patch(commands: &[Command]) -> (&PathBuf, &Vec<u8>, PatchSide) {
-    let [Command::Operate(_, op)] = commands else {
+    let [Command::Operate(_, op, ..)] = commands else {
         panic!("expected exactly one Operate, got {commands:?}");
     };
     let (Operation::Stage(target) | Operation::Unstage(target) | Operation::Discard(target)) =
@@ -306,7 +306,7 @@ fn space_on_a_conflicted_file_stages_it_as_the_resolution() {
         stage_selected(&mut state, &mut commands, &mut ids()),
         "the key is answered, not ignored"
     );
-    let [Command::Operate(_, op)] = commands.as_slice() else {
+    let [Command::Operate(_, op, ..)] = commands.as_slice() else {
         panic!("expected one staging operation: {commands:?}");
     };
     assert!(
@@ -414,7 +414,7 @@ fn a_hunk_under_staged_unstages_in_reverse_against_the_index() {
     let mut state = state_on_diff(WorkingTreeSection::Staged, diff.clone(), 0);
     let mut commands = Vec::new();
     assert!(stage_at_diff_cursor(&mut state, &mut commands, &mut ids()));
-    let [Command::Operate(_, op)] = commands.as_slice() else {
+    let [Command::Operate(_, op, ..)] = commands.as_slice() else {
         panic!("expected one Operate");
     };
     assert!(
@@ -524,7 +524,7 @@ fn space_in_an_untracked_files_diff_stages_the_whole_file() {
     let mut state = state_on_diff(WorkingTreeSection::Untracked, one_pair_diff(), 0);
     let mut commands = Vec::new();
     assert!(stage_at_diff_cursor(&mut state, &mut commands, &mut ids()));
-    let [Command::Operate(_, op)] = commands.as_slice() else {
+    let [Command::Operate(_, op, ..)] = commands.as_slice() else {
         panic!("expected one Operate");
     };
     assert_eq!(
@@ -543,7 +543,7 @@ fn stage_selected_stages_an_unstaged_file() {
     let mut commands = Vec::new();
     assert!(stage_selected(&mut state, &mut commands, &mut ids()));
     assert!(state.operating.is_some());
-    let Command::Operate(_, op) = &commands[0] else {
+    let Command::Operate(_, op, ..) = &commands[0] else {
         panic!("expected Operate");
     };
     assert_eq!(
@@ -561,7 +561,7 @@ fn stage_selected_unstages_a_row_under_the_staged_section() {
     );
     let mut commands = Vec::new();
     assert!(stage_selected(&mut state, &mut commands, &mut ids()));
-    let Command::Operate(_, op) = &commands[0] else {
+    let Command::Operate(_, op, ..) = &commands[0] else {
         panic!("expected Operate");
     };
     assert_eq!(
@@ -594,7 +594,7 @@ fn section_not_status_decides_direction_for_a_file_in_both() {
     let mut staged_row = state_with(&rows, vec![both.clone()], 1);
     let mut commands = Vec::new();
     assert!(stage_selected(&mut staged_row, &mut commands, &mut ids()));
-    let Command::Operate(_, op) = &commands[0] else {
+    let Command::Operate(_, op, ..) = &commands[0] else {
         panic!("expected Operate");
     };
     assert_eq!(
@@ -606,7 +606,7 @@ fn section_not_status_decides_direction_for_a_file_in_both() {
     let mut unstaged_row = state_with(&rows, vec![both], 3);
     let mut commands = Vec::new();
     assert!(stage_selected(&mut unstaged_row, &mut commands, &mut ids()));
-    let Command::Operate(_, op) = &commands[0] else {
+    let Command::Operate(_, op, ..) = &commands[0] else {
         panic!("expected Operate");
     };
     assert_eq!(
@@ -632,7 +632,7 @@ fn stage_selected_on_a_section_row_takes_every_file_under_it() {
     let mut state = state_with(&rows, entries, 0);
     let mut commands = Vec::new();
     assert!(stage_selected(&mut state, &mut commands, &mut ids()));
-    let Command::Operate(_, op) = &commands[0] else {
+    let Command::Operate(_, op, ..) = &commands[0] else {
         panic!("expected Operate");
     };
     assert_eq!(
@@ -671,7 +671,7 @@ fn stage_all_stages_every_path_in_status() {
     );
     let mut commands = Vec::new();
     assert_eq!(stage_all(&mut state, &mut commands, &mut ids()), Ok(()));
-    let Command::Operate(_, op) = &commands[0] else {
+    let Command::Operate(_, op, ..) = &commands[0] else {
         panic!("expected Operate");
     };
     assert_eq!(
@@ -783,7 +783,7 @@ fn stage_all_skips_the_paths_git_add_would_refuse() {
     );
     let mut commands = Vec::new();
     assert_eq!(stage_all(&mut state, &mut commands, &mut ids()), Ok(()));
-    let Command::Operate(_, op) = &commands[0] else {
+    let Command::Operate(_, op, ..) = &commands[0] else {
         panic!("expected Operate");
     };
     assert_eq!(

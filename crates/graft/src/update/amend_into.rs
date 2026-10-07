@@ -15,6 +15,7 @@
 //! rewrite that happens to run later never picks them up: [`landed`] takes
 //! them only for the very operation that was planned.
 
+use crate::update::op_keys::OpKeys;
 use graft_ops::operation::{Operation, Refusal};
 use graft_ops::rewrite::{RewriteParams, RewriteRequest};
 
@@ -170,7 +171,8 @@ fn put_into_older(
         .as_deref()
         .is_some_and(|tree| tree.staged().next().is_some());
     if !staged {
-        state.status = Status::sticky(Refusal::NothingStagedFor { target }.explain());
+        state.status =
+            Status::sticky(Refusal::NothingStagedFor { target }.explain(&OpKeys(&state.keymap)));
         return;
     }
     start(
@@ -315,7 +317,7 @@ pub(crate) fn planned(
             }
         }
         Ok(RewritePlanned::Refused(refusal)) => {
-            state.status = Status::sticky(refusal.explain());
+            state.status = Status::sticky(refusal.explain(&OpKeys(&state.keymap)));
         }
         Ok(RewritePlanned::NothingBuiltOnHead) => {
             if matches!(state.status, Status::Waiting(_)) {

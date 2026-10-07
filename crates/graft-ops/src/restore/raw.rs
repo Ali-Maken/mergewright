@@ -360,7 +360,7 @@ mod tests {
             source: std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied"),
         };
         assert_eq!(
-            error.explain(),
+            error.explain(&crate::keys::Letters),
             "could not write src/a.rs back as it was: denied"
         );
     }

@@ -124,7 +124,7 @@ fn u_in_j_after_a_push_then_undo_locally_closes_j() {
     assert!(
         commands
             .iter()
-            .any(|command| matches!(command, Command::Undo(_, false))),
+            .any(|command| matches!(command, Command::Undo(_, false, ..))),
         "the undo launched: {commands:?}"
     );
     assert!(!state.journal.shown, "J closed: the result is on the graph");

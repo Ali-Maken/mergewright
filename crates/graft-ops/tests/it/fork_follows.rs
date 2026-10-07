@@ -170,7 +170,10 @@ fn stopped(repo: &TempRepo, op: &Operation) {
         Err(ApplyError::Conflicted { entry, .. }) => {
             assert_eq!(entry.status, EntryStatus::Pending);
         }
-        Err(other) => panic!("expected a stop, got {}", other.explain()),
+        Err(other) => panic!(
+            "expected a stop, got {}",
+            other.explain(&crate::support::Letters)
+        ),
         Ok(applied) => panic!("expected a stop, it finished: {:?}", applied.entry.status),
     }
 }
@@ -276,7 +279,7 @@ fn a_branch_off_a_dependents_middle_is_refused_as_a_second_dependent() {
     );
     match refused {
         Err(RewriteError::Refused(refusal @ Refusal::ForkedDependents { .. })) => {
-            let words = refusal.explain();
+            let words = refusal.explain(&crate::support::Letters);
             assert!(words.contains("feature-b"), "{words}");
             assert!(words.contains("feature-x"), "{words}");
             assert!(words.contains("are both built on yours"), "{words}");
@@ -369,7 +372,8 @@ fn an_abort_at_a_stop_after_a_section_leaves_the_fork() {
         "update-ref waits for the end"
     );
 
-    resume_with(&repo, Resume::Abort).unwrap_or_else(|why| panic!("{}", why.explain()));
+    resume_with(&repo, Resume::Abort)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(id(&repo, "feature-x"), fork_was);
     assert_eq!(state_of(&repo), before);
 }
@@ -609,7 +613,10 @@ fn a_fork_moved_after_the_preview_is_refused_moved() {
         Err(ApplyError::Refused(Refusal::Moved { name })) => {
             assert_eq!(name, "refs/heads/feature-x");
         }
-        Err(other) => panic!("expected Moved, got {}", other.explain()),
+        Err(other) => panic!(
+            "expected Moved, got {}",
+            other.explain(&crate::support::Letters)
+        ),
         Ok(applied) => panic!("it ran: {:?}", applied.entry.status),
     }
     assert_eq!(state_of(&repo), before, "nothing written");
@@ -629,10 +636,11 @@ fn a_stop_resumed_after_relaunch_finishes_the_section() {
     let mut journal = journal_for(&handle);
     let never = Never;
     let mut ctx = context(&handle, &mut journal, NOW + 1, &never);
-    let recovered = recover_interrupted(&mut ctx).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let recovered = recover_interrupted(&mut ctx)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(recovered.live.len(), 1, "the stopped rewrite is live");
-    let applied =
-        resume(&mut ctx, Resume::Continue).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = resume(&mut ctx, Resume::Continue)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     assert_eq!(id(&repo, "feature-x~1"), id(&repo, "feature-a~1"));

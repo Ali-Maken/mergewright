@@ -156,7 +156,8 @@ fn plan_with(
 }
 
 fn plan_of(repo: &TempRepo, op: &Operation) -> PreviewPlan {
-    plan_with(repo, op, &git_version(), &Never).unwrap_or_else(|why| panic!("{}", why.explain()))
+    plan_with(repo, op, &git_version(), &Never)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)))
 }
 
 fn paths(names: &[&str]) -> Vec<PathBuf> {
@@ -212,7 +213,7 @@ fn unsaved_edits_in_the_way_refuse_the_preview() {
                 }
             );
             assert_eq!(
-                refusal.explain(),
+                refusal.explain(&crate::support::Letters),
                 "your unsaved edits to notes.md are in the way"
             );
         }
@@ -237,7 +238,10 @@ fn an_untracked_file_in_the_way_refuses_the_preview() {
     match answer {
         Err(PreviewError::Refused(refusal)) => {
             assert_eq!(refusal, expected);
-            assert_eq!(refusal.explain(), "new.txt is in the way");
+            assert_eq!(
+                refusal.explain(&crate::support::Letters),
+                "new.txt is in the way"
+            );
         }
         other => panic!("refused, in the way: {other:?}"),
     }
@@ -256,7 +260,7 @@ fn an_untracked_file_in_the_way_refuses_the_preview() {
             };
             assert_eq!(refusal, ignored, "an ignored file in the way");
             assert_eq!(
-                refusal.explain(),
+                refusal.explain(&crate::support::Letters),
                 "new.txt (ignored) is in the way · move it aside first"
             );
         }
@@ -283,7 +287,7 @@ fn a_mixed_refusal_names_unsaved_and_staged() {
                 }
             );
             assert_eq!(
-                refusal.explain(),
+                refusal.explain(&crate::support::Letters),
                 "your unsaved edits to a.txt and your staged edits to b.txt are in the way"
             );
         }
@@ -306,7 +310,7 @@ fn a_staged_part_that_no_longer_applies_refuses_the_preview() {
             Err(PreviewError::Refused(refusal)) => {
                 assert_eq!(refusal, Refusal::StashIndexNoLongerApplies { index: 0 });
                 assert_eq!(
-                    refusal.explain(),
+                    refusal.explain(&crate::support::Letters),
                     "the staged part of stash@{0} no longer applies"
                 );
             }

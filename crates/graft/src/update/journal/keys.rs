@@ -271,6 +271,7 @@ pub(super) fn enter(
                 id,
                 list,
                 row: index,
+                keys: std::sync::Arc::clone(&next.keymap),
             });
         }
         None => {}

@@ -231,7 +231,7 @@ fn continue_with_nothing_unmerged_queues_an_unstoppable_resume() {
     // signal it (m8-13b).
     let [
         Command::Unstoppable(marked, _),
-        Command::Resume(id, Resume::Continue),
+        Command::Resume(id, Resume::Continue, ..),
     ] = commands.as_slice()
     else {
         panic!("expected the mark, then one Resume: {commands:?}");
@@ -483,7 +483,7 @@ fn u_on_the_banner_of_a_shell_merge_is_sent() {
         assert!(
             matches!(
                 (command, redo),
-                (Command::Undo(_, false), false) | (Command::Redo(_, false), true)
+                (Command::Undo(_, false, ..), false) | (Command::Redo(_, false, ..), true)
             ),
             "{code:?}: {command:?}"
         );
@@ -669,7 +669,11 @@ fn u_right_after_continue_is_accepted() {
         panic!("u was refused: {:?}", pressed.status);
     };
     assert!(
-        commands.contains(&Command::Undo(undo, false)),
+        commands.contains(&Command::Undo(
+            undo,
+            false,
+            std::sync::Arc::new(graft_ui::keymap::Keymap::shipped().clone())
+        )),
         "{commands:?}"
     );
 }
@@ -915,7 +919,7 @@ fn continued(key: &str, verb: &str, before: &AppState, after: &AppState, command
                 commands,
                 [
                     Command::Unstoppable(..),
-                    Command::Resume(_, Resume::Continue)
+                    Command::Resume(_, Resume::Continue, ..)
                 ]
             ),
             "`{key} {verb}` queued {commands:?}"

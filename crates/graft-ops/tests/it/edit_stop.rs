@@ -223,7 +223,10 @@ fn an_edit_stop_comes_back_as_a_stop() {
         Err(ApplyError::Conflicted { paths, .. }) => {
             assert!(paths.is_empty(), "an edit stop lists nothing: {paths:?}");
         }
-        Err(other) => panic!("expected a stop, got {}", other.explain()),
+        Err(other) => panic!(
+            "expected a stop, got {}",
+            other.explain(&crate::support::Letters)
+        ),
         Ok(applied) => panic!("expected a stop, it finished: {:?}", applied.entry.status),
     }
     let stop = facts(&repo).edit_stop.expect("an edit stop");
@@ -260,7 +263,7 @@ fn a_shell_begun_edit_stop_amend_is_recorded_with_a_backup() {
     repo.git(&["add", "c2.txt"]);
 
     let applied = try_run(&repo, &keep_message("c2"), NOW)
-        .unwrap_or_else(|why| panic!("the amend runs: {}", why.explain()));
+        .unwrap_or_else(|why| panic!("the amend runs: {}", why.explain(&crate::support::Letters)));
     assert_eq!(
         applied.refresh,
         graft_ops::apply::Refresh::Everything,
@@ -307,20 +310,27 @@ fn an_amend_inside_graft_s_rewrite_folds_and_c_still_continues_it() {
     params.todo[0].action = TodoAction::Edit;
     let entry = match try_run(&repo, &Operation::Rewrite(params), NOW) {
         Err(ApplyError::Conflicted { entry, .. }) => entry.id,
-        Err(other) => panic!("expected a stop, got {}", other.explain()),
+        Err(other) => panic!(
+            "expected a stop, got {}",
+            other.explain(&crate::support::Letters)
+        ),
         Ok(_) => panic!("expected a stop"),
     };
     repo.write("a1.txt", b"a1 amended\n");
     repo.git(&["add", "a1.txt"]);
 
     let applied = try_run(&repo, &keep_message("a1"), NOW + 1)
-        .unwrap_or_else(|why| panic!("the amend runs: {}", why.explain()));
+        .unwrap_or_else(|why| panic!("the amend runs: {}", why.explain(&crate::support::Letters)));
     assert_eq!(applied.refresh, graft_ops::apply::Refresh::Everything);
     // Twice, as for a forgotten file.
     repo.write("late.txt", b"late\n");
     repo.git(&["add", "late.txt"]);
-    try_run(&repo, &keep_message("a1"), NOW + 2)
-        .unwrap_or_else(|why| panic!("the second amend runs: {}", why.explain()));
+    try_run(&repo, &keep_message("a1"), NOW + 2).unwrap_or_else(|why| {
+        panic!(
+            "the second amend runs: {}",
+            why.explain(&crate::support::Letters)
+        )
+    });
 
     let ids: Vec<_> = journal(&repo).iter().map(|e| e.id.clone()).collect();
     assert_eq!(ids, vec![entry.clone()], "no entry of the amends' own");
@@ -329,7 +339,7 @@ fn an_amend_inside_graft_s_rewrite_folds_and_c_still_continues_it() {
     let mut journal = crate::support::journal_for(&handle);
     let mut ctx = crate::support::context(&handle, &mut journal, NOW + 3, &Never);
     let finished = graft_ops::apply::resume(&mut ctx, graft_ops::apply::Resume::Continue)
-        .unwrap_or_else(|why| panic!("c continues: {}", why.explain()));
+        .unwrap_or_else(|why| panic!("c continues: {}", why.explain(&crate::support::Letters)));
     assert_eq!(finished.entry.id, entry, "the live entry was the one found");
     assert!(!repo.path().join(".git/rebase-merge").exists());
     assert_eq!(repo.git(&["show", "HEAD~1:a1.txt"]), "a1 amended");

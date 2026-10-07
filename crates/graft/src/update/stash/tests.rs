@@ -346,7 +346,7 @@ fn y_in_the_preview_applies() {
     let (op, _) = previewed(&state);
     planned(&mut state, &op);
     let commands = key(&mut state, KeyCode::Char('y'));
-    let [Command::Operate(_, operation)] = commands.as_slice() else {
+    let [Command::Operate(_, operation, ..)] = commands.as_slice() else {
         panic!("one operate, got {commands:?}");
     };
     assert_eq!(
@@ -373,7 +373,7 @@ fn y_in_the_preview_pops() {
     let (op, _) = previewed(&state);
     planned(&mut state, &op);
     let commands = key(&mut state, KeyCode::Char('y'));
-    let [Command::Operate(_, operation)] = commands.as_slice() else {
+    let [Command::Operate(_, operation, ..)] = commands.as_slice() else {
         panic!("one operate, got {commands:?}");
     };
     assert_eq!(
@@ -445,7 +445,7 @@ fn tab_flips_the_scope_and_enter_saves_what_is_chosen() {
     press(&mut state, KeyCode::Tab);
     assert!(state.stash.prompt.as_ref().expect("still open").staged_only);
     let (_, commands) = press(&mut state, KeyCode::Enter);
-    let [Command::Operate(_, operation)] = commands.as_slice() else {
+    let [Command::Operate(_, operation, ..)] = commands.as_slice() else {
         panic!("one operate, got {commands:?}");
     };
     assert_eq!(
@@ -464,7 +464,7 @@ fn an_empty_message_is_no_message_at_all_not_an_empty_one() {
     state.working_tree = Some(dirty());
     press(&mut state, KeyCode::Char('s'));
     let (_, commands) = press(&mut state, KeyCode::Enter);
-    let [Command::Operate(_, operation)] = commands.as_slice() else {
+    let [Command::Operate(_, operation, ..)] = commands.as_slice() else {
         panic!("one operate, got {commands:?}");
     };
     assert_eq!(

@@ -883,7 +883,12 @@ impl<S: JobEvents> JobRunner<S> {
     /// Simpler than [`Self::operate`]: no progress stream and no askpass,
     /// because `git <kind> --continue|--skip|--abort` talks to no remote
     /// and asks no credential.
-    fn resume(&self, id: JobId, what: graft_ops::apply::Resume) {
+    fn resume(
+        &self,
+        id: JobId,
+        what: graft_ops::apply::Resume,
+        keys: Arc<graft_ui::keymap::Keymap>,
+    ) {
         let repos = Arc::clone(&self.repos);
         let sink = self.sink.clone();
         let clock = self.clock;
@@ -906,13 +911,18 @@ impl<S: JobEvents> JobRunner<S> {
                     return Outcome::Cancelled;
                 }
                 Outcome::Produced(Product::Resumed(Box::new(super::operate::run_resume(
-                    &repos, what, clock, cancel,
+                    &repos, what, clock, cancel, &keys,
                 ))))
             })
         });
     }
 
-    fn operate(&self, id: JobId, op: Box<graft_ops::operation::Operation>) {
+    fn operate(
+        &self,
+        id: JobId,
+        op: Box<graft_ops::operation::Operation>,
+        keys: Arc<graft_ui::keymap::Keymap>,
+    ) {
         let repos = Arc::clone(&self.repos);
         let sink = self.sink.clone();
         let clock = self.clock;
@@ -975,6 +985,7 @@ impl<S: JobEvents> JobRunner<S> {
                         askpass,
                         helper,
                     },
+                    &keys,
                 ))))
             })
         });
@@ -1015,7 +1026,7 @@ impl<S: JobEvents> JobRunner<S> {
     /// (m3-working-tree-undo-and-stash/06). A write like any other: it takes
     /// `AppState::operating`, so the same `Progress::Operating` line names it
     /// while it runs.
-    fn run_undo(&self, id: JobId, redo: bool, force: bool) {
+    fn run_undo(&self, id: JobId, redo: bool, force: bool, keys: Arc<graft_ui::keymap::Keymap>) {
         let repos = Arc::clone(&self.repos);
         let sink = self.sink.clone();
         let clock = self.clock;
@@ -1032,7 +1043,7 @@ impl<S: JobEvents> JobRunner<S> {
                     return Outcome::Cancelled;
                 }
                 Outcome::Produced(Product::Undone(Box::new(super::undo::run_undo(
-                    &repos, redo, force, clock, cancel,
+                    &repos, redo, force, clock, cancel, &keys,
                 ))))
             })
         });
@@ -1062,7 +1073,13 @@ impl<S: JobEvents> JobRunner<S> {
     ///
     /// A write, like an undo: it takes `AppState::operating`, so the same
     /// `Progress::Operating` line names it while it runs.
-    fn run_revert_to(&self, id: JobId, target: graft_core::journal::EntryId, force: bool) {
+    fn run_revert_to(
+        &self,
+        id: JobId,
+        target: graft_core::journal::EntryId,
+        force: bool,
+        keys: Arc<graft_ui::keymap::Keymap>,
+    ) {
         let repos = Arc::clone(&self.repos);
         let sink = self.sink.clone();
         let clock = self.clock;
@@ -1078,7 +1095,7 @@ impl<S: JobEvents> JobRunner<S> {
                     return Outcome::Cancelled;
                 }
                 Outcome::Produced(Product::RevertedTo(Box::new(super::undo::run_revert_to(
-                    &repos, &target, force, clock, cancel,
+                    &repos, &target, force, clock, cancel, &keys,
                 ))))
             })
         });
@@ -1134,7 +1151,13 @@ impl<S: JobEvents> JobRunner<S> {
     }
 
     /// What `⏎` on `list.rows[row]` in J puts back (m7-power-tools/24).
-    fn recover_for(&self, id: JobId, list: Arc<graft_ops::journal_list::JournalList>, row: usize) {
+    fn recover_for(
+        &self,
+        id: JobId,
+        list: Arc<graft_ops::journal_list::JournalList>,
+        row: usize,
+        keys: Arc<graft_ui::keymap::Keymap>,
+    ) {
         let repos = Arc::clone(&self.repos);
         let clock = self.clock;
         self.queue_as(id, Some(Task::RecoverFor), move |_| {
@@ -1143,7 +1166,7 @@ impl<S: JobEvents> JobRunner<S> {
                     return Outcome::Cancelled;
                 }
                 Outcome::Produced(Product::RecoverFor(super::journal_list::recover_for(
-                    &repos, clock, &list, row, cancel,
+                    &repos, clock, &list, row, cancel, &keys,
                 )))
             })
         });
@@ -1291,6 +1314,12 @@ macro_rules! detail_read {
 }
 
 impl<S: JobEvents> Dispatch for JobRunner<S> {
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one arm per `Command` variant, exhaustive with no `_` arm so a new command \
+                  stops this compiling until it is routed; `RecoverFor`'s fourth field (m8/10e) \
+                  is what rustfmt spreads over five lines"
+    )]
     fn dispatch(&self, command: Command) {
         match command {
             Command::OpenRepository => self.open_repository(),
@@ -1313,16 +1342,21 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::PlanRewrite { id, request, head } => self.plan_rewrite(id, request, head),
             Command::OpenRewrite { id, req } => self.open_rewrite(id, req),
             Command::ResolveRowTags(id, offsets) => self.resolve_row_tags(id, offsets),
-            Command::Operate(id, op) => self.operate(id, op),
-            Command::Resume(id, what) => self.resume(id, what),
-            Command::Undo(id, force) => self.run_undo(id, false, force),
-            Command::Redo(id, force) => self.run_undo(id, true, force),
+            Command::Operate(id, op, keys) => self.operate(id, op, keys),
+            Command::Resume(id, what, keys) => self.resume(id, what, keys),
+            Command::Undo(id, force, keys) => self.run_undo(id, false, force, keys),
+            Command::Redo(id, force, keys) => self.run_undo(id, true, force, keys),
             Command::ReadJournal(id) => self.read_journal(id),
             Command::ReadOutside { id } => self.read_outside(id),
             Command::FindLost { id, outside } => self.find_lost(id, outside),
-            Command::RecoverFor { id, list, row } => self.recover_for(id, list, row),
+            Command::RecoverFor {
+                id,
+                list,
+                row,
+                keys,
+            } => self.recover_for(id, list, row, keys),
             Command::PlanPreview(id, request) => self.plan_preview(id, request),
-            Command::RevertTo(id, target, force) => self.run_revert_to(id, target, force),
+            Command::RevertTo(id, to, force, keys) => self.run_revert_to(id, to, force, keys),
             Command::ReadStashes(id) => self.read_stashes(id),
             Command::ReadSwitchList(id) => self.read_switch_list(id),
             Command::ReadIndexState { id } => self.read_index_state(id),

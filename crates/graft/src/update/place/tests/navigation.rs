@@ -258,21 +258,24 @@ fn is_write_covers_every_operation_launch() {
         regions: Vec::new(),
         fingerprint: lina(),
     });
+    let keys = || Arc::new(graft_ui::keymap::Keymap::shipped().clone());
     let launches = [
         Command::Operate(
             job,
             Box::new(graft_ops::operation::Operation::Stage(
                 graft_ops::operation::Target::Paths(vec!["a.rs".into()]),
             )),
+            keys(),
         ),
-        Command::Resume(job, graft_ops::apply::Resume::Continue),
+        Command::Resume(job, graft_ops::apply::Resume::Continue, keys()),
         Command::RevertTo(
             job,
             graft_core::journal::EntryId::new(1_000, [0; 10]),
             false,
+            keys(),
         ),
-        Command::Undo(job, false),
-        Command::Redo(job, false),
+        Command::Undo(job, false, keys()),
+        Command::Redo(job, false, keys()),
         Command::TakeSide(
             job,
             crate::update::events::TakeRequest {

@@ -246,7 +246,7 @@ fn c_in_the_graph_continues_a_graft_begun_rebase() {
     assert!(
         commands.iter().any(|command| matches!(
             command,
-            Command::Resume(_, graft_ops::apply::Resume::Continue)
+            Command::Resume(_, graft_ops::apply::Resume::Continue, ..)
         )),
         "{commands:?}"
     );

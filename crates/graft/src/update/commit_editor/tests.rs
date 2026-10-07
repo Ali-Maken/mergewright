@@ -73,7 +73,7 @@ pub(crate) fn ready(paths: &[&str]) -> AppState {
 /// The `Operate` command in `commands`, if there is one.
 fn operate(commands: &[Command]) -> Option<&Operation> {
     commands.iter().find_map(|command| match command {
-        Command::Operate(_, op) => Some(&**op),
+        Command::Operate(_, op, ..) => Some(&**op),
         _ => None,
     })
 }

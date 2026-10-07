@@ -66,7 +66,12 @@ fn resolve(repo: &TempRepo, path: &str, side: Side, how: UnmergedHow, at: i64) {
         }),
         at,
     )
-    .unwrap_or_else(|why| panic!("resolving {path}: {}", why.explain()));
+    .unwrap_or_else(|why| {
+        panic!(
+            "resolving {path}: {}",
+            why.explain(&crate::support::Letters)
+        )
+    });
 }
 
 fn restart(repo: &TempRepo, path: &str, kind: RestartKind, at: i64) -> Result<Applied, ApplyError> {
@@ -116,7 +121,12 @@ fn start_over_brings_back_a_modify_delete_choice() {
 
     let plan = gate(&repo, "gone.txt")
         .unwrap_or_else(|why| panic!("{}", why.explain()))
-        .unwrap_or_else(|refusal| panic!("the gate refused: {}", refusal.explain()));
+        .unwrap_or_else(|refusal| {
+            panic!(
+                "the gate refused: {}",
+                refusal.explain(&crate::support::Letters)
+            )
+        });
     assert!(
         matches!(plan.source, StageSource::Backup { .. }),
         "{plan:?}"
@@ -129,7 +139,7 @@ fn start_over_brings_back_a_modify_delete_choice() {
     );
 
     let applied = restart(&repo, "gone.txt", plan.kind, NOW + 3)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(
         stages(&repo, "gone.txt"),
@@ -186,10 +196,15 @@ fn start_over_restores_the_surviving_side() {
 
         let plan = gate(&repo, path)
             .unwrap_or_else(|why| panic!("{}", why.explain()))
-            .unwrap_or_else(|refusal| panic!("{path}: refused {}", refusal.explain()));
+            .unwrap_or_else(|refusal| {
+                panic!(
+                    "{path}: refused {}",
+                    refusal.explain(&crate::support::Letters)
+                )
+            });
         assert_eq!(plan.kind, RestartKind::WholeFile { shape }, "{path}");
         let applied = restart(&repo, path, plan.kind, at + 1)
-            .unwrap_or_else(|why| panic!("{path}: {}", why.explain()));
+            .unwrap_or_else(|why| panic!("{path}: {}", why.explain(&crate::support::Letters)));
 
         assert_eq!(
             unmerged_lines(&repo, path),
@@ -395,7 +410,7 @@ fn start_over_refuses_when_the_shape_changed_since_the_gate() {
             Refusal::RestartChanged {
                 path: PathBuf::from(path)
             }
-            .explain(),
+            .explain(&crate::support::Letters),
             format!("{path} changed since it was opened · open it again")
         );
     }
@@ -436,8 +451,9 @@ fn undo_after_a_whole_file_start_over_matches_markers() {
         mark_both_done(&repo);
         keep_gone(&repo);
         let plan = gate(&repo, start_over).unwrap().unwrap();
-        restart(&repo, start_over, plan.kind, NOW + 3)
-            .unwrap_or_else(|why| panic!("{start_over}: {}", why.explain()));
+        restart(&repo, start_over, plan.kind, NOW + 3).unwrap_or_else(|why| {
+            panic!("{start_over}: {}", why.explain(&crate::support::Letters))
+        });
         assert_eq!(
             entries(&repo).len(),
             entries_stopped,
@@ -449,8 +465,12 @@ fn undo_after_a_whole_file_start_over_matches_markers() {
         } else {
             mark_both_done(&repo);
         }
-        run_resume(&repo, Resume::Continue, NOW + 6)
-            .unwrap_or_else(|why| panic!("{start_over}: finishing: {}", why.explain()));
+        run_resume(&repo, Resume::Continue, NOW + 6).unwrap_or_else(|why| {
+            panic!(
+                "{start_over}: finishing: {}",
+                why.explain(&crate::support::Letters)
+            )
+        });
         assert!(!merging(&repo), "{start_over}: the merge is finished");
         let finished = entries(&repo).len();
         run_undo(&repo, NOW + 7, false).unwrap_or_else(|why| panic!("{start_over}: u: {why:?}"));
@@ -507,7 +527,7 @@ fn start_over_of_a_whole_file_is_still_refused_in_a_shell_merge() {
         other => panic!("expected NoStagesKept, got {other:?}"),
     }
     assert_eq!(
-        want.explain(),
+        want.explain(&crate::support::Letters),
         "theirs-deleted.txt: the conflict's sides were not kept"
     );
 }

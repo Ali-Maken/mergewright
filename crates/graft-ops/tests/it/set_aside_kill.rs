@@ -128,7 +128,7 @@ fn child_runs_the_switch() {
     });
     let line = match apply(&mut ctx, &op) {
         Ok(_) => "ok".to_owned(),
-        Err(error) => error.explain(),
+        Err(error) => error.explain(&crate::support::Letters),
     };
     std::fs::write(out, line).expect("the line writes");
 }
@@ -141,7 +141,7 @@ fn recover(repo: &TempRepo) -> Vec<(EntryId, EditsAt)> {
     let never = Never;
     let mut ctx = context(&handle, &mut journal, NOW + 1, &never);
     recover_interrupted(&mut ctx)
-        .unwrap_or_else(|why| panic!("{}", why.explain()))
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)))
         .set_aside
 }
 
@@ -184,7 +184,8 @@ fn killed_between_the_two_applies_loses_nothing() {
             .contains("\nfive\n"),
         "S holds the edit"
     );
-    run_undo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(&repo), before, "undo exact, stash list included");
 }
 
@@ -201,7 +202,8 @@ fn killed_before_the_drop_loses_nothing() {
     assert_eq!(recovered, [(id, EditsAt::Back { copy: Some(0) })]);
     assert_eq!(repo.git(&["show", ":f.txt"]), "v2", "index v2");
     assert_eq!(repo.read("f.txt"), b"v3\n", "worktree v3");
-    run_undo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(&repo), before, "undo exact, stash list included");
 }
 
@@ -217,6 +219,7 @@ fn killed_before_the_drop_after_the_fallback_loses_nothing() {
     let (id, _stash) = interrupted(&repo);
     assert_eq!(recovered, [(id, EditsAt::Back { copy: Some(0) })]);
     assert_eq!(repo.git(&["status", "--porcelain"]), " M f.txt");
-    run_undo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(&repo), before, "undo exact, stash list included");
 }

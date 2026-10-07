@@ -212,7 +212,7 @@ fn enter_on_the_next_undo_row_is_u_and_closes_the_browser() {
     assert!(claimed);
     assert!(!state.journal.shown, "the result is on the graph");
     assert!(
-        matches!(commands.as_slice(), [Command::Undo(_, false)]),
+        matches!(commands.as_slice(), [Command::Undo(_, false, ..)]),
         "{commands:?}"
     );
     assert!(state.operating.is_some());
@@ -317,7 +317,7 @@ fn enter_on_the_next_redo_row_is_still_capital_u() {
 
     assert!(claimed);
     assert!(
-        matches!(commands.as_slice(), [Command::Redo(_, _)]),
+        matches!(commands.as_slice(), [Command::Redo(..)]),
         "a redo, not a refusal: {commands:?}"
     );
 }
@@ -1078,6 +1078,7 @@ fn enter_on(landed: LostFound, pick: impl Fn(&ListRow) -> bool) -> (AppState, Jo
             id,
             list: asked,
             row: asked_row,
+            ..
         },
     ] = commands.as_slice()
     else {

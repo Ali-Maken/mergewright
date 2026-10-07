@@ -28,7 +28,7 @@ fn drift() -> graft_ops::undo::Drift {
 /// The job `undo_key` launched, from the command it sent.
 fn launched(commands: &[Command]) -> JobId {
     match commands {
-        [Command::Undo(id, _) | Command::Redo(id, _)] => *id,
+        [Command::Undo(id, ..) | Command::Redo(id, ..)] => *id,
         other => panic!("one undo or redo job: {other:?}"),
     }
 }

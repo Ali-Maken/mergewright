@@ -711,13 +711,13 @@ fn drift_on_redo_says_capital_u() {
         drift: moved(),
         direction: Direction::Redo,
     }
-    .explain();
+    .explain(&crate::keys::Letters);
     assert!(redo.ends_with("— U again to go ahead"), "{redo}");
     let undo = UndoError::Drift {
         drift: moved(),
         direction: Direction::Undo,
     }
-    .explain();
+    .explain(&crate::keys::Letters);
     assert!(undo.ends_with("— u again to go ahead"), "{undo}");
 }
 

@@ -72,20 +72,20 @@ impl Graft for AppOps {
             prune: false,
         });
         with_context(work, at_ms, |ctx| {
-            apply(ctx, &op).map_err(|why| why.explain())
+            apply(ctx, &op).map_err(|why| why.explain(&graft_ops::keys::NoKeys))
         })
     }
 
     fn discard(&mut self, work: &Path, path: &str, at_ms: i64) -> Result<(), String> {
         let op = Operation::Discard(Target::Paths(vec![PathBuf::from(path)]));
         with_context(work, at_ms, |ctx| {
-            apply(ctx, &op).map_err(|why| why.explain())
+            apply(ctx, &op).map_err(|why| why.explain(&graft_ops::keys::NoKeys))
         })
     }
 
     fn undo_forced(&mut self, work: &Path, at_ms: i64) -> Result<(), String> {
         with_context(work, at_ms, |ctx| {
-            graft_ops::undo::undo(ctx, true).map_err(|why| why.explain())
+            graft_ops::undo::undo(ctx, true).map_err(|why| why.explain(&graft_ops::keys::NoKeys))
         })
     }
 }

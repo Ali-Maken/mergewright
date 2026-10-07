@@ -67,7 +67,7 @@ fn d_starts_over_behind_a_box() {
     // `→` off `Cancel` onto `Start over`, then `Enter` runs it.
     let state = app.key(&state, KeyCode::Right);
     let (_, commands) = press_for_commands(&state, KeyPress::plain(KeyCode::Enter));
-    let [Command::Operate(_, operation)] = commands.as_slice() else {
+    let [Command::Operate(_, operation, ..)] = commands.as_slice() else {
         panic!("`Start over` queued {commands:?}")
     };
     assert!(

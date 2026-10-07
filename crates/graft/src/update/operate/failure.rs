@@ -1,6 +1,9 @@
 //! A write that did not land, or was refused: the line it leaves.
 
+use graft_ui::keymap::Keymap;
+
 use super::{AppState, Command, InProgress, JobId, Operated, Operation, Refresh, Refusal, Status};
+use crate::update::op_keys::OpKeys;
 
 /// A write that did not land: the line it leaves, and what it makes stale.
 ///
@@ -125,11 +128,15 @@ pub(super) fn history_refusal(state: &AppState, refused: Option<&Refusal>) -> Op
         // preview refused with before the confirm (m6-conflicts/67).
         refused @ Refusal::DirtyTree { .. } => running
             .and_then(|running| running.op.as_ref())
-            .map(|op| refusal_status(op, refused, state.size.columns)),
+            .map(|op| refusal_status(op, refused, state.size.columns, &state.keymap)),
         // The guard read again at `y` (ADR-0049): the same line the preview
         // refuses with, its next step kept whole (m7-power-tools/30t). It
         // reads no operation, so it needs none running.
-        refused @ Refusal::InTheWay { .. } => Some(in_the_way_status(refused, state.size.columns)),
+        refused @ Refusal::InTheWay { .. } => Some(in_the_way_status(
+            refused,
+            state.size.columns,
+            &state.keymap,
+        )),
         // Marking a half-resolved file done is the one mistake that loses
         // work quietly: the markers go into the commit. The reason names
         // the file; the keys are the two ways out of it, which is exactly
@@ -160,7 +167,12 @@ pub(super) fn short_ref(full: &str) -> &str {
 /// `columns` wide (ADR-0049 amendment, m7-power-tools/30t); a resize after
 /// the refusal keeps the rung chosen here. Every other refusal is
 /// `Refusal::explain`'s one sentence.
-pub(crate) fn refusal_status(op: &Operation, refusal: &Refusal, columns: u16) -> Status {
+pub(crate) fn refusal_status(
+    op: &Operation,
+    refusal: &Refusal,
+    columns: u16,
+    keys: &Keymap,
+) -> Status {
     match refusal {
         Refusal::DirtyTree { count } => Status::Sticky {
             reason: format!("{} needs a clean tree", verb_of(&op.describe())),
@@ -169,8 +181,8 @@ pub(crate) fn refusal_status(op: &Operation, refusal: &Refusal, columns: u16) ->
                 if *count == 1 { "file" } else { "files" }
             )),
         },
-        refused @ Refusal::InTheWay { .. } => in_the_way_status(refused, columns),
-        other => Status::sticky(other.explain()),
+        refused @ Refusal::InTheWay { .. } => in_the_way_status(refused, columns, keys),
+        other => Status::sticky(other.explain(&OpKeys(keys))),
     }
 }
 
@@ -178,7 +190,7 @@ pub(crate) fn refusal_status(op: &Operation, refusal: &Refusal, columns: u16) ->
 /// `fit_status_line` measures it, for the graph footer's text, which is one
 /// cell narrower than the row (it indents one); J's row is the full width,
 /// so a rung that fits here fits there too.
-fn in_the_way_status(refusal: &Refusal, columns: u16) -> Status {
+fn in_the_way_status(refusal: &Refusal, columns: u16, keymap: &Keymap) -> Status {
     use unicode_width::UnicodeWidthStr;
     // An ignored file's next step (`move it aside first`) names no key, and
     // a footer with no key is what ADR-0037 §4 rules out; `S stashes it
@@ -194,10 +206,10 @@ fn in_the_way_status(refusal: &Refusal, columns: u16) -> Status {
         let suffix = format!(" \u{b7} {}", keys(words.next.as_deref()));
         suffix.width() < room && words.reason.width() <= room - suffix.width()
     };
-    let rungs = refusal.explain_rungs();
+    let rungs = refusal.explain_rungs(&OpKeys(keymap));
     // `explain_rungs` is never empty; the fallback is its own sentence.
     let Some(picked) = rungs.iter().find(fits).or(rungs.last()) else {
-        return Status::sticky(refusal.explain());
+        return Status::sticky(refusal.explain(&OpKeys(keymap)));
     };
     Status::Sticky {
         reason: picked.reason.clone(),

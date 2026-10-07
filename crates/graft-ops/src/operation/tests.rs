@@ -364,7 +364,7 @@ fn mid_rebase_stage_and_unstage_are_allowed_and_the_rest_wait() {
             );
         }
     }
-    let explained = Refusal::InProgress(InProgress::Rebase).explain();
+    let explained = Refusal::InProgress(InProgress::Rebase).explain(&crate::keys::Letters);
     assert!(
         explained.contains("git rebase --continue") && explained.contains("git rebase --abort")
     );
@@ -810,7 +810,7 @@ fn describe_reads_like_the_browser_line() {
 #[test]
 fn head_unborn_says_there_is_no_commit_and_the_key_that_makes_one() {
     assert_eq!(
-        Refusal::HeadUnborn.explain(),
+        Refusal::HeadUnborn.explain(&crate::keys::Letters),
         "HEAD has no commit yet \u{b7} c makes the first one"
     );
 }
@@ -847,13 +847,13 @@ fn every_refusal_explains_itself_in_one_actionable_sentence() {
         },
     ];
     for refusal in all {
-        let text = refusal.explain();
+        let text = refusal.explain(&crate::keys::Letters);
         assert!(text.ends_with('.'), "{text}");
         assert!(text.len() > 20 && !text.contains('\n'), "{text}");
     }
     assert!(
         Refusal::InProgress(InProgress::Merge)
-            .explain()
+            .explain(&crate::keys::Letters)
             .contains("`git merge --abort`")
     );
     assert!(
@@ -865,7 +865,7 @@ fn every_refusal_explains_itself_in_one_actionable_sentence() {
                 patch: 0
             }
         }
-        .explain()
+        .explain(&crate::keys::Letters)
         .contains("2.35.0")
     );
 }
@@ -1120,14 +1120,14 @@ fn conflict_refusals_in_words() {
         Refusal::NotUnmerged {
             path: PathBuf::from("src/a.rs"),
         }
-        .explain(),
+        .explain(&crate::keys::Letters),
         "src/a.rs is not conflicted"
     );
     assert_eq!(
         Refusal::NoStagesKept {
             path: PathBuf::from("src/a.rs"),
         }
-        .explain(),
+        .explain(&crate::keys::Letters),
         "src/a.rs: the conflict's sides were not kept"
     );
     assert_eq!(
@@ -1135,7 +1135,7 @@ fn conflict_refusals_in_words() {
             path: PathBuf::from("src/a.rs"),
             open: 2,
         }
-        .explain(),
+        .explain(&crate::keys::Letters),
         "2 conflicts still open in src/a.rs"
     );
     // m6-conflicts/46: one open block reads as one, not "1 conflicts".
@@ -1144,7 +1144,7 @@ fn conflict_refusals_in_words() {
             path: PathBuf::from("both.txt"),
             open: 1,
         }
-        .explain(),
+        .explain(&crate::keys::Letters),
         "1 conflict still open in both.txt"
     );
     assert_eq!(
@@ -1152,7 +1152,7 @@ fn conflict_refusals_in_words() {
             path: PathBuf::from("src/a.rs"),
             how: UnmergedHow::DeletedByThem,
         }
-        .explain(),
+        .explain(&crate::keys::Letters),
         "src/a.rs: deleted by them — no markers to take from"
     );
 }
@@ -1166,7 +1166,7 @@ fn the_unmerged_refusal_names_no_shell_and_no_milestone() {
         paths: vec![PathBuf::from("src/a.rs")],
     };
     assert_eq!(
-        one.explain(),
+        one.explain(&crate::keys::Letters),
         "src/a.rs still has conflicts · resolve it first"
     );
     let three = Refusal::Unmerged {
@@ -1177,10 +1177,13 @@ fn the_unmerged_refusal_names_no_shell_and_no_milestone() {
         ],
     };
     assert_eq!(
-        three.explain(),
+        three.explain(&crate::keys::Letters),
         "src/a.rs +2 still has conflicts · resolve it first"
     );
-    for words in [one.explain(), three.explain()] {
+    for words in [
+        one.explain(&crate::keys::Letters),
+        three.explain(&crate::keys::Letters),
+    ] {
         assert!(!words.contains("shell"), "{words}");
         assert!(!words.contains("milestone"), "{words}");
     }
@@ -1495,7 +1498,7 @@ fn in_the_way_words() {
             ignored: ignored.iter().map(PathBuf::from).collect(),
             untracked: untracked.iter().map(PathBuf::from).collect(),
         }
-        .explain()
+        .explain(&crate::keys::Letters)
     };
     assert_eq!(
         words(&["c.txt"], &[]),
@@ -1713,7 +1716,7 @@ fn stash_in_the_way_words_name_an_ignored_file() {
             untracked: paths(untracked),
             ignored: paths(ignored),
         }
-        .explain()
+        .explain(&crate::keys::Letters)
     };
     let cases = [
         (words(&[], &["n.txt"], &[]), "n.txt is in the way"),
@@ -1825,7 +1828,7 @@ fn in_the_way(ignored: &[&str], untracked: &[&str]) -> Refusal {
 
 fn rung_reasons(refusal: &Refusal) -> Vec<String> {
     refusal
-        .explain_rungs()
+        .explain_rungs(&crate::keys::Letters)
         .into_iter()
         .map(|words| words.reason)
         .collect()
@@ -1873,7 +1876,7 @@ fn in_the_way_rungs() {
             "\u{2026}/session-cache.json is in the way",
         ]
     );
-    for words in deep.explain_rungs() {
+    for words in deep.explain_rungs(&crate::keys::Letters) {
         assert_eq!(words.next.as_deref(), Some("move it aside first"));
     }
     // `+N more` stays after the path.
@@ -1889,11 +1892,14 @@ fn in_the_way_rungs() {
         ]
     );
     assert_eq!(
-        more.explain_rungs()[0].next.as_deref(),
+        more.explain_rungs(&crate::keys::Letters)[0].next.as_deref(),
         Some("move them aside first")
     );
     for refusal in [one, two, deep, more] {
-        assert_eq!(joined(&refusal.explain_rungs()[0]), refusal.explain());
+        assert_eq!(
+            joined(&refusal.explain_rungs(&crate::keys::Letters)[0]),
+            refusal.explain(&crate::keys::Letters)
+        );
     }
 }
 
@@ -1910,10 +1916,15 @@ fn in_the_way_rungs_untracked_only() {
         ]
     );
     assert_eq!(
-        untracked.explain_rungs()[0].next.as_deref(),
+        untracked.explain_rungs(&crate::keys::Letters)[0]
+            .next
+            .as_deref(),
         Some("S stashes it first")
     );
-    assert_eq!(joined(&untracked.explain_rungs()[0]), untracked.explain());
+    assert_eq!(
+        joined(&untracked.explain_rungs(&crate::keys::Letters)[0]),
+        untracked.explain(&crate::keys::Letters)
+    );
 }
 
 #[test]
@@ -1952,10 +1963,14 @@ fn every_other_refusal_has_one_rung_equal_to_explain() {
         },
     ];
     for refusal in all {
-        let rungs = refusal.explain_rungs();
+        let rungs = refusal.explain_rungs(&crate::keys::Letters);
         assert_eq!(rungs.len(), 1, "{refusal:?}");
         assert_eq!(rungs[0].next, None, "{refusal:?}");
-        assert_eq!(rungs[0].reason, refusal.explain(), "{refusal:?}");
+        assert_eq!(
+            rungs[0].reason,
+            refusal.explain(&crate::keys::Letters),
+            "{refusal:?}"
+        );
     }
 }
 

@@ -57,7 +57,12 @@ pub(crate) fn keep_gone(repo: &TempRepo) {
         }),
         NOW + 2,
     )
-    .unwrap_or_else(|why| panic!("keeping gone.txt: {}", why.explain()));
+    .unwrap_or_else(|why| {
+        panic!(
+            "keeping gone.txt: {}",
+            why.explain(&crate::support::Letters)
+        )
+    });
 }
 
 /// Everything the gate must not touch: the journal's bytes, Graft's backup

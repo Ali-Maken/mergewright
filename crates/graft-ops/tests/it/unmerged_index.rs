@@ -94,7 +94,7 @@ fn restore_the_index(repo: &TempRepo, index: IndexState, at: i64) {
             pins: Vec::new(),
         },
     )
-    .unwrap_or_else(|why| panic!("{}", why.explain()));
+    .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 }
 
 /// `take` over an unmerged index gives the stage tree, that tree holds every
@@ -230,7 +230,8 @@ fn conflicted_pop_undo_is_clean_without_force() {
         drift.explain()
     );
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         state_of(&repo),
         before,
@@ -276,7 +277,8 @@ fn pop_conflict_undo_redo_walks_both_ways() {
     assert_eq!(repo.git(&["ls-files", "-u"]), String::new());
 
     // `u` puts the conflict back, stages and bytes.
-    run_undo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(repo.git(&["ls-files", "-u"]), conflicted_stages);
     assert_eq!(repo.read("p.txt"), conflicted_bytes);
     assert!(
@@ -286,14 +288,17 @@ fn pop_conflict_undo_redo_walks_both_ways() {
     );
 
     // `U` resolves it again.
-    run_redo(&repo, NOW + 3, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_redo(&repo, NOW + 3, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(repo.git(&["ls-files", "-u"]), String::new());
 
     // `u`, `u`: the resolution, then the pop itself. The second `u` is the
     // one the defect blocked outright — undo being linear, the resolution's
     // missing before-index made every older entry unreachable.
-    run_undo(&repo, NOW + 4, false).unwrap_or_else(|why| panic!("{}", why.explain()));
-    run_undo(&repo, NOW + 5, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 4, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
+    run_undo(&repo, NOW + 5, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(state_of(&repo), clean, "the pop is undone");
     assert_eq!(
         repo.git(&["stash", "list"]).lines().count(),
@@ -302,7 +307,8 @@ fn pop_conflict_undo_redo_walks_both_ways() {
     );
 
     // `U`: the pop again, markers on disk and an unmerged index.
-    run_redo(&repo, NOW + 6, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_redo(&repo, NOW + 6, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         repo.git(&["ls-files", "-u"]),
         conflicted_stages,

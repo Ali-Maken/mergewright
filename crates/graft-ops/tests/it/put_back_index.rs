@@ -228,7 +228,7 @@ fn rm_cached() -> TempRepo {
 fn switch_keeps_a_staged_rm_cached() {
     let repo = rm_cached();
     let applied = try_run(&repo, &checkout_to(&repo, "refs/heads/other"), NOW)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/other");
     assert_eq!(
@@ -245,7 +245,7 @@ fn switch_keeps_index_only_content() {
     let repo = forked();
     staged_then_edited(&repo);
     try_run(&repo, &checkout_to(&repo, "refs/heads/feature"), NOW)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_split_kept(&repo, "checkout");
     assert!(stash_commits(&repo).is_empty(), "S dropped");
 }
@@ -261,15 +261,17 @@ fn every_set_aside_kind_keeps_the_index() {
         let what = format!("{kind:?}");
         let before = whole(&repo);
         let applied = try_run(&repo, &kind.op(&repo), NOW)
-            .unwrap_or_else(|why| panic!("{what}: {}", why.explain()));
+            .unwrap_or_else(|why| panic!("{what}: {}", why.explain(&crate::support::Letters)));
         assert_eq!(applied.entry.status, EntryStatus::Committed, "{what}");
         set_aside_of(&applied.entry);
         assert_split_kept(&repo, &what);
         assert!(stash_commits(&repo).is_empty(), "{what}: S dropped");
         let after = whole(&repo);
-        run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{what}: {}", why.explain()));
+        run_undo(&repo, NOW + 1, false)
+            .unwrap_or_else(|why| panic!("{what}: {}", why.explain(&crate::support::Letters)));
         assert_eq!(whole(&repo), before, "{what}: undo exact");
-        run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("{what}: {}", why.explain()));
+        run_redo(&repo, NOW + 2, false)
+            .unwrap_or_else(|why| panic!("{what}: {}", why.explain(&crate::support::Letters)));
         assert_eq!(whole(&repo), after, "{what}: redo exact");
     }
 }
@@ -293,12 +295,13 @@ fn amend_into_commits_the_index_and_puts_the_rest_back() {
         },
     );
     try_run(&repo, &Operation::Rewrite(params), NOW)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(repo.git(&["show", "HEAD~1:f.txt"]), "v2", "into the target");
     assert_eq!(repo.git(&["status", "--porcelain"]), " M o.txt");
     assert_eq!(repo.read("o.txt"), b"o, unstaged\n");
     assert!(stash_commits(&repo).is_empty(), "S dropped");
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(&repo), before, "undo exact");
 }
 
@@ -346,7 +349,7 @@ fn put_back_falls_back_when_the_index_cannot_go_back() {
     };
     assert_eq!(paths, &[PathBuf::from("f.txt")]);
     assert_eq!(
-        unread[0].to_string(),
+        unread[0].explain(&crate::support::Letters),
         "your edits are back · staging not kept: f.txt · u undoes it, staging included"
     );
     let text = String::from_utf8(repo.read("f.txt")).expect("utf-8");
@@ -391,7 +394,7 @@ fn staging_not_kept_counts_the_rest() {
     let words = AfterState::StagingNotKept {
         paths: vec!["a".into(), "b".into(), "c".into()],
     }
-    .to_string();
+    .explain(&crate::support::Letters);
     assert_eq!(
         words,
         "your edits are back · staging not kept: a +2 more · u undoes it, staging included"
@@ -416,10 +419,12 @@ fn undo_after_a_fallback_restores_the_split() {
         "{result:?}"
     );
     let after = whole(&repo);
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(&repo), before, "undo exact, the split included");
     // Minor 6 (review m7-30-06d): redo puts back the post-fallback state.
-    run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_redo(&repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(&repo), after, "redo exact");
 }
 
@@ -442,7 +447,8 @@ fn a_drop_that_fails_after_the_fallback_names_the_staging() {
         "{line}"
     );
     assert!(line.contains("u restores the backup"), "{line}");
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(&repo), before, "undo exact, stash list included");
 }
 
@@ -454,7 +460,7 @@ fn fallback_paths(repo: &TempRepo) -> Vec<PathBuf> {
         Err(ApplyError::AfterState { unread, .. }) => match unread.as_slice() {
             [AfterState::StagingNotKept { paths }] => {
                 assert_eq!(
-                    unread[0].to_string(),
+                    unread[0].explain(&crate::support::Letters),
                     format!(
                         "your edits are back · staging not kept: {} · u undoes it, staging included",
                         if paths.len() == 1 {
@@ -488,11 +494,13 @@ fn put_back_names_a_staged_new_file_edited_on() {
     assert_eq!(repo.git(&["status", "--porcelain"]), " M f.txt\nA  n.txt");
     assert_eq!(repo.git(&["show", ":n.txt"]), "v2");
     let after = whole(&repo);
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(repo.git(&["show", ":n.txt"]), "v1", "undo: v1 staged again");
     assert_eq!(repo.read("n.txt"), b"v2\n");
     assert_eq!(whole(&repo), before, "undo exact");
-    run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_redo(&repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(&repo), after, "redo exact");
 }
 
@@ -516,7 +524,8 @@ fn put_back_leaves_a_staged_new_file_deleted_since_unnamed() {
     assert_eq!(repo.git(&["status", "--porcelain"]), " M f.txt\nA  n.txt");
     assert_eq!(repo.git(&["show", ":n.txt"]), "v1");
     assert_eq!(repo.read("n.txt"), b"v1\n");
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(&repo), before, "undo exact: AD again");
 }
 
@@ -662,8 +671,9 @@ fn undo_of_the_switch_keeps_the_rm_cached() {
     let repo = rm_cached();
     let before = state_of(&repo);
     try_run(&repo, &checkout_to(&repo, "refs/heads/other"), NOW)
-        .unwrap_or_else(|why| panic!("{}", why.explain()));
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(repo.read(".env"), b"MINE\n");
     assert_eq!(
         repo.git(&["status", "--porcelain", "--ignored", "--", ".env"]),

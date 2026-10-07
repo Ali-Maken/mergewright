@@ -329,7 +329,8 @@ fn check(scenario: &Scenario) {
     let repo = main_and_feature();
     run(&repo, &checkout_feature(), NOW);
     if scenario.redo {
-        run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{name}: {}", why.explain()));
+        run_undo(&repo, NOW + 1, false)
+            .unwrap_or_else(|why| panic!("{name}: {}", why.explain(&crate::support::Letters)));
     }
     (scenario.edit)(&repo);
     let reversed = entries(&repo)
@@ -342,14 +343,17 @@ fn check(scenario: &Scenario) {
     // The box: the unforced run stops at the rail and names them.
     let boxed = match reverse(&repo, scenario.redo, NOW + 2, false) {
         Err(UndoError::Drift { drift, .. }) => drift.replaced,
-        Err(other) => panic!("{name}: the rail answered {}", other.explain()),
+        Err(other) => panic!(
+            "{name}: the rail answered {}",
+            other.explain(&crate::support::Letters)
+        ),
         Ok(_) => panic!("{name}: no drift box over an edit"),
     };
     assert_eq!(state_of(&repo), pre_state, "{name}: the box wrote nothing");
 
     // `y`: the forced run.
     let forced = reverse(&repo, scenario.redo, NOW + 3, true)
-        .unwrap_or_else(|why| panic!("{name}: {}", why.explain()));
+        .unwrap_or_else(|why| panic!("{name}: {}", why.explain(&crate::support::Letters)));
     let post = holds_now(&repo);
     let recorded = holds_in(
         &repo,
@@ -381,8 +385,12 @@ fn check(scenario: &Scenario) {
     // is in the redo's backup only. `crates/graft/tests/it/
     // undo_over_drift.rs` pins that, and the box does not promise `u`.
     if !scenario.redo {
-        run_redo(&repo, NOW + 4, false)
-            .unwrap_or_else(|why| panic!("{name}, the way back: {}", why.explain()));
+        run_redo(&repo, NOW + 4, false).unwrap_or_else(|why| {
+            panic!(
+                "{name}, the way back: {}",
+                why.explain(&crate::support::Letters)
+            )
+        });
         assert_eq!(state_of(&repo), pre_state, "{name}: U put it back");
     }
 }

@@ -4,6 +4,7 @@ use super::{
     AppState, Command, JobId, KeyCode, KeyPress, Operation, PickParams, PreviewSubject, RefLabel,
     Status, open_preview, short, short_name_of,
 };
+use crate::update::op_keys::OpKeys;
 
 /// A one-commit cherry-pick's title in the words `o` is named by
 /// (m7-power-tools/11): `take <sha7> "<subject>" onto <branch>`, whether it
@@ -105,8 +106,9 @@ pub(super) fn take_operation(state: &AppState) -> Result<Operation, Status> {
     // other branches' commits. `check_pick` refuses that HEAD as
     // `HeadUnborn` (graft-ops `head_is`), and `o` says the same words
     // (ticket 11 Decided; 30n m3).
-    let head = crate::update::context_menu::verbs::head_tip(refs)
-        .ok_or_else(|| Status::sticky(graft_ops::operation::Refusal::HeadUnborn.explain()))?;
+    let head = crate::update::context_menu::verbs::head_tip(refs).ok_or_else(|| {
+        Status::sticky(graft_ops::operation::Refusal::HeadUnborn.explain(&OpKeys(&state.keymap)))
+    })?;
     let subject = String::from_utf8_lossy(row.commit.subject()).into_owned();
     let params = crate::update::context_menu::verbs::pick_params(id, &subject, &head);
     let refused = params.check_commit(id, id == head.oid, row.commit.parents.len());
@@ -117,6 +119,7 @@ pub(super) fn take_operation(state: &AppState) -> Result<Operation, Status> {
             &op,
             &refusal,
             state.size.columns,
+            &state.keymap,
         )),
     }
 }

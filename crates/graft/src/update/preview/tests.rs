@@ -505,7 +505,7 @@ fn confirm_runs_the_very_operation_the_picture_was_drawn_from() {
     let operated = commands
         .iter()
         .find_map(|command| match command {
-            Command::Operate(_, op) => Some(op.as_ref()),
+            Command::Operate(_, op, ..) => Some(op.as_ref()),
             _ => None,
         })
         .expect("confirm runs the operation");
@@ -561,7 +561,7 @@ fn the_confirmed_rebase_is_the_one_the_job_completed() {
     let operated = commands
         .iter()
         .find_map(|command| match command {
-            Command::Operate(_, op) => Some(op.as_ref()),
+            Command::Operate(_, op, ..) => Some(op.as_ref()),
             _ => None,
         })
         .expect("y runs the operation");
@@ -976,7 +976,7 @@ fn operated(commands: &[Command]) -> Vec<&Operation> {
     commands
         .iter()
         .filter_map(|command| match command {
-            Command::Operate(_, op) => Some(op.as_ref()),
+            Command::Operate(_, op, ..) => Some(op.as_ref()),
             _ => None,
         })
         .collect()
@@ -1269,7 +1269,7 @@ fn a_refused_merge_preview_says_why_on_the_status_line() {
     };
     assert_eq!(
         state.status,
-        crate::update::operate::refusal_status(&op, &refusal, state.size.columns)
+        crate::update::operate::refusal_status(&op, &refusal, state.size.columns, &state.keymap)
     );
 }
 

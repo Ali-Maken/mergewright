@@ -343,9 +343,9 @@ fn launch(
     );
     debug_assert_eq!(unstoppable, None, "an undo can be stopped: no mark");
     Some(if redo {
-        Command::Redo(id, force)
+        Command::Redo(id, force, std::sync::Arc::clone(&state.keymap))
     } else {
-        Command::Undo(id, force)
+        Command::Undo(id, force, std::sync::Arc::clone(&state.keymap))
     })
 }
 
@@ -508,7 +508,12 @@ pub(super) fn revert_to_forced(
         super::remote::Stoppable::No(super::preview::HISTORY_CANNOT_STOP),
         None,
     ));
-    commands.push(Command::RevertTo(id, entry, true));
+    commands.push(Command::RevertTo(
+        id,
+        entry,
+        true,
+        std::sync::Arc::clone(&state.keymap),
+    ));
 }
 
 /// The journal's time machine answered (DESIGN §6.6,
@@ -953,7 +958,14 @@ mod tests {
     fn u_asks_for_an_undo_and_says_so() {
         let mut state = AppState::default();
         let commands = undo_key(&mut state, false, &mut ids());
-        assert_eq!(commands, vec![Command::Undo(JobId::new(1), false)]);
+        assert_eq!(
+            commands,
+            vec![Command::Undo(
+                JobId::new(1),
+                false,
+                std::sync::Arc::new(graft_ui::keymap::Keymap::shipped().clone())
+            )]
+        );
         assert_eq!(state.operating, Some(JobId::new(1)));
         // The busy line offers the cancel, because the cancel is now real
         // (m5-history-and-ghost-preview/06): `restore::execute` rolls back
@@ -969,7 +981,14 @@ mod tests {
     fn capital_u_asks_for_a_redo() {
         let mut state = AppState::default();
         let commands = undo_key(&mut state, true, &mut ids());
-        assert_eq!(commands, vec![Command::Redo(JobId::new(1), false)]);
+        assert_eq!(
+            commands,
+            vec![Command::Redo(
+                JobId::new(1),
+                false,
+                std::sync::Arc::new(graft_ui::keymap::Keymap::shipped().clone())
+            )]
+        );
     }
 
     /// Piece 6. A stopped merge, rebase, cherry-pick or revert has exactly
@@ -1084,9 +1103,17 @@ mod tests {
             let mut state = merging(Some(Vec::new()));
             let commands = undo_key(&mut state, redo, &mut ids());
             let sent = if redo {
-                Command::Redo(JobId::new(1), false)
+                Command::Redo(
+                    JobId::new(1),
+                    false,
+                    std::sync::Arc::new(graft_ui::keymap::Keymap::shipped().clone()),
+                )
             } else {
-                Command::Undo(JobId::new(1), false)
+                Command::Undo(
+                    JobId::new(1),
+                    false,
+                    std::sync::Arc::new(graft_ui::keymap::Keymap::shipped().clone()),
+                )
             };
             assert_eq!(commands, vec![sent], "redo {redo}: {:?}", state.status);
         }
@@ -1141,7 +1168,9 @@ mod tests {
             InProgress::Revert,
             InProgress::Bisect,
         ] {
-            let ops = UndoError::Nothing(NotInvertible::OperationLive { kind }).explain();
+            let ops = UndoError::Nothing(NotInvertible::OperationLive { kind }).explain(
+                &crate::update::op_keys::OpKeys(graft_ui::keymap::Keymap::shipped()),
+            );
             let Status::Sticky { reason, .. } = live_refusal(kind, None) else {
                 panic!("a refusal is sticky");
             };
@@ -1271,7 +1300,14 @@ mod tests {
             start_undo(&mut free, &mut commands, false, &mut ids()),
             UndoStart::Launched
         );
-        assert_eq!(commands, vec![Command::Undo(JobId::new(1), false)]);
+        assert_eq!(
+            commands,
+            vec![Command::Undo(
+                JobId::new(1),
+                false,
+                std::sync::Arc::new(graft_ui::keymap::Keymap::shipped().clone())
+            )]
+        );
     }
 
     #[test]
@@ -1506,7 +1542,14 @@ mod tests {
             KeyPress::plain(KeyCode::Enter),
             &mut ids(),
         ));
-        assert_eq!(commands, vec![Command::Undo(JobId::new(1), true)]);
+        assert_eq!(
+            commands,
+            vec![Command::Undo(
+                JobId::new(1),
+                true,
+                std::sync::Arc::new(graft_ui::keymap::Keymap::shipped().clone())
+            )]
+        );
     }
 
     #[test]
@@ -1528,7 +1571,14 @@ mod tests {
             KeyPress::plain(KeyCode::Enter),
             &mut ids(),
         ));
-        assert_eq!(commands, vec![Command::Redo(JobId::new(1), true)]);
+        assert_eq!(
+            commands,
+            vec![Command::Redo(
+                JobId::new(1),
+                true,
+                std::sync::Arc::new(graft_ui::keymap::Keymap::shipped().clone())
+            )]
+        );
     }
 
     /// A journal holding one entry per description, each one torn the way
@@ -1706,7 +1756,7 @@ mod tests {
         assert!(
             matches!(
                 commands.as_slice(),
-                [Command::Unstoppable(..), Command::RevertTo(_, _, true)]
+                [Command::Unstoppable(..), Command::RevertTo(_, _, true, ..)]
             ),
             "{commands:?}"
         );

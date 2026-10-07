@@ -112,7 +112,8 @@ fn a_pull_journals_as_today() {
     let before = work.git(&["rev-parse", "HEAD"]);
     let tip = theirs(&behind, "shared.txt", THEIRS);
 
-    let applied = try_run(work, &pull(work), NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = try_run(work, &pull(work), NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     let entry = &applied.entry;
     assert_eq!(entry.kind, OperationKind::Pull);
@@ -198,7 +199,8 @@ fn a_ff_pull_over_overlapping_edits_sets_them_aside() {
     work.write("shared.txt", MINE);
     let tip = theirs(&behind, "shared.txt", THEIRS);
 
-    let applied = try_run(work, &pull(work), NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = try_run(work, &pull(work), NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     let entry = &applied.entry;
     assert_eq!(entry.status, EntryStatus::Committed);
@@ -270,7 +272,8 @@ fn a_ff_pull_over_unrelated_edits_is_unchanged() {
     let staged = work.git(&["ls-files", "-s", "--", "base.txt"]);
     let tip = theirs(&behind, "shared.txt", THEIRS);
 
-    let applied = try_run(work, &pull(work), NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = try_run(work, &pull(work), NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     let entry = &applied.entry;
     assert_eq!(entry.status, EntryStatus::Committed);
@@ -330,7 +333,8 @@ fn the_ff_pull_entry_is_one_entry_and_u_restores_edits() {
     work.write("shared.txt", MINE);
     let before = whole(work);
 
-    let applied = try_run(work, &pull(work), NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = try_run(work, &pull(work), NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     set_aside_of(&applied.entry);
     assert_eq!(journal_entries(work).len(), 1, "one entry for one p");
     assert_eq!(
@@ -340,14 +344,16 @@ fn the_ff_pull_entry_is_one_entry_and_u_restores_edits() {
     assert_eq!(work.read("shared.txt"), BOTH);
     let after = whole(work);
 
-    run_undo(work, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(work, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(work), before, "u: everything as before");
     assert_eq!(
         work.git(&["show", ":shared.txt"]),
         "1\n2\n3\n4\n5\n6\n7\n8\n9\nstaged ten",
         "the staged half back"
     );
-    run_redo(work, NOW + 2, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_redo(work, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(work), after, "redo: as after");
 }
 
@@ -368,7 +374,8 @@ fn round_trip(tree: Tree) {
     let status_before = porcelain(work);
     let split_before = split_but_shared(work);
 
-    let applied = try_run(work, &op, NOW).unwrap_or_else(|why| panic!("{what}: {}", why.explain()));
+    let applied = try_run(work, &op, NOW)
+        .unwrap_or_else(|why| panic!("{what}: {}", why.explain(&crate::support::Letters)));
     assert_eq!(applied.entry.status, EntryStatus::Committed, "{what}");
     set_aside_of(&applied.entry);
     assert_eq!(work.git(&["rev-parse", "HEAD"]), tip, "{what}");
@@ -386,9 +393,11 @@ fn round_trip(tree: Tree) {
     assert_eq!(split_but_shared(work), split_before, "{what}: the split");
     assert_eq!(staging_lost(&status_before, &status_after), 0, "{what}");
 
-    run_undo(work, NOW + 1, false).unwrap_or_else(|why| panic!("{what}: {}", why.explain()));
+    run_undo(work, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{what}: {}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(work), before, "{what}: undo exact");
-    run_redo(work, NOW + 2, false).unwrap_or_else(|why| panic!("{what}: {}", why.explain()));
+    run_redo(work, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("{what}: {}", why.explain(&crate::support::Letters)));
     assert_eq!(whole(work), after, "{what}: redo exact");
 }
 

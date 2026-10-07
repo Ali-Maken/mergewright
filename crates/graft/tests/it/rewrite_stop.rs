@@ -75,7 +75,10 @@ pub(crate) fn graft_rewrite_stops(repo: &Path, from: &str, edit: Option<&str>, o
     .unwrap_or_else(|why| panic!("the context opens: {why:?}"));
     match apply(&mut ctx, &Operation::Rewrite(params)) {
         Err(ApplyError::Conflicted { .. }) => {}
-        Err(other) => panic!("expected a stop, got {}", other.explain()),
+        Err(other) => panic!(
+            "expected a stop, got {}",
+            other.explain(&graft_ops::keys::NoKeys)
+        ),
         Ok(applied) => panic!("expected a stop, it finished: {:?}", applied.entry.status),
     }
 }

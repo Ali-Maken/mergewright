@@ -63,7 +63,7 @@ fn sent_resume(commands: &[Command]) -> (JobId, Resume) {
     commands
         .iter()
         .find_map(|command| match command {
-            Command::Resume(id, what) => Some((*id, what.clone())),
+            Command::Resume(id, what, ..) => Some((*id, what.clone())),
             _ => None,
         })
         .unwrap_or_else(|| panic!("no resume was sent: {commands:?}"))

@@ -39,7 +39,7 @@ fn a_failed_operation_after_the_fallback_names_the_staging() {
     )
     .expect_err("the operation failed");
     assert!(matches!(error, ApplyError::Git { .. }), "{error:?}");
-    let line = error.explain();
+    let line = error.explain(&crate::keys::Letters);
     assert!(line.contains("staging not kept: f.txt"), "{line}");
     assert!(line.contains("would be overwritten"), "{line}");
 }
@@ -57,7 +57,7 @@ fn a_failed_drop_after_the_fallback_names_the_staging() {
     };
     let outcome = Outcome::kept(kept, &Ok(Some(0)), stash());
     let error = answer(outcome, entry, stash(), None, Vec::new()).expect_err("S kept");
-    let line = error.explain();
+    let line = error.explain(&crate::keys::Letters);
     assert!(line.contains("staging not kept: f.txt"), "{line}");
     assert!(
         line.contains("your edits are back · a copy stays in stash@{0}"),
@@ -174,7 +174,7 @@ fn a_git_failure_after_a_failed_raw_step_carries_its_words() {
     let entry = committed(1, OperationKind::Checkout, 1, 2);
     let error = answer(outcome, entry, stash(), None, Vec::new()).expect_err("S kept");
     assert!(matches!(error, ApplyError::Git { .. }), "{error:?}");
-    let line = error.explain();
+    let line = error.explain(&crate::keys::Letters);
     assert!(
         line.contains(&format!("error: could not drop; {RAW_WORDS}")),
         "{line}"
@@ -194,7 +194,7 @@ fn a_git_failure_after_a_failed_raw_step_carries_its_words() {
         Vec::new(),
     )
     .expect_err("the operation failed");
-    let line = error.explain();
+    let line = error.explain(&crate::keys::Letters);
     assert!(
         line.contains(&format!("would be overwritten; {RAW_WORDS}")),
         "{line}"
@@ -220,7 +220,7 @@ fn a_failed_operation_after_a_clean_put_back_names_what_came_back() {
     )
     .expect_err("the operation failed");
     assert!(matches!(error, ApplyError::Git { .. }), "{error:?}");
-    let line = error.explain();
+    let line = error.explain(&crate::keys::Letters);
     assert!(
         line.contains("would be overwritten \u{b7} notes.md came back from the index"),
         "{line}"

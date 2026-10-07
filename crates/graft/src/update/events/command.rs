@@ -134,7 +134,15 @@ pub enum Command {
     /// what it does (checks, plans, journals, snapshots); `app` only wires
     /// the key to the call (the seam rule, `crates/graft/tests/it/
     /// seam_rule.rs`, m3-working-tree-undo-and-stash/04).
-    Operate(JobId, Box<graft_ops::operation::Operation>),
+    ///
+    /// Carries his keymap, cloned at dispatch: the job flattens a failure
+    /// to one line, and the keys in it are spelled from his bindings
+    /// (m8/10e).
+    Operate(
+        JobId,
+        Box<graft_ops::operation::Operation>,
+        std::sync::Arc<graft_ui::keymap::Keymap>,
+    ),
     /// Carry the live merge/rebase/cherry-pick/revert forward, back a step,
     /// or all the way out, under an id `update` chose
     /// (`c`/`s`/`a` on the operation banner,
@@ -145,7 +153,12 @@ pub enum Command {
     /// `Operation` at all — the operation is already on disk, in git's own
     /// state, and what this names is only which of the three ways out to
     /// take.
-    Resume(JobId, graft_ops::apply::Resume),
+    /// Carries his keymap for the same reason as [`Command::Operate`].
+    Resume(
+        JobId,
+        graft_ops::apply::Resume,
+        std::sync::Arc<graft_ui::keymap::Keymap>,
+    ),
     /// Work out what a history operation — or the journal's time machine —
     /// *would* do, so the Ghost Preview can draw it before anything runs
     /// (m5-history-and-ghost-preview/08). A **read**: `graft_ops::preview`
@@ -155,15 +168,22 @@ pub enum Command {
     /// Run the journal's time machine: undo every entry back to and
     /// including this one, a step at a time (DESIGN §6.6,
     /// m5-history-and-ghost-preview/08). Reached only from a confirmed
-    /// Ghost Preview, never straight from a key.
-    RevertTo(JobId, graft_core::journal::EntryId, bool),
+    /// Ghost Preview, never straight from a key. The keymap spells the keys
+    /// its failure words name (m8/10e), cloned at dispatch.
+    RevertTo(
+        JobId,
+        graft_core::journal::EntryId,
+        bool,
+        std::sync::Arc<graft_ui::keymap::Keymap>,
+    ),
     /// Take back the newest operation still in force (`u`), under an id
     /// `update` chose. `true` forces past the drift guard — the user has
     /// seen what moved and said go ahead (m3-working-tree-undo-and-stash/06).
-    Undo(JobId, bool),
+    /// The keymap spells the keys its failure words name (m8/10e).
+    Undo(JobId, bool, std::sync::Arc<graft_ui::keymap::Keymap>),
     /// Put back the newest undo still in force (`U`), otherwise exactly
     /// [`Command::Undo`] (m3-working-tree-undo-and-stash/06).
-    Redo(JobId, bool),
+    Redo(JobId, bool, std::sync::Arc<graft_ui::keymap::Keymap>),
     /// Read the undo journal, under an id `update` chose. The job closes
     /// anything a previous run left `Pending` before it answers, so the
     /// browser never shows an entry that is waiting for a process that is
@@ -196,6 +216,8 @@ pub enum Command {
         list: std::sync::Arc<graft_ops::journal_list::JournalList>,
         /// The row `⏎` was pressed on, an index into `list.rows`.
         row: usize,
+        /// His keymap, for the refusal's words (m8/10e).
+        keys: std::sync::Arc<graft_ui::keymap::Keymap>,
     },
     /// Read the stash list, under an id `update` chose. Asked for when the
     /// `S` overlay opens and again after every write, because any of them

@@ -242,7 +242,7 @@ pub enum RewriteRequest {
 #[derive(Debug, thiserror::Error)]
 pub enum RewriteError {
     /// Refused before anything was written, in words.
-    #[error("{}", .0.explain())]
+    #[error("{}", .0.explain(&crate::keys::NoKeys))]
     Refused(Refusal),
     /// A read failed.
     #[error("{0}")]

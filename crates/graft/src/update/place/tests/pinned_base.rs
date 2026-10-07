@@ -120,7 +120,11 @@ fn esc_from_blame_restores_the_compare_base() {
 #[test]
 fn a_write_with_a_base_aside_pins_it_again() {
     let (mut state, base) = blamed_with_a_base(a_blame(false, false));
-    let mut commands = vec![Command::Undo(JobId::new(9), false)];
+    let mut commands = vec![Command::Undo(
+        JobId::new(9),
+        false,
+        std::sync::Arc::new(graft_ui::keymap::Keymap::shipped().clone()),
+    )];
     after_commands(&mut state, &mut commands);
     assert!(!state.trail.is_live());
     assert_eq!(state.compare_base, Some(base));
@@ -249,7 +253,11 @@ fn caret_on_a_shallow_line_says_the_clone_is_shallow_not_nothing_before_it() {
 fn a_write_clears_the_trail() {
     let mut state = commit_pane(JobId::new(1), false);
     hide_a_trail(&mut state);
-    let mut commands = vec![Command::Undo(JobId::new(9), false)];
+    let mut commands = vec![Command::Undo(
+        JobId::new(9),
+        false,
+        std::sync::Arc::new(graft_ui::keymap::Keymap::shipped().clone()),
+    )];
     after_commands(&mut state, &mut commands);
     assert!(!state.trail.is_live());
 }

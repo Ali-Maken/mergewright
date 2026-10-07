@@ -3,6 +3,7 @@
 //! staying on it: a merge then opens its finish summary on its own, anything
 //! else shows the finish row (a stash pop, with no `c`, closes to the graph).
 
+use crate::update::op_keys::OpKeys;
 use std::path::{Path, PathBuf};
 
 use graft_core::event::KeyCode;
@@ -37,7 +38,7 @@ pub(super) fn mark_resolved(
     };
     if let Some(refusal) = graft_ops::conflict::mark_resolved_refusal(&path, &file) {
         state.status = Status::Sticky {
-            reason: refusal.explain(),
+            reason: refusal.explain(&OpKeys(&state.keymap)),
             keys: Some("n next".to_owned()),
         };
         return;

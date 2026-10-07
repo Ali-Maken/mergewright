@@ -33,7 +33,7 @@ fn fetching() -> (AppState, JobId) {
     let id = commands
         .iter()
         .find_map(|command| match command {
-            Command::Operate(id, op) if matches!(op.as_ref(), Operation::Fetch(_)) => Some(*id),
+            Command::Operate(id, op, ..) if matches!(op.as_ref(), Operation::Fetch(_)) => Some(*id),
             _ => None,
         })
         .expect("the fetch launched");

@@ -239,7 +239,7 @@ fn enter_launches_the_create() {
     assert!(
         commands.iter().any(|command| matches!(
             command,
-            Command::Operate(_, op)
+            Command::Operate(_, op, ..)
                 if matches!(op.as_ref(), Operation::BranchCreate(params)
                     if params.name == "release" && params.at == oid(3) && !params.checkout)
         )),
@@ -252,7 +252,7 @@ fn enter_launches_the_create() {
     assert!(
         commands.iter().any(|command| matches!(
             command,
-            Command::Operate(_, op)
+            Command::Operate(_, op, ..)
                 if matches!(op.as_ref(), Operation::TagCreate(params)
                     if params.name == "v2" && params.message.is_none())
         )),
@@ -479,7 +479,7 @@ fn creating_from_j_closes_j() {
     assert!(
         commands.iter().any(|command| matches!(
             command,
-            Command::Operate(_, op)
+            Command::Operate(_, op, ..)
                 if matches!(op.as_ref(), Operation::BranchCreate(params)
                     if params.name == "main-restored" && params.at == oid(2))
         )),

@@ -430,7 +430,7 @@ mod tests {
         assert!(state.confirm.is_none());
         assert_eq!(state.operating, Some(graft_core::job::JobId::new(7)));
         assert_eq!(commands.len(), 1);
-        let Command::Operate(id, op) = &commands[0] else {
+        let Command::Operate(id, op, ..) = &commands[0] else {
             panic!("expected Operate");
         };
         assert_eq!(*id, graft_core::job::JobId::new(7));
@@ -766,7 +766,9 @@ mod tests {
         assert!(state.confirm.is_none(), "`y` left the box open");
         let pushes: Vec<_> = commands
             .iter()
-            .filter(|c| matches!(c, Command::Operate(_, op) if matches!(**op, Operation::Push(_))))
+            .filter(
+                |c| matches!(c, Command::Operate(_, op, ..) if matches!(**op, Operation::Push(_))),
+            )
             .collect();
         assert_eq!(pushes.len(), 1, "one push, got {commands:?}");
     }

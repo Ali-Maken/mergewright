@@ -250,7 +250,7 @@ fn cancels(commands: &[Command], job: JobId) -> bool {
 
 fn operate_job(commands: &[Command]) -> Option<(JobId, &Operation)> {
     commands.iter().find_map(|command| match command {
-        Command::Operate(id, op) => Some((*id, op.as_ref())),
+        Command::Operate(id, op, ..) => Some((*id, op.as_ref())),
         _ => None,
     })
 }
@@ -456,7 +456,9 @@ fn capital_r_on_another_branch_is_refused_in_words() {
         commit: oid(9),
         by: RewriteKey::Open,
     };
-    let words = refusal.explain();
+    let words = refusal.explain(&crate::update::op_keys::OpKeys(
+        graft_ui::keymap::Keymap::shipped(),
+    ));
     let (state, _) = answer(
         &state,
         id,
@@ -974,7 +976,9 @@ fn a_moved_branch_refuses_y_in_words() {
     let moved = Refusal::Moved {
         name: "refs/heads/feature".to_owned(),
     };
-    let words = moved.explain();
+    let words = moved.explain(&crate::update::op_keys::OpKeys(
+        graft_ui::keymap::Keymap::shipped(),
+    ));
     let (state, _) = answer(
         &state,
         plan,
@@ -995,7 +999,9 @@ fn a_refused_write_restores_the_editor_with_the_words() {
     let moved = Refusal::Moved {
         name: "refs/heads/feature".to_owned(),
     };
-    let words = moved.explain();
+    let words = moved.explain(&crate::update::op_keys::OpKeys(
+        graft_ui::keymap::Keymap::shipped(),
+    ));
     crate::update::operate::operated(
         &mut state,
         id,

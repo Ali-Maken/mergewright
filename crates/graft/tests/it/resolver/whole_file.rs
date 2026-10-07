@@ -138,7 +138,7 @@ fn whole_file_ops_per_row() {
         let key = if side == Side::Ours { 'o' } else { 't' };
 
         let (_, commands) = press_for_commands(&state, KeyPress::plain(KeyCode::Char(key)));
-        let [Command::Operate(_, operation)] = commands.as_slice() else {
+        let [Command::Operate(_, operation, ..)] = commands.as_slice() else {
             panic!("{name} `{key}` queued {commands:?}")
         };
         assert!(
@@ -208,7 +208,7 @@ fn deleted_by_them_o_keeps() {
     );
 
     let (_, commands) = press_for_commands(&state, KeyPress::plain(KeyCode::Char('o')));
-    let [Command::Operate(_, operation)] = commands.as_slice() else {
+    let [Command::Operate(_, operation, ..)] = commands.as_slice() else {
         panic!("`o` on the card queued {commands:?}")
     };
     assert!(

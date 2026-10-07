@@ -116,7 +116,7 @@ pub fn entries(repo: &TempRepo) -> Vec<JournalEntry> {
 
 pub fn abort(repo: &TempRepo, at: i64) -> JournalEntry {
     run_resume(repo, Resume::Abort, at)
-        .unwrap_or_else(|why| panic!("abort: {}", why.explain()))
+        .unwrap_or_else(|why| panic!("abort: {}", why.explain(&crate::support::Letters)))
         .entry
 }
 
@@ -168,7 +168,8 @@ fn abort_of_a_shell_merge_is_journaled_and_undoable() {
     an_abort_entry(&entry);
     assert_eq!(oid(&repo, "HEAD"), head, "the abort leaves HEAD");
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(oid(&repo, "MERGE_HEAD"), oid(&repo, "feature"));
     assert_eq!(merge_files(&repo), files, "the merge files, byte for byte");
     assert_eq!(
@@ -210,7 +211,8 @@ fn undo_of_an_abort_keeps_a_file_already_resolved() {
     abort(&repo, NOW);
     assert!(!merging(&repo));
 
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert!(merging(&repo), "the merge is back");
     assert_eq!(
         repo.git(&["ls-files", "--stage"]),
@@ -263,11 +265,16 @@ fn redo_of_an_undone_abort_is_allowed_while_the_merge_is_back() {
     abort(&repo, NOW);
     let clean = repo.git(&["status", "--porcelain=v2"]);
     let head = oid(&repo, "HEAD");
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert!(merging(&repo), "the merge is back");
 
-    let redone = crate::support::run_redo(&repo, NOW + 2, false)
-        .unwrap_or_else(|why| panic!("redo while the merge is back: {}", why.explain()));
+    let redone = crate::support::run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| {
+        panic!(
+            "redo while the merge is back: {}",
+            why.explain(&crate::support::Letters)
+        )
+    });
     assert_eq!(redone.entry.kind, OperationKind::Redo);
     assert!(!merging(&repo), "aborted again");
     assert_eq!(repo.git(&["ls-files", "-u"]), "", "nothing unmerged");
@@ -346,7 +353,8 @@ fn undo_of_an_abort_restores_exactly_the_merge_files_graft_knows() {
     );
 
     abort(&repo, NOW);
-    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     let after = git_state_files(&repo);
 
     let missing: Vec<&str> = before

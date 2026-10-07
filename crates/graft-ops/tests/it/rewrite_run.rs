@@ -183,8 +183,8 @@ fn an_r_line_that_stops_continues_home() {
     assert_eq!(head(&repo), "detached", "stopped inside the line");
     resolve(&repo);
 
-    let applied =
-        resume_with(&repo, Resume::Continue).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = resume_with(&repo, Resume::Continue)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     for (name, was) in LINE.iter().zip(&was) {
@@ -210,7 +210,10 @@ fn a_branch_built_on_his_after_the_preview_is_refused_moved() {
         Err(ApplyError::Refused(Refusal::Moved { name })) => {
             assert_eq!(name, "refs/heads/feature-d");
         }
-        Err(other) => panic!("expected Moved, got {}", other.explain()),
+        Err(other) => panic!(
+            "expected Moved, got {}",
+            other.explain(&crate::support::Letters)
+        ),
         Ok(applied) => panic!("it ran: {:?}", applied.entry.status),
     }
     assert_eq!(state_of(&repo), before, "no ref moved");
@@ -251,7 +254,10 @@ fn a_drop_not_among_the_rows_is_refused_moved() {
         Err(ApplyError::Refused(Refusal::Moved { name })) => {
             assert_eq!(name, "refs/heads/feature-a");
         }
-        Err(other) => panic!("expected Moved, got {}", other.explain()),
+        Err(other) => panic!(
+            "expected Moved, got {}",
+            other.explain(&crate::support::Letters)
+        ),
         Ok(applied) => panic!("it ran: {:?}", applied.entry.status),
     }
     assert_eq!(state_of(&repo), before, "no ref moved");
@@ -295,8 +301,8 @@ fn r_drops_the_squash_merged_commits() {
 
     repo.write("shared.txt", b"m\nb\n");
     repo.git(&["add", "shared.txt"]);
-    let applied =
-        resume_with(&repo, Resume::Continue).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = resume_with(&repo, Resume::Continue)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     assert_eq!(
         id(&repo, "feature-a"),
@@ -496,7 +502,10 @@ fn conflicted_line() -> TempRepo {
 fn stopped(repo: &TempRepo, op: &Operation) -> (JournalEntry, Vec<PathBuf>) {
     match try_run(repo, op, NOW) {
         Err(ApplyError::Conflicted { entry, paths, .. }) => (*entry, paths),
-        Err(other) => panic!("expected a stop, got {}", other.explain()),
+        Err(other) => panic!(
+            "expected a stop, got {}",
+            other.explain(&crate::support::Letters)
+        ),
         Ok(applied) => panic!("expected a stop, it finished: {:?}", applied.entry.status),
     }
 }
@@ -541,8 +550,8 @@ fn abort_returns_head_to_his_branch_and_every_ref() {
     assert_eq!(entry.status, EntryStatus::Pending);
     assert_eq!(plans_left(&repo).len(), 1, "the plan waits for the resume");
 
-    let applied =
-        resume_with(&repo, Resume::Abort).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = resume_with(&repo, Resume::Abort)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(state_of(&repo), before, "every branch and HEAD put back");
     assert_eq!(
@@ -561,8 +570,8 @@ fn a_stopped_line_continues_home_with_every_branch_moved() {
     stopped(&repo, &line_onto_main(&repo));
     resolve(&repo);
 
-    let applied =
-        resume_with(&repo, Resume::Continue).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = resume_with(&repo, Resume::Continue)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     for (name, was) in LINE.iter().zip(&was) {
@@ -586,7 +595,8 @@ fn kill_mid_rewrite_then_relaunch_continues_from_the_saved_plan() {
     let mut journal = journal_for(&handle);
     let never = Never;
     let mut ctx = context(&handle, &mut journal, NOW + 1, &never);
-    let recovered = recover_interrupted(&mut ctx).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let recovered = recover_interrupted(&mut ctx)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(
         recovered.live,
         std::slice::from_ref(&entry.id),
@@ -596,8 +606,8 @@ fn kill_mid_rewrite_then_relaunch_continues_from_the_saved_plan() {
     assert_eq!(in_progress(&repo), Some(InProgress::Rebase));
     resolve(&repo);
 
-    let applied =
-        resume(&mut ctx, Resume::Continue).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = resume(&mut ctx, Resume::Continue)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(applied.entry.id, entry.id);
     assert_eq!(applied.entry.status, EntryStatus::Committed);
@@ -639,8 +649,8 @@ fn an_edit_row_stops_and_the_resume_takes_the_line_home() {
     // Amended at the stop, as he would in the shell or the app.
     repo.write("a1.txt", b"a1 amended\n");
     repo.git(&["commit", "-q", "--amend", "--no-edit", "-a"]);
-    let applied =
-        resume_with(&repo, Resume::Continue).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let applied = resume_with(&repo, Resume::Continue)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     assert_eq!(head(&repo), "refs/heads/feature-a", "HEAD came home");
@@ -665,7 +675,8 @@ fn a_relaunch_that_closes_a_rewrite_removes_its_plan() {
     let mut journal = journal_for(&handle);
     let never = Never;
     let mut ctx = context(&handle, &mut journal, NOW + 1, &never);
-    let recovered = recover_interrupted(&mut ctx).unwrap_or_else(|why| panic!("{}", why.explain()));
+    let recovered = recover_interrupted(&mut ctx)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(recovered.closed, [entry.id]);
     assert!(recovered.plans_left.is_empty());
@@ -720,7 +731,8 @@ fn a_resume_never_turns_his_update_refs_config_on() {
     stopped(&repo, &line_onto_main(&repo));
     resolve(&repo);
 
-    resume_with(&repo, Resume::Continue).unwrap_or_else(|why| panic!("{}", why.explain()));
+    resume_with(&repo, Resume::Continue)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(id(&repo, "lower"), lower, "lower stays");
     assert_eq!(head(&repo), "refs/heads/feature-a");

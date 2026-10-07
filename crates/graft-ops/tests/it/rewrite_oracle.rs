@@ -112,7 +112,10 @@ fn graft(repo: &TempRepo, params: RewriteParams, between: &dyn Fn(&TempRepo)) {
                 let mut ctx = context(&handle, &mut journal, at, &never);
                 result = resume(&mut ctx, Resume::Continue);
             }
-            Err(why) => panic!("Graft's route failed: {}", why.explain()),
+            Err(why) => panic!(
+                "Graft's route failed: {}",
+                why.explain(&crate::support::Letters)
+            ),
         }
     }
 }

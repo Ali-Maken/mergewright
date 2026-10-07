@@ -45,7 +45,7 @@ pub(crate) fn after_planned(
         Err(PreviewFailure::Refused(refusal)) => {
             let op = graft_ops::operation::Operation::Rewrite(asked);
             After::Refused(words::status_words(
-                &crate::update::operate::refusal_status(&op, &refusal, columns),
+                &crate::update::operate::refusal_status(&op, &refusal, columns, &state.keymap),
             ))
         }
         Err(PreviewFailure::Failed(why)) => After::Failed(why),
@@ -157,7 +157,12 @@ pub(crate) fn write_answered(state: &mut AppState, answer: &Operated) {
             _ => graft_ops::operation::Operation::Rewrite(editor.opened.clone()),
         };
         editor.notice = Some(words::status_words(
-            &crate::update::operate::refusal_status(&op, refusal, state.size.columns),
+            &crate::update::operate::refusal_status(
+                &op,
+                refusal,
+                state.size.columns,
+                &state.keymap,
+            ),
         ));
         state.rewrite.editor = Some(editor);
     }

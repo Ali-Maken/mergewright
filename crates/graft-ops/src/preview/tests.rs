@@ -26,7 +26,11 @@ fn operation_live_has_one_wording_in_ops() {
         let why = NotInvertible::OperationLive { kind };
         let words = operation_live_words(kind);
         assert_eq!(words, format!("finish or abort the {} first", kind.name()));
-        assert_eq!(UndoError::Nothing(why.clone()).explain(), words, "{kind:?}");
+        assert_eq!(
+            UndoError::Nothing(why.clone()).explain(&crate::keys::Letters),
+            words,
+            "{kind:?}"
+        );
         let PreviewError::Refused(Refusal::CannotRevertTo(preview)) = not_invertible(&why) else {
             panic!("{kind:?}: a refusal");
         };

@@ -35,7 +35,9 @@ fn apply_in(work: &Path, op: &Operation, at_ms: i64) -> Result<(), String> {
     let mut journal = journal_for(&repo);
     let never = Never;
     let mut ctx = context(&repo, &mut journal, at_ms, &never);
-    apply(&mut ctx, op).map(|_| ()).map_err(|why| why.explain())
+    apply(&mut ctx, op)
+        .map(|_| ())
+        .map_err(|why| why.explain(&crate::support::Letters))
 }
 
 impl Graft for GraftOps {
@@ -59,7 +61,7 @@ impl Graft for GraftOps {
         let mut ctx = context(&repo, &mut journal, at_ms, &never);
         undo::undo(&mut ctx, true)
             .map(|_| ())
-            .map_err(|why| why.explain())
+            .map_err(|why| why.explain(&crate::support::Letters))
     }
 }
 

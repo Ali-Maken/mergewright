@@ -274,7 +274,7 @@ fn previewed_from(state: &AppState) -> AppState {
 
 fn operate_job(commands: &[Command]) -> Option<(JobId, &Operation)> {
     commands.iter().find_map(|command| match command {
-        Command::Operate(id, op) => Some((*id, op.as_ref())),
+        Command::Operate(id, op, ..) => Some((*id, op.as_ref())),
         _ => None,
     })
 }
@@ -448,7 +448,12 @@ fn a_off_the_branch_is_refused_in_words() {
         by: RewriteKey::AmendInto,
     };
     let (state, _) = answer(&state, id, Ok(RewritePlanned::Refused(refusal.clone())));
-    assert_eq!(sticky(&state), refusal.explain());
+    assert_eq!(
+        sticky(&state),
+        refusal.explain(&crate::update::op_keys::OpKeys(
+            graft_ui::keymap::Keymap::shipped()
+        ))
+    );
     assert!(
         sticky(&state).starts_with("a puts staged changes into a commit on your branch"),
         "{}",

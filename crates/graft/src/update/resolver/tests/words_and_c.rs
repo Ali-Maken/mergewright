@@ -136,7 +136,8 @@ fn continued(commands: &[Command]) -> bool {
     commands.iter().any(|command| {
         matches!(
             command,
-            Command::Resume(_, graft_ops::apply::Resume::Continue) | Command::ReadFinishSummary(_)
+            Command::Resume(_, graft_ops::apply::Resume::Continue, ..)
+                | Command::ReadFinishSummary(_)
         )
     })
 }

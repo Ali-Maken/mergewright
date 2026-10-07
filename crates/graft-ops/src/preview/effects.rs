@@ -404,7 +404,7 @@ pub enum PreviewError {
     /// The operation would be refused, and there is no point drawing it: a
     /// `--ff-only` merge of diverged branches, a re-push of a commit that
     /// is not on the branch.
-    #[error("{}", .0.explain())]
+    #[error("{}", .0.explain(&crate::keys::NoKeys))]
     Refused(Refusal),
     /// The caller asked to stop.
     #[error("stopped")]
@@ -412,10 +412,15 @@ pub enum PreviewError {
 }
 
 impl PreviewError {
-    /// One line for the box.
+    /// One line for the box, its keys spelled through `keys` (an unbound
+    /// one's clause left out). The `Display` is these words with
+    /// [`NoKeys`](crate::keys::NoKeys).
     #[must_use]
-    pub fn explain(&self) -> String {
-        self.to_string()
+    pub fn explain(&self, keys: &dyn crate::keys::KeyNames) -> String {
+        match self {
+            PreviewError::Refused(refusal) => refusal.explain(keys),
+            other => other.to_string(),
+        }
     }
 }
 

@@ -328,7 +328,7 @@ fn a_amends(state: &AppState, message: &str) -> (AppState, crate::update::JobId)
     );
     assert!(launched.commit_editor.is_none(), "no editor opens");
     let amend = commands.iter().find_map(|command| match command {
-        Command::Operate(id, op) => match op.as_ref() {
+        Command::Operate(id, op, ..) => match op.as_ref() {
             Operation::Amend(params) => Some((*id, params.message.clone())),
             _ => None,
         },
@@ -405,7 +405,7 @@ fn c_after_an_amend_at_an_edit_stop_continues_the_rewrite() {
     assert!(
         commands
             .iter()
-            .any(|command| matches!(command, Command::Resume(_, Resume::Continue))),
+            .any(|command| matches!(command, Command::Resume(_, Resume::Continue, ..))),
         "{commands:?}"
     );
 }
@@ -438,7 +438,7 @@ fn a_off_head_at_an_edit_stop_is_not_the_stop_s_amend() {
     assert!(
         !commands
             .iter()
-            .any(|command| matches!(command, Command::Operate(_, op) if matches!(op.as_ref(), Operation::Amend(_)))),
+            .any(|command| matches!(command, Command::Operate(_, op, ..) if matches!(op.as_ref(), Operation::Amend(_)))),
         "{commands:?}"
     );
 }

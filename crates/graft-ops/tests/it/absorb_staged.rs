@@ -43,8 +43,12 @@ fn planned(repo: &TempRepo) -> RewriteParams {
 /// Plan and run absorb; it must go through (no clash, no stop).
 fn absorb(repo: &TempRepo) -> RewriteParams {
     let params = planned(repo);
-    try_run(repo, &Operation::Rewrite(params.clone()), NOW)
-        .unwrap_or_else(|why| panic!("absorb goes through: {}", why.explain()));
+    try_run(repo, &Operation::Rewrite(params.clone()), NOW).unwrap_or_else(|why| {
+        panic!(
+            "absorb goes through: {}",
+            why.explain(&crate::support::Letters)
+        )
+    });
     params
 }
 
@@ -208,7 +212,7 @@ fn previewed_aside(repo: &TempRepo, request: &RewriteRequest) -> Option<usize> {
     let facts = read_facts(&handle, git_version(), &Never, &op.facts_scope())
         .expect("the preview's facts read");
     graft_ops::preview::plan(&handle, &git_version(), &op, &facts, &Never)
-        .unwrap_or_else(|why| panic!("{}", why.explain()))
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)))
         .set_aside
         .map(|aside| aside.files)
 }
@@ -435,8 +439,12 @@ fn a_staged_file_deletion_drops_the_commit_that_made_it() {
     let before = state_of(&repo);
 
     let params = planned(&repo);
-    let applied = try_run(&repo, &Operation::Rewrite(params.clone()), NOW)
-        .unwrap_or_else(|why| panic!("absorb goes through: {}", why.explain()));
+    let applied = try_run(&repo, &Operation::Rewrite(params.clone()), NOW).unwrap_or_else(|why| {
+        panic!(
+            "absorb goes through: {}",
+            why.explain(&crate::support::Letters)
+        )
+    });
 
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     assert!(
@@ -535,7 +543,7 @@ fn abort_after_absorb_stops_keeps_index_only_lines() {
     absorb_stopped_at_f3(&repo);
 
     let applied = resume_with(&repo, Resume::Abort, NOW + 1)
-        .unwrap_or_else(|why| panic!("abort: {}", why.explain()));
+        .unwrap_or_else(|why| panic!("abort: {}", why.explain(&crate::support::Letters)));
 
     assert!(matches!(applied.entry.status, EntryStatus::Aborted { .. }));
     assert_eq!(repo.git(&["show", ":old.txt"]), "o1\no2\nO3\no4\no5");
@@ -559,7 +567,7 @@ fn undo_after_absorb_stops_then_aborts() {
     let before = state_of(&repo);
     absorb_stopped_at_f3(&repo);
     resume_with(&repo, Resume::Abort, NOW + 1)
-        .unwrap_or_else(|why| panic!("abort: {}", why.explain()));
+        .unwrap_or_else(|why| panic!("abort: {}", why.explain(&crate::support::Letters)));
     let undone = run_undo(&repo, NOW + 2, false);
     assert!(
         format!("{undone:?}").contains("NothingToUndo"),
@@ -579,7 +587,7 @@ fn absorb_stopped_then_continued_as_planned_keeps_the_stay() {
     absorb_stopped_at_f3(&repo);
 
     let applied = resume_with(&repo, Resume::Continue, NOW + 1)
-        .unwrap_or_else(|why| panic!("continue: {}", why.explain()));
+        .unwrap_or_else(|why| panic!("continue: {}", why.explain(&crate::support::Letters)));
 
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     f2_carries_b3(&repo);

@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use graft_git::run::RunError;
 
 use crate::journal::JournalError;
+use crate::keys::{KeyNames, OpKey, clause, then};
 use crate::restore::RestoreError;
 
 use super::{AfterState, reason_for};
@@ -33,10 +34,10 @@ pub(in crate::apply) fn not_as_they_were_words(error: &RestoreError, files: usiz
 
 /// `your edits are back · staging not kept: <first>[ +N more] · u undoes it,
 /// staging included`.
-pub(super) fn staging_not_kept_words(paths: &[PathBuf]) -> String {
-    format!(
-        "your edits are back{} · u undoes it, staging included",
-        staging_clause(paths)
+pub(in crate::apply) fn staging_not_kept_words(paths: &[PathBuf], keys: &dyn KeyNames) -> String {
+    then(
+        format!("your edits are back{}", staging_clause(paths)),
+        [clause(keys, OpKey::Undo, "undoes it, staging included")],
     )
 }
 
@@ -82,10 +83,10 @@ pub(super) fn journal_failed(
 }
 
 /// Every after-state failure on one line.
-pub(in crate::apply) fn joined(unread: &[AfterState]) -> String {
+pub(in crate::apply) fn joined(unread: &[AfterState], keys: &dyn KeyNames) -> String {
     unread
         .iter()
-        .map(ToString::to_string)
+        .map(|state| state.explain(keys))
         .collect::<Vec<_>>()
         .join("; ")
 }

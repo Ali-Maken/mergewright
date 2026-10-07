@@ -18,6 +18,8 @@ use graft_ops::operation::Operation;
 use super::Cancel;
 use crate::repos::RepoStore;
 use crate::session::Clock;
+use crate::update::op_keys::OpKeys;
+use graft_ui::keymap::Keymap;
 
 /// What running one operation came back with.
 ///
@@ -275,8 +277,9 @@ pub(super) fn run_operation(
     clock: Clock,
     cancel: &Cancel,
     hooks: Hooks,
+    keys: &Keymap,
 ) -> Operated {
-    in_context(repos, clock, cancel, |ctx| {
+    in_context(repos, clock, cancel, keys, |ctx| {
         ctx.remote = remote_hooks(op, hooks);
         apply::apply(ctx, op)
     })
@@ -299,8 +302,9 @@ pub(super) fn run_resume(
     what: apply::Resume,
     clock: Clock,
     cancel: &Cancel,
+    keys: &Keymap,
 ) -> Operated {
-    in_context(repos, clock, cancel, |ctx| apply::resume(ctx, what))
+    in_context(repos, clock, cancel, keys, |ctx| apply::resume(ctx, what))
 }
 
 /// The setup both of the above share: the repository, the system `git`, the
@@ -310,6 +314,7 @@ fn in_context(
     repos: &RepoStore,
     clock: Clock,
     cancel: &Cancel,
+    keys: &Keymap,
     run: impl FnOnce(&mut Context<'_>) -> Result<Applied, ApplyError>,
 ) -> Operated {
     let repo = match repos.shared() {
@@ -349,7 +354,7 @@ fn in_context(
         Ok(applied) => applied.stopped_at,
         Err(error) => error.stopped_at(),
     });
-    let mut operated = answer(ran);
+    let mut operated = answer(ran, keys);
     // A rebase stopped: where it is, read here while the repository and the
     // job's stop flag are at hand, so `update` never reads git (07b).
     if let Operated::Conflicted {
@@ -366,8 +371,9 @@ fn in_context(
 /// One [`apply::apply`] result, as the caller reads it.
 ///
 /// Split out of [`run_operation`] so the mapping is one readable match
-/// rather than a tail on the end of the setup.
-fn answer(result: Result<Applied, ApplyError>) -> Operated {
+/// rather than a tail on the end of the setup. `keys` spells the keys the
+/// flattened lines name, from his keymap (m8/10e).
+fn answer(result: Result<Applied, ApplyError>, keys: &Keymap) -> Operated {
     match result {
         Ok(applied) => Operated::Done(applied),
         Err(ApplyError::AfterState { applied, unread }) => match unread.as_slice() {
@@ -383,7 +389,7 @@ fn answer(result: Result<Applied, ApplyError>) -> Operated {
                 applied: *applied,
                 error: unread
                     .iter()
-                    .map(ToString::to_string)
+                    .map(|state| state.explain(&OpKeys(keys)))
                     .collect::<Vec<_>>()
                     .join("; "),
             },
@@ -431,13 +437,28 @@ fn answer(result: Result<Applied, ApplyError>) -> Operated {
                 _ => None,
             };
             Operated::Failed {
-                error: error.to_string(),
+                error: failure_words(&error, keys),
                 refresh,
                 remote,
                 refused,
                 edits: error.edits_at(),
             }
         }
+    }
+}
+
+/// A failure's one line, the keys it names spelled from his keymap
+/// (m8/10e). Only the variants whose words name a key are worded through
+/// `explain`; every other keeps its `Display`, the line this job always
+/// drew — `ApplyError::Git` included, whose `explain` adds a
+/// `u restores the backup` clause this line has never carried (the edits
+/// clause, `update::operate::failure::edits_clause`, names it instead).
+fn failure_words(error: &ApplyError, keys: &Keymap) -> String {
+    match error {
+        ApplyError::Refused(_) | ApplyError::AfterState { .. } | ApplyError::Remote { .. } => {
+            error.explain(&OpKeys(keys))
+        }
+        other => other.to_string(),
     }
 }
 

@@ -15,6 +15,7 @@ use graft_git::run::RunError;
 use crate::branch_config;
 use crate::facts::{self, FactsError};
 use crate::journal::JournalError;
+use crate::keys::NoKeys;
 use crate::merge_state::read_merge_state;
 use crate::operation::Operation;
 use crate::snapshot::{self, SnapshotError, SnapshotScope};
@@ -231,7 +232,8 @@ pub(crate) fn finish(
 
     entry.status = match status {
         EntryStatus::Aborted { reason } if !unread.is_empty() => EntryStatus::Aborted {
-            reason: format!("{reason}; {}", joined(&unread)),
+            // A journal record names no key: keyless words (m8/10e).
+            reason: format!("{reason}; {}", joined(&unread, &NoKeys)),
         },
         other => other,
     };

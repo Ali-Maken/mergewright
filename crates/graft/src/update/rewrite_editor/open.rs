@@ -4,6 +4,7 @@ use super::{
     AppState, Command, JobId, Oid, OpenedFrom, RebaseParams, RewriteEditor, RewriteOpened,
     RewriteRequest, Status, after,
 };
+use crate::update::op_keys::OpKeys;
 
 /// Is the editor's `r` field open (`AppState::text_field_open`)?
 pub(crate) fn field_open(state: &AppState) -> bool {
@@ -158,7 +159,7 @@ pub(crate) fn opened(
             state.rewrite.editor = Some(editor);
         }
         Ok(RewriteOpened::Refused(refusal)) => {
-            state.status = Status::sticky(refusal.explain());
+            state.status = Status::sticky(refusal.explain(&OpKeys(&state.keymap)));
         }
         Err(why) => {
             state.status = Status::Failed(format!("couldn't open the rewrite editor: {why}"));

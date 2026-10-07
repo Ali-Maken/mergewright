@@ -128,7 +128,7 @@ pub fn graft_stage(repo: &TempRepo, path: &str, at: i64) {
         &Operation::Stage(Target::Paths(vec![PathBuf::from(path)])),
         at,
     )
-    .unwrap_or_else(|why| panic!("staging {path}: {}", why.explain()));
+    .unwrap_or_else(|why| panic!("staging {path}: {}", why.explain(&crate::support::Letters)));
 }
 
 /// The conflict set, read with a fresh handle and fresh facts.

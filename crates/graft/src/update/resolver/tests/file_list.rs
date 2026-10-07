@@ -202,7 +202,9 @@ fn the_open_files_row_follows_its_document() {
                     path: std::path::PathBuf::from("gone.txt"),
                     how: UnmergedHow::DeletedByUs,
                 }
-                .explain(),
+                .explain(&crate::update::op_keys::OpKeys(
+                    graft_ui::keymap::Keymap::shipped(),
+                )),
             },
         });
         assert_eq!(states(&card)[0].1, want, "binary {binary}");
@@ -864,7 +866,7 @@ fn d_on_a_done_file_starts_it_over() {
     assert!(
         commands.iter().any(|command| matches!(
             command,
-            Command::Operate(_, op)
+            Command::Operate(_, op, ..)
                 if matches!(**op, graft_ops::operation::Operation::RestartConflict(_))
         )),
         "{commands:?}"

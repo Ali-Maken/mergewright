@@ -67,7 +67,8 @@ fn lose_an_edit(repo: &TempRepo, versions: &Versions) {
         NOW,
     );
     repo.write(versions.path, versions.lost);
-    run_undo(repo, NOW + 1, true).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(repo, NOW + 1, true)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(
         repo.read(versions.path),
         versions.e1,
@@ -141,7 +142,8 @@ fn u_after_a_lost_edit_put_back_gives_back_what_it_replaced_byte_for_byte() {
     let repo = committed(AUTOCRLF, &A_RS);
     put_back_under_autocrlf(&repo);
 
-    run_undo(&repo, NOW + 3, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 3, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
 
     assert_eq!(repo.read(PATH), E1, "u gives back E1, byte for byte");
 }
@@ -150,9 +152,11 @@ fn u_after_a_lost_edit_put_back_gives_back_what_it_replaced_byte_for_byte() {
 fn redo_after_undoing_a_lost_edit_put_back_writes_his_lf_bytes() {
     let repo = committed(AUTOCRLF, &A_RS);
     put_back_under_autocrlf(&repo);
-    run_undo(&repo, NOW + 3, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(&repo, NOW + 3, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
 
-    run_redo(&repo, NOW + 4, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+    run_redo(&repo, NOW + 4, false)
+        .unwrap_or_else(|why| panic!("redo: {}", why.explain(&crate::support::Letters)));
 
     assert_eq!(repo.read(PATH), LOST, "U gives back his LF bytes");
 }

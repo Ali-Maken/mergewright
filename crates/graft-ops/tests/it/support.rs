@@ -311,7 +311,7 @@ pub fn stash_list(repo: &TempRepo) -> String {
 /// Apply one operation with a fresh context, and return the entry.
 pub fn run(repo: &TempRepo, op: &Operation, at: i64) -> JournalEntry {
     try_run(repo, op, at)
-        .unwrap_or_else(|why| panic!("{}", why.explain()))
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)))
         .entry
 }
 
@@ -365,13 +365,16 @@ pub fn round_trip(repo: &TempRepo, op: &Operation) {
     let after = state_of(repo);
     assert_ne!(before, after, "the operation changed nothing to undo");
 
-    run_undo(repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    run_undo(repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(state_of(repo), before, "undo did not put it back exactly");
 
-    run_redo(repo, NOW + 2, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+    run_redo(repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("redo: {}", why.explain(&crate::support::Letters)));
     assert_eq!(state_of(repo), after, "redo did not put it forward exactly");
 
-    run_undo(repo, NOW + 3, false).unwrap_or_else(|why| panic!("undo 2: {}", why.explain()));
+    run_undo(repo, NOW + 3, false)
+        .unwrap_or_else(|why| panic!("undo 2: {}", why.explain(&crate::support::Letters)));
     assert_eq!(
         state_of(repo),
         before,
@@ -399,4 +402,33 @@ pub fn expire_and_prune(repo: &TempRepo) {
 /// Whether the repository still holds an object.
 pub fn holds(repo: &TempRepo, id: &str) -> bool {
     repo.try_git(&["cat-file", "-e", id]).is_ok()
+}
+
+/// Today's letters for every key graft-ops' words name (ticket m8/10e): the
+/// integration tree's one `KeyNames`, so its assertions keep the shipped
+/// spelling. Never production — the app spells from his keymap.
+pub struct Letters;
+
+impl graft_ops::keys::KeyNames for Letters {
+    fn label(&self, key: graft_ops::keys::OpKey) -> Option<String> {
+        use graft_ops::keys::OpKey;
+        Some(
+            match key {
+                OpKey::Commit | OpKey::Continue => "c",
+                OpKey::Amend | OpKey::Abort => "a",
+                OpKey::Stage => "space",
+                OpKey::Stash => "S",
+                OpKey::Switch => "C",
+                OpKey::Rewrite => "R",
+                OpKey::Fetch => "f",
+                OpKey::Pull => "p",
+                OpKey::Push => "P",
+                OpKey::Merge => "m",
+                OpKey::Rebase => "r",
+                OpKey::Undo => "u",
+                OpKey::Redo => "U",
+            }
+            .to_owned(),
+        )
+    }
 }

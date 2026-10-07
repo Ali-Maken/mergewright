@@ -175,7 +175,7 @@ fn a_push_boxed_before_a_reread_launches_and_ops_decides() {
     let sent: Vec<_> = commands
         .iter()
         .filter_map(|command| match command {
-            Command::Operate(_, op) => Some(op.as_ref()),
+            Command::Operate(_, op, ..) => Some(op.as_ref()),
             _ => None,
         })
         .collect();
@@ -205,7 +205,8 @@ fn pull_with_an_upstream_launches_it() {
             Box::new(Operation::Pull(PullParams {
                 branch: "refs/heads/main".to_owned(),
                 upstream: upstream(Some(THEIRS)),
-            }))
+            })),
+            std::sync::Arc::new(graft_ui::keymap::Keymap::shipped().clone())
         )]
     );
     assert_eq!(
@@ -1090,7 +1091,8 @@ fn repush_opens_its_own_confirm_before_the_remote_moves() {
         commands,
         [Command::Operate(
             id,
-            Box::new(Operation::Push(after_the_box_params()))
+            Box::new(Operation::Push(after_the_box_params())),
+            std::sync::Arc::new(graft_ui::keymap::Keymap::shipped().clone())
         )]
     );
 }
@@ -1173,7 +1175,8 @@ fn repush_after_a_two_commit_push_sends_the_first_commit() {
             Box::new(Operation::Push(PushParams {
                 source_commit: Some(oid(FIRST)),
                 ..after_the_box_params()
-            }))
+            })),
+            std::sync::Arc::new(graft_ui::keymap::Keymap::shipped().clone())
         )],
         "source_commit is the first commit, not the pre-push tracking tip"
     );
@@ -1216,7 +1219,14 @@ fn undo_locally_runs_the_undo_and_the_same_push_asks_once() {
     let Some(id) = undoing.operating else {
         panic!("[ Undo locally ] launched nothing: {commands:?}");
     };
-    assert_eq!(commands, [Command::Undo(id, false)]);
+    assert_eq!(
+        commands,
+        [Command::Undo(
+            id,
+            false,
+            std::sync::Arc::new(graft_ui::keymap::Keymap::shipped().clone())
+        )]
+    );
     assert_eq!(
         undoing.remote.undo_after_push_asked,
         Some(graft_core::journal::EntryId::new(2, [0; 10])),
@@ -1230,7 +1240,7 @@ fn undo_locally_runs_the_undo_and_the_same_push_asks_once() {
     let (again, commands) = press(&settled, plain('u'));
     assert!(again.confirm.is_none(), "it asked twice");
     assert!(
-        matches!(commands.as_slice(), [Command::Undo(_, false)]),
+        matches!(commands.as_slice(), [Command::Undo(_, false, ..)]),
         "{commands:?}"
     );
 }
@@ -1242,7 +1252,7 @@ fn capital_u_after_a_push_does_not_ask() {
     let (next, commands) = press(&after_a_push(), plain('U'));
     assert!(next.confirm.is_none());
     assert!(
-        matches!(commands.as_slice(), [Command::Redo(_, false)]),
+        matches!(commands.as_slice(), [Command::Redo(_, false, ..)]),
         "{commands:?}"
     );
 }
@@ -1266,7 +1276,7 @@ fn an_entry_the_push_did_not_send_is_not_explained() {
     let (next, commands) = press(&state, plain('u'));
     assert!(next.confirm.is_none(), "nothing to explain");
     assert!(
-        matches!(commands.as_slice(), [Command::Undo(_, false)]),
+        matches!(commands.as_slice(), [Command::Undo(_, false, ..)]),
         "{commands:?}"
     );
 }
@@ -1341,7 +1351,7 @@ fn a_push_of_another_branch_does_not_ask_or_name_that_branch() {
     let (next, commands) = press(&a_push_of_another_branch(), plain('u'));
     assert!(next.confirm.is_none(), "{:?}", next.confirm.map(|c| c.view));
     assert!(
-        matches!(commands.as_slice(), [Command::Undo(_, false)]),
+        matches!(commands.as_slice(), [Command::Undo(_, false, ..)]),
         "{commands:?}"
     );
 }
@@ -1481,7 +1491,14 @@ fn undo_locally_still_runs_when_there_is_no_re_push() {
     let Some(id) = undoing.operating else {
         panic!("[ Undo locally ] launched nothing: {commands:?}");
     };
-    assert_eq!(commands, [Command::Undo(id, false)]);
+    assert_eq!(
+        commands,
+        [Command::Undo(
+            id,
+            false,
+            std::sync::Arc::new(graft_ui::keymap::Keymap::shipped().clone())
+        )]
+    );
 }
 
 mod lease;
