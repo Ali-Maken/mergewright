@@ -1153,6 +1153,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/10e-open-points | 10e: `MarkersRemain` refusal not keyed; rare ApplyError::Journal path drops 'u undoes it' (set_aside/answer.rs:323); conflict-gate and revert-plan jobs keyless; OpKey has Amend/Push not Absorb/ForcePush (deviation). | **unverified** | M8 |
 | M8/13e-sigcont-test-never-red | 13e's SIGSTOP/SIGTTIN hook tests passed even without the SIGCONT fix, so they don't prove it (likely: kernel continues stopped members of an orphaned group — read, not observed). SIGCONT now sent; its need is unproven. | **unverified** | M8 |
 | M8/stale-sigkill-comments | `update/quit.rs:174` and `update/events/command.rs:72` still say "SIGKILL after 2 s" (13f NOTES). | **broken** | M8 |
+| M8/09e-start-help-n-next-match | Start-screen `?` help (m8-help-empty-state capture) now lists `n Next match`, a key the start screen ignores; lost the cancel row (09e NOTES). Ties to M8/11-start-help-dead-keys. | **broken** | M8 |
+| M8/j21-note-stale | Design note J21 still says `i n` declines; 09e removed the raw `n` (doc stale). | **broken** | M8 |
 | M8/flaky-http-remote-drop | graft-fixtures `http_remote_drop_ends_a_wedged_backend` failed once in a full run under load (14d), passes alone; crate untouched; not diagnosed. | **unverified** | M8 |
 | M8/long-tmpdir-socket | 6+ graft tests fail when `$TMPDIR` is a long path (unix-socket path limit); Paperclip runs set one. Gates pass with `TMPDIR=/tmp`. Tests should not depend on `$TMPDIR` length — cause not fixed. | **broken** | M8 |
 | M8/startup-rs-564 | `startup.rs` 564 lines, over the readability limit; outside 02's file set, not split. | **broken** | M8 |
