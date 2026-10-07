@@ -21,7 +21,7 @@ Tuple is `(ContextId, &str id, &str chord, &str why)` (4 fields; ticket's sketch
 - C rows (5): :137 Changes home (detail/keys.rs:307); :138 Resolver ⌃Z (resolver.rs:383); :139 Banner ⌃Z (focus_keys.rs:173); :144 Blame home, :145 Blame end (place/keys.rs:78).
 - Picker (6): :140 ⌃Z (picker.rs:155), :141 ↑ (:138), :142 home, :143 end (:155), :160 ⌃P (`R_PICKER`).
 - CommitEditor (6): :146 ⌃Z (commit_editor/keys.rs:110), :147 ↑ (:231), :148 home (:229), :149 end (:230), :161 ⌃P (`R_EDITOR`).
-- Credential (11): :150–154 `credential.edit_text` delete/←/→/home/end (credential.rs:379–382); :155 ⌃Z (:326); :156 ↓, :157 ↑ (:385); :158 home (:381); :159 end (:382); :162 ⌃P (`R_CREDENTIAL`).
+- Credential (11): :150–154 `credential.edit_text` delete/←/→<home___> (credential.rs:379–382); :155 ⌃Z (:326); :156 ↓, :157 ↑ (:385); :158 home (:381); :159 end (:382); :162 ⌃P (`R_CREDENTIAL`).
 - Menu (1): :163 `changes.stage` `s`.
-- Contradiction for R1: of the 22 non-C rows, **none is a plain printable character** except Menu `s` (:163); all others are ↑/↓/←/→/home/end/delete/⌃Z/⌃P. `TypesItself` as defined (idle chord is a printable the field inserts) would cover at most 0–1 rows; the "u is typed / j is typed" notes refer to the *other* chord, not the idle one.
+- Contradiction for R1: of the 22 non-C rows, **none is a plain printable character** except Menu `s` (:163); all others are ↑/↓/←/→<home___>/delete/⌃Z/⌃P. `TypesItself` as defined (idle chord is a printable the field inserts) would cover at most 0–1 rows; the "u is typed / j is typed" notes refer to the *other* chord, not the idle one.
 - Picker and CommitEditor: whether `ctx.is_text_field()` is true for them — not checked; could not confirm.
