@@ -1,6 +1,7 @@
 //! Find anything (m8-polish-and-ship/12, J26–J28): the real binary on a
-//! pty, walking the design note's journeys `seek-branch`, `seek-tag` and
-//! `rerun-recent`, counting keys against its `journey-counts` fence. The
+//! pty, walking the design note's journeys `seek-branch`, `seek-tag`,
+//! `rerun-recent` and (12b) `seek-commit-sha`, `seek-commit-words`,
+//! `file-history`, counting keys against its `journey-counts` fence. The
 //! start is the graph with its cursor on HEAD; every run is isolated by
 //! `pty::Isolated` (no real config, no real recent list).
 #![allow(
@@ -208,5 +209,126 @@ fn walk_rerun_recent() {
     assert_within_the_note("rerun-recent", &keys);
     pty.send(b"\x1b");
     pty.wait_for("back on the graph", |s| !s.has("J/esc close"));
+    quit(pty);
+}
+
+/// 12b's fixture, on [`repo`]'s: `tools/harmonica.txt` added by `Tune the
+/// instrument`, then `Untangle the quokka ledger`, then `Polish` (HEAD), so
+/// both sought commits lie below HEAD. The words `quokka ledger` and the
+/// path `harmonica` match no action, branch, tag or other group's row
+/// (the fence's fixture for `seek-commit-words`).
+struct Finds {
+    repo: Repo,
+    /// `Tune the instrument`'s full sha.
+    tune: String,
+}
+
+fn finds() -> Finds {
+    let mut repo = repo();
+    let path = repo.scratch.path().to_path_buf();
+    std::fs::create_dir_all(path.join("tools")).expect("a directory");
+    std::fs::write(path.join("tools/harmonica.txt"), "do re mi\n").expect("a file");
+    git(&path, &["add", "tools/harmonica.txt"]);
+    git(&path, &["commit", "--quiet", "-m", "Tune the instrument"]);
+    let tune = git(&path, &["rev-parse", "HEAD"]).trim().to_owned();
+    git(
+        &path,
+        &[
+            "commit",
+            "--quiet",
+            "--allow-empty",
+            "-m",
+            "Untangle the quokka ledger",
+        ],
+    );
+    git(
+        &path,
+        &["commit", "--quiet", "--allow-empty", "-m", "Polish"],
+    );
+    git(&path, &["rev-parse", "HEAD"])
+        .trim()
+        .clone_into(&mut repo.head);
+    Finds { repo, tune }
+}
+
+/// Waits for the palette's cursor on a row of `group` holding `needle`.
+fn cursor_in_group(pty: &Pty, group: &str, needle: &str) {
+    pty.wait_for("the find row under the palette's cursor", |s| {
+        s.has(group)
+            && s.lines()
+                .iter()
+                .any(|l| l.contains("│\u{25b8}") && l.contains(needle))
+    });
+}
+
+/// J29 `seek-commit-sha` = 3: `⌃P <sha prefix> ⏎` puts the graph's cursor
+/// on that commit, found in all of history, not only the rows loaded.
+#[test]
+fn walk_seek_commit_sha() {
+    let finds = finds();
+    let isolated = Isolated::new();
+    let mut pty = spawn(&finds.repo, &isolated);
+    let prefix = &finds.tune[..12];
+    let keys: [&[u8]; 3] = [CTRL_P, prefix.as_bytes(), b"\r"];
+    pty.send(keys[0]);
+    pty.wait_for("the palette", |s| s.has("find anything"));
+    pty.send(keys[1]);
+    cursor_in_group(&pty, "COMMITS", "Tune the instrument");
+    pty.send(keys[2]);
+    seeked_to(&pty, "Tune the instrument");
+    assert_within_the_note("seek-commit-sha", &keys);
+    assert_eq!(
+        git(finds.repo.scratch.path(), &["rev-parse", "HEAD"]).trim(),
+        finds.repo.head,
+        "HEAD unchanged"
+    );
+    quit(pty);
+}
+
+/// J30 `seek-commit-words` = 3: `⌃P quokka ledger ⏎`, on the fence's
+/// fixture (the words match one commit and nothing else).
+#[test]
+fn walk_seek_commit_words() {
+    let finds = finds();
+    let isolated = Isolated::new();
+    let mut pty = spawn(&finds.repo, &isolated);
+    let keys: [&[u8]; 3] = [CTRL_P, b"quokka ledger", b"\r"];
+    pty.send(keys[0]);
+    pty.wait_for("the palette", |s| s.has("find anything"));
+    pty.send(keys[1]);
+    cursor_in_group(&pty, "COMMITS", "Untangle the quokka ledger");
+    pty.send(keys[2]);
+    seeked_to(&pty, "Untangle the quokka ledger");
+    assert_within_the_note("seek-commit-words", &keys);
+    quit(pty);
+}
+
+/// J31 `file-history` = 3: `⌃P harmonica ⏎` ends on the history place for
+/// `tools/harmonica.txt`. `Esc` (not part of the journey) lands back on
+/// the graph, its cursor on HEAD where it was.
+#[test]
+fn walk_file_history() {
+    let finds = finds();
+    let isolated = Isolated::new();
+    let mut pty = spawn(&finds.repo, &isolated);
+    let keys: [&[u8]; 3] = [CTRL_P, b"harmonica", b"\r"];
+    pty.send(keys[0]);
+    pty.wait_for("the palette", |s| s.has("find anything"));
+    pty.send(keys[1]);
+    cursor_in_group(&pty, "FILES", "tools/harmonica.txt");
+    pty.send(keys[2]);
+    pty.wait_for("the history place for the path", |s| {
+        !s.has("find anything")
+            && s.has("HISTORY \u{b7} tools/harmonica.txt")
+            && s.has("Tune the instrument")
+    });
+    assert_within_the_note("file-history", &keys);
+    pty.send(b"\x1b");
+    pty.wait_for("the graph, cursor on HEAD as before", |s| {
+        !s.has("HISTORY \u{b7}")
+            && s.lines()
+                .iter()
+                .any(|l| l.starts_with(CURSOR) && l.contains("Polish"))
+    });
     quit(pty);
 }

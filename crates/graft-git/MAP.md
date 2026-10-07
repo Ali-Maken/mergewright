@@ -124,6 +124,7 @@ Files (m6-conflicts/23, pure moves; every item below is re-exported from `confli
 ## diff
 - `FileStatus` (enum) — `Added`, `Deleted`, `Modified`, `Renamed { similarity }`, `Copied { similarity }`, `TypeChanged`, `Unmerged`, `Untracked`.
 - `FileEntry` (struct) — `path`, `old_path` (renames/copies only), `status`, `added`/`removed` line counts (`None` for binary).
+- `tracked_paths(repo, stop) -> Result<TrackedPaths, StatusError>` (fn, m8/12b) — every tracked path, index order, one `ls-files -z` (bare: empty, no spawn; an unmerged path once; past `TRACKED_CAP` 64 MiB → `TooLarge`). `TrackedPaths` (struct) — packed bytes: `len`, `is_empty`, `get(ix)`, `iter`, `from_nul_separated`.
 - `FileList` (struct) — `files`, plus the total `added`/`removed` across them.
 - `LineKind` (enum) — `Context`, `Added`, `Removed`.
 - `DiffLine` (struct) — `kind`, `text`, `old_no`/`new_no`, `no_newline_at_eof`.

@@ -4,8 +4,11 @@
 //! on 2026-10-07.
 
 use graft_ui::keymap::ContextId;
+use graft_ui::text_input::TextField;
 
+use super::AppState;
 use super::sweep_swallowed::{R_CREDENTIAL, R_EDITOR, R_PICKER};
+use crate::update::credential::PromptField;
 
 /// `(place, id, why)`: answered there, but the fixture gives it nothing to
 /// change.
@@ -130,30 +133,136 @@ pub(super) const SHADOWED: &[(ContextId, &str, &str, &str, &str)] = &[
     (ContextId::Menu, "graph.write_commit_graph", "B", "diff.blame", "scope Diff before Graph: graft-ui keymap.rs:154"),
 ];
 
+/// Why one chord of a row is idle in the sweep while its other chord acts
+/// (m8/09h R1′).
+pub(super) enum IdleWhy {
+    /// Acts in its handler; the sweep's fixture leaves it nothing to
+    /// change. `at`: the handler arm's `file:line`. `given` puts the place
+    /// where the action has something to change; `then` reads the effect
+    /// off state.
+    ActsGivenState {
+        at: &'static str,
+        given: fn(&mut AppState),
+        then: fn(before: &AppState, after: &AppState) -> bool,
+    },
+    /// Neither acts nor types. `at`: where the chord falls idle. Gap row
+    /// `M8/one-chord-idle` (broken).
+    Defect { at: &'static str },
+}
+
+impl IdleWhy {
+    /// The `file:line` the row cites.
+    pub(super) fn at(&self) -> &'static str {
+        match self {
+            Self::ActsGivenState { at, .. } | Self::Defect { at } => at,
+        }
+    }
+}
+
+use IdleWhy::{ActsGivenState, Defect};
+
+/// The open picker, its selection on the second of at least two rows.
+fn picker_on_row_1(state: &mut AppState) {
+    let picker = state.picker.as_mut().expect("the picker is open");
+    assert!(picker.rows().len() >= 2, "the picker has two rows");
+    picker.selected = 1;
+}
+
+fn picker_row_1_to_0(before: &AppState, after: &AppState) -> bool {
+    let selected = |s: &AppState| s.picker.as_ref().map(|p| p.selected);
+    selected(before) == Some(1) && selected(after) == Some(0)
+}
+
+/// `abc`, caret at `at`.
+fn abc_at(at: usize) -> TextField {
+    let mut field = TextField::new("abc");
+    for _ in at..3 {
+        field.left();
+    }
+    field
+}
+
+fn subject_abc(state: &mut AppState, at: usize) {
+    state
+        .commit_editor
+        .as_mut()
+        .expect("the editor is open")
+        .subject = abc_at(at);
+}
+
+fn subject(state: &AppState) -> Option<(String, usize)> {
+    let subject = &state.commit_editor.as_ref()?.subject;
+    Some((subject.text().to_owned(), subject.cursor()))
+}
+
+fn credential_abc(state: &mut AppState, at: usize) {
+    state.credential.as_mut().expect("the prompt is open").field = PromptField::Open(abc_at(at));
+}
+
+fn credential(state: &AppState) -> Option<(String, usize)> {
+    match &state.credential.as_ref()?.field {
+        PromptField::Open(field) => Some((field.text().to_owned(), field.cursor())),
+        PromptField::Secret(_) => None,
+    }
+}
+
+type Read = fn(&AppState) -> Option<(String, usize)>;
+
+/// `read` gives `from` before the press and `to` after it.
+fn went(
+    read: Read,
+    before: &AppState,
+    after: &AppState,
+    from: (&str, usize),
+    to: (&str, usize),
+) -> bool {
+    let owned = |(text, caret): (&str, usize)| Some((text.to_owned(), caret));
+    read(before) == owned(from) && read(after) == owned(to)
+}
+
 /// `(place, id, chord, why)`: one chord of a row does nothing there while
 /// its other chord acts — the per-row lists cannot say it.
 #[rustfmt::skip]
-pub(super) const ONE_CHORD_IDLE: &[(ContextId, &str, &str, &str)] = &[
-    (ContextId::Picker, "app.undo", "⌃Z", "picker.rs:155 swallows ⌃Z; u is typed (:147)"),
-    (ContextId::Picker, "app.up", "↑", "picker.rs:138 the first row is already selected"),
-    (ContextId::Picker, "app.top", "home", "picker.rs:155 swallows home; g is typed"),
-    (ContextId::Picker, "app.bottom", "end", "picker.rs:155 swallows end; G is typed"),
-    (ContextId::CommitEditor, "app.undo", "⌃Z", "commit_editor/keys.rs:110 swallows ⌃Z; u is typed"),
-    (ContextId::CommitEditor, "app.up", "↑", "commit_editor/keys.rs:231 swallows ↑ in the subject"),
-    (ContextId::CommitEditor, "app.top", "home", "commit_editor/keys.rs:229 caret already at home"),
-    (ContextId::CommitEditor, "app.bottom", "end", "commit_editor/keys.rs:230 caret already at end"),
-    (ContextId::Credential, "credential.edit_text", "delete", "credential.rs:379-382 caret at the end"),
-    (ContextId::Credential, "credential.edit_text", "←", "credential.rs:379 moves the caret; not drawn"),
-    (ContextId::Credential, "credential.edit_text", "→", "credential.rs:379-382 caret at the end"),
-    (ContextId::Credential, "credential.edit_text", "home", "credential.rs:381 moves the caret; not drawn"),
-    (ContextId::Credential, "credential.edit_text", "end", "credential.rs:382 caret at the end"),
-    (ContextId::Credential, "app.undo", "⌃Z", "credential.rs:326 swallows ⌃Z; u is typed"),
-    (ContextId::Credential, "app.down", "↓", "credential.rs:385 swallows ↓; j is typed"),
-    (ContextId::Credential, "app.up", "↑", "credential.rs:385 swallows ↑; k is typed"),
-    (ContextId::Credential, "app.top", "home", "credential.rs:381 moves the caret; not drawn"),
-    (ContextId::Credential, "app.bottom", "end", "credential.rs:382 caret at the end"),
-    (ContextId::Picker, "app.palette", "⌃P", R_PICKER),
-    (ContextId::CommitEditor, "app.palette", "⌃P", R_EDITOR),
-    (ContextId::Credential, "app.palette", "⌃P", R_CREDENTIAL),
-    (ContextId::Menu, "changes.stage", "s", "no changes pane under the menu; the graph has no s"),
+pub(super) const ONE_CHORD_IDLE: &[(ContextId, &str, &str, IdleWhy)] = &[
+    (ContextId::Picker, "app.undo", "⌃Z", Defect { at: "picker.rs:158 swallows ⌃Z; u is typed (:150)" }),
+    (ContextId::Picker, "app.up", "↑", ActsGivenState {
+        at: "picker.rs:141", given: picker_on_row_1, then: picker_row_1_to_0 }),
+    (ContextId::Picker, "app.top", "home", Defect { at: "picker.rs:158 swallows home; g is typed (:150)" }),
+    (ContextId::Picker, "app.bottom", "end", Defect { at: "picker.rs:158 swallows end; G is typed (:150)" }),
+    (ContextId::CommitEditor, "app.undo", "⌃Z", Defect { at: "commit_editor/keys.rs:110 swallows ⌃Z; u is typed" }),
+    (ContextId::CommitEditor, "app.up", "↑", Defect { at: "commit_editor/keys.rs:231 swallows ↑ in the subject" }),
+    (ContextId::CommitEditor, "app.top", "home", ActsGivenState {
+        at: "commit_editor/keys.rs:229", given: |s| subject_abc(s, 2),
+        then: |b, a| went(subject, b, a, ("abc", 2), ("abc", 0)) }),
+    (ContextId::CommitEditor, "app.bottom", "end", ActsGivenState {
+        at: "commit_editor/keys.rs:230", given: |s| subject_abc(s, 0),
+        then: |b, a| went(subject, b, a, ("abc", 0), ("abc", 3)) }),
+    (ContextId::Credential, "credential.edit_text", "delete", ActsGivenState {
+        at: "credential.rs:378", given: |s| credential_abc(s, 1),
+        then: |b, a| went(credential, b, a, ("abc", 1), ("ac", 1)) }),
+    (ContextId::Credential, "credential.edit_text", "←", ActsGivenState {
+        at: "credential.rs:379", given: |s| credential_abc(s, 3),
+        then: |b, a| went(credential, b, a, ("abc", 3), ("abc", 2)) }),
+    (ContextId::Credential, "credential.edit_text", "→", ActsGivenState {
+        at: "credential.rs:380", given: |s| credential_abc(s, 1),
+        then: |b, a| went(credential, b, a, ("abc", 1), ("abc", 2)) }),
+    (ContextId::Credential, "credential.edit_text", "home", ActsGivenState {
+        at: "credential.rs:381", given: |s| credential_abc(s, 3),
+        then: |b, a| went(credential, b, a, ("abc", 3), ("abc", 0)) }),
+    (ContextId::Credential, "credential.edit_text", "end", ActsGivenState {
+        at: "credential.rs:382", given: |s| credential_abc(s, 1),
+        then: |b, a| went(credential, b, a, ("abc", 1), ("abc", 3)) }),
+    (ContextId::Credential, "app.undo", "⌃Z", Defect { at: "credential.rs:326 swallows ⌃Z; u is typed" }),
+    (ContextId::Credential, "app.down", "↓", Defect { at: "credential.rs:385 swallows ↓; j is typed" }),
+    (ContextId::Credential, "app.up", "↑", Defect { at: "credential.rs:385 swallows ↑; k is typed" }),
+    (ContextId::Credential, "app.top", "home", ActsGivenState {
+        at: "credential.rs:381", given: |s| credential_abc(s, 3),
+        then: |b, a| went(credential, b, a, ("abc", 3), ("abc", 0)) }),
+    (ContextId::Credential, "app.bottom", "end", ActsGivenState {
+        at: "credential.rs:382", given: |s| credential_abc(s, 1),
+        then: |b, a| went(credential, b, a, ("abc", 1), ("abc", 3)) }),
+    (ContextId::Picker, "app.palette", "⌃P", Defect { at: R_PICKER }),
+    (ContextId::CommitEditor, "app.palette", "⌃P", Defect { at: R_EDITOR }),
+    (ContextId::Credential, "app.palette", "⌃P", Defect { at: R_CREDENTIAL }),
+    (ContextId::Menu, "changes.stage", "s", Defect { at: "context_menu.rs:162 closes, falls through; the graph has no s" }),
 ];

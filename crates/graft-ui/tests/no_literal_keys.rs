@@ -7,8 +7,10 @@
 //!
 //! "Where a hint goes": a literal's start, after the bars' two-space gap,
 //! after `· `, or a trailing `(x)` — then a default label (or a `/` pair of
-//! them) followed by a space and a lowercase word. The label set is every
-//! live chord of the shipped table.
+//! them) followed by a space and a lowercase word; or a heading's key — a
+//! label after an all-caps word, before ` · ` or the end (`AFTER y ·
+//! checking…`, m8/09h). The label set is every live chord of the shipped
+//! table.
 //!
 //! Test code is not scanned: `tests.rs`, `*_tests.rs`, `tests/` folders,
 //! the sweep helpers, and everything after a file's `#[cfg(test)]`.
@@ -293,6 +295,18 @@ fn hint_at(literal: &str, labels: &BTreeSet<String>) -> Option<String> {
         };
         if is_label(token) && after.starts_with(|c: char| c.is_lowercase()) {
             return Some(token.to_owned());
+        }
+    }
+    // A heading's key (m8/09h): a label after an all-caps word, then ` · `
+    // or the end — `AFTER y · checking…`, which the rules above missed
+    // because no lowercase word follows the key.
+    let words: Vec<&str> = literal.split(' ').collect();
+    for (at, pair) in words.windows(2).enumerate() {
+        let heading =
+            pair[0].chars().count() >= 2 && pair[0].chars().all(|c| c.is_ascii_uppercase());
+        let closes = words.get(at + 2).is_none_or(|next| *next == "·");
+        if heading && closes && is_label(pair[1]) {
+            return Some(pair[1].to_owned());
         }
     }
     literal

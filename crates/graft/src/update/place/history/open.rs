@@ -124,6 +124,37 @@ fn opening(from: HistoryFrom, head: Option<Oid>) -> Result<Opening, String> {
     }
 }
 
+/// A FILES row's `⏎` in `⌃P` (m8-polish-and-ship/12b): the history place
+/// on `path`, traced from `HEAD`, as `F` on a file row opens it. Any trail
+/// is left first (nothing restored: the palette was over it), so `Esc`
+/// pops this place and lands where `⌃P` was opened, its graph cursor
+/// untouched. A path the status reads as added in the index has no
+/// commit to trace: said, and no place opens (as `F` on an untracked
+/// file).
+pub(crate) fn open_file_history(state: &mut AppState, commands: &mut Vec<Command>, path: PathBuf) {
+    let added = state
+        .working_tree
+        .as_ref()
+        .and_then(|status| status.entry(&path))
+        .is_some_and(|entry| {
+            !entry.unmerged && entry.staged == Some(graft_git::status::Change::Added)
+        });
+    if added {
+        state.status = Status::sticky(not_committed_words(&path));
+        return;
+    }
+    if state.trail.is_live() {
+        super::super::trail::leave(state, commands, false);
+    }
+    let from = HistoryFrom::File {
+        at: Rev::WorkingTree,
+        path,
+        line: None,
+        side: Side::New,
+    };
+    commands.extend(open_history(state, from));
+}
+
 /// `<path> isn't committed yet · no history`.
 fn not_committed_words(path: &std::path::Path) -> String {
     format!(

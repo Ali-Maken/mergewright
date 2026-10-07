@@ -294,6 +294,12 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         AppEvent::Produced(id, Product::PaletteNames(hits)) => {
             palette::names_answered(next, id, hits);
         }
+        AppEvent::Produced(id, Product::TrackedPaths(result)) => {
+            palette::tracked_read(next, commands, id, result);
+        }
+        AppEvent::Produced(id, Product::PaletteCommits(result)) => {
+            palette::commits_answered(next, id, result);
+        }
         // The overlay's file preview reads through `ListFiles` like the
         // detail pane does, under its own id; the guard asks which of the
         // two is waiting for this one.
@@ -617,6 +623,8 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::ReadSwitchList
         | Task::ReadPaletteBranches
         | Task::PaletteNames
+        | Task::ReadTrackedPaths
+        | Task::PaletteCommits
         | Task::ReadIndexState
         | Task::ReadRemotes
         | Task::OpenConflict
@@ -1027,6 +1035,8 @@ fn took_fact(
         | Product::SwitchList(_)
         | Product::PaletteBranches(_)
         | Product::PaletteNames(_)
+        | Product::TrackedPaths(_)
+        | Product::PaletteCommits(_)
         | Product::IndexState(_)
         | Product::Remotes(_)
         | Product::Leaves { .. }

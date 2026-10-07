@@ -18,6 +18,7 @@
 mod fields;
 mod palette;
 mod palette_find;
+mod palette_find_files_commits;
 mod remaps;
 mod sweep;
 mod sweep_swallowed;

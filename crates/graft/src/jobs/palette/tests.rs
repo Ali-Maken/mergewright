@@ -73,6 +73,7 @@ fn request(query: &str) -> NamesRequest {
         query: Arc::from(query),
         branches: Some(Arc::new(refs())),
         tags: Some(Arc::new(tags())),
+        files: None,
     }
 }
 
@@ -134,6 +135,7 @@ fn names_keep_the_best_fifty_and_count_the_rest() {
         query: Arc::from("b"),
         branches: Some(Arc::new(refs)),
         tags: None,
+        files: None,
     };
     let branches = match_names(&req, &|| false)
         .and_then(|hits| hits.branches)
@@ -158,6 +160,7 @@ fn names_stop_when_cancelled() {
         query: Arc::from("b"),
         branches: Some(Arc::new(refs)),
         tags: None,
+        files: None,
     };
     let asked = Cell::new(0);
     let stop = || {
@@ -203,6 +206,7 @@ fn palette_and_picker_order_branches_alike() {
             previous: None,
         })),
         tags: None,
+        files: None,
     };
     let palette = names(
         &match_names(&req, &|| false)
@@ -220,4 +224,47 @@ fn palette_and_picker_order_branches_alike() {
 #[test]
 fn top_is_the_widened_cap() {
     assert_eq!(TOP, crate::update::palette::WIDE_ROWS);
+}
+
+/// FILES (12b): `fuzzy_score` first, then the shorter path, then index
+/// order; a path that does not match is left out; `total` counts all.
+#[test]
+fn files_rank_by_score_then_shorter_then_index_order() {
+    let paths = TrackedPaths::from_nul_separated(
+        b"docs/rebase/notes.md\0src/rebase.rs\0README.md\0lib/rebase.rs\0src/x/rebase.rs\0",
+    );
+    let req = NamesRequest {
+        query: Arc::from("rebase"),
+        branches: None,
+        tags: None,
+        files: Some(Arc::new(paths.clone())),
+    };
+    let files = match_names(&req, &|| false)
+        .and_then(|hits| hits.files)
+        .expect("answered");
+    let names: Vec<&[u8]> = files
+        .top
+        .iter()
+        .map(|ix| paths.get(*ix as usize).expect("an index into the read"))
+        .collect();
+    let score = |p: &str| fuzzy_score("rebase", p).expect("matches");
+    // A stable sort keeps index order for an equal key.
+    let mut want = [
+        "docs/rebase/notes.md",
+        "src/rebase.rs",
+        "lib/rebase.rs",
+        "src/x/rebase.rs",
+    ];
+    want.sort_by_key(|p| (score(p), p.len()));
+    assert_eq!(names, want.iter().map(|p| p.as_bytes()).collect::<Vec<_>>());
+    assert_eq!(files.total, 4);
+}
+
+/// The read's failure words: the cap in his terms.
+#[test]
+fn tracked_failure_words_say_too_many_to_list() {
+    assert_eq!(
+        tracked_failure_words(&StatusError::TooLarge { bytes: 1 }),
+        "too many to list"
+    );
 }

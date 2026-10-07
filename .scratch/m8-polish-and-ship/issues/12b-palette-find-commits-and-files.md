@@ -1,6 +1,6 @@
 # G-palette 2b — `⌃P` finds commits and files
 
-Status: ready (spec-only pass 2026-10-07; split from 12; re-aligned the same day to `docs/research/palette-find.md`:
+Status: done, except the perf box (paths loop p95 34 ms, over budget; see NOTES) (built 2026-10-07; spec: spec-only pass 2026-10-07; split from 12; re-aligned the same day to `docs/research/palette-find.md`:
 step counts from the note's fence, `ReadOnce` shared with 12; P-find-1 **approved** 2026-10-07, field notes :92,
 ADR-0061)
 Build with: **Opus** — git read + two jobs on 12's contract; not Fable (judged from git-truth tests and the stale/cancel
@@ -97,21 +97,25 @@ File `⏎`: `open_history(state, HistoryFrom::File { at: Rev::WorkingTree, path:
 plus whatever the scout finds `Esc` needs to land on the graph.
 
 ## Acceptance (each box names its test at tick time)
-- [ ] `tracked_paths`: NUL split, non-UTF-8 path kept, unmerged path once, bare repo empty, over cap `TooLarge` (`tracked_paths_*`, graft-git, git fixtures).
-- [ ] `⌃P` asks one `ReadTrackedPaths`; `?` asks none; close cancels it (`palette_open_reads_tracked_paths_once`).
-- [ ] FILES `reading…` until it lands, then file rows (`files_group_reads_then_lists`); read failure in the group (`tracked_read_failure_reads_in_files_group`).
-- [ ] File row → history place on that path (`enter_on_file_row_opens_its_history_place`); `Esc` → graph, cursor unchanged (`esc_from_palette_file_history_lands_on_graph`); staged-new file → `isn't committed yet` (`file_not_in_head_says_not_committed`).
-- [ ] Commit row by sha prefix and by subject word → cursor on it (`commit_row_by_sha_prefix_seeks_it`, `commit_row_by_subject_word_seeks_it`).
-- [ ] `first_hits` = the first N of `scan`'s hits, same order (`palette_commit_hits_match_slash_search`); stops at 9 (`commits_job_stops_after_nine_hits`).
-- [ ] `more · / searches all of history` → palette closed, `/` search running for the query (`commits_more_row_starts_slash_search`).
-- [ ] Each query edit cancels the previous commits job; stale answer dropped (`stale_commits_answer_is_dropped`).
-- [ ] Empty query has no FILES or COMMITS rows (P-find-1, approved) (`empty_query_has_no_files_or_commits`). No declined-branch test (ADR-0061).
-- [ ] **Journeys, from the fence** (same mechanics as 12: pty test, fence id as a string literal, count read with
+- [x] `tracked_paths`: NUL split, non-UTF-8 path kept, unmerged path once, bare repo empty, over cap `TooLarge` (`tracked_paths_splits_on_nul_in_index_order`, `tracked_paths_keeps_a_non_utf8_path`, `tracked_paths_lists_an_unmerged_path_once`, `tracked_paths_of_a_bare_repository_is_empty`, `tracked_paths_over_the_cap_is_too_large` — graft-git `status/tracked.rs`).
+- [x] `⌃P` asks one `ReadTrackedPaths`; `?` asks none; close cancels it (`palette_open_reads_tracked_paths_once`).
+- [x] FILES `reading…` until it lands, then file rows (`files_group_reads_then_lists`); read failure in the group (`tracked_read_failure_reads_in_files_group`).
+- [x] File row → history place on that path (`enter_on_file_row_opens_its_history_place`); `Esc` → graph, cursor unchanged (`esc_from_palette_file_history_lands_on_graph`); staged-new file → `isn't committed yet` (`file_not_in_head_says_not_committed`).
+- [x] Commit row by sha prefix and by subject word → cursor on it (`commit_row_by_sha_prefix_seeks_it`, `commit_row_by_subject_word_seeks_it`).
+- [x] `first_hits` = the first N of `scan`'s hits, same order (`palette_commit_hits_match_slash_search`); stops at 9 (`commits_job_stops_after_nine_hits`).
+- [x] `more · / searches all of history` → palette closed, `/` search running for the query (`commits_more_row_starts_slash_search`); the row spells his `app.find` key, none when unbound (`commits_more_row_spells_his_find_key`).
+- [x] Each query edit cancels the previous commits job; stale answer dropped (`stale_commits_answer_is_dropped`, `query_edit_cancels_the_previous_find_job`); failure in the group (`commits_failure_reads_in_commits_group`).
+- [x] Empty query has no FILES or COMMITS rows (P-find-1, approved) (`empty_query_has_no_files_or_commits`). No declined-branch test (ADR-0061).
+- [x] **Journeys, from the fence** (same mechanics as 12: pty test, fence id as a string literal, count read with
       `m5_walk::parse_counts`, fails if the key list is longer; start: graph, cursor on HEAD): `seek-commit-sha` 3
       (`walk_seek_commit_sha`); `seek-commit-words` 3, on the stated fixture (`walk_seek_commit_words`);
       `file-history` 3, ends on the history place for that path (`walk_file_history`).
-- [ ] Perf: `scripts/perf-palette.sh` gains a 100k-path index fixture (`update-index --index-info` against one blob; no worktree files) → `docs/perf/m8-palette.txt`: per-key p95 < 16 ms; key → names answer p50/p95 with files; `⌃P` → FILES landed p50/p95. Summary only.
-- [ ] Capture `docs/shots/m8-palette-find-120x36.txt` re-taken: query `rebase` over a fixture with a matching branch, file and commit — ACTIONS, BRANCHES, FILES, COMMITS, COMMANDS RUN RECENTLY. **Colour unverified.**
+- [ ] **Not met.** Perf: `scripts/perf-palette.sh` gains a 100k-path index fixture (`update-index --index-info` against one blob; no worktree files) → `docs/perf/m8-palette.txt`: per-key p95 < 16 ms; key → names answer p50/p95 with files; `⌃P` → FILES landed p50/p95. Summary only.
+      Run (release, real pty, 2026-10-07; `bash scripts/perf-palette.sh`): paths-100000 — `loop_us` p95 34.3 ms
+      **FAIL**, `update_us` p95 3.6 ms ok, `draw_us` p95 1.1 ms, `write_us` p95 32.9 ms; key → names p50 26.5 / p95
+      41.1 ms; `⌃P` → FILES p50 68.7 / p95 83.2 ms. The loop overrun is pty write time, not update or draw; cause
+      not verified (pyte reader pacing suspected, not shown). refs-50000 also FAIL (12c's known item, not touched).
+- [x] Capture `docs/shots/m8-palette-find-120x36.txt` re-taken: query `rebase` over a fixture with a matching branch, file and commit — ACTIONS, BRANCHES, FILES, COMMITS, COMMANDS RUN RECENTLY. **Colour unverified.** (`capture_find_and_empty_palette`, 5070 bytes; muted dir/sha by `file_rows_mute_the_directory_and_commit_rows_the_sha`, cell attributes only.)
 
 ## Touches (each checked in the report)
 graft-git `status` (new fn; MAP.md), `search.rs` (shared walk loop — `/`'s tests must stay green unchanged),
@@ -125,3 +129,36 @@ MAP.md graft, graft-git, graft-ui.
 
 ## Size
 One context, ~60k tokens.
+
+## NOTES (builder, 2026-10-07)
+- **Compacted once** mid-ticket. Remaining at compaction: one clippy fix, gates, MAP.md, this ticket, commit. All done
+  after; nothing left over but the perf box.
+- **Scout:** used — `.scratch/m8-polish-and-ship/scouts/12b-commits-and-files.md` (dispatched, on 12's merged state)
+  plus 12's NOTES. Re-checked the lines it cites: `Origin.spot` private / `begin_trail` needs a `DiffCursor`; Esc's
+  `leave` with no origin restores nothing (`update/place/trail.rs:42-44`); `RowKind::File/Commit` already in graft-ui;
+  `start_search` private; `scan` yields oids only; `NOTHING_MATCHES` drawn (graft-ui `palette.rs:37`).
+- **Red first:** seen failing an assertion before their code: the five `tracked_paths_*` (bare-repo one passed against
+  the stub — a stub returning empty is the right answer there); `palette_commit_hits_match_slash_search`,
+  `commits_job_stops_after_nine_hits`; all 13 in `keymap_edge/palette_find_files_commits.rs`;
+  `commits_more_row_spells_his_find_key`; `file_rows_mute_the_directory_and_commit_rows_the_sha`. **Written after the
+  code, never seen red:** `files_rank_by_score_then_shorter_then_index_order`,
+  `tracked_failure_words_say_too_many_to_list` (jobs/palette/tests.rs) and the three pty walks (5/5 green runs each).
+- **Deviations from the spec:**
+  - Staged-new file: the spec says open.rs:128 already says "isn't committed yet". It does not — that branch fires
+    only with no `HEAD`. `open_file_history` checks the working-tree status (staged `Added`, not unmerged → the
+    not-committed words). If status has not loaded yet, the trace runs and shows an empty history. Gap, unverified
+    in use.
+  - `NameHits.files` is `Option<Ranked<u32>>` (None until the paths land), not `Ranked<u32>`.
+  - `open_file_history` leaves a live trail first (palette over a trail), then opens with no origin — Esc pops the
+    place and the graph cursor is untouched (`esc_from_palette_file_history_lands_on_graph`, `walk_file_history`).
+  - `FIRST_HITS_CHUNK` 64 (scan's chunk is larger) so the 9-hit stop is visible on the 200-commit fixture.
+  - `COMMITS_MORE` const became `commits_more(&Keymap)`: the literal `/` failed the `no_literal_keys` ratchet; the
+    row now spells `app.find` as he bound it.
+- **Touches:** graft-git `status` (new fn, MAP.md); `search.rs` (shared `walk_matching`; `/`'s search tests green
+  unchanged in the workspace run); `update/search.rs` (visibility only, 09e's file; `git diff`: the signature line only, reflowed by fmt);
+  `update/palette.rs`; events/commands/labels/`update/mod.rs`/`place/write.rs` routing (compiler-exhaustive arms);
+  jobs runner + `jobs/palette.rs`; `place/history/open.rs` — `f_key` unchanged (diff), new `open_file_history`;
+  `empty_state.rs` (no-op arm for `File`); graft-ui `palette.rs` (muted prefix); 12's tests in `palette_find.rs` /
+  `palette.rs` updated for the two new commands; 12's capture re-taken; keymap: no key bound
+  (`no_literal_keys` green); journal/undo: none (no write path); note fence read only; perf script extended;
+  MAP.md graft, graft-git, graft-ui. 09h's files not touched.

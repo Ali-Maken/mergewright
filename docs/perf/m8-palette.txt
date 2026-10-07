@@ -1,4 +1,8 @@
-# m8/12, 12c: palette find and held j on many refs. scripts/perf-palette.sh both
+# m8/12, 12b, 12c: palette find on many refs and many paths, held j.
+# Merged file: piled, held j and with-refs from 12c's run (`scripts/perf-palette.sh both`, 2026-10-07T16:46Z, after
+# the 12c fix); paths from 12b's run (2026-10-07T16:30Z, 12b's script, before 12c; one ref, so the 12c change does
+# not reach it). 12b's "refs" section (piled fixture, before the 12c fix) is dropped: "piled" below replaces it.
+# Rerun all with `scripts/perf-palette.sh` (default `all`).
 
 ## piled: 40 000 branches + 10 000 tags on 3 commits; palette, real pty 120x36, release, Unicode.
 # 2026-10-07T16:46Z Darwin arm64; load at start 11.71 15.96 21.06; pty driver exit 0
@@ -61,5 +65,28 @@ bytes n=55 p50=2555 p95=7817 p99=8075 max=8075
 write_us n=55 p50=2243 p95=10230 p99=17931 max=17931
 fence_us n=0
 input_age_us n=34 p50=21659 p95=33961 p99=40402 max=40402
+tail_ms=0.0
+power Now drawing from 'AC Power'
+
+## paths: pty driver exit 0
+loop_us n=40 p50=6181 p95=34305 max=67939
+check loop_p95_under_16ms FAIL
+update_us n=40 p50=1314 p95=3643 max=4080
+check update_p95_under_16ms ok
+open_to_files_ms n=5 p50=68.7 p95=83.2 max=83.2
+key_to_names_ms n=12 p50=26.5 p95=41.1 max=41.1
+broken=none exited=yes status=0
+header tier=unicode columns=120 rows=36 history_rows=1 refs=1 term=vscode headers=2
+frames=40 span_ms=5929.6 frames_per_s=6.6
+wakes n=40 p50=5 p95=16 p99=21 max=21
+motions n=40 p50=1 p95=3 p99=5 max=5
+queued n=40 p50=0 p95=2 p99=4 max=4
+update_us n=40 p50=1314 p95=3643 p99=4080 max=4080
+commands n=40 p50=2 p95=8 p99=16 max=16
+draw_us n=40 p50=766 p95=1135 p99=5538 max=5538
+bytes n=40 p50=2235 p95=8425 p99=8425 max=8425
+write_us n=40 p50=4809 p95=32859 p99=64146 max=64146
+fence_us n=0
+input_age_us n=32 p50=32285 p95=52736 p99=71875 max=71875
 tail_ms=0.0
 power Now drawing from 'AC Power'

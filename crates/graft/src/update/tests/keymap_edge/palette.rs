@@ -77,15 +77,19 @@ impl Walk {
     }
 }
 
-/// `commands` less the palette's own finds (ticket 12): the branch read and
-/// names jobs `⌃P` asks, and their cancels when it closes. What is left is
+/// `commands` less the palette's own finds (tickets 12, 12b): the branch
+/// and path reads and the names and commits jobs `⌃P` asks, and their
+/// cancels when it closes. What is left is
 /// what running the row did. `before` is the state the commands started
 /// from: a job its palette had in flight is the palette's too.
 pub(super) fn without_finds(before: &AppState, commands: &[Command]) -> Vec<Command> {
     let mut ours: Vec<JobId> = commands
         .iter()
         .filter_map(|c| match c {
-            Command::ReadPaletteBranches(id) | Command::PaletteNames(id, _) => Some(*id),
+            Command::ReadPaletteBranches(id)
+            | Command::PaletteNames(id, _)
+            | Command::ReadTrackedPaths(id)
+            | Command::PaletteCommits(id, _) => Some(*id),
             _ => None,
         })
         .collect();
@@ -93,12 +97,19 @@ pub(super) fn without_finds(before: &AppState, commands: &[Command]) -> Vec<Comm
         if let crate::update::palette::ReadOnce::Reading(id) = palette.find.branches {
             ours.push(id);
         }
+        if let crate::update::palette::ReadOnce::Reading(id) = palette.find.files {
+            ours.push(id);
+        }
         ours.extend(palette.find.names.pending.as_ref().map(|(id, _)| *id));
+        ours.extend(palette.find.commits.pending.as_ref().map(|(id, _)| *id));
     }
     commands
         .iter()
         .filter(|c| match c {
-            Command::ReadPaletteBranches(_) | Command::PaletteNames(..) => false,
+            Command::ReadPaletteBranches(_)
+            | Command::PaletteNames(..)
+            | Command::ReadTrackedPaths(_)
+            | Command::PaletteCommits(..) => false,
             Command::CancelJob(id) => !ours.contains(id),
             _ => true,
         })

@@ -1151,6 +1151,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/13g-double-sighup | Two SIGHUPs from one window close might skip the 60 s wait — question, no line yet (13g) | **unverified** | M8 |
 | M8/13g-banner-unjudged | 13g relaunch banner capture docs/shots/m8-hangup-relaunch-120x40.txt not judged by eye | **unverified** | M8 |
 | M8/outside-repo-captures-flaky | `outside_repo::outside_repo_captures` failed once under load, passes alone. Unverified hypothesis (debugger): `Pty::wait_for` (pty.rs:210) returns the first screen matching `has("RECENT")`, possibly a half-drawn frame. Not reproduced | **broken** | M8 |
+| M8/queued-keys-draw-once-flaky | `event_loop::tests::queued_keys_draw_once` failed once in the full run after 12 (0.075 s, 2 builders loading the machine); passes alone 3/3. Third load-only flake this session → debugger | **broken** | M8 |
 | M8/sighup-before-waiting-line | A SIGHUP before the waiting line (stop_to baseline, exit_wait.rs:89-95, signals.rs:99) is absorbed → 60 s wait; documented. Changing it would make a shell-forwarded SIGHUP stop writes at once — design question. Fast tier no longer force-stops a write with stderr dead (heavy only) | **unverified** | M8 |
 | M8/keymap-file-sizes | Over-400 files left unsplit by 09f: hints.rs, lists.rs (held by 11c/15), stash_screen.rs, context_menu.rs, graft-ops/graft files held by 10f–10i (keymap review Major 1) | **broken** | M8 |
 | M8/help-lists-dead-keys | `?` lists keys that do nothing: pane over an overlay, Diff `M`, start-screen `n`; held by a test table, not fixed (09f) | **broken** | M8 |
@@ -1174,6 +1175,12 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/12-palette-perf | Palette loop p95 61 ms (release, docs/perf/m8-palette.txt) — over budget. Measured cause: graph draw 33 ms p50 on the 16k-badge fixture; palette update p95 5 ms; branch read ~2 s on 50k refs (picker shares) → planner ruling | **broken** | M8 |
 | M8/12-launch-cursor-not-head | Launch leaves the cursor on the newest row, not HEAD; 12's walks switch fixture around it — question | **unverified** | M8 |
 | M8/12-palette-colour-unverified | 12's 3 palette captures: colour unverified (rule 5) | **unverified** | M8 |
+| M8/12b-perf-pty-write | 12b palette on 100k paths: loop p95 34 ms, driven by pty write_us 33 ms (update 3.6, draw 1.1). Cause unverified | **broken** | M8 |
+| M8/12c-release-run-9-vs-7 | ADR-0021 release run: 9 frame-budget tests fail with 12c's fix, 7 without (incl. tests drawing no piled row), machine loaded (8–14). The 2 extra may be the fix — rerun on a quiet machine at the milestone perf run | **unverified** | M8 |
+| M8/12c-ghost-rows-all-badges | Ghost Preview rows still build every badge (12c fixed graph rows only) | **broken** | M8 |
+| M8/switch-refs-for-each-ref | Branch switch on 50k refs: git for-each-ref ≈930 ms of 988 ms (12c measured) | **unverified** | M8 |
+| M8/12b-empty-history-before-status | Opening a file's history before status loads shows an empty history (staged-Added check needs status; spec's open.rs:128 fires only with no HEAD) | **broken** | M8 |
+| M8/12b-tests-never-red | 12b: files ranking, tracked_failure_words and 3 pty walks written after code, never seen red | **unverified** | M8 |
 | M8/rewrite-editor-until-y | Literal `until y` at graft/src/view/rewrite_editor.rs:73–74 (found by 09h, not fixed) | **broken** | M8 |
 | M8/09h-captures | 09h captures box open (waited on 12; 12 now merged) — re-shoot pending | **unverified** | M8 |
 | M8/13d-open-points | 13d NOTES: `stopped_on_conflict` (graft-ops apply.rs:761) not switched (its live_entry would hold a Pending entry Q4 forbids); relaunch banner reads `c finish  a abort` vs design note `c continue · a abort`; 80x24 capture drops 'from a previous run'; forced undo jump always prints the `None` line; 13b merge-half box left unticked though 13c/13d cover it (review to confirm). | **unverified** | M8 |

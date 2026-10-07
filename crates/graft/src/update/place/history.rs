@@ -32,8 +32,8 @@ use crate::update::state::{AppState, Status};
 mod open;
 mod view;
 
-pub(crate) use open::f_key;
 pub use open::open_history;
+pub(crate) use open::{f_key, open_file_history};
 use view::drawn_rows;
 
 /// What a history place traces, from where the key was pressed.

@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # m8-polish-and-ship/12: `⌃P` find anything on 50 000 refs, release, real pty.
-# m8-polish-and-ship/12c: a fixture argument, and held `j` on the piled one.
+# 12b: the 100 000-paths case. 12c: a fixture argument, held `j` on the piled
+# refs fixture, and the spread-refs case.
 #
-#   scripts/perf-palette.sh [piled|with-refs|both]     (default: both)
+#   scripts/perf-palette.sh [piled|with-refs|paths|all]     (default: all)
 #
 # Writes docs/perf/m8-palette.txt, one section per run, summary lines only,
 # numbers only:
 #   loop_us        per frame update+draw+write from the GRAFT_PERF_TRACE
 #                  frame trace, p50/p95/max; check: p95 < 16 ms
-#   open_to_branches_ms   `⌃P` `4` -> BRANCHES drawn, settled (p50/p95)
+#   open_to_<group>_ms    `⌃P` `4` -> BRANCHES (refs cases) or FILES (paths)
+#                         drawn, settled (p50/p95)
 #   key_to_names_ms       one query key -> its answer drawn (p50/p95)
 #   then scripts/m8-trace-summary.sh's per-field lines.
 #   piled only: held `j`, no palette (scripts/scroll-lag-pty.py): its trace
@@ -25,6 +27,10 @@
 #              .with_refs(50_000)` (crates/graft/tests/it/many_refs.rs), refs
 #              spread over history; built or found by graft-fixtures'
 #              `synthetic` example.
+#   paths      one commit whose tree holds 100 000 paths (src/mNNN/fN.rs),
+#              every entry one blob, written with `update-index --index-info`;
+#              no worktree files: every entry is marked skip-worktree so the
+#              status is clean. Built under $SCRATCH if none is there.
 # Needs the release binary: `cargo build --release -p graft`.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -32,11 +38,31 @@ TARGET=${CARGO_TARGET_DIR:-$ROOT/target}
 SCRATCH=${SCRATCH:-$TARGET/perf-palette}
 BIN=$TARGET/release/graft
 [ -x "$BIN" ] || { echo "no release binary at $BIN" >&2; exit 1; }
-WHICH=${1:-both}
+WHICH=${1:-all}
 case "$WHICH" in
-  piled | with-refs | both) ;;
-  *) echo "usage: $0 [piled|with-refs|both]" >&2; exit 2 ;;
+  piled | with-refs | paths | all) ;;
+  *) echo "usage: $0 [piled|with-refs|paths|all]" >&2; exit 2 ;;
 esac
+runs() { [ "$WHICH" = all ] || [ "$WHICH" = "$1" ]; }
+
+paths_fixture() {
+  local fixture=$SCRATCH/paths-100000
+  if [ ! -d "$fixture/.git" ]; then
+    mkdir -p "$fixture"
+    git -C "$fixture" init --quiet --initial-branch=main
+    local blob tree commit
+    blob=$(echo "perf" | git -C "$fixture" hash-object -w --stdin)
+    awk -v blob="$blob" 'BEGIN {
+      for (i = 0; i < 100000; i++) printf "100644 %s\tsrc/m%03d/f%d.rs\n", blob, i % 1000, i
+    }' | git -C "$fixture" update-index --add --index-info
+    tree=$(git -C "$fixture" write-tree)
+    commit=$(GIT_AUTHOR_DATE="2026-01-01 12:00 +0000" GIT_COMMITTER_DATE="2026-01-01 12:00 +0000" \
+      git -C "$fixture" -c user.name=perf -c user.email=perf@example.invalid commit-tree "$tree" -m "100k paths")
+    git -C "$fixture" update-ref refs/heads/main "$commit"
+    git -C "$fixture" ls-files -z | xargs -0 git -C "$fixture" update-index --skip-worktree
+  fi
+  echo "$fixture"
+}
 
 piled_fixture() {
   local fixture=$SCRATCH/refs-50000
@@ -84,13 +110,13 @@ copy_of() { # fixture dest
   chmod -R u+w "$2"
 }
 
-run_palette() { # name fixture-dir description
+run_palette() { # name fixture-dir description group queries
   local name=$1 repo=$WORK/$1-repo trace=$WORK/$1-trace.txt status=0
   copy_of "$2" "$repo"
   local started_load
   started_load=$(load)
   GRAFT_PERF_TRACE=$trace python3 "$ROOT/scripts/perf-palette-pty.py" "$BIN" "$repo" 120 36 5 \
-    >"$WORK/$name-pty.txt" 2>"$WORK/$name-pty.err" || status=$?
+    "$4" "$5" >"$WORK/$name-pty.txt" 2>"$WORK/$name-pty.err" || status=$?
 
   local loop p95 check up95 upcheck
   loop=$(awk '
@@ -143,18 +169,25 @@ run_held_j() { # name fixture-dir: held `j` for 3 s at 60 Hz, no palette
 
 OUT=$ROOT/docs/perf/m8-palette.txt
 {
-  echo "# m8/12, 12c: palette find and held j on many refs. scripts/perf-palette.sh $WHICH"
-  if [ "$WHICH" != with-refs ]; then
+  echo "# m8/12, 12b, 12c: palette find on many refs and many paths, held j. scripts/perf-palette.sh $WHICH"
+  # The refs cases' queries are the pty driver's defaults (12's).
+  if runs piled; then
     piled=$(piled_fixture)
     echo
-    run_palette piled "$piled" "40 000 branches + 10 000 tags on 3 commits"
+    run_palette piled "$piled" "40 000 branches + 10 000 tags on 3 commits" BRANCHES "4417,v1.99,-2024"
     echo
     run_held_j piled "$piled"
   fi
-  if [ "$WHICH" != piled ]; then
+  if runs with-refs; then
     with_refs=$(with_refs_fixture)
     echo
-    run_palette with-refs "$with_refs" "100 000 commits, 50 000 refs spread (Scale::with_refs)"
+    run_palette with-refs "$with_refs" "100 000 commits, 50 000 refs spread (Scale::with_refs)" \
+      BRANCHES "4417,v1.99,-2024"
+  fi
+  if runs paths; then
+    paths=$(paths_fixture)
+    echo
+    run_palette paths "$paths" "100 000 tracked paths in one commit" FILES "4417,m99/f,f12"
   fi
 } >"$OUT"
 cat "$OUT"

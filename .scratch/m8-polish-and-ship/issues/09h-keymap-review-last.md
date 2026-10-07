@@ -1,6 +1,6 @@
 # G-keymap 1h — 09g remainder: `ONE_CHORD_IDLE` classes (third class ruled), Diff `Home`/`End`, resolver `⌃Z` under the suspend switch, `AFTER y`, ratchet, `?`-at-Map capture, D
 
-Status: ready
+Status: partial — captures wait for 12; R6 took E-b (stop)
 Build with: **Opus** — per-row judgement (each of the ten "acts given state" rows needs the right `given`/`then`; a
 wrong `then` hides a defect in a table) and one probe whose result picks the branch of E. Not Fable: every box is a
 full oracle (state compared, red first); nothing structural.
@@ -121,39 +121,88 @@ const ACTING_AT_LANDING: usize; // 449; unchanged by R5 (Diff Home/End already c
 ```
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] **R1′, table.** `IdleWhy` has exactly `ActsGivenState` and `Defect`; 22 rows, each with `at`; sweep green.
+- [x] **R1′, table.** `IdleWhy` has exactly `ActsGivenState` and `Defect`; 22 rows, each with `at`; sweep green.
   (`update::tests::keymap_edge::sweep::every_reachable_row_acts_or_is_listed_and_follows_its_remap`)
-- [ ] **R1′, acts given state.** Every `ActsGivenState` row: built as the sweep builds its place, `given` applied, the
+- [x] **R1′, acts given state.** Every `ActsGivenState` row: built as the sweep builds its place, `given` applied, the
   idle chord pressed → `then(before, after)` holds and `after != before`. Shown failing once with Picker `⌃Z`
   deliberately classed `ActsGivenState` (temporary, NOTES). (`update::tests::keymap_edge::sweep::every_one_chord_row_that_acts_given_state_does`)
-- [ ] **R1′, gap list.** NOTES lists every `Defect` row (place, action, chord, `at`); `rg -c 'Defect \{'
-  sweep_tables.rs` = NOTES count (12 expected; more if a `then` failed — each named). (that command)
-- [ ] **R5, Diff.** Diff pane focused, document scrolled mid: `Home` → same state as `g`, `End` → as `G`, graph cursor
+- [x] **R1′, gap list.** NOTES lists every `Defect` row (place, action, chord, `at`); `rg -c 'Defect \{'
+  sweep_tables.rs` = NOTES count (12 expected; more if a `then` failed — each named). (that command: 14 = 12 rows +
+  the variant's definition + `at()`'s match arm, NOTES)
+- [x] **R5, Diff.** Diff pane focused, document scrolled mid: `Home` → same state as `g`, `End` → as `G`, graph cursor
   unchanged both times; `[keys.app] top = "t"` → `t` tops the diff, `Home` leaves the diff where it was. Red first.
   (`update::detail::tests::home_and_end_in_the_diff_pane_act_as_g_and_capital_g`)
-- [ ] **R5, no raw arm.** `git diff <base> | rg '^\+.*(KeyCode::Home|KeyCode::End)'` hits test files only (NOTES).
-  (that command)
-- [ ] **R6, probe.** NOTES: probe code summary, output, branch taken (E-a or E-b). (the probe, NOTES)
+- [x] **R5, no raw arm.** `git diff <base> | rg '^\+.*(KeyCode::Home|KeyCode::End)'` hits test files only (NOTES).
+  (that command: 2 hits, both `detail/tests.rs`)
+- [x] **R6, probe.** NOTES: probe code summary, output, branch taken (E-a or E-b). (the probe, NOTES — E-b)
 - [ ] **R6, E-a** (if taken). Resolver open, switch on: `⌃Z` → commands `[Suspend]`; the answer fed back → no file's
   edited state changes; switch off → unchanged (as `u`). 09g's test's switch-on half updated to expect `Suspend`
   (old → new assertion in NOTES). Red first. (`update::resolver::tests::ctrl_z_suspends_in_the_resolver_and_marks_nothing_edited`,
   `update::resolver::tests::ctrl_z_answers_in_the_resolver_as_u_does`) — **or E-b:** stop recorded, box unticked,
-  NOTES says so.
-- [ ] **C, `AFTER y`.** `confirm.yes = "c"` → `AFTER c` outside the field; inside the `r` field the shipped `y`;
+  NOTES says so. **E-b taken: stop recorded in NOTES; swallow stays.**
+- [x] **C, `AFTER y`.** `confirm.yes = "c"` → `AFTER c` outside the field; inside the `r` field the shipped `y`;
   unbound → `AFTER` alone, no `—`. Red first. (`rewrite_editor::tests::the_after_heading_spells_his_confirm_key`)
-- [ ] **C, ratchet.** Literal restored → exactly one new hit, red observed (NOTES); merged tree (base named, after 10h
+- [x] **C, ratchet.** Literal restored → exactly one new hit, red observed (NOTES); merged tree (base named, after 10h
   if merged) → no new hit. (`no_literal_keys::no_user_facing_literal_spells_a_default_key`)
 - [ ] **Captures** (after 12 merges). Full `cargo nextest run` with `GRAFT_UPDATE_SHOTS` once, then unset and green;
   `git diff --stat <base> -- docs/shots` = the new file only (or R4's allowance, listed). New
   `docs/shots/m8/help-at-map-120x36.txt` (Map open, graph focused, `?`): HERE = Map's own keys; EVERYWHERE = Global
   keys that act there; no `c commit`, `R`, `m merge`, `/ Find…`. Judged by the user (rule 6); colour unverified (rule 5).
-  (`tests/it/look_polish.rs::help_at_the_map_lists_only_live_keys`, via `captures::check_shot`)
-- [ ] **D, ARCHITECTURE.md.** "Changing a key, or words that name one" entry after :84–85 per 09f Major 4 (≤15 lines,
-  ADR-0055/0058 cited). (`rg -n 'Changing a key' ARCHITECTURE.md`)
-- [ ] **D, MAP.md.** graft: :945 sweep (`IdleWhy` classes, `ACTING_AT_LANDING` 449), :946 `DEAD_ELSEWHERE` 214, :491
+  (`tests/it/look_polish.rs::help_at_the_map_lists_only_live_keys`, via `captures::check_shot`) — **open: 12 had not
+  merged (main aaf182d0 "12 back partial", no merge commit).**
+- [x] **D, ARCHITECTURE.md.** "Changing a key, or words that name one" entry after :84–85 per 09f Major 4 (≤15 lines,
+  ADR-0055/0058 cited). (`rg -n 'Changing a key' ARCHITECTURE.md` → :86, 14 lines)
+- [x] **D, MAP.md.** graft: :945 sweep (`IdleWhy` classes, `ACTING_AT_LANDING` 449), :946 `DEAD_ELSEWHERE` 214, :491
   resolver `u`/`U` + `⌃Z` (and the switch, per branch taken), blame/changes/diff/banner handlers. graft-ui:
   `rewrite_editor` (`AFTER` spelled), `no_literal_keys` pattern. (`rg -n 'ONE_CHORD_IDLE|ACTING_AT_LANDING|IdleWhy'
-  crates/graft/MAP.md`)
+  crates/graft/MAP.md`; handlers in the `update::detail` header line)
+
+## NOTES (builder, 2026-10-07)
+Scout used: `scouts/09g-one-chord-idle.md` and 09g NOTES (:179–238). No compaction. Base: main 7f85a98f (10h merged;
+12 not merged). Partial: captures wait for 12; R6 stopped at E-b by the ticket's rule.
+
+**R1′.** `sweep_tables::IdleWhy { ActsGivenState { at, given, then }, Defect { at } }`; `TypesItself` gone. Deviation:
+rows keep `(ContextId, &str id, &str chord label, IdleWhy)`, not `ActionId`/`KeyChord` — `listed()` matches on labels
+already; `Fx` = `AppState`. All ten `then`s matched the handler lines: picker.rs:141; commit_editor/keys.rs:229,230;
+credential.rs:378–382 (given replaces the fixture's Open `me` field with Open `abc`). Red: Picker `⌃Z` classed
+`ActsGivenState` → `["Picker: app.undo (⌃Z) does not act given state (TEMPORARY red)"]`, every real row held; reverted.
+`rg -c 'Defect \{'` = 14: 12 rows + enum variant + `at()` arm.
+**Defect rows (12, gap `M8/one-chord-idle`):** Picker `app.undo` ⌃Z, `app.top` home, `app.bottom` end — picker.rs:158;
+Picker `app.palette` ⌃P — `R_PICKER`; CommitEditor `app.undo` ⌃Z — commit_editor/keys.rs:110; CommitEditor `app.up` ↑ —
+:231; CommitEditor `app.palette` ⌃P — `R_EDITOR`; Credential `app.undo` ⌃Z — credential.rs:326; Credential `app.down` ↓,
+`app.up` ↑ — :385; Credential `app.palette` ⌃P — `R_CREDENTIAL`; Menu `changes.stage` s — context_menu.rs:162 (closes,
+falls to the graph, which has no `s`).
+Counts: 727 cases, **449 act** (unchanged, read via a temporary bump of the floor), 244 listed, 34 shadowed;
+`DEAD_ELSEWHERE` 214 (palette_live exact table green).
+
+**R5.** Cause: `detail/keys.rs` `diff_key` matched `Char('g'|'G') if plain` only; Home/End fell to the graph. Fix: it now
+takes the `KeyPress` and answers `shipped_as(key, "app.top"/"app.bottom")`, reusing the file's copy. Red first: `Home is g`
+failed — the Home press had moved the graph (new spec, files Pending). Fix of the cause; for him, Home/End in a diff now
+move the diff cursor and follow a remap.
+
+**R6 probe → E-b (stop).** Temporary test: resolver on screen, `suspend_on_ctrl_z` on, `conflict_editing` None; fed
+`AppEvent::Produced(JobId(0), Product::HandedOver(Ok(())))` — what `Command::Suspend` returns
+(`event_loop/running/carry.rs:149–150`). Output: `choices before={} after={"conflicted.rs": Choices { takes: [], whole:
+None, edited: true }}`, commands `[OpenConflict, ReadWorkingTree, EvilProbe]`. Cause `update/mod.rs:441` (resolver-open
+`HandedOver` arm → `finish::record_edited`). Probe removed; `resolver.rs` untouched, swallow stays.
+`M8/resolver-ctrl-z-swallowed` is now **observed**. Fix needs `update/mod.rs` to tell a suspend's return from `e`'s.
+
+**C.** `rewrite_editor/right.rs`: the AFTER header spells `confirm.yes` (`spell_keys`) from `keys`, or `shipped()` while
+the `r` field is open (the field choice now covers both headers); unbound → `AFTER · …`. Red: `AFTER y · checking…` under
+`confirm.yes = c`. Ratchet: missed because no lowercase word follows the key; new rule — a label after an all-caps word,
+before ` · ` or the end. Restoring one literal: exactly 1 hit (`rewrite_editor/right.rs: "AFTER y · checking…"`);
+merged tree (7f85a98f + this): 0 hits.
+**Finding, not fixed (outside the set):** `crates/graft/src/view/rewrite_editor.rs:73–74` — the REWRITE title ends
+`nothing written until y`, a literal `y` (seen in the red output under `confirm.yes = c`). The new rule does not
+catch it (no heading word before it). Conductor's to file.
+
+**Touches:** `git diff --stat 7f85a98f --` edge.rs, update/mod.rs, update/keys.rs, resolver.rs, graft-ui keymap/,
+keymap_ids.txt, journal*, undo*, graft-ops, credential.rs, picker.rs, commit_editor/ → 0 lines. Raw arms: 2 `+` hits, both
+in detail/tests.rs. 09g blame/changes/banner/resolver tests untouched, green. Hint bars/captures: full nextest green,
+no shot changed (no `GRAFT_UPDATE_SHOTS` run). Gates: fmt, clippy, nextest 5784/5784, doctests green.
+
+**Next (split):** the capture box once 12 merges — add `help_at_the_map_lists_only_live_keys` to
+`tests/it/look_polish.rs`, run with `GRAFT_UPDATE_SHOTS` once, then unset. The E-b fix in `update/mod.rs` after 12/17b.
 
 ## Touches
 - Translate/dispatch/keymap: `git diff <base> -- crates/graft/src/update/edge.rs crates/graft/src/update/mod.rs
