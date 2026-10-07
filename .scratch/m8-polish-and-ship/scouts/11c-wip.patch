@@ -1,0 +1,341 @@
+diff --git a/crates/graft-ui/src/graph_screen/hints.rs b/crates/graft-ui/src/graph_screen/hints.rs
+index 0f6a96e8..ddc9369c 100644
+--- a/crates/graft-ui/src/graph_screen/hints.rs
++++ b/crates/graft-ui/src/graph_screen/hints.rs
+@@ -529,49 +529,42 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
+         // A drag takes no doorway either, and for the banner's reason: `.`
+         // does not open the menu while a badge is in the air, it cancels the
+         // drag. Two hints fit at every width the app draws at.
+-        // The banner, a badge in the air and the two overlays are all
+-        // modal: each swallows every key but its own, so `.` opens no menu
+-        // and `<>` moves no divider while it has focus (`banner_key`,
+-        // `drag_key`, `journal::shown_key` and `stash::shown_key`, whose
+-        // catch-all arms return "claimed"). ADR-0039's doorway is a promise
+-        // that what the width dropped is still reachable; under a modal
+-        // that reaches nothing it would be the dead key the ADR's own first
+-        // condition rules out (its first amendment, extended to the
+-        // overlays in m5/31 — the sweep pressed `.` in the journal and
+-        // nothing happened).
+-        // The Map view is the third overlay and swallows keys the same way
+-        // (`graft::update::map::shown_key`'s catch-all). The detail pane
+-        // with an overlay behind it takes no doorway either: `.` reaches
+-        // the overlay, which swallows it — pressed in every one of these
+-        // states and nothing happened (m5/42).
++        // The bars where the keys are the point (ADR-0058 §4): each
++        // swallows `?` or types it, so a doorway there would be a dead key.
+         HintContext::Banner { .. }
+         | HintContext::Dragging
+         | HintContext::ConfirmBox { .. }
+         | HintContext::NamePrompt { .. }
+         | HintContext::Credential
+-        | HintContext::Journal
+-        | HintContext::Stash
+-        | HintContext::Map
+         | HintContext::Picker
+-        | HintContext::PaneOverOverlay { .. }
+         | HintContext::Resolver { .. }
+         | HintContext::Finish { .. }
+-        // The blame place is modal too (keymap §2.1): no doorway. The
+-        // history place likewise (m7-power-tools/21b).
+-        | HintContext::Blame { .. }
+-        | HintContext::History { .. }
+         // The rewrite editor is modal (keymap §2.7): no doorway.
+         | HintContext::RewriteEditor { .. }
+         | HintContext::RewriteMessage => (drawable(context, divider), None),
++        // The overlays and places are modal for keys but not for the bar
++        // (m8/11c decision 1): `?` answers before any of them
++        // (`graft::update::keys`, `palette::open_key`) and lists the place's
++        // own keys, so they end with the doorway. No `. more`: `.` is
++        // swallowed there.
++        HintContext::Journal
++        | HintContext::Stash
++        | HintContext::Map
++        | HintContext::PaneOverOverlay { .. }
++        | HintContext::Blame { .. }
++        | HintContext::History { .. } => (drawable(context, divider), Some(DOORWAY)),
+         HintContext::Marked(inner) => {
+             // `.` is already on screen as `. explain`, so no `. more`; it
+             // is prepended before fitting and not after, because a list
+             // fitted first and prepended to second overflows by one hint.
+             let mut list = vec![EXPLAIN];
+             list.extend(drawable(inner, divider));
+-            // No `? keys` here (m8/11b): it would cost the marked bar its
+-            // `/ search` at 92 cells and `u undo` at 83; ruling asked for in
+-            // the ticket NOTES.
++            // `? keys` as the last ordinary candidate, not a trailer
++            // (m8/11c decision 3): the ladder places hints in list order and
++            // stops at the first that does not fit, so it is drawn only
++            // once every other hint is, and never costs `u undo` (83 cells)
++            // or `/ search` (92).
++            list.push(DOORWAY);
+             (list, None)
+         }
+         // The inner context's own bar, minus the key the focused pane has
+diff --git a/crates/graft-ui/src/graph_screen/hints/tests.rs b/crates/graft-ui/src/graph_screen/hints/tests.rs
+index e54840b5..bb4b7ced 100644
+--- a/crates/graft-ui/src/graph_screen/hints/tests.rs
++++ b/crates/graft-ui/src/graph_screen/hints/tests.rs
+@@ -1112,17 +1112,18 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
+         | HintContext::ConfirmBox { .. }
+         | HintContext::NamePrompt { .. }
+         | HintContext::Credential
+-        | HintContext::Journal
+-        | HintContext::Stash
+-        | HintContext::Map
+         | HintContext::Picker
+-        | HintContext::PaneOverOverlay { .. }
+         | HintContext::Resolver { .. }
+         | HintContext::Finish { .. }
+-        | HintContext::Blame { .. }
+-        | HintContext::History { .. }
+         | HintContext::RewriteEditor { .. }
+         | HintContext::RewriteMessage => None,
++        // Modal for keys, not for the bar (m8/11c decision 1).
++        HintContext::Journal
++        | HintContext::Stash
++        | HintContext::Map
++        | HintContext::PaneOverOverlay { .. }
++        | HintContext::Blame { .. }
++        | HintContext::History { .. } => Some(DOORWAY),
+         HintContext::BackToBlame(inner) | HintContext::BackToHistory(inner) => doorway_of(inner),
+         HintContext::Marked(_) => Some(EXPLAIN),
+         // A filter keeps the doorway of the context it filters: `? keys`
+@@ -2604,3 +2605,150 @@ fn the_doorway_falls_back_to_the_palette_key_then_to_nothing() {
+     assert!(!text.contains("keys"), "{text:?}");
+     assert!(!text.contains('—'), "{text:?}");
+ }
++
++/// The overlays and places m8/11c decision 1 names: modal for keys, not for
++/// the bar (ADR-0058 §4), so `?` answers there and the bar says so.
++fn overlays_and_places() -> Vec<HintContext> {
++    let mut contexts = vec![
++        HintContext::Journal,
++        HintContext::Stash,
++        HintContext::Map,
++        HintContext::PaneOverOverlay { opens: true },
++        HintContext::PaneOverOverlay { opens: false },
++        HintContext::ChangesPane {
++            unmerged: false,
++            live: None,
++            tab: TabWord::Graph,
++            over_overlay: true,
++        },
++    ];
++    for finding in [false, true] {
++        for ignore_file in [false, true] {
++            for lines in [false, true] {
++                contexts.push(HintContext::Blame {
++                    finding,
++                    ignore_file,
++                    lines,
++                });
++            }
++        }
++    }
++    for rows in [false, true] {
++        for on_file in [false, true] {
++            contexts.push(HintContext::History { rows, on_file });
++        }
++    }
++    let row = HintContext::PlainRow {
++        verbs: RowVerbs::NONE,
++    };
++    contexts.push(HintContext::BackToBlame(Box::new(row.clone())));
++    contexts.push(HintContext::BackToHistory(Box::new(row)));
++    contexts
++}
++
++fn unbound(ids: &[&str]) -> Keymap {
++    Keymap::with_overrides(
++        &ids.iter()
++            .map(|id| ((*id).to_owned(), vec!["none".to_owned()]))
++            .collect::<Vec<_>>(),
++        crate::keymap::KeySwitches::default(),
++    )
++    .0
++}
++
++/// m8/11c decision 1: every overlay and place bar ends `? keys` at 80, 120
++/// and 200 cells; `⌃P keys` with `?` unbound; nothing with both unbound.
++#[test]
++fn overlays_and_places_end_with_the_keys_doorway() {
++    let no_help = unbound(&["app.help"]);
++    let neither = unbound(&["app.help", "app.palette"]);
++    for context in overlays_and_places() {
++        for columns in [80u16, 120, 200] {
++            let text = hints_text(&hints_for(&context, Divider::Hidden, columns));
++            assert!(text.ends_with("? keys"), "{context:?} at {columns}: {text:?}");
++            let bar = super::hints_for(&context, Divider::Hidden, columns, &no_help);
++            let text = super::hints_text(&bar, &no_help);
++            assert!(
++                text.ends_with("⌃P keys"),
++                "{context:?} at {columns}, `?` unbound: {text:?}"
++            );
++            let bar = super::hints_for(&context, Divider::Hidden, columns, &neither);
++            let text = super::hints_text(&bar, &neither);
++            assert!(
++                !text.contains("? keys") && !text.contains("⌃P keys") && !text.contains('—'),
++                "{context:?} at {columns}, both unbound: {text:?}"
++            );
++        }
++    }
++}
++
++/// m8/11c decision 2: the bars where the keys are the point draw no doorway.
++#[test]
++fn modal_bars_draw_no_doorway() {
++    let modal: Vec<HintContext> = every_context()
++        .into_iter()
++        .filter(|context| {
++            matches!(
++                context,
++                HintContext::Banner { .. }
++                    | HintContext::Dragging
++                    | HintContext::ConfirmBox { .. }
++                    | HintContext::NamePrompt { .. }
++                    | HintContext::Credential
++                    | HintContext::Picker
++                    | HintContext::Resolver { .. }
++                    | HintContext::Finish { .. }
++                    | HintContext::RewriteEditor { .. }
++                    | HintContext::RewriteMessage
++                    | HintContext::Preview
++            )
++        })
++        .collect();
++    assert!(modal.len() >= 10, "{modal:?}");
++    for context in modal {
++        for columns in [48u16, 80, 120, 200] {
++            let text = hints_text(&hints_for(&context, Divider::Hidden, columns));
++            assert!(
++                !text.contains("? keys") && !text.contains("⌃P keys"),
++                "{context:?} at {columns}: {text:?}"
++            );
++        }
++    }
++}
++
++/// m8/11c decision 3: on a marked row `? keys` is the last candidate — drawn
++/// last where it fits, and never at the cost of `u undo` or `/ search`.
++#[test]
++fn a_marked_row_keeps_undo_and_search_before_the_doorway() {
++    let marked = HintContext::Marked(Box::new(HintContext::PlainRow {
++        verbs: RowVerbs::NONE,
++    }));
++    for divider in [Divider::Hidden, Divider::Shown] {
++        let wide = hints_text(&hints_for(&marked, divider, 120));
++        assert!(wide.ends_with("? keys"), "{divider:?} at 120: {wide:?}");
++        for columns in [83u16, 92] {
++            let text = hints_text(&hints_for(&marked, divider, columns));
++            assert!(
++                text.contains("u undo") && text.contains("/ search"),
++                "{divider:?} at {columns}: {text:?}"
++            );
++            assert!(!text.contains("? keys"), "{divider:?} at {columns}: {text:?}");
++        }
++        let mut drawn_before = false;
++        for columns in 40..=240u16 {
++            let hints = hints_for(&marked, divider, columns);
++            let has = hints.iter().any(|hint| hint.is(DOORWAY.keys));
++            assert!(
++                has || !drawn_before,
++                "{divider:?}: `? keys` drawn below {columns} but not at it"
++            );
++            if has {
++                assert!(
++                    hints.last().is_some_and(|hint| hint.is(DOORWAY.keys)),
++                    "{divider:?} at {columns}: doorway not last"
++                );
++            }
++            drawn_before |= has;
++        }
++    }
++}
+diff --git a/crates/graft/src/update/tests.rs b/crates/graft/src/update/tests.rs
+index cbcda6da..1ed66c4b 100644
+--- a/crates/graft/src/update/tests.rs
++++ b/crates/graft/src/update/tests.rs
+@@ -4099,6 +4099,68 @@ fn every_key_the_bar_draws_is_answered() {
+     );
+ }
+ 
++/// **`? keys` opens a palette he can see, everywhere it is drawn** (m8/11c):
++/// over the Map, journal, stash (graph and pane focus), blame, history and
++/// a marked row, `?` changes state *and* the drawn frame holds the
++/// palette's `keys here` title — the unseen-modal class 09e fixed for `/`.
++/// Lives here, not in `view::tests`, for `states_for`.
++#[test]
++fn the_keys_doorway_opens_a_palette_he_can_see_everywhere_it_is_drawn() {
++    use graft_ui::graph_screen::{Divider, every_context, hints_for, hints_text};
++
++    const COLUMNS: u16 = 120;
++    const ROWS: u16 = 36;
++    let mut unseen: Vec<String> = Vec::new();
++    let mut checked = 0;
++    for context in every_context() {
++        let place = matches!(
++            context,
++            HintContext::Map
++                | HintContext::Journal
++                | HintContext::Stash
++                | HintContext::PaneOverOverlay { .. }
++                | HintContext::ChangesPane {
++                    over_overlay: true,
++                    ..
++                }
++                | HintContext::Blame { .. }
++                | HintContext::History { .. }
++                | HintContext::BackToBlame(_)
++                | HintContext::BackToHistory(_)
++                | HintContext::Marked(_)
++        );
++        let keys = graft_ui::keymap::Keymap::shipped();
++        let bar = hints_text(&hints_for(&context, Divider::Hidden, COLUMNS, keys), keys);
++        if !place || !bar.contains("? keys") {
++            continue;
++        }
++        for state in states_for(&context, Divider::Hidden, COLUMNS) {
++            let state = settled(AppState {
++                size: Size {
++                    columns: COLUMNS,
++                    rows: ROWS,
++                },
++                ..state
++            });
++            let (after, _) = crate::update::update(
++                &state,
++                AppEvent::Core(Event::Key(key(KeyCode::Char('?')))),
++            );
++            checked += 1;
++            let frame = crate::view::tests::draw(&after, COLUMNS, ROWS);
++            if !frame.contains("keys here") {
++                unseen.push(format!("{context:?}"));
++            }
++        }
++    }
++    assert!(checked >= 8, "only {checked} states swept");
++    assert!(
++        unseen.is_empty(),
++        "`?` drew no palette over:\n  {}",
++        unseen.join("\n  ")
++    );
++}
++
+ /// **The bar the Detail tab draws with an overlay behind it answers every
+ /// key on it** (m5/42, the review's Q1 as m5/36 confirmed it).
+ ///
+diff --git a/docs/design/02-keymap.md b/docs/design/02-keymap.md
+index 2c04c9c7..486dbef5 100644
+--- a/docs/design/02-keymap.md
++++ b/docs/design/02-keymap.md
+@@ -42,7 +42,9 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
+   budget and a `more` affordance; it ranks by relevance at the cursor.
+   Outside modal contexts a hint is drawn with its words or not at all; what
+   does not fit is behind the doorway (M8, ADR-0058; `?` lists every key of
+-  the place, §2.12).
++  the place, §2.12). The doorway ends every bar but the modal ones
++  ADR-0058 §4 names; on a marked row it is the last candidate and yields to
++  `u undo` and `/ search`.
+   **Two classes never appear on it, and that is correct:**
+   - **Navigation and meta globals** (§2.2): `g`/`G` top/bottom, `PgUp`/`PgDn`
+     page, `Ctrl+R` refresh, `U` redo, `Esc` dismiss. They are live in every
