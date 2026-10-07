@@ -22,11 +22,11 @@ tempfile = "3.27.0"
 # measured with (PROMPT.md 7.1 names the call). One `unsafe` site, ADR-0015.
 libc = "0.2"
 
-# Smart HTTP for the remote fixtures (`remote::HttpRemote`): a blocking,
-# thread-per-connection server in front of `git http-backend`. No async
-# runtime, no TLS. A normal dependency, not a dev-dependency, because other
-# crates' tests call it — this whole crate is dev-only.
-tiny_http = "0.12.0"
+# Smart HTTP for the remote fixtures (`remote::HttpRemote`) needs no crate:
+# the fixture owns its `std::net::TcpListener` and speaks the little HTTP/1.1
+# `git http-backend` needs itself. 2026-10-07 (m8 13i/13j): `tiny_http` was
+# dropped because it never joins its accept thread, so the port could still
+# accept after the fixture's `drop` returned.
 
 # The heavy tier (PROMPT.md 7.1): the synthetic repository of 100k commits and
 # every test that reads it. Off by default, so a fast-tier `cargo test` cannot
