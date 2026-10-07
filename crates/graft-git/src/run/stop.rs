@@ -7,6 +7,7 @@ use std::process::{Child, ExitStatus};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use nix::errno::Errno;
 use nix::sys::signal::Signal;
 use nix::unistd::Pid;
 
@@ -111,7 +112,7 @@ pub(super) fn stop(
     graces: Graces,
 ) -> Result<StopEnd, RunError> {
     match order {
-        StopOrder::Group => group_stop(child, graces.term),
+        StopOrder::Group => group_stop(child, members, graces),
         StopOrder::HooksFirst => hooks_first(child, members, graces),
     }
 }
@@ -119,13 +120,22 @@ pub(super) fn stop(
 /// The default stop, used wherever the runner kills a child for any reason
 /// but a hook-first stop: the output cap, a reader that panicked.
 pub(super) fn kill(child: &mut Child) -> Result<(), RunError> {
-    group_stop(child, TERM_GRACE).map(drop)
+    group_stop(child, &super::group::members, Graces::REAL).map(drop)
 }
 
 /// `killpg(SIGTERM)` then `killpg(SIGCONT)` — a member stopped by `SIGTTIN`
 /// or `SIGSTOP` acts on the `SIGTERM` only once continued — then
-/// `killpg(SIGKILL)` if git is still there after `grace`.
-fn group_stop(child: &mut Child, grace: Duration) -> Result<StopEnd, RunError> {
+/// `killpg(SIGKILL)` if git is still there after `graces.term`.
+///
+/// git ending of the `SIGTERM` does not end the stop while helpers are
+/// still listed (a hook that ignores `SIGTERM`): they get [`after_git_ended`]
+/// within the same `graces.term`, so a default stop still ends within
+/// `POLL + TERM_GRACE` (m8/13e, review Minor 2).
+fn group_stop(
+    child: &mut Child,
+    members: Members<'_>,
+    graces: Graces,
+) -> Result<StopEnd, RunError> {
     if let Some(status) = child.try_wait().map_err(RunError::Spawn)? {
         return Ok(StopEnd {
             status,
@@ -135,9 +145,11 @@ fn group_stop(child: &mut Child, grace: Duration) -> Result<StopEnd, RunError> {
     // git is alive and unreaped, so the group it leads is still its own.
     let group = pid_of(child)?;
     if signal_group(group, Signal::SIGTERM) {
-        let deadline = Instant::now() + grace;
+        continue_group(group);
+        let deadline = Instant::now() + graces.term;
         while Instant::now() < deadline {
             if let Some(status) = child.try_wait().map_err(RunError::Spawn)? {
+                after_git_ended(&mut Helpers::of(group), members, graces, deadline);
                 return Ok(StopEnd {
                     status,
                     git_signalled: true,
@@ -180,9 +192,9 @@ fn group_stop(child: &mut Child, grace: Duration) -> Result<StopEnd, RunError> {
 ///   **Safe:** that is the stop every write had before 13c, and the caller
 ///   reads what git left on disk rather than trusting how it ended.
 ///
-/// After git ends on its own, helpers still listed keep the same treatment
-/// until none is left, bounded by `graces.hooks + graces.term` from the
-/// start — so the whole stop stays within [`super::STOP_WITHIN`].
+/// After git ends on its own, helpers still listed get [`after_git_ended`],
+/// bounded by `graces.hooks + graces.term` from the start — so the whole
+/// stop stays within [`super::STOP_WITHIN`].
 fn hooks_first(
     child: &mut Child,
     members: Members<'_>,
@@ -195,43 +207,63 @@ fn hooks_first(
     if let Some(status) = child.try_wait().map_err(RunError::Spawn)? {
         return Ok(own(status));
     }
-    let mut helpers = Helpers {
-        git: pid_of(child)?,
-        termed: Vec::new(),
-    };
+    let mut helpers = Helpers::of(pid_of(child)?);
     let start = Instant::now();
-    let mut ended: Option<ExitStatus> = None;
     let mut next_read = start;
     loop {
-        if ended.is_none()
-            && let Some(status) = child.try_wait().map_err(RunError::Spawn)?
-        {
-            ended = Some(status);
-            // Read at once: no helper left means the stop is done now.
-            next_read = Instant::now();
+        if let Some(status) = child.try_wait().map_err(RunError::Spawn)? {
+            let until = start + graces.hooks + graces.term;
+            after_git_ended(&mut helpers, members, graces, until);
+            return Ok(own(status));
         }
         let now = Instant::now();
-        match ended {
-            None if now >= start + graces.hooks => return group_stop(child, graces.term),
-            Some(status) if now >= start + graces.hooks + graces.term => return Ok(own(status)),
-            _ => {}
+        if now >= start + graces.hooks {
+            return group_stop(child, members, graces);
         }
         if now >= next_read {
             next_read = now + LIST_EVERY;
-            match (helpers.pass(members, now, graces.helper_term), ended) {
+            match helpers.pass(members, now, graces.helper_term) {
                 // Safe to fall back: see the doc comment's last bullet.
-                (Err(_unreadable), None) => return group_stop(child, graces.term),
-                (Err(_) | Ok(false), Some(status)) => {
-                    return Ok(own(status));
-                }
+                Err(_unreadable) => return group_stop(child, members, graces),
                 // Nothing but git in its group: no hook to end first.
-                (Ok(false), None) if helpers.termed.is_empty() => {
-                    return group_stop(child, graces.term);
+                Ok(false) if helpers.termed.is_empty() => {
+                    return group_stop(child, members, graces);
                 }
-                (Ok(_), _) => {}
+                Ok(_) => {}
             }
         }
         thread::sleep(TERM_POLL);
+    }
+}
+
+/// git has ended and been reaped; its helpers may not have (a hook that
+/// ignores `SIGTERM`, one stopped by job control). The one helper path both
+/// stops take after git ends:
+///
+/// - read the group at once, then at most every [`LIST_EVERY`];
+/// - each helper gets `SIGTERM` + `SIGCONT`, and `SIGKILL` once still listed
+///   `graces.helper_term` after that;
+/// - none listed: done. Still listed at `until`: `SIGKILL` to each, so the
+///   stop's bound holds;
+/// - the group cannot be read: [`kill_reaped_group`] (review Minor 4).
+fn after_git_ended(helpers: &mut Helpers, members: Members<'_>, graces: Graces, until: Instant) {
+    let mut next_read = Instant::now();
+    loop {
+        let now = Instant::now();
+        let read = if now >= until {
+            helpers.end_all(members).map(|()| false)
+        } else if now >= next_read {
+            next_read = now + LIST_EVERY;
+            helpers.pass(members, now, graces.helper_term)
+        } else {
+            Ok(true)
+        };
+        match read {
+            Ok(true) => thread::sleep(TERM_POLL),
+            Ok(false) => return,
+            // Not dropped: the failed read is answered by ending the group.
+            Err(_unreadable) => return kill_reaped_group(helpers.git),
+        }
     }
 }
 
@@ -242,6 +274,22 @@ struct Helpers {
 }
 
 impl Helpers {
+    fn of(git: Pid) -> Self {
+        Self {
+            git,
+            termed: Vec::new(),
+        }
+    }
+
+    /// Every helper still listed gets `SIGKILL`.
+    fn end_all(&self, members: Members<'_>) -> io::Result<()> {
+        let git = self.git;
+        for helper in members(git)?.into_iter().filter(|&pid| pid != git) {
+            signal_one(helper, Signal::SIGKILL);
+        }
+        Ok(())
+    }
+
     /// One read of the group: `SIGTERM` + `SIGCONT` to each helper not yet
     /// asked, `SIGKILL` to each asked `grace` ago and still listed. `false`
     /// when no helper is listed.
@@ -282,6 +330,41 @@ fn signal_group(group: Pid, signal: Signal) -> bool {
     nix::sys::signal::killpg(group, signal).is_ok()
 }
 
+/// `killpg(SIGCONT)`: a member stopped by job control (`SIGSTOP`, or
+/// `SIGTTIN` from a hook reading the terminal) acts on its `SIGTERM` only
+/// once continued (m8/13e, review Major 3).
+///
+/// **Safe to ignore a failure:** git is unreaped, so the group is its own;
+/// a refused `SIGCONT` leaves a stopped git to the `SIGKILL` after the grace,
+/// and a stopped helper to the per-helper `SIGCONT` once git has ended.
+fn continue_group(group: Pid) {
+    match nix::sys::signal::killpg(group, Signal::SIGCONT) {
+        Ok(()) => {}
+        // Safe to ignore: the doc comment above.
+        Err(_refused) => {}
+    }
+}
+
+/// `killpg(SIGKILL)` to the group of a git already reaped, whose members
+/// could not be read (m8/13e, review Minor 4).
+///
+/// **Safe:** git's pid no longer reserves the group id, but a group id stays
+/// reserved while any member lives — so while a helper is left this number
+/// is still git's group, and once none is, the kill is `ESRCH` and reaches
+/// no one. (A new process taking the freed number as its group within
+/// milliseconds is review Minor 3, filed apart.)
+fn kill_reaped_group(group: Pid) {
+    match nix::sys::signal::killpg(group, Signal::SIGKILL) {
+        // Sent; or the group is empty (`ESRCH`): nothing of git's is left
+        // to end.
+        Ok(()) | Err(Errno::ESRCH) => {}
+        // Safe to ignore: `EPERM`, a member Graft may not signal (a setuid
+        // helper). git is reaped and the caller reads what it left on disk;
+        // there is no harder signal left to send.
+        Err(_refused) => {}
+    }
+}
+
 /// `kill` to one helper of git's group.
 ///
 /// **Safe to ignore a failure:** the helper was listed in git's group a
@@ -320,6 +403,23 @@ mod tests {
             .expect("sh starts")
     }
 
+    /// A group with nothing in it but the child itself.
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "the shape of `Members`, which can fail"
+    )]
+    fn no_helpers(_: Pid) -> io::Result<Vec<Pid>> {
+        Ok(Vec::new())
+    }
+
+    /// The real graces with the `SIGTERM` grace set to `term`.
+    fn graces(term: Duration) -> Graces {
+        Graces {
+            term,
+            ..Graces::REAL
+        }
+    }
+
     /// Waits for the child's first line, so the trap is certainly installed.
     fn wait_until_ready(child: &mut Child) {
         let mut out = child.stdout.take().expect("stdout is piped");
@@ -342,7 +442,8 @@ mod tests {
         let mut child = trapping_child(&marker, "touch \"$MARKER\"; exit 0");
         wait_until_ready(&mut child);
 
-        group_stop(&mut child, Duration::from_secs(5)).expect("stopped and reaped");
+        group_stop(&mut child, &no_helpers, graces(Duration::from_secs(5)))
+            .expect("stopped and reaped");
 
         assert!(
             marker.exists(),
@@ -360,7 +461,8 @@ mod tests {
         wait_until_ready(&mut child);
 
         let start = Instant::now();
-        group_stop(&mut child, Duration::from_millis(100)).expect("stopped and reaped");
+        group_stop(&mut child, &no_helpers, graces(Duration::from_millis(100)))
+            .expect("stopped and reaped");
 
         assert!(!marker.exists(), "the trap was empty, so nothing ran");
         assert!(
@@ -380,7 +482,7 @@ mod tests {
             .spawn()
             .expect("true starts");
         child.wait().expect("it exits");
-        let end = group_stop(&mut child, Duration::from_millis(0))
+        let end = group_stop(&mut child, &no_helpers, graces(Duration::from_millis(0)))
             .expect("reaping an exited child is fine");
         assert!(!end.git_signalled, "an exited child is never signalled");
     }

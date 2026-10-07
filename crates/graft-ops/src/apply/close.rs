@@ -345,6 +345,11 @@ fn stopped_on_conflict(
     if !stopped {
         return Ok(None);
     }
+    // A `FinishMerge` is `None` here on purpose (m8/13e, ruling R2): its
+    // merge was begun before this operation, so a commit that fails without
+    // a stop answers `Git` — entry `Aborted`, merge still live, banner still
+    // `c`/`a`, nothing lost. Holding it would keep a `Pending` entry for a
+    // merge Graft never began (13d Q4).
     let Some(started) = op.starts_in_progress() else {
         return Ok(None);
     };
