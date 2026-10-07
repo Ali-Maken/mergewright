@@ -200,6 +200,11 @@ pub struct AppState {
     /// The branch picker (`C`, m7-power-tools/10), while it is up or hidden
     /// under the switch preview it opened.
     pub picker: Option<super::picker::PickerState>,
+    /// The command palette and help (`?`, `⌃P`, `:`; m8-polish-and-ship/11),
+    /// while it is up: a text field over everything but the credential
+    /// prompt. Boxed: its text field would grow every `AppState` by its
+    /// size while it is closed.
+    pub(crate) palette: Option<Box<super::palette::PaletteState>>,
     /// The configured remotes, `HEAD`'s branch and its upstream: what `f`,
     /// `p` and `P` decide from (m4-remotes/05). Read with the refs; a
     /// re-read keeps the last answer on screen until the new one lands
@@ -872,6 +877,7 @@ impl AppState {
     #[must_use]
     pub fn text_field_open(&self) -> bool {
         self.search_prompt.is_some()
+            || self.palette.is_some()
             || super::place::prompt_open(self)
             || super::journal::find::typing(self)
             || self.commit_editor.is_some()

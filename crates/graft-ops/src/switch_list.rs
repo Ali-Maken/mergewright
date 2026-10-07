@@ -12,6 +12,7 @@
 
 use std::cmp::Reverse;
 
+use graft_core::matcher::fuzzy_score;
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 use graft_git::remote;
@@ -178,33 +179,28 @@ fn row(listing: RefListing, kind: SwitchKind, current: bool) -> SwitchRow {
 
 /// Pure: rank `list` for `query`; empty query = the drawn order.
 ///
-/// Case-insensitive over the short name. A match at the start or right after
-/// `/` or `-` ranks above any other substring match; ties go to the newest
-/// tip. `previous` ranks like any row once something is typed.
+/// Case-insensitive over the short name, by `graft_core::matcher`: a match
+/// at the start or right after a non-alphanumeric character (`/`, `-`, …)
+/// ranks above any other substring match; a query with spaces matches when
+/// each word does; ties go to the newest tip. `previous` ranks like any row once something is typed.
 #[must_use]
 pub fn filter_switch_rows<'a>(list: &'a SwitchList, query: &str) -> Vec<&'a SwitchRow> {
     let all = list.previous.iter().chain(list.rows.iter());
     if query.is_empty() {
         return all.collect();
     }
-    let query = query.to_lowercase();
-    let mut ranked: Vec<(u8, &SwitchRow)> = all
-        .filter_map(|r| rank(r, &query).map(|tier| (tier, r)))
+    let mut ranked: Vec<(u32, &SwitchRow)> = all
+        .filter_map(|r| rank(r, query).map(|tier| (tier, r)))
         .collect();
     ranked.sort_by_key(|(tier, r)| (*tier, Reverse(r.when)));
     ranked.into_iter().map(|(_, r)| r).collect()
 }
 
-/// 0 for a segment-prefix match, 1 for any other substring, `None` for none.
-fn rank(row: &SwitchRow, query: &str) -> Option<u8> {
-    let short = String::from_utf8_lossy(row.name.shorthand()).to_lowercase();
-    let mut found = None;
-    for (at, _) in short.match_indices(query) {
-        let segment_start = at == 0 || matches!(short.as_bytes().get(at - 1), Some(b'/' | b'-'));
-        if segment_start {
-            return Some(0);
-        }
-        found = Some(1);
-    }
-    found
+/// 0 when every word of the query matches at a segment start, more for
+/// each word that matches only inside; `None` when one does not match
+/// (`graft_core::matcher::fuzzy_score`, whose tiers this keeps — the offset
+/// is not a switch rank: ties go to the newest tip).
+fn rank(row: &SwitchRow, query: &str) -> Option<u32> {
+    let short = String::from_utf8_lossy(row.name.shorthand());
+    fuzzy_score(query, &short).map(|score| score / 1024)
 }

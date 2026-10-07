@@ -22,7 +22,7 @@ use super::{Screen, prefetch};
 use crate::jobs::Dispatch;
 use crate::session::{Session, TerminalChange};
 use crate::trace::Tracer;
-use crate::update::{AppEvent, AppState, Quit, follow_behind, follow_key, update};
+use crate::update::{AppEvent, AppState, Command, Quit, follow_behind, follow_key, update};
 
 /// The most update time a turn spends on queued wakes before its frame shows
 /// them — job answers and keys alike. Half a 60 Hz frame: a burst longer than
@@ -266,6 +266,25 @@ where
         }
     }
 
+    /// The palette's `Theme: …` rows (`Command::Retheme`, m8/11 decision 6):
+    /// the theme is the loop's, so the loop carries them out here — the
+    /// same two steps as a re-detected background (`terminal_changed`): the
+    /// session rebuilds the theme, and the strips drawn in the old one go.
+    /// Every other command is handed back, in order.
+    fn rethemed(&mut self, commands: Vec<Command>) -> Vec<Command> {
+        let (themes, rest): (Vec<Command>, Vec<Command>) = commands
+            .into_iter()
+            .partition(|command| matches!(command, Command::Retheme(_)));
+        for command in themes {
+            if let Command::Retheme(kind) = command
+                && self.session.choose(kind)
+            {
+                self.graphics.flush(Flush::Theme);
+            }
+        }
+        rest
+    }
+
     /// An event for `update`: rest first when it ends a burst, then applied,
     /// and the cursor's move noted for rest. `Some` when the loop ends.
     fn input(
@@ -319,6 +338,7 @@ where
         if commands.iter().any(hands_over) {
             self.settle_fences();
         }
+        let commands = self.rethemed(commands);
 
         let (next, carried) = carry_out(
             self.terminal,

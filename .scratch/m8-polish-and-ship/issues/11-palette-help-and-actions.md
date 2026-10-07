@@ -1,6 +1,7 @@
 # G-palette 1 — `?` and `⌃P` / `:` open one palette; actions, theme rows, your config
 
-Status: draft (planner spec-only split, 2026-10-07, from scout `.scratch/m8-polish-and-ship/scouts/11-palette-help.md`;
+Status: **partial** (builder 2026-10-07; compacted once mid-ticket — see NOTES "Remaining")
+(planner spec-only split, 2026-10-07, from scout `.scratch/m8-polish-and-ship/scouts/11-palette-help.md`;
 part 2 is `11b-palette-doorway-and-hint-rows.md`)
 Build with: **Opus** — a new modal screen plus the theme command across graft-ui, graft-core and graft; every choice is
 decided below and each is held by a named test. Not Fable: nothing left structural or unjudgeable from tests.
@@ -121,35 +122,45 @@ pub(crate) fn view(state: &AppState, palette: &PaletteState) -> PaletteView;
 12 extends `PaletteTarget`/`rows`; it must not need a signature change here — if the builder sees one coming, NOTES.
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] Matcher: table test in graft-core (segment start beats inside; every word must hit; case-insensitive;
+- [x] Matcher: table test in graft-core (segment start beats inside; every word must hit; case-insensitive;
       `theme light` vs `Theme: light` = `Some`); `switch_list` tests green unedited.
-- [ ] Widget at 80×24, 120×36, 200×60 (buffer tests): groups and order as §1.16; config id present ≥ 100 columns,
+      — `graft_core::matcher::tests::{the_table, segment_start_ranks_below_inside}`; switch tests unedited, green in
+      the workspace run.
+- [x] Widget at 80×24, 120×36, 200×60 (buffer tests): groups and order as §1.16; config id present ≥ 100 columns,
       absent below; `—` for an unbound row; box ≤ 96 wide and centred over `over` at 120 and 200, full width at 80;
       cursor row scrolled into view with 40 rows; `nothing matches · esc close` on an empty result.
-- [ ] Walk tests counting keys (`inputs_of` rule: a key or a typed string = 1): J4 `find-key-by-name` = 2 (`?`
-      `merge` → first HERE row `m … merge`); J5 `what-does-key` = 2 (`?` `x` → `x`'s row first, cursor on it); J6
-      `run-unrecalled` = 3 (`⌃P` `stash` `⏎` → the stash prompt open); J7 `stopped-how-go-on` = 1 (rebase stopped,
-      `?` → first group `IN PROGRESS`, first row `c continue`; then `⏎` continues — truth by git); J9 `light-theme` = 3
-      (`⌃P` `theme light` `⏎` → `Command::Retheme(Light)` emitted).
-- [ ] Theme path: `Command::Retheme(Light)` through the loop's handler → `session.retheme` called, theme kind light,
-      strip cache flushed (test); a following `TerminalChange::Theme(dark hint)` leaves it light (test); 16's
-      overrides for light applied (reuse 16's override fixture).
-- [ ] Per-place spelling: `[keys.graph] merge = "j"` → `?` on the graph shows `j` for merge and **no** `j` beside
-      `app.down` (it isn't reachable there); on the changes pane `j` beside move (test).
-- [ ] Sweep: `?` opens a `Here(ctx)` palette on every non-text-field `ContextId` with a 09d fixture, plus the empty
-      state; over a live confirm box `?` leaves state unchanged; in each text field `?` is typed (one test, cases
-      printed).
-- [ ] `⌃P` and `:` open `Everything` on the graph, a pane and the empty state (test). `esc` closes, focus restored,
-      no command (test). `Ctrl+C` while open quits (test).
-- [ ] 2 config problems → `?` lists `YOUR CONFIG` first with both words (test; the status words are 16's).
-- [ ] A refusal through the palette reads as from the key: `⌃P` `merge` `⏎` with HEAD detached → the same status as
-      `m` (test compares both).
-- [ ] Rule 7: NOTES records the scout's `?`/`:`/`⌃P` lines (keymap_edge `NOT_YET_ANSWERED`, place/keys.rs:22-28)
-      before the change; the `NOT_YET_ANSWERED` rows are gone (grep in NOTES).
-- [ ] Captures `docs/shots/m8-help-graph-120x36.txt` (`?` on the graph) and `docs/shots/m8-palette-everything-120x36.txt`
-      (`⌃P`, empty query), each beside §1.16's drawing in NOTES. **Colour unverified** (rule 5).
-- [ ] MAP.md: graft-core `matcher`; graft-ui `palette`; graft `update::palette`, `AppState::palette`,
-      `Command::Retheme`, `Session::chosen`, `context_of` (returns `Palette` while open).
+      — `graft_ui::palette::tests::{groups_and_rows_in_the_order_of_the_drawing,
+      the_key_column_is_six_cells_and_the_cursor_marks_its_row, the_config_id_is_drawn_from_100_columns_and_dropped_below,
+      the_box_is_at_most_96_wide_and_centred_from_100_columns_full_width_below, the_box_is_as_tall_as_its_lines,
+      the_cursor_row_is_scrolled_into_view_with_40_rows, an_empty_result_draws_one_line_that_says_how_out,
+      a_click_finds_the_row_it_landed_on}`.
+- [~] Walk tests counting keys: J4 = 2 — `keymap_edge::palette::j4_help_then_merge_lands_on_the_merge_row_in_two_inputs`;
+      J5 = 2 — `j5_help_then_a_key_puts_what_it_does_first`; J6 = 3 — `j6_palette_stash_enter_does_what_its_key_does`
+      (asserts the same commands and frame as `S`, not "the stash prompt" by name); J9 = 3 —
+      `j9_palette_theme_light_asks_the_loop_for_light`. **J7 partly**: `tests/it/palette_in_progress.rs`
+      `j7_help_mid_rebase_puts_continue_first_and_enter_asks_what_c_asks` — real stopped rebase, `?` → `IN PROGRESS`
+      first, `▸c Continue`; `⏎` emits exactly what `c` emits (`ContinueInGit { kind: Rebase }`). **"Truth by git" not
+      observed**: `ContinueInGit` is a terminal handover the loop carries out (`jobs/runner.rs:1313` refuses it), so
+      the app harness cannot run it. Not a routing problem: palette and key take the same path.
+- [~] Theme path: chosen theme survives a later dark hint with light's overrides —
+      `session::theme_tests::a_chosen_theme_outlasts_a_re_detected_background`. **Not done**: the loop-level test
+      (`turn.rs` `rethemed` → `Flush::Theme`) — code written, no test drives it.
+- [x] Per-place spelling — `keymap_edge::palette::rows_are_spelled_with_what_the_key_does_in_that_place` (merge `j`,
+      move `↓` on the graph; move `j` on Changes).
+- [~] Sweep — `keymap_edge::palette::help_opens_on_every_place_and_is_typed_in_every_field` (every fixture context;
+      confirm box: no palette; every field: `?` typed — **except blame find**, see NOTES). **Not done**: the empty
+      state; "confirm leaves state unchanged" is asserted as "no palette opens", plus 09d's sweep listing it swallowed.
+- [~] `⌃P`/`:` open `Everything` on graph and a pane — `ctrl_p_and_colon_open_everything_on_the_graph_and_a_pane`;
+      `esc` closes, no command, same frame; `Ctrl+C` quits — `esc_closes_with_nothing_run_and_ctrl_c_still_quits`.
+      **Not done**: the empty state.
+- [x] 2 config problems → `YOUR CONFIG` first, cursor past them — `keymap_edge::palette::config_problems_head_the_list`.
+- [ ] A refusal through the palette reads as from the key (HEAD detached). **Not done** (no test yet).
+- [x] Rule 7 — NOTES below; `NOT_YET_ANSWERED` rows for `app.help`, `app.palette`, `palette.run` deleted from
+      `keymap_edge/sweep.rs` (09d's `every_reachable_row_acts_or_is_listed_and_follows_its_remap` green).
+- [x] Captures — `keymap_edge::palette::capture_help_and_palette` writes both; beside §1.16 in NOTES. Colour unverified.
+- [x] MAP.md — graft-core `matcher`; graft-ui `palette`, `Keymap::acting`; graft-ops `filter_switch_rows`; graft
+      `update::palette` (incl. `AppState::palette`), `Command::Retheme`, `Session::choose`, `context_of`. (No
+      `Session::chosen` getter: nothing reads it; the field is private.)
 
 ## Touches
 - `context_of` and every caller (`hint_context`/`footer_context` must show the palette's bar while open — check
@@ -172,3 +183,71 @@ pub(crate) fn view(state: &AppState, palette: &PaletteState) -> PaletteView;
 theme command + `chosen` 6k; walks, sweep, config test 8k; 2 captures + MAP 3k.
 Order: matcher → widget → state/open/filter/run → walks J4–J7 → theme → sweep → captures. Seam if over: commit after
 J4–J7 green, report `blocked: theme rows, sweep, captures`.
+
+## NOTES (builder, 2026-10-07)
+
+**Compacted once mid-ticket.** Scout used (`scouts/11-palette-help.md`): its lines held (NOT_YET_ANSWERED moved to
+`keymap_edge/sweep.rs:22-25` by 09d; `place/keys.rs:22-28` as cited; `edge.rs` `context_of` doc). It missed the empty
+state's separate loop (`event_loop/places.rs` `outside_loop`, no `AppState`), the turn.rs command path for a
+loop-owned command, `FieldView`'s lifetime, and the `no_literal_keys` grep test. Partly sufficed.
+
+**Test-first:** not red-first. The widget, matcher and state code were written before their tests in the first
+context; the walk tests were written after the code and run green at first compile except where they found real
+things (fixture probes, `Menu` closing on F20, blame find — below).
+
+**Rule 7, before the change:** `crates/graft/src/update/tests/keymap_edge/sweep.rs:22-25` listed `app.help`,
+`app.palette`, `palette.run` as `NOT_YET_ANSWERED` ("ticket 11"); `crates/graft/src/update/place/keys.rs:22-28`
+`live_global` passed `?` up from a blame place to a chain where nothing answered it. After: the three rows are
+deleted (grep `ticket 11` in `sweep.rs` → nothing); 09d's sweep counts 438 acting (was 396).
+
+**Found, not fixed (09e's ground):** in blame's find prompt `?` (and by the same line `q`) is not typed:
+`update/keys.rs:125` `place_claim` returns early for `place::live_global(key)` (`place/keys.rs:23-29`) without
+checking `find_prompt`, so the key leaves the place's prompt; the palette then refuses (a text field is open) and the
+`?` is dropped. Pinned as `NOT_TYPED_YET` in `keymap_edge/palette.rs`, which fails once it is fixed. Whether `q` quits
+from that prompt: not checked.
+
+**Deviations from the signatures (say so, not silently):**
+- `PaletteView.query` is `SanitizedText` + `query_cursor`, not `FieldView` (it has a lifetime and no `PartialEq`).
+- `PaletteView` gained `wide`; dropped `warnings` (the `YOUR CONFIG` rows carry them) and `top` (scroll is computed
+  from the cursor at draw time, the picker's rule). `PaletteState` has no `top` either.
+- `AppState::palette` is `Option<Box<PaletteState>>`: unboxed it grew `AppState` past `large_stack_arrays` in four
+  existing tests. One test (`resolver/tests/take_all.rs:125`) still tripped by 8 bytes; it now loops over the two
+  presses instead of an array of two states (test-only change, outside the listed files).
+- `NOTHING_MATCHES` = `nothing matches`; ` · esc close` is spelled from `Keymap::shipped()` (the grep test forbids
+  the literal).
+- `Keymap::acting(ctx, chord) -> Option<ActionId>` added in graft-ui `keymap/resolve.rs` (not in the crate set's file
+  list): the per-place spelling needs "what does this chord do here", which `translate` does not say.
+- `graft_core::matcher` is behaviour in core, which normally holds none — the ticket's choice; flagged.
+- No `Session::chosen()` getter (dead code); the private field does the work.
+- `command.rs` `Retheme` forced `place/write.rs` `is_write` (exhaustive) to classify it: a read.
+
+**Interpretations (questions for the planner):**
+- IN PROGRESS rows are spelled in the `Banner` context; `⌃P`'s ACTIONS includes them.
+- `⏎` on IN PROGRESS `s`/`a` opened from the Graph dispatches `s`/`a` as the graph would get them. With `c` that
+  continues (J7 shows `ContinueInGit` either way); for `s`/`a` on the graph: not checked.
+- The box's bottom border lands on the pane's last row (the graph's divider row in the captures):
+  `palette_area` height is `over.height − 2` as specified.
+
+**Captures** (colour unverified, rule 5): `docs/shots/m8-help-graph-120x36.txt`, `docs/shots/m8-palette-everything-120x36.txt`.
+Beside §1.16 (`docs/design/01-view-mockups.md:471-498`): title, `esc close`, `›` row, `HERE` header, `▸` row, key
+column, right-aligned config id match. Differ: the labels are the key table's (`Merge selected branch into current`),
+not the drawing's (`merge the selected branch into yours`) — wording drift between table and mock-up; the drawing's
+`▏` cursor is not a character in the capture; with the fixture's 30+ HERE rows, `EVERYWHERE` is below the fold.
+
+**Touches:** `context_of` (09d `context_of_names_each_fixture` green); `text_field_open` callers (all `keymap_edge`
+field tests green); key claim chain (`update::tests` green, 09d sweep green); `dispatch` / paste chain; `Command`
+match sites (`jobs/runner.rs`, `place/write.rs` — compile-forced); `turn.rs` `apply` (no loop test — Remaining);
+`Session::apply` theme arm (`theme_tests` green); `switch_list` (32 tests unedited, green); view draw order (palette
+after `draw_box_bars`, before `draw_modal_boxes`; in the pixel cut); captures — only the two new ones; landing test
+`detail/landing/tests.rs` `a_key_during_a_landing_drops_it` moved from `?` to `F20`, name kept, green. Journal/undo: `git diff --stat` over `crates/graft/src/update/journal*` and
+`crates/graft-ops/src/journal*` is empty.
+
+**Remaining** (for the conductor to split):
+1. Empty state: `OutsideState.palette`, open on `?`/`⌃P`/`:` in `empty_state::list_key`, edge routes to it, `⏎` via
+   `outside_key(default.to_press())`, theme rows → a new `OutsideStep::Retheme` handled in `event_loop/places.rs`
+   (needs a mutable session there), draw over `EmptyState`; tests in `empty_state/tests.rs` + sweep.
+2. Loop-level theme test (`event_loop/tests.rs`, `pixel_flushes`): `⌃P` `theme light` `⏎` then a dark `Theme` wake →
+   one `Flush::Theme`, still light.
+3. Refusal parity test (HEAD detached: `⌃P` `merge` `⏎` vs `m`, same status).
+4. Confirm sweep: assert the whole `Seen` unchanged, not just "no palette".
+5. J7 truth by git needs a pty or loop-level test (the handover is the loop's).

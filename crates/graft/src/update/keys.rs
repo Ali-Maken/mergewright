@@ -191,6 +191,10 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     // banner, then a blame place on screen. `||` is the early return, one
     // claim per line.
     if super::drag::drag_key(next, key)
+        // `?`, `⌃P`, `:` open the palette (§2.12) over every place but
+        // a live confirm box, before any of them can claim the key: help
+        // answers on every screen (§2.2).
+        || super::palette::open_key(next, key)
         || boxes_key(next, commands, key)
         || rewrite_key(next, commands, key)
         || finish_key(next, commands, key)

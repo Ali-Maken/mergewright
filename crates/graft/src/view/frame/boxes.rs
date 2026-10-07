@@ -28,6 +28,47 @@ pub(super) fn draw_commit_editor(
     None
 }
 
+/// The palette and help (§2.12, m8-polish-and-ship/11), over the pane the
+/// keys go to, and its own keys on the bar rows. Under the modal boxes:
+/// none can open while it is up, but one already up stays on top (it takes
+/// the keys). Returns the rectangle it may cover, for the pixel layer.
+pub(super) fn draw_palette(
+    session: &Session,
+    state: &AppState,
+    frame: &mut Frame,
+    area: Rect,
+) -> Option<Rect> {
+    let palette = state.palette.as_ref()?;
+    let over = match state.screen {
+        Screen::Graph if state.resolver.is_none() && state.finish.is_none() => {
+            primary_pane_area(state, area).unwrap_or(area)
+        }
+        Screen::Graph | Screen::Status => area,
+    };
+    let view = crate::update::palette::view(state, palette);
+    let rect = graft_ui::palette::palette_area(over, area);
+    frame.render_widget(
+        graft_ui::palette::Palette {
+            view: &view,
+            theme: &session.theme,
+        },
+        rect,
+    );
+    let tier = tier_in_force(session, state);
+    for bar in bar_rows(state, area) {
+        frame.render_widget(Clear, bar);
+        draw_status_or_hints(
+            frame,
+            state,
+            tier,
+            (bar.x, bar.y, bar.width),
+            &session.theme,
+            || format!(" {}", crate::update::palette::bar()),
+        );
+    }
+    Some(rect)
+}
+
 /// The three modal boxes, over whatever this frame drew, in the order they
 /// stack: the confirm box, the name prompt, git's credential question on top.
 /// Each draws only when its state is live; each returns the rectangle it

@@ -1291,6 +1291,8 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::CopyToClipboard(_) => not_a_job("CopyToClipboard is terminal output"),
             // The loop writes this to disk itself (`event_loop::running`).
             Command::SaveLayout(_) => not_a_job("SaveLayout is written by the loop"),
+            // The theme is the loop's (`Session`), not a worker's.
+            Command::Retheme(_) => not_a_job("Retheme is the loop's theme"),
             // Handing the terminal over and taking it back is the loop's own
             // business (`event_loop::outside`): a worker thread has no claim
             // on the modes the loop drew through (m3/05).

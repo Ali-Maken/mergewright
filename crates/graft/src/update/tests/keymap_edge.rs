@@ -16,6 +16,7 @@
 //! unbound key draws.
 
 mod fields;
+mod palette;
 mod remaps;
 mod sweep;
 mod sweep_swallowed;

@@ -56,15 +56,17 @@ fn unanswered(next: &mut AppState, pressed: KeyPress, context: ContextId) {
 /// hand a key to, in the order it claims keys.
 ///
 /// A text field over a place is that place: the edge passes the field's keys
-/// before this matters. Never `Tour` (no tour yet) or `Palette` (ticket 11's
-/// to add); the name prompt has no context — it is a text field.
+/// before this matters. `Palette` while the palette is up (a text field:
+/// translate passes every key); never `Tour` (no tour yet); the name
+/// prompt has no context — it is a text field.
 #[must_use]
 pub(crate) fn context_of(state: &AppState) -> ContextId {
     use ContextId as C;
     let detail_focused = state.detail.shown && state.detail.focus != DetailFocus::Graph;
     let graph_focused = !detail_focused;
-    let chain: [(bool, ContextId); 16] = [
+    let chain: [(bool, ContextId); 17] = [
         (state.credential.is_some(), C::Credential),
+        (state.palette.is_some(), C::Palette),
         (state.drag.is_some(), C::Graph),
         (state.confirm.is_some(), C::Confirm),
         (state.preview.is_some(), C::Preview),

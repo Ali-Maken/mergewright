@@ -20,9 +20,6 @@ use super::sweep_tables::{DEFECTS, NO_EFFECT_IN_FIXTURE, ONE_CHORD_IDLE, SHADOWE
 
 /// In the table, answered by a later ticket; each deletes its own.
 const NOT_YET_ANSWERED: &[(&str, &str)] = &[
-    ("app.help", "ticket 11: `?`"),
-    ("app.palette", "ticket 11: the palette"),
-    ("palette.run", "ticket 11: the palette"),
     ("empty_state.clone", "ticket 18: clone"),
     ("empty_state.tour", "ticket 19: the practice tour"),
 ];

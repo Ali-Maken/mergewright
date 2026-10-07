@@ -122,8 +122,14 @@ fn a_bulk_take_is_one_queued_entry() {
         TAKE_QUEUE_CAP,
         "Ctrl+T is one entry"
     );
-    for refused in [press(&state, KeyCode::Char('t')), ctrl(&state, 'o')] {
-        let (after, commands) = refused;
+    // The presses, not their results: two whole states in one array trip
+    // `large_stack_arrays` since `AppState` grew (m8-polish-and-ship/11).
+    for (letter, control) in [('t', false), ('o', true)] {
+        let (after, commands) = if control {
+            ctrl(&state, letter)
+        } else {
+            press(&state, KeyCode::Char(letter))
+        };
         assert_eq!(takes(&commands), 0);
         assert_eq!(sticky(&after).0, "still writing the last take");
         assert_eq!(

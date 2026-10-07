@@ -349,6 +349,16 @@ impl Keymap {
             .collect()
     }
 
+    /// The action `chord` acts as when pressed in `ctx`, his lines applied:
+    /// the palette's per-place spelling (m8/11 decision 3 — after `merge =
+    /// "j"`, `j` on the graph is merge, not move). `None` when no row a key
+    /// there reaches holds it.
+    #[must_use]
+    pub fn acting(&self, ctx: ContextId, chord: KeyChord) -> Option<ActionId> {
+        self.resolve(ctx, chord, Over::Effective)
+            .map(|row| defaults()[row].action)
+    }
+
     /// The row a chord acts as in `ctx`: its own rows, then the rows it
     /// borrows, then the rest of its scope in order (D1). Inside one tier
     /// an override beats a default, and of two overrides the earlier line

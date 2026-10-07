@@ -312,6 +312,11 @@ pub enum Command {
     /// (`keys.suspend_on_ctrl_z`, ADR-0002). Carried out by the frame loop,
     /// like `OpenExternalEditor`.
     Suspend,
+    /// Draw in this theme for the rest of the run: the palette's
+    /// `Theme: …` rows (m8-polish-and-ship/11, decision 6). Carried out by
+    /// the frame loop, which owns the theme (`Session::choose`); not an
+    /// operation, never journaled.
+    Retheme(graft_ui::theme::ThemeKind),
     /// Read one conflicted path for the resolver (m6-conflicts/04), under an
     /// id `update` chose so a stale answer can be dropped.
     ///

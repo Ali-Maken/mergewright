@@ -40,6 +40,7 @@ pub mod map;
 mod mouse;
 pub mod name_prompt;
 pub mod operate;
+pub(crate) mod palette;
 pub mod picker;
 pub mod place;
 mod prelude;
@@ -1093,6 +1094,12 @@ fn dispatch(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress, raw
     if credential::credential_key(next, commands, key) {
         return;
     }
+    // The palette (§2.12) is a text field over everything else: while it
+    // is up every key but `Ctrl+C` is its own. Only the credential prompt,
+    // which opens by itself over whatever is on screen, comes first.
+    if palette::palette_key(next, commands, key) {
+        return;
+    }
     if name_prompt_claimed(next, commands, key) {
         return;
     }
@@ -1192,6 +1199,7 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             // and there is nothing to report: the user pasted at a screen
             // with no text field on it.
             if !credential::credential_paste(next, &text)
+                && !palette::paste(next, &text)
                 && !name_prompt::name_prompt_paste(next, &text)
                 && !journal::find::find_paste(next, &text)
                 && !finish::paste(next, &text)
