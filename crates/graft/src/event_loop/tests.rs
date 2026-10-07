@@ -71,10 +71,14 @@ impl Dispatch for Recorded {
 /// Every scripted wake is already queued, so `waiting` says `true` —
 /// unless `idle` says how many times it answers `false` first.
 ///
-/// Time is real only where the loop waits with a deadline (the pacer's,
-/// ADR-0054): a wake that was not there at first (`idle[i] > 0`) arrives
-/// after the frame before it is drawn, so `next_wake_by` lets the deadline
-/// pass instead of handing it over early; so does an empty script.
+/// Time is the script's own, not the machine's: it moves only where the
+/// loop waits with a deadline (the pacer's, ADR-0054). A wake that was not
+/// there at first (`idle[i] > 0`) arrives after the frame before it is
+/// drawn, so `next_wake_by` moves the clock to the deadline instead of
+/// handing it over early; so does an empty script. Updates take no time, so
+/// a loaded machine cannot spend `BATCH_BUDGET` mid-script and draw a frame
+/// the script did not ask for (13h: `queued_keys_draw_once` drew 3-5 frames
+/// under load on the real clock).
 struct ScriptedWakes {
     remaining: std::iter::Peekable<std::vec::IntoIter<Wake>>,
     /// `idle[i]`: `waiting` calls that find nothing before wake `i`.
@@ -85,6 +89,8 @@ struct ScriptedWakes {
     /// A frame was drawn since the last wake was taken.
     drawn: bool,
     asked: usize,
+    /// The script's clock: what [`Wakes::now`] reads.
+    now: std::time::Instant,
 }
 
 impl ScriptedWakes {
@@ -110,6 +116,7 @@ impl ScriptedWakes {
             idle: idle.into(),
             drawn: false,
             asked: 0,
+            now: std::time::Instant::now(),
         }
     }
 
@@ -132,7 +139,7 @@ impl Wakes for ScriptedWakes {
         if !arrived {
             // Nothing comes before the deadline: let it pass, as the
             // channel's `recv_timeout` would.
-            std::thread::sleep(deadline.saturating_duration_since(std::time::Instant::now()));
+            self.now = self.now.max(deadline);
             return Waited::TimedOut;
         }
         self.hand_out().map_or(Waited::Ended, Waited::Woke)
@@ -157,6 +164,10 @@ impl Wakes for ScriptedWakes {
         if phase == super::Phase::Drawn {
             self.drawn = true;
         }
+    }
+
+    fn now(&self) -> std::time::Instant {
+        self.now
     }
 }
 
