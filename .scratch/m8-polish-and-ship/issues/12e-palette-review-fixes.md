@@ -1,6 +1,6 @@
 # G-palette 2e — palette review Majors: IN PROGRESS rows run the banner's key; a placeholder cursor reaches any landed row; `update/palette.rs` split; the matcher leaves core; ARCHITECTURE.md matches the code
 
-Status: ready (conductor 2026-10-07) — was draft (planner spec-only pass 2026-10-07; from `docs/reviews/m8-palette-theme.md` Majors 1–4, fixed hash
+Status: **partial** — D1, D2 done (commit `3df7417d`); D3, D4 not started, to a split (builder 2026-10-07). Was: ready (conductor 2026-10-07) — was draft (planner spec-only pass 2026-10-07; from `docs/reviews/m8-palette-theme.md` Majors 1–4, fixed hash
 `81075e6f`)
 Build with: **Opus** (expected; conductor confirms) — every fix is decided below, but Major 1 sits in the modal banner
 key path at a stop (a wrong route rewrote a commit), and the split moves ~1460 lines where one misplaced line changes
@@ -107,24 +107,24 @@ pub fn fuzzy_score(query: &str, text: &str) -> Option<u32>;
 `run`, `landed`, `first_runnable`, `rows`, `listing`: signatures unchanged (moved; NOTES quotes each).
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] **Check first** (before any edit): at base, `palette.rs` :1250–1253 re-presses the chord, :677–687 spells
+- [x] **Check first** (before any edit): at base, `palette.rs` :1250–1253 re-presses the chord, :677–687 spells
   IN PROGRESS in `Banner`, `focus_keys.rs:100` guards on `banner_focus`, :1219–1233 `landed` searches `in_group` only;
   and, per group, the `ContextId` its rows are spelled in (NOTES: group → ctx → line). A group other than IN PROGRESS
   spelled in a ctx that is neither `context_of` at open nor `Global` → **stop**, report with the line.
-- [ ] D1 equivalence, red first on base: at a rebase edit stop (cursor on HEAD), a rebase conflict stop, a cherry-pick
+- [x] D1 equivalence, red first on base: at a rebase edit stop (cursor on HEAD), a rebase conflict stop, a cherry-pick
   conflict stop and a merge conflict stop, banner **unfocused**: each IN PROGRESS row run from `?` yields the same
   commands and state as pressing its chord with `banner_focus = true` (focus fields excepted); after it,
   `banner_focus` and `detail.focus` are what they were. Merge lists no Skip row (assert).
   (`update::palette::tests::in_progress_rows_run_as_the_focused_banner_would`)
-- [ ] D1 the review's case, red first: edit stop, graph focused, `?` → Abort row → `⏎`: no amend command emitted, the
+- [x] D1 the review's case, red first: edit stop, graph focused, `?` → Abort row → `⏎`: no amend command emitted, the
   abort preview is up; Skip row → skip's command. (`update::palette::tests::abort_from_the_palette_never_amends`)
-- [ ] D1 by the binary: rebase edit stop, graph focused, `?`, cursor to Abort, `⏎` → abort preview drawn; HEAD's oid
+- [x] D1 by the binary: rebase edit stop, graph focused, `?`, cursor to Abort, `⏎` → abort preview drawn; HEAD's oid
   unchanged (`git rev-parse HEAD` before/after). (`it::palette_in_progress::walk_abort_from_the_graph_at_an_edit_stop`)
-- [ ] D1 no regression: `banner_key`'s own tests green **unedited** (`git diff <base> -- crates/graft/src/update/banner`
+- [x] D1 no regression: `banner_key`'s own tests green **unedited** (`git diff <base> -- crates/graft/src/update/banner`
   shows only `focus_keys.rs`); J7's `c` walk green unedited. (those tests; the diff command)
-- [ ] D1 invariant: rows opened from the graph, a focused banner and one place: every `Action` row's ctx is `Banner`,
+- [x] D1 invariant: rows opened from the graph, a focused banner and one place: every `Action` row's ctx is `Banner`,
   `Global` or `context_of` at open. (`update::palette::tests::every_action_row_names_a_context_its_run_reaches`)
-- [ ] D2, red first: BRANCHES `reading…` with the cursor on it, TAGS answers → cursor on TAGS' first row; BRANCHES then
+- [x] D2, red first: BRANCHES `reading…` with the cursor on it, TAGS answers → cursor on TAGS' first row; BRANCHES then
   answers → cursor stays on that tag row; every group a placeholder → cursor stays.
   (`update::palette::tests::cursor_on_placeholder_moves_to_a_landed_row_in_another_group`);
   `cursor_on_placeholder_moves_to_first_landed_row` green unedited.
@@ -137,7 +137,7 @@ pub fn fuzzy_score(query: &str, text: &str) -> Option<u32>;
 - [ ] D4 docs: ARCHITECTURE.md reads "Seven commands", names `Retheme` with its reason and line, :183–185 points at
   `not_a_job`; "Changing the palette" row present; `ops` row amended; design note :331 amended. Check: `rg -n
   'Seven commands|Retheme|Changing the palette|not_a_job' ARCHITECTURE.md` (output in NOTES).
-- [ ] Captures unchanged: `git diff --stat <base> -- docs/shots` empty. (that command)
+- [x] Captures unchanged: `git diff --stat <base> -- docs/shots` empty. (that command)
 - [ ] MAP.md: graft-core `## matcher` gone; graft-ops `## matcher` added, :394 path; graft :705 `graft_ops::matcher`,
   the `PaletteTarget::Action { id, ctx }` route, the five files; `banner_press` beside `banner_key` (:464). Check:
   `rg -n 'matcher|banner_press|palette/' crates/*/MAP.md`.
@@ -163,6 +163,98 @@ pub fn fuzzy_score(query: &str, text: &str) -> Option<u32>;
 go to a split (NOTES says so). D1 is the one that must land.
 
 ## NOTES
+
+### Builder 2026-10-07 (Opus) — partial: D1 + D2 landed; D3, D4 to a split
+
+No scout: the ticket says the review is the scout; Check first re-read every cited line at base `f349f135` (below).
+No compaction. Stopped after D2 per **Size** ("past ~60k after D2: stop") — context well past that.
+
+**Check first** (base `f349f135`, all as the review says): `palette.rs:1250-1253` `Action(id)` → `dispatch_key(chord)`;
+`:677-687` IN PROGRESS from `keymap.in_context(ContextId::Banner)`, spelled `key_in(keymap, ContextId::Banner, b)`;
+`focus_keys.rs:100` `if !state.banner_focus || banner_view(state).is_none() { return false; }`; `:1219-1233` `landed`
+searches `in_group` only. Group → ctx → line: YOUR CONFIG → none (`Note`) :660-676; IN PROGRESS → `Banner` :683;
+HERE / EVERYWHERE → `at = palette.opened_from` :658, :764, :769 (`place_rows`), and `opened_from` is
+`super::edge::context_of(state)` at open :336; ACTIONS (`⌃P`) = the same entries (`everything` :730); COMMANDS RUN
+RECENTLY → copies of ACTIONS entries (`recent_rows` :715). No group spelled outside {Banner, Global, context_of at
+open} — no stop.
+
+**Ticks, each with its test** (all in `crates/graft/src/update/palette/tests.rs` unless said):
+- Equivalence: `update::palette::tests::in_progress_rows_run_as_the_focused_banner_would`. Red on base, seen: failed
+  `rebase edit stop: Skip this commit: state` (the graph has no `s`). Covers edit stop (`rewrite_stop_tests::edit_stop`),
+  rebase / cherry-pick / merge conflict stops (`banner::tests::stopped`, `banner_focus` set false). **Fixture note:**
+  the conflict stops set `mergetool = Some("vimdiff")`. Without a tool, `M`'s refusal words are spelled for
+  `edge::context_of` (`banner/resume.rs:73-77`): focused → `e edits a.rs  a abort`, from the palette (graph focus
+  kept) → no keys. That is correct — the graph's `a` amends — and it is a focus-derived field, so the oracle compares
+  the handover command instead.
+- Review's case: `update::palette::tests::abort_from_the_palette_never_amends`. Red on base, seen: failed at "nothing
+  amends" (`ReadHeadMessage` emitted = the graph's `a`).
+- Binary: `it::palette_in_progress::walk_abort_from_the_graph_at_an_edit_stop` (real git, `rebase -i` with
+  `sequence.editor` → `edit`). Red on base, seen (base production files checked out over the test): failed at
+  "the abort preview" (`palette_in_progress.rs:165`). Green: `Abort the rebase?` drawn, `operating` none, HEAD's oid
+  equal after `app.close()`, still rebasing. No capture written (asserts on the frame only).
+- No regression: `git diff f349f135 -- crates/graft/src/update/banner` → only `banner/focus_keys.rs` (shown); banner
+  tests and `it::palette_in_progress::j7_…` green unedited (full nextest below).
+- Invariant: `update::palette::tests::every_action_row_names_a_context_its_run_reaches` (graph at an edit stop, a
+  focused banner, the journal; `?` and `⌃P` each; also asserts `opened_from == context_of` at open).
+- D2: `update::palette::tests::cursor_on_placeholder_moves_to_a_landed_row_in_another_group` — red on base, seen:
+  `left: ("BRANCHES", "reading…") right: ("TAGS", "v2.1.0")`. Covers TAGS landing, then BRANCHES (`v2-fix`) landing
+  above it with the cursor kept on the tag. The "every group a placeholder → stays" case is its own test,
+  `update::palette::tests::cursor_on_placeholder_stays_while_every_group_is_a_placeholder` (green on base too: a
+  guard, not a red). `cursor_on_placeholder_moves_to_first_landed_row` green, unedited.
+- Captures unchanged: `git diff --stat f349f135 -- docs/shots` empty.
+
+**Gates at `3df7417d`:** fmt ok; clippy `--all-targets -D warnings` clean; `cargo nextest run --workspace
+--test-threads 4` 5882/5882 passed, 10 skipped; `cargo test --doc --workspace` ok.
+
+**Final signatures:**
+```rust
+pub(crate) enum PaletteTarget { Action { id: ActionId, ctx: ContextId }, App(AppAction), Note, Seek(Oid), File(u32), More(FindGroup) }
+pub(crate) fn banner_press(state: &mut AppState, commands: &mut Vec<Command>, key: KeyPress,
+    next_id: &mut impl FnMut() -> JobId) -> bool;   // banner/focus_keys.rs
+```
+`run`, `landed`, `first_runnable`, `rows`, `listing`: signatures unchanged. `run` builds `next_id` from
+`state.local_jobs` as `keys::banner_key` does (`keys.rs:136-138`).
+
+**RecentRuns can hold a Banner row** — `run` calls `state.palette_recent.ran(target)` for every run
+(`palette.rs` `run`, first line), IN PROGRESS rows included. It stores the target with its ctx; `ran` dedupes and
+`recent_rows` matches by command (`same_command`: an action by id, ctx ignored), so a recent row is drawn and run as
+ACTIONS spells it **now** (`..entry.clone()` keeps the current entry's target). Matching by full target would have
+dropped a recent row opened from another place — a behaviour change nobody asked for.
+
+**Deviations — the conductor should know:**
+1. **Merge lists no Skip row: was false at base, now made true.** The box asserts it; the code listed every Banner row
+   for every kind (`palette.rs:677-687`). Added `Source::skippable` (live and not a merge) and a filter on
+   `operation.skip`, matching the banner's hint bar (`graft-ui/src/graph_screen/hints/catalogue.rs:199-206`,
+   `skippable: !merge`). Knock-on: `update/tests/palette_live/dead.rs` lost its `(Finish, operation.skip)` row — the
+   sweep reported it **fixed** (the merge finish fixture no longer lists it). No capture lists a merge's IN PROGRESS.
+2. **`update/banner.rs` edited** (spec: "Not: banner.rs"): one line, `pub(super) use focus_keys::banner_press;` —
+   `focus_keys` is a private module, so `palette::run` cannot reach `banner_press` otherwise.
+3. **Test files edited for the variant change** (spec: `palette_live` "green, unedited"; `empty_state.rs` "import line
+   only"): `Action(id)` patterns cannot compile against `Action { id, ctx }`. Edits are mechanical:
+   `palette_live.rs:38` `Action { id, .. }`; `empty_state.rs:177` `Action { id, .. }`; `empty_state/palette_tests.rs`
+   expects `ctx: EmptyState`; `keymap_edge/palette.rs` expects `ctx: Graph` (two) and finds by id (one);
+   `keymap_edge/palette_find.rs` a helper `on_graph(id)` (8 sites; clippy `too_many_lines` after rustfmt expanded the
+   literals). Assertions otherwise unchanged; `palette_live` is still green.
+
+**Touches:** `run` callers (`palette_key` ⏎, `double_clicked`, recent rows via the listing) unchanged in shape;
+`grep -rnE 'palette::(run|first_runnable)' crates/graft/src` → none outside `palette.rs` before and after (empty
+state's `outside_paste` does not call them at base). `banner_key` callers (`keys.rs:137`) unchanged. Journal/undo,
+graft-ui, graft-ops, `update/tests.rs`, `update/mod.rs`, `banner/{pressed,stop}.rs`, `tests/it/palette_find.rs`,
+`docs/shots`: `git diff --stat f349f135 -- <each>` empty (run). Keymap / hint bar: untouched (graft-ui diff empty).
+
+**What remains (for the split) — D3 then D4, exactly as Decisions say; nothing of either started:**
+- D3: split `update/palette.rs` (now 1509 lines incl. the D1/D2 changes and `#[cfg(test)] mod tests;` at its foot,
+  whose file is already at `update/palette/tests.rs`) into `palette/{mod,listing,find,run,input}.rs`; pure move, own
+  commit. Gotcha: `same_command` (used by `RecentRuns::ran` and `recent_rows`) and `Source::skippable` are new since
+  the spec; `RecentRuns` → mod.rs, `recent_rows` → listing.rs, so `same_command` must be `pub(super)` in whichever
+  holds it.
+- D4: matcher to graft-ops; sites: `graft-core/src/lib.rs:18`, `graft-ops/src/switch_list.rs:15`,
+  `graft/src/jobs/palette.rs:9`, `graft/src/update/palette.rs:23`, and the test
+  `graft/src/update/tests/keymap_edge/palette_find.rs` (`graft_core::matcher::fuzzy_score("featu", …)`, :626) —
+  a test file, not only import lines. ARCHITECTURE.md and design-note :331 edits; MAP rows (graft-core :80-81,
+  graft-ops :394, graft :706).
+- MAP box: graft's `banner_press` row and the `update::palette` route are written (this commit); the matcher and
+  five-file rows wait for D3/D4.
 
 ### For the conductor: review Minors and Questions → KNOWN_GAPS rows (planner proposal; conductor writes them)
 | id | row | status | expiry |
