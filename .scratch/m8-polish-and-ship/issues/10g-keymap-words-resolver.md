@@ -46,7 +46,7 @@ No new public items. Word fns gaining `keys: &Keymap` are named in MAP.md.
       still holds 2 `KNOWN: 10g` rows** — not ticked, see NOTES.
 - [x] Captures: shipped keymap → `git diff --stat main -- docs/shots` empty — checked by that command; shipped
       bytes also held by `each_resolver_word_spells_the_remapped_key` and the existing resolver tests unchanged.
-- [x] MAP.md graft: changed fn signatures — `whole_file_keys` (+`keys: &Keymap`), `Identity::Done.restart`
+- [ ] → 10j (conductor 2026-10-07: "checked by reading the diff" names no test). MAP.md graft: changed fn signatures — `whole_file_keys` (+`keys: &Keymap`), `Identity::Done.restart`
       (`bool` → `Option<&str>`). Checked by reading the diff.
 
 ## Touches
