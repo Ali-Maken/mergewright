@@ -1150,8 +1150,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/13g-places-hangup-101 | Hang-up on the places screen probably still exits 101 (not reproduced, 13g builder) | **unverified** | M8 |
 | M8/13g-double-sighup | Two SIGHUPs from one window close might skip the 60 s wait — question, no line yet (13g) | **unverified** | M8 |
 | M8/13g-banner-unjudged | 13g relaunch banner capture docs/shots/m8-hangup-relaunch-120x40.txt not judged by eye | **unverified** | M8 |
-| M8/13g-hangup-test-flaky | `quit_waits::hangup::a_hangup_mid_write_never_exits_101` failed once in the full run after 10f (20.7 s, machine loaded by 2 builders); passes alone in 3.7 s ×4. Cause unknown → debugger | **broken** | M8 |
-| M8/outside-repo-captures-flaky | `outside_repo::outside_repo_captures` failed once in the full run after 10g (machine loaded by debugger's load loop + 09f builder; run 1265 s); passes alone. Cause unknown → sent to the 13g-flake debugger | **broken** | M8 |
+| M8/outside-repo-captures-flaky | `outside_repo::outside_repo_captures` failed once under load, passes alone. Unverified hypothesis (debugger): `Pty::wait_for` (pty.rs:210) returns the first screen matching `has("RECENT")`, possibly a half-drawn frame. Not reproduced | **broken** | M8 |
+| M8/sighup-before-waiting-line | A SIGHUP before the waiting line (stop_to baseline, exit_wait.rs:89-95, signals.rs:99) is absorbed → 60 s wait; documented. Changing it would make a shell-forwarded SIGHUP stop writes at once — design question. Fast tier no longer force-stops a write with stderr dead (heavy only) | **unverified** | M8 |
 | M8/keymap-file-sizes | Over-400 files left unsplit by 09f: hints.rs, lists.rs (held by 11c/15), stash_screen.rs, context_menu.rs, graft-ops/graft files held by 10f–10i (keymap review Major 1) | **broken** | M8 |
 | M8/help-lists-dead-keys | `?` lists keys that do nothing: pane over an overlay, Diff `M`, start-screen `n`; held by a test table, not fixed (09f) | **broken** | M8 |
 | M8/17-colour-unverified | 17's lane fade by hue (truecolor/256) and muted whitespace tail: colour unverified (rule 5) | **unverified** | M8 |
