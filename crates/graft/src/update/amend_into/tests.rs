@@ -503,7 +503,12 @@ fn a_during_an_operation_keeps_p14() {
             let mut probe = state.clone();
             let live = crate::update::commit_editor::live_operation(&probe).expect("live");
             let tabs = crate::update::commit_editor::refusal_tabs(&probe);
-            probe.status = crate::update::commit_editor::operation_refusal(live, tabs).status();
+            probe.status = crate::update::commit_editor::operation_refusal(
+                live,
+                tabs,
+                graft_ui::keymap::Keymap::shipped(),
+            )
+            .status();
             probe.status
         };
         let (state, commands) = update(&state, key('a'));

@@ -142,7 +142,7 @@ fn refused_by_live_operation(state: &mut AppState) -> bool {
         return false;
     };
     let tabs = super::commit_editor::refusal_tabs(state);
-    state.status = super::commit_editor::operation_refusal(live, tabs).status();
+    state.status = super::commit_editor::operation_refusal(live, tabs, &state.keymap).status();
     true
 }
 

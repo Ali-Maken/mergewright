@@ -198,7 +198,7 @@ fn graft_row(
     JournalRowView {
         age: sanitize(&age(entry.at_unix_ms, now_seconds)),
         description: sanitize(&entry.description),
-        summary: sanitize(&summary(entry, is_live)),
+        summary: sanitize(&summary(entry, is_live, &state.keymap)),
         mark,
         commands: entry.commands.iter().map(|line| sanitize(line)).collect(),
         failure: failure(entry, is_live).map(|line| sanitize(&line)),

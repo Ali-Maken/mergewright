@@ -471,7 +471,8 @@ fn a_resume_whose_put_back_lost_staging_is_done_and_says_so() {
             "rebase main onto origin/main",
             &paths,
             &[],
-            lost.size.columns
+            lost.size.columns,
+            &lost.keymap,
         )
     );
     let row = bottom_row(&lost, 120, 40);

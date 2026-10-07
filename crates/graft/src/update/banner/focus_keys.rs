@@ -187,6 +187,23 @@ pub fn banner_key(
 pub(super) fn nothing_conflicted(state: &mut AppState) {
     state.status = Status::Sticky {
         reason: "nothing conflicted".to_owned(),
-        keys: Some("c continue  a abort".to_owned()),
+        keys: continue_abort(&state.keymap),
     };
+}
+
+/// A stop's two ways out, `c continue  a abort`, spelled from his keymap
+/// (m8/10f, 10b W1): the banner's rows, an unbound one left out, `None`
+/// when both are. The one wording of this state: the banner's lines and the
+/// journal's `in progress` row both take it.
+pub(crate) fn continue_abort(keys: &graft_ui::keymap::Keymap) -> Option<String> {
+    let words = keys.key_verbs(&[
+        ("operation.continue", "continue"),
+        ("operation.abort", "abort"),
+    ]);
+    (!words.is_empty()).then_some(words)
+}
+
+/// `a abort` alone, spelled from his keymap; `None` when unbound.
+pub(crate) fn abort_key(keys: &graft_ui::keymap::Keymap) -> Option<String> {
+    keys.key_verb(&[graft_ui::keymap::ActionId("operation.abort")], "abort")
 }

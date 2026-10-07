@@ -3,10 +3,24 @@
 
 use std::path::PathBuf;
 
+use graft_ui::keymap::{ActionId, Keymap};
+
 use crate::update::state::Status;
 
-/// The key half of every [`staging_not_kept_rungs`] wording.
-const STAGING_UNDO: &str = "u undoes it, staging included";
+/// The key half of every [`staging_not_kept_rungs`] wording, spelled from
+/// his keymap (m8/10f): `u undoes it, staging included`, `None` with undo
+/// unbound — every rung then ends at its words (10b W3).
+fn staging_undo(keys: &Keymap) -> Option<String> {
+    keys.key_verb(&[ActionId("app.undo")], "undoes it, staging included")
+}
+
+/// `words · <clause>`, or `words` alone with no clause.
+fn with_clause(words: String, clause: Option<&str>) -> String {
+    match clause {
+        Some(clause) => format!("{words} \u{b7} {clause}"),
+        None => words,
+    }
+}
 
 /// The fallback's status wordings, longest first (planner 30b, Decided 3).
 /// `what` is what `Done` would put before its tick:
@@ -27,7 +41,10 @@ pub(crate) fn staging_not_kept_rungs(
     what: &str,
     paths: &[PathBuf],
     came_back: &[PathBuf],
+    keys: &Keymap,
 ) -> Vec<String> {
+    let undo = staging_undo(keys);
+    let undo = undo.as_deref();
     let first = paths
         .first()
         .map_or_else(String::new, |path| path.display().to_string());
@@ -45,13 +62,13 @@ pub(crate) fn staging_not_kept_rungs(
         done_line(
             what,
             Some(&format!("your edits are back \u{b7} {lost}")),
-            Some(STAGING_UNDO),
+            undo,
         ),
-        done_line(what, Some(&lost), Some(STAGING_UNDO)),
-        format!("{lost} \u{b7} {STAGING_UNDO}"),
+        done_line(what, Some(&lost), undo),
+        with_clause(lost.clone(), undo),
     ];
     if lost != staging {
-        rungs.push(format!("{staging} \u{b7} {STAGING_UNDO}"));
+        rungs.push(with_clause(staging, undo));
     }
     rungs
 }
@@ -67,16 +84,20 @@ pub(crate) fn staging_not_kept_status(
     paths: &[PathBuf],
     came_back: &[PathBuf],
     columns: u16,
+    keys: &Keymap,
 ) -> Status {
     // `fitting_line` measures a box `width` wide whose text is 4 cells
     // narrower; the status row's text is `columns - 1` (it indents one
     // cell), so the same rule is asked with the box 3 cells wider.
-    let rungs = staging_not_kept_rungs(what, paths, came_back);
+    let rungs = staging_not_kept_rungs(what, paths, came_back, keys);
     let picked = graft_ui::preview_box::fitting_line(&rungs, columns.saturating_add(3));
-    let picked = picked.as_str();
-    let suffix = format!(" \u{b7} {STAGING_UNDO}");
-    Status::Sticky {
-        reason: picked.strip_suffix(&suffix).unwrap_or(picked).to_owned(),
-        keys: Some(STAGING_UNDO.to_owned()),
-    }
+    let undo = staging_undo(keys);
+    let reason = match &undo {
+        Some(undo) => {
+            let suffix = format!(" \u{b7} {undo}");
+            picked.strip_suffix(&suffix).unwrap_or(&picked).to_owned()
+        }
+        None => picked,
+    };
+    Status::Sticky { reason, keys: undo }
 }

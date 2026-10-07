@@ -205,7 +205,12 @@ fn a_graft_merge_refusal_says_c_finish() {
     );
     let refused = press(&before, KeyCode::Char('a'));
     assert_eq!(refusal_keys(&refused), "⇥ ⇥ banner, then c finish  a abort");
-    let words = operation_refusal((InProgress::Merge, Begun::InGraft), 1).editor_words();
+    let words = operation_refusal(
+        (InProgress::Merge, Begun::InGraft),
+        1,
+        graft_ui::keymap::Keymap::shipped(),
+    )
+    .editor_words();
     assert_eq!(
         words,
         "merge in progress — esc, ⇥ banner, then c finish  a abort"

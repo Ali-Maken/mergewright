@@ -1,6 +1,6 @@
 //! A write that did not land, or was refused: the line it leaves.
 
-use graft_ui::keymap::Keymap;
+use graft_ui::keymap::{ActionId, Keymap};
 
 use super::{AppState, Command, InProgress, JobId, Operated, Operation, Refresh, Refusal, Status};
 use crate::update::op_keys::OpKeys;
@@ -38,7 +38,7 @@ pub(super) fn operation_failed(
     }
     let remote_op = launched_op.filter(|op| op.is_remote());
     state.status = match edits {
-        Some(at) => edits_status(&error, at),
+        Some(at) => edits_status(&error, at, &state.keymap),
         None => failure_line(state, remote_op, remote.as_ref(), refused.as_ref(), error),
     };
     match what {
@@ -53,10 +53,10 @@ pub(super) fn operation_failed(
 /// the `keys` half, so at narrow widths the failure is cut and the clause
 /// kept whole (`fit_status_line`). `S p` is named only when the edits are
 /// not in the tree.
-pub(crate) fn edits_status(failure: &str, at: graft_ops::EditsAt) -> Status {
+pub(crate) fn edits_status(failure: &str, at: graft_ops::EditsAt, keys: &Keymap) -> Status {
     Status::Sticky {
         reason: failure.to_owned(),
-        keys: Some(edits_clause(at)),
+        keys: edits_clause(at, keys),
     }
 }
 
@@ -64,19 +64,39 @@ pub(crate) fn edits_status(failure: &str, at: graft_ops::EditsAt) -> Status {
 /// clause of [`edits_status`], and of the relaunch notice when recovery
 /// read where they were (`update::undo::interrupted_notice`, 30c). Same
 /// state, same words.
-pub(crate) fn edits_clause(at: graft_ops::EditsAt) -> String {
+///
+/// Keys spelled from his keymap (m8/10f). `S p` is a sequence: `S` from the
+/// graph's row, `p` from the stash list's (10b W5); either unbound drops
+/// the clause. An unbound undo drops `u restores the backup`, and a clause
+/// left with nothing is `None` (W3).
+pub(crate) fn edits_clause(at: graft_ops::EditsAt, keys: &Keymap) -> Option<String> {
     use graft_ops::EditsAt;
-    match at {
-        EditsAt::Stash { n } => format!("your edits are in stash@{{{n}}} · S p puts them back"),
+    let restores = keys.key_verb(&[ActionId("app.undo")], "restores the backup");
+    let clause = match at {
+        EditsAt::Stash { n } => {
+            let words = format!("your edits are in stash@{{{n}}}");
+            match (
+                keys.spell_keys(&[ActionId("graph.stash")]),
+                keys.spell_keys(&[ActionId("stash.pop")]),
+            ) {
+                (Some(stash), Some(pop)) => format!("{words} · {stash} {pop} puts them back"),
+                _ => words,
+            }
+        }
         EditsAt::Back { copy: Some(n) } => {
             format!("your edits are back · a copy stays in stash@{{{n}}}")
         }
         EditsAt::Back { copy: None } => "your edits are back · a copy may still be in S".to_owned(),
         EditsAt::Backup { copy: Some(n) } => {
-            format!("u restores the backup · a copy is in stash@{{{n}}}")
+            let copy = format!("a copy is in stash@{{{n}}}");
+            match restores {
+                Some(restores) => format!("{restores} · {copy}"),
+                None => copy,
+            }
         }
-        EditsAt::Backup { copy: None } => "u restores the backup".to_owned(),
-    }
+        EditsAt::Backup { copy: None } => return restores,
+    };
+    Some(clause)
 }
 
 /// The status line for a write that failed: the remote wording where the
@@ -143,7 +163,12 @@ pub(super) fn history_refusal(state: &AppState, refused: Option<&Refusal>) -> Op
         // what the user needs next.
         Refusal::MarkersRemain { path } => Some(Status::Sticky {
             reason: format!("{} still has conflict markers", path.display()),
-            keys: Some("e edit  M mergetool".to_owned()),
+            keys: Some(
+                state
+                    .keymap
+                    .key_verbs(&[("changes.edit", "edit"), ("changes.mergetool", "mergetool")]),
+            )
+            .filter(|keys| !keys.is_empty()),
         }),
         _ => None,
     }
@@ -176,10 +201,13 @@ pub(crate) fn refusal_status(
     match refusal {
         Refusal::DirtyTree { count } => Status::Sticky {
             reason: format!("{} needs a clean tree", verb_of(&op.describe())),
-            keys: Some(format!(
-                "S stash {count} changed {}",
-                if *count == 1 { "file" } else { "files" }
-            )),
+            keys: keys.key_verb(
+                &[ActionId("graph.stash")],
+                &format!(
+                    "stash {count} changed {}",
+                    if *count == 1 { "file" } else { "files" }
+                ),
+            ),
         },
         refused @ Refusal::InTheWay { .. } => in_the_way_status(refused, columns, keys),
         other => Status::sticky(other.explain(&OpKeys(keys))),
