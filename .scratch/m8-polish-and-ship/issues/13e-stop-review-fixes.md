@@ -5,7 +5,7 @@ Build with: **Opus** (high, not xhigh). This is the code that signals git's proc
 stopped hook really ends can't be judged from the diff, only from a process test. It changes no journal or undo
 semantics, so it doesn't need xhigh. Not Fable: the shape stays as it is.
 Needs: none (no new signatures).
-Blocked by: 10e (conductor 2026-10-07: 10e is editing graft-ops refusal callers now; 13e\'s move-only splits go after it)
+Blocked by: 10e (conductor 2026-10-07: 10e is editing graft-ops refusal callers now; 13e's move-only splits go after it)
 run concurrently (at most 2 helpers).
 Scout: none needed. The review (`docs/reviews/m8-13cd-stop.md`) names every line. Say this in the report.
 Source: review m8-13cd Major 1 (in part), Major 3, Minors 2, 4 and 8; open point `M8/13d-open-points`
