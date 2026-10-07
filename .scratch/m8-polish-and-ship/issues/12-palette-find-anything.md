@@ -1,12 +1,15 @@
-# G-palette 2a — `⌃P` finds branches and tags; RECENT; the find job
+# G-palette 2a — `⌃P` finds branches and tags; COMMANDS RUN RECENTLY; the find job
 
-Status: draft (re-spec 2026-10-07, spec-only pass; replaces the 2b spec — see "Why re-specced")
+Status: draft (re-spec 2026-10-07, spec-only pass; replaces the 2b spec — see "Why re-specced"; re-aligned the same
+day to `docs/research/palette-find.md` — see "Aligned to prior art")
 Build with: **Opus** — design-heavy: a per-keystroke job contract (cancel, stale drop, re-filter), cursor anchoring;
 not Fable (correctness is judged from tests: stale ids, cancel commands, HEAD unchanged).
-Blocked by: 11b (same `update/palette.rs`, `graft-ui/src/palette.rs`, palette captures).
-Needs: 11's `PaletteState`, `PaletteTarget`, `Group`, `rows`/`listing`, `run`; `graft_core::matcher::fuzzy_score`;
-`update::map::seek_to` (`pub(super)`, update/map.rs:202); `refs::RefBadges::{branches, remotes, tags}`
-(refs/mod.rs:87, :107, :123); `AppState::refs: Option<Arc<RefBadges>>`.
+Blocked by: 11b (same `update/palette.rs`, `graft-ui/src/palette.rs`, palette captures). **P-find-1** (design note,
+"Where I'd differ") answered by him — build the "declined" branch below if he says no.
+Needs: 11's `PaletteState`, `PaletteTarget`, `Group`, `rows`/`listing`, `run`, `NOTHING_MATCHES`;
+`graft_core::matcher::fuzzy_score`; `update::map::seek_to` (`pub(super)`, update/map.rs:202);
+`graft_git::switch_refs::switch_refs` (as `graft_ops::switch_list` calls it; `SwitchRefs`, `RefListing { name, tip,
+when, .. }`); `refs::RefBadges::tags` (refs/mod.rs:123); `AppState::refs: Option<Arc<RefBadges>>`.
 
 ## Why re-specced (scout `.scratch/m8-polish-and-ship/scouts/12-find-anything.md`, checked by the planner)
 - `PaletteTarget` has `Note` (update/palette.rs:59) and derives `Copy` (:52); the old spec dropped one, broke the other.
@@ -16,47 +19,75 @@ Needs: 11's `PaletteState`, `PaletteTarget`, `Group`, `rows`/`listing`, `run`; `
 - No tracked-paths read exists (diff/read.rs:276 is `--others`). Files move to 12b.
 - `⇥` seek handles a tip not laid out (`seek_to`: `History::seek` + `Command::ShowRows`, map.rs:208). Reused as is.
 
+## Aligned to prior art (2026-10-07; design note Prior art "Find: …" rows)
+- **Branch order**: Magit #2872 (alphabetical is wrong; newest first). `RefBadges` has no dates, so BRANCHES now come
+  from `graft_git::switch_refs` (every local and remote branch, committer date), read **once per `⌃P` open** on a
+  job — the same rule as the `C` picker (`filter_switch_rows`: segment start first, ties newest tip), so one query
+  orders alike in both (H4). Tags stay on resident `RefBadges::tags`.
+- **Header**: `COMMANDS RUN RECENTLY`, as DESIGN §1.6 draws it (P-find-2): §1.15 already calls the repo list
+  `RECENT`, and the palette opens over it. Rows are action rows, no stored argument (P-find-2).
+- **Journeys**: J26 `seek-branch` 3, J27 `seek-tag` 3, J31 `rerun-recent` 2 — the note's `journey-counts` fence.
+
 ## Read first
 - `docs/design/01-view-mockups.md` §1.6 (lines 257–277); `docs/design/02-keymap.md` §2.12 (lines 528–542)
-- `docs/design-notes/m8-polish-and-ship.md`: Journeys (J6 row and "Where he lands", lines 84–143), New UI "Palette
-  sources" (line 352)
+- `docs/design-notes/m8-polish-and-ship.md`: Prior art rows "Find: …"; Journeys rows 26–32, "Find rows judged",
+  "Where he lands" rows "Palette …", the `journey-counts` fence; Where I'd differ P-find-1, P-find-2; New UI
+  "Palette sources"
+- `docs/research/palette-find.md` "Take / reject candidates" (lines 59–67)
 - `crates/graft/MAP.md`: `update::palette` (691), `update::map` `seek_to` (687), `refs` (104), `jobs` (1013, the
-  `switch_list` and `map` jobs as the pattern), `trace` (126); `crates/graft-ui/MAP.md`: `palette`;
+  `switch_list` job :1042 as the pattern), `trace` (126); `crates/graft-git/MAP.md`: `switch_refs` (115);
+  `crates/graft-ops/MAP.md`: `switch_list` (384, the ranking rule); `crates/graft-ui/MAP.md`: `palette`;
   `crates/graft-core/MAP.md`: `fuzzy_score` (81)
 - The scout file above. Scout again (≤1 page) only if 11b changed `palette.rs` past the line numbers cited here.
 
 ## Decisions (planner)
 **Cost per keystroke** (PROMPT §6: input to frame < 16 ms; must hold at 50k+ refs). The loop never scans refs, paths or
-history. Per key it does: actions + RECENT filter (≤ ~200 rows, as today), re-filter of the last answer's shown rows
-(≤ 50 per group), one `CancelJob` + one `Command::PaletteNames`. Matching 50k ref names runs on a worker. Every shown
-row always matches the current query (re-filter), so `⏎` never runs a row the query excludes. A group whose answer
-is for an older query shows its re-filtered rows plus a muted `searching…` row in place of `+N more` (H1, UX §2).
+history. Per key it does: actions + COMMANDS RUN RECENTLY filter (≤ ~200 rows, as today), re-filter of the last
+answer's shown rows (≤ 50 per group), one `CancelJob` + one `Command::PaletteNames`. Matching 50k ref names runs on a
+worker. Every shown row always matches the current query (re-filter), so `⏎` never runs a row the query excludes. A
+group whose answer is for an older query shows its re-filtered rows plus a muted `searching…` row in place of
+`+N more` (H1, UX §2).
 
 | Source | Where it comes from | Rows | `⏎` |
 |---|---|---|---|
 | Actions | `listing` (11), unchanged | as 11 | as 11 |
-| BRANCHES | `RefBadges::branches` then `remotes` (resident `Arc`), matched by the names job | `main`, `origin/feat` | `Seek(tip)` via `seek_to`; never switches (`C` does) |
-| TAGS | `RefBadges::tags`, same job | `v2.1.0` | `Seek(tip)` |
-| RECENT | `AppState::palette_recent`, in memory, this session | the action row as 11 draws it | same `Action`/`App` target, its key's path |
+| BRANCHES | `switch_refs`, one read per `⌃P`/`:` open (`Command::ReadPaletteBranches`), held as `Find::branches`; matched by the names job | `main`, `origin/feat` (short name) | `Seek(tip)` via `seek_to`; never switches (`C` does) |
+| TAGS | `RefBadges::tags` (resident `Arc`), same names job | `v2.1.0` | `Seek(tip)` |
+| COMMANDS RUN RECENTLY | `AppState::palette_recent`, in memory, this session | the action row as 11 draws it (key, label, config id) | same `Action`/`App` target, its key's path |
 
-- **Group order** (§2.12): `YOUR CONFIG` (11) · empty query: `RECENT`, `ACTIONS` — no ref groups. Typed: `ACTIONS`,
-  `BRANCHES`, `TAGS`, (12b: `FILES`, `COMMITS`), `RECENT`. Fixed; §1.6's "then recency" applies inside RECENT only —
-  ref dates are not resident. `?` mode: no find groups, no RECENT (§2.12).
-- **Inside a group**: `fuzzy_score` (lower first); branches: local before remote, then name; tags: name.
-- **RECENT**: last 8 distinct `Action`/`App` targets run from either palette mode, newest first; a rerun moves to the
-  front. Typed query: filtered like actions, may repeat an ACTIONS row (the §1.6 drawing does). Header `RECENT`
-  (the §1.6 drawing says `COMMANDS RUN RECENTLY`; conductor: doc follow-up).
+- **Group order** (§2.12): `YOUR CONFIG` (11) first when present. Typed: `ACTIONS`, `BRANCHES`, `TAGS`, (12b: `FILES`,
+  `COMMITS`), `COMMANDS RUN RECENTLY`. Fixed across groups; §1.6's "then recency" applies inside groups (branches by
+  tip date, recent runs newest first). `?` mode: no find groups, no recent group (§2.12).
+- **Empty query (P-find-1)**: `COMMANDS RUN RECENTLY` (if any), then `ACTIONS`; no find groups; cursor on the first
+  runnable row (11), so `⌃P ⏎` reruns the newest. The empty field draws, muted, `type to find actions, branches,
+  tags, files, commits` (graft-ui; gone on the first character). **If P-find-1 is declined**: §2.12's order —
+  `ACTIONS`, then the find groups for the empty query (the same names job, `fuzzy_score("")` = `Some(0)`, so newest
+  branches first), then `COMMANDS RUN RECENTLY`; no placeholder; set the fence's `rerun-recent` to 3.
+- **Inside a group**: `fuzzy_score` (lower first). Branches: then local before remote, then newer `when`, then name
+  (the `C` picker's tie rule, plus local first). Tags: then name.
+- **COMMANDS RUN RECENTLY**: last 8 distinct `Action`/`App` targets run from either palette mode, newest first; a rerun
+  moves to the front. Typed query: filtered like actions, may repeat an ACTIONS row (the §1.6 drawing does). Header
+  exactly `COMMANDS RUN RECENTLY` (DESIGN §1.6). No argument stored: `⏎` runs as the key would (§2.12, P-find-2).
 - **Caps**: 8 rows per find group; `+N more` (`More(group)`) widens that group to 50, cursor on the first new row; past
   50 the last row is `+N more · type more to narrow` (`Note`). Query change resets the widening.
-- **Cursor**: anchored by `(group header, target)`; re-found when an answer lands, else index clamped.
-- **refs not read yet** (`AppState::refs` `None`): BRANCHES shows one muted `reading…` row (`Note`).
+- **Cursor**: anchored by `(group header, target)` on a runnable row; re-found when an answer lands, else index
+  clamped. A cursor on a placeholder (`reading…`, `searching…`) moves to the first runnable row when one lands.
+  `⏎` on a placeholder does nothing.
+- **Not read yet**: BRANCHES shows one muted `reading…` row until `switch_refs` lands (then the names job is re-asked
+  for the current query); TAGS the same while `AppState::refs` is `None`. Read failure: BRANCHES reads
+  `branches: <reason>` (muted, `Note`); other groups unaffected (H9).
+- **Nothing matches**: `NOTHING_MATCHES` (11) only once every asked source has answered for this query and all are
+  empty; before that, the placeholders.
 - **Lands** (UX §3.1): seek row `⏎` → palette closed, graph focused, cursor on the commit, detail follows; not laid out
   → existing jump (`jumping`, `Esc` withdraws); walk ends without it → `seek_to`'s existing fallback, unchanged.
 
 ## Scope
-In: target arms, names job (refs only; 12b adds paths to the same request), stale drop, cancel on edit and close,
-re-filter, `+N more`, cursor anchor, RECENT, `RowKind::Branch/Tag/Recent/More` drawing, perf script, capture.
-Out: files, commits (12b); switching from the palette; persistent RECENT; cross-group ranking.
+In: target arms, branches read job (cancel on close), names job (branches + tags; 12b adds paths to the same
+request), stale drop, cancel on edit and close, re-filter, `+N more`, cursor anchor, COMMANDS RUN RECENTLY, empty-box
+placeholder, `RowKind::Branch/Tag/Recent/More` drawing, walks for `seek-branch`/`seek-tag`/`rerun-recent`, perf
+script, capture.
+Out: files, commits (12b); switching from the palette; persistent recent runs; stored arguments; kind prefixes
+(rejected, note Prior art); cross-group ranking; MRU (reflog) branch order.
 
 ## Signatures
 ```rust
@@ -69,8 +100,13 @@ pub(crate) enum PaletteTarget {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum FindGroup { Branches, Tags, Files, Commits } // Files/Commits used by 12b
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+/// One read per `⌃P` open, cancelled on close. `PartialEq`: `Read` compares by `Arc::ptr_eq` (manual impl — no
+/// derives added to graft-git types).
+#[derive(Clone, Debug, Default)]
+pub(crate) enum ReadOnce<T> { #[default] NotAsked, Reading(JobId), Read(Arc<T>), Failed(String) }
+#[derive(Clone, Debug, PartialEq, Default)]
 pub(crate) struct Find {
+    pub branches: ReadOnce<graft_git::switch_refs::SwitchRefs>,
     pub names: Asked<Arc<NameHits>>,
     pub widened: Option<FindGroup>,
 }
@@ -80,50 +116,68 @@ pub(crate) struct Asked<T> { pub pending: Option<(JobId, String)>, pub answer: O
 pub(crate) struct RecentRuns(VecDeque<PaletteTarget>);           // in AppState as `palette_recent`
 impl RecentRuns { pub(crate) fn ran(&mut self, t: PaletteTarget); pub(crate) fn iter(&self) -> impl Iterator<Item = PaletteTarget> + '_; }
 pub const RECENT_CAP: usize = 8; pub const GROUP_ROWS: usize = 8; pub const WIDE_ROWS: usize = 50;
+pub const RECENT_HEADER: &str = "COMMANDS RUN RECENTLY";
+pub const FIND_PLACEHOLDER: &str = "type to find actions, branches, tags, files, commits"; // P-find-1 only
 
 // graft — jobs::palette (new private mod), dispatched by JobRunner like `switch_list`
-pub(crate) struct NamesRequest { pub query: Arc<str>, pub refs: Option<Arc<RefBadges>> } // 12b adds `files`
+pub(crate) fn read_branches(repos: &RepoStore, cancel: &Cancel) -> Result<Arc<SwitchRefs>, String>; // switch_refs off the loop
+pub(crate) struct NamesRequest {
+    pub query: Arc<str>,
+    pub branches: Option<Arc<SwitchRefs>>,  // None until read
+    pub tags: Option<Arc<RefBadges>>,       // None until the refs job answers
+}                                           // 12b adds `files`
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub(crate) struct NameHits { pub branches: Ranked<RefHit>, pub tags: Ranked<RefHit> }      // 12b adds `files`
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub(crate) struct Ranked<T> { pub top: Vec<T>, pub total: usize }                          // top ≤ WIDE_ROWS, best first
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct RefHit { pub name: Box<[u8]>, pub tip: Oid, pub remote: bool }
+pub(crate) struct RefHit { pub name: Box<[u8]>, pub tip: Oid, pub remote: bool }           // short name
 pub(crate) fn match_names(req: &NamesRequest, stop: &dyn Fn() -> bool) -> Option<NameHits>; // None = stopped; checks stop every 4096
-// update: Command::PaletteNames(JobId, NamesRequest) → AppEvent::Produced(id, Product::PaletteNames(Arc<NameHits>))
+// update: Command::ReadPaletteBranches(JobId) → AppEvent::Produced(id, Product::PaletteBranches(Result<Arc<SwitchRefs>, String>))
+//         Command::PaletteNames(JobId, NamesRequest) → AppEvent::Produced(id, Product::PaletteNames(Arc<NameHits>))
 
 // graft-ui — palette
 pub enum RowKind { Action, App, Branch, Tag, File, Commit, Recent, More } // + More: muted (`+N more`, `reading…`, `searching…`)
+// PaletteView: the query field draws `FIND_PLACEHOLDER` muted when empty in `Everything` mode (P-find-1).
 ```
 `run` (palette.rs:479): `Seek(oid)` → close, `super::map::seek_to`; `More(g)` → widen; `Action`/`App` → `palette_recent.ran`
-then today's path.
+then today's path. Open in `Everything` mode → `Command::ReadPaletteBranches`; `?` asks none; close cancels both jobs.
 
 ## Acceptance (each box names its test at tick time)
 - [ ] `⌃P` `feat` `⏎` on a branch row → cursor on its tip, HEAD unchanged (`enter_on_branch_row_seeks_tip_and_keeps_head`, reads HEAD with git).
 - [ ] Remote branch and tag rows seek their commit (`enter_on_remote_and_tag_rows_seek`).
 - [ ] Tip not laid out → `Command::ShowRows`, cursor lands when rows arrive (`branch_tip_not_laid_out_seeks_through_the_walk`).
-- [ ] Empty query → `RECENT` (if any) then `ACTIONS`, no ref rows (`empty_query_lists_recent_then_actions_only`).
-- [ ] `?` has neither find groups nor RECENT (`help_palette_has_no_find_groups`).
-- [ ] RECENT: run stash from the palette, reopen → `RECENT` first, `⏎` opens the stash prompt (`recent_row_runs_its_key_path`); cap 8, newest first, rerun moves to front (`recent_runs_cap_and_order`).
+- [ ] `⌃P` asks one `ReadPaletteBranches`; `?` asks none; close cancels it (`palette_open_reads_branches_once`); BRANCHES `reading…` until it lands, then rows for the current query (`branches_group_reads_then_lists`); read failure reads in the group (`branch_read_failure_reads_in_branches_group`).
+- [ ] Branch order: score, local before remote, newer tip, name — same order as `filter_switch_rows` for local rows on one fixture (`branches_rank_local_then_newest_tip`, `palette_and_picker_order_branches_alike`).
+- [ ] Empty query (P-find-1) → `COMMANDS RUN RECENTLY` (if any) then `ACTIONS`, no find rows, placeholder drawn (`empty_query_lists_recent_then_actions_only`, `empty_everything_field_names_what_it_finds`). Declined → `empty_query_follows_section_2_12_order` instead.
+- [ ] `?` has neither find groups nor the recent group (`help_palette_has_no_find_groups`).
+- [ ] Recent group: header reads exactly `COMMANDS RUN RECENTLY` (`recent_group_header_is_commands_run_recently`); run stash from the palette, reopen → that group first, `⏎` opens the stash prompt (`recent_row_runs_its_key_path`); cap 8, newest first, rerun moves to front (`recent_runs_cap_and_order`).
 - [ ] Each query edit cancels the previous names job and asks one new one; close cancels it (`query_edit_cancels_the_previous_find_job`, `closing_the_palette_cancels_find_jobs`).
 - [ ] Answer for an older id dropped (`stale_names_answer_is_dropped`); every shown row matches the current query while an answer is pending (`shown_rows_always_match_the_current_query`).
 - [ ] `+N more` widens to 50, cursor on first new row; query edit resets (`more_row_widens_then_resets`).
-- [ ] Cursor stays on its row when an answer lands above it (`cursor_stays_on_its_row_when_an_answer_lands`).
-- [ ] `match_names`: segment start first, local before remote, totals right, stops when asked (`names_rank_and_total`, `names_stop_when_cancelled`).
-- [ ] Journey: seek a branch = 3 keys (`⌃P` text `⏎`; VS Code 3, `docs/research/checkout-cherry-pick.md:20`) — walk asserts ≤ 3 (`palette_seek_branch_is_three_keys`).
+- [ ] Cursor stays on its row when an answer lands above it (`cursor_stays_on_its_row_when_an_answer_lands`); a cursor on `reading…` moves to the first runnable row that lands; `⏎` on a placeholder does nothing (`cursor_on_placeholder_moves_to_first_landed_row`).
+- [ ] `nothing matches · esc close` only after every asked source answered empty (`nothing_matches_waits_for_every_source`).
+- [ ] `match_names`: segment start first, local before remote, newer tip, totals right, stops when asked (`names_rank_and_total`, `names_stop_when_cancelled`).
+- [ ] **Journeys, from the fence.** Each walk is a pty test that contains its fence id as a string literal, reads the
+      count with `m5_walk::parse_counts` from the note's `journey-counts` fence, replays the keys and fails if the key
+      list is longer (so `accept-m8`'s `WALKS` can map it): `seek-branch` 3 (`⌃P` name `⏎`, cursor on the tip, HEAD
+      unchanged: `walk_seek_branch`); `seek-tag` 3 (`walk_seek_tag`); `rerun-recent` 2 (`⌃P` `⏎` after one palette
+      run: `walk_rerun_recent`). Start state: graph, cursor on HEAD.
 - [ ] Click on a branch row seeks, as `⏎` (`click_on_branch_row_seeks`; 11b's mouse path).
-- [ ] Perf: `scripts/perf-palette.sh` (release; 50k-ref fixture, built under the scratch dir if none exists) → `docs/perf/m8-palette.txt`: loop time per key p50/p95/max from the G-trace frame trace, and key → names answer p50/p95. p95 per key < 16 ms. Summary lines only in context; no fast-tier timing assert.
-- [ ] Capture `docs/shots/m8-palette-find-120x36.txt`: query `rebase`, groups ACTIONS, BRANCHES, RECENT (§1.6). **Colour unverified.**
+- [ ] Perf: `scripts/perf-palette.sh` (release; 50k-ref fixture, built under the scratch dir if none exists) → `docs/perf/m8-palette.txt`: loop time per key p50/p95/max from the G-trace frame trace; `⌃P` → BRANCHES landed p50/p95; key → names answer p50/p95. p95 per key < 16 ms. Summary lines only in context; no fast-tier timing assert.
+- [ ] Capture `docs/shots/m8-palette-find-120x36.txt`: query `rebase`, groups ACTIONS, BRANCHES, COMMANDS RUN RECENTLY (§1.6); and `docs/shots/m8-palette-empty-120x36.txt`: empty box after one run (recent group, ACTIONS, placeholder). **Colour unverified.**
 
 ## Touches (each checked in the report)
 `update/palette.rs` (`PaletteState`, `run`, `rows`, `edit`, `view`), `AppState` (new `palette_recent`), update events
-(`Product::PaletteNames` route beside `SwitchList`), `jobs` runner + new `jobs/palette.rs`, `graft-ui/src/palette.rs`
-(`RowKind`, row drawing; 11b's `palette_row_at` must count the new rows), empty state (`listing` unchanged — no find
-groups there; grep), 11's captures (empty RECENT → unchanged; re-run), `seek_to` callers (map, picker: unchanged),
-keymap (no key), journal/undo (none: a seek is not an operation), MAP.md graft + graft-ui.
+(`Product::PaletteBranches`, `Product::PaletteNames` routes beside `SwitchList`), `jobs` runner + new
+`jobs/palette.rs`, `graft-ui/src/palette.rs` (`RowKind`, row drawing, placeholder; 11b's `palette_row_at` must count
+the new rows), the `C` picker (`switch_list` job and `filter_switch_rows` unchanged — grep; ordering test only reads
+it), empty state (`listing` unchanged — no find groups there; grep), 11's captures (empty box now draws the
+placeholder → re-run and re-shoot), `seek_to` callers (map, picker: unchanged), keymap (no key), journal/undo (none: a
+seek is not an operation), the note's fence (counts read, not edited), MAP.md graft + graft-ui.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc` — workspace-wide.
 
 ## Size
-One context, ~60k tokens.
+One context, ~65k tokens.

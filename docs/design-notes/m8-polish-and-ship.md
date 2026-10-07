@@ -7,6 +7,7 @@ M8 row, §5, §9; research `scroll-smoothness.md`, `big-repo-scroll.md`, `themes
 `first-run.md`, `install-docs.md`; `docs/naming-research.md`; field notes :46, :48–50, :82–86 and 2026-10-02; the
 prototype (`prototypes/m8-polish-and-ship/README.md`, `docs/shots/m8-proto-*.txt`); `real-vs-mockup.md`; MAP.md of
 graft, graft-ui, graft-term (2b: also graft-ops, graft-git headings). No source read.
+2026-10-07, palette find (steps 3–4): `palette-find.md` → Prior art "Find" rows, J26–J32, P-find-1/2 (Where I'd differ).
 
 **Promise (M8):** *"It stays smooth on your biggest repo, looks like the mock-up, installs with one command, and teaches
 itself from inside the app."* The acceptance walk proves it: held-key and wheel tails on MONOREPO, every journey at or
@@ -24,6 +25,7 @@ with no shell.
 | Looks like the mock-up | "the prototype looks better than the product" (field notes 2026-10-02); six differences in `real-vs-mockup.md` | daily |
 | Learn the app | "He did not know dragging existed … I'll definitely need a tutorial" (:46) | once, then rare |
 | Keys he can't remember | "`?` does nothing", `⌃P` and `:` too (M6/u2; `real-vs-mockup.md` r04); PROMPT §9: 7 daily tasks "using only the hint bar and the command palette" | daily |
+| Find a branch, tag, commit or file by name | no field note in his words yet; DESIGN §1.6 (one box over actions, branches, tags, files, commits); 1,323 refs on his work repo (row 1) | daily (assumed, unmeasured) |
 | Readable in his theme | cursor row unreadable in dark, twice (:44, :48); 3.04:1 (:50); text on it 4.28:1 (M5/44); branch label on it "dim magenta on grey, hard to read" (real-vs-mockup 6) | daily, dark |
 | Install like a real tool | runs a build from this repo today | once |
 | Two daily rulings | "pull with nothing new → cursor stays; `a` on HEAD with nothing staged → reword" (:86) | daily |
@@ -70,6 +72,17 @@ with no shell.
 | Reword HEAD with a branch on it (2c) | lazygit reword, no preview (`stacked-branches` §1.9) | M7's rule: previewed when a branch is built on HEAD (keymap `a` row, :219) | T (have) |
 | **Fork off a rewritten commit** (2c, approved 2026-10-02) | jj: every descendant follows (`stacked-branches` §1.4); branchless `restack` + skip-on-conflict (§1.3); Graphite `sync` skips conflicting (§1.2) | follows when its replay forecasts clean, else stays and says why (ADR-0059, accepted) | T descendants · T skip-on-conflict (for forks only) |
 | **Quit while a write runs; a write that hangs** | `docs/research/quit-while-git-runs.md` (2026-10-04): no tool found waits, then offers a stop after a delay, and says what state it leaves. JetBrains confirms on exit with tasks running (wording unconfirmed); Magit stops a process in two stages, interrupt then kill (`k`); lazygit, VS Code and gitui hang on a stuck hook with no way out but killing the app (lazygit #3557, vscode #171353, gitui #2546) — the dominant complaint | wait for it, then quit; after 10 s `q` offers to stop it half-way; a signal gives the terminal back first, then waits ≤ 60 s (keymap §2.2) | T confirm on exit (JetBrains) · T interrupt-then-kill order (Magit: SIGTERM, SIGKILL after 2 s) · **I** the 10 s offer and the wait-then-quit: nothing found fits. Argued from ux-principles §3.1 (where he lands), heuristic 4 (one box, one `y`) and the measured half-rebase (13b NOTES). The research flagged "leaves the merge paused" as unverified; 13b's review-fix walk found it holds for a rebase and **not** for a merge stopped in its `pre-merge-commit` hook (ticket 13b NOTES) |
+| **Find: one box, grouped** (2026-10-07) | JetBrains Search Everywhere: one entry, results in tabs; its Git tab is opt-in (`palette-find` "JetBrains") | one `⌃P`, groups in §2.12's fixed order, a header each, ≤ 8 rows | T grouped · R opt-in Git tab: git objects are the point |
+| Find: empty box | JetBrains opens on recent files (same); VS Code: Question | `COMMANDS RUN RECENTLY`, then `ACTIONS`; find groups once he types (P-find-1) | T, narrowed to §2.12's own "recently run commands" |
+| Find: match rule | lazygit #3373: fuzzy too loose at 4,000 branches, asks substring per word (`palette-find` "lazygit") | `fuzzy_score`: every word a substring, segment start first (m8/11) | T (have) |
+| Find: branch order | Magit #2872: alphabetical is wrong, asks `--sort=-committerdate`; MRU asked on the list (`palette-find` "Magit") | score, local before remote, newest tip, name — the `C` picker's rule (`switch_list`), so one query orders alike in both (H4) | T newest tip · R MRU: a reflog read per open; `C` already offers `↩ before` |
+| Find: slow sources | JetBrains lags waiting for every contributor; the workaround is not waiting (IJPL-131511) | each group lands on its own; `reading…` / `searching…` in its place (H1) | T |
+| Find: typing on a big repo | per-key cancel: Question, no source (`palette-find` "Big repos") | each edit cancels the last job; the loop never scans; a stale answer is dropped; shown rows re-filtered | **I** — nothing documented fits; PROMPT §6's 16 ms at 50k refs |
+| Find: commits, how far | lazygit #3279 wants git-side search, not loaded rows; GitUp searches the whole repo | `/`'s walk over every ref, first 9 hits, then `more · / searches all of history` | T (lazygit ask, GitUp) — settles the study's Question |
+| Find: commit fields | GitLens: message, `@author`, `#sha`, `:path`, `~patch` | subject, author, body, sha prefix (`/`'s `Query`); paths → FILES | T message/author/sha · R `~patch`: a diff per commit, `/` doesn't either |
+| Find: kind prefixes | VS Code `>` `@` `#` `:`; GitLens `@` `#` `:` | none: headed, capped groups narrow by sight | R — recall, not recognition (UX H6); `:` already opens the palette (§2.12) |
+| Find: what `⏎` does | Sublime Merge "Navigate to branch", forgit `gcb`/`gsw`: verb first, then pick | object first: `⏎` puts the cursor on it; the graph's own keys act; a file opens its history | R verb-first · T lazygit's search-not-filter reason: commits before and after stay in view |
+| Find: files | VS Code Quick Open by name; lazygit #1525 asks a fuzzy file picker for history | FILES from `ls-files`; `⏎` opens its history (`F`) | T |
 
 **Dark pick: B** (`docs/shots/m8-proto-4a-dark-a-b.txt:21-24`): cursor row vs ground **3.14** (A 3.05, floor 3.0); text
 on cursor row **5.14** (A 4.61, floor 4.5); muted text on ground **6.95** (A 6.15, floor 4.5). Blue lane on cursor row
@@ -80,6 +93,8 @@ text/bg 4.5 · text/selection 4.5 · selection/bg 3.0 · text-muted/bg **4.5** (
 **Pipeline check after 2b.** Prior art: every new aspect has a row. Journeys: every id in the fence has an owning spec
 and a walk (`accept-m8.md`). Prototype (step 5) ran, scenes 1–4 shot; scene 1's feel (blind 1/2, wheel step) still
 his — the wheel step stays per event until then. Satisfied.
+Palette find (2026-10-07): study and rows done; no prototype — find adds rows to 11's built widget, no new screen or
+key (conductor: confirm that reading of step 5).
 
 ## Journeys (steps = keys + decisions, UX §1.3; start: his repo, graph, cursor on HEAD)
 
@@ -110,6 +125,13 @@ his — the wheel step stays per event until then. Satisfied.
 | 23 | Find the cursor row, read its branch | read the `▸` row | 0 | Sublime Merge 0 |
 | 24 | Quit while a merge or rebase runs | `q` `y`, then nothing: it quits when the write lands | 2+1 | JetBrains ~2, confirm on exit (`quit-while-git-runs`; wording unconfirmed) |
 | 25 | Quit while a git hook hangs | `q` `y`, wait 10 s, `q` `y` | 4+2 | lazygit, VS Code, gitui: no way out but killing the app (`quit-while-git-runs`) |
+| 26 | Look at a branch, not switch to it | `⌃P` name `⏎` | 3+1; cursor on its tip, HEAD unchanged | Sublime Merge 4 ("Navigate to branch"), JetBrains 3–4, lazygit 4 (`palette-find` Journeys) |
+| 27 | Jump to a tag | `⌃P` tag `⏎` | 3+1 | JetBrains 4 (Git tab) |
+| 28 | Commit by sha prefix | `⌃P` sha `⏎` | 3+1 | Sublime Merge 4 (`navigate_to_commit`), GitLens 4 |
+| 29 | Commit by subject words | `⌃P` words `⏎` | 3+1; +1 (`↓` run, UX §1.3) when a group above also matches | forgit 3, JetBrains/GitLens 4, lazygit 4+ |
+| 30 | Open a file's history | `⌃P` path `⏎` | 3+1 | lazygit 3 (`⌃S`), JetBrains/VS Code 4+ |
+| 31 | Run again what he ran from the palette | `⌃P` `⏎` | 2+1 (P-find-1; 3+1 by §2.12's order) | VS Code 3 (J6); JetBrains: recent files only |
+| 32 | Switch to yesterday's branch | `C` name `⏎` | 3+1 (M7's picker, newest first; not walked here) | forgit 3, JetBrains 3–4, Sublime Merge 4, lazygit 4 |
 
 **J19 is 4, not 3 (2c).** The 2b row counted the field-note case (:86) as the plain amend. But `a` on HEAD with
 nothing staged was refused only when a branch is built on HEAD (ticket 14 item 1) — the case where other branches
@@ -118,6 +140,14 @@ his M7 "all yes"). Kept: M5's promise and UX §2 H5 (see the result before confi
 the editor); H4 (every history-changing preview confirms with `y`, field notes :58). UX §3.5 (undo permits fewer
 confirms) argues for 3, but the preview here shows something nothing else on screen does. The build is right; only the
 count was wrong. Nothing built on HEAD stays 3, no preview, not in the fence (M7's path, unchanged by M8).
+
+**Find rows judged (UX §1.3, §5).** The typed text is the target: 1 key, and nothing could pre-select it, so 3 is
+the floor for a named find (not 1 at any cost). The `⏎` after it is +1 decision: he checks the top row. Every find
+row is at or under the best tool's count — J26–J28 one under (no "which command" step: UX §5 item 2, one box);
+J29/J30 equal to the best, which needs one tool per task (forgit `glo`, lazygit `⌃S`); J31 one under VS Code, by
+pre-selecting the likely answer (UX §5 item 3, Hick §1.4). Seek, not switch (J26): switching stays on `C` (J32), so
+`⏎` on a branch row is never a write and needs no preview (UX §3.5, H5). J29's `↓` costs one motion command; its
+walk's fixture has no other group matching, as stated in the fence.
 
 **Where he lands** (UX §3.1):
 
@@ -141,6 +171,12 @@ count was wrong. Nothing built on HEAD stays 3, no preview, not in the fence (M7
 | SIGTERM / SIGHUP while a write runs | terminal given back at once; the write lands within 60 s → exits; else it is stopped half-way, with the same line; a second signal stops it at once |
 | `q`, git stopped mid-operation, nothing running | quits, no box; next launch keeps the banner: continue or abort (keymap §2.6a, 2b) |
 | On-disk rename can't finish | old names stay in force; `rename: still using the old names · <reason>` (2b) |
+| Palette branch, tag or commit `⏎` | palette closed, graph focused, cursor on the commit, detail follows; not laid out → `jumping` (`Esc` withdraws) |
+| Palette file `⏎` | that file's history place at HEAD; `Esc` → graph, cursor where it was before `⌃P`; not in HEAD → palette closed, `<path> isn't committed yet · no history` |
+| Palette `⏎` on `reading…` / `searching…` | nothing; the cursor moves to the first real row when one lands (it was on the placeholder) |
+| Palette `Esc`; nothing matches | graph, cursor unchanged; `nothing matches · esc close` (11) only once every group has answered |
+| A find source fails | its group reads `branches: <reason>` / `files: <reason>` / `commits: search failed: <reason>`, muted; other groups work (H9) |
+| `more · / searches all of history` | palette closed, `/` running for the query, `n`/`N` step (as `/`'s `⏎`) |
 
 ```journey-counts
 # id                          keys  # decisions · best tool · the keys
@@ -167,6 +203,12 @@ reword-head                   4     # +2 · lazygit 2–3 (no preview) · a <edi
 undo-see-result               1     # +0 · GitUp 1 · u
 quit-while-write              2     # +1 · JetBrains ~2 · q y (quits when the write lands)
 quit-stuck-write              4     # +2 · lazygit/VS Code/gitui: kill the app · q y … 10 s … q y
+seek-branch                   3     # +1 · Sublime Merge 4, JetBrains 3–4 · ⌃P <name> ⏎ (HEAD unchanged)
+seek-tag                      3     # +1 · JetBrains 4 · ⌃P <tag> ⏎
+seek-commit-sha               3     # +1 · Sublime Merge 4, GitLens 4 · ⌃P <sha prefix> ⏎
+seek-commit-words             3     # +1 · forgit 3, JetBrains 4 · ⌃P <words> ⏎ (fixture: no other group matches)
+file-history                  3     # +1 · lazygit 3 · ⌃P <path> ⏎
+rerun-recent                  2     # +1 · VS Code 3 · ⌃P ⏎ (P-find-1; 3 if declined)
 ```
 
 Not walked in the pty (a person's step, a TESTING.md row): rebind (5+1), fix a colour (2+1), install (2), man (1).
@@ -287,6 +329,15 @@ pub struct PaletteView { pub mode: PaletteMode, pub query: FieldView, pub groups
     pub cursor: usize, pub warnings: Vec<SanitizedText> }
 pub fn fuzzy_score(query: &str, text: &str) -> Option<u32>;        // one matcher (graft-core or where the scout says)
 
+// graft::update::palette + jobs::palette (G-palette find, 2026-10-07; full shapes in specs 12 and 12b)
+pub(crate) enum PaletteTarget { Action(ActionId), App(AppAction), Note, Seek(Oid), More(FindGroup), File(u32) } // Copy
+pub(crate) enum ReadOnce<T> { NotAsked, Reading(JobId), Read(Arc<T>), Failed(String) } // one read per ⌃P open
+pub(crate) fn match_names(req: &NamesRequest, stop: &dyn Fn() -> bool) -> Option<NameHits>;     // branches, tags, files
+pub fn first_hits(store: &RepoStore, query: &Query, limit: usize, stop: &dyn Fn() -> bool)
+    -> Result<Vec<CommitHit>, String>;                                                           // graft::search, `/`'s walk
+// graft-git::status: `tracked_paths(repo, stop) -> Result<TrackedPaths, StatusError>` (12b); BRANCHES read
+// `graft_git::switch_refs` (unchanged) on a job.
+
 // graft-ops::tour (G-tour) — never touches his repo; TourTask is pub (graft words the card)
 pub struct PracticeRepo { pub root: PathBuf, pub work: PathBuf, pub remote: PathBuf }
 pub fn build_practice_repo(under: &Path) -> Result<PracticeRepo, TourError>;
@@ -341,6 +392,22 @@ preview first (ADR-0059, accepted). Replaces m7/37's `left behind`. Trade-off as
 rebase afterwards, vs. a branch he didn't name moving (shown before `y`, undone by one `u`; a conflicting, pushed or
 elsewhere-checked-out one stays, in words). Specs `fork-follows-engine.md` and `fork-follows-preview-words.md` stand.
 
+Palette find, **proposed 2026-10-07, not decided** (the conductor takes them to him):
+- **P-find-1. The empty `⌃P` box.** §2.12 opens it on "actions, then branches, tags, files, commits, then recently run
+  commands". Proposed: empty → `COMMANDS RUN RECENTLY` first, then `ACTIONS`; branches, tags, files and commits only
+  once he types; the empty field reads, muted, `type to find actions, branches, tags, files, commits`. Why: JetBrains
+  opens on recent (`palette-find` "JetBrains"); UX §1.4 order by likelihood; J31 2 keys, not 3; eight branches, tags,
+  files and commits nobody asked for are noise on an empty box (H8). Trade-off: the box no longer *shows* that refs
+  are findable — the placeholder *says* it (H6); `⌃P ⏎` reruns the newest command (it runs as its key would, preview
+  and all). Declined → §2.12's order on an empty box, find groups showing their first rows for the empty query (the
+  same jobs), J31 = 3.
+- **P-find-2. The recent group's rows.** Header stays §1.6's `COMMANDS RUN RECENTLY` (not spec 12's earlier
+  `RECENT`: §1.15 already calls the repo list `RECENT`, and the palette opens over it — one word, one meaning, H4).
+  §1.6's sample row `git rebase main` (a command with its argument) is **not** built: a row is the action row as the
+  M8 paragraph of §1.6 draws it (key, label, config id), and `⏎` asks the argument again. Why: §2.12's `Enter` runs
+  "as its key would"; a stored argument makes a rerun a different action from the key's. Trade-off: rebase onto main
+  again is `⌃P ⏎` and pick `main`, not `⌃P ⏎`.
+
 ## New UI
 
 - Chrome and cursor row: DESIGN §1.0. Empty state: §1.15. `?`: §1.16. Palette rows: §1.6.
@@ -350,7 +417,8 @@ elsewhere-checked-out one stays, in words). Specs `fork-follows-engine.md` and `
   `╭ practice 3 of 8 · undo that commit ──── esc leave ╮` / `│ u takes back the last thing you did — nothing is lost
   ✓ stage ✓ commit · undo │`. Ticks by doing; < 100 cols drops the ticks; claims no key but `Esc`.
 - **Palette sources** (`⌃P`): branches/tags/commits `⏎` seek the cursor (never switch — `C` does); files open history
-  (`F`); RECENT = palette actions run this session. ≤ 8 rows per group, `+N more`.
+  (`F`); `COMMANDS RUN RECENTLY` = palette actions run this session (P-find-2; was `RECENT`). ≤ 8 rows per group,
+  `+N more`. Empty box: P-find-1. A source still reading draws one muted `reading…` / `searching…` row in its group.
 - Bar doorway becomes `? keys`; `.` stays bound as an ordinary candidate `. actions`.
 - (2c) **Fork rows** in every rewrite/rebase preview and the rewrite editor's right pane: see "Pass 2c".
 
@@ -378,7 +446,7 @@ elsewhere-checked-out one stays, in words). Specs `fork-follows-engine.md` and `
 | 6a | G-keymap table | graft-ui keymap, graft config + update entry | **Fable (sig)** | `keymap-table-and-translate.md` |
 | 6b | G-keymap spell | graft-ui hints + labels, graft words | Opus | `keymap-spell-from-the-table.md` |
 | 7a | G-palette help | graft-ui palette, graft update | Opus | `palette-help-and-actions.md` |
-| 7b | G-palette find | graft update::palette, search | Opus | `palette-find-anything.md` |
+| 7b | G-palette find | graft update::palette, jobs, search; graft-git status (12b) | Opus | `palette-find-anything.md`, `palette-find-commits-and-files.md` |
 | 8 | G-bar | graft-ui hints, graft view | Opus | `bar-content-pass.md` |
 | 9a | G-theme | graft-ui theme, graft config + session | Opus | `theme-overrides.md` |
 | 9b | G-look polish | graft-ui theme + rows, graft view/config | Opus | `look-polish-rows.md` |
