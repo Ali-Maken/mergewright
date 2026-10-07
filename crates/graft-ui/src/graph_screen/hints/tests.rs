@@ -364,6 +364,7 @@ fn the_divider_hint_follows_the_pane_not_the_context() {
             unmerged: false,
             live: None,
             tab: TabWord::Graph,
+            over_overlay: false,
         },
     ] {
         // Wide enough for the whole list: since R1 resize is the last of a
@@ -479,6 +480,7 @@ fn a_pane_hints_only_its_own_keys() {
             unmerged: false,
             live: None,
             tab: TabWord::Graph,
+            over_overlay: false,
         },
         Divider::Hidden,
         200,
@@ -492,6 +494,7 @@ fn a_pane_hints_only_its_own_keys() {
             unmerged: true,
             live: None,
             tab: TabWord::Graph,
+            over_overlay: false,
         },
         Divider::Hidden,
         200,
@@ -1167,6 +1170,7 @@ fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
             unmerged: false,
             live: None,
             tab: TabWord::Graph,
+            over_overlay: false,
         },
         HintContext::Journal,
     ] {
@@ -1658,6 +1662,7 @@ fn unmerged_rows_lead_with_resolve() {
         unmerged: true,
         live: None,
         tab: TabWord::Graph,
+        over_overlay: false,
     });
     assert_eq!(
         hints_text(&unmerged),
@@ -1802,6 +1807,7 @@ fn operation_live_leads_with_the_way_back() {
             unmerged: true,
             live: None,
             tab: TabWord::Graph,
+            over_overlay: false,
         },
     ] {
         let context = HintContext::OperationLive {
@@ -2135,6 +2141,7 @@ fn the_files_list_bar_names_where_tab_goes() {
                     unmerged,
                     live,
                     tab,
+                    over_overlay: false,
                 });
                 let text = hints_text(&list);
                 assert!(text.ends_with(word), "{unmerged} {live:?}: {text:?}");
@@ -2405,6 +2412,7 @@ mod pane_space {
             unmerged: false,
             live: None,
             tab: TabWord::Graph,
+            over_overlay: false,
         };
         assert!(keys(&changes).contains(&("space", "stage")));
         let context = pane(changes, true, false, false);

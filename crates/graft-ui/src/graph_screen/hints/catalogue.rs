@@ -184,6 +184,7 @@ fn blame_forms() -> Vec<HintContext> {
             unmerged: false,
             live: None,
             tab: TabWord::Graph,
+            over_overlay: false,
         },
     ];
     forms.extend(
@@ -213,20 +214,23 @@ fn banner_forms() -> Vec<HintContext> {
 
 /// Every [`HintContext::ChangesPane`] form with nothing live: `⇥ diff` from
 /// the file list, `⇥ graph` from the diff (no banner to go to), each over
-/// `unmerged`.
+/// `unmerged`, and each over an overlay or not (m8/09e: under the Map,
+/// journal or stash list `live` is not read, so `None` stands for all).
 fn changes_pane_forms() -> Vec<HintContext> {
-    [TabWord::Graph, TabWord::Diff]
-        .into_iter()
-        .flat_map(|tab| {
-            [false, true]
-                .into_iter()
-                .map(move |unmerged| HintContext::ChangesPane {
+    let mut forms = Vec::new();
+    for over_overlay in [false, true] {
+        for tab in [TabWord::Graph, TabWord::Diff] {
+            for unmerged in [false, true] {
+                forms.push(HintContext::ChangesPane {
                     unmerged,
                     live: None,
                     tab,
-                })
-        })
-        .collect()
+                    over_overlay,
+                });
+            }
+        }
+    }
+    forms
 }
 
 /// Every live-operation form of [`HintContext::ChangesPane`]: each
@@ -249,6 +253,7 @@ fn changes_pane_live_forms() -> Vec<HintContext> {
                     unmerged,
                     live: Some(c),
                     tab,
+                    over_overlay: false,
                 });
             }
         }

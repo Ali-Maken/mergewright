@@ -97,6 +97,12 @@ pub enum HintContext {
         /// the file list, the banner or the graph from the diff. Read off
         /// the one reading of the cycle (`graft::update::banner::tab_target`).
         tab: TabWord,
+        /// The Map, the journal or the stash list is up behind the pane
+        /// (m8/09e, 11b row 553): the bar is the pane's list minus what the
+        /// overlay swallows — `c` falls through to the graph, which the
+        /// overlay's `shown_key` takes, so no `c` hint in any form. Set only
+        /// by `graft`'s `view::rows::overlay_context`.
+        over_overlay: bool,
     },
     /// The undo journal browser has focus (overlay; draws its own footer
     /// today — reserved for the `?` help overlay, M8).

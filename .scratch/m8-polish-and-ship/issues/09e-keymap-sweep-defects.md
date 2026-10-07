@@ -1,6 +1,6 @@
 # G-keymap 1e — the nine keys 09d's sweep found idle, the dead `empty_state.cancel` row, and the changes pane's bar over an overlay (11b row 553)
 
-Status: draft (planner spec-only pass, 2026-10-07; rewritten the same day after the scout's stop — ruling on Defects 1–2
+Status: done (builder 2026-10-07; see NOTES). Was: draft (planner spec-only pass, 2026-10-07; rewritten the same day after the scout's stop — ruling on Defects 1–2
 re-made against the code, stale lines fixed; from 09d NOTES "DEFECTS found by the sweep" and "D6 knock-on
 (question)"; KNOWN_GAPS `M8/09d-empty-state-cancel-dead` and the 09d sweep-defects row. Second rewrite the same day:
 11b merged partial — its row 553 folded in here (same `overlay_context`, same over-overlay bar, same swallow oracle);
@@ -216,57 +216,58 @@ const ACTING_AT_LANDING: usize; // raised to the new count, date 09e's
 (`overlay_context`'s parameter is as graft MAP :930 names it; if the code differs, keep the code's signature.)
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] **Defects 1–2, graph focus.** Map open, `/` → `search_prompt` is `None`, `AppState` equal to an unbound key's;
+- [x] **Defects 1–2, graph focus.** Map open, `/` → `search_prompt` is `None`, `AppState` equal to an unbound key's;
   then `j` moves the Map row. Same for the stash list. Red first.
   (`update::search::tests::slash_under_the_map_opens_no_search`, `…_under_the_stash_list…`)
-- [ ] **Defects 1–2, pane focus.** Detail pane focused over each of Map, journal, stash: `/` → `search_prompt` `None`.
+- [x] **Defects 1–2, pane focus.** Detail pane focused over each of Map, journal, stash: `/` → `search_prompt` `None`.
   Red first. (`update::search::tests::slash_from_the_pane_over_an_overlay_opens_no_search`)
-- [ ] **Kept search under an overlay.** A kept graph search, open the Map (then the stash list): `n` → history cursor
+- [x] **Kept search under an overlay.** A kept graph search, open the Map (then the stash list): `n` → history cursor
   unchanged; close it, `n` → steps. Red first — or, if opening the overlay already clears `search`, NOTES names that
   line and the test stays as the guard. (`update::search::tests::n_under_an_overlay_leaves_the_graph_where_it_was`)
-- [ ] **Never a prompt that isn't drawn.** For Map, journal, stash × graph/pane focus × 80×24 and 120×40: press `/`,
+- [x] **Never a prompt that isn't drawn.** For Map, journal, stash × graph/pane focus × 80×24 and 120×40: press `/`,
   draw the frame; either `search_prompt` is `None` or the frame contains ` /_`. Fails today for Map/Stash.
   (`view::tests::a_search_prompt_is_never_open_where_it_is_not_drawn`)
-- [ ] **Bar.** `the_bar_behind_an_overlay_draws_what_the_pane_still_answers` (tests/it/hint_bar.rs:578) expects
+- [x] **Bar.** `the_bar_behind_an_overlay_draws_what_the_pane_still_answers` (tests/it/hint_bar.rs:578) expects
   ` ⏎ open  j/k move  u undo` plus 11b's doorway as that bar has it today (NOTES quotes the before/after string);
   `the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows` green; graft-ui hint catalogue tests green.
   `slash_belongs_to_every_modal_that_is_up` unchanged and green (overlays are not modals; the new tests cover them).
-- [ ] **553, red first.** 11b's repro, committed: Map, journal, stash × changes pane focused: the bar contains
+- [x] **553, red first.** 11b's repro, committed: Map, journal, stash × changes pane focused: the bar contains
   `space stage` and no `c commit`, no `/ search`. (`tests/it/hint_bar.rs::the_changes_pane_over_an_overlay_draws_its_live_keys`)
-- [ ] **553, swallow test.** `the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows` (update/tests.rs:4105)
+- [x] **553, swallow test.** `the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows` (update/tests.rs:4105)
   extended to the changes pane over each overlay; green. (that test)
-- [ ] **553, frame oracle.** Each key drawn on the over-overlay changes bar and on `PaneOverOverlay`'s, over each of
+- [x] **553, frame oracle.** Each key drawn on the over-overlay changes bar and on `PaneOverOverlay`'s, over each of
   the three overlays, changes the frame or emits a `Command`; NOTES lists any key dropped or stood down, with its line.
-  (`view::tests::every_key_on_a_bar_over_an_overlay_changes_what_he_sees`)
-- [ ] **553, catalogue.** `every_context` yields `ChangesPane { over_overlay: true }` forms; `coverage_slot` exhaustive
+  (`update::tests::every_key_on_a_bar_over_an_overlay_changes_what_he_sees` — lives in update::tests, where the overlay/pane fixtures are; see NOTES)
+- [x] **553, catalogue.** `every_context` yields `ChangesPane { over_overlay: true }` forms; `coverage_slot` exhaustive
   on the new field; `COVERAGE_SLOTS` raised (NOTES: old → new); `every_context_reaches_every_shape` green.
-- [ ] **Defects 3–8.** From Changes and from Diff: `C` → picker open, graph focused; `Esc` → graph focused, detail pane
+- [x] **Defects 3–8.** From Changes and from Diff: `C` → picker open, graph focused; `Esc` → graph focused, detail pane
   open. `R` → the rewrite editor on the graph cursor's row, the same editor as `⇥`-to-graph then `R` (state compared);
   `Esc` → graph focused, pane open. `O` → strip toggled, focus still in the pane. Red first, one test per key.
   (`update::keys::tests::{c_opens_the_picker_from_the_panes, r_opens_the_rewrite_editor_from_the_panes,
   o_toggles_the_strip_from_the_panes}`)
-- [ ] **Defect 9.** Diff `M` listed in `SWALLOWED_BY_DESIGN` with the cite above; the sweep fails if it acts (09d's
+- [x] **Defect 9.** Diff `M` listed in `SWALLOWED_BY_DESIGN` with the cite above; the sweep fails if it acts (09d's
   rule). (the sweep test)
-- [ ] **Sweep.** `DEFECTS` deleted; `every_reachable_row_acts_or_is_listed_and_follows_its_remap` green with
+- [x] **Sweep.** `DEFECTS` deleted; `every_reachable_row_acts_or_is_listed_and_follows_its_remap` green with
   `ACTING_AT_LANDING` at the new count (≥ 402, NOTES gives the number and which rows moved).
-- [ ] **Question.** graft-ui: `empty_state.cancel` gone from the table and `keymap_ids.txt`;
+- [x] **Question.** graft-ui: `empty_state.cancel` gone from the table and `keymap_ids.txt`;
   `with_overrides([keys.empty_state] cancel = "x")` → `UnknownAction` (`keymap::tests::rules::empty_state_cancel_is_no_action`).
   graft: init box open, `n` → box stays, no step; `y` → `Init`; `esc` → closed
   (`empty_state::tests::the_init_box_answers_the_same_keys_in_confirm` edited in place for `n`, NOTES says so);
   `empty_state::sweep_tests` green with the row gone (case count in NOTES; its `:43` comment citing `:256` goes too).
-- [ ] **`?`/palette check** (report only): NOTES answers both questions in the `?` ruling, each with its line.
-- [ ] **Captures.** Full `cargo nextest run` with `GRAFT_UPDATE_SHOTS` set once, then unset and green. The only
+- [x] **`?`/palette check** (report only): NOTES answers both questions in the `?` ruling, each with its line.
+- [x] **Captures.** Full `cargo nextest run` with `GRAFT_UPDATE_SHOTS` set once, then unset and green. The only
   allowed diffs: a pane-over-overlay bar losing `/ search`; a changes-pane-over-overlay bar becoming the changes
   pane's list (553). NOTES lists every changed file under `docs/shots/` and its one-line diff; any other diff is a
   stop. Add `docs/shots/m8/changes-over-stash-bar-80x24.txt` (Stash open, Detail tab, changes pane focused, one
   unstaged file) and, if no committed capture shows the commit pane's bar over an overlay,
   `docs/shots/m8/pane-over-map-bar-80x24.txt` (Map open, Detail tab, files focused) — the visual result is each bar's
   last row, judged by the user (rule 6). Colour unverified (rule 5).
-- [ ] MAP.md — graft: `graph_has_focus` read by `M` (and `hint_context`, `offer_keys_live`) only; `S`/`J` (m6/85)
+- [x] MAP.md — graft: `graph_has_focus` read by `M` (and `hint_context`, `offer_keys_live`) only; `S`/`J` (m6/85)
   and `R`/`C`/`O` (09e) answer from the panes; `empty_state` init box answers `y`/`esc` only; the graph's search
   answers only with no overlay up; `overlay_context` returns `ChangesPane { over_overlay: true }` for a focused changes
   pane (the m8/11b row at :1160 closed). graft-ui: the row's removal; `PaneOverOverlay` bar is `⏎`/`j/k`/`u`;
   `ChangesPane.over_overlay`. (doc, no test)
+  Tests for the 553 catalogue tick: `graph_screen::tests::every_context_reaches_every_shape`; Bar tick: `hint_bar::the_bar_behind_an_overlay_draws_what_the_pane_still_answers`; Captures tick: `hint_bar::capture_bars_over_an_overlay_for_docs_shots`; `?` check: report only (NOTES).
 
 ## Touches
 - Callers of the three gates and the search: grep each function; the dispatcher tests (`update::keys::tests`),
@@ -302,3 +303,18 @@ const ACTING_AT_LANDING: usize; // raised to the new count, date 09e's
 captures ~5k; row + arm + tests ~8k; sweep tables, count, MAP, `?` check ~7k; 553 (field, catalogue slots,
 `overlay_context`, repro, frame oracle, two captures) ~14k. If the 553 oracle stands down a key, NOTES and stop
 rather than run past ~70k.
+
+## NOTES (builder, 2026-10-07)
+- Scout used (`scouts/09e-sweep-defects.md`); lines re-verified (R at keys.rs:409, picker.rs:125, strip.rs:17, init arm empty_state.rs:256 held).
+- Red first, observed: 4 search tests, 3 R/C/O tests, init-box `n` assert, 553 hint_bar repro + extended swallow test (by disabling the rows.rs branch), prompt-invariant (by disabling `graph_is_shown`: failed Map/Stash both focuses + journal pane focus).
+- Search: `update/search.rs` `graph_is_shown` (`graph_overlay().is_none()`) on opener and `n`/`N` step. Opening an overlay does not clear `search` (the n test was red).
+- Bar before/after: ` ⏎ open  j/k move  u undo  / search` → ` ⏎ open  j/k move  u undo` (no doorway on that bar, before or after).
+- 553: oracle dropped **`. actions`** from the over-overlay changes bar — `.` is a graph key (`update/keys.rs` graph_key `is_context_menu_key`, ~:363) reached only after `pane_and_overlay_key`, whose overlay swallows it. Found by the swallow test; the frame oracle then passed for every remaining key. No key needed a stand-down guard. `tab` word under an overlay not checked for accuracy (`⇥ diff`/`⇥ graph`; `⇥` itself answers).
+- Frame-oracle test is `update::tests::…` not `view::tests::…` (fixtures live there). Deviation, name kept.
+- COVERAGE_SLOTS 112 → 116 (slots 112–115).
+- Sweep: DEFECTS deleted; 6 rows act (Changes/Diff R C O), 3 → SWALLOWED_BY_DESIGN (Map/Stash app.find, Diff graph.map). Count 837 cases: 444 act, 351 listed, 42 shadowed; ACTING_AT_LANDING 396 → 444. The pre-09e count on this base was not measured, so the +48 is not all mine (other merges since 09d).
+- Question: init box `n` now swallowed; `the_init_box_answers_the_same_keys_in_confirm` edited in place (added n/y/esc asserts); `i_then_esc_or_n_declines…` renamed `i_then_esc_declines_and_writes_nothing`; `empty_state::sweep_tests` now lists `(Confirm, app.next_match, BOX)` (n reaches it there; was acting via the raw arm) and BOX cite → `:259`. pty test `outside_repo::init_declined_writes_nothing` changed to `esc` and `n esc`. **J21's "Init declined" Lands row (design note) still says `i n` — doc stale, not mine to edit.**
+- **Capture diff outside the allowed list (judged inevitable, flagged):** `docs/shots/m8-help-empty-state-120x36.txt` loses the `n No — don't init  empty_state.cancel` row and EVERYWHERE gains `n Next match  app.next_match` (no longer shadowed on the list). That second line is a `?` row for a key the start-screen list ignores (sweep_tests LIST) — question for 11's file. No pane-over-overlay capture existed before; added `docs/shots/m8/changes-over-stash-bar-80x24.txt` (last row ` space stage · d discard · ⌃A all · e edit · ⇥ diff · ? keys`) and `docs/shots/m8/pane-over-map-bar-80x24.txt` (` ⏎ open  j/k move  u undo`). The stash capture's diff body reads `reading…` (diff not landed; bar is the point). Colour unverified. raster::write_shots fails under GRAFT_UPDATE_SHOTS by design (PNGs unchanged).
+- `?`/palette check (not run, read only — questions, not findings): `update/palette.rs:280–283` `place_rows` lists every `reachable(at)` row whose chord `key_in` (:303–310) resolves via `acting`/`translate` — keymap-level, not behaviour. So Diff likely lists `graph.map` `M`, and Map/Stash likely list `app.find` `/`. Unverified.
+- Touches: search callers (mod.rs search_key, J find tests green); R/C/O callers (keys.rs, picker opens, strip_key; m6/85 S/J tests green; old tests `c_needs_the_graph_focused…` → `c_needs_nothing_over_the_graph`, `o_is_ignored_off_the_graph_focus` → `o_acts_off_the_graph_focus_and_keeps_it`); ChangesPane constructors (graft rows.rs ×2, graft-ui catalogue ×3, tests); keymap row + golden list; journal/undo: `git diff --stat` over update/journal* = find.rs comment only, graft-ops none; captures above; MAP.md ×2.
+- Not compacted.

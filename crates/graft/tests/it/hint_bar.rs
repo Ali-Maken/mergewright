@@ -604,6 +604,148 @@ fn the_bar_behind_an_overlay_draws_what_the_pane_still_answers() {
     app.close();
 }
 
+/// The two bars over an overlay, captured for the user's eye (m8/09e, rule
+/// 6): the changes pane over the stash list (its own keys, no `c`, no `.`,
+/// no `/`), and a commit's file list over the Map (`⏎ open  j/k move  u
+/// undo`, no `/ search`). The bar is each frame's last row.
+#[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "two scenarios driven by real keys and the header each capture explains itself with"
+)]
+fn capture_bars_over_an_overlay_for_docs_shots() {
+    use graft_ui::detail::DetailFocus;
+
+    let scratch = repo();
+    let (app, state) = App::open(scratch.path());
+    let state = opened(&app, state);
+
+    // Changes pane, back to the graph, `S`, `⇥` to the Detail tab.
+    let mut changes = changes_pane(&app, state.clone());
+    for _ in 0..3 {
+        if changes.detail.focus == DetailFocus::Graph {
+            break;
+        }
+        changes = app.key(&changes, KeyCode::Tab);
+    }
+    let stash = app.key(&changes, KeyCode::Char('S'));
+    let changes_over_stash = app.key(&stash, KeyCode::Tab);
+    assert!(changes_over_stash.stash.shown && changes_over_stash.on_changes_pane());
+
+    // The tip's pane, back to the graph, `M`, `⇥` to its file list.
+    let tip = app.key(&state, KeyCode::Enter);
+    let mut tip = app.pump(tip, "the tip's detail", |state| state.detail.shown);
+    for _ in 0..3 {
+        if tip.detail.focus == DetailFocus::Graph {
+            break;
+        }
+        tip = app.key(&tip, KeyCode::Tab);
+    }
+    let map = app.key(&tip, KeyCode::Char('M'));
+    let files_over_map = app.key(&map, KeyCode::Tab);
+    assert!(files_over_map.map.shown && files_over_map.detail.focus == DetailFocus::Files);
+
+    let mut drifted = Vec::new();
+    for (name, state, what) in [
+        (
+            "changes-over-stash-bar-80x24.txt",
+            &changes_over_stash,
+            "the stash list is open and the changes pane (one edited file) has the keyboard \
+             on the Detail tab. Right: the last row is the pane's own keys — `space stage`, \
+             `d discard`, `⌃A all`, `e edit`, `⇥` — and `? keys`; no `c commit`, no \
+             `. actions`, no `/ search` (the stash list swallows `c` and `.`, and the graph's \
+             search stands down under an overlay)",
+        ),
+        (
+            "pane-over-map-bar-80x24.txt",
+            &files_over_map,
+            "the Map is open and the tip's file list has the keyboard on the Detail tab. \
+             Right: the last row reads `⏎ open  j/k move  u undo` — no `/ search`",
+        ),
+    ] {
+        let sized = app.resize(state, 80, 24);
+        let drawn = crate::captures::frame_at(
+            &sized,
+            80,
+            24,
+            Some(graft::session::Clock::Fixed(HINTS_NOW)),
+        );
+        let mut out = format!(
+            "# m8/{name}: 80x24, drawn by `view::view` from a real AppState (crates/graft/\n\
+             # tests/it/hint_bar.rs, capture_bars_over_an_overlay_for_docs_shots). Not a pty\n\
+             # capture: a character grid, no colour (CLAUDE.md rule 5 — colour unverified).\n\
+             #\n\
+             # Here {what}.\n\n"
+        );
+        for line in &drawn {
+            out.push_str(line);
+            out.push('\n');
+        }
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/shots/m8")
+            .join(name);
+        if let Err(why) = graft_fixtures::check(&path, &out) {
+            drifted.push(why);
+        }
+    }
+    app.close();
+    assert!(drifted.is_empty(), "{}", drifted.join("\n\n"));
+}
+
+/// Whether an overlay is up in a state.
+type IsShown = fn(&AppState) -> bool;
+
+/// **The changes pane over an overlay draws its own live keys** (m8/09e,
+/// 11b row 553). Open the changes pane, `⇥` back to the graph, open the
+/// Map, the journal or the stash list, `⇥` to the Detail tab: the pane
+/// answers `space`, `d`, `⌃A`, `e`, `⇥` ahead of the overlay, so the bar
+/// offers them — but not `c commit` (the overlay swallows `c`) and not
+/// `/ search` (the graph's search stands down under an overlay).
+#[test]
+fn the_changes_pane_over_an_overlay_draws_its_live_keys() {
+    use graft_ui::detail::DetailFocus;
+
+    let scratch = repo();
+    let (app, state) = App::open(scratch.path());
+    let state = opened(&app, state);
+    let mut pane = changes_pane(&app, state);
+    for _ in 0..3 {
+        if pane.detail.focus == DetailFocus::Graph {
+            break;
+        }
+        pane = app.key(&pane, KeyCode::Tab);
+    }
+    assert_eq!(pane.detail.focus, DetailFocus::Graph, "back on the graph");
+
+    let overlays: [(char, IsShown); 3] = [
+        ('M', |s| s.map.shown),
+        ('J', |s| s.journal.shown),
+        ('S', |s| s.stash.shown),
+    ];
+    for (letter, shown) in overlays {
+        let up = app.key(&pane, KeyCode::Char(letter));
+        assert!(shown(&up), "`{letter}` opens its overlay");
+        let detail_tab = app.key(&up, KeyCode::Tab);
+        assert!(
+            shown(&detail_tab) && detail_tab.detail.focus == DetailFocus::Files,
+            "`{letter}`: `Tab` shows the Detail tab, the overlay still up"
+        );
+        let drawn = frame(&detail_tab, 80, 24);
+        let bar = drawn.last().cloned().unwrap_or_default();
+        assert!(
+            bar.contains("space stage"),
+            "`{letter}`: the pane's own key: {bar:?}"
+        );
+        for gone in ["c commit", "/ search"] {
+            assert!(
+                !bar.contains(gone),
+                "`{letter}`: `{gone}` is swallowed here: {bar:?}"
+            );
+        }
+    }
+    app.close();
+}
+
 #[test]
 fn the_detail_tab_hides_the_keys_a_focused_pane_does_not_answer() {
     let scratch = repo();

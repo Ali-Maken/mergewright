@@ -121,12 +121,10 @@ fn i_then_y_inits_the_folder() {
 fn i_then_esc_declines_and_writes_nothing() {
     // m8/09e: `n` no longer declines — the box answers `y`/`esc` only
     // (`the_init_box_answers_the_same_keys_in_confirm`).
-    for decline in [key(KeyCode::Escape)] {
-        let mut s = state();
-        outside_key(&mut s, ch('i'));
-        assert_eq!(outside_key(&mut s, decline), OutsideStep::Stay);
-        assert_eq!(s.prompt, None, "{decline:?} closes the confirm");
-    }
+    let mut s = state();
+    outside_key(&mut s, ch('i'));
+    assert_eq!(outside_key(&mut s, key(KeyCode::Escape)), OutsideStep::Stay);
+    assert_eq!(s.prompt, None, "`esc` closes the confirm");
 }
 
 #[test]

@@ -66,7 +66,8 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
             unmerged,
             live,
             tab,
-        } => changes_pane_list(*unmerged, *live, *tab),
+            over_overlay,
+        } => changes_pane_list(*unmerged, *live, *tab, *over_overlay),
         HintContext::Resolver { .. } => resolver_context_list(context),
         HintContext::Finish { focus, expandable } => finish_list(*focus, *expandable),
         HintContext::Blame {
@@ -450,12 +451,31 @@ fn banner_list(skippable: bool, conflicted: bool, merge: bool) -> Vec<Hint> {
 /// While an operation is live, `c` is said the way it acts ([`said_live`]).
 ///
 /// `⇥` names where it lands (`tab`, m6-conflicts/70).
-fn changes_pane_list(unmerged: bool, live: Option<LiveC>, tab: TabWord) -> Vec<Hint> {
+fn changes_pane_list(
+    unmerged: bool,
+    live: Option<LiveC>,
+    tab: TabWord,
+    over_overlay: bool,
+) -> Vec<Hint> {
+    if over_overlay {
+        return changes_pane_over_overlay_list(unmerged, tab);
+    }
     let list = changes_pane_table(unmerged, tab);
     match live {
         Some(c) => said_live(list, c),
         None => list,
     }
+}
+
+/// The changes pane's list with the Map, journal or stash list up behind
+/// it (m8/09e, 11b row 553): the pane's own keys, which it answers before
+/// the overlay, without `c` in any form — `c` is the graph's verb reached
+/// through the graph, and the overlay swallows it — so `live` is not read.
+fn changes_pane_over_overlay_list(unmerged: bool, tab: TabWord) -> Vec<Hint> {
+    changes_pane_table(unmerged, tab)
+        .into_iter()
+        .filter(|hint| !hint.is(COMMIT))
+        .collect()
 }
 
 /// `list` with its `c commit` said the way `c` acts while an operation is
