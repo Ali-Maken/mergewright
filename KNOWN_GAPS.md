@@ -1176,6 +1176,9 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/12-launch-cursor-not-head | Launch leaves the cursor on the newest row, not HEAD; 12's walks switch fixture around it — question | **unverified** | M8 |
 | M8/12-palette-colour-unverified | 12's 3 palette captures: colour unverified (rule 5) | **unverified** | M8 |
 | M8/12b-perf-pty-write | 12b palette on 100k paths: loop p95 34 ms, driven by pty write_us 33 ms (update 3.6, draw 1.1). Cause unverified | **broken** | M8 |
+| M8/12c-release-run-9-vs-7 | ADR-0021 release run: 9 frame-budget tests fail with 12c's fix, 7 without (incl. tests drawing no piled row), machine loaded (8–14). The 2 extra may be the fix — rerun on a quiet machine at the milestone perf run | **unverified** | M8 |
+| M8/12c-ghost-rows-all-badges | Ghost Preview rows still build every badge (12c fixed graph rows only) | **broken** | M8 |
+| M8/switch-refs-for-each-ref | Branch switch on 50k refs: git for-each-ref ≈930 ms of 988 ms (12c measured) | **unverified** | M8 |
 | M8/12b-empty-history-before-status | Opening a file's history before status loads shows an empty history (staged-Added check needs status; spec's open.rs:128 fires only with no HEAD) | **broken** | M8 |
 | M8/12b-tests-never-red | 12b: files ranking, tracked_failure_words and 3 pty walks written after code, never seen red | **unverified** | M8 |
 | M8/rewrite-editor-until-y | Literal `until y` at graft/src/view/rewrite_editor.rs:73–74 (found by 09h, not fixed) | **broken** | M8 |
