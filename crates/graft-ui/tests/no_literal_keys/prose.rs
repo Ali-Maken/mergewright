@@ -55,8 +55,8 @@ pub const ROWS: &[(&str, &str, &str)] = &[
     ),
     (
         "graft:update/operate/failure.rs",
-        "your edits are back · a copy may still be in S",
-        "article",
+        "your edits are back · a copy may still be in {stash}",
+        "article (m8/10j: `S` now spelled from `graph.stash`)",
     ),
     (
         "graft:update/operate.rs",

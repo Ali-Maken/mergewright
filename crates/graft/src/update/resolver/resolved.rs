@@ -349,8 +349,23 @@ fn every_file_done_parts(state: &AppState) -> (&'static str, Option<String>) {
 /// `c`'s refusal as the resolver's notice row says it: the reason, and the
 /// key that marks a file done **here** — `⏎` (§2.6), where the banner's
 /// line names `space`, the key outside (§2.6a).
-pub(crate) fn finish_refused_notice(reason: &str) -> (String, bool) {
-    (format!("{reason} · ⏎ marks done"), false)
+///
+/// Spelled from the resolver's own `resolver.mark_done` row: the place is
+/// the open resolver, whose notice row this is, and its footer names the
+/// same row (m8/10j ruling 5). Unbound → the reason alone.
+pub(crate) fn finish_refused_notice(
+    reason: &str,
+    keys: &graft_ui::keymap::Keymap,
+) -> (String, bool) {
+    let marks = keys.key_verb(
+        &[graft_ui::keymap::ActionId("resolver.mark_done")],
+        "marks done",
+    );
+    let words = match marks {
+        Some(marks) => format!("{reason} · {marks}"),
+        None => reason.to_owned(),
+    };
+    (words, false)
 }
 
 /// Put `notice` on the open resolver's notice row; nothing when it is

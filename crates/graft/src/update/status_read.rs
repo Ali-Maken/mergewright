@@ -64,7 +64,7 @@ pub(super) fn answered(state: &mut AppState, id: JobId) -> bool {
 pub(super) fn settle(state: &mut AppState) {
     if notice_checking(state) {
         let verdict = super::banner::continue_refusal(state)
-            .map(|reason| super::resolver::finish_refused_notice(&reason));
+            .map(|reason| super::resolver::finish_refused_notice(&reason, &state.keymap));
         if let Some(open) = state.resolver.as_mut() {
             open.notice = verdict;
         }

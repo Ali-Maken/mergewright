@@ -67,6 +67,7 @@ use pressed::{abort_pressed, skip_pressed};
 pub(crate) use pressed::{continue_pressed, continued_in_git};
 pub(super) use pressed::{continue_refused, land_after_continue_in_git};
 pub use resume::{cursor_conflict, edit_conflict, open_mergetool, resume, resumed};
+pub(crate) use resume::{edit_or_mergetool, mergetool_fallback};
 #[cfg(test)]
 use resume::{kept_open, resumed_words};
 

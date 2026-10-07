@@ -37,7 +37,7 @@ pub(crate) fn continue_pressed(
             ReturnTo::Resolver => {
                 crate::update::resolver::set_notice(
                     state,
-                    crate::update::resolver::finish_refused_notice(&reason),
+                    crate::update::resolver::finish_refused_notice(&reason, &state.keymap),
                 );
             }
         }

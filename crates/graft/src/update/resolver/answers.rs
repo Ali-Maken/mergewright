@@ -166,12 +166,12 @@ pub(super) fn open_failed(state: &mut AppState, failure: &crate::jobs::conflict:
         return;
     }
     state.resolver = None;
+    // Spelled for where the close leaves him, read after it (m8/10j ruling
+    // 4): a key with no edit or mergetool row there is left out.
+    let place = crate::update::edge::context_of(state);
     state.status = Status::Sticky {
         reason: failure.words.clone(),
-        // Not spelled yet (m8/10g, W2 stop): once the resolver closes the
-        // keys land on the graph, where neither `e` nor `M` hands the file
-        // over (`M` is `graph.map`) — which row answers is a design call.
-        keys: Some("e edit  M mergetool".to_owned()),
+        keys: crate::update::banner::edit_or_mergetool(place, &state.keymap),
     };
 }
 

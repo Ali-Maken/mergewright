@@ -5,6 +5,7 @@ use super::{
     finished_lands_on_head, land_in_resolver, live, stopped_again,
 };
 use crate::update::op_keys::OpKeys;
+use graft_ui::keymap::{ActionId, ContextId, KeyChord, Keymap};
 
 /// Queue a `--continue`/`--skip`/`--abort`.
 ///
@@ -70,9 +71,10 @@ pub fn open_mergetool(
         return false;
     };
     let Some(tool) = state.mergetool.as_deref() else {
+        let place = crate::update::edge::context_of(state);
         state.status = Status::Sticky {
             reason: "no merge.tool configured".to_owned(),
-            keys: Some(format!("e edits {}  a abort", path.display())),
+            keys: mergetool_fallback(place, path, &state.keymap),
         };
         return true;
     };
@@ -81,6 +83,65 @@ pub fn open_mergetool(
         path: path.to_path_buf(),
     });
     true
+}
+
+/// The rows a press of `e` may answer with "open this file in `$EDITOR`".
+const EDIT_ROWS: [&str; 3] = ["operation.edit", "resolver.edit", "changes.edit"];
+
+/// The rows a press of `M` may answer with "hand this file to the mergetool".
+const MERGETOOL_ROWS: [&str; 3] = [
+    "operation.mergetool",
+    "resolver.mergetool",
+    "changes.mergetool",
+];
+
+/// The row the shipped `key` acts as at `place`, when it is one of `rows`
+/// (m8/10j ruling 1). Read off the shipped table, not his: the words name
+/// the *action* that answers there, then spell it from his keymap — so a
+/// remap moves the label, never the action the clause promises.
+fn row_at(place: ContextId, key: char, rows: &[&str]) -> Option<ActionId> {
+    Keymap::shipped()
+        .acting(place, KeyChord::key(key))
+        .filter(|id| rows.contains(&id.0))
+}
+
+/// The one place → edit-row lookup both stop lines share, so the two can
+/// never name different `e` keys in one place (m8/10j ruling 4).
+fn edit_row(place: ContextId) -> Option<ActionId> {
+    row_at(place, 'e', &EDIT_ROWS)
+}
+
+/// Two clauses two spaces apart, either dropped; `None` when both are.
+fn joined(first: Option<String>, second: Option<String>) -> Option<String> {
+    match (first, second) {
+        (Some(a), Some(b)) => Some(format!("{a}  {b}")),
+        (one, other) => one.or(other),
+    }
+}
+
+/// The fallback clause after `no merge.tool configured · `: `e edits {path}
+/// a abort`, each key from the row answering it at `place` (m8/10j ruling
+/// 1); a clause with no row there or an unbound key dropped; nothing left →
+/// `None`. `a` is kept only where it is `operation.abort` (the banner): the
+/// resolver is modal and the changes pane refuses `a` while an operation
+/// is live.
+pub(crate) fn mergetool_fallback(place: ContextId, path: &Path, keys: &Keymap) -> Option<String> {
+    let edit =
+        edit_row(place).and_then(|row| keys.key_verb(&[row], &format!("edits {}", path.display())));
+    let abort =
+        row_at(place, 'a', &["operation.abort"]).and_then(|row| keys.key_verb(&[row], "abort"));
+    joined(edit, abort)
+}
+
+/// `e edit  M mergetool` as said at `place` (m8/10j ruling 4): `e` from
+/// the edit row answering it there, `M` only where it is a mergetool row
+/// (on the graph `M` is `graph.map`); a clause with no row or an unbound
+/// key dropped; nothing left → `None`.
+pub(crate) fn edit_or_mergetool(place: ContextId, keys: &Keymap) -> Option<String> {
+    let edit = edit_row(place).and_then(|row| keys.key_verb(&[row], "edit"));
+    let tool =
+        row_at(place, 'M', &MERGETOOL_ROWS).and_then(|row| keys.key_verb(&[row], "mergetool"));
+    joined(edit, tool)
 }
 
 /// `e`: open `$EDITOR` on `path` at its first conflict marker.

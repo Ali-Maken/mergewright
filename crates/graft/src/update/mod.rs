@@ -505,10 +505,13 @@ fn mergetool_returned(
                 next.status = Status::Ready;
             }
         }
+        // Spelled for where he is now: this arm moves no focus, so the
+        // place is the one he pressed `M` in (m8/10j ruling 1).
         Err(why) => {
+            let place = edge::context_of(next);
             next.status = Status::Sticky {
                 reason: why,
-                keys: Some(format!("e edits {}  a abort", path.display())),
+                keys: banner::mergetool_fallback(place, path, &next.keymap),
             };
         }
     }
