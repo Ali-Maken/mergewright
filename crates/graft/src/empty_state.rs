@@ -253,7 +253,9 @@ pub(crate) fn outside_key(state: &mut OutsideState, key: KeyPress) -> OutsideSte
         Some(Prompt::Open(field)) => open_prompt_key(state, field, key),
         Some(Prompt::ConfirmInit) => match key.code {
             KeyCode::Char('y') => OutsideStep::Init(state.folder.clone()),
-            KeyCode::Char('n') | KeyCode::Escape => OutsideStep::Stay,
+            // A confirm box: `esc` cancels, any other key is swallowed
+            // (§2.3c :296). No raw `n` — no keymap row names it (m8/09e).
+            KeyCode::Escape => OutsideStep::Stay,
             _ => {
                 state.prompt = Some(Prompt::ConfirmInit);
                 OutsideStep::Stay

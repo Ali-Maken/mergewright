@@ -492,12 +492,6 @@ const DEFAULTS: &[Binding] = &[
     b("empty_state.init", EmptyState, &[k('i')], "Init"),
     b("empty_state.clone", EmptyState, &[k('c')], "Clone…"),
     b("empty_state.tour", EmptyState, &[k('t')], "Practice tour"),
-    b(
-        "empty_state.cancel",
-        EmptyState,
-        &[k('n')],
-        "No — don't init",
-    ),
     // §2.14 Credential prompt (a text field: fixed).
     b("credential.send", Credential, &[ENTER], "Submit the answer"),
     b(

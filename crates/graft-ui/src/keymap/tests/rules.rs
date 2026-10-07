@@ -313,3 +313,15 @@ fn a_line_on_a_follower_is_not_applied() {
     );
     assert_eq!(map.spell(&ActionId("preview.confirm_merge")).0, "m");
 }
+
+/// m8/09e: `empty_state.cancel` is gone — the init box is a confirm box,
+/// `esc` cancels (§2.3c), and no other row names `n` there. Pre-release,
+/// no alias: a line naming it is an unknown action.
+#[test]
+fn empty_state_cancel_is_no_action() {
+    let (_, warnings) = with(&[line("empty_state.cancel", &["x"])], OFF);
+    assert_eq!(
+        warnings,
+        [KeyWarning::UnknownAction("empty_state.cancel".into())]
+    );
+}
