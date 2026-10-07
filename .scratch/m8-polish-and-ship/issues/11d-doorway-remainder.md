@@ -1,6 +1,6 @@
 # G-palette 1d — `? keys` on overlays, places and marked rows: the remainder of 11c, with its two conflicts ruled
 
-Status: draft (planner spec-only pass 2026-10-07; replaces the unbuilt part of
+Status: ready (conductor 2026-10-07; 10k + 22c merged) — was draft (planner spec-only pass 2026-10-07; replaces the unbuilt part of
 `11c-doorway-on-overlays-places-and-marked-rows.md`, blocked on NOTES conflicts 1–2)
 Build with: **Sonnet** — both conflicts ruled below; the patch exists; the one new piece (Marked's rank-then-move) is
 a few lines in `whole_bar`'s Marked arm with a monotone test. Not Fable (no signature, judgeable from tests).

@@ -6,7 +6,7 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 
 **Current step:** **M8.** Research (6244e3e0), note pass 1 (6bc9b7b3), prototype (aefc0b76) done. User approved 2026-10-02 (field-notes, last line): look-parity group after scroll (`.scratch/m8-polish-and-ship/real-vs-mockup.md`), note's Proposed changes 1–5, name Tributary/`trib`, no notarising. **Next: dispatch `planner-fable` pass 2** — ADRs + DESIGN.md/PROMPT.md edits for the approved changes, pick dark A/B by contrast, then all group specs (note §Expected groups + look-parity group); `?`-does-nothing on graph goes to a scout question first. Still with the user: scene 1 scroll-feel run on his laptop (`python3 prototypes/m8-polish-and-ship/polish.py 1` in Ghostty, Zed, VS Code); one timing run after the scroll group. Logs: `docs/log/m8.md`.
 
-**Running now:** builder 10k (inline stop words); builder 22c (stale captures); planner ruling on 11c doorway (11c blocked, WIP patch kept). Gates on main after 17c. Next: 11d (after ruling), 12d (captures serial after 22c), 12b pty-write perf, http_remote flake, 15, 18, then reviews owed and the milestone stop.
+**Running now:** builder 12e (palette review fixes); builder 11d (doorway remainder). Next: 13j own listener, 12d (captures after 11d), 12b pty-write perf, 15, 18, then reviews owed and the milestone stop.
 
 **Batched for the user at the M6 stop:** the 11 items in `.scratch/m6-conflicts/user-batch.md` (supersedes the earlier (1)–(8) list; checked against the build 2026-09-24).
 
