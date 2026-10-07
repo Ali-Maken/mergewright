@@ -126,11 +126,14 @@ pub fn opening(repo_path: std::path::PathBuf, size: Size) -> (AppState, Vec<Comm
     (state, commands)
 }
 
-/// A repository opened from the empty state (m8-polish-and-ship/08, note
-/// Lands row "Open / init succeeds"): the cursor goes to `HEAD`'s row once
+/// A repository arrived at on a terminal — launched inside it, or opened
+/// from the empty state (m8-polish-and-ship/08 and /12d, note Lands row
+/// "Open / init succeeds"): the cursor goes to `HEAD`'s row once
 /// [`opening`]'s own refs read and walk have answered — the same owed landing
-/// a `--continue` spends (`banner::land_on_head`). A start inside a
-/// repository does not call this and lands on the top row, as before.
+/// a `--continue` spends (`banner::land_on_head`). Unlike that one, it gives
+/// way to a key or click that moves the graph cursor first
+/// ([`HeadLanding::gives_way`]). Off a terminal (`event_loop::run`) nothing
+/// calls this: the top row, as before.
 pub fn lands_on_head_at_open(state: &mut AppState) {
     let refs = match state.refs_read {
         RefsRead::Pending(id) => Some(id),
@@ -141,6 +144,7 @@ pub fn lands_on_head_at_open(state: &mut AppState) {
         refs,
         walk: state.awaiting,
         on: operate::Landing::Head,
+        gives_way: true,
     };
 }
 
@@ -266,11 +270,15 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             commit_graph::commit_graph_event(next, event);
         }
         // A key or click that moves the graph cursor or the pane's
-        // selection drops a `show_line` still landing (m7-power-tools/20b).
+        // selection drops a `show_line` still landing (m7-power-tools/20b),
+        // and the graph cursor an arrival's `HEAD` landing still owed
+        // (m8-polish-and-ship/12d).
         AppEvent::Core(event @ (Event::Key(_) | Event::Mouse(_))) => {
             let watch = detail::LandingWatch::of(next);
+            let arrival = banner::ArrivalWatch::of(next);
             core_event(next, commands, event);
             watch.drop_if_moved(next);
+            arrival.drop_if_moved(next);
         }
         AppEvent::Core(event) => core_event(next, commands, event),
         // Nothing to answer: the loop sends it with `defer_follow` off, so

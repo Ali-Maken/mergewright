@@ -1951,5 +1951,6 @@ fn a_refresh_before_the_walk_starts_still_lands_on_head() {
     );
 }
 
+mod arrival_landing;
 mod continue_in_git;
 mod resume_words;

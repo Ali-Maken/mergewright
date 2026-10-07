@@ -1,6 +1,6 @@
 # G-look 2d — launching inside a repository lands on HEAD, as an open does
 
-Status: ready (planner spec-only pass 2026-10-07; from 12's NOTES question, "cursor on the newest row at launch")
+Status: done (builder 2026-10-08) — was: ready (planner spec-only pass 2026-10-07; from 12's NOTES question, "cursor on the newest row at launch")
 Build with: **Opus** (conductor 2026-10-07 after scout `scouts/12d-launch-head.md`: the "moved" case holds — banner/stop.rs:301 land_on_head overwrites a key typed before reads answer; fix sits in banner/stop.rs, update/mod.rs only for the :131 doc comment). Was: Expected **Sonnet** if the scout
 confirms the fix is the start path arming the existing landing (one flag); **Opus** if the owed landing yanks a cursor
 he already moved (see Decision 3 — touches the landing's consumption in `update`). Not Fable: every box is a pty
@@ -63,21 +63,21 @@ None new. Expected change (scout confirms the shape): `places::drive`'s first `r
 condition sits where the owed landing is consumed (NOTES: file:line).
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] Launch lands on HEAD: binary on `FeatureBranches` under a pty → `▸` on `main`'s row, not `feature/three`'s; red
+- [x] Launch lands on HEAD (`it::outside_repo::starting_inside_a_repository_lands_on_head`, red on base: cursor on `[feature/three] three: in progress`): binary on `FeatureBranches` under a pty → `▸` on `main`'s row, not `feature/three`'s; red
       on base first. (`it::outside_repo::starting_inside_a_repository_lands_on_head`)
-- [ ] Launch and open land alike: same fixture with a dirty tree and HEAD below the first window — launched, and opened
+- [x] Launch and open land alike (`it::outside_repo::launch_and_open_land_alike`, red on base: timed out, cursor on `side 39`; 8/8 runs green): same fixture with a dirty tree and HEAD below the first window — launched, and opened
       from the empty state — the cursor row and pane top are equal. (`it::outside_repo::launch_and_open_land_alike`)
-- [ ] 08's test: `starting_inside_a_repository_remembers_it` green; its "remembers" assertion unchanged; any top-row
+- [x] 08's test (`it::outside_repo::starting_inside_a_repository_remembers_it`, body unchanged; it had no top-row assertion, only its doc comment said so — now says HEAD): `starting_inside_a_repository_remembers_it` green; its "remembers" assertion unchanged; any top-row
       assertion flipped to HEAD (NOTES quotes old → new).
-- [ ] Decision 3: launch on `FeatureBranches`, `j` sent before the walk answers → after it lands, the cursor is where
+- [x] Decision 3, **moved** branch (`update::banner::tests::arrival_landing::a_key_before_the_launch_landing_keeps_his_cursor`, red on base: cursor oid(2)=HEAD instead of oid(4); plus `with_no_key_the_launch_lands_on_head`, `a_key_does_not_drop_a_continue_landing`) — unit level, not pty, see NOTES: launch on `FeatureBranches`, `j` sent before the walk answers → after it lands, the cursor is where
       `j` put it, not HEAD (or, "not moved" branch, the same assertion pins today's behaviour).
       (`it::outside_repo::a_key_before_the_launch_landing_keeps_his_cursor`)
-- [ ] 12's walks without the workaround: `walk_seek_branch`, `walk_seek_tag`, `walk_rerun_recent` green, 5/5 runs
+- [x] 12's walks without the workaround (`walk_seek_branch`, `walk_seek_tag`, `walk_rerun_recent`: 5/5 runs, a shell loop of 5 × `cargo nextest run -E 'test(/walk_seek_branch|walk_seek_tag|walk_rerun_recent/)'`): `walk_seek_branch`, `walk_seek_tag`, `walk_rerun_recent` green, 5/5 runs
       (NOTES: the loop used); `repo()` diff shows the switch removed.
-- [ ] Captures: one full `GRAFT_UPDATE_SHOTS=1 cargo nextest run`, then plain green; `git diff --stat <base> --
+- [x] Captures (full `GRAFT_UPDATE_SHOTS=1 cargo nextest run`, then plain: 5896/5896; `git status docs/shots` empty — no capture changed, see NOTES): one full `GRAFT_UPDATE_SHOTS=1 cargo nextest run`, then plain green; `git diff --stat <base> --
       docs/shots` lists only files whose fixture's HEAD is not the top row; NOTES per file: old → new cursor row (and
       the detail pane that follows it). Any other change → stop. Colour unverified (rule 5).
-- [ ] MAP.md :103, :273 read the new rule. Check: `rg -n 'lands on .HEAD' crates/graft/MAP.md`.
+- [x] MAP.md :103, :273 (`rg -n 'lands on .HEAD' crates/graft/MAP.md` → :103, :273) read the new rule. Check: `rg -n 'lands on .HEAD' crates/graft/MAP.md`.
 
 ## Touches
 - `places::drive` callers (`main` on a tty) and its `Exit::Open` arm (unchanged — diff shown).
@@ -95,3 +95,16 @@ condition sits where the owed landing is consumed (NOTES: file:line).
 
 ## Size
 ~30k: start path + tests ~12k; Decision 3 (if moved) ~8k; walks + captures ~7k; MAP/NOTES ~3k.
+
+## NOTES (builder, 2026-10-08)
+- Scout used (`scouts/12d-launch-head.md`); its lines held at ea870976. No compaction.
+- **Decision 1** (cause fix): `event_loop/places.rs` drops the `opened` flag; every `Place::Repo` gets `Arrival { on_head: true, .. }`. `Exit::Open` arm otherwise unchanged (only `opened = true;` removed).
+- **Decision 3 = moved** (scout: `banner/stop.rs` `land_on_head` never checked the cursor). Fix: `HeadLanding::gives_way` (pub(crate) field, `update/state.rs`), true only in `update::lands_on_head_at_open`; `banner::ArrivalWatch` (`banner/stop.rs`) notes the graph cursor (`on_working_tree`, selected commit) before a key/click and drops the owed landing if it moved; wired beside `LandingWatch` in `update/mod.rs` `answer`'s Key/Mouse arm. `--continue`, operate and relaunch landings set `gives_way: false` and are untouched (`a_key_does_not_drop_a_continue_landing`). 17c had merged (fd0b66c8), so `update/mod.rs` was open.
+- Decision 3's test is unit level (through `update::update`), not a pty walk: on a pty the order of `j` vs the walk's first rows vs the refs answer cannot be fixed, so a pty assertion would be flaky or vacuous. A `j` before any rows exist moves nothing, and the landing still lands on HEAD (by design: "a key that moves the graph cursor").
+- `launch_and_open_land_alike` first flaked 4/6: the working-tree read answers on its own time and its pinned row shifts every row. The test now waits for the `Uncommitted changes` row as well as the cursor (a settled-frame wait, not a sleep); 8/8 green after. The full plain run (5896/5896) predates this test-only change; `outside_repo` re-run 8× after it.
+- **Captures: none changed.** Some were expected; no capture run reaches `places::drive` with a repo whose HEAD is not the top row (the harness captures start from `opening`, not `drive`). Not checked capture by capture.
+- `raster::write_shots` (graft-graph) is red under `GRAFT_UPDATE_SHOTS=1` ("regenerated 10 capture(s)", PNGs), yet `git status docs/` is empty afterwards. Unrelated to this ticket, not investigated; green in the plain run.
+- Off a tty (`run`, `src/event_loop/startup.rs:209`, called only from `src/main.rs:91`): unchanged, never calls `lands_on_head_at_open`.
+- **Flag for 19 (tour return):** no place produces `Exit::Open` from the graph yet (`src/event_loop/mod.rs:86`). Every place `drive` runs now lands on HEAD, so 19's "cursor where he left it" must not return through `Place::Repo` in `drive` as it stands; it needs its own arrival (e.g. `on_head: false` for a return).
+- **Ask conductor:** add the design-note Lands row `Launch inside a repo | graph, cursor on HEAD`.
+- Touches: `places::drive` (the only `run_repo(` caller; `main` on a tty); `startup.rs:323` consumer unchanged; recent list (08's test green); harness prelude (`update/prelude.rs:109` still holds keys while owed; full nextest green); journal/undo: no file under `update/journal*`, `update/undo*` in the diff; keymap: none; captures: none changed.
