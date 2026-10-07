@@ -1,0 +1,42 @@
+=== the terminal closed mid-merge (hook stuck), then SIGHUP again: nothing printed, the terminal was gone ===
+=== the next launch ===
+ ◆ api  ~/code/api · feature                                                                                    MERGING
+
+▸   ◌    Uncommitted changes (2 staged, 1 unstaged)
+    ◆    [◆ feature] finish the feature                                                                 GF now  8d6cd28
+    ●    start the feature                                                                              GF 2m   52f3b96
+  ● │    [main] main moves again                                                                        GF 3m   45fa51d
+  ● │    main moves on                                                                                  GF 4m   37926a7
+  ●─╯    add the base                                                                                   GF 5m   ed332bc
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ merge still in progress from a previous run · c finish  a abort  ⇥ graph  q quit
+UNCOMMITTED · 2 staged 1 unstaged
+diff vs HEAD 8d6cd28
+STAGED (2)                    ▎
+  A main-one.txt        +1 −0       1 + one
+  A main-two.txt        +1 −0
+UNSTAGED (1)
+  M base.txt            +1 −1
+
+
+
+
+
+
+
+
+

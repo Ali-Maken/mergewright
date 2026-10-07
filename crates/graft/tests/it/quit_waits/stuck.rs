@@ -69,7 +69,7 @@ fn hang(repo: &Path, name: &str) {
 
 /// A pid the hook wrote, once it has written it. Polled: the hook runs in
 /// git, which runs in the pool, and nothing tells the test when it starts.
-fn pid(repo: &Path, file: &str) -> u32 {
+pub(super) fn pid(repo: &Path, file: &str) -> u32 {
     let path = repo.join(".git").join(file);
     let began = Instant::now();
     loop {
@@ -84,7 +84,7 @@ fn pid(repo: &Path, file: &str) -> u32 {
 }
 
 /// `kill -0 pid`: is the process still there?
-fn alive(pid: u32) -> bool {
+pub(super) fn alive(pid: u32) -> bool {
     std::process::Command::new("kill")
         .args(["-0", &pid.to_string()])
         .stderr(std::process::Stdio::null())
@@ -95,7 +95,7 @@ fn alive(pid: u32) -> bool {
 
 /// Waits up to `bound` for `pid` to be gone. A killed child is reaped by
 /// the pool's job, which may lag the signal by a poll.
-fn gone_within(pid: u32, bound: Duration) -> bool {
+pub(super) fn gone_within(pid: u32, bound: Duration) -> bool {
     let began = Instant::now();
     while alive(pid) {
         if began.elapsed() > bound {
@@ -107,7 +107,7 @@ fn gone_within(pid: u32, bound: Duration) -> bool {
 }
 
 /// Every `*.lock` under `.git`.
-fn locks(dir: &Path) -> Vec<PathBuf> {
+pub(super) fn locks(dir: &Path) -> Vec<PathBuf> {
     let mut found = Vec::new();
     for entry in std::fs::read_dir(dir).expect(".git is readable") {
         let path = entry.expect("a readable entry").path();
@@ -120,7 +120,7 @@ fn locks(dir: &Path) -> Vec<PathBuf> {
     found
 }
 
-fn entries(repo: &Path) -> Vec<JournalEntry> {
+pub(super) fn entries(repo: &Path) -> Vec<JournalEntry> {
     graft_ops::journal::Journal::open(&repo.join(".git/graft/undo-journal.jsonl"))
         .expect("the journal is readable")
         .entries()

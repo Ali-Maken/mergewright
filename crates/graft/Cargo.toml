@@ -86,7 +86,7 @@ tiny-skia = { version = "0.12", default-features = false, features = ["std", "pn
 # `tests/it/pty.rs` (m8-polish-and-ship/08) runs the real binary on a pseudo
 # terminal: the empty state only exists on a tty. The version `graft-git`
 # already ships with; `term` is the safe `openpty` wrapper, so no `unsafe`.
-nix = { version = "0.29", default-features = false, features = ["term"] }
+nix = { version = "0.29", default-features = false, features = ["poll", "term"] }
 
 [features]
 # Forwards the heavy tier to the fixture corpus, per TESTING.md, so one

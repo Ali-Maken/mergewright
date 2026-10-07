@@ -1,6 +1,6 @@
 # Stop review fixes, part 3: a terminal hang-up mid-write leaves the operation paused, never orphaned
 
-Status: draft
+Status: done
 Build with: **Opus** (high). It's the exit path during a git write. The cause of the 101 is unknown, and whether git
 is left orphaned shows only in a process test, not in the diff. The journal and undo semantics don't change: the stop
 is 13c's and the answer is 13d's. Not xhigh, not Fable.
@@ -99,31 +99,31 @@ builder finds a new variant necessary, report it before building.
 - Captures: one new one; no existing capture changes.
 
 ## Acceptance (each tick names its test inline)
-- [ ] The cause: NOTES name the panicking line and its message, observed. Red first:
+- [x] The cause: NOTES name the panicking line and its message, observed. Red first:
       `it::quit_waits::hangup::a_hangup_mid_write_never_exits_101` (exit ≠ 101, = the SIGTERM path's code).
-- [ ] Quick hook lands: `it::quit_waits::hangup::a_hangup_mid_merge_lets_a_quick_hook_land`.
+- [x] Quick hook lands: `it::quit_waits::hangup::a_hangup_mid_merge_lets_a_quick_hook_land`.
       - Hook `sleep 2; exit 0`; close the master once the hook's pidfile exists.
       - Asserts: Graft exits within `EXIT_WRITE_WAIT`; `HEAD^2` = the source tip; no `MERGE_HEAD`; no `*.lock` under
         `.git`; git and the hook gone (`kill -0`); the journal entry `Committed`.
-- [ ] Stuck hook, second signal: `it::quit_waits::hangup::a_hangup_then_a_second_hangup_leaves_the_merge_paused`.
+- [x] Stuck hook, second signal: `it::quit_waits::hangup::a_hangup_then_a_second_hangup_leaves_the_merge_paused`.
       - Hook `sleep 600`; close the master, then `SIGHUP` Graft's pid.
       - Asserts: Graft exits within `FORCED_WAIT` of the second signal; `MERGE_HEAD` = the source tip; `HEAD` unmoved;
         no lock; git and the hook gone; the entry `Pending`.
       - Then relaunch in a new 120x40 pty: the banner reads `c finish  a abort`, and `a` gives back `HEAD`, `git status`
         and his file as before (reuse `stuck.rs`'s relaunch helper).
-- [ ] Stuck hook, no second signal (heavy, `heavy-tests`):
+- [x] Stuck hook, no second signal (heavy, `heavy-tests`):
       `it::quit_waits::hangup::a_hangup_with_a_stuck_hook_is_stopped_after_the_wait_and_left_paused`. Same asserts,
       bound `EXIT_WRITE_WAIT` + `FORCED_WAIT`. Run this one test alone, once; record its time in NOTES. The heavy
       tier itself stays for the review.
-- [ ] EOF/`EIO` = hang-up: `event_loop::tests::a_dead_terminal_read_ends_the_loop_as_a_hangup` (an `EIO` and an EOF
+- [x] EOF/`EIO` = hang-up: `event_loop::tests::a_dead_terminal_read_ends_the_loop_as_a_hangup` (an `EIO` and an EOF
       both give `Exit::Signal(SIGHUP)`).
-- [ ] Minor 6: `event_loop::exit_wait::tests::a_fatal_exit_with_a_write_running_prints_the_waiting_line`, and a dead
+- [x] Minor 6: `event_loop::exit_wait::tests::a_fatal_exit_with_a_write_running_prints_the_waiting_line`, and a dead
       stderr there doesn't panic: `…::the_waiting_line_to_a_closed_stderr_is_not_fatal`.
-- [ ] Every hang-up test holds a `Drop` guard that kills its pidfile pids. `ps -A | grep -c "sleep 600"` = 0 after
+- [x] Every hang-up test holds a `Drop` guard that kills its pidfile pids. `ps -A | grep -c "sleep 600"` = 0 after
       the run (NOTES).
-- [ ] Capture `docs/shots/m8-hangup-relaunch-120x40.txt` (≤ 200 KB), banner row quoted in NOTES with
+- [x] Capture `docs/shots/m8-hangup-relaunch-120x40.txt` (≤ 200 KB), banner row quoted in NOTES with
       `from a previous run`. Colour **unverified**; whether it looks right is the user's call.
-- [ ] The doc blocks in item 5 are replaced (grep in NOTES).
+- [x] The doc blocks in item 5 are replaced (grep in NOTES).
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
@@ -133,3 +133,69 @@ workspace-wide.
 ## Size
 One context, about 70k tokens. Item 1 is the unknown. If it eats the context, hand off after item 1 with the cause in
 NOTES; the conductor splits the rest.
+
+## NOTES (builder, 2026-10-07)
+
+No compaction. No scout: the ticket's line held (`graft-git run.rs:478` `process_group(0)` unchanged) and the exit path
+is five files I read directly (startup `run_repo`/`wind_down`/`finish_to`, exit_wait, input, signals, turn).
+
+**The cause (observed, rule 7).** Reproduced as a session-leader pty (`setsid` + `TIOCSCTTY` in `pre_exec`; the master
+fd closed in the child, else Graft's inherited copy keeps the pty alive), stderr on the pty, merge hook `sleep 600`,
+master closed: exit status 25856 = **101 after 0.05 s**, git and hook alive (orphaned). Graft's own crash report
+(`$HOME/.local/state/graft/crash-*.log`, isolated home) said:
+`message: failed printing to stderr: Input/output error (os error 5)`, backtrace
+`ratatui-core-0.1.2/src/terminal.rs:483:17` (`Terminal::drop`'s `eprintln!("Failed to show the cursor")`) ←
+`graft/src/event_loop/startup.rs:349` `drop(terminal)` in `run_repo`. So 13b's guess was right. With stderr to a
+file the 101 goes away and the file holds `Failed to show the cursor: Input/output error (os error 5)`: same write.
+The panic happens before `Pool::stop`, so nothing stopped git (its own process group since 13c, so the kernel's
+`SIGHUP` never reached it).
+
+**Fix (cause).** `startup::put_away` shows the cursor itself before the `Terminal` drops; on failure it marks the
+backend (`RowClear::cursor_given_up`), so ratatui's `Drop` retry is answered `Ok` and never `eprintln!`s. Cost to the
+user: none; a live terminal gets the same bytes as before. Plus: dead-terminal read (`EOF`/`EIO`, `input::hung_up`)
+→ `Exit::Signal(SIGHUP)` in the repo loop and the places loop (headless unchanged); `finish_to` lets a hang-up die of
+`SIGHUP` though the restore fails (`EIO`), and `wind_down` drops a stalled-jobs line it cannot print after a hang-up;
+`Pool::stop` takes `again` **before** the waiting line and, when signalled, counts the ending as one signal
+(`Watch::again_after_one`) so a hang-up's own late-counted `SIGHUP` is not "the signal again".
+Exit code: the `SIGTERM` path dies of the signal (`quit_waits::signal` asserts `status.signal() == Some(15)`); a
+hang-up now dies of `SIGHUP` (`status.signal() == Some(1)`), asserted in all four hang-up tests.
+
+**Ticks' tests:** `it::quit_waits::hangup::{a_hangup_mid_write_never_exits_101, a_hangup_mid_merge_lets_a_quick_hook_land,
+a_hangup_then_a_second_hangup_leaves_the_merge_paused, a_hangup_with_a_stuck_hook_is_stopped_after_the_wait_and_left_paused}`;
+`event_loop::tests::a_dead_terminal_read_ends_the_loop_as_a_hangup`; `event_loop::exit_wait::tests::{a_fatal_exit_with_a_write_running_prints_the_waiting_line,
+the_waiting_line_to_a_closed_stderr_is_not_fatal}`; also `event_loop::signals::tests::*`,
+`event_loop::row_clear::tests::a_cursor_given_up_is_not_asked_for_again`,
+`event_loop::startup::tests::finish_after_a_hangup_dies_of_it_whatever_the_restore_said`.
+Red first: the 101 was observed by the probe (above) before the fix; the never-101 test was written against that run.
+The EOF/EIO loop test was written alongside its mapping, not seen red.
+
+**Timings.** Quick hook: hang-up to exit 2.03–2.10 s. Second hang-up to exit: 125–177 ms (≤ `FORCED_WAIT`).
+Heavy test, run alone once: **60.09 s** hang-up to exit (≤ `EXIT_WRITE_WAIT` + `FORCED_WAIT`).
+`ps -A | grep -c "[s]leep 600"` = 0 after the quit_waits run, after the heavy run and after the workspace nextest.
+
+**Capture.** `docs/shots/m8-hangup-relaunch-120x40.txt` (2.0 KB). Banner row:
+` merge still in progress from a previous run · c finish  a abort  ⇥ graph  q quit`. Colour **unverified**;
+whether it looks right is the user's call. The pty relaunch (120x40) shows the banner, `a` `y` aborts, `HEAD`,
+`git status --porcelain` and `base.txt` match before the merge.
+
+**Docs.** `grep -n "terminal closing" docs/design/02-keymap.md` → :242 replaced. The design note's row was at **:171**,
+not :141 (the note grew); replaced there: `grep -n "terminal closed while a write runs" docs/design-notes/m8-polish-and-ship.md`.
+graft MAP: `Exit`, `waiting_line`, `exit_wait::Pool`, `signals::watch` rows; new rows `input::hung_up`, `startup::put_away`.
+
+**Touches.** `Exit::Fatal`: none changed (6 uses in `crates/graft/src`, none edited; the diff touches no `Fatal`).
+`quit_waits::signal`/`stuck`: green in the workspace nextest (5725/5725). Headless: `headless.rs` untouched; its
+`InputFailed` still returns the error. Examples matching `Exit`: compile (`clippy --all-targets`, both feature sets).
+Journey fences `quit-stuck-write 4`, `quit-while-write 2`: walked by `stuck.rs`, green. Captures: one new; every
+existing `check_shot` green. `stuck.rs`: `pid`/`alive`/`gone_within`/`locks`/`entries` made `pub(super)` for
+`hangup.rs` (no behaviour change). `nix` dev-dependency gains the `poll` feature (no new package; `Cargo.lock`
+unchanged). Test-only `unsafe` in `hangup.rs::session_leader` under a scoped `#[allow(unsafe_code)]` with a reason.
+
+**Findings (not fixed, out of scope).**
+- The places screen (`event_loop/places.rs:241`, plain `Terminal<CrosstermBackend<Stdout>>`) still drops ratatui's
+  `Terminal` the old way: a hang-up **on the places screen** would still exit 101 by the same `terminal.rs:483`
+  `eprintln!`. No write runs there, so nothing is orphaned. Unverified (not reproduced); filed here as a gap.
+- After `a` `y` on the relaunch, `q` sometimes opens `Quit?` ("abort merge is still running") because the abort's job
+  has not answered yet though `MERGE_HEAD` is gone; the test answers `y` as he would. Behaviour, not a defect claim.
+- Real-world double `SIGHUP` (kernel to the foreground group + the shell forwarding `SIGHUP` to its jobs) may count as
+  "the signal again" and stop the write at once instead of waiting. Not observed here (one kernel `SIGHUP` in the test
+  setup, where Graft is the session leader); a question for the walk, not verified.

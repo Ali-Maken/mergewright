@@ -668,6 +668,37 @@ fn a_failed_read_stops_the_loop_and_is_reported() {
     assert_eq!(error.kind(), io::ErrorKind::BrokenPipe);
 }
 
+/// m8/13g: a terminal read that fails because the terminal closed — `EIO`,
+/// or the mux's end of input — is the hang-up, and ends the loop as its
+/// `SIGHUP` would: the exit then waits for a running write and dies of the
+/// signal, never a failure that sits silently.
+#[test]
+fn a_dead_terminal_read_ends_the_loop_as_a_hangup() {
+    let dead = [
+        io::Error::from_raw_os_error(5),
+        io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "the terminal closed its input",
+        ),
+    ];
+    for failure in dead {
+        let (mut terminal, _recorder) = terminal(20, 3);
+        let what = failure.to_string();
+        let mut wakes = ScriptedWakes::new(vec![Wake::InputFailed(failure)]);
+
+        let exit = pump(
+            &mut terminal,
+            &mut wakes,
+            &Recorded::default(),
+            &mut session(),
+            AppState::default(),
+        )
+        .expect("a hang-up is an exit, not a failure");
+
+        assert_eq!(exit, Exit::Signal(signal_hook::consts::SIGHUP), "{what}");
+    }
+}
+
 #[test]
 fn losing_every_producer_ends_the_loop_rather_than_spinning() {
     let (mut terminal, _recorder) = terminal(20, 3);

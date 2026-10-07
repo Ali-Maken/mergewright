@@ -311,6 +311,10 @@ fn outside_loop(
                 OutsideStep::Stay
             }
             Wake::Shutdown(signal) => return Ok(Outcome::Exit(Exit::Signal(signal))),
+            // The terminal hung up: the same exit as its `SIGHUP` (13g).
+            Wake::InputFailed(error) if input::hung_up(&error) => {
+                return Ok(Outcome::Exit(Exit::Signal(signal_hook::consts::SIGHUP)));
+            }
             Wake::InputFailed(error) | Wake::TerminalFailed(error) => return Err(error),
             // A resize redraws (ratatui resizes on `draw`); focus, mouse,
             // fences and re-detection answers change nothing here — no
