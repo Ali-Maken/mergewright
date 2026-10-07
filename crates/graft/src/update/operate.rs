@@ -397,4 +397,4 @@ pub fn stage_selected(
 }
 
 #[cfg(test)]
-mod tests;
+pub(in crate::update) mod tests;

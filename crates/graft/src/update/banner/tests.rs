@@ -37,7 +37,7 @@ fn unmerged(path: &str) -> StatusEntry {
 }
 
 /// A state standing in a `kind` with `paths` conflicted, banner focused.
-fn stopped(kind: InProgress, paths: &[&str]) -> AppState {
+pub(in crate::update) fn stopped(kind: InProgress, paths: &[&str]) -> AppState {
     AppState {
         in_progress: Some(detail(kind, Some((3, 7)))),
         banner_focus: true,
@@ -50,7 +50,7 @@ fn stopped(kind: InProgress, paths: &[&str]) -> AppState {
 
 /// An `Applied` naming a finished `--continue`. Only `description` and
 /// `refresh` are read by `resumed`; the rest is a plausible journal entry.
-pub(super) fn done_applied() -> graft_ops::apply::Applied {
+pub(in crate::update) fn done_applied() -> graft_ops::apply::Applied {
     use graft_core::journal::{
         EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches,
     };
@@ -389,7 +389,10 @@ fn refs_on(branch: Option<&str>) -> std::sync::Arc<crate::refs::RefBadges> {
 
 /// A merge stopped, the journal read, and `live` the entries git is still
 /// inside: empty for a merge begun in the shell.
-fn merge_read(live: Vec<graft_core::journal::EntryId>, branch: Option<&str>) -> AppState {
+pub(in crate::update) fn merge_read(
+    live: Vec<graft_core::journal::EntryId>,
+    branch: Option<&str>,
+) -> AppState {
     AppState {
         live_entries: live.clone(),
         journal: crate::update::journal::JournalState {

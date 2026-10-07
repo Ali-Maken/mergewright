@@ -198,7 +198,7 @@ fn line(kind: LineKind, text: &str, old_no: Option<u32>, new_no: Option<u32>) ->
 /// `src/a.rs` with one hunk: a context line, a `-`/`+` pair, a context
 /// line. Body rows: `0` the `@@` heading, `1` context, `2` the removed
 /// line, `3` the added line, `4` context.
-fn one_pair_diff() -> FileDiff {
+pub(in crate::update) fn one_pair_diff() -> FileDiff {
     FileDiff {
         entry: FileEntry {
             path: b"src/a.rs".to_vec(),
@@ -250,7 +250,11 @@ fn no_trailing_newline_diff() -> FileDiff {
 
 /// The changes pane with the diff region focused, `diff` on show and the
 /// line cursor on body row `cursor`.
-fn state_on_diff(section: WorkingTreeSection, diff: FileDiff, cursor: usize) -> AppState {
+pub(in crate::update) fn state_on_diff(
+    section: WorkingTreeSection,
+    diff: FileDiff,
+    cursor: usize,
+) -> AppState {
     let path = String::from_utf8(diff.entry.path.clone()).expect("a test path is utf-8");
     let entry = match section {
         WorkingTreeSection::Staged => staged_entry(&path),
