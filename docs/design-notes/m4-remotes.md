@@ -33,6 +33,7 @@ impl LocalRemote { pub fn new(shape: Shape) -> Result<Self, Unavailable>; pub fn
     pub fn commit_on_remote(&self, subject: &str) -> io::Result<Oid>;   // via a second clone: work falls behind
     pub fn commit_locally(&self, subject: &str) -> io::Result<Oid>; }   // work goes ahead
 pub struct HttpRemote;    // smart HTTP: tiny_http (dev-dep) → `git http-backend` CGI; Basic auth; 127.0.0.1 ephemeral port
+                          // 2026-10-07: tiny_http replaced by own listener (13i/13j: it never joins its accept thread)
 impl HttpRemote { pub fn serve(bare: &Path, user: &str, password: &str) -> io::Result<Self>;
     pub fn url(&self) -> String /* http://user@127.0.0.1:p/repo.git */; pub fn url_anonymous(&self) -> String;
     pub fn requests(&self) -> (usize /*authorised*/, usize /*rejected 401*/); }

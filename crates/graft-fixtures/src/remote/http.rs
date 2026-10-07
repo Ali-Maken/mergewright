@@ -1,32 +1,51 @@
 //! A bare repository behind git's smart HTTP protocol, with Basic auth.
 //!
-//! [`tiny_http`] listens on `127.0.0.1:0`; every authorised request is handed
-//! to `git http-backend` as a CGI script, which is exactly what a real Git
-//! server does behind Apache or nginx. Plain HTTP only — no TLS (see the
-//! module above).
+//! The fixture owns a `TcpListener` on `127.0.0.1:0` and speaks just enough
+//! HTTP/1.1 itself: one request per connection, a body by `Content-Length`
+//! or chunked, `Expect: 100-continue`, and `Connection: close` on every
+//! answer. Every authorised request is handed to `git http-backend` as a CGI
+//! script, which is exactly what a real Git server does behind Apache or
+//! nginx. Plain HTTP only — no TLS (see the module above).
+//!
+//! Why not a server crate: `tiny_http`, used until m8 13j, moved its listener
+//! into an accept thread it never joined, so the port could still accept a
+//! connection after `drop` returned (13i). Here the listener lives in the
+//! thread `Drop` joins, so the port is closed once `drop` returns — by
+//! construction, as for [`HungRemote`](super::HungRemote).
 
 use std::fmt;
-use std::io::{self, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
+use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-use tiny_http::{Header, Request, Response, Server};
-
 use super::{hermetic_command, run_git};
 
-/// How long [`Drop`] waits for the listener thread, after ending any
-/// `http-backend` it is running, before declaring the teardown failed.
+/// How long [`Drop`] waits for the listener thread and every connection
+/// handler, after ending any `http-backend` and closing every client, before
+/// declaring the teardown failed.
 ///
 /// A test's teardown must never hang, and must never quietly leave a thread
 /// behind either: past this, drop panics (the test fails, saying why) rather
-/// than return with the thread still running.
+/// than return with a thread still running.
 const STOP_BOUND: Duration = Duration::from_secs(2);
+
+/// The longest one read from a client may block. A backstop only: `Drop`
+/// shuts every client's stream, which ends a blocked read at once. It bounds
+/// a handler whose client went silent (half-open) even without a `Drop`.
+const READ_TIMEOUT: Duration = Duration::from_secs(1);
+
+/// The longest request line, header line or chunk-size line accepted.
+const MAX_LINE: u64 = 8 * 1024;
+
+/// The most header lines one request may carry.
+const MAX_HEADERS: usize = 100;
 
 /// The one repository path the server answers for.
 const REPO_PATH: &str = "/repo.git";
@@ -40,16 +59,16 @@ const REPO_PATH: &str = "/repo.git";
 ///
 /// Dropping it stops the listener and frees the port.
 pub struct HttpRemote {
-    server: Arc<Server>,
+    address: SocketAddr,
+    /// The listener thread: it owns the `TcpListener`, so the port closes
+    /// when it ends.
     thread: Option<JoinHandle<()>>,
-    /// Disconnects when the listener thread ends, however it ends: the one
-    /// sender lives in the thread. In a `Mutex` only so the fixture stays
-    /// `Sync`.
+    /// Disconnects once the listener thread and every connection handler
+    /// have ended, however they end: each holds a clone of the one sender.
+    /// In a `Mutex` only so the fixture stays `Sync`.
     stopped: Mutex<Receiver<()>>,
-    running: Arc<Mutex<Running>>,
-    port: u16,
+    shared: Arc<Shared>,
     user: String,
-    counters: Arc<Counters>,
     /// Keeps the empty `HOME` the backend runs with.
     _home: tempfile::TempDir,
 }
@@ -61,6 +80,32 @@ impl fmt::Debug for HttpRemote {
             .field("requests", &self.requests())
             .finish_non_exhaustive()
     }
+}
+
+/// What the fixture, its listener and its handlers share.
+#[derive(Default)]
+struct Shared {
+    connections: Mutex<Connections>,
+    running: Mutex<Running>,
+    counters: Counters,
+}
+
+/// Every accepted connection, so [`Drop`] can close and join it.
+#[derive(Default)]
+struct Connections {
+    /// Set by `Drop`. The listener checks it under this lock before it
+    /// registers a connection, so once `Drop` has set it, nothing it does
+    /// not see in `open` can be registered.
+    closing: bool,
+    open: Vec<Connection>,
+}
+
+/// One accepted client and the thread answering it.
+struct Connection {
+    /// A clone of the handler's stream: shutting it ends the handler's
+    /// blocked read or write.
+    stream: TcpStream,
+    handler: JoinHandle<()>,
 }
 
 /// What the server has seen, for tests to assert on.
@@ -75,17 +120,18 @@ struct Counters {
     gzipped: AtomicUsize,
 }
 
-/// The `http-backend` the listener is waiting on, so [`Drop`] can end it.
+/// The `http-backend`s the handlers are waiting on, so [`Drop`] can end them.
 ///
-/// The backend runs in its own process group, and the whole group is killed:
-/// `http-backend` hands a push to `receive-pack`, which runs the repository's
-/// hooks, and each of them holds the output pipe the listener reads to EOF.
+/// Each backend runs in its own process group, and the whole group is
+/// killed: `http-backend` hands a push to `receive-pack`, which runs the
+/// repository's hooks, and each of them holds the output pipe the handler
+/// reads to EOF.
 #[derive(Debug, Default)]
 struct Running {
     /// Set by `Drop`: a backend started after this is killed at once.
     stopping: bool,
-    /// The running backend's process group id (its pid).
-    group: Option<u32>,
+    /// The running backends' process group ids (each its leader's pid).
+    groups: Vec<u32>,
 }
 
 /// `SIGKILL` to every process in `group`. Through `kill(1)`: this crate keeps
@@ -107,12 +153,22 @@ fn kill_group(group: u32) -> Result<(), String> {
 }
 
 /// A poisoned lock only means a panic elsewhere already failed the test;
-/// the two fields are still sound.
-fn lock(running: &Mutex<Running>) -> std::sync::MutexGuard<'_, Running> {
-    running.lock().unwrap_or_else(PoisonError::into_inner)
+/// what it guards is still sound.
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// Everything the listener thread needs to answer a request.
+/// `shutdown(Both)`: wakes whatever thread is blocked reading or writing it.
+fn shut(stream: &TcpStream, port: u16) {
+    if let Err(error) = stream.shutdown(Shutdown::Both) {
+        // The client already went away; the stream is closed either way.
+        if error.kind() != io::ErrorKind::NotConnected {
+            eprintln!("HttpRemote on port {port}: shutdown failed: {error}");
+        }
+    }
+}
+
+/// Everything a handler needs to answer a request.
 struct Backend {
     /// The directory holding the bare repository: `GIT_PROJECT_ROOT`.
     project_root: PathBuf,
@@ -122,8 +178,7 @@ struct Backend {
     expected_authorization: String,
     user: String,
     home: PathBuf,
-    counters: Arc<Counters>,
-    running: Arc<Mutex<Running>>,
+    shared: Arc<Shared>,
 }
 
 impl HttpRemote {
@@ -137,6 +192,29 @@ impl HttpRemote {
     /// If `bare` has no parent or file name, the config cannot be written,
     /// or the port cannot be bound.
     pub fn serve(bare: &Path, user: &str, password: &str) -> io::Result<HttpRemote> {
+        Self::start(bare, user, password, Duration::ZERO)
+    }
+
+    /// [`serve`](Self::serve), with the listener thread holding the listening
+    /// socket for `exit_delay` after its loop ends. The test seam that makes
+    /// "`drop` returns only once the port is closed" fail deterministically
+    /// if `drop` stops waiting for that thread.
+    #[cfg(test)]
+    pub(crate) fn serve_with_exit_delay(
+        bare: &Path,
+        user: &str,
+        password: &str,
+        exit_delay: Duration,
+    ) -> io::Result<HttpRemote> {
+        Self::start(bare, user, password, exit_delay)
+    }
+
+    fn start(
+        bare: &Path,
+        user: &str,
+        password: &str,
+        exit_delay: Duration,
+    ) -> io::Result<HttpRemote> {
         let (Some(project_root), Some(repo_name)) = (bare.parent(), bare.file_name()) else {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -154,16 +232,10 @@ impl HttpRemote {
         )
         .map_err(io::Error::other)?;
 
-        let server = Server::http("127.0.0.1:0").map_err(io::Error::other)?;
-        let port = server
-            .server_addr()
-            .to_ip()
-            .ok_or_else(|| io::Error::other("tiny_http bound a non-IP address"))?
-            .port();
-        let server = Arc::new(server);
-        let counters = Arc::new(Counters::default());
-        let running = Arc::new(Mutex::new(Running::default()));
-        let backend = Backend {
+        let listener = TcpListener::bind("127.0.0.1:0")?;
+        let address = listener.local_addr()?;
+        let shared = Arc::new(Shared::default());
+        let backend = Arc::new(Backend {
             project_root: project_root.to_path_buf(),
             repo_name: repo_name.to_string_lossy().into_owned(),
             expected_authorization: format!(
@@ -172,32 +244,30 @@ impl HttpRemote {
             ),
             user: user.to_owned(),
             home: home.path().to_path_buf(),
-            counters: Arc::clone(&counters),
-            running: Arc::clone(&running),
-        };
-        let listening = Arc::clone(&server);
+            shared: Arc::clone(&shared),
+        });
         let (finished, stopped) = mpsc::channel::<()>();
         let thread = thread::Builder::new()
-            .name(format!("http-remote-{port}"))
+            .name(format!("http-remote-{}", address.port()))
             .spawn(move || {
-                // Owned here so it drops — disconnecting `stopped` — when the
-                // thread ends, by returning or by unwinding.
-                let _finished = finished;
-                // Ends when `Drop` calls `unblock`: `recv` then returns an
-                // error and the iterator stops.
-                for request in listening.incoming_requests() {
-                    backend.answer(request);
+                accept_loop(&listener, &backend, &finished);
+                if !exit_delay.is_zero() {
+                    // Test seam only (`serve_with_exit_delay`): stands in for
+                    // a thread descheduled between its loop and its exit.
+                    thread::sleep(exit_delay);
                 }
+                // The port closes here; only then may `Drop` see this thread
+                // as finished, so the sender goes after it.
+                drop(listener);
+                drop(finished);
             })?;
 
         Ok(HttpRemote {
-            server,
+            address,
             thread: Some(thread),
             stopped: Mutex::new(stopped),
-            running,
-            port,
+            shared,
             user: user.to_owned(),
-            counters,
             _home: home,
         })
     }
@@ -205,17 +275,17 @@ impl HttpRemote {
     /// `http://<user>@127.0.0.1:<port>/repo.git` — git asks only for the
     /// password.
     pub fn url(&self) -> String {
-        format!("http://{}@127.0.0.1:{}{REPO_PATH}", self.user, self.port)
+        format!("http://{}@127.0.0.1:{}{REPO_PATH}", self.user, self.port())
     }
 
     /// `http://127.0.0.1:<port>/repo.git` — git asks for user and password.
     pub fn url_anonymous(&self) -> String {
-        format!("http://127.0.0.1:{}{REPO_PATH}", self.port)
+        format!("http://127.0.0.1:{}{REPO_PATH}", self.port())
     }
 
     /// The port the server listens on.
     pub fn port(&self) -> u16 {
-        self.port
+        self.address.port()
     }
 
     /// Requests seen so far: (authorised, rejected with `401`).
@@ -223,56 +293,160 @@ impl HttpRemote {
     /// Git's first request never carries credentials, so even a clone with
     /// the right password counts one rejection.
     pub fn requests(&self) -> (usize, usize) {
+        let counters = &self.shared.counters;
         (
-            self.counters.authorised.load(Ordering::SeqCst),
-            self.counters.rejected.load(Ordering::SeqCst),
+            counters.authorised.load(Ordering::SeqCst),
+            counters.rejected.load(Ordering::SeqCst),
         )
     }
 
     /// Authorised requests whose body came chunked.
     #[cfg(test)]
     pub(crate) fn chunked_requests(&self) -> usize {
-        self.counters.chunked.load(Ordering::SeqCst)
+        self.shared.counters.chunked.load(Ordering::SeqCst)
     }
 
     /// Authorised requests whose body came gzipped.
     #[cfg(test)]
     pub(crate) fn gzipped_requests(&self) -> usize {
-        self.counters.gzipped.load(Ordering::SeqCst)
+        self.shared.counters.gzipped.load(Ordering::SeqCst)
     }
+
+    /// Accepted connections whose handler is still running.
+    #[cfg(test)]
+    pub(crate) fn open_connections(&self) -> usize {
+        lock(&self.shared.connections)
+            .open
+            .iter()
+            .filter(|connection| !connection.handler.is_finished())
+            .count()
+    }
+}
+
+/// The listener thread: accept, hand the client to its own handler thread,
+/// repeat — until `Drop` sets `closing` and connects once to wake `accept`.
+///
+/// `closing` is checked, under the lock `Drop` sets it with, after every
+/// `accept`. Whatever is accepted once it is set — the wake-up, or a real
+/// client that connected in the same moment — is closed, not answered.
+fn accept_loop(listener: &TcpListener, backend: &Arc<Backend>, finished: &Sender<()>) {
+    for stream in listener.incoming() {
+        let mut connections = lock(&backend.shared.connections);
+        if connections.closing {
+            return;
+        }
+        let stream = match stream {
+            Ok(stream) => stream,
+            Err(error) => {
+                // A failed `accept` (the client reset before it completed)
+                // costs nothing: the listener is still good, and that
+                // client sees its own error.
+                eprintln!("HttpRemote: accept failed: {error}");
+                continue;
+            }
+        };
+        reap_finished(&mut connections.open);
+        match spawn_handler(stream, backend, finished) {
+            Ok(connection) => connections.open.push(connection),
+            // The stream dropped with the error: that client sees a closed
+            // connection and fails. This line says why.
+            Err(error) => eprintln!("HttpRemote: could not start a handler: {error}"),
+        }
+    }
+}
+
+/// Joins the handlers that have ended, so `open` holds only live ones.
+fn reap_finished(open: &mut Vec<Connection>) {
+    let (done, live): (Vec<_>, Vec<_>) = open
+        .drain(..)
+        .partition(|connection| connection.handler.is_finished());
+    *open = live;
+    for connection in done {
+        join_handler(connection.handler);
+    }
+}
+
+/// Joins one handler. A handler never panics by design; if one did, its
+/// client already failed, and this line says why.
+fn join_handler(handler: JoinHandle<()>) {
+    if handler.join().is_err() {
+        eprintln!("HttpRemote: a connection handler panicked");
+    }
+}
+
+/// Starts the thread that answers `stream`'s one request.
+fn spawn_handler(
+    stream: TcpStream,
+    backend: &Arc<Backend>,
+    finished: &Sender<()>,
+) -> io::Result<Connection> {
+    stream.set_read_timeout(Some(READ_TIMEOUT))?;
+    let kept = stream.try_clone()?;
+    let backend = Arc::clone(backend);
+    let finished = finished.clone();
+    let handler = thread::Builder::new()
+        .name("http-remote-connection".to_owned())
+        .spawn(move || {
+            // Owned here so it drops when the handler ends, by returning or
+            // by unwinding.
+            let _finished = finished;
+            backend.handle(stream);
+        })?;
+    Ok(Connection {
+        stream: kept,
+        handler,
+    })
 }
 
 impl Drop for HttpRemote {
     fn drop(&mut self) {
-        self.server.unblock();
         let Some(thread) = self.thread.take() else {
             return;
         };
-        // The listener may be inside a request, waiting on an `http-backend`
-        // that will never finish (a hung hook, say). End it; no backend
-        // started from here on survives either.
-        let killed = {
-            let mut running = lock(&self.running);
+        let port = self.port();
+        // 1. Closed: from here on the listener registers no connection.
+        lock(&self.shared.connections).closing = true;
+        // 2. A handler may be waiting on an `http-backend` that will never
+        //    finish (a hung hook, say). End it; no backend started from here
+        //    on survives either.
+        let killed: Vec<Result<(), String>> = {
+            let mut running = lock(&self.shared.running);
             running.stopping = true;
-            running.group.take().map(kill_group)
+            running.groups.drain(..).map(kill_group).collect()
         };
+        // 3. Every handler blocked on its client — idle, half-open, or not
+        //    reading its answer — wakes with its stream shut.
+        for connection in &lock(&self.shared.connections).open {
+            shut(&connection.stream, port);
+        }
+        // 4. Wake the blocked `accept` while the listener is still open; the
+        //    listener sees `closing`, returns, and drops the listener.
+        //
+        //    A refused wake is not by itself a failure: a client queued
+        //    before step 1 (a test's "is the port open?" probe, say) can be
+        //    accepted after it, and then the listener has already seen
+        //    `closing`, returned and closed the socket — nothing is left to
+        //    wake. A listener that really is still in `accept` is caught by
+        //    step 5's bound, whose panic carries this error.
+        let wake = TcpStream::connect(self.address).map(drop);
+        // 5. Wait for the listener thread and every handler, within the bound.
         let stopped = self
             .stopped
             .get_mut()
             .unwrap_or_else(PoisonError::into_inner);
         match stopped.recv_timeout(STOP_BOUND) {
             Err(RecvTimeoutError::Disconnected) => {}
-            Ok(()) => unreachable!("the listener thread never sends, it only disconnects"),
+            Ok(()) => unreachable!("no thread sends; each only disconnects"),
             Err(RecvTimeoutError::Timeout) => {
-                // Stuck even with its backend killed: something outside the
-                // backend's process group holds the request open. Returning
-                // would leave the thread (and its port) running for the rest
-                // of the test binary, silently. Fail the test instead — unless
-                // it is already failing, where a second panic would abort.
+                // Stuck even with backends killed and clients shut: something
+                // outside a backend's process group holds a request open.
+                // Returning would leave a thread (maybe the port) running for
+                // the rest of the test binary, silently. Fail the test
+                // instead — unless it is already failing.
                 let message = format!(
-                    "HttpRemote on port {}: listener thread still running {STOP_BOUND:?} \
-                     after its backend was killed ({killed:?}); teardown failed",
-                    self.port
+                    "HttpRemote on port {port}: a thread still running {STOP_BOUND:?} \
+                     after its backends were killed ({killed:?}) and the listener \
+                     was woken ({wake:?}); teardown failed"
                 );
                 if thread::panicking() {
                     eprintln!("{message}");
@@ -281,106 +455,369 @@ impl Drop for HttpRemote {
                 panic!("{message}");
             }
         }
+        // Every thread has ended (all senders are gone): these joins return
+        // at once. The listener thread dropped the listening socket before
+        // its sender, so the port is closed now.
         if thread.join().is_err() {
-            eprintln!("HttpRemote on port {}: listener thread panicked", self.port);
+            eprintln!("HttpRemote on port {port}: listener thread panicked");
         }
-        // `self.server` drops after this; `Server::drop` closes the listening
-        // socket, so the port is free once `drop` returns.
+        let open = std::mem::take(&mut lock(&self.shared.connections).open);
+        for connection in open {
+            join_handler(connection.handler);
+        }
+    }
+}
+
+/// One HTTP request, body already de-chunked.
+struct Request {
+    method: String,
+    target: String,
+    headers: Vec<(String, String)>,
+    body: Vec<u8>,
+}
+
+impl Request {
+    /// The first header called `name`, compared case-insensitively.
+    fn header(&self, name: &str) -> Option<&str> {
+        find_header(&self.headers, name)
+    }
+}
+
+fn find_header<'a>(headers: &'a [(String, String)], name: &str) -> Option<&'a str> {
+    headers
+        .iter()
+        .find(|(field, _)| field.eq_ignore_ascii_case(name))
+        .map(|(_, value)| value.as_str())
+}
+
+/// An answer, before framing.
+struct Reply {
+    status: u16,
+    headers: Vec<(String, String)>,
+    body: Vec<u8>,
+}
+
+impl Reply {
+    fn text(status: u16, body: impl Into<String>) -> Reply {
+        Reply {
+            status,
+            headers: vec![("Content-Type".to_owned(), "text/plain".to_owned())],
+            body: body.into().into_bytes(),
+        }
+    }
+}
+
+/// An error that means the client sent something that is not HTTP/1.1 this
+/// server understands: answered `400`, unlike an I/O error.
+fn malformed(what: impl Into<String>) -> io::Error {
+    io::Error::new(io::ErrorKind::InvalidData, what.into())
+}
+
+/// The peer closed in the middle of a request.
+fn cut_short() -> io::Error {
+    io::Error::new(
+        io::ErrorKind::UnexpectedEof,
+        "the client closed mid-request",
+    )
+}
+
+/// Reads one `\r\n`- or `\n`-terminated line, without its terminator.
+/// `Ok(None)`: the peer closed before sending a byte of it.
+fn read_line(reader: &mut impl BufRead) -> io::Result<Option<String>> {
+    let mut line = Vec::new();
+    (&mut *reader).take(MAX_LINE).read_until(b'\n', &mut line)?;
+    if line.is_empty() {
+        return Ok(None);
+    }
+    if line.pop() != Some(b'\n') {
+        return Err(
+            if line.len() + 1 >= usize::try_from(MAX_LINE).unwrap_or(usize::MAX) {
+                malformed("line too long")
+            } else {
+                cut_short()
+            },
+        );
+    }
+    if line.last() == Some(&b'\r') {
+        line.pop();
+    }
+    String::from_utf8(line)
+        .map(Some)
+        .map_err(|_| malformed("line is not UTF-8"))
+}
+
+/// Reads one request; answers `100 Continue` itself when asked. `Ok(None)`:
+/// the peer closed before a request line. A request this server cannot
+/// parse is an `InvalidData` error.
+fn read_request(stream: &mut TcpStream) -> io::Result<Option<Request>> {
+    let mut reader = BufReader::new(&*stream);
+    let Some(line) = read_line(&mut reader)? else {
+        return Ok(None);
+    };
+    let mut parts = line.split(' ');
+    let (Some(method), Some(target), Some(version), None) =
+        (parts.next(), parts.next(), parts.next(), parts.next())
+    else {
+        return Err(malformed(format!("bad request line {line:?}")));
+    };
+    if method.is_empty() || !target.starts_with('/') || !version.starts_with("HTTP/1.") {
+        return Err(malformed(format!("bad request line {line:?}")));
+    }
+    let (method, target) = (method.to_owned(), target.to_owned());
+
+    let mut headers = Vec::new();
+    loop {
+        let line = read_line(&mut reader)?.ok_or_else(cut_short)?;
+        if line.is_empty() {
+            break;
+        }
+        if headers.len() == MAX_HEADERS {
+            return Err(malformed("too many headers"));
+        }
+        let Some((name, value)) = line.split_once(':') else {
+            return Err(malformed(format!("bad header {line:?}")));
+        };
+        if name.is_empty() || name.contains(|c: char| c.is_ascii_whitespace()) {
+            return Err(malformed(format!("bad header {line:?}")));
+        }
+        headers.push((name.to_owned(), value.trim().to_owned()));
+    }
+
+    let chunked = match find_header(&headers, "Transfer-Encoding") {
+        None => false,
+        Some(coding) if coding.eq_ignore_ascii_case("chunked") => true,
+        Some(coding) => return Err(malformed(format!("transfer coding {coding:?}"))),
+    };
+    let length = match find_header(&headers, "Content-Length") {
+        Some(length) if !chunked => Some(
+            length
+                .parse::<u64>()
+                .map_err(|_| malformed(format!("Content-Length {length:?}")))?,
+        ),
+        _ => None,
+    };
+    if find_header(&headers, "Expect").is_some_and(|v| v.eq_ignore_ascii_case("100-continue")) {
+        (&*stream).write_all(b"HTTP/1.1 100 Continue\r\n\r\n")?;
+    }
+    let body = if chunked {
+        read_chunked(&mut reader)?
+    } else if let Some(length) = length {
+        read_exactly(&mut reader, length)?
+    } else {
+        Vec::new()
+    };
+    Ok(Some(Request {
+        method,
+        target,
+        headers,
+        body,
+    }))
+}
+
+/// Appends exactly `length` bytes to a new buffer, or fails.
+fn read_exactly(reader: &mut impl BufRead, length: u64) -> io::Result<Vec<u8>> {
+    let mut body = Vec::new();
+    append_exactly(reader, length, &mut body)?;
+    Ok(body)
+}
+
+fn append_exactly(reader: &mut impl BufRead, length: u64, body: &mut Vec<u8>) -> io::Result<()> {
+    let read = (&mut *reader).take(length).read_to_end(body)?;
+    if u64::try_from(read).ok() == Some(length) {
+        Ok(())
+    } else {
+        Err(cut_short())
+    }
+}
+
+/// A `Transfer-Encoding: chunked` body: hex size lines (extensions ignored),
+/// each chunk followed by a line end, a `0` chunk, then trailers (ignored)
+/// up to a blank line.
+fn read_chunked(reader: &mut impl BufRead) -> io::Result<Vec<u8>> {
+    let mut body = Vec::new();
+    loop {
+        let line = read_line(reader)?.ok_or_else(cut_short)?;
+        let size = line.split_once(';').map_or(line.as_str(), |(size, _)| size);
+        let size = u64::from_str_radix(size.trim(), 16)
+            .map_err(|_| malformed(format!("bad chunk size {line:?}")))?;
+        if size == 0 {
+            break;
+        }
+        append_exactly(reader, size, &mut body)?;
+        if !read_line(reader)?.ok_or_else(cut_short)?.is_empty() {
+            return Err(malformed("chunk longer than its size"));
+        }
+    }
+    while !read_line(reader)?.ok_or_else(cut_short)?.is_empty() {}
+    Ok(body)
+}
+
+/// The reason phrase for the statuses this server sends. Clients ignore it.
+fn reason(status: u16) -> &'static str {
+    match status {
+        100 => "Continue",
+        200 => "OK",
+        400 => "Bad Request",
+        401 => "Unauthorized",
+        403 => "Forbidden",
+        404 => "Not Found",
+        405 => "Method Not Allowed",
+        500 => "Internal Server Error",
+        _ => "Status",
+    }
+}
+
+/// Status line + headers + body, always `Connection: close`. The framing is
+/// this function's: any `Content-Length`, `Transfer-Encoding` or
+/// `Connection` in `headers` is replaced by its own.
+fn write_response(
+    stream: &mut TcpStream,
+    status: u16,
+    headers: &[(String, String)],
+    body: &[u8],
+) -> io::Result<()> {
+    let mut head = format!("HTTP/1.1 {status} {}\r\n", reason(status));
+    for (name, value) in headers {
+        let framing = ["Content-Length", "Transfer-Encoding", "Connection"]
+            .iter()
+            .any(|field| name.eq_ignore_ascii_case(field));
+        if !framing {
+            head.push_str(&format!("{name}: {value}\r\n"));
+        }
+    }
+    head.push_str(&format!(
+        "Content-Length: {}\r\nConnection: close\r\n\r\n",
+        body.len()
+    ));
+    let mut out = head.into_bytes();
+    out.extend_from_slice(body);
+    stream.write_all(&out)?;
+    stream.flush()
+}
+
+/// Ends a connection whose answer is written: says so (`FIN`), then reads
+/// whatever the client still sends until it closes. Closing with unread
+/// bytes would send a reset instead, which can destroy the answer before
+/// the client reads it (a `400` sent before the body was read, say).
+fn close(stream: &TcpStream) {
+    if let Err(error) = stream.shutdown(Shutdown::Write) {
+        if error.kind() != io::ErrorKind::NotConnected {
+            eprintln!("HttpRemote: could not end the answer: {error}");
+        }
+        return;
+    }
+    let mut sink = [0u8; 4096];
+    loop {
+        match (&*stream).read(&mut sink) {
+            Ok(n) if n > 0 => {}
+            // The client closed — or an error: a timeout, a reset or `Drop`'s
+            // shutdown. Either way the answer is out and the client is gone
+            // or silent; nothing is left to do with it.
+            Ok(_) | Err(_) => return,
+        }
     }
 }
 
 impl Backend {
-    /// Answers one request: a challenge, or whatever `http-backend` says.
-    fn answer(&self, mut request: Request) {
-        let authorised = request
-            .headers()
-            .iter()
-            .find(|h| h.field.equiv("Authorization"))
-            .is_some_and(|h| h.value.as_str() == self.expected_authorization);
-        let response = if authorised {
-            self.counters.authorised.fetch_add(1, Ordering::SeqCst);
-            match self.cgi(&mut request) {
-                Ok(response) => response,
-                Err(error) => {
-                    // The client sees a 500 and fails; this line says why.
-                    eprintln!(
-                        "HttpRemote: {} {}: {error}",
-                        request.method(),
-                        request.url()
-                    );
-                    Response::from_string(error.to_string()).with_status_code(500)
-                }
+    /// Answers the one request on `stream`, then closes it.
+    fn handle(&self, mut stream: TcpStream) {
+        let reply = match read_request(&mut stream) {
+            Ok(Some(request)) => self.answer(request),
+            // Closed before a request — the client gave up, or `Drop` shut
+            // the stream. Nothing to answer.
+            Ok(None) => return,
+            Err(error) if error.kind() == io::ErrorKind::InvalidData => {
+                Reply::text(400, format!("bad request: {error}\n"))
             }
-        } else {
-            self.counters.rejected.fetch_add(1, Ordering::SeqCst);
-            Response::from_string("authentication required\n")
-                .with_status_code(401)
-                .with_header(header("WWW-Authenticate", "Basic realm=\"graft\""))
+            Err(error) => {
+                // A timeout or a client that hung up mid-request: there is
+                // no one to answer. The client sees its own error; this line
+                // says what the server saw.
+                eprintln!("HttpRemote: reading a request: {error}");
+                return;
+            }
         };
-        if let Err(error) = request.respond(response) {
+        if let Err(error) = write_response(&mut stream, reply.status, &reply.headers, &reply.body) {
             // The client hung up before the answer went out — a killed
             // `git` does that. Nothing waits on this answer any more; the
             // test that killed the client asserts on the client instead.
             eprintln!("HttpRemote: could not send the response: {error}");
+            return;
         }
+        close(&stream);
+    }
+
+    /// Answers one request: a challenge, or whatever `http-backend` says.
+    fn answer(&self, request: Request) -> Reply {
+        let counters = &self.shared.counters;
+        let authorised = request.header("Authorization") == Some(&self.expected_authorization);
+        if !authorised {
+            counters.rejected.fetch_add(1, Ordering::SeqCst);
+            let mut reply = Reply::text(401, "authentication required\n");
+            reply.headers.push((
+                "WWW-Authenticate".to_owned(),
+                "Basic realm=\"graft\"".to_owned(),
+            ));
+            return reply;
+        }
+        counters.authorised.fetch_add(1, Ordering::SeqCst);
+        let line = format!("{} {}", request.method, request.target);
+        self.cgi(request).unwrap_or_else(|error| {
+            // The client sees a 500 and fails; this line says why.
+            eprintln!("HttpRemote: {line}: {error}");
+            Reply::text(500, error.to_string())
+        })
     }
 
     /// Runs `git http-backend` for one authorised request.
-    fn cgi(&self, request: &mut Request) -> io::Result<Response<io::Cursor<Vec<u8>>>> {
-        let url = request.url().to_owned();
-        let (path, query) = url.split_once('?').unwrap_or((&url, ""));
+    fn cgi(&self, request: Request) -> io::Result<Reply> {
+        let (path, query) = request
+            .target
+            .split_once('?')
+            .unwrap_or((&request.target, ""));
         let Some(rest) = path.strip_prefix(REPO_PATH) else {
-            return Ok(Response::from_string("no such repository\n").with_status_code(404));
+            return Ok(Reply::text(404, "no such repository\n"));
         };
-        let method = request.method().as_str().to_owned();
-        let find = |name: &'static str| {
-            request
-                .headers()
-                .iter()
-                .find(|h| h.field.equiv(name))
-                .map(|h| h.value.as_str().to_owned())
-        };
-        let content_type = find("Content-Type");
-        let content_encoding = find("Content-Encoding");
-        let git_protocol = find("Git-Protocol");
-        if find("Transfer-Encoding").is_some_and(|v| v.eq_ignore_ascii_case("chunked")) {
-            self.counters.chunked.fetch_add(1, Ordering::SeqCst);
+        let counters = &self.shared.counters;
+        if request
+            .header("Transfer-Encoding")
+            .is_some_and(|v| v.eq_ignore_ascii_case("chunked"))
+        {
+            counters.chunked.fetch_add(1, Ordering::SeqCst);
         }
+        let content_encoding = request.header("Content-Encoding");
         if content_encoding.is_some() {
-            self.counters.gzipped.fetch_add(1, Ordering::SeqCst);
+            counters.gzipped.fetch_add(1, Ordering::SeqCst);
         }
 
-        // tiny_http's reader has already undone any chunked transfer
-        // encoding, so reading it whole gives the exact body and its length;
-        // `http-backend` then gets a plain `CONTENT_LENGTH`.
-        let mut body = Vec::new();
-        request.as_reader().read_to_end(&mut body)?;
-
+        // The body is already de-chunked, so `http-backend` gets a plain
+        // `CONTENT_LENGTH`.
         let mut command = hermetic_command(&self.home, &self.project_root, &["http-backend"]);
         command
             .env("GIT_PROJECT_ROOT", &self.project_root)
             .env("GIT_HTTP_EXPORT_ALL", "1")
             .env("PATH_INFO", format!("/{}{rest}", self.repo_name))
             .env("QUERY_STRING", query)
-            .env("REQUEST_METHOD", &method)
-            .env("CONTENT_LENGTH", body.len().to_string())
+            .env("REQUEST_METHOD", &request.method)
+            .env("CONTENT_LENGTH", request.body.len().to_string())
             .env("REMOTE_USER", &self.user)
             .env("REMOTE_ADDR", "127.0.0.1")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
-        if let Some(value) = &content_type {
+        if let Some(value) = request.header("Content-Type") {
             command.env("CONTENT_TYPE", value);
         }
-        if let Some(value) = &content_encoding {
+        if let Some(value) = content_encoding {
             // `http-backend` inflates a gzipped body itself when told.
             command.env("HTTP_CONTENT_ENCODING", value);
         }
-        if let Some(value) = &git_protocol {
+        if let Some(value) = request.header("Git-Protocol") {
             command.env("HTTP_GIT_PROTOCOL", value);
         }
 
-        parse_cgi(&self.run_backend(&mut command, body)?)
+        let output = self.run_backend(&mut command, request.body)?;
+        parse_cgi(&output)
     }
 
     /// Runs `http-backend` with `body` on its stdin and returns its stdout.
@@ -388,18 +825,19 @@ impl Backend {
     /// it runs, so `Drop` can kill it and everything it started.
     fn run_backend(&self, command: &mut Command, body: Vec<u8>) -> io::Result<Vec<u8>> {
         let child = command.process_group(0).spawn()?;
+        let group = child.id();
         {
-            let mut running = lock(&self.running);
+            let mut running = lock(&self.shared.running);
             if running.stopping {
                 // `Drop` came between the spawn and here: it found nothing
                 // to kill, so this does. The wait below then returns. If the
                 // kill failed, `Drop`'s bounded wait is what notices: this
                 // line only says why.
-                if let Err(error) = kill_group(child.id()) {
+                if let Err(error) = kill_group(group) {
                     eprintln!("HttpRemote: {error}");
                 }
             } else {
-                running.group = Some(child.id());
+                running.groups.push(group);
             }
         }
         let output = feed_and_wait(child, body);
@@ -407,7 +845,7 @@ impl Backend {
         // the group id; for it to name another process, the pid would have
         // to be reused as a group leader in that window. Accepted in a test
         // fixture.
-        lock(&self.running).group = None;
+        lock(&self.shared.running).groups.retain(|&g| g != group);
         output
     }
 }
@@ -437,8 +875,8 @@ fn feed_and_wait(mut child: std::process::Child, body: Vec<u8>) -> io::Result<Ve
 }
 
 /// Turns a CGI script's output — headers, a blank line, the body — into a
-/// response. `Status:` becomes the status code (200 if absent).
-fn parse_cgi(output: &[u8]) -> io::Result<Response<io::Cursor<Vec<u8>>>> {
+/// reply. `Status:` becomes the status code (200 if absent).
+fn parse_cgi(output: &[u8]) -> io::Result<Reply> {
     let (head, body) = split_head(output)
         .ok_or_else(|| io::Error::other("http-backend's output had no end of headers"))?;
     let head = std::str::from_utf8(head).map_err(io::Error::other)?;
@@ -456,14 +894,14 @@ fn parse_cgi(output: &[u8]) -> io::Result<Response<io::Cursor<Vec<u8>>>> {
                 .and_then(|code| code.parse().ok())
                 .ok_or_else(|| io::Error::other(format!("malformed CGI status {value:?}")))?;
         } else {
-            headers.push(header(name, value));
+            headers.push((name.to_owned(), value.to_owned()));
         }
     }
-    let mut response = Response::from_data(body.to_vec()).with_status_code(status);
-    for h in headers {
-        response.add_header(h);
-    }
-    Ok(response)
+    Ok(Reply {
+        status,
+        headers,
+        body: body.to_vec(),
+    })
 }
 
 /// Splits CGI output at the blank line ending the headers, `\r\n` or `\n`.
@@ -478,16 +916,6 @@ fn split_head(output: &[u8]) -> Option<(&[u8], &[u8])> {
         (a, b) => a.or(b)?,
     };
     Some((&output[..at], &output[at + len..]))
-}
-
-/// A header built from strings this module controls or `http-backend`
-/// wrote. Both are ASCII, so the conversion cannot fail in practice; if it
-/// ever does, the header is `X-Graft-Bad-Header` and the test sees it.
-fn header(name: &str, value: &str) -> Header {
-    Header::from_bytes(name.as_bytes().to_vec(), value.as_bytes().to_vec()).unwrap_or_else(|()| {
-        Header::from_bytes(b"X-Graft-Bad-Header".to_vec(), name.as_bytes().to_vec())
-            .unwrap_or_else(|()| unreachable!("a fixed ASCII header name is valid"))
-    })
 }
 
 /// Standard base64 with padding — all Basic auth needs, not worth a crate.
@@ -536,6 +964,6 @@ mod unit {
     fn cgi_status_line_sets_the_code() {
         let response = parse_cgi(b"Status: 404 Not Found\r\nContent-Type: text/plain\r\n\r\nnope")
             .expect("parses");
-        assert_eq!(response.status_code().0, 404);
+        assert_eq!(response.status, 404);
     }
 }

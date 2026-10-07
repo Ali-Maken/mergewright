@@ -411,6 +411,139 @@ fn http_remote_drop_ends_a_wedged_backend() {
     );
 }
 
+/// The cause of 13i, pinned: `drop` must not return before the thread that
+/// owns the listening socket has dropped it. The seam holds the listener
+/// 300 ms past its loop, so a `drop` that does not join that thread returns
+/// early and the port still accepts — every time, not only under load.
+#[test]
+fn http_remote_drop_waits_for_the_listener_to_close() {
+    let remote = local();
+    let delay = Duration::from_millis(300);
+    let http = HttpRemote::serve_with_exit_delay(remote.bare(), USER, PASSWORD, delay).unwrap();
+    let port = http.port();
+    assert!(!port_is_closed(port));
+
+    let started = Instant::now();
+    drop(http);
+    let dropped_in = started.elapsed();
+
+    assert!(
+        dropped_in >= delay,
+        "drop returned in {dropped_in:?}, before the listener thread let go of the socket"
+    );
+    assert!(port_is_closed(port), "port {port} still accepts after drop");
+}
+
+/// `printf '0014command=ls-refs\n0000'`: a protocol-v2 `ls-refs` request.
+const LS_REFS: &[u8] = b"0014command=ls-refs\n0000";
+
+/// The head of an authorised `git-upload-pack` POST, up to and including the
+/// blank line; `extra` is more header lines, each ending `\r\n`.
+fn upload_pack_head(extra: &str) -> String {
+    format!(
+        "POST /repo.git/git-upload-pack HTTP/1.1\r\n\
+         Host: 127.0.0.1\r\n\
+         Authorization: Basic {}\r\n\
+         Content-Type: application/x-git-upload-pack-request\r\n\
+         Git-Protocol: version=2\r\n\
+         {extra}\r\n",
+        super::http::base64(format!("{USER}:{PASSWORD}").as_bytes()),
+    )
+}
+
+/// A chunked body is reassembled before `http-backend` sees it: the backend
+/// answers `ls-refs` with the branch only if it got the exact 24 bytes.
+#[test]
+fn http_remote_reads_a_chunked_body() {
+    let remote = local();
+    let http = HttpRemote::serve(remote.bare(), USER, PASSWORD).unwrap();
+    let mut stream = TcpStream::connect(("127.0.0.1", http.port())).unwrap();
+    stream
+        .write_all(upload_pack_head("Transfer-Encoding: chunked\r\n").as_bytes())
+        .unwrap();
+    // Split mid-pkt-line, with a chunk extension, then a trailer.
+    let (first, second) = LS_REFS.split_at(10);
+    write!(stream, "{:x};ext=1\r\n", first.len()).unwrap();
+    stream.write_all(first).unwrap();
+    write!(stream, "\r\n{:X}\r\n", second.len()).unwrap();
+    stream.write_all(second).unwrap();
+    stream.write_all(b"\r\n0\r\nX-Trailer: t\r\n\r\n").unwrap();
+    let mut answer = Vec::new();
+    stream.read_to_end(&mut answer).unwrap();
+    let answer = String::from_utf8_lossy(&answer);
+
+    assert!(answer.starts_with("HTTP/1.1 200"), "{answer}");
+    assert!(answer.contains("refs/heads/main"), "{answer}");
+    assert_eq!(http.chunked_requests(), 1);
+    assert_eq!(http.requests(), (1, 0));
+}
+
+/// `Expect: 100-continue`: the server says `100 Continue` before the client
+/// sends a byte of the body, then answers the request.
+#[test]
+fn http_remote_answers_expect_100_continue() {
+    let remote = local();
+    let http = HttpRemote::serve(remote.bare(), USER, PASSWORD).unwrap();
+    let mut stream = TcpStream::connect(("127.0.0.1", http.port())).unwrap();
+    // A server that never says 100 fails the read rather than hang the test.
+    stream
+        .set_read_timeout(Some(Duration::from_secs(5)))
+        .unwrap();
+    let extra = format!(
+        "Expect: 100-continue\r\nContent-Length: {}\r\n",
+        LS_REFS.len()
+    );
+    stream
+        .write_all(upload_pack_head(&extra).as_bytes())
+        .unwrap();
+
+    let mut interim = Vec::new();
+    while !interim.ends_with(b"\r\n\r\n") {
+        let mut byte = [0u8; 1];
+        let read = stream.read(&mut byte).expect("the 100 Continue arrives");
+        assert_eq!(read, 1, "closed before 100 Continue: {interim:?}");
+        interim.push(byte[0]);
+    }
+    assert_eq!(interim, b"HTTP/1.1 100 Continue\r\n\r\n");
+
+    stream.write_all(LS_REFS).unwrap();
+    let mut answer = Vec::new();
+    stream.read_to_end(&mut answer).unwrap();
+    let answer = String::from_utf8_lossy(&answer);
+    assert!(answer.starts_with("HTTP/1.1 200"), "{answer}");
+    assert!(answer.contains("refs/heads/main"), "{answer}");
+}
+
+/// A client that connects and says nothing holds a handler blocked in its
+/// first read. Drop still ends it promptly and frees the port.
+#[test]
+fn http_remote_drop_ends_an_idle_client() {
+    let remote = local();
+    let http = HttpRemote::serve(remote.bare(), USER, PASSWORD).unwrap();
+    let port = http.port();
+    let idle = TcpStream::connect(("127.0.0.1", port)).unwrap();
+    assert!(
+        eventually(Duration::from_secs(5), || http.open_connections() == 1),
+        "the idle connection reached a handler"
+    );
+
+    let started = Instant::now();
+    drop(http);
+    let dropped_in = started.elapsed();
+
+    assert!(
+        dropped_in < Duration::from_secs(2),
+        "drop took {dropped_in:?}"
+    );
+    assert!(port_is_closed(port), "port {port} still accepts after drop");
+    let mut buf = [0u8; 1];
+    let read = (&idle).read(&mut buf);
+    assert!(
+        matches!(read, Ok(0) | Err(_)),
+        "the idle stream was closed: {read:?}"
+    );
+}
+
 /// Drop wakes the listener while it is still open, joins it, and closes the
 /// held streams: it returns promptly, and the listener is gone with the port.
 /// (A failed wake panics in drop; loopback gives no way to make it fail here.)

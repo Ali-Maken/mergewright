@@ -1,0 +1,6 @@
+13j load loop, 2026-10-07T19:40Z
+command: taskpolicy -b <graft-fixtures lib test binary> --exact remote::tests::http_remote_frees_its_port_on_drop, 200x, sequential
+load: cargo build --workspace --release (separate target dir), started 20 s before the loop; cold release builds back to back until the loop ended (load loop alive at loop end: yes; builds completed: 7)
+host: 10 cores; loop wall time 686 s
+SUMMARY: 198 passed, 2 failed, of 200
+failures: both (iterations 178, 184) panicked in setup at tests.rs:20 (local(): LocalRemote::new -> git clone Timeout, 37 s and 149 s under background QoS), before HttpRemote::serve ran; port assertion (tests.rs:313) failed 0 of 200

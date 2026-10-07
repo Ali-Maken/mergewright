@@ -1,6 +1,6 @@
 # 13j — HttpRemote owns its listener (cause fix for 13i)
 
-Status: ready (conductor 2026-10-07) — was draft
+Status: done (builder 2026-10-08) — 8 of 9 ticks; load-loop tick open, see NOTES
 Build with: Opus — test-only crate, no structural risk (fails Fable test 1), but HTTP framing, drop ordering and
 process-group teardown are easy to get subtly wrong; not Sonnet.
 Needs: none.
@@ -77,22 +77,22 @@ fn serve_with_exit_delay(/* serve's args */, exit_delay: std::time::Duration) ->
 
 ## Acceptance (tick each with its test named inline)
 
-- [ ] **Deterministic red/green**: `remote::tests::http_remote_drop_waits_for_the_listener_to_close` — via
+- [x] (`remote::tests::http_remote_drop_waits_for_the_listener_to_close`: red by mutation, green after; NOTES) **Deterministic red/green**: `remote::tests::http_remote_drop_waits_for_the_listener_to_close` — via
       `serve_with_exit_delay(300 ms)`: `drop` takes ≥ 300 ms and a connect straight after it is refused. **Red** shown by
       temporarily removing the listener join (mutation): paste the failing assertion into NOTES, then restore. Green after.
-- [ ] `remote::tests::http_remote_frees_its_port_on_drop` passes, unchanged in name and assertion.
-- [ ] `remote::tests::http_remote_drop_ends_a_wedged_backend` (`tests.rs:395`) passes, unchanged in name and assertion.
-- [ ] `remote::tests::http_remote_reads_a_chunked_body` — raw `TcpStream` POST with a chunked body reaches the backend
+- [x] (`remote::tests::http_remote_frees_its_port_on_drop`, untouched, green) `remote::tests::http_remote_frees_its_port_on_drop` passes, unchanged in name and assertion.
+- [x] (`remote::tests::http_remote_drop_ends_a_wedged_backend`, untouched, green) `remote::tests::http_remote_drop_ends_a_wedged_backend` (`tests.rs:395`) passes, unchanged in name and assertion.
+- [x] (`remote::tests::http_remote_reads_a_chunked_body`: asserts 200, `refs/heads/main` in the ls-refs answer, `chunked_requests()==1`, `requests()==(1,0)`) `remote::tests::http_remote_reads_a_chunked_body` — raw `TcpStream` POST with a chunked body reaches the backend
       (fetch/push outcome or `requests()` count; name what it asserts).
-- [ ] `remote::tests::http_remote_answers_expect_100_continue` — raw client sends `Expect: 100-continue`, reads
+- [x] (`remote::tests::http_remote_answers_expect_100_continue`) `remote::tests::http_remote_answers_expect_100_continue` — raw client sends `Expect: 100-continue`, reads
       `100 Continue` before sending the body.
-- [ ] `remote::tests::http_remote_drop_ends_an_idle_client` — a client connects and sends nothing; `drop` returns within
+- [x] (`remote::tests::http_remote_drop_ends_an_idle_client`) `remote::tests::http_remote_drop_ends_an_idle_client` — a client connects and sends nothing; `drop` returns within
       2 s; port refused after.
-- [ ] Every existing HttpRemote user green in the workspace run: graft-fixtures `remote::tests`, `graft-ops`
+- [x] (workspace nextest 5888/5888: graft-fixtures `remote::tests` 17, graft-ops `it::remote_ops` 20, graft `it::credential_by_key` 3, `it::m4_walk` 27, `it::m5_walk` 123 — counts from `cargo nextest list`) Every existing HttpRemote user green in the workspace run: graft-fixtures `remote::tests`, `graft-ops`
       `it::remote_ops`, `graft` `it::credential_by_key`, `it::m4_walk`, `it::m5_walk`. Name each in the tick.
-- [ ] Load loop: `http_remote_frees_its_port_on_drop` 200× under `taskpolicy -b` with another workspace build running:
+- [ ] **Open — 198/200, both failures in setup, 0 on the port; see NOTES.** Load loop: `http_remote_frees_its_port_on_drop` 200× under `taskpolicy -b` with another workspace build running:
       0 failures. Record command and count in NOTES (output to a file; report the summary line only).
-- [ ] `cargo tree -i tiny_http` empty; no `unsafe` added (`grep -n unsafe crates/graft-fixtures/src` shows only
+- [x] (`cargo tree --workspace -i` tiny_http / ascii / chunked_transfer / httpdate: "did not match any packages"; `unsafe` code only in `memory.rs`, other hits are comments and lint attributes) `cargo tree -i tiny_http` empty; no `unsafe` added (`grep -n unsafe crates/graft-fixtures/src` shows only
       `memory.rs`, ADR-0015).
 
 ## Touches (each checked and stated in NOTES)
@@ -112,3 +112,47 @@ Workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 ## Size
 
 One context: one ~400-line file rewritten in part, ~5 tests, docs lines. ~50k tokens.
+
+## NOTES (builder, 2026-10-08)
+
+No scout: the ticket named the exact files and line ranges; read them directly (~700 lines). No compaction.
+
+**Red (mutation: `Drop` returned right after the wake, no wait/join), then restored:**
+```
+thread 'remote::tests::http_remote_drop_waits_for_the_listener_to_close' panicked at crates/graft-fixtures/src/remote/tests.rs:430:5:
+drop returned in 1.146125ms, before the listener thread let go of the socket
+```
+Green after restore; all 17 `remote::tests` green.
+
+**Deviation from the spec — a refused wake no longer panics (cause found by the load loop).** First 200x loop: 74/200
+passed. Every failure: "could not wake the listener (Connection refused)". Instrumented (throwaway): `thread.is_finished()
+== true` at that moment. Cause: the test's open-port probe (`tests.rs:312`, connect + drop) sits in the backlog; `drop`
+sets `closing`; the listener then accepts the probe, sees `closing`, returns and closes the socket — the wake is refused
+because the listener is already gone, not stuck. Fix (cause): a refused wake is recorded, not fatal; step 5's 2 s bound
+still panics if any thread really remains, and its message carries the wake error (`http.rs` Drop step 4 comment).
+After: 40/40 sequential, then the loop below. MAP line says so. **`HungRemote` has the same latent race** (`hung.rs`
+Drop panics on a refused wake); its only drop test waits for the accept first, so it is not hit today. Not changed (outside
+this ticket's file set) — for the conductor: KNOWN_GAPS candidate, unverified.
+
+**Load loop** (script in scratchpad; summary `docs/perf/13j-http-remote-own-listener.txt`):
+`taskpolicy -b <graft-fixtures lib test binary> --exact remote::tests::http_remote_frees_its_port_on_drop`, 200x
+sequential, cold `cargo build --workspace --release` builds back to back throughout (7 completed, separate target dir).
+`SUMMARY: 198 passed, 2 failed, of 200`. Both failures panicked in setup at `tests.rs:20` (`LocalRemote::new` → clone
+deadline Timeout, 37 s and 149 s under background QoS), before `HttpRemote::serve` ran. The port assertion
+(`tests.rs:313`) failed 0/200. Tick left open: the criterion says 0 failures; whether setup timeouts under
+`taskpolicy -b` count is the conductor's call. The fixture's clone deadline under background QoS is a separate question,
+not a 13i/13j cause.
+
+**Behaviour notes.** One handler thread per connection; `Running` now tracks every backend group (was one; handlers are
+concurrent now). Read timeout 1 s per read (spec): a client pausing > 1 s mid-body would be cut off — not seen in any
+test; unverified risk. After answering, the handler half-closes and drains the client to EOF (lingering close) so a `400`
+sent before the body is read is not destroyed by a reset.
+
+**Touches.**
+- Callers (`graft-ops/tests/it/remote_ops.rs`, `graft/tests/it/{credential_by_key,m4_walk/*,m5_walk/fixture}.rs`): untouched, compile, green in the workspace run (counts in the tick).
+- `docs/capabilities/m4-remotes.md` cites `http_right_password_clones_and_pushes`, `http_wrong_password_is_401_...`, `http_remote_frees_its_port_on_drop` — none renamed; `graft-capabilities` `every_capability_citation_checks_out` green in the workspace run.
+- `TESTING.md` (lines 1545, 1703) names `HttpRemote` only, not tiny_http: nothing stale. `tiny_http` remains only in history (`docs/log/m4.md`, `docs/log/m8.md`, `docs/reviews/m4-01-remote-fixtures.md`) — left as history.
+- Public API: `serve` signature byte-for-byte; new items are `#[cfg(test)] pub(crate)` (`serve_with_exit_delay`, `open_connections`).
+- No keymap, journal, captures or shipped code: test-only crate.
+
+Gates (workspace-wide, final code): fmt ok, clippy -D warnings ok, nextest 5888/5888 (`--test-threads 4`), doctests ok.
