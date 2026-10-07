@@ -19,7 +19,7 @@ Amends: DESIGN §1.7 (`docs/design/01-view-mockups.md`), "dashed stroke in the r
 
 ## Decision
 1. While a preview with ghost rows is open and the tier in force is Pixel, the **whole graph column** draws at the
-   Unicode tier: `AppState::graph_tier()` = Unicode then, else `tier()`. Every draw and hit-test path of the graph
+   Unicode tier: `view::graph_tier(session, state)` = Unicode then, else `tier_in_force` (name corrected 2026-10-07 after the 17b scout; decision unchanged). Every draw and hit-test path of the graph
    column reads `graph_tier()`.
 2. The tier in force does not change: the header's `gfx` field and F3 keep reading `tier()`. F3 during the preview:
    `graph_tier()` = `min(tier(), Unicode)`.
