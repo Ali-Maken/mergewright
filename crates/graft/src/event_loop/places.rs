@@ -125,6 +125,11 @@ pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Ex
                 let ran = run_repo(&mut term, repos, &path, config, Harness::default(), arrival)?;
                 match ran.outcome {
                     Ok(Exit::Open(next)) => {
+                        Ran {
+                            outcome: Ok(Exit::Quit),
+                            pool: ran.pool,
+                        }
+                        .stop_for_the_next_place()?;
                         opened = true;
                         place = match locate(&next, config) {
                             Ok(next) => next,
@@ -136,7 +141,7 @@ pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Ex
                     outcome => {
                         return term.close(Ran {
                             outcome,
-                            shutdown: ran.shutdown,
+                            pool: ran.pool,
                         });
                     }
                 }
@@ -243,9 +248,8 @@ fn run_outside(
         config,
         shown.keymap,
     );
-    for watcher in [signals, resizes] {
-        watcher.close();
-    }
+    signals.close();
+    resizes.close();
     let outcome = hand_back_input(&term.mux, forwarder, wakes, outcome)?;
     if matches!(outcome, Outcome::Opened(_)) {
         // The repository's screen starts from a blank one: its first frame

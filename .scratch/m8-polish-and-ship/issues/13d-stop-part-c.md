@@ -1,6 +1,6 @@
 # Stop leaves it paused, part C: rulings on 13c's questions, then the app side
 
-Status: draft
+Status: done
 Build with: **Opus, xhigh**. Same reasons as 13c: it decides what the journal records for a stopped write and what
 the shell says about it. A wrong outcome loses no bytes but tells him the wrong thing, and that doesn't show in a
 diff. Not Fable: the shape is decided below.
@@ -97,20 +97,23 @@ pub struct Applied { /* … */ pub stopped_at: Option<StoppedAt> }  // Some(Land
   needs the terminal's foreground group.
 
 ## Acceptance (each tick names its test, inline)
-- [ ] Q2: `it::stop_hooks::a_cherry_pick_stopped_in_its_post_commit_hook_has_landed`,
+- [x] Q2: `it::stop_hooks::a_cherry_pick_stopped_in_its_post_commit_hook_has_landed`,
       `…a_revert_stopped_in_its_post_commit_hook_has_landed`, `…a_continue_stopped_in_its_post_commit_hook_has_landed`.
       Each checks `Committed` and `stopped_at: Some(Landed)`.
-- [ ] Q3: `it::ops_execution_hard::a_plan_stopped_between_invocations_is_aborted_recoverable_and_narrow` asserts
-      `git was stopped` and `Stopped { changed: true }`. Undo restores the tree and his file byte-equal.
-- [ ] Q4: `it::stop_hooks::a_finish_merge_stopped_in_its_hook_leaves_the_merge_paused`. Checks `MERGE_HEAD` = source
+- [x] Q3: `it::ops_execution_hard::a_plan_stopped_between_invocations_is_aborted_recoverable_and_narrow` asserts
+      `git was stopped` and `Stopped { changed: true }`. Undo restores the tree and his file byte-equal (:1051, :1062,
+      :1078).
+- [x] Q4: `it::stop_hooks::a_finish_merge_stopped_in_its_hook_leaves_the_merge_paused`. Checks `MERGE_HEAD` = source
       tip, HEAD unchanged, `stopped_at() = Paused(Merge)`, and the entry shape as NOTES record it.
-- [ ] Q4b: `apply::error::tests::a_hook_rejection_with_nothing_unmerged_says_a_hook_stopped_it` (exact words).
-- [ ] Q1: `it::quit_waits::stuck::stop_now_mid_rebase_with_edits_set_aside` also asserts: no `*.lock` under `.git`,
+- [x] Q4b: `apply::error::tests::a_hook_rejection_with_nothing_unmerged_says_a_hook_stopped_it` (exact words). Merge
+      only: `apply::error::tests::nothing_unmerged_outside_a_merge_does_not_blame_a_hook` (NOTES).
+- [x] Q1: `it::quit_waits::stuck::stop_now_mid_rebase_with_edits_set_aside` also asserts: no `*.lock` under `.git`,
       the rebase state live, entry `Pending`, and the exit line exactly `Paused(Rebase)`.
-- [ ] Every remaining box of 13c's Acceptance from "Exit line" down (exit line seven cases; walk; relaunch; real
+- [x] Every remaining box of 13c's Acceptance from "Exit line" down (exit line seven cases; walk; relaunch; real
       binary; forced wait; hang-up observation; capture `docs/shots/m8-quit-stopped-merge-relaunch-80x24.txt`, colour
-      **unverified**; fence; MAP rows), plus `jobs::tests::answer_paused_lands_as_conflicted` (item 12).
-- [ ] An unforced cancel still yields `JobCancelled`: `jobs::tests::an_unforced_cancel_is_still_job_cancelled`.
+      **unverified**; fence; MAP rows), plus `jobs::tests::answer_paused_lands_as_conflicted` (item 12). Each ticked in
+      13c with its test. Item 12's test is `jobs::operate::tests::answer_paused_lands_as_conflicted` (where `answer` lives).
+- [x] An unforced cancel still yields `JobCancelled`: `jobs::tests::an_unforced_cancel_is_still_job_cancelled`.
 
 ## Doc edits (verbatim; these replace 13c's)
 - `docs/design/02-keymap.md`, "A stuck write": replace
@@ -125,3 +128,70 @@ workspace-wide.
 
 ## Size
 One context, about 70k tokens. If it runs long, the conductor splits it at the graft-ops seam.
+
+## NOTES (builder, 2026-10-07)
+**Context compacted twice.** Nothing remains; all boxes ticked with tests. Scout reused (`scouts/13c-app.md`).
+
+Measured (`stuck` walks, eprintln, debug build): `y` to the pool down 53.7 ms (merge), 13.2 ms (rebase); bound
+`FORCED_WAIT` = `SHUTDOWN_GRACE` + 3 s (the 3 s stays the planner's allowance, not measured as a bound).
+
+**How the answer travels (signature freedom the ticket gave).**
+- graft-ops (seam d9efe3e0): Q3 rides `ApplyError::Git { paused: Option<InProgress> }`; `stopped_at()` gives
+  `Paused(k)` if set, else `BeforePause`/`Stopped` by `opens_in_progress`. Q4's read is `apply/stopped.rs`
+  `where_stopped`, for the stop path only; `opens_in_progress` unchanged.
+- graft: a forced write's `StoppedAt` rides the `Cancel` token (`left_at`, set in `jobs::operate::in_context`), so
+  `run_job`'s event mapping is untouched: a cancelled job is still `JobCancelled` (pool.rs `finish`). `Live` keeps
+  `forced` + `started`; a forced write that never started is answered at once with `None`.
+- `exit_line` is `pub` and takes the undo key spelled from the keymap (`app.undo`, startup.rs `UNDO`), not a literal `u`
+  (10b's ratchet).
+
+**Q4.** Observed first: `crates/graft-ops/tests/it/finish_merge.rs:503` `a_hook_refusal_leaves_the_merge_in_progress`:
+a `FinishMerge` whose commit fails is `ApplyError::Git`, entry `Aborted { <hook stderr> }`, not in force. The stopped
+one takes that shape with reason `git was stopped` (stop_hooks.rs:655-661). Siblings (`opens_in_progress` `None`, run only
+while a kind is live): `FinishMerge`, `AbortMerge`. Not `ResolveWholeFile`/`RestartConflict`/`Commit`: a stash clash
+leaves unmerged paths with no kind live.
+
+**Question for the conductor (not done):** `stopped_on_conflict` (apply.rs:761) is **not** switched to the new read.
+`live_entry` there reads `opens_in_progress`, and Q4 forbids holding a `Pending` entry for a merge Graft never began.
+The ruling said "fixed by the same read"; I found it cannot be without breaking that rule. Decide.
+
+**Q4b narrowed to `Merge`.** Empty `paths` is not only a hook: a rewrite's `edit` row (apply.rs:418 `edit_stop`) and
+an empty pick also stop with nothing unmerged. They keep today's words (test above).
+
+**Deviations from the ticket's words.**
+- The relaunch banner reads `c finish  a abort`, not `c continue · a abort` (graft-ui, existing). The test quotes the
+  real banner. The design note `:140` edit says `c continue · a abort` verbatim as ruled: the doc and the banner
+  disagree. Conductor's call.
+- Design note `:140`: replaced only text after `next launch:`, as ruled. The stale prefix before it
+  (`<bin>: stopped <op> half-way after <n> s · <bin> here shows where it stopped`) is still there.
+- The capture at 80x24 shows the Detail tab: banner `MERGING … c finish  a abort`, with no room for "from a previous
+  run". Colour **unverified**; looks-right is the user's.
+
+**Known limits.**
+- A forced undo jump (`update/undo.rs:508`, `jobs::undo`) does not go through `in_context`: its exit line is always
+  the `None` words.
+- A third signal does not cut the forced wait (bounded, `FORCED_WAIT`).
+
+**Hang-up observation (13b item 10 re-run, scratch script, no test).** Real binary as a pty session leader, merge
+with a hung `pre-merge-commit`, master closed: graft exited **101** after 0.1 s (13b's dead-stderr exit, out of scope).
+git (own pgid since 13c, graft-git run.rs:478 `process_group(0)`), the hook and its sleep all **stayed alive**;
+the hook's HUP/TERM/INT traps fired none. No `MERGE_HEAD` yet, no locks. Leftovers killed by pid. So on hang-up git
+is orphaned and keeps running: SIGHUP no longer reaches it, and the 101 skips the stop. Needs the conductor.
+
+**Touches.**
+- `StoppedAt` variant: every match by compiler; `explain` by `apply::error::tests`.
+- `0 unmerged` quotes: `grep -rn "0 unmerged" crates docs/shots` finds only
+  `nothing_unmerged_outside_a_merge_does_not_blame_a_hook` (error/tests.rs:154); no capture quotes it.
+- pool.rs `JobCancelled`: `an_unforced_cancel_is_still_job_cancelled`.
+- 13b exit-line and signal tests: rewritten to the new lines (`quit_waits::signal`); fence `quit-stuck-write 4` walked.
+- Foreground-group grep: editor/mergetool/`--continue` handovers (`event_loop/outside.rs:178,215,237,454,461,489,504`)
+  use plain `Command`, stay in graft's group. `git var GIT_EDITOR` (graft-git editor.rs:45) runs without a tty read.
+  Plan steps set `GIT_EDITOR=true` (graft-ops apply/run.rs:191); rewrite helpers are scripts (engine.rs:145-146).
+  `GIT_ASKPASS`/`SSH_ASKPASS` → graft's helper, `SSH_ASKPASS_REQUIRE=force` (graft-git run.rs:341-353);
+  `GIT_TERMINAL_PROMPT=0` (run.rs:10); `--no-pager` (run.rs:458). No source opens `/dev/tty`. None needs the
+  foreground group; only a user's hook that opens `/dev/tty` would (13c decision 2).
+- **Outside the crate set:** graft-ui test data only: ratchet rows in 3715a1fb, plus one prose row in
+  `crates/graft-ui/tests/no_literal_keys/prose.rs` (the `Landed` line's `· a git hook`). No graft-ui source changed.
+- Examples (`gallery`, `m3_walk`, `m4_walk`, `m5_walk`) match the new `Exit::StoppedHalfWay`.
+
+Gates (workspace): fmt ok; clippy clean; nextest 5660/5660 (10 skipped); doctests ok.

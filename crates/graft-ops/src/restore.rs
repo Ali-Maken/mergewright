@@ -319,6 +319,7 @@ pub(crate) fn execute_over_drift(
             );
             let applied = Applied {
                 came_back: Vec::new(),
+                stopped_at: None,
                 entry: pending.entry,
                 refresh,
                 step_backup: None,

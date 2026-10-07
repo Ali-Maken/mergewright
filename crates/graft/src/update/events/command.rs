@@ -64,8 +64,15 @@ pub enum Command {
     /// (`update::remote::Stoppable::No`): no cancel may reach it, and the
     /// pool's shutdown waits for it to end rather than signalling its git
     /// child (m8-polish-and-ship/13b). Sent by `remote::launched`, ahead of
-    /// the command that queues the job.
-    Unstoppable(JobId),
+    /// the command that queues the job. The `String` is the write's
+    /// description, so a shutdown that has to stop it can say which
+    /// (m8/13b review fix).
+    Unstoppable(JobId, String),
+    /// Stop the unstoppable write `JobId` half-way: lift its mark and cancel
+    /// it (SIGTERM, SIGKILL after 2 s, reaped). Sent **only** by the quit
+    /// stop box's `y` (`update::quit`, m8/13b review fix); nothing else
+    /// lifts the mark.
+    ForceStop(JobId),
     /// Hand the user's answer to the credential question job `JobId` is
     /// waiting on (m4-remotes/06). Dropped, zeroed, if the job has ended.
     AnswerCredential(JobId, crate::update::credential::Answer),

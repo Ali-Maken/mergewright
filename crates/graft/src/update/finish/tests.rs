@@ -109,7 +109,7 @@ fn summary() -> Arc<FinishSummary> {
 }
 
 /// `c` on a resolved merge's banner, and the summary's read answered.
-fn opened() -> AppState {
+pub(crate) fn opened() -> AppState {
     let state = stopped(InProgress::Merge, &[]);
     let (state, commands) = press(&state, plain(KeyCode::Char('c')));
     let id = commands
@@ -564,6 +564,31 @@ fn committing() -> (AppState, JobId) {
     let state = key(&opened(), KeyCode::Char('y'));
     let id = state.operating.expect("the commit runs");
     (state, id)
+}
+
+/// m8/13b review fix M2: the `--continue` commit runs here and its hooks
+/// with it, so `Ctrl+C` → box, `y` → the wait, and `Esc` drops the wait on
+/// the summary as it does on the graph — the commit still running, no
+/// `CancelJob`, the summary still up.
+#[test]
+fn esc_on_the_summary_drops_the_quit_wait() {
+    let (state, id) = committing();
+    let (state, _) = press(&state, control(KeyCode::Char('c')));
+    assert!(state.confirm.is_some(), "Ctrl+C boxes over the commit");
+    let (state, commands) = press(&state, plain(KeyCode::Char('y')));
+    assert!(commands.is_empty(), "{commands:?}");
+    assert!(state.quit_when_done.is_some(), "the wait is set");
+    let (state, commands) = press(&state, plain(KeyCode::Escape));
+    assert_eq!(state.quit_when_done, None, "Esc drops the wait");
+    assert_eq!(state.operating, Some(id), "the commit still runs");
+    assert_eq!(state.quit, None);
+    assert!(
+        !commands
+            .iter()
+            .any(|command| matches!(command, Command::CancelJob(_))),
+        "{commands:?}"
+    );
+    assert!(finish(&state).committing.is_some(), "the summary stays");
 }
 
 #[test]

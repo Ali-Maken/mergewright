@@ -1,0 +1,27 @@
+=== the shell, after `q y`, the offer, `q y` over a stuck pre-merge-commit hook ===
+graft: stopped merge main into feature after 10 s · the merge is paused · graft here offers continue or abort
+=== the next launch ===
+MERGING
+Graph  [Detail]
+UNCOMMITTED · 2 staged 1 unstaged
+diff vs HEAD 8d6cd28
+
+STAGED (2)
+  A main-one.txt                                                           +1 −0
+  A main-two.txt                                                           +1 −0
+UNSTAGED (1)
+  M base.txt                                                               +1 −1
+▎
+      1 + one
+
+
+
+
+
+
+
+
+
+
+
+ c finish  a abort  ⇥ graph  q quit

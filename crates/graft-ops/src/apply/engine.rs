@@ -109,14 +109,7 @@ impl Engine {
         ctx: &Context<'_>,
         commands: &mut Vec<String>,
     ) -> Result<PlanRun, ApplyError> {
-        let mut git = GitInvocation::new(ctx.repo)
-            .args(self.invocation.args.iter().cloned())
-            .env("GIT_SEQUENCE_EDITOR", saved::sequence_editor(&self.dir))
-            .env("GIT_EDITOR", saved::editor(&self.dir));
-        for (key, value) in CLEANUP {
-            git = git.env(key, value);
-        }
-        let ran = git.run(ctx.stop);
+        let ran = rewrite_git(ctx.repo, &self.invocation, &self.dir).run(ctx.stop);
         if rebasing(ctx.repo)? {
             let edit_stop = ran.is_ok();
             return Ok(PlanRun {
@@ -134,6 +127,27 @@ impl Engine {
             edit_stop: false,
         })
     }
+}
+
+/// The git a rewrite's plan line runs: its todo and messages from the saved
+/// plan in `dir`.
+///
+/// **Not** stopped hook-first, unlike every other local plan line
+/// (`run::plan_git`, m8-polish-and-ship/13c). A rebase's hooks do not stop
+/// it when they fail: with its `post-checkout` hook killed, `git rebase -i`
+/// carries on, prints `Successfully rebased`, and exits 0 (observed, git
+/// 2.x, 13c NOTES). Ending the hook first would finish the rewrite the user
+/// asked to stop. The group stop ends git with its hook, and git's rebase
+/// state stays live: paused, `c`/`a` offered.
+pub(super) fn rewrite_git(repo: &RepoHandle, invocation: &Invocation, dir: &Path) -> GitInvocation {
+    let mut git = GitInvocation::new(repo)
+        .args(invocation.args.iter().cloned())
+        .env("GIT_SEQUENCE_EDITOR", saved::sequence_editor(dir))
+        .env("GIT_EDITOR", saved::editor(dir));
+    for (key, value) in CLEANUP {
+        git = git.env(key, value);
+    }
+    git
 }
 
 /// `r`'s rows: `rebase_rows`, each of `params.drops` marked `drop`.

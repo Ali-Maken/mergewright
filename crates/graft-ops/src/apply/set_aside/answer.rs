@@ -96,6 +96,9 @@ pub(super) fn answer(
                 ),
                 recoverable,
                 edits,
+                // Set-aside writes are a rebase's or a checkout's: none runs
+                // inside a shell merge (`runs_in_progress`).
+                paused: None,
             },
             // No git error to carry the words: a read failed after the
             // operation went through. The entry is journaled, so it is an
@@ -158,6 +161,7 @@ fn back_but_git_failed(
         entry: Box::new(entry),
         error: with_not_as_they_were(error, not_as_they_were),
         edits: None,
+        paused: None,
     }
 }
 
@@ -295,6 +299,7 @@ fn with_not_as_they_were(error: RunError, not_as_they_were: Option<NotAsTheyWere
 fn applied(entry: JournalEntry) -> Applied {
     Applied {
         came_back: Vec::new(),
+        stopped_at: None,
         entry,
         refresh: Refresh::Everything,
         step_backup: None,

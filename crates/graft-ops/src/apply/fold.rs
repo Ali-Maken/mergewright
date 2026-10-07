@@ -179,6 +179,7 @@ fn inside_live_operation(
     match failure {
         None => Ok(Applied {
             came_back: Vec::new(),
+            stopped_at: None,
             entry: record,
             refresh,
             step_backup,

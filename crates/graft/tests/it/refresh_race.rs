@@ -224,8 +224,9 @@ fn cancelling_a_parked_walk_gives_its_worker_back() {
 
     assert_eq!(state.awaiting, Some(replacement));
     assert_eq!(
-        app.jobs.shutdown(Duration::from_secs(10)),
-        graft::jobs::Shutdown::Clean,
+        app.jobs
+            .shutdown(Duration::from_secs(10), graft::jobs::EXIT_WRITE_WAIT, &()),
+        graft::jobs::Shutdown::CLEAN,
         "no worker is still inside the walk that was cancelled"
     );
 }

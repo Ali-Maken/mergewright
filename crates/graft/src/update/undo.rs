@@ -902,6 +902,7 @@ mod tests {
     fn applied(description: &str, refresh: Refresh) -> Applied {
         Applied {
             came_back: Vec::new(),
+            stopped_at: None,
             entry: JournalEntry {
                 id: EntryId::new(1, [0; 10]),
                 at_unix_ms: 1,
@@ -1705,7 +1706,7 @@ mod tests {
         assert!(
             matches!(
                 commands.as_slice(),
-                [Command::Unstoppable(_), Command::RevertTo(_, _, true)]
+                [Command::Unstoppable(..), Command::RevertTo(_, _, true)]
             ),
             "{commands:?}"
         );

@@ -14,6 +14,7 @@
 
 mod carry;
 mod frame;
+mod quit_clock;
 mod turn;
 
 use std::io::{self, Write};

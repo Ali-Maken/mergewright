@@ -18,6 +18,7 @@ use super::super::rest::{Mover, Rest};
 use super::super::{Exit, Phase, Waited, Wake, Wakes, joins_frame};
 use super::carry::{Carried, carry_out, hands_over};
 use super::frame::draw_traced;
+use super::quit_clock::QuitClock;
 use super::{Screen, prefetch};
 use crate::jobs::Dispatch;
 use crate::session::{Session, TerminalChange};
@@ -61,6 +62,7 @@ where
         undrawn_since: None,
         deferred: VecDeque::new(),
         now: false,
+        quit_clock: QuitClock::default(),
     }
     .run()
 }
@@ -93,6 +95,8 @@ struct Run<'r, 'o, B: Backend, W, D, R> {
     /// The next frame goes out without waiting for the pacer: the terminal
     /// was just handed back, and shows someone else's screen.
     now: bool,
+    /// The quit wait's count toward the stop offer (m8/13b review fix).
+    quit_clock: QuitClock,
 }
 
 impl<B, W, D, R> Run<'_, '_, B, W, D, R>
@@ -120,8 +124,18 @@ where
         if rest_at.is_some_and(|at| self.wakes.now() >= at) {
             return self.rested();
         }
+        let offer_at = self.offer_deadline();
+        if offer_at.is_some_and(|at| self.wakes.now() >= at) {
+            self.waited_long();
+            return Ok(None);
+        }
+        // Whichever the loop owes first; the turn after the wait acts on it.
+        let due = match (rest_at, offer_at) {
+            (Some(rest), Some(offer)) => Some(rest.min(offer)),
+            (rest, offer) => rest.or(offer),
+        };
         let Some(began) = self.undrawn_since else {
-            return self.idle(rest_at);
+            return self.idle(due);
         };
 
         // One turn (m7-power-tools/43): while the next wake joins the frame
@@ -145,21 +159,23 @@ where
             self.draw()?;
             return Ok(None);
         }
-        self.paced(rest_at)
+        self.paced(due)
     }
 
     /// The screen shows the state. What was held back comes first; else,
     /// idle: get the next page ready, then wait.
-    fn idle(&mut self, rest_at: Option<Instant>) -> io::Result<Option<Exit>> {
+    fn idle(&mut self, due: Option<Instant>) -> io::Result<Option<Exit>> {
         if let Some(wake) = self.deferred.pop_front() {
             return self.take(wake);
         }
-        // A follow is owed: wait for the next wake or for rest, which comes
-        // first. The idle work waits for the turn after.
-        if let Some(at) = rest_at {
+        // A follow is owed, or the quit wait's offer: wait for the next wake
+        // or for that moment, which comes first. The next turn acts on the
+        // moment (rest, or `waited_long`); the idle work waits for the turn
+        // after.
+        if let Some(at) = due {
             return match self.wakes.next_wake_by(at) {
                 Waited::Woke(wake) => self.take(wake),
-                Waited::TimedOut => self.rested(),
+                Waited::TimedOut => Ok(None),
                 Waited::Ended => Ok(Some(Exit::Quit)),
             };
         }
@@ -176,9 +192,9 @@ where
     /// it, applying what comes meanwhile; the answer, or the pacer's
     /// deadline, releases one frame showing all of it. Rest may come first;
     /// the next turn applies it.
-    fn paced(&mut self, rest_at: Option<Instant>) -> io::Result<Option<Exit>> {
+    fn paced(&mut self, due: Option<Instant>) -> io::Result<Option<Exit>> {
         let paced = self.pacer.deadline().unwrap_or_else(|| self.wakes.now());
-        let deadline = rest_at.map_or(paced, |at| at.min(paced));
+        let deadline = due.map_or(paced, |at| at.min(paced));
         match self.wakes.next_wake_by(deadline) {
             Waited::TimedOut => Ok(None),
             Waited::Ended => Ok(Some(Exit::Quit)),
@@ -326,6 +342,19 @@ where
         }
     }
 
+    /// When the quit wait's stop offer is due (m8/13b review fix). The loop
+    /// owns the clock ([`QuitClock`]); `update` stays pure.
+    fn offer_deadline(&mut self) -> Option<Instant> {
+        self.quit_clock.due(self.state, self.wakes.now())
+    }
+
+    /// The wait has stood `STOP_OFFER_AFTER`: its line now offers the stop,
+    /// and a frame is owed to show it.
+    fn waited_long(&mut self) {
+        crate::update::quit::waited_long(self.state);
+        self.undrawn_since.get_or_insert_with(|| self.wakes.now());
+    }
+
     /// The cursor has rested: the owed follow runs, once, and the next move
     /// is a leading edge again.
     fn rested(&mut self) -> io::Result<Option<Exit>> {
@@ -365,6 +394,21 @@ where
             Some(Quit::HandedBack(key)) => return Ok(Some(Exit::HandedBack(*key))),
             // Reported by the caller, once the terminal is the user's again.
             Some(Quit::Fatal(reason)) => return Ok(Some(Exit::Fatal(reason.clone()))),
+            Some(Quit::StoppedHalfWay { job, what }) => {
+                // The stop box opens only after the offer, which only the
+                // clock makes, so a count is always there. Were it not, the
+                // write was waited on no time this loop knows of: zero says
+                // that, and the stop itself has already been asked.
+                let after = self
+                    .quit_clock
+                    .after(self.wakes.now())
+                    .unwrap_or(Duration::ZERO);
+                return Ok(Some(Exit::StoppedHalfWay {
+                    job: *job,
+                    what: what.clone(),
+                    after,
+                }));
+            }
             None => {}
         }
         if carried == Carried::EndsBatch {

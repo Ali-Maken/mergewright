@@ -285,6 +285,7 @@ fn applied() -> graft_ops::apply::Applied {
     };
     graft_ops::apply::Applied {
         came_back: Vec::new(),
+        stopped_at: None,
         entry: JournalEntry {
             id: EntryId::new(1, [0; 10]),
             at_unix_ms: 1,

@@ -21,10 +21,13 @@ use crate::snapshot;
 mod rewrite;
 pub(super) mod shell;
 
-use rewrite::{resume_invocation, started_on_its_line, stopped_on_edit};
+// `apply`'s tests read its stop mark (m8-polish-and-ship/13c).
+pub(super) use rewrite::resume_invocation;
+use rewrite::{started_on_its_line, stopped_on_edit};
 use shell::{Target, refuse_unmerged, shell_merge};
 
 use super::engine::{go_home, plan_of, remove};
+use super::stopped::{self, BEFORE_PAUSE, Left, StoppedAt, where_stopped};
 use super::{
     AfterState, Applied, ApplyError, Context, Pending, Refresh, apply, as_apply_error, finish,
     reason_for, set_aside,
@@ -241,22 +244,7 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
     snapshot::chain_backup(ctx, &entry, snapshot::LinkKind::Resume).map_err(as_apply_error)?;
 
     let aborting = how == Resume::Abort;
-    let flag = |flag| vec![GitArg::Flag(kind.name()), GitArg::Flag(flag)];
-    let (args, message) = match how {
-        // `resume_target` has refused every kind but a merge.
-        Resume::ContinueWith { message } => (
-            vec![
-                GitArg::Flag("commit"),
-                GitArg::Flag("--cleanup=whitespace"),
-                GitArg::Flag("-F"),
-                GitArg::Flag("-"),
-            ],
-            Some(message),
-        ),
-        Resume::Continue => (flag("--continue"), None),
-        Resume::Skip => (flag("--skip"), None),
-        Resume::Abort => (flag("--abort"), None),
-    };
+    let (args, message) = resume_args(kind, how);
     // A rewrite's saved plan (ADR-0047), if this is one.
     let plan = match kind {
         InProgress::Rebase => plan_of(ctx.repo, &entry.id).map_err(ApplyError::Facts)?,
@@ -265,8 +253,9 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
     let mut commands = entry.commands.clone();
     commands.push(graft_git::run::command_line(&args));
     let plan_dir = plan.as_ref().map(|(dir, _)| dir.as_path());
-    let ran = resume_invocation(ctx.repo, args, plan_dir, message).run(ctx.stop);
+    let ran = resume_invocation(ctx.repo, kind, args, plan_dir, message).run(ctx.stop);
 
+    let mut stopped_at = None;
     let failure = match ran {
         Ok(_) => {
             // A rewrite's `edit` row: git stopped on purpose, exit 0, and
@@ -278,7 +267,11 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
             }
             None
         }
-        Err(RunError::Stopped) => return Err(ApplyError::Stopped),
+        Err(RunError::Stopped) => {
+            let (failure, at) = stopped_resume(ctx, kind, &entry, &commands)?;
+            stopped_at = at;
+            failure
+        }
         Err(error) => {
             // Still live: git stopped again (a rebase's next conflict) or
             // refused to go on. Either way the entry is not finished.
@@ -299,7 +292,55 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
         left.extend(remove(dir));
     }
     let index_base = plan.as_ref().and_then(|(_, plan)| plan.index_base);
-    close_resume(ctx, entry, aborting, commands, failure, left, index_base)
+    let closed = close_resume(ctx, entry, aborting, commands, failure, left, index_base);
+    stopped::mark(stopped_at, closed)
+}
+
+/// The resume's git arguments, and its message on stdin for `ContinueWith`.
+fn resume_args(kind: InProgress, how: Resume) -> (Vec<GitArg>, Option<Vec<u8>>) {
+    let flag = |flag| vec![GitArg::Flag(kind.name()), GitArg::Flag(flag)];
+    match how {
+        // `resume_target` has refused every kind but a merge.
+        Resume::ContinueWith { message } => (
+            vec![
+                GitArg::Flag("commit"),
+                GitArg::Flag("--cleanup=whitespace"),
+                GitArg::Flag("-F"),
+                GitArg::Flag("-"),
+            ],
+            Some(message),
+        ),
+        Resume::Continue => (flag("--continue"), None),
+        Resume::Skip => (flag("--skip"), None),
+        Resume::Abort => (flag("--abort"), None),
+    }
+}
+
+/// The user stopped the resume's git (m8-polish-and-ship/13c): what git
+/// left decides, read as `apply` reads it. Still live → held again, the
+/// resume's line with it, and [`ApplyError::Paused`] is the answer; a merge,
+/// pick or revert that committed → no failure, `Landed` (13d Q2); otherwise
+/// the stop is the failure `close_resume` closes the entry on.
+fn stopped_resume(
+    ctx: &mut Context<'_>,
+    kind: InProgress,
+    entry: &JournalEntry,
+    commands: &[String],
+) -> Result<(Option<RunError>, Option<StoppedAt>), ApplyError> {
+    match where_stopped(ctx, Some(kind), entry)? {
+        Left::Paused { kind, paths } => {
+            ctx.journal.hold_commands(&entry.id, commands.to_vec());
+            let mut entry = entry.clone();
+            entry.commands = commands.to_vec();
+            Err(ApplyError::Paused {
+                entry: Box::new(entry),
+                kind,
+                paths,
+            })
+        }
+        Left::Landed => Ok((None, Some(StoppedAt::Landed))),
+        Left::Residual => Ok((Some(RunError::Stopped), None)),
+    }
 }
 
 /// Which entry a resume closes, and the checks that run before git does.
@@ -408,6 +449,16 @@ fn before_commit_of(
     Ok((before_commit, backup_gone))
 }
 
+/// A failed resume's `Aborted` reason. A stop reaches `close_resume` only
+/// when git did not pause the operation (`stopped_resume`'s residual), and
+/// the reason says so (m8-polish-and-ship/13c).
+fn resume_reason(error: &RunError) -> String {
+    match error {
+        RunError::Stopped => BEFORE_PAUSE.to_owned(),
+        other => reason_for(other),
+    }
+}
+
 /// git is done with the operation, one way or the other: write the outcome
 /// line the stop deferred. `aborting` is `Resume::Abort`; every other way
 /// on commits. `left` is what a rewrite's close could not tidy (its way
@@ -444,7 +495,7 @@ fn close_resume(
     }
     let status = match &failure {
         Some(error) => EntryStatus::Aborted {
-            reason: reason_for(error),
+            reason: resume_reason(error),
         },
         None => went_through(aborting),
     };
@@ -468,10 +519,14 @@ fn close_resume(
             recoverable,
             // A set-aside's resume closes through `set_aside::close`.
             edits: None,
+            // A resume runs on its own entry: a stop it left paused is held
+            // (`stopped_resume`), never closed.
+            paused: None,
         });
     }
     let applied = Applied {
         came_back: Vec::new(),
+        stopped_at: None,
         entry,
         refresh: Refresh::Everything,
         step_backup: None,

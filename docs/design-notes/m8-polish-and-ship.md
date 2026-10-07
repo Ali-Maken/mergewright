@@ -69,6 +69,7 @@ with no shell.
 | Notarisation | dist doesn't | none (ADR-0057) | R (his call) |
 | Reword HEAD with a branch on it (2c) | lazygit reword, no preview (`stacked-branches` §1.9) | M7's rule: previewed when a branch is built on HEAD (keymap `a` row, :219) | T (have) |
 | **Fork off a rewritten commit** (2c, approved 2026-10-02) | jj: every descendant follows (`stacked-branches` §1.4); branchless `restack` + skip-on-conflict (§1.3); Graphite `sync` skips conflicting (§1.2) | follows when its replay forecasts clean, else stays and says why (ADR-0059, accepted) | T descendants · T skip-on-conflict (for forks only) |
+| **Quit while a write runs; a write that hangs** | `docs/research/quit-while-git-runs.md` (2026-10-04): no tool found waits, then offers a stop after a delay, and says what state it leaves. JetBrains confirms on exit with tasks running (wording unconfirmed); Magit stops a process in two stages, interrupt then kill (`k`); lazygit, VS Code and gitui hang on a stuck hook with no way out but killing the app (lazygit #3557, vscode #171353, gitui #2546) — the dominant complaint | wait for it, then quit; after 10 s `q` offers to stop it half-way; a signal gives the terminal back first, then waits ≤ 60 s (keymap §2.2) | T confirm on exit (JetBrains) · T interrupt-then-kill order (Magit: SIGTERM, SIGKILL after 2 s) · **I** the 10 s offer and the wait-then-quit: nothing found fits. Argued from ux-principles §3.1 (where he lands), heuristic 4 (one box, one `y`) and the measured half-rebase (13b NOTES). The research flagged "leaves the merge paused" as unverified; 13b's review-fix walk found it holds for a rebase and **not** for a merge stopped in its `pre-merge-commit` hook (ticket 13b NOTES) |
 
 **Dark pick: B** (`docs/shots/m8-proto-4a-dark-a-b.txt:21-24`): cursor row vs ground **3.14** (A 3.05, floor 3.0); text
 on cursor row **5.14** (A 4.61, floor 4.5); muted text on ground **6.95** (A 6.15, floor 4.5). Blue lane on cursor row
@@ -107,6 +108,8 @@ his — the wheel step stays per event until then. Satisfied.
 | 21 | Make this folder a repo | `i` `y` (empty state) | 2+1 | Sublime Merge ~3 |
 | 22 | Which repo and branch am I in | read the header | 0 | VS Code status bar 0 |
 | 23 | Find the cursor row, read its branch | read the `▸` row | 0 | Sublime Merge 0 |
+| 24 | Quit while a merge or rebase runs | `q` `y`, then nothing: it quits when the write lands | 2+1 | JetBrains ~2, confirm on exit (`quit-while-git-runs`; wording unconfirmed) |
+| 25 | Quit while a git hook hangs | `q` `y`, wait 10 s, `q` `y` | 4+2 | lazygit, VS Code, gitui: no way out but killing the app (`quit-while-git-runs`) |
 
 **J19 is 4, not 3 (2c).** The 2b row counted the field-note case (:86) as the plain amend. But `a` on HEAD with
 nothing staged was refused only when a branch is built on HEAD (ticket 14 item 1) — the case where other branches
@@ -134,6 +137,8 @@ count was wrong. Nothing built on HEAD stays 3, no preview, not in the fence (M7
 | Pull, nothing new | cursor where it was, `up to date ✓` |
 | `u` / `U` done | on HEAD if it moved, else on the first ref the entry touched (2b) |
 | `q` while a write runs | box `Quit?` (keymap §2.2). Can stop (fetch, undo): `<op> is still running · quit stops it`, `y` stops it, quits. Can't stop (merge, rebase, …): `quit waits for it to finish`, `y` → status row `<op> · quitting when it finishes · esc stays`; ends done → journaled, quits; stops or fails → stays, where that event lands (2b) |
+| Stuck write, `q` `y` after 10 s | shell, with `<bin>: stopped <op> half-way after <n> s · <bin> here shows where it stopped`; next launch: banner `c continue · a abort` (merge, rebase, cherry-pick, revert), set-aside edits offered. Graft ends the stuck hook, not git, so git pauses a merge, cherry-pick or revert itself; a rebase stays paused at its step (13c–13d); git stuck outside a hook: no pause, `u` puts the files back, and the exit line says which. |
+| SIGTERM / SIGHUP while a write runs | terminal given back at once; the write lands within 60 s → exits; else it is stopped half-way, with the same line; a second signal stops it at once |
 | `q`, git stopped mid-operation, nothing running | quits, no box; next launch keeps the banner: continue or abort (keymap §2.6a, 2b) |
 | On-disk rename can't finish | old names stay in force; `rename: still using the old names · <reason>` (2b) |
 
@@ -160,6 +165,8 @@ cursor-row-branch             0     # +0 · Sublime Merge 0 · —
 pull-nothing-new              1     # +0 · lazygit 1 · p
 reword-head                   4     # +2 · lazygit 2–3 (no preview) · a <edit> ⏎ y (a branch built on HEAD)
 undo-see-result               1     # +0 · GitUp 1 · u
+quit-while-write              2     # +1 · JetBrains ~2 · q y (quits when the write lands)
+quit-stuck-write              4     # +2 · lazygit/VS Code/gitui: kill the app · q y … 10 s … q y
 ```
 
 Not walked in the pty (a person's step, a TESTING.md row): rebind (5+1), fix a colour (2+1), install (2), man (1).

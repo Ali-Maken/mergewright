@@ -1262,6 +1262,23 @@ pub(crate) fn opens_in_progress(kind: OperationKind) -> Option<InProgress> {
     }
 }
 
+/// The in-progress state a **stop** of this kind is read against
+/// (m8-polish-and-ship/13d Q4): the one it opens, or the one it runs only
+/// inside — finishing or aborting a merge begun in the shell, which
+/// `finish_merge::check` admits only while git is merging. Such a stop can
+/// leave that merge paused, as it was before `c`.
+///
+/// Not [`opens_in_progress`], which recovery and the banner ask: an
+/// operation that runs inside a merge does not own it, and its entry is
+/// never held `Pending` for it — Graft did not begin that merge.
+#[must_use]
+pub(crate) fn runs_in_progress(kind: OperationKind) -> Option<InProgress> {
+    match kind {
+        OperationKind::FinishMerge | OperationKind::AbortMerge => Some(InProgress::Merge),
+        other => opens_in_progress(other),
+    }
+}
+
 impl Operation {
     /// Which journal kind this records as.
     #[must_use]

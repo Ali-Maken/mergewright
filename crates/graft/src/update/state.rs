@@ -38,7 +38,7 @@ pub struct AppState {
     /// write ends done, and stays if it stops, fails or ends incomplete
     /// (`update::quit`, m8-polish-and-ship/13b). Only meaningful while its
     /// job is `operating`; [`AppState::shown_status`] draws its line then.
-    pub quit_when_done: Option<super::quit::QuitWait>,
+    pub quit_when_done: Option<Box<super::quit::QuitWait>>,
     /// What a harness wrapping the run asked for; default in the shipped
     /// binary.
     pub harness: Harness,
@@ -843,6 +843,17 @@ pub enum Quit {
     /// restored first: a message written into the alternate screen vanishes
     /// with it, which is how "it just exits and says nothing" happens.
     Fatal(String),
+    /// The stop box's `y` (m8/13b review fix): the write `what` is being
+    /// stopped half-way (`Command::ForceStop`). The loop, which owns the
+    /// wait's clock, turns it into `Exit::StoppedHalfWay` with the seconds
+    /// waited, and the shell gets one line once the terminal is restored.
+    StoppedHalfWay {
+        /// The write being stopped: its answer says where git was left
+        /// (`jobs::Forced`).
+        job: graft_core::job::JobId,
+        /// The write's description.
+        what: String,
+    },
 }
 
 impl AppState {

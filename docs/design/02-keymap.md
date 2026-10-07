@@ -203,7 +203,7 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
 | `Ctrl+Z`, `u` | Undo (ADR-0002) |
 | `Ctrl+Shift+Z`, `U` | Redo |
 | `Ctrl+R` | Manual refresh |
-| `q`, `Ctrl+C` | Quit. `Ctrl+C` quits at once, never boxed. `q` confirms only while a write runs ("`q` while a write runs", below). Git stopped mid-operation with nothing running: `q` quits at once, no box; the next launch keeps the banner, which offers continue or abort (§2.6a `q`; approved 2026-10-02) |
+| `q`, `Ctrl+C` | Quit. `Ctrl+C` quits at once with no box, except over a write that can't stop, where it boxes exactly like `q` and never signals that write (**Proposed**, M8/13b conductor decision 2026-10-02; not yet seen by the user). `q` confirms only while a write runs ("`q` while a write runs", below). Git stopped mid-operation with nothing running: `q` quits at once, no box; the next launch keeps the banner, which offers continue or abort (§2.6a `q`; approved 2026-10-02) |
 | `↑ ↓ ← →` | Move selection / scroll |
 | `j k h l` | Move down/up/left/right (vim, movement only) |
 | `g` / `G` | Jump to top / bottom (vim) |
@@ -237,7 +237,9 @@ whether the write can stop halfway:
 - Why not a Cancel-only box: a box with no work in it is a dismiss step (ux-principles §3.1), and he would have to
   watch for the end and press `q` again. Why not stop it: a rebase stopped halfway by a signal is the state the M3
   promise rules out. Two keys, `q y`, the same as the fetch box (heuristic 4: one box, one `y`).
-- `Ctrl+C` is not changed by this.
+- `Ctrl+C` over a write that can't stop does what `q` does: the same box, the same wait. Over the quit box itself it does not quit (**Proposed**, M8/13b, conductor 2026-10-02).
+- **A stuck write** (**Proposed**, M8/13b review fix; stopping git is pending the user's answer): after 10 s of waiting the status row reads `<op> · still running after 10 s · q stop it now · esc stays`. `q` or `Ctrl+C` then opens `Quit now?`, with the lines `<op> is still running · a git hook may be stuck` and `quit now stops it half-way · the next launch shows where it stopped`, and `[ Cancel ] [ Quit ]`; `y` quits. Before 10 s, `q` and `Ctrl+C` while waiting do nothing. Why 10 s: a merge or rebase with ordinary hooks ends inside it, and an earlier offer invites stopping a write that was about to land. The shell then reads one line saying where git was left: paused (the next launch offers continue or abort), landed, or stopped before git could pause it (`u` puts the files back). Graft ends a merge's, cherry-pick's or revert's stuck hook first, so git pauses it itself; a rebase is stopped where it stands and stays paused at its step (**Proposed**, M8/13c–13d).
+- **Quit from outside** (SIGTERM, SIGHUP; **Proposed**, M8/13b): the terminal is given back first. A write that can't stop gets up to 60 s to land, then it is stopped half-way; the same signal again stops it at once. The shell gets one line saying what was stopped.
 
 ### 2.3 Graph / history pane
 
@@ -293,7 +295,7 @@ whether the write can stop halfway:
 
 ### 2.3c Confirm box
 
-`←`/`→` choose (clamped, Cancel first, ADR-0038 §1) · `Tab` cycles · `Enter` the choice under the cursor · `y` the box's one acting choice, whatever the cursor is on, and the hint bar leads with `y <verb>` — the box has no footer of its own (P15, approved 2026-09-24; ADR-0044 §3) — **except** the force-push (lease) box, the undo-after-push box (two acting choices: its answer is the cursor's) and the journal revert's box, where `y` is swallowed and not drawn · `Esc` cancels · `Ctrl+C` passes through (quits, §2.1) · **any other key is swallowed: the box stays** (usability walk M1).
+`←`/`→` choose (clamped, Cancel first, ADR-0038 §1) · `Tab` cycles · `Enter` the choice under the cursor · `y` the box's one acting choice, whatever the cursor is on, and the hint bar leads with `y <verb>` — the box has no footer of its own (P15, approved 2026-09-24; ADR-0044 §3) — **except** the force-push (lease) box, the undo-after-push box (two acting choices: its answer is the cursor's) and the journal revert's box, where `y` is swallowed and not drawn · `Esc` cancels · `Ctrl+C` passes through to §2.2's quit (over a write that can't stop it boxes like `q`; over the quit box itself it does not quit — **Proposed**, M8/13b) · **any other key is swallowed: the box stays** (usability walk M1).
 
 ### 2.4 Working tree / staging (detail pane)
 

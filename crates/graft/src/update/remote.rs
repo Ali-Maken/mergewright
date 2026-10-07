@@ -264,6 +264,8 @@ pub(super) fn launched(
     stoppable: Stoppable,
     opened_by: Option<&'static str>,
 ) -> Option<Command> {
+    let unstoppable = matches!(stoppable, Stoppable::No(_))
+        .then(|| Command::Unstoppable(id, description.clone()));
     state.remote.running = Some(Running {
         id,
         description,
@@ -275,7 +277,7 @@ pub(super) fn launched(
     // guess: the write may be the merge or the rebase that answers it, or
     // something else that moves the same refs.
     state.remote.diverged_upstream = None;
-    matches!(stoppable, Stoppable::No(_)).then_some(Command::Unstoppable(id))
+    unstoppable
 }
 
 /// The keys a pull refused over his edits offers: they work from where he

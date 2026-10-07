@@ -1,5 +1,5 @@
-//! `q` asks first while a write runs or git is stopped mid-operation
-//! (m8-polish-and-ship/13, ruling 4). Driven through `update`, so every
+//! `q` asks first while a write runs; git stopped mid-operation quits with no
+//! box (m8-polish-and-ship/13 ruling 4; 13b). Driven through `update`, so every
 //! handler between the key and `graft_key` is in the path.
 
 use graft_core::event::{Event, KeyCode, KeyPress};
@@ -9,11 +9,11 @@ use graft_ops::operation::{FetchParams, Operation};
 use crate::update::events::{AppEvent, Command};
 use crate::update::state::{AppState, Quit};
 
-fn press(state: &AppState, key: KeyPress) -> (AppState, Vec<Command>) {
+pub(crate) fn press(state: &AppState, key: KeyPress) -> (AppState, Vec<Command>) {
     crate::update::update(state, AppEvent::Core(Event::Key(key)))
 }
 
-fn plain(character: char) -> KeyPress {
+pub(crate) fn plain(character: char) -> KeyPress {
     KeyPress::plain(KeyCode::Char(character))
 }
 
@@ -310,7 +310,7 @@ fn q_on_the_banner_while_its_continue_runs_waits_for_it() {
     let id = state.operating.expect("the continue runs");
     assert_eq!(
         commands.first(),
-        Some(&Command::Unstoppable(id)),
+        Some(&Command::Unstoppable(id, description(&state))),
         "marked before it is queued: {commands:?}"
     );
     let (next, commands) = press(&state, plain('q'));
@@ -358,7 +358,7 @@ fn merging() -> (AppState, JobId) {
     let id = state.operating.expect("the merge runs");
     assert_eq!(
         commands.first(),
-        Some(&Command::Unstoppable(id)),
+        Some(&Command::Unstoppable(id, description(&state))),
         "the pool is told before the job is queued: {commands:?}"
     );
     (state, id)
@@ -382,7 +382,7 @@ fn waiting_line(state: &AppState) -> Status {
 }
 
 /// The merge running, `q`, then `y`: Graft waiting to quit.
-fn waiting() -> (AppState, JobId) {
+pub(crate) fn waiting() -> (AppState, JobId) {
     let (state, id) = merging();
     let (state, _) = press(&state, plain('q'));
     let (state, commands) = press(&state, plain('y'));
@@ -411,6 +411,7 @@ fn applied() -> graft_ops::apply::Applied {
     use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind};
     graft_ops::apply::Applied {
         came_back: Vec::new(),
+        stopped_at: None,
         entry: JournalEntry {
             id: EntryId::new(1, [0; 10]),
             at_unix_ms: 1,
@@ -823,7 +824,13 @@ fn waiting_on_a_revert() -> (AppState, JobId) {
         crate::update::remote::Stoppable::No(crate::update::preview::HISTORY_CANNOT_STOP),
         None,
     );
-    assert_eq!(unstoppable, Some(Command::Unstoppable(id)));
+    assert_eq!(
+        unstoppable,
+        Some(Command::Unstoppable(
+            id,
+            "revert to before \u{201c}stage a.txt\u{201d}".to_owned()
+        ))
+    );
     let (state, _) = press(&state, plain('q'));
     let (state, commands) = press(&state, plain('y'));
     not_cancelled(&commands);
@@ -879,3 +886,72 @@ fn a_revert_failing_part_way_stays() {
         next.shown_status()
     );
 }
+
+/// 13d's exit lines, exact: the one line a stopped write leaves in the
+/// shell says where git was left (paused, landed, stopped before it could
+/// pause, or not known). `<n>` is whole seconds; the undo key is the one
+/// the keymap spells, here a rebound `z`.
+#[test]
+fn exit_line_says_where_git_left_it() {
+    use core::time::Duration;
+
+    use graft_git::state::InProgress;
+    use graft_ops::apply::StoppedAt;
+
+    use crate::update::quit::exit_line;
+
+    let line = |at| {
+        exit_line(
+            "graft",
+            "merge feature into main",
+            Duration::from_millis(12_900),
+            at,
+            "z",
+        )
+    };
+    let stopped = "graft: stopped merge feature into main after 12 s";
+    assert_eq!(
+        line(Some(StoppedAt::Paused(InProgress::Merge))),
+        format!("{stopped} \u{b7} the merge is paused \u{b7} graft here offers continue or abort")
+    );
+    assert_eq!(
+        line(Some(StoppedAt::Paused(InProgress::CherryPick))),
+        format!(
+            "{stopped} \u{b7} the cherry-pick is paused \u{b7} graft here offers continue or abort"
+        )
+    );
+    assert_eq!(
+        line(Some(StoppedAt::Landed)),
+        "graft: merge feature into main finished \u{b7} a git hook after it was stopped after 12 s"
+    );
+    assert_eq!(
+        line(Some(StoppedAt::BeforePause { changed: true })),
+        format!("{stopped}, before git could pause it \u{b7} z in graft puts your files back")
+    );
+    assert_eq!(
+        line(Some(StoppedAt::Stopped { changed: true })),
+        format!("{stopped} \u{b7} z in graft puts your files back")
+    );
+    for nothing in [
+        StoppedAt::BeforePause { changed: false },
+        StoppedAt::Stopped { changed: false },
+    ] {
+        assert_eq!(
+            line(Some(nothing)),
+            format!("{stopped} \u{b7} nothing changed"),
+            "{nothing:?}"
+        );
+    }
+    assert_eq!(
+        line(None),
+        format!("{stopped} \u{b7} graft here shows where git left it")
+    );
+    let hostile = exit_line("graft", "merge \u{1b}[2Jx", Duration::ZERO, None, "u");
+    assert!(
+        !hostile.contains('\u{1b}'),
+        "a description from the repository is sanitised: {hostile:?}"
+    );
+}
+
+mod modals;
+mod stuck;

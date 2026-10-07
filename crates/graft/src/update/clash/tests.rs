@@ -722,6 +722,7 @@ fn a_put_back_clash_done_names_the_dropped_copy() {
     let id = state.operating.expect("the drop is running");
     let applied = graft_ops::apply::Applied {
         came_back: Vec::new(),
+        stopped_at: None,
         entry: pop_entry(),
         refresh: graft_ops::apply::Refresh::Everything,
         step_backup: None,

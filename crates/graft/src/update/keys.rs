@@ -196,6 +196,13 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
         // answers on every screen (§2.2).
         || super::palette::open_key(next, key)
         || boxes_key(next, commands, key)
+        // `Esc` while Graft waits to quit drops the wait, whatever modal is
+        // up — the finish summary, the resolver, the rewrite editor each
+        // spend `Esc` on themselves otherwise, and on the summary while its
+        // commit runs it was swallowed (review m8-13b Major 2). After the
+        // box (its `Esc` closes it, the wait standing) and before every
+        // pane: the first `Esc` is the wait's, as on the graph.
+        || (key.code == KeyCode::Escape && super::quit::drop_wait(next))
         || rewrite_key(next, commands, key)
         || finish_key(next, commands, key)
         || resolver_key(next, commands, key)

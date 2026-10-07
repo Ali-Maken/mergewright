@@ -51,6 +51,7 @@ mod snapshot_raw;
 mod stash_clash;
 mod stash_pop_redo;
 mod stash_preview;
+mod stop_hooks;
 mod submodule_log;
 mod support;
 mod switch_list;

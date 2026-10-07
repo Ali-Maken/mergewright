@@ -18,16 +18,33 @@
 //! half-way through (conductor decision on 13b's Question). The pool keeps
 //! the same promise underneath: no cancel and no shutdown signals that write
 //! (`jobs::JobRunner::shutdown`).
+//!
+//! **A stuck write** (13b review fix, keymap §2.2): a git hook can hang, and
+//! waiting must not mean waiting for ever. The loop owns the clock — no
+//! time is held here, `update` stays pure: it starts counting the turn it
+//! first sees [`offer_pending`] name a wait and, at [`STOP_OFFER_AFTER`],
+//! calls [`waited_long`]. From then on `q` or `Ctrl+C` opens `Quit now?`,
+//! whose `y` is the one key in the app that stops such a write half-way
+//! (`Command::ForceStop`, `Quit::StoppedHalfWay`).
+
+use core::time::Duration;
 
 use graft_core::event::{KeyCode, KeyPress};
 use graft_core::job::JobId;
+use graft_ops::apply::StoppedAt;
 use graft_term::sanitize_line;
 use graft_ui::confirm::ConfirmView;
+use graft_ui::keymap::ActionId;
 
 use super::confirm::{ConfirmThen, PendingConfirm};
 use super::events::Command;
 use super::remote::Stoppable;
 use super::state::{AppState, Quit, Status};
+
+/// How long Graft waits on a write before `q` offers to stop it half-way.
+/// A merge or rebase with ordinary hooks ends inside it; an earlier offer
+/// invites stopping a write that was about to land (keymap §2.2).
+pub(crate) const STOP_OFFER_AFTER: Duration = Duration::from_secs(10);
 
 /// What the quit box's `[ Quit ]` (or `y`) does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -38,6 +55,9 @@ pub enum QuitThen {
     Stop(JobId),
     /// A write that cannot (`Stoppable::No`): quit once it ends done.
     WaitFor(JobId),
+    /// The stop box over a write waited on past [`STOP_OFFER_AFTER`]: stop
+    /// it half-way (`Command::ForceStop`), then quit.
+    StopNow(JobId),
 }
 
 /// Graft waiting to quit until `job` ends (`AppState::quit_when_done`).
@@ -46,17 +66,59 @@ pub struct QuitWait {
     /// The write waited for.
     pub job: JobId,
     /// `<op> · quitting when it finishes · esc stays`, drawn over the
-    /// status while the wait stands (`AppState::shown_status`).
+    /// status while the wait stands (`AppState::shown_status`); after
+    /// [`waited_long`], `<op> · still running after 10 s · q stop it now ·
+    /// esc stays`.
     pub line: Status,
+    /// [`STOP_OFFER_AFTER`] has passed (the loop called [`waited_long`]):
+    /// `q` and `Ctrl+C` open the stop box.
+    pub long: bool,
+}
+
+/// The write whose wait the loop is counting toward the stop offer: a wait
+/// stands and has not been called long. `None` otherwise, so nothing wakes
+/// the loop for it after the offer. The loop starts its count when this
+/// first names a job, and starts again if it names another.
+pub(crate) fn offer_pending(state: &AppState) -> Option<JobId> {
+    waiting(state)
+        .filter(|wait| !wait.long)
+        .map(|wait| wait.job)
+}
+
+/// The loop, [`STOP_OFFER_AFTER`] into the wait: it has gone on long
+/// enough to offer stopping the write. The line is fixed text — no ticking
+/// count — so nothing needs to wake after this.
+pub fn waited_long(state: &mut AppState) {
+    let what = match waiting(state) {
+        Some(wait) if !wait.long => running_description(state, wait.job),
+        _ => return,
+    };
+    let quit = state.keymap.spell(&ActionId("app.quit"));
+    let back = state.keymap.spell(&ActionId("app.back"));
+    let line = Status::Waiting(format!(
+        "{what} \u{b7} still running after {} s \u{b7} {} stop it now \u{b7} {} stays",
+        STOP_OFFER_AFTER.as_secs(),
+        quit.0,
+        back.0,
+    ));
+    if let Some(wait) = state.quit_when_done.as_mut() {
+        wait.long = true;
+        wait.line = line;
+    }
 }
 
 /// A quit key (`q` or `Ctrl+C`) reached the graph or the focused banner:
 /// quit now, or open the box that asks first.
 ///
-/// While Graft already waits to quit, neither key changes anything: the
-/// status row says what is happening, and a second box would ask the same.
+/// While Graft already waits to quit, neither key changes anything for the
+/// first [`STOP_OFFER_AFTER`]: the status row says what is happening, and a
+/// second box would ask the same. After it, either opens the stop box.
 pub(super) fn asked(state: &mut AppState, key: KeyPress) {
-    if waiting(state).is_some() {
+    if let Some(wait) = waiting(state) {
+        let (long, job) = (wait.long, wait.job);
+        if long {
+            state.confirm = Some(stop_box(state, job));
+        }
         return;
     }
     let control_c = key.code == KeyCode::Char('c') && key.modifiers.control;
@@ -97,12 +159,30 @@ pub(super) fn confirmed(state: &mut AppState, commands: &mut Vec<Command>, then:
         }
         QuitThen::WaitFor(id) if state.operating == Some(id) => {
             let what = running_description(state, id);
-            state.quit_when_done = Some(QuitWait {
+            let back = state.keymap.spell(&ActionId("app.back"));
+            state.quit_when_done = Some(Box::new(QuitWait {
                 job: id,
                 line: Status::Waiting(format!(
-                    "{what} \u{b7} quitting when it finishes \u{b7} esc stays"
+                    "{what} \u{b7} quitting when it finishes \u{b7} {} stays",
+                    back.0
                 )),
-            });
+                long: false,
+            }));
+        }
+        // The stop box's `[ Quit ]`: the one path that stops a write that
+        // cannot stop half-way. The pool lifts the write's mark and stops
+        // its git (SIGTERM, SIGKILL after 2 s, reaped); Graft quits and the
+        // shell gets one line saying what was stopped.
+        QuitThen::StopNow(id) => {
+            if !waiting(state).is_some_and(|wait| wait.job == id && wait.long) {
+                // The write ended while the box was up: its answer has
+                // landed and dropped or spent the wait. Nothing to stop.
+                return;
+            }
+            let what = running_description(state, id);
+            commands.push(Command::ForceStop(id));
+            state.quit_when_done = None;
+            state.quit = Some(Quit::StoppedHalfWay { job: id, what });
         }
         // It ended while the box was up, so its answer has landed. Quit
         // unless that answer left something to see — a stop, or its
@@ -155,7 +235,7 @@ pub(crate) fn drop_wait(state: &mut AppState) -> bool {
 pub(crate) fn waiting(state: &AppState) -> Option<&QuitWait> {
     state
         .quit_when_done
-        .as_ref()
+        .as_deref()
         .filter(|wait| state.operating == Some(wait.job))
 }
 
@@ -174,10 +254,12 @@ fn running_box(state: &AppState) -> Option<PendingConfirm> {
         .map_or(Stoppable::Yes, |running| running.stoppable);
     Some(match stoppable {
         Stoppable::Yes => quit_box(
+            "Quit?",
             &[&format!("{what} is still running \u{b7} quit stops it")],
             QuitThen::Stop(id),
         ),
         Stoppable::No(_) => quit_box(
+            "Quit?",
             &[
                 &format!("{what} is still running \u{b7} quit waits for it to finish"),
                 "if it stops at a conflict or fails, you stay to see it",
@@ -185,6 +267,61 @@ fn running_box(state: &AppState) -> Option<PendingConfirm> {
             QuitThen::WaitFor(id),
         ),
     })
+}
+
+/// The stop box (keymap §2.2, "a stuck write"): `Quit now?`, naming the
+/// cost. Cursor on `Cancel`; `y` quits.
+fn stop_box(state: &AppState, id: JobId) -> PendingConfirm {
+    let what = running_description(state, id);
+    quit_box(
+        "Quit now?",
+        &[
+            &format!("{what} is still running \u{b7} a git hook may be stuck"),
+            "quit now stops it half-way \u{b7} the next launch shows where it stopped",
+        ],
+        QuitThen::StopNow(id),
+    )
+}
+
+/// The one line a write stopped on the way out leaves in the shell, saying
+/// where git was left (13d's exit lines; keymap §2.2, "a stuck write"):
+/// `at` is the stopped job's own answer (`jobs::Forced::at`), `None` when it
+/// did not come within `jobs::FORCED_WAIT`. `after` is how long Graft had
+/// waited, in whole seconds; `undo` is the keymap's spelling of undo, the key
+/// that puts his files back when git could not pause.
+#[must_use]
+pub fn exit_line(
+    bin: &str,
+    what: &str,
+    after: Duration,
+    at: Option<StoppedAt>,
+    undo: &str,
+) -> String {
+    let what = sanitize_line(what);
+    let what = what.as_str();
+    let n = after.as_secs();
+    let stopped = format!("{bin}: stopped {what} after {n} s");
+    match at {
+        Some(StoppedAt::Paused(kind)) => format!(
+            "{stopped} \u{b7} the {} is paused \u{b7} {bin} here offers continue or abort",
+            kind.name()
+        ),
+        Some(StoppedAt::Landed) => {
+            format!("{bin}: {what} finished \u{b7} a git hook after it was stopped after {n} s")
+        }
+        Some(StoppedAt::BeforePause { changed: true }) => {
+            format!(
+                "{stopped}, before git could pause it \u{b7} {undo} in {bin} puts your files back"
+            )
+        }
+        Some(StoppedAt::Stopped { changed: true }) => {
+            format!("{stopped} \u{b7} {undo} in {bin} puts your files back")
+        }
+        Some(StoppedAt::BeforePause { changed: false } | StoppedAt::Stopped { changed: false }) => {
+            format!("{stopped} \u{b7} nothing changed")
+        }
+        None => format!("{stopped} \u{b7} {bin} here shows where git left it"),
+    }
 }
 
 /// What the running write `id` is called: its description, or `a write`.
@@ -200,10 +337,10 @@ fn running_description(state: &AppState, id: JobId) -> String {
         )
 }
 
-fn quit_box(lines: &[&str], then: QuitThen) -> PendingConfirm {
+fn quit_box(title: &str, lines: &[&str], then: QuitThen) -> PendingConfirm {
     PendingConfirm {
         view: ConfirmView::new(
-            sanitize_line("Quit?"),
+            sanitize_line(title),
             lines.iter().map(|line| sanitize_line(line)).collect(),
             // No git command runs: quitting only stops or waits for what is
             // running.
@@ -215,4 +352,4 @@ fn quit_box(lines: &[&str], then: QuitThen) -> PendingConfirm {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

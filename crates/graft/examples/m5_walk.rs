@@ -223,6 +223,12 @@ fn show(
             Ok(ExitCode::SUCCESS)
         }
         Exit::Fatal(reason) => Err(reason),
+        // A walk never stops a write half-way; if one did, say so (its
+        // exit line was printed when the pool stopped).
+        Exit::StoppedHalfWay { what, after, .. } => Err(format!(
+            "the stop box stopped {what} after {} s",
+            after.as_secs()
+        )),
         // `run` gives the terminal back after one repository; only `drive`
         // opens another place, so this would be a broken promise, said.
         Exit::Open(path) => Err(format!("`run` asked to open {}", path.display())),

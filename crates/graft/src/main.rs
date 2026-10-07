@@ -52,8 +52,13 @@ fn main() -> ExitCode {
         // The harness is the default, so `HandedBack` cannot happen; if it
         // did, the loop stopped where it was told to, which is a success.
         // `Open` is handled by `drive` and never returned; `run` never
-        // produces it.
-        Ok(Exit::Quit | Exit::HandedBack(_) | Exit::Open(_)) => ExitCode::SUCCESS,
+        // produces it. The stop box's `y` (m8/13b review fix) is a success
+        // too: he asked for it, and its one line, saying where git was left,
+        // was printed when the pool stopped (`event_loop::exit_wait`, 13d),
+        // which is when its answer is known.
+        Ok(Exit::Quit | Exit::HandedBack(_) | Exit::Open(_) | Exit::StoppedHalfWay { .. }) => {
+            ExitCode::SUCCESS
+        }
         Ok(Exit::Signal(signal)) => {
             // Normally this does not return: the process dies of the signal.
             if let Err(error) = event_loop::signals::reraise(signal) {

@@ -24,8 +24,16 @@
 //! after the terminal is restored, `main` re-raises the signal with the
 //! default disposition, so `$?` is the 128 + N a shell script expects and a
 //! `SIGINT` still reads as an interrupt rather than as a clean exit.
+//!
+//! **A second signal** (m8/13b review fix): after the loop ends, the exit
+//! may wait for a write that cannot stop half-way (up to
+//! `jobs::EXIT_WRITE_WAIT`). The watcher keeps counting signals until it is
+//! closed, so the same signal again is heard ([`Watch::again`]) and stops
+//! that write at once.
 
 use std::io;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::Sender;
 use std::thread;
 
@@ -46,25 +54,67 @@ use crate::update::AppEvent;
 /// left to notice.
 pub const WATCHED: [i32; 3] = [SIGINT, SIGTERM, SIGHUP];
 
+/// The signal watcher: stop it with [`Watch::close`]; ask it whether
+/// another signal came with [`Watch::again`].
+pub struct Watch {
+    handle: Handle,
+    /// Every watched signal that has arrived, the loop's included.
+    seen: Arc<AtomicUsize>,
+}
+
+impl Watch {
+    /// Let the watcher thread end.
+    pub fn close(&self) {
+        self.handle.close();
+    }
+
+    /// A [`graft_git::run::Stop`] that says stop once a watched signal
+    /// arrives **after** this call: "the signal again".
+    #[must_use]
+    pub fn again(&self) -> Again {
+        Again {
+            seen: Arc::clone(&self.seen),
+            at: self.seen.load(Ordering::Acquire),
+        }
+    }
+}
+
+/// See [`Watch::again`].
+pub struct Again {
+    seen: Arc<AtomicUsize>,
+    at: usize,
+}
+
+impl graft_git::run::Stop for Again {
+    fn should_stop(&self) -> bool {
+        self.seen.load(Ordering::Acquire) > self.at
+    }
+}
+
 /// Start watching, and wake `wakes` when one of [`WATCHED`] arrives.
 ///
-/// The returned [`Handle`] stops the watcher: call [`Handle::close`] once the
-/// loop is over so the thread can end.
-pub fn watch(wakes: Sender<Wake>) -> io::Result<Handle> {
+/// The returned [`Watch`] stops the watcher: call [`Watch::close`] once the
+/// exit is over so the thread can end.
+pub fn watch(wakes: Sender<Wake>) -> io::Result<Watch> {
     // `Signals::new` installs signal-hook's handlers, which only write to a
     // self-pipe. The iterator below is ordinary code on an ordinary thread —
     // nothing in this file runs in a signal handler.
     let mut signals = Signals::new(WATCHED)?;
     let handle = signals.handle();
+    let seen = Arc::new(AtomicUsize::new(0));
+    let counted = Arc::clone(&seen);
 
     let spawned = thread::Builder::new()
         .name("graft-signals".to_owned())
         .spawn(move || {
             for signal in &mut signals {
+                // Counted first: once the loop has gone, the count is how
+                // the exit hears a second signal (`Watch::again`).
+                counted.fetch_add(1, Ordering::AcqRel);
                 if wakes.send(Wake::Shutdown(signal)).is_err() {
-                    // The loop has already finished. Whatever the signal was
-                    // for, the process is on its way out anyway.
-                    return;
+                    // The loop has already finished, so nobody reads the
+                    // wake; the count above is what the exit reads. Keep
+                    // counting until `close`.
                 }
             }
         });
@@ -77,7 +127,7 @@ pub fn watch(wakes: Sender<Wake>) -> io::Result<Handle> {
         return Err(error);
     }
 
-    Ok(handle)
+    Ok(Watch { handle, seen })
 }
 
 /// Start watching for the window changing size, and wake `wakes` with the

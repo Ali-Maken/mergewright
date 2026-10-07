@@ -21,6 +21,7 @@
 //! startup and headless share: the wake types, and `opening_repository`, the
 //! state both paths start from.
 
+mod exit_wait;
 mod graphics;
 mod headless;
 pub mod input;
@@ -46,6 +47,7 @@ use crate::jobs::{Delivery, Dispatch, JobEvents};
 use crate::session::TerminalChange;
 use crate::update::{AppEvent, AppState};
 
+pub use exit_wait::waiting_line;
 pub use places::{OutsideStart, Place, drive, locate};
 pub use running::pump;
 pub use startup::{Ran, Terminal, run};
@@ -66,6 +68,18 @@ pub enum Exit {
     /// alternate screen disappears with the alternate screen, which is how a
     /// program comes to "exit without saying anything".
     Fatal(String),
+    /// The quit stop box's `y` (m8/13b review fix): the write `job`, `what`,
+    /// was stopped after `after` of waiting. Once the terminal is restored,
+    /// the pool's stop prints its line, saying where git was left
+    /// (`update::quit::exit_line`, 13d).
+    StoppedHalfWay {
+        /// The write being stopped.
+        job: graft_core::job::JobId,
+        /// The write's description.
+        what: String,
+        /// How long Graft had waited on it.
+        after: std::time::Duration,
+    },
     /// Open this path next, on the same terminal (m8-polish-and-ship/08).
     /// [`places::drive`] handles it and never returns it; [`run`], which
     /// runs one repository and gives the terminal back, never produces it

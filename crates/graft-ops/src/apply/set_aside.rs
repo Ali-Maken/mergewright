@@ -207,6 +207,9 @@ pub(super) fn abandon(
         error,
         recoverable,
         edits,
+        // Set-aside writes are a rebase's or a checkout's: none runs inside
+        // a shell merge (`runs_in_progress`).
+        paused: None,
     })
 }
 

@@ -93,6 +93,16 @@ pub const ROWS: &[(&str, &str, &str)] = &[
         "KNOWN: 10e",
     ),
     (
+        "graft-ops:apply/error.rs",
+        "{}: stopped · the {} is paused · c continues, a aborts",
+        "KNOWN: 10e",
+    ),
+    (
+        "graft-ops:apply/error.rs",
+        "{}: a git hook stopped it · c continues, a aborts",
+        "KNOWN: 10e",
+    ),
+    (
         "graft-ops:restore.rs",
         "undo cancelled part-way · {} · U restores the backup",
         "KNOWN: 10e",

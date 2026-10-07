@@ -14,7 +14,7 @@ use std::process::{Command, Stdio};
 
 use graft_core::journal::{EntryStatus, HeadRef, OperationKind};
 use graft_core::oid::Oid;
-use graft_ops::apply::{ApplyError, apply};
+use graft_ops::apply::{ApplyError, StoppedAt, apply};
 use graft_ops::facts;
 use graft_ops::operation::{
     CommitParams, FactsScope, Operation, PatchSide, StashParams, StashScope, Target,
@@ -1045,6 +1045,10 @@ fn a_plan_stopped_between_invocations_is_aborted_recoverable_and_narrow() {
         NOW,
         &stop,
     );
+    // m8-polish-and-ship/13d Q3: a discard can never be paused, so its stop
+    // says only that git was stopped, and that something changed.
+    let stopped_at = outcome.as_ref().err().and_then(ApplyError::stopped_at);
+    assert_eq!(stopped_at, Some(StoppedAt::Stopped { changed: true }));
     let entry = match outcome {
         Err(ApplyError::Git {
             entry, recoverable, ..

@@ -231,8 +231,8 @@ fn refresh_after_failure(error: &ApplyError) -> Option<Refresh> {
         // A failed fetch/pull/push may still have moved remote-tracking refs
         // (a pull fetches before its fast-forward fails): the graph too.
         //
-        // `Conflicted`, `ResumeFailed` and `Clashed` are neither of those and
-        // are not failures at all — `answer` takes them into
+        // `Conflicted`, `Paused`, `ResumeFailed` and `Clashed` are neither of
+        // those and are not failures at all — `answer` takes them into
         // [`Operated::Conflicted`] and [`Operated::Clashed`] before this is
         // reached. They are named here rather than left to a wildcard so a
         // fourth "git stopped and the user is in it" variant has to be
@@ -242,6 +242,7 @@ fn refresh_after_failure(error: &ApplyError) -> Option<Refresh> {
         | ApplyError::AfterState { .. }
         | ApplyError::Remote { .. }
         | ApplyError::Conflicted { .. }
+        | ApplyError::Paused { .. }
         | ApplyError::ResumeFailed { .. }
         | ApplyError::Clashed { .. } => Some(Refresh::Everything),
         // Cancelled between steps, which can be after some of them ran.
@@ -340,7 +341,15 @@ fn in_context(
         Ok(ctx) => ctx,
         Err(error) => return nothing_ran(&error),
     };
-    let mut operated = answer(run(&mut ctx));
+    let ran = run(&mut ctx);
+    // Where a stop left git, for the pool to read if this write was forced
+    // (13c item 11): the event this job answers with is read by nobody once
+    // the loop has ended, which a forced stop's quit already has.
+    cancel.left_at(match &ran {
+        Ok(applied) => applied.stopped_at,
+        Err(error) => error.stopped_at(),
+    });
+    let mut operated = answer(ran);
     // A rebase stopped: where it is, read here while the repository and the
     // job's stop flag are at hand, so `update` never reads git (07b).
     if let Operated::Conflicted {
@@ -380,8 +389,13 @@ fn answer(result: Result<Applied, ApplyError>) -> Operated {
             },
         },
         // git stopped and left its state live. Not a failure: see
-        // [`Operated::Conflicted`].
-        Err(ApplyError::Conflicted { entry, kind, paths }) => Operated::Conflicted {
+        // [`Operated::Conflicted`]. A write the user stopped that git paused
+        // itself lands the same way, one arm, no screen of its own
+        // (m8-polish-and-ship/13c): `c` continues it, `a` aborts it.
+        Err(
+            ApplyError::Conflicted { entry, kind, paths }
+            | ApplyError::Paused { entry, kind, paths },
+        ) => Operated::Conflicted {
             description: entry.description.clone(),
             kind,
             paths,

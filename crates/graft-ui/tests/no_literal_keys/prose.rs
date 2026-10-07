@@ -177,4 +177,14 @@ pub const ROWS: &[(&str, &str, &str)] = &[
         "article",
     ),
     ("graft-ops:undo.rs", "a merge is in progress now", "article"),
+    (
+        "graft:update/quit.rs",
+        "{bin}: {what} finished · a git hook after it was stopped after {n} s",
+        "article",
+    ),
+    (
+        "graft:update/quit.rs",
+        "{what} is still running · a git hook may be stuck",
+        "article",
+    ),
 ];

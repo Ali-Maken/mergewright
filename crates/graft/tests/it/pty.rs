@@ -91,11 +91,28 @@ impl Pty {
     /// Start `graft <arg>` in `cwd` on a `columns`x`rows` pty, isolated by
     /// `isolated`. `GIT_CEILING_DIRECTORIES` stops git's search at `ceiling`
     /// so a repository above the temp dir never counts.
-    pub fn spawn(
+    pub fn spawn(isolated: &Isolated, arg: &Path, ceiling: &Path, size: (u16, u16)) -> Self {
+        Self::spawn_with(isolated, arg, ceiling, size, false)
+    }
+
+    /// As [`Pty::spawn`], with stderr on the pty too, the way a shell runs
+    /// it: one transcript, so a test can read what came after what — the
+    /// terminal's restore, then a line on stderr (m8/13b review fix).
+    pub fn spawn_with_stderr_on_pty(
+        isolated: &Isolated,
+        arg: &Path,
+        ceiling: &Path,
+        size: (u16, u16),
+    ) -> Self {
+        Self::spawn_with(isolated, arg, ceiling, size, true)
+    }
+
+    fn spawn_with(
         isolated: &Isolated,
         arg: &Path,
         ceiling: &Path,
         (columns, rows): (u16, u16),
+        stderr_on_pty: bool,
     ) -> Self {
         std::fs::create_dir_all(isolated.config()).expect("config home");
         std::fs::create_dir_all(isolated.home()).expect("home");
@@ -107,6 +124,11 @@ impl Pty {
         };
         let pty = openpty(Some(&size), None).expect("a pty");
         let slave: OwnedFd = pty.slave;
+        let stderr = if stderr_on_pty {
+            Stdio::from(slave.try_clone().expect("slave fd"))
+        } else {
+            Stdio::piped()
+        };
         let mut child = Command::new(env!("CARGO_BIN_EXE_graft"))
             .arg(arg)
             .env("XDG_CONFIG_HOME", isolated.config())
@@ -119,7 +141,7 @@ impl Pty {
             .env_remove("GRAFT_TRACE")
             .stdin(Stdio::from(slave.try_clone().expect("slave fd")))
             .stdout(Stdio::from(slave))
-            .stderr(Stdio::piped())
+            .stderr(stderr)
             .spawn()
             .expect("graft starts");
         let master = File::from(pty.master);
@@ -137,14 +159,16 @@ impl Pty {
             }
         });
         let stderr = Arc::new(Mutex::new(Vec::new()));
-        let mut child_err = child.stderr.take().expect("stderr piped");
-        let err_sink = Arc::clone(&stderr);
-        std::thread::spawn(move || {
-            let mut all = Vec::new();
-            if child_err.read_to_end(&mut all).is_ok() {
-                err_sink.lock().expect("stderr").extend(all);
-            }
-        });
+        // On the pty, stderr is in `output`; piped, it is gathered apart.
+        if let Some(mut child_err) = child.stderr.take() {
+            let err_sink = Arc::clone(&stderr);
+            std::thread::spawn(move || {
+                let mut all = Vec::new();
+                if child_err.read_to_end(&mut all).is_ok() {
+                    err_sink.lock().expect("stderr").extend(all);
+                }
+            });
+        }
         Self {
             master,
             child,
@@ -159,6 +183,16 @@ impl Pty {
     pub fn send(&mut self, bytes: &[u8]) {
         self.master.write_all(bytes).expect("typed");
         self.master.flush().expect("flushed");
+    }
+
+    /// Send the app `signal` (`TERM`, `HUP`) with `kill`, by its pid.
+    pub fn signal(&self, signal: &str) {
+        let status = Command::new("kill")
+            .arg(format!("-{signal}"))
+            .arg(self.child.id().to_string())
+            .status()
+            .expect("kill runs");
+        assert!(status.success(), "SIG{signal} not delivered");
     }
 
     /// Everything the app has written so far.

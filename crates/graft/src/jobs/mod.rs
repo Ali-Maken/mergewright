@@ -91,7 +91,7 @@ mod switch_list;
 mod types;
 pub(crate) mod undo;
 
-pub use pool::Shutdown;
+pub use pool::{Forced, Shutdown};
 pub use runner::JobRunner;
 pub use types::{Cancel, Delivery, Dispatch, JobEvents, Outcome, Work};
 
@@ -112,7 +112,25 @@ pub const MAX_WORKERS: usize = 4;
 /// with its git child alive (m8/13b). Most quits pay nothing for it: an idle
 /// pool, or one running reads that check their token, ends at once. Only a
 /// git child slow to take SIGTERM costs the wait, and that child is exactly
-/// what must not outlive Graft. Unstoppable writes are outside this bound
-/// altogether: shutdown waits for them to end ([`JobRunner::shutdown`]).
+/// what must not outlive Graft. Unstoppable writes are outside this bound:
+/// shutdown waits for them first, up to [`EXIT_WRITE_WAIT`]
+/// ([`JobRunner::shutdown`]).
 pub const SHUTDOWN_GRACE: Duration =
     graft_git::run::STOP_WITHIN.saturating_add(Duration::from_millis(500));
+
+/// The longest a shutdown waits for a **forced** write's answer — where its
+/// stop left git — once its git is stopped (m8-polish-and-ship/13c item 11):
+/// [`SHUTDOWN_GRACE`] for the stop itself, plus 3 s for the after-state
+/// reads that close its journal entry. Past it the write is abandoned and the
+/// exit line says only that it was stopped (`Forced::at` is `None`).
+///
+/// **Not measured** as a bound: the 3 s is the planner's allowance for the
+/// reads. The stop walk records the real time (13c/13d NOTES).
+pub const FORCED_WAIT: Duration = SHUTDOWN_GRACE.saturating_add(Duration::from_secs(3));
+
+/// The longest an exit waits for an unstoppable write (a merge, a rebase, a
+/// `--continue`) to land before stopping it half-way (13b review fix): a
+/// merge or rebase with ordinary hooks lands well inside it, and a hung hook
+/// does not leave an invisible process for good. The terminal is already
+/// restored while it runs (`event_loop::startup`).
+pub const EXIT_WRITE_WAIT: Duration = Duration::from_secs(60);
