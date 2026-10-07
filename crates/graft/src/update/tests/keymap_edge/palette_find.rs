@@ -798,8 +798,9 @@ fn an_answer_with_nothing_found_leaves_no_group() {
 /// reads, muted, `type to find actions, branches, tags, files, commits`;
 /// COMMANDS RUN RECENTLY (`S Stash…`, `▸` on it) above ACTIONS; no branch
 /// or tag rows. Colour unverified (rule 5).
-#[test]
-fn capture_find_and_empty_palette() {
+/// The capture's typed state: `rebase` over a branch, a file and a commit
+/// matching it, every source answered (12b).
+fn rebase_found() -> AppState {
     let mut state = start();
     state
         .palette_recent
@@ -844,6 +845,12 @@ fn capture_find_and_empty_palette() {
             subject: b"Rebase the login branch onto main"[..].into(),
         }]))),
     );
+    found
+}
+
+#[test]
+fn capture_find_and_empty_palette() {
+    let found = rebase_found();
     assert_eq!(
         headers(&found),
         ["ACTIONS", "BRANCHES", "FILES", "COMMITS", RECENT_HEADER],

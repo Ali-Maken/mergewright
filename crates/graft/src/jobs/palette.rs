@@ -41,7 +41,10 @@ pub(crate) fn read_branches(repos: &RepoStore, cancel: &Cancel) -> Result<Arc<Sw
 /// # Errors
 /// The failure text, ready to show in the FILES group after `files: `:
 /// `too many to list` past `graft_git::status::TRACKED_CAP`, else git's.
-pub(crate) fn read_tracked(repos: &RepoStore, cancel: &Cancel) -> Result<Arc<TrackedPaths>, String> {
+pub(crate) fn read_tracked(
+    repos: &RepoStore,
+    cancel: &Cancel,
+) -> Result<Arc<TrackedPaths>, String> {
     let repo = repos.shared().map_err(|error| error.to_string())?;
     let handle = repo.handle();
     tracked_paths(&handle, cancel)
@@ -143,54 +146,11 @@ pub(crate) fn match_names(req: &NamesRequest, stop: &dyn Fn() -> bool) -> Option
         None => None,
     };
     let tags = match &req.tags {
-        Some(badges) => {
-            let mut hits: Vec<(u32, RefHit)> = Vec::new();
-            for (tip, name) in badges.tags() {
-                if stopped() {
-                    return None;
-                }
-                let Some(tier) = tier(query, name) else {
-                    continue;
-                };
-                hits.push((
-                    tier,
-                    RefHit {
-                        name: name.into(),
-                        tip,
-                        remote: false,
-                    },
-                ));
-            }
-            Some(ranked(hits))
-        }
+        Some(badges) => Some(match_tags(query, badges, &mut stopped)?),
         None => None,
     };
     let files = match &req.files {
-        Some(paths) => {
-            // Best score, then shorter path, then index order: a total key.
-            let mut hits: Vec<(u32, usize, u32)> = Vec::new();
-            for (ix, path) in paths.iter().enumerate() {
-                if stopped() {
-                    return None;
-                }
-                let Some(score) = fuzzy_score(query, &String::from_utf8_lossy(path)) else {
-                    continue;
-                };
-                // `TrackedPaths` holds under 4 GiB, so far fewer paths.
-                let Ok(ix) = u32::try_from(ix) else { break };
-                hits.push((score, path.len(), ix));
-            }
-            let total = hits.len();
-            if hits.len() > TOP {
-                hits.select_nth_unstable(TOP - 1);
-                hits.truncate(TOP);
-            }
-            hits.sort_unstable();
-            Some(Ranked {
-                top: hits.into_iter().map(|(_, _, ix)| ix).collect(),
-                total,
-            })
-        }
+        Some(paths) => Some(match_files(query, paths, &mut stopped)?),
         None => None,
     };
     if stop() {
@@ -200,6 +160,65 @@ pub(crate) fn match_names(req: &NamesRequest, stop: &dyn Fn() -> bool) -> Option
         branches,
         tags,
         files,
+    })
+}
+
+/// TAGS: every tag `fuzzy_score` matches, by tier, then name. `None` when
+/// `stopped` said so.
+fn match_tags(
+    query: &str,
+    badges: &RefBadges,
+    stopped: &mut dyn FnMut() -> bool,
+) -> Option<Ranked<RefHit>> {
+    let mut hits: Vec<(u32, RefHit)> = Vec::new();
+    for (tip, name) in badges.tags() {
+        if stopped() {
+            return None;
+        }
+        let Some(tier) = tier(query, name) else {
+            continue;
+        };
+        hits.push((
+            tier,
+            RefHit {
+                name: name.into(),
+                tip,
+                remote: false,
+            },
+        ));
+    }
+    Some(ranked(hits))
+}
+
+/// FILES: every path `fuzzy_score` matches, best score, then shorter path,
+/// then index order (a total key). `None` when `stopped` said so.
+fn match_files(
+    query: &str,
+    paths: &TrackedPaths,
+    stopped: &mut dyn FnMut() -> bool,
+) -> Option<Ranked<u32>> {
+    let mut hits: Vec<(u32, usize, u32)> = Vec::new();
+    for (ix, path) in paths.iter().enumerate() {
+        if stopped() {
+            return None;
+        }
+        let Some(score) = fuzzy_score(query, &String::from_utf8_lossy(path)) else {
+            continue;
+        };
+        // `TrackedPaths` holds under 4 GiB of path bytes, so far fewer
+        // than `u32::MAX` paths: the conversion cannot fail.
+        let Ok(ix) = u32::try_from(ix) else { break };
+        hits.push((score, path.len(), ix));
+    }
+    let total = hits.len();
+    if hits.len() > TOP {
+        hits.select_nth_unstable(TOP - 1);
+        hits.truncate(TOP);
+    }
+    hits.sort_unstable();
+    Some(Ranked {
+        top: hits.into_iter().map(|(_, _, ix)| ix).collect(),
+        total,
     })
 }
 

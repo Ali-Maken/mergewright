@@ -13,7 +13,7 @@ use super::palette_find::{
 };
 use super::*;
 use crate::search::CommitHit;
-use crate::update::palette::{COMMIT_HITS, FindGroup, PaletteTarget};
+use crate::update::palette::{COMMIT_HITS, FindGroup, PaletteTarget, commits_more};
 use crate::update::place::Place;
 
 /// `README.md`, `src/main.rs`, `src/rebase.rs`, `docs/main-notes.md`.
@@ -101,11 +101,7 @@ fn files_group_reads_then_lists() {
         rows_of(&typing, "FILES"),
         [("reading…".to_owned(), RowKind::More, PaletteTarget::Note)]
     );
-    let (landed, commands) = produced(
-        &typing,
-        read,
-        Product::TrackedPaths(Ok(Arc::new(paths()))),
-    );
+    let (landed, commands) = produced(&typing, read, Product::TrackedPaths(Ok(Arc::new(paths()))));
     let again = names_asked(&commands);
     assert_eq!(again.len(), 1, "the names job re-asked for the paths");
     assert!(again[0].1.files.is_some());
@@ -285,6 +281,34 @@ fn commits_more_row_starts_slash_search() {
     );
 }
 
+/// The more row names `/` as his keymap spells `app.find` (R1): moved, the
+/// row says the new key; unbound, it names no key.
+#[test]
+fn commits_more_row_spells_his_find_key() {
+    let moved = |keys: &[&str]| {
+        let lines = [(
+            "app.find".to_owned(),
+            keys.iter().map(|k| (*k).to_owned()).collect(),
+        )];
+        let (map, warnings) =
+            Keymap::with_overrides(&lines, graft_ui::keymap::KeySwitches::default());
+        assert_eq!(warnings, []);
+        map
+    };
+    assert_eq!(
+        commits_more(Keymap::shipped()),
+        "more · / searches all of history"
+    );
+    assert_eq!(
+        commits_more(&moved(&["ctrl+f"])),
+        "more · ⌃F searches all of history"
+    );
+    assert_eq!(
+        commits_more(&moved(&["none"])),
+        "more · search all of history"
+    );
+}
+
 #[test]
 fn stale_commits_answer_is_dropped() {
     let (open, _) = press(&start(), ctrl_p());
@@ -363,5 +387,5 @@ fn files_and_commits_follow_tags() {
     let at = |h: &str| order.iter().position(|o| o == h);
     assert!(at("BRANCHES") < at("FILES"), "{order:?}");
     assert!(at("FILES") < at("COMMITS"), "{order:?}");
-    assert!(under_cursor(&state).2 != PaletteTarget::Note);
+    assert_ne!(under_cursor(&state).2, PaletteTarget::Note);
 }

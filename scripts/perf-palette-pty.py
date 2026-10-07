@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """`⌃P` find anything on many refs, through a real pty (m8-polish-and-ship/12).
 
-Usage: perf-palette-pty.py BINARY REPO COLS ROWS WAIT
+Usage: perf-palette-pty.py BINARY REPO COLS ROWS WAIT [GROUP [QUERIES]]
+
+GROUP (default BRANCHES) is the find group the open waits for; QUERIES a
+comma-separated list (default the refs fixture's). 12b runs it with FILES
+on a 100 000-path index.
 
 Spawns the release binary on REPO in a COLSxROWS pty (temp config folder,
 checked: never the user's real one), waits WAIT seconds for the load, then:
 
   open   OPENS times: `⌃P` `4`, then the time from `⌃P` until the screen
-         shows BRANCHES with no `reading…`/`searching…` (the branch read
+         shows GROUP with no `reading…`/`searching…` (the group's read
          landed and its names answered and drew; an empty box lists no
-         branches, P-find-1); `esc`.
+         finds, P-find-1); `esc`.
   names  for each query in QUERIES, typed one key at a time: the time from
          the key until the box shows the query and no `searching…` /
          `reading…` row (the names job for that query answered and drew).
@@ -97,6 +101,8 @@ def line(name, samples):
 def main():
     binary, repo, cols, rows, wait = sys.argv[1:6]
     cols, rows, wait = int(cols), int(rows), float(wait)
+    group = sys.argv[6] if len(sys.argv) > 6 else "BRANCHES"
+    queries = sys.argv[7].split(",") if len(sys.argv) > 7 else QUERIES
     pid, fd = pty.fork()
     if pid == 0:
         os.chdir(repo)
@@ -114,13 +120,13 @@ def main():
             os.write(fd, CTRL_P)
             term.until("open", lambda t: "find anything" in t)
             os.write(fd, b"4")
-            term.until("BRANCHES", lambda t: "BRANCHES" in t and settled(t))
+            term.until(group, lambda t: group in t and settled(t))
             opens.append(time.monotonic() - start)
             os.write(fd, ESC)
             term.until("closed", lambda t: "find anything" not in t)
         os.write(fd, CTRL_P)
         term.until("open", lambda t: "find anything" in t and settled(t))
-        for query in QUERIES:
+        for query in queries:
             for i in range(1, len(query) + 1):
                 os.write(fd, query[i - 1].encode())
                 shown = "› " + query[:i]
@@ -143,7 +149,7 @@ def main():
         broken.append(f"quit_{type(why).__name__}")
     term.drain(1.0)
     finished, status = os.waitpid(pid, os.WNOHANG)
-    print(line("open_to_branches_ms", opens))
+    print(line(f"open_to_{group.lower()}_ms", opens))
     print(line("key_to_names_ms", names))
     print(f"SUMMARY broken={','.join(broken) or 'none'} exited={'yes' if finished else 'no'} status={status}")
     return 1 if broken else 0

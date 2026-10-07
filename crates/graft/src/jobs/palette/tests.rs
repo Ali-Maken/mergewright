@@ -249,17 +249,14 @@ fn files_rank_by_score_then_shorter_then_index_order() {
         .collect();
     let score = |p: &str| fuzzy_score("rebase", p).expect("matches");
     // A stable sort keeps index order for an equal key.
-    let mut want = vec![
+    let mut want = [
         "docs/rebase/notes.md",
         "src/rebase.rs",
         "lib/rebase.rs",
         "src/x/rebase.rs",
     ];
     want.sort_by_key(|p| (score(p), p.len()));
-    assert_eq!(
-        names,
-        want.iter().map(|p| p.as_bytes()).collect::<Vec<_>>()
-    );
+    assert_eq!(names, want.iter().map(|p| p.as_bytes()).collect::<Vec<_>>());
     assert_eq!(files.total, 4);
 }
 

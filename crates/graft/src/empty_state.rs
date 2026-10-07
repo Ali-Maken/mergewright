@@ -168,9 +168,7 @@ fn palette_key(state: &mut OutsideState, keymap: &Keymap, key: KeyPress) -> Outs
             | PaletteTarget::Seek(_)
             | PaletteTarget::File(_)
             | PaletteTarget::More(_),
-        ) => {
-            OutsideStep::Stay
-        }
+        ) => OutsideStep::Stay,
         // `Ctrl+C`: quits, as everywhere (§2.1).
         Edited::Pass => {
             state.palette = Some(open);

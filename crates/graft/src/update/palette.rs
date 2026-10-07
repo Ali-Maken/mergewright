@@ -221,6 +221,9 @@ pub(crate) enum PaletteTarget {
 /// A group as drawn: its header and its rows, each with what it runs.
 pub(crate) type Group = (SanitizedText, Vec<(PaletteRow, PaletteTarget)>);
 
+/// A group's rows, each with what it runs.
+type Rows = Vec<(PaletteRow, PaletteTarget)>;
+
 /// What a listing is built from — the few things it reads, so the empty
 /// state (no `AppState`) builds the same rows.
 pub(crate) struct Source<'a> {
@@ -397,7 +400,7 @@ pub(crate) fn listing(source: &Source<'_>, palette: &PaletteState) -> Vec<Group>
             .iter()
             .position(|(header, _)| header.as_str() == RECENT_HEADER)
             .unwrap_or(out.len());
-        let finds = find_groups(&palette.find, query, source.tags_read);
+        let finds = find_groups(&palette.find, query, source.tags_read, source.keymap);
         out.splice(at..at, finds);
     }
     out
@@ -410,7 +413,7 @@ pub(crate) fn listing(source: &Source<'_>, palette: &PaletteState) -> Vec<Group>
 /// is typed; a current answer shows its best [`GROUP_ROWS`] (or
 /// [`WIDE_ROWS`] once widened) and `+N more`. A group with no row is left
 /// out.
-fn find_groups(find: &Find, query: &str, tags_read: bool) -> Vec<Group> {
+fn find_groups(find: &Find, query: &str, tags_read: bool, keymap: &Keymap) -> Vec<Group> {
     let mut out = Vec::new();
     for group in [FindGroup::Branches, FindGroup::Tags, FindGroup::Files] {
         let read = match group {
@@ -427,7 +430,7 @@ fn find_groups(find: &Find, query: &str, tags_read: bool) -> Vec<Group> {
             out.push((sanitize_line(group.header()), rows));
         }
     }
-    let commits = commit_rows(&find.commits, query);
+    let commits = commit_rows(&find.commits, query, keymap);
     if !commits.is_empty() {
         out.push((sanitize_line(FindGroup::Commits.header()), commits));
     }
@@ -483,10 +486,7 @@ fn group_rows(find: &Find, group: FindGroup, query: &str) -> Vec<(PaletteRow, Pa
 /// The names answer's rows for `group`, best first, with the query it
 /// answered and how many matched in all. `None` when no answer carries
 /// the group yet.
-fn answered_rows(
-    find: &Find,
-    group: FindGroup,
-) -> Option<(&str, Vec<(PaletteRow, PaletteTarget)>, usize)> {
+fn answered_rows(find: &Find, group: FindGroup) -> Option<(&str, Rows, usize)> {
     let (asked, hits) = find.names.answer.as_ref()?;
     let refs = |ranked: Option<&Ranked<RefHit>>, kind| {
         ranked.map(|ranked| {
@@ -563,16 +563,23 @@ fn file_row(paths: &TrackedPaths, ix: u32) -> Option<(PaletteRow, PaletteTarget)
 }
 
 /// The `more` row under [`COMMIT_HITS`] commits: `⏎` hands the query to `/`.
-pub const COMMITS_MORE: &str = "more · / searches all of history";
+/// Names the find key as his keymap spells it; unbound, no key.
+pub(crate) fn commits_more(keymap: &Keymap) -> String {
+    match keymap.spell_keys(&[ActionId("app.find")]) {
+        Some(keys) => format!("more · {keys} searches all of history"),
+        None => "more · search all of history".to_owned(),
+    }
+}
 
-/// COMMITS for `query`: the current answer's hits, then [`COMMITS_MORE`]
+/// COMMITS for `query`: the current answer's hits, then [`commits_more`]
 /// when the job stopped at [`COMMIT_HITS`]; its failure as one row; while
 /// the query's job runs, the last answer's hits still matching by sha or
 /// subject, then `searching…`.
 fn commit_rows(
     commits: &Asked<Result<Arc<[CommitHit]>, String>>,
     query: &str,
-) -> Vec<(PaletteRow, PaletteTarget)> {
+    keymap: &Keymap,
+) -> Rows {
     if query.is_empty() {
         return Vec::new();
     }
@@ -580,13 +587,16 @@ fn commit_rows(
         Some((asked, Ok(hits))) if asked == query => {
             let mut rows: Vec<_> = hits.iter().map(commit_row).collect();
             if hits.len() >= COMMIT_HITS {
-                let (row, _) = placeholder(COMMITS_MORE);
+                let (row, _) = placeholder(&commits_more(keymap));
                 rows.push((row, PaletteTarget::More(FindGroup::Commits)));
             }
             rows
         }
         Some((asked, Err(why))) if asked == query => {
-            vec![placeholder(&format!("commits: search failed: {}", one_line(why)))]
+            vec![placeholder(&format!(
+                "commits: search failed: {}",
+                one_line(why)
+            ))]
         }
         stale => {
             let parsed = crate::search::Query::parse(query);
@@ -1055,10 +1065,11 @@ fn cancel_finds(palette: &PaletteState, commands: &mut Vec<Command>) {
     if let ReadOnce::Reading(id) = palette.find.files {
         commands.push(Command::CancelJob(id));
     }
-    for pending in [&palette.find.names.pending, &palette.find.commits.pending] {
-        if let Some((id, _)) = pending {
-            commands.push(Command::CancelJob(*id));
-        }
+    for (id, _) in [&palette.find.names.pending, &palette.find.commits.pending]
+        .into_iter()
+        .flatten()
+    {
+        commands.push(Command::CancelJob(*id));
     }
 }
 

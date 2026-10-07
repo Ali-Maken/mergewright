@@ -577,7 +577,10 @@ mod tests {
         let store = RepoStore::new(graft_fixtures::borrow(Shape::Linear), None);
         let email = String::from_utf8_lossy(&walked(&store)[0].author.email).into_owned();
         let (_, batches) = scanned(&store, &email);
-        let slash: Vec<Oid> = batches.iter().flat_map(|batch| batch.iter().copied()).collect();
+        let slash: Vec<Oid> = batches
+            .iter()
+            .flat_map(|batch| batch.iter().copied())
+            .collect();
         assert!(slash.len() > 9, "every commit matches its author");
         let query = Query::parse(&email).expect("a query");
 
@@ -613,12 +616,14 @@ mod tests {
         assert_eq!(hits.len(), 9);
         let full = std::cell::Cell::new(0_usize);
         let none = Query::parse("no commit says zq-xj-vk-7431").expect("a query");
-        assert!(first_hits(&store, &none, limit, &|| {
-            full.set(full.get() + 1);
-            false
-        })
-        .expect("reads")
-        .is_empty());
+        assert!(
+            first_hits(&store, &none, limit, &|| {
+                full.set(full.get() + 1);
+                false
+            })
+            .expect("reads")
+            .is_empty()
+        );
         assert!(
             asked.get() < full.get(),
             "stopped early: {} stop checks vs {} for a full walk",

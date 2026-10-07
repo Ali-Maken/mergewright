@@ -393,10 +393,10 @@ fn draw_row(
     buf.set_string(label_x, y, &fitted, label_style);
     // 12b: what tells two rows of a find group apart drawn as text, the
     // rest muted — a file's directory, a commit's sha.
-    if let Some(prefix) = muted_prefix(row) {
-        if let Some(drawn) = fitted.get(..prefix.len()).filter(|d| *d == prefix) {
-            buf.set_string(label_x, y, drawn, muted);
-        }
+    if let Some(prefix) = muted_prefix(row)
+        && let Some(drawn) = fitted.get(..prefix.len()).filter(|d| *d == prefix)
+    {
+        buf.set_string(label_x, y, drawn, muted);
     }
     if label_room < room {
         let config_x = inner - 2 - config_cells;
