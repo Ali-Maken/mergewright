@@ -168,7 +168,7 @@ pub(crate) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
             files_key(detail, commands, ids, key, plain)
         }
         _ if detail.shown && detail.focus == DetailFocus::Diff => {
-            diff_key(detail, commands, ids, key.code, plain, body_rows)
+            diff_key(detail, commands, ids, key, plain, body_rows)
         }
         _ => false,
     }
@@ -341,17 +341,20 @@ fn diff_key(
     detail: &mut DetailState,
     commands: &mut Vec<Command>,
     ids: &mut impl FnMut() -> JobId,
-    code: KeyCode,
+    key: KeyPress,
     plain: bool,
     body_rows: usize,
 ) -> bool {
+    let code = key.code;
     let delta = match code {
         KeyCode::Char('j') | KeyCode::Down => Some(1),
         KeyCode::Char('k') | KeyCode::Up => Some(-1),
         KeyCode::PageDown => Some(PAGE_STEP),
         KeyCode::PageUp => Some(-PAGE_STEP),
-        KeyCode::Char('g') if plain => Some(isize::MIN),
-        KeyCode::Char('G') if plain => Some(isize::MAX),
+        // Every chord of `app.top`/`app.bottom`, not `g`/`G` alone: `Home`
+        // and `End` went past the pane to the graph (m8/09h R5).
+        _ if shipped_as(key, "app.top") => Some(isize::MIN),
+        _ if shipped_as(key, "app.bottom") => Some(isize::MAX),
         _ => None,
     };
     if let Some(delta) = delta {

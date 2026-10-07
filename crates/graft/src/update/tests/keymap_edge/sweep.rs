@@ -16,7 +16,7 @@
 use super::*;
 
 use super::sweep_swallowed::SWALLOWED_BY_DESIGN;
-use super::sweep_tables::{NO_EFFECT_IN_FIXTURE, ONE_CHORD_IDLE, SHADOWED};
+use super::sweep_tables::{IdleWhy, NO_EFFECT_IN_FIXTURE, ONE_CHORD_IDLE, SHADOWED};
 
 /// In the table, answered by a later ticket; each deletes its own.
 const NOT_YET_ANSWERED: &[(&str, &str)] = &[
@@ -193,7 +193,7 @@ fn every_reachable_row_acts_or_is_listed_and_follows_its_remap() {
     // Every list entry names a reachable row of its place.
     let per_chord = ONE_CHORD_IDLE
         .iter()
-        .map(|(ctx, id, _, why)| (*ctx, *id, *why));
+        .map(|(ctx, id, _, why)| (*ctx, *id, why.at()));
     let per_row = SWALLOWED_BY_DESIGN
         .iter()
         .chain(NO_EFFECT_IN_FIXTURE)
@@ -207,6 +207,37 @@ fn every_reachable_row_acts_or_is_listed_and_follows_its_remap() {
             "{ctx:?}: {id} is not reachable there"
         );
     }
+}
+
+/// Every [`IdleWhy::ActsGivenState`] row of [`ONE_CHORD_IDLE`] acts once
+/// its place has something to change (m8/09h R1′): built as the sweep
+/// builds the place, `given` applied, the idle chord pressed — `then`
+/// holds and the state moved. A row whose `then` fails is a `Defect`.
+#[test]
+fn every_one_chord_row_that_acts_given_state_does() {
+    let mut checked = 0;
+    let mut failures: Vec<String> = Vec::new();
+    for (ctx, id, label, why) in ONE_CHORD_IDLE {
+        let IdleWhy::ActsGivenState { at, given, then } = why else {
+            continue;
+        };
+        let chord = defaults()
+            .iter()
+            .find(|b| b.action.0 == *id)
+            .and_then(|b| b.default.iter().find(|c| c.label().0 == *label))
+            .unwrap_or_else(|| panic!("{ctx:?}: {id} has no default chord {label}"));
+        let mut before = fixture(*ctx).unwrap_or_else(|| panic!("{ctx:?} has a fixture"));
+        given(&mut before);
+        let (after, _) = update(&before, AppEvent::Core(Event::Key(chord.to_press())));
+        checked += 1;
+        if after == before || !then(&before, &after) {
+            failures.push(format!(
+                "{ctx:?}: {id} ({label}) does not act given state ({at})"
+            ));
+        }
+    }
+    assert_eq!(failures, Vec::<String>::new());
+    assert_eq!(checked, 10, "ten rows act given state");
 }
 
 /// What a place stands down (`ContextId::stands_down`, m8/09f) it answers

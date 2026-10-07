@@ -83,6 +83,20 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   superset).
 - **Changing a screen or a keybinding** → `ui` for the widget, `app` for the
   key-to-`Command` mapping. Start at `DESIGN.md` §1–§2.
+- **Changing a key, or words that name one** → one table, `graft-ui`
+  `keymap/table.rs`; its ids are golden in `graft-ui/tests/keymap_ids.txt`
+  and never renamed (ADR-0055). Where a chord lands in a place:
+  `ContextId::scope()` (own rows, then `borrows()`, then the rest), less
+  `stands_down()`. His remaps are translated at the edge
+  (`graft::update::edge::key`, place from `context_of`) before any handler;
+  a handler matches every shipped chord of the action it answers, never a
+  second raw arm. Every printed key is spelled from the live table at render
+  (`Keymap::spell_*`, `key_verb`, `after`, `HintKey`); inside a text field,
+  `Keymap::shipped()` (ADR-0055, ADR-0058). graft-ops names keys only as
+  `OpKey` through `KeyNames` (`graft-ops/src/keys.rs`), answered by
+  `graft/src/update/op_keys.rs`; jobs carry an `Arc<Keymap>`. Kept honest by
+  the behavioural sweep (`graft::update::tests::keymap_edge::sweep`) and the
+  `graft-ui/tests/no_literal_keys.rs` ratchet, which fails a literal key.
 - **Changing the detail pane, a diff view or the Explain panel** →
   `ui::detail_pane` for the widget (header, file list, unified and
   side-by-side diff bodies, the Explain panel's own render), `app::view::detail`

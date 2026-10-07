@@ -420,6 +420,57 @@ fn the_changes_header_spells_his_key_and_the_shipped_one_in_the_field() {
     assert!(!unbound.contains('\u{2014}'), "{unbound}");
 }
 
+/// m8/09h C (09f Major 3): the AFTER header's `y` is `confirm.yes`, which
+/// Rewrite borrows (`keymap.rs` `borrows`): his key outside the `r` field,
+/// the shipped `y` inside it (every key there is typed), and `AFTER` alone
+/// when he unbound it — never `—`.
+#[test]
+fn the_after_heading_spells_his_confirm_key() {
+    let keymap = |chords: &str| {
+        crate::keymap::Keymap::with_overrides(
+            &[("confirm.yes".to_owned(), vec![chords.to_owned()])],
+            crate::keymap::KeySwitches::default(),
+        )
+        .0
+    };
+    let (on_c, none) = (keymap("c"), keymap("none"));
+    let header = |view: &RewriteEditorView, keys| {
+        line_with(&draw_keyed(view, 187, 50, keys), "AFTER")
+            .1
+            .to_owned()
+    };
+    for (right, rest) in [
+        (AfterView::Checking, "checking\u{2026}"),
+        (
+            AfterView::Failed(sanitize_line("no plan")),
+            "not written yet",
+        ),
+    ] {
+        let after = RewriteEditorView {
+            right: RightSide::After(right),
+            ..view()
+        };
+        let in_field = RewriteEditorView {
+            field: Some(FieldView {
+                row: 2,
+                text: sanitize_line("Tests"),
+                caret: 5,
+            }),
+            ..after.clone()
+        };
+        let mine = header(&after, &on_c);
+        assert!(mine.contains(&format!("AFTER c \u{b7} {rest}")), "{mine}");
+        let typed = header(&in_field, &on_c);
+        assert!(typed.contains(&format!("AFTER y \u{b7} {rest}")), "{typed}");
+        let unbound = header(&after, &none);
+        assert!(
+            unbound.contains(&format!("AFTER \u{b7} {rest}")),
+            "{unbound}"
+        );
+        assert!(!unbound.contains('\u{2014}'), "{unbound}");
+    }
+}
+
 #[test]
 fn ascii_has_a_stand_in_for_every_glyph() {
     let ascii = RewriteEditorView {

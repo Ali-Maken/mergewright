@@ -971,3 +971,53 @@ fn home_in_the_changes_pane_acts_as_g() {
         assert_eq!(chord_commands, letter_commands, "{chord:?} is {letter}");
     }
 }
+
+/// m8/09h R5: in the diff pane `Home`/`End` are `app.top`/`app.bottom`'s
+/// other chords (keymap §2.6) and do what `g`/`G` do to the diff — they
+/// went past the pane and moved the graph (`diff_key` answered `g`/`G`
+/// only). Moved to `t`, `app.top` goes with it: `t` tops the diff and
+/// `Home` leaves it where it was.
+#[test]
+fn home_and_end_in_the_diff_pane_act_as_g_and_capital_g() {
+    use crate::update::events::AppEvent;
+    use graft_core::event::Event;
+
+    let press = |state: &AppState, code| {
+        crate::update::update(state, AppEvent::Core(Event::Key(KeyPress::plain(code))))
+    };
+    let mut mid = crate::update::tests::commit_pane(JobId::new(701), false);
+    mid.size = crate::update::Size {
+        columns: 120,
+        rows: 36,
+    };
+    for _ in 0..5 {
+        mid = press(&mid, KeyCode::Char('j')).0;
+    }
+    assert_eq!(mid.detail.focus, DetailFocus::Diff);
+    assert_eq!(mid.detail.body_cursor, 5, "mid-diff");
+    for (chord, letter) in [(KeyCode::Home, 'g'), (KeyCode::End, 'G')] {
+        let (by_chord, chord_commands) = press(&mid, chord);
+        let (by_letter, letter_commands) = press(&mid, KeyCode::Char(letter));
+        assert_ne!(by_letter.detail.body_cursor, 5, "{letter} moves the diff");
+        assert_eq!(by_chord.detail, by_letter.detail, "{chord:?} is {letter}");
+        assert_eq!(chord_commands, letter_commands, "{chord:?} is {letter}");
+        assert_eq!(by_chord.history, mid.history, "{chord:?} left the graph");
+    }
+
+    let (top_on_t, _) = graft_ui::keymap::Keymap::with_overrides(
+        &[("app.top".to_owned(), vec!["t".to_owned()])],
+        graft_ui::keymap::KeySwitches::default(),
+    );
+    let remapped = AppState {
+        keymap: Arc::new(top_on_t),
+        ..mid.clone()
+    };
+    assert_eq!(
+        press(&remapped, KeyCode::Char('t')).0.detail.body_cursor,
+        0,
+        "t tops the diff"
+    );
+    let (home, _) = press(&remapped, KeyCode::Home);
+    assert_eq!(home.detail, mid.detail, "Home went with app.top");
+    assert_eq!(home.history, mid.history, "Home went with app.top");
+}
