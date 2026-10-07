@@ -20,8 +20,8 @@ use graft_ui::text_input::TextField;
 
 /// `(place, id, why)`: the place answers the key itself and does nothing
 /// with it.
-const LIST: &str = "empty_state.rs:158 the list answers q o i ⏎ j/↓ k/↑ alone";
-const BOX: &str = "empty_state.rs:113 the init box keeps all but y n esc (draws y, esc)";
+const LIST: &str = "empty_state.rs:302 the list answers q o i ⏎ j/↓ k/↑ alone (and ? ⌃P :, act)";
+const BOX: &str = "empty_state.rs:257 the init box keeps all but y n esc (draws y, esc)";
 
 const SWALLOWED_BY_DESIGN: &[(ContextId, &str, &str)] = &[
     (ContextId::EmptyState, "app.next_pane", LIST),
@@ -39,7 +39,7 @@ const SWALLOWED_BY_DESIGN: &[(ContextId, &str, &str)] = &[
     (ContextId::EmptyState, "app.prev_match", LIST),
     (ContextId::EmptyState, "app.menu", LIST),
     // D6 moved the init box to `Confirm`, where `n` declines raw
-    // (empty_state.rs:112); this row is now live only on the list (NOTES).
+    // (empty_state.rs:256); this row is now live only on the list (NOTES).
     (ContextId::EmptyState, "empty_state.cancel", LIST),
     (ContextId::Confirm, "confirm.choose", BOX),
     (ContextId::Confirm, "confirm.left", BOX),
@@ -61,6 +61,9 @@ const SWALLOWED_BY_DESIGN: &[(ContextId, &str, &str)] = &[
     (ContextId::Confirm, "app.prev_match", BOX),
     (ContextId::Confirm, "app.open", BOX),
     (ContextId::Confirm, "app.menu", BOX),
+    // m8/11 decision 7: a confirm box swallows `?`, `⌃P` and `:` too.
+    (ContextId::Confirm, "app.help", BOX),
+    (ContextId::Confirm, "app.palette", BOX),
 ];
 
 /// `(place, id, why)`: answered, but the fixture gives it nothing to change.
@@ -71,8 +74,6 @@ const NO_EFFECT_IN_FIXTURE: &[(ContextId, &str, &str)] = &[];
 const NOT_YET_ANSWERED: &[(&str, &str)] = &[
     ("empty_state.clone", "ticket 18: clone"),
     ("empty_state.tour", "ticket 19: the practice tour"),
-    ("app.help", "ticket 11: `?`"),
-    ("app.palette", "ticket 11: the palette"),
 ];
 
 /// Cases that acted when this sweep landed (2026-10-07). It may grow; a
@@ -101,6 +102,8 @@ fn state() -> OutsideState {
         cursor: 1,
         prompt: None,
         problem: None,
+        palette: None,
+        config_problems: Vec::new(),
     }
 }
 

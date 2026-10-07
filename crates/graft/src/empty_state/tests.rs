@@ -33,6 +33,8 @@ fn state() -> OutsideState {
         cursor: 0,
         prompt: None,
         problem: None,
+        palette: None,
+        config_problems: Vec::new(),
     }
 }
 

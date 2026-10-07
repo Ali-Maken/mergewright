@@ -81,6 +81,10 @@ fn ctrl_p() -> KeyPress {
     KeyPress::control(KeyCode::Char('p'))
 }
 
+fn key_colon() -> KeyPress {
+    KeyPress::plain(KeyCode::Char(':'))
+}
+
 /// J4: `?` `merge` — the cursor on HERE's merge row, spelled `m`. 2 inputs.
 #[test]
 fn j4_help_then_merge_lands_on_the_merge_row_in_two_inputs() {
@@ -137,6 +141,48 @@ fn j9_palette_theme_light_asks_the_loop_for_light() {
     assert!(walk.state.palette.is_none());
     assert_eq!(walk.commands, vec![Command::Retheme(ThemeKind::Light)]);
     assert!(walk.inputs <= 3, "{} inputs", walk.inputs);
+}
+
+/// Decision 5: a refusal through the palette reads as from the key. On a
+/// detached `HEAD`, `⌃P` `merge` `⏎` says what `m` says, in `m`'s words,
+/// and asks nothing.
+#[test]
+fn a_refusal_through_the_palette_reads_as_from_the_key() {
+    let mut start = sized_to_draw(on_a_branch_row());
+    let name = |full: &str| RefName::new(full.as_bytes().to_vec()).expect("a valid ref name");
+    let oid = |byte: u8| Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is an oid");
+    let detached = crate::refs::badges(
+        &[
+            (name("refs/heads/main"), oid(1)),
+            (name("refs/heads/feature"), oid(2)),
+        ],
+        &graft_git::repo::HeadState::Detached(oid(1)),
+        &HashMap::new(),
+        &[],
+        |_, _| {
+            Ok(graft_git::history::AheadBehind {
+                ahead: 0,
+                behind: 0,
+            })
+        },
+    )
+    .expect("badges");
+    start.refs = Some(Arc::new(detached));
+    let typed = Walk::from(&start).press(ctrl_p()).typed("merge");
+    let (_, _, _, target) = typed.under_cursor();
+    assert_eq!(target, PaletteTarget::Action(ActionId("graph.merge")));
+    let walk = typed.enter();
+    let by_key = Walk::from(&start).char('m');
+    assert!(walk.state.palette.is_none());
+    assert_eq!(walk.commands, by_key.commands);
+    assert_eq!(
+        format!("{:?}", walk.state.status),
+        format!("{:?}", by_key.state.status)
+    );
+    match &walk.state.status {
+        Status::Sticky { reason, .. } => assert_eq!(reason, "m needs a branch checked out"),
+        other => panic!("expected the key's refusal, got {other:?}"),
+    }
 }
 
 /// `⌃P` and `:` both open on everything, on the graph and on a pane.
@@ -245,8 +291,20 @@ fn help_opens_on_every_place_and_is_typed_in_every_field() {
         // The fixture as 09d's sweep presses it: unsettled, since a key
         // nobody answers closes a menu.
         let after = update(&state, key(KeyCode::Char('?'))).0;
-        if state.text_field_open() || state.confirm.is_some() {
-            assert!(after.palette.is_none(), "{ctx:?}: not over a field or box");
+        if state.confirm.is_some() {
+            // A confirm box swallows them (§2.3c): what `?`, `⌃P` and `:`
+            // do there is what a key nobody answers does.
+            for press in [KeyPress::plain(KeyCode::Char('?')), ctrl_p(), key_colon()] {
+                assert_eq!(
+                    seen(&state, press),
+                    seen(&state, unanswered()),
+                    "{ctx:?}: {press:?} over a confirm box"
+                );
+            }
+            continue;
+        }
+        if state.text_field_open() {
+            assert!(after.palette.is_none(), "{ctx:?}: not over a field");
             continue;
         }
         let palette = after.palette.as_ref().unwrap_or_else(|| panic!("{ctx:?}"));

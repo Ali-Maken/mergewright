@@ -253,13 +253,22 @@ where
 
     /// A re-detected cell size or theme: the strips drawn for the old one
     /// go, and a frame is owed if anything changed or a reply asked for one.
+    /// A new background hint that leaves the theme as it was (his palette
+    /// choice or a forced `ui.theme` wins) owes a frame — the hint's own
+    /// words may change — but keeps the strips: they are painted from the
+    /// theme (`StripPaint::of`), not the hint.
     fn terminal_changed(&mut self, change: TerminalChange, replied: bool) {
+        let theme_before =
+            matches!(change, TerminalChange::Theme(_)).then(|| self.session.theme.clone());
         let changed = self.session.apply(change);
-        if changed {
-            self.graphics.flush(match change {
-                TerminalChange::CellSize(_) => Flush::CellSize,
-                TerminalChange::Theme(_) => Flush::Theme,
-            });
+        let flush = match change {
+            TerminalChange::CellSize(_) => changed.then_some(Flush::CellSize),
+            TerminalChange::Theme(_) => {
+                (theme_before.as_ref() != Some(&self.session.theme)).then_some(Flush::Theme)
+            }
+        };
+        if let Some(flush) = flush {
+            self.graphics.flush(flush);
         }
         if changed || replied {
             self.undrawn_since.get_or_insert_with(|| self.wakes.now());

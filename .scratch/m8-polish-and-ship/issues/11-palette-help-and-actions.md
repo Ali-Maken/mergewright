@@ -1,6 +1,7 @@
 # G-palette 1 — `?` and `⌃P` / `:` open one palette; actions, theme rows, your config
 
-Status: **partial** (builder 2026-10-07; compacted once mid-ticket — see NOTES "Remaining")
+Status: **done except J7's truth-by-git** (builder 2026-10-07, compacted once; continuation 1 2026-10-07 finished
+the empty state, the loop theme test, refusal parity and the confirm sweep — see NOTES "Continuation 1")
 (planner spec-only split, 2026-10-07, from scout `.scratch/m8-polish-and-ship/scouts/11-palette-help.md`;
 part 2 is `11b-palette-doorway-and-hint-rows.md`)
 Build with: **Opus** — a new modal screen plus the theme command across graft-ui, graft-core and graft; every choice is
@@ -142,22 +143,34 @@ pub(crate) fn view(state: &AppState, palette: &PaletteState) -> PaletteView;
       first, `▸c Continue`; `⏎` emits exactly what `c` emits (`ContinueInGit { kind: Rebase }`). **"Truth by git" not
       observed**: `ContinueInGit` is a terminal handover the loop carries out (`jobs/runner.rs:1313` refuses it), so
       the app harness cannot run it. Not a routing problem: palette and key take the same path.
-- [~] Theme path: chosen theme survives a later dark hint with light's overrides —
-      `session::theme_tests::a_chosen_theme_outlasts_a_re_detected_background`. **Not done**: the loop-level test
-      (`turn.rs` `rethemed` → `Flush::Theme`) — code written, no test drives it.
+- [x] Theme path: chosen theme survives a later dark hint with light's overrides —
+      `session::theme_tests::a_chosen_theme_outlasts_a_re_detected_background`; through the loop (`⌃P` `theme light`
+      `⏎`, then a dark background wake: one `Flush::Theme`, still light) —
+      `event_loop::tests::a_theme_chosen_in_the_palette_flushes_once_and_outlasts_a_dark_hint`.
 - [x] Per-place spelling — `keymap_edge::palette::rows_are_spelled_with_what_the_key_does_in_that_place` (merge `j`,
       move `↓` on the graph; move `j` on Changes).
-- [~] Sweep — `keymap_edge::palette::help_opens_on_every_place_and_is_typed_in_every_field` (every fixture context;
-      confirm box: no palette; every field: `?` typed — **except blame find**, see NOTES). **Not done**: the empty
-      state; "confirm leaves state unchanged" is asserted as "no palette opens", plus 09d's sweep listing it swallowed.
-- [~] `⌃P`/`:` open `Everything` on graph and a pane — `ctrl_p_and_colon_open_everything_on_the_graph_and_a_pane`;
+- [x] Sweep — `keymap_edge::palette::help_opens_on_every_place_and_is_typed_in_every_field` (every fixture context;
+      confirm box: `?`, `⌃P`, `:` each `Seen`-equal to `F20`; every field: `?` typed — **except blame find**, see
+      NOTES). Empty state: `empty_state::palette_tests::{help_opens_on_the_start_screen_and_esc_closes_it,
+      not_over_the_init_box_and_typed_in_the_open_prompt}`; start-screen sweep
+      `empty_state::sweep_tests::every_row_the_start_screen_reaches_acts_or_is_listed_and_follows_its_remap` (its
+      `NOT_YET_ANSWERED` `app.help`/`app.palette` rows deleted; init box lists them swallowed, decision 7).
+- [x] `⌃P`/`:` open `Everything` on graph and a pane — `ctrl_p_and_colon_open_everything_on_the_graph_and_a_pane`;
       `esc` closes, no command, same frame; `Ctrl+C` quits — `esc_closes_with_nothing_run_and_ctrl_c_still_quits`.
-      **Not done**: the empty state.
+      Empty state — `empty_state::palette_tests::{ctrl_p_and_colon_open_everything_on_the_start_screen,
+      help_opens_on_the_start_screen_and_esc_closes_it, ctrl_c_quits_with_the_palette_up,
+      enter_runs_a_row_as_its_key_would, a_theme_row_asks_the_loop_for_that_theme,
+      config_problems_head_the_list_on_the_start_screen,
+      the_palette_draws_over_the_start_screen_with_its_keys_on_the_bar}`.
 - [x] 2 config problems → `YOUR CONFIG` first, cursor past them — `keymap_edge::palette::config_problems_head_the_list`.
-- [ ] A refusal through the palette reads as from the key (HEAD detached). **Not done** (no test yet).
+- [x] A refusal through the palette reads as from the key (HEAD detached) —
+      `keymap_edge::palette::a_refusal_through_the_palette_reads_as_from_the_key` (`⌃P` `merge` `⏎` vs `m`: same
+      commands, same status, `m needs a branch checked out`).
 - [x] Rule 7 — NOTES below; `NOT_YET_ANSWERED` rows for `app.help`, `app.palette`, `palette.run` deleted from
       `keymap_edge/sweep.rs` (09d's `every_reachable_row_acts_or_is_listed_and_follows_its_remap` green).
-- [x] Captures — `keymap_edge::palette::capture_help_and_palette` writes both; beside §1.16 in NOTES. Colour unverified.
+- [x] Captures — `keymap_edge::palette::capture_help_and_palette` writes both; beside §1.16 in NOTES. Empty state:
+      `docs/shots/m8-help-empty-state-120x36.txt` by `the_palette_draws_over_the_start_screen_with_its_keys_on_the_bar`.
+      Colour unverified.
 - [x] MAP.md — graft-core `matcher`; graft-ui `palette`, `Keymap::acting`; graft-ops `filter_switch_rows`; graft
       `update::palette` (incl. `AppState::palette`), `Command::Retheme`, `Session::choose`, `context_of`. (No
       `Session::chosen` getter: nothing reads it; the field is private.)
@@ -251,3 +264,53 @@ after `draw_box_bars`, before `draw_modal_boxes`; in the pixel cut); captures �
 3. Refusal parity test (HEAD detached: `⌃P` `merge` `⏎` vs `m`, same status).
 4. Confirm sweep: assert the whole `Seen` unchanged, not just "no palette".
 5. J7 truth by git needs a pty or loop-level test (the handover is the loop's).
+
+## NOTES — Continuation 1 (builder, 2026-10-07)
+
+**Not compacted.** Scout: the first builder's scout file and its NOTES "Remaining" sufficed (the empty-state loop
+it missed is now read: `event_loop/places.rs` `outside_loop`); no new scout — every file touched was read in full.
+
+**Test-first:** the empty-state tests (`empty_state/palette_tests.rs`) were written before the code; red was a
+compile failure (missing `palette_rows`, `render`, fields), not a failing run. The refusal-parity and confirm-sweep
+tests were green at first run — they pin behaviour the first builder built. The loop theme test was **red on a real
+run** (2 flushes, wanted 1) and found the defect below.
+
+**Found and fixed (cause):** `event_loop/running/turn.rs` `terminal_changed` flushed the strip cache whenever
+`Session::apply` returned `true`, and `apply` returns `true` for **any** new hint (session.rs `apply`, "The hint
+changed, so something drawn from it did") — even when his palette choice (or a forced `ui.theme`) keeps the theme as
+it was. Every strip was thrown away and re-rasterised for nothing. Now the flush keys on the theme itself changing
+(`StripPaint::of` paints from `session.theme`); the frame is still owed. Cost to him: none visible; saves a full
+re-raster on a background re-detection under a chosen theme. **Existing test edited:**
+`a_new_cell_size_or_theme_flushes_the_strips` used an `Assumed` light hint, which `ThemeKind::select` reads as dark
+(theme/mod.rs:213) — it changed no strip and passed only through the conflation. It now uses a light `Background`
+read, and gains the inverse case (a hint that leaves the theme dark: 0 flushes).
+
+**Empty state built** (`empty_state.rs`, `event_loop/places.rs`): `OutsideState` gains `palette` and
+`config_problems` (his config problems, also shown here; still seeded on the first repository screen after).
+`outside_edge` routes every key to the palette while it is up (a text field); after translation, `act` opens it on
+`?`/`⌃P`/`:` when no prompt is up — the init box swallows (§2.3c), the open prompt types them. `⏎` runs the row's
+default chord through `act`; a theme row returns `OutsideStep::Retheme(kind)`, which the loop answers with
+`Session::choose` (no strips to flush on this screen). `render` draws the list, the palette over the screen bar the
+bar row, and `↑↓ move  ⏎ run  esc close` on the bar row.
+
+**Questions (not deviations):**
+- A theme chosen on the start screen lasts while he is there; opening a repository settles a new `Session`
+  (`run_repo`), so the choice does not carry over. "This run only" (§2.12) may mean it should. Not built; ask.
+- The start screen's `?` lists, under EVERYWHERE, every `Global` row `reachable(EmptyState)` gives — `u`, `U`, `⇥`,
+  `/`, `.`, `⌃R`, … — which the list swallows (`empty_state/sweep_tests.rs` `SWALLOWED_BY_DESIGN`, `LIST`); and
+  under HERE `c Clone…`/`t Practice tour` (tickets 18/19) and `n No — don't init` (swallowed on the list). Decision 2
+  lists by `reachable`, so this is to spec; the capture shows it. Whether help should hide rows that do nothing on
+  this screen is the planner's call.
+
+**Not done:** J7's truth by git (the `[~]` above) — `ContinueInGit` is a terminal handover the loop carries out
+through `Outside`'s `Handover`, which the headless and test loops do not have (`Outside::default()`); needs the pty
+walk. Blame find's `?`/`q` drop stays (gap row, 09e).
+
+**Touches:** `outside_edge` callers — `places::outside_loop` only (grep `outside_edge`), start-screen sweep green
+(`ACTING_AT_LANDING` 13 holds); `OutsideState` literals (2 test files, `places.rs`); `OutsideStep` matches —
+`places.rs` only (grep `OutsideStep::`); `update::palette` reused unchanged (`listing`, `opened`, `opener`, `edit`,
+`view_of`, `bar`, `default_chord`); `terminal_changed` — every `event_loop::tests` theme/flush test green (25 by
+filter `theme|flushes`), pixel captures unchanged (workspace run, no shot diff but the new file); sweep tables'
+`file:line` citations moved to the new lines (`empty_state.rs:302`, `:257`, `:256`); MAP.md (`empty_state`,
+`places::drive`, `running` split). Journal/undo: no file under `update/journal*` or `graft-ops/src/journal*` in the
+diff. Keymap: no rows added or moved.

@@ -12,13 +12,12 @@ use std::time::SystemTime;
 
 use graft_core::capabilities::RenderingTier;
 use graft_core::event::Event;
-use graft_ui::empty_state::EmptyState;
 use ratatui::backend::CrosstermBackend;
 
 use super::startup::{Arrival, Ran, Terminal, hand_back_input, run_repo};
 use super::{ChannelWakes, Exit, Wake, Wakes, input, signals};
 use crate::config::Loaded;
-use crate::empty_state::{OutsideState, OutsideStep, Prompt, outside_edge, view};
+use crate::empty_state::{OutsideState, OutsideStep, outside_edge, outside_paste, render};
 use crate::recent::{self, Recent};
 use crate::repos::RepoStore;
 use crate::session::Session;
@@ -143,7 +142,11 @@ pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Ex
                 }
             }
             Place::Outside(start) => {
-                match run_outside(&mut term, start, config, &keymap, config_dir.as_deref()) {
+                let shown = Shown {
+                    keymap: &keymap,
+                    problems: &problems,
+                };
+                match run_outside(&mut term, start, config, shown, config_dir.as_deref()) {
                     Ok(Outcome::Opened(next)) => {
                         opened = true;
                         place = next;
@@ -180,6 +183,15 @@ fn remember_opened(config_dir: Option<&Path>, repos: &RepoStore, path: &Path) ->
     }
 }
 
+/// What the empty state shows besides its folder: the keys, and his
+/// config's problems (the palette's `YOUR CONFIG`; still said on the first
+/// repository screen after).
+#[derive(Clone, Copy)]
+struct Shown<'a> {
+    keymap: &'a std::sync::Arc<graft_ui::keymap::Keymap>,
+    problems: &'a [String],
+}
+
 /// How the empty state ended.
 enum Outcome {
     /// A repository was opened (by `⏎`, `o` or `i`).
@@ -197,10 +209,10 @@ fn run_outside(
     term: &mut Terminal,
     start: OutsideStart,
     config: &Loaded,
-    keymap: &std::sync::Arc<graft_ui::keymap::Keymap>,
+    shown: Shown<'_>,
     config_dir: Option<&Path>,
 ) -> io::Result<Outcome> {
-    let settled = Session::settle(config, term.capabilities.clone());
+    let mut settled = Session::settle(config, term.capabilities.clone());
     let ascii = settled.rendering.tier == RenderingTier::Ascii;
     let (recents, said) = read_recents(config_dir);
     let cursor = start.cursor.min(recents.len().saturating_sub(1));
@@ -212,6 +224,8 @@ fn run_outside(
         cursor,
         prompt: None,
         problem: start.problem.or(said),
+        palette: None,
+        config_problems: shown.problems.to_vec(),
     };
 
     let inputs = term.inputs();
@@ -225,9 +239,9 @@ fn run_outside(
         &mut screen,
         &mut wakes,
         &mut state,
-        (&settled, ascii),
+        (&mut settled, ascii),
         config,
-        keymap,
+        shown.keymap,
     );
     for watcher in [signals, resizes] {
         watcher.close();
@@ -265,21 +279,22 @@ fn outside_loop(
     screen: &mut Screen,
     wakes: &mut ChannelWakes,
     state: &mut OutsideState,
-    (settled, ascii): (&Session, bool),
+    (settled, ascii): (&mut Session, bool),
     config: &Loaded,
     keymap: &std::sync::Arc<graft_ui::keymap::Keymap>,
 ) -> io::Result<Outcome> {
     loop {
-        let drawn = view(state, SystemTime::now());
+        let now = SystemTime::now();
         screen.draw(|frame| {
-            frame.render_widget(
-                &EmptyState {
-                    view: &drawn,
-                    theme: &settled.theme,
-                    ascii,
-                    keys: keymap,
-                },
-                frame.area(),
+            let area = frame.area();
+            render(
+                state,
+                keymap,
+                &settled.theme,
+                ascii,
+                now,
+                area,
+                frame.buffer_mut(),
             );
         })?;
         let Some(wake) = wakes.next_wake() else {
@@ -288,9 +303,7 @@ fn outside_loop(
         let step = match wake {
             Wake::Event(AppEvent::Core(Event::Key(key))) => outside_edge(state, keymap, key),
             Wake::Event(AppEvent::Core(Event::Paste(text))) => {
-                if let Some(Prompt::Open(field)) = &mut state.prompt {
-                    field.insert_str(&text);
-                }
+                outside_paste(state, keymap, &text);
                 OutsideStep::Stay
             }
             Wake::Shutdown(signal) => return Ok(Outcome::Exit(Exit::Signal(signal))),
@@ -303,6 +316,12 @@ fn outside_loop(
         match step {
             OutsideStep::Stay => {}
             OutsideStep::Quit => return Ok(Outcome::Exit(Exit::Quit)),
+            // The next pass round this loop draws in it, changed or not.
+            // This screen draws no pixels, so there are no strips to flush
+            // (`turn::rethemed` does that in a repository).
+            OutsideStep::Retheme(kind) => {
+                settled.choose(kind);
+            }
             OutsideStep::Open(path) => {
                 if let Some(place) = try_open(state, &path, "open", config) {
                     return Ok(Outcome::Opened(place));
