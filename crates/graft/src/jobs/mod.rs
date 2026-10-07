@@ -74,6 +74,7 @@ pub(crate) mod commit_message;
 pub(crate) mod conflict;
 pub(crate) mod detail;
 mod finish;
+mod forced;
 pub(crate) mod journal_list;
 mod kinds;
 mod map;
@@ -91,7 +92,8 @@ mod switch_list;
 mod types;
 pub(crate) mod undo;
 
-pub use pool::{Forced, Shutdown};
+pub use forced::Forced;
+pub use pool::Shutdown;
 pub use runner::JobRunner;
 pub use types::{Cancel, Delivery, Dispatch, JobEvents, Outcome, Work};
 
