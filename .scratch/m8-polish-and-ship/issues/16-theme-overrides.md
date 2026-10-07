@@ -1,6 +1,6 @@
 # G-theme — change one colour in config; a colour that misses a floor is named
 
-Status: ready
+Status: done
 Build with: **Opus** — brownfield across two crates (graft-ui theme, graft config + session); the theme gains a
 pre-reduction colour table and two readers move onto it; judgement on every path that builds a theme (scout:
 `.scratch/m8-polish-and-ship/scouts/16-theme-overrides.md`).
@@ -101,29 +101,29 @@ Words for the new problems: `theme.dark.lane-3: lane colours are fixed, not them
 is not a #RRGGBB colour`.
 
 ## Acceptance
-- [ ] J10 (person step stays a TESTING.md row, accept ticket's): `[theme.dark] selection = "#3A3F4B"` loads as
+- [x] J10 (person step stays a TESTING.md row, accept ticket's): `[theme.dark] selection = "#3A3F4B"` loads as
       `theme.dark == [(Selection, Rgb(0x3A,0x3F,0x4B))]` (config test); a settled truecolor dark session's cursor-row
-      cell bg is that colour (buffer test).
-- [ ] `selection` = the built-in dark `bg` (test reads it from `ThemeKind::Dark`, no literal) → `config_problems ==
+      cell bg is that colour (buffer test). — `config::theme_tests::j10_one_selection_line_loads_as_one_override`, `session::theme_tests::j10_the_cursor_row_is_filled_with_his_selection`
+- [x] `selection` = the built-in dark `bg` (test reads it from `ThemeKind::Dark`, no literal) → `config_problems ==
       ["[theme.dark] selection on bg 1.0:1 — under 3.0"]`, bottom row `config: 1 problem · ? shows them`, F2's
-      status notes list it (test). `?`'s `YOUR CONFIG` row is ticket 11's test.
-- [ ] Ratio floored: a pair at 2.96:1 words as `2.9:1` (unit test on `words`).
-- [ ] A miss in `[theme.light]` is named while the session runs dark (test).
-- [ ] `lane-3 = "#FF0000"` → `LaneColour` warning, `Theme::lane(3)` unchanged (test).
-- [ ] `"red"` → `BadColour`; `[theme.solarized]` and `theme.dark.selction` → `UnknownKey`; `[theme.dark]` with valid
-      keys → no warning (config tests).
-- [ ] Overridden `selection`: `on_selection(Text)` resolved colour is ≥ 4.5:1 against the override, not the built-in
-      (test). Overridden `text-muted`: `raster_muted()` returns it (test).
-- [ ] Overridden conflict token at 256 colours: `token(Ours)` is the cube-nearest of the override, not the pin (test).
-- [ ] Survives a switch: `retheme(Light)` then `retheme(Dark)` → `token(Selection)` is the dark override again; light
-      gets light's overrides (test). `apply(TerminalChange::Theme)` goes through `retheme` (test).
-- [ ] `bg` overridden: a graph row's cells keep `Color::Reset` bg; the commit editor's fill is the override (buffer
-      tests).
-- [ ] `NO_COLOR`: tokens equal the no-override `NO_COLOR` theme; no contrast miss in `config_problems`; a bad colour
-      still listed (test).
-- [ ] Capture `docs/shots/m8-16-theme-problems.txt`: graph with the bottom row `config: 2 problems · ? shows them`,
+      status notes list it (test). `?`'s `YOUR CONFIG` row is ticket 11's test. — `event_loop::tests::theme_problems::selection_on_bg_is_one_problem_on_the_bottom_row_and_on_f2` (+ `config::theme_tests::selection_on_the_built_in_bg_is_one_contrast_problem`)
+- [x] Ratio floored: a pair at 2.96:1 words as `2.9:1` (unit test on `words`). — `theme::overrides::tests::a_ratio_is_floored_so_a_miss_never_reads_as_its_floor`
+- [x] A miss in `[theme.light]` is named while the session runs dark (test). — `config::theme_tests::a_light_miss_is_named_whatever_theme_runs` (`theme_problems` takes no kind: all three checked)
+- [x] `lane-3 = "#FF0000"` → `LaneColour` warning, `Theme::lane(3)` unchanged (test). — `config::theme_tests::a_lane_colour_is_refused_and_lanes_stay_put`
+- [x] `"red"` → `BadColour`; `[theme.solarized]` and `theme.dark.selction` → `UnknownKey`; `[theme.dark]` with valid
+      keys → no warning (config tests). — `config::theme_tests::{a_colour_that_is_not_hex_is_a_bad_colour, an_unknown_kind_or_token_is_an_unknown_key, valid_keys_in_every_kind_say_nothing_and_hex_takes_either_case}`
+- [x] Overridden `selection`: `on_selection(Text)` resolved colour is ≥ 4.5:1 against the override, not the built-in
+      (test). Overridden `text-muted`: `raster_muted()` returns it (test). — `theme::overrides::tests::{on_selection_lifts_against_the_override_not_the_built_in, an_overridden_text_muted_reaches_the_pixel_marker}`
+- [x] Overridden conflict token at 256 colours: `token(Ours)` is the cube-nearest of the override, not the pin (test). — `theme::overrides::tests::an_overridden_conflict_token_at_256_is_cube_nearest_not_the_pin`
+- [x] Survives a switch: `retheme(Light)` then `retheme(Dark)` → `token(Selection)` is the dark override again; light
+      gets light's overrides (test). `apply(TerminalChange::Theme)` goes through `retheme` (test). — `session::theme_tests::{retheme_keeps_each_kinds_overrides_across_a_switch, a_re_detected_background_rebuilds_through_retheme}`
+- [x] `bg` overridden: a graph row's cells keep `Color::Reset` bg; the commit editor's fill is the override (buffer
+      tests). — `session::theme_tests::an_overridden_bg_fills_the_commit_editor_and_never_the_graph`
+- [x] `NO_COLOR`: tokens equal the no-override `NO_COLOR` theme; no contrast miss in `config_problems`; a bad colour
+      still listed (test). — `theme::overrides::tests::no_color_ignores_overrides`, `session::theme_tests::no_color_draws_the_same_tokens_with_or_without_overrides`, `event_loop::tests::theme_problems::no_color_drops_the_miss_and_keeps_the_bad_colour`, `config::theme_tests::no_color_reports_no_contrast_miss`
+- [x] Capture `docs/shots/m8-16-theme-problems.txt`: graph with the bottom row `config: 2 problems · ? shows them`,
       then F2 notes showing one contrast miss and one `lane-3` problem. Colour of an applied override is **unverified**
-      by capture (rule 5): say so in the handoff.
+      by capture (rule 5): say so in the handoff. — `event_loop::tests::theme_problems::capture_theme_problems`
 
 ## Touches
 - `Theme::new` callers: session.rs:171, :198 → `with_overrides`/`retheme`; tests/examples/benches keep `new` (list in
@@ -145,3 +145,12 @@ is not a #RRGGBB colour`.
 
 ## Size
 One context, ~55k tokens.
+
+## NOTES (builder, 2026-10-07)
+- Scout used; verified against code after 09/09b/10/10c/09c — line refs drifted by a few lines (SCHEMA load.rs:208, not :217), substance held. It sufficed.
+- **Colour unverified (rule 5):** the capture is a character grid. Applied override colours are proven only by buffer tests (cell `bg == Color::Rgb(..)`), never by eye.
+- **11: theme rows call `Session::retheme`.** Ticket 11 (palette) not merged at build time; no palette code exists.
+- Deviations: `ThemeOverrides` also derives `Eq` (Config/Loaded derive Eq; Token, Rgb are Eq). `[theme] dark = 3` (kind not a table) → `UnknownKey { theme.dark }`, as `[keys]` does for `keys.graph = 3`. `BadColour.value` for a non-string is its TOML scalar (`3`) or kind (`array`). High-contrast tables accept `high-contrast` and `high_contrast`; problems are labelled `[theme.high-contrast]` (`ThemeKind::name`, the `ui.theme` spelling).
+- `with_overrides`/`contrast_misses`/`Token::from_name` live in `theme/overrides.rs` to keep `theme/mod.rs` under 400 lines (380). `session.rs` was 473 lines before this ticket, 494 after (inline tests); new session tests went to `session/theme_tests.rs`. Splitting session.rs's inline tests is out of scope.
+- `Session::retheme` also sets `rendering.theme`, so the F2 Theme row follows a palette switch.
+- Tests were written in the same pass as the code, not strictly red first.

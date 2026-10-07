@@ -347,26 +347,30 @@ carries none and neither does a `NO_COLOR` terminal.
 - `mix` (fn) — `fg` over `bg` at `alpha`, per channel, rounded; ties the tint literals to the rule.
 - `contrast` (fn) — WCAG 2.x ratio of two `Rgb`s, `(L1+0.05)/(L2+0.05)`, symmetric (`theme/contrast.rs`).
 - `ContrastRule` (struct) — one floor: `fg` token on `bg` token at `min`:1.
+- `ContrastMiss` (struct, m8-16) — a floor missed: `rule` and the `ratio` reached. `words()` → `selection on bg 1.0:1 — under 3.0`, ratio floored to 0.1 (never rounds up to its floor).
+- `contrast_misses` (fn, m8-16) — `(ThemeKind, &[(Token, Rgb)]) -> Vec<ContrastMiss>`: pure, on the pre-reduction table (built-ins with overrides written over), `CONTRAST_RULES` order; empty for every built-in (`theme/overrides.rs`).
 - `CONTRAST_RULES` (const) — the four floors every theme passes: text/bg 4.5, text/selection 4.5, selection/bg 3.0, text-muted/bg 4.5.
 - `Theme::legible_on` (fn) — `fg` unchanged if ≥ 4.5:1 on `bg`, else mixed toward white (dark bg) / black (light bg) in 5% steps until it is; target after 20 steps.
-- `Theme::on_selection` (fn) — a `TokenColor` as drawn on this theme's `selection`: truecolor `legible_on`; 256 lifts and judges each step after reduction to the palette; 16 colours / `NO_COLOR` / `Default` → `token(Text)`. What every cursor-row painter calls.
+- `Theme::on_selection` (fn) — a `TokenColor` as drawn on this theme's `selection` (read from the theme's pre-reduction table, so an overridden `selection` drives the lift): truecolor `legible_on`; 256 lifts and judges each step after reduction to the palette; 16 colours / `NO_COLOR` / `Default` → `token(Text)`. What every cursor-row painter calls.
 - `Token` (enum) — a chrome colour role; ends with the conflict roles `Ours`, `Theirs`, `Open`, `OursTint`, `TheirsTint`, `OpenTint` (named by pane position, ADR-0044 §1).
 - `Token::ALL` (const) — every token, in PROMPT.md §5's order.
 - `Token::name` (fn) — the token's name as PROMPT.md §5 and config spell it.
+- `Token::from_name` (fn, m8-16) — inverse of `Token::name` over `Token::ALL`; `lane-N` and typos → `None`.
 - `Token::is_tint` (fn) — true for the three conflict tints (backgrounds).
 - `ThemeKind` (enum) — dark, light, or high contrast (override only).
 - `ThemeKind::select` (fn) — resolve theme from an override and a terminal hint; unknown → dark.
 - `ThemeKind::name` (fn) — the theme's name as the config file spells it.
 - `TokenColor` (enum) — a resolved colour, `NO_COLOR`-aware.
 - `Theme` (struct) — a resolved theme; no path hands a widget a colour the terminal can't show.
-- `Theme::new` (fn) — resolve a theme for a kind and terminal capabilities.
+- `Theme::new` (fn) — resolve a theme for a kind and terminal capabilities; `with_overrides(kind, caps, &[])`.
+- `Theme::with_overrides` (fn, m8-16) — the constructor: `kind`'s built-in table with `[theme.<kind>]` colours written over it (kept privately as `rgb`), each token reduced from that table. Overridden conflict token skips its pin → `nearest_256_cube`; no token re-derives another; lanes untouchable; `NO_COLOR` → all `Default` (`theme/overrides.rs`).
 - `Theme::kind` (fn) — which theme this is (diagnostics, config round-trips).
 - `Theme::color_depth` (fn) — how much colour this terminal has, `NO_COLOR`-reduced like every token; widgets use it to reach for a non-colour separator at `Palette16`.
 - `Theme::token` (fn) — the colour for one chrome token. Conflict tokens use private `pinned` (fixed 256/16 entries, dark and high contrast) then `depth::nearest_256_cube` (16–231, never the grey ramp); a dropped tint is `TokenColor::Default`.
 - `Theme::tint` (fn) — a tint token's background, `None` at 16 colours, under `NO_COLOR` and in high contrast; widgets ask this, never the depth.
 - `Theme::lane` (fn) — the colour for one graph lane; shape/dash separate same-hue lanes.
 - `Theme::raster_lanes` (fn) — truecolor lane hues for the pixel tier at any depth; one muted hue when colour is off.
-- `Theme::raster_muted` (fn) — the unreduced `text-muted` hue, for a pixel `+N` marker.
+- `Theme::raster_muted` (fn) — the unreduced `text-muted` hue (his override if any, from the `rgb` table), for a pixel `+N` marker.
 - `Theme::branch` (fn) — the colour a branch identity draws in, independent of column.
 - `Theme::syntax` (fn) — the colour for a `syntax::SyntaxRole`, from the chrome tokens; collapses to `Token::Text` at `Palette16` and under `NO_COLOR`.
 

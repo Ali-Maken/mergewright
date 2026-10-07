@@ -40,10 +40,15 @@ mod keys;
 mod load;
 #[cfg(test)]
 pub(crate) mod tests;
+mod theme;
+#[cfg(test)]
+pub(crate) mod theme_tests;
 mod types;
 
 pub(crate) use keys::keymap_from;
 pub use load::{ConfigError, ConfigWarning, Loaded, default_path, load, load_from};
+pub use theme::ThemeOverrides;
+pub(crate) use theme::theme_problems;
 pub use types::{
     Config, DEFAULT_MAX_LANES, Diff, Graph, IconSet, Keys, Radar, RadarSetting, RendererChoice,
     ThemeChoice, Ui,

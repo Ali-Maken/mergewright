@@ -17,7 +17,7 @@ use graft_term::{SanitizedText, sanitize_line};
 use graft_ui::status_screen::{RenderingView, TierSource};
 use graft_ui::theme::{Theme, ThemeKind};
 
-use crate::config::Loaded;
+use crate::config::{Loaded, ThemeOverrides};
 
 /// What `main` decided before touching the terminal.
 pub struct Startup {
@@ -125,6 +125,9 @@ pub struct Session {
     /// today, the config file's warnings. Already sanitised: the text quotes
     /// keys the user typed.
     pub notes: Vec<SanitizedText>,
+    /// His `[theme.<kind>]` colours, fixed for the run: every rebuild of
+    /// [`Session::theme`] goes through [`Session::retheme`], which reads them.
+    overrides: ThemeOverrides,
 }
 
 impl Session {
@@ -167,12 +170,27 @@ impl Session {
             )));
         }
 
+        let overrides = config.config.theme.clone();
         Self {
-            theme: Theme::new(kind, &capabilities),
+            theme: Theme::with_overrides(kind, &capabilities, overrides.for_kind(kind)),
             rendering,
             notes,
             capabilities,
+            overrides,
         }
+    }
+
+    /// Rebuild the theme as `kind`, with that kind's overrides — the only way
+    /// the theme changes mid-run (a re-detected background; the palette's
+    /// theme rows). `true` when the theme drawn changed.
+    pub(crate) fn retheme(&mut self, kind: ThemeKind) -> bool {
+        let theme = Theme::with_overrides(kind, &self.capabilities, self.overrides.for_kind(kind));
+        self.rendering.theme = kind;
+        if theme == self.theme {
+            return false;
+        }
+        self.theme = theme;
+        true
     }
 
     /// Take in a re-detected answer; `true` when anything drawn from it
@@ -194,9 +212,9 @@ impl Session {
                 self.capabilities.theme = hint;
                 // A `ui.theme` override still wins; only the evidence changes.
                 let forced = self.rendering.theme_forced.then_some(self.rendering.theme);
-                let kind = ThemeKind::select(forced, hint);
-                self.theme = Theme::new(kind, &self.capabilities);
-                self.rendering.theme = kind;
+                // The hint changed, so something drawn from it did, whether
+                // or not the theme itself did (`theme_unknown` below).
+                self.retheme(ThemeKind::select(forced, hint));
                 self.rendering.theme_unknown = matches!(hint.source, ThemeSource::Assumed);
             }
         }
@@ -279,6 +297,9 @@ pub(crate) mod for_tests {
         Session::settle(&Loaded::default(), capabilities())
     }
 }
+
+#[cfg(test)]
+mod theme_tests;
 
 #[cfg(test)]
 mod tests {

@@ -79,7 +79,8 @@ The read behind `R` (m7-power-tools/08). `Command::OpenRewrite { id, req: Rewrit
 - `Session` (struct) — what Graft is drawing with, for as long as this run lasts.
 - `Session::icons` / `Session::max_lanes` — **gone** (m5-history-and-ghost-preview/33). Both moved to `AppState`: they decide how wide a badge is and how wide the graph column is, so they decide where a *drag* has to hit a badge, and the mouse hit-test has no `Session`. See `update::AppState::icons`.
 - `Session::settle` (fn) — resolve capabilities, theme, rendering info at startup.
-- `Session::apply` (fn) — take in a re-detected cell size or theme; `true` when anything changed. Never touches the tier.
+- `Session::apply` (fn) — take in a re-detected cell size or theme; `true` when anything changed. Never touches the tier. A theme change goes through `retheme`.
+- `Session::retheme` (fn, `pub(crate)`, m8-16) — rebuild the theme as `kind` with that kind's `[theme.*]` overrides (kept privately from `settle`'s `&Loaded`); the only mid-run rebuild path; `true` if the theme changed. Palette theme rows (ticket 11) must call it.
 - `TerminalChange` (enum) — a mid-session answer that changed: `CellSize(CellSize)`, `Theme(ThemeHint)`.
 - `Clock` (enum) — `Wall` (default) or `Fixed(i64)`; `now_seconds()` is the one `SystemTime::now()` read on the date path (m1-the-graph/53). `now_millis()` is the same instant at millisecond resolution, read for the focus-refresh debounce only (m3-working-tree-undo-and-stash/06). `update::Harness::clock` carries it; `view::graph_view` takes the result. **The one `SystemTime::now()` read for anything a capture can show** (m5/25): the journal's `at_unix_ms` comes through it too, via `JobRunner::with_clock`, so a pinned clock pins the ages the journal browser draws.
 
@@ -820,6 +821,9 @@ re-exported from `mod.rs`.
 - `Config::graph` (field) — `[graph]`: how history is drawn.
 - `Config::diff` (field) — `[diff]`: the detail pane's diff options at startup (m2-details-and-diffs/10).
 - `Config::radar` (field) — `[radar]`: Mistake Radar per-kind severity overrides (m2-details-and-diffs/13).
+- `Config::theme` (field, m8-16) — `[theme.<kind>]`: `ThemeOverrides`, read off the raw table by `config::theme::overrides` (serde skip).
+- `ThemeOverrides` (struct, m8-16) — `dark`/`light`/`high_contrast: Vec<(Token, Rgb)>`, key order; `for_kind(ThemeKind)`. Kinds `dark`, `light`, `high-contrast` or `high_contrast` (`config/theme.rs`).
+- `theme_problems` (fn, `pub(crate)`, m8-16) — `(&ThemeOverrides, no_color) -> Vec<String>`: every contrast miss in all three kinds as `[theme.<kind>] <ContrastMiss::words>`; empty under `NO_COLOR`. Appended after `keymap_from`'s list by `Arrival::first(config, no_color)`.
 - `Config::keys` (field) — `[keys]`: `Keys { suspend_on_ctrl_z }` (ADR-0002), the one key whose meaning is a preference (m3-working-tree-undo-and-stash/05).
 - `Radar` (struct) — `[radar]` section: one `RadarSetting` per `MistakeRadarKind` (`foxtrot`, `backward`, `accidental_pull`, `evil`, `duplicate`, `force_pushed`, `risky_state`).
 - `Radar::policy` (fn) — the `graft_ops::mistake_radar::Policy` this section describes: `Policy::default()` with only the set keys overridden; loaded into `AppState.radar.policy` by `event_loop::startup::terminal_and_state` (m2-details-and-diffs/13c).
@@ -844,7 +848,7 @@ re-exported from `mod.rs`.
 - `Loaded::warnings` (field) — unrecognised keys, in file key order.
 - `Keys::remaps` (field, m8-09b) — `Vec<(String, Vec<String>)>`: each `[keys.<ctx>] <verb> = "chord"` (or a list) as `("<ctx>.<verb>", chords)`, for `Keymap::with_overrides`. In **sorted** order (toml without `preserve_order`), so a collision's winner follows that order, not the file's. `serde(skip)`: filled by `load`'s typed parse (`config/keys.rs`).
 - `keymap_from` (fn, `pub(crate)`, m8-09b) — `(&Loaded) -> (Keymap, Vec<String>)`: the keymap and every config problem as words, the file's warnings first, then `KeyWarning::words`. Passes `KeySwitches { suspend_on_ctrl_z }` from `[keys]` (m8/09c D2).
-- `ConfigWarning` (enum) — a config problem worth telling the user, non-fatal. `NotAKey { path }` (m8-09b): a `[keys.<ctx>]` value that is not a string or a list of strings.
+- `ConfigWarning` (enum) — a config problem worth telling the user, non-fatal. `NotAKey { path }` (m8-09b): a `[keys.<ctx>]` value that is not a string or a list of strings. `LaneColour { path }` (m8-16): a `[theme.<kind>] lane-N` line. `BadColour { path, value }` (m8-16): a theme value not `"#RRGGBB"`. Unknown theme kind/token → `UnknownKey`.
 - `ConfigError` (enum) — a config problem that stops startup.
 - `load` (fn) — load config from the default location, or defaults if none.
 - `load_from` (fn) — load config from an explicit path (tests, future `--config`).

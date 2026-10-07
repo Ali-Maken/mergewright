@@ -36,6 +36,7 @@ mod conflict;
 mod contrast;
 mod depth;
 mod lanes;
+mod overrides;
 
 #[cfg(test)]
 mod tests;
@@ -47,9 +48,9 @@ use graft_graph::identity::BranchIdentity;
 
 use crate::syntax::SyntaxRole;
 
-use conflict::reduce_conflict;
 pub use conflict::{TINT_ALPHA, mix};
-pub use contrast::{CONTRAST_RULES, ContrastRule, contrast};
+pub use contrast::{CONTRAST_RULES, ContrastMiss, ContrastRule, contrast};
+pub use overrides::contrast_misses;
 
 /// The number of chrome tokens PROMPT.md §5 names, lanes excluded, plus
 /// [`Token::Selection`] (m5-history-and-ghost-preview/44): PROMPT.md §5 does
@@ -258,6 +259,11 @@ pub struct Theme {
     depth: ColorDepth,
     chrome: [TokenColor; TOKEN_COUNT],
     lanes: [TokenColor; LANE_COUNT],
+    /// The colours `chrome` was reduced from: the built-in table with his
+    /// overrides written over it. What reads a truecolor hue — the
+    /// `selection` lift, the pixel `+N` marker — reads it here, never the
+    /// built-in table, so an override reaches them too.
+    rgb: [Rgb; TOKEN_COUNT],
 }
 
 impl Theme {
@@ -270,33 +276,7 @@ impl Theme {
     /// shape and dash patterns in that case, not on a colour Graft was told
     /// not to use.
     pub fn new(kind: ThemeKind, capabilities: &Capabilities) -> Theme {
-        let depth = if capabilities.no_color {
-            ColorDepth::None
-        } else {
-            capabilities.color_depth
-        };
-
-        let chrome = kind.chrome();
-        let mut resolved_chrome = [TokenColor::Default; TOKEN_COUNT];
-        for token in Token::ALL {
-            resolved_chrome[token.index()] = if token.is_conflict() {
-                reduce_conflict(kind, token, chrome[token.index()], depth)
-            } else {
-                reduce(chrome[token.index()], depth)
-            };
-        }
-
-        let mut resolved_lanes = [TokenColor::Default; LANE_COUNT];
-        for (slot, hue) in resolved_lanes.iter_mut().zip(lanes::LANE_HUES) {
-            *slot = reduce(hue, depth);
-        }
-
-        Theme {
-            kind,
-            depth,
-            chrome: resolved_chrome,
-            lanes: resolved_lanes,
-        }
+        Theme::with_overrides(kind, capabilities, &[])
     }
 
     /// Which theme this is. For the diagnostics view and for config round-trips.
@@ -347,10 +327,11 @@ impl Theme {
     }
 
     /// The muted hue (`text-muted`) a pixel renderer draws a `+N` marker in
-    /// when no lane joins it: the theme's truecolor value, never reduced.
+    /// when no lane joins it: the theme's truecolor value (his override if
+    /// he gave one), never reduced.
     #[must_use]
     pub fn raster_muted(&self) -> Rgb {
-        self.kind.chrome()[Token::TextMuted.index()]
+        self.rgb[Token::TextMuted.index()]
     }
 
     /// The colour a branch's lane draws in, from its identity alone — never
