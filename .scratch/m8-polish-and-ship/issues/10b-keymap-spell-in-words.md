@@ -60,3 +60,34 @@ dependency added (check `cargo tree -p graft-ops` names no graft-ui).
 
 ## Size
 ~45k: 23 sites ~20k, remap test ~15k, grep extension ~5k, MAP ~5k.
+
+## NOTES (builder, 2026-10-07) — stopped early: scope ~5x the spec, needs a planner ruling
+
+Status: **blocked on scope**. No source changed. Did not compact. Scout used (`scouts/10-keymap-spell.md`).
+
+**Scout check.** All 23 listed sites verified against code at HEAD 80dd116b: line numbers held for every one
+(`consequence.rs:415` is inside `#[cfg(test)]` and already spells via `{key}` at :81 — nothing to do there).
+The scout's *site list* did not suffice: it listed 23 of ~100.
+
+**Why stopped.** Extended 10's grep test to scan `crates/graft/src` and `crates/graft-ops/src` (patch:
+`10b-grep-extension.patch`, a by-path scan with `graft:`/`graft-ops:` allow-list prefixes, no new dependency).
+It reports **138 non-test hits** (`10b-grep-hits.txt`): ~37 false (article `a`, counts `1 file`), **~100 real
+literal keys** — e.g. `banner/pressed.rs "c continue  a abort"`, `resolver/whole_file.rs` (7× `o keeps … t …`),
+`operate/failure.rs "e edit  M mergetool"`, `"S stash {count} changed"`, `view/credential.rs`, `view/status.rs
+"esc dismiss"`, `undo.rs "U redoes"/"J journal"/"⇥ banner"`, `search.rs "n/N next/prev  Esc …"`, graft-ops
+`restore.rs "U restores the backup"`, `apply/remote.rs` p/m/r/P/f clauses, `operation.rs` C/R/space/a/c clauses.
+Acceptance 3 ("grep test covers graft + graft-ops and is green") cannot be met by the 23 sites: it needs ~100
+more fixed or ~100 KNOWN allow-list rows. Also needs: skip `*_tests.rs` files (the scanner only skips
+`tests.rs`/`tests/`; 23 hits come from `*_tests.rs`).
+
+**Design question for the planner (graft-ops).** The `operation.rs` sites live in `Refusal::explain(&self)`,
+called at ~40 sites incl. job threads (`jobs/preview.rs:70`, `jobs/rewrite.rs`) that hold no keymap. Rule 2
+("graft appends the clause where it shows the error") needs the variant at the show site; job paths flatten to
+`String` first. Options: (a) `Refusal::explain_with(&self, key: &dyn Fn(&str) -> Option<String>)` + `explain()`
+keeping default letters (allow-listed) for keymap-less callers; (b) pass `Arc<Keymap>` into the jobs that word
+refusals; (c) keep `Refusal` values to `update` and word there. Pick one before building.
+
+**Proposed split.** 10b-1: grep extension with `*_tests.rs` skip + allow-list every current hit as KNOWN per
+file group (green, ratchets). 10b-2: the 23 graft `update` sites listed above (mechanical). 10b-3: graft-ops
+refusal/error words after the ruling. 10b-4..n: the ~80 extra graft sites by area (banner, resolver, undo/journal,
+failure/outcome, view/*). Leave 09d's 5 KNOWN graft-ui rows alone.
