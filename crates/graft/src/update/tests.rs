@@ -4101,6 +4101,65 @@ fn every_key_the_bar_draws_is_answered() {
     );
 }
 
+/// **`? keys` opens a palette he can see, everywhere it is drawn** (m8/11c):
+/// over the Map, journal, stash (graph and pane focus), blame, history and
+/// a marked row, `?` changes state *and* the drawn frame holds the
+/// palette's `keys here` title — the unseen-modal class 09e fixed for `/`.
+/// Lives here, not in `view::tests`, for `states_for`.
+#[test]
+fn the_keys_doorway_opens_a_palette_he_can_see_everywhere_it_is_drawn() {
+    use graft_ui::graph_screen::{Divider, every_context, hints_for, hints_text};
+
+    const COLUMNS: u16 = 120;
+    const ROWS: u16 = 36;
+    let mut unseen: Vec<String> = Vec::new();
+    let mut checked = 0;
+    for context in every_context() {
+        let place = matches!(
+            context,
+            HintContext::Map
+                | HintContext::Journal
+                | HintContext::Stash
+                | HintContext::PaneOverOverlay { .. }
+                | HintContext::ChangesPane {
+                    over_overlay: true,
+                    ..
+                }
+                | HintContext::Blame { .. }
+                | HintContext::History { .. }
+                | HintContext::BackToBlame(_)
+                | HintContext::BackToHistory(_)
+                | HintContext::Marked(_)
+        );
+        let keys = graft_ui::keymap::Keymap::shipped();
+        let bar = hints_text(&hints_for(&context, Divider::Hidden, COLUMNS, keys), keys);
+        if !place || !bar.contains("? keys") {
+            continue;
+        }
+        for state in states_for(&context, Divider::Hidden, COLUMNS) {
+            let state = settled(AppState {
+                size: Size {
+                    columns: COLUMNS,
+                    rows: ROWS,
+                },
+                ..state
+            });
+            let (after, _) = crate::update::update(&state, key(KeyCode::Char('?')));
+            checked += 1;
+            let frame = crate::view::tests::draw(&after, COLUMNS, ROWS);
+            if !frame.contains("keys here") {
+                unseen.push(format!("{context:?}"));
+            }
+        }
+    }
+    assert!(checked >= 8, "only {checked} states swept");
+    assert!(
+        unseen.is_empty(),
+        "`?` drew no palette over:\n  {}",
+        unseen.join("\n  ")
+    );
+}
+
 /// **The bar the Detail tab draws with an overlay behind it answers every
 /// key on it** (m5/42, the review's Q1 as m5/36 confirmed it).
 ///
@@ -6578,4 +6637,127 @@ fn a_dirty_tree_arriving_keeps_a_shown_cursor_shown() {
     assert!(arrived.uncommitted_row_pinned());
     assert_eq!(cursor_and_top(&arrived), (cursor, top), "left where it was");
     assert!(!cursor_drawn(&arrived), "still off screen");
+}
+
+/// **The keys doorway on a journal and a blame place** (m8/11d): two
+/// captures under `docs/shots/m8/`, each drawn by
+/// `view::view` from the state `states_for` builds for that bar's context.
+/// The bar row is the user's to judge (rule 6); colour unverified (rule 5).
+/// The marked row's is `tests/it/hint_bar.rs`: `states_for` cannot draw a
+/// radar marker, which lives on the row, not in the state.
+#[test]
+fn capture_the_keys_doorway_for_docs_shots() {
+    let blame_lines = HintContext::Blame {
+        finding: false,
+        ignore_file: false,
+        lines: true,
+    };
+    let shots: [(&str, HintContext, u16, u16, &str); 2] = [
+        (
+            "doorway-journal-120x36.txt",
+            HintContext::Journal,
+            120,
+            36,
+            "the journal (J) is open with the graph's keyboard, the detail pane shut. \
+             The bar drawn is the journal's own footer (graft-ui `journal_screen.rs` \
+             `footer`, :243), not `HintContext::Journal`'s, so it has **no** `? keys`: \
+             R1 reaches this screen only where that context is drawn (11d NOTES finding)",
+        ),
+        (
+            "doorway-blame-80x24.txt",
+            blame_lines,
+            80,
+            24,
+            "a blame place with its lines read, 80 columns. Right: the bar reads \
+             `⏎ that commit  ^ before it  L history of these lines  ? keys  /  space  w  esc` — \
+             `? keys` after the words, leading the bare keys (ADR-0039, m8/11d R1)",
+        ),
+    ];
+    let mut drifted = Vec::new();
+    for (name, context, columns, rows, what) in shots {
+        let state = states_for(&context, Divider::Hidden, columns)
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| panic!("no state for {context:?}"));
+        let state = settled(AppState {
+            size: Size { columns, rows },
+            ..state
+        });
+        // `TestBackend` quotes each row; the capture is the bare grid.
+        let frame = crate::view::tests::draw(&state, columns, rows)
+            .lines()
+            .map(|row| {
+                row.strip_prefix('"')
+                    .and_then(|row| row.strip_suffix('"'))
+                    .unwrap_or(row)
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        let out = format!(
+            "# m8/{name}: {columns}x{rows}, drawn by `view::view` from the AppState\n\
+             # `update::tests::states_for` builds for {context:?}\n\
+             # (crates/graft/src/update/tests.rs, capture_the_keys_doorway_for_docs_shots).\n\
+             # Not a pty capture: a character grid, no colour (CLAUDE.md rule 5 — colour\n\
+             # unverified).\n#\n# Here {what}.\n\n{frame}\n"
+        );
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/shots/m8")
+            .join(name);
+        if let Err(why) = graft_fixtures::check(&path, &out) {
+            drifted.push(why);
+        }
+    }
+    assert!(drifted.is_empty(), "{}", drifted.join("\n\n"));
+}
+
+/// **A text field inside a place draws no keys doorway** (m8/11d, the
+/// check before R1): journal find and blame find while typing, and the
+/// stash save prompt, are where `?` types (`palette::open_key` refuses
+/// under `text_field_open`), so no bar on that frame may offer `? keys` —
+/// with the detail pane shut and shown, at the widths the app draws at.
+#[test]
+fn a_text_field_inside_a_place_draws_no_keys_doorway() {
+    use graft_ui::graph_screen::every_context;
+
+    let mut drawn: Vec<String> = Vec::new();
+    let mut reached: Vec<String> = Vec::new();
+    for context in every_context() {
+        let opener = match context {
+            HintContext::Journal | HintContext::Blame { lines: true, .. } => KeyCode::Char('/'),
+            HintContext::Stash => KeyCode::Char('s'),
+            _ => continue,
+        };
+        for state in states_for(&context, Divider::Hidden, 120) {
+            for (columns, rows) in [(120, 36), (80, 24), (60, 20)] {
+                for shown in [false, true] {
+                    let mut state = settled(AppState {
+                        size: Size { columns, rows },
+                        ..state.clone()
+                    });
+                    state.detail.shown = shown;
+                    let (after, _) = crate::update::update(&state, key(opener));
+                    if !after.text_field_open() {
+                        continue;
+                    }
+                    reached.push(format!("{context:?}"));
+                    let frame = crate::view::tests::draw(&after, columns, rows);
+                    if frame.contains("? keys") || frame.contains("⌃P keys") {
+                        drawn.push(format!("{context:?} at {columns}x{rows}, pane {shown}"));
+                    }
+                }
+            }
+        }
+    }
+    reached.dedup();
+    for wanted in ["Journal", "Stash", "Blame"] {
+        assert!(
+            reached.iter().any(|context| context.starts_with(wanted)),
+            "{wanted}'s text field never opened: {reached:?}"
+        );
+    }
+    assert!(
+        drawn.is_empty(),
+        "a doorway where `?` types:\n  {}",
+        drawn.join("\n  ")
+    );
 }

@@ -37,4 +37,4 @@
                                         │    34
                                         │    35       pub fn age(&self) -> Duration {
                                         │    36           self.issued.elapsed()
- j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back
+ j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back  ? keys

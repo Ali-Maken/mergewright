@@ -434,7 +434,25 @@ pub fn hints_for(
     // `esc back` alone below it (`graft::view::finish`), so the width sweep
     // here stays monotone.
     let (list, trailer) = spelled_bar(context, divider, keys);
-    fit_list(&list, trailer, columns, words_for(context), keys)
+    let words = words_for(context);
+    let fitted = fit_list(&list, trailer, columns, words, keys);
+    if words == Words::Only {
+        doorway_last(fitted)
+    } else {
+        fitted
+    }
+}
+
+/// A words-only bar with its doorway, if drawn, moved to the end: where a
+/// marked row ranks `? keys` mid-list (m8/11d R2) it still reads last, as
+/// on every other words-only bar. Width-neutral — every join on a
+/// words-only bar is the same ` · `, so a reorder cannot overflow.
+fn doorway_last(mut fitted: Vec<Hint>) -> Vec<Hint> {
+    if let Some(at) = fitted.iter().position(|hint| *hint == DOORWAY) {
+        let door = fitted.remove(at);
+        fitted.push(door);
+    }
+    fitted
 }
 
 /// [`whole_bar`] with [`spelled`] applied to the list and its doorway: the
@@ -529,51 +547,31 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         // A drag takes no doorway either, and for the banner's reason: `.`
         // does not open the menu while a badge is in the air, it cancels the
         // drag. Two hints fit at every width the app draws at.
-        // The banner, a badge in the air and the two overlays are all
-        // modal: each swallows every key but its own, so `.` opens no menu
-        // and `<>` moves no divider while it has focus (`banner_key`,
-        // `drag_key`, `journal::shown_key` and `stash::shown_key`, whose
-        // catch-all arms return "claimed"). ADR-0039's doorway is a promise
-        // that what the width dropped is still reachable; under a modal
-        // that reaches nothing it would be the dead key the ADR's own first
-        // condition rules out (its first amendment, extended to the
-        // overlays in m5/31 — the sweep pressed `.` in the journal and
-        // nothing happened).
-        // The Map view is the third overlay and swallows keys the same way
-        // (`graft::update::map::shown_key`'s catch-all). The detail pane
-        // with an overlay behind it takes no doorway either: `.` reaches
-        // the overlay, which swallows it — pressed in every one of these
-        // states and nothing happened (m5/42).
+        // The bars where the keys are the point (ADR-0058 §4): each
+        // swallows `?` or types it, so a doorway there would be a dead key.
         HintContext::Banner { .. }
         | HintContext::Dragging
         | HintContext::ConfirmBox { .. }
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
-        | HintContext::Journal
-        | HintContext::Stash
-        | HintContext::Map
         | HintContext::Picker
-        | HintContext::PaneOverOverlay { .. }
         | HintContext::Resolver { .. }
         | HintContext::Finish { .. }
-        // The blame place is modal too (keymap §2.1): no doorway. The
-        // history place likewise (m7-power-tools/21b).
-        | HintContext::Blame { .. }
-        | HintContext::History { .. }
         // The rewrite editor is modal (keymap §2.7): no doorway.
         | HintContext::RewriteEditor { .. }
         | HintContext::RewriteMessage => (drawable(context, divider), None),
-        HintContext::Marked(inner) => {
-            // `.` is already on screen as `. explain`, so no `. more`; it
-            // is prepended before fitting and not after, because a list
-            // fitted first and prepended to second overflows by one hint.
-            let mut list = vec![EXPLAIN];
-            list.extend(drawable(inner, divider));
-            // No `? keys` here (m8/11b): it would cost the marked bar its
-            // `/ search` at 92 cells and `u undo` at 83; ruling asked for in
-            // the ticket NOTES.
-            (list, None)
-        }
+        // The overlays and places are modal for keys but not for the bar
+        // (m8/11c decision 1): `?` answers before any of them
+        // (`graft::update::keys`, `palette::open_key`) and lists the place's
+        // own keys, so they end with the doorway. No `. more`: `.` is
+        // swallowed there.
+        HintContext::Journal
+        | HintContext::Stash
+        | HintContext::Map
+        | HintContext::PaneOverOverlay { .. }
+        | HintContext::Blame { .. }
+        | HintContext::History { .. } => (drawable(context, divider), Some(DOORWAY)),
+        HintContext::Marked(inner) => (marked_list(inner, divider), None),
         // The inner context's own bar, minus the key the focused pane has
         // nothing left to do with. Nothing else changes: every other key on
         // a row context is still answered with the pane up — the graph's
@@ -620,6 +618,26 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
             (led, trailer)
         }
     }
+}
+
+/// A marked row's list: `. explain`, the row's own list, and `? keys`.
+///
+/// `.` is already on screen as `. explain`, so no `. more`; it is prepended
+/// before fitting and not after, because a list fitted first and prepended
+/// to second overflows by one hint. `? keys` is an ordinary candidate, not
+/// a trailer (m8/11d R2): ranked right after the later of `u undo` and
+/// `/ search`, so it never costs either (a trailer cost `u undo` at 83
+/// cells, 11b), and the hints ranked after it are what `?` recovers.
+/// [`hints_for`] then draws it last ([`doorway_last`]).
+fn marked_list(inner: &HintContext, divider: Divider) -> Vec<Hint> {
+    let mut list = vec![EXPLAIN];
+    list.extend(drawable(inner, divider));
+    let at = list
+        .iter()
+        .rposition(|hint| hint.is(hint_keys::UNDO) || hint.is(hint_keys::FIND))
+        .map_or(list.len(), |at| at + 1);
+    list.insert(at, DOORWAY);
+    list
 }
 
 /// A focused pane's bar on the Detail tab (`graph_hidden`) less

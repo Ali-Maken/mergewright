@@ -37,4 +37,4 @@
  │                    │ 35      pub fn age(&self) -> Duration {
  │                    │ 36          self.issued.elapsed()
  │                    │ 37      }
- ⏎ that commit  ^ before it  L history of these lines  / find  space ages  w whitespace  i ignore list  esc back
+ ⏎ that commit  ^ before it  L history of these lines  / find  space ages  w whitespace  i ignore list  esc back  ? keys

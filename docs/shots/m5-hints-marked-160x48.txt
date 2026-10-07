@@ -68,4 +68,4 @@
 
 
 
- . explain · ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend
+ . explain · ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · ? keys

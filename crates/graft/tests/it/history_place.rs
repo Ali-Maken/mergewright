@@ -14,8 +14,7 @@ use crate::m7_walk::blame::{blame, drawn, on_line_22, open_on_the_file, session}
 use crate::m7_walk::history::{history, traced};
 
 /// The `List` form's bar, as the frame draws it at 140 columns and wider.
-const LIST_BAR: &str =
-    " j/k older\u{b7}newer  ⇥ file  n/N next change  B blame here  \u{23ce} that commit  esc back";
+const LIST_BAR: &str = " j/k older\u{b7}newer  ⇥ file  n/N next change  B blame here  \u{23ce} that commit  esc back  ? keys";
 
 /// `B L` from the diff cursor on line 22 at `columns`×`rows`, traced and
 /// the selected commit's file read.
@@ -180,7 +179,7 @@ fn a_depth_one_clone_shows_the_end_row_alone() {
     assert_eq!(place.selected, None);
     assert_eq!(place.file, FileLoad::Idle);
     // 21b: nothing acts but the way back, and the drawn bar says only that.
-    assert_eq!(bar_row(&drawn(&state, 187, 50)), " esc back");
+    assert_eq!(bar_row(&drawn(&state, 187, 50)), " esc back  ? keys");
     let back = app.key(&state, KeyCode::Escape);
     assert!(!back.trail.is_live(), "Esc goes back");
     app.close();
@@ -206,7 +205,7 @@ fn a_trace_error_is_drawn_as_a_failure() {
         place.trace
     );
     // 21b: nothing acts but the way back, and the drawn bar says only that.
-    assert_eq!(bar_row(&drawn(&state, 140, 40)), " esc back");
+    assert_eq!(bar_row(&drawn(&state, 140, 40)), " esc back  ? keys");
     let back = app.key(&state, KeyCode::Escape);
     assert!(back.trail.on_screen().is_some(), "Esc: blame again");
     app.close();

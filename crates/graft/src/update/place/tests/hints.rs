@@ -107,6 +107,7 @@ fn history_rows_in_the_place_bar_table() {
         ("B", "blame here"),
         ("⏎", "that commit"),
         ("esc", "back"),
+        ("?", "keys"),
     ];
     let on_file = [
         ("j/k", "scroll"),
@@ -116,8 +117,9 @@ fn history_rows_in_the_place_bar_table() {
         ("⏎", "that commit"),
         ("w", "whitespace"),
         ("esc", "back"),
+        ("?", "keys"),
     ];
-    let back = [("esc", "back")];
+    let back = [("esc", "back"), ("?", "keys")];
     let table: [BarRow; 5] = [
         ("rows, list focus", &list, &rows),
         ("rows, file focus", &file, &on_file),

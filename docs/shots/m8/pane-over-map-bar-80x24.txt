@@ -2,7 +2,7 @@
 # tests/it/hint_bar.rs, capture_bars_over_an_overlay_for_docs_shots). Not a pty
 # capture: a character grid, no colour (CLAUDE.md rule 5 — colour unverified).
 #
-# Here the Map is open and the tip's file list has the keyboard on the Detail tab. Right: the last row reads `⏎ open  j/k move  u undo` — no `/ search`.
+# Here the Map is open and the tip's file list has the keyboard on the Detail tab. Right: the last row reads `⏎ open  j/k move  u undo  ? keys` — no `/ search`.
 
 Map  [Detail]
 COMMIT 29a1432
@@ -27,4 +27,4 @@ reading…
 
 
 
- ⏎ open  j/k move  u undo
+ ⏎ open  j/k move  u undo  ? keys

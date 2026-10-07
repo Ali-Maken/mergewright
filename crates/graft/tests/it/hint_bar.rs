@@ -580,7 +580,7 @@ fn the_bar_behind_an_overlay_draws_what_the_pane_still_answers() {
         bar.trim_end(),
         // m8/09e: `/ search` gone — the graph's search stands down under
         // an overlay, where its prompt would never be drawn.
-        " ⏎ open  j/k move  u undo",
+        " ⏎ open  j/k move  u undo  ? keys",
         "the keys the pane and the globals still answer, quoted so the change is legible \
          in review: {drawn:?}"
     );
@@ -660,7 +660,7 @@ fn capture_bars_over_an_overlay_for_docs_shots() {
             "pane-over-map-bar-80x24.txt",
             &files_over_map,
             "the Map is open and the tip's file list has the keyboard on the Detail tab. \
-             Right: the last row reads `⏎ open  j/k move  u undo` — no `/ search`",
+             Right: the last row reads `⏎ open  j/k move  u undo  ? keys` — no `/ search`",
         ),
     ] {
         let sized = app.resize(state, 80, 24);
@@ -808,7 +808,7 @@ fn hint_bar_history_place() {
     let bar = footer(&state, 187, 50);
     assert_eq!(
         bar.trim_end(),
-        " j/k older\u{b7}newer  ⇥ file  n/N next change  B blame here  \u{23ce} that commit  esc back"
+        " j/k older\u{b7}newer  ⇥ file  n/N next change  B blame here  \u{23ce} that commit  esc back  ? keys"
     );
     app.close();
 }
@@ -849,4 +849,65 @@ fn a_amend_is_hinted_on_heads_row() {
         assert!(bar.contains("a amend"), "{columns}: {bar:?}");
     }
     app.close();
+}
+
+/// **The keys doorway on a marked row** (m8/11d R2):
+/// `docs/shots/m8/doorway-marked-120x36.txt`. A real repository (the
+/// preview fixture: `feature` checked out, its tip carrying the radar's
+/// marker), settled — walk, sort and radar landed — and drawn at 120x36
+/// with the cursor on that marked branch tip. `states_for` cannot stand
+/// in: the marker lives on the row, not in the state.
+#[test]
+fn capture_the_doorway_on_a_marked_row_for_docs_shots() {
+    use graft::update::detail::Loading;
+
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::EvilMerge);
+    let (app, state) = App::open(scratch.path());
+    let state = app.resize(&state, 120, 36);
+    let state = opened(&app, state);
+    // `⏎` opens the pane on the merge, which runs the evil probe; the
+    // marker it sets stays on the row. Then `esc` shuts the pane again.
+    let state = app.key(&state, KeyCode::Enter);
+    let state = app.pump(
+        state,
+        "the merge probed evil, the radar answered",
+        |state| {
+            matches!(
+                state.detail.evil,
+                Loading::Ready(graft_ops::mistake_radar::probes::EvilVerdict::Evil { .. })
+            ) && matches!(state.radar.context, Loading::Ready(_))
+        },
+    );
+    let state = crate::captures::settled_frame(&app, state);
+    let state = app.key(&state, KeyCode::Escape);
+    let drawn = crate::captures::frame_at(
+        &state,
+        120,
+        36,
+        Some(graft::session::Clock::Fixed(crate::preview::FORK_NOW)),
+    );
+    let bar = drawn.last().cloned().unwrap_or_default();
+    assert!(bar.starts_with(" . explain"), "a marked row's bar: {bar:?}");
+    assert!(bar.contains("u undo"), "{bar:?}");
+    let mut out = String::from(
+        "# m8/doorway-marked-120x36.txt: 120x36, drawn by `view::view` from a real AppState\n\
+         # (crates/graft/tests/it/hint_bar.rs, capture_the_doorway_on_a_marked_row_for_docs_shots).\n\
+         # Not a pty capture: a character grid, no colour (CLAUDE.md rule 5 — colour unverified).\n\
+         #\n\
+         # Here the cursor is on an evil merge that is the current branch's tip, marked by the\n\
+         # radar, the pane shut. Right (m8/11d R2): `. explain` leads, `u undo` is drawn, and\n\
+         # `? keys` is not — it ranks right after `u undo` and `/ search` and is drawn, last,\n\
+         # only once both are (a plain marked row needs 129 cells of bar); `?` still answers.\n\n",
+    );
+    for line in &drawn {
+        out.push_str(line);
+        out.push('\n');
+    }
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/shots/m8/doorway-marked-120x36.txt");
+    let checked = graft_fixtures::check(&path, &out);
+    app.close();
+    if let Err(why) = checked {
+        panic!("{why}");
+    }
 }

@@ -239,10 +239,10 @@ fn hundred_sixty_shows_the_context_then_the_screen() {
 }
 
 /// (e) A marked row leads with `. explain`, then the row's own list, draws
-/// neither `. actions` (`.` is already on screen) nor `? keys` (m8/11b:
-/// it would push `u undo` and `/ search` off; ruling pending) — and never overflows the row.
+/// no `. actions` (`.` is already on screen); `? keys` only as a ranked
+/// hint (m8/11d R2, `a_marked_row_keeps_…`) — and never overflows the row.
 #[test]
-fn marked_leads_with_explain_and_draws_no_doorway() {
+fn marked_leads_with_explain_and_draws_no_actions() {
     let marked = HintContext::Marked(Box::new(HintContext::PlainRow {
         verbs: RowVerbs::NONE,
     }));
@@ -252,8 +252,10 @@ fn marked_leads_with_explain_and_draws_no_doorway() {
             (hints[0].key(), hints[0].verb),
             (EXPLAIN.key(), EXPLAIN.verb)
         );
-        assert!(!hints.contains(&DOORWAY), "{hints:?}");
         assert!(!hints.contains(&ACTIONS), "{hints:?}");
+        // `? keys` is a ranked list hint here since m8/11d (R2), drawn last;
+        // the rest keep the plain row's order.
+        let hints = without_trailer(&hints);
         let plain = drawable(
             &HintContext::PlainRow {
                 verbs: RowVerbs::NONE,
@@ -873,7 +875,14 @@ fn a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn() {
             let whole = whole_list(&context, divider);
             for columns in 0..=240u16 {
                 let hints = hints_for(&context, divider, columns);
-                let body = without_trailer(&hints);
+                // The doorway is outside the body only where it is the
+                // trailer; on a marked row it is an ordinary list hint
+                // (m8/11d R2), counted in `whole`.
+                let body = if super::whole_bar(&context, divider).1.is_some() {
+                    without_trailer(&hints)
+                } else {
+                    hints.clone()
+                };
                 let raised = body
                     .iter()
                     .skip(3)
@@ -1112,15 +1121,9 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         | HintContext::ConfirmBox { .. }
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
-        | HintContext::Journal
-        | HintContext::Stash
-        | HintContext::Map
         | HintContext::Picker
-        | HintContext::PaneOverOverlay { .. }
         | HintContext::Resolver { .. }
         | HintContext::Finish { .. }
-        | HintContext::Blame { .. }
-        | HintContext::History { .. }
         | HintContext::RewriteEditor { .. }
         | HintContext::RewriteMessage => None,
         HintContext::BackToBlame(inner) | HintContext::BackToHistory(inner) => doorway_of(inner),
@@ -1135,7 +1138,14 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
         | HintContext::Rewritable(_)
-        | HintContext::ChangesPane { .. } => Some(DOORWAY),
+        | HintContext::ChangesPane { .. }
+        // Modal for keys, not for the bar (m8/11d R1).
+        | HintContext::Journal
+        | HintContext::Stash
+        | HintContext::Map
+        | HintContext::PaneOverOverlay { .. }
+        | HintContext::Blame { .. }
+        | HintContext::History { .. } => Some(DOORWAY),
     }
 }
 
@@ -2234,7 +2244,7 @@ mod blame_place {
 }
 
 /// The history place's bar (design note pass 1b "History";
-/// m7-power-tools/21b): modal, no doorway, no `<> resize`.
+/// m7-power-tools/21b): modal for keys, no `<> resize`; `? keys` since m8/11d.
 mod history_place {
     use super::*;
 
@@ -2259,6 +2269,7 @@ mod history_place {
                 "B blame here",
                 "⏎ that commit",
                 "esc back",
+                "? keys",
             ]
         );
         assert_eq!(
@@ -2274,6 +2285,7 @@ mod history_place {
                 "⏎ that commit",
                 "w whitespace",
                 "esc back",
+                "? keys",
             ]
         );
     }
@@ -2287,7 +2299,7 @@ mod history_place {
                     rows: false,
                     on_file
                 }),
-                ["esc back"]
+                ["esc back", "? keys"]
             );
         }
     }
@@ -2322,15 +2334,14 @@ mod history_place {
             on_file: false,
         };
         let at = |columns| hints_text(&hints_for(&list, Divider::Hidden, columns));
-        assert!(
-            at(40).starts_with(" j/k older·newer  ⇥ file  n/N next"),
-            "{:?}",
-            at(40)
-        );
-        assert!(!at(40).contains("next change"), "{:?}", at(40));
-        assert_eq!(at(30), " j/k older  ⇥ file  n/N next");
-        assert_eq!(at(28), " j/k older  ⇥ file  n/N next");
-        assert_eq!(at(27), "");
+        // Since m8/11d the doorway is in the floor (11c decision 4): the
+        // floor is 36 cells, and below it the doorway stands alone.
+        assert_eq!(at(44), " j/k older·newer  ⇥ file  n/N next  ? keys");
+        assert!(!at(44).contains("next change"), "{:?}", at(44));
+        assert_eq!(at(40), " j/k older  ⇥ file  n/N next  ? keys");
+        assert_eq!(at(36), " j/k older  ⇥ file  n/N next  ? keys");
+        assert_eq!(at(35), " ? keys");
+        assert_eq!(at(28), " ? keys");
     }
 
     #[test]
@@ -2525,7 +2536,8 @@ fn a_fixed_key_is_drawn_only_where_keys_go_on_as_typed() {
 // --- m8/11b: the doorway is `? keys`, `. actions` an ordinary candidate ---
 
 /// Decision 1: every bar `every_context()` yields, at 80, 120 and 200
-/// columns, ends with `? keys` where it has a doorway, and never draws
+/// columns, draws `? keys` where it has a doorway — last, or leading a
+/// place's bare keys (m8/11d R1) — and never draws
 /// `. more`.
 #[test]
 fn every_bar_ends_with_the_keys_doorway_and_never_more() {
@@ -2540,10 +2552,9 @@ fn every_bar_ends_with_the_keys_doorway_and_never_more() {
                     "{context:?} at {columns}: {text:?}"
                 );
                 if spelled_bar(&context, divider, keys).1.is_some() {
-                    assert!(
-                        text.ends_with("? keys"),
-                        "{context:?} at {columns}: {text:?}"
-                    );
+                    // A place's bar keeps bare keys, which the doorway leads
+                    // (ADR-0039, m8/11d R1); every other bar ends with it.
+                    assert_doorway_placed(&text, "? keys", &format!("{context:?} at {columns}"));
                 }
             }
         }
@@ -2603,4 +2614,196 @@ fn the_doorway_falls_back_to_the_palette_key_then_to_nothing() {
     let text = super::hints_text(&bar, &neither);
     assert!(!text.contains("keys"), "{text:?}");
     assert!(!text.contains('—'), "{text:?}");
+}
+
+/// The overlays and places m8/11c decision 1 names: modal for keys, not for
+/// the bar (ADR-0058 §4), so `?` answers there and the bar says so.
+fn overlays_and_places() -> Vec<HintContext> {
+    let mut contexts = vec![
+        HintContext::Journal,
+        HintContext::Stash,
+        HintContext::Map,
+        HintContext::PaneOverOverlay { opens: true },
+        HintContext::PaneOverOverlay { opens: false },
+        HintContext::ChangesPane {
+            unmerged: false,
+            live: None,
+            tab: TabWord::Graph,
+            over_overlay: true,
+        },
+    ];
+    for finding in [false, true] {
+        for ignore_file in [false, true] {
+            for lines in [false, true] {
+                contexts.push(HintContext::Blame {
+                    finding,
+                    ignore_file,
+                    lines,
+                });
+            }
+        }
+    }
+    for rows in [false, true] {
+        for on_file in [false, true] {
+            contexts.push(HintContext::History { rows, on_file });
+        }
+    }
+    let row = HintContext::PlainRow {
+        verbs: RowVerbs::NONE,
+    };
+    contexts.push(HintContext::BackToBlame(Box::new(row.clone())));
+    contexts.push(HintContext::BackToHistory(Box::new(row)));
+    contexts
+}
+
+fn unbound(ids: &[&str]) -> Keymap {
+    Keymap::with_overrides(
+        &ids.iter()
+            .map(|id| ((*id).to_owned(), vec!["none".to_owned()]))
+            .collect::<Vec<_>>(),
+        crate::keymap::KeySwitches::default(),
+    )
+    .0
+}
+
+/// Asserts `doorway` sits where ADR-0039's one rule puts it: after every
+/// hint drawn with words, ahead of every bare key (m8/11d R1).
+fn assert_doorway_placed(text: &str, doorway: &str, what: &str) {
+    // A keys bar joins with two spaces, a words-only one with ` · `.
+    let pieces: Vec<&str> = text
+        .trim()
+        .split(" · ")
+        .flat_map(|part| part.split("  "))
+        .collect();
+    let at = pieces
+        .iter()
+        .position(|piece| *piece == doorway)
+        .unwrap_or_else(|| panic!("{what}: no {doorway:?} in {text:?}"));
+    assert!(
+        pieces[..at].iter().all(|piece| piece.contains(' ')),
+        "{what}: a bare key before the doorway: {text:?}"
+    );
+    assert!(
+        pieces[at + 1..].iter().all(|piece| !piece.contains(' ')),
+        "{what}: a worded hint after the doorway: {text:?}"
+    );
+}
+
+/// m8/11d R1: every overlay and place bar draws `? keys` at 80, 120 and 200
+/// cells, after its words and leading its bare keys; `⌃P keys` with `?`
+/// unbound; nothing with both unbound.
+#[test]
+fn overlays_and_places_draw_the_keys_doorway() {
+    let no_help = unbound(&["app.help"]);
+    let neither = unbound(&["app.help", "app.palette"]);
+    for context in overlays_and_places() {
+        for columns in [80u16, 120, 200] {
+            let what = format!("{context:?} at {columns}");
+            let text = hints_text(&hints_for(&context, Divider::Hidden, columns));
+            assert_doorway_placed(&text, "? keys", &what);
+            let bar = super::hints_for(&context, Divider::Hidden, columns, &no_help);
+            let text = super::hints_text(&bar, &no_help);
+            assert_doorway_placed(&text, "⌃P keys", &format!("{what}, `?` unbound"));
+            let bar = super::hints_for(&context, Divider::Hidden, columns, &neither);
+            let text = super::hints_text(&bar, &neither);
+            assert!(
+                !text.contains("? keys") && !text.contains("⌃P keys") && !text.contains('—'),
+                "{context:?} at {columns}, both unbound: {text:?}"
+            );
+        }
+    }
+}
+
+/// m8/11c decision 2: the bars where the keys are the point draw no doorway.
+#[test]
+fn modal_bars_draw_no_doorway() {
+    let modal: Vec<HintContext> = every_context()
+        .into_iter()
+        .filter(|context| {
+            matches!(
+                context,
+                HintContext::Banner { .. }
+                    | HintContext::Dragging
+                    | HintContext::ConfirmBox { .. }
+                    | HintContext::NamePrompt { .. }
+                    | HintContext::Credential
+                    | HintContext::Picker
+                    | HintContext::Resolver { .. }
+                    | HintContext::Finish { .. }
+                    | HintContext::RewriteEditor { .. }
+                    | HintContext::RewriteMessage
+                    | HintContext::Preview
+            )
+        })
+        .collect();
+    assert!(modal.len() >= 10, "{modal:?}");
+    for context in modal {
+        for columns in [48u16, 80, 120, 200] {
+            let text = hints_text(&hints_for(&context, Divider::Hidden, columns));
+            assert!(
+                !text.contains("? keys") && !text.contains("⌃P keys"),
+                "{context:?} at {columns}: {text:?}"
+            );
+        }
+    }
+}
+
+/// m8/11d R2: on a marked row `? keys` ranks right after `u undo` and `/ search`, is drawn
+/// last, monotone in width, and never at the cost of either.
+#[test]
+fn a_marked_row_keeps_undo_and_search_before_the_doorway() {
+    let marked = HintContext::Marked(Box::new(HintContext::PlainRow {
+        verbs: RowVerbs::NONE,
+    }));
+    for divider in [Divider::Hidden, Divider::Shown] {
+        // Measured first-drawn width, recorded in 11d's NOTES (R2's "drawn
+        // at 120" does not hold: the twelve hints ahead of it take 119
+        // cells). Pinned so a ranking change shows up here.
+        let first = (40..=240u16)
+            .find(|columns| hints_text(&hints_for(&marked, divider, *columns)).contains("? keys"));
+        assert_eq!(first, Some(129), "{divider:?}");
+        let mut drawn_before = false;
+        for columns in 40..=240u16 {
+            let hints = hints_for(&marked, divider, columns);
+            let text = hints_text(&hints);
+            assert!(
+                text.chars().count() <= usize::from(columns),
+                "{divider:?} at {columns}: {text:?} overflows"
+            );
+            let has = hints.iter().any(|hint| hint.is(DOORWAY.keys));
+            assert!(
+                has || !drawn_before,
+                "{divider:?}: `? keys` drawn below {columns} but not at it"
+            );
+            if has {
+                assert!(
+                    text.contains("u undo") && text.contains("/ search"),
+                    "{divider:?} at {columns}: the doorway displaced one: {text:?}"
+                );
+                assert!(
+                    hints.last().is_some_and(|hint| hint.is(DOORWAY.keys)),
+                    "{divider:?} at {columns}: doorway not last"
+                );
+            }
+            drawn_before |= has;
+        }
+    }
+    // A branch tip's marked row: the doorway never displaces `u undo` or
+    // `/ search` — wherever it is drawn, both are too.
+    let tip = HintContext::Marked(Box::new(HintContext::BranchRow {
+        current: false,
+        verbs: RowVerbs::NONE,
+    }));
+    let mut first = None;
+    for columns in 40..=240u16 {
+        let text = hints_text(&hints_for(&tip, Divider::Hidden, columns));
+        if text.contains("? keys") {
+            first.get_or_insert(columns);
+            assert!(
+                text.contains("u undo") && text.contains("/ search"),
+                "branch tip at {columns}: {text:?}"
+            );
+        }
+    }
+    eprintln!("branch-tip marked row: `? keys` first drawn at {first:?}");
 }
