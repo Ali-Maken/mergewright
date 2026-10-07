@@ -1161,6 +1161,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/10j-red-not-observed | 10j wrote code before tests: its 17 ticked tests were never seen red (builder's own report) — they may not fail on the defect | **unverified** | M8 |
 | M8/10j-inline-seven | 7 inline stop words: remapped spelling untested — fixtures sit in private test modules on 10j's Not list; needs its own ticket | **unverified** | M8 |
 | M8/open-failed-lands-graph | After a failed mergetool open he lands on the Graph, so the `e`/`M` clauses drop; should it land on that file's CONFLICTS row? Question (10j, file_list test) | **unverified** | M8 |
+| M8/resolve-refusal-space-dead | Resolve refusal says `space marks resolved`, but both callers leave him on the Banner where `space` does nothing (pinned by `keymap_words::stops::the_resolve_keys_name_rows_that_act_where_the_refusal_is_shown`). Question: move focus to CONFLICTS rows, or drop the clause | **broken** | M8 |
+| M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | RESOLVE_KEYS shown on screen via pressed.rs:156; the literal-key grep misses consts | **unverified** | M8 |
 | M8/one-chord-idle | 12 ONE_CHORD_IDLE rows classed Defect: keys that do nothing at their place (09g, sweep_tables.rs) | **broken** | M8 |
 | M8/09g-third-class | 10 ONE_CHORD_IDLE rows act on keys but the test setup gives nothing to change — neither class of R1; builder stopped, proposed a third class → planner | **unverified** | M8 |
