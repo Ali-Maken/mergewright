@@ -1,8 +1,8 @@
 # G-keymap 1g — 09f remainder: the five one-chord idles and `AFTER y` (C), the ruling on `ONE_CHORD_IDLE`'s other 22 rows, the `?`-at-Map capture, the keymap seam in ARCHITECTURE.md (D)
 
-Status: draft (planner spec-only pass, 2026-10-07, from 09f NOTES + Handoff; 09f merged partial at 82bbe686, A and B
+Status: ready (planner spec-only pass, 2026-10-07, from 09f NOTES + Handoff; 09f merged partial at 82bbe686, A and B
 done)
-Build with: **Opus** (recommended; conductor confirms after the scout below). Two judgements a test cannot make for
+Build with: **Opus** (confirmed by conductor 2026-10-07 after scout `scouts/09g-one-chord-idle.md`: no source overlap with 10j; only Menu `s` types itself — other rows are defects per R1, a third class → stop). Two judgements a test cannot make for
 the builder: where each of the five chords is lost (handler vs the edge's translate — a stop if the edge), and the class
 of each of the 22 rows left in `ONE_CHORD_IDLE` (a wrong "by design" hides a defect in a table). Not Fable: the sweep
 and the new typing assertion are full oracles; nothing here is structural.
