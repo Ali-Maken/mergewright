@@ -65,7 +65,9 @@ fn take_block(
     let (Some(block), Some(pending)) = (open.cursor_block, pending_file(open)) else {
         state.status = Status::Sticky {
             reason: "no conflict under the cursor".to_owned(),
-            keys: Some("n next".to_owned()),
+            keys: state
+                .keymap
+                .key_verb(&[graft_ui::keymap::ActionId("resolver.next_block")], "next"),
         };
         return;
     };
@@ -200,6 +202,7 @@ pub(super) fn take_refusal(state: &AppState) -> Option<&'static str> {
 fn advance(state: &mut AppState, pending: &ConflictFile, taken: usize) {
     let next = after_take(pending, taken);
     let top = next.map(|block| scrolled_to(state, block));
+    let keys = std::sync::Arc::clone(&state.keymap);
     let Some(open) = state.resolver.as_mut() else {
         return;
     };
@@ -209,13 +212,18 @@ fn advance(state: &mut AppState, pending: &ConflictFile, taken: usize) {
             open.top = top;
             open.notice = None;
         }
-        _ => open.notice = Some((all_taken(&open.path), false)),
+        _ => open.notice = Some((all_taken(&open.path, &keys), false)),
     }
 }
 
-/// The notice once every block is taken.
-pub(super) fn all_taken(path: &Path) -> String {
-    format!("all blocks taken · ⏎ marks {} done", path.display())
+/// The notice once every block is taken: `⏎` from his keymap (m8/10g),
+/// left out when unbound.
+pub(super) fn all_taken(path: &Path, keys: &graft_ui::keymap::Keymap) -> String {
+    keys.after(
+        "all blocks taken",
+        graft_ui::keymap::ActionId("resolver.mark_done"),
+        &format!("marks {} done", path.display()),
+    )
 }
 
 /// The document as it will stand once every take sent or queued has

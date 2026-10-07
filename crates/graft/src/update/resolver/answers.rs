@@ -54,6 +54,7 @@ pub fn conflict_opened(
 pub(super) fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::conflict::OpenedFile) {
     // A conflicted path is not done, whatever this resolver showed of it
     // before (a `d` on a done file brings its conflict back).
+    let keys = Arc::clone(&state.keymap);
     if let Some(open) = state.resolver.as_mut() {
         open.done = None;
     }
@@ -119,15 +120,17 @@ pub(super) fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::confl
     // into (scope 2, "a re-read clears them and `base_shown`").
     open.base_shown = false;
     let landing = landing_notice(open);
-    open.notice = empty
-        .then(|| {
-            (
-                "no conflict markers · ⏎ marks it resolved".to_owned(),
-                false,
-            )
-        })
-        .or(landing);
+    open.notice = empty.then(|| (no_markers(&keys), false)).or(landing);
     remember(open);
+}
+
+/// A document with no blocks: `⏎` (his key, m8/10g) marks it resolved.
+fn no_markers(keys: &graft_ui::keymap::Keymap) -> String {
+    keys.after(
+        "no conflict markers",
+        graft_ui::keymap::ActionId("resolver.mark_done"),
+        "marks it resolved",
+    )
 }
 
 /// What of the notice set before a read survives its landing: the words a
@@ -165,6 +168,9 @@ pub(super) fn open_failed(state: &mut AppState, failure: &crate::jobs::conflict:
     state.resolver = None;
     state.status = Status::Sticky {
         reason: failure.words.clone(),
+        // Not spelled yet (m8/10g, W2 stop): once the resolver closes the
+        // keys land on the graph, where neither `e` nor `M` hands the file
+        // over (`M` is `graph.map`) — which row answers is a design call.
         keys: Some("e edit  M mergetool".to_owned()),
     };
 }

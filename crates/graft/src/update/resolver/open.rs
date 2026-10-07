@@ -25,7 +25,9 @@ pub fn open_resolver(
     if state.resolver.is_some() {
         state.status = Status::Sticky {
             reason: "the resolver is already open".to_owned(),
-            keys: Some("esc closes it".to_owned()),
+            keys: state
+                .keymap
+                .key_verb(&[graft_ui::keymap::ActionId("app.back")], "closes it"),
         };
         return true;
     }
@@ -95,7 +97,9 @@ fn open_refusal(state: &AppState) -> Option<Status> {
     if state.operating.is_some() {
         return Some(Status::Sticky {
             reason: "a write is running".to_owned(),
-            keys: Some("esc stops it".to_owned()),
+            keys: state
+                .keymap
+                .key_verb(&[graft_ui::keymap::ActionId("app.back")], "stops it"),
         });
     }
     None

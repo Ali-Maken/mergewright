@@ -49,7 +49,11 @@ pub fn resolver_view(state: &AppState, columns: u16) -> Option<DocView> {
     }
     let file = open.file.as_ref()?;
     let blocks = file.blocks();
-    let restart = start_over_refusal(state).is_none();
+    let restart = start_over_refusal(state)
+        .is_none()
+        .then(|| start_over_words(&state.keymap))
+        .flatten();
+    let restart = restart.as_deref();
     let identity = match open.done.as_ref().map(|done| &done.shape) {
         Some(DoneShape::Text { unstaged } | DoneShape::Binary { unstaged }) => Identity::Done {
             unstaged: *unstaged,
@@ -100,14 +104,19 @@ pub(crate) fn finish_row(state: &AppState) -> Option<graft_ui::conflict_resolver
         return None;
     }
     let kind = state.in_progress.as_ref()?.kind;
+    // `c` from his keymap (m8/10g); the row is only that key's clause, so
+    // an unbound `c` draws no row at all.
+    let c = state
+        .keymap
+        .spell_keys(&[graft_ui::keymap::ActionId("resolver.finish")])?;
     let (full, short) = match kind {
         InProgress::Merge => (
-            "c review and finish the merge".to_owned(),
-            "c review & finish".to_owned(),
+            format!("{c} review and finish the merge"),
+            format!("{c} review & finish"),
         ),
         InProgress::Rebase | InProgress::CherryPick | InProgress::Revert => (
-            format!("c continue the {}", kind.name()),
-            "c continue".to_owned(),
+            format!("{c} continue the {}", kind.name()),
+            format!("{c} continue"),
         ),
         InProgress::Bisect => return None,
     };
@@ -164,10 +173,19 @@ pub enum Identity<'a> {
     Done {
         /// The status shows a working-tree change for it.
         unstaged: bool,
-        /// `d` opens the box (`update::resolver::start_over_refusal`,
-        /// m6-conflicts/28): the row offers it only then.
-        restart: bool,
+        /// `d starts it over`, spelled from his keymap, where `d` opens the
+        /// box (`update::resolver::start_over_refusal`, m6-conflicts/28):
+        /// the row offers it only then, and never an unbound key (m8/10g).
+        restart: Option<&'a str>,
     },
+}
+
+/// `d starts it over`, `d` from `keys` (m8/10g); `None` when unbound.
+fn start_over_words(keys: &graft_ui::keymap::Keymap) -> Option<String> {
+    keys.key_verb(
+        &[graft_ui::keymap::ActionId("resolver.start_over")],
+        "starts it over",
+    )
 }
 
 /// The file identity row (m6-conflicts/13): `notes.txt · 2 conflicts · 1
@@ -184,7 +202,7 @@ pub fn resolver_title(path: &Path, identity: Identity<'_>) -> String {
         }
         Identity::Whole(how) => format!("{name} · {how}"),
         Identity::Done { unstaged, restart } => {
-            let offer = if restart { " · d starts it over" } else { "" };
+            let offer = restart.map_or_else(String::new, |words| format!(" \u{b7} {words}"));
             let edited = if unstaged {
                 " · edited since done"
             } else {

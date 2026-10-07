@@ -58,9 +58,14 @@ pub fn done_refusal(state: &AppState) -> Option<String> {
     let open = state.resolver.as_ref()?;
     open.done.as_ref()?;
     let path = open.path.display();
+    let done = format!("{path} is done");
     Some(match super::restart::start_over_refusal(state) {
-        None => format!("{path} is done · d starts it over"),
-        Some(_) => format!("{path} is done"),
+        None => state.keymap.after(
+            &done,
+            graft_ui::keymap::ActionId("resolver.start_over"),
+            "starts it over",
+        ),
+        Some(_) => done,
     })
 }
 

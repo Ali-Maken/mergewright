@@ -39,7 +39,9 @@ pub(super) fn mark_resolved(
     if let Some(refusal) = graft_ops::conflict::mark_resolved_refusal(&path, &file) {
         state.status = Status::Sticky {
             reason: refusal.explain(&OpKeys(&state.keymap)),
-            keys: Some("n next".to_owned()),
+            keys: state
+                .keymap
+                .key_verb(&[graft_ui::keymap::ActionId("resolver.next_block")], "next"),
         };
         return;
     }

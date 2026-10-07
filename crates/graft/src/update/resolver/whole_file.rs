@@ -7,6 +7,7 @@ use graft_core::job::JobId;
 use graft_git::status::UnmergedHow;
 use graft_ops::operation::{Operation, ResolveWholeParams, Side};
 use graft_ui::conflict_resolver::SideNames;
+use graft_ui::keymap::{ActionId, Keymap};
 
 use crate::update::events::Command;
 use crate::update::state::{AppState, Status};
@@ -36,24 +37,42 @@ pub struct WholeFileShape {
 ///
 /// A side is named by its one name (`t keeps theirs · feature`,
 /// [`super::side_names`]); words about the file itself (`keeps the file`,
-/// `deletes it`) stay as they are.
+/// `deletes it`) stay as they are. Each key is spelled from `keys`, his
+/// keymap (m8/10g): an unbound one drops its clause, never `—`.
 #[must_use]
-pub fn whole_file_keys(how: UnmergedHow, binary: bool, names: &SideNames) -> String {
+pub fn whole_file_keys(how: UnmergedHow, binary: bool, names: &SideNames, keys: &Keymap) -> String {
     let (ours, theirs) = (names.ours.as_str(), names.theirs.as_str());
-    if binary {
-        return format!("o keeps {ours}  t keeps {theirs}");
-    }
-    match how {
-        UnmergedHow::DeletedByThem => "o keeps the file  t deletes it".to_owned(),
-        UnmergedHow::DeletedByUs => format!("o deletes it  t keeps {theirs}"),
-        UnmergedHow::AddedByUs => format!("o keeps {ours}  t drops it"),
-        UnmergedHow::AddedByThem => format!("o drops it  t keeps {theirs}"),
-        UnmergedHow::BothDeleted => "o or t removes it".to_owned(),
-        UnmergedHow::BothModified | UnmergedHow::BothAdded => {
-            format!("o keeps {ours}  t keeps {theirs}")
+    let (o, t) = if binary {
+        (format!("keeps {ours}"), format!("keeps {theirs}"))
+    } else {
+        match how {
+            UnmergedHow::DeletedByThem => ("keeps the file".to_owned(), "deletes it".to_owned()),
+            UnmergedHow::DeletedByUs => ("deletes it".to_owned(), format!("keeps {theirs}")),
+            UnmergedHow::AddedByUs => (format!("keeps {ours}"), "drops it".to_owned()),
+            UnmergedHow::AddedByThem => ("drops it".to_owned(), format!("keeps {theirs}")),
+            // One clause, two alternatives: the bound ones kept (W3).
+            UnmergedHow::BothDeleted => {
+                let bound: Vec<String> = [TAKE_OURS, TAKE_THEIRS]
+                    .iter()
+                    .filter_map(|id| keys.live_labels(&ActionId(id)).first().cloned())
+                    .collect();
+                return if bound.is_empty() {
+                    String::new()
+                } else {
+                    format!("{} removes it", bound.join(" or "))
+                };
+            }
+            UnmergedHow::BothModified | UnmergedHow::BothAdded => {
+                (format!("keeps {ours}"), format!("keeps {theirs}"))
+            }
         }
-    }
+    };
+    keys.key_verbs(&[(TAKE_OURS, o.as_str()), (TAKE_THEIRS, t.as_str())])
 }
+
+/// The rows `o` and `t` answer on a card (`docs/design/02-keymap.md` §2.6).
+const TAKE_OURS: &str = "resolver.take_ours";
+const TAKE_THEIRS: &str = "resolver.take_theirs";
 
 /// `o`/`t` on a whole-file card: resolve the path whole, through the same
 /// `Operate`/`Stage` channel `⏎` uses — a whole-file resolution *is* a git
