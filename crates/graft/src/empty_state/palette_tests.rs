@@ -111,7 +111,10 @@ fn enter_runs_a_row_as_its_key_would() {
     typed(&mut walked, "open");
     assert_eq!(
         under_cursor(&walked).1,
-        PaletteTarget::Action(ActionId("empty_state.open"))
+        PaletteTarget::Action {
+            id: ActionId("empty_state.open"),
+            ctx: ContextId::EmptyState
+        }
     );
     let step = press(&mut walked, KeyPress::plain(KeyCode::Enter));
     let mut by_key = state();

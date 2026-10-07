@@ -110,3 +110,65 @@ fn j7_help_mid_rebase_puts_continue_first_and_enter_asks_what_c_asks() {
     assert!(rebasing(path), "nothing ran yet");
     app.close();
 }
+
+/// A rebase stopped at an `edit` of its one commit, begun in the shell:
+/// `HEAD` is the stopped commit, the graph has the keyboard.
+fn stopped_at_an_edit() -> graft_fixtures::Scratch {
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+    let path = scratch.path();
+    dated_commit(path, "edit.txt", "one\n", "the commit to edit", 1);
+    git(
+        path,
+        &[
+            "-c",
+            "sequence.editor=sed -i.bak -e 1s/^pick/edit/",
+            "rebase",
+            "-q",
+            "-i",
+            "HEAD~1",
+        ],
+    );
+    scratch
+}
+
+/// m8/12e (review m8-palette-theme Major 1): at an edit stop with the graph
+/// focused, `?` `↓` `↓` `⏎` on `a Abort` asks to abort the rebase — the
+/// banner's `a` — and never reaches the graph's `a`, which amends there.
+/// `HEAD` is the same commit after the app has closed (every job done).
+#[test]
+fn walk_abort_from_the_graph_at_an_edit_stop() {
+    let scratch = stopped_at_an_edit();
+    let path = scratch.path();
+    assert!(rebasing(path), "git stopped on the edit");
+    let head = git(path, &["rev-parse", "HEAD"]);
+    let (app, state) = App::open(path);
+    let state = app.resize(&state, 120, 36);
+    let state = crate::conflict_interim::launched(&app, state);
+    let state = app.pump(state, "the stop, read", |state| {
+        state
+            .stopped
+            .as_ref()
+            .is_some_and(|stop| stop.rewrite.is_some())
+    });
+    let state = crate::captures::settled_frame(&app, state);
+    assert!(!state.banner_focus, "the graph has the keyboard");
+    let state = app.key(&state, KeyCode::Char('?'));
+    let state = app.key(&state, KeyCode::Down);
+    let state = app.key(&state, KeyCode::Down);
+    let frame = crate::captures::frame(&state, 120, 36).join("\n");
+    assert!(
+        frame.contains("▸a") && frame.contains("Abort"),
+        "the cursor on `a` Abort\n{frame}"
+    );
+    let state = app.key(&state, KeyCode::Enter);
+    let frame = crate::captures::frame(&state, 120, 36).join("\n");
+    assert!(
+        frame.contains("Abort the rebase?"),
+        "the abort preview\n{frame}"
+    );
+    assert!(state.operating.is_none(), "nothing written");
+    drop(state);
+    app.close();
+    assert_eq!(git(path, &["rev-parse", "HEAD"]), head, "HEAD unchanged");
+    assert!(rebasing(path), "still stopped");
+}

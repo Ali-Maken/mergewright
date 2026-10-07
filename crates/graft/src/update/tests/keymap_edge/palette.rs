@@ -165,7 +165,13 @@ fn j5_help_then_a_key_puts_what_it_does_first() {
     let (_, label, key, target) = walk.under_cursor();
     assert_eq!(label, "Compare against a marked base");
     assert_eq!(key.as_deref(), Some("x"));
-    assert_eq!(target, PaletteTarget::Action(ActionId("graph.compare")));
+    assert_eq!(
+        target,
+        PaletteTarget::Action {
+            id: ActionId("graph.compare"),
+            ctx: graft_ui::keymap::ContextId::Graph
+        }
+    );
     assert!(walk.inputs <= 2, "{} inputs", walk.inputs);
 }
 
@@ -228,7 +234,13 @@ fn a_refusal_through_the_palette_reads_as_from_the_key() {
     start.refs = Some(Arc::new(detached));
     let typed = Walk::from(&start).press(ctrl_p()).typed("merge");
     let (_, _, _, target) = typed.under_cursor();
-    assert_eq!(target, PaletteTarget::Action(ActionId("graph.merge")));
+    assert_eq!(
+        target,
+        PaletteTarget::Action {
+            id: ActionId("graph.merge"),
+            ctx: graft_ui::keymap::ContextId::Graph
+        }
+    );
     let by_key = under_the_palette(&typed).char('m');
     let walk = typed.enter();
     assert!(walk.state.palette.is_none());
@@ -304,7 +316,7 @@ fn rows_are_spelled_with_what_the_key_does_in_that_place() {
         rows(&walk.state, palette)
             .into_iter()
             .flat_map(|(_, rows)| rows)
-            .find(|(_, target)| *target == PaletteTarget::Action(ActionId(action)))
+            .find(|(_, target)| matches!(target, PaletteTarget::Action { id, .. } if *id == ActionId(action)))
             .and_then(|(row, _)| row.key.map(|k| k.0))
     };
     assert_eq!(

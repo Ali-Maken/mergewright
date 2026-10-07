@@ -174,7 +174,7 @@ fn palette_key(state: &mut OutsideState, keymap: &Keymap, key: KeyPress) -> Outs
             state.palette = Some(open);
             outside_key(state, key)
         }
-        Edited::Run(PaletteTarget::Action(id)) => palette::default_chord(id)
+        Edited::Run(PaletteTarget::Action { id, .. }) => palette::default_chord(id)
             .map_or(OutsideStep::Stay, |chord| {
                 act(state, keymap, chord.to_press())
             }),

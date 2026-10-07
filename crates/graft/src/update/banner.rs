@@ -59,6 +59,7 @@ pub(crate) use stop::{edit_stop_of, progress_unread, read_rewrite_stop, stop_tak
 pub(super) use stop::{finished_lands_on, finished_lands_on_head, lands_on_changes};
 
 mod focus_keys;
+pub(super) use focus_keys::banner_press;
 pub(crate) use focus_keys::{abort_key, continue_abort};
 mod pressed;
 mod resume;

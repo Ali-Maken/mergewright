@@ -14,6 +14,15 @@ use crate::update::palette::{
     WIDE_ROWS, rows,
 };
 
+/// An action row as `⌃P` on the graph lists it: a row carries the context
+/// it was spelled in (m8/12e).
+fn on_graph(id: &'static str) -> PaletteTarget {
+    PaletteTarget::Action {
+        id: ActionId(id),
+        ctx: graft_ui::keymap::ContextId::Graph,
+    }
+}
+
 pub(super) fn oid(byte: u8) -> Oid {
     Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is an oid")
 }
@@ -420,9 +429,7 @@ fn empty_everything_field_names_what_it_finds() {
 #[test]
 fn help_palette_has_no_find_groups() {
     let mut state = start();
-    state
-        .palette_recent
-        .ran(PaletteTarget::Action(ActionId("graph.stash")));
+    state.palette_recent.ran(on_graph("graph.stash"));
     let (help, commands) = press(&state, plain(KeyCode::Char('?')));
     let (help, more) = typed(&help, "feat");
     assert!(names_asked(&commands).is_empty() && names_asked(&more).is_empty());
@@ -443,9 +450,7 @@ fn help_palette_has_no_find_groups() {
 fn recent_group_header_is_commands_run_recently() {
     assert_eq!(RECENT_HEADER, "COMMANDS RUN RECENTLY");
     let mut state = start();
-    state
-        .palette_recent
-        .ran(PaletteTarget::Action(ActionId("graph.stash")));
+    state.palette_recent.ran(on_graph("graph.stash"));
     let (open, _) = press(&state, ctrl_p());
     let frame = crate::view::tests::draw(&open, 120, 36);
     assert!(frame.contains("COMMANDS RUN RECENTLY"), "{frame}");
@@ -516,24 +521,17 @@ fn recent_runs_cap_and_order() {
         "graph.cherry_pick",
     ];
     for id in ids {
-        recent.ran(PaletteTarget::Action(ActionId(id)));
+        recent.ran(on_graph(id));
     }
     let kept: Vec<PaletteTarget> = recent.iter().collect();
     assert_eq!(kept.len(), RECENT_CAP);
-    assert_eq!(
-        kept[0],
-        PaletteTarget::Action(ActionId("graph.cherry_pick")),
-        "newest first"
-    );
-    assert!(
-        !kept.contains(&PaletteTarget::Action(ActionId("graph.stash"))),
-        "oldest dropped"
-    );
-    recent.ran(PaletteTarget::Action(ActionId("graph.pull")));
+    assert_eq!(kept[0], on_graph("graph.cherry_pick"), "newest first");
+    assert!(!kept.contains(&on_graph("graph.stash")), "oldest dropped");
+    recent.ran(on_graph("graph.pull"));
     let kept: Vec<PaletteTarget> = recent.iter().collect();
     assert_eq!(
         kept[0],
-        PaletteTarget::Action(ActionId("graph.pull")),
+        on_graph("graph.pull"),
         "a rerun moves to the front"
     );
     assert_eq!(kept.len(), RECENT_CAP, "distinct");
@@ -549,7 +547,7 @@ fn recent_runs_cap_and_order() {
     assert!(
         recent
             .iter()
-            .all(|t| matches!(t, PaletteTarget::Action(_) | PaletteTarget::App(_)))
+            .all(|t| matches!(t, PaletteTarget::Action { .. } | PaletteTarget::App(_)))
     );
 }
 
@@ -802,9 +800,7 @@ fn an_answer_with_nothing_found_leaves_no_group() {
 /// matching it, every source answered (12b).
 fn rebase_found() -> AppState {
     let mut state = start();
-    state
-        .palette_recent
-        .ran(PaletteTarget::Action(ActionId("graph.rebase")));
+    state.palette_recent.ran(on_graph("graph.rebase"));
     let (open, commands) = press(&state, ctrl_p());
     let (open, _) = produced(
         &open,

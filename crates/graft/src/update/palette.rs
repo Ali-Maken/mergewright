@@ -172,11 +172,13 @@ pub(crate) struct RecentRuns(VecDeque<PaletteTarget>);
 impl RecentRuns {
     /// `target` was run from the palette: to the front, once. Only actions
     /// and app rows are commands; a seek or a note is not kept.
+    /// Kept with the context it ran in; one command is kept once whatever
+    /// context it ran in ([`same_command`]).
     pub(crate) fn ran(&mut self, target: PaletteTarget) {
-        if !matches!(target, PaletteTarget::Action(_) | PaletteTarget::App(_)) {
+        if !matches!(target, PaletteTarget::Action { .. } | PaletteTarget::App(_)) {
             return;
         }
-        self.0.retain(|kept| *kept != target);
+        self.0.retain(|kept| !same_command(*kept, target));
         self.0.push_front(target);
         self.0.truncate(RECENT_CAP);
     }
@@ -184,6 +186,16 @@ impl RecentRuns {
     /// Newest first.
     pub(crate) fn iter(&self) -> impl Iterator<Item = PaletteTarget> + '_ {
         self.0.iter().copied()
+    }
+}
+
+/// The same command, whatever context its row was spelled in: an action by
+/// its id, anything else by equality. COMMANDS RUN RECENTLY keeps commands,
+/// and draws each as ACTIONS spells it now (`recent_rows`).
+fn same_command(a: PaletteTarget, b: PaletteTarget) -> bool {
+    match (a, b) {
+        (PaletteTarget::Action { id: a, .. }, PaletteTarget::Action { id: b, .. }) => a == b,
+        (a, b) => a == b,
     }
 }
 
@@ -200,8 +212,10 @@ pub(crate) enum AppAction {
 /// What `⏎` on a row does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum PaletteTarget {
-    /// Run this action as its default chord would.
-    Action(ActionId),
+    /// Run this action as its default chord would **in `ctx`**, the
+    /// context its row was spelled in (m8/12e): `Banner` for `IN PROGRESS`
+    /// rows, else the place the palette was opened on.
+    Action { id: ActionId, ctx: ContextId },
     /// An app row.
     App(AppAction),
     /// A `YOUR CONFIG` row: nothing to run; `⏎` closes. Also a find
@@ -233,6 +247,9 @@ pub(crate) struct Source<'a> {
     pub problems: &'a [String],
     /// An operation is live: `IN PROGRESS` comes first under `?`.
     pub operation_live: bool,
+    /// The live operation can skip a step: not a merge, which has no `s`
+    /// (the banner's hint bar drops it too, `hints::catalogue`).
+    pub skippable: bool,
     /// COMMANDS RUN RECENTLY, under `⌃P`.
     pub recent: &'a RecentRuns,
     /// There is a repository to find in: `⌃P` lists the find groups. The
@@ -358,6 +375,8 @@ fn source_of(state: &AppState) -> Source<'_> {
         keymap: &state.keymap,
         problems: &state.config_problems,
         operation_live: super::banner::live(state).is_some(),
+        skippable: super::banner::live(state)
+            .is_some_and(|live| live.kind != graft_git::state::InProgress::Merge),
         recent: &state.palette_recent,
         finds: true,
         tags_read: state.refs.is_some(),
@@ -371,6 +390,7 @@ pub(crate) fn outside_source<'a>(keymap: &'a Keymap, problems: &'a [String]) -> 
         keymap,
         problems,
         operation_live: false,
+        skippable: false,
         recent: &NO_RECENT,
         finds: false,
         tags_read: false,
@@ -680,7 +700,12 @@ fn groups(source: &Source<'_>, palette: &PaletteState) -> Vec<(&'static str, Vec
             .in_context(ContextId::Banner)
             .into_iter()
             .filter(|(b, _)| listed(b))
-            .filter_map(|(b, _)| key_in(keymap, ContextId::Banner, b).map(|key| action(b, key)))
+            // A merge has no step to skip: its banner answers `s` only with
+            // a refusal, so the row is not offered.
+            .filter(|(b, _)| source.skippable || b.action != ActionId("operation.skip"))
+            .filter_map(|(b, _)| {
+                key_in(keymap, ContextId::Banner, b).map(|key| action(b, key, ContextId::Banner))
+            })
             .collect()
     } else {
         Vec::new()
@@ -715,7 +740,7 @@ fn groups(source: &Source<'_>, palette: &PaletteState) -> Vec<(&'static str, Vec
 fn recent_rows(recent: &RecentRuns, actions: &[Entry]) -> Vec<Entry> {
     recent
         .iter()
-        .filter_map(|target| actions.iter().find(|e| e.target == target))
+        .filter_map(|target| actions.iter().find(|e| same_command(e.target, target)))
         .map(|entry| Entry {
             row: PaletteRow {
                 kind: RowKind::Recent,
@@ -761,12 +786,12 @@ fn place_rows(keymap: &Keymap, at: ContextId, global: bool, taken: &[ActionId]) 
         .reachable(at)
         .into_iter()
         .filter(|(b, _)| wanted(b))
-        .filter_map(|(b, _)| key_in(keymap, at, b).map(|key| action(b, key)))
+        .filter_map(|(b, _)| key_in(keymap, at, b).map(|key| action(b, key, at)))
         .collect();
     let own = if global { ContextId::Global } else { at };
     for (b, _) in keymap.in_context(own) {
         if wanted(b) && key_in(keymap, at, b).is_none() {
-            out.push(action(b, KeyLabel("—".to_owned())));
+            out.push(action(b, KeyLabel("—".to_owned()), at));
         }
     }
     out
@@ -792,7 +817,8 @@ fn key_in(keymap: &Keymap, at: ContextId, binding: &Binding) -> Option<KeyLabel>
         .map(KeyChord::label)
 }
 
-fn action(binding: &Binding, key: KeyLabel) -> Entry {
+/// A row for `binding`, spelled `key` in `ctx`, where `⏎` runs it.
+fn action(binding: &Binding, key: KeyLabel, ctx: ContextId) -> Entry {
     Entry {
         row: PaletteRow {
             label: sanitize_line(binding.label),
@@ -800,14 +826,17 @@ fn action(binding: &Binding, key: KeyLabel) -> Entry {
             config: Some(binding.action),
             kind: RowKind::Action,
         },
-        target: PaletteTarget::Action(binding.action),
+        target: PaletteTarget::Action {
+            id: binding.action,
+            ctx,
+        },
         search: binding.search,
     }
 }
 
 fn action_of(entry: &Entry) -> Option<ActionId> {
     match entry.target {
-        PaletteTarget::Action(id) => Some(id),
+        PaletteTarget::Action { id, .. } => Some(id),
         PaletteTarget::App(_)
         | PaletteTarget::Note
         | PaletteTarget::Seek(_)
@@ -1207,8 +1236,10 @@ fn flat(groups: Vec<Group>) -> Vec<Flat> {
 
 /// Apply `change` to the open palette, keeping the cursor on its row (its
 /// group's header and what it runs). A cursor on a placeholder moves to
-/// the first runnable row of that group once one lands, else stays on the
-/// placeholder; failing both, the index, clamped.
+/// the first real row once one lands (design note :177): its own group's
+/// first runnable row, else the first runnable row in any group, in display
+/// order (m8/12e, review Major 2); with none anywhere it stays on the
+/// placeholder. Failing all, the index, clamped.
 fn landed(state: &mut AppState, change: impl FnOnce(&mut AppState, &mut PaletteState)) {
     let Some(mut palette) = state.palette.take() else {
         return;
@@ -1219,9 +1250,11 @@ fn landed(state: &mut AppState, change: impl FnOnce(&mut AppState, &mut PaletteS
     let found = anchor.and_then(|(header, row, target)| {
         let in_group = |(h, _, _): &&Flat| *h == header;
         if is_placeholder(&row, target) {
+            let runnable = |f: &&Flat| f.2 != PaletteTarget::Note;
             after
                 .iter()
-                .position(|f| in_group(&f) && f.2 != PaletteTarget::Note)
+                .position(|f| in_group(&f) && runnable(&f))
+                .or_else(|| after.iter().position(|f| runnable(&f)))
                 .or_else(|| {
                     after
                         .iter()
@@ -1247,9 +1280,20 @@ fn run(
 ) {
     state.palette_recent.ran(target);
     match target {
-        PaletteTarget::Action(id) => {
+        // In the context the row was spelled in (m8/12e): an `IN PROGRESS`
+        // row is the banner's key whether or not the banner has focus, and
+        // focus stays where it was. Any other row is its place's key.
+        PaletteTarget::Action { id, ctx } => {
             if let Some(chord) = default_chord(id) {
-                super::dispatch_key(state, commands, chord.to_press());
+                if ctx == ContextId::Banner {
+                    let mut local_jobs = state.local_jobs;
+                    super::banner::banner_press(state, commands, chord.to_press(), &mut || {
+                        local_jobs.next_id()
+                    });
+                    state.local_jobs = local_jobs;
+                } else {
+                    super::dispatch_key(state, commands, chord.to_press());
+                }
             }
         }
         PaletteTarget::App(AppAction::Theme(kind)) => commands.push(Command::Retheme(kind)),
@@ -1460,3 +1504,6 @@ fn double_clicked(
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

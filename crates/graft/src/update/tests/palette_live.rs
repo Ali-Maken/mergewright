@@ -35,7 +35,7 @@ fn listed_keys(state: &AppState) -> Option<(ContextId, Vec<(ActionId, KeyChord)>
         .into_iter()
         .flat_map(|(_, group)| group)
         .filter_map(|(row, target)| {
-            let PaletteTarget::Action(id) = target else {
+            let PaletteTarget::Action { id, .. } = target else {
                 return None;
             };
             let label = row.key?.0;
