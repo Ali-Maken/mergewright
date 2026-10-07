@@ -44,7 +44,7 @@ Right: (a) `B L ⏎` then `Tab` to the graph — the bar leads `esc back to hist
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- esc back to history · ⏎ open · o take · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · . more
+ esc back to history · ⏎ open · o take · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · ? keys
 COMMIT 2f48ca3 · Lina <lina@example.invalid> · 2019-06-07 00:00 +0000 · 7mo · parents 47593a5 · diff vs first parent · …
 Retry refresh once on 401
 ▾ src/                        impl Session {
@@ -214,7 +214,7 @@ what right looks like: Ticket 07d: an `edit` stop on his a3 of 5, Sara's feature
 
 
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · r rebase · t tag · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · . more
+ ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · r rebase · t tag · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · ? keys
 
 ================================================================================
 docs/shots/m7/rewrite-edit-stop-120x40.txt
@@ -260,7 +260,7 @@ what right looks like: Ticket 07b/07c/07d: the `edit` stop at 120x40: banner wit
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · r rebase · t tag · y sha · m merge · . more
+ ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · r rebase · t tag · y sha · m merge · ? keys
 
 ================================================================================
 docs/shots/m7/rewrite-edit-stop-80x24.txt
@@ -290,7 +290,7 @@ what right looks like: Ticket 07d: the `edit` stop at 80x24, his 10 rows + Sara'
 ▸   ◆    [HEAD] a3  HEAD · stopped here                            2d   7326de5
     ●    a2                                                        2d   15335d9
     ●    a1                                                        2d   0395451
- ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · . more
+ ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · ? keys
 
 ================================================================================
 docs/shots/m7/rewrite-editor-187x50.txt
@@ -636,7 +636,7 @@ what right looks like: Ticket 11: `.` on HEAD's row (main). Slot 1 `Checkout —
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · . more
+ ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · ? keys
 
 ================================================================================
 docs/shots/m7/30b-staging-not-kept-187x50.txt
@@ -924,7 +924,7 @@ what right looks like: Detail pane's radar block starts `radar: not checked — 
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · B blame · F history · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · . more
+ ⏎ open · B blame · F history · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · ? keys
 COMMIT 2c59061 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:01 +0000 · 5m · parents a82960b · diff vs firs…
 add notes · radar: not checked — commit b32274b is not in the repository · ctrl+r to try again
 M notes.txt             +1 −1 ▎

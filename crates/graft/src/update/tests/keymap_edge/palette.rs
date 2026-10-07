@@ -352,3 +352,207 @@ fn capture_help_and_palette() {
         );
     }
 }
+
+// --- m8/11b: the doorway, the bar rows, the mouse ---
+
+/// `state` at `columns` × `rows`.
+fn at_size(state: AppState, columns: u16, rows: u16) -> AppState {
+    AppState {
+        size: Size { columns, rows },
+        ..state
+    }
+}
+
+/// The hint bar row of a drawn frame: its last line, without the quotes
+/// `TestBackend` puts round each.
+fn bar_of(frame: &str) -> String {
+    frame
+        .lines()
+        .last()
+        .expect("a frame has rows")
+        .trim_matches('"')
+        .trim_end()
+        .to_owned()
+}
+
+/// Row 163 (decision 2): at 80×24 the graph's bar ends `? keys`; `space`,
+/// `1` and `H`, which the width may drop, are listed by `?` under HERE.
+/// Also `docs/shots/m8-help-80x24.txt`: what right looks like — the bar
+/// ending `? keys`, then the same screen with `?` open, `HERE` first.
+/// Colour unverified (rule 5).
+#[test]
+fn at_80_the_bar_ends_with_keys_and_help_lists_what_it_dropped() {
+    let start = at_size(on_a_branch_row(), 80, 24);
+    let before = crate::view::tests::draw(&start, 80, 24);
+    let bar = bar_of(&before);
+    assert!(bar.ends_with("? keys"), "{bar:?}");
+    let walk = Walk::from(&start).char('?');
+    let palette = walk.state.palette.as_ref().expect("open");
+    let here: Vec<String> = rows(&walk.state, palette)
+        .into_iter()
+        .filter(|(header, _)| header.as_str() == "HERE")
+        .flat_map(|(_, rows)| rows)
+        .filter_map(|(row, _)| row.key.map(|k| k.0))
+        .collect();
+    for key in ["space", "1", "H"] {
+        assert!(
+            here.iter().any(|k| k == key),
+            "`{key}` under HERE: {here:?}"
+        );
+    }
+    let after = crate::view::tests::draw(&walk.state, 80, 24);
+    graft_fixtures::capture(
+        format!(
+            "{}/../../docs/shots/m8-help-80x24.txt",
+            env!("CARGO_MANIFEST_DIR")
+        ),
+        format!("{before}\n{after}"),
+    );
+}
+
+/// Row 538 (decision 3): the Detail tab under 100 columns (graph hidden)
+/// offers no `1 first-parent`; the graph's bar at 120 still does.
+#[test]
+fn the_detail_tab_offers_no_first_parent() {
+    use graft_ui::graph_screen::{Divider, hints_for};
+    let first_parent = |context: &HintContext| {
+        hints_for(context, Divider::Hidden, 240, Keymap::shipped())
+            .iter()
+            .any(|hint| hint.verb == "first-parent")
+    };
+    let tab = at_size(super::commit_pane(JobId::new(703), true), 80, 48);
+    assert_eq!(
+        crate::update::detail::tab_hint_rows(&tab),
+        1,
+        "the tab layout"
+    );
+    let context = crate::view::rows::pane_hint_context(&tab);
+    assert!(!first_parent(&context), "{context:?}");
+    // The graph at 120: its bar still offers `1` (the width may drop it;
+    // `?` lists it).
+    let graph = at_size(on_a_branch_row(), 120, 40);
+    let context = crate::view::rows::pane_hint_context(&graph);
+    assert!(first_parent(&context), "{context:?}");
+}
+
+fn mouse(state: &AppState, kind: graft_core::event::MouseKind, column: u16, row: u16) -> Walk {
+    let (after, commands) = update(
+        state,
+        AppEvent::Core(Event::Mouse(graft_core::event::MouseInput {
+            kind,
+            column,
+            row,
+            modifiers: Modifiers::NONE,
+        })),
+    );
+    Walk {
+        state: after,
+        commands,
+        inputs: 1,
+    }
+}
+
+fn left() -> graft_core::event::MouseKind {
+    graft_core::event::MouseKind::Down(graft_core::event::MouseButton::Left)
+}
+
+/// The screen row the drawn palette shows `label` on, and a column inside
+/// the box: read off the real frame.
+fn drawn_row(state: &AppState, label: &str) -> (u16, u16) {
+    let frame = crate::view::tests::draw(state, state.size.columns, state.size.rows);
+    let row = frame
+        .lines()
+        .position(|line| line.contains(label))
+        .unwrap_or_else(|| panic!("`{label}` drawn\n{frame}"));
+    (
+        state.size.columns / 2,
+        u16::try_from(row).expect("a screen row"),
+    )
+}
+
+fn at_second(state: AppState, seconds: i64) -> AppState {
+    let mut state = state;
+    state.harness.clock = crate::session::Clock::Fixed(seconds);
+    state
+}
+
+/// Decision 6: a click on a row moves the cursor there and runs nothing.
+#[test]
+fn a_click_in_the_palette_moves_the_cursor_only() {
+    let start = at_second(sized_to_draw(on_a_branch_row()), 1_000);
+    let open = Walk::from(&start).char('?');
+    let before = open.state.palette.as_ref().expect("open").cursor;
+    let (column, row) = drawn_row(&open.state, "graph.fetch");
+    let clicked = mouse(&open.state, left(), column, row);
+    let palette = clicked.state.palette.as_ref().expect("still open");
+    assert_ne!(palette.cursor, before);
+    let (_, label, _, _) = clicked.under_cursor();
+    assert_eq!(label, "Fetch");
+    assert!(clicked.commands.is_empty(), "{:?}", clicked.commands);
+}
+
+/// Decision 6: J6's row double-clicked does what `S` does.
+#[test]
+fn a_double_click_runs_the_row_as_its_key() {
+    let start = at_second(sized_to_draw(on_a_branch_row()), 1_000);
+    let typed = Walk::from(&start).press(ctrl_p()).typed("stash");
+    let (column, row) = drawn_row(&typed.state, "Stash…");
+    let once = mouse(&typed.state, left(), column, row);
+    assert!(once.state.palette.is_some(), "one click runs nothing");
+    let twice = mouse(&once.state, left(), column, row);
+    assert!(twice.state.palette.is_none(), "closed after running");
+    let by_key = Walk::from(&start).char('S');
+    assert_eq!(twice.commands, by_key.commands);
+    assert_eq!(
+        crate::view::tests::draw(&twice.state, 120, 36),
+        crate::view::tests::draw(&by_key.state, 120, 36),
+        "the same screen as pressing S"
+    );
+}
+
+/// Decision 6: the wheel moves the cursor, clamped at the top.
+#[test]
+fn the_wheel_moves_the_palette_cursor() {
+    use graft_core::event::MouseKind;
+    let open = Walk::from(&sized_to_draw(on_a_branch_row())).char('?');
+    let at = open.state.palette.as_ref().expect("open").cursor;
+    let down = mouse(&open.state, MouseKind::ScrollDown, 60, 10);
+    assert_eq!(down.state.palette.as_ref().expect("open").cursor, at + 1);
+    let mut up = down;
+    for _ in 0..(at + 5) {
+        up = mouse(&up.state, MouseKind::ScrollUp, 60, 10);
+    }
+    assert_eq!(up.state.palette.as_ref().expect("open").cursor, 0);
+}
+
+/// Decision 6: a click outside the palette closes it with nothing run,
+/// and reaches nothing behind it.
+#[test]
+fn a_click_outside_the_palette_closes_it() {
+    let open = Walk::from(&sized_to_draw(on_a_branch_row())).char('?');
+    let cursor = open.state.history.as_ref().expect("a walk").cursor;
+    // The bottom-left cell: the bar row, outside the box.
+    let clicked = mouse(&open.state, left(), 0, open.state.size.rows - 1);
+    assert!(clicked.state.palette.is_none(), "closed");
+    assert!(clicked.commands.is_empty(), "{:?}", clicked.commands);
+    assert_eq!(
+        clicked.state.history.as_ref().expect("a walk").cursor,
+        cursor
+    );
+}
+
+/// Decision 6: the palette is first in the mouse routing — opened over the
+/// `.` menu, a click on a palette row is the palette's, not the menu's.
+/// (The branch picker is a text field: `?` types into it, so the palette
+/// never stands over it — `palette::open_key`.)
+#[test]
+fn the_palette_takes_the_click_before_the_menu() {
+    let start = at_second(sized_to_draw(on_a_branch_row()), 1_000);
+    let open = Walk::from(&start).char('.').char('?');
+    assert!(open.state.context_menu.is_some(), "the menu is still up");
+    let (column, row) = drawn_row(&open.state, "graph.fetch");
+    let clicked = mouse(&open.state, left(), column, row);
+    let (_, label, _, _) = clicked.under_cursor();
+    assert_eq!(label, "Fetch");
+    assert!(clicked.commands.is_empty(), "{:?}", clicked.commands);
+}

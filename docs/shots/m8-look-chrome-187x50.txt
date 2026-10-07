@@ -1,4 +1,4 @@
-m8-polish-and-ship/06 at 187x50: what right looks like — the first row is ` ◆ <repo>  ~/<path> · <branch>` with the walk state right-aligned; list rows start two cells in and stop one short of the edge; the bar joins its hints with ` · ` and ends `. more`; from 30 rows a blank row sits under the header and a `─` rule over the bar. Colour unverified (rule 5).
+m8-polish-and-ship/06 at 187x50: what right looks like — the first row is ` ◆ <repo>  ~/<path> · <branch>` with the walk state right-aligned; list rows start two cells in and stop one short of the edge; the bar joins its hints with ` · ` and ends `? keys`; from 30 rows a blank row sits under the header and a `─` rule over the bar. Colour unverified (rule 5).
 
  ◆ api  ~/code/api · main                                                                                                                                                       10 commits
 
@@ -49,4 +49,4 @@ m8-polish-and-ship/06 at 187x50: what right looks like — the first row is ` �
 
 
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · / search · R rewrite · q quit · F2 stat · F3 rend · . more
+ m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · / search · R rewrite · q quit · F2 stat · F3 rend · ? keys

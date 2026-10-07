@@ -19,10 +19,14 @@ pub(super) const WHEEL_LINES: isize = 3;
 
 /// The half of [`super::core_event`] that answers the mouse (DESIGN.md §2.15).
 pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mouse: MouseInput) {
-    // A click acknowledges a status line exactly as a key does; motion, the
-    // wheel and a release do not (the pointer passing over is not an act).
+    // A click acknowledges a status line as a key does; motion, the wheel
+    // and a release do not (the pointer passing over is not an act).
     if matches!(mouse.kind, MouseKind::Down(_)) {
         super::keys::acknowledge(next);
+    }
+    // The palette (§2.12, modal over every place) first (m8/11b).
+    if super::palette::palette_mouse(next, commands, mouse) {
+        return;
     }
     // The conflict resolver first, and it claims **every** mouse event
     // while it is open (m6-conflicts/04). Nothing below this line checks
@@ -81,30 +85,7 @@ pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mous
         MouseKind::ScrollUp => wheel(next, commands, mouse.column, mouse.row, -WHEEL_LINES),
         MouseKind::ScrollDown => wheel(next, commands, mouse.column, mouse.row, WHEEL_LINES),
         MouseKind::Down(MouseButton::Left) => left_click(next, commands, mouse),
-        MouseKind::Down(MouseButton::Right) => {
-            // Reuses the graph's existing click-to-row mapping, not a new
-            // one (`context-actions-menu`, m2-details-and-diffs/12).
-            //
-            // A right-click **picks** the row before it opens the menu, the
-            // same `select_row` a left click runs. Every verb in the app
-            // acts on the cursor — including the letters the menu hands back
-            // down `key_event` (m5-history-and-ghost-preview/13) — so a menu
-            // opened somewhere the cursor is not would label one commit and
-            // move another. That was the bug: `y` copied the cursor's sha
-            // under a label naming the clicked one, silently
-            // (m5-history-and-ghost-preview/18 F1). Moving the cursor here
-            // keeps "the current row" a single value instead of adding a
-            // second one for the menu to carry.
-            if let Some(row) = geometry::graph_row_at(next, mouse.row) {
-                select_graph_row(next, commands, row);
-                context_menu::open_for_history_row(next, row);
-            } else if crate::view::uncommitted_shown(next)
-                && mouse.row == geometry::rows_above_graph(next)
-            {
-                next.on_working_tree = true;
-                context_menu::open_for_working_tree(next);
-            }
-        }
+        MouseKind::Down(MouseButton::Right) => right_click(next, commands, mouse),
         MouseKind::Drag(MouseButton::Left) if next.detail.dragging => {
             drag_divider(next, commands, mouse.column, mouse.row);
         }
@@ -113,6 +94,31 @@ pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mous
         // no button held — hover, not a drag.
         MouseKind::Moved => next.hover = geometry::graph_row_at(next, mouse.row),
         _ => {}
+    }
+}
+
+/// A right button down: picks the row, then opens its menu.
+fn right_click(next: &mut AppState, commands: &mut Vec<Command>, mouse: MouseInput) {
+    // Reuses the graph's existing click-to-row mapping, not a new
+    // one (`context-actions-menu`, m2-details-and-diffs/12).
+    //
+    // A right-click **picks** the row before it opens the menu, the
+    // same `select_row` a left click runs. Every verb in the app
+    // acts on the cursor — including the letters the menu hands back
+    // down `key_event` (m5-history-and-ghost-preview/13) — so a menu
+    // opened somewhere the cursor is not would label one commit and
+    // move another. That was the bug: `y` copied the cursor's sha
+    // under a label naming the clicked one, silently
+    // (m5-history-and-ghost-preview/18 F1). Moving the cursor here
+    // keeps "the current row" a single value instead of adding a
+    // second one for the menu to carry.
+    if let Some(row) = geometry::graph_row_at(next, mouse.row) {
+        select_graph_row(next, commands, row);
+        context_menu::open_for_history_row(next, row);
+    } else if crate::view::uncommitted_shown(next) && mouse.row == geometry::rows_above_graph(next)
+    {
+        next.on_working_tree = true;
+        context_menu::open_for_working_tree(next);
     }
 }
 

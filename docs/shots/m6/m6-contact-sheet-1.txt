@@ -974,7 +974,7 @@ what right looks like: (ticket 12) After `Esc` from the resolver a stop lands in
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⇥ banner · c finish · m merge · r rebase · ⏎ open · b branch · t tag · P push · p pull · f fetch · u undo · . more
+ ⇥ banner · c finish · m merge · r rebase · ⏎ open · b branch · t tag · P push · p pull · f fetch · u undo · ? keys
 
 ================================================================================
 docs/shots/m6/fix-landing-after-esc-187x50.txt
@@ -1030,7 +1030,7 @@ what right looks like: (ticket 12) The same at 187x50: the last row lists `⇥ b
 
 
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⇥ banner · c finish · m merge · r rebase · ⏎ open · b branch · t tag · P push · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · F3 rend · x compare · + lane · . more
+ ⇥ banner · c finish · m merge · r rebase · ⏎ open · b branch · t tag · P push · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · F3 rend · x compare · + lane · ? keys
 
 ================================================================================
 docs/shots/m6/fix-landing-b-launch-120x40.txt

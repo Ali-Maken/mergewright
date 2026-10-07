@@ -4099,7 +4099,7 @@ fn every_key_the_bar_draws_is_answered() {
 /// overlays and both focuses, a bar of the graph's verbs with every one of
 /// them dead: `b branch`, `r rebase`, `t tag`, `c commit`, `y sha`,
 /// `m merge`, `q quit`, `F2 status`, `F3 renderer`, `x compare`,
-/// `+ lanes`, `. more` — the overlay's `shown_key` claims the keyboard
+/// `+ lanes`, `? keys` — the overlay's `shown_key` claims the keyboard
 /// before `graph_key` ever runs.
 #[test]
 fn the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows() {
@@ -4358,6 +4358,7 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
             opens: *opens,
             blamable: *blamable,
             folds: *folds,
+            graph_hidden: false,
         }),
         // The inner bar, led by the way back.
         HintContext::BackToBlame(inner) => {

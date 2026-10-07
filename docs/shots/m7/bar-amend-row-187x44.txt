@@ -3,4 +3,4 @@
 # Right: cursor on HEAD's row; bar reads `⏎ open  c commit  P push  p pull  f fetch  a amend …`; no `o`.
 #
 Rewritable(BranchRow { current: true, verbs: RowVerbs { take: false, amend: true } })
-" ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · / search · R rewrite · q quit · F2 stat · F3 rend · x compare · . more"
+" ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · / search · R rewrite · q quit · F2 stat · F3 rend · x compare · ? keys"

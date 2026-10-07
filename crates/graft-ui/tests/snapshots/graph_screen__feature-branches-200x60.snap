@@ -61,4 +61,4 @@ expression: text
 
 
 
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · + lane · j/k move · space fold · . more
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · + lane · j/k move · space fold · ? keys

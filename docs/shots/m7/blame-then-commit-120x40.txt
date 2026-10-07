@@ -21,7 +21,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- esc back to blame · B blame · F history · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · . more
+ esc back to blame · B blame · F history · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · ? keys
 COMMIT 2f48ca3 · Lina <lina@example.invalid> · 2019-06-07 00:00 +0000 · 7mo · parents 47593a5 · diff vs first parent · …
 Retry refresh once on 401
 ▾ src/                        impl Session {

@@ -5,7 +5,7 @@
 # three most relevant hints keep their whole verbs; every hint after them
 # is drawn at its bare key until the whole context is on the bar, and only
 # then do the tail's keys start gaining verbs, left to right. A hint that
-# will not fit even at its bare key is dropped, and `. more` — the doorway
+# will not fit even at its bare key is dropped, and `? keys` — the doorway
 # — is never dropped and **sits at the head of the bare keys**, which is
 # the end of the row when there are none.
 #
@@ -13,14 +13,14 @@
 # naked letters after three labelled hints read as *leftover*, and the
 # user chose variant B, which is what is built here. Every labelled item
 # is now contiguous and the last of them announces the menu, so everything
-# after `. more` reads as keys the menu will spell out — which is what
+# after `? keys` reads as keys the menu will spell out — which is what
 # they are. That resolves `space` and `j/k` in the tail too: the region is
 # labelled even though its members are not. It cost no cells and no glyph.
 # The A/B comparison that used to sit at the bottom of this file is gone
 # with the question.
 #
 # The bottom of the ladder, which these widths are all far above:
-# floor → `. more` → `.` → nothing. The bar never draws a fragment of
+# floor → `? keys` → `?` → nothing. The bar never draws a fragment of
 # itself at any width. The narrowest bar anything reachable actually has
 # is 48 cells and the tightest context's floor fits in 38, so nothing
 # below is near it (ADR-0039).
@@ -46,23 +46,23 @@
 
 --- the cursor is on the uncommitted-changes row
 [······························ 80 cells of bar ·······························]
- ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · . more
+ ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · ? keys
 
 --- the cursor is on the tip, which carries the current branch's badge
 [······························ 80 cells of bar ·······························]
- ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · . more
+ ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · ? keys
 
 --- the cursor is on another branch's tip
 [······························ 80 cells of bar ·······························]
- m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · . more
+ m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · ? keys
 
 --- the cursor is on an ordinary commit row
 [······························ 80 cells of bar ·······························]
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · . more
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · ? keys
 
 --- the changes pane has focus, the divider draggable
 [······························ 80 cells of bar ·······························]
- space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · ? keys
 
 --- the undo journal browser has focus
 [······························ 80 cells of bar ·······························]
@@ -72,23 +72,23 @@
 
 --- the cursor is on the uncommitted-changes row
 [·················································· 120 cells of bar ··················································]
- ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · J journal · / search · j/k move · q quit · . more
+ ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · J journal · / search · j/k move · q quit · ? keys
 
 --- the cursor is on the tip, which carries the current branch's badge
 [·················································· 120 cells of bar ··················································]
- ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · . more
+ ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · ? keys
 
 --- the cursor is on another branch's tip
 [·················································· 120 cells of bar ··················································]
- m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · . more
+ m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · ? keys
 
 --- the cursor is on an ordinary commit row
 [·················································· 120 cells of bar ··················································]
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · . more
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
 
 --- the changes pane has focus, the divider draggable
 [·················································· 120 cells of bar ··················································]
- space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . actions · ? keys
 
 --- the undo journal browser has focus
 [·················································· 120 cells of bar ··················································]
@@ -98,23 +98,23 @@
 
 --- the cursor is on the uncommitted-changes row
 [······································································ 160 cells of bar ······································································]
- ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · J journal · / search · j/k move · q quit · F2 stat · F3 rend · + lane · 1 first · . more
+ ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · J journal · / search · j/k move · q quit · F2 stat · F3 rend · + lane · 1 first · ? keys
 
 --- the cursor is on the tip, which carries the current branch's badge
 [······································································ 160 cells of bar ······································································]
- ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · . more
+ ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · ? keys
 
 --- the cursor is on another branch's tip
 [······································································ 160 cells of bar ······································································]
- m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · F3 rend · . more
+ m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · F3 rend · ? keys
 
 --- the cursor is on an ordinary commit row
 [······································································ 160 cells of bar ······································································]
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · . more
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · ? keys
 
 --- the changes pane has focus, the divider draggable
 [······································································ 160 cells of bar ······································································]
- space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . actions · ? keys
 
 --- the undo journal browser has focus
 [······································································ 160 cells of bar ······································································]
@@ -130,9 +130,9 @@
 #
 # It cannot be shown at 80, 120 or 160 cells: the journal browser's whole
 # list is `⏎ revert  esc close`, two hints, and that fits whole (plus
-# `. more`) from about 28 cells of bar — every width in the three-width
+# `? keys`) from about 28 cells of bar — every width in the three-width
 # matrix above is past that, so the journal row there always reads
-# `⏎ revert  esc close  . more` in full, never `rev`. Below is the
+# `⏎ revert  esc close  ? keys` in full, never `rev`. Below is the
 # narrowest room `rev` actually appears in, computed the same way as
 # every row above: `hints_for`, nothing hand-set.
 

@@ -52,7 +52,7 @@ fn state_with_finding_at(mark: Oid) -> AppState {
     state
 }
 
-/// `. more` says the keys the bar dropped are behind `.`, so choosing
+/// `? keys` says the keys the bar dropped are behind `.`, so choosing
 /// one there must run what the key runs — the same function, not a
 /// second implementation (m5-03 review, Major 1).
 #[test]

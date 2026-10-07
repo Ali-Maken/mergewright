@@ -1,0 +1,35 @@
+ ◆ api  ~/code/api · detached 36c271e                         REBASING  step 1 of 1 · pick ea19160 feature edits shared
+            ╭─ keys here ─────────────────────────────────────────────────────────────────────── esc close ╮
+▸ ◌      Unc│ ›                                                                                            │
+    ●    [fe│ IN PROGRESS                                                                                  │y   ea19160
+  ◆ │  ⓘ [HE│▸c     Continue                                                           operation.continue  │y   36c271e
+  ●─╯    add│ s     Skip this commit                                                       operation.skip  │y   982c1d3
+  ●      Cor│ a     Abort                                                                 operation.abort  │y   a82960b
+  ●      Add│ M     Launch the mergetool on the first conflicted file                 operation.mergetool  │y   fadcfb3
+  ◇      Add│ e     Open the first conflicted file in $EDITOR                              operation.edit  │y   64ded19
+            │ EVERYWHERE                                                                                   │
+            │ ⌃P    Command palette                                                           app.palette  │
+            │ ?     Help for this place                                                          app.help  │
+            │ ⇥     Next pane                                                               app.next_pane  │
+            │ ⇧⇥    Previous pane                                                           app.prev_pane  │
+            │ esc   Back out / close / cancel                                                    app.back  │
+            │ u     Undo                                                                         app.undo  │
+            │ U     Redo                                                                         app.redo  │
+            │ ⌃R    Refresh                                                                   app.refresh  │
+            │ q     Quit                                                                         app.quit  │
+            │ ⌃C    Quit at once                                                             app.quit_now  │
+────────────╰──────────────────────────────────────────────────────────────────────────────────────────────╯────────────
+ ↑↓ move  ⏎ run  esc close
+UNCOMMITTED · 1 staged
+diff vs HEAD 36c271e
+STAGED (1)                    ▎
+  M shared.txt          +1 −1   1     - main's line
+                                    1 + both lines
+
+
+
+
+
+
+
+

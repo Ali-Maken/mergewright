@@ -350,9 +350,17 @@ const fn planned(keys: &'static [HintKey], verb: &'static str) -> Hint {
     }
 }
 
-/// Leads a truncated list: press `.` for the rest (the context-actions key,
-/// `docs/design/02-keymap.md` §2.1 "Rare verbs").
-const MORE: Hint = hint(hint_keys::MENU, "more");
+/// The bar's doorway (m8/11b decision 1, §2.12): `? keys` opens the palette
+/// on this place, which lists every key the width dropped. Drawn last, never
+/// dropped. Spelled from his keymap; with `app.help` unbound it falls back to
+/// [`DOORWAY_BY_PALETTE`], and with both unbound there is no doorway.
+pub(crate) const DOORWAY: Hint = hint(hint_keys::HELP, "keys");
+/// The doorway when `app.help` is unbound: `⌃P keys` (`app.palette`).
+pub(crate) const DOORWAY_BY_PALETTE: Hint = hint(hint_keys::PALETTE, "keys");
+/// `. actions`: the context menu, an ordinary candidate since m8/11b
+/// (§2.1: everything bound is a candidate). Ranked last before the doorway,
+/// so it is the first hint the width drops.
+pub(crate) const ACTIONS: Hint = hint(hint_keys::MENU, "actions");
 /// Leads a marked row's list: press `.` to explain the Mistake Radar finding
 /// (m2-details-and-diffs/17, design note "Marker column").
 const EXPLAIN: Hint = hint(hint_keys::MENU, "explain");
@@ -438,6 +446,14 @@ fn spelled_bar(
 ) -> (Vec<Hint>, Option<Hint>) {
     let (list, trailer) = whole_bar(context, divider);
     let list = spelled(list, keys);
+    // `? keys`, or `⌃P keys` when `?` is unbound (m8/11b decision 1).
+    let trailer = trailer.map(|door| {
+        if door == DOORWAY && DOORWAY.labels(keys).is_empty() {
+            DOORWAY_BY_PALETTE
+        } else {
+            door
+        }
+    });
     let trailer = trailer.filter(|door| {
         spelled(list.iter().copied().chain([*door]).collect(), keys).len() > list.len()
     });
@@ -553,6 +569,9 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
             // fitted first and prepended to second overflows by one hint.
             let mut list = vec![EXPLAIN];
             list.extend(drawable(inner, divider));
+            // No `? keys` here (m8/11b): it would cost the marked bar its
+            // `/ search` at 92 cells and `u undo` at 83; ruling asked for in
+            // the ticket NOTES.
             (list, None)
         }
         // The inner context's own bar, minus the key the focused pane has
@@ -565,14 +584,20 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
             opens,
             blamable,
             folds,
-        } => pane_focused_bar(row, *opens, *blamable, *folds, divider),
+            graph_hidden,
+        } => off_the_graph(
+            pane_focused_bar(row, *opens, *blamable, *folds, divider),
+            *graph_hidden,
+        ),
         HintContext::BackToBlame(inner) => led_by(BACK_TO_BLAME, inner, divider),
         HintContext::BackToHistory(inner) => led_by(BACK_TO_HISTORY, inner, divider),
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
         | HintContext::Rewritable(_)
-        | HintContext::ChangesPane { .. } => (drawable(context, divider), Some(MORE)),
+        | HintContext::ChangesPane { .. } => {
+            (with_actions(drawable(context, divider)), Some(DOORWAY))
+        }
         // The row's own bar with its `c` said the way it acts now, and —
         // while one `⇥` reaches the banner — the way back leading, so the
         // ladder's floor always holds it. Then the row's own `⇥` goes: one
@@ -594,6 +619,26 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
             (led, trailer)
         }
     }
+}
+
+/// A focused pane's bar on the Detail tab (`graph_hidden`) less
+/// `1 first-parent`, whose effect is on the hidden graph (m8/11b decision 3,
+/// ADR-0041 carve-out).
+fn off_the_graph(
+    (mut list, trailer): (Vec<Hint>, Option<Hint>),
+    graph_hidden: bool,
+) -> (Vec<Hint>, Option<Hint>) {
+    if graph_hidden {
+        list.retain(|hint| !hint.is(hint_keys::FIRST_PARENT));
+    }
+    (list, trailer)
+}
+
+/// `list` with `. actions` last: ranked after every other candidate, so the
+/// width drops it first (m8/11b decision 1).
+fn with_actions(mut list: Vec<Hint>) -> Vec<Hint> {
+    list.push(ACTIONS);
+    list
 }
 
 /// `inner`'s whole bar with `lead` in front: the way back to a place.

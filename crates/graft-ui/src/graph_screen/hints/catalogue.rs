@@ -4,8 +4,8 @@
 
 use super::lists::{TAIL, context_list};
 use super::{
-    BACK_TO_BLAME, BACK_TO_HISTORY, BLAME, ConfirmYes, EXPLAIN, F_HISTORY, FOLD, Hint, HintContext,
-    LiveC, MORE, RESIZE, RowVerbs, TabWord, WAY_BACK,
+    ACTIONS, BACK_TO_BLAME, BACK_TO_HISTORY, BLAME, ConfirmYes, DOORWAY, DOORWAY_BY_PALETTE,
+    EXPLAIN, F_HISTORY, FOLD, Hint, HintContext, LiveC, RESIZE, RowVerbs, TabWord, WAY_BACK,
 };
 use crate::conflict_resolver::SideRoles;
 
@@ -169,6 +169,7 @@ fn blame_forms() -> Vec<HintContext> {
             opens: false,
             blamable: true,
             folds: false,
+            graph_hidden: false,
         },
         HintContext::PaneFocused {
             row: Box::new(HintContext::PlainRow {
@@ -177,6 +178,7 @@ fn blame_forms() -> Vec<HintContext> {
             opens: true,
             blamable: false,
             folds: true,
+            graph_hidden: false,
         },
         HintContext::ChangesPane {
             unmerged: false,
@@ -488,20 +490,25 @@ fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
             // line or not. Never `folds` without `opens` (only the files
             // list folds), nor with `blamable` (a directory has no file to
             // blame): neither shape exists in the app.
+            // The last: the Detail tab, graph hidden (m8/11b decision 3).
             [
-                (true, true, false),
-                (true, false, true),
-                (true, false, false),
-                (false, true, false),
-                (false, false, false),
+                (true, true, false, false),
+                (true, false, true, false),
+                (true, false, false, false),
+                (false, true, false, false),
+                (false, false, false, false),
+                (false, false, false, true),
             ]
             .into_iter()
-            .map(|(opens, blamable, folds)| HintContext::PaneFocused {
-                row: Box::new(context.clone()),
-                opens,
-                blamable,
-                folds,
-            })
+            .map(
+                |(opens, blamable, folds, graph_hidden)| HintContext::PaneFocused {
+                    row: Box::new(context.clone()),
+                    opens,
+                    blamable,
+                    folds,
+                    graph_hidden,
+                },
+            )
             .collect()
         }
         HintContext::WorkingTreeRow
@@ -541,7 +548,9 @@ pub fn every_hint() -> Vec<Hint> {
         all.extend(context_list(&context));
     }
     all.extend(TAIL);
-    all.push(MORE);
+    all.push(DOORWAY);
+    all.push(DOORWAY_BY_PALETTE);
+    all.push(ACTIONS);
     all.push(EXPLAIN);
     all.push(RESIZE);
     all.push(WAY_BACK);

@@ -349,7 +349,7 @@ what right looks like: (ticket 85 A) `esc G` on a 200-commit history after the f
   ●    Commit 002                                                                                       GF 2d   ace211d
 ▸ ◇    Commit 001                                                                                       GF 2d   a9a0c8e
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · o take · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · . more
+ ⏎ open · o take · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · ? keys
 
 ================================================================================
 docs/shots/m6/stash-clash-take-esc-pane-120x40.txt
@@ -395,7 +395,7 @@ what right looks like: (ticket 85 B) `S p y esc ⏎ o esc`: a stash pop that cla
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- stash@{0} clashed · 1 file conflicted · ⏎ resolve · M mergetool · e edit · space resolved · c commit · ⇥ diff · . more
+ stash@{0} clashed · 1 file conflicted · ⏎ resolve · M mergetool · e edit · space resolved · c commit · ⇥ diff · ? keys
 UNCOMMITTED
 diff vs HEAD f3742ab
 CONFLICTS (1)

@@ -21,7 +21,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · B blame · F history · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · . more
+ ⏎ open · B blame · F history · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · ? keys
 COMMIT 2c59061 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:01 +0000 · 5m · parents a82960b · diff vs firs…
 add notes · radar: not checked — commit b32274b is not in the repository · ctrl+r to try again
 M notes.txt             +1 −1 ▎

@@ -32,4 +32,4 @@
 
 
 
- stash@{0} clashed · 1 conflicted · ⏎ changes · c commit · S stash · . more
+ stash@{0} clashed · 1 conflicted · ⏎ changes · c commit · S stash · ? keys

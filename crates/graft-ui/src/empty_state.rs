@@ -134,7 +134,16 @@ pub fn bar_keys(view: &EmptyStateView, keys: &Keymap) -> Vec<(String, &'static s
                 parts.push(("app.open", "open the selected"));
             }
             parts.push(("app.quit", "quit"));
-            spelled(keys, &parts)
+            // The doorway, last (m8/11b decision 1): `?` opens the palette
+            // on the list. `⌃P` when `?` is unbound; neither, no doorway.
+            let mut drawn = spelled(keys, &parts);
+            drawn.extend(
+                spelled(keys, &[("app.help", "keys")])
+                    .into_iter()
+                    .next()
+                    .or_else(|| spelled(keys, &[("app.palette", "keys")]).into_iter().next()),
+            );
+            drawn
         }
     }
 }

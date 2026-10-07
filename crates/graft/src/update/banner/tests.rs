@@ -1040,7 +1040,7 @@ fn did_the_verb(verb: &str, key: &str, before: &AppState, after: &AppState, comm
 /// `keys::bound_actions` — another table. Group 09 bound `c`/`s`/`a` in
 /// `banner_key` and flipped neither, so both tables were wrong in the same
 /// direction, agreed with each other, and passed while the footer under a
-/// modal banner taught `<> resize  . more` (m5/14, found on the way).
+/// modal banner taught `<> resize  ? keys` (m5/14, found on the way).
 ///
 /// This test cannot agree its way out of that: the only thing it compares
 /// the bar with is the dispatcher.

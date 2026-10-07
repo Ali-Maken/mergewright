@@ -21,7 +21,7 @@
   ◉─╮    Commit 63                                                                                      TE 57y  3f3f3f3
   ● │    Commit 62                                                                                      TE 57y  3e3e3e3
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · . more
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
 COMMIT 5050505 · Test <test@example.invalid> · 1970-01-01 00:01 +0000 · 57y · parents 4f4f4f4 · diff vs first p reading…
 Commit 80
                               reading…

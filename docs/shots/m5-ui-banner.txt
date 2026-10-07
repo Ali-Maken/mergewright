@@ -28,23 +28,23 @@
  ◆ api  /code/api · main                                   REBASING step 3 of 7
 ▸ ●    Commit 2                                                    2h   0202020
   ◇    Commit 1                                                    2h   0101010
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · . more
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · ? keys
 
 === 120x10 ===
  ◆ api  /code/api · main                                                                           REBASING step 3 of 7
 ▸ ●    Commit 2                                                                                         TE 2h   0202020
   ◇    Commit 1                                                                                         TE 2h   0101010
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · . more
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
 
 === 160x10 ===
  ◆ api  /code/api · main                                                                                                                   REBASING step 3 of 7
 ▸ ●    Commit 2                                                                                                                                 TE 2h   0202020
   ◇    Commit 1                                                                                                                                 TE 2h   0101010
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · . more
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · ? keys
 
 === a long path does not cut the banner, 120x10 ===
  ◆ billing-api  /media/archive/work/customers/acme/services/billing-api · main                     REBASING step 3 of 7
 ▸ ●    Commit 2                                                                                         TE 2h   0202020
   ◇    Commit 1                                                                                         TE 2h   0101010
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · . more
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
 

@@ -76,14 +76,14 @@ fn footer(state: &AppState, columns: u16, rows: u16) -> String {
 /// row only while the detail pane is closed or beside the graph: stacked
 /// below it (`DetailLayout::Below`, the layout at 120 columns) the pane's
 /// own rows come after. So it is found by its doorway instead of by
-/// position — every list the width rule cuts carries `. more`, though since
+/// position — every list the width rule cuts carries `? keys`, though since
 /// m5/28 it leads the bare keys rather than ending the row (ADR-0039), so
 /// this looks for it anywhere on the line.
 fn hint_bar(state: &AppState, columns: u16, rows: u16) -> Option<String> {
     frame(state, columns, rows)
         .into_iter()
         .rev()
-        .find(|line| line.contains(". more"))
+        .find(|line| line.contains("? keys"))
 }
 
 /// Opened, with the first rows, the refs and the working-tree status on
@@ -114,7 +114,7 @@ fn the_tip_row_hints_the_current_branch_context() {
 
     let bar = footer(&state, 80, 24);
     assert!(
-        bar.starts_with(" ⏎ open · c commit · P push · ") && bar.ends_with(". more"),
+        bar.starts_with(" ⏎ open · c commit · P push · ") && bar.ends_with("? keys"),
         "{bar:?}"
     );
     app.close();
@@ -131,7 +131,7 @@ fn a_plain_row_hints_the_plain_context() {
 
     let bar = footer(&state, 80, 24);
     // HEAD's parent: an ancestor, take-live like the `.` menu, so `o take`
-    // follows `⏎ open` and `r rebase` drops past `. more` (m7-power-tools/40).
+    // follows `⏎ open` and `r rebase` drops past `? keys` (m7-power-tools/40).
     assert!(
         graft::update::can_take(&state),
         "the parent row is not take-live"
@@ -140,7 +140,7 @@ fn a_plain_row_hints_the_plain_context() {
         // `b branch` and `t tag` went live in
         // m5-history-and-ghost-preview/10, in the hint-bar design note's own
         // order for a plain row; `c commit` dropped to its bare key.
-        bar.starts_with(" ⏎ open · o take · b branch · ") && bar.ends_with(". more"),
+        bar.starts_with(" ⏎ open · o take · b branch · ") && bar.ends_with("? keys"),
         "{bar:?}"
     );
     app.close();
@@ -158,7 +158,7 @@ fn the_uncommitted_row_hints_the_working_tree_context() {
 
     let bar = footer(&state, 80, 24);
     assert!(
-        bar.starts_with(" ⏎ changes · c commit · S stash · ") && bar.ends_with(". more"),
+        bar.starts_with(" ⏎ changes · c commit · S stash · ") && bar.ends_with("? keys"),
         "{bar:?}"
     );
     app.close();
@@ -194,7 +194,8 @@ fn the_changes_pane_hints_the_keys_that_write() {
         let bar = hint_bar(&state, columns, rows).unwrap_or_default();
         assert!(
             bar.starts_with(" space stage · d discard · c commit · ")
-                && bar.ends_with(" · </> resize · . more"),
+                && bar.contains(" · </> resize · ")
+                && bar.ends_with(" · ? keys"),
             "at {columns}x{rows}: {bar:?}"
         );
     }
@@ -211,14 +212,14 @@ fn the_changes_pane_hints_the_keys_that_write() {
         .count();
     assert!(
         drawn > 4,
-        "93 cells fit more than three hints and `. more`: {beside:?}"
+        "93 cells fit more than three hints and `? keys`: {beside:?}"
     );
     // Counting parts would still pass with half the write keys gone
     // (m5/14-22 review, Minor 1), so name them: 93 cells fit the changes
     // pane's whole vocabulary, in the order the tier hands it out.
     assert_eq!(
         beside,
-        " space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . more",
+        " space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · ? keys",
         "every key the pane answers, beside the graph"
     );
 
@@ -426,7 +427,7 @@ fn capture_hint_bar_for_docs_shots() {
             // The bar is the last row of the *graph* area, which is the
             // frame's last row only while the pane is closed or beside the
             // graph.
-            let bar = drawn.iter().rev().find(|line| line.contains(". more"));
+            let bar = drawn.iter().rev().find(|line| line.contains("? keys"));
             let mut out = format!(
                 "# m5-hints-{name}-{label}.txt: {columns}x{rows}, drawn by `view::view` from\n\
                  # a real AppState — a real repository, opened over the real job pool, with\n\
@@ -442,7 +443,7 @@ fn capture_hint_bar_for_docs_shots() {
                  # Judge by eye: the hint bar is the bottom row of whatever owns the\n\
                  # screen — the graph's, or (below 100 columns, with the Detail tab up)\n\
                  # the pane's own reserved row, which costs the pane one row of content\n\
-                 # and is what keeps every key from being hidden. `. more` is never dropped\n\
+                 # and is what keeps every key from being hidden. `? keys` is never dropped\n\
                  # (ADR-0037 §4) and sits at the head of the bare keys — the end of the\n\
                  # row where there are none (ADR-0039, m5/28).\n\
                  #\n\
@@ -521,7 +522,7 @@ const MISSING_BAR: &str = "#\n\
 /// nothing. The bar drew `⏎ open` anyway until this ticket.
 ///
 /// Before the fix, at 80 columns, the bar read
-/// `⏎ open  c commit  P push  . more  p  f  b  t  u  S  J  /  q  F2  F3  x  +  j/k  space`;
+/// `⏎ open  c commit  P push  ? keys  p  f  b  t  u  S  J  /  q  F2  F3  x  +  j/k  space`;
 /// the four keys that need the graph to have the keyboard (`S`, `J`, `M`,
 /// `O`) were dead there too. The doorway stays: `.` still leads to
 /// everything hidden, which is what makes filtering honest (ADR-0039).
@@ -572,7 +573,7 @@ fn the_bar_behind_an_overlay_draws_what_the_pane_still_answers() {
     );
 
     // The bar is the frame's last row in the `Tab` layout, and it carries no
-    // `. more`: `.` reaches the browser, which swallows it.
+    // `? keys`: `.` reaches the browser, which swallows it.
     let drawn = frame(&detail_tab, 80, 24);
     let bar = drawn.last().cloned().unwrap_or_default();
     assert_eq!(
@@ -625,7 +626,7 @@ fn the_detail_tab_hides_the_keys_a_focused_pane_does_not_answer() {
 
     let bar = hint_bar(&diff, 80, 24).expect("the Detail tab draws a bar");
     assert_eq!(
-        bar, " c commit · P push · p pull · f fetch · b branch · t tag · u undo · . more",
+        bar, " c commit · P push · p pull · f fetch · b branch · t tag · u undo · ? keys",
         "the bar after the filter, quoted so the change is legible in review"
     );
     assert!(
@@ -639,7 +640,7 @@ fn the_detail_tab_hides_the_keys_a_focused_pane_does_not_answer() {
         );
     }
     assert!(
-        bar.contains(". more"),
+        bar.contains("? keys"),
         "the doorway is never dropped, so nothing filtered is lost: {bar:?}"
     );
     app.close();
@@ -656,7 +657,7 @@ fn history_place() -> (graft_fixtures::Scratch, App, AppState) {
 }
 
 /// The history place (m7-power-tools/21b): the drawn frame's last row is
-/// the place's own bar — the list form's keys, no `. more`, no `</> resize`.
+/// the place's own bar — the list form's keys, no `? keys`, no `</> resize`.
 #[test]
 fn hint_bar_history_place() {
     let (_scratch, app, state) = history_place();
@@ -688,5 +689,20 @@ fn hint_bar_back_to_history() {
         bar.trim_start().starts_with("esc back to history"),
         "{bar:?}"
     );
+    app.close();
+}
+
+/// Row 539 (m8/11b decision 4): the cursor on HEAD's row — the tip, its
+/// commit unpushed (no upstream) and amend not blocked — so the bar has
+/// `a amend`, at 80 and at 120 columns.
+#[test]
+fn a_amend_is_hinted_on_heads_row() {
+    let scratch = repo();
+    let (app, state) = App::open(scratch.path());
+    let state = opened(&app, state);
+    for (columns, rows) in [(80, 24), (120, 40)] {
+        let bar = hint_bar(&state, columns, rows).expect("a bar with its doorway");
+        assert!(bar.contains("a amend"), "{columns}: {bar:?}");
+    }
     app.close();
 }

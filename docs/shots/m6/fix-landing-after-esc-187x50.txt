@@ -47,4 +47,4 @@
 
 
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⇥ banner · c finish · m merge · r rebase · ⏎ open · b branch · t tag · P push · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · F3 rend · x compare · + lane · . more
+ ⇥ banner · c finish · m merge · r rebase · ⏎ open · b branch · t tag · P push · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · F3 rend · x compare · + lane · ? keys

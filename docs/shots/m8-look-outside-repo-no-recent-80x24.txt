@@ -23,4 +23,4 @@ m8-polish-and-ship/08: what right looks like — a first run, nothing remembered
 
 
 ────────────────────────────────────────────────────────────────────────────────
- o open… · i init · q quit
+ o open… · i init · q quit · ? keys

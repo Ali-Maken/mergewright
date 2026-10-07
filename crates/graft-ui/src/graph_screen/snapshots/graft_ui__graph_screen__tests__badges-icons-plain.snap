@@ -1,9 +1,10 @@
 ---
 source: crates/graft-ui/src/graph_screen/tests.rs
+assertion_line: 773
 expression: plain
 ---
  ◆ api  /code/api · main                                                                                      2 commits 
   ●    [◆ main ⇄ origin] [feature/auth ↑2 ↓1] [origin… Commit 2                                         TE 2h   0202020 
 ▸ ◇    [topic] Commit 1                                                                                 TE 2h   0101010 
                                                                                                                         
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · . more
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys

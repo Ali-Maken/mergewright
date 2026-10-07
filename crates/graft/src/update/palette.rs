@@ -39,6 +39,10 @@ pub(crate) struct PaletteState {
     /// The place it was opened on: what its rows' keys are spelled for,
     /// and where `⏎` runs them. Never `Palette`.
     pub opened_from: ContextId,
+    /// The last click on a row and when, in the clock's milliseconds: a
+    /// second click on the same row within the picker's double-click rule
+    /// runs it (m8/11b decision 6).
+    pub last_click: Option<(usize, i64)>,
 }
 
 /// What an app row does: not a key-table action.
@@ -137,6 +141,7 @@ pub(crate) fn opened(source: &Source<'_>, opened_from: ContextId, how: Opens) ->
         query: TextField::new(""),
         cursor: 0,
         opened_from,
+        last_click: None,
     };
     palette.cursor = first_runnable(&listing(source, &palette));
     palette
@@ -545,4 +550,72 @@ pub(crate) fn bar() -> String {
     );
     let rest = shipped.key_verbs(&[("palette.run", "run"), ("app.back", "close")]);
     format!("{arrows}  {rest}")
+}
+
+/// The mouse while the palette is up (m8/11b decision 6, §1.16): first in
+/// the routing, and it claims every event. A click on a row moves the cursor
+/// there; a second on the same row within the picker's double-click rule
+/// runs it, as `⏎` would; the wheel moves the cursor, clamped; a click
+/// outside the palette's rectangle closes it with nothing run, as `esc`.
+/// `false` when no palette is up.
+pub(crate) fn palette_mouse(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    mouse: graft_core::event::MouseInput,
+) -> bool {
+    use graft_core::event::{MouseButton, MouseKind};
+    let Some(palette) = state.palette.as_ref() else {
+        return false;
+    };
+    let lines = match mouse.kind {
+        MouseKind::ScrollDown => 1,
+        MouseKind::ScrollUp => -1,
+        MouseKind::Down(MouseButton::Left) => 0,
+        // Motion, a release, another button: the palette's, and nothing.
+        _ => return true,
+    };
+    let shown = rows(state, palette);
+    let count: usize = shown.iter().map(|(_, rows)| rows.len()).sum();
+    if lines != 0 {
+        let Some(palette) = state.palette.as_mut() else {
+            return true;
+        };
+        palette.cursor = if lines > 0 {
+            (palette.cursor + 1).min(count.saturating_sub(1))
+        } else {
+            palette.cursor.saturating_sub(1)
+        };
+        return true;
+    }
+    let view = view_of(shown.clone(), palette, state.size.columns >= WIDE_FROM);
+    let row = match crate::view::frame::palette_click(state, &view, mouse.column, mouse.row) {
+        crate::view::frame::PaletteClick::Outside => {
+            state.palette = None;
+            return true;
+        }
+        crate::view::frame::PaletteClick::Inside => return true,
+        crate::view::frame::PaletteClick::Row(row) => row,
+    };
+    let now = state.harness.clock.now_millis();
+    let Some(palette) = state.palette.as_mut() else {
+        return true;
+    };
+    let double = palette
+        .last_click
+        .is_some_and(|(at, when)| at == row && now - when <= super::picker::DOUBLE_CLICK_MS);
+    palette.cursor = row;
+    if !double {
+        palette.last_click = Some((row, now));
+        return true;
+    }
+    let target = shown
+        .iter()
+        .flat_map(|(_, rows)| rows)
+        .nth(row)
+        .map(|(_, target)| *target);
+    state.palette = None;
+    if let Some(target) = target {
+        run(state, commands, target);
+    }
+    true
 }

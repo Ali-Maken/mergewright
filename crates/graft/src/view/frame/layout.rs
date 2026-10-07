@@ -260,6 +260,48 @@ pub(super) fn split_for_detail(
     detail_rects(state, layout, area)
 }
 
+/// The rectangle the palette (§2.12) is drawn in on a frame of `area`:
+/// over the pane the keys go to on the graph, over the whole frame
+/// elsewhere. One placement for the drawing (`boxes::draw_palette`) and the
+/// mouse (`update::mouse`, m8/11b decision 6), so a click and a cell agree.
+pub(super) fn palette_rect(state: &AppState, area: Rect) -> Rect {
+    let over = match state.screen {
+        Screen::Graph if state.resolver.is_none() && state.finish.is_none() => {
+            primary_pane_area(state, area).unwrap_or(area)
+        }
+        Screen::Graph | Screen::Status => area,
+    };
+    graft_ui::palette::palette_area(over, area)
+}
+
+/// Where a click lands on the palette (m8/11b decision 6).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum PaletteClick {
+    /// Outside [`palette_rect`]: closes it.
+    Outside,
+    /// Inside, on no row: a border, the query, a header.
+    Inside,
+    /// On row `i`, over every row with groups flattened.
+    Row(usize),
+}
+
+/// Where a click at `column`, `row` lands on the palette drawn from `view`
+/// over this frame.
+pub(crate) fn palette_click(
+    state: &AppState,
+    view: &graft_ui::palette::PaletteView,
+    column: u16,
+    row: u16,
+) -> PaletteClick {
+    let area = palette_rect(state, Rect::new(0, 0, state.size.columns, state.size.rows));
+    let inside = column >= area.x && column < area.right() && row >= area.y && row < area.bottom();
+    if !inside {
+        return PaletteClick::Outside;
+    }
+    graft_ui::palette::palette_row_at(area, view, column, row)
+        .map_or(PaletteClick::Inside, PaletteClick::Row)
+}
+
 /// The pane an overlay anchored in the graph floats inside: the whole area
 /// when the detail pane is closed, the graph half of the split when it is
 /// open. Pure geometry — the same split `render_graph_with_detail` draws

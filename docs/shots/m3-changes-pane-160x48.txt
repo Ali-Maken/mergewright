@@ -67,4 +67,4 @@
 "                                                                                                                                                                "
 "                                                                                                                                                                "
 "────────────────────────────────────────────────────────────────────────────────────────────                                                                    "
-" space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more                                                                           "
+" space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · ? keys                                                                           "

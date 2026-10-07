@@ -37,4 +37,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · r rebase · t tag · y sha · m merge · . more
+ ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · r rebase · t tag · y sha · m merge · ? keys

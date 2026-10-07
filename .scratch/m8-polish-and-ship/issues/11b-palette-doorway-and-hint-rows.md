@@ -1,6 +1,6 @@
 # G-palette 1b — the bar's doorway is `? keys`; four hint rows; the palette takes the mouse
 
-Status: draft (planner spec-only split, 2026-10-07, from scout `.scratch/m8-polish-and-ship/scouts/11-palette-help.md`;
+Status: partial — 553 stopped for a ruling; Marked-row doorway asked (see NOTES). (was: draft, planner spec-only split, 2026-10-07, from scout `.scratch/m8-polish-and-ship/scouts/11-palette-help.md`;
 part 1 is `11-palette-help-and-actions.md`)
 Build with: **Sonnet** — mechanical: a hint constant and its rank, tests and captures re-shot, four rulings already
 made, mouse wiring onto 11's pure hit-test. Row 553 is trace-first with a stop. Escalate per policy if it stalls.
@@ -60,22 +60,34 @@ No new `pub` items. Changed: `graph_screen::hints::MORE` → `DOORWAY` (pub(crat
 `HintKey` pattern needs), `MENU`'s entry becomes an ordinary candidate with verb `actions`. MAP.md records both.
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] Doorway: every bar `every_context()` yields at 80/120/200 ends with `? keys`, never `. more` (sweep test); `.
-      actions` drawn at 200 on the graph, dropped before any other candidate as width shrinks (test). `[keys.app]
-      help = "none"` → doorway `⌃P keys`; both none → no doorway, no `—` (test).
-- [ ] `every_key_the_bar_draws_is_answered` green and covers `? keys` and `. actions` (named in the test's cases).
-- [ ] 163: 80×24 graph — bar ends `? keys`; `?` lists `space`, `1`, `H` under HERE (test).
-- [ ] 538: Detail tab under 100 columns — no `1` in its bar; graph bar at 120 still has it (test).
-- [ ] 539: cursor on HEAD's row (unpushed, not blocked) → bar has `a amend`; NOTES quotes `NEVER_HINTED` before/after
-      (test `a_amend_is_hinted_on_heads_row`).
-- [ ] 553: test reproducing it fails before, passes after; NOTES has the trace line (or the stop).
-- [ ] Mouse: click selects, double-click runs (J6's row → stash prompt), wheel scrolls, outside click closes with no
-      command, palette beats an open picker's hit area (tests in `update::tests` mouse).
-- [ ] Captures: `docs/shots/m8-help-rebase-stop-120x36.txt` (rebase stopped, `?`: IN PROGRESS first),
-      `docs/shots/m8-help-80x24.txt` (80×24 graph bar ending `? keys`, then `?` open). Every committed capture with
-      `. more` re-shot (`GRAFT_UPDATE_SHOTS=1` and the pty scripts that own them); NOTES lists each file; contact
-      sheets re-assembled. **Colour unverified** (rule 5).
-- [ ] MAP.md graft-ui (`DOORWAY`, `. actions` candidate); graft (palette in mouse routing; 553's fix site).
+- [x] Doorway: every bar ends `? keys`, never `. more` at 80/120/200 —
+      `graft_ui::graph_screen::hints::tests::every_bar_ends_with_the_keys_doorway_and_never_more`; `. actions` last
+      before the doorway and dropped first — `…::actions_is_drawn_wide_and_dropped_first` (**not at 200**: on a
+      current-branch row it is first drawn at 267 columns, every other candidate ranks ahead); `help = "none"` →
+      `⌃P keys`, both none → nothing, no `—` — `…::the_doorway_falls_back_to_the_palette_key_then_to_nothing`.
+      Exception: `Marked` rows (see NOTES).
+- [x] `every_key_the_bar_draws_is_answered` green, covering `? keys` and `. actions` (drawn on every row context;
+      `app.help`/`app.palette` added to `BOUND_ACTIONS`) — `graft::update::tests::every_key_the_bar_draws_is_answered`,
+      `every_bound_action_is_hinted_live_or_is_named_here`.
+- [x] 163: 80×24 graph bar ends `? keys`; `?` lists `space`, `1`, `H` under HERE —
+      `graft::update::tests::keymap_edge::palette::at_80_the_bar_ends_with_keys_and_help_lists_what_it_dropped`.
+- [x] 538: Detail tab under 100 columns — no `1`; graph bar at 120 keeps it —
+      `…::keymap_edge::palette::the_detail_tab_offers_no_first_parent`.
+- [x] 539: HEAD's row has `a amend` at 80 and 120 — `graft::it hint_bar::a_amend_is_hinted_on_heads_row`.
+      `NEVER_HINTED` before (and after, unchanged): `update/tests.rs:5752-5774` lists only `app.top`, `app.bottom`,
+      `app.page_up`, `app.page_down`, `app.refresh`, `app.redo` — **`a amend` absent**; graft MAP :213's "left" means
+      removed, and it was.
+- [ ] 553: **stopped for a ruling** (NOTES). Repro written and run red; not committed (no disabled tests).
+- [x] Mouse: click selects — `…::palette::a_click_in_the_palette_moves_the_cursor_only`; double-click runs J6's row
+      as `S` — `…::a_double_click_runs_the_row_as_its_key`; wheel — `…::the_wheel_moves_the_palette_cursor`; outside
+      click closes, nothing run — `…::a_click_outside_the_palette_closes_it`; first in routing —
+      `…::the_palette_takes_the_click_before_the_menu` (tested over the `.` menu, not the picker: the picker is a text
+      field, `?` types into it, so the palette never stands over it — `update/palette.rs` `open_key`).
+- [x] Captures: `docs/shots/m8-help-rebase-stop-120x36.txt` (`palette_in_progress::j7_…`),
+      `docs/shots/m8-help-80x24.txt` (`at_80_the_bar_ends_…`); 71 committed captures re-shot by
+      `GRAFT_UPDATE_SHOTS=1`, 6 insta snapshots, m6/m7 contact sheets re-assembled (`scripts/contact-sheet.sh
+      --captions-order`). **Colour unverified** (rule 5).
+- [x] MAP.md graft-ui and graft: `**m8/11b**` rows (checked by reading).
 
 ## Touches
 - Every non-modal bar and its tests (`hints/tests.rs`, `every_context`, coverage slots); the empty-state bar
@@ -92,3 +104,31 @@ No new `pub` items. Changed: `graph_screen::hints::MORE` → `DOORWAY` (pub(crat
 ## Size
 ~55k: doorway + rank + tests 14k; 163/538/539 8k; 553 trace + fix 8k; mouse 8k; re-shoots and two captures 12k;
 MAP 3k. If the re-shoot list alone exceeds ~25 files, captures go to a follow-up (conductor).
+
+## NOTES (builder, 2026-10-07)
+- Scout `scouts/11-palette-help.md` predates 11's merge; its doorway lines (`hints.rs:355`, `:575`, catalogue `:544`,
+  the six tests) held; its "palette not built" half is stale (11 built it). Enough for this ticket, with a re-read of
+  `update/palette.rs`, `update/mouse.rs`, `view/rows.rs`.
+- **553, stop (rule 7 trace).** Reproduced: overlay (Map/Journal/Stash) up, changes pane focused → bar is
+  `PaneOverOverlay` (`⏎ open · j/k move · u undo · / search`), no `space stage`. Site:
+  `crates/graft/src/view/rows.rs` `overlay_context`, the final `Some(HintContext::PaneOverOverlay { … })` (≈ line 696),
+  reached from `hint_context` before its `on_changes_pane()` branch. Tried choosing `ChangesPane` there: `space`,
+  `d`, `⌃A`, `e`, `⇥`, `.`, `?` all answered, but **`c commit` is not** — `c` falls through to the graph, which the
+  overlay's `shown_key` catch-all swallows. Ruling needed: (a) bar = `ChangesPane` minus `c`; (b) make `c` reach the
+  commit editor from a focused changes pane under an overlay; (c) leave as is. Reverted; repro test not committed.
+- **Marked rows keep no doorway** (deviation from decision 1, asked): `? keys` on a marked row costs 9 cells and
+  pushed `/ search` off at 92 columns and `u undo` at 83 in `m2` captures; the brief says undo/search must stay.
+  `. explain` is still there. Ruling: doorway on marked rows (losing undo/search there) or not.
+- `. actions` first fits at 267 columns on a current-branch row, not 200 (it ranks after every candidate, as ruled).
+- Doorway placement: kept exactly where `. more` was (row and pane contexts) plus the empty state. The modal
+  overlays/places (journal, stash, Map, blame, history, resolver) still draw none, though `?` opens the palette there
+  (`keys.rs` `open_key` runs before them): decision 1 lists "overlays, places" but the code and keymap §2.1 call them
+  modal. Question for the planner.
+- `. more` left in `docs/shots` (frozen history, not re-shot): m3/m5 contact sheets and captions, m5-07 branch-row
+  hints, m6/m6-19-after-esc-esc-*, m6/m6-25-menu-fixed-slots-*, m6 sheets 2/3/5 + captions, m6/prototype-journeys,
+  m7-proto-*. No test checks them.
+- Bar widths: every re-shot diff is the bar line only; a script over `git diff docs/shots` found 0 lines where
+  `u undo` or `/ search` was lost.
+- Touches: hint bar (every row/pane context), empty-state bar, palette mouse, mouse routing order, `BOUND_ACTIONS`,
+  71 captures, 6 snapshots, 2 contact sheets, MAP.md ×2. No keymap/journal change. Literal-key grep test green.
+- **Compacted once**, after gates went green. Still to do: rulings on 553 / Marked / the overlay doorway (above).

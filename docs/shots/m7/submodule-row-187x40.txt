@@ -37,4 +37,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
- space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . actions · ? keys

@@ -60,7 +60,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
- merge in progress · space stage · d discard · c finish · ⌃A all · e edit · ⇥ diff · </> resize · . more
+ space stage · d discard · c finish · ⌃A all · e edit · ⇥ diff · </> resize · . actions · ? keys
 --- after c ---
 MERGING
 ╭ Preview: finish merging feature into main ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮

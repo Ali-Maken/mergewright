@@ -56,6 +56,11 @@ fn j7_help_mid_rebase_puts_continue_first_and_enter_asks_what_c_asks() {
     let state = app.key(&state, KeyCode::Char('?'));
     let frame = crate::captures::frame(&state, 120, 36);
     let shot = frame.join("\n");
+    // `docs/shots/m8-help-rebase-stop-120x36.txt` (m8/11b). What right looks
+    // like: the rebase stopped and resolved, `?` open — `IN PROGRESS` the
+    // first group, `▸c Continue` under the cursor, then `HERE` and
+    // `EVERYWHERE`. Colour unverified (rule 5).
+    crate::captures::check_shot("m8-help-rebase-stop-120x36.txt", &shot);
     let headers: Vec<&String> = frame
         .iter()
         .filter(|row| {

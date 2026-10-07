@@ -27,6 +27,8 @@ pub(super) const QUIT: &[HintKey] = &[key("app.quit")];
 pub(super) const UNDO: &[HintKey] = &[key("app.undo")];
 pub(super) const FIND: &[HintKey] = &[key("app.find")];
 pub(super) const MENU: &[HintKey] = &[key("app.menu")];
+pub(super) const HELP: &[HintKey] = &[key("app.help")];
+pub(super) const PALETTE: &[HintKey] = &[key("app.palette")];
 pub(super) const DOWN_UP: &[HintKey] = &[key("app.down"), key("app.up")];
 pub(super) const NEXT_PREV_MATCH: &[HintKey] = &[key("app.next_match"), key("app.prev_match")];
 

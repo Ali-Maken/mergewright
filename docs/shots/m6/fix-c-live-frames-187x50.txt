@@ -61,7 +61,7 @@
 
 
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · + lane · j/k move · space fold · . more
+ ⏎ open · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · + lane · j/k move · space fold · ? keys
 --- frame 2 ---
  ◆ api  ~/code/api · main                                                                           MERGING  UNCOMMITTED · 2 staged
                                                                                                              diff vs HEAD ddeed32
@@ -112,4 +112,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
- c finish · ⏎ changes · S stash · p pull · P push · f fetch · u undo · J journal · / search · . more
+ c finish · ⏎ changes · S stash · p pull · P push · f fetch · u undo · J journal · / search · ? keys
