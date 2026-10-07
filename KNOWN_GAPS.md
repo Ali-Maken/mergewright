@@ -1144,6 +1144,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/10b-known-rows-per-copy | Literal-key grep: repeated literals get one KNOWN row each; fixing one copy doesn't make its row stale, so area tickets (10e–10i) must fix every copy — no test enforces it. 138 known rows (prose 43, ops 20, stops 20, resolver 19, undo 21, preview 15). | **broken** | M8 |
 | M8/blame-find-drops-help-quit | `?`/`q` dropped while blame find is open (graft update/keys.rs:125, place/keys.rs:23-29) — found by 11, not fixed. | **broken** | M8 |
 | M8/11-j7-handover-unobserved | Palette J7: `⏎` emits the same ContinueInGit as `c`; whether git finishes the rebase is not observed (harness can't run a terminal handover). | **unverified** | M8 |
+| M8/11-start-theme-lost | Question: a theme chosen from the palette on the start screen is lost once a repo opens (11 cont. NOTES). | **unverified** | M8 |
+| M8/11-start-help-dead-keys | Question: start-screen `?` help lists ~20 keys that do nothing there (follows 11 decision 2). Usability walk to judge. | **unverified** | M8 |
 | M8/flaky-http-remote-drop | graft-fixtures `http_remote_drop_ends_a_wedged_backend` failed once in a full run under load (14d), passes alone; crate untouched; not diagnosed. | **unverified** | M8 |
 | M8/long-tmpdir-socket | 6+ graft tests fail when `$TMPDIR` is a long path (unix-socket path limit); Paperclip runs set one. Gates pass with `TMPDIR=/tmp`. Tests should not depend on `$TMPDIR` length — cause not fixed. | **broken** | M8 |
 | M8/startup-rs-564 | `startup.rs` 564 lines, over the readability limit; outside 02's file set, not split. | **broken** | M8 |
