@@ -85,7 +85,11 @@ fn prompt_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
 
 /// Replaces any search on screen with one for `query`, remembering where the
 /// selection is so `Esc` can put it back.
-fn start_search(next: &mut AppState, commands: &mut Vec<Command>, query: crate::search::Query) {
+pub(in crate::update) fn start_search(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    query: crate::search::Query,
+) {
     let prior = next
         .history
         .as_ref()

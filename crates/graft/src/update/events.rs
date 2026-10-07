@@ -209,6 +209,12 @@ pub enum Task {
     /// Match the palette's query against branch and tag names
     /// (m8-polish-and-ship/12).
     PaletteNames,
+    /// Read every tracked path for the palette's FILES, once per `⌃P` open
+    /// (m8-polish-and-ship/12b).
+    ReadTrackedPaths,
+    /// The palette's first commits matching its query
+    /// (m8-polish-and-ship/12b).
+    PaletteCommits,
     /// Read the index now for a stash clash's tie (ADR-0045 §2).
     ReadIndexState,
     /// Read the configured remotes and `HEAD`'s upstream (m4-remotes/05).
@@ -475,6 +481,13 @@ pub enum Product {
     PaletteBranches(Result<std::sync::Arc<graft_git::switch_refs::SwitchRefs>, String>),
     /// The names job's answer for one query (`Command::PaletteNames`).
     PaletteNames(std::sync::Arc<crate::jobs::palette::NameHits>),
+    /// Every tracked path, for the palette's FILES, or why they could not be
+    /// read (`Command::ReadTrackedPaths`, m8-polish-and-ship/12b).
+    TrackedPaths(Result<std::sync::Arc<graft_git::status::TrackedPaths>, String>),
+    /// The commits job's answer for one query: the first
+    /// `update::palette::COMMIT_HITS` in walk order, or why the walk failed
+    /// (`Command::PaletteCommits`, m8-polish-and-ship/12b).
+    PaletteCommits(Result<std::sync::Arc<[crate::search::CommitHit]>, String>),
     /// The index now, for a stash clash's tie, or why it could not be read
     /// (`Command::ReadIndexState`).
     IndexState(Result<graft_core::journal::IndexState, String>),

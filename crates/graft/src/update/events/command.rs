@@ -236,6 +236,15 @@ pub enum Command {
     /// `update` chose. Asked on every query edit, the previous one
     /// cancelled (m8-polish-and-ship/12).
     PaletteNames(JobId, crate::jobs::palette::NamesRequest),
+    /// Read every tracked path (`graft_git::status::tracked_paths`) for the
+    /// palette's FILES, under an id `update` chose. Asked once when `⌃P`/`:`
+    /// opens the palette; cancelled when it closes first
+    /// (m8-polish-and-ship/12b).
+    ReadTrackedPaths(JobId),
+    /// Find the first `update::palette::COMMIT_HITS` commits matching the
+    /// query (`search::first_hits`), under an id `update` chose. Asked on
+    /// every query edit, the previous one cancelled (m8-polish-and-ship/12b).
+    PaletteCommits(JobId, crate::search::Query),
     /// Read the index now as the journal's recorder does
     /// (`graft_ops::snapshot::index_state`), under an id `update` chose:
     /// a stash clash's tie (ADR-0045 §2, amended 2026-09-25). Asked only
