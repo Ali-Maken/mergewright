@@ -2,11 +2,11 @@
 
 Status: draft (planner spec-only pass, 2026-10-07, from `docs/reviews/m8-keymap-sweeps.md` Majors 1–4; review at
 main `c18e7d72`)
-Build with: **Opus** (provisional — brownfield, ADR-0035: scout first, conductor confirms). Part B changes the
+Build with: **Opus** (confirmed by conductor 2026-10-07 after scout `scouts/09f-keymap-review-fixes.md`). Part B changes the
 resolution contract (`scope()` stops over-including at the three overlays) and needs judgement on what the sweep
 shows; the rest is mechanical. Not Fable: the sweep is a full oracle (acting count must not move in Part B), so
 correctness is judged by tests, not by eye.
-Blocked by: none for source (09d, 09e, 11 merged). **17 (building):** may run alongside — this ticket touches no
+Blocked by: **10f** (conductor 2026-10-07: scout found both edit `update/banner/focus_keys.rs`); otherwise none for source (09d, 09e, 11 merged). **17 (building):** may run alongside — this ticket touches no
 `view/rows.rs`, no `graph_screen/hints*`, no theme/graph_column/detail_pane file (scout confirms 17's diff does not
 touch `update/detail/keys.rs` or `update/place/keys.rs`); the **capture step waits for 17 to merge** (rebase, then
 re-shoot). **11c:** serial, **09f first** — shares `update/tests.rs` (one `mod` line), captures, and 11c's report-only
@@ -18,7 +18,7 @@ Needs: from 09d — the sweep (`update::tests::keymap_edge::sweep`), `SWALLOWED_
 `update::tests::every_key_on_a_bar_over_an_overlay_changes_what_he_sees` (its press-and-compare helper, reused); from
 11 — `update::palette::rows(state, palette)` and `context_of`; graft-ui `ContextId::{scope, borrows}`,
 `Keymap::{reachable, acting, translate}`.
-Scout: write `.scratch/m8-polish-and-ship/scouts/09f-keymap-review.md` (≤1 page): `resolve.rs`'s function inventory
+Scout: write `.scratch/m8-polish-and-ship/scouts/09f-keymap-review-fixes.md` (≤1 page): `resolve.rs`'s function inventory
 with line counts per proposed child; `preview_box.rs` (inline tests? line count after moving them); `scope()` /
 `borrows()` bodies and return types; `SWALLOWED_BY_DESIGN`'s key shape (by `ContextId` + `ActionId`?) and its rows at
 `Map`/`Stash`/`Journal`, split Graph-context vs Global; which Graph rows **act** at those three (sweep); the four
