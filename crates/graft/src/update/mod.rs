@@ -288,6 +288,12 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         }
         AppEvent::Produced(id, product @ Product::Stashes(_)) => stash_answer(next, id, &product),
         AppEvent::Produced(id, Product::SwitchList(result)) => picker::listed(next, id, result),
+        AppEvent::Produced(id, Product::PaletteBranches(result)) => {
+            palette::branches_read(next, commands, id, result);
+        }
+        AppEvent::Produced(id, Product::PaletteNames(hits)) => {
+            palette::names_answered(next, id, hits);
+        }
         // The overlay's file preview reads through `ListFiles` like the
         // detail pane does, under its own id; the guard asks which of the
         // two is waiting for this one.
@@ -609,6 +615,8 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::RevertTo
         | Task::ReadStashes
         | Task::ReadSwitchList
+        | Task::ReadPaletteBranches
+        | Task::PaletteNames
         | Task::ReadIndexState
         | Task::ReadRemotes
         | Task::OpenConflict
@@ -977,6 +985,8 @@ fn took_fact(
             // A finished `--continue` waits on this read for the new
             // `HEAD` (m6-conflicts/12); any other read passes it by.
             banner::refs_answered(next, commands, id);
+            // `⌃P` with a query was waiting on these for TAGS (m8/12).
+            palette::refs_landed(next, commands);
             // The stash list is one of a clash's facts (m6-conflicts/72b).
             let mut local_jobs = next.local_jobs;
             clash::refresh_and_land(next, commands, &mut || local_jobs.next_id());
@@ -1015,6 +1025,8 @@ fn took_fact(
         | Product::RevertedTo(_)
         | Product::Stashes(_)
         | Product::SwitchList(_)
+        | Product::PaletteBranches(_)
+        | Product::PaletteNames(_)
         | Product::IndexState(_)
         | Product::Remotes(_)
         | Product::Leaves { .. }
@@ -1203,7 +1215,7 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             // and there is nothing to report: the user pasted at a screen
             // with no text field on it.
             if !credential::credential_paste(next, &text)
-                && !palette::paste(next, &text)
+                && !palette::paste(next, commands, &text)
                 && !name_prompt::name_prompt_paste(next, &text)
                 && !journal::find::find_paste(next, &text)
                 && !finish::paste(next, &text)

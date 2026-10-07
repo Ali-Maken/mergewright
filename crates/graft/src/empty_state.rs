@@ -133,13 +133,10 @@ fn act(state: &mut OutsideState, keymap: &Keymap, key: KeyPress) -> OutsideStep 
 }
 
 /// What the palette's rows are built from on the start screen: no
-/// operation can be live outside a repository.
+/// operation can be live outside a repository, and there is nothing to
+/// find but actions (ticket 12).
 fn source_of<'a>(problems: &'a [String], keymap: &'a Keymap) -> Source<'a> {
-    Source {
-        keymap,
-        problems,
-        operation_live: false,
-    }
+    palette::outside_source(keymap, problems)
 }
 
 /// The palette's rows as drawn now. Empty when it is not up.
@@ -163,7 +160,12 @@ fn palette_key(state: &mut OutsideState, keymap: &Keymap, key: KeyPress) -> Outs
             state.palette = Some(open);
             OutsideStep::Stay
         }
-        Edited::Close | Edited::Run(PaletteTarget::Note) => OutsideStep::Stay,
+        // No find rows outside a repository: a seek or `+N more` is never
+        // listed here, so never run.
+        Edited::Close
+        | Edited::Run(PaletteTarget::Note | PaletteTarget::Seek(_) | PaletteTarget::More(_)) => {
+            OutsideStep::Stay
+        }
         // `Ctrl+C`: quits, as everywhere (§2.1).
         Edited::Pass => {
             state.palette = Some(open);

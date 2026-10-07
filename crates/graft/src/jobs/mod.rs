@@ -79,6 +79,7 @@ pub(crate) mod journal_list;
 mod kinds;
 mod map;
 pub(crate) mod operate;
+pub(crate) mod palette;
 mod pool;
 mod preview;
 pub(crate) mod radar;

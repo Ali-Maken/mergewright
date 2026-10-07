@@ -194,7 +194,7 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
         // `?`, `⌃P`, `:` open the palette (§2.12) over every place but
         // a live confirm box, before any of them can claim the key: help
         // answers on every screen (§2.2).
-        || super::palette::open_key(next, key)
+        || super::palette::open_key(next, commands, key)
         || boxes_key(next, commands, key)
         // `Esc` while Graft waits to quit drops the wait, whatever modal is
         // up — the finish summary, the resolver, the rewrite editor each

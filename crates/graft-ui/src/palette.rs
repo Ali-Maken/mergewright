@@ -51,8 +51,7 @@ pub enum PaletteMode {
     Everything,
 }
 
-/// What a row stands for. Only actions and app rows exist so far; ticket
-/// 12 adds the rest.
+/// What a row stands for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RowKind {
     /// A key-table action.
@@ -63,12 +62,15 @@ pub enum RowKind {
     Branch,
     /// A tag (ticket 12).
     Tag,
-    /// A file (ticket 12).
+    /// A file (ticket 12b).
     File,
-    /// A commit (ticket 12).
+    /// A commit (ticket 12b).
     Commit,
-    /// A recently run command (ticket 12).
+    /// A recently run command (ticket 12): drawn as an action row.
     Recent,
+    /// A find group's muted line: `+N more`, `reading…`, `searching…`, a
+    /// read failure (ticket 12).
+    More,
 }
 
 /// One row, worded.
@@ -104,6 +106,9 @@ pub struct PaletteView {
     /// The frame is at least [`WIDE_FROM`] columns: rows carry their
     /// config id.
     pub wide: bool,
+    /// Drawn muted in the empty query field, gone on the first character
+    /// (`⌃P` in a repository: what the box finds, ADR-0061).
+    pub placeholder: Option<&'static str>,
 }
 
 impl PaletteView {
@@ -255,8 +260,19 @@ fn render_palette(buf: &mut Buffer, area: Rect, view: &PaletteView, theme: &Them
         format!("╰{}╯", "─".repeat(width - 2)),
         border,
     );
-    // The query: `› ` and the field, its cursor placed by the text field's
-    // own scroll rule.
+    draw_query(buf, drawn, view, theme);
+    let lines = lines(view);
+    let visible = usize::from(drawn.height - CHROME_ROWS);
+    let top = first_drawn(&lines, view.cursor, visible);
+    for (offset, line) in lines.iter().skip(top).take(visible).enumerate() {
+        let y = drawn.y + 2 + u16::try_from(offset).unwrap_or(0);
+        draw_list_line(buf, drawn, y, *line, view, theme);
+    }
+}
+
+/// The query row: `› ` and the field, its cursor placed by the text field's
+/// own scroll rule; the placeholder, muted, while the field is empty.
+fn draw_query(buf: &mut Buffer, drawn: Rect, view: &PaletteView, theme: &Theme) {
     buf.set_string(
         drawn.x + 2,
         drawn.y + 1,
@@ -271,12 +287,14 @@ fn render_palette(buf: &mut Buffer, area: Rect, view: &PaletteView, theme: &Them
         None,
         theme,
     );
-    let lines = lines(view);
-    let visible = usize::from(drawn.height - CHROME_ROWS);
-    let top = first_drawn(&lines, view.cursor, visible);
-    for (offset, line) in lines.iter().skip(top).take(visible).enumerate() {
-        let y = drawn.y + 2 + u16::try_from(offset).unwrap_or(0);
-        draw_list_line(buf, drawn, y, *line, view, theme);
+    if let Some(words) = view.placeholder.filter(|_| view.query.as_str().is_empty()) {
+        // One cell past the field's cursor, which stays where typing goes.
+        buf.set_string(
+            drawn.x + 5,
+            drawn.y + 1,
+            fit(words, usize::from(drawn.width.saturating_sub(7))).trim_end(),
+            foreground(theme, Token::TextMuted),
+        );
     }
 }
 
@@ -365,10 +383,10 @@ fn draw_row(
     } else {
         room - config_cells - 2
     };
-    let label_style = if chosen {
-        text.add_modifier(Modifier::BOLD)
-    } else {
-        text
+    let label_style = match (row.kind, chosen) {
+        (RowKind::More, _) => muted,
+        (_, true) => text.add_modifier(Modifier::BOLD),
+        (_, false) => text,
     };
     buf.set_string(
         x + u16::try_from(label_at).unwrap_or(0),

@@ -61,6 +61,8 @@ pub fn is_write(command: &Command) -> bool {
         | Command::RecoverFor { .. }
         | Command::ReadStashes(..)
         | Command::ReadSwitchList(..)
+        | Command::ReadPaletteBranches(..)
+        | Command::PaletteNames(..)
         | Command::ReadIndexState { .. }
         | Command::ReadRemotes(..)
         | Command::ReadLeaves { .. }

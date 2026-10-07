@@ -17,6 +17,7 @@
 
 mod fields;
 mod palette;
+mod palette_find;
 mod remaps;
 mod sweep;
 mod sweep_swallowed;

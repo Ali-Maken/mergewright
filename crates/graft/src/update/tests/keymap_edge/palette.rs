@@ -77,6 +77,49 @@ impl Walk {
     }
 }
 
+/// `commands` less the palette's own finds (ticket 12): the branch read and
+/// names jobs `⌃P` asks, and their cancels when it closes. What is left is
+/// what running the row did. `before` is the state the commands started
+/// from: a job its palette had in flight is the palette's too.
+pub(super) fn without_finds(before: &AppState, commands: &[Command]) -> Vec<Command> {
+    let mut ours: Vec<JobId> = commands
+        .iter()
+        .filter_map(|c| match c {
+            Command::ReadPaletteBranches(id) | Command::PaletteNames(id, _) => Some(*id),
+            _ => None,
+        })
+        .collect();
+    if let Some(palette) = before.palette.as_ref() {
+        if let crate::update::palette::ReadOnce::Reading(id) = palette.find.branches {
+            ours.push(id);
+        }
+        ours.extend(palette.find.names.pending.as_ref().map(|(id, _)| *id));
+    }
+    commands
+        .iter()
+        .filter(|c| match c {
+            Command::ReadPaletteBranches(_) | Command::PaletteNames(..) => false,
+            Command::CancelJob(id) => !ours.contains(id),
+            _ => true,
+        })
+        .cloned()
+        .collect()
+}
+
+/// `walk`'s state with the palette gone: where pressing the row's key at
+/// the moment `⏎` was pressed starts, so a job the key asks has the id the
+/// palette's run used (`⌃P` takes ids for its finds, ticket 12).
+fn under_the_palette(walk: &Walk) -> Walk {
+    Walk {
+        state: AppState {
+            palette: None,
+            ..walk.state.clone()
+        },
+        commands: Vec::new(),
+        inputs: 0,
+    }
+}
+
 fn ctrl_p() -> KeyPress {
     KeyPress::control(KeyCode::Char('p'))
 }
@@ -119,10 +162,11 @@ fn j5_help_then_a_key_puts_what_it_does_first() {
 #[test]
 fn j6_palette_stash_enter_does_what_its_key_does() {
     let start = sized_to_draw(on_a_branch_row());
-    let walk = Walk::from(&start).press(ctrl_p()).typed("stash").enter();
+    let typed = Walk::from(&start).press(ctrl_p()).typed("stash");
+    let by_key = under_the_palette(&typed).char('S');
+    let walk = typed.enter();
     assert!(walk.state.palette.is_none(), "closed after running");
-    let by_key = Walk::from(&start).char('S');
-    assert_eq!(walk.commands, by_key.commands);
+    assert_eq!(without_finds(&start, &walk.commands), by_key.commands);
     assert_eq!(
         crate::view::tests::draw(&walk.state, 120, 36),
         crate::view::tests::draw(&by_key.state, 120, 36),
@@ -139,7 +183,10 @@ fn j9_palette_theme_light_asks_the_loop_for_light() {
         .typed("theme light")
         .enter();
     assert!(walk.state.palette.is_none());
-    assert_eq!(walk.commands, vec![Command::Retheme(ThemeKind::Light)]);
+    assert_eq!(
+        without_finds(&on_a_branch_row(), &walk.commands),
+        vec![Command::Retheme(ThemeKind::Light)]
+    );
     assert!(walk.inputs <= 3, "{} inputs", walk.inputs);
 }
 
@@ -171,10 +218,10 @@ fn a_refusal_through_the_palette_reads_as_from_the_key() {
     let typed = Walk::from(&start).press(ctrl_p()).typed("merge");
     let (_, _, _, target) = typed.under_cursor();
     assert_eq!(target, PaletteTarget::Action(ActionId("graph.merge")));
+    let by_key = under_the_palette(&typed).char('m');
     let walk = typed.enter();
-    let by_key = Walk::from(&start).char('m');
     assert!(walk.state.palette.is_none());
-    assert_eq!(walk.commands, by_key.commands);
+    assert_eq!(without_finds(&start, &walk.commands), by_key.commands);
     assert_eq!(
         format!("{:?}", walk.state.status),
         format!("{:?}", by_key.state.status)
@@ -499,10 +546,10 @@ fn a_double_click_runs_the_row_as_its_key() {
     let (column, row) = drawn_row(&typed.state, "Stash…");
     let once = mouse(&typed.state, left(), column, row);
     assert!(once.state.palette.is_some(), "one click runs nothing");
+    let by_key = under_the_palette(&once).char('S');
     let twice = mouse(&once.state, left(), column, row);
     assert!(twice.state.palette.is_none(), "closed after running");
-    let by_key = Walk::from(&start).char('S');
-    assert_eq!(twice.commands, by_key.commands);
+    assert_eq!(without_finds(&once.state, &twice.commands), by_key.commands);
     assert_eq!(
         crate::view::tests::draw(&twice.state, 120, 36),
         crate::view::tests::draw(&by_key.state, 120, 36),

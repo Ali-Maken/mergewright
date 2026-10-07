@@ -1,6 +1,6 @@
 "                                                                                                          2 rows so far "
 "            ╭─ find anything ─────────────────────────────────────────────────────────────────── esc close ╮            "
-"  ◆    [◆ ma│ ›                                                                                            │7y  0101010 "
+"  ◆    [◆ ma│ ›  type to find actions, branches, tags, files, commits                                      │7y  0101010 "
 "▸ ◉    [feat│ ACTIONS                                                                                      │7y  0202020 "
 "            │▸c     Commit                                                                   graph.commit  │            "
 "            │ a     Amend                                                                     graph.amend  │            "

@@ -205,6 +205,9 @@ pub struct AppState {
     /// prompt. Boxed: its text field would grow every `AppState` by its
     /// size while it is closed.
     pub(crate) palette: Option<Box<super::palette::PaletteState>>,
+    /// COMMANDS RUN RECENTLY: what the palette ran this session, newest
+    /// first (m8-polish-and-ship/12, ADR-0061). In memory only.
+    pub(crate) palette_recent: super::palette::RecentRuns,
     /// The configured remotes, `HEAD`'s branch and its upstream: what `f`,
     /// `p` and `P` decide from (m4-remotes/05). Read with the refs; a
     /// re-read keeps the last answer on screen until the new one lands

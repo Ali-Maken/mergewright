@@ -1318,6 +1318,7 @@ fn every_field_spelled_out() -> AppState {
         stash: crate::update::stash::StashState::default(),
         picker: None,
         palette: None,
+        palette_recent: crate::update::palette::RecentRuns::default(),
         remotes: detail::Loading::Idle,
         remote: crate::update::remote::RemoteState::default(),
         last_focus_refresh: None,
