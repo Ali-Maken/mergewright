@@ -1161,6 +1161,19 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/10j-red-not-observed | 10j wrote code before tests: its 17 ticked tests were never seen red (builder's own report) — they may not fail on the defect | **unverified** | M8 |
 | M8/10j-inline-seven | 7 inline stop words: remapped spelling untested — fixtures sit in private test modules on 10j's Not list; needs its own ticket | **unverified** | M8 |
 | M8/open-failed-lands-graph | After a failed mergetool open he lands on the Graph, so the `e`/`M` clauses drop; should it land on that file's CONFLICTS row? Question (10j, file_list test) | **unverified** | M8 |
+| M8/11-files-over-size | `graft-ui/src/palette.rs` 430, `graft/src/empty_state.rs` 441, `graft/src/session.rs` 510 lines (rule ~400); split on their seams (Minor 1) → 21 | **broken** | M8 |
+| M8/11-allow-no-reason | `graft-ui/src/palette.rs:350` `#[allow(clippy::too_many_arguments)]` with no `reason` (Minor 2) → 21 | **broken** | M8 |
+| M8/11-rank-segment-change-untested | `switch_list` `rank`: a segment now starts after any non-alphanumeric (was `/`, `-`); picker order for `_`/`.` names changed, unreported, no test (Minor 3) | **unverified** | M8 |
+| M8/11b-click-below-short-box | `view/frame/layout.rs:291–303` hit-tests the max `palette_area`, not the drawn box: a click below a short box reads `Inside` (Minor 4; reasoned, not run) | **unverified** | M8 |
+| M8/12b-more-row-at-exact-cap | `update/palette.rs:589` `hits.len() >= COMMIT_HITS` with the job capped at `COMMIT_HITS`: exactly 9 hits offers `more` (Minor 5; reasoned, not run) | **unverified** | M8 |
+| M8/12b-outside-paste-duplicates-first-runnable | `empty_state.rs` `outside_paste` repeats `first_runnable` (Minor 7); one call once 12e's split lands | **broken** | M8 |
+| M8/16-problem-label-spelling | theme problem labelled `[theme.high-contrast]` when he wrote `high_contrast` (`config/theme.rs`; Minor 8; reasoned) | **unverified** | M8 |
+| M8/12-walk-journey-numbers | `tests/it/palette_find.rs` header/walk docs say J26–J28, "J30 seek-commit-words", "J31 file-history"; note has J29, J30 (Minor 9; after 12d, which edits that file) | **broken** | M8 |
+| M8/11-tests-never-red | 11's tests written after the code (its NOTES :207), no gap row (Minor 10) | **unverified** | M8 |
+| M8/12-test-file-size | `tests/it/palette_find.rs` ~900 lines; split by journey (Minor 11; after 12d) → 21 | **broken** | M8 |
+| M8/12-seek-under-overlay-focus | Q1: a seek from under Journal/Stash/Map sets `detail.focus = Graph` (`update/palette.rs:1258–1261`) without closing the overlay (`edge.rs:84–86`); does he see the graph focused, as :175 says? Needs a capture | **unverified** | M8 |
+| M8/12b-files-row-esc-from-place | Q3: a FILES row from inside a place leaves its trail (`place/history/open.rs`, `trail::leave(…, false)`), so `Esc` lands on the graph. Ruling: compare `F` from the same place — same landing → intended (consistency), close with that test's line; `F` stacks → FILES must too (defect) | **unverified** | M8 |
+| M8/adr-0007-unguarded | ADR-0007 (graft-core exports no free fns) held only by review; broken once by a planner spec (11 :35). An independent check (fast test on graft-core exports) would hold it → 21 | **unverified** | M8 |
 | M8/resolve-refusal-space-dead | Resolve refusal says `space marks resolved`, but both callers leave him on the Banner where `space` does nothing (pinned by `keymap_words::stops::the_resolve_keys_name_rows_that_act_where_the_refusal_is_shown`). Question: move focus to CONFLICTS rows, or drop the clause | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | RESOLVE_KEYS shown on screen via pressed.rs:156; the literal-key grep misses consts | **unverified** | M8 |
@@ -1170,7 +1183,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/diff-home-end-moves-graph | Diff pane Home/End move the graph (found by 09g, not fixed) | **broken** | M8 |
 | M8/10h-search-captures-stale | Search `Esc`→`esc` leaves 3 hand-made pty captures stale (26-search-far, 26-search-typing, m2-18-git-git-search…); no script regenerates them | **broken** | M8 |
 | M8/10h-red-by-compile-only | 10h's new tests were seen red only as compile failures; an assertion failure seen once (dismiss). Ticks may not fail on the defect | **unverified** | M8 |
-| M8/12-palette-perf | Palette loop p95 61 ms (release, docs/perf/m8-palette.txt) — over budget. Measured cause: graph draw 33 ms p50 on the 16k-badge fixture; palette update p95 5 ms; branch read ~2 s on 50k refs (picker shares) → planner ruling | **broken** | M8 |
+| M8/12-palette-perf | Palette loop p95 61 ms (release, docs/perf/m8-palette.txt) — over budget. Measured cause: graph draw 33 ms p50 on the 16k-badge fixture; palette update p95 5 ms; branch read ~2 s on 50k refs (picker shares) → planner ruling Also: update rebuilds `rows`/`flat` in `edit`, `landed`, `first_runnable` + per frame, ~⅓ of p95 update (review Minor 6) | **broken** | M8 |
 | M8/12-launch-cursor-not-head | Launch leaves the cursor on the newest row, not HEAD; 12's walks switch fixture around it — question | **unverified** | M8 |
 | M8/12-palette-colour-unverified | 12's 3 palette captures: colour unverified (rule 5) | **unverified** | M8 |
 | M8/12b-perf-pty-write | 12b palette on 100k paths: loop p95 34 ms, driven by pty write_us 33 ms (update 3.6, draw 1.1). Cause unverified | **broken** | M8 |
