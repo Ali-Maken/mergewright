@@ -11,9 +11,11 @@
 //!   rewritten.
 //! - Every surface that prints a key spells it with [`Keymap::spell`].
 
+mod apply;
 mod chord;
 mod clash;
 mod resolve;
+mod spell;
 mod table;
 mod warning;
 
@@ -24,8 +26,8 @@ mod tests;
 
 pub use chord::{ChordError, KeyChord, KeyLabel};
 pub use graft_core::event::KeyCode;
-pub(crate) use resolve::join;
 pub use resolve::{Keymap, Translated};
+pub(crate) use spell::join;
 pub use table::defaults;
 pub use warning::{Clash, KeyWarning};
 
