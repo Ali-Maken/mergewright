@@ -533,7 +533,7 @@ fn text_on_the_cursor_row_is_legible() {
                     &shown,
                     &theme,
                     crate::keymap::Keymap::shipped(),
-                )
+                );
             })
             .expect("draws");
         let checked =
@@ -562,7 +562,7 @@ fn each_fact_draws_in_its_tone() {
                 &view,
                 &theme,
                 crate::keymap::Keymap::shipped(),
-            )
+            );
         })
         .unwrap_or_else(|why| panic!("drawing into a test backend cannot fail: {why}"));
     let buffer = terminal.backend().buffer();

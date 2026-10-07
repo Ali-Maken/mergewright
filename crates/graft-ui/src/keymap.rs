@@ -186,9 +186,10 @@ impl ContextId {
             C::History => HISTORY_BORROWS,
             // The one confirm key (§2.3b), each place's own `y`:
             // `update/preview/keys.rs:78` `confirm_key`, `update/finish/
-            // keys.rs:98` `files_key`, `update/rewrite_editor/keys.rs:171`,
-            // and the init box in graft's `empty_state.rs` `outside_key`.
-            C::Preview | C::Finish | C::Rewrite | C::EmptyState => &[ActionId("confirm.yes")],
+            // keys.rs:98` `files_key`, `update/rewrite_editor/keys.rs:171`.
+            // The start screen's init box is a confirm box: graft translates
+            // its keys in `Confirm` while it is open (m8/09d D6).
+            C::Preview | C::Finish | C::Rewrite => &[ActionId("confirm.yes")],
             C::Global
             | C::Graph
             | C::Confirm
@@ -198,6 +199,7 @@ impl ContextId {
             | C::CommitEditor
             | C::Palette
             | C::Tour
+            | C::EmptyState
             | C::Credential => &[],
         }
     }

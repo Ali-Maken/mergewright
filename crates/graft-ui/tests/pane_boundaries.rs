@@ -295,6 +295,23 @@ fn check_carve(screen: GraphScreen<'_>, area: Rect, banner_lines: u16, where_: &
 
 /// The text on one row of a drawn terminal, cell by cell, trailing blanks
 /// trimmed.
+/// What the header spends before anything else: the app's own name. Read
+/// off a wide render of `view` (no banner) rather than hard-coded, so the
+/// banner sweep follows the header if that prefix ever changes.
+fn header_prefix(
+    view: &graft_ui::graph_screen::GraphView<'_>,
+    theme: &graft_ui::theme::Theme,
+) -> usize {
+    let mut terminal = Terminal::new(TestBackend::new(240, 24)).expect("test backend opens");
+    terminal
+        .draw(|frame| frame.render_widget(GraphScreen::new(view, theme), frame.area()))
+        .expect("draws");
+    let header = row_text(&terminal, 0);
+    header
+        .find("~/code/api")
+        .unwrap_or_else(|| panic!("no location on the header row: {header:?}"))
+}
+
 fn row_text(terminal: &Terminal<TestBackend>, y: u16) -> String {
     let buffer = terminal.backend().buffer();
     let text: String = (buffer.area.x..buffer.area.right())
@@ -330,20 +347,7 @@ fn the_banner_keeps_its_state_word_at_every_width() {
     let lines = laid.lines();
     let theme = theme(ThemeKind::Dark, ColorDepth::TrueColor);
     let conflict = "src/auth/token.rs";
-    // What the header spends before anything else: the app's own name. Read
-    // off a wide render with no banner rather than hard-coded, so the sweep
-    // follows the header if that prefix ever changes.
-    let prefix = {
-        let view = screen::view(&lines, 24, 0);
-        let mut terminal = Terminal::new(TestBackend::new(240, 24)).expect("test backend opens");
-        terminal
-            .draw(|frame| frame.render_widget(GraphScreen::new(&view, &theme), frame.area()))
-            .expect("draws");
-        let header = row_text(&terminal, 0);
-        header
-            .find("~/code/api")
-            .unwrap_or_else(|| panic!("no location on the header row: {header:?}"))
-    };
+    let prefix = header_prefix(&screen::view(&lines, 24, 0), &theme);
 
     for height in HEIGHTS {
         for focused in [false, true] {

@@ -68,7 +68,10 @@ pub(crate) enum OutsideStep {
 /// `empty_state` — a moved action's chord becomes its default, and a
 /// default whose action moved does what a key nobody answers does: clears
 /// the problem line, and nothing else. (The clone prompt, ticket 18, joins
-/// the "prompt open" check.)
+/// the "prompt open" check.) The init box is a confirm box (§2.13, §2.3c):
+/// while it is open the press translates in `Confirm`, whose own row is
+/// `confirm.yes`, so the start screen's rows behind it (`c` clone, …) are
+/// not live there (m8/09d D6).
 pub(crate) fn outside_edge(
     state: &mut OutsideState,
     keymap: &Keymap,
@@ -80,7 +83,12 @@ pub(crate) fn outside_edge(
     let Some(chord) = KeyChord::from_press(&key) else {
         return outside_key(state, key);
     };
-    match keymap.translate(ContextId::EmptyState, chord) {
+    let context = if matches!(state.prompt, Some(Prompt::ConfirmInit)) {
+        ContextId::Confirm
+    } else {
+        ContextId::EmptyState
+    };
+    match keymap.translate(context, chord) {
         Translated::Pass => outside_key(state, key),
         Translated::Default(default) => outside_key(state, default.to_press()),
         Translated::Unbound => {
@@ -274,5 +282,7 @@ pub(crate) fn view(state: &OutsideState, now: SystemTime) -> EmptyStateView {
     }
 }
 
+#[cfg(test)]
+mod sweep_tests;
 #[cfg(test)]
 mod tests;

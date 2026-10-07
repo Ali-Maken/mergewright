@@ -352,9 +352,10 @@ fn open_moved_to_capital_o_outside_a_repository() {
     assert_eq!(field.text(), "~/code/o", "typed text is never remapped");
 }
 
-/// m8/09c D3: the init box confirms on `confirm.yes`'s key — one line moves
-/// it with every other box's. `Y` here: `c`, the ticket's example, is the
-/// start screen's own clone key and keeps it (own rows first; 09c NOTES).
+/// m8/09c D3, re-pointed by 09d D6: the init box is a confirm box, so it
+/// confirms on `confirm.yes`'s key and swallows the rest — `c` too, though
+/// `c` is clone's key on the start screen behind it. No problem is warned:
+/// the box translates in `Confirm`, where `c` is nobody else's.
 #[test]
 fn the_init_box_confirms_on_his_confirm_key() {
     use graft_ui::keymap::{KeySwitches, Keymap};
@@ -362,7 +363,7 @@ fn the_init_box_confirms_on_his_confirm_key() {
     use super::outside_edge;
 
     let (keymap, warnings) = Keymap::with_overrides(
-        &[("confirm.yes".to_owned(), vec!["Y".to_owned()])],
+        &[("confirm.yes".to_owned(), vec!["c".to_owned()])],
         KeySwitches::default(),
     );
     assert_eq!(warnings, []);
@@ -372,9 +373,65 @@ fn the_init_box_confirms_on_his_confirm_key() {
     assert_eq!(outside_edge(&mut s, &keymap, ch('y')), OutsideStep::Stay);
     assert_eq!(s.prompt, Some(Prompt::ConfirmInit), "y no longer confirms");
     assert_eq!(
-        outside_edge(&mut s, &keymap, ch('Y')),
+        outside_edge(&mut s, &keymap, ch('c')),
         OutsideStep::Init(PathBuf::from("/me/code"))
     );
+    // The start screen behind it: `c` reaches the list as `c`, clone's
+    // key. The list has no clone arm yet (`empty_state.rs` `list_key`), so
+    // nothing opens and nothing inits.
+    let mut start = state();
+    assert_eq!(
+        outside_edge(&mut start, &keymap, ch('c')),
+        OutsideStep::Stay
+    );
+    assert_eq!(start.prompt, None);
+}
+
+/// 09d D6's stop condition: under the shipped keymap every key the init
+/// box's arm answers (`y` inits; `n`, `esc` close it; every other key —
+/// `←`/`→`, `⇥`, `⏎`, letters — is swallowed and the box stays; `⌃C`
+/// quits) gives the same step and the same box state through the edge
+/// (now translating in `Confirm`) as handed to the arm untranslated.
+#[test]
+fn the_init_box_answers_the_same_keys_in_confirm() {
+    use graft_core::event::Modifiers;
+    use graft_ui::keymap::Keymap;
+
+    use super::outside_edge;
+
+    let keys = [
+        ch('y'),
+        ch('n'),
+        key(KeyCode::Escape),
+        key(KeyCode::Left),
+        key(KeyCode::Right),
+        key(KeyCode::Tab),
+        key(KeyCode::BackTab),
+        key(KeyCode::Enter),
+        ch('c'),
+        ch('q'),
+        ch('i'),
+        ch('o'),
+        ch('j'),
+        ch('k'),
+        ch('Y'),
+        KeyPress {
+            code: KeyCode::Char('c'),
+            modifiers: Modifiers {
+                control: true,
+                ..Modifiers::NONE
+            },
+        },
+    ];
+    for pressed in keys {
+        let mut boxed = state();
+        boxed.prompt = Some(Prompt::ConfirmInit);
+        let mut raw = boxed.clone();
+        let through_edge = outside_edge(&mut boxed, Keymap::shipped(), pressed);
+        let to_the_arm = outside_key(&mut raw, pressed);
+        assert_eq!(through_edge, to_the_arm, "{pressed:?}");
+        assert_eq!(boxed, raw, "{pressed:?}");
+    }
 }
 
 /// The typed-text case of 09b outside: with `graph.merge = "x"`, `x` typed

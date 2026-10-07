@@ -92,3 +92,39 @@ fn a_shared_modifier_word_is_written_once() {
         Some("+/+")
     );
 }
+
+/// m8/09d D7: `merge = "j"` takes `j` on the graph from `app.down`. A key
+/// is not spelled for an action any place took it from — a hint for move
+/// spells `↓` alone, never the `j` that merges on the graph.
+#[test]
+fn a_key_taken_anywhere_is_not_spelled_for_its_loser() {
+    let (map, warnings) = Keymap::with_overrides(
+        &[line("graph.merge", &["j"])],
+        crate::keymap::KeySwitches::default(),
+    );
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert_eq!(map.live_labels(&DOWN), ["↓"]);
+    assert_eq!(map.spell_keys(&[DOWN, UP]).as_deref(), Some("↓/k"));
+    assert_eq!(map.live_labels(&MERGE), ["j"]);
+}
+
+/// m8/09d D7: the shipped table has no clashes, so every label is what the
+/// old rule gave — each chord of a row, its own context holding it there
+/// (the table never binds one chord twice in one context).
+#[test]
+fn the_shipped_labels_are_unchanged() {
+    let shipped = Keymap::shipped();
+    for binding in crate::keymap::defaults() {
+        let old: Vec<String> = shipped
+            .chords(&binding.action)
+            .iter()
+            .map(|chord| chord.label().0)
+            .collect();
+        assert_eq!(
+            shipped.live_labels(&binding.action),
+            old.as_slice(),
+            "{}",
+            binding.action.0
+        );
+    }
+}
