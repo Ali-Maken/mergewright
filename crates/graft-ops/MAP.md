@@ -197,6 +197,9 @@ Not an `Operation`: no journal entry, no undo (keymap §2.13 `i`, note J21). Run
 - `init_here` (fn) — `(dir) -> Result<PathBuf, InitError>`: `git init --quiet` in an existing `dir`; the canonical repository path.
 - `InitError` (enum) — `Missing(PathBuf)` (`init: no such folder …`; nothing created), `Git(String)` (`init: <git's reason>`).
 
+## matcher
+- `fuzzy_score(query, text) -> Option<u32>` (fn, pure, m8-polish-and-ship/11; moved from graft-core by 12f, ADR-0007) — case-insensitive; every whitespace-separated word of `query` must occur in `text`; lower is better: a word at a segment start (the start, or after a non-alphanumeric) beats one inside (1024 per word that is inside), then the first word's offset. Empty query → `Some(0)`. Shared by the palette and `graft_ops::switch_list`.
+
 ## merge_state
 git's merge in progress, as files (m6-conflicts/20). The one place Graft writes git's merge files, and only to put back bytes git wrote.
 - `MergeStateError` (enum) — `Io { file, source }`, `NotAnOid { printed }`, `Run(RunError)`, `NotWritten { expected, git_says }`. `Octopus` removed (m6-conflicts/38): an octopus merge is read, not an error.
@@ -391,7 +394,7 @@ The journal and git's reflog as one list: `●` Graft, `$` the shell, `✗` lost
 - `SwitchKind` (enum) — `Local`, `RemoteOnly { remote, local }`. `Relation` (enum) — `Tracks(ref)` (upstream under `refs/remotes/`), `BuiltOn(ref)` (under `refs/heads/`), `None`.
 - `SwitchRow` (struct) — `name, kind, tip, subject, author, when, relation, current`. `SwitchList` (struct) — `previous: Option<SwitchRow>` (`↩ before`, not repeated in `rows`), `rows`.
 - `switch_list(repo, stop) -> Result<SwitchList, FactsError>` (fn) — `graft_git::switch_refs` + `head` + `remote::list`. Rows: previous (`@{-1}`, when not HEAD's branch) apart; then local newest tip first; then remote-only newest first; HEAD's branch (`current`) last. A remote ref is left out when a local branch's upstream is it, when a local branch has its local name, or **when no listed remote prefixes it**. Local name = ref less `refs/remotes/<remote>/`, `<remote>` the **longest** listed remote name prefixing it. Stopped → `FactsError::Stopped`.
-- `filter_switch_rows(list, query) -> Vec<&SwitchRow>` (fn, pure) — empty query: previous then `rows`. Else `graft_core::matcher::fuzzy_score` over the short name (m8/11): a match at a segment start ranks above one inside; ties newest tip first; previous ranks like any row.
+- `filter_switch_rows(list, query) -> Vec<&SwitchRow>` (fn, pure) — empty query: previous then `rows`. Else `crate::matcher::fuzzy_score` over the short name (m8/11): a match at a segment start ranks above one inside; ties newest tip first; previous ranks like any row.
 
 ## bin (test-only)
 - `askpass_test_helper` (bin) — stands in for Graft's askpass mode (M4 05b) in `tests/it/remote_ops.rs`: reads `GRAFT_ASKPASS_SOCKET`, calls `graft_git::run::askpass::respond` with `argv[1]`. Nothing ships it (m4/04).

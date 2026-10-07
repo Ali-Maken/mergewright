@@ -1,10 +1,9 @@
 //! The one text matcher: the branch picker's filter and the command palette
 //! both rank with it (m8-polish-and-ship/11, decision 1).
 //!
-//! It lives in `core` although `core` otherwise holds shapes, not
-//! behaviour: `graft-ops` (the picker's ranking) and `graft` (the palette)
-//! both need the same answer, and `core` is the one crate both reach
-//! without a new edge in the layering.
+//! It lives in `ops`, not `core` (ADR-0007: core holds shapes, not
+//! behaviour; m8/12e D4): `graft-ops` ranks the picker with it and `graft`
+//! (the palette) already depends on `graft-ops`, so no new edge.
 
 /// How far a query matches `text`; **lower ranks first**, `None` when it
 /// does not match at all.

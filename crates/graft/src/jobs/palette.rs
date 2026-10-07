@@ -6,10 +6,10 @@
 
 use std::sync::Arc;
 
-use graft_core::matcher::fuzzy_score;
 use graft_core::oid::Oid;
 use graft_git::status::{StatusError, TrackedPaths, tracked_paths};
 use graft_git::switch_refs::{SwitchRefs, switch_refs};
+use graft_ops::matcher::fuzzy_score;
 
 use super::Cancel;
 use crate::refs::RefBadges;

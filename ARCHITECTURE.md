@@ -157,9 +157,18 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 - **Changing pull's fetch-first path** → `graft-ops/src/apply/pull.rs`.
 - **Adding a new kind of `Command` or wiring a new job** → `app`. It's the
   only crate allowed to see every other crate, and `update` and the job
-  runner both live there. **Six commands are the exception: they are
-  carried out by the frame loop itself, never by a job** — see the hand-over
-  rule below.
+  runner both live there. **Seven commands are the exception: they are
+  carried out by the frame loop itself, never by a job** — the six that
+  hand the terminal over (see the hand-over rule below) and `Retheme`, the
+  palette's `Theme: …` rows, because "the theme is the loop's, so the loop
+  carries them out here" (`app/src/event_loop/running/turn.rs:298–299`).
+  The full list is the `not_a_job` arms in `app/src/jobs/runner.rs`.
+- **Changing the palette** (`?`, `⌃P`) → `app/src/update/palette/`:
+  `mod.rs` (state, `palette_key`, view), `listing.rs` (rows, filter),
+  `find.rs` (BRANCHES/TAGS/FILES/COMMITS and their jobs' answers),
+  `run.rs` (`⏎`), `input.rs` (opening, edits, paste, mouse);
+  `graft-ui/src/palette.rs` for how it draws; `app::jobs::palette` for the
+  find jobs; `graft_ops::matcher` for the one fuzzy matcher.
 - **Changing the branch picker** → `app/src/update/picker.rs` for its keys
   and state, `graft-ui/src/picker.rs` for how it draws.
 - **Changing `o` (take the cursor commit, previewed; m7-power-tools/11)** →
@@ -182,7 +191,10 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 shell they suspended to — inside the terminal Graft is drawing on. The
 six commands that do this (`EditCommitMessage`, `OpenExternalEditor`,
 `OpenMergetool`, `OpenConflictEditor`, `ContinueInGit`, `Suspend`;
-`hands_over` in `crates/graft/src/event_loop/running/carry.rs`) are the only ones **carried out by the frame loop rather than queued as jobs**, and
+`hands_over` in `crates/graft/src/event_loop/running/carry.rs`) **hand the
+terminal over**; with `Retheme` they are the only commands **carried out by
+the frame loop rather than queued as jobs** (the full list: `not_a_job` in
+`crates/graft/src/jobs/runner.rs`), and
 that is not a shortcut: the job pool's threads do not own the session or the
 input mux, and only the thread that owns both can give the terminal up. A job
 that tried would leave two readers on one file descriptor and the user's
@@ -230,7 +242,7 @@ unchanged.
 | `core` | Plain data only — no behaviour, no algorithms: commit and ref identity, events, the record shapes other crates read and write, errors for its own parsing | nothing internal |
 | `graph` | The pure layout engine and the pixel/Unicode/ASCII renderers | `core` |
 | `git` | Repository reads (`gix`; `git2` only per named gap, ADR-0011), the typed git command runner, output and diff parsers | `core` |
-| `ops` | Operations, the undo journal, Mistake Radar detection, Ghost Preview planning | `git`, `core` |
+| `ops` | Operations, the undo journal, Mistake Radar detection, Ghost Preview planning, the matcher pickers and the palette rank by | `git`, `core` |
 | `term` | Terminal capability detection, image-protocol encoding, escape-sequence sanitising | `core` |
 | `ui` | Widgets, screen layout, theme, view models | `graph`, `term`, `core` |
 | `app` | The binary: event loop, `AppState`, `update`, the job runner, config, wiring | everything |

@@ -77,9 +77,6 @@ One line per public item. Update when a public item changes.
 - `RasterFrame` (struct) — the pixel renderer's strip: `width`, `height`, `rows`, `columns`, premultiplied RGBA `pixels`, never a painted background.
 - `RasterFrame::pixel` (fn) — the premultiplied RGBA at one pixel, `None` outside.
 
-## matcher
-- `fuzzy_score(query, text) -> Option<u32>` (fn, pure, m8-polish-and-ship/11) — case-insensitive; every whitespace-separated word of `query` must occur in `text`; lower is better: a word at a segment start (the start, or after a non-alphanumeric) beats one inside (1024 per word that is inside), then the first word's offset. Empty query → `Some(0)`. Shared by the palette and `graft_ops::switch_list`.
-
 ## ref_name
 - `RefName` (struct) — a git ref's full name; `new` / `as_bytes` / `shorthand` / `is_graft_internal` (fn).
 - `GRAFT_INTERNAL` (const) — `refs/graft/`, the namespace Graft writes its own refs under.

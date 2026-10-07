@@ -15,7 +15,6 @@ pub mod error;
 pub mod event;
 pub mod job;
 pub mod journal;
-pub mod matcher;
 pub mod mistake_radar;
 pub mod oid;
 pub mod raster;

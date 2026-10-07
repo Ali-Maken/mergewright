@@ -623,7 +623,7 @@ fn shown_rows_always_match_the_current_query() {
     for (header, label, kind, _) in &rows {
         if *kind == RowKind::Branch || *kind == RowKind::Tag {
             assert!(
-                graft_core::matcher::fuzzy_score("featu", label).is_some(),
+                graft_ops::matcher::fuzzy_score("featu", label).is_some(),
                 "{header}/{label} does not match `featu`"
             );
         }

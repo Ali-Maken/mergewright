@@ -19,6 +19,7 @@ pub mod init;
 pub mod journal;
 pub mod journal_list;
 pub mod keys;
+pub mod matcher;
 pub mod merge_state;
 pub mod mistake_radar;
 mod objects;
