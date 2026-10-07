@@ -1,8 +1,8 @@
 # G-look polish — states you can see: folded merges, faded threads, ghosts at Pixel, ignored whitespace
 
 Status: ready
-Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: each item decided below; small, visual.
-Blocked by: 07, 16
+Build with: **Sonnet** (conductor 2026-10-07 after scout `scouts/17-look-polish.md`: items 2/3/5/7/8 mechanical; item 6 needs design — the builder stops on it and reports, it goes to the planner)
+Blocked by: 07, 16, 11b (shares graph_screen and captures); before 09e (shares rows.rs `modal_blanked`)
 Needs: `theme-overrides` (same `theme` files, sequential), `look-cursor-row-and-dark-b`.
 
 ## Read first
