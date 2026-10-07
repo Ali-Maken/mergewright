@@ -152,13 +152,23 @@ pub(crate) fn recover_answered(
         Ok(Recover::OfferBranch { at, name, why }) => {
             state.status = Status::Sticky {
                 reason: why.clone(),
-                keys: Some(format!(
-                    "b makes {name} at {}",
-                    crate::update::place::short(*at)
-                )),
+                keys: offer_branch_keys(name, &crate::update::place::short(*at), &state.keymap),
             };
             state.journal.offered = Some((row, name.clone()));
         }
         Err(why) => state.status = Status::sticky(why.clone()),
     }
+}
+
+/// `b makes <name> at <short>`: the branch a `⏎` on a lost row offers,
+/// spelled from `journal.branch` (J is up); `None` when unbound.
+pub(crate) fn offer_branch_keys(
+    name: &str,
+    at: &str,
+    keys: &graft_ui::keymap::Keymap,
+) -> Option<String> {
+    keys.key_verb(
+        &[graft_ui::keymap::ActionId("journal.branch")],
+        &format!("makes {name} at {at}"),
+    )
 }

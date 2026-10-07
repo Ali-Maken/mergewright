@@ -73,7 +73,12 @@ pub(crate) fn done_line(what: &str, also: Option<&str>, keys: Option<&str>) -> S
 /// really does clear a `Failed`/`Sticky` status (`update::keys::key_event`),
 /// and a failure that names no key at all is the one footer ADR-0037 §4
 /// rules out — the bar must never be keyless (m5-03 review, Major 2).
-pub(crate) const DISMISS: &str = "esc dismiss";
+///
+/// `esc dismiss`, spelled from `app.back` (the graph's `Esc`); `None` when
+/// unbound — the bar is then keyless, the one honest answer.
+pub(crate) fn dismiss(keys: &graft_ui::keymap::Keymap) -> Option<String> {
+    keys.key_verb(&[graft_ui::keymap::ActionId("app.back")], "dismiss")
+}
 
 /// The graph footer's reading of [`Status`]: the same problem, but with the
 /// reason and keys kept apart so [`graft_ui::graph_screen::hints::fit_status_line`]
@@ -82,7 +87,11 @@ pub(crate) const DISMISS: &str = "esc dismiss";
 /// failure carries no keys — the common case (a hook rejected the commit,
 /// `$EDITOR` failed, staging refused on a conflict).
 #[must_use]
-pub(crate) fn graph_problem(status: &Status) -> Option<ProblemLine> {
+pub(crate) fn graph_problem(
+    status: &Status,
+    keys: &graft_ui::keymap::Keymap,
+) -> Option<ProblemLine> {
+    let dismiss = || dismiss(keys).map(|words| sanitize_line(&words));
     match status {
         Status::Ready
         | Status::Copied { .. }
@@ -91,11 +100,14 @@ pub(crate) fn graph_problem(status: &Status) -> Option<ProblemLine> {
         | Status::Done { .. } => None,
         Status::Failed(message) => Some(ProblemLine {
             reason: sanitize_line(message),
-            keys: Some(sanitize_line(DISMISS)),
+            keys: dismiss(),
         }),
         Status::Sticky { reason, keys } => Some(ProblemLine {
             reason: sanitize_line(reason),
-            keys: Some(sanitize_line(keys.as_deref().unwrap_or(DISMISS))),
+            keys: match keys {
+                Some(keys) => Some(sanitize_line(keys)),
+                None => dismiss(),
+            },
         }),
     }
 }
@@ -125,7 +137,7 @@ pub(crate) fn bottom_row_problem(state: &AppState) -> Option<ProblemLine> {
     if state.modal_owns_bottom_row() {
         modal_problem(state)
     } else {
-        graph_problem(state.shown_status())
+        graph_problem(state.shown_status(), &state.keymap)
     }
 }
 
@@ -228,6 +240,6 @@ mod tests {
     fn a_wait_is_never_drawn_as_a_problem() {
         let wait = super::Status::Waiting("still reading the refs — try again".to_owned());
         assert_eq!(super::problem(&wait), None);
-        assert!(super::graph_problem(&wait).is_none());
+        assert!(super::graph_problem(&wait, graft_ui::keymap::Keymap::shipped()).is_none());
     }
 }

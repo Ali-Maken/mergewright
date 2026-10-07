@@ -1,6 +1,6 @@
 # G-keymap 2h — undo, journal, recover and status-row words spell keys from his keymap
 
-Status: ready
+Status: partial (6/7 boxes; captures box open)
 Build with: **Sonnet** — every site listed, every rule decided (10b W1–W6), each held by a table row. Not Fable.
 Blocked by: 10b, 10e (callers' files; test scaffold). **After 09d merges** (`view/status*`, possible `view/frame*`
 contact with 09d's widget call sites).
@@ -37,19 +37,19 @@ Out: prose rows; graft-ops `UndoError` words (10e); 20's item 5 (`undo.rs:645-65
 No new public items. Word fns gaining `keys: &Keymap` are named in MAP.md.
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] `update::tests::keymap_words::undo_journal::each_word_spells_the_remapped_key` — one row per site (count
+- [x] `update::tests::keymap_words::undo_journal::each_word_spells_the_remapped_key` (22 rows; search shipped bytes: `update::tests::keymap_words::undo_journal::the_search_hint_normalises_esc_only`) — one row per site (count
       stated): sweep keymap → remapped label, no default label of a moved action as a whole token; shipped →
       byte-identical (or the W6 normalisation, asserted).
-- [ ] `…::undo_journal::each_word_names_the_row_that_answers_it` — W2 pin per site (ctx stated); the credential
+- [x] `…::undo_journal::each_word_names_the_row_that_answers_it` (16 pins) — W2 pin per site (ctx stated); the credential
       row pinned in its text-field context.
-- [ ] `…::undo_journal::an_unbound_key_drops_its_clause` — redo unbound: no `U redoes …` clause; journal unbound:
+- [x] `…::undo_journal::an_unbound_key_drops_its_clause` + `an_unbound_back_drops_its_clause` + `an_unbound_undo_or_help_drops_its_clause` + `no_unbound_key_draws_a_dash` — redo unbound: no `U redoes …` clause; journal unbound:
       no `J journal` / `· J to inspect`; `app.back = "none"`: `esc dismiss` not drawn; no `—`.
-- [ ] Credential line under the sweep keymap equals the shipped line (W4) — test named.
-- [ ] `no_literal_keys::no_user_facing_literal_spells_a_default_key` green; `known_undo.rs` holds only `text field,
+- [x] Credential line under the sweep keymap equals the shipped line (W4) — `update::tests::keymap_words::undo_journal::the_credential_keys_are_the_shipped_ones_under_any_keymap`.
+- [x] `no_literal_keys::no_user_facing_literal_spells_a_default_key` green (ROWS now empty — Esc has a Credential row, pinned); `known_undo.rs` holds only `text field,
       no row` rows with `file:line`.
 - [ ] Captures: shipped keymap → only W6 normalisations (`Esc` → `esc` in search captures); each file and token in
       NOTES; affected contact sheets re-assembled. Colour unverified (rule 5).
-- [ ] MAP.md graft: changed fn signatures.
+- [x] MAP.md graft: changed fn signatures (checked by reading the diff; no test).
 
 ## Touches
 - Callers (compiler); tests asserting these strings (grep each literal); every capture showing search's hint line.
@@ -62,3 +62,25 @@ No new public items. Word fns gaining `keys: &Keymap` are named in MAP.md.
 
 ## Size
 ~55k: ~25 sites ~20k, table + pins ~20k, captures ~5k, MAP/NOTES ~5k.
+
+## NOTES (builder 10h, 2026-10-07)
+
+No compaction. Scout: none — 10f/10g/10j NOTES served as scout; sites read directly.
+- **TDD:** red observed as compile failure for every new test (fns missing); plus one mutation red (`dismiss` returning the
+  literal → `each_word_spells…` and `an_unbound…` FAIL), reverted, green. Assertion red per test not observed otherwise.
+- **Captures box OPEN:** search hint `Esc` → `esc` (W6). Stale files, token `Esc close`/`Esc cancel`:
+  `docs/shots/26-search-far.txt` (7 lines), `26-search-typing.txt` (2), `m2-18-git-git-search-enter-160x40-unicode.txt` (1).
+  No generator in the repo (no test or script names them); hand-shot pty captures. Not hand-edited (would fake a capture).
+  Needs a re-shoot by the conductor or an acceptance walk. Colour unverified (rule 5).
+- **Also spelled (scanner missed):** `quit.rs` waits (used `spell` → `—` when unbound; now clauses drop); `undo.rs`
+  `so u restores the whole tree`; `operate/failure.rs` dismiss stand-in.
+- **W2 contexts:** see doc comment on `each_word_names_the_row_that_answers_it`. Search `n/N` answer translated keys
+  (`update/mod.rs` `dispatch_key` → `search::search_key`).
+- **Unbound `journal.branch` on a `●` row:** status left unchanged (W3: line is only a key clause).
+- **Outside Files (compiler-forced / visibility):** `operate/outcome.rs`, `operate/failure.rs`, `preview/answer.rs`,
+  `view/rows.rs`; `mod` lines in `journal.rs`, `preview.rs`, `place.rs`, `view/frame.rs`, `view/mod.rs` → `pub(crate)`;
+  tests `recover/tests.rs`, `clash/tests.rs`, `undo/tests/set_aside.rs`, `view/tests/bottom_row/rungs.rs`, `update/tests.rs`
+  (pass `Keymap::shipped()`).
+- **Touches:** callers via compiler; string-asserting tests — full nextest 5781/5781 green, unchanged expectations;
+  journal/undo logic: `git diff` of undo.rs/journal/recover.rs holds only word fns + their call lines (read by eye);
+  keymap table untouched; captures as above.

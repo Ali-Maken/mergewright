@@ -38,13 +38,17 @@ fn done(what: &str, also: Option<&str>) -> Status {
 
 #[test]
 fn a_moved_branch_says_it_has_the_commit_again() {
-    let said = done_status(&move_main(), |_| Some("Add retry".to_owned()));
+    let said = done_status(
+        &move_main(),
+        |_| Some("Add retry".to_owned()),
+        graft_ui::keymap::Keymap::shipped(),
+    );
     assert_eq!(said, done("put back", Some("main has \"Add retry\" again")));
 }
 
 #[test]
 fn a_subject_nobody_holds_is_the_sha() {
-    let said = done_status(&move_main(), |_| None);
+    let said = done_status(&move_main(), |_| None, graft_ui::keymap::Keymap::shipped());
     assert_eq!(said, done("put back", Some("main has 0404040 again")));
 }
 
@@ -54,7 +58,11 @@ fn a_recreated_branch_is_back_at_its_commit() {
         name: "spike".to_owned(),
         at: oid(7),
     };
-    let said = done_status(&params(target), |_| Some("Try it".to_owned()));
+    let said = done_status(
+        &params(target),
+        |_| Some("Try it".to_owned()),
+        graft_ui::keymap::Keymap::shipped(),
+    );
     assert_eq!(said, done("spike is back at \"Try it\"", None));
 }
 
@@ -68,11 +76,19 @@ fn files_put_back_say_which() {
         })
     };
     assert_eq!(
-        done_status(&files(&["src/a.rs"]), |_| None),
+        done_status(
+            &files(&["src/a.rs"]),
+            |_| None,
+            graft_ui::keymap::Keymap::shipped()
+        ),
         done("your edit to src/a.rs is back", None)
     );
     assert_eq!(
-        done_status(&files(&["src/a.rs", "b", "c"]), |_| None),
+        done_status(
+            &files(&["src/a.rs", "b", "c"]),
+            |_| None,
+            graft_ui::keymap::Keymap::shipped()
+        ),
         done("your edits to src/a.rs +2 more are back", None)
     );
 }
@@ -146,7 +162,12 @@ fn the_put_back_box_says_now_and_after() {
     );
     let files = changes(&["src/api/limit.rs"], &[], 1);
     assert_eq!(
-        preview_lines(&move_main(), Some(&files), subjects),
+        preview_lines(
+            &move_main(),
+            Some(&files),
+            subjects,
+            graft_ui::keymap::Keymap::shipped()
+        ),
         vec![
             "now       main \u{2192} 0303030  Add metrics endpoint",
             "after y   main \u{2192} 0404040  Add rate limiter",
@@ -161,7 +182,12 @@ fn the_box_says_unchanged_when_not_checked_out() {
     let files = FilesEffect::Unchanged {
         not_checked_out: "main isn't checked out".to_owned(),
     };
-    let lines = preview_lines(&move_main(), Some(&files), subjects);
+    let lines = preview_lines(
+        &move_main(),
+        Some(&files),
+        subjects,
+        graft_ui::keymap::Keymap::shipped(),
+    );
     assert_eq!(
         lines.get(2).map(String::as_str),
         Some("your files: unchanged (main isn't checked out)")
@@ -182,7 +208,12 @@ fn a_make_again_box_says_the_branch_is_gone() {
         not_checked_out: "spike isn't checked out".to_owned(),
     };
     assert_eq!(
-        preview_lines(&recreate, Some(&files), subjects),
+        preview_lines(
+            &recreate,
+            Some(&files),
+            subjects,
+            graft_ui::keymap::Keymap::shipped()
+        ),
         vec![
             "now       spike is gone",
             "after y   spike \u{2192} 0707070  Try it",
@@ -204,7 +235,12 @@ fn a_file_put_back_box_says_only_your_files() {
     );
     let files = changes(&["src/a.rs"], &[], 0);
     assert_eq!(
-        preview_lines(&edit_to(&["src/a.rs"]), Some(&files), subjects),
+        preview_lines(
+            &edit_to(&["src/a.rs"]),
+            Some(&files),
+            subjects,
+            graft_ui::keymap::Keymap::shipped()
+        ),
         vec!["your files: src/a.rs comes back", "u undoes it"]
     );
 }
@@ -216,7 +252,12 @@ fn the_box_names_the_sha_when_the_subject_is_unknown() {
         "Preview: put main back to 0404040"
     );
     assert_eq!(
-        preview_lines(&move_main(), None, |_| None),
+        preview_lines(
+            &move_main(),
+            None,
+            |_| None,
+            graft_ui::keymap::Keymap::shipped()
+        ),
         vec![
             "now       main \u{2192} 0303030",
             "after y   main \u{2192} 0404040",
@@ -321,7 +362,12 @@ fn files_words_says_a_staged_path_stays_staged() {
 
 #[test]
 fn no_files_line_when_the_plan_has_none() {
-    let lines = preview_lines(&move_main(), None, subjects);
+    let lines = preview_lines(
+        &move_main(),
+        None,
+        subjects,
+        graft_ui::keymap::Keymap::shipped(),
+    );
     assert!(
         lines.iter().all(|line| !line.starts_with("your files")),
         "{lines:?}"

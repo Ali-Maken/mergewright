@@ -347,7 +347,7 @@ pub fn preview_box(state: &AppState) -> Option<PreviewBox> {
                     &preview.subject,
                 )
             } else if let Some((index, pop)) = stash_put_back(&preview.subject) {
-                stash_box(&planned.plan, index, pop)
+                stash_box(&planned.plan, index, pop, &state.keymap)
             } else if let Some(Operation::Recover(params)) = preview.subject.operation() {
                 put_back_box(state, &planned.plan, params)
             } else {

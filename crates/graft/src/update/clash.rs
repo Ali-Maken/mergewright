@@ -242,7 +242,7 @@ pub(super) fn clashed(
         _ => "rebase",
     };
     let undoes = (clash.why == PutBackWhy::SetAside).then_some(what);
-    let notice = notice_words(index, clash.paths.len(), undoes);
+    let notice = notice_words(index, clash.paths.len(), undoes, &state.keymap);
     if super::resolver::land_on_clash(state, &mut commands, first, next_id) {
         super::resolver::set_notice(state, (notice, false));
     } else {
@@ -276,27 +276,46 @@ pub(crate) fn stash_name(state: &AppState) -> Option<String> {
 /// back`. A set-aside's names the edits and the operation `u` undoes with
 /// them (`undoes`: `rebase`, `switch`): `your edits clashed in 2 files ·
 /// esc, u undoes the rebase too` (m6-conflicts/74).
-fn notice_words(index: Option<usize>, files: usize, undoes: Option<&str>) -> String {
+fn notice_words(
+    index: Option<usize>,
+    files: usize,
+    undoes: Option<&str>,
+    keys: &graft_ui::keymap::Keymap,
+) -> String {
     let noun = if files == 1 { "file" } else { "files" };
     let who = match undoes {
         Some(_) => "your edits".to_owned(),
         None => stash_words(index),
     };
-    format!(
-        "{who} clashed in {files} {noun} \u{b7} {}",
-        undo_clause_words(undoes)
-    )
+    let words = format!("{who} clashed in {files} {noun}");
+    match undo_clause_words(undoes, keys) {
+        Some(clause) => format!("{words} \u{b7} {clause}"),
+        None => words,
+    }
 }
 
 /// What `u` does for a clash, as its landing notice says it: `esc, u puts
 /// it all back`, or for a set-aside `esc, u undoes the <rebase|switch> too`.
 /// The one wording: the notice and the resolver's answer to `u`
 /// (m6-conflicts/85 m-i) both take it from here.
-fn undo_clause_words(undoes: Option<&str>) -> String {
-    match undoes {
-        Some(what) => format!("esc, u undoes the {what} too"),
-        None => "esc, u puts it all back".to_owned(),
-    }
+///
+/// Two keys (W5): `esc` closes the resolver (`app.back` there), then `u`
+/// on the graph (`app.undo`). Esc unbound → `u …` alone; undo unbound →
+/// `None`, the clause goes.
+pub(crate) fn undo_clause_words(
+    undoes: Option<&str>,
+    keys: &graft_ui::keymap::Keymap,
+) -> Option<String> {
+    use graft_ui::keymap::ActionId;
+    let verb = match undoes {
+        Some(what) => format!("undoes the {what} too"),
+        None => "puts it all back".to_owned(),
+    };
+    let undo = keys.key_verb(&[ActionId("app.undo")], &verb)?;
+    Some(match keys.spell_keys(&[ActionId("app.back")]) {
+        Some(back) => format!("{back}, {undo}"),
+        None => undo,
+    })
 }
 
 /// [`undo_clause_words`] for the clash standing, or `None` with no clash.
@@ -320,7 +339,7 @@ pub(crate) fn undo_clause(state: &AppState) -> Option<String> {
         }));
         if checkout { "switch" } else { "rebase" }
     });
-    Some(undo_clause_words(undoes))
+    undo_clause_words(undoes, &state.keymap)
 }
 
 /// The stop line's wordings while a clash is open and nothing is stopped,
@@ -393,7 +412,11 @@ pub(crate) fn kept_status(index: Option<usize>) -> Status {
 /// edits are back`: after `o branch` in every block they are not, and `u`
 /// brings the copy back.
 #[must_use]
-pub(crate) fn dropped_status(index: Option<usize>, why: PutBackWhy) -> Status {
+pub(crate) fn dropped_status(
+    index: Option<usize>,
+    why: PutBackWhy,
+    keys: &graft_ui::keymap::Keymap,
+) -> Status {
     let dropped = match why {
         PutBackWhy::SetAside => "set-aside copy".to_owned(),
         PutBackWhy::Pop | PutBackWhy::Apply => stash_words(index),
@@ -401,7 +424,7 @@ pub(crate) fn dropped_status(index: Option<usize>, why: PutBackWhy) -> Status {
     Status::Done {
         what: format!("every file done \u{b7} {dropped} dropped"),
         also: None,
-        keys: Some("u brings it back".to_owned()),
+        keys: brings_back(keys),
     }
 }
 
@@ -460,3 +483,9 @@ pub(crate) fn drops(why: PutBackWhy) -> bool {
 
 #[cfg(test)]
 pub(crate) mod tests;
+
+/// `u brings it back`: a dropped stash or set-aside copy, `app.undo` on
+/// the graph; `None` when unbound.
+pub(crate) fn brings_back(keys: &graft_ui::keymap::Keymap) -> Option<String> {
+    keys.key_verb(&[graft_ui::keymap::ActionId("app.undo")], "brings it back")
+}

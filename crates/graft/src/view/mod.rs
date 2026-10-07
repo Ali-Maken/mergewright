@@ -15,7 +15,7 @@
 //! builds the status screen's view model.
 
 mod commit_editor;
-mod credential;
+pub(crate) mod credential;
 mod detail;
 mod entries;
 pub(crate) mod explain;

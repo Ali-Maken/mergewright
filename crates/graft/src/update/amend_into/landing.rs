@@ -49,7 +49,7 @@ pub(crate) fn landed(
     state.status = Status::Done {
         what: asked.words.what.clone(),
         also: (!also.is_empty()).then_some(also),
-        keys: Some("u undoes".to_owned()),
+        keys: crate::update::recover::undoes(&state.keymap),
     };
     if asked.offsets.is_empty() {
         return;

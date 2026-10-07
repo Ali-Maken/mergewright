@@ -27,9 +27,9 @@ use super::state::{AppState, Status};
 use crate::jobs::journal_list::LostFound;
 use crate::jobs::undo::JournalRead;
 
-mod answers;
+pub(crate) mod answers;
 pub(crate) mod find;
-mod keys;
+pub(crate) mod keys;
 pub(super) use answers::journal_event;
 pub(crate) use answers::{lost_landed, outside_landed, recover_answered};
 #[cfg(test)]

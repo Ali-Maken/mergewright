@@ -13,9 +13,6 @@ use graft_ui::graph_screen::RowTag;
 
 use super::state::{AppState, Status};
 
-/// The key the line names: the put-back is a journal entry like any other.
-const UNDOES: &str = "u undoes";
-
 /// The line a put-back's `Done` leaves (note "Where he lands" 2b):
 /// `put back ✓ · main has "<subject>" again · u undoes`,
 /// `spike is back at "<subject>" ✓ · u undoes`,
@@ -26,6 +23,7 @@ const UNDOES: &str = "u undoes";
 pub(crate) fn done_status(
     params: &RecoverParams,
     subject_of: impl Fn(Oid) -> Option<String>,
+    keys: &graft_ui::keymap::Keymap,
 ) -> Status {
     let named = |oid: Oid| match subject_of(oid) {
         Some(subject) => format!("\"{}\"", sanitize_line(&subject)),
@@ -45,7 +43,7 @@ pub(crate) fn done_status(
     Status::Done {
         what,
         also,
-        keys: Some(UNDOES.to_owned()),
+        keys: undoes(keys),
     }
 }
 
@@ -129,6 +127,7 @@ pub(crate) fn preview_lines(
     params: &RecoverParams,
     files: Option<&FilesEffect>,
     subject_of: impl Fn(Oid) -> Option<String>,
+    keys: &graft_ui::keymap::Keymap,
 ) -> Vec<String> {
     // `main → 3d4e5f6  Add metrics endpoint`, the sha7 alone when no
     // subject is known.
@@ -150,7 +149,7 @@ pub(crate) fn preview_lines(
         RecoverTarget::Files { .. } => Vec::new(),
     };
     lines.extend(files.map(files_words));
-    lines.push("u undoes it".to_owned());
+    lines.extend(undoes_it(keys));
     lines
 }
 
@@ -259,3 +258,14 @@ pub(super) fn subject_in(state: &AppState, oid: Oid) -> Option<String> {
 
 #[cfg(test)]
 mod tests;
+
+/// `u undoes`, the key a put-back's done line names (`app.undo`, on the
+/// graph it lands on); `None` when unbound.
+pub(crate) fn undoes(keys: &graft_ui::keymap::Keymap) -> Option<String> {
+    keys.key_verb(&[graft_ui::keymap::ActionId("app.undo")], "undoes")
+}
+
+/// `u undoes it`, the put-back preview's last line; none when unbound.
+pub(crate) fn undoes_it(keys: &graft_ui::keymap::Keymap) -> Option<String> {
+    keys.key_verb(&[graft_ui::keymap::ActionId("app.undo")], "undoes it")
+}

@@ -264,8 +264,9 @@ impl Search {
         self.hit(next)
     }
 
-    /// The footer's words: query, state, position, and the keys that apply.
-    pub fn line(&self) -> String {
+    /// The footer's words: query, state, position, and the keys that apply,
+    /// spelled from `keys` ([`keys_words`]).
+    pub fn line(&self, keys: &graft_ui::keymap::Keymap) -> String {
         let position = match self.current {
             Some(at) => format!(" ({}/{})", at + 1, self.hits()),
             None => String::new(),
@@ -275,18 +276,43 @@ impl Search {
         } else {
             ""
         };
-        let keys = match (&self.state, self.hits()) {
-            (SearchState::Running { .. }, 0) => "  Esc cancel",
-            (SearchState::Running { .. }, _) => "  n/N next/prev  Esc cancel",
-            (_, 0) => "  Esc close",
-            _ => "  n/N next/prev  Esc close",
-        };
+        let running = matches!(self.state, SearchState::Running { .. });
+        let keys = keys_words(running, self.hits(), keys);
         format!(
             "/{}  {}{position}{missed}{keys}",
             self.query.text(),
             self.state.describe()
         )
     }
+}
+
+/// The search line's keys: `  n/N next/prev  esc close` (`esc cancel`
+/// while running; no `n/N` with no hits). Spelled from the graph's rows —
+/// `n`/`N` step on the translated key (`update/search.rs` `search_step`),
+/// `esc` is the graph's `Esc` ladder. An unbound key's clause goes; with
+/// one of `n`/`N` unbound the other keeps its own verb (`n next`).
+#[must_use]
+pub fn keys_words(running: bool, hits: usize, keys: &graft_ui::keymap::Keymap) -> String {
+    use graft_ui::keymap::ActionId;
+    let mut parts = Vec::new();
+    if hits > 0 {
+        let next = keys.spell_keys(&[ActionId("app.next_match")]);
+        let prev = keys.spell_keys(&[ActionId("app.prev_match")]);
+        match (next, prev) {
+            (Some(next), Some(prev)) => parts.push(format!("{next}/{prev} next/prev")),
+            (Some(next), None) => parts.push(format!("{next} next")),
+            (None, Some(prev)) => parts.push(format!("{prev} prev")),
+            (None, None) => {}
+        }
+    }
+    let verb = if running { "cancel" } else { "close" };
+    parts.extend(keys.key_verb(&[ActionId("app.back")], verb));
+    let mut line = String::new();
+    for part in parts {
+        line.push_str("  ");
+        line.push_str(&part);
+    }
+    line
 }
 
 #[cfg(test)]

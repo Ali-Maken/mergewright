@@ -114,7 +114,7 @@ pub(crate) fn blame_arrived(
     };
     // `^`'s came-from line is the blame under this one's; a history place
     // under it asked with a line (`B`), not a came-from.
-    let asked_line = index
+    let asked = index
         .checked_sub(1)
         .and_then(|newer| state.trail.places.get(newer))
         .and_then(|newer| match newer {
@@ -144,9 +144,8 @@ pub(crate) fn blame_arrived(
                     .unwrap_or(0),
                 Want::CameFrom => {
                     let Some(line) = answer.line else {
-                        // The job read the parent but not where the line
-                        // came from: say so, not a guess at line 1.
-                        blame.body = BlameLoad::Failed(cannot_tell(asked_line, came_from));
+                        // Parent read, not where the line came from: say so.
+                        blame.body = unplaced(asked, came_from, &state.keymap);
                         return;
                     };
                     rows::row_of_line(&answer.blame, line)
@@ -172,17 +171,33 @@ pub(crate) fn blame_arrived(
     }
 }
 
+/// [`cannot_tell`] as the blame place draws it.
+fn unplaced(
+    line: Option<u32>,
+    came_from: Option<CameFromRequest>,
+    keys: &graft_ui::keymap::Keymap,
+) -> BlameLoad {
+    BlameLoad::Failed(cannot_tell(line, came_from, keys))
+}
+
 /// `^` answered with no line: the words name the newer blame's line (the
 /// one `^` was pressed on) and the commit that last changed it.
-fn cannot_tell(line: Option<u32>, came_from: Option<CameFromRequest>) -> String {
+///
+/// `esc back` is `app.back` in Blame; the clause goes when unbound.
+pub(crate) fn cannot_tell(
+    line: Option<u32>,
+    came_from: Option<CameFromRequest>,
+    keys: &graft_ui::keymap::Keymap,
+) -> String {
     let line = line.or_else(|| came_from.as_ref().map(|asked| asked.line));
-    match (line, came_from) {
+    let words = match (line, came_from) {
         (Some(line), Some(asked)) => format!(
-            "can't tell where line {line} came from in {} · esc back",
+            "can't tell where line {line} came from in {}",
             short(asked.commit)
         ),
-        _ => "can't tell where the line came from · esc back".to_owned(),
-    }
+        _ => "can't tell where the line came from".to_owned(),
+    };
+    keys.after(&words, graft_ui::keymap::ActionId("app.back"), "back")
 }
 
 /// git refused the place at `index`: it comes off the trail (leaving it if

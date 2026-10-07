@@ -16,6 +16,7 @@
 use graft_core::job::JobId;
 use graft_ops::apply::Refresh;
 use graft_term::sanitize_line;
+use graft_ui::keymap::{ActionId, Keymap};
 
 use super::confirm::{ConfirmThen, PendingConfirm};
 use super::events::Command;
@@ -174,11 +175,37 @@ pub(super) fn in_progress_refusal(state: &AppState) -> Option<Status> {
     if shell_merge_known(state) {
         return None;
     }
-    Some(live_refusal(kind, Some(BANNER_KEYS.to_owned())))
+    Some(live_refusal(kind, banner_keys(&state.keymap)))
 }
 
-/// The key that reaches the banner, as every "finish or abort" line names it.
-const BANNER_KEYS: &str = "\u{21e5} banner";
+/// The key that reaches the banner, as every "finish or abort" line names
+/// it: `⇥ banner`, spelled from his keymap (`app.next_pane`, pressed on the
+/// graph); `None` when unbound.
+pub(crate) fn banner_keys(keys: &Keymap) -> Option<String> {
+    keys.key_verb(&[ActionId("app.next_pane")], "banner")
+}
+
+/// `U redoes <waiting>` after a `nothing to undo`; `None` when redo is
+/// unbound (the line is then `nothing to undo` alone).
+pub(crate) fn redo_clause(waiting: &str, keys: &Keymap) -> Option<String> {
+    keys.key_verb(&[ActionId("app.redo")], &format!("redoes {waiting}"))
+}
+
+/// `J journal`, the key a stopped revert names: the journal shows each
+/// step that ran. `None` when `graph.journal` is unbound.
+pub(crate) fn journal_keys(keys: &Keymap) -> Option<String> {
+    keys.key_verb(&[ActionId("graph.journal")], "journal")
+}
+
+/// The relaunch notice's warning when the journal could not be read:
+/// `…, so u restores the whole tree`, the clause dropped with undo unbound.
+pub(crate) fn unreadable_words(keys: &Keymap) -> String {
+    const WORDS: &str = "its state could not be read";
+    match keys.key_verb(&[ActionId("app.undo")], "restores the whole tree") {
+        Some(clause) => format!("{WORDS}, so {clause}"),
+        None => WORDS.to_owned(),
+    }
+}
 
 /// A merge is live, **and it is known that Graft did not begin it**: the
 /// launch's journal read has answered and named no entry of Graft's live
@@ -415,14 +442,17 @@ pub fn undone(
         // the edit is one `U` away, and a bare "nothing to undo" read as a
         // dead end (m6-conflicts/77, usability review Q4).
         Undone::Nothing { reason, redo } => {
-            state.status = done_with(reason, redo.map(|waiting| format!("U redoes {waiting}")));
+            let clause = redo.and_then(|waiting| redo_clause(&waiting, &state.keymap));
+            state.status = done_with(reason, clause);
             Vec::new()
         }
         // Ops' gate: the entry is older than the merge git is standing in
         // (m6-conflicts/57). A refusal, so `Sticky`, in `u`'s own words;
         // the banner is named only where there is one (a bisect has none).
         Undone::OperationLive { kind } => {
-            let keys = super::banner::banner_focusable(kind).then(|| BANNER_KEYS.to_owned());
+            let keys = super::banner::banner_focusable(kind)
+                .then(|| banner_keys(&state.keymap))
+                .flatten();
             state.status = live_refusal(kind, keys);
             Vec::new()
         }
@@ -586,7 +616,7 @@ pub(super) fn reverted_to(
                     "revert stopped after {done} of {total} {}: {error}",
                     if total == 1 { "step" } else { "steps" }
                 ),
-                keys: Some("J journal".to_owned()),
+                keys: journal_keys(&state.keymap),
             };
             if done > 0 {
                 refresh(state, Refresh::Everything, next_id)
@@ -722,8 +752,7 @@ pub(crate) fn interrupted_notice_in(state: &AppState, cells: usize) -> Option<St
     } else {
         format!(" (and {more} more)")
     };
-    let widest = (!state.journal.unreadable.is_empty())
-        .then_some("its state could not be read, so u restores the whole tree");
+    let widest = (!state.journal.unreadable.is_empty()).then(|| unreadable_words(&state.keymap));
     // The parts `notice_line` fits (30d Decided 5): the description is the
     // first entry's own words, plus `(and n more)` when no clause follows
     // them; everything after the first ` · ` (the clause, the count, the
@@ -736,9 +765,14 @@ pub(crate) fn interrupted_notice_in(state: &AppState, cells: usize) -> Option<St
                 None => format!("{clause}{rest}"),
             }),
         ),
-        None => (format!("{description}{rest}"), widest.map(str::to_owned)),
+        None => (format!("{description}{rest}"), widest),
     };
-    Some(notice_line(&description, clause.as_deref(), cells))
+    Some(notice_line(
+        &description,
+        clause.as_deref(),
+        cells,
+        &state.keymap,
+    ))
 }
 
 /// Display cells, the measure the footer's own cut uses (`graft_ui::fit`).
@@ -757,14 +791,26 @@ fn cells_of(text: &str) -> usize {
 /// 2. `interrupted: <description> · <clause> · J to inspect`
 /// 3. rung 2 with the description cut to fill, when 10 cells of it remain
 /// 4. `interrupted · <clause> · J to inspect`
-pub(crate) fn notice_line(description: &str, clause: Option<&str>, cells: usize) -> String {
-    const KEY: &str = " \u{b7} J to inspect";
+///
+/// `J to inspect` is spelled from `graph.journal` (the notice is the
+/// graph's footer); unbound, the clause goes and nothing stands for it.
+pub(crate) fn notice_line(
+    description: &str,
+    clause: Option<&str>,
+    cells: usize,
+    keys: &Keymap,
+) -> String {
     const SHORT: &str = "interrupted: ";
+    let key = keys
+        .key_verb(&[ActionId("graph.journal")], "to inspect")
+        .map(|key| format!(" \u{b7} {key}"))
+        .unwrap_or_default();
+    let key = key.as_str();
     let description = graft_term::sanitize_line(description);
     let description = description.as_str();
     let tail = match clause {
-        Some(clause) => format!(" \u{b7} {clause}{KEY}"),
-        None => KEY.to_owned(),
+        Some(clause) => format!(" \u{b7} {clause}{key}"),
+        None => key.to_owned(),
     };
     let full = format!("an operation was interrupted: {description}{tail}");
     if cells_of(&full) <= cells {

@@ -272,7 +272,12 @@ fn whole_from_the_last_rung_up(d: &str) {
     for clause in [BACK, IN_STASH, OLDER] {
         for description in [d, LONG] {
             for cells in 78..=120 {
-                let line = notice_line(description, Some(clause), cells);
+                let line = notice_line(
+                    description,
+                    Some(clause),
+                    cells,
+                    graft_ui::keymap::Keymap::shipped(),
+                );
                 assert!(cells_of(&line) <= cells, "{line:?} at {cells}");
                 assert!(line.contains(clause), "{line:?}");
                 assert!(line.ends_with(" \u{b7} J to inspect"), "{line:?}");
@@ -287,10 +292,22 @@ fn ladder_rows_of_the_table(d: &str) {
         assert_eq!(cells_of(&rung1(d, Some(clause))), w1);
         assert_eq!(cells_of(&rung2(d, clause)), w2);
         assert_eq!(cells_of(&rung4(clause)), w4);
-        assert_eq!(notice_line(d, Some(clause), w1), rung1(d, Some(clause)));
-        assert_eq!(notice_line(d, Some(clause), w1 - 1), rung2(d, clause));
-        assert_eq!(notice_line(d, Some(clause), w2), rung2(d, clause));
-        assert_eq!(notice_line(d, Some(clause), 79), rung4(clause));
+        assert_eq!(
+            notice_line(d, Some(clause), w1, graft_ui::keymap::Keymap::shipped()),
+            rung1(d, Some(clause))
+        );
+        assert_eq!(
+            notice_line(d, Some(clause), w1 - 1, graft_ui::keymap::Keymap::shipped()),
+            rung2(d, clause)
+        );
+        assert_eq!(
+            notice_line(d, Some(clause), w2, graft_ui::keymap::Keymap::shipped()),
+            rung2(d, clause)
+        );
+        assert_eq!(
+            notice_line(d, Some(clause), 79, graft_ui::keymap::Keymap::shipped()),
+            rung4(clause)
+        );
     }
     ladder_rows_without_a_new_clause(d);
 }
@@ -299,20 +316,26 @@ fn ladder_rows_of_the_table(d: &str) {
 /// description whose rung 3 is the cut.
 fn ladder_rows_without_a_new_clause(d: &str) {
     assert_eq!(
-        notice_line(d, Some(OLDER), 79),
+        notice_line(d, Some(OLDER), 79, graft_ui::keymap::Keymap::shipped()),
         "an operation was interrupted: checkout fix \u{b7} edits in stash@{0} \u{b7} J to inspect"
     );
     assert_eq!(cells_of(&rung1(d, Some(OLDER))), 78);
     assert_eq!(cells_of(&rung1(d, None)), 57);
-    assert_eq!(notice_line(d, None, 57), rung1(d, None));
+    assert_eq!(
+        notice_line(d, None, 57, graft_ui::keymap::Keymap::shipped()),
+        rung1(d, None)
+    );
     assert_eq!(cells_of(&rung1(LONG, Some(OLDER))), 112);
     assert_eq!(cells_of(&rung2(LONG, OLDER)), 95);
     assert_eq!(
-        notice_line(LONG, Some(OLDER), 112),
+        notice_line(LONG, Some(OLDER), 112, graft_ui::keymap::Keymap::shipped()),
         rung1(LONG, Some(OLDER))
     );
-    assert_eq!(notice_line(LONG, Some(OLDER), 95), rung2(LONG, OLDER));
-    let rung3 = notice_line(LONG, Some(OLDER), 79);
+    assert_eq!(
+        notice_line(LONG, Some(OLDER), 95, graft_ui::keymap::Keymap::shipped()),
+        rung2(LONG, OLDER)
+    );
+    let rung3 = notice_line(LONG, Some(OLDER), 79, graft_ui::keymap::Keymap::shipped());
     assert_eq!(
         rung3,
         "interrupted: rebase feature/payments-retry\u{2026} \u{b7} edits in stash@{0} \u{b7} J to inspect"
@@ -323,7 +346,15 @@ fn ladder_rows_without_a_new_clause(d: &str) {
 /// 30d L2: narrower than the last rung, the last rung (the footer cuts it).
 #[test]
 fn the_notice_below_its_last_rung_is_the_last_rung() {
-    assert_eq!(notice_line("checkout fix", Some(BACK), 60), rung4(BACK));
+    assert_eq!(
+        notice_line(
+            "checkout fix",
+            Some(BACK),
+            60,
+            graft_ui::keymap::Keymap::shipped()
+        ),
+        rung4(BACK)
+    );
 }
 
 /// 30d L3: the rung is picked at draw time, so a resize re-picks.
@@ -363,7 +394,12 @@ fn a_hostile_description_is_measured_as_drawn() {
     let hostile =
         "rebase \u{1b}[31m\u{7}fix\u{5b57}\u{5b57}\u{5b57} onto feature/payments-retry-longer";
     for cells in 60..=130 {
-        let line = notice_line(hostile, Some(OLDER), cells);
+        let line = notice_line(
+            hostile,
+            Some(OLDER),
+            cells,
+            graft_ui::keymap::Keymap::shipped(),
+        );
         let drawn = graft_term::sanitize_line(&line);
         assert_eq!(cells_of(&line), cells_of(drawn.as_str()), "{line:?}");
         assert!(cells_of(&line) <= cells, "{line:?} at {cells}");

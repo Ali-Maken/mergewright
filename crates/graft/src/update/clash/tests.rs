@@ -546,7 +546,11 @@ fn the_close_words() {
         }
     );
     assert_eq!(
-        dropped_status(Some(0), PutBackWhy::Pop),
+        dropped_status(
+            Some(0),
+            PutBackWhy::Pop,
+            graft_ui::keymap::Keymap::shipped()
+        ),
         Status::Done {
             what: "every file done \u{b7} stash@{0} dropped".to_owned(),
             also: None,
@@ -624,7 +628,7 @@ fn a_put_back_clash_lands_on_the_resolver_with_set_aside_names() {
     );
     // A pop's words are unchanged.
     assert_eq!(
-        notice_words(Some(0), 2, None),
+        notice_words(Some(0), 2, None, graft_ui::keymap::Keymap::shipped()),
         "stash@{0} clashed in 2 files \u{b7} esc, u puts it all back"
     );
 }
@@ -700,7 +704,14 @@ fn a_put_back_clash_done_names_the_dropped_copy() {
         also: None,
         keys: Some("u brings it back".to_owned()),
     };
-    assert_eq!(dropped_status(Some(0), PutBackWhy::SetAside), closed);
+    assert_eq!(
+        dropped_status(
+            Some(0),
+            PutBackWhy::SetAside,
+            graft_ui::keymap::Keymap::shipped()
+        ),
+        closed
+    );
     assert_eq!(
         crate::view::status::done_line(
             "every file done \u{b7} set-aside copy dropped",
