@@ -339,7 +339,7 @@ Touches: `update/quit.rs`; `update/state.rs` (`shown_status`); `event_loop/{runn
       still holds). — `stuck::y_on_the_stop_box_force_stops_once_and_quits_stopped_half_way`,
       `stuck::no_other_path_emits_force_stop`, `jobs::tests::an_unstoppable_job_ignores_a_cancel_by_id`,
       `jobs::tests::force_stop_lifts_the_mark_and_stops_the_write`.
-- [ ] **NOT MET — the merge half (stop and ask, see NOTES "Review fix, 2026-10-04").** Real pool, real repo, a merge with a `pre-merge-commit` hook `sleep 600`, `STOP_OFFER_AFTER` injected short for
+- [x] **Met by 13c/13d** — `stop_now_mid_merge_leaves_it_paused` + `relaunch_after_a_stopped_merge_offers_continue_and_abort` (verified by review docs/reviews/m8-13cd-stop.md; ticked by the conductor 2026-10-07). Was: NOT MET — the merge half (stop and ask, see NOTES "Review fix, 2026-10-04").** Real pool, real repo, a merge with a `pre-merge-commit` hook `sleep 600`, `STOP_OFFER_AFTER` injected short for
       the test: `q y`, wait, `q y`. Then the git child is gone (`kill -0`), the app quits within `SHUTDOWN_GRACE`,
       `.git/MERGE_HEAD` is present, there is no `*.lock` under `.git`, and the journal entry is `Pending`. Relaunch →
       the banner offers `c continue · a abort`.
