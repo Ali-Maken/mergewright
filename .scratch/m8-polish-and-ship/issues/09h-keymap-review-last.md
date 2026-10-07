@@ -1,6 +1,6 @@
 # G-keymap 1h — 09g remainder: `ONE_CHORD_IDLE` classes (third class ruled), Diff `Home`/`End`, resolver `⌃Z` under the suspend switch, `AFTER y`, ratchet, `?`-at-Map capture, D
 
-Status: draft (planner spec-only pass, 2026-10-07, from 09g NOTES :179–238; 09g merged partial at e847c744)
+Status: ready
 Build with: **Opus** — per-row judgement (each of the ten "acts given state" rows needs the right `given`/`then`; a
 wrong `then` hides a defect in a table) and one probe whose result picks the branch of E. Not Fable: every box is a
 full oracle (state compared, red first); nothing structural.
