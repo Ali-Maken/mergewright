@@ -1181,6 +1181,9 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/11d-palette-here-per-place | Palette HERE lists per place (11d report-only box) | **unverified** | M8 |
 | M8/11d-captures-unjudged | `docs/shots/m8/doorway-{journal-120x36,blame-80x24,marked-120x36}.txt` + 17 re-shot: by-eye unjudged, colour unverified | **unverified** | M8 |
 | M8/stop-now-signal-flaky | `quit_waits::signal::stop_now_after_the_real_offer_restores_then_says_where_git_stopped` failed once in the full run after 11d (20.6 s, 2 builders loading the machine); passes alone (12 s). Same family as closed `13g-hangup-test-flaky` (20.7 s) — cause unknown → debugger | **broken** | M8 |
+| M8/localremote-clone-timeout-under-load | 13j load loop: 2/200 failures were clone timeouts in `LocalRemote` setup (graft-fixtures `remote/tests.rs:20`), not the port; observed under sustained load, cause unknown | **broken** | M8 |
+| M8/hungremote-wake-race | `HungRemote` Drop (graft-fixtures `hung.rs`) has the same latent refused-wake race 13j fixed in the http listener; not hit today | **unverified** | M8 |
+| M8/http-listener-1s-read-timeout | Own http listener cuts off a client pausing >1 s mid-body (1 s read timeout) | **unverified** | M8 |
 | M8/resolve-refusal-space-dead | Resolve refusal says `space marks resolved`, but both callers leave him on the Banner where `space` does nothing (pinned by `keymap_words::stops::the_resolve_keys_name_rows_that_act_where_the_refusal_is_shown`). Question: move focus to CONFLICTS rows, or drop the clause | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | RESOLVE_KEYS shown on screen via pressed.rs:156; the literal-key grep misses consts | **unverified** | M8 |
@@ -1200,7 +1203,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/pixel-ghosts-text | Pixel tier: while a preview is open the graph column draws at Unicode (ADR-0060, 17c); dashed Pixel ghost strokes after v1. Not tried in a real terminal; capture docs/shots/m8/polish-ghost-pixel-120x36.txt is characters only | **unverified** | after v1 |
 | M8/wheel-scrolls-behind-preview | Mouse wheel scrolls the window behind an open preview (update/mouse.rs:85–86 → :175) — question (17c) | **unverified** | M8 |
 | M8/two-tier-sources | AppState::tier() (settled_tier) and view::tier_in_force (session.rendering.tier) can disagree — question (17b/17c scout) | **unverified** | M8 |
-| M8/http-remote-port-flaky | graft-fixtures `http_remote_frees_its_port_on_drop` failed once in 17b's loaded run, passed alone | **broken** | M8 |
 | M8/10i-diverged-both-unbound | If merge and rebase are both unbound, the diverged mark drops at once — question (10i) | **unverified** | M8 |
 | M8/switch-refs-for-each-ref | Branch switch on 50k refs: git for-each-ref ≈930 ms of 988 ms (12c measured) | **unverified** | M8 |
 | M8/12b-empty-history-before-status | Opening a file's history before status loads shows an empty history (staged-Added check needs status; spec's open.rs:128 fires only with no HEAD) | **broken** | M8 |
