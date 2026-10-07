@@ -422,3 +422,44 @@ fn outside_repo_captures() {
     quit_cleanly(pty);
     shots.finish();
 }
+
+/// Every frame of the empty state is one synchronized update (ADR-0054 §3,
+/// DESIGN.md §4.1), as every repository frame is: a terminal shows it whole
+/// or not at all, and so can [`Pty::wait_for`]. Without it the frame went
+/// out in 1 KiB writes and a capture could catch half of one (13h).
+#[test]
+fn the_empty_state_draws_each_frame_as_one_synchronized_update() {
+    let isolated = Isolated::new();
+    let code = mockup_home(&isolated);
+    let mut pty = Pty::spawn(&isolated, &code, isolated.root.path(), (120, 36));
+    pty.wait_for("the empty state", |s| s.has("RECENT"));
+    pty.send(b"j");
+    pty.wait_for("the cursor on the second", |s| {
+        s.has("\u{25b8} web-dashboard")
+    });
+    let output = quit_cleanly(pty);
+    let begins = count(&output, graft_term::SYNC_BEGIN);
+    assert!(begins >= 2, "a frame before `j` and one after: {begins}");
+    assert_eq!(
+        begins,
+        count(&output, graft_term::SYNC_END),
+        "each one ended"
+    );
+    for needle in ["RECENT".as_bytes(), "quit".as_bytes()] {
+        let at = output
+            .windows(needle.len())
+            .position(|window| window == needle)
+            .expect("drawn");
+        let opened = output[..at]
+            .windows(graft_term::SYNC_BEGIN.len())
+            .rposition(|window| window == graft_term::SYNC_BEGIN);
+        let closed = output[..at]
+            .windows(graft_term::SYNC_END.len())
+            .rposition(|window| window == graft_term::SYNC_END);
+        assert!(
+            opened.is_some_and(|open| closed.is_none_or(|close| close < open)),
+            "{:?} drawn inside an update",
+            String::from_utf8_lossy(needle)
+        );
+    }
+}

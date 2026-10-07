@@ -279,6 +279,23 @@ fn read_recents(config_dir: Option<&Path>) -> (Vec<Recent>, Option<String>) {
 
 type Screen = ratatui::Terminal<CrosstermBackend<io::Stdout>>;
 
+/// One frame as one synchronized update (ADR-0054 §3, DESIGN.md §4.1), as
+/// the repository's frames are (`running::frame::draw_frame`): a frame
+/// reaches the terminal in pieces, so without the bracket it can show the
+/// top of a frame over the bottom of the last one (13h). The end marker goes out
+/// even when the draw failed: a terminal left inside an update freezes on
+/// what it showed before.
+fn draw_whole(screen: &mut Screen, render: impl FnOnce(&mut ratatui::Frame<'_>)) -> io::Result<()> {
+    use std::io::Write;
+    screen.backend_mut().write_all(graft_term::SYNC_BEGIN)?;
+    let drawn = screen.draw(render).map(|_| ());
+    let backend = screen.backend_mut();
+    let ended = backend
+        .write_all(graft_term::SYNC_END)
+        .and_then(|()| Write::flush(backend));
+    drawn.and(ended)
+}
+
 fn outside_loop(
     screen: &mut Screen,
     wakes: &mut ChannelWakes,
@@ -289,7 +306,7 @@ fn outside_loop(
 ) -> io::Result<Outcome> {
     loop {
         let now = SystemTime::now();
-        screen.draw(|frame| {
+        draw_whole(screen, |frame| {
             let area = frame.area();
             render(
                 state,

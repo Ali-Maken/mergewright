@@ -129,9 +129,12 @@ impl Wakes for Stamped {
     }
     fn mark(&mut self, phase: super::super::Phase) {
         if phase == super::super::Phase::Drawn {
-            self.drawn.push(Instant::now());
+            self.drawn.push(self.inner.now());
         }
         self.inner.mark(phase);
+    }
+    fn now(&self) -> Instant {
+        self.inner.now()
     }
 }
 

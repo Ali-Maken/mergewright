@@ -377,7 +377,14 @@ impl Screen {
     /// text, `CR`/`LF`, CSI `H`/`f` (position), `A`/`B`/`C`/`D`/`G`/`d`,
     /// `J` (2 clears), `K`; everything else (SGR, modes, OSC, APC, DCS, the
     /// probe's queries) is skipped.
+    ///
+    /// Shown as a DEC 2026 terminal shows it: a synchronized update that has
+    /// begun and not ended is not on the screen yet. Every frame Graft draws
+    /// is one update (ADR-0054 §3), and the pty hands its bytes over in
+    /// pieces, so without this a wait could take half a frame for the screen
+    /// (13h).
     pub fn replay(bytes: &[u8], columns: u16, rows: u16) -> Self {
+        let bytes = ended(bytes);
         let (columns, rows) = (usize::from(columns), usize::from(rows));
         let mut replay = Replay {
             cells: vec![vec![' '; columns]; rows],
@@ -419,4 +426,37 @@ impl Screen {
     pub fn has(&self, needle: &str) -> bool {
         self.lines().iter().any(|line| line.contains(needle))
     }
+}
+
+/// `bytes` up to the synchronized update still being written, if one is:
+/// what a terminal that holds an update until it ends has shown.
+fn ended(bytes: &[u8]) -> &[u8] {
+    let last = |needle: &[u8]| {
+        bytes
+            .windows(needle.len())
+            .rposition(|window| window == needle)
+    };
+    match (last(graft_term::SYNC_BEGIN), last(graft_term::SYNC_END)) {
+        (Some(begin), Some(end)) if end > begin => bytes,
+        (Some(begin), _) => &bytes[..begin],
+        (None, _) => bytes,
+    }
+}
+
+/// A frame still being written is not on the screen yet (13h): the replay
+/// shows what a DEC 2026 terminal shows, the last frame that ended.
+#[test]
+fn a_frame_not_yet_ended_is_not_on_the_screen() {
+    let mut bytes = Vec::new();
+    bytes.extend_from_slice(graft_term::SYNC_BEGIN);
+    bytes.extend_from_slice(b"\x1b[1;1Hfirst");
+    bytes.extend_from_slice(graft_term::SYNC_END);
+    bytes.extend_from_slice(graft_term::SYNC_BEGIN);
+    bytes.extend_from_slice(b"\x1b[1;1Hsecond, half");
+    let screen = Screen::replay(&bytes, 20, 2);
+    assert_eq!(screen.lines()[0], "first", "{}", screen.text());
+
+    bytes.extend_from_slice(graft_term::SYNC_END);
+    let screen = Screen::replay(&bytes, 20, 2);
+    assert_eq!(screen.lines()[0], "second, half", "{}", screen.text());
 }
