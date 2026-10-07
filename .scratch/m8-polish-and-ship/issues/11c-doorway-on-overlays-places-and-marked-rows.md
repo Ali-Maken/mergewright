@@ -1,8 +1,8 @@
 # G-palette 1c — `? keys` on the overlays, the places and marked rows (11b's two open doorway items)
 
-Status: draft (planner spec-only pass, 2026-10-07, from 11b NOTES "Doorway placement" and "Marked rows keep no
+Status: ready
 doorway"; rulings recorded in `09e-keymap-sweep-defects.md` "11b's other open items")
-Build with: **Sonnet** (provisional — brownfield, ADR-0035: conductor confirms; 11b's scout
+Build with: **Sonnet** (confirmed by conductor 2026-10-07 after scout `scouts/11c-doorway.md`; was provisional — brownfield, ADR-0035: conductor confirms; 11b's scout
 `scouts/11-palette-help.md` covers the doorway code, its "palette not built" half is stale). Mechanical: one hint
 appended to existing lists with the rule 11b already built; the only judgement (does `?` draw over each place) is a
 test with a stop. Not Fable.
