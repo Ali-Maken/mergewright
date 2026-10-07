@@ -8,14 +8,20 @@
 //! killed. So the order on every exit is: graphics freed and the screen torn
 //! down (the loop, `startup::run_repo`), the terminal restored
 //! (`startup::wind_down`), then [`Pool::stop`].
+//!
+//! Each write stopped on the way out leaves one line saying where git was
+//! left (`update::quit::exit_line`, 13d): its own answer, waited for up to
+//! `jobs::FORCED_WAIT`.
 
 use std::io::{self, Write};
 use std::time::{Duration, Instant};
 
+use graft_core::job::JobId;
 use graft_term::sanitize_line;
 
 use super::signals::Watch;
-use crate::jobs::{EXIT_WRITE_WAIT, JobRunner, SHUTDOWN_GRACE, Shutdown};
+use crate::jobs::{EXIT_WRITE_WAIT, Forced, JobRunner, SHUTDOWN_GRACE, Shutdown};
+use crate::update::quit::exit_line;
 
 /// The binary's own name, as the man page and the shell know it.
 const BIN: &str = env!("CARGO_PKG_NAME");
@@ -27,6 +33,18 @@ pub struct Pool {
     pub(super) jobs: JobRunner<std::sync::mpsc::Sender<super::Wake>>,
     pub(super) signals: Watch,
     pub(super) resizes: signal_hook::iterator::Handle,
+    /// The process keymap's spelling of undo (ADR-0055: one keymap per
+    /// process), for the exit line of a write git could not pause.
+    pub(super) undo: String,
+}
+
+/// The write the stop box's `y` stopped (`Exit::StoppedHalfWay`): its line
+/// is printed whether or not its answer came, counted from the loop's wait.
+pub(super) struct Boxed<'a> {
+    pub job: JobId,
+    pub what: &'a str,
+    /// How long Graft had waited on it when he pressed `y`.
+    pub after: Duration,
 }
 
 impl Pool {
@@ -35,28 +53,36 @@ impl Pool {
         jobs: JobRunner<std::sync::mpsc::Sender<super::Wake>>,
         signals: Watch,
         resizes: signal_hook::iterator::Handle,
+        undo: String,
     ) -> Self {
         Self {
             jobs,
             signals,
             resizes,
+            undo,
         }
     }
 
     /// Stop the pool now: cancel what can stop, wait up to
     /// [`EXIT_WRITE_WAIT`] for a write that cannot — less if the signal
-    /// comes again — then stop it half-way, and close the watchers.
+    /// comes again — then stop it half-way, and close the watchers. Each
+    /// write stopped leaves its exit line: `boxed`, the stop box's, always.
     ///
     /// `signalled`: the loop ended on a signal, so a write still running gets
     /// the waiting line first (item 8 of the review fix). Lines go to
-    /// `stderr`; see [`stop_to`].
-    pub(super) fn stop(self, signalled: bool) -> io::Result<Shutdown> {
-        self.stop_to(&mut io::stderr(), signalled)
+    /// `stderr`; see [`Pool::stop_to`].
+    pub(super) fn stop(self, signalled: bool, boxed: Option<&Boxed<'_>>) -> io::Result<Shutdown> {
+        self.stop_to(&mut io::stderr(), signalled, boxed)
     }
 
     /// [`Pool::stop`], writing to `stderr` instead of the real one — the
     /// seam a test reads.
-    pub(super) fn stop_to(self, stderr: &mut impl Write, signalled: bool) -> io::Result<Shutdown> {
+    pub(super) fn stop_to(
+        self,
+        stderr: &mut impl Write,
+        signalled: bool,
+        boxed: Option<&Boxed<'_>>,
+    ) -> io::Result<Shutdown> {
         let began = Instant::now();
         let writes = self.jobs.writes_running();
         if signalled {
@@ -78,9 +104,24 @@ impl Pool {
         // that matters.
         self.signals.close();
         self.resizes.close();
-        for what in &shutdown.forced {
-            let written = writeln!(stderr, "{}", stopped_line(what, began.elapsed()))
-                .and_then(|()| stderr.flush());
+        if let Some(boxed) = boxed {
+            let at = answer_of(&shutdown.forced, boxed.job);
+            let line = exit_line(BIN, boxed.what, boxed.after, at, &self.undo);
+            match writeln!(stderr, "{line}").and_then(|()| stderr.flush()) {
+                // A failed write is ignored on purpose: he asked for this
+                // stop in the box, with stderr gone there is nowhere left to
+                // say it, and the next launch shows where git was left
+                // anyway (as 13b's line in `main` did).
+                Ok(()) | Err(_) => {}
+            }
+        }
+        let stopped_after = began.elapsed();
+        for forced in &shutdown.forced {
+            if boxed.is_some_and(|boxed| boxed.job == forced.job) {
+                continue;
+            }
+            let line = exit_line(BIN, &forced.what, stopped_after, forced.at, &self.undo);
+            let written = writeln!(stderr, "{line}").and_then(|()| stderr.flush());
             match written {
                 Ok(()) => {}
                 // As the waiting line: after a signal the status says it.
@@ -94,16 +135,13 @@ impl Pool {
     }
 }
 
-/// `<bin>: stopped <op> half-way after <n> s · <bin> here shows where it
-/// stopped` — the one line a stopped write leaves in the shell (keymap §2.2,
-/// "a stuck write"). `<n>` is whole seconds.
-#[must_use]
-pub fn stopped_line(what: &str, after: Duration) -> String {
-    format!(
-        "{BIN}: stopped {} half-way after {} s \u{b7} {BIN} here shows where it stopped",
-        sanitize_line(what).as_str(),
-        after.as_secs()
-    )
+/// What the forced job `job` answered: where git was left, or `None` when
+/// it was not forced here or did not answer within `jobs::FORCED_WAIT`.
+fn answer_of(forced: &[Forced], job: JobId) -> Option<graft_ops::apply::StoppedAt> {
+    forced
+        .iter()
+        .find(|forced| forced.job == job)
+        .and_then(|forced| forced.at)
 }
 
 /// `<bin>: waiting for <op> to finish (up to 60 s) · send the signal again to

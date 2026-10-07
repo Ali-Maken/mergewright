@@ -3,9 +3,10 @@
 //! what (m8/13b review fix, M1 items 5, 7, 8).
 //!
 //! - A signal while the write runs: the terminal restored, **then** the
-//!   waiting line; a second signal stops git, prints the stopped line, and
-//!   the process dies of the signal.
-//! - `q y`, the real 10 s offer, `q y`: restored, then the stopped line,
+//!   waiting line; a second signal stops git — its hook first, so git
+//!   pauses the merge itself (13c) — prints the line saying the merge is
+//!   paused, and the process dies of the signal.
+//! - `q y`, the real 10 s offer, `q y`: restored, then the same line,
 //!   exit 0.
 
 use std::os::unix::process::ExitStatusExt;
@@ -57,8 +58,21 @@ fn alive(pid: u32) -> bool {
         .success()
 }
 
-/// Kill a leftover by pid (the hook outlives git's stop: the pool signals
-/// git's pid, not its group). Never by pattern.
+/// Waits up to a second for `pid` to be gone: the hook's `sleep`, ended
+/// by the stop, is reaped by init once git has gone.
+fn gone(pid: u32) -> bool {
+    let began = Instant::now();
+    while alive(pid) {
+        if began.elapsed() > Duration::from_secs(1) {
+            return false;
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    true
+}
+
+/// Kill a leftover by pid, in case a regression leaves the hook running.
+/// Never by pattern.
 fn reap(pid: u32) {
     if alive(pid) {
         let status = std::process::Command::new("kill")
@@ -140,18 +154,25 @@ fn a_signal_restores_then_waits_and_a_second_stops_git() {
     let text = String::from_utf8_lossy(&transcript).into_owned();
     let stopped = find(
         &transcript,
-        b"stopped merge main into feature half-way",
+        b"graft: stopped merge main into feature after ",
         restored,
     )
     .unwrap_or_else(|| panic!("the stopped line: {text}"));
     assert!(stopped > waiting, "{text}");
+    assert!(text.contains(PAUSED), "{text}");
     assert_eq!(status.signal(), Some(15), "dies of SIGTERM: {status:?}");
     assert!(!alive(git), "git stopped");
+    let hook_gone = gone(hook);
     reap(hook);
+    assert!(hook_gone, "the hook's sleep was stopped too");
 }
 
+/// The end of the line a merge stopped in its hook leaves (13d's exit
+/// lines, `Paused(Merge)`).
+const PAUSED: &str = " s \u{b7} the merge is paused \u{b7} graft here offers continue or abort";
+
 #[test]
-fn stop_now_after_the_real_offer_restores_then_says_what_it_stopped() {
+fn stop_now_after_the_real_offer_restores_then_says_where_git_stopped() {
     let isolated = Isolated::new();
     let scratch = crate::preview::forked();
     let repo = scratch.path().canonicalize().expect("the repo resolves");
@@ -172,13 +193,19 @@ fn stop_now_after_the_real_offer_restores_then_says_what_it_stopped() {
     let restored = find(&transcript, RESTORED, 0).expect("the terminal restored");
     let stopped = find(
         &transcript,
-        b"stopped merge main into feature half-way after ",
+        b"graft: stopped merge main into feature after ",
         0,
     )
     .unwrap_or_else(|| panic!("the stopped line: {text}"));
     assert!(restored < stopped, "restored, then the line");
-    assert!(text.contains("here shows where it stopped"), "{text}");
+    assert!(text.contains(PAUSED), "{text}");
     assert_eq!(status.code(), Some(0), "{text}");
     assert!(!alive(git), "git stopped");
+    let hook_gone = gone(hook);
     reap(hook);
+    assert!(hook_gone, "the hook's sleep was stopped too");
+    assert!(
+        repo.join(".git/MERGE_HEAD").exists(),
+        "the merge is paused on disk"
+    );
 }

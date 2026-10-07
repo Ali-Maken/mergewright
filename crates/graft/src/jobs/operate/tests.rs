@@ -200,3 +200,60 @@ fn answer_maps_staging_not_kept_alone_to_its_own_outcome() {
     }));
     assert!(matches!(two, Operated::Incomplete { .. }), "{two:?}");
 }
+
+/// 13c item 12: a write he stopped that git paused itself
+/// (`ApplyError::Paused`) lands exactly as a conflict does — one arm, no
+/// screen of its own: `Operated::Conflicted`, the entry named, nothing
+/// stalled, so the banner offers `c`/`a` as for any paused merge.
+#[test]
+fn answer_paused_lands_as_conflicted() {
+    let entry = JournalEntry {
+        id: EntryId::new(7, [0; 10]),
+        at_unix_ms: 1,
+        kind: OperationKind::Merge,
+        description: "merge feature into main".to_owned(),
+        status: EntryStatus::Pending,
+        touches: Touches::default(),
+        head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+        head_after: None,
+        refs_before: std::collections::BTreeMap::new(),
+        refs_after: std::collections::BTreeMap::new(),
+        index_before: None,
+        index_after: None,
+        worktree_before: None,
+        worktree_after: None,
+        worktree_raw_before: None,
+        backup_ref: None,
+        pins: Vec::new(),
+        commands: Vec::new(),
+        reverses: None,
+        merge_before: None,
+        merge_after: None,
+        config_before: std::collections::BTreeMap::new(),
+        config_after: std::collections::BTreeMap::new(),
+        put_back: None,
+    };
+    let id = entry.id.clone();
+    let paused = answer(Err(ApplyError::Paused {
+        entry: Box::new(entry.clone()),
+        kind: InProgress::Merge,
+        paths: Vec::new(),
+    }));
+    let conflicted = answer(Err(ApplyError::Conflicted {
+        entry: Box::new(entry),
+        kind: InProgress::Merge,
+        paths: Vec::new(),
+    }));
+    assert_eq!(
+        paused,
+        Operated::Conflicted {
+            description: "merge feature into main".to_owned(),
+            kind: InProgress::Merge,
+            paths: Vec::new(),
+            stalled: None,
+            entry: id,
+            rewrite: None,
+        }
+    );
+    assert_eq!(paused, conflicted, "the same landing as a conflict");
+}

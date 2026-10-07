@@ -887,5 +887,71 @@ fn a_revert_failing_part_way_stays() {
     );
 }
 
+/// 13d's exit lines, exact: the one line a stopped write leaves in the
+/// shell says where git was left (paused, landed, stopped before it could
+/// pause, or not known). `<n>` is whole seconds; the undo key is the one
+/// the keymap spells, here a rebound `z`.
+#[test]
+fn exit_line_says_where_git_left_it() {
+    use core::time::Duration;
+
+    use graft_git::state::InProgress;
+    use graft_ops::apply::StoppedAt;
+
+    use crate::update::quit::exit_line;
+
+    let line = |at| {
+        exit_line(
+            "graft",
+            "merge feature into main",
+            Duration::from_millis(12_900),
+            at,
+            "z",
+        )
+    };
+    let stopped = "graft: stopped merge feature into main after 12 s";
+    assert_eq!(
+        line(Some(StoppedAt::Paused(InProgress::Merge))),
+        format!("{stopped} \u{b7} the merge is paused \u{b7} graft here offers continue or abort")
+    );
+    assert_eq!(
+        line(Some(StoppedAt::Paused(InProgress::CherryPick))),
+        format!(
+            "{stopped} \u{b7} the cherry-pick is paused \u{b7} graft here offers continue or abort"
+        )
+    );
+    assert_eq!(
+        line(Some(StoppedAt::Landed)),
+        "graft: merge feature into main finished \u{b7} a git hook after it was stopped after 12 s"
+    );
+    assert_eq!(
+        line(Some(StoppedAt::BeforePause { changed: true })),
+        format!("{stopped}, before git could pause it \u{b7} z in graft puts your files back")
+    );
+    assert_eq!(
+        line(Some(StoppedAt::Stopped { changed: true })),
+        format!("{stopped} \u{b7} z in graft puts your files back")
+    );
+    for nothing in [
+        StoppedAt::BeforePause { changed: false },
+        StoppedAt::Stopped { changed: false },
+    ] {
+        assert_eq!(
+            line(Some(nothing)),
+            format!("{stopped} \u{b7} nothing changed"),
+            "{nothing:?}"
+        );
+    }
+    assert_eq!(
+        line(None),
+        format!("{stopped} \u{b7} graft here shows where git left it")
+    );
+    let hostile = exit_line("graft", "merge \u{1b}[2Jx", Duration::ZERO, None, "u");
+    assert!(
+        !hostile.contains('\u{1b}'),
+        "a description from the repository is sanitised: {hostile:?}"
+    );
+}
+
 mod modals;
 mod stuck;

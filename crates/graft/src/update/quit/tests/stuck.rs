@@ -165,7 +165,7 @@ fn y_on_the_stop_box_force_stops_once_and_quits_stopped_half_way() {
     let (boxed, _) = press(&state, plain('q'));
     let (next, commands) = press(&boxed, plain('y'));
     assert_eq!(commands, vec![Command::ForceStop(id)]);
-    assert_eq!(next.quit, Some(Quit::StoppedHalfWay { what }));
+    assert_eq!(next.quit, Some(Quit::StoppedHalfWay { job: id, what }));
     assert!(next.confirm.is_none());
 }
 

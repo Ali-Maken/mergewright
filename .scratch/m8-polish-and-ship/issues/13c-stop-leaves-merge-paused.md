@@ -223,28 +223,28 @@ pub const FORCED_WAIT: Duration; // SHUTDOWN_GRACE + 3 s
 - [x] Cherry-pick, same rule (`it::stop_hooks::…`): `apply::tests::stop_hooks::a_cherry_pick_stopped_in_its_hook_is_paused_if_git_pauses_it`.
       If git does not leave `CHERRY_PICK_HEAD`, the test asserts the residual instead, and NOTES say which. — git
       leaves it (`prepare-commit-msg`): the test asserts `Paused { kind: CherryPick }`.
-- [ ] Exit line: `update::quit::tests::exit_line_says_where_git_left_it` (five cases, exact words).
-- [ ] **The walk (13b's NOT MET box, now met):** `it::quit_waits::stuck::stop_now_mid_merge_leaves_it_paused`.
+- [x] Exit line: `update::quit::tests::exit_line_says_where_git_left_it` (five cases, exact words). — 13d: seven cases (13d's lines, `Stopped` added), exact words.
+- [x] **The walk (13b's NOT MET box, now met):** `it::quit_waits::stuck::stop_now_mid_merge_leaves_it_paused` (13d; 54 ms from `y` to the pool down, 13d NOTES).
       Setup: real pool, real repo, `pre-merge-commit` `sleep 600`, his dirty unrelated file, offer injected short.
       Keys: `q y`, wait, `q y`. Then all of:
       - git and the hook's `sleep` are gone (`kill -0`)
       - the app quits within `FORCED_WAIT`, and the time taken is in NOTES
       - `MERGE_HEAD` = source tip, no `*.lock`, entry `Pending`
       - the exit line is exactly the `Paused(Merge)` words
-- [ ] Relaunch: `it::quit_waits::stuck::relaunch_after_a_stopped_merge_offers_continue_and_abort`. Checks: the banner
+- [x] Relaunch: `it::quit_waits::stuck::relaunch_after_a_stopped_merge_offers_continue_and_abort` (13d; the live banner's words are `c finish  a abort`, quoted). Checks: the banner
       offers `c continue · a abort` (its words quoted from the existing live-merge banner), `a` gives HEAD and the
       tree as before, and his file is byte-equal.
-- [ ] Real binary: `it::quit_waits::signal::stop_now_after_the_real_offer_restores_then_says_where_git_stopped`
+- [x] Real binary: `it::quit_waits::signal::stop_now_after_the_real_offer_restores_then_says_where_git_stopped` (13d)
       (renamed from 13b's; restore then the `Paused` line on stderr). Signal path:
       `a_signal_restores_then_waits_and_a_second_stops_git` asserts the new line and that the hook is gone.
-- [ ] Forced wait: `jobs::tests::a_forced_job_is_waited_for_its_answer_up_to_its_bound`, and past it the `None` line.
-- [ ] Hang-up, observation only (13b item 10, re-run): a pty walk, master closed. Record in NOTES whether git or the
+- [x] Forced wait: `jobs::tests::a_forced_job_is_waited_for_its_answer_up_to_its_bound`, and past it the `None` line (13d).
+- [x] Hang-up, observation only (13b item 10, re-run; 13d NOTES, scratch script, no test): a pty walk, master closed. Record in NOTES whether git or the
       hook gets SIGHUP now, with lines. The 13b exit 101 on a dead stderr is **not** fixed here; it is for the conductor.
-- [ ] Capture `docs/shots/m8-quit-stopped-merge-relaunch-80x24.txt`: the relaunch landing after a stopped merge, with
+- [x] Capture `docs/shots/m8-quit-stopped-merge-relaunch-80x24.txt` (13d): the relaunch landing after a stopped merge, with
       the exit line as its caption. Colour **unverified**. Looks-right is the user's.
       — `it::quit_waits::capture_relaunch_after_a_stopped_merge`.
-- [ ] Journey fence `quit-stuck-write 4` still walked: `stuck::stop_now_mid_merge_leaves_it_paused` (`within_the_note`).
-- [ ] MAP rows (by hand): graft-git `run` (group, both stops, `STOP_WITHIN`, `stop_hooks_first`, `members`);
+- [x] Journey fence `quit-stuck-write 4` still walked: `stuck::stop_now_mid_merge_leaves_it_paused` (`within_the_note`) (13d).
+- [x] MAP rows (by hand; graft rows 13d, by reading `crates/graft/MAP.md`): graft-git `run` (group, both stops, `STOP_WITHIN`, `stop_hooks_first`, `members`);
       graft-ops `apply` (`StoppedAt`, `Paused`, the stop-outcome rule, `Applied::stopped_at`); graft `exit_line`,
       `Forced`, `FORCED_WAIT`.
 

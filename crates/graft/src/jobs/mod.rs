@@ -91,7 +91,7 @@ mod switch_list;
 mod types;
 pub(crate) mod undo;
 
-pub use pool::Shutdown;
+pub use pool::{Forced, Shutdown};
 pub use runner::JobRunner;
 pub use types::{Cancel, Delivery, Dispatch, JobEvents, Outcome, Work};
 
@@ -117,6 +117,16 @@ pub const MAX_WORKERS: usize = 4;
 /// ([`JobRunner::shutdown`]).
 pub const SHUTDOWN_GRACE: Duration =
     graft_git::run::STOP_WITHIN.saturating_add(Duration::from_millis(500));
+
+/// The longest a shutdown waits for a **forced** write's answer — where its
+/// stop left git — once its git is stopped (m8-polish-and-ship/13c item 11):
+/// [`SHUTDOWN_GRACE`] for the stop itself, plus 3 s for the after-state
+/// reads that close its journal entry. Past it the write is abandoned and the
+/// exit line says only that it was stopped (`Forced::at` is `None`).
+///
+/// **Not measured** as a bound: the 3 s is the planner's allowance for the
+/// reads. The stop walk records the real time (13c/13d NOTES).
+pub const FORCED_WAIT: Duration = SHUTDOWN_GRACE.saturating_add(Duration::from_secs(3));
 
 /// The longest an exit waits for an unstoppable write (a merge, a rebase, a
 /// `--continue`) to land before stopping it half-way (13b review fix): a

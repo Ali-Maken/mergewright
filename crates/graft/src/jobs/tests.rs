@@ -13,6 +13,8 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 
+use graft_ops::apply::StoppedAt;
+
 use super::*;
 
 /// How long a test waits for a result before deciding the runner is broken.
@@ -925,7 +927,11 @@ fn shutdown_stops_a_write_still_running_at_its_bound_and_names_it() {
         shutdown,
         Shutdown {
             stalled: 0,
-            forced: vec!["merge feature into main".to_owned()],
+            forced: vec![Forced {
+                job: id,
+                what: "merge feature into main".to_owned(),
+                at: None,
+            }],
         }
     );
     assert!(took >= bound, "it waited the whole bound first: {took:?}");
@@ -944,7 +950,14 @@ fn a_forced_shutdown_stops_the_write_without_waiting_out_the_bound() {
     has_started.recv_timeout(PATIENCE).expect("the job starts");
 
     let (shutdown, took) = shut_down_within(runner, PATIENCE, PATIENCE, true);
-    assert_eq!(shutdown.forced, vec!["rebase onto main".to_owned()]);
+    assert_eq!(
+        shutdown.forced,
+        vec![Forced {
+            job: id,
+            what: "rebase onto main".to_owned(),
+            at: None,
+        }]
+    );
     assert_eq!(shutdown.stalled, 0);
     assert!(took < PATIENCE, "the bound was not sat out: {took:?}");
     assert!(saw_cancel.load(Ordering::Acquire));
@@ -982,7 +995,15 @@ fn a_queued_write_behind_a_stuck_worker_is_bounded_and_never_runs() {
         Duration::from_millis(100),
         false,
     );
-    assert_eq!(shutdown.forced, vec!["merge feature".to_owned()]);
+    assert_eq!(
+        shutdown.forced,
+        vec![Forced {
+            job: queued,
+            what: "merge feature".to_owned(),
+            at: None,
+        }],
+        "never started, so answered at once with nothing to say"
+    );
     assert_eq!(shutdown.stalled, 1, "the stuck worker is abandoned");
     release.send(()).expect("the stuck job is waiting");
     assert_eq!(next_event(&events), Event::JobCancelled(stuck));
@@ -991,7 +1012,9 @@ fn a_queued_write_behind_a_stuck_worker_is_bounded_and_never_runs() {
 }
 
 /// `Command::ForceStop` (the quit stop box's `y`) lifts the mark: the cancel
-/// reaches the job, and the shutdown after has nothing left to force.
+/// reaches the job, and the shutdown after has nothing left to force — it
+/// names the write the box forced, with its answer (none here: the job
+/// said nothing about where git was left).
 #[test]
 fn force_stop_lifts_the_mark_and_stops_the_write() {
     let (runner, events) = runner(1);
@@ -1007,7 +1030,155 @@ fn force_stop_lifts_the_mark_and_stops_the_write() {
     assert!(saw_cancel.load(Ordering::Acquire));
     assert!(runner.writes_running().is_empty());
     let (shutdown, _) = shut_down_within(runner, PATIENCE, PATIENCE, false);
-    assert_eq!(shutdown, Shutdown::CLEAN, "nothing left to force");
+    assert_eq!(
+        shutdown,
+        Shutdown {
+            stalled: 0,
+            forced: vec![Forced {
+                job: id,
+                what: "a merge".to_owned(),
+                at: None,
+            }],
+        },
+        "nothing left to force; the forced write is named"
+    );
+}
+
+/// A job that, once cancelled, takes `reads` — the after-state reads that
+/// close a stopped write's entry — then says git was left at `at`
+/// (`operate::in_context` does this with `apply`'s answer).
+fn answers_after_cancel(
+    started: Sender<()>,
+    reads: Receiver<()>,
+    at: StoppedAt,
+) -> impl FnOnce(&Cancel) -> Outcome + Send + 'static {
+    move |cancel| {
+        started.send(()).expect("the test is still listening");
+        let deadline = Instant::now() + PATIENCE;
+        while !cancel.is_cancelled() {
+            assert!(Instant::now() < deadline, "never cancelled");
+            thread::park_timeout(SLICE);
+        }
+        match reads.recv_timeout(PATIENCE) {
+            Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => {}
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                return Outcome::Failed("the reads never ended".to_owned());
+            }
+        }
+        cancel.left_at(Some(at));
+        Outcome::Cancelled
+    }
+}
+
+/// A running `Stoppable::No` write `what` built by [`answers_after_cancel`]:
+/// its runner, events and id, and the sender that ends its reads.
+fn an_unstoppable_write(
+    what: &str,
+    at: StoppedAt,
+) -> (
+    JobRunner<Sender<AppEvent>>,
+    Receiver<AppEvent>,
+    JobId,
+    Sender<()>,
+) {
+    let (runner, events) = runner(1);
+    let (started, has_started) = mpsc::channel();
+    let (finish_reads, reads) = mpsc::channel();
+    let id = runner.submit(answers_after_cancel(started, reads, at));
+    runner.dispatch(Command::Unstoppable(id, what.to_owned()));
+    has_started.recv_timeout(PATIENCE).expect("the job starts");
+    (runner, events, id, finish_reads)
+}
+
+/// 13c item 11: a forced write is waited for until it answers where its
+/// stop left git — after its git is stopped, through its after-state reads —
+/// and named with that answer. Past the bound it is named with none, and
+/// its line says only where to look.
+#[test]
+fn a_forced_job_is_waited_for_its_answer_up_to_its_bound() {
+    use graft_git::state::InProgress;
+
+    // The stop box's `y`: the answer comes inside the bound.
+    let paused = StoppedAt::Paused(InProgress::Merge);
+    let (boxed, events, id, finish_reads) = an_unstoppable_write("merge feature", paused);
+    boxed.dispatch(Command::ForceStop(id));
+    finish_reads.send(()).expect("the job is still running");
+    let shutdown = boxed.shutdown_answered_within(PATIENCE, PATIENCE, PATIENCE, &());
+    assert_eq!(
+        shutdown,
+        Shutdown {
+            stalled: 0,
+            forced: vec![Forced {
+                job: id,
+                what: "merge feature".to_owned(),
+                at: Some(paused),
+            }],
+        }
+    );
+    assert_eq!(
+        next_event(&events),
+        Event::JobCancelled(id),
+        "the loop's event is unchanged; the answer went to the shutdown"
+    );
+
+    // Shutdown's own force, the reads still going at the bound.
+    let (bounded, _events, id, finish_reads) = an_unstoppable_write("rebase onto main", paused);
+    let bound = Duration::from_millis(200);
+    let began = Instant::now();
+    let shutdown =
+        bounded.shutdown_answered_within(Duration::from_millis(20), Duration::ZERO, bound, &());
+    let took = began.elapsed();
+    finish_reads
+        .send(())
+        .expect("the abandoned job is still reading");
+    let unanswered = Forced {
+        job: id,
+        what: "rebase onto main".to_owned(),
+        at: None,
+    };
+    assert_eq!(shutdown.forced, vec![unanswered.clone()]);
+    assert_eq!(shutdown.stalled, 1, "abandoned, not waited on");
+    assert!(
+        took >= bound && took < PATIENCE,
+        "it waited its bound and no longer: {took:?}"
+    );
+    assert_eq!(
+        crate::update::quit::exit_line(
+            "graft",
+            &unanswered.what,
+            Duration::from_secs(60),
+            unanswered.at,
+            "u"
+        ),
+        "graft: stopped rebase onto main after 60 s \u{b7} graft here shows where git left it"
+    );
+}
+
+/// The forced answer travels beside the event, never instead of it: a
+/// cancel that was not forced still reaches the loop as `JobCancelled`,
+/// whatever the job returned and whatever it said about git, and is not
+/// named by the shutdown (`run_job`'s mapping is unchanged, 13d).
+#[test]
+fn an_unforced_cancel_is_still_job_cancelled() {
+    let (runner, events) = runner(1);
+    let (started, has_started) = mpsc::channel();
+    let id = runner.submit(move |cancel| {
+        started.send(()).expect("the test is still listening");
+        let deadline = Instant::now() + PATIENCE;
+        while !cancel.is_cancelled() {
+            if Instant::now() >= deadline {
+                return Outcome::Failed("never cancelled".to_owned());
+            }
+            thread::park_timeout(SLICE);
+        }
+        cancel.left_at(Some(StoppedAt::BeforePause { changed: true }));
+        Outcome::Done
+    });
+    has_started.recv_timeout(PATIENCE).expect("the job starts");
+    runner.dispatch(Command::CancelJob(id));
+    assert_eq!(next_event(&events), Event::JobCancelled(id));
+    let (shutdown, _) = shut_down_within(runner, PATIENCE, PATIENCE, false);
+    assert_eq!(shutdown, Shutdown::CLEAN, "an unforced cancel is not named");
 }
 
 /// The grace covers a git child's whole stop: SIGTERM, the wait before

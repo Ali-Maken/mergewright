@@ -47,7 +47,7 @@ use crate::jobs::{Delivery, Dispatch, JobEvents};
 use crate::session::TerminalChange;
 use crate::update::{AppEvent, AppState};
 
-pub use exit_wait::{stopped_line, waiting_line};
+pub use exit_wait::waiting_line;
 pub use places::{OutsideStart, Place, drive, locate};
 pub use running::pump;
 pub use startup::{Ran, Terminal, run};
@@ -68,10 +68,13 @@ pub enum Exit {
     /// alternate screen disappears with the alternate screen, which is how a
     /// program comes to "exit without saying anything".
     Fatal(String),
-    /// The quit stop box's `y` (m8/13b review fix): the write `what` was
-    /// stopped half-way after `after` of waiting. The caller prints
-    /// [`stopped_line`] once the terminal is restored.
+    /// The quit stop box's `y` (m8/13b review fix): the write `job`, `what`,
+    /// was stopped after `after` of waiting. Once the terminal is restored,
+    /// the pool's stop prints its line, saying where git was left
+    /// (`update::quit::exit_line`, 13d).
     StoppedHalfWay {
+        /// The write being stopped.
+        job: graft_core::job::JobId,
         /// The write's description.
         what: String,
         /// How long Graft had waited on it.

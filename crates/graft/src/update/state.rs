@@ -843,6 +843,9 @@ pub enum Quit {
     /// wait's clock, turns it into `Exit::StoppedHalfWay` with the seconds
     /// waited, and the shell gets one line once the terminal is restored.
     StoppedHalfWay {
+        /// The write being stopped: its answer says where git was left
+        /// (`jobs::Forced`).
+        job: graft_core::job::JobId,
         /// The write's description.
         what: String,
     },

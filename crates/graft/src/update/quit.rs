@@ -31,6 +31,7 @@ use core::time::Duration;
 
 use graft_core::event::{KeyCode, KeyPress};
 use graft_core::job::JobId;
+use graft_ops::apply::StoppedAt;
 use graft_term::sanitize_line;
 use graft_ui::confirm::ConfirmView;
 use graft_ui::keymap::ActionId;
@@ -181,7 +182,7 @@ pub(super) fn confirmed(state: &mut AppState, commands: &mut Vec<Command>, then:
             let what = running_description(state, id);
             commands.push(Command::ForceStop(id));
             state.quit_when_done = None;
-            state.quit = Some(Quit::StoppedHalfWay { what });
+            state.quit = Some(Quit::StoppedHalfWay { job: id, what });
         }
         // It ended while the box was up, so its answer has landed. Quit
         // unless that answer left something to see — a stop, or its
@@ -280,6 +281,47 @@ fn stop_box(state: &AppState, id: JobId) -> PendingConfirm {
         ],
         QuitThen::StopNow(id),
     )
+}
+
+/// The one line a write stopped on the way out leaves in the shell, saying
+/// where git was left (13d's exit lines; keymap §2.2, "a stuck write"):
+/// `at` is the stopped job's own answer (`jobs::Forced::at`), `None` when it
+/// did not come within `jobs::FORCED_WAIT`. `after` is how long Graft had
+/// waited, in whole seconds; `undo` is the keymap's spelling of undo, the key
+/// that puts his files back when git could not pause.
+#[must_use]
+pub fn exit_line(
+    bin: &str,
+    what: &str,
+    after: Duration,
+    at: Option<StoppedAt>,
+    undo: &str,
+) -> String {
+    let what = sanitize_line(what);
+    let what = what.as_str();
+    let n = after.as_secs();
+    let stopped = format!("{bin}: stopped {what} after {n} s");
+    match at {
+        Some(StoppedAt::Paused(kind)) => format!(
+            "{stopped} \u{b7} the {} is paused \u{b7} {bin} here offers continue or abort",
+            kind.name()
+        ),
+        Some(StoppedAt::Landed) => {
+            format!("{bin}: {what} finished \u{b7} a git hook after it was stopped after {n} s")
+        }
+        Some(StoppedAt::BeforePause { changed: true }) => {
+            format!(
+                "{stopped}, before git could pause it \u{b7} {undo} in {bin} puts your files back"
+            )
+        }
+        Some(StoppedAt::Stopped { changed: true }) => {
+            format!("{stopped} \u{b7} {undo} in {bin} puts your files back")
+        }
+        Some(StoppedAt::BeforePause { changed: false } | StoppedAt::Stopped { changed: false }) => {
+            format!("{stopped} \u{b7} nothing changed")
+        }
+        None => format!("{stopped} \u{b7} {bin} here shows where git left it"),
+    }
 }
 
 /// What the running write `id` is called: its description, or `a write`.

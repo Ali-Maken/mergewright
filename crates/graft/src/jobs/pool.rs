@@ -4,7 +4,7 @@
 //! [`super::runner::JobRunner`] is the seam callers see; everything here is
 //! what it is built from.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
@@ -13,6 +13,7 @@ use graft_core::event::Event;
 use graft_core::job::{JobFailure, JobId};
 
 use graft_git::run::Stop;
+use graft_ops::apply::StoppedAt;
 
 use super::types::{Cancel, Delivery, JobEvents, Outcome, Work};
 use crate::crash;
@@ -41,7 +42,10 @@ pub(super) struct Assignment {
 /// for them to end instead ([`Live::wait_for_unstoppable`]) — up to a bound.
 /// Only [`Live::force_stop`] (the quit stop box's `y`) and
 /// [`Live::force_all_unstoppable`] (shutdown, once its bound or a second
-/// signal says so) lift the mark (13b review fix).
+/// signal says so) lift the mark (13b review fix). Both remember the write
+/// as forced, and its answer — where the stop left git — is kept when it
+/// ends, for the line the shell gets ([`Live::wait_for_forced`], 13c
+/// item 11).
 #[derive(Default)]
 pub(super) struct Live {
     jobs: Mutex<Jobs>,
@@ -56,6 +60,42 @@ struct Jobs {
     /// either order holds. Removed when the job is over. The value is the
     /// write's description, for the line a forced stop prints.
     unstoppable: HashMap<JobId, String>,
+    /// The writes a stop was forced on, in id order, and their answers.
+    forced: BTreeMap<JobId, ForcedJob>,
+    /// The jobs a worker has taken off the queue ([`Live::begin`]), until
+    /// they are over. A forced write not among them never runs (`run_job`
+    /// finds it cancelled), so it has no answer to wait for.
+    started: HashSet<JobId>,
+}
+
+/// A forced write: its description, and its answer.
+struct ForcedJob {
+    what: String,
+    answer: Answer,
+}
+
+/// Where a forced write's stop left git, once it has said.
+#[derive(Clone, Copy)]
+enum Answer {
+    /// Still running: its git being stopped, or its after-state reads.
+    Awaited,
+    /// Ended. `None`: nothing to say — never run, or no stop reached git.
+    Given(Option<StoppedAt>),
+}
+
+impl ForcedJob {
+    /// `what`, just forced. One no worker has started never will — its
+    /// cancel is seen before it runs — so it is answered now, with nothing.
+    fn new(what: String, started: bool) -> Self {
+        Self {
+            what,
+            answer: if started {
+                Answer::Awaited
+            } else {
+                Answer::Given(None)
+            },
+        }
+    }
 }
 
 impl Live {
@@ -63,10 +103,24 @@ impl Live {
         self.lock().tokens.insert(id, cancel);
     }
 
-    /// Forget a job that is over. Its token is no longer anyone's business.
+    /// A worker has taken `id` off the queue and is about to run it — or,
+    /// if it was cancelled while queued, to answer that it never ran. Taken
+    /// under the same lock as a force, so a write forced before this is
+    /// seen cancelled by `run_job` and never runs.
+    pub(super) fn begin(&self, id: JobId) {
+        self.lock().started.insert(id);
+    }
+
+    /// Forget a job that is over. Its token is no longer anyone's business —
+    /// but a forced write's answer is kept first ([`Cancel::stopped_at`]).
     pub(super) fn finish(&self, id: JobId) {
         let mut jobs = self.lock();
-        jobs.tokens.remove(&id);
+        jobs.started.remove(&id);
+        if let Some(token) = jobs.tokens.remove(&id)
+            && let Some(forced) = jobs.forced.get_mut(&id)
+        {
+            forced.answer = Answer::Given(token.stopped_at());
+        }
         jobs.unstoppable.remove(&id);
         drop(jobs);
         self.ended.notify_all();
@@ -79,38 +133,85 @@ impl Live {
     }
 
     /// Lift `id`'s mark and cancel it: its git is stopped half-way. The
-    /// quit stop box's `y` only (`Command::ForceStop`).
+    /// quit stop box's `y` only (`Command::ForceStop`). A write still live
+    /// is remembered as forced, so the shutdown after the quit waits for
+    /// its answer.
     pub(super) fn force_stop(&self, id: JobId) {
         let mut jobs = self.lock();
-        jobs.unstoppable.remove(&id);
-        if let Some(token) = jobs.tokens.get(&id) {
-            token.cancel();
+        let what = jobs.unstoppable.remove(&id);
+        let Some(token) = jobs.tokens.get(&id) else {
+            // Already over: nothing to stop, and its answer went to the
+            // loop as any job's does.
+            return;
+        };
+        token.cancel();
+        if let Some(what) = what {
+            let started = jobs.started.contains(&id);
+            jobs.forced.insert(id, ForcedJob::new(what, started));
         }
     }
 
-    /// Lift every live unstoppable job's mark and cancel it; their
-    /// descriptions, in id order. A job still queued is cancelled before it
-    /// starts, so it never runs (`run_job`). Shutdown's, once its bound for
-    /// writes is spent or a second signal asks for it.
-    pub(super) fn force_all_unstoppable(&self) -> Vec<String> {
+    /// Lift every live unstoppable job's mark, cancel it, and remember it
+    /// as forced ([`Live::wait_for_forced`] names them). A job still queued
+    /// is cancelled before it starts, so it never runs (`run_job`).
+    /// Shutdown's, once its bound for writes is spent or a second signal
+    /// asks for it.
+    pub(super) fn force_all_unstoppable(&self) {
         let mut jobs = self.lock();
-        let mut live: Vec<JobId> = jobs
+        let live: Vec<JobId> = jobs
             .unstoppable
             .keys()
             .filter(|id| jobs.tokens.contains_key(id))
             .copied()
             .collect();
-        live.sort_unstable();
-        let mut forced = Vec::with_capacity(live.len());
         for id in live {
             if let Some(token) = jobs.tokens.get(&id) {
                 token.cancel();
             }
             if let Some(what) = jobs.unstoppable.remove(&id) {
-                forced.push(what);
+                let started = jobs.started.contains(&id);
+                jobs.forced.insert(id, ForcedJob::new(what, started));
             }
         }
-        forced
+    }
+
+    /// Block until every forced write has answered, or `bound` has passed;
+    /// then every forced write, in id order, with its answer.
+    ///
+    /// A forced write's answer is read **after** its git is stopped: the
+    /// after-state reads that close its entry (13c item 11). One that has
+    /// not answered by `bound` is named with no answer and abandoned. **Why
+    /// that is safe:** its entry is `Pending` or already closed, and the
+    /// next launch's recovery closes a `Pending` one — nothing is lost by
+    /// not hearing the answer, only the words that say where git was left.
+    pub(super) fn wait_for_forced(&self, bound: Duration) -> Vec<Forced> {
+        let deadline = Instant::now() + bound;
+        let mut jobs = self.lock();
+        while jobs
+            .forced
+            .values()
+            .any(|forced| matches!(forced.answer, Answer::Awaited))
+        {
+            let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
+                break;
+            };
+            let (guard, _timeout) = self
+                .ended
+                .wait_timeout(jobs, remaining)
+                .unwrap_or_else(PoisonError::into_inner);
+            jobs = guard;
+        }
+        jobs.forced
+            .iter()
+            .map(|(id, forced)| Forced {
+                job: *id,
+                what: forced.what.clone(),
+                at: match forced.answer {
+                    Answer::Given(at) => at,
+                    Answer::Awaited => None,
+                },
+            })
+            .collect()
     }
 
     /// The live unstoppable writes' descriptions, in id order: what a
@@ -240,10 +341,25 @@ pub struct Shutdown {
     /// Their threads are left to die with the process rather than held on
     /// to, so that the process can end now.
     pub stalled: usize,
-    /// The unstoppable writes shutdown stopped half-way, by description: its
-    /// bound for writes was spent, or a second signal asked (13b review
-    /// fix). Empty on every ordinary quit.
-    pub forced: Vec<String>,
+    /// The writes a stop was forced on, in id order: the quit stop box's
+    /// `y`, or shutdown's own once its bound for writes was spent or a
+    /// second signal asked (13b review fix) — each with where its stop left
+    /// git (13c item 11). Empty on every ordinary quit.
+    pub forced: Vec<Forced>,
+}
+
+/// A write a stop was forced on, and where the stop left git
+/// (m8-polish-and-ship/13c item 11): what the shell's exit line says.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Forced {
+    /// The write's job.
+    pub job: JobId,
+    /// The write's description.
+    pub what: String,
+    /// Where its stop left git, as `graft_ops` read it from disk. `None`:
+    /// no answer within [`super::FORCED_WAIT`] (the job was abandoned), or
+    /// nothing to say (never run, or the stop did not reach git).
+    pub at: Option<StoppedAt>,
 }
 
 impl Shutdown {
@@ -272,6 +388,7 @@ impl<S: JobEvents> Worker<S> {
             };
 
             let id = assignment.id;
+            self.live.begin(id);
             let event = run_job(assignment);
             self.live.finish(id);
 

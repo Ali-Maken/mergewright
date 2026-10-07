@@ -365,7 +365,7 @@ where
             Some(Quit::HandedBack(key)) => return Ok(Some(Exit::HandedBack(*key))),
             // Reported by the caller, once the terminal is the user's again.
             Some(Quit::Fatal(reason)) => return Ok(Some(Exit::Fatal(reason.clone()))),
-            Some(Quit::StoppedHalfWay { what }) => {
+            Some(Quit::StoppedHalfWay { job, what }) => {
                 // The stop box opens only after the offer, which only the
                 // clock makes, so a count is always there. Were it not, the
                 // write was waited on no time this loop knows of: zero says
@@ -375,6 +375,7 @@ where
                     .after(self.wakes.now())
                     .unwrap_or(Duration::ZERO);
                 return Ok(Some(Exit::StoppedHalfWay {
+                    job: *job,
                     what: what.clone(),
                     after,
                 }));

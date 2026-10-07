@@ -2,9 +2,11 @@
 //! the two seams ([`JobEvents`], [`Dispatch`]) that let the pool and the loop
 //! be tested apart from each other.
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+
+use graft_ops::apply::StoppedAt;
 
 use crate::update::{AppEvent, Command, Product};
 
@@ -36,12 +38,46 @@ pub type Work = Box<dyn FnOnce(&Cancel) -> Outcome + Send + 'static>;
 /// Cloned into the job; the runner keeps the other half. Long work is expected
 /// to check [`Cancel::is_cancelled`] between steps — a rev-walk once per batch
 /// of commits, a `git` invocation between reading chunks of output.
+///
+/// It also carries the stop's answer back (m8-polish-and-ship/13c item 11):
+/// a write's job records where a stop left git ([`Cancel::left_at`]), and
+/// the pool reads it for a write it forced ([`super::Forced`]). By then the
+/// loop is gone and reads no event, so the answer travels on the token the
+/// stop was asked on, not on the job's event.
 #[derive(Clone, Debug)]
-pub struct Cancel(Arc<AtomicBool>);
+pub struct Cancel(Arc<Token>);
+
+#[derive(Debug, Default)]
+struct Token {
+    cancelled: AtomicBool,
+    /// Where a stop left git, once the job knows (`None` until then, and
+    /// for every job a stop did not reach).
+    left: Mutex<Option<StoppedAt>>,
+}
 
 impl Cancel {
     pub(super) fn new() -> Self {
-        Self(Arc::new(AtomicBool::new(false)))
+        Self(Arc::new(Token::default()))
+    }
+
+    /// The job read where a stop left git: `graft_ops`' own answer
+    /// (`Applied::stopped_at`, `ApplyError::stopped_at`). `None` changes
+    /// nothing.
+    pub(super) fn left_at(&self, at: Option<StoppedAt>) {
+        if at.is_some() {
+            *self.left() = at;
+        }
+    }
+
+    /// Where a stop left git, as the job recorded it.
+    pub(super) fn stopped_at(&self) -> Option<StoppedAt> {
+        *self.left()
+    }
+
+    /// Poisoning cannot leave the slot half-written — it is one `Copy`
+    /// value — so the value is taken as it is.
+    fn left(&self) -> MutexGuard<'_, Option<StoppedAt>> {
+        self.0.left.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
     /// Has this job been asked to stop?
@@ -52,11 +88,11 @@ impl Cancel {
     /// thing the job was working on.
     #[must_use]
     pub fn is_cancelled(&self) -> bool {
-        self.0.load(Ordering::Acquire)
+        self.0.cancelled.load(Ordering::Acquire)
     }
 
     pub(super) fn cancel(&self) {
-        self.0.store(true, Ordering::Release);
+        self.0.cancelled.store(true, Ordering::Release);
     }
 }
 

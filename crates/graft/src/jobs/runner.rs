@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use graft_core::event::Event;
 use graft_core::job::{JobFailure, JobId};
@@ -513,6 +513,11 @@ impl<S: JobEvents> JobRunner<S> {
     ///   child alive ([`super::SHUTDOWN_GRACE`] covers it). A job that
     ///   ignores its token past `grace` is abandoned rather than waited on
     ///   forever.
+    /// - A **forced** write — the stop box's `y`, or the bullet above — is
+    ///   waited for until it answers where its stop left git, up to
+    ///   [`super::FORCED_WAIT`] (13c item 11), and named in
+    ///   [`Shutdown::forced`] with that answer. The other jobs' `grace` runs
+    ///   alongside that wait, not after it.
     #[must_use]
     pub fn shutdown(
         self,
@@ -520,18 +525,33 @@ impl<S: JobEvents> JobRunner<S> {
         writes: Duration,
         force: &dyn graft_git::run::Stop,
     ) -> Shutdown {
+        self.shutdown_answered_within(grace, writes, super::FORCED_WAIT, force)
+    }
+
+    /// [`Self::shutdown`] with the forced writes' answers waited for up to
+    /// `answers` rather than [`super::FORCED_WAIT`]: the seam a test of
+    /// that bound uses, so it need not sit the real one out.
+    pub(crate) fn shutdown_answered_within(
+        self,
+        grace: Duration,
+        writes: Duration,
+        answers: Duration,
+        force: &dyn graft_git::run::Stop,
+    ) -> Shutdown {
         self.row_requests().clear();
         self.live.cancel_all();
         // Dropping the queue is what ends a worker that is idle: its `recv`
         // fails, and it stops. A job still queued is handed out first.
         drop(self.queue);
-        let forced = if self.live.wait_for_unstoppable(writes, force) {
-            Vec::new()
-        } else {
-            self.live.force_all_unstoppable()
-        };
+        if !self.live.wait_for_unstoppable(writes, force) {
+            self.live.force_all_unstoppable();
+        }
+        let answering = Instant::now();
+        let forced = self.live.wait_for_forced(answers);
 
-        let stalled = self.alive.wait_for_all(grace);
+        let stalled = self
+            .alive
+            .wait_for_all(grace.saturating_sub(answering.elapsed()));
         if stalled > 0 {
             // The handles are dropped rather than joined, which detaches those
             // threads. They hold nothing but their own job and a channel handle,

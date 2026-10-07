@@ -12,7 +12,7 @@ use graft_term::input::{FenceAnswers, InputMux, Inputs};
 use ratatui::Terminal as Frames;
 use ratatui::backend::CrosstermBackend;
 
-use super::exit_wait::Pool;
+use super::exit_wait::{Boxed, Pool};
 use super::graphics::Graphics;
 use super::headless::run_headless;
 use super::outside::{Handover, Outside};
@@ -28,6 +28,11 @@ use crate::session::{Session, Startup};
 use crate::terminal::{SessionOptions, TerminalSession};
 use crate::trace::{self, TerminalOut, Tracer};
 use crate::update::{AppState, Size};
+
+/// Undo, spelled once per place for the exit line of a write git could not
+/// pause (13d): the process has one keymap (ADR-0055), and that line is
+/// printed after the loop, and its state, are gone (`exit_wait::Pool`).
+const UNDO: graft_ui::keymap::ActionId = graft_ui::keymap::ActionId("app.undo");
 
 /// Start the re-query worker (DESIGN.md §4.5), knowing what startup settled.
 ///
@@ -185,7 +190,7 @@ impl Ran {
     /// line can be printed while the next place owns the screen.
     pub(super) fn stop_for_the_next_place(self) -> io::Result<()> {
         match self.pool {
-            Some(pool) => pool.stop(false).map(drop),
+            Some(pool) => pool.stop(false, None).map(drop),
             None => Ok(()),
         }
     }
@@ -309,6 +314,7 @@ pub(super) fn run_repo(
         &config.config,
         common_dir.as_deref(),
     )?;
+    let undo = arrival.keymap.spell(&UNDO).0;
     state.seed_keys(arrival.keymap, arrival.config_problems);
     if let Some(reason) = arrival.status {
         state.status = crate::update::Status::Sticky { reason, keys: None };
@@ -350,7 +356,7 @@ pub(super) fn run_repo(
     // stay up with it, so a second signal during that wait is heard.
     Ok(Ran {
         outcome,
-        pool: Some(Pool::new(jobs, signals, resizes)),
+        pool: Some(Pool::new(jobs, signals, resizes, undo)),
     })
 }
 
@@ -430,7 +436,17 @@ fn wind_down(
     // failure can be returned instead of merely printed.
     let restored = session.restore();
     let signalled = matches!(outcome, Ok(Exit::Signal(_)));
-    let stopped = pool.map_or(Ok(Shutdown::CLEAN), |pool| pool.stop(signalled));
+    let boxed = match &outcome {
+        Ok(Exit::StoppedHalfWay { job, what, after }) => Some(Boxed {
+            job: *job,
+            what,
+            after: *after,
+        }),
+        _ => None,
+    };
+    let stopped = pool.map_or(Ok(Shutdown::CLEAN), |pool| {
+        pool.stop(signalled, boxed.as_ref())
+    });
     let stalled_report = stopped.and_then(|shutdown| report_stalled_jobs(&shutdown));
     // `finish` already picks which of two possible errors the process exits
     // on; a failure to report stalled jobs is folded in afterwards so it

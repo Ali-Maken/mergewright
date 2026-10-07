@@ -341,7 +341,15 @@ fn in_context(
         Ok(ctx) => ctx,
         Err(error) => return nothing_ran(&error),
     };
-    let mut operated = answer(run(&mut ctx));
+    let ran = run(&mut ctx);
+    // Where a stop left git, for the pool to read if this write was forced
+    // (13c item 11): the event this job answers with is read by nobody once
+    // the loop has ended, which a forced stop's quit already has.
+    cancel.left_at(match &ran {
+        Ok(applied) => applied.stopped_at,
+        Err(error) => error.stopped_at(),
+    });
+    let mut operated = answer(ran);
     // A rebase stopped: where it is, read here while the repository and the
     // job's stop flag are at hand, so `update` never reads git (07b).
     if let Operated::Conflicted {

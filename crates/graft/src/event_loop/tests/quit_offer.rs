@@ -133,17 +133,15 @@ fn the_loop_offers_the_stop_at_ten_seconds_and_y_quits_with_the_seconds_waited()
         jobs.commands()
     );
     assert_eq!(end.quit_when_done, None);
-    match exit.expect("writing to memory cannot fail") {
-        Exit::StoppedHalfWay { what: named, after } => {
-            assert_eq!(named, what);
-            assert_eq!(
-                after,
-                Duration::from_secs(16),
-                "counted from the loop's first sight"
-            );
-        }
-        other => panic!("expected StoppedHalfWay, got {other:?}"),
-    }
+    assert_eq!(
+        exit.expect("writing to memory cannot fail"),
+        Exit::StoppedHalfWay {
+            job: id,
+            what,
+            after: Duration::from_secs(16),
+        },
+        "the boxed write, whose answer the line reads; counted from the loop's first sight"
+    );
 }
 
 /// Nothing pressed after the first 2 s: the loop alone turns the line into

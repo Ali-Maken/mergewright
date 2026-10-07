@@ -5,24 +5,27 @@
 //! (stop it now). The offer's 10 s are the loop's clock
 //! (`event_loop::tests::quit_offer` walks that timeline); here, with no
 //! loop, the harness plays the clock by calling `quit::waited_long` itself
-//! — the injected short `STOP_OFFER_AFTER`. Then: git gone, the pool down
-//! inside `SHUTDOWN_GRACE`, no lock left. A rebase is paused on disk, its
-//! entry `Pending`, and the next launch offers continue or abort with his
-//! edits named. A merge stopped in `pre-merge-commit` is **not** paused —
-//! see `stop_now_mid_merge_stops_git_and_leaves_no_lock`.
+//! — the injected short `STOP_OFFER_AFTER`. Then: git and its hook gone,
+//! the pool down inside `FORCED_WAIT`, no lock left, and the operation
+//! paused on disk, its entry `Pending`: a merge because Graft ended the
+//! stuck hook first and git paused the merge itself (13c), a rebase because
+//! it is stopped where it stands (13d Q1). The exit line says so, and the
+//! next launch offers continue or abort.
 //!
-//! The hook itself outlives git's stop: the pool signals git's pid, not its
-//! process group. Each test kills the leftover by pid (`reap`).
+//! A leftover hook is killed by pid (`reap`) in case a regression leaves
+//! one; the walks assert it is gone first.
 
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
-use graft::jobs::{EXIT_WRITE_WAIT, SHUTDOWN_GRACE, Shutdown};
+use graft::jobs::{EXIT_WRITE_WAIT, FORCED_WAIT, Forced, SHUTDOWN_GRACE, Shutdown};
 use graft::update::{AppState, Command, Quit};
 use graft_core::event::{KeyCode, KeyPress};
 use graft_core::journal::JournalEntry;
 use graft_core::journal::{EntryStatus, OperationKind};
+use graft_git::state::InProgress;
+use graft_ops::apply::StoppedAt;
 
 use super::{assert_no_cancel, merging, press};
 use crate::app_harness::{App, git};
@@ -126,7 +129,7 @@ fn entries(repo: &Path) -> Vec<JournalEntry> {
 
 /// `q y` → waiting; the clock calls the wait long; `q` → the stop box;
 /// `y` → `ForceStop`, `Quit::StoppedHalfWay`. Counts the keys pressed.
-fn walk_to_the_stop(app: &App, state: &AppState) -> (AppState, usize) {
+pub(super) fn walk_to_the_stop(app: &App, state: &AppState) -> (AppState, usize) {
     let mut keys = 0;
     let mut step = |state: &AppState, key: char| {
         keys += 1;
@@ -160,10 +163,12 @@ fn walk_to_the_stop(app: &App, state: &AppState) -> (AppState, usize) {
 
 /// The pool shut down on another thread, joined with a timeout: a hang
 /// here fails the test instead of hanging it.
-fn close_within(app: App, bound: Duration) -> (Shutdown, Duration) {
+pub(super) fn close_within(app: App, bound: Duration) -> (Shutdown, Duration) {
     let (sent, got) = mpsc::channel();
     let began = Instant::now();
     std::thread::spawn(move || {
+        // The real exit's shutdown (`event_loop::exit_wait`): a forced
+        // write's answer is waited for up to `FORCED_WAIT`.
         let shutdown = app.jobs.shutdown(SHUTDOWN_GRACE, EXIT_WRITE_WAIT, &());
         // The receiver is gone only if the test already failed on its
         // timeout; nothing is left to tell.
@@ -200,14 +205,45 @@ fn reap(pid: u32) {
     }
 }
 
-/// A merge whose `pre-merge-commit` hook hangs, `q y`, the offer, `q y`:
-/// git gone, the pool down within `SHUTDOWN_GRACE`, no lock left.
-/// `quit-stuck-write 4` counted. What the merge leaves on disk is printed,
-/// not asserted: see the comment at the end.
-#[test]
-fn stop_now_mid_merge_stops_git_and_leaves_no_lock() {
-    let scratch = forked();
-    let repo = scratch.path();
+/// The exit line the shell gets for `forced`, as `event_loop::exit_wait`
+/// prints it: the binary's name, a fixed wait (the harness has no loop
+/// clock; the offer is injected), and undo as the default keymap spells it.
+pub(super) fn exit_line_for(forced: &Forced) -> String {
+    graft::update::quit::exit_line("graft", &forced.what, OFFERED, forced.at, "u")
+}
+
+/// The wait the exit lines here are worded with: the offer's 10 s.
+const OFFERED: Duration = Duration::from_secs(10);
+
+/// His edit to a file the merge does not touch.
+const HIS_EDIT: &str = "base, his edit\n";
+
+/// A merge stopped in its stuck `pre-merge-commit` hook by the stop box's
+/// `y`, and closed as the real exit closes it: no answer pumped, the pool's
+/// shutdown waits for it.
+pub(super) struct StoppedMerge {
+    pub shutdown: Shutdown,
+    /// From the stop box's `y` to the pool being down: the quit's wait.
+    pub took: Duration,
+    pub keys: usize,
+    pub git_gone: bool,
+    pub hook_gone: bool,
+    /// `main`'s tip, the merge's source.
+    pub source: String,
+    /// `HEAD` before the merge.
+    pub head_before: String,
+    /// `git status --porcelain` before the merge: his edit alone.
+    pub status_before: String,
+}
+
+/// `feature` checked out with his edit to `base.txt`, a hanging
+/// `pre-merge-commit`, `m m` onto `main`, then `q y`, the offer, `q y`.
+/// The hook is removed afterwards, so a relaunch's `c` would not hang.
+pub(super) fn stop_a_stuck_merge(repo: &Path) -> StoppedMerge {
+    std::fs::write(repo.join("base.txt"), HIS_EDIT).expect("writable");
+    let head_before = git(repo, &["rev-parse", "HEAD"]).trim().to_owned();
+    let source = git(repo, &["rev-parse", "main"]).trim().to_owned();
+    let status_before = git(repo, &["status", "--porcelain"]);
     hang(repo, "pre-merge-commit");
     let (app, state) = App::open(repo);
     let state = merging(&app, state);
@@ -215,41 +251,122 @@ fn stop_now_mid_merge_stops_git_and_leaves_no_lock() {
     let hook_pid = pid(repo, "hook.pid");
 
     let (state, keys) = walk_to_the_stop(&app, &state);
-    within_the_note("quit-stuck-write", keys);
-    let state = app.pump(state, "the stopped merge's answer", |state| {
-        state.operating.is_none()
-    });
+    // The loop ends at `y`: its answer is never pumped, as in the app.
     drop(state);
-    assert!(
-        gone_within(git_pid, SHUTDOWN_GRACE),
-        "git {git_pid} still runs"
-    );
-    let (shutdown, took) = close_within(app, SHUTDOWN_GRACE + Duration::from_secs(5));
-    assert_eq!(shutdown, Shutdown::CLEAN);
-    assert!(took <= SHUTDOWN_GRACE, "{took:?}");
-
-    let hook_survived = alive(hook_pid);
+    let (shutdown, took) = close_within(app, FORCED_WAIT + Duration::from_secs(5));
+    let git_gone = gone_within(git_pid, Duration::from_secs(1));
+    let hook_gone = gone_within(hook_pid, Duration::from_secs(1));
     reap(hook_pid);
-    eprintln!("item 10 / force-stop: the hook (sleep) survived git's stop: {hook_survived}");
+    std::fs::remove_file(repo.join(".git/hooks/pre-merge-commit")).expect("the hook goes");
+    StoppedMerge {
+        shutdown,
+        took,
+        keys,
+        git_gone,
+        hook_gone,
+        source,
+        head_before,
+        status_before,
+    }
+}
 
+/// 13c's walk, 13b's NOT MET box: a merge whose `pre-merge-commit` hook
+/// hangs, `q y`, the offer, `q y`. Graft ends the hook first, git pauses
+/// the merge itself, and the exit line says the merge is paused. Git and
+/// the hook gone, the quit inside `FORCED_WAIT`, `MERGE_HEAD` the source's
+/// tip, `HEAD` unmoved, no lock, the entry `Pending`. `quit-stuck-write 4`.
+#[test]
+fn stop_now_mid_merge_leaves_it_paused() {
+    let scratch = forked();
+    let repo = scratch.path();
+    let stopped = stop_a_stuck_merge(repo);
+
+    within_the_note("quit-stuck-write", stopped.keys);
+    assert!(stopped.git_gone, "git still runs");
+    assert!(stopped.hook_gone, "the hook's sleep still runs");
+    eprintln!(
+        "13d NOTES: the stop box's y to the pool down: {:?}",
+        stopped.took
+    );
+    assert!(stopped.took <= FORCED_WAIT, "{:?}", stopped.took);
+    let [forced] = stopped.shutdown.forced.as_slice() else {
+        panic!("one forced write: {:?}", stopped.shutdown);
+    };
+    assert_eq!(stopped.shutdown.stalled, 0);
+    assert_eq!(forced.what, "merge main into feature");
+    assert_eq!(forced.at, Some(StoppedAt::Paused(InProgress::Merge)));
+    assert_eq!(
+        exit_line_for(forced),
+        "graft: stopped merge main into feature after 10 s \u{b7} the merge is paused \u{b7} \
+         graft here offers continue or abort"
+    );
+
+    let merge_head = std::fs::read_to_string(repo.join(".git/MERGE_HEAD"))
+        .unwrap_or_else(|why| panic!("the merge is paused: {why}"));
+    assert_eq!(merge_head.trim(), stopped.source);
+    assert_eq!(
+        git(repo, &["rev-parse", "HEAD"]).trim(),
+        stopped.head_before
+    );
     assert_eq!(locks(&repo.join(".git")), Vec::<PathBuf>::new());
     let merges: Vec<_> = entries(repo)
         .into_iter()
         .filter(|entry| entry.kind == OperationKind::Merge)
         .collect();
     assert_eq!(merges.len(), 1, "{merges:?}");
-    // NOT the ticket's acceptance (13b review fixes, Q1): the ticket expects
-    // `MERGE_HEAD` kept, the entry `Pending` and the relaunch offering
-    // continue/abort. Observed instead: git writes no `MERGE_HEAD` before
-    // `pre-merge-commit` runs, so the stop leaves the merge's result staged
-    // on `feature` with no merge in progress, and the entry closes
-    // `Aborted { reason: "git was stopped" }`. Raised in the ticket for the
-    // conductor; recorded here so the run shows it.
-    eprintln!(
-        "stopped merge: MERGE_HEAD {} · entry {:?}\n{}",
+    assert_eq!(merges[0].status, EntryStatus::Pending);
+    assert_eq!(
+        std::fs::read_to_string(repo.join("base.txt")).expect("his file"),
+        HIS_EDIT,
+        "his edit is untouched"
+    );
+}
+
+/// The next launch over that stopped merge offers continue or abort — the
+/// live merge's own banner words, `c finish  a abort` — and `a` (then `y`)
+/// puts `HEAD` and the tree back as they were, his edit byte-equal.
+#[test]
+fn relaunch_after_a_stopped_merge_offers_continue_and_abort() {
+    let scratch = forked();
+    let repo = scratch.path();
+    let stopped = stop_a_stuck_merge(repo);
+    assert!(
         repo.join(".git/MERGE_HEAD").exists(),
-        merges[0].status,
-        git(repo, &["status", "--short"])
+        "{:?}",
+        stopped.shutdown
+    );
+
+    let (app, state) = App::open(repo);
+    let state = app.pump(state, "the relaunch's reads", |state| {
+        state.in_progress.is_some() && state.refs.is_some() && !state.live_entries.is_empty()
+    });
+    let banner = crate::captures::frame_at(&state, 100, 30, None).join("\n");
+    // The live merge's own banner, quoted: with nothing unmerged its `c`
+    // reads `finish` (the merge's commit is all that is left).
+    assert!(
+        banner.contains("merge still in progress from a previous run \u{b7} c finish  a abort"),
+        "{banner}"
+    );
+    assert!(state.banner_focus, "the banner has the keyboard: {banner}");
+    let asked = app.key(&state, KeyCode::Char('a'));
+    assert!(asked.confirm.is_some(), "a asks first");
+    let aborting = app.key(&asked, KeyCode::Char('y'));
+    let aborted = app.pump(aborting, "the abort", |state| {
+        state.operating.is_none() && state.in_progress.is_none()
+    });
+    drop(aborted);
+    app.close();
+
+    assert!(!repo.join(".git/MERGE_HEAD").exists(), "the merge is gone");
+    assert_eq!(
+        git(repo, &["rev-parse", "HEAD"]).trim(),
+        stopped.head_before
+    );
+    assert_eq!(git(repo, &["status", "--porcelain"]), stopped.status_before);
+    assert_eq!(
+        std::fs::read_to_string(repo.join("base.txt")).expect("his file"),
+        HIS_EDIT,
+        "his edit, byte-equal"
     );
 }
 
@@ -273,9 +390,11 @@ fn quit_while_write_is_two_keys() {
 }
 
 /// The same walk over a rebase that set his edits aside: its
-/// `post-checkout` hook hangs after git has begun. Stopped half-way, the
-/// rebase is paused, and the relaunch offers continue or abort, and his
-/// edits back.
+/// `post-checkout` hook hangs after git has begun. Stopped where it stands
+/// (13d Q1: not hook-first, which would let git finish it), the rebase is
+/// paused with no lock left, the exit line says so, and the relaunch offers
+/// continue or abort, and his edits back. Closed as the real exit closes:
+/// the answer is the shutdown's, never pumped.
 #[test]
 fn stop_now_mid_rebase_with_edits_set_aside() {
     let scratch = forked();
@@ -288,15 +407,27 @@ fn stop_now_mid_rebase_with_edits_set_aside() {
 
     let (state, keys) = walk_to_the_stop(&app, &state);
     within_the_note("quit-stuck-write", keys);
-    let state = app.pump(state, "the stopped rebase's answer", |state| {
-        state.operating.is_none()
-    });
     drop(state);
+    let (shutdown, took) = close_within(app, FORCED_WAIT + Duration::from_secs(5));
     assert!(gone_within(git_pid, SHUTDOWN_GRACE), "git still runs");
-    let (shutdown, took) = close_within(app, SHUTDOWN_GRACE + Duration::from_secs(5));
-    assert_eq!(shutdown, Shutdown::CLEAN);
-    assert!(took <= SHUTDOWN_GRACE, "{took:?}");
+    eprintln!("13d NOTES: rebase, the stop box's y to the pool down: {took:?}");
+    assert!(took <= FORCED_WAIT, "{took:?}");
+    let [forced] = shutdown.forced.as_slice() else {
+        panic!("one forced write: {shutdown:?}");
+    };
+    assert_eq!(shutdown.stalled, 0);
+    assert_eq!(forced.at, Some(StoppedAt::Paused(InProgress::Rebase)));
+    assert_eq!(
+        exit_line_for(forced),
+        format!(
+            "graft: stopped {} after 10 s \u{b7} the rebase is paused \u{b7} graft here offers \
+             continue or abort",
+            forced.what
+        )
+    );
+    let hook_gone = gone_within(hook_pid, Duration::from_secs(1));
     reap(hook_pid);
+    assert!(hook_gone, "the hook's sleep still runs");
     std::fs::remove_file(repo.join(".git/hooks/post-checkout")).expect("the hook goes");
 
     assert!(
