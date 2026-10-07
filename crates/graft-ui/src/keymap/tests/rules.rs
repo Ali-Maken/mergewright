@@ -234,34 +234,48 @@ fn a_graph_verb_on_ctrl_z_takes_suspend_on_the_graph() {
 
 // ── D3 ──────────────────────────────────────────────────────────────────
 
-const CONFIRMERS: [ContextId; 5] = [
+const CONFIRMERS: [ContextId; 4] = [
     ContextId::Preview,
     ContextId::Confirm,
     ContextId::Finish,
     ContextId::Rewrite,
-    ContextId::EmptyState,
 ];
 
 /// `[keys.confirm] yes = "c"`: one line moves the confirm of every box;
 /// `y` is unanswered there and still copies the SHA on the graph. The
-/// start screen's own `c` (clone) keeps `c` there — own rows first — and
-/// that is the line's one problem.
+/// start screen's init box is a `Confirm` box (09d D6), so the start
+/// screen's own `c` (clone) keeps `c` with no clash to warn of.
 #[test]
 fn one_confirm_line_moves_every_confirm() {
     let (map, warnings) = with(&[line("confirm.yes", &["c"])], OFF);
     let c = KeyChord::key('c');
     let y = KeyChord::key('y');
-    for ctx in &CONFIRMERS[..4] {
+    for ctx in &CONFIRMERS {
         assert_eq!(map.translate(*ctx, c), Translated::Default(y), "{ctx:?}");
         assert_eq!(map.translate(*ctx, y), Translated::Unbound, "{ctx:?}");
     }
     assert_eq!(map.translate(ContextId::Graph, y), Translated::Pass);
     assert_eq!(map.translate(ContextId::EmptyState, c), Translated::Pass);
-    assert_eq!(
-        words(&warnings),
-        ["c given to confirm.yes — on the start screen c stays clone…"]
-    );
+    assert_eq!(warnings, []);
     assert_eq!(map.spell(&ActionId("confirm.yes")).0, "c");
+}
+
+/// 09d D6: the start screen borrows no confirm — its init box translates
+/// in `Confirm` — so `confirm.yes = "c"` is no problem there: `c` stays
+/// clone on the start screen and nothing is warned.
+#[test]
+fn confirm_on_c_is_no_problem_on_the_start_screen() {
+    assert!(
+        !ContextId::EmptyState
+            .borrows()
+            .contains(&ActionId("confirm.yes"))
+    );
+    let (map, warnings) = with(&[line("confirm.yes", &["c"])], OFF);
+    assert_eq!(warnings, []);
+    assert_eq!(
+        map.translate(ContextId::EmptyState, KeyChord::key('c')),
+        Translated::Pass
+    );
 }
 
 /// The repeat key follows the opener: `merge = "M"` → `M` confirms the

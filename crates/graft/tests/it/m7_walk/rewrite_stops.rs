@@ -84,7 +84,8 @@ fn rewrite_stop_to_first_file() {
     let resolver = state.resolver.as_ref().expect("the resolver is open");
     assert_eq!(resolver.path, std::path::PathBuf::from("shared.txt"));
     let banner = graft::update::banner::banner_view(&state).expect("a banner");
-    let words = graft_ui::graph_screen::banner_line(&banner, u16::MAX);
+    let words =
+        graft_ui::graph_screen::banner_line(&banner, u16::MAX, graft_ui::keymap::Keymap::shipped());
     assert!(
         words.contains("step 3 of 5") && words.contains("feature-b, branch 2 of 3"),
         "{words}"

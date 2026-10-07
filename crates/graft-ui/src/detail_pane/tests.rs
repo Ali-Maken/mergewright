@@ -34,6 +34,7 @@ fn draw(view: &DetailView, layout: DetailLayout, columns: u16, rows: u16) -> Ter
                     view,
                     layout: &layout,
                     theme: &theme,
+                    keys: crate::keymap::Keymap::shipped(),
                 },
                 frame.area(),
             );
@@ -394,11 +395,14 @@ fn working_tree_header_reads_the_uncommitted_summary() {
 
 #[test]
 fn working_tree_header_omits_zero_counts() {
-    let title = title_text(&Subject::WorkingTree {
-        staged: 3,
-        unstaged: 0,
-        untracked: 0,
-    });
+    let title = title_text(
+        &Subject::WorkingTree {
+            staged: 3,
+            unstaged: 0,
+            untracked: 0,
+        },
+        crate::keymap::Keymap::shipped(),
+    );
     assert_eq!(title, "UNCOMMITTED \u{b7} 3 staged");
 }
 
@@ -845,7 +849,7 @@ fn truncated_diff_ends_with_the_more_lines_footer() {
     let total = diff_body(
         &diff.hunks,
         0,
-        Some((5, 105)),
+        Some((5, 105, crate::keymap::Keymap::shipped())),
         area,
         &mut buffer,
         &theme,
@@ -1340,16 +1344,16 @@ fn since(
 fn the_header_says_changes_since_it_left() {
     let header = compare("feature-a", "main", since(3, 2, 10, 4));
     assert_eq!(
-        compare_title(&header, usize::MAX),
+        compare_title(&header, usize::MAX, crate::keymap::Keymap::shipped()),
         "changes on feature-a since it left main \u{b7} 3 commits \u{b7} 2 files +10 \u{2212}4"
     );
     let one = compare("feature-a", "main", since(1, 1, 1, 0));
     assert_eq!(
-        compare_title(&one, usize::MAX),
+        compare_title(&one, usize::MAX, crate::keymap::Keymap::shipped()),
         "changes on feature-a since it left main \u{b7} 1 commit \u{b7} 1 file +1 \u{2212}0"
     );
     assert_eq!(
-        title_text(&Subject::Compare(header)),
+        title_text(&Subject::Compare(header), crate::keymap::Keymap::shipped()),
         "changes on feature-a since it left main \u{b7} 3 commits \u{b7} 2 files +10 \u{2212}4"
     );
 }
@@ -1358,12 +1362,12 @@ fn the_header_says_changes_since_it_left() {
 fn an_ancestor_says_nothing_of_its_own() {
     let header = compare("old", "main", crate::detail::CompareState::AlreadyIn);
     assert_eq!(
-        compare_title(&header, usize::MAX),
+        compare_title(&header, usize::MAX, crate::keymap::Keymap::shipped()),
         "old is already in main \u{b7} nothing of its own"
     );
     let base = compare("main", "main", crate::detail::CompareState::IsBase);
     assert_eq!(
-        compare_title(&base, usize::MAX),
+        compare_title(&base, usize::MAX, crate::keymap::Keymap::shipped()),
         "this is the compare base \u{b7} x clears it"
     );
 }
@@ -1376,7 +1380,7 @@ fn no_shared_history_says_two_dot_in_words() {
         crate::detail::CompareState::NoSharedHistory,
     );
     assert_eq!(
-        compare_title(&header, usize::MAX),
+        compare_title(&header, usize::MAX, crate::keymap::Keymap::shipped()),
         "orphan and main share no history \u{b7} showing main..orphan"
     );
 }
@@ -1389,12 +1393,12 @@ fn a_failed_compare_says_why() {
         crate::detail::CompareState::Failed(sanitize_line("bad object")),
     );
     assert_eq!(
-        compare_title(&header, usize::MAX),
+        compare_title(&header, usize::MAX, crate::keymap::Keymap::shipped()),
         "couldn't compare: bad object"
     );
     let reading = compare("feature-a", "main", crate::detail::CompareState::Reading);
     assert_eq!(
-        compare_title(&reading, usize::MAX),
+        compare_title(&reading, usize::MAX, crate::keymap::Keymap::shipped()),
         "comparing feature-a with main \u{2026}"
     );
 }
@@ -1403,14 +1407,18 @@ fn a_failed_compare_says_why() {
 fn the_header_drops_the_tally_first_when_narrow() {
     let header = compare("feature-a", "main", since(3, 2, 10, 4));
     let counted = "changes on feature-a since it left main \u{b7} 3 commits";
-    assert_eq!(compare_title(&header, 60), counted, "tally dropped first");
     assert_eq!(
-        compare_title(&header, 45),
+        compare_title(&header, 60, crate::keymap::Keymap::shipped()),
+        counted,
+        "tally dropped first"
+    );
+    assert_eq!(
+        compare_title(&header, 45, crate::keymap::Keymap::shipped()),
         "changes on feature-a since it left main",
         "then the count"
     );
     assert_eq!(
-        compare_title(&header, 36),
+        compare_title(&header, 36, crate::keymap::Keymap::shipped()),
         "changes on featu\u{2026} since it left main",
         "then the head's name, cut"
     );
@@ -1841,4 +1849,58 @@ fn text_on_the_files_cursor_row_is_legible() {
             "{focus:?}: the files cursor row is drawn ({checked})"
         );
     }
+}
+
+/// m8/09d D5: the compare line's `x clears it` spells `graph.compare` and
+/// the diff footer's `L load all` spells `diff.load_all`, from his keymap;
+/// an unbound key's clause is left out, never `—`.
+#[test]
+fn the_compare_line_and_the_load_all_footer_spell_his_keys() {
+    use crate::keymap::sweep::{assert_spelled, swept};
+    use crate::keymap::{KeySwitches, Keymap};
+    let (keys, _) = swept();
+    let base = compare("main", "main", crate::detail::CompareState::IsBase);
+    let line = compare_title(&base, usize::MAX, &keys);
+    assert_spelled(&line, &keys, &[&["graph.compare"]]);
+    assert!(line.ends_with("clears it"), "{line}");
+
+    let footer = |keys: &Keymap| {
+        let view = commit_view();
+        let BodyView::Diff(diff) = &view.body else {
+            panic!("expected a diff body");
+        };
+        let area = Rect::new(0, 0, 60, 6);
+        let mut buffer = Buffer::empty(area);
+        let _rows = diff_body(
+            &diff.hunks,
+            0,
+            Some((5, 105, keys)),
+            area,
+            &mut buffer,
+            &theme(ColorDepth::TrueColor),
+            DiffFocus {
+                focused: true,
+                word_tint: true,
+                cursor: None,
+            },
+        );
+        (0..area.width)
+            .map(|x| buffer[(x, 5)].symbol().to_string())
+            .collect::<String>()
+    };
+    let swept_footer = footer(&keys);
+    assert_spelled(&swept_footer, &keys, &[&["diff.load_all"]]);
+
+    let (none, warnings) = Keymap::with_overrides(
+        &[
+            ("graph.compare".to_owned(), vec!["none".to_owned()]),
+            ("diff.load_all".to_owned(), vec!["none".to_owned()]),
+        ],
+        KeySwitches::default(),
+    );
+    assert_eq!(warnings, []);
+    let line = compare_title(&base, usize::MAX, &none);
+    assert_eq!(line, "this is the compare base");
+    let unbound = footer(&none);
+    assert_eq!(unbound.trim_end(), "\u{2026} 100 more lines");
 }

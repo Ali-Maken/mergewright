@@ -698,7 +698,7 @@ fn every_kind() -> Vec<Badge> {
 fn badges_read_as_designed_in_plain_unicode() {
     let texts: Vec<String> = every_kind()
         .iter()
-        .map(|badge| badge.text(Icons::Plain))
+        .map(|badge| badge.text(Icons::Plain, crate::keymap::Keymap::shipped()))
         .collect();
     assert_eq!(
         texts,
@@ -727,8 +727,14 @@ fn badges_read_as_designed_in_plain_unicode() {
             behind: 4,
         },
     );
-    assert_eq!(ahead_only.text(Icons::Plain), "[a ↑3]");
-    assert_eq!(behind_only.text(Icons::Plain), "[b ↓4]");
+    assert_eq!(
+        ahead_only.text(Icons::Plain, crate::keymap::Keymap::shipped()),
+        "[a ↑3]"
+    );
+    assert_eq!(
+        behind_only.text(Icons::Plain, crate::keymap::Keymap::shipped()),
+        "[b ↓4]"
+    );
 }
 
 /// Rows 0 and 1 of a two-commit history, with every kind of badge on row 0.
@@ -1544,7 +1550,7 @@ fn rebase_banner(step: Option<(u32, u32)>, conflict: Option<&str>) -> BannerView
 #[test]
 fn the_banner_names_the_state_and_never_the_files() {
     let banner = rebase_banner(Some((3, 7)), Some("src/auth/token.rs"));
-    let text = banner_line(&banner, u16::MAX);
+    let text = banner_line(&banner, u16::MAX, crate::keymap::Keymap::shipped());
     assert_eq!(text, "REBASING step 3 of 7");
     assert!(!text.contains("token.rs"), "{text:?}");
     assert!(!text.contains("conflict"), "{text:?}");
@@ -1561,7 +1567,7 @@ fn the_banner_carries_no_warning_glyph() {
         rebase_banner(Some((3, 7)), Some("src/auth/token.rs")),
         rebase_banner(None, None),
     ] {
-        let text = banner_line(&banner, u16::MAX);
+        let text = banner_line(&banner, u16::MAX, crate::keymap::Keymap::shipped());
         assert!(!text.contains('⚠'), "{text:?}");
     }
 }
@@ -1578,7 +1584,7 @@ fn the_banner_is_worded_the_same_whatever_the_header_it_lands_in() {
     let banner = rebase_banner(Some((3, 7)), Some("src/auth/token.rs"));
     let mut with_banner = view(&rows, WalkView::Complete { rows: 2 }, 0);
     with_banner.banner_op = Some(banner.clone());
-    let whole = banner_line(&banner, u16::MAX);
+    let whole = banner_line(&banner, u16::MAX, crate::keymap::Keymap::shipped());
     for columns in [100u16, 120, 160, 200] {
         let header = text(&draw(&with_banner, columns, 6))[0].clone();
         assert!(
@@ -1599,14 +1605,21 @@ fn banner_line_with_no_step_names_only_the_operation() {
         skippable: false,
         rewrite: None,
     };
-    assert_eq!(banner_line(&banner, u16::MAX), "MERGING");
+    assert_eq!(
+        banner_line(&banner, u16::MAX, crate::keymap::Keymap::shipped()),
+        "MERGING"
+    );
 }
 
 /// A step, and nothing after it.
 #[test]
 fn banner_line_with_a_step_counts_it() {
     assert_eq!(
-        banner_line(&rebase_banner(Some((3, 7)), None), u16::MAX),
+        banner_line(
+            &rebase_banner(Some((3, 7)), None),
+            u16::MAX,
+            crate::keymap::Keymap::shipped(),
+        ),
         "REBASING step 3 of 7"
     );
 }
@@ -1699,7 +1712,7 @@ fn a_long_location_is_cut_before_the_banner_is() {
 
     for columns in [80u16, 100, 120, 160] {
         let header = text(&draw(&long, columns, 6))[0].clone();
-        let whole = banner_line(&banner, u16::MAX);
+        let whole = banner_line(&banner, u16::MAX, crate::keymap::Keymap::shipped());
         assert!(
             header.contains(&whole),
             "at {columns} columns the banner was cut instead of the path: \
@@ -2200,14 +2213,14 @@ fn check_one_row(screen: &GraphView<'_>, width: u16, icons: Icons) {
             let line = &drawn[1];
             let cells: Vec<&str> = line.split("").filter(|cell| !cell.is_empty()).collect();
 
-            let spans = badge_spans(entry, &columns, icons);
+            let spans = badge_spans(entry, &columns, icons, crate::keymap::Keymap::shipped());
             assert!(!spans.is_empty(), "{width} columns, {icons:?}: no badges");
             for (span, index) in &spans {
                 let drawn_here: String = cells[usize::from(span.start)..usize::from(span.end)]
                     .concat()
                     .trim_end()
                     .to_owned();
-                let expected = entry.badges[*index].text(icons);
+                let expected = entry.badges[*index].text(icons, crate::keymap::Keymap::shipped());
                 // A badge cut off at the pane's edge is drawn elided
                 // (`draw_cell`'s `fit`), so the last one on a narrow row
                 // reads as a prefix plus `…`. The span is still the badge's
@@ -2250,7 +2263,15 @@ fn a_row_without_badges_has_no_spans() {
         height: 12,
     };
     let (entry, columns) = row_at(&screen, area, 1).expect("a commit row");
-    assert!(badge_spans(entry, &columns, Icons::Plain).is_empty());
+    assert!(
+        badge_spans(
+            entry,
+            &columns,
+            Icons::Plain,
+            crate::keymap::Keymap::shipped()
+        )
+        .is_empty()
+    );
 }
 
 /// Off the commit rows there is no row at all: the header, the footer and
@@ -2579,8 +2600,38 @@ fn the_base_row_carries_x_base() {
         name: sanitize_line(""),
         kind: BadgeKind::CompareBase,
     };
-    assert_eq!(badge.text(Icons::Plain), "[x base]");
-    assert_eq!(badge.text(Icons::Nerd), "\u{f47f} x base");
+    assert_eq!(
+        badge.text(Icons::Plain, crate::keymap::Keymap::shipped()),
+        "[x base]"
+    );
+    assert_eq!(
+        badge.text(Icons::Nerd, crate::keymap::Keymap::shipped()),
+        "\u{f47f} x base"
+    );
+}
+
+/// m8/09d D5: the badge's `x` is `graph.compare`, spelled from his keymap;
+/// unbound, the badge reads `base` alone — no `x`, no `—`.
+#[test]
+fn the_base_badge_spells_his_compare_key() {
+    use crate::keymap::sweep::{assert_spelled, swept};
+    use crate::keymap::{KeySwitches, Keymap};
+    let badge = Badge {
+        name: sanitize_line(""),
+        kind: BadgeKind::CompareBase,
+    };
+    let (keys, _) = swept();
+    assert_spelled(
+        &badge.text(Icons::Plain, &keys),
+        &keys,
+        &[&["graph.compare"]],
+    );
+    let (none, _) = Keymap::with_overrides(
+        &[("graph.compare".to_owned(), vec!["none".to_owned()])],
+        KeySwitches::default(),
+    );
+    assert_eq!(badge.text(Icons::Plain, &none), "[base]");
+    assert_eq!(badge.text(Icons::Nerd, &none), "\u{f47f} base");
 }
 
 /// m7-power-tools/16: a commit only a stash reaches is badged with the
@@ -2591,8 +2642,14 @@ fn only_in_stash_badge_reads_its_entry() {
         name: sanitize_line(""),
         kind: BadgeKind::OnlyInStash(2),
     };
-    assert_eq!(badge.text(Icons::Plain), "[only in stash@{2}]");
-    assert_eq!(badge.text(Icons::Nerd), "\u{f01c} only in stash@{2}");
+    assert_eq!(
+        badge.text(Icons::Plain, crate::keymap::Keymap::shipped()),
+        "[only in stash@{2}]"
+    );
+    assert_eq!(
+        badge.text(Icons::Nerd, crate::keymap::Keymap::shipped()),
+        "\u{f01c} only in stash@{2}"
+    );
 }
 
 /// m7-power-tools/09: `✎ changed` two cells after the subject, on the

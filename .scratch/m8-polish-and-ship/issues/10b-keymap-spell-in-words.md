@@ -1,6 +1,6 @@
 # G-keymap 2b — the literal-key grep reaches graft and graft-ops (a ratchet)
 
-Status: draft (re-specced by the planner's spec-only pass 2026-10-07 after the builder's stop; was: the 23 word
+Status: done (2026-10-07). Was: draft (re-specced by the planner's spec-only pass 2026-10-07 after the builder's stop; was: the 23 word
 sites, now split across 10e–10i — see **Ruling** below)
 Build with: **Sonnet** — the scanner change exists as a patch (`10b-grep-extension.patch`), the file layout and the
 classification rule are decided below; held by the test itself (stale rows fail). Not Fable.
@@ -48,12 +48,12 @@ None in `src/`. Test-local: `fn roots() -> Vec<(&'static str, PathBuf)>`, `fn so
 (as the patch).
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] `no_literal_keys::no_user_facing_literal_spells_a_default_key` green over graft-ui, graft, graft-ops.
-- [ ] A planted literal (`"u undoes"` in a scratch graft file, not committed) fails it naming `graft:<path>`; a
-      planted `*_tests.rs` file does not — say how checked (two runs, output lines quoted in NOTES).
-- [ ] NOTES: hit count at HEAD, rows per file (prose / each `known_*`), and every graft path a `known_*` file holds
-      that is **not** in that ticket's Files list (the conductor amends the ticket).
-- [ ] No `src/` change: `git diff --stat main -- crates/*/src` empty.
+- [x] `no_literal_keys::no_user_facing_literal_spells_a_default_key` green over graft-ui, graft, graft-ops — that test, `cargo nextest run` (full workspace 5597 passed).
+- [x] A planted literal (`"u undoes"` in a scratch graft file, not committed) fails it naming `graft:<path>`; a
+      planted `*_tests.rs` file does not — say how checked (two runs, output lines quoted in NOTES). Verified by `no_user_facing_literal_spells_a_default_key`, two runs, NOTES 10b-done.
+- [x] NOTES: hit count at HEAD, rows per file (prose / each `known_*`), and every graft path a `known_*` file holds
+      that is **not** in that ticket's Files list (the conductor amends the ticket). See NOTES 10b-done; held by `no_user_facing_literal_spells_a_default_key` (stale rows fail).
+- [x] No `src/` change: `git diff --stat main -- crates/*/src` empty — checked by that command before commit.
 
 ## Touches
 - 09d (same root file, `ALLOWED` rows only — scheduling above). 10e–10i each delete their `known_*` rows.
@@ -133,3 +133,26 @@ refusals; (c) keep `Refusal` values to `update` and word there. Pick one before 
 file group (green, ratchets). 10b-2: the 23 graft `update` sites listed above (mechanical). 10b-3: graft-ops
 refusal/error words after the ruling. 10b-4..n: the ~80 extra graft sites by area (banner, resolver, undo/journal,
 failure/outcome, view/*). Leave 09d's 5 KNOWN graft-ui rows alone.
+
+## NOTES 10b-done (builder, 2026-10-07)
+
+Scout: none — tests-only, the patch and hit list were the map. Did not compact.
+
+- Patch applied as given, except `ui.parent().expect(..)` → `ui.join("..")` (clippy `expect_used` denies it).
+- Filter now skips `*_tests.rs`. Six tables `#[path]`-included, chained after `ALLOWED` in `allowed()`; hit and
+  stale checks both read it.
+- **Hit count at HEAD b0718d1b: 138** non-test graft/graft-ops hits (with the `*_tests.rs` skip; 161 without).
+  Same 138 as the probe's list at 80dd116b — 09d's sites were graft-ui only.
+- Rows: prose 43 (article 30, count 8, description 2, not shown: debug 2 (`#[must_use]` messages,
+  `update/operate.rs`), not shown: assert 1 (`update/resolver/handover.rs` debug_assert)); known_ops 20 (10e),
+  known_stops 20 (10f), known_resolver 19 (10g), known_undo 21 (10h), known_preview 15 (10i).
+- Judgement calls: graft-ops `Unparsable` messages (`a log record with no id`, …) filed as `article` — they may reach
+  him as error text, but hold no key. `operation.rs` "a puts staged changes…" and "a only changes older commits…"
+  name the `a` key → known_ops, not prose.
+- Duplicate literals (e.g. `pressed.rs` "c continue  a abort" ×3) get one row each; fixing one of three does not go
+  stale — area tickets should fix all copies.
+- Planted checks: `crates/graft/src/plant_scratch.rs` with `"u undoes"` → failed:
+  `1 literal key(s) — spell them from the keymap, or allow with a reason:` / `graft:plant_scratch.rs: "u undoes" (`u`)`.
+  Same text in `crates/graft/src/plant_tests.rs` → `test result: ok. 1 passed`. Both files deleted.
+- **Paths outside their ticket's Files list: none.** Every graft/graft-ops path in each `known_*` file is in
+  10e/10f/10g/10h/10i's Files line (checked by hand against each ticket's list).

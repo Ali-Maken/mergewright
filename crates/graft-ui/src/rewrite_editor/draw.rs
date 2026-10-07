@@ -1,14 +1,20 @@
 //! Drawing the rewrite editor: the widget, its glyphs and the commit rows.
 
 use super::{
-    ACTION_WIDTH, Buffer, FieldWidget, Frame, InputView, LEAD, Modifier, Rect, RewriteEditorView,
-    RowLine, RowMark, SHORT_WIDTH, SUBJECT_MAX, SUBJECT_MIN, Style, Theme, Token, Widget, band,
-    draw_message, draw_right, fit, foreground, layout, row_lines,
+    ACTION_WIDTH, Buffer, FieldWidget, Frame, InputView, Keymap, LEAD, Modifier, Rect,
+    RewriteEditorView, RowLine, RowMark, SHORT_WIDTH, SUBJECT_MAX, SUBJECT_MIN, Style, Theme,
+    Token, Widget, band, draw_message, draw_right, fit, foreground, layout, row_lines,
 };
 
 /// Draw the editor into `area` (the whole frame but the hint bar).
-pub fn draw_rewrite_editor(frame: &mut Frame, area: Rect, view: &RewriteEditorView, theme: &Theme) {
-    frame.render_widget(RewriteEditorWidget { view, theme }, area);
+pub fn draw_rewrite_editor(
+    frame: &mut Frame,
+    area: Rect,
+    view: &RewriteEditorView,
+    theme: &Theme,
+    keys: &Keymap,
+) {
+    frame.render_widget(RewriteEditorWidget { view, theme, keys }, area);
 }
 
 /// The editor as a widget, for [`draw_rewrite_editor`] and tests.
@@ -18,6 +24,9 @@ pub struct RewriteEditorWidget<'a> {
     pub view: &'a RewriteEditorView,
     /// Colours.
     pub theme: &'a Theme,
+    /// His keymap: the CHANGES header's `⏎ back to AFTER` spells
+    /// `rewrite.toggle_changes` from it (m8/09d).
+    pub keys: &'a Keymap,
 }
 
 impl Widget for RewriteEditorWidget<'_> {
@@ -47,7 +56,7 @@ impl Widget for RewriteEditorWidget<'_> {
             }
         }
         if let Some(right) = at.right {
-            draw_right(buf, right, view, theme, &glyphs);
+            draw_right(buf, right, view, (theme, self.keys), &glyphs);
         }
         if let Some(message) = at.message
             && let Some(block) = &view.message

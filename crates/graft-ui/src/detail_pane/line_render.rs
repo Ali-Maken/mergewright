@@ -10,6 +10,7 @@ use unicode_width::UnicodeWidthChar;
 
 use crate::detail::{LineKindView, LineView};
 use crate::fit::fit;
+use crate::keymap::{ActionId, Keymap};
 use crate::paint::{color, foreground};
 use crate::theme::{Theme, Token};
 use graft_term::sanitize::SanitizedText;
@@ -150,16 +151,23 @@ fn draw_heading_row(
     buf.set_stringn(slot.x, slot.y, fitted, usize::from(slot.width), style);
 }
 
+/// `… N more lines · L load all`, `L` spelled from `keys`
+/// (`diff.load_all`), the clause left out when unbound (m8/09d).
 pub(crate) fn draw_truncation_row(
     shown: usize,
     total: usize,
     slot: RowSlot,
     buf: &mut Buffer,
     theme: &Theme,
+    keys: &Keymap,
 ) {
     let style = foreground(theme, Token::TextMuted);
     let more = total.saturating_sub(shown);
-    let text = format!("\u{2026} {more} more lines \u{b7} L load all");
+    let text = keys.after(
+        &format!("\u{2026} {more} more lines"),
+        ActionId("diff.load_all"),
+        "load all",
+    );
     let fitted = fit(&text, usize::from(slot.width));
     buf.set_stringn(slot.x, slot.y, fitted, usize::from(slot.width), style);
 }

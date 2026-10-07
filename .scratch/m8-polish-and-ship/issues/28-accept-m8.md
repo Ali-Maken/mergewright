@@ -3,14 +3,17 @@
 Status: ready
 Build with: **Fable** — the acceptance ticket (CLAUDE.md); judges whether the promise holds across every group, and
 doesn't count against the Fable build expectation.
-Blocked by: 02, 03, 04, 05, 06, 07, 08, 09, 10, 10b, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27
+Blocked by: 02, 03, 04, 05, 06, 07, 08, 09, 10, 10b, 10e, 10f, 10g, 10h, 10i, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+21, 22, 23, 24, 25, 26, 27
 Needs: every other M8 ticket: `01-trace-product-frame-trace`, `pace-fence-and-sync`, `settle-work-at-rest`,
 `pixel-memory-budget`, `look-chrome-header-gutter-bar`, `look-cursor-row-and-dark-b`, `look-outside-repo-screen`,
 `trace-followup-per-turn-cost`, `keymap-table-and-translate`, `keymap-spell-from-the-table`, `keymap-spell-in-words`,
-`palette-help-and-actions`, `palette-find-anything`, `bar-content-pass`, `theme-overrides`, `look-polish-rows`,
-`first-run-clone-and-first-launch`, `tour-practice-repo`, `daily-landing`, `daily-ops-fixes`, `words-sweep`,
-`hygiene-code`, `hygiene-scripts-and-fixtures`, `docs-readme-and-man`, `release-dist-and-matrix`,
-`fable-architecture-pass` and its G-health tickets, `rename-on-disk-migration`, `rename-names-sweep`.
+`keymap-words-ops`, `keymap-words-stops`, `keymap-words-resolver`, `keymap-words-undo-journal`,
+`keymap-words-preview-remote`, `palette-help-and-actions`, `palette-find-anything`, `bar-content-pass`,
+`theme-overrides`, `look-polish-rows`, `first-run-clone-and-first-launch`, `tour-practice-repo`, `daily-landing`,
+`daily-ops-fixes`, `words-sweep`, `hygiene-code`, `hygiene-scripts-and-fixtures`, `docs-readme-and-man`,
+`release-dist-and-matrix`, `fable-architecture-pass` and its G-health tickets, `rename-on-disk-migration`,
+`rename-names-sweep`.
 
 **Promise (M8):** *"It stays smooth on your biggest repo, looks like the mock-up, installs with one command, and
 teaches itself from inside the app."*

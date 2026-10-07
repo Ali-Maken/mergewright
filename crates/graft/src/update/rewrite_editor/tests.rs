@@ -1151,6 +1151,7 @@ fn drawn_line_of(state: &AppState, subject: &str) -> u16 {
         graft_ui::rewrite_editor::RewriteEditorWidget {
             view: &view,
             theme: &theme,
+            keys: &state.keymap,
         },
         area,
         &mut buffer,

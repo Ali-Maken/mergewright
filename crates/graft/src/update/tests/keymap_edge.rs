@@ -7,7 +7,22 @@
 //! one thing throughout. No clock is read: the fixtures' harness clock is
 //! fixed.
 //!
-//! The empty state's edge is `crate::empty_state::tests`' (no `AppState`).
+//! The empty state's edge is `crate::empty_state`'s (no `AppState`): its
+//! sweep is `crate::empty_state::sweep_tests`.
+//!
+//! Split (m8/09d, Minor 8): this file holds the fixtures and the sweep
+//! keymaps; [`sweep`] the behavioural sweep over every reachable row;
+//! [`remaps`] his config's lines through startup; [`unbound`] what an
+//! unbound key draws.
+
+mod fields;
+mod remaps;
+mod sweep;
+mod sweep_swallowed;
+mod sweep_tables;
+mod unbound;
+
+pub(super) use fields::every_field;
 
 use std::collections::HashMap;
 
@@ -21,12 +36,15 @@ use std::sync::Arc;
 
 use crate::update::edge::context_of;
 
-/// What a press did, as far as anyone can see.
+/// What a press did, as far as anyone can see. `selected` is the Map's
+/// row: it is drawn as a fill only (ADR-0058 §3), which a text frame cannot
+/// show (rule 5), so it is read from the state (m8/09d Major 3).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct Seen {
     commands: Vec<Command>,
     quit: String,
     frame: String,
+    selected: usize,
 }
 
 pub(super) fn seen(state: &AppState, press: KeyPress) -> Seen {
@@ -45,6 +63,7 @@ pub(super) fn seen_as(state: &AppState, press: KeyPress, keys: &Arc<Keymap>) -> 
         commands,
         quit: format!("{:?}", after.quit),
         frame: crate::view::tests::draw(&after, after.size.columns, after.size.rows),
+        selected: after.map.selected,
     }
 }
 
@@ -92,9 +111,11 @@ pub(super) fn fixture(ctx: ContextId) -> Option<AppState> {
     use ContextId as C;
     let state = match ctx {
         C::Graph => on_a_branch_row(),
-        C::Map => overlay_over(on_a_branch_row(), Shown::Map),
-        C::Journal => overlay_over(on_a_branch_row(), Shown::Journal),
-        C::Stash => overlay_over(on_a_branch_row(), Shown::Stash),
+        // The overlays and the panes stand mid-list (09d Major 3): a row
+        // above the cursor and a row below, so `j` and `k` both move.
+        C::Map => mid_list(three_rows(overlay_over(on_a_branch_row(), Shown::Map))),
+        C::Journal => mid_list(three_rows(overlay_over(on_a_branch_row(), Shown::Journal))),
+        C::Stash => mid_list(three_rows(overlay_over(on_a_branch_row(), Shown::Stash))),
         C::Preview => {
             crate::update::preview::tests::opened_with(crate::update::preview::tests::a_plan()).0
         }
@@ -105,8 +126,8 @@ pub(super) fn fixture(ctx: ContextId) -> Option<AppState> {
                 .expect("a confirm box with a yes button");
             box_over_the_graph(walk(), &yes)
         }
-        C::Changes => changes_pane_open(walk(), false),
-        C::Diff => commit_pane(walk(), false),
+        C::Changes => mid_list(three_files(changes_pane_open(walk(), false))),
+        C::Diff => mid_list(commit_pane(walk(), false)),
         C::Resolver => resolver_on_screen(walk()),
         C::Banner => stopped_operation(walk(), true, true),
         C::Finish => finish_screen_for(walk(), SummaryFocus::Files, true),
@@ -161,32 +182,81 @@ pub(super) fn sized_to_draw(mut state: AppState) -> AppState {
     state
 }
 
+/// The overlay `state` shows, given three rows: the Map three branches,
+/// J three entries, the stash list three stashes.
+fn three_rows(mut state: AppState) -> AppState {
+    if let Loading::Ready(map) = &state.map.data {
+        let mut map = (**map).clone();
+        let mut third = map.branches[1].clone();
+        third.name = RefName::new(b"refs/heads/b2".to_vec()).expect("a valid ref name");
+        third.tip = Oid::from_bytes(&[3; Oid::SHA1_BYTES]).expect("20 bytes is an oid");
+        map.branches.push(third);
+        state.map.data = Loading::Ready(Arc::new(map));
+    }
+    if state.journal.shown {
+        let entries = (1..=3)
+            .map(|n| graft_core::journal::JournalEntry {
+                id: graft_core::journal::EntryId::new(n, [0; 10]),
+                at_unix_ms: n,
+                description: format!("commit \"x{n}\""),
+                ..journal_entry()
+            })
+            .collect();
+        state.journal.entries = Loading::Ready(Arc::new(crate::jobs::undo::JournalRead {
+            entries,
+            unreadable: Vec::new(),
+            live: Vec::new(),
+            interrupted_edits: Vec::new(),
+        }));
+        crate::update::journal::rebuild(&mut state);
+    }
+    if state.stash.shown {
+        let entries = (0..3)
+            .map(|index| graft_git::stash::StashEntry {
+                index,
+                message: format!("WIP {index} on main"),
+                ..stash_entry()
+            })
+            .collect();
+        state.stash.entries = Loading::Ready(Arc::new(entries));
+    }
+    state
+}
+
+/// The changes pane given a third unstaged file, `c.rs`.
+fn three_files(mut state: AppState) -> AppState {
+    if let Some(tree) = &state.working_tree {
+        let mut tree = (**tree).clone();
+        tree.entries.push(status_entry("c.rs", false));
+        state.working_tree = Some(Arc::new(tree));
+    }
+    if let (Loading::Ready(view), Some(list)) = (&state.detail.files, &state.detail.list) {
+        let (mut view, mut list) = ((**view).clone(), (**list).clone());
+        let mut row = view.rows[view.rows.len() - 1].clone();
+        row.name = sanitize_line("c.rs");
+        row.entry = Some(2);
+        view.rows.push(row);
+        view.files += 1;
+        if let graft_ui::detail::FileRowKind::Section { count, .. } = &mut view.rows[0].kind {
+            *count += 1;
+        }
+        let mut entry = list.files[1].clone();
+        entry.path = "c.rs".into();
+        list.files.push(entry);
+        state.detail.files = Loading::Ready(DetailArc::new(view));
+        state.detail.list = Some(DetailArc::new(list));
+    }
+    state
+}
+
+/// `state` after one `j`: the cursor off the first row.
+fn mid_list(state: AppState) -> AppState {
+    update(&sized_to_draw(state), key(KeyCode::Char('j'))).0
+}
+
 /// `state` after a key nobody answers.
 fn settled(state: &AppState) -> AppState {
     update(state, AppEvent::Core(Event::Key(unanswered()))).0
-}
-
-/// The default chord of `row` that acts as `row` in `ctx` out of the box:
-/// the first context of the scope holding it is `row`'s. `None` when every
-/// default is shadowed there (`app.open`'s `⏎` in the Map is `map.seek`).
-fn acting_default(ctx: ContextId, row: &Binding) -> Option<KeyChord> {
-    row.default.iter().copied().find(|chord| {
-        ctx.scope()
-            .iter()
-            .find_map(|inner| {
-                defaults()
-                    .iter()
-                    .find(|b| b.context == *inner && b.default.contains(chord))
-            })
-            .is_some_and(|holder| holder.action == row.action)
-    })
-}
-
-/// The rows a fixture of `ctx` is checked against: its own and `Global`'s.
-fn rows_for(ctx: ContextId) -> impl Iterator<Item = &'static Binding> {
-    defaults()
-        .iter()
-        .filter(move |b| b.context == ctx || b.context == ContextId::Global)
 }
 
 /// 09's sweep set: chords no default uses anywhere.
@@ -282,342 +352,6 @@ fn context_of_names_each_fixture() {
     }
 }
 
-/// ADR-0055's consequence: every movable action on its own free chord. In
-/// each context, the free chord does what the action's default does under
-/// the default keymap, and every default does what a key nobody answers
-/// does. In a text field every key goes on as typed, remapped or not.
-#[test]
-fn the_sweep_moves_every_action_and_every_context_follows() {
-    let (swept, moved) = swept();
-    let both = both(&moved);
-    let mut failures = Vec::new();
-    let mut checked = 0;
-    for &ctx in ContextId::ALL {
-        let Some(fixture) = fixture(ctx) else {
-            continue;
-        };
-        let remapped = AppState {
-            keymap: swept.clone(),
-            ..fixture.clone()
-        };
-        // `base` presses with the defaults (spelling the sweep's chords in
-        // anything it builds), drawn under the sweep's keymap.
-        let base = AppState {
-            keymap: both.clone(),
-            ..fixture
-        };
-        let nothing = seen_as(&base, unanswered(), &swept);
-        let rows: Vec<&str> = rows_for(ctx).map(|b| b.action.0).collect();
-        for (row, to) in moved.iter().filter(|(b, _)| rows.contains(&b.action.0)) {
-            let id = row.action.0;
-            let (want, unbound) = if ctx.is_text_field() {
-                (seen_as(&base, to.to_press(), &swept), None)
-            } else {
-                let acts = acting_default(ctx, row);
-                let want =
-                    acts.map_or_else(|| nothing.clone(), |d| seen_as(&base, d.to_press(), &swept));
-                (want, Some(&nothing))
-            };
-            if seen(&remapped, to.to_press()) != want {
-                failures.push(format!("{ctx:?}: {id}'s new chord {}", to.label().0));
-            }
-            for chord in row.default {
-                let want = match unbound {
-                    Some(nothing) => nothing.clone(),
-                    None => seen_as(&base, chord.to_press(), &swept),
-                };
-                if seen(&remapped, chord.to_press()) != want {
-                    failures.push(format!("{ctx:?}: {id}'s old {}", chord.label().0));
-                }
-            }
-            checked += 1;
-        }
-    }
-    assert_eq!(failures, Vec::<String>::new());
-    // 18 contexts with a fixture; the graph alone has its own and Global's.
-    assert!(checked > 300, "only {checked} rows swept");
-}
-
-/// What 09's NOTES list as in the table but answered by a later ticket.
-/// Each ticket deletes its own entries.
-const NOT_YET_ANSWERED: &[(&str, &str)] = &[
-    ("app.help", "ticket 11: `?`"),
-    ("app.palette", "ticket 11: the palette"),
-    ("palette.run", "ticket 11: the palette"),
-    ("empty_state.clone", "ticket 18: clone"),
-    ("empty_state.tour", "ticket 19: the practice tour"),
-];
-
-/// Rows whose default does nothing *in this fixture* — the key is answered,
-/// but the fixture's data gives it nothing to change. Each says why.
-const NO_EFFECT_IN_FIXTURE: &[(&str, &str)] = &[
-    (
-        "app.suspend",
-        "no key with `suspend_on_ctrl_z` off, as the fixtures have it; `keymap_rules` pins it on",
-    ),
-    (
-        "preview.confirm_merge",
-        "preview: the fixture is `r`-opened; `m` repeats only a merge (`confirm_key`)",
-    ),
-    (
-        "app.next_pane",
-        "graph: no pane shown to move to (`detail_key`'s `Tab if detail.shown`)",
-    ),
-    (
-        "app.prev_pane",
-        "graph: no pane shown to move to (`BackTab if detail.shown`)",
-    ),
-    ("app.back", "graph: nothing open to back out of"),
-    ("app.next_match", "graph: no search kept to step through"),
-    ("app.prev_match", "graph: no search kept to step through"),
-    ("graph.lanes", "graph: no lanes folded behind `+N`"),
-    ("graph.hide_stash", "graph: no stash to hide"),
-    (
-        "graph.write_commit_graph",
-        "graph: no commit-graph offer standing (`offer_keys_live`)",
-    ),
-    (
-        "graph.decline_commit_graph",
-        "graph: no commit-graph offer standing (`offer_keys_live`)",
-    ),
-    (
-        "preview.rewrite",
-        "preview: no suggested drop to keep (`keeps_drops`)",
-    ),
-    ("preview.left", "preview: its cursor is already leftmost"),
-    (
-        "confirm.left",
-        "confirm box: its cursor is already leftmost",
-    ),
-    (
-        "changes.mergetool",
-        "changes: the row is not an unmerged file",
-    ),
-    (
-        "diff.word_diff",
-        "colour only (`word_tint`): the text frame cannot show it",
-    ),
-    (
-        "diff.blame",
-        "diff: no diff line under the cursor (`place::b_key`)",
-    ),
-    (
-        "diff.fold_dir",
-        "diff: no directory row under the cursor (`space_folds`)",
-    ),
-    (
-        "rewrite.move_up",
-        "rewrite editor: the cursor is on the first row",
-    ),
-    (
-        "blame.heatmap",
-        "colour only (`blame.heatmap`): the text frame cannot show it",
-    ),
-];
-
-/// Default keymap: each row's default, pressed in its context's fixture,
-/// changes what is seen — or the row is listed above with its reason.
-/// Replaces 09's "every row is answered" criterion: `bound_actions` has no
-/// context and cannot drive it (scout 09).
-#[test]
-fn every_row_is_answered_in_its_context() {
-    let exempt = |id: &str| {
-        NOT_YET_ANSWERED
-            .iter()
-            .chain(NO_EFFECT_IN_FIXTURE)
-            .any(|(listed, _)| *listed == id)
-    };
-    let mut dead = Vec::new();
-    let mut answered_by_exempt = Vec::new();
-    for &ctx in ContextId::ALL {
-        let Some(base) = fixture(ctx) else {
-            continue;
-        };
-        let nothing = seen(&base, unanswered());
-        let rows = defaults().iter().filter(|b| {
-            b.context == ctx || (ctx == ContextId::Graph && b.context == ContextId::Global)
-        });
-        for row in rows {
-            let id = row.action.0;
-            let Some(chord) = acting_default(ctx, row) else {
-                if !exempt(id) {
-                    dead.push(format!("{ctx:?}: {id} is shadowed"));
-                }
-                continue;
-            };
-            let acts = seen(&base, chord.to_press()) != nothing;
-            match (acts, exempt(id)) {
-                (false, false) => dead.push(format!("{ctx:?}: {id} ({})", chord.label().0)),
-                (true, true) => answered_by_exempt.push(format!("{ctx:?}: {id}")),
-                _ => {}
-            }
-        }
-    }
-    assert_eq!(dead, Vec::<String>::new(), "rows nothing answers");
-    assert_eq!(
-        answered_by_exempt,
-        Vec::<String>::new(),
-        "listed as dead, but answered: delete the entry"
-    );
-}
-
-/// Journey J8 from the file on disk: `suspend_on_ctrl_z` beside a
-/// `[keys.graph]` table, read by `config::load_from`, made a keymap by
-/// `keymap_from`, seeded as startup seeds it. (The file is written by
-/// `config::tests`: `update` names no file system, tests included.)
-/// `M` was the Map's: merge takes it, the Map loses it — the one problem.
-#[test]
-fn j8_a_keys_table_beside_suspend_moves_merge_and_says_one_problem() {
-    let loaded = crate::config::tests::loaded_from_a_file(
-        "[keys]\nsuspend_on_ctrl_z = true\n\n[keys.graph]\nmerge = \"M\"\n",
-    );
-    assert!(
-        loaded.config.keys.suspend_on_ctrl_z,
-        "suspend still reads true"
-    );
-    assert_eq!(
-        loaded.warnings,
-        [],
-        "no unknown-key warning for `keys.graph` or its line"
-    );
-    let (keymap, problems) = crate::config::keymap_from(&loaded);
-    assert_eq!(problems.len(), 1, "{problems:?}");
-
-    let mut base = sized_to_draw(on_a_branch_row());
-    base.seed_keys(Arc::new(keymap), problems);
-    let first = crate::view::tests::draw(&base, base.size.columns, base.size.rows);
-    assert!(
-        first.contains("config: 1 problem · ? shows them"),
-        "the bottom row says so:\n{first}"
-    );
-    // `docs/shots/m8-keymap-config-problem-120x36.txt`. What right looks
-    // like: the graph as normal, the bottom row `config: 1 problem · ?
-    // shows them` (muted). Colour unverified (rule 5).
-    graft_fixtures::capture(
-        format!(
-            "{}/../../docs/shots/m8-keymap-config-problem-120x36.txt",
-            env!("CARGO_MANIFEST_DIR")
-        ),
-        &first,
-    );
-
-    let (merged, _) = update(
-        &base,
-        AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char('M')))),
-    );
-    assert!(
-        merged.preview.is_some(),
-        "M on a branch row opens the merge preview"
-    );
-    assert_eq!(
-        seen(&base, KeyPress::plain(KeyCode::Char('m'))),
-        seen(&base, unanswered()),
-        "m does what a key nobody answers does"
-    );
-}
-
-/// The notice is there until the first key, and never with no problems.
-#[test]
-fn the_config_notice_goes_at_the_first_key_and_needs_a_problem() {
-    let mut state = on_a_branch_row();
-    state.seed_keys(
-        Arc::default(),
-        vec!["graf.merge is not an action".to_owned()],
-    );
-    let draw = |state: &AppState| crate::view::tests::draw(state, 120, 36);
-    assert!(draw(&state).contains("config: 1 problem · ? shows them"));
-    let after = update(&state, AppEvent::Core(Event::Key(unanswered()))).0;
-    assert!(!draw(&after).contains("config:"), "gone at the first key");
-
-    let mut clean = on_a_branch_row();
-    clean.seed_keys(Arc::default(), Vec::new());
-    assert!(
-        !draw(&clean).contains("config:"),
-        "nothing to report, nothing said"
-    );
-}
-
-/// Every text field `text_field_open` names, each open and empty: the
-/// search prompt, blame's find, J's find, the stash prompt, the commit
-/// editor, the credential box, the name prompt, the picker, the rewrite
-/// editor's `r` field and the finish screen's subject.
-pub(super) fn every_field() -> Vec<(&'static str, AppState)> {
-    let typed = |state: AppState, c: char| update(&state, key(KeyCode::Char(c))).0;
-    let mut rewrite = on_a_branch_row();
-    super::rewrite_editor::tests::open_an_editor_field(&mut rewrite);
-    let fields = vec![
-        ("search", typed(on_a_branch_row(), '/')),
-        (
-            "blame find",
-            typed(fixture(ContextId::Blame).expect("blame"), '/'),
-        ),
-        (
-            "J find",
-            typed(fixture(ContextId::Journal).expect("J"), '/'),
-        ),
-        (
-            "stash prompt",
-            typed(fixture(ContextId::Stash).expect("stash"), 's'),
-        ),
-        (
-            "commit editor",
-            fixture(ContextId::CommitEditor).expect("editor"),
-        ),
-        (
-            "credential",
-            fixture(ContextId::Credential).expect("credential"),
-        ),
-        (
-            "name prompt",
-            box_over_the_graph(walk(), &HintContext::NamePrompt { toggle: true }),
-        ),
-        ("picker", fixture(ContextId::Picker).expect("picker")),
-        ("rewrite field", rewrite),
-        (
-            "finish subject",
-            finish_screen_for(walk(), SummaryFocus::Subject, true),
-        ),
-    ];
-    fields
-        .into_iter()
-        .map(|(name, state)| (name, sized_to_draw(state)))
-        .collect()
-}
-
-/// ADR-0055 §2.1: typed text is never remapped. With `graph.merge = "x"`,
-/// `x` typed into each field is the letter `x` — the same press, the same
-/// result, as under the default keymap — and the field shows one more `x`.
-#[test]
-fn x_typed_into_every_field_is_an_x_with_merge_on_x() {
-    // `x` is `graph.compare`'s: merge keeps it, compare loses it — on the
-    // graph `x` now merges, and still types an `x` everywhere text goes.
-    let (map, warnings) = Keymap::with_overrides(
-        &[("graph.merge".to_owned(), vec!["x".to_owned()])],
-        graft_ui::keymap::KeySwitches::default(),
-    );
-    assert_eq!(warnings.len(), 1, "{warnings:?}");
-    let remapped = Arc::new(map);
-    for (name, base) in every_field() {
-        assert!(base.text_field_open(), "{name}: the field is open");
-        let moved = AppState {
-            keymap: remapped.clone(),
-            ..base.clone()
-        };
-        let press = KeyPress::plain(KeyCode::Char('x'));
-        assert_eq!(
-            seen(&moved, press),
-            seen(&base, press),
-            "{name}: as under the default keymap"
-        );
-        let before = seen(&base, unanswered()).frame.matches('x').count();
-        let after = seen(&moved, press).frame.matches('x').count();
-        assert!(
-            after > before,
-            "{name}: the field shows the x ({before} → {after})"
-        );
-    }
-}
-
 /// The labels of the `.` menu open on `state`, in order.
 fn menu_labels(state: &AppState) -> Vec<String> {
     state
@@ -637,284 +371,4 @@ fn names(hint: &graft_ui::graph_screen::Hint, action: ActionId) -> bool {
     hint.keys.iter().any(|key| {
         matches!(key, HintKey::Key(a) | HintKey::EveryChord(a) | HintKey::Fixed(a) if *a == action)
     })
-}
-
-/// No bar of any context, at any width, draws a hint naming `action` under
-/// `keys`, while the default keymap draws one somewhere.
-fn no_bar_draws(action: ActionId, keys: &Keymap) {
-    use graft_ui::graph_screen::{Divider, hints_for};
-    let mut drawn_by_default = 0;
-    for context in every_context() {
-        for divider in [Divider::Shown, Divider::Hidden] {
-            for columns in [40, 80, 120, 200] {
-                drawn_by_default += hints_for(&context, divider, columns, Keymap::shipped())
-                    .iter()
-                    .filter(|hint| names(hint, action))
-                    .count();
-                for hint in hints_for(&context, divider, columns, keys) {
-                    assert!(
-                        !names(&hint, action),
-                        "{context:?} {divider:?} {columns}: `{:?} {}` drawn unbound",
-                        hint.key_text(keys),
-                        hint.verb
-                    );
-                }
-            }
-        }
-    }
-    assert!(
-        drawn_by_default > 0,
-        "the default keymap draws it somewhere"
-    );
-}
-
-/// The bottom border of the box `⏎` opens on the `.` menu's `row`: where a
-/// box draws its keys.
-fn keys_of_the_box_opened_from_menu_row(graph: &AppState, row: usize) -> String {
-    let mut menu = update(graph, key(KeyCode::Char('.'))).0;
-    for _ in 0..row {
-        menu = update(&menu, key(KeyCode::Char('j'))).0;
-    }
-    let previewed = update(&menu, key(KeyCode::Enter)).0;
-    assert!(
-        previewed.preview.is_some(),
-        "⏎ on the row opens the preview"
-    );
-    crate::view::tests::draw(&previewed, previewed.size.columns, previewed.size.rows)
-        .lines()
-        .find(|line| line.contains('╰'))
-        .expect("the box's bottom border")
-        .to_owned()
-}
-
-/// Ticket m8/10, decision 2: `graph.merge = "none"` leaves merge unbound.
-/// No bar draws its hint at any width, the menu keeps the `Merge …` row (it
-/// acts by `⏎`) with no `(key)`, and no screen draws a `—` the default
-/// keymap's does not — an unbound key is never spelled as a dash.
-#[test]
-fn merge_unbound_is_drawn_nowhere_and_its_menu_row_names_no_key() {
-    let merge = ActionId("graph.merge");
-    let (map, warnings) = Keymap::with_overrides(
-        &[("graph.merge".to_owned(), vec!["none".to_owned()])],
-        graft_ui::keymap::KeySwitches::default(),
-    );
-    assert_eq!(warnings, []);
-    let unbound = Arc::new(map);
-    no_bar_draws(merge, &unbound);
-
-    let base = sized_to_draw(on_a_branch_row());
-    let moved = AppState {
-        keymap: unbound.clone(),
-        ..base.clone()
-    };
-    let shipped_menu = menu_labels(&update(&base, key(KeyCode::Char('.'))).0);
-    let unbound_menu = menu_labels(&update(&moved, key(KeyCode::Char('.'))).0);
-    assert!(
-        shipped_menu.contains(&"Merge feature into main (m)".to_owned()),
-        "{shipped_menu:?}"
-    );
-    assert!(
-        unbound_menu.contains(&"Merge feature into main".to_owned()),
-        "{unbound_menu:?}"
-    );
-    // m8/09c (Unbound ruling): the merge preview opened from that row draws
-    // no `m merge` part and no `—`; its confirm is `confirm.yes`'s `y`.
-    let row = unbound_menu
-        .iter()
-        .position(|label| label == "Merge feature into main")
-        .expect("the merge row");
-    let box_keys = |graph: &AppState| keys_of_the_box_opened_from_menu_row(graph, row);
-    let unbound_keys = box_keys(&moved);
-    assert!(!unbound_keys.contains("m merge"), "{unbound_keys}");
-    assert!(!unbound_keys.contains('—'), "{unbound_keys}");
-    // The ticket says `y merge`; a `.`-opened preview has no verb slot
-    // (`preview/keys.rs`, `opened_by` "."), so its confirm reads
-    // `y confirm` under the shipped keymap too (09c NOTES).
-    assert!(unbound_keys.contains("y confirm"), "{unbound_keys}");
-    assert_eq!(unbound_keys, box_keys(&base));
-
-    for &ctx in ContextId::ALL {
-        let Some(state) = fixture(ctx) else {
-            continue;
-        };
-        let moved = AppState {
-            keymap: unbound.clone(),
-            ..state.clone()
-        };
-        let dashes = |state: &AppState| {
-            crate::view::tests::draw(state, state.size.columns, state.size.rows)
-                .matches('—')
-                .count()
-        };
-        assert_eq!(
-            dashes(&moved),
-            dashes(&state),
-            "{ctx:?}: a dash for an unbound key"
-        );
-    }
-}
-
-/// Ticket 10c, re-pointed by 09c (Unbound ruling): `r rebase` in an
-/// `r`-opened preview is `preview.confirm_rebase`, whose chords follow
-/// `graph.rebase`'s. With `graph.rebase = "none"` the part goes, no `—` is
-/// drawn, and `r` does what an unanswered key does. A line on
-/// `preview.confirm_rebase` itself is `Follows`, not applied: the box still
-/// names `r rebase`, and `r` still confirms.
-#[test]
-fn the_preview_names_its_again_key_exactly_while_it_confirms() {
-    let base = sized_to_draw(fixture(ContextId::Preview).expect("a preview"));
-    // The box's bottom border, where its keys are (`after rebase` in the
-    // ghost rows reads `r rebase` too).
-    let footer = |state: &AppState| {
-        crate::view::tests::draw(state, state.size.columns, state.size.rows)
-            .lines()
-            .find(|line| line.contains('╰'))
-            .expect("the box's bottom border")
-            .to_owned()
-    };
-    assert!(footer(&base).contains("r rebase"), "{}", footer(&base));
-    let press_r = KeyPress::plain(KeyCode::Char('r'));
-    assert_ne!(
-        seen(&base, press_r),
-        seen(&base, unanswered()),
-        "r confirms under the default keymap"
-    );
-
-    let (map, warnings) = Keymap::with_overrides(
-        &[("graph.rebase".to_owned(), vec!["none".to_owned()])],
-        graft_ui::keymap::KeySwitches::default(),
-    );
-    assert_eq!(warnings, []);
-    let rebase_unbound = AppState {
-        keymap: Arc::new(map),
-        ..base.clone()
-    };
-    let drawn = footer(&rebase_unbound);
-    assert!(!drawn.contains("r rebase"), "{drawn}");
-    assert!(!drawn.contains('—'), "{drawn}");
-    assert!(drawn.contains("y confirm"), "{drawn}");
-    assert_eq!(
-        seen(&rebase_unbound, press_r),
-        seen(&rebase_unbound, unanswered()),
-        "r no longer confirms with graph.rebase unbound"
-    );
-
-    let (map, warnings) = Keymap::with_overrides(
-        &[("preview.confirm_rebase".to_owned(), vec!["y".to_owned()])],
-        graft_ui::keymap::KeySwitches::default(),
-    );
-    assert_eq!(
-        warnings,
-        [KeyWarning::Follows {
-            action: ActionId("preview.confirm_rebase"),
-            leader: ActionId("graph.rebase"),
-        }]
-    );
-    let follows = AppState {
-        keymap: Arc::new(map),
-        ..base.clone()
-    };
-    assert!(
-        footer(&follows).contains("r rebase"),
-        "{}",
-        footer(&follows)
-    );
-    assert_eq!(
-        seen(&follows, press_r),
-        seen(&base, press_r),
-        "r still confirms"
-    );
-}
-
-/// Ruling R5 (ticket m8/10): `[keys.graph] merge = "M"` is one collision —
-/// `M` was the Map's (02-keymap §2.3) — that keeps `graph.merge` and loses
-/// `graph.map`, warned at startup, never fatal.
-#[test]
-fn merge_on_shift_m_is_one_collision_that_loses_the_map() {
-    let loaded = crate::config::tests::loaded_from_a_file("[keys.graph]\nmerge = \"M\"\n");
-    let (_, warnings) = Keymap::with_overrides(
-        &loaded.config.keys.remaps,
-        graft_ui::keymap::KeySwitches::default(),
-    );
-    assert!(
-        matches!(
-            warnings.as_slice(),
-            [KeyWarning::Collision { line, places }]
-                if *line == ActionId("graph.merge")
-                    && places.len() == 1
-                    && places[0].kept == ActionId("graph.merge")
-                    && places[0].lost == ActionId("graph.map")
-        ),
-        "{warnings:?}"
-    );
-}
-
-/// `[keys.graph] merge = "M"` from a config file, through the startup path
-/// (`config::keymap_from`, which `event_loop::startup::Arrival::first`
-/// calls, then `seed_keys` as `run_repo` does): the bar on a branch row
-/// reads `M merge`, the status row says the collision, and the `.` menu's
-/// row reads `Merge feature into main (M)`. `M` was `graph.map`'s, so the
-/// map loses it and its `M map` hint is not drawn anywhere (R5: a colliding
-/// remap shows him its cost).
-#[test]
-fn capture_merge_remapped_to_shift_m() {
-    use graft_ui::graph_screen::{Divider, hints_for};
-    let loaded = crate::config::tests::loaded_from_a_file("[keys.graph]\nmerge = \"M\"\n");
-    let (keymap, problems) = crate::config::keymap_from(&loaded);
-    assert_eq!(problems.len(), 1, "M was the map's: {problems:?}");
-    let keymap = Arc::new(keymap);
-    for context in every_context() {
-        for hint in hints_for(&context, Divider::Shown, 200, &keymap) {
-            assert!(
-                !names(&hint, ActionId("graph.map")),
-                "{context:?}: `{:?} {}` — the map lost M",
-                hint.key_text(&keymap),
-                hint.verb
-            );
-        }
-    }
-
-    let mut base = sized_to_draw(on_a_branch_row());
-    base.seed_keys(keymap, problems);
-    let draw =
-        |state: &AppState| crate::view::tests::draw(state, state.size.columns, state.size.rows);
-    // At startup the notice holds the bottom row, where the bar goes.
-    let notice = draw(&base);
-    assert!(
-        notice.contains("config: 1 problem · ? shows them"),
-        "the status row says the collision:\n{notice}"
-    );
-    let menu = update(&base, key(KeyCode::Char('.'))).0;
-    assert!(
-        menu_labels(&menu).contains(&"Merge feature into main (M)".to_owned()),
-        "{:?}",
-        menu_labels(&menu)
-    );
-    let menu_frame = draw(&menu);
-    // The notice went at that first key; closing the menu shows the bar.
-    let closed = update(&menu, key(KeyCode::Escape)).0;
-    let bar = draw(&closed);
-    assert!(
-        bar.contains("M merge"),
-        "the bar spells merge's chord:\n{bar}"
-    );
-    assert!(!bar.contains("M map"), "the map lost M:\n{bar}");
-    assert!(
-        !bar.contains("m merge"),
-        "not the default it replaced:\n{bar}"
-    );
-    // `docs/shots/m8-keymap-remapped-120x36.txt`. What right looks like:
-    // three whole frames. First, at startup: the status row
-    // `config: 1 problem · ? shows them` (it holds the bar's row until the
-    // first key). Second, the `.` menu on the branch row with
-    // `Merge feature into main (M)`. Third, the menu closed: the bar reads
-    // `M merge`, and no `M map` anywhere.
-    // Colour unverified (rule 5).
-    graft_fixtures::capture(
-        format!(
-            "{}/../../docs/shots/m8-keymap-remapped-120x36.txt",
-            env!("CARGO_MANIFEST_DIR")
-        ),
-        format!("{notice}\n{menu_frame}\n{bar}"),
-    );
 }

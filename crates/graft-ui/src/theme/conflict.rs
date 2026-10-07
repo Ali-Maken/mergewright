@@ -96,18 +96,20 @@ const fn pinned(kind: ThemeKind, token: Token, depth: ColorDepth) -> Option<u8> 
 }
 
 /// One conflict token reduced to this depth: dropped tints paint nothing,
-/// then a pin, then the nearest cube entry (never the grey ramp) at 256
+/// then a pin (only when `pinnable` — an overridden hue is not the one the
+/// pin was chosen for), then the nearest cube entry (never the grey ramp) at 256
 /// colours or the nearest system colour at 16.
 pub(super) fn reduce_conflict(
     kind: ThemeKind,
     token: Token,
     hue: Rgb,
     depth: ColorDepth,
+    pinnable: bool,
 ) -> TokenColor {
     if token.is_tint() && tints_dropped(kind, depth) {
         return TokenColor::Default;
     }
-    if let Some(index) = pinned(kind, token, depth) {
+    if let Some(index) = pinned(kind, token, depth).filter(|_| pinnable) {
         return TokenColor::Indexed(index);
     }
     match depth {

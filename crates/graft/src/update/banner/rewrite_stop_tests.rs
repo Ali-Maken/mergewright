@@ -105,7 +105,11 @@ fn edit_stop() -> AppState {
 }
 
 fn words(state: &AppState) -> String {
-    banner_line(&banner_view(state).expect("a rebase is live"), u16::MAX)
+    banner_line(
+        &banner_view(state).expect("a rebase is live"),
+        u16::MAX,
+        &state.keymap,
+    )
 }
 
 fn key(state: &AppState, code: KeyCode) -> (AppState, Vec<Command>) {

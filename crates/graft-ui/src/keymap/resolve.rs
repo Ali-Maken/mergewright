@@ -84,8 +84,19 @@ impl Keymap {
             }
         }
         map.follow();
-        warned.extend(map.collisions());
-        map.relabel();
+        let collisions = map.collisions();
+        // D7 (m8/09d): a chord any place took from an action is not
+        // spelled for it anywhere — a hint naming it would be a lie there.
+        let taken: Vec<(KeyChord, ActionId)> = collisions
+            .iter()
+            .flat_map(|(_, warning)| match warning {
+                KeyWarning::Collision { places, .. } => places.as_slice(),
+                _ => &[],
+            })
+            .map(|clash| (clash.key, clash.lost))
+            .collect();
+        warned.extend(collisions);
+        map.relabel(&taken);
         // Stable: within one line, the order they were found in.
         warned.sort_by_key(|(at, _)| *at);
         (map, warned.into_iter().map(|(_, w)| w).collect())
@@ -108,7 +119,7 @@ impl Keymap {
             line: vec![None; rows.len()],
             labels: Vec::new(),
         };
-        map.relabel();
+        map.relabel(&[]);
         map
     }
 
@@ -272,19 +283,24 @@ impl Keymap {
     }
 
     /// The action's live chords, spelled: every chord it holds, less any
-    /// another action of its own context took in a collision. Empty when
-    /// unbound or not an action.
+    /// another action of its own context took in a collision, and less any
+    /// a collision anywhere names it as losing (m8/09d D7: after `merge =
+    /// "j"`, move spells `↓` alone). Empty when unbound or not an action.
     #[must_use]
     pub fn live_labels(&self, action: &ActionId) -> &[String] {
         index_of(action.0).map_or(&[], |row| self.labels[row].as_slice())
     }
 
-    /// Works out [`Keymap::labels`] from the chords as they now stand.
-    fn relabel(&mut self) {
+    /// Works out [`Keymap::labels`] from the chords as they now stand,
+    /// leaving out each `(chord, action)` in `taken` — a chord a clash says
+    /// that action lost.
+    fn relabel(&mut self, taken: &[(KeyChord, ActionId)]) {
         self.labels = (0..self.chords.len())
             .map(|row| {
+                let action = defaults()[row].action;
                 self.live_chords(row)
                     .iter()
+                    .filter(|chord| !taken.contains(&(**chord, action)))
                     .map(|chord| chord.label().0)
                     .collect()
             })

@@ -148,7 +148,10 @@ impl<'a> GraphScreen<'a> {
                 if banner.focused {
                     style = style.add_modifier(ratatui::style::Modifier::REVERSED);
                 }
-                Line::from(Span::styled(banner_line(banner, room16), style))
+                Line::from(Span::styled(
+                    banner_line(banner, room16, self.view.keys),
+                    style,
+                ))
             }
             None => Line::from(self.walk_status(folded_lanes, room)),
         });
