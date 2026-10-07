@@ -231,7 +231,13 @@ pub(super) fn draw_rewrite(
         height: area.height.saturating_sub(1),
         ..area
     };
-    graft_ui::rewrite_editor::draw_rewrite_editor(frame, body, &view, &session.theme);
+    graft_ui::rewrite_editor::draw_rewrite_editor(
+        frame,
+        body,
+        &view,
+        &session.theme,
+        &state.keymap,
+    );
     if area.height == 0 {
         return None;
     }
@@ -331,6 +337,7 @@ pub(super) fn render_overlay_with_detail(
                 view: &view,
                 layout: &layout,
                 theme: &session.theme,
+                keys: &state.keymap,
             },
             pane_area,
         );

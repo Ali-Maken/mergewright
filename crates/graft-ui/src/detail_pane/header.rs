@@ -9,6 +9,7 @@ use crate::detail::{
     CompareHeader, CompareState, ContainedIn, DetailFocus, DetailHeader, DetailView, RadarLine,
     Subject,
 };
+use crate::keymap::{ActionId, Keymap};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 use graft_term::sanitize::SanitizedText;
@@ -17,11 +18,11 @@ use unicode_width::UnicodeWidthStr;
 use super::layout::DetailLayout;
 use super::line_render::draw_line;
 
-pub(crate) fn title_text(subject: &Subject) -> String {
+pub(crate) fn title_text(subject: &Subject, keys: &Keymap) -> String {
     match subject {
         Subject::None => String::new(),
         Subject::Commit { sha } => format!("COMMIT {}", sha.as_str()),
-        Subject::Compare(compare) => compare_title(compare, usize::MAX),
+        Subject::Compare(compare) => compare_title(compare, usize::MAX, keys),
         Subject::WorkingTree {
             staged,
             unstaged,
@@ -48,13 +49,18 @@ pub(crate) fn title_text(subject: &Subject) -> String {
 
 /// A compare's first line in words (m7-14), fitted to `width` cells by a
 /// ladder: drop `· F files +a −d`, then `· N commits`, then cut the head's
-/// name with `…`. A number is never cut.
-pub(crate) fn compare_title(compare: &CompareHeader, width: usize) -> String {
+/// name with `…`. A number is never cut. On the base itself, `· x clears
+/// it` spells `graph.compare` from `keys`, left out when unbound (m8/09d).
+pub(crate) fn compare_title(compare: &CompareHeader, width: usize, keys: &Keymap) -> String {
     let base = compare.base.as_str();
     let head = compare.head.as_str();
     let fits = |text: &String| text.width() <= width;
     match &compare.state {
-        CompareState::IsBase => "this is the compare base \u{b7} x clears it".to_string(),
+        CompareState::IsBase => keys.after(
+            "this is the compare base",
+            ActionId("graph.compare"),
+            "clears it",
+        ),
         CompareState::Reading => fit_head(width, head, |c| {
             format!("comparing {c} with {base} \u{2026}")
         }),
@@ -172,9 +178,9 @@ fn author_line(header: &DetailHeader) -> String {
 
 /// The header's five canonical lines (title, author, parents/against,
 /// contained, radar), before a narrower breakpoint compresses them.
-fn header_lines(view: &DetailView) -> [String; 5] {
+fn header_lines(view: &DetailView, keys: &Keymap) -> [String; 5] {
     let header = &view.header;
-    let title = title_text(&header.subject);
+    let title = title_text(&header.subject, keys);
 
     if let Subject::WorkingTree { .. } = header.subject {
         let against = header.against.as_ref().map_or("", |sha| sha.as_str());
@@ -235,14 +241,15 @@ pub(crate) fn render_header(
     layout: DetailLayout,
     area: Rect,
     theme: &Theme,
+    keys: &Keymap,
     buf: &mut Buffer,
 ) {
     if area.width == 0 || area.height == 0 {
         return;
     }
-    let mut lines = header_lines(view);
+    let mut lines = header_lines(view, keys);
     if let Subject::Compare(compare) = &view.header.subject {
-        lines[0] = compare_title(compare, usize::from(area.width));
+        lines[0] = compare_title(compare, usize::from(area.width), keys);
     }
     let is_working_tree = matches!(view.header.subject, Subject::WorkingTree { .. });
     let meta = [&lines[1], &lines[2], &lines[3]]

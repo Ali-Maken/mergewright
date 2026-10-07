@@ -13,6 +13,7 @@ use crate::detail::{
     BodyView, DetailFocus, DetailView, DiffMode, ExplainView, FileStatusView, SubmoduleLogView,
     SubmoduleView,
 };
+use crate::keymap::Keymap;
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 
@@ -31,6 +32,9 @@ pub struct DetailPane<'a> {
     pub layout: &'a DetailLayout,
     /// Not in the ticket's literal signature; see the module doc.
     pub theme: &'a Theme,
+    /// His keymap: the compare line's `x clears it` and the diff's `L load
+    /// all` spell their keys from it (m8/09d).
+    pub keys: &'a Keymap,
 }
 
 impl Widget for DetailPane<'_> {
@@ -40,19 +44,26 @@ impl Widget for DetailPane<'_> {
         }
         let files_count = self.view.files.as_ref().map_or(0, |files| files.rows.len());
         let areas = detail_areas(area, *self.layout, files_count);
-        render_header(self.view, *self.layout, areas.header, self.theme, buf);
+        render_header(
+            self.view,
+            *self.layout,
+            areas.header,
+            self.theme,
+            self.keys,
+            buf,
+        );
         if let Some(explain) = &self.view.explain {
             // Same area the files+body split otherwise occupies, at every
             // breakpoint (`m2-details-and-diffs/17`).
             render_explain(explain, areas.files.union(areas.body), self.theme, buf);
         } else {
             render_files(self.view, areas.files, self.theme, buf);
-            render_body(self.view, areas.body, self.theme, buf);
+            render_body(self.view, areas.body, self.theme, self.keys, buf);
         }
     }
 }
 
-fn render_body(view: &DetailView, area: Rect, theme: &Theme, buf: &mut Buffer) {
+fn render_body(view: &DetailView, area: Rect, theme: &Theme, keys: &Keymap, buf: &mut Buffer) {
     if area.width == 0 || area.height == 0 {
         return;
     }
@@ -77,7 +88,9 @@ fn render_body(view: &DetailView, area: Rect, theme: &Theme, buf: &mut Buffer) {
                 draw_line(buf, area, offset, line.as_str(), text_style);
             }
         }
-        BodyView::Diff(diff) => render_diff_body(view, diff, focused, area, theme, buf, muted),
+        BodyView::Diff(diff) => {
+            render_diff_body(view, diff, focused, area, (theme, keys), buf, muted);
+        }
     }
 }
 
@@ -88,7 +101,7 @@ fn render_diff_body(
     diff: &crate::detail::DiffView,
     focused: bool,
     area: Rect,
-    theme: &Theme,
+    (theme, keys): (&Theme, &Keymap),
     buf: &mut Buffer,
     muted: Style,
 ) {
@@ -123,7 +136,7 @@ fn render_diff_body(
         DiffMode::Unified => diff_body(
             &diff.hunks,
             view.body_top,
-            diff.truncated,
+            diff.truncated.map(|(shown, total)| (shown, total, keys)),
             area,
             buf,
             theme,

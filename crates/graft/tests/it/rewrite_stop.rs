@@ -104,6 +104,7 @@ fn words(state: &AppState) -> String {
     banner_line(
         &banner_view(state).unwrap_or_else(|| panic!("a rebase is live")),
         u16::MAX,
+        graft_ui::keymap::Keymap::shipped(),
     )
 }
 

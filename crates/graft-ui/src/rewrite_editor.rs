@@ -34,6 +34,7 @@ use ratatui::style::{Modifier, Style};
 use ratatui::widgets::Widget;
 
 use crate::fit::fit;
+use crate::keymap::Keymap;
 use crate::paint::foreground;
 use crate::text_input::{FieldView as InputView, FieldWidget};
 use crate::theme::{Theme, Token};

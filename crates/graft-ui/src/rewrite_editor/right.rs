@@ -1,5 +1,7 @@
 //! Drawing the rewrite editor's right side and message: the after-state, the changes, the message block.
 
+use crate::keymap::{ActionId, Keymap};
+
 use super::{
     AfterFact, AfterMark, AfterRow, AfterView, Buffer, ChangesView, FactTone, Glyphs, MessageBlock,
     Modifier, Rect, RewriteEditorView, RightSide, SHORT_HEIGHT, SHORT_MESSAGE_LINES, SHORT_WIDTH,
@@ -130,7 +132,7 @@ pub(super) fn draw_right(
     buf: &mut Buffer,
     right: Rect,
     view: &RewriteEditorView,
-    theme: &Theme,
+    (theme, keys): (&Theme, &Keymap),
     glyphs: &Glyphs,
 ) {
     let header_style = foreground(theme, Token::Accent).add_modifier(Modifier::BOLD);
@@ -141,7 +143,19 @@ pub(super) fn draw_right(
         RightSide::After(AfterView::Checking) => "AFTER y \u{b7} checking\u{2026}".to_owned(),
         RightSide::After(_) => "AFTER y \u{b7} not written yet".to_owned(),
         RightSide::Changes { short, .. } => {
-            format!("CHANGES of {short} \u{b7} \u{23ce} back to AFTER")
+            // `⏎ back to AFTER` is `rewrite.toggle_changes`, his key. While
+            // the `r` field is open every key is typed (R4, m8/09c), so the
+            // header names the shipped key, as every text field does.
+            let keys = if view.field.is_some() {
+                Keymap::shipped()
+            } else {
+                keys
+            };
+            keys.after(
+                &format!("CHANGES of {short}"),
+                ActionId("rewrite.toggle_changes"),
+                "back to AFTER",
+            )
         }
     };
     lines.push(vec![(header, header_style)]);

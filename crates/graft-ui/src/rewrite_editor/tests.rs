@@ -154,11 +154,20 @@ fn view() -> RewriteEditorView {
 }
 
 fn draw(view: &RewriteEditorView, columns: u16, rows: u16) -> Vec<String> {
+    draw_keyed(view, columns, rows, crate::keymap::Keymap::shipped())
+}
+
+fn draw_keyed(
+    view: &RewriteEditorView,
+    columns: u16,
+    rows: u16,
+    keys: &crate::keymap::Keymap,
+) -> Vec<String> {
     let mut terminal = Terminal::new(TestBackend::new(columns, rows))
         .unwrap_or_else(|why| panic!("a test backend always opens: {why}"));
     let theme = theme();
     terminal
-        .draw(|frame| draw_rewrite_editor(frame, frame.area(), view, &theme))
+        .draw(|frame| draw_rewrite_editor(frame, frame.area(), view, &theme, keys))
         .unwrap_or_else(|why| panic!("drawing into a test backend cannot fail: {why}"));
     let buffer = terminal.backend().buffer();
     (0..rows)
@@ -368,6 +377,49 @@ fn the_changes_side_lists_files_with_counts() {
     assert!(text.contains("logo.png     binary"), "no counts: {text}");
 }
 
+/// m8/09d D5: the CHANGES header's `⏎ back to AFTER` is
+/// `rewrite.toggle_changes`, spelled from his keymap; while the `r` field
+/// is open every key is typed, so it names the shipped key (R4).
+#[test]
+fn the_changes_header_spells_his_key_and_the_shipped_one_in_the_field() {
+    use crate::keymap::sweep::{assert_shipped, assert_spelled, swept};
+    let (keys, _) = swept();
+    let changes = RewriteEditorView {
+        right: RightSide::Changes {
+            short: "5d4c3b2".to_owned(),
+            files: ChangesView::Files(Vec::new()),
+        },
+        ..view()
+    };
+    let header = |view: &RewriteEditorView| {
+        line_with(&draw_keyed(view, 187, 50, &keys), "CHANGES of")
+            .1
+            .to_owned()
+    };
+    let rows_header = header(&changes);
+    let words = &rows_header[rows_header.find("CHANGES of").unwrap_or(0)..];
+    assert_spelled(words, &keys, &[&["rewrite.toggle_changes"]]);
+    assert!(words.contains("back to AFTER"), "{words}");
+    let in_field = RewriteEditorView {
+        field: Some(FieldView {
+            row: 2,
+            text: sanitize_line("Tests"),
+            caret: 5,
+        }),
+        ..changes.clone()
+    };
+    assert_shipped(&header(&in_field), &[&["rewrite.toggle_changes"]]);
+    let (none, _) = crate::keymap::Keymap::with_overrides(
+        &[("rewrite.toggle_changes".to_owned(), vec!["none".to_owned()])],
+        crate::keymap::KeySwitches::default(),
+    );
+    let unbound = line_with(&draw_keyed(&changes, 187, 50, &none), "CHANGES of")
+        .1
+        .to_owned();
+    assert!(!unbound.contains("back to AFTER"), "{unbound}");
+    assert!(!unbound.contains('\u{2014}'), "{unbound}");
+}
+
 #[test]
 fn ascii_has_a_stand_in_for_every_glyph() {
     let ascii = RewriteEditorView {
@@ -474,7 +526,15 @@ fn text_on_the_cursor_row_is_legible() {
         let shown = RewriteEditorView { cursor, ..view() };
         let mut terminal = Terminal::new(TestBackend::new(187, 40)).expect("test backend");
         terminal
-            .draw(|frame| draw_rewrite_editor(frame, frame.area(), &shown, &theme))
+            .draw(|frame| {
+                draw_rewrite_editor(
+                    frame,
+                    frame.area(),
+                    &shown,
+                    &theme,
+                    crate::keymap::Keymap::shipped(),
+                )
+            })
             .expect("draws");
         let checked =
             crate::test_support::assert_legible_on_selection(terminal.backend().buffer(), &theme);
@@ -495,7 +555,15 @@ fn each_fact_draws_in_its_tone() {
     let mut terminal = Terminal::new(TestBackend::new(187, 30))
         .unwrap_or_else(|why| panic!("a test backend always opens: {why}"));
     terminal
-        .draw(|frame| draw_rewrite_editor(frame, frame.area(), &view, &theme))
+        .draw(|frame| {
+            draw_rewrite_editor(
+                frame,
+                frame.area(),
+                &view,
+                &theme,
+                crate::keymap::Keymap::shipped(),
+            )
+        })
         .unwrap_or_else(|why| panic!("drawing into a test backend cannot fail: {why}"));
     let buffer = terminal.backend().buffer();
     let style_of = |needle: &str| {

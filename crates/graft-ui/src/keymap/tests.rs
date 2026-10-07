@@ -3,6 +3,7 @@
 //! (ADR-0055 Consequences).
 
 mod chords;
+mod literals;
 mod rules;
 mod spelling;
 mod table;

@@ -17,6 +17,7 @@ use super::{
 };
 use crate::fit::fit;
 use crate::graph_column::{GraphColumn, GraphLine, RowPaint};
+use crate::keymap::Keymap;
 use crate::paint::{color, foreground};
 use crate::theme::{Token, TokenColor};
 
@@ -456,18 +457,19 @@ impl GraphScreen<'_> {
         buf: &mut Buffer,
     ) -> u16 {
         let icons = self.view.icons;
-        for (span, index) in badge_spans(entry, columns, icons) {
+        let keys = self.view.keys;
+        for (span, index) in badge_spans(entry, columns, icons, keys) {
             let badge = &entry.badges[index];
             draw_cell(
                 buf,
                 span.start,
                 y,
                 span.end - span.start,
-                &badge.text(icons),
+                &badge.text(icons, keys),
                 style.patch(self.badge_style(entry, badge)),
             );
         }
-        badges_width(entry, icons, columns)
+        badges_width(entry, icons, keys, columns)
     }
 
     /// The colour and weight one badge draws in: branches and remotes in
@@ -518,13 +520,14 @@ pub fn badge_spans(
     entry: &GraphEntry<'_>,
     columns: &Columns,
     icons: Icons,
+    keys: &Keymap,
 ) -> Vec<(std::ops::Range<u16>, usize)> {
     if entry.badges.is_empty() {
         return Vec::new();
     }
     let separator = u16::try_from(badges::separator(icons).width()).unwrap_or(u16::MAX);
     // Room for the badges themselves; the gap after them stays blank.
-    let room = badges_width(entry, icons, columns).saturating_sub(SUBJECT_GAP);
+    let room = badges_width(entry, icons, keys, columns).saturating_sub(SUBJECT_GAP);
     let end = columns.subject_x + room;
 
     let mut spans = Vec::with_capacity(entry.badges.len());
@@ -533,7 +536,7 @@ pub fn badge_spans(
         if index > 0 {
             x = x.saturating_add(separator).min(end);
         }
-        let width = u16::try_from(badge.text(icons).width())
+        let width = u16::try_from(badge.text(icons, keys).width())
             .unwrap_or(u16::MAX)
             .min(end - x);
         if width == 0 {
@@ -550,11 +553,15 @@ pub fn badge_spans(
 /// [`GraphScreen::draw_badges`] draws to, so it and the footer reveal's
 /// truncation check ([`subject_truncated`]) always agree on where the
 /// subject itself actually starts.
-fn badges_width(entry: &GraphEntry<'_>, icons: Icons, columns: &Columns) -> u16 {
+fn badges_width(entry: &GraphEntry<'_>, icons: Icons, keys: &Keymap, columns: &Columns) -> u16 {
     if entry.badges.is_empty() {
         return 0;
     }
-    let texts: Vec<String> = entry.badges.iter().map(|badge| badge.text(icons)).collect();
+    let texts: Vec<String> = entry
+        .badges
+        .iter()
+        .map(|badge| badge.text(icons, keys))
+        .collect();
     let separator = badges::separator(icons);
     let wanted = texts.iter().map(|text| text.width()).sum::<usize>()
         + separator.width() * (texts.len() - 1)
@@ -583,11 +590,11 @@ fn drawn_tag<'e>(
 /// ([`GraphView::reveal`]) keys off. `ascii` is `GraphView::ascii`.
 pub(super) fn subject_truncated(
     entry: &GraphEntry<'_>,
-    icons: Icons,
+    (icons, keys): (Icons, &Keymap),
     ascii: bool,
     columns: &Columns,
 ) -> bool {
-    let taken = badges_width(entry, icons, columns);
+    let taken = badges_width(entry, icons, keys, columns);
     let width = columns.subject_width.saturating_sub(taken);
     let tag = drawn_tag(entry, ascii, width).map_or(0, |tag| {
         u16::try_from(tag.width())

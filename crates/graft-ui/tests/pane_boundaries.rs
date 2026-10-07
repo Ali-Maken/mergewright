@@ -357,7 +357,11 @@ fn the_banner_keeps_its_state_word_at_every_width() {
                     skippable: true,
                     rewrite: None,
                 });
-                let want = banner_line(view.banner_op.as_ref().expect("set above"), u16::MAX);
+                let want = banner_line(
+                    view.banner_op.as_ref().expect("set above"),
+                    u16::MAX,
+                    graft_ui::keymap::Keymap::shipped(),
+                );
                 // The banner is drawn behind two spaces of its own, after
                 // the header's prefix.
                 let needs = prefix + 2 + want.chars().count();
@@ -518,6 +522,7 @@ fn the_conflicts_section_stays_inside_the_files_region_at_every_width() {
                             view: &view,
                             layout: &layout,
                             theme: &theme,
+                            keys: graft_ui::keymap::Keymap::shipped(),
                         },
                         pane,
                     );

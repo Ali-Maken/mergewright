@@ -58,7 +58,14 @@ impl GraphScreen<'_> {
             .view
             .reveal
             .and_then(|index| rows.get(index))
-            .filter(|entry| subject_truncated(entry, self.view.icons, self.view.ascii, &columns))
+            .filter(|entry| {
+                subject_truncated(
+                    entry,
+                    (self.view.icons, self.view.keys),
+                    self.view.ascii,
+                    &columns,
+                )
+            })
             .map(|entry| entry.subject.as_str().to_owned());
 
         match (

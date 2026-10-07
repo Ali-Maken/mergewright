@@ -3,6 +3,7 @@
 use graft_term::sanitize_line;
 
 use super::{BannerChain, BannerView, RewriteBannerView, banner_line};
+use crate::keymap::Keymap;
 
 fn rewrite(chain: bool, edit: bool) -> BannerView {
     BannerView {
@@ -39,11 +40,11 @@ fn a_stop_inside_a_fork_says_the_fork() {
         });
     }
     assert_eq!(
-        banner_line(&banner, WIDE),
+        banner_line(&banner, WIDE, Keymap::shipped()),
         "REBASING  step 3 of 7 · pick 5d4c3b2 wip: tests · feature-x, forked at a1b2c3d"
     );
     assert_eq!(
-        banner_line(&banner, 50),
+        banner_line(&banner, 50, Keymap::shipped()),
         "REBASING  step 3 of 7 · pick 5d4c3b2",
         "the chain words drop with the subject"
     );
@@ -52,7 +53,7 @@ fn a_stop_inside_a_fork_says_the_fork() {
 #[test]
 fn a_rewrite_stop_says_the_step_the_row_and_the_branch() {
     assert_eq!(
-        banner_line(&rewrite(true, false), WIDE),
+        banner_line(&rewrite(true, false), WIDE, Keymap::shipped()),
         "REBASING  step 3 of 7 · pick 5d4c3b2 wip: tests · feature-b, branch 2 of 3"
     );
 }
@@ -60,7 +61,7 @@ fn a_rewrite_stop_says_the_step_the_row_and_the_branch() {
 #[test]
 fn a_single_branch_rewrite_has_no_chain_words() {
     assert_eq!(
-        banner_line(&rewrite(false, false), WIDE),
+        banner_line(&rewrite(false, false), WIDE, Keymap::shipped()),
         "REBASING  step 3 of 7 · pick 5d4c3b2 wip: tests"
     );
 }
@@ -68,7 +69,7 @@ fn a_single_branch_rewrite_has_no_chain_words() {
 #[test]
 fn an_edit_stop_adds_its_hint() {
     assert_eq!(
-        banner_line(&rewrite(false, true), WIDE),
+        banner_line(&rewrite(false, true), WIDE, Keymap::shipped()),
         "REBASING  step 3 of 7 · edit 5d4c3b2 wip: tests · change files, space stages, \
          a amends it, c continues · \u{21e5} banner"
     );
@@ -81,7 +82,7 @@ fn an_edit_stop_adds_its_hint() {
 #[test]
 fn banner_ladder_drops_hint_subject_chain_sha_in_order() {
     let banner = rewrite(true, true);
-    let full = banner_line(&banner, WIDE);
+    let full = banner_line(&banner, WIDE, Keymap::shipped());
     let rungs = [
         full.clone(),
         "REBASING  step 3 of 7 · edit 5d4c3b2 wip: tests · feature-b, branch 2 of 3".to_owned(),
@@ -93,11 +94,17 @@ fn banner_ladder_drops_hint_subject_chain_sha_in_order() {
         let (wider, narrower) = (&pair[0], &pair[1]);
         let fits = |text: &str| u16::try_from(text.chars().count()).expect("short");
         // Exactly the room of a rung draws that rung…
-        assert_eq!(&banner_line(&banner, fits(wider)), wider);
+        assert_eq!(&banner_line(&banner, fits(wider), Keymap::shipped()), wider);
         // …and one cell less draws the next one down.
-        assert_eq!(&banner_line(&banner, fits(wider) - 1), narrower);
+        assert_eq!(
+            &banner_line(&banner, fits(wider) - 1, Keymap::shipped()),
+            narrower
+        );
     }
-    assert_eq!(banner_line(&banner, 3), "REBASING  step 3 of 7");
+    assert_eq!(
+        banner_line(&banner, 3, Keymap::shipped()),
+        "REBASING  step 3 of 7"
+    );
 }
 
 /// Every banner without a rewrite reads as it did before 07b, at any width.
@@ -118,7 +125,47 @@ fn non_rewrite_banners_are_unchanged() {
             rewrite: None,
         };
         for width in [0u16, 10, 80, WIDE] {
-            assert_eq!(banner_line(&banner, width), want, "{kind} at {width}");
+            assert_eq!(
+                banner_line(&banner, width, Keymap::shipped()),
+                want,
+                "{kind} at {width}"
+            );
         }
     }
+}
+
+/// m8/09d D5: an `edit` stop's words spell each key from his keymap —
+/// `space` is `graph.fold`'s key (it stages there), `a` `graph.amend`'s,
+/// `c` `graph.commit`'s, `⇥` `app.next_pane`'s — and an unbound key's
+/// clause is left out, never `—`.
+#[test]
+fn the_edit_hint_spells_his_keys() {
+    use crate::keymap::sweep::{assert_spelled, swept};
+    let (keys, _) = swept();
+    let line = banner_line(&rewrite(false, true), WIDE, &keys);
+    let hint = &line[line.find("change files").unwrap_or(0)..];
+    assert_spelled(
+        hint,
+        &keys,
+        &[
+            &["graph.fold"],
+            &["graph.amend"],
+            &["graph.commit"],
+            &["app.next_pane"],
+        ],
+    );
+    let (none, warnings) = Keymap::with_overrides(
+        &[
+            ("graph.fold".to_owned(), vec!["none".to_owned()]),
+            ("app.next_pane".to_owned(), vec!["none".to_owned()]),
+        ],
+        crate::keymap::KeySwitches::default(),
+    );
+    assert_eq!(warnings, []);
+    let line = banner_line(&rewrite(false, true), WIDE, &none);
+    assert!(
+        line.ends_with("change files, a amends it, c continues"),
+        "{line}"
+    );
+    assert!(!line.contains('\u{2014}'), "{line}");
 }

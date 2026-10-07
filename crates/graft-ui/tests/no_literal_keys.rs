@@ -63,36 +63,6 @@ const ALLOWED: &[(&str, &str, &str)] = &[
         "← next {word}",
         "`←` points at the row, not the left key: the mark of an unbound undo/redo",
     ),
-    (
-        "detail_pane/header.rs",
-        "this is the compare base · x clears it",
-        "KNOWN: `graph.compare`'s default; the detail pane takes no keymap yet — outside \
-         10c's list, in its NOTES as a follow-up",
-    ),
-    (
-        "detail_pane/line_render.rs",
-        "… {more} more lines · L load all",
-        "KNOWN: a literal key; the detail pane takes no keymap yet — outside 10c's list, in \
-         its NOTES as a follow-up",
-    ),
-    (
-        "graph_screen/banner.rs",
-        "change files, space stages, a amends it, c continues · ⇥ banner",
-        "KNOWN: the banner's prose names keys (`space`, `a`, `c`, `⇥`); the banner takes no \
-         keymap yet — outside 10c's list, in its NOTES as a follow-up",
-    ),
-    (
-        "rewrite_editor/right.rs",
-        "CHANGES of {short} · ⏎ back to AFTER",
-        "KNOWN: a literal key; the rewrite editor's right pane takes no keymap yet — outside \
-         10c's list, in its NOTES as a follow-up",
-    ),
-    (
-        "graph_screen/badges.rs",
-        "x base",
-        "KNOWN: the compare-base badge names `graph.compare`'s default; badges take no keymap \
-         yet — outside 10c's list, in its NOTES as a follow-up",
-    ),
 ];
 
 #[test]

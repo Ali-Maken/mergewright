@@ -9,6 +9,7 @@ use graft_core::capabilities::ColorDepth;
 use graft_term::sanitize::SanitizedText;
 
 use crate::detail::{HunkView, LineKindView};
+use crate::keymap::Keymap;
 use crate::theme::Theme;
 
 use super::line_render::{
@@ -76,7 +77,8 @@ fn pin_heading<'a>(
 /// Draw `hunks` from content row `top`: gutter numbers, sign cell, soft
 /// added/removed background, a stronger background over changed words,
 /// syntax foreground, a pinned hunk heading, and — when `truncated` is
-/// `Some((shown, total))` — a `… N more lines · L load all` footer row.
+/// `Some((shown, total, keys))` — a `… N more lines · L load all` footer
+/// row, `L` spelled from `keys` (m8/09d).
 /// Returns the total content rows including that footer, for scroll
 /// clamping. At [`ColorDepth::Palette16`] or under `NO_COLOR`
 /// ([`ColorDepth::None`]): sign glyph plus bold (added) / dim (removed)
@@ -85,7 +87,7 @@ fn pin_heading<'a>(
 pub fn diff_body(
     hunks: &[HunkView],
     top: usize,
-    truncated: Option<(usize, usize)>,
+    truncated: Option<(usize, usize, &Keymap)>,
     area: Rect,
     buf: &mut Buffer,
     theme: &Theme,
@@ -145,8 +147,8 @@ pub fn diff_body(
                 ..style_ctx
             };
             draw_diff_row(row, gutter, slot, buf, theme, style_ctx);
-        } else if let (true, Some((shown, of_total))) = (idx == rows.len(), truncated) {
-            draw_truncation_row(shown, of_total, slot, buf, theme);
+        } else if let (true, Some((shown, of_total, keys))) = (idx == rows.len(), truncated) {
+            draw_truncation_row(shown, of_total, slot, buf, theme, keys);
         }
     }
 

@@ -908,7 +908,10 @@ fn a_branch_name_with_an_escape_sequence_renders_inert() {
         },
     };
 
-    let text = badge_view(&label).text(graft_ui::graph_screen::Icons::Plain);
+    let text = badge_view(&label).text(
+        graft_ui::graph_screen::Icons::Plain,
+        graft_ui::keymap::Keymap::shipped(),
+    );
 
     assert!(!text.contains('\x1b'), "{text:?}");
     assert!(!text.contains('\x07'), "{text:?}");
