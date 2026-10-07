@@ -377,6 +377,6 @@ pub(crate) fn continue_words(kind: InProgress) -> Option<String> {
 }
 
 #[cfg(test)]
-mod rewrite_stop_tests;
+pub(in crate::update) mod rewrite_stop_tests;
 #[cfg(test)]
-mod tests;
+pub(in crate::update) mod tests;

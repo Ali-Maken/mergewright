@@ -100,7 +100,7 @@ fn live(rewrite: Option<Result<RewriteStop, String>>, paths: &[&str]) -> AppStat
     }
 }
 
-fn edit_stop() -> AppState {
+pub(in crate::update) fn edit_stop() -> AppState {
     live(Some(Ok(read(TodoAction::Edit, None, true))), &[])
 }
 
@@ -316,7 +316,10 @@ fn tab_focuses_the_banner_at_an_edit_stop() {
 /// `a` on `HEAD`'s row: `HEAD`'s message is read, and its answer launches
 /// the amend with it — no editor. Returns the state after the launch and
 /// the amend's job id.
-fn a_amends(state: &AppState, message: &str) -> (AppState, crate::update::JobId) {
+pub(in crate::update) fn a_amends(
+    state: &AppState,
+    message: &str,
+) -> (AppState, crate::update::JobId) {
     let (asked, commands) = key(state, KeyCode::Char('a'));
     let [Command::ReadHeadMessage(read_id)] = commands.as_slice() else {
         panic!("expected HEAD's message to be read: {commands:?}");
@@ -340,7 +343,7 @@ fn a_amends(state: &AppState, message: &str) -> (AppState, crate::update::JobId)
 }
 
 /// The amend's answer: done, still at the stop.
-fn amended(state: &AppState, id: crate::update::JobId) -> AppState {
+pub(in crate::update) fn amended(state: &AppState, id: crate::update::JobId) -> AppState {
     let (landed, _) = update(
         state,
         AppEvent::Produced(
