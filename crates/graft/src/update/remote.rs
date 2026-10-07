@@ -18,6 +18,7 @@ use graft_core::job::JobId;
 use graft_core::oid::Oid;
 use graft_git::history_reads::CommitSummary;
 use graft_ops::operation::{FetchParams, Operation, PullParams, PushParams};
+use graft_ui::keymap::{ActionId, Keymap};
 
 use super::detail::Loading;
 use super::events::Command;
@@ -233,7 +234,7 @@ pub enum Stoppable {
     /// killing it leaves the repository either written or not.
     Yes,
     /// `Esc` refuses and says so, in these words.
-    No(&'static str),
+    No(super::preview::CannotStop),
 }
 
 impl RemoteState {
@@ -284,11 +285,29 @@ pub(super) fn launched(
 /// is, the graph or the changes pane (m6-conflicts/85 D, m2). A stash, then
 /// `p` again, is the whole way through until a pull sets his edits aside
 /// itself (`KNOWN_GAPS` M6/0045).
-pub const OVERWRITE_KEYS: &str = "S s stashes them first";
+///
+/// `S` opens the stash box (`graph.stash`), `s` saves there (`stash.save`):
+/// a sequence, each key from its own place's row (10b W5). `None` when
+/// either is unbound — half a sequence is no way through.
+#[must_use]
+pub fn overwrite_keys(keys: &Keymap) -> Option<String> {
+    let open = keys.spell_keys(&[ActionId("graph.stash")])?;
+    let save = keys.spell_keys(&[ActionId("stash.save")])?;
+    Some(format!("{open} {save} stashes them first"))
+}
 
 /// The keys the diverged-pull line offers, and the mark that tells
 /// [`forget_stale_divergence`] the line is still the one on screen.
-pub const DIVERGED_KEYS: &str = "m merge it  r rebase onto it";
+/// `m merge it  r rebase onto it`, each clause dropped when its key is
+/// unbound; `None` when both are.
+#[must_use]
+pub fn diverged_keys(keys: &Keymap) -> Option<String> {
+    let words = keys.key_verbs(&[
+        ("graph.merge", "merge it"),
+        ("graph.rebase", "rebase onto it"),
+    ]);
+    (!words.is_empty()).then_some(words)
+}
 
 /// The remembered upstream outlives its words otherwise, and its tip goes
 /// stale the moment the refs move.
@@ -317,7 +336,7 @@ pub const DIVERGED_KEYS: &str = "m merge it  r rebase onto it";
 pub(super) fn forget_stale_divergence(state: &mut AppState) {
     let showing = matches!(
         &state.status,
-        Status::Sticky { keys: Some(keys), .. } if keys == DIVERGED_KEYS
+        Status::Sticky { keys: Some(keys), .. } if Some(keys) == diverged_keys(&state.keymap).as_ref()
     );
     if !showing {
         state.remote.diverged_upstream = None;
@@ -348,13 +367,28 @@ fn tracking_tip(refs: &crate::refs::RefBadges, tracking: &str) -> Option<Oid> {
 /// draws a line ending in it as it is, without the `…` it gives every other
 /// busy line: the hint is not the part still in progress (design note, New
 /// UI, "Footer while a remote write runs").
-pub const ESC_HINT: &str = " · esc cancels";
+/// Empty when `app.back` is unbound: then nothing stops it, and the line
+/// is an ordinary busy line.
+#[must_use]
+pub fn esc_hint(keys: &Keymap) -> String {
+    keys.key_verb(&[ActionId("app.back")], "cancels")
+        .map_or_else(String::new, |cancels| format!(" \u{b7} {cancels}"))
+}
+
+/// Whether a busy line ends in [`esc_hint`]: the footer then draws it
+/// without its `…`. Never true when `app.back` is unbound (an empty hint
+/// ends every line).
+#[must_use]
+pub fn ends_with_esc_hint(line: &str, keys: &Keymap) -> bool {
+    let hint = esc_hint(keys);
+    !hint.is_empty() && line.ends_with(&hint)
+}
 
 /// What the status line says while `op` runs. A remote write says `Esc`
 /// stops it: it is the one kind that can hang (design note, choice 4).
-pub(super) fn busy_text(op: &Operation) -> String {
+pub(super) fn busy_text(op: &Operation, keys: &Keymap) -> String {
     if op.is_remote() {
-        format!("{}{ESC_HINT}", op.describe())
+        format!("{}{}", op.describe(), esc_hint(keys))
     } else {
         op.describe()
     }
@@ -529,6 +563,8 @@ fn short_oid(oid: Oid) -> String {
 mod after_push;
 mod in_flight;
 mod push_box;
+#[cfg(test)]
+pub(crate) use push_box::nothing_to_lease;
 
 pub(crate) use after_push::pushed_to;
 pub use after_push::repush_lease;

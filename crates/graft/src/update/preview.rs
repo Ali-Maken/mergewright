@@ -23,7 +23,15 @@
 //! one operation two ways.
 
 mod line_rows;
+#[cfg(test)]
+pub(crate) use answer::not_loaded;
+#[cfg(test)]
+pub(crate) use history::stash_isnt_a_branch;
 pub(crate) use line_rows::{ForkTone, fork_rows, onto_label};
+#[cfg(test)]
+pub(crate) use line_rows::{keep_them, published_words};
+#[cfg(test)]
+pub(crate) use take::{not_a_commit_words, waiting_for_refs};
 pub mod slice;
 
 use std::collections::{HashMap, HashSet};
@@ -41,6 +49,7 @@ use graft_ops::preview::{
     UndoNote, WorktreeEffect,
 };
 use graft_term::{SanitizedText, sanitize_line};
+use graft_ui::keymap::{ActionId, Keymap};
 use graft_ui::preview_box::{Again, PREVIEW_MIN, PreviewBox, preview_rows};
 
 mod answer;
@@ -120,14 +129,45 @@ use crate::refs::{RefBadges, RefLabel};
 /// banner would then have to adopt as if the user had asked for it. The
 /// honest answer is not to offer the cancel: a conflict stops the operation
 /// by itself, on the banner, where `a` aborts it properly.
-pub const HISTORY_CANNOT_STOP: &str =
-    "runs to the end · a conflict stops it on the banner, where a aborts";
+pub const HISTORY_CANNOT_STOP: CannotStop = CannotStop::History;
 
 /// Why `Esc` will not stop a running put-back from J (m7/30o Minor 7):
 /// `put main back to 9a8b7c6 runs to the end · u undoes it after`. A
 /// put-back has no conflict and no banner, so [`HISTORY_CANNOT_STOP`]'s
 /// words would name a place he never lands on; `u` is what takes it back.
-pub const PUT_BACK_CANNOT_STOP: &str = "runs to the end · u undoes it after";
+pub const PUT_BACK_CANNOT_STOP: CannotStop = CannotStop::PutBack;
+
+/// Which of the two "`Esc` cannot stop this" lines a running write gets.
+/// Worded where it is drawn ([`CannotStop::words`]), from his keymap
+/// (m8/10i): the key the line names is the one that answers on the banner
+/// or the graph.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CannotStop {
+    /// [`HISTORY_CANNOT_STOP`]: a merge, rebase, pick or jump.
+    History,
+    /// [`PUT_BACK_CANNOT_STOP`]: a put-back from J.
+    PutBack,
+}
+
+impl CannotStop {
+    /// `runs to the end · a conflict stops it on the banner, where a
+    /// aborts` (`operation.abort`, on the banner) or `runs to the end · u
+    /// undoes it after` (`app.undo`, on the graph). An unbound key drops
+    /// its words: `, where a aborts` alone (the conflict fact stays), or the
+    /// whole `u` clause.
+    #[must_use]
+    pub fn words(self, keys: &Keymap) -> String {
+        match self {
+            Self::History => {
+                let abort = keys
+                    .key_verb(&[ActionId("operation.abort")], "aborts")
+                    .map_or_else(String::new, |aborts| format!(", where {aborts}"));
+                format!("runs to the end \u{b7} a conflict stops it on the banner{abort}")
+            }
+            Self::PutBack => keys.after("runs to the end", ActionId("app.undo"), "undoes it after"),
+        }
+    }
+}
 
 /// What a preview is a preview of.
 ///

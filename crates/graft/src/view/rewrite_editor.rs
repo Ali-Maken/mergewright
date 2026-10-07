@@ -15,6 +15,7 @@ use graft_ops::preview::{ConflictForecast, PreviewPlan, Target};
 use graft_ops::rewrite::TodoAction;
 use graft_term::{sanitize_line, sanitize_path_bytes};
 use graft_ui::graph_screen::HintContext;
+use graft_ui::keymap::{ActionId, Keymap};
 use graft_ui::rewrite_editor::{
     AfterMark, AfterRow, AfterView, ChangesView, EditorRow, FieldView, MessageBlock, NARROW_BELOW,
     RewriteEditorView, RightSide, RowMark,
@@ -43,7 +44,11 @@ pub fn editor_area(state: &AppState) -> Rect {
 #[must_use]
 pub fn rewrite_view(state: &AppState, ascii: bool) -> Option<RewriteEditorView> {
     let editor = state.rewrite.editor.as_deref()?;
-    Some(view_of(&editor.view_facts(), ascii))
+    Some(view_of(
+        &editor.view_facts(&state.keymap),
+        words_keys(state),
+        ascii,
+    ))
 }
 
 /// The editor's bar: its field's keys while `r` has the field open, else
@@ -52,7 +57,7 @@ pub fn rewrite_view(state: &AppState, ascii: bool) -> Option<RewriteEditorView> 
 #[must_use]
 pub fn rewrite_context(state: &AppState) -> Option<HintContext> {
     let editor = state.rewrite.editor.as_deref()?;
-    let facts = editor.view_facts();
+    let facts = editor.view_facts(&state.keymap);
     if facts.field.is_some() {
         return Some(HintContext::RewriteMessage);
     }
@@ -63,21 +68,12 @@ pub fn rewrite_context(state: &AppState) -> Option<HintContext> {
 }
 
 /// The whole view from the editor's facts.
-fn view_of(facts: &ViewFacts<'_>, ascii: bool) -> RewriteEditorView {
-    let commits = if facts.since == 1 {
-        "commit"
-    } else {
-        "commits"
-    };
-    let title = format!(
-        "REWRITE {} \u{b7} {} {commits} since it left {} \u{b7} newest first \u{b7} nothing \
-         written until y",
-        facts.branch, facts.since, facts.base.label
-    );
+fn view_of(facts: &ViewFacts<'_>, keys: &Keymap, ascii: bool) -> RewriteEditorView {
+    let title = title(facts.branch, facts.since, &facts.base.label, keys);
     let mut rows: Vec<EditorRow> = facts
         .rows
         .iter()
-        .map(|row| editor_row(row, &facts.base.label, ascii))
+        .map(|row| editor_row(row, &facts.base.label, ascii, keys))
         .collect();
     rows.push(EditorRow {
         mark: RowMark::Base {
@@ -97,7 +93,7 @@ fn view_of(facts: &ViewFacts<'_>, ascii: bool) -> RewriteEditorView {
             text: sanitize_line(text),
             caret,
         }),
-        message: message_block(facts),
+        message: message_block(facts, keys),
         right: right_side(facts),
         narrow_shows_right: facts.narrow_shows_right,
         // While `$EDITOR` has the terminal nothing here is drawn; a frame
@@ -113,7 +109,7 @@ fn view_of(facts: &ViewFacts<'_>, ascii: bool) -> RewriteEditorView {
 
 /// One of his rows: its mark, and what it says about itself. `base` is the
 /// base row's label, which a rebase's suggested drop is already in.
-fn editor_row(row: &RowFacts<'_>, base: &str, ascii: bool) -> EditorRow {
+fn editor_row(row: &RowFacts<'_>, base: &str, ascii: bool, keys: &Keymap) -> EditorRow {
     let mark = match row.action {
         TodoAction::Pick => RowMark::Pick,
         TodoAction::Reword => RowMark::Reword,
@@ -137,7 +133,7 @@ fn editor_row(row: &RowFacts<'_>, base: &str, ascii: bool) -> EditorRow {
     }
     match row.marked {
         Some(MarkedBy::Name) => said.push("marked by its name".to_owned()),
-        Some(MarkedBy::AlreadyIn) => said.push(format!("already in {base} \u{b7} p keeps it")),
+        Some(MarkedBy::AlreadyIn) => said.push(already_in_note(base, keys)),
         None => {}
     }
     EditorRow {
@@ -152,7 +148,7 @@ fn editor_row(row: &RowFacts<'_>, base: &str, ascii: bool) -> EditorRow {
 /// The message block: the one whose kept row is the cursor's, else the
 /// newest. `MESSAGE of the squashed commit · r on "<kept subject>"
 /// changes it`.
-fn message_block(facts: &ViewFacts<'_>) -> Option<MessageBlock> {
+fn message_block(facts: &ViewFacts<'_>, keys: &Keymap) -> Option<MessageBlock> {
     let cursor_commit = facts.rows.get(facts.cursor).map(|row| row.commit);
     let message = facts
         .messages
@@ -170,9 +166,51 @@ fn message_block(facts: &ViewFacts<'_>) -> Option<MessageBlock> {
         "reworded"
     };
     Some(MessageBlock {
-        label: sanitize_line(&format!(
-            "MESSAGE of the {what} commit \u{b7} r on \"{subject}\" changes it"
-        )),
+        label: sanitize_line(&message_label(what, subject, keys)),
         lines: message.text.lines().map(sanitize_line).collect(),
     })
+}
+
+/// The keymap the editor's words spell from: his, except while the `r`
+/// field is open — a text field, whose words spell the shipped keys (10b
+/// W4; 09d D5's rule for `⏎ back to AFTER`).
+fn words_keys(state: &AppState) -> &Keymap {
+    if crate::update::rewrite_editor::field_open(state) {
+        Keymap::shipped()
+    } else {
+        &state.keymap
+    }
+}
+
+/// `REWRITE <branch> · <n> commits since it left <base> · newest first ·
+/// nothing written until y`: `y` starts it (`confirm.yes`, in the editor).
+/// Unbound, `· nothing written yet`.
+pub(crate) fn title(branch: &str, since: usize, base: &str, keys: &Keymap) -> String {
+    let commits = if since == 1 { "commit" } else { "commits" };
+    let title = format!(
+        "REWRITE {branch} \u{b7} {since} {commits} since it left {base} \u{b7} newest first"
+    );
+    match keys.spell_keys(&[ActionId("confirm.yes")]) {
+        Some(start) => format!("{title} \u{b7} nothing written until {start}"),
+        None => title,
+    }
+}
+
+/// `already in <base> · p keeps it` (`rewrite.pick`); unbound, the fact.
+pub(crate) fn already_in_note(base: &str, keys: &Keymap) -> String {
+    keys.after(
+        &format!("already in {base}"),
+        ActionId("rewrite.pick"),
+        "keeps it",
+    )
+}
+
+/// `MESSAGE of the <what> commit · r on "<subject>" changes it`
+/// (`rewrite.reword`); unbound, the label alone.
+pub(crate) fn message_label(what: &str, subject: &str, keys: &Keymap) -> String {
+    let label = format!("MESSAGE of the {what} commit");
+    match keys.spell_keys(&[ActionId("rewrite.reword")]) {
+        Some(reword) => format!("{label} \u{b7} {reword} on \"{subject}\" changes it"),
+        None => label,
+    }
 }

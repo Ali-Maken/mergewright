@@ -529,7 +529,7 @@ fn esc_cancels_an_undo_in_flight() {
         );
         assert_eq!(
             running.status,
-            Status::Busy(format!("{words}{ESC_HINT}")),
+            Status::Busy(format!("{words} · esc cancels")),
             "{words}: the busy line offers the cancel"
         );
 
@@ -601,7 +601,7 @@ fn history_ops_launch_unstoppable() {
         pressed.status,
         Status::Busy(format!(
             "{description} {}",
-            crate::update::preview::HISTORY_CANNOT_STOP
+            crate::update::preview::HISTORY_CANNOT_STOP.words(graft_ui::keymap::Keymap::shipped())
         )),
         "the refusal names what does stop it"
     );
@@ -775,7 +775,7 @@ fn the_diverged_line_aims_at_where_the_fetch_left_the_tracking_ref() {
     state.remote.diverged_upstream = Some(("refs/remotes/origin/main".to_owned(), oid(THEIRS)));
     state.status = Status::Sticky {
         reason: "main and origin/main have diverged".to_owned(),
-        keys: Some(crate::update::remote::DIVERGED_KEYS.to_owned()),
+        keys: Some("m merge it  r rebase onto it".to_owned()),
     };
 
     // One event with the line still on screen: the refs have caught up, so
@@ -849,7 +849,7 @@ fn the_remembered_upstream_dies_with_the_line_that_explained_it() {
     state.remote.diverged_upstream = Some(("refs/remotes/origin/main".to_owned(), oid(THEIRS)));
     state.status = Status::Sticky {
         reason: "main and origin/main have diverged".to_owned(),
-        keys: Some(crate::update::remote::DIVERGED_KEYS.to_owned()),
+        keys: Some("m merge it  r rebase onto it".to_owned()),
     };
 
     // Any event at all, with the line replaced by something else first.

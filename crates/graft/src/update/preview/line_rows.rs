@@ -12,6 +12,8 @@ use graft_ops::preview::{
     ConflictForecast, DropSuggestion, Fork, ForkFate, LeftBehind, PreviewPlan, WhyStays,
 };
 
+use graft_ui::keymap::{ActionId, Keymap};
+
 use super::{ref_line, short, slice};
 
 /// `branches: ` — the label, and the indent the rows under it take.
@@ -208,6 +210,7 @@ pub(super) fn already_in_row(
     plan: &PreviewPlan,
     op: Option<&Operation>,
     keeps: bool,
+    keys: &Keymap,
 ) -> Option<String> {
     let Some(Operation::Rebase(params)) = op else {
         return None;
@@ -225,7 +228,10 @@ pub(super) fn already_in_row(
                 if count == 1 { "commit" } else { "commits" },
                 short(found.matches),
                 found.subject,
-                if keeps { " \u{b7} R to keep them" } else { "" }
+                keeps
+                    .then(|| keep_them(keys))
+                    .flatten()
+                    .map_or_else(String::new, |keep| format!(" \u{b7} {keep}"))
             ))
         }
         DropSuggestion::NotChecked(why) => Some(format!("already in {onto}: not checked ({why})")),
@@ -333,7 +339,7 @@ pub(super) fn left_behind_row(plan: &PreviewPlan, rewrite: bool, columns: u16) -
 
 /// `on origin: feature-a · P will need force after`: the branches whose
 /// upstream holds a commit this rewrites. `None` when there are none.
-pub(super) fn published_row(plan: &PreviewPlan) -> Option<String> {
+pub(super) fn published_row(plan: &PreviewPlan, keys: &Keymap) -> Option<String> {
     if plan.published.is_empty() {
         return None;
     }
@@ -345,8 +351,22 @@ pub(super) fn published_row(plan: &PreviewPlan) -> Option<String> {
                 .into_owned()
         })
         .collect();
-    Some(format!(
-        "on origin: {} \u{b7} P will need force after",
-        names.join(", ")
-    ))
+    Some(published_words(&names.join(", "), keys))
+}
+
+/// `on origin: <names> · P will need force after`: `P` is the graph's
+/// push (`graph.push`), pressed there once the rewrite lands. Unbound, the
+/// fact alone.
+pub(crate) fn published_words(names: &str, keys: &Keymap) -> String {
+    keys.after(
+        &format!("on origin: {names}"),
+        ActionId("graph.push"),
+        "will need force after",
+    )
+}
+
+/// `R to keep them`: the preview's `R` (`preview.rewrite`) opens the editor
+/// with the suggested drops. `None` when unbound.
+pub(crate) fn keep_them(keys: &Keymap) -> Option<String> {
+    keys.key_verb(&[ActionId("preview.rewrite")], "to keep them")
 }

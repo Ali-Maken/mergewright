@@ -525,7 +525,7 @@ fn autosquash_rows_open_marked_by_their_name() {
         line(TodoAction::Pick, 5, "wip"),
     ];
     let (state, _) = editor_with(0, todo);
-    let facts = ed(&state).view_facts();
+    let facts = ed(&state).view_facts(graft_ui::keymap::Keymap::shipped());
     let marked: Vec<_> = facts
         .rows
         .iter()
@@ -546,7 +546,13 @@ fn autosquash_rows_open_marked_by_their_name() {
     let (state, _) = press(&state, 'j');
     let (state, _) = press(&state, 'j');
     let (state, _) = press(&state, 's');
-    assert_eq!(ed(&state).view_facts().rows[2].marked, None);
+    assert_eq!(
+        ed(&state)
+            .view_facts(graft_ui::keymap::Keymap::shipped())
+            .rows[2]
+            .marked,
+        None
+    );
 }
 
 #[test]
@@ -555,7 +561,7 @@ fn a_bottom_squash_is_refused_in_words() {
     assert_eq!(ed(&state).cursor, 3, "on the oldest row, commit 2");
     let (state, commands) = press(&state, 's');
     assert!(plan_job(&commands).is_none(), "nothing is planned");
-    let facts = ed(&state).view_facts();
+    let facts = ed(&state).view_facts(graft_ui::keymap::Keymap::shipped());
     assert_eq!(
         facts.rows[3].problem.as_deref(),
         Some("nothing below to meld into")
@@ -579,9 +585,12 @@ fn a_new_editor_claims_nothing_before_its_first_plan() {
     let editor = RewriteEditor::new(opened_with(four_picks()), OpenedFrom::Row(oid(5)));
     assert_ne!(editor.after, After::Invalid(TodoProblem::EverythingDropped));
     assert!(
-        matches!(editor.view_facts().after, AfterFacts::Checking),
+        matches!(
+            editor.view_facts(graft_ui::keymap::Keymap::shipped()).after,
+            AfterFacts::Checking
+        ),
         "{:?}",
-        editor.view_facts().after
+        editor.view_facts(graft_ui::keymap::Keymap::shipped()).after
     );
 }
 
@@ -641,7 +650,7 @@ fn alt_up_moves_the_row_and_marks_it() {
         "4 is now the newest"
     );
     assert_eq!(ed(&state).cursor, 0, "the cursor follows the row");
-    let facts = ed(&state).view_facts();
+    let facts = ed(&state).view_facts(graft_ui::keymap::Keymap::shipped());
     assert!(facts.rows[0].moved, "↕ moved");
     assert!(!facts.rows[1].moved);
     assert!(cancels(&commands, first));
@@ -701,7 +710,13 @@ fn enter_in_the_field_rewords_and_replans() {
     assert!(cancels(&commands, first));
     let (_, params) = plan_job(&commands).expect("replanned");
     assert_eq!(params.messages.get(&3).map(String::as_str), Some("Done\n"));
-    assert_eq!(ed(&state).view_facts().rows[0].subject, "Done");
+    assert_eq!(
+        ed(&state)
+            .view_facts(graft_ui::keymap::Keymap::shipped())
+            .rows[0]
+            .subject,
+        "Done"
+    );
 }
 
 #[test]
@@ -712,7 +727,9 @@ fn the_squash_message_is_default_message_until_edited() {
     let default = "Handle expired tokens\n\nwip: tests\n\nCovers the expired path.\n";
     let (_, params) = plan_job(&commands).expect("replanned");
     assert_eq!(params.messages.get(&1).map(String::as_str), Some(default));
-    let messages = ed(&state).view_facts().messages;
+    let messages = ed(&state)
+        .view_facts(graft_ui::keymap::Keymap::shipped())
+        .messages;
     assert_eq!(messages.len(), 1);
     assert!(messages[0].squashed);
     assert_eq!(messages[0].kept, oid(3));
@@ -759,7 +776,11 @@ fn ctrl_e_hands_the_message_over_and_back() {
         })
         .expect("the handover");
     assert_eq!(message, "wip: tests\n\nCovers the expired path.\n");
-    assert!(ed(&state).view_facts().handing_over);
+    assert!(
+        ed(&state)
+            .view_facts(graft_ui::keymap::Keymap::shipped())
+            .handing_over
+    );
 
     // The terminal is away: nothing typed here acts.
     let (away, commands) = press(&state, 'y');
@@ -825,13 +846,20 @@ fn enter_shows_the_rows_changes() {
         Product::Files(Ok((Arc::default(), Arc::clone(&list)))),
     );
     assert_eq!(
-        ed(&state).view_facts().changes,
+        ed(&state)
+            .view_facts(graft_ui::keymap::Keymap::shipped())
+            .changes,
         Some((oid(5), &Loading::Ready(list)))
     );
 
     // `⏎` again: back to AFTER.
     let (state, _) = plain(&state, KeyCode::Enter);
-    assert!(ed(&state).view_facts().changes.is_none());
+    assert!(
+        ed(&state)
+            .view_facts(graft_ui::keymap::Keymap::shipped())
+            .changes
+            .is_none()
+    );
 }
 
 #[test]
@@ -872,7 +900,9 @@ fn y_before_the_plan_lands_does_nothing() {
     let (state, commands) = press(&state, 'y');
     assert!(operate_job(&commands).is_none());
     assert!(matches!(
-        ed(&state).view_facts().after,
+        ed(&state)
+            .view_facts(graft_ui::keymap::Keymap::shipped())
+            .after,
         AfterFacts::Checking
     ));
 }
@@ -895,7 +925,9 @@ fn y_launches_the_planned_rewrite() {
         Product::Preview(Ok(a_planned(Some(runs.clone())))),
     );
     assert!(matches!(
-        ed(&state).view_facts().after,
+        ed(&state)
+            .view_facts(graft_ui::keymap::Keymap::shipped())
+            .after,
         AfterFacts::Ready(_)
     ));
     let (mut state, commands) = press(&state, 'y');
@@ -930,7 +962,9 @@ fn an_edit_replans_and_the_last_wins() {
 
     let state = landed(&state, third);
     assert!(matches!(
-        ed(&state).view_facts().after,
+        ed(&state)
+            .view_facts(graft_ui::keymap::Keymap::shipped())
+            .after,
         AfterFacts::Ready(_)
     ));
     assert!(state.preview.is_none(), "the editor never sets the preview");
@@ -962,7 +996,9 @@ fn a_failed_after_plan_says_so_and_y_refuses() {
         ))),
     );
     assert!(matches!(
-        ed(&state).view_facts().after,
+        ed(&state)
+            .view_facts(graft_ui::keymap::Keymap::shipped())
+            .after,
         AfterFacts::Failed("couldn't read 0000003")
     ));
     let (state, commands) = press(&state, 'y');
@@ -984,7 +1020,9 @@ fn a_moved_branch_refuses_y_in_words() {
         plan,
         Product::Preview(Err(PreviewFailure::Refused(moved))),
     );
-    assert!(matches!(ed(&state).view_facts().after, AfterFacts::Refused(said) if said == words));
+    assert!(
+        matches!(ed(&state).view_facts(graft_ui::keymap::Keymap::shipped()).after, AfterFacts::Refused(said) if said == words)
+    );
     let (state, commands) = press(&state, 'y');
     assert!(operate_job(&commands).is_none());
     assert_eq!(state.graph_overlay(), Some(GraphOverlay::Rewrite));
@@ -1100,7 +1138,7 @@ fn view_facts_are_the_screen_in_order() {
     let (state, _) = editor_up(1);
     let (state, _) = press(&state, 's');
     let (state, _) = press(&state, 'r');
-    let facts = ed(&state).view_facts();
+    let facts = ed(&state).view_facts(graft_ui::keymap::Keymap::shipped());
     assert_eq!(facts.branch, "feature");
     assert_eq!(facts.since, 4);
     assert_eq!(facts.base.label, "main");
@@ -1124,7 +1162,7 @@ fn view_facts_are_the_screen_in_order() {
 fn view_facts_show_the_plan_that_landed() {
     let (state, plan) = editor_up(1);
     let (state, _) = press(&state, 's');
-    let facts = ed(&state).view_facts();
+    let facts = ed(&state).view_facts(graft_ui::keymap::Keymap::shipped());
     assert_eq!(facts.notice, None);
     assert!(!facts.narrow_shows_right);
     assert!(!facts.handing_over);
@@ -1136,7 +1174,7 @@ fn view_facts_show_the_plan_that_landed() {
     let planned = a_planned(None);
     let (state, _) = answer(&state, job, Product::Preview(Ok(Arc::clone(&planned))));
     assert!(
-        matches!(ed(&state).view_facts().after, AfterFacts::Ready(shown) if *shown == *planned)
+        matches!(ed(&state).view_facts(graft_ui::keymap::Keymap::shipped()).after, AfterFacts::Ready(shown) if *shown == *planned)
     );
 }
 
@@ -1220,7 +1258,13 @@ fn a_drag_moves_the_row() {
         "4 dragged down to the oldest place (oldest first)"
     );
     assert_eq!(ed(&state).cursor, 3, "the cursor follows the row");
-    assert!(ed(&state).view_facts().rows[3].moved, "↕ moved");
+    assert!(
+        ed(&state)
+            .view_facts(graft_ui::keymap::Keymap::shipped())
+            .rows[3]
+            .moved,
+        "↕ moved"
+    );
     assert!(cancels(&commands, first), "the old plan is cancelled");
     let plans = commands
         .iter()
@@ -1386,7 +1430,7 @@ fn notes(state: &AppState) -> Vec<Option<String>> {
 fn seeded_drops_read_already_in_and_p_clears_it() {
     let state = editor_from_rebase();
     let marked: Vec<_> = ed(&state)
-        .view_facts()
+        .view_facts(graft_ui::keymap::Keymap::shipped())
         .rows
         .iter()
         .map(|row| (row.commit, row.action, row.marked))
@@ -1422,14 +1466,20 @@ fn seeded_drops_read_already_in_and_p_clears_it() {
     // `d` pressed again is his own mark: no words.
     let (state, _) = press(&state, 'k');
     let (state, _) = press(&state, 'd');
-    assert_eq!(ed(&state).view_facts().rows[1].marked, None);
+    assert_eq!(
+        ed(&state)
+            .view_facts(graft_ui::keymap::Keymap::shipped())
+            .rows[1]
+            .marked,
+        None
+    );
     assert_eq!(notes(&state)[1].as_deref(), Some("left out"));
 }
 
 #[test]
 fn cursor_opens_on_the_newest_drop() {
     let state = editor_from_rebase();
-    let facts = ed(&state).view_facts();
+    let facts = ed(&state).view_facts(graft_ui::keymap::Keymap::shipped());
     assert_eq!(facts.cursor, 1, "row 1 is commit 4, the newest drop");
     assert_eq!(facts.rows[facts.cursor].commit, oid(4));
 }
@@ -1456,7 +1506,13 @@ fn autosquash_rows_still_read_marked_by_its_name() {
             .all(|note| !note.contains("already in")),
         "{drawn:?}"
     );
-    assert_eq!(ed(&state).view_facts().cursor, 0, "on the row R was on");
+    assert_eq!(
+        ed(&state)
+            .view_facts(graft_ui::keymap::Keymap::shipped())
+            .cursor,
+        0,
+        "on the row R was on"
+    );
 }
 
 // ── arrival from a rebase with every row dropped (30n Q1) ────────────────
@@ -1465,7 +1521,10 @@ const NOTHING_KEPT_YET: &str = "nothing kept yet \u{b7} p keeps a commit";
 const EVERY_COMMIT_DROPPED: &str = "every commit dropped \u{b7} the branch would be its base again";
 
 fn after_words(state: &AppState) -> String {
-    match ed(state).view_facts().after {
+    match ed(state)
+        .view_facts(graft_ui::keymap::Keymap::shipped())
+        .after
+    {
         AfterFacts::Invalid(words) => words,
         other => panic!("an invalid todo, not {other:?}"),
     }
@@ -1562,7 +1621,7 @@ fn r_in_a_preview_while_a_read_is_out_opens_on_the_rebase() {
     assert!(state.rewrite.editor.is_none(), "the old answer is dropped");
     let (state, _) = answer(&state, second, opened_answer(opened_with(rebase_todo())));
     let marked: Vec<_> = ed(&state)
-        .view_facts()
+        .view_facts(graft_ui::keymap::Keymap::shipped())
         .rows
         .iter()
         .map(|row| row.marked)

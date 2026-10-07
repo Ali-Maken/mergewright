@@ -4,6 +4,7 @@ use graft_ops::rewrite::{TodoAction, TodoProblem, squash_groups};
 
 use super::{After, Arc, BaseRow, FileList, Loading, MarkedBy, Oid, Planned, RewriteEditor, Right};
 use crate::update::state::Status;
+use graft_ui::keymap::{ActionId, Keymap};
 
 /// `p s f d e r`, a move, onto the base row (R1).
 pub(super) const BASE_STAYS: &str = "the base stays \u{b7} it isn't yours to rewrite";
@@ -11,28 +12,40 @@ pub(super) const BASE_STAYS: &str = "the base stays \u{b7} it isn't yours to rew
 /// Opened from a rebase whose every row is a suggested drop he has not
 /// touched: he pressed `R` to keep one, so the first words say where he is
 /// and the next key, not a refusal (30n Q1; ux-principles §3.1, H9).
-pub(super) const NOTHING_KEPT_YET: &str = "nothing kept yet \u{b7} p keeps a commit";
+/// `p` is the editor's keep (`rewrite.pick`); unbound, `nothing kept yet`.
+pub(crate) fn nothing_kept_yet(keys: &Keymap) -> String {
+    keys.after(
+        "nothing kept yet",
+        ActionId("rewrite.pick"),
+        "keeps a commit",
+    )
+}
 
 /// An invalid todo's words, on the AFTER side and on `y`: the problem's,
-/// except [`NOTHING_KEPT_YET`] while every row is still a drop the rebase
+/// except [`nothing_kept_yet`] while every row is still a drop the rebase
 /// suggested. Once he marks any of them himself, every drop is his choice
 /// and the problem's own words come back.
-pub(super) fn invalid(editor: &RewriteEditor, problem: &TodoProblem) -> String {
+pub(super) fn invalid(editor: &RewriteEditor, problem: &TodoProblem, keys: &Keymap) -> String {
     let arrived = *problem == TodoProblem::EverythingDropped
         && editor.todo.iter().all(|row| {
             row.action == TodoAction::Drop
                 && editor.marked_by.get(&row.commit) == Some(&MarkedBy::AlreadyIn)
         });
     if arrived {
-        NOTHING_KEPT_YET.to_owned()
+        nothing_kept_yet(keys)
     } else {
         problem.explain()
     }
 }
 
-/// `r` on a melded row: its message is the kept row's.
-pub(super) fn melds_into(kept_subject: &str) -> String {
-    format!("this row melds into \"{kept_subject}\" \u{b7} r there changes the message")
+/// `r` on a melded row: its message is the kept row's. `r` is the
+/// editor's reword (`rewrite.reword`); unbound, the fact alone.
+pub(crate) fn melds_into(kept_subject: &str, keys: &Keymap) -> String {
+    keys.after(
+        &format!("this row melds into \"{kept_subject}\""),
+        ActionId("rewrite.reword"),
+        "there changes the message",
+    )
 }
 
 /// A status line as one line of words: `reason · keys`.
@@ -74,7 +87,7 @@ pub(super) fn with_subject(message: &str, subject: &str) -> String {
 }
 
 /// Everything the view draws, newest row first.
-pub(super) fn view_facts(editor: &RewriteEditor) -> ViewFacts<'_> {
+pub(super) fn view_facts<'a>(editor: &'a RewriteEditor, keys: &Keymap) -> ViewFacts<'a> {
     let count = editor.todo.len();
     let rows = rows(editor);
     let field = editor.field.as_ref().and_then(|field| {
@@ -102,7 +115,7 @@ pub(super) fn view_facts(editor: &RewriteEditor) -> ViewFacts<'_> {
             After::Ready { planned, .. } => AfterFacts::Ready(planned),
             After::Failed(why) => AfterFacts::Failed(why),
             After::Refused(words) => AfterFacts::Refused(words),
-            After::Invalid(problem) => AfterFacts::Invalid(invalid(editor, problem)),
+            After::Invalid(problem) => AfterFacts::Invalid(invalid(editor, problem, keys)),
         },
         changes: match &editor.right {
             Right::Changes { commit, files } => Some((*commit, files)),

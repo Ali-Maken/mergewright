@@ -117,7 +117,7 @@ pub(super) fn launch_unstoppable(
     next: &mut AppState,
     commands: &mut Vec<Command>,
     op: Operation,
-    why: &'static str,
+    why: super::preview::CannotStop,
     opened_by: Option<&'static str>,
     next_id: &mut impl FnMut() -> JobId,
 ) -> Result<(), InFlight> {
@@ -153,7 +153,7 @@ fn launch_with(
     // Decided here, from what was asked, so `Done` never guesses the kind
     // from its answer (m7-power-tools/03, /24).
     next.lands = landing_of(&op).map(|on| (id, on));
-    next.status = Status::Busy(super::remote::busy_text(&op));
+    next.status = Status::Busy(super::remote::busy_text(&op, &next.keymap));
     commands.extend(super::remote::launched(
         next,
         id,

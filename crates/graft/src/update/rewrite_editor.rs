@@ -48,11 +48,15 @@ pub(crate) mod tests;
 mod words;
 
 use open::cancel_opening;
+#[cfg(test)]
+pub(crate) use open::opens_it;
 pub(crate) use open::{field_open, open_rewrite, open_rewrite_from_rebase, opened};
 pub(crate) use routing::{
     after_planned, files_listed, job_ended, message_returned, owns, write_answered,
 };
 pub(crate) use words::{AfterFacts, RowFacts, ViewFacts};
+#[cfg(test)]
+pub(crate) use words::{melds_into, nothing_kept_yet};
 
 pub(crate) use keys::{rewrite_key, rewrite_mouse};
 
@@ -336,8 +340,9 @@ impl RewriteEditor {
     }
 
     /// Everything the view draws (`view::rewrite_editor`).
-    pub(crate) fn view_facts(&self) -> ViewFacts<'_> {
-        words::view_facts(self)
+    /// `keys` spells the keys its words name (m8/10i).
+    pub(crate) fn view_facts(&self, keys: &graft_ui::keymap::Keymap) -> ViewFacts<'_> {
+        words::view_facts(self, keys)
     }
 }
 
