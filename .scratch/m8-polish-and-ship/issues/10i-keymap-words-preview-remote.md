@@ -1,6 +1,6 @@
 # G-keymap 2i — preview, remote and rewrite-editor words spell keys from his keymap
 
-Status: draft (planner spec-only pass 2026-10-07; split from 10b)
+Status: ready
 Build with: **Sonnet** — every site listed, every rule decided (10b W1–W6), each held by a table row. Not Fable.
 Blocked by: 10b, 10e (callers' files; test scaffold). **After 09d merges** (`view/rewrite_editor*` holds 09d's
 `rewrite_editor::right` call site).
