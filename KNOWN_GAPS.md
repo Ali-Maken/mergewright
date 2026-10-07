@@ -1169,6 +1169,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/09g-third-class | 10 ONE_CHORD_IDLE rows act on keys but the test setup gives nothing to change — neither class of R1; builder stopped, proposed a third class → planner | **unverified** | M8 |
 | M8/resolver-ctrl-z-swallowed | With suspend_on_ctrl_z, ⌃Z in the resolver is swallowed, not suspended; a suspend would hit mod.rs:441 (marks file edited) | **broken** | M8 |
 | M8/diff-home-end-moves-graph | Diff pane Home/End move the graph (found by 09g, not fixed) | **broken** | M8 |
+| M8/10h-search-captures-stale | Search `Esc`→`esc` leaves 3 hand-made pty captures stale (26-search-far, 26-search-typing, m2-18-git-git-search…); no script regenerates them | **broken** | M8 |
+| M8/10h-red-by-compile-only | 10h's new tests were seen red only as compile failures; an assertion failure seen once (dismiss). Ticks may not fail on the defect | **unverified** | M8 |
 | M8/13d-open-points | 13d NOTES: `stopped_on_conflict` (graft-ops apply.rs:761) not switched (its live_entry would hold a Pending entry Q4 forbids); relaunch banner reads `c finish  a abort` vs design note `c continue · a abort`; 80x24 capture drops 'from a previous run'; forced undo jump always prints the `None` line; 13b merge-half box left unticked though 13c/13d cover it (review to confirm). | **unverified** | M8 |
 | M8/13cd-review-minors | 9 Minors + 2 Questions (Minors 2/4/7/8 and 13d points fixed in 13e/13f; 1/3/9 and Q1 stay here) in `docs/reviews/m8-13cd-stop.md`. | **broken** (per finding) | M8 |
 | M8/stop-files-over-400 | graft pool.rs 451, graft-git exec.rs 529, graft-ops apply.rs 777, resume.rs 543 (review 13cd M3) — splits in 13e/13f. | **broken** | M8 |
