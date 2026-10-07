@@ -53,6 +53,7 @@ mod keymap_config;
 mod land_on_result;
 mod lane_cap;
 mod look_chrome;
+mod look_polish;
 mod m3_walk;
 mod m4_walk;
 mod m5_walk;

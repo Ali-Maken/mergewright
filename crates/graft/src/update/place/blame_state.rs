@@ -94,6 +94,7 @@ impl BlameState {
             find,
             heatmap: self.heatmap,
             now,
+            whitespace_ignored: self.options.ignore_whitespace,
         };
         draw(&view)
     }

@@ -51,6 +51,7 @@ impl HistoryState {
             focus: self.focus,
             now,
             theme,
+            whitespace_ignored: self.ignore_whitespace,
         };
         draw(&view)
     }

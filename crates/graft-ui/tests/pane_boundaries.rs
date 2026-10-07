@@ -490,6 +490,7 @@ fn conflicted_view() -> DetailView {
         options: graft_ui::detail::DiffOptionsView::default(),
         explain: None,
         following: false,
+        ascii: false,
     }
 }
 

@@ -157,7 +157,7 @@ fn capture_blame_find_187x50() {
     let state = app.key(&state, KeyCode::Char('n'));
     let frame = shoot(&state, 187, 50, "blame-find-187x50.txt");
     assert!(
-        frame[0].ends_with("\u{b7} find \"refresh\" 8 of 8"),
+        frame[0].contains("\u{b7} find \"refresh\" 8 of 8"),
         "the title: {}",
         frame[0]
     );

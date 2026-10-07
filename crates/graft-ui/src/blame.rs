@@ -143,6 +143,9 @@ pub struct BlameView<'a> {
     pub heatmap: bool,
     /// The clock the ages are read against, Unix seconds.
     pub now: i64,
+    /// `w`: whitespace-only changes are ignored; the title's tail says so,
+    /// muted (m8-polish-and-ship/17 item 8).
+    pub whitespace_ignored: bool,
 }
 
 /// The gap between the code's last character and the trailer's `◂`.
@@ -215,14 +218,18 @@ fn draw_into(buf: &mut Buffer, area: Rect, view: &BlameView, keys: &Keymap) {
     if area.is_empty() {
         return;
     }
+    let title = title(view, keys);
     put(
         buf,
         area.x,
         area.y,
         area.width,
-        &title(view, keys),
+        &title,
         Style::default().add_modifier(Modifier::BOLD),
     );
+    if view.whitespace_ignored {
+        put_whitespace_tail(buf, area, &title, put);
+    }
     if let Some(ignore) = view.ignore
         && area.height > 1
     {
@@ -539,6 +546,31 @@ fn heat(elapsed: i64) -> Color {
 }
 
 /// Writes `text` at (`x`, `y`), clipped to `width` cells.
+/// The title tail every diff-reading screen draws while `w` is on.
+pub(crate) const WHITESPACE_IGNORED: &str = " \u{b7} whitespace ignored";
+
+/// `· whitespace ignored`, muted (DIM), right after `title` on `area`'s
+/// first row, cut at the area's edge. `put` is the caller's cell writer.
+pub(crate) fn put_whitespace_tail(
+    buf: &mut Buffer,
+    area: Rect,
+    title: &str,
+    put: fn(&mut Buffer, u16, u16, u16, &str, Style),
+) {
+    let used = u16::try_from(unicode_width::UnicodeWidthStr::width(title)).unwrap_or(u16::MAX);
+    if used >= area.width {
+        return;
+    }
+    put(
+        buf,
+        area.x + used,
+        area.y,
+        area.width - used,
+        WHITESPACE_IGNORED,
+        Style::default().add_modifier(Modifier::DIM),
+    );
+}
+
 fn put(buf: &mut Buffer, x: u16, y: u16, width: u16, text: &str, style: Style) {
     if width == 0 {
         return;

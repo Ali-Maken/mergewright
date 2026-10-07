@@ -32,8 +32,8 @@ shape: criss-cross-merge, truecolor, focus, 80x24, row 4 selected
 modifiers: graph | subject
 ..b.......| .
 bbbbb.....| .
-d.bdbdd...| .
-d.b.bbdbb.| .
-d.bbdbdbb.| b
-d.b.ddd...| d
-bbbdd.....| .
+..b.b.....| .
+..b.bb.bb.| .
+..bb.b.bb.| b
+..b.......| d
+bbb.......| .

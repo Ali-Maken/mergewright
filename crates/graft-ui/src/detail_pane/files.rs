@@ -81,9 +81,36 @@ pub(crate) fn submodule_tails(view: &SubmoduleView) -> Vec<SubmoduleTail> {
 /// `width`. On the marks rung only, a path too long for the row is cut by
 /// [`fit`] — the cutter `draw_line` uses on every other row — so the marks
 /// are never the part cut.
-fn submodule_row_text(indent: &str, name: &str, view: &SubmoduleView, width: usize) -> String {
-    let lead = format!("{indent}\u{25a3} ");
+/// The submodule row's non-ASCII marks in their ASCII-tier spelling
+/// (m8-polish-and-ship/17 item 7): `▣` `[S]`, `→` `->`, `±` `+-`, the
+/// `·` separator `-` (the conflict list's ASCII dot).
+fn ascii_marks(text: &str) -> String {
+    text.replace('\u{25a3}', "[S]")
+        .replace('\u{2192}', "->")
+        .replace('\u{b1}', "+-")
+        .replace('\u{b7}', "-")
+}
+
+fn submodule_row_text(
+    indent: &str,
+    name: &str,
+    view: &SubmoduleView,
+    width: usize,
+    ascii: bool,
+) -> String {
+    let safe = |text: &str| {
+        if ascii {
+            ascii_marks(text)
+        } else {
+            text.to_owned()
+        }
+    };
+    let lead = safe(&format!("{indent}\u{25a3} "));
     for tail in submodule_tails(view) {
+        let tail = match tail {
+            SubmoduleTail::Words(words) => SubmoduleTail::Words(safe(&words)),
+            SubmoduleTail::Marks(marks) => SubmoduleTail::Marks(safe(&marks)),
+        };
         match tail {
             SubmoduleTail::Words(words) => {
                 let row = format!("{lead}{name}  {words}");
@@ -109,7 +136,7 @@ fn submodule_row_text(indent: &str, name: &str, view: &SubmoduleView, width: usi
     unreachable!("the ladder ends with marks")
 }
 
-fn file_row_text(row: &FileRow, width: usize) -> String {
+fn file_row_text(row: &FileRow, width: usize, ascii: bool) -> String {
     let indent = "  ".repeat(usize::from(row.depth));
     let (left, right) = match &row.kind {
         FileRowKind::Section { count, .. } => {
@@ -136,7 +163,7 @@ fn file_row_text(row: &FileRow, width: usize) -> String {
             // takes the trailing column instead of a letter and counts.
             if let FileStatusView::Submodule(view) = status {
                 (
-                    submodule_row_text(&indent, row.name.as_str(), view, width),
+                    submodule_row_text(&indent, row.name.as_str(), view, width, ascii),
                     String::new(),
                 )
             } else if let FileStatusView::Unmerged { how } = status {
@@ -187,7 +214,7 @@ pub(crate) fn render_files(view: &DetailView, area: Rect, theme: &Theme, buf: &m
         } else {
             text_style
         };
-        let text = file_row_text(row, usize::from(area.width));
+        let text = file_row_text(row, usize::from(area.width), view.ascii);
         draw_line(buf, area, offset, &text, style);
     }
 }
@@ -216,7 +243,7 @@ mod tests {
             },
             entry: Some(0),
         };
-        let text = file_row_text(&row, 40);
+        let text = file_row_text(&row, 40, false);
         assert!(text.contains("src/auth.rs"), "{text:?}");
         assert!(text.contains("both modified"), "{text:?}");
         assert!(!text.starts_with(" U "), "{text:?}");
@@ -237,7 +264,7 @@ mod tests {
             },
             entry: None,
         };
-        let text = file_row_text(&heading, 40);
+        let text = file_row_text(&heading, 40, false);
         assert!(text.starts_with("CONFLICTS (2)"), "{text:?}");
     }
 
@@ -259,7 +286,7 @@ mod tests {
     /// (m6-conflicts/70, n1).
     #[test]
     fn an_untracked_file_reads_new_not_bin() {
-        let text = file_row_text(&counts_row(FileStatusView::Untracked, None), 40);
+        let text = file_row_text(&counts_row(FileStatusView::Untracked, None), 40, false);
         assert!(text.ends_with(" new"), "{text:?}");
         assert!(!text.contains("bin"), "{text:?}");
     }
@@ -268,9 +295,9 @@ mod tests {
     /// `bin`; a row with counts still reads them (m6-conflicts/70).
     #[test]
     fn a_binary_file_still_reads_bin() {
-        let binary = file_row_text(&counts_row(FileStatusView::Modified, None), 40);
+        let binary = file_row_text(&counts_row(FileStatusView::Modified, None), 40, false);
         assert!(binary.ends_with(" bin"), "{binary:?}");
-        let counted = file_row_text(&counts_row(FileStatusView::Added, Some(1)), 40);
+        let counted = file_row_text(&counts_row(FileStatusView::Added, Some(1)), 40, false);
         assert!(counted.ends_with("+1 \u{2212}0"), "{counted:?}");
     }
 }

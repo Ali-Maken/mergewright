@@ -58,7 +58,7 @@ The blame place's picture (m7-power-tools/20c); pure draw, no state.
 - `BlameBody<'a>` (enum) — `Reading` / `Failed(&str)` / `Lines { rows, cursor, top }`.
 - `IgnoreLine` (struct) — `count`, `applied`: the `.git-blame-ignore-revs` line, drawn only when `Some`.
 - `FindTitle<'a>` (struct) — `query`, `at` (1-based), `of` (0 = no match): the title's find tail.
-- `BlameView<'a>` (struct) — `path`, `rev`, `body`, `ignore`, `find`, `heatmap`, `now`.
+- `BlameView<'a>` (struct) — `path`, `rev`, `body`, `ignore`, `find`, `heatmap`, `now`, `whitespace_ignored` (m8/17: title tail `· whitespace ignored`, DIM).
 - `draw_blame(frame, area, view, keys: &Keymap)` (fn) — title, ignore line, body: gutter (46/22/10 cells at ≥180/120–179/<120) · `│` · number · code; `▸` and a trailer `◂ Name · age · subject · sha7` (shed sha, cut subject, drop) on the cursor row only. Heatmap colours the gutter only (unverified).
 - `blame_row_at(area, view, y) -> Option<usize>` (fn) — mouse hit-test: index into rows, `None` on title/ignore line/past the end.
 
@@ -70,7 +70,7 @@ The history place's picture (m7-power-tools/21); pure draw, no state. Uses `deta
 - `HistoryRow<'a>` (struct) — `sha7`, `subject`, `who`, `when`, `added`, `removed`, `was` (a rename's `↳ was <path>` row).
 - `HistoryList<'a>` (enum) — `Rows { rows, selected, top, end }` / `Failed(&str)` (drawn across the whole width).
 - `FilePane<'a>` (enum) — `Empty` / `NoChange` / `Reading { header }` / `Failed(&str)` / `Binary { header, old, new, sizes_failed }` (`binary · <old> → <new>`, or dim `binary · couldn't read sizes: <why>`; 21c) / `Lines { header, hunks, top, range, side_by_side, word_tint }`.
-- `HistoryView<'a>` (struct) — `title`, `tracing`, `list`, `file`, `focus`, `now`, `theme`.
+- `HistoryView<'a>` (struct) — `title`, `tracing`, `list`, `file`, `focus`, `now`, `theme`, `whitespace_ignored` (m8/17, as blame's).
 - `Columns` (struct), `columns(width, focus)` (fn) — where the list and the file pane sit; shared with the app's mouse hit-test.
 - `file_rows`, `changed_rows`, `row_of_new_line`, `row_of_old_line` (fns) — the whole file's rows from its one hunk, which are changed, and the row of a line.
 - `list_index_at`, `rows_through` (fns) — list hit-test and height, counting a rename's `↳ was` row.
@@ -105,7 +105,7 @@ View-model types for the detail pane (m2-details-and-diffs/06); no widget. Every
 - `DiffView` (struct) — path, old path, status, hunks, `binary`, `truncated`, `untracked`.
 - `BodyView` (enum) — `Empty`, `Message`, `Loading`, `Failed`, `Diff(Arc<DiffView>)`.
 - `DetailFocus` (enum) — `Graph`, `Files`, `Diff`.
-- `DetailView` (struct) — everything the pane draws: header, files, body, body_top, focus, mode, options, explain, `following` (G-settle: the title row ends in a muted `reading…`).
+- `DetailView` (struct) — everything the pane draws: header, files, body, body_top, focus, mode, options, explain, `following` (G-settle: the title row ends in a muted `reading…`), `ascii` (m8/17: the submodule row's `[S]` `->` `+-` `?`). With `options.ignore_whitespace` the title row ends `· whitespace ignored` (muted).
 - `ExplainView` (struct) — the explain panel's title, severity, paragraphs, sketch (built by `explain-panel`).
 
 ## detail_pane
@@ -370,6 +370,9 @@ carries none and neither does a `NO_COLOR` terminal.
 - `Theme::token` (fn) — the colour for one chrome token. Conflict tokens use private `pinned` (fixed 256/16 entries, dark and high contrast) then `depth::nearest_256_cube` (16–231, never the grey ramp); a dropped tint is `TokenColor::Default`.
 - `Theme::tint` (fn) — a tint token's background, `None` at 16 colours, under `NO_COLOR` and in high contrast; widgets ask this, never the depth.
 - `Theme::lane` (fn) — the colour for one graph lane; shape/dash separate same-hue lanes.
+- `Theme::lane_muted` (fn) — m8/17: a lane's hue mixed 45% toward `bg` for off-thread cells at truecolor/256; the lane's own colour at 16/none (caller keeps DIM).
+- `Theme::branch_muted` (fn) — `lane_muted` by `BranchIdentity`.
+- `Theme::fades_by_hue` (fn) — truecolor or 256: off-thread lanes fade by hue, not DIM.
 - `Theme::raster_lanes` (fn) — truecolor lane hues for the pixel tier at any depth; one muted hue when colour is off.
 - `Theme::raster_muted` (fn) — the unreduced `text-muted` hue (his override if any, from the `rgb` table), for a pixel `+N` marker.
 - `Theme::branch` (fn) — the colour a branch identity draws in, independent of column.

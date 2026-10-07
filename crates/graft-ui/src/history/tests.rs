@@ -154,6 +154,7 @@ fn view<'a>(
         focus,
         now: NOW,
         theme,
+        whitespace_ignored: false,
     }
 }
 
@@ -326,6 +327,7 @@ fn an_empty_trace_shows_its_end_row_alone() {
         focus: HistoryFocus::List,
         now: NOW,
         theme: &theme,
+        whitespace_ignored: false,
     };
     let frame = draw(&v, 140, 10);
     let list: String = frame[1..4]
@@ -353,6 +355,7 @@ fn a_failed_trace_is_one_line() {
         focus: HistoryFocus::List,
         now: NOW,
         theme: &theme,
+        whitespace_ignored: false,
     };
     let frame = draw(&v, 140, 10);
     assert!(frame[1].starts_with(" couldn't trace: git could not run"));
@@ -447,6 +450,7 @@ fn history_tracing_140x40() {
         focus: HistoryFocus::List,
         now: NOW,
         theme: &theme,
+        whitespace_ignored: false,
     };
     snap!(
         "history_tracing_140x40",
@@ -524,4 +528,21 @@ fn history_spells_its_stop_key_from_his_keymap() {
     let mut tracing = view(&rows, &hunks, &theme, HistoryFocus::List);
     tracing.tracing = true;
     assert_spelled(&title(&tracing, &keys), &keys, &[&["app.back"]]);
+}
+
+/// m8-polish-and-ship/17 item 8: with `w` on the title ends
+/// `· whitespace ignored`; off, it does not.
+#[test]
+fn history_title_says_whitespace_ignored_while_w_is_on() {
+    let theme = theme();
+    let rows = mock_rows();
+    let hunks = lina_file();
+    let mut v = view(&rows, &hunks, &theme, HistoryFocus::List);
+    assert!(!draw(&v, 187, 50)[0].contains("whitespace ignored"));
+    v.whitespace_ignored = true;
+    let title = draw(&v, 187, 50)[0].clone();
+    assert!(
+        title.trim_end().ends_with("\u{b7} whitespace ignored"),
+        "{title:?}"
+    );
 }

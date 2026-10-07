@@ -177,6 +177,7 @@ fn commit_view() -> DetailView {
         },
         explain: None,
         following: false,
+        ascii: false,
     }
 }
 
@@ -1691,6 +1692,30 @@ fn a_submodule_row_keeps_every_fact_at_120_columns() {
     assert!(!row.contains("submodule"), "{row:?}");
 }
 
+/// m8-polish-and-ship/17 item 7: at the ASCII tier a submodule row draws
+/// `[S]`, `->`, `+-`, `?` — no non-ASCII byte on the row, at every rung.
+#[test]
+fn a_submodule_row_at_the_ascii_tier_is_all_ascii() {
+    for columns in [80, 120, 187] {
+        let mut view = submodule_row_view(submodule(true, true, true));
+        view.ascii = true;
+        let screen = at_width(&view, columns);
+        let area = files_area(columns);
+        let row: String = screen
+            .iter()
+            .find(|line| line.contains("[S] libs/parser"))
+            .unwrap_or_else(|| panic!("an ASCII submodule row at {columns}: {screen:#?}"))
+            .chars()
+            .skip(usize::from(area.x))
+            .take(usize::from(area.width))
+            .collect();
+        assert!(row.is_ascii(), "{columns}: {row:?}");
+        if columns == 120 {
+            assert!(row.trim_end().ends_with("-> +- ?"), "{row:?}");
+        }
+    }
+}
+
 /// m7-power-tools/30i: the diff pane's second line says what the
 /// submodule's own tree holds; moved-only has no second line and no blank.
 #[test]
@@ -1829,6 +1854,27 @@ fn a_pane_waiting_for_the_cursor_to_rest_ends_its_title_row_in_reading() {
     let screen = text(&draw(&view, layout, 60, 20));
     assert!(screen[0].starts_with("COMMIT a1b2c3d"), "{screen:#?}");
     assert!(screen[0].ends_with(" reading\u{2026}"), "{screen:#?}");
+}
+
+/// m8-polish-and-ship/17 item 8: with `w` on the title row ends
+/// `· whitespace ignored` in the muted token, right after the title.
+#[test]
+fn detail_title_says_whitespace_ignored_while_w_is_on() {
+    let mut view = commit_view();
+    let layout = DetailLayout::Right { columns: 80 };
+    assert!(!text(&draw(&view, layout, 80, 20))[0].contains("whitespace ignored"));
+    view.options.ignore_whitespace = true;
+    let terminal = draw(&view, layout, 80, 20);
+    let screen = text(&terminal);
+    let title = screen[0].trim_end();
+    assert!(title.starts_with("COMMIT a1b2c3d"), "{screen:#?}");
+    assert!(title.ends_with(" \u{b7} whitespace ignored"), "{screen:#?}");
+    let x = u16::try_from(title.chars().count() - 1).expect("fits");
+    let cell = &terminal.backend().buffer()[(x, 0)];
+    assert_eq!(
+        cell.fg,
+        crate::paint::color(theme(ColorDepth::TrueColor).token(Token::TextMuted))
+    );
 }
 
 /// ADR-0058 §3: the files list's cursor row clears 4.5:1 on `selection` in

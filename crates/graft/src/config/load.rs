@@ -242,7 +242,7 @@ const SCHEMA: &[(&str, &[&str])] = &[
             "risky-state",
         ],
     ),
-    ("ui", &["icons", "theme"]),
+    ("ui", &["icons", "overview", "theme"]),
 ];
 
 /// What serde ignored, as warnings, in the file's key order.

@@ -193,7 +193,59 @@ fn a_thread_lights_its_lanes_bold_and_dims_the_rest_of_the_row() {
         .find(|c| *c != lit);
     let other = other.expect("a merge has a second lane");
     let cell = u16::try_from(other).expect("small") * CELLS_PER_LANE;
-    assert!(buf[(cell, 0)].modifier.contains(Modifier::DIM), "{other}");
+    // At truecolor the fade is the hue itself (m8-polish-and-ship/17 item 3).
+    assert!(!buf[(cell, 0)].modifier.contains(Modifier::DIM), "{other}");
+    assert!(!buf[(cell, 0)].modifier.contains(Modifier::BOLD), "{other}");
+}
+
+/// m8-polish-and-ship/17 item 3: an off-thread lane cell draws its hue
+/// mixed toward `bg` (`Theme::lane_muted`) at truecolor and 256 colours,
+/// with no DIM (terminals ignoring SGR 2 would show no fade); at 16 colours
+/// and `NO_COLOR` it keeps its colour and DIM.
+#[test]
+fn off_thread_lanes_fade_by_hue_at_truecolor_and_by_dim_at_16() {
+    let rows = reuse_rows();
+    let merge = &rows[0];
+    let lit = merge.lane;
+    let other = merge
+        .outgoing
+        .iter()
+        .map(|(column, _)| *column)
+        .find(|c| *c != lit)
+        .expect("a merge has a second lane");
+    let cell = u16::try_from(other).expect("small") * CELLS_PER_LANE;
+    let width = GraphColumn::width_for(merge.lanes.len().max(merge.lane + 1));
+    for depth in [
+        ColorDepth::TrueColor,
+        ColorDepth::Palette256,
+        ColorDepth::Palette16,
+        ColorDepth::None,
+    ] {
+        let theme = dark(depth);
+        let plain = render(&[GraphLine::plain(merge)], &theme, width);
+        let hue = plain[(cell, 0)].fg;
+        let slot = (0..12)
+            .find(|slot| crate::paint::color(theme.lane(*slot)) == hue)
+            .expect("the cell draws a lane hue");
+        let threaded = GraphLine {
+            thread: Some([lit].into()),
+            ..GraphLine::plain(merge)
+        };
+        let buf = render(&[threaded], &theme, width);
+        let faded = &buf[(cell, 0)];
+        if theme.fades_by_hue() {
+            assert_eq!(
+                faded.fg,
+                crate::paint::color(theme.lane_muted(slot)),
+                "{depth:?}"
+            );
+            assert_ne!(faded.fg, hue, "{depth:?}: the muted hue differs");
+            assert!(!faded.modifier.contains(Modifier::DIM), "{depth:?}");
+        } else {
+            assert_eq!(faded.fg, hue, "{depth:?}");
+            assert!(faded.modifier.contains(Modifier::DIM), "{depth:?}");
+        }
+    }
 }
 
 #[test]
