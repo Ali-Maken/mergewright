@@ -61,7 +61,7 @@
   │ │ │ │ │ │ ● │ │ ⋮    [topic-09] Work on topic-09                           51m  1d4f9e1
   │ │ │ │ │ │ │ ● │ ⋮    [topic-08] Work on topic-08                           52m  d9fef8f
   │ │ │ │ │ │ │ │ ● ⋮    [topic-07] Work on topic-07                           53m  cd808d7
- ⏎ open · B blame · F history · c commit · P push · p pull · f fetch · b branch · . more
+ ⏎ open · B blame · F history · c commit · P push · p pull · f fetch · b branch · ? keys
 
 == the same terminal, pane closed: the graph has all 160 ==
 
@@ -88,4 +88,4 @@
   │ │ │ │ │ │ ● │ │ │ │ ⋮    [topic-09] Work on topic-09                                                                                        GF 51m  1d4f9e1
   │ │ │ │ │ │ │ ● │ │ │ ⋮    [topic-08] Work on topic-08                                                                                        GF 52m  d9fef8f
   │ │ │ │ │ │ │ │ ● │ │ ⋮    [topic-07] Work on topic-07                                                                                        GF 53m  cd808d7
- ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · q quit · F2 stat · F3 rend · x compare · + lane · j/k move · . more
+ ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · q quit · F2 stat · F3 rend · x compare · + lane · j/k move · ? keys

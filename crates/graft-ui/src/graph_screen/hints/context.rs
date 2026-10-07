@@ -260,6 +260,10 @@ pub enum HintContext {
         /// without `opens`, nor with `blamable` (a directory row has no file
         /// to blame); `every_context` produces neither shape.
         folds: bool,
+        /// The graph is off screen: the Detail tab of the sub-100-column tab
+        /// layout. `1 first-parent` goes — its effect is on the hidden graph
+        /// (m8/11b decision 3, ADR-0041 carve-out).
+        graph_hidden: bool,
     },
     /// **A blame place is on screen** (m7-power-tools/20; design note pass
     /// 2b B1): modal, its own bar, no doorway.

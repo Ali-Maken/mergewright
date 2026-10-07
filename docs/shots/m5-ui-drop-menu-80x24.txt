@@ -45,4 +45,4 @@
 
 
 
- ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · . more
+ ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · ? keys

@@ -299,15 +299,19 @@ fn empty_state_bar_keys_are_answered() {
                 other => panic!("{form}: a bar key this test cannot press: {other:?}"),
             };
             let mut after = start.clone();
-            let step = outside_key(&mut after, press);
+            // Through the edge, as the loop sends it: `?` opens the palette
+            // there (`act`), before `outside_key` (m8/11b).
+            let step = super::outside_edge(&mut after, graft_ui::keymap::Keymap::shipped(), press);
             assert!(
-                step != OutsideStep::Stay || view(&after, now) != view(&start, now),
+                step != OutsideStep::Stay
+                    || view(&after, now) != view(&start, now)
+                    || after.palette.is_some(),
                 "{form}: `{drawn}` is drawn on the bar but does nothing"
             );
             checked += 1;
         }
     }
-    assert_eq!(checked, 4 + 3 + 3 + 3 + 2, "every form's keys were pressed");
+    assert_eq!(checked, 5 + 4 + 4 + 3 + 2, "every form's keys were pressed");
 }
 
 /// `[keys.empty_state] open = "O"` outside a repository

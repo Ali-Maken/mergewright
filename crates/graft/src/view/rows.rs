@@ -887,6 +887,8 @@ fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
             blamable: crate::update::place::blamable(state),
             // The files list's `space` on a directory row (m7-power-tools/20h).
             folds: crate::update::detail::space_folds(&state.detail),
+            // The Detail tab: the graph is off screen (m8/11b decision 3).
+            graph_hidden: crate::update::detail::tab_hint_rows(state) > 0,
         }
     }
 }

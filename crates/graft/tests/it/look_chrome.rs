@@ -267,7 +267,7 @@ fn capture_the_chrome_at_every_designed_size() {
             "m8-polish-and-ship/06 at {columns}x{rows}: what right looks like — the first row \
              is ` ◆ <repo>  ~/<path> · <branch>` with the walk state right-aligned; list rows \
              start two cells in and stop one short of the edge; the bar joins its hints with \
-             ` · ` and ends `. more`; from 30 rows a blank row sits under the header and a `─` \
+             ` · ` and ends `? keys`; from 30 rows a blank row sits under the header and a `─` \
              rule over the bar. Colour unverified (rule 5).\n\n"
         );
         check_shot(

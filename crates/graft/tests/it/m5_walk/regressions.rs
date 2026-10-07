@@ -2,7 +2,7 @@
 //! walked end to end: `Esc` really stops an undo and puts back what already
 //! ran; two fast `⌃R`s leave one history walk and the app still gets its
 //! rows; a typed password reaches nothing and draws eight glyphs whatever
-//! its length; and at 80 columns the footer teaches three keys and `. more`.
+//! its length; and at 80 columns the footer teaches three keys and `? keys`.
 //!
 //! None of these judges a ghost, so none takes a [`Step::Claim`] — every
 //! one asserts refs, files, the index tree and the journal for itself.
@@ -355,10 +355,10 @@ fn the_password_got_through(
 /// is found by its doorway rather than by position (ADR-0039, m5/28: `.
 /// more` leads the bare keys rather than ending the row).
 fn bar(state: &AppState) -> Result<String, String> {
-    bar_by(state, ". more")
+    bar_by(state, "? keys")
 }
 
-/// The footer found by some other doorway than `. more`: the context whose
+/// The footer found by some other doorway than `? keys`: the context whose
 /// whole list fits at 80 has no overflow marker to find it by.
 fn bar_by(state: &AppState, marker: &str) -> Result<String, String> {
     crate::captures::frame(state, 80, 24)
@@ -368,11 +368,11 @@ fn bar_by(state: &AppState, marker: &str) -> Result<String, String> {
         .ok_or_else(|| format!("no row of the frame carries `{marker}`"))
 }
 
-/// The bar opens with `<three hints>  . more`, and the hints are the first
+/// The bar opens with `<three hints>  ? keys`, and the hints are the first
 /// three of the context's own list (the design note's table).
 ///
-/// Everything after `. more` is the bare keys — the letters of the verbs
-/// that did not fit, drawn without their labels (ADR-0039, m5/28: `. more`
+/// Everything after `? keys` is the bare keys — the letters of the verbs
+/// that did not fit, drawn without their labels (ADR-0039, m5/28: `? keys`
 /// **leads** them rather than ending the row). Three teaching hints and the
 /// doorway is the claim; what follows the doorway is a different one, made
 /// by `hint_bar`'s own tests.
@@ -393,13 +393,13 @@ fn bar_is(state: &AppState, three: &str) -> Result<(), String> {
     })?;
     // Words only since m8-polish-and-ship/06 (ADR-0058 §4): the rest of the
     // row goes on more whole hints, and the doorway is last.
-    check(drawn.trim_end().ends_with(" · . more"), || {
+    check(drawn.trim_end().ends_with(" · ? keys"), || {
         format!("the bar {drawn:?} does not end with its doorway")
     })
 }
 
 /// The focused banner's bar: all eight of `hints::banner_list`'s hints and
-/// no `. more`, because they fit. `⏎ resolve` joined them in
+/// no `? keys`, because they fit. `⏎ resolve` joined them in
 /// m6-conflicts/04 and leads the list (design note, Proposed change 2a);
 /// `q quit` joined last in m8-13b.
 fn the_banners_whole_list(state: &AppState) -> Result<(), String> {
@@ -411,19 +411,19 @@ fn the_banners_whole_list(state: &AppState) -> Result<(), String> {
     check(drawn.trim_end() == wanted, || {
         format!("the banner's bar is {drawn:?}, not {wanted:?}")
     })?;
-    check(!drawn.contains(". more"), || {
+    check(!drawn.contains("? keys"), || {
         "the banner's eight hints fit at 80: nothing is left over".to_owned()
     })
 }
 
 /// At 80 columns a context whose list does not fit teaches **three** keys
-/// and then `. more` — never all of them, and never none (ADR-0037 §4);
-/// a context whose list *does* fit teaches all of it and draws no `. more`
+/// and then `? keys` — never all of them, and never none (ADR-0037 §4);
+/// a context whose list *does* fit teaches all of it and draws no `? keys`
 /// at all. The strings are the design note's own per-context lists.
 ///
 /// The focused banner is the second kind: its seven hints still fit inside
 /// 80, so ADR-0039's ladder never has to shorten them. The design note's own
-/// 80-column mockup still shows `c continue  s skip  a abort  . more` there
+/// 80-column mockup still shows `c continue  s skip  a abort  ? keys` there
 /// — stale, from before the ladder replaced the width tiers (the note says
 /// as much two lines above it). Filed in the ticket.
 fn hints_at_80_show_three_and_more() -> Scenario {
@@ -484,7 +484,7 @@ fn hints_at_80_show_three_and_more() -> Scenario {
             // design note's parenthesis is today's bar now.
             // Six hints and the doorway measure 76 of the 80 columns (74
             // before m6-conflicts/52 said `c continue` for `c commit`), so
-            // this is the *whole* list, not a three-and-`. more` prefix:
+            // this is the *whole* list, not a three-and-`? keys` prefix:
             // before m6-conflicts/04 three of the six were `planned()` and
             // the bar was short enough to be the other kind. Since
             // m8-polish-and-ship/06 the hints are joined with ` · ` and the
@@ -493,7 +493,7 @@ fn hints_at_80_show_three_and_more() -> Scenario {
             Step::See("the changes pane, on an unmerged file", |state| {
                 let drawn = bar(state)?;
                 let wanted =
-                    " ⏎ resolve · M mergetool · e edit · space resolved · c cont · ⇥ diff · . more";
+                    " ⏎ resolve · M mergetool · e edit · space resolved · c cont · ⇥ diff · ? keys";
                 check(drawn.trim_end() == wanted, || {
                     format!("the bar is {drawn:?}, not {wanted:?}")
                 })

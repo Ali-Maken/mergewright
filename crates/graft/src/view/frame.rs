@@ -58,7 +58,7 @@ use self::overlays::{
 };
 
 pub(super) use self::bars::banner_lines;
-pub(crate) use self::layout::{graph_columns, screen_area};
+pub(crate) use self::layout::{PaletteClick, graph_columns, palette_click, screen_area};
 pub(super) use self::layout::{primary_pane_area, tabbed};
 
 // `update::tests` measures the detail split against the frame's own.

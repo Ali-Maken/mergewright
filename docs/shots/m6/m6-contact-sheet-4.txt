@@ -392,7 +392,7 @@ what right looks like: (ticket 71) The `.` menu on a commit row leads with Check
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · c commit · p pull · f fetch · u undo · . more
+ m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · c commit · p pull · f fetch · u undo · ? keys
 
 == 2. `.` on main's tip (checked out, no other branch) ==
 
@@ -435,7 +435,7 @@ what right looks like: (ticket 71) The `.` menu on a commit row leads with Check
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · . more
+ ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · ? keys
 
 ================================================================================
 docs/shots/m6/fix-undo-drift-way-back-120x40.txt
@@ -1260,7 +1260,7 @@ what right looks like: Re-taken 2026-10-02 (m8-13b: `q quit` joins the banner's 
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- rebase still in progr… · ⏎ resolve · M mergetool · e edit · space resolved · c continue · ⇥ diff · </> resize · . more
+ ⏎ resolve · M mergetool · e edit · space resolved · c continue · ⇥ diff · </> resize · . actions · ? keys
 UNCOMMITTED
 diff vs HEAD 274c7d4
 CONFLICTS (13)                ▎
@@ -1465,7 +1465,7 @@ CONFLICTS (13)                ▎
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . actions · ? keys
 UNCOMMITTED · 1 untracked
 diff vs HEAD a82960b
 UNTRACKED (1)                 ▎
@@ -1512,7 +1512,7 @@ CONFLICTS (13)
 
 
 
- ⏎ resolve · M mergetool · e edit · space resolved · c cont · ⇥ diff · . more
+ ⏎ resolve · M mergetool · e edit · space resolved · c cont · ⇥ diff · ? keys
 --- frame 2: `a`: the bottom row names `⇥ ⇥ banner, then c continue  a abort`
 REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 Graph  [Detail]
@@ -1637,7 +1637,7 @@ UNTRACKED (1)
 
 
 
- space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · ? keys
 
 ================================================================================
 docs/shots/m6/stash-clash-landing-120x40.txt
@@ -2053,7 +2053,7 @@ what right looks like: (ticket 82) `S p y` clashed in notes.md, then `esc` shut 
 
 
 
- stash@{0} clashed · 1 conflicted · ⏎ changes · c commit · S stash · . more
+ stash@{0} clashed · 1 conflicted · ⏎ changes · c commit · S stash · ? keys
 
 ================================================================================
 docs/shots/m6/m6-20-stash-clash-landing-120x40.txt

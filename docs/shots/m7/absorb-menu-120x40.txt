@@ -37,4 +37,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · J journal · / search · j/k move · . more
+ ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · J journal · / search · j/k move · ? keys

@@ -1,6 +1,5 @@
 ---
 source: crates/graft-ui/tests/selection.rs
-assertion_line: 90
 expression: text
 ---
 shape: criss-cross-merge, truecolor, focus, 80x24, row 4 selected
@@ -28,7 +27,7 @@ shape: criss-cross-merge, truecolor, focus, 80x24, row 4 selected
 
 
 
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · . more
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · ? keys
 
 modifiers: graph | subject
 ..b.......| .

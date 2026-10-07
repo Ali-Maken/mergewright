@@ -35,4 +35,4 @@ m8-polish-and-ship/08: what right looks like — started in `~/code`, which is n
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- o open… · i init · ⏎ open the selected · q quit
+ o open… · i init · ⏎ open the selected · q quit · ? keys

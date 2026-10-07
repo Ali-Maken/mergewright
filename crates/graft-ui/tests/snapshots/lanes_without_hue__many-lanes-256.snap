@@ -27,7 +27,7 @@ shape: many-lanes, 256, 80x24, cursor on row 2
   │ │ │ │ │ │ │ │ │ ●      lane 5: start                           4y   b42258f
   │ │ │ │ │ │ │ │ │ │ ●    lane 4: finish                          4y   53c77f2
   │ │ │ │ │ │ │ │ │ │ ●    lane 4: start                           4y   8b63689
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · . more
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · ? keys
 
 graph colour per cell:
 cjj...................????????

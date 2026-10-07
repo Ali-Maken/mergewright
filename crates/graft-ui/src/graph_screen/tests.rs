@@ -1119,7 +1119,7 @@ fn the_footer_hint_list_widens_with_the_frame() {
 /// note's table order — the note's own `m merge` and `r rebase` are not
 /// among them until a group binds them, so the first three are the first
 /// three the branch row actually answers (m5-03 review, Critical 2;
-/// `hint-bar-redesign`) — and fills the rest of the row, `. more` leading
+/// `hint-bar-redesign`) — and fills the rest of the row, `? keys` leading
 /// the bare keys that follow (variant B, m5/28).
 ///
 /// Re-measured for the shrink ladder (m5/24, ADR-0039's third amendment):
@@ -1132,7 +1132,7 @@ fn the_footer_hint_list_widens_with_the_frame() {
 /// is that the leading verbs survive at 80 columns.
 ///
 /// Words only since m8-polish-and-ship/06 (ADR-0058 §4): a row context's
-/// bar draws no bare key; what does not fit as words is behind `. more`,
+/// bar draws no bare key; what does not fit as words is behind `? keys`,
 /// which ends the bar, and hints are joined by ` · `.
 #[test]
 fn footer_eighty_branch_row() {
@@ -1146,7 +1146,7 @@ fn footer_eighty_branch_row() {
     let footer = screen.last().expect("a footer row").trim_end().to_owned();
     assert_eq!(
         footer,
-        " m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · . more"
+        " m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · ? keys"
     );
 }
 
@@ -1187,7 +1187,7 @@ fn the_changes_pane_hints_replace_the_row_context() {
         .to_owned();
     assert_eq!(
         unmerged_footer,
-        " ⏎ resolve · M mergetool · e edit · space resolved · c commit · ⇥ graph · . more"
+        " ⏎ resolve · M mergetool · e edit · space resolved · c commit · ⇥ graph · . actions · ? keys"
     );
     assert!(
         !unmerged_footer.contains("space stage"),
@@ -2050,7 +2050,7 @@ fn capture_the_ladder_for_docs_shots() {
          # three most relevant hints keep their whole verbs; every hint after them\n\
          # is drawn at its bare key until the whole context is on the bar, and only\n\
          # then do the tail's keys start gaining verbs, left to right. A hint that\n\
-         # will not fit even at its bare key is dropped, and `. more` — the doorway\n\
+         # will not fit even at its bare key is dropped, and `? keys` — the doorway\n\
          # — is never dropped and **sits at the head of the bare keys**, which is\n\
          # the end of the row when there are none.\n\
          #\n\
@@ -2058,14 +2058,14 @@ fn capture_the_ladder_for_docs_shots() {
          # naked letters after three labelled hints read as *leftover*, and the\n\
          # user chose variant B, which is what is built here. Every labelled item\n\
          # is now contiguous and the last of them announces the menu, so everything\n\
-         # after `. more` reads as keys the menu will spell out — which is what\n\
+         # after `? keys` reads as keys the menu will spell out — which is what\n\
          # they are. That resolves `space` and `j/k` in the tail too: the region is\n\
          # labelled even though its members are not. It cost no cells and no glyph.\n\
          # The A/B comparison that used to sit at the bottom of this file is gone\n\
          # with the question.\n\
          #\n\
          # The bottom of the ladder, which these widths are all far above:\n\
-         # floor → `. more` → `.` → nothing. The bar never draws a fragment of\n\
+         # floor → `? keys` → `?` → nothing. The bar never draws a fragment of\n\
          # itself at any width. The narrowest bar anything reachable actually has\n\
          # is 48 cells and the tightest context's floor fits in 38, so nothing\n\
          # below is near it (ADR-0039).\n\
@@ -2114,9 +2114,9 @@ fn capture_the_ladder_for_docs_shots() {
          #\n\
          # It cannot be shown at 80, 120 or 160 cells: the journal browser's whole\n\
          # list is `⏎ revert  esc close`, two hints, and that fits whole (plus\n\
-         # `. more`) from about 28 cells of bar — every width in the three-width\n\
+         # `? keys`) from about 28 cells of bar — every width in the three-width\n\
          # matrix above is past that, so the journal row there always reads\n\
-         # `⏎ revert  esc close  . more` in full, never `rev`. Below is the\n\
+         # `⏎ revert  esc close  ? keys` in full, never `rev`. Below is the\n\
          # narrowest room `rev` actually appears in, computed the same way as\n\
          # every row above: `hints_for`, nothing hand-set.\n\
          \n",

@@ -97,7 +97,7 @@ fn rows_are_as_the_mockup_at_both_sizes() {
         assert!(lines[rows - 2].chars().all(|c| c == '─'), "{text}");
         assert_eq!(
             lines[rows - 1],
-            " o open… · i init · ⏎ open the selected · q quit",
+            " o open… · i init · ⏎ open the selected · q quit · ? keys",
             "{text}"
         );
         assert!(
@@ -112,7 +112,7 @@ fn an_empty_list_draws_no_recent_block_and_no_enter_hint() {
     let (_, lines) = draw(&no_recents(), 80, 24);
     let text = lines.join("\n");
     assert!(!text.contains("RECENT"), "{text}");
-    assert_eq!(lines[23], " o open… · i init · q quit", "{text}");
+    assert_eq!(lines[23], " o open… · i init · q quit · ? keys", "{text}");
 }
 
 #[test]
@@ -126,7 +126,7 @@ fn a_missing_folder_says_so_and_offers_no_init() {
     let text = lines.join("\n");
     assert_eq!(lines[1], " ~/code/newthing · no such folder", "{text}");
     assert_eq!(lines[3], "  o  Open…", "{text}");
-    assert_eq!(lines[23], " o open… · q quit", "{text}");
+    assert_eq!(lines[23], " o open… · q quit · ? keys", "{text}");
     assert!(!text.contains("init") && !text.contains("Init"), "{text}");
 }
 
@@ -233,8 +233,8 @@ fn bar_keys_follow_the_form() {
             .map(|(key, _)| key)
             .collect()
     };
-    assert_eq!(keys(&with_recents()), ["o", "i", "⏎", "q"]);
-    assert_eq!(keys(&no_recents()), ["o", "i", "q"]);
+    assert_eq!(keys(&with_recents()), ["o", "i", "⏎", "q", "?"]);
+    assert_eq!(keys(&no_recents()), ["o", "i", "q", "?"]);
 }
 
 #[test]

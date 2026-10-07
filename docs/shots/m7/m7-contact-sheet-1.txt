@@ -1365,7 +1365,7 @@ what right looks like: Ticket 09b: `k .` on the uncommitted row with three hunks
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · J journal · / search · j/k move · . more
+ ⏎ changes · c commit · S stash · p pull · P push · f fetch · u undo · J journal · / search · j/k move · ? keys
 
 ================================================================================
 docs/shots/m7/absorb-preview-120x40.txt
@@ -1549,7 +1549,7 @@ what right looks like: Ticket 13b: a real submodule at `libs/parser`, pointer mo
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
- space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . actions · ? keys
 
 ================================================================================
 docs/shots/m7/submodule-row-120x40.txt
@@ -1579,7 +1579,7 @@ what right looks like: At 120 the `▣ libs/parser` row ends `→ ±` right-alig
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . actions · ? keys
 UNCOMMITTED · 1 unstaged
 diff vs HEAD f48cdbe
 UNSTAGED (1)                  libs/parser · submodule · ca07ea9 → efdd295
@@ -1625,7 +1625,7 @@ what right looks like: Diff pane lists the commits the move pulled in, held to g
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . more
+ space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . actions · ? keys
 UNCOMMITTED · 1 unstaged
 diff vs HEAD 7c7e188
 UNSTAGED (1)                  libs/parser · submodule · 5bdba05 → efdd295
@@ -1821,7 +1821,7 @@ select a file
 
 
 
- m merge · r rebase · ⏎ open · space fold · b branch · t tag · P push · . more
+ m merge · r rebase · ⏎ open · space fold · b branch · t tag · P push · ? keys
 
 ================================================================================
 docs/shots/m7/stash-in-history-120x40.txt
@@ -1867,7 +1867,7 @@ what right looks like: No `index on` and no `untracked files on` rows; exactly o
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · . more
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
 
 ================================================================================
 docs/shots/m7/stash-in-history-80x24.txt
@@ -1897,7 +1897,7 @@ what right looks like: At 80: no `index on` and no `untracked files on` rows; ex
 
 
 
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · . more
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · ? keys
 
 ================================================================================
 docs/shots/m7/restart-after-done-box-120x40.txt
@@ -2279,7 +2279,7 @@ what right looks like: After `B ⏎`: graph on Lina's commit `2f48ca3`, the diff
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- esc back to blame · B blame · F history · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · . more
+ esc back to blame · B blame · F history · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · ? keys
 COMMIT 2f48ca3 · Lina <lina@example.invalid> · 2019-06-07 00:00 +0000 · 7mo · parents 47593a5 · diff vs first parent · …
 Retry refresh once on 401
 ▾ src/                        impl Session {
@@ -2371,7 +2371,7 @@ what right looks like: Commit diff, cursor on New line 2: exactly one row carrie
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- B blame · F history · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · q quit · . more
+ B blame · F history · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · q quit · ? keys
 COMMIT 6944d27 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 4m · parents 9d5dd9b · diff vs firs…
 edit notes
 M notes.txt             +2 −1
@@ -2418,7 +2418,7 @@ what right looks like: Two frames: files cursor on a file row, bar has no `space
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · B blame · F history · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · . more
+ ⏎ open · B blame · F history · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · ? keys
 COMMIT 9d4f6c9 · Graft Fixture <fixture@example.invalid> · 2020-09-13 12:27 +0000 · 4mo · parents a82960b · diff vs fir…
 add src
 M notes.txt             +1 −1 ▎
@@ -2460,7 +2460,7 @@ M notes.txt             +1 −1 ▎
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · space fold · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · q quit · . more
+ ⏎ open · space fold · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · q quit · ? keys
 COMMIT 9d4f6c9 · Graft Fixture <fixture@example.invalid> · 2020-09-13 12:27 +0000 · 4mo · parents a82960b · diff vs fir…
 add src
 M notes.txt             +1 −1 select a file
@@ -2507,7 +2507,7 @@ Right: (a) `B ⏎` then `Tab` to the graph — the pane still open on Lina's com
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- esc back to blame · ⏎ open · o take · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · . more
+ esc back to blame · ⏎ open · o take · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · ? keys
 COMMIT 2f48ca3 · Lina <lina@example.invalid> · 2019-06-07 00:00 +0000 · 7mo · parents 47593a5 · diff vs first parent · …
 Retry refresh once on 401
 ▾ src/                        impl Session {
@@ -2595,7 +2595,7 @@ what right looks like: Changes pane after `⏎` from blame in a partly-staged fi
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- esc back to blame · space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . more
+ esc back to blame · space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . actions · ? keys
 UNCOMMITTED · 1 staged 1 unstaged
 diff vs HEAD d45d045
 STAGED (1)                    l4

@@ -21,4 +21,4 @@
 ▸   ◆    [HEAD] a3  HEAD · stopped here                            2d   7326de5
     ●    a2                                                        2d   15335d9
     ●    a1                                                        2d   0395451
- ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · . more
+ ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · ? keys

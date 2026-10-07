@@ -264,7 +264,7 @@ pub fn picker_box_in(state: &AppState, pane: (u16, u16, u16, u16)) -> (u16, u16,
 }
 
 /// Two clicks on one row this close together are a double-click (blame's).
-const DOUBLE_CLICK_MS: i64 = 500;
+pub(super) const DOUBLE_CLICK_MS: i64 = 500;
 
 /// The mouse while the picker is shown: a click on a row selects it, a
 /// second on the same row within [`DOUBLE_CLICK_MS`] switches to it — `⏎`'s

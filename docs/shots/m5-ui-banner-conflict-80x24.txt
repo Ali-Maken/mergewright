@@ -34,7 +34,7 @@
 #    file's conflict, which shows a screen rather than a cost.
 #  - The footer teaches the banner's own keys — `c continue`,
 #    `a abort`, `M mergetool`, `e edit`, `⇥ graph` — and nothing else.
-#    No `<> resize` and no `. more`: the banner is modal and swallows
+#    No `<> resize` and no `? keys`: the banner is modal and swallows
 #    both.
 #  - The banner is drawn focused (colour, so unverified here), and the
 #    footer says nothing false about the merge: no `an operation was

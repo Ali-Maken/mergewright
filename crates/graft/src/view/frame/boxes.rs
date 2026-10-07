@@ -39,14 +39,8 @@ pub(super) fn draw_palette(
     area: Rect,
 ) -> Option<Rect> {
     let palette = state.palette.as_ref()?;
-    let over = match state.screen {
-        Screen::Graph if state.resolver.is_none() && state.finish.is_none() => {
-            primary_pane_area(state, area).unwrap_or(area)
-        }
-        Screen::Graph | Screen::Status => area,
-    };
     let view = crate::update::palette::view(state, palette);
-    let rect = graft_ui::palette::palette_area(over, area);
+    let rect = super::layout::palette_rect(state, area);
     frame.render_widget(
         graft_ui::palette::Palette {
             view: &view,

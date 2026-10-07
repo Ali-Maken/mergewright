@@ -53,6 +53,8 @@ const BOUND_ACTIONS: &[ActionId] = &[
     // a drag's cancel, the finish summary's and the places' back.
     id("app.back"),
     id("app.menu"),       // `is_context_menu_key` → `context_menu::open_selected`
+    id("app.help"),       // `palette::open_key`: the bar's `? keys` doorway (m8/11b)
+    id("app.palette"),    // `palette::open_key`: the doorway when `?` is unbound
     id("app.find"),       // `search::search_key`; the blame place's find prompt
     id("app.next_match"), // `place::keys::step_find`
     id("app.prev_match"), // the same

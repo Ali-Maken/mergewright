@@ -1436,7 +1436,7 @@ fn the_hint_bar_fills_the_row_it_has_at_a_hundred_and_sixty_columns() {
     let bar = drawn
         .iter()
         .rev()
-        .find(|line| line.contains(" more"))
+        .find(|line| line.contains("? keys"))
         .unwrap_or_else(|| panic!("no hint bar at 160x48:\n{}", drawn.join("\n")))
         .clone();
     let hints = bar
@@ -1547,7 +1547,7 @@ fn the_doorway_survives_everywhere_the_banner_does_not_own_the_keyboard() {
     for (columns, rows) in [(80u16, 24u16), (120, 40), (160, 48)] {
         let drawn = frame(&state, columns, rows);
         assert!(
-            !drawn.iter().any(|line| line.contains(". more")),
+            !drawn.iter().any(|line| line.contains("? keys")),
             "the modal banner must not offer a key it swallows, at {columns}x{rows}:\n{}",
             drawn.join("\n")
         );
@@ -1563,7 +1563,7 @@ fn the_doorway_survives_everywhere_the_banner_does_not_own_the_keyboard() {
     for (columns, rows) in [(120u16, 40u16), (160, 48)] {
         let drawn = frame(&left, columns, rows);
         assert!(
-            drawn.iter().any(|line| line.contains(". more")),
+            drawn.iter().any(|line| line.contains("? keys")),
             "the doorway is back at {columns}x{rows}:\n{}",
             drawn.join("\n")
         );
@@ -1677,7 +1677,7 @@ fn capture_header(
              {cost}\
              #  - The footer teaches the banner's own keys \u{2014} `c continue`,\n\
              #    `a abort`, `M mergetool`, `e edit`, `\u{21e5} graph` \u{2014} and nothing else.\n\
-             #    No `<> resize` and no `. more`: the banner is modal and swallows\n\
+             #    No `<> resize` and no `? keys`: the banner is modal and swallows\n\
              #    both.\n\
              #  - The banner is drawn focused (colour, so unverified here), and the\n\
              #    footer says nothing false about the merge: no `an operation was\n\

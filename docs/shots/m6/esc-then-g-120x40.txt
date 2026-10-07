@@ -39,4 +39,4 @@
   ●    Commit 002                                                                                       GF 2d   ace211d
 ▸ ◇    Commit 001                                                                                       GF 2d   a9a0c8e
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · o take · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · . more
+ ⏎ open · o take · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · ? keys

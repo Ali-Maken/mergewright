@@ -1,5 +1,6 @@
 ---
 source: crates/graft-ui/tests/graph_screen.rs
+assertion_line: 41
 expression: text
 ---
  ◆ api  ~/code/api · main                                            10 commits
@@ -25,4 +26,4 @@ expression: text
 
 
 
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · . more
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · ? keys

@@ -107,12 +107,12 @@ fn no_context_hides_every_key() {
 /// (b) At 80 columns the row contexts lead with their first three *bound*
 /// hints, in the note's table order — the planned entries (`b branch`,
 /// `t tag`) are not among them — and then take as many more as the row has
-/// room for, the `. more` doorway leading the bare keys. `m merge` and
+/// room for, the `? keys` doorway leading the bare keys. `m merge` and
 /// `r rebase` joined the bound
 /// ones when ticket 25 bound them (see `no_planned_hint_is_ever_drawn`), so
 /// a branch row now leads with the two verbs the design note put first.
 ///
-/// It used to be exactly three plus `. more` whatever else fitted: a tier
+/// It used to be exactly three plus `? keys` whatever else fitted: a tier
 /// keyed to width, not a fit. ADR-0037 §4's three is a floor (ADR-0039,
 /// 2026-09-21 amendment).
 #[test]
@@ -238,11 +238,11 @@ fn hundred_sixty_shows_the_context_then_the_screen() {
     assert!(wide.contains("x compare"), "{wide:?}");
 }
 
-/// (e) A marked row leads with `. explain`, then the row's own list, never
-/// shows `. more` (`.` is already on screen) — and, counting `. explain`
-/// as one of the width tier's own, never overflows the row.
+/// (e) A marked row leads with `. explain`, then the row's own list, draws
+/// neither `. actions` (`.` is already on screen) nor `? keys` (m8/11b:
+/// it would push `u undo` and `/ search` off; ruling pending) — and never overflows the row.
 #[test]
-fn marked_leads_with_explain_and_omits_more() {
+fn marked_leads_with_explain_and_draws_no_doorway() {
     let marked = HintContext::Marked(Box::new(HintContext::PlainRow {
         verbs: RowVerbs::NONE,
     }));
@@ -252,12 +252,8 @@ fn marked_leads_with_explain_and_omits_more() {
             (hints[0].key(), hints[0].verb),
             (EXPLAIN.key(), EXPLAIN.verb)
         );
-        assert!(
-            !hints
-                .iter()
-                .any(|h| (h.key(), h.verb) == (MORE.key(), MORE.verb)),
-            "marked row must not also show `. more`: {hints:?}"
-        );
+        assert!(!hints.contains(&DOORWAY), "{hints:?}");
+        assert!(!hints.contains(&ACTIONS), "{hints:?}");
         let plain = drawable(
             &HintContext::PlainRow {
                 verbs: RowVerbs::NONE,
@@ -413,7 +409,9 @@ fn resize_is_drawn_only_when_nothing_else_was_dropped() {
             };
             let hints = hints_for(&context, divider, columns);
             drawn_somewhere += 1;
-            for wanted in &list {
+            // `. actions` ranks after `<> resize` (m8/11b decision 1: last
+            // before the doorway), so it alone may be dropped first.
+            for wanted in list.iter().filter(|hint| **hint != ACTIONS) {
                 assert!(
                     hints
                         .iter()
@@ -457,6 +455,7 @@ fn the_hints_resize_once_pushed_off_are_drawn_again() {
             opens,
             blamable,
             folds,
+            graph_hidden: false,
         };
         let bar = print(&focused, 120);
         assert!(bar.contains("/ search"), "{focused:?} at 120: {bar:?}");
@@ -486,7 +485,7 @@ fn a_pane_hints_only_its_own_keys() {
     ));
     assert_eq!(
         pane,
-        " space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · . more"
+        " space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · . actions · ? keys"
     );
     let unmerged = hints_text(&hints_for(
         &HintContext::ChangesPane {
@@ -499,12 +498,12 @@ fn a_pane_hints_only_its_own_keys() {
     ));
     assert_eq!(
         unmerged,
-        " ⏎ resolve · M mergetool · e edit · space resolved · c commit · ⇥ graph · . more"
+        " ⏎ resolve · M mergetool · e edit · space resolved · c commit · ⇥ graph · . actions · ? keys"
     );
 }
 
 /// The banner draws its **own** keys — the whole list, at 80 columns, with
-/// no `. more` and no `<> resize`: it is modal, so those two would name
+/// no `? keys` and no `<> resize`: it is modal, so those two would name
 /// keys it swallows (m5/16). `M`/`e` are there only while something is
 /// conflicted, and so is `⏎ resolve` (m6-conflicts/04); with nothing
 /// unmerged all three refuse in words, and a hint that can only say no is a
@@ -724,7 +723,8 @@ fn every_short_rung_is_the_users_own_word() {
         "fetch",
         "focus",
         "undo",
-        "more",
+        "keys",
+        "actions",
         "quit",
         "move",
         "fold",
@@ -964,7 +964,7 @@ fn a_hint_is_dropped_only_when_its_words_will_not_fit() {
     for context in row_contexts() {
         assert_eq!(words_for(&context), Words::Only, "{context:?}");
         for divider in [Divider::Shown, Divider::Hidden] {
-            let whole = drawable(&context, divider);
+            let whole = whole_list(&context, divider);
             for columns in 40..=240u16 {
                 let hints = hints_for(&context, divider, columns);
                 let body = without_trailer(&hints);
@@ -978,7 +978,7 @@ fn a_hint_is_dropped_only_when_its_words_will_not_fit() {
                 let mut with_one_more = body.clone();
                 let next = whole[body.len()];
                 with_one_more.push(words(next.at(next.floor_rung())));
-                with_one_more.push(words(MORE));
+                with_one_more.push(words(DOORWAY));
                 assert!(
                     hints_text(&with_one_more).width() > usize::from(columns),
                     "{context:?} at {columns} columns dropped `{}` with room for its words: {:?}",
@@ -1005,7 +1005,7 @@ fn no_hint_loses_ground_as_the_room_for_it_grows() {
             let mut narrower: Vec<Hint> = Vec::new();
             for columns in 0..=240u16 {
                 let drawn = hints_for(&context, divider, columns);
-                // Without `. more`: it moves along the row as hints are
+                // Without `? keys`: it moves along the row as hints are
                 // added, and comparing by index would read that move as a
                 // reorder.
                 let wider = without_trailer(&drawn);
@@ -1041,7 +1041,7 @@ fn whole_list(context: &HintContext, divider: Divider) -> Vec<Hint> {
     super::whole_bar(context, divider).0
 }
 
-/// The drawn hints without the `. more` doorway — the one part of the bar
+/// The drawn hints without the `? keys` doorway — the one part of the bar
 /// the ladder does not touch.
 ///
 /// Taken out wherever it sits rather than off the end: since m5/28 the
@@ -1050,7 +1050,7 @@ fn whole_list(context: &HintContext, divider: Divider) -> Vec<Hint> {
 fn without_trailer(hints: &[Hint]) -> Vec<Hint> {
     hints
         .iter()
-        .filter(|hint| (hint.key(), hint.verb) != (MORE.key(), MORE.verb))
+        .filter(|hint| (hint.key(), hint.verb) != (DOORWAY.key(), DOORWAY.verb))
         .copied()
         .collect()
 }
@@ -1060,12 +1060,12 @@ fn without_trailer(hints: &[Hint]) -> Vec<Hint> {
 ///
 /// Stated as one invariant over the drawn row, because it is one rule: no
 /// bare key ahead of the doorway, nothing but bare keys behind it. A row
-/// with a tail of bare keys puts `. more` in front of that tail; a row with
+/// with a tail of bare keys puts `? keys` in front of that tail; a row with
 /// none leaves it last, where it always was.
 fn assert_doorway_leads_the_bare_keys(hints: &[Hint], context: &str) {
     let at = hints
         .iter()
-        .position(|hint| (hint.key(), hint.verb) == (MORE.key(), MORE.verb))
+        .position(|hint| (hint.key(), hint.verb) == (DOORWAY.key(), DOORWAY.verb))
         .unwrap_or_else(|| panic!("{context}: the doorway is never dropped: {hints:?}"));
     assert!(
         hints[..at].iter().all(|hint| hint.rung != Rung::Key),
@@ -1093,14 +1093,12 @@ fn is_the_bottom_of_the_ladder(hints: &[Hint], doorway: Option<Hint>) -> bool {
     }
 }
 
-/// The doorway `context` has, if any: `. more` for everything but a marked
-/// row (whose `.` is already on screen as `. explain`), the focused banner,
+/// The doorway `context` has, if any: `? keys` for everything but the
+/// focused banner,
 /// a drag in the air and the two overlays — modal in the way that matters,
 /// so `.` leads nowhere and is not drawn (ADR-0039's first amendment).
 ///
-/// Not `whole_bar`'s trailer: a marked row's `. explain` leads the *list*
-/// rather than trailing it, and this is the hint the tests look for on the
-/// drawn row either way. Written out arm by arm rather than with a `_` —
+/// Written out arm by arm rather than with a `_` —
 /// the wildcard is how it came to claim a doorway for `Dragging` that the
 /// bar never draws (m5/31).
 fn doorway_of(context: &HintContext) -> Option<Hint> {
@@ -1124,7 +1122,7 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         | HintContext::RewriteMessage => None,
         HintContext::BackToBlame(inner) | HintContext::BackToHistory(inner) => doorway_of(inner),
         HintContext::Marked(_) => Some(EXPLAIN),
-        // A filter keeps the doorway of the context it filters: `. more`
+        // A filter keeps the doorway of the context it filters: `? keys`
         // still leads to everything, the dropped `⏎` included. So does the
         // way back: it leads the row's list, and changes nothing else.
         HintContext::PaneFocused { row, .. } | HintContext::OperationLive { row, .. } => {
@@ -1134,7 +1132,7 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
         | HintContext::Rewritable(_)
-        | HintContext::ChangesPane { .. } => Some(MORE),
+        | HintContext::ChangesPane { .. } => Some(DOORWAY),
     }
 }
 
@@ -1144,8 +1142,8 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
 ///
 /// Since ADR-0058 §4 a row context draws no bare keys, so its doorway is
 /// last too: at 80 cells the graph row's bar is words joined by ` · `,
-/// ending in `. more`. The changes pane and the journal browser draw every
-/// hint whole at the same width, and `. more` stays last, where it always
+/// ending in `? keys`. The changes pane and the journal browser draw every
+/// hint whole at the same width, and `? keys` stays last, where it always
 /// was.
 #[test]
 fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
@@ -1160,7 +1158,7 @@ fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
     let text = hints_text(&with_a_tail);
     assert_eq!(
         text,
-        " ⏎ open \u{b7} c commit \u{b7} P push \u{b7} p pull \u{b7} f fetch \u{b7} b branch \u{b7} t tag \u{b7} . more",
+        " ⏎ open \u{b7} c commit \u{b7} P push \u{b7} p pull \u{b7} f fetch \u{b7} b branch \u{b7} t tag \u{b7} ? keys",
         "a row context draws words only, and its doorway is last"
     );
 
@@ -1185,23 +1183,23 @@ fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
         // it stays last, where it always was.
         if doorway_of(&context).is_some() {
             assert!(
-                text.ends_with(". more"),
+                text.ends_with("? keys"),
                 "{context:?} has no bare keys, so the doorway stays last: {text:?}"
             );
         } else {
             assert!(
-                !text.contains(". more"),
+                !text.contains("? keys"),
                 "{context:?} is modal: `.` leads nowhere, so it is not drawn: {text:?}"
             );
         }
     }
 
-    // And the invariant behind both, over every context that has a `. more`
+    // And the invariant behind both, over every context that has a `? keys`
     // to place, at every width. A marked row's doorway is `. explain`, which
     // the caller puts at the head of the list itself and the ladder never
     // moves; the focused banner has none at all.
     for context in all_contexts() {
-        if doorway_of(&context) != Some(MORE) {
+        if doorway_of(&context) != Some(DOORWAY) {
             continue;
         }
         for columns in 1..=240u16 {
@@ -1287,7 +1285,7 @@ fn the_floor_fits_at_the_narrowest_bar() {
 }
 
 /// ADR-0058 §4: outside modal contexts no hint is drawn at its bare key, at
-/// any width from 40 to 200, and `. more` is always last where it is drawn.
+/// any width from 40 to 200, and `? keys` is always last where it is drawn.
 #[test]
 fn a_words_only_bar_draws_no_bare_key_and_ends_with_its_doorway() {
     for context in all_contexts() {
@@ -1302,7 +1300,7 @@ fn a_words_only_bar_draws_no_bare_key_and_ends_with_its_doorway() {
                     hints.iter().all(|hint| hint.rung != Rung::Key),
                     "{context:?} at {columns}: a bare key: {text:?}"
                 );
-                if let Some(at) = hints.iter().position(|hint| *hint == MORE) {
+                if let Some(at) = hints.iter().position(|hint| *hint == DOORWAY) {
                     assert_eq!(at, hints.len() - 1, "{context:?} at {columns}: {text:?}");
                 }
                 assert!(
@@ -1434,7 +1432,7 @@ fn resolver_hint_ladder() {
         " o yours  t theirs  b both  ⌃O/⌃T all  O/T file  e  n  N  ⏎  j/k  M  esc close"
     );
     assert!(text_80.width() <= 80, "{text_80:?}");
-    // Nothing is ever cut to `. more` — the resolver is modal (§2.1), so
+    // Nothing is ever cut to `? keys` — the resolver is modal (§2.1), so
     // there is no doorway to lead a dropped tail to.
     assert!(!text_80.contains("more"), "{text_80:?}");
 }
@@ -2365,6 +2363,7 @@ mod pane_space {
             opens,
             blamable,
             folds,
+            graph_hidden: false,
         }
     }
 
@@ -2513,4 +2512,87 @@ fn a_fixed_key_is_drawn_only_where_keys_go_on_as_typed() {
         }
     }
     assert!(fixed_drawn > 0, "no list draws a fixed key");
+}
+
+// --- m8/11b: the doorway is `? keys`, `. actions` an ordinary candidate ---
+
+/// Decision 1: every bar `every_context()` yields, at 80, 120 and 200
+/// columns, ends with `? keys` where it has a doorway, and never draws
+/// `. more`.
+#[test]
+fn every_bar_ends_with_the_keys_doorway_and_never_more() {
+    let keys = Keymap::shipped();
+    for context in every_context() {
+        for divider in [Divider::Hidden, Divider::Shown] {
+            for columns in [80, 120, 200] {
+                let hints = hints_for(&context, divider, columns);
+                let text = hints_text(&hints);
+                assert!(
+                    !text.contains(". more"),
+                    "{context:?} at {columns}: {text:?}"
+                );
+                if spelled_bar(&context, divider, keys).1.is_some() {
+                    assert!(
+                        text.ends_with("? keys"),
+                        "{context:?} at {columns}: {text:?}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// Decision 1: `. actions` is on the graph's bar at 200 columns, last
+/// before the doorway, and is the first hint the width drops.
+#[test]
+fn actions_is_drawn_wide_and_dropped_first() {
+    let row = HintContext::BranchRow {
+        current: true,
+        verbs: RowVerbs::NONE,
+    };
+    // The narrowest width that draws `. actions`: it sits last before the
+    // doorway, and one cell less drops it and nothing else. (On this row
+    // every other candidate fits first, so that width is 267 — m8/11b
+    // NOTES.)
+    let first = (40..=400u16)
+        .find(|columns| hints_for(&row, Divider::Hidden, *columns).contains(&ACTIONS))
+        .expect("drawn somewhere");
+    let with = hints_for(&row, Divider::Hidden, first);
+    let n = with.len();
+    assert_eq!(with[n - 2], ACTIONS, "{:?}", hints_text(&with));
+    assert_eq!(with[n - 1], DOORWAY, "{:?}", hints_text(&with));
+    let without = hints_for(&row, Divider::Hidden, first - 1);
+    let named = |hints: &[Hint]| -> Vec<(&str, &str)> {
+        hints.iter().map(|hint| (hint.key(), hint.verb)).collect()
+    };
+    let mut expected = named(&with);
+    expected.retain(|pair| *pair != (".", "actions"));
+    assert_eq!(named(&without), expected);
+}
+
+/// Decision 1: `[keys.app] help = "none"` → the doorway is `⌃P keys`; with
+/// `palette` unbound too there is no doorway, and nothing in its place.
+#[test]
+fn the_doorway_falls_back_to_the_palette_key_then_to_nothing() {
+    let row = HintContext::PlainRow {
+        verbs: RowVerbs::NONE,
+    };
+    let unbind = |ids: &[&str]| {
+        Keymap::with_overrides(
+            &ids.iter()
+                .map(|id| ((*id).to_owned(), vec!["none".to_owned()]))
+                .collect::<Vec<_>>(),
+            crate::keymap::KeySwitches::default(),
+        )
+        .0
+    };
+    let no_help = unbind(&["app.help"]);
+    let bar = super::hints_for(&row, Divider::Hidden, 120, &no_help);
+    let text = super::hints_text(&bar, &no_help);
+    assert!(text.ends_with("⌃P keys"), "{text:?}");
+    let neither = unbind(&["app.help", "app.palette"]);
+    let bar = super::hints_for(&row, Divider::Hidden, 120, &neither);
+    let text = super::hints_text(&bar, &neither);
+    assert!(!text.contains("keys"), "{text:?}");
+    assert!(!text.contains('—'), "{text:?}");
 }
