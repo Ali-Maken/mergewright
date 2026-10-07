@@ -139,18 +139,24 @@ pub(super) fn draw_right(
     let muted = foreground(theme, Token::TextMuted);
     let warning = foreground(theme, Token::Warning);
     let mut lines: Vec<Spans> = Vec::new();
+    // While the `r` field is open every key is typed (R4, m8/09c), so the
+    // headers name the shipped keys, as every text field does.
+    let keys = if view.field.is_some() {
+        Keymap::shipped()
+    } else {
+        keys
+    };
+    // `AFTER y`: the plan is written by `confirm.yes`, which Rewrite borrows
+    // (m8/09h). Unbound, `AFTER` alone.
+    let after = |rest: &str| match keys.spell_keys(&[ActionId("confirm.yes")]) {
+        Some(yes) => format!("AFTER {yes} \u{b7} {rest}"),
+        None => format!("AFTER \u{b7} {rest}"),
+    };
     let header = match &view.right {
-        RightSide::After(AfterView::Checking) => "AFTER y \u{b7} checking\u{2026}".to_owned(),
-        RightSide::After(_) => "AFTER y \u{b7} not written yet".to_owned(),
+        RightSide::After(AfterView::Checking) => after("checking\u{2026}"),
+        RightSide::After(_) => after("not written yet"),
         RightSide::Changes { short, .. } => {
-            // `⏎ back to AFTER` is `rewrite.toggle_changes`, his key. While
-            // the `r` field is open every key is typed (R4, m8/09c), so the
-            // header names the shipped key, as every text field does.
-            let keys = if view.field.is_some() {
-                Keymap::shipped()
-            } else {
-                keys
-            };
+            // `⏎ back to AFTER` is `rewrite.toggle_changes`, his key.
             keys.after(
                 &format!("CHANGES of {short}"),
                 ActionId("rewrite.toggle_changes"),
