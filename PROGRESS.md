@@ -6,7 +6,7 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 
 **Current step:** **M8.** Research (6244e3e0), note pass 1 (6bc9b7b3), prototype (aefc0b76) done. User approved 2026-10-02 (field-notes, last line): look-parity group after scroll (`.scratch/m8-polish-and-ship/real-vs-mockup.md`), note's Proposed changes 1–5, name Tributary/`trib`, no notarising. **Next: dispatch `planner-fable` pass 2** — ADRs + DESIGN.md/PROMPT.md edits for the approved changes, pick dark A/B by contrast, then all group specs (note §Expected groups + look-parity group); `?`-does-nothing on graph goes to a scout question first. Still with the user: scene 1 scroll-feel run on his laptop (`python3 prototypes/m8-polish-and-ship/polish.py 1` in Ghostty, Zed, VS Code); one timing run after the scroll group. Logs: `docs/log/m8.md`.
 
-**Running now:** builder 09h (keymap review last); builder 12b (palette commits+files); scout 12c. Gates on main after 12. Next: 12c, 17b, 17c, 10i, 11c, launch-cursor ticket, inline-seven ticket, outside_repo flake, stale search captures, 15, 18.
+**Running now:** builder 12b (palette commits+files); builder 12c (palette loop budget). Gates on main after 09h. Next: 3 load-only flakes → debugger, 09h captures, 17b, 17c, 10i, 11c, launch-cursor ticket, inline-seven ticket, stale search captures, until-y literal, 15, 18.
 
 **Batched for the user at the M6 stop:** the 11 items in `.scratch/m6-conflicts/user-batch.md` (supersedes the earlier (1)–(8) list; checked against the build 2026-09-24).
 
