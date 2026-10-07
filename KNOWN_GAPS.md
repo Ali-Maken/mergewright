@@ -1178,10 +1178,11 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/17b-colour-unverified | 17b's muted fold `+N` and whitespace tail: colour unverified (rule 5); captures docs/shots/m8/polish-fold-120x36.txt, polish-blame-whitespace-counted-120x36.txt to judge by eye | **unverified** | M8 |
 | M8/m8-contact-sheet-missing | No m8 contact sheet/captions file exists yet (ADR-0037); 17b's box to re-assemble it left open → acceptance ticket | **unverified** | M8 |
 | M8/http-remote-port-flaky | graft-fixtures `http_remote_frees_its_port_on_drop` failed once in 17b's loaded run, passed alone | **broken** | M8 |
+| M8/10i-diverged-both-unbound | If merge and rebase are both unbound, the diverged mark drops at once — question (10i) | **unverified** | M8 |
+| M8/10i-literals-not-found | `c commit  S stash`, `p pull first` not found in 10i's files — still to locate | **unverified** | M8 |
 | M8/switch-refs-for-each-ref | Branch switch on 50k refs: git for-each-ref ≈930 ms of 988 ms (12c measured) | **unverified** | M8 |
 | M8/12b-empty-history-before-status | Opening a file's history before status loads shows an empty history (staged-Added check needs status; spec's open.rs:128 fires only with no HEAD) | **broken** | M8 |
 | M8/12b-tests-never-red | 12b: files ranking, tracked_failure_words and 3 pty walks written after code, never seen red | **unverified** | M8 |
-| M8/rewrite-editor-until-y | Literal `until y` at graft/src/view/rewrite_editor.rs:73–74 (found by 09h, not fixed) | **broken** | M8 |
 | M8/09h-captures | 09h captures box open (waited on 12; 12 now merged) — re-shoot pending | **unverified** | M8 |
 | M8/13d-open-points | 13d NOTES: `stopped_on_conflict` (graft-ops apply.rs:761) not switched (its live_entry would hold a Pending entry Q4 forbids); relaunch banner reads `c finish  a abort` vs design note `c continue · a abort`; 80x24 capture drops 'from a previous run'; forced undo jump always prints the `None` line; 13b merge-half box left unticked though 13c/13d cover it (review to confirm). | **unverified** | M8 |
 | M8/13cd-review-minors | 9 Minors + 2 Questions (Minors 2/4/7/8 and 13d points fixed in 13e/13f; 1/3/9 and Q1 stay here) in `docs/reviews/m8-13cd-stop.md`. | **broken** (per finding) | M8 |
