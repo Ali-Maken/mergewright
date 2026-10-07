@@ -10,14 +10,47 @@
 //! them) followed by a space and a lowercase word. The label set is every
 //! live chord of the shipped table.
 //!
-//! Test code is not scanned: `tests.rs`, `tests/` folders, the sweep
-//! helpers, and everything after a file's `#[cfg(test)]`.
+//! Test code is not scanned: `tests.rs`, `*_tests.rs`, `tests/` folders,
+//! the sweep helpers, and everything after a file's `#[cfg(test)]`.
+//!
+//! Scanned: graft-ui, graft and graft-ops (ticket m8/10b). This is a
+//! ratchet: a new literal key anywhere in the three crates fails at once;
+//! a fixed literal still listed fails as stale, so each area ticket
+//! (10e–10i) deletes its own rows from its `no_literal_keys/known_*.rs`
+//! file. `prose.rs` holds the permanent not-a-key rows of graft and
+//! graft-ops; graft-ui's stay in `ALLOWED` below.
 
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use graft_ui::keymap::{Keymap, defaults};
+
+#[path = "no_literal_keys/known_ops.rs"]
+mod known_ops;
+#[path = "no_literal_keys/known_preview.rs"]
+mod known_preview;
+#[path = "no_literal_keys/known_resolver.rs"]
+mod known_resolver;
+#[path = "no_literal_keys/known_stops.rs"]
+mod known_stops;
+#[path = "no_literal_keys/known_undo.rs"]
+mod known_undo;
+#[path = "no_literal_keys/prose.rs"]
+mod prose;
+
+/// Every allow-list row: graft-ui's `ALLOWED`, then graft's and graft-ops'
+/// prose and the `KNOWN` rows each area ticket removes.
+fn allowed() -> impl Iterator<Item = &'static (&'static str, &'static str, &'static str)> {
+    ALLOWED
+        .iter()
+        .chain(prose::ROWS)
+        .chain(known_ops::ROWS)
+        .chain(known_stops::ROWS)
+        .chain(known_resolver::ROWS)
+        .chain(known_undo::ROWS)
+        .chain(known_preview::ROWS)
+}
 
 /// Literals that read like a hint but are not one, each with why. A file
 /// and the literal's exact text.
@@ -68,29 +101,30 @@ const ALLOWED: &[(&str, &str, &str)] = &[
 #[test]
 fn no_user_facing_literal_spells_a_default_key() {
     let labels = labels();
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let mut hits = Vec::new();
-    for file in rust_files(&root) {
-        let source =
-            fs::read_to_string(&file).unwrap_or_else(|why| panic!("{}: {why}", file.display()));
-        let name = file
-            .strip_prefix(&root)
-            .unwrap_or(&file)
-            .to_string_lossy()
-            .replace('\\', "/");
-        for literal in literals(&shipped_part(&source)) {
-            if let Some(label) = hint_at(&literal, &labels)
-                && !ALLOWED
-                    .iter()
-                    .any(|(path, text, _)| *path == name && *text == literal)
-            {
-                hits.push(format!("{name}: {literal:?} (`{label}`)"));
+    for (prefix, root) in roots() {
+        for file in rust_files(&root) {
+            let source =
+                fs::read_to_string(&file).unwrap_or_else(|why| panic!("{}: {why}", file.display()));
+            let name = format!(
+                "{prefix}{}",
+                file.strip_prefix(&root)
+                    .unwrap_or(&file)
+                    .to_string_lossy()
+                    .replace('\\', "/")
+            );
+            for literal in literals(&shipped_part(&source)) {
+                if let Some(label) = hint_at(&literal, &labels)
+                    && !allowed().any(|(path, text, _)| *path == name && *text == literal)
+                {
+                    hits.push(format!("{name}: {literal:?} (`{label}`)"));
+                }
             }
         }
     }
     let mut stale = Vec::new();
-    for (path, text, _) in ALLOWED {
-        let source = fs::read_to_string(root.join(path))
+    for (path, text, _) in allowed() {
+        let source = fs::read_to_string(source_path(path))
             .unwrap_or_else(|why| panic!("allow-list file {path}: {why}"));
         if !literals(&shipped_part(&source)).any(|literal| literal == *text) {
             stale.push(format!("{path}: {text:?}"));
@@ -107,6 +141,30 @@ fn no_user_facing_literal_spells_a_default_key() {
         "allow-list entries no longer in the source:\n  {}",
         stale.join("\n  ")
     );
+}
+
+/// The trees scanned, each with the prefix its allow-list paths carry:
+/// graft-ui's own (none), then graft's and graft-ops' status, refusal and
+/// error words (ticket m8/10b). Read by path — no crate dependency added.
+fn roots() -> Vec<(&'static str, PathBuf)> {
+    let ui = Path::new(env!("CARGO_MANIFEST_DIR"));
+    // graft-ui sits in `crates/`, beside graft and graft-ops.
+    let crates = ui.join("..");
+    vec![
+        ("", ui.join("src")),
+        ("graft:", crates.join("graft").join("src")),
+        ("graft-ops:", crates.join("graft-ops").join("src")),
+    ]
+}
+
+/// The file an allow-list path names.
+fn source_path(path: &str) -> PathBuf {
+    let roots = roots();
+    roots
+        .iter()
+        .skip(1)
+        .find_map(|(prefix, root)| path.strip_prefix(prefix).map(|rest| root.join(rest)))
+        .unwrap_or_else(|| roots[0].1.join(path))
 }
 
 /// Every live chord label of the shipped table: `y`, `esc`, `⏎`, `⌃R`, …
@@ -136,6 +194,7 @@ fn rust_files(dir: &Path) -> Vec<PathBuf> {
             }
         } else if path.extension().is_some_and(|ext| ext == "rs")
             && name != "tests.rs"
+            && !name.ends_with("_tests.rs")
             && name != "spell_sweep.rs"
             && name != "sweep.rs"
             // `#[cfg(test)] mod test_support;` in lib.rs.
