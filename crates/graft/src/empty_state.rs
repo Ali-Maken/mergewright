@@ -15,11 +15,20 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use graft_core::event::{KeyCode, KeyPress};
 use graft_term::{sanitize_line, sanitize_path};
-use graft_ui::empty_state::{EmptyPrompt, EmptyStateView, RecentRow, recent_age};
+use graft_ui::empty_state::{EmptyPrompt, EmptyState, EmptyStateView, RecentRow, recent_age};
 use graft_ui::keymap::{ContextId, KeyChord, Keymap, Translated};
+use graft_ui::paint::foreground;
+use graft_ui::palette::{Palette, WIDE_FROM, palette_area};
 use graft_ui::text_input::TextField;
+use graft_ui::theme::{Theme, ThemeKind, Token};
+use ratatui::buffer::Buffer;
+use ratatui::layout::Rect;
+use ratatui::widgets::Widget;
 
 use crate::recent::Recent;
+use crate::update::palette::{
+    self as palette, AppAction, Edited, Group, PaletteState, PaletteTarget, Source,
+};
 use crate::view::rows::home_relative;
 
 /// The prompt open over the list.
@@ -47,6 +56,11 @@ pub(crate) struct OutsideState {
     pub prompt: Option<Prompt>,
     /// Read in the bar row until the next key.
     pub problem: Option<String>,
+    /// `?` / `⌃P` / `:` (m8/11): the palette, over the list. A text field
+    /// while it is up — every key but `Ctrl+C` is its own.
+    pub palette: Option<PaletteState>,
+    /// His config's problems, for the palette's `YOUR CONFIG` rows.
+    pub config_problems: Vec<String>,
 }
 
 /// What a key asks the loop to do.
@@ -60,6 +74,8 @@ pub(crate) enum OutsideStep {
     Init(PathBuf),
     /// Leave Graft.
     Quit,
+    /// A palette theme row: draw in this theme for the rest of the run.
+    Retheme(ThemeKind),
 }
 
 /// The empty state's edge (ADR-0055): a key, through his `[keys]` remaps,
@@ -77,6 +93,9 @@ pub(crate) fn outside_edge(
     keymap: &Keymap,
     key: KeyPress,
 ) -> OutsideStep {
+    if state.palette.is_some() {
+        return palette_key(state, keymap, key);
+    }
     if matches!(state.prompt, Some(Prompt::Open(_))) {
         return outside_key(state, key);
     }
@@ -89,13 +108,138 @@ pub(crate) fn outside_edge(
         ContextId::EmptyState
     };
     match keymap.translate(context, chord) {
-        Translated::Pass => outside_key(state, key),
-        Translated::Default(default) => outside_key(state, default.to_press()),
+        Translated::Pass => act(state, keymap, key),
+        Translated::Default(default) => act(state, keymap, default.to_press()),
         Translated::Unbound => {
             state.problem = None;
             OutsideStep::Stay
         }
     }
+}
+
+/// A key past the edge (a default chord): `?`, `⌃P` or `:` open the
+/// palette on the list — not over the init box, which swallows them
+/// (§2.3c) — and every other key is [`outside_key`]'s.
+fn act(state: &mut OutsideState, keymap: &Keymap, key: KeyPress) -> OutsideStep {
+    if let Some(how) = palette::opener(key)
+        && state.prompt.is_none()
+    {
+        state.problem = None;
+        let source = source_of(&state.config_problems, keymap);
+        state.palette = Some(palette::opened(&source, ContextId::EmptyState, how));
+        return OutsideStep::Stay;
+    }
+    outside_key(state, key)
+}
+
+/// What the palette's rows are built from on the start screen: no
+/// operation can be live outside a repository.
+fn source_of<'a>(problems: &'a [String], keymap: &'a Keymap) -> Source<'a> {
+    Source {
+        keymap,
+        problems,
+        operation_live: false,
+    }
+}
+
+/// The palette's rows as drawn now. Empty when it is not up.
+pub(crate) fn palette_rows(state: &OutsideState, keymap: &Keymap) -> Vec<Group> {
+    state.palette.as_ref().map_or_else(Vec::new, |palette| {
+        palette::listing(&source_of(&state.config_problems, keymap), palette)
+    })
+}
+
+/// A key while the palette is up (decision 8): `⏎` closes it and runs the
+/// row as its key would — the default chord, through [`act`] — and a
+/// theme row asks the loop for that theme.
+fn palette_key(state: &mut OutsideState, keymap: &Keymap, key: KeyPress) -> OutsideStep {
+    let Some(mut open) = state.palette.take() else {
+        return outside_key(state, key);
+    };
+    let source = source_of(&state.config_problems, keymap);
+    let shown = palette::listing(&source, &open);
+    match palette::edit(&mut open, key, &shown, |p| palette::listing(&source, p)) {
+        Edited::Stay => {
+            state.palette = Some(open);
+            OutsideStep::Stay
+        }
+        Edited::Close | Edited::Run(PaletteTarget::Note) => OutsideStep::Stay,
+        // `Ctrl+C`: quits, as everywhere (§2.1).
+        Edited::Pass => {
+            state.palette = Some(open);
+            outside_key(state, key)
+        }
+        Edited::Run(PaletteTarget::Action(id)) => palette::default_chord(id)
+            .map_or(OutsideStep::Stay, |chord| {
+                act(state, keymap, chord.to_press())
+            }),
+        Edited::Run(PaletteTarget::App(AppAction::Theme(kind))) => OutsideStep::Retheme(kind),
+    }
+}
+
+/// A paste: into the palette's query or the open prompt, else nowhere.
+pub(crate) fn outside_paste(state: &mut OutsideState, keymap: &Keymap, text: &str) {
+    if let Some(open) = &mut state.palette {
+        open.query.insert_str(text);
+        let groups = palette::listing(&source_of(&state.config_problems, keymap), open);
+        open.cursor = groups
+            .iter()
+            .flat_map(|(_, rows)| rows)
+            .position(|(_, target)| *target != PaletteTarget::Note)
+            .unwrap_or(0);
+    } else if let Some(Prompt::Open(field)) = &mut state.prompt {
+        field.insert_str(text);
+    }
+}
+
+/// The start screen as drawn: the list, and the palette over it with its
+/// keys on the bar row while it is up.
+pub(crate) fn render(
+    state: &OutsideState,
+    keymap: &Keymap,
+    theme: &Theme,
+    ascii: bool,
+    now: SystemTime,
+    area: Rect,
+    buf: &mut Buffer,
+) {
+    let drawn = view(state, now);
+    EmptyState {
+        view: &drawn,
+        theme,
+        ascii,
+        keys: keymap,
+    }
+    .render(area, buf);
+    let Some(open) = &state.palette else {
+        return;
+    };
+    let groups = palette_rows(state, keymap);
+    let shown = palette::view_of(groups, open, area.width >= WIDE_FROM);
+    // Over the whole screen bar the bar row, which carries its keys.
+    let over = Rect {
+        height: area.height.saturating_sub(1),
+        ..area
+    };
+    Palette {
+        view: &shown,
+        theme,
+    }
+    .render(palette_area(over, area), buf);
+    if area.height == 0 {
+        return;
+    }
+    let bar = area.y + area.height - 1;
+    for x in area.x..area.x + area.width {
+        buf[(x, bar)].reset();
+    }
+    buf.set_stringn(
+        area.x + 1,
+        bar,
+        palette::bar(),
+        usize::from(area.width.saturating_sub(2)),
+        foreground(theme, Token::TextMuted),
+    );
 }
 
 /// Apply one key. A `problem` is cleared by any key, which is then acted on
@@ -282,6 +426,8 @@ pub(crate) fn view(state: &OutsideState, now: SystemTime) -> EmptyStateView {
     }
 }
 
+#[cfg(test)]
+mod palette_tests;
 #[cfg(test)]
 mod sweep_tests;
 #[cfg(test)]

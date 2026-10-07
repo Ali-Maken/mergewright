@@ -265,6 +265,12 @@ fn transmitted(stream: &str) -> Vec<u32> {
 /// Strip-cache flushes over a pixel-tier run through `wakes`, and every
 /// frame it drew.
 fn pixel_flushes(wakes: Vec<Wake>) -> (u64, Vec<String>) {
+    let (flushes, frames, _) = pixel_flushes_and_session(wakes);
+    (flushes, frames)
+}
+
+/// [`pixel_flushes`], and the session as the run left it.
+fn pixel_flushes_and_session(wakes: Vec<Wake>) -> (u64, Vec<String>, Session) {
     let (mut terminal, recorder) = terminal(PIXEL_COLUMNS, PIXEL_ROWS);
     let (mut session, state) = at_pixel_tier();
     let mut graphics = Graphics::new(NoReplies, &session.capabilities);
@@ -283,7 +289,7 @@ fn pixel_flushes(wakes: Vec<Wake>) -> (u64, Vec<String>) {
     .expect("writing to memory cannot fail");
     let end = String::from_utf8_lossy(END_SYNCHRONIZED_UPDATE).into_owned();
     let frames = recorder.written().split(&end).map(str::to_owned).collect();
-    (graphics.strip_stats().flushes, frames)
+    (graphics.strip_stats().flushes, frames, session)
 }
 
 /// A pixel-tier run on `protocol` through `wakes`: every frame drawn,
@@ -382,7 +388,17 @@ fn a_new_cell_size_or_theme_flushes_the_strips() {
     let (session, _) = at_pixel_tier();
     let mut cell = session.capabilities.cell_size;
     cell.width += 1;
+    // A light background read: the theme turns light. (An `Assumed` hint
+    // reads as dark whatever it says, so it would change no strip.)
     let theme = ThemeHint {
+        theme: Theme::Light,
+        source: ThemeSource::Background(graft_core::capabilities::Rgb {
+            red: 0xf8,
+            green: 0xf8,
+            blue: 0xf8,
+        }),
+    };
+    let assumed = ThemeHint {
         theme: Theme::Light,
         source: ThemeSource::Assumed,
     };
@@ -394,6 +410,44 @@ fn a_new_cell_size_or_theme_flushes_the_strips() {
         quit_key(),
     ]);
     assert_eq!(flushes, 2);
+    // A new hint that leaves the theme dark (the fixture's): a frame, but
+    // the strips stay (m8/11).
+    let (flushes, _) = pixel_flushes(vec![
+        Wake::Terminal(TerminalChange::Theme(assumed)),
+        quit_key(),
+    ]);
+    assert_eq!(flushes, 0);
+}
+
+/// m8/11 decision 6, through the loop: `⌃P` `theme light` `⏎` rebuilds
+/// the theme and flushes the strips once (`turn::rethemed`); a dark
+/// background re-detected after it changes nothing — no second flush, and
+/// the session still draws light.
+#[test]
+fn a_theme_chosen_in_the_palette_flushes_once_and_outlasts_a_dark_hint() {
+    use graft_core::capabilities::{Theme, ThemeHint, ThemeSource};
+    use graft_ui::theme::ThemeKind;
+    let (start, _) = at_pixel_tier();
+    assert_eq!(start.rendering.theme, ThemeKind::Dark, "starts dark");
+    let mut wakes = vec![key(KeyPress::control(KeyCode::Char('p')))];
+    wakes.extend(
+        "theme light"
+            .chars()
+            .map(|c| key(KeyPress::plain(KeyCode::Char(c)))),
+    );
+    wakes.push(key(KeyPress::plain(KeyCode::Enter)));
+    wakes.push(Wake::Terminal(TerminalChange::Theme(ThemeHint {
+        theme: Theme::Dark,
+        source: ThemeSource::Background(graft_core::capabilities::Rgb {
+            red: 0,
+            green: 0,
+            blue: 0,
+        }),
+    })));
+    wakes.push(quit_key());
+    let (flushes, _, session) = pixel_flushes_and_session(wakes);
+    assert_eq!(flushes, 1, "the chosen theme flushed the strips once");
+    assert_eq!(session.rendering.theme, ThemeKind::Light);
 }
 
 #[test]

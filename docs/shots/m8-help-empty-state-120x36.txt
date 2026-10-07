@@ -1,0 +1,36 @@
+ graft · no repository here
+ ~/code     ╭─ keys here ─────────────────────────────────────────────────────────────────────── esc close ╮
+            │ ›                                                                                            │
+  o  Open…  │ HERE                                                                                         │
+            │▸o     Open…                                                                empty_state.open  │
+  RECENT    │ i     Init                                                                 empty_state.init  │
+  ▸ payments│ c     Clone…                                                              empty_state.clone  │
+    web-dash│ t     Practice tour                                                        empty_state.tour  │
+            │ n     No — don't init                                                    empty_state.cancel  │
+            │ EVERYWHERE                                                                                   │
+            │ ⌃P    Command palette                                                           app.palette  │
+            │ ?     Help for this place                                                          app.help  │
+            │ ⇥     Next pane                                                               app.next_pane  │
+            │ ⇧⇥    Previous pane                                                           app.prev_pane  │
+            │ esc   Back out / close / cancel                                                    app.back  │
+            │ u     Undo                                                                         app.undo  │
+            │ U     Redo                                                                         app.redo  │
+            │ ⌃R    Refresh                                                                   app.refresh  │
+            │ q     Quit                                                                         app.quit  │
+            │ ⌃C    Quit at once                                                             app.quit_now  │
+            │ j     Move down                                                                    app.down  │
+            │ k     Move up                                                                        app.up  │
+            │ g     Jump to the top                                                               app.top  │
+            │ G     Jump to the bottom                                                         app.bottom  │
+            │ PgDn  Page down                                                               app.page_down  │
+            │ PgUp  Page up                                                                   app.page_up  │
+            │ /     Find in the focused list                                                     app.find  │
+            │ N     Previous match                                                         app.prev_match  │
+            │ ⏎     Open / drill in                                                              app.open  │
+            │ .     Context actions                                                              app.menu  │
+            │ —     Next match                                                             app.next_match  │
+            ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ↑↓ move  ⏎ run  esc close
