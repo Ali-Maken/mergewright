@@ -108,17 +108,16 @@ pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Ex
         config_problems: mut problems,
         ..
     } = Arrival::first(config, term.capabilities.no_color);
-    // The first place is where Graft was started; every later one was
-    // opened, and an open lands on `HEAD` (note Lands row "Open / init
-    // succeeds").
-    let mut opened = false;
+    // Every place lands on `HEAD`: the first, where Graft was started, as
+    // much as every later one opened from it (note Lands row "Open / init
+    // succeeds"; m8-polish-and-ship/12d — a launch is an arrival too).
     loop {
         match place {
             Place::Repo { repos, path } => {
                 let status = remember_opened(config_dir.as_deref(), &repos, &path);
                 let arrival = Arrival {
                     status,
-                    on_head: opened,
+                    on_head: true,
                     keymap: keymap.clone(),
                     config_problems: std::mem::take(&mut problems),
                 };
@@ -130,7 +129,6 @@ pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Ex
                             pool: ran.pool,
                         }
                         .stop_for_the_next_place()?;
-                        opened = true;
                         place = match locate(&next, config) {
                             Ok(next) => next,
                             Err(reason) => {
@@ -153,7 +151,6 @@ pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Ex
                 };
                 match run_outside(&mut term, start, config, shown, config_dir.as_deref()) {
                     Ok(Outcome::Opened(next)) => {
-                        opened = true;
                         place = next;
                     }
                     Ok(Outcome::Exit(exit)) => return term.close(Ran::without_jobs(Ok(exit))),

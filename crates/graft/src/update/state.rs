@@ -1080,6 +1080,12 @@ pub struct HeadLanding {
     /// (m7-power-tools/24). `Changes` never waits here: it lands on the
     /// changes pane at once (`banner::finished_lands_on`).
     pub(crate) on: super::operate::Landing,
+    /// An arrival's landing (a launch or an open,
+    /// `update::lands_on_head_at_open`): a key or click that moves the graph
+    /// cursor before it is spent drops it, so it never yanks a cursor he
+    /// already moved (m8-polish-and-ship/12d Decision 3). A landing after a
+    /// write he asked for (`--continue`, an operation) does not give way.
+    pub(crate) gives_way: bool,
 }
 
 /// Which commits only a stash reaches (`graft_git::history_reads::only_in_stash`,

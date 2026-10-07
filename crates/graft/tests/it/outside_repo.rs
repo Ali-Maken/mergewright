@@ -302,8 +302,8 @@ fn opening_a_folder_that_is_not_a_repository_stays_and_says_why() {
 }
 
 /// Starting inside a repository on a tty remembers it, and draws no empty
-/// state at all (it lands on the top row, as before: only an open lands on
-/// `HEAD`).
+/// state at all (it lands on `HEAD`, as an open does:
+/// `starting_inside_a_repository_lands_on_head`).
 #[test]
 fn starting_inside_a_repository_remembers_it() {
     let tree = Tree::new();
@@ -316,6 +316,99 @@ fn starting_inside_a_repository_remembers_it() {
     assert!(!screen.has("no repository here"), "{}", screen.text());
     quit_cleanly(pty);
     assert_eq!(newest_recent(&isolated), repo);
+}
+
+/// m8-polish-and-ship/12d: launched inside a repository, the cursor lands on
+/// `HEAD`'s row, as an open from the empty state does — not on the newest
+/// row. `FeatureBranches` puts `feature/three` on top and `HEAD` (`main`)
+/// below it.
+#[test]
+fn starting_inside_a_repository_lands_on_head() {
+    let tree = Tree::new();
+    let (repo, subject) = tree.repo("api");
+    let top = git(&repo, &["log", "-1", "--format=%s", "feature/three"])
+        .trim()
+        .to_owned();
+    assert_ne!(top, subject, "the fixture's newest row is not HEAD");
+    let isolated = Isolated::new();
+    let pty = Pty::spawn(&isolated, &repo, tree.root.path(), (120, 36));
+    // Waits for the cursor itself: the rows can be drawn a frame before the
+    // refs read answers and the landing is spent.
+    let (cursor, _) = landed(&pty, &subject, &[]);
+    assert!(cursor > 2, "not the top row");
+    quit_cleanly(pty);
+}
+
+/// The cursor row's index and the graph's rows down to it, once the cursor
+/// sits on `subject` and every line in `settled` is drawn (the working-tree
+/// read answers on its own time, and its pinned row moves every row below).
+fn landed(pty: &Pty, subject: &str, settled: &[&str]) -> (usize, Vec<String>) {
+    let screen = pty.wait_for("the cursor on HEAD", |s| {
+        s.lines()
+            .iter()
+            .any(|line| line.contains('\u{25b8}') && line.contains(subject))
+            && settled.iter().all(|line| s.has(line))
+    });
+    let lines = screen.lines();
+    let cursor = lines
+        .iter()
+        .position(|line| line.contains('\u{25b8}'))
+        .expect("a cursor row");
+    // The graph column only: the pane on the right fills in on its own time.
+    let graph = lines[1..=cursor]
+        .iter()
+        .map(|line| line.chars().take(60).collect::<String>())
+        .collect();
+    (cursor, graph)
+}
+
+/// The pinned uncommitted row of [`launch_and_open_land_alike`]'s tree.
+const DIRTY: &str = "Uncommitted changes (1 unstaged)";
+
+/// m8-polish-and-ship/12d Decision 2: a launch lands exactly where an open
+/// from the empty state lands on the same repository — dirty tree (the
+/// uncommitted row pinned on top) and `HEAD` below the first window.
+#[test]
+fn launch_and_open_land_alike() {
+    let tree = Tree::new();
+    let (repo, subject) = tree.repo("api");
+    // Forty commits on a side branch, newer than `HEAD`, put `HEAD` below
+    // the first window of a 36-row terminal.
+    git(&repo, &["switch", "--quiet", "-c", "side"]);
+    for n in 0..40 {
+        git(
+            &repo,
+            &[
+                "commit",
+                "--quiet",
+                "--allow-empty",
+                "-m",
+                &format!("side {n}"),
+            ],
+        );
+    }
+    git(&repo, &["switch", "--quiet", "main"]);
+    let tracked = git(&repo, &["ls-files"]);
+    let file = tracked.lines().next().expect("a tracked file");
+    let mut dirty = std::fs::read(repo.join(file)).expect("readable");
+    dirty.extend_from_slice(b"\nan edit\n");
+    std::fs::write(repo.join(file), dirty).expect("dirty tree");
+
+    let isolated = Isolated::new();
+    let launched = Pty::spawn(&isolated, &repo, tree.root.path(), (120, 36));
+    let at_launch = landed(&launched, &subject, &[DIRTY]);
+    quit_cleanly(launched);
+
+    let isolated = Isolated::new();
+    isolated.write_recent(&[(1_000_000_200, &repo)]);
+    let mut opener = Pty::spawn(&isolated, &tree.plain(), tree.root.path(), (120, 36));
+    on_the_empty_state(&opener);
+    opener.send(b"\r");
+    let at_open = landed(&opener, &subject, &[DIRTY]);
+    quit_cleanly(opener);
+
+    assert!(at_launch.0 > 1, "HEAD is not the top row: {at_launch:?}");
+    assert_eq!(at_launch, at_open, "launch and open land alike");
 }
 
 /// A home with the mock-up's three recent repositories under it (§1.15):

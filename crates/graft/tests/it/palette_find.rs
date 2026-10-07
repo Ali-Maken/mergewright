@@ -57,11 +57,8 @@ struct Repo {
 fn repo() -> Repo {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::FeatureBranches);
     let path = scratch.path();
-    // Launched in a repository, the cursor starts on the newest row
-    // (`feature/three` here), not on HEAD (`main`); the walks start on HEAD
-    // (ticket 12), so HEAD is put on the newest row. Filed as a question in
-    // the ticket's NOTES.
-    git(path, &["switch", "--quiet", "feature/three"]);
+    // Launched in a repository, the cursor lands on HEAD (`main`; ticket
+    // 12d), where the walks start.
     git(path, &["branch", "qzseek", "HEAD~2"]);
     git(path, &["tag", "vqz9", "HEAD~3"]);
     let subject = |rev: &str| {

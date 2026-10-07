@@ -192,7 +192,12 @@ pub(in crate::update) fn finished_lands_on(
     // A scope that re-reads neither has nothing to land on: the cursor
     // stays where it is rather than waiting on reads never asked for.
     state.land_on_head = refs.is_some() && walk.is_some();
-    state.head_landing = crate::update::state::HeadLanding { refs, walk, on };
+    state.head_landing = crate::update::state::HeadLanding {
+        refs,
+        walk,
+        on,
+        gives_way: false,
+    };
 }
 
 /// An edit put back lands on the changes pane, its cursor on `path` under
@@ -257,6 +262,7 @@ pub(in crate::update) fn relaunch_lands_on_head(state: &mut AppState, commands: 
         refs,
         walk,
         on: Landing::Head,
+        gives_way: false,
     };
     land_on_head(state, commands);
 }
@@ -289,6 +295,43 @@ pub(in crate::update) fn walk_started(state: &mut AppState, commands: &mut Vec<C
     if state.land_on_head && state.head_landing.walk.is_some() {
         state.head_landing.walk = None;
         land_on_head(state, commands);
+    }
+}
+
+/// Where the graph cursor was before a key or click, while an arrival's
+/// landing ([`HeadLanding::gives_way`]) is owed — `None` otherwise.
+///
+/// [`HeadLanding::gives_way`]: crate::update::state::HeadLanding::gives_way
+pub(in crate::update) struct ArrivalWatch(Option<(bool, Option<graft_core::oid::Oid>)>);
+
+impl ArrivalWatch {
+    /// Take note before the key or click is answered.
+    pub(in crate::update) fn of(state: &AppState) -> Self {
+        Self((state.land_on_head && state.head_landing.gives_way).then(|| Self::cursor(state)))
+    }
+
+    /// The graph cursor: on the uncommitted row, or on which commit.
+    fn cursor(state: &AppState) -> (bool, Option<graft_core::oid::Oid>) {
+        let commit = state
+            .history
+            .as_ref()
+            .and_then(|history| history.selected())
+            .map(|row| row.commit.id);
+        (state.on_working_tree, commit)
+    }
+
+    /// After it: the same arrival landing still owed and the cursor moved —
+    /// he went somewhere himself, so the landing is dropped rather than
+    /// yanking him back to `HEAD` when the reads answer. A landing the key
+    /// itself owes (an operation's) never gives way, so it is not touched.
+    pub(in crate::update) fn drop_if_moved(self, state: &mut AppState) {
+        let Some(before) = self.0 else {
+            return;
+        };
+        if state.land_on_head && state.head_landing.gives_way && Self::cursor(state) != before {
+            state.land_on_head = false;
+            state.head_landing = crate::update::state::HeadLanding::default();
+        }
     }
 }
 
