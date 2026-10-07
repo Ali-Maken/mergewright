@@ -5,6 +5,8 @@ use super::{
     operation_failed, refresh_scope, stalled_line,
 };
 
+use graft_ui::keymap::ActionId;
+
 pub(crate) mod staging_not_kept;
 
 pub(crate) use staging_not_kept::staging_not_kept_status;
@@ -61,7 +63,9 @@ pub(super) fn done_status(
         return Status::Done {
             what: "amended the stopped commit".to_owned(),
             also: None,
-            keys: Some("c continues".to_owned()),
+            keys: state
+                .keymap
+                .key_verb(&[ActionId("operation.continue")], "continues"),
         };
     }
     if let Some(on) = launched_op.and_then(crate::update::switch::landed_words) {
@@ -86,7 +90,7 @@ pub(super) fn done_status(
         return Status::Done {
             what: format!("took \"{}\" onto {onto}", params.subject),
             also: crate::update::clash::edits_back(applied),
-            keys: Some("u undoes".to_owned()),
+            keys: state.keymap.key_verb(&[ActionId("app.undo")], "undoes"),
         };
     }
     Status::Done {
@@ -244,7 +248,13 @@ fn staging_not_kept_answered(
     let what = launched_op
         .and_then(crate::update::switch::landed_words)
         .unwrap_or_else(|| done_what(state, remote_op, applied));
-    let status = staging_not_kept_status(&what, paths, &applied.came_back, state.size.columns);
+    let status = staging_not_kept_status(
+        &what,
+        paths,
+        &applied.came_back,
+        state.size.columns,
+        &state.keymap,
+    );
     let mut commands = landed(state, applied, lands, next_id);
     crate::update::recover::tag_rows(state, launched_op);
     // A put-in landed all the same: its commits are tagged and its

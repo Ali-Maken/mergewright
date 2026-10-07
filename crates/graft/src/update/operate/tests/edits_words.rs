@@ -178,7 +178,7 @@ fn the_clause_is_kept_whole_at_80() {
         let Status::Sticky {
             reason,
             keys: Some(keys),
-        } = edits_status(failure, at)
+        } = edits_status(failure, at, graft_ui::keymap::Keymap::shipped())
         else {
             panic!("a failure with edits is sticky with keys");
         };

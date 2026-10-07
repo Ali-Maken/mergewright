@@ -20,7 +20,7 @@ fn paths(names: &[&str]) -> Vec<PathBuf> {
 #[test]
 fn staging_not_kept_rungs_cut_the_edits_back_clause_first() {
     assert_eq!(
-        staging_not_kept_rungs("checkout fix", &paths(&["base.txt"]), &[]),
+        staging_not_kept_rungs("checkout fix", &paths(&["base.txt"]), &[], graft_ui::keymap::Keymap::shipped()),
         vec![
             "checkout fix \u{2713} \u{b7} your edits are back \u{b7} staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
             "checkout fix \u{2713} \u{b7} staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
@@ -28,7 +28,7 @@ fn staging_not_kept_rungs_cut_the_edits_back_clause_first() {
         ]
     );
     assert_eq!(
-        staging_not_kept_rungs("checkout fix", &paths(&["a.txt", "b.txt", "c.txt"]), &[]),
+        staging_not_kept_rungs("checkout fix", &paths(&["a.txt", "b.txt", "c.txt"]), &[], graft_ui::keymap::Keymap::shipped()),
         vec![
             "checkout fix \u{2713} \u{b7} your edits are back \u{b7} staging not kept: a.txt +2 more \u{b7} u undoes it, staging included".to_owned(),
             "checkout fix \u{2713} \u{b7} staging not kept: a.txt +2 more \u{b7} u undoes it, staging included".to_owned(),
@@ -43,7 +43,12 @@ fn staging_not_kept_rungs_cut_the_edits_back_clause_first() {
 fn staging_not_kept_words_match_graft_ops() {
     for names in [&["f.txt"][..], &["a.txt", "b.txt", "c.txt"][..]] {
         let paths = paths(names);
-        let rungs = staging_not_kept_rungs("checkout fix", &paths, &[]);
+        let rungs = staging_not_kept_rungs(
+            "checkout fix",
+            &paths,
+            &[],
+            graft_ui::keymap::Keymap::shipped(),
+        );
         let tail = rungs[0]
             .strip_prefix("checkout fix \u{2713} \u{b7} ")
             .expect("rung 1 leads with the done words");
@@ -61,11 +66,20 @@ fn staging_not_kept_words_match_graft_ops() {
 #[test]
 fn staging_not_kept_status_picks_the_rung_that_fits() {
     let files = paths(&["base.txt"]);
-    let rungs = staging_not_kept_rungs("checkout fix", &files, &[]);
+    let rungs = staging_not_kept_rungs(
+        "checkout fix",
+        &files,
+        &[],
+        graft_ui::keymap::Keymap::shipped(),
+    );
     for (columns, rung) in [(187, 0), (80, 1), (60, 2)] {
-        let Status::Sticky { reason, keys } =
-            staging_not_kept_status("checkout fix", &files, &[], columns)
-        else {
+        let Status::Sticky { reason, keys } = staging_not_kept_status(
+            "checkout fix",
+            &files,
+            &[],
+            columns,
+            graft_ui::keymap::Keymap::shipped(),
+        ) else {
             panic!("sticky");
         };
         let keys = keys.expect("the undo key");
@@ -104,7 +118,13 @@ fn operated_takes_staging_not_kept_as_done_with_its_line() {
     );
     assert_eq!(
         state.status,
-        staging_not_kept_status("checkout fix", &paths(&["base.txt"]), &[], 187)
+        staging_not_kept_status(
+            "checkout fix",
+            &paths(&["base.txt"]),
+            &[],
+            187,
+            graft_ui::keymap::Keymap::shipped()
+        )
     );
     assert!(state.land_on_head, "lands as Done does");
     assert_eq!(state.lands, None);
@@ -120,7 +140,8 @@ fn staging_not_kept_names_a_file_back_from_the_index() {
         staging_not_kept_rungs(
             "checkout fix",
             &paths(&["base.txt"]),
-            &paths(&["notes.md"])
+            &paths(&["notes.md"]),
+            graft_ui::keymap::Keymap::shipped()
         ),
         vec![
             "checkout fix \u{2713} \u{b7} your edits are back \u{b7} notes.md came back from the index \u{b7} staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),

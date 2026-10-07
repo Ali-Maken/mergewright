@@ -219,7 +219,7 @@ fn resumed_answer(
             let reason = refused.map_or(error, |refusal| refusal.explain(&OpKeys(&state.keymap)));
             state.status = Status::Sticky {
                 reason,
-                keys: Some("a abort".to_owned()),
+                keys: super::abort_key(&state.keymap),
             };
             match refresh {
                 Some(what) => crate::update::operate::refresh_scope(state, what, next_id),
@@ -241,7 +241,7 @@ pub(super) fn edits_left_aside(
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
     crate::update::undo::operation_ended(state);
-    state.status = crate::update::operate::edits_status(failure, at);
+    state.status = crate::update::operate::edits_status(failure, at, &state.keymap);
     match refresh {
         Some(what) => crate::update::operate::refresh_scope(state, what, next_id),
         None => Vec::new(),
@@ -362,6 +362,7 @@ pub(super) fn resumed_staging_not_kept(
             paths,
             &applied.came_back,
             state.size.columns,
+            &state.keymap,
         ),
         // Anything but `Done` (an `Unfinished` sticky) is left as it is: a
         // put-back runs only on a close that finished, so no such line

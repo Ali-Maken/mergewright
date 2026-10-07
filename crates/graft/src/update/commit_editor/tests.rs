@@ -1161,7 +1161,11 @@ fn the_editor_words_are_unchanged() {
             Some(words),
             "{live:?}"
         );
-        assert_eq!(operation_refusal(live, 1).editor_words(), words, "{live:?}");
+        assert_eq!(
+            operation_refusal(live, 1, graft_ui::keymap::Keymap::shipped()).editor_words(),
+            words,
+            "{live:?}"
+        );
     }
 }
 
@@ -1171,7 +1175,7 @@ fn the_editor_words_are_unchanged() {
 fn the_pane_status_is_the_editor_words_split() {
     for (live, _, reason, keys) in EVERY_LIVE_OPERATION {
         assert_eq!(
-            operation_refusal(live, 1).status(),
+            operation_refusal(live, 1, graft_ui::keymap::Keymap::shipped()).status(),
             Status::Sticky {
                 reason: reason.to_owned(),
                 keys: keys.map(str::to_owned)

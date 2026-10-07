@@ -849,7 +849,7 @@ fn live_edits_clause(
 ) -> Option<String> {
     use graft_ops::EditsAt;
     let (Some(refs), Some(put_back)) = (state.refs.as_deref(), entry.put_back.as_ref()) else {
-        return Some(super::operate::edits_clause(at));
+        return super::operate::edits_clause(at, &state.keymap);
     };
     let listed = refs
         .stashes()
@@ -864,7 +864,7 @@ fn live_edits_clause(
         // No copy was found at launch: there is no index to follow.
         (other, _) => other,
     };
-    Some(super::operate::edits_clause(live))
+    super::operate::edits_clause(live, &state.keymap)
 }
 
 /// Re-read what the restore changed — `update::operate`'s own two scopes,

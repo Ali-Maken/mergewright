@@ -236,7 +236,14 @@ pub(super) fn commit(
         Loading::Failed(_) => Resume::Continue,
         Loading::Ready(summary) => {
             if finish.subject.text().trim().is_empty() {
-                finish.notice = Some(("the message is empty · ⇥ to write one".to_owned(), true));
+                finish.notice = Some((
+                    state.keymap.after(
+                        "the message is empty",
+                        graft_ui::keymap::ActionId("app.next_pane"),
+                        "to write one",
+                    ),
+                    true,
+                ));
                 return;
             }
             let message = compose(finish.subject.text(), &finish.body.text());

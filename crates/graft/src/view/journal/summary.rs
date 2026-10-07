@@ -1,5 +1,7 @@
 //! A journal entry's summary words: what it did, how it ended, and why it failed.
 
+use graft_ui::keymap::Keymap;
+
 use super::{EntryStatus, JournalEntry, OperationKind};
 
 /// The reason an entry closed by his own `--abort` carries
@@ -10,8 +12,15 @@ pub(super) const ABORTED: &str = "aborted";
 pub(super) const ABORTED_BY_YOU: &str = "aborted by you · nothing changed";
 
 /// What a live entry's row says instead of a verdict: the operation has not
-/// finished happening, and these are the two keys that end it either way.
-pub(super) const IN_PROGRESS: &str = "in progress \u{2014} c continue  a abort";
+/// finished happening, and the two keys that end it either way — the
+/// banner's own `continue_abort` words (m8/10f), the dash dropped with them
+/// when both are unbound (W3).
+pub(super) fn in_progress(keys: &Keymap) -> String {
+    match crate::update::banner::continue_abort(keys) {
+        Some(keys) => format!("in progress \u{2014} {keys}"),
+        None => "in progress".to_owned(),
+    }
+}
 
 /// What the entry moved, and whether a backup was kept — the two facts that
 /// decide whether `u` can put it back.
@@ -19,7 +28,7 @@ pub(super) const IN_PROGRESS: &str = "in progress \u{2014} c continue  a abort";
 /// `live` is git standing part-way through this very entry
 /// ([`crate::update::AppState::live_entries`]); it outranks every verdict,
 /// because there is not one yet.
-pub(super) fn summary(entry: &JournalEntry, live: bool) -> String {
+pub(super) fn summary(entry: &JournalEntry, live: bool, keys: &Keymap) -> String {
     let mut parts: Vec<String> = Vec::new();
     // A push or a fetch is journaled but `u` passes over it (design note,
     // choice 1): the row says what moved and that it stays moved, instead of
@@ -43,12 +52,12 @@ pub(super) fn summary(entry: &JournalEntry, live: bool) -> String {
             }
             let remote = tracking.split('/').next().unwrap_or("the remote");
             parts.insert(0, format!("not undoable \u{2014} {remote} has it"));
-            return with_failure(entry, live, &parts);
+            return with_failure(entry, live, &parts, keys);
         }
         OperationKind::Fetch => {
             parts.push("remote-tracking refs".to_owned());
             parts.push("not undoable".to_owned());
-            return with_failure(entry, live, &parts);
+            return with_failure(entry, live, &parts, keys);
         }
         _ => {}
     }
@@ -68,7 +77,7 @@ pub(super) fn summary(entry: &JournalEntry, live: bool) -> String {
     // and "failed: interrupted" is the wrong word for a process that died
     // (m3/06 review, Major 2).
     if live {
-        parts.insert(0, IN_PROGRESS.to_owned());
+        parts.insert(0, in_progress(keys));
     } else if entry.is_interrupted() {
         parts.insert(0, "interrupted".to_owned());
     } else if let EntryStatus::Aborted { reason } = &entry.status {
@@ -89,9 +98,14 @@ pub(super) fn summary(entry: &JournalEntry, live: bool) -> String {
 
 /// A push or fetch row that failed says so first, and nothing else: an
 /// aborted push sent nothing, so "origin has it" would be false.
-pub(super) fn with_failure(entry: &JournalEntry, live: bool, parts: &[String]) -> String {
+pub(super) fn with_failure(
+    entry: &JournalEntry,
+    live: bool,
+    parts: &[String],
+    keys: &Keymap,
+) -> String {
     if live {
-        return IN_PROGRESS.to_owned();
+        return in_progress(keys);
     }
     if entry.is_interrupted() {
         return "interrupted".to_owned();

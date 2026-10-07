@@ -176,9 +176,19 @@ pub(super) fn patch_for(
 /// both acting unseen and a key that does nothing (m3/04 review M5).
 pub(super) fn side_by_side_refusal(state: &AppState, verb: &str) -> Option<String> {
     if state.detail.mode == graft_ui::detail::DiffMode::SideBySide {
-        Some(format!(
-            "side by side has no line cursor \u{2014} press v for the unified view to {verb} a hunk"
-        ))
+        // Spelled from his keymap (m8/10f); with the toggle unbound the
+        // way out has no key to name, so the reason stands alone (W3).
+        Some(
+            match state
+                .keymap
+                .spell_keys(&[graft_ui::keymap::ActionId("diff.side_by_side")])
+            {
+                Some(key) => format!(
+                    "side by side has no line cursor \u{2014} press {key} for the unified view to {verb} a hunk"
+                ),
+                None => "side by side has no line cursor".to_owned(),
+            },
+        )
     } else {
         None
     }
@@ -249,6 +259,16 @@ pub fn stage_at_diff_cursor(
     true
 }
 
+/// The discard box's backup line, the undo key spelled from his keymap
+/// (m8/10f); unbound, the backup is still kept and said, with no key
+/// promised (10b W3).
+fn backup_words(keys: &graft_ui::keymap::Keymap) -> String {
+    match keys.spell_keys(&[graft_ui::keymap::ActionId("app.undo")]) {
+        Some(undo) => format!("Graft keeps a backup first, so `{undo}` can undo it afterwards."),
+        None => "Graft keeps a backup first.".to_owned(),
+    }
+}
+
 /// `d` with the diff region focused: the confirm box for discarding the hunk
 /// or line under the line cursor. An untracked file has no hunks to discard
 /// one of, so it falls back to the whole-file box (ADR-0034).
@@ -294,7 +314,7 @@ pub fn request_discard_at_diff_cursor(next: &mut AppState) -> bool {
                 "{} added / {} removed lines go back to how they were.",
                 counts.0, counts.1
             )),
-            sanitize_line("Graft keeps a backup first, so `u` can undo it afterwards."),
+            sanitize_line(&backup_words(&next.keymap)),
         ],
         sanitize_line(&discard_patch_command(side)),
     )

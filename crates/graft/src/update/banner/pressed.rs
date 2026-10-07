@@ -109,7 +109,7 @@ pub(crate) fn continued_in_git(
         Err(why) => {
             state.status = Status::Sticky {
                 reason: why,
-                keys: Some("c continue  a abort".to_owned()),
+                keys: super::continue_abort(&state.keymap),
             };
         }
     }
@@ -144,7 +144,7 @@ pub(in crate::update) fn land_after_continue_in_git(
     let code = exit.map_or_else(|| "on a signal".to_owned(), |code| code.to_string());
     state.status = Status::Sticky {
         reason: format!("{command} exited {code} · still stopped"),
-        keys: Some("c continue  a abort".to_owned()),
+        keys: super::continue_abort(&state.keymap),
     };
 }
 
@@ -166,7 +166,7 @@ pub(super) fn skip_pressed(state: &mut AppState) {
     if detail.kind == InProgress::Merge {
         state.status = Status::Sticky {
             reason: "nothing to skip in a merge".to_owned(),
-            keys: Some("c continue  a abort".to_owned()),
+            keys: super::continue_abort(&state.keymap),
         };
         return;
     }
@@ -199,10 +199,16 @@ pub(super) fn abort_pressed(state: &mut AppState) {
         return;
     };
     let lines = if crate::update::undo::shell_merge_known(state) {
-        vec![
-            format!("{} goes back to before the merge", head_word(state)),
-            "u puts the merge back".to_owned(),
-        ]
+        // W3: with undo unbound the line that is only its key draws nothing.
+        std::iter::once(format!(
+            "{} goes back to before the merge",
+            head_word(state)
+        ))
+        .chain(state.keymap.key_verb(
+            &[graft_ui::keymap::ActionId("app.undo")],
+            "puts the merge back",
+        ))
+        .collect()
     } else {
         vec![
             "everything goes back to before it started".to_owned(),

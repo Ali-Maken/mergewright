@@ -1,5 +1,7 @@
 //! Why `c` in the editor is refused while an operation is live, and the words that say so.
 
+use graft_ui::keymap::{ActionId, Keymap};
+
 use super::{AppState, InProgress, Status};
 
 /// Who began the operation git is part-way through — which decides whether
@@ -100,9 +102,22 @@ impl OperationRefusal {
 /// or revert Graft began is the operation banner's (keymap §2.6a); `⇥` leads
 /// there from the panes, and the keys name as many `⇥` as it takes from
 /// where the keyboard is (`tabs`, [`refusal_tabs`]; m6-conflicts/70).
+///
+/// The banner's keys are spelled from `keys` (m8/10f): his keymap for the
+/// pane's status, `Keymap::shipped()` for the editor's row, which is drawn
+/// while its text field is open (10b W4). An unbound key drops its part;
+/// none bound, no keys at all (W3).
 #[must_use]
-pub fn operation_refusal((kind, begun): (InProgress, Begun), tabs: u8) -> OperationRefusal {
+pub fn operation_refusal(
+    (kind, begun): (InProgress, Begun),
+    tabs: u8,
+    keys: &Keymap,
+) -> OperationRefusal {
     let to_banner = crate::update::banner::tab_keys(tabs);
+    let then = |parts: &[(&'static str, &str)]| {
+        let words = keys.key_verbs(parts);
+        (!words.is_empty()).then(|| format!("{to_banner}, then {words}"))
+    };
     let (reason, keys) = match (kind, begun) {
         // A bisect draws no banner — that is M7's — so there are no keys to
         // name and git's own command is still the way out.
@@ -119,12 +134,15 @@ pub fn operation_refusal((kind, begun): (InProgress, Begun), tabs: u8) -> Operat
         // (`resume_target`), so no `a abort`.
         (InProgress::Merge, Begun::InShell) => (
             "merge begun in the shell".to_owned(),
-            Some(format!("{to_banner}, then c finishes it")),
+            then(&[("operation.continue", "finishes it")]),
         ),
         // A rebase or cherry-pick begun in the shell: `c` hands it to git
         // (m7-power-tools/07c).
         (InProgress::Rebase | InProgress::CherryPick, Begun::InShell) => (
-            format!("{} begun in the shell — c hands it to git", kind.name()),
+            match keys.key_verb(&[ActionId("operation.continue")], "hands it to git") {
+                Some(hint) => format!("{} begun in the shell — {hint}", kind.name()),
+                None => format!("{} begun in the shell", kind.name()),
+            },
             None,
         ),
         // Any other begun in the shell has no entry of Graft's; the banner's
@@ -141,11 +159,17 @@ pub fn operation_refusal((kind, begun): (InProgress, Begun), tabs: u8) -> Operat
         // named `c finish`, as the banner's own bar names it (n2).
         (InProgress::Merge, Begun::InGraft) => (
             format!("{} in progress", kind.name()),
-            Some(format!("{to_banner}, then c finish  a abort")),
+            then(&[
+                ("operation.continue", "finish"),
+                ("operation.abort", "abort"),
+            ]),
         ),
         (_, Begun::InGraft) => (
             format!("{} in progress", kind.name()),
-            Some(format!("{to_banner}, then c continue  a abort")),
+            then(&[
+                ("operation.continue", "continue"),
+                ("operation.abort", "abort"),
+            ]),
         ),
     };
     OperationRefusal { reason, keys }

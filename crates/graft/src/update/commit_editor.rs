@@ -220,7 +220,10 @@ impl CommitEditor {
         // Finishing an operation is the banner's (m6-conflicts/39, 48);
         // the words are `operation_refusal`'s, shared with the pane.
         if let Some(live) = in_progress {
-            return Some(operation_refusal(live, tabs).editor_words());
+            // Drawn while the editor's field is open: shipped keys (10b W4).
+            return Some(
+                operation_refusal(live, tabs, graft_ui::keymap::Keymap::shipped()).editor_words(),
+            );
         }
         // An amend with nothing staged is a reword, which is allowed
         // (`Operation::check`).
@@ -289,7 +292,7 @@ pub fn open(
     // pane answers in words instead (m6-conflicts/48). Nothing is read and
     // the draft stays where `Esc` left it.
     if let Some(live) = live_operation(state) {
-        state.status = operation_refusal(live, refusal_tabs(state)).status();
+        state.status = operation_refusal(live, refusal_tabs(state), &state.keymap).status();
         return Vec::new();
     }
     if amend {
@@ -350,7 +353,7 @@ pub fn head_message_arrived(
     // An operation became live while the read was in flight: refuse as
     // `open` would have, whatever the read said.
     if let Some(live) = live_operation(state) {
-        state.status = operation_refusal(live, refusal_tabs(state)).status();
+        state.status = operation_refusal(live, refusal_tabs(state), &state.keymap).status();
         return;
     }
     match message {

@@ -149,7 +149,7 @@ fn refuses_in_words_and_sends_nothing(kind: InProgress, begun: Begun, frame: Fra
     assert!(commands.is_empty(), "{frame:?}: {commands:?}");
     assert!(after.commit_editor.is_none());
     assert!(after.finish.is_none());
-    let words = operation_refusal((kind, begun), 1).status();
+    let words = operation_refusal((kind, begun), 1, graft_ui::keymap::Keymap::shipped()).status();
     assert!(
         matches!(&words, Status::Sticky { reason, .. } if !reason.is_empty()),
         "{words:?}"
@@ -409,7 +409,8 @@ fn a_mid_operation_still_refuses_in_words_on_plain_data() {
             let tabs = crate::update::commit_editor::refusal_tabs(&state);
             assert_eq!(
                 after.status,
-                operation_refusal((kind, begun), tabs).status()
+                operation_refusal((kind, begun), tabs, graft_ui::keymap::Keymap::shipped())
+                    .status()
             );
         }
     }
