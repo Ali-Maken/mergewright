@@ -44,7 +44,7 @@ use graft_term::{SanitizedText, sanitize_line};
 use graft_ui::preview_box::{Again, PREVIEW_MIN, PreviewBox, preview_rows};
 
 mod answer;
-mod boxes;
+pub(crate) mod boxes;
 mod history;
 mod keys;
 mod plan_lines;

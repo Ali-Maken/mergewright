@@ -68,7 +68,7 @@ fn the_search_rung_is_blank_under_the_preview() {
         let query = crate::search::Query::parse("Commit").expect("a non-empty query");
         let mut search = crate::search::Search::new(query, 0, (0, 0));
         search.state = crate::search::SearchState::Done { hits: 2 };
-        let line = search.line();
+        let line = search.line(graft_ui::keymap::Keymap::shipped());
         state.search = Some(search);
         assert!(
             crate::view::graph_view(&state, 0).search.is_some(),

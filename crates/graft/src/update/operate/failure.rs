@@ -229,14 +229,21 @@ fn in_the_way_status(refusal: &Refusal, columns: u16, keymap: &Keymap) -> Status
     // a footer with no key is what ADR-0037 §4 rules out; `S stashes it
     // first` names its own.
     let names_no_key = matches!(refusal, Refusal::InTheWay { ignored, .. } if !ignored.is_empty());
+    // `esc dismiss` spelled from his keymap (m8/10h); unbound, it goes.
+    let dismiss = crate::view::status::dismiss(keymap);
     let keys = |next: Option<&str>| match (next, names_no_key) {
-        (Some(next), true) => format!("{next} \u{b7} {}", crate::view::status::DISMISS),
-        (Some(next), false) => next.to_owned(),
-        (None, _) => crate::view::status::DISMISS.to_owned(),
+        (Some(next), true) => Some(match &dismiss {
+            Some(dismiss) => format!("{next} \u{b7} {dismiss}"),
+            None => next.to_owned(),
+        }),
+        (Some(next), false) => Some(next.to_owned()),
+        (None, _) => dismiss.clone(),
     };
     let room = usize::from(columns.saturating_sub(1));
     let fits = |words: &&graft_ops::operation::RefusalWords| {
-        let suffix = format!(" \u{b7} {}", keys(words.next.as_deref()));
+        let suffix = keys(words.next.as_deref())
+            .map(|keys| format!(" \u{b7} {keys}"))
+            .unwrap_or_default();
         suffix.width() < room && words.reason.width() <= room - suffix.width()
     };
     let rungs = refusal.explain_rungs(&OpKeys(keymap));
@@ -246,7 +253,7 @@ fn in_the_way_status(refusal: &Refusal, columns: u16, keymap: &Keymap) -> Status
     };
     Status::Sticky {
         reason: picked.reason.clone(),
-        keys: Some(keys(picked.next.as_deref())),
+        keys: keys(picked.next.as_deref()),
     }
 }
 

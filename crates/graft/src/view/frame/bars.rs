@@ -350,8 +350,18 @@ fn config_notice(state: &AppState) -> Option<String> {
     if !state.config_notice || count == 0 {
         return None;
     }
+    Some(config_words(count, &state.keymap))
+}
+
+/// `config: <n> problem(s) · ? shows them`, `?` spelled from `app.help`
+/// (pressed on the graph); the clause goes when unbound.
+pub(crate) fn config_words(count: usize, keys: &graft_ui::keymap::Keymap) -> String {
     let noun = if count == 1 { "problem" } else { "problems" };
-    Some(format!("config: {count} {noun} · ? shows them"))
+    keys.after(
+        &format!("config: {count} {noun}"),
+        graft_ui::keymap::ActionId("app.help"),
+        "shows them",
+    )
 }
 
 /// The harness banner as drawn: its title with ` · <tier>` appended for the

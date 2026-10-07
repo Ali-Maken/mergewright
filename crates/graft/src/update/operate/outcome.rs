@@ -50,7 +50,7 @@ pub(super) fn done_status(
     applied: &graft_ops::apply::Applied,
 ) -> Status {
     if let Some((index, why)) = clash_drop {
-        return crate::update::clash::dropped_status(index, why);
+        return crate::update::clash::dropped_status(index, why, &state.keymap);
     }
     if pulled_nothing(launched_op, &applied.entry) {
         return Status::done(UP_TO_DATE);
@@ -72,14 +72,17 @@ pub(super) fn done_status(
         return Status::Done {
             what: on,
             also: crate::update::clash::edits_back(applied),
-            keys: Some(crate::update::switch::GOES_BACK.to_owned()),
+            keys: crate::update::switch::goes_back(&state.keymap),
         };
     }
     // A put-back from the journal names what came back (m7-power-tools/24).
     if let Some(Operation::Recover(params)) = launched_op {
-        return crate::update::recover::done_status(params, |oid| {
-            crate::update::recover::subject_in(state, oid)
-        });
+        let state = &*state;
+        return crate::update::recover::done_status(
+            params,
+            |oid| crate::update::recover::subject_in(state, oid),
+            &state.keymap,
+        );
     }
     // A one-commit cherry-pick (`o`, or slot 2's `⏎`) lands in `o`'s words
     // (m7-power-tools/11; the journal keeps git's `cherry-pick …`).

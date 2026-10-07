@@ -155,14 +155,18 @@ pub(super) fn branch_here(next: &mut AppState) {
         Some(ListRow::LostEdit { .. }) => {
             next.status = Status::Sticky {
                 reason: "a lost edit has no commit".to_owned(),
-                keys: Some("\u{23ce} puts it back".to_owned()),
+                keys: lost_edit_keys(&next.keymap),
             };
             return;
         }
         // A `●` entry can move several refs or none, so "its commit" has
         // no single answer (m7/30o Minor 3): say where `b` does work.
         Some(ListRow::Graft(_)) => {
-            next.status = Status::sticky("b makes a branch on a $ or \u{2717} row");
+            // Reached by `journal.branch`, so bound; an unbound one draws
+            // nothing rather than a keyless instruction (W3).
+            if let Some(words) = branch_needs_row(&next.keymap) {
+                next.status = Status::sticky(words);
+            }
             return;
         }
         Some(ListRow::Outside(_) | ListRow::Lost { .. }) | None => {}
@@ -400,4 +404,20 @@ pub(crate) fn undo_from_j(
         UndoStart::Launched => close(next, commands),
         UndoStart::Asked | UndoStart::Refused => {}
     }
+}
+
+/// `⏎ puts it back`: what a lost edit answers to (`journal.revert`).
+pub(crate) fn lost_edit_keys(keys: &graft_ui::keymap::Keymap) -> Option<String> {
+    keys.key_verb(
+        &[graft_ui::keymap::ActionId("journal.revert")],
+        "puts it back",
+    )
+}
+
+/// `b makes a branch on a $ or ✗ row`: where `journal.branch` does work.
+pub(crate) fn branch_needs_row(keys: &graft_ui::keymap::Keymap) -> Option<String> {
+    keys.key_verb(
+        &[graft_ui::keymap::ActionId("journal.branch")],
+        "makes a branch on a $ or \u{2717} row",
+    )
 }

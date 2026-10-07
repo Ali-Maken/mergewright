@@ -97,7 +97,12 @@ pub(super) fn stash_verb(pop: bool) -> &'static str {
 /// listed as the conflict line lists its paths; the forecast in the
 /// preview's own words; one row for the stash's fate, kept whole; and
 /// `Cancel` / `Apply` (or `Pop`).
-pub(super) fn stash_box(plan: &PreviewPlan, index: usize, pop: bool) -> PreviewBox {
+pub(super) fn stash_box(
+    plan: &PreviewPlan,
+    index: usize,
+    pop: bool,
+    keys: &graft_ui::keymap::Keymap,
+) -> PreviewBox {
     let name = format!("stash@{{{index}}}");
     let title = sanitize_line(&format!("Preview: {}", plan.description));
     let label = if pop { "Pop" } else { "Apply" };
@@ -116,7 +121,7 @@ pub(super) fn stash_box(plan: &PreviewPlan, index: usize, pop: bool) -> PreviewB
     };
     let mut lines = vec![files, conflict_line(&plan.conflicts, None)];
     if pop {
-        lines.push(format!("{name} is dropped \u{b7} u brings it back"));
+        lines.push(popped_line(&name, keys));
     } else {
         lines.push(format!("{name} stays in the list"));
         lines.push(undo_line(&plan.undo));
@@ -144,10 +149,15 @@ pub(super) fn put_back_box(
     let title = sanitize_line(&crate::update::recover::preview_title(params, subject_of));
     let mut view = PreviewBox::new(title)
         .with_choices(vec![sanitize_line("Cancel"), sanitize_line("Put back")]);
-    view.lines = crate::update::recover::preview_lines(params, plan.files.as_ref(), subject_of)
-        .iter()
-        .map(|line| sanitize_line(line))
-        .collect();
+    view.lines = crate::update::recover::preview_lines(
+        params,
+        plan.files.as_ref(),
+        subject_of,
+        &state.keymap,
+    )
+    .iter()
+    .map(|line| sanitize_line(line))
+    .collect();
     view.commands = plan
         .commands
         .iter()
@@ -162,5 +172,15 @@ pub(super) fn planning_title(subject: &PreviewSubject) -> String {
     match subject {
         PreviewSubject::Operation { op, .. } => format!("Preview: {}", op.describe()),
         PreviewSubject::RevertTo(_) => "Preview: revert to before this".to_owned(),
+    }
+}
+
+/// The pop box's `stash@{n} is dropped · u brings it back`, the clause
+/// spelled by [`crate::update::clash::brings_back`]; dropped when unbound.
+pub(crate) fn popped_line(name: &str, keys: &graft_ui::keymap::Keymap) -> String {
+    let dropped = format!("{name} is dropped");
+    match crate::update::clash::brings_back(keys) {
+        Some(clause) => format!("{dropped} \u{b7} {clause}"),
+        None => dropped,
     }
 }

@@ -266,8 +266,11 @@ pub(crate) fn landed_words(op: &Operation) -> Option<String> {
     }
 }
 
-/// The key half of a switch's landing line.
-pub(crate) const GOES_BACK: &str = "u goes back";
+/// The key half of a switch's landing line: `u goes back` (`app.undo`, on
+/// the graph it lands on); `None` when unbound.
+pub(crate) fn goes_back(keys: &graft_ui::keymap::Keymap) -> Option<String> {
+    keys.key_verb(&[graft_ui::keymap::ActionId("app.undo")], "goes back")
+}
 
 #[cfg(test)]
 mod tests;

@@ -66,13 +66,13 @@ pub fn credential_view(state: &AppState) -> Option<CredentialView<'static>> {
 /// when 69 gave the row under the box to the box's keys). When that does not
 /// fit the box whole, the verb alone (`esc cancel the push`): the border is
 /// cut from the right, and a cut description names no push at all.
-fn footer(state: &AppState) -> String {
-    const KEYS: &str = "⏎ send  ⌃U clear  esc cancel";
+pub(crate) fn footer(state: &AppState) -> String {
+    let keys = footer_keys();
     let named = state
         .remote
         .running
         .as_ref()
-        .map(|running| format!("{KEYS} {}", running.description));
+        .map(|running| format!("{keys} {}", running.description));
     // `border_row` keeps a label whole while it and its two gutters fit
     // between the corners: the box's width less four.
     let frame = ratatui::layout::Rect::new(0, 0, state.size.columns, state.size.rows);
@@ -84,7 +84,7 @@ fn footer(state: &AppState) -> String {
     match named {
         // Display width, as the border measures it (ratatui's own count).
         Some(named) if ratatui::text::Line::raw(named.as_str()).width() <= room => named,
-        _ => format!("{KEYS} the {}", what_it_stops(state)),
+        _ => format!("{keys} the {}", what_it_stops(state)),
     }
 }
 
@@ -104,4 +104,17 @@ fn what_it_stops(state: &AppState) -> &'static str {
         // rather than guess a word.
         _ => "operation",
     }
+}
+
+/// `⏎ send  ⌃U clear  esc cancel`. The prompt is a text field (ADR-0055,
+/// 10b W4): its keys are fixed, so they spell from the shipped keymap
+/// whatever his config says — `credential.send`, `credential.clear`, and
+/// `Esc`, which the prompt reads itself (`update/credential.rs` `Escape`)
+/// and the shipped `app.back` names.
+pub(crate) fn footer_keys() -> String {
+    graft_ui::keymap::Keymap::shipped().key_verbs(&[
+        ("credential.send", "send"),
+        ("credential.clear", "clear"),
+        ("app.back", "cancel"),
+    ])
 }

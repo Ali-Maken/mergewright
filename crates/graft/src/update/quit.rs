@@ -34,7 +34,7 @@ use graft_core::job::JobId;
 use graft_ops::apply::StoppedAt;
 use graft_term::sanitize_line;
 use graft_ui::confirm::ConfirmView;
-use graft_ui::keymap::ActionId;
+use graft_ui::keymap::{ActionId, Keymap};
 
 use super::confirm::{ConfirmThen, PendingConfirm};
 use super::events::Command;
@@ -93,14 +93,7 @@ pub fn waited_long(state: &mut AppState) {
         Some(wait) if !wait.long => running_description(state, wait.job),
         _ => return,
     };
-    let quit = state.keymap.spell(&ActionId("app.quit"));
-    let back = state.keymap.spell(&ActionId("app.back"));
-    let line = Status::Waiting(format!(
-        "{what} \u{b7} still running after {} s \u{b7} {} stop it now \u{b7} {} stays",
-        STOP_OFFER_AFTER.as_secs(),
-        quit.0,
-        back.0,
-    ));
+    let line = Status::Waiting(long_wait_words(&what, &state.keymap));
     if let Some(wait) = state.quit_when_done.as_mut() {
         wait.long = true;
         wait.line = line;
@@ -159,13 +152,9 @@ pub(super) fn confirmed(state: &mut AppState, commands: &mut Vec<Command>, then:
         }
         QuitThen::WaitFor(id) if state.operating == Some(id) => {
             let what = running_description(state, id);
-            let back = state.keymap.spell(&ActionId("app.back"));
             state.quit_when_done = Some(Box::new(QuitWait {
                 job: id,
-                line: Status::Waiting(format!(
-                    "{what} \u{b7} quitting when it finishes \u{b7} {} stays",
-                    back.0
-                )),
+                line: Status::Waiting(wait_words(&what, &state.keymap)),
                 long: false,
             }));
         }
@@ -362,3 +351,24 @@ fn quit_box(title: &str, lines: &[&str], then: QuitThen) -> PendingConfirm {
 
 #[cfg(test)]
 pub(crate) mod tests;
+
+/// `<what> · quitting when it finishes · esc stays`; the `esc` clause
+/// (`app.back`, on the graph) goes when unbound.
+pub(crate) fn wait_words(what: &str, keys: &Keymap) -> String {
+    keys.after(
+        &format!("{what} \u{b7} quitting when it finishes"),
+        ActionId("app.back"),
+        "stays",
+    )
+}
+
+/// `<what> · still running after 10 s · q stop it now · esc stays`, each
+/// key clause dropped when its action is unbound.
+pub(crate) fn long_wait_words(what: &str, keys: &Keymap) -> String {
+    let words = format!(
+        "{what} \u{b7} still running after {} s",
+        STOP_OFFER_AFTER.as_secs()
+    );
+    let words = keys.after(&words, ActionId("app.quit"), "stop it now");
+    keys.after(&words, ActionId("app.back"), "stays")
+}

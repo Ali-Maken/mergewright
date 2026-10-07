@@ -14,7 +14,7 @@
 //! pinned-base ruling): moved into [`Origin::base`] when `B` opens a place,
 //! pinned again when the trail ends.
 
-mod answer;
+pub(crate) mod answer;
 mod blame_state;
 mod from;
 mod history;

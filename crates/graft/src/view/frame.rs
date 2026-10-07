@@ -32,7 +32,7 @@ use super::rows::graph_view;
 use super::stash::stash_view;
 use super::status::status_view;
 
-mod bars;
+pub(crate) mod bars;
 mod boxes;
 mod conflicts;
 mod layout;

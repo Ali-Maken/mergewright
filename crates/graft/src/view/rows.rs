@@ -321,7 +321,7 @@ fn search_line(state: &AppState) -> Option<SearchLine> {
     }
     let search = state.search.as_ref()?;
     Some(SearchLine::Status {
-        text: sanitize_line(&search.line()),
+        text: sanitize_line(&search.line(&state.keymap)),
         failed: matches!(search.state, crate::search::SearchState::Failed(_)),
     })
 }

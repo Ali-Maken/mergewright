@@ -2150,7 +2150,7 @@ fn the_count_is_partial_while_running_and_settles_when_done() {
     assert_eq!(search_of(&state).state.describe(), "1 match so far");
     let history = state.history.as_ref().expect("a walk");
     assert_eq!(history.cursor, 2, "the first hit is selected at once");
-    assert!(search_of(&state).line().contains("(1/1)"));
+    assert!(search_of(&state).line(&state.keymap).contains("(1/1)"));
 
     let (state, _) = update(&state, found(job, &[12, 20]));
     assert_eq!(search_of(&state).state.describe(), "3 matches so far");
