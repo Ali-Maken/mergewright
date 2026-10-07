@@ -135,6 +135,34 @@ fn retheme_keeps_each_kinds_overrides_across_a_switch() {
     assert!(!session.retheme(ThemeKind::Dark), "no change twice");
 }
 
+/// J9 (m8-polish-and-ship/11): `Theme: light` from the palette is his
+/// choice for the run — light with light's overrides, and a background the
+/// terminal reports later does not take it back.
+#[test]
+fn a_chosen_theme_outlasts_a_re_detected_background() {
+    let mut session = both_selections();
+    assert!(session.choose(ThemeKind::Light));
+    assert_eq!(
+        session.theme.token(Token::Selection),
+        TokenColor::Rgb(LIGHT_SELECTION)
+    );
+    let dark_hint = ThemeHint {
+        theme: TerminalTheme::Dark,
+        source: ThemeSource::Background(Rgb {
+            red: 10,
+            green: 10,
+            blue: 10,
+        }),
+    };
+    // Redraws (the hint is new), but keeps his choice.
+    assert!(session.apply(TerminalChange::Theme(dark_hint)));
+    assert_eq!(session.rendering.theme, ThemeKind::Light);
+    assert_eq!(
+        session.theme.token(Token::Selection),
+        TokenColor::Rgb(LIGHT_SELECTION)
+    );
+}
+
 #[test]
 fn a_re_detected_background_rebuilds_through_retheme() {
     let mut session = both_selections();

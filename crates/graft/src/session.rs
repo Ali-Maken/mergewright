@@ -128,6 +128,10 @@ pub struct Session {
     /// His `[theme.<kind>]` colours, fixed for the run: every rebuild of
     /// [`Session::theme`] goes through [`Session::retheme`], which reads them.
     overrides: ThemeOverrides,
+    /// The theme he chose from the palette (`Theme: light`, m8/11 decision
+    /// 6): it sticks for the run, over the terminal's evidence and over a
+    /// forced `ui.theme`. `None` until he chooses.
+    chosen: Option<ThemeKind>,
 }
 
 impl Session {
@@ -177,6 +181,7 @@ impl Session {
             notes,
             capabilities,
             overrides,
+            chosen: None,
         }
     }
 
@@ -191,6 +196,14 @@ impl Session {
         }
         self.theme = theme;
         true
+    }
+
+    /// He chose `kind` from the palette: draw in it for the rest of the run,
+    /// whatever the terminal says later. `true` when the theme drawn
+    /// changed.
+    pub(crate) fn choose(&mut self, kind: ThemeKind) -> bool {
+        self.chosen = Some(kind);
+        self.retheme(kind)
     }
 
     /// Take in a re-detected answer; `true` when anything drawn from it
@@ -210,8 +223,11 @@ impl Session {
                     return false;
                 }
                 self.capabilities.theme = hint;
-                // A `ui.theme` override still wins; only the evidence changes.
-                let forced = self.rendering.theme_forced.then_some(self.rendering.theme);
+                // His palette choice, then a `ui.theme` override, still
+                // win; only the evidence changes.
+                let forced = self
+                    .chosen
+                    .or_else(|| self.rendering.theme_forced.then_some(self.rendering.theme));
                 // The hint changed, so something drawn from it did, whether
                 // or not the theme itself did (`theme_unknown` below).
                 self.retheme(ThemeKind::select(forced, hint));

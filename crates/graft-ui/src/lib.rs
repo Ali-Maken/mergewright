@@ -28,6 +28,7 @@ pub mod map_screen;
 pub mod name_prompt;
 pub mod overview_strip;
 pub mod paint;
+pub mod palette;
 pub mod picker;
 pub mod preview_box;
 pub mod rewrite_editor;

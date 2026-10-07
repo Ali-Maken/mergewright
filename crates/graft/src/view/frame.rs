@@ -41,12 +41,12 @@ mod overlays;
 // Each child reaches its siblings, and these files' own imports, through
 // `use super::*`; what is named here is what more than one of them uses.
 use self::bars::{
-    draw_box_bars, draw_status_or_hints, draw_tab_banner, draw_tab_hints, draw_tab_strip,
+    bar_rows, draw_box_bars, draw_status_or_hints, draw_tab_banner, draw_tab_hints, draw_tab_strip,
     footer_notice,
 };
 use self::boxes::{
-    draw_commit_editor, draw_context_menu, draw_modal_boxes, draw_over_graph, draw_preview,
-    row_columns,
+    draw_commit_editor, draw_context_menu, draw_modal_boxes, draw_over_graph, draw_palette,
+    draw_preview, row_columns,
 };
 use self::conflicts::{draw_finish, draw_resolver};
 use self::layout::{
@@ -215,10 +215,9 @@ pub fn view_with_graphics(
         }
     };
     draw_box_bars(session, state, frame, area);
-    pixels_above_overlays(
-        graph,
-        draw_modal_boxes(session, state, frame, area, &columns).into_iter(),
-    )
+    let palette = draw_palette(session, state, frame, area);
+    let boxes = draw_modal_boxes(session, state, frame, area, &columns);
+    pixels_above_overlays(graph, palette.into_iter().chain(boxes))
 }
 
 #[cfg(test)]

@@ -70,6 +70,7 @@ pub fn is_write(command: &Command) -> bool {
         | Command::ResolveRowTags(..)
         | Command::EditCommitMessage { .. }
         | Command::Suspend
+        | Command::Retheme(..)
         | Command::OpenConflict(..)
         | Command::LoadBase(..)
         | Command::ReadConflictSet(..)

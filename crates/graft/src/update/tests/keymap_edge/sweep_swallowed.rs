@@ -14,6 +14,9 @@ pub(super) const R_PREVIEW: &str =
     "preview/keys.rs:69-70 the preview swallows every key but its own and ^C";
 pub(super) const R_CONFIRM: &str =
     "confirm.rs:192-196 the confirm box swallows every key but its own and ^C";
+/// Ticket 11, decision 7: no palette over a box that waits for an answer.
+pub(super) const R_CONFIRM_PALETTE: &str = "palette.rs:153 the palette refuses over a confirm box, which \
+     then swallows the key (confirm.rs:192-196)";
 pub(super) const R_FINISH: &str =
     "finish/keys.rs:84,104 the finish summary swallows keys it does not own";
 pub(super) const R_RESOLVER: &str =
@@ -147,6 +150,8 @@ pub(super) const SWALLOWED_BY_DESIGN: &[(ContextId, &str, &str)] = &[
     (ContextId::Preview, "app.next_match", R_PREVIEW),
     (ContextId::Preview, "app.prev_match", R_PREVIEW),
     (ContextId::Preview, "app.menu", R_PREVIEW),
+    (ContextId::Confirm, "app.help", R_CONFIRM_PALETTE),
+    (ContextId::Confirm, "app.palette", R_CONFIRM_PALETTE),
     (ContextId::Confirm, "app.undo", R_CONFIRM),
     (ContextId::Confirm, "app.redo", R_CONFIRM),
     (ContextId::Confirm, "app.refresh", R_CONFIRM),

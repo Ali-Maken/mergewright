@@ -303,9 +303,10 @@ fn a_key_during_a_landing_drops_it() {
     let (state, _) = step(&state, window(find, 180..210));
     assert!(!state.detail.shown, "a late answer lands nothing");
 
-    // A key that moves nothing leaves the landing alone.
+    // A key that moves nothing leaves the landing alone. `F20`, not `?`:
+    // `?` opens the palette since m8-polish-and-ship/11.
     let (state, _) = landing_far("src/x.rs", Some(new_line(2)));
-    let (state, _) = step(&state, key(KeyCode::Char('?')));
+    let (state, _) = step(&state, key(KeyCode::Function(20)));
     assert!(state.line_landing.is_some());
 }
 
