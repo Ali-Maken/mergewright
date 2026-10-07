@@ -953,5 +953,17 @@ fn exit_line_says_where_git_left_it() {
     );
 }
 
+/// Review m8-13cd Minor 7: a forced write that never started says so, and
+/// nothing about a stop after n seconds.
+#[test]
+fn exit_line_says_a_write_that_never_started_did_not_start() {
+    use crate::update::quit::not_started_line;
+
+    assert_eq!(
+        not_started_line("graft", "merge feature into main"),
+        "graft: merge feature into main did not start \u{b7} nothing changed"
+    );
+}
+
 mod modals;
 mod stuck;

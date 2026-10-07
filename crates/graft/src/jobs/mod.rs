@@ -74,6 +74,7 @@ pub(crate) mod commit_message;
 pub(crate) mod conflict;
 pub(crate) mod detail;
 mod finish;
+mod forced;
 pub(crate) mod journal_list;
 mod kinds;
 mod map;
@@ -91,7 +92,8 @@ mod switch_list;
 mod types;
 pub(crate) mod undo;
 
-pub use pool::{Forced, Shutdown};
+pub use forced::Forced;
+pub use pool::Shutdown;
 pub use runner::JobRunner;
 pub use types::{Cancel, Delivery, Dispatch, JobEvents, Outcome, Work};
 
@@ -103,7 +105,7 @@ pub use types::{Cancel, Delivery, Dispatch, JobEvents, Outcome, Work};
 pub const MAX_WORKERS: usize = 4;
 
 /// How long [`JobRunner::shutdown`] waits for cancelled jobs to end before
-/// it gives up on them: 2.55 s.
+/// it gives up on them: 4.55 s.
 ///
 /// Long enough for a cancelled job's git child to be stopped and reaped —
 /// [`graft_git::run::STOP_WITHIN`] (a 50 ms poll, then SIGTERM and 2 s before

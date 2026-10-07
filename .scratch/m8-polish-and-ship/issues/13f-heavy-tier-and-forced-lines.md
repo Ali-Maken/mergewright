@@ -1,6 +1,6 @@
 # Stop review fixes, part 2: the heavy tier compiles again, pool split, forced-write lines, stale docs
 
-Status: draft
+Status: done
 Build with: **Sonnet**. The work is mechanical: call-site fixes, a move-only split, one new case in the exit line, and
 doc lines given verbatim. It changes no git write and no journal or undo behaviour.
 Needs: none (no other ticket's signatures).
@@ -81,15 +81,15 @@ unchanged. Keep `Forced`'s existing derives if they differ from the ones above.
 - Captures: none change (no drawn text).
 
 ## Acceptance (each tick names its test or check inline)
-- [ ] Heavy compile: `cargo clippy --all-targets --features heavy-tests -- -D warnings` rc 0, and
+- [x] Heavy compile: `cargo clippy --all-targets --features heavy-tests -- -D warnings` rc 0, and
       `cargo nextest run --features heavy-tests --no-run` rc 0. Both summary lines in NOTES.
-- [ ] Pool split: the move commit comes first. nextest total N = N (NOTES). `pool.rs` ≤ 400 lines (`wc -l`).
-- [ ] Minor 7: `jobs::tests::a_forced_write_that_never_started_is_answered_not_started` (`started: false`, `at: None`),
+- [x] Pool split: the move commit comes first. nextest total N = N (NOTES). `pool.rs` ≤ 400 lines (`wc -l`).
+- [x] Minor 7: `jobs::tests::a_forced_write_that_never_started_is_answered_not_started` (`started: false`, `at: None`),
       and `update::quit::tests::exit_line_says_a_write_that_never_started_did_not_start` (the exact words).
       A started forced write still reads its 13d line: `update::quit::tests::exit_line_says_where_git_left_it`, which
       passes unchanged.
-- [ ] R4: the MAP row exists. `grep -rn "left_at(" crates/graft/src` lists only `jobs/operate.rs` (NOTES).
-- [ ] Minor 5: every line in item 5 is replaced (`grep` for the old strings finds none; NOTES).
+- [x] R4: the MAP row exists. `grep -rn "left_at(" crates/graft/src` lists only `jobs/operate.rs` (NOTES).
+- [x] Minor 5: every line in item 5 is replaced (`grep` for the old strings finds none; NOTES).
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
@@ -98,3 +98,12 @@ workspace-wide.
 
 ## Size
 One context, about 45k tokens.
+
+## NOTES
+- Scout: none (ticket gives each line; the named `scouts/13b-review-fix.md` does not exist in this worktree).
+- Heavy: `cargo clippy --all-targets --features heavy-tests -- -D warnings` rc 0, no output; `cargo nextest run --features heavy-tests --no-run` rc 0 ("Finished `test` profile"). Only the five listed sites failed. Heavy tests not run.
+- Commit order: heavy-site fix (tests only) first, then the move-only split, then behaviour. nextest after split 5713/5713 (no test file touched by the move); after Minor 7 5715/5715 (+2). `pool.rs` 325 lines. `Live`/`Jobs` fields and `lock` became `pub(super)` so `jobs/forced.rs` holds `impl Live { force_stop, force_all_unstoppable, wait_for_forced }`.
+- Minor 7 delivery: `exit_line` unchanged; new `update::quit::not_started_line(bin, what)`; `event_loop/exit_wait.rs` picks it when `Forced::started` is false (boxed write and the rest). `answer_of` removed (inlined).
+- R4: `grep -rn "left_at(" crates/graft/src` → non-test only `jobs/operate.rs:353` (plus its def `types.rs:66`, two test uses in `jobs/tests.rs`).
+- Minor 5: grep for `2.55 s`, `not its group`, `stopping git is pending`, `13b's review-fix walk found` finds none. Still stale, outside this ticket's list: `src/update/quit.rs:174`, `src/update/events/command.rs:72` ("SIGTERM, SIGKILL after 2 s, reaped").
+- Prose ratchet: new line not in graft-ui `prose.rs`; no row needed. Journey fence walk passes in workspace nextest.

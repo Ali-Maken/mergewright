@@ -477,8 +477,9 @@ impl<S: JobEvents> JobRunner<S> {
 
     /// The only path that signals a `Stoppable::No` job from inside the
     /// app: the quit stop box's `y` (`Command::ForceStop`). Lifts `id`'s
-    /// mark and cancels it — SIGTERM, SIGKILL after 2 s, reaped, all within
-    /// [`super::SHUTDOWN_GRACE`]. The shutdown that follows the quit waits
+    /// mark and cancels it (its git stopped as `graft_git::run` stops a write:
+    /// hook-first for a local write, the group stop for a rebase or a remote
+    /// op; reaped within `STOP_WITHIN`), all within [`super::SHUTDOWN_GRACE`]. The shutdown that follows the quit waits
     /// for it as for any stopped job. (Shutdown's own forced stop, on its
     /// bound or a second signal, is the other.)
     pub fn force_stop(&self, id: JobId) {

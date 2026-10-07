@@ -324,6 +324,15 @@ pub fn exit_line(
     }
 }
 
+/// `<bin>: <op> did not start · nothing changed` — the exit line of a
+/// forced write that was still queued, so it never ran (review m8-13cd
+/// Minor 7). It replaces [`exit_line`] for that case only.
+#[must_use]
+pub fn not_started_line(bin: &str, what: &str) -> String {
+    let what = sanitize_line(what);
+    format!("{bin}: {what} did not start \u{b7} nothing changed")
+}
+
 /// What the running write `id` is called: its description, or `a write`.
 fn running_description(state: &AppState, id: JobId) -> String {
     state

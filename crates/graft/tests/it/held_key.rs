@@ -416,8 +416,12 @@ fn run(
     keys_were_the_script(&script, &stamps, journal)?;
 
     let reading = read(&wakes, &drain, initial, &stamps, journal);
-    if let Shutdown::Stalled { .. } = jobs.shutdown(Duration::from_secs(10)) {
-        return Err("the job pool did not stop cleanly".to_owned());
+    let shutdown = jobs.shutdown(Duration::from_secs(10), graft::jobs::EXIT_WRITE_WAIT, &());
+    if shutdown != Shutdown::CLEAN {
+        return Err(format!(
+            "the job pool did not stop cleanly: stalled {}, forced {:?}",
+            shutdown.stalled, shutdown.forced
+        ));
     }
     reading
 }
