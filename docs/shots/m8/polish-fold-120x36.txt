@@ -1,0 +1,45 @@
+# m8/polish-fold-120x36: drawn by `view::view` from a real AppState
+# (crates/graft/tests/it/look_polish.rs). Not a pty capture: a character grid,
+# no colour (CLAUDE.md rule 5 — colour unverified).
+#
+# The corpus octopus folded with `Space`. Right: the merge's row reads
+# `Merge branches 'topic-1', 'topic-2' and 'topic-3' +3` — one space, then
+# `+3` (muted), the three topic commits the fold hides; the header says
+# `1 merge folded`. While counting the mark reads `+`; a failure `+?`.
+
+ ◆ api  ~/code/api · main                                                                     2 commits  1 merge folded
+
+▸ ◆    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3' +3                                    GF 2d   e385b54
+  ◇    Add the base                                                                                     GF 2d   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · ? keys

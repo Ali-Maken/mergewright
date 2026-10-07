@@ -38,6 +38,7 @@ fn entry<'a>(line: &GraphLine<'a>, cursor: bool) -> GraphEntry<'a> {
         compare_marked: false,
         marker: None,
         tag: None,
+        fold: None,
     }
 }
 

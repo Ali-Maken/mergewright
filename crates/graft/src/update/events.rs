@@ -505,6 +505,14 @@ pub enum Product {
         /// The answer.
         result: Result<crate::update::remote::Leaves, String>,
     },
+    /// How many commits a folded merge brought in
+    /// (`Command::CountFolded`), or git's reason it could not be counted.
+    FoldedCounted {
+        /// The folded merge.
+        merge: graft_core::oid::Oid,
+        /// The answer.
+        count: Result<usize, String>,
+    },
 }
 
 /// A history place's whole file at one commit (m7-power-tools/21c).

@@ -1,4 +1,4 @@
- BLAME · src/auth/session.rs · as of 74f9a9e · whitespace ignored
+ BLAME · src/auth/session.rs · as of 74f9a9e
  skipping 1 commit listed in .git-blame-ignore-revs · i shows them
  ─ 3f6c311 Ana     1y  Add session            │  1  use std::time::{Duration, Instant};
  ─ 0a27627 Priya  4mo  Move session TTL to c… │  2  use crate::config::Config;

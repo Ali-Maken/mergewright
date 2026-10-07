@@ -31,6 +31,7 @@ pub mod drag;
 pub(crate) mod edge;
 mod events;
 pub mod finish;
+pub(crate) mod fold_count;
 mod geometry;
 mod history;
 mod in_view;
@@ -441,6 +442,9 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
                 result,
             },
         ) => remote::leaves_arrived(next, sent, expected, result),
+        AppEvent::Produced(_, Product::FoldedCounted { merge, count }) => {
+            fold_count::counted(next, merge, count);
+        }
         AppEvent::Progress(id, Progress::RemoteProgress { brief }) => {
             remote::remote_progress(next, id, &brief);
         }
@@ -1040,6 +1044,7 @@ fn took_fact(
         | Product::IndexState(_)
         | Product::Remotes(_)
         | Product::Leaves { .. }
+        | Product::FoldedCounted { .. }
         | Product::CommitTemplate(_)
         | Product::HeadMessage(_)
         | Product::RewritePlanned(_)

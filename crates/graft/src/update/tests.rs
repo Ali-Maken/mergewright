@@ -1377,6 +1377,11 @@ fn every_field_spelled_out() -> AppState {
             );
             tags
         },
+        fold_counts: [(
+            graft_core::oid::Oid::from_sha1([8; 20]),
+            super::fold_count::FoldCount::Counted(3),
+        )]
+        .into(),
         defer_follow: true,
         followed: Some(super::FollowKey::WorkingTree),
     }

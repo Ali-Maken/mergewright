@@ -1330,6 +1330,21 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
+    /// Counts what a folded merge brought in, for its `+N`
+    /// (m8-polish-and-ship/17b).
+    fn count_folded(&self, id: JobId, merge: Oid) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, None, move |_| {
+            Box::new(move |cancel: &Cancel| {
+                let count = super::fold_count::count_folded(&repos, merge, cancel);
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::FoldedCounted { merge, count })
+            })
+        });
+    }
+
     /// Builds the Map view's per-branch bucket counts, under an id `update`
     /// already chose (`update::map::MapState::open`, mirroring the detail
     /// pane's own jobs — see `queue_as`'s doc).
@@ -1440,6 +1455,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::ReadFinishDiff(id, path) => self.read_finish_diff(id, path),
             Command::ReadRemotes(id) => self.read_remotes(id),
             Command::ReadLeaves { id, sent, expected } => self.read_leaves(id, sent, expected),
+            Command::CountFolded { id, merge } => self.count_folded(id, merge),
             Command::CancelJob(id) => self.cancel(id),
             Command::Unstoppable(id, what) => self.unstoppable(id, what),
             Command::ForceStop(id) => self.force_stop(id),

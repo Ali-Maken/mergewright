@@ -86,3 +86,86 @@ fn capture_whitespace_ignored_title_for_docs_shots() {
     app.close();
     crate::captures::check_shot("m8/polish-whitespace-120x36.txt", &out);
 }
+
+/// `header` then `drawn`, one line each: a capture file's body.
+fn shot(header: &str, drawn: &[String]) -> String {
+    let mut out = String::from(header);
+    for line in drawn {
+        out.push_str(line);
+        out.push('\n');
+    }
+    out
+}
+
+/// 17b decision 1: `Space` on the corpus octopus folds it; once the count
+/// answers, its row ends ` +3` (the three topics it brought in), muted.
+#[test]
+fn capture_folded_merge_count_for_docs_shots() {
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::OctopusMerge);
+    let (app, state) = App::open(scratch.path());
+    let state = opened(&app, state);
+    let state = app.resize(&state, 120, 36);
+    let clock = Some(graft::session::Clock::Fixed(graft_fixtures::CORPUS_NOW));
+    let folded = app.key(&state, KeyCode::Char(' '));
+    let folded = app.pump(folded, "the fold's count", |state| {
+        crate::captures::frame_at(state, 120, 36, clock)
+            .iter()
+            .any(|line| line.contains("Merge branches 'topic-1', 'topic-2' and 'topic-3' +3 "))
+    });
+    let folded = crate::captures::settled_frame(&app, folded);
+    let drawn = crate::captures::frame_at(&folded, 120, 36, clock);
+    assert!(
+        drawn.iter().any(|line| line.contains("1 merge folded")),
+        "{drawn:#?}"
+    );
+    let out = shot(
+        "# m8/polish-fold-120x36: drawn by `view::view` from a real AppState\n\
+         # (crates/graft/tests/it/look_polish.rs). Not a pty capture: a character grid,\n\
+         # no colour (CLAUDE.md rule 5 — colour unverified).\n\
+         #\n\
+         # The corpus octopus folded with `Space`. Right: the merge's row reads\n\
+         # `Merge branches 'topic-1', 'topic-2' and 'topic-3' +3` — one space, then\n\
+         # `+3` (muted), the three topic commits the fold hides; the header says\n\
+         # `1 merge folded`. While counting the mark reads `+`; a failure `+?`.\n\n",
+        &drawn,
+    );
+    app.close();
+    crate::captures::check_shot("m8/polish-fold-120x36.txt", &out);
+}
+
+/// 17b decision 3: blame's default ignores whitespace, so its title says
+/// nothing about it; after `w` it ends `· whitespace counted`.
+#[test]
+fn capture_blame_whitespace_counted_for_docs_shots() {
+    use crate::m7_walk::blame::{blame, blame_ready, drawn, on_line_22, session};
+
+    let scratch = session();
+    let (app, state) = on_line_22(scratch.path(), 120, 36);
+    let state = blame(&app, &state);
+    let before = drawn(&state, 120, 36);
+    assert!(
+        before[0].contains(" BLAME \u{b7} ") && !before[0].contains("whitespace"),
+        "{:?}",
+        before[0]
+    );
+    let counted = app.key(&state, KeyCode::Char('w'));
+    let counted = blame_ready(&app, counted);
+    let after = drawn(&counted, 120, 36);
+    assert!(
+        after[0].trim_end().ends_with("\u{b7} whitespace counted"),
+        "{:?}",
+        after[0]
+    );
+    let out = shot(
+        "# m8/polish-blame-whitespace-counted-120x36: drawn by `view::view` from a real\n\
+         # AppState (crates/graft/tests/it/look_polish.rs). Not a pty capture: a character\n\
+         # grid, no colour (CLAUDE.md rule 5 — colour unverified).\n\
+         #\n\
+         # Blame of src/auth/session.rs after `w`. Right: the title ends\n\
+         # `· whitespace counted` (muted). At blame's default (whitespace ignored)\n\
+         # the title has no whitespace words at all — see docs/shots/m7/blame-*.txt.\n\n",
+        &after,
+    );
+    app.close();
+    crate::captures::check_shot("m8/polish-blame-whitespace-counted-120x36.txt", &out);
+}

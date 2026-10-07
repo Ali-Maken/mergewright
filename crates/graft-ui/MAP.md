@@ -59,7 +59,8 @@ The blame place's picture (m7-power-tools/20c); pure draw, no state.
 - `BlameBody<'a>` (enum) — `Reading` / `Failed(&str)` / `Lines { rows, cursor, top }`.
 - `IgnoreLine` (struct) — `count`, `applied`: the `.git-blame-ignore-revs` line, drawn only when `Some`.
 - `FindTitle<'a>` (struct) — `query`, `at` (1-based), `of` (0 = no match): the title's find tail.
-- `BlameView<'a>` (struct) — `path`, `rev`, `body`, `ignore`, `find`, `heatmap`, `now`, `whitespace_ignored` (m8/17: title tail `· whitespace ignored`, DIM).
+- `BlameView<'a>` (struct) — `path`, `rev`, `body`, `ignore`, `find`, `heatmap`, `now`, `whitespace_ignored` (m8/17b: blame's default is ignored, so the title says nothing then; `false` → tail `· whitespace counted`, DIM).
+- `whitespace_tail(ignored, default_ignored) -> Option<&'static str>` (fn, m8/17b) — the title tail naming the whitespace mode only when it departs from the screen's default: `· whitespace ignored` (default counted: detail, history) or `· whitespace counted` (default ignored: blame); `None` at the default. Every title tail goes through it.
 - `draw_blame(frame, area, view, keys: &Keymap)` (fn) — title, ignore line, body: gutter (46/22/10 cells at ≥180/120–179/<120) · `│` · number · code; `▸` and a trailer `◂ Name · age · subject · sha7` (shed sha, cut subject, drop) on the cursor row only. Heatmap colours the gutter only (unverified).
 - `blame_row_at(area, view, y) -> Option<usize>` (fn) — mouse hit-test: index into rows, `None` on title/ignore line/past the end.
 
@@ -71,7 +72,7 @@ The history place's picture (m7-power-tools/21); pure draw, no state. Uses `deta
 - `HistoryRow<'a>` (struct) — `sha7`, `subject`, `who`, `when`, `added`, `removed`, `was` (a rename's `↳ was <path>` row).
 - `HistoryList<'a>` (enum) — `Rows { rows, selected, top, end }` / `Failed(&str)` (drawn across the whole width).
 - `FilePane<'a>` (enum) — `Empty` / `NoChange` / `Reading { header }` / `Failed(&str)` / `Binary { header, old, new, sizes_failed }` (`binary · <old> → <new>`, or dim `binary · couldn't read sizes: <why>`; 21c) / `Lines { header, hunks, top, range, side_by_side, word_tint }`.
-- `HistoryView<'a>` (struct) — `title`, `tracing`, `list`, `file`, `focus`, `now`, `theme`, `whitespace_ignored` (m8/17, as blame's).
+- `HistoryView<'a>` (struct) — `title`, `tracing`, `list`, `file`, `focus`, `now`, `theme`, `whitespace_ignored` (m8/17; default counted, so `true` → tail `· whitespace ignored` via `blame::whitespace_tail`).
 - `Columns` (struct), `columns(width, focus)` (fn) — where the list and the file pane sit; shared with the app's mouse hit-test.
 - `file_rows`, `changed_rows`, `row_of_new_line`, `row_of_old_line` (fns) — the whole file's rows from its one hunk, which are changed, and the row of a line.
 - `list_index_at`, `rows_through` (fns) — list hit-test and height, counting a rename's `↳ was` row.
@@ -208,6 +209,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-
 - `GraphEntry::compare_marked` (field) — this row is the pinned base of a live compare; draws the accent `▏` left rule (m2-details-and-diffs/11).
 - `GraphEntry::marker` (field) — `Option<MarkerView>`: this row's Mistake Radar marker, painted at draw time (`view::radar::marker_for`, m2-details-and-diffs/13).
 - `GraphEntry::tag` (field) — `Option<RowTag>`: words drawn two cells after the subject in the accent token (colour unverified); the subject is cut with `…` first, and the tag is left off when fewer than `TAG_MIN_SUBJECT` subject cells would remain (m7-power-tools/09).
+- `GraphEntry::fold` (field) / `FoldMark` (enum, m8/17b) — a folded merge's mark, one space after the subject, muted (`TextMuted` through `ink`, so lifted on the cursor row; colour unverified): `Counting` `+`, `Count(n)` `+n` (0 draws nothing), `Unknown` `+?`; `words()`. ASCII in every tier; the subject is cut with `…` before it and it is never cut (left off only when it and one subject cell do not fit). Drawn before a `RowTag`; `subject_truncated` subtracts it.
 - `RowTag` (enum) — `Changed` (`✎ changed`, ASCII `~ changed`): a commit a put-in just changed. `words(ascii)`: the drawn words, `ascii` being `GraphView::ascii`. `StoppedHere` (`HEAD · stopped here`, both tiers; 07b): `HEAD`'s row at a rewrite's `edit` stop. `PutBack` (`↺ put back`, ASCII `put back`) and `WasHere { branch }` (`○ <branch> was here`, ASCII `<branch> was here`) — m7/24-a: what a J put-back restored and where a moved branch was. `words` returns `Cow<str>` since `WasHere` formats.
 - `TAG_MIN_SUBJECT` (const) — 8: the fewest subject cells a row keeps before its tag is dropped.
 - `MarkerView` (struct) — a marker's `severity`, all a paint-time lens needs; draws `⚠`/`ⓘ` (ASCII `!`/`i`) in the marker slot, only while `GraphView::marker_column` and only in the row's colour token.

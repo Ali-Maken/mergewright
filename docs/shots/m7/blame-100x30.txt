@@ -1,4 +1,4 @@
- BLAME · src/auth/session.rs · as of 74f9a9e · whitespace ignored
+ BLAME · src/auth/session.rs · as of 74f9a9e
  skipping 1 commit listed in .git-blame-ignore-revs · i shows them
  ─ AN   1y│  1  use std::time::{Duration, Instant};
  ─ PR  4mo│  2  use crate::config::Config;

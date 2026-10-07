@@ -8,8 +8,8 @@ use graft_graph::{Ancestry, Kin};
 use graft_term::{sanitize_line, sanitize_path_bytes};
 use graft_ui::graph_column::{GraphLine, NodeKind, RowPaint};
 use graft_ui::graph_screen::{
-    AuthorChip, Badge, BadgeKind, GraphEntry, RowTag, SHA_WIDTH, Tracking, badges_that_fit,
-    initials, relative_date, short_sha,
+    AuthorChip, Badge, BadgeKind, FoldMark, GraphEntry, RowTag, SHA_WIDTH, Tracking,
+    badges_that_fit, initials, relative_date, short_sha,
 };
 
 use crate::history::History;
@@ -207,6 +207,7 @@ fn uncommitted_entry<'a>(head_row: Option<&Row>, status: &WorkingTreeStatus) -> 
         // nor for a row tag.
         marker: None,
         tag: None,
+        fold: None,
     }
 }
 
@@ -359,7 +360,27 @@ fn row_entry<'a>(
         // commit a put-in just changed (m7-power-tools/09).
         tag: stopped_here(state, row.commit.id)
             .or_else(|| state.row_tags.on(row.commit.id).cloned()),
+        fold: fold_mark(state, row.commit.id),
     }
+}
+
+/// A folded merge's `+N` (m8-polish-and-ship/17b): from
+/// `AppState::fold_counts`, on a merge the view folds now. An unfolded merge
+/// keeps its count but draws no mark.
+fn fold_mark(state: &AppState, id: graft_core::oid::Oid) -> Option<FoldMark> {
+    use crate::update::fold_count::FoldCount;
+    let folded = state
+        .history
+        .as_ref()
+        .is_some_and(|history| history.view.inclusion.folded.contains(&id));
+    if !folded {
+        return None;
+    }
+    Some(match state.fold_counts.get(&id)? {
+        FoldCount::Counting => FoldMark::Counting,
+        FoldCount::Counted(count) => FoldMark::Count(*count),
+        FoldCount::Failed => FoldMark::Unknown,
+    })
 }
 
 /// `HEAD · stopped here` on `HEAD`'s row while a rewrite is stopped on an
