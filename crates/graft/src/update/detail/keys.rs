@@ -4,6 +4,7 @@
 use graft_core::event::{KeyCode, KeyPress, Modifiers};
 use graft_core::job::JobId;
 use graft_ui::detail::{DetailFocus, DiffMode, FileRowKind};
+use graft_ui::keymap::{ActionId, KeyChord, Keymap};
 
 use crate::update::events::Command;
 use crate::update::state::AppState;
@@ -164,7 +165,7 @@ pub(crate) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
             true
         }
         _ if detail.shown && detail.focus == DetailFocus::Files => {
-            files_key(detail, commands, ids, key.code, plain)
+            files_key(detail, commands, ids, key, plain)
         }
         _ if detail.shown && detail.focus == DetailFocus::Diff => {
             diff_key(detail, commands, ids, key.code, plain, body_rows)
@@ -278,15 +279,24 @@ fn changes_pane_write_key(
     handled
 }
 
+/// `key` is one of `action`'s chords as shipped. The edge hands a handler
+/// shipped chords only (`update/edge.rs`), so this is the action itself,
+/// whichever of its chords he pressed and whatever he moved it to.
+fn shipped_as(key: KeyPress, action: &'static str) -> bool {
+    KeyChord::from_press(&key)
+        .is_some_and(|chord| Keymap::shipped().chords(&ActionId(action)).contains(&chord))
+}
+
 /// Keys active with the files list focused: cursor movement, paging, home/end
 /// and `Space` to fold or unfold a directory row.
 fn files_key(
     detail: &mut DetailState,
     commands: &mut Vec<Command>,
     ids: &mut impl FnMut() -> JobId,
-    code: KeyCode,
+    key: KeyPress,
     plain: bool,
 ) -> bool {
+    let code = key.code;
     match code {
         KeyCode::Char('j') | KeyCode::Down => {
             commands.extend(detail.move_files_cursor(1, ids));
@@ -304,11 +314,13 @@ fn files_key(
             commands.extend(detail.move_files_cursor(-PAGE_STEP, ids));
             true
         }
-        KeyCode::Char('g') if plain => {
+        // Every chord of `app.top`/`app.bottom`, not `g`/`G` alone: `Home`
+        // and `End` went past the pane to the graph (m8/09g C).
+        _ if shipped_as(key, "app.top") => {
             commands.extend(detail.move_files_cursor(isize::MIN, ids));
             true
         }
-        KeyCode::Char('G') if plain => {
+        _ if shipped_as(key, "app.bottom") => {
             commands.extend(detail.move_files_cursor(isize::MAX, ids));
             true
         }

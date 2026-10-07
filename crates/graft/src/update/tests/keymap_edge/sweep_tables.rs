@@ -134,15 +134,10 @@ pub(super) const SHADOWED: &[(ContextId, &str, &str, &str, &str)] = &[
 /// its other chord acts — the per-row lists cannot say it.
 #[rustfmt::skip]
 pub(super) const ONE_CHORD_IDLE: &[(ContextId, &str, &str, &str)] = &[
-    (ContextId::Changes, "app.top", "home", "detail/keys.rs:307 no Home arm; the graph is at row 0"),
-    (ContextId::Resolver, "app.undo", "⌃Z", "resolver.rs:383 swallows ⌃Z; u answers (:379)"),
-    (ContextId::Banner, "app.undo", "⌃Z", "banner/focus_keys.rs:173 swallows ⌃Z; u answers (:147)"),
     (ContextId::Picker, "app.undo", "⌃Z", "picker.rs:155 swallows ⌃Z; u is typed (:147)"),
     (ContextId::Picker, "app.up", "↑", "picker.rs:138 the first row is already selected"),
     (ContextId::Picker, "app.top", "home", "picker.rs:155 swallows home; g is typed"),
     (ContextId::Picker, "app.bottom", "end", "picker.rs:155 swallows end; G is typed"),
-    (ContextId::Blame, "app.top", "home", "place/keys.rs:78 swallows home; g answers (:57)"),
-    (ContextId::Blame, "app.bottom", "end", "place/keys.rs:78 swallows end; G answers (:58)"),
     (ContextId::CommitEditor, "app.undo", "⌃Z", "commit_editor/keys.rs:110 swallows ⌃Z; u is typed"),
     (ContextId::CommitEditor, "app.up", "↑", "commit_editor/keys.rs:231 swallows ↑ in the subject"),
     (ContextId::CommitEditor, "app.top", "home", "commit_editor/keys.rs:229 caret already at home"),

@@ -317,3 +317,45 @@ fn place_with(state: &mut AppState, blame: Blame, cursor: usize) {
     place.cursor = cursor;
     trail_over(state, place, true);
 }
+
+/// m8/09g C: `Home`/`End` are `app.top`/`app.bottom`'s other chords, and
+/// blame borrows both (graft-ui `table.rs:92–93`, `BLAME_BORROWS`): each
+/// does what `g`/`G` does. Moved to `t`, `app.top` goes with it — `t` goes
+/// to the top and `Home` is a key nobody answers.
+#[test]
+fn home_and_end_in_blame_act_as_g_and_capital_g() {
+    let mid = press_all(&blamed_at(22), &[KeyCode::Char('k'); 3]);
+    let cursor = |state: &AppState| state.trail.on_screen().expect("blame is up").cursor;
+    let last = mid.trail.on_screen().expect("blame is up").row_count() - 1;
+    assert!(
+        (1..last).contains(&cursor(&mid)),
+        "mid-file: {}",
+        cursor(&mid)
+    );
+    for (chord, letter, want) in [(KeyCode::Home, 'g', 0), (KeyCode::End, 'G', last)] {
+        let (by_chord, chord_commands) = press(&mid, chord);
+        let (by_letter, letter_commands) = press(&mid, KeyCode::Char(letter));
+        assert_eq!(cursor(&by_chord), want, "{chord:?}");
+        assert_eq!(by_chord.trail, by_letter.trail, "{chord:?} is {letter}");
+        assert_eq!(chord_commands, letter_commands, "{chord:?} is {letter}");
+    }
+
+    let (top_on_t, _) = graft_ui::keymap::Keymap::with_overrides(
+        &[("app.top".to_owned(), vec!["t".to_owned()])],
+        graft_ui::keymap::KeySwitches::default(),
+    );
+    let remapped = AppState {
+        keymap: Arc::new(top_on_t),
+        ..mid.clone()
+    };
+    assert_eq!(
+        cursor(&press(&remapped, KeyCode::Char('t')).0),
+        0,
+        "t is top"
+    );
+    let (home, _) = press(&remapped, KeyCode::Home);
+    assert_eq!(
+        home.trail, mid.trail,
+        "Home went with app.top: it does nothing"
+    );
+}

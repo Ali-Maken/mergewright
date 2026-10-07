@@ -376,12 +376,29 @@ fn act(
         KeyCode::Char('d') if plain => restart_box(state),
         KeyCode::Char('M') if plain => mergetool_here(state, commands),
         KeyCode::Char('c') if plain => finish_pressed(state, commands, next_id),
-        KeyCode::Char('u' | 'U') if plain => undo_answered(state),
+        _ if asks_undo(state, key) => undo_answered(state),
         _ if plain => scroll_key(state, key.code),
         // Swallowed on purpose and silently: §2.1's modal rule. The bar
         // under the document is what says which keys apply here.
         _ => {}
     }
+}
+
+/// `key` is one of `app.undo`'s or `app.redo`'s chords as shipped: `u`,
+/// `⌃Z`, `U`. The edge hands a handler shipped chords only
+/// (`update/edge.rs`), so this is the action itself, whichever chord he
+/// pressed and whatever he moved it to. `⌃Z` was swallowed until m8/09g C.
+/// With `suspend_on_ctrl_z`, `⌃Z` is `app.suspend`'s, not undo's, and
+/// stays swallowed here: a suspend from the resolver would come back as
+/// the `HandedOver` that `update/mod.rs` reads as `e`'s edit returning.
+fn asks_undo(state: &AppState, key: KeyPress) -> bool {
+    use graft_ui::keymap::{ActionId, KeyChord, Keymap};
+    let Some(chord) = KeyChord::from_press(&key) else {
+        return false;
+    };
+    let of = |id| Keymap::shipped().chords(&ActionId(id)).contains(&chord);
+    let suspends = state.suspend_on_ctrl_z && chord == KeyChord::ctrl('z');
+    (of("app.undo") && !suspends) || of("app.redo")
 }
 
 /// `u`/`U` inside the resolver: not undo — the resolver is modal (§2.1) —

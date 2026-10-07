@@ -491,6 +491,40 @@ fn u_on_the_banner_of_a_shell_merge_is_sent() {
     }
 }
 
+/// m8/09g C (R2): `⌃Z` is `app.undo`'s other chord, so on the focused
+/// banner it does what `u` does — sent in a merge begun in the shell,
+/// refused in words while Graft's own step is live. It was swallowed (the
+/// catch-all). With `suspend_on_ctrl_z` it suspends, as on the graph, and
+/// never undoes.
+#[test]
+fn ctrl_z_undoes_on_the_focused_banner_as_u_does() {
+    let ctrl_z = KeyPress {
+        code: KeyCode::Char('z'),
+        modifiers: Modifiers::CONTROL,
+    };
+    let answer = |state: &AppState, key: KeyPress| {
+        let (next, commands) = crate::update::update(state, AppEvent::Core(Event::Key(key)));
+        (next.status, next.operating, next.banner_focus, commands)
+    };
+    let journaled = vec![graft_core::journal::EntryId::new(7, [7; 10])];
+    for state in [
+        merge_read(Vec::new(), Some("main")),
+        merge_read(journaled, Some("main")),
+    ] {
+        assert!(state.banner_focus, "the banner has the keyboard");
+        let by_u = answer(&state, KeyPress::plain(KeyCode::Char('u')));
+        assert_eq!(answer(&state, ctrl_z), by_u, "⌃Z is u");
+
+        let suspending = AppState {
+            suspend_on_ctrl_z: true,
+            ..state.clone()
+        };
+        let (_, operating, _, commands) = answer(&suspending, ctrl_z);
+        assert_eq!(operating, state.operating, "no undo launched");
+        assert_eq!(commands, [Command::Suspend], "⌃Z suspends");
+    }
+}
+
 /// `git mergetool` with no `merge.tool` asks "which one?" on stdin, and
 /// stdin at that moment belongs to a terminal Graft has given away. So the
 /// key refuses before the hand-over, and the line names what does work.

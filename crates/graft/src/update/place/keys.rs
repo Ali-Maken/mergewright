@@ -4,6 +4,7 @@
 use graft_core::event::{KeyCode, KeyPress, MouseButton, MouseInput, MouseKind};
 use graft_git::blame::Rev;
 use graft_git::trace::SHALLOW_END;
+use graft_ui::keymap::{ActionId, KeyChord, Keymap};
 
 use crate::update::detail::{DetailSpec, LineRef, Side, show_line};
 use crate::update::events::Command;
@@ -54,8 +55,10 @@ pub fn place_key(state: &mut AppState, key: KeyPress) -> Vec<Command> {
         KeyCode::Char('k') | KeyCode::Up => blame.cursor = blame.cursor.saturating_sub(1),
         KeyCode::PageDown => blame.cursor = (blame.cursor + page).min(last),
         KeyCode::PageUp => blame.cursor = blame.cursor.saturating_sub(page),
-        KeyCode::Char('g') => blame.cursor = 0,
-        KeyCode::Char('G') => blame.cursor = last,
+        // Every chord of `app.top`/`app.bottom`, not `g`/`G` alone: `Home`
+        // and `End` fell to the catch-all below (m8/09g C).
+        _ if shipped_as(key, "app.top") => blame.cursor = 0,
+        _ if shipped_as(key, "app.bottom") => blame.cursor = last,
         KeyCode::Char(' ') => blame.heatmap = !blame.heatmap,
         KeyCode::Char('/') => blame.find_prompt = Some(String::new()),
         KeyCode::Char('n') => step_find(blame, true),
@@ -79,6 +82,14 @@ pub fn place_key(state: &mut AppState, key: KeyPress) -> Vec<Command> {
     }
     keep_in_view(state);
     Vec::new()
+}
+
+/// `key` is one of `action`'s chords as shipped. The edge hands a handler
+/// shipped chords only (`update/edge.rs`), so this is the action itself,
+/// whichever of its chords he pressed and whatever he moved it to.
+fn shipped_as(key: KeyPress, action: &'static str) -> bool {
+    KeyChord::from_press(&key)
+        .is_some_and(|chord| Keymap::shipped().chords(&ActionId(action)).contains(&chord))
 }
 
 /// The `/` prompt: text goes in, `⏎` finds, `Esc` closes it and nothing

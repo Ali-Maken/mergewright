@@ -909,3 +909,44 @@ fn u_in_the_resolver_says_where_undo_is() {
         }
     }
 }
+
+/// m8/09g C (R2): `⌃Z` is `app.undo`'s other chord, so in the resolver it
+/// answers as `u` does — the notice saying where undo is, no command, the
+/// status left alone (`u_in_the_resolver_says_where_undo_is`). It was
+/// swallowed (`act`'s catch-all). With `suspend_on_ctrl_z` it is not
+/// undo's chord, and gets none of that answer.
+#[test]
+fn ctrl_z_answers_in_the_resolver_as_u_does() {
+    let plain = AppState {
+        in_progress: None,
+        ..resolver_on_screen(WALK)
+    };
+    let merge = AppState {
+        in_progress: Some(crate::update::resolver::fixtures::operation(
+            graft_git::state::InProgress::Merge,
+            None,
+        )),
+        ..plain.clone()
+    };
+    let ctrl_z = KeyPress {
+        code: KeyCode::Char('z'),
+        modifiers: graft_core::event::Modifiers::CONTROL,
+    };
+    let answer = |state: &AppState, key: KeyPress| {
+        let (next, commands) = update(state, AppEvent::Core(Event::Key(key)));
+        let notice = next.resolver.as_ref().and_then(|open| open.notice.clone());
+        (notice, next.status, commands)
+    };
+    for state in [plain, merge] {
+        let by_u = answer(&state, KeyPress::plain(KeyCode::Char('u')));
+        assert!(by_u.0.is_some(), "u answers with a notice");
+        assert_eq!(answer(&state, ctrl_z), by_u, "⌃Z is u");
+
+        let suspending = AppState {
+            suspend_on_ctrl_z: true,
+            ..state.clone()
+        };
+        let (notice, _, _) = answer(&suspending, ctrl_z);
+        assert_eq!(notice, None, "⌃Z suspends, never undo's answer");
+    }
+}

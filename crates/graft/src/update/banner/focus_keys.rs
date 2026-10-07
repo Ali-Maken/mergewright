@@ -4,6 +4,7 @@ use super::{
     AppState, Command, JobId, KeyCode, KeyPress, ReturnTo, Status, abort_pressed, banner_view,
     continue_pressed, edit_conflict, first_conflicted, open_mergetool, skip_pressed,
 };
+use graft_ui::keymap::{ActionId, KeyChord, Keymap};
 
 /// `Tab`/`Shift+Tab` **into** the banner: the door back in.
 ///
@@ -102,6 +103,9 @@ pub fn banner_key(
     if key.code == KeyCode::Char('c') && key.modifiers.control {
         return false;
     }
+    if let Some(claimed) = undo_keys(state, commands, key, next_id) {
+        return claimed;
+    }
     let plain = !key.modifiers.control && !key.modifiers.alt;
     match key.code {
         KeyCode::Tab | KeyCode::BackTab | KeyCode::Escape => hand_the_keyboard_back(state, key),
@@ -138,28 +142,6 @@ pub fn banner_key(
             }
             None => nothing_conflicted(state),
         },
-        // `u`/`U` answer exactly as the global keys do, focused or not —
-        // `undo_key` is the one path. That is a refusal **in words** while an
-        // operation is live (§2.6a); they used to fall into the silent arm
-        // below, so the key pressed on purpose drew nothing at all (review
-        // M3). In a merge begun in the shell they are sent, and ops' gate
-        // decides (§2.6a's one exception, m6-conflicts/57).
-        KeyCode::Char(letter @ ('u' | 'U')) if plain => {
-            // The refusal first where there is one: `undo_key` asks the
-            // undo-after-push box before `launch` refuses, and a box on a key
-            // that then refuses is not what the banner has ever answered. In
-            // a merge begun in the shell there is none (`in_progress_refusal`
-            // is `None`), so `undo_key` runs as is: when the next undo is a
-            // push, the push box opens first, and "Undo locally" then meets
-            // ops' `OperationLive` refusal (review 54–58 m1; KNOWN_GAPS
-            // M6/57 holds the question).
-            match crate::update::undo::in_progress_refusal(state) {
-                Some(refusal) => state.status = refusal,
-                None => {
-                    commands.extend(crate::update::undo::undo_key(state, letter == 'U', next_id));
-                }
-            }
-        }
         // `q` quits as it does from the graph, through the same path, so the
         // stopped or running box asks first. It used to fall into the silent
         // arm below and read as a hang (review m8-13 Major 1).
@@ -167,12 +149,55 @@ pub fn banner_key(
         // Swallowed on purpose, and **silently**: §2.1's modal rule.
         // Nothing outside the banner is live while it has focus, so `u`
         // cannot undo the entry *before* the one still running (answered
-        // in words just above, per §2.6) and `S` cannot stash a tree full
+        // in words by `undo_keys`, per §2.6) and `S` cannot stash a tree full
         // of conflict markers. Anything reaching here draws nothing — the
         // banner's own hint bar is what says which keys do apply.
         _ => {}
     }
     true
+}
+
+/// `app.undo` (`u`, `⌃Z`) and `app.redo` (`U`) on the focused banner;
+/// `None` for any other key. The chords are read off the shipped table:
+/// the edge hands a handler shipped chords only (`update/edge.rs`), so this
+/// is the action whichever chord he pressed and whatever he moved it to.
+///
+/// They answer exactly as the global keys do, focused or not — `undo_key`
+/// is the one path. That is a refusal **in words** while an operation is
+/// live (§2.6a); `u`/`U` used to fall into the silent arm, so the key
+/// pressed on purpose drew nothing at all (review M3), and `⌃Z` did until
+/// m8/09g C. In a merge begun in the shell they are sent, and ops' gate
+/// decides (§2.6a's one exception, m6-conflicts/57). The refusal comes
+/// first: `undo_key` asks the undo-after-push box before `launch` refuses,
+/// and a box on a key that then refuses is not what the banner has ever
+/// answered. With no refusal, when the next undo is a push, the push box
+/// opens first, and "Undo locally" then meets ops' `OperationLive` refusal
+/// (review 54–58 m1; `KNOWN_GAPS` M6/57 holds the question).
+///
+/// With `suspend_on_ctrl_z`, `⌃Z` is `app.suspend`, never undo: not the
+/// banner's (`Some(false)`), so it goes on to the one suspend path
+/// (`update/keys.rs`), as from the graph.
+fn undo_keys(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    key: KeyPress,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Option<bool> {
+    let chord = KeyChord::from_press(&key)?;
+    if state.suspend_on_ctrl_z && chord == KeyChord::ctrl('z') {
+        return Some(false);
+    }
+    let of = |id| Keymap::shipped().chords(&ActionId(id)).contains(&chord);
+    let redo = match (of("app.undo"), of("app.redo")) {
+        (true, _) => false,
+        (_, true) => true,
+        _ => return None,
+    };
+    match crate::update::undo::in_progress_refusal(state) {
+        Some(refusal) => state.status = refusal,
+        None => commands.extend(crate::update::undo::undo_key(state, redo, next_id)),
+    }
+    Some(true)
 }
 
 /// `M`/`e` with nothing unmerged: say so, and name the two keys that do
