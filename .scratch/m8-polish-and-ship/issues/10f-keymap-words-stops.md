@@ -1,6 +1,6 @@
 # G-keymap 2f — stop, outcome and failure words spell keys from his keymap
 
-Status: draft (planner spec-only pass 2026-10-07; split from 10b)
+Status: ready
 Build with: **Sonnet** — every site listed, every rule decided (10b W1–W6), each held by a table row. Not Fable.
 Blocked by: 10b, 10e (same callers' files; test scaffold).
 Needs: from 10e — `update/tests/keymap_words.rs` helpers, `OpKeys`; from 10/10c — `Keymap::{spell_keys, key_verb,
