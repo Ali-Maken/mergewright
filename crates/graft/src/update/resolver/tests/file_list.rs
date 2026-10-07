@@ -811,10 +811,9 @@ fn an_unmerged_open_failure_still_closes() {
     );
     assert_eq!(
         sticky(&state),
-        (
-            "could not read the file: denied",
-            Some("e edit  M mergetool")
-        )
+        // m8/10j ruling 4: the close lands him on the graph, where `e`
+        // edits nothing and `M` is the Map — so no key is named.
+        ("could not read the file: denied", None)
     );
 }
 

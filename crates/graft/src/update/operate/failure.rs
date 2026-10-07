@@ -86,7 +86,12 @@ pub(crate) fn edits_clause(at: graft_ops::EditsAt, keys: &Keymap) -> Option<Stri
         EditsAt::Back { copy: Some(n) } => {
             format!("your edits are back · a copy stays in stash@{{{n}}}")
         }
-        EditsAt::Back { copy: None } => "your edits are back · a copy may still be in S".to_owned(),
+        // `S` opens the stash list from the graph (10b W2/W5); unbound →
+        // the clause naming it goes (m8/10j ruling 1b).
+        EditsAt::Back { copy: None } => match keys.spell_keys(&[ActionId("graph.stash")]) {
+            Some(stash) => format!("your edits are back · a copy may still be in {stash}"),
+            None => "your edits are back".to_owned(),
+        },
         EditsAt::Backup { copy: Some(n) } => {
             let copy = format!("a copy is in stash@{{{n}}}");
             match restores {

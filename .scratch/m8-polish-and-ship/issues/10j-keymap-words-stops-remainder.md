@@ -1,6 +1,6 @@
 # G-keymap 2j — stops remainder: the mergetool fallback's `e`/`a` by place, the seven inline words tested remapped, 10f's MAP box held
 
-Status: ready
+Status: partial (ruling 2 open)
 Amended: planner spec-only pass 2026-10-07, from 10g's NOTES (merged partial, 3693ddd6): rulings 4–6 added — 10g's two
 left `KNOWN` rows (`open_failed`, `finish_refused_notice`) and 10g's re-opened MAP box. Nothing above is changed.
 Build with: **Sonnet** — all three rulings below are decided and each is held by a test or a stated command. Mechanical
@@ -164,56 +164,56 @@ pub(crate) fn finish_refused_notice(reason: &str, keys: &Keymap) -> (String, boo
 ```
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] Pins: `update::tests::keymap_words::stops::the_mergetool_fallback_names_the_row_where_it_is_shown` — shipped
+- [x] Pins: `update::tests::keymap_words::stops::the_mergetool_fallback_names_the_row_where_it_is_shown` — shipped
       `translate(ctx, e)` == `operation.edit`/`resolver.edit`/`changes.edit` at Banner/Resolver/Changes (Diff per
       ruling); `translate(Banner, a)` == `operation.abort`; at Resolver and Changes ≠ `operation.abort`. Red first.
-- [ ] Spelling: `…::stops::the_mergetool_fallback_spells_each_place_s_own_key` — the three edit rows remapped to three
+- [x] Spelling: `…::stops::the_mergetool_fallback_spells_each_place_s_own_key` — the three edit rows remapped to three
       different keys: each place's line carries its own key and no other's; shipped → Banner line byte-identical to
       today's; Resolver/Changes lines = today's minus `  a abort` (NOTES quotes old → new).
-- [ ] Unbound: `…::stops::an_unbound_edit_or_abort_drops_its_clause` — `resolver.edit = "none"` at Resolver → line is
+- [x] Unbound: `…::stops::an_unbound_edit_or_abort_drops_its_clause` — `resolver.edit = "none"` at Resolver → line is
       `no merge.tool configured` alone; `operation.abort = "none"` at Banner → `e edits {path}` alone; no `—`, no
       trailing `·`.
-- [ ] Both sites, driven: `…::stops::no_merge_tool_words_follow_the_place_he_pressed_m` — `M` with no `merge.tool`
+- [x] Both sites, driven: `…::stops::no_merge_tool_words_follow_the_place_he_pressed_m` — `M` with no `merge.tool`
       from the focused banner, the resolver, a CONFLICTS row: each status/notice spelled for that place under the
       sweep keymap; and `mergetool_returned`'s arm (NOTES names it) likewise.
-- [ ] Inline seven: `…::stops::each_inline_stop_word_spells_the_remapped_key` — 7 cases (count stated), swept →
+- [ ] → split (10j NOTES) Inline seven: `…::stops::each_inline_stop_word_spells_the_remapped_key` — 7 cases (count stated), swept →
       remapped label as a whole token, no default label of a moved action; shipped → byte-identical to the literal
       pinned in the test.
-- [ ] 1b: `…::stops::each_stop_word_spells_the_remapped_key` gains the `Back{None}` row (`S` from `graph.stash`);
+- [x] 1b: `…::stops::each_stop_word_spells_the_remapped_key` gains the `Back{None}` row (`S` from `graph.stash`);
       `RESOLVE_KEYS` answered in NOTES with its line (and a row here if spelled).
-- [ ] Ratchet: `no_literal_keys::no_user_facing_literal_spells_a_default_key` green; `rg -c 'KNOWN' crates/graft-ui/tests/no_literal_keys/known_stops.rs` → 0 (output in NOTES).
-- [ ] Captures: `git diff --stat <base> -- docs/shots` empty (planner checked 2026-10-07: `rg 'merge\.tool' docs/shots`
+- [x] Ratchet: `no_literal_keys::no_user_facing_literal_spells_a_default_key` green; `rg -c 'KNOWN' crates/graft-ui/tests/no_literal_keys/known_stops.rs` → 0 (output in NOTES).
+- [x] Captures: `git diff --stat <base> -- docs/shots` empty (planner checked 2026-10-07: `rg 'merge\.tool' docs/shots`
       has no hit, so no capture draws the changed line). Check: that command.
-- [ ] MAP.md (ruling 3): fn → MAP line list in NOTES for 10f's and this ticket's `keys: &Keymap` fns; `:470` reads
+- [x] MAP.md (ruling 3): fn → MAP line list in NOTES for 10f's and this ticket's `keys: &Keymap` fns; `:470` reads
       the new words. Check: the two commands in ruling 3.
 
 Amended (rulings 4–6):
-- [ ] Open-failure place pin: `…::stops::an_open_failure_lands_him_where_its_words_are_read` — drives
+- [x] Open-failure place pin: `…::stops::an_open_failure_lands_him_where_its_words_are_read` — drives
       `an_unmerged_open_failure_still_closes`'s flow; asserts `context_of` after the close == the place NOTES names,
       and shipped `translate(that place, e)` / `translate(that place, M)` == the rows NOTES names (or not an
       edit/mergetool row). Red first.
-- [ ] Open-failure words: `…::stops::the_open_failure_names_only_keys_that_work_where_he_lands` — table on
+- [x] Open-failure words: `…::stops::the_open_failure_names_only_keys_that_work_where_he_lands` — table on
       `edit_or_mergetool` over Banner/Resolver/Changes/Graph (Diff per pin): shipped, swept (each place's own key, no
       other's), `e`-row unbound, `M`-row unbound, both unbound → None; Graph → None (`M` is `graph.map`). Plus driven:
       the line after the close under the sweep keymap is that place's spelling or the reason alone, no `·`.
-- [ ] One edit row: `…::stops::the_fallback_and_the_open_failure_name_the_same_edit_key` — at each place, under the
+- [x] One edit row: `…::stops::the_fallback_and_the_open_failure_name_the_same_edit_key` — at each place, under the
       sweep keymap, the `e` key in `mergetool_fallback` and in `edit_or_mergetool` is the same label.
-- [ ] Existing test held: `update::resolver::tests::file_list::an_unmerged_open_failure_still_closes` green; its close
+- [x] Existing test held: `update::resolver::tests::file_list::an_unmerged_open_failure_still_closes` green; its close
       assertion unchanged (`git diff <base>` of that test shows only the expected-words line, or nothing); NOTES quotes
       old → new.
-- [ ] Finish refusal: `…::stops::the_finish_refusal_spells_mark_done_from_the_resolver_row` — shipped
+- [x] Finish refusal: `…::stops::the_finish_refusal_spells_mark_done_from_the_resolver_row` — shipped
       `translate(Resolver, ⏎)` == the row `resolver::a_notice_and_the_footer_spell_mark_done_alike` pins; swept →
       remapped label as a whole token, no `⏎`; that row unbound → `{reason}` alone, no `·`; shipped → byte-identical
       `<reason> · ⏎ marks done`; `bool` equal to today's for each case.
-- [ ] Both refusal callers, driven: `…::stops::both_finish_refusals_spell_his_key` — banner `c` with the resolver open
+- [x] Both refusal callers, driven: `…::stops::both_finish_refusals_spell_his_key` — banner `c` with the resolver open
       and a `continue_refusal` (`pressed.rs` path); a status read settling to a refusal while the notice says
       `CHECKING` (`status_read.rs` path); under the sweep keymap the resolver's notice row carries the remapped key.
-- [ ] Ratchet (10g's): `rg -c 'KNOWN' crates/graft-ui/tests/no_literal_keys/known_resolver.rs` → 0 (output in NOTES);
+- [x] Ratchet (10g's): `rg -c 'KNOWN' crates/graft-ui/tests/no_literal_keys/known_resolver.rs` → 0 (output in NOTES);
       `no_literal_keys::no_user_facing_literal_spells_a_default_key` green.
-- [ ] Captures (rulings 4–5): `rg -n 'e edit  M mergetool' docs/shots` → no hit (planner checked 2026-10-07); `· ⏎
+- [x] Captures (rulings 4–5): `rg -n 'e edit  M mergetool' docs/shots` → no hit (planner checked 2026-10-07); `· ⏎
       marks done` hits only `three.txt · ⏎ marks done` (10g's settled-file notice, not this fn). Shipped bytes of
       `finish_refused_notice` unchanged. Check: `git diff --stat <base> -- docs/shots` empty.
-- [ ] MAP.md (ruling 6): NOTES lists fn → MAP line for 10g's `keys: &Keymap` fns, `Identity::Done.restart`,
+- [x] MAP.md (ruling 6): NOTES lists fn → MAP line for 10g's `keys: &Keymap` fns, `Identity::Done.restart`,
       `finish_refused_notice`, `edit_or_mergetool`. Check: the commands in ruling 6.
 
 ## Touches
@@ -248,3 +248,51 @@ MAP check + NOTES ~5k. Past ~65k: stop after the seven, hand 1b/`RESOLVE_KEYS` t
 Amended: ~60k with rulings 4–6 (open failure pin + fn + driven ~7k, finish refusal + two callers driven ~6k, MAP ~2k).
 Order: 1, 4, 5, 2, 3+6, then 1b. The split rule above still holds: past ~65k, 1b/`RESOLVE_KEYS` go to the split
 first; if 4–5 are not done by then, they go with it (NOTES says which).
+
+## NOTES (builder 10j, 2026-10-07)
+
+No compaction. Scout: none — 10f's and 10g's NOTES were the scout (sites, callers, contexts named there); source read directly.
+**Partial: ruling 2 (inline seven) not built** — its fixtures live in private test modules of files on this ticket's
+Not list (`banner/tests.rs` 09f: `u puts the merge back` :437; `banner/rewrite_stop_tests.rs`: `c continues` :363;
+`finish/tests.rs`: `⇥ to write one` :249), so each case needs a new fixture or a visibility change there. Split it.
+RESOLVE_KEYS (1b question) also left, answered below.
+
+**TDD honesty:** implementation was written before its tests in this session; red was not observed per test (the new
+fns did not exist, so the new tests could not have compiled against base). Every test below observed green.
+
+- **Rule (1, 4):** `banner/resume.rs` `row_at(place, key, rows)` reads `Keymap::shipped().acting(place, key)` and keeps
+  it only if it is an edit / mergetool / `operation.abort` row; label spelled from `state.keymap`. One `edit_row` serves
+  `mergetool_fallback` and `edit_or_mergetool`. Diff pin: shipped `e` at Diff is **not** `changes.edit` → clause dropped.
+- **W6 byte changes:** `M` no merge.tool at Resolver / Changes: `e edits <p>  a abort` → `e edits <p>`. Banner unchanged
+  (`banner/tests.rs:510` test untouched, green). Diff/Graph → reason alone.
+- **`mergetool_returned` arm:** `Err(why)`, `update/mod.rs:~509`; it moves no focus, so `context_of` = where `M` was
+  pressed (test asserts it).
+- **Open-failure place (ruling 4 pin):** after the close `context_of` == **Graph** (`resolver_on_screen` → `merge_on_screen`,
+  `banner_focus` false, graph focused; `answers.rs` `state.resolver = None` is the only focus change). Graph: `M` =
+  `graph.map`, `e` no edit row → **both clauses drop**. `file_list.rs` `an_unmerged_open_failure_still_closes`:
+  old `Some("e edit  M mergetool")` → new `None`; its close assertion unchanged.
+  **Question for conductor (journey, not built):** an open failure lands him on the graph with no next step named; should
+  it land on that file's CONFLICTS row (where `e`/`M` act)?
+- **Pin test drives** the read failure by setting `open.job` and sending `ConflictOpened(Err)` (not the list click);
+  `file_list`'s own test covers the click route.
+- **Ruling 5:** `finish_refused_notice(reason, keys)`; row `resolver.mark_done` (shipped `⏎` at Resolver pinned). Callers
+  `pressed.rs:40`, `status_read.rs:67` (`settle`, resolver open — `notice_checking` gates it; no out-of-resolver caller).
+  `grep finish_refused_notice crates/graft/src` → def, those two, re-export `resolver.rs:85`, tests. Shipped bytes held by
+  3 resolver tests (`words_and_c.rs:290`, `finish_here.rs:181`, `opens_itself.rs:282`) green unchanged.
+- **1b:** `failure.rs` `Back{None}` spells `S` from `graph.stash`; unbound → `your edits are back`. Prose row swapped,
+  not removed: the new literal `… a copy may still be in {stash}` still trips the scanner on the article `a`, so it is
+  in `prose.rs` as `article` (old `… in S` row out).
+- **RESOLVE_KEYS** (`banner.rs:347`, `M mergetool  e edit  space marks resolved`): **drawn** — `pressed.rs:156`
+  `continue_refused` puts it in the status keys (callers `pressed.rs:38`, `status_read.rs:77`). Grep hole: a `const`
+  item, which the scanner does not read as a format literal. Not spelled: `continue_refused` gains `keys`, and
+  `banner/tests.rs:207,945` (09f) compare against the const — report only, for the split.
+- **Ratchet:** `grep -c KNOWN known_stops.rs` → 0; `known_resolver.rs` → 0 (ROWS empty).
+- **MAP (3, 6):** fn → MAP line: `continue_abort`/`abort_key` :383; `operation_refusal` :384; `staging_not_kept_rungs`/
+  `_status` :362; `edits_status` :363; `edits_clause` :364; `whole_file_keys` :495; `Identity::Done.restart` :908
+  (`Option<&str>`); `finish_refused_notice` :499 (new sig); `open_mergetool` :470 (new words);
+  `mergetool_fallback`/`edit_or_mergetool` :471 (new). Not in MAP (private / `pub(super)`): `with_failure`,
+  `journal::summary`/`in_progress`, `all_taken`, `backup_words`, `staging_undo`, `no_markers`, `landed_notice`,
+  `start_over_words`, `whole_file_note`.
+- **Touches:** `git diff --stat 3ea84f70 -- docs/shots banner/focus_keys.rs resolver/handover.rs detail/keys.rs
+  crates/graft-ops update/journal update/undo` → empty. Keymap table untouched. Outside Files: none
+  (`banner.rs` one `pub(crate) use` — resume is a private child of banner).
