@@ -2,9 +2,11 @@
 
 Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: four small rulings below, each held by a test.
-Blocked by: 10, 10c, 11, 14
-Needs: `keymap-spell-from-the-table` (hints over `ActionId`), `palette-help-and-actions` (doorway `? keys`),
-`daily-ops-fixes` (ruling 4's refusal exists first).
+Blocked by: 10, 10c, 11, 11b, 14
+Needs: `keymap-spell-from-the-table` (hints over `ActionId`), `palette-help-and-actions` (`?`/`:`/`⌃P` open the
+palette), `palette-doorway-and-hint-rows` (doorway `? keys`; same `hints/*` files — serial; it settles `a amend` in
+`NEVER_HINTED` and on HEAD's row, ruling 3 here covers the older rows), `daily-ops-fixes` (ruling 4's refusal exists
+first).
 
 ## Read first
 - `docs/design/02-keymap.md` §2.1 bullets "The hint bar is a ranked selection" (the two never-hinted classes) and the

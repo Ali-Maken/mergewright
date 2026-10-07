@@ -122,10 +122,9 @@ pub fn bar_keys(view: &EmptyStateView, keys: &Keymap) -> Vec<(String, &'static s
                 ("app.back", "cancel"),
             ],
         ),
-        Some(EmptyPrompt::ConfirmInit) => spelled(
-            keys,
-            &[("empty_state.confirm", "init"), ("app.back", "keep it")],
-        ),
+        Some(EmptyPrompt::ConfirmInit) => {
+            spelled(keys, &[("confirm.yes", "init"), ("app.back", "keep it")])
+        }
         None => {
             let mut parts = vec![("empty_state.open", "open…")];
             if !view.missing {

@@ -12,6 +12,7 @@
 //! - Every surface that prints a key spells it with [`Keymap::spell`].
 
 mod chord;
+mod clash;
 mod resolve;
 mod table;
 mod warning;
@@ -26,7 +27,7 @@ pub use graft_core::event::KeyCode;
 pub(crate) use resolve::join;
 pub use resolve::{Keymap, Translated};
 pub use table::defaults;
-pub use warning::KeyWarning;
+pub use warning::{Clash, KeyWarning};
 
 /// A place keys are bound in: a pane, an overlay, a box, or `Global`
 /// (every place).
@@ -168,6 +169,39 @@ impl ContextId {
         }
     }
 
+    /// The rows of other places this place answers itself, ahead of
+    /// anything it falls through to: a key resolves in its own rows, then
+    /// these, then the rest of [`ContextId::scope`] in order (ticket m8/09c,
+    /// D1). Read off the claim chain (`graft::update::keys::key_event`), one
+    /// comment per place naming the line that claims them. Empty for
+    /// `Graph`, `Global` and text fields.
+    #[must_use]
+    pub fn borrows(self) -> &'static [ActionId] {
+        match self {
+            C::Menu => MENU_BORROWS,
+            C::Changes | C::Diff => PANE_BORROWS,
+            C::Map | C::Stash => LIST_BORROWS,
+            C::Journal => JOURNAL_BORROWS,
+            C::Blame => BLAME_BORROWS,
+            C::History => HISTORY_BORROWS,
+            // The one confirm key (§2.3b), each place's own `y`:
+            // `update/preview/keys.rs:78` `confirm_key`, `update/finish/
+            // keys.rs:98` `files_key`, `update/rewrite_editor/keys.rs:171`,
+            // and the init box in graft's `empty_state.rs` `outside_key`.
+            C::Preview | C::Finish | C::Rewrite | C::EmptyState => &[ActionId("confirm.yes")],
+            C::Global
+            | C::Graph
+            | C::Confirm
+            | C::Resolver
+            | C::Banner
+            | C::Picker
+            | C::CommitEditor
+            | C::Palette
+            | C::Tour
+            | C::Credential => &[],
+        }
+    }
+
     /// A text field: typed keys stay as they are. Its rows are fixed — in
     /// the table for `?` and the man page, never remapped — and
     /// [`Keymap::translate`] passes every key here untouched.
@@ -178,6 +212,92 @@ impl ContextId {
             C::Picker | C::Palette | C::CommitEditor | C::Credential
         )
     }
+}
+
+// The rows each place answers itself (`ContextId::borrows`), with the
+// line in graft that claims them.
+
+// `context_menu_key` claims j/k, the arrows, ⏎, esc and `.`
+// (graft `update/context_menu.rs:133-161`); every other key
+// closes the menu and falls through.
+const MENU_BORROWS: &[ActionId] = &[
+    ActionId("app.down"),
+    ActionId("app.up"),
+    ActionId("app.open"),
+    ActionId("app.back"),
+    ActionId("app.menu"),
+];
+
+// `detail_key` (graft `update/detail/keys.rs:123-167` ⏎, esc,
+// ⇥/⇧⇥; `:285`, `:326` j/k, PgDn/PgUp, g/G in files and diff),
+// before `graph_key`.
+const PANE_BORROWS: &[ActionId] = &[
+    ActionId("app.down"),
+    ActionId("app.up"),
+    ActionId("app.page_down"),
+    ActionId("app.page_up"),
+    ActionId("app.top"),
+    ActionId("app.bottom"),
+    ActionId("app.open"),
+    ActionId("app.back"),
+    ActionId("app.next_pane"),
+    ActionId("app.prev_pane"),
+];
+
+// `map_key` (graft `update/map.rs:159-172`): esc, j/k, ⏎.
+const LIST_BORROWS: &[ActionId] = &[
+    ActionId("app.down"),
+    ActionId("app.up"),
+    ActionId("app.open"),
+    ActionId("app.back"),
+];
+
+// `journal::shown_key` (graft `update/journal/keys.rs:83-108`):
+// esc, j/k, n/N, ⏎. (`stash::shown_key`, `update/stash.rs:204-218`,
+// claims esc, j/k, ⏎ — `LIST_BORROWS`.)
+const JOURNAL_BORROWS: &[ActionId] = &[
+    ActionId("app.down"),
+    ActionId("app.up"),
+    ActionId("app.open"),
+    ActionId("app.back"),
+    ActionId("app.next_match"),
+    ActionId("app.prev_match"),
+];
+
+// `place_claim` (graft `update/keys.rs:124-130`) ahead of
+// everything; blame's keys `update/place/keys.rs:54-77`.
+const BLAME_BORROWS: &[ActionId] = &[
+    ActionId("app.down"),
+    ActionId("app.up"),
+    ActionId("app.page_down"),
+    ActionId("app.page_up"),
+    ActionId("app.top"),
+    ActionId("app.bottom"),
+    ActionId("app.find"),
+    ActionId("app.next_match"),
+    ActionId("app.prev_match"),
+    ActionId("app.open"),
+    ActionId("app.back"),
+];
+
+// `place_claim`, then `update/place/history_keys.rs:29-52`.
+const HISTORY_BORROWS: &[ActionId] = &[
+    ActionId("app.down"),
+    ActionId("app.up"),
+    ActionId("app.page_down"),
+    ActionId("app.page_up"),
+    ActionId("app.next_pane"),
+    ActionId("app.open"),
+    ActionId("app.back"),
+];
+
+/// The config switches that change which chords a row has out of the box
+/// (ticket m8/09c, D2). `Default`: every switch off.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct KeySwitches {
+    /// `[keys] suspend_on_ctrl_z`: `⌃Z` is `app.suspend`, and undo keeps
+    /// only `u`.
+    pub suspend_on_ctrl_z: bool,
 }
 
 /// An action's name in his config: `<context>.<verb>`, `snake_case`

@@ -3,9 +3,10 @@
 Status: ready
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: clone is a remote write outside any repo
 (askpass, progress, partial-folder cleanup); the line is small.
-Blocked by: 08, 11
+Blocked by: 08, 11, 11b (11b edits the empty-state bar — same files, serial)
 Needs: `look-outside-repo-screen` (`EmptyStateView`, `EmptyPrompt`, `Exit::Open`), `palette-help-and-actions`
-(the line names `?` and `⌃P`; "used once" means the palette opened).
+(the line names `?` and `⌃P`; "used once" means the palette opened), `palette-doorway-and-hint-rows` (the empty-state
+bar's `? keys` doorway, which `c clone…` sits before).
 
 ## Read first
 - `docs/design/01-view-mockups.md` §1.15 (the `c` bullet); `docs/design/02-keymap.md` §2.13, §2.14

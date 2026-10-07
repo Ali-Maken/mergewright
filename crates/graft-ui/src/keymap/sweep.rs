@@ -29,7 +29,18 @@ fn free_chords() -> Vec<KeyChord> {
 pub(crate) fn swept() -> (Keymap, HashMap<&'static str, String>) {
     let rows: Vec<&'static str> = defaults()
         .iter()
-        .filter(|b| !b.context.is_text_field() && b.action.0 != "app.quit_now")
+        .filter(|b| {
+            // Not a text field's, not `⌃C`, not a row whose keys follow
+            // another's, not one a switch keeps off (m8/09c).
+            !b.context.is_text_field()
+                && !matches!(
+                    b.action.0,
+                    "app.quit_now"
+                        | "app.suspend"
+                        | "preview.confirm_merge"
+                        | "preview.confirm_rebase"
+                )
+        })
         .map(|b| b.action.0)
         .collect();
     let free = free_chords();
@@ -48,7 +59,7 @@ pub(crate) fn swept() -> (Keymap, HashMap<&'static str, String>) {
         .iter()
         .map(|(action, label)| ((*action).to_owned(), vec![label.clone()]))
         .collect();
-    let (map, warnings) = Keymap::with_overrides(&lines);
+    let (map, warnings) = Keymap::with_overrides(&lines, crate::keymap::KeySwitches::default());
     assert_eq!(warnings, [], "every chord is free, so nothing collides");
     (map, moved)
 }

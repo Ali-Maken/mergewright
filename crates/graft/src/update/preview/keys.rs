@@ -174,8 +174,14 @@ pub(super) fn footer_keys(mut view: PreviewBox, preview: &PreviewState, keep: bo
     if let PreviewSubject::Operation { opened_by, .. } = &preview.subject {
         view.confirm_key = true;
         view.again = match *opened_by {
-            "m" => Some(Again::opening("m", "merge")),
-            "r" => Some(Again::opening("r", "rebase")),
+            "m" => Some(Again::opening(
+                graft_ui::keymap::ActionId("preview.confirm_merge"),
+                "merge",
+            )),
+            "r" => Some(Again::opening(
+                graft_ui::keymap::ActionId("preview.confirm_rebase"),
+                "rebase",
+            )),
             _ => None,
         };
     }

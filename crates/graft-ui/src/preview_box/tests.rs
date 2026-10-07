@@ -371,7 +371,7 @@ fn capture_for_docs_shots() {
 fn m_opened() -> PreviewBox {
     let mut view = rebase_view();
     view.confirm_key = true;
-    view.again = Some(Again::opening("m", "merge"));
+    view.again = Some(Again::opening(ActionId("preview.confirm_merge"), "merge"));
     view
 }
 
@@ -458,7 +458,7 @@ fn a_revert_preview_draws_the_old_footer() {
 fn r_opened_keeps() -> PreviewBox {
     let mut view = rebase_view();
     view.confirm_key = true;
-    view.again = Some(Again::opening("r", "rebase"));
+    view.again = Some(Again::opening(ActionId("preview.confirm_rebase"), "rebase"));
     view.keep = true;
     view
 }
@@ -593,32 +593,49 @@ fn preview_box_docks_on_the_footer_below_thirty_rows() {
     assert_eq!(area.bottom(), screen.bottom() - 1, "{area:?}");
 }
 
-/// Ticket 10c: the verb slot spells `preview.confirm`'s chord, and an
-/// opening chord only while it still confirms.
+/// Ticket 10c, re-pointed by 09c (Unbound ruling): the verb slot spells
+/// `confirm.yes`'s chord, or the opening key again — `preview.confirm_*`,
+/// whose chords follow the opener's — and only while it has one.
 #[test]
 fn again_names_a_confirm_chord_only_while_it_confirms() {
+    use crate::keymap::{KeySwitches, KeyWarning};
+    let rebase = Again::opening(ActionId("preview.confirm_rebase"), "rebase");
     let shipped = Keymap::shipped();
-    assert_eq!(
-        Again::opening("r", "rebase").text(shipped).as_deref(),
-        Some("r rebase")
-    );
+    assert_eq!(rebase.text(shipped).as_deref(), Some("r rebase"));
     assert_eq!(
         Again::confirm("apply").text(shipped).as_deref(),
         Some("y apply")
     );
-    let (only_y, warnings) =
-        Keymap::with_overrides(&[("preview.confirm".to_owned(), vec!["Y".to_owned()])]);
+    let lines = |id: &str, key: &str| [(id.to_owned(), vec![key.to_owned()])];
+    let (unbound, warnings) =
+        Keymap::with_overrides(&lines("graph.rebase", "none"), KeySwitches::default());
     assert_eq!(warnings, []);
-    assert_eq!(Again::opening("r", "rebase").text(&only_y), None);
+    assert_eq!(rebase.text(&unbound), None);
+    let (moved, warnings) =
+        Keymap::with_overrides(&lines("graph.rebase", "alt+r"), KeySwitches::default());
+    assert_eq!(warnings, []);
+    assert_eq!(rebase.text(&moved).as_deref(), Some("alt+r rebase"));
+    let (yes, warnings) =
+        Keymap::with_overrides(&lines("confirm.yes", "Y"), KeySwitches::default());
+    assert_eq!(warnings, []);
     assert_eq!(
-        Again::confirm("apply").text(&only_y).as_deref(),
+        Again::confirm("apply").text(&yes).as_deref(),
         Some("Y apply")
     );
+    let (follows, warnings) = Keymap::with_overrides(
+        &lines("preview.confirm_rebase", "x"),
+        KeySwitches::default(),
+    );
+    assert!(
+        matches!(warnings[..], [KeyWarning::Follows { .. }]),
+        "{warnings:?}"
+    );
+    assert_eq!(rebase.text(&follows).as_deref(), Some("r rebase"));
 }
 
-/// Spell sweep (c), ticket m8/10c: the footer names his chords, the
-/// `again` slot drops out (his `preview.confirm` no longer answers `r`),
-/// and the too-small line names his `app.back`.
+/// Spell sweep (c), ticket m8/10c: the footer names his chords — the
+/// `again` slot his `graph.rebase`'s (09c: it follows the opener) — and the
+/// too-small line names his `app.back`.
 #[test]
 fn the_box_spells_every_key_from_his_keymap() {
     use crate::keymap::sweep::{assert_spelled, swept};
@@ -628,13 +645,13 @@ fn the_box_spells_every_key_from_his_keymap() {
         &footer,
         &keys,
         &[
-            &["preview.confirm"],
+            &["confirm.yes"],
+            &["preview.confirm_rebase"],
             &["preview.rewrite"],
             &["preview.left", "preview.right"],
             &["preview.choose"],
             &["app.back"],
         ],
     );
-    assert!(!footer.contains("rebase"), "{footer}");
     assert_spelled(&too_small(&keys), &keys, &[&["app.back"]]);
 }

@@ -1,7 +1,7 @@
 //! The table with his overrides applied, and the translate the app runs on
 //! every key press (ADR-0055 §3, made exact by ticket m8/09 Scope 5).
 
-use super::{ActionId, Binding, ContextId, KeyChord, KeyLabel, KeyWarning, defaults};
+use super::{ActionId, Binding, ContextId, KeyChord, KeyLabel, KeySwitches, KeyWarning, defaults};
 
 /// What the app does with a pressed key, decided before any pane sees it.
 #[derive(Debug, PartialEq, Eq)]
@@ -22,9 +22,13 @@ pub enum Translated {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Keymap {
     /// Each row's effective chords, by index into [`defaults()`].
-    chords: Vec<Vec<KeyChord>>,
-    /// The override line that set a row's chords; `None` keeps its defaults.
-    line: Vec<Option<usize>>,
+    pub(super) chords: Vec<Vec<KeyChord>>,
+    /// Each row's chords before his lines: the table, with the switches
+    /// applied (D2). What translate's "default" means.
+    pub(super) base: Vec<Vec<KeyChord>>,
+    /// The override line that set a row's chords; `None` keeps its base. A
+    /// follower ([`FOLLOWS`]) carries its leader's line.
+    pub(super) line: Vec<Option<usize>>,
     /// Each row's live chords, spelled ([`Keymap::live_labels`]): worked
     /// out once, because every bar spells its keys many times over while
     /// its width rule measures.
@@ -32,27 +36,30 @@ pub struct Keymap {
 }
 
 impl Default for Keymap {
-    /// The table as shipped: no overrides.
+    /// The table as shipped: no overrides, every switch off.
     fn default() -> Self {
-        let rows = defaults();
-        let mut map = Self {
-            chords: rows.iter().map(|r| r.default.to_vec()).collect(),
-            line: vec![None; rows.len()],
-            labels: Vec::new(),
-        };
-        map.relabel();
-        map
+        Self::base_map(KeySwitches::default())
     }
 }
 
 /// Which chords a resolve reads.
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Over {
+pub(super) enum Over {
     /// What he has now, overrides applied.
     Effective,
-    /// The table as shipped.
-    Defaults,
+    /// Before his lines: the table with the switches applied.
+    Base,
 }
+
+/// Rows whose chords are another row's, never his to set (D3): the
+/// preview's "opening key again" confirms with whatever opens it.
+pub(super) const FOLLOWS: &[(ActionId, ActionId)] = &[
+    (ActionId("preview.confirm_merge"), ActionId("graph.merge")),
+    (ActionId("preview.confirm_rebase"), ActionId("graph.rebase")),
+];
+
+const SUSPEND_ID: ActionId = ActionId("app.suspend");
+const UNDO_ID: ActionId = ActionId("app.undo");
 
 impl Keymap {
     /// Apply his `[keys.<context>]` lines, in the order his file has them:
@@ -60,16 +67,23 @@ impl Keymap {
     /// `("graph.push", ["none"])`. An override replaces the action's whole
     /// default list. A line with a problem is not applied and says why;
     /// nothing here is fatal.
+    ///
+    /// `switches` set the chords before his lines (D2): with
+    /// `suspend_on_ctrl_z`, `app.suspend` is `⌃Z` and `app.undo` keeps `u`.
     #[must_use]
-    pub fn with_overrides(lines: &[(String, Vec<String>)]) -> (Keymap, Vec<KeyWarning>) {
-        let mut map = Keymap::default();
+    pub fn with_overrides(
+        lines: &[(String, Vec<String>)],
+        switches: KeySwitches,
+    ) -> (Keymap, Vec<KeyWarning>) {
+        let mut map = Keymap::base_map(switches);
         let mut warned: Vec<(usize, KeyWarning)> = Vec::new();
         for (at, (name, texts)) in lines.iter().enumerate() {
-            match map.apply(at, name, texts) {
+            match map.apply(at, name, texts, switches) {
                 Ok(()) => {}
                 Err(warning) => warned.push((at, warning)),
             }
         }
+        map.follow();
         warned.extend(map.collisions());
         map.relabel();
         // Stable: within one line, the order they were found in.
@@ -77,14 +91,63 @@ impl Keymap {
         (map, warned.into_iter().map(|(_, w)| w).collect())
     }
 
+    /// The table with `switches` applied and no lines.
+    fn base_map(switches: KeySwitches) -> Self {
+        let rows = defaults();
+        let mut base: Vec<Vec<KeyChord>> = rows.iter().map(|r| r.default.to_vec()).collect();
+        if switches.suspend_on_ctrl_z {
+            let suspend = KeyChord::ctrl('z');
+            if let (Some(s), Some(u)) = (index_of(SUSPEND_ID.0), index_of(UNDO_ID.0)) {
+                base[s] = vec![suspend];
+                base[u].retain(|chord| *chord != suspend);
+            }
+        }
+        let mut map = Self {
+            chords: base.clone(),
+            base,
+            line: vec![None; rows.len()],
+            labels: Vec::new(),
+        };
+        map.relabel();
+        map
+    }
+
+    /// Each follower takes its leader's chords and line.
+    fn follow(&mut self) {
+        for (follower, leader) in FOLLOWS {
+            if let (Some(f), Some(l)) = (index_of(follower.0), index_of(leader.0)) {
+                self.chords[f] = self.chords[l].clone();
+                self.line[f] = self.line[l];
+            }
+        }
+    }
+
     /// One override line, applied, or the reason it isn't.
-    fn apply(&mut self, at: usize, name: &str, texts: &[String]) -> Result<(), KeyWarning> {
+    fn apply(
+        &mut self,
+        at: usize,
+        name: &str,
+        texts: &[String],
+        switches: KeySwitches,
+    ) -> Result<(), KeyWarning> {
         let Some(row) = index_of(name) else {
             return Err(KeyWarning::UnknownAction(name.to_string()));
         };
         let binding = &defaults()[row];
         if binding.context.is_text_field() {
             return Err(KeyWarning::Fixed(binding.action));
+        }
+        if let Some((_, leader)) = FOLLOWS.iter().find(|(f, _)| *f == binding.action) {
+            return Err(KeyWarning::Follows {
+                action: binding.action,
+                leader: *leader,
+            });
+        }
+        if binding.action == SUSPEND_ID && !switches.suspend_on_ctrl_z {
+            return Err(KeyWarning::SwitchOff {
+                action: binding.action,
+                switch: "suspend_on_ctrl_z",
+            });
         }
         let chords = parse_list(name, texts)?;
         if binding.action == QUIT_NOW_ID {
@@ -111,9 +174,10 @@ impl Keymap {
         if pressed == KeyChord::QUIT_NOW || ctx.is_text_field() {
             return Translated::Pass;
         }
-        let scope = ctx.scope();
-        let Some(action) = self.resolve(scope, pressed, Over::Effective) else {
-            let is_default = rows_in(scope).any(|r| defaults()[r].default.contains(&pressed));
+        let Some(action) = self.resolve(ctx, pressed, Over::Effective) else {
+            let is_default = reachable_rows(ctx)
+                .iter()
+                .any(|r| self.base[*r].contains(&pressed));
             return if is_default {
                 Translated::Unbound
             } else {
@@ -121,8 +185,8 @@ impl Keymap {
             };
         };
         let acts_as_action =
-            |chord: &KeyChord| self.resolve(scope, *chord, Over::Defaults) == Some(action);
-        let own = defaults()[action].default;
+            |chord: &KeyChord| self.resolve(ctx, *chord, Over::Base) == Some(action);
+        let own = &self.base[action];
         let chosen = if own.contains(&pressed) && acts_as_action(&pressed) {
             Some(pressed)
         } else {
@@ -246,6 +310,17 @@ impl Keymap {
         index_of(action.0).map_or(&[], |row| self.chords[row].as_slice())
     }
 
+    /// Every row a key pressed in `ctx` may land on, in the order a chord
+    /// resolves there: its own rows, then [`ContextId::borrows`], then the
+    /// rest of its scope (D1). Each row once, with its chords as he has them.
+    #[must_use]
+    pub fn reachable(&self, ctx: ContextId) -> Vec<(&Binding, &[KeyChord])> {
+        reachable_rows(ctx)
+            .into_iter()
+            .map(|row| (&defaults()[row], self.chords[row].as_slice()))
+            .collect()
+    }
+
     /// The context's own rows, in table order, with their chords as he has
     /// them. Not its scope: `?` lists a place's own keys, then `Global`'s.
     #[must_use]
@@ -258,30 +333,43 @@ impl Keymap {
             .collect()
     }
 
-    /// The row a chord acts as in `scope`: inner context first; inside one
-    /// context an override beats a default, and of two overrides the
-    /// earlier line keeps it.
-    fn resolve(&self, scope: &[ContextId], chord: KeyChord, over: Over) -> Option<usize> {
-        scope.iter().find_map(|ctx| self.holder(*ctx, chord, over))
+    /// The row a chord acts as in `ctx`: its own rows, then the rows it
+    /// borrows, then the rest of its scope in order (D1). Inside one tier
+    /// an override beats a default, and of two overrides the earlier line
+    /// keeps it.
+    pub(super) fn resolve(&self, ctx: ContextId, chord: KeyChord, over: Over) -> Option<usize> {
+        self.holder(ctx, chord, over)
+            .or_else(|| self.best(borrowed_rows(ctx), chord, over))
+            .or_else(|| {
+                ctx.scope()
+                    .iter()
+                    .filter(|inner| **inner != ctx)
+                    .find_map(|inner| self.holder(*inner, chord, over))
+            })
     }
 
     /// The row of `ctx` itself that keeps `chord`, by the same rule.
     fn holder(&self, ctx: ContextId, chord: KeyChord, over: Over) -> Option<usize> {
-        self.holders(ctx, chord, over)
+        self.best(rows_of(ctx), chord, over)
+    }
+
+    /// Of `rows`, the one holding `chord` that keeps it.
+    fn best(
+        &self,
+        rows: impl Iterator<Item = usize>,
+        chord: KeyChord,
+        over: Over,
+    ) -> Option<usize> {
+        rows.filter(|row| self.has(*row, chord, over))
             .min_by_key(|row| self.rank(*row))
     }
 
-    /// Every row of `ctx` itself holding `chord`.
-    fn holders(
-        &self,
-        ctx: ContextId,
-        chord: KeyChord,
-        over: Over,
-    ) -> impl Iterator<Item = usize> + '_ {
-        rows_of(ctx).filter(move |row| match over {
-            Over::Effective => self.chords[*row].contains(&chord),
-            Over::Defaults => defaults()[*row].default.contains(&chord),
-        })
+    /// Whether `row` holds `chord`, as he has it or before his lines.
+    pub(super) fn has(&self, row: usize, chord: KeyChord, over: Over) -> bool {
+        match over {
+            Over::Effective => self.chords[row].contains(&chord),
+            Over::Base => self.base[row].contains(&chord),
+        }
     }
 
     /// Lower keeps a shared chord: overrides by line, then defaults by
@@ -291,75 +379,6 @@ impl Keymap {
             Some(at) => (false, at, row),
             None => (true, 0, row),
         }
-    }
-
-    /// Every chord that ends up on two actions in one context, or on a
-    /// context's action and a `Global` one, where an override put it there.
-    /// Each with the line it is about, for ordering.
-    fn collisions(&self) -> Vec<(usize, KeyWarning)> {
-        let mut found = Vec::new();
-        for &ctx in ContextId::ALL {
-            if ctx.is_text_field() {
-                continue; // nothing in a text field is remapped
-            }
-            for chord in self.chords_in(ctx) {
-                let Some(kept) = self.holder(ctx, chord, Over::Effective) else {
-                    continue;
-                };
-                let mut lost: Vec<usize> = self
-                    .holders(ctx, chord, Over::Effective)
-                    .filter(|row| *row != kept)
-                    .collect();
-                if ctx != ContextId::Global {
-                    lost.extend(self.holders(ContextId::Global, chord, Over::Effective));
-                }
-                for row in lost {
-                    let lines = [self.line[kept], self.line[row]];
-                    let Some(at) = lines.iter().flatten().max() else {
-                        continue; // two defaults: the table's own design
-                    };
-                    found.push((
-                        *at,
-                        KeyWarning::Collision {
-                            key: chord,
-                            context: ctx,
-                            kept: defaults()[kept].action,
-                            lost: defaults()[row].action,
-                        },
-                    ));
-                }
-            }
-        }
-        found
-    }
-
-    /// The distinct chords `ctx`'s own rows hold now, in table order.
-    fn chords_in(&self, ctx: ContextId) -> Vec<KeyChord> {
-        let mut out: Vec<KeyChord> = Vec::new();
-        for row in rows_of(ctx) {
-            for chord in &self.chords[row] {
-                if !out.contains(chord) {
-                    out.push(*chord);
-                }
-            }
-        }
-        out
-    }
-
-    /// Words for a lost chord: what else the losing action still answers to
-    /// in `ctx`, by the effective resolve.
-    pub(super) fn left_in(
-        &self,
-        action: &ActionId,
-        ctx: ContextId,
-        lost: KeyChord,
-    ) -> Option<KeyChord> {
-        let row = index_of(action.0)?;
-        self.chords[row]
-            .iter()
-            .copied()
-            .filter(|c| *c != lost)
-            .find(|c| self.resolve(ctx.scope(), *c, Over::Effective) == Some(row))
     }
 }
 
@@ -403,7 +422,7 @@ fn word_prefix(label: &str) -> Option<&str> {
 }
 
 /// The row index of an action id.
-fn index_of(name: &str) -> Option<usize> {
+pub(super) fn index_of(name: &str) -> Option<usize> {
     static ROWS: std::sync::LazyLock<std::collections::HashMap<&'static str, usize>> =
         std::sync::LazyLock::new(|| {
             defaults()
@@ -424,13 +443,22 @@ fn rows_of(ctx: ContextId) -> impl Iterator<Item = usize> {
         .map(|(row, _)| row)
 }
 
-/// The rows bound in any of `contexts`.
-fn rows_in(contexts: &[ContextId]) -> impl Iterator<Item = usize> + '_ {
-    defaults()
-        .iter()
-        .enumerate()
-        .filter(|(_, b)| contexts.contains(&b.context))
-        .map(|(row, _)| row)
+/// The rows `ctx` borrows ([`ContextId::borrows`]).
+fn borrowed_rows(ctx: ContextId) -> impl Iterator<Item = usize> {
+    ctx.borrows().iter().filter_map(|action| index_of(action.0))
+}
+
+/// Every row reachable in `ctx`, in resolution order, each once.
+pub(super) fn reachable_rows(ctx: ContextId) -> Vec<usize> {
+    let mut out: Vec<usize> = rows_of(ctx).chain(borrowed_rows(ctx)).collect();
+    for inner in ctx.scope().iter().filter(|inner| **inner != ctx) {
+        for row in rows_of(*inner) {
+            if !out.contains(&row) {
+                out.push(row);
+            }
+        }
+    }
+    out
 }
 
 /// His chord list: `["none"]` alone is no chord; `none` inside a longer

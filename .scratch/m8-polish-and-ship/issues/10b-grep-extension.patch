@@ -1,0 +1,84 @@
+diff --git a/crates/graft-ui/tests/no_literal_keys.rs b/crates/graft-ui/tests/no_literal_keys.rs
+index 8ba81b92..70a930f9 100644
+--- a/crates/graft-ui/tests/no_literal_keys.rs
++++ b/crates/graft-ui/tests/no_literal_keys.rs
+@@ -98,29 +98,32 @@ const ALLOWED: &[(&str, &str, &str)] = &[
+ #[test]
+ fn no_user_facing_literal_spells_a_default_key() {
+     let labels = labels();
+-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+     let mut hits = Vec::new();
+-    for file in rust_files(&root) {
+-        let source =
+-            fs::read_to_string(&file).unwrap_or_else(|why| panic!("{}: {why}", file.display()));
+-        let name = file
+-            .strip_prefix(&root)
+-            .unwrap_or(&file)
+-            .to_string_lossy()
+-            .replace('\\', "/");
+-        for literal in literals(&shipped_part(&source)) {
+-            if let Some(label) = hint_at(&literal, &labels)
+-                && !ALLOWED
+-                    .iter()
+-                    .any(|(path, text, _)| *path == name && *text == literal)
+-            {
+-                hits.push(format!("{name}: {literal:?} (`{label}`)"));
++    for (prefix, root) in roots() {
++        for file in rust_files(&root) {
++            let source = fs::read_to_string(&file)
++                .unwrap_or_else(|why| panic!("{}: {why}", file.display()));
++            let name = format!(
++                "{prefix}{}",
++                file.strip_prefix(&root)
++                    .unwrap_or(&file)
++                    .to_string_lossy()
++                    .replace('\\', "/")
++            );
++            for literal in literals(&shipped_part(&source)) {
++                if let Some(label) = hint_at(&literal, &labels)
++                    && !ALLOWED
++                        .iter()
++                        .any(|(path, text, _)| *path == name && *text == literal)
++                {
++                    hits.push(format!("{name}: {literal:?} (`{label}`)"));
++                }
+             }
+         }
+     }
+     let mut stale = Vec::new();
+     for (path, text, _) in ALLOWED {
+-        let source = fs::read_to_string(root.join(path))
++        let source = fs::read_to_string(source_path(path))
+             .unwrap_or_else(|why| panic!("allow-list file {path}: {why}"));
+         if !literals(&shipped_part(&source)).any(|literal| literal == *text) {
+             stale.push(format!("{path}: {text:?}"));
+@@ -139,6 +142,29 @@ fn no_user_facing_literal_spells_a_default_key() {
+     );
+ }
+ 
++/// The trees scanned, each with the prefix its allow-list paths carry:
++/// graft-ui's own (none), then graft's and graft-ops' status, refusal and
++/// error words (ticket m8/10b). Read by path — no crate dependency added.
++fn roots() -> Vec<(&'static str, PathBuf)> {
++    let ui = Path::new(env!("CARGO_MANIFEST_DIR"));
++    let crates = ui.parent().expect("graft-ui sits in crates/");
++    vec![
++        ("", ui.join("src")),
++        ("graft:", crates.join("graft").join("src")),
++        ("graft-ops:", crates.join("graft-ops").join("src")),
++    ]
++}
++
++/// The file an allow-list path names.
++fn source_path(path: &str) -> PathBuf {
++    let roots = roots();
++    roots
++        .iter()
++        .skip(1)
++        .find_map(|(prefix, root)| path.strip_prefix(prefix).map(|rest| root.join(rest)))
++        .unwrap_or_else(|| roots[0].1.join(path))
++}
++
+ /// Every live chord label of the shipped table: `y`, `esc`, `⏎`, `⌃R`, …
+ fn labels() -> BTreeSet<String> {
+     let shipped = Keymap::shipped();

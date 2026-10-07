@@ -317,8 +317,10 @@ fn open_moved_to_capital_o_outside_a_repository() {
 
     use super::outside_edge;
 
-    let (keymap, warnings) =
-        Keymap::with_overrides(&[("empty_state.open".to_owned(), vec!["O".to_owned()])]);
+    let (keymap, warnings) = Keymap::with_overrides(
+        &[("empty_state.open".to_owned(), vec!["O".to_owned()])],
+        graft_ui::keymap::KeySwitches::default(),
+    );
     assert_eq!(warnings, []);
 
     let mut moved = state();
@@ -350,6 +352,31 @@ fn open_moved_to_capital_o_outside_a_repository() {
     assert_eq!(field.text(), "~/code/o", "typed text is never remapped");
 }
 
+/// m8/09c D3: the init box confirms on `confirm.yes`'s key — one line moves
+/// it with every other box's. `Y` here: `c`, the ticket's example, is the
+/// start screen's own clone key and keeps it (own rows first; 09c NOTES).
+#[test]
+fn the_init_box_confirms_on_his_confirm_key() {
+    use graft_ui::keymap::{KeySwitches, Keymap};
+
+    use super::outside_edge;
+
+    let (keymap, warnings) = Keymap::with_overrides(
+        &[("confirm.yes".to_owned(), vec!["Y".to_owned()])],
+        KeySwitches::default(),
+    );
+    assert_eq!(warnings, []);
+    let mut s = state();
+    assert_eq!(outside_edge(&mut s, &keymap, ch('i')), OutsideStep::Stay);
+    assert_eq!(s.prompt, Some(Prompt::ConfirmInit));
+    assert_eq!(outside_edge(&mut s, &keymap, ch('y')), OutsideStep::Stay);
+    assert_eq!(s.prompt, Some(Prompt::ConfirmInit), "y no longer confirms");
+    assert_eq!(
+        outside_edge(&mut s, &keymap, ch('Y')),
+        OutsideStep::Init(PathBuf::from("/me/code"))
+    );
+}
+
 /// The typed-text case of 09b outside: with `graph.merge = "x"`, `x` typed
 /// into the open prompt is an `x`.
 #[test]
@@ -358,8 +385,10 @@ fn x_typed_into_the_open_prompt_is_an_x_with_merge_on_x() {
 
     use super::outside_edge;
 
-    let (keymap, _collision_with_compare) =
-        Keymap::with_overrides(&[("graph.merge".to_owned(), vec!["x".to_owned()])]);
+    let (keymap, _collision_with_compare) = Keymap::with_overrides(
+        &[("graph.merge".to_owned(), vec!["x".to_owned()])],
+        graft_ui::keymap::KeySwitches::default(),
+    );
     let mut s = state();
     outside_edge(&mut s, &keymap, ch('o'));
     outside_edge(&mut s, &keymap, ch('x'));

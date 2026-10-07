@@ -98,11 +98,13 @@ pub(super) const BANNER_MERGETOOL: &[HintKey] = &[key("operation.mergetool")];
 pub(super) const BANNER_EDIT: &[HintKey] = &[key("operation.edit")];
 
 // §2.6b Finish summary.
-pub(super) const FINISH_COMMIT: &[HintKey] = &[key("finish.commit")];
+/// `y` from the files: the one confirm key (§2.3b), borrowed by `Finish`.
+pub(super) const FINISH_COMMIT: &[HintKey] = &[key("confirm.yes")];
 pub(super) const TOGGLE_DIFF: &[HintKey] = &[EveryChord(ActionId("finish.toggle_diff"))];
 
 // §2.7 Rewrite editor.
-pub(super) const REWRITE_START: &[HintKey] = &[key("rewrite.start")];
+/// `y`: the one confirm key (§2.3b), borrowed by `Rewrite`.
+pub(super) const REWRITE_START: &[HintKey] = &[key("confirm.yes")];
 pub(super) const REWRITE_CHANGES: &[HintKey] = &[key("rewrite.toggle_changes")];
 pub(super) const PICK: &[HintKey] = &[key("rewrite.pick")];
 pub(super) const REWORD: &[HintKey] = &[key("rewrite.reword")];

@@ -184,6 +184,13 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   ? shows them` and `?` lists them first. Typed text in a field is never
   remapped. Every surface that prints a key (hint bar, `?`, palette, `.`
   labels, the tour card, the man page) spells it from the live table.
+  A line acts where its section is live and never over a place's own keys:
+  a place answers its own rows and the keys it handles itself (movement in
+  panes and the `.` menu) before anything it falls through to. Each line
+  with a problem is one problem, naming every place it changes.
+  `confirm.yes` is the one confirm key (§2.3b). With `suspend_on_ctrl_z`,
+  `⌃Z` is `app.suspend` and undo keeps `u`. Inside a text field no line
+  acts: keys type themselves.
 
 ### 2.2 Global (every pane)
 

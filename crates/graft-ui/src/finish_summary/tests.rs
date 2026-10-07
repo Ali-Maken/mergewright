@@ -544,11 +544,11 @@ fn the_summary_spells_every_key_from_his_keymap() {
         .iter()
         .find(|line| line.contains("summary unavailable"))
         .unwrap_or_else(|| panic!("{}", grid.join("\n")));
-    assert_spelled(unavailable, &keys, &[&["finish.commit"]]);
+    assert_spelled(unavailable, &keys, &[&["confirm.yes"]]);
     assert_spelled(
         &preview_line(Some("main"), &keys),
         &keys,
-        &[&["finish.commit"]],
+        &[&["confirm.yes"]],
     );
     assert_spelled(&undo_line(&keys), &keys, &[&["app.undo"]]);
 }
