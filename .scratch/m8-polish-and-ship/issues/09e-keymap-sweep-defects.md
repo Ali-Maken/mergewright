@@ -1,17 +1,24 @@
-# G-keymap 1e — the nine keys 09d's sweep found idle, and the dead `empty_state.cancel` row
+# G-keymap 1e — the nine keys 09d's sweep found idle, the dead `empty_state.cancel` row, and the changes pane's bar over an overlay (11b row 553)
 
 Status: draft (planner spec-only pass, 2026-10-07; rewritten the same day after the scout's stop — ruling on Defects 1–2
 re-made against the code, stale lines fixed; from 09d NOTES "DEFECTS found by the sweep" and "D6 knock-on
-(question)"; KNOWN_GAPS `M8/09d-empty-state-cancel-dead` and the 09d sweep-defects row)
+(question)"; KNOWN_GAPS `M8/09d-empty-state-cancel-dead` and the 09d sweep-defects row. Second rewrite the same day:
+11b merged partial — its row 553 folded in here (same `overlay_context`, same over-overlay bar, same swallow oracle);
+11b's other three open items ruled below, one of them sent to the new ticket `doorway-on-overlays-places-and-marked-rows.md`)
 Build with: **Sonnet** (provisional — brownfield, ADR-0035: conductor confirms; scout done). Every ruling is made
-below, each fix is a gate or an arm at a line the scout pinned, and 09d's sweep is the oracle that flips each row.
-Not Fable: nothing structural is left open.
-Blocked by: 11, 11b (conductor 2026-10-07: 09e drops `/ search` from bars under overlays; 11b is building the bar hint rows)
+below, each fix is a gate or an arm at a line the scout pinned (553: the line 11b's builder pinned), and 09d's sweep is
+the oracle that flips each row. Not Fable: nothing structural is left open.
+Blocked by: none (11 and 11b merged). **Order:** before 17 (look polish) — 09e is unblocked now and fixes live defects;
+17's item 6 may stop for a planner ruling and must not hold this. 17 shares `view/rows.rs` (`modal_blanked`) and the
+capture set: run them serially, never concurrently. After 09e: the doorway ticket (shares `hints/lists.rs`, catalogue,
+captures).
 Needs: from 09d — the sweep (`update::tests::keymap_edge::sweep`), its tables `SWALLOWED_BY_DESIGN`
 (`sweep_swallowed.rs:44`), `DEFECTS` (`sweep_tables.rs:178–188`), `ACTING_AT_LANDING = 396` (`sweep.rs:29`);
 `empty_state::sweep_tests`; `empty_state::tests::the_init_box_answers_the_same_keys_in_confirm`. From m6/85 — the
 S/J-from-the-pane precedent (`update::keys::tests::s_opens_the_stash_list_from_the_changes_pane`,
 `…::j_opens_the_journal_from_the_changes_pane`; landing lines `update/stash.rs:175–176`, `update/journal/keys.rs:43`).
+From 11b — `the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows` (update/tests.rs:4105), 11b's `DOORWAY`
+(the `? keys` hint, `graph_screen::hints`).
 Scout: `.scratch/m8-polish-and-ship/scouts/09e-sweep-defects.md` (on main). Read it before source.
 
 **Files.** Paths under `crates/graft/src/` unless stated.
@@ -20,14 +27,19 @@ Scout: `.scratch/m8-polish-and-ship/scouts/09e-sweep-defects.md` (on main). Read
   init-box arm `:254–261` (raw `n` at `:256`) + its tests and `empty_state/sweep_tests.rs` (cancel row `:43`);
   `update/tests/keymap_edge/{sweep,sweep_tables,sweep_swallowed}.rs`; `update/keys.rs` tests;
   `update/search/tests.rs` (`slash_belongs_to_every_modal_that_is_up`, `:197`); `tests/it/hint_bar.rs:578–583`
-  (expected bar string); `MAP.md`. **Doc comments only** (no code): `update/state.rs:906–911`
+  (expected bar string); `MAP.md`. **553:** `view/rows.rs` `overlay_context` — the final
+  `Some(HintContext::PaneOverOverlay { … })` (≈ :696), only its changes-pane case; `update/tests.rs:4105` (the swallow
+  test, extended); `tests/it/hint_bar.rs` (one test added). **Doc comments only** (no code): `update/state.rs:906–911`
   (`modal_owns_keys`' "Not the Map, journal or stash overlay … `/ search`, which works there"),
   `update/journal/find.rs:162–164` ("`/` stays the search that pane's bar offers"). **Not** `modal_owns_keys`' body,
-  not `graph_has_focus`, not `update/map.rs` (`M` stays), not `view/*`, not `update/edge.rs`.
-- graft-ui: `graph_screen/hints/lists.rs:324–335` (`pane_over_overlay_list` loses `/ search`);
-  `graph_screen/hints/context.rs:126–129` (doc: "`u undo` and `/ search`" → `u undo` only);
-  `graph_screen/hints/catalogue.rs:483` (comment only: "`R` needs the graph's keyboard … never under a pane" →
-  the pane bar doesn't offer `R`; ranking is 15 — behaviour unchanged); `keymap/table.rs:495–500` (row deleted);
+  not `graph_has_focus`, not `update/map.rs` (`M` stays), no other `view/*` line (`rows.rs` `modal_blanked` and
+  `hint_context` are 17's and untouched), not `update/edge.rs`.
+- graft-ui: `graph_screen/hints/lists.rs:324–335` (`pane_over_overlay_list` loses `/ search`) and the changes pane's
+  list (`over_overlay` filter, 553); `graph_screen/hints/context.rs:126–129` (doc: "`u undo` and `/ search`" →
+  `u undo` only) and `HintContext::ChangesPane` (field added, 553); `graph_screen/hints/catalogue.rs` (`every_context`,
+  `coverage_slot`, `COVERAGE_SLOTS` for the new shape; `:483` comment only: "`R` needs the graph's keyboard … never
+  under a pane" → the pane bar doesn't offer `R`; ranking is 15 — behaviour unchanged); every `ChangesPane { unmerged }`
+  constructor (grep; adds `over_overlay: false`); `keymap/table.rs:495–500` (row deleted);
   `tests/keymap_ids.txt:57`; `MAP.md`. No `keymap/resolve.rs`, no `borrows`. No `keymap/tests/*` names the row
   (scout grep).
 - 10b / 10e: no file above is theirs by their specs' crate lines — conductor confirms.
@@ -35,14 +47,17 @@ Scout: `.scratch/m8-polish-and-ship/scouts/09e-sweep-defects.md` (on main). Read
 ## Read first
 - The scout file, whole (one page).
 - `09d-keymap-sweeps-and-literals.md` NOTES: "DEFECTS found by the sweep", "D6 knock-on (question)", "Init box"
-- `docs/design/02-keymap.md` §2.1 modal list (:61–113, the Map/Journal/Stash bullet :100–105, search prompt :98–99),
+- `11b-palette-doorway-and-hint-rows.md` NOTES bullet "553, stop (rule 7 trace)" — the repro and the site
+- `docs/design/02-keymap.md` §2.1 hint-bar bullet (:38–59, "everything bound is a candidate"), §2.1 modal list
+  (:61–113, the Map/Journal/Stash bullet :100–105, search prompt :98–99),
   §2.1 remap paragraph (:174–193, "a line acts where its section is live", "every binding is remappable"), §2.2 `/`
   (:210 "Find in the focused list"), §2.3 `R` `C` `M` `O` (:248–249, :266, :268), §2.3a (:279), §2.3c (:296), §2.4 `M`
   (:308), §2.9 (:470–479), §2.13 (:542–555)
 - `.scratch/m6-conflicts/issues/85-usability-2-fixes.md` m2 (:48–49) and NOTES (:221) — S/J from the pane
 - `docs/research/ux-principles.md` rows 1, 3, 4, 6 (:51–56)
-- `crates/graft/MAP.md` `empty_state` (:6), `AppState::graph_has_focus` (:215), sweep tables (:937);
-  `crates/graft-ui/MAP.md` `## keymap` (`ContextId::borrows`, `reachable`)
+- `crates/graft/MAP.md` `empty_state` (:6), `AppState::graph_has_focus` (:215), `view::rows` `overlay_context` (:930),
+  m8/11b row (:1160), sweep tables (:937); `crates/graft-ui/MAP.md` `## keymap` (`ContextId::borrows`, `reachable`),
+  `graph_screen::hints` (:25 — `ChangesPane`, `PaneOverOverlay`, `every_context`, `coverage_slot`)
 - Source after the maps: each line in the Files list; `update/mod.rs:1106–1124` (search before `key_event`);
   `view/frame.rs:158–160` and `view/frame/overlays.rs:83–107, 262–349` (what draws under Map/Stash)
 
@@ -107,6 +122,51 @@ does nothing; the bar never offered it there.
 - Row flips to `SWALLOWED_BY_DESIGN` with why `§2.3a :279 Map opens from the graph pane; M in the detail pane is the
   mergetool's (§2.4 :308)`.
 
+**Row 553 (from 11b) — overlay up, changes pane focused: the bar draws the changes pane's keys that answer there, and
+no other. Fix (a): `ChangesPane` minus what the overlay swallows.** Traced by 11b's builder (NOTES, rule 7):
+`view/rows.rs` `overlay_context` returns `PaneOverOverlay` for a focused changes pane (≈ :696, reached before
+`hint_context`'s `on_changes_pane()` branch), so the bar reads `⏎ open · j/k move · u undo · / search` while `space`,
+`d`, `⌃A`, `e`, `⇥`, `.`, `?` all answer — live keys he is never shown (§2.1 :38–59 "everything bound is a
+candidate"; ux row 6). Choosing `ChangesPane` draws `c commit`, which falls through to the graph and the overlay's
+`shown_key` swallows.
+- Options: (a) bar = the changes pane's list minus every key the overlay swallows (`c commit`; `/ search` by Defects
+  1–2 above); (b) make `c` reach the commit editor from the pane under an overlay; (c) leave as is.
+  **Take (a).** (b) rejected: the Map, journal and stash are modal (§2.1 :100–105) and the frame draws the overlay, not
+  the graph screen, in their place (`view/frame.rs:158,160`) — a commit editor opened under one is the unseen-modal
+  failure Defects 1–2 remove for `/`; and `c` is the graph's verb reached through the graph, which is exactly what an
+  overlay takes away (09e's one rule: graph keys answer only while the graph is shown). (c) rejected: live keys
+  never drawn (ux row 6). Trade-off: `c` in the changes pane commits everywhere except under an overlay — reached by
+  closing the overlay first, as today (ux row 4 dented, not broken: the bar never offers `c` there).
+- Mechanism: `HintContext::ChangesPane` gains `over_overlay: bool`; `overlay_context` returns
+  `ChangesPane { unmerged, over_overlay: true }` where it returns `PaneOverOverlay` for a focused changes pane today
+  (the commit's files/diff case keeps `PaneOverOverlay`). The list with `over_overlay` omits `c commit` and `/ search`
+  and every graph-dispatched key the swallow test finds; it keeps 11b's doorway rule as `ChangesPane` has it. Every
+  other constructor passes `false` (grep, NOTES lists them).
+- **The oracle is the frame, not the state** (Defects 1–2's lesson: "something moved" ≠ "he can see it"). For each key
+  the over-overlay changes bar (and `PaneOverOverlay`'s) draws, on a fixture where the key has something to act on:
+  pressing it changes the drawn frame or emits a `Command` (`e` hands over to `$EDITOR`). A key that changes nothing →
+  dropped from the `over_overlay` list (NOTES names it). A key that changes `AppState` but not the frame (opens a
+  menu, prompt or box the frame doesn't draw under the overlay — check `.` first) → stands down under an overlay at its
+  opener with `graph_overlay().is_none()`, as `/` does, and its hint drops; NOTES names the opener line. **Stop** if
+  more than two keys need that, or if an opener is shared with the graph-shown path so a guard can't separate them.
+- He sees (Stash open, Detail tab, changes pane focused, one unstaged file): bar ends `… u undo · ? keys` with
+  `space stage` among the hints, no `c commit`, no `/ search`; `space` stages the file (the pane redraws); `c` does
+  nothing.
+
+**11b's other open items — ruled here, built elsewhere or not at all:**
+- **Overlays and places draw no `? keys` (11b NOTES).** Fix, in the new ticket
+  `doorway-on-overlays-places-and-marked-rows.md` (after 09e: shares `lists.rs`, catalogue, captures; no
+  `overlay_context` code, so not folded). Why: 11b's decision 1 named them; ADR-0058 §4's bar-modal list (resolver,
+  banner, boxes, prompts, preview — "there the keys are the point") does not; `?` answers there (`keys.rs` `open_key`
+  runs first); DESIGN §1.0 (01-view-mockups :50–52) "the doorway is always last"; ux rows 4, 6, 10.
+- **Marked rows have no `? keys` (11b NOTES).** Fix, partial, same new ticket: `? keys` drawn on a marked row as an
+  ordinary candidate ranked last, dropped first — the one non-modal bar where the doorway yields, because `u undo` and
+  `/ search` must stay (10c R1) and the row's own `.` is `explain`. Details there.
+- **`. actions` first draws at 267 columns, not 200.** Accept, no code. Decision 1 ranked it last before the doorway
+  (§2.1 :54–55, everything bound is a candidate — drawn when it fits, never promised a width); the 200 in 11b's tick
+  was an assumption, already corrected there. `.` stays one key away through `?` (it lists `. actions` under HERE).
+  Re-ranking is ticket 15's.
+
 **`?` and the palette do not read the sweep tables** (corrected 2026-10-07). `SWALLOWED_BY_DESIGN`/`DEFECTS` are
 test-only consts; their readers are `update/tests/keymap_edge/*`, `empty_state/sweep_tests.rs` (its own table) and
 graft MAP.md:937 (scout grep; planner grep agrees). 11's lists come from the keymap's resolution —
@@ -131,22 +191,29 @@ drawn); `n` → box stays.
 
 **Out:** the `ONE_CHORD_IDLE` questions (resolver/banner `⌃Z`, blame `home`/`end`, changes `home`) — not ruled here;
 the hint bar's ranking and the pane bar offering `R`/`C`/`O` (`hint_context` still reads `graph_has_focus`; ranking
-is 15); `?`/palette content (11's file — report only, above); `M8/blame-find-drops-help-quit` (separate path, scout §6).
+is 15); `?`/palette content (11's file — report only, above); `M8/blame-find-drops-help-quit` (separate path, scout §6);
+the doorway on overlays, places and marked rows (new ticket, above).
 
 ## Signatures
-No new `pub` items. No signature changes.
+No new `pub` items. One field added.
 ```rust
 // graft::update::search — guard added, signature unchanged:
 pub(super) fn search_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool;
 //   opener (:20) and step (:22) also require `next.graph_overlay().is_none()`
 // graft-ui::graph_screen::hints::lists — `hint(FIND, "search")` removed:
 fn pane_over_overlay_list(opens: bool) -> Vec<Hint>; // [⏎ open]? j/k move, u undo
+// graft-ui::graph_screen::hints::context — 553:
+pub enum HintContext { /* … */ ChangesPane { unmerged: bool, over_overlay: bool }, /* … */ }
+//   over_overlay: true only from graft's overlay_context; list omits `c commit`, `/ search` and what the oracle drops
+// graft::view::rows — signature unchanged; a focused changes pane under an overlay → ChangesPane { unmerged, over_overlay: true }
+fn overlay_context(state: &AppState) -> Option<HintContext>;
 // graft-ui::keymap::table — row deleted (golden list tests/keymap_ids.txt loses `empty_state.cancel`)
 // Binding { action: ActionId("empty_state.cancel"), context: ContextId::EmptyState, default: &[n], .. }  // gone
 // graft::update::tests::keymap_edge — DEFECTS ends empty and is deleted with its loop (sweep.rs:19,44,194);
 //   nine rows moved: 6 → acting (none listed), 3 → SWALLOWED_BY_DESIGN (Map "/", Stash "/", Diff graph.map)
 const ACTING_AT_LANDING: usize; // raised to the new count, date 09e's
 ```
+(`overlay_context`'s parameter is as graft MAP :930 names it; if the code differs, keep the code's signature.)
 
 ## Acceptance (each tick names its test, at tick time)
 - [ ] **Defects 1–2, graph focus.** Map open, `/` → `search_prompt` is `None`, `AppState` equal to an unbound key's;
@@ -161,9 +228,18 @@ const ACTING_AT_LANDING: usize; // raised to the new count, date 09e's
   draw the frame; either `search_prompt` is `None` or the frame contains ` /_`. Fails today for Map/Stash.
   (`view::tests::a_search_prompt_is_never_open_where_it_is_not_drawn`)
 - [ ] **Bar.** `the_bar_behind_an_overlay_draws_what_the_pane_still_answers` (tests/it/hint_bar.rs:578) expects
-  ` ⏎ open  j/k move  u undo`; `the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows` green unchanged;
-  graft-ui hint catalogue tests green. `slash_belongs_to_every_modal_that_is_up` unchanged and green (overlays are not
-  modals; the new tests cover them).
+  ` ⏎ open  j/k move  u undo` plus 11b's doorway as that bar has it today (NOTES quotes the before/after string);
+  `the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows` green; graft-ui hint catalogue tests green.
+  `slash_belongs_to_every_modal_that_is_up` unchanged and green (overlays are not modals; the new tests cover them).
+- [ ] **553, red first.** 11b's repro, committed: Map, journal, stash × changes pane focused: the bar contains
+  `space stage` and no `c commit`, no `/ search`. (`tests/it/hint_bar.rs::the_changes_pane_over_an_overlay_draws_its_live_keys`)
+- [ ] **553, swallow test.** `the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows` (update/tests.rs:4105)
+  extended to the changes pane over each overlay; green. (that test)
+- [ ] **553, frame oracle.** Each key drawn on the over-overlay changes bar and on `PaneOverOverlay`'s, over each of
+  the three overlays, changes the frame or emits a `Command`; NOTES lists any key dropped or stood down, with its line.
+  (`view::tests::every_key_on_a_bar_over_an_overlay_changes_what_he_sees`)
+- [ ] **553, catalogue.** `every_context` yields `ChangesPane { over_overlay: true }` forms; `coverage_slot` exhaustive
+  on the new field; `COVERAGE_SLOTS` raised (NOTES: old → new); `every_context_reaches_every_shape` green.
 - [ ] **Defects 3–8.** From Changes and from Diff: `C` → picker open, graph focused; `Esc` → graph focused, detail pane
   open. `R` → the rewrite editor on the graph cursor's row, the same editor as `⇥`-to-graph then `R` (state compared);
   `Esc` → graph focused, pane open. `O` → strip toggled, focus still in the pane. Red first, one test per key.
@@ -180,35 +256,49 @@ const ACTING_AT_LANDING: usize; // raised to the new count, date 09e's
   `empty_state::sweep_tests` green with the row gone (case count in NOTES; its `:43` comment citing `:256` goes too).
 - [ ] **`?`/palette check** (report only): NOTES answers both questions in the `?` ruling, each with its line.
 - [ ] **Captures.** Full `cargo nextest run` with `GRAFT_UPDATE_SHOTS` set once, then unset and green. The only
-  allowed diffs: a pane-over-overlay bar losing `/ search`. NOTES lists every changed file under `docs/shots/` and its
-  one-line diff; any other diff is a stop. If no committed capture shows that bar, add
-  `docs/shots/m8/pane-over-map-bar-80x24.txt` (Map open, Detail tab, files focused) — the visual result is the bar's
+  allowed diffs: a pane-over-overlay bar losing `/ search`; a changes-pane-over-overlay bar becoming the changes
+  pane's list (553). NOTES lists every changed file under `docs/shots/` and its one-line diff; any other diff is a
+  stop. Add `docs/shots/m8/changes-over-stash-bar-80x24.txt` (Stash open, Detail tab, changes pane focused, one
+  unstaged file) and, if no committed capture shows the commit pane's bar over an overlay,
+  `docs/shots/m8/pane-over-map-bar-80x24.txt` (Map open, Detail tab, files focused) — the visual result is each bar's
   last row, judged by the user (rule 6). Colour unverified (rule 5).
 - [ ] MAP.md — graft: `graph_has_focus` read by `M` (and `hint_context`, `offer_keys_live`) only; `S`/`J` (m6/85)
   and `R`/`C`/`O` (09e) answer from the panes; `empty_state` init box answers `y`/`esc` only; the graph's search
-  answers only with no overlay up. graft-ui: the row's removal; `PaneOverOverlay` bar is `⏎`/`j/k`/`u`. (doc, no test)
+  answers only with no overlay up; `overlay_context` returns `ChangesPane { over_overlay: true }` for a focused changes
+  pane (the m8/11b row at :1160 closed). graft-ui: the row's removal; `PaneOverOverlay` bar is `⏎`/`j/k`/`u`;
+  `ChangesPane.over_overlay`. (doc, no test)
 
 ## Touches
 - Callers of the three gates and the search: grep each function; the dispatcher tests (`update::keys::tests`),
   `update::search::tests`, m6/85's S/J tests green.
 - Other screens drawing this state: the graph footer still draws the prompt whenever the graph is shown (the opener is
-  unchanged there — existing search tests); the `PaneOverOverlay` bar changes (above); every other bar unchanged —
-  `hint_context` untouched, captures prove it. Overview strip drawn at the pane-focused sizes: existing captures cover
-  it toggled from the graph; no new capture.
+  unchanged there — existing search tests); the `PaneOverOverlay` bar changes (above); the changes pane's bar over an
+  overlay changes (553); every other bar unchanged — `hint_context` untouched (only `overlay_context`'s changes-pane
+  case), captures prove it. Overview strip drawn at the pane-focused sizes: existing captures cover it toggled from the
+  graph; no new capture.
+- `HintContext::ChangesPane` constructors and matches (graft and graft-ui; grep `ChangesPane {`): each passes or
+  ignores `over_overlay`; `every_context`, `marked_form`, `pane_focused_form`, `coverage_slot` (exhaustive matches).
+- Any key stood down under an overlay by the 553 oracle: its opener's tests and the sweep (a row may flip to
+  `SWALLOWED_BY_DESIGN` — same cite form as Map `/`).
 - J's own find: unchanged at graph focus (runs before, mod.rs:1109); its `find.rs:162–164` comment rewritten. Journal
   find tests green.
-- Keymap: one row deleted (golden list); no chord moves. 02-keymap.md needs no edit (§2.2 :210 already says it).
-- Journal/undo: none — key routing only; `R`/`C` open places whose writes are already journaled. Show the empty
-  `git diff --stat` over `crates/graft/src/update/journal*` (comment lines in `journal/find.rs` excepted — say so)
-  and `crates/graft-ops`.
+- Keymap: one row deleted (golden list); no chord moves. 02-keymap.md needs no edit (§2.2 :210 already says it; 553
+  follows §2.1 :38–59 and :100–105 as written).
+- Journal/undo: none — key routing and the bar only; `R`/`C` open places whose writes are already journaled. Show the
+  empty `git diff --stat` over `crates/graft/src/update/journal*` (comment lines in `journal/find.rs` excepted — say
+  so) and `crates/graft-ops`.
 - 11 (merged): its `?`/palette reads the keymap, not the sweep tables — the check above reports any row it lists that
   doesn't act. 18 (Clone prompt) does not name `empty_state.cancel` (planner grep of `.scratch/m8-polish-and-ship/issues/`,
   2026-10-07).
-- KNOWN_GAPS: `M8/09d-empty-state-cancel-dead` and the 09d sweep-defects row close (conductor).
+- 17 (look polish) — `view/rows.rs` (`modal_blanked`) and captures: serial, 09e first. The doorway ticket reads
+  `ChangesPane.over_overlay`: after 09e.
+- KNOWN_GAPS: `M8/09d-empty-state-cancel-dead`, the 09d sweep-defects row and 11b's row 553 close (conductor).
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc` — workspace-wide.
 
 ## Size
-~42k: three gates + landing tests ~12k; search guard, pane/`n` cases, frame invariant ~10k; bar + hint_bar test +
-captures ~5k; row + arm + tests ~8k; sweep tables, count, MAP, `?` check ~7k.
+~56k: three gates + landing tests ~12k; search guard, pane/`n` cases, frame invariant ~10k; bar + hint_bar test +
+captures ~5k; row + arm + tests ~8k; sweep tables, count, MAP, `?` check ~7k; 553 (field, catalogue slots,
+`overlay_context`, repro, frame oracle, two captures) ~14k. If the 553 oracle stands down a key, NOTES and stop
+rather than run past ~70k.
