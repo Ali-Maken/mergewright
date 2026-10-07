@@ -325,3 +325,60 @@ fn empty_state_cancel_is_no_action() {
         [KeyWarning::UnknownAction("empty_state.cancel".into())]
     );
 }
+
+// ── m8/09f Major 2: the three modal overlays ────────────────────────────
+
+/// The Map, the stash list and the journal are modal (§2.1 :100–105): the
+/// graph's section is not live under them (:187), so a key pressed there
+/// reaches its own rows, what it borrows, and `Global` — less the `Global`
+/// rows it answers with nothing. Every other place's scope as it was.
+#[test]
+fn an_overlay_reaches_no_graph_row_it_does_not_borrow() {
+    use ContextId as C;
+    let map = Keymap::default();
+    for ctx in [C::Map, C::Stash, C::Journal] {
+        assert_eq!(ctx.scope(), [ctx, C::Global], "{ctx:?}");
+        for (row, _) in map.reachable(ctx) {
+            assert!(
+                row.context != C::Graph || ctx.borrows().contains(&row.action),
+                "{ctx:?} reaches {}",
+                row.action.0
+            );
+            assert!(
+                !ctx.stands_down().contains(&row.action),
+                "{ctx:?} lists {}, which it stands down",
+                row.action.0
+            );
+        }
+        assert!(!ctx.stands_down().is_empty(), "{ctx:?} stands nothing down");
+    }
+    let pinned: &[(C, &[C])] = &[
+        (C::Graph, &[C::Graph, C::Diff, C::Global]),
+        (C::Changes, &[C::Changes, C::Diff, C::Graph, C::Global]),
+        (C::Diff, &[C::Diff, C::Graph, C::Global]),
+        (
+            C::Menu,
+            &[C::Menu, C::Changes, C::Diff, C::Graph, C::Global],
+        ),
+        (C::Blame, &[C::Blame, C::Diff, C::Global]),
+        (C::History, &[C::History, C::Diff, C::Global]),
+        (C::Preview, &[C::Preview, C::Global]),
+        (C::Confirm, &[C::Confirm, C::Global]),
+        (C::Resolver, &[C::Resolver, C::Global]),
+        (C::Banner, &[C::Banner, C::Global]),
+        (C::Finish, &[C::Finish, C::Global]),
+        (C::Rewrite, &[C::Rewrite, C::Global]),
+        (C::Picker, &[C::Picker, C::Global]),
+        (C::CommitEditor, &[C::CommitEditor, C::Global]),
+        (C::Credential, &[C::Credential, C::Global]),
+        (C::Palette, &[C::Palette, C::Global]),
+        (C::EmptyState, &[C::EmptyState, C::Global]),
+        (C::Tour, &[C::Global]),
+        (C::Global, &[C::Global]),
+    ];
+    for (ctx, want) in pinned {
+        assert_eq!(ctx.scope(), *want, "{ctx:?}");
+        assert_eq!(ctx.stands_down(), &[] as &[ActionId], "{ctx:?}");
+    }
+    assert_eq!(pinned.len() + 3, C::ALL.len());
+}

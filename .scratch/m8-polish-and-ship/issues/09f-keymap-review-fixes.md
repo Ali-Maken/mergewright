@@ -1,6 +1,6 @@
 # G-keymap 1f — the keymap review's four Majors: `resolve.rs` split, `?` at the overlays lists only live keys, the four one-chord idles and `AFTER y`, the keymap seam in ARCHITECTURE.md
 
-Status: draft (planner spec-only pass, 2026-10-07, from `docs/reviews/m8-keymap-sweeps.md` Majors 1–4; review at
+Status: **partial** (builder 2026-10-07: A and B done; C, captures, D handed off; see NOTES). Was: draft (planner spec-only pass, 2026-10-07, from `docs/reviews/m8-keymap-sweeps.md` Majors 1–4; review at
 main `c18e7d72`)
 Build with: **Opus** (confirmed by conductor 2026-10-07 after scout `scouts/09f-keymap-review-fixes.md`). Part B changes the
 resolution contract (`scope()` stops over-including at the three overlays) and needs judgement on what the sweep
@@ -150,23 +150,23 @@ const DEAD_ELSEWHERE: &[(ContextId, ActionId, &str /* why */)];
 ```
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] **A, pure moves.** `resolve.rs`, `spell.rs`, `apply.rs`, `preview_box.rs` (+ child) each under 400 lines
-  (`wc -l` in NOTES); no test renamed or edited; full gates green on the move commit alone. (gates; NOTES `wc -l`)
-- [ ] **B, keymap.** `reachable(Map|Stash|Journal)` holds no Graph-context row except that place's borrows, and no
+- [x] **A, pure moves.** `resolve.rs`, `spell.rs`, `apply.rs`, `preview_box.rs` (+ child) each under 400 lines
+  (`wc -l` in NOTES); no test renamed or edited; full gates green on the move commit alone. (gates; NOTES `wc -l`) — ticked: full gates on the A commit, 5756/5756.
+- [x] **B, keymap.** `reachable(Map|Stash|Journal)` holds no Graph-context row except that place's borrows, and no
   `stands_down()` row; `scope()` of every other place unchanged (compared to a pinned list). Red first.
-  (`keymap::tests::rules::an_overlay_reaches_no_graph_row_it_does_not_borrow`)
-- [ ] **B, clash.** `[keys.map] seek = "c"` → no `Collision` with `graph.commit`, and `c commit` is still spelled on
+  (`keymap::tests::rules::an_overlay_reaches_no_graph_row_it_does_not_borrow`) — ticked, red seen first.
+- [x] **B, clash.** `[keys.map] seek = "c"` → no `Collision` with `graph.commit`, and `c commit` is still spelled on
   the graph bar (D7 no longer drops it). Any clash test changed by the narrowing is listed in NOTES (old → new).
-  (`keymap::tests::clash::a_map_line_on_a_graph_chord_loses_nothing_on_the_graph`)
-- [ ] **B, `?` at the overlays.** Map, stash list, journal open, graph focused: open `?`, for every listed row with a
+  (`keymap::tests::clash::a_map_line_on_a_graph_chord_loses_nothing_on_the_graph`; plus `keymap::tests::clash::a_map_line_on_a_key_the_map_stands_down_loses_nothing`) — ticked; the first was **green before** the change (see NOTES), the second red first.
+- [x] **B, `?` at the overlays.** Map, stash list, journal open, graph focused: open `?`, for every listed row with a
   key, press it (fresh fixture where it has something to act on) → the frame changes or a `Command` is emitted
-  (09e's oracle). Red first (fails today on `c`, `R`, `/`). (`update::tests::palette_live::every_key_help_lists_at_an_overlay_changes_what_he_sees`)
-- [ ] **B, ratchet elsewhere.** The same check at every other place `?` opens (pane over each overlay, Diff, start
+  (09e's oracle). Red first (fails today on `c`, `R`, `/`). (`update::tests::palette_live::every_key_help_lists_at_an_overlay_changes_what_he_sees`) — ticked, red seen first.
+- [x] **B, ratchet elsewhere.** The same check at every other place `?` opens (pane over each overlay, Diff, start
   screen list, …) equals `DEAD_ELSEWHERE` exactly; NOTES lists its rows for the conductor's gap row.
-  (`update::tests::palette_live::dead_rows_help_lists_elsewhere_match_the_known_table`)
-- [ ] **B, sweep.** Every `stands_down()` row is idle at its place (new assertion); acting count 444 before and after
+  (`update::tests::palette_live::dead_rows_help_lists_elsewhere_match_the_known_table`) — ticked; 214 rows, NOTES.
+- [x] **B, sweep.** Every `stands_down()` row is idle at its place (new assertion); acting count 444 before and after
   Part B (both in NOTES); `every_reachable_row_acts_or_is_listed_and_follows_its_remap` green.
-  (`update::tests::keymap_edge::sweep::every_row_a_place_stands_down_is_idle_there`, and that test)
+  (`update::tests::keymap_edge::sweep::every_row_a_place_stands_down_is_idle_there`, and that test) — ticked, 444 → 444.
 - [ ] **C, blame.** Blame open, cursor mid-file: `End` → as `G`, `Home` → as `g` (state compared); `[keys.app] top =
   "t"` → `t` goes top, `Home` does nothing. Red first. (`update::place::tests::home_and_end_in_blame_act_as_g_and_capital_g`)
 - [ ] **C, changes.** Changes pane, cursor on the third file: `Home` → first file, as `g`. Red first.
@@ -213,3 +213,44 @@ const DEAD_ELSEWHERE: &[(ContextId, ActionId, &str /* why */)];
 ~62k: A pure moves ~8k; B scope/borrows/`stands_down` + keymap tests ~12k, sweep tables ~6k, `palette_live` (two tests,
 oracle reuse) ~10k; C four handlers + tests ~12k, `AFTER` + grep ~4k; captures ~4k; ARCHITECTURE + MAP ~6k. Commit
 order A → B → C → D. Past ~70k: stop after B, hand C and D to a split (NOTES says where).
+
+## NOTES (builder, 2026-10-07)
+**Compacted once mid-ticket** (after B's gates). Scout used: `scouts/09f-keymap-review-fixes.md`.
+
+Done: A (commit "A - split …"), B (commit "B - …"). Not done: C, captures, D — handed off below.
+
+- `wc -l`: keymap.rs 274, resolve.rs 307, spell.rs 144, apply.rs 77, claims.rs 144 (new, B: the borrows/stands-down
+  lists, moved out because keymap.rs reached 407), preview_box.rs 329, preview_box/footer.rs 129.
+- Deviation A: moving only `Again` left preview_box.rs at 403 (its tests were already a child). The whole footer
+  (part, join, footer_label, too_small, Again) went to `preview_box/footer.rs`. One import added to
+  `preview_box/tests.rs` (`use crate::keymap::ActionId;`), no test edited.
+- B design: `ContextId::stands_down()` is much bigger than the planner expected — every Global row each overlay
+  swallows (map.rs:176; stash.rs:224,226; journal/keys.rs:111,113), not only search. `reachable` and clash `lives_in`
+  leave them out; translate/resolve unchanged.
+- Graph rows that act at the overlays (stop 1 at ≤5): Map borrows `graph.stash`, `graph.journal`; Stash borrows
+  `graph.journal` (claim chain `update/keys.rs:309-313`); Journal none.
+- Clash test `seek = "c"` was **green before** B: `lives_in` was already false for Graph rows at Map, so no collision
+  existed. The red-first clash test is the new `seek = "q"` one (Map stands down `app.quit`). No existing clash test changed.
+- Sweep: before B 837 cases, 444 act, 351 listed, 42 shadowed; after B 727 cases, 444 act, 249 listed, 34 shadowed.
+  Removed 96 SWALLOWED rows (Map/Stash/Journal) and 8 SHADOWED rows. Measured with a temporary assert, since removed.
+- `DEAD_ELSEWHERE` (gap row `M8/help-lists-dead-keys`), 214 rows in `update/tests/palette_live/dead.rs`, by reason:
+  swallowed 87, no effect in the fixture 69, pane over an overlay 52, one-chord idle 1, Finish listing the banner's
+  `operation.*` 5. `?` lists swallowed keys at Banner, Finish, Blame, History and others — the same class as Major 2.
+- Contradiction: C says "`ONE_CHORD_IDLE` deleted". It has 27 rows; most are text fields (Picker, CommitEditor,
+  Credential) and the Menu `s` row, which C does not fix. Only the five C rows can go (Changes Home, Resolver ⌃Z,
+  Banner ⌃Z, Blame Home, Blame End). Ruling needed: shrink the table rather than delete it.
+- Question (no line yet): with the stash list shown and the pane focused after `⇥`, the frame is identical — the
+  focus shows only by colour. Is a text cue wanted?
+- Touches: `reachable` callers grepped — `update/palette.rs:281` (place_rows), sweep; `scope()` — `resolve.rs:226,299`;
+  `history`'s `reachable` is unrelated. Empty diffs: `tests/keymap_ids.txt`, `update/palette.rs`, `update/edge.rs`,
+  graft-ops, update/journal. Captures: full nextest green with no shot change (no `GRAFT_UPDATE_SHOTS` run yet).
+
+### Handoff (C, captures, D)
+1. C, blame Home/End: `crates/graft/src/update/place/keys.rs`. Changes Home: `update/detail/keys.rs`. Banner ⌃Z:
+   `update/focus_keys.rs`. `AFTER y`: `rewrite_editor/right.rs:143-144`.
+2. **C resolver ⌃Z needs `crates/graft/src/update/resolver.rs` — held by 10g.** Do it after 10g merges.
+3. Then remove the five rows from `ONE_CHORD_IDLE` (see the ruling above) and re-measure `ACTING_AT_LANDING`; the
+   matching `DEAD_ELSEWHERE` row (one-chord idle) goes too.
+4. Captures: add `docs/shots/m8/help-at-map-120x36.txt` via `crates/graft/tests/it/look_polish.rs`
+   (`crate::captures::check_shot`); full run with `GRAFT_UPDATE_SHOTS` once.
+5. D: ARCHITECTURE.md entry; graft MAP.md for the C handlers. graft-ui MAP.md is already updated for A and B.

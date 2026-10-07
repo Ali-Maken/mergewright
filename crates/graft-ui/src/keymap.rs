@@ -11,9 +11,12 @@
 //!   rewritten.
 //! - Every surface that prints a key spells it with [`Keymap::spell`].
 
+mod apply;
 mod chord;
+mod claims;
 mod clash;
 mod resolve;
+mod spell;
 mod table;
 mod warning;
 
@@ -24,8 +27,8 @@ mod tests;
 
 pub use chord::{ChordError, KeyChord, KeyLabel};
 pub use graft_core::event::KeyCode;
-pub(crate) use resolve::join;
 pub use resolve::{Keymap, Translated};
+pub(crate) use spell::join;
 pub use table::defaults;
 pub use warning::{Clash, KeyWarning};
 
@@ -80,6 +83,10 @@ pub enum ContextId {
 }
 
 use ContextId as C;
+use claims::{
+    BLAME_BORROWS, HISTORY_BORROWS, JOURNAL_BORROWS, JOURNAL_STANDS_DOWN, MAP_BORROWS,
+    MAP_STANDS_DOWN, MENU_BORROWS, PANE_BORROWS, STASH_BORROWS, STASH_STANDS_DOWN,
+};
 
 impl ContextId {
     /// Every place, `Global` first.
@@ -139,18 +146,21 @@ impl ContextId {
     }
 
     /// Where a key pressed in this place may still land, innermost first,
-    /// `Global` last. It may over-include (a default the code ignores here
-    /// does nothing, as pressing it does); it must never under-include, or a
-    /// remap would fail here. Not for help: `?` lists [`Keymap::in_context`].
+    /// `Global` last. It must never under-include, or a remap would fail
+    /// here. It may over-include (a default the code ignores here does
+    /// nothing, as pressing it does) — but nowhere a place swallows: the
+    /// Map, the stash list and the journal are modal (§2.1), so the graph's
+    /// section is not live under them and they are `[self, Global]`; the
+    /// graph rows they do answer are in [`ContextId::borrows`] (m8/09f).
     #[must_use]
     pub fn scope(self) -> &'static [ContextId] {
         match self {
             C::Graph => &[C::Graph, C::Diff, C::Global],
             C::Changes => &[C::Changes, C::Diff, C::Graph, C::Global],
             C::Diff => &[C::Diff, C::Graph, C::Global],
-            C::Map => &[C::Map, C::Graph, C::Global],
-            C::Journal => &[C::Journal, C::Graph, C::Global],
-            C::Stash => &[C::Stash, C::Graph, C::Global],
+            C::Map => &[C::Map, C::Global],
+            C::Journal => &[C::Journal, C::Global],
+            C::Stash => &[C::Stash, C::Global],
             C::Menu => &[C::Menu, C::Changes, C::Diff, C::Graph, C::Global],
             C::Blame => &[C::Blame, C::Diff, C::Global],
             C::History => &[C::History, C::Diff, C::Global],
@@ -180,7 +190,8 @@ impl ContextId {
         match self {
             C::Menu => MENU_BORROWS,
             C::Changes | C::Diff => PANE_BORROWS,
-            C::Map | C::Stash => LIST_BORROWS,
+            C::Map => MAP_BORROWS,
+            C::Stash => STASH_BORROWS,
             C::Journal => JOURNAL_BORROWS,
             C::Blame => BLAME_BORROWS,
             C::History => HISTORY_BORROWS,
@@ -204,6 +215,23 @@ impl ContextId {
         }
     }
 
+    /// In-scope rows this place answers with nothing: the `Global` rows a
+    /// modal overlay swallows (m8/09f). Left out of [`Keymap::reachable`],
+    /// so `?` never lists them there and a line taking their key there
+    /// takes nothing; [`Keymap::translate`] is unchanged for them (the place
+    /// swallows the key whatever it is translated to). Each list is
+    /// commented with the line in graft that swallows them. Empty for every
+    /// other place.
+    #[must_use]
+    pub fn stands_down(self) -> &'static [ActionId] {
+        match self {
+            C::Map => MAP_STANDS_DOWN,
+            C::Stash => STASH_STANDS_DOWN,
+            C::Journal => JOURNAL_STANDS_DOWN,
+            _ => &[],
+        }
+    }
+
     /// A text field: typed keys stay as they are. Its rows are fixed — in
     /// the table for `?` and the man page, never remapped — and
     /// [`Keymap::translate`] passes every key here untouched.
@@ -215,83 +243,6 @@ impl ContextId {
         )
     }
 }
-
-// The rows each place answers itself (`ContextId::borrows`), with the
-// line in graft that claims them.
-
-// `context_menu_key` claims j/k, the arrows, ⏎, esc and `.`
-// (graft `update/context_menu.rs:133-161`); every other key
-// closes the menu and falls through.
-const MENU_BORROWS: &[ActionId] = &[
-    ActionId("app.down"),
-    ActionId("app.up"),
-    ActionId("app.open"),
-    ActionId("app.back"),
-    ActionId("app.menu"),
-];
-
-// `detail_key` (graft `update/detail/keys.rs:123-167` ⏎, esc,
-// ⇥/⇧⇥; `:285`, `:326` j/k, PgDn/PgUp, g/G in files and diff),
-// before `graph_key`.
-const PANE_BORROWS: &[ActionId] = &[
-    ActionId("app.down"),
-    ActionId("app.up"),
-    ActionId("app.page_down"),
-    ActionId("app.page_up"),
-    ActionId("app.top"),
-    ActionId("app.bottom"),
-    ActionId("app.open"),
-    ActionId("app.back"),
-    ActionId("app.next_pane"),
-    ActionId("app.prev_pane"),
-];
-
-// `map_key` (graft `update/map.rs:159-172`): esc, j/k, ⏎.
-const LIST_BORROWS: &[ActionId] = &[
-    ActionId("app.down"),
-    ActionId("app.up"),
-    ActionId("app.open"),
-    ActionId("app.back"),
-];
-
-// `journal::shown_key` (graft `update/journal/keys.rs:83-108`):
-// esc, j/k, n/N, ⏎. (`stash::shown_key`, `update/stash.rs:204-218`,
-// claims esc, j/k, ⏎ — `LIST_BORROWS`.)
-const JOURNAL_BORROWS: &[ActionId] = &[
-    ActionId("app.down"),
-    ActionId("app.up"),
-    ActionId("app.open"),
-    ActionId("app.back"),
-    ActionId("app.next_match"),
-    ActionId("app.prev_match"),
-];
-
-// `place_claim` (graft `update/keys.rs:124-130`) ahead of
-// everything; blame's keys `update/place/keys.rs:54-77`.
-const BLAME_BORROWS: &[ActionId] = &[
-    ActionId("app.down"),
-    ActionId("app.up"),
-    ActionId("app.page_down"),
-    ActionId("app.page_up"),
-    ActionId("app.top"),
-    ActionId("app.bottom"),
-    ActionId("app.find"),
-    ActionId("app.next_match"),
-    ActionId("app.prev_match"),
-    ActionId("app.open"),
-    ActionId("app.back"),
-];
-
-// `place_claim`, then `update/place/history_keys.rs:29-52`.
-const HISTORY_BORROWS: &[ActionId] = &[
-    ActionId("app.down"),
-    ActionId("app.up"),
-    ActionId("app.page_down"),
-    ActionId("app.page_up"),
-    ActionId("app.next_pane"),
-    ActionId("app.open"),
-    ActionId("app.back"),
-];
 
 /// The config switches that change which chords a row has out of the box
 /// (ticket m8/09c, D2). `Default`: every switch off.

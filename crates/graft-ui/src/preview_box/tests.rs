@@ -5,6 +5,7 @@
 use graft_term::sanitize_line;
 
 use super::*;
+use crate::keymap::ActionId;
 
 /// The plain footer: no confirm key, no again verb.
 const FOOTER: &str = "←/→ choose  ⏎ act  esc cancel";

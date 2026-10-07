@@ -2305,6 +2305,8 @@ mod keymap_rules;
 
 mod keymap_words;
 
+mod palette_live;
+
 mod commit_graph_offer {
     use super::*;
     use crate::repository::CommitGraphFact;
