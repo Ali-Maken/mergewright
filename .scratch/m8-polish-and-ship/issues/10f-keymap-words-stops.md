@@ -44,7 +44,7 @@ No new public items. Word fns gaining `keys: &Keymap` are named in MAP.md.
       alone; the failure line with stash unbound drops its `S …` clause; no `—`.
 - [ ] `no_literal_keys::no_user_facing_literal_spells_a_default_key` green — yes; but `known_stops.rs` still holds 2 `KNOWN: 10f W2 stop` rows (NOTES). Not ticked.
 - [x] Captures: `git diff --stat b1756a50 -- docs/shots` empty (no reshoot; capture tests green in `cargo nextest run`; main has since moved, so diff vs base), or only W6 normalisations listed in NOTES.
-- [x] MAP.md graft: changed fn signatures (doc, no test).
+- [ ] → 10j (conductor 2026-10-07: ticked naming no test). MAP.md graft: changed fn signatures (doc, no test).
 
 ## Touches
 - Callers of each changed word fn (compiler); tests asserting these strings (grep each literal).
