@@ -1,0 +1,125 @@
+# m8/search-hint-120x36: drawn by `view::view` from a real AppState
+# (crates/graft/tests/it/search_hint.rs). Not a pty capture: a character grid,
+# no colour (CLAUDE.md rule 5 — colour unverified).
+#
+# The graph search on the corpus octopus, shipped keymap. Three frames. Right:
+# running — `… matches so far …  n/N next/prev  esc cancel` (the running frame
+# is the settled AppState with its search state set back to Running);
+# settled — `… (1/N)  n/N next/prev  esc close`; no match — `no matches  esc close`.
+
+## running
+
+ ◆ api  ~/code/api · main                                                                                     5 commits
+
+▸ ◆─┬─┬─╮    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'                                 GF 2d   e385b54
+  │ │ │ ●    [topic-3] topic 3                                                                          GF 2d   c95dba0
+  │ │ ● │    [topic-2] topic 2                                                                          GF 2d   3d625a5
+  │ ● │ │    [topic-1] topic 1                                                                          GF 2d   04bb363
+  ◇─┴─┴─╯    Add the base                                                                               GF 2d   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ /topic  4 matches so far (1/4)  n/N next/prev  esc cancel
+
+## settled with matches
+
+ ◆ api  ~/code/api · main                                                                                     5 commits
+
+▸ ◆─┬─┬─╮    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'                                 GF 2d   e385b54
+  │ │ │ ●    [topic-3] topic 3                                                                          GF 2d   c95dba0
+  │ │ ● │    [topic-2] topic 2                                                                          GF 2d   3d625a5
+  │ ● │ │    [topic-1] topic 1                                                                          GF 2d   04bb363
+  ◇─┴─┴─╯    Add the base                                                                               GF 2d   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ /topic  4 matches (1/4)  n/N next/prev  esc close
+
+## no match
+
+ ◆ api  ~/code/api · main                                                                                     5 commits
+
+▸ ◆─┬─┬─╮    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'                                 GF 2d   e385b54
+  │ │ │ ●    [topic-3] topic 3                                                                          GF 2d   c95dba0
+  │ │ ● │    [topic-2] topic 2                                                                          GF 2d   3d625a5
+  │ ● │ │    [topic-1] topic 1                                                                          GF 2d   04bb363
+  ◇─┴─┴─╯    Add the base                                                                               GF 2d   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ /zzqx  no matches  esc close

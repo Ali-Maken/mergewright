@@ -1,7 +1,7 @@
 # G-hygiene 2c — 09h's `?`-at-Map capture; the three hand-shot search captures; the two literals 10i could not find
 
-Status: ready (conductor 2026-10-07; 11c paused, 12d after) — was draft (planner spec-only pass 2026-10-07; from 09h NOTES "Next (split)", 10h NOTES "Captures box OPEN", 10i
-NOTES "Not found in Files", KNOWN_GAPS `M8/10i-literals-not-found`)
+Status: done (builder 2026-10-07; was ready, conductor 2026-10-07; from 09h/10h/10i NOTES, KNOWN_GAPS
+`M8/10i-literals-not-found`)
 Build with: **Sonnet** — three decided steps; the one judgement (is a capture diff explained) has a stop rule. Not Fable.
 Blocked by: **12 merged** (met, per conductor). **Capture run serial** with 11c's and 12d's (all rewrite
 `docs/shots`); may run **beside 17c** (17c writes only its new `docs/shots/m8/polish-ghost-pixel-120x36.txt`; shared
@@ -70,18 +70,18 @@ neither may exist as a user-facing literal.
 None (test fns only).
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] A: `tests/it/look_polish.rs::help_at_the_map_lists_only_live_keys` green after one `GRAFT_UPDATE_SHOTS` run;
+- [x] A (`look_polish::help_at_the_map_lists_only_live_keys`): green after one `GRAFT_UPDATE_SHOTS` run;
       `docs/shots/m8/help-at-map-120x36.txt` exists; HERE/EVERYWHERE as A1 (read and quoted in NOTES). Judged by the
       user (rule 6); colour unverified (rule 5). Conductor ticks 09h's Captures box with this test.
-- [ ] A3: `git diff --stat <base> -- docs/shots` output in NOTES; every file in it new or explained (cited).
-- [ ] B1: NOTES answers the mechanism with file:line, and the `rg` output.
-- [ ] B2: `<file named in NOTES>::the_search_hint_draws_his_esc_spelling` (via `check_shot`) green;
+- [x] A3 (`git diff --stat b089a72c -- docs/shots`, NOTES): `git diff --stat <base> -- docs/shots` output in NOTES; every file in it new or explained (cited).
+- [x] B1 (`rg` + `grep read_dir`, NOTES): NOTES answers the mechanism with file:line, and the `rg` output.
+- [x] B2: `crates/graft/tests/it/search_hint.rs::the_search_hint_draws_his_esc_spelling` (via `check_shot`) green;
       `docs/shots/m8/search-hint-120x36.txt` holds the three frames, `esc cancel` / `esc close`, no `Esc`. Colour
       unverified.
-- [ ] B3: the three files' bytes unchanged (`git diff --stat <base> -- docs/shots/26-search-far.txt
+- [x] B3 (`git diff --stat` of the three, NOTES): the three files' bytes unchanged (`git diff --stat <base> -- docs/shots/26-search-far.txt
       docs/shots/26-search-typing.txt docs/shots/m2-18-git-git-search-enter-160x40-unicode.txt` empty); records listed
       where B1 says (diff shown). Conductor closes 10h's Captures box with B2's test.
-- [ ] C: the `rg` output and classification in NOTES; conductor closes or re-files `M8/10i-literals-not-found` from it.
+- [x] C (`rg` over crates, NOTES): the `rg` output and classification in NOTES; conductor closes or re-files `M8/10i-literals-not-found` from it.
 
 ## Touches
 - Contact sheet: m8 sheet re-assembled with the two new captures (conductor, ADR-0037).
@@ -96,3 +96,42 @@ None (test fns only).
 
 ## Size
 ~30k: A ~10k (incl. one full update run); B ~12k; C ~3k; NOTES ~5k.
+
+## NOTES (builder, 2026-10-07)
+Scout: none — the ticket's sources (09h/10h/10i NOTES, TESTING.md) plus two greps were enough; test-only, two files.
+No compaction. Base b089a72c.
+
+**A.** `look_polish::help_at_the_map_lists_only_live_keys`: `M` opens the Map, then `?`. (First try pressed `?` on the
+graph — that is not the Map; fixed before the file was written.) Quoted from the capture: HERE = `M Close the Map
+view`, `⏎ Seek the graph to this branch`, `S Stash…`, `J Undo journal`; EVERYWHERE = `j`, `k`, `esc`, `⌃P`, `?`, `u`,
+`U`, `⌃R`, `⌃C`, `— Open / drill in` (unbound). No `c commit`, `R`, `m merge`, `/ Find…`. **Question (not a defect,
+rule 7):** `S Stash…` and `J Undo journal` are listed under HERE with ids `graph.stash`/`graph.journal` at the Map —
+whether they act there was not checked. Judged by the user; colour unverified.
+
+**A3.** `GRAFT_UPDATE_SHOTS=1` full run: 3 red by design (the two new tests, `graft-graph raster::write_shots`
+"regenerated 10 capture(s)" — it rewrites always). `git diff --stat b089a72c -- docs/shots` afterwards: **empty**;
+untracked only `m8/help-at-map-120x36.txt`, `m8/search-hint-120x36.txt`. 09f's R4 allowance did not occur.
+`git diff --stat b089a72c -- crates/*/src`: empty.
+
+**B1.** No exemption list: the claim at TESTING.md :29 is false for hand-shot files. Assertion is per call —
+`captures::check_shot` (crates/graft/tests/it/captures.rs:188) → `graft_fixtures::capture`; nothing enumerates
+`docs/shots/` (`grep read_dir` over graft-fixtures/src hits only cache.rs:157, scratch.rs:91, permissions.rs:39 —
+none on shots). `rg -n '26-search|m2-18-git-git' crates scripts tests` → no hits (`tests` dir absent).
+
+**B2.** File `crates/graft/tests/it/search_hint.rs`, corpus OctopusMerge, query `topic`/`zzqx`. Drawn lines:
+` /topic  4 matches so far (1/4)  n/N next/prev  esc cancel`; ` /topic  4 matches (1/4)  n/N next/prev  esc close`;
+` /zzqx  no matches  esc close`. The running frame is the settled AppState with `search.state` set to `Running`
+(caption says so) — a fast-tier search finishes before any frame. No `Esc` in the file.
+
+**B3.** Three files' `git diff --stat` empty. Paragraph "Records, not asserted" added to TESTING.md Captures. Other five:
+`m2-explain-panel` → `view/tests.rs:1780`; `m2-map-view-loading` → `view/tests.rs:2027`; `m3-commit-editor-rejected` →
+`view/tests.rs:2709` (generated); `m3-contact-sheet` → `scripts/contact-sheet.sh` (its header); `17-mouse-select-and-
+tooltip` → record of m1/17 (listed). 4 records total.
+
+**C.** `rg -n 'c commit  S stash|p pull first|commit or stash first' crates` → **no hits**. Neither literal lives in
+crates; `M8/10i-literals-not-found` can close. Docs hits (report only): README.md:179 `p pull first` (→23);
+TESTING.md:1687, :1766 `p pull first` (ticket's :1672/:1751 shifted); TESTING.md:2177, :2865 `c commit  S stash`
+(hint-bar checklist rows).
+
+**Touches:** production src empty (diff above); look_polish.rs additive; main.rs `mod search_hint`; TESTING.md
+Captures only; m8 contact sheet not reassembled (conductor). Gates: fmt, clippy, nextest 5876/5876, doctests green.
