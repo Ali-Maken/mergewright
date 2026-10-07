@@ -932,3 +932,42 @@ fn ctrl_a_with_nothing_to_stage_says_so() {
         crate::update::state::Status::sticky("nothing to stage")
     );
 }
+
+/// m8/09g C: `Home` is `app.top`'s other chord. In the changes pane's file
+/// list it goes to the first file as `g` does — not past the pane to the
+/// graph behind it, which is where it went (`files_key` had no `Home`).
+/// `End` likewise, as `G`.
+#[test]
+fn home_in_the_changes_pane_acts_as_g() {
+    use crate::update::events::AppEvent;
+    use graft_core::event::Event;
+
+    let sections = [
+        (WorkingTreeSection::Unstaged, &["a.rs", "b.rs", "c.rs"][..]),
+        (WorkingTreeSection::Untracked, &["d.rs", "e.rs"][..]),
+    ];
+    // Row 3 is c.rs, the third file: heading, a.rs, b.rs, c.rs.
+    let mut state = AppState {
+        detail: pane_on(&sections, 3, 0),
+        ..AppState::default()
+    };
+    state.detail.focus = DetailFocus::Files;
+    let press =
+        |code| crate::update::update(&state, AppEvent::Core(Event::Key(KeyPress::plain(code))));
+    let cursor = |state: &AppState| match &state.detail.files {
+        Loading::Ready(files) => files.cursor,
+        other => panic!("the list is loaded: {other:?}"),
+    };
+    for (chord, letter) in [(KeyCode::Home, 'g'), (KeyCode::End, 'G')] {
+        let (by_chord, chord_commands) = press(chord);
+        let (by_letter, letter_commands) = press(KeyCode::Char(letter));
+        assert_ne!(cursor(&by_letter), 3, "{letter} moves the files cursor");
+        assert_eq!(
+            cursor(&by_chord),
+            cursor(&by_letter),
+            "{chord:?} is {letter}"
+        );
+        assert_eq!(by_chord.detail, by_letter.detail, "{chord:?} is {letter}");
+        assert_eq!(chord_commands, letter_commands, "{chord:?} is {letter}");
+    }
+}

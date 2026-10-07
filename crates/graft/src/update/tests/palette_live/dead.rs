@@ -17,8 +17,12 @@ const R_NO_EFFECT: &str = "nothing to act on in the fixture: NO_EFFECT_IN_FIXTUR
 /// `Diff`/`Changes`, which keep the graph's section, and the overlay
 /// swallows the key (`keys.rs:309-313`, the overlays after the pane).
 const R_OVERLAY: &str = "pane focused over an overlay: the overlay swallows it";
-/// One chord of the row idle there (`sweep_tables.rs`, `ONE_CHORD_IDLE`).
-const R_ONE_CHORD: &str = "one chord idle: ONE_CHORD_IDLE";
+/// `?` over the Map with the changes pane focused lists `g` for
+/// `app.top`; that place's files cursor is already on the first file, so
+/// `g` has nothing to move (`detail/keys.rs` `files_key`). Measured
+/// 2026-10-07 (m8/09g); its `Home` was a one-chord idle until 09g, which
+/// is not the press `?` lists.
+const R_FIRST_FILE: &str = "files cursor already on the first file";
 /// `IN PROGRESS` spells the banner's keys while an operation is live; the
 /// finish summary swallows them (`finish/keys.rs:84,104`).
 const R_IN_PROGRESS: &str = "IN PROGRESS lists the banner's keys over the finish summary";
@@ -57,7 +61,7 @@ pub(super) const DEAD_ELSEWHERE: &[(ContextId, ActionId, &str)] = &[
     (ContextId::Changes, ActionId("app.page_up"), R_OVERLAY),
     (ContextId::Changes, ActionId("app.prev_match"), R_NO_EFFECT),
     (ContextId::Changes, ActionId("app.quit"), R_OVERLAY),
-    (ContextId::Changes, ActionId("app.top"), R_ONE_CHORD),
+    (ContextId::Changes, ActionId("app.top"), R_FIRST_FILE),
     (ContextId::Changes, ActionId("app.up"), R_OVERLAY),
     (ContextId::Changes, ActionId("changes.mergetool"), R_NO_EFFECT),
     (ContextId::Changes, ActionId("diff.blame"), R_OVERLAY),

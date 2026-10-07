@@ -1,6 +1,6 @@
 # G-keymap 1g — 09f remainder: the five one-chord idles and `AFTER y` (C), the ruling on `ONE_CHORD_IDLE`'s other 22 rows, the `?`-at-Map capture, the keymap seam in ARCHITECTURE.md (D)
 
-Status: ready (planner spec-only pass, 2026-10-07, from 09f NOTES + Handoff; 09f merged partial at 82bbe686, A and B
+Status: partial (builder 2026-10-07: C handlers + R1 shrink done; stopped at R1 classes — see NOTES). Was: ready (planner spec-only pass, 2026-10-07, from 09f NOTES + Handoff; 09f merged partial at 82bbe686, A and B
 done)
 Build with: **Opus** (confirmed by conductor 2026-10-07 after scout `scouts/09g-one-chord-idle.md`: no source overlap with 10j; only Menu `s` types itself — other rows are defects per R1, a third class → stop). Two judgements a test cannot make for
 the builder: where each of the five chords is lost (handler vs the edge's translate — a stop if the edge), and the class
@@ -117,15 +117,15 @@ const ACTING_AT_LANDING: usize; // raised by C, dated
 ```
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] **C, blame.** Blame open, cursor mid-file: `End` → as `G`, `Home` → as `g` (state compared); `[keys.app] top =
+- [x] **C, blame.** Blame open, cursor mid-file: `End` → as `G`, `Home` → as `g` (state compared); `[keys.app] top =
   "t"` → `t` goes top, `Home` does nothing. Red first. (`update::place::tests::home_and_end_in_blame_act_as_g_and_capital_g`)
-- [ ] **C, changes.** Changes pane, cursor on the third file: `Home` → first file, as `g`. Red first.
+- [x] **C, changes.** Changes pane, cursor on the third file: `Home` → first file, as `g`. Red first.
   (`update::detail::tests::home_in_the_changes_pane_acts_as_g`)
-- [ ] **C, resolver `⌃Z`.** Resolver open: `⌃Z` → same state, notice and commands as `u` (R2); `suspend_on_ctrl_z` on →
+- [x] **C, resolver `⌃Z`.** Resolver open: `⌃Z` → same state, notice and commands as `u` (R2); `suspend_on_ctrl_z` on →
   not `u`'s answer. Red first. (`update::resolver::tests::ctrl_z_answers_in_the_resolver_as_u_does`)
-- [ ] **C, banner `⌃Z`.** Focused banner after a journaled step: `⌃Z` → same state and commands as `u`;
+- [x] **C, banner `⌃Z`.** Focused banner after a journaled step: `⌃Z` → same state and commands as `u`;
   `suspend_on_ctrl_z` on → no undo. Red first. (`update::banner::tests::ctrl_z_undoes_on_the_focused_banner_as_u_does`)
-- [ ] **C, cause.** NOTES names, per chord, where it was lost (file:line) and the fix point; `git diff <base> --
+- [x] **C, cause.** NOTES names, per chord, where it was lost (file:line) and the fix point; `git diff <base> --
   crates/graft/src/update/edge.rs crates/graft/src/update/mod.rs crates/graft-ui/src/keymap` empty (shown). No new raw
   `Home`/`End`/`⌃Z` arm (`rg` output in NOTES). (that command)
 - [ ] **R1, table.** `ONE_CHORD_IDLE` 27 → 22, each row classed with its `at`; the five C rows gone; the sweep green.
@@ -133,7 +133,7 @@ const ACTING_AT_LANDING: usize; // raised by C, dated
 - [ ] **R1, typing observed.** Every `TypesItself` row: the chord pressed in its field adds exactly that character to
   the field's text. Shown failing once on a row deliberately mis-classed (temporary, NOTES).
   (`update::tests::keymap_edge::sweep::every_one_chord_row_marked_typed_types_itself`)
-- [ ] **R1, count.** `ACTING_AT_LANDING` 444 → new (dated); NOTES: old → new and which rows rose. `DEAD_ELSEWHERE`'s
+- [x] **R1, count.** `ACTING_AT_LANDING` 444 → new (dated); NOTES: old → new and which rows rose. `DEAD_ELSEWHERE`'s
   one-chord row removed if it is one of the five (else kept, NOTES says why); count 214 → new.
   (`…::sweep::every_reachable_row_acts_or_is_listed_and_follows_its_remap`,
   `update::tests::palette_live::dead_rows_help_lists_elsewhere_match_the_known_table`)
@@ -175,3 +175,64 @@ const ACTING_AT_LANDING: usize; // raised by C, dated
 ~38k: four handlers + four tests ~12k; R1 classes + typing assertion ~8k; `AFTER` + pattern ~4k; captures ~4k;
 ARCHITECTURE + MAP ~6k; NOTES ~4k. Order C handlers → R1 → `AFTER` → captures → D. Past ~65k: stop after R1, hand
 captures and D to a split (NOTES says where).
+
+## NOTES (builder, 2026-10-07)
+Scout used: `scouts/09g-one-chord-idle.md`. No compaction. Base: main d1ed9683. **Partial — R1's stop** (a third class
+of row, below). Done: the four C handlers, the five rows out of `ONE_CHORD_IDLE`, `ACTING_AT_LANDING`, the
+`DEAD_ELSEWHERE` row. Not done: R1 classes + typing assertion, `AFTER y`, ratchet, captures, D (MAP touched only for
+the acting count).
+
+**C, cause per chord** (all four red first, observed: blame cursor 18 not 0; changes cursor 3 not 1; resolver notice
+None vs u's; banner `[]` vs u's `Undo`). Edge not involved: Home/End/⌃Z are shipped chords, so `translate` passes them
+raw (graft-ui `keymap/resolve.rs:156–163`); each was lost in the handler.
+- Blame Home/End: `place/keys.rs` catch-all (was :78); fix: the `g`/`G` arms became `_ if shipped_as(key, "app.top")`
+  / `"app.bottom"` — every shipped chord of the action. Remap `top = "t"`: `t` tops, Home does nothing (in the test).
+- Changes Home: went past `files_key` to the graph (no arm). Fix in `detail/keys.rs` `files_key`, same pattern; `End`
+  was the same defect (moved the graph, not the files cursor — the sweep counted it as acting) and is fixed with it.
+- Resolver ⌃Z: `act`'s catch-all (was :383). Fix: one arm `asks_undo` (shipped chords of `app.undo`/`app.redo`)
+  replaces the raw `u`/`U` arm. **Deviation from R2:** with `suspend_on_ctrl_z`, ⌃Z stays swallowed in the resolver,
+  not suspended — a `Suspend` returns `Product::HandedOver`, which `update/mod.rs:441` reads as `e`'s editor returning
+  and calls `finish::record_edited` (marks the file edited). Fixing needs `update/mod.rs` (10j's, and outside this set).
+  The box's "not u's answer" holds (test). Gap candidate for the conductor.
+- Banner ⌃Z: catch-all (was :173). Fix: `undo_keys` before the match (shipped chords of undo/redo, the one
+  `undo_pressed` path, refusal first as before); with `suspend_on_ctrl_z` the banner returns unclaimed and the one
+  suspend path (`update/keys.rs:243`) suspends — test sees `[Suspend]`.
+- `git diff d1ed9683 -- crates/graft/src/update/edge.rs crates/graft/src/update/mod.rs crates/graft-ui/src/keymap` →
+  0 lines. New raw arms: `git diff | rg '^\+.*(KeyCode::Home|KeyCode::End|Char\('z'\))'` → 5 hits, all in the four
+  test files, none in a handler. The handlers read chords off `Keymap::shipped()` (no shared home in this file set for
+  the helper: 4 small copies — `place/keys.rs`, `detail/keys.rs`, `resolver.rs`, `banner/focus_keys.rs`; a natural
+  home is `update/keys/predicates.rs`, a follow-up).
+- Not fixed, same class, found: Diff pane `Home`/`End` — `detail/keys.rs` `diff_key` answers `g`/`G` only
+  (`Char('g') if plain` arm); Home/End fall to the graph. Not in `ONE_CHORD_IDLE` because the graph moves in the fixture.
+
+**R1, count.** `ACTING_AT_LANDING` 444 → 449 (+5, exactly the five C rows; 727 cases, 244 listed, 34 shadowed).
+`DEAD_ELSEWHERE`'s one-chord row (`Changes app.top`) **kept, count stays 214**: still found dead, but from "changes
+over Map", where `?` lists `g` and that place's files cursor is already on the first file (probed: `g` idle, cursor 1).
+Reason relabelled `R_FIRST_FILE`; `R_ONE_CHORD` removed.
+
+**R1 stop — rows fitting neither `TypesItself` nor `Defect`.** None of the 22 is `TypesItself` (Menu is no text field;
+every other idle chord is non-printable). Ten rows *act* in their handler but the fixture gives them nothing to change —
+R1's `Defect` ("neither acts nor types") would be false for them:
+- Picker `app.up` ↑: `picker.rs:141` handles `Up`; selected already 0.
+- CommitEditor `app.top` home, `app.bottom` end: `commit_editor/keys.rs:229–230` move the subject caret; already there.
+- Credential `edit_text` delete, →, end, and `app.bottom` end: `credential.rs:378,380,382`; caret at the end.
+- Credential `edit_text` ←, home, and `app.top` home: `credential.rs:379,381` move the caret; the frame does not
+  change ("not drawn" in the table) — not checked whether the caret is drawn; question, not a defect (rule 7).
+Proposed: a third class `NoEffectInFixture { at }` (as the per-row table), or a fixture with mid-text caret / second
+picker row so they act and leave the table. Conductor's call.
+
+**Defect rows (12), for gap `M8/one-chord-idle` (broken):** Picker ⌃Z, home, end (`picker.rs:158` catch-all), ⌃P
+(`R_PICKER`); CommitEditor ⌃Z (`commit_editor/keys.rs:110`), ↑ in the subject (subject arm has no `Up`, catch-all
+after :230), ⌃P (`R_EDITOR`); Credential ⌃Z (`credential.rs:326`), ↓, ↑ (`:385` catch-all), ⌃P (`R_CREDENTIAL`); Menu
+`changes.stage` `s` (no changes pane under the menu; the graph has no `s`). Not yet written into the table as classes.
+
+**Other.** `published_repo::nothing_a_commit_would_carry_names_this_machine` failed on main's scout file: the text
+"home/end" after a slash matches its home-directory rule (false positive in the detector). Reworded two scout lines
+("delete, ←, →, home, end"). Cause is the detector's pattern — not fixed.
+
+**Touches:** edge/mod/keymap/`keymap_ids.txt`/graft-ops/journal/undo: empty diff (shown above). Hint bars + captures:
+full nextest green with no shot change (no `GRAFT_UPDATE_SHOTS` run). `palette_live` exact table holds (green). MAP:
+:945 acting count only. 10j files: untouched.
+
+**Next (split):** R1 classes per conductor ruling → typing assertion (vacuous if zero `TypesItself`) → `AFTER y` +
+ratchet → captures (`help-at-map-120x36.txt`) → D (ARCHITECTURE entry, MAP :491/:945/:946, handler entries).

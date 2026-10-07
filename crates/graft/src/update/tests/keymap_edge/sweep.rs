@@ -25,9 +25,11 @@ const NOT_YET_ANSWERED: &[(&str, &str)] = &[
 ];
 
 /// Cases that act (396 when this sweep landed, 2026-10-07; 444 after
-/// m8/09e the same day, which made `R`/`C`/`O` act from Changes and Diff).
+/// m8/09e the same day, which made `R`/`C`/`O` act from Changes and Diff;
+/// 449 after m8/09g the same day: `Home`/`End` in blame, `Home` in the
+/// changes pane, `⌃Z` in the resolver and on the focused banner).
 /// It may grow; a drop means a key stopped doing something.
-const ACTING_AT_LANDING: usize = 444;
+const ACTING_AT_LANDING: usize = 449;
 
 /// Rows whose chords are another row's (`Keymap`'s followers): swept with
 /// their leader.
