@@ -1152,6 +1152,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/13cd-review-minors | 9 Minors + 2 Questions (Minors 2/4/7/8 and 13d points fixed in 13e/13f; 1/3/9 and Q1 stay here) in `docs/reviews/m8-13cd-stop.md`. | **broken** (per finding) | M8 |
 | M8/stop-files-over-400 | graft pool.rs 451, graft-git exec.rs 529, graft-ops apply.rs 777, resume.rs 543 (review 13cd M3) — splits in 13e/13f. | **broken** | M8 |
 | M8/10e-open-points | 10e: `MarkersRemain` refusal not keyed; rare ApplyError::Journal path drops 'u undoes it' (set_aside/answer.rs:323); conflict-gate and revert-plan jobs keyless; OpKey has Amend/Push not Absorb/ForcePush (deviation). | **unverified** | M8 |
+| M8/13e-sigcont-test-never-red | 13e's SIGSTOP/SIGTTIN hook tests passed even without the SIGCONT fix, so they don't prove it (likely: kernel continues stopped members of an orphaned group — read, not observed). SIGCONT now sent; its need is unproven. | **unverified** | M8 |
 | M8/flaky-http-remote-drop | graft-fixtures `http_remote_drop_ends_a_wedged_backend` failed once in a full run under load (14d), passes alone; crate untouched; not diagnosed. | **unverified** | M8 |
 | M8/long-tmpdir-socket | 6+ graft tests fail when `$TMPDIR` is a long path (unix-socket path limit); Paperclip runs set one. Gates pass with `TMPDIR=/tmp`. Tests should not depend on `$TMPDIR` length — cause not fixed. | **broken** | M8 |
 | M8/startup-rs-564 | `startup.rs` 564 lines, over the readability limit; outside 02's file set, not split. | **broken** | M8 |
