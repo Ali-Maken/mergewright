@@ -326,6 +326,7 @@ case. Every key M0 knows:
 [ui]
 theme = "auto"      # auto | dark | light | high-contrast
 icons = "plain"     # plain | nerd        (nothing reads this until M1)
+overview = false    # true: the overview strip starts shown (`O` still toggles)
 
 [graph]
 renderer = "auto"   # auto | pixel | unicode | ascii

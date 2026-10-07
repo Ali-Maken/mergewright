@@ -843,6 +843,7 @@ re-exported from `mod.rs`.
 - `Ui` (struct) — `[ui]` section.
 - `Ui::theme` (field) — `ui.theme`.
 - `Ui::icons` (field) — `ui.icons`.
+- `Ui::overview` (field) — `ui.overview` (m8/17): the overview strip starts shown (`AppState::strip_shown` seeded in `seed_config`); `O` still toggles per run.
 - `Graph` (struct) — `[graph]` section.
 - `Graph::renderer` (field) — `graph.renderer`.
 - `Graph::default_branch` (field) — forced default branch full ref name; `None` lets detection decide.

@@ -320,7 +320,8 @@ pub(super) fn render_overlay_with_detail(
         &state.detail.pane_size,
         (area.width, area.height),
     );
-    let view = detail_view(state);
+    let mut view = detail_view(state);
+    view.ascii = super::tier_in_force(session, state) == RenderingTier::Ascii;
     let (overlay_area, pane_area) = split_for_detail(
         frame,
         session,

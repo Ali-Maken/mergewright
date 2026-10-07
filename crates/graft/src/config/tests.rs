@@ -116,6 +116,15 @@ fn keys_the_file_omits_keep_their_defaults() {
     assert_eq!(loaded.config.graph.renderer, RendererChoice::Auto);
 }
 
+/// m8-polish-and-ship/17 item 5.
+#[test]
+fn ui_overview_loads_without_a_warning() {
+    let (_dir, path) = config_file("[ui]\noverview = true\n");
+    let loaded = load_from(&path).expect("loads");
+    assert!(loaded.config.ui.overview);
+    assert_eq!(loaded.warnings, []);
+}
+
 #[test]
 fn broken_toml_names_the_file_the_line_and_the_problem() {
     let (_dir, path) = config_file("[ui]\ntheme = \n");

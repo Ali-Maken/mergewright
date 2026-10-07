@@ -63,6 +63,8 @@ pub fn detail_view(state: &AppState) -> DetailView {
         },
         explain: state.detail.explain.clone(),
         following: following(state),
+        // The frame sets it from the tier in force.
+        ascii: false,
     }
 }
 

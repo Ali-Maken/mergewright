@@ -251,6 +251,42 @@ pub(crate) fn render_header(
     if let Subject::Compare(compare) = &view.header.subject {
         lines[0] = compare_title(compare, usize::from(area.width), keys);
     }
+    let displayed = displayed_lines(view, layout, &lines);
+
+    let title_style = title_style(view, theme);
+    let text_style = foreground(theme, Token::Text);
+    // `w` on: the title gives up the tail's cells, so a long title is cut
+    // with `…` rather than the tail dropped — unless the row is too narrow
+    // to keep a readable title beside it.
+    let tail = whitespace_tail_width(view, area);
+    for (index, line) in displayed.iter().enumerate() {
+        let Ok(offset) = u16::try_from(index) else {
+            break;
+        };
+        let style = if index == 0 { title_style } else { text_style };
+        let row_area = if index == 0 {
+            Rect {
+                width: area.width - tail,
+                ..area
+            }
+        } else {
+            area
+        };
+        draw_line(buf, row_area, offset, line, style);
+    }
+    if tail > 0
+        && let Some(title) = displayed.first()
+    {
+        let used = title.trim_end().width().min(usize::from(area.width - tail));
+        draw_whitespace_tail(area, used, theme, buf);
+    }
+    if view.following {
+        draw_following(area, theme, buf);
+    }
+}
+
+/// The header's rows for this breakpoint, from the five canonical lines.
+fn displayed_lines(view: &DetailView, layout: DetailLayout, lines: &[String; 5]) -> Vec<String> {
     let is_working_tree = matches!(view.header.subject, Subject::WorkingTree { .. });
     let meta = [&lines[1], &lines[2], &lines[3]]
         .into_iter()
@@ -264,7 +300,7 @@ pub(crate) fn render_header(
         subject_radar.push_str(&lines[4]);
     }
 
-    let displayed: Vec<String> = match layout {
+    match layout {
         DetailLayout::Right { .. } => lines.to_vec(),
         DetailLayout::Below { .. } => {
             if is_working_tree {
@@ -285,20 +321,40 @@ pub(crate) fn render_header(
                 vec![lines[0].clone(), meta, subject_radar]
             }
         }
-    };
+    }
+}
 
-    let title_style = title_style(view, theme);
-    let text_style = foreground(theme, Token::Text);
-    for (index, line) in displayed.iter().enumerate() {
-        let Ok(offset) = u16::try_from(index) else {
-            break;
-        };
-        let style = if index == 0 { title_style } else { text_style };
-        draw_line(buf, area, offset, line, style);
+/// The cells the title row keeps for `· whitespace ignored`: none with `w`
+/// off, or when fewer than [`TITLE_MIN`] cells of title would be left.
+fn whitespace_tail_width(view: &DetailView, area: Rect) -> u16 {
+    let width = u16::try_from(crate::blame::WHITESPACE_IGNORED.width()).unwrap_or(u16::MAX);
+    if view.options.ignore_whitespace && area.width >= width.saturating_add(TITLE_MIN) {
+        width
+    } else {
+        0
     }
-    if view.following {
-        draw_following(area, theme, buf);
+}
+
+/// The narrowest title worth keeping beside the whitespace tail.
+const TITLE_MIN: u16 = 12;
+
+/// `· whitespace ignored`, muted, right after the title's text while `w` is
+/// on (m8-polish-and-ship/17 item 8); cut at the area's edge.
+fn draw_whitespace_tail(area: Rect, used: usize, theme: &Theme, buf: &mut Buffer) {
+    let Ok(used) = u16::try_from(used) else {
+        return;
+    };
+    if used >= area.width || area.height == 0 {
+        return;
     }
+    let room = usize::from(area.width - used);
+    buf.set_stringn(
+        area.x + used,
+        area.y,
+        crate::blame::WHITESPACE_IGNORED,
+        room,
+        foreground(theme, Token::TextMuted),
+    );
 }
 
 /// What the title row ends in while the pane waits for the cursor to rest.

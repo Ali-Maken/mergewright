@@ -1,0 +1,43 @@
+# m8/polish-whitespace-120x36: drawn by `view::view` from a real AppState
+# (crates/graft/tests/it/look_polish.rs). Not a pty capture: a character grid,
+# no colour (CLAUDE.md rule 5 — colour unverified).
+#
+# The tip's detail pane with `w` on. Right: the pane's title row ends
+# `· whitespace ignored` (muted), right after the title.
+
+ ◆ api  ~/code/api · main                                                                                     5 commits
+
+▸ ◆    [◆ main] reflow notes                                                                            GF 8m   6029ea7
+  ●    add notes                                                                                        GF 9m   c89398b
+  ●    Correct the note                                                                                 GF 1y   a82960b
+  ●    Add the first note                                                                               GF 1y   fadcfb3
+  ◇    Add a readme                                                                                     GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · B blame · F history · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · ? keys
+COMMIT 6029ea7 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 8m · parents c… · whitespace ignored
+reflow notes
+M notes.txt             +2 −2 ▎
+                                1   1   alpha   beta
+                                2     - gamma
+                                    2 + delta
+
+
+
+
+
+
+
+

@@ -63,6 +63,9 @@ pub struct Ui {
     pub theme: ThemeChoice,
     /// `ui.icons`.
     pub icons: IconSet,
+    /// `ui.overview`: the overview strip starts shown. `O` still toggles it
+    /// per run. Off by default.
+    pub overview: bool,
 }
 
 /// `[graph]`.

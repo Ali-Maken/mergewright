@@ -642,6 +642,7 @@ fn seed_config(state: &mut AppState, config: &crate::config::Config) {
     // (m5-history-and-ghost-preview/33, review M1).
     state.icons = config.ui.icons.glyphs();
     state.max_lanes = config.graph.max_lanes;
+    state.strip_shown = config.ui.overview;
 }
 
 #[cfg(test)]
@@ -747,6 +748,20 @@ mod tests {
             },
         );
         assert!(state.suspend_on_ctrl_z);
+    }
+
+    /// m8-polish-and-ship/17 item 5: `ui.overview = true` starts the strip shown.
+    #[test]
+    fn ui_overview_seeds_strip_shown() {
+        let mut state = AppState::default();
+        seed_config(&mut state, &crate::config::Config::default());
+        assert!(!state.strip_shown, "off by default");
+
+        let mut state = AppState::default();
+        let mut config = crate::config::Config::default();
+        config.ui.overview = true;
+        seed_config(&mut state, &config);
+        assert!(state.strip_shown);
     }
 
     #[test]

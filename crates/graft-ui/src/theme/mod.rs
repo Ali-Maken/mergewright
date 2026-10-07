@@ -310,6 +310,37 @@ impl Theme {
         self.lanes[lane % LANE_COUNT]
     }
 
+    /// A lane's faded hue for cells off the selected thread
+    /// (m8-polish-and-ship/17 item 3): the lane's truecolor hue mixed 45%
+    /// toward `bg`, reduced to this depth. Terminals that ignore SGR 2 show
+    /// no DIM, so at truecolor and 256 colours the fade is the colour itself.
+    /// At 16 colours and with no colour there is no in-between hue to pick:
+    /// the lane's own colour comes back and the caller keeps DIM
+    /// ([`Theme::fades_by_hue`] says which).
+    #[must_use]
+    pub fn lane_muted(&self, lane: usize) -> TokenColor {
+        if !self.fades_by_hue() {
+            return self.lane(lane);
+        }
+        let hue = lanes::LANE_HUES[lane % LANE_COUNT];
+        let bg = self.rgb[Token::Bg.index()];
+        reduce(conflict::mix(hue, bg, 0.55), self.depth)
+    }
+
+    /// [`Theme::lane_muted`] for a branch, by identity — the slot
+    /// [`Theme::branch`] reads.
+    #[must_use]
+    pub fn branch_muted(&self, identity: BranchIdentity) -> TokenColor {
+        self.lane_muted(identity.slot(LANE_COUNT))
+    }
+
+    /// Whether off-thread lanes fade by hue ([`Theme::lane_muted`]) rather
+    /// than by DIM: truecolor and 256 colours only.
+    #[must_use]
+    pub fn fades_by_hue(&self) -> bool {
+        matches!(self.depth, ColorDepth::TrueColor | ColorDepth::Palette256)
+    }
+
     /// Lane hues for a pixel renderer, indexed like [`Theme::branch`]'s slots.
     ///
     /// An image is not limited to the terminal's ANSI palette, so these are

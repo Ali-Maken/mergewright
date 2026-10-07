@@ -4,7 +4,7 @@
 //! (ticket m1-the-graph/19, ADR-0016).
 
 use graft_core::capabilities::ColorDepth;
-use ratatui::style::{Modifier, Style};
+use ratatui::style::{Color, Modifier, Style};
 
 use super::{CELLS_PER_LANE, GraphLine, NodeKind, RAIL, STUB_ABOVE, STUB_BELOW};
 
@@ -40,30 +40,43 @@ pub(super) fn lane_x(column: usize) -> u16 {
 }
 
 /// A rail or stub cell's style on `line`. A fold never hides a thread lane
-/// (the thread is its protected set), so both are off the thread: dim under
-/// a selection, the row's own paint otherwise.
-pub(super) fn off_thread(style: Style, line: &GraphLine<'_>) -> Style {
+/// (the thread is its protected set), so both are off the thread: faded
+/// under a selection, the row's own paint otherwise. See [`fade`].
+pub(super) fn off_thread(style: Style, line: &GraphLine<'_>, muted: Option<Color>) -> Style {
     let style = style.add_modifier(line.paint.modifier());
     if line.thread.is_some() {
-        style
-            .remove_modifier(Modifier::BOLD)
-            .add_modifier(Modifier::DIM)
+        fade(style, muted)
     } else {
         style
     }
 }
 
-/// A lane cell's style under a selection: bold on the thread, dim off it.
+/// A lane cell's style under a selection: bold on the thread, faded off it.
 /// Without a selection, or for a cell with no real column, unchanged.
-pub(super) fn on_thread(style: Style, line: &GraphLine<'_>, real: Option<usize>) -> Style {
+pub(super) fn on_thread(
+    style: Style,
+    line: &GraphLine<'_>,
+    real: Option<usize>,
+    muted: Option<Color>,
+) -> Style {
     match (&line.thread, real) {
         (Some(thread), Some(column)) if thread.contains(&column) => style
             .remove_modifier(Modifier::DIM)
             .add_modifier(Modifier::BOLD),
-        (Some(_), _) => style
-            .remove_modifier(Modifier::BOLD)
-            .add_modifier(Modifier::DIM),
+        (Some(_), _) => fade(style, muted),
         (None, _) => style,
+    }
+}
+
+/// An off-thread cell: its lane's hue mixed toward `bg` where the depth has
+/// one (`muted`, [`crate::theme::Theme::lane_muted`]) — terminals that
+/// ignore SGR 2 would otherwise show no fade at all (m8-polish-and-ship/17
+/// item 3) — else DIM, as at 16 colours and `NO_COLOR`.
+fn fade(style: Style, muted: Option<Color>) -> Style {
+    let style = style.remove_modifier(Modifier::BOLD);
+    match muted {
+        Some(muted) => style.fg(muted).remove_modifier(Modifier::DIM),
+        None => style.add_modifier(Modifier::DIM),
     }
 }
 

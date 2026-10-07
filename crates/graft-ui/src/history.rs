@@ -163,6 +163,9 @@ pub struct HistoryView<'a> {
     /// Colours for the file pane's rows (21: a field added to the note's
     /// signature — the rows are drawn by the detail pane's styling helpers).
     pub theme: &'a Theme,
+    /// `w`: whitespace-only changes are ignored; the title's tail says so,
+    /// muted (m8-polish-and-ship/17 item 8).
+    pub whitespace_ignored: bool,
 }
 
 /// Where the two panes sit across the width: `(x offset, width)` each,
@@ -283,14 +286,18 @@ fn draw_into(buf: &mut Buffer, area: Rect, view: &HistoryView, keys: &Keymap) {
     if area.is_empty() {
         return;
     }
+    let title = title(view, keys);
     put(
         buf,
         area.x,
         area.y,
         area.width,
-        &title(view, keys),
+        &title,
         Style::default().add_modifier(Modifier::BOLD),
     );
+    if view.whitespace_ignored {
+        crate::blame::put_whitespace_tail(buf, area, &title, put);
+    }
     if area.height < 2 {
         return;
     }

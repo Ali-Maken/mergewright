@@ -370,8 +370,7 @@ impl Widget for GraphColumn<'_> {
                             .add_modifier(line.paint.modifier());
                     }
                 } else if let Some(owner) = cell.owner {
-                    style = style.fg(color(self.theme.branch(owner.identity)));
-                    style = on_thread(style, line, real_column(owner.column));
+                    style = self.threaded(style, line, owner.identity, real_column(owner.column));
                     if dashes && real_column(owner.column).is_some_and(|c| c % 2 == 1) {
                         glyph = dashed(glyph);
                     }
@@ -382,7 +381,7 @@ impl Widget for GraphColumn<'_> {
                 continue;
             };
             if let Some(rail) = fold.marker() {
-                let style = off_thread(foreground(self.theme, Token::TextMuted), line);
+                let style = off_thread(foreground(self.theme, Token::TextMuted), line, None);
                 self.put(buf, area, lane_x(rail), y, RAIL, style);
             }
             // Several folded edges on one row draw one stub, in the first
@@ -396,6 +395,7 @@ impl Widget for GraphColumn<'_> {
                 let style = off_thread(
                     Style::new().fg(color(self.theme.branch(first.identity))),
                     line,
+                    self.faded(first.identity),
                 );
                 let gap = lane_x(row.lane).saturating_add(1);
                 self.put(buf, area, gap, y, glyph, style);
@@ -405,6 +405,30 @@ impl Widget for GraphColumn<'_> {
 }
 
 impl GraphColumn<'_> {
+    /// A lane cell in its branch's colour, under the selection's thread
+    /// ([`on_thread`]).
+    fn threaded(
+        &self,
+        style: Style,
+        line: &GraphLine<'_>,
+        identity: graft_graph::identity::BranchIdentity,
+        real: Option<usize>,
+    ) -> Style {
+        let style = style.fg(color(self.theme.branch(identity)));
+        on_thread(style, line, real, self.faded(identity))
+    }
+
+    /// A lane's off-thread colour where the depth fades by hue
+    /// ([`Theme::lane_muted`]); `None` where the fade stays DIM.
+    fn faded(
+        &self,
+        identity: graft_graph::identity::BranchIdentity,
+    ) -> Option<ratatui::style::Color> {
+        self.theme
+            .fades_by_hue()
+            .then(|| color(self.theme.branch_muted(identity)))
+    }
+
     /// Write one glyph at `x` cells into the column, if it fits, through the
     /// ASCII table when this is the ASCII tier.
     fn put(&self, buf: &mut Buffer, area: Rect, x: u16, y: u16, glyph: char, style: Style) {

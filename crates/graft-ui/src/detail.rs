@@ -391,6 +391,9 @@ pub struct DetailView {
     /// The cursor has moved on and the pane will follow it once the
     /// cursor rests (G-settle): the title row ends in a muted `reading…`.
     pub following: bool,
+    /// Draw the ASCII tier's glyphs where the pane has them (the submodule
+    /// row, m8-polish-and-ship/17).
+    pub ascii: bool,
 }
 
 /// A Mistake Radar explanation, as the explain panel draws it.

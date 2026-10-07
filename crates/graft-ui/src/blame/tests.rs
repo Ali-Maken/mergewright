@@ -90,6 +90,7 @@ fn view(rows: &[BlameRowView], cursor: usize) -> BlameView<'_> {
         find: None,
         heatmap: false,
         now: NOW,
+        whitespace_ignored: false,
     }
 }
 
@@ -630,4 +631,21 @@ fn blame_spells_its_back_key_from_his_keymap() {
         .find(|line| line.contains("git blame stopped"))
         .unwrap_or_else(|| panic!("{text}"));
     assert_spelled(line, &keys, &[&["app.back"]]);
+}
+
+/// m8-polish-and-ship/17 item 8: with `w` on the title ends
+/// `· whitespace ignored`; off, it does not.
+#[test]
+fn blame_title_says_whitespace_ignored_while_w_is_on() {
+    let rows = mockup();
+    let mut v = view(&rows, ON_22);
+    assert!(!draw(&v, 187, 20)[0].contains("whitespace ignored"));
+    v.whitespace_ignored = true;
+    let title = draw(&v, 187, 20)[0].clone();
+    assert!(
+        title
+            .trim_end()
+            .ends_with("as it is now \u{b7} whitespace ignored"),
+        "{title:?}"
+    );
 }

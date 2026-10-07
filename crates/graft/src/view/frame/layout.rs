@@ -42,7 +42,8 @@ pub(super) fn render_graph_with_detail(
         &state.detail.pane_size,
         (area.width, area.height),
     );
-    let view = detail_view(state);
+    let mut view = detail_view(state);
+    view.ascii = screen.ascii;
     let (graph_area, pane_area) = split_for_detail(
         frame,
         session,

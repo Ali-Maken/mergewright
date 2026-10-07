@@ -1,6 +1,5 @@
 ---
 source: crates/graft-ui/tests/selection.rs
-assertion_line: 90
 expression: text
 ---
 shape: criss-cross-merge, truecolor, highlight, 80x24, row 4 selected
@@ -33,8 +32,8 @@ shape: criss-cross-merge, truecolor, highlight, 80x24, row 4 selected
 modifiers: graph | subject
 ..b.......| .
 bbbbb.....| .
-d.bdbdd...| .
-d.b.bbdbb.| .
-d.bbdbdbb.| b
-d.b.ddd...| .
-bbbdd.....| .
+..b.b.....| .
+..b.bb.bb.| .
+..bb.b.bb.| b
+..b.......| .
+bbb.......| .

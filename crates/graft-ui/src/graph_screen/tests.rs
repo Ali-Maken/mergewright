@@ -2849,3 +2849,28 @@ fn the_filter_line_and_the_commit_graph_line_spell_his_keys() {
         &[&["app.refresh"]],
     );
 }
+
+/// m8-polish-and-ship/17 item 4: at 80 columns a 120-character path is cut
+/// from the left and the order notice still shows whole, right-aligned.
+#[test]
+fn a_long_path_never_cuts_the_order_notice_at_80_columns() {
+    let rows = linear(2);
+    let path = format!("~/{}/api", "deeply-nested-folder/".repeat(6));
+    assert!(path.chars().count() >= 120, "{}", path.chars().count());
+    for (notice, words) in [
+        (OrderNotice::Sorting, "date order, sorting\u{2026}"),
+        (OrderNotice::Provisional, "order stays provisional (date)"),
+    ] {
+        let mut shown = view(&rows, WalkView::Complete { rows: 2 }, 0);
+        shown.location = Some(at(&path));
+        shown.order = Some(notice);
+        let header = text(&draw(&shown, 80, 6))[0].clone();
+        assert!(header.trim_end().ends_with(words), "{header:?}");
+        assert!(
+            header.contains(" api "),
+            "the repo name survives: {header:?}"
+        );
+        assert!(header.contains('\u{2026}'), "the path is cut: {header:?}");
+        assert_eq!(header.width(), 80);
+    }
+}
