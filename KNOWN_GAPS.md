@@ -1167,13 +1167,15 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/resolve-keys-const-literal | RESOLVE_KEYS shown on screen via pressed.rs:156; the literal-key grep misses consts | **unverified** | M8 |
 | M8/one-chord-idle | 12 ONE_CHORD_IDLE rows classed Defect: keys that do nothing at their place (09g, sweep_tables.rs) | **broken** | M8 |
 | M8/09g-third-class | 10 ONE_CHORD_IDLE rows act on keys but the test setup gives nothing to change — neither class of R1; builder stopped, proposed a third class → planner | **unverified** | M8 |
-| M8/resolver-ctrl-z-swallowed | With suspend_on_ctrl_z, ⌃Z in the resolver is swallowed, not suspended; a suspend would hit mod.rs:441 (marks file edited) | **broken** | M8 |
+| M8/resolver-ctrl-z-swallowed | With suspend_on_ctrl_z, ⌃Z in the resolver is swallowed, not suspended. Observed by 09h probe: a suspend's return marks `conflicted.rs` edited (update/mod.rs:441) — fix there, then remove the swallow | **broken** | M8 |
 | M8/diff-home-end-moves-graph | Diff pane Home/End move the graph (found by 09g, not fixed) | **broken** | M8 |
 | M8/10h-search-captures-stale | Search `Esc`→`esc` leaves 3 hand-made pty captures stale (26-search-far, 26-search-typing, m2-18-git-git-search…); no script regenerates them | **broken** | M8 |
 | M8/10h-red-by-compile-only | 10h's new tests were seen red only as compile failures; an assertion failure seen once (dismiss). Ticks may not fail on the defect | **unverified** | M8 |
 | M8/12-palette-perf | Palette loop p95 61 ms (release, docs/perf/m8-palette.txt) — over budget. Measured cause: graph draw 33 ms p50 on the 16k-badge fixture; palette update p95 5 ms; branch read ~2 s on 50k refs (picker shares) → planner ruling | **broken** | M8 |
 | M8/12-launch-cursor-not-head | Launch leaves the cursor on the newest row, not HEAD; 12's walks switch fixture around it — question | **unverified** | M8 |
 | M8/12-palette-colour-unverified | 12's 3 palette captures: colour unverified (rule 5) | **unverified** | M8 |
+| M8/rewrite-editor-until-y | Literal `until y` at graft/src/view/rewrite_editor.rs:73–74 (found by 09h, not fixed) | **broken** | M8 |
+| M8/09h-captures | 09h captures box open (waited on 12; 12 now merged) — re-shoot pending | **unverified** | M8 |
 | M8/13d-open-points | 13d NOTES: `stopped_on_conflict` (graft-ops apply.rs:761) not switched (its live_entry would hold a Pending entry Q4 forbids); relaunch banner reads `c finish  a abort` vs design note `c continue · a abort`; 80x24 capture drops 'from a previous run'; forced undo jump always prints the `None` line; 13b merge-half box left unticked though 13c/13d cover it (review to confirm). | **unverified** | M8 |
 | M8/13cd-review-minors | 9 Minors + 2 Questions (Minors 2/4/7/8 and 13d points fixed in 13e/13f; 1/3/9 and Q1 stay here) in `docs/reviews/m8-13cd-stop.md`. | **broken** (per finding) | M8 |
 | M8/stop-files-over-400 | graft pool.rs 451, graft-git exec.rs 529, graft-ops apply.rs 777, resume.rs 543 (review 13cd M3) — splits in 13e/13f. | **broken** | M8 |
