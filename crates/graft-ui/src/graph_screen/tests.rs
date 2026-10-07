@@ -2201,6 +2201,65 @@ fn three_badges() -> Vec<Badge> {
     ]
 }
 
+/// `count` branch badges one cell of name each (`[a]`, the narrowest a badge
+/// gets), so as many as possible could fit before the edge.
+fn narrow_pile(count: usize) -> Vec<Badge> {
+    (0..count)
+        .map(|i| {
+            let letter = char::from(b'a' + u8::try_from(i % 26).expect("under 26"));
+            branch(&letter.to_string(), false, Tracking::Untracked)
+        })
+        .collect()
+}
+
+/// `count` badges named like the perf fixture's (`team/123`).
+fn named_pile(count: usize) -> Vec<Badge> {
+    (0..count)
+        .map(|i| branch(&format!("team/{i}"), false, Tracking::Untracked))
+        .collect()
+}
+
+/// m8/12c: a row holding 16 000 refs draws exactly what its first
+/// [`badges_that_fit`] badges draw alone, cell for cell and style for style,
+/// so a row builder may stop there. Also with `only in stash@{0}` pushed
+/// last, as `graft::view::rows::mark_stash_only` does after the builder:
+/// on a cut row it lands past the edge, the same as behind 16 000 refs.
+#[test]
+fn many_refs_row_draws_like_its_first_badges() {
+    let rows = linear(3);
+    let only_in_stash = Badge {
+        name: sanitize_line(""),
+        kind: BadgeKind::OnlyInStash(0),
+    };
+    let piles: [fn(usize) -> Vec<Badge>; 2] = [narrow_pile, named_pile];
+    for width in [80_u16, 120, 200] {
+        for icons in [Icons::Plain, Icons::Nerd] {
+            for pile in piles {
+                for stash in [false, true] {
+                    let draw_with = |mut badges: Vec<Badge>| {
+                        if stash {
+                            badges.push(only_in_stash.clone());
+                        }
+                        let mut screen = view(&rows, WalkView::Complete { rows: 3 }, 0);
+                        screen.icons = icons;
+                        screen.rows[0].badges = badges;
+                        draw(&screen, width, 8).backend().buffer().clone()
+                    };
+                    let all = pile(16_000);
+                    let first = all[..badges_that_fit(width)].to_vec();
+                    assert_eq!(
+                        draw_with(all),
+                        draw_with(first),
+                        "{width} columns, {icons:?}, stash {stash}: 16 000 badges and the first \
+                         {} draw different cells",
+                        badges_that_fit(width)
+                    );
+                }
+            }
+        }
+    }
+}
+
 /// Draw `screen` at `width` and check every span against the cells drawn.
 fn check_one_row(screen: &GraphView<'_>, width: u16, icons: Icons) {
     {

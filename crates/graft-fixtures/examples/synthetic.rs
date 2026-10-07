@@ -3,8 +3,11 @@
 //! test builds:
 //!
 //! ```sh
-//! cargo run --release -p graft-fixtures --features heavy-tests --example synthetic -- 1000000 [--commit-graph] [--realistic]
+//! cargo run --release -p graft-fixtures --features heavy-tests --example synthetic -- 1000000 [--commit-graph] [--realistic] [--refs N]
 //! ```
+//!
+//! `--refs N` is [`Scale::with_refs`]: the heavy tier's many-refs fixture,
+//! for `scripts/perf-palette.sh with-refs` (m8-polish-and-ship/12c).
 //!
 //! Heavy tier only: the example does not compile without `heavy-tests`.
 //! Prints one line, `<path>\t<MiB on disk>\t<seconds>\t<built|cached>`.
@@ -17,10 +20,23 @@ fn main() -> ExitCode {
     let mut commits = None;
     let mut commit_graph = false;
     let mut realistic = false;
-    for arg in std::env::args().skip(1) {
+    let mut refs = None;
+    let mut args = std::env::args().skip(1);
+    while let Some(arg) = args.next() {
         match arg.as_str() {
             "--commit-graph" => commit_graph = true,
             "--realistic" => realistic = true,
+            "--refs" => match args.next().map(|count| count.parse::<u32>()) {
+                Some(Ok(count)) => refs = Some(count),
+                Some(Err(why)) => {
+                    eprintln!("synthetic: --refs takes a count: {why}");
+                    return ExitCode::FAILURE;
+                }
+                None => {
+                    eprintln!("synthetic: --refs takes a count");
+                    return ExitCode::FAILURE;
+                }
+            },
             number => match number.parse::<u32>() {
                 Ok(n) => commits = Some(n),
                 Err(why) => {
@@ -31,7 +47,7 @@ fn main() -> ExitCode {
         }
     }
     let Some(commits) = commits else {
-        eprintln!("usage: synthetic <commits> [--commit-graph] [--realistic]");
+        eprintln!("usage: synthetic <commits> [--commit-graph] [--realistic] [--refs N]");
         return ExitCode::FAILURE;
     };
     let mut scale = Scale::of(commits);
@@ -40,6 +56,9 @@ fn main() -> ExitCode {
     }
     if realistic {
         scale = scale.with_realistic_commits();
+    }
+    if let Some(refs) = refs {
+        scale = scale.with_refs(refs);
     }
     match synthetic::ensure(scale) {
         Ok(report) => {

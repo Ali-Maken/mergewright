@@ -45,7 +45,7 @@ pub use layout::{
     Columns, RowLayout, ScreenRows, lanes_that_fit, max_lanes_for, row_at, row_layout, screen_rows,
     snap_to_columns,
 };
-pub use render::badge_spans;
+pub use render::{badge_spans, badges_that_fit};
 
 use crate::graph_column::GraphLine;
 use crate::theme::Theme;

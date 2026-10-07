@@ -8,8 +8,8 @@ use graft_graph::{Ancestry, Kin};
 use graft_term::{sanitize_line, sanitize_path_bytes};
 use graft_ui::graph_column::{GraphLine, NodeKind, RowPaint};
 use graft_ui::graph_screen::{
-    AuthorChip, Badge, BadgeKind, GraphEntry, RowTag, SHA_WIDTH, Tracking, initials, relative_date,
-    short_sha,
+    AuthorChip, Badge, BadgeKind, GraphEntry, RowTag, SHA_WIDTH, Tracking, badges_that_fit,
+    initials, relative_date, short_sha,
 };
 
 use crate::history::History;
@@ -321,12 +321,18 @@ fn row_entry<'a>(
         name: sanitize_line(""),
         kind: BadgeKind::CompareBase,
     });
+    // Only the badges a row this wide can draw (m8/12c): a commit can carry
+    // 16 000 refs, and every one built here was sanitised, measured and
+    // packed again each frame. Cut in drawing order, so the row draws and
+    // hit-tests exactly as before — `graft_ui::graph_screen::badges_that_fit`
+    // says why the cells cannot change.
     let badges = base
         .into_iter()
         .chain(
             refs.into_iter()
                 .flat_map(|refs| refs.on(row.commit.id).iter().map(badge_view)),
         )
+        .take(badges_that_fit(state.size.columns))
         .collect();
     let subject = String::from_utf8_lossy(row.commit.subject());
     let marker = super::radar::marker_for(state, row.commit.id, &row.commit.parents, &subject);

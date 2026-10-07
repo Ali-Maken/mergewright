@@ -33,7 +33,8 @@ use super::rows::graph_view;
 
 /// The badge drawn at `(column, row)`, as its position in the row's badge
 /// list — which is also its position in `RefBadges::on(oid)`, because
-/// [`super::entries::row_entry`] maps that slice one for one.
+/// [`super::entries::row_entry`] maps that slice one for one (its first
+/// `badges_that_fit` labels: past them nothing is drawn, so nothing is hit).
 ///
 /// `None` off a badge, including the gap between two of them: the separator
 /// is drawn by the row, not owned by either neighbour, so a drag started

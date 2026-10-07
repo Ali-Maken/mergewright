@@ -548,6 +548,26 @@ pub fn badge_spans(
     spans
 }
 
+/// The most badges a row can draw on a screen `columns` wide. A row
+/// builder may stop at this many and [`badge_spans`] returns the same
+/// spans, so the same cells are drawn, whatever the commit carries
+/// (m8/12c: 16 000 refs on one commit cost 16 000 badges a row a frame).
+///
+/// Why this many is enough: the badges get at most half the subject column
+/// ([`badges_width`]), and the subject column is narrower than the screen,
+/// so they have fewer than `columns / 2` cells. Every badge's text is at
+/// least two cells (`[…]` plain, glyph and space Nerd) and each one after
+/// the first adds a separator cell, so badge `columns / 2` starts at or past
+/// the edge and [`badge_spans`] stops there. The first `columns / 2 + 1`
+/// also want at least that half column on their own, so the room the cut
+/// list is given is the room the whole list was. Whatever is pushed after
+/// the cut (`only in stash`) lands past the edge, as it did behind them.
+/// Pinned by `tests::many_refs_row_draws_like_its_first_badges`.
+#[must_use]
+pub fn badges_that_fit(columns: u16) -> usize {
+    usize::from(columns / 2) + 1
+}
+
 /// Cells a row's badges take from the subject column's left edge, the
 /// trailing gap included — half the subject column at most. The same sum
 /// [`GraphScreen::draw_badges`] draws to, so it and the footer reveal's
