@@ -219,4 +219,4 @@ pub(crate) use mouse::finish_mouse;
 pub(crate) use words::{by_you_words, compose, split_message};
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

@@ -180,6 +180,8 @@ fn show(repo_path: PathBuf, entry: &Entry, index: usize, total: usize) -> Result
             Ok(Step::Quit)
         }
         Exit::Fatal(reason) => Err(reason),
+        // A walk never stops a write half-way; if one did, say so.
+        Exit::StoppedHalfWay { what, after } => Err(event_loop::stopped_line(&what, after)),
         // `run` gives the terminal back after one repository; only `drive`
         // opens another place, so this would be a broken promise, said.
         Exit::Open(path) => Err(format!("`run` asked to open {}", path.display())),

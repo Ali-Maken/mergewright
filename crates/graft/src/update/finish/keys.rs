@@ -20,6 +20,8 @@ pub fn finish_key(
         return false;
     }
     // The text on screen is what is being written: nothing changes it.
+    // (`Esc` while Graft waits to quit on that commit never reaches here:
+    // `keys::key_event` spends it on the wait first, m8/13b review M2.)
     if finish.committing.is_some() {
         return true;
     }

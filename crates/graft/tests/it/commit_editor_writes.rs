@@ -137,10 +137,14 @@ impl App {
     }
 
     fn close(self) {
-        match self.jobs.shutdown(Duration::from_secs(10)) {
-            Shutdown::Clean => {}
-            other @ Shutdown::Stalled { .. } => panic!("the job pool did not stop: {other:?}"),
-        }
+        let shutdown =
+            self.jobs
+                .shutdown(Duration::from_secs(10), graft::jobs::EXIT_WRITE_WAIT, &());
+        assert_eq!(
+            shutdown,
+            Shutdown::CLEAN,
+            "the job pool did not stop cleanly"
+        );
     }
 }
 

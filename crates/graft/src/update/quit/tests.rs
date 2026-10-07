@@ -1,5 +1,5 @@
-//! `q` asks first while a write runs or git is stopped mid-operation
-//! (m8-polish-and-ship/13, ruling 4). Driven through `update`, so every
+//! `q` asks first while a write runs; git stopped mid-operation quits with no
+//! box (m8-polish-and-ship/13 ruling 4; 13b). Driven through `update`, so every
 //! handler between the key and `graft_key` is in the path.
 
 use graft_core::event::{Event, KeyCode, KeyPress};
@@ -9,11 +9,11 @@ use graft_ops::operation::{FetchParams, Operation};
 use crate::update::events::{AppEvent, Command};
 use crate::update::state::{AppState, Quit};
 
-fn press(state: &AppState, key: KeyPress) -> (AppState, Vec<Command>) {
+pub(crate) fn press(state: &AppState, key: KeyPress) -> (AppState, Vec<Command>) {
     crate::update::update(state, AppEvent::Core(Event::Key(key)))
 }
 
-fn plain(character: char) -> KeyPress {
+pub(crate) fn plain(character: char) -> KeyPress {
     KeyPress::plain(KeyCode::Char(character))
 }
 
@@ -310,7 +310,7 @@ fn q_on_the_banner_while_its_continue_runs_waits_for_it() {
     let id = state.operating.expect("the continue runs");
     assert_eq!(
         commands.first(),
-        Some(&Command::Unstoppable(id)),
+        Some(&Command::Unstoppable(id, description(&state))),
         "marked before it is queued: {commands:?}"
     );
     let (next, commands) = press(&state, plain('q'));
@@ -358,7 +358,7 @@ fn merging() -> (AppState, JobId) {
     let id = state.operating.expect("the merge runs");
     assert_eq!(
         commands.first(),
-        Some(&Command::Unstoppable(id)),
+        Some(&Command::Unstoppable(id, description(&state))),
         "the pool is told before the job is queued: {commands:?}"
     );
     (state, id)
@@ -382,7 +382,7 @@ fn waiting_line(state: &AppState) -> Status {
 }
 
 /// The merge running, `q`, then `y`: Graft waiting to quit.
-fn waiting() -> (AppState, JobId) {
+pub(crate) fn waiting() -> (AppState, JobId) {
     let (state, id) = merging();
     let (state, _) = press(&state, plain('q'));
     let (state, commands) = press(&state, plain('y'));
@@ -823,7 +823,13 @@ fn waiting_on_a_revert() -> (AppState, JobId) {
         crate::update::remote::Stoppable::No(crate::update::preview::HISTORY_CANNOT_STOP),
         None,
     );
-    assert_eq!(unstoppable, Some(Command::Unstoppable(id)));
+    assert_eq!(
+        unstoppable,
+        Some(Command::Unstoppable(
+            id,
+            "revert to before \u{201c}stage a.txt\u{201d}".to_owned()
+        ))
+    );
     let (state, _) = press(&state, plain('q'));
     let (state, commands) = press(&state, plain('y'));
     not_cancelled(&commands);
@@ -879,3 +885,6 @@ fn a_revert_failing_part_way_stays() {
         next.shown_status()
     );
 }
+
+mod modals;
+mod stuck;

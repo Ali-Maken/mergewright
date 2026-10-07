@@ -44,7 +44,7 @@ pub mod picker;
 pub mod place;
 mod prelude;
 pub mod preview;
-mod quit;
+pub mod quit;
 pub mod radar;
 pub(crate) mod recover;
 mod relaunch;

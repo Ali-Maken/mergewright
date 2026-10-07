@@ -88,7 +88,7 @@ fn a_finished_job_comes_back_as_an_event() {
     let id = runner.submit(|_cancel| Outcome::Done);
 
     assert_eq!(next_event(&events), Event::JobFinished(id));
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 #[test]
@@ -101,7 +101,7 @@ fn a_job_that_fails_says_why() {
         next_event(&events),
         Event::JobFailed(id, JobFailure::Failed("no such repository".to_owned()))
     );
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 #[test]
@@ -112,7 +112,7 @@ fn every_id_is_its_own() {
     let second = runner.submit(|_cancel| Outcome::Done);
 
     assert_ne!(first, second);
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 #[test]
@@ -139,7 +139,7 @@ fn six_jobs_on_a_pool_of_two_all_finish() {
 
     assert_eq!(finished, submitted);
     assert_eq!(ran.load(Ordering::Relaxed), 6);
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 /// A pool of two is two jobs at once, not two jobs one after the other. Both
@@ -177,7 +177,7 @@ fn a_pool_of_two_runs_two_jobs_at_once() {
     release.send(()).expect("a job is waiting");
     assert!(matches!(next_event(&events), Event::JobFinished(_)));
     assert!(matches!(next_event(&events), Event::JobFinished(_)));
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 #[test]
@@ -206,7 +206,7 @@ fn a_running_job_stops_when_it_is_cancelled() {
     runner.cancel(id);
 
     assert_eq!(next_event(&events), Event::JobCancelled(id));
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 /// The cheapest cancellation there is: a job that was still queued is dropped
@@ -245,7 +245,7 @@ fn a_job_cancelled_before_it_starts_never_runs() {
         !ran.load(Ordering::Acquire),
         "a cancelled job must not run at all"
     );
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 /// A job that panics is a bug in one job. The user is told, and the pool keeps
@@ -272,7 +272,7 @@ fn a_panicking_job_is_reported_and_the_pool_survives() {
         other => panic!("expected a panic failure, got {other:?}"),
     }
     assert_eq!(next_event(&events), Event::JobFinished(after));
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 #[test]
@@ -288,7 +288,7 @@ fn a_panic_that_is_not_a_string_is_still_reported() {
         }
         other => panic!("expected a panic failure, got {other:?}"),
     }
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 /// Quitting must not wait for a job that will not stop. The job is cancelled,
@@ -319,9 +319,9 @@ fn shutdown_gives_up_on_a_job_that_ignores_its_token() {
 
     // A short grace: the job cannot possibly finish, because only this test can
     // release it.
-    let shutdown = runner.shutdown(Duration::from_millis(20));
+    let shutdown = runner.shutdown(Duration::from_millis(20), PATIENCE, &());
 
-    assert_eq!(shutdown, Shutdown::Stalled { workers: 1 });
+    assert_eq!(shutdown.stalled, 1);
     // The abandoned worker is still a worker. Once released it ends its job and
     // says so — as a cancellation, because by then the application had asked it
     // to stop, whatever the work itself thought it returned. The job queued
@@ -339,7 +339,7 @@ fn shutdown_gives_up_on_a_job_that_ignores_its_token() {
 fn shutting_down_an_idle_pool_is_clean() {
     let (runner, _events) = runner(2);
 
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 /// A result whose screen has gone has nowhere to go, and that is a normal end
@@ -363,7 +363,7 @@ fn a_pool_whose_events_go_nowhere_still_shuts_down() {
 
     runner.submit(|_cancel| Outcome::Done);
 
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 #[test]
@@ -373,8 +373,8 @@ fn the_pool_is_never_empty_and_never_larger_than_the_cap() {
 
     assert_eq!(empty.worker_count(), 1);
     assert_eq!(huge.worker_count(), MAX_WORKERS);
-    assert_eq!(empty.shutdown(PATIENCE), Shutdown::Clean);
-    assert_eq!(huge.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(empty.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
+    assert_eq!(huge.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 #[test]
@@ -385,7 +385,7 @@ fn the_default_pool_fits_a_laptop() {
         JobRunner::with_default_size(sender, store).expect("a test machine can start a thread");
 
     assert!((1..=MAX_WORKERS).contains(&runner.worker_count()));
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 /// The command that proves the pipeline: a real repository opens and brings its
@@ -404,7 +404,7 @@ fn opening_a_repository_reports_what_it_found() {
         }
         other => panic!("expected an open repository, got {other:?}"),
     }
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 #[test]
@@ -421,7 +421,7 @@ fn a_path_that_is_not_a_repository_comes_back_as_an_answer() {
         }
         other => panic!("expected a refusal, got {other:?}"),
     }
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 /// The point of [`RepoStore`]: two jobs, one open. Discovering and opening a
@@ -443,7 +443,7 @@ fn two_jobs_share_one_open_repository() {
         1,
         "the second job must reuse the handle the first one opened"
     );
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 /// The other startup command. Whether git is there or not is an answer, and
@@ -464,7 +464,7 @@ fn checking_the_system_git_reports_either_way() {
         },
         other => panic!("expected a git check, got {other:?}"),
     }
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 #[test]
@@ -490,7 +490,7 @@ fn a_cancel_command_reaches_the_job_it_names() {
     runner.dispatch(Command::CancelJob(id));
 
     assert_eq!(next_event(&events), Event::JobCancelled(id));
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 /// Cancelling something that is already over is not an error and not an event:
@@ -505,7 +505,7 @@ fn cancelling_a_job_that_is_over_changes_nothing() {
     runner.cancel(id);
     runner.cancel(JobId::new(9_999));
 
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
     assert!(
         events.recv_timeout(Duration::from_millis(20)).is_err(),
         "a job that is over must not report twice"
@@ -571,7 +571,7 @@ fn a_history_job_answers_row_requests_until_cancelled() {
         next_report(&events),
         AppEvent::Core(Event::JobCancelled(id))
     );
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 /// m1-the-graph/54, closed by m2-details-and-diffs/21: a walk started after
@@ -639,7 +639,7 @@ fn refresh_after_a_commit_graph_write_puts_the_next_walk_on_the_graph_path() {
         next_report(&events),
         AppEvent::Core(Event::JobCancelled(id))
     );
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 #[test]
@@ -668,7 +668,7 @@ fn ahead_behind_is_counted_on_a_worker_never_the_loops_thread() {
         walked_on.iter().all(|&thread| thread != here),
         "{walked_on:?}"
     );
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 /// What the job `id` brought back, past its own start announcement: the
@@ -746,13 +746,15 @@ fn the_detail_reads_come_back_as_products() {
         contained.branches.iter().any(|b| b.as_slice() == b"main"),
         "main contains its own tip, got {contained:?}"
     );
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
 // m8/13b: a write that cannot stop half-way is never signalled.
 
 /// A job that runs until `released`, checking its token as it goes, and
-/// records whether it ever saw a cancel.
+/// records whether it ever saw a cancel. It blocks on the release channel in
+/// short slices rather than spinning a core (review m8-13b Minor 6); the
+/// slice is how often it looks at its token, not a race being timed.
 fn watching_job(
     started: Sender<()>,
     released: Receiver<()>,
@@ -765,13 +767,63 @@ fn watching_job(
             if cancel.is_cancelled() {
                 saw_cancel.store(true, Ordering::Release);
             }
-            if released.try_recv().is_ok() {
-                return Outcome::Done;
+            match released.recv_timeout(SLICE) {
+                Ok(()) => return Outcome::Done,
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    return Outcome::Failed("the test went away".to_owned());
+                }
             }
-            thread::yield_now();
         }
         Outcome::Failed("never released".to_owned())
     }
+}
+
+/// How often a test job looks at its token while it waits.
+const SLICE: Duration = Duration::from_millis(5);
+
+/// A job that runs until it sees its cancel — a git child only a signal
+/// ends — and records that it did. Parks between looks, never spins.
+fn until_cancelled(
+    started: Sender<()>,
+    saw_cancel: Arc<AtomicBool>,
+) -> impl FnOnce(&Cancel) -> Outcome + Send + 'static {
+    move |cancel| {
+        started.send(()).expect("the test is still listening");
+        let deadline = Instant::now() + PATIENCE;
+        while Instant::now() < deadline {
+            if cancel.is_cancelled() {
+                saw_cancel.store(true, Ordering::Release);
+                return Outcome::Cancelled;
+            }
+            thread::park_timeout(SLICE);
+        }
+        Outcome::Failed("never cancelled".to_owned())
+    }
+}
+
+/// Runs `shutdown` on a thread joined with a bound, so a regression that
+/// hangs fails here instead of hanging nextest (review m8-13b Minor 6). The
+/// shutdown and how long it took.
+fn shut_down_within(
+    runner: JobRunner<Sender<AppEvent>>,
+    grace: Duration,
+    writes: Duration,
+    force: bool,
+) -> (Shutdown, Duration) {
+    let (done, finished) = mpsc::channel();
+    let began = Instant::now();
+    thread::spawn(move || {
+        let shutdown = runner.shutdown(grace, writes, &AtomicBool::new(force));
+        if done.send(shutdown).is_err() {
+            // The test already failed on its bound and stopped listening:
+            // there is nobody left to tell.
+        }
+    });
+    let shutdown = finished
+        .recv_timeout(writes + grace + PATIENCE)
+        .expect("shutdown returns within its bounds");
+    (shutdown, began.elapsed())
 }
 
 /// `Command::Unstoppable`: a cancel by id never reaches the job, which runs
@@ -783,7 +835,7 @@ fn an_unstoppable_job_ignores_a_cancel_by_id() {
     let (release, released) = mpsc::channel();
     let saw_cancel = Arc::new(AtomicBool::new(false));
     let id = runner.submit(watching_job(started, released, Arc::clone(&saw_cancel)));
-    runner.dispatch(Command::Unstoppable(id));
+    runner.dispatch(Command::Unstoppable(id, "a merge".to_owned()));
     has_started.recv_timeout(PATIENCE).expect("the job starts");
 
     runner.dispatch(Command::CancelJob(id));
@@ -794,15 +846,16 @@ fn an_unstoppable_job_ignores_a_cancel_by_id() {
         !saw_cancel.load(Ordering::Acquire),
         "the cancel never reached it"
     );
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    assert_eq!(runner.shutdown(PATIENCE, PATIENCE, &()), Shutdown::CLEAN);
 }
 
-/// Shutdown cancels every other job but never the unstoppable one, and
-/// returns only once that one has ended. The release comes from a stoppable
-/// job when *its* cancel lands, so the unstoppable job is still running
-/// after `cancel_all`: had shutdown cancelled it, it would have seen so.
+/// Shutdown cancels every other job but never the unstoppable one before
+/// its bound, and returns once that one has ended. The release comes from a
+/// stoppable job when *its* cancel lands, so the unstoppable job is still
+/// running after `cancel_all`: had shutdown cancelled it, it would have seen
+/// so. Joined with a bound (review m8-13b Minor 6).
 #[test]
-fn shutdown_waits_for_an_unstoppable_job_and_never_cancels_it() {
+fn shutdown_waits_up_to_the_bound_and_never_cancels_before_it() {
     let (runner, _events) = runner(2);
     let (started, has_started) = mpsc::channel();
     let (release, released) = mpsc::channel();
@@ -817,7 +870,7 @@ fn shutdown_waits_for_an_unstoppable_job_and_never_cancels_it() {
             outcome
         })
     };
-    runner.dispatch(Command::Unstoppable(unstoppable));
+    runner.dispatch(Command::Unstoppable(unstoppable, "a merge".to_owned()));
     has_started
         .recv_timeout(PATIENCE)
         .expect("the unstoppable job starts");
@@ -832,7 +885,7 @@ fn shutdown_waits_for_an_unstoppable_job_and_never_cancels_it() {
                 release.send(()).expect("the unstoppable job is waiting");
                 return Outcome::Cancelled;
             }
-            thread::yield_now();
+            thread::park_timeout(SLICE);
         }
         Outcome::Failed("never cancelled".to_owned())
     });
@@ -840,7 +893,8 @@ fn shutdown_waits_for_an_unstoppable_job_and_never_cancels_it() {
         .recv_timeout(PATIENCE)
         .expect("the stoppable job starts");
 
-    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+    let (shutdown, _) = shut_down_within(runner, PATIENCE, PATIENCE, false);
+    assert_eq!(shutdown, Shutdown::CLEAN);
     assert!(
         ended.load(Ordering::Acquire),
         "shutdown returned only after the unstoppable job ended"
@@ -849,6 +903,111 @@ fn shutdown_waits_for_an_unstoppable_job_and_never_cancels_it() {
         !saw_cancel.load(Ordering::Acquire),
         "shutdown never cancelled the unstoppable job"
     );
+}
+
+/// The bound spent with the write still running: shutdown stops it half-way
+/// and names it. Nothing cancelled it before the bound.
+#[test]
+fn shutdown_stops_a_write_still_running_at_its_bound_and_names_it() {
+    let (runner, _events) = runner(1);
+    let (started, has_started) = mpsc::channel();
+    let saw_cancel = Arc::new(AtomicBool::new(false));
+    let id = runner.submit(until_cancelled(started, Arc::clone(&saw_cancel)));
+    runner.dispatch(Command::Unstoppable(
+        id,
+        "merge feature into main".to_owned(),
+    ));
+    has_started.recv_timeout(PATIENCE).expect("the job starts");
+
+    let bound = Duration::from_millis(200);
+    let (shutdown, took) = shut_down_within(runner, PATIENCE, bound, false);
+    assert_eq!(
+        shutdown,
+        Shutdown {
+            stalled: 0,
+            forced: vec!["merge feature into main".to_owned()],
+        }
+    );
+    assert!(took >= bound, "it waited the whole bound first: {took:?}");
+    assert!(saw_cancel.load(Ordering::Acquire), "then it was stopped");
+}
+
+/// `force` (the signal path's second signal) ends the wait at once: the
+/// bound is not sat out.
+#[test]
+fn a_forced_shutdown_stops_the_write_without_waiting_out_the_bound() {
+    let (runner, _events) = runner(1);
+    let (started, has_started) = mpsc::channel();
+    let saw_cancel = Arc::new(AtomicBool::new(false));
+    let id = runner.submit(until_cancelled(started, Arc::clone(&saw_cancel)));
+    runner.dispatch(Command::Unstoppable(id, "rebase onto main".to_owned()));
+    has_started.recv_timeout(PATIENCE).expect("the job starts");
+
+    let (shutdown, took) = shut_down_within(runner, PATIENCE, PATIENCE, true);
+    assert_eq!(shutdown.forced, vec!["rebase onto main".to_owned()]);
+    assert_eq!(shutdown.stalled, 0);
+    assert!(took < PATIENCE, "the bound was not sat out: {took:?}");
+    assert!(saw_cancel.load(Ordering::Acquire));
+}
+
+/// Review m8-13b Major 1, bullet 3: an unstoppable write still **queued**
+/// behind a worker stuck in a job that ignores its token is bounded too, and
+/// once forced it never starts.
+#[test]
+fn a_queued_write_behind_a_stuck_worker_is_bounded_and_never_runs() {
+    let (runner, events) = runner(1);
+    let (started, has_started) = mpsc::channel();
+    let (release, released) = mpsc::channel::<()>();
+    let stuck = runner.submit(move |_cancel| {
+        started.send(()).expect("the test is still listening");
+        released.recv().expect("the test releases this job");
+        Outcome::Done
+    });
+    has_started
+        .recv_timeout(PATIENCE)
+        .expect("the stuck job starts");
+    let ran = Arc::new(AtomicBool::new(false));
+    let queued = {
+        let ran = Arc::clone(&ran);
+        runner.submit(move |_cancel| {
+            ran.store(true, Ordering::Release);
+            Outcome::Done
+        })
+    };
+    runner.dispatch(Command::Unstoppable(queued, "merge feature".to_owned()));
+
+    let (shutdown, _) = shut_down_within(
+        runner,
+        Duration::from_millis(20),
+        Duration::from_millis(100),
+        false,
+    );
+    assert_eq!(shutdown.forced, vec!["merge feature".to_owned()]);
+    assert_eq!(shutdown.stalled, 1, "the stuck worker is abandoned");
+    release.send(()).expect("the stuck job is waiting");
+    assert_eq!(next_event(&events), Event::JobCancelled(stuck));
+    assert_eq!(next_event(&events), Event::JobCancelled(queued));
+    assert!(!ran.load(Ordering::Acquire), "the forced write never ran");
+}
+
+/// `Command::ForceStop` (the quit stop box's `y`) lifts the mark: the cancel
+/// reaches the job, and the shutdown after has nothing left to force.
+#[test]
+fn force_stop_lifts_the_mark_and_stops_the_write() {
+    let (runner, events) = runner(1);
+    let (started, has_started) = mpsc::channel();
+    let saw_cancel = Arc::new(AtomicBool::new(false));
+    let id = runner.submit(until_cancelled(started, Arc::clone(&saw_cancel)));
+    runner.dispatch(Command::Unstoppable(id, "a merge".to_owned()));
+    has_started.recv_timeout(PATIENCE).expect("the job starts");
+    assert_eq!(runner.writes_running(), vec!["a merge".to_owned()]);
+
+    runner.dispatch(Command::ForceStop(id));
+    assert_eq!(next_event(&events), Event::JobCancelled(id));
+    assert!(saw_cancel.load(Ordering::Acquire));
+    assert!(runner.writes_running().is_empty());
+    let (shutdown, _) = shut_down_within(runner, PATIENCE, PATIENCE, false);
+    assert_eq!(shutdown, Shutdown::CLEAN, "nothing left to force");
 }
 
 /// The grace covers a git child's whole stop: SIGTERM, the wait before
@@ -901,7 +1060,10 @@ fn no_git_child_outlives_shutdown() {
         thread::yield_now();
     };
 
-    assert_eq!(runner.shutdown(SHUTDOWN_GRACE), Shutdown::Clean);
+    assert_eq!(
+        runner.shutdown(SHUTDOWN_GRACE, PATIENCE, &()),
+        Shutdown::CLEAN
+    );
     assert_eq!(next_event(&events), Event::JobCancelled(id));
     // The alias's shell is git's child, not ours: once git is gone it is
     // reparented and reaped by init. The deadline is a failure bound.

@@ -4,7 +4,7 @@
 //! [`super::runner::JobRunner`] is the seam callers see; everything here is
 //! what it is built from.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
@@ -12,9 +12,15 @@ use std::time::{Duration, Instant};
 use graft_core::event::Event;
 use graft_core::job::{JobFailure, JobId};
 
+use graft_git::run::Stop;
+
 use super::types::{Cancel, Delivery, JobEvents, Outcome, Work};
 use crate::crash;
 use crate::update::AppEvent;
+
+/// How often a bounded wait for unstoppable writes asks its `force`
+/// whether to stop waiting: a second signal is heard within this.
+const FORCE_POLL: Duration = Duration::from_millis(50);
 
 /// A queued job, on its way to whichever worker is free first.
 pub(super) struct Assignment {
@@ -32,7 +38,10 @@ pub(super) struct Assignment {
 /// leaves its state on disk with the journal entry `Pending`
 /// (m8-polish-and-ship/13b). Those are marked [`Live::unstoppable`]: no
 /// cancel reaches them, not one by id and not shutdown's, and shutdown waits
-/// for them to end instead ([`Live::wait_for_unstoppable`]).
+/// for them to end instead ([`Live::wait_for_unstoppable`]) — up to a bound.
+/// Only [`Live::force_stop`] (the quit stop box's `y`) and
+/// [`Live::force_all_unstoppable`] (shutdown, once its bound or a second
+/// signal says so) lift the mark (13b review fix).
 #[derive(Default)]
 pub(super) struct Live {
     jobs: Mutex<Jobs>,
@@ -44,8 +53,9 @@ pub(super) struct Live {
 struct Jobs {
     tokens: HashMap<JobId, Cancel>,
     /// Marked before or after the job is registered — the mark is by id, so
-    /// either order holds. Removed when the job is over.
-    unstoppable: HashSet<JobId>,
+    /// either order holds. Removed when the job is over. The value is the
+    /// write's description, for the line a forced stop prints.
+    unstoppable: HashMap<JobId, String>,
 }
 
 impl Live {
@@ -62,16 +72,65 @@ impl Live {
         self.ended.notify_all();
     }
 
-    /// Mark `id` as a job no cancel may reach (the type doc).
-    pub(super) fn unstoppable(&self, id: JobId) {
-        self.lock().unstoppable.insert(id);
+    /// Mark `id`, described as `what`, as a job no cancel may reach (the
+    /// type doc).
+    pub(super) fn unstoppable(&self, id: JobId, what: String) {
+        self.lock().unstoppable.insert(id, what);
+    }
+
+    /// Lift `id`'s mark and cancel it: its git is stopped half-way. The
+    /// quit stop box's `y` only (`Command::ForceStop`).
+    pub(super) fn force_stop(&self, id: JobId) {
+        let mut jobs = self.lock();
+        jobs.unstoppable.remove(&id);
+        if let Some(token) = jobs.tokens.get(&id) {
+            token.cancel();
+        }
+    }
+
+    /// Lift every live unstoppable job's mark and cancel it; their
+    /// descriptions, in id order. A job still queued is cancelled before it
+    /// starts, so it never runs (`run_job`). Shutdown's, once its bound for
+    /// writes is spent or a second signal asks for it.
+    pub(super) fn force_all_unstoppable(&self) -> Vec<String> {
+        let mut jobs = self.lock();
+        let mut live: Vec<JobId> = jobs
+            .unstoppable
+            .keys()
+            .filter(|id| jobs.tokens.contains_key(id))
+            .copied()
+            .collect();
+        live.sort_unstable();
+        let mut forced = Vec::with_capacity(live.len());
+        for id in live {
+            if let Some(token) = jobs.tokens.get(&id) {
+                token.cancel();
+            }
+            if let Some(what) = jobs.unstoppable.remove(&id) {
+                forced.push(what);
+            }
+        }
+        forced
+    }
+
+    /// The live unstoppable writes' descriptions, in id order: what a
+    /// shutdown is about to wait for.
+    pub(super) fn unstoppable_live(&self) -> Vec<String> {
+        let jobs = self.lock();
+        let mut live: Vec<(&JobId, &String)> = jobs
+            .unstoppable
+            .iter()
+            .filter(|(id, _)| jobs.tokens.contains_key(id))
+            .collect();
+        live.sort_unstable_by_key(|(id, _)| **id);
+        live.into_iter().map(|(_, what)| what.clone()).collect()
     }
 
     /// Cancel `id`, unless it is [`Live::unstoppable`]. `update` never asks
     /// that (`stop_write` refuses in words); this is the floor under it.
     pub(super) fn cancel(&self, id: JobId) {
         let jobs = self.lock();
-        if jobs.unstoppable.contains(&id) {
+        if jobs.unstoppable.contains_key(&id) {
             return;
         }
         if let Some(token) = jobs.tokens.get(&id) {
@@ -83,23 +142,42 @@ impl Live {
     pub(super) fn cancel_all(&self) {
         let jobs = self.lock();
         for (id, token) in &jobs.tokens {
-            if !jobs.unstoppable.contains(id) {
+            if !jobs.unstoppable.contains_key(id) {
                 token.cancel();
             }
         }
     }
 
-    /// Block until no unstoppable job is live. **No bound**: such a job
-    /// ends when git does, and cutting it off is the very thing this
-    /// exists to prevent. A job is live from submit to its event, so one
-    /// still queued is waited for too: it runs, since nothing cancelled it.
-    pub(super) fn wait_for_unstoppable(&self) {
+    /// Block until no unstoppable job is live, until `bound` has passed, or
+    /// until `force` says stop — whichever comes first. `true` when none is
+    /// live. A job is live from submit to its event, so one still queued is
+    /// waited for too: it runs, since nothing cancelled it.
+    ///
+    /// Bounded since the 13b review fix: a write whose git hook hangs must
+    /// not hold the process (and, before that fix, the terminal) for ever.
+    /// `force` is polled every [`FORCE_POLL`]; nothing else is.
+    pub(super) fn wait_for_unstoppable(&self, bound: Duration, force: &dyn Stop) -> bool {
+        let deadline = Instant::now() + bound;
         let mut jobs = self.lock();
-        while jobs.tokens.keys().any(|id| jobs.unstoppable.contains(id)) {
-            jobs = self
+        loop {
+            if !jobs
+                .tokens
+                .keys()
+                .any(|id| jobs.unstoppable.contains_key(id))
+            {
+                return true;
+            }
+            if force.should_stop() {
+                return false;
+            }
+            let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
+                return false;
+            };
+            let (guard, _timeout) = self
                 .ended
-                .wait(jobs)
+                .wait_timeout(jobs, remaining.min(FORCE_POLL))
                 .unwrap_or_else(PoisonError::into_inner);
+            jobs = guard;
         }
     }
 
@@ -153,20 +231,27 @@ impl Alive {
 }
 
 /// What happened when the runner was asked to stop.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Shutdown {
-    /// Every worker stopped and every job is accounted for.
-    Clean,
-    /// This many workers were still inside a job when the wait ran out.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Shutdown {
+    /// How many workers were still inside a job when the grace ran out.
     ///
     /// They were cancelled and did not notice in time — a job that does not
-    /// check its token often enough, which is a bug worth hearing about. Their
-    /// threads are left to die with the process rather than held on to, so
-    /// that the terminal can be given back now.
-    Stalled {
-        /// How many workers were still busy.
-        workers: usize,
-    },
+    /// check its token often enough, which is a bug worth hearing about.
+    /// Their threads are left to die with the process rather than held on
+    /// to, so that the process can end now.
+    pub stalled: usize,
+    /// The unstoppable writes shutdown stopped half-way, by description: its
+    /// bound for writes was spent, or a second signal asked (13b review
+    /// fix). Empty on every ordinary quit.
+    pub forced: Vec<String>,
+}
+
+impl Shutdown {
+    /// Every worker stopped, every job accounted for, nothing forced.
+    pub const CLEAN: Self = Self {
+        stalled: 0,
+        forced: Vec::new(),
+    };
 }
 
 /// One worker thread: take the next job, run it, say what happened, repeat.

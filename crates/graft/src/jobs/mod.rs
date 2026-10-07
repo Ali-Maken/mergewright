@@ -112,7 +112,15 @@ pub const MAX_WORKERS: usize = 4;
 /// with its git child alive (m8/13b). Most quits pay nothing for it: an idle
 /// pool, or one running reads that check their token, ends at once. Only a
 /// git child slow to take SIGTERM costs the wait, and that child is exactly
-/// what must not outlive Graft. Unstoppable writes are outside this bound
-/// altogether: shutdown waits for them to end ([`JobRunner::shutdown`]).
+/// what must not outlive Graft. Unstoppable writes are outside this bound:
+/// shutdown waits for them first, up to [`EXIT_WRITE_WAIT`]
+/// ([`JobRunner::shutdown`]).
 pub const SHUTDOWN_GRACE: Duration =
     graft_git::run::STOP_WITHIN.saturating_add(Duration::from_millis(500));
+
+/// The longest an exit waits for an unstoppable write (a merge, a rebase, a
+/// `--continue`) to land before stopping it half-way (13b review fix): a
+/// merge or rebase with ordinary hooks lands well inside it, and a hung hook
+/// does not leave an invisible process for good. The terminal is already
+/// restored while it runs (`event_loop::startup`).
+pub const EXIT_WRITE_WAIT: Duration = Duration::from_secs(60);

@@ -67,6 +67,17 @@ fn main() -> ExitCode {
             report(&reason);
             ExitCode::FAILURE
         }
+        // He asked for it in the stop box (m8/13b review fix): a success,
+        // with the one line that says what was stopped and where to look.
+        Ok(Exit::StoppedHalfWay { what, after }) => {
+            let mut stderr = io::stderr();
+            // As `report`: with stderr gone there is nowhere left to say it,
+            // and the next launch shows the stop anyway.
+            writeln!(stderr, "{}", event_loop::stopped_line(&what, after))
+                .and_then(|()| stderr.flush())
+                .unwrap_or(());
+            ExitCode::SUCCESS
+        }
         Err(error) => {
             report(&error.to_string());
             ExitCode::FAILURE

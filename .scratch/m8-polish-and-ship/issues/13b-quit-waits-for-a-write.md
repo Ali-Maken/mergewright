@@ -321,49 +321,67 @@ impl JobRunner {
 
 Touches: `update/quit.rs`; `update/state.rs` (`shown_status`); `event_loop/{running,startup,signals}.rs`; `jobs/{pool,runner,mod}.rs`; `update` `Command` (each exhaustive match); `Quit` (each match: `Quit::should_quit`, the exit report); the `?` help (it lists the long-wait line's `q` if it lists status keys); captures that draw the waiting row (`m8-quit-waits-80x24.txt`: its first 10 s are unchanged, so it should still match — confirm it); `TESTING.md` quit rows; journal/undo (no new entry kind; a forced stop leaves the write's entry `Pending`, which recovery reads as live or interrupted).
 
-- [ ] Before 10 s, `q` and `Ctrl+C` while waiting change nothing: no box, same line. Virtual timeline.
-- [ ] At 10 s, on a virtual timeline (`event_loop/tests/settle.rs` `Timed`), the status row is exactly
-      `<op> · still running after 10 s · q stop it now · esc stays`. While idle, the loop's next deadline **is**
-      `since + 10 s`: nothing wakes it earlier, and nothing wakes it after.
-- [ ] After that, `q` and `Ctrl+C` each open the stop box with the exact words above. Cancel or `Esc` keeps the wait
-      and its long line. The next `Esc` drops it.
-- [ ] `y` → `ForceStop(id)` emitted exactly once, quit `StoppedHalfWay`. No other path emits `ForceStop`, and
+- [x] Before 10 s, `q` and `Ctrl+C` while waiting change nothing: no box, same line. Virtual timeline.
+      — `update::quit::tests::stuck::before_ten_seconds_q_and_ctrl_c_change_nothing`; on the loop's virtual
+      timeline, the `q` at 2 s in `event_loop::tests::quit_offer::the_loop_offers_the_stop_at_ten_seconds_and_y_quits_with_the_seconds_waited`.
+- [x] At 10 s, on a virtual timeline (own `Clocked` wakes, not `settle.rs` `Timed`: it records deadlines and draw
+      times), the status row is exactly the long line — `update::quit::tests::stuck::at_ten_seconds_the_row_offers_the_stop_and_nothing_is_due_after`,
+      `event_loop::tests::quit_offer::the_offer_line_is_drawn_from_the_clock_alone`. The loop waits toward
+      `since + 10 s` and draws a frame there with no key, and no deadline after it waits toward a later offer —
+      `the_loop_offers_the_stop_at_ten_seconds_and_y_quits_with_the_seconds_waited`, `running::quit_clock::tests::*`.
+      **Not asserted:** that no *other* deadline wakes the loop earlier (the test checks the offer deadline is
+      present, not that it is the only one).
+- [x] After that, `q` and `Ctrl+C` each open the stop box with the exact words above. Cancel or `Esc` keeps the wait
+      and its long line. The next `Esc` drops it. — `stuck::after_ten_seconds_q_and_ctrl_c_open_the_stop_box`,
+      `stuck::cancel_or_esc_keeps_the_long_wait_and_the_next_esc_drops_it`, `stuck::ctrl_c_over_the_stop_box_does_not_quit`.
+- [x] `y` → `ForceStop(id)` emitted exactly once, quit `StoppedHalfWay`. No other path emits `ForceStop`, and
       `cancel` and `cancel_all` still skip a marked job (the existing `an_unstoppable_job_ignores_a_cancel_by_id`
-      still holds).
-- [ ] Real pool, real repo, a merge with a `pre-merge-commit` hook `sleep 600`, `STOP_OFFER_AFTER` injected short for
+      still holds). — `stuck::y_on_the_stop_box_force_stops_once_and_quits_stopped_half_way`,
+      `stuck::no_other_path_emits_force_stop`, `jobs::tests::an_unstoppable_job_ignores_a_cancel_by_id`,
+      `jobs::tests::force_stop_lifts_the_mark_and_stops_the_write`.
+- [ ] **NOT MET — the merge half (stop and ask, see NOTES "Review fix, 2026-10-04").** Real pool, real repo, a merge with a `pre-merge-commit` hook `sleep 600`, `STOP_OFFER_AFTER` injected short for
       the test: `q y`, wait, `q y`. Then the git child is gone (`kill -0`), the app quits within `SHUTDOWN_GRACE`,
       `.git/MERGE_HEAD` is present, there is no `*.lock` under `.git`, and the journal entry is `Pending`. Relaunch →
       the banner offers `c continue · a abort`.
-- [ ] The same walk over a rebase with edits set aside: the relaunch offers the edits back. If it does not, stop and
-      report (item 6).
-- [ ] Exit line exactly item 5's words, on stderr, **after** the restore sequence in the terminal transcript.
-- [ ] Signal path, injected short bound: a SIGTERM with a hung unstoppable write leaves the transcript in this order:
-      restore, then the waiting line. A second SIGTERM → git child gone within `SHUTDOWN_GRACE`, item 5's line, the
-      signal re-raised (exit status). Bound expiry with no second signal does the same.
-- [ ] No unbounded wait is left. `shutdown_waits_for_an_unstoppable_job_and_never_cancels_it` is rewritten to "waits
-      up to the bound and never cancels before it". It and every new shutdown test run on a thread joined with a
-      timeout, so a regression fails instead of hanging nextest (review Minor 6).
-- [ ] Item 10's SIGHUP observation is in NOTES, with the spawn line.
-- [ ] Capture `docs/shots/m8-quit-stop-now-80x24.txt`: the long status row, then the stop box over it. Colour
-      **unverified**. Real merge and real pool, as `capture_quit_waits` does; the short `STOP_OFFER_AFTER` is stated
-      in its caption.
-- [ ] Journey count: `quit-while-write 2` (`q y`, then nothing) and `quit-stuck-write 4` (`q y`, the 10 s,
-      `q y`), each walked and counted in `it::quit_waits`. The walk fails if the keys exceed the fence (design note
-      fence, after the doc edit below).
-- [ ] MAP rows: `JobRunner::shutdown`, `force_stop`, `EXIT_WRITE_WAIT`, `SHUTDOWN_GRACE` (still the stoppable grace),
+      What holds: git gone, pool clean within `SHUTDOWN_GRACE`, no `*.lock`, one merge entry —
+      `it::quit_waits::stuck::stop_now_mid_merge_stops_git_and_leaves_no_lock`. What does not: no `MERGE_HEAD`,
+      entry `Aborted`, no relaunch banner (NOTES).
+- [x] The same walk over a rebase with edits set aside: the relaunch offers the edits back. —
+      `it::quit_waits::stuck::stop_now_mid_rebase_with_edits_set_aside` (rebase dir kept, no lock, entry `Pending`
+      with `put_back`, banner `rebase still in progress from a previous run · edits aside · c continue s skip a abort`).
+- [x] Exit line exactly item 5's words, on stderr, **after** the restore sequence in the terminal transcript. —
+      `it::quit_waits::signal::stop_now_after_the_real_offer_restores_then_says_what_it_stopped` (real binary, real
+      10 s, exit 0). The words are true for the rebase, **false for the merge** (NOTES).
+- [x] Signal path: a SIGTERM with a hung unstoppable write leaves the transcript in this order: restore, then the
+      waiting line. A second SIGTERM → git child gone, item 5's line, the signal re-raised (exit status 15). —
+      `it::quit_waits::signal::a_signal_restores_then_waits_and_a_second_stops_git`. **Bound expiry** is covered at
+      the pool only (`jobs::tests::shutdown_stops_a_write_still_running_at_its_bound_and_names_it`): `EXIT_WRITE_WAIT`
+      is a const, so the binary cannot be given a short bound; not walked through the binary.
+- [x] No unbounded wait is left. — `jobs::tests::shutdown_waits_up_to_the_bound_and_never_cancels_before_it` (the
+      rewrite), `a_forced_shutdown_stops_the_write_without_waiting_out_the_bound`,
+      `a_queued_write_behind_a_stuck_worker_is_bounded_and_never_runs`; each joins on a thread with `recv_timeout`.
+- [x] Item 10's SIGHUP observation is in NOTES, with the spawn line (`graft-git/src/run.rs:413`). — observation,
+      scratch script, no test.
+- [x] Capture `docs/shots/m8-quit-stop-now-80x24.txt`: the long status row, then the stop box over it. Colour
+      **unverified**. Injected offer stated in its caption. — `it::quit_waits::capture_quit_stop_now`. Looks-right is
+      the user's.
+- [x] Journey count: `quit-while-write 2` and `quit-stuck-write 4`, walked and counted against the note's fence —
+      `it::quit_waits::stuck::quit_while_write_is_two_keys`, `stuck::stop_now_mid_rebase_with_edits_set_aside` and
+      `stuck::stop_now_mid_merge_stops_git_and_leaves_no_lock` (via `within_the_note`).
+- [x] (review: `crates/graft/MAP.md`, read by hand) MAP rows: `JobRunner::shutdown`, `force_stop`, `EXIT_WRITE_WAIT`, `SHUTDOWN_GRACE` (still the stoppable grace),
       `Quit`, `QuitWait`, `update::quit`. Also `confirm_key` (review Major 3): "`Ctrl+C` passes through (`false`, so
       the app quits)" becomes "passes through to `quit::asked`: quits, or over a `Stoppable::No` write boxes like
       `q`".
 
 ### M2: `Esc` on the finish summary drops the wait (a bug, cause-level)
-- [ ] In `finish_key`'s committing branch (`update/finish/keys.rs:23-25`), `Esc` calls `quit::drop_wait` first, as
-      `banner/focus_keys.rs:58` does. With no wait it stays swallowed, as today. `q` stays the summary's own key
-      (a modal pane, keymap §2.1); it is not changed here.
-- [ ] One test per modal that can be on screen while a `Stoppable::No` write runs: finish summary, resolver, rewrite
-      editor. `Ctrl+C` → box, `y` → wait, `Esc` → `quit_when_done` is `None`, the write still running, no `CancelJob`.
-      The finish-summary test is red before the fix.
-- [ ] The same three modals, after 10 s: `Ctrl+C` opens the stop box (M1 item 3). `Ctrl+C` is the only key these
-      modals pass through.
+- [x] `Esc` drops the wait over the finish summary; with no wait it stays swallowed; `q` unchanged. **Deviation:**
+      done in `update/keys.rs` `key_event`, right after the quit box and before every modal pane, not in `finish_key`
+      — the resolver and rewrite editor also claimed `Esc` first (their tests were red too). `finish/keys.rs` is back
+      to `return true`. — `update::quit::tests::modals::esc_drops_the_wait_over_the_finish_summary`.
+- [x] One test per modal: `esc_drops_the_wait_over_{the_finish_summary,the_resolver,the_rewrite_editor}` in
+      `update::quit::tests::modals`. All three were red before the fix (observed).
+- [x] The same three modals, after 10 s: `Ctrl+C` opens the stop box. —
+      `modals::after_the_offer_ctrl_c_opens_the_stop_box_over_each_modal`.
 
 ### Doc edits (apply verbatim; the planner had no edit tool on this pass)
 Review Major 3 (keymap) and Major 4 (design note). The builder applies these. They are design text, not the
@@ -398,3 +416,45 @@ builder's wording.
 - If `accept-m8` is already built, it owes the two new fence ids a walk.
 
 Gates: as above, workspace-wide. Size: one context, ~55k tokens; graft only.
+
+## NOTES — Review fix (builder, 2026-10-04..07) — status **partial**
+
+**Compacted twice** mid-ticket. Scout used: `.scratch/m8-polish-and-ship/scouts/13b-review-fix.md` (written by me).
+Gates: fmt, clippy `--all-targets -D warnings`, nextest 5552/5552, `test --doc` — workspace-wide, all green.
+
+**Stop and ask — the merge premise is false (Q1's default).** After `q y`, the offer, `q y` with a `pre-merge-commit`
+hook hung, observed (`it::quit_waits::stuck::stop_now_mid_merge_stops_git_and_leaves_no_lock` prints it): no
+`MERGE_HEAD`; `main-one.txt`/`main-two.txt` staged (`A`); HEAD still on `feature`; entry
+`Aborted { reason: "git was stopped" }` (graft-ops `src/apply.rs:459` `outcome_status`); no relaunch banner. So
+"the merge is left paused, continue/abort offered" does not hold, and the exit line's "here shows where it stopped"
+is false for a merge. `took_effect` (`graft-ops/src/journal.rs:165`) may still let `u` undo an Aborted entry with
+changes — **not verified**. Fixing it means graft-ops (recording a stopped merge as pending / restoring), outside this
+crate set. The rebase half holds (box ticked).
+
+**Hook outlives git's stop.** `ForceStop` SIGTERMs git's pid only; the hook's `sleep 600` survives (tests reap it by
+pid). Same root as item 10.
+
+**Item 10 (SIGHUP), observation only.** graft, git and hook share one pgid: git is spawned with no process group,
+`graft-git/src/run.rs:413` `Command::new("git")`. macOS, master pty closed: HUP or EIO reaches graft, git stays alive;
+no waiting line seen — suspected the input-EIO path (not "signalled") waiting silently up to 60 s (unverified). With
+stderr on the dead pty, graft exited 101 — suspected panic from ratatui-core-0.1.2 `src/terminal.rs:483` `eprintln!`
+in `Terminal::drop` (unverified) — and git and the hook then died. Scratch script, no test.
+
+**Lines that moved (item 7):** pool shutdown and watcher close left `run_repo` (old `startup.rs` ~:333/:338) for
+`wind_down`, after `session.restore()` (`event_loop/exit_wait.rs` `Pool::stop`).
+
+**Deviations from the signatures:** clock lives in the loop (`event_loop/running/quit_clock.rs` `QuitClock`) because
+`update_cannot_reach_the_world` forbids `std::time` in update — so no `QuitWait::since`, no `stamp_wait`;
+`offer_pending` instead. `Quit::StoppedHalfWay { what }` (the loop adds `after`). `Command::Unstoppable(JobId,
+String)`. `Shutdown` is a struct `{ stalled, forced }`. `quit` is `pub mod`, `waited_long` `pub` (the it harness plays
+the clock). `quit_when_done` is `Option<Box<QuitWait>>`: the `long` field pushed `AppState` past clippy's
+`large_stack_arrays` in three existing tests; boxing keeps its size. M2's `Esc` fix sits in `keys::key_event`, not
+`finish_key` (all three modals claimed `Esc`). `<bin>` = `CARGO_PKG_NAME`.
+
+**Touches:** `update/{quit,keys,state,mod}.rs`, `finish/keys.rs` (reverted to `return true`); `event_loop/{running,
+turn,startup,signals,exit_wait}.rs`; `jobs/{pool,runner,mod}.rs`; `main.rs` (exit line) and examples (exhaustive
+`Exit`/`Command` matches — compiler-checked); capture `m8-quit-waits-80x24.txt` still matches (`capture_quit_waits`
+green), new `m8-quit-stop-now-80x24.txt`; keymap doc :199/:233/:289 applied verbatim; design note Prior art row now
+cites `docs/research/quit-while-git-runs.md` (not "no study"), Journeys 24/25, two "Where he lands" rows (stuck-write
+row carries the merge caveat), fence `quit-while-write 2`, `quit-stuck-write 4`; `MAP.md` rows; `TESTING.md` has no
+quit-wait rows (grep `quit`) — none added; journal: no new entry kind; `?` help draws no status keys (unchanged).

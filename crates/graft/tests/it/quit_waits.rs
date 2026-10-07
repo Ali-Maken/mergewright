@@ -190,6 +190,60 @@ fn capture_quit_waits() {
     app.close();
 }
 
+/// What right looks like (`m8-quit-stop-now-80x24.txt`): frame 1, after `q
+/// y` and the offer — the status row `merge … · still running after 10 s ·
+/// q stop it now · esc stays`, no box. Frame 2, after `q`: a box `Quit now?`
+/// reading `merge … is still running · a git hook may be stuck` / `quit now
+/// stops it half-way · the next launch shows where it stopped`, `[ Cancel ]
+/// [ Quit ]` with the cursor on Cancel, the bottom row led by `y quit`. The
+/// offer is **injected**: the harness calls `quit::waited_long` at once in
+/// place of the loop's 10 s (`STOP_OFFER_AFTER`), so no time passes. Colour
+/// unverified.
+///
+/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it quit_waits::capture_quit_stop_now`.
+#[test]
+fn capture_quit_stop_now() {
+    use crate::preview::FORK_NOW;
+    use graft::session::Clock;
+
+    let scratch = forked();
+    let repo = scratch.path();
+    let (app, state) = App::open(repo);
+    let mut state = merging(&app, state);
+    if let Some(facts) = state.repository.as_mut() {
+        facts.path = std::path::PathBuf::from("/code/api");
+    }
+    let boxed = app.key(&state, KeyCode::Char('q'));
+    let mut waiting = app.key(&boxed, KeyCode::Char('y'));
+    graft::update::quit::waited_long(&mut waiting);
+    let first = crate::captures::frame_at(&waiting, 80, 24, Some(Clock::Fixed(FORK_NOW)));
+    let body = first.join("\n");
+    assert!(body.contains("still running after 10 s"), "{body}");
+    let stop_box = app.key(&waiting, KeyCode::Char('q'));
+    let second = crate::captures::frame_at(&stop_box, 80, 24, Some(Clock::Fixed(FORK_NOW)));
+    let body = second.join("\n");
+    assert!(body.contains("Quit now?"), "{body}");
+    assert!(body.contains("a git hook may be stuck"), "{body}");
+    assert!(
+        second.last().is_some_and(|bar| bar.contains("y quit")),
+        "{body}"
+    );
+    crate::captures::check_shot(
+        "m8-quit-stop-now-80x24.txt",
+        &format!(
+            "=== `q y` while the merge runs, then the offer (injected: no 10 s wait) ===\n{}\n\
+             === then `q`: the stop box ===\n{}\n",
+            first.join("\n"),
+            second.join("\n")
+        ),
+    );
+    // Cancel: the merge lands, nothing was stopped.
+    let state = app.key(&stop_box, KeyCode::Escape);
+    let state = app.pump(state, "the merge's answer", |state| state.quit.is_some());
+    drop(state);
+    app.close();
+}
+
 /// The window closing mid-merge: shutdown waits for the merge rather than
 /// signalling it, so it lands whole with its entry committed.
 #[test]
@@ -202,3 +256,6 @@ fn shutdown_mid_merge_lets_it_land() {
     app.close();
     assert_merged_and_journaled(repo);
 }
+
+mod signal;
+mod stuck;

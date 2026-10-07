@@ -229,7 +229,7 @@ fn continue_with_nothing_unmerged_queues_an_unstoppable_resume() {
     // Marked unstoppable ahead of the job, so no cancel or shutdown can
     // signal it (m8-13b).
     let [
-        Command::Unstoppable(marked),
+        Command::Unstoppable(marked, _),
         Command::Resume(id, Resume::Continue),
     ] = commands.as_slice()
     else {
@@ -913,7 +913,7 @@ fn continued(key: &str, verb: &str, before: &AppState, after: &AppState, command
             matches!(
                 commands,
                 [
-                    Command::Unstoppable(_),
+                    Command::Unstoppable(..),
                     Command::Resume(_, Resume::Continue)
                 ]
             ),

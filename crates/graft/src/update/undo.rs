@@ -1705,7 +1705,7 @@ mod tests {
         assert!(
             matches!(
                 commands.as_slice(),
-                [Command::Unstoppable(_), Command::RevertTo(_, _, true)]
+                [Command::Unstoppable(..), Command::RevertTo(_, _, true)]
             ),
             "{commands:?}"
         );

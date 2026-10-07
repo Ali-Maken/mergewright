@@ -12,6 +12,7 @@ use graft_term::input::{FenceAnswers, InputMux, Inputs};
 use ratatui::Terminal as Frames;
 use ratatui::backend::CrosstermBackend;
 
+use super::exit_wait::Pool;
 use super::graphics::Graphics;
 use super::headless::run_headless;
 use super::outside::{Handover, Outside};
@@ -157,14 +158,16 @@ impl Terminal {
     /// # Errors
     /// The place's own failure, or the restore's.
     pub fn close(self, ran: Ran) -> io::Result<Exit> {
-        wind_down(&self.session, ran.shutdown, ran.outcome)
+        wind_down(&self.session, ran.pool, ran.outcome)
     }
 }
 
-/// How one place ended: the loop's outcome and the job pool's shutdown.
+/// How one place ended: the loop's outcome, and the job pool still to stop
+/// (m8/13b review fix: stopped **after** the terminal is restored, since
+/// its wait for a write can last up to `jobs::EXIT_WRITE_WAIT`).
 pub struct Ran {
     pub(super) outcome: io::Result<Exit>,
-    pub(super) shutdown: Shutdown,
+    pub(super) pool: Option<Pool>,
 }
 
 impl Ran {
@@ -172,7 +175,18 @@ impl Ran {
     pub(super) fn without_jobs(outcome: io::Result<Exit>) -> Self {
         Self {
             outcome,
-            shutdown: Shutdown::Clean,
+            pool: None,
+        }
+    }
+
+    /// Stop the pool now, with the terminal still Graft's: the place is
+    /// being left for another on the same screen (`Exit::Open`). What the
+    /// shutdown reports is dropped, as it was before 13b's review fix: no
+    /// line can be printed while the next place owns the screen.
+    pub(super) fn stop_for_the_next_place(self) -> io::Result<()> {
+        match self.pool {
+            Some(pool) => pool.stop(false).map(drop),
+            None => Ok(()),
         }
     }
 }
@@ -328,17 +342,16 @@ pub(super) fn run_repo(
     // it hid) goes out while the session is still in charge of the terminal.
     drop(terminal);
 
-    // Stop the pool before the terminal goes back, so that a job still writing
-    // its result cannot outlive the screen it was writing for.
-    let shutdown = jobs.shutdown(jobs::SHUTDOWN_GRACE);
-    // Let the signal threads end. The mux's reader is the process's, not
-    // this run's (it is blocked waiting on the terminal until the user
-    // types), so it is left to die with the process. It holds nothing that
-    // matters.
-    for watcher in [signals, resizes] {
-        watcher.close();
-    }
-    Ok(Ran { outcome, shutdown })
+    // The pool is stopped by the caller, **after** the terminal is restored
+    // (m8/13b review fix): its wait for a write that cannot stop half-way
+    // can last up to `jobs::EXIT_WRITE_WAIT`, and a screen held in raw mode
+    // that long looks frozen. A job still writing its result meanwhile
+    // writes to a channel nobody reads, never to the screen. The watchers
+    // stay up with it, so a second signal during that wait is heard.
+    Ok(Ran {
+        outcome,
+        pool: Some(Pool::new(jobs, signals, resizes)),
+    })
 }
 
 /// What the loop may reach outside itself: the repository's directories,
@@ -404,17 +417,21 @@ fn listen(
     })
 }
 
-/// The run is over, the pool stopped and the watchers closed: give the
-/// terminal back, and pick the error the process exits on.
+/// The run is over: give the terminal back, **then** stop the pool and close
+/// the watchers (m8/13b review fix: nothing that can wait longer than
+/// `jobs::SHUTDOWN_GRACE` runs before the restore), and pick the error the
+/// process exits on.
 fn wind_down(
     session: &TerminalSession,
-    shutdown: Shutdown,
+    pool: Option<Pool>,
     outcome: io::Result<Exit>,
 ) -> io::Result<Exit> {
     // Restore explicitly rather than leaving it to `Drop`, so a restore
     // failure can be returned instead of merely printed.
     let restored = session.restore();
-    let stalled_report = report_stalled_jobs(shutdown);
+    let signalled = matches!(outcome, Ok(Exit::Signal(_)));
+    let stopped = pool.map_or(Ok(Shutdown::CLEAN), |pool| pool.stop(signalled));
+    let stalled_report = stopped.and_then(|shutdown| report_stalled_jobs(&shutdown));
     // `finish` already picks which of two possible errors the process exits
     // on; a failure to report stalled jobs is folded in afterwards so it
     // still turns into `ExitCode::FAILURE` (main.rs) instead of vanishing.
@@ -494,16 +511,17 @@ fn finish_to(
 /// failure to print it is propagated rather than dropped: the caller folds it
 /// into the run's outcome, and the exit status is the only signal left that
 /// something was lost.
-fn report_stalled_jobs(shutdown: Shutdown) -> io::Result<()> {
+fn report_stalled_jobs(shutdown: &Shutdown) -> io::Result<()> {
     report_stalled_jobs_to(&mut io::stderr(), shutdown)
 }
 
 /// [`report_stalled_jobs`], writing to `stderr` instead of the real one — the
 /// seam a failing writer is plugged into in tests.
-fn report_stalled_jobs_to(stderr: &mut impl Write, shutdown: Shutdown) -> io::Result<()> {
-    let Shutdown::Stalled { workers } = shutdown else {
+fn report_stalled_jobs_to(stderr: &mut impl Write, shutdown: &Shutdown) -> io::Result<()> {
+    let workers = shutdown.stalled;
+    if workers == 0 {
         return Ok(());
-    };
+    }
 
     writeln!(
         stderr,
@@ -600,9 +618,12 @@ mod tests {
 
     #[test]
     fn report_stalled_jobs_propagates_a_failing_writer() {
-        let shutdown = Shutdown::Stalled { workers: 2 };
+        let shutdown = Shutdown {
+            stalled: 2,
+            forced: Vec::new(),
+        };
 
-        let result = report_stalled_jobs_to(&mut FailingWriter, shutdown);
+        let result = report_stalled_jobs_to(&mut FailingWriter, &shutdown);
 
         assert!(result.is_err(), "a failing writer must not be swallowed");
     }
@@ -611,7 +632,7 @@ mod tests {
     fn report_stalled_jobs_clean_shutdown_never_writes() {
         // `FailingWriter` would fail the call if `Clean` reached the write at
         // all, so this also proves the early return is taken.
-        let result = report_stalled_jobs_to(&mut FailingWriter, Shutdown::Clean);
+        let result = report_stalled_jobs_to(&mut FailingWriter, &Shutdown::CLEAN);
 
         assert!(result.is_ok());
     }

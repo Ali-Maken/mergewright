@@ -118,11 +118,9 @@ pub fn run(repo: &Path) -> Result<Numbers, String> {
 
     let peak_rss = peak()?;
     let footprint_at_end = graft_fixtures::footprint();
-    match jobs.shutdown(Duration::from_secs(10)) {
-        Shutdown::Clean => {}
-        other @ Shutdown::Stalled { .. } => {
-            return Err(format!("the job pool did not stop cleanly: {other:?}"));
-        }
+    let shutdown = jobs.shutdown(Duration::from_secs(10), graft::jobs::EXIT_WRITE_WAIT, &());
+    if shutdown != Shutdown::CLEAN {
+        return Err(format!("the job pool did not stop cleanly: {shutdown:?}"));
     }
     let overflow_len = store.table().map_err(|why| why.to_string())?.overflow_len();
     Ok(Numbers {

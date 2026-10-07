@@ -37,6 +37,7 @@ pub fn is_write(command: &Command) -> bool {
         | Command::ShowRows(..)
         | Command::CancelJob(..)
         | Command::Unstoppable(..)
+        | Command::ForceStop(..)
         | Command::AnswerCredential(..)
         | Command::CancelCredential(..)
         | Command::Search(..)

@@ -465,24 +465,48 @@ impl<S: JobEvents> JobRunner<S> {
             .unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Mark `id` as a write that cannot stop halfway
-    /// (`Command::Unstoppable`): no cancel reaches it, and [`shutdown`]
-    /// waits for it to end rather than signalling its git child.
+    /// Mark `id`, described as `what`, as a write that cannot stop
+    /// halfway (`Command::Unstoppable`): no cancel reaches it, and
+    /// [`shutdown`] waits for it to end — up to its bound for writes —
+    /// rather than signalling its git child.
     ///
     /// [`shutdown`]: Self::shutdown
-    pub fn unstoppable(&self, id: JobId) {
-        self.live.unstoppable(id);
+    pub fn unstoppable(&self, id: JobId, what: String) {
+        self.live.unstoppable(id, what);
+    }
+
+    /// The only path that signals a `Stoppable::No` job from inside the
+    /// app: the quit stop box's `y` (`Command::ForceStop`). Lifts `id`'s
+    /// mark and cancels it — SIGTERM, SIGKILL after 2 s, reaped, all within
+    /// [`super::SHUTDOWN_GRACE`]. The shutdown that follows the quit waits
+    /// for it as for any stopped job. (Shutdown's own forced stop, on its
+    /// bound or a second signal, is the other.)
+    pub fn force_stop(&self, id: JobId) {
+        self.live.force_stop(id);
+    }
+
+    /// The unstoppable writes still live, by description: what a shutdown
+    /// starting now would wait for (the signal path's waiting line).
+    #[must_use]
+    pub fn writes_running(&self) -> Vec<String> {
+        self.live.unstoppable_live()
     }
 
     /// Stop the pool: cancel every job but the unstoppable writes, wait for
-    /// those to end, then wait up to `grace` for the rest to notice.
+    /// those to end — up to `writes`, or until `force` says stop — then wait
+    /// up to `grace` for the rest to notice.
     ///
     /// Consumes the runner, because a pool that has been shut down must not be
-    /// able to accept another job.
+    /// able to accept another job. **No path waits without a bound** (13b
+    /// review fix): at most `writes + grace`.
     ///
     /// - An **unstoppable** write ([`Self::unstoppable`]: a merge, a rebase,
-    ///   a `--continue`) is never signalled. Shutdown waits for it, with no
-    ///   bound: git cut off half-way through a rebase is work lost (m8/13b).
+    ///   a `--continue`) is not signalled while the wait lasts: git cut off
+    ///   half-way through a rebase leaves it paused. When `writes` is spent
+    ///   or `force` says stop (the signal path's second signal), every one
+    ///   still live — running or still queued — is stopped half-way and
+    ///   named in [`Shutdown::forced`]. A queued one is cancelled before it
+    ///   starts, so it never runs.
     /// - Every **other** job is cancelled. `grace` must cover a git child's
     ///   stop — `graft_git::run::STOP_WITHIN`, SIGTERM then SIGKILL, child
     ///   reaped — or a worker still inside that stop is abandoned with its
@@ -490,22 +514,29 @@ impl<S: JobEvents> JobRunner<S> {
     ///   ignores its token past `grace` is abandoned rather than waited on
     ///   forever.
     #[must_use]
-    pub fn shutdown(self, grace: Duration) -> Shutdown {
+    pub fn shutdown(
+        self,
+        grace: Duration,
+        writes: Duration,
+        force: &dyn graft_git::run::Stop,
+    ) -> Shutdown {
         self.row_requests().clear();
         self.live.cancel_all();
         // Dropping the queue is what ends a worker that is idle: its `recv`
         // fails, and it stops. A job still queued is handed out first.
         drop(self.queue);
-        self.live.wait_for_unstoppable();
+        let forced = if self.live.wait_for_unstoppable(writes, force) {
+            Vec::new()
+        } else {
+            self.live.force_all_unstoppable()
+        };
 
-        let still_busy = self.alive.wait_for_all(grace);
-        if still_busy > 0 {
+        let stalled = self.alive.wait_for_all(grace);
+        if stalled > 0 {
             // The handles are dropped rather than joined, which detaches those
             // threads. They hold nothing but their own job and a channel handle,
             // so the worst they can do is finish and find nobody listening.
-            return Shutdown::Stalled {
-                workers: still_busy,
-            };
+            return Shutdown { stalled, forced };
         }
 
         for handle in self.workers {
@@ -515,7 +546,7 @@ impl<S: JobEvents> JobRunner<S> {
             // the pool is being torn down anyway.
             handle.join().unwrap_or(());
         }
-        Shutdown::Clean
+        Shutdown { stalled: 0, forced }
     }
 }
 
@@ -1284,7 +1315,8 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::ReadRemotes(id) => self.read_remotes(id),
             Command::ReadLeaves { id, sent, expected } => self.read_leaves(id, sent, expected),
             Command::CancelJob(id) => self.cancel(id),
-            Command::Unstoppable(id) => self.unstoppable(id),
+            Command::Unstoppable(id, what) => self.unstoppable(id, what),
+            Command::ForceStop(id) => self.force_stop(id),
             Command::AnswerCredential(id, answer) => self.credential(id, Some(answer)),
             Command::CancelCredential(id) => self.credential(id, None),
             // The loop writes this to the terminal itself (`event_loop`).
