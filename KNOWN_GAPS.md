@@ -1176,6 +1176,10 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/adr-0007-unguarded | ADR-0007 (graft-core exports no free fns) held only by review; broken once by a planner spec (11 :35). An independent check (fast test on graft-core exports) would hold it → 21 | **unverified** | M8 |
 | M8/map-help-s-j | Map help lists `S` and `J` under HERE; not checked that they act at the Map (22c question) | **unverified** | M8 |
 | M8/22c-captures-unjudged | `docs/shots/m8/help-at-map-120x36.txt`, `search-hint-120x36.txt`: by-eye unjudged, colour unverified | **unverified** | M8 |
+| M8/11d-r2-widths | Marked row draws `? keys` only from 129 cells (branch tip 137), not 120 as ruled; at 83 `u undo` doesn't fit even without the doorway (11d NOTES) — needs a ruling | **broken** | M8 |
+| M8/11d-own-footer-overlays | Journal, stash and Map draw their own footers (`journal_screen.rs:243`, `stash_screen.rs:189`), so the overlay doorway (R1) never shows there; `doorway-journal` shot has no `? keys`. R1's tick holds at the hint-bar level only | **broken** | M8 |
+| M8/11d-palette-here-per-place | Palette HERE lists per place (11d report-only box) | **unverified** | M8 |
+| M8/11d-captures-unjudged | `docs/shots/m8/doorway-{journal-120x36,blame-80x24,marked-120x36}.txt` + 17 re-shot: by-eye unjudged, colour unverified | **unverified** | M8 |
 | M8/resolve-refusal-space-dead | Resolve refusal says `space marks resolved`, but both callers leave him on the Banner where `space` does nothing (pinned by `keymap_words::stops::the_resolve_keys_name_rows_that_act_where_the_refusal_is_shown`). Question: move focus to CONFLICTS rows, or drop the clause | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | RESOLVE_KEYS shown on screen via pressed.rs:156; the literal-key grep misses consts | **unverified** | M8 |
