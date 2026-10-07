@@ -1,6 +1,6 @@
 # G-keymap 2k — the seven inline stop words, tested remapped by driving the real path; `RESOLVE_KEYS` spelled or stopped
 
-Status: draft (planner spec-only pass 2026-10-07; split from 10j ruling 2 and 10j's 1b question — 10j NOTES)
+Status: ready
 Build with: **Sonnet** — every rule decided below (10j ruling 2 stands; how to reach the fixtures decided here); each
 case is a full oracle (swept keymap → remapped label, shipped → byte-identical). Part B has a pin with a stop, so no
 judgement is left to the builder. Not Fable.
