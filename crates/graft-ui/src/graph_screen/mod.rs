@@ -388,6 +388,35 @@ pub struct GraphEntry<'a> {
     /// A short tag drawn after the subject — `✎ changed` on a commit a
     /// rewrite just changed (m7-power-tools/09). `None` on almost every row.
     pub tag: Option<RowTag>,
+    /// A folded merge's `+N` (m8-polish-and-ship/17b), drawn muted one space
+    /// after the subject. `None` on every row that is not a folded merge.
+    pub fold: Option<FoldMark>,
+}
+
+/// How many commits a folded merge brought in, as its row draws it: one
+/// space after the subject, muted, ASCII in every tier. The subject is cut
+/// with `…` before the mark; the mark is never cut.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FoldMark {
+    /// `+`: asked, not answered yet.
+    Counting,
+    /// `+N`. Zero draws nothing.
+    Count(usize),
+    /// `+?`: git could not count; the status line said why.
+    Unknown,
+}
+
+impl FoldMark {
+    /// The words drawn after the subject, or `None` for `+0`.
+    #[must_use]
+    pub fn words(self) -> Option<String> {
+        match self {
+            FoldMark::Counting => Some("+".to_owned()),
+            FoldMark::Count(0) => None,
+            FoldMark::Count(count) => Some(format!("+{count}")),
+            FoldMark::Unknown => Some("+?".to_owned()),
+        }
+    }
 }
 
 /// A tag a row carries after its subject until the next write starts

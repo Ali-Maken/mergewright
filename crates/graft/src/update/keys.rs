@@ -438,13 +438,21 @@ fn apply_view_change(next: &mut AppState, commands: &mut Vec<Command>, change: V
     let stashes: Vec<Oid> = next.refs.as_deref().map_or_else(Vec::new, |refs| {
         refs.stashes().iter().map(|&(commit, _)| commit).collect()
     });
-    if let Some(history) = next.history.as_mut()
-        && let Some(view) = change.apply(history, &stashes)
-        && let Some(request) = history.change_view(view, height)
+    let Some(history) = next.history.as_mut() else {
+        return;
+    };
+    let Some(view) = change.apply(history, &stashes) else {
+        return;
+    };
+    // `Space` is where a merge enters `Inclusion::folded`: its `+N` is
+    // asked for here, once (m8-polish-and-ship/17b).
+    let folded = view.inclusion.folded.clone();
+    if let Some(request) = history.change_view(view, height)
         && let Some(id) = next.awaiting
     {
         commands.push(Command::ShowRows(id, request));
     }
+    super::fold_count::request(next, commands, &folded);
 }
 
 /// One remote key, with `local_jobs` borrowed out for the closure.

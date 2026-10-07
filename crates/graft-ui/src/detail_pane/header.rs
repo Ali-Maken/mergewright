@@ -276,9 +276,10 @@ pub(crate) fn render_header(
     }
     if tail > 0
         && let Some(title) = displayed.first()
+        && let Some(words) = detail_whitespace_tail(view)
     {
         let used = title.trim_end().width().min(usize::from(area.width - tail));
-        draw_whitespace_tail(area, used, theme, buf);
+        draw_whitespace_tail(area, used, words, theme, buf);
     }
     if view.following {
         draw_following(area, theme, buf);
@@ -327,20 +328,29 @@ fn displayed_lines(view: &DetailView, layout: DetailLayout, lines: &[String; 5])
 /// The cells the title row keeps for `· whitespace ignored`: none with `w`
 /// off, or when fewer than [`TITLE_MIN`] cells of title would be left.
 fn whitespace_tail_width(view: &DetailView, area: Rect) -> u16 {
-    let width = u16::try_from(crate::blame::WHITESPACE_IGNORED.width()).unwrap_or(u16::MAX);
-    if view.options.ignore_whitespace && area.width >= width.saturating_add(TITLE_MIN) {
+    let Some(words) = detail_whitespace_tail(view) else {
+        return 0;
+    };
+    let width = u16::try_from(words.width()).unwrap_or(u16::MAX);
+    if area.width >= width.saturating_add(TITLE_MIN) {
         width
     } else {
         0
     }
 }
 
+/// The detail's tail: its default counts whitespace (`config/types.rs`), so
+/// only `w`'s ignored state is named.
+fn detail_whitespace_tail(view: &DetailView) -> Option<&'static str> {
+    crate::blame::whitespace_tail(view.options.ignore_whitespace, false)
+}
+
 /// The narrowest title worth keeping beside the whitespace tail.
 const TITLE_MIN: u16 = 12;
 
-/// `· whitespace ignored`, muted, right after the title's text while `w` is
-/// on (m8-polish-and-ship/17 item 8); cut at the area's edge.
-fn draw_whitespace_tail(area: Rect, used: usize, theme: &Theme, buf: &mut Buffer) {
+/// `words` (`· whitespace ignored`), muted, right after the title's text
+/// while `w` is on (m8-polish-and-ship/17 item 8); cut at the area's edge.
+fn draw_whitespace_tail(area: Rect, used: usize, words: &str, theme: &Theme, buf: &mut Buffer) {
     let Ok(used) = u16::try_from(used) else {
         return;
     };
@@ -351,7 +361,7 @@ fn draw_whitespace_tail(area: Rect, used: usize, theme: &Theme, buf: &mut Buffer
     buf.set_stringn(
         area.x + used,
         area.y,
-        crate::blame::WHITESPACE_IGNORED,
+        words,
         room,
         foreground(theme, Token::TextMuted),
     );

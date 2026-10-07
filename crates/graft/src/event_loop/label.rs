@@ -170,6 +170,7 @@ fn product_label(product: &Product) -> &'static str {
         Product::IndexState(_) => "Produced::IndexState",
         Product::Remotes(_) => "Produced::Remotes",
         Product::Leaves { .. } => "Produced::Leaves",
+        Product::FoldedCounted { .. } => "Produced::FoldedCounted",
     }
 }
 

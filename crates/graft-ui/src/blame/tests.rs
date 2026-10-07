@@ -90,7 +90,8 @@ fn view(rows: &[BlameRowView], cursor: usize) -> BlameView<'_> {
         find: None,
         heatmap: false,
         now: NOW,
-        whitespace_ignored: false,
+        // Blame's default (graft-git `blame.rs`): the title says nothing.
+        whitespace_ignored: true,
     }
 }
 
@@ -633,19 +634,23 @@ fn blame_spells_its_back_key_from_his_keymap() {
     assert_spelled(line, &keys, &[&["app.back"]]);
 }
 
-/// m8-polish-and-ship/17 item 8: with `w` on the title ends
-/// `· whitespace ignored`; off, it does not.
+/// m8-polish-and-ship/17b decision 3: blame's default is whitespace
+/// ignored, so the title says nothing then; after `w` (whitespace counted)
+/// it ends `· whitespace counted`.
 #[test]
-fn blame_title_says_whitespace_ignored_while_w_is_on() {
+fn blame_title_names_whitespace_only_when_counted() {
     let rows = mockup();
     let mut v = view(&rows, ON_22);
-    assert!(!draw(&v, 187, 20)[0].contains("whitespace ignored"));
     v.whitespace_ignored = true;
+    let title = draw(&v, 187, 20)[0].clone();
+    assert!(!title.contains("whitespace"), "{title:?}");
+    assert!(title.trim_end().ends_with("as it is now"), "{title:?}");
+    v.whitespace_ignored = false;
     let title = draw(&v, 187, 20)[0].clone();
     assert!(
         title
             .trim_end()
-            .ends_with("as it is now \u{b7} whitespace ignored"),
+            .ends_with("as it is now \u{b7} whitespace counted"),
         "{title:?}"
     );
 }

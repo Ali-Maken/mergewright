@@ -295,8 +295,9 @@ fn draw_into(buf: &mut Buffer, area: Rect, view: &HistoryView, keys: &Keymap) {
         &title,
         Style::default().add_modifier(Modifier::BOLD),
     );
-    if view.whitespace_ignored {
-        crate::blame::put_whitespace_tail(buf, area, &title, put);
+    // History's default counts whitespace, so only `w`'s ignored state is named.
+    if let Some(tail) = crate::blame::whitespace_tail(view.whitespace_ignored, false) {
+        crate::blame::put_whitespace_tail(buf, area, &title, tail, put);
     }
     if area.height < 2 {
         return;

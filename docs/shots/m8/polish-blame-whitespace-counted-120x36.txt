@@ -1,0 +1,44 @@
+# m8/polish-blame-whitespace-counted-120x36: drawn by `view::view` from a real
+# AppState (crates/graft/tests/it/look_polish.rs). Not a pty capture: a character
+# grid, no colour (CLAUDE.md rule 5 — colour unverified).
+#
+# Blame of src/auth/session.rs after `w`. Right: the title ends
+# `· whitespace counted` (muted). At blame's default (whitespace ignored)
+# the title has no whitespace words at all — see docs/shots/m7/blame-*.txt.
+
+ BLAME · src/auth/session.rs · as of 74f9a9e · whitespace counted
+ skipping 1 commit listed in .git-blame-ignore-revs · i shows them
+ ─ 3f6c311 Ana     1y │  1  use std::time::{Duration, Instant};
+ ─ 0a27627 Priya  4mo │  2  use crate::config::Config;
+ ─ 74f9a9e Graf…  60m │  3  use crate::error::Expired;
+ ┌ 3f6c311 Ana     1y │  4  use crate::http::{Client, Result};
+ │                    │  5
+ │                    │  6  pub struct Session {
+ │                    │  7      token: String,
+ │                    │  8      refresh: String,
+ └                    │  9      issued: Instant,
+ ─ 0a27627 Priya  4mo │ 10      ttl: Duration,
+ ┌ 3f6c311 Ana     1y │ 11  }
+ │                    │ 12
+ └                    │ 13  impl Session {
+ ┌ 0a27627 Priya  4mo │ 14      pub fn new(token: String, refresh: String, config: &Config) -> Self {
+ └                    │ 15          Session { token, refresh, issued: Instant::now(), ttl: config.session_ttl }
+ ─ 3f6c311 Ana     1y │ 16      }
+ ┌ 47593a5 Tom   10mo │ 17      /// Refresh the token when the server says it expired.
+ └                    │ 18      pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
+ ─ 2f48ca3 Lina   7mo │ 19          let mut attempt = 0;
+ ┌ 47593a5 Tom   10mo │ 20          loop {
+ └                    │ 21              let resp = client.refresh(&self.token)?;
+ ▸ 2f48ca3 Lina   7mo │ 22              if resp.status() == 401 && attempt == 0 {    ◂ Lina · 7 months ago · Retry…
+ └                    │ 23                  attempt += 1;
+ ┌ 47593a5 Tom   10mo │ 24                  continue;
+ └                    │ 25              }
+ ─ 74f9a9e Graf…  60m │ 26              self.token = resp.token().map_err(Expired::from)?;
+ ┌ 47593a5 Tom   10mo │ 27              return self.record_refresh(&resp, "refreshed after the server answered 401 on th
+ │                    │ 28          }
+ └                    │ 29      }
+ ┌ 3f6c311 Ana     1y │ 30
+ │                    │ 31      pub fn token(&self) -> &str {
+ │                    │ 32          &self.token
+ │                    │ 33      }
+ ⏎ that commit  ^ before it  L history of these lines  / find  space ages  w whitespace  i ignore list  esc back

@@ -267,6 +267,15 @@ pub enum Command {
         /// The tracking tip the lease names.
         expected: graft_core::oid::Oid,
     },
+    /// Count the commits a folded merge brought in, for its `+N`
+    /// (m8-polish-and-ship/17b, `jobs::fold_count`). A read; asked once per
+    /// merge per session, when it is first folded.
+    CountFolded {
+        /// The id the answer comes back under.
+        id: JobId,
+        /// The folded merge.
+        merge: graft_core::oid::Oid,
+    },
     /// Read `commit.template`'s file for the commit editor's empty body,
     /// under an id `update` chose (m3-working-tree-undo-and-stash/05).
     ReadCommitTemplate(JobId),

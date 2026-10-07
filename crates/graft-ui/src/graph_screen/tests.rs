@@ -90,6 +90,7 @@ pub(super) fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_>
                     compare_marked: false,
                     marker: None,
                     tag: None,
+                    fold: None,
                 }
             })
             .collect(),
@@ -2817,6 +2818,96 @@ fn the_tag_drops_below_8_subject_cells() {
     assert!(subject.ends_with("A very "), "{with_tag}");
     let (narrower, untagged) = drawn(first - 1);
     assert_eq!(narrower, untagged, "one column less: no tag, today's row");
+}
+
+/// The cell `needle` starts at on screen row `y`, and that row's text.
+fn cell_of(terminal: &Terminal<TestBackend>, y: usize, needle: &str) -> (u16, u16) {
+    let line = &text(terminal)[y];
+    let at = line
+        .find(needle)
+        .unwrap_or_else(|| panic!("{needle:?} in {line:?}"));
+    let x = u16::try_from(line[..at].chars().count()).expect("fits");
+    (x, u16::try_from(y).expect("fits"))
+}
+
+/// m8-polish-and-ship/17b decision 1: a folded merge's row ends one space
+/// after the subject with ` +` while counting, ` +3` counted, ` +?` failed,
+/// muted; `+0` draws nothing; a row with no fold draws as before.
+#[test]
+fn a_folded_merge_ends_with_its_count() {
+    let rows = linear(2);
+    let plain = view(&rows, WalkView::Complete { rows: 2 }, 1);
+    let before = text(&draw(&plain, 120, 5));
+    let marked = |mark| {
+        let mut folded = view(&rows, WalkView::Complete { rows: 2 }, 1);
+        folded.rows[0].fold = Some(mark);
+        draw(&folded, 120, 5)
+    };
+    let counting = text(&marked(FoldMark::Counting));
+    assert!(counting[1].contains("Commit 2 + "), "{counting:#?}");
+    assert_eq!(counting[2], before[2], "an unfolded row draws as before");
+    let counted = marked(FoldMark::Count(3));
+    assert!(
+        text(&counted)[1].contains("Commit 2 +3 "),
+        "{:#?}",
+        text(&counted)
+    );
+    let unknown = text(&marked(FoldMark::Unknown));
+    assert!(unknown[1].contains("Commit 2 +? "), "{unknown:#?}");
+    assert_eq!(
+        text(&marked(FoldMark::Count(0)))[1],
+        before[1],
+        "+0: no mark"
+    );
+
+    // Muted: `TextMuted` off the cursor row, and the subject is not.
+    let theme = Theme::new(ThemeKind::Dark, &terminal_caps());
+    let buffer = counted.backend().buffer();
+    let (x, y) = cell_of(&counted, 1, "+3");
+    let muted = color(theme.token(Token::TextMuted));
+    assert_eq!(buffer[(x, y)].fg, muted, "the `+`");
+    assert_eq!(buffer[(x + 1, y)].fg, muted, "the `3`");
+    let (subject, _) = cell_of(&counted, 1, "Commit 2");
+    assert_ne!(buffer[(subject, y)].fg, muted, "the subject keeps its ink");
+
+    // On the cursor row, lifted to stay legible on the selection fill.
+    let mut on_cursor = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    on_cursor.rows[0].fold = Some(FoldMark::Count(3));
+    let terminal = draw(&on_cursor, 120, 5);
+    let (x, y) = cell_of(&terminal, 1, "+3");
+    assert_eq!(
+        terminal.backend().buffer()[(x, y)].fg,
+        color(theme.on_selection(theme.token(Token::TextMuted))),
+    );
+}
+
+/// At 80 columns a long subject is cut with `…` before the mark, which is
+/// never cut; the ASCII tier's marked row is all ASCII.
+#[test]
+fn the_fold_mark_survives_a_cut_subject() {
+    let long = linear_with_subject(2, LONG_SUBJECT);
+    let mut folded = view(&long, WalkView::Complete { rows: 2 }, 1);
+    folded.rows[0].fold = Some(FoldMark::Count(12));
+    let lines = text(&draw(&folded, 80, 5));
+    assert!(lines[1].contains("\u{2026} +12 "), "{lines:#?}");
+
+    // With a tag too: subject, mark, then the tag.
+    folded.rows[0].tag = Some(RowTag::Changed);
+    let lines = text(&draw(&folded, 80, 5));
+    assert!(
+        lines[1].contains("\u{2026} +12  \u{270e} changed"),
+        "{lines:#?}"
+    );
+
+    let rows = linear(2);
+    let mut ascii = view(&rows, WalkView::Complete { rows: 2 }, 1);
+    ascii.ascii = true;
+    for mark in [FoldMark::Counting, FoldMark::Count(3), FoldMark::Unknown] {
+        ascii.rows[0].fold = Some(mark);
+        let lines = text(&draw(&ascii, 120, 5));
+        assert!(lines[1].contains("Commit 2 +"), "{lines:#?}");
+        assert!(lines[1].is_ascii(), "{:?}", lines[1]);
+    }
 }
 
 #[test]

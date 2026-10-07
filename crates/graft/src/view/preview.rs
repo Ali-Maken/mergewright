@@ -186,6 +186,7 @@ fn label_entry<'a>(ghost: &graft_graph::row::Row, label: &str) -> GraphEntry<'a>
         compare_marked: false,
         marker: None,
         tag: None,
+        fold: None,
     }
 }
 
@@ -258,6 +259,7 @@ fn entry<'a>(
         compare_marked: false,
         marker: None,
         tag: None,
+        fold: None,
     }
 }
 

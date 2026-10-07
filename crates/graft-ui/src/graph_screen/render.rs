@@ -284,23 +284,49 @@ impl GraphScreen<'_> {
         buf: &mut Buffer,
     ) {
         let subject = entry.subject.as_str();
-        let Some(tag) = drawn_tag(entry, self.view.ascii, width) else {
+        let mark = drawn_fold(entry, width);
+        let mark_width = mark.as_deref().map_or(0, fold_cells);
+        let tag = drawn_tag(entry, self.view.ascii, width - mark_width);
+        if mark.is_none() && tag.is_none() {
             draw_cell(buf, x, y, width, subject, style);
             return;
+        }
+        let tag_width = tag
+            .as_deref()
+            .map_or(0, |tag| u16::try_from(tag.width()).unwrap_or(u16::MAX));
+        let tag_cells = if tag.is_some() {
+            tag_width + TAG_GAP
+        } else {
+            0
         };
-        let tag_width = u16::try_from(tag.width()).unwrap_or(u16::MAX);
-        let room = width - tag_width - TAG_GAP;
+        let room = width - mark_width - tag_cells;
         let used = u16::try_from(super::layout::text_width(subject))
             .unwrap_or(u16::MAX)
             .min(room);
         draw_cell(buf, x, y, used, subject, style);
-        // The gap and whatever the subject left carry the row's own
-        // emphasis, as every other blank cell of the row does.
-        draw_cell(buf, x + used, y, TAG_GAP, "", style);
-        let tag_style = style.patch(self.ink(entry, self.theme.token(Token::Accent)));
-        draw_cell(buf, x + used + TAG_GAP, y, tag_width, &tag, tag_style);
-        let after = x + used + TAG_GAP + tag_width;
-        draw_cell(buf, after, y, (x + width).saturating_sub(after), "", style);
+        let mut at = x + used;
+        // Gaps and whatever the subject left carry the row's own emphasis,
+        // as every other blank cell of the row does.
+        if let Some(mark) = mark.as_deref() {
+            draw_cell(buf, at, y, FOLD_GAP, "", style);
+            let mark_style = style.patch(self.ink(entry, self.theme.token(Token::TextMuted)));
+            draw_cell(
+                buf,
+                at + FOLD_GAP,
+                y,
+                mark_width - FOLD_GAP,
+                mark,
+                mark_style,
+            );
+            at += mark_width;
+        }
+        if let Some(tag) = tag.as_deref() {
+            draw_cell(buf, at, y, TAG_GAP, "", style);
+            let tag_style = style.patch(self.ink(entry, self.theme.token(Token::Accent)));
+            draw_cell(buf, at + TAG_GAP, y, tag_width, tag, tag_style);
+            at += tag_cells;
+        }
+        draw_cell(buf, at, y, (x + width).saturating_sub(at), "", style);
     }
 
     /// The marker slot, which holds two marks that **do not queue** and the
@@ -603,6 +629,24 @@ fn drawn_tag<'e>(
     (width.saturating_sub(tag_width.saturating_add(TAG_GAP)) >= TAG_MIN_SUBJECT).then_some(tag)
 }
 
+/// Cells between the subject and a folded merge's `+N`.
+const FOLD_GAP: u16 = 1;
+
+/// The cells a fold mark takes, its gap included.
+fn fold_cells(mark: &str) -> u16 {
+    u16::try_from(mark.width())
+        .unwrap_or(u16::MAX)
+        .saturating_add(FOLD_GAP)
+}
+
+/// A folded merge's `+N` when [`GraphScreen::draw_subject`] draws it in a
+/// subject column of `width` cells: `None` off a folded merge, at `+0`, or
+/// when the mark and one subject cell do not fit — the mark is never cut.
+fn drawn_fold(entry: &GraphEntry<'_>, width: u16) -> Option<String> {
+    let mark = entry.fold?.words()?;
+    (fold_cells(&mark) < width).then_some(mark)
+}
+
 /// Whether `entry`'s subject needed a `…` to fit the subject column it is
 /// actually drawn into — badges' share and the row tag's subtracted first,
 /// the same as [`GraphScreen::draw_badges`] and
@@ -616,6 +660,8 @@ pub(super) fn subject_truncated(
 ) -> bool {
     let taken = badges_width(entry, icons, keys, columns);
     let width = columns.subject_width.saturating_sub(taken);
+    let mark = drawn_fold(entry, width).as_deref().map_or(0, fold_cells);
+    let width = width - mark;
     let tag = drawn_tag(entry, ascii, width).map_or(0, |tag| {
         u16::try_from(tag.width())
             .unwrap_or(u16::MAX)
