@@ -1,7 +1,7 @@
 # G-look 2d — launching inside a repository lands on HEAD, as an open does
 
-Status: draft (planner spec-only pass 2026-10-07; from 12's NOTES question, "cursor on the newest row at launch")
-Build with: **(blank — brownfield, ADR-0035: conductor sets it after the scout).** Expected **Sonnet** if the scout
+Status: ready (planner spec-only pass 2026-10-07; from 12's NOTES question, "cursor on the newest row at launch")
+Build with: **Opus** (conductor 2026-10-07 after scout `scouts/12d-launch-head.md`: the "moved" case holds — banner/stop.rs:301 land_on_head overwrites a key typed before reads answer; fix sits in banner/stop.rs, update/mod.rs only for the :131 doc comment). Was: Expected **Sonnet** if the scout
 confirms the fix is the start path arming the existing landing (one flag); **Opus** if the owed landing yanks a cursor
 he already moved (see Decision 3 — touches the landing's consumption in `update`). Not Fable: every box is a pty
 oracle (row under `▸` vs HEAD's row).
