@@ -40,6 +40,9 @@ pub const RECENT_CAP: usize = 8;
 pub const GROUP_ROWS: usize = 8;
 /// Rows a find group shows once `+N more` widened it.
 pub const WIDE_ROWS: usize = 50;
+/// How many commits COMMITS lists before `more · / searches all of history`
+/// (12b): the commits job stops reading at this many.
+pub const COMMIT_HITS: usize = 9;
 /// The recent group's header, exactly as DESIGN §1.6 draws it (P-find-2).
 pub const RECENT_HEADER: &str = "COMMANDS RUN RECENTLY";
 /// What the empty `⌃P` field says, muted, until the first character

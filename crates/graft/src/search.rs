@@ -8,6 +8,7 @@
 
 use std::sync::Arc;
 
+use graft_core::commit::Commit;
 use graft_core::job::JobId;
 use graft_core::oid::Oid;
 use graft_git::history::{Order, Walk};
@@ -146,6 +147,64 @@ pub fn scan(
     stop: &dyn Fn() -> bool,
     found: &mut dyn FnMut(Arc<[Oid]>) -> bool,
 ) -> Result<Scanned, String> {
+    walk_matching(store, query, chunk, stop, &mut |hits| {
+        hits.is_empty() || found(hits.iter().map(|commit| commit.id).collect())
+    })
+}
+
+/// One commit the palette's COMMITS group lists: its id and subject line.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CommitHit {
+    /// The commit.
+    pub id: Oid,
+    /// Its subject, raw repository bytes (sanitised when drawn).
+    pub subject: Box<[u8]>,
+}
+
+/// How many commits [`first_hits`] reads per chunk: small, so a query that
+/// hits early stops early, and still one `stop` check per chunk.
+const FIRST_HITS_CHUNK: usize = 64;
+
+/// The first `limit` commits [`scan`] would find, in the same walk order
+/// (topological from every ref, newest first) — the palette's COMMITS group
+/// (m8 12b). Stops reading as soon as `limit` are found; a query with fewer
+/// hits walks all of history (a job's work, never the loop's).
+///
+/// # Errors
+/// The walk's own failure, as words.
+pub fn first_hits(
+    store: &RepoStore,
+    query: &Query,
+    limit: usize,
+    stop: &dyn Fn() -> bool,
+) -> Result<Vec<CommitHit>, String> {
+    let mut hits = Vec::new();
+    if limit == 0 {
+        return Ok(hits);
+    }
+    // `Stopped` and `Finished` both mean "this is all there is": the hits
+    // in hand. A cancelled job's answer is dropped by its caller.
+    walk_matching(store, query, FIRST_HITS_CHUNK, stop, &mut |found| {
+        for commit in found.iter().take(limit - hits.len()) {
+            hits.push(CommitHit {
+                id: commit.id,
+                subject: commit.subject().into(),
+            });
+        }
+        hits.len() < limit
+    })?;
+    Ok(hits)
+}
+
+/// The walk both [`scan`] and [`first_hits`] share: each chunk's matching
+/// commits (possibly none) go to `found`, which returns `false` to stop.
+fn walk_matching(
+    store: &RepoStore,
+    query: &Query,
+    chunk: usize,
+    stop: &dyn Fn() -> bool,
+    found: &mut dyn FnMut(&[&Commit]) -> bool,
+) -> Result<Scanned, String> {
     let repo = store.shared().map_err(|error| error.to_string())?;
     let handle = repo.handle();
     let table = store.table().map_err(|error| error.to_string())?;
@@ -159,7 +218,7 @@ pub fn scan(
         let read = walk
             .next_chunk(chunk, stop)
             .map_err(|error| error.to_string())?;
-        let hits: Arc<[Oid]> = read
+        let hits: Vec<&Commit> = read
             .commits
             .iter()
             .filter(|commit| {
@@ -171,9 +230,8 @@ pub fn scan(
                 author.push(b'>');
                 query.matches(commit.id, commit.subject(), &author, &commit.message)
             })
-            .map(|commit| commit.id)
             .collect();
-        if !hits.is_empty() && !found(hits) {
+        if !found(&hits) {
             return Ok(Scanned::Stopped);
         }
         if read.stopped {
@@ -395,7 +453,6 @@ mod tests {
 
     use std::sync::atomic::{AtomicBool, Ordering};
 
-    use graft_core::commit::Commit;
     use graft_fixtures::Shape;
 
     /// Every commit a walk from every ref reaches, in walk order.
@@ -512,5 +569,61 @@ mod tests {
         )
         .expect("the scan reads");
         assert_eq!((ended, calls), (Scanned::Stopped, 1));
+    }
+    /// The palette's COMMITS are `/`'s first hits, same commits, same order,
+    /// each with its subject.
+    #[test]
+    fn palette_commit_hits_match_slash_search() {
+        let store = RepoStore::new(graft_fixtures::borrow(Shape::Linear), None);
+        let email = String::from_utf8_lossy(&walked(&store)[0].author.email).into_owned();
+        let (_, batches) = scanned(&store, &email);
+        let slash: Vec<Oid> = batches.iter().flat_map(|batch| batch.iter().copied()).collect();
+        assert!(slash.len() > 9, "every commit matches its author");
+        let query = Query::parse(&email).expect("a query");
+
+        let hits = first_hits(&store, &query, 5, &|| false).expect("reads");
+
+        assert_eq!(
+            hits.iter().map(|hit| hit.id).collect::<Vec<_>>(),
+            slash[..5].to_vec()
+        );
+        let commits = walked(&store);
+        for hit in &hits {
+            let commit = commits.iter().find(|c| c.id == hit.id).expect("walked");
+            assert_eq!(&*hit.subject, commit.subject());
+        }
+    }
+
+    /// Nine hits found → the walk ends there: it reads fewer chunks than
+    /// a full walk (`stop` is asked once per chunk).
+    #[test]
+    fn commits_job_stops_after_nine_hits() {
+        let store = RepoStore::new(graft_fixtures::borrow(Shape::Linear), None);
+        let email = String::from_utf8_lossy(&walked(&store)[0].author.email).into_owned();
+        let query = Query::parse(&email).expect("a query");
+        let asked = std::cell::Cell::new(0_usize);
+        let limit = crate::update::palette::COMMIT_HITS;
+
+        let hits = first_hits(&store, &query, limit, &|| {
+            asked.set(asked.get() + 1);
+            false
+        })
+        .expect("reads");
+
+        assert_eq!(hits.len(), 9);
+        let full = std::cell::Cell::new(0_usize);
+        let none = Query::parse("no commit says zq-xj-vk-7431").expect("a query");
+        assert!(first_hits(&store, &none, limit, &|| {
+            full.set(full.get() + 1);
+            false
+        })
+        .expect("reads")
+        .is_empty());
+        assert!(
+            asked.get() < full.get(),
+            "stopped early: {} stop checks vs {} for a full walk",
+            asked.get(),
+            full.get()
+        );
     }
 }

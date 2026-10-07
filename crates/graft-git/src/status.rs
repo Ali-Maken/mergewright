@@ -19,9 +19,11 @@ mod parse;
 mod submodule;
 #[cfg(test)]
 mod tests;
+mod tracked;
 
 pub use parse::parse_porcelain_v2;
 pub use submodule::submodules_not_set_up;
+pub use tracked::{TRACKED_CAP, TrackedPaths, tracked_paths};
 
 use submodule::submodule_status;
 
