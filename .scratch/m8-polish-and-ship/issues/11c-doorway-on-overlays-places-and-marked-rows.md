@@ -1,6 +1,6 @@
 # G-palette 1c — `? keys` on the overlays, the places and marked rows (11b's two open doorway items)
 
-Status: ready
+Status: blocked (design conflict, see NOTES at end)
 doorway"; rulings recorded in `09e-keymap-sweep-defects.md` "11b's other open items")
 Build with: **Sonnet** (confirmed by conductor 2026-10-07 after scout `scouts/11c-doorway.md`; was provisional — brownfield, ADR-0035: conductor confirms; 11b's scout
 `scouts/11-palette-help.md` covers the doorway code, its "palette not built" half is stale). Mechanical: one hint
@@ -102,3 +102,38 @@ last as a droppable candidate (`Marked`, decision 3). MAP.md records which conte
 ~50k: lists + doorway placement 10k; marked candidate + monotone test 6k; tests and catalogue 10k; drawn-palette check
 6k; re-shoots + three captures 15k; MAP and doc 3k. If re-shoots exceed ~30 files, captures go to a follow-up
 (conductor).
+
+## NOTES (builder, 2026-10-07) — stopped at the seam, no source committed
+
+Scout used: `scouts/11c-doorway.md`. WIP diff (tests + hints.rs arms + doc sentence) saved as
+`scouts/11c-wip.patch` (apply it); reverted from the tree because it leaves gates red.
+
+Red seen on assertion before any fix: `overlays_and_places_end_with_the_keys_doorway` (Journal at 80:
+`" ⏎ revert  esc close"`), `a_marked_row_keeps_undo_and_search_before_the_doorway`.
+`modal_bars_draw_no_doorway` green before and after (guard; behaviour unchanged, no red possible).
+
+With the patch (trailer `Some(DOORWAY)` for Journal/Stash/Map/PaneOverOverlay/Blame/History; Marked
+pushes `DOORWAY` last in its list), two decisions cannot hold without a fitter/ADR change:
+
+1. **Decision 1 "last, after esc close" contradicts ADR-0039's placement rule.** `hints/fitting.rs:184`
+   `place_doorway` puts the trailer at the head of the bare keys; overlays/places are `Words::Keys`
+   (`hints.rs:495–511`), so they draw bare keys. Measured: Blame{lines} at 80 =
+   `" ⏎ that commit  ^ before it  L history of these lines  ? keys  /  space  w  esc"`. Invariant
+   `one_rule_puts_the_doorway_before_a_tail_and_last_without_one` asserts this rule for every DOORWAY
+   context. Ruling: keep ADR-0039 (amend decision 1 to "ends, or leads the bare keys") or amend ADR-0039
+   so `? keys` is always last.
+2. **Decision 3 "`? keys` last at 120" is unreachable with "ranked last, dropped first".** Marked plain
+   row at 120: `" . explain · ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo ·
+   S stash · J journal · / search"` — undrawn hints remain, so the last candidate never fits. Drawn only
+   near ~230+ cells (PaneFocused{Marked} at 239). Also breaks `resize_is_drawn_only_when_nothing_else_was_dropped`
+   (tests.rs:416) and `a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn` (:883), which treat
+   `? keys` as the trailer. Ruling: accept no doorway on marked bars below ~230, or rank it earlier
+   (e.g. right after `/ search`).
+
+Unverified: whether text-field sub-states (journal find, blame find typing, stash save prompt) draw a
+context other than Journal/Blame/Stash; `Blame{finding}` is the post-find state.
+Knock-on with the patch: 30 failing tests workspace-wide, ~20 of them captures (blame_place,
+history_place, hint_bar, look_polish, offer_and_blame), plus history_place unit lists
+(`["esc back","? keys"]`). Next: rulings 1–2, apply patch, fix the two tests to the rulings, update
+expected lists, re-shoot. The view-frame test was written into `update/tests.rs` (needs `states_for`),
+not `view::tests`; not yet run.
