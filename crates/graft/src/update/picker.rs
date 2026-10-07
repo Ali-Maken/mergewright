@@ -108,21 +108,24 @@ pub fn picker_key(state: &mut AppState, commands: &mut Vec<Command>, key: KeyPre
         return true;
     }
     if opens(state, key) {
+        // From a pane the keyboard goes to the graph first, as `S`/`J` do
+        // (m6/85, m8/09e): `Esc` out of the picker lands on the graph.
+        state.detail.focus = graft_ui::detail::DetailFocus::Graph;
         commands.extend(open_picker(state));
         return true;
     }
     false
 }
 
-/// `C` opens it on the graph screen with the graph focused and nothing
-/// standing over the graph (§2.3). The commit editor's `C` is the editor's:
-/// the editor is an overlay, so this never sees it.
+/// `C` opens it on the graph screen with nothing standing over the graph
+/// (§2.3), from the graph or either detail pane (m8/09e). The commit
+/// editor's `C` is the editor's: the editor is an overlay, so this never
+/// sees it.
 fn opens(state: &AppState, key: KeyPress) -> bool {
     key.code == KeyCode::Char('C')
         && !key.modifiers.control
         && !key.modifiers.alt
         && state.screen == Screen::Graph
-        && state.graph_has_focus()
         && state.picker.is_none()
         && state.graph_overlay().is_none()
         && !state.modal_owns_keys()

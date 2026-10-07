@@ -916,10 +916,12 @@ impl AppState {
     /// sweeps it.
     ///
     /// Not the Map, journal or stash overlay: each claims only the keys it
-    /// shows (§2.1), and the bar behind each offers `/ search`, which works
-    /// there (`update::tests::the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows`).
-    /// J is the exception for `/`, `n`, `N`: its own find answers them
-    /// first (`update::journal::find::find_key`, keymap §2.11).
+    /// shows (§2.1), and this also drives the banner tab and the bottom-row
+    /// rungs. The graph's search stands down under them by its own rule —
+    /// it answers only while the graph is what's shown
+    /// (`update::search::graph_is_shown`, m8/09e). J's own find answers
+    /// `/`, `n`, `N` first with graph focus
+    /// (`update::journal::find::find_key`, keymap §2.11).
     #[must_use]
     pub fn modal_owns_keys(&self) -> bool {
         self.text_field_open()

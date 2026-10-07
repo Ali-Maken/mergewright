@@ -54,7 +54,6 @@ diff.more_context
 diff.shrink
 diff.side_by_side
 diff.word_diff
-empty_state.cancel
 empty_state.clone
 empty_state.init
 empty_state.open

@@ -17,16 +17,30 @@ pub(super) fn search_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
     let control_c = key.code == KeyCode::Char('c') && key.modifiers.control;
     if next.search_prompt.is_some() && !control_c {
         prompt_key(next, commands, key);
-    } else if is_search_key(key) && next.screen == Screen::Graph && next.history.is_some() {
+    } else if is_search_key(key)
+        && next.screen == Screen::Graph
+        && next.history.is_some()
+        && graph_is_shown(next)
+    {
         next.search_prompt = Some(String::new());
     } else if let Some(forward) = search_step(key)
         && next.search.is_some()
+        && graph_is_shown(next)
     {
         step_search(next, commands, forward);
     } else {
         return false;
     }
     true
+}
+
+/// The graph's search answers only while the graph is what's shown
+/// (m8/09e). Under the Map, the journal or the stash list the frame draws the
+/// overlay, not the graph screen, so the prompt (drawn only in the graph's
+/// footer) would be unseen and `n`/`N` would move a hidden cursor. Every
+/// other overlay is already in [`AppState::modal_owns_keys`].
+fn graph_is_shown(state: &AppState) -> bool {
+    state.graph_overlay().is_none()
 }
 
 /// `/`: open the search prompt over the graph.

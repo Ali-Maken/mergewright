@@ -21,7 +21,7 @@ use graft_ui::text_input::TextField;
 /// `(place, id, why)`: the place answers the key itself and does nothing
 /// with it.
 const LIST: &str = "empty_state.rs:302 the list answers q o i ⏎ j/↓ k/↑ alone (and ? ⌃P :, act)";
-const BOX: &str = "empty_state.rs:257 the init box keeps all but y n esc (draws y, esc)";
+const BOX: &str = "empty_state.rs:259 the init box keeps all but y esc (draws y, esc)";
 
 const SWALLOWED_BY_DESIGN: &[(ContextId, &str, &str)] = &[
     (ContextId::EmptyState, "app.next_pane", LIST),
@@ -38,9 +38,6 @@ const SWALLOWED_BY_DESIGN: &[(ContextId, &str, &str)] = &[
     (ContextId::EmptyState, "app.next_match", LIST),
     (ContextId::EmptyState, "app.prev_match", LIST),
     (ContextId::EmptyState, "app.menu", LIST),
-    // D6 moved the init box to `Confirm`, where `n` declines raw
-    // (empty_state.rs:256); this row is now live only on the list (NOTES).
-    (ContextId::EmptyState, "empty_state.cancel", LIST),
     (ContextId::Confirm, "confirm.choose", BOX),
     (ContextId::Confirm, "confirm.left", BOX),
     (ContextId::Confirm, "confirm.right", BOX),
@@ -59,6 +56,8 @@ const SWALLOWED_BY_DESIGN: &[(ContextId, &str, &str)] = &[
     (ContextId::Confirm, "app.page_up", BOX),
     (ContextId::Confirm, "app.find", BOX),
     (ContextId::Confirm, "app.prev_match", BOX),
+    // m8/09e: `n` no longer declines raw; swallowed like every other key.
+    (ContextId::Confirm, "app.next_match", BOX),
     (ContextId::Confirm, "app.open", BOX),
     (ContextId::Confirm, "app.menu", BOX),
     // m8/11 decision 7: a confirm box swallows `?`, `⌃P` and `:` too.

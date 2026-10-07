@@ -97,6 +97,12 @@ pub enum HintContext {
         /// the file list, the banner or the graph from the diff. Read off
         /// the one reading of the cycle (`graft::update::banner::tab_target`).
         tab: TabWord,
+        /// The Map, the journal or the stash list is up behind the pane
+        /// (m8/09e, 11b row 553): the bar is the pane's list minus what the
+        /// overlay swallows — `c` falls through to the graph, which the
+        /// overlay's `shown_key` takes, so no `c` hint in any form. Set only
+        /// by `graft`'s `view::rows::overlay_context`.
+        over_overlay: bool,
     },
     /// The undo journal browser has focus (overlay; draws its own footer
     /// today — reserved for the `?` help overlay, M8).
@@ -124,9 +130,10 @@ pub enum HintContext {
     /// `update::tests::the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows`).
     ///
     /// What is left is this list: the pane's own `⏎` and `j`/`k`, and the
-    /// two verbs dispatched **before** the panes and so still live under an
-    /// overlay — `u undo` and `/ search` (`graft::update::keys::key_event`,
-    /// which answers both above `pane_and_overlay_key`).
+    /// verb dispatched **before** the panes and so still live under an
+    /// overlay — `u undo` (`graft::update::keys::key_event`, which answers
+    /// it above `pane_and_overlay_key`). Not `/ search`: the graph's search
+    /// stands down while an overlay is up (m8/09e, `graft::update::search`).
     ///
     /// The overlay's *own* verbs are not here either. `⏎` and `Esc` never
     /// reach it while the pane has focus — `detail::keys::detail_key` runs

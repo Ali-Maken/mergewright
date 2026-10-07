@@ -16,7 +16,7 @@
 use super::*;
 
 use super::sweep_swallowed::SWALLOWED_BY_DESIGN;
-use super::sweep_tables::{DEFECTS, NO_EFFECT_IN_FIXTURE, ONE_CHORD_IDLE, SHADOWED};
+use super::sweep_tables::{NO_EFFECT_IN_FIXTURE, ONE_CHORD_IDLE, SHADOWED};
 
 /// In the table, answered by a later ticket; each deletes its own.
 const NOT_YET_ANSWERED: &[(&str, &str)] = &[
@@ -24,9 +24,10 @@ const NOT_YET_ANSWERED: &[(&str, &str)] = &[
     ("empty_state.tour", "ticket 19: the practice tour"),
 ];
 
-/// Cases that acted when this sweep landed (2026-10-07). It may grow; a
-/// drop means a key stopped doing something.
-const ACTING_AT_LANDING: usize = 396;
+/// Cases that act (396 when this sweep landed, 2026-10-07; 444 after
+/// m8/09e the same day, which made `R`/`C`/`O` act from Changes and Diff).
+/// It may grow; a drop means a key stopped doing something.
+const ACTING_AT_LANDING: usize = 444;
 
 /// Rows whose chords are another row's (`Keymap`'s followers): swept with
 /// their leader.
@@ -41,7 +42,6 @@ fn leader_of(id: &str) -> &str {
 fn listed(ctx: ContextId, id: &str, label: &str) -> bool {
     ONE_CHORD_IDLE
         .iter()
-        .chain(DEFECTS)
         .any(|(at, row, chord, _)| *at == ctx && *row == id && *chord == label)
         || SWALLOWED_BY_DESIGN
         .iter()
@@ -191,7 +191,6 @@ fn every_reachable_row_acts_or_is_listed_and_follows_its_remap() {
     // Every list entry names a reachable row of its place.
     let per_chord = ONE_CHORD_IDLE
         .iter()
-        .chain(DEFECTS)
         .map(|(ctx, id, _, why)| (*ctx, *id, *why));
     let per_row = SWALLOWED_BY_DESIGN
         .iter()

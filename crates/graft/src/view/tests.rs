@@ -5200,3 +5200,51 @@ fn the_edit_stop_tags_head_s_row_stopped_here() {
     let view = graph_view(&state, state.harness.clock.now_seconds());
     assert!(view.rows.iter().all(|row| row.tag.is_none()));
 }
+
+/// Opens one overlay on a state.
+type OpenOverlay = fn(&mut AppState);
+
+/// **Never a prompt that isn't drawn** (m8/09e): with the Map, the journal
+/// or the stash list up, graph or pane focused, at two sizes, `/` either
+/// opens no search or opens one the frame shows (` /_`). Before 09e the
+/// Map and the stash list opened the graph's prompt where only the
+/// graph's footer could draw it — and under them the frame draws the
+/// overlay, not the graph screen.
+#[test]
+fn a_search_prompt_is_never_open_where_it_is_not_drawn() {
+    use graft_core::event::{Event, KeyCode, KeyPress};
+    use graft_ui::detail::DetailFocus;
+
+    let overlays: [(&str, OpenOverlay); 3] = [
+        ("Map", |s| s.map.shown = true),
+        ("journal", |s| s.journal.shown = true),
+        ("stash list", |s| s.stash.shown = true),
+    ];
+    let mut wrong = Vec::new();
+    for (name, open) in overlays {
+        for focus in [DetailFocus::Graph, DetailFocus::Files] {
+            for (columns, rows) in [(80, 24), (120, 40)] {
+                let mut state = AppState {
+                    history: Some(history_of(5, 0)),
+                    size: Size { columns, rows },
+                    ..AppState::default()
+                };
+                state.detail.shown = focus != DetailFocus::Graph;
+                state.detail.focus = focus;
+                open(&mut state);
+                let (after, _) = crate::update::update(
+                    &state,
+                    crate::update::AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char('/')))),
+                );
+                if after.search_prompt.is_some() && !draw(&after, columns, rows).contains(" /_") {
+                    wrong.push(format!("{name}, {focus:?} focus, {columns}×{rows}"));
+                }
+            }
+        }
+    }
+    assert!(
+        wrong.is_empty(),
+        "`/` opened a search prompt the frame does not draw:\n  {}",
+        wrong.join("\n  ")
+    );
+}

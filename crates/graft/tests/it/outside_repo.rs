@@ -222,11 +222,13 @@ fn init_here_is_i_then_y() {
     );
 }
 
-/// J21's decline (Lands row "Init declined"): `i esc` and `i n` leave the
-/// empty state as it was, nothing written.
+/// J21's decline (Lands row "Init declined"): `i esc` leaves the empty
+/// state as it was, nothing written. m8/09e: `n` no longer declines — the
+/// box is a confirm box, `esc` its one exit (§2.3c) — so `i n esc` is the
+/// second case: `n` is swallowed, the box stays, `esc` closes it.
 #[test]
 fn init_declined_writes_nothing() {
-    for decline in [&b"\x1b"[..], b"n"] {
+    for decline in [&[&b"\x1b"[..]][..], &[b"n", b"\x1b"]] {
         let tree = Tree::new();
         let isolated = Isolated::new();
         let folder = tree.plain();
@@ -235,7 +237,9 @@ fn init_declined_writes_nothing() {
         on_the_empty_state(&pty);
         pty.send(b"i");
         pty.wait_for("the init confirm", |s| s.has("a Git repository?"));
-        pty.send(decline);
+        for key in decline {
+            pty.send(key);
+        }
         pty.wait_for("the confirm gone", |s| {
             !s.has("a Git repository?") && s.has("i init")
         });

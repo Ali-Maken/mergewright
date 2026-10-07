@@ -693,6 +693,17 @@ fn overlay_context(state: &AppState) -> Option<HintContext> {
     if state.graph_has_focus() {
         return Some(overlay);
     }
+    // The changes pane answers its own keys ahead of the overlay (`space`,
+    // `d`, `⌃A`, `e`, `⇥`): its own bar, less what the overlay swallows
+    // (m8/09e, 11b row 553). A commit's files or diff keep the short bar.
+    if state.on_changes_pane() {
+        return Some(HintContext::ChangesPane {
+            unmerged: cursor_file_unmerged(state),
+            live: live_c(state),
+            tab: tab_word(state),
+            over_overlay: true,
+        });
+    }
     Some(HintContext::PaneOverOverlay {
         opens: crate::update::detail::enter_opens(&state.detail),
     })
@@ -855,6 +866,7 @@ fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
             unmerged: cursor_file_unmerged(state),
             live: live_c(state),
             tab: tab_word(state),
+            over_overlay: false,
         };
     }
     if state.on_working_tree {

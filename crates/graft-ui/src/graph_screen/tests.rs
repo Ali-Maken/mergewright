@@ -1163,6 +1163,7 @@ fn the_changes_pane_hints_replace_the_row_context() {
         unmerged: false,
         live: None,
         tab: TabWord::Graph,
+        over_overlay: false,
     };
     view.divider_shown = true;
     let footer = text(&draw(&view, 200, 8))
@@ -1178,6 +1179,7 @@ fn the_changes_pane_hints_replace_the_row_context() {
         unmerged: true,
         live: None,
         tab: TabWord::Graph,
+        over_overlay: false,
     };
     view.divider_shown = false;
     let unmerged_footer = text(&draw(&view, 200, 8))
@@ -1462,11 +1464,13 @@ fn every_hint_context() -> Vec<HintContext> {
             unmerged: false,
             live: None,
             tab: TabWord::Graph,
+            over_overlay: false,
         },
         HintContext::ChangesPane {
             unmerged: true,
             live: None,
             tab: TabWord::Graph,
+            over_overlay: false,
         },
         HintContext::Journal,
         HintContext::Stash,
@@ -2021,6 +2025,7 @@ fn capture_the_ladder_for_docs_shots() {
                 unmerged: false,
                 live: None,
                 tab: TabWord::Graph,
+                over_overlay: false,
             },
             Divider::Shown,
         ),
@@ -2302,7 +2307,7 @@ fn row_at_is_none_off_the_body() {
 /// boolean field combination (54 → 63 in m6-conflicts/50: the confirm box
 /// once per `ConfirmYes`; 111 → 112 in m8-polish-and-ship/13: `Quit`, whose
 /// place after `Redo` (63) was already the changes pane's).
-const COVERAGE_SLOTS: usize = 112;
+const COVERAGE_SLOTS: usize = 116;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2465,6 +2470,21 @@ fn pane_focused_slot(context: &HintContext) -> usize {
 /// [`coverage_slot`] for the changes pane (m6-conflicts/70 split it out).
 fn changes_pane_slot(context: &HintContext) -> usize {
     match context {
+        // m8/09e (11b row 553): over the Map, journal or stash list, `live`
+        // is not read (no `c` in any form) — `⇥ graph` 112–113, `⇥ diff`
+        // 114–115, each over `unmerged`.
+        HintContext::ChangesPane {
+            unmerged,
+            tab: TabWord::Graph | TabWord::Banner,
+            over_overlay: true,
+            ..
+        } => 112 + usize::from(*unmerged),
+        HintContext::ChangesPane {
+            unmerged,
+            tab: TabWord::Diff,
+            over_overlay: true,
+            ..
+        } => 114 + usize::from(*unmerged),
         // Nothing live: `⇥ graph` from the diff keeps 9–10; `⇥ diff` from
         // the file list is 63–64 (m6-conflicts/70). `⇥ banner` with nothing
         // live is not a screen, and shares 9–10.
@@ -2472,11 +2492,13 @@ fn changes_pane_slot(context: &HintContext) -> usize {
             unmerged,
             live: None,
             tab: TabWord::Graph | TabWord::Banner,
+            over_overlay: false,
         } => 9 + usize::from(*unmerged),
         HintContext::ChangesPane {
             unmerged,
             live: None,
             tab: TabWord::Diff,
+            over_overlay: false,
         } => 63 + usize::from(*unmerged),
         // m6-conflicts/52: each `c` an operation can make, over each
         // `unmerged`: from the file list, `⇥ diff` (43–48); from the diff
@@ -2488,26 +2510,31 @@ fn changes_pane_slot(context: &HintContext) -> usize {
             unmerged,
             live: Some(super::LiveC::ContinueAmends),
             tab: TabWord::Diff,
+            over_overlay: false,
         } => 92 + usize::from(*unmerged),
         HintContext::ChangesPane {
             unmerged,
             live: Some(super::LiveC::ContinueAmends),
             tab: TabWord::Banner,
+            over_overlay: false,
         } => 94 + usize::from(*unmerged),
         HintContext::ChangesPane {
             unmerged,
             live: Some(c),
             tab: TabWord::Diff,
+            over_overlay: false,
         } => 43 + 2 * live_c_slot(*c) + usize::from(*unmerged),
         HintContext::ChangesPane {
             unmerged,
             live: Some(c),
             tab: TabWord::Banner,
+            over_overlay: false,
         } => 65 + 2 * live_c_slot(*c) + usize::from(*unmerged),
         HintContext::ChangesPane {
             unmerged,
             live: Some(_),
             tab: TabWord::Graph,
+            over_overlay: false,
         } => 71 + usize::from(*unmerged),
         _ => unreachable!("only called on a `ChangesPane`"),
     }

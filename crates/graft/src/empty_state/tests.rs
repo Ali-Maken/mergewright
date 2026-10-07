@@ -118,13 +118,13 @@ fn i_then_y_inits_the_folder() {
 }
 
 #[test]
-fn i_then_esc_or_n_declines_and_writes_nothing() {
-    for decline in [key(KeyCode::Escape), ch('n')] {
-        let mut s = state();
-        outside_key(&mut s, ch('i'));
-        assert_eq!(outside_key(&mut s, decline), OutsideStep::Stay);
-        assert_eq!(s.prompt, None, "{decline:?} closes the confirm");
-    }
+fn i_then_esc_declines_and_writes_nothing() {
+    // m8/09e: `n` no longer declines — the box answers `y`/`esc` only
+    // (`the_init_box_answers_the_same_keys_in_confirm`).
+    let mut s = state();
+    outside_key(&mut s, ch('i'));
+    assert_eq!(outside_key(&mut s, key(KeyCode::Escape)), OutsideStep::Stay);
+    assert_eq!(s.prompt, None, "`esc` closes the confirm");
 }
 
 #[test]
@@ -394,8 +394,8 @@ fn the_init_box_confirms_on_his_confirm_key() {
 }
 
 /// 09d D6's stop condition: under the shipped keymap every key the init
-/// box's arm answers (`y` inits; `n`, `esc` close it; every other key —
-/// `←`/`→`, `⇥`, `⏎`, letters — is swallowed and the box stays; `⌃C`
+/// box's arm answers (`y` inits; `esc` closes it; every other key —
+/// `n`, `←`/`→`, `⇥`, `⏎`, letters — is swallowed and the box stays; `⌃C`
 /// quits) gives the same step and the same box state through the edge
 /// (now translating in `Confirm`) as handed to the arm untranslated.
 #[test]
@@ -438,6 +438,22 @@ fn the_init_box_answers_the_same_keys_in_confirm() {
         assert_eq!(through_edge, to_the_arm, "{pressed:?}");
         assert_eq!(boxed, raw, "{pressed:?}");
     }
+
+    // m8/09e: the box answers `y` and `esc` only (§2.3c :296). `n` was a
+    // raw decline no keymap row named; it is swallowed now, the box stays.
+    let answer = |pressed: KeyPress| {
+        let mut boxed = state();
+        boxed.prompt = Some(Prompt::ConfirmInit);
+        let step = outside_edge(&mut boxed, Keymap::shipped(), pressed);
+        (step, boxed.prompt)
+    };
+    assert_eq!(
+        answer(ch('n')),
+        (OutsideStep::Stay, Some(Prompt::ConfirmInit)),
+        "`n` leaves the box up"
+    );
+    assert!(matches!(answer(ch('y')).0, OutsideStep::Init(_)));
+    assert_eq!(answer(key(KeyCode::Escape)), (OutsideStep::Stay, None));
 }
 
 /// The typed-text case of 09b outside: with `graph.merge = "x"`, `x` typed

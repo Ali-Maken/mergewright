@@ -595,9 +595,10 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
         | HintContext::Rewritable(_)
-        | HintContext::ChangesPane { .. } => {
-            (with_actions(drawable(context, divider)), Some(DOORWAY))
-        }
+        | HintContext::ChangesPane { .. } => (
+            actions_unless_over_overlay(context, drawable(context, divider)),
+            Some(DOORWAY),
+        ),
         // The row's own bar with its `c` said the way it acts now, and —
         // while one `⇥` reaches the banner — the way back leading, so the
         // ladder's floor always holds it. Then the row's own `⇥` goes: one
@@ -639,6 +640,19 @@ fn off_the_graph(
 fn with_actions(mut list: Vec<Hint>) -> Vec<Hint> {
     list.push(ACTIONS);
     list
+}
+
+/// [`with_actions`], except for the changes pane over an overlay (m8/09e,
+/// 11b row 553): there `.` is the graph's menu key, reached through the
+/// graph, which the overlay swallows (`graft::update::keys::graph_key`) —
+/// no `. actions`. `?` answers first (`open_key`), so the doorway stays.
+fn actions_unless_over_overlay(context: &HintContext, list: Vec<Hint>) -> Vec<Hint> {
+    match context {
+        HintContext::ChangesPane {
+            over_overlay: true, ..
+        } => list,
+        _ => with_actions(list),
+    }
 }
 
 /// `inner`'s whole bar with `lead` in front: the way back to a place.

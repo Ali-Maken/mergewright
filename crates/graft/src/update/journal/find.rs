@@ -161,7 +161,8 @@ pub(crate) fn find_key(state: &mut AppState, key: KeyPress) -> bool {
     }
     // J's keys come first only while the keyboard is on it (graph focus,
     // `update::keys::pane_and_overlay_key`); with the changes pane focused
-    // over it, `/` stays the search that pane's bar offers.
+    // over it, `/` does nothing: the graph's search stands down under an
+    // overlay (`update::search::graph_is_shown`, m8/09e).
     if !plain
         || state.modal_owns_keys()
         || state.detail.focus != graft_ui::detail::DetailFocus::Graph

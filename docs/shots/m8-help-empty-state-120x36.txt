@@ -6,7 +6,6 @@
   RECENT    │ i     Init                                                                 empty_state.init  │
   ▸ payments│ c     Clone…                                                              empty_state.clone  │
     web-dash│ t     Practice tour                                                        empty_state.tour  │
-            │ n     No — don't init                                                    empty_state.cancel  │
             │ EVERYWHERE                                                                                   │
             │ ⌃P    Command palette                                                           app.palette  │
             │ ?     Help for this place                                                          app.help  │
@@ -25,11 +24,12 @@
             │ PgDn  Page down                                                               app.page_down  │
             │ PgUp  Page up                                                                   app.page_up  │
             │ /     Find in the focused list                                                     app.find  │
+            │ n     Next match                                                             app.next_match  │
             │ N     Previous match                                                         app.prev_match  │
             │ ⏎     Open / drill in                                                              app.open  │
             │ .     Context actions                                                              app.menu  │
-            │ —     Next match                                                             app.next_match  │
             ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
