@@ -572,3 +572,84 @@ fn a_deflate_error_falls_back_in_the_app() {
         "raw from then on: {after:?}"
     );
 }
+
+/// m8 17c, ADR-0060: the pixel-tier state the preview fixture builds —
+/// 120 commits, scrolled two screens in, one ghost three rows down — with
+/// the preview closed, and with it open and its plan landed.
+fn preview_at_pixel() -> (Session, AppState, AppState) {
+    let (session, _) = at_pixel_tier();
+    let (mut open, _, _) = crate::view::tests::scrolled_preview(120, |height| 2 * height, 3);
+    open.settled_tier = Some(RenderingTier::Pixel);
+    if let Some(history) = open.history.as_mut() {
+        history.strip_rows = Some(STRIP_ROWS);
+    }
+    let closed = AppState {
+        preview: None,
+        ..open.clone()
+    };
+    (session, closed, open)
+}
+
+/// Draws each state in turn on one terminal through the loop's `draw`;
+/// one string per frame.
+fn draw_each(session: &Session, states: &[&AppState]) -> Vec<String> {
+    let first = states.first().expect("at least one state");
+    let (mut terminal, recorder) = terminal(first.size.columns, first.size.rows);
+    let mut graphics = Graphics::new(NoReplies, &session.capabilities);
+    for state in states {
+        draw(&mut terminal, session, state, &mut graphics).expect("memory");
+    }
+    let end = String::from_utf8_lossy(END_SYNCHRONIZED_UPDATE).into_owned();
+    let mut frames: Vec<String> = recorder.written().split(&end).map(str::to_owned).collect();
+    frames.pop();
+    assert_eq!(frames.len(), states.len(), "one frame per draw");
+    frames
+}
+
+#[test]
+fn a_preview_at_pixel_draws_the_unicode_graph_and_places_no_strip() {
+    let (session, closed, open) = preview_at_pixel();
+    let frames = draw_each(&session, &[&closed, &open]);
+
+    assert!(
+        !placed(&frames[0]).is_empty(),
+        "premise: closed, the pixel graph places its strips"
+    );
+    assert_eq!(
+        placed(&frames[1]),
+        Vec::<u32>::new(),
+        "no strip placed while the preview holds the column"
+    );
+    assert_eq!(
+        transmits(&frames[1]),
+        Vec::new(),
+        "no strip rastered for the preview"
+    );
+    // The fixture's one ghost hangs off its anchor with no straight run, so
+    // its mark is the ghost node `○` (`graft_ui` `ghost_node_glyph`); `┊`
+    // only draws on a ghost edge that runs through a row.
+    assert!(
+        frames[1].contains('○'),
+        "the text layer draws the ghost's node"
+    );
+    assert!(
+        frames[1].contains('●'),
+        "and the real rows' nodes, in text, as one picture"
+    );
+}
+
+#[test]
+fn closing_the_preview_replaces_the_strips() {
+    let (session, closed, open) = preview_at_pixel();
+    let frames = draw_each(&session, &[&closed, &open, &closed]);
+
+    let before: std::collections::BTreeSet<u32> = placed(&frames[0]).into_iter().collect();
+    let after: std::collections::BTreeSet<u32> = placed(&frames[2]).into_iter().collect();
+    assert!(!after.is_empty(), "closed again, the strips are placed");
+    assert_eq!(before, after, "the same strips, by id, from the cache");
+    let strips: Vec<Transmit> = transmits(&frames[2])
+        .into_iter()
+        .filter(|t| !t.is_emphasis())
+        .collect();
+    assert_eq!(strips, Vec::new(), "zero new rasters on close");
+}

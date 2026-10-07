@@ -150,6 +150,9 @@ impl<R: GraphicsReplies> Graphics<R> {
         out: &mut Vec<u8>,
     ) {
         let Some(graph) = graph.filter(|area| !area.is_empty()) else {
+            // The tier in force, not the column's (`view::graph_tier`): an
+            // open preview drawing the column in text only hides the strips,
+            // so closing it places them again from the cache (ADR-0060 3).
             if crate::view::tier_in_force(session, state) == RenderingTier::Pixel {
                 self.images.hide(out);
             } else {

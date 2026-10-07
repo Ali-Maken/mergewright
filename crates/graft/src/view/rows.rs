@@ -170,6 +170,17 @@ fn modal_blanked<'a, T>(
     }
 }
 
+/// The preview whose picture — ghost rows and all — the graph draws this
+/// frame instead of the live window: one is open and its plan has landed.
+/// Asked by [`rows_for_frame`] for the rows and by `view::graph_tier` for
+/// the tier (ADR-0060), so the two cannot disagree on when it is drawn.
+pub(super) fn preview_drawn(state: &AppState) -> Option<&crate::update::preview::PreviewState> {
+    state
+        .preview
+        .as_ref()
+        .filter(|preview| !preview.rows.is_empty())
+}
+
 /// The rows this frame draws, and which of them reveals its refs on hover.
 ///
 /// A preview is modal: while one is open the graph draws its slice instead
@@ -184,11 +195,7 @@ fn rows_for_frame<'a>(
     live: Vec<GraphEntry<'a>>,
     now_seconds: i64,
 ) -> (Vec<GraphEntry<'a>>, Option<usize>) {
-    if let Some(preview) = state
-        .preview
-        .as_ref()
-        .filter(|preview| !preview.rows.is_empty())
-    {
+    if let Some(preview) = preview_drawn(state) {
         return (
             super::preview::preview_entries(state, preview, now_seconds),
             None,
