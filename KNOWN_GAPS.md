@@ -1174,6 +1174,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/12-seek-under-overlay-focus | Q1: a seek from under Journal/Stash/Map sets `detail.focus = Graph` (`update/palette.rs:1258–1261`) without closing the overlay (`edge.rs:84–86`); does he see the graph focused, as :175 says? Needs a capture | **unverified** | M8 |
 | M8/12b-files-row-esc-from-place | Q3: a FILES row from inside a place leaves its trail (`place/history/open.rs`, `trail::leave(…, false)`), so `Esc` lands on the graph. Ruling: compare `F` from the same place — same landing → intended (consistency), close with that test's line; `F` stacks → FILES must too (defect) | **unverified** | M8 |
 | M8/adr-0007-unguarded | ADR-0007 (graft-core exports no free fns) held only by review; broken once by a planner spec (11 :35). An independent check (fast test on graft-core exports) would hold it → 21 | **unverified** | M8 |
+| M8/map-help-s-j | Map help lists `S` and `J` under HERE; not checked that they act at the Map (22c question) | **unverified** | M8 |
+| M8/22c-captures-unjudged | `docs/shots/m8/help-at-map-120x36.txt`, `search-hint-120x36.txt`: by-eye unjudged, colour unverified | **unverified** | M8 |
 | M8/resolve-refusal-space-dead | Resolve refusal says `space marks resolved`, but both callers leave him on the Banner where `space` does nothing (pinned by `keymap_words::stops::the_resolve_keys_name_rows_that_act_where_the_refusal_is_shown`). Question: move focus to CONFLICTS rows, or drop the clause | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | RESOLVE_KEYS shown on screen via pressed.rs:156; the literal-key grep misses consts | **unverified** | M8 |
@@ -1181,7 +1183,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/09g-third-class | 10 ONE_CHORD_IDLE rows act on keys but the test setup gives nothing to change — neither class of R1; builder stopped, proposed a third class → planner | **unverified** | M8 |
 | M8/resolver-ctrl-z-swallowed | With suspend_on_ctrl_z, ⌃Z in the resolver is swallowed, not suspended. Observed by 09h probe: a suspend's return marks `conflicted.rs` edited (update/mod.rs:441) — fix there, then remove the swallow | **broken** | M8 |
 | M8/diff-home-end-moves-graph | Diff pane Home/End move the graph (found by 09g, not fixed) | **broken** | M8 |
-| M8/10h-search-captures-stale | Search `Esc`→`esc` leaves 3 hand-made pty captures stale (26-search-far, 26-search-typing, m2-18-git-git-search…); no script regenerates them | **broken** | M8 |
 | M8/10h-red-by-compile-only | 10h's new tests were seen red only as compile failures; an assertion failure seen once (dismiss). Ticks may not fail on the defect | **unverified** | M8 |
 | M8/12-palette-perf | Palette loop p95 61 ms (release, docs/perf/m8-palette.txt) — over budget. Measured cause: graph draw 33 ms p50 on the 16k-badge fixture; palette update p95 5 ms; branch read ~2 s on 50k refs (picker shares) → planner ruling Also: update rebuilds `rows`/`flat` in `edit`, `landed`, `first_runnable` + per frame, ~⅓ of p95 update (review Minor 6) | **broken** | M8 |
 | M8/12-launch-cursor-not-head | Launch leaves the cursor on the newest row, not HEAD; 12's walks switch fixture around it — question | **unverified** | M8 |
@@ -1196,11 +1197,9 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/two-tier-sources | AppState::tier() (settled_tier) and view::tier_in_force (session.rendering.tier) can disagree — question (17b/17c scout) | **unverified** | M8 |
 | M8/http-remote-port-flaky | graft-fixtures `http_remote_frees_its_port_on_drop` failed once in 17b's loaded run, passed alone | **broken** | M8 |
 | M8/10i-diverged-both-unbound | If merge and rebase are both unbound, the diverged mark drops at once — question (10i) | **unverified** | M8 |
-| M8/10i-literals-not-found | `c commit  S stash`, `p pull first` not found in 10i's files — still to locate | **unverified** | M8 |
 | M8/switch-refs-for-each-ref | Branch switch on 50k refs: git for-each-ref ≈930 ms of 988 ms (12c measured) | **unverified** | M8 |
 | M8/12b-empty-history-before-status | Opening a file's history before status loads shows an empty history (staged-Added check needs status; spec's open.rs:128 fires only with no HEAD) | **broken** | M8 |
 | M8/12b-tests-never-red | 12b: files ranking, tracked_failure_words and 3 pty walks written after code, never seen red | **unverified** | M8 |
-| M8/09h-captures | 09h captures box open (waited on 12; 12 now merged) — re-shoot pending | **unverified** | M8 |
 | M8/13d-open-points | 13d NOTES: `stopped_on_conflict` (graft-ops apply.rs:761) not switched (its live_entry would hold a Pending entry Q4 forbids); relaunch banner reads `c finish  a abort` vs design note `c continue · a abort`; 80x24 capture drops 'from a previous run'; forced undo jump always prints the `None` line; 13b merge-half box left unticked though 13c/13d cover it (review to confirm). | **unverified** | M8 |
 | M8/13cd-review-minors | 9 Minors + 2 Questions (Minors 2/4/7/8 and 13d points fixed in 13e/13f; 1/3/9 and Q1 stay here) in `docs/reviews/m8-13cd-stop.md`. | **broken** (per finding) | M8 |
 | M8/stop-files-over-400 | graft pool.rs 451, graft-git exec.rs 529, graft-ops apply.rs 777, resume.rs 543 (review 13cd M3) — splits in 13e/13f. | **broken** | M8 |
