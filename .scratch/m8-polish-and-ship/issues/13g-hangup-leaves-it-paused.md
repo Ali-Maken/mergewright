@@ -199,3 +199,49 @@ unchanged). Test-only `unsafe` in `hangup.rs::session_leader` under a scoped `#[
 - Real-world double `SIGHUP` (kernel to the foreground group + the shell forwarding `SIGHUP` to its jobs) may count as
   "the signal again" and stop the write at once instead of waiting. Not observed here (one kernel `SIGHUP` in the test
   setup, where Graft is the session leader); a question for the walk, not verified.
+
+## NOTES (debugger, 2026-10-07): `a_hangup_mid_write_never_exits_101` flaky under load
+
+**Cause (test, ordering assumption; mechanism observed).** The test closed the master, waited a fixed 2 s, then sent
+"the signal again" (old `hangup.rs:432-440`). The product counts "again" from the exit's waiting line:
+`exit_wait.rs:89-95` takes the baseline in `Pool::stop_to`, as `max(seen now, 1)` (`signals.rs:99`). A `SIGHUP` counted
+before `stop_to` runs goes into the baseline, so it is never heard. Graft then waits `EXIT_WRITE_WAIT` (60 s), and the
+test's `FORCED_WAIT + 5 s` bound fails with "the second hang-up ends it". With stderr on the dead pty, the test cannot
+see the line, so it has no moment at which a second signal is sure to count.
+- Instrumented (`[DEBUG-13gx]`, all removed). Unloaded order: kernel `SIGHUP` seen=1 → loop ends on `InputFailed`
+  (EOF) → `stop_to` baseline=1 → test `SIGHUP` seen=2 → stop. From hang-up to the waiting line: 22–49 ms, 10 runs, load
+  average 37.
+- Red, by forcing the order: a 2.5 s sleep injected before the baseline (temporary, env-gated). Order: seen=1, seen=2,
+  then baseline=2. The unchanged test failed **3 of 3** at `hangup.rs:440`, in 16.3–18.6 s. The flake on main took
+  20.7 s, which fits a slower setup under load.
+- **Not reproduced naturally.** 10 loop runs with a 6-thread load beside them, plus 2 full loaded workspace runs: all
+  green. Under load the 50 ms window never reached 2 s here.
+- **Not excluded:** a `PATIENCE`/`HOOK_STARTS` (20 s) setup timeout also fits 20.7 s. The failure output was not kept,
+  so the two can't be told apart. A longer timeout would be a symptom fix, so none was added.
+
+**Product: not changed. This is a question, not a defect.** Counting from the line is documented
+(`exit_wait.rs:89-90`), and the window is what stops a shell-forwarded duplicate `SIGHUP` from counting as "again".
+Counting from the loop's end instead would make a real window-close stop the write at once. That is a design call.
+
+**Fix (cause, test-side).** `a_hangup_mid_write_never_exits_101`:
+- Its hook now waits for `.git/release` and then exits 0.
+- After the 2 s check (no exit, git alive), the test creates the file. The merge lands, and the test asserts: Graft
+  exits within `EXIT_WRITE_WAIT`, ≠ 101, dies of `SIGHUP`, no crash report, git and the hook gone.
+- No signal-ordering race is left.
+- Still red on 13d's bug: with the old `drop(terminal)` put back temporarily, it fails at 48 ms with status 25856
+  (exit 101).
+- Green 3 of 3 with the 2.5 s injection, and 1 of 1 without it.
+
+The second signal stays covered by `a_hangup_then_a_second_hangup_leaves_the_merge_paused`, which waits for the line
+first: green 3 of 3 under the injection.
+
+Coverage moved: the stuck hook, force-stopped with stderr dead, is now
+`a_hangup_with_a_stuck_hook_is_stopped_after_the_wait_and_left_paused` (heavy), switched from `Stderr::File` to
+`Stderr::Pty`. It never read the file. Run alone once: 60.08 s from hang-up to exit, PASS. The cost: the fast tier no
+longer force-stops a write with stderr dead. Only the heavy tier does.
+
+**Touches.**
+- `hangup.rs` only. No product code changed (`git diff --stat`).
+- `FORCED_WAIT` and `hang_up_again` are still used by the paused test.
+- No capture changes.
+- Gates: see the commit.
