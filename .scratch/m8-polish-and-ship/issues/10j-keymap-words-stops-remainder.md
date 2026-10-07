@@ -1,6 +1,6 @@
 # G-keymap 2j — stops remainder: the mergetool fallback's `e`/`a` by place, the seven inline words tested remapped, 10f's MAP box held
 
-Status: draft (planner spec-only pass 2026-10-07, from 10f's NOTES: W2 stop ×2, inline words unverified, MAP box untested)
+Status: ready
 Amended: planner spec-only pass 2026-10-07, from 10g's NOTES (merged partial, 3693ddd6): rulings 4–6 added — 10g's two
 left `KNOWN` rows (`open_failed`, `finish_refused_notice`) and 10g's re-opened MAP box. Nothing above is changed.
 Build with: **Sonnet** — all three rulings below are decided and each is held by a test or a stated command. Mechanical
