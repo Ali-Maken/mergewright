@@ -65,6 +65,7 @@ mod name_and_drag;
 mod not_a_repo;
 mod offer_and_blame;
 mod outside_repo;
+mod palette_find;
 mod palette_in_progress;
 mod pane_bar_space;
 mod piped_stdout;

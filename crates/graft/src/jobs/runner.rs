@@ -1203,6 +1203,35 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
+    /// Reads every branch for the palette's BRANCHES (m8-polish-and-ship/12),
+    /// under an id `update` already chose.
+    fn read_palette_branches(&self, id: JobId) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::ReadPaletteBranches), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::PaletteBranches(super::palette::read_branches(
+                    &repos, cancel,
+                )))
+            })
+        });
+    }
+
+    /// Matches the palette's query against branch and tag names, under an
+    /// id `update` already chose; cancelled by the next keystroke.
+    fn palette_names(&self, id: JobId, request: super::palette::NamesRequest) {
+        self.queue_as(id, Some(Task::PaletteNames), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                match super::palette::match_names(&request, &|| cancel.is_cancelled()) {
+                    Some(hits) => Outcome::Produced(Product::PaletteNames(Arc::new(hits))),
+                    None => Outcome::Cancelled,
+                }
+            })
+        });
+    }
+
     /// Reads the index now for a stash clash's tie, under an id `update`
     /// already chose (ADR-0045 §2, amended 2026-09-25).
     fn read_index_state(&self, id: JobId) {
@@ -1360,6 +1389,8 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::RevertTo(id, to, force, keys) => self.run_revert_to(id, to, force, keys),
             Command::ReadStashes(id) => self.read_stashes(id),
             Command::ReadSwitchList(id) => self.read_switch_list(id),
+            Command::ReadPaletteBranches(id) => self.read_palette_branches(id),
+            Command::PaletteNames(id, request) => self.palette_names(id, request),
             Command::ReadIndexState { id } => self.read_index_state(id),
             Command::OpenConflict(id, path) => self.open_conflict(id, path),
             Command::TakeSide(id, request) => self.take_side(id, request),

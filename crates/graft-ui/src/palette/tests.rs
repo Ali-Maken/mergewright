@@ -58,7 +58,90 @@ fn help(wide: bool) -> PaletteView {
         ],
         cursor: 0,
         wide,
+        placeholder: None,
     }
+}
+
+/// The box drawn into a buffer, for a cell's style.
+fn buffer(view: &PaletteView) -> Buffer {
+    let frame = Rect::new(0, 0, 120, 36);
+    let mut buf = Buffer::empty(frame);
+    Palette {
+        view,
+        theme: &theme(),
+    }
+    .render(palette_area(Rect::new(0, 1, 120, 34), frame), &mut buf);
+    buf
+}
+
+/// Where `needle` starts in `buf`, and that cell's foreground.
+fn style_of(buf: &Buffer, needle: &str) -> ratatui::style::Color {
+    let area = buf.area;
+    for y in 0..area.height {
+        let line: String = (0..area.width)
+            .map(|x| buf[(x, y)].symbol().to_owned())
+            .collect();
+        if let Some(at) = line.find(needle) {
+            let column = line[..at].chars().count();
+            return buf[(u16::try_from(column).expect("a column"), y)].fg;
+        }
+    }
+    panic!("`{needle}` not drawn");
+}
+
+fn muted() -> ratatui::style::Color {
+    foreground(&theme(), Token::TextMuted)
+        .fg
+        .expect("a muted colour")
+}
+
+/// P-find-1: the empty `⌃P` field says what it finds, muted; typed, the
+/// words are gone.
+#[test]
+fn the_empty_field_draws_its_placeholder_muted() {
+    let words = "type to find actions, branches, tags, files, commits";
+    let view = PaletteView {
+        mode: PaletteMode::Everything,
+        placeholder: Some(words),
+        ..help(true)
+    };
+    let buf = buffer(&view);
+    assert_eq!(style_of(&buf, words), muted());
+    let (_, lines) = drawn(&view, 120, 36);
+    assert!(line_with(&lines, words).contains("› "), "on the query row");
+    let typed = PaletteView {
+        query: sanitize_line("f"),
+        query_cursor: 1,
+        ..view
+    };
+    let (_, lines) = drawn(&typed, 120, 36);
+    assert!(!lines.join("\n").contains(words), "gone once typed");
+}
+
+/// `+N more`, `reading…`, `searching…`: muted, no key; a branch row is
+/// drawn as text, its label in the label column.
+#[test]
+fn more_rows_draw_muted_and_find_rows_as_text() {
+    let row = |label: &str, kind| PaletteRow {
+        label: sanitize_line(label),
+        key: None,
+        config: None,
+        kind,
+    };
+    let view = PaletteView {
+        mode: PaletteMode::Everything,
+        groups: vec![group(
+            "BRANCHES",
+            vec![
+                row("feature", RowKind::Branch),
+                row("+3 more", RowKind::More),
+            ],
+        )],
+        ..help(true)
+    };
+    let buf = buffer(&view);
+    assert_eq!(style_of(&buf, "+3 more"), muted());
+    assert_ne!(style_of(&buf, "feature"), muted());
 }
 
 /// The whole frame, `width`×`height`, with the box drawn over a pane that

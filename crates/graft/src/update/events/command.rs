@@ -227,6 +227,15 @@ pub enum Command {
     /// under an id `update` chose. Asked for when `C` opens the picker
     /// (m7-power-tools/10); cancelled when it closes first.
     ReadSwitchList(JobId),
+    /// Read every branch for the palette's BRANCHES
+    /// (`graft_git::switch_refs`), under an id `update` chose. Asked once
+    /// when `⌃P`/`:` opens the palette; cancelled when it closes first
+    /// (m8-polish-and-ship/12).
+    ReadPaletteBranches(JobId),
+    /// Match the palette's query against branch and tag names, under an id
+    /// `update` chose. Asked on every query edit, the previous one
+    /// cancelled (m8-polish-and-ship/12).
+    PaletteNames(JobId, crate::jobs::palette::NamesRequest),
     /// Read the index now as the journal's recorder does
     /// (`graft_ops::snapshot::index_state`), under an id `update` chose:
     /// a stash clash's tie (ADR-0045 §2, amended 2026-09-25). Asked only

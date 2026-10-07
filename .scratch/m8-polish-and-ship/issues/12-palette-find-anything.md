@@ -1,6 +1,6 @@
 # G-palette 2a — `⌃P` finds branches and tags; COMMANDS RUN RECENTLY; the find job
 
-Status: ready (re-spec 2026-10-07, spec-only pass; replaces the 2b spec — see "Why re-specced"; re-aligned the same
+Status: partial (17/18 ticked; the perf box is open, see NOTES) — was: ready (re-spec 2026-10-07, spec-only pass; replaces the 2b spec — see "Why re-specced"; re-aligned the same
 day to `docs/research/palette-find.md` — see "Aligned to prior art"; P-find-1 and P-find-2 **approved** 2026-10-07,
 field notes :92, ADR-0061)
 Build with: **Opus** — design-heavy: a per-keystroke job contract (cancel, stale drop, re-filter), cursor anchoring;
@@ -148,28 +148,28 @@ pub enum RowKind { Action, App, Branch, Tag, File, Commit, Recent, More } // + M
 then today's path. Open in `Everything` mode → `Command::ReadPaletteBranches`; `?` asks none; close cancels both jobs.
 
 ## Acceptance (each box names its test at tick time)
-- [ ] `⌃P` `feat` `⏎` on a branch row → cursor on its tip, HEAD unchanged (`enter_on_branch_row_seeks_tip_and_keeps_head`, reads HEAD with git).
-- [ ] Remote branch and tag rows seek their commit (`enter_on_remote_and_tag_rows_seek`).
-- [ ] Tip not laid out → `Command::ShowRows`, cursor lands when rows arrive (`branch_tip_not_laid_out_seeks_through_the_walk`).
-- [ ] `⌃P` asks one `ReadPaletteBranches`; `?` asks none; close cancels it (`palette_open_reads_branches_once`); BRANCHES `reading…` until it lands, then rows for the current query (`branches_group_reads_then_lists`); read failure reads in the group (`branch_read_failure_reads_in_branches_group`).
-- [ ] Branch order: score, local before remote, newer tip, name — same order as `filter_switch_rows` for local rows on one fixture (`branches_rank_local_then_newest_tip`, `palette_and_picker_order_branches_alike`).
-- [ ] Empty query (P-find-1, approved) → `COMMANDS RUN RECENTLY` (if any) then `ACTIONS`, no find rows, placeholder drawn (`empty_query_lists_recent_then_actions_only`, `empty_everything_field_names_what_it_finds`). No declined-branch test (ADR-0061).
-- [ ] `?` has neither find groups nor the recent group (`help_palette_has_no_find_groups`).
-- [ ] Recent group: header reads exactly `COMMANDS RUN RECENTLY` (`recent_group_header_is_commands_run_recently`); run stash from the palette, reopen → that group first, `⏎` opens the stash prompt (`recent_row_runs_its_key_path`); cap 8, newest first, rerun moves to front (`recent_runs_cap_and_order`).
-- [ ] Each query edit cancels the previous names job and asks one new one; close cancels it (`query_edit_cancels_the_previous_find_job`, `closing_the_palette_cancels_find_jobs`).
-- [ ] Answer for an older id dropped (`stale_names_answer_is_dropped`); every shown row matches the current query while an answer is pending (`shown_rows_always_match_the_current_query`).
-- [ ] `+N more` widens to 50, cursor on first new row; query edit resets (`more_row_widens_then_resets`).
-- [ ] Cursor stays on its row when an answer lands above it (`cursor_stays_on_its_row_when_an_answer_lands`); a cursor on `reading…` moves to the first runnable row that lands; `⏎` on a placeholder does nothing (`cursor_on_placeholder_moves_to_first_landed_row`).
-- [ ] `nothing matches · esc close` only after every asked source answered empty (`nothing_matches_waits_for_every_source`).
-- [ ] `match_names`: segment start first, local before remote, newer tip, totals right, stops when asked (`names_rank_and_total`, `names_stop_when_cancelled`).
-- [ ] **Journeys, from the fence.** Each walk is a pty test that contains its fence id as a string literal, reads the
+- [x] `⌃P` `feat` `⏎` on a branch row → cursor on its tip, HEAD unchanged (`enter_on_branch_row_seeks_tip_and_keeps_head`, reads HEAD with git).
+- [x] Remote branch and tag rows seek their commit (`enter_on_remote_and_tag_rows_seek`).
+- [x] Tip not laid out → `Command::ShowRows`, cursor lands when rows arrive (`branch_tip_not_laid_out_seeks_through_the_walk`).
+- [x] `⌃P` asks one `ReadPaletteBranches`; `?` asks none; close cancels it (`palette_open_reads_branches_once`); BRANCHES `reading…` until it lands, then rows for the current query (`branches_group_reads_then_lists`); read failure reads in the group (`branch_read_failure_reads_in_branches_group`).
+- [x] Branch order: score, local before remote, newer tip, name — same order as `filter_switch_rows` for local rows on one fixture (`branches_rank_local_then_newest_tip`, `palette_and_picker_order_branches_alike`).
+- [x] Empty query (P-find-1, approved) → `COMMANDS RUN RECENTLY` (if any) then `ACTIONS`, no find rows, placeholder drawn (`empty_query_lists_recent_then_actions_only`, `empty_everything_field_names_what_it_finds`). No declined-branch test (ADR-0061).
+- [x] `?` has neither find groups nor the recent group (`help_palette_has_no_find_groups`).
+- [x] Recent group: header reads exactly `COMMANDS RUN RECENTLY` (`recent_group_header_is_commands_run_recently`); run stash from the palette, reopen → that group first, `⏎` opens the stash prompt (`recent_row_runs_its_key_path`); cap 8, newest first, rerun moves to front (`recent_runs_cap_and_order`).
+- [x] Each query edit cancels the previous names job and asks one new one; close cancels it (`query_edit_cancels_the_previous_find_job`, `closing_the_palette_cancels_find_jobs`).
+- [x] Answer for an older id dropped (`stale_names_answer_is_dropped`); every shown row matches the current query while an answer is pending (`shown_rows_always_match_the_current_query`).
+- [x] `+N more` widens to 50, cursor on first new row; query edit resets (`more_row_widens_then_resets`).
+- [x] Cursor stays on its row when an answer lands above it (`cursor_stays_on_its_row_when_an_answer_lands`); a cursor on `reading…` moves to the first runnable row that lands; `⏎` on a placeholder does nothing (`cursor_on_placeholder_moves_to_first_landed_row`).
+- [x] `nothing matches · esc close` only after every asked source answered empty (`nothing_matches_waits_for_every_source`).
+- [x] `match_names`: segment start first, local before remote, newer tip, totals right, stops when asked (`names_rank_and_total`, `names_stop_when_cancelled`).
+- [x] **Journeys, from the fence.** Each walk is a pty test that contains its fence id as a string literal, reads the
       count with `m5_walk::parse_counts` from the note's `journey-counts` fence, replays the keys and fails if the key
       list is longer (so `accept-m8`'s `WALKS` can map it): `seek-branch` 3 (`⌃P` name `⏎`, cursor on the tip, HEAD
       unchanged: `walk_seek_branch`); `seek-tag` 3 (`walk_seek_tag`); `rerun-recent` 2 (`⌃P` `⏎` after one palette
       run: `walk_rerun_recent`). Start state: graph, cursor on HEAD.
-- [ ] Click on a branch row seeks, as `⏎` (`click_on_branch_row_seeks`; 11b's mouse path).
+- [x] Click on a branch row seeks, as `⏎` (`click_on_branch_row_seeks`; 11b's mouse path).
 - [ ] Perf: `scripts/perf-palette.sh` (release; 50k-ref fixture, built under the scratch dir if none exists) → `docs/perf/m8-palette.txt`: loop time per key p50/p95/max from the G-trace frame trace; `⌃P` → BRANCHES landed p50/p95; key → names answer p50/p95. p95 per key < 16 ms. Summary lines only in context; no fast-tier timing assert.
-- [ ] Capture `docs/shots/m8-palette-find-120x36.txt`: query `rebase`, groups ACTIONS, BRANCHES, COMMANDS RUN RECENTLY (§1.6); and `docs/shots/m8-palette-empty-120x36.txt`: empty box after one run (recent group, ACTIONS, placeholder). **Colour unverified.**
+- [x] Capture `docs/shots/m8-palette-find-120x36.txt`: query `rebase`, groups ACTIONS, BRANCHES, COMMANDS RUN RECENTLY (§1.6); and `docs/shots/m8-palette-empty-120x36.txt`: empty box after one run (recent group, ACTIONS, placeholder). **Colour unverified.**
 
 ## Touches (each checked in the report)
 `update/palette.rs` (`PaletteState`, `run`, `rows`, `edit`, `view`), `AppState` (new `palette_recent`), update events
@@ -185,3 +185,54 @@ seek is not an operation), the note's fence (counts read, not edited), MAP.md gr
 
 ## Size
 One context, ~65k tokens.
+
+## NOTES (builder, 2026-10-07)
+**Compacted once mid-ticket.** Nothing remains from before the compaction except the perf box below; every other box was
+built and its test run after it.
+
+**Scout:** used `.scratch/m8-polish-and-ship/scouts/12-find-anything.md`; written before 11/11b/09e–09g/10f–10j merged,
+so each line it cites was re-read in current `update/palette.rs`, `update/map.rs`, `graft-ui/src/palette.rs`. No new
+scout: the files were read directly.
+
+**Red first, per box.** Unit/edge tests (`update/tests/keymap_edge/palette_find.rs`, `graft-ui/src/palette/tests.rs`)
+were seen red as compile failures (the APIs did not exist) before the code. `match_names` tests
+(`jobs/palette/tests.rs`) were seen red against a stub returning `NameHits::default()`. The pty walks
+(`tests/it/palette_find.rs`) were written after the code (behaviour already green underneath); their first failures
+were test faults (below), not app faults. 11's tests in `keymap_edge/palette.rs` went red on this ticket's extra find
+commands and job ids; fixed by comparing with the find commands removed (`without_finds`) and against the same state
+with the palette closed (`under_the_palette`), not by loosening what the row runs.
+
+**Perf box — open.** `scripts/perf-palette.sh` (+ `scripts/perf-palette-pty.py`) runs and writes
+`docs/perf/m8-palette.txt`. 40 000 branches + 10 000 tags on 3 commits, release, pty 120x36, on battery:
+`loop_us p50=36249 p95=60739` → **`check loop_p95_under_16ms FAIL`**; `update_us p95=5368` (ok); `⌃P 4` → BRANCHES
+drawn p50 2083 ms / p95 2414 ms; key → names drawn p50 52 ms / p95 2416 ms (the first key of a query waits on the
+branch read). Cause of the loop FAIL, measured: `draw_us` is 33 ms p50 on the **same fixture with no palette** (held
+`j`, `scroll-lag-pty.py`, 18 frames: draw p50 33383 / p95 64777 µs) — every frame draws ~16 000 ref badges on one row.
+Pre-existing graph draw cost on a degenerate fixture, not the palette's (its `update_us` is 5 ms p95). Not fixed: out
+of scope (graph badge drawing). Second fact, not judged: `switch_refs` on 50k refs takes ~2 s, so BRANCHES reads
+`reading…` for ~2 s on such a repo; the `C` picker shares the read. Needs a ruling: a realistic 50k-ref fixture
+(refs spread over many commits) or a badge cap in the graph.
+
+**Deviations from the Signatures section (each a smaller shape, same behaviour):**
+- `NameHits { branches, tags }` are `Option<Ranked<RefHit>>`: `None` = that source was not in the request (still
+  `reading…`/`searching…`), so "answered empty" and "not asked" are told apart (`nothing_matches_waits_for_every_source`).
+- `FindGroup` has `Branches`, `Tags` only: `Files`/`Commits` were never constructed (clippy dead code); 12b adds them.
+- `jobs::palette` types are `pub` (they ride in `Product`/`Command`, which are `pub`).
+- A seek from a non-graph screen sets `detail.focus = Graph` and calls `map::seek_to`, as the picker's `⇥` does; it
+  does not close other overlays.
+- `enter_on_branch_row_seeks_tip_and_keeps_head` reads HEAD from `state.refs` (a unit test has no repository); the
+  git read of HEAD is in `walk_seek_branch` (`git rev-parse HEAD`, `git branch --show-current`).
+
+**Question (rule 7: no line, so a question, not a defect).** Launched by the binary on `FeatureBranches` (HEAD `main`,
+newest row `feature/three`), the graph's cursor stayed on the newest row, not HEAD, for 20 s
+(`tests/it/palette_find.rs` first run). `places::drive` lands on HEAD only "by an open" (MAP.md). The walks start on
+HEAD by switching the fixture to `feature/three` first (comment in `repo()`). Is "cursor on the newest row at launch"
+intended?
+
+**Test faults found and fixed in the walks:** the wait for the find row matched the graph's own cursor row through the
+box's query line (`▸ … › vqz9`), so `⏎` sometimes landed on `searching…` (which correctly runs nothing; flaky 2/5).
+Now matches `│▸` inside the box: 5/5 runs green.
+
+**Captures** (colour unverified, rule 5): `docs/shots/m8-palette-find-120x36.txt`, `docs/shots/m8-palette-empty-120x36.txt`
+(`capture_find_and_empty_palette`), and 11's `docs/shots/m8-palette-everything-120x36.txt` re-shot (the empty field now
+draws the placeholder). The placeholder starts one cell after the field cursor: `›  type to find…` (two spaces).

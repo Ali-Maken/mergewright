@@ -203,6 +203,12 @@ pub enum Task {
     ReadStashes,
     /// Read the branch picker's rows (m7-power-tools/10).
     ReadSwitchList,
+    /// Read every branch for the palette's BRANCHES, once per `⌃P` open
+    /// (m8-polish-and-ship/12).
+    ReadPaletteBranches,
+    /// Match the palette's query against branch and tag names
+    /// (m8-polish-and-ship/12).
+    PaletteNames,
     /// Read the index now for a stash clash's tie (ADR-0045 §2).
     ReadIndexState,
     /// Read the configured remotes and `HEAD`'s upstream (m4-remotes/05).
@@ -463,6 +469,12 @@ pub enum Product {
     /// read (`Command::ReadSwitchList`, m7-power-tools/10). `Arc`: the
     /// picker holds it across frames and filters it per key.
     SwitchList(Result<std::sync::Arc<graft_ops::switch_list::SwitchList>, String>),
+    /// Every branch with its tip's date, for the palette's BRANCHES, or why
+    /// they could not be read (`Command::ReadPaletteBranches`,
+    /// m8-polish-and-ship/12).
+    PaletteBranches(Result<std::sync::Arc<graft_git::switch_refs::SwitchRefs>, String>),
+    /// The names job's answer for one query (`Command::PaletteNames`).
+    PaletteNames(std::sync::Arc<crate::jobs::palette::NameHits>),
     /// The index now, for a stash clash's tie, or why it could not be read
     /// (`Command::ReadIndexState`).
     IndexState(Result<graft_core::journal::IndexState, String>),
