@@ -20,9 +20,9 @@ use std::sync::Arc;
 
 use graft_core::event::{KeyCode, KeyPress};
 use graft_core::job::JobId;
-use graft_core::matcher::fuzzy_score;
 use graft_core::oid::Oid;
 use graft_git::switch_refs::SwitchRefs;
+use graft_ops::matcher::fuzzy_score;
 use graft_term::{SanitizedText, sanitize_line};
 use graft_ui::keymap::{
     ActionId, Binding, ContextId, KeyChord, KeyLabel, Keymap, Translated, defaults,

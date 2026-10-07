@@ -335,7 +335,7 @@ pub(super) fn action_of(entry: &Entry) -> Option<ActionId> {
 }
 
 /// Decision 4. Empty query: every group with rows. Typed: each row scored
-/// by its label and search words (`graft_core::matcher`), groups in their
+/// by its label and search words (`graft_ops::matcher`), groups in their
 /// order, rows by score then table order, empty groups dropped. A query
 /// that is a chord bound in `at` puts that row first, its group first.
 pub(super) fn filter(

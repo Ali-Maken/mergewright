@@ -12,7 +12,7 @@
 
 use std::cmp::Reverse;
 
-use graft_core::matcher::fuzzy_score;
+use crate::matcher::fuzzy_score;
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 use graft_git::remote;
@@ -179,7 +179,7 @@ fn row(listing: RefListing, kind: SwitchKind, current: bool) -> SwitchRow {
 
 /// Pure: rank `list` for `query`; empty query = the drawn order.
 ///
-/// Case-insensitive over the short name, by `graft_core::matcher`: a match
+/// Case-insensitive over the short name, by `crate::matcher`: a match
 /// at the start or right after a non-alphanumeric character (`/`, `-`, …)
 /// ranks above any other substring match; a query with spaces matches when
 /// each word does; ties go to the newest tip. `previous` ranks like any row once something is typed.
@@ -198,7 +198,7 @@ pub fn filter_switch_rows<'a>(list: &'a SwitchList, query: &str) -> Vec<&'a Swit
 
 /// 0 when every word of the query matches at a segment start, more for
 /// each word that matches only inside; `None` when one does not match
-/// (`graft_core::matcher::fuzzy_score`, whose tiers this keeps — the offset
+/// (`crate::matcher::fuzzy_score`, whose tiers this keeps — the offset
 /// is not a switch rank: ties go to the newest tip).
 fn rank(row: &SwitchRow, query: &str) -> Option<u32> {
     let short = String::from_utf8_lossy(row.name.shorthand());

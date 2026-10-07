@@ -328,7 +328,7 @@ pub enum PaletteMode { Here(ContextId), Everything }
 pub struct PaletteRow { pub label: SanitizedText, pub key: Option<KeyLabel>, pub config: Option<ActionId>, pub kind: RowKind }
 pub struct PaletteView { pub mode: PaletteMode, pub query: FieldView, pub groups: Vec<(SanitizedText, Vec<PaletteRow>)>,
     pub cursor: usize, pub warnings: Vec<SanitizedText> }
-pub fn fuzzy_score(query: &str, text: &str) -> Option<u32>;        // one matcher (graft-core or where the scout says)
+pub fn fuzzy_score(query: &str, text: &str) -> Option<u32>;        // one matcher, graft-ops (12e; ADR-0007)
 
 // graft::update::palette + jobs::palette (G-palette find, 2026-10-07; full shapes in specs 12 and 12b)
 pub(crate) enum PaletteTarget { Action(ActionId), App(AppAction), Note, Seek(Oid), More(FindGroup), File(u32) } // Copy
