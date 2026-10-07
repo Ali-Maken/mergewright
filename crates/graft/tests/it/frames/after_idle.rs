@@ -160,11 +160,12 @@ fn g_after_gap(repo: &Path, no_idle_advance: bool) -> Result<Landing, String> {
     }
     let landing = landed(&wakes, initial, rows, laid_out)?;
 
-    match jobs.shutdown(Duration::from_secs(10)) {
-        Shutdown::Clean => {}
-        other @ Shutdown::Stalled { .. } => {
-            return Err(format!("the job pool did not stop cleanly: {other:?}"));
-        }
+    let shutdown = jobs.shutdown(Duration::from_secs(10), graft::jobs::EXIT_WRITE_WAIT, &());
+    if shutdown != Shutdown::CLEAN {
+        return Err(format!(
+            "the job pool did not stop cleanly: stalled {}, forced {:?}",
+            shutdown.stalled, shutdown.forced
+        ));
     }
     Ok(landing)
 }

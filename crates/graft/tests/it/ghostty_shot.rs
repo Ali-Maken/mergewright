@@ -121,8 +121,12 @@ fn shot() -> Result<Shot, String> {
     // The thread and window answers the hold asked for.
     let state = answered(&jobs, state, &events, QUIET)?;
     let built = composed(&state, from + HELD);
-    if let Shutdown::Stalled { .. } = jobs.shutdown(Duration::from_secs(10)) {
-        return Err("the job pool did not stop cleanly".to_owned());
+    let shutdown = jobs.shutdown(Duration::from_secs(10), graft::jobs::EXIT_WRITE_WAIT, &());
+    if shutdown != Shutdown::CLEAN {
+        return Err(format!(
+            "the job pool did not stop cleanly: stalled {}, forced {:?}",
+            shutdown.stalled, shutdown.forced
+        ));
     }
     built
 }

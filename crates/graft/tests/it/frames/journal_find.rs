@@ -286,8 +286,12 @@ fn measure(repo: &std::path::Path, control: Control) -> Result<Measured, String>
     drop(spinner);
     let after_enter = replayed(settled, &found.replay, Some(enter_at()));
     let title_after_enter = title(&after_enter)?;
-    if let other @ Shutdown::Stalled { .. } = jobs.shutdown(Duration::from_secs(10)) {
-        return Err(format!("the job pool did not stop cleanly: {other:?}"));
+    let shutdown = jobs.shutdown(Duration::from_secs(10), graft::jobs::EXIT_WRITE_WAIT, &());
+    if shutdown != Shutdown::CLEAN {
+        return Err(format!(
+            "the job pool did not stop cleanly: stalled {}, forced {:?}",
+            shutdown.stalled, shutdown.forced
+        ));
     }
 
     let mut latencies = opened.latencies;
