@@ -27,4 +27,4 @@
 
 
 
- j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back
+ j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back  ? keys

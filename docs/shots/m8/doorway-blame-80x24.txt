@@ -1,0 +1,32 @@
+# m8/doorway-blame-80x24.txt: 80x24, drawn by `view::view` from the AppState
+# `update::tests::states_for` builds for Blame { finding: false, ignore_file: false, lines: true }
+# (crates/graft/src/update/tests.rs, capture_the_keys_doorway_for_docs_shots).
+# Not a pty capture: a character grid, no colour (CLAUDE.md rule 5 — colour
+# unverified).
+#
+# Here a blame place with its lines read, 80 columns. Right: the bar reads `⏎ that commit  ^ before it  L history of these lines  ? keys  /  space  w  esc` — `? keys` after the words, leading the bare keys (ADR-0039, m8/11d R1).
+
+ BLAME · a.rs · as of a1a1a1a                                                   
+ ┌ LI  57y│  1  line 1                                                          
+ │        │  2  line 2                                                          
+ │        │  3  line 3                                                          
+ └        │  4  line 4                                                          
+ ─ MO  57y│  5  line 5                                                          
+ ┌ LI  57y│  6  line 6                                                          
+ │        │  7  line 7                                                          
+ │        │  8  line 8                                                          
+ │        │  9  line 9                                                          
+ │        │ 10  line 10                                                         
+ │        │ 11  line 11                                                         
+ │        │ 12  line 12                                                         
+ │        │ 13  line 13                                                         
+ │        │ 14  line 14                                                         
+ │        │ 15  line 15                                                         
+ │        │ 16  line 16                                                         
+ │        │ 17  line 17                                                         
+ │        │ 18  line 18                                                         
+ │        │ 19  line 19                                                         
+ │        │ 20  line 20                                                         
+ │        │ 21  line 21                                                         
+ ▸ LI  57y│ 22  retry 22    ◂ Lina · 57 years ago · Lina's change · a1a1a1a     
+ ⏎ that commit  ^ before it  L history of these lines  ? keys  /  space  w  esc 

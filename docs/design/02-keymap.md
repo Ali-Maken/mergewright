@@ -42,7 +42,10 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   budget and a `more` affordance; it ranks by relevance at the cursor.
   Outside modal contexts a hint is drawn with its words or not at all; what
   does not fit is behind the doorway (M8, ADR-0058; `?` lists every key of
-  the place, §2.12).
+  the place, §2.12). The doorway ends every bar's words but on the modal
+  ones ADR-0058 §4 names; where a place keeps bare keys it leads them
+  (ADR-0039). On a marked row it ranks right after `u undo` and `/ search`
+  and never displaces them.
   **Two classes never appear on it, and that is correct:**
   - **Navigation and meta globals** (§2.2): `g`/`G` top/bottom, `PgUp`/`PgDn`
     page, `Ctrl+R` refresh, `U` redo, `Esc` dismiss. They are live in every

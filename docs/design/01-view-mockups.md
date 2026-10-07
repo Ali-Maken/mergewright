@@ -48,7 +48,7 @@ judged against the real app in `.scratch/m8-polish-and-ship/real-vs-mockup.md`):
   (ASCII `=`).
 - **Rows ≥ 30:** blank row under the header, rule (`─`, border token) above the bar. Under 30 rows: neither.
 - **Bar:** hints joined by ` · `; outside modal contexts every hint keeps its words or is not drawn; the doorway
-  (`. more`, `? keys` once `?` is built) is always last. Problem, notice and stop lines take the bar's row as before
+  (`. more`, `? keys` once `?` is built) is always last among the words, and leads any bare keys a place still draws (ADR-0039). Problem, notice and stop lines take the bar's row as before
   (ADR-0037 §4). Modal contexts keep their own ladders (ADR-0044 §4).
 
 ### 1.1 Main graph view — wide (160+ columns, three-column layout)

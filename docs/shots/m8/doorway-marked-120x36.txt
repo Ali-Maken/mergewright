@@ -1,0 +1,45 @@
+# m8/doorway-marked-120x36.txt: 120x36, drawn by `view::view` from a real AppState
+# (crates/graft/tests/it/hint_bar.rs, capture_the_doorway_on_a_marked_row_for_docs_shots).
+# Not a pty capture: a character grid, no colour (CLAUDE.md rule 5 — colour unverified).
+#
+# Here the cursor is on an evil merge that is the current branch's tip, marked by the
+# radar, the pane shut. Right (m8/11d R2): `. explain` leads, `u undo` is drawn, and
+# `? keys` is not — it ranks right after `u undo` and `/ search` and is drawn, last,
+# only once both are (a plain marked row needs 129 cells of bar); `?` still answers.
+
+ ◆ api  ~/code/api · main                                                                                     4 commits
+
+▸ ◆─╮  ⚠ [◆ main] Merge branch 'alpha'                                                                  GF 1y   cc1103b
+  ● │    Advance main                                                                                   GF 1y   0631550
+  │ ●    [alpha] alpha: work                                                                            GF 1y   bd20b78
+  ◇─╯    Add the base                                                                                   GF 1y   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ . explain · ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal

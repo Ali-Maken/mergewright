@@ -80,4 +80,4 @@ Right: (b) one `Esc` — the history place again, the same commit selected.
                                         │    48       use super::*;
                                         │    49
                                         │    50       #[test]
- j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back
+ j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back  ? keys
