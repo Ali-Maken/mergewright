@@ -1154,8 +1154,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/keymap-file-sizes | Over-400 files left unsplit by 09f: hints.rs, lists.rs (held by 11c/15), stash_screen.rs, context_menu.rs, graft-ops/graft files held by 10f–10i (keymap review Major 1) | **broken** | M8 |
 | M8/help-lists-dead-keys | `?` lists keys that do nothing: pane over an overlay, Diff `M`, start-screen `n`; held by a test table, not fixed (09f) | **broken** | M8 |
 | M8/17-colour-unverified | 17's lane fade by hue (truecolor/256) and muted whitespace tail: colour unverified (rule 5) | **unverified** | M8 |
-| M8/17-fold-count-and-pixel-ghosts | 17 items 2 (folded merge `+N`: nothing counts a fold's commits, inclusion.rs:61,213) and 6 (Pixel ghost rows: strips.rs:196-202 never sees preview rows) unbuilt — to planner | **broken** | M8 |
-| M8/17-blame-title-always-whitespace | Blame ignores whitespace by default (blame.rs:77), so every blame title now ends `· whitespace ignored`; 8 m7 blame shots re-taken — question for planner whether that noise is wanted | **unverified** | M8 |
+| M8/17-fold-count-and-pixel-ghosts | 17 item 2 built by 17b (fold `+N`); item 6 (Pixel ghosts) → 17c, ADR-0060 | **broken** | M8 |
 | M8/10f-e-edits-literal | `e edits {path}  a abort` left literal (resume.rs:75, mod.rs:511): `e` reaches 3 rows, needs W2 ruling; 2 KNOWN rows stay in known_stops.rs | **broken** | M8 |
 | M8/10f-inline-sites-unpinned | 6 key words built inside other functions (c continues, u undoes, e edit M mergetool, ⇥ to write one, u puts the merge back, diff_cursor ×2): remapped spelling untested | **unverified** | M8 |
 | M8/10f-map-tick-no-test | 10f's MAP.md box ticked with "doc, no test" — a tick naming no test | **unverified** | M8 |
@@ -1176,6 +1175,9 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/12b-perf-pty-write | 12b palette on 100k paths: loop p95 34 ms, driven by pty write_us 33 ms (update 3.6, draw 1.1). Cause unverified | **broken** | M8 |
 | M8/12c-release-run-9-vs-7 | ADR-0021 release run: 9 frame-budget tests fail with 12c's fix, 7 without (incl. tests drawing no piled row), machine loaded (8–14). The 2 extra may be the fix — rerun on a quiet machine at the milestone perf run | **unverified** | M8 |
 | M8/12c-ghost-rows-all-badges | Ghost Preview rows still build every badge (12c fixed graph rows only) | **broken** | M8 |
+| M8/17b-colour-unverified | 17b's muted fold `+N` and whitespace tail: colour unverified (rule 5); captures docs/shots/m8/polish-fold-120x36.txt, polish-blame-whitespace-counted-120x36.txt to judge by eye | **unverified** | M8 |
+| M8/m8-contact-sheet-missing | No m8 contact sheet/captions file exists yet (ADR-0037); 17b's box to re-assemble it left open → acceptance ticket | **unverified** | M8 |
+| M8/http-remote-port-flaky | graft-fixtures `http_remote_frees_its_port_on_drop` failed once in 17b's loaded run, passed alone | **broken** | M8 |
 | M8/switch-refs-for-each-ref | Branch switch on 50k refs: git for-each-ref ≈930 ms of 988 ms (12c measured) | **unverified** | M8 |
 | M8/12b-empty-history-before-status | Opening a file's history before status loads shows an empty history (staged-Added check needs status; spec's open.rs:128 fires only with no HEAD) | **broken** | M8 |
 | M8/12b-tests-never-red | 12b: files ranking, tracked_failure_words and 3 pty walks written after code, never seen red | **unverified** | M8 |
