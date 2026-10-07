@@ -1,12 +1,14 @@
-//! The palette's finds (m8-polish-and-ship/12, ADR-0061): the branch read
-//! once per `⌃P` open, and the per-keystroke name match over branches and
-//! tags. Both run off the loop: matching 50k ref names is not the loop's to
-//! do inside a 16 ms frame (PROMPT §6).
+//! The palette's finds (m8-polish-and-ship/12, ADR-0061): the branch and
+//! tracked-path reads once per `⌃P` open (12b), and the per-keystroke name
+//! match over branches, tags and paths. All run off the loop: matching 50k
+//! ref names or 100k paths is not the loop's to do inside a 16 ms frame
+//! (PROMPT §6).
 
 use std::sync::Arc;
 
 use graft_core::matcher::fuzzy_score;
 use graft_core::oid::Oid;
+use graft_git::status::{StatusError, TrackedPaths, tracked_paths};
 use graft_git::switch_refs::{SwitchRefs, switch_refs};
 
 use super::Cancel;
@@ -34,6 +36,27 @@ pub(crate) fn read_branches(repos: &RepoStore, cancel: &Cancel) -> Result<Arc<Sw
         .map_err(|error| error.to_string())
 }
 
+/// Every tracked path, read once when `⌃P` opens (12b).
+///
+/// # Errors
+/// The failure text, ready to show in the FILES group after `files: `:
+/// `too many to list` past `graft_git::status::TRACKED_CAP`, else git's.
+pub(crate) fn read_tracked(repos: &RepoStore, cancel: &Cancel) -> Result<Arc<TrackedPaths>, String> {
+    let repo = repos.shared().map_err(|error| error.to_string())?;
+    let handle = repo.handle();
+    tracked_paths(&handle, cancel)
+        .map(Arc::new)
+        .map_err(|error| tracked_failure_words(&error))
+}
+
+/// FILES' words for a failed read: the cap in his terms, else git's.
+pub(crate) fn tracked_failure_words(error: &StatusError) -> String {
+    match error {
+        StatusError::TooLarge { .. } => "too many to list".to_owned(),
+        other => other.to_string(),
+    }
+}
+
 /// What one keystroke asks the names job: the query and the sources read
 /// so far.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -44,6 +67,8 @@ pub struct NamesRequest {
     pub branches: Option<Arc<SwitchRefs>>,
     /// The refs as the graph has them, once the refs job has answered.
     pub tags: Option<Arc<RefBadges>>,
+    /// Every tracked path, once the open's read has landed (12b).
+    pub files: Option<Arc<TrackedPaths>>,
 }
 
 /// The names job's answer: per source, `None` when the request did not
@@ -54,6 +79,8 @@ pub struct NameHits {
     pub branches: Option<Ranked<RefHit>>,
     /// TAGS.
     pub tags: Option<Ranked<RefHit>>,
+    /// FILES: indexes into the request's [`TrackedPaths`] (12b).
+    pub files: Option<Ranked<u32>>,
 }
 
 /// The best rows of one group and how many matched in all.
@@ -138,10 +165,42 @@ pub(crate) fn match_names(req: &NamesRequest, stop: &dyn Fn() -> bool) -> Option
         }
         None => None,
     };
+    let files = match &req.files {
+        Some(paths) => {
+            // Best score, then shorter path, then index order: a total key.
+            let mut hits: Vec<(u32, usize, u32)> = Vec::new();
+            for (ix, path) in paths.iter().enumerate() {
+                if stopped() {
+                    return None;
+                }
+                let Some(score) = fuzzy_score(query, &String::from_utf8_lossy(path)) else {
+                    continue;
+                };
+                // `TrackedPaths` holds under 4 GiB, so far fewer paths.
+                let Ok(ix) = u32::try_from(ix) else { break };
+                hits.push((score, path.len(), ix));
+            }
+            let total = hits.len();
+            if hits.len() > TOP {
+                hits.select_nth_unstable(TOP - 1);
+                hits.truncate(TOP);
+            }
+            hits.sort_unstable();
+            Some(Ranked {
+                top: hits.into_iter().map(|(_, _, ix)| ix).collect(),
+                total,
+            })
+        }
+        None => None,
+    };
     if stop() {
         return None;
     }
-    Some(NameHits { branches, tags })
+    Some(NameHits {
+        branches,
+        tags,
+        files,
+    })
 }
 
 /// `fuzzy_score`'s tier for a name: 0 when every word starts a segment.

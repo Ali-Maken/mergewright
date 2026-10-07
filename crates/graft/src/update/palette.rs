@@ -33,6 +33,8 @@ use graft_ui::theme::ThemeKind;
 
 use super::{AppState, Command};
 use crate::jobs::palette::{NameHits, NamesRequest, Ranked, RefHit};
+use crate::search::CommitHit;
+use graft_git::status::TrackedPaths;
 
 /// The most distinct commands COMMANDS RUN RECENTLY keeps (ADR-0061).
 pub const RECENT_CAP: usize = 8;
@@ -70,13 +72,17 @@ pub(crate) struct PaletteState {
     pub find: Find,
 }
 
-/// A find group: what `+N more` widens. 12b adds `Files` and `Commits`.
+/// A find group: what `+N more` widens (`more · /` for COMMITS).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum FindGroup {
     /// BRANCHES.
     Branches,
     /// TAGS.
     Tags,
+    /// FILES (12b).
+    Files,
+    /// COMMITS (12b): its `more` row hands the query to `/`.
+    Commits,
 }
 
 impl FindGroup {
@@ -85,6 +91,8 @@ impl FindGroup {
         match self {
             Self::Branches => "BRANCHES",
             Self::Tags => "TAGS",
+            Self::Files => "FILES",
+            Self::Commits => "COMMITS",
         }
     }
 }
@@ -144,8 +152,13 @@ impl<T> Default for Asked<T> {
 pub(crate) struct Find {
     /// Every branch, read once per open.
     pub branches: ReadOnce<SwitchRefs>,
-    /// Branch and tag names matched against the query.
+    /// Every tracked path, read once per open (12b).
+    pub files: ReadOnce<TrackedPaths>,
+    /// Branch, tag and path names matched against the query.
     pub names: Asked<Arc<NameHits>>,
+    /// The first [`COMMIT_HITS`] commits matching the query, or why the
+    /// walk failed (12b).
+    pub commits: Asked<Result<Arc<[CommitHit]>, String>>,
     /// The group `+N more` widened; reset by a query edit.
     pub widened: Option<FindGroup>,
 }
@@ -198,6 +211,9 @@ pub(crate) enum PaletteTarget {
     Note,
     /// A branch, tag (12) or commit (12b) row: put the graph cursor on it.
     Seek(Oid),
+    /// A FILES row (12b): open that path's history place. An index into
+    /// the open's [`TrackedPaths`], which is not re-read while it is up.
+    File(u32),
     /// `+N more`: widen this group.
     More(FindGroup),
 }
@@ -311,7 +327,8 @@ pub(crate) fn open_key(state: &mut AppState, commands: &mut Vec<Command>, key: K
 }
 
 /// Open the palette over whatever is on screen. `⌃P`/`:` read the
-/// branches once, for BRANCHES (ticket 12); `?` reads nothing.
+/// branches once, for BRANCHES (ticket 12), and the tracked paths, for
+/// FILES (12b); `?` reads nothing.
 pub(crate) fn open(state: &mut AppState, commands: &mut Vec<Command>, how: Opens) {
     let opened_from = super::edge::context_of(state);
     let mut palette = opened(&source_of(state), opened_from, how);
@@ -319,6 +336,9 @@ pub(crate) fn open(state: &mut AppState, commands: &mut Vec<Command>, how: Opens
         let id = next_id(state);
         palette.find.branches = ReadOnce::Reading(id);
         commands.push(Command::ReadPaletteBranches(id));
+        let id = next_id(state);
+        palette.find.files = ReadOnce::Reading(id);
+        commands.push(Command::ReadTrackedPaths(id));
     }
     state.palette = Some(Box::new(palette));
 }
@@ -383,77 +403,76 @@ pub(crate) fn listing(source: &Source<'_>, palette: &PaletteState) -> Vec<Group>
     out
 }
 
-/// BRANCHES and TAGS for `query` (ticket 12). A group not read yet says
-/// `reading…`; one whose answer is for an older query shows that answer's
-/// rows the query still matches, then `searching…`, so every row shown
-/// matches what is typed; a current answer shows its best [`GROUP_ROWS`]
-/// (or [`WIDE_ROWS`] once widened) and `+N more`. A group with no row is
-/// left out.
+/// BRANCHES, TAGS, FILES and COMMITS for `query` (tickets 12, 12b). A group
+/// not read yet says `reading…`; a failed read says so in its group (H9);
+/// one whose answer is for an older query shows that answer's rows the
+/// query still matches, then `searching…`, so every row shown matches what
+/// is typed; a current answer shows its best [`GROUP_ROWS`] (or
+/// [`WIDE_ROWS`] once widened) and `+N more`. A group with no row is left
+/// out.
 fn find_groups(find: &Find, query: &str, tags_read: bool) -> Vec<Group> {
     let mut out = Vec::new();
-    for (group, kind) in [
-        (FindGroup::Branches, RowKind::Branch),
-        (FindGroup::Tags, RowKind::Tag),
-    ] {
+    for group in [FindGroup::Branches, FindGroup::Tags, FindGroup::Files] {
         let read = match group {
-            FindGroup::Branches => match &find.branches {
-                ReadOnce::NotAsked | ReadOnce::Reading(_) => false,
-                ReadOnce::Read(_) => true,
-                ReadOnce::Failed(why) => {
-                    // One line, as the `C` picker words its failure.
-                    let why: Vec<&str> = why
-                        .lines()
-                        .map(str::trim)
-                        .filter(|line| !line.is_empty())
-                        .collect();
-                    let words = format!("branches: {}", why.join(" "));
-                    out.push((sanitize_line(group.header()), vec![placeholder(&words)]));
-                    continue;
-                }
-            },
-            FindGroup::Tags => tags_read,
+            FindGroup::Branches => read_state(&find.branches, "branches"),
+            FindGroup::Files => read_state(&find.files, "files"),
+            FindGroup::Tags | FindGroup::Commits => Ok(tags_read),
         };
-        let rows = if read {
-            group_rows(find, group, kind, query)
-        } else {
-            vec![placeholder("reading…")]
+        let rows = match read {
+            Ok(true) => group_rows(find, group, query),
+            Ok(false) => vec![placeholder("reading…")],
+            Err(words) => vec![placeholder(&words)],
         };
         if !rows.is_empty() {
             out.push((sanitize_line(group.header()), rows));
         }
     }
+    let commits = commit_rows(&find.commits, query);
+    if !commits.is_empty() {
+        out.push((sanitize_line(FindGroup::Commits.header()), commits));
+    }
     out
+}
+
+/// A once-per-open read: landed (`true`), not yet (`false`), or its
+/// failure as the group's one row, `<what>: <reason>` on one line, as the
+/// `C` picker words its failure.
+fn read_state<T>(read: &ReadOnce<T>, what: &str) -> Result<bool, String> {
+    match read {
+        ReadOnce::NotAsked | ReadOnce::Reading(_) => Ok(false),
+        ReadOnce::Read(_) => Ok(true),
+        ReadOnce::Failed(why) => Err(format!("{what}: {}", one_line(why))),
+    }
+}
+
+/// `why`'s non-blank lines, trimmed, joined by a space.
+fn one_line(why: &str) -> String {
+    let lines: Vec<&str> = why
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect();
+    lines.join(" ")
 }
 
 /// One read group's rows from the names answer: current, or stale and
 /// re-filtered with `searching…` after.
-fn group_rows(
-    find: &Find,
-    group: FindGroup,
-    kind: RowKind,
-    query: &str,
-) -> Vec<(PaletteRow, PaletteTarget)> {
-    let ranked = find.names.answer.as_ref().and_then(|(asked, hits)| {
-        let ranked = match group {
-            FindGroup::Branches => hits.branches.as_ref(),
-            FindGroup::Tags => hits.tags.as_ref(),
-        };
-        ranked.map(|ranked| (asked.as_str(), ranked))
-    });
+fn group_rows(find: &Find, group: FindGroup, query: &str) -> Vec<(PaletteRow, PaletteTarget)> {
+    let answered = answered_rows(find, group);
     let cap = if find.widened == Some(group) {
         WIDE_ROWS
     } else {
         GROUP_ROWS
     };
-    match ranked {
-        Some((asked, ranked)) if asked == query => current_rows(ranked, group, kind, cap),
+    match answered {
+        Some((asked, rows, total)) if asked == query => current_rows(rows, total, group, cap),
         stale => {
             let mut rows: Vec<_> = stale
-                .map_or(&[][..], |(_, ranked)| ranked.top.as_slice())
-                .iter()
-                .filter(|hit| fuzzy_score(query, &String::from_utf8_lossy(&hit.name)).is_some())
+                .map(|(_, rows, _)| rows)
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|(row, _)| fuzzy_score(query, row.label.as_str()).is_some())
                 .take(cap)
-                .map(|hit| hit_row(hit, kind))
                 .collect();
             rows.push(placeholder("searching…"));
             rows
@@ -461,21 +480,51 @@ fn group_rows(
     }
 }
 
+/// The names answer's rows for `group`, best first, with the query it
+/// answered and how many matched in all. `None` when no answer carries
+/// the group yet.
+fn answered_rows(
+    find: &Find,
+    group: FindGroup,
+) -> Option<(&str, Vec<(PaletteRow, PaletteTarget)>, usize)> {
+    let (asked, hits) = find.names.answer.as_ref()?;
+    let refs = |ranked: Option<&Ranked<RefHit>>, kind| {
+        ranked.map(|ranked| {
+            let rows = ranked.top.iter().map(|hit| hit_row(hit, kind)).collect();
+            (rows, ranked.total)
+        })
+    };
+    let (rows, total) = match group {
+        FindGroup::Branches => refs(hits.branches.as_ref(), RowKind::Branch),
+        FindGroup::Tags => refs(hits.tags.as_ref(), RowKind::Tag),
+        FindGroup::Files => {
+            let ReadOnce::Read(paths) = &find.files else {
+                return None;
+            };
+            hits.files.as_ref().map(|ranked| {
+                let rows = ranked
+                    .top
+                    .iter()
+                    .filter_map(|ix| file_row(paths, *ix))
+                    .collect();
+                (rows, ranked.total)
+            })
+        }
+        FindGroup::Commits => None,
+    }?;
+    Some((asked.as_str(), rows, total))
+}
+
 /// A current answer's rows: the best `cap`, then `+N more` (widens) or,
 /// once widened, `+N more · type more to narrow` (a note).
 fn current_rows(
-    ranked: &Ranked<RefHit>,
+    rows: Vec<(PaletteRow, PaletteTarget)>,
+    total: usize,
     group: FindGroup,
-    kind: RowKind,
     cap: usize,
 ) -> Vec<(PaletteRow, PaletteTarget)> {
-    let mut rows: Vec<_> = ranked
-        .top
-        .iter()
-        .take(cap)
-        .map(|hit| hit_row(hit, kind))
-        .collect();
-    let more = ranked.total.saturating_sub(rows.len());
+    let mut rows: Vec<_> = rows.into_iter().take(cap).collect();
+    let more = total.saturating_sub(rows.len());
     if more > 0 {
         if cap >= WIDE_ROWS {
             rows.push(placeholder(&format!("+{more} more · type more to narrow")));
@@ -496,6 +545,80 @@ fn hit_row(hit: &RefHit, kind: RowKind) -> (PaletteRow, PaletteTarget) {
             kind,
         },
         PaletteTarget::Seek(hit.tip),
+    )
+}
+
+/// A FILES row: the path as git lists it; the widget mutes its directory.
+fn file_row(paths: &TrackedPaths, ix: u32) -> Option<(PaletteRow, PaletteTarget)> {
+    let path = paths.get(ix as usize)?;
+    Some((
+        PaletteRow {
+            label: sanitize_line(&String::from_utf8_lossy(path)),
+            key: None,
+            config: None,
+            kind: RowKind::File,
+        },
+        PaletteTarget::File(ix),
+    ))
+}
+
+/// The `more` row under [`COMMIT_HITS`] commits: `⏎` hands the query to `/`.
+pub const COMMITS_MORE: &str = "more · / searches all of history";
+
+/// COMMITS for `query`: the current answer's hits, then [`COMMITS_MORE`]
+/// when the job stopped at [`COMMIT_HITS`]; its failure as one row; while
+/// the query's job runs, the last answer's hits still matching by sha or
+/// subject, then `searching…`.
+fn commit_rows(
+    commits: &Asked<Result<Arc<[CommitHit]>, String>>,
+    query: &str,
+) -> Vec<(PaletteRow, PaletteTarget)> {
+    if query.is_empty() {
+        return Vec::new();
+    }
+    match &commits.answer {
+        Some((asked, Ok(hits))) if asked == query => {
+            let mut rows: Vec<_> = hits.iter().map(commit_row).collect();
+            if hits.len() >= COMMIT_HITS {
+                let (row, _) = placeholder(COMMITS_MORE);
+                rows.push((row, PaletteTarget::More(FindGroup::Commits)));
+            }
+            rows
+        }
+        Some((asked, Err(why))) if asked == query => {
+            vec![placeholder(&format!("commits: search failed: {}", one_line(why)))]
+        }
+        stale => {
+            let parsed = crate::search::Query::parse(query);
+            let mut rows: Vec<_> = match (stale, parsed) {
+                (Some((_, Ok(hits))), Some(parsed)) => hits
+                    .iter()
+                    .filter(|hit| parsed.matches(hit.id, &hit.subject, b"", b""))
+                    .map(commit_row)
+                    .collect(),
+                _ => Vec::new(),
+            };
+            rows.push(placeholder("searching…"));
+            rows
+        }
+    }
+}
+
+/// `a1b2c3d  subject`: the widget mutes the sha.
+fn commit_row(hit: &CommitHit) -> (PaletteRow, PaletteTarget) {
+    let sha = hit.id.to_string();
+    let short = sha.get(..7).unwrap_or(&sha);
+    (
+        PaletteRow {
+            label: sanitize_line(&format!(
+                "{short}  {}",
+                String::from_utf8_lossy(&hit.subject)
+            )),
+            key: None,
+            config: None,
+            kind: RowKind::Commit,
+        },
+        PaletteTarget::Seek(hit.id),
     )
 }
 
@@ -678,6 +801,7 @@ fn action_of(entry: &Entry) -> Option<ActionId> {
         PaletteTarget::App(_)
         | PaletteTarget::Note
         | PaletteTarget::Seek(_)
+        | PaletteTarget::File(_)
         | PaletteTarget::More(_) => None,
     }
 }
@@ -832,13 +956,13 @@ pub(crate) fn palette_key(
             state.palette = Some(palette);
             return false;
         }
-        Edited::Run(PaletteTarget::More(group)) => {
+        Edited::Run(PaletteTarget::More(group)) if group != FindGroup::Commits => {
             widen(state, &mut palette, group);
             state.palette = Some(palette);
         }
         Edited::Run(target) => {
             cancel_finds(&palette, commands);
-            run(state, commands, target);
+            run(state, commands, &palette, target);
         }
     }
     true
@@ -852,17 +976,40 @@ fn query_changed(state: &mut AppState, commands: &mut Vec<Command>, palette: &mu
         palette.find.widened = None;
         // A space typed or deleted at either end asks nothing new.
         let query = palette.query.text().trim();
-        let names = &palette.find.names;
-        let asked = names.pending.as_ref().map(|(_, q)| q).or(names
-            .answer
-            .as_ref()
-            .filter(|_| names.pending.is_none())
-            .map(|(q, _)| q));
-        if asked.is_none_or(|asked| asked != query) {
+        let names_stale = last_asked(&palette.find.names).is_none_or(|asked| asked != query);
+        let commits_stale = last_asked(&palette.find.commits).is_none_or(|asked| asked != query);
+        if names_stale {
             ask_names(state, commands, palette);
+        }
+        if commits_stale {
+            ask_commits(state, commands, palette);
         }
     }
     palette.cursor = first_runnable(&rows(state, palette));
+}
+
+/// The query a job was last asked for: the one in flight, else the one
+/// answered.
+fn last_asked<T>(asked: &Asked<T>) -> Option<&str> {
+    match (&asked.pending, &asked.answer) {
+        (Some((_, query)), _) | (None, Some((query, _))) => Some(query),
+        (None, None) => None,
+    }
+}
+
+/// Cancel the commits job in flight and, when there is a query, ask one
+/// for it (12b). An empty box asks none (P-find-1).
+fn ask_commits(state: &mut AppState, commands: &mut Vec<Command>, palette: &mut PaletteState) {
+    if let Some((id, _)) = palette.find.commits.pending.take() {
+        commands.push(Command::CancelJob(id));
+    }
+    let query = palette.query.text().trim().to_owned();
+    let Some(parsed) = crate::search::Query::parse(&query) else {
+        return;
+    };
+    let id = next_id(state);
+    commands.push(Command::PaletteCommits(id, parsed));
+    palette.find.commits.pending = Some((id, query));
 }
 
 /// Cancel the names job in flight and, when there is a query and something
@@ -879,8 +1026,12 @@ fn ask_names(state: &mut AppState, commands: &mut Vec<Command>, palette: &mut Pa
         ReadOnce::Read(read) => Some(Arc::clone(read)),
         ReadOnce::NotAsked | ReadOnce::Reading(_) | ReadOnce::Failed(_) => None,
     };
+    let files = match &palette.find.files {
+        ReadOnce::Read(read) => Some(Arc::clone(read)),
+        ReadOnce::NotAsked | ReadOnce::Reading(_) | ReadOnce::Failed(_) => None,
+    };
     let tags = state.refs.clone();
-    if branches.is_none() && tags.is_none() {
+    if branches.is_none() && tags.is_none() && files.is_none() {
         return;
     }
     let id = next_id(state);
@@ -890,6 +1041,7 @@ fn ask_names(state: &mut AppState, commands: &mut Vec<Command>, palette: &mut Pa
             query: Arc::from(query.as_str()),
             branches,
             tags,
+            files,
         },
     ));
     palette.find.names.pending = Some((id, query));
@@ -900,8 +1052,13 @@ fn cancel_finds(palette: &PaletteState, commands: &mut Vec<Command>) {
     if let ReadOnce::Reading(id) = palette.find.branches {
         commands.push(Command::CancelJob(id));
     }
-    if let Some((id, _)) = &palette.find.names.pending {
-        commands.push(Command::CancelJob(*id));
+    if let ReadOnce::Reading(id) = palette.find.files {
+        commands.push(Command::CancelJob(id));
+    }
+    for pending in [&palette.find.names.pending, &palette.find.commits.pending] {
+        if let Some((id, _)) = pending {
+            commands.push(Command::CancelJob(*id));
+        }
     }
 }
 
@@ -941,6 +1098,54 @@ pub(super) fn branches_read(
         };
         if matches!(palette.find.branches, ReadOnce::Read(_)) {
             ask_names(state, commands, palette);
+        }
+    });
+}
+
+/// The tracked-path read landed, or failed (12b). Another open's (a stale
+/// id) is dropped. Landed: the names job is asked again with the paths.
+pub(super) fn tracked_read(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    id: JobId,
+    result: Result<Arc<TrackedPaths>, String>,
+) {
+    let ours = state
+        .palette
+        .as_ref()
+        .is_some_and(|p| p.find.files == ReadOnce::Reading(id));
+    if !ours {
+        return;
+    }
+    landed(state, |state, palette| {
+        palette.find.files = match result {
+            Ok(read) => ReadOnce::Read(read),
+            Err(why) => ReadOnce::Failed(why),
+        };
+        if matches!(palette.find.files, ReadOnce::Read(_)) {
+            ask_names(state, commands, palette);
+        }
+    });
+}
+
+/// The commits job answered (12b). Any but the one in flight (an older
+/// query's, a closed palette's) is dropped.
+pub(super) fn commits_answered(
+    state: &mut AppState,
+    id: JobId,
+    result: Result<Arc<[CommitHit]>, String>,
+) {
+    let ours = state
+        .palette
+        .as_ref()
+        .and_then(|p| p.find.commits.pending.as_ref())
+        .is_some_and(|(pending, _)| *pending == id);
+    if !ours {
+        return;
+    }
+    landed(state, |_, palette| {
+        if let Some((_, query)) = palette.find.commits.pending.take() {
+            palette.find.commits.answer = Some((query, result));
         }
     });
 }
@@ -1019,9 +1224,16 @@ fn landed(state: &mut AppState, change: impl FnOnce(&mut AppState, &mut PaletteS
     state.palette = Some(palette);
 }
 
-/// `⏎` on a row, the palette already closed: as the row's key would. A
-/// command run is kept in COMMANDS RUN RECENTLY; a find row seeks.
-fn run(state: &mut AppState, commands: &mut Vec<Command>, target: PaletteTarget) {
+/// `⏎` on a row, the palette (`closed`) already off screen: as the row's
+/// key would. A command run is kept in COMMANDS RUN RECENTLY; a branch,
+/// tag or commit row seeks; a file row opens its history place (as `F`);
+/// COMMITS' `more` row starts `/` with the query.
+fn run(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    closed: &PaletteState,
+    target: PaletteTarget,
+) {
     state.palette_recent.ran(target);
     match target {
         PaletteTarget::Action(id) => {
@@ -1038,8 +1250,37 @@ fn run(state: &mut AppState, commands: &mut Vec<Command>, target: PaletteTarget)
         }
         // `+N more` widens in place, never closing the palette
         // (`palette_key`, `palette_mouse`); a note runs nothing.
+        PaletteTarget::File(ix) => {
+            let path = match &closed.find.files {
+                ReadOnce::Read(paths) => paths.get(ix as usize).map(bytes_to_pathbuf),
+                ReadOnce::NotAsked | ReadOnce::Reading(_) | ReadOnce::Failed(_) => None,
+            };
+            // A row is only listed from the open's read, which is never
+            // replaced while the palette is up: `None` cannot be reached.
+            if let Some(path) = path {
+                super::place::open_file_history(state, commands, path);
+            }
+        }
+        // Lands as `/`'s `⏎` does: the search on the graph, `n`/`N` step.
+        PaletteTarget::More(FindGroup::Commits) => {
+            if let Some(query) = crate::search::Query::parse(closed.query.text().trim()) {
+                state.detail.focus = graft_ui::detail::DetailFocus::Graph;
+                super::search::start_search(state, commands, query);
+            }
+        }
         PaletteTarget::More(_) | PaletteTarget::Note => {}
     }
+}
+
+#[cfg(unix)]
+fn bytes_to_pathbuf(bytes: &[u8]) -> std::path::PathBuf {
+    use std::os::unix::ffi::OsStrExt;
+    std::path::PathBuf::from(std::ffi::OsStr::from_bytes(bytes))
+}
+
+#[cfg(not(unix))]
+fn bytes_to_pathbuf(bytes: &[u8]) -> std::path::PathBuf {
+    std::path::PathBuf::from(String::from_utf8_lossy(bytes).into_owned())
 }
 
 /// The chord an action answers out of the box: what the dispatchers know
@@ -1194,7 +1435,7 @@ fn double_clicked(
     match target {
         // A placeholder: as `⏎`, nothing.
         None | Some((true, _)) => {}
-        Some((false, PaletteTarget::More(group))) => {
+        Some((false, PaletteTarget::More(group))) if group != FindGroup::Commits => {
             if let Some(mut palette) = state.palette.take() {
                 widen(state, &mut palette, group);
                 state.palette = Some(palette);
@@ -1203,8 +1444,8 @@ fn double_clicked(
         Some((false, target)) => {
             if let Some(palette) = state.palette.take() {
                 cancel_finds(&palette, commands);
+                run(state, commands, &palette, target);
             }
-            run(state, commands, target);
         }
     }
 }

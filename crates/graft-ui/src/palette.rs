@@ -388,15 +388,35 @@ fn draw_row(
         (_, true) => text.add_modifier(Modifier::BOLD),
         (_, false) => text,
     };
-    buf.set_string(
-        x + u16::try_from(label_at).unwrap_or(0),
-        y,
-        fit(row.label.as_str(), label_room),
-        label_style,
-    );
+    let fitted = fit(row.label.as_str(), label_room);
+    let label_x = x + u16::try_from(label_at).unwrap_or(0);
+    buf.set_string(label_x, y, &fitted, label_style);
+    // 12b: what tells two rows of a find group apart drawn as text, the
+    // rest muted — a file's directory, a commit's sha.
+    if let Some(prefix) = muted_prefix(row) {
+        if let Some(drawn) = fitted.get(..prefix.len()).filter(|d| *d == prefix) {
+            buf.set_string(label_x, y, drawn, muted);
+        }
+    }
     if label_room < room {
         let config_x = inner - 2 - config_cells;
         buf.set_string(x + u16::try_from(config_x).unwrap_or(0), y, config, muted);
+    }
+}
+
+/// The part of a find row's label drawn muted: a FILES row's directory (up
+/// to its last `/`), a COMMITS row's sha (before its two spaces).
+fn muted_prefix(row: &PaletteRow) -> Option<&str> {
+    let label = row.label.as_str();
+    match row.kind {
+        RowKind::File => label.rfind('/').map(|at| &label[..=at]),
+        RowKind::Commit => label.find("  ").map(|at| &label[..at]),
+        RowKind::Action
+        | RowKind::App
+        | RowKind::Branch
+        | RowKind::Tag
+        | RowKind::Recent
+        | RowKind::More => None,
     }
 }
 

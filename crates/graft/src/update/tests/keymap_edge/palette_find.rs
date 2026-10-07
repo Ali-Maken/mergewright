@@ -14,7 +14,7 @@ use crate::update::palette::{
     WIDE_ROWS, rows,
 };
 
-fn oid(byte: u8) -> Oid {
+pub(super) fn oid(byte: u8) -> Oid {
     Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is an oid")
 }
 
@@ -35,7 +35,7 @@ fn listing(full: &str, tip: Oid, when: i64) -> RefListing {
 
 /// The graph of [`on_a_branch_row`] (rows `0x01` `main`, `0x02`
 /// `feature`), its badges with a tag `v2.1.0` on `0x02`, at 120×36.
-fn start() -> AppState {
+pub(super) fn start() -> AppState {
     let mut state = sized_to_draw(on_a_branch_row());
     let badges = crate::refs::badges(
         &[
@@ -73,20 +73,20 @@ fn branches() -> SwitchRefs {
     }
 }
 
-fn press(state: &AppState, key: KeyPress) -> (AppState, Vec<Command>) {
+pub(super) fn press(state: &AppState, key: KeyPress) -> (AppState, Vec<Command>) {
     update(state, AppEvent::Core(Event::Key(key)))
 }
 
-fn ctrl_p() -> KeyPress {
+pub(super) fn ctrl_p() -> KeyPress {
     KeyPress::control(KeyCode::Char('p'))
 }
 
-fn plain(code: KeyCode) -> KeyPress {
+pub(super) fn plain(code: KeyCode) -> KeyPress {
     KeyPress::plain(code)
 }
 
 /// Types `word` a letter at a time, every command kept.
-fn typed(state: &AppState, word: &str) -> (AppState, Vec<Command>) {
+pub(super) fn typed(state: &AppState, word: &str) -> (AppState, Vec<Command>) {
     let mut state = state.clone();
     let mut commands = Vec::new();
     for c in word.chars() {
@@ -97,14 +97,14 @@ fn typed(state: &AppState, word: &str) -> (AppState, Vec<Command>) {
     (state, commands)
 }
 
-fn branch_read(commands: &[Command]) -> Option<JobId> {
+pub(super) fn branch_read(commands: &[Command]) -> Option<JobId> {
     commands.iter().find_map(|c| match c {
         Command::ReadPaletteBranches(id) => Some(*id),
         _ => None,
     })
 }
 
-fn names_asked(commands: &[Command]) -> Vec<(JobId, NamesRequest)> {
+pub(super) fn names_asked(commands: &[Command]) -> Vec<(JobId, NamesRequest)> {
     commands
         .iter()
         .filter_map(|c| match c {
@@ -114,7 +114,7 @@ fn names_asked(commands: &[Command]) -> Vec<(JobId, NamesRequest)> {
         .collect()
 }
 
-fn cancelled(commands: &[Command]) -> Vec<JobId> {
+pub(super) fn cancelled(commands: &[Command]) -> Vec<JobId> {
     commands
         .iter()
         .filter_map(|c| match c {
@@ -124,12 +124,12 @@ fn cancelled(commands: &[Command]) -> Vec<JobId> {
         .collect()
 }
 
-fn produced(state: &AppState, id: JobId, product: Product) -> (AppState, Vec<Command>) {
+pub(super) fn produced(state: &AppState, id: JobId, product: Product) -> (AppState, Vec<Command>) {
     update(state, AppEvent::Produced(id, product))
 }
 
 /// The branch read landed with [`branches`].
-fn read_lands(state: &AppState, id: JobId) -> (AppState, Vec<Command>) {
+pub(super) fn read_lands(state: &AppState, id: JobId) -> (AppState, Vec<Command>) {
     produced(
         state,
         id,
@@ -138,7 +138,7 @@ fn read_lands(state: &AppState, id: JobId) -> (AppState, Vec<Command>) {
 }
 
 /// The worker's answer to `(id, req)`.
-fn answer(state: &AppState, (id, req): &(JobId, NamesRequest)) -> AppState {
+pub(super) fn answer(state: &AppState, (id, req): &(JobId, NamesRequest)) -> AppState {
     let hits = match_names(req, &|| false).expect("not stopped");
     produced(state, *id, Product::PaletteNames(Arc::new(hits))).0
 }
@@ -155,7 +155,7 @@ fn found(query: &str) -> AppState {
 }
 
 /// Every shown row: its header, label, kind and target.
-fn shown(state: &AppState) -> Vec<(String, String, RowKind, PaletteTarget)> {
+pub(super) fn shown(state: &AppState) -> Vec<(String, String, RowKind, PaletteTarget)> {
     let palette = state.palette.as_ref().expect("the palette is up");
     rows(state, palette)
         .into_iter()
@@ -173,7 +173,7 @@ fn shown(state: &AppState) -> Vec<(String, String, RowKind, PaletteTarget)> {
         .collect()
 }
 
-fn headers(state: &AppState) -> Vec<String> {
+pub(super) fn headers(state: &AppState) -> Vec<String> {
     let palette = state.palette.as_ref().expect("the palette is up");
     rows(state, palette)
         .into_iter()
@@ -181,7 +181,7 @@ fn headers(state: &AppState) -> Vec<String> {
         .collect()
 }
 
-fn under_cursor(state: &AppState) -> (String, String, PaletteTarget) {
+pub(super) fn under_cursor(state: &AppState) -> (String, String, PaletteTarget) {
     let palette = state.palette.as_ref().expect("the palette is up");
     let (header, label, _, target) = shown(state)
         .into_iter()
@@ -191,7 +191,7 @@ fn under_cursor(state: &AppState) -> (String, String, PaletteTarget) {
 }
 
 /// The palette's cursor put on the row labelled `label` in `header`.
-fn cursor_on(mut state: AppState, header: &str, label: &str) -> AppState {
+pub(super) fn cursor_on(mut state: AppState, header: &str, label: &str) -> AppState {
     let at = shown(&state)
         .iter()
         .position(|(h, l, _, _)| h == header && l == label)
@@ -200,7 +200,7 @@ fn cursor_on(mut state: AppState, header: &str, label: &str) -> AppState {
     state
 }
 
-fn selected(state: &AppState) -> Option<Oid> {
+pub(super) fn selected(state: &AppState) -> Option<Oid> {
     state
         .history
         .as_ref()
@@ -564,7 +564,14 @@ fn query_edit_cancels_the_previous_find_job() {
     let first = names_asked(&first);
     assert_eq!(first.len(), 1);
     let (_, second) = press(&one, plain(KeyCode::Char('e')));
-    assert_eq!(cancelled(&second), vec![first[0].0]);
+    // The names job, and the commits job (12b's, its own test).
+    let commits = one
+        .palette
+        .as_ref()
+        .and_then(|p| p.find.commits.pending.as_ref())
+        .map(|(id, _)| *id)
+        .expect("a commits job too");
+    assert_eq!(cancelled(&second), vec![first[0].0, commits]);
     let asked = names_asked(&second);
     assert_eq!(asked.len(), 1, "one new job");
     assert_eq!(&*asked[0].1.query, "fe");
@@ -714,10 +721,27 @@ fn cursor_on_placeholder_moves_to_first_landed_row() {
     assert_eq!(under_cursor(&landed).1, "feature");
 }
 
+/// The commits job in flight (12b).
+fn commits_pending(state: &AppState) -> JobId {
+    state
+        .palette
+        .as_ref()
+        .and_then(|p| p.find.commits.pending.as_ref())
+        .map(|(id, _)| *id)
+        .expect("a commits job in flight")
+}
+
 #[test]
 fn nothing_matches_waits_for_every_source() {
     let (open, commands) = press(&start(), ctrl_p());
     let read = branch_read(&commands).expect("a read");
+    let files = commands
+        .iter()
+        .find_map(|c| match c {
+            Command::ReadTrackedPaths(id) => Some(*id),
+            _ => None,
+        })
+        .expect("a path read (12b)");
     let (typing, asked) = typed(&open, "qqqq");
     let frame = crate::view::tests::draw(&typing, 120, 36);
     assert!(
@@ -732,6 +756,19 @@ fn nothing_matches_waits_for_every_source() {
         "re-asked, not answered:\n{frame}"
     );
     let landed = answer(&landed, names_asked(&commands).last().expect("re-asked"));
+    let frame = crate::view::tests::draw(&landed, 120, 36);
+    assert!(
+        !frame.contains(NOTHING_MATCHES),
+        "files and commits not answered (12b):\n{frame}"
+    );
+    let (landed, more) = produced(
+        &landed,
+        files,
+        Product::TrackedPaths(Ok(Arc::new(graft_git::status::TrackedPaths::default()))),
+    );
+    let landed = answer(&landed, names_asked(&more).last().expect("re-asked"));
+    let commits = commits_pending(&landed);
+    let (landed, _) = produced(&landed, commits, Product::PaletteCommits(Ok(Arc::from([]))));
     let frame = crate::view::tests::draw(&landed, 120, 36);
     assert!(
         frame.contains(NOTHING_MATCHES),
@@ -753,8 +790,11 @@ fn an_answer_with_nothing_found_leaves_no_group() {
 /// `docs/shots/m8-palette-empty-120x36.txt`. What right looks like: typed
 /// `rebase` — `find anything`, `› rebase`, then ACTIONS (the rebase rows,
 /// keys and config ids), BRANCHES (`sara/rebase-tidy` then
-/// `origin/rebase-tidy`, no key), COMMANDS RUN RECENTLY (the rebase row
-/// again, as ACTIONS draws it), in that order (§1.6). Empty — the field
+/// `origin/rebase-tidy`, no key), FILES (`src/rebase.rs`, then
+/// `docs/rebase-guide.md`; directory muted), COMMITS (`0202020  Rebase
+/// the login branch onto main`, sha muted), COMMANDS RUN RECENTLY (the
+/// rebase row again, as ACTIONS draws it), in that order (§1.6, §2.12;
+/// 12b re-took it). Empty — the field
 /// reads, muted, `type to find actions, branches, tags, files, commits`;
 /// COMMANDS RUN RECENTLY (`S Stash…`, `▸` on it) above ACTIONS; no branch
 /// or tag rows. Colour unverified (rule 5).
@@ -777,11 +817,36 @@ fn capture_find_and_empty_palette() {
             previous: None,
         }))),
     );
+    let paths = commands
+        .iter()
+        .find_map(|c| match c {
+            Command::ReadTrackedPaths(id) => Some(*id),
+            _ => None,
+        })
+        .expect("a path read");
+    let (open, _) = produced(
+        &open,
+        paths,
+        Product::TrackedPaths(Ok(Arc::new(
+            graft_git::status::TrackedPaths::from_nul_separated(
+                b"README.md\0docs/rebase-guide.md\0src/main.rs\0src/rebase.rs\0",
+            ),
+        ))),
+    );
     let (typing, asked) = typed(&open, "rebase");
     let found = answer(&typing, names_asked(&asked).last().expect("asked"));
+    let commits = commits_pending(&found);
+    let (found, _) = produced(
+        &found,
+        commits,
+        Product::PaletteCommits(Ok(Arc::from([crate::search::CommitHit {
+            id: oid(2),
+            subject: b"Rebase the login branch onto main"[..].into(),
+        }]))),
+    );
     assert_eq!(
         headers(&found),
-        ["ACTIONS", "BRANCHES", RECENT_HEADER],
+        ["ACTIONS", "BRANCHES", "FILES", "COMMITS", RECENT_HEADER],
         "§1.6's order"
     );
     graft_fixtures::capture(

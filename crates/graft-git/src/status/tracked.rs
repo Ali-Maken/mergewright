@@ -45,10 +45,11 @@ impl TrackedPaths {
         (0..self.len()).filter_map(|ix| self.get(ix))
     }
 
-    /// Builds the list from `ls-files -z` output: split on NUL, empty records
+    /// Parses `ls-files -z` output: split on NUL, empty records
     /// skipped, a path repeated on adjacent records (an unmerged path, once
     /// per stage) kept once.
-    fn from_nul_separated(stdout: &[u8]) -> Self {
+    #[must_use]
+    pub fn from_nul_separated(stdout: &[u8]) -> Self {
         let mut paths = TrackedPaths::default();
         for record in stdout.split(|&b| b == 0) {
             if record.is_empty() || paths.get(paths.len().wrapping_sub(1)) == Some(record) {

@@ -63,6 +63,8 @@ pub fn is_write(command: &Command) -> bool {
         | Command::ReadSwitchList(..)
         | Command::ReadPaletteBranches(..)
         | Command::PaletteNames(..)
+        | Command::ReadTrackedPaths(..)
+        | Command::PaletteCommits(..)
         | Command::ReadIndexState { .. }
         | Command::ReadRemotes(..)
         | Command::ReadLeaves { .. }

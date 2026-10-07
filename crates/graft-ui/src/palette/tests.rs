@@ -144,6 +144,35 @@ fn more_rows_draw_muted_and_find_rows_as_text() {
     assert_ne!(style_of(&buf, "feature"), muted());
 }
 
+/// 12b: a FILES row mutes its directory and draws its base name as text;
+/// a COMMITS row mutes its sha and draws its subject as text.
+#[test]
+fn file_rows_mute_the_directory_and_commit_rows_the_sha() {
+    let row = |label: &str, kind| PaletteRow {
+        label: sanitize_line(label),
+        key: None,
+        config: None,
+        kind,
+    };
+    let view = PaletteView {
+        mode: PaletteMode::Everything,
+        groups: vec![
+            group("FILES", vec![row("src/update/rebase.rs", RowKind::File)]),
+            group(
+                "COMMITS",
+                vec![row("a1b2c3d  Tidy the rebase", RowKind::Commit)],
+            ),
+        ],
+        cursor: 5,
+        ..help(true)
+    };
+    let buf = buffer(&view);
+    assert_eq!(style_of(&buf, "src/update/"), muted());
+    assert_ne!(style_of(&buf, "rebase.rs"), muted());
+    assert_eq!(style_of(&buf, "a1b2c3d"), muted());
+    assert_ne!(style_of(&buf, "Tidy the rebase"), muted());
+}
+
 /// The whole frame, `width`×`height`, with the box drawn over a pane that
 /// is the frame less its top and bottom rows.
 fn drawn(view: &PaletteView, width: u16, height: u16) -> (Rect, Vec<String>) {

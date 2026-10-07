@@ -32,7 +32,7 @@ use crate::update::state::{AppState, Status};
 mod open;
 mod view;
 
-pub(crate) use open::f_key;
+pub(crate) use open::{f_key, open_file_history};
 pub use open::open_history;
 use view::drawn_rows;
 

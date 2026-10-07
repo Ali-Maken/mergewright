@@ -163,7 +163,12 @@ fn palette_key(state: &mut OutsideState, keymap: &Keymap, key: KeyPress) -> Outs
         // No find rows outside a repository: a seek or `+N more` is never
         // listed here, so never run.
         Edited::Close
-        | Edited::Run(PaletteTarget::Note | PaletteTarget::Seek(_) | PaletteTarget::More(_)) => {
+        | Edited::Run(
+            PaletteTarget::Note
+            | PaletteTarget::Seek(_)
+            | PaletteTarget::File(_)
+            | PaletteTarget::More(_),
+        ) => {
             OutsideStep::Stay
         }
         // `Ctrl+C`: quits, as everywhere (§2.1).
