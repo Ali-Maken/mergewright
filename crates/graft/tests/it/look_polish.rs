@@ -133,6 +133,41 @@ fn capture_folded_merge_count_for_docs_shots() {
     crate::captures::check_shot("m8/polish-fold-120x36.txt", &out);
 }
 
+/// m8/22c (09h's capture box): `?` with the Map open and the graph focused.
+/// HERE lists the Map's own keys, EVERYWHERE the Global keys that act there;
+/// none of `c commit`, `R`, `m merge`, `/ Find…` (dead at the graph).
+#[test]
+fn help_at_the_map_lists_only_live_keys() {
+    let scratch = repo();
+    let (app, state) = App::open(scratch.path());
+    let state = opened(&app, state);
+    let state = app.resize(&state, 120, 36);
+    let map = app.key(&state, KeyCode::Char('M'));
+    let map = crate::captures::settled_frame(&app, map);
+    let help = app.key(&map, KeyCode::Char('?'));
+    let help = crate::captures::settled_frame(&app, help);
+    let clock = Some(graft::session::Clock::Fixed(1_609_459_200 + 600));
+    let drawn = crate::captures::frame_at(&help, 120, 36, clock);
+    for heading in ["HERE", "EVERYWHERE"] {
+        assert!(
+            drawn.iter().any(|line| line.contains(heading)),
+            "{heading}: {drawn:#?}"
+        );
+    }
+    let out = shot(
+        "# m8/help-at-map-120x36: drawn by `view::view` from a real AppState\n\
+         # (crates/graft/tests/it/look_polish.rs). Not a pty capture: a character grid,\n\
+         # no colour (CLAUDE.md rule 5 — colour unverified).\n\
+         #\n\
+         # The Map open, the graph focused, `?` pressed. Right: HERE lists the Map's own\n\
+         # keys; EVERYWHERE the Global keys that act here; no `c commit`, `R`, `m merge`,\n\
+         # `/ Find…`.\n\n",
+        &drawn,
+    );
+    app.close();
+    crate::captures::check_shot("m8/help-at-map-120x36.txt", &out);
+}
+
 /// 17b decision 3: blame's default ignores whitespace, so its title says
 /// nothing about it; after `w` it ends `· whitespace counted`.
 #[test]

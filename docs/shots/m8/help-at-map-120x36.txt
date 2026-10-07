@@ -1,0 +1,44 @@
+# m8/help-at-map-120x36: drawn by `view::view` from a real AppState
+# (crates/graft/tests/it/look_polish.rs). Not a pty capture: a character grid,
+# no colour (CLAUDE.md rule 5 — colour unverified).
+#
+# The Map open, the graph focused, `?` pressed. Right: HERE lists the Map's own
+# keys; EVERYWHERE the Global keys that act here; no `c commit`, `R`, `m merge`,
+# `/ Find…`.
+
+MAP ·  · last 1 day
+  BRANCH    ╭─ keys here ─────────────────────────────────────────────────────────────────────── esc close ╮
+            │ ›                                                                                            │
+            │ HERE                                                                                         │
+            │▸M     Close the Map view                                                          map.close  │
+            │ ⏎     Seek the graph to this branch                                                map.seek  │
+            │ S     Stash…                                                                    graph.stash  │
+            │ J     Undo journal                                                            graph.journal  │
+            │ EVERYWHERE                                                                                   │
+            │ j     Move down                                                                    app.down  │
+            │ k     Move up                                                                        app.up  │
+            │ esc   Back out / close / cancel                                                    app.back  │
+            │ ⌃P    Command palette                                                           app.palette  │
+            │ ?     Help for this place                                                          app.help  │
+            │ u     Undo                                                                         app.undo  │
+            │ U     Redo                                                                         app.redo  │
+            │ ⌃R    Refresh                                                                   app.refresh  │
+            │ ⌃C    Quit at once                                                             app.quit_now  │
+            │ —     Open / drill in                                                              app.open  │
+            ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ↑↓ move  ⏎ run  esc close

@@ -84,6 +84,21 @@ pty walks do not write to `docs/shots/` themselves: they pipe each frame to
 so a walk asserts like everything else and `GRAFT_UPDATE_SHOTS=1` is how it
 regenerates.
 
+**Records, not asserted** (m8/22c). "Every file is asserted" holds only for a
+file some test passes to `captures::check_shot` / `graft_fixtures::capture`:
+nothing lists `docs/shots/` and fails on a file no test owns. Hand-shot files
+from before m5/40 are therefore **records of their ticket**, not current
+output — their chrome is stale and no run checks them. Do not hand-edit them
+(the file would claim a frame the app never drew); a current picture of the
+same thing gets its own generated capture. Known records:
+`26-search-far.txt`, `26-search-typing.txt` (record of m1/26, 100k synthetic
+repo); `m2-18-git-git-search-enter-160x40-unicode.txt` (record of M2 stop 18,
+git/git); `17-mouse-select-and-tooltip.txt` (record of m1/17, pty, release
+binary). The current search hint is `m8/search-hint-120x36.txt`
+(`search_hint::the_search_hint_draws_his_esc_spelling`). Assembled contact
+sheets (`*-contact-sheet.txt`) come from `scripts/contact-sheet.sh`, not a test.
+This list is not an audit of every file under `docs/shots/`.
+
 ## Times I left
 
 Every time you leave Graft for the shell, one line here. **This is the only
