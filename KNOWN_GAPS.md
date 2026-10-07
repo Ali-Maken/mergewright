@@ -1184,6 +1184,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/localremote-clone-timeout-under-load | 13j load loop: 2/200 failures were clone timeouts in `LocalRemote` setup (graft-fixtures `remote/tests.rs:20`), not the port; observed under sustained load, cause unknown | **broken** | M8 |
 | M8/hungremote-wake-race | `HungRemote` Drop (graft-fixtures `hung.rs`) has the same latent refused-wake race 13j fixed in the http listener; not hit today | **unverified** | M8 |
 | M8/http-listener-1s-read-timeout | Own http listener cuts off a client pausing >1 s mid-body (1 s read timeout) | **unverified** | M8 |
+| M8/raster-write-shots-red-on-update | `raster::write_shots` (graft-graph) goes red under `GRAFT_UPDATE_SHOTS` yet leaves `docs/` unchanged (seen by 12d) | **unverified** | M8 |
+| M8/lands-row-launch-in-repo | 12d asks for a Lands row "Launch inside a repo · graph, cursor on HEAD"; 19 (tour) must know every place in `drive` now lands on HEAD → planner with 19 | **unverified** | M8 |
 | M8/resolve-refusal-space-dead | Resolve refusal says `space marks resolved`, but both callers leave him on the Banner where `space` does nothing (pinned by `keymap_words::stops::the_resolve_keys_name_rows_that_act_where_the_refusal_is_shown`). Question: move focus to CONFLICTS rows, or drop the clause | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | RESOLVE_KEYS shown on screen via pressed.rs:156; the literal-key grep misses consts | **unverified** | M8 |
@@ -1193,7 +1195,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/diff-home-end-moves-graph | Diff pane Home/End move the graph (found by 09g, not fixed) | **broken** | M8 |
 | M8/10h-red-by-compile-only | 10h's new tests were seen red only as compile failures; an assertion failure seen once (dismiss). Ticks may not fail on the defect | **unverified** | M8 |
 | M8/12-palette-perf | Palette loop p95 61 ms (release, docs/perf/m8-palette.txt) — over budget. Measured cause: graph draw 33 ms p50 on the 16k-badge fixture; palette update p95 5 ms; branch read ~2 s on 50k refs (picker shares) → planner ruling Also: update rebuilds `rows`/`flat` in `edit`, `landed`, `first_runnable` + per frame, ~⅓ of p95 update (review Minor 6) | **broken** | M8 |
-| M8/12-launch-cursor-not-head | Launch leaves the cursor on the newest row, not HEAD; 12's walks switch fixture around it — question | **unverified** | M8 |
 | M8/12-palette-colour-unverified | 12's 3 palette captures: colour unverified (rule 5) | **unverified** | M8 |
 | M8/12b-perf-pty-write | 12b palette on 100k paths: loop p95 34 ms, driven by pty write_us 33 ms (update 3.6, draw 1.1). Cause unverified | **broken** | M8 |
 | M8/12c-release-run-9-vs-7 | ADR-0021 release run: 9 frame-budget tests fail with 12c's fix, 7 without (incl. tests drawing no piled row), machine loaded (8–14). The 2 extra may be the fix — rerun on a quiet machine at the milestone perf run | **unverified** | M8 |
