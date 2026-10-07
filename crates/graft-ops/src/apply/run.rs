@@ -3,11 +3,13 @@
 
 use graft_core::journal::JournalEntry;
 use graft_git::remote::RemoteFailure;
+use graft_git::repo::RepoHandle;
 use graft_git::run::{GitInvocation, RunError};
 
 use crate::operation::{Invocation, RemoteNames};
 
 use super::error::joined;
+use super::stopped::BEFORE_PAUSE;
 use super::{AfterState, ApplyError, Context, reason_for, remote};
 
 /// What running a plan came to.
@@ -27,6 +29,10 @@ pub(super) struct PlanFailure {
     pub(super) error: RunError,
     /// For a remote operation: what went wrong in its terms.
     remote: Option<RemoteFailed>,
+    /// A stop that git did not get to pause, as read from disk
+    /// (`stopped::where_stopped`, m8-polish-and-ship/13c): the entry's
+    /// reason says so. Set only by [`PlanFailure::before_pause`].
+    before_pause: bool,
 }
 
 /// A remote operation's failure: what the whole of git's stderr said, its
@@ -43,6 +49,23 @@ impl PlanFailure {
         PlanFailure {
             error,
             remote: None,
+            before_pause: false,
+        }
+    }
+
+    /// The user stopped a local invocation: where git was left decides the
+    /// outcome, not this failure (`stopped::where_stopped`). A remote
+    /// operation's stop keeps its own words (`remote::short`), its local
+    /// steps (a pull's merge) included.
+    pub(super) fn stopped_locally(&self) -> bool {
+        self.remote.is_none() && matches!(self.error, RunError::Stopped)
+    }
+
+    /// This stop ended git before it could pause the operation.
+    pub(super) fn before_pause(self) -> Self {
+        PlanFailure {
+            before_pause: true,
+            ..self
         }
     }
 
@@ -50,6 +73,7 @@ impl PlanFailure {
     pub(super) fn reason(&self) -> String {
         match &self.remote {
             Some(failed) => remote::short(&failed.failure),
+            None if self.before_pause => BEFORE_PAUSE.to_owned(),
             None => reason_for(&self.error),
         }
     }
@@ -103,16 +127,7 @@ pub(super) fn run_plan(
 ) -> PlanRun {
     let mut cleanup = Vec::new();
     for invocation in plan {
-        // No plan step ever wants an editor: every message travels on stdin
-        // or in `-m`. A step that would still open one (`merge` writing its
-        // message, `cherry-pick` without `--no-edit`) gets `true` and
-        // carries on with git's own text (M5 design note, G5 plan).
-        let mut git = GitInvocation::new(ctx.repo)
-            .args(invocation.args.iter().cloned())
-            .env("GIT_EDITOR", "true");
-        if let Some(bytes) = &invocation.stdin {
-            git = git.stdin(bytes.clone());
-        }
+        let git = plan_git(ctx.repo, invocation);
         let failure = if let Some(names) = names {
             remote::run(ctx, git, invocation, &mut cleanup)
                 .err()
@@ -123,12 +138,10 @@ pub(super) fn run_plan(
                         names: Box::new(names.clone()),
                     }),
                     error: failed.error,
+                    before_pause: false,
                 })
         } else {
-            git.run(ctx.stop).err().map(|error| PlanFailure {
-                error,
-                remote: None,
-            })
+            git.run(ctx.stop).err().map(PlanFailure::local)
         };
         if failure.is_some() {
             return PlanRun {
@@ -142,5 +155,30 @@ pub(super) fn run_plan(
         failure: None,
         cleanup,
         edit_stop: false,
+    }
+}
+
+/// The git one plan line runs.
+///
+/// No plan step ever wants an editor: every message travels on stdin or in
+/// `-m`. A step that would still open one (`merge` writing its message,
+/// `cherry-pick` without `--no-edit`) gets `true` and carries on with git's
+/// own text (M5 design note, G5 plan).
+///
+/// A local line is stopped hook-first (m8-polish-and-ship/13c): a stuck hook
+/// is ended and git pauses the operation itself, as it does when a hook
+/// fails. A remote line (fetch, push) keeps the group stop: its helpers are
+/// ssh and the credential helper, and there is nothing for git to pause.
+pub(super) fn plan_git(repo: &RepoHandle, invocation: &Invocation) -> GitInvocation {
+    let mut git = GitInvocation::new(repo)
+        .args(invocation.args.iter().cloned())
+        .env("GIT_EDITOR", "true");
+    if let Some(bytes) = &invocation.stdin {
+        git = git.stdin(bytes.clone());
+    }
+    if invocation.remote {
+        git
+    } else {
+        git.stop_hooks_first()
     }
 }

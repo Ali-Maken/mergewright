@@ -1055,7 +1055,9 @@ fn a_plan_stopped_between_invocations_is_aborted_recoverable_and_narrow() {
         other => panic!("the plan should have been cut short: {other:?}"),
     };
     assert!(
-        matches!(&entry.status, EntryStatus::Aborted { reason } if reason == "git was stopped"),
+        // m8-polish-and-ship/13c: a stopped local run git left nothing live
+        // for is the residual, in its words.
+        matches!(&entry.status, EntryStatus::Aborted { reason } if reason == "stopped before git could pause it"),
         "{:?}",
         entry.status
     );

@@ -11,12 +11,12 @@ use graft_git::state::InProgress;
 
 use crate::clash::Clash;
 use crate::facts::FactsError;
-use crate::journal::JournalError;
+use crate::journal::{JournalError, in_force};
 use crate::operation::{Refusal, RemoteNames};
 use crate::restore::RestoreError;
 use crate::snapshot::SnapshotError;
 
-use super::{Applied, PrepareError, remote};
+use super::{Applied, PrepareError, StoppedAt, remote};
 
 mod words;
 
@@ -106,6 +106,23 @@ pub enum ApplyError {
         /// The entry, still `Pending`.
         entry: Box<JournalEntry>,
         /// The state git left: what the banner shows and what `resume` runs.
+        kind: InProgress,
+        /// The unmerged paths.
+        paths: Vec<PathBuf>,
+    },
+    /// A write stopped by the user (the quit box's stop, or the signal path)
+    /// that git paused itself: its hook was ended first, and git wrote its
+    /// in-progress state as it does when a hook fails (m8-polish-and-ship/13c).
+    /// Closes like [`ApplyError::Conflicted`]: the entry stays `Pending`
+    /// with its commands held, no outcome line, and
+    /// [`resume`](super::resume) continues or aborts it — found by
+    /// `live_entry`, listed `live` by `recover_interrupted`. `paths` are
+    /// what is unmerged now, normally none.
+    #[error("{}: stopped · the {} is paused · c continues, a aborts", entry.description, kind.name())]
+    Paused {
+        /// The entry, still `Pending`.
+        entry: Box<JournalEntry>,
+        /// The state git left.
         kind: InProgress,
         /// The unmerged paths.
         paths: Vec<PathBuf>,
@@ -314,6 +331,28 @@ impl ApplyError {
     pub fn edits_at(&self) -> Option<EditsAt> {
         match self {
             ApplyError::Git { edits, .. } => *edits,
+            _ => None,
+        }
+    }
+
+    /// Where a stop left git, for an error a stop produced
+    /// (m8-polish-and-ship/13c): [`ApplyError::Paused`] → `Paused`; a
+    /// stopped local run closed `Aborted` → `BeforePause`, `changed` when
+    /// the entry is in force (`u` has something to put back). `None` for
+    /// every other error, a stop before git ran included.
+    #[must_use]
+    pub fn stopped_at(&self) -> Option<StoppedAt> {
+        match self {
+            ApplyError::Paused { kind, .. } => Some(StoppedAt::Paused(*kind)),
+            ApplyError::Git {
+                entry,
+                error: RunError::Stopped,
+                ..
+            } => Some(StoppedAt::BeforePause {
+                // The entry is the journal's newest, so nothing can have
+                // reversed it yet: in force is "took effect".
+                changed: in_force(std::slice::from_ref(&**entry), &entry.id),
+            }),
             _ => None,
         }
     }

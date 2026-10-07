@@ -1,6 +1,6 @@
 # Stopping a stuck merge leaves it paused: end git's hook, not git
 
-Status: draft
+Status: partial — Parts A and B done (seam commits); Part C (graft) not started. Builder compacted.
 Build with: **Opus, xhigh**. It changes what the journal records for a stopped write (the undo area) and how every git
 child is signalled. A wrong order loses the paused state or strands a lock, and neither shows in a diff. Not Fable:
 the shape is decided below.
@@ -187,37 +187,42 @@ pub const FORCED_WAIT: Duration; // SHUTDOWN_GRACE + 3 s
 - Journal/undo: no new entry kind. `Paused` reuses the conflict-stop shape (ADR on hard choice 2 unchanged).
 
 ## Acceptance (each tick names its test, inline)
-- [ ] Step 0's observation is in NOTES, with all four hooks.
+- [x] Step 0's observation is in NOTES, with all four hooks.
       Git contract: `graft-ops tests/stop_hooks.rs::git_pauses_a_merge_whose_pre_merge_commit_hook_is_killed`
+      — ticked by `it::stop_hooks::git_pauses_a_merge_whose_pre_merge_commit_hook_is_killed` (exit 1, MERGE_HEAD = source tip, MERGE_MSG)
       (pure git: hook pid killed → `MERGE_HEAD` = source tip, `MERGE_MSG` present).
-- [ ] Own group: `run::tests::git_runs_in_its_own_process_group` (child's pgid = its pid ≠ ours).
-- [ ] A stop ends the hook's children too: `run::tests::a_stop_leaves_no_process_of_the_group` (hook `sleep 600`;
+- [x] Own group: `run::tests::git_runs_in_its_own_process_group` (child's pgid = its pid ≠ ours).
+- [x] A stop ends the hook's children too: `run::tests::a_stop_leaves_no_process_of_the_group` (hook `sleep 600`;
       `kill -0` on the pidfile pid fails; returns within `STOP_WITHIN`).
-- [ ] Hook first: `run::tests::hooks_first_lets_git_pause_a_merge` (`MERGE_HEAD` present, no `*.lock`, git never
+- [x] Hook first: `run::tests::hooks_first_lets_git_pause_a_merge` (`MERGE_HEAD` present, no `*.lock`, git never
       signalled: its exit code is git's own non-zero, read with `run_raw` or a test hook on the supervise path; say which).
-- [ ] `run::tests::hooks_first_kills_a_hook_that_ignores_term` (`trap '' TERM`, merge still paused, within `STOP_WITHIN`).
-- [ ] `run::tests::a_stopped_hook_is_continued_and_ended` (hook `kill -STOP $$`).
-- [ ] `run::tests::hooks_first_falls_back_to_the_group_stop_when_members_cannot_be_listed` (injected lister `Err`).
-- [ ] `run::group::tests::members_lists_a_child_in_the_group` (runs on the host OS).
-- [ ] A run that ends unstopped signals nothing: `run::tests::an_unstopped_run_leaves_a_hooks_background_job_alone`.
-- [ ] Marking: `apply::tests::stop_hooks::local_write_lines_stop_hooks_first_and_remote_lines_do_not`.
-- [ ] Paused: `apply::tests::stop_hooks::a_merge_stopped_in_its_pre_merge_commit_hook_is_paused`,
+      — which: the supervise path, `exec::stop`'s `StopEnd { status, git_signalled }` (exit 1, `git_signalled == false`).
+- [x] `run::tests::hooks_first_kills_a_hook_that_ignores_term` (`trap '' TERM`, merge still paused, within `STOP_WITHIN`).
+- [x] `run::tests::a_stopped_hook_is_continued_and_ended` (hook `kill -STOP $$`).
+- [x] `run::tests::hooks_first_falls_back_to_the_group_stop_when_members_cannot_be_listed` (injected lister `Err`).
+- [x] `run::group::tests::members_lists_a_child_in_the_group` (runs on the host OS).
+- [x] A run that ends unstopped signals nothing: `run::tests::an_unstopped_run_leaves_a_hooks_background_job_alone`.
+- [x] Marking: `apply::tests::stop_hooks::local_write_lines_stop_hooks_first_and_remote_lines_do_not`. **Deviation:** a
+      rebase's lines (engine, rebase resume) are *not* marked — NOTES Q1; the test asserts that.
+- [x] Paused (at `it::stop_hooks::…`, NOTES D1): `apply::tests::stop_hooks::a_merge_stopped_in_its_pre_merge_commit_hook_is_paused`,
       `…_in_its_prepare_commit_msg_hook_is_paused` (entry `Pending`, `Paused { kind: Merge }`, `stopped_at`
       `Paused(Merge)`).
-- [ ] Landed: `apply::tests::stop_hooks::a_merge_stopped_in_its_post_merge_hook_has_landed` (`Committed`,
+- [x] Landed (`it::stop_hooks::…`): `apply::tests::stop_hooks::a_merge_stopped_in_its_post_merge_hook_has_landed` (`Committed`,
       `stopped_at: Some(Landed)`).
-- [ ] Residual: `apply::tests::stop_hooks::a_merge_stopped_before_git_paused_it_is_aborted_and_u_puts_it_back`. Driven
-      with the hook-first mark off (a `cfg(test)` seam, named in NOTES). It reproduces 13b's observed state. Checks:
+- [x] Residual (`it::stop_hooks::…`): `apply::tests::stop_hooks::a_merge_stopped_before_git_paused_it_is_aborted_and_u_puts_it_back`. Driven
+      with the hook-first mark off (a `cfg(test)` seam, named in NOTES). **Driven instead** by a hook that leaves
+      git's process group (NOTES D2) — no seam. It reproduces 13b's observed state. Checks:
       reason exact, `BeforePause { changed: true }`, then `undo` → HEAD, index and tree equal before, his dirty file
       byte-equal.
-- [ ] Nothing lost through pause and abort:
+- [x] Nothing lost through pause and abort (`it::stop_hooks::…`):
       `apply::tests::stop_hooks::a_paused_merge_aborted_by_resume_gives_his_edits_back` (dirty unrelated file
       byte-equal; entry `Aborted`).
-- [ ] Continue: `apply::tests::stop_hooks::a_paused_merge_continues_to_the_merge_git_would_have_made`. Checks: `Committed`,
+- [x] Continue (`it::stop_hooks::…`): `apply::tests::stop_hooks::a_paused_merge_continues_to_the_merge_git_would_have_made`. Checks: `Committed`,
       `HEAD^2` = source tip, and the message equal to a one-step `git merge` of the same branches in a twin fixture.
-- [ ] Relaunch: `recover::tests::a_paused_merge_is_live_at_relaunch`.
-- [ ] Cherry-pick, same rule: `apply::tests::stop_hooks::a_cherry_pick_stopped_in_its_hook_is_paused_if_git_pauses_it`.
-      If git does not leave `CHERRY_PICK_HEAD`, the test asserts the residual instead, and NOTES say which.
+- [x] Relaunch: `recover::tests::a_paused_merge_is_live_at_relaunch` — at `it::stop_hooks::a_paused_merge_is_live_at_relaunch` (D1).
+- [x] Cherry-pick, same rule (`it::stop_hooks::…`): `apply::tests::stop_hooks::a_cherry_pick_stopped_in_its_hook_is_paused_if_git_pauses_it`.
+      If git does not leave `CHERRY_PICK_HEAD`, the test asserts the residual instead, and NOTES say which. — git
+      leaves it (`prepare-commit-msg`): the test asserts `Paused { kind: CherryPick }`.
 - [ ] Exit line: `update::quit::tests::exit_line_says_where_git_left_it` (five cases, exact words).
 - [ ] **The walk (13b's NOT MET box, now met):** `it::quit_waits::stuck::stop_now_mid_merge_leaves_it_paused`.
       Setup: real pool, real repo, `pre-merge-commit` `sleep 600`, his dirty unrelated file, offer injected short.
@@ -265,3 +270,125 @@ workspace-wide.
 
 ## Size
 One context, ~75k tokens, three crates. If it runs long, the conductor splits it at the Part A / Part B seam commit.
+
+## NOTES (builder, 2026-10-07)
+
+**Compacted once**, during Part B. Parts A and B are built and committed at their seams; **Part C (graft) is not
+started** — the conductor splits it. Scouts used: `.scratch/m8-polish-and-ship/scouts/13b-review-fix.md` (given), plus
+`.scratch/m8-polish-and-ship/scouts/13c-app.md` (app side, for Part C; its findings are listed under Remaining).
+
+### Step 0 (observed, before any build)
+Sandbox repos under the session scratchpad, `HOME`/`GIT_CONFIG_GLOBAL` pointed at an empty file, system git (Apple
+git, CommandLineTools). `git merge --no-ff feature`; each hook `sleep 600` (shell + child); the **hook's pid only**
+sent `SIGTERM`; git waited for:
+- `pre-merge-commit`: exit 1, `error: .git/hooks/pre-merge-commit died of signal 15`, `Not committing merge; use
+  'git commit' to complete the merge.` `MERGE_HEAD` = source tip, `MERGE_MSG` (`Merge branch 'feature'`),
+  `MERGE_MODE` (`no-ff`); `HEAD` unchanged; his dirty `notes.txt` byte-equal. `git merge --continue` → exit 0,
+  `HEAD^2` = source tip, message `Merge branch 'feature'`; `--abort` → `HEAD` and tree as before, his file byte-equal.
+- `prepare-commit-msg`, `commit-msg`: the same, word for word.
+- `post-merge`: exit 0, merge commit made, no `MERGE_*`; `HEAD` moved.
+- In every case the hook's own child (`sleep`) **survived in git's group** — what Part A's member re-listing ends.
+- Cherry-pick (`git cherry-pick feature`): runs `prepare-commit-msg` and `post-commit` only (`pre-commit`,
+  `commit-msg` never ran). `prepare-commit-msg` killed → exit 128, `CHERRY_PICK_HEAD` present, `HEAD` unmoved;
+  `post-commit` killed → exit 0, committed.
+- **Rebase** (`GIT_SEQUENCE_EDITOR=true git rebase -i main`, `post-checkout` hook killed): exit 0, `Successfully
+  rebased and updated refs/heads/feature`, no `rebase-merge/`. A rebase's hook failing does **not** stop it (Q1).
+
+### What `run/exec.rs` used before (item 5)
+`kill(1)` via `Command::new("kill")` for `SIGTERM`, then `Child::kill` (`SIGKILL`) — git's pid only, so a hook and
+its children outlived the stop. Now `nix` `killpg`/`kill` (`signal` feature added to graft-git's existing `nix`).
+
+### Deviations (for the reviewer)
+- **D1 — test paths.** The Paused / Landed / residual / abort / continue / relaunch / cherry-pick tests are in
+  `crates/graft-ops/tests/it/stop_hooks.rs` (`it::stop_hooks::<same name>`), not `apply::tests::stop_hooks` /
+  `recover::tests`: they need `TempRepo`, `state_of`, `run_undo`, which live in `tests/it/support.rs`. The marking
+  test is where the ticket names it (`src/apply/tests/stop_hooks.rs`). Extra: `it::stop_hooks::
+  a_resume_stopped_in_its_hook_stays_paused` (the `resume` half of item 8) and `apply::error::tests::
+  a_paused_write_says_so_and_only_a_stop_has_a_stopped_at`.
+- **D2 — residual without a seam.** `cfg(test)` does not reach integration tests. The residual is driven by a real
+  case instead: a hook that daemonises (`perl -e 'setpgrp(0,0); …'`). The stop finds no helper in git's group, stops
+  the group — git alone — and git dies before it pauses: no `MERGE_HEAD`, the merge's files in the tree (13b's
+  state). The test kills the hook's pid itself (`Hooked`'s drop: only pids the hook wrote, never a pattern).
+- **D3 — `HEAD` unmoved** is part of Paused for merge, cherry-pick and revert, not rebase (a rebase moves `HEAD` as
+  it goes; its live state alone says paused, as `stopped_on_conflict` read it). `HEAD` before = the entry's
+  `refs_before[head_before]` (or the detached oid); unrecorded counts as unmoved (`stopped.rs:113`).
+- **D4 — the stop is read for local lines only** (`PlanFailure::stopped_locally`, `apply/run.rs`). A remote
+  operation's stop keeps `remote::short`'s words — a pull's local merge included, since `run_plan` gives every line of
+  a remote op a `RemoteFailed`. **Pull:** `opens_in_progress(Pull)` = `None` (`operation.rs:1254`), so a pull could
+  never be Paused or Landed under this rule anyway.
+- **D5 — where the residual's words do not reach.** A write that set edits aside closes through `set_aside::close`,
+  whose reason stays `git was stopped` (`set_aside.rs:175–186` call `reason_for`); a folded step keeps it too.
+  `stopped_at()` still maps them to `BeforePause` (the variant is `Git { error: Stopped }`).
+- **Kept variant (item 8):** the residual returns today's `ApplyError::Git { error: RunError::Stopped, .. }`.
+
+### Questions for the conductor (rule 7: lines given)
+- **Q1 — a rebase is not stopped hook-first (deviates from item 7, keeps its fence).** Item 7 marks `apply::engine`;
+  the Touches fence says `stop_now_mid_rebase_with_edits_set_aside` must stay green. Both cannot hold: with the
+  engine marked, the walk's `post-checkout` hook is ended, git **finishes the rebase** (Step 0, exit 0), and the walk
+  failed at `crates/graft/tests/it/quit_waits/stuck.rs:302` (`On branch feature … modified: base.txt`); with Landed
+  Merge-only the entry was also journaled `Aborted "git was stopped"` for a rebase that landed. Built: `engine::
+  rewrite_git` and a rebase's `resume_invocation` are **not** marked (doc at `apply/engine.rs` `rewrite_git`), so the
+  group stop leaves the rebase paused — walk green, entry `Pending`, `c`/`a` offered. Flip = add `.stop_hooks_first()`
+  in `rewrite_git` and the rebase arm of `resume_invocation`, then decide the walk's new expectation.
+- **Q2 — Landed is Merge-only (as specified), but cherry-pick and revert land too.** Step 0: a cherry-pick whose
+  `post-commit` hook is killed exits 0 with the commit made. `where_stopped` (`apply/stopped.rs:74`) then reads
+  `HEAD` moved, no `CHERRY_PICK_HEAD`, kind ≠ Merge → residual: `Aborted "stopped before git could pause it"`,
+  `BeforePause { changed: true }` for a pick that landed. Nothing lost (`u` undoes it), the words are wrong. Same for
+  a revert and a `--continue` whose `post-commit` hangs. Generalising Landed to "the op's in-progress kind not live,
+  `HEAD` moved" fixes all three; not done, spec says Merge only. (Before 13c the same case read `git was stopped`.)
+- **Q3 — the residual's words on a write git cannot pause.** A stopped discard now reads `stopped before git could
+  pause it` (`tests/it/ops_execution_hard.rs` assertion updated to the spec's words). True, but "pause" means nothing
+  for a discard. Keep, or keep `git was stopped` where `opens_in_progress` is `None`?
+- **Q4 — `FinishMerge` (a merge begun in the shell, `c` from the banner).** `opens_in_progress(FinishMerge)` = `None`,
+  so its stop is always the residual even when git leaves `MERGE_HEAD` live (`stopped_on_conflict` has the same
+  blind spot, `apply.rs:761`). Not changed.
+- **Out-of-scope question (asked by the ticket): a `pre-merge-commit` hook that rejects (exit 1), no stop.** Observed
+  with a temporary test (removed): `ApplyError::Conflicted { kind: Merge, paths: [] }`, entry `Pending`, `MERGE_HEAD`
+  present, `stopped_at() = None`, `explain()` = `merge feature into main: 0 unmerged · resolve, then c continues, a
+  aborts`. Path: `closed` → `stopped_on_conflict` (`apply.rs:418`, `:761`) — live `Merge` after a non-zero exit is a
+  stop; the words from `error.rs:104`; graft lands it as `Operated::Conflicted` (`jobs/operate.rs:388`). The
+  `0 unmerged · resolve` wording for a hook rejection is the thing to decide. Not changed.
+
+### Verified, and how
+- Gates at the Part B commit, workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
+  `cargo nextest run` (5607 passed, 10 skipped), `cargo test --doc` — all pass.
+- Mutations (each reverted by hand, not `git checkout`): Part A — without the group and hooks-first, 6 of the
+  `run::tests::stop` tests fail. Part B — `plan_git` unmarked: 5 of the 9 `it::stop_hooks` tests fail (the
+  `prepare-commit-msg` and cherry-pick ones still pass: git writes `MERGE_HEAD`/`CHERRY_PICK_HEAD` **before** that
+  hook, so even the group stop leaves them paused); the outcome rule off: 8 of 9 fail (all but the pure-git one).
+- After the run, `ps` showed no `sleep 600` / `setpgrp` process left.
+- Not verified: Linux `/proc` member listing (macOS host only; `members_lists_a_child_in_the_group` is
+  host-OS); anything in the app (Part C).
+
+### Touches (Parts A–B)
+- Every `run` spawn now leads its own process group (`process_group(0)`): checked by the full nextest run (5607
+  green); the editor handover is Graft's own spawn, not `run` — not yet re-grepped for Part C (`/dev/tty`,
+  `SSH_ASKPASS`, pager grep is still to do).
+- `SHUTDOWN_GRACE` follows `STOP_WITHIN` (4.05 s): `the_shutdown_grace_covers_a_git_childs_stop`,
+  `no_git_child_outlives_shutdown` green in the run.
+- `ApplyError::Paused`: the one exhaustive match (`graft/src/jobs/operate.rs` `refresh_after_failure`) and
+  `answer` (Paused lands as `Conflicted`, item 12 — compiler-checked, **no test of its own yet**, Part C).
+- `Applied` literals: 6 in graft-ops, 12 in graft (`stopped_at: None`).
+- Knock-on tests updated: `it::set_aside::a_stop_mid_rebase_is_held_and_abort_puts_the_edits_back` (`Conflicted` →
+  `Paused`), `it::ops_execution_hard::a_plan_stopped_between_invocations_is_aborted_recoverable_and_narrow` (Q3).
+- `resume`: a stop now holds (`Paused`) or closes the entry instead of returning `ApplyError::Stopped` with the entry
+  untouched; `recover_interrupted` lists a paused entry `live` (`a_paused_merge_is_live_at_relaunch`).
+- Journal/undo: no new entry kind; `Paused` uses `hold_commands` as a conflict stop does.
+- Refactors for clippy's line limit, pure moves: `resume_args`, `closed_set_aside`.
+
+### Remaining — Part C (graft), not started
+1. `exit_line(bin, what, after, at: Option<StoppedAt>)` with item 10's five lines; test
+   `update::quit::tests::exit_line_says_where_git_left_it`; update the 13b exit-line tests.
+2. `Forced { job, what, at }`, `FORCED_WAIT = SHUTDOWN_GRACE + 3 s`; the forced job's answer must reach `wind_down`
+   (`event_loop/exit_wait.rs`). **Scout finding:** today the pool replaces a cancelled job's `Operated` with
+   `JobCancelled` (`graft/src/jobs/pool.rs:326`), including after the stop box's `y` — that is what must change.
+   Test `jobs::tests::a_forced_job_is_waited_for_its_answer_up_to_its_bound` + the `None` line past it.
+3. A test for item 12 (`answer(Err(Paused))` → `Operated::Conflicted`); the arm is in.
+4. Walks: `quit_waits::stuck::stop_now_mid_merge_leaves_it_paused` (today's `stop_now_mid_merge…` at
+   `tests/it/quit_waits/stuck.rs:244–256` only prints the no-`MERGE_HEAD` state, asserts nothing), the relaunch walk,
+   the signal tests' rename/new line, the capture `docs/shots/m8-quit-stopped-merge-relaunch-80x24.txt`
+   (`it::quit_waits::capture_relaunch_after_a_stopped_merge`; the relaunch banner is drawn in graft-ui — not scouted),
+   journey fence `quit-stuck-write 4`, the SIGHUP pty observation.
+5. Doc edits (verbatim, keymap §2.2 and design note :140); graft MAP rows (`exit_line`, `Forced`, `FORCED_WAIT`);
+   the Touches grep for `GIT_EDITOR`/`core.editor`/`/dev/tty`/`SSH_ASKPASS`/pager.
+6. Q1's answer changes the rebase walk; Q2's changes the cherry-pick exit line.

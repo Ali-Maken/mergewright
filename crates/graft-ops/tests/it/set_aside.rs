@@ -1195,16 +1195,17 @@ fn a_stop_before_each_step_loses_nothing() {
 }
 
 /// A stop that kills a set-aside rebase part-way leaves git's rebase live:
-/// `apply` holds it as the stop it is — `Conflicted`, the entry `Pending`
-/// with `S` listed — rather than failing the status read after it on the
-/// same stop (M7/02b: `Facts(Status(Run(Stopped)))`, the commands never
-/// held). `a` then puts the edits back and drops `S`.
+/// `apply` holds it as the stop it is — `Paused` since
+/// m8-polish-and-ship/13c (`Conflicted` before), the entry `Pending` with
+/// `S` listed — rather than failing the status read after it on the same
+/// stop (M7/02b: `Facts(Status(Run(Stopped)))`, the commands never held).
+/// `a` then puts the edits back and drops `S`.
 #[test]
 fn a_stop_mid_rebase_is_held_and_abort_puts_the_edits_back() {
     let (repo, op) = dirty_for(Kind::Rebase);
     let stop = stop_before(&repo, 6);
     let (entry, paths) = match run_with_stop(&repo, &op, NOW, &stop) {
-        Err(ApplyError::Conflicted { entry, kind, paths }) => {
+        Err(ApplyError::Paused { entry, kind, paths }) => {
             assert_eq!(kind, InProgress::Rebase);
             (*entry, paths)
         }

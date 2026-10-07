@@ -40,8 +40,9 @@ pub(super) fn started_on_its_line(
 /// still to come, a picked commit after its conflict — under the plan's
 /// cleanup (ADR-0047). Without one, `GIT_EDITOR=true`: git's own message
 /// stands.
-pub(super) fn resume_invocation(
+pub(in crate::apply) fn resume_invocation(
     repo: &RepoHandle,
+    kind: InProgress,
     args: Vec<GitArg>,
     plan_dir: Option<&Path>,
     message: Option<Vec<u8>>,
@@ -56,6 +57,16 @@ pub(super) fn resume_invocation(
         }
         None => invocation = invocation.env("GIT_EDITOR", "true"),
     }
+    // Stopped hook-first, as a local plan line is (`run::plan_git`,
+    // m8-polish-and-ship/13c): a `--continue` stuck in its commit hook is
+    // ended and git leaves the operation live, so `c` is offered again. Not
+    // a rebase's, for the reason `engine::rewrite_git` gives: its hooks
+    // failing do not stop it.
+    let invocation = if kind == InProgress::Rebase {
+        invocation
+    } else {
+        invocation.stop_hooks_first()
+    };
     match message {
         Some(message) => invocation.stdin(message),
         None => invocation,

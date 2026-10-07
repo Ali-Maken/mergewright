@@ -29,6 +29,9 @@ mod restart;
 mod resume;
 mod run;
 mod set_aside;
+mod stopped;
+#[cfg(test)]
+mod tests;
 
 use std::path::{Path, PathBuf};
 
@@ -52,6 +55,7 @@ pub use restart::{RestartPlan, RestartReadError, StageSource, restart_gate, stag
 pub use resume::{Resume, resume};
 pub(crate) use resume::{live_entry, live_entry_facts};
 pub use set_aside::{came_back_from_index, came_back_words};
+pub use stopped::StoppedAt;
 
 pub(crate) use error::{as_apply_error, reason_for};
 pub(crate) use record::{Opening, Pending, PrepareError, begin, finish, kind_name};
@@ -112,6 +116,13 @@ pub struct Applied {
     /// [`came_back_from_index`]). Nothing is lost; the landing line names
     /// them. Empty for every other operation.
     pub came_back: Vec<PathBuf>,
+    /// Where a stop left git, when the user stopped this write and it
+    /// finished anyway (m8-polish-and-ship/13c): `Some(Landed)` for a merge
+    /// whose commit was made before the stop reached its `post-merge` hook.
+    /// `None` for every write that was not stopped. A stop that paused or
+    /// aborted the write is an error, read by
+    /// [`ApplyError::stopped_at`].
+    pub stopped_at: Option<StoppedAt>,
 }
 
 /// Everything one operation needs to run and be recorded.
@@ -333,19 +344,40 @@ fn touches_of(op: &Operation, facts: &RepoFacts, engine: Option<&Engine>) -> Tou
 /// `Pending` with no outcome line and `resume` closes it (hard choice 2).
 fn held(
     ctx: &mut Context<'_>,
-    mut pending: Pending,
+    pending: Pending,
     commands: Vec<String>,
     kind: InProgress,
     paths: Vec<PathBuf>,
 ) -> ApplyError {
-    ctx.journal
-        .hold_commands(&pending.entry.id, commands.clone());
-    pending.entry.commands = commands;
     ApplyError::Conflicted {
-        entry: Box::new(pending.entry),
+        entry: Box::new(hold(ctx, pending, commands)),
         kind,
         paths,
     }
+}
+
+/// The user stopped the write and git paused it itself: held exactly as
+/// [`held`] holds a conflict (m8-polish-and-ship/13c).
+fn paused(
+    ctx: &mut Context<'_>,
+    pending: Pending,
+    commands: Vec<String>,
+    kind: InProgress,
+    paths: Vec<PathBuf>,
+) -> ApplyError {
+    ApplyError::Paused {
+        entry: Box::new(hold(ctx, pending, commands)),
+        kind,
+        paths,
+    }
+}
+
+/// The `Pending` entry keeps the commands run so far; `resume` adds its own.
+fn hold(ctx: &mut Context<'_>, mut pending: Pending, commands: Vec<String>) -> JournalEntry {
+    ctx.journal
+        .hold_commands(&pending.entry.id, commands.clone());
+    pending.entry.commands = commands;
+    pending.entry
 }
 
 /// The plan has run: close the entry the way git left the repository —
@@ -363,6 +395,19 @@ fn closed(
         cleanup,
         edit_stop,
     } = run;
+    // The user stopped git (m8-polish-and-ship/13c). How git ended does not
+    // decide the outcome — the fallback stops kill it outright — what it
+    // left on disk does (`stopped`): paused, landed, or ended before it
+    // could pause.
+    let (failure, stopped_at) = match stopped::after_a_stop(ctx, op, &pending.entry, failure)? {
+        stopped::Read::Held { kind, paths } => {
+            return Err(paused(ctx, pending, commands, kind, paths));
+        }
+        stopped::Read::Closes {
+            failure,
+            stopped_at,
+        } => (failure, stopped_at),
+    };
     // Stopped, not failed.
     //
     // `cleanup` is dropped on this path and nothing is lost by it: it is
@@ -376,19 +421,7 @@ fn closed(
     // A rebase or checkout that set edits aside: step 6, whether the
     // operation went through or git refused it (ADR-0045 §4).
     if let Some(stash) = set_aside::stash_of(&pending.entry) {
-        // Absorb's rebuilt stash only once it went through; otherwise `S`
-        // itself, still with `--index` (`set_aside::put_back`).
-        let index_base = match op {
-            Operation::Rewrite(params) if failure.is_none() => params.index_base,
-            _ => None,
-        };
-        let ended = set_aside::Ended {
-            failure: failure.map(|failed| failed.error),
-            done: EntryStatus::Committed,
-            unread: cleanup,
-            index_base,
-        };
-        return set_aside::close(ctx, pending, commands, stash, ended);
+        return closed_set_aside(ctx, op, pending, commands, stash, failure, cleanup);
     }
     // A put-back that failed: the index says whether it clashed, never the
     // exit code (ADR-0045 §7). Read before the outcome, which it decides.
@@ -437,13 +470,38 @@ fn closed(
         // thing the answer says went short (30s's `NotAsTheyWere`, unchanged).
         None => {
             let went_short = after_failed.into_iter().chain(unread).collect();
-            succeeded(entry, op, went_short, cleanup)
+            stopped::mark(stopped_at, succeeded(entry, op, went_short, cleanup))
         }
         // `finish` has already put the after-state failures, if any, into the
         // entry's `Aborted` reason: git's own failure is the headline, but
         // nothing is lost behind it.
         Some(failed) => Err(failed.into_error(entry)),
     }
+}
+
+/// [`closed`] for a write that set edits aside: step 6 puts them back.
+fn closed_set_aside(
+    ctx: &mut Context<'_>,
+    op: &Operation,
+    pending: Pending,
+    commands: Vec<String>,
+    stash: Oid,
+    failure: Option<PlanFailure>,
+    cleanup: Vec<AfterState>,
+) -> Result<Applied, ApplyError> {
+    // Absorb's rebuilt stash only once it went through; otherwise `S`
+    // itself, still with `--index` (`set_aside::put_back`).
+    let index_base = match op {
+        Operation::Rewrite(params) if failure.is_none() => params.index_base,
+        _ => None,
+    };
+    let ended = set_aside::Ended {
+        failure: failure.map(|failed| failed.error),
+        done: EntryStatus::Committed,
+        unread: cleanup,
+        index_base,
+    };
+    set_aside::close(ctx, pending, commands, stash, ended)
 }
 
 /// The outcome a run closes its entry with: `Aborted` with git's reason when
@@ -581,6 +639,7 @@ fn succeeded(
     };
     let applied = Applied {
         came_back: Vec::new(),
+        stopped_at: None,
         entry,
         refresh,
         step_backup: None,
@@ -681,6 +740,7 @@ fn clashed(
     Err(ApplyError::AfterState {
         applied: Box::new(Applied {
             came_back: Vec::new(),
+            stopped_at: None,
             entry,
             refresh: Refresh::WorkingTree,
             step_backup: None,

@@ -295,6 +295,7 @@ fn with_not_as_they_were(error: RunError, not_as_they_were: Option<NotAsTheyWere
 fn applied(entry: JournalEntry) -> Applied {
     Applied {
         came_back: Vec::new(),
+        stopped_at: None,
         entry,
         refresh: Refresh::Everything,
         step_backup: None,

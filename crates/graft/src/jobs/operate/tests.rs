@@ -145,6 +145,7 @@ fn committed_checkout() -> Box<Applied> {
     entry.status = EntryStatus::Committed;
     Box::new(Applied {
         came_back: Vec::new(),
+        stopped_at: None,
         entry: *entry,
         refresh: Refresh::Everything,
         step_backup: None,

@@ -382,6 +382,13 @@ impl GitInvocation {
         self
     }
 
+    /// Whether [`stop_hooks_first`](Self::stop_hooks_first) marked this
+    /// invocation: a caller's own test of which of its lines it marks.
+    #[must_use]
+    pub fn stops_hooks_first(&self) -> bool {
+        self.stop_order == StopOrder::HooksFirst
+    }
+
     /// Bytes to feed git's stdin. Without this, stdin is closed.
     #[must_use]
     pub fn stdin(mut self, bytes: Vec<u8>) -> Self {

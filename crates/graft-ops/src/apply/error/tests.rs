@@ -40,3 +40,52 @@ fn not_as_they_were_says_the_edits_are_back_and_where_the_bytes_are() {
          expected: hash-object printed \"?\" · their exact bytes are in the backup"
     );
 }
+
+/// m8-polish-and-ship/13c: a paused write explains itself in the conflict's
+/// terms, and only a stop's errors say where git was left.
+#[test]
+fn a_paused_write_says_so_and_only_a_stop_has_a_stopped_at() {
+    use graft_core::journal::{EntryStatus, OperationKind};
+
+    use crate::journal::tests::committed;
+
+    let mut pending = committed(1, OperationKind::Merge, 1, 2);
+    pending.description = "merge feature into main".to_owned();
+    pending.status = EntryStatus::Pending;
+    let paused = ApplyError::Paused {
+        entry: Box::new(pending.clone()),
+        kind: InProgress::Merge,
+        paths: Vec::new(),
+    };
+    assert_eq!(
+        paused.explain(),
+        "merge feature into main: stopped · the merge is paused · c continues, a aborts"
+    );
+    assert_eq!(
+        paused.stopped_at(),
+        Some(StoppedAt::Paused(InProgress::Merge))
+    );
+
+    let conflicted = ApplyError::Conflicted {
+        entry: Box::new(pending.clone()),
+        kind: InProgress::Merge,
+        paths: Vec::new(),
+    };
+    assert_eq!(conflicted.stopped_at(), None, "a conflict is not a stop");
+    assert_eq!(
+        ApplyError::Stopped.stopped_at(),
+        None,
+        "stopped before git ran"
+    );
+    let failed = ApplyError::Git {
+        entry: Box::new(pending),
+        error: RunError::Exited {
+            status: 1,
+            stderr_first_line: "fatal: no".to_owned(),
+            command: "git merge".to_owned(),
+        },
+        recoverable: true,
+        edits: None,
+    };
+    assert_eq!(failed.stopped_at(), None, "git's own failure is not a stop");
+}
