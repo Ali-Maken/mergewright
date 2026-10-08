@@ -24,7 +24,7 @@ fn every_task_has_a_line_naming_its_shipped_key() {
             "S opens the stashes \u{b7} s sets your edits aside \u{b7} p brings them back",
             "b makes a branch at the cursor",
             "m on feature shows the merge before it happens \u{b7} y does it",
-            "m on clash stops on a conflict \u{b7} \u{23ce} opens it \u{b7} t takes theirs \u{b7} c finishes",
+            "m on clash \u{b7} y stops on its conflict \u{b7} t takes theirs \u{b7} \u{23ce} marks it done \u{b7} y finishes",
             "P sends main to origin",
         ]
     );

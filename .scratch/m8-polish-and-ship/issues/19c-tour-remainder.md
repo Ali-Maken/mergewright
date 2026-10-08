@@ -215,6 +215,59 @@ Graft invocation overrides those for commit/merge; if one does, stop and report.
 **Touches:** `tests/it/main.rs`, captures + contact sheet, the two existing Esc/q tests if extended, ticket 19's open
 boxes (conductor ticks them naming these tests), KNOWN_GAPS unjudged rows for the 4 captures (conductor files).
 
+**NOTES 19c-c (builder, 2026-10-08)** — **partial: stopped on a red at task 6**, no compaction. Scout used
+(`scouts/19-tour.md`, plus 19c-b's NOTES); no second scout. Skill: `implement`/`tdd` (followed from SKILL.md, not
+loaded via the Skill tool).
+- **Red, cause found, outside this crate set (production):** following the card in order, task 6's merge is refused.
+  `u` (task 3) undoes the commit and leaves `notes.txt` **staged**; task 4 (`S s ⏎ p y`) brings it back staged; at
+  task 6 `git status --porcelain` in the practice repo reads `M  notes.txt` / `?? scratch.txt`, and `feature` does not
+  touch `notes.txt` (`git diff --name-status main feature`: chef/hours/menu/specials). git refuses a non-fast-forward
+  merge over **any** staged change: reproduced with plain git 2.54 in a scratch repo (`error: Your local changes to
+  the following files would be overwritten by merge: n` / `Merge with strategy ort failed`, exit 2). The app's status
+  line: `merge feature into main: git merge --no-edit --ff … feature failed (2): error: Your local changes to the
+  following files would be overwritten by merge:`. 19c-b's per-task tests never met it: each starts a fresh tour, so
+  task 6 there runs with `notes.txt` only unstaged. Fix needs a ruling (not mine to pick): the practice repo / task
+  order (e.g. task 3 or 4 ends with nothing staged), the card's words, or Graft refusing/warning before `y`.
+- **Question (no line, rule 7):** the task-6 merge preview read `no conflicts expected` and offered `y`, then the merge
+  failed on the staged file. Whether the preview should have named the dirty index — I did not read the forecast code.
+- **Not built (wait on the red):** the whole-tour walk and its three assertions (`his_repo_is_untouched`,
+  `state_dir_is_unchanged`, `practice_folder_is_gone` after finish), `m8-tour-step7-conflict-120x36.txt`,
+  `m8-tour-finished-120x36.txt`. The draft walk (all eight tasks, the Before/after byte checks, the two captures) is
+  `.scratch/m8-polish-and-ship/handoff/19c-c-whole-walk.rs.txt` — it ran green through task 5 at 120×36, then
+  failed at `merge_feature`. **Next step:** after the fix, move its test, `Walk` and `Before` into `tour_walk.rs`
+  (drop the `PROBE` eprintln, use `tour_tmp`/`settled`/the suffix-only `steady` from the committed file), run with
+  `GRAFT_UPDATE_SHOTS=1`, read both new captures.
+- **Gotcha for that walk:** "all 8 ticked in the drawn card" cannot be observed as worded — `update/tour.rs:100-101`
+  sets `LeaveTour { finished: true }` in the same update that stores the eighth tick, so the next frame is his repo.
+  Assert 7 drawn + the finish status (which only an all-eight read sets), or rule the box reworded.
+- **Built, green:** `the_tour_captures_match` (step 1 at 120×36 from his repo by `⌃P tour ⏎`; step 1 at 80×24 from
+  `t`); C+1; C+2.
+- Esc/q absence (box 4's second half): already asserted — `tests/it/tour.rs:145` (`removed after Esc`) and
+  `tests/it/tour.rs:224` (`removed after q`); nothing added.
+- **Env:** `GRAFT_PRACTICE_EPOCH` = 1609459200 = `graft_fixtures::git::FIXED_DATE` (2021-01-01Z); `GIT_AUTHOR_DATE` /
+  `GIT_COMMITTER_DATE` = that + 3600. Confirmed first by grep (`GIT_COMMITTER_DATE|GIT_AUTHOR_DATE` over graft-git,
+  graft-ops, graft `src`): only `graft-ops/src/tour/build.rs:215-216` (the build's own dates) and graft-git test
+  data — no Graft commit/merge invocation overrides them.
+- **`TMPDIR` deviation:** not `/tmp/graft-capture/<scenario>` itself but a random `/tmp/graft-capture/<scenario>-<6>`
+  (+ `/practice-tmp`): a fixed folder would collide when two worktrees run the suite at once. The random suffix is
+  written as `XXXXXX` in the capture (`steady`); the header cuts the path from the left at a fixed place.
+- **Findings from the captures (textual, capture-proven):**
+  - Step 1 at 120×36 draws **no ticks row**: line 1 (82 cols) + ticks does not fit (`tour_card.rs` middle_row rule);
+    the ticket expected "ticks row all open" there. At 300×50 they show (C+2 test); the smallest width that fits them is not measured.
+  - 80×24 header reads `◇ work· …ctice-…` — no gap between `work` and `·` (`m8-tour-80x24.txt` line 3).
+  - Starting the tour from the empty state at 300×50, row 2 under the header shows `~/code` (the empty state's
+    folder line) — seen in the C+2 test's failure dump; a stale cell or intended, unverified. Question.
+  - Card line 1 says "⏎ on the top row" but the tour lands the cursor on `main`, not the top row (19c-b's note too).
+- **Gap, unverified fragility:** the graph's ages (`6y`) are counted from the wall clock (`Clock::Wall`, no env pin in
+  the binary); the epoch is fixed, so these captures go red when the age label rolls (`6y` → `7y`). Same for older
+  captures dated from `FIXED_DATE`.
+- Ticket's step-1 caption text said `stage a hunk` / "`main` 5 commits": the app says `stage a change` and 7 commits;
+  captions describe what is drawn.
+**Touches (19c-c):** `view/tour.rs` line 7 + its unit test (grep `c finishes`/`opens it` over crates, docs/shots, design
+note: no other copy of the old line; `resolver.finish` no longer named by the card); `tests/it/main.rs` (one `mod`);
+`tests/it/tour.rs` doc only; graft MAP tests entry; two new captures (no contact sheet for M8 exists yet — captions
+in-file, as `m8-look-outside-repo-*`); no shared helper changed; no production file but `view/tour.rs`.
+
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc` —
 workspace-wide, every part.
@@ -223,5 +276,14 @@ workspace-wide, every part.
 a ~30k · b ~50k · c ~55k. Each one context; compaction → say so in NOTES.
 
 ## 19c-c additions (conductor 2026-10-08, from 19c-b's hand-back — fixes as found, no new decision)
-- [ ] C+1: card task 7 line in `crates/graft/src/view/tour.rs` names the keys that work (`m y t ⏎ y`, per 19c-b's `tour_tasks.rs` task 7 test), not `⏎ opens it … c finishes`. The full-tour walk follows the card's words, so it proves this; name that test at tick. Also refresh the stale `tour.rs:7-10` doc.
-- [ ] C+2: probe `P` (push) in the tour with TMPDIR at the length of the macOS default per-user temp folder (~49 chars; read `$TMPDIR`'s length on this Mac, don't write the path down) — the askpass socket path must fit SUN_LEN (104). Red → say whether it hits the tour only or every askpass push, and stop (don't fix outside this ticket's scope without a ruling). Green → name the test.
+- [x] C+1: card task 7 line in `crates/graft/src/view/tour.rs` names the keys that work (`m y t ⏎ y`, per 19c-b's `tour_tasks.rs` task 7 test), not `⏎ opens it … c finishes`. The full-tour walk follows the card's words, so it proves this; name that test at tick. Also refresh the stale `tour.rs:7-10` doc.
+      Tests: the words — `view::tour::tests::every_task_has_a_line_naming_its_shipped_key` (now
+      `m on clash · y stops on its conflict · t takes theirs · ⏎ marks it done · y finishes`, red before the change);
+      the keys work — 19c-b's `task_7_ticks_by_resolving_clash_and_finishing` presses exactly `m y t ⏎ y`. **Not**
+      the full-tour walk: it does not exist (red at task 6, NOTES 19c-c). Stale doc refreshed: `tests/it/tour.rs:7-10`.
+- [x] C+2: probe `P` (push) in the tour with TMPDIR at the length of the macOS default per-user temp folder (~49 chars; read `$TMPDIR`'s length on this Mac, don't write the path down) — the askpass socket path must fit SUN_LEN (104). Red → say whether it hits the tour only or every askpass push, and stop (don't fix outside this ticket's scope without a ruling). Green → name the test.
+      **Green.** Test: `tour_walk::push_in_the_tour_fits_the_askpass_socket_under_a_default_length_tmpdir` (`TMPDIR`
+      asserted exactly 49 chars, trailing `/` as macOS sets it; `P y` lands, task 8 drawn and read). Bites: the same
+      test with a 79-char `TMPDIR` fails with `askpass: … path must be shorter than SUN_LEN` (run once, reverted).
+      Applies to every askpass push, not the tour alone: the socket dir is `std::env::temp_dir()`
+      (`graft-git/src/run/askpass.rs:254`). Margin: 49 + `graft-askpass-<pid>-<8 hex>/ask.sock` ≈ 86-88 of 104.

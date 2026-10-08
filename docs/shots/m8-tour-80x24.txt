@@ -1,0 +1,26 @@
+m8-polish-and-ship/19c-c: what right looks like — `t` from the empty state at 80×24: the card's top border still holds `practice 1 of 8 · stage a change` and `esc leave`; its line is cut to the width with `…` and no ticks row is drawn (under 100 columns the ticks go); the header `◇ work` with a gap before the path cut from the left (`…ctice-1609459200/work · a throwaway repo, not yours`); the practice graph under the card, `Uncommitted changes` on top, the cursor on `main`. Colour unverified (rule 5).
+
+ ◇ work· …ctice-1609459200/work · a throwaway repo, not yours · main  7 commits
+╭─ practice 1 of 8 · stage a change ──────────────────────────────── esc leave ╮
+│ ⏎ on the top row opens your changes · space stages the change under the cur… │
+╰──────────────────────────────────────────────────────────────────────────────╯
+  ◌        Uncommitted changes (1 unstaged, 1 untracked)
+▸ ◆      ⓘ [◆ main ↑1] Add today's specials                        6y   ecad443
+  ●        [origin/main] Name the chef                             6y   9855ec8
+  ●        Pie for dessert                                         6y   eb4b686
+  │ ●      [clash] Ice cream for dessert                           6y   ebf3d77
+  │ │ ●    [feature] Add opening hours                             6y   8393dfc
+  ●─┴─╯    Add a side dish                                         6y   4a6c890
+  ◇        Start the menu                                          6y   4baa76b
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+ . explain · ⏎ open · c commit · P push · p pull · f fetch · a amend · u undo

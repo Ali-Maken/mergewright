@@ -4,10 +4,10 @@
 //! practice repository is built under `TMPDIR`, set per test to a folder
 //! under the isolated home, so every folder it makes can be listed.
 //!
-//! Not here yet (ticket 19b NOTES): the eight tasks ticked by doing, the
-//! finish, and the captures — the practice repository's commits carry the
-//! clock, so their ids and order differ every build and no capture of it
-//! can be compared (blocked on `graft_ops::tour::build_practice_repo`).
+//! Elsewhere: each task ticked by doing it, `tour_tasks.rs` (19c-b); the
+//! captures and `P` under a macOS-length `TMPDIR`, `tour_walk.rs` (19c-c).
+//! `GRAFT_PRACTICE_EPOCH` fixes the practice repository's dates (19c-a), so
+//! its ids and order are the same every build.
 #![allow(
     clippy::expect_used,
     reason = "a fixture that cannot be built leaves nothing to test; the panic names why"

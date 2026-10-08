@@ -1,0 +1,38 @@
+m8-polish-and-ship/19c-c: what right looks like — `⌃P tour ⏎` from his repo: the header `◇ work`, then the practice path cut from the left (`…-step1-XXXXXX/practice-tmp/tributary-practice-1609459200/work`, the run's random folder written as `X`s), `· a throwaway repo, not yours · main  7 commits`; the card at the graph pane's top, 3 rows, `practice 1 of 8 · stage a change` and `esc leave` on its top border, line 1 `⏎ on the top row opens your changes · space stages the change under the cursor` (at 120 columns the ticks row does not fit beside that line, so it is dropped, never cut); the practice graph under it: `Uncommitted changes` on top, `main ↑1` one ahead of `origin/main`, `feature` and `clash` beside it, the cursor on `main`. Colour unverified (rule 5).
+
+ ◇ work  …-step1-XXXXXX/practice-tmp/tributary-practice-1609459200/work · a throwaway repo, not yours · main  7 commits
+
+╭─ practice 1 of 8 · stage a change ──────────────────────────────────────────────────────────────────────── esc leave ╮
+│ ⏎ on the top row opens your changes · space stages the change under the cursor                                       │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+  ◌        Uncommitted changes (1 unstaged, 1 untracked)
+▸ ◆      ⓘ [◆ main ↑1] Add today's specials                                                             PR 6y   ecad443
+  ●        [origin/main] Name the chef                                                                  PR 6y   9855ec8
+  ●        Pie for dessert                                                                              PR 6y   eb4b686
+  │ ●      [clash] Ice cream for dessert                                                                PR 6y   ebf3d77
+  │ │ ●    [feature] Add opening hours                                                                  PR 6y   8393dfc
+  ●─┴─╯    Add a side dish                                                                              PR 6y   4a6c890
+  ◇        Start the menu                                                                               PR 6y   4baa76b
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ . explain · ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal

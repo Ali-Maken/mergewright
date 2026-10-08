@@ -75,7 +75,7 @@ fn key(keys: &Keymap, action: ActionId) -> String {
 /// The line that teaches `task`, keys spelled from `keys`. Ops keys through
 /// `op_action` (the table the ops crate's words read); the rest by their
 /// own rows: `app.open`, `graph.branch`, `stash.save`, `stash.pop`,
-/// `confirm.yes`, `resolver.take_theirs`, `resolver.finish`.
+/// `confirm.yes`, `resolver.take_theirs`, `resolver.mark_done`.
 #[must_use]
 pub(crate) fn line(task: TourTask, keys: &Keymap) -> String {
     let op = |op: OpKey| key(keys, op_action(op));
@@ -103,12 +103,17 @@ pub(crate) fn line(task: TourTask, keys: &Keymap) -> String {
             op(OpKey::Merge),
             row("confirm.yes")
         ),
+        // The keys the app answers on this path (19c-b's walk, 19c-c C+1):
+        // `y` on the merge preview lands in the resolver already, and `⏎`
+        // marking the last file done opens the finish preview, whose key is
+        // `y` — not `⏎ opens it … c finishes`.
         TourTask::ResolveConflict => format!(
-            "{} on clash stops on a conflict \u{b7} {} opens it \u{b7} {} takes theirs \u{b7} {} finishes",
+            "{} on clash \u{b7} {} stops on its conflict \u{b7} {} takes theirs \u{b7} {} marks it done \u{b7} {} finishes",
             op(OpKey::Merge),
-            row("app.open"),
+            row("confirm.yes"),
             row("resolver.take_theirs"),
-            row("resolver.finish")
+            row("resolver.mark_done"),
+            row("confirm.yes")
         ),
         TourTask::Push => format!("{} sends main to origin", op(OpKey::Push)),
     }
