@@ -1176,8 +1176,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/adr-0007-unguarded | ADR-0007 (graft-core exports no free fns) held only by review; broken once by a planner spec (11 :35). An independent check (fast test on graft-core exports) would hold it → 21 | **unverified** | M8 |
 | M8/map-help-s-j | Map help lists `S` and `J` under HERE; not checked that they act at the Map (22c question) | **unverified** | M8 |
 | M8/22c-captures-unjudged | `docs/shots/m8/help-at-map-120x36.txt`, `search-hint-120x36.txt`: by-eye unjudged, colour unverified | **unverified** | M8 |
-| M8/11d-r2-widths | Marked row draws `? keys` only from 129 cells (branch tip 137), not 120 as ruled; at 83 `u undo` doesn't fit even without the doorway (11d NOTES) — needs a ruling | **broken** | M8 |
-| M8/11d-own-footer-overlays | Journal, stash and Map draw their own footers (`journal_screen.rs:243`, `stash_screen.rs:189`), so the overlay doorway (R1) never shows there; `doorway-journal` shot has no `? keys`. R1's tick holds at the hint-bar level only | **broken** | M8 |
 | M8/11d-palette-here-per-place | Palette HERE lists per place (11d report-only box) | **unverified** | M8 |
 | M8/11d-captures-unjudged | `docs/shots/m8/doorway-{journal-120x36,blame-80x24,marked-120x36}.txt` + 17 re-shot: by-eye unjudged, colour unverified | **unverified** | M8 |
 | M8/stop-now-signal-flaky | Product cause fixed by 13k: HOOKS_GRACE (2 s) started before the first `ps`, which takes 1.9–2.3 s under load, so git got SIGTERM mid-pause (graft-git `run/stop.rs:211,220`); regression `run::stop::tests::a_slow_read_of_the_group_does_not_spend_gits_grace` red 3/3 → green 3/3. The natural flake was never reproduced (0/36 loaded), so its link to this cause is inferred | **unverified** | M8 |
@@ -1207,6 +1205,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/13g-double-sighup (update) | Q1 now has its lines: `signals.rs:98-99` (`at = max(seen,1)`) and `:106`; `exit_wait.rs:92`. Whether his shells forward `SIGHUP` on window close is not verified | unverified (question) | keep |
 | M8/http-read-timeout | Q2: does `shutdown` wake a blocked read on macOS? If it does, the 1 s per-read timeout (`http.rs:383`, `handle` :732-737) buys nothing for teardown and could fail a slow client under load. A spec change goes through the conductor | unverified (question) | 21 |
 | M8/blame-place-ends-with | Q3: should `tests/it/blame_place.rs:160` go back from `contains` to `ends_with` now that the tail is off by default? | unverified (question) | 21, with m6/m7 |
+| M8/map-enter-words-at-empty | At Map Empty/Failed `⏎` only closes the Map (`update/map.rs:191`) but its words say "zoom to commits" (11e question) | **broken** | M8 |
+| M8/11e-captures-unjudged | `docs/shots/m8/doorway-{stash-120x36,stash-60x20,map-120x36,marked-140x40,journal-120x36}.txt` + J/S/Map footers in m2/m3/m7 shots: by-eye unjudged, colour unverified | **unverified** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` 407 lines (~7 over); seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | RESOLVE_KEYS shown on screen via pressed.rs:156; the literal-key grep misses consts | **unverified** | M8 |
