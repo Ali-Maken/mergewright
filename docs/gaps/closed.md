@@ -311,3 +311,4 @@ Rows whose expiry was M6, closed with the evidence named inline. Re-expired and 
 
 | M8/10f-inline-sites-unpinned | 6 key words built inside other functions (c continues, u undoes, e edit M mergetool, ⇥ to write one, u puts the merge back, diff_cursor ×2): remapped spelling untested | **unverified** | M8 | Closed 2026-10-08: 10k `each_inline_stop_word_spells_the_remapped_key` (review m8-doorway-words m7).
 | M8/10j-inline-seven | 7 inline stop words: remapped spelling untested — fixtures sit in private test modules on 10j's Not list; needs its own ticket | **unverified** | M8 | Closed 2026-10-08: 10k `each_inline_stop_word_spells_the_remapped_key` (review m8-doorway-words m7).
+| M8/18c-secret-events-level | 18c `no_secret_leaked` checks pty output, stderr and .git files only — not the event stream | **unverified** | M8 | Closed 2026-10-08 by 18e A1 (`jobs::clone::tests::child_asks_through_the_pool_and_clones`, seen red).
