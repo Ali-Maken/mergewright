@@ -16,5 +16,6 @@ Reply to the conductor in 150 words or fewer, telegraphic (fragments fine, no fi
 STATUS: fixed | not fixed
 ROOT CAUSE: <one sentence>
 CHANGED: <files>
+SKILLS: <each skill you loaded via the Skill tool or by reading its SKILL.md, or "none">
 NOTES: <anything the user must decide>
 ```

@@ -38,7 +38,7 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
   boxes blank and nobody noticed until the review (m5-10-30-31 M5). Checking
   costs one read; not checking cost a Major and a post-hoc correction that had
   to admit it was post-hoc.
-- **After each helper returns**, add a one-line entry to the current milestone's live log, `docs/log/<milestone>.md` (format at the top of that file's Session log; not PROGRESS.md, which only points to it), ending with **the helper's turn count** — the harness figure, never the helper's own claim, which has been wrong by 8x. If it compacted, end with `· COMPACTED`.
+- **After each helper returns**, add a one-line entry to the current milestone's live log, `docs/log/<milestone>.md` (format at the top of that file's Session log; not PROGRESS.md, which only points to it), ending with **the helper's turn count** — the harness figure, never the helper's own claim, which has been wrong by 8x. If it compacted, end with `· COMPACTED`. Builders, reviewers and debuggers also report a `SKILLS:` line (user, 2026-10-08): copy it into the log line as `skills: <list>`; a report without one is sent back for it.
 - **Batch the ceremony per group, not per helper** (ADR-0029): tick the box, update **Current step** and `git commit -am "progress: <what>"` once the group is done. Your own turns cost the same as anyone's.
 - **You file tickets; you don't decide them** (M2 onward). Scope, signatures and `Build with` come from `planner-fable`'s specs. If one looks wrong, send it back to `planner-fable` or ask the user; don't edit it.
 - **Never** push, force anything or skip a failing gate.

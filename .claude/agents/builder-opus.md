@@ -25,5 +25,6 @@ STATUS: done | partial | failed
 TICKET: <id>
 CHANGED: <key modules/files>
 TESTS: <passed>/<total>, gates <pass|fail>
+SKILLS: <each skill you loaded via the Skill tool or by reading its SKILL.md, or "none">
 NOTES: <only what the conductor or user must know>
 ```
