@@ -1249,6 +1249,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/20b-m6-sheet-no-remote | `docs/shots/m6/m6-contact-sheet-4.txt` (:879, :1128) still reads `no remote named` after 20b R3 re-worded the clone failure; M6's shipped sheet, not re-assembled | **unverified** (record) | M8 (28) |
 | M8/flake-single-close-box | `offer_and_blame::a_single_close_box_offers_only_esc` failed once in 20b A's full run (preview box; not in its diff), passed alone and on rerun | **unverified** (flaky?) | M8 |
 | M8/20b-map-tick-no-test | 20b A's MAP.md box ticked "doc, no test; rows checked by reading" — a doc box with no test (same pattern as 10f) | **unverified** | M8 |
+| M8/after-write-capture-race | Debugger (pull flake): header `N rows so far` depends on whether the landing `Find` (graft `update/banner/stop.rs:371`) arrives before the worker reads ahead (`history/serve.rs:141`, `history/scroll/apply.rs:37`). Other after-write captures (set-aside, fix-box, undo-after-push) may share it — not looped | **unverified** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` 407 lines (~7 over); seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |
