@@ -43,8 +43,11 @@ RECENT moves down by the rows used. Bars: Typing `⏎ clone · esc cancel`; Runn
       key over. Use 08's empty-state walk driver if one exists (`rg -n 'J21|init_here' crates/graft/tests`); else
       drive `outside_edge` + `outside_job` with a real `JobRunner` and say so in NOTES.
       (`tests/it/m8_walk/clone.rs::clone_from_the_empty_state`)
-- [ ] **UNTICKED by the conductor 2026-10-08 — false tick (review m8-clone Critical): `no_secret_leaked` does not cover events (`m8_walk/clone.rs:229-238` checks pty output, stderr, .git only). Fix in 18e.** HTTP Basic: credential box drawn over the empty state (frame has its title), `TypeSecret`, `⏎`, clone lands;
-      `no_secret_leaked` over events, frames and the new repo. (`…::clone.rs::clone_asks_for_a_password`)
+- [x] HTTP Basic: credential box drawn over the empty state (frame has its title), `TypeSecret`, `⏎`, clone lands;
+      secret absent from every event's `Debug` (`jobs::clone::tests::child_asks_through_the_pool_and_clones`) and
+      from pty frames, stderr and the new `.git` (`m8_walk/clone.rs::clone_asks_for_a_password`).
+      *Re-ticked 2026-10-08 by 18e A1, box amended: unticked earlier by the conductor as a false tick (review m8-clone
+      C1), since it named `no_secret_leaked` over events and no test saw events. The event scan was seen red in 18e.*
 - [x] R6 rows, words asserted from the drawn frame: no name; target non-empty (nothing ran); unreachable → fails
       row, URL kept, `⏎` retries; `HungRemote` + `esc` → stopped row, no folder; `esc` not running → list, nothing
       written. (`…::clone.rs::{bad_url_stays, target_exists_refused, failure_keeps_the_url_and_retries,
