@@ -312,6 +312,8 @@ fn run_job(assignment: Assignment) -> AppEvent {
                 report: panicked.report,
             },
         )),
+        // The job's own account of how it ended, stopped or not.
+        Ok(Outcome::Answered(product)) => AppEvent::Produced(id, product),
         // Whatever it came back with, the application asked for it to stop and
         // is no longer expecting a result. One job, one event.
         Ok(_) if cancel.is_cancelled() => AppEvent::Core(Event::JobCancelled(id)),

@@ -929,12 +929,7 @@ impl<S: JobEvents> JobRunner<S> {
         let clock = self.clock;
         let description = op.describe();
         let waiting = self.waiting.clone();
-        // Settled here, on the loop's thread, not inside the job: what git
-        // must run to ask is a fact about this process.
-        let helper = match self.askpass_helper.clone() {
-            Some(helper) => Ok(helper),
-            None => std::env::current_exe().map_err(|error| error.to_string()),
-        };
+        let helper = super::operate::askpass_helper(self.askpass_helper.as_ref());
         self.queue_as(id, Some(Task::Operate), move |id| {
             Box::new(move |cancel: &Cancel| {
                 sink.deliver(AppEvent::Progress(id, Progress::Operating { description }));
@@ -942,54 +937,27 @@ impl<S: JobEvents> JobRunner<S> {
                     return Outcome::Cancelled;
                 }
                 // A fetch, pull or push streams git's progress lines to the
-                // status line (m4-remotes/05). The sink is `Send` but not
-                // `Sync`, and the hook is called from the executor's stderr
-                // thread, hence the lock.
-                let sink = Arc::new(std::sync::Mutex::new(sink));
-                let say = move |sink: &std::sync::Mutex<S>, progress: Progress| {
-                    // A poisoned lock means another progress call panicked;
-                    // that panic is the job's failure and is reported as
-                    // one. Dropping this one line of progress is safe.
-                    if let Ok(sink) = sink.lock() {
-                        // `Delivery::NobodyListening`: nobody is left to
-                        // show it.
-                        let _delivery = sink.deliver(AppEvent::Progress(id, progress));
-                    }
-                };
-                let brief_sink = Arc::clone(&sink);
-                let progress = move |brief: String| {
-                    say(&brief_sink, Progress::RemoteProgress { brief });
-                };
-                // The credential question travels the same way the progress
-                // line does; the answer comes back through `waiting`.
-                let askpass = Arc::new(super::askpass::ChannelAskPass::new(
-                    id,
-                    Box::new(move |prompt: String| {
-                        say(
-                            &sink,
-                            Progress::CredentialNeeded {
-                                prompt,
-                                pulse_seed: super::askpass::pulse_seed(),
-                            },
-                        );
-                    }),
-                    waiting,
-                    cancel.clone(),
-                ));
+                // status line (m4-remotes/05) and asks through the prompt.
+                let hooks = super::operate::job_hooks(sink, id, waiting, cancel, helper);
                 Outcome::Produced(Product::Operated(Box::new(super::operate::run_operation(
-                    &repos,
-                    &op,
-                    clock,
-                    cancel,
-                    super::operate::Hooks {
-                        progress: Box::new(progress),
-                        askpass,
-                        helper,
-                    },
-                    &keys,
+                    &repos, &op, clock, cancel, hooks, &keys,
                 ))))
             })
         });
+    }
+
+    /// Clone `request.url` into `request.into` (m8/18b): answered as
+    /// [`Product::Cloned`], progress as `Progress::RemoteProgress`, git's
+    /// questions as `Progress::CredentialNeeded` under the returned id.
+    /// Stoppable: [`Self::cancel`] stops git and the answer still comes,
+    /// saying what the stop left.
+    pub(crate) fn clone_repo(&self, request: super::clone::CloneRequest) -> JobId {
+        let sink = self.sink.clone();
+        let waiting = self.waiting.clone();
+        let helper = super::operate::askpass_helper(self.askpass_helper.as_ref());
+        self.queue_job(None, move |id| {
+            Box::new(super::clone::work(sink, id, waiting, helper, request))
+        })
     }
 
     /// The user's answer to git's credential question, or their cancelling

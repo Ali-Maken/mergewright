@@ -33,7 +33,7 @@ use crate::update::{AppState, Size};
 /// Undo, spelled once per place for the exit line of a write git could not
 /// pause (13d): the process has one keymap (ADR-0055), and that line is
 /// printed after the loop, and its state, are gone (`exit_wait::Pool`).
-const UNDO: graft_ui::keymap::ActionId = graft_ui::keymap::ActionId("app.undo");
+pub(super) const UNDO: graft_ui::keymap::ActionId = graft_ui::keymap::ActionId("app.undo");
 
 /// Start the re-query worker (DESIGN.md §4.5), knowing what startup settled.
 ///
@@ -240,6 +240,10 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
 pub(super) struct Arrival {
     /// Put on the first frame's status row (`recent: not saved · …`).
     pub status: Option<String>,
+    /// What the place before handed on, said once on the first frame: a
+    /// clone's askpass close failure (m8/18b). `None` from every other
+    /// arrival.
+    pub notice: Option<String>,
     /// Opened from the empty state: the cursor lands on `HEAD`'s row
     /// (`update::lands_on_head_at_open`), not the top row.
     pub on_head: bool,
@@ -269,6 +273,21 @@ impl Arrival {
             config_problems,
             ..Self::default()
         }
+    }
+}
+
+/// Seed a repository's first state with how it was arrived at: the keys,
+/// his config's problems, the first-launch line, what to say on the first
+/// frame (a notice the last place handed on, then the arrival's own status,
+/// one sticky line), and the cursor on `HEAD`.
+pub(super) fn arrive(state: &mut AppState, arrival: Arrival) {
+    state.seed_keys(arrival.keymap, arrival.config_problems);
+    state.first_launch = arrival.first_launch;
+    if let Some(reason) = super::places::joined(arrival.notice, arrival.status) {
+        state.status = crate::update::Status::Sticky { reason, keys: None };
+    }
+    if arrival.on_head {
+        crate::update::lands_on_head_at_open(state);
     }
 }
 
@@ -319,14 +338,7 @@ pub(super) fn run_repo(
         common_dir.as_deref(),
     )?;
     let undo = arrival.keymap.spell(&UNDO).0;
-    state.seed_keys(arrival.keymap, arrival.config_problems);
-    state.first_launch = arrival.first_launch;
-    if let Some(reason) = arrival.status {
-        state.status = crate::update::Status::Sticky { reason, keys: None };
-    }
-    if arrival.on_head {
-        crate::update::lands_on_head_at_open(&mut state);
-    }
+    arrive(&mut state, arrival);
     let mut graphics = Graphics::new(mux.waiter(), &settled.capabilities)
         .with_transport(Transport::for_tmux(&settled.capabilities.tmux));
     let outcome = pump_with(

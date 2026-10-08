@@ -36,6 +36,7 @@ fn state() -> OutsideState {
         palette: None,
         config_problems: Vec::new(),
         first_launch: crate::first_launch::FirstLaunch::default(),
+        credential: None,
     }
 }
 
@@ -496,4 +497,305 @@ fn the_default_keymap_outside_is_every_key_as_pressed() {
         );
         assert_eq!(through, direct, "{c}");
     }
+}
+
+/// The running clone's job (m8/18b).
+const CLONE: graft_core::job::JobId = graft_core::job::JobId::new(7);
+const OTHER: graft_core::job::JobId = graft_core::job::JobId::new(8);
+
+/// The empty state with a clone of `url` running under [`CLONE`].
+fn cloning() -> OutsideState {
+    let mut s = state();
+    s.prompt = Some(Prompt::Clone(super::CloneState {
+        url: TextField::new("https://h/x.git"),
+        run: super::CloneRun::Typing,
+    }));
+    super::clone_started(&mut s, CLONE, PathBuf::from("/me/code/x"));
+    s
+}
+
+fn job(event: crate::update::AppEvent) -> crate::event_loop::Wake {
+    crate::event_loop::Wake::Event(event)
+}
+
+fn progress(id: graft_core::job::JobId, brief: &str) -> crate::event_loop::Wake {
+    job(crate::update::AppEvent::Progress(
+        id,
+        crate::update::Progress::RemoteProgress {
+            brief: brief.to_owned(),
+        },
+    ))
+}
+
+fn asks(id: graft_core::job::JobId) -> crate::event_loop::Wake {
+    job(crate::update::AppEvent::Progress(
+        id,
+        crate::update::Progress::CredentialNeeded {
+            prompt: "Password for 'https://u@h':".to_owned(),
+            pulse_seed: false,
+        },
+    ))
+}
+
+fn answered(
+    id: graft_core::job::JobId,
+    answer: crate::jobs::clone::CloneAnswer,
+) -> crate::event_loop::Wake {
+    job(crate::update::AppEvent::Produced(
+        id,
+        crate::update::Product::Cloned(answer),
+    ))
+}
+
+fn run_of(s: &OutsideState) -> &super::CloneRun {
+    match &s.prompt {
+        Some(Prompt::Clone(clone)) => &clone.run,
+        other => panic!("no clone prompt: {other:?}"),
+    }
+}
+
+/// What each of the clone job's events does to the empty state: progress
+/// updates the running line, git's question opens the credential prompt,
+/// an end puts its words on the prompt (URL kept) and closes the question,
+/// a landed clone asks the loop to open it. Another job's events, and any
+/// event with no clone running, change nothing.
+#[test]
+fn clone_job_events_table() {
+    let mut s = cloning();
+    progress_updates_the_running_line(&mut s);
+    git_asks_open_the_credential_prompt(&mut s);
+    an_end_says_its_words_and_closes_the_question(&s);
+    a_landed_clone_asks_to_open_it(&s);
+    others_change_nothing(&s);
+}
+
+fn progress_updates_the_running_line(s: &mut OutsideState) {
+    use super::{CloneRun, outside_job};
+
+    assert_eq!(
+        *run_of(s),
+        CloneRun::Running {
+            job: CLONE,
+            into: PathBuf::from("/me/code/x"),
+            progress: None
+        },
+        "running, `connecting…` until git's first line"
+    );
+
+    assert_eq!(
+        outside_job(s, &progress(CLONE, "Receiving objects: 40%")),
+        OutsideStep::Stay
+    );
+    assert!(
+        matches!(run_of(s), CloneRun::Running { progress: Some(line), .. } if line == "Receiving objects: 40%")
+    );
+    let before = s.clone();
+    assert_eq!(outside_job(s, &progress(OTHER, "nope")), OutsideStep::Stay);
+    assert_eq!(*s, before, "another job's progress");
+}
+
+fn git_asks_open_the_credential_prompt(s: &mut OutsideState) {
+    use super::outside_job;
+
+    assert_eq!(outside_job(s, &asks(OTHER)), OutsideStep::Stay);
+    assert!(s.credential.is_none(), "another job's ask");
+    assert_eq!(outside_job(s, &asks(CLONE)), OutsideStep::Stay);
+    assert_eq!(s.credential.as_ref().map(|prompt| prompt.job), Some(CLONE));
+    assert!(
+        s.credential
+            .as_ref()
+            .is_some_and(crate::update::credential::CredentialPrompt::masked)
+    );
+}
+
+/// Ended (refused, failed or stopped): the words, the URL kept, the
+/// question closed. `s` has a clone running and its question open.
+fn an_end_says_its_words_and_closes_the_question(s: &OutsideState) {
+    use super::{CloneRun, outside_job};
+    use crate::jobs::clone::CloneAnswer;
+    use graft_core::event::Event;
+    use graft_core::job::JobFailure;
+
+    let words = "clone failed: authentication failed".to_owned();
+    let mut ended = s.clone();
+    assert_eq!(
+        outside_job(
+            &mut ended,
+            &answered(
+                CLONE,
+                CloneAnswer::Ended {
+                    words: words.clone()
+                }
+            )
+        ),
+        OutsideStep::Stay
+    );
+    assert_eq!(*run_of(&ended), CloneRun::Ended { words });
+    assert!(
+        ended.credential.is_none(),
+        "the question closed with its job"
+    );
+    assert!(
+        matches!(&ended.prompt, Some(Prompt::Clone(clone)) if clone.url.text() == "https://h/x.git"),
+        "the URL is kept for a retry"
+    );
+
+    // Stopped before it ran: nothing kept.
+    let mut queued = s.clone();
+    outside_job(
+        &mut queued,
+        &job(crate::update::AppEvent::Core(Event::JobCancelled(CLONE))),
+    );
+    assert_eq!(
+        *run_of(&queued),
+        CloneRun::Ended {
+            words: "clone stopped \u{b7} nothing kept".to_owned()
+        }
+    );
+    assert!(queued.credential.is_none());
+
+    // The job broke: said, and sanitised.
+    let mut broke = s.clone();
+    outside_job(
+        &mut broke,
+        &job(crate::update::AppEvent::Core(Event::JobFailed(
+            CLONE,
+            JobFailure::Failed("boom\u{1b}[31m".to_owned()),
+        ))),
+    );
+    assert!(
+        matches!(run_of(&broke), CloneRun::Ended { words } if words.starts_with("clone failed: boom") && !words.contains('\u{1b}')),
+        "{:?}",
+        run_of(&broke)
+    );
+}
+
+/// Done: open it, the notice with it; the question closes.
+fn a_landed_clone_asks_to_open_it(s: &OutsideState) {
+    use super::outside_job;
+    use crate::jobs::clone::CloneAnswer;
+
+    let mut done = s.clone();
+    let notice =
+        Some("cloned \u{b7} the credential prompt's socket could not be cleaned up".to_owned());
+    assert_eq!(
+        outside_job(
+            &mut done,
+            &answered(
+                CLONE,
+                CloneAnswer::Done {
+                    path: PathBuf::from("/me/code/x"),
+                    notice: notice.clone()
+                }
+            )
+        ),
+        OutsideStep::Cloned {
+            path: PathBuf::from("/me/code/x"),
+            notice
+        }
+    );
+    assert!(done.credential.is_none());
+}
+
+fn others_change_nothing(s: &OutsideState) {
+    use super::outside_job;
+    use crate::jobs::clone::CloneAnswer;
+
+    // Another job's answer: not this screen's.
+    let mut other = s.clone();
+    assert_eq!(
+        outside_job(
+            &mut other,
+            &answered(
+                OTHER,
+                CloneAnswer::Ended {
+                    words: "x".to_owned()
+                }
+            )
+        ),
+        OutsideStep::Stay
+    );
+    assert_eq!(other, *s);
+
+    // No clone running: nothing is this screen's.
+    let mut idle = state();
+    assert_eq!(outside_job(&mut idle, &asks(CLONE)), OutsideStep::Stay);
+    assert_eq!(idle, state());
+}
+
+/// git's question on the empty state is modal over everything (the
+/// palette's opener included) and its answers go to the loop as
+/// `OutsideStep::Credential`: `⏎` with what was typed, `esc` with none.
+#[test]
+fn the_credential_prompt_takes_every_key_and_answers_through_the_loop() {
+    use super::{outside_edge, outside_job, outside_paste};
+    use crate::update::credential::Answer;
+    use graft_ui::keymap::Keymap;
+    use zeroize::Zeroizing;
+
+    let keymap = Keymap::default();
+    let mut s = cloning();
+    outside_job(&mut s, &asks(CLONE));
+
+    for typed in ['q', '?', 'o'] {
+        assert_eq!(
+            outside_edge(&mut s, &keymap, key(KeyCode::Char(typed))),
+            OutsideStep::Stay
+        );
+    }
+    outside_paste(&mut s, &keymap, "!");
+    assert!(s.palette.is_none(), "`?` was typed, not the palette");
+    assert_eq!(
+        outside_edge(&mut s, &keymap, key(KeyCode::Enter)),
+        OutsideStep::Credential(CLONE, Some(Answer::new(Zeroizing::new(b"q?o!".to_vec()))))
+    );
+    assert!(s.credential.is_none());
+
+    outside_job(&mut s, &asks(CLONE));
+    assert_eq!(
+        outside_edge(&mut s, &keymap, key(KeyCode::Escape)),
+        OutsideStep::Credential(CLONE, None)
+    );
+    assert!(s.credential.is_none());
+
+    outside_job(&mut s, &asks(CLONE));
+    assert_eq!(
+        outside_edge(&mut s, &keymap, KeyPress::control(KeyCode::Char('c'))),
+        OutsideStep::Quit
+    );
+}
+
+/// `⏎`'s request: the folder git would pick under the shown one, or R6's
+/// reason with nothing run.
+#[test]
+fn clone_request_names_the_folder_or_says_why_not() {
+    use super::clone_request;
+
+    let folder = tempfile::tempdir().expect("a scratch folder");
+    let here = folder.path();
+    assert_eq!(
+        clone_request(here, "https://github.com/me/api.git"),
+        Ok(crate::jobs::clone::CloneRequest {
+            url: "https://github.com/me/api.git".to_owned(),
+            into: here.join("api"),
+        })
+    );
+    for bad in ["", "-upload-pack=x", "https://h/"] {
+        assert_eq!(
+            clone_request(here, bad),
+            Err("can't name a folder from this URL".to_owned()),
+            "{bad:?}"
+        );
+    }
+    std::fs::create_dir(here.join("empty")).expect("a folder");
+    assert!(
+        clone_request(here, "git@h:me/empty.git").is_ok(),
+        "an empty folder is filled"
+    );
+    std::fs::create_dir(here.join("full")).expect("a folder");
+    std::fs::write(here.join("full/notes.txt"), "mine").expect("a file");
+    assert_eq!(
+        clone_request(here, "git@h:me/full.git"),
+        Err("full already exists here".to_owned())
+    );
 }

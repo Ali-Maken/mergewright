@@ -15,10 +15,13 @@ use graft_ops::apply::{self, AfterState, Applied, ApplyError, Context, Refresh, 
 use graft_ops::journal::{Journal, journal_path};
 use graft_ops::operation::Operation;
 
+use graft_core::job::JobId;
+
 use super::Cancel;
 use crate::repos::RepoStore;
 use crate::session::Clock;
 use crate::update::op_keys::OpKeys;
+use crate::update::{AppEvent, Progress};
 use graft_ui::keymap::Keymap;
 
 /// What running one operation came back with.
@@ -171,17 +174,78 @@ pub(super) struct Hooks {
     pub helper: Result<PathBuf, String>,
 }
 
-/// The hooks a remote operation runs with. `None` for a local operation.
+/// Job `id`'s [`Hooks`], wired to `sink`: each progress brief goes out as
+/// [`Progress::RemoteProgress`], each credential question as
+/// [`Progress::CredentialNeeded`], and the answer comes back through
+/// `waiting` (`JobRunner::answer_credential`). One builder for every remote
+/// job — a fetch, pull or push (`JobRunner::operate`) and a clone
+/// (`jobs::clone`, m8/18b) — so the two cannot drift.
+pub(super) fn job_hooks<S: super::JobEvents>(
+    sink: S,
+    id: JobId,
+    waiting: super::askpass::Waiting,
+    cancel: &Cancel,
+    helper: Result<PathBuf, String>,
+) -> Hooks {
+    // The sink is `Send` but not `Sync`, and the progress hook is called
+    // from the executor's stderr thread, hence the lock.
+    let sink = Arc::new(std::sync::Mutex::new(sink));
+    let say = move |sink: &std::sync::Mutex<S>, progress: Progress| {
+        // A poisoned lock means another progress call panicked; that panic
+        // is the job's failure and is reported as one. Dropping this one
+        // line of progress is safe.
+        if let Ok(sink) = sink.lock() {
+            // `Delivery::NobodyListening`: nobody is left to show it.
+            let _delivery = sink.deliver(AppEvent::Progress(id, progress));
+        }
+    };
+    let brief_sink = Arc::clone(&sink);
+    let progress = move |brief: String| {
+        say(&brief_sink, Progress::RemoteProgress { brief });
+    };
+    // The credential question travels the same way the progress line does;
+    // the answer comes back through `waiting`.
+    let askpass = Arc::new(super::askpass::ChannelAskPass::new(
+        id,
+        Box::new(move |prompt: String| {
+            say(
+                &sink,
+                Progress::CredentialNeeded {
+                    prompt,
+                    pulse_seed: super::askpass::pulse_seed(),
+                },
+            );
+        }),
+        waiting,
+        cancel.clone(),
+    ));
+    Hooks {
+        progress: Box::new(progress),
+        askpass,
+        helper,
+    }
+}
+
+/// The binary git runs as its askpass helper: `configured`
+/// (`JobRunner::with_askpass_helper`), else Graft's own. Settled on the
+/// loop's thread, not inside the job: what git must run to ask is a fact
+/// about this process.
+pub(super) fn askpass_helper(configured: Option<&PathBuf>) -> Result<PathBuf, String> {
+    match configured {
+        Some(helper) => Ok(helper.clone()),
+        None => std::env::current_exe().map_err(|error| error.to_string()),
+    }
+}
+
+/// The [`RemoteHooks`] a remote job runs with — a fetch, pull, push or
+/// clone. The caller decides whether the job is remote at all.
 ///
-/// When Graft cannot name the binary git must run to ask, the operation
-/// still runs, headless — no progress, no questions — and the reason goes
-/// out as the one progress line it will get, so the status line says why
+/// When Graft cannot name the binary git must run to ask, the job still
+/// runs, headless — no progress, no questions — and the reason goes out as
+/// the one progress line it will get, so the status line says why
 /// credentials cannot be asked rather than failing later with no
 /// explanation.
-fn remote_hooks(op: &Operation, hooks: Hooks) -> Option<RemoteHooks> {
-    if !op.is_remote() {
-        return None;
-    }
+pub(super) fn remote_hooks(hooks: Hooks) -> Option<RemoteHooks> {
     let Hooks {
         progress,
         askpass,
@@ -280,7 +344,12 @@ pub(super) fn run_operation(
     keys: &Keymap,
 ) -> Operated {
     in_context(repos, clock, cancel, keys, |ctx| {
-        ctx.remote = remote_hooks(op, hooks);
+        // A local operation drops its hooks unused: nothing to report.
+        ctx.remote = if op.is_remote() {
+            remote_hooks(hooks)
+        } else {
+            None
+        };
         apply::apply(ctx, op)
     })
 }
