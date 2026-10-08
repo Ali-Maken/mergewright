@@ -3,7 +3,7 @@ m8-polish-and-ship/18d, from the real binary on a pty: what right looks like —
  graft · no repository here
  ~/code
 
-  o  Open…     i  Init
+  o  Open…     i  Init     c  Clone…
 
   RECENT
   ▸ payments-service    ~/code/payments-service     yesterday
@@ -35,4 +35,4 @@ m8-polish-and-ship/18d, from the real binary on a pty: what right looks like —
 
  first time? ? keys here · ⌃P anything
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- o open… · i init · ⏎ open the selected · q quit · ? keys
+ o open… · i init · c clone… · ⏎ open the selected · q quit · ? keys

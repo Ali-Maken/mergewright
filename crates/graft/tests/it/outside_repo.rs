@@ -478,9 +478,10 @@ fn outside_repo_captures() {
         &mut shots,
         "m8-look-outside-repo-120x36.txt",
         "started in `~/code`, which is no repository: the header says so, the folder line \
-         under it, `o Open… i Init`, then RECENT newest first with `▸` on the newest \
+         under it, `o Open… i Init c Clone…`, then RECENT newest first with `▸` on the newest \
          (selection fill under it), name · `~` path · age; a `─` rule over the bar row \
-         `o open… · i init · ⏎ open the selected · q quit`. No clone, no tour.",
+         `o open… · i init · c clone… · ⏎ open the selected · q quit · ? keys`. No tour \
+         (m8/18c added clone).",
         &screen,
     );
     quit_cleanly(pty);
@@ -509,7 +510,7 @@ fn outside_repo_captures() {
         &mut shots,
         "m8-look-outside-repo-no-recent-80x24.txt",
         "a first run, nothing remembered yet: no RECENT block and no `⏎` in the bar \
-         (`o open… · i init · q quit`); the rest as with recents.",
+         (`o open… · i init · c clone… · q quit · ? keys`); the rest as with recents.",
         &screen,
     );
     quit_cleanly(pty);

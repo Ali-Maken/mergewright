@@ -66,6 +66,7 @@ mod m4_walk;
 mod m5_walk;
 mod m6_stash_put_back;
 mod m7_walk;
+mod m8_walk;
 #[cfg(feature = "heavy-tests")]
 mod many_refs;
 mod name_and_drag;

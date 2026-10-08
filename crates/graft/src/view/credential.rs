@@ -12,7 +12,7 @@ use graft_ui::credential_prompt::CredentialView;
 use graft_ui::text_input::FieldView;
 
 use crate::update::AppState;
-use crate::update::credential::PromptField;
+use crate::update::credential::{CredentialPrompt, PromptField};
 
 /// What the note under the field says, always: Graft answers git's question
 /// and keeps nothing (design note m4, choice 2).
@@ -22,6 +22,12 @@ const NOTE: &str = "typed here only · never stored by Graft";
 #[must_use]
 pub fn credential_view(state: &AppState) -> Option<CredentialView<'static>> {
     let prompt = state.credential.as_ref()?;
+    Some(prompt_view(prompt, &footer(state)))
+}
+
+/// `prompt` as it draws, its bottom border reading `footer`. Shared with
+/// the empty state, whose clone asks the same question (m8/18c).
+pub(crate) fn prompt_view(prompt: &CredentialPrompt, footer: &str) -> CredentialView<'static> {
     let field = match &prompt.field {
         // The open case is unchanged: real text, real cursor.
         PromptField::Open(field) => FieldView {
@@ -50,13 +56,13 @@ pub fn credential_view(state: &AppState) -> Option<CredentialView<'static>> {
             secret: Some(field.pulse()),
         },
     };
-    Some(CredentialView {
+    CredentialView {
         title: prompt.title.clone(),
         prompt: prompt.prompt.clone(),
         field,
         note: sanitize_line(NOTE),
-        footer: sanitize_line(&footer(state)),
-    })
+        footer: sanitize_line(footer),
+    }
 }
 
 /// The box's bottom border: its keys, and what `Esc` cancels — named as the

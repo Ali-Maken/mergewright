@@ -10,7 +10,11 @@ use graft_core::event::{KeyCode, KeyPress};
 use graft_ui::empty_state::bar_keys;
 use graft_ui::text_input::TextField;
 
-use super::{OutsideState, OutsideStep, Prompt, complete, outside_key, resolve, view};
+use graft_ui::empty_state::{CloneShown, EmptyPrompt};
+
+use super::{
+    CloneRun, CloneState, OutsideState, OutsideStep, Prompt, complete, outside_key, resolve, view,
+};
 use crate::recent::Recent;
 
 fn recent(path: &str, secs: u64) -> Recent {
@@ -258,37 +262,7 @@ fn the_view_abbreviates_home_and_names_rows() {
 fn empty_state_bar_keys_are_answered() {
     let root = tempfile::tempdir().expect("scratch");
     std::fs::create_dir(root.path().join("web")).expect("dir");
-    let open_prompt = OutsideState {
-        folder: root.path().to_path_buf(),
-        // `⇥` has something to complete, so it visibly answers.
-        prompt: Some(Prompt::Open(TextField::new("we"))),
-        ..state()
-    };
-    let forms = [
-        ("list with recents", state()),
-        (
-            "list, no recents",
-            OutsideState {
-                recents: Vec::new(),
-                ..state()
-            },
-        ),
-        (
-            "missing folder",
-            OutsideState {
-                missing: true,
-                ..state()
-            },
-        ),
-        ("open prompt", open_prompt),
-        (
-            "init confirm",
-            OutsideState {
-                prompt: Some(Prompt::ConfirmInit),
-                ..state()
-            },
-        ),
-    ];
+    let forms = bar_forms(root.path());
     let now = UNIX_EPOCH;
     let mut checked = 0;
     for (form, start) in forms {
@@ -313,7 +287,74 @@ fn empty_state_bar_keys_are_answered() {
             checked += 1;
         }
     }
-    assert_eq!(checked, 5 + 4 + 4 + 3 + 2, "every form's keys were pressed");
+    assert_eq!(
+        checked,
+        6 + 5 + 4 + 3 + 2 + 2 + 1 + 2 + 2,
+        "every form's keys were pressed"
+    );
+}
+
+/// [`empty_state_bar_keys_are_answered`]'s forms, in `root` (which holds a
+/// `web` folder for `⇥` to complete).
+fn bar_forms(root: &Path) -> Vec<(&'static str, OutsideState)> {
+    let open_prompt = OutsideState {
+        folder: root.to_path_buf(),
+        // `⇥` has something to complete, so it visibly answers.
+        prompt: Some(Prompt::Open(TextField::new("we"))),
+        ..state()
+    };
+    vec![
+        ("list with recents", state()),
+        (
+            "list, no recents",
+            OutsideState {
+                recents: Vec::new(),
+                ..state()
+            },
+        ),
+        (
+            "missing folder",
+            OutsideState {
+                missing: true,
+                ..state()
+            },
+        ),
+        ("open prompt", open_prompt),
+        (
+            "init confirm",
+            OutsideState {
+                prompt: Some(Prompt::ConfirmInit),
+                ..state()
+            },
+        ),
+        // m8/18c: the clone prompt's three bars and the credential box's.
+        (
+            "clone typing",
+            OutsideState {
+                folder: root.to_path_buf(),
+                ..clone_state("file:///srv/x.git", CloneRun::Typing)
+            },
+        ),
+        ("clone running", cloning()),
+        (
+            "clone ended",
+            OutsideState {
+                folder: root.to_path_buf(),
+                ..clone_state(
+                    "file:///srv/x.git",
+                    CloneRun::Ended {
+                        words: "clone failed: no such repository".to_owned(),
+                    },
+                )
+            },
+        ),
+        ("credential", {
+            let mut s = cloning();
+            assert_eq!(super::outside_job(&mut s, &asks(CLONE)), OutsideStep::Stay);
+            assert!(s.credential.is_some(), "the question opened");
+            s
+        }),
+    ]
 }
 
 /// `[keys.empty_state] open = "O"` outside a repository
@@ -385,14 +426,183 @@ fn the_init_box_confirms_on_his_confirm_key() {
         OutsideStep::Init(PathBuf::from("/me/code"))
     );
     // The start screen behind it: `c` reaches the list as `c`, clone's
-    // key. The list has no clone arm yet (`empty_state.rs` `list_key`), so
-    // nothing opens and nothing inits.
+    // key (m8/18c): the clone prompt opens, and nothing inits.
     let mut start = state();
     assert_eq!(
         outside_edge(&mut start, &keymap, ch('c')),
         OutsideStep::Stay
     );
-    assert_eq!(start.prompt, None);
+    assert!(
+        matches!(start.prompt, Some(Prompt::Clone(_))),
+        "{:?}",
+        start.prompt
+    );
+}
+
+/// Rulings R6: `c` is gated like `i` — a folder that does not exist
+/// neither draws nor answers it.
+#[test]
+fn no_clone_in_a_missing_folder() {
+    let missing = OutsideState {
+        missing: true,
+        ..state()
+    };
+    let drawn = bar_keys(
+        &view(&missing, UNIX_EPOCH),
+        graft_ui::keymap::Keymap::shipped(),
+    );
+    assert!(
+        drawn.iter().all(|(key, _)| key != "c"),
+        "c drawn for a missing folder: {drawn:?}"
+    );
+    let mut after = missing.clone();
+    let step = super::outside_edge(&mut after, graft_ui::keymap::Keymap::shipped(), ch('c'));
+    assert_eq!(step, OutsideStep::Stay);
+    assert_eq!(after, missing, "c answered for a missing folder");
+}
+
+fn clone_state(url: &str, run: CloneRun) -> OutsideState {
+    OutsideState {
+        prompt: Some(Prompt::Clone(CloneState {
+            url: TextField::new(url),
+            run,
+        })),
+        ..state()
+    }
+}
+
+fn edge(s: &mut OutsideState, press: KeyPress) -> OutsideStep {
+    super::outside_edge(s, graft_ui::keymap::Keymap::shipped(), press)
+}
+
+/// R6 `c`, typing, `⏎`: the prompt opens empty with `→ ~/code/…`, the
+/// `→` line follows the URL, and `⏎` asks for the clone into the folder.
+#[test]
+fn c_types_a_url_and_enter_asks_for_the_clone() {
+    let root = tempfile::tempdir().expect("scratch");
+    let mut s = OutsideState {
+        folder: root.path().to_path_buf(),
+        home: None,
+        ..state()
+    };
+    assert_eq!(edge(&mut s, ch('c')), OutsideStep::Stay);
+    let shown = |s: &OutsideState| match view(s, UNIX_EPOCH).prompt {
+        Some(EmptyPrompt::Clone(clone)) => clone,
+        other => panic!("no clone prompt: {other:?}"),
+    };
+    let folder = root.path().display().to_string();
+    assert_eq!(shown(&s).into.as_str(), format!("{folder}/\u{2026}"));
+    assert_eq!(shown(&s).shown, CloneShown::Typing);
+    // `q` is typed, not a quit; `⇥` completes nothing.
+    for c in "file:///srv/q.git".chars() {
+        assert_eq!(edge(&mut s, ch(c)), OutsideStep::Stay);
+    }
+    assert_eq!(edge(&mut s, key(KeyCode::Tab)), OutsideStep::Stay);
+    assert_eq!(shown(&s).url.as_str(), "file:///srv/q.git");
+    assert_eq!(shown(&s).into.as_str(), format!("{folder}/q"));
+    assert_eq!(
+        edge(&mut s, key(KeyCode::Enter)),
+        OutsideStep::StartClone(crate::jobs::clone::CloneRequest {
+            url: "file:///srv/q.git".to_owned(),
+            into: root.path().join("q"),
+        })
+    );
+}
+
+/// R6 `⏎` with no name, and `⏎` onto a folder with something in it: the
+/// prompt stays with the reason, nothing runs, and an edit goes back to
+/// typing.
+#[test]
+fn enter_without_a_name_or_onto_a_full_folder_says_why() {
+    let root = tempfile::tempdir().expect("scratch");
+    std::fs::create_dir(root.path().join("x")).expect("dir");
+    std::fs::write(root.path().join("x/keep"), "his").expect("file");
+    for (url, reason) in [
+        ("https://h/", "can't name a folder from this URL"),
+        ("-x", "can't name a folder from this URL"),
+        ("file:///srv/x.git", "x already exists here"),
+    ] {
+        let mut s = OutsideState {
+            folder: root.path().to_path_buf(),
+            ..clone_state(url, CloneRun::Typing)
+        };
+        assert_eq!(
+            edge(&mut s, key(KeyCode::Enter)),
+            OutsideStep::Stay,
+            "{url}"
+        );
+        assert_eq!(
+            s.prompt,
+            Some(Prompt::Clone(CloneState {
+                url: TextField::new(url),
+                run: CloneRun::Ended {
+                    words: reason.to_owned()
+                },
+            })),
+            "{url}"
+        );
+        assert_eq!(edge(&mut s, ch('z')), OutsideStep::Stay);
+        assert!(matches!(
+            s.prompt,
+            Some(Prompt::Clone(CloneState {
+                run: CloneRun::Typing,
+                ..
+            }))
+        ));
+    }
+}
+
+/// R6 while running: `esc` asks for the stop, every other key is
+/// swallowed, `⌃C` quits; not running, `esc` closes the prompt.
+#[test]
+fn running_keys_only_esc_and_ctrl_c() {
+    let job = graft_core::job::JobId::new(7);
+    let running = clone_state(
+        "file:///srv/x.git",
+        CloneRun::Running {
+            job,
+            into: PathBuf::from("/me/code/x"),
+            progress: None,
+        },
+    );
+    for press in [
+        ch('a'),
+        ch('q'),
+        key(KeyCode::Enter),
+        key(KeyCode::Backspace),
+        ch('?'),
+    ] {
+        let mut s = running.clone();
+        assert_eq!(edge(&mut s, press), OutsideStep::Stay, "{press:?}");
+        assert_eq!(s, running, "{press:?} changed something");
+    }
+    let mut s = running.clone();
+    assert_eq!(
+        edge(&mut s, key(KeyCode::Escape)),
+        OutsideStep::StopClone(job)
+    );
+    let mut s = running.clone();
+    assert_eq!(
+        edge(&mut s, KeyPress::control(KeyCode::Char('c'))),
+        OutsideStep::Quit
+    );
+
+    let mut s = clone_state("file:///srv/x.git", CloneRun::Typing);
+    assert_eq!(edge(&mut s, key(KeyCode::Escape)), OutsideStep::Stay);
+    assert_eq!(s, state(), "esc closed the prompt and kept the list");
+}
+
+/// A paste lands in the clone field (trimmed of its newline), never while
+/// it runs.
+#[test]
+fn a_paste_lands_in_the_clone_field() {
+    let mut s = clone_state("", CloneRun::Typing);
+    super::outside_paste(
+        &mut s,
+        graft_ui::keymap::Keymap::shipped(),
+        "file:///srv/x.git\n",
+    );
+    assert!(matches!(&s.prompt, Some(Prompt::Clone(c)) if c.url.text() == "file:///srv/x.git"));
 }
 
 /// 09d D6's stop condition: under the shipped keymap every key the init

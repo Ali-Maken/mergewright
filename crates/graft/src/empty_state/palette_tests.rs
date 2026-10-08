@@ -126,6 +126,27 @@ fn enter_runs_a_row_as_its_key_would() {
     assert_eq!(walked, by_key);
 }
 
+/// m8/18c: `?` `clone` `⏎` does what `c` does — the clone prompt opens.
+#[test]
+fn the_clone_row_opens_the_clone_prompt() {
+    let mut walked = state();
+    press(&mut walked, ch('?'));
+    typed(&mut walked, "clone");
+    assert_eq!(
+        under_cursor(&walked).1,
+        PaletteTarget::Action {
+            id: ActionId("empty_state.clone"),
+            ctx: ContextId::EmptyState
+        }
+    );
+    let step = press(&mut walked, KeyPress::plain(KeyCode::Enter));
+    let mut by_key = state();
+    assert_eq!(step, press(&mut by_key, ch('c')));
+    assert!(walked.palette.is_none(), "closed after running");
+    assert_eq!(walked, by_key);
+    assert!(matches!(walked.prompt, Some(super::Prompt::Clone(_))));
+}
+
 /// `⌃P` `theme light` `⏎` asks the loop for light.
 #[test]
 fn a_theme_row_asks_the_loop_for_that_theme() {
