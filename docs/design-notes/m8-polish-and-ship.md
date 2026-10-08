@@ -9,6 +9,9 @@ prototype (`prototypes/m8-polish-and-ship/README.md`, `docs/shots/m8-proto-*.txt
 graft, graft-ui, graft-term (2b: also graft-ops, graft-git headings). No source read.
 2026-10-07, palette find (steps 3–4): `palette-find.md` → Prior art "Find" rows, J26–J32, P-find-1/2 (Where I'd differ).
 2026-10-07, approved (field notes :92): P-find-1 and P-find-2 → ADR-0061; 17b's Pixel ghosts → ADR-0060.
+2026-10-08, look polish (13l box C, review M1), **post hoc**: `m8-look-polish.md` → Prior art "look polish" rows,
+J33–J37, fence ids `fold-merge-count` and `whitespace-mode-shown`, P-look-1/2 (Where I'd differ). Written after
+17/17b/17c shipped; the study did not inform them. Nothing here changes the build.
 
 **Promise (M8):** *"It stays smooth on your biggest repo, looks like the mock-up, installs with one command, and teaches
 itself from inside the app."* The acceptance walk proves it: held-key and wheel tails on MONOREPO, every journey at or
@@ -31,6 +34,7 @@ with no shell.
 | Install like a real tool | runs a build from this repo today | once |
 | Two daily rulings | "pull with nothing new → cursor stays; `a` on HEAD with nothing staged → reword" (:86) | daily |
 | Fork left behind (2c) | "mid-chain branch left behind after `a` → fine until M8" (:86); ruled 2026-10-02 (:89 item 5): it **moves too** when it moves clean, shown in the preview first | with dependents |
+| States you can't see (look polish, 17, post hoc) | no field note in his words; open gap rows carried by 17's Decisions 2, 3, 5, 6, 8 (a folded merge looks plain, fade lost where SGR 2 is ignored, no `[ui]` key for the strip, ghosts at Pixel, whitespace mode on no screen) | daily (assumed, unmeasured) |
 
 ## Prior art (T take · R reject · I invent)
 
@@ -84,6 +88,15 @@ with no shell.
 | Find: kind prefixes | VS Code `>` `@` `#` `:`; GitLens `@` `#` `:` | none: headed, capped groups narrow by sight | R — recall, not recognition (UX H6); `:` already opens the palette (§2.12) |
 | Find: what `⏎` does | Sublime Merge "Navigate to branch", forgit `gcb`/`gsw`: verb first, then pick | object first: `⏎` puts the cursor on it; the graph's own keys act; a file opens its history | R verb-first · T lazygit's search-not-filter reason: commits before and after stay in view |
 | Find: files | VS Code Quick Open by name; lazygit #1525 asks a fuzzy file picker for history | FILES from `ls-files`; `⏎` opens its history (`F`) | T |
+| **Fold mark `+N`** (look polish, **post hoc**, 17/17b) | jj: elided commits draw `~` or `(elided revisions)`, no count; jj users ask for one (#3099, title only); JetBrains "Collapse Linear Branches": a dotted line, no count (`m8-look-polish` §1) | muted ` +N` after the subject of a folded merge; `+` counting, `+?` failed; N = `rev-list --count M ^M^1` − 1, once per merge, cached (17b dec. 1) | T mark the elision on its row (jj) · **I** the count — nothing found shows one, and jj's users ask for it · R a dotted line instead of a row: it can't carry a number |
+| **Fade what's off the thread** (look polish, **post hoc**, 17) | VS Code Git Graph mutes the *text* of commits not reachable from HEAD, opt-in (default false), merges muted by default; JetBrains greys non-picked commits (`m8-look-polish` §2) | off-thread lanes' hue mixed 45% toward `bg` at truecolor/256; DIM at 16 colours and `NO_COLOR`; Pixel keeps alpha (ADR-0024) (17 dec. 3) | T fade the less relevant (Git Graph, JetBrains) · **I** fading *lanes* by hue — the study is silent on lanes vs text; SGR 2 alone shows nothing where a terminal ignores it (17 dec. 3) |
+| **Whitespace mode visible** (look polish, **post hoc**, 17/17b) | lazygit `⌃W`, then a toast "Ignoring whitespace" (PR #1340, snippet only) — transient, no persistent mark confirmed; VS Code `diffEditor.ignoreTrimWhitespace`, toolbar state unconfirmed; GitHub users ask "Hide whitespace" to persist (#65597, title only); delta highlights whitespace errors (`m8-look-polish` §3) | `w` toggles (M7); the title tail names the mode only where it departs from the screen's default: detail/history `· whitespace ignored`, blame `· whitespace counted` (17b dec. 3) | T make the mode visible (lazygit) · **I** a persistent tail, off-default only — a toast is gone when he looks back; "show it only when there's something to report" (CLAUDE.md) · R delta's trailing-whitespace highlight: no field note asks |
+| **Overview strip on at start** (look polish, **post hoc**, 17) | Araxis: overview strips in the scroll bars, a mark per difference, click to jump (snippet only); VS Code `editor.minimap.enabled`, diff `renderOverviewRuler` — defaults not read (`m8-look-polish` §4) | `ui.overview = true \| false`, default false; `O` per run (17 dec. 5) | T a setting (VS Code) · default off: unjudged — the study left both defaults open (P-look-2) |
+| **Ghost Preview at Pixel** (look polish, **post hoc**, ADR-0060) | lazygit: a rebase's todo shows as rows in the commits list, text only (wiki "Interactive Rebasing", PR #4442); no tool found draws a preview in a pixel graph (`m8-look-polish` §5) | while a preview's picture is drawn, the whole graph column draws at Unicode; strips re-place from cache on close, no re-raster (17c) | **I** — nothing found; §1.7 rules out a lane half pixel, half text (ADR-0060) |
+
+**Look polish rows (post hoc): nothing shipped is rejected.** Each R above rejects another tool's answer (a dotted
+line, delta's highlight), not a shipped choice, so 13l box C's "each reject becomes a follow-up ticket spec" yields
+none. The two open points are questions (P-look-1/2), not defects: the study's coverage is thin by its own account.
 
 **Dark pick: B** (`docs/shots/m8-proto-4a-dark-a-b.txt:21-24`): cursor row vs ground **3.14** (A 3.05, floor 3.0); text
 on cursor row **5.14** (A 4.61, floor 4.5); muted text on ground **6.95** (A 6.15, floor 4.5). Blue lane on cursor row
@@ -96,6 +109,9 @@ and a walk (`accept-m8.md`). Prototype (step 5) ran, scenes 1–4 shot; scene 1'
 his — the wheel step stays per event until then. Satisfied.
 Palette find (2026-10-07): study and rows done; no prototype — find adds rows to 11's built widget, no new screen or
 key (conductor: confirm that reading of step 5).
+Look polish (2026-10-08, **post hoc**): steps 2–4 written after the build (review M1). Step 5 was not run for 17/17b/17c;
+ADR-0060 was his ruling instead (field notes :92). No new key. Fence gains two walked ids (J33, J34); J35–J37 are
+reads or person steps, held by 17/17c's tests and the TESTING.md rows (`28-amendment.md`).
 
 ## Journeys (steps = keys + decisions, UX §1.3; start: his repo, graph, cursor on HEAD)
 
@@ -133,6 +149,11 @@ key (conductor: confirm that reading of step 5).
 | 30 | Open a file's history | `⌃P` path `⏎` | 3+1 | lazygit 3 (`⌃S`), JetBrains/VS Code 4+ |
 | 31 | Run again what he ran from the palette | `⌃P` `⏎` | 2+1 (P-find-1, approved 2026-10-07, ADR-0061) | VS Code 3 (J6); JetBrains: recent files only |
 | 32 | Switch to yesterday's branch | `C` name `⏎` | 3+1 (M7's picker, newest first; not walked here) | forgit 3, JetBrains 3–4, Sublime Merge 4, lazygit 4 |
+| 33 | Fold a merge, see how many commits it hid (**post hoc**) | `Space` on the merge | 1+0; row ends ` +` then ` +N` when counted | none shows N (`m8-look-polish` §1): jj needs the shell (#3099 asks for a count); JetBrains a dotted line |
+| 34 | Ignore whitespace, and know it's on (**post hoc**) | `w` | 1+0; the title tail names it while it lasts; reading the mode later: 0 | lazygit 1 (`⌃W`, toast fades; afterwards no mark confirmed, `m8-look-polish` §3) |
+| 35 | Which commits are off my thread (**post hoc**) | read the lanes (cursor on a commit: its ancestry stays full, the rest fades) | 0 | JetBrains 0 (non-picked greyed); Git Graph 0 once its opt-in setting is on (1 edit) |
+| 36 | Overview strip on at every launch (**post hoc**) | edit 1 line (`ui.overview = true`), restart | 2+1; this run only: `O` 1 | VS Code 2 (`editor.minimap.enabled`; default unconfirmed) |
+| 37 | See a rewrite's result at the Pixel tier (**post hoc**) | the preview's own keys | +0 over its journey (J19 at Pixel: 4+2); graph column at Unicode while the picture shows | none found at a pixel tier; lazygit's todo rows, text only |
 
 **J19 is 4, not 3 (2c).** The 2b row counted the field-note case (:86) as the plain amend. But `a` on HEAD with
 nothing staged was refused only when a branch is built on HEAD (ticket 14 item 1) — the case where other branches
@@ -149,6 +170,12 @@ J29/J30 equal to the best, which needs one tool per task (forgit `glo`, lazygit 
 pre-selecting the likely answer (UX §5 item 3, Hick §1.4). Seek, not switch (J26): switching stays on `C` (J32), so
 `⏎` on a branch row is never a write and needs no preview (UX §3.5, H5). J29's `↓` costs one motion command; its
 walk's fixture has no other group matching, as stated in the fence.
+
+**Look polish rows judged (post hoc; UX §1.3, §3.1).** J33: the fold is the key he already presses; the count costs
+nothing more — the best tool needs the shell. J34: equal to lazygit on the toggle, ahead on reading it back (0 vs
+toggling again to find out). J35 and J37 are reads, 0 extra: the fade follows the cursor, and the Pixel preview needs
+no key of its own. J36 matches J10's shape (a config line), one per-run key beside it. None is over the best tool's
+count. J35 rests on colour: rule 5, unverified until his eye.
 
 **Where he lands** (UX §3.1):
 
@@ -178,6 +205,10 @@ walk's fixture has no other group matching, as stated in the fence.
 | Palette `Esc`; nothing matches | graph, cursor unchanged; `nothing matches · esc close` (11) only once every group has answered |
 | A find source fails | its group reads `branches: <reason>` / `files: <reason>` / `commits: search failed: <reason>`, muted; other groups work (H9) |
 | `more · / searches all of history` | palette closed, `/` running for the query, `n`/`N` step (as `/`'s `⏎`) |
+| Merge folded (`Space`) (post hoc, 17b) | cursor stays on the merge; its row ends ` +` (counting), then ` +N`; N = 0 → no mark; refresh doesn't recount |
+| Fold count fails (post hoc, 17b) | row ends ` +?`; status row, once per merge, `couldn't count <sha7>'s commits: <git's reason>` |
+| Preview's picture drawn at Pixel (post hoc, ADR-0060, 17c) | graph column at Unicode, ghosts as text; header `gfx` unchanged; F3 still cycles |
+| Preview closed at Pixel (post hoc, 17c) | strips back from the cache, no new raster |
 
 ```journey-counts
 # id                          keys  # decisions · best tool · the keys
@@ -210,9 +241,13 @@ seek-commit-sha               3     # +1 · Sublime Merge 4, GitLens 4 · ⌃P <
 seek-commit-words             3     # +1 · forgit 3, JetBrains 4 · ⌃P <words> ⏎ (fixture: no other group matches)
 file-history                  3     # +1 · lazygit 3 · ⌃P <path> ⏎
 rerun-recent                  2     # +1 · VS Code 3 · ⌃P ⏎ (P-find-1; 3 if declined)
+fold-merge-count              1     # +0 · none shows N (jj: shell, #3099) · Space on a merge (row ends +N) — post hoc
+whitespace-mode-shown         1     # +0 · lazygit 1 (toast fades) · w (title tail names the mode) — post hoc
 ```
 
-Not walked in the pty (a person's step, a TESTING.md row): rebind (5+1), fix a colour (2+1), install (2), man (1).
+Not walked in the pty (a person's step, a TESTING.md row): rebind (5+1), fix a colour (2+1), install (2), man (1),
+overview on at start (J36, 2+1). Reads with no key, held by their tickets' tests and his eye: off-thread fade (J35,
+17's buffer test; colour, rule 5), Pixel preview (J37, 17c's frame-bytes tests; a real Kitty/iTerm2 terminal is his).
 Before G-rename lands, `trib` in the walk is the dev binary's name.
 
 ## Interfaces and data shapes
@@ -417,6 +452,20 @@ pixel dashed ghost strokes move past v1. Departs §1.7's "dashed stroke in the r
 bands, so text ghost rows inside them would draw a lane half pixel, half text — two pictures, which §1.7 rules out.
 Trade-off: no pixel curves while a preview is open; strips return on close, no re-raster.
 
+Look polish, **post hoc** (13l box C, 2026-10-08), **proposed — not decided, not in the build.** Prior art
+(`m8-look-polish.md`) supports or is silent on all five shipped choices; it argues against none. Two questions:
+- **P-look-1 (question). Does the whitespace choice outlive the run?** GitHub users ask "Hide whitespace" to persist
+  (#65597, title only); lazygit keeps it in config (`git.ignoreWhitespaceInDiffView`). Ours: each screen's default is
+  fixed (detail `config/types.rs:110`, history `update/place/history/open.rs:41`, blame `graft-git blame.rs:77` — lines
+  from 17b's scout). Whether `w` writes anything back, and whether a `[diff]` key already sets detail's default, is
+  **unverified** here (no source read). If neither: proposed, a `[diff] ignore_whitespace` key seeding detail and
+  history, `w` per run as today; the tail rule (off-default only) then reads against the configured default. Trade-off:
+  one more config key vs. pressing `w` every run on a repo full of reformat commits. No field note asks yet — his
+  daily use decides; nothing filed until it does.
+- **P-look-2 (question). `ui.overview` default.** Shipped off. The study couldn't read Araxis's or VS Code's defaults
+  (§4: "question"). No change proposed until a source says what the best tools default to; the off default costs
+  nothing to reverse (one config default, one capture set).
+
 ## New UI
 
 - Chrome and cursor row: DESIGN §1.0. Empty state: §1.15. `?`: §1.16. Palette rows: §1.6.
@@ -473,7 +522,7 @@ Trade-off: no pixel curves while a preview is open; strips return on close, no r
 | 17 | arch pass → G-health | all | Fable review → Opus/Sonnet | `fable-architecture-pass.md` (standing) |
 | 18a | G-rename migration | graft-ops, graft, graft-git | Opus, alone | `rename-on-disk-migration.md` |
 | 18b | G-rename sweep | all (names) | Sonnet, alone | `rename-names-sweep.md` |
-| 19 | G-accept | — | Fable | `accept-m8.md` |
+| 19 | G-accept | — | Fable | `accept-m8.md` (+ `28-amendment.md`, 2026-10-08) |
 
 Lanes: 1→2→3→3b; 4 after 2. 5a→5b; 5c after 5b (re-specced 2026-10-03: shares `graft-ui` `lib.rs`, MAP.md and the
 `selection` paint with 5b). 6a→6b→7a→7b; 8 after 7a and 12b. 9a after 5b and 6b (re-specced 2026-10-04: shares graft
