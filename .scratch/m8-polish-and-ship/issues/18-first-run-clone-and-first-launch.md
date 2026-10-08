@@ -1,7 +1,7 @@
 # G-first-run — clone from the empty state; one first-launch line
 
 Status: ready
-Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: clone is a remote write outside any repo
+Build with: **Opus** (conductor 2026-10-08 after scout `scouts/18-first-run.md`; plumbing rulings pending). Planner expected **Opus**: clone is a remote write outside any repo
 (askpass, progress, partial-folder cleanup); the line is small.
 Blocked by: 08, 11, 11b (11b edits the empty-state bar — same files, serial)
 Needs: `look-outside-repo-screen` (`EmptyStateView`, `EmptyPrompt`, `Exit::Open`), `palette-help-and-actions`
