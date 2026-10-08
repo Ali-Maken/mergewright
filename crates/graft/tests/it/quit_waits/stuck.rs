@@ -342,6 +342,21 @@ pub(super) fn assert_his_edit_waits_aside(repo: &Path, merge: &JournalEntry) {
     );
 }
 
+/// While the merge is paused with his edit aside, what is staged is the
+/// merge's own work and nothing of his (19d-a3, ticket §R7.2): the index's
+/// changed paths, read from the index, equal what the source brings since
+/// the merge base, read from the commits — `main-one.txt` and
+/// `main-two.txt` in [`forked`] — and his `base.txt` is not among them.
+pub(super) fn assert_staged_are_the_merges_own(repo: &Path) {
+    let staged = git(repo, &["diff", "--cached", "--name-only"]);
+    let brought = git(repo, &["diff", "--name-only", "HEAD...MERGE_HEAD"]);
+    assert_eq!(staged, brought, "the staged paths are the merge's own");
+    assert_eq!(
+        staged, "main-one.txt\nmain-two.txt\n",
+        "as forked() makes them"
+    );
+}
+
 /// The stash a set-aside entry recorded (`S`, ADR-0045 §1), as full hex.
 pub(super) fn set_aside_stash(entry: &JournalEntry) -> String {
     match &entry.put_back {

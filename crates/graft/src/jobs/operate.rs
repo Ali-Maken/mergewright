@@ -490,8 +490,9 @@ fn answer(result: Result<Applied, ApplyError>, keys: &Keymap) -> Operated {
             rewrite: None,
         },
         // A stash put back clashed: the user is in it, not past a failure.
-        // See [`Operated::Clashed`].
-        Err(ApplyError::Clashed { entry, clash }) => Operated::Clashed {
+        // See [`Operated::Clashed`]. Its `stopped_at` (`Landed` when a stop
+        // came after the commit, 19d-a3) is already on the stop token above.
+        Err(ApplyError::Clashed { entry, clash, .. }) => Operated::Clashed {
             entry: entry.id,
             clash,
         },

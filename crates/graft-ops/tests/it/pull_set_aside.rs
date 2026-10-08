@@ -247,7 +247,7 @@ fn a_ff_pull_whose_put_back_clashes_stops_as_a_clash() {
     let tip = theirs(&behind, "shared.txt", THEIRS);
 
     let (entry, clash) = match try_run(work, &pull(work), NOW) {
-        Err(ApplyError::Clashed { entry, clash }) => (*entry, clash),
+        Err(ApplyError::Clashed { entry, clash, .. }) => (*entry, clash),
         other => panic!("the put-back should clash: {other:?}"),
     };
 

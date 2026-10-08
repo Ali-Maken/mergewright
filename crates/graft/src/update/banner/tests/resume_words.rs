@@ -207,10 +207,34 @@ fn aborting_a_stopped_rebase_says_your_edits_are_back() {
 /// the put-back after it clashes — `resumed`'s `Clashed` arm. The
 /// operation is over (no stop), the clash is recorded, and the resolver
 /// opens on the clashed file with the set-aside's notice.
+///
+/// The journal read holds the rebase's `Pending` entry, as the app's does
+/// while the rebase is stopped: nothing is launched on `c`, so the notice
+/// names the rebase from it (19d-a3: without it no kind is named).
 #[test]
 fn a_continue_whose_put_back_clashes_lands_on_the_clash() {
     let mut before = graft_began(stopped(InProgress::Rebase, &[]));
     before.stopped = Some(stop(LiveOrigin::ThisRun, false, InProgress::Rebase, 0));
+    let rebase = JournalEntry {
+        id: graft_core::journal::EntryId::new(1, [0; 10]),
+        put_back: Some(graft_core::journal::PutBack {
+            stash: graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes"),
+            why: graft_core::journal::PutBackWhy::SetAside,
+        }),
+        ..entry(
+            OperationKind::Rebase,
+            "rebase feature onto main",
+            EntryStatus::Pending,
+        )
+    };
+    before.journal.entries = crate::update::detail::Loading::Ready(std::sync::Arc::new(
+        crate::jobs::undo::JournalRead {
+            entries: vec![rebase],
+            unreadable: Vec::new(),
+            live: Vec::new(),
+            interrupted_edits: Vec::new(),
+        },
+    ));
     let (state, commands) = keys(before, &[KeyCode::Char('c')]);
     let (id, how) = sent_resume(&commands);
     assert_eq!(how, Resume::Continue);

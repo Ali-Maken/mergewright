@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-use graft_core::journal::{EntryStatus, JournalEntry, OperationKind};
+use graft_core::journal::{EntryStatus, JournalEntry, OperationKind, PutBackWhy};
 use graft_core::oid::Oid;
 use graft_git::run::Stop;
 use graft_git::state::InProgress;
@@ -411,6 +411,80 @@ fn a_merge_stopped_in_its_post_merge_hook_has_landed() {
     assert_eq!(repo.read("notes.txt"), HIS_EDIT, "his edit is back");
     assert_eq!(porcelain(&repo), split, "with its split");
     assert!(stash_commits(&repo).is_empty(), "S dropped");
+    hooked.assert_gone();
+
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("u puts it back: {why}"));
+    assert_eq!(
+        whole(&repo),
+        before,
+        "HEAD, index, tree and stash list as before"
+    );
+}
+
+/// [`diverged`], and `feature` also rewrites the line his edit changes: the
+/// merge itself is clean (his edit is aside while it runs), the put-back of
+/// his edit over it clashes on `notes.txt`.
+fn diverged_over_his_line() -> TempRepo {
+    let repo = TempRepo::init();
+    repo.write("a.txt", b"base\n");
+    repo.write("notes.txt", b"notes\n");
+    repo.commit_all("base");
+    repo.git(&["checkout", "-q", "-b", "feature"]);
+    repo.write("b.txt", b"feature\n");
+    repo.write("notes.txt", b"notes, as feature has them\n");
+    repo.commit_all("feature work");
+    repo.git(&["checkout", "-q", "main"]);
+    repo.write("c.txt", b"main\n");
+    repo.commit_all("main work");
+    repo.write("notes.txt", HIS_EDIT);
+    repo
+}
+
+/// The merge landed before its post-merge hook was stopped, and the put-back
+/// of his edit then clashed (19d-a3, ticket §R7.3). The answer is the clash —
+/// the resolver takes it from there (ADR-0045 §2) — and it still says
+/// `Landed`: the merge is committed, not paused. `S` is kept, the clash is
+/// live, and `u` puts it all back.
+#[test]
+fn a_merge_that_landed_before_the_stop_and_clashed_on_put_back_says_landed() {
+    let repo = diverged_over_his_line();
+    let hooked = Hooked::stuck(&repo, "post-merge");
+    let source = id(&repo, "feature");
+    let before = whole(&repo);
+
+    let stopped = run_with_stop(
+        &repo,
+        &merge_feature(&repo),
+        NOW,
+        &StopOnceRunning(hooked.running()),
+    );
+
+    let Err(error) = stopped else {
+        panic!("a put-back that clashed does not succeed");
+    };
+    assert_eq!(error.stopped_at(), Some(StoppedAt::Landed));
+    let ApplyError::Clashed {
+        entry,
+        clash,
+        stopped_at,
+    } = error
+    else {
+        panic!("the clash, not {error:?}");
+    };
+    assert_eq!(stopped_at, Some(StoppedAt::Landed));
+    assert_eq!(entry.status, EntryStatus::Committed);
+    assert_eq!(id(&repo, "HEAD^2"), source, "the merge commit is made");
+    assert!(!repo.path().join(".git/MERGE_HEAD").exists(), "not paused");
+    let stash = set_aside_of(&entry);
+    assert_eq!(clash.stash, stash);
+    assert_eq!(clash.why, PutBackWhy::SetAside);
+    assert_eq!(clash.paths, vec![PathBuf::from("notes.txt")]);
+    assert_eq!(stash_commits(&repo), vec![stash], "S kept");
+    assert_eq!(
+        repo.git(&["diff", "--name-only", "--diff-filter=U"]),
+        "notes.txt",
+        "the clash is live"
+    );
     hooked.assert_gone();
 
     run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("u puts it back: {why}"));

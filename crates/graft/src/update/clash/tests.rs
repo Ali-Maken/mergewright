@@ -615,8 +615,9 @@ fn a_put_back_clash_lands_on_the_resolver_with_set_aside_names() {
         "o branch  t yours"
     );
 
-    // After a `c` that finished a stopped rebase there is no launched op:
-    // the rebase is what `u` takes back.
+    // After a `c` that finished a stopped one there is no launched op, and
+    // here the journal read does not hold the entry either: no kind is
+    // named (19d-a3, ticket §R7.1; this said `undoes the rebase too`).
     let mut resumed = AppState::default();
     set_aside_clash(&mut resumed, None, 2);
     assert_eq!(
@@ -625,12 +626,37 @@ fn a_put_back_clash_lands_on_the_resolver_with_set_aside_names() {
             .as_ref()
             .and_then(|open| open.notice.as_ref())
             .map(|(words, _)| words.as_str()),
-        Some("your edits clashed in 2 files \u{b7} esc, u undoes the rebase too")
+        Some("your edits clashed in 2 files \u{b7} esc, u puts it all back")
     );
     // A pop's words are unchanged.
     assert_eq!(
-        notice_words(Some(0), 2, None, graft_ui::keymap::Keymap::shipped()),
+        notice_words(Some(0), 2, false, None, graft_ui::keymap::Keymap::shipped()),
         "stash@{0} clashed in 2 files \u{b7} esc, u puts it all back"
+    );
+}
+
+/// m8-polish-and-ship/19d-a3 (ticket §R7.1): a set-aside's clash whose kind
+/// is not known — nothing launched, and the journal read does not hold the
+/// entry — names no kind. It used to say `rebase`, a guess worded as fact.
+/// The edits are still named, and `u` keeps the clause a pop's clash has.
+#[test]
+fn an_unknown_kind_names_no_kind() {
+    let mut state = AppState::default();
+    set_aside_clash(&mut state, None, 2);
+
+    let notice = state
+        .resolver
+        .as_ref()
+        .and_then(|open| open.notice.as_ref())
+        .map(|(words, _)| words.clone());
+    assert_eq!(
+        notice.as_deref(),
+        Some("your edits clashed in 2 files \u{b7} esc, u puts it all back")
+    );
+    assert_eq!(
+        undo_clause(&state).as_deref(),
+        Some("esc, u puts it all back"),
+        "the resolver's answer to u says the same"
     );
 }
 

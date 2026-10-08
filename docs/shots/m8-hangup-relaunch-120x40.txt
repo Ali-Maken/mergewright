@@ -2,7 +2,8 @@
 === the next launch ===
  ◆ api  ~/code/api · feature                                                                                    MERGING
 
-▸   ◌    Uncommitted changes (2 staged, 1 unstaged)
+▸ ◌      Uncommitted changes (2 staged)
+    ■    [stash@{0}] On feature: graft: your edits, set aside for merge main into feature               GS now  84aed18
     ◆    [◆ feature] finish the feature                                                                 GF now  8d6cd28
     ●    start the feature                                                                              GF 2m   52f3b96
   ● │    [main] main moves again                                                                        GF 3m   45fa51d
@@ -21,16 +22,15 @@
 
 
 
-
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- merge still in progress from a previous run · c finish  a abort  ⇥ graph  q quit
-UNCOMMITTED · 2 staged 1 unstaged
+ merge still in progress from a previous run · edits aside · c finish  a abort  ⇥ graph  q quit
+UNCOMMITTED · 2 staged
 diff vs HEAD 8d6cd28
 STAGED (2)                    ▎
   A main-one.txt        +1 −0       1 + one
   A main-two.txt        +1 −0
-UNSTAGED (1)
-  M base.txt            +1 −1
+
+
 
 
 

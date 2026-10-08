@@ -436,11 +436,17 @@ fn a_merge_put_back_that_clashes_stops_as_a_clash() {
     let op = merge_feature(&repo);
     let before = whole(&repo);
 
-    let (entry, clash) = match try_run(&repo, &op, NOW) {
-        Err(ApplyError::Clashed { entry, clash }) => (*entry, clash),
+    let (entry, clash, stopped_at) = match try_run(&repo, &op, NOW) {
+        Err(ApplyError::Clashed {
+            entry,
+            clash,
+            stopped_at,
+        }) => (*entry, clash, stopped_at),
         other => panic!("the put-back should clash: {other:?}"),
     };
 
+    // No stop here: only a stop after the commit marks a clash (19d-a3).
+    assert_eq!(stopped_at, None, "no stop, no mark");
     assert_eq!(clash.why, PutBackWhy::SetAside);
     assert_eq!(clash.paths, vec![PathBuf::from("shared.txt")]);
     let stash = set_aside_of(&entry);

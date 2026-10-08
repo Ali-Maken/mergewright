@@ -323,6 +323,7 @@ fn clashed(
         return Err(ApplyError::Clashed {
             entry: Box::new(entry),
             clash,
+            stopped_at: None,
         });
     }
     Err(ApplyError::AfterState {

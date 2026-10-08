@@ -383,14 +383,17 @@ NOTES 19d-a (do not read 13c's whole ticket); graft MAP :504, :646.
       `stopped::BEFORE_PAUSE`'s words, edit back, stash empty, `u` restores. Pick twin:
       `cherry_pick::a_pick_over_edits_stopped_before_git_paused_it_says_so`. Both red before. — both seen red
       (`git was stopped`) before `set_aside::Failed { error, reason }` + `PlanFailure::local_reason`, green after.
-- [ ] The 7 paused tests (NOTES 19d-a "Paused") assert R6's claim, names unchanged. While paused: `S` listed by
+- [x] The 7 paused tests (NOTES 19d-a "Paused") assert R6's claim, names unchanged. While paused: `S` listed by
       commit, the tree at `HEAD`'s copy. After resume: back, split kept, `S` dropped.
       `a_paused_merge_aborted_by_resume_gives_his_edits_back` and
       `a_paused_merge_continues_to_the_merge_git_would_have_made` stay green. — **5 of 7 green** on R6's claim:
       `stop_hooks::a_merge_stopped_in_its_{prepare_commit_msg,pre_merge_commit}_hook_is_paused`,
       `stop_hooks::a_resume_stopped_in_its_hook_stays_paused`, `quit_waits::stuck::stop_now_mid_merge_leaves_it_paused`,
       `quit_waits::stuck::relaunch_after_a_stopped_merge_offers_continue_and_abort`. The other 2 assert the claim
-      (paused half passes) but stay red at their captures: box below. The two named stay green.
+      (paused half passes) but stay red at their captures: box below. The two named stay green. — **19d-a3: 7 of 7
+      green**: `quit_waits::capture_relaunch_after_a_stopped_merge` and
+      `quit_waits::hangup::a_hangup_then_a_second_hangup_leaves_the_merge_paused` (its post-abort `S`-dropped check now
+      reached) green after the re-shoot; full run 6155/6155.
 - [x] Clean-tree twins: `stop_hooks::a_clean_merge_stopped_in_its_prepare_commit_msg_hook_is_paused`,
       `stop_hooks::a_clean_merge_stopped_in_its_pre_merge_commit_hook_is_paused`. They carry 13c's old "untouched"
       claim with nothing set aside. — green on first run (twins of shipped behaviour).
@@ -398,9 +401,11 @@ NOTES 19d-a (do not read 13c's whole ticket); graft MAP :504, :646.
       and NOTES names the rung: `quit_waits::stuck::relaunch_after_a_stopped_merge_offers_continue_and_abort`. —
       rung ` · edits aside`; asserts recovery left the entry live (`live_entries == [merge]`, `Pending`, no
       `interrupted_edits`, `S` listed) and `S` dropped after `a y`.
-- [ ] Captures re-shot, diff read, only set-aside words changed, captions updated:
+- [x] Captures re-shot, diff read, only set-aside words changed, captions updated:
       `capture_relaunch_after_a_stopped_merge` and the hangup capture's test. — **STOPPED (R6: other cells changed).**
-      Diff read; files restored to HEAD, not re-shot. NOTES 19d-a2 "Captures".
+      Diff read; files restored to HEAD, not re-shot. NOTES 19d-a2 "Captures". — **19d-a3: re-shot under §R7.2**
+      (which ruled the other cells right), diff read, captions rewritten: `quit_waits::capture_relaunch_after_a_stopped_
+      merge`, `quit_waits::hangup::a_hangup_then_a_second_hangup_leaves_the_merge_paused`. NOTES 19d-a3 "Step 3".
 - [x] Clash notice: a table over every kind that sets aside (rebase, rewrite, cherry-pick, checkout, switching
       branch-create, pull, recover, merge), each worded from its kind name, no `_` arm. Red before for pick and pull:
       graft `clash::tests::the_clash_notice_names_each_set_aside_kind`. — red before for rewrite, cherry-pick, pull,
@@ -413,9 +418,11 @@ NOTES 19d-a (do not read 13c's whole ticket); graft MAP :504, :646.
 - [x] Spawn box re-ticked against 5 / 3: `the_merge_preview_forecasts_the_put_back`. The ADR-0045 19d amendment says
       5 / 3 and names D1/D2's tests. MAP :263's "Not reached: … a set-aside's close" is removed. — the test asserts
       `PUT_BACK_SPAWNS` (5) and `FF_PUT_BACK_SPAWNS` (3); ADR "19d-a2 (ticket R6)" paragraph; MAP :263 rewritten.
-- [ ] All four gates workspace-wide, including every test NOTES 19d-a lists red. — fmt, clippy pass; nextest red on
+- [x] All four gates workspace-wide, including every test NOTES 19d-a lists red. — fmt, clippy pass; nextest red on
       the 2 capture tests only — 6146/6148, both at `check_shot` (`graft-fixtures/src/capture.rs:147`); doc tests
-      pass (NOTES 19d-a2).
+      pass (NOTES 19d-a2). — **19d-a3 run** (a + a2 + a3 on main fa0111ca): `cargo fmt --check` ok; `cargo clippy
+      --workspace --all-targets -- -D warnings` ok; `cargo nextest run --workspace` **6155/6155** (14 skipped); `cargo
+      test --workspace --doc` ok. Every test NOTES 19d-a lists red is in that run, green.
 **Touches (check each, say how):** every set-aside kind's close (run `set_aside.rs`, `cherry_pick.rs`,
 `pull_set_aside.rs`, `absorb_staged.rs`, `merge_set_aside.rs`: green, no expectation changed except those named);
 `ApplyError::stopped_at` callers in graft (the stop words the app shows after a stop); recovery (a paused set-aside
@@ -438,28 +445,45 @@ MAP :504, :646.
 **Out:** the pick-post-commit hold and the resume residual wording (§R7, filed by the conductor); 13c's pause rule;
 any new words; masking a stash id.
 **Acceptance:**
-- [ ] Step 1, Landed through a clash, red before: a set-aside merge over an edit that overlaps a path the merge changes
+- [x] Step 1, Landed through a clash, red before: a set-aside merge over an edit that overlaps a path the merge changes
       cleanly, with its post-merge hook stopped, gives `ApplyError::Clashed { stopped_at: Some(StoppedAt::Landed), .. }`.
       The entry is `Committed`, `S` is kept, and the clash is live:
       `stop_hooks::a_merge_that_landed_before_the_stop_and_clashed_on_put_back_says_landed`. `u` is exact (same test).
       Every other `Clashed` constructor gives `None` (`merge_set_aside::a_merge_put_back_that_clashes_stops_as_a_clash`
-      asserts it).
-- [ ] Step 1, callers: NOTES lists each graft caller of `stopped_at()` and what it shows for this case. No new words.
-      A caller that would need them → stopped and reported.
-- [ ] Step 2, the unknown-kind fallback names no kind (§R7.1). The shipped None test's expectation is changed and named
+      asserts it). — red before (`stopped_at()` `None`), green after; `u` → `whole == before`. `None` asserted for
+      both constructors: the set-aside answer by `merge_set_aside::a_merge_put_back_that_clashes_stops_as_a_clash`, the
+      pop's `close::clashed` by `stash_clash`'s `clashed` helper (11/11).
+- [x] Step 1, callers: NOTES lists each graft caller of `stopped_at()` and what it shows for this case. No new words.
+      A caller that would need them → stopped and reported. — one caller (`jobs/operate.rs:424`), one reader (the
+      quit exit line, `update/quit.rs:298`): now the shipped Landed line, no new words. It does not name the clash:
+      filed as a **question** in NOTES 19d-a3, not a stop (keymap §2.2 has the line say where git was left).
+      Covered by the full run (`update::quit::tests` exit-line table unchanged, green).
+- [x] Step 2, the unknown-kind fallback names no kind (§R7.1). The shipped None test's expectation is changed and named
       in NOTES. Test: `clash::tests::an_unknown_kind_names_no_kind`. Checkout and switch-create still read `switch`:
-      `clash::tests::the_clash_notice_names_each_set_aside_kind` unchanged.
+      `clash::tests::the_clash_notice_names_each_set_aside_kind` unchanged. — red before (`… u undoes the rebase
+      too`), green after (`… esc, u puts it all back`); `the_clash_notice_names_each_set_aside_kind` green, unchanged.
+      Expectation changed: `a_put_back_clash_lands_on_the_resolver_with_set_aside_names` (`resumed`); fixture changed:
+      `banner::tests::resume_words::a_continue_whose_put_back_clashes_lands_on_the_clash` (NOTES 19d-a3).
 - [ ] Step 3 (after 19d-b2), relaunch capture: the paused merge's staged paths equal the merge's own changed paths
       (asserted, §R7.2), and the stash row is drawn:
-      `quit_waits::capture_relaunch_after_a_stopped_merge`.
-- [ ] Step 3, hangup capture: the same assertions, plus the post-abort `S`-dropped check, now reached:
-      `quit_waits::hangup::a_hangup_then_a_second_hangup_leaves_the_merge_paused`.
-- [ ] Step 3, stability: each capture test run twice with `GRAFT_UPDATE_SHOTS=1`, both outputs byte-identical. No
+      `quit_waits::capture_relaunch_after_a_stopped_merge`. — **half true, left open.** Staged paths asserted and green
+      (`stuck::assert_staged_are_the_merges_own`, called by that test). **The stash row is not drawn** in this 80x24
+      capture: the landing is the `Detail` tab (`Graph  [Detail]`). Finding in NOTES 19d-a3; the conductor's call.
+- [x] Step 3, hangup capture: the same assertions, plus the post-abort `S`-dropped check, now reached:
+      `quit_waits::hangup::a_hangup_then_a_second_hangup_leaves_the_merge_paused`. — staged paths asserted; the stash
+      row drawn (`[stash@{0}] On feature: graft: your edits, set aside for merge main into feature … now  84aed18`);
+      `relaunch_and_abort` and `assert!(!listed(&repo, &stash))` reached and green.
+- [x] Step 3, stability: each capture test run twice with `GRAFT_UPDATE_SHOTS=1`, both outputs byte-identical. No
       `future` / `futu…`. The diff from HEAD is only the cells §R7.2 names (stash row; `1 unstaged` / `UNSTAGED (1)
       M base.txt` gone; the ` · edits aside` rung at 120×40). Captions rewritten. Files:
       `docs/shots/m8-hangup-relaunch-120x40.txt`, `docs/shots/m8-quit-stopped-merge-relaunch-80x24.txt`. Colour
-      **unverified**; ≤ 200 KB.
-- [ ] All four gates workspace-wide; 19d-a2's open gates box ticked here with the run's counts.
+      **unverified**; ≤ 200 KB. — both tests above, twice each under `GRAFT_UPDATE_SHOTS=1`, the second run passing
+      with nothing rewritten, `cmp` identical; `grep -c futu` 0; 2049 B, 536 B. The 120x40 needed `S` dated: in
+      `quit_waits/pty_session.rs` `Session::spawn` (NOTES). Diff also moves the uncommitted row's glyph one lane (the
+      stash takes the lane; named in NOTES 19d-a2 and 19d-a3).
+- [x] All four gates workspace-wide; 19d-a2's open gates box ticked here with the run's counts. — fmt ok, clippy ok,
+      nextest `--workspace` 6155/6155 (14 skipped), doc tests ok. After that run one test file changed
+      (`stash_clash.rs`, the `None` assertion): fmt, clippy (workspace) and `stash_clash` 11/11 re-run, green.
 **Touches (check each, say how):** every construction and match of `ApplyError::Clashed` (grep in both crates; the
 compiler's exhaustiveness is the check); `ApplyError::stopped_at` callers; the resolver landing on a clash
 (unchanged; `a_put_back_clash_lands_on_the_resolver_with_set_aside_names` green); the m6 `switch` captures and
@@ -708,3 +732,95 @@ changed.
 - Stop-line rungs: ` · edits aside` drawn at 100x30 (relaunch test), absent at 80x24 (capture diff).
 - Captures and contact sheets: none changed in this commit. KNOWN_GAPS: not read (conductor's).
 - 19d-b2's files (`tests/it/pty.rs`, `app_harness.rs`, `clock_pin.rs`, `examples/`): not touched (`git status`).
+
+## NOTES 19d-a3 (builder, 2026-10-08)
+**Status: done, with one box left open (the 80x24 stash row, below) and one question (the exit line).** Not compacted.
+Base: main fa0111ca (R7, 19d-b2, the task_4 fix) + `git merge --no-ff 47f5a389` (a and a2), committed as its own merge;
+the ticket conflict kept main's R7/a3 sections and a/a2's ticks and NOTES. Scout: none; NOTES 19d-a2 was the scout
+(ticket). Skills: `tdd` (Skill tool), `implement` (SKILL.md read).
+
+**Step 1 — Landed through a clash (cause fixed).** `ApplyError::Clashed` gains `stopped_at: Option<StoppedAt>`;
+`stopped::mark` (`apply/stopped.rs`) now carries the mark onto a `Clashed` as it does onto `Ok` and `AfterState`; both
+constructors (`apply/close.rs` `clashed`, the pop path; `apply/set_aside/answer.rs` `answer`) build `None`;
+`ApplyError::stopped_at()` returns the field. `resume.rs:187` goes through the same `mark`, so a `--continue` that
+landed before its post-commit hook was stopped and then clashed says `Landed` too (not separately tested). Red before:
+the new test's first assertion, `error.stopped_at()`, read `None` against `Some(Landed)` (run with the destructure
+written `{ entry, clash }`, since the field did not exist yet). Compiler-forced `..` in 7 graft-ops test files
+(`cherry_pick`, `pull_set_aside`, `put_back_index`, `remote_ops`, `set_aside`, `stash_clash`, `undo_bytes`): no
+expectation changed.
+
+**Step 1 — graft callers of `ApplyError::stopped_at()`** (grep `stopped_at()` in `crates/graft/src`): one,
+`jobs/operate.rs:424` `cancel.left_at(error.stopped_at())`, read back by `jobs/pool.rs:92` into `Forced::at`, whose one
+reader is the quit exit line `update/quit.rs` `exit_line` (`:298`). For this case it now prints the shipped Landed line
+`graft: merge … finished · a git hook after it was stopped after N s` (was the `None` line `graft: stopped merge … after
+N s · graft here shows where git left it`). No new words. The app's landing is unchanged: `operate.rs` maps
+`Clashed { entry, clash, .. }` to `Operated::Clashed` as before (the resolver; `a_put_back_clash_lands_on_the_resolver_
+with_set_aside_names` green).
+- **Question (not a defect; no line proves wrong logic):** that Landed line says nothing of the clash, and the old
+  `None` line at least sent him back to Graft. Keymap §2.2 (`docs/design/02-keymap.md:245`) says the line names where
+  *git* was left, which Landed does; the next launch lands on the clash (`relaunch::land_on_the_work`). Naming the clash
+  in the shell would need new words, so it is not done here. Conductor's call whether it goes on the usability walk.
+
+**Step 2 — the unknown-kind fallback (cause).** `clash.rs` `undone_with_edits` now answers `Option<&str>`, `None` for a
+kind not known. The notice keeps `your edits clashed in N files` and takes the pop's shipped clause `esc, u puts it all
+back` (true: `u` undoes the whole entry) — no new words. Ruling read: "drop the `the <kind>` clause" left `u undoes …
+too` with no object, so the clause that names no kind is the shipped one; if a different reading was meant, it is one
+line in `notice_words` / `undo_clause_words`. `notice_words` gains `set_aside: bool` (it used to infer "your edits" from
+the kind word being there).
+- **Changed expectation (named, per R7.1):** `clash::tests::a_put_back_clash_lands_on_the_resolver_with_set_aside_names`,
+  its `resumed` half: `… esc, u undoes the rebase too` → `… esc, u puts it all back`.
+- **Changed fixture, expectation kept:** `update::banner::tests::resume_words::a_continue_whose_put_back_clashes_lands_
+  on_the_clash` also reached the fallback (its `AppState` had no journal read), red after the fix with `puts it all
+  back`. It now holds the rebase's `Pending` set-aside entry, as the app's journal read does while a rebase is stopped,
+  and still asserts `undoes the rebase too`. Outside the ticket's named file list; the only other test that hit the
+  fallback (full run).
+- Reachability of the fallback in the app: still **unverified** (as 19d-a2 said).
+
+**Step 3 — the two captures (re-shot).**
+- `assert_staged_are_the_merges_own` (`quit_waits/stuck.rs`): `git diff --cached --name-only` (the index) equals
+  `git diff --name-only HEAD...MERGE_HEAD` (the commits) and the literal `main-one.txt`, `main-two.txt`. Called by both
+  capture tests; green.
+- **120x40 (hangup) was unstable as 19d-a2 found** (`futu…8ee854d`, wall-dated `S`): the binary there runs under
+  `quit_waits/pty_session.rs` `Session::spawn`, not `Pty::spawn`, so 19d-b2's pty defaults never reached it. Fixed at
+  the fixture, as R7.2 allows: `Session::spawn` sets `GIT_AUTHOR_DATE`/`GIT_COMMITTER_DATE` to `@FORK_NOW +0000`
+  (the instant the capture is drawn at). `S` now draws `now  84aed18`. Not `PINNED_NOW − 3600`: drawn at `FORK_NOW`
+  (2021) that would read `future`. `pty_session.rs` is outside the named list (quit_waits/*, this part's); graft MAP
+  line 30 updated.
+- **80x24 (relaunch) needed nothing:** in-process, `S` is wall-dated, but this landing is the `Detail` tab and draws
+  no stash row, so no `S` cell is in it.
+- Stability: run 1 (pre-pin) rewrote both; run A (pin) — 80x24 passed under `GRAFT_UPDATE_SHOTS=1` (identical), 120x40
+  rewritten; run B — both passed under `GRAFT_UPDATE_SHOTS=1`, and `cmp` against copies of run A: identical. `grep -c
+  futu` 0 in both. No home or temp path in either (`grep Users|/private|/tmp|/var/folders`: none; `~/code/api` is the
+  fixed `/code/api` drawn, as before). 2049 B and 536 B.
+- Diff from HEAD, 120x40: the stash row `[stash@{0}] On feature: graft: your edits, set aside for merge main into
+  feature  GS now  84aed18`; `Uncommitted changes (2 staged, 1 unstaged)` → `(2 staged)` **and its glyph moves from
+  lane 2 to lane 1** (`▸   ◌` → `▸ ◌`) — the stash takes the lane, the layout consequence 19d-a2 reported with the
+  header ("its glyph column shifts"); the banner gains ` · edits aside`; `UNCOMMITTED · 2 staged 1 unstaged` → `· 2
+  staged`; `UNSTAGED (1)` / `M base.txt` gone; one blank row moves. 80x24: `· 2 staged`, the `UNSTAGED` pair gone, two
+  blank rows at the foot. Nothing else.
+- **Finding (textual, stands on the capture):** R7.2 says at 80x24 "the stash row is what tells him there". At this
+  landing it is not drawn: `docs/shots/m8-quit-stopped-merge-relaunch-80x24.txt` shows `Graph  [Detail]` and no stash
+  row, and the rung does not fit. So at 80x24 nothing on the landing says his edit is aside (the graph tab, `⇥`, may
+  draw it: **unverified**). Its box is left open; the caption says so.
+- Captions rewritten (`quit_waits.rs` `capture_relaunch_after_a_stopped_merge`, `hangup.rs` `capture_the_relaunch`).
+  Colour **unverified**.
+
+**Touches (how checked).**
+- Every construction/match of `ApplyError::Clashed`: the compiler (`cargo check --workspace --all-targets` listed 8
+  sites, all updated); grep `Clashed {` in graft-ops src: 2 constructors.
+- `ApplyError::stopped_at` callers: above (one; one reader).
+- The resolver landing on a clash: `a_put_back_clash_lands_on_the_resolver_with_set_aside_names` green.
+- m6 `switch` captures and `TESTING.md:2598`, `:2724`: unchanged (`switch` arms untouched;
+  `the_clash_notice_names_each_set_aside_kind` green, unchanged).
+- The two captures: re-shot; no contact sheet holds them (grep of `*.md`/`*.txt`: issues, a review, a scout, and
+  KNOWN_GAPS, not read). The conductor rebuilds the M8 sheet.
+- `clock_pin::no_capture_producer_runs_on_the_wall_clock`: green in the full run, with `Session::spawn`'s new pin.
+
+**Gates (workspace-wide, `CARGO_TARGET_DIR` in this worktree).** `cargo fmt --check` ok; `cargo clippy --all-targets
+-- -D warnings` ok; `cargo nextest run --workspace` 6155/6155 passed (14 skipped); `cargo test --doc` ok. After that
+run, `stash_clash.rs` gained its `None` assertion: fmt, clippy (workspace) and `stash_clash` 11/11 re-run, green; the
+full nextest was not re-run for that one test-only edit.
+- Scout: none. NOTES 19d-a2 and the files R7 names served; the change is to three graft-ops functions and one graft
+  module.
+- Not compacted mid-build; the session compacted once **after** the gates, before the ticks (ticks re-checked against
+  this NOTES, not from memory).

@@ -136,7 +136,7 @@ fn a_pick_put_back_that_clashes_stops_as_a_clash() {
 
     let before = whole(&repo);
     let (entry, clash) = match try_run(&repo, &op, NOW) {
-        Err(ApplyError::Clashed { entry, clash }) => (*entry, clash),
+        Err(ApplyError::Clashed { entry, clash, .. }) => (*entry, clash),
         other => panic!("the put-back should clash: {other:?}"),
     };
     assert_eq!(clash.why, PutBackWhy::SetAside);

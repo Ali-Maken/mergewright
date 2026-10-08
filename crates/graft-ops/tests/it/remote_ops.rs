@@ -334,7 +334,7 @@ fn pull_dirty_file_sets_it_aside_bytes_kept() {
     git(&remote, remote.work(), &["reset", "-q", "--hard", "HEAD~1"]);
     std::fs::write(&file, b"my uncommitted edit\n").unwrap();
 
-    let Err(ApplyError::Clashed { entry, clash }) = run_in(remote.work(), &pull(&remote), NOW)
+    let Err(ApplyError::Clashed { entry, clash, .. }) = run_in(remote.work(), &pull(&remote), NOW)
     else {
         panic!("a pull over an edit to the line it changes clashes on the put-back");
     };

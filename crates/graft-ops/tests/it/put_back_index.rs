@@ -562,7 +562,7 @@ fn a_clash_with_staging_is_the_same_clash() {
     repo.write("f.txt", lines.replace("\n5\n", "\nmine5\n").as_bytes());
 
     let (entry, clash) = match try_run(&repo, &checkout_to(&repo, "refs/heads/other"), NOW) {
-        Err(ApplyError::Clashed { entry, clash }) => (*entry, clash),
+        Err(ApplyError::Clashed { entry, clash, .. }) => (*entry, clash),
         other => panic!("the put-back should clash: {other:?}"),
     };
     assert_eq!(clash.why, PutBackWhy::SetAside);

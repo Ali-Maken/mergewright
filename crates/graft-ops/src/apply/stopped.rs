@@ -224,8 +224,10 @@ pub(super) fn after_a_stop(
 }
 
 /// The answer says where a stop left git ([`Applied::stopped_at`]), on
-/// success and on an after-state that could not be read alike. Any other
-/// error passes through as it is; `None` changes nothing.
+/// success, on an after-state that could not be read, and on a set-aside
+/// put-back that clashed after the operation landed (its own `stopped_at`,
+/// 19d-a3) alike. Any other error passes through as it is; `None` changes
+/// nothing.
 pub(super) fn mark(
     stopped_at: Option<StoppedAt>,
     closed: Result<Applied, ApplyError>,
@@ -245,6 +247,11 @@ pub(super) fn mark(
             applied.stopped_at = stopped_at;
             Err(ApplyError::AfterState { applied, unread })
         }
+        Err(ApplyError::Clashed { entry, clash, .. }) => Err(ApplyError::Clashed {
+            entry,
+            clash,
+            stopped_at,
+        }),
         Err(other) => Err(other),
     }
 }

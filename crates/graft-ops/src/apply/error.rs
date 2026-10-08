@@ -165,6 +165,11 @@ pub enum ApplyError {
         entry: Box<JournalEntry>,
         /// The stash, why it was put back, and the unmerged paths.
         clash: Clash,
+        /// `Some(Landed)` when a stop reached a hook after the operation
+        /// committed and the put-back of its set-aside edits then clashed
+        /// (`stopped::mark`, m8-polish-and-ship/19d-a3); `None` for every
+        /// clash no stop produced.
+        stopped_at: Option<StoppedAt>,
     },
     /// [`resume`](super::resume) ran `--continue`, `--skip` or `--abort`, git refused, and
     /// its in-progress state is still there with no unmerged path to explain
@@ -392,8 +397,10 @@ impl ApplyError {
     /// stopped local run closed `Aborted` → `Paused` when it left the shell
     /// merge it ran in paused (`paused`), else `BeforePause` for a kind git
     /// can pause and `Stopped` for one it never can, `changed` when the
-    /// entry is in force (`u` has something to put back). `None` for every
-    /// other error, a stop before git ran included.
+    /// entry is in force (`u` has something to put back);
+    /// [`ApplyError::Clashed`] → its `stopped_at` (`Landed` when the
+    /// operation committed before the stop and the put-back then clashed,
+    /// 19d-a3). `None` for every other error, a stop before git ran included.
     #[must_use]
     pub fn stopped_at(&self) -> Option<StoppedAt> {
         match self {
@@ -414,6 +421,7 @@ impl ApplyError {
                 // reversed it yet: in force is "took effect".
                 in_force(std::slice::from_ref(&**entry), &entry.id),
             )),
+            ApplyError::Clashed { stopped_at, .. } => *stopped_at,
             _ => None,
         }
     }

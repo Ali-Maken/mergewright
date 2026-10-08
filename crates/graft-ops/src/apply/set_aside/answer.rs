@@ -64,6 +64,9 @@ pub(super) fn answer(
                 return Err(ApplyError::Clashed {
                     entry: Box::new(entry),
                     clash,
+                    // A stop's mark goes on in `stopped::mark`, after the
+                    // close (19d-a3).
+                    stopped_at: None,
                 });
             }
             // The clash is re-found from the journal by `live_clash`; what
