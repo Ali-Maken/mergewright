@@ -1276,6 +1276,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/19c-capture-age-roll | Tour captures go red when ages roll 6y→7y (19c-c NOTES). Unverified. | **unverified** | M8 |
 | M8/21c-sheets-stale | m7 contact sheet, m4 pty capture + sheet, TESTING.md:1769 stale after 21c B; 21c captures not on the M8 sheet. → 19d-c additions C+1/C+2. | **broken** | M8 |
 | M8/21c-row-cuts-moves | Question for the stop (what he sees): at 120 and 80 cols a long fetch failure cuts `origin/main moved…` off the J row; full words only on the status row and expanded row. Accept, or moves first? | **unverified** | M8 |
+| M8/19d-clock-sweep | 19 capture producers still unpinned (m3/m4/m5 walk examples, gallery git-git/workspace/100k, 15 in-process tests; `App::open_with_clock` pins the runner, not the drawn frame); ~70 captures have no current producer. List in 19d ticket NOTES 19d-b. Ages in those can still roll. Needs a split ruling. | **broken** | M8 |
+| M8/19d-pin-future-commits | Under `GRAFT_NOW`, commits made in the app carry the real date and draw `future` (19d-b saw it in its own test). Hits 19d-c tour captures (tasks 2, 6, 7 make commits). Needs a ruling. | **unverified** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` **429** lines at the split (12f's 407 was false — review m8-palette-landing-stop C1); `listing.rs` 424 also over → 21b-4 additions; seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |
