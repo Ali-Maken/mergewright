@@ -979,7 +979,7 @@ fn did_a_resume_verb(
                 after.status,
                 Status::Sticky {
                     reason,
-                    keys: resolve_keys(crate::update::edge::context_of(after), &after.keymap),
+                    keys: resolve_keys(crate::update::banner::refused_at(after), &after.keymap),
                 },
                 "`{key} {verb}`"
             ),

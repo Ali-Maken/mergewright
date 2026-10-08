@@ -62,7 +62,7 @@ fn state_on(path: &str, entry: StatusEntry, section: WorkingTreeSection) -> AppS
 /// A changes pane built row by row: `rows` is `(path, section)` in draw
 /// order, a section heading inserted whenever the section changes.
 /// `cursor` is the row the pane's cursor sits on.
-fn state_with(
+pub(in crate::update) fn state_with(
     rows: &[(String, WorkingTreeSection)],
     entries: Vec<StatusEntry>,
     cursor: usize,
@@ -137,7 +137,7 @@ fn sectioned_rows(rows: &[(String, WorkingTreeSection)]) -> (Vec<FileEntry>, Vec
     (files, view_rows)
 }
 
-fn unstaged_entry(path: &str) -> StatusEntry {
+pub(in crate::update) fn unstaged_entry(path: &str) -> StatusEntry {
     StatusEntry {
         path: path.into(),
         original_path: None,
@@ -755,7 +755,7 @@ fn deleted_and_staged(path: &str) -> StatusEntry {
     }
 }
 
-fn unmerged_entry(path: &str) -> StatusEntry {
+pub(in crate::update) fn unmerged_entry(path: &str) -> StatusEntry {
     StatusEntry {
         path: path.into(),
         original_path: None,

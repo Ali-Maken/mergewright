@@ -15,6 +15,7 @@ use crate::update::op_keys::OpKeys;
 
 mod ops;
 mod preview_remote;
+mod resolve;
 mod resolver;
 mod stops;
 mod undo_journal;

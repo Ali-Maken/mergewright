@@ -75,7 +75,7 @@ pub(super) fn settle(state: &mut AppState) {
     state.status = match super::banner::continue_refusal(state) {
         None => super::resolver::every_file_done(state),
         Some(reason) => {
-            super::banner::continue_refused(reason, super::edge::context_of(state), &state.keymap)
+            super::banner::continue_refused(reason, super::banner::refused_at(state), &state.keymap)
         }
     };
 }

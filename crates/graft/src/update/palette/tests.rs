@@ -162,6 +162,20 @@ fn in_progress_rows_run_as_the_focused_banner_would() {
     }
 }
 
+// Each named key acts at `place` as the row its clause names (m8/11f
+// Minor 8): not compared against `resolve_keys`, the function under test.
+const RESOLVE_ROWS: [&str; 9] = [
+    "app.open",
+    "app.next_pane",
+    "operation.mergetool",
+    "changes.mergetool",
+    "resolver.mergetool",
+    "operation.edit",
+    "changes.edit",
+    "resolver.edit",
+    "changes.stage",
+];
+
 /// The two runs to compare: for `c`'s refusal at a conflict, keys dropped
 /// after checking the palette run names only keys acting where it left him.
 fn keys_excepted(
@@ -174,11 +188,22 @@ fn keys_excepted(
         return (by_row.clone(), by_key);
     }
     let place = crate::update::edge::context_of(by_row);
-    assert_eq!(
-        sticky_keys(by_row),
-        crate::update::banner::resolve_keys(place, &by_row.keymap),
-        "{name}: Continue: no key named that does not act at {place:?}"
-    );
+    let keymap = &by_row.keymap;
+    for clause in sticky_keys(by_row).iter().flat_map(|k| k.split("  ")) {
+        let label = clause.split(' ').next().unwrap_or(clause);
+        let acts = keymap.reachable(place).iter().any(|(_, chords)| {
+            chords.iter().any(|chord| {
+                chord.label().0 == label
+                    && keymap
+                        .acting(place, *chord)
+                        .is_some_and(|id| RESOLVE_ROWS.contains(&id.0))
+            })
+        });
+        assert!(
+            acts,
+            "{name}: Continue: `{clause}` does not act at {place:?}"
+        );
+    }
     (without_keys(by_row.clone()), without_keys(by_key))
 }
 
