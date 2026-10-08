@@ -173,7 +173,7 @@ fn c_with_a_file_unmerged_is_still_refused() {
         state.status,
         crate::update::banner::continue_refused(
             "1 file still conflicted".to_owned(),
-            crate::update::edge::context_of(&state),
+            crate::update::banner::refused_at(&state),
             &state.keymap,
         )
     );

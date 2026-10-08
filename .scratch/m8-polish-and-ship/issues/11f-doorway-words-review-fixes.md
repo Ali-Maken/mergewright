@@ -1,6 +1,10 @@
 # 11f — doorway/words review fixes: `c`'s refusal at the changes pane names `space`, the Map footer is one rule, stale J/S/Map captures re-shot
 
+<<<<<<< HEAD
 Status: draft (planner spec-only pass 2026-10-08, from `docs/reviews/m8-doorway-words.md` Majors 1–3, plus Minor 8 folded into Part A)
+=======
+Status: Part A done (builder 2026-10-08); Parts B, C open. Was: draft (planner spec-only pass 2026-10-08, from `docs/reviews/m8-doorway-words.md` Majors 1–3, plus Minor 8 folded into Part A)
+>>>>>>> worktree-agent-a9de6247cb095ec51
 Build with: **Sonnet**, all three parts.
 - **Part A**: a ruled words change on 10l's pattern, held by an "every named key acts" pin.
 - **Part B**: a move-only split plus one call replacing a copy. Byte-identical captures prove it.
@@ -227,9 +231,15 @@ word change on a footer (Minor 2 is a row), and any hint-bar change.
   checked and edited only if a row now contradicts its capture.
 
 ## Acceptance (each tick names its test or check inline, at tick time)
+<<<<<<< HEAD
 - [ ] **A check-first**: NOTES answers items 1–4 with file:line. Two items stop the work on a "no": item 1 (focus
   isn't on the pane) and item 2 (`space` refuses on a CONFLICTS row).
 - [ ] **A pin, red first**: `update::tests::keymap_words::resolve::the_resolve_keys_name_rows_that_act_where_the_refusal_is_shown`.
+=======
+- [x] **A check-first**: NOTES answers items 1–4 with file:line. Two items stop the work on a "no": item 1 (focus — **ticked (Part A builder):** NOTES Part A §Check-first, items 1–4 with file:line. Item 4 answered **no** (⇥ goes to the diff), so the `⇥ banner` clause drops per the stop rule; see NOTES.
+  isn't on the pane) and item 2 (`space` refuses on a CONFLICTS row).
+- [x] **A pin, red first**: `update::tests::keymap_words::resolve::the_resolve_keys_name_rows_that_act_where_the_refusal_is_shown`. — **ticked (Part A builder):** `update::tests::keymap_words::resolve::the_resolve_keys_name_rows_that_act_where_the_refusal_is_shown` green; seen red with the `space` clause removed (NOTES). Off-row spot expects reason alone (check-first 4), and pins that one `⇥` there does not focus the banner.
+>>>>>>> worktree-agent-a9de6247cb095ec51
   - It is moved from `stops` (old path → new path in NOTES) and covers four spots: banner, changes pane on a CONFLICTS
     row, changes pane on another row, and graph.
   - Every key the words name, pressed at that spot from the same state, does what its clause says:
@@ -240,11 +250,16 @@ word change on a footer (Minor 2 is a row), and any hint-bar change.
     - `⇥` focuses the banner.
   - No key is named that doesn't act there.
   - Red on base at the CONFLICTS-row spot (no `space`), green after.
+<<<<<<< HEAD
 - [ ] **A spelled**: `update::tests::keymap_words::resolve::the_resolve_keys_spell_his_keys` (moved).
+=======
+- [x] **A spelled**: `update::tests::keymap_words::resolve::the_resolve_keys_spell_his_keys` (moved). — **ticked (Part A builder):** `update::tests::keymap_words::resolve::the_resolve_keys_spell_his_keys` green; shipped strings per the table as amended by check-first 4 (off-row = `None`).
+>>>>>>> worktree-agent-a9de6247cb095ec51
   - Shipped keymap: exactly the four strings in the ruling's table.
   - A swept keymap gives his labels as whole tokens.
   - Each row unbound drops its clause. That includes `space`'s row, and the `⇥` row off the conflict row.
   - All unbound → the reason alone, no `·`.
+<<<<<<< HEAD
 - [ ] **A pane = banner**: `update::keys::live_c_tests::c_from_the_pane_and_from_the_banner_emit_the_same`.
   - The reasons are equal.
   - The pane's keys equal the CONFLICTS-row string on that row, and `⇥ banner` off it.
@@ -256,6 +271,19 @@ word change on a footer (Minor 2 is a row), and any hint-bar change.
   `keymap_words/stops.rs` smaller than 1142. The new `resolve_words.rs` and `keymap_words/resolve.rs` are each
   ≤ 400 lines.
 - [ ] **A unchanged words**: `update::banner::tests` (the :207 and :945 cases), `conflict_interim` (:506) and
+=======
+- [x] **A pane = banner**: `update::keys::live_c_tests::c_from_the_pane_and_from_the_banner_emit_the_same`. — **ticked (Part A builder):** `update::keys::live_c_tests::c_from_the_pane_and_from_the_banner_emit_the_same` (fixture has no file rows → pane keys `None`) plus new `update::keys::live_c_tests::on_a_conflicts_row_the_pane_names_space_and_off_it_nothing` (row 1 → CONFLICTS-row string, row 3 → `None`), both green.
+  - The reasons are equal.
+  - The pane's keys equal the CONFLICTS-row string on that row, and `⇥ banner` off it.
+- [x] **A Minor 8**: `update::palette::tests::in_progress_rows_run_as_the_focused_banner_would`. — **ticked (Part A builder):** `update::palette::tests::in_progress_rows_run_as_the_focused_banner_would` green; seen red at `palette/tests.rs:201`: `rebase conflict stop: Continue: \`space marks resolved\` does not act at Graph`.
+  - The keys-excepted oracle asserts `acting(place, chord)` for each clause, with no call to `resolve_keys`.
+  - Seen red: make `resolve_keys` return `space marks resolved` at the graph; the test fails (line in NOTES). Then
+    restore.
+- [x] **A sizes**: `wc -l` before and after (NOTES). `banner/resume.rs` is smaller than 511 and — **ticked (Part A builder):** `wc -l`: `banner/resume.rs` 511 → 493, `keymap_words/stops.rs` 1142 → 1038, new `banner/resolve_words.rs` 64, `keymap_words/resolve.rs` 219.
+  `keymap_words/stops.rs` smaller than 1142. The new `resolve_words.rs` and `keymap_words/resolve.rs` are each
+  ≤ 400 lines.
+- [x] **A unchanged words**: `update::banner::tests` (the :207 and :945 cases), `conflict_interim` (:506) and — **ticked (Part A builder):** workspace `cargo nextest run` green; `git diff --stat` shows no change to `tests/it/conflict_interim.rs`, `tests/it/m5_walk/conflicts.rs`; `banner/tests.rs` changed only at :982 (the `resolve_keys` caller), not the :207/:945 cases; `no_literal_keys::no_user_facing_literal_spells_a_default_key` green in the same run.
+>>>>>>> worktree-agent-a9de6247cb095ec51
   `m5_walk::conflicts` (:248) pass with no edit (`git diff` of those files is empty);
   `no_literal_keys::no_user_facing_literal_spells_a_default_key` is green.
 - [ ] **B1 move-only** (one commit):
@@ -331,3 +359,64 @@ The conductor dispatches them separately (see Blocked by). If one builder takes 
 - `KNOWN_GAPS.md:1187` (`M8/10l-changes-pane-c-refusal`) understates Major 1 (it says only "no `⏎`"). Part A closes
   it.
 - m8 is folded into Part A: no row.
+<<<<<<< HEAD
+=======
+
+
+## NOTES — Part A (builder, 2026-10-08)
+
+Scout: none, per the ticket (the review names every line; check-first below is the scout). Not compacted.
+Skills: none loaded (worked test-first by hand; the `implement`/`tdd` SKILL.md files were not read).
+
+### Check-first
+1. **Focus after the pane refusal: the changes pane.** `keys/commit.rs:19–25` → `continue_pressed(.., ReturnTo::Banner, ..)`;
+   the refusal arm (`banner/pressed.rs:34–38`) sets only `state.status` and returns; `banner_focus` is set only on the
+   resolver path further down (`pressed.rs:~70`). `edge::context_of` (`edge.rs:63–93`) → `ContextId::Changes`. Pinned:
+   the pin asserts `context_of(refused) == Changes` at both pane spots.
+2. **`space` on a CONFLICTS row stages.** `update/operate.rs:380–391`: `Unmerged => Operation::Stage(target)`; existing
+   test `operate::tests::space_on_a_conflicted_file_stages_it_as_the_resolution`. MAP :360 was stale → corrected. Its
+   `ActionId` there: `changes.stage` (`graft-ui/src/keymap/table.rs:245–250`, chords `SPACE`, `s`).
+3. **⏎, M, e on that row act on that file.** `⏎`: `detail/keys.rs:186–204` `open_the_resolver` via `cursor_conflict`
+   (row `app.open`, Global). `M` → `changes.mergetool`, `e` → `changes.edit` (`table.rs:253–258`). The pin presses each:
+   resolver opens on `a.rs`, `Command::OpenMergetool{a.rs}`, `Command::OpenConflictEditor{a.rs}`, `Operation::Stage([a.rs])`.
+4. **`⇥` at the changes pane does NOT focus the banner.** From the file list one `⇥` goes to the diff:
+   `banner/stop/tab.rs:51–56` (`DetailFocus::Files => TabTarget::Diff`), `tabs_to_banner` = 2 (`tab.rs:72–74`). So per
+   the ticket ("If `⇥` doesn't act, the clause drops and that is reported"), **off a CONFLICTS row the words are the
+   reason alone**, not `⇥ banner`. The pin pins this (one `⇥` from there leaves `banner_focus` false).
+   - The `u` refusal's speller is `undo::banner_keys` (`undo.rs:184–186`, "pressed on the graph"). A two-tab speller
+     exists: `banner::tab_keys(tabs_to_banner)` (`stop/tab.rs:80–85`, used by `commit_editor/refusal.rs:116`), giving
+     `⇥ ⇥ banner` — but it is a literal `⇥`, not spelled from his keymap, and the ruling did not name it. Using it would be
+     a words change; left to the planner.
+   - **Finding (question, not fixed):** `u`/`U` refused from the changes pane during a live operation names `⇥ banner`
+     (`undo.rs:178`, `:453`) though one `⇥` from the file list reaches the diff (`tab.rs:54`). Unverified by a driven test.
+
+### Touches
+- `rg 'continue_refused|resolve_keys|refused_at' crates/graft/src` before: `banner.rs:69,71`, `status_read.rs:78`,
+  `stops.rs:1031–1108`, `finish/tests.rs:174`, `live_c_tests.rs:304`, `resume.rs:153`, `banner/tests.rs:982`,
+  `pressed.rs:37,159–167`, `palette/tests.rs:179`. After: the same callers pass `refused_at(state)`; the stops tests moved
+  to `keymap_words/resolve.rs`; `palette/tests.rs` no longer calls `resolve_keys`.
+- Moved tests: `update::tests::keymap_words::stops::{the_resolve_keys_name_rows_that_act_where_the_refusal_is_shown,
+  the_resolve_keys_spell_his_keys}` → `update::tests::keymap_words::resolve::{same names}`.
+- Outside the listed crate set: `update/operate/tests.rs` — three test fixtures (`state_with`, `unmerged_entry`,
+  `unstaged_entry`) widened to `pub(in crate::update)` so the pin can build a pane with a CONFLICTS section. No other
+  change there; not held by 18c.
+- Changes pane hint bar on a CONFLICTS row (graft-ui, not edited): `space` label is **`resolved`**
+  (`graft-ui/src/graph_screen/hints/lists.rs:522`, `hint(STAGE, "resolved")`), the refusal says `space marks resolved`.
+  **Question for the M8 usability walk** (same key, two verbs), not changed here.
+- Captures: `rg -l 'still conflicted' docs/shots` → no hits. No capture changes.
+- TESTING.md scenario 27 (:2049–2051) quotes the **banner** refusal (`⏎ resolve  M mergetool e edit`), unchanged → not edited.
+- Banner words unchanged: `RefusedAt{Banner}` path is the old code path; `banner::tests` green unedited at :207/:945.
+- Palette IN PROGRESS: graph stays reason-only (pin's Graph spot, palette test).
+- MAP (graft): :360 corrected; `continue_refused` row new param; `resolve_keys` row moved to child `resolve_words`, plus
+  `RefusedAt`, `refused_at` rows.
+- Keymap table, `keymap_ids.txt`, journal/undo, `KNOWN_GAPS.md`: untouched (`git diff --stat`).
+
+### Seen red
+- Pin with the `mark` clause removed: `ConflictRow` left `Some("⏎ resolve  M mergetool  e edit")`, right the
+  `… space marks resolved` string (`resolve.rs:125`). Base itself said `M mergetool  e edit` there (no `⏎`, no `space`).
+- Minor 8: `resolve_keys` returning `space marks resolved` at Graph → `palette/tests.rs:201` failed as quoted in the tick.
+
+### Deviation from the ruling (say so, not silent)
+- Off-CONFLICTS-row words are the reason alone, not `1 file still conflicted · ⇥ banner` (check-first 4).
+  Planner may want `⇥ ⇥ banner` via `tab_keys`; that is a words ruling.
+>>>>>>> worktree-agent-a9de6247cb095ec51

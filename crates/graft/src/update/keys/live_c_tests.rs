@@ -298,18 +298,67 @@ fn c_from_the_pane_and_from_the_banner_emit_the_same() {
             ) if p.ends_with("still conflicted") => {
                 assert_eq!(p, b, "{what:?}");
                 for (s, keys) in [(&pane, pk), (&banner, bk)] {
-                    let place = crate::update::edge::context_of(s);
+                    let at = crate::update::banner::refused_at(s);
                     assert_eq!(
                         keys,
-                        &crate::update::banner::resolve_keys(place, &s.keymap),
-                        "{what:?} at {place:?}"
+                        &crate::update::banner::resolve_keys(at, &s.keymap),
+                        "{what:?} at {at:?}"
                     );
                 }
+                // The fixture's pane draws no file row, so the cursor is
+                // off any CONFLICTS row: the reason alone (m8/11f). On a
+                // CONFLICTS row: `on_a_conflicts_row_…` below.
+                assert_eq!(pk.as_deref(), None, "{what:?}");
+                assert_eq!(
+                    bk.as_deref(),
+                    Some("⏎ resolve  M mergetool  e edit"),
+                    "{what:?}"
+                );
             }
             _ => assert_eq!(pane.status, banner.status, "{what:?}"),
         }
         assert_eq!(pane.finish, banner.finish, "{what:?}");
         assert!(pane.commit_editor.is_none());
+    }
+}
+
+/// m8/11f: from the pane with the cursor on a CONFLICTS row, the same
+/// reason as the banner's, and the banner's keys plus `space marks
+/// resolved`; on the row below it (another section), the reason alone.
+#[test]
+fn on_a_conflicts_row_the_pane_names_space_and_off_it_nothing() {
+    use crate::update::operate::tests::{state_with, unstaged_entry};
+    use graft_ui::detail::WorkingTreeSection;
+    let rows = [
+        ("a.rs".to_owned(), WorkingTreeSection::Unmerged),
+        ("b.rs".to_owned(), WorkingTreeSection::Unstaged),
+    ];
+    for (cursor, want) in [
+        (
+            1,
+            Some("⏎ resolve  M mergetool  e edit  space marks resolved"),
+        ),
+        (3, None),
+    ] {
+        let mut state = state_with(
+            &rows,
+            vec![unmerged("a.rs"), unstaged_entry("b.rs")],
+            cursor,
+        );
+        let shape = live(InProgress::Rebase, Begun::InGraft, &["a.rs"], Frame::Pane);
+        state.in_progress = shape.in_progress.clone();
+        state.live_entries = shape.live_entries.clone();
+        state.on_working_tree = true;
+        state.size = shape.size;
+        let (pane, _) = c(&state);
+        let (banner, _) = from_the_banner(&state);
+        let (Status::Sticky { reason: p, keys }, Status::Sticky { reason: b, .. }) =
+            (&pane.status, &banner.status)
+        else {
+            panic!("both refuse: {:?} / {:?}", pane.status, banner.status);
+        };
+        assert_eq!(p, b, "row {cursor}");
+        assert_eq!(keys.as_deref(), want, "row {cursor}");
     }
 }
 

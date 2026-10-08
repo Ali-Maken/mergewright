@@ -5,7 +5,7 @@ use super::{
     finished_lands_on_head, land_in_resolver, live, stopped_again,
 };
 use crate::update::op_keys::OpKeys;
-use graft_ui::keymap::{ActionId, ContextId, KeyChord, KeyCode, Keymap};
+use graft_ui::keymap::{ActionId, ContextId, KeyChord, Keymap};
 
 /// Queue a `--continue`/`--skip`/`--abort`.
 ///
@@ -86,10 +86,10 @@ pub fn open_mergetool(
 }
 
 /// The rows a press of `e` may answer with "open this file in `$EDITOR`".
-const EDIT_ROWS: [&str; 3] = ["operation.edit", "resolver.edit", "changes.edit"];
+pub(super) const EDIT_ROWS: [&str; 3] = ["operation.edit", "resolver.edit", "changes.edit"];
 
 /// The rows a press of `M` may answer with "hand this file to the mergetool".
-const MERGETOOL_ROWS: [&str; 3] = [
+pub(super) const MERGETOOL_ROWS: [&str; 3] = [
     "operation.mergetool",
     "resolver.mergetool",
     "changes.mergetool",
@@ -99,7 +99,7 @@ const MERGETOOL_ROWS: [&str; 3] = [
 /// (m8/10j ruling 1). Read off the shipped table, not his: the words name
 /// the *action* that answers there, then spell it from his keymap — so a
 /// remap moves the label, never the action the clause promises.
-fn row_at(place: ContextId, key: char, rows: &[&str]) -> Option<ActionId> {
+pub(super) fn row_at(place: ContextId, key: char, rows: &[&str]) -> Option<ActionId> {
     Keymap::shipped()
         .acting(place, KeyChord::key(key))
         .filter(|id| rows.contains(&id.0))
@@ -107,12 +107,12 @@ fn row_at(place: ContextId, key: char, rows: &[&str]) -> Option<ActionId> {
 
 /// The one place → edit-row lookup both stop lines share, so the two can
 /// never name different `e` keys in one place (m8/10j ruling 4).
-fn edit_row(place: ContextId) -> Option<ActionId> {
+pub(super) fn edit_row(place: ContextId) -> Option<ActionId> {
     row_at(place, 'e', &EDIT_ROWS)
 }
 
 /// Two clauses two spaces apart, either dropped; `None` when both are.
-fn joined(first: Option<String>, second: Option<String>) -> Option<String> {
+pub(super) fn joined(first: Option<String>, second: Option<String>) -> Option<String> {
     match (first, second) {
         (Some(a), Some(b)) => Some(format!("{a}  {b}")),
         (one, other) => one.or(other),
@@ -142,24 +142,6 @@ pub(crate) fn edit_or_mergetool(place: ContextId, keys: &Keymap) -> Option<Strin
     let tool =
         row_at(place, 'M', &MERGETOOL_ROWS).and_then(|row| keys.key_verb(&[row], "mergetool"));
     joined(edit, tool)
-}
-
-/// `⏎ resolve  M mergetool  e edit` — the keys `c`'s refusal offers — as
-/// said at `place` (m8/10l, on 10j ruling 1's place rule): `⏎` only where
-/// it is `app.open` (on the banner it opens the resolver on the first
-/// conflicted file), `M`, `e` from their rows there; a clause with no row
-/// or an unbound key dropped; nothing left → `None`. The order is the
-/// banner bar's, which leads with `⏎ resolve`.
-pub(crate) fn resolve_keys(place: ContextId, keys: &Keymap) -> Option<String> {
-    let resolve = (place == ContextId::Banner)
-        .then(|| Keymap::shipped().acting(place, KeyChord::plain(KeyCode::Enter)))
-        .flatten()
-        .filter(|id| id.0 == "app.open")
-        .and_then(|row| keys.key_verb(&[row], "resolve"));
-    let tool =
-        row_at(place, 'M', &MERGETOOL_ROWS).and_then(|row| keys.key_verb(&[row], "mergetool"));
-    let edit = edit_row(place).and_then(|row| keys.key_verb(&[row], "edit"));
-    joined(joined(resolve, tool), edit)
 }
 
 /// `e`: open `$EDITOR` on `path` at its first conflict marker.

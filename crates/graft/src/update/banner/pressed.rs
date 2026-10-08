@@ -34,11 +34,7 @@ pub(crate) fn continue_pressed(
     if let Some(reason) = continue_refusal(state) {
         match from {
             ReturnTo::Banner => {
-                state.status = continue_refused(
-                    reason,
-                    crate::update::edge::context_of(state),
-                    &state.keymap,
-                );
+                state.status = continue_refused(reason, super::refused_at(state), &state.keymap);
             }
             ReturnTo::Resolver => {
                 crate::update::resolver::set_notice(
@@ -155,16 +151,16 @@ pub(in crate::update) fn land_after_continue_in_git(
 }
 
 /// `c`'s refusal as the status line says it: the reason, and the keys that
-/// get the user out of it — only those acting at `ctx`, where he is left
-/// (m8/10l: [`super::resolve_keys`]).
+/// get the user out of it — only those acting at `at`, where he is left
+/// (m8/10l, m8/11f: [`super::resolve_keys`]).
 pub(in crate::update) fn continue_refused(
     reason: String,
-    ctx: graft_ui::keymap::ContextId,
+    at: super::RefusedAt,
     keys: &graft_ui::keymap::Keymap,
 ) -> Status {
     Status::Sticky {
         reason,
-        keys: super::resolve_keys(ctx, keys),
+        keys: super::resolve_keys(at, keys),
     }
 }
 

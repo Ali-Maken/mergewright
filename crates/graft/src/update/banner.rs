@@ -62,13 +62,15 @@ mod focus_keys;
 pub(super) use focus_keys::banner_press;
 pub(crate) use focus_keys::{abort_key, continue_abort};
 mod pressed;
+mod resolve_words;
 mod resume;
 pub use focus_keys::{banner_key, take_focus};
 use pressed::{abort_pressed, skip_pressed};
 pub(crate) use pressed::{continue_pressed, continued_in_git};
 pub(super) use pressed::{continue_refused, land_after_continue_in_git};
+pub(crate) use resolve_words::{RefusedAt, refused_at, resolve_keys};
 pub use resume::{cursor_conflict, edit_conflict, open_mergetool, resume, resumed};
-pub(crate) use resume::{edit_or_mergetool, mergetool_fallback, resolve_keys};
+pub(crate) use resume::{edit_or_mergetool, mergetool_fallback};
 #[cfg(test)]
 use resume::{kept_open, resumed_words};
 
