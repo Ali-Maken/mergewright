@@ -5,6 +5,27 @@ fn keys() -> &'static Keymap {
     Keymap::shipped()
 }
 
+/// M8/11f-b2-ready-join: `place_footer_text` is `fit_place_footer` then
+/// `keys_text` — the same string at a width that keeps every clause, one
+/// that sheds, and one below the doorway's words.
+#[test]
+fn keys_text_is_place_footer_text() {
+    let clauses: Vec<String> = ["s save", "S/esc close", "d drop"]
+        .into_iter()
+        .map(str::to_owned)
+        .collect();
+    for width in [120, 24, 4] {
+        let fitted = fit_place_footer(&clauses, keys(), &[], width);
+        assert_eq!(
+            fitted.keys_text(&clauses),
+            place_footer_text(&clauses, keys(), width),
+            "at {width}"
+        );
+    }
+    let shed = fit_place_footer(&clauses, keys(), &[], 24);
+    assert!(shed.clauses.len() < clauses.len(), "24 sheds: {shed:?}");
+}
+
 /// M8/11f-b2-ready-join: the one join — kept clauses, then the doorway,
 /// two cells apart; dropped clauses and notes are not drawn.
 #[test]

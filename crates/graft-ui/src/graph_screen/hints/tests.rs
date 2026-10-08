@@ -2637,10 +2637,10 @@ fn the_doorway_falls_back_to_the_palette_key_then_to_nothing() {
 }
 
 /// M8/marked-row-no-ctrlp: a marked row spells the doorway the same way
-/// the bar trailer does: `⌃P keys` when `help` is unbound, nothing when
-/// `palette` is unbound too.
+/// the bar trailer does: `⌃P keys` where `? keys` sat when `help` is
+/// unbound; with `palette` unbound too, no doorway and nothing else changes.
 #[test]
-fn a_marked_row_falls_back_to_the_palette_doorway() {
+fn a_marked_row_with_help_unbound_ends_ctrl_p_keys() {
     let marked = HintContext::Marked(Box::new(HintContext::PlainRow {
         verbs: RowVerbs::NONE,
     }));
@@ -2669,6 +2669,25 @@ fn a_marked_row_falls_back_to_the_palette_doorway() {
         &neither,
     );
     assert!(!text.contains("keys"), "{text:?}");
+    // Nothing else changes: at a width that holds every hint, the same
+    // bar as the shipped one, its doorway respelled or gone. (At 240 the
+    // cells freed by a missing doorway let one more hint in — the width
+    // rule, not a change.)
+    let text = super::hints_text(
+        &super::hints_for(&marked, Divider::Hidden, 400, &neither),
+        &neither,
+    );
+    let shipped = Keymap::shipped();
+    let base = super::hints_text(
+        &super::hints_for(&marked, Divider::Hidden, 400, shipped),
+        shipped,
+    );
+    let with_ctrl_p = super::hints_text(
+        &super::hints_for(&marked, Divider::Hidden, 400, &no_help),
+        &no_help,
+    );
+    assert_eq!(with_ctrl_p, base.replace("? keys", "⌃P keys"));
+    assert_eq!(Some(text.as_str()), base.strip_suffix(" · ? keys"));
 }
 
 /// The overlays and places m8/11c decision 1 names: modal for keys, not for

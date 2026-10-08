@@ -348,6 +348,30 @@ fn footer_cases<'a>() -> Vec<(&'static str, StashView<'a>, Vec<&'static str>)> {
     ]
 }
 
+/// M8/stash-footer-close-key: `S` and `esc` both close the list, so every
+/// status's footer names both (`S/esc close`); `stash.close` unbound →
+/// `esc close`; both unbound → no close clause.
+#[test]
+fn every_stash_footer_names_both_close_keys() {
+    let no_s = crate::test_support::unbound(&["stash.close"]);
+    let neither = crate::test_support::unbound(&["stash.close", "app.back"]);
+    for (what, view, _) in &footer_cases() {
+        let shipped = footer_row(view, 200, Keymap::shipped());
+        assert!(
+            shipped.contains("  S/esc close  ? keys"),
+            "{what}: {shipped:?}"
+        );
+        let esc_only = footer_row(view, 200, &no_s);
+        assert!(
+            esc_only.contains("  esc close  ? keys"),
+            "{what}: {esc_only:?}"
+        );
+        assert!(!esc_only.contains("S/"), "{what}: {esc_only:?}");
+        let none = footer_row(view, 200, &neither);
+        assert!(!none.contains("close"), "{what}: {none:?}");
+    }
+}
+
 /// m8/11e F2: the list's own footer is the bar he sees; it ends with
 /// the doorway, in every status that draws its own keys.
 #[test]
