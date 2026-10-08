@@ -186,15 +186,22 @@ fn group_stop(
 ///   same, the members read at most every [`LIST_EVERY`].
 /// - A helper still listed `graces.helper_term` after its `SIGTERM` gets
 ///   `SIGKILL`.
-/// - git is not signalled for `graces.hooks`. Still running then, the whole
-///   group gets [`group_stop`].
+/// - git is not signalled for `graces.hooks` **from the first helper's
+///   `SIGTERM`**. Still running then, the whole group gets [`group_stop`].
 /// - No helpers, or members that cannot be read: straight to [`group_stop`].
 ///   **Safe:** that is the stop every write had before 13c, and the caller
 ///   reads what git left on disk rather than trusting how it ended.
 ///
+/// Why the grace starts at the `SIGTERM` and not at the call (m8/13k): git's
+/// time to pause begins when its hook ends. Reading the group is one `ps` on
+/// macOS, which took 1.9–2.3 s on a loaded machine — the whole grace. Counted
+/// from the call, git was shot while it was still writing `MERGE_HEAD`, and
+/// the merge he asked to leave paused was not paused.
+///
 /// After git ends on its own, helpers still listed get [`after_git_ended`],
-/// bounded by `graces.hooks + graces.term` from the start — so the whole
-/// stop stays within [`super::STOP_WITHIN`].
+/// bounded by `graces.hooks + graces.term` from the first `SIGTERM` — so the
+/// whole stop stays within [`super::STOP_WITHIN`] plus that first read of
+/// the group.
 fn hooks_first(
     child: &mut Child,
     members: Members<'_>,
@@ -212,17 +219,20 @@ fn hooks_first(
     let mut next_read = start;
     loop {
         if let Some(status) = child.try_wait().map_err(RunError::Spawn)? {
-            let until = start + graces.hooks + graces.term;
+            let until = helpers.first_asked().unwrap_or(start) + graces.hooks + graces.term;
             after_git_ended(&mut helpers, members, graces, until);
             return Ok(own(status));
         }
         let now = Instant::now();
-        if now >= start + graces.hooks {
+        if helpers
+            .first_asked()
+            .is_some_and(|asked| now >= asked + graces.hooks)
+        {
             return group_stop(child, members, graces);
         }
         if now >= next_read {
             next_read = now + LIST_EVERY;
-            match helpers.pass(members, now, graces.helper_term) {
+            match helpers.pass(members, graces.helper_term) {
                 // Safe to fall back: see the doc comment's last bullet.
                 Err(_unreadable) => return group_stop(child, members, graces),
                 // Nothing but git in its group: no hook to end first.
@@ -254,7 +264,7 @@ fn after_git_ended(helpers: &mut Helpers, members: Members<'_>, graces: Graces, 
             helpers.end_all(members).map(|()| false)
         } else if now >= next_read {
             next_read = now + LIST_EVERY;
-            helpers.pass(members, now, graces.helper_term)
+            helpers.pass(members, graces.helper_term)
         } else {
             Ok(true)
         };
@@ -290,15 +300,24 @@ impl Helpers {
         Ok(())
     }
 
+    /// When the first helper was sent `SIGTERM`: where git's grace starts.
+    fn first_asked(&self) -> Option<Instant> {
+        self.termed.first().map(|&(_, asked)| asked)
+    }
+
     /// One read of the group: `SIGTERM` + `SIGCONT` to each helper not yet
     /// asked, `SIGKILL` to each asked `grace` ago and still listed. `false`
     /// when no helper is listed.
-    fn pass(&mut self, members: Members<'_>, now: Instant, grace: Duration) -> io::Result<bool> {
+    ///
+    /// Each signal is timed from when the read came back, not from when it
+    /// was asked for: a slow read must not count against a grace (m8/13k).
+    fn pass(&mut self, members: Members<'_>, grace: Duration) -> io::Result<bool> {
         let git = self.git;
         let listed: Vec<Pid> = members(git)?
             .into_iter()
             .filter(|&pid| pid != git)
             .collect();
+        let now = Instant::now();
         for &helper in &listed {
             match self.termed.iter().find(|(pid, _)| *pid == helper) {
                 None => {
@@ -473,6 +492,43 @@ mod tests {
             child.try_wait().expect("try_wait").is_some(),
             "the child has been reaped"
         );
+    }
+
+    /// m8/13k: git's grace begins when its helpers are ended, not before the
+    /// group is read. On a loaded Mac one `ps` took 1.9–2.3 s, the whole
+    /// `HOOKS_GRACE`; git, still writing its pause when the read came back,
+    /// was then shot (`SIGTERM` to the group) and the merge was not paused.
+    ///
+    /// The "git" here waits on its helper as git waits on a hook, then takes
+    /// 100 ms to end once the helper is gone, as git takes to write
+    /// `MERGE_HEAD` and exit 1. The read of the group takes longer than the
+    /// whole hooks grace.
+    #[test]
+    fn a_slow_read_of_the_group_does_not_spend_gits_grace() {
+        let mut child = Command::new("sh")
+            .arg("-c")
+            .arg("sleep 600 & echo ready; wait; sleep 0.1; exit 1")
+            .process_group(0)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("sh starts");
+        wait_until_ready(&mut child);
+        // The real graces: git's 100 ms exit has the same 1.9 s margin it has
+        // in the app, so a loaded machine does not make this test flake.
+        let graces = Graces::REAL;
+        let slow = |group: Pid| {
+            thread::sleep(graces.hooks + Duration::from_millis(100));
+            super::super::group::members(group)
+        };
+
+        let end = hooks_first(&mut child, &slow, graces).expect("stopped and reaped");
+
+        assert!(
+            !end.git_signalled,
+            "git was left to end on its own: {end:?}"
+        );
+        assert_eq!(end.status.code(), Some(1), "{end:?}");
     }
 
     #[test]
