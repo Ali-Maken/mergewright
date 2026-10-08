@@ -1188,6 +1188,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/raster-write-shots-red-on-update | `raster::write_shots` (graft-graph) goes red under `GRAFT_UPDATE_SHOTS` yet leaves `docs/` unchanged (seen by 12d) | **unverified** | M8 |
 | M8/lands-row-launch-in-repo | 12d asks for a Lands row "Launch inside a repo · graph, cursor on HEAD"; 19 (tour) must know every place in `drive` now lands on HEAD → planner with 19 | **unverified** | M8 |
 | M8/10l-changes-pane-c-refusal | Third caller found by 10l: `c` in the changes pane now offers `M mergetool  e edit` with no `⏎` (live_c_tests.rs edited, outside the ticket list); whether any capture shows this status line unverified — 11e capture run will tell | **unverified** | M8 |
+| M8/clone-askpass-close-dropped | On a failed or stopped clone, an askpass socket close failure is dropped (commented) because `CloneError` has no field for it (graft-ops `clone.rs`); question: add a field? → 18b planner | **unverified** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` 407 lines (~7 over); seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | RESOLVE_KEYS shown on screen via pressed.rs:156; the literal-key grep misses consts | **unverified** | M8 |
