@@ -258,17 +258,14 @@ impl History {
             commit: row.commit.id,
             offset: self.cursor.saturating_sub(self.top),
         });
-        let promote = match &mut self.promotion {
-            Some(Promotion::Swapping { order, anchor }) => {
-                // A cursor moved off the rows on hand has no commit to anchor
-                // to yet: an older anchor would snap it back (27c).
-                *anchor = selected;
-                Some(Promote {
-                    order: Arc::clone(order),
-                    anchor: *anchor,
-                    height,
-                })
-            }
+        // A cursor moved off the rows on hand has no commit to anchor to yet:
+        // the walk then lays out by row numbers (27c).
+        let promote = match &self.promotion {
+            Some(Promotion::Swapping { order }) => Some(Promote {
+                order: Arc::clone(order),
+                anchor: selected,
+                height,
+            }),
             _ => None,
         };
         RowRequest {
