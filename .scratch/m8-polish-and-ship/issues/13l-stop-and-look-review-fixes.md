@@ -130,7 +130,7 @@ pub(crate) fn session_command(program: &Path, args: &[OsString], slave: OwnedFd)
 - [x] B2 (verified: after the hang-up run `ps -A | grep -c "[a]gent-a31affec4ac4ccd5d/target/debug/graft"` = 0 and
       `ps -A | grep -c "[s]leep 600"` = 0; the literal `[g]raft` count read 6, every match listed in NOTES and none
       ours): `ps -A | grep -c "[g]raft"` reads 0 after the hang-up run, so no orphaned graft (NOTES).
-- [ ] C (planner, after `docs/research/m8-look-polish.md` lands): the design note `m8-polish-and-ship.md` gains
+- [x] C (verified by conductor 2026-10-08: design note cites `m8-look-polish.md` 9× — post-hoc Prior art rows, planner pass; research found no contradiction of what shipped, so no "reject" and no follow-up spec) (planner, after `docs/research/m8-look-polish.md` lands): the design note `m8-polish-and-ship.md` gains
       **Prior art** rows (take/reject/invent, each citing that file) and **Journeys** rows for 17's aspects:
       - the folded-merge `+N` (`Space` → `+N`, step-counted);
       - the off-thread fade by hue;
