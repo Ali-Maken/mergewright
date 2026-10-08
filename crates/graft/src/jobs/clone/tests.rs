@@ -37,11 +37,23 @@ fn pool() -> (
 
 /// The next of `id`'s events, or a panic naming what was waited for.
 fn next_for(events: &Receiver<AppEvent>, id: JobId, deadline: Instant) -> AppEvent {
+    next_watched(events, id, deadline, |_| {})
+}
+
+/// As [`next_for`], showing `watch` every event received on the way,
+/// another job's included: what a check over the whole stream needs.
+fn next_watched(
+    events: &Receiver<AppEvent>,
+    id: JobId,
+    deadline: Instant,
+    mut watch: impl FnMut(&AppEvent),
+) -> AppEvent {
     loop {
         let left = deadline.saturating_duration_since(Instant::now());
         let event = events
             .recv_timeout(left)
             .unwrap_or_else(|why| panic!("no event for {id:?} within {WITHIN:?}: {why}"));
+        watch(&event);
         let ours = match &event {
             AppEvent::Produced(of, _) | AppEvent::Progress(of, _) | AppEvent::Started(of, _) => {
                 *of == id
@@ -210,11 +222,22 @@ fn child_asks_through_the_pool_and_clones() {
         url: http.url(),
         into: into.clone(),
     });
-
+    // The password must reach git through the askpass answer only: no event
+    // the loop receives (the ask itself included) may carry it, since the
+    // loop logs events and draws from them.
+    let mut seen = 0;
+    let mut no_password = |event: &AppEvent| {
+        seen += 1;
+        let shown = format!("{event:?}");
+        assert!(
+            !shown.contains(PASSWORD),
+            "event {seen} carries the password: {shown}"
+        );
+    };
     let deadline = Instant::now() + WITHIN;
     let mut asked = 0;
     let answer = loop {
-        match next_for(&events, id, deadline) {
+        match next_watched(&events, id, deadline, &mut no_password) {
             AppEvent::Progress(_, Progress::CredentialNeeded { .. }) => {
                 asked += 1;
                 assert!(

@@ -1,6 +1,6 @@
 # 18e — clone review fixes: the secret check over events, a pure first-launch line, `esc` in the clone's password box, the splits
 
-Status: ready (conductor 2026-10-08) — was draft (planner spec-only pass 2026-10-08, from `docs/reviews/m8-clone.md` Critical C1 and Majors M1–M3)
+Status: **A1 done** (builder 2026-10-08, dispatched early); A2, A3, Part B open, waiting for 19b. Was: ready (conductor 2026-10-08) — was draft (planner spec-only pass 2026-10-08, from `docs/reviews/m8-clone.md` Critical C1 and Majors M1–M3)
 Build with:
 - **Part A Opus (high)**: M1 moves a per-process switch out of `AppState` across the shell/loop seam; the seam is fixed
   below, but whether a done in one place still hides the line in the next is judged only by a cross-place test. M2's
@@ -137,11 +137,14 @@ modules.
 - No keymap, journal, undo or graft-ops change. No change to ARCHITECTURE.md: this restores its rule.
 
 ## Acceptance (each tick names its test or check inline)
-- [ ] A1, events: `jobs::clone::tests::child_asks_through_the_pool_and_clones` asserts that, for every event it
+- [x] A1, events: `jobs::clone::tests::child_asks_through_the_pool_and_clones` asserts that, for every event it
       receives (the credential ask included), `format!("{event:?}")` doesn't contain the test password. **Seen red**:
       a probe event whose payload string holds the password fails it. Record the failing line in NOTES, then remove
-      the probe.
-- [ ] A1, 18c box 2: amended to name what is scanned, then re-ticked with both tests. The text: "secret absent from
+      the probe. (`jobs::clone::tests::child_asks_through_the_pool_and_clones`, run via its parent
+      `asks_through_the_pool_and_clones`; red line in NOTES "A1")
+- [x] A1, 18c box 2: amended to name what is scanned, then re-ticked with both tests. (18c :46-50, naming
+      `jobs::clone::tests::child_asks_through_the_pool_and_clones` and `m8_walk/clone.rs::clone_asks_for_a_password`)
+      The text: "secret absent from
       every event's `Debug` (`jobs::clone::tests::child_asks_through_the_pool_and_clones`) and from pty frames,
       stderr and the new `.git` (`m8_walk/clone.rs::clone_asks_for_a_password`)". The box no longer says
       `no_secret_leaked`.
@@ -189,6 +192,31 @@ workspace-wide.
 One context per part:
 - Part A: about 50k tokens.
 - Part B: about 45k tokens (reading four files is most of it).
+
+## NOTES — A1 (builder, 2026-10-08)
+- Scout: none. The ticket names the one test; the change is in one test file.
+- Shape: `jobs/clone/tests.rs` gains `next_watched(events, id, deadline, watch)`, which shows `watch` **every** event
+  received, another job's and `Core`/`Rested` included, before the id filter. `next_for` now delegates to it with a
+  no-op watch, so its other callers are unchanged. The child test passes a closure asserting
+  `!format!("{event:?}").contains(PASSWORD)`. The scan runs before the `match`, so the `CredentialNeeded` ask and the
+  `Cloned` answer are both scanned. The loop breaks on `Cloned`, so events after it are not received and not
+  scanned.
+- **Seen red:** a probe sending `Progress(id, RemoteProgress { brief: "leaked <PASSWORD>" })` on a clone of the
+  sender failed at `crates/graft/src/jobs/clone/tests.rs:243:9` with `event 1 carries the password: Progress(JobId(1),
+  RemoteProgress { brief: "leaked correct-horse-battery-staple" })`. The parent `asks_through_the_pool_and_clones`
+  failed with it. Probe removed. The assertion is now at `:234`. Green after removal.
+- The 18c box's second half was checked by reading, not run here beyond the workspace suite:
+  `m8_walk/clone.rs::clone_asks_for_a_password` scans the pty output (`leaks(&output)`) and every file under the new
+  `.git`. stderr is covered by `quit()` asserting it empty (`m8_walk/clone.rs:84`), which is stronger than a scan.
+- Touches: `jobs/clone/tests.rs` (other `next_for` callers unchanged in behaviour: the watch is a no-op, and the
+  suite passed); the 18c box (:46-50); gap `18c-secret-events-level` is for the conductor to close, naming
+  `jobs::clone::tests::child_asks_through_the_pool_and_clones`. `m8_walk/clone.rs` unchanged. No production code,
+  no MAP item (test-only helper).
+- Gates (worktree's own target): fmt ok; clippy `--workspace --all-targets -D warnings` ok; doctests ok; nextest
+  6020/6021. **The one failure is not A1's**: `published_repo::nothing_a_commit_would_carry_names_this_machine` names
+  `docs/log/m8.md:330` (a home-dir path), a file last changed by base commit `a9bf9e0c` (conductor, "gaps+log: 20
+  remainder"). Outside this ticket's files, so not fixed here. Fix: `cargo run -q -p graft-fixtures -- redact
+  docs/log/m8.md`.
 
 ## NOTES — proposed KNOWN_GAPS rows (planner, for the conductor)
 Lines are at `ce6fdfdf`. 19b and 18e B move them, and 18e's builder lists the new location of each.
