@@ -38,6 +38,13 @@ use crate::keymap::{ActionId, Keymap};
 use crate::paint::{foreground, lift_on_selection};
 use crate::theme::{Theme, Token};
 
+mod bar;
+mod clone_prompt;
+
+pub use bar::{bar_fitted, bar_keys};
+use clone_prompt::window;
+pub use clone_prompt::{CloneShown, CloneView};
+
 /// One remembered repository as drawn.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RecentRow {
@@ -63,39 +70,6 @@ pub enum EmptyPrompt {
     ConfirmInit,
     /// `c`: `clone › <url>`, and under it where it goes and how it went.
     Clone(CloneView),
-}
-
-/// The clone prompt as drawn (m8/18c, rulings R6).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CloneView {
-    /// The URL typed (kept after a failure or a stop, for a retry).
-    pub url: SanitizedText,
-    /// The cursor's character index into `url`.
-    pub cursor: usize,
-    /// The folder it goes into, `~`-abbreviated: `~/code/x`, or `~/code/…`
-    /// while no name can be read from the URL.
-    pub into: SanitizedText,
-    /// Typing, running, or ended.
-    pub shown: CloneShown,
-}
-
-/// Where the clone prompt's clone is, as drawn.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum CloneShown {
-    /// Nothing has run yet.
-    Typing,
-    /// The clone runs and the field is read-only.
-    Running {
-        /// git's last progress line, shortened; `None` before its first
-        /// (drawn `connecting…`).
-        progress: Option<SanitizedText>,
-    },
-    /// It failed, was stopped, or could not start.
-    Ended {
-        /// What happened, in R6's words: Problem ink, on the row under the
-        /// `→` line.
-        reason: SanitizedText,
-    },
 }
 
 /// Everything the empty state draws.
@@ -135,81 +109,6 @@ pub struct EmptyState<'a> {
     /// His keymap, built from config before the first draw: the bar's keys
     /// are spelled from it.
     pub keys: &'a Keymap,
-}
-
-/// The bar row's hints for `view`, as `(key, label)` pairs — the keys the
-/// screen answers in its current form, and only those. The one list the
-/// widget draws and the app's "every drawn key is answered" test reads.
-///
-/// Keys are spelled from `keys`, his keymap (ticket m8/10): the empty state
-/// translates every key but the open prompt's (`graft::empty_state::
-/// outside_edge`), and an unbound one is left out. The open prompt is a
-/// text field — it takes every press as typed — so its keys spell from the
-/// shipped table.
-#[must_use]
-pub fn bar_keys(view: &EmptyStateView, keys: &Keymap) -> Vec<(String, &'static str)> {
-    let spelled = |keys: &Keymap, parts: &[(&'static str, &'static str)]| {
-        parts
-            .iter()
-            .filter_map(|(action, label)| {
-                keys.spell_keys(&[ActionId(action)])
-                    .map(|key| (key, *label))
-            })
-            .collect()
-    };
-    if view.credential {
-        // The question keeps the shipped keys whatever his `[keys]` say,
-        // as on a repository screen (`graft::empty_state::outside_edge`).
-        return spelled(
-            Keymap::shipped(),
-            &[("credential.send", "send"), ("app.back", "cancel")],
-        );
-    }
-    match &view.prompt {
-        Some(EmptyPrompt::Open { .. }) => spelled(
-            Keymap::shipped(),
-            &[
-                ("app.open", "open"),
-                ("app.next_pane", "complete"),
-                ("app.back", "cancel"),
-            ],
-        ),
-        Some(EmptyPrompt::ConfirmInit) => {
-            spelled(keys, &[("confirm.yes", "init"), ("app.back", "keep it")])
-        }
-        // A text field, as the open prompt: its keys spell from the shipped
-        // table (rulings R6's three bars).
-        Some(EmptyPrompt::Clone(clone)) => spelled(
-            Keymap::shipped(),
-            match clone.shown {
-                CloneShown::Typing => &[("app.open", "clone"), ("app.back", "cancel")],
-                CloneShown::Running { .. } => &[("app.back", "cancels")],
-                CloneShown::Ended { .. } => &[("app.open", "retry"), ("app.back", "cancel")],
-            },
-        ),
-        None => {
-            let mut parts = vec![("empty_state.open", "open…")];
-            if !view.missing {
-                parts.push(("empty_state.init", "init"));
-                parts.push(("empty_state.clone", "clone…"));
-            }
-            parts.push(("empty_state.tour", TOUR_CLAUSE));
-            if !view.recent.is_empty() {
-                parts.push(("app.open", "open the selected"));
-            }
-            parts.push(("app.quit", "quit"));
-            // The doorway, last (m8/11b decision 1): `?` opens the palette
-            // on the list. `⌃P` when `?` is unbound; neither, no doorway.
-            let mut drawn = spelled(keys, &parts);
-            drawn.extend(
-                spelled(keys, &[("app.help", "keys")])
-                    .into_iter()
-                    .next()
-                    .or_else(|| spelled(keys, &[("app.palette", "keys")]).into_iter().next()),
-            );
-            drawn
-        }
-    }
 }
 
 /// The first-launch line fitted to `cells`: `first time? ? keys here ·
@@ -588,107 +487,6 @@ impl EmptyState<'_> {
             buf[(cx, y)].modifier.insert(Modifier::REVERSED);
         }
     }
-
-    /// The clone prompt's `→ <into>[ · <progress>]` row, and an ended
-    /// clone's reason on the row under it, in Problem ink.
-    fn draw_clone_rows(&self, x: u16, y: u16, inner: usize, clone: &CloneView, buf: &mut Buffer) {
-        let progress = match &clone.shown {
-            CloneShown::Running { progress } => Some(
-                progress
-                    .as_ref()
-                    .map_or("connecting…", SanitizedText::as_str),
-            ),
-            CloneShown::Typing | CloneShown::Ended { .. } => None,
-        };
-        let line = into_line(clone.into.as_str(), progress, inner);
-        buf.set_stringn(x, y + 2, &line, inner, self.muted());
-        if let CloneShown::Ended { reason } = &clone.shown {
-            buf.set_stringn(
-                x,
-                y + 3,
-                fit(reason.as_str(), inner),
-                inner,
-                foreground(self.theme, Token::Warning),
-            );
-        }
-    }
-
-    fn draw_bar(&self, area: Rect, y: u16, buf: &mut Buffer) {
-        let x = area.x + 1;
-        let width = usize::from(area.width.saturating_sub(2));
-        if let Some(problem) = &self.view.problem {
-            buf.set_stringn(
-                x,
-                y,
-                problem.as_str(),
-                width,
-                foreground(self.theme, Token::Warning),
-            );
-            return;
-        }
-        let mut at = x;
-        let end_x = x + u16::try_from(width).unwrap_or(u16::MAX);
-        for (index, (key, label)) in bar_fitted(self.view, self.keys, width)
-            .into_iter()
-            .enumerate()
-        {
-            if index > 0 {
-                at = buf
-                    .set_stringn(
-                        at,
-                        y,
-                        " · ",
-                        usize::from(end_x.saturating_sub(at)),
-                        self.muted(),
-                    )
-                    .0;
-            }
-            at = buf
-                .set_stringn(
-                    at,
-                    y,
-                    key,
-                    usize::from(end_x.saturating_sub(at)),
-                    self.key(),
-                )
-                .0;
-            at = buf
-                .set_stringn(
-                    at,
-                    y,
-                    format!(" {label}"),
-                    usize::from(end_x.saturating_sub(at)),
-                    self.muted(),
-                )
-                .0;
-        }
-    }
-}
-
-/// The bar's `t` clause (m8/19b).
-const TOUR_CLAUSE: &str = "practice tour";
-
-/// [`bar_keys`] as drawn in `width` cells: the tour clause is the first
-/// shed when the whole bar does not fit (it is opt-in, and the actions row
-/// still names `t`); past that, the bar is cut at the edge as before.
-#[must_use]
-pub fn bar_fitted(
-    view: &EmptyStateView,
-    keys: &Keymap,
-    width: usize,
-) -> Vec<(String, &'static str)> {
-    let mut parts = bar_keys(view, keys);
-    let wide = |parts: &[(String, &str)]| {
-        parts
-            .iter()
-            .map(|(key, label)| cells(key) + 1 + cells(label))
-            .sum::<usize>()
-            + 3 * parts.len().saturating_sub(1)
-    };
-    if wide(&parts) > width {
-        parts.retain(|(_, label)| *label != TOUR_CLAUSE);
-    }
-    parts
 }
 
 /// The widest name and the widest path: where RECENT's columns start.
@@ -717,59 +515,6 @@ fn draw_box(buf: &mut Buffer, at: Rect, title: &str, border: Style) {
         buf.set_string(at.x, at.y + row, "│", border);
         buf.set_string(at.x + at.width - 1, at.y + row, "│", border);
     }
-}
-
-/// `text` in `room` cells with its cursor (character index `cursor`) in
-/// view and one cell spare for the `▏` past the end: whole when it fits;
-/// else cut at the start behind `…` so the cursor is the last thing shown,
-/// and cut at the end when what follows the cursor overruns. Returns the
-/// shown text and the cells before the cursor in it.
-fn window(text: &str, cursor: usize, room: usize) -> (String, usize) {
-    let chars: Vec<char> = text.chars().collect();
-    let cursor = cursor.min(chars.len());
-    let wide = |part: &[char]| part.iter().map(|c| cells(&c.to_string())).sum::<usize>();
-    if wide(&chars) < room {
-        return (text.to_owned(), wide(&chars[..cursor]));
-    }
-    // Drop from the start until `…`, the text up to the cursor and the
-    // cursor's own cell fit.
-    let mut start = 0;
-    while start < cursor && cells("…") + wide(&chars[start..cursor]) + 1 > room {
-        start += 1;
-    }
-    let (lead, before) = if start == 0 {
-        (String::new(), wide(&chars[..cursor]))
-    } else {
-        ("…".to_owned(), cells("…") + wide(&chars[start..cursor]))
-    };
-    let rest: String = chars[start..].iter().collect();
-    let shown = fit(&format!("{lead}{rest}"), room);
-    (shown, before)
-}
-
-/// `→ <into>[ · <progress>]` in `width` cells. The path is the part he
-/// checks, its tail most of all: it keeps at least half the row and is cut
-/// at the start (`…/code/x`); the progress takes what is left, cut from the
-/// right.
-fn into_line(into: &str, progress: Option<&str>, width: usize) -> String {
-    const ARROW: &str = "→ ";
-    let room = width.saturating_sub(cells(ARROW));
-    let tail = progress.map_or(0, |p| cells(" · ") + cells(p));
-    let path_room = room.saturating_sub(tail).max(room / 2);
-    let mut path = keep_end(into, path_room);
-    // A cut path starts at a folder boundary when one is in what is kept:
-    // `…/code/x`, never `…de/x`.
-    if let Some(rest) = path.strip_prefix('…')
-        && !rest.starts_with('/')
-        && let Some(at) = rest.find('/')
-    {
-        path = format!("…{}", &rest[at..]);
-    }
-    let line = match progress {
-        Some(progress) => format!("{ARROW}{path} · {progress}"),
-        None => format!("{ARROW}{path}"),
-    };
-    fit(&line, width)
 }
 
 /// `text` in at most `width` cells, cut at the start with `…` when longer.
