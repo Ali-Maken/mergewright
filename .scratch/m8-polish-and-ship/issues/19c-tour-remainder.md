@@ -133,14 +133,54 @@ full tour's (19c-c). Say which in NOTES. Each test: bit `k` false before; after 
 lines) and the `TourProgress` product, bit `k` true in `AppState::tour` **and** in `tour_progress(work)`; other bits
 unchanged; card shows the next unticked. Prerequisite tasks run in setup.
 **Acceptance** (`crates/graft/tests/it/tour_tasks.rs`; replaces ticket 19 §A9 box 1, "8 pty walks"):
-- [ ] `task_1_ticks_by_staging_a_hunk`, `task_2_ticks_by_committing`, `task_3_ticks_by_undoing_that_commit`,
+- [x] `task_1_ticks_by_staging_a_hunk`, `task_2_ticks_by_committing`, `task_3_ticks_by_undoing_that_commit`,
       `task_4_ticks_by_setting_aside_and_bringing_back`, `task_5_ticks_by_making_a_branch` (asserts the entry kind is
       `BranchCreate`, §A2), `task_6_ticks_by_merging_feature_and_not_7`,
       `task_7_ticks_by_resolving_clash_and_finishing` (asserts R1's app-path facts: one `Merge` entry, Pending at the
       stop, Committed after `c`, two-parent result on `main`), `task_8_ticks_by_pushing`.
-- [ ] `an_aborted_clash_merge_ticks_neither_6_nor_7`.
-- [ ] `reading_the_card_ticks_nothing` — palette open/close, `?`, cursor moves, `⏎` on a commit: all 8 bits false.
+      Tests: those eight, in `crates/graft/tests/it/tour_tasks.rs` (task 7's finish is `t ⏎ y`, not `c` — NOTES).
+- [x] `an_aborted_clash_merge_ticks_neither_6_nor_7`. Test: same name, `tour_tasks.rs` (also asserts the one clash
+      `Merge` entry is `Aborted`).
+- [x] `reading_the_card_ticks_nothing` — palette open/close, `?`, cursor moves, `⏎` on a commit: all 8 bits false.
+      Test: same name, `tour_tasks.rs` (also: no journal entry at all).
 **Touches:** `tests/it/main.rs`, any shared walk helper changed (list callers), graft MAP tests entry.
+
+**NOTES 19c-b (builder, 2026-10-08)** — done, no compaction. Scout used (`scouts/19-tour.md`); no second scout. Skill:
+`implement` (read from SKILL.md).
+- **Harness: pty per task**, not headless. No seam outside the crate seeds a practice arrival: `startup::arrive` is
+  `pub(super)`, `AppState::tour` and `TourState` are `pub(crate)` (`update/state.rs:443`, `update/tour.rs:22`), and
+  `update::opening` has no practice flag. Adding one is a production change, so the ruling's fallback was taken.
+  "Bit k in `AppState::tour`" is therefore read **as drawn**: the card's ticks row (`drawn_ticks`, parsing
+  `graft_ui::tour_card::ticks_text`'s form) at 300×50, wide enough for the ticks beside every task line.
+- Each test: bits before (drawn and `tour_progress`), the task's keys, then waits for the drawn ticks, asserts the card
+  title names the first open task, and `tour_progress(work)` equals the same bits. Prerequisites in setup by their keys:
+  3 runs 1+2; 7 runs 6 first (the clash merge also ticks 6, so "other bits unchanged" needs 6 already on).
+- **R1 app-path facts confirmed by test** (`task_7_…`): at the stop, exactly one new journal entry, `Merge`, `Pending`,
+  and `tour_progress` unchanged; after the finish, still that one entry (same id), `Committed`, `head_after` =
+  `Branch("refs/heads/main")`, `refs_after["refs/heads/main"]` = `main`'s oid, which has two parents (`rev-list`).
+- Tests bite: mutating `graft-ops/src/tour/tasks.rs` (task 7 = any Committed Merge; task 8 = never) failed
+  `task_6_…`, `task_7_…`, `task_8_…`; reverted (`git diff --stat` shows no graft-ops change).
+- **Finding (wording, from the walk's screens; a question on the card text, not a logic defect):** card line 7 says
+  "m on clash stops on a conflict · ⏎ opens it · t takes theirs · c finishes". What the app did: `y` on the merge
+  preview lands **in the resolver** already; after `t`, `c` answers "1 file still conflicted · ⏎ marks done"; `⏎`
+  marks `menu.txt` done and opens the finish preview, whose key is `y`. Keys that work: `m y t ⏎ y`. The stopped
+  merge's graph hint row (after `Esc` out of the resolver) does read `⏎ resolve  c finish`, where the card's words fit.
+  Not my crate set (`graft/src/view/tour.rs` line text); for the conductor — 19c-c's full walk will meet it.
+- Card line 1 says "⏎ on the top row"; the tour lands the cursor on `main` (HEAD), so `k` first. Words fit; noted.
+  Lines 2, 4, 5 leave out their confirms (message `⏎`, stash save `⏎`, pop `y`, branch name `⏎`).
+- **Observed, test env only:** with `TMPDIR` under the isolated home (long path), `P` failed: `askpass: the credential
+  prompt's socket could not open: path must be shorter than SUN_LEN` (socket under `temp_dir()`,
+  `graft-git/src/run/askpass.rs:254`). These tests use a short `/tmp/gt*` folder. Whether a real user's `TMPDIR` is
+  ever that long: unverified — a question, not filed as a defect.
+- `tests/it/tour.rs:7-10` doc says the per-task ticks are "not here yet" — now stale; left for 19c-c (owns that file).
+- Keys sent before a screen has read its data are dropped (`space` before the changes pane lists files, `y` before a
+  preview's forecast): each step waits on a loaded marker (`M notes.txt`, `no conflicts expected`,
+  `may conflict: menu.txt`) before its key. No sleeps.
+- Gates: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run` (6093 passed),
+  `cargo test --doc` — workspace-wide, all pass.
+**Touches (19c-b):** `tests/it/main.rs` (one `mod` line); no shared helper changed (uses `pty::{Isolated, Pty,
+Screen}`, `outside_repo::quit_cleanly`, `app_harness::git` as they are); graft MAP tests entry added; no production
+file (`git status`: only main.rs, MAP.md, this ticket, the new test file).
 
 ## 19c-c — the full tour in a pty, byte checks, captures (Opus, ~55k)
 **Crate set:** `crates/graft` tests (`tests/it/tour_walk.rs` new + `main.rs` line), `docs/shots/`, the M8 contact-sheet
