@@ -71,6 +71,11 @@ pub const HOOKS_GRACE: Duration = stop::HOOKS_GRACE;
 /// grace before `SIGKILL` (`stop::TERM_GRACE`, 2 s) — 4.05 s. A default stop
 /// still ends within `POLL + TERM_GRACE`, 2.05 s.
 ///
+/// A hook-first stop adds one read of git's process group before its grace
+/// starts (`stop::hooks_first`, m8/13k): one `ps` on macOS, milliseconds on
+/// an idle machine, 1.9–2.3 s measured on a loaded one. Graft does not bound
+/// that read.
+///
 /// A caller that must not leave a git child behind — the app's shutdown —
 /// waits at least this long for a stopped job before giving up on it.
 pub const STOP_WITHIN: Duration = POLL
