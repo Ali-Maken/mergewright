@@ -23,4 +23,4 @@ JOURNAL · what happened in this repo, newest first
 
 
 ● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a…
-⏎ undo this  / find  space command log  J/esc close
+⏎ undo this  / find  space command log  J/esc close  ? keys
