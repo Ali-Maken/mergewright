@@ -1192,6 +1192,21 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/20-esc-back-dangling-dot | `docs/shots/m7/esc-back-to-history-from-the-graph` at 120 now ends in a dangling `·` — the history header is hard-cut, not shed by clause (seen by 20) | **broken** | M8 |
 | M8/20-remainder | 20 open: item 13 (doc-only, no test), item 14 (route not tested), askpass close() errors on refusal unconfirmed (question); next steps in ticket | **unverified** | M8 |
 | M8/20-captures-unjudged | 7 re-shot by 20: m6/fix-finish-shell-merge-120x40, m7/{rebase-preview-target-top, rebase-line-preview, amend-into-preview, history-lines, esc-back-to-history-from-the-graph}, m8/reword-preview — by-eye unjudged, colour unverified; contact sheets not rebuilt | **unverified** | M8 |
+| M8/stop-read-cadence | m1: `next_read` is taken from the `now` before the read (graft-git `run/stop.rs:226,234`; `:262,266` in `after_git_ended`), so a slow `ps` makes the reads back-to-back. Test `a_slow_read_of_the_group_does_not_spend_gits_grace` (:507-532): about 6.3 s by reading, NOTES claim 2.3 s | broken (cadence); time unverified | 21 |
+| M8/13k-sleep-unguarded | m2: `stop.rs:510` `sleep 600` holds no `Reap` guard, which breaks 13e's Minor 8 rule | broken | 21 |
+| M8/hangup-exemption-too-wide | m3: `startup.rs:531` and `:482` turn any error into `Ok` on `Signal(SIGHUP)`. They should exempt only `EIO` / `input::hung_up` (rule 3) | broken | 21, with the startup split, before 28 |
+| M8/waiting-line-again | m4: `exit_wait.rs:186` "send the signal again" is printed on `Ending::Exited` too, where no signal was sent | broken (textual) | 20 |
+| M8/idle-client-bound | m5: `remote/tests.rs:534-537` allows 2 s, but the 1 s `READ_TIMEOUT` (`http.rs:42,383`) passes it alone, so the test doesn't pin `Drop`'s shutdown. Line numbers move with 13l A: the builder updates them | broken (test weakness) | 21 |
+| M8/blame-ws-default-twice | m6: graft-ui `blame.rs:232` literal `true` vs graft-git `blame.rs:77` `BlameOptions::default` | broken | 21, before the blame split |
+| M8/whitespace-tail-home | m7: `whitespace_tail` and `put_whitespace_tail` live in `blame.rs` but are used by `detail_pane/header.rs:350-351` and `history.rs:299-300`. Move them to `graft-ui/src/whitespace_tail.rs` | broken (placement) | 21, before the blame split |
+| M8/captures-two-places | m8 **ruling**, below | decided | 28 |
+| M8/fold-refresh-test-blind | m10: `update/fold_count/tests.rs:56-60` asserts only the absence of `CountFolded`, and also passes if `Ctrl+R` did nothing | broken (test weakness) | 21 |
+| M8/adr-0060-wording | m11: ADR-0060 decision 1 and §1.7 say "with ghost rows", but the built condition is any landed preview (`view/rows.rs:177-182`). Decision 2 says `tier()`, but the code reads `tier_in_force` (`view/frame.rs:110,224`) | broken (textual) | 23 docs pass |
+| M8/look-sizes-2 | graft-ui `blame.rs` 601, `graph_column/mod.rs` 443 (PROMPT 6.2). Split after the M1 follow-ups and m6/m7 | broken | 21 |
+| M8/look-file-sizes (refresh) | `startup.rs` is now 801, not 704. Split after 18b | broken | 21 |
+| M8/13g-double-sighup (update) | Q1 now has its lines: `signals.rs:98-99` (`at = max(seen,1)`) and `:106`; `exit_wait.rs:92`. Whether his shells forward `SIGHUP` on window close is not verified | unverified (question) | keep |
+| M8/http-read-timeout | Q2: does `shutdown` wake a blocked read on macOS? If it does, the 1 s per-read timeout (`http.rs:383`, `handle` :732-737) buys nothing for teardown and could fail a slow client under load. A spec change goes through the conductor | unverified (question) | 21 |
+| M8/blame-place-ends-with | Q3: should `tests/it/blame_place.rs:160` go back from `contains` to `ends_with` now that the tail is off by default? | unverified (question) | 21, with m6/m7 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` 407 lines (~7 over); seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | RESOLVE_KEYS shown on screen via pressed.rs:156; the literal-key grep misses consts | **unverified** | M8 |
