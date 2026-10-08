@@ -347,7 +347,7 @@ pub(super) fn footer_notice(
 /// nothing else is on it — no problem (drawn before the notice), no notice,
 /// no modal's row. Fitted to the row's text width, whole clauses only.
 pub(super) fn first_launch_line(state: &AppState, columns: u16) -> Option<SanitizedText> {
-    if !state.first_launch.is_shown() || state.modal_owns_bottom_row() {
+    if state.first_launch.is_none() || state.modal_owns_bottom_row() {
         return None;
     }
     let cells = usize::from(columns)

@@ -39,6 +39,12 @@ pub struct Outside<'a> {
     pub common_dir: Option<&'a Path>,
     /// The terminal, when there is one to hand over.
     pub handover: Option<Handover<'a>>,
+    /// The process's first-launch switch, lent by `places::drive`
+    /// (m8/18e): `Command::FirstLaunchDone` ends it, so no later place
+    /// arrives with the line. `None` where no switch exists — `startup::run`,
+    /// which never seeds a line, and the loop's tests — and the command then
+    /// writes the folder it names.
+    pub(crate) first_launch: Option<&'a crate::first_launch::FirstLaunch>,
 }
 
 /// What the frame loop needs to hand the terminal to another program.

@@ -41,7 +41,7 @@ fn state() -> OutsideState {
         problem: None,
         palette: None,
         config_problems: Vec::new(),
-        first_launch: crate::first_launch::FirstLaunch::default(),
+        first_launch: None,
         credential: None,
     }
 }
@@ -247,21 +247,35 @@ fn the_palette_draws_over_the_start_screen_with_its_keys_on_the_bar() {
 }
 
 /// The first palette open on the start screen ends the first-launch line
-/// (m8/18d, R7): `launches` reads `done`, and the line is not drawn.
+/// (m8/18d, R7): not drawn from that frame, and the loop is asked to end
+/// the process's switch and write `done` (m8/18e) — the first open only.
+/// The key touches no file itself.
 #[test]
 fn opening_the_palette_ends_the_first_launch_line() {
     for opener in [ch('?'), KeyPress::control(KeyCode::Char('p')), ch(':')] {
         let dir = tempfile::tempdir().expect("temp dir");
         let mut s = OutsideState {
-            first_launch: crate::first_launch::FirstLaunch::shown(dir.path().to_path_buf()),
+            first_launch: Some(dir.path().to_path_buf()),
             ..state()
         };
         assert!(super::view(&s, UNIX_EPOCH).first_launch);
-        press(&mut s, opener);
+        let first = press(&mut s, opener);
+        assert_eq!(
+            first,
+            OutsideStep::FirstLaunchDone(dir.path().to_path_buf()),
+            "{opener:?}"
+        );
         assert!(s.palette.is_some(), "{opener:?}");
         assert!(!super::view(&s, UNIX_EPOCH).first_launch, "{opener:?}");
-        let file = crate::first_launch::launches_file(dir.path());
-        assert_eq!(std::fs::read_to_string(file).expect("written"), "done\n");
-        assert_eq!(s.problem, None);
+        assert!(
+            !crate::first_launch::launches_file(dir.path()).exists(),
+            "the key writes nothing"
+        );
+
+        press(&mut s, KeyPress::plain(KeyCode::Escape));
+        assert!(s.palette.is_none(), "{opener:?}");
+        let second = press(&mut s, opener);
+        assert_eq!(second, OutsideStep::Stay, "{opener:?}: the second open");
+        assert!(s.palette.is_some(), "{opener:?}");
     }
 }

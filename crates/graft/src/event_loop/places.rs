@@ -13,6 +13,8 @@ use std::time::SystemTime;
 
 use graft_core::capabilities::RenderingTier;
 use graft_core::event::Event;
+use graft_core::job::JobId;
+use graft_git::run::askpass::Secret;
 use ratatui::backend::CrosstermBackend;
 
 use super::exit_wait::Pool;
@@ -132,7 +134,15 @@ pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Ex
                     remember_opened(config_dir.as_deref(), &repos, &path)
                 };
                 let arrival = carried.repo_arrival(remembered);
-                let ran = run_repo(&mut term, repos, &path, config, Harness::default(), arrival)?;
+                let ran = run_repo(
+                    &mut term,
+                    repos,
+                    &path,
+                    config,
+                    Harness::default(),
+                    arrival,
+                    Some(&carried.first_launch),
+                )?;
                 match ran.outcome {
                     Ok(exit @ (Exit::Open(_) | Exit::Practise { .. } | Exit::LeaveTour { .. })) => {
                         Ran {
@@ -156,12 +166,7 @@ pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Ex
             }
             Place::Outside(mut start) => {
                 start.problem = carried.outside_problem(start.problem);
-                let shown = Shown {
-                    keymap: &carried.keymap,
-                    problems: &carried.problems,
-                    first_launch: &carried.first_launch,
-                    warning: carried.warning.take(),
-                };
+                let shown = carried.shown();
                 let left = run_outside(&mut term, start, config, shown, config_dir.as_deref());
                 match leave_outside(left, &mut carried)? {
                     Next::Place(next) => Ok(next),
@@ -425,6 +430,18 @@ impl Carried {
         problem
     }
 
+    /// What the empty state is handed: the keys, his config's problems, the
+    /// first-launch switch, and the count's warning, once.
+    fn shown(&mut self) -> Shown<'_> {
+        let warning = self.warning.take();
+        Shown {
+            keymap: &self.keymap,
+            problems: &self.problems,
+            first_launch: &self.first_launch,
+            warning,
+        }
+    }
+
     /// The next repository's arrival: `remembered` (the recent list's
     /// word), else the first-launch warning; the notice handed on, once;
     /// the config's problems, once; the tour's landing, card and finish,
@@ -439,7 +456,7 @@ impl Carried {
             tour_done: std::mem::take(&mut self.tour_done),
             keymap: self.keymap.clone(),
             config_problems: std::mem::take(&mut self.problems),
-            first_launch: self.first_launch.clone(),
+            first_launch: self.first_launch.line(),
         }
     }
 }
@@ -582,7 +599,7 @@ fn run_outside(
         problem: start.problem.or(said).or(shown.warning),
         palette: None,
         config_problems: shown.problems.to_vec(),
-        first_launch: shown.first_launch.clone(),
+        first_launch: shown.first_launch.line(),
         credential: None,
     };
 
@@ -599,7 +616,7 @@ fn run_outside(
         &mut wakes,
         &mut state,
         (&mut settled, ascii),
-        (config, &mut jobs),
+        (config, &mut jobs, shown.first_launch),
         shown.keymap,
     );
     let pool = jobs.into_pool(signals, resizes, shown.keymap.spell(&UNDO).0);
@@ -656,7 +673,7 @@ fn outside_loop(
     wakes: &mut ChannelWakes,
     state: &mut OutsideState,
     (settled, ascii): (&mut Session, bool),
-    (config, jobs): (&Loaded, &mut OutsideJobs),
+    (config, jobs, line): (&Loaded, &mut OutsideJobs, &FirstLaunch),
     keymap: &std::sync::Arc<graft_ui::keymap::Keymap>,
 ) -> io::Result<Outcome> {
     loop {
@@ -703,7 +720,7 @@ fn outside_loop(
                 settled.choose(kind);
             }
             step => {
-                if let Some(outcome) = carry_out(step, state, jobs, config) {
+                if let Some(outcome) = carry_out(step, state, jobs, config, line) {
                     return Ok(outcome);
                 }
             }
@@ -718,6 +735,7 @@ fn carry_out(
     state: &mut OutsideState,
     jobs: &mut OutsideJobs,
     config: &Loaded,
+    line: &FirstLaunch,
 ) -> Option<Outcome> {
     match step {
         OutsideStep::Stay | OutsideStep::Retheme(_) => {}
@@ -760,18 +778,17 @@ fn carry_out(
         // No pool, no job: nothing is waiting for an answer.
         OutsideStep::Credential(job, answer) => {
             if let Some(pool) = &jobs.pool {
-                // `false`: the job ended while the key was in flight, and the
-                // answer is dropped there and then, zeroed — nobody is left
-                // to tell (as `JobRunner::credential`).
-                let secret = answer.map(Answer::into_secret);
-                if secret.is_none() {
-                    // The job goes first, then the ask is refused: the other
-                    // order lets git die of the refusal before the stop
-                    // lands, and that reads as a wrong password
-                    // (`update::credential::credential_key`).
-                    pool.cancel(job);
-                }
-                let _delivered: bool = pool.answer_credential(job, secret);
+                answer_ask(pool, job, answer);
+            }
+        }
+        // The switch first, as the repository's loop does: ended once per
+        // process (it names the folder the state was seeded with), so no
+        // later place shows the line; already ended, nothing to write.
+        OutsideStep::FirstLaunchDone(_seeded_from) => {
+            if let Some(config_dir) = line.end()
+                && let Err(error) = first_launch::first_launch_done(&config_dir)
+            {
+                state.problem = Some(error.words());
             }
         }
         OutsideStep::Cloned { path, notice } => {
@@ -783,6 +800,40 @@ fn carry_out(
         }
     }
     None
+}
+
+/// The two pool calls the password box's answer makes, behind a seam so
+/// their order is tested (m8/18e A3): on the real pool a swap only loses a
+/// race, which no test can be relied on to see.
+trait AnswersAsks {
+    fn cancel(&self, job: JobId);
+    fn answer_credential(&self, job: JobId, answer: Option<Secret>) -> bool;
+}
+
+impl AnswersAsks for JobRunner<Sender<Wake>> {
+    fn cancel(&self, job: JobId) {
+        JobRunner::cancel(self, job);
+    }
+
+    fn answer_credential(&self, job: JobId, answer: Option<Secret>) -> bool {
+        JobRunner::answer_credential(self, job, answer)
+    }
+}
+
+/// The box's answer to git's ask for `job`; `None` is `esc`, which stops
+/// the clone (rulings R6).
+fn answer_ask(pool: &impl AnswersAsks, job: JobId, answer: Option<Answer>) {
+    let secret = answer.map(Answer::into_secret);
+    if secret.is_none() {
+        // The job goes first, then the ask is refused: the other order lets
+        // git die of the refusal before the stop lands, and that reads as a
+        // wrong password (`update::credential::credential_key`).
+        pool.cancel(job);
+    }
+    // `false`: the job ended while the key was in flight, and the answer is
+    // dropped there and then, zeroed — nobody is left to tell (as
+    // `JobRunner::credential`).
+    let _delivered: bool = pool.answer_credential(job, secret);
 }
 
 /// Open `path` if it is a repository; otherwise put the reason in the bar

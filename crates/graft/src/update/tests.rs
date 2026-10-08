@@ -1367,7 +1367,7 @@ fn every_field_spelled_out() -> AppState {
         keymap: std::sync::Arc::default(),
         config_problems: Vec::new(),
         config_notice: false,
-        first_launch: crate::first_launch::FirstLaunch::default(),
+        first_launch: None,
         preview: None,
         resolver: None,
         choices: std::collections::BTreeMap::new(),
@@ -2059,6 +2059,29 @@ fn update_cannot_reach_the_world() {
             !code.contains(forbidden),
             "`update` must stay pure, but its module mentions `{forbidden}`"
         );
+    }
+
+    // No state shared across clones (m8/18e, review M1): an atomic, or the
+    // shell's first-launch switch that holds one, would let `update` change
+    // its input state. The empty state's `OutsideState` holds the same plain
+    // value, so `empty_state*` is held to it too.
+    let src = concat!(env!("CARGO_MANIFEST_DIR"), "/src");
+    let mut outside =
+        vec![std::fs::read_to_string(format!("{src}/empty_state.rs")).expect("empty_state.rs")];
+    outside.extend(update_sources(
+        &std::path::Path::new(src).join("empty_state"),
+    ));
+    for (place, code) in [("update", code), ("empty_state", outside.join("\n"))] {
+        for switch in ["atomic", "Atomic", "FirstLaunch"] {
+            let held = code.match_indices(switch).any(|(at, _)| {
+                // `Command::FirstLaunchDone` is the request, not the switch.
+                !code[at + switch.len()..].starts_with(|c: char| c.is_alphanumeric() || c == '_')
+            });
+            assert!(
+                !held,
+                "`{place}` holds a shared switch: it mentions `{switch}`"
+            );
+        }
     }
 }
 
