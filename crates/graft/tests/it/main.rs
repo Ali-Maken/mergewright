@@ -4,6 +4,12 @@
 //! link, which is slow and memory-hungry, so all integration tests live in
 //! `tests/it/` and are included from here as modules (PROMPT.md 7.1). Add a
 //! test by writing `tests/it/<area>.rs` and a `mod <area>;` line below.
+//!
+//! No `unsafe` here (m8/13l): ADR-0015 keeps the workspace's `unsafe` to two
+//! files to review, and a test that needs a syscall uses a safe wrapper
+//! (`quit_waits::pty_session` re-execs itself rather than use `pre_exec`).
+
+#![forbid(unsafe_code)]
 
 mod app_harness;
 mod askpass_mode;

@@ -1,6 +1,6 @@
 # 13l — stop/look review fixes: no `unsafe` in graft's tests, the two big test-side files split
 
-Status: ready (conductor 2026-10-08; Part A now, Part B after 11e) — was draft (planner spec-only pass 2026-10-08, from `docs/reviews/m8-stop-and-look.md` Majors 1–3)
+Status: A+B done (builder 2026-10-08); C open (planner). Was ready (conductor 2026-10-08; Part A now, Part B after 11e) — was draft (planner spec-only pass 2026-10-08, from `docs/reviews/m8-stop-and-look.md` Majors 1–3)
 Build with: **Part A Sonnet**: a move-only split plus naming `Drop`'s steps, with the review naming the cuts.
 **Part B Opus (high)**: whether the hang-up tests still deliver a real kernel `SIGHUP` to a session leader can't
 be judged from the diff, only by seeing a test go red without it. Not Fable: the code is test-only, nothing is
@@ -112,16 +112,24 @@ pub(crate) fn session_command(program: &Path, args: &[OsString], slave: OwnedFd)
       NOTES). Each `remote/http/*.rs` is ≤ 400 production lines (`wc -l` up to `#[cfg(test)]`, in NOTES).
 - [x] A2 (verified: `Drop` 15 lines; workspace `cargo nextest run` passes `remote::tests::http_remote_drop_waits_for_the_listener_to_close`, `http_remote_reads_a_chunked_body`, `http_remote_answers_expect_100_continue`, `http_remote_drop_ends_an_idle_client`; `remote/tests.rs` untouched): `Drop` ≤ 60 lines (count in NOTES). These pass unchanged: `remote::tests` drop-waits (:419), chunked
       (:457), 100-continue (:484), idle client (:520).
-- [ ] B1: `hangup.rs` ≤ 400 lines, `pty_session.rs` ≤ 400. Every `quit_waits::hangup::*` test name is unchanged
+- [x] B1 (verified: `wc -l` hangup.rs 385, pty_session.rs 385 at HEAD; `cargo nextest list --workspace` before vs
+      after the move commit `2b09e44c`: `diff` identical, 5933 lines; NOTES Part B): `hangup.rs` ≤ 400 lines, `pty_session.rs` ≤ 400. Every `quit_waits::hangup::*` test name is unchanged
       (`cargo nextest list` before and after, in NOTES).
-- [ ] B2, no unsafe: `grep -rn "unsafe" crates/graft` finds nothing outside comments (output in NOTES). The `it`
+- [x] B2, no unsafe (verified: `grep -rn "unsafe" crates/graft` output in NOTES, comments/attribute only; a probe
+      `#[allow(unsafe_code)] fn fourth_site() { unsafe {} }` in `main.rs` failed `E0453`, then removed): `grep -rn "unsafe" crates/graft` finds nothing outside comments (output in NOTES). The `it`
       root has `#![forbid(unsafe_code)]`.
-- [ ] B2, real hang-up: `quit_waits::hangup` tests pass, run alone as 13g did (heavy features if they're gated; time
+- [x] B2, real hang-up (verified: `cargo nextest run --workspace --features heavy-tests --no-capture -E
+      "test(/quit_waits::hangup/)"`, 4/4 passed, times in NOTES; the capture `check_shot` passed with no
+      `GRAFT_UPDATE_SHOTS`, `git status` clean): `quit_waits::hangup` tests pass, run alone as 13g did (heavy features if they're gated; time
       in NOTES). They include the second hang-up (:430-556) and the capture banner (:593).
-- [ ] B2, seen red: with the controlling-terminal step removed, the first hang-up test fails because graft never
+- [x] B2, seen red (verified, **on the second-hang-up test, not the first** — see NOTES: with `ioctl_tiocsctty`
+      commented out, `quit_waits::hangup::a_hangup_then_a_second_hangup_leaves_the_merge_paused` fails at
+      `hangup.rs:251` `expect("the second hang-up ends it")`; restored, it passes): with the controlling-terminal step removed, the first hang-up test fails because graft never
       gets `SIGHUP`. Record the failing line in NOTES, then restore the step. Without this, the route is unverified:
       say so and leave the box open.
-- [ ] B2: `ps -A | grep -c "[g]raft"` reads 0 after the hang-up run, so no orphaned graft (NOTES).
+- [x] B2 (verified: after the hang-up run `ps -A | grep -c "[a]gent-a31affec4ac4ccd5d/target/debug/graft"` = 0 and
+      `ps -A | grep -c "[s]leep 600"` = 0; the literal `[g]raft` count read 6, every match listed in NOTES and none
+      ours): `ps -A | grep -c "[g]raft"` reads 0 after the hang-up run, so no orphaned graft (NOTES).
 - [ ] C (planner, after `docs/research/m8-look-polish.md` lands): the design note `m8-polish-and-ship.md` gains
       **Prior art** rows (take/reject/invent, each citing that file) and **Journeys** rows for 17's aspects:
       - the folded-merge `+N` (`Space` → `+N`, step-counted);
@@ -205,3 +213,56 @@ do A first and commit at the seam.
   `remote/tests.rs` (`super::http::base64` path kept). 13j heavy loop: heavy clippy clean, not run. No
   Cargo.lock, capture or product-code change. MAP: graft-fixtures `remote/http/` layout line added.
 - Gates: fmt, clippy (plain + heavy-tests), nextest, `cargo test --doc` all pass, workspace-wide.
+
+## NOTES — Part B (builder, 2026-10-08)
+- Scout: none, per the ticket (review names the cuts). No compaction. Part C untouched (planner's).
+- **B1** commit `2b09e44c` (move only). `pty_session.rs` takes `PATIENCE`, `Leftovers`, `Stderr`, `Session` (+ impls,
+  `Drop`), `read_into_memory`, `hook`, plus `wait_for_line` and `assert_no_crash` (moved too: 1-300 alone left
+  hangup.rs at ~434 lines). `Before`/`Merging`/`merging`, `SIGHUP`, `HIS_EDIT` stay in hangup.rs. Line-set check:
+  every non-blank line of the two files is in old hangup.rs except `use`/`//!` lines, `pub(super)`, and fmt's
+  re-wrap of `spawn`'s signature. `cargo nextest list --workspace` before/after: identical (5933 lines), incl.
+  `quit_waits::hangup::{a_hangup_mid_merge_lets_a_quick_hook_land, a_hangup_mid_write_never_exits_101,
+  a_hangup_then_a_second_hangup_leaves_the_merge_paused}`. Lines at HEAD: hangup.rs 385, pty_session.rs 385.
+- **B2** commit `5c5a6a49`. Route as ruled: `session_command` re-execs `current_exe()` with `--exact
+  quit_waits::pty_session::session_exec_entry --test-threads=1 --nocapture`, program/args in env
+  (`GRAFT_IT_SESSION_EXEC`, `_ARGC`, `_ARG_<n>`), stdin = slave, stdout null. `session_exec_entry`:
+  `rustix::process::setsid`, `rustix::process::ioctl_tiocsctty(stdin)`, `rustix::stdio::dup2_stdout`/`dup2_stderr`,
+  then `CommandExt::exec` with the env vars removed. Master set `FD_CLOEXEC` in the parent
+  (`rustix::io::fcntl_setfd`), replacing the `close` in `pre_exec`.
+  - **Deviation 1:** stderr is *inherited*, not null, until the entry's `dup2`: a panic before the exec then shows
+    in the test's output instead of vanishing. libtest's "running 1 test" goes to stdout, which is null.
+  - **Deviation 2:** `Stderr::File` needs fd 2 kept, so a private `GRAFT_IT_SESSION_EXEC_KEEP_STDERR` var tells the
+    entry not to `dup2` onto 2.
+  - Dependency: `rustix = { version = "1.1.4", default-features = false, features = ["std","process","stdio"] }` in
+    graft `[dev-dependencies]`, a new line, not only features (the ruling names rustix). `git diff Cargo.lock`:
+    one line, `+ "rustix",` in graft's `dependencies`; **no new `[[package]]`**.
+- `grep -rn "unsafe" crates/graft` at HEAD: `Cargo.toml:88` and `:93` (comments), `tests/it/main.rs:8` (doc),
+  `:12` `#![forbid(unsafe_code)]`, `tests/it/quit_waits/pty_session.rs:154` (doc), `src/lib.rs:10` (forbid). Plus
+  substring hits on `forbidden` in `seam_rule.rs`, `update/tests.rs`, `event_loop/tests.rs`, `MAP.md`, not `unsafe`.
+- Real hang-up, run alone with `--features heavy-tests --no-capture` (serial): quick hook 4.4 s (hang-up→exit
+  2.14 s); never-exits-101 3.6 s; second hang-up 2.2 s (second hang-up→exit 149 ms; banner row ` merge still in
+  progress from a previous run · c finish  a abort  ⇥ graph  q quit`); heavy stuck hook 61.4 s (hang-up→exit
+  60.1 s). Capture `m8-hangup-relaunch-120x40.txt` passed unchanged, no `GRAFT_UPDATE_SHOTS`.
+- **Seen red — finding for the conductor.** With `ioctl_tiocsctty` commented out, the first two tests still
+  **pass** (status `signal 1`); only `a_hangup_then_a_second_hangup_leaves_the_merge_paused` fails, at
+  `hangup.rs:251` (`expect("the second hang-up ends it")`, after 13.7 s). Why the first can't go red: Graft turns
+  a read's `EIO`/EOF into the same `Exit::Signal(SIGHUP)` (`src/event_loop/running/turn.rs:249-250`,
+  `input::hung_up` `input.rs:77`), so it dies of `SIGHUP` with or without the kernel's signal. The second-hang-up
+  test does see it: the kernel `SIGHUP` is the first counted signal and `kill -HUP` the second; without the ctty
+  the `kill` is only the first and the forced stop never comes. **Same pattern on the old `pre_exec` route**
+  (B1 code with the `TIOCSCTTY` ioctl removed: same two pass, same `:251` failure), so the new route is no weaker.
+  The box's "the first test fails" premise is wrong for both routes; the route is verified through the second test.
+  Proposed row: `M8/hangup-first-test-blind` — `a_hangup_mid_write_never_exits_101` cannot tell a kernel `SIGHUP`
+  from the `EIO` path; unverified-coverage, route 21.
+- `ps`: the literal `ps -A | grep -c "[g]raft"` read 6 after the run — 2 × `target/release/graft …/charms-reports-v3.0`
+  (the user's own sessions, 2 h 42 m old) and 4 from the concurrent 18d builder (zsh, `cargo-nextest -p graft-ui`,
+  `cargo test --package graft-ui`). This worktree's `target/debug/graft`: 0. `sleep 600`: 0.
+- Touches: harness users — `grep Session::spawn|Leftovers|pty_session` under `tests/it`: hangup.rs only
+  (`session_leader` had no other caller; the other `Session` hits are `graft::session::Session`, unrelated).
+  Capture: unchanged (above). Cargo.lock: above. ADR-0015 and workspace `Cargo.toml` untouched. MAP: graft gains
+  the `tests/it/quit_waits/pty_session.rs` row. No product, keymap, journal or undo code. `git diff --stat
+  50b5b4a4..HEAD`: Cargo.lock, crates/graft/{Cargo.toml, MAP.md, tests/it/main.rs, tests/it/quit_waits.rs,
+  tests/it/quit_waits/{hangup,pty_session}.rs}, this ticket.
+- Gates, workspace-wide: `cargo fmt --check` ok; `cargo clippy --all-targets -D warnings` ok; same with
+  `--features heavy-tests` ok; `cargo nextest run --test-threads 4` 5934 passed / 11 skipped (5933 + the new
+  `session_exec_entry`); `cargo test --doc` ok.

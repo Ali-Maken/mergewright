@@ -87,6 +87,12 @@ tiny-skia = { version = "0.12", default-features = false, features = ["std", "pn
 # terminal: the empty state only exists on a tty. The version `graft-git`
 # already ships with; `term` is the safe `openpty` wrapper, so no `unsafe`.
 nix = { version = "0.29", default-features = false, features = ["poll", "term"] }
+# `tests/it/quit_waits/pty_session.rs` (m8-polish-and-ship/13l): the hang-up
+# harness's re-exec'd child makes itself a session leader on the pty —
+# `setsid`, `TIOCSCTTY`, `dup2` — through rustix's safe wrappers, so the `it`
+# crate needs no `unsafe` (it is `forbid`den there). Already in the lock,
+# through crossterm and tempfile, so no new package.
+rustix = { version = "1.1.4", default-features = false, features = ["std", "process", "stdio"] }
 
 [features]
 # Forwards the heavy tier to the fixture corpus, per TESTING.md, so one
