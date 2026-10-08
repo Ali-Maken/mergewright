@@ -373,7 +373,7 @@ fn an_overlay_reaches_no_graph_row_it_does_not_borrow() {
         (C::Credential, &[C::Credential, C::Global]),
         (C::Palette, &[C::Palette, C::Global]),
         (C::EmptyState, &[C::EmptyState, C::Global]),
-        (C::Tour, &[C::Global]),
+        (C::Tour, &[C::Tour, C::Global]),
         (C::Global, &[C::Global]),
     ];
     for (ctx, want) in pinned {

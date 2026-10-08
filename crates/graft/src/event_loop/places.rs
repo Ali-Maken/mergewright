@@ -17,7 +17,7 @@ use ratatui::backend::CrosstermBackend;
 
 use super::exit_wait::Pool;
 use super::startup::{Arrival, Ran, Terminal, UNDO, hand_back_input, run_repo};
-use super::{ChannelWakes, Exit, Wake, Wakes, input, is_job_event, signals};
+use super::{ChannelWakes, Exit, Open, Wake, Wakes, input, is_job_event, signals};
 use crate::config::Loaded;
 use crate::empty_state::{
     OutsideState, OutsideStep, clone_started, outside_edge, outside_job, outside_paste, render,
@@ -99,8 +99,13 @@ pub fn locate(path: &Path, config: &Loaded) -> Result<Place, String> {
 }
 
 /// Run places on `term` until one ends Graft, then give the terminal back.
-/// Handles [`Exit::Open`] itself (re-locates, runs the next place); never
-/// returns it.
+/// Handles [`Exit::Open`], [`Exit::Practise`] and [`Exit::LeaveTour`]
+/// itself (runs the next place); never returns them.
+///
+/// The practice tour's repository (m8-polish-and-ship/19b, ticket Amendment
+/// §A8) is held here, in one slot, from the moment it is built until it is
+/// removed: on leaving the tour, on opening anything else from inside it,
+/// and once the terminal is back when Graft ends inside it.
 ///
 /// # Errors
 /// A place could not be set up, or the terminal could not be restored.
@@ -108,41 +113,49 @@ pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Ex
     let config_dir = recent::config_dir();
     let mut place = first;
     let mut carried = Carried::first(config, term.capabilities.no_color, config_dir.as_deref());
+    let mut practice: Option<Practice> = None;
     // Every place lands on `HEAD`: the first, where Graft was started, as
     // much as every later one opened from it (note Lands row "Open / init
-    // succeeds"; m8-polish-and-ship/12d — a launch is an arrival too).
+    // succeeds"; m8-polish-and-ship/12d — a launch is an arrival too). The
+    // way back from the tour lands on the commit he left from (§A4).
     loop {
-        match place {
+        let went = match place {
             Place::Repo { repos, path } => {
-                let arrival =
-                    carried.repo_arrival(remember_opened(config_dir.as_deref(), &repos, &path));
+                // The practice repository is never remembered (§A6): it is
+                // gone when the tour is, and a recent row would open nothing.
+                // Nor is the way back: he was already here, and the tour
+                // leaves his state folder byte-for-byte as it found it.
+                let returning = std::mem::take(&mut carried.returning);
+                let remembered = if practice.is_some() || returning {
+                    None
+                } else {
+                    remember_opened(config_dir.as_deref(), &repos, &path)
+                };
+                let arrival = carried.repo_arrival(remembered);
                 let ran = run_repo(&mut term, repos, &path, config, Harness::default(), arrival)?;
                 match ran.outcome {
-                    Ok(Exit::Open(next)) => {
+                    Ok(exit @ (Exit::Open(_) | Exit::Practise { .. } | Exit::LeaveTour { .. })) => {
                         Ran {
                             outcome: Ok(Exit::Quit),
                             pool: ran.pool,
                         }
                         .stop_for_the_next_place()?;
-                        place = match locate(&next, config) {
-                            Ok(next) => next,
-                            Err(reason) => {
-                                return term.close(Ran::without_jobs(Ok(Exit::Fatal(reason))));
-                            }
-                        };
+                        moved(exit, &mut practice, &mut carried, config)
                     }
                     outcome => {
-                        return term.close(Ran {
-                            outcome,
-                            pool: ran.pool,
-                        });
+                        return end(
+                            term,
+                            Ran {
+                                outcome,
+                                pool: ran.pool,
+                            },
+                            practice,
+                        );
                     }
                 }
             }
             Place::Outside(mut start) => {
-                // Never a clone's notice (a clone opens a repository); said
-                // where this screen says problems all the same.
-                start.problem = joined(start.problem, carried.notice.take());
+                start.problem = carried.outside_problem(start.problem);
                 let shown = Shown {
                     keymap: &carried.keymap,
                     problems: &carried.problems,
@@ -151,18 +164,157 @@ pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Ex
                 };
                 let left = run_outside(&mut term, start, config, shown, config_dir.as_deref());
                 match leave_outside(left, &mut carried)? {
-                    Next::Place(next) => place = next,
-                    Next::End(ran) => return term.close(*ran),
+                    Next::Place(next) => Ok(next),
+                    Next::Practise(from) => practise(from, &mut practice, &mut carried, config),
+                    Next::End(ran) => return end(term, *ran, practice),
                 }
             }
+        };
+        place = match went {
+            Ok(next) => next,
+            Err(reason) => return end(term, Ran::without_jobs(Ok(Exit::Fatal(reason))), practice),
+        };
+    }
+}
+
+/// The practice repository while the tour is on, and where leaving it goes.
+struct Practice {
+    repo: graft_ops::tour::PracticeRepo,
+    /// Where he started the tour from, with the commit he was on.
+    back: Open,
+}
+
+/// Where a repository's place-changing exit goes. A broken repository there
+/// is the reason to end on (`Err`), as a launch into one is.
+fn moved(
+    exit: Exit,
+    practice: &mut Option<Practice>,
+    carried: &mut Carried,
+    config: &Loaded,
+) -> Result<Place, String> {
+    match exit {
+        Exit::Practise { from } => practise(from, practice, carried, config),
+        Exit::LeaveTour { finished } => {
+            let Some(back) = leave_practice(practice, carried) else {
+                // Only the practice repository's screen asks to leave the
+                // tour, and it is only ever run with the slot held.
+                return Err("tour: left a tour that was not on".to_owned());
+            };
+            carried.tour_done = finished;
+            carried.returning = true;
+            go_to(&back, carried, config)
+        }
+        // Anything else opened from inside the tour ends it (§A8).
+        Exit::Open(open) => {
+            let _back: Option<Open> = leave_practice(practice, carried);
+            go_to(&open, carried, config)
+        }
+        // `drive` hands only the three above to `moved`.
+        other => Err(format!("graft: {other:?} is not a place to go")),
+    }
+}
+
+/// Build the practice repository under the temp folder and go into it;
+/// on any failure, say why and go back to `from`, cursor and all (§A5).
+fn practise(
+    from: Open,
+    practice: &mut Option<Practice>,
+    carried: &mut Carried,
+    config: &Loaded,
+) -> Result<Place, String> {
+    // Never two: a tour started from inside one (the palette refuses that
+    // first, `update::tour::start_from_palette`) ends the first.
+    let _left: Option<Open> = leave_practice(practice, carried);
+    match graft_ops::tour::build_practice_repo(&std::env::temp_dir()) {
+        Ok(repo) => match locate(repo.work(), config) {
+            Ok(place @ Place::Repo { .. }) => {
+                carried.at = None;
+                carried.practice = true;
+                *practice = Some(Practice { repo, back: from });
+                return Ok(place);
+            }
+            Ok(Place::Outside(_)) => {
+                say(carried, "tour: the practice repository did not open");
+                remove(&repo, carried);
+            }
+            Err(reason) => {
+                say(carried, &format!("tour: {reason}"));
+                remove(&repo, carried);
+            }
+        },
+        Err(error) => say(carried, &format!("tour: {}", error.explain())),
+    }
+    carried.returning = true;
+    go_to(&from, carried, config)
+}
+
+/// Remove the practice repository, if one is held; where the tour was
+/// started from. A removal that fails is said on the next place's first
+/// frame, with where it was left.
+fn leave_practice(practice: &mut Option<Practice>, carried: &mut Carried) -> Option<Open> {
+    let Practice { repo, back } = practice.take()?;
+    remove(&repo, carried);
+    Some(back)
+}
+
+/// `remove_practice_repo`, its failure said on the next place's first frame.
+fn remove(repo: &graft_ops::tour::PracticeRepo, carried: &mut Carried) {
+    if let Err(error) = graft_ops::tour::remove_practice_repo(repo) {
+        let home = std::env::var_os("HOME").map(PathBuf::from);
+        let shown = home_relative(repo.root(), home.as_deref());
+        say(
+            carried,
+            &format!(
+                "tour: couldn't remove {}: {}",
+                shown.display(),
+                error.explain()
+            ),
+        );
+    }
+}
+
+/// Add `line` to what the next place says on its first frame, sanitised:
+/// a path or git's words can carry control bytes.
+fn say(carried: &mut Carried, line: &str) {
+    let clean = graft_term::sanitize_line(line).as_str().to_owned();
+    carried.notice = joined(carried.notice.take(), Some(clean));
+}
+
+/// Locate `open`, landing on its commit when it names one.
+fn go_to(open: &Open, carried: &mut Carried, config: &Loaded) -> Result<Place, String> {
+    carried.at = open.cursor;
+    locate(&open.path, config)
+}
+
+/// Graft ends: give the terminal back, then remove the practice repository
+/// if Graft ended inside the tour — after, so the line saying it could not
+/// be removed is on his own screen, not under the alternate one.
+fn end(term: Terminal, ran: Ran, practice: Option<Practice>) -> io::Result<Exit> {
+    let closed = term.close(ran);
+    if let Some(Practice { repo, .. }) = practice
+        && let Err(error) = graft_ops::tour::remove_practice_repo(&repo)
+    {
+        use std::io::Write;
+        let line = graft_term::sanitize_line(&format!(
+            "tour: left {} behind: {}",
+            repo.root().display(),
+            error.explain()
+        ));
+        // A stderr that cannot be written to has nobody behind it to tell;
+        // the exit is still the place's own.
+        if let Err(write) = writeln!(io::stderr(), "{}", line.as_str()) {
+            return closed.and(Err(write));
         }
     }
+    closed
 }
 
 /// Where `drive` goes once the empty state has ended.
 enum Next {
     /// On to this place.
     Place(Place),
+    /// Into the practice tour, coming back to this (m8/19b).
+    Practise(Open),
     /// Graft ends: close the terminal on this.
     End(Box<Ran>),
 }
@@ -185,6 +337,17 @@ fn leave_outside(left: io::Result<Left>, carried: &mut Carried) -> io::Result<Ne
             .stop_for_the_next_place()?;
             carried.notice = notice;
             Ok(Next::Place(place))
+        }
+        Ok(Left {
+            outcome: Ok(Outcome::Practise { from }),
+            pool,
+        }) => {
+            Ran {
+                outcome: Ok(Exit::Quit),
+                pool,
+            }
+            .stop_for_the_next_place()?;
+            Ok(Next::Practise(from))
         }
         Ok(Left {
             outcome: Ok(Outcome::Exit(exit)),
@@ -214,8 +377,18 @@ struct Carried {
     first_launch: FirstLaunch,
     warning: Option<String>,
     /// Said once, on the next place's first frame: a clone's notice
-    /// (m8/18b). Set only by the empty state's `Outcome::Opened`.
+    /// (m8/18b), or the tour's word on a build or removal that failed.
     notice: Option<String>,
+    /// The next repository lands on this commit, not `HEAD`: the tour's
+    /// way back (m8/19b §A4).
+    at: Option<graft_core::oid::Oid>,
+    /// The next repository is the practice one.
+    practice: bool,
+    /// The tour was finished: said on the next place's first frame.
+    tour_done: bool,
+    /// The next place is the way back from the tour (or from a tour that
+    /// could not start): not put on the recent list again (§A6).
+    returning: bool,
 }
 
 impl Carried {
@@ -232,17 +405,38 @@ impl Carried {
             first_launch,
             warning,
             notice: None,
+            at: None,
+            practice: false,
+            tour_done: false,
+            returning: false,
         }
+    }
+
+    /// What the empty state says in its bar row on arrival: its own
+    /// problem, then what the last place handed on — never a clone's notice
+    /// (a clone opens a repository), but said where this screen says
+    /// problems all the same — then the tour's finish.
+    fn outside_problem(&mut self, problem: Option<String>) -> Option<String> {
+        self.returning = false;
+        let problem = joined(problem, self.notice.take());
+        if std::mem::take(&mut self.tour_done) {
+            return joined(problem, Some("practice done".to_owned()));
+        }
+        problem
     }
 
     /// The next repository's arrival: `remembered` (the recent list's
     /// word), else the first-launch warning; the notice handed on, once;
-    /// the config's problems, once.
+    /// the config's problems, once; the tour's landing, card and finish,
+    /// once.
     fn repo_arrival(&mut self, remembered: Option<String>) -> Arrival {
         Arrival {
             status: remembered.or_else(|| self.warning.take()),
             notice: self.notice.take(),
             on_head: true,
+            at: self.at.take(),
+            practice: std::mem::take(&mut self.practice),
+            tour_done: std::mem::take(&mut self.tour_done),
             keymap: self.keymap.clone(),
             config_problems: std::mem::take(&mut self.problems),
             first_launch: self.first_launch.clone(),
@@ -302,6 +496,9 @@ enum Outcome {
         /// Said once on its first frame (a clone's askpass close failure).
         notice: Option<String>,
     },
+    /// `t` or the palette's `Practice tour`: into the practice tour,
+    /// coming back here (m8/19b).
+    Practise { from: Open },
     /// Graft is leaving.
     Exit(Exit),
 }
@@ -525,6 +722,11 @@ fn carry_out(
     match step {
         OutsideStep::Stay | OutsideStep::Retheme(_) => {}
         OutsideStep::Quit => return Some(Outcome::Exit(Exit::Quit)),
+        OutsideStep::Practise => {
+            return Some(Outcome::Practise {
+                from: Open::at(state.folder.clone()),
+            });
+        }
         OutsideStep::Open(path) => {
             return try_open(state, &path, "open", config).map(|place| Outcome::Opened {
                 place,

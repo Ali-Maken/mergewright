@@ -36,6 +36,10 @@ pub struct ScreenRows {
     /// The rows [`GraphView::banner`](super::GraphView::banner) takes under
     /// the header, clipped to what is free above the rest of the chrome.
     pub banner: Rect,
+    /// The practice tour's card under the banner
+    /// ([`GraphView::tour`](super::GraphView::tour), ticket m8/19b): its
+    /// three rows when the body keeps at least one, else zero-height.
+    pub tour: Rect,
     /// The still-to-apply block's rows, under the banner
     /// ([`GraphView::pending`](super::GraphView::pending)). At most half of
     /// what the banner leaves, so the graph keeps the other half; zero when
@@ -364,25 +368,54 @@ pub fn screen_rows(view: &GraphView<'_>, area: Rect) -> ScreenRows {
         ..area
     };
     let body_floor = if spaced { rule.y } else { above_offer };
-    let pending = pending_rect(view, banner.bottom(), body_floor, area);
-    // The gutter and the margin come off only where the row can afford
-    // them: a screen a few cells wide keeps what it has.
-    let body = Rect {
-        x: area.x + inset(area.width).0,
-        y: pending.bottom(),
-        width: body_width(area.width),
-        height: body_floor.saturating_sub(pending.bottom()),
-    };
+    let tour = tour_rect(view, banner.bottom(), body_floor, area);
+    let pending = pending_rect(view, tour.bottom(), body_floor, area);
+    let body = body_rect(area, pending.bottom(), body_floor);
     ScreenRows {
         header,
         gap,
         banner,
+        tour,
         pending,
         body,
         rule,
         offer,
         footer,
     }
+}
+
+/// The graph rows, from `top` down to `floor`. The gutter and the margin
+/// come off only where the row can afford them: a screen a few cells wide
+/// keeps what it has.
+fn body_rect(area: Rect, top: u16, floor: u16) -> Rect {
+    Rect {
+        x: area.x + inset(area.width).0,
+        y: top,
+        width: body_width(area.width),
+        height: floor.saturating_sub(top),
+    }
+}
+
+/// The tour card's rows: from `top` (under the banner), as many as
+/// [`tour_rows`] gives out of what is left above `floor`.
+fn tour_rect(view: &GraphView<'_>, top: u16, floor: u16, area: Rect) -> Rect {
+    Rect {
+        y: top,
+        height: tour_rows(view, floor.saturating_sub(top)),
+        ..area
+    }
+}
+
+/// Rows the tour card takes out of `left` (the rows between the banner and
+/// the body's floor): all three, or none when that would leave the graph
+/// no row of its own.
+fn tour_rows(view: &GraphView<'_>, left: u16) -> u16 {
+    let wanted = if view.tour.is_some() {
+        crate::tour_card::TOUR_CARD_ROWS
+    } else {
+        0
+    };
+    if left > wanted { wanted } else { 0 }
 }
 
 /// The "still to apply" block under the banner: at most half the rows

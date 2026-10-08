@@ -34,6 +34,7 @@ pub(crate) mod rows;
 mod stash;
 pub(crate) mod status;
 pub(crate) mod strip;
+pub(crate) mod tour;
 
 pub mod strips;
 

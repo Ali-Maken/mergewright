@@ -120,6 +120,7 @@ pub(super) fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_>
         marker_column: false,
         banner_op: None,
         pending: None,
+        tour: None,
     }
 }
 

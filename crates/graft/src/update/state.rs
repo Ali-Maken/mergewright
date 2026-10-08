@@ -430,6 +430,18 @@ pub struct AppState {
     /// shown. Shared with every place `drive` runs this process; never
     /// shown by default (headless `run`, the gallery, every `Harness`).
     pub(crate) first_launch: crate::first_launch::FirstLaunch,
+    /// This place is the practice tour's repository (m8-polish-and-ship/19b):
+    /// its ticks and the read that refreshes them. `None` everywhere else.
+    /// Seeded at arrival (`event_loop::startup::arrive`), never later.
+    // Boxed: `AppState` is copied whole on every event and kept under the
+    // stack-array size clippy guards (`large_stack_arrays`); the tour is
+    // `None` in every repository but one.
+    pub(crate) tour: Option<Box<super::tour::TourState>>,
+    /// The commit an arrival's landing went looking for (`update::
+    /// lands_at_open` with `Some`, the tour's way back): kept until the walk
+    /// has answered where it is, so a commit no longer there falls back to
+    /// `HEAD` with a word (`tour::check_return`). `None` once settled.
+    pub(crate) return_to: Option<graft_core::oid::Oid>,
     /// The open Ghost Preview (`m`, `r`, a `.` menu verb, the journal's
     /// time machine): `None` while closed (m5-history-and-ghost-preview/08).
     ///
@@ -555,6 +567,8 @@ impl AppState {
             // Neither was a term here, so `j`/`k` and every mouse row ran
             // past what the graph actually drew (review M1).
             .saturating_add(super::banner::tab_rows_above_graph(self))
+            // The tour card's three rows (m8/19b), carved under the banner.
+            .saturating_add(super::tour::card_rows(self))
             // The Ghost Preview's box takes rows out of the graph the same
             // way the footer and the commit-graph line do, so the rows it
             // covers are rows the graph never drew — rather than rows drawn
@@ -868,6 +882,18 @@ pub enum Quit {
         /// The write's description.
         what: String,
     },
+    /// The palette's `Practice tour` row (m8-polish-and-ship/19b): the loop
+    /// leaves for a practice repository, coming back to this repository
+    /// with the cursor on `cursor`.
+    Practise {
+        /// The commit the graph cursor was on, if any.
+        cursor: Option<graft_core::oid::Oid>,
+    },
+    /// Leave the practice repository (`tour.leave`, or all eight ticked).
+    LeaveTour {
+        /// Every task done.
+        finished: bool,
+    },
 }
 
 impl AppState {
@@ -1085,7 +1111,7 @@ pub struct HeadLanding {
     /// changes pane at once (`banner::finished_lands_on`).
     pub(crate) on: super::operate::Landing,
     /// An arrival's landing (a launch or an open,
-    /// `update::lands_on_head_at_open`): a key or click that moves the graph
+    /// `update::lands_at_open`): a key or click that moves the graph
     /// cursor before it is spent drops it, so it never yanks a cursor he
     /// already moved (m8-polish-and-ship/12d Decision 3). A landing after a
     /// write he asked for (`--continue`, an operation) does not give way.

@@ -331,6 +331,9 @@ impl ArrivalWatch {
         if state.land_on_head && state.head_landing.gives_way && Self::cursor(state) != before {
             state.land_on_head = false;
             state.head_landing = crate::update::state::HeadLanding::default();
+            // He went somewhere himself: the commit the arrival sought is
+            // no longer where he is going (`tour::check_return`).
+            state.return_to = None;
         }
     }
 }

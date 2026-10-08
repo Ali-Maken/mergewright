@@ -70,12 +70,13 @@ const SWALLOWED_BY_DESIGN: &[(ContextId, &str, &str)] = &[
 const NO_EFFECT_IN_FIXTURE: &[(ContextId, &str, &str)] = &[];
 
 /// Rows the table holds that a later ticket answers; each deletes its own.
-const NOT_YET_ANSWERED: &[(&str, &str)] = &[("empty_state.tour", "ticket 19: the practice tour")];
+/// None since m8/19b answered `t`.
+const NOT_YET_ANSWERED: &[(&str, &str)] = &[];
 
 /// Cases that acted when this sweep landed (2026-10-07: 13; 16 after
-/// m8/18c answered `c`). It may grow; a drop means a key stopped doing
-/// something.
-const ACTING_AT_LANDING: usize = 16;
+/// m8/18c answered `c`; 17 after m8/19b answered `t`). It may grow; a drop
+/// means a key stopped doing something.
+const ACTING_AT_LANDING: usize = 17;
 
 /// Never moved by the sweep: `⌃C` is never his to move; suspend is off
 /// unless his switch is on.

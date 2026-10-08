@@ -3,7 +3,7 @@ m8-polish-and-ship/18c: what right looks like — the clone failed: the URL kept
  graft · no repository here
  ~/code
 
-  o  Open…     i  Init     c  Clone…
+  o  Open…     i  Init     c  Clone…     t  Practice tour
 
   ╭ clone ─────────────────────────────────────────────────────────────────────────────────╮
   │  clone › file:///nonexistent/payments-service.git▏                                     │

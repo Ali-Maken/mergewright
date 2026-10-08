@@ -84,7 +84,10 @@ fn rows_are_as_the_mockup_at_both_sizes() {
         assert_eq!(lines[0], " graft · no repository here", "{text}");
         assert_eq!(lines[1], " ~/code", "{text}");
         assert_eq!(lines[2], "", "{text}");
-        assert_eq!(lines[3], "  o  Open…     i  Init     c  Clone…", "{text}");
+        assert_eq!(
+            lines[3], "  o  Open…     i  Init     c  Clone…     t  Practice tour",
+            "{text}"
+        );
         assert_eq!(lines[5], "  RECENT", "{text}");
         assert_eq!(
             lines[6], "  ▸ payments-service    ~/code/payments-service     yesterday",
@@ -100,12 +103,14 @@ fn rows_are_as_the_mockup_at_both_sizes() {
         );
         let rows = usize::from(rows);
         assert!(lines[rows - 2].chars().all(|c| c == '─'), "{text}");
-        assert_eq!(
-            lines[rows - 1],
-            " o open… · i init · c clone… · ⏎ open the selected · q quit · ? keys",
-            "{text}"
-        );
-        assert!(!text.contains("tour"), "t drawn: {text}");
+        // m8/19b: `t practice tour` after `c clone…` where the bar fits it;
+        // at 80 columns it does not, and it is the first clause shed.
+        let bar = if columns >= 120 {
+            " o open… · i init · c clone… · t practice tour · ⏎ open the selected · q quit · ? keys"
+        } else {
+            " o open… · i init · c clone… · ⏎ open the selected · q quit · ? keys"
+        };
+        assert_eq!(lines[rows - 1], bar, "{text}");
     }
 }
 
@@ -115,7 +120,7 @@ fn an_empty_list_draws_no_recent_block_and_no_enter_hint() {
     let text = lines.join("\n");
     assert!(!text.contains("RECENT"), "{text}");
     assert_eq!(
-        lines[23], " o open… · i init · c clone… · q quit · ? keys",
+        lines[23], " o open… · i init · c clone… · t practice tour · q quit · ? keys",
         "{text}"
     );
 }
@@ -130,8 +135,12 @@ fn a_missing_folder_says_so_and_offers_no_init() {
     let (_, lines) = draw(&view, 80, 24);
     let text = lines.join("\n");
     assert_eq!(lines[1], " ~/code/newthing · no such folder", "{text}");
-    assert_eq!(lines[3], "  o  Open…", "{text}");
-    assert_eq!(lines[23], " o open… · q quit · ? keys", "{text}");
+    // The tour is offered in a missing folder too: it builds its own.
+    assert_eq!(lines[3], "  o  Open…     t  Practice tour", "{text}");
+    assert_eq!(
+        lines[23], " o open… · t practice tour · q quit · ? keys",
+        "{text}"
+    );
     assert!(!text.contains("init") && !text.contains("Init"), "{text}");
     assert!(!text.contains("clone") && !text.contains("Clone"), "{text}");
 }
@@ -239,8 +248,32 @@ fn bar_keys_follow_the_form() {
             .map(|(key, _)| key)
             .collect()
     };
-    assert_eq!(keys(&with_recents()), ["o", "i", "c", "⏎", "q", "?"]);
-    assert_eq!(keys(&no_recents()), ["o", "i", "c", "q", "?"]);
+    assert_eq!(keys(&with_recents()), ["o", "i", "c", "t", "⏎", "q", "?"]);
+    assert_eq!(keys(&no_recents()), ["o", "i", "c", "t", "q", "?"]);
+}
+
+/// m8/19b: the tour clause is the first the bar sheds, and only when the
+/// whole bar does not fit; every other clause is kept in order.
+#[test]
+fn the_tour_clause_is_shed_first_when_the_bar_overflows() {
+    let shipped = crate::keymap::Keymap::shipped();
+    let view = with_recents();
+    let all = bar_keys(&view, shipped);
+    let wide: usize = all
+        .iter()
+        .map(|(key, label)| key.chars().count() + 1 + label.chars().count())
+        .sum::<usize>()
+        + 3 * (all.len() - 1);
+    assert_eq!(
+        super::bar_fitted(&view, shipped, wide),
+        all,
+        "fits: all kept"
+    );
+    let shed = super::bar_fitted(&view, shipped, wide - 1);
+    assert_eq!(
+        shed.iter().map(|(key, _)| key.as_str()).collect::<Vec<_>>(),
+        ["o", "i", "c", "⏎", "q", "?"]
+    );
 }
 
 fn clone_view(url: &str, into: &str, shown: CloneShown) -> EmptyStateView {

@@ -231,7 +231,12 @@ pub(super) fn recent_rows(recent: &RecentRuns, actions: &[Entry]) -> Vec<Entry> 
         .collect()
 }
 
-/// `ACTIONS`: every row of the three groups once, then the app rows.
+/// The app row that starts the practice tour (m8/19b): `⌃P` "tour".
+pub(super) const TOUR_LABEL: &str = "Practice tour";
+
+/// `ACTIONS`: every row of the three groups once, then the app rows: the
+/// themes, and `Practice tour` unless a key row already starts it (the
+/// empty state's `empty_state.tour`, `t`).
 pub(super) fn everything(
     in_progress: Vec<Entry>,
     here: Vec<Entry>,
@@ -254,6 +259,19 @@ pub(super) fn everything(
         target: PaletteTarget::App(AppAction::Theme(*kind)),
         search: &[],
     }));
+    let tour_row = Some(ActionId("empty_state.tour"));
+    if !actions.iter().any(|kept| action_of(kept) == tour_row) {
+        actions.push(Entry {
+            row: PaletteRow {
+                label: sanitize_line(TOUR_LABEL),
+                key: None,
+                config: None,
+                kind: RowKind::App,
+            },
+            target: PaletteTarget::App(AppAction::Tour),
+            search: &[],
+        });
+    }
     actions
 }
 

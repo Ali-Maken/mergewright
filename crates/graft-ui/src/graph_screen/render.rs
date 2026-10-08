@@ -93,6 +93,15 @@ impl Widget for GraphScreen<'_> {
         }
         self.rule(chrome.rule, buf);
         self.banner(area, chrome.banner, buf);
+        if let Some(card) = &self.view.tour
+            && chrome.tour.height > 0
+        {
+            crate::tour_card::TourCard {
+                view: card,
+                theme: self.theme,
+            }
+            .render(chrome.tour, buf);
+        }
 
         self.pending_block(chrome.pending, buf);
 

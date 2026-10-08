@@ -62,6 +62,7 @@ mod state;
 mod status_read;
 mod strip;
 pub mod switch;
+pub(crate) mod tour;
 pub mod undo;
 
 pub use context_menu::verbs::can_take;
@@ -134,7 +135,12 @@ pub fn opening(repo_path: std::path::PathBuf, size: Size) -> (AppState, Vec<Comm
 /// way to a key or click that moves the graph cursor first
 /// ([`HeadLanding::gives_way`]). Off a terminal (`event_loop::run`) nothing
 /// calls this: the top row, as before.
-pub fn lands_on_head_at_open(state: &mut AppState) {
+///
+/// `at` is the tour's way back (m8-polish-and-ship/19b, Amendment §A4): the
+/// commit his cursor was on, sought as `HEAD` is; `None` is every other
+/// arrival, on `HEAD`. A commit the walk does not find falls back to `HEAD`
+/// with a word (`tour::check_return`).
+pub fn lands_at_open(state: &mut AppState, at: Option<graft_core::oid::Oid>) {
     let refs = match state.refs_read {
         RefsRead::Pending(id) => Some(id),
         RefsRead::Unknown | RefsRead::Current(_) => None,
@@ -143,9 +149,10 @@ pub fn lands_on_head_at_open(state: &mut AppState) {
     state.head_landing = HeadLanding {
         refs,
         walk: state.awaiting,
-        on: operate::Landing::Head,
+        on: at.map_or(operate::Landing::Head, operate::Landing::Commit),
         gives_way: true,
     };
+    state.return_to = at;
 }
 
 /// Answer one event: the new state, and the work it wants done.
@@ -177,6 +184,8 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
     place::after_commands(&mut next, &mut commands);
     in_view::keep_cursor_in_view(state, &mut next, &mut commands);
     keep_unseen_failure(state, &mut next);
+    tour::check_return(&mut next, &mut commands);
+    tour::request(state, &mut next, &mut commands);
     (next, commands)
 }
 
@@ -436,6 +445,7 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         AppEvent::Produced(id, Product::LostFound(result)) => {
             journal::lost_landed(next, id, &result);
         }
+        AppEvent::Produced(id, Product::TourProgress(done)) => tour::answered(next, id, done),
         AppEvent::Produced(id, Product::RecoverFor(result)) => {
             let mut local_jobs = next.local_jobs;
             journal::recover_answered(next, commands, id, &result, &mut || local_jobs.next_id());
@@ -629,6 +639,7 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::Undo
         | Task::ReadJournal
         | Task::ReadOutside
+        | Task::TourProgress
         | Task::FindLost
         | Task::RecoverFor
         | Task::PlanPreview
@@ -1042,6 +1053,7 @@ fn took_fact(
         | Product::Undone(_)
         | Product::Journal(_)
         | Product::Outside(_)
+        | Product::TourProgress(_)
         | Product::LostFound(_)
         | Product::RecoverFor(_)
         | Product::Preview(_)
@@ -1319,6 +1331,7 @@ fn job_cancelled(next: &mut AppState, commands: &mut Vec<Command>, id: graft_cor
     // A leaves read that will never answer is a failed one (review
     // m7-16b..21b, Minor 2).
     remote::leaves_job_ended(next, id, "the read was cancelled");
+    tour::job_ended(next, id);
     let mut local_jobs = next.local_jobs;
     // The write `Esc` stopped: the answer the user asked for. Any other
     // cancelled write (shutdown) is cleared as before.
@@ -1369,6 +1382,7 @@ fn job_failed(
     amend_into::job_ended(next, id);
     rewrite_editor::job_ended(next, id, &failure.to_string());
     remote::leaves_job_ended(next, id, &failure.to_string());
+    tour::job_ended(next, id);
     next.status = Status::Failed(format!("{id} failed: {failure}"));
     let mut local_jobs = next.local_jobs;
     commands.extend(operate::write_job_ended(next, id, &mut || {

@@ -68,12 +68,7 @@ fn every_action_has_a_default_and_no_context_binds_one_chord_twice() {
 fn every_scope_starts_at_its_own_place_and_ends_at_global() {
     for &ctx in ContextId::ALL {
         let scope = ctx.scope();
-        let want_first = if ctx == ContextId::Tour {
-            ContextId::Global
-        } else {
-            ctx
-        };
-        assert_eq!(scope.first(), Some(&want_first), "{ctx:?}");
+        assert_eq!(scope.first(), Some(&ctx), "{ctx:?}");
         assert_eq!(scope.last(), Some(&ContextId::Global), "{ctx:?}");
         for inner in scope {
             assert!(
@@ -85,12 +80,23 @@ fn every_scope_starts_at_its_own_place_and_ends_at_global() {
 }
 
 #[test]
-fn the_tour_and_the_menu_bind_nothing_of_their_own() {
-    // §2.18: the tour's `Esc` is `app.back`; §2.1: the menu claims only
-    // movement, `⏎` and `.`, all §2.2's.
-    for ctx in [ContextId::Tour, ContextId::Menu] {
-        assert!(defaults().iter().all(|b| b.context != ctx), "{ctx:?}");
-    }
+fn the_tour_binds_only_esc_to_leave_and_the_menu_nothing() {
+    // §2.18: the tour claims no key but `Esc` (`tour.leave`, ticket 19
+    // Amendment §A8); §2.1: the menu claims only movement, `⏎` and `.`,
+    // all §2.2's.
+    let tour: Vec<_> = defaults()
+        .iter()
+        .filter(|b| b.context == ContextId::Tour)
+        .map(|b| (b.action.0, b.default))
+        .collect();
+    assert_eq!(
+        tour,
+        [(
+            "tour.leave",
+            &[KeyChord::plain(graft_core::event::KeyCode::Escape)][..]
+        )]
+    );
+    assert!(defaults().iter().all(|b| b.context != ContextId::Menu));
 }
 
 #[test]

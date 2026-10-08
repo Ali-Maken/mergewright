@@ -151,6 +151,18 @@ impl Pty {
         )
     }
 
+    /// As [`Pty::spawn`], with `env` set on top (m8/19b: `TMPDIR`, where
+    /// the practice tour builds its repository).
+    pub fn spawn_with_env(
+        isolated: &Isolated,
+        arg: &Path,
+        ceiling: &Path,
+        size: (u16, u16),
+        env: &[(&str, std::ffi::OsString)],
+    ) -> Self {
+        Self::spawn_env(isolated, arg, ceiling, size, false, env)
+    }
+
     fn spawn_with(
         isolated: &Isolated,
         arg: &Path,

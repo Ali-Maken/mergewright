@@ -218,6 +218,10 @@ static NO_RECENT: RecentRuns = RecentRuns(VecDeque::new());
 pub(crate) enum AppAction {
     /// `Theme: dark` / `light` / `high contrast`, for this run only.
     Theme(ThemeKind),
+    /// `Practice tour` (m8/19b): from a repository, into the practice
+    /// tour, coming back to the commit under the cursor. Outside one, the
+    /// empty state's own `empty_state.tour` row is listed instead.
+    Tour,
 }
 
 /// What `⏎` on a row does.

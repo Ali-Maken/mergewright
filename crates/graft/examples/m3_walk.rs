@@ -185,7 +185,11 @@ fn show(
         )),
         // `run` gives the terminal back after one repository; only `drive`
         // opens another place, so this would be a broken promise, said.
-        Exit::Open(path) => Err(format!("`run` asked to open {}", path.display())),
+        Exit::Open(open) => Err(format!("`run` asked to open {}", open.path().display())),
+        // The tour is reached only through `drive`; `run` never starts one.
+        Exit::Practise { .. } | Exit::LeaveTour { .. } => {
+            Err("`run` asked to start or leave the tour".to_owned())
+        }
     }
 }
 

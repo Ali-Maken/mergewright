@@ -326,7 +326,8 @@ pub fn pending_rows_taken(state: &AppState) -> u16 {
         graft_ui::graph_screen::chrome_rows(state.size.rows)
             .saturating_add(state.harness.banner_rows())
             .saturating_add(u16::from(state.commit_graph_line().is_some()))
-            .saturating_add(tab_rows_above_graph(state)),
+            .saturating_add(tab_rows_above_graph(state))
+            .saturating_add(super::tour::card_rows(state)),
     );
     let height = wanted.min(left / 2);
     if height >= 3 { height } else { 0 }

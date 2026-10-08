@@ -5,17 +5,18 @@
 //!  graft · no repository here
 //!  ~/code
 //!
-//!   o  Open…     i  Init     c  Clone…
+//!   o  Open…     i  Init     c  Clone…     t  Practice tour
 //!
 //!   RECENT
 //!   ▸ payments-service    ~/code/payments-service     yesterday
 //!     web-dashboard       ~/code/web-dashboard        3 days ago
 //! ───────────────────────────────────────────────────────────────
-//!  o open… · i init · c clone… · ⏎ open the selected · q quit · ? keys
+//!  o open… · i init · c clone… · t practice tour · ⏎ open the selected · q quit · ? keys
 //! ```
 //!
-//! Only keys the screen answers are drawn (§1.15's last rule): `t` tour
-//! belongs to a later ticket and is not here yet. A missing folder draws no
+//! Only keys the screen answers are drawn (§1.15's last rule). `t` starts the
+//! practice tour (m8/19b); it is the bar's first clause shed when the bar
+//! is too narrow — the actions row still names it. A missing folder draws no
 //! `i` and no `c` — a typo must not become a repository. RECENT is not
 //! drawn when the list is empty, and neither is the `⏎` hint.
 //!
@@ -192,6 +193,7 @@ pub fn bar_keys(view: &EmptyStateView, keys: &Keymap) -> Vec<(String, &'static s
                 parts.push(("empty_state.init", "init"));
                 parts.push(("empty_state.clone", "clone…"));
             }
+            parts.push(("empty_state.tour", TOUR_CLAUSE));
             if !view.recent.is_empty() {
                 parts.push(("app.open", "open the selected"));
             }
@@ -215,8 +217,9 @@ pub fn bar_keys(view: &EmptyStateView, keys: &Keymap) -> Vec<(String, &'static s
 /// right, never a fragment (ADR-0039); an unbound key's clause goes (the
 /// `first time?` lead rides on the first clause left); `None` when no
 /// clause is bound or none fits. Shared by the graph's status row
-/// (`graft::view`) and this screen. The tour clause joins when the palette
-/// has a tour row (G-tour).
+/// (`graft::view`) and this screen. The tour is not a clause here: the
+/// palette's `Practice tour` row is found by typing "tour", and the empty
+/// state names `t` on its own actions row and bar (m8/19b).
 #[must_use]
 pub fn first_launch_words(keys: &Keymap, cells_wide: usize) -> Option<String> {
     let clauses: Vec<String> = [("app.help", "keys here"), ("app.palette", "anything")]
@@ -420,6 +423,8 @@ impl EmptyState<'_> {
             actions.push(("i", "Init"));
             actions.push(("c", "Clone…"));
         }
+        // Not gated on a missing folder: the tour builds its own (m8/19b).
+        actions.push(("t", "Practice tour"));
         let y = area.y + 3;
         let mut x = area.x + BODY_X;
         let right = area.x + area.width.saturating_sub(1);
@@ -623,7 +628,10 @@ impl EmptyState<'_> {
         }
         let mut at = x;
         let end_x = x + u16::try_from(width).unwrap_or(u16::MAX);
-        for (index, (key, label)) in bar_keys(self.view, self.keys).into_iter().enumerate() {
+        for (index, (key, label)) in bar_fitted(self.view, self.keys, width)
+            .into_iter()
+            .enumerate()
+        {
             if index > 0 {
                 at = buf
                     .set_stringn(
@@ -655,6 +663,32 @@ impl EmptyState<'_> {
                 .0;
         }
     }
+}
+
+/// The bar's `t` clause (m8/19b).
+const TOUR_CLAUSE: &str = "practice tour";
+
+/// [`bar_keys`] as drawn in `width` cells: the tour clause is the first
+/// shed when the whole bar does not fit (it is opt-in, and the actions row
+/// still names `t`); past that, the bar is cut at the edge as before.
+#[must_use]
+pub fn bar_fitted(
+    view: &EmptyStateView,
+    keys: &Keymap,
+    width: usize,
+) -> Vec<(String, &'static str)> {
+    let mut parts = bar_keys(view, keys);
+    let wide = |parts: &[(String, &str)]| {
+        parts
+            .iter()
+            .map(|(key, label)| cells(key) + 1 + cells(label))
+            .sum::<usize>()
+            + 3 * parts.len().saturating_sub(1)
+    };
+    if wide(&parts) > width {
+        parts.retain(|(_, label)| *label != TOUR_CLAUSE);
+    }
+    parts
 }
 
 /// The widest name and the widest path: where RECENT's columns start.

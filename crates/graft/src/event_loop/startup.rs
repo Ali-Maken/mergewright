@@ -186,7 +186,8 @@ impl Ran {
     }
 
     /// Stop the pool now, with the terminal still Graft's: the place is
-    /// being left for another on the same screen (`Exit::Open`). What the
+    /// being left for another on the same screen (`Exit::Open`, or into or
+    /// out of the practice tour). What the
     /// shutdown reports is dropped, as it was before 13b's review fix: no
     /// line can be printed while the next place owns the screen.
     pub(super) fn stop_for_the_next_place(self) -> io::Result<()> {
@@ -245,8 +246,15 @@ pub(super) struct Arrival {
     /// arrival.
     pub notice: Option<String>,
     /// Opened from the empty state: the cursor lands on `HEAD`'s row
-    /// (`update::lands_on_head_at_open`), not the top row.
+    /// (`update::lands_at_open`), not the top row.
     pub on_head: bool,
+    /// The tour's way back (m8/19b): the commit to land on instead of
+    /// `HEAD`. Read only with `on_head`.
+    pub at: Option<graft_core::oid::Oid>,
+    /// This place is the practice repository: the tour's card and ticks.
+    pub practice: bool,
+    /// The tour was finished in the place before: `practice done ✓`.
+    pub tour_done: bool,
     /// The process's one keymap (`config::keymap_from`, ADR-0055).
     pub keymap: Arc<graft_ui::keymap::Keymap>,
     /// His config's problems in words — on the process's first repository
@@ -285,9 +293,21 @@ pub(super) fn arrive(state: &mut AppState, arrival: Arrival) {
     state.first_launch = arrival.first_launch;
     if let Some(reason) = super::places::joined(arrival.notice, arrival.status) {
         state.status = crate::update::Status::Sticky { reason, keys: None };
+    } else if arrival.tour_done {
+        let again = state.keymap.key_verb(
+            &[graft_ui::keymap::ActionId("app.palette")],
+            "tour goes again",
+        );
+        state.status = match again {
+            Some(keys) => crate::update::Status::done_with_keys("practice done", keys),
+            None => crate::update::Status::done("practice done"),
+        };
     }
     if arrival.on_head {
-        crate::update::lands_on_head_at_open(state);
+        crate::update::lands_at_open(state, arrival.at);
+    }
+    if arrival.practice {
+        state.tour = Some(Box::new(crate::update::tour::TourState::arrived()));
     }
 }
 
@@ -361,6 +381,19 @@ pub(super) fn run_repo(
     // Answers from here on are for nobody; they go back to being replies.
     drop(fences);
     let outcome = hand_back_input(mux, forwarder, wakes, outcome);
+    // Left for another place on this screen (m8/19b: into or out of the
+    // tour, or an open): that place's first frame only draws cells that
+    // differ from blank, so the screen is blanked first, as the empty state
+    // does before a repository (`places::run_outside`) — without it the card
+    // and the palette stayed on his graph after the tour. The backend's
+    // clear, not `Terminal::clear`, which asks the terminal where its cursor
+    // is and waits on stdin the mux owns.
+    let outcome = match outcome {
+        Ok(exit @ (Exit::Open(_) | Exit::Practise { .. } | Exit::LeaveTour { .. })) => {
+            ratatui::backend::Backend::clear(terminal.backend_mut()).map(|()| exit)
+        }
+        other => other,
+    };
     // Put away before the restore so that its own teardown (it shows the
     // cursor it hid) goes out while the session is still in charge of the
     // terminal.

@@ -3,6 +3,11 @@
 
 pub const ROWS: &[(&str, &str, &str)] = &[
     (
+        "graft:view/tour.rs",
+        "practice · {shown} · a throwaway repo, not yours",
+        "article",
+    ),
+    (
         "graft:jobs/rewrite/words.rs",
         "a new file · no commit has it yet",
         "article",
