@@ -857,7 +857,7 @@ fn capture_find_and_empty_palette() {
             "{}/../../docs/shots/m8-palette-find-120x36.txt",
             env!("CARGO_MANIFEST_DIR")
         ),
-        crate::view::tests::draw(&found, 120, 36),
+        crate::view::tests::draw_pinned(&found, 120, 36),
     );
 
     let (open, _) = press(&start(), ctrl_p());
@@ -871,6 +871,6 @@ fn capture_find_and_empty_palette() {
             "{}/../../docs/shots/m8-palette-empty-120x36.txt",
             env!("CARGO_MANIFEST_DIR")
         ),
-        crate::view::tests::draw(&empty, 120, 36),
+        crate::view::tests::draw_pinned(&empty, 120, 36),
     );
 }

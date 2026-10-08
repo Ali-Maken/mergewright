@@ -128,7 +128,8 @@ impl App {
         Self::open_sized(repo, None, workers, graft::session::Clock::Wall)
     }
 
-    /// Open with every journal entry this run writes stamped from `clock`.
+    /// Open with every journal entry this run writes stamped from `clock`,
+    /// and every age the frame draws measured against it (m8/19d-b2).
     ///
     /// For a capture — or a test — of a repository the app writes **during**
     /// the run: the entry's own `at_unix_ms` is drawn, so left on the wall
@@ -159,7 +160,10 @@ impl App {
         // The opening list (and the id its history walk runs under) is
         // `update::opening`'s, so this harness cannot drift from the real
         // loop (m5-history-and-ghost-preview/05).
-        let (state, commands) = graft::update::opening(repo.to_path_buf(), SIZE);
+        let (mut state, commands) = graft::update::opening(repo.to_path_buf(), SIZE);
+        // One clock for the frame and the journal stamps, as `GRAFT_NOW`
+        // gives the binary (m8/19d-b2).
+        state.harness.clock = clock;
         for command in commands {
             jobs.dispatch(command);
         }

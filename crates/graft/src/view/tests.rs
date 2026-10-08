@@ -29,6 +29,18 @@ pub(crate) fn draw(state: &AppState, columns: u16, rows: u16) -> String {
     terminal.backend().to_string()
 }
 
+/// [`draw`] for a capture: a state left on the wall clock is drawn at
+/// `graft_fixtures::PINNED_NOW` instead, so its ages never roll with the
+/// calendar (m8/19d-b2). A state that names its own fixed clock keeps it.
+pub(crate) fn draw_pinned(state: &AppState, columns: u16, rows: u16) -> String {
+    if state.harness.clock == crate::session::Clock::default() {
+        let mut pinned = state.clone();
+        pinned.harness.clock = crate::session::Clock::Fixed(graft_fixtures::PINNED_NOW);
+        return draw(&pinned, columns, rows);
+    }
+    draw(state, columns, rows)
+}
+
 fn open(head: Head) -> AppState {
     AppState {
         screen: Screen::Status,
@@ -174,6 +186,7 @@ fn a_harness_banner_sits_under_the_header_with_the_tier_and_costs_rows() {
                 title: String::from("gallery 6/23 · foxtrot-merge · ] next"),
                 lines: vec![String::from("shows: a lane jump")],
             }),
+            clock: crate::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
             ..Harness::default()
         },
         ..AppState::default()
@@ -1440,7 +1453,7 @@ fn capture_m2_evil_merge() {
         files: vec![b"src/config.rs".to_vec()],
     });
 
-    let screen = draw(&opened, 100, 16);
+    let screen = draw_pinned(&opened, 100, 16);
     assert!(screen.contains("evil merge"), "{screen}");
     let header = "\
 # m2-evil-merge.txt: TestBackend capture (not a pty), 100x16. Fixture:
@@ -1574,7 +1587,7 @@ fn capture_m2_duplicate_commit() {
         &state,
         AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Enter))),
     );
-    let screen = draw(&opened, 100, 16);
+    let screen = draw_pinned(&opened, 100, 16);
     assert!(screen.contains("duplicate commit"), "{screen}");
     let header = "\
 # m2-duplicate-commit.txt: TestBackend capture (not a pty), 100x16. Fixture:
@@ -1611,7 +1624,7 @@ fn capture_m2_force_push() {
         &state,
         AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Enter))),
     );
-    let screen = draw(&opened, 100, 16);
+    let screen = draw_pinned(&opened, 100, 16);
     assert!(screen.contains("force-pushed remote"), "{screen}");
     let header = "\
 # m2-force-push.txt: TestBackend capture (not a pty), 100x16. Fixture:
@@ -1749,7 +1762,7 @@ fn capture_m2_explain_panel() {
     });
     assert!(state.detail.explain.is_some(), "a foxtrot finding exists");
 
-    let screen = draw(&state, 160, 24);
+    let screen = draw_pinned(&state, 160, 24);
     assert!(screen.contains("FOXTROT MERGE"), "{screen}");
     assert!(screen.contains("Esc close"), "{screen}");
     let header = "\
@@ -2105,12 +2118,12 @@ fn strip_capture_state() -> AppState {
 #[test]
 fn capture_m2_overview_strip() {
     let state = strip_capture_state();
-    let unicode = draw(&state, 80, 24);
+    let unicode = draw_pinned(&state, 80, 24);
     assert!(unicode.contains('●') || unicode.contains('◉'), "{unicode}");
 
     let mut ascii_state = state.clone();
     ascii_state.renderer_override = Some(RenderingTier::Ascii);
-    let ascii = draw(&ascii_state, 80, 24);
+    let ascii = draw_pinned(&ascii_state, 80, 24);
     assert!(ascii.contains('*') || ascii.contains('o'), "{ascii}");
 
     let header = "\
@@ -2418,7 +2431,7 @@ fn capture_m3_changes_pane() {
     let mut shots = graft_fixtures::Captures::new();
     for (columns, rows) in [(160_u16, 48_u16), (120, 40), (80, 24)] {
         let state = changes_pane_state(columns, rows);
-        let screen = draw(&state, columns, rows);
+        let screen = draw_pinned(&state, columns, rows);
         assert!(screen.contains("STAGED"), "{screen}");
         shots.check(
             format!(
@@ -2440,7 +2453,7 @@ fn capture_m3_confirm_discard() {
         crate::update::operate::request_discard_at_diff_cursor(&mut state),
         "the box opens on the hunk under the cursor"
     );
-    let screen = draw(&state, 120, 40);
+    let screen = draw_pinned(&state, 120, 40);
     let header = "\
 # m3-confirm-discard.txt: TestBackend capture (not a pty), 120x40, no colour
 # recorded. Fixture: capture_m3_confirm_discard in
@@ -2539,7 +2552,7 @@ fn capture_m3_confirm_delete_untracked() {
         crate::update::operate::request_discard(&mut state),
         "the box opens on the untracked file under the cursor"
     );
-    let screen = draw(&state, 120, 40);
+    let screen = draw_pinned(&state, 120, 40);
     let header = "\
 # m3-confirm-delete-untracked.txt: TestBackend capture (not a pty), 120x40,
 # no colour recorded. Fixture: capture_m3_confirm_delete_untracked in
@@ -3327,7 +3340,7 @@ fn capture_m3_undo_drift() {
             graft_core::job::JobId::new(next)
         },
     );
-    let screen = draw(&state, 120, 32);
+    let screen = draw_pinned(&state, 120, 32);
     assert!(screen.contains("Stop"), "{screen}");
     graft_fixtures::capture(
         concat!(
@@ -3483,13 +3496,13 @@ fn lease_box_state(columns: u16, rows: u16, leaves: crate::update::remote::Leave
 #[test]
 fn capture_m4_remote_keys() {
     let mut state = lease_box_state(120, 40, crate::update::remote::Leaves::default());
-    let push_box = draw(&state, 120, 40);
+    let push_box = draw_pinned(&state, 120, 40);
 
     state.confirm = None;
     state.operating = Some(graft_core::job::JobId::new(9));
     state.status =
         Status::Busy("fetch all remotes · Receiving objects 45% · esc cancels".to_owned());
-    let fetching = draw(&state, 120, 40);
+    let fetching = draw_pinned(&state, 120, 40);
 
     let header = "\
 # m4-remote-keys.txt: TestBackend capture (not a pty), 120x40, no colour
@@ -3558,7 +3571,7 @@ fn capture_force_box_leaves() {
             .iter()
             .map(SanitizedText::as_str)
             .collect();
-        let screen = draw(&state, columns, rows);
+        let screen = draw_pinned(&state, columns, rows);
         // Every row from the history warning on is one box row, never
         // wrapped or cut (line 1 may wrap at 80 columns: it always did).
         for line in &message[1..] {
@@ -3727,18 +3740,18 @@ fn capture_m4_credential_prompt_in_app() {
     let ask = "Password for 'http://user@127.0.0.1:8443':";
     let mut password = credential_state_seeded(120, 40, ask, false);
     type_into_prompt(&mut password, "hunter2");
-    let masked = draw(&password, 120, 40);
+    let masked = draw_pinned(&password, 120, 40);
 
     // The same password, the same length, the other seed. The two rows
     // differ, which is the point: what the row rests at is the seed's
     // doing, not the password's.
     let mut other_seed = credential_state_seeded(120, 40, ask, true);
     type_into_prompt(&mut other_seed, "hunter2");
-    let masked_other_seed = draw(&other_seed, 120, 40);
+    let masked_other_seed = draw_pinned(&other_seed, 120, 40);
 
     let mut username = credential_state(80, 24, "Username for 'http://127.0.0.1:8443':");
     type_into_prompt(&mut username, "alice");
-    let plain = draw(&username, 80, 24);
+    let plain = draw_pinned(&username, 80, 24);
 
     let header = "\
 # m4-credential-prompt-in-app.txt: TestBackend captures (not a pty), no

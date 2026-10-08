@@ -89,7 +89,10 @@ fn esc_on_a_fetch_that_moved_a_ref_says_what_moved() {
     let hung = HungRemote::listen().expect("the hung remote listens");
     run(&remote, work, &["remote", "add", "hung", &hung.url()]);
 
-    let (app, state) = App::open(work);
+    let (app, state) = App::open_with_clock(
+        work,
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = ready(&app, state);
     let state = app.press(&state, plain('f'));
     assert!(state.operating.is_some());
@@ -126,7 +129,10 @@ fn fetched_part_way() -> (LocalRemote, App, AppState, String, String) {
         .expect("a teammate's push");
     run(&remote, &work, &["remote", "add", "gone", GONE]);
 
-    let (app, state) = App::open(&work);
+    let (app, state) = App::open_with_clock(
+        &work,
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = ready(&app, state);
     let state = app.press(&state, plain('f'));
     let state = finish(&app, state, "the fetch that fails on gone");

@@ -177,7 +177,10 @@ pub fn frame_at(state: &AppState, columns: u16, rows: u16, clock: Option<Clock>)
 #[test]
 fn r_on_a_fork_draws_ghosts_for_the_commits_it_would_replay() {
     let scratch = forked();
-    let (app, state) = App::open(scratch.path());
+    let (app, state) = App::open_with_clock(
+        scratch.path(),
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = preview_of_a_rebase(&app, state);
 
     let preview = state.preview.as_ref().expect("a preview is open");
@@ -199,7 +202,10 @@ fn r_on_a_fork_draws_ghosts_for_the_commits_it_would_replay() {
 #[test]
 fn the_preview_box_and_its_ghost_rows_are_actually_drawn() {
     let scratch = forked();
-    let (app, state) = App::open(scratch.path());
+    let (app, state) = App::open_with_clock(
+        scratch.path(),
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = preview_of_a_rebase(&app, state);
 
     let drawn = frame(&state, 100, 30);
@@ -231,7 +237,10 @@ fn the_preview_box_and_its_ghost_rows_are_actually_drawn() {
 fn esc_closes_the_preview_and_the_repository_never_moved() {
     let scratch = forked();
     let before = git(scratch.path(), &["rev-parse", "HEAD"]);
-    let (app, state) = App::open(scratch.path());
+    let (app, state) = App::open_with_clock(
+        scratch.path(),
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = preview_of_a_rebase(&app, state);
     let state = app.key(&state, KeyCode::Escape);
 
@@ -251,7 +260,10 @@ fn esc_closes_the_preview_and_the_repository_never_moved() {
 #[test]
 fn capture_preview_for_docs_shots() {
     let scratch = forked();
-    let (app, state) = App::open(scratch.path());
+    let (app, state) = App::open_with_clock(
+        scratch.path(),
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = preview_of_a_rebase(&app, state);
     let mut drifted = Vec::new();
 
@@ -307,7 +319,10 @@ fn capture_preview_for_docs_shots() {
 #[test]
 fn capture_fix_preview_verb_for_docs_shots() {
     let scratch = forked();
-    let (app, state) = App::open(scratch.path());
+    let (app, state) = App::open_with_clock(
+        scratch.path(),
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = preview_opened_by(&app, state, 'm');
     let drawn = frame_at(&state, 120, 40, Some(Clock::Fixed(FORK_NOW)));
     app.close();
@@ -346,7 +361,10 @@ fn capture_fix_preview_verb_for_docs_shots() {
 fn m_again_merges_through_the_real_path() {
     let scratch = forked();
     let before = git(scratch.path(), &["rev-parse", "HEAD"]);
-    let (app, state) = App::open(scratch.path());
+    let (app, state) = App::open_with_clock(
+        scratch.path(),
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = preview_opened_by(&app, state, 'm');
     let state = app.key(&state, KeyCode::Char('m'));
     assert!(state.preview.is_none(), "the second `m` confirmed");
@@ -459,7 +477,10 @@ fn journal_enter_on_an_older_row_previews_and_confirm_really_reverts() {
         "the index starts empty"
     );
 
-    let (app, state) = App::open(repo);
+    let (app, state) = App::open_with_clock(
+        repo,
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = stage_all_three(&app, state);
     let staged = git(repo, &["diff", "--cached", "--name-only"]);
     assert_eq!(
@@ -623,7 +644,10 @@ fn capture_time_machine_for_docs_shots() {
 fn the_preview_warning_row_is_opaque_when_the_box_cannot_fit() {
     const WARNING: &str = "preview needs 40x12 · esc closes";
     let scratch = forked();
-    let (app, state) = App::open(scratch.path());
+    let (app, state) = App::open_with_clock(
+        scratch.path(),
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = preview_of_a_rebase(&app, state);
 
     for (columns, rows) in [(38_u16, 20_u16), (39, 8), (80, 11), (80, 3), (80, 2)] {
@@ -776,7 +800,10 @@ fn preview_scrolled_at(app: &App, state: AppState, columns: u16, rows: u16) -> A
 #[test]
 fn a_preview_scrolled_into_history_draws_the_rows_the_user_was_on() {
     let scratch = left_behind();
-    let (app, state) = App::open(scratch.path());
+    let (app, state) = App::open_with_clock(
+        scratch.path(),
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = preview_scrolled_into_history(&app, state);
 
     let drawn = frame(&state, 80, 24).join("\n");
@@ -811,7 +838,10 @@ fn capture_scrolled_preview_for_docs_shots() {
         // photographed at two sizes gave one `history.top` for two
         // pictures, and the caption was then true of at most one of them
         // (m5/20 item 5).
-        let (app, state) = App::open(scratch.path());
+        let (app, state) = App::open_with_clock(
+            scratch.path(),
+            graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+        );
         let state = preview_scrolled_at(&app, state, columns, rows);
         let top = state.history.as_ref().expect("a history").top;
         tops.push((label, top));
@@ -901,7 +931,10 @@ fn scrolled_caption(label: &str, columns: u16, rows: u16, top: usize) -> String 
 #[test]
 fn the_predicted_block_is_labelled_and_named_in_the_users_words() {
     let scratch = left_behind();
-    let (app, state) = App::open(scratch.path());
+    let (app, state) = App::open_with_clock(
+        scratch.path(),
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = preview_scrolled_into_history(&app, state);
 
     let drawn = frame(&state, 80, 24).join("\n");
@@ -932,7 +965,10 @@ fn the_predicted_block_is_labelled_and_named_in_the_users_words() {
 #[test]
 fn the_branch_badge_still_lands_on_the_newest_predicted_row() {
     let scratch = left_behind();
-    let (app, state) = App::open(scratch.path());
+    let (app, state) = App::open_with_clock(
+        scratch.path(),
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = preview_scrolled_into_history(&app, state);
 
     let drawn = frame(&state, 80, 24);

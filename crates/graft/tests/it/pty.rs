@@ -105,10 +105,9 @@ impl Isolated {
 }
 
 /// The instant every pty run's session clock is pinned to unless the test
-/// names `GRAFT_NOW` itself (m8/19d-b): 2026-10-08 00:00 UTC, the day the
-/// pin landed, so ages drawn against the fixtures' 2021 dates read as the
-/// committed captures were shot, and never roll with the calendar.
-pub const PINNED_NOW: i64 = 1_791_417_600;
+/// names `GRAFT_NOW` itself (m8/19d-b). One value for every producer:
+/// `graft_fixtures::PINNED_NOW` (m8/19d-b2).
+pub const PINNED_NOW: i64 = graft_fixtures::PINNED_NOW;
 
 impl Pty {
     /// Start `graft <arg>` in `cwd` on a `columns`x`rows` pty, isolated by
@@ -202,6 +201,7 @@ impl Pty {
         } else {
             Stdio::piped()
         };
+        let pinned_git_date = format!("{} +0000", PINNED_NOW - 3_600);
         let mut child = Command::new(env!("CARGO_BIN_EXE_graft"))
             .arg(arg)
             .env("XDG_CONFIG_HOME", isolated.config())
@@ -214,6 +214,12 @@ impl Pty {
             .env_remove("GRAFT_TRACE")
             // Set before `env`, so a caller naming `GRAFT_NOW` wins.
             .env("GRAFT_NOW", PINNED_NOW.to_string())
+            // A commit made in the app is dated an hour before the pin, so
+            // it draws `1h` (not `future`) and its id is the same every run
+            // (m8/19d-b2, ticket 19d §R5). Graft itself never sets git's
+            // dates; a caller naming either variable wins.
+            .env("GIT_AUTHOR_DATE", &pinned_git_date)
+            .env("GIT_COMMITTER_DATE", &pinned_git_date)
             .envs(env.iter().map(|(name, value)| (*name, value)))
             .stdin(Stdio::from(slave.try_clone().expect("slave fd")))
             .stdout(Stdio::from(slave))

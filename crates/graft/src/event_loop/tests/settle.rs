@@ -226,6 +226,11 @@ fn graph(cursor: usize, shown: bool) -> AppState {
             columns: COLUMNS,
             rows: ROWS,
         },
+        // Ages against the pinned instant, not the wall (m8/19d-b2).
+        harness: crate::update::Harness {
+            clock: crate::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+            ..crate::update::Harness::default()
+        },
         ..AppState::default()
     };
     state.detail.shown = shown;

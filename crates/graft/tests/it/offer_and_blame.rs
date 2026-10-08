@@ -99,7 +99,7 @@ fn merge_with_nothing_to_do() -> (graft_fixtures::Scratch, App, AppState) {
     let old = rev(scratch.path(), "old");
     let (app, state) = App::open_with_clock(
         scratch.path(),
-        graft::session::Clock::Fixed(graft_fixtures::CORPUS_NOW),
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
     );
     let state = app.resize(&state, 120, 40);
     let state = crate::preview::opened(&app, state);

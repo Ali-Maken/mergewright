@@ -44,13 +44,15 @@ impl Entry {
     /// shape is fixed at [`graft_fixtures::CORPUS_NOW`] — the instant every
     /// one of its dates, `relative-dates` included, was built to read
     /// against — so a capture never drifts; a real repository has no such
-    /// instant, so it draws against the wall clock like the shipped binary
-    /// does.
+    /// instant, so it draws against `graft_fixtures::PINNED_NOW`, the
+    /// instant every capture producer shares (m8/19d-b2).
     #[must_use]
     pub fn clock(&self) -> Clock {
         match self.source {
             Source::Shape(_) => Clock::Fixed(graft_fixtures::CORPUS_NOW),
-            Source::Workspace | Source::Synthetic100k | Source::GitGit => Clock::Wall,
+            Source::Workspace | Source::Synthetic100k | Source::GitGit => {
+                Clock::Fixed(graft_fixtures::PINNED_NOW)
+            }
         }
     }
 }
@@ -1000,11 +1002,13 @@ mod tests {
     }
 
     #[test]
-    fn corpus_stops_view_at_corpus_now_real_repos_view_the_wall_clock() {
+    fn corpus_stops_view_at_corpus_now_real_repos_view_the_pinned_clock() {
         for entry in entries() {
             let expected = match entry.source {
                 Source::Shape(_) => Clock::Fixed(graft_fixtures::CORPUS_NOW),
-                Source::Workspace | Source::Synthetic100k | Source::GitGit => Clock::Wall,
+                Source::Workspace | Source::Synthetic100k | Source::GitGit => {
+                    Clock::Fixed(graft_fixtures::PINNED_NOW)
+                }
             };
             assert_eq!(entry.clock(), expected, "{}", entry.name);
         }

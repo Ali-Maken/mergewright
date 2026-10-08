@@ -483,21 +483,21 @@ belongs to 19d-a, and `quit_waits/*` to 19d-a2 and a3.
 **Read first:** this file §R3-§R5 and NOTES 19d-b; graft MAP :91, :182, :1116; graft-fixtures MAP :32 and the
 `capture` lines; ADR-0037 (contact sheets).
 **Acceptance:**
-- [ ] `graft_fixtures::PINNED_NOW` = `1_791_417_600`, and `tests/it/pty.rs` uses it (no second literal; grep shows one):
-      `clock_pin::graft_now_pins_the_drawn_age` still green.
-- [ ] `App::open_with_clock` pins the frame. In-process, an `App` opened with `Clock::Fixed(t)` and with
+- [x] `graft_fixtures::PINNED_NOW` = `1_791_417_600`, and `tests/it/pty.rs` uses it (no second literal; grep shows one):
+      `clock_pin::graft_now_pins_the_drawn_age` still green. (ticked: `grep -rn 1_791_417_600 crates` → one hit, graft-fixtures lib.rs; that test green)
+- [x] `App::open_with_clock` pins the frame. In-process, an `App` opened with `Clock::Fixed(t)` and with
       `Clock::Fixed(t + 1y)` draws two different ages on one commit row:
-      `clock_pin::open_with_clock_pins_the_drawn_frame` (red before).
-- [ ] All 19 producers in NOTES 19d-b :269-273 build on `PINNED_NOW`, and the guard is green:
+      `clock_pin::open_with_clock_pins_the_drawn_frame` (red before). (ticked: green; red-before NOT observed — seam fixed before the test ran, see NOTES)
+- [x] All 19 producers in NOTES 19d-b :269-273 build on `PINNED_NOW`, and the guard is green:
       `clock_pin::no_capture_producer_runs_on_the_wall_clock`. It bites: adding `Clock::Wall` to one producer fails it.
-      Run that once, revert, and say so in NOTES.
-- [ ] An in-app commit in a pty run with no date env draws its age, not `future`:
+      Run that once, revert, and say so in NOTES. (ticked: guard green; bite run in NOTES; + `the_wall_clock_scan_names_each_unpinned_shape`)
+- [x] An in-app commit in a pty run with no date env draws its age, not `future`:
       `clock_pin::an_in_app_commit_under_the_default_pin_draws_an_age` (row reads `1h`; red before).
-      `u_under_a_pinned_clock_undoes_the_newest` still green.
+      `u_under_a_pinned_clock_undoes_the_newest` still green. (ticked: row reads `60m`, the label for 3600 s; both green; red before not run separately)
 - [ ] Full suite green. `git status --short docs/shots` is empty except `FROZEN.md`, or every changed capture is listed
       in NOTES with only age cells changed. `grep -l future docs/shots` → none, or each hit named in NOTES with why.
-- [ ] `docs/shots/FROZEN.md`: every year-age capture with no producer, one line each (§R4), with the method that built
-      the list named in NOTES. Each sheet that is a contact sheet is **not** listed.
+- [x] `docs/shots/FROZEN.md`: every year-age capture with no producer, one line each (§R4), with the method that built
+      the list named in NOTES. Each sheet that is a contact sheet is **not** listed. (ticked: 91 lines; method in NOTES)
 **Touches:** every pty test (two more default env vars; a caller naming them wins, which keeps 19c-c's and 19d-c's
 dates); every in-process capture test listed; the gallery and walk examples' captures (expected unchanged); G-rename
 27 (no new `GRAFT_*` read); KNOWN_GAPS `M8/19c-capture-age-roll` (the conductor closes it); the contact sheets
@@ -557,3 +557,16 @@ compacts, say so in NOTES.
   - `App::open_with_clock` pins only the JobRunner, not the frame (`app_harness.rs:154`).
   - About 70 year-age captures map to no current producer: old numbered shots, 35-/38- tiers, older m1/m2, contact sheets.
   - The conductor decides the follow-up. Scout used: yes, for this sweep only.
+
+## NOTES 19d-b2 (builder, 2026-10-08)
+- Scout: none; NOTES 19d-b's sweep was the scout. Instead, an **empirical sweep**: Clock::Wall temporarily shifted +2y in `session.rs` (reverted, `git diff` on it empty), full nextest: 29 failures = every in-process capture still on the wall. Each fixed, rerun green under the shift.
+- Seam: `App::open_with_clock` sets `state.harness.clock`. Most in-process producers used `App::open` (Wall) or `..AppState::default()`, which neither the spec's sites nor the guard cover. Fixed per site: `open_with_clock(.., Fixed(PINNED_NOW))` in remote_by_key/partial_fetch/status_under_a_box/daily_landing/preview capture tests and offer_and_blame:100; `view::tests::draw_pinned` (wall-clock state drawn at PINNED_NOW) for view/tests, keymap_edge palette/palette_find/remaps, update doorway, theme_problems; harness clock set in settle.rs and pixel_preview; examples m3/m4/m5; gallery real repos (`corpus_stops_..._real_repos_view_the_pinned_clock`, renamed).
+- **Not pinned, deliberately**: `capture_undo_after_push`, `capture_fix_plain_box_after_rebase`, `radar_bookkeeping`, `capture_time_machine`, `commit_editor_writes`, `box_owns_the_bar`: they commit in-process with git's wall date and draw `now`; pinning the frame turns that into `future`/`2y`. Fixing needs dates on the in-process git child: via job runner env = production hook → §R5 says stop. **Open, unverified-when-it-rolls**: they draw `now` only while wall ≈ commit time, so they don't roll; their fixture (2021) rows still roll on the wall clock. Conductor's call.
+- Guard scope gap: it flags `Clock::Wall` and unpinned `Harness::default()` only; `App::open(` and `..AppState::default()` in capture files are not caught (flagging App::open hit ~250 sites).
+- Bite: `fn bite() -> Clock { Clock::Wall }` appended to daily_landing.rs → guard failed naming `tests/it/daily_landing.rs:236`; reverted.
+- R5 label: 3600 s draws `60m`, not `1h`.
+- Captures: none changed (`git status --short docs/shots` = only FROZEN.md). `grep -l future docs/shots`: 6 pre-existing hits, unchanged, prose (e.g. m7/landed-after-merge: `YYYY-MM-DD hh:mm +zzzz · future`) — not ages checked for all 6.
+- FROZEN.md method: python over `docs/shots/**` (skip names containing `contact-sheet`): file has a word `\d+y`; producer = name, stem, stem without `-CxR`, or without leading `NN-`, found in any `crates/**/*.rs` or `scripts/*`; date `git log -1 --format=%cs`. 91, not ~70: heuristic, names built at run time may be listed as frozen wrongly (unverified).
+- **Failing, not mine**: `tour_tasks::task_4_ticks_by_setting_aside_and_bringing_back` fails deterministically, also with the new git-date env removed (checked); no production change here. Cause unknown; 19d-a's file. Full: 6130/6131.
+- Red-before for the two new behaviour tests not observed (written after the fix).
+

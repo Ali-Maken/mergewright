@@ -28,7 +28,7 @@ fn j8_a_keys_table_beside_suspend_moves_merge_and_says_one_problem() {
 
     let mut base = sized_to_draw(on_a_branch_row());
     base.seed_keys(Arc::new(keymap), problems);
-    let first = crate::view::tests::draw(&base, base.size.columns, base.size.rows);
+    let first = crate::view::tests::draw_pinned(&base, base.size.columns, base.size.rows);
     assert!(
         first.contains("config: 1 problem · ? shows them"),
         "the bottom row says so:\n{first}"
@@ -186,8 +186,9 @@ fn capture_merge_remapped_to_shift_m() {
 
     let mut base = sized_to_draw(on_a_branch_row());
     base.seed_keys(keymap, problems);
-    let draw =
-        |state: &AppState| crate::view::tests::draw(state, state.size.columns, state.size.rows);
+    let draw = |state: &AppState| {
+        crate::view::tests::draw_pinned(state, state.size.columns, state.size.rows)
+    };
     // At startup the notice holds the bottom row, where the bar goes.
     let notice = draw(&base);
     assert!(
