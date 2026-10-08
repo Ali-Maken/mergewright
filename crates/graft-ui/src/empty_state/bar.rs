@@ -22,15 +22,6 @@ use crate::theme::Token;
 /// shipped table.
 #[must_use]
 pub fn bar_keys(view: &EmptyStateView, keys: &Keymap) -> Vec<(String, &'static str)> {
-    let spelled = |keys: &Keymap, parts: &[(&'static str, &'static str)]| {
-        parts
-            .iter()
-            .filter_map(|(action, label)| {
-                keys.spell_keys(&[ActionId(action)])
-                    .map(|key| (key, *label))
-            })
-            .collect()
-    };
     if view.credential {
         // The question keeps the shipped keys whatever his `[keys]` say,
         // as on a repository screen (`graft::empty_state::outside_edge`).
@@ -61,29 +52,43 @@ pub fn bar_keys(view: &EmptyStateView, keys: &Keymap) -> Vec<(String, &'static s
                 CloneShown::Ended { .. } => &[("app.open", "retry"), ("app.back", "cancel")],
             },
         ),
-        None => {
-            let mut parts = vec![("empty_state.open", "open…")];
-            if !view.missing {
-                parts.push(("empty_state.init", "init"));
-                parts.push(("empty_state.clone", "clone…"));
-            }
-            parts.push(("empty_state.tour", TOUR_CLAUSE));
-            if !view.recent.is_empty() {
-                parts.push(("app.open", "open the selected"));
-            }
-            parts.push(("app.quit", "quit"));
-            // The doorway, last (m8/11b decision 1): `?` opens the palette
-            // on the list. `⌃P` when `?` is unbound; neither, no doorway.
-            let mut drawn = spelled(keys, &parts);
-            drawn.extend(
-                spelled(keys, &[("app.help", "keys")])
-                    .into_iter()
-                    .next()
-                    .or_else(|| spelled(keys, &[("app.palette", "keys")]).into_iter().next()),
-            );
-            drawn
-        }
+        None => list_keys(view, keys),
     }
+}
+
+/// `parts` whose actions `keys` binds, each with its key spelled.
+fn spelled(keys: &Keymap, parts: &[(&'static str, &'static str)]) -> Vec<(String, &'static str)> {
+    parts
+        .iter()
+        .filter_map(|(action, label)| {
+            keys.spell_keys(&[ActionId(action)])
+                .map(|key| (key, *label))
+        })
+        .collect()
+}
+
+/// The bar over the list, no prompt open.
+fn list_keys(view: &EmptyStateView, keys: &Keymap) -> Vec<(String, &'static str)> {
+    let mut parts = vec![("empty_state.open", "open…")];
+    if !view.missing {
+        parts.push(("empty_state.init", "init"));
+        parts.push(("empty_state.clone", "clone…"));
+    }
+    parts.push(("empty_state.tour", TOUR_CLAUSE));
+    if !view.recent.is_empty() {
+        parts.push(("app.open", "open the selected"));
+    }
+    parts.push(("app.quit", "quit"));
+    // The doorway, last (m8/11b decision 1): `?` opens the palette
+    // on the list. `⌃P` when `?` is unbound; neither, no doorway.
+    let mut drawn = spelled(keys, &parts);
+    drawn.extend(
+        spelled(keys, &[("app.help", "keys")])
+            .into_iter()
+            .next()
+            .or_else(|| spelled(keys, &[("app.palette", "keys")]).into_iter().next()),
+    );
+    drawn
 }
 
 /// The bar's `t` clause (m8/19b).

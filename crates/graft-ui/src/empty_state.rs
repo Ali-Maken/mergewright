@@ -441,6 +441,20 @@ impl EmptyState<'_> {
         if let EmptyPrompt::Clone(clone) = prompt {
             self.draw_clone_rows(inner_x, y, inner, clone, buf);
         }
+        self.draw_field_cursor(prompt, cursor_at, (inner_x, y + 1), inner, buf);
+    }
+
+    /// The prompt's field cursor on the row at `at`: none on the init box or
+    /// a running clone. `cursor_at` is where the clone's scrolled window put
+    /// it; otherwise counted from the field's lead.
+    fn draw_field_cursor(
+        &self,
+        prompt: &EmptyPrompt,
+        cursor_at: Option<usize>,
+        at: (u16, u16),
+        inner: usize,
+        buf: &mut Buffer,
+    ) {
         let field = match prompt {
             EmptyPrompt::Open { text, cursor } => Some(("open › ", text, cursor)),
             // Read-only while it runs: no cursor.
@@ -463,7 +477,7 @@ impl EmptyState<'_> {
                         .sum::<usize>()
             });
             let at_end = *cursor >= text.as_str().chars().count();
-            self.draw_cursor((inner_x, y + 1), before, inner, at_end, buf);
+            self.draw_cursor(at, before, inner, at_end, buf);
         }
     }
 

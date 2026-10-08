@@ -24,6 +24,7 @@ use crate::empty_state::{
 };
 use crate::first_launch::{self, FirstLaunch};
 use crate::jobs::JobRunner;
+use crate::jobs::clone::CloneRequest;
 use crate::recent::{self, Recent};
 use crate::repos::RepoStore;
 use crate::session::Session;
@@ -350,25 +351,8 @@ pub(super) fn carry_out(
                 notice: None,
             });
         }
-        OutsideStep::Init(folder) => match graft_ops::init::init_here(&folder) {
-            Ok(made) => {
-                return try_open(state, &made, "init", config).map(|place| Outcome::Opened {
-                    place,
-                    notice: None,
-                });
-            }
-            Err(error) => state.problem = Some(error.to_string()),
-        },
-        OutsideStep::StartClone(request) => match jobs.started(&state.folder) {
-            Ok(pool) => {
-                let into = request.into.clone();
-                let job = pool.clone_repo(request);
-                clone_started(state, job, into);
-            }
-            Err(error) => {
-                state.problem = Some(format!("clone: could not start a job \u{b7} {error}"));
-            }
-        },
+        OutsideStep::Init(folder) => return init_and_open(state, &folder, config),
+        OutsideStep::StartClone(request) => start_clone(state, jobs, request),
         OutsideStep::StopClone(job) => {
             if let Some(pool) = &jobs.pool {
                 pool.cancel(job);
@@ -383,13 +367,7 @@ pub(super) fn carry_out(
         // The switch first, as the repository's loop does: ended once per
         // process (it names the folder the state was seeded with), so no
         // later place shows the line; already ended, nothing to write.
-        OutsideStep::FirstLaunchDone(_seeded_from) => {
-            if let Some(config_dir) = line.end()
-                && let Err(error) = first_launch::first_launch_done(&config_dir)
-            {
-                state.problem = Some(error.words());
-            }
-        }
+        OutsideStep::FirstLaunchDone(_seeded_from) => end_first_launch(state, line),
         OutsideStep::Cloned { path, notice } => {
             match try_open(state, &path, "clone", config) {
                 Some(place) => return Some(Outcome::Opened { place, notice }),
@@ -399,6 +377,45 @@ pub(super) fn carry_out(
         }
     }
     None
+}
+
+/// `i`: `git init` the folder, then open it; a failure is said in the bar
+/// row.
+fn init_and_open(state: &mut OutsideState, folder: &Path, config: &Loaded) -> Option<Outcome> {
+    match graft_ops::init::init_here(folder) {
+        Ok(made) => try_open(state, &made, "init", config).map(|place| Outcome::Opened {
+            place,
+            notice: None,
+        }),
+        Err(error) => {
+            state.problem = Some(error.to_string());
+            None
+        }
+    }
+}
+
+/// Run the clone on the empty state's pool, started now if it is not yet.
+fn start_clone(state: &mut OutsideState, jobs: &mut OutsideJobs, request: CloneRequest) {
+    match jobs.started(&state.folder) {
+        Ok(pool) => {
+            let into = request.into.clone();
+            let job = pool.clone_repo(request);
+            clone_started(state, job, into);
+        }
+        Err(error) => {
+            state.problem = Some(format!("clone: could not start a job \u{b7} {error}"));
+        }
+    }
+}
+
+/// End the shell's first-launch switch and write `done`; a failed write is
+/// said in the bar row.
+fn end_first_launch(state: &mut OutsideState, line: &FirstLaunch) {
+    if let Some(config_dir) = line.end()
+        && let Err(error) = first_launch::first_launch_done(&config_dir)
+    {
+        state.problem = Some(error.words());
+    }
 }
 
 /// The two pool calls the password box's answer makes, behind a seam so

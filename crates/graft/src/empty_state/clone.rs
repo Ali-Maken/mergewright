@@ -124,13 +124,7 @@ pub(crate) fn outside_job(state: &mut OutsideState, wake: &Wake) -> OutsideStep 
     };
     let ended = match event {
         AppEvent::Progress(id, Progress::RemoteProgress { brief }) if *id == running => {
-            if let Some(Prompt::Clone(CloneState {
-                run: CloneRun::Running { progress, .. },
-                ..
-            })) = &mut state.prompt
-            {
-                *progress = Some(brief.clone());
-            }
+            show_progress(state, brief);
             return OutsideStep::Stay;
         }
         AppEvent::Progress(id, Progress::CredentialNeeded { prompt, pulse_seed }) => {
@@ -170,12 +164,28 @@ pub(crate) fn outside_job(state: &mut OutsideState, wake: &Wake) -> OutsideStep 
         }
         _ => return OutsideStep::Stay,
     };
+    end_clone(state, ended);
+    OutsideStep::Stay
+}
+
+/// git's latest progress line on the running clone's prompt.
+fn show_progress(state: &mut OutsideState, brief: &str) {
+    if let Some(Prompt::Clone(CloneState {
+        run: CloneRun::Running { progress, .. },
+        ..
+    })) = &mut state.prompt
+    {
+        *progress = Some(brief.to_owned());
+    }
+}
+
+/// The clone ended: its words on the prompt, and git's question closed.
+fn end_clone(state: &mut OutsideState, words: String) {
     if let Some(Prompt::Clone(clone)) = &mut state.prompt {
-        clone.run = CloneRun::Ended { words: ended };
+        clone.run = CloneRun::Ended { words };
     }
     let still = running_clone(state);
     credential::close_orphaned(&mut state.credential, still);
-    OutsideStep::Stay
 }
 
 /// A key in the clone prompt (rulings R6). While it runs, `esc` stops it
