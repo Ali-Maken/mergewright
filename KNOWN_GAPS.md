@@ -1271,6 +1271,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/test-files-over-400 | `graft-ui/src/context_menu/tests.rs` 441, `stash_screen/tests.rs` 424. Review m6. → 25. | **broken** | M8 |
 | M8/bars-stale-wording | Stale wording left by 15/15b/11f/21b (list: docs/reviews/m8-bars-hygiene.md minor 7). → 23 docs pass. | **broken** | M8 |
 | M8/15-a2-no-prior-art | 15 A2 (where a standing search lives) has no Prior art row in docs/design-notes/m8-polish-and-ship.md:39–115. Review m8. Before the usability walk. | **broken** | M8 |
+| M8/21c-cancelled-status-no-moves | A cancelled fetch's status words don't list moved refs (graft `cancelled`; 21c NOTES); a diverged pull builds its own reason. Moves are in the journal line. → 21c Part B B+1. | **broken** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` **429** lines at the split (12f's 407 was false — review m8-palette-landing-stop C1); `listing.rs` 424 also over → 21b-4 additions; seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |

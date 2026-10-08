@@ -338,3 +338,6 @@ and the field).
    in the summary — say so.
 5. **Captures** (box 11) per the contact-sheet line; **docs** — graft and graft-ui MAP rows; DESIGN §1.10 mockup row
    → `fetch · origin/main moved`.
+
+## Part B additions (conductor 2026-10-08)
+- [ ] B+1: a **cancelled** fetch (graft's `cancelled`, see NOTES :307-308) also shows its moves in the status words, ending ` · origin/main moved before it stopped`. The user approved exactly this case on 2026-10-08 ("if you stop a fetch … partway … the line reads … moved before it stopped"), so it is in scope, not a new decision. Test seen red first; name it at tick. The diverged-pull path (graft builds its own reason) stays as NOTES says; Part B's status capture shows it.
