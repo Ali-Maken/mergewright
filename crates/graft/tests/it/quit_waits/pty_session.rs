@@ -6,9 +6,10 @@
 //! Every pid a test learns (Graft's, git's, the hook's) is held by a
 //! [`Leftovers`] guard that kills it on drop, by pid, never by pattern.
 
+use std::ffi::OsString;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::os::fd::{AsFd, AsRawFd, OwnedFd};
+use std::os::fd::{AsFd, OwnedFd};
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Stdio};
@@ -89,11 +90,17 @@ impl Session {
             None,
         )
         .expect("a pty");
-        let slave: OwnedFd = pty.slave;
-        let master_fd = pty.master.as_raw_fd();
-        let mut command = Command::new(env!("CARGO_BIN_EXE_graft"));
+        // Close-on-exec, so neither the re-exec'd test binary nor Graft
+        // holds the master: left open there, it would keep the terminal
+        // alive after the test closes it.
+        rustix::io::fcntl_setfd(&pty.master, rustix::io::FdFlags::CLOEXEC)
+            .expect("the master is close-on-exec");
+        let mut command = session_command(
+            Path::new(env!("CARGO_BIN_EXE_graft")),
+            &[repo.as_os_str().to_owned()],
+            pty.slave,
+        );
         command
-            .arg(repo)
             .env("XDG_CONFIG_HOME", isolated.config())
             .env("HOME", isolated.home())
             .env("GIT_CEILING_DIRECTORIES", repo)
@@ -101,16 +108,12 @@ impl Session {
             .env_remove("GIT_DIR")
             .env_remove("GIT_WORK_TREE")
             .env_remove("NO_COLOR")
-            .env_remove("GRAFT_TRACE")
-            .stdin(Stdio::from(slave.try_clone().expect("slave fd")))
-            .stdout(Stdio::from(slave.try_clone().expect("slave fd")));
-        match stderr {
-            Stderr::Pty => command.stderr(Stdio::from(slave)),
-            Stderr::File(path) => {
-                command.stderr(Stdio::from(File::create(path).expect("a stderr file")))
-            }
-        };
-        session_leader(&mut command, master_fd);
+            .env_remove("GRAFT_TRACE");
+        if let Stderr::File(path) = stderr {
+            command
+                .stderr(Stdio::from(File::create(path).expect("a stderr file")))
+                .env(KEEP_STDERR_VAR, "1");
+        }
         let child = command.spawn().expect("graft starts");
         let master = File::from(pty.master);
         let (output, reading, reader) = read_into_memory(&master);
@@ -125,30 +128,100 @@ impl Session {
     }
 }
 
-/// Start `command` in a new session with its stdin, the pty's slave, as its
-/// controlling terminal — as a shell in a terminal window runs it, so
-/// closing `master_fd` is the window closing.
-fn session_leader(command: &mut Command, master_fd: std::os::fd::RawFd) {
-    #[allow(
-        unsafe_code,
-        reason = "a controlling terminal is only set from pre_exec: close, setsid and \
-                  TIOCSCTTY, each async-signal-safe, touching only the child"
-    )]
-    // SAFETY: the closure makes three async-signal-safe syscalls on the
-    // child's own descriptors and allocates nothing.
-    unsafe {
-        command.pre_exec(move || {
-            // The master is not close-on-exec: left open in Graft, it would
-            // keep the terminal alive after the test closes it.
-            if nix::libc::close(master_fd) < 0
-                || nix::libc::setsid() < 0
-                || nix::libc::ioctl(0, nix::libc::TIOCSCTTY.into(), 0) < 0
-            {
-                return Err(std::io::Error::last_os_error());
-            }
-            Ok(())
-        });
+/// The program [`session_exec_entry`] execs; its arguments are in
+/// `<this>_ARG_<n>`, their count in `<this>_ARGC`. Never in libtest's argv,
+/// which libtest would read as filters.
+pub(crate) const SESSION_EXEC_VAR: &str = "GRAFT_IT_SESSION_EXEC";
+
+/// Set when the caller gave the child its own stderr (a file): fd 2 is then
+/// kept rather than pointed at the pty.
+const KEEP_STDERR_VAR: &str = "GRAFT_IT_SESSION_EXEC_KEEP_STDERR";
+
+fn argc_var() -> String {
+    format!("{SESSION_EXEC_VAR}_ARGC")
+}
+
+fn arg_var(n: usize) -> String {
+    format!("{SESSION_EXEC_VAR}_ARG_{n}")
+}
+
+/// `program args` started as a shell in a terminal window starts it: in a
+/// new session, with `slave` as its controlling terminal and on fds 0, 1
+/// and 2, so closing the master is the window closing.
+///
+/// Only the process itself can take a controlling terminal, after `setsid`.
+/// Rather than doing that between fork and exec (`pre_exec`, which is
+/// `unsafe`), this re-execs the test binary into [`session_exec_entry`]: a
+/// fresh process that does it with safe calls, then execs `program` under
+/// its own pid, so the session leader is `program` itself.
+///
+/// stdin is `slave`. stdout is null, so libtest's own lines never reach the
+/// pty. stderr is inherited, so a failure before the exec shows in the
+/// test's output. The entry points both at the pty just before the exec.
+pub(crate) fn session_command(program: &Path, args: &[OsString], slave: OwnedFd) -> Command {
+    let test_binary = std::env::current_exe().expect("the test binary");
+    // `it::quit_waits::pty_session` → `quit_waits::pty_session`: libtest's
+    // names leave out the crate.
+    let module = module_path!()
+        .split_once("::")
+        .map_or(module_path!(), |(_crate, path)| path);
+    let mut command = Command::new(test_binary);
+    command
+        .args([
+            "--exact",
+            &format!("{module}::session_exec_entry"),
+            "--test-threads=1",
+            "--nocapture",
+        ])
+        .env(SESSION_EXEC_VAR, program)
+        .env(argc_var(), args.len().to_string())
+        .env_remove(KEEP_STDERR_VAR)
+        .stdin(Stdio::from(slave))
+        .stdout(Stdio::null());
+    for (n, arg) in args.iter().enumerate() {
+        command.env(arg_var(n), arg);
     }
+    command
+}
+
+/// The re-exec target of [`session_command`]. In a normal test run
+/// [`SESSION_EXEC_VAR`] is unset and it returns at once. When it is set, the
+/// entry makes this process a session leader, takes fd 0 (the pty's slave)
+/// as its controlling terminal, points fds 1 and 2 at it, and execs the
+/// program, so it never returns.
+#[test]
+fn session_exec_entry() {
+    let Some(program) = std::env::var_os(SESSION_EXEC_VAR) else {
+        return;
+    };
+    let count: usize = std::env::var(argc_var())
+        .expect("the argument count")
+        .parse()
+        .expect("a number");
+    let args: Vec<OsString> = (0..count)
+        .map(|n| std::env::var_os(arg_var(n)).expect("each argument"))
+        .collect();
+    let keep_stderr = std::env::var_os(KEEP_STDERR_VAR).is_some();
+
+    rustix::process::setsid().expect("a new session");
+    let tty = std::io::stdin();
+    rustix::process::ioctl_tiocsctty(&tty).expect("the pty becomes the controlling terminal");
+    rustix::stdio::dup2_stdout(&tty).expect("stdout on the pty");
+    if !keep_stderr {
+        rustix::stdio::dup2_stderr(&tty).expect("stderr on the pty");
+    }
+
+    let mut command = Command::new(&program);
+    command
+        .args(&args)
+        .env_remove(SESSION_EXEC_VAR)
+        .env_remove(argc_var())
+        .env_remove(KEEP_STDERR_VAR);
+    for n in 0..count {
+        command.env_remove(arg_var(n));
+    }
+    let error = command.exec();
+    panic!("could not exec {}: {error}", program.to_string_lossy());
 }
 
 type Reader = (Arc<Mutex<Vec<u8>>>, Arc<AtomicBool>, JoinHandle<()>);
