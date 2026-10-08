@@ -27,6 +27,8 @@ mod history_ops;
 mod in_the_way;
 mod journal_list_oracle;
 mod lost_work;
+#[cfg(unix)]
+mod merge_set_aside;
 mod mistake_radar;
 mod octopus_merge;
 mod ops_execution;

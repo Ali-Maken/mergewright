@@ -135,6 +135,7 @@ fn planned(
     drawn.against = op.tips();
     drawn.set_aside = op
         .sets_aside(facts)
+        .filter(|_| !up_to_date_merge(op, &drawn))
         .map(|aside| aside::shown_aside(op, facts, aside));
     // Only with edits aside: a clean tree spawns nothing more.
     drawn.put_back = match drawn.set_aside {
@@ -150,6 +151,13 @@ fn planned(
         None => None,
     };
     Ok((drawn, sections))
+}
+
+/// A merge that moves no ref: git would answer "Already up to date." and do
+/// nothing, so the box is the nothing-to-do one and nothing is set aside
+/// for it or put back (19d-a2, ADR-0045 §8: `put_back` follows `set_aside`).
+fn up_to_date_merge(op: &Operation, drawn: &PreviewPlan) -> bool {
+    matches!(op, Operation::Merge(_)) && drawn.ref_moves.is_empty()
 }
 
 /// The kind's own picture, before the fields every kind fills the same way;

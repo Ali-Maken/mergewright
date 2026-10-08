@@ -272,6 +272,12 @@ fn capture_relaunch_after_a_stopped_merge() {
     };
     let line = stuck::exit_line_for(forced);
     assert!(line.contains("the merge is paused"), "{line}");
+    // R6 (19d-a2): his edit waits aside while the merge is paused.
+    let merge = stuck::entries(repo)
+        .into_iter()
+        .find(|entry| entry.kind == OperationKind::Merge)
+        .expect("the merge's entry");
+    stuck::assert_his_edit_waits_aside(repo, &merge);
 
     let (app, state) = App::open(repo);
     let state = app.resize(&state, 80, 24);

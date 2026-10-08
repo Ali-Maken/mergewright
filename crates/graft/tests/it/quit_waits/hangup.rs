@@ -22,7 +22,9 @@ use graft_core::journal::{EntryStatus, OperationKind};
 use super::pty_session::{
     Leftovers, PATIENCE, Session, Stderr, assert_no_crash, hook, wait_for_line,
 };
-use super::stuck::{alive, entries, gone_within, locks, pid};
+use super::stuck::{
+    alive, assert_his_edit_waits_aside, entries, gone_within, listed, locks, pid, set_aside_stash,
+};
 use crate::app_harness::{App, git};
 use crate::pty::{Isolated, Pty};
 
@@ -96,8 +98,9 @@ fn merging(
 
 /// The merge is paused on disk, as the stuck write's `q y` leaves it:
 /// `MERGE_HEAD` the source, `HEAD` unmoved, no lock, git and the hook gone,
-/// the entry `Pending`.
-fn assert_paused(repo: &Path, merging: &Merging) {
+/// the entry `Pending`, and his edit waiting aside — `S` listed, the tree
+/// at `HEAD`'s copy (R6, 19d-a2). Answers `S`, for the abort to see dropped.
+fn assert_paused(repo: &Path, merging: &Merging) -> String {
     let merge_head = std::fs::read_to_string(repo.join(".git/MERGE_HEAD"))
         .unwrap_or_else(|why| panic!("the merge is paused: {why}"));
     assert_eq!(merge_head.trim(), merging.before.source);
@@ -120,6 +123,8 @@ fn assert_paused(repo: &Path, merging: &Merging) {
         .collect();
     assert_eq!(merges.len(), 1, "{merges:?}");
     assert_eq!(merges[0].status, EntryStatus::Pending);
+    assert_his_edit_waits_aside(repo, &merges[0]);
+    set_aside_stash(&merges[0])
 }
 
 /// 13d's observation, red before 13g with exit 101 after ~0.05 s: stderr on
@@ -253,7 +258,7 @@ fn a_hangup_then_a_second_hangup_leaves_the_merge_paused() {
 
     assert!(took <= FORCED_WAIT, "{took:?}");
     assert_eq!(status.signal(), Some(SIGHUP), "{status:?}");
-    assert_paused(&repo, &merging);
+    let stash = assert_paused(&repo, &merging);
     let text = std::fs::read_to_string(&said).expect("stderr");
     assert!(
         text.contains("the merge is paused \u{b7} graft here offers continue or abort"),
@@ -264,6 +269,7 @@ fn a_hangup_then_a_second_hangup_leaves_the_merge_paused() {
 
     capture_the_relaunch(&repo);
     relaunch_and_abort(&isolated, &repo, &merging.before);
+    assert!(!listed(&repo, &stash), "S is dropped");
 }
 
 /// The next launch at 120x40, through the harness at a fixed clock and a
@@ -380,6 +386,7 @@ fn a_hangup_with_a_stuck_hook_is_stopped_after_the_wait_and_left_paused() {
 
     assert!(took <= EXIT_WRITE_WAIT + FORCED_WAIT, "{took:?}");
     assert_eq!(status.signal(), Some(SIGHUP), "{status:?}");
+    // `S` stays listed: no resume follows here.
     assert_paused(&repo, &merging);
     assert_no_crash(&isolated);
 }

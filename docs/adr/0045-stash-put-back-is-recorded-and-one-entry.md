@@ -290,3 +290,51 @@ or one that touches none of his files sets nothing aside. When it does set aside
 (§4 is all-or-nothing); untracked never. Verified by `a_ff_pull_over_overlapping_edits_sets_them_aside`,
 `a_diverged_pull_over_edits_sets_nothing_aside`, `a_pull_whose_fetch_fails_journals_as_today`,
 `the_ff_pull_entry_is_one_entry_and_u_restores_edits` (`crates/graft-ops/tests/it/pull_set_aside.rs`), per 03 NOTES -b.
+
+## Amended 2026-10-08 (19d) — a merge sets aside
+
+Ticket `.scratch/m8-polish-and-ship/issues/19d-merge-dirty-tree-and-tour-order.md` R1. §4's kinds list gains **`Merge`**,
+with the cherry-pick rule (11a): over any changed tracked file, staged or unstaged, `sets_aside` is `Some` and **every**
+changed tracked file is set aside — fast-forward or not, `--ff-only` or not. Untracked files are never set aside.
+`touches` adds `refs/stash` when it is `Some` (`crates/graft-ops/src/operation.rs`, the `sets_aside` and `touches`
+arms). `check_merge` gains no `DirtyTree` refusal. The order is §4's, unchanged; a merge that **stops** keeps `S` until
+`resume` ends it, and each end — `Continue`, `ContinueWith` (the finish screen's commit) and `Abort` (back onto the old
+tip) — runs the same put-back, in the same entry. The preview forecasts the put-back (§8): the landed commit is the
+source on a fast-forward, else the merged tree of `merge-tree --merge-base=<merge-base>` made a scratch commit
+(`preview/put_back.rs` `merge_landed`); `NotChecked("the merge may stop first")` when the merge's own forecast is not
+clean. The app draws the rows rebase and cherry-pick draw, in their words; the put-back clash notice says `u undoes the
+merge too`.
+
+**Why every file, not only the overlap.** git refuses a true merge over **any** staged change, even to a file the merge
+does not touch (`Your local changes to the following files would be overwritten by merge`, reproduced on git 2.54 —
+the red of `a_merge_over_a_staged_change_git_would_refuse_goes_through`), and the paths a merge touches need a read
+of the commits, which `sets_aside` makes none of. The cherry-pick precedent (11a) is the same rule for the same reason.
+
+**Why not refuse (`DirtyTree`).** The end-of-M6 pick (`docs/field-notes.md` :67, the ticket's "pick 16") chose
+"set them aside and put them back" for a switch or pull-rebase over unsaved edits; merge was not named and fell through. Refusing costs about 9 steps (`S s ⏎`, back, `m y`, `S p y`) against
+2 (`m y`).
+
+Verified by `crates/graft-ops/tests/it/merge_set_aside.rs`:
+`a_merge_over_a_staged_change_git_would_refuse_goes_through`, `a_merge_puts_unstaged_edits_back_after`,
+`a_merge_over_a_clean_tree_sets_nothing_aside`, `untracked_files_alone_set_nothing_aside`,
+`a_stopped_merge_finished_puts_the_edits_back`, `a_stopped_merge_continued_puts_the_edits_back`,
+`a_stopped_merge_aborted_puts_the_edits_back`, `a_merge_put_back_that_clashes_stops_as_a_clash`,
+`undo_of_a_set_aside_merge_round_trips`, `redo_of_a_set_aside_merge_round_trips`,
+`a_stop_anywhere_in_a_set_aside_merge_keeps_the_edits`, `the_merge_preview_forecasts_the_put_back`; in graft,
+`m6_stash_put_back::set_aside::merge_over_staged_edits_previews_and_puts_back` and
+`update::clash::tests::a_merge_put_back_clash_notice_names_the_merge`. The pull keeps its own rule (03b): a
+fast-forward goes through a staged change it does not touch (`pull_set_aside::an_ff_pull_over_an_untouched_staged_change_goes_through`).
+
+**19d-a2 (ticket R6).** The put-back forecast costs **5** git spawns on a true merge and **3** on a fast-forward, measured
+(`PUT_BACK_SPAWNS`, `FF_PUT_BACK_SPAWNS` in `the_merge_preview_forecasts_the_put_back`); R1's "≤ 4" is amended to those.
+A merge that moves no ref (git: "Already up to date.") sets nothing aside and forecasts no put-back: its box is the
+nothing-to-do one (`preview::plan`, `up_to_date_merge`; `an_up_to_date_merge_over_edits_sets_nothing_aside`). **The
+set-aside close keeps the stop's mark and reason**, in the close every set-aside kind shares: an operation that landed
+before its hook was stopped answers `StoppedAt::Landed`, and one stopped before git could pause it is `Aborted`
+`stopped before git could pause it` — `stop_hooks::a_merge_stopped_in_its_post_merge_hook_has_landed`,
+`stop_hooks::a_merge_stopped_before_git_paused_it_is_aborted_and_u_puts_it_back`,
+`cherry_pick::a_pick_over_edits_stopped_after_it_committed_has_landed`,
+`cherry_pick::a_pick_over_edits_stopped_before_git_paused_it_says_so`. A merge paused in its hook keeps `S` listed
+and the tree at `HEAD`'s copy until `resume` puts the edits back (§4, as a stopped rebase). The clash notice words
+each kind from the journal's kind name, a checkout and a switching create keeping the shipped `switch`
+(`update::clash::tests::the_clash_notice_names_each_set_aside_kind`).

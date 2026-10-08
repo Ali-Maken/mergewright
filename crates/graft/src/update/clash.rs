@@ -7,7 +7,7 @@
 //! `stopped` changes; only the stop line reads both.
 
 use graft_core::job::JobId;
-use graft_core::journal::{EntryId, JournalEntry, PutBackWhy};
+use graft_core::journal::{EntryId, JournalEntry, OperationKind, PutBackWhy};
 use graft_ops::clash::{Clash, StashClash, clash_candidate, live_clash};
 use graft_ops::operation::Operation;
 use graft_term::sanitize_line;
@@ -216,6 +216,13 @@ pub(super) fn clashed(
                     .map(|(_, index)| *index)
             }),
         };
+    // A set-aside's `u` takes back the operation it was set aside around:
+    // the launched one, or — with nothing launched, from the `c` that
+    // finished a stopped rebase or merge — the journal's entry.
+    let kind = match launched {
+        Some(op) => Some(op.kind()),
+        None => entry_kind(state, &entry),
+    };
     state.clash = Some(ClashState {
         clash: StashClash {
             entry,
@@ -233,15 +240,7 @@ pub(super) fn clashed(
     let Some(first) = clash.paths.first().cloned() else {
         return commands;
     };
-    // A set-aside's `u` takes back the operation it was set aside around:
-    // a checkout's or a new branch's switch, else a rebase — the one kind
-    // that also reaches here with nothing launched, from the `c` that
-    // finished it.
-    let what = match launched {
-        Some(Operation::Checkout(_) | Operation::BranchCreate(_)) => "switch",
-        _ => "rebase",
-    };
-    let undoes = (clash.why == PutBackWhy::SetAside).then_some(what);
+    let undoes = (clash.why == PutBackWhy::SetAside).then(|| undone_with_edits(kind));
     let notice = notice_words(index, clash.paths.len(), undoes, &state.keymap);
     if super::resolver::land_on_clash(state, &mut commands, first, next_id) {
         super::resolver::set_notice(state, (notice, false));
@@ -274,8 +273,8 @@ pub(crate) fn stash_name(state: &AppState) -> Option<String> {
 
 /// The landing's notice: `stash@{0} clashed in 2 files · esc, u puts it all
 /// back`. A set-aside's names the edits and the operation `u` undoes with
-/// them (`undoes`: `rebase`, `switch`): `your edits clashed in 2 files ·
-/// esc, u undoes the rebase too` (m6-conflicts/74).
+/// them (`undoes`: `rebase`, `switch`, `merge`): `your edits clashed in 2
+/// files · esc, u undoes the rebase too` (m6-conflicts/74).
 fn notice_words(
     index: Option<usize>,
     files: usize,
@@ -320,26 +319,76 @@ pub(crate) fn undo_clause_words(
 
 /// [`undo_clause_words`] for the clash standing, or `None` with no clash.
 /// A set-aside's operation is read off the journal entry that put the edits
-/// back — a checkout's or a new branch's switch, else a rebase, as
-/// [`clashed`] words it at the landing.
+/// back, as [`clashed`] words it at the landing.
 #[must_use]
 pub(crate) fn undo_clause(state: &AppState) -> Option<String> {
     let clash = state.clash.as_ref()?;
-    let undoes = (clash.clash.why == PutBackWhy::SetAside).then(|| {
-        // Only a switching create sets edits aside, so a `BranchCreate`
-        // entry here is a switch (10b).
-        let checkout = matches!(&state.journal.entries, Loading::Ready(read)
-        if read.entries.iter().any(|entry| {
-            entry.id == clash.clash.entry
-                && matches!(
-                    entry.kind,
-                    graft_core::journal::OperationKind::Checkout
-                        | graft_core::journal::OperationKind::BranchCreate
-                )
-        }));
-        if checkout { "switch" } else { "rebase" }
-    });
+    let undoes = (clash.clash.why == PutBackWhy::SetAside)
+        .then(|| undone_with_edits(entry_kind(state, &clash.clash.entry)));
     undo_clause_words(undoes, &state.keymap)
+}
+
+/// The kind of the journal entry `id`, when the journal read holds it.
+fn entry_kind(state: &AppState, id: &EntryId) -> Option<OperationKind> {
+    let Loading::Ready(read) = &state.journal.entries else {
+        return None;
+    };
+    read.entries
+        .iter()
+        .find(|entry| entry.id == *id)
+        .map(|entry| entry.kind)
+}
+
+/// What a set-aside's `u` takes back with the edits, in the notice's
+/// words: the entry's own kind name (graft-ops `apply::kind_name`, the
+/// journal's), so a cherry-pick says `cherry-pick` and a pull `pull`
+/// (m8-polish-and-ship/19d-a2). A checkout and a switching create (only a
+/// switching create sets edits aside, 10b) keep the shipped `switch`.
+///
+/// Every kind is named, no catch-all: a kind added later is worded here
+/// on purpose. A kind not known — the journal read does not hold the entry
+/// — still says `rebase`, the word this notice had before it read kinds
+/// (NOTES 19d-a2).
+fn undone_with_edits(kind: Option<OperationKind>) -> &'static str {
+    let Some(kind) = kind else {
+        return "rebase";
+    };
+    match kind {
+        OperationKind::Checkout | OperationKind::BranchCreate => "switch",
+        // The kinds that set edits aside (graft-ops `Operation::sets_aside`).
+        OperationKind::Rebase
+        | OperationKind::Rewrite
+        | OperationKind::CherryPick
+        | OperationKind::Pull
+        | OperationKind::Recover
+        | OperationKind::Merge
+        // The rest never carry a `SetAside` put-back; were one to, its own
+        // name is still the truest word.
+        | OperationKind::Stage
+        | OperationKind::Unstage
+        | OperationKind::Discard
+        | OperationKind::Commit
+        | OperationKind::Amend
+        | OperationKind::StashPush
+        | OperationKind::StashApply
+        | OperationKind::StashPop
+        | OperationKind::StashDrop
+        | OperationKind::Fetch
+        | OperationKind::Push
+        | OperationKind::Revert
+        | OperationKind::Reset
+        | OperationKind::BranchDelete
+        | OperationKind::TagCreate
+        | OperationKind::TagDelete
+        | OperationKind::BranchFromStash
+        | OperationKind::ResolveConflict
+        | OperationKind::RestartConflict
+        | OperationKind::FinishMerge
+        | OperationKind::AbortMerge
+        | OperationKind::RevertTo
+        | OperationKind::Undo
+        | OperationKind::Redo => graft_ops::apply::kind_name(kind),
+    }
 }
 
 /// The stop line's wordings while a clash is open and nothing is stopped,

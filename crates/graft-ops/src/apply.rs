@@ -59,7 +59,8 @@ pub use set_aside::{came_back_from_index, came_back_words};
 pub use stopped::StoppedAt;
 
 pub(crate) use error::{as_apply_error, reason_for};
-pub(crate) use record::{Opening, Pending, PrepareError, begin, finish, kind_name};
+pub use record::kind_name;
+pub(crate) use record::{Opening, Pending, PrepareError, begin, finish};
 pub(crate) use restart::{RestartPrep, prepare_restart, run_restart_prep};
 
 use close::closed;

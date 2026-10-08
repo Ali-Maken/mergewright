@@ -1454,8 +1454,8 @@ impl Operation {
         }
     }
 
-    /// What a rebase, rewrite, cherry-pick, previewed switch or switching
-    /// create away from `HEAD` would set aside before it runs and put back
+    /// What a rebase, rewrite, cherry-pick, merge, previewed switch or
+    /// switching create away from `HEAD` would set aside before it runs and put back
     /// after (ADR-0045 §4): `Some` when tracked files are changed,
     /// staged or not; `None` on a clean tree, over untracked files only
     /// (they stay where they are), and for every other kind. Pure over the
@@ -1471,10 +1471,15 @@ impl Operation {
     /// read from [`RepoFacts::incoming`] after its fetch; then it sets aside
     /// every changed tracked file, as a rebase does. Diverged, up to date,
     /// no overlap, or not fetched yet: `None`, and git's own words.
+    ///
+    /// A merge (m8-polish-and-ship/19d) wraps as a cherry-pick does: any
+    /// changed tracked file, fast-forward or not. git refuses a true merge
+    /// over any staged change, even one the merge does not touch, and the
+    /// paths it touches need a read of the commits, which this makes none of.
     #[must_use]
     pub fn sets_aside(&self, facts: &RepoFacts) -> Option<SetAside> {
         let wraps = match self {
-            Self::Rebase(_) | Self::Rewrite(_) | Self::CherryPick(_) => true,
+            Self::Rebase(_) | Self::Rewrite(_) | Self::CherryPick(_) | Self::Merge(_) => true,
             Self::Pull(_) => remote::pull_overlaps(facts),
             // A switch sets aside only when it was previewed (the switch
             // rule, m7-power-tools/10b); a new branch at `HEAD`'s own commit
@@ -1855,7 +1860,7 @@ impl Operation {
             // branch is recorded all the same: a commit made on it since is
             // drift, and putting the merge back onto another `HEAD` would
             // be a merge nobody began.
-            Self::Merge(_) | Self::Revert(_) | Self::FinishMerge(_) | Self::AbortMerge(_) => {
+            Self::Revert(_) | Self::FinishMerge(_) | Self::AbortMerge(_) => {
                 (vec![commit::head_ref_name(&facts.head)], true, true)
             }
             // A set-aside records `refs/stash` too: its before and after
@@ -1864,11 +1869,11 @@ impl Operation {
             //
             // A rebase's branches built on his join these in `apply`, which
             // finds them when it runs (`apply::engine`). A cherry-pick sets
-            // aside as a rebase does (m7-power-tools/11a), and so does a pull
-            // (m7-power-tools/03b). A pull never records the tracking ref:
-            // undo must not move it back, since the remote still has those
-            // commits.
-            Self::Rebase(_) | Self::CherryPick(_) | Self::Pull(_) => {
+            // aside as a rebase does (m7-power-tools/11a), and so do a pull
+            // (m7-power-tools/03b) and a merge (m8-polish-and-ship/19d). A
+            // pull never records the tracking ref: undo must not move it
+            // back, since the remote still has those commits.
+            Self::Rebase(_) | Self::CherryPick(_) | Self::Pull(_) | Self::Merge(_) => {
                 let mut refs = vec![commit::head_ref_name(&facts.head)];
                 refs.extend(self.stash_ref_if_set_aside(facts));
                 (refs, true, true)
