@@ -20,6 +20,7 @@ mod box_owns_the_bar;
 mod budget_run;
 mod captures;
 mod changes_pane_writes;
+mod clock_pin;
 mod commit_editor_writes;
 mod conflict_interim;
 mod context_menu;

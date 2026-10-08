@@ -104,6 +104,12 @@ impl Isolated {
     }
 }
 
+/// The instant every pty run's session clock is pinned to unless the test
+/// names `GRAFT_NOW` itself (m8/19d-b): 2026-10-08 00:00 UTC, the day the
+/// pin landed, so ages drawn against the fixtures' 2021 dates read as the
+/// committed captures were shot, and never roll with the calendar.
+pub const PINNED_NOW: i64 = 1_791_417_600;
+
 impl Pty {
     /// Start `graft <arg>` in `cwd` on a `columns`x`rows` pty, isolated by
     /// `isolated`. `GIT_CEILING_DIRECTORIES` stops git's search at `ceiling`
@@ -206,6 +212,8 @@ impl Pty {
             .env_remove("GIT_WORK_TREE")
             .env_remove("NO_COLOR")
             .env_remove("GRAFT_TRACE")
+            // Set before `env`, so a caller naming `GRAFT_NOW` wins.
+            .env("GRAFT_NOW", PINNED_NOW.to_string())
             .envs(env.iter().map(|(name, value)| (*name, value)))
             .stdin(Stdio::from(slave.try_clone().expect("slave fd")))
             .stdout(Stdio::from(slave))

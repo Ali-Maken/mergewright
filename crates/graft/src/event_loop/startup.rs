@@ -350,7 +350,9 @@ pub(super) fn run_repo(
     // The worktree root, for the directory `$EDITOR` is started in and the
     // root a porcelain path is joined onto (m3/05 review, Major 2).
     let workdir = repos.workdir().ok().flatten();
-    let jobs = JobRunner::with_default_size(sender.clone(), repos)?;
+    // Journal stamps follow the session clock, as the drawn ages do
+    // (`GRAFT_NOW`, m8/19d-b).
+    let jobs = JobRunner::with_default_size(sender.clone(), repos)?.with_clock(harness.clock);
     let redetector = start_redetector(&term.environment, mux, &settled, &sender)?;
     let resizes = signals::watch_resizes(sender.clone(), redetector.clone())?;
     let Listening {

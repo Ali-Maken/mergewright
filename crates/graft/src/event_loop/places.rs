@@ -113,10 +113,15 @@ pub fn locate(path: &Path, config: &Loaded) -> Result<Place, String> {
 ///
 /// # Errors
 /// A place could not be set up, or the terminal could not be restored.
-pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Exit> {
+pub fn drive(
+    mut term: Terminal,
+    mut place: Place,
+    config: &Loaded,
+    clock: Clock,
+) -> io::Result<Exit> {
     let config_dir = recent::config_dir();
-    let mut place = first;
-    let mut carried = Carried::first(config, term.capabilities.no_color, config_dir.as_deref());
+    let no_color = term.capabilities.no_color;
+    let mut carried = Carried::first(config, no_color, config_dir.as_deref(), clock);
     let mut practice: Option<Practice> = None;
     // Every place lands on `HEAD`: the first, where Graft was started, as
     // much as every later one opened from it (note Lands row "Open / init
@@ -141,7 +146,7 @@ pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Ex
                     repos,
                     &path,
                     config,
-                    Harness::default(),
+                    carried.harness(),
                     arrival,
                     Some(&carried.first_launch),
                 )?;
@@ -257,10 +262,10 @@ fn practise(
     // Never two: a tour started from inside one (the palette refuses that
     // first, `update::tour::start_from_palette`) ends the first.
     let _left: Option<Open> = leave_practice(practice, carried);
-    // Read at the tour's start, not at launch (m8/19c R2). The shipped
-    // binary's session clock is `Clock::Wall`.
+    // Read at the tour's start, not at launch (m8/19c R2). `now` is the
+    // session clock: `Wall` unless `GRAFT_NOW` pins it (m8/19d-b).
     let var = std::env::var_os(PRACTICE_EPOCH_VAR);
-    let at = match practice_at(var.as_deref(), Clock::Wall.now_seconds()) {
+    let at = match practice_at(var.as_deref(), carried.clock.now_seconds()) {
         Ok(at) => at,
         Err(words) => {
             say(carried, &format!("tour: {words}"));
@@ -432,10 +437,13 @@ struct Carried {
     /// The next place is the way back from the tour (or from a tour that
     /// could not start): not put on the recent list again (§A6).
     returning: bool,
+    /// The session clock, for the whole process (`GRAFT_NOW`, m8/19d-b):
+    /// every repository's harness and the practice repo's `now`.
+    clock: Clock,
 }
 
 impl Carried {
-    fn first(config: &Loaded, no_color: bool, config_dir: Option<&Path>) -> Self {
+    fn first(config: &Loaded, no_color: bool, config_dir: Option<&Path>, clock: Clock) -> Self {
         let Arrival {
             keymap,
             config_problems,
@@ -452,6 +460,7 @@ impl Carried {
             practice: false,
             tour_done: false,
             returning: false,
+            clock,
         }
     }
 
@@ -459,6 +468,14 @@ impl Carried {
     /// problem, then what the last place handed on — never a clone's notice
     /// (a clone opens a repository), but said where this screen says
     /// problems all the same — then the tour's finish.
+    /// The shipped harness, on this process's session clock.
+    fn harness(&self) -> Harness {
+        Harness {
+            clock: self.clock,
+            ..Harness::default()
+        }
+    }
+
     fn outside_problem(&mut self, problem: Option<String>) -> Option<String> {
         self.returning = false;
         let problem = joined(problem, self.notice.take());
