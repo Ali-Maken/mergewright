@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use graft_core::journal::{EntryId, HeadRef, IndexState, OperationKind, Touches};
+use graft_term::sanitize::SanitizedText;
 
 use super::*;
 use crate::jobs::undo::JournalRead;
@@ -310,6 +311,234 @@ fn an_aborted_entry_reads_aborted_by_you() {
     let summary = view.rows[0].summary.as_str();
     assert_eq!(summary, "aborted by you · nothing changed");
     assert!(!summary.contains("failed"), "{summary}");
+}
+
+/// The 21b-3 probe's reason: the second remote is not there.
+const GONE: &str = "no repository at '/nonexistent/gone.git', or no access to it";
+
+/// `refs/remotes/origin/<name>` moved from `before` to `after` (`None` =
+/// absent: new / gone).
+fn moves(
+    list: &[(&str, Option<u8>, Option<u8>)],
+) -> std::collections::BTreeMap<String, graft_core::journal::RefMove> {
+    list.iter()
+        .map(|(name, before, after)| {
+            (
+                (*name).to_owned(),
+                graft_core::journal::RefMove {
+                    before: before.map(oid),
+                    after: after.map(oid),
+                },
+            )
+        })
+        .collect()
+}
+
+/// `fetch all remotes` as `apply` closes it: no refs touched, no backup,
+/// `fetched_refs` as given, `Aborted` with `reason` when there is one.
+fn fetch_entry(
+    n: i64,
+    reason: Option<&str>,
+    fetched: Option<std::collections::BTreeMap<String, graft_core::journal::RefMove>>,
+) -> JournalEntry {
+    let mut fetch = remote_entry(n, OperationKind::Fetch, "fetch all remotes", Vec::new());
+    fetch.index_after = fetch.index_before;
+    fetch.commands = vec!["git fetch --progress --all".to_owned()];
+    if let Some(reason) = reason {
+        fetch.status = EntryStatus::Aborted {
+            reason: reason.to_owned(),
+        };
+    }
+    fetch.fetched_refs = fetched;
+    fetch
+}
+
+/// The 21b-3 probe (ADR-0062): `origin/main` moved, then the second remote
+/// failed. The row says what failed and what moved, and is not `refused ·
+/// nothing written` — a ref moved — nor `← u`: `u` steps over a fetch.
+#[test]
+fn a_partial_fetch_row_names_what_moved_and_is_not_refused() {
+    let fetch = fetch_entry(
+        2,
+        Some(GONE),
+        Some(moves(&[(
+            "refs/remotes/origin/main",
+            Some(0xa1),
+            Some(0x9f),
+        )])),
+    );
+    let state = state_with(vec![
+        entry(1, OperationKind::Stage, "stage src/a.rs"),
+        fetch,
+    ]);
+    let view = journal_view(&state, 10);
+    let row = &view.rows[0];
+    assert_eq!(
+        row.mark,
+        RowMark::None,
+        "{:?}",
+        row.mark.label(&state.keymap)
+    );
+    assert_eq!(
+        row.summary.as_str(),
+        format!("failed: {GONE} · origin/main moved before it stopped · not undoable"),
+    );
+    assert_eq!(
+        view.rows[1].mark,
+        RowMark::NextUndo,
+        "`u` reaches the stage"
+    );
+}
+
+/// A fetch whose remotes all failed before any ref moved (`Some({})`) wrote
+/// nothing: its row, mark and words are exactly what they were before
+/// ADR-0062 — `failed: <git's first line>`, `refused · nothing written`.
+#[test]
+fn a_fetch_that_moved_nothing_reads_as_today() {
+    let state = state_with(vec![fetch_entry(
+        2,
+        Some(GONE),
+        Some(std::collections::BTreeMap::new()),
+    )]);
+    let view = journal_view(&state, 10);
+    let row = &view.rows[0];
+    assert_eq!(row.mark, RowMark::Refused);
+    assert_eq!(row.summary.as_str(), format!("failed: {GONE}"));
+    assert_eq!(
+        row.failure.as_ref().map(SanitizedText::as_str),
+        Some(format!("failed: {GONE}").as_str())
+    );
+    assert!(row.moved.is_empty(), "{:?}", row.moved);
+}
+
+/// A finished fetch says what it moved, or that it brought nothing new.
+#[test]
+fn a_committed_fetch_reads_nothing_new_not_undoable() {
+    let nothing = fetch_entry(1, None, Some(std::collections::BTreeMap::new()));
+    let some = fetch_entry(
+        2,
+        None,
+        Some(moves(&[
+            ("refs/remotes/origin/feat", None, Some(0x9f)),
+            ("refs/remotes/origin/main", Some(0xa1), Some(0x9f)),
+            ("refs/tags/v1.2", None, Some(0x9f)),
+        ])),
+    );
+    let state = state_with(vec![nothing, some]);
+    let view = journal_view(&state, 10);
+    let rows: Vec<(&str, RowMark)> = view
+        .rows
+        .iter()
+        .map(|row| (row.summary.as_str(), row.mark))
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            (
+                "origin/feat new, origin/main moved +1 more · not undoable",
+                RowMark::None
+            ),
+            ("nothing new · not undoable", RowMark::None),
+        ]
+    );
+}
+
+/// A line written before ADR-0062 has no `fetched_refs`: what its fetch
+/// moved is unknown, and unknown is not "nothing", so an `Aborted` one is
+/// no longer `refused · nothing written`. Its words are today's: `failed:
+/// …` alone when it failed (`with_failure` keeps only the failure), and
+/// `remote-tracking refs · not undoable` when it finished.
+#[test]
+fn an_old_aborted_fetch_line_is_not_refused() {
+    let state = state_with(vec![
+        fetch_entry(1, None, None),
+        fetch_entry(2, Some(GONE), None),
+    ]);
+    let view = journal_view(&state, 10);
+    let failed = &view.rows[0];
+    assert_eq!(failed.mark, RowMark::None);
+    assert_eq!(failed.summary.as_str(), format!("failed: {GONE}"));
+    assert!(failed.moved.is_empty(), "{:?}", failed.moved);
+    let finished = &view.rows[1];
+    assert_eq!(finished.mark, RowMark::None);
+    assert_eq!(
+        finished.summary.as_str(),
+        "remote-tracking refs · not undoable"
+    );
+}
+
+/// A pull's fetch moved its tracking ref: the row says so after today's
+/// words, `before it stopped` when the pull failed. Nothing when its fetch
+/// moved nothing.
+#[test]
+fn a_pull_row_ends_with_its_moves() {
+    let pull = |n: i64, reason: Option<&str>, fetched| {
+        let mut pull = remote_entry(
+            n,
+            OperationKind::Pull,
+            "pull origin/main",
+            vec!["refs/heads/main".to_owned()],
+        );
+        if let Some(reason) = reason {
+            pull.status = EntryStatus::Aborted {
+                reason: reason.to_owned(),
+            };
+        }
+        pull.fetched_refs = fetched;
+        pull
+    };
+    let main = || moves(&[("refs/remotes/origin/main", Some(0xa1), Some(0x9f))]);
+    let state = state_with(vec![
+        pull(1, None, Some(main())),
+        pull(2, None, Some(std::collections::BTreeMap::new())),
+        pull(
+            3,
+            Some("fatal: Not possible to fast-forward, aborting."),
+            Some(main()),
+        ),
+    ]);
+    let view = journal_view(&state, 10);
+    let rows: Vec<&str> = view.rows.iter().map(|row| row.summary.as_str()).collect();
+    assert_eq!(
+        rows,
+        [
+            "failed: fatal: Not possible to fast-forward, aborting. · 1 ref · origin/main moved before it stopped",
+            "1 ref",
+            "1 ref · origin/main moved",
+        ]
+    );
+    assert_eq!(
+        view.rows[0].mark,
+        RowMark::None,
+        "a failed pull whose fetch moved a ref wrote something"
+    );
+}
+
+/// The expanded row's list (box 10's other half): one line per moved ref,
+/// at most twenty, then `+N more` — `graft_ops::journal::moved_lines`'
+/// words, which `graft-ui` draws as it gets them.
+#[test]
+fn an_expanded_fetch_row_carries_at_most_twenty_moves() {
+    let names: Vec<String> = (0..25)
+        .map(|n| format!("refs/remotes/origin/b{n:02}"))
+        .collect();
+    let many = moves(
+        &names
+            .iter()
+            .map(|name| (name.as_str(), Some(0xa1), Some(0x9f)))
+            .collect::<Vec<_>>(),
+    );
+    let state = state_with(vec![fetch_entry(1, Some(GONE), Some(many))]);
+    let view = journal_view(&state, 10);
+    let moved: Vec<&str> = view.rows[0]
+        .moved
+        .iter()
+        .map(SanitizedText::as_str)
+        .collect();
+    assert_eq!(moved.len(), 21, "{moved:?}");
+    assert_eq!(moved[0], "origin/b00  a1a1a1a → 9f9f9f9");
+    assert_eq!(moved[19], "origin/b19  a1a1a1a → 9f9f9f9");
+    assert_eq!(moved[20], "+5 more");
 }
 
 /// m8-polish-and-ship/20 item 11: a refused pull or rejected push wrote

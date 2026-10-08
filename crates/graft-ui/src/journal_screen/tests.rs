@@ -46,6 +46,11 @@ fn lost(words: &str, under: usize) -> JournalRowView {
 
 /// The drawn grid, one string per line, trailing blanks trimmed.
 fn draw(view: &JournalView, width: u16, height: u16) -> Vec<String> {
+    draw_with(view, width, height, Keymap::shipped())
+}
+
+/// [`draw`] under `keys`.
+fn draw_with(view: &JournalView, width: u16, height: u16, keys: &Keymap) -> Vec<String> {
     let theme = theme();
     let mut terminal =
         Terminal::new(TestBackend::new(width, height)).expect("the test backend starts");
@@ -55,7 +60,7 @@ fn draw(view: &JournalView, width: u16, height: u16) -> Vec<String> {
                 JournalScreen {
                     view,
                     theme: &theme,
-                    keys: Keymap::shipped(),
+                    keys,
                 },
                 frame.area(),
             );
@@ -94,7 +99,7 @@ fn view(rows: Vec<JournalRowView>, status: JournalStatus) -> JournalView {
 fn mock_rows() -> Vec<JournalRowView> {
     vec![
         JournalRowView {
-            summary: sanitize("remote-tracking refs · not undoable"),
+            summary: sanitize("origin/main moved · not undoable"),
             ..row("2m ago", "fetch all remotes", RowMark::None)
         },
         outside(
@@ -168,6 +173,92 @@ fn an_aborted_rows_reason_is_shown_in_full_when_it_is_expanded() {
     assert!(grid[2].contains("failed: hook rejected"), "{grid:?}");
     assert!(grid[3].contains(COMMANDS_HEADING), "{grid:?}");
     assert!(grid[4].contains("┆ git commit"), "{grid:?}");
+}
+
+/// ADR-0062: an expanded fetch row lists the refs its fetch moved, between
+/// its failure and its Command Log, under a heading that says `u` leaves
+/// them where they are — every line the caller gives (`graft` caps them at
+/// twenty and a `+N more`), `┆ `-led like the commands. Collapsed, none.
+#[test]
+fn an_expanded_fetch_row_lists_its_moves() {
+    let fetch = fetch_with_moves();
+    let expanded = view(vec![fetch.clone()], JournalStatus::Ready);
+    let grid = draw(&expanded, 120, 40);
+    let lines: Vec<&str> = grid.iter().map(|line| line.trim_start()).collect();
+    let heading = lines
+        .iter()
+        .position(|line| line.starts_with("refs the fetch moved"))
+        .unwrap_or_else(|| panic!("no heading: {grid:#?}"));
+    assert_eq!(
+        lines[heading],
+        "refs the fetch moved · u does not move them back"
+    );
+    assert!(
+        lines[heading - 1].starts_with("failed: no repository"),
+        "after the failure: {grid:#?}"
+    );
+    for n in 0..20 {
+        assert_eq!(
+            lines[heading + 1 + n],
+            format!("┆ origin/b{n:02}  a1b2c3d → e4f5a6b"),
+            "{grid:#?}"
+        );
+    }
+    assert_eq!(lines[heading + 21], "┆ +5 more", "{grid:#?}");
+    assert_eq!(lines[heading + 22], COMMANDS_HEADING, "{grid:#?}");
+    assert_eq!(lines[heading + 23], "┆ git fetch --progress --all");
+
+    // Collapsed: no heading, no moves.
+    let collapsed = view(
+        vec![JournalRowView {
+            expanded: false,
+            ..fetch
+        }],
+        JournalStatus::Ready,
+    );
+    let grid = draw(&collapsed, 120, 40);
+    assert!(
+        !grid
+            .iter()
+            .any(|line| line.contains("refs the fetch moved") || line.contains("┆ origin/")),
+        "{grid:#?}"
+    );
+}
+
+/// The expanded fetch row both tests above and below draw: twenty moves
+/// and a `+5 more`, a failure, one command.
+fn fetch_with_moves() -> JournalRowView {
+    let mut moved: Vec<SanitizedText> = (0..20)
+        .map(|n| sanitize(&format!("origin/b{n:02}  a1b2c3d → e4f5a6b")))
+        .collect();
+    moved.push(sanitize("+5 more"));
+    JournalRowView {
+        summary: sanitize(
+            "failed: no repository at '/x' · origin/b00 moved +24 more before it stopped",
+        ),
+        failure: Some(sanitize(
+            "failed: no repository at '/x', or no access to it",
+        )),
+        commands: vec![sanitize("git fetch --progress --all")],
+        moved,
+        expanded: true,
+        ..row("2m ago", "fetch all remotes", RowMark::None)
+    }
+}
+
+/// `app.undo` unbound: the moved list's heading is its first clause alone,
+/// naming no key that does nothing.
+#[test]
+fn the_moved_heading_names_no_unbound_undo_key() {
+    let unbound = crate::test_support::unbound(&["app.undo"]);
+    assert_eq!(moved_heading(&unbound), "refs the fetch moved");
+    let expanded = view(vec![fetch_with_moves()], JournalStatus::Ready);
+    let grid = draw_with(&expanded, 120, 40, &unbound);
+    assert!(
+        grid.iter()
+            .any(|line| line.trim_start() == "refs the fetch moved"),
+        "{grid:#?}"
+    );
 }
 
 #[test]

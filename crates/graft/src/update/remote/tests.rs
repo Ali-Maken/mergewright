@@ -461,6 +461,46 @@ fn progress_reaches_the_line_and_narrows() {
     );
 }
 
+/// ADR-0062, 21c B+1: a fetch `Esc` stopped after it moved a ref answers
+/// with its own account (`jobs::operate::outcome`), and the line says what
+/// moved: `graft_ops`' stop words, `Done` as any cancel, the write cleared
+/// and everything re-read.
+#[test]
+fn a_stopped_fetch_that_moved_a_ref_says_what_moved() {
+    let state = with_facts(
+        vec![remote("origin")],
+        Some("refs/heads/main"),
+        Some(upstream(Some(THEIRS))),
+    );
+    let (running, _) = press(&state, plain('f'));
+    let id = running.operating.expect("f launched the fetch");
+    let (asked, _) = press(&running, KeyPress::plain(KeyCode::Escape));
+    assert_eq!(asked.remote.cancelling, Some(id));
+    let words = "fetch all remotes cancelled · origin/main moved before it stopped";
+    let (done, commands) = update(
+        &asked,
+        AppEvent::Produced(
+            id,
+            crate::update::Product::Operated(Box::new(crate::jobs::operate::Operated::Failed {
+                error: words.to_owned(),
+                refresh: Some(graft_ops::apply::Refresh::Everything),
+                remote: Some(RemoteFailure::Cancelled),
+                refused: None,
+                edits: None,
+            })),
+        ),
+    );
+    assert_eq!(done.status, Status::done(words));
+    assert_eq!(done.operating, None);
+    assert_eq!(done.remote.cancelling, None);
+    assert!(
+        commands
+            .iter()
+            .any(|command| matches!(command, Command::ReadRefs(_))),
+        "{commands:?}"
+    );
+}
+
 /// A non-fast-forward push is remembered for the lease box; a cancel is
 /// `Done`, not sticky; anything else is the `ops` line, sticky.
 #[test]

@@ -1,7 +1,7 @@
 JOURNAL · what happened in this repo, newest first
   $  outside Graft  now       fast-forwarded main 1 commit                       git: "merge a65d7e4c502f351238cd52040d89363fa81d47f1: Fast-forward"
   $  outside Graft  now       made spike at 419e109                              git: "branch: Created from 419e10956a4446d8b5d1e8bee7d0663c004d3457"
-  ●  Graft          now       fetch origin                                 remote-tracking refs · not undoable
+  ●  Graft          now       fetch origin                                 origin/main moved · not undoable
   $  outside Graft  4m ago    reset main 1 commit back                           git: "reset: moving to HEAD~1"
   $  outside Graft  8m ago    switch from spike to main                          git: "checkout: moving from spike to main"
   $  outside Graft  24m ago   committed "Try redis cache" on spike               git: "commit: Try redis cache"

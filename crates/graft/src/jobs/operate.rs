@@ -516,6 +516,28 @@ fn answer(result: Result<Applied, ApplyError>, keys: &Keymap) -> Operated {
     }
 }
 
+/// The operate job's outcome for `operated` (21c B+1, ADR-0062). A remote
+/// write a stop ended answers with its own account, [`Outcome::Answered`],
+/// which the pool delivers although the job was cancelled: `graft_ops`'
+/// stop words say what its fetch moved before it stopped, and the pool's
+/// bare `JobCancelled` would drop them. Every other answer is `Produced`,
+/// which a cancel still turns into `JobCancelled` (`pool::run_job`).
+pub(super) fn outcome(operated: Operated) -> super::Outcome {
+    let stopped = matches!(
+        &operated,
+        Operated::Failed {
+            remote: Some(RemoteFailure::Cancelled),
+            ..
+        }
+    );
+    let product = crate::update::Product::Operated(Box::new(operated));
+    if stopped {
+        super::Outcome::Answered(product)
+    } else {
+        super::Outcome::Produced(product)
+    }
+}
+
 /// A failure's one line, the keys it names spelled from his keymap
 /// (m8/10e). Only the variants whose words name a key are worded through
 /// `explain`; every other keeps its `Display`, the line this job always

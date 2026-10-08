@@ -4,7 +4,8 @@ use crate::keymap::Keymap;
 
 use super::{
     AGE, COMMANDS_HEADING, CURSOR, Columns, GLYPH, Ink, JournalRowView, MARK, Piece, RowKind,
-    RowMark, SOURCE, SanitizedText, UnicodeWidthStr, WORDS_BEFORE_GIT, cut_at_word, pad,
+    RowMark, SOURCE, SanitizedText, UnicodeWidthStr, WORDS_BEFORE_GIT, cut_at_word, moved_heading,
+    pad,
 };
 
 /// A row's own line: cursor, glyph, source word, age, words, and a `●`
@@ -176,12 +177,14 @@ pub(super) fn git_words(subject: &SanitizedText) -> String {
 }
 
 /// The lines under a row: a selected `$` row's git subject where its column
-/// is not drawn, and an expanded `●` row's reason and Command Log.
+/// is not drawn, and an expanded `●` row's reason, the refs its fetch
+/// moved, and its Command Log.
 pub(super) fn under_pieces(
     row: &JournalRowView,
     selected: bool,
     columns: Columns,
     width: usize,
+    keys: &Keymap,
 ) -> Vec<Vec<Piece>> {
     let x = columns.words_x();
     let room = width.saturating_sub(x + 1);
@@ -203,6 +206,12 @@ pub(super) fn under_pieces(
     if row.expanded {
         if let Some(failure) = &row.failure {
             lines.push(one(failure.as_str().to_owned(), Ink::Warning));
+        }
+        if !row.moved.is_empty() {
+            lines.push(one(moved_heading(keys), Ink::Muted));
+        }
+        for moved in &row.moved {
+            lines.push(one(format!("┆ {}", moved.as_str()), Ink::Muted));
         }
         if !row.commands.is_empty() {
             lines.push(one(COMMANDS_HEADING.to_owned(), Ink::Muted));

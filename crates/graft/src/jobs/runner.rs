@@ -939,9 +939,9 @@ impl<S: JobEvents> JobRunner<S> {
                 // A fetch, pull or push streams git's progress lines to the
                 // status line (m4-remotes/05) and asks through the prompt.
                 let hooks = super::operate::job_hooks(sink, id, waiting, cancel, helper);
-                Outcome::Produced(Product::Operated(Box::new(super::operate::run_operation(
+                super::operate::outcome(super::operate::run_operation(
                     &repos, &op, clock, cancel, hooks, &keys,
-                ))))
+                ))
             })
         });
     }

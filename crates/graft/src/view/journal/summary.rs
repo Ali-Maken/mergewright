@@ -54,11 +54,7 @@ pub(super) fn summary(entry: &JournalEntry, live: bool, keys: &Keymap) -> String
             parts.insert(0, format!("not undoable \u{2014} {remote} has it"));
             return with_failure(entry, live, &parts, keys);
         }
-        OperationKind::Fetch => {
-            parts.push("remote-tracking refs".to_owned());
-            parts.push("not undoable".to_owned());
-            return with_failure(entry, live, &parts, keys);
-        }
+        OperationKind::Fetch => return fetch_summary(entry, live, keys),
         _ => {}
     }
     match entry.touches.refs.len() {
@@ -93,7 +89,54 @@ pub(super) fn summary(entry: &JournalEntry, live: bool, keys: &Keymap) -> String
     if entry.backup_ref.is_some() {
         parts.push("backup saved".to_owned());
     }
+    // A pull's fetch moved its tracking refs whatever became of the merge
+    // (ADR-0062): last, after what `u` would take back.
+    if let Some(moved) = moves(entry) {
+        parts.push(moved);
+    }
     parts.join(" · ")
+}
+
+/// A fetch row: what it moved, then `not undoable` (ADR-0062). The refs by
+/// name; `nothing new` when it was read and nothing moved; today's
+/// `remote-tracking refs` where nothing was recorded (a line from before the
+/// ADR) or a failed fetch moved nothing — that row stays exactly as it was.
+fn fetch_summary(entry: &JournalEntry, live: bool, keys: &Keymap) -> String {
+    let moved = moves(entry);
+    let clause = match (&moved, &entry.fetched_refs, &entry.status) {
+        (Some(moved), ..) => moved.clone(),
+        (None, Some(_), EntryStatus::Committed) => "nothing new".to_owned(),
+        (None, ..) => "remote-tracking refs".to_owned(),
+    };
+    let parts = [clause, "not undoable".to_owned()];
+    let row = with_failure(entry, live, &parts, keys);
+    // `with_failure` keeps a failed row's failure alone. What the fetch
+    // moved before it stopped is the one fact that has to outlive it: the
+    // row no longer says `nothing written`, so it must say what was.
+    match moved {
+        Some(_) if failed(entry, live) => format!("{row} · {}", parts.join(" · ")),
+        _ => row,
+    }
+}
+
+/// What the entry's fetch moved, in `graft_ops`' words (`origin/main moved,
+/// origin/feat new +3 more`), `before it stopped` after them when it failed;
+/// `None` when it moved nothing or nothing was recorded.
+fn moves(entry: &JournalEntry) -> Option<String> {
+    let words = graft_ops::journal::moved_words(entry.fetched_refs.as_ref()?)?;
+    Some(match entry.status {
+        EntryStatus::Aborted { .. } => format!("{words} before it stopped"),
+        EntryStatus::Pending | EntryStatus::Committed => words,
+    })
+}
+
+/// The row reads `failed: …` ([`with_failure`]'s failure arm): `Aborted`
+/// for a reason other than his own `--abort`, and neither live nor
+/// interrupted.
+fn failed(entry: &JournalEntry, live: bool) -> bool {
+    !live
+        && !entry.is_interrupted()
+        && matches!(&entry.status, EntryStatus::Aborted { reason } if reason != ABORTED)
 }
 
 /// A push or fetch row that failed says so first, and nothing else: an

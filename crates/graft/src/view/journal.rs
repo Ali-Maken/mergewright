@@ -23,6 +23,10 @@ use summary::{failure, short, summary};
 /// Milliseconds in a second, for the entries' `at_unix_ms`.
 const MILLIS: i64 = 1_000;
 
+/// How many moved refs an expanded fetch row lists before `+N more`
+/// (ADR-0062): a `--prune` over a busy remote can move hundreds.
+const MOVES_SHOWN: usize = 20;
+
 /// [`JournalView`] for whatever the journal read and J's two later stages
 /// have brought back (m7-power-tools/24: the list is
 /// `graft_ops::journal_list::build`'s, built by `update::journal::rebuild`).
@@ -190,15 +194,20 @@ fn graft_row(
     } else if entry.is_interrupted() {
         RowMark::Interrupted
     } else if marks.in_force.get(index) == Some(&false) {
-        // Not in force because it never wrote anything (a refused pull, a
-        // rejected push), not because something took it back.
+        // Not in force because it failed (a refused pull, a rejected push,
+        // a fetch that stopped), not because something took it back. Only
+        // one that wrote nothing is `nothing written`: a failed fetch can
+        // have moved tracking refs that `u` never takes back (ADR-0062), so
+        // `in_force` cannot answer that — `wrote_anything` does.
         let reversed = entries[index + 1..]
             .iter()
             .any(|later| later.reverses.as_ref() == Some(&entry.id));
-        if !reversed && matches!(entry.status, EntryStatus::Aborted { .. }) {
-            RowMark::Refused
-        } else {
+        if reversed || !matches!(entry.status, EntryStatus::Aborted { .. }) {
             RowMark::Undone
+        } else if graft_ops::journal::wrote_anything(entry) {
+            RowMark::None
+        } else {
+            RowMark::Refused
         }
     } else {
         RowMark::None
@@ -210,6 +219,14 @@ fn graft_row(
         mark,
         commands: entry.commands.iter().map(|line| sanitize(line)).collect(),
         failure: failure(entry, is_live).map(|line| sanitize(&line)),
+        // `None` is "not recorded" (any other kind, a line from before
+        // ADR-0062), not a failure: there is simply no list to draw.
+        moved: entry.fetched_refs.as_ref().map_or_else(Vec::new, |moved| {
+            graft_ops::journal::moved_lines(moved, MOVES_SHOWN)
+                .iter()
+                .map(|line| sanitize(line))
+                .collect()
+        }),
         expanded: state.journal.is_expanded(&entry.id),
         kind: RowKind::Graft,
         git_subject: None,
