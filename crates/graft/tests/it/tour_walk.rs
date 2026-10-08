@@ -1,11 +1,14 @@
-//! The practice tour on a pty by the card's own words: its captures, and
-//! `P` with a temp folder as long as macOS's own (m8-polish-and-ship/19c-c).
+//! The practice tour on a pty by the card's own words: the whole tour walked
+//! from his repository and home again, its captures, and `P` with a temp
+//! folder as long as macOS's own (m8-polish-and-ship/19c-c, 19d-c).
 //!
-//! Not here (19c-c NOTES, red): the whole tour walked to the end. Followed in
-//! order, task 6's merge is refused by git — `u` (task 3) leaves `notes.txt`
-//! staged, task 4 brings it back staged, and `git merge` will not run over a
-//! staged change. The walk, the conflict capture and the finished capture
-//! wait on that.
+//! The whole walk: `⌃P tour ⏎` from his repository with the cursor moved off
+//! `HEAD`, the eight tasks by the keys each card line names (the walk
+//! asserts the line before it presses them, so a card naming keys that do
+//! not work fails here), then home: his commit under the cursor,
+//! `practice done ✓ · ⌃P tour goes again`, and nothing of his changed.
+//! Tasks 6 and 7 merge over `notes.txt`, staged since task 3's `u`: each
+//! merge sets it aside and puts it back staged (19d §R1, §R2).
 //!
 //! Reproducible: the practice repository's dates come from
 //! `GRAFT_PRACTICE_EPOCH` = `graft_fixtures::git::FIXED_DATE`'s instant, and
@@ -20,12 +23,14 @@
     reason = "a fixture that cannot be built leaves nothing to test; the panic names why"
 )]
 
+use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 use crate::app_harness::git;
 use crate::outside_repo::quit_cleanly;
 use crate::pty::{Isolated, Pty, Screen};
+use crate::repo_truth::{RepoTruth, git_truth};
 
 /// `graft_fixtures::git::FIXED_DATE` (2021-01-01T00:00:00Z), the instant
 /// the fixtures' own commits carry.
@@ -239,6 +244,429 @@ fn on_task(pty: &Pty, work: &Path, n: usize, done: [bool; 8]) -> Screen {
         .unwrap_or_else(|error| panic!("tour_progress: {}", error.explain()));
     assert_eq!(read, done, "the practice journal on task {}", n + 1);
     screen
+}
+
+/// The first `n` tasks done.
+fn first(n: usize) -> [bool; 8] {
+    let mut bits = [false; 8];
+    for bit in bits.iter_mut().take(n) {
+        *bit = true;
+    }
+    bits
+}
+
+/// Every subject on his repository's graph.
+fn subjects_of(repo: &Path) -> Vec<String> {
+    git(repo, &["log", "--all", "--format=%s"])
+        .lines()
+        .map(str::to_owned)
+        .collect()
+}
+
+fn cursor_line(screen: &Screen) -> Option<String> {
+    cursor_row(screen).map(|row| screen.lines()[row].clone())
+}
+
+fn row_of(screen: &Screen, label: &str) -> Option<usize> {
+    screen.lines().iter().position(|line| line.contains(label))
+}
+
+/// The subject on the cursor's row, of `subjects` (the longest that fits).
+fn cursor_subject(screen: &Screen, subjects: &[String]) -> Option<String> {
+    let line = cursor_line(screen)?;
+    subjects
+        .iter()
+        .filter(|subject| line.contains(subject.as_str()))
+        .max_by_key(|subject| subject.len())
+        .cloned()
+}
+
+/// Every file under `root`, by path, with its bytes.
+fn bytes_under(root: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
+    let mut out = BTreeMap::new();
+    let mut todo = vec![root.to_path_buf()];
+    while let Some(dir) = todo.pop() {
+        let entries = match std::fs::read_dir(&dir) {
+            Ok(entries) => entries,
+            // A folder that is not there holds no files: before = after
+            // still compares what is.
+            Err(why) if why.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(why) => panic!("{}: {why}", dir.display()),
+        };
+        for entry in entries {
+            let path = entry.expect("entry").path();
+            if path.is_dir() {
+                todo.push(path);
+            } else {
+                let bytes = std::fs::read(&path).expect("readable");
+                out.insert(path.strip_prefix(root).expect("under").to_path_buf(), bytes);
+            }
+        }
+    }
+    out
+}
+
+/// `git status --porcelain` in `work`, its untracked lines left out: the
+/// tracked changes and their staging.
+fn tracked_status(work: &Path) -> Vec<String> {
+    git(work, &["status", "--porcelain=v1"])
+        .lines()
+        .filter(|line| !line.starts_with("??"))
+        .map(str::to_owned)
+        .collect()
+}
+
+/// `notes.txt` staged and nothing else of the tracked tree changed: the
+/// split task 3's `u` left, kept through a merge that set it aside and put
+/// it back (`stash apply --index`, 19d §R2).
+fn the_split_survives_both_merges(work: &Path, after: &str) {
+    assert_eq!(
+        tracked_status(work),
+        vec!["M  notes.txt".to_owned()],
+        "the practice tree after {after}"
+    );
+}
+
+/// No age drawn as `future`: his tour commits are dated an hour after the
+/// practice epoch (`GIT_*_DATE` in [`env`]), which the pinned session clock
+/// draws as years (19d §R5, C+3).
+fn no_future(screen: &Screen) {
+    assert!(!screen.has("future"), "{}", screen.text());
+}
+
+/// The practice tour on a pty, walked task by task.
+struct Walk {
+    pty: Pty,
+    work: PathBuf,
+}
+
+impl Walk {
+    fn wait(&self, what: &str, done: impl Fn(&Screen) -> bool) -> Screen {
+        self.pty.wait_for(what, done)
+    }
+
+    fn send(&mut self, bytes: &[u8]) {
+        self.pty.send(bytes);
+    }
+
+    /// The card on task `n` (0-based), the tasks before it done.
+    fn on_task(&self, n: usize) -> Screen {
+        on_task(&self.pty, &self.work, n, first(n))
+    }
+
+    fn cursor_to(&mut self, label: &str) {
+        let screen = self.wait(&format!("a graph row with {label:?}"), |s| {
+            row_of(s, label).is_some() && cursor_row(s).is_some()
+        });
+        let (Some(from), Some(to)) = (cursor_row(&screen), row_of(&screen, label)) else {
+            unreachable!("waited for both rows");
+        };
+        let key: &[u8] = if to > from { b"j" } else { b"k" };
+        for _ in 0..from.abs_diff(to) {
+            self.send(key);
+        }
+        self.wait(&format!("the cursor on {label:?}"), |s| {
+            cursor_line(s).is_some_and(|line| line.contains(label))
+        });
+    }
+
+    /// Tasks 1 to 6, each from its card; `notes.txt` still staged after
+    /// task 6's merge.
+    fn tasks_one_to_six(&mut self) {
+        self.on_task(0);
+        self.stage();
+        self.on_task(1);
+        self.commit();
+        self.on_task(2);
+        self.undo();
+        self.on_task(3);
+        self.stash_and_back();
+        self.on_task(4);
+        self.branch();
+        self.on_task(5);
+        self.merge_feature();
+        the_split_survives_both_merges(&self.work, "task 6's merge");
+    }
+
+    /// Task 7 from its card: to the stop, its capture, resolved and
+    /// finished; `notes.txt` staged again after.
+    fn task_seven(&mut self, shots: &mut graft_fixtures::Captures, root: &Path) {
+        self.on_task(6);
+        let conflict = self.merge_clash_to_the_stop();
+        no_future(&conflict);
+        shot(
+            shots,
+            "m8-tour-step7-conflict-120x36.txt",
+            "task 7 after `m y` on clash: the resolver over the whole screen, `MERGING` on top, \
+             `menu.txt · 1 conflict · 1 open`, conflict 1 of 1 with `yours · main` `4 dessert: \
+             pie` against `theirs · clash` `4 dessert: ice cream`, the lines around it plain, the \
+             resolver's keys at the foot. Drawn as it is, not as hoped: no practice header, no \
+             card and no stop line here, so nothing on this screen says his staged `notes.txt` \
+             waits set aside until the merge ends (19d-c NOTES). No age is drawn.",
+            &steady(&conflict, root),
+        );
+        self.resolve_and_finish();
+        the_split_survives_both_merges(&self.work, "task 7's finish");
+    }
+
+    /// 1: `⏎` on the top row, `space`; `Esc` back to the graph.
+    fn stage(&mut self) {
+        self.cursor_to("Uncommitted changes");
+        self.send(b"\r");
+        self.wait("the changes pane, its files read", |s| {
+            s.has("UNSTAGED (1)") && s.has("M notes.txt")
+        });
+        self.send(b" ");
+        self.wait("staged", |s| s.has("STAGED (1)") && !s.has("UNSTAGED"));
+        self.send(b"\x1b");
+        self.wait("the graph's own keys", |s| {
+            s.has("\u{23ce} changes \u{b7} c commit")
+        });
+    }
+
+    /// 2: `c`, a message, `⏎`.
+    fn commit(&mut self) {
+        self.send(b"c");
+        self.wait("the commit editor", |s| s.has("\u{23ce} commit"));
+        self.send(b"Note the changes");
+        self.send(b"\r");
+        self.wait("the commit on main", |s| {
+            s.has("main \u{2191}2] Note the changes")
+        });
+    }
+
+    /// 3: `u`.
+    fn undo(&mut self) {
+        self.send(b"u");
+        self.wait("main back on its own commit", |s| {
+            s.has("main \u{2191}1] Add today's specials") && !s.has("main \u{2191}2]")
+        });
+    }
+
+    /// 4: `S`, `s` (and `⏎` for the message), `p` (and `y` on its
+    /// preview); `S` closes.
+    fn stash_and_back(&mut self) {
+        self.send(b"S");
+        self.wait("the stash list", |s| s.has("STASHES (0)"));
+        self.send(b"s");
+        self.wait("the stash message", |s| s.has("Stash the working tree"));
+        self.send(b"\r");
+        self.wait("stashed", |s| s.has("STASHES (1)"));
+        self.send(b"p");
+        self.wait("the pop preview, forecast read", |s| {
+            s.has("Preview: pop stash@{0}") && s.has("no conflicts expected")
+        });
+        self.send(b"y");
+        self.wait("popped", |s| s.has("STASHES (0)"));
+        self.send(b"S");
+        self.wait("the graph again", |s| {
+            s.has("practice ") && !s.has("STASHES")
+        });
+    }
+
+    /// 5: `b`, a name, `⏎`.
+    fn branch(&mut self) {
+        self.send(b"b");
+        self.wait("the branch box", |s| s.has("New branch at"));
+        self.send(b"try-it");
+        self.send(b"\r");
+        self.wait("the branch on the graph", |s| s.has("[try-it]"));
+    }
+
+    /// 6: `m` on feature, `y`. The preview names `notes.txt` set aside and
+    /// put back after (19d §R1), and the put-back is forecast clean.
+    fn merge_feature(&mut self) {
+        self.cursor_to("[feature]");
+        self.send(b"m");
+        self.wait("the merge preview, set-aside row and forecast read", |s| {
+            s.has("Preview: merge feature into main")
+                && s.has("your edits: 1 file set aside, put back after")
+                && s.has("no conflicts expected")
+        });
+        self.send(b"y");
+        self.wait("the merge on main, his edits back", |s| {
+            s.has("Merge branch 'feature' into main")
+                && s.has("your edits are back")
+                && !s.has("Preview:")
+        });
+    }
+
+    /// 7 to the stop: `m` on clash, `y` — the resolver on `menu.txt`, his
+    /// edits aside until the merge ends.
+    fn merge_clash_to_the_stop(&mut self) -> Screen {
+        self.cursor_to("[clash]");
+        self.send(b"m");
+        self.wait("the merge preview, set-aside row and forecast read", |s| {
+            s.has("Preview: merge clash into main")
+                && s.has("your edits: 1 file set aside, put back after")
+                && s.has("may conflict: menu.txt")
+        });
+        self.send(b"y");
+        self.wait("the resolver on menu.txt", |s| {
+            s.has("MERGING")
+                && s.has("menu.txt \u{b7} 1 conflict")
+                && s.has("pie")
+                && s.has("ice cream")
+        })
+    }
+
+    /// 7 from the stop: `t`, `⏎` (the finish preview), `y`; the put-back
+    /// after. The status names the merge only: the finish summary's words
+    /// replace the line that would say `your edits are back`
+    /// (`update/banner/resume.rs` `resumed_done`; 19d-c NOTES), so the walk
+    /// reads the put-back from git instead.
+    fn resolve_and_finish(&mut self) {
+        self.send(b"t");
+        self.wait("theirs taken", |s| s.has("took theirs"));
+        self.send(b"\r");
+        self.wait("the finish preview", |s| {
+            s.has("Preview: finish merging clash into main")
+        });
+        self.send(b"y");
+        self.wait("merged, his edits back staged", |s| {
+            s.has("merged clash into main \u{2713}")
+                && s.has("Uncommitted changes (1 staged, 1 untracked)")
+        });
+    }
+
+    /// 8: `P`, `y` — the eighth tick ends the tour.
+    fn push(&mut self) {
+        self.send(b"P");
+        self.wait("the push preview", |s| {
+            s.has("Push main \u{2192} origin/main")
+        });
+        self.send(b"y");
+    }
+}
+
+/// His repository and his state folder, as read before the tour.
+struct Before {
+    truth: RepoTruth,
+    journal: Option<Vec<u8>>,
+    graft_dir: BTreeMap<PathBuf, Vec<u8>>,
+    state: BTreeMap<PathBuf, Vec<u8>>,
+}
+
+fn journal_bytes(repo: &Path) -> Option<Vec<u8>> {
+    let handle = graft_git::repo::RepoHandle::open(repo).expect("his repo opens");
+    let path = graft_ops::journal::journal_path(&handle).expect("journal path");
+    match std::fs::read(&path) {
+        Ok(bytes) => Some(bytes),
+        Err(why) if why.kind() == std::io::ErrorKind::NotFound => None,
+        Err(why) => panic!("{}: {why}", path.display()),
+    }
+}
+
+impl Before {
+    fn read(repo: &Path, isolated: &Isolated) -> Self {
+        Self {
+            truth: git_truth(repo).expect("his repo reads"),
+            journal: journal_bytes(repo),
+            graft_dir: bytes_under(&repo.join(".git").join("graft")),
+            state: bytes_under(&isolated.config()),
+        }
+    }
+
+    /// Refs, `HEAD`, index, worktree, stashes, and his journal's bytes.
+    fn his_repo_is_untouched(&self, repo: &Path) {
+        assert_eq!(git_truth(repo).expect("his repo reads"), self.truth);
+        assert_eq!(journal_bytes(repo), self.journal, "his journal's bytes");
+    }
+
+    /// Every file of the state folder (recents, layout, first-launch) and
+    /// of his `.git/graft/`.
+    fn state_dir_is_unchanged(&self, repo: &Path, isolated: &Isolated) {
+        assert_eq!(
+            bytes_under(&repo.join(".git").join("graft")),
+            self.graft_dir,
+            ".git/graft"
+        );
+        assert_eq!(bytes_under(&isolated.config()), self.state, "state folder");
+    }
+}
+
+/// His graph drawn, the cursor moved two rows off where it landed: the
+/// subject it is on, which the tour must bring him back to.
+fn off_head(pty: &mut Pty, subjects: &[String]) -> String {
+    let landed = pty.wait_for("his graph", |s| {
+        s.lines()[0].contains("his") && cursor_row(s).is_some()
+    });
+    let landed = cursor_row(&landed).expect("a cursor");
+    pty.send(b"j");
+    pty.send(b"j");
+    let moved = pty.wait_for("the cursor two rows down", |s| {
+        cursor_row(s) == Some(landed + 2)
+    });
+    cursor_subject(&moved, subjects).expect("a subject under the cursor")
+}
+
+/// Ticket 19 §A9, 19c-c / 19d-c: the whole tour from his repository, by the
+/// card's words, at 120×36; home after, nothing of his touched. The eighth
+/// tick cannot be seen drawn — the tour leaves in the update that stores it
+/// (`update/tour.rs`, 19c-c NOTES) — so the walk asserts seven drawn and
+/// read at task 8, then the finish status only an all-eight read sets.
+#[test]
+fn the_whole_tour_in_a_pty_ticks_all_eight_and_comes_home() {
+    let mut shots = graft_fixtures::Captures::new();
+    let isolated = Isolated::new();
+    let (_root, root) = capture_root("tour-walk", 6);
+    let tmp = tour_tmp(&root);
+    let repo = his_repo(&root);
+    let subjects = subjects_of(&repo);
+    let mut pty = Pty::spawn_with_env(
+        &isolated,
+        &repo,
+        &tmp,
+        (120, 36),
+        &env(&tmp.as_os_str().to_owned()),
+    );
+    let was_on = off_head(&mut pty, &subjects);
+    let before = Before::read(&repo, &isolated);
+
+    pty.send(b"\x10");
+    pty.send(b"tour");
+    pty.wait_for("the tour row", |s| s.has("Practice tour"));
+    pty.send(b"\r");
+    let mut walk = Walk {
+        pty,
+        work: work_under(&tmp),
+    };
+
+    walk.tasks_one_to_six();
+    walk.task_seven(&mut shots, &root);
+    let task8 = walk.on_task(7);
+    assert_eq!(
+        drawn_ticks(&task8),
+        Some(first(7)),
+        "seven ticks drawn at task 8:\n{}",
+        task8.text()
+    );
+    walk.push();
+
+    let home = walk.wait("home, finished", |s| {
+        s.lines()[0].contains("his")
+            && s.has("practice done \u{2713} \u{b7} \u{2303}P tour goes again")
+    });
+    assert!(!home.has("practice 8 of 8"), "no card:\n{}", home.text());
+    let home = walk.wait(&format!("the cursor back on {was_on:?}"), |s| {
+        cursor_subject(s, &subjects).as_deref() == Some(was_on.as_str())
+    });
+    no_future(&home);
+    shot(
+        &mut shots,
+        "m8-tour-finished-120x36.txt",
+        "the eighth task done: back in his repo (header `◆ his`), no card, the cursor on the \
+         commit he left (two rows under where he landed), the status `practice done ✓ · ⌃P tour \
+         goes again`. Every age on his graph in years.",
+        &steady(&home, &root),
+    );
+    let Walk { pty, .. } = walk;
+    quit_cleanly(pty);
+
+    before.his_repo_is_untouched(&repo);
+    before.state_dir_is_unchanged(&repo, &isolated);
+    practice_folder_is_gone(&tmp);
+    shots.finish();
 }
 
 /// The tour's captures that do not need the whole walk: step 1 at 120×36

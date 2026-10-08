@@ -192,18 +192,27 @@ commits he makes in the tour are stable too. **Confirm first** (grep `GIT_COMMIT
 Graft invocation overrides those for commit/merge; if one does, stop and report. Captures through
 `graft_fixtures::capture` — asserted every run, never tolerant.
 **Acceptance** (`crates/graft/tests/it/tour_walk.rs` unless named):
-- [ ] Full tour in a pty from his repo: `⌃P tour ⏎`, the 8 tasks by the card's keys, all 8 ticked in the drawn card,
+- [x] Full tour in a pty from his repo: `⌃P tour ⏎`, the 8 tasks by the card's keys, all 8 ticked in the drawn card,
       lands in his repo, cursor on the oid he left, status `practice done ✓ · ⌃P tour goes again`:
       `the_whole_tour_in_a_pty_ticks_all_eight_and_comes_home` (ticket 19 §A9 "Full tour walked in a pty").
-- [ ] His repo byte-for-byte untouched by that tour — `git_truth` (refs, HEAD, index tree, worktree tree) and the
+      (ticked 19d-c, **as reworded by 19d** :555-558: 7 ticks drawn and journal-read at task 8, then the finish
+      status. "Cursor on the oid" is checked by the subject on the cursor row equal to the one he left — each
+      subject in that fixture is distinct; the oid itself is not read.)
+- [x] His repo byte-for-byte untouched by that tour — `git_truth` (refs, HEAD, index tree, worktree tree) and the
       journal file's bytes before = after: same test, assertion `his_repo_is_untouched` (§A9 box "His repo…").
-- [ ] State dir byte-identical — every file under the isolated config dir (recents, layout, first-launch `done`) and
-      `.git/graft/` of his repo: same test, assertion `state_dir_is_unchanged` (§A9 box "State dir…").
-- [ ] Practice dir gone after finish (no `tributary-practice-*` under the walk's `TMPDIR`): same test, assertion
+      (ticked 19d-c; `git_truth` also compares the index file's bytes and the stash list.)
+- [x] State dir byte-identical — every file under the isolated config dir (recents, layout, first-launch `done`) and
+      `.git/graft/` of his repo: same test, assertion `state_dir_is_unchanged` (§A9 box "State dir…"). (ticked 19d-c.)
+- [x] (ticked 19d-c: after finish, `practice_folder_is_gone` in the same test; after Esc `tests/it/tour.rs:145`,
+      after q `tests/it/tour.rs:224`, re-read 19d-c.) Practice dir gone after finish (no `tributary-practice-*` under the walk's `TMPDIR`): same test, assertion
       `practice_folder_is_gone`. After `Esc` and `q`: the existing `t_on_the_empty_state_starts_the_tour_and_esc_comes_back`
       and `q_inside_the_tour_removes_the_practice_folder` — **read them and cite the line that asserts absence**; if
       either asserts only the exit, add the absence check (§A9 box "Practice dir gone…").
-- [ ] Captures, each with a caption saying what right looks like, colour **unverified**, ≤ 200 KB:
+- [x] (ticked 19d-c: step 1 and 80×24 by `the_tour_captures_match`; step 7 and finished by
+      `the_whole_tour_in_a_pty_ticks_all_eight_and_comes_home`'s `shot` calls. Captions say what is drawn, which
+      differs from this list: step 7 has no card or header (the resolver fills the screen); step 1 says `stage a
+      change`, 7 commits, no ticks row at 120 columns — 19c-c and 19d-c NOTES.) Captures, each with a caption saying
+      what right looks like, colour **unverified**, ≤ 200 KB:
   - `docs/shots/m8-tour-step1-120x36.txt` — header `◇ practice · /tmp/graft-capture/…/work`; card at the graph pane's
     top, 3 rows, `practice 1 of 8 · stage a hunk` and `esc leave` on its border, line 1 of 19b NOTES' card lines, ticks
     row all open; graph: `main` 5 commits, `origin/main` one behind, `feature`, `clash`.

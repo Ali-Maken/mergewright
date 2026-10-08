@@ -1,0 +1,38 @@
+m8-polish-and-ship/19c-c: what right looks like — the eighth task done: back in his repo (header `◆ his`), no card, the cursor on the commit he left (two rows under where he landed), the status `practice done ✓ · ⌃P tour goes again`. Every age on his graph in years. Colour unverified (rule 5).
+
+ ◆ his  /tmp/graft-capture/tour-walk-XXXXXX/his · main                                                       10 commits
+
+    ●        [feature/three] three: in progress                                                         GF 7y   0683985
+  ◆─│─╮      [◆ main] Merge branch 'feature/two'                                                        GF 7y   5202e1c
+  │ │ ●      [feature/two] two: finish                                                                  GF 7y   e30e870
+▸ │ │ ●      two: start                                                                                 GF 7y   40034e4
+  ◉─│─│─╮    Merge branch 'feature/one'                                                                 GF 7y   3a97003
+  │ │ │ ●    [feature/one] one: finish                                                                  GF 7y   fdb311f
+  │ │ │ ●    one: start                                                                                 GF 7y   bba225a
+  ●─┴─╯ │    Add b.txt                                                                                  GF 7y   de95041
+  ●─────╯    Add a.txt                                                                                  GF 7y   21b16b9
+  ◇          Add a readme                                                                               GF 7y   daa5167
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ practice done ✓ · ⌃P tour goes again
