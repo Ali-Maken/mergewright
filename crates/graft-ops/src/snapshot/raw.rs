@@ -189,8 +189,8 @@ fn not_given_back(
     Ok(differ)
 }
 
-/// `checkout-index -a` failed, and git's words for a failing smudge filter
-/// name the filter, not the file (m8-polish-and-ship/20 item 6). Only on
+/// `checkout-index -a` failed, and git's words — for a failing smudge filter,
+/// say — may name the filter, not the file (m8-polish-and-ship/20 item 6). Only on
 /// this failure path, each file is checked out alone until one fails: that
 /// file is named. The first error stands when none fails alone (or on a
 /// stop), so nothing is reported that was not seen.
@@ -217,7 +217,7 @@ fn name_the_failing_file(
             Ok(_) => {}
             Err(RunError::Stopped) => return SnapshotError::Stopped,
             Err(error) => {
-                return SnapshotError::Filter {
+                return SnapshotError::CheckOut {
                     path: String::from_utf8_lossy(&file.path).into_owned(),
                     error,
                 };

@@ -528,3 +528,63 @@ fn an_unreadable_tree_is_a_read_error_in_one_line() {
         "{line}"
     );
 }
+
+/// A tree naming `a.txt` at `blob`, written whether or not the object store
+/// holds that blob (`mktree --missing`).
+fn tree_naming(repo: &TempRepo, blob: &str) -> Oid {
+    let mut mktree = std::process::Command::new("git")
+        .arg("-C")
+        .arg(repo.path())
+        .args(["mktree", "--missing"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .expect("git mktree starts");
+    std::io::Write::write_all(
+        mktree.stdin.as_mut().expect("stdin is piped"),
+        format!("100644 blob {blob}\ta.txt\n").as_bytes(),
+    )
+    .expect("the entry writes");
+    let made = mktree.wait_with_output().expect("git mktree ends");
+    assert!(made.status.success(), "{made:?}");
+    Oid::from_hex(String::from_utf8_lossy(&made.stdout).trim()).expect("a tree id")
+}
+
+/// m8/21b-3 (`M8/snapshot-filter-blamed`): a lone `checkout-index` failure
+/// with no filter configured — here the file's blob is missing, as in a
+/// partial clone — names the file and carries git's own words, and does not
+/// guess that a filter failed.
+#[test]
+fn a_lone_checkout_failure_without_a_filter_is_not_blamed_on_one() {
+    let repo = TempRepo::init();
+    repo.git(&["config", "core.autocrlf", "true"]);
+    repo.write("a.txt", b"one\n");
+    repo.commit_all("first");
+    repo.write("a.txt", b"two\n");
+    let handle = repo.open();
+    let scratch = repo.path().join(".git/graft");
+    std::fs::create_dir_all(&scratch).expect("the scratch is made");
+    // The worktree tree names a blob the object store does not hold.
+    let missing = "3".repeat(40);
+    let tree = tree_naming(&repo, &missing);
+
+    let mut commands = Vec::new();
+    let failed = snapshot::raw_record(
+        &handle,
+        &scratch,
+        &Never,
+        head_of(&repo),
+        tree,
+        &mut commands,
+    );
+    let Err(why @ snapshot::SnapshotError::CheckOut { .. }) = failed else {
+        panic!("the checkout of a missing blob failed, got {failed:?}");
+    };
+    let line = why.to_string();
+    assert!(
+        line.starts_with("a.txt: git could not check it out: "),
+        "{line}"
+    );
+    assert!(line.contains(&missing), "git's own words: {line}");
+    assert!(!line.contains("filter"), "{line}");
+}
