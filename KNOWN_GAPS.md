@@ -1262,6 +1262,15 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/21b1-stash-caption-stale | Stash footer now reads `S/esc close` (21b-1) but the graft caption `crates/graft/src/update/tests.rs:6964` and the m3 stash capture caption headers still say `esc close`. Routed to 21b-4 additions 5e. | **broken** | M8 |
 | M8/19c-card-line-7-keys | Tour card task 7 reads `⏎ opens it … c finishes`; the keys that work are `m y t ⏎ y` (19c-b found, `crates/graft/src/view/tour.rs`). Routed to 19c-c addition. | **broken** | M8 |
 | M8/19c-askpass-long-tmpdir | Tour `P` (and maybe any askpass push) may fail when TMPDIR is long — askpass socket path over SUN_LEN. 19c-b tests used a short /tmp. Probe at the macOS default TMPDIR in 19c-c. | **unverified** | M8 |
+| M8/bars-m1-files-grew | 15/15b grew over-400 files: graph_screen `layout.rs` 710→828, `view/rows.rs` 1133→1215, `catalogue.rs` 567→634; `footer.rs` 387→430. Review m8-bars-hygiene M1. Routed → 21b-5 additions 5+1. | **broken** | M8 |
+| M8/stash-row-menu-m-r | Stash row `.` menu offers Merge `(m)`/Rebase `(r)` and opens their preview (`graft/src/update/context_menu/slots.rs:98–101`; code-read, not run). Review m8-bars-hygiene m1. → 21b-4 additions 5f. | **broken** | M8 |
+| M8/stash-S-opens-at-0 | `S` on a stash row opens the list at `stash@{0}`, not that stash (`graft/src/update/stash.rs:175–178`; code-read). Review m2. → 21b-4 additions 5g. | **broken** | M8 |
+| M8/map-seek-in-empty | Map footer offers `⏎ zoom to commits` in Empty/Failed where `⏎` only closes (`graft-ui/src/map_screen/render/footer.rs:61`). Review m3. | **broken** | M8 |
+| M8/stash-sweep-doc-claim | Doc at `graft/src/update/tests.rs:4187–4198` claims a live-wrap classification the test never asserts. Review m4. | **broken** | M8 |
+| M8/blame-pin-blind | 21b-2 graft pin `blame_state.rs:116–132` checks wiring, can't go red while default is `true` — not a guard against the literal. Review m5. | **unverified** | M8 |
+| M8/test-files-over-400 | `graft-ui/src/context_menu/tests.rs` 441, `stash_screen/tests.rs` 424. Review m6. → 25. | **broken** | M8 |
+| M8/bars-stale-wording | Stale wording left by 15/15b/11f/21b (list: docs/reviews/m8-bars-hygiene.md minor 7). → 23 docs pass. | **broken** | M8 |
+| M8/15-a2-no-prior-art | 15 A2 (where a standing search lives) has no Prior art row in docs/design-notes/m8-polish-and-ship.md:39–115. Review m8. Before the usability walk. | **broken** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` **429** lines at the split (12f's 407 was false — review m8-palette-landing-stop C1); `listing.rs` 424 also over → 21b-4 additions; seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |
