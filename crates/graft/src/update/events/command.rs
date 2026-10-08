@@ -91,10 +91,12 @@ pub enum Command {
     /// layout` (`crate::layout::save_split`); a failure is expected and
     /// non-fatal (see that module's doc), never dispatched to jobs.
     SaveLayout(PaneSize),
-    /// The first palette open of the process (m8/18d): write `done` to
-    /// `<this config dir>/graft/launches` (`first_launch::first_launch_done`).
-    /// Written by the loop itself, as `SaveLayout` is; a failure is said
-    /// once on the status row, never dispatched to jobs.
+    /// The first palette open of the process (m8/18d): end the shell's
+    /// first-launch switch, so no later place shows the line (18e), and
+    /// write `done` to `<this config dir>/graft/launches`
+    /// (`first_launch::first_launch_done`). Carried by the loop itself, as
+    /// `SaveLayout` is; a failure is said once on the status row, never
+    /// dispatched to jobs.
     FirstLaunchDone(std::path::PathBuf),
     /// Run `git commit-graph write --reachable` as a job (`B` on the offer).
     /// Never cancelled once git starts (`graft_git::commit_graph`).

@@ -232,7 +232,15 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
 
     let mut terminal = Terminal::open()?;
     let arrival = Arrival::first(&config, terminal.capabilities.no_color);
-    let ran = run_repo(&mut terminal, repos, &repo_path, &config, harness, arrival)?;
+    let ran = run_repo(
+        &mut terminal,
+        repos,
+        &repo_path,
+        &config,
+        harness,
+        arrival,
+        None,
+    )?;
     terminal.close(ran)
 }
 
@@ -260,9 +268,10 @@ pub(super) struct Arrival {
     /// His config's problems in words — on the process's first repository
     /// screen only; empty on every later one.
     pub config_problems: Vec<String>,
-    /// The process's first-launch line (m8/18d): counted by `drive` once;
-    /// never shown by default (`run`, the gallery, the walks).
-    pub first_launch: crate::first_launch::FirstLaunch,
+    /// The first-launch line as this place arrives (m8/18d, 18e): `drive`'s
+    /// switch read now (`FirstLaunch::line`), so a line ended in an earlier
+    /// place stays gone. `None` by default (`run`, the gallery, the walks).
+    pub first_launch: Option<std::path::PathBuf>,
 }
 
 impl Arrival {
@@ -290,7 +299,7 @@ impl Arrival {
 /// one sticky line), and the cursor on `HEAD`.
 pub(super) fn arrive(state: &mut AppState, arrival: Arrival) {
     state.seed_keys(arrival.keymap, arrival.config_problems);
-    state.first_launch = arrival.first_launch;
+    state.first_launch = arrival.first_launch.map(Box::new);
     if let Some(reason) = super::places::joined(arrival.notice, arrival.status) {
         state.status = crate::update::Status::Sticky { reason, keys: None };
     } else if arrival.tour_done {
@@ -314,6 +323,8 @@ pub(super) fn arrive(state: &mut AppState, arrival: Arrival) {
 /// One repository's run on an open [`Terminal`]: the job pool, the signal
 /// and resize watchers, the input forwarder and the loop. Everything it
 /// starts it stops before returning, except the terminal itself.
+/// `first_launch` is the process's switch, lent by `places::drive` for the
+/// loop to end (m8/18e); `None` from `run`, which shows no line.
 ///
 /// # Errors
 /// Setting the run up failed; the terminal is still the caller's.
@@ -324,6 +335,7 @@ pub(super) fn run_repo(
     config: &crate::config::Loaded,
     harness: crate::update::Harness,
     arrival: Arrival,
+    first_launch: Option<&crate::first_launch::FirstLaunch>,
 ) -> io::Result<Ran> {
     let inputs = term.inputs();
     let mux = &term.mux;
@@ -375,6 +387,7 @@ pub(super) fn run_repo(
             mux,
             common_dir.as_deref(),
             workdir.as_deref(),
+            first_launch,
         ),
         &mut tracer,
     );
@@ -431,15 +444,18 @@ fn put_away(mut terminal: Frames<RowClear<CrosstermBackend<TerminalOut>>>) {
 }
 
 /// What the loop may reach outside itself: the repository's directories,
-/// and the terminal to hand to `$EDITOR` or a mergetool.
+/// the terminal to hand to `$EDITOR` or a mergetool, and the process's
+/// first-launch switch.
 fn outside<'a>(
     session: &'a TerminalSession,
     mux: &'a InputMux,
     common_dir: Option<&'a std::path::Path>,
     workdir: Option<&'a std::path::Path>,
+    first_launch: Option<&'a crate::first_launch::FirstLaunch>,
 ) -> Outside<'a> {
     Outside {
         common_dir,
+        first_launch,
         handover: Some(Handover {
             session,
             mux,

@@ -138,16 +138,17 @@ pub(crate) fn for_this_launch(config_dir: Option<&Path>) -> (FirstLaunch, Option
     }
 }
 
-/// The process's one answer to "is the line shown", shared by every place
-/// `drive` runs (graph and empty state alike): the first palette open in
-/// any of them ends it for the rest of the process, and writes `done`.
-/// The default is never shown and never writes — headless `run`, the
+/// The process's one answer to "is the line still shown". Held by
+/// `event_loop::places::drive` only (m8/18e, review M1): every place's state
+/// is seeded with [`FirstLaunch::line`], a plain value, and the first palette
+/// open in any of them asks the shell to [`FirstLaunch::end`] it, so every
+/// later place arrives without the line. No state holds this: `update` stays
+/// pure. The default is never shown and never writes — headless `run`, the
 /// gallery, every `Harness`.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct FirstLaunch(Option<Arc<Shown>>);
 
-/// A shown line: whether it still is, and where `done` goes. One pointer
-/// in `AppState`, which is copied whole on every update.
+/// A shown line: whether it still is, and where `done` goes.
 #[derive(Debug)]
 struct Shown {
     still: AtomicBool,
@@ -163,26 +164,25 @@ impl FirstLaunch {
         })))
     }
 
-    pub(crate) fn is_shown(&self) -> bool {
+    /// `Some(config_dir)` while the line still shows this process: what
+    /// every place's state is seeded with on arrival.
+    pub(crate) fn line(&self) -> Option<PathBuf> {
         self.0
             .as_ref()
-            .is_some_and(|shown| shown.still.load(Ordering::Relaxed))
+            .filter(|shown| shown.still.load(Ordering::Relaxed))
+            .map(|shown| shown.config_dir.clone())
     }
 
-    /// The palette opened: hide the line from this frame on, in every
-    /// place of the process. The folder to write `done` under the first
-    /// time only (`None` after, and for the default); the caller writes it
-    /// with [`first_launch_done`] — the empty state at once, the graph
-    /// through `Command::FirstLaunchDone`, as `update` touches no file.
+    /// The palette opened in some place: no later place shows the line.
+    /// The folder to write `done` under the first time only (`None` after,
+    /// and for the default); the caller writes it with
+    /// [`first_launch_done`] — the empty state's loop, or the repository's
+    /// loop on `Command::FirstLaunchDone`.
     pub(crate) fn end(&self) -> Option<PathBuf> {
         self.0
             .as_ref()
             .filter(|shown| shown.still.swap(false, Ordering::Relaxed))
             .map(|shown| shown.config_dir.clone())
-    }
-
-    fn config_dir(&self) -> Option<&Path> {
-        self.0.as_ref().map(|shown| shown.config_dir.as_path())
     }
 }
 
@@ -209,16 +209,6 @@ pub(crate) fn test_config(text: Option<&str>) -> tempfile::TempDir {
 pub(crate) fn test_read(config_dir: &Path) -> Option<String> {
     std::fs::read_to_string(launches_file(config_dir)).ok()
 }
-
-/// Equal when both say the same thing now, about the same folder (the
-/// states holding one derive `Eq`).
-impl PartialEq for FirstLaunch {
-    fn eq(&self, other: &Self) -> bool {
-        self.is_shown() == other.is_shown() && self.config_dir() == other.config_dir()
-    }
-}
-
-impl Eq for FirstLaunch {}
 
 #[cfg(test)]
 mod tests {
@@ -283,14 +273,15 @@ mod tests {
         let dir = seeded(Some("2\n"));
         let line = FirstLaunch::shown(dir.path().to_path_buf());
         let other_place = line.clone();
+        assert_eq!(line.line().as_deref(), Some(dir.path()));
         let to_write = line.end().expect("the first end writes");
         first_launch_done(&to_write).expect("written");
-        assert!(!other_place.is_shown());
+        assert_eq!(other_place.line(), None);
         assert_eq!(file(&dir), "done\n");
         assert_eq!(other_place.end(), None, "once per process");
 
         let never = FirstLaunch::default();
-        assert!(!never.is_shown());
+        assert_eq!(never.line(), None);
         assert_eq!(never.end(), None);
     }
 }

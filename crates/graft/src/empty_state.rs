@@ -31,7 +31,6 @@ use ratatui::layout::Rect;
 use ratatui::widgets::Widget;
 
 use crate::event_loop::Wake;
-use crate::first_launch::FirstLaunch;
 use crate::jobs::clone::{CloneAnswer, CloneRequest};
 use crate::recent::Recent;
 use crate::update::credential::{self, Answer, CredentialPrompt, PromptKey};
@@ -105,9 +104,11 @@ pub(crate) struct OutsideState {
     pub palette: Option<PaletteState>,
     /// His config's problems, for the palette's `YOUR CONFIG` rows.
     pub config_problems: Vec<String>,
-    /// The first-launch line (m8/18d): the process's one, shared with
-    /// every repository screen `drive` runs.
-    pub first_launch: FirstLaunch,
+    /// The first-launch line (m8/18d): shown while `Some(config dir)`. A
+    /// plain value seeded from the shell's switch (m8/18e); the first
+    /// palette open sets it `None` and asks the loop to end the switch
+    /// ([`OutsideStep::FirstLaunchDone`]).
+    pub first_launch: Option<PathBuf>,
     /// git's credential question for the running clone (m8/18b, rulings
     /// R5): the same prompt a repository's fetch opens, modal over
     /// everything here while it is up.
@@ -141,6 +142,10 @@ pub(crate) enum OutsideStep {
         path: PathBuf,
         notice: Option<String>,
     },
+    /// The first palette open ended the first-launch line here: end the
+    /// shell's switch and write `done` under this config folder; a failure
+    /// is said in the bar row (m8/18e).
+    FirstLaunchDone(PathBuf),
 }
 
 /// The clone `⏎` asks for: `url` into `folder`/<the name git would pick>.
@@ -337,16 +342,15 @@ fn act(state: &mut OutsideState, keymap: &Keymap, key: KeyPress) -> OutsideStep 
         && state.prompt.is_none()
     {
         state.problem = None;
-        // The first palette open ends the line, for this launch and every
-        // later one; a failure to say so is said where problems go.
-        if let Some(config_dir) = state.first_launch.end()
-            && let Err(error) = crate::first_launch::first_launch_done(&config_dir)
-        {
-            state.problem = Some(error.words());
-        }
         let source = source_of(&state.config_problems, keymap);
         state.palette = Some(palette::opened(&source, ContextId::EmptyState, how));
-        return OutsideStep::Stay;
+        // The first palette open ends the line, for this launch and every
+        // later one: gone here this frame; the loop ends it for the process
+        // and writes `done`, and says a failure where problems go.
+        return state
+            .first_launch
+            .take()
+            .map_or(OutsideStep::Stay, OutsideStep::FirstLaunchDone);
     }
     outside_key(state, key)
 }
@@ -800,7 +804,7 @@ pub(crate) fn view(state: &OutsideState, now: SystemTime) -> EmptyStateView {
             Prompt::Clone(clone) => EmptyPrompt::Clone(clone_view(state, clone)),
         }),
         problem: state.problem.as_deref().map(sanitize_line),
-        first_launch: state.first_launch.is_shown(),
+        first_launch: state.first_launch.is_some(),
         credential: state.credential.is_some(),
     }
 }

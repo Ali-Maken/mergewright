@@ -1,6 +1,6 @@
 # 18e — clone review fixes: the secret check over events, a pure first-launch line, `esc` in the clone's password box, the splits
 
-Status: **A1 done** (builder 2026-10-08, dispatched early); A2, A3, Part B open, waiting for 19b. Was: ready (conductor 2026-10-08) — was draft (planner spec-only pass 2026-10-08, from `docs/reviews/m8-clone.md` Critical C1 and Majors M1–M3)
+Status: **Part A done** (A1 builder 2026-10-08; A2, A3 builder 2026-10-08, after 19b); Part B open. Was: ready (conductor 2026-10-08) — was draft (planner spec-only pass 2026-10-08, from `docs/reviews/m8-clone.md` Critical C1 and Majors M1–M3)
 Build with:
 - **Part A Opus (high)**: M1 moves a per-process switch out of `AppState` across the shell/loop seam; the seam is fixed
   below, but whether a done in one place still hides the line in the next is judged only by a cross-place test. M2's
@@ -148,25 +148,36 @@ modules.
       every event's `Debug` (`jobs::clone::tests::child_asks_through_the_pool_and_clones`) and from pty frames,
       stderr and the new `.git` (`m8_walk/clone.rs::clone_asks_for_a_password`)". The box no longer says
       `no_secret_leaked`.
-- [ ] A2, purity: `update::tests::first_launch::update_leaves_its_input_state_alone`. With `s0.first_launch =
+- [x] A2, purity: `update::tests::first_launch::update_leaves_its_input_state_alone`. With `s0.first_launch =
       Some(dir)`, `let before = s0.clone()`, `update(&s0, ?)` gives `None` plus `Command::FirstLaunchDone(dir)`, and
       `s0 == before`. **Written first against today's code, where it fails** (the shared atomic flips `s0`). Record
-      the failing line in NOTES.
-- [ ] A2, across places: `event_loop::places::tests::a_line_ended_in_one_place_stays_gone_in_the_next`. The palette
+      the failing line in NOTES. (`update::tests::first_launch::update_leaves_its_input_state_alone`; red line in
+      NOTES "A2/A3")
+- [x] A2, across places: `event_loop::places::tests::a_line_ended_in_one_place_stays_gone_in_the_next`. The palette
       opened in a repo place, then `Exit::Open` → next `Arrival::first_launch == None`. The same from the empty
-      state into a repo.
-- [ ] A2, empty state: `empty_state::palette_tests::opening_the_palette_ends_the_first_launch_line` asserts
+      state into a repo. (`event_loop::places::tests::a_line_ended_in_one_place_stays_gone_in_the_next`; seen red
+      by mutation, NOTES)
+- [x] A2, empty state: `empty_state::palette_tests::opening_the_palette_ends_the_first_launch_line` asserts
       `OutsideStep::FirstLaunchDone(dir)` on the first open and no such step on the second.
-- [ ] A2, guard: no `atomic` under `crates/graft/src/update/**` or in `empty_state*`. Extend
+      (`empty_state::palette_tests::opening_the_palette_ends_the_first_launch_line`; seen red by mutation, NOTES)
+- [x] A2, guard: no `atomic` under `crates/graft/src/update/**` or in `empty_state*`. Extend
       `update_cannot_reach_the_world` if it scans source; else add `update_holds_no_shared_switch`. Name the test in
-      NOTES.
-- [ ] A2, unchanged and passing: `first_launch::tests::count_launch_table`;
+      NOTES. (`update::tests::update_cannot_reach_the_world`, extended: `atomic`, `Atomic` and the word `FirstLaunch`
+      over `update/**` and `empty_state*`; red on today's code, NOTES)
+- [x] A2, unchanged and passing: `first_launch::tests::count_launch_table`;
       `update::tests::first_launch::{shown_until_the_palette_opens, gone_after_five_launches,
       a_problem_or_notice_wins_the_row, a_broken_file_warns_once_and_never_stops_the_app}`;
       `event_loop::tests::the_loop_writes_first_launch_done_and_says_a_failure`;
       it `first_launch::{a_terminal_launch_counts_and_shows_the_line_until_the_palette, headless_never_counts,
-      first_launch_captures}`, the last with no `GRAFT_UPDATE_SHOTS` and `git status` clean.
-- [ ] A3: `event_loop::places::tests::esc_in_the_clone_password_box_stops_the_clone`.
+      first_launch_captures}`, the last with no `GRAFT_UPDATE_SHOTS` and `git status` clean. (Each named test passed
+      in the workspace `cargo nextest run`, 6063/6063; `GRAFT_UPDATE_SHOTS` unset (`printenv`), `git status --short
+      docs` empty after. Names unchanged; the four `update::tests::first_launch` bodies and
+      `event_loop::tests::the_loop_writes_first_launch_done_and_says_a_failure` — the latter untouched — read the new
+      `Option` shape, see NOTES)
+- [x] A3: `event_loop::places::tests::esc_in_the_clone_password_box_stops_the_clone` (behaviour, real pool) **and**
+      `event_loop::places::tests::esc_in_the_box_stops_before_it_refuses` (the order). **Deviation:** the real-pool
+      test does **not** go red on the swap (6 runs, all green); the order is held by the second test, seen red on the
+      swap. Why, with lines: NOTES "A2/A3".
       - Setup: an `HttpRemote` that needs Basic auth, and a clone started through `OutsideJobs` on a real pool.
       - Wait for the credential ask, bounded and event-driven, never a sleep. Then
         `carry_out(OutsideStep::Credential(job, None))`.
@@ -217,6 +228,46 @@ One context per part:
   `docs/log/m8.md:330` (a home-dir path), a file last changed by base commit `a9bf9e0c` (conductor, "gaps+log: 20
   remainder"). Outside this ticket's files, so not fixed here. Fix: `cargo run -q -p graft-fixtures -- redact
   docs/log/m8.md`.
+
+## NOTES — A2/A3 (builder, 2026-10-08)
+- **Compacted mid-ticket** (once, after the gates passed and before ticking). Nothing remains of A2/A3; Part B open.
+- Scout: none. The ticket names every site; re-located after 19b by `rg first_launch|FirstLaunch` over `crates/graft`.
+  `places::Carried` confirmed (`event_loop/places.rs`, the struct `drive` owns).
+- Shape: `FirstLaunch` (the `Arc<AtomicBool>` switch) is held only by `drive`'s `Carried`. It gains `line() ->
+  Option<PathBuf>` and loses `is_shown`, `config_dir` and `PartialEq`. `OutsideState.first_launch: Option<PathBuf>`;
+  the empty state's `act` takes it and returns new `OutsideStep::FirstLaunchDone(dir)`; `places::carry_out` ends the
+  switch and writes `done`. In a repo, `update` takes the field and emits `Command::FirstLaunchDone`;
+  `running::carry_out` ends the switch through new `Outside::first_launch: Option<&FirstLaunch>` (lent by
+  `startup::run_repo`), then writes. Each place's arrival is seeded from `line()` (`Carried::repo_arrival`,
+  `run_outside`), so the tour's arrival is too.
+- **Seen red** (before the change, or by mutation, each reverted):
+  - purity: `update/tests/first_launch.rs:165:5` "update changed its input state" on the old code (now `:171`).
+  - guard: `update/tests.rs:2079:13` "`update` holds a shared switch: it mentions `FirstLaunch`" on the old code
+    (now `:2082`).
+  - empty state: `act` returning `Stay` failed at `empty_state/palette_tests.rs:263:9` (now `:265`).
+  - across places: carry not calling `end()` failed at `event_loop/places/tests.rs:363:5` (repo half, `None` wanted).
+  - A3 order: refuse before stop failed at `event_loop/places/tests.rs:478:5` (`["refuse","stop"]`); now `:498`.
+- **Deviations** (conductor to judge):
+  - `AppState.first_launch` is `Option<Box<PathBuf>>`, not `Option<PathBuf>`: the 16 extra bytes tripped clippy
+    `large_stack_arrays` at `update/remote/tests.rs:62` and `view/tests.rs:4753`. Boxed as `tour` already is.
+    `OutsideState` holds plain `Option<PathBuf>`.
+  - `running::carry_out` with no switch lent (`Outside::default()`, headless `startup::run`, tests) writes the folder
+    the command names, so `event_loop::tests::the_loop_writes_first_launch_done_and_says_a_failure` stays untouched.
+  - A3: the real-pool test **cannot see the swap**: refuse-then-cancel passed 6 of 6 runs, because `graft_git::run`
+    polls the stop flag every loop turn (`crates/graft-git/src/run.rs` ~584-593), so a cancel microseconds after the
+    refusal still wins. Added a private seam `trait AnswersAsks` + `fn answer_ask` (`places.rs:808,825`) and
+    `esc_in_the_box_stops_before_it_refuses`, which records the calls and is red on the swap. The real-pool test stays
+    for the behaviour (words, folder absent, box closed).
+  - Guard: extended `update_cannot_reach_the_world` (it already scans source) rather than a new test.
+  - `graft_binary()` duplicated from `jobs/clone/tests.rs` into `places/tests.rs` (the askpass helper; test-only).
+- Touches: `first_launch.rs`, `update/{state,palette/input,events/command}.rs`, `view/frame/bars.rs`,
+  `event_loop/{startup,outside,places,running/carry}.rs`, `empty_state.rs` + its three test files,
+  `update/tests{,/first_launch}.rs`, `places/tests.rs`, graft MAP rows 6, 7, 106, 1030. Unchanged and checked by
+  reading: `update/place/write.rs` (matches the variant), `jobs/runner.rs` (`FirstLaunchDone` is `not_a_job`),
+  `event_loop/tests.rs`, graft-ui `EmptyStateView::first_launch: bool`. Captures: `git status --short docs` empty.
+  Not touched: the m7 pull-flake files.
+- Gates (worktree target): fmt ok; clippy workspace `-D warnings` ok; nextest workspace 6063/6063 (13 skipped);
+  doctests ok.
 
 ## NOTES — proposed KNOWN_GAPS rows (planner, for the conductor)
 Lines are at `ce6fdfdf`. 19b and 18e B move them, and 18e's builder lists the new location of each.

@@ -427,9 +427,13 @@ pub struct AppState {
     /// (`keys::acknowledge`). Set at startup only when there are problems.
     pub(crate) config_notice: bool,
     /// The first-launch line (m8/18d): the status row's fallback while
-    /// shown. Shared with every place `drive` runs this process; never
-    /// shown by default (headless `run`, the gallery, every `Harness`).
-    pub(crate) first_launch: crate::first_launch::FirstLaunch,
+    /// `Some(config dir)`. A plain value, seeded on arrival from the shell's
+    /// one switch (m8/18e); the first palette open sets it `None` and asks
+    /// the loop to end the switch (`Command::FirstLaunchDone`). `None` by
+    /// default (headless `run`, the gallery, every `Harness`).
+    // Boxed, as `tour` below: one pointer keeps `AppState` the size it was
+    // and under the stack-array size clippy guards (`large_stack_arrays`).
+    pub(crate) first_launch: Option<Box<std::path::PathBuf>>,
     /// This place is the practice tour's repository (m8-polish-and-ship/19b):
     /// its ticks and the read that refreshes them. `None` everywhere else.
     /// Seeded at arrival (`event_loop::startup::arrive`), never later.

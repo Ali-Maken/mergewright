@@ -80,10 +80,10 @@ pub(crate) fn open(state: &mut AppState, commands: &mut Vec<Command>, how: Opens
     }
     state.palette = Some(Box::new(palette));
     // The first palette open ends the first-launch line for good (m8/18d):
-    // gone this frame; `done` is written by the loop (`update` touches no
-    // file), which says a failure once.
-    if let Some(config_dir) = state.first_launch.end() {
-        commands.push(Command::FirstLaunchDone(config_dir));
+    // gone this frame; the loop ends it for every later place and writes
+    // `done` (`update` touches no file), which says a failure once.
+    if let Some(config_dir) = state.first_launch.take() {
+        commands.push(Command::FirstLaunchDone(*config_dir));
     }
 }
 

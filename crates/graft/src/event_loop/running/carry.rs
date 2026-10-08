@@ -53,7 +53,16 @@ where
                 }
             }
             Command::FirstLaunchDone(config_dir) => {
-                if let Err(error) = crate::first_launch::first_launch_done(&config_dir) {
+                // The shell's switch first: ended once per process, so a
+                // later place arrives without the line; already ended, there
+                // is nothing to write. With no switch lent, the folder named.
+                let to_write = match outside.first_launch {
+                    Some(line) => line.end(),
+                    None => Some(config_dir),
+                };
+                if let Some(config_dir) = to_write
+                    && let Err(error) = crate::first_launch::first_launch_done(&config_dir)
+                {
                     state.status = crate::update::Status::Failed(error.words());
                 }
             }

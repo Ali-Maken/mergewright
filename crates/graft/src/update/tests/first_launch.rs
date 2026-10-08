@@ -5,7 +5,7 @@
 
 use super::place_footers::footer_row;
 use super::*;
-use crate::first_launch::{FirstLaunch, for_this_launch, test_config, test_read};
+use crate::first_launch::{for_this_launch, test_config, test_read};
 
 const LINE: &str = "first time? ? keys here · ⌃P anything";
 
@@ -14,9 +14,9 @@ fn config(text: Option<&str>) -> tempfile::TempDir {
 }
 
 /// The graph after a walk, on this launch's line.
-fn graph(first_launch: FirstLaunch) -> AppState {
+fn graph(first_launch: Option<std::path::PathBuf>) -> AppState {
     AppState {
-        first_launch,
+        first_launch: first_launch.map(Box::new),
         ..merge_on_screen(JobId::new(801), 0).0
     }
 }
@@ -50,12 +50,12 @@ fn shown_until_the_palette_opens() {
         let dir = config(None);
         let (line, warning) = for_this_launch(Some(dir.path()));
         assert_eq!(warning, None);
-        let state = graph(line);
+        let state = graph(line.line());
         assert_eq!(footer(&state), LINE);
 
         let (opened, commands) = update(&state, AppEvent::Core(Event::Key(opener)));
         assert!(opened.palette.is_some(), "{opener:?}");
-        assert!(!opened.first_launch.is_shown(), "{opener:?}");
+        assert_eq!(opened.first_launch, None, "{opener:?}");
         assert!(!footer(&opened).contains("first time?"), "{opener:?}");
         // `done` is the loop's to write (`running::carry`), named here.
         assert!(
@@ -85,8 +85,8 @@ fn gone_after_five_launches() {
     let dir = config(Some("5\n"));
     let (line, warning) = for_this_launch(Some(dir.path()));
     assert_eq!(warning, None);
-    assert!(!line.is_shown());
-    let row = footer(&graph(line));
+    assert_eq!(line.line(), None);
+    let row = footer(&graph(line.line()));
     assert!(!row.contains("first time?"), "{row}");
     assert_eq!(test_read(dir.path()).as_deref(), Some("6\n"));
 }
@@ -96,7 +96,7 @@ fn gone_after_five_launches() {
 #[test]
 fn a_problem_or_notice_wins_the_row() {
     let dir = config(None);
-    let state = graph(FirstLaunch::shown(dir.path().to_path_buf()));
+    let state = graph(Some(dir.path().to_path_buf()));
     for status in [
         Status::Failed("could not read the refs".to_owned()),
         Status::Waiting("still reading the refs".to_owned()),
@@ -126,7 +126,7 @@ fn a_broken_file_warns_once_and_never_stops_the_app() {
     let garbled = config(Some("x7\n"));
     for dir in [&unreadable, &garbled] {
         let (line, warning) = for_this_launch(Some(dir.path()));
-        assert!(!line.is_shown());
+        assert_eq!(line.line(), None);
         let warning = warning.expect("one warning");
         assert!(warning.starts_with("first-launch: "), "{warning}");
         // `drive` hands it to the first place as its status (`Arrival`).
@@ -135,7 +135,7 @@ fn a_broken_file_warns_once_and_never_stops_the_app() {
                 reason: warning.clone(),
                 keys: None,
             },
-            ..graph(line)
+            ..graph(line.line())
         };
         let row = footer(&state);
         assert!(row.starts_with("first-launch: "), "{row}");
@@ -144,4 +144,31 @@ fn a_broken_file_warns_once_and_never_stops_the_app() {
         assert!(after != state, "j moved the cursor");
         assert!(!footer(&after).contains("first time?"));
     }
+}
+
+/// `update` is pure (ARCHITECTURE.md "`AppState` … must stay pure"): the
+/// first palette open ends the line in the state it returns and asks the
+/// loop to write `done`; the state it was given is left as it was.
+#[test]
+fn update_leaves_its_input_state_alone() {
+    let dir = config(None);
+    let s0 = graph(Some(dir.path().to_path_buf()));
+    let before = s0.clone();
+
+    let (next, commands) = update(
+        &s0,
+        AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char('?')))),
+    );
+
+    assert_eq!(next.first_launch, None);
+    assert!(
+        commands.contains(&Command::FirstLaunchDone(dir.path().to_path_buf())),
+        "{commands:?}"
+    );
+    assert_eq!(
+        s0.first_launch,
+        Some(Box::new(dir.path().to_path_buf())),
+        "update changed its input state"
+    );
+    assert_eq!(s0, before);
 }
