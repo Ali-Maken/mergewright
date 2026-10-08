@@ -41,4 +41,4 @@
 
 
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⇥ banner · a amend it · c continue · space stage · m merge · r rebase · ⏎ open · b branch · t tag · P push · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · ? keys
+ ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · t tag · P push · p pull · f fetch · S stash · / search · q quit · F2 stat · F3 rend · x compare · + lane · ? keys

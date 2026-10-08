@@ -533,6 +533,7 @@ fn live_wrapped(state: &AppState, row: HintContext) -> HintContext {
         HintContext::WorkingTreeRow
             | HintContext::BranchRow { .. }
             | HintContext::PlainRow { .. }
+            | HintContext::StashRow
             | HintContext::Marked(_)
             | HintContext::PaneFocused { .. }
     ) {
@@ -630,6 +631,7 @@ pub(crate) fn back_to_place(state: &AppState, context: HintContext) -> HintConte
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
+        | HintContext::StashRow
         | HintContext::Rewritable(_)
         | HintContext::Marked(_)
         | HintContext::PaneFocused { .. }
@@ -787,6 +789,17 @@ pub fn resolver_context(state: &AppState) -> HintContext {
 /// The drawn cursor row's context: its first local-branch badge or plain,
 /// with its verbs, under `R rewrite` when offered and `Marked` when flagged.
 fn cursor_row_context(state: &AppState, cursor: &GraphEntry<'_>) -> HintContext {
+    // A stash's row first, before any badge (m8-polish-and-ship/15 A4): the
+    // same `is_stash` on the same selected commit that `m`/`r` refuse on
+    // (`update::preview::history`), so the bar and the keys agree. Never
+    // `Rewritable`; marked like any row.
+    if cursor_is_stash(state) {
+        return if cursor.marker.is_some() {
+            HintContext::Marked(Box::new(HintContext::StashRow))
+        } else {
+            HintContext::StashRow
+        };
+    }
     let verbs = row_verbs(state);
     let base = cursor
         .badges
@@ -806,6 +819,16 @@ fn cursor_row_context(state: &AppState, cursor: &GraphEntry<'_>) -> HintContext 
     } else {
         base
     }
+}
+
+/// The selected commit is a stash's (`RefBadges::is_stash`).
+fn cursor_is_stash(state: &AppState) -> bool {
+    state
+        .history
+        .as_ref()
+        .and_then(crate::history::History::selected)
+        .zip(state.refs.as_deref())
+        .is_some_and(|(row, refs)| refs.is_stash(row.commit.id))
 }
 
 /// The cursor row's own verbs (m7-power-tools/40), each from the check its

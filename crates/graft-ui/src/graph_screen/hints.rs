@@ -531,6 +531,7 @@ fn words_for(context: &HintContext) -> Words {
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
+        | HintContext::StashRow
         | HintContext::Rewritable(_)
         | HintContext::ChangesPane { .. }
         | HintContext::Marked(_)
@@ -614,6 +615,7 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
+        | HintContext::StashRow
         | HintContext::Rewritable(_)
         | HintContext::ChangesPane { .. } => (
             actions_unless_over_overlay(context, drawable(context, divider)),
@@ -817,6 +819,7 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
         HintContext::WorkingTreeRow
             | HintContext::BranchRow { .. }
             | HintContext::PlainRow { .. }
+            | HintContext::StashRow
             | HintContext::Rewritable(_)
     );
     if rows {

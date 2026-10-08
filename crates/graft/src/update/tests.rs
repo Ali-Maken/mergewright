@@ -4105,6 +4105,111 @@ fn every_key_the_bar_draws_is_answered() {
     );
 }
 
+/// **No key a live-operation bar draws refuses because the operation is
+/// live** (m8/15 A1). [`every_key_the_bar_draws_is_answered`] counts a
+/// refusal as an answer — the status line moves — so it cannot see this;
+/// here every drawn key of every `OperationLive` form (an `edit` stop
+/// included, `LiveC::ContinueAmends`) is pressed into its screen and the
+/// status it leaves must not be the live refusal (`undo::live_refusal_words`)
+/// nor `m`'s detached-`HEAD` one (`preview/history.rs:112`). Holds
+/// `graft_ui`'s `REFUSED_WHILE_LIVE` against the keys that really refuse.
+#[test]
+fn no_key_a_live_operation_bar_draws_refuses_while_live() {
+    use graft_ui::graph_screen::every_context;
+
+    let mut refused: Vec<String> = Vec::new();
+    let mut pressed = 0;
+    for context in every_context() {
+        if !matches!(context, HintContext::OperationLive { .. }) {
+            continue;
+        }
+        for columns in [80, 120, 160] {
+            for state in states_for(&context, Divider::Hidden, columns) {
+                let state = settled(state);
+                let banner = crate::update::banner::banner_view(&state);
+                let drawn = crate::view::rows::footer_context(&state, &[], banner.as_ref());
+                for hint in bar_hints(&state, &drawn, Divider::Hidden, columns) {
+                    for press in presses_for(&hint) {
+                        pressed += 1;
+                        let status = format!("{:?}", outcome(&state, press).0.status);
+                        if status.contains("finish or abort the")
+                            || status.contains("needs a branch checked out")
+                        {
+                            refused.push(format!(
+                                "{context:?} at {columns}: `{} {}` → {status}",
+                                hint.key(),
+                                hint.verb
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    assert!(pressed > 50, "only {pressed} presses swept");
+    assert!(
+        refused.is_empty(),
+        "a live bar offers {} key(s) that refuse:\n  {}",
+        refused.len(),
+        refused.join("\n  ")
+    );
+}
+
+/// **A stash's row draws the stash bar, and no key on it refuses for being
+/// a stash** (m8/15 A4): the drawn frame classifies the row `StashRow`
+/// (bare, and inside a live operation's wrap), and every drawn key pressed
+/// there leaves no `a stash isn't a branch` (`preview/history.rs:185`).
+#[test]
+fn a_stash_row_is_classified_and_no_key_on_its_bar_refuses_a_stash() {
+    let mut refused: Vec<String> = Vec::new();
+    for columns in [80, 120, 160] {
+        for state in states_for(&HintContext::StashRow, Divider::Hidden, columns) {
+            let state = settled(state);
+            let view = crate::view::rows::graph_view(&state, 0);
+            assert_eq!(view.hint_context, HintContext::StashRow, "at {columns}");
+            for hint in bar_hints(&state, &view.hint_context, Divider::Hidden, columns) {
+                for press in presses_for(&hint) {
+                    let status = format!("{:?}", outcome(&state, press).0.status);
+                    if status.contains("isn't a branch") || status.contains("takes a commit") {
+                        refused.push(format!(
+                            "{columns}: `{} {}` → {status}",
+                            hint.key(),
+                            hint.verb
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    assert!(refused.is_empty(), "{}", refused.join("\n"));
+}
+
+/// **`?`, `:` and `⌃P` on the graph each open the palette** (m8/15 scope:
+/// the old "they do nothing" finding, closed by G-palette).
+#[test]
+fn help_colon_and_ctrl_p_on_the_graph_each_open_the_palette() {
+    let context = HintContext::PlainRow {
+        verbs: graft_ui::graph_screen::hints::RowVerbs::NONE,
+    };
+    let state = states_for(&context, Divider::Hidden, 120)
+        .into_iter()
+        .next()
+        .map(settled)
+        .expect("a graph screen");
+    assert!(state.palette.is_none());
+    for press in [
+        KeyPress::plain(KeyCode::Char('?')),
+        KeyPress::plain(KeyCode::Char(':')),
+        KeyPress {
+            code: KeyCode::Char('p'),
+            modifiers: Modifiers::CONTROL,
+        },
+    ] {
+        let (after, _) = update(&state, AppEvent::Core(Event::Key(press)));
+        assert!(after.palette.is_some(), "{press:?} opened no palette");
+    }
+}
+
 /// **`? keys` opens a palette he can see, everywhere it is drawn** (m8/11c):
 /// over the Map, journal, stash (graph and pane focus), blame, history and
 /// a marked row, `?` changes state *and* the drawn frame holds the
@@ -4542,8 +4647,11 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
     match context {
         // `R rewrite` is decoration on a drawn row too (08, ruling 10).
         // So are `o`/`a` (m7-power-tools/40): `row_verbs` reads a drawn cursor row.
+        // So is a stash's row (m8/15 A4): `cursor_row_context` reads it off
+        // the drawn cursor row, as it reads a badge.
         HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
+        | HintContext::StashRow
         | HintContext::Marked(_)
         | HintContext::Rewritable(_) => {
             Some(HintContext::PlainRow { verbs: graft_ui::graph_screen::hints::RowVerbs::NONE })
@@ -4848,6 +4956,9 @@ fn states_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<AppS
             // columns is exactly where tickets 29 and 31's defects lived.
             state.size = Size { columns, rows: 48 };
             one_stash(&mut state);
+            if holds_stash_row(context) {
+                stash_under_cursor(&mut state);
+            }
             if divider == Divider::Shown && !state.detail.shown {
                 // On a commit, even where the cursor is on the working-tree
                 // row: a pane open on the working tree *is* the changes
@@ -5001,8 +5112,11 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         // Radar marker that tell `BranchRow`, `Marked` and `PlainRow` apart
         // are painted on the row, not held in the state, and no key turns
         // on them.
+        // A stash's row is the same screen; `states_for` puts the stash
+        // under the cursor after `one_stash` (`stash_under_cursor`).
         HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
+        | HintContext::StashRow
         | HintContext::Marked(_)
         | HintContext::Rewritable(_)
         | HintContext::Preview => vec![merge_on_screen(walk, MERGE_ROW).0],
@@ -5522,6 +5636,43 @@ fn one_stash(state: &mut AppState) {
     )
     .expect("badges");
     state.refs = Some(Arc::new(badges));
+}
+
+/// The selected commit made a stash's (`refs/stash` on it), with `HEAD`
+/// detached elsewhere: the screen of [`HintContext::StashRow`] (m8/15 A4).
+fn stash_under_cursor(state: &mut AppState) {
+    let selected = state
+        .history
+        .as_ref()
+        .and_then(crate::history::History::selected)
+        .expect("a row under the cursor")
+        .commit
+        .id;
+    let elsewhere = Oid::from_bytes(&[9; Oid::SHA1_BYTES]).expect("20 bytes is an oid");
+    let name = graft_core::ref_name::RefName::new("refs/stash").expect("a valid ref name");
+    let badges = crate::refs::badges(
+        &[(name, selected)],
+        &graft_git::repo::HeadState::Detached(elsewhere),
+        &std::collections::HashMap::new(),
+        &[(selected, 0)],
+        |_, _| Err("no upstreams on this fixture".to_owned()),
+    )
+    .expect("badges");
+    state.refs = Some(Arc::new(badges));
+}
+
+/// Whether `context` is, or wraps, a stash's row.
+fn holds_stash_row(context: &HintContext) -> bool {
+    match context {
+        HintContext::StashRow => true,
+        HintContext::Marked(row)
+        | HintContext::Rewritable(row)
+        | HintContext::BackToBlame(row)
+        | HintContext::BackToHistory(row)
+        | HintContext::OperationLive { row, .. }
+        | HintContext::PaneFocused { row, .. } => holds_stash_row(row),
+        _ => false,
+    }
 }
 
 /// The pane open on `spec`, with a two-file list in it so the keys that act

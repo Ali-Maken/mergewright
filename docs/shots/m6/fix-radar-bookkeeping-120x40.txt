@@ -100,7 +100,7 @@
   ●      Commit 170                                                                                     GF 7y   8ea98be
   ●      Commit 169                                                                                     GF 7y   4926766
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
+ ⏎ open · S stash · b branch · t tag · c commit · y sha · u undo · J journal · / search · q quit · F2 stat · ? keys
 
 == 3. `.` on main's tip: the menu does not lead with Explain ==
 

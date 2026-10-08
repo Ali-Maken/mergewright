@@ -27,4 +27,4 @@ shape: octopus-merge, no-color, 80x24, cursor on row 2
 
 
 
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · ? keys
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · u undo · ? keys

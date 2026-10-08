@@ -50,15 +50,15 @@
 
 --- the cursor is on the tip, which carries the current branch's badge
 [······························ 80 cells of bar ·······························]
- ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · ? keys
+ ⏎ open · c commit · P push · p pull · f fetch · b branch · u undo · ? keys
 
 --- the cursor is on another branch's tip
 [······························ 80 cells of bar ·······························]
- m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · ? keys
+ m merge · r rebase · ⏎ open · b branch · t tag · P push · u undo · ? keys
 
 --- the cursor is on an ordinary commit row
 [······························ 80 cells of bar ·······························]
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · ? keys
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · u undo · ? keys
 
 --- the changes pane has focus, the divider draggable
 [······························ 80 cells of bar ·······························]

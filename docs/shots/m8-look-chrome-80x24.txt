@@ -23,4 +23,4 @@ m8-polish-and-ship/06 at 80x24: what right looks like — the first row is ` ◆
 
 
 
- m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · ? keys
+ m merge · r rebase · ⏎ open · o take · b branch · t tag · u undo · ? keys

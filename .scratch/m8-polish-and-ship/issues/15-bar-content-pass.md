@@ -1,6 +1,7 @@
 # G-bar — the bar offers what acts: at a stop, after a search, on stash rows, on his unpushed rows
 
-Status: ready (amended 2026-10-08 after scout `.scratch/m8-polish-and-ship/scouts/15-bar-content.md`; the
+Status: partial — A1, A4, A5 and the palette check done; **A2 split off, not built** (see NOTES at the end).
+(Amended 2026-10-08 after scout `.scratch/m8-polish-and-ship/scouts/15-bar-content.md`; the
 **Amendment** section below overrides the Rulings, Signatures and Acceptance sections where they differ)
 Build with: **Opus** — brownfield, four small list/fit changes plus one footer-precedence move, each held by a test;
 no structure a wrong approach would lock in (fails Fable test 1).
@@ -135,10 +136,16 @@ graft: `view::rows::search_line(&AppState) -> Option<SearchLine>` (Prompt only);
 the `is_stash` arm; the `Searching` wrap where the hint context is built. Both MAP.md files record each.
 
 ## Acceptance
-- [ ] A1 Edit stop: bar drawn at 80/120/160 has no `u`, no `m`; every drawn key acts (sweep extended with an
+- [x] A1 Edit stop: bar drawn at 80/120/160 has no `u`, no `m`; every drawn key acts (sweep extended with an
       edit-stop context; test named). Each `REFUSED_WHILE_LIVE` member's refusing file:line in NOTES.
-- [ ] A1 Every other `OperationLive` form (each `LiveC` × `tab_to_banner`) draws no `REFUSED_WHILE_LIVE` key (test).
-- [ ] A2 Search: `/root ⏎` then the bar shows `n next  N prev` and the pane's keys; header tail shows the search text
+      — `graft` `update::tests::no_key_a_live_operation_bar_draws_refuses_while_live` (presses every drawn key of
+      every `OperationLive` form, `ContinueAmends` included, at 80/120/160; status must not be a live or
+      detached-HEAD refusal; probe: with the filter commented out it reported 1347 refusals — `u` 309, `m` 474,
+      `r` 564); capture asserted by `rewrite_stop::capture_m8_bar_edit_stop_120x36`.
+- [x] A1 Every other `OperationLive` form (each `LiveC` × `tab_to_banner`) draws no `REFUSED_WHILE_LIVE` key (test).
+      — `graft-ui` `hints::tests::no_live_operation_bar_offers_a_key_that_refuses_while_live` (all forms, 80–200,
+      both dividers).
+- [ ] **Split off (A2, not built — see NOTES).** A2 Search: `/root ⏎` then the bar shows `n next  N prev` and the pane's keys; header tail shows the search text
       (was "the match count" — same text, as `Status` drew it); `Esc` clears both (tests).
 - [ ] A2 At a stop, `/root ⏎` draws the stop row with the stop's keys leading, `n N` after; the prompt still wins
       while open (the two tests replacing `footer.rs:334`, named).
@@ -146,14 +153,27 @@ the `is_stash` arm; the `Searching` wrap where the hint context is built. Both M
 - [x] ~~`a amend` on the second unpushed row hinted iff resident (test), or NOTES states not resident with
       file:line and the conductor carries the row.~~ **Cut (A3):** not resident, file:line in A3; conductor files
       the gap row. Builder: no work.
-- [ ] A4 Stash row bar: no `m`, `r`, `R`, `o`; has `⏎ open` then `S stash` (test); every drawn key acts (sweep
+- [x] A4 Stash row bar: no `m`, `r`, `R`, `o`; has `⏎ open` then `S stash` (test); every drawn key acts (sweep
       extended with `StashRow`).
-- [ ] A5 `u undo` drawn on every graph-row form × `RowVerbs::ALL` at 100 and at 80 columns wherever the bar holds
+      — `graft-ui` `hints::tests::a_stash_row_offers_open_then_stash_and_nothing_that_refuses_on_a_stash`; `graft`
+      `update::tests::a_stash_row_is_classified_and_no_key_on_its_bar_refuses_a_stash` (drawn frame classifies
+      `StashRow`; each drawn key pressed, no stash refusal); `every_key_the_bar_draws_is_answered` and
+      `every_swept_state_is_the_context_it_claims` now sweep `StashRow` (via `every_context`).
+- [x] A5 `u undo` drawn on every graph-row form × `RowVerbs::ALL` at 100 and at 80 columns wherever the bar holds
       `u` (test); the three existing fit tests pass unchanged.
-- [ ] `?`, `:`, `⌃P` on the graph each open the palette (test).
+      — `graft-ui` `hints::tests::undo_is_drawn_at_100_and_80_on_every_row_form_that_holds_it` (bare, `Marked`,
+      `Rewritable`, both dividers). `resize_is_drawn_only_when_nothing_else_was_dropped`,
+      `the_hints_resize_once_pushed_off_are_drawn_again` and the `tests.rs:2747` test pass untouched. **Five other
+      existing tests were changed** — see NOTES.
+- [x] `?`, `:`, `⌃P` on the graph each open the palette (test).
+      — `graft` `update::tests::help_colon_and_ctrl_p_on_the_graph_each_open_the_palette` (asserts
+      `state.palette.is_some()` after each press).
 - [ ] Captures: `docs/shots/m8-bar-edit-stop-120x36.txt`, `m8-bar-after-search-120x36.txt`,
       `m8-bar-stash-row-120x36.txt`, `m8-bar-head-row-100x30.txt` (HEAD's row with `a amend`, `u undo` present).
       **Colour unverified** (search-failed warning style).
+      — **Partial:** three of four written, each asserted by its test: `rewrite_stop::capture_m8_bar_edit_stop_120x36`,
+      `stash_in_history::capture_m8_bar_stash_row_120x36`, `hint_bar::capture_m8_bar_head_row_100x30`.
+      `m8-bar-after-search-120x36.txt` belongs to A2 (split off). By-eye check is the user's (rule 6).
 
 ## Touches
 - `hints/lists.rs` stop, row and new stash lists; `hints/fitting.rs` (A5); `every_context` + `coverage_slot` +
@@ -180,3 +200,58 @@ the `is_stash` arm; the `Searching` wrap where the hint context is built. Both M
 ## Size
 One context, ~65k tokens (A2 and A5 added work; A3 removed). If it runs over, split A2 off as its own ticket —
 it shares `footer.rs`/`header.rs` with nothing else here.
+
+## NOTES (builder, 2026-10-08)
+
+Scout used: `.scratch/m8-polish-and-ship/scouts/15-bar-content.md`. No compaction. Context ran well past 65k
+before A2 started, so **A2 is split off per this section** — nothing of A2 is built: `SearchLine::Status`,
+`SearchTail`, `HeaderView::search`, `HintContext::Searching`, `footer.rs:334`'s replacement tests and the capture
+`m8-bar-after-search-120x36.txt` are all still to do. The search line still holds the bar until `Esc`.
+Next step for the A2 ticket: start at `crates/graft/src/view/rows.rs` `search_line` (Prompt only), then
+let the compiler find every `SearchLine::Status` reader. The shared seams A2 will touch that this ticket changed:
+`every_context`/`coverage_slot` (now 114 slots, `StashRow` = 113) and `view::rows::live_wrapped`/`back_to_place`.
+
+**`REFUSED_WHILE_LIVE` members and their refusing lines** (graft):
+- `app.undo` — `update/undo.rs:344` (`start_undo` → `in_progress_refusal`, words `undo.rs:240`
+  `live_refusal_words`). Exception kept by the app but not by the bar: a merge begun in the shell, once the
+  journal read says so (`undo.rs:173-178`, keymap §2.6a), sends `u`. The bar's context cannot tell that case
+  apart, so `u` is not offered there either (a hint left out, not a key refused; `?` still lists it).
+- `graph.merge`, `graph.rebase` — `preview::history_key` → `open_preview` → `preview_refusal`
+  (`update/preview.rs:380`); at an `edit` stop `m` refuses first on detached HEAD (`update/preview/history.rs:112`).
+- `graph.take` — `preview::take_key` → `open_preview` → `preview_refusal` (`update/preview.rs:380`).
+- `graph.rewrite` — `rewrite_editor::open_rewrite` → `preview_refusal` (`update/rewrite_editor/open.rs:48`).
+Verified by press for `u`, `m`, `r` (the probe above). `o` and `R` are verified by **code reading only**: no
+live fixture draws them (`row_verbs` is `NONE` while live; `Rewritable` is never wrapped live), so the filter
+is belt-and-braces for them. `b branch`, `t tag` stay drawn: no refusing line found (`name_prompt.rs:104` refuses
+only branch-from-stash).
+
+**A4.** The stash test is `RefBadges::is_stash` on the selected commit — the same check `m`/`r` refuse on
+(`preview/history.rs:108`). `StashRow` is also wrapped by `OperationLive`/`PaneFocused` (graft wraps any row);
+`catalogue` yields those forms so the sweeps cover them. `m6/fix-radar-bookkeeping-120x40.txt` changed to the
+stash bar: that fixture's cursor rests on a stash row after the pull (the classifier says so; not re-traced).
+
+**A5 — existing tests changed** (the ticket said only the three named must pass unchanged; these five encoded
+"drawn = prefix of the list", which A5 ends):
+- `hints::tests::a_hint_is_dropped_only_when_its_words_will_not_fit` — "next" hint is now next in fit order.
+- `hints::tests::no_hint_loses_ground_as_the_room_for_it_grows` — matched by key, relative order, not index.
+- `hints::tests::marked_leads_with_explain_and_draws_no_actions` — subsequence of the plain list, not prefix.
+- `hints::tests::one_rule_puts_the_doorway_before_a_tail_and_last_without_one` and
+  `graph_screen::tests::footer_eighty_branch_row` — expected 80-column strings: `t tag`/`c commit` give way to
+  `u undo`.
+
+**Palette/help (`?` "every key of the place")**: it does not read `HintContext` — `grep -rln HintContext` over
+`graft/src` and `graft-ui/src` finds no palette source file (only the test `update/tests/keymap_edge/palette.rs`).
+No non-test code in `graft` names `PlainRow`/`BranchRow` outside `view/rows.rs`, so no other classifier needed
+`StashRow`.
+
+**Captures re-shot** (each a one-line footer change; `git diff docs/shots` shows it): `m2-overview-strip`,
+`m5-hints-{branch,plain,marked}-80x24`, `m5-hints-ladder`, `m5-lane-cap-160x24`, `m5-ui-banner`,
+`m5-ui-context-menu-verbs-80x24`, `m5-ui-drop-menu-80x24`, `m6/fix-c-live-frames-187x50`,
+`m6/fix-landing-after-esc-{120x40,187x50}`, `m6/fix-radar-bookkeeping-120x40`, `m6/stash-clash-stop-line-80x24`,
+`m7/compare-since-split-80x24`, `m7/rewrite-edit-stop-{120x40,187x50}`, `m7/stash-in-history-{120x40,80x24}`,
+`m8-help-80x24`, `m8-look-chrome-80x24`, `m8/fork-follows-banner-187x44`; 26 insta snapshots in
+`crates/graft-ui/tests/snapshots` and 4 in `crates/graft/src/view/snapshots` (footer line; `assertion_line`
+headers dropped by insta). New: `m8-bar-edit-stop-120x36`, `m8-bar-stash-row-120x36`, `m8-bar-head-row-100x30`.
+Not re-shot from the ticket's list (their bars did not change, the capture tests passed):
+`m8-help-rebase-stop-120x36`, `m8-banner-bar-q-*`, `m8-quit-*`, `m2-18-git-git-search-enter-*`, `26-search-*`,
+`15-stash-hidden` — the search ones change with A2. `m7-proto-1b-edit-stop.txt` is a prototype, left.

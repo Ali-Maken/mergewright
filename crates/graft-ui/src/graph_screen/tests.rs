@@ -1147,7 +1147,8 @@ fn footer_eighty_branch_row() {
     let footer = screen.last().expect("a footer row").trim_end().to_owned();
     assert_eq!(
         footer,
-        " m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · ? keys"
+        // `u undo` is fitted second (m8/15 A5): `c commit` gives way, not `u`.
+        " m merge · r rebase · ⏎ open · b branch · t tag · P push · u undo · ? keys"
     );
 }
 
@@ -2326,8 +2327,8 @@ fn row_at_is_none_off_the_body() {
 /// boolean field combination (54 → 63 in m6-conflicts/50: the confirm box
 /// once per `ConfirmYes`; 111 → 112 in m8-polish-and-ship/13: `Quit`, whose
 /// place after `Redo` (63) was already the changes pane's; 116 → 113 in
-/// m8/11e: `Journal`, `Stash` and `Map` deleted, their slots refilled).
-const COVERAGE_SLOTS: usize = 113;
+/// m8/11e: `Journal`, `Stash` and `Map` deleted, their slots refilled; 113 → 114 in m8/15 A4: `StashRow`).
+const COVERAGE_SLOTS: usize = 114;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2379,6 +2380,8 @@ fn coverage_slot(context: &HintContext) -> usize {
         // forms keep 1–3, the other three per shape are 102–110.
         HintContext::BranchRow { current, verbs } => row_slot(1 + usize::from(*current), *verbs),
         HintContext::PlainRow { verbs } => row_slot(3, *verbs),
+        // m8-polish-and-ship/15 A4.
+        HintContext::StashRow => 113,
         // Both fields are plain `bool`s, so the arm stays exhaustive.
         // `merge` is `!skippable` in every form a live operation makes
         // (m6-conflicts/70), so it takes no slot of its own.

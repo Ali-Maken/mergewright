@@ -47,4 +47,4 @@
 
 
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · r rebase · t tag · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · ? keys
+ ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · t tag · y sha · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · + lane · ? keys

@@ -28,7 +28,7 @@
  ◆ api  /code/api · main                                   REBASING step 3 of 7
 ▸ ●    Commit 2                                                    2h   0202020
   ◇    Commit 1                                                    2h   0101010
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · ? keys
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · u undo · ? keys
 
 === 120x10 ===
  ◆ api  /code/api · main                                                                           REBASING step 3 of 7

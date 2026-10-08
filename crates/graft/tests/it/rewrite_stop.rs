@@ -167,6 +167,31 @@ fn capture_edit_stop() {
     app.close();
 }
 
+/// `docs/shots/m8-bar-edit-stop-120x36.txt` (m8/15 A1). What right looks
+/// like: the stop's keys lead (`⇥ banner · a amend it · c continue · space
+/// stage`), and the bar holds no `u undo` and no `m merge` — both refuse
+/// while the rebase is live.
+#[test]
+fn capture_m8_bar_edit_stop_120x36() {
+    let dir = stopped_on_a1();
+    let (app, state) = relaunched(dir.path());
+    let lines = crate::captures::frame_at(
+        &state,
+        120,
+        36,
+        Some(graft::session::Clock::Fixed(graft_fixtures::CORPUS_NOW)),
+    );
+    let bar = lines.last().expect("a footer row");
+    assert!(bar.contains("a amend it · c continue"), "{bar}");
+    assert!(!bar.contains("u undo") && !bar.contains("m merge"), "{bar}");
+    crate::captures::check_shot(
+        "m8-bar-edit-stop-120x36.txt",
+        &format!("{}\n", lines.join("\n")),
+    );
+    drop(state);
+    app.close();
+}
+
 /// A rebase begun in the shell has no plan of Graft's: no chain words, and
 /// the edit stop still gives the graph the keyboard.
 #[test]
