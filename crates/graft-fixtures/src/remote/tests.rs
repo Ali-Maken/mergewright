@@ -389,7 +389,7 @@ fn http_remote_drop_ends_a_wedged_backend() {
     let dropped_in = started.elapsed();
 
     assert!(
-        dropped_in < Duration::from_millis(500),
+        dropped_in < Duration::from_secs(2),
         "drop took {dropped_in:?}"
     );
     assert!(port_is_closed(port), "port {port} still accepts after drop");

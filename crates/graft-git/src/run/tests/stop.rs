@@ -311,7 +311,9 @@ fn the_next_read_waits_a_full_interval_after_a_slow_read() {
     let reads = Reads::default();
     let listed = |_: Pid| io::Result::Ok(slow_read(&reads, slow, helper.pid()));
     let not_signalled = OwnSleep::start();
-    let until = Instant::now() + Duration::from_millis(1200);
+    // Five reads fit before it nominally; the test needs three, so a loaded
+    // machine stretching each read has room.
+    let until = Instant::now() + Duration::from_millis(2000);
     stop::after_git_ended(
         &mut stop::Helpers::of(not_signalled.pid()),
         &listed,
