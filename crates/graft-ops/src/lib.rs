@@ -11,6 +11,7 @@ pub mod absorb;
 pub mod apply;
 mod branch_config;
 pub mod clash;
+pub mod clone;
 pub mod conflict;
 pub mod facts;
 pub mod finish;

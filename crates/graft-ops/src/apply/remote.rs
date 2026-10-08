@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 use graft_core::journal::{JournalEntry, OperationKind};
 use graft_git::remote::{RemoteFailure, RemoteProgress, classify_failure, parse_progress};
 use graft_git::run::askpass::{AskPass, AskPassServer, Secret};
-use graft_git::run::{GitInvocation, RunError};
+use graft_git::run::{GitInvocation, RunError, Stop};
 
 use super::{AfterState, Context};
 use crate::keys::{KeyNames, OpKey, clause, either, then};
@@ -61,6 +61,28 @@ fn remote_invocation(invocation: &Invocation, hooks: Option<&RemoteHooks>) -> bo
     invocation.remote && hooks.is_some()
 }
 
+/// What the runner reads, and nothing else: the hooks and the stop. Narrowed
+/// from a whole [`Context`] so a clone, which has no repository and no
+/// journal yet, runs through the same askpass and progress path as a fetch
+/// (m8-polish-and-ship/18a, rulings R1).
+#[derive(Clone, Copy)]
+pub(crate) struct RemoteRun<'a> {
+    /// `None` is headless: no prompt (git fails auth instead), no progress.
+    pub(crate) hooks: Option<&'a RemoteHooks>,
+    /// Cancellation.
+    pub(crate) stop: &'a dyn Stop,
+}
+
+impl Context<'_> {
+    /// This operation's hooks and stop, for [`run`].
+    pub(crate) fn remote_run(&self) -> RemoteRun<'_> {
+        RemoteRun {
+            hooks: self.remote.as_ref(),
+            stop: self.stop,
+        }
+    }
+}
+
 /// One invocation of a remote operation that failed, with everything git
 /// wrote to stderr (as far as the stream got before a stop).
 pub(crate) struct Failed {
@@ -74,14 +96,13 @@ pub(crate) struct Failed {
 /// [`remote_invocation`] says so. A failure to clean up the askpass server
 /// is pushed onto `cleanup`, never dropped and never fatal.
 pub(crate) fn run(
-    ctx: &Context<'_>,
+    at: RemoteRun<'_>,
     mut git: GitInvocation,
     invocation: &Invocation,
     cleanup: &mut Vec<AfterState>,
 ) -> Result<(), Failed> {
-    let hooks = ctx
-        .remote
-        .as_ref()
+    let hooks = at
+        .hooks
         .filter(|hooks| remote_invocation(invocation, Some(hooks)));
     let segments: Arc<Mutex<Vec<Vec<u8>>>> = Arc::default();
     let (sender, receiver) = mpsc::channel();
@@ -118,7 +139,7 @@ pub(crate) fn run(
         if let Some(hooks) = hooks {
             scope.spawn(move || forward(receiver, &*hooks.progress));
         }
-        let result = git.run(ctx.stop);
+        let result = git.run(at.stop);
         // The sink, and with it the last progress sender, lives in `git`:
         // dropping it here is what ends `forward` (review Minor 3).
         drop(git);
@@ -133,7 +154,7 @@ pub(crate) fn run(
 
     let refused = asks.is_some_and(|asks| asks.refused());
     result.map(|_| ()).map_err(|error| Failed {
-        error: cancelled_at_the_prompt(error, refused, || ctx.stop.should_stop()),
+        error: cancelled_at_the_prompt(error, refused, || at.stop.should_stop()),
         // A poisoned lock means a sink call panicked on the drain thread; the
         // segments it had already pushed are still whole, and they are all
         // the failure has to go on.

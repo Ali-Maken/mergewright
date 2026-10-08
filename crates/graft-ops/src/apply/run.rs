@@ -146,7 +146,7 @@ pub(super) fn run_plan(
     for invocation in plan {
         let git = plan_git(ctx.repo, invocation);
         let failure = if let Some(names) = names {
-            remote::run(ctx, git, invocation, &mut cleanup)
+            remote::run(ctx.remote_run(), git, invocation, &mut cleanup)
                 .err()
                 .map(|failed| PlanFailure {
                     remote: Some(RemoteFailed {
