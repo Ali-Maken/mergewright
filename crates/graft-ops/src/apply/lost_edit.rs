@@ -103,7 +103,11 @@ pub(super) fn write_back(
             RestoreError::WriteRaw { tried, .. } => tried,
             _ => 0,
         };
-        AfterState::NotAsTheyWere { error, files }
+        AfterState::NotAsTheyWere {
+            error,
+            files,
+            of: crate::apply::RawStepOf::LostEdit,
+        }
     })
 }
 

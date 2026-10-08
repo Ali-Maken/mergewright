@@ -1,13 +1,12 @@
 //! What the listener thread shares with the server, and how an exchange's
 //! wait on its handler ends.
 
-use std::io;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
-use super::Secret;
 use super::peer::Refusal;
+use super::{Refused, Secret};
 
 /// What the listener thread shares with the server that owns it.
 #[derive(Default)]
@@ -47,16 +46,12 @@ impl Shared {
         refused.get_or_insert_with(|| (refusal.to_string(), 0)).1 += 1;
     }
 
-    /// Any refusal, as the error `close` reports.
-    pub(super) fn refusals(&self) -> io::Result<()> {
+    /// Any refusal, for the error `close` reports.
+    pub(super) fn refusals(&self) -> Option<Refused> {
         let refused = self.refused.lock().unwrap_or_else(PoisonError::into_inner);
-        match &*refused {
-            None => Ok(()),
-            Some((first, count)) => Err(io::Error::new(
-                io::ErrorKind::PermissionDenied,
-                format!("{first}; {count} refused in all"),
-            )),
-        }
+        refused
+            .as_ref()
+            .map(|(first, count)| Refused::new(first.clone(), *count))
     }
 
     /// The slot. A poisoned lock still holds a whole `Option<Sender>` — the

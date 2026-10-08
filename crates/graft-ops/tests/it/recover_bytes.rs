@@ -13,8 +13,9 @@
 use std::path::PathBuf;
 
 use graft_core::journal::{EntryStatus, JournalEntry};
-use graft_ops::apply::{AfterState, ApplyError};
+use graft_ops::apply::{AfterState, ApplyError, RawStepOf};
 use graft_ops::journal_list::lost_edits;
+use graft_ops::keys::{KeyNames, NoKeys, OpKey};
 use graft_ops::operation::{Operation, RecoverParams, RecoverTarget, Target};
 use graft_ops::restore::RestoreError;
 
@@ -230,6 +231,7 @@ fn a_lost_edit_put_back_whose_raw_step_cannot_land_says_so() {
         AfterState::NotAsTheyWere {
             error: RestoreError::WriteRaw { path, source, .. },
             files: 1,
+            ..
         },
     ] = unread.as_slice()
     else {
@@ -253,6 +255,43 @@ fn a_lost_edit_put_back_whose_raw_step_cannot_land_says_so() {
 /// lost. The backup kept nothing raw (git converted nothing then), so the
 /// put-back is git's checkout under today's setting: CRLF. Pinned, not
 /// endorsed: the gap row `M7/30w-autocrlf-later`.
+/// 20b R2: a lost edit's put-back whose raw step is blocked names the route
+/// that `after_a_failed_raw_step_u_then_the_put_back_again_restores_his_bytes`
+/// walks: clear the way, `u` (as he has it bound), then this put-back again.
+#[test]
+fn a_failed_raw_step_names_the_route() {
+    struct Undo;
+    impl KeyNames for Undo {
+        fn label(&self, key: OpKey) -> Option<String> {
+            (key == OpKey::Undo).then(|| "u".to_owned())
+        }
+    }
+
+    let repo = committed(AUTOCRLF, &A_RS);
+    lose_an_edit(&repo, &A_RS);
+    let (op, _) = the_put_back(&repo, &A_RS);
+    let _in_the_way = repo.block_raw_writes_in("src");
+
+    let Err(ApplyError::AfterState { unread, .. }) = try_run(&repo, &op, NOW + 2) else {
+        panic!("the raw step's failure was not reported");
+    };
+    let [state @ AfterState::NotAsTheyWere { of, .. }] = unread.as_slice() else {
+        panic!("{unread:?}");
+    };
+    assert_eq!(*of, RawStepOf::LostEdit);
+    let words = state.explain(&Undo);
+    assert!(
+        words
+            .ends_with("its exact bytes are in the backup: fix that, then u and put it back again"),
+        "{words}"
+    );
+    assert_eq!(
+        state.explain(&NoKeys),
+        state.to_string(),
+        "undo unbound: today's words, no clause"
+    );
+}
+
 #[test]
 fn a_lost_edit_lost_before_autocrlf_was_set_comes_back_as_git_checks_it_out_now() {
     let repo = committed(&[], &A_RS);
@@ -312,6 +351,7 @@ fn a_failed_raw_step_counts_only_the_files_it_tried() {
             [AfterState::NotAsTheyWere {
                 error: RestoreError::WriteRaw { .. },
                 files: 1,
+                ..
             }]
         ),
         "{unread:?}"

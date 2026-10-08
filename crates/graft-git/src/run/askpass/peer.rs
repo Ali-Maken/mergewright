@@ -21,11 +21,11 @@ impl fmt::Display for Refusal {
         match self {
             Refusal::OtherUser { peer, owner } => write!(
                 f,
-                "askpass: refused a connection from uid {peer} (this server serves uid {owner})"
+                "refused a connection from uid {peer} (this server serves uid {owner})"
             ),
             Refusal::Unreadable(error) => write!(
                 f,
-                "askpass: refused a connection whose uid could not be read: {error}"
+                "refused a connection whose uid could not be read: {error}"
             ),
         }
     }

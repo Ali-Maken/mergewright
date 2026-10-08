@@ -277,6 +277,15 @@ pub(crate) fn tail(segments: &[Vec<u8>]) -> Vec<String> {
         .collect()
 }
 
+/// [`RemoteFailure::NoSuchRemote`] in his words, the one formatter for the
+/// journal's reason and the status line (20b R3). git said `'<x>' does not
+/// appear to be a git repository`: `<x>` is a location, and git's two causes
+/// are nothing there or no access. (`Refusal::NoSuchRemote`, before git
+/// runs, keeps `no remote named`: there the name truly is not configured.)
+fn nothing_there(name: &str) -> String {
+    format!("no repository at '{name}', or no access to it")
+}
+
 /// The journal's `Aborted` reason: short, no advice.
 pub(crate) fn short(failure: &RemoteFailure) -> String {
     match failure {
@@ -284,7 +293,7 @@ pub(crate) fn short(failure: &RemoteFailure) -> String {
         RemoteFailure::NonFastForward => "rejected: the remote has commits you don't".to_owned(),
         RemoteFailure::StaleInfo => "rejected: stale lease".to_owned(),
         RemoteFailure::RemoteRejected { reason } => format!("rejected by the remote: {reason}"),
-        RemoteFailure::NoSuchRemote { name } => format!("no remote named '{name}'"),
+        RemoteFailure::NoSuchRemote { name } => nothing_there(name),
         RemoteFailure::Unreachable { target } => with_target("unreachable", target),
         RemoteFailure::NotFastForward => "diverged: not possible to fast-forward".to_owned(),
         RemoteFailure::WouldOverwrite { paths } => format!("would overwrite {}", paths.join(", ")),
@@ -372,7 +381,7 @@ pub(crate) fn explain(
             format!("{} rejected by the remote: {reason}", entry.description)
         }
         RemoteFailure::NoSuchRemote { name } => {
-            format!("{} failed: no remote named '{name}'", entry.description)
+            format!("{} failed: {}", entry.description, nothing_there(name))
         }
         RemoteFailure::Cancelled => format!("{} cancelled", entry.description),
         RemoteFailure::Other { first_line } => {

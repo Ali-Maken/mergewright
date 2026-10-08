@@ -191,6 +191,18 @@ fn a_failed_clone_leaves_no_folder() {
 
         let answer = clone(&params(&url, &into), None, &Never);
 
+        if url.starts_with("file://")
+            && let Err(error) = &answer
+        {
+            // 20b R3: nothing there, in git's two causes, not "no remote named".
+            let words = error.explain();
+            assert!(
+                words.starts_with("clone failed: no repository at '")
+                    && words.contains("nope.git")
+                    && words.ends_with("', or no access to it"),
+                "{words}"
+            );
+        }
         let Err(CloneError::Remote { left, failure, .. }) = answer else {
             panic!("{url}: not a remote failure: {answer:?}");
         };

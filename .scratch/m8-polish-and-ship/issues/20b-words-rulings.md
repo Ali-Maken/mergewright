@@ -83,19 +83,47 @@ in NOTES. `tab_keys` callers that pass `Keymap::shipped()` today (the commit edi
    gets `..` (the only graft edit allowed; list the lines; none may be in 19b's files).
 
 Acceptance (each tick names its test at tick time):
-- [ ] R1 graft-git: a peer of another uid (or the existing refusal test's fixture) → `close`'s `Err` has
+- [x] R1 graft-git (tests `run::askpass::tests::a_refusal_is_typed` — the existing refusal test renamed and extended; red: E0425 — and, amendment 2, `run::askpass::tests::a_refusal_survives_a_failed_cleanup`, red: E0599 `cleanup` missing): a peer of another uid (or the existing refusal test's fixture) → `close`'s `Err` has
   `refused(&e).is_some()` and `count() == n`. Test: `askpass::tests::a_refusal_is_typed` (or the existing refusal test, extended).
-- [ ] R1 graft-ops: a remote op whose askpass refused → its `AfterState` words read `another user's program asked for
+- [x] R1 graft-ops (test `apply::error::tests::askpass_refusal_has_its_own_words`, three arms — refusal, refusal + cleanup (amendment 2), cleanup alone — each red then green; a unit test over `AfterState::AskPass`, no remote op driven): a remote op whose askpass refused → its `AfterState` words read `another user's program asked for
   your login and was turned away · nothing was sent: …`, never `could not be cleaned up`; a cleanup failure still reads
   the old words. Test: `error::tests::askpass_refusal_has_its_own_words` (both arms, red first).
-- [ ] R2: lost-edit put-back, raw step blocked → words end `: fix that, then u and put it back again`; plural form for
+- [x] R2 (tests `recover_bytes::a_failed_raw_step_names_the_route` — red with `of: SetAside` — and `apply::error::words::tests::the_route_clause_drops_when_undo_is_unbound`; set-aside words held by `apply::error::tests::not_as_they_were_says_the_edits_are_back_and_where_the_bytes_are`; route test unedited, green): lost-edit put-back, raw step blocked → words end `: fix that, then u and put it back again`; plural form for
   two paths; with `app.undo` unbound (a `KeyNames` returning `None`) → today's words byte-for-byte. Set-aside put-back
   → today's words. Tests: `recover_bytes::a_failed_raw_step_names_the_route` (it) + `words::tests::the_route_clause_drops_when_undo_is_unbound`.
   The existing route test stays green unedited.
-- [ ] R3: missing `file://` bare → `CloneError::explain` reads `clone failed: no repository at '<url>', or no access to
+- [x] R3 (tests `tests/it/clone.rs::a_failed_clone_leaves_no_folder` (words asserted) and `tests/it/pull_set_aside.rs::a_pull_whose_fetch_fails_journals_as_today` (a remote whose URL is a missing path) — both red with the formatter broken; `apply::remote::tests::short_reason_for_no_such_remote_names_the_two_causes` (`:287`) and `apply::remote::tests::explain_names_each_failure`'s `NoSuchRemote` case (`:375`), each red first; `operation.rs:910` held by `operation::remote::tests` :414 `"no remote named 'x'"`, unedited and green. `remote_ops.rs` quotes neither old string — not edited): missing `file://` bare → `CloneError::explain` reads `clone failed: no repository at '<url>', or no access to
   it`; a fetch from a remote whose URL is a missing path reads the same tail. Tests: `tests/it/clone.rs::a_failed_clone_leaves_no_folder`
   (assert the words) + one `remote::tests` case. `tests/it/remote_ops.rs` updated only where it quotes the old words (list them).
-- [ ] MAP.md: graft-git `run/askpass` (`Refused`, `refused`), graft-ops `AfterState::AskPass`, `NotAsTheyWere` (`of`, route clause), `## clone` explain.
+- [x] MAP.md (doc, no test; rows checked by reading): graft-git `run/askpass` (`Refused`, `refused`), graft-ops `AfterState::AskPass`, `NotAsTheyWere` (`of`, route clause), `## clone` explain.
+
+### NOTES — Part A (builder, 2026-10-08)
+
+Status: **done** (R1, R2, R3, amendment 2). No scout: the check-first is the scout. No compaction.
+
+Check first:
+1. `graft-git/src/run/askpass.rs` `shutdown` (before): `note(...)` kept only the first error, the refusal noted last,
+   after join / `remove_file` / `remove_dir` — a cleanup failure hid a refusal. Fixed per amendment 2: `shutdown`
+   computes cleanup (wake failure included) via new `clean_up`, then a refusal wins with the cleanup inside
+   (`Refused::cleanup()`). No seam needed: the test plants a file in the private dir so `remove_dir` fails.
+2. Three producers of `no remote named` (`apply/remote.rs:287`, `:375`, `operation.rs:910`). Per amendment 1: the two
+   `RemoteFailure` producers call one fn `nothing_there` (`apply/remote.rs`); `operation.rs:910` untouched.
+3. No graft hits for `NotAsTheyWere`. Constructors: `apply/lost_edit.rs` → `LostEdit`; `apply/set_aside/answer.rs` →
+   `SetAside`. Patterns given `..`: `tests/it/recover_bytes.rs` (2), `tests/it/undo_bytes.rs:595`.
+
+Deviations: `Refused::new(first, count)` and `Refused::with_cleanup(io::Error)` are pub (graft-ops' test builds one;
+a real one needs another uid). `Refusal`'s Display (`peer.rs`) lost its `askpass: ` prefix; `admit_takes_only_our_own_uid`
+quotes updated. Only `AfterState::explain(keys)` carries the R2 clause; `Display` (so `ApplyError::Journal.kept`) keeps
+today's words. R2's unit test came after `lost_edit_words` (the integration test was red first). Amendment-2 graft-git
+test's red was a compile error only. `askpass_words`, `RawStepOf` at `graft_ops::apply`.
+
+Captures re-shot (GRAFT_UPDATE_SHOTS=1, graft tests `status_under_a_box`, `m8_walk::clone`):
+`docs/shots/m6/fix-status-under-a-box-120x40.txt`, `docs/shots/m6/fix-status-under-a-box-80x24.txt`,
+`docs/shots/m8/clone-failed-120x36.txt`. **Not** re-assembled: `docs/shots/m6/m6-contact-sheet-4.txt` (:879, :1128)
+still reads `no remote named` — M6's shipped sheet; conductor's call. No home-dir paths (paths are `/graft-no-such-remote`,
+`/nonexistent/...`). By eye: user; colour unverified.
+Touches: graft/graft-ui — no `NotAsTheyWere` pattern, no quoted old words except the 3 captures above (rg);
+`ApplyError::explain` → `joined` → `AfterState::explain` carries the R2 clause to the status line; clone notice → B6.
 
 ## Part B — graft, graft-ui
 

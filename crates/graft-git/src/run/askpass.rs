@@ -156,6 +156,9 @@ impl AskPassServer {
     /// steps are still attempted. Last, a peer of another uid was refused
     /// (`PermissionDenied`: the first refusal and the count) — reported here,
     /// never written to the terminal the TUI owns.
+    /// The refusal's `io::Error` carries a [`Refused`] payload: read it with
+    /// [`refused`], never by kind (a cleanup failure can be
+    /// `PermissionDenied` too).
     pub fn close(mut self) -> io::Result<()> {
         self.shutdown()
     }
@@ -175,16 +178,39 @@ impl AskPassServer {
         // returns. Everything it can be doing instead is bounded (prompt read
         // and reply write have timeouts; a wait on a blocked handler was just
         // ended by `Shared::stop`), so once woken the join returns.
-        if let Err(error) = UnixStream::connect(&self.socket) {
-            return Err(io::Error::new(
+        let cleanup = match UnixStream::connect(&self.socket) {
+            Err(error) => Err(io::Error::new(
                 error.kind(),
                 format!(
                     "could not wake the askpass listener at {}: {error}; \
                      its thread is still running and the socket is left in place",
                     self.socket.display()
                 ),
-            ));
+            )),
+            Ok(woke) => {
+                // Its only job was to wake `accept`; closed before the join,
+                // as before.
+                drop(woke);
+                Self::clean_up(thread, &self.socket, &self.dir)
+            }
+        };
+        // A refusal wins: it is the event he must hear about, and a cleanup
+        // failure rides inside it rather than hiding it (20b R3 amendment 2).
+        match (self.shared.refusals(), cleanup) {
+            (Some(refused), cleanup) => Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                match cleanup {
+                    Err(error) => refused.with_cleanup(error),
+                    Ok(()) => refused,
+                },
+            )),
+            (None, cleanup) => cleanup,
         }
+    }
+
+    /// Join the listener, then remove the socket and the directory: every
+    /// step attempted, the first failure returned.
+    fn clean_up(thread: JoinHandle<()>, socket: &Path, dir: &Path) -> io::Result<()> {
         let mut first: Option<io::Error> = None;
         let mut note = |result: io::Result<()>| {
             if let Err(error) = result
@@ -198,9 +224,8 @@ impl AskPassServer {
                 .join()
                 .map_err(|_| io::Error::other("the askpass listener panicked")),
         );
-        note(std::fs::remove_file(&self.socket));
-        note(std::fs::remove_dir(&self.dir));
-        note(self.shared.refusals());
+        note(std::fs::remove_file(socket));
+        note(std::fs::remove_dir(dir));
         first.map_or(Ok(()), Err)
     }
 }
@@ -332,6 +357,63 @@ fn serve(mut stream: UnixStream, handler: &Arc<dyn AskPass>, shared: &Shared) ->
         // happen; reported rather than assumed.
         Err(mpsc::RecvError) => Err(io::Error::other("the askpass wait lost every sender")),
     }
+}
+
+/// Peers of another uid were turned away: the first refusal's words and how
+/// many in all. The payload of [`AskPassServer::close`]'s refusal error.
+#[derive(Debug)]
+pub struct Refused {
+    first: String,
+    count: usize,
+    cleanup: Option<io::Error>,
+}
+
+impl Refused {
+    /// A refusal record, for callers' tests: real ones come only from
+    /// [`AskPassServer::close`], since another uid is needed to make one.
+    #[must_use]
+    pub fn new(first: impl Into<String>, count: usize) -> Self {
+        Self {
+            first: first.into(),
+            count,
+            cleanup: None,
+        }
+    }
+
+    /// The same refusal, with the cleanup failure that happened alongside it.
+    #[must_use]
+    pub fn with_cleanup(self, error: io::Error) -> Self {
+        Self {
+            cleanup: Some(error),
+            ..self
+        }
+    }
+
+    /// The socket's cleanup failure, when it failed as well as the refusal.
+    #[must_use]
+    pub fn cleanup(&self) -> Option<&io::Error> {
+        self.cleanup.as_ref()
+    }
+
+    /// How many connections were refused.
+    #[must_use]
+    pub fn count(&self) -> usize {
+        self.count
+    }
+}
+
+impl fmt::Display for Refused {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}; {} refused in all", self.first, self.count)
+    }
+}
+
+impl std::error::Error for Refused {}
+
+/// The [`Refused`] payload `error` carries, if it is a refusal.
+#[must_use]
+pub fn refused(error: &io::Error) -> Option<&Refused> {
+    error.get_ref()?.downcast_ref()
 }
 
 #[cfg(test)]

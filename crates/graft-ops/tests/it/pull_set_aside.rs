@@ -164,7 +164,8 @@ fn a_pull_whose_fetch_fails_journals_as_today() {
     assert_eq!(entry.kind, OperationKind::Pull);
     assert_eq!(entry.description, "pull origin/main");
     assert!(
-        aborted_reason(&entry).starts_with("no remote named '"),
+        aborted_reason(&entry).starts_with("no repository at '")
+            && aborted_reason(&entry).ends_with("', or no access to it"),
         "{:?}",
         entry.status
     );

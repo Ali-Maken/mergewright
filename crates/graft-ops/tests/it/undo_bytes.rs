@@ -595,6 +595,7 @@ fn a_put_back_whose_raw_step_cannot_land_says_so_and_drops_s() {
             [AfterState::NotAsTheyWere {
                 error: RestoreError::WriteRaw { path, .. },
                 files: 1,
+                ..
             }] if path == &PathBuf::from("src/a.rs")
         ),
         "{unread:?}"

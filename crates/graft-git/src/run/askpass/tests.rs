@@ -382,12 +382,12 @@ fn admit_takes_only_our_own_uid() {
     assert!(admit(Ok(501), 501).is_ok(), "same uid: served");
     assert_eq!(
         admit(Ok(0), 501).map_err(|refusal| refusal.to_string()),
-        Err("askpass: refused a connection from uid 0 (this server serves uid 501)".to_owned()),
+        Err("refused a connection from uid 0 (this server serves uid 501)".to_owned()),
         "another uid, root included, is refused"
     );
     assert_eq!(
         admit(Err(io::Error::other("no creds")), 501).map_err(|refusal| refusal.to_string()),
-        Err("askpass: refused a connection whose uid could not be read: no creds".to_owned()),
+        Err("refused a connection whose uid could not be read: no creds".to_owned()),
         "a peer whose uid cannot be read is refused, never assumed to be us"
     );
 }
@@ -403,8 +403,41 @@ fn peer_uid_of_a_real_connection_is_ours() {
 
 /// The server is told its owner is a uid this process is not, so the test
 /// process is "another user" to it: the different-uid path without root.
+/// 20b R3 amendment 2: a refusal and a failed cleanup both happen; the
+/// refusal is what `close` returns, the cleanup failure inside it.
 #[test]
-fn a_peer_with_another_uid_is_refused_unanswered_and_never_asked() {
+fn a_refusal_survives_a_failed_cleanup() {
+    let stranger = nix::unistd::geteuid().as_raw().wrapping_add(1);
+    let server = AskPassServer::spawn_owned_by(
+        PathBuf::from("/nonexistent/graft"),
+        Fixed::new(Some(b"s3c")),
+        stranger,
+    )
+    .expect("server starts");
+    respond(server.socket_path(), "Password:", &mut Vec::new()).expect_err("refused");
+    // A file of someone else's in the private dir: `remove_dir` fails.
+    let dir = server
+        .socket_path()
+        .parent()
+        .expect("in a dir")
+        .to_path_buf();
+    let planted = dir.join("planted");
+    std::fs::write(&planted, b"x").expect("plant");
+
+    let error = server.close().expect_err("close reports");
+
+    let typed = refused(&error).expect("the refusal wins over the cleanup failure");
+    assert_eq!(typed.count(), 1);
+    assert!(
+        typed.cleanup().is_some(),
+        "the cleanup failure is kept inside"
+    );
+    std::fs::remove_file(&planted).expect("tidy");
+    std::fs::remove_dir(&dir).expect("tidy");
+}
+
+#[test]
+fn a_refusal_is_typed() {
     let handler = Fixed::new(Some(b"s3c"));
     let stranger = nix::unistd::geteuid().as_raw().wrapping_add(1);
     let server = AskPassServer::spawn_owned_by(
@@ -427,14 +460,20 @@ fn a_peer_with_another_uid_is_refused_unanswered_and_never_asked() {
         "the handler was never asked for a refused peer"
     );
     respond(server.socket_path(), "again", &mut Vec::new()).expect_err("refused again");
-    let reported = server
-        .close()
-        .expect_err("close reports the refusals")
-        .to_string();
+    let error = server.close().expect_err("close reports the refusals");
+    let typed = refused(&error).expect("a refusal is typed, not only words");
+    assert_eq!(typed.count(), 2, "both refusals are counted");
+    assert_eq!(
+        typed.to_string(),
+        error.to_string(),
+        "the error's words are the payload's"
+    );
+    assert_eq!(error.kind(), io::ErrorKind::PermissionDenied);
+    let reported = error.to_string();
     assert_eq!(
         reported,
         format!(
-            "askpass: refused a connection from uid {} (this server serves uid {stranger}); \
+            "refused a connection from uid {} (this server serves uid {stranger}); \
              2 refused in all",
             nix::unistd::geteuid().as_raw()
         ),
