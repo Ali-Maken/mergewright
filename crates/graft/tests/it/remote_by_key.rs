@@ -1060,7 +1060,10 @@ fn capture_fix_box_takes_y() {
     let main = main_ref(&remote);
     let theirs = rev(remote.bare(), &main);
 
-    let (app, state) = App::open(work);
+    let (app, state) = App::open_with_clock(
+        work,
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let (plain_box, plain_frames) = plain_box_takes_y(&app, state, branch);
 
     // `y` from `Cancel` pushes: the write starts, and origin refuses it.

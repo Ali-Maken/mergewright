@@ -418,7 +418,7 @@ fn capture_help_and_palette() {
         let walk = Walk::from(&start).press(press);
         graft_fixtures::capture(
             format!("{}/../../docs/shots/{name}", env!("CARGO_MANIFEST_DIR")),
-            crate::view::tests::draw(&walk.state, 120, 36),
+            crate::view::tests::draw_pinned(&walk.state, 120, 36),
         );
     }
 }
@@ -453,7 +453,7 @@ fn bar_of(frame: &str) -> String {
 #[test]
 fn at_80_the_bar_ends_with_keys_and_help_lists_what_it_dropped() {
     let start = at_size(on_a_branch_row(), 80, 24);
-    let before = crate::view::tests::draw(&start, 80, 24);
+    let before = crate::view::tests::draw_pinned(&start, 80, 24);
     let bar = bar_of(&before);
     assert!(bar.ends_with("? keys"), "{bar:?}");
     let walk = Walk::from(&start).char('?');
@@ -470,7 +470,7 @@ fn at_80_the_bar_ends_with_keys_and_help_lists_what_it_dropped() {
             "`{key}` under HERE: {here:?}"
         );
     }
-    let after = crate::view::tests::draw(&walk.state, 80, 24);
+    let after = crate::view::tests::draw_pinned(&walk.state, 80, 24);
     graft_fixtures::capture(
         format!(
             "{}/../../docs/shots/m8-help-80x24.txt",

@@ -31,7 +31,7 @@ fn arrived(file: &str, no_color: bool) -> AppState {
 }
 
 fn draw(state: &AppState) -> String {
-    crate::view::tests::draw(state, state.size.columns, state.size.rows)
+    crate::view::tests::draw_pinned(state, state.size.columns, state.size.rows)
 }
 
 fn f2(state: &AppState) -> AppState {

@@ -211,6 +211,9 @@ fn show(
             // The scratch is a throwaway: never offer to write a
             // commit-graph into it, and pin nothing to the screen.
             offer_commit_graph: false,
+            // Ages drawn against the pinned instant, so a re-shoot never
+            // rolls with the calendar (m8/19d-b2).
+            clock: graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
             ..Harness::default()
         },
     };

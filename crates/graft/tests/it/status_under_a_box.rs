@@ -206,7 +206,10 @@ fn a_second_write_refused(
 
 fn sit() -> Sitting {
     let remote = local();
-    let (app, state) = App::open(remote.work());
+    let (app, state) = App::open_with_clock(
+        remote.work(),
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = rested(&app, state);
     let prompt_keys = {
         let open = app.press(&state, plain('b'));
@@ -267,7 +270,10 @@ fn check_rows(sitting: &Sitting, size: &str, rows: &[String]) {
 #[test]
 fn a_frame_waits_for_the_radar_and_the_whole_walk() {
     let remote = local();
-    let (app, state) = App::open(remote.work());
+    let (app, state) = App::open_with_clock(
+        remote.work(),
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = rested(&app, state);
     app.close();
     assert!(at_rest(&state));

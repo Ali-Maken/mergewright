@@ -111,6 +111,13 @@ pub use tier::proptest_cases;
 /// even one day past `EPOCH` on its own.
 pub const CORPUS_NOW: i64 = 1_578_009_600;
 
+/// 2026-10-08T00:00:00Z: the "now" every capture producer draws ages against
+/// (m8-polish-and-ship/19d-b2). The pty harness passes it as `GRAFT_NOW`;
+/// in-process producers build `Clock::Fixed(PINNED_NOW)`. Against the
+/// fixtures' 2021 dates the ages read as the committed captures were shot,
+/// and never roll with the calendar.
+pub const PINNED_NOW: i64 = 1_791_417_600;
+
 /// The directory holding one fixture, ready to open read-only.
 ///
 /// # Panics

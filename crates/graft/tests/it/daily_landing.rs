@@ -50,7 +50,10 @@ fn assert_on(state: &AppState, repo: &Path, rev_name: &str, what: &str) {
 fn j18_a_pull_with_nothing_new_leaves_the_cursor() {
     let remote = local();
     let work = remote.work();
-    let (app, state) = App::open(work);
+    let (app, state) = App::open_with_clock(
+        work,
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = ready(&app, state);
     let state = app.key(&state, KeyCode::Char('j'));
     let before = selected(&state);
@@ -117,7 +120,10 @@ fn j20_u_and_capital_u_land_on_the_result() {
     let repo = scratch.path();
     std::fs::write(repo.join("sample.txt"), "one\ntwo\n").expect("writable");
     git(repo, &["add", "sample.txt"]);
-    let (app, state) = App::open(repo);
+    let (app, state) = App::open_with_clock(
+        repo,
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = ready(&app, state);
     let parent = rev(repo, "HEAD");
     let state = commit_by_key(&app, &state, "land here");
@@ -150,7 +156,10 @@ fn u_after_a_stash_lands_on_head() {
     let scratch = two_commits();
     let repo = scratch.path();
     std::fs::write(repo.join("sample.txt"), "one\nedited\n").expect("writable");
-    let (app, state) = App::open(repo);
+    let (app, state) = App::open_with_clock(
+        repo,
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = ready(&app, state);
     let state = app.key(&state, KeyCode::Char('S'));
     assert!(state.stash.shown, "`S` opens the overlay");
@@ -186,7 +195,10 @@ fn u_after_a_stash_lands_on_head() {
 fn capture_quit_while_a_fetch_runs() {
     let remote = local();
     let work = remote.work();
-    let (app, state) = App::open(work);
+    let (app, state) = App::open_with_clock(
+        work,
+        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+    );
     let state = crate::captures::settled_frame(&app, ready(&app, state));
     // Pressed without pumping: the fetch's answer cannot arrive between
     // the two keys, so the write is still running when `q` lands.

@@ -1276,7 +1276,7 @@ fn every_field_spelled_out() -> AppState {
     AppState {
         quit: None,
         quit_when_done: None,
-        harness: Harness::default(),
+        harness: pinned_harness(),
         status: Status::Failed("earlier".to_owned()),
         unseen: Some(Status::sticky("arrived under a box")),
         size: Size {
@@ -2305,6 +2305,7 @@ fn a_handed_back_key_ends_the_run_naming_the_key() {
     let state = AppState {
         harness: Harness {
             hand_back: vec![KeyCode::Char(']')],
+            clock: crate::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
             ..Harness::default()
         },
         ..AppState::default()
@@ -2323,6 +2324,7 @@ fn an_open_search_prompt_keeps_a_handed_back_key_as_text() {
     let state = AppState {
         harness: Harness {
             hand_back: vec![KeyCode::Char(']')],
+            clock: crate::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
             ..Harness::default()
         },
         search_prompt: Some(String::from("fox")),
@@ -2389,7 +2391,7 @@ mod commit_graph_offer {
             opened(
                 CommitGraphFact::Absent { declined: false },
                 supported(),
-                Harness::default(),
+                pinned_harness(),
             ),
             super::commit_graph::SLOW_SORT,
         )
@@ -2437,7 +2439,7 @@ mod commit_graph_offer {
         assert_eq!(state.commit_graph, CommitGraphOffer::NotNeeded);
         assert_eq!(state.commit_graph_line(), None);
         // The facts alone, before any sort, offer nothing either.
-        let before = opened(absent, supported(), Harness::default());
+        let before = opened(absent, supported(), pinned_harness());
         assert_eq!(before.commit_graph, CommitGraphOffer::NotNeeded);
     }
 
@@ -2629,13 +2631,13 @@ mod commit_graph_offer {
         let present = opened(
             CommitGraphFact::Present { commits: 5 },
             supported(),
-            Harness::default(),
+            pinned_harness(),
         );
         assert_eq!(present.commit_graph, CommitGraphOffer::NotNeeded);
         let declined = opened(
             CommitGraphFact::Absent { declined: true },
             supported(),
-            Harness::default(),
+            pinned_harness(),
         );
         assert_eq!(declined.commit_graph, CommitGraphOffer::NotNeeded);
         let suppressed = sorted_in(
@@ -2644,6 +2646,7 @@ mod commit_graph_offer {
                 supported(),
                 Harness {
                     offer_commit_graph: false,
+                    clock: crate::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
                     ..Harness::default()
                 },
             ),
@@ -2667,7 +2670,7 @@ mod commit_graph_offer {
                 opened(
                     CommitGraphFact::Absent { declined: false },
                     git,
-                    Harness::default(),
+                    pinned_harness(),
                 ),
                 super::commit_graph::SLOW_SORT,
             );
@@ -2687,7 +2690,7 @@ mod commit_graph_offer {
         let state = opened(
             CommitGraphFact::Unreadable("commit-graph unreadable: bad signature".to_owned()),
             supported(),
-            Harness::default(),
+            pinned_harness(),
         );
         assert_eq!(state.commit_graph, CommitGraphOffer::NotNeeded);
         assert_eq!(
@@ -6906,7 +6909,7 @@ fn capture_the_keys_doorway_for_docs_shots() {
             ..state
         });
         // `TestBackend` quotes each row; the capture is the bare grid.
-        let frame = crate::view::tests::draw(&state, columns, rows)
+        let frame = crate::view::tests::draw_pinned(&state, columns, rows)
             .lines()
             .map(|row| {
                 row.strip_prefix('"')
@@ -7059,4 +7062,14 @@ fn a_text_field_inside_a_place_draws_no_keys_doorway() {
         "a doorway where `?` types:\n  {}",
         drawn.join("\n  ")
     );
+}
+
+/// A harness on the pinned clock (m8/19d-b2): this file writes captures,
+/// so nothing in it draws against the wall clock
+/// (`clock_pin::no_capture_producer_runs_on_the_wall_clock`).
+fn pinned_harness() -> Harness {
+    Harness {
+        clock: crate::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
+        ..Harness::default()
+    }
 }

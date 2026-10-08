@@ -159,3 +159,194 @@ fn git_out(repo: &Path, args: &[&str]) -> String {
     assert!(out.status.success(), "git {args:?}");
     String::from_utf8(out.stdout).expect("utf-8")
 }
+
+/// m8/19d-b2: `App::open_with_clock` pins the frame, not only the journal:
+/// one commit row, two clocks a year apart, two different ages.
+#[test]
+fn open_with_clock_pins_the_drawn_frame() {
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+    for (now, age) in [(EARLIER, "4y"), (A_YEAR_LATER, "5y")] {
+        let (app, state) = crate::app_harness::App::open_with_clock(
+            scratch.path(),
+            graft::session::Clock::Fixed(now),
+        );
+        let state = app.pump(state, "a commit row with its age", |state| {
+            crate::captures::frame(state, 120, 40)
+                .iter()
+                .any(|line| line.contains("main]"))
+        });
+        let state = crate::captures::settled_frame(&app, state);
+        let frame = crate::captures::frame(&state, 120, 40);
+        let drawn = |age: &str| {
+            frame.iter().any(|line| {
+                line.split(|c: char| !c.is_ascii_alphanumeric())
+                    .any(|word| word == age)
+            })
+        };
+        assert!(drawn(age), "{age} at {now}:\n{}", frame.join("\n"));
+        for other in ["3y", "4y", "5y", "6y"].into_iter().filter(|o| *o != age) {
+            assert!(!drawn(other), "{other} at {now}:\n{}", frame.join("\n"));
+        }
+        app.close();
+    }
+}
+
+/// m8/19d-b2, ticket 19d §R5: with no date env, the pty harness dates an
+/// in-app commit an hour before the default pin, so its row reads `60m`
+/// (the age label's words for 3600 s; the ticket guessed `1h`), never
+/// `future`.
+#[test]
+fn an_in_app_commit_under_the_default_pin_draws_an_age() {
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+    let repo = scratch.path();
+    let isolated = Isolated::new();
+    std::fs::write(repo.join("README.md"), "edited\n").expect("the scratch repo is writable");
+    let mut pty = Pty::spawn(
+        &isolated,
+        repo,
+        repo.parent().expect("a temp repo has a parent"),
+        SIZE,
+    );
+    pty.wait_for("the graph", |s| s.has("Uncommitted changes"));
+    pty.send(b"k");
+    pty.wait_for("the cursor on the changes row", |s| {
+        s.lines()
+            .iter()
+            .any(|l| l.contains('\u{25b8}') && l.contains("Uncommitted changes"))
+    });
+    pty.send(b"\r");
+    pty.wait_for("the changes pane", |s| {
+        s.has("space stage") && s.has("UNSTAGED (1)")
+    });
+    pty.send(b" ");
+    pty.wait_for("one staged", |s| {
+        s.has("STAGED (1)") && !s.has("UNSTAGED (1)")
+    });
+    pty.send(b"\x1b");
+    pty.wait_for("the graph's own keys", |s| {
+        s.has("\u{23ce} changes \u{b7} c commit")
+    });
+    pty.send(b"c");
+    pty.wait_for("the commit editor", |s| s.has("\u{23ce} commit"));
+    pty.send(b"Made in the app");
+    pty.send(b"\r");
+    let screen = pty.wait_for("the new commit's row", |s| s.has("main] Made in the app"));
+    let row = screen
+        .lines()
+        .iter()
+        .find(|l| l.contains("main] Made in the app"))
+        .cloned()
+        .expect("the row was waited for");
+    assert!(
+        row.split(|c: char| !c.is_ascii_alphanumeric())
+            .any(|word| word == "60m"),
+        "{row}\n{}",
+        screen.text()
+    );
+    assert!(!screen.has("future"), "{}", screen.text());
+    pty.send(b"q");
+    let (status, stderr, _) = pty.wait_exit();
+    assert_eq!(status.code(), Some(0), "stderr: {stderr}");
+}
+
+/// What a capture producer must not say: a wall clock, or a `Harness` /
+/// left on its wall-clock default (m8/19d-b2, ticket 19d §R4).
+fn wall_clock_lines(source: &str) -> Vec<(usize, String)> {
+    let lines: Vec<&str> = source.lines().collect();
+    let mut found = Vec::new();
+    for (index, line) in lines.iter().enumerate() {
+        // A path in front (`..crate::update::Harness::default()`) is the
+        // same call.
+        let code = line
+            .trim_start()
+            .replace("crate::update::", "")
+            .replace("graft::update::", "");
+        if code.starts_with("//") {
+            continue;
+        }
+        let bare_default =
+            code.contains("Harness::default()") && !code.contains("..Harness::default()");
+        // `..Harness::default()` is fine only when the literal it closes
+        // names `clock:` itself: look back to the `Harness {` that opens it.
+        let unpinned_update = code.contains("..Harness::default()")
+            && !lines[..index]
+                .iter()
+                .rev()
+                .take_while(|above| !above.contains("Harness {"))
+                .any(|above| above.trim_start().starts_with("clock:"));
+        if code.contains("Clock::Wall") || bare_default || unpinned_update {
+            found.push((index + 1, (*line).to_owned()));
+        }
+    }
+    found
+}
+
+/// Whether a source file writes a capture under `docs/shots/`.
+fn writes_a_capture(source: &str) -> bool {
+    [
+        "check_shot(",
+        "Captures::",
+        "graft_fixtures::check(",
+        "graft_fixtures::check_bytes(",
+        "graft_fixtures::capture(",
+        "graft_fixtures::capture_bytes(",
+        "docs/shots/",
+    ]
+    .iter()
+    .any(|call| source.contains(call))
+}
+
+fn rust_files(dir: &Path, into: &mut Vec<std::path::PathBuf>) {
+    for entry in std::fs::read_dir(dir).expect("a source dir reads") {
+        let path = entry.expect("a dir entry reads").path();
+        if path.is_dir() {
+            rust_files(&path, into);
+        } else if path.extension().is_some_and(|e| e == "rs") {
+            into.push(path);
+        }
+    }
+}
+
+/// The scan bites on each shape it names, and passes a pinned one.
+#[test]
+fn the_wall_clock_scan_names_each_unpinned_shape() {
+    for bad in [
+        "let c = Clock::Wall;",
+        "harness: Harness::default(),",
+        "Harness {\n    prelude,\n    ..Harness::default()\n}",
+        "harness: crate::update::Harness::default(),",
+    ] {
+        assert!(!wall_clock_lines(bad).is_empty(), "{bad}");
+    }
+    let pinned = "Harness {\n    clock: Clock::Fixed(graft_fixtures::PINNED_NOW),\n    ..Harness::default()\n}\n// Clock::Wall in a comment";
+    assert!(wall_clock_lines(pinned).is_empty());
+}
+
+/// Every source file that writes a capture draws on a pinned clock, so no
+/// capture rolls with the calendar (m8/19d-b2, ticket 19d §R4).
+#[test]
+fn no_capture_producer_runs_on_the_wall_clock() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut files = Vec::new();
+    for dir in ["tests", "examples", "src"] {
+        rust_files(&root.join(dir), &mut files);
+    }
+    let this = root.join("tests/it/clock_pin.rs");
+    let mut offenders = Vec::new();
+    for file in files.iter().filter(|f| **f != this) {
+        let source = std::fs::read_to_string(file).expect("a source file reads");
+        if !writes_a_capture(&source) {
+            continue;
+        }
+        for (line, text) in wall_clock_lines(&source) {
+            let shown = file.strip_prefix(root).unwrap_or(file).display();
+            offenders.push(format!("{shown}:{line}: {}", text.trim()));
+        }
+    }
+    assert!(
+        offenders.is_empty(),
+        "{} capture producer line(s) on the wall clock (pin with graft_fixtures::PINNED_NOW):\n{}",
+        offenders.len(),
+        offenders.join("\n")
+    );
+}

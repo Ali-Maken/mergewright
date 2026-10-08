@@ -161,6 +161,8 @@ fn preview_hit_test_uses_the_graph_tier() {
 fn capture_a_pixel_preview_for_docs_shots() {
     let pixel = pixel_session();
     let mut open = previewing();
+    // Ages against the pinned instant, not the wall (m8/19d-b2).
+    open.harness.clock = crate::session::Clock::Fixed(graft_fixtures::PINNED_NOW);
     open.size = crate::update::Size {
         columns: 120,
         rows: 36,
