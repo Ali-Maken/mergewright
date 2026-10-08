@@ -204,7 +204,7 @@ fn continue_refuses_in_words_while_anything_is_unmerged() {
         state.status,
         Status::Sticky {
             reason: "2 files still conflicted".to_owned(),
-            keys: Some(RESOLVE_KEYS.to_owned()),
+            keys: Some("⏎ resolve  M mergetool  e edit".to_owned()),
         }
     );
     assert!(state.banner_focus, "the banner keeps the keyboard");
@@ -979,7 +979,7 @@ fn did_a_resume_verb(
                 after.status,
                 Status::Sticky {
                     reason,
-                    keys: Some(RESOLVE_KEYS.to_owned()),
+                    keys: resolve_keys(crate::update::edge::context_of(after), &after.keymap),
                 },
                 "`{key} {verb}`"
             ),

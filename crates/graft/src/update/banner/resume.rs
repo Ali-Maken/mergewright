@@ -5,7 +5,7 @@ use super::{
     finished_lands_on_head, land_in_resolver, live, stopped_again,
 };
 use crate::update::op_keys::OpKeys;
-use graft_ui::keymap::{ActionId, ContextId, KeyChord, Keymap};
+use graft_ui::keymap::{ActionId, ContextId, KeyChord, KeyCode, Keymap};
 
 /// Queue a `--continue`/`--skip`/`--abort`.
 ///
@@ -142,6 +142,24 @@ pub(crate) fn edit_or_mergetool(place: ContextId, keys: &Keymap) -> Option<Strin
     let tool =
         row_at(place, 'M', &MERGETOOL_ROWS).and_then(|row| keys.key_verb(&[row], "mergetool"));
     joined(edit, tool)
+}
+
+/// `⏎ resolve  M mergetool  e edit` — the keys `c`'s refusal offers — as
+/// said at `place` (m8/10l, on 10j ruling 1's place rule): `⏎` only where
+/// it is `app.open` (on the banner it opens the resolver on the first
+/// conflicted file), `M`, `e` from their rows there; a clause with no row
+/// or an unbound key dropped; nothing left → `None`. The order is the
+/// banner bar's, which leads with `⏎ resolve`.
+pub(crate) fn resolve_keys(place: ContextId, keys: &Keymap) -> Option<String> {
+    let resolve = (place == ContextId::Banner)
+        .then(|| Keymap::shipped().acting(place, KeyChord::plain(KeyCode::Enter)))
+        .flatten()
+        .filter(|id| id.0 == "app.open")
+        .and_then(|row| keys.key_verb(&[row], "resolve"));
+    let tool =
+        row_at(place, 'M', &MERGETOOL_ROWS).and_then(|row| keys.key_verb(&[row], "mergetool"));
+    let edit = edit_row(place).and_then(|row| keys.key_verb(&[row], "edit"));
+    joined(joined(resolve, tool), edit)
 }
 
 /// `e`: open `$EDITOR` on `path` at its first conflict marker.

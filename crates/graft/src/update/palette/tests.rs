@@ -17,6 +17,7 @@ use crate::jobs::palette::{NamesRequest, match_names};
 use crate::update::banner::rewrite_stop_tests::edit_stop;
 use crate::update::banner::tests::stopped;
 use crate::update::palette::{PaletteTarget, RecentRuns, rows};
+use crate::update::state::Status;
 use crate::update::{AppEvent, AppState, Command, JobId, Product, update};
 
 fn press(state: &AppState, key: KeyPress) -> (AppState, Vec<Command>) {
@@ -139,9 +140,14 @@ fn in_progress_rows_run_as_the_focused_banner_would() {
             focused.banner_focus = true;
             let (by_key, key_commands) = press(&focused, banner_chord(label));
             assert_eq!(row_commands, key_commands, "{name}: {label}: commands");
+            // `c`'s refusal at a conflict names the keys acting where he
+            // stands (m8/10l), and the palette run leaves the graph focused:
+            // the reason is compared, the keys are not — as `M`'s refusal.
+            let refused = label == "Continue" && name.contains("conflict");
+            let (by_row_cmp, by_key_cmp) = keys_excepted(refused, &by_row, by_key, name);
             assert_eq!(
-                but_focus(by_row.clone()),
-                but_focus(by_key),
+                but_focus(by_row_cmp),
+                but_focus(by_key_cmp),
                 "{name}: {label}: state"
             );
             assert_eq!(
@@ -154,6 +160,42 @@ fn in_progress_rows_run_as_the_focused_banner_would() {
             );
         }
     }
+}
+
+/// The two runs to compare: for `c`'s refusal at a conflict, keys dropped
+/// after checking the palette run names only keys acting where it left him.
+fn keys_excepted(
+    refused: bool,
+    by_row: &AppState,
+    by_key: AppState,
+    name: &str,
+) -> (AppState, AppState) {
+    if !refused {
+        return (by_row.clone(), by_key);
+    }
+    let place = crate::update::edge::context_of(by_row);
+    assert_eq!(
+        sticky_keys(by_row),
+        crate::update::banner::resolve_keys(place, &by_row.keymap),
+        "{name}: Continue: no key named that does not act at {place:?}"
+    );
+    (without_keys(by_row.clone()), without_keys(by_key))
+}
+
+/// The sticky line's keys, when the status is one.
+fn sticky_keys(state: &AppState) -> Option<String> {
+    match &state.status {
+        Status::Sticky { keys, .. } => keys.clone(),
+        other => panic!("not a sticky line: {other:?}"),
+    }
+}
+
+/// `state` with its sticky line's keys dropped, reason kept.
+fn without_keys(mut state: AppState) -> AppState {
+    if let Status::Sticky { keys, .. } = &mut state.status {
+        *keys = None;
+    }
+    state
 }
 
 #[test]

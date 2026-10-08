@@ -1023,49 +1023,92 @@ fn refused_both_ways() -> [(&'static str, AppState); 2] {
     [("banner c", pressed), ("status read", settled)]
 }
 
-/// Part B pin (10k): where `c`'s refusal leaves him, and what the shipped
-/// `M`, `e` and `space` answer there. A clause is spelled from its row only
-/// if all three act where the line is shown; otherwise the const stays and
-/// the question goes to the conductor (ticket Part B).
+/// Part B pin (10k, 10l): where `c`'s refusal leaves him — the focused
+/// banner, both callers — and that every key its words name acts there:
+/// `⏎` opens the resolver (`app.open`), `M`, `e` the banner's own rows.
+/// `space` acts only on the changes pane, so it is no longer named.
 #[test]
 fn the_resolve_keys_name_rows_that_act_where_the_refusal_is_shown() {
     for (caller, state) in refused_both_ways() {
+        let (reason, keys) = sticky_keys(&state);
         assert_eq!(
-            sticky_keys(&state),
+            (reason.as_str(), keys.as_deref()),
             (
-                "2 files still conflicted".to_owned(),
-                Some("M mergetool  e edit  space marks resolved".to_owned())
+                "2 files still conflicted",
+                Some("⏎ resolve  M mergetool  e edit")
             ),
+            "{caller}"
+        );
+        assert!(
+            keys.as_deref().is_some_and(|k| !k.contains("space")),
             "{caller}"
         );
         let place = crate::update::edge::context_of(&state);
         let shipped = Keymap::shipped();
         let rows = [
+            shipped.acting(place, KeyChord::plain(KeyCode::Enter)),
             shipped.acting(place, KeyChord::key('M')),
             shipped.acting(place, KeyChord::key('e')),
-            shipped.acting(place, KeyChord::key(' ')),
         ];
-        // The chord is the one the CONFLICTS rows answer: a control.
-        assert!(
-            shipped
-                .acting(ContextId::Changes, KeyChord::key(' '))
-                .is_some(),
-            "space acts on the changes pane"
-        );
-        // `space` marks resolved on a CONFLICTS row (§2.6a, Changes), not
-        // on the focused banner, which is where both callers leave him:
-        // Part B stops here (ticket NOTES), the const stays.
         assert_eq!(
             (place, rows),
             (
                 ContextId::Banner,
                 [
+                    Some(ActionId("app.open")),
                     Some(ActionId("operation.mergetool")),
                     Some(ActionId("operation.edit")),
-                    None
                 ]
             ),
             "{caller}"
         );
     }
+}
+
+/// The shipped keymap with every one of `ids` unbound.
+fn unbinding_all(ids: &[&str]) -> Keymap {
+    let overrides: Vec<(String, Vec<String>)> = ids
+        .iter()
+        .map(|id| ((*id).to_owned(), vec!["none".to_owned()]))
+        .collect();
+    let (map, problems) =
+        Keymap::with_overrides(&overrides, graft_ui::keymap::KeySwitches::default());
+    assert_eq!(problems, [], "{ids:?} = none reads cleanly");
+    map
+}
+
+/// The refusal's keys spelled from his keymap (10l): a remap moves each
+/// label; an unbound row drops its clause; all unbound → no keys, no `·`.
+#[test]
+fn the_resolve_keys_spell_his_keys() {
+    use crate::update::banner::resolve_keys;
+    const ROWS: [(&str, &str); 3] = [
+        ("app.open", "resolve"),
+        ("operation.mergetool", "mergetool"),
+        ("operation.edit", "edit"),
+    ];
+    let shipped = Keymap::shipped();
+    assert_eq!(
+        resolve_keys(ContextId::Banner, shipped).as_deref(),
+        Some("⏎ resolve  M mergetool  e edit")
+    );
+    assert_eq!(resolve_keys(ContextId::Graph, shipped), None);
+    let swept = swept();
+    let line = resolve_keys(ContextId::Banner, &swept).expect("swept keys");
+    for (id, verb) in ROWS {
+        let label = swept.spell(&ActionId(id)).0;
+        assert_eq!(whole_tokens(&line, &label), 1, "{id} as {label}: {line}");
+        assert!(line.contains(&format!("{label} {verb}")), "{id}: {line}");
+    }
+    for (gone, verb) in ROWS {
+        let line = resolve_keys(ContextId::Banner, &unbinding(gone)).expect("two left");
+        assert!(!line.contains(verb), "{gone}: {line}");
+    }
+    let none = unbinding_all(&ROWS.map(|(id, _)| id));
+    assert_eq!(resolve_keys(ContextId::Banner, &none), None);
+    let mut state = crate::update::banner::tests::stopped(InProgress::Rebase, &["a.rs"]);
+    state.keymap = Arc::new(none);
+    press(&mut state, 'c');
+    let (reason, keys) = sticky_keys(&state);
+    assert_eq!((reason.as_str(), keys), ("1 file still conflicted", None));
 }
