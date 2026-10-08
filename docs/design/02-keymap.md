@@ -45,7 +45,8 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   the place, §2.12). The doorway ends every bar's words but on the modal
   ones ADR-0058 §4 names; where a place keeps bare keys it leads them
   (ADR-0039). On a marked row it ranks right after `u undo` and `/ search`
-  and never displaces them.
+  and never displaces them. `u undo` is fitted second in any bar that
+  holds it; what gives way is the lowest-ranked hint, not `u` (m8 15 A5).
   **Two classes never appear on it, and that is correct:**
   - **Navigation and meta globals** (§2.2): `g`/`G` top/bottom, `PgUp`/`PgDn`
     page, `Ctrl+R` refresh, `U` redo, `Esc` dismiss. They are live in every

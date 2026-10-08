@@ -1209,6 +1209,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/launch-open-land-alike-flaky | `outside_repo::launch_and_open_land_alike` failed once under double load in 18d's run (base without 13m), passed 3/3 alone; 12d had already fixed one cause. Possibly 13m's promotion-snap cause (keys during load) — unverified | **broken** | M8 |
 | M8/18d-unbound-key-drop-untested | 18d: the first-launch line's unbound-key drop has no test; tour clause never drawn (no tour row yet → 19) | **unverified** | M8 |
 | M8/18d-captures-unjudged | `docs/shots/m8/first-launch-120x36.txt`, `first-launch-empty-state-120x36.txt`: by-eye unjudged, colour unverified | **unverified** | M8 |
+| M8/15-amend-older-rows-unhinted | **unverified** — `a amend` hinted on HEAD's row only; older unpushed rows act on `a` but aren't offered. Needs `upstream..HEAD` kept by `divergence::count` (graft-git/src/history/divergence.rs:73-75). Cut from 15 (A3). | past v1 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` 407 lines (~7 over); seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | RESOLVE_KEYS shown on screen via pressed.rs:156; the literal-key grep misses consts | **unverified** | M8 |
