@@ -236,16 +236,26 @@ pub(crate) fn lands_at_open(state: &mut AppState, at: Option<Oid>); // replaces 
   re-shot one goes on the unjudged list (KNOWN_GAPS row, unverified) — the user judges by eye.
 
 ### A9. Acceptance (replaces the original list; nothing dropped silently)
-19a:
-- [ ] Path guard, build: under a temp root nothing appears outside `<root>` (test lists the temp root's parent
-      before/after) — **kept**.
-- [ ] Path guard, remove: refuses no `.practice`; `.practice` a symlink; root a symlink; root outside `under`; wrong
-      prefix — one test each — **kept, widened**.
-- [ ] `inside` refuses absolute and `..` (tests) — **new**.
-- [ ] `tasks_done` per §A1-A3 on synthetic entries, incl. Aborted/Pending never tick, task 7 needs `ResolveConflict`
-      after its `Merge` (tests) — **new**.
-- [ ] Built repo shape: branches, two hunks in `notes.txt`, untracked `scratch.txt`, `main` one ahead of `origin/main`,
-      `feature` merges clean, `clash` conflicts on `menu.txt` (test with git reads) — **new**.
+19a (all tests in `crates/graft-ops/src/tour/tests.rs`, module `graft_ops::tour::tests`):
+- [x] Path guard, build: under a temp root nothing appears outside `<root>` (test lists the temp root's parent
+      before/after) — **kept**. Test: `building_writes_nothing_outside_its_root`.
+- [x] Path guard, remove: refuses no `.practice`; `.practice` a symlink; root a symlink; root outside `under`; wrong
+      prefix — one test each — **kept, widened**. Tests: `removal_refuses_a_folder_without_the_marker`,
+      `removal_refuses_a_marker_that_is_a_link`, `removal_refuses_a_root_that_is_a_link`,
+      `removal_refuses_a_root_outside_the_folder_it_was_made_in`, `removal_refuses_a_root_with_the_wrong_name`
+      (plus `removal_refuses_a_recorded_root_that_is_not_canonical`,
+      `removing_a_built_repo_removes_its_folder_and_nothing_else`).
+- [x] `inside` refuses absolute and `..` (tests) — **new**. Tests: `inside_refuses_an_absolute_path`,
+      `inside_refuses_any_dot_dot` (plus `inside_refuses_empty_and_dot`, `inside_joins_a_plain_relative_path`).
+- [x] `tasks_done` per §A1-A3 on synthetic entries, incl. Aborted/Pending never tick, task 7 needs `ResolveConflict`
+      after its `Merge` (tests) — **new**. Tests: `each_simple_task_ticks_on_its_committed_kind`,
+      `aborted_and_pending_entries_never_tick`, `an_amend_is_not_the_commit_task`,
+      `undo_ticks_only_when_it_reverses_a_commit`, `stash_and_back_needs_a_push_then_a_later_apply_or_pop`,
+      `resolve_conflict_needs_a_resolution_inside_a_committed_merge`, `nothing_is_done_in_an_empty_journal`.
+- [x] Built repo shape: branches, two hunks in `notes.txt`, untracked `scratch.txt`, `main` one ahead of `origin/main`,
+      `feature` merges clean, `clash` conflicts on `menu.txt` (test with git reads) — **new**. Test:
+      `the_built_repo_has_the_tours_shape` (plus
+      `the_built_repos_own_config_keeps_his_hooks_and_signing_out`).
 19b:
 - [ ] Each task ticks only by doing (8 pty walks in the practice repo); reading the card ticks nothing — **kept**;
       task 1 by any stage (§A1, "one hunk" **cut**, reason there).
@@ -276,3 +286,28 @@ and click geometry (`update::geometry`: the card's 3 rows shift rows), keymap sw
 `graft/src/empty_state.rs:398`, header callers (`header.rs:204`), the 3 captures in §A8, KNOWN_GAPS rows, MAP.md
 graft-ops (`## tour`), graft (`Open`, `Exit`, `drive`, `lands_at_open`, `TourState`), graft-ui (`tour_card`, empty
 state). Each named with how it was checked in the builder's **Touches:** line.
+
+## NOTES — 19a (builder, 2026-10-08)
+Status: **19a done**; 19b open. Scout used (`scouts/19-tour.md`); no second scout.
+- Built: `crates/graft-ops/src/tour.rs` (types, `inside`, removal, `tour_progress`), `tour/build.rs`, `tour/tasks.rs`,
+  `tour/tests.rs` (27 tests). `lib.rs` `pub mod tour`. MAP.md `## tour`. No new dependency.
+- **Deviation from §A7, one variant added:** `TourError::Left { cause, left, left_why }`. A build that fails after its
+  folder exists removes it (guarded); if that removal fails too, both reasons are returned instead of one being
+  dropped (rule 3). 19b only calls `explain()`, so nothing there changes. Test:
+  `a_build_that_fails_part_way_removes_its_folder` (the clean-up path; the `Left` path itself is untested — no way to
+  make the guarded removal fail after a fill failure without a fault hook).
+- Extra check beyond §A7: removal also refuses a recorded root that is not canonical
+  (`removal_refuses_a_recorded_root_that_is_not_canonical`). `inside` also refuses `.` and empty.
+- Repo shape: `main` has **5** commits (4 pushed with upstream, 1 local) — reading Decisions literally ("4 commits …
+  then one more local commit"). `feature`/`clash` branch from `main`'s 2nd commit. Conflict: `menu.txt` line
+  `dessert:` (main `pie`, clash `ice cream`). `core.hooksPath` = absolute `<root>/hooks` in both `work` and
+  `remote.git`; a non-UTF-8 temp path is refused (`TempDir`) rather than written lossily into git config.
+- `tour_progress` parses the journal file without `Journal::open` (which writes: torn-tail cut). No file → all false.
+- **For 19b, a risk to check (rule 7, a question, not a defect):** `graft-core/src/journal.rs:89-92` says
+  `ResolveConflict` is "Folded into the live operation's entry when one is open; its own entry when nothing is". During
+  a stopped `Merge` an entry *is* open, so the resolver may write **no** `ResolveConflict` entry and task 7 would never
+  tick. Not verified (not my crate set). §A3 already says: if so, stop and report.
+- Red phase: tests and impl were written in one pass; first run was green. Checked the tests bite by mutation: disabling
+  the `..` refusal fails `inside_refuses_any_dot_dot`; disabling the marker check fails
+  `removal_refuses_a_folder_without_the_marker` and `removal_refuses_a_marker_that_is_a_link`.
+- Not compacted.

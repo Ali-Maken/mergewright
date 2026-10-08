@@ -31,6 +31,7 @@ pub mod rewrite;
 pub mod snapshot;
 pub mod submodule;
 pub mod switch_list;
+pub mod tour;
 pub mod undo;
 
 pub use apply::EditsAt;
