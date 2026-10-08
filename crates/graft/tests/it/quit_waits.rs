@@ -320,5 +320,6 @@ fn shutdown_mid_merge_lets_it_land() {
 }
 
 mod hangup;
+mod pty_session;
 mod signal;
 mod stuck;
