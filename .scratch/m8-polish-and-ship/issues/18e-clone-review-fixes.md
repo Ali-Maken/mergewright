@@ -1,6 +1,6 @@
 # 18e — clone review fixes: the secret check over events, a pure first-launch line, `esc` in the clone's password box, the splits
 
-Status: **Part A done** (A1 builder 2026-10-08; A2, A3 builder 2026-10-08, after 19b); Part B open. Was: ready (conductor 2026-10-08) — was draft (planner spec-only pass 2026-10-08, from `docs/reviews/m8-clone.md` Critical C1 and Majors M1–M3)
+Status: **Part A done** (A1 builder 2026-10-08; A2, A3 builder 2026-10-08, after 19b); **Part B partial** (B2, MAPs done; B1 moves done but three files still over 400, NOTES "B (builder)"). Was: ready (conductor 2026-10-08) — was draft (planner spec-only pass 2026-10-08, from `docs/reviews/m8-clone.md` Critical C1 and Majors M1–M3)
 Build with:
 - **Part A Opus (high)**: M1 moves a per-process switch out of `AppState` across the shell/loop seam; the seam is fixed
   below, but whether a done in one place still hides the line in the next is judged only by a cross-place test. M2's
@@ -188,12 +188,21 @@ modules.
 - [ ] B1: each split file and each new child is ≤ 400 production lines (`wc -l` to the first `#[cfg(test)]`, every
       count in NOTES, plus which seams were needed). `cargo nextest list --workspace` before and after each move
       commit gives `diff` empty. A line-set check as 13l A1 did shows moves only.
-- [ ] B2: `carry_out`, `outside_job`, `bar_keys` and `draw_prompt` are each ≤ 60 lines (counts in NOTES). The
+      **Not ticked — partial.** Moves done, `nextest list` diff empty after all four move commits (6155 lines each),
+      line-set check shows only `use` lines, module headers, `pub(super)` and rustfmt reflows. But every named seam
+      applied still leaves **three files over 400**: graft `empty_state.rs` 510, graft `places/outside.rs` 478,
+      graft-ui `empty_state.rs` 556. Per the ruling ("a new seam is a spec question") stopped there. Counts and the
+      proposed seams: NOTES "B (builder)".
+- [x] B2: `carry_out`, `outside_job`, `bar_keys` and `draw_prompt` are each ≤ 60 lines (counts in NOTES). The
       workspace `cargo nextest run` passes with no test file edited in that commit (`git diff --stat` of the
-      commit shows no test file).
-- [ ] B, MAPs: graft `empty_state` (:6), `first_launch` (:7, the new shape), `places::drive` (:105),
+      commit shows no test file). (counted by script: `carry_out` 48, `outside_job` 52, `bar_keys` 34, `draw_prompt`
+      43; workspace `cargo nextest run` 6155/6155 passed; `git show --stat` of the B2 commit lists 4 source files, no
+      test file)
+- [x] B, MAPs: graft `empty_state` (:6), `first_launch` (:7, the new shape), `places::drive` (:105),
       `## update::credential`; graft-ui `empty_state`. Each names its new file. Checked by `rg` of each moved item in
-      the MAPs (NOTES).
+      the MAPs (NOTES). (`grep -n 'empty_state/clone.rs\|places/outside.rs\|credential/core.rs' crates/graft/MAP.md`
+      and `grep -n 'empty_state/bar.rs' crates/graft-ui/MAP.md` each hit the row; `first_launch` :7 already carries
+      `line()`/`end()` from Part A, unchanged here)
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all
@@ -291,3 +300,68 @@ Lines are at `ce6fdfdf`. 19b and 18e B move them, and 18e's builder lists the ne
 | `18c-secret-events-level` | 18e A1, naming `jobs::clone::tests::child_asks_through_the_pool_and_clones` |
 | `M8/11-files-over-size`, the graft `empty_state.rs` part | 18e B1, with the counts |
 | `M8/look-file-sizes`, the graft-ui `empty_state.rs` part | 18e B1, with the counts |
+
+## NOTES — B (builder, 2026-10-08)
+Scout: none (ticket says none needed; seams re-found by `grep`, never by line — 19b/19c/19d-b had moved them).
+Status: **B2 and MAPs done; B1 partial** — moves made, three files still over 400 with every named seam applied.
+
+**Counts** (`wc -l`, committed files; none of the children has a test module, the parents' `#[cfg(test)] mod` lines are
+the last 1-6 lines):
+| File | Lines | ≤ 400 |
+|---|---|---|
+| graft `empty_state.rs` | 510 (was 851) | **no** |
+| graft `empty_state/clone.rs` | 293 | yes |
+| graft `empty_state/open_prompt.rs` | 102 | yes |
+| graft `event_loop/places.rs` | 323 (was 915) | yes |
+| graft `event_loop/places/outside.rs` | 478 | **no** |
+| graft `event_loop/places/practice.rs` | 185 | yes |
+| graft-ui `empty_state.rs` | 556 (was 797) | **no** |
+| graft-ui `empty_state/bar.rs` | 171 | yes |
+| graft-ui `empty_state/clone_prompt.rs` | 131 | yes |
+| graft `update/credential.rs` | 338 (was 467) | yes |
+| graft `update/credential/core.rs` | 144 | yes |
+
+Seams used: all named ones. Extras inside a named seam's intent, said so: `places/outside.rs` took the whole
+empty-state loop (`run_outside`, `outside_loop`, `Shown`, `Outcome`, `Next`, `read_recents`, `Screen`/`draw_whole`,
+`AnswersAsks`/`answer_ask`, `try_open`) besides the four named items — the ticket calls it "the empty-state place's
+loop"; `places/practice.rs` also took `say`, `go_to`, `end` (only the practice arms call them, `grep`); graft-ui
+`bar.rs` took `bar_fitted`, `TOUR_CLAUSE` and the `draw_bar` method ("its shedding"); `clone_prompt.rs` takes
+`draw_clone_rows` as its own `impl EmptyState<'_>` block. `keep_end` stays in the parent (the head and init box use it).
+
+**Proposed seams (spec question, not done):**
+- graft `empty_state.rs` (510): `empty_state/palette.rs` — `act`, `source_of`, `palette_rows`, `palette_key`,
+  `outside_paste`, `render_palette` (~170) → ~340.
+- graft `places/outside.rs` (478): `places/outside/jobs.rs` — `OutsideJobs`, `carry_out` + its three step fns,
+  `AnswersAsks`, `answer_ask`, `try_open` (~170) → ~310. Or leave `try_open`/`read_recents`/`draw_whole` in
+  `places.rs` (~50; parent → ~375, outside → ~430, still over).
+- graft-ui `empty_state.rs` (556): `empty_state/draw.rs` — `draw_head`, `draw_actions`, `draw_recent`,
+  `draw_prompt` + `draw_field_cursor` + `draw_cursor` (~230) → ~330.
+
+**Method:** a script moved each item with its doc comments and attributes; private items became `pub(super)`
+(plus three `OutsideJobs`/`Shown` fields and `OutsideJobs::{new, into_pool}`, which `places::tests` reaches).
+Public paths unchanged by re-export (`pub use`/`pub(crate) use`); items only the tests reached through the parent
+are re-imported under `#[cfg(test)]` (graft `empty_state`: `clone_request`, `resolve`, `complete`; `places`:
+`signals`, `AnswersAsks`, `Outcome`, `OutsideJobs`, `answer_ask`, `carry_out`, `practice_at`). No test file edited
+in any commit. Children import explicitly (clippy `wildcard_imports` is on). `cargo nextest list --workspace`
+diffed against the pre-move baseline after each of the four move commits: empty. Line-set check (multiset of
+stripped lines, `pub(super) ` dropped): only `use`/`mod` lines, `//!` headers, the `#[cfg(test)]` lines and rustfmt
+re-wrapping of signatures that grew past 100 columns.
+
+**B2:** `carry_out` 71 → 48 (`init_and_open`, `start_clone`, `end_first_launch`); `outside_job` 62 → 52
+(`show_progress`, `end_clone`); `bar_keys` 64 → 34 (`spelled` closure → fn, `list_keys`); `draw_prompt` 66 → 43
+(`draw_field_cursor`). Same order, same arms; `Init` still returns `None` after a failure, as the fall-through did.
+
+**Old sites, new places** (review minors; m2–m4 are in files Part B did not move):
+- m1 `outside_job` `Cloned` arm: `graft/src/empty_state/clone.rs:144-152`.
+- m5 `clone_request`: `graft/src/empty_state/clone.rs:58`; `folder_name`'s `-` refusal: `:77-79`.
+- m6 `carry_out`: `graft/src/event_loop/places/outside.rs:333`; `outside_job`: `empty_state/clone.rs:118`;
+  `bar_keys`: `graft-ui/src/empty_state/bar.rs:24`; `draw_prompt`: `graft-ui/src/empty_state.rs:403`.
+- m2 `update/palette/listing.rs`, m3 `tests/it/m8_walk/clone.rs`, m4 `update/tests/first_launch.rs`,
+  `view/frame.rs`: not touched.
+
+**Touches:** callers — every `use` path outside the split modules unchanged (`git diff --stat` of the four move
+commits lists only the split files and their new children); captures — `git status --short docs` empty after the
+full run, no `GRAFT_UPDATE_SHOTS`; MAPs — graft :6, places::drive row, `## update::credential` core row, graft-ui
+`empty_state` row; keymap, journal, undo, graft-ops, `tests/it/tour_walk.rs` (19d-c's): not touched.
+Gates: `cargo fmt --check` ok; `cargo clippy --workspace --all-targets -- -D warnings` clean; `cargo nextest run
+--workspace` 6155/6155; `cargo test --doc --workspace` ok.
