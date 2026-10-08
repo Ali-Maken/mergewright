@@ -19,20 +19,46 @@ mod tasks;
 #[cfg(test)]
 mod tests;
 
+use std::collections::BTreeSet;
 use std::path::{Component, Path, PathBuf};
 
 pub use build::build_practice_repo;
 pub use tasks::{TourTask, tasks_done};
 
+use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind};
+use graft_core::oid::Oid;
+use graft_git::history_reads::{Forecast, forecast_merge};
 use graft_git::repo::RepoHandle;
+use graft_git::run::{GitArg, GitInvocation};
+use graft_git::version::system_git;
 
 use crate::journal::{JournalError, journal_path, parse};
+
+/// When the practice repo's commits are dated (m8/19c R2). Every built
+/// commit gets its own minute, strictly increasing in build order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PracticeAt {
+    /// The app's: the last commit is a minute before `now_unix_secs` (the
+    /// session clock's). Folder `tributary-practice-<pid>-<unix_ms>`.
+    Now {
+        /// The instant to end before, Unix seconds.
+        now_unix_secs: i64,
+    },
+    /// Reproducible: the first commit at `first_unix_secs`, folder
+    /// `tributary-practice-<first_unix_secs>`, so two builds at the same
+    /// instant give the same commits and the same drawn path.
+    Fixed {
+        /// The first commit's date, Unix seconds.
+        first_unix_secs: i64,
+    },
+}
 
 /// The file at a practice repo's root that marks it as one. Removal refuses a
 /// folder without it (as a regular file, not a link).
 pub const PRACTICE_MARKER: &str = ".practice";
 
-/// Every practice root's name starts with this, then `<pid>-<unix_ms>`.
+/// Every practice root's name starts with this, then `<pid>-<unix_ms>`
+/// ([`PracticeAt::Now`]) or `<first_unix_secs>` ([`PracticeAt::Fixed`]).
 pub const PRACTICE_PREFIX: &str = "tributary-practice-";
 
 /// A built practice repo. Only [`build_practice_repo`] makes one, so holding
@@ -220,5 +246,86 @@ pub fn tour_progress(work: &Path) -> Result<[bool; 8], TourError> {
         Err(why) => return Err(TourError::Journal(why.into())),
     };
     let parsed = parse(&bytes).map_err(TourError::Journal)?;
-    Ok(tasks_done(&parsed.entries))
+    let conflicted = conflicted_merges(&repo, &parsed.entries)?;
+    Ok(tasks_done(&parsed.entries, &conflicted))
+}
+
+/// The committed `Merge` entries whose result git could not have made
+/// alone (m8/19c R1): the result commit has two parents and
+/// `forecast_merge` of those parents answers `Conflicts`.
+///
+/// `forecast_merge` **writes** the merged tree into `repo`'s object store.
+/// That is the practice repo's only: `tour_progress` is only ever called on
+/// `PracticeRepo::work()`.
+fn conflicted_merges(
+    repo: &RepoHandle,
+    entries: &[JournalEntry],
+) -> Result<BTreeSet<EntryId>, TourError> {
+    let git_failed = |error: &dyn std::fmt::Display| TourError::Git {
+        words: error.to_string(),
+    };
+    let mut conflicted = BTreeSet::new();
+    let mut version = None;
+    for merge in entries
+        .iter()
+        .filter(|e| e.kind == OperationKind::Merge && e.status == EntryStatus::Committed)
+    {
+        // No branch HEAD after, or no recorded value for it: there is no
+        // recorded result to judge, so no proof of a resolution. The tick
+        // is withheld; nothing failed.
+        let Some(HeadRef::Branch(name)) = &merge.head_after else {
+            continue;
+        };
+        let Some(Some(result)) = merge.refs_after.get(name) else {
+            continue;
+        };
+        let parents = parents_of(repo, *result)?;
+        // One parent (a fast-forward) or an octopus: not a two-way merge
+        // someone resolved.
+        let [ours, theirs] = parents[..] else {
+            continue;
+        };
+        let git = if let Some(found) = version {
+            found
+        } else {
+            let found = system_git().map_err(|e| git_failed(&e))?.version();
+            version = Some(found);
+            found
+        };
+        match forecast_merge(repo, &git, None, ours, theirs, &()).map_err(|e| git_failed(&e))? {
+            Forecast::Conflicts { .. } => {
+                conflicted.insert(merge.id.clone());
+            }
+            Forecast::Clean => {}
+            // Graft's floor (2.38) checks the plain form, so this is an
+            // answer not recognised, not an old git: an error, never a tick.
+            Forecast::NotCheckable(why) => return Err(TourError::Git { words: why }),
+        }
+    }
+    Ok(conflicted)
+}
+
+/// `git rev-list --parents -n 1 <oid>`: the commit's parents.
+fn parents_of(repo: &RepoHandle, commit: Oid) -> Result<Vec<Oid>, TourError> {
+    let output = GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("rev-list"),
+            GitArg::Flag("--parents"),
+            GitArg::Flag("-n"),
+            GitArg::Flag("1"),
+            GitArg::Oid(commit),
+        ])
+        .run(&())
+        .map_err(|error| TourError::Git {
+            words: error.to_string(),
+        })?;
+    let line = String::from_utf8_lossy(&output.stdout);
+    line.split_whitespace()
+        .skip(1)
+        .map(|hex| {
+            Oid::from_hex(hex).map_err(|error| TourError::Git {
+                words: error.to_string(),
+            })
+        })
+        .collect()
 }

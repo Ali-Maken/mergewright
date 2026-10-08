@@ -620,3 +620,32 @@ fn carry_wakes_until(
         assert!(carry_out(step, state, jobs, &config, &FirstLaunch::default()).is_none());
     }
 }
+
+#[test]
+fn practice_at_reads_whole_seconds_and_refuses_the_rest() {
+    use std::ffi::OsStr;
+
+    use graft_ops::tour::PracticeAt;
+
+    use super::practice_at;
+
+    assert_eq!(
+        practice_at(None, 42),
+        Ok(PracticeAt::Now { now_unix_secs: 42 })
+    );
+    assert_eq!(
+        practice_at(Some(OsStr::new("1700000000")), 42),
+        Ok(PracticeAt::Fixed {
+            first_unix_secs: 1_700_000_000
+        })
+    );
+    for bad in ["x", "-1", "1.5", ""] {
+        assert_eq!(
+            practice_at(Some(OsStr::new(bad)), 42),
+            Err(format!(
+                "GRAFT_PRACTICE_EPOCH must be whole seconds since 1970, got {bad}"
+            )),
+            "{bad:?}"
+        );
+    }
+}

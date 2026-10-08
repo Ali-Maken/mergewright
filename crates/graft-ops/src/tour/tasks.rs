@@ -2,7 +2,9 @@
 //! only, never from what was read on the card (ticket 19 §A1-A3). Only
 //! `Committed` entries count; `Aborted` and `Pending` never tick.
 
-use graft_core::journal::{EntryStatus, JournalEntry, OperationKind};
+use std::collections::BTreeSet;
+
+use graft_core::journal::{EntryId, EntryStatus, JournalEntry, OperationKind};
 
 use crate::journal::root_operation;
 
@@ -22,8 +24,9 @@ pub enum TourTask {
     Branch,
     /// Any `Merge`.
     MergeWithPreview,
-    /// A `Merge` with a `ResolveConflict` after it and before the next
-    /// `Merge` entry.
+    /// A committed `Merge` whose result git could not have made alone: its
+    /// id is in `conflicted` (m8/19c R1). The resolver writes no journal
+    /// entry of its own, so this reads the result, not the steps.
     ResolveConflict,
     /// A `Push`.
     Push,
@@ -44,10 +47,12 @@ impl TourTask {
 }
 
 /// One flag per [`TourTask::ALL`]: done or not, read from `entries`. Pure.
+/// `conflicted` names the `Merge` entries whose result git could not have
+/// made alone; [`super::tour_progress`] works that out from the repo.
 /// A task done early ticks early; order between tasks is not required.
 #[must_use]
-pub fn tasks_done(entries: &[JournalEntry]) -> [bool; 8] {
-    TourTask::ALL.map(|task| is_done(task, entries))
+pub fn tasks_done(entries: &[JournalEntry], conflicted: &BTreeSet<EntryId>) -> [bool; 8] {
+    TourTask::ALL.map(|task| is_done(task, entries, conflicted))
 }
 
 fn committed(entry: &JournalEntry) -> bool {
@@ -60,7 +65,7 @@ fn any_committed(entries: &[JournalEntry], kind: OperationKind) -> bool {
         .any(|entry| entry.kind == kind && committed(entry))
 }
 
-fn is_done(task: TourTask, entries: &[JournalEntry]) -> bool {
+fn is_done(task: TourTask, entries: &[JournalEntry], conflicted: &BTreeSet<EntryId>) -> bool {
     match task {
         TourTask::StageHunk => any_committed(entries, OperationKind::Stage),
         TourTask::Commit => any_committed(entries, OperationKind::Commit),
@@ -84,27 +89,8 @@ fn is_done(task: TourTask, entries: &[JournalEntry]) -> bool {
         TourTask::Branch => any_committed(entries, OperationKind::BranchCreate),
         TourTask::MergeWithPreview => any_committed(entries, OperationKind::Merge),
         TourTask::ResolveConflict => entries.iter().any(|merge| {
-            merge.kind == OperationKind::Merge
-                && committed(merge)
-                && resolved_within(merge, entries)
+            merge.kind == OperationKind::Merge && committed(merge) && conflicted.contains(&merge.id)
         }),
         TourTask::Push => any_committed(entries, OperationKind::Push),
     }
-}
-
-/// A committed `ResolveConflict` whose id is after `merge`'s and before the
-/// next `Merge` entry's (of any status), if there is one. `EntryId` orders
-/// by time.
-fn resolved_within(merge: &JournalEntry, entries: &[JournalEntry]) -> bool {
-    let next_merge = entries
-        .iter()
-        .filter(|other| other.kind == OperationKind::Merge && other.id > merge.id)
-        .map(|other| &other.id)
-        .min();
-    entries.iter().any(|resolve| {
-        resolve.kind == OperationKind::ResolveConflict
-            && committed(resolve)
-            && resolve.id > merge.id
-            && next_merge.is_none_or(|next| resolve.id < *next)
-    })
 }
