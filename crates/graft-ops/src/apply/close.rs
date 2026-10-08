@@ -95,10 +95,13 @@ pub(super) fn closed(
     if let Some((kind, paths)) = stopped_on_conflict(ctx, op, failure.is_some() || edit_stop)? {
         return Err(held(ctx, pending, commands, kind, paths));
     }
-    // A rebase or checkout that set edits aside: step 6, whether the
-    // operation went through or git refused it (ADR-0045 §4).
+    // A write that set edits aside: step 6, whether the operation went
+    // through or git refused it (ADR-0045 §4). The stop's mark rides on its
+    // answer as on any other close (19d-a2 D1): a set-aside merge or pick
+    // that landed before its hook was stopped still says `Landed`.
     if let Some(stash) = set_aside::stash_of(&pending.entry) {
-        return closed_set_aside(ctx, op, pending, commands, stash, failure, cleanup);
+        let closed = closed_set_aside(ctx, op, pending, commands, stash, failure, cleanup);
+        return stopped::mark(stopped_at, closed);
     }
     // A put-back that failed: the index says whether it clashed, never the
     // exit code (ADR-0045 §7). Read before the outcome, which it decides.
@@ -172,8 +175,14 @@ fn closed_set_aside(
         Operation::Rewrite(params) if failure.is_none() => params.index_base,
         _ => None,
     };
+    // The reason goes with git's error, so a stop read as before-pause keeps
+    // its words here too (19d-a2 D2).
+    let failure = failure.map(|failed| set_aside::Failed {
+        reason: failed.local_reason(),
+        error: failed.error,
+    });
     let ended = set_aside::Ended {
-        failure: failure.map(|failed| failed.error),
+        failure,
         done: EntryStatus::Committed,
         unread: cleanup,
         index_base,

@@ -85,7 +85,10 @@ pub(super) fn close_resume(
     if let Some(stash) = set_aside::stash_of(&pending.entry) {
         let ended = set_aside::Ended {
             index_base: index_base.filter(|_| failure.is_none() && !aborting),
-            failure,
+            // git's own words, as before 19d-a2: a stop that reaches here
+            // (`stopped_resume`'s residual) is not reworded — no resume with
+            // edits aside has been seen to reach it (NOTES 19d-a2).
+            failure: failure.map(set_aside::Failed::git),
             done: went_through(aborting),
             unread: noted,
         };

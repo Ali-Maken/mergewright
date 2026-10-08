@@ -324,3 +324,17 @@ Verified by `crates/graft-ops/tests/it/merge_set_aside.rs`:
 `m6_stash_put_back::set_aside::merge_over_staged_edits_previews_and_puts_back` and
 `update::clash::tests::a_merge_put_back_clash_notice_names_the_merge`. The pull keeps its own rule (03b): a
 fast-forward goes through a staged change it does not touch (`pull_set_aside::an_ff_pull_over_an_untouched_staged_change_goes_through`).
+
+**19d-a2 (ticket R6).** The put-back forecast costs **5** git spawns on a true merge and **3** on a fast-forward, measured
+(`PUT_BACK_SPAWNS`, `FF_PUT_BACK_SPAWNS` in `the_merge_preview_forecasts_the_put_back`); R1's "≤ 4" is amended to those.
+A merge that moves no ref (git: "Already up to date.") sets nothing aside and forecasts no put-back: its box is the
+nothing-to-do one (`preview::plan`, `up_to_date_merge`; `an_up_to_date_merge_over_edits_sets_nothing_aside`). **The
+set-aside close keeps the stop's mark and reason**, in the close every set-aside kind shares: an operation that landed
+before its hook was stopped answers `StoppedAt::Landed`, and one stopped before git could pause it is `Aborted`
+`stopped before git could pause it` — `stop_hooks::a_merge_stopped_in_its_post_merge_hook_has_landed`,
+`stop_hooks::a_merge_stopped_before_git_paused_it_is_aborted_and_u_puts_it_back`,
+`cherry_pick::a_pick_over_edits_stopped_after_it_committed_has_landed`,
+`cherry_pick::a_pick_over_edits_stopped_before_git_paused_it_says_so`. A merge paused in its hook keeps `S` listed
+and the tree at `HEAD`'s copy until `resume` puts the edits back (§4, as a stopped rebase). The clash notice words
+each kind from the journal's kind name, a checkout and a switching create keeping the shipped `switch`
+(`update::clash::tests::the_clash_notice_names_each_set_aside_kind`).

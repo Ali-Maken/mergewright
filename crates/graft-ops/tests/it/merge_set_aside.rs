@@ -264,6 +264,30 @@ fn untracked_files_alone_set_nothing_aside() {
     assert_eq!(porcelain(&repo), ["?? junk.tmp"]);
 }
 
+/// `feature` is already in `main`, and he has edits (staged and not): git
+/// would say "Already up to date." and do nothing, so there is nothing to
+/// set aside or put back. The preview is the nothing-to-do box (no ref
+/// move, no `HEAD`, no ghost, tree untouched — the app offers only Close)
+/// with no set-aside and no put-back in it (19d-a2, NOTES 19d-a question).
+#[test]
+fn an_up_to_date_merge_over_edits_sets_nothing_aside() {
+    let repo = two_branches(true);
+    repo.git(&["merge", "-q", "--no-edit", "feature"]);
+    repo.write("notes.txt", b"notes, staged\n");
+    repo.git(&["add", "notes.txt"]);
+    repo.write("a.txt", b"a, unstaged\n");
+    let op = merge_feature(&repo);
+
+    let plan = plan_of(&repo, &op);
+
+    assert!(plan.ref_moves.is_empty(), "{:?}", plan.ref_moves);
+    assert_eq!(plan.head, None);
+    assert!(plan.ghosts.is_empty());
+    assert_eq!(plan.worktree, preview::WorktreeEffect::Untouched);
+    assert_eq!(plan.set_aside, None, "nothing to set aside for");
+    assert_eq!(plan.put_back, None, "nothing to put back");
+}
+
 // ── a merge that stops ──────────────────────────────────────────────────
 
 /// Run `op`, which must stop on `shared.txt`, and check the edits wait

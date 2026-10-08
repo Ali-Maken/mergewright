@@ -340,14 +340,54 @@ fn entry_kind(state: &AppState, id: &EntryId) -> Option<OperationKind> {
 }
 
 /// What a set-aside's `u` takes back with the edits, in the notice's
-/// words: a switch (a checkout, or a new branch switched to — only a
-/// switching create sets edits aside, 10b), a merge (m8-polish-and-ship/
-/// 19d), else a rebase — also the word when the kind is not known.
+/// words: the entry's own kind name (graft-ops `apply::kind_name`, the
+/// journal's), so a cherry-pick says `cherry-pick` and a pull `pull`
+/// (m8-polish-and-ship/19d-a2). A checkout and a switching create (only a
+/// switching create sets edits aside, 10b) keep the shipped `switch`.
+///
+/// Every kind is named, no catch-all: a kind added later is worded here
+/// on purpose. A kind not known — the journal read does not hold the entry
+/// — still says `rebase`, the word this notice had before it read kinds
+/// (NOTES 19d-a2).
 fn undone_with_edits(kind: Option<OperationKind>) -> &'static str {
+    let Some(kind) = kind else {
+        return "rebase";
+    };
     match kind {
-        Some(OperationKind::Checkout | OperationKind::BranchCreate) => "switch",
-        Some(OperationKind::Merge) => "merge",
-        _ => "rebase",
+        OperationKind::Checkout | OperationKind::BranchCreate => "switch",
+        // The kinds that set edits aside (graft-ops `Operation::sets_aside`).
+        OperationKind::Rebase
+        | OperationKind::Rewrite
+        | OperationKind::CherryPick
+        | OperationKind::Pull
+        | OperationKind::Recover
+        | OperationKind::Merge
+        // The rest never carry a `SetAside` put-back; were one to, its own
+        // name is still the truest word.
+        | OperationKind::Stage
+        | OperationKind::Unstage
+        | OperationKind::Discard
+        | OperationKind::Commit
+        | OperationKind::Amend
+        | OperationKind::StashPush
+        | OperationKind::StashApply
+        | OperationKind::StashPop
+        | OperationKind::StashDrop
+        | OperationKind::Fetch
+        | OperationKind::Push
+        | OperationKind::Revert
+        | OperationKind::Reset
+        | OperationKind::BranchDelete
+        | OperationKind::TagCreate
+        | OperationKind::TagDelete
+        | OperationKind::BranchFromStash
+        | OperationKind::ResolveConflict
+        | OperationKind::RestartConflict
+        | OperationKind::FinishMerge
+        | OperationKind::AbortMerge
+        | OperationKind::RevertTo
+        | OperationKind::Undo
+        | OperationKind::Redo => graft_ops::apply::kind_name(kind),
     }
 }
 

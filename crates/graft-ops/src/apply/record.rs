@@ -463,8 +463,11 @@ pub(super) fn put_back_for(op: &Operation) -> Option<PutBack> {
     Some(PutBack { stash, why })
 }
 
-/// The kind as it reads in a backup commit's message.
-pub(crate) fn kind_name(kind: OperationKind) -> &'static str {
+/// The kind as it reads in a backup commit's message — and, in the app,
+/// what a set-aside's `u` takes back with the edits (graft
+/// `update::clash::undone_with_edits`, m8-polish-and-ship/19d-a2).
+#[must_use]
+pub fn kind_name(kind: OperationKind) -> &'static str {
     match kind {
         OperationKind::Stage => "stage",
         OperationKind::Unstage => "unstage",

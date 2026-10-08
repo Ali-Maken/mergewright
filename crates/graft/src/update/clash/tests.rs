@@ -723,6 +723,60 @@ fn a_merge_put_back_clash_notice_names_the_merge() {
     );
 }
 
+/// m8-polish-and-ship/19d-a2 (R6): every kind that sets edits aside names
+/// itself in what `u` takes back with them, worded from the journal's kind
+/// name — a cherry-pick and a pull no longer say `rebase`. A checkout and a
+/// switching create keep the shipped `switch` (NOTES 19d-a2). Read the way
+/// a `c` that finished a stopped one reads it: off the journal's entry, at
+/// the landing and in the resolver's answer to `u`.
+#[test]
+fn the_clash_notice_names_each_set_aside_kind() {
+    let table = [
+        (OperationKind::Rebase, "rebase"),
+        (OperationKind::Rewrite, "rewrite"),
+        (OperationKind::CherryPick, "cherry-pick"),
+        (OperationKind::Checkout, "switch"),
+        (OperationKind::BranchCreate, "switch"),
+        (OperationKind::Pull, "pull"),
+        (OperationKind::Recover, "recover"),
+        (OperationKind::Merge, "merge"),
+    ];
+    let mut wrong = Vec::new();
+    for (kind, word) in table {
+        let mut state = AppState::default();
+        state.journal.entries = Loading::Ready(Arc::new(JournalRead {
+            entries: vec![JournalEntry {
+                kind,
+                status: EntryStatus::Pending,
+                put_back: Some(PutBack {
+                    stash: oid(STASH),
+                    why: PutBackWhy::SetAside,
+                }),
+                ..pop_entry()
+            }],
+            unreadable: Vec::new(),
+            live: Vec::new(),
+            interrupted_edits: Vec::new(),
+        }));
+        set_aside_clash(&mut state, None, 1);
+        let notice = state
+            .resolver
+            .as_ref()
+            .and_then(|open| open.notice.as_ref())
+            .map(|(words, _)| words.clone());
+        let clause = format!("esc, u undoes the {word} too");
+        let expected = format!("your edits clashed in 1 file \u{b7} {clause}");
+        if notice.as_deref() != Some(expected.as_str()) {
+            wrong.push(format!("{kind:?}'s landing notice: {notice:?}"));
+        }
+        let answer = undo_clause(&state);
+        if answer.as_deref() != Some(clause.as_str()) {
+            wrong.push(format!("{kind:?}'s answer to u: {answer:?}"));
+        }
+    }
+    assert!(wrong.is_empty(), "{wrong:#?}");
+}
+
 /// The stop line while a set-aside's clash is open and the resolver shut:
 /// `your edits clashed · 1 file conflicted`; the count goes, then all but
 /// `your edits clashed`. The stash is never named.
