@@ -145,6 +145,7 @@ fn product_label(product: &Product) -> &'static str {
         Product::ExternalEditor(_) => "Produced::ExternalEditor",
         Product::HandedOver(_) => "Produced::HandedOver",
         Product::Operated(_) => "Produced::Operated",
+        Product::Cloned(_) => "Produced::Cloned",
         Product::Resumed(_) => "Produced::Resumed",
         Product::Mergetool { .. } => "Produced::Mergetool",
         Product::ContinuedInGit(_) => "Produced::ContinuedInGit",

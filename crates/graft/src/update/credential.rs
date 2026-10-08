@@ -273,62 +273,140 @@ pub fn host_of(prompt: &str) -> Option<String> {
     (!host.is_empty()).then(|| host.to_owned())
 }
 
-/// A job asked a question. Opened only for the write the screen is waiting
-/// on, and not once the user has asked it to stop; a second ask replaces the
-/// first (git asks the username, then the password — one at a time).
+/// What a key did to an open prompt ([`prompt_key`]): the host — a
+/// repository's `update`, or the empty state's loop (m8/18b, rulings R5) —
+/// carries it out.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum PromptKey {
+    /// Taken by the prompt (typed, edited, or swallowed): nothing else to do.
+    /// Also the answer for a closed prompt, which no host asks.
+    Kept,
+    /// `Enter`: this answer goes to the job. The prompt has closed.
+    Send(JobId, Answer),
+    /// `Esc`: stop the job, then refuse its ask. The prompt has closed and
+    /// its field is wiped.
+    Cancel(JobId),
+    /// `Ctrl+C`: not the prompt's — it quits from anywhere.
+    Quit,
+}
+
+/// A job asked a question: open it in `slot`. Opened only for the job the
+/// host is waiting on (`running`), and not once the user has asked it to
+/// stop (`cancelling`); a second ask replaces the first (git asks the
+/// username, then the password — one at a time).
 ///
 /// A question not opened here is not lost: the job waiting on it notices
-/// its cancellation, or the write it belongs to is no longer the one on
+/// its cancellation, or the job it belongs to is no longer the one on
 /// screen and is answered by nobody, which git reports as a refusal.
-pub fn credential_needed(state: &mut AppState, id: JobId, prompt: &str, pulse_seed: bool) {
-    if state.operating != Some(id) || state.remote.cancelling == Some(id) {
+pub(crate) fn open_prompt(
+    slot: &mut Option<CredentialPrompt>,
+    running: Option<JobId>,
+    cancelling: bool,
+    id: JobId,
+    git_prompt: &str,
+    pulse_seed: bool,
+) {
+    if running != Some(id) || cancelling {
         return;
     }
-    let title = host_of(prompt).map_or_else(
+    let title = host_of(git_prompt).map_or_else(
         || "Credentials".to_owned(),
         |host| format!("Credentials \u{2014} {host}"),
     );
-    state.credential = Some(CredentialPrompt {
+    *slot = Some(CredentialPrompt {
         title: sanitize_line(&title),
-        prompt: sanitize_line(prompt),
-        field: PromptField::new(is_masked_prompt(prompt), pulse_seed),
+        prompt: sanitize_line(git_prompt),
+        field: PromptField::new(is_masked_prompt(git_prompt), pulse_seed),
         job: id,
     });
 }
 
-/// Closes a prompt whose write is no longer running. Called at the tail of
-/// every `update`, so however the operation ended — done, failed, cancelled
-/// — no stale prompt can answer into nothing.
-pub(super) fn close_if_orphaned(state: &mut AppState) {
-    if state
-        .credential
+/// Closes a prompt whose job is no longer `running`, so however it ended —
+/// done, failed, cancelled — no stale prompt can answer into nothing.
+pub(crate) fn close_orphaned(slot: &mut Option<CredentialPrompt>, running: Option<JobId>) {
+    if slot
         .as_ref()
-        .is_some_and(|prompt| state.operating != Some(prompt.job))
+        .is_some_and(|prompt| running != Some(prompt.job))
     {
-        state.credential = None;
+        *slot = None;
     }
+}
+
+/// A job asked a question. Opened only for the write the screen is waiting
+/// on, and not once the user has asked it to stop ([`open_prompt`]).
+pub fn credential_needed(state: &mut AppState, id: JobId, prompt: &str, pulse_seed: bool) {
+    let cancelling = state.remote.cancelling == Some(id);
+    open_prompt(
+        &mut state.credential,
+        state.operating,
+        cancelling,
+        id,
+        prompt,
+        pulse_seed,
+    );
+}
+
+/// Closes a prompt whose write is no longer running. Called at the tail of
+/// every `update` ([`close_orphaned`]).
+pub(super) fn close_if_orphaned(state: &mut AppState) {
+    close_orphaned(&mut state.credential, state.operating);
 }
 
 /// The prompt's keys, while it is open; `false` (the key is someone else's)
 /// only while it is closed, and for `Ctrl+C`, which quits from anywhere.
 ///
-/// Modal: every key it does not use is swallowed, so no binding under it
-/// can fire while the user is typing a password.
+/// Modal: every key it does not use is swallowed ([`prompt_key`]).
 pub fn credential_key(state: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
-    let Some(prompt) = state.credential.as_mut() else {
+    if state.credential.is_none() {
         return false;
+    }
+    match prompt_key(&mut state.credential, key) {
+        PromptKey::Kept => {}
+        PromptKey::Quit => return false,
+        PromptKey::Send(job, answer) => commands.push(Command::AnswerCredential(job, answer)),
+        PromptKey::Cancel(job) => {
+            // Cancel the whole operation, never leave it half-authenticated:
+            // the job is stopped, and the ask gets no answer.
+            //
+            // The job goes first. The other order lets git see its refused
+            // ask and die of its own accord before the cancel lands, and
+            // that death is classified `AuthFailed` — so the line would say
+            // the password was wrong when the user simply pressed `Esc`
+            // (m4-remotes/06 review, Minor m1).
+            if !super::remote::stop_write(state, commands) {
+                // `operating` is always this job while the prompt is open
+                // (`close_if_orphaned`); stop it by id all the same.
+                commands.push(Command::CancelJob(job));
+            }
+            commands.push(Command::CancelCredential(job));
+        }
+    }
+    true
+}
+
+/// A bracketed paste into the open prompt; `false` when it is closed.
+pub fn credential_paste(state: &mut AppState, text: &str) -> bool {
+    prompt_paste(&mut state.credential, text)
+}
+
+/// One key into the prompt in `slot`. Modal: every key it does not use is
+/// swallowed ([`PromptKey::Kept`]), so nothing under it can fire while the
+/// user is typing a password; only `Ctrl+C` passes ([`PromptKey::Quit`]).
+pub(crate) fn prompt_key(slot: &mut Option<CredentialPrompt>, key: KeyPress) -> PromptKey {
+    let Some(prompt) = slot.as_mut() else {
+        return PromptKey::Kept;
     };
     if key.modifiers.control {
         match key.code {
-            KeyCode::Char('c') => return false,
+            KeyCode::Char('c') => return PromptKey::Quit,
             KeyCode::Char('u') => prompt.field.clear(),
             // Any other control chord is not text: swallowed.
             _ => {}
         }
-        return true;
+        return PromptKey::Kept;
     }
     if key.modifiers.alt {
-        return true;
+        return PromptKey::Kept;
     }
     match key.code {
         KeyCode::Enter => {
@@ -346,18 +424,12 @@ pub fn credential_key(state: &mut AppState, commands: &mut Vec<Command>, key: Ke
             // wipe it again.
             let field = std::mem::replace(&mut prompt.field, PromptField::Open(TextField::new("")));
             let answer = Answer::new(field.into_bytes());
-            state.credential = None;
-            commands.push(Command::AnswerCredential(job, answer));
+            *slot = None;
+            return PromptKey::Send(job, answer);
         }
         KeyCode::Escape => {
-            // Cancel the whole operation, never leave it half-authenticated:
-            // the job is stopped, and the ask gets no answer.
-            //
-            // The job goes first. The other order lets git see its refused
-            // ask and die of its own accord before the cancel lands, and
-            // that death is classified `AuthFailed` — so the line would say
-            // the password was wrong when the user simply pressed `Esc`
-            // (m4-remotes/06 review, Minor m1).
+            // The host stops the job, then refuses the ask (in that order:
+            // see `credential_key`).
             let job = prompt.job;
             // Defence in depth, not a requirement: dropping the prompt on
             // the next line wipes the field anyway. The explicit clear
@@ -365,13 +437,8 @@ pub fn credential_key(state: &mut AppState, commands: &mut Vec<Command>, key: Ke
             // being reached — one fewer thing for a future refactor
             // (a prompt kept alive, an `Arc` around it) to break silently.
             prompt.field.clear();
-            state.credential = None;
-            if !super::remote::stop_write(state, commands) {
-                // `operating` is always this job while the prompt is open
-                // (`close_if_orphaned`); stop it by id all the same.
-                commands.push(Command::CancelJob(job));
-            }
-            commands.push(Command::CancelCredential(job));
+            *slot = None;
+            return PromptKey::Cancel(job);
         }
         KeyCode::Char(character) => prompt.field.insert(character),
         KeyCode::Backspace => prompt.field.backspace(),
@@ -384,12 +451,12 @@ pub fn credential_key(state: &mut AppState, commands: &mut Vec<Command>, key: Ke
         // prompt's and must not reach what is under it.
         _ => {}
     }
-    true
+    PromptKey::Kept
 }
 
-/// A bracketed paste into the open prompt; `false` when it is closed.
-pub fn credential_paste(state: &mut AppState, text: &str) -> bool {
-    let Some(prompt) = state.credential.as_mut() else {
+/// A bracketed paste into the prompt in `slot`; `false` when it is closed.
+pub(crate) fn prompt_paste(slot: &mut Option<CredentialPrompt>, text: &str) -> bool {
+    let Some(prompt) = slot.as_mut() else {
         return false;
     };
     prompt.field.insert_str(text);

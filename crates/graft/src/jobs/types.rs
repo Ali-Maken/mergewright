@@ -20,6 +20,12 @@ pub enum Outcome {
     /// "this path is not a repository" arrives here too, because it is an
     /// answer to the question that was asked, not a job that broke.
     Produced(Product),
+    /// Like [`Outcome::Produced`], but delivered **even when the job was
+    /// cancelled**: the product is the job's own account of its stop, which
+    /// a bare `JobCancelled` would drop. A clone stopped part-way says
+    /// whether git left its folder behind (`jobs::clone`, rulings R3) — rule
+    /// 3, never swallowed.
+    Answered(Product),
     /// The work stopped early because its [`Cancel`] token was set.
     Cancelled,
     /// The work could not be completed, and this is what to tell the user.

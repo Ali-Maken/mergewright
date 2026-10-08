@@ -13,7 +13,9 @@
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use graft_core::event::{KeyCode, KeyPress};
+use graft_core::event::{Event, KeyCode, KeyPress};
+use graft_core::job::JobId;
+use graft_ops::clone::{CloneError, name_from_url};
 use graft_term::{sanitize_line, sanitize_path};
 use graft_ui::empty_state::{EmptyPrompt, EmptyState, EmptyStateView, RecentRow, recent_age};
 use graft_ui::keymap::{ContextId, KeyChord, Keymap, Translated};
@@ -25,11 +27,15 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::widgets::Widget;
 
+use crate::event_loop::Wake;
 use crate::first_launch::FirstLaunch;
+use crate::jobs::clone::{CloneAnswer, CloneRequest};
 use crate::recent::Recent;
+use crate::update::credential::{self, Answer, CredentialPrompt, PromptKey};
 use crate::update::palette::{
     self as palette, AppAction, Edited, Group, PaletteState, PaletteTarget, Source,
 };
+use crate::update::{AppEvent, Product, Progress};
 use crate::view::rows::home_relative;
 
 /// The prompt open over the list.
@@ -39,7 +45,45 @@ pub(crate) enum Prompt {
     Open(TextField),
     /// `i`: `Make <folder> a Git repository?`.
     ConfirmInit,
+    /// `c`: the URL being typed, and the clone it started (m8/18b; the key,
+    /// its keys and its drawing are 18c's).
+    Clone(CloneState),
 }
+
+/// The clone prompt: what was typed, and where its clone is.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct CloneState {
+    /// The URL. Kept after a failure or a stop, for a retry (rulings R6).
+    pub url: TextField,
+    pub run: CloneRun,
+}
+
+/// Where the clone prompt's clone is.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum CloneRun {
+    /// Nothing has run yet: the URL is being typed.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "18c's `c` opens the prompt typing")
+    )]
+    Typing,
+    /// The clone job is running.
+    Running {
+        job: JobId,
+        /// The folder git is making.
+        into: PathBuf,
+        /// git's last progress line, shortened (`RemoteProgress::brief`, as
+        /// the job's `Progress::RemoteProgress` carries it). `None` before
+        /// git's first line.
+        progress: Option<String>,
+    },
+    /// It failed or was stopped: `CloneError::explain`, sanitised.
+    Ended { words: String },
+}
+
+/// What a stop says when the clone was stopped before it began: nothing ran,
+/// so nothing can be left (`CloneError::Stopped { left: None }`'s words).
+const STOPPED_BEFORE_IT_RAN: &str = "clone stopped \u{b7} nothing kept";
 
 /// Everything the empty state holds between keys.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -65,6 +109,10 @@ pub(crate) struct OutsideState {
     /// The first-launch line (m8/18d): the process's one, shared with
     /// every repository screen `drive` runs.
     pub first_launch: FirstLaunch,
+    /// git's credential question for the running clone (m8/18b, rulings
+    /// R5): the same prompt a repository's fetch opens, modal over
+    /// everything here while it is up.
+    pub credential: Option<CredentialPrompt>,
 }
 
 /// What a key asks the loop to do.
@@ -80,6 +128,166 @@ pub(crate) enum OutsideStep {
     Quit,
     /// A palette theme row: draw in this theme for the rest of the run.
     Retheme(ThemeKind),
+    /// Run this clone on the empty state's pool (started on the first).
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "18c's clone prompt `⏎` asks for it")
+    )]
+    StartClone(CloneRequest),
+    /// Stop the clone job (`JobRunner::cancel`).
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "18c's `esc` while running asks for it")
+    )]
+    StopClone(JobId),
+    /// The credential prompt's answer for this job; `None` is `esc`: stop
+    /// the job, then refuse its ask.
+    Credential(JobId, Option<Answer>),
+    /// The clone landed: open it. `notice` goes on its first frame.
+    Cloned {
+        path: PathBuf,
+        notice: Option<String>,
+    },
+}
+
+/// The clone `⏎` asks for: `url` into `folder`/<the name git would pick>.
+///
+/// # Errors
+/// The reason, in rulings R6's words, when no folder can be named from the
+/// URL or that folder is already there with something in it. Nothing has
+/// run either way.
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "18c's clone prompt `⏎` calls it")
+)]
+pub(crate) fn clone_request(folder: &Path, url: &str) -> Result<CloneRequest, String> {
+    let name = name_from_url(url)
+        .filter(|_| !url.starts_with('-'))
+        .ok_or_else(|| CloneError::BadUrl.explain())?;
+    let into = folder.join(name);
+    // As `graft_ops::clone` refuses (it checks again when it runs): an
+    // empty folder is filled, anything else there is his.
+    let empty = std::fs::read_dir(&into).is_ok_and(|mut entries| entries.next().is_none());
+    if into.exists() && !empty {
+        return Err(sanitize_line(&CloneError::TargetNotEmpty(into).explain())
+            .as_str()
+            .to_owned());
+    }
+    Ok(CloneRequest {
+        url: url.to_owned(),
+        into,
+    })
+}
+
+/// The clone job `job` is running into `into`: the prompt goes read-only
+/// on it, `connecting…` until git's first progress line.
+pub(crate) fn clone_started(state: &mut OutsideState, job: JobId, into: PathBuf) {
+    let run = CloneRun::Running {
+        job,
+        into,
+        progress: None,
+    };
+    match &mut state.prompt {
+        Some(Prompt::Clone(clone)) => clone.run = run,
+        // Only the clone prompt asks for a clone; were it gone, the job
+        // still has a place on screen, so its answer is never dropped.
+        _ => {
+            state.prompt = Some(Prompt::Clone(CloneState {
+                url: TextField::new(""),
+                run,
+            }));
+        }
+    }
+}
+
+/// The running clone's job, if one is.
+fn running_clone(state: &OutsideState) -> Option<JobId> {
+    match &state.prompt {
+        Some(Prompt::Clone(CloneState {
+            run: CloneRun::Running { job, .. },
+            ..
+        })) => Some(*job),
+        _ => None,
+    }
+}
+
+/// A job said something: what it means for the running clone. Progress
+/// updates its line; git's question opens the credential prompt; an end
+/// puts its words on the prompt and closes the question; a landed clone is
+/// [`OutsideStep::Cloned`]. Anything about another job is not this
+/// screen's: [`OutsideStep::Stay`].
+pub(crate) fn outside_job(state: &mut OutsideState, wake: &Wake) -> OutsideStep {
+    let Some(running) = running_clone(state) else {
+        return OutsideStep::Stay;
+    };
+    let Wake::Event(event) = wake else {
+        return OutsideStep::Stay;
+    };
+    let ended = match event {
+        AppEvent::Progress(id, Progress::RemoteProgress { brief }) if *id == running => {
+            if let Some(Prompt::Clone(CloneState {
+                run: CloneRun::Running { progress, .. },
+                ..
+            })) = &mut state.prompt
+            {
+                *progress = Some(brief.clone());
+            }
+            return OutsideStep::Stay;
+        }
+        AppEvent::Progress(id, Progress::CredentialNeeded { prompt, pulse_seed }) => {
+            // Nothing here marks a clone as stopping: after `esc` the job's
+            // own cancel refuses its asks before they are sent
+            // (`ChannelAskPass`), so none reaches this.
+            credential::open_prompt(
+                &mut state.credential,
+                Some(running),
+                false,
+                *id,
+                prompt,
+                *pulse_seed,
+            );
+            return OutsideStep::Stay;
+        }
+        AppEvent::Produced(id, Product::Cloned(CloneAnswer::Done { path, notice }))
+            if *id == running =>
+        {
+            state.credential = None;
+            return OutsideStep::Cloned {
+                path: path.clone(),
+                notice: notice.clone(),
+            };
+        }
+        AppEvent::Produced(id, Product::Cloned(CloneAnswer::Ended { words })) if *id == running => {
+            words.clone()
+        }
+        // Stopped while still queued: nothing ran.
+        AppEvent::Core(Event::JobCancelled(id)) if *id == running => {
+            STOPPED_BEFORE_IT_RAN.to_owned()
+        }
+        AppEvent::Core(Event::JobFailed(id, failure)) if *id == running => {
+            sanitize_line(&format!("clone failed: {failure}"))
+                .as_str()
+                .to_owned()
+        }
+        _ => return OutsideStep::Stay,
+    };
+    if let Some(Prompt::Clone(clone)) = &mut state.prompt {
+        clone.run = CloneRun::Ended { words: ended };
+    }
+    let still = running_clone(state);
+    credential::close_orphaned(&mut state.credential, still);
+    OutsideStep::Stay
+}
+
+/// A key while git's question is open: the prompt's own (modal), carried
+/// out by the loop.
+fn credential_key(state: &mut OutsideState, key: KeyPress) -> OutsideStep {
+    match credential::prompt_key(&mut state.credential, key) {
+        PromptKey::Kept => OutsideStep::Stay,
+        PromptKey::Quit => OutsideStep::Quit,
+        PromptKey::Send(job, answer) => OutsideStep::Credential(job, Some(answer)),
+        PromptKey::Cancel(job) => OutsideStep::Credential(job, None),
+    }
 }
 
 /// The empty state's edge (ADR-0055): a key, through his `[keys]` remaps,
@@ -97,6 +305,12 @@ pub(crate) fn outside_edge(
     keymap: &Keymap,
     key: KeyPress,
 ) -> OutsideStep {
+    // git's question is modal over everything, the palette included, and
+    // keeps the shipped keys whatever his `[keys]` say, as on a repository
+    // screen (`update::credential::credential_key` runs first there).
+    if state.credential.is_some() {
+        return credential_key(state, key);
+    }
     if state.palette.is_some() {
         return palette_key(state, keymap, key);
     }
@@ -195,6 +409,9 @@ fn palette_key(state: &mut OutsideState, keymap: &Keymap, key: KeyPress) -> Outs
 
 /// A paste: into the palette's query or the open prompt, else nowhere.
 pub(crate) fn outside_paste(state: &mut OutsideState, keymap: &Keymap, text: &str) {
+    if credential::prompt_paste(&mut state.credential, text) {
+        return;
+    }
     if let Some(open) = &mut state.palette {
         open.query.insert_str(text);
         let groups = palette::listing(&source_of(&state.config_problems, keymap), open);
@@ -277,6 +494,11 @@ pub(crate) fn outside_key(state: &mut OutsideState, key: KeyPress) -> OutsideSte
                 OutsideStep::Stay
             }
         },
+        // Its keys are 18c's; until then it keeps every key.
+        Some(clone @ Prompt::Clone(_)) => {
+            state.prompt = Some(clone);
+            OutsideStep::Stay
+        }
         None => list_key(state, key),
     }
 }
@@ -433,12 +655,14 @@ pub(crate) fn view(state: &OutsideState, now: SystemTime) -> EmptyStateView {
             })
             .collect(),
         cursor: state.cursor,
-        prompt: state.prompt.as_ref().map(|prompt| match prompt {
-            Prompt::Open(field) => EmptyPrompt::Open {
+        prompt: state.prompt.as_ref().and_then(|prompt| match prompt {
+            Prompt::Open(field) => Some(EmptyPrompt::Open {
                 text: sanitize_line(field.text()),
                 cursor: field.cursor(),
-            },
-            Prompt::ConfirmInit => EmptyPrompt::ConfirmInit,
+            }),
+            Prompt::ConfirmInit => Some(EmptyPrompt::ConfirmInit),
+            // Drawn by 18c (graft-ui has no clone prompt yet).
+            Prompt::Clone(_) => None,
         }),
         problem: state.problem.as_deref().map(sanitize_line),
         first_launch: state.first_launch.is_shown(),

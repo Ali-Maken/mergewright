@@ -374,6 +374,9 @@ pub enum Product {
     /// ran but left part of its after-state unread still carries the
     /// [`graft_ops::apply::Applied`] the caller refreshes from.
     Operated(Box<crate::jobs::operate::Operated>),
+    /// A clone from the empty state ended (m8/18b): the new repository, or
+    /// why not. Delivered even when the clone was stopped.
+    Cloned(crate::jobs::clone::CloneAnswer),
     /// A `--continue`/`--skip`/`--abort` finished
     /// (m5-history-and-ghost-preview/09). The same [`Operated`] shape as a
     /// write, because it is one, and its own product so that the banner —

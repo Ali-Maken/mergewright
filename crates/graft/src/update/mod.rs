@@ -283,7 +283,9 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         AppEvent::Core(event) => core_event(next, commands, event),
         // Nothing to answer: the loop sends it with `defer_follow` off, so
         // `settle` runs the owed follow (G-settle).
-        AppEvent::Rested => {}
+        // A clone: only the empty state's own pool runs one (m8/18b); a
+        // repository screen never submits one, so never hears of one.
+        AppEvent::Rested | AppEvent::Produced(_, Product::Cloned(_)) => {}
         AppEvent::Started(id, task) => started(next, commands, id, &task),
         // The rewrite editor's jobs, by id, before the handlers that share
         // their products: the preview's, the detail pane's and the stash
@@ -1036,6 +1038,7 @@ fn took_fact(
         | Product::StashOnly(_)
         | Product::Map(_)
         | Product::Operated(_)
+        | Product::Cloned(_)
         | Product::Undone(_)
         | Product::Journal(_)
         | Product::Outside(_)

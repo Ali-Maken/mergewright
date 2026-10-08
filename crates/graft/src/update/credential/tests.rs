@@ -402,3 +402,114 @@ fn a_prompt_whose_write_has_ended_closes_itself() {
         "a prompt with nothing to answer would answer into nothing"
     );
 }
+
+/// A prompt open in a bare slot, `typed` already in it.
+fn open_slot(typed: &str) -> Option<CredentialPrompt> {
+    let mut slot = None;
+    open_prompt(
+        &mut slot,
+        Some(JOB),
+        false,
+        JOB,
+        "Password for 'http://u@h':",
+        false,
+    );
+    assert!(prompt_paste(&mut slot, typed), "the prompt opened");
+    slot
+}
+
+/// The host-agnostic core (m8/18b, rulings R5), with no `AppState`: what
+/// each key does to a prompt in a bare slot. `⏎` sends what was typed and
+/// closes, `esc` cancels and closes, `⌃U` clears, `⌃C` is the host's quit,
+/// and anything else is kept — typed, or swallowed.
+#[test]
+fn prompt_key_table() {
+    let ctrl = |c| KeyPress::control(KeyCode::Char(c));
+    let sent = |text: &[u8]| PromptKey::Send(JOB, Answer::new(Zeroizing::new(text.to_vec())));
+
+    let mut slot = open_slot("hunter2");
+    assert_eq!(
+        prompt_key(&mut slot, KeyPress::plain(KeyCode::Enter)),
+        sent(b"hunter2")
+    );
+    assert!(slot.is_none(), "⏎ closes the prompt");
+
+    let mut slot = open_slot("hunter2");
+    assert_eq!(
+        prompt_key(&mut slot, KeyPress::plain(KeyCode::Escape)),
+        PromptKey::Cancel(JOB)
+    );
+    assert!(slot.is_none(), "esc closes the prompt");
+
+    let mut slot = open_slot("hunter2");
+    assert_eq!(prompt_key(&mut slot, ctrl('u')), PromptKey::Kept);
+    assert_eq!(
+        prompt_key(&mut slot, KeyPress::plain(KeyCode::Enter)),
+        sent(b""),
+        "⌃U cleared the field"
+    );
+
+    let mut slot = open_slot("x");
+    assert_eq!(prompt_key(&mut slot, ctrl('c')), PromptKey::Quit);
+    assert!(slot.is_some(), "⌃C leaves the prompt to the host's quit");
+
+    other_keys_are_kept();
+}
+
+/// Anything but `⏎`, `esc`, `⌃U` and `⌃C` is typed or swallowed: kept.
+fn other_keys_are_kept() {
+    for key in [
+        KeyPress::plain(KeyCode::Char('q')),
+        KeyPress::plain(KeyCode::Tab),
+        KeyPress::plain(KeyCode::Backspace),
+        KeyPress::control(KeyCode::Char('p')),
+        KeyPress {
+            code: KeyCode::Char('u'),
+            modifiers: Modifiers {
+                alt: true,
+                ..Modifiers::NONE
+            },
+        },
+    ] {
+        let mut slot = open_slot("x");
+        assert_eq!(prompt_key(&mut slot, key), PromptKey::Kept, "{key:?}");
+        assert!(slot.is_some(), "{key:?} closed the prompt");
+    }
+    let mut slot = open_slot("x");
+    assert_eq!(
+        prompt_key(&mut slot, KeyPress::plain(KeyCode::Char('y'))),
+        PromptKey::Kept
+    );
+    assert_eq!(
+        prompt_key(&mut slot, KeyPress::plain(KeyCode::Enter)),
+        PromptKey::Send(JOB, Answer::new(Zeroizing::new(b"xy".to_vec()))),
+        "a letter is typed"
+    );
+
+    let mut closed = None;
+    assert_eq!(
+        prompt_key(&mut closed, KeyPress::plain(KeyCode::Enter)),
+        PromptKey::Kept
+    );
+    assert!(!prompt_paste(&mut closed, "x"), "nothing to paste into");
+}
+
+/// The core's open and close rules on a bare slot: only the running job's
+/// ask opens, not while it is being cancelled, and the prompt closes once
+/// its job is no longer the one running.
+#[test]
+fn the_core_opens_for_the_running_job_and_closes_when_it_ends() {
+    let ask = "Username for 'https://h':";
+    let mut slot = None;
+    open_prompt(&mut slot, Some(JobId::new(9)), false, JOB, ask, false);
+    assert!(slot.is_none(), "another job's ask");
+    open_prompt(&mut slot, Some(JOB), true, JOB, ask, false);
+    assert!(slot.is_none(), "an ask while cancelling");
+    open_prompt(&mut slot, Some(JOB), false, JOB, ask, false);
+    assert_eq!(slot.as_ref().map(|prompt| prompt.job), Some(JOB));
+
+    close_orphaned(&mut slot, Some(JOB));
+    assert!(slot.is_some(), "still running");
+    close_orphaned(&mut slot, None);
+    assert!(slot.is_none(), "its job ended");
+}
