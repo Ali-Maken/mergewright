@@ -1222,6 +1222,10 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/aborted-refs-moved | Q3: `took_effect` counts an Aborted entry only when `worktree_before.is_some()` (graft-ops `journal.rs:165`), so a multi-remote fetch that moved tracking refs could read `nothing written` (`view/journal.rs:192–202`). Whether fetch/push entries carry `worktree_before` is unchecked (review m8-doorway-words) (question) → 21 | **unverified** | M8 |
 | M8/15-u-hidden-shell-begun-merge | 15 hides `u undo` at a merge begun in the shell, where `u` would act (15 NOTES; builder's choice under A1 REFUSED_WHILE_LIVE). A hint withheld where the key works — rule at the usability walk | **unverified** | M8 |
 | M8/15-o-R-refusal-unseen | 15: `o`/`R` hidden while live checked by reading code only — no fixture draws them live | **unverified** | M8 |
+| M8/18c-open-prompt-cuts-path-end | 18c builder saw it on the pty: the open prompt cuts a long path's end, hiding the cursor (seen in output; no line named — the cause is a question) | **broken** | M8 |
+| M8/18c-secret-events-level | 18c `no_secret_leaked` checks pty output, stderr and .git files only — not the event stream | **unverified** | M8 |
+| M8/18c-file-url-remote-words | Question (18c): a failed file:// clone says "no remote named '/nonexistent/…'" — wording for a path URL | **unverified** | M8 |
+| M8/18c-captures-unjudged | 18c clone prompt / credential box captures and 4 re-shot empty-state captures: not judged by eye; colour unverified | **unverified** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` 407 lines (~7 over); seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |
