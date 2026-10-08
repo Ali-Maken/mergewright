@@ -12,7 +12,7 @@ use ratatui::widgets::Widget;
 
 use super::{MapMarkView, MapRowView, MapScreen, MapStatus};
 use crate::fit::fit;
-use crate::graph_screen::hints::fit_place_footer;
+use crate::graph_screen::hints::{fit_place_footer, place_footer_text};
 use crate::keymap::ActionId;
 use crate::paint::{color, foreground};
 use crate::theme::{Theme, Token};
@@ -140,40 +140,10 @@ impl MapScreen<'_> {
                 .key_verb(&[ActionId("app.back")], "cancels")
                 .into_iter()
                 .collect();
-            let fitted = fit_place_footer(&cancel, keys, &[], usize::from(width));
-            let words = fitted
-                .clauses
-                .iter()
-                .map(|at| cancel[*at].as_str())
-                .chain(fitted.doorway.as_deref())
-                .collect::<Vec<_>>()
-                .join("  ");
-            return Line::styled(words, muted);
+            return Line::styled(place_footer_text(&cancel, keys, usize::from(width)), muted);
         }
-        // Spelled from his keymap (ticket m8/10): the rows move by
-        // `app.down`/`app.up` (`j/k`, the table's first chords — the Map
-        // answers both, `update::map::shown_key`), `⏎` seeks, and `M` and
-        // `esc` both close. Empty and Failed have no row to select, so no
-        // `j/k` there (m8/11e G2, §2.1 mode rule).
-        let has_rows = matches!(self.view.status, MapStatus::Ready);
-        let clauses: Vec<String> = [
-            has_rows
-                .then(|| keys.key_verb(&[ActionId("app.down"), ActionId("app.up")], "select"))
-                .flatten(),
-            keys.key_verb(&[ActionId("map.seek")], "zoom to commits"),
-            keys.key_verb(&[ActionId("map.close"), ActionId("app.back")], "back"),
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
-        let warning = foreground(self.theme, Token::Warning);
-        let mut notes: Vec<(String, Style)> = Vec::new();
-        if self.view.more > 0 {
-            notes.push((format!(" · +{} more", self.view.more), muted));
-        }
-        if !self.view.complete {
-            notes.push((" · partial".to_owned(), warning));
-        }
+        let clauses = self.ready_clauses();
+        let notes = self.notes(muted);
         let note_words: Vec<String> = notes.iter().map(|(words, _)| words.clone()).collect();
         let fitted = fit_place_footer(&clauses, keys, &note_words, usize::from(width));
         let keys_part = fitted
@@ -196,6 +166,43 @@ impl MapScreen<'_> {
             spans.push(Span::styled(words, *style));
         }
         Line::from(spans)
+    }
+
+    /// The footer's key clauses outside Loading. Spelled from his keymap
+    /// (ticket m8/10): the rows move by `app.down`/`app.up` (`j/k`, the
+    /// table's first chords — the Map answers both,
+    /// `update::map::shown_key`), `⏎` seeks, and `M` and `esc` both close.
+    /// Empty and Failed have no row to select, so no `j/k` there (m8/11e
+    /// G2, §2.1 mode rule).
+    fn ready_clauses(&self) -> Vec<String> {
+        let keys = self.keys;
+        let has_rows = matches!(self.view.status, MapStatus::Ready);
+        [
+            has_rows
+                .then(|| keys.key_verb(&[ActionId("app.down"), ActionId("app.up")], "select"))
+                .flatten(),
+            keys.key_verb(&[ActionId("map.seek")], "zoom to commits"),
+            keys.key_verb(&[ActionId("map.close"), ActionId("app.back")], "back"),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    /// The notes after the doorway, in 11e's order: ` · +N more` (muted),
+    /// then ` · partial` in Warning ink. Each carries its own separator.
+    fn notes(&self, muted: Style) -> Vec<(String, Style)> {
+        let mut notes = Vec::new();
+        if self.view.more > 0 {
+            notes.push((format!(" · +{} more", self.view.more), muted));
+        }
+        if !self.view.complete {
+            notes.push((
+                " · partial".to_owned(),
+                foreground(self.theme, Token::Warning),
+            ));
+        }
+        notes
     }
 
     fn draw_column_header(&self, buf: &mut Buffer, area: Rect) {
