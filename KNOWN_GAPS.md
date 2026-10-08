@@ -1272,6 +1272,9 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/bars-stale-wording | Stale wording left by 15/15b/11f/21b (list: docs/reviews/m8-bars-hygiene.md minor 7). → 23 docs pass. | **broken** | M8 |
 | M8/15-a2-no-prior-art | 15 A2 (where a standing search lives) has no Prior art row in docs/design-notes/m8-polish-and-ship.md:39–115. Review m8. Before the usability walk. | **broken** | M8 |
 | M8/21c-cancelled-status-no-moves | A cancelled fetch's status words don't list moved refs (graft `cancelled`; 21c NOTES); a diverged pull builds its own reason. Moves are in the journal line. → 21c Part B B+1. | **broken** | M8 |
+| M8/19c-tour-task6-refused | Following the tour card in order, task 6 merge is refused by git: task 3 `u` leaves `notes.txt` staged, task 4 stash pop restores it staged, git refuses a non-ff merge over staged changes (19c-c NOTES, reproduced in plain git 2.54). Whole-tour walk + 2 captures blocked. Needs a planner ruling. | **broken** | M8 |
+| M8/merge-preview-dirty-index | Question (scout finding line): task-6 merge preview said `no conflicts expected` and offered `y`, then the merge failed on a staged file. Does the preview read the index? Scout scouts/merge-preview-dirty-index.md. | **unverified** | M8 |
+| M8/19c-capture-age-roll | Tour captures go red when ages roll 6y→7y (19c-c NOTES). Unverified. | **unverified** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` **429** lines at the split (12f's 407 was false — review m8-palette-landing-stop C1); `listing.rs` 424 also over → 21b-4 additions; seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |
