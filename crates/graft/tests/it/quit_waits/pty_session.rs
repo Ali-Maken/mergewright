@@ -100,10 +100,18 @@ impl Session {
             &[repo.as_os_str().to_owned()],
             pty.slave,
         );
+        // git's dates for what the app writes itself — a merge over his edit
+        // sets it aside first, and `git stash create` stamps `S` — pinned to
+        // the instant the captures of `preview::forked` are drawn at, so
+        // `S`'s id and age are the same every run (19d-a3, ticket §R7.2).
+        // The wall clock gave a new id per run, drawn `future`.
+        let git_date = format!("@{} +0000", crate::preview::FORK_NOW);
         command
             .env("XDG_CONFIG_HOME", isolated.config())
             .env("HOME", isolated.home())
             .env("GIT_CEILING_DIRECTORIES", repo)
+            .env("GIT_AUTHOR_DATE", &git_date)
+            .env("GIT_COMMITTER_DATE", &git_date)
             .env("TERM", "xterm-256color")
             .env_remove("GIT_DIR")
             .env_remove("GIT_WORK_TREE")

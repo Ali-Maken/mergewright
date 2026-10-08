@@ -103,8 +103,19 @@ impl PlanFailure {
     pub(super) fn reason(&self) -> String {
         match &self.remote {
             Some(failed) => remote::short(&failed.failure),
-            None if self.before_pause => BEFORE_PAUSE.to_owned(),
-            None => reason_for(&self.error),
+            None => self.local_reason(),
+        }
+    }
+
+    /// The reason in git's own words, with a stop read as before-pause
+    /// saying so. The set-aside close gives this one for every failure,
+    /// a remote operation's local step included (a pull's merge, ADR-0045
+    /// amendment 03b), as it did before 19d-a2.
+    pub(super) fn local_reason(&self) -> String {
+        if self.before_pause {
+            BEFORE_PAUSE.to_owned()
+        } else {
+            reason_for(&self.error)
         }
     }
 

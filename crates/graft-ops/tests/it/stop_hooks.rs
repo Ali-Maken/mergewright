@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-use graft_core::journal::{EntryStatus, JournalEntry, OperationKind};
+use graft_core::journal::{EntryStatus, JournalEntry, OperationKind, PutBackWhy};
 use graft_core::oid::Oid;
 use graft_git::run::Stop;
 use graft_git::state::InProgress;
@@ -23,6 +23,7 @@ use graft_ops::operation::{
     FastForward, MergeParams, Operation, PickParams, RevertParams, Source, Tip,
 };
 
+use crate::set_aside::{porcelain, resume_with, set_aside_of, stash_commits, whole};
 use crate::support::{
     NOW, Never, TempRepo, context, journal_for, run_undo, run_with_stop, state_of, try_run,
 };
@@ -65,7 +66,7 @@ fn merge_feature(repo: &TempRepo) -> Operation {
 
 /// A hook installed under `.git/test-hooks/` (outside the tree `state_of`
 /// reads), and the pids its processes wrote there.
-struct Hooked {
+pub(crate) struct Hooked {
     dir: PathBuf,
 }
 
@@ -73,7 +74,7 @@ impl Hooked {
     /// `body` runs under `/bin/sh`; `PIDS` in it is replaced by the pid
     /// directory. The hook must write `PIDS/hook` (atomically, by rename)
     /// once it is where the test wants the stop.
-    fn install(repo: &TempRepo, name: &str, body: &str) -> Hooked {
+    pub(crate) fn install(repo: &TempRepo, name: &str, body: &str) -> Hooked {
         let dir = repo.path().join(".git/test-hooks");
         std::fs::create_dir_all(&dir).expect("the hooks dir is made");
         let script = dir.join(name);
@@ -86,7 +87,7 @@ impl Hooked {
     }
 
     /// A hook stuck the ordinary way: a shell waiting on a child.
-    fn stuck(repo: &TempRepo, name: &str) -> Hooked {
+    pub(crate) fn stuck(repo: &TempRepo, name: &str) -> Hooked {
         Hooked::install(
             repo,
             name,
@@ -98,7 +99,7 @@ impl Hooked {
     /// stop finds no helper of git's to end, stops the group — git alone —
     /// and git dies before it can pause the merge. `PIDS/hook` is written
     /// only after the hook has left the group.
-    fn stuck_outside_the_group(repo: &TempRepo, name: &str) -> Hooked {
+    pub(crate) fn stuck_outside_the_group(repo: &TempRepo, name: &str) -> Hooked {
         Hooked::install(
             repo,
             name,
@@ -107,8 +108,14 @@ impl Hooked {
         )
     }
 
-    fn running(&self) -> PathBuf {
+    pub(crate) fn running(&self) -> PathBuf {
         self.dir.join("hook")
+    }
+
+    /// Where the script `name` was installed, for a helper git runs that is
+    /// not a hook (a merge driver).
+    pub(crate) fn script(&self, name: &str) -> PathBuf {
+        self.dir.join(name)
     }
 
     fn pid(&self, name: &str) -> Option<String> {
@@ -121,7 +128,7 @@ impl Hooked {
     /// Every pid this hook recorded is gone, within two seconds: the
     /// processes may be zombies for a moment before their new parent reaps
     /// them, and `kill -0` still finds a zombie.
-    fn assert_gone(&self) {
+    pub(crate) fn assert_gone(&self) {
         for name in ["hook", "sleep"] {
             if let Some(pid) = self.pid(name) {
                 assert!(gone(&pid), "the hook's {name} ({pid}) was ended");
@@ -130,7 +137,7 @@ impl Hooked {
     }
 
     /// The hook is removed, so a resume runs without it.
-    fn remove(&self, name: &str) {
+    pub(crate) fn remove(&self, name: &str) {
         std::fs::remove_file(self.dir.join(name)).expect("the hook is removed");
     }
 }
@@ -172,7 +179,7 @@ fn gone(pid: &str) -> bool {
 }
 
 /// The user's stop, fired once the hook is running.
-struct StopOnceRunning(PathBuf);
+pub(crate) struct StopOnceRunning(pub(crate) PathBuf);
 
 impl Stop for StopOnceRunning {
     fn should_stop(&self) -> bool {
@@ -202,16 +209,60 @@ fn entry_now(repo: &TempRepo, id: &graft_core::journal::EntryId) -> JournalEntry
         .expect("the entry is in the journal")
 }
 
-/// A merge stopped in `hook`: it must come back paused, nothing lost.
-fn assert_merge_paused(hook: &str) {
-    let repo = diverged();
-    let hooked = Hooked::stuck(&repo, hook);
-    let source = id(&repo, "feature");
-    let head = id(&repo, "HEAD");
+/// While a merge over his edit is paused, the edit waits in the set-aside
+/// copy (19d; ADR-0045 §4, as for a stopped rebase): `S` is listed, found by
+/// commit, it holds his edit, and the tree holds `HEAD`'s copy.
+fn assert_his_edit_waits_in_s(repo: &TempRepo, entry: &JournalEntry) {
+    let stash = set_aside_of(entry);
+    assert_eq!(
+        stash_commits(repo),
+        vec![stash],
+        "S listed, found by commit"
+    );
+    assert_eq!(
+        repo.git(&["show", &format!("{stash}:notes.txt")])
+            .as_bytes(),
+        HIS_EDIT.trim_ascii_end(),
+        "his edit is in S"
+    );
+    assert_eq!(
+        repo.read("notes.txt"),
+        b"notes\n",
+        "the tree holds HEAD's copy"
+    );
+}
+
+/// A paused merge over a clean tree (an untracked file alone): nothing set
+/// aside, no stash, and his untracked file untouched — 13c's claim.
+fn assert_nothing_set_aside(repo: &TempRepo, entry: &JournalEntry) {
+    assert_eq!(entry.put_back, None, "nothing set aside");
+    assert!(stash_commits(repo).is_empty(), "no stash");
+    assert_eq!(
+        repo.read("scratch.txt"),
+        b"his scratch\n",
+        "his untracked file is untouched"
+    );
+}
+
+/// A merge stopped in `hook`: it must come back paused, nothing lost; then
+/// `a` (`Resume::Abort`) leaves everything as before the merge.
+///
+/// Over his edit (`diverged`), the edit waits in `S` while paused
+/// ([`assert_his_edit_waits_in_s`]) and the abort puts it back with its
+/// split and drops `S`. On a clean tree (`diverged_clean` + an untracked
+/// file) nothing is set aside, and the untracked file is untouched — 13c's
+/// claim.
+fn assert_merge_paused(repo: &TempRepo, hook: &str) {
+    let hooked = Hooked::stuck(repo, hook);
+    let source = id(repo, "feature");
+    let head = id(repo, "HEAD");
+    let before = whole(repo);
+    let split = porcelain(repo);
+    let edited = split.iter().any(|line| !line.starts_with("??"));
 
     let stopped = run_with_stop(
-        &repo,
-        &merge_feature(&repo),
+        repo,
+        &merge_feature(repo),
         NOW,
         &StopOnceRunning(hooked.running()),
     );
@@ -229,19 +280,30 @@ fn assert_merge_paused(hook: &str) {
     assert_eq!(kind, InProgress::Merge);
     assert!(paths.is_empty(), "nothing is unmerged: {paths:?}");
     assert_eq!(entry.status, EntryStatus::Pending, "no outcome line");
-    assert_eq!(entry_now(&repo, &entry.id).status, EntryStatus::Pending);
+    assert_eq!(entry_now(repo, &entry.id).status, EntryStatus::Pending);
     assert_eq!(
         repo.git(&["rev-parse", "MERGE_HEAD"]),
         source.to_string(),
         "MERGE_HEAD is the source tip"
     );
-    assert_eq!(id(&repo, "HEAD"), head, "nothing committed");
+    assert_eq!(id(repo, "HEAD"), head, "nothing committed");
     assert!(
         locks_under(&repo.path().join(".git")).is_empty(),
         "no lock left"
     );
-    assert_eq!(repo.read("notes.txt"), HIS_EDIT, "his edit is untouched");
+    if edited {
+        assert_his_edit_waits_in_s(repo, &entry);
+    } else {
+        assert_nothing_set_aside(repo, &entry);
+    }
     hooked.assert_gone();
+
+    hooked.remove(hook);
+    let aborted =
+        resume_with(repo, Resume::Abort, NOW + 1).unwrap_or_else(|why| panic!("a aborts: {why}"));
+    assert_eq!(aborted.entry.id, entry.id, "the paused entry is closed");
+    assert_eq!(porcelain(repo), split, "back, the split kept");
+    assert_eq!(whole(repo), before, "as before, S dropped");
 }
 
 /// Pure git, no Graft: the contract the pause stands on. A `pre-merge-commit`
@@ -292,19 +354,41 @@ fn git_pauses_a_merge_whose_pre_merge_commit_hook_is_killed() {
 
 #[test]
 fn a_merge_stopped_in_its_pre_merge_commit_hook_is_paused() {
-    assert_merge_paused("pre-merge-commit");
+    assert_merge_paused(&diverged(), "pre-merge-commit");
 }
 
 #[test]
 fn a_merge_stopped_in_its_prepare_commit_msg_hook_is_paused() {
-    assert_merge_paused("prepare-commit-msg");
+    assert_merge_paused(&diverged(), "prepare-commit-msg");
 }
 
+/// A clean tree with an untracked file in it: nothing to set aside.
+fn clean_with_scratch() -> TempRepo {
+    let repo = diverged_clean();
+    repo.write("scratch.txt", b"his scratch\n");
+    repo
+}
+
+#[test]
+fn a_clean_merge_stopped_in_its_pre_merge_commit_hook_is_paused() {
+    assert_merge_paused(&clean_with_scratch(), "pre-merge-commit");
+}
+
+#[test]
+fn a_clean_merge_stopped_in_its_prepare_commit_msg_hook_is_paused() {
+    assert_merge_paused(&clean_with_scratch(), "prepare-commit-msg");
+}
+
+/// His edit was set aside (19d): the merge landed, the put-back ran, and the
+/// answer still says `Landed` — the set-aside close keeps the stop's mark
+/// (19d-a2 D1). `u` puts the whole thing back, the stash list included.
 #[test]
 fn a_merge_stopped_in_its_post_merge_hook_has_landed() {
     let repo = diverged();
     let hooked = Hooked::stuck(&repo, "post-merge");
     let source = id(&repo, "feature");
+    let before = whole(&repo);
+    let split = porcelain(&repo);
 
     let landed = run_with_stop(
         &repo,
@@ -321,21 +405,108 @@ fn a_merge_stopped_in_its_post_merge_hook_has_landed() {
     };
     assert_eq!(stopped_at, Some(StoppedAt::Landed));
     assert_eq!(entry.status, EntryStatus::Committed);
+    set_aside_of(&entry);
     assert_eq!(id(&repo, "HEAD^2"), source, "the merge commit is made");
     assert!(!repo.path().join(".git/MERGE_HEAD").exists());
-    assert_eq!(repo.read("notes.txt"), HIS_EDIT);
+    assert_eq!(repo.read("notes.txt"), HIS_EDIT, "his edit is back");
+    assert_eq!(porcelain(&repo), split, "with its split");
+    assert!(stash_commits(&repo).is_empty(), "S dropped");
     hooked.assert_gone();
+
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("u puts it back: {why}"));
+    assert_eq!(
+        whole(&repo),
+        before,
+        "HEAD, index, tree and stash list as before"
+    );
+}
+
+/// [`diverged`], and `feature` also rewrites the line his edit changes: the
+/// merge itself is clean (his edit is aside while it runs), the put-back of
+/// his edit over it clashes on `notes.txt`.
+fn diverged_over_his_line() -> TempRepo {
+    let repo = TempRepo::init();
+    repo.write("a.txt", b"base\n");
+    repo.write("notes.txt", b"notes\n");
+    repo.commit_all("base");
+    repo.git(&["checkout", "-q", "-b", "feature"]);
+    repo.write("b.txt", b"feature\n");
+    repo.write("notes.txt", b"notes, as feature has them\n");
+    repo.commit_all("feature work");
+    repo.git(&["checkout", "-q", "main"]);
+    repo.write("c.txt", b"main\n");
+    repo.commit_all("main work");
+    repo.write("notes.txt", HIS_EDIT);
+    repo
+}
+
+/// The merge landed before its post-merge hook was stopped, and the put-back
+/// of his edit then clashed (19d-a3, ticket §R7.3). The answer is the clash —
+/// the resolver takes it from there (ADR-0045 §2) — and it still says
+/// `Landed`: the merge is committed, not paused. `S` is kept, the clash is
+/// live, and `u` puts it all back.
+#[test]
+fn a_merge_that_landed_before_the_stop_and_clashed_on_put_back_says_landed() {
+    let repo = diverged_over_his_line();
+    let hooked = Hooked::stuck(&repo, "post-merge");
+    let source = id(&repo, "feature");
+    let before = whole(&repo);
+
+    let stopped = run_with_stop(
+        &repo,
+        &merge_feature(&repo),
+        NOW,
+        &StopOnceRunning(hooked.running()),
+    );
+
+    let Err(error) = stopped else {
+        panic!("a put-back that clashed does not succeed");
+    };
+    assert_eq!(error.stopped_at(), Some(StoppedAt::Landed));
+    let ApplyError::Clashed {
+        entry,
+        clash,
+        stopped_at,
+    } = error
+    else {
+        panic!("the clash, not {error:?}");
+    };
+    assert_eq!(stopped_at, Some(StoppedAt::Landed));
+    assert_eq!(entry.status, EntryStatus::Committed);
+    assert_eq!(id(&repo, "HEAD^2"), source, "the merge commit is made");
+    assert!(!repo.path().join(".git/MERGE_HEAD").exists(), "not paused");
+    let stash = set_aside_of(&entry);
+    assert_eq!(clash.stash, stash);
+    assert_eq!(clash.why, PutBackWhy::SetAside);
+    assert_eq!(clash.paths, vec![PathBuf::from("notes.txt")]);
+    assert_eq!(stash_commits(&repo), vec![stash], "S kept");
+    assert_eq!(
+        repo.git(&["diff", "--name-only", "--diff-filter=U"]),
+        "notes.txt",
+        "the clash is live"
+    );
+    hooked.assert_gone();
+
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("u puts it back: {why}"));
+    assert_eq!(
+        whole(&repo),
+        before,
+        "HEAD, index, tree and stash list as before"
+    );
 }
 
 /// git killed before it could pause (here: the hook left git's group, so
 /// the stop had no helper to end and stopped git itself). The state 13b saw:
 /// the merge's files in the tree, no `MERGE_HEAD`. `Aborted`, and `u` puts
-/// everything back, his edit included.
+/// everything back, his edit included. His edit was set aside (19d): the
+/// set-aside close keeps the reason the stop was read as (19d-a2 D2), puts
+/// the edit back and drops `S`.
 #[test]
 fn a_merge_stopped_before_git_paused_it_is_aborted_and_u_puts_it_back() {
     let repo = diverged();
     let hooked = Hooked::stuck_outside_the_group(&repo, "pre-merge-commit");
     let before = state_of(&repo);
+    let stashes_before = whole(&repo).1;
 
     let stopped = run_with_stop(
         &repo,
@@ -360,15 +531,19 @@ fn a_merge_stopped_before_git_paused_it_is_aborted_and_u_puts_it_back() {
             reason: "stopped before git could pause it".to_owned()
         }
     );
+    set_aside_of(entry);
     assert!(
         !repo.path().join(".git/MERGE_HEAD").exists(),
         "git did not get to pause it"
     );
     assert_ne!(state_of(&repo), before, "the merge's files are in the tree");
+    assert_eq!(repo.read("notes.txt"), HIS_EDIT, "his edit is back");
+    assert!(stash_commits(&repo).is_empty(), "S dropped");
 
     run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("u puts it back: {why}"));
 
     assert_eq!(state_of(&repo), before, "HEAD, index and tree as before");
+    assert_eq!(whole(&repo).1, stashes_before, "the stash list as before");
     assert_eq!(repo.read("notes.txt"), HIS_EDIT, "his edit, byte for byte");
 }
 
@@ -675,10 +850,13 @@ fn a_finish_merge_stopped_in_its_hook_leaves_the_merge_paused() {
 }
 
 /// Paused, then `c`, and the commit's own hook is stuck and stopped too: git
-/// fails the commit, `MERGE_HEAD` stays, and the entry is held again.
+/// fails the commit, `MERGE_HEAD` stays, and the entry is held again — his
+/// edit still waiting in `S` (19d). Then `c` with the hook gone: the merge
+/// commits, the edit is back with its split, `S` dropped.
 #[test]
 fn a_resume_stopped_in_its_hook_stays_paused() {
     let repo = diverged();
+    let split = porcelain(&repo);
     let hooked = Hooked::stuck(&repo, "pre-merge-commit");
     let Err(ApplyError::Paused { entry, .. }) = run_with_stop(
         &repo,
@@ -715,6 +893,20 @@ fn a_resume_stopped_in_its_hook_stays_paused() {
         "the resume's line is held with the entry: {:?}",
         held.commands
     );
-    assert_eq!(repo.read("notes.txt"), HIS_EDIT);
+    assert_his_edit_waits_in_s(&repo, &held);
     again.assert_gone();
+
+    again.remove("pre-commit");
+    let continued = resume_with(&repo, Resume::Continue, NOW + 2)
+        .unwrap_or_else(|why| panic!("c continues: {why}"));
+    assert_eq!(continued.entry.id, entry.id, "the paused entry is closed");
+    assert_eq!(continued.entry.status, EntryStatus::Committed);
+    assert_eq!(
+        id(&repo, "HEAD^2"),
+        id(&repo, "feature"),
+        "the merge is made"
+    );
+    assert_eq!(repo.read("notes.txt"), HIS_EDIT, "his edit is back");
+    assert_eq!(porcelain(&repo), split, "with its split");
+    assert!(stash_commits(&repo).is_empty(), "S dropped");
 }

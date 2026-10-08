@@ -33,10 +33,19 @@ fn journal_entries(repo: &TempRepo) -> Vec<JournalEntry> {
     journal_for(&handle).entries().to_vec()
 }
 
-/// Run a put-back that must clash; hand back the entry and the clash.
+/// Run a put-back that must clash; hand back the entry and the clash. No
+/// stop ran, so the clash carries no stop's mark (19d-a3: only a set-aside
+/// that landed before a stop says `Landed`).
 fn clashed(repo: &TempRepo, op: &Operation) -> (JournalEntry, Clash) {
     match try_run(repo, op, NOW) {
-        Err(ApplyError::Clashed { entry, clash }) => (*entry, clash),
+        Err(ApplyError::Clashed {
+            entry,
+            clash,
+            stopped_at,
+        }) => {
+            assert_eq!(stopped_at, None, "a pop's clash is not a stop");
+            (*entry, clash)
+        }
         other => panic!("the put-back should have clashed: {other:?}"),
     }
 }

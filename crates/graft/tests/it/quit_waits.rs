@@ -251,12 +251,16 @@ fn capture_quit_stop_now() {
 /// offers continue or abort` (the 10 s is the injected offer's). Below it,
 /// the next launch at 80x24, as drawn today (graft-ui untouched): `MERGING`
 /// at the top, the `Detail` tab of the narrow layout on the uncommitted
-/// changes — the merge's result staged (`A main-one.txt`, `A
-/// main-two.txt`), his edit unstaged (`M base.txt`) — and the bottom row
-/// `c finish  a abort  ⇥ graph  q quit`. At this width the banner's words
-/// (`merge still in progress from a previous run`, drawn at 100x30) do not
-/// fit and only its keys are shown. Colour unverified; looks-right is the
-/// user's.
+/// changes — `UNCOMMITTED · 2 staged`, the merge's result alone
+/// (`A main-one.txt`, `A main-two.txt`; asserted to be the merge's own
+/// paths) — and the bottom row `c finish  a abort  ⇥ graph  q quit`. His
+/// edit to `base.txt` is not in the tree: the merge set it aside (19d,
+/// ADR-0045 §4), it waits in the stash list, and `c` or `a` puts it back.
+/// Nothing on this landing says so: at this width the banner's words
+/// (`merge still in progress from a previous run · edits aside`, drawn at
+/// 100x30) do not fit and only its keys are shown, and the stash row is on
+/// the graph tab, not here (NOTES 19d-a3). Colour unverified; looks-right
+/// is the user's.
 ///
 /// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it quit_waits::capture_relaunch_after_a_stopped_merge`.
 #[test]
@@ -272,6 +276,13 @@ fn capture_relaunch_after_a_stopped_merge() {
     };
     let line = stuck::exit_line_for(forced);
     assert!(line.contains("the merge is paused"), "{line}");
+    // R6 (19d-a2): his edit waits aside while the merge is paused.
+    let merge = stuck::entries(repo)
+        .into_iter()
+        .find(|entry| entry.kind == OperationKind::Merge)
+        .expect("the merge's entry");
+    stuck::assert_his_edit_waits_aside(repo, &merge);
+    stuck::assert_staged_are_the_merges_own(repo);
 
     let (app, state) = App::open(repo);
     let state = app.resize(&state, 80, 24);

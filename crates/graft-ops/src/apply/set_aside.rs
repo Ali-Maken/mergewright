@@ -213,10 +213,28 @@ pub(super) fn abandon(
     })
 }
 
+/// The operation's own failure, as [`close`] closes on it: git's error, and
+/// the reason the entry's `Aborted` line gives — the caller's, so a stop
+/// read as "before git could pause it" keeps those words (19d-a2 D2).
+pub(super) struct Failed {
+    pub(super) error: RunError,
+    pub(super) reason: String,
+}
+
+impl Failed {
+    /// git's failure in git's own words (`reason_for`).
+    pub(super) fn git(error: RunError) -> Self {
+        Failed {
+            reason: reason_for(&error),
+            error,
+        }
+    }
+}
+
 /// How the operation (step 5, or its resume) ended, for [`close`].
 pub(super) struct Ended {
-    /// git's own failure of the operation, when it failed without stopping.
-    pub(super) failure: Option<RunError>,
+    /// The operation's own failure, when git did not go through with it.
+    pub(super) failure: Option<Failed>,
     /// The status when the operation went through: `Committed`, or
     /// `Aborted("aborted")` for `--abort`.
     pub(super) done: EntryStatus,
@@ -290,20 +308,22 @@ pub(super) fn close(
             Outcome::kept(kept, &listed_at(ctx, stash), stash)
         }
     };
-    let status = status_for(&outcome, ended.failure.as_ref(), ended.done);
+    let reason = ended.failure.as_ref().map(|failed| failed.reason.as_str());
+    let status = status_for(&outcome, reason, ended.done);
+    let failure = ended.failure.map(|failed| failed.error);
     let mut unread = match finish(ctx, &mut pending, status, commands) {
         Ok(unread) => unread,
         Err(error) => {
             return Err(ApplyError::Journal {
                 error,
-                after: ended.failure,
+                after: failure,
                 kept: unwritten_words(ctx, &outcome, stash),
             });
         }
     };
     unread.extend(ended.unread);
     unread.extend(came_back_unread);
-    answer(outcome, pending.entry, stash, ended.failure, unread)
+    answer(outcome, pending.entry, stash, failure, unread)
 }
 
 /// Where `S` is, for words: `stash@{n}` when listed, else its commit.

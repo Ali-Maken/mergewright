@@ -247,7 +247,7 @@ fn a_ff_pull_whose_put_back_clashes_stops_as_a_clash() {
     let tip = theirs(&behind, "shared.txt", THEIRS);
 
     let (entry, clash) = match try_run(work, &pull(work), NOW) {
-        Err(ApplyError::Clashed { entry, clash }) => (*entry, clash),
+        Err(ApplyError::Clashed { entry, clash, .. }) => (*entry, clash),
         other => panic!("the put-back should clash: {other:?}"),
     };
 
@@ -288,6 +288,37 @@ fn a_ff_pull_over_unrelated_edits_is_unchanged() {
         "the index entry byte-equal"
     );
     assert_eq!(work.read("base.txt"), b"staged\nand unstaged\n");
+    assert!(stash_commits(work).is_empty(), "no stash");
+}
+
+/// The probe 19d asked for (m8-polish-and-ship/19d R1, "Pull checked"):
+/// a staged change alone, to a file the fast-forward does not touch. git
+/// refuses a *true* merge over any staged change; a fast-forward pull goes
+/// through it, so the pull keeps its own rule (03b) and needs no other.
+#[test]
+fn an_ff_pull_over_an_untouched_staged_change_goes_through() {
+    let behind = clone_of_origin();
+    let work = &behind.work;
+    work.write("base.txt", b"staged\n");
+    work.git(&["add", "base.txt"]);
+    let staged = work.git(&["ls-files", "-s", "--", "base.txt"]);
+    let tip = theirs(&behind, "shared.txt", THEIRS);
+
+    let applied = try_run(work, &pull(work), NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
+
+    let entry = &applied.entry;
+    assert_eq!(entry.status, EntryStatus::Committed);
+    assert_eq!(entry.put_back, None, "nothing set aside");
+    assert_eq!(entry.commands, vec![fetch_line(), merge_line()]);
+    assert_eq!(work.git(&["rev-parse", "HEAD"]), tip, "fast-forwarded");
+    assert_eq!(work.read("shared.txt"), THEIRS, "theirs came in");
+    assert_eq!(
+        work.git(&["ls-files", "-s", "--", "base.txt"]),
+        staged,
+        "still staged, byte-equal"
+    );
+    assert_eq!(porcelain(work), ["M  base.txt"]);
     assert!(stash_commits(work).is_empty(), "no stash");
 }
 

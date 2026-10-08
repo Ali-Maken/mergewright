@@ -1,5 +1,6 @@
-//! The put-back forecast (ADR-0045 §8, m6-conflicts/84): when a rebase or a
-//! switch sets the user's edits aside, will putting them back clash?
+//! The put-back forecast (ADR-0045 §8, m6-conflicts/84): when a rebase,
+//! a merge or a switch sets the user's edits aside, will putting them back
+//! clash?
 //!
 //! Three steps, mirroring what `apply` will do at step 6:
 //! 1. `git stash create` of the tree now → `S'` (on a copy of the index);
@@ -9,7 +10,8 @@
 //!    `merge-tree HEAD <upstream>` made a commit stands in — for the
 //!    replayed branch, which is never built (m5 hard choice 5); for a
 //!    cherry-pick, each picked commit replayed from its own parent
-//!    (m7-power-tools/11a);
+//!    (m7-power-tools/11a); for a merge, the source it fast-forwards to or
+//!    the merged tree from their merge base (m8-polish-and-ship/19d);
 //! 3. `git merge-tree --merge-base=HEAD <landed> <S'>`: the three-way merge
 //!    `stash apply` does, whose base is `S'^1`, which is `HEAD`.
 //!
@@ -27,7 +29,9 @@ use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::version::GitVersion;
 
-use crate::operation::{CheckoutTarget, Operation, RecoverParams, RecoverTarget, RepoFacts};
+use crate::operation::{
+    CheckoutTarget, MergeParams, Operation, RecoverParams, RecoverTarget, RepoFacts,
+};
 use crate::snapshot::{self, SnapshotError};
 
 use super::{ConflictForecast, PreviewError, forecast_one, kinds};
@@ -48,6 +52,10 @@ const MAY_STOP: &str = "the rebase may stop first";
 /// The same hole for a cherry-pick: a pick that stops, or one whose commit
 /// could not be replayed here, leaves no tree to put the edits back onto.
 const PICK_MAY_STOP: &str = "the cherry-pick may stop first";
+
+/// The same hole for a merge whose own forecast is not clean
+/// (m8-polish-and-ship/19d).
+const MERGE_MAY_STOP: &str = "the merge may stop first";
 
 /// The same hole for a rewrite whose replay may stop.
 const REWRITE_MAY_STOP: &str = "the rewrite may stop first";
@@ -103,6 +111,13 @@ pub(super) fn forecast(
         Landing::Picked(commits) => match picked(repo, git, head, &commits, stop)? {
             Ok(landed) => landed,
             Err(hole) => return Ok(hole),
+        },
+        Landing::Merged(params) => match merge_landed(repo, git, head, &params, stop) {
+            Ok(MergeLanded::At(landed)) => landed,
+            Ok(MergeLanded::MayStop) => return Ok(not_checked(MERGE_MAY_STOP)),
+            Ok(MergeLanded::NotChecked(why)) => return Ok(not_checked(&why)),
+            Err(RunError::Stopped) => return Err(PreviewError::Stopped),
+            Err(why) => return Ok(not_checked(&why.to_string())),
         },
     };
     stopped(stop)?;
@@ -175,9 +190,18 @@ fn landing_of(
                 _ => Err(not_checked(REORDER_NOT_FORECAST)),
             }
         }
+        // A merge (m8-polish-and-ship/19d): `HEAD` lands on the source
+        // itself, or on the merged tree, once the merge's own forecast is
+        // clean.
+        Operation::Merge(params) => {
+            if *replay != ConflictForecast::Clean {
+                return Err(not_checked(MERGE_MAY_STOP));
+            }
+            Ok((params.into.oid, Landing::Merged(params.clone())))
+        }
         // `sets_aside` is `Some` for a rebase, a rewrite, a cherry-pick, a
-        // checkout, a switching create away from `HEAD` or a checked-out
-        // put-back only (a pull has no preview).
+        // merge, a checkout, a switching create away from `HEAD` or a
+        // checked-out put-back only (a pull has no preview).
         _ => Err(not_checked("nothing is put back after this")),
     }
 }
@@ -191,6 +215,64 @@ enum Landing {
     /// A cherry-pick of these commits, in order: each replayed exactly,
     /// from its own first parent, as git does.
     Picked(Vec<Oid>),
+    /// A merge of this source into `HEAD` ([`merge_landed`]).
+    Merged(MergeParams),
+}
+
+/// Where a merge leaves `HEAD`, for the put-back forecast.
+pub(crate) enum MergeLanded {
+    /// The commit the merge lands on: the source (fast-forward) or a
+    /// scratch commit of the merged tree.
+    At(Oid),
+    /// The merge itself would stop on a conflict, or git would refuse it:
+    /// `put_back` is `NotChecked("the merge may stop first")`.
+    MayStop,
+    /// A read that went wrong, in its own words.
+    NotChecked(String),
+}
+
+/// The commit a merge of `params.source_tip` into `head` lands on.
+///
+/// Already in (`source` is an ancestor): `head`, which git leaves where it
+/// is. A fast-forward, or `--no-ff` over one: `source`, whose tree is the
+/// one git ends on either way. Otherwise the three-way merge from their
+/// merge base (`merge_tree_step`), its tree made a commit on both, as the
+/// rebase landing makes its own. No merge base: git refuses unrelated
+/// histories, so the put-back never runs — [`MergeLanded::MayStop`].
+///
+/// # Errors
+/// [`RunError`] from `merge-base` or `merge-tree`: git missing or stopped.
+/// A scratch commit that fails is [`MergeLanded::NotChecked`].
+pub(crate) fn merge_landed(
+    repo: &RepoHandle,
+    git: &GitVersion,
+    head: Oid,
+    params: &MergeParams,
+    stop: &dyn Stop,
+) -> Result<MergeLanded, RunError> {
+    let source = params.source_tip;
+    if stop.should_stop() {
+        return Err(RunError::Stopped);
+    }
+    let Some(base) = history_reads::merge_base(repo, head, source)? else {
+        return Ok(MergeLanded::MayStop);
+    };
+    if base == source {
+        return Ok(MergeLanded::At(head));
+    }
+    if base == head {
+        return Ok(MergeLanded::At(source));
+    }
+    let tree = match history_reads::merge_tree_step(repo, git, base, head, source, stop)? {
+        MergeStep::Clean { tree } => tree,
+        MergeStep::Conflicts { .. } => return Ok(MergeLanded::MayStop),
+        MergeStep::NotCheckable(why) => return Ok(MergeLanded::NotChecked(why)),
+    };
+    match snapshot::scratch_commit(repo, tree, &[head, source], stop) {
+        Ok(landed) => Ok(MergeLanded::At(landed)),
+        Err(SnapshotError::Stopped) => Err(RunError::Stopped),
+        Err(why) => Ok(MergeLanded::NotChecked(why.to_string())),
+    }
 }
 
 /// The pick's landed commit: each commit's own change replayed onto the

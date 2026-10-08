@@ -615,8 +615,9 @@ fn a_put_back_clash_lands_on_the_resolver_with_set_aside_names() {
         "o branch  t yours"
     );
 
-    // After a `c` that finished a stopped rebase there is no launched op:
-    // the rebase is what `u` takes back.
+    // After a `c` that finished a stopped one there is no launched op, and
+    // here the journal read does not hold the entry either: no kind is
+    // named (19d-a3, ticket §R7.1; this said `undoes the rebase too`).
     let mut resumed = AppState::default();
     set_aside_clash(&mut resumed, None, 2);
     assert_eq!(
@@ -625,12 +626,37 @@ fn a_put_back_clash_lands_on_the_resolver_with_set_aside_names() {
             .as_ref()
             .and_then(|open| open.notice.as_ref())
             .map(|(words, _)| words.as_str()),
-        Some("your edits clashed in 2 files \u{b7} esc, u undoes the rebase too")
+        Some("your edits clashed in 2 files \u{b7} esc, u puts it all back")
     );
     // A pop's words are unchanged.
     assert_eq!(
-        notice_words(Some(0), 2, None, graft_ui::keymap::Keymap::shipped()),
+        notice_words(Some(0), 2, false, None, graft_ui::keymap::Keymap::shipped()),
         "stash@{0} clashed in 2 files \u{b7} esc, u puts it all back"
+    );
+}
+
+/// m8-polish-and-ship/19d-a3 (ticket §R7.1): a set-aside's clash whose kind
+/// is not known — nothing launched, and the journal read does not hold the
+/// entry — names no kind. It used to say `rebase`, a guess worded as fact.
+/// The edits are still named, and `u` keeps the clause a pop's clash has.
+#[test]
+fn an_unknown_kind_names_no_kind() {
+    let mut state = AppState::default();
+    set_aside_clash(&mut state, None, 2);
+
+    let notice = state
+        .resolver
+        .as_ref()
+        .and_then(|open| open.notice.as_ref())
+        .map(|(words, _)| words.clone());
+    assert_eq!(
+        notice.as_deref(),
+        Some("your edits clashed in 2 files \u{b7} esc, u puts it all back")
+    );
+    assert_eq!(
+        undo_clause(&state).as_deref(),
+        Some("esc, u puts it all back"),
+        "the resolver's answer to u says the same"
     );
 }
 
@@ -658,6 +684,123 @@ fn a_switching_create_clash_is_labelled_switch() {
             .map(|(words, _)| words.as_str()),
         Some("your edits clashed in 1 file \u{b7} esc, u undoes the switch too")
     );
+}
+
+/// m8-polish-and-ship/19d: a merge sets edits aside too (ADR-0045 §4), so
+/// its clash says `u` undoes the merge — after `y` (the launched merge),
+/// after the `c` that finished a stopped one (nothing launched: the
+/// journal's entry is read), and in the resolver's answer to `u`.
+#[test]
+fn a_merge_put_back_clash_notice_names_the_merge() {
+    let merge = Operation::Merge(graft_ops::operation::MergeParams {
+        source: graft_ops::operation::Source::Branch("feature".to_owned()),
+        into: graft_ops::operation::Tip {
+            name: "refs/heads/main".to_owned(),
+            oid: oid(1),
+        },
+        source_tip: oid(3),
+        ff: graft_ops::operation::FastForward::Default,
+    });
+    let notice = |state: &AppState| {
+        state
+            .resolver
+            .as_ref()
+            .and_then(|open| open.notice.as_ref())
+            .map(|(words, _)| words.clone())
+    };
+
+    let mut launched = AppState {
+        refs: Some(Arc::new(refs_with_stash())),
+        ..AppState::default()
+    };
+    set_aside_clash(&mut launched, Some(&merge), 1);
+    assert_eq!(
+        notice(&launched).as_deref(),
+        Some("your edits clashed in 1 file \u{b7} esc, u undoes the merge too")
+    );
+
+    // A stopped merge finished with `c`: the entry the journal holds, still
+    // `Pending` from the stop, is the merge.
+    let mut resumed = AppState::default();
+    resumed.journal.entries = Loading::Ready(Arc::new(JournalRead {
+        entries: vec![JournalEntry {
+            kind: OperationKind::Merge,
+            description: "merge feature into main".to_owned(),
+            status: EntryStatus::Pending,
+            put_back: Some(PutBack {
+                stash: oid(STASH),
+                why: PutBackWhy::SetAside,
+            }),
+            ..pop_entry()
+        }],
+        unreadable: Vec::new(),
+        live: Vec::new(),
+        interrupted_edits: Vec::new(),
+    }));
+    set_aside_clash(&mut resumed, None, 2);
+    assert_eq!(
+        notice(&resumed).as_deref(),
+        Some("your edits clashed in 2 files \u{b7} esc, u undoes the merge too")
+    );
+    assert_eq!(
+        undo_clause(&resumed).as_deref(),
+        Some("esc, u undoes the merge too"),
+        "the resolver's answer to u says the same"
+    );
+}
+
+/// m8-polish-and-ship/19d-a2 (R6): every kind that sets edits aside names
+/// itself in what `u` takes back with them, worded from the journal's kind
+/// name — a cherry-pick and a pull no longer say `rebase`. A checkout and a
+/// switching create keep the shipped `switch` (NOTES 19d-a2). Read the way
+/// a `c` that finished a stopped one reads it: off the journal's entry, at
+/// the landing and in the resolver's answer to `u`.
+#[test]
+fn the_clash_notice_names_each_set_aside_kind() {
+    let table = [
+        (OperationKind::Rebase, "rebase"),
+        (OperationKind::Rewrite, "rewrite"),
+        (OperationKind::CherryPick, "cherry-pick"),
+        (OperationKind::Checkout, "switch"),
+        (OperationKind::BranchCreate, "switch"),
+        (OperationKind::Pull, "pull"),
+        (OperationKind::Recover, "recover"),
+        (OperationKind::Merge, "merge"),
+    ];
+    let mut wrong = Vec::new();
+    for (kind, word) in table {
+        let mut state = AppState::default();
+        state.journal.entries = Loading::Ready(Arc::new(JournalRead {
+            entries: vec![JournalEntry {
+                kind,
+                status: EntryStatus::Pending,
+                put_back: Some(PutBack {
+                    stash: oid(STASH),
+                    why: PutBackWhy::SetAside,
+                }),
+                ..pop_entry()
+            }],
+            unreadable: Vec::new(),
+            live: Vec::new(),
+            interrupted_edits: Vec::new(),
+        }));
+        set_aside_clash(&mut state, None, 1);
+        let notice = state
+            .resolver
+            .as_ref()
+            .and_then(|open| open.notice.as_ref())
+            .map(|(words, _)| words.clone());
+        let clause = format!("esc, u undoes the {word} too");
+        let expected = format!("your edits clashed in 1 file \u{b7} {clause}");
+        if notice.as_deref() != Some(expected.as_str()) {
+            wrong.push(format!("{kind:?}'s landing notice: {notice:?}"));
+        }
+        let answer = undo_clause(&state);
+        if answer.as_deref() != Some(clause.as_str()) {
+            wrong.push(format!("{kind:?}'s answer to u: {answer:?}"));
+        }
+    }
+    assert!(wrong.is_empty(), "{wrong:#?}");
 }
 
 /// The stop line while a set-aside's clash is open and the resolver shut:

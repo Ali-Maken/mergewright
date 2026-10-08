@@ -13,7 +13,7 @@ use std::path::PathBuf;
 
 use graft_core::journal::{EntryStatus, PutBackWhy};
 use graft_core::oid::Oid;
-use graft_ops::apply::ApplyError;
+use graft_ops::apply::{ApplyError, StoppedAt};
 use graft_ops::facts::read_facts;
 use graft_ops::operation::{Operation, PickParams, Refusal, SetAside, Tip};
 use graft_ops::preview::{self, ConflictForecast, PreviewError, PreviewPlan};
@@ -21,7 +21,10 @@ use graft_ops::preview::{self, ConflictForecast, PreviewError, PreviewPlan};
 use crate::set_aside::{
     journal_entries, last_entry, porcelain, set_aside_of, stash_commits, whole,
 };
-use crate::support::{NOW, Never, TempRepo, git_version, run_redo, run_undo, try_run};
+use crate::stop_hooks::{Hooked, StopOnceRunning};
+use crate::support::{
+    NOW, Never, TempRepo, git_version, run_redo, run_undo, run_with_stop, try_run,
+};
 
 fn id(repo: &TempRepo, rev: &str) -> Oid {
     Oid::from_hex(&repo.git(&["rev-parse", rev])).expect("a full id")
@@ -133,7 +136,7 @@ fn a_pick_put_back_that_clashes_stops_as_a_clash() {
 
     let before = whole(&repo);
     let (entry, clash) = match try_run(&repo, &op, NOW) {
-        Err(ApplyError::Clashed { entry, clash }) => (*entry, clash),
+        Err(ApplyError::Clashed { entry, clash, .. }) => (*entry, clash),
         other => panic!("the put-back should clash: {other:?}"),
     };
     assert_eq!(clash.why, PutBackWhy::SetAside);
@@ -178,6 +181,130 @@ fn edits_the_pick_leaves_alone_are_set_aside_and_come_back_as_they_were() {
     );
     assert_eq!(porcelain(&repo), status_before);
     assert_eq!(repo.git(&["log", "-1", "--format=%s"]), "fix line one");
+
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
+    assert_eq!(whole(&repo), before, "u put it back exactly");
+}
+
+// ── a pick over edits, stopped in its hook (19d-a2: the shared close) ───
+
+/// `with_a_fix_on_feature`, with an edit the pick leaves alone, staged and
+/// unstaged: `base.txt` (`MM`).
+fn with_a_fix_and_edits() -> TempRepo {
+    let repo = with_a_fix_on_feature();
+    repo.write("base.txt", b"staged\n");
+    repo.git(&["add", "base.txt"]);
+    repo.write("base.txt", b"staged\nand unstaged\n");
+    repo
+}
+
+/// The pick committed before its `post-commit` hook was stopped: it landed,
+/// and the set-aside close keeps that mark (D1) — `Committed`, his edits
+/// back with their split, `S` dropped, and `u` exact.
+#[test]
+fn a_pick_over_edits_stopped_after_it_committed_has_landed() {
+    let repo = with_a_fix_and_edits();
+    let hooked = Hooked::stuck(&repo, "post-commit");
+    let before = whole(&repo);
+    let split = porcelain(&repo);
+    let main_before = id(&repo, "refs/heads/main");
+
+    let landed = run_with_stop(
+        &repo,
+        &take_the_fix(&repo),
+        NOW,
+        &StopOnceRunning(hooked.running()),
+    );
+
+    let Ok(applied) = landed else {
+        panic!("a pick committed before its post-commit hook landed: {landed:?}");
+    };
+    assert_eq!(applied.stopped_at, Some(StoppedAt::Landed));
+    assert_eq!(applied.entry.status, EntryStatus::Committed);
+    set_aside_of(&applied.entry);
+    assert_eq!(id(&repo, "refs/heads/main^"), main_before, "one commit on");
+    assert_eq!(repo.read("base.txt"), b"staged\nand unstaged\n");
+    assert_eq!(porcelain(&repo), split, "the split kept");
+    assert!(stash_commits(&repo).is_empty(), "S dropped");
+    hooked.assert_gone();
+
+    run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
+    assert_eq!(whole(&repo), before, "u put it back exactly");
+}
+
+/// git killed before it could pause the pick. A pick runs no hook before
+/// it writes `CHERRY_PICK_HEAD`, so the stop lands in a merge driver: one
+/// that left git's group, so the stop had no helper to end and stopped git
+/// itself, mid-merge — `HEAD` unmoved, no pick in progress, only the
+/// driver's temp files left in the tree. The set-aside close keeps the
+/// reason the stop was read as (D2): `stopped before git could pause it`,
+/// not `git was stopped`. His edits come back with their split, `S` is
+/// dropped, and `u` takes git's debris away.
+#[test]
+fn a_pick_over_edits_stopped_before_git_paused_it_says_so() {
+    let repo = with_a_fix_on_feature();
+    // `main` changes `a.txt` too (line 7), so the pick's merge of it is a
+    // real three-way merge and runs the driver.
+    repo.write("a.txt", b"1\n2\n3\n4\n5\n6\nseven, main\n");
+    repo.commit_all("main's line seven");
+    repo.write("base.txt", b"staged\n");
+    repo.git(&["add", "base.txt"]);
+    repo.write("base.txt", b"staged\nand unstaged\n");
+    let hooked = Hooked::stuck_outside_the_group(&repo, "merge-driver");
+    let driver = hooked.script("merge-driver");
+    repo.git(&[
+        "config",
+        "merge.stuck.driver",
+        &format!("{} %A %O %B", driver.to_str().expect("utf-8")),
+    ]);
+    std::fs::write(
+        repo.path().join(".git/info/attributes"),
+        b"a.txt merge=stuck\n",
+    )
+    .expect("the attributes are written");
+    let before = whole(&repo);
+    let split = porcelain(&repo);
+
+    let stopped = run_with_stop(
+        &repo,
+        &take_the_fix(&repo),
+        NOW,
+        &StopOnceRunning(hooked.running()),
+    );
+
+    let Err(error) = stopped else {
+        panic!("a pick git did not pause does not succeed");
+    };
+    // git left its driver's temp files (`.merge_file_*`) behind: changed.
+    assert_eq!(
+        error.stopped_at(),
+        Some(StoppedAt::BeforePause { changed: true }),
+        "{error:?}"
+    );
+    let ApplyError::Git { entry, .. } = &error else {
+        panic!("today's variant, not {error:?}");
+    };
+    assert_eq!(
+        entry.status,
+        EntryStatus::Aborted {
+            reason: "stopped before git could pause it".to_owned()
+        }
+    );
+    set_aside_of(entry);
+    assert!(!repo.path().join(".git/CHERRY_PICK_HEAD").exists());
+    assert_eq!(id(&repo, "HEAD"), id(&repo, "refs/heads/main"));
+    assert_eq!(before.0.head, whole(&repo).0.head, "HEAD unmoved");
+    assert_eq!(repo.read("base.txt"), b"staged\nand unstaged\n");
+    let tracked: Vec<String> = porcelain(&repo)
+        .into_iter()
+        .filter(|line| !line.starts_with("??"))
+        .collect();
+    assert_eq!(tracked, split, "his edits are back, split kept");
+    assert!(stash_commits(&repo).is_empty(), "S dropped");
+    // The driver left git's group, so the stop does not end it; `hooked`'s
+    // drop does.
 
     run_undo(&repo, NOW + 1, false)
         .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));

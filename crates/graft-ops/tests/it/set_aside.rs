@@ -559,7 +559,7 @@ pub(crate) fn clashing_checkout() -> (TempRepo, Operation) {
 fn a_clashing_put_back_is_clashed_and_keeps_the_stash() {
     let (repo, op) = clashing_checkout();
     let (entry, clash) = match try_run(&repo, &op, NOW) {
-        Err(ApplyError::Clashed { entry, clash }) => (*entry, clash),
+        Err(ApplyError::Clashed { entry, clash, .. }) => (*entry, clash),
         other => panic!("the put-back should clash: {other:?}"),
     };
     assert_eq!(clash.why, PutBackWhy::SetAside);

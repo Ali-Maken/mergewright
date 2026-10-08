@@ -7,7 +7,7 @@
 //! `stopped` changes; only the stop line reads both.
 
 use graft_core::job::JobId;
-use graft_core::journal::{EntryId, JournalEntry, PutBackWhy};
+use graft_core::journal::{EntryId, JournalEntry, OperationKind, PutBackWhy};
 use graft_ops::clash::{Clash, StashClash, clash_candidate, live_clash};
 use graft_ops::operation::Operation;
 use graft_term::sanitize_line;
@@ -216,6 +216,13 @@ pub(super) fn clashed(
                     .map(|(_, index)| *index)
             }),
         };
+    // A set-aside's `u` takes back the operation it was set aside around:
+    // the launched one, or — with nothing launched, from the `c` that
+    // finished a stopped rebase or merge — the journal's entry.
+    let kind = match launched {
+        Some(op) => Some(op.kind()),
+        None => entry_kind(state, &entry),
+    };
     state.clash = Some(ClashState {
         clash: StashClash {
             entry,
@@ -233,16 +240,9 @@ pub(super) fn clashed(
     let Some(first) = clash.paths.first().cloned() else {
         return commands;
     };
-    // A set-aside's `u` takes back the operation it was set aside around:
-    // a checkout's or a new branch's switch, else a rebase — the one kind
-    // that also reaches here with nothing launched, from the `c` that
-    // finished it.
-    let what = match launched {
-        Some(Operation::Checkout(_) | Operation::BranchCreate(_)) => "switch",
-        _ => "rebase",
-    };
-    let undoes = (clash.why == PutBackWhy::SetAside).then_some(what);
-    let notice = notice_words(index, clash.paths.len(), undoes, &state.keymap);
+    let set_aside = clash.why == PutBackWhy::SetAside;
+    let undoes = set_aside.then(|| undone_with_edits(kind)).flatten();
+    let notice = notice_words(index, clash.paths.len(), set_aside, undoes, &state.keymap);
     if super::resolver::land_on_clash(state, &mut commands, first, next_id) {
         super::resolver::set_notice(state, (notice, false));
     } else {
@@ -273,19 +273,23 @@ pub(crate) fn stash_name(state: &AppState) -> Option<String> {
 }
 
 /// The landing's notice: `stash@{0} clashed in 2 files · esc, u puts it all
-/// back`. A set-aside's names the edits and the operation `u` undoes with
-/// them (`undoes`: `rebase`, `switch`): `your edits clashed in 2 files ·
-/// esc, u undoes the rebase too` (m6-conflicts/74).
+/// back`. A set-aside's (`set_aside`) names the edits and the operation `u`
+/// undoes with them (`undoes`: `rebase`, `switch`, `merge` …): `your edits
+/// clashed in 2 files · esc, u undoes the rebase too` (m6-conflicts/74). Its
+/// operation not known (`undoes` `None`), it keeps the pop's clause and
+/// names no kind (19d-a3).
 fn notice_words(
     index: Option<usize>,
     files: usize,
+    set_aside: bool,
     undoes: Option<&str>,
     keys: &graft_ui::keymap::Keymap,
 ) -> String {
     let noun = if files == 1 { "file" } else { "files" };
-    let who = match undoes {
-        Some(_) => "your edits".to_owned(),
-        None => stash_words(index),
+    let who = if set_aside {
+        "your edits".to_owned()
+    } else {
+        stash_words(index)
     };
     let words = format!("{who} clashed in {files} {noun}");
     match undo_clause_words(undoes, keys) {
@@ -295,7 +299,8 @@ fn notice_words(
 }
 
 /// What `u` does for a clash, as its landing notice says it: `esc, u puts
-/// it all back`, or for a set-aside `esc, u undoes the <rebase|switch> too`.
+/// it all back`, or for a set-aside whose operation is known `esc, u undoes
+/// the <rebase|switch|merge …> too`.
 /// The one wording: the notice and the resolver's answer to `u`
 /// (m6-conflicts/85 m-i) both take it from here.
 ///
@@ -320,26 +325,75 @@ pub(crate) fn undo_clause_words(
 
 /// [`undo_clause_words`] for the clash standing, or `None` with no clash.
 /// A set-aside's operation is read off the journal entry that put the edits
-/// back — a checkout's or a new branch's switch, else a rebase, as
-/// [`clashed`] words it at the landing.
+/// back, as [`clashed`] words it at the landing.
 #[must_use]
 pub(crate) fn undo_clause(state: &AppState) -> Option<String> {
     let clash = state.clash.as_ref()?;
-    let undoes = (clash.clash.why == PutBackWhy::SetAside).then(|| {
-        // Only a switching create sets edits aside, so a `BranchCreate`
-        // entry here is a switch (10b).
-        let checkout = matches!(&state.journal.entries, Loading::Ready(read)
-        if read.entries.iter().any(|entry| {
-            entry.id == clash.clash.entry
-                && matches!(
-                    entry.kind,
-                    graft_core::journal::OperationKind::Checkout
-                        | graft_core::journal::OperationKind::BranchCreate
-                )
-        }));
-        if checkout { "switch" } else { "rebase" }
-    });
+    let undoes = (clash.clash.why == PutBackWhy::SetAside)
+        .then(|| undone_with_edits(entry_kind(state, &clash.clash.entry)))
+        .flatten();
     undo_clause_words(undoes, &state.keymap)
+}
+
+/// The kind of the journal entry `id`, when the journal read holds it.
+fn entry_kind(state: &AppState, id: &EntryId) -> Option<OperationKind> {
+    let Loading::Ready(read) = &state.journal.entries else {
+        return None;
+    };
+    read.entries
+        .iter()
+        .find(|entry| entry.id == *id)
+        .map(|entry| entry.kind)
+}
+
+/// What a set-aside's `u` takes back with the edits, in the notice's
+/// words: the entry's own kind name (graft-ops `apply::kind_name`, the
+/// journal's), so a cherry-pick says `cherry-pick` and a pull `pull`
+/// (m8-polish-and-ship/19d-a2). A checkout and a switching create (only a
+/// switching create sets edits aside, 10b) keep the shipped `switch`.
+///
+/// Every kind is named, no catch-all: a kind added later is worded here
+/// on purpose. A kind not known — nothing launched, and the journal read
+/// does not hold the entry — is `None`: the notice names no kind rather
+/// than guess one (19d-a3, ticket §R7.1; it said `rebase` before).
+fn undone_with_edits(kind: Option<OperationKind>) -> Option<&'static str> {
+    let kind = kind?;
+    Some(match kind {
+        OperationKind::Checkout | OperationKind::BranchCreate => "switch",
+        // The kinds that set edits aside (graft-ops `Operation::sets_aside`).
+        OperationKind::Rebase
+        | OperationKind::Rewrite
+        | OperationKind::CherryPick
+        | OperationKind::Pull
+        | OperationKind::Recover
+        | OperationKind::Merge
+        // The rest never carry a `SetAside` put-back; were one to, its own
+        // name is still the truest word.
+        | OperationKind::Stage
+        | OperationKind::Unstage
+        | OperationKind::Discard
+        | OperationKind::Commit
+        | OperationKind::Amend
+        | OperationKind::StashPush
+        | OperationKind::StashApply
+        | OperationKind::StashPop
+        | OperationKind::StashDrop
+        | OperationKind::Fetch
+        | OperationKind::Push
+        | OperationKind::Revert
+        | OperationKind::Reset
+        | OperationKind::BranchDelete
+        | OperationKind::TagCreate
+        | OperationKind::TagDelete
+        | OperationKind::BranchFromStash
+        | OperationKind::ResolveConflict
+        | OperationKind::RestartConflict
+        | OperationKind::FinishMerge
+        | OperationKind::AbortMerge
+        | OperationKind::RevertTo
+        | OperationKind::Undo
+        | OperationKind::Redo => graft_ops::apply::kind_name(kind),
+    })
 }
 
 /// The stop line's wordings while a clash is open and nothing is stopped,

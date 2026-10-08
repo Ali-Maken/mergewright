@@ -16,18 +16,17 @@ use super::came_back::came_back_words;
 use super::put_back::NotAsTheyWere;
 use super::returned::Kept;
 use super::{
-    AfterState, Applied, ApplyError, Context, EditsAt, Refresh, appended, naming, reason_for,
-    staging_clause,
+    AfterState, Applied, ApplyError, Context, EditsAt, Refresh, appended, naming, staging_clause,
 };
 
-/// The entry's outcome status, from the put-back and the operation's own
-/// failure (see [`close`]).
+/// The entry's outcome status, from the put-back and the reason the
+/// operation itself failed, if it did (see [`close`]).
 pub(super) fn status_for(
     outcome: &Outcome,
-    failure: Option<&RunError>,
+    failed: Option<&str>,
     done: EntryStatus,
 ) -> EntryStatus {
-    let failed = failure.map(reason_for);
+    let failed = failed.map(str::to_owned);
     match (outcome, failed) {
         (Outcome::Kept { words, .. }, Some(failed)) => EntryStatus::Aborted {
             reason: format!("{failed}; {words}"),
@@ -65,6 +64,9 @@ pub(super) fn answer(
                 return Err(ApplyError::Clashed {
                     entry: Box::new(entry),
                     clash,
+                    // A stop's mark goes on in `stopped::mark`, after the
+                    // close (19d-a3).
+                    stopped_at: None,
                 });
             }
             // The clash is re-found from the journal by `live_clash`; what

@@ -23,7 +23,7 @@ use graft::jobs::{EXIT_WRITE_WAIT, FORCED_WAIT, Forced, SHUTDOWN_GRACE, Shutdown
 use graft::update::{AppState, Command, Quit};
 use graft_core::event::{KeyCode, KeyPress};
 use graft_core::journal::JournalEntry;
-use graft_core::journal::{EntryStatus, OperationKind};
+use graft_core::journal::{EntryStatus, OperationKind, PutBack, PutBackWhy};
 use graft_git::state::InProgress;
 use graft_ops::apply::StoppedAt;
 
@@ -275,7 +275,8 @@ pub(super) fn stop_a_stuck_merge(repo: &Path) -> StoppedMerge {
 /// hangs, `q y`, the offer, `q y`. Graft ends the hook first, git pauses
 /// the merge itself, and the exit line says the merge is paused. Git and
 /// the hook gone, the quit inside `FORCED_WAIT`, `MERGE_HEAD` the source's
-/// tip, `HEAD` unmoved, no lock, the entry `Pending`. `quit-stuck-write 4`.
+/// tip, `HEAD` unmoved, no lock, the entry `Pending`, and his edit waiting
+/// aside (R6). `quit-stuck-write 4`.
 #[test]
 fn stop_now_mid_merge_leaves_it_paused() {
     let scratch = forked();
@@ -316,16 +317,69 @@ fn stop_now_mid_merge_leaves_it_paused() {
         .collect();
     assert_eq!(merges.len(), 1, "{merges:?}");
     assert_eq!(merges[0].status, EntryStatus::Pending);
+    assert_his_edit_waits_aside(repo, &merges[0]);
+}
+
+/// R6 (19d-a2): a merge sets his edit aside (ADR-0045 §4), so while it is
+/// paused his edit waits in `S`, listed by commit, and the tree holds
+/// `HEAD`'s copy; `resume` puts it back.
+pub(super) fn assert_his_edit_waits_aside(repo: &Path, merge: &JournalEntry) {
+    let stash = set_aside_stash(merge);
+    assert!(
+        listed(repo, &stash),
+        "S is listed: {}",
+        git(repo, &["stash", "list"])
+    );
     assert_eq!(
-        std::fs::read_to_string(repo.join("base.txt")).expect("his file"),
+        git(repo, &["show", &format!("{stash}:base.txt")]),
         HIS_EDIT,
-        "his edit is untouched"
+        "his edit is in S"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.join("base.txt")).expect("the file"),
+        git(repo, &["show", "HEAD:base.txt"]),
+        "the tree holds HEAD's copy"
     );
 }
 
+/// While the merge is paused with his edit aside, what is staged is the
+/// merge's own work and nothing of his (19d-a3, ticket §R7.2): the index's
+/// changed paths, read from the index, equal what the source brings since
+/// the merge base, read from the commits — `main-one.txt` and
+/// `main-two.txt` in [`forked`] — and his `base.txt` is not among them.
+pub(super) fn assert_staged_are_the_merges_own(repo: &Path) {
+    let staged = git(repo, &["diff", "--cached", "--name-only"]);
+    let brought = git(repo, &["diff", "--name-only", "HEAD...MERGE_HEAD"]);
+    assert_eq!(staged, brought, "the staged paths are the merge's own");
+    assert_eq!(
+        staged, "main-one.txt\nmain-two.txt\n",
+        "as forked() makes them"
+    );
+}
+
+/// The stash a set-aside entry recorded (`S`, ADR-0045 §1), as full hex.
+pub(super) fn set_aside_stash(entry: &JournalEntry) -> String {
+    match &entry.put_back {
+        Some(PutBack {
+            stash,
+            why: PutBackWhy::SetAside,
+        }) => stash.to_string(),
+        other => panic!("not a set-aside entry: {other:?}"),
+    }
+}
+
+/// Whether `stash` is in the stash list, found by commit.
+pub(super) fn listed(repo: &Path, stash: &str) -> bool {
+    git(repo, &["stash", "list", "--format=%H"])
+        .lines()
+        .any(|line| line == stash)
+}
+
 /// The next launch over that stopped merge offers continue or abort — the
-/// live merge's own banner words, `c finish  a abort` — and `a` (then `y`)
-/// puts `HEAD` and the tree back as they were, his edit byte-equal.
+/// live merge's own banner words, `c finish  a abort`, with the stop line's
+/// ` · edits aside` rung (R6: his edit waits in `S`) — and `a` (then `y`)
+/// puts `HEAD` and the tree back as they were, his edit byte-equal and `S`
+/// dropped. Recovery leaves the paused entry live, `S` with it.
 #[test]
 fn relaunch_after_a_stopped_merge_offers_continue_and_abort() {
     let scratch = forked();
@@ -341,11 +395,31 @@ fn relaunch_after_a_stopped_merge_offers_continue_and_abort() {
     let state = app.pump(state, "the relaunch's reads", |state| {
         state.in_progress.is_some() && state.refs.is_some() && !state.live_entries.is_empty()
     });
+    // Recovery (`recover_interrupted`, run by the first journal read) left
+    // the paused set-aside merge alone: live, still `Pending`, `S` listed,
+    // nothing closed as interrupted.
+    let merge = entries(repo)
+        .into_iter()
+        .find(|entry| entry.kind == OperationKind::Merge)
+        .expect("the merge's entry");
+    assert_eq!(
+        state.live_entries,
+        vec![merge.id.clone()],
+        "the merge is live"
+    );
+    assert_eq!(merge.status, EntryStatus::Pending);
+    assert!(state.interrupted_edits.is_empty(), "nothing interrupted");
+    assert_his_edit_waits_aside(repo, &merge);
+    let stash = set_aside_stash(&merge);
     let banner = crate::captures::frame_at(&state, 100, 30, None).join("\n");
     // The live merge's own banner, quoted: with nothing unmerged its `c`
-    // reads `finish` (the merge's commit is all that is left).
+    // reads `finish` (the merge's commit is all that is left), and the
+    // set-aside's rung says where his edit is.
     assert!(
-        banner.contains("merge still in progress from a previous run \u{b7} c finish  a abort"),
+        banner.contains(
+            "merge still in progress from a previous run \u{b7} edits aside \u{b7} c finish  \
+             a abort"
+        ),
         "{banner}"
     );
     assert!(state.banner_focus, "the banner has the keyboard: {banner}");
@@ -369,6 +443,7 @@ fn relaunch_after_a_stopped_merge_offers_continue_and_abort() {
         HIS_EDIT,
         "his edit, byte-equal"
     );
+    assert!(!listed(repo, &stash), "S is dropped");
 }
 
 /// `quit-while-write 2`: `q y` and Graft quits when the merge lands.
