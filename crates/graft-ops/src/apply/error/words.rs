@@ -18,10 +18,18 @@ use super::{AfterState, reason_for};
 #[must_use]
 pub fn askpass_words(error: &std::io::Error) -> String {
     match graft_git::run::askpass::refused(error) {
-        Some(refused) => format!(
-            "another user's program asked for your login and was turned away · nothing was \
-             sent: {refused}"
-        ),
+        Some(refused) => {
+            let mut words = format!(
+                "another user's program asked for your login and was turned away · nothing was \
+                 sent: {refused}"
+            );
+            if let Some(cleanup) = refused.cleanup() {
+                words.push_str(&format!(
+                    " · and the credential prompt's socket could not be cleaned up: {cleanup}"
+                ));
+            }
+            words
+        }
         None => format!("the credential prompt's socket could not be cleaned up: {error}"),
     }
 }

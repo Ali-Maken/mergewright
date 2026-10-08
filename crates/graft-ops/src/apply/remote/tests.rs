@@ -115,7 +115,10 @@ fn case(failure: &RemoteFailure) -> (Operation, &'static [&'static str]) {
             push(),
             &["rejected by the remote", "pre-receive hook declined"],
         ),
-        RemoteFailure::NoSuchRemote { .. } => (fetch(), &["no remote named 'upstream'"]),
+        RemoteFailure::NoSuchRemote { .. } => (
+            fetch(),
+            &["fetch origin failed: no repository at 'upstream', or no access to it"],
+        ),
         RemoteFailure::Unreachable { .. } => (
             fetch(),
             &["origin unreachable", "Could not resolve host: github.com"],
@@ -220,6 +223,18 @@ fn rejected_push_names_pull_then_m_or_r() {
     assert_eq!(
         line,
         "push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease"
+    );
+}
+
+/// 20b R3: git's "does not appear to be a git repository" names a location,
+/// not a remote: the journal's short reason says what git's two causes are.
+#[test]
+fn short_reason_for_no_such_remote_names_the_two_causes() {
+    assert_eq!(
+        short(&RemoteFailure::NoSuchRemote {
+            name: "/nonexistent/x".to_owned()
+        }),
+        "no repository at '/nonexistent/x', or no access to it"
     );
 }
 

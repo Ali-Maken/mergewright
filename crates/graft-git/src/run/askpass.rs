@@ -178,16 +178,39 @@ impl AskPassServer {
         // returns. Everything it can be doing instead is bounded (prompt read
         // and reply write have timeouts; a wait on a blocked handler was just
         // ended by `Shared::stop`), so once woken the join returns.
-        if let Err(error) = UnixStream::connect(&self.socket) {
-            return Err(io::Error::new(
+        let cleanup = match UnixStream::connect(&self.socket) {
+            Err(error) => Err(io::Error::new(
                 error.kind(),
                 format!(
                     "could not wake the askpass listener at {}: {error}; \
                      its thread is still running and the socket is left in place",
                     self.socket.display()
                 ),
-            ));
+            )),
+            Ok(woke) => {
+                // Its only job was to wake `accept`; closed before the join,
+                // as before.
+                drop(woke);
+                Self::clean_up(thread, &self.socket, &self.dir)
+            }
+        };
+        // A refusal wins: it is the event he must hear about, and a cleanup
+        // failure rides inside it rather than hiding it (20b R3 amendment 2).
+        match (self.shared.refusals(), cleanup) {
+            (Some(refused), cleanup) => Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                match cleanup {
+                    Err(error) => refused.with_cleanup(error),
+                    Ok(()) => refused,
+                },
+            )),
+            (None, cleanup) => cleanup,
         }
+    }
+
+    /// Join the listener, then remove the socket and the directory: every
+    /// step attempted, the first failure returned.
+    fn clean_up(thread: JoinHandle<()>, socket: &Path, dir: &Path) -> io::Result<()> {
         let mut first: Option<io::Error> = None;
         let mut note = |result: io::Result<()>| {
             if let Err(error) = result
@@ -201,9 +224,8 @@ impl AskPassServer {
                 .join()
                 .map_err(|_| io::Error::other("the askpass listener panicked")),
         );
-        note(std::fs::remove_file(&self.socket));
-        note(std::fs::remove_dir(&self.dir));
-        note(self.shared.refusals());
+        note(std::fs::remove_file(socket));
+        note(std::fs::remove_dir(dir));
         first.map_or(Ok(()), Err)
     }
 }
@@ -343,6 +365,7 @@ fn serve(mut stream: UnixStream, handler: &Arc<dyn AskPass>, shared: &Shared) ->
 pub struct Refused {
     first: String,
     count: usize,
+    cleanup: Option<io::Error>,
 }
 
 impl Refused {
@@ -353,7 +376,23 @@ impl Refused {
         Self {
             first: first.into(),
             count,
+            cleanup: None,
         }
+    }
+
+    /// The same refusal, with the cleanup failure that happened alongside it.
+    #[must_use]
+    pub fn with_cleanup(self, error: io::Error) -> Self {
+        Self {
+            cleanup: Some(error),
+            ..self
+        }
+    }
+
+    /// The socket's cleanup failure, when it failed as well as the refusal.
+    #[must_use]
+    pub fn cleanup(&self) -> Option<&io::Error> {
+        self.cleanup.as_ref()
     }
 
     /// How many connections were refused.

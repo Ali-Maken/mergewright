@@ -104,7 +104,7 @@
   ●    Commit 166                                                                                       GF 7y   953abf3
   ●    Commit 165                                                                                       GF 7y   49912f3
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- fetch all remotes failed: no remote named '/graft-no-such-remote' · esc dismiss
+ fetch all remotes failed: no repository at '/graft-no-such-remote', or no access to it · esc dismiss
 
 === frame 3: `esc`, the create's line ===
  ◆ api  ~/code/api · main                                                                                   200 commits

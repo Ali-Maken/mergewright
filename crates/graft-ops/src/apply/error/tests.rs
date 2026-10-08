@@ -66,6 +66,20 @@ fn askpass_refusal_has_its_own_words() {
         "another user's program asked for your login and was turned away · nothing was sent: \
          refused a connection from uid 0 (this server serves uid 501); 1 refused in all"
     );
+    let both = AfterState::AskPass(Error::new(
+        ErrorKind::PermissionDenied,
+        Refused::new(
+            "refused a connection from uid 0 (this server serves uid 501)",
+            1,
+        )
+        .with_cleanup(Error::other("rmdir: not empty")),
+    ));
+    assert_eq!(
+        both.to_string(),
+        "another user's program asked for your login and was turned away · nothing was sent: \
+         refused a connection from uid 0 (this server serves uid 501); 1 refused in all · and \
+         the credential prompt's socket could not be cleaned up: rmdir: not empty"
+    );
     let cleanup = AfterState::AskPass(Error::new(ErrorKind::PermissionDenied, "rmdir denied"));
     assert_eq!(
         cleanup.to_string(),

@@ -8,7 +8,7 @@ m8-polish-and-ship/18c: what right looks like — the clone failed: the URL kept
   ╭ clone ─────────────────────────────────────────────────────────────────────────────────╮
   │  clone › file:///nonexistent/payments-service.git▏                                     │
   │  → ~/code/payments-service                                                             │
-  │  clone failed: no remote named '/nonexistent/payments-service.git'                     │
+  │  clone failed: no repository at '/nonexistent/payments-service.git', or no access to … │
   ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 

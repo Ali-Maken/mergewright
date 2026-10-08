@@ -72,7 +72,7 @@
   ●    Commit 181                                                  7y   c8254c5
   ●    Commit 180                                                  7y   e95ccd4
   ●    Commit 179                                                  7y   97b58e5
- fetch all remotes failed: no remote named '/graft-no-such-remot… · esc dismiss
+ fetch all remotes failed: no repository at '/graft-no-such-remo… · esc dismiss
 
 === frame 3: `esc`, the create's line ===
  ◆ api  ~/code/api · main                                           200 commits
