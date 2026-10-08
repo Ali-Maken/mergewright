@@ -1260,6 +1260,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/12e-continue-from-palette-graph | Q2: `Continue` from `?` with the graph focused goes `banner_press` → `continue_pressed(…)` — return focus unproven (review Q2) | **unverified** (question) | M8 |
 | M8/18e-tour-arrival-line | 18e A2: the tour's arrival with the first-launch line is covered only via the shared `repo_arrival` — no tour-specific test (builder) | **unverified** | M8 |
 | M8/21b1-stash-caption-stale | Stash footer now reads `S/esc close` (21b-1) but the graft caption `crates/graft/src/update/tests.rs:6964` and the m3 stash capture caption headers still say `esc close`. Routed to 21b-4 additions 5e. | **broken** | M8 |
+| M8/19c-card-line-7-keys | Tour card task 7 reads `⏎ opens it … c finishes`; the keys that work are `m y t ⏎ y` (19c-b found, `crates/graft/src/view/tour.rs`). Routed to 19c-c addition. | **broken** | M8 |
+| M8/19c-askpass-long-tmpdir | Tour `P` (and maybe any askpass push) may fail when TMPDIR is long — askpass socket path over SUN_LEN. 19c-b tests used a short /tmp. Probe at the macOS default TMPDIR in 19c-c. | **unverified** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` **429** lines at the split (12f's 407 was false — review m8-palette-landing-stop C1); `listing.rs` 424 also over → 21b-4 additions; seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |
