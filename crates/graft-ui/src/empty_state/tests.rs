@@ -8,7 +8,9 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::widgets::Widget;
 
-use super::{EmptyPrompt, EmptyState, EmptyStateView, RecentRow, bar_keys, recent_age};
+use super::{
+    EmptyPrompt, EmptyState, EmptyStateView, RecentRow, bar_keys, first_launch_words, recent_age,
+};
 use crate::theme::{Theme, ThemeKind};
 
 fn theme() -> Theme {
@@ -38,6 +40,7 @@ fn with_recents() -> EmptyStateView {
         cursor: 0,
         prompt: None,
         problem: None,
+        first_launch: false,
     }
 }
 
@@ -292,4 +295,58 @@ fn the_bar_spells_his_keys_and_the_open_prompt_the_shipped_ones() {
         &line(&open),
         &[&["app.open"], &["app.next_pane"], &["app.back"]],
     );
+}
+
+/// The first-launch line (m8/18d, R7): muted, on the row above the rule,
+/// when nothing else is there; not drawn when the list reaches that row.
+#[test]
+fn first_launch_sits_above_the_rule_when_free() {
+    let view = EmptyStateView {
+        first_launch: true,
+        ..with_recents()
+    };
+    let (_, lines) = draw(&view, 120, 36);
+    assert_eq!(
+        lines[33], " first time? ? keys here · ⌃P anything",
+        "{lines:#?}"
+    );
+    assert!(lines[34].starts_with('─'));
+
+    // Nine rows at 16 high: the list runs to the row above the rule.
+    let full = EmptyStateView {
+        recent: (0..9)
+            .map(|i| row(&format!("r{i}"), "~/r", "today"))
+            .collect(),
+        first_launch: true,
+        ..with_recents()
+    };
+    let (_, lines) = draw(&full, 120, 16);
+    assert!(lines[13].contains("r7"), "{lines:#?}");
+    assert!(
+        !lines.iter().any(|line| line.contains("first time?")),
+        "{lines:#?}"
+    );
+
+    let (_, lines) = draw(&with_recents(), 120, 36);
+    assert!(!lines.iter().any(|line| line.contains("first time?")));
+}
+
+/// At every width a clause is drawn whole or not at all (ADR-0039), and
+/// an unbound key drops its clause.
+#[test]
+fn first_launch_never_draws_a_fragment() {
+    let keys = crate::keymap::Keymap::shipped();
+    let first = "first time? ? keys here";
+    let whole = "first time? ? keys here · ⌃P anything";
+    for width in 20..=200 {
+        let words = first_launch_words(keys, width);
+        let expected = if width >= crate::frame_box::cells(whole) {
+            Some(whole)
+        } else if width >= crate::frame_box::cells(first) {
+            Some(first)
+        } else {
+            None
+        };
+        assert_eq!(words.as_deref(), expected, "{width}");
+    }
 }

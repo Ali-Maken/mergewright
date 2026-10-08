@@ -52,6 +52,11 @@ where
                     drop(crate::layout::save_split(common_dir, &split));
                 }
             }
+            Command::FirstLaunchDone(config_dir) => {
+                if let Err(error) = crate::first_launch::first_launch_done(&config_dir) {
+                    state.status = crate::update::Status::Failed(error.words());
+                }
+            }
             // These six restore the terminal, hand it over and take it
             // back (`super::outside`).
             command if hands_over(&command) => {

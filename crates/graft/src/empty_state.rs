@@ -25,6 +25,7 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::widgets::Widget;
 
+use crate::first_launch::FirstLaunch;
 use crate::recent::Recent;
 use crate::update::palette::{
     self as palette, AppAction, Edited, Group, PaletteState, PaletteTarget, Source,
@@ -61,6 +62,9 @@ pub(crate) struct OutsideState {
     pub palette: Option<PaletteState>,
     /// His config's problems, for the palette's `YOUR CONFIG` rows.
     pub config_problems: Vec<String>,
+    /// The first-launch line (m8/18d): the process's one, shared with
+    /// every repository screen `drive` runs.
+    pub first_launch: FirstLaunch,
 }
 
 /// What a key asks the loop to do.
@@ -125,6 +129,13 @@ fn act(state: &mut OutsideState, keymap: &Keymap, key: KeyPress) -> OutsideStep 
         && state.prompt.is_none()
     {
         state.problem = None;
+        // The first palette open ends the line, for this launch and every
+        // later one; a failure to say so is said where problems go.
+        if let Some(config_dir) = state.first_launch.end()
+            && let Err(error) = crate::first_launch::first_launch_done(&config_dir)
+        {
+            state.problem = Some(error.words());
+        }
         let source = source_of(&state.config_problems, keymap);
         state.palette = Some(palette::opened(&source, ContextId::EmptyState, how));
         return OutsideStep::Stay;
@@ -430,6 +441,7 @@ pub(crate) fn view(state: &OutsideState, now: SystemTime) -> EmptyStateView {
             Prompt::ConfirmInit => EmptyPrompt::ConfirmInit,
         }),
         problem: state.problem.as_deref().map(sanitize_line),
+        first_launch: state.first_launch.is_shown(),
     }
 }
 

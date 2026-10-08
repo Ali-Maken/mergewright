@@ -343,6 +343,19 @@ pub(super) fn footer_notice(
         .map(|_| sanitize_line(&format!("renderer: {} (F3 cycles)", tier_name(tier))))
 }
 
+/// The first-launch line (m8/18d, R7): the graph's status row when
+/// nothing else is on it — no problem (drawn before the notice), no notice,
+/// no modal's row. Fitted to the row's text width, whole clauses only.
+pub(super) fn first_launch_line(state: &AppState, columns: u16) -> Option<SanitizedText> {
+    if !state.first_launch.is_shown() || state.modal_owns_bottom_row() {
+        return None;
+    }
+    let cells = usize::from(columns)
+        .saturating_sub(1)
+        .saturating_sub(usize::from(graft_ui::graph_screen::RIGHT_MARGIN));
+    graft_ui::empty_state::first_launch_words(&state.keymap, cells).map(|line| sanitize_line(&line))
+}
+
 /// `config: 1 problem · ? shows them` / `config: N problems · ? shows them`,
 /// while the startup notice stands and there is something to say.
 fn config_notice(state: &AppState) -> Option<String> {

@@ -41,6 +41,7 @@ fn state() -> OutsideState {
         problem: None,
         palette: None,
         config_problems: Vec::new(),
+        first_launch: crate::first_launch::FirstLaunch::default(),
     }
 }
 
@@ -221,4 +222,24 @@ fn the_palette_draws_over_the_start_screen_with_its_keys_on_the_bar() {
         ),
         trimmed.join("\n") + "\n",
     );
+}
+
+/// The first palette open on the start screen ends the first-launch line
+/// (m8/18d, R7): `launches` reads `done`, and the line is not drawn.
+#[test]
+fn opening_the_palette_ends_the_first_launch_line() {
+    for opener in [ch('?'), KeyPress::control(KeyCode::Char('p')), ch(':')] {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let mut s = OutsideState {
+            first_launch: crate::first_launch::FirstLaunch::shown(dir.path().to_path_buf()),
+            ..state()
+        };
+        assert!(super::view(&s, UNIX_EPOCH).first_launch);
+        press(&mut s, opener);
+        assert!(s.palette.is_some(), "{opener:?}");
+        assert!(!super::view(&s, UNIX_EPOCH).first_launch, "{opener:?}");
+        let file = crate::first_launch::launches_file(dir.path());
+        assert_eq!(std::fs::read_to_string(file).expect("written"), "done\n");
+        assert_eq!(s.problem, None);
+    }
 }

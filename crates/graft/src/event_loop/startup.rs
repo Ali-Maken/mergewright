@@ -248,6 +248,9 @@ pub(super) struct Arrival {
     /// His config's problems in words — on the process's first repository
     /// screen only; empty on every later one.
     pub config_problems: Vec<String>,
+    /// The process's first-launch line (m8/18d): counted by `drive` once;
+    /// never shown by default (`run`, the gallery, the walks).
+    pub first_launch: crate::first_launch::FirstLaunch,
 }
 
 impl Arrival {
@@ -317,6 +320,7 @@ pub(super) fn run_repo(
     )?;
     let undo = arrival.keymap.spell(&UNDO).0;
     state.seed_keys(arrival.keymap, arrival.config_problems);
+    state.first_launch = arrival.first_launch;
     if let Some(reason) = arrival.status {
         state.status = crate::update::Status::Sticky { reason, keys: None };
     }

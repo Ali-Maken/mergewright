@@ -42,7 +42,7 @@ mod overlays;
 // `use super::*`; what is named here is what more than one of them uses.
 use self::bars::{
     bar_rows, draw_box_bars, draw_status_or_hints, draw_tab_banner, draw_tab_hints, draw_tab_strip,
-    footer_notice,
+    first_launch_line, footer_notice,
 };
 use self::boxes::{
     draw_commit_editor, draw_context_menu, draw_modal_boxes, draw_over_graph, draw_palette,
@@ -126,6 +126,26 @@ fn pixel_tier_on_graph(session: &Session, state: &AppState) -> bool {
 #[must_use]
 pub fn draws_pixels(session: &Session, state: &AppState) -> bool {
     pixel_tier_on_graph(session, state) && graph_tier(session, state) == RenderingTier::Pixel
+}
+
+/// The graph's status-row notice: `footer_notice`, else the first-launch
+/// line, which stands in for the key hints only — a problem (drawn first),
+/// a search, a stop, the compare line and a reveal all keep the row
+/// (m8/18d, R7).
+fn status_row_notice(
+    state: &AppState,
+    screen: &graft_ui::graph_screen::GraphView<'_>,
+    tier: RenderingTier,
+    width: u16,
+) -> Option<graft_term::SanitizedText> {
+    footer_notice(state, tier, width).or_else(|| {
+        let row_free = screen.problem.is_none()
+            && screen.search.is_none()
+            && screen.stopped.is_none()
+            && screen.compare_footer.is_none()
+            && screen.reveal.is_none();
+        row_free.then(|| first_launch_line(state, width)).flatten()
+    })
 }
 
 /// [`view`], saying `graphics` in the header when the graph is drawn in
@@ -217,7 +237,7 @@ pub fn view_with_graphics(
                 // drawing path takes, asked again so the two cannot drift.
                 let footer_width =
                     primary_pane_area(state, area).map_or(area.width, |graph| graph.width);
-                screen.notice = footer_notice(state, tier, footer_width);
+                screen.notice = status_row_notice(state, &screen, tier, footer_width);
                 screen.pixel = pixels;
                 // By the tier in force: a preview drawing the column in text
                 // does not change what the terminal said (ADR-0060 2).

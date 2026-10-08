@@ -14,6 +14,7 @@ pub mod config;
 pub mod crash;
 pub(crate) mod empty_state;
 pub mod event_loop;
+pub(crate) mod first_launch;
 pub mod history;
 pub mod jobs;
 pub mod layout;

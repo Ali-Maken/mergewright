@@ -1606,3 +1606,39 @@ mod pixel_scroll;
 mod quit_offer;
 mod settle;
 mod theme_problems;
+
+/// `Command::FirstLaunchDone` (m8/18d) is written by the loop: `done` on
+/// disk, and a write that fails is said once on the status row, the loop
+/// carrying on.
+#[test]
+fn the_loop_writes_first_launch_done_and_says_a_failure() {
+    let carry = |dir: &std::path::Path| {
+        let (mut terminal, _) = terminal(20, 3);
+        super::running::carry_out(
+            &mut terminal,
+            &session(),
+            &Recorded::default(),
+            on_history(),
+            Outside::default(),
+            vec![Command::FirstLaunchDone(dir.to_path_buf())],
+        )
+        .expect("writing to memory cannot fail")
+    };
+    let dir = crate::first_launch::test_config(Some("1\n"));
+    let (state, carried) = carry(dir.path());
+    assert_eq!(carried, super::running::Carried::Continue);
+    assert_eq!(state.status, crate::update::Status::Ready);
+    assert_eq!(
+        crate::first_launch::test_read(dir.path()).as_deref(),
+        Some("done\n")
+    );
+
+    // `launches` is a folder: the rename onto it fails.
+    let broken = crate::first_launch::test_config(Some("/"));
+    let (state, carried) = carry(broken.path());
+    assert_eq!(carried, super::running::Carried::Continue);
+    let crate::update::Status::Failed(words) = &state.status else {
+        panic!("a failed write is said: {:?}", state.status);
+    };
+    assert!(words.starts_with("first-launch: "), "{words}");
+}

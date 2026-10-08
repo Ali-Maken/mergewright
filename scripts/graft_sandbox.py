@@ -49,14 +49,28 @@ def scratch_root(scenario):
     return f"/tmp/graft-capture/{scenario}"
 
 
-def sandbox_env(config_home=None, base=None, **overrides):
+def seed_first_launch_done(config_home):
+    """Write `<config_home>/graft/launches` = `done` (m8/18d): a walk sees
+    every screen as he does after his first palette open, so the
+    first-launch line never changes an existing capture. Kept if present."""
+    folder = os.path.join(config_home, "graft")
+    os.makedirs(folder, exist_ok=True)
+    path = os.path.join(folder, "launches")
+    if not os.path.exists(path):
+        with open(path, "w") as out:
+            out.write("done\n")
+
+
+def sandbox_env(config_home=None, base=None, first_launch=False, **overrides):
     """A copy of `base` (default: os.environ) with `overrides` applied and
     XDG_CONFIG_HOME set to `config_home` (a fresh temp folder when None).
     Checked by `check_sandboxed` before it is returned.
 
     A caller's own config folder (one holding a `config.toml`) is passed as
     `config_home`; passing XDG_CONFIG_HOME in `overrides` raises, because it
-    would be silently replaced (m8/22b, review M1)."""
+    would be silently replaced (m8/22b, review M1).
+
+    `launches` is seeded `done` unless `first_launch` (m8/18d)."""
     if "XDG_CONFIG_HOME" in overrides:
         raise ValueError("graft_sandbox: pass the config folder as config_home, not XDG_CONFIG_HOME=")
     if config_home is None:
@@ -64,4 +78,8 @@ def sandbox_env(config_home=None, base=None, **overrides):
     env = dict(os.environ if base is None else base)
     env.update(overrides)
     env["XDG_CONFIG_HOME"] = config_home
-    return check_sandboxed(env)
+    checked = check_sandboxed(env)
+    # Only a shot of the first-launch line itself passes first_launch=True.
+    if not first_launch:
+        seed_first_launch_done(config_home)
+    return checked

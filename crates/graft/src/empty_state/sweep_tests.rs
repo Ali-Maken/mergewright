@@ -103,6 +103,7 @@ fn state() -> OutsideState {
         problem: None,
         palette: None,
         config_problems: Vec::new(),
+        first_launch: crate::first_launch::FirstLaunch::default(),
     }
 }
 
