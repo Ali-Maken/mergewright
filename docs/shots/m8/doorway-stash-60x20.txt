@@ -25,4 +25,4 @@ STASHES (1)
                                                             
                                                             
                                                             
-⏎ apply  p pop  s save  d drop  b branch  esc close  ? keys 
+⏎ apply  p pop  s save  d drop  S/esc close  ? keys         

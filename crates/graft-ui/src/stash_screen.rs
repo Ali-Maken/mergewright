@@ -209,25 +209,30 @@ impl StashScreen<'_> {
             );
         }
         let keys = self.keys;
-        let parts: &[(&'static str, &str)] = match self.view.status {
+        // `S` and `esc` both close: one clause, both keys (`S/esc close`).
+        let close: &[&str] = &["stash.close", "app.back"];
+        let parts: &[(&[&str], &str)] = match self.view.status {
             StashStatus::Ready => &[
-                ("stash.apply", "apply"),
-                ("stash.pop", "pop"),
-                ("stash.save", "save"),
-                ("stash.drop", "drop"),
+                (&["stash.apply"], "apply"),
+                (&["stash.pop"], "pop"),
+                (&["stash.save"], "save"),
+                (&["stash.drop"], "drop"),
                 // A branch from the stash under the cursor (§2.9's order);
                 // Ready is the only status with one selected (m8/11e G1).
-                ("stash.branch", "branch"),
-                ("stash.preview", "files"),
-                ("app.back", "close"),
+                (&["stash.branch"], "branch"),
+                (&["stash.preview"], "files"),
+                (close, "close"),
             ],
             StashStatus::Loading | StashStatus::Empty | StashStatus::Failed(_) => {
-                &[("stash.save", "save"), ("app.back", "close")]
+                &[(&["stash.save"], "save"), (close, "close")]
             }
         };
         let clauses: Vec<String> = parts
             .iter()
-            .filter_map(|(id, verb)| keys.key_verb(&[ActionId(id)], verb))
+            .filter_map(|(ids, verb)| {
+                let ids: Vec<ActionId> = ids.iter().map(|id| ActionId(id)).collect();
+                keys.key_verb(&ids, verb)
+            })
             .collect();
         place_footer_text(&clauses, keys, usize::from(width))
     }

@@ -146,13 +146,7 @@ impl MapScreen<'_> {
         let notes = self.notes(muted);
         let note_words: Vec<String> = notes.iter().map(|(words, _)| words.clone()).collect();
         let fitted = fit_place_footer(&clauses, keys, &note_words, usize::from(width));
-        let keys_part = fitted
-            .clauses
-            .iter()
-            .map(|at| clauses[*at].as_str())
-            .chain(fitted.doorway.as_deref())
-            .collect::<Vec<_>>()
-            .join("  ");
+        let keys_part = fitted.keys_text(&clauses);
         let mut spans = vec![Span::styled(keys_part, muted)];
         for at in fitted.notes {
             let (words, style) = &notes[at];

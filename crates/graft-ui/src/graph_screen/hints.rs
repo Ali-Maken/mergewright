@@ -450,7 +450,10 @@ pub fn hints_for(
 /// on every other words-only bar. Width-neutral — every join on a
 /// words-only bar is the same ` · `, so a reorder cannot overflow.
 fn doorway_last(mut fitted: Vec<Hint>) -> Vec<Hint> {
-    if let Some(at) = fitted.iter().position(|hint| *hint == DOORWAY) {
+    if let Some(at) = fitted
+        .iter()
+        .position(|hint| *hint == DOORWAY || *hint == DOORWAY_BY_PALETTE)
+    {
         let door = fitted.remove(at);
         fitted.push(door);
     }
@@ -464,7 +467,7 @@ fn spelled_bar(
     divider: Divider,
     keys: &Keymap,
 ) -> (Vec<Hint>, Option<Hint>) {
-    let (list, trailer) = whole_bar(context, divider);
+    let (list, trailer) = whole_bar(context, divider, keys);
     let list = spelled(list, keys);
     // `? keys`, or `⌃P keys` when `?` is unbound (m8/11b decision 1): the
     // one fallback, [`doorway_hint`], which the place footers spell too.
@@ -563,7 +566,7 @@ fn words_for(context: &HintContext) -> Words {
 /// ([`HintContext::PaneFocused`]) can take the whole list away and hand back
 /// less **before** the ladder runs. Filtering after it would leave a gap in
 /// a row the ladder had already fitted.
-fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint>) {
+fn whole_bar(context: &HintContext, divider: Divider, keys: &Keymap) -> (Vec<Hint>, Option<Hint>) {
     match context {
         HintContext::Preview => (Vec::new(), None),
         // No width tier for the banner: every key it answers draws while
@@ -596,8 +599,8 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         HintContext::PaneOverOverlay { .. }
         | HintContext::Blame { .. }
         | HintContext::History { .. } => (drawable(context, divider), Some(DOORWAY)),
-        HintContext::Marked(inner) => (marked_list(inner, divider), None),
-        HintContext::Searching(inner) => searching_bar(inner, divider),
+        HintContext::Marked(inner) => (marked_list(inner, divider, keys), None),
+        HintContext::Searching(inner) => searching_bar(inner, divider, keys),
         // The inner context's own bar, minus the key the focused pane has
         // nothing left to do with. Nothing else changes: every other key on
         // a row context is still answered with the pane up — the graph's
@@ -610,11 +613,11 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
             folds,
             graph_hidden,
         } => off_the_graph(
-            pane_focused_bar(row, *opens, *blamable, *folds, divider),
+            pane_focused_bar(row, *opens, *blamable, *folds, divider, keys),
             *graph_hidden,
         ),
-        HintContext::BackToBlame(inner) => led_by(BACK_TO_BLAME, inner, divider),
-        HintContext::BackToHistory(inner) => led_by(BACK_TO_HISTORY, inner, divider),
+        HintContext::BackToBlame(inner) => led_by(BACK_TO_BLAME, inner, divider, keys),
+        HintContext::BackToHistory(inner) => led_by(BACK_TO_HISTORY, inner, divider, keys),
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
@@ -635,7 +638,7 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
             tab_to_banner,
             space_stages,
         } => {
-            let (list, trailer) = whole_bar(row, divider);
+            let (list, trailer) = whole_bar(row, divider, keys);
             let list = lists::said_live_on_the_graph(list, *c, *space_stages);
             if !*tab_to_banner {
                 return (list, trailer);
@@ -656,14 +659,19 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
 /// `/ search`, so it never costs either (a trailer cost `u undo` at 83
 /// cells, 11b), and the hints ranked after it are what `?` recovers.
 /// [`hints_for`] then draws it last ([`doorway_last`]).
-fn marked_list(inner: &HintContext, divider: Divider) -> Vec<Hint> {
+///
+/// The doorway is [`doorway_hint`]'s, spelled before ranking: `⌃P keys`
+/// when `help` is unbound ranks where `? keys` did; both unbound, none.
+fn marked_list(inner: &HintContext, divider: Divider, keys: &Keymap) -> Vec<Hint> {
     let mut list = vec![EXPLAIN];
     list.extend(drawable(inner, divider));
     let at = list
         .iter()
         .rposition(|hint| hint.is(hint_keys::UNDO) || hint.is(hint_keys::FIND))
         .map_or(list.len(), |at| at + 1);
-    list.insert(at, DOORWAY);
+    if let Some(door) = doorway_hint(keys) {
+        list.insert(at, door);
+    }
     list
 }
 
@@ -703,8 +711,12 @@ fn actions_unless_over_overlay(context: &HintContext, list: Vec<Hint>) -> Vec<Hi
 /// [`whole_bar`] for [`HintContext::Searching`] (m8/15b): `n next  N prev`
 /// lead the row's own bar, since the search is what he is moving through
 /// now. Any `n`/`N` the row had goes, so one key draws once.
-fn searching_bar(inner: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint>) {
-    let (list, trailer) = whole_bar(inner, divider);
+fn searching_bar(
+    inner: &HintContext,
+    divider: Divider,
+    keys: &Keymap,
+) -> (Vec<Hint>, Option<Hint>) {
+    let (list, trailer) = whole_bar(inner, divider, keys);
     let mut led = vec![SEARCH_NEXT, SEARCH_PREV];
     led.extend(list.into_iter().filter(|hint| {
         !hint.is(hint_keys::NEXT_MATCH)
@@ -715,8 +727,13 @@ fn searching_bar(inner: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hi
 }
 
 /// `inner`'s whole bar with `lead` in front: the way back to a place.
-fn led_by(lead: Hint, inner: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint>) {
-    let (list, trailer) = whole_bar(inner, divider);
+fn led_by(
+    lead: Hint,
+    inner: &HintContext,
+    divider: Divider,
+    keys: &Keymap,
+) -> (Vec<Hint>, Option<Hint>) {
+    let (list, trailer) = whole_bar(inner, divider, keys);
     let mut bar = vec![lead];
     bar.extend(list);
     (bar, trailer)
@@ -731,8 +748,9 @@ fn pane_focused_bar(
     blamable: bool,
     folds: bool,
     divider: Divider,
+    keys: &Keymap,
 ) -> (Vec<Hint>, Option<Hint>) {
-    let (list, trailer) = whole_bar(row, divider);
+    let (list, trailer) = whole_bar(row, divider, keys);
     // With a pane focused (its files list or its diff) `space` is the pane's,
     // so the graph's merge fold is not live (m7-power-tools/20h, 20l). Only
     // that hint goes: another list's `space` is its own.

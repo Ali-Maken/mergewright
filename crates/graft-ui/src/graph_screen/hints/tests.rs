@@ -877,7 +877,10 @@ fn a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn() {
                 // The doorway is outside the body only where it is the
                 // trailer; on a marked row it is an ordinary list hint
                 // (m8/11d R2), counted in `whole`.
-                let body = if super::whole_bar(&context, divider).1.is_some() {
+                let body = if super::whole_bar(&context, divider, Keymap::shipped())
+                    .1
+                    .is_some()
+                {
                     without_trailer(&hints)
                 } else {
                     hints.clone()
@@ -1069,7 +1072,7 @@ fn no_hint_loses_ground_as_the_room_for_it_grows() {
 /// rule sees it — `whole_bar`'s own answer, so a context the bar filters
 /// (a focused pane drops five keys) cannot read as the unfiltered list.
 fn whole_list(context: &HintContext, divider: Divider) -> Vec<Hint> {
-    super::whole_bar(context, divider).0
+    super::whole_bar(context, divider, Keymap::shipped()).0
 }
 
 /// The drawn hints without the `? keys` doorway — the one part of the bar
@@ -2631,6 +2634,41 @@ fn the_doorway_falls_back_to_the_palette_key_then_to_nothing() {
     let text = super::hints_text(&bar, &neither);
     assert!(!text.contains("keys"), "{text:?}");
     assert!(!text.contains('—'), "{text:?}");
+}
+
+/// M8/marked-row-no-ctrlp: a marked row spells the doorway the same way
+/// the bar trailer does: `⌃P keys` when `help` is unbound, nothing when
+/// `palette` is unbound too.
+#[test]
+fn a_marked_row_falls_back_to_the_palette_doorway() {
+    let marked = HintContext::Marked(Box::new(HintContext::PlainRow {
+        verbs: RowVerbs::NONE,
+    }));
+    let unbind = |ids: &[&str]| {
+        Keymap::with_overrides(
+            &ids.iter()
+                .map(|id| ((*id).to_owned(), vec!["none".to_owned()]))
+                .collect::<Vec<_>>(),
+            crate::keymap::KeySwitches::default(),
+        )
+        .0
+    };
+    let no_help = unbind(&["app.help"]);
+    let text = super::hints_text(
+        &super::hints_for(&marked, Divider::Hidden, 240, &no_help),
+        &no_help,
+    );
+    assert!(text.ends_with("⌃P keys"), "{text:?}");
+    assert!(
+        text.contains("u undo") && text.contains("/ search"),
+        "{text:?}"
+    );
+    let neither = unbind(&["app.help", "app.palette"]);
+    let text = super::hints_text(
+        &super::hints_for(&marked, Divider::Hidden, 240, &neither),
+        &neither,
+    );
+    assert!(!text.contains("keys"), "{text:?}");
 }
 
 /// The overlays and places m8/11c decision 1 names: modal for keys, not for

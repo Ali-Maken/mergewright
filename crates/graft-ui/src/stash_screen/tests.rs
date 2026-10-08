@@ -261,14 +261,14 @@ fn the_stash_list_spells_his_keys_and_its_prompt_the_shipped_ones() {
             &["stash.save"],
             &["stash.drop"],
             &["stash.preview"],
-            &["app.back"],
+            &["stash.close", "app.back"],
         ],
     );
     let mut empty_list = view(Vec::new(), StashStatus::Empty);
     assert_spelled(
         &footer(&empty_list),
         &keys,
-        &[&["stash.save"], &["app.back"]],
+        &[&["stash.save"], &["stash.close", "app.back"]],
     );
     assert_spelled(&empty(&keys), &keys, &[&["stash.save"]]);
     empty_list.prompt = Some(StashPromptView {
@@ -319,7 +319,7 @@ fn footer_row(view: &StashView<'_>, width: u16, keys: &Keymap) -> String {
 /// full clauses each draws under the shipped keymap.
 fn footer_cases<'a>() -> Vec<(&'static str, StashView<'a>, Vec<&'static str>)> {
     let rows = || vec![row("stash@{0}", "WIP on main: tidy", "2h", 3)];
-    let short = vec!["s save", "esc close"];
+    let short = vec!["s save", "S/esc close"];
     vec![
         (
             "rows",
@@ -331,7 +331,7 @@ fn footer_cases<'a>() -> Vec<(&'static str, StashView<'a>, Vec<&'static str>)> {
                 "d drop",
                 "b branch",
                 "space files",
-                "esc close",
+                "S/esc close",
             ],
         ),
         (

@@ -599,14 +599,21 @@ pub(crate) fn fit_place_footer(
 /// [`fit_place_footer`] with no notes, as one line: the journal's and the
 /// stash list's footer.
 pub(crate) fn place_footer_text(clauses: &[String], keys: &Keymap, width: usize) -> String {
-    let fitted = fit_place_footer(clauses, keys, &[], width);
-    fitted
-        .clauses
-        .iter()
-        .map(|at| clauses[*at].as_str())
-        .chain(fitted.doorway.as_deref())
-        .collect::<Vec<_>>()
-        .join(FOOTER_SEP)
+    fit_place_footer(clauses, keys, &[], width).keys_text(clauses)
+}
+
+impl PlaceFooter {
+    /// The fitted clauses, then the doorway, joined "  " — the one join every
+    /// place footer draws (m8/11f B2). Notes are the caller's: each carries
+    /// its own separator and style.
+    pub(crate) fn keys_text(&self, clauses: &[String]) -> String {
+        self.clauses
+            .iter()
+            .map(|at| clauses[*at].as_str())
+            .chain(self.doorway.as_deref())
+            .collect::<Vec<_>>()
+            .join(FOOTER_SEP)
+    }
 }
 
 #[cfg(test)]
@@ -616,6 +623,25 @@ mod tests {
 
     fn keys() -> &'static Keymap {
         Keymap::shipped()
+    }
+
+    /// M8/11f-b2-ready-join: the one join — kept clauses, then the doorway,
+    /// two cells apart; dropped clauses and notes are not drawn.
+    #[test]
+    fn keys_text_joins_kept_clauses_then_the_doorway() {
+        let clauses = vec!["a one".to_owned(), "b two".to_owned(), "c three".to_owned()];
+        let fitted = PlaceFooter {
+            clauses: vec![0, 2],
+            doorway: Some("? keys".to_owned()),
+            notes: vec![0],
+        };
+        assert_eq!(fitted.keys_text(&clauses), "a one  c three  ? keys");
+        let bare = PlaceFooter {
+            clauses: Vec::new(),
+            doorway: None,
+            notes: Vec::new(),
+        };
+        assert_eq!(bare.keys_text(&clauses), "");
     }
 
     /// A stash clash's ladder as `graft::update::clash::stop_wordings`
