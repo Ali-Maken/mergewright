@@ -13,6 +13,7 @@ use crate::run::group;
 use crate::run::stop::{self, Graces, StopOrder};
 
 mod fixture;
+mod signals;
 use fixture::{
     Reap, assert_paused, gone, group_empty, merge, merging, stop_at_the_hook, stop_once_stopped,
 };

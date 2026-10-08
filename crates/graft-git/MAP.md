@@ -355,3 +355,4 @@ Rule: a commit listed in `<common_dir>/shallow` has no parents — git's (`rev-l
 ## File layout (m8/13e: pure moves, public paths unchanged)
 
 - `run/exec.rs` → `run/stop.rs` (`StopOrder`, `Graces`, `StopEnd`, `stop`, `kill`, `group_stop`, `hooks_first`, `after_git_ended`, `Helpers`, `signal_*`, the grace constants), and `run/tests.rs`'s `stop` module → `run/tests/stop.rs`. Private moves; `HOOKS_GRACE`/`STOP_WITHIN` unchanged at `run::`.
+- m8/21b-3: `run/stop.rs`'s inline tests → `run/tests/stop/signals.rs` (`group_stop`/`hooks_first` widened to `pub(super)` for it); `stop.rs` is production only.
