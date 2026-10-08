@@ -101,6 +101,7 @@ mod stop_ladder_readers;
 mod submodule_truth;
 mod tour;
 mod tour_tasks;
+mod tour_walk;
 mod two_boxes_over_content;
 mod undo_by_key;
 mod undo_over_drift;
