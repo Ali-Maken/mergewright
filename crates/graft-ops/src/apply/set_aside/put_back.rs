@@ -153,9 +153,13 @@ fn as_they_were(
         Ok(paths) if paths.is_empty() => None,
         Ok(paths) => write_raw(ctx, his.raw, &paths, commands)
             .err()
-            .map(|error| NotAsTheyWere {
-                error,
-                files: paths.len(),
+            .map(|error| {
+                // What the write tried, not every path asked about.
+                let files = match &error {
+                    crate::restore::RestoreError::WriteRaw { tried, .. } => *tried,
+                    _ => 0,
+                };
+                NotAsTheyWere { error, files }
             }),
         Err(error) => Some(NotAsTheyWere { error, files: 0 }),
     };

@@ -38,7 +38,7 @@
 │ 29033ed  new message  Handle expired tokens on refresh                                                               │
 │ 2 commits replayed                                                                                                   │
 │ branches: feature-a 29033ed → 1 new commit                                                                           │
-│           feature-b 04fbed6 → 2 new commits · built on yours · follows                                               │
+│           feature-b 04fbed6 → 1 new commit · built on yours · follows                                                │
 │ HEAD → feature-a                                                                                                     │
 │ working tree: 0 files updated                                                                                        │
 │ no conflicts expected                                                                                                │

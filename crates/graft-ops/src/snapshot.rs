@@ -133,6 +133,16 @@ pub enum SnapshotError {
         /// The line as written, lossy.
         printed: String,
     },
+    /// git could not check out `path` through its filters while the raw
+    /// record compared bytes — a failing smudge filter, named by the file
+    /// (m8-polish-and-ship/20).
+    #[error("{path}: its filter failed: {error}")]
+    Filter {
+        /// The file, relative to the worktree root, lossy.
+        path: String,
+        /// git's own failure.
+        error: RunError,
+    },
     /// The caller asked to stop.
     #[error("stopped")]
     Stopped,

@@ -1112,3 +1112,31 @@ fn the_resolve_keys_spell_his_keys() {
     let (reason, keys) = sticky_keys(&state);
     assert_eq!((reason.as_str(), keys), ("1 file still conflicted", None));
 }
+
+/// m8-polish-and-ship/20 item 17: the `InTheWay` rung is picked by the
+/// width of what is drawn — the sanitised path — so a path full of control
+/// characters (each drawn as a one-cell placeholder) still fits the row.
+#[test]
+fn an_in_the_way_rung_is_measured_as_drawn() {
+    use unicode_width::UnicodeWidthStr;
+    let keys = Keymap::shipped().clone();
+    let path = format!("src/{}.rs", "\u{200b}".repeat(30));
+    let refused = Refusal::InTheWay {
+        doing: "switching to other".to_owned(),
+        ignored: Vec::new(),
+        untracked: vec![PathBuf::from(path)],
+    };
+    let Status::Sticky { reason, keys: next } =
+        crate::update::operate::refusal_status(&stage(), &refused, 80, &keys)
+    else {
+        panic!("a sticky line");
+    };
+    let drawn = graft_term::sanitize_line(&reason);
+    let suffix = next
+        .map(|next| format!(" \u{b7} {next}"))
+        .unwrap_or_default();
+    assert!(
+        drawn.as_str().width() + suffix.width() < 80,
+        "{drawn}{suffix}"
+    );
+}

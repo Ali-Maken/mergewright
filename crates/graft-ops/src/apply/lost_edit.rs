@@ -80,8 +80,9 @@ pub(super) fn his_bytes(
 /// never fires and handed back on the way out. Every spawn is pushed to
 /// `commands`, the entry's Command Log.
 ///
-/// Err is [`AfterState::NotAsTheyWere`]: `files` is `paths.len()` when a
-/// write failed ([`RestoreError::WriteRaw`]), 0 when the read before it did.
+/// Err is [`AfterState::NotAsTheyWere`]: `files` is the count the write
+/// tried ([`RestoreError::WriteRaw`]'s `tried`: the paths `raw` holds), 0
+/// when the read before it failed.
 pub(super) fn write_back(
     ctx: &mut Context<'_>,
     raw: Oid,
@@ -99,7 +100,7 @@ pub(super) fn write_back(
     ctx.stop = asked;
     written.map_err(|error| {
         let files = match error {
-            RestoreError::WriteRaw { .. } => paths.len(),
+            RestoreError::WriteRaw { tried, .. } => tried,
             _ => 0,
         };
         AfterState::NotAsTheyWere { error, files }

@@ -15,12 +15,12 @@ use super::{AfterState, reason_for};
 /// never re-worded, and no `u` clause.
 pub(in crate::apply) fn not_as_they_were_words(error: &RestoreError, files: usize) -> String {
     match error {
-        RestoreError::WriteRaw { path, source } if files <= 1 => format!(
+        RestoreError::WriteRaw { path, source, .. } if files <= 1 => format!(
             "your edits are back · {} not written back as it was: {source} · its exact bytes are in \
              the backup",
             path.display()
         ),
-        RestoreError::WriteRaw { path, source } => format!(
+        RestoreError::WriteRaw { path, source, .. } => format!(
             "your edits are back · not all written back as they were: {}: {source} · their exact \
              bytes are in the backup",
             path.display()
@@ -65,7 +65,7 @@ pub(super) fn staging_named(paths: &[PathBuf]) -> String {
 }
 
 /// The journal failing, with git's own failure when there was one, and
-/// where a set-aside's edits are when they are not back in the tree.
+/// a failed raw step's words when there were any (`kept`).
 pub(super) fn journal_failed(
     error: &JournalError,
     after: Option<&RunError>,

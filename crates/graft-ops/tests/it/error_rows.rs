@@ -348,8 +348,17 @@ fn a_failed_read_refs_in_seal_after_is_reported() {
         Err(ApplyError::AfterState { unread, .. }) => {
             let words: Vec<String> = unread.iter().map(ToString::to_string).collect();
             assert!(
-                unread.iter().any(|why| matches!(why, AfterState::Refs(_))),
+                unread
+                    .iter()
+                    .any(|why| matches!(why, AfterState::BackupUnread(_))),
                 "the backup ref's read failure is reported: {words:?}"
+            );
+            // m8-polish-and-ship/20 item 4: said as the backup, not "the refs".
+            assert!(
+                words
+                    .iter()
+                    .any(|w| w.starts_with("the backup couldn't be read")),
+                "{words:?}"
             );
             assert!(
                 !unread

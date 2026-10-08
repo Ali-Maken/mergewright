@@ -5250,3 +5250,12 @@ fn a_search_prompt_is_never_open_where_it_is_not_drawn() {
         wrong.join("\n  ")
     );
 }
+
+/// m8-polish-and-ship/20 item 7: the stash list and the journal share one
+/// age formatter, so a stash made this minute reads `now`, never `now ago`.
+#[test]
+fn a_moment_ago_reads_now_in_the_stash_list_and_the_journal() {
+    assert_eq!(super::ago(1_000, 1_010), "now");
+    assert_eq!(super::ago(1_000, 1_000 + 7_200), "2h ago");
+    assert_eq!(super::ago(2_000, 1_000), "future");
+}

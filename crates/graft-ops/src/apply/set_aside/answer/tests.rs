@@ -71,6 +71,7 @@ fn sample_not_as_they_were() -> NotAsTheyWere {
         error: crate::restore::RestoreError::WriteRaw {
             path: PathBuf::from("src/a.rs"),
             source: std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied"),
+            tried: 1,
         },
         files: 1,
     }

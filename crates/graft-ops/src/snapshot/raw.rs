@@ -173,8 +173,12 @@ fn not_given_back(
         .arg(GitArg::Flag("checkout-index"))
         .arg(GitArg::Flag("-a"))
         .arg(GitArg::Flag("-f"))
-        .arg(GitArg::Glued("--prefix=", prefix));
-    run_logged(&checkout, stop, commands).map_err(stopped)?;
+        .arg(GitArg::Glued("--prefix=", prefix.clone()));
+    if let Err(error) = run_logged(&checkout, stop, commands) {
+        return Err(name_the_failing_file(
+            repo, &index, &prefix, &files, error, stop, commands,
+        ));
+    }
     let mut differ = Vec::new();
     for file in files {
         let relative = path_of(file.path.clone());
@@ -183,6 +187,44 @@ fn not_given_back(
         }
     }
     Ok(differ)
+}
+
+/// `checkout-index -a` failed, and git's words for a failing smudge filter
+/// name the filter, not the file (m8-polish-and-ship/20 item 6). Only on
+/// this failure path, each file is checked out alone until one fails: that
+/// file is named. The first error stands when none fails alone (or on a
+/// stop), so nothing is reported that was not seen.
+fn name_the_failing_file(
+    repo: &RepoHandle,
+    index: &TempIndex,
+    prefix: &[u8],
+    files: &[File],
+    first: RunError,
+    stop: &dyn Stop,
+    commands: &mut Vec<String>,
+) -> SnapshotError {
+    if matches!(first, RunError::Stopped) {
+        return stopped(first);
+    }
+    for file in files {
+        let one = GitInvocation::new(repo)
+            .env("GIT_INDEX_FILE", index.path())
+            .arg(GitArg::Flag("checkout-index"))
+            .arg(GitArg::Flag("-f"))
+            .arg(GitArg::Glued("--prefix=", prefix.to_vec()))
+            .arg(GitArg::Path(file.path.clone()));
+        match run_logged(&one, stop, commands) {
+            Ok(_) => {}
+            Err(RunError::Stopped) => return SnapshotError::Stopped,
+            Err(error) => {
+                return SnapshotError::Filter {
+                    path: String::from_utf8_lossy(&file.path).into_owned(),
+                    error,
+                };
+            }
+        }
+    }
+    stopped(first)
 }
 
 /// The raw blobs (`hash-object -w --no-filters`, read from disk as they are)

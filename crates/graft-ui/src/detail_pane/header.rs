@@ -123,7 +123,8 @@ pub(crate) fn radar_text(line: &RadarLine) -> String {
         RadarLine::EvilClean => "evil merge: clean".to_string(),
         RadarLine::EvilResolved { files } => {
             let plural = if *files == 1 { "" } else { "s" };
-            format!("evil merge: clean ({files} file{plural} hand-resolved)")
+            // Files both sides touched are the probe's blind spot: not checked.
+            format!("evil merge: not checked \u{b7} {files} file{plural} hand-resolved")
         }
         RadarLine::EvilNotCheckable(reason) => {
             format!("evil merge: not checkable \u{2014} {}", reason.as_str())
@@ -214,11 +215,16 @@ fn header_lines(view: &DetailView, keys: &Keymap) -> [String; 5] {
         } => {
             let mut names: Vec<&str> = branches.iter().map(SanitizedText::as_str).collect();
             names.extend(tags.iter().map(SanitizedText::as_str));
-            let mut line = format!("Contained in: {}", names.join(", "));
-            if *more > 0 {
-                line.push_str(&format!(" +{more} more"));
+            // A commit no ref holds (a stash's own commit): nothing to say.
+            if names.is_empty() && *more == 0 {
+                String::new()
+            } else {
+                let mut line = format!("Contained in: {}", names.join(", "));
+                if *more > 0 {
+                    line.push_str(&format!(" +{more} more"));
+                }
+                line
             }
-            line
         }
         ContainedIn::Failed(message) => format!("Contained in: {}", message.as_str()),
     };

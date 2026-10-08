@@ -286,10 +286,13 @@ fn a_failing_required_smudge_filter_refuses_the_operation_before_it_writes() {
         &Operation::Discard(Target::Paths(vec![PathBuf::from("src/a.rs")])),
         NOW,
     );
-    assert!(
-        refused.is_err(),
-        "the discard ran past a snapshot that could not be taken"
-    );
+    let Err(error) = refused else {
+        panic!("the discard ran past a snapshot that could not be taken");
+    };
+    // m8-polish-and-ship/20 item 6: the refusal names the file whose
+    // filter failed.
+    let words = error.explain(&crate::support::Letters);
+    assert!(words.contains("nb.txt"), "{words}");
     assert_eq!(repo.read("src/a.rs"), WORKING, "his edit is untouched");
     assert_eq!(repo.read("nb.txt"), b"cell 2\n", "and so is nb.txt");
     assert!(

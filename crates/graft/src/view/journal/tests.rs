@@ -310,3 +310,21 @@ fn an_aborted_entry_reads_aborted_by_you() {
     assert_eq!(summary, "aborted by you · nothing changed");
     assert!(!summary.contains("failed"), "{summary}");
 }
+
+/// m8-polish-and-ship/20 item 11: a refused pull or rejected push wrote
+/// nothing, so its row reads `refused · nothing written`, never `undone`.
+#[test]
+fn a_refused_push_reads_refused_nothing_written_not_undone() {
+    let mut push = entry(2, OperationKind::Push, "push main to origin");
+    push.status = EntryStatus::Aborted {
+        reason: "rejected".to_owned(),
+    };
+    push.index_after = push.index_before;
+    let state = state_with(vec![entry(1, OperationKind::Stage, "stage src/a.rs"), push]);
+    let view = journal_view(&state, 10);
+    assert_eq!(view.rows[0].mark, RowMark::Refused);
+    assert_eq!(
+        view.rows[0].mark.label(&state.keymap),
+        "refused \u{b7} nothing written"
+    );
+}

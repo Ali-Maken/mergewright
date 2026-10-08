@@ -38,8 +38,8 @@
 ╭ Preview: rebase feature-a onto main ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 4 commits replayed                                                                                                                                                                      │
 │ branches: feature-a 15335d9 → 2 new commits                                                                                                                                             │
-│           feature-b 82392de → 3 new commits · built on yours · follows                                                                                                                  │
-│           feature-c 1966dda → 4 new commits · built on yours · follows                                                                                                                  │
+│           feature-b 82392de → 1 new commit · built on yours · follows                                                                                                                   │
+│           feature-c 1966dda → 1 new commit · built on yours · follows                                                                                                                   │
 │ working tree: 1 file updated                                                                                                                                                            │
 │ no conflicts expected                                                                                                                                                                   │
 │ undo: u takes this back                                                                                                                                                                 │

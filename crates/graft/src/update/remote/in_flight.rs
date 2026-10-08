@@ -225,8 +225,8 @@ pub fn remote_failed(
     }
 }
 
-/// `"push rejected: X has moved · p pull first · P force with lease"` →
-/// `("push rejected: X has moved", Some("p pull first · P force with
+/// `"push rejected: X has commits you don't · p pull, then m or r · P force with lease"` →
+/// `("push rejected: X has commits you don't", Some("p pull, then m or r · P force with
 /// lease"))`. A line with no ` · ` (most of them) has no keys to keep
 /// whole; the reason is cut like any other footer text.
 fn split_reason_and_keys(explained: &str) -> (String, Option<String>) {

@@ -40,7 +40,8 @@ pub(crate) fn write_raw(
     }
     let args = vec![GitArg::Flag("cat-file"), GitArg::Flag("--batch")];
     let output = run(ctx, args, Some(wanted), commands)?;
-    let blobs = batch_blobs(&output, kept.len())?;
+    let tried = kept.len();
+    let blobs = batch_blobs(&output, tried)?;
     for ((path, (mode, _)), bytes) in kept.into_iter().zip(blobs) {
         let relative = snapshot::path_of(path);
         let written = match repo.workdir() {
@@ -52,6 +53,7 @@ pub(crate) fn write_raw(
         written.map_err(|source| RestoreError::WriteRaw {
             path: relative,
             source,
+            tried,
         })?;
     }
     Ok(())
@@ -358,6 +360,7 @@ mod tests {
         let error = RestoreError::WriteRaw {
             path: std::path::PathBuf::from("src/a.rs"),
             source: std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied"),
+            tried: 1,
         };
         assert_eq!(
             error.explain(&crate::keys::Letters),

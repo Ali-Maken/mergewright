@@ -200,10 +200,9 @@ pub(crate) fn journal_keys(keys: &Keymap) -> Option<String> {
 /// The relaunch notice's warning when the journal could not be read:
 /// `…, so u restores the whole tree`, the clause dropped with undo unbound.
 pub(crate) fn unreadable_words(keys: &Keymap) -> String {
-    const WORDS: &str = "its state could not be read";
     match keys.key_verb(&[ActionId("app.undo")], "restores the whole tree") {
-        Some(clause) => format!("{WORDS}, so {clause}"),
-        None => WORDS.to_owned(),
+        Some(clause) => format!("{UNREADABLE}, so {clause}"),
+        None => UNREADABLE.to_owned(),
     }
 }
 
@@ -712,6 +711,9 @@ pub fn interrupted_notice(state: &AppState) -> Option<String> {
     interrupted_notice_in(state, usize::MAX)
 }
 
+/// The unreadable-journal warning without its key clause.
+const UNREADABLE: &str = "its state could not be read";
+
 /// [`interrupted_notice`] fitted to the footer row's `cells` display cells
 /// (30d). The footer's only caller (`view::frame::bars`); the rung is
 /// picked from the frame's width every draw, so a resize re-picks.
@@ -757,22 +759,68 @@ pub(crate) fn interrupted_notice_in(state: &AppState, cells: usize) -> Option<St
     // first entry's own words, plus `(and n more)` when no clause follows
     // them; everything after the first ` · ` (the clause, the count, the
     // unreadable warning) is the never-cut clause. Rung 1 reads as before.
-    let (description, clause) = match clause {
-        Some(clause) => (
-            description,
-            Some(match widest {
-                Some(widest) => format!("{clause}{rest} \u{b7} {widest}"),
-                None => format!("{clause}{rest}"),
-            }),
-        ),
-        None => (format!("{description}{rest}"), widest),
+    let Some(clause) = clause else {
+        return Some(notice_line(
+            &format!("{description}{rest}"),
+            widest.as_deref(),
+            cells,
+            &state.keymap,
+        ));
     };
-    Some(notice_line(
+    Some(shed_to_fit(
         &description,
-        clause.as_deref(),
+        &clause,
+        &rest,
+        widest.as_deref(),
         cells,
         &state.keymap,
     ))
+}
+
+/// [`notice_line`] with the set-aside `clause`, `rest` (`(and n more)`) and
+/// the unreadable warning `widest`, fitted to `cells`.
+fn shed_to_fit(
+    description: &str,
+    clause: &str,
+    rest: &str,
+    widest: Option<&str>,
+    cells: usize,
+    keys: &Keymap,
+) -> String {
+    // Too narrow for the whole clause even on the last rung: the set-aside
+    // clause sheds its detail (the keys after its first ` · `), then itself,
+    // before the footer's cut can reach `J to inspect` (m8-polish-and-ship/20).
+    let head = clause.split(" \u{b7} ").next().unwrap_or(clause).to_owned();
+    let mut asides = vec![Some(clause.to_owned())];
+    if head != clause {
+        asides.push(Some(head));
+    }
+    let mut steps: Vec<(Option<String>, Option<String>)> = asides
+        .into_iter()
+        .map(|aside| (aside, widest.map(str::to_owned)))
+        .collect();
+    if widest.is_some() {
+        // Then the aside goes, then the warning's own key clause: whole
+        // clauses leave, a key is never cut in half.
+        steps.push((None, widest.map(str::to_owned)));
+        steps.push((None, Some(UNREADABLE.to_owned())));
+    }
+    let mut line = String::new();
+    for (aside, widest) in steps {
+        let joined = match (aside, widest.as_deref()) {
+            (Some(aside), Some(widest)) => format!("{aside}{rest} \u{b7} {widest}"),
+            (Some(aside), None) => format!("{aside}{rest}"),
+            (None, Some(widest)) if rest.is_empty() => widest.to_owned(),
+            (None, Some(widest)) => format!("{} \u{b7} {widest}", rest.trim_start()),
+            // Never pushed: the last step exists only with a warning.
+            (None, None) => rest.trim_start().to_owned(),
+        };
+        line = notice_line(description, Some(&joined), cells, keys);
+        if cells_of(&line) <= cells {
+            break;
+        }
+    }
+    line
 }
 
 /// Display cells, the measure the footer's own cut uses (`graft_ui::fit`).

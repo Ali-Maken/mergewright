@@ -135,9 +135,40 @@ pub(super) fn ref_line(plan: &PreviewPlan, moved: &RefMove) -> String {
     let to = match moved.to {
         None => "deleted".to_owned(),
         Some(Target::Real(oid)) => short(oid),
-        Some(Target::Ghost(at)) => new_commits(new_commits_at(plan, at)),
+        Some(Target::Ghost(at)) => new_commits(own_commits_at(plan, at)),
     };
     format!("{name} {from} \u{2192} {to}")
+}
+
+/// The predicted commits a ref landing on ghost `at` gains **of its own**:
+/// [`new_commits_at`]'s walk, stopped at a ghost another moved ref lands
+/// on — those are that ref's. So a chain's per-ref counts sum to the
+/// `N commits replayed` total (m8-polish-and-ship/20 item 10).
+pub(super) fn own_commits_at(plan: &PreviewPlan, at: usize) -> usize {
+    let owned: std::collections::HashSet<usize> = plan
+        .ref_moves
+        .iter()
+        .filter_map(|moved| match moved.to {
+            Some(Target::Ghost(landed)) if landed != at => Some(landed),
+            _ => None,
+        })
+        .collect();
+    let mut count = 0;
+    let mut next = Some(at);
+    while let Some(index) = next {
+        if owned.contains(&index) {
+            break;
+        }
+        let Some(ghost) = plan.ghosts.get(index) else {
+            break;
+        };
+        count += 1;
+        next = ghost.parents.iter().find_map(|parent| match parent {
+            Target::Ghost(parent) => Some(*parent),
+            Target::Real(_) => None,
+        });
+    }
+    count
 }
 
 /// `5 new commits`, singular at one.

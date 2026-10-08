@@ -244,7 +244,10 @@ fn in_the_way_status(refusal: &Refusal, columns: u16, keymap: &Keymap) -> Status
         let suffix = keys(words.next.as_deref())
             .map(|keys| format!(" \u{b7} {keys}"))
             .unwrap_or_default();
-        suffix.width() < room && words.reason.width() <= room - suffix.width()
+        // Measured as drawn: a control character in a path is drawn as a
+        // one-cell placeholder, and has no width raw (m8-polish-and-ship/20).
+        let drawn = graft_term::sanitize_line(&words.reason);
+        suffix.width() < room && drawn.as_str().width() <= room - suffix.width()
     };
     let rungs = refusal.explain_rungs(&OpKeys(keymap));
     // `explain_rungs` is never empty; the fallback is its own sentence.

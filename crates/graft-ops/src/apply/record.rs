@@ -313,7 +313,7 @@ fn seal_after(ctx: &Context<'_>, entry: &mut JournalEntry, before: Oid) -> Optio
         Ok(refs) => refs.get(&name).copied().flatten().unwrap_or(before),
         Err(why) => {
             drop_after_trees(entry);
-            return Some(AfterState::Refs(why));
+            return Some(AfterState::BackupUnread(why));
         }
     };
     let parents = with_anchors(

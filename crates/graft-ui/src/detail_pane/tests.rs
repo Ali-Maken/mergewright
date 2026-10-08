@@ -1950,3 +1950,36 @@ fn the_compare_line_and_the_load_all_footer_spell_his_keys() {
     let unbound = footer(&none);
     assert_eq!(unbound.trim_end(), "\u{2026} 100 more lines");
 }
+
+// --- words sweep (m8-polish-and-ship/20) ---
+
+/// Item 2: files both sides touched are the probe's blind spot — it did
+/// not check them, so the line never calls them clean.
+#[test]
+fn a_hand_resolved_merge_says_not_checked_never_clean() {
+    assert_eq!(
+        radar_text(&RadarLine::EvilResolved { files: 2 }),
+        "evil merge: not checked \u{b7} 2 files hand-resolved"
+    );
+    assert_eq!(
+        radar_text(&RadarLine::EvilResolved { files: 1 }),
+        "evil merge: not checked \u{b7} 1 file hand-resolved"
+    );
+}
+
+/// Item 8: `Contained in:` with nothing after it is not drawn.
+#[test]
+fn contained_in_with_no_names_is_not_drawn() {
+    let mut view = commit_view();
+    view.header.contained = ContainedIn::Known {
+        branches: vec![],
+        tags: vec![],
+        more: 0,
+    };
+    let layout = DetailLayout::compute(160, 40, DetailFocus::Graph, None);
+    let rows = text(&draw(&view, layout, 160, 40));
+    assert!(
+        rows.iter().all(|row| !row.contains("Contained in")),
+        "{rows:#?}"
+    );
+}
