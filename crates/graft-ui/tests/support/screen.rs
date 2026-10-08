@@ -72,6 +72,7 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
         graphics: None,
         notice: None,
         search: None,
+        search_tail: None,
         compare_footer: None,
         stopped: None,
         commit_graph: None,

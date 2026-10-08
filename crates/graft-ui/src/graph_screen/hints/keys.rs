@@ -30,6 +30,8 @@ pub(super) const MENU: &[HintKey] = &[key("app.menu")];
 pub(super) const HELP: &[HintKey] = &[key("app.help")];
 pub(super) const PALETTE: &[HintKey] = &[key("app.palette")];
 pub(super) const DOWN_UP: &[HintKey] = &[key("app.down"), key("app.up")];
+pub(super) const NEXT_MATCH: &[HintKey] = &[key("app.next_match")];
+pub(super) const PREV_MATCH: &[HintKey] = &[key("app.prev_match")];
 pub(super) const NEXT_PREV_MATCH: &[HintKey] = &[key("app.next_match"), key("app.prev_match")];
 
 // §2.3 Graph.

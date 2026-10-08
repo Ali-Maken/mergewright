@@ -84,10 +84,6 @@ impl GraphScreen<'_> {
                 (format!(" {line}"), Token::Warning)
             }
             (None, Some(SearchLine::Prompt(typed)), _, _) => (format!(" /{typed}_"), Token::Info),
-            (None, Some(SearchLine::Status { text, failed }), _, _) => (
-                format!(" {text}"),
-                if *failed { Token::Warning } else { Token::Info },
-            ),
             (None, None, Some(notice), _) => (format!(" {notice}"), Token::Info),
             (None, None, None, Some(compare)) => (format!(" {compare}"), Token::Accent),
             (None, None, None, None) => {
@@ -330,8 +326,10 @@ mod tests {
         assert!(!row.contains("merge stopped"), "{row}");
     }
 
+    /// m8/15b (15 A2; replaces `a_search_line_still_wins_over_a_stop`):
+    /// while the `/` field is open it is the row he is typing in.
     #[test]
-    fn a_search_line_still_wins_over_a_stop() {
+    fn the_search_prompt_still_wins_over_a_stop() {
         let rows = linear(3);
         let mut shown = view(&rows, WalkView::Complete { rows: 3 }, 0);
         shown.stopped = Some(StopWording::new(
@@ -342,6 +340,51 @@ mod tests {
         let row = last_row(&shown);
         assert!(row.starts_with(" /fix_"), "{row}");
         assert!(!row.contains("merge stopped"), "{row}");
+    }
+
+    /// m8/15b (15 A2): after `⏎` the search leaves the footer. The stop's
+    /// row is drawn — its reason, then the stop's own keys, `n N` after —
+    /// and the search's line is in the header's tail.
+    #[test]
+    fn after_enter_a_stop_row_is_drawn_and_the_search_moves_to_the_header() {
+        use crate::graph_screen::hints::RowVerbs;
+        use crate::graph_screen::{LiveC, SearchTail};
+        let rows = linear(3);
+        let mut shown = view(&rows, WalkView::Complete { rows: 3 }, 0);
+        shown.stopped = Some(StopWording::new(
+            sanitize_line("merge stopped · 1 file conflicted"),
+            Vec::new(),
+        ));
+        let search = "/fix  2 matches (1/2)  n/N next/prev  esc close";
+        shown.search = None;
+        shown.search_tail = Some(SearchTail {
+            text: sanitize_line(search),
+            failed: false,
+        });
+        shown.hint_context = HintContext::OperationLive {
+            row: Box::new(HintContext::Searching(Box::new(HintContext::PlainRow {
+                verbs: RowVerbs::NONE,
+            }))),
+            c: LiveC::Finish,
+            tab_to_banner: false,
+            space_stages: false,
+        };
+        let drawn = text(&draw(&shown, 120, 8));
+        let row = drawn.last().expect("eight rows");
+        // The stop's row as `stopped_row` draws it beside a laddered row
+        // bar: the reason leads where the bar leaves it twelve cells, else
+        // the bar alone (m6-conflicts/12) — either way the stop's, not the
+        // search's.
+        assert!(
+            row.starts_with(" merge stopped") || row.starts_with(" c finish"),
+            "{row}"
+        );
+        let finish = row.find("c finish").unwrap_or_else(|| panic!("{row}"));
+        let next = row.find("n next").unwrap_or_else(|| panic!("{row}"));
+        let prev = row.find("N prev").unwrap_or_else(|| panic!("{row}"));
+        assert!(finish < next && next < prev, "the stop's keys lead: {row}");
+        assert!(!row.contains("/fix"), "{row}");
+        assert!(drawn[0].contains(search), "header: {:?}", drawn[0]);
     }
 
     fn words(line: crate::graph_screen::CommitGraphLine, width: usize) -> String {

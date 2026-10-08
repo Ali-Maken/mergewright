@@ -185,9 +185,14 @@ pub struct GraphView<'a> {
     /// be told twice — the tier-drop key said what it did. Takes the
     /// footer's place under [`GraphView::problem`], above the hints.
     pub notice: Option<SanitizedText>,
-    /// The search prompt or the search's state, in the footer above a notice
-    /// and under a problem; `None` when there is no search (m1-the-graph/26).
+    /// The search prompt while `/` is open, in the footer above a notice and
+    /// under a problem; `None` otherwise (m1-the-graph/26). Once `⏎` closes
+    /// the field the search's line is [`GraphView::search_tail`] (m8/15b).
     pub search: Option<SearchLine>,
+    /// A search that stands with its field closed: its line in the header's
+    /// tail, leftmost, so the footer is the place's keys again (m8/15b,
+    /// ticket 15 A2). `None` with no search, or while the prompt is open.
+    pub search_tail: Option<SearchTail>,
     /// The pinned compare base's footer line (`x`, m2-details-and-diffs/11):
     /// `"compare base <sha> — move, x again clears"`, in the same footer
     /// slot as [`GraphView::search`]/[`GraphView::notice`] — stacked under
@@ -552,19 +557,23 @@ impl<'a> GraphScreen<'a> {
     }
 }
 
-/// What the footer says about search: the prompt being typed, or how the
-/// search stands. Only a failed search reads as a warning.
+/// What the footer says about search: the prompt being typed. A search
+/// that stands after `⏎` is the header's [`SearchTail`] instead (m8/15b).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SearchLine {
     /// The `/` prompt: the query typed so far.
     Prompt(SanitizedText),
-    /// A running or finished search: its line, and whether it failed.
-    Status {
-        /// Query, state, position and keys.
-        text: SanitizedText,
-        /// The search failed; drawn as a warning.
-        failed: bool,
-    },
+}
+
+/// A running or finished search, as the header's tail draws it (m8/15b,
+/// ticket 15 A2): its line verbatim, leftmost in the tail. Only a failed
+/// search reads as a warning.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SearchTail {
+    /// Query, state, position and keys.
+    pub text: SanitizedText,
+    /// The search failed; drawn as a warning.
+    pub failed: bool,
 }
 
 /// What the commit-graph offer's footer line says (m1-the-graph/54).

@@ -60,6 +60,8 @@ fn the_commit_graph_offer_hides_under_a_box() {
 /// Minor 6b: a search standing on the graph, then a Ghost Preview opened
 /// over it. The preview's own row is blank, and the search line with it —
 /// the one modal where it would show, since a box's bar covers the footer.
+/// Since m8/15b the standing search is the header's `search_tail`, blanked
+/// under the same modals.
 #[test]
 fn the_search_rung_is_blank_under_the_preview() {
     for (columns, rows) in SIZES {
@@ -71,7 +73,7 @@ fn the_search_rung_is_blank_under_the_preview() {
         let line = search.line(graft_ui::keymap::Keymap::shipped());
         state.search = Some(search);
         assert!(
-            crate::view::graph_view(&state, 0).search.is_some(),
+            crate::view::graph_view(&state, 0).search_tail.is_some(),
             "{columns}x{rows}: the search rung stands"
         );
 
@@ -81,7 +83,7 @@ fn the_search_rung_is_blank_under_the_preview() {
             .expect("the preview is one of the modals");
         preview.search = state.search.clone();
         assert!(
-            crate::view::graph_view(&preview, 0).search.is_none(),
+            crate::view::graph_view(&preview, 0).search_tail.is_none(),
             "{columns}x{rows}: blank under the preview"
         );
         let screen = draw(&preview, columns, rows);

@@ -5,7 +5,8 @@
 use super::lists::{TAIL, context_list};
 use super::{
     ACTIONS, BACK_TO_BLAME, BACK_TO_HISTORY, BLAME, ConfirmYes, DOORWAY, DOORWAY_BY_PALETTE,
-    EXPLAIN, F_HISTORY, FOLD, Hint, HintContext, LiveC, RESIZE, RowVerbs, TabWord, WAY_BACK,
+    EXPLAIN, F_HISTORY, FOLD, Hint, HintContext, LiveC, RESIZE, RowVerbs, SEARCH_NEXT, SEARCH_PREV,
+    TabWord, WAY_BACK,
 };
 use crate::conflict_resolver::SideRoles;
 
@@ -86,6 +87,10 @@ pub fn every_context() -> Vec<HintContext> {
             .map(|yes| HintContext::ConfirmBox { yes: Some(yes) }),
     );
     all.extend(plain.iter().filter_map(marked_form));
+    // m8/15b: a search left open after `⏎`, over every graph-row form,
+    // marked or not; before the live wrap, which takes it inside.
+    let searching: Vec<HintContext> = all.iter().filter_map(searching_form).collect();
+    all.extend(searching);
     let rows: Vec<HintContext> = all.iter().flat_map(pane_focused_form).collect();
     all.extend(rows);
     let live: Vec<HintContext> = all.iter().flat_map(operation_live_form).collect();
@@ -309,11 +314,14 @@ fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
         // A live operation hides `o` and `a` (graft `view::rows::live_wrapped`
         // passes `RowVerbs::NONE`): a row with either never reaches the bar.
         _ if has_row_verbs(context) => Vec::new(),
+        // `R` is never live, so neither is a search over it.
+        HintContext::Searching(row) if over_rewritable(row) => Vec::new(),
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::StashRow
         | HintContext::PlainRow { .. }
         | HintContext::Marked(_)
+        | HintContext::Searching(_)
         | HintContext::PaneFocused { .. } => {
             // `space stage` only at an `edit` stop with the graph focused
             // (07d D1): never for a pane with the keyboard.
@@ -415,6 +423,15 @@ const ALL_ROLES: [SideRoles; 6] = [
     SideRoles::SetAside,
 ];
 
+/// `context` is `R rewrite`'s row, marked or not.
+fn over_rewritable(context: &HintContext) -> bool {
+    match context {
+        HintContext::Rewritable(_) => true,
+        HintContext::Marked(row) => over_rewritable(row),
+        _ => false,
+    }
+}
+
 /// The cursor row inside `context` carries `o take` or `a amend`.
 fn has_row_verbs(context: &HintContext) -> bool {
     match context {
@@ -423,6 +440,7 @@ fn has_row_verbs(context: &HintContext) -> bool {
         }
         HintContext::Marked(row)
         | HintContext::Rewritable(row)
+        | HintContext::Searching(row)
         | HintContext::PaneFocused { row, .. } => has_row_verbs(row),
         _ => false,
     }
@@ -454,6 +472,44 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Resolver { .. }
         | HintContext::Finish { .. }
         | HintContext::Marked(_)
+        | HintContext::Searching(_)
+        | HintContext::PaneFocused { .. }
+        | HintContext::Blame { .. }
+        | HintContext::BackToBlame(_)
+        | HintContext::History { .. }
+        | HintContext::BackToHistory(_)
+        | HintContext::RewriteEditor { .. }
+        | HintContext::RewriteMessage
+        | HintContext::OperationLive { .. } => None,
+    }
+}
+
+/// `context` wrapped in [`HintContext::Searching`] (m8/15b), for the
+/// graph-row forms `graft::view::rows::footer_context` wraps while a search
+/// stands with its prompt closed: a row, marked or under `R`. Not a pane's
+/// bar, an overlay's or a box's: the search's keys are the graph's.
+///
+/// Exhaustive on purpose: see [`every_context`].
+fn searching_form(context: &HintContext) -> Option<HintContext> {
+    match context {
+        HintContext::WorkingTreeRow
+        | HintContext::BranchRow { .. }
+        | HintContext::PlainRow { .. }
+        | HintContext::StashRow
+        | HintContext::Rewritable(_)
+        | HintContext::Marked(_) => Some(HintContext::Searching(Box::new(context.clone()))),
+        HintContext::Banner { .. }
+        | HintContext::Preview
+        | HintContext::ChangesPane { .. }
+        | HintContext::Picker
+        | HintContext::PaneOverOverlay { .. }
+        | HintContext::Dragging
+        | HintContext::ConfirmBox { .. }
+        | HintContext::NamePrompt { .. }
+        | HintContext::Credential
+        | HintContext::Resolver { .. }
+        | HintContext::Finish { .. }
+        | HintContext::Searching(_)
         | HintContext::PaneFocused { .. }
         | HintContext::Blame { .. }
         | HintContext::BackToBlame(_)
@@ -528,6 +584,7 @@ fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::Resolver { .. }
         | HintContext::Finish { .. }
         | HintContext::PaneFocused { .. }
+        | HintContext::Searching(_)
         | HintContext::Blame { .. }
         | HintContext::BackToBlame(_)
         | HintContext::History { .. }
@@ -555,6 +612,8 @@ pub fn every_hint() -> Vec<Hint> {
     all.push(EXPLAIN);
     all.push(RESIZE);
     all.push(WAY_BACK);
+    all.push(SEARCH_NEXT);
+    all.push(SEARCH_PREV);
     all.push(BLAME);
     all.push(BACK_TO_BLAME);
     all.push(BACK_TO_HISTORY);

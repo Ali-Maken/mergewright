@@ -137,75 +137,160 @@ impl<'a> GraphScreen<'a> {
         // (m5/16, review C1).
         let room = usize::from(tail_room(&header, width));
         header.tail = Some(match &self.view.banner_op {
-            // The operation banner takes the tail's place — the walk state,
+            // The operation banner takes the walk's place — the walk state,
             // filters, order notice and graphics status all answer "is
             // history still loading", which is not the question
             // mid-operation (DESIGN.md §1.13, ADR-0038 §3). `focused`
             // reverses it so a conflict landing is noticed without a click.
+            // A standing search keeps its place left of it while both fit
+            // whole; the banner is safety, so the search gives way first
+            // (m8/15b, ticket 15 A2).
             Some(banner) => {
                 let room16 = u16::try_from(room).unwrap_or(u16::MAX);
                 let mut style = foreground(self.theme, Token::Warning);
                 if banner.focused {
                     style = style.add_modifier(ratatui::style::Modifier::REVERSED);
                 }
-                Line::from(Span::styled(
-                    banner_line(banner, room16, self.view.keys),
-                    style,
-                ))
+                let banner = banner_line(banner, room16, self.view.keys);
+                let mut spans = Vec::new();
+                if let Some(search) = self.search_item()
+                    && text_width(&search.text) + TAIL_SEPARATOR.len() + text_width(&banner) <= room
+                {
+                    spans.push(Span::styled(search.text, search.style));
+                    spans.push(Span::raw(TAIL_SEPARATOR));
+                }
+                spans.push(Span::styled(banner, style));
+                Line::from(spans)
             }
-            None => Line::from(self.walk_status(folded_lanes, room)),
+            None => Line::from(fitted_tail(self.tail_items(folded_lanes, room), room)),
         });
         header_line(&header, width, self.theme)
     }
 
-    /// The walk state, filters, order notice and graphics status — the
-    /// header's informational tail when no operation banner takes its place
-    /// — in that order, each cut with `…` to what the parts before it left
-    /// of `room`, so a failure is shortened, never silently dropped while
-    /// any cell is free.
-    fn walk_status(&self, folded_lanes: usize, room: usize) -> Vec<Span<'static>> {
+    /// The search's line as a tail item, styled as the footer drew it
+    /// before it moved here: a warning when the search failed.
+    fn search_item(&self) -> Option<TailItem> {
+        self.view.search_tail.as_ref().map(|search| TailItem {
+            text: search.text.as_str().to_owned(),
+            style: foreground(
+                self.theme,
+                if search.failed {
+                    Token::Warning
+                } else {
+                    Token::Info
+                },
+            ),
+            drop: Drop::Search,
+        })
+    }
+
+    /// The header's informational tail when no operation banner takes the
+    /// walk's place, left to right: the search (m8/15b), the walk state,
+    /// filters, `Esc cancels`, the order notice and the graphics status.
+    fn tail_items(&self, folded_lanes: usize, room: usize) -> Vec<TailItem> {
         let muted = foreground(self.theme, Token::TextMuted);
-        let (walk, token) = walk_text_within(&self.view.walk, room);
-        let mut used = 0;
-        let mut spans = Vec::new();
-        let mut push = |text: String, style: Style| {
-            let left = room.saturating_sub(used);
-            if left == 0 {
-                return;
+        let mut items: Vec<TailItem> = self.search_item().into_iter().collect();
+        let mut push = |text: String, style: Style, drop: Drop| {
+            if !text.is_empty() {
+                items.push(TailItem { text, style, drop });
             }
-            let text = fit(&text, left.min(text_width(&text)));
-            used += text_width(&text);
-            spans.push(Span::styled(text, style));
         };
-        push(walk, foreground(self.theme, token));
+        let (walk, token) = walk_text_within(&self.view.walk, room);
+        push(walk, foreground(self.theme, token), Drop::Walk);
         let filters = left_out(self.view.filters, folded_lanes, self.view.keys);
-        if !filters.is_empty() {
-            push(
-                format!("  {filters}"),
-                foreground(self.theme, Token::Accent),
-            );
-        }
+        push(
+            filters,
+            foreground(self.theme, Token::Accent),
+            Drop::Filters,
+        );
         if matches!(self.view.walk, WalkView::Jumping { .. }) {
-            push("  Esc cancels".to_owned(), muted);
+            push("Esc cancels".to_owned(), muted, Drop::Walk);
         }
         match self.view.order {
-            Some(OrderNotice::Sorting) => push("  date order, sorting…".to_owned(), muted),
+            Some(OrderNotice::Sorting) => {
+                push("date order, sorting…".to_owned(), muted, Drop::Walk);
+            }
             Some(OrderNotice::Provisional) => push(
-                "  order stays provisional (date)".to_owned(),
+                "order stays provisional (date)".to_owned(),
                 foreground(self.theme, Token::Warning),
+                Drop::Walk,
             ),
             None => {}
         }
         match &self.view.graphics {
-            Some(GraphicsStatus::Ok) => push("  gfx ok".to_owned(), muted),
+            Some(GraphicsStatus::Ok) => push("gfx ok".to_owned(), muted, Drop::Gfx),
             Some(GraphicsStatus::Failed(message)) => push(
-                format!("  gfx: {message}"),
+                format!("gfx: {message}"),
                 foreground(self.theme, Token::Warning),
+                Drop::Gfx,
             ),
             None => {}
         }
-        spans
+        items
     }
+}
+
+/// Between two items of the header's tail.
+const TAIL_SEPARATOR: &str = "  ";
+
+/// Which items of the header's tail give way first when the row is short
+/// (m8/15b, ticket 15 A2): the graphics status, then the walk (with its
+/// `Esc cancels` and order notice), then the filters, then the search. The
+/// operation banner, when there is one, outlasts them all.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Drop {
+    Gfx,
+    Walk,
+    Filters,
+    Search,
+}
+
+/// One item of the header's tail.
+struct TailItem {
+    text: String,
+    style: Style,
+    drop: Drop,
+}
+
+/// `items` in `room` cells: whole items dropped in [`Drop`] order until the
+/// rest fit. The last group standing, unless it is the search, is cut with
+/// `…` rather than dropped — a lone walk failure is shortened, never
+/// silently gone while any cell is free. The search is whole or not at all.
+fn fitted_tail(mut items: Vec<TailItem>, room: usize) -> Vec<Span<'static>> {
+    let width = |items: &[TailItem]| -> usize {
+        items
+            .iter()
+            .map(|item| text_width(&item.text))
+            .sum::<usize>()
+            + TAIL_SEPARATOR.len() * items.len().saturating_sub(1)
+    };
+    for drop in [Drop::Gfx, Drop::Walk, Drop::Filters, Drop::Search] {
+        if width(&items) <= room {
+            break;
+        }
+        let last_group = items.iter().all(|item| item.drop == drop);
+        if last_group && drop != Drop::Search {
+            break;
+        }
+        items.retain(|item| item.drop != drop);
+    }
+    let mut used = 0;
+    let mut spans = Vec::new();
+    for (index, item) in items.into_iter().enumerate() {
+        let text = if index == 0 {
+            item.text
+        } else {
+            format!("{TAIL_SEPARATOR}{}", item.text)
+        };
+        let left = room.saturating_sub(used);
+        if left == 0 {
+            break;
+        }
+        let text = fit(&text, left.min(text_width(&text)));
+        used += text_width(&text);
+        spans.push(Span::styled(text, item.style));
+    }
+    spans
 }
 
 /// Rows [`GraphView::banner`](super::GraphView::banner) takes: one per

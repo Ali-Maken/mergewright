@@ -4728,6 +4728,10 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         // code that decides it. The three `Resolver` forms above this arm
         // never reach the app.
         HintContext::Preview | HintContext::Resolver { .. } => None,
+        // A standing search (m8/15b): the row's form, led by `n N`.
+        HintContext::Searching(row) => {
+            classified_form(row).map(|row| HintContext::Searching(Box::new(row)))
+        }
         // The wrapper classifies as its row does.
         HintContext::OperationLive {
             row,
@@ -4959,6 +4963,9 @@ fn states_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<AppS
             if holds_stash_row(context) {
                 stash_under_cursor(&mut state);
             }
+            if holds_search(context) {
+                search_standing(&mut state);
+            }
             if divider == Divider::Shown && !state.detail.shown {
                 // On a commit, even where the cursor is on the working-tree
                 // row: a pane open on the working tree *is* the changes
@@ -5114,6 +5121,9 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         // on them.
         // A stash's row is the same screen; `states_for` puts the stash
         // under the cursor after `one_stash` (`stash_under_cursor`).
+        // A standing search is its row's screen too; `states_for` adds the
+        // search (`search_standing`, m8/15b).
+        HintContext::Searching(row) => screen_for(row),
         HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
         | HintContext::StashRow
@@ -5661,11 +5671,46 @@ fn stash_under_cursor(state: &mut AppState) {
     state.refs = Some(Arc::new(badges));
 }
 
+/// Whether `context` is, or wraps, a standing search's bar (m8/15b).
+fn holds_search(context: &HintContext) -> bool {
+    match context {
+        HintContext::Searching(_) => true,
+        HintContext::BackToBlame(row)
+        | HintContext::BackToHistory(row)
+        | HintContext::OperationLive { row, .. }
+        | HintContext::PaneFocused { row, .. } => holds_search(row),
+        _ => false,
+    }
+}
+
+/// A finished search over `state` with two hits — the first two rows on
+/// screen — its prompt closed: the screen of [`HintContext::Searching`]
+/// (m8/15b). Two, so `n` and `N` each move the selection.
+fn search_standing(state: &mut AppState) {
+    let ids: Vec<Oid> = state
+        .history
+        .as_ref()
+        .and_then(|history| history.window.as_ref())
+        .expect("rows on screen")
+        .rows
+        .iter()
+        .take(2)
+        .map(|row| row.commit.id)
+        .collect();
+    assert_eq!(ids.len(), 2, "two rows to find");
+    let mut search = Search::new(Query::parse("Commit").expect("a query"), 0, (0, 0));
+    search.batches = vec![Arc::from(ids)];
+    search.state = SearchState::Done { hits: 2 };
+    state.search = Some(search);
+    state.search_prompt = None;
+}
+
 /// Whether `context` is, or wraps, a stash's row.
 fn holds_stash_row(context: &HintContext) -> bool {
     match context {
         HintContext::StashRow => true,
         HintContext::Marked(row)
+        | HintContext::Searching(row)
         | HintContext::Rewritable(row)
         | HintContext::BackToBlame(row)
         | HintContext::BackToHistory(row)

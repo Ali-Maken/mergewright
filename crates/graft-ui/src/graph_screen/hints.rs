@@ -536,7 +536,9 @@ fn words_for(context: &HintContext) -> Words {
         | HintContext::ChangesPane { .. }
         | HintContext::Marked(_)
         | HintContext::PaneFocused { .. } => Words::Only,
-        HintContext::BackToBlame(inner) | HintContext::BackToHistory(inner) => words_for(inner),
+        HintContext::BackToBlame(inner)
+        | HintContext::BackToHistory(inner)
+        | HintContext::Searching(inner) => words_for(inner),
         HintContext::OperationLive { row, .. } => words_for(row),
         HintContext::Preview
         | HintContext::Banner { .. }
@@ -595,6 +597,7 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         | HintContext::Blame { .. }
         | HintContext::History { .. } => (drawable(context, divider), Some(DOORWAY)),
         HintContext::Marked(inner) => (marked_list(inner, divider), None),
+        HintContext::Searching(inner) => searching_bar(inner, divider),
         // The inner context's own bar, minus the key the focused pane has
         // nothing left to do with. Nothing else changes: every other key on
         // a row context is still answered with the pane up — the graph's
@@ -697,6 +700,20 @@ fn actions_unless_over_overlay(context: &HintContext, list: Vec<Hint>) -> Vec<Hi
     }
 }
 
+/// [`whole_bar`] for [`HintContext::Searching`] (m8/15b): `n next  N prev`
+/// lead the row's own bar, since the search is what he is moving through
+/// now. Any `n`/`N` the row had goes, so one key draws once.
+fn searching_bar(inner: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint>) {
+    let (list, trailer) = whole_bar(inner, divider);
+    let mut led = vec![SEARCH_NEXT, SEARCH_PREV];
+    led.extend(list.into_iter().filter(|hint| {
+        !hint.is(hint_keys::NEXT_MATCH)
+            && !hint.is(hint_keys::PREV_MATCH)
+            && !hint.is(hint_keys::NEXT_PREV_MATCH)
+    }));
+    (led, trailer)
+}
+
 /// `inner`'s whole bar with `lead` in front: the way back to a place.
 fn led_by(lead: Hint, inner: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint>) {
     let (list, trailer) = whole_bar(inner, divider);
@@ -768,6 +785,12 @@ const BACK_TO_HISTORY: Hint = hint(hint_keys::BACK, "back to history");
 /// `F history`: the focused pane's file traced
 /// ([`HintContext::PaneFocused`]'s `blamable`, m7-power-tools/21b).
 const F_HISTORY: Hint = hint(hint_keys::FILE_HISTORY, "history");
+
+/// `n next`: the search's next match ([`HintContext::Searching`], 15b).
+const SEARCH_NEXT: Hint = hint(hint_keys::NEXT_MATCH, "next");
+
+/// `N prev`: the search's previous match ([`HintContext::Searching`], 15b).
+const SEARCH_PREV: Hint = hint(hint_keys::PREV_MATCH, "prev");
 
 /// `⇥ banner`: the way back to a live operation's banner
 /// ([`HintContext::OperationLive`]).

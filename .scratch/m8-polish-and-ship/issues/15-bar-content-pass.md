@@ -1,6 +1,6 @@
 # G-bar — the bar offers what acts: at a stop, after a search, on stash rows, on his unpushed rows
 
-Status: partial — A1, A4, A5 and the palette check done; **A2 split off, not built** (see NOTES at the end).
+Status: done — A1, A4, A5 and the palette check here; **A2 built in `15b-search-leaves-the-footer.md`** (see its NOTES).
 (Amended 2026-10-08 after scout `.scratch/m8-polish-and-ship/scouts/15-bar-content.md`; the
 **Amendment** section below overrides the Rulings, Signatures and Acceptance sections where they differ)
 Build with: **Opus** — brownfield, four small list/fit changes plus one footer-precedence move, each held by a test;
@@ -145,11 +145,21 @@ the `is_stash` arm; the `Searching` wrap where the hint context is built. Both M
 - [x] A1 Every other `OperationLive` form (each `LiveC` × `tab_to_banner`) draws no `REFUSED_WHILE_LIVE` key (test).
       — `graft-ui` `hints::tests::no_live_operation_bar_offers_a_key_that_refuses_while_live` (all forms, 80–200,
       both dividers).
-- [ ] **Split off (A2, not built — see NOTES).** A2 Search: `/root ⏎` then the bar shows `n next  N prev` and the pane's keys; header tail shows the search text
+- [x] A2 Search (built in 15b): `/root ⏎` then the bar shows `n next  N prev` and the pane's keys; header tail shows the search text
       (was "the match count" — same text, as `Status` drew it); `Esc` clears both (tests).
-- [ ] A2 At a stop, `/root ⏎` draws the stop row with the stop's keys leading, `n N` after; the prompt still wins
+      — `graft` it `search_hint::after_enter_the_bar_is_the_rows_keys_and_the_search_is_in_the_header` (real
+      AppState, corpus octopus, `/topic ⏎`: header holds `Search::line` verbatim, bar starts ` n next · N prev · `
+      then `⏎ open`…; `Esc` → `state.search` is `None`, neither header nor bar has it); `graft-ui`
+      `hints::tests::a_search_after_enter_leads_the_row_bar_with_next_and_prev` (every row form × 80–160 × both dividers).
+- [x] A2 At a stop, `/root ⏎` draws the stop row with the stop's keys leading, `n N` after; the prompt still wins
       while open (the two tests replacing `footer.rs:334`, named).
-- [ ] A2 Header narrowing drops gfx, walk, filters, search, banner in that order, each whole (test).
+      — `graft-ui` `footer::tests::the_search_prompt_still_wins_over_a_stop` and
+      `footer::tests::after_enter_a_stop_row_is_drawn_and_the_search_moves_to_the_header`; order at every live `c`:
+      `hints::tests::at_a_stop_a_search_puts_next_and_prev_after_the_stops_keys`.
+- [x] A2 Header narrowing drops gfx, walk, filters, search, banner in that order, each whole (test).
+      — `graft-ui` `graph_screen::tests::header_narrowing_drops_gfx_walk_filters_search_banner_in_that_order`
+      (140→8 columns, each item whole or absent, never a later one gone while an earlier is drawn, all five steps
+      reached) and `graph_screen::tests::header_narrowing_drops_the_search_before_the_banner`.
 - [x] ~~`a amend` on the second unpushed row hinted iff resident (test), or NOTES states not resident with
       file:line and the conductor carries the row.~~ **Cut (A3):** not resident, file:line in A3; conductor files
       the gap row. Builder: no work.
@@ -168,12 +178,14 @@ the `is_stash` arm; the `Searching` wrap where the hint context is built. Both M
 - [x] `?`, `:`, `⌃P` on the graph each open the palette (test).
       — `graft` `update::tests::help_colon_and_ctrl_p_on_the_graph_each_open_the_palette` (asserts
       `state.palette.is_some()` after each press).
-- [ ] Captures: `docs/shots/m8-bar-edit-stop-120x36.txt`, `m8-bar-after-search-120x36.txt`,
+- [x] Captures: `docs/shots/m8-bar-edit-stop-120x36.txt`, `m8-bar-after-search-120x36.txt`,
       `m8-bar-stash-row-120x36.txt`, `m8-bar-head-row-100x30.txt` (HEAD's row with `a amend`, `u undo` present).
       **Colour unverified** (search-failed warning style).
       — **Partial:** three of four written, each asserted by its test: `rewrite_stop::capture_m8_bar_edit_stop_120x36`,
       `stash_in_history::capture_m8_bar_stash_row_120x36`, `hint_bar::capture_m8_bar_head_row_100x30`.
       `m8-bar-after-search-120x36.txt` belongs to A2 (split off). By-eye check is the user's (rule 6).
+      — **Fourth, 15b:** `m8-bar-after-search-120x36.txt` (3.2 KB, no home path), asserted by `graft` it
+      `search_hint::after_enter_the_bar_is_the_rows_keys_and_the_search_is_in_the_header`. Colour unverified.
 
 ## Touches
 - `hints/lists.rs` stop, row and new stash lists; `hints/fitting.rs` (A5); `every_context` + `coverage_slot` +
