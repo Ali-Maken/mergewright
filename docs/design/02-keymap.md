@@ -254,7 +254,7 @@ whether the write can stop halfway:
 | `R` | Open the rewrite editor (§2.7) on the cursor's row. Amended 2026-09-26 (M7, user "all yes") |
 | `C` | Open the branch picker (§2.16). Amended 2026-09-26 (M7, user "all yes") |
 | `o` | Take the cursor commit onto your branch (cherry-pick), previewed, `y`. Unsaved edits are set aside and put back (ADR-0045). Amended 2026-09-26 (M7, user "all yes") |
-| `m` | Merge selected branch into current |
+| `m` | Merge selected branch into current. Unsaved edits are set aside and put back (ADR-0045). Amended 2026-10-08 (M8/19d) |
 | `r` | Rebase current onto selection |
 | `b` | New branch from selected commit |
 | `t` | New tag at selected commit |
