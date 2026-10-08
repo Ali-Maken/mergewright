@@ -1,15 +1,20 @@
 # Merge over unsaved edits sets them aside; the tour's ages stop following the calendar; the whole-tour walk
 
-Status: draft (planner spec-only pass, 2026-10-08; rules on 19c-c NOTES :221-232 and :261-263)
-Build with: three parts. a and b have disjoint file sets and may run concurrently (two helpers max); c needs both.
+Status: draft (planner spec-only pass, 2026-10-08; rules on 19c-c NOTES :221-232 and :261-263). Amended 2026-10-08,
+planner follow-up on NOTES 19d-b: §R4, §R5 and part 19d-b2 added, and 19d-c gains C+3.
+Build with: four parts. a and b have disjoint file sets and may run concurrently (two helpers max). b2 comes after b.
+c comes last and needs all three.
 - **19d-a — Opus, xhigh.** Stash- and undo-adjacent: a wrong order or a missed resume path loses edits, and no diff shows
   it. Not Fable: no new structure. It is the third extension of a proven mechanism (11a cherry-pick, 03b ff-pull, both
   on the same `sets_aside` arm and the same table tests), and the round-trip tests below can show whether it is right.
 - **19d-b — Sonnet.** A pure parse, one read at launch, one default in the pty harness. Every signature is fixed below.
-- **19d-c — Opus.** The 19c-c walk, finished; pty and captures.
-Needs: 19c-a, 19c-b (merged), 19c-c partial (merged, 706d988f). 19d-c needs 19d-a and 19d-b.
+- **19d-b2 — Sonnet.** Mechanical: one constant moves, one test seam is fixed, and 19 producers and one pty default are
+  pinned. No production API. The rulings are §R4 and §R5.
+- **19d-c — Opus.** The 19c-c walk, finished; pty and captures. **Last.**
+Needs: 19c-a, 19c-b (merged), 19c-c partial (merged, 706d988f). 19d-b2 needs 19d-b (merged, partial). 19d-c needs
+19d-a, 19d-b and 19d-b2.
 Scout: 19d-a uses `.scratch/m8-polish-and-ship/scouts/merge-preview-dirty-index.md` (no second scout). 19d-b: none.
-MAP :91, :182 and :1116 are enough; the conductor decides.
+MAP :91, :182 and :1116 are enough; the conductor decides. 19d-b2: the sweep in NOTES 19d-b is its scout.
 ADR: **none new.** Nothing here is hard to reverse: the journal field (`put_back`) already exists and is additive
 (ADR-0045 §1), and `sets_aside` is one match arm. 19d-a appends an **ADR-0045 amendment** (text in §R1, last bullet),
 as 11a and 03b did.
@@ -116,6 +121,52 @@ as 11a and 03b did.
   launch: stderr `graft: GRAFT_NOW must be whole seconds since 1970, got <v>` (sanitised), exit 2. Never ignored
   (rule 3). G-rename 27's grep finds it, like `GRAFT_PRACTICE_EPOCH`.
 
+### R4. The sweep's split (NOTES 19d-b :269-275): pin every producer, freeze the orphans (19d-b2)
+- **One constant.** `PINNED_NOW` moves from `tests/it/pty.rs` to `graft_fixtures::PINNED_NOW` (same value,
+  `1_791_417_600`). graft-fixtures is the dev-only crate that tests, examples and `#[cfg(test)]` modules already
+  reach. `pty.rs` uses it from there.
+- **Fix the seam, not 15 call sites' symptoms.** `App::open_with_clock` (`tests/it/app_harness.rs:154`) pins the job
+  runner but not the frame. Make its clock reach the `Harness` clock too, so one clock covers the frame and the
+  journal stamps, as R3 says for the binary. The signature stays as it is. Then every producer that already goes
+  through it is pinned with no change at its site.
+- **In-process producers** (the 15 in NOTES :272): each one that writes a year-age capture builds with
+  `Clock::Fixed(graft_fixtures::PINNED_NOW)`. That is `open_with_clock` where it opens an `App`, or
+  `Harness { clock: Clock::Fixed(graft_fixtures::PINNED_NOW), ..Harness::default() }` where it builds a `Harness`.
+  **No new production constructor**, and `Harness::default()` stays `Wall` (the shipped headless path, `main.rs`,
+  and `places.rs:144` use it).
+- **Examples** m3/m4/m5 walk (`m3_walk.rs:168`, `m4_walk.rs:195`, `m5_walk.rs:214`) and the **gallery** (git-git,
+  workspace, 100k: `gallery.rs:53`, `:1007`): the same struct-update with the constant.
+- **Guard, so it stays fixed.** A test, `clock_pin::no_capture_producer_runs_on_the_wall_clock`, scans every source
+  file under `crates/graft/{tests,examples,src}` that writes a capture (calls `Captures::check`, or a local `shot`
+  helper over it). It fails when such a file names `Clock::Wall`, or builds `Harness::default()` without overriding
+  `clock`. Its message names the file and line. Why a scan: a rule only a reviewer checks is the "be careful" kind
+  that doesn't hold.
+- **About 70 captures with no producer: frozen, not re-homed.** No test asserts them, so they cannot go red. They are
+  each milestone's record as drawn on its day. Re-homing them would mean writing producers for evidence nobody
+  re-checks. Record them in `docs/shots/FROZEN.md`, one line each: `<file> · no producer · last changed <date>`, with
+  the date from `git log -1 --format=%cs`. NOTES names the script or command that built the list. **Contact sheets
+  are not frozen.** They are derived and are rebuilt from their parts (ADR-0037; 19d-c C+2 already rebuilds m7 and
+  m4). A sheet whose parts are frozen keeps those parts' text.
+- Expected: with `PINNED_NOW` = 2026-10-08 00:00 UTC, every asserted capture stays byte-identical, because each one
+  passed against today's wall clock. A capture that changes is listed in NOTES with its diff's lines. It is
+  regenerated only when every changed cell is an age.
+
+### R5. In-app commits under `GRAFT_NOW` draw `future` (NOTES 19d-b :268): pin git's dates in the harness, not in Graft
+- Status: observed once by 19d-b in its own test (`u_under_a_pinned_clock_undoes_the_newest`), which commits through
+  the app with git's wall date while the pin is earlier. It has not been seen in a committed capture.
+- **The tour's captures are not hit.** The 19c-c draft walk sets `GIT_AUTHOR_DATE` / `GIT_COMMITTER_DATE` itself, to
+  `EPOCH + 3600` (`handoff/19c-c-whole-walk.rs.txt:87-94`). So the commits at tasks 2, 6 and 7 are dated 2021 and draw
+  as years. 19d-c keeps that env (C+3).
+- **Rejected: Graft sets git's dates from `GRAFT_NOW`.** The shipped binary would write a date a test variable told it
+  into the user's commits. `GRAFT_NOW` is the clock Graft **reads**, nothing more. Fixtures already date commits from
+  outside the app (`graft_fixtures::git::run_at`, graft-fixtures MAP :32; 19c R2).
+- **Ruling: the pty harness dates commits by default.** `Pty::spawn*` sets `GIT_AUTHOR_DATE` and `GIT_COMMITTER_DATE`
+  to `"<PINNED_NOW − 3600> +0000"` unless the caller's env names them, the same rule as its `GRAFT_NOW` default. An
+  in-app commit then draws `1h`, and its id is the same every run.
+- **In-process producers:** git runs as a child of the test process. If one draws an in-app commit, the full run's
+  `grep -l future docs/shots` finds it. Pin it by giving that test's git child the dates. If that needs an env hook in
+  production code (the job runner), **stop and report**. Don't add one.
+
 ## Signatures
 ```rust
 // 19d-a, graft-ops — public signatures unchanged; behaviour per R1.
@@ -150,6 +201,14 @@ pub(crate) fn clock_from(var: Option<&std::ffi::OsStr>) -> Result<Clock, String>
 // tests/it/pty.rs
 pub const PINNED_NOW: i64; // chosen so no committed capture changes; named in NOTES
 // Pty::spawn* sets GRAFT_NOW = PINNED_NOW unless the caller's env names GRAFT_NOW.
+
+// 19d-b2, graft-fixtures (moved from tests/it/pty.rs; same value)
+/// 2026-10-08T00:00:00Z: the "now" every capture producer draws ages against.
+pub const PINNED_NOW: i64 = 1_791_417_600;
+// 19d-b2, crates/graft/tests/it/app_harness.rs — signature unchanged; its clock now also reaches the frame:
+//   App::open_with_clock(..., clock: Clock) → JobRunner::with_clock(clock) AND Harness { clock, .. }
+// 19d-b2, tests/it/pty.rs — Pty::spawn* also defaults, unless the caller names them:
+//   GIT_AUTHOR_DATE = GIT_COMMITTER_DATE = format!("{} +0000", graft_fixtures::PINNED_NOW - 3_600)
 ```
 
 ## 19d-a — merge sets aside (Opus xhigh, ~60k)
@@ -220,12 +279,43 @@ continue too). The conductor checks KNOWN_GAPS for a row.
       (`git status docs/shots` clean); `PINNED_NOW` named in NOTES. (ticked: full nextest 6127/6127, `git status --short docs/shots` empty)
 - [ ] Sweep: every `docs/shots/` capture that draws a year age (`\b\d+y\b`) maps to a pinned producer (pty default, or
       a `Harness` with `Clock::Fixed`). The list goes in NOTES. More than 10 unpinned harness producers → stop and
-      report the count.
+      report the count. **Moved to 19d-b2** (planner 2026-10-08): the stop condition fired, and §R4 rules the split.
 **Touches:** every pty test (default env), the 19c-c committed captures (`m8-tour-step1-120x36.txt`,
 `m8-tour-80x24.txt`: unchanged), G-rename 27's `GRAFT_*` list, KNOWN_GAPS `M8/19c-capture-age-roll` (the conductor
-closes it, naming `graft_now_pins_the_drawn_age`).
+closes it after 19d-b2, naming `graft_now_pins_the_drawn_age` and `no_capture_producer_runs_on_the_wall_clock`).
 
-## 19d-c — the whole-tour walk (Opus, ~35k)
+## 19d-b2 — every capture producer on the pinned clock; in-app commits dated (Sonnet, ~45k)
+**Crate set:** `crates/graft-fixtures` (`PINNED_NOW`, MAP line); `crates/graft` (test and example code only:
+`tests/it/pty.rs`, `tests/it/app_harness.rs`, `tests/it/clock_pin.rs`, the 15 test files in NOTES 19d-b :272,
+`examples/m3_walk.rs`, `examples/m4_walk.rs`, `examples/m5_walk.rs`, `examples/gallery.rs`, the `#[cfg(test)]` modules
+`src/view/tests.rs` and `src/update/tests.rs`); `docs/shots/FROZEN.md` (new); graft MAP (the `app_harness` and
+`pty` test entries). **No production file.** If one needs to change, stop and report.
+**Schedule:** after 19d-b. It shares the `crates/graft` tests with 19d-a. Before running them concurrently, the
+conductor checks the file sets are disjoint (19d-a's app test goes in a new file; `tour_tasks.rs` is 19d-a's).
+**Read first:** this file §R3-§R5 and NOTES 19d-b; graft MAP :91, :182, :1116; graft-fixtures MAP :32 and the
+`capture` lines; ADR-0037 (contact sheets).
+**Acceptance:**
+- [ ] `graft_fixtures::PINNED_NOW` = `1_791_417_600`, and `tests/it/pty.rs` uses it (no second literal; grep shows one):
+      `clock_pin::graft_now_pins_the_drawn_age` still green.
+- [ ] `App::open_with_clock` pins the frame. In-process, an `App` opened with `Clock::Fixed(t)` and with
+      `Clock::Fixed(t + 1y)` draws two different ages on one commit row:
+      `clock_pin::open_with_clock_pins_the_drawn_frame` (red before).
+- [ ] All 19 producers in NOTES 19d-b :269-273 build on `PINNED_NOW`, and the guard is green:
+      `clock_pin::no_capture_producer_runs_on_the_wall_clock`. It bites: adding `Clock::Wall` to one producer fails it.
+      Run that once, revert, and say so in NOTES.
+- [ ] An in-app commit in a pty run with no date env draws its age, not `future`:
+      `clock_pin::an_in_app_commit_under_the_default_pin_draws_an_age` (row reads `1h`; red before).
+      `u_under_a_pinned_clock_undoes_the_newest` still green.
+- [ ] Full suite green. `git status --short docs/shots` is empty except `FROZEN.md`, or every changed capture is listed
+      in NOTES with only age cells changed. `grep -l future docs/shots` → none, or each hit named in NOTES with why.
+- [ ] `docs/shots/FROZEN.md`: every year-age capture with no producer, one line each (§R4), with the method that built
+      the list named in NOTES. Each sheet that is a contact sheet is **not** listed.
+**Touches:** every pty test (two more default env vars; a caller naming them wins, which keeps 19c-c's and 19d-c's
+dates); every in-process capture test listed; the gallery and walk examples' captures (expected unchanged); G-rename
+27 (no new `GRAFT_*` read); KNOWN_GAPS `M8/19c-capture-age-roll` (the conductor closes it); the contact sheets
+(unchanged; their parts are unchanged).
+
+## 19d-c — the whole-tour walk (Opus, ~35k) — last
 What remains of 19c-c once a and b land: its four unbuilt boxes (19c-tour-remainder.md :195-214, the walk and two
 captures). Start from `.scratch/m8-polish-and-ship/handoff/19c-c-whole-walk.rs.txt`:
 - Move its test, `Walk` and `Before` into `tests/it/tour_walk.rs`. Drop the `PROBE` eprintln (:507-511). Use the
@@ -255,11 +345,16 @@ at 80×24; `~/code` under the header; card line 1 "top row" while the cursor is 
 workspace-wide, every part.
 
 ## Size
-a ~60k · b ~25k · c ~35k. Each fits one context. If one compacts, say so in NOTES.
+a ~60k · b ~25k · b2 ~45k · c ~35k. Each fits one context. If one compacts, say so in NOTES.
 
 ## 19d-c additions (conductor 2026-10-08, from 21c Part B hand-back — stale outputs, no new decision)
 - [ ] C+1: the M8 contact sheet gains `docs/shots/m8/21c-status-partial-fetch-120x40.txt`, `21c-journal-partial-fetch-120x40.txt`, `21c-journal-partial-fetch-80x24.txt` (ticket order, each under its "what right looks like" line).
 - [ ] C+2: rebuild the m7 contact sheet (9 m7 captures were regenerated by 21c B) and the m4 pty capture + m4 sheet 21c B left stale; `TESTING.md:1769` updated to match. Name the test or script that rebuilt each at tick.
+
+## 19d-c addition (planner 2026-10-08, §R5)
+- [ ] C+3: the walk keeps its own `GIT_AUTHOR_DATE` / `GIT_COMMITTER_DATE` (`EPOCH + 3600`, draft :87-94). They
+      override 19d-b2's pty default, so the commits from tasks 2, 6 and 7 draw as years. Neither new capture contains
+      `future`. Test: the same walk; assert `!screen.has("future")` before each `shot`.
 
 ## NOTES 19d-b (builder, 2026-10-08)
 - Verify first: premise true. No pin in the binary: `Clock::Wall` hardcoded at `event_loop/places.rs:263` (practice `now`) and `jobs/runner.rs:183`; `Harness::default()` at `places.rs:144` and `main.rs` headless path.
