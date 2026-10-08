@@ -1206,6 +1206,9 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/blame-place-ends-with | Q3: should `tests/it/blame_place.rs:160` go back from `contains` to `ends_with` now that the tail is off by default? | unverified (question) | 21, with m6/m7 |
 | M8/map-enter-words-at-empty | At Map Empty/Failed `⏎` only closes the Map (`update/map.rs:191`) but its words say "zoom to commits" (11e question) | **broken** | M8 |
 | M8/11e-captures-unjudged | `docs/shots/m8/doorway-{stash-120x36,stash-60x20,map-120x36,marked-140x40,journal-120x36}.txt` + J/S/Map footers in m2/m3/m7 shots: by-eye unjudged, colour unverified | **unverified** | M8 |
+| M8/launch-open-land-alike-flaky | `outside_repo::launch_and_open_land_alike` failed once under double load in 18d's run (base without 13m), passed 3/3 alone; 12d had already fixed one cause. Possibly 13m's promotion-snap cause (keys during load) — unverified | **broken** | M8 |
+| M8/18d-unbound-key-drop-untested | 18d: the first-launch line's unbound-key drop has no test; tour clause never drawn (no tour row yet → 19) | **unverified** | M8 |
+| M8/18d-captures-unjudged | `docs/shots/m8/first-launch-120x36.txt`, `first-launch-empty-state-120x36.txt`: by-eye unjudged, colour unverified | **unverified** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` 407 lines (~7 over); seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | RESOLVE_KEYS shown on screen via pressed.rs:156; the literal-key grep misses consts | **unverified** | M8 |
