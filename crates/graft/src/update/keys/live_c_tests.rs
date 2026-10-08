@@ -283,7 +283,31 @@ fn c_from_the_pane_and_from_the_banner_emit_the_same() {
             &state.working_tree,
         );
         assert_eq!(pane_commands, banner_commands, "{what:?}");
-        assert_eq!(pane.status, banner.status, "{what:?}");
+        // A refusal names the keys acting where each `c` was pressed
+        // (m8/10l): reason the same, keys each from its own place.
+        match (&pane.status, &banner.status) {
+            (
+                Status::Sticky {
+                    reason: p,
+                    keys: pk,
+                },
+                Status::Sticky {
+                    reason: b,
+                    keys: bk,
+                },
+            ) if p.ends_with("still conflicted") => {
+                assert_eq!(p, b, "{what:?}");
+                for (s, keys) in [(&pane, pk), (&banner, bk)] {
+                    let place = crate::update::edge::context_of(s);
+                    assert_eq!(
+                        keys,
+                        &crate::update::banner::resolve_keys(place, &s.keymap),
+                        "{what:?} at {place:?}"
+                    );
+                }
+            }
+            _ => assert_eq!(pane.status, banner.status, "{what:?}"),
+        }
         assert_eq!(pane.finish, banner.finish, "{what:?}");
         assert!(pane.commit_editor.is_none());
     }

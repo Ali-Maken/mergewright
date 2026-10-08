@@ -68,7 +68,7 @@ use pressed::{abort_pressed, skip_pressed};
 pub(crate) use pressed::{continue_pressed, continued_in_git};
 pub(super) use pressed::{continue_refused, land_after_continue_in_git};
 pub use resume::{cursor_conflict, edit_conflict, open_mergetool, resume, resumed};
-pub(crate) use resume::{edit_or_mergetool, mergetool_fallback};
+pub(crate) use resume::{edit_or_mergetool, mergetool_fallback, resolve_keys};
 #[cfg(test)]
 use resume::{kept_open, resumed_words};
 
@@ -344,9 +344,6 @@ pub fn continue_refusal(state: &AppState) -> Option<String> {
     let files = if count == 1 { "file" } else { "files" };
     Some(format!("{count} {files} still conflicted"))
 }
-
-/// The keys `continue_refusal`'s line offers.
-const RESOLVE_KEYS: &str = "M mergetool  e edit  space marks resolved";
 
 /// The keys a stopped-again or failed resume offers. `a` is in every one of
 /// them: the way back is never more than one key away.

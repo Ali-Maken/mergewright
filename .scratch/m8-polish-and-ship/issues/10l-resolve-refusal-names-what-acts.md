@@ -1,6 +1,6 @@
 # G-keymap 0l — `c`'s refusal at a conflict names keys that act where he is: `⏎ resolve` replaces `space marks resolved`
 
-Status: ready (conductor 2026-10-08) — was draft (planner spec-only pass 2026-10-08; rules KNOWN_GAPS `M8/resolve-refusal-space-dead`, 10k Part B's stop)
+Status: done (builder 2026-10-08) — was ready (conductor 2026-10-08) — was draft (planner spec-only pass 2026-10-08; rules KNOWN_GAPS `M8/resolve-refusal-space-dead`, 10k Part B's stop)
 Build with: **Sonnet** — ruled below; one const becomes a pure fn on 10j's existing pattern (`mergetool_fallback`,
 `edit_or_mergetool`), held by the 10k pin and a remap test. Not Fable: no signature others build on.
 Scout: **none** — 10k NOTES Part B is the scout (both callers, the place, the three rows, with lines). Check first
@@ -58,25 +58,25 @@ pub(crate) fn resolve_keys(ctx: ContextId, keys: &Keymap) -> Option<String>;
 last. Callers `pressed.rs:36–38` and `status_read.rs:77` pass them. NOTES quotes the final signature.
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] **Check first**: at base, `acting(Banner, ⏎)` is the row that opens the resolver (NOTES: its `ActionId`, line);
+- [x] **Check first**: at base, `acting(Banner, ⏎)` is the row that opens the resolver (NOTES: its `ActionId`, line);
   `M`, `e` as 10k pinned. `⏎` not a resolver row at Banner → **stop**, report the line.
-- [ ] Pin updated, red first: `update::tests::keymap_words::stops::the_resolve_keys_name_rows_that_act_where_the_refusal_is_shown`
+- [x] Pin updated, red first: `update::tests::keymap_words::stops::the_resolve_keys_name_rows_that_act_where_the_refusal_is_shown`
   — both callers: every clause in the words acts at the place he is left (`⏎`, `M`, `e`); `space` no longer named.
   Red on base (it names `space`), green after.
-- [ ] Spelled: `update::tests::keymap_words::stops::the_resolve_keys_spell_his_keys` — swept keymap → his labels as
+- [x] Spelled: `update::tests::keymap_words::stops::the_resolve_keys_spell_his_keys` — swept keymap → his labels as
   whole tokens; each row unbound → its clause gone; all unbound → no keys, no `·`, no `—`; shipped → exactly
   `⏎ resolve  M mergetool  e edit`.
-- [ ] Words: `update::banner::tests` :207, :945 expect `1 file still conflicted · ⏎ resolve  M mergetool  e edit`
+- [x] Words: `update::banner::tests` :207, :945 expect `1 file still conflicted · ⏎ resolve  M mergetool  e edit`
   (and the plural form); `…::the_refusal_counts_one_file_in_the_singular` green.
-- [ ] Palette path: `update::palette::tests::in_progress_rows_run_as_the_focused_banner_would` — for the Continue row
+- [x] Palette path: `update::palette::tests::in_progress_rows_run_as_the_focused_banner_would` — for the Continue row
   at a conflict stop the oracle compares the refusal **reason** and commands, keys excepted (the 12e `M` treatment);
   a new assert that the palette run's refusal names no key that does not act at `context_of`. Only that case edited.
-- [ ] `no_literal_keys::no_user_facing_literal_spells_a_default_key` green; `rg -n 'RESOLVE_KEYS|space marks resolved'
+- [x] `no_literal_keys::no_user_facing_literal_spells_a_default_key` green; `rg -n 'RESOLVE_KEYS|space marks resolved'
   crates` empty (output in NOTES).
-- [ ] M5 / M6 walks: any test quoting the old words (`rg` before) updated to the new and green; TESTING.md scenario 27
+- [x] M5 / M6 walks: any test quoting the old words (`rg` before) updated to the new and green; TESTING.md scenario 27
   (:2047–2049) reads the new words, and its next steps still hold (`Esc`, `space` in the changes pane, `⇥`, `c`).
-- [ ] Captures unchanged: `git diff --stat <base> -- docs/shots` empty.
-- [ ] MAP.md graft: `resolve_keys` beside `mergetool_fallback` (:476); :462 `continue_refused` line. Check: `rg -n
+- [x] Captures unchanged: `git diff --stat <base> -- docs/shots` empty.
+- [x] MAP.md graft: `resolve_keys` beside `mergetool_fallback` (:476); :462 `continue_refused` line. Check: `rg -n
   'resolve_keys' crates/graft/MAP.md`.
 
 ## Touches
@@ -92,3 +92,28 @@ last. Callers `pressed.rs:36–38` and `status_read.rs:77` pass them. NOTES quot
 
 ## Size
 ~25k: check-first 3k; fn + callers 5k; tests 9k; walks/TESTING 4k; NOTES/MAP 4k.
+
+## NOTES (builder, 2026-10-08)
+- No compaction. Scout: none (ticket rules 10k NOTES Part B is the scout; re-checked at base).
+- Check first: `acting(Banner, ⏎)` = `app.open` (Global row, `graft-ui/src/keymap/table.rs:99`); the banner answers
+  Enter by opening the resolver on the first conflicted file (`update/banner/focus_keys.rs:119-121`). `M`, `e` =
+  `operation.mergetool`, `operation.edit`. Held by the pin test.
+- Red shown: pin and spell test failed on the const (`left: Some("M mergetool  e edit  space marks resolved")`),
+  green after.
+- Final signature: `continue_refused(reason: String, ctx: ContextId, keys: &Keymap) -> Status`; `resolve_keys` lives
+  in `banner/resume.rs` beside `mergetool_fallback`. `⏎` clause only at `ContextId::Banner` (elsewhere `app.open`
+  drills into something else, not the resolver).
+- **Third caller found, not in spec:** `c` from the changes pane (`update/keys/live_c_tests.rs`
+  `c_from_the_pane_and_from_the_banner_emit_the_same`) also reaches `continue_refused`; at Changes it now says
+  `M mergetool  e edit` (no `⏎`, which does not resolve there). Test edited: reasons equal, keys each = `resolve_keys`
+  at its own `context_of`.
+- Palette path: Continue at a conflict stop gives the reason with keys `None` (Graph) — compared keys-excepted via
+  `keys_excepted` helper (`palette/tests.rs`).
+- `grep -rn 'RESOLVE_KEYS\|space marks resolved' crates` → empty. Callers of `continue_refused(`/`resolve_keys(`:
+  pressed.rs, status_read.rs, finish/tests.rs, banner/tests.rs, live_c_tests.rs, palette/tests.rs, stops.rs.
+- Walks: `tests/it/conflict_interim.rs:506` and `tests/it/m5_walk/conflicts.rs:248` updated; TESTING.md 27 updated,
+  its next steps unchanged.
+- Touches: hint bar, keymap table, graft-ui, docs/shots — `git diff --stat 4527016f -- docs/shots crates/graft-ui` empty.
+  Captures not re-shot (none hold the words; m5_walk See-label text changed but See labels are assertions, not shots —
+  unverified whether any capture prints the walk's status line; 11e's capture run will show).
+- Gates: fmt, clippy -D warnings, nextest 5901/5901 (10 skipped), test --doc all green, workspace-wide.

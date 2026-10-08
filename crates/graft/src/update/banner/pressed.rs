@@ -1,9 +1,9 @@
 //! What `c`, `s` and `a` do at a stop, and the hand-over to git when `c` needs it.
 
 use super::{
-    AppState, Command, ConfirmThen, InProgress, JobId, PendingConfirm, RESOLVE_KEYS, Resume,
-    ReturnTo, RewriteStop, Status, continue_refusal, edit_stop_lands_on_head, land_in_resolver,
-    live, resume, sanitize_line, stopped_again, unmerged_paths,
+    AppState, Command, ConfirmThen, InProgress, JobId, PendingConfirm, Resume, ReturnTo,
+    RewriteStop, Status, continue_refusal, edit_stop_lands_on_head, land_in_resolver, live, resume,
+    sanitize_line, stopped_again, unmerged_paths,
 };
 
 /// `c`: refuse in words while anything is unmerged, else run `--continue`
@@ -33,7 +33,13 @@ pub(crate) fn continue_pressed(
     }
     if let Some(reason) = continue_refusal(state) {
         match from {
-            ReturnTo::Banner => state.status = continue_refused(reason),
+            ReturnTo::Banner => {
+                state.status = continue_refused(
+                    reason,
+                    crate::update::edge::context_of(state),
+                    &state.keymap,
+                );
+            }
             ReturnTo::Resolver => {
                 crate::update::resolver::set_notice(
                     state,
@@ -149,11 +155,16 @@ pub(in crate::update) fn land_after_continue_in_git(
 }
 
 /// `c`'s refusal as the status line says it: the reason, and the keys that
-/// get the user out of it.
-pub(in crate::update) fn continue_refused(reason: String) -> Status {
+/// get the user out of it — only those acting at `ctx`, where he is left
+/// (m8/10l: [`super::resolve_keys`]).
+pub(in crate::update) fn continue_refused(
+    reason: String,
+    ctx: graft_ui::keymap::ContextId,
+    keys: &graft_ui::keymap::Keymap,
+) -> Status {
     Status::Sticky {
         reason,
-        keys: Some(RESOLVE_KEYS.to_owned()),
+        keys: super::resolve_keys(ctx, keys),
     }
 }
 

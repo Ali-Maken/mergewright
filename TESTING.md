@@ -2045,8 +2045,8 @@ and the exact git command are from the captures only.
     the line says `still in progress from a previous run`, git still
     merging.
 27. **continue-refuses-until-resolved-then-one-entry-undoes** — the stopped
-    merge; `c` at once: `1 file still conflicted · M mergetool  e edit
-    space marks resolved`, `MERGE_HEAD` still there and `write-tree`
+    merge; `c` at once: `1 file still conflicted · ⏎ resolve  M mergetool
+    e edit`, `MERGE_HEAD` still there and `write-tree`
     still refusing the index (an unmerged entry is what it refuses). Then
     `Esc`, `shared.txt` written as `resolved by hand\n`, `space` on it in
     the changes pane, `⇥` back to the banner, `c` again: git has **one**

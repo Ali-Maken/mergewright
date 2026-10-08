@@ -501,10 +501,7 @@ fn continue_refuses_while_unmerged_then_finishes() {
     match &refused.status {
         Status::Sticky { reason, keys } => {
             assert_eq!(reason, "2 files still conflicted");
-            assert_eq!(
-                keys.as_deref(),
-                Some("M mergetool  e edit  space marks resolved")
-            );
+            assert_eq!(keys.as_deref(), Some("⏎ resolve  M mergetool  e edit"));
         }
         other => panic!("`c` did not refuse in words: {other:?}"),
     }

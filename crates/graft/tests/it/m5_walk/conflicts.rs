@@ -214,8 +214,8 @@ fn conflict_survives_relaunch() -> Scenario {
 // ───────────────────────── finishing what stopped ────────────────────────
 
 /// What a person does to a conflicted `shared.txt`: write the resolution
-/// with an editor, then `space` on it in the changes pane — the banner's
-/// own `space marks resolved`.
+/// with an editor, then `space` on it in the changes pane, which is where
+/// `space` marks resolved (§2.6a).
 ///
 /// The banner is modal while focused, so `Esc` hands the keyboard back
 /// before the pane opens and `⇥` takes it again afterwards; without that
@@ -245,7 +245,7 @@ fn c_is_refused() -> Vec<Step> {
         key(ch('c')),
         Step::See("c refuses and names the keys that resolve it", |state| {
             status_containing(state, "1 file still conflicted")?;
-            status_containing(state, "space marks resolved")
+            status_containing(state, "⏎ resolve  M mergetool  e edit")
         }),
         Step::Mark("refused"),
     ]
