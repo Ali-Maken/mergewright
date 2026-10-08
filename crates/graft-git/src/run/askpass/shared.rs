@@ -6,8 +6,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
-use super::Secret;
 use super::peer::Refusal;
+use super::{Refused, Secret};
 
 /// What the listener thread shares with the server that owns it.
 #[derive(Default)]
@@ -54,7 +54,10 @@ impl Shared {
             None => Ok(()),
             Some((first, count)) => Err(io::Error::new(
                 io::ErrorKind::PermissionDenied,
-                format!("{first}; {count} refused in all"),
+                Refused {
+                    first: first.clone(),
+                    count: *count,
+                },
             )),
         }
     }

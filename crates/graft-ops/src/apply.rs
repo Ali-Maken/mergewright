@@ -48,7 +48,7 @@ use crate::facts;
 use crate::journal::{Journal, JournalError};
 use crate::operation::{Invocation, Operation, RepoFacts};
 
-pub use error::{AfterState, ApplyError, EditsAt};
+pub use error::{AfterState, ApplyError, EditsAt, RawStepOf, askpass_words};
 pub use recover::{Recovered, recover_interrupted};
 pub use remote::RemoteHooks;
 pub use restart::{RestartPlan, RestartReadError, StageSource, restart_gate, stage_source};

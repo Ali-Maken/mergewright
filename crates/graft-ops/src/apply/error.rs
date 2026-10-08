@@ -21,8 +21,21 @@ use super::{Applied, PrepareError, StoppedAt, remote};
 
 mod words;
 
+pub use words::askpass_words;
 pub(super) use words::{joined, not_as_they_were_words, staging_clause};
-use words::{journal_failed, staging_not_kept_words};
+use words::{journal_failed, lost_edit_words, staging_not_kept_words};
+
+/// Whose put-back's raw step failed, for
+/// [`AfterState::NotAsTheyWere`]'s words (20b R2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RawStepOf {
+    /// A set-aside put-back: `u` undoes the whole operation and does not
+    /// rewrite the path, so no route clause.
+    SetAside,
+    /// A lost edit's put-back: clearing the way, `u`, then the put-back
+    /// again brings his bytes back, and the words say so.
+    LostEdit,
+}
 
 /// Why an operation did not run, or did not finish.
 #[derive(Debug, thiserror::Error)]
@@ -244,8 +257,10 @@ pub enum AfterState {
     Unsealed(SnapshotError),
     /// The askpass server a remote invocation ran with could not be shut
     /// down cleanly: its socket or directory may be left in the temp dir.
-    /// The operation itself is unaffected.
-    #[error("the credential prompt's socket could not be cleaned up: {0}")]
+    /// The operation itself is unaffected. Or a program of another uid
+    /// connected and was turned away (a typed `Refused` payload): its own
+    /// words, [`askpass_words`] (m8-polish-and-ship/20b R1).
+    #[error("{}", askpass_words(.0))]
     AskPass(std::io::Error),
     /// The entry names a backup ref that no longer exists, so the after-state
     /// read by `resume` has nothing to hang off and is not sealed: something
@@ -324,6 +339,9 @@ pub enum AfterState {
         /// How many paths the raw step was to write (1 → the singular words;
         /// 0 when the check itself failed).
         files: usize,
+        /// Whose raw step: a lost edit's put-back gets the route clause in
+        /// [`explain`](Self::explain) (20b R2); a set-aside's does not.
+        of: RawStepOf,
     },
     /// A set-aside put-back brought his edits back, and the read that names
     /// the files that came back from the index failed
@@ -342,6 +360,11 @@ impl AfterState {
     pub fn explain(&self, keys: &dyn KeyNames) -> String {
         match self {
             AfterState::StagingNotKept { paths } => staging_not_kept_words(paths, keys),
+            AfterState::NotAsTheyWere {
+                error,
+                files,
+                of: RawStepOf::LostEdit,
+            } => lost_edit_words(error, *files, keys),
             other => other.to_string(),
         }
     }

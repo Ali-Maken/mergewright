@@ -16,6 +16,7 @@ fn not_as_they_were_says_the_edits_are_back_and_where_the_bytes_are() {
     let one = AfterState::NotAsTheyWere {
         error: denied("src/a.rs"),
         files: 1,
+        of: RawStepOf::SetAside,
     };
     assert_eq!(
         one.to_string(),
@@ -25,6 +26,7 @@ fn not_as_they_were_says_the_edits_are_back_and_where_the_bytes_are() {
     let more = AfterState::NotAsTheyWere {
         error: denied("src/b.rs"),
         files: 3,
+        of: RawStepOf::SetAside,
     };
     assert_eq!(
         more.to_string(),
@@ -34,11 +36,40 @@ fn not_as_they_were_says_the_edits_are_back_and_where_the_bytes_are() {
     let check = AfterState::NotAsTheyWere {
         error: RestoreError::Run(RunError::Unparsable("hash-object printed \"?\"".to_owned())),
         files: 0,
+        of: RawStepOf::SetAside,
     };
     assert_eq!(
         check.to_string(),
         "your edits are back · not written back as they were: git's output did not parse as \
          expected: hash-object printed \"?\" · their exact bytes are in the backup"
+    );
+}
+
+/// 20b R1: a peer of another uid turned away by the askpass socket gets its
+/// own words, read from the typed payload; a cleanup failure keeps the old
+/// words, even when its kind is `PermissionDenied` too.
+#[test]
+fn askpass_refusal_has_its_own_words() {
+    use std::io::{Error, ErrorKind};
+
+    use graft_git::run::askpass::Refused;
+
+    let refusal = AfterState::AskPass(Error::new(
+        ErrorKind::PermissionDenied,
+        Refused::new(
+            "refused a connection from uid 0 (this server serves uid 501)",
+            1,
+        ),
+    ));
+    assert_eq!(
+        refusal.to_string(),
+        "another user's program asked for your login and was turned away · nothing was sent: \
+         refused a connection from uid 0 (this server serves uid 501); 1 refused in all"
+    );
+    let cleanup = AfterState::AskPass(Error::new(ErrorKind::PermissionDenied, "rmdir denied"));
+    assert_eq!(
+        cleanup.to_string(),
+        "the credential prompt's socket could not be cleaned up: rmdir denied"
     );
 }
 

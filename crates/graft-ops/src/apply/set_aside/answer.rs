@@ -7,6 +7,7 @@ use graft_core::journal::{EntryStatus, JournalEntry, PutBackWhy};
 use graft_core::oid::Oid;
 use graft_git::run::RunError;
 
+use crate::apply::RawStepOf;
 use crate::apply::error::not_as_they_were_words;
 use crate::clash::Clash;
 use crate::facts::FactsError;
@@ -278,6 +279,7 @@ pub(super) fn answer_not_as_they_were(not_as_they_were: NotAsTheyWere) -> AfterS
     AfterState::NotAsTheyWere {
         error: not_as_they_were.error,
         files: not_as_they_were.files,
+        of: RawStepOf::SetAside,
     }
 }
 

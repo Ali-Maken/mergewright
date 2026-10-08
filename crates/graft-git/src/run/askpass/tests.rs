@@ -382,12 +382,12 @@ fn admit_takes_only_our_own_uid() {
     assert!(admit(Ok(501), 501).is_ok(), "same uid: served");
     assert_eq!(
         admit(Ok(0), 501).map_err(|refusal| refusal.to_string()),
-        Err("askpass: refused a connection from uid 0 (this server serves uid 501)".to_owned()),
+        Err("refused a connection from uid 0 (this server serves uid 501)".to_owned()),
         "another uid, root included, is refused"
     );
     assert_eq!(
         admit(Err(io::Error::other("no creds")), 501).map_err(|refusal| refusal.to_string()),
-        Err("askpass: refused a connection whose uid could not be read: no creds".to_owned()),
+        Err("refused a connection whose uid could not be read: no creds".to_owned()),
         "a peer whose uid cannot be read is refused, never assumed to be us"
     );
 }
@@ -404,7 +404,7 @@ fn peer_uid_of_a_real_connection_is_ours() {
 /// The server is told its owner is a uid this process is not, so the test
 /// process is "another user" to it: the different-uid path without root.
 #[test]
-fn a_peer_with_another_uid_is_refused_unanswered_and_never_asked() {
+fn a_refusal_is_typed() {
     let handler = Fixed::new(Some(b"s3c"));
     let stranger = nix::unistd::geteuid().as_raw().wrapping_add(1);
     let server = AskPassServer::spawn_owned_by(
@@ -427,14 +427,20 @@ fn a_peer_with_another_uid_is_refused_unanswered_and_never_asked() {
         "the handler was never asked for a refused peer"
     );
     respond(server.socket_path(), "again", &mut Vec::new()).expect_err("refused again");
-    let reported = server
-        .close()
-        .expect_err("close reports the refusals")
-        .to_string();
+    let error = server.close().expect_err("close reports the refusals");
+    let typed = refused(&error).expect("a refusal is typed, not only words");
+    assert_eq!(typed.count(), 2, "both refusals are counted");
+    assert_eq!(
+        typed.to_string(),
+        error.to_string(),
+        "the error's words are the payload's"
+    );
+    assert_eq!(error.kind(), io::ErrorKind::PermissionDenied);
+    let reported = error.to_string();
     assert_eq!(
         reported,
         format!(
-            "askpass: refused a connection from uid {} (this server serves uid {stranger}); \
+            "refused a connection from uid {} (this server serves uid {stranger}); \
              2 refused in all",
             nix::unistd::geteuid().as_raw()
         ),

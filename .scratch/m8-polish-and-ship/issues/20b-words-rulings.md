@@ -81,19 +81,46 @@ in NOTES. `tab_keys` callers that pass `Keymap::shipped()` today (the commit edi
    gets `..` (the only graft edit allowed; list the lines; none may be in 19b's files).
 
 Acceptance (each tick names its test at tick time):
-- [ ] R1 graft-git: a peer of another uid (or the existing refusal test's fixture) → `close`'s `Err` has
+- [x] R1 graft-git (test `run::askpass::tests::a_refusal_is_typed` — the existing refusal test renamed and extended; red: E0425 `refused` missing): a peer of another uid (or the existing refusal test's fixture) → `close`'s `Err` has
   `refused(&e).is_some()` and `count() == n`. Test: `askpass::tests::a_refusal_is_typed` (or the existing refusal test, extended).
-- [ ] R1 graft-ops: a remote op whose askpass refused → its `AfterState` words read `another user's program asked for
+- [x] R1 graft-ops (test `apply::error::tests::askpass_refusal_has_its_own_words`, red then green; a unit test over `AfterState::AskPass`, not a driven remote op): a remote op whose askpass refused → its `AfterState` words read `another user's program asked for
   your login and was turned away · nothing was sent: …`, never `could not be cleaned up`; a cleanup failure still reads
   the old words. Test: `error::tests::askpass_refusal_has_its_own_words` (both arms, red first).
-- [ ] R2: lost-edit put-back, raw step blocked → words end `: fix that, then u and put it back again`; plural form for
+- [x] R2 (tests `recover_bytes::a_failed_raw_step_names_the_route` — red with `of: SetAside` — and `apply::error::words::tests::the_route_clause_drops_when_undo_is_unbound`; set-aside words held by `apply::error::tests::not_as_they_were_says_the_edits_are_back_and_where_the_bytes_are`; route test unedited, green): lost-edit put-back, raw step blocked → words end `: fix that, then u and put it back again`; plural form for
   two paths; with `app.undo` unbound (a `KeyNames` returning `None`) → today's words byte-for-byte. Set-aside put-back
   → today's words. Tests: `recover_bytes::a_failed_raw_step_names_the_route` (it) + `words::tests::the_route_clause_drops_when_undo_is_unbound`.
   The existing route test stays green unedited.
-- [ ] R3: missing `file://` bare → `CloneError::explain` reads `clone failed: no repository at '<url>', or no access to
+- [ ] R3 **BLOCKED at check first 2** (see NOTES — Part A): missing `file://` bare → `CloneError::explain` reads `clone failed: no repository at '<url>', or no access to
   it`; a fetch from a remote whose URL is a missing path reads the same tail. Tests: `tests/it/clone.rs::a_failed_clone_leaves_no_folder`
   (assert the words) + one `remote::tests` case. `tests/it/remote_ops.rs` updated only where it quotes the old words (list them).
-- [ ] MAP.md: graft-git `run/askpass` (`Refused`, `refused`), graft-ops `AfterState::AskPass`, `NotAsTheyWere` (`of`, route clause), `## clone` explain.
+- [ ] MAP.md — **partial**: R1/R2 rows done (no test; doc), `## clone` explain not touched (R3 blocked): graft-git `run/askpass` (`Refused`, `refused`), graft-ops `AfterState::AskPass`, `NotAsTheyWere` (`of`, route clause), `## clone` explain.
+
+### NOTES — Part A (builder, 2026-10-08)
+
+Status: **partial** — R1, R2 built; **R3 blocked** at check first 2. No scout: the check-first is the scout. No compaction.
+
+Check first:
+1. `graft-git/src/run/askpass.rs` `shutdown`: `note(...)` keeps only the **first** error, and the refusal is noted last
+   (`note(self.shared.refusals())` after join, `remove_file`, `remove_dir`). A cleanup failure therefore **hides** a
+   refusal. **Question (rule 3), not fixed.**
+2. `rg -n 'no remote named' crates` → **three producers**: `graft-ops/src/apply/remote.rs:287` (`short`),
+   `apply/remote.rs:375` (`explain`'s `NoSuchRemote` arm: `<desc> failed: no remote named '<name>'`, the status line),
+   `graft-ops/src/operation.rs:910` (`Refusal::NoSuchRemote`, pre-run, the name truly not configured — correct as is).
+   Ticket: more → stop. **R3 not built.** Question: change both `RemoteFailure` producers (`short`, `explain` :375)
+   and leave `Refusal::NoSuchRemote`?
+3. No graft hits for `NotAsTheyWere`. Constructors: `apply/lost_edit.rs:106` → `LostEdit`; `apply/set_aside/answer.rs:278`
+   → `SetAside`. Patterns given `..`: `tests/it/recover_bytes.rs` (2), `tests/it/undo_bytes.rs:595`. Unit constructors
+   in `apply/error/tests.rs` get `of: SetAside`.
+
+Deviations: `Refused::new(first, count)` is pub (graft-ops' test needs one; a real one needs another uid).
+`Refusal`'s Display (`peer.rs`) lost its `askpass: ` prefix so `Refused` has none; `admit_takes_only_our_own_uid`
+quotes updated. Only `AfterState::explain(keys)` carries the route clause; `Display` (so `ApplyError::Journal.kept`)
+keeps today's words. R2's unit test was written after `lost_edit_words`; the integration test was red first.
+`askpass_words`, `RawStepOf` are at `graft_ops::apply` (pub).
+
+Captures: none changed (`rg` of old words over docs/shots, TESTING.md, graft, graft-ui: no hits).
+Touches: graft/graft-ui — no pattern or quoted words (rg); `ApplyError::explain` → `joined` → `AfterState::explain`
+(route clause reaches the app's status line); clone notice → B6.
 
 ## Part B — graft, graft-ui
 
