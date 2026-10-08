@@ -18,7 +18,7 @@ pub enum TourTask {
     Commit,
     /// An `Undo` whose root operation is a `Commit`.
     Undo,
-    /// A `StashPush`, then a later `StashApply` or `StashPop`.
+    /// A `StashPush`, then a `StashApply` or `StashPop` later in the journal.
     StashAndBack,
     /// A `BranchCreate`.
     Branch,
@@ -75,15 +75,18 @@ fn is_done(task: TourTask, entries: &[JournalEntry], conflicted: &BTreeSet<Entry
                 && root_operation(entries, entry)
                     .is_some_and(|root| root.kind == OperationKind::Commit)
         }),
-        TourTask::StashAndBack => entries.iter().any(|push| {
+        // "Later" is the journal's own order (`parse` keeps entries in the
+        // order they were opened), never id order: under a pinned clock
+        // (`GRAFT_NOW`) two ids share their millisecond and sort by their
+        // random half.
+        TourTask::StashAndBack => entries.iter().enumerate().any(|(at, push)| {
             push.kind == OperationKind::StashPush
                 && committed(push)
-                && entries.iter().any(|back| {
+                && entries[at + 1..].iter().any(|back| {
                     matches!(
                         back.kind,
                         OperationKind::StashApply | OperationKind::StashPop
                     ) && committed(back)
-                        && back.id > push.id
                 })
         }),
         TourTask::Branch => any_committed(entries, OperationKind::BranchCreate),

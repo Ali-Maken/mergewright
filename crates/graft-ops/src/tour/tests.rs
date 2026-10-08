@@ -548,6 +548,28 @@ fn stash_and_back_needs_a_push_then_a_later_apply_or_pop() {
     assert!(!done(&[push], TourTask::StashAndBack), "a push alone");
 }
 
+/// "Later" is journal order, not id order. Under a pinned clock
+/// (`GRAFT_NOW`) every entry of a run shares one millisecond, so two ids
+/// differ only in their random half and sort either way round. The pty
+/// test `task_4_ticks_by_setting_aside_and_bringing_back` failed about
+/// half its runs on exactly this.
+#[test]
+fn stash_and_back_reads_journal_order_when_ids_share_a_millisecond() {
+    let mut push = committed(1, OperationKind::StashPush, 1, 1);
+    push.id = EntryId::new(1, [0xff; 10]);
+    let mut pop = committed(1, OperationKind::StashPop, 1, 1);
+    pop.id = EntryId::new(1, [0x00; 10]);
+    assert!(pop.id < push.id, "the pop's id sorts first");
+    assert!(
+        done(&[push.clone(), pop.clone()], TourTask::StashAndBack),
+        "push written first, then pop"
+    );
+    assert!(
+        !done(&[pop, push], TourTask::StashAndBack),
+        "pop written first, then push"
+    );
+}
+
 fn only(merge: &JournalEntry) -> BTreeSet<EntryId> {
     BTreeSet::from([merge.id.clone()])
 }
