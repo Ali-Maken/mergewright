@@ -258,20 +258,23 @@ word change on a footer (Minor 2 is a row), and any hint-bar change.
 - [x] **A unchanged words**: `update::banner::tests` (the :207 and :945 cases), `conflict_interim` (:506) and — **ticked (Part A builder):** workspace `cargo nextest run` green; `git diff --stat` shows no change to `tests/it/conflict_interim.rs`, `tests/it/m5_walk/conflicts.rs`; `banner/tests.rs` changed only at :982 (the `resolve_keys` caller), not the :207/:945 cases; `no_literal_keys::no_user_facing_literal_spells_a_default_key` green in the same run.
   `m5_walk::conflicts` (:248) pass with no edit (`git diff` of those files is empty);
   `no_literal_keys::no_user_facing_literal_spells_a_default_key` is green.
-- [ ] **B1 move-only** (one commit):
+- [x] **B1 move-only** — **ticked (Part B builder):** `cargo nextest list --workspace` sorted before/after: `diff` empty (5986 lines). `map_screen.rs` 129 lines. `stash_screen.rs` production = 463 lines (over 400 → gap row M8/doorway-files-over-400, not fixed here). Line-set check (removed vs `tests.rs` lines, whitespace-stripped): only differences are `cargo fmt` re-wraps of 4 calls after de-indent and the two `mod tests {` wrappers. Deviation: two commits, not one — the move also had to carry the 6 Map insta snapshots to `map_screen/snapshots/` (insta resolves beside the source file; first run failed on `empty_snapshot`), committed separately as a pure rename. Stash tests have no snapshots.
+- B1 spec (as filed):
   - `cargo nextest list --workspace` before vs after: `diff` is empty (NOTES).
   - `map_screen.rs` ≤ 400 lines.
   - `stash_screen.rs` production lines (up to `#[cfg(test)] mod tests;`) are counted in NOTES. Over 400 → the number
     goes in the gap row, not fixed here.
   - A line-set check shows moves only (13l A1's method).
-- [ ] **B2 one rule**:
+- [ ] **B2 one rule** — **left open (Part B builder), one sub-check not met:** Loading arm is `return Line::styled(place_footer_text(&cancel, keys, usize::from(width)), muted);` ✓. `footer_line` 37 lines (render.rs :133–169) ✓. Named tests pass unedited in workspace `cargo nextest run` (5986/5986) ✓. **But** `rg -n 'join\(' map_screen/render.rs` still shows `:155` — the Ready arm's keys-part join. `place_footer_text` takes no notes, so Ready can't use it; removing that join needs a notes-aware text helper in `hints/fitting.rs` (15's file, outside this crate slice). Conductor: accept, or add the helper after 15 merges. Private items as written: `fn ready_clauses(&self) -> Vec<String>`, `fn notes(&self, muted: Style) -> Vec<(String, Style)>`, `fn footer_line(&self, width: u16) -> Line<'static>` (unchanged).
+- B2 spec (as filed):
   - The Loading arm is the single call `place_footer_text(…)`. Quote it in NOTES; `rg -n 'join\(' map_screen/render.rs`
     shows no footer join left.
   - `footer_line` is ≤ 40 lines (count in NOTES).
   - These pass unedited: graft-ui `footer_ends_with_the_keys_doorway` (Map), `footer_never_draws_a_fragment`,
     `the_doorway_ends_the_keys_and_the_notes_follow`; graft
     `the_map_loading_footer_draws_the_doorway_only_if_question_mark_answers`.
-- [ ] **B captures byte-identical**: plain `cargo nextest run` (no `GRAFT_UPDATE_SHOTS`) is green;
+- [x] **B captures byte-identical** — **ticked (Part B builder):** plain `cargo nextest run --workspace --no-fail-fast` 5986 passed, 12 skipped; `git diff --stat 9f1f3835 -- docs/shots` empty; no `.snap.new` left.
+- B captures spec (as filed): plain `cargo nextest run` (no `GRAFT_UPDATE_SHOTS`) is green;
   `git diff --stat <base> -- docs/shots` is empty (shown).
 - [ ] **C0 generators**: for each file in the C table, NOTES gives the command run and the header line that ties the
   file to it. The m7 sheet is classed as script-built or record, with its header quoted.
