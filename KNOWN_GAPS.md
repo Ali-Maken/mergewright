@@ -1228,6 +1228,9 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/18c-captures-unjudged | 18c clone prompt / credential box captures and 4 re-shot empty-state captures: not judged by eye; colour unverified | **unverified** | M8 |
 | M8/tour-leftover-after-kill | Practice-repo temp dirs from a killed process are not swept — sweeping temp by name could delete another Graft's live tour; the OS reaps temp (19 amendment) | **unverified** | past v1 |
 | M8/19-one-hunk-cut | Tour task 1 ticks on any Committed `Stage`, not "one hunk": the journal's `Touches` has no hunk count (graft-core/src/journal.rs:161); needs a journal-format field (19 amendment) | **unverified** | past v1 |
+| M8/15b-stale-search-records | `docs/shots/m2-18-*-search-enter*` and `26-search-far*` show the pre-15b footer; hand-shot records no test rebuilds (15b builder) | **broken** | M8 (28 contact sheet) |
+| M8/15b-deviations | 15b chose, against A2's letter: search reaches the header via `GraphView::search_tail` (no `HeaderView::search`); `n`/`N` lead the bar only with a hit (dead keys otherwise); a last non-search header item is cut with `…` not dropped. Planner/usability walk to confirm | **unverified** | M8 |
+| M8/15b-captures-unjudged | `m8-bar-after-search-120x36`, re-shot `m8/search-hint-120x36`, and 15's 3 m8-bar captures: not judged by eye; header search colour unverified | **unverified** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` 407 lines (~7 over); seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |
