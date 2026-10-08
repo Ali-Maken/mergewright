@@ -1,6 +1,6 @@
 # 15b — Search leaves the footer after ⏎ (split from 15, A2)
 
-Status: ready (conductor 2026-10-08) — split from `15-bar-content-pass.md` along its own seam; no new decision.
+Status: ready (conductor 2026-10-08; 15 merged) — split from `15-bar-content-pass.md` along its own seam; no new decision.
 Build with: **Opus** (as 15).
 Blocked by: 15 (merged first: `Searching` slots and fit order build on its A1/A4/A5).
 
