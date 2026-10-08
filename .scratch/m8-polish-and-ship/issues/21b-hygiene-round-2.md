@@ -513,3 +513,4 @@ ef6d2dc0 (8), 8a059fe0 (revert of an over-wide sed in 4, test margin in 1). Gate
 
 ## 21b-5 additions (conductor 2026-10-08, from docs/reviews/m8-bars-hygiene.md M1 — fixes as the review states them; adds graft-ui files to 21b-5's crate set)
 - [ ] 5+1: move-only, each ≤400 by `wc -l` on the committed file: graph_screen `layout.rs` header tail (:263–303 + its three types) → `graph_screen/header_tail.rs`; graft-ui `footer.rs` inline tests → `footer/tests.rs`; `view/rows.rs` hint-context classification (`cursor_row_context`, `cursor_is_stash`, `search_wrapped`, `live_wrapped`, `back_to_place`) → a `view/rows/` child; `catalogue.rs` (634) by its own seam. Re-locate; quote before/after `wc -l` at tick.
+- [ ] 5h (19d-c hand-back): finishing a paused merge keeps `your edits are back` in the words — `update/banner/resume.rs:447-449` `resumed_done` overwrites `also`; keep both. New test seen red first.

@@ -318,3 +318,6 @@ Rows whose expiry was M6, closed with the evidence named inline. Re-expired and 
 | M8/tour-task4-flake | Cause: graft-ops `tour/tasks.rs:86` ordered stash push/pop by ULID; a pinned clock gives same-ms ids that sort by random bits. Fix: journal order. 7/12 → 30/30 green; regression test red before. Closed 2026-10-08 by debugger. |
 | M8/merge-preview-dirty-index | Merge sets aside unsaved edits (cherry-pick rule), preview shows set-aside + put-back rows. Closed 2026-10-08 by 19d-a/a2 (tests/it/merge_set_aside.rs). |
 | M8/landed-mark-lost-on-clash | `ApplyError::Clashed` carries `stopped_at`. Closed 2026-10-08 by 19d-a3. |
+| M8/19c-tour-task6-refused | Whole tour passes in card order (19d-c `tour_walk`). Closed 2026-10-08. |
+| M8/19c-capture-age-roll | Pinned clock + pty git dates; tour captures stable over 2 runs. Closed 2026-10-08 by 19d-b/b2/c. |
+| M8/19d-pin-future-commits | pty harness dates in-app commits (R5); tour captures carry no `future`. Closed 2026-10-08 by 19d-b2/c. |

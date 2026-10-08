@@ -1271,18 +1271,19 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/test-files-over-400 | `graft-ui/src/context_menu/tests.rs` 441, `stash_screen/tests.rs` 424. Review m6. → 25. | **broken** | M8 |
 | M8/bars-stale-wording | Stale wording left by 15/15b/11f/21b (list: docs/reviews/m8-bars-hygiene.md minor 7). → 23 docs pass. | **broken** | M8 |
 | M8/15-a2-no-prior-art | 15 A2 (where a standing search lives) has no Prior art row in docs/design-notes/m8-polish-and-ship.md:39–115. Review m8. Before the usability walk. | **broken** | M8 |
-| M8/19c-capture-age-roll | Tour captures go red when ages roll 6y→7y (19c-c NOTES). Unverified. | **unverified** | M8 |
 | M8/21c-sheets-stale | m7 contact sheet, m4 pty capture + sheet, TESTING.md:1769 stale after 21c B; 21c captures not on the M8 sheet. → 19d-c additions C+1/C+2. | **broken** | M8 |
 | M8/21c-row-cuts-moves | Question for the stop (what he sees): at 120 and 80 cols a long fetch failure cuts `origin/main moved…` off the J row; full words only on the status row and expanded row. Accept, or moves first? | **unverified** | M8 |
 | M8/19d-clock-sweep | 19 capture producers still unpinned (m3/m4/m5 walk examples, gallery git-git/workspace/100k, 15 in-process tests; `App::open_with_clock` pins the runner, not the drawn frame); ~70 captures have no current producer. List in 19d ticket NOTES 19d-b. Ages in those can still roll. Needs a split ruling. | **broken** | M8 |
-| M8/19d-pin-future-commits | Under `GRAFT_NOW`, commits made in the app carry the real date and draw `future` (19d-b saw it in its own test). Hits 19d-c tour captures (tasks 2, 6, 7 make commits). Needs a ruling. | **unverified** | M8 |
 | M8/19d-b2-open-unguarded | 19d-b2: 6 producers stay on wall clock (in-process git commits need a production hook, §R5 stop); guard misses `App::open`; FROZEN.md list heuristic; 2 new tests not seen red; 3600 s age draws `60m` not `1h`. | **unverified** | M8 |
 | M8/pick-post-commit-hold | Pick post-commit hold (planner 19d R7 notes; not built in 19d). | **broken** | M8 |
 | M8/resume-git-stopped-words | Resume "git was stopped" wording for a residual stop (19d-a2 / R7). | **unverified** | M8 |
 | M8/clash-unknown-kind-reachable | Clash notice fallback for an unknown kind now names no kind (R7.1); whether the app can reach that arm is unverified. | **unverified** | M8 |
 | M8/19d-a3-80x24-no-stash-row | At 80x24 the paused-merge relaunch capture lands on the Detail tab, no stash row — R7.2 premise fails there; box left open. Whether the graph tab draws the stash row at 80x24 unverified. | **unverified** | M8 |
 | M8/landed-clash-exit-line | Question: Landed + a put-back clash — the exit line says Landed and doesn't name the clash (19d-a3). | **unverified** | M8 |
-| M8/19c-tour-task6-refused | Following the tour card in order, task 6 merge was refused by git (staged notes.txt). Merge now sets aside (19d-a); the whole-tour walk proving the tour passes is 19d-c. | **unverified** | M8 |
+| M8/merge-finish-drops-edits-back | Finishing a paused merge drops the `your edits are back` words: `crates/graft/src/update/banner/resume.rs:447-449` (`resumed_done` overwrites `also`). The edits do come back (walk reads git). → 21b-4 additions 5h. | **broken** | M8 |
+| M8/m4-07-future-rows | m4-07 re-shoot draws `future`: frame pinned (`m4_walk.rs:197`) but journal rows wall-dated; re-shoot reverted, m4 sheet stale. Stamp line unverified. | **broken** | M8 |
+| M8/tour-step7-capture-bare | `m8-tour-step7-conflict-120x36.txt` has no header, card or stop line (caption says so) — whether the resolver screen should show the tour card is unverified. | **unverified** | M8 |
+| M8/m8-contact-sheet-21c | The 21c captures go on the M8 contact sheet when 28 builds it (19d-c C+1). | **broken** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` **429** lines at the split (12f's 407 was false — review m8-palette-landing-stop C1); `listing.rs` 424 also over → 21b-4 additions; seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |
