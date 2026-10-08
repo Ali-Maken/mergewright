@@ -59,8 +59,7 @@ pub(super) const JOURNAL: &[HintKey] = &[key("graph.journal")];
 pub(super) const STATUS: &[HintKey] = &[key("graph.status")];
 pub(super) const RENDERER: &[HintKey] = &[key("graph.renderer")];
 
-// §2.3a–c Map, confirm box.
-pub(super) const SEEK: &[HintKey] = &[key("map.seek")];
+// §2.3b–c confirm box.
 pub(super) const CONFIRM_YES: &[HintKey] = &[key("confirm.yes")];
 pub(super) const CONFIRM_MOVE: &[HintKey] = &[key("confirm.left"), key("confirm.right")];
 pub(super) const CONFIRM_CHOOSE: &[HintKey] = &[key("confirm.choose")];
@@ -123,13 +122,6 @@ pub(super) const HEATMAP: &[HintKey] = &[key("blame.heatmap")];
 pub(super) const IGNORE_REVS: &[HintKey] = &[key("blame.ignore_revs")];
 pub(super) const NEXT_PREV_CHANGE: &[HintKey] =
     &[key("history.next_change"), key("history.prev_change")];
-
-// §2.9 Stash, §2.11 Journal.
-pub(super) const STASH_APPLY: &[HintKey] = &[key("stash.apply")];
-pub(super) const STASH_POP: &[HintKey] = &[key("stash.pop")];
-pub(super) const STASH_DROP: &[HintKey] = &[key("stash.drop")];
-pub(super) const STASH_BRANCH: &[HintKey] = &[key("stash.branch")];
-pub(super) const JOURNAL_REVERT: &[HintKey] = &[key("journal.revert")];
 
 // Text fields: their keys are their defaults (module docs).
 pub(super) const FIELD_ENTER: &[HintKey] = &[fixed("app.open")];

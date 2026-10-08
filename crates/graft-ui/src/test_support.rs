@@ -144,3 +144,117 @@ pub(crate) fn wide_history(topics: u8) -> Vec<Row> {
         },
     )
 }
+
+/// His keymap with `ids` set to `none`.
+pub(crate) fn unbound(ids: &[&str]) -> crate::keymap::Keymap {
+    crate::keymap::Keymap::with_overrides(
+        &ids.iter()
+            .map(|id| ((*id).to_owned(), vec!["none".to_owned()]))
+            .collect::<Vec<_>>(),
+        crate::keymap::KeySwitches::default(),
+    )
+    .0
+}
+
+/// **One check for the journal, stash and Map footers** (m8/11e F2, E1).
+/// `bottom(width, keys)` draws the place at `width` under `keys` and hands
+/// back its footer row, trailing blanks trimmed. `clauses` are its full key
+/// clauses under the shipped keymap, `notes` its notes as drawn
+/// (`" · +3 more"`), in order.
+///
+/// - 48, 80, 120, 200: the keys end with `? keys`; with `help` unbound,
+///   `⌃P keys`; with `palette` unbound too, no doorway and no stray
+///   separator.
+/// - 20..=200: every piece drawn is whole — one of the clauses, the
+///   doorway, or its bare `?` — and once `? keys` is drawn, every wider
+///   width draws it too.
+pub(crate) fn assert_place_footer(
+    what: &str,
+    clauses: &[&str],
+    notes: &[&str],
+    bottom: impl Fn(u16, &crate::keymap::Keymap) -> String,
+) {
+    assert_footer_doorway(what, notes, &bottom);
+    assert_footer_whole(what, clauses, notes, &bottom);
+}
+
+/// A footer row's key pieces: `notes` stripped off its end, the rest split
+/// at its two-space joins.
+fn footer_pieces(what: &str, line: &str, notes: &[&str]) -> Vec<String> {
+    let mut keys_part = line.to_owned();
+    for note in notes.iter().rev() {
+        if let Some(rest) = keys_part.strip_suffix(note) {
+            keys_part = rest.to_owned();
+        }
+    }
+    assert!(
+        !keys_part.contains(" · "),
+        "{what}: a note cut or out of order: {line:?}"
+    );
+    if keys_part.is_empty() {
+        return Vec::new();
+    }
+    keys_part.split("  ").map(str::to_owned).collect()
+}
+
+/// The doorway half of [`assert_place_footer`]: 48, 80, 120, 200 cells.
+pub(crate) fn assert_footer_doorway(
+    what: &str,
+    notes: &[&str],
+    bottom: &impl Fn(u16, &crate::keymap::Keymap) -> String,
+) {
+    let shipped = crate::keymap::Keymap::shipped();
+    let pieces = |line: &str| footer_pieces(what, line, notes);
+    let no_help = unbound(&["app.help"]);
+    let neither = unbound(&["app.help", "app.palette"]);
+    for width in [48u16, 80, 120, 200] {
+        let line = bottom(width, shipped);
+        assert!(
+            pieces(&line).last().is_some_and(|last| last == "? keys"),
+            "{what} at {width}: the keys do not end with `? keys`: {line:?}"
+        );
+        let line = bottom(width, &no_help);
+        assert!(
+            pieces(&line).last().is_some_and(|last| last == "⌃P keys"),
+            "{what} at {width}, `help` unbound: {line:?}"
+        );
+        let line = bottom(width, &neither);
+        let drawn = pieces(&line);
+        assert!(
+            !line.contains("keys") && !line.starts_with(' ') && !line.starts_with('·'),
+            "{what} at {width}, both unbound: {line:?}"
+        );
+        assert!(
+            drawn.iter().all(|piece| !piece.is_empty()),
+            "{what} at {width}, both unbound: a stray separator: {line:?}"
+        );
+    }
+}
+
+/// The whole-clause half of [`assert_place_footer`]: 20..=200 cells.
+pub(crate) fn assert_footer_whole(
+    what: &str,
+    clauses: &[&str],
+    notes: &[&str],
+    bottom: &impl Fn(u16, &crate::keymap::Keymap) -> String,
+) {
+    let shipped = crate::keymap::Keymap::shipped();
+    let pieces = |line: &str| footer_pieces(what, line, notes);
+    let mut drawn_before = false;
+    for width in 20..=200u16 {
+        let line = bottom(width, shipped);
+        let drawn = pieces(&line);
+        for piece in &drawn {
+            assert!(
+                clauses.contains(&piece.as_str()) || piece == "? keys" || piece == "?",
+                "{what} at {width}: `{piece}` is a fragment: {line:?}"
+            );
+        }
+        let has = drawn.last().is_some_and(|last| last == "? keys");
+        assert!(
+            has || !drawn_before,
+            "{what}: `? keys` drawn below {width} but not at it: {line:?}"
+        );
+        drawn_before |= has;
+    }
+}

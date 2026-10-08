@@ -1,0 +1,44 @@
+# m8/doorway-map-120x36.txt: 120x36, drawn by `view::view` from the AppState
+# `update::tests` builds for: map, +3 more, partial
+# (crates/graft/src/update/tests.rs, capture_the_keys_doorway_for_docs_shots).
+# Not a pty capture: a character grid, no colour (CLAUDE.md rule 5 — colour
+# unverified).
+#
+# Here the Map (M) with three branches more than it shows and a row cut short. Right: the footer reads keys, then `? keys`, then ` · +3 more · partial` (m8/11e E2).
+
+MAP · b0 · last 1 day                                                                                                   
+  BRANCH                    NOW                                                                                         
+▸ b0                            ●                                                                                       
+  b1                                                                                                                    
+  b2                                                                                                                    
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+j/k select  ⏎ zoom to commits  M/esc back  ? keys · +3 more · partial                                                   

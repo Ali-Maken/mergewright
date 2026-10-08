@@ -16,9 +16,10 @@
 //! wide terminal still teaches `q quit` or `x compare`).
 //!
 //! The per-context lists are the design note's priority table
-//! (`docs/design-notes/m5-history-and-ghost-preview.md`, "Hint bar") — with
-//! `Journal`, `Stash` and `Map`, which the note leaves out, taken from
-//! `docs/design/02-keymap.md` §2.11, §2.9 and §2.3a.
+//! (`docs/design-notes/m5-history-and-ghost-preview.md`, "Hint bar"). The
+//! journal, stash and Map draw their own footers (`journal_screen`,
+//! `stash_screen`, `map_screen`), which take the doorway from
+//! [`doorway_words`] and shed by [`fit_place_footer`] (m8/11e).
 //!
 //! **A hint is only drawn once its key is bound.** Every entry carries a
 //! [`HintState`]: the table stays as the design wrote it, but
@@ -45,6 +46,7 @@ pub use fitting::{
     HINT_SEPARATOR, StopWording, fit_status_line, hints_text, stopped_row, stopped_row_before_keys,
 };
 use fitting::{Words, fit_list};
+pub(crate) use fitting::{fit_place_footer, place_footer_text};
 use lists::{TAIL, context_list};
 pub use lists::{blame_place_list, history_place_list};
 
@@ -464,18 +466,43 @@ fn spelled_bar(
 ) -> (Vec<Hint>, Option<Hint>) {
     let (list, trailer) = whole_bar(context, divider);
     let list = spelled(list, keys);
-    // `? keys`, or `⌃P keys` when `?` is unbound (m8/11b decision 1).
-    let trailer = trailer.map(|door| {
-        if door == DOORWAY && DOORWAY.labels(keys).is_empty() {
-            DOORWAY_BY_PALETTE
+    // `? keys`, or `⌃P keys` when `?` is unbound (m8/11b decision 1): the
+    // one fallback, [`doorway_hint`], which the place footers spell too.
+    let trailer = trailer.and_then(|door| {
+        if door == DOORWAY {
+            doorway_hint(keys)
         } else {
-            door
+            Some(door)
         }
     });
     let trailer = trailer.filter(|door| {
         spelled(list.iter().copied().chain([*door]).collect(), keys).len() > list.len()
     });
     (list, trailer)
+}
+
+/// The doorway his keymap can spell: [`DOORWAY`], else
+/// [`DOORWAY_BY_PALETTE`] when `app.help` is unbound, else `None`. The one
+/// home of that fallback (m8/11e F2): the bar and the place footers both
+/// read it.
+fn doorway_hint(keys: &Keymap) -> Option<Hint> {
+    [DOORWAY, DOORWAY_BY_PALETTE]
+        .into_iter()
+        .find(|door| !door.labels(keys).is_empty())
+}
+
+/// The bar doorway as his keymap spells it: `? keys`, else `⌃P keys` when
+/// `help` is unbound, else `None`. The one source: `spelled_bar` and the
+/// journal / stash / Map footers all call it (m8/11e F2).
+#[must_use]
+pub fn doorway_words(keys: &Keymap) -> Option<String> {
+    doorway_hint(keys).and_then(|door| door.text(keys))
+}
+
+/// The doorway's bare key (`?`, or `⌃P`): the rung below
+/// [`doorway_words`] on a footer too narrow for the words (ADR-0039).
+pub(crate) fn doorway_key(keys: &Keymap) -> Option<String> {
+    doorway_hint(keys).and_then(|door| door.key_text(keys))
 }
 
 /// `list` less every hint that names no live key, and less every hint
@@ -516,9 +543,6 @@ fn words_for(context: &HintContext) -> Words {
         | HintContext::ConfirmBox { .. }
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
-        | HintContext::Journal
-        | HintContext::Stash
-        | HintContext::Map
         | HintContext::Picker
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Resolver { .. }
@@ -560,15 +584,13 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         // The rewrite editor is modal (keymap §2.7): no doorway.
         | HintContext::RewriteEditor { .. }
         | HintContext::RewriteMessage => (drawable(context, divider), None),
-        // The overlays and places are modal for keys but not for the bar
-        // (m8/11c decision 1): `?` answers before any of them
-        // (`graft::update::keys`, `palette::open_key`) and lists the place's
-        // own keys, so they end with the doorway. No `. more`: `.` is
-        // swallowed there.
-        HintContext::Journal
-        | HintContext::Stash
-        | HintContext::Map
-        | HintContext::PaneOverOverlay { .. }
+        // The places, and the pane over an overlay, are modal for keys but
+        // not for the bar (m8/11c decision 1): `?` answers before any of
+        // them (`graft::update::keys`, `palette::open_key`) and lists the
+        // place's own keys, so they end with the doorway. No `. more`: `.`
+        // is swallowed there. The journal, stash and Map draw their own
+        // footers, which take the doorway from [`doorway_words`] (m8/11e).
+        HintContext::PaneOverOverlay { .. }
         | HintContext::Blame { .. }
         | HintContext::History { .. } => (drawable(context, divider), Some(DOORWAY)),
         HintContext::Marked(inner) => (marked_list(inner, divider), None),
@@ -811,9 +833,6 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
             context,
             HintContext::Banner { .. }
                 | HintContext::Dragging
-                | HintContext::Journal
-                | HintContext::Stash
-                | HintContext::Map
                 | HintContext::Picker
                 | HintContext::PaneOverOverlay { .. }
                 | HintContext::Resolver { .. }

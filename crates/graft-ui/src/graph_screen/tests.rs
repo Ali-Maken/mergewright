@@ -1473,8 +1473,6 @@ fn every_hint_context() -> Vec<HintContext> {
             tab: TabWord::Graph,
             over_overlay: false,
         },
-        HintContext::Journal,
-        HintContext::Stash,
     ];
     let marked = plain
         .iter()
@@ -1974,7 +1972,7 @@ fn capture_hint_bar_for_docs_shots() {
 /// The shrink ladder, for the user's eye (m5/24 and m5/28, ADR-0039;
 /// CLAUDE.md rule 6 — nobody here ticks "looks right").
 ///
-/// Writes `docs/shots/m5-hints-ladder.txt`: the same six contexts at 80,
+/// Writes `docs/shots/m5-hints-ladder.txt`: the same five contexts at 80,
 /// 120 and 160 cells of bar, as built. The A/B comparison that used to
 /// follow them is gone — the variants were the question, the user answered
 /// it (variant B, the doorway leading the bare keys), and as-built is now B,
@@ -1984,14 +1982,14 @@ fn capture_hint_bar_for_docs_shots() {
 #[test]
 #[allow(
     clippy::too_many_lines,
-    reason = "six contexts, three widths and the header each block explains itself with, not logic"
+    reason = "five contexts, three widths and the header each block explains itself with, not logic"
 )]
 fn capture_the_ladder_for_docs_shots() {
     use super::hints::{Divider, hints_for, hints_text};
 
     let mut shots = graft_fixtures::Captures::new();
 
-    let cases: [(&str, HintContext, Divider); 6] = [
+    let cases: [(&str, HintContext, Divider); 5] = [
         (
             "the cursor is on the uncommitted-changes row",
             HintContext::WorkingTreeRow,
@@ -2029,11 +2027,6 @@ fn capture_the_ladder_for_docs_shots() {
                 over_overlay: false,
             },
             Divider::Shown,
-        ),
-        (
-            "the undo journal browser has focus",
-            HintContext::Journal,
-            Divider::Hidden,
         ),
     ];
     let widths = [80u16, 120, 160];
@@ -2107,40 +2100,6 @@ fn capture_the_ladder_for_docs_shots() {
             ));
             out.push_str("\n\n");
         }
-    }
-
-    out.push_str(
-        "=== `rev` — revert's only home, the undo journal browser ===\n\
-         #\n\
-         # `revert` keeps its short form under the m5/27 rule — `rev` is a clean\n\
-         # prefix, not a squeeze or a substitution. But `rev` is also a git word\n\
-         # meaning *revision* (`rev-parse`, `rev-list`), and that clash is the\n\
-         # user's to judge, not the builder's — this section exists only to put it\n\
-         # in front of him.\n\
-         #\n\
-         # It cannot be shown at 80, 120 or 160 cells: the journal browser's whole\n\
-         # list is `⏎ revert  esc close`, two hints, and that fits whole (plus\n\
-         # `? keys`) from about 28 cells of bar — every width in the three-width\n\
-         # matrix above is past that, so the journal row there always reads\n\
-         # `⏎ revert  esc close  ? keys` in full, never `rev`. Below is the\n\
-         # narrowest room `rev` actually appears in, computed the same way as\n\
-         # every row above: `hints_for`, nothing hand-set.\n\
-         \n",
-    );
-    for columns in [16u16, 20, 24, 27] {
-        let hints = hints_for(
-            &HintContext::Journal,
-            Divider::Hidden,
-            columns,
-            crate::keymap::Keymap::shipped(),
-        );
-        out.push_str(&format!(
-            "--- the undo journal browser has focus, {columns} cells\n"
-        ));
-        out.push_str(&ruler(columns));
-        out.push('\n');
-        out.push_str(&hints_text(&hints, crate::keymap::Keymap::shipped()));
-        out.push_str("\n\n");
     }
 
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -2366,8 +2325,9 @@ fn row_at_is_none_off_the_body() {
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination (54 → 63 in m6-conflicts/50: the confirm box
 /// once per `ConfirmYes`; 111 → 112 in m8-polish-and-ship/13: `Quit`, whose
-/// place after `Redo` (63) was already the changes pane's).
-const COVERAGE_SLOTS: usize = 116;
+/// place after `Redo` (63) was already the changes pane's; 116 → 113 in
+/// m8/11e: `Journal`, `Stash` and `Map` deleted, their slots refilled).
+const COVERAGE_SLOTS: usize = 113;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2429,8 +2389,6 @@ fn coverage_slot(context: &HintContext) -> usize {
         } => 4 + 2 * usize::from(*skippable) + usize::from(*conflicted),
         HintContext::Preview => 8,
         HintContext::ChangesPane { .. } => changes_pane_slot(context),
-        HintContext::Journal => 11,
-        HintContext::Stash => 12,
         HintContext::Dragging => 13,
         HintContext::Marked(_) => 14,
         // 15, 16, 73, 79, 80.
@@ -2459,13 +2417,13 @@ fn coverage_slot(context: &HintContext) -> usize {
         // m7-power-tools/10: the branch picker's one bar.
         HintContext::Picker => 89,
         // m7-power-tools/08: the rewrite editor's four flag pairs (96–99),
-        // its field (100), `R rewrite` on a commit row (101).
+        // its field (17, once 100), `R rewrite` on a commit row (112, once 101;
+        // both moved when m8/11e retired the journal, stash and Map slots).
         HintContext::RewriteEditor { narrow, can_start } => {
             96 + 2 * usize::from(*narrow) + usize::from(*can_start)
         }
-        HintContext::RewriteMessage => 100,
-        HintContext::Rewritable(_) => 101,
-        HintContext::Map => 17,
+        HintContext::RewriteMessage => 17,
+        HintContext::Rewritable(_) => 112,
         HintContext::PaneOverOverlay { opens: false } => 18,
         HintContext::PaneOverOverlay { opens: true } => 19,
         HintContext::Resolver { .. } => resolver_slot(context),
@@ -2531,20 +2489,21 @@ fn pane_focused_slot(context: &HintContext) -> usize {
 fn changes_pane_slot(context: &HintContext) -> usize {
     match context {
         // m8/09e (11b row 553): over the Map, journal or stash list, `live`
-        // is not read (no `c` in any form) — `⇥ graph` 112–113, `⇥ diff`
-        // 114–115, each over `unmerged`.
+        // is not read (no `c` in any form) — `⇥ graph` 100–101, `⇥ diff`
+        // 11–12, each over `unmerged` (112–115 until m8/11e retired slots
+        // 11, 12 and 17 with the journal, stash and Map contexts).
         HintContext::ChangesPane {
             unmerged,
             tab: TabWord::Graph | TabWord::Banner,
             over_overlay: true,
             ..
-        } => 112 + usize::from(*unmerged),
+        } => 100 + usize::from(*unmerged),
         HintContext::ChangesPane {
             unmerged,
             tab: TabWord::Diff,
             over_overlay: true,
             ..
-        } => 114 + usize::from(*unmerged),
+        } => 11 + usize::from(*unmerged),
         // Nothing live: `⇥ graph` from the diff keeps 9–10; `⇥ diff` from
         // the file list is 63–64 (m6-conflicts/70). `⇥ banner` with nothing
         // live is not a screen, and shares 9–10.

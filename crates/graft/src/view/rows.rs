@@ -659,7 +659,8 @@ pub(crate) fn back_to_place(state: &AppState, context: HintContext) -> HintConte
 /// `update::keys::pane_and_overlay_key` decides it:
 ///
 /// - the graph has focus, so the overlay is first and answers everything:
-///   its own list;
+///   no context here — the overlay's own footer is the bar (m8/11e F2), and
+///   the frame draws no graph bar under it;
 /// - the detail pane has focus, so `detail::keys::detail_key` is first and
 ///   the overlay swallows whatever the pane leaves: the pane's own keys
 ///   and the two globals that are dispatched above both
@@ -678,10 +679,21 @@ pub(crate) fn back_to_place(state: &AppState, context: HintContext) -> HintConte
 /// row (`view::frame::split_for_detail`). A bar drawn for it would be a
 /// bar the app never shows.
 fn overlay_context(state: &AppState) -> Option<HintContext> {
-    let overlay = match state.graph_overlay()? {
-        GraphOverlay::Map => HintContext::Map,
-        GraphOverlay::Journal => HintContext::Journal,
-        GraphOverlay::Stash => HintContext::Stash,
+    match state.graph_overlay()? {
+        // The Map, the journal and the stash list draw their own footers
+        // (graft-ui `map_screen`, `journal_screen`, `stash_screen`), which
+        // carry their keys and the `? keys` doorway (m8/11e F2: one bar per
+        // place). With the graph focused there is no hint bar on the frame
+        // to be about: `view::frame` draws the overlay where the graph would
+        // be, and the Detail tab's row needs the pane focused. So, as for the
+        // commit editor, the overlay adds no context of its own: the caller
+        // answers for the graph under it, a bar the frame never draws.
+        GraphOverlay::Map | GraphOverlay::Journal | GraphOverlay::Stash
+            if state.graph_has_focus() =>
+        {
+            return None;
+        }
+        GraphOverlay::Map | GraphOverlay::Journal | GraphOverlay::Stash => {}
         GraphOverlay::CommitEditor => return None,
         // Modal over the graph and the pane (keymap §2.7): its own bar.
         GraphOverlay::Rewrite => return crate::view::rewrite_editor::rewrite_context(state),
@@ -696,9 +708,6 @@ fn overlay_context(state: &AppState) -> Option<HintContext> {
         GraphOverlay::Finish => return Some(super::finish::finish_context(state)),
         // Modal over the graph and the pane (keymap §2.1): its own bar.
         GraphOverlay::Place => return place_context(state),
-    };
-    if state.graph_has_focus() {
-        return Some(overlay);
     }
     // The changes pane answers its own keys ahead of the overlay (`space`,
     // `d`, `⌃A`, `e`, `⇥`): its own bar, less what the overlay swallows

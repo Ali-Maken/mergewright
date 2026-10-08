@@ -1,6 +1,5 @@
 ---
 source: crates/graft-ui/src/map_screen.rs
-assertion_line: 266
 expression: "draw(&sample_view(false), 120, 40)"
 ---
 "MAP · main · last 40 days                                                                                               "
@@ -42,4 +41,4 @@ expression: "draw(&sample_view(false), 120, 40)"
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-"j/k select  ⏎ zoom to commits  M/esc back                                                                               "
+"j/k select  ⏎ zoom to commits  M/esc back  ? keys                                                                       "

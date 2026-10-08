@@ -1,13 +1,18 @@
 # m8/doorway-journal-120x36.txt: 120x36, drawn by `view::view` from the AppState
-# `update::tests::states_for` builds for Journal
+# `update::tests` builds for: journal row 0
 # (crates/graft/src/update/tests.rs, capture_the_keys_doorway_for_docs_shots).
 # Not a pty capture: a character grid, no colour (CLAUDE.md rule 5 — colour
 # unverified).
 #
-# Here the journal (J) is open with the graph's keyboard, the detail pane shut. The bar drawn is the journal's own footer (graft-ui `journal_screen.rs` `footer`, :243), not `HintContext::Journal`'s, so it has **no** `? keys`: R1 reaches this screen only where that context is drawn (11d NOTES finding).
+# Here the journal (J) is open with the graph's keyboard, the detail pane shut. Right: its footer ends `J/esc close  ? keys` — the doorway last, after the journal's own keys (m8/11e F2).
 
 JOURNAL · what happened in this repo, newest first                                                                      
-▸ ●  Graft          57y ago   commit "x"                                   the index · backup saved                 ← u 
+▸ $  outside Graft  57y ago   moved main to 0303030                                                                     
+                              git: "reset: moving to HEAD~1"                                                            
+     └ ✗ lost       0404040 "D" · was main's tip · main is gone                                                         
+  $  outside Graft  57y ago   committed "D" on main                                                                     
+  $  outside Graft  57y ago   switch from spike to main                                                                 
+  ●  Graft          57y ago   commit "x"                                   the index · backup saved                 ← u 
   a branch deleted outside Graft and never checked out leaves no trace here                                             
                                                                                                                         
                                                                                                                         
@@ -35,10 +40,5 @@ JOURNAL · what happened in this repo, newest first
                                                                                                                         
                                                                                                                         
                                                                                                                         
-                                                                                                                        
-                                                                                                                        
-                                                                                                                        
-                                                                                                                        
-                                                                                                                        
 ● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds                  
-⏎ undo this  / find  space command log  J/esc close                                                                     
+⏎ put main back to before this  b new branch here  / find  J/esc close  ? keys                                          

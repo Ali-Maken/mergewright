@@ -41,4 +41,4 @@
 "                                                                                                                        "
 "                                                                                                                        "
 "● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds                  "
-"⏎ revert to before this  / find  space command log  J/esc close                                                         "
+"⏎ revert to before this  / find  space command log  J/esc close  ? keys                                                 "

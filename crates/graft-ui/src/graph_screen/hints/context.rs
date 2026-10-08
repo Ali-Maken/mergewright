@@ -104,16 +104,9 @@ pub enum HintContext {
         /// by `graft`'s `view::rows::overlay_context`.
         over_overlay: bool,
     },
-    /// The undo journal browser has focus (overlay; draws its own footer
-    /// today — reserved for the `?` help overlay, M8).
-    Journal,
-    /// The stash list has focus (overlay; draws its own footer today —
-    /// reserved for the `?` help overlay, M8).
-    Stash,
-    /// The Map view has focus (overlay; draws its own footer today, which
-    /// carries no keys — `docs/design/02-keymap.md` §2.3a is where this
-    /// list comes from).
-    Map,
+    // No `Journal`, `Stash` or `Map`: those overlays draw their own footers
+    // (`journal_screen`, `stash_screen`, `map_screen`), which carry the
+    // doorway from `hints::doorway_words` — one bar per place (m8/11e F2).
     /// The branch picker (`C`, m7-power-tools/10) is up: a text field over
     /// the lower graph that answers typing, `⏎`, `⇥`, `↑↓` and `Esc`.
     Picker,

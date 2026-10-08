@@ -340,13 +340,13 @@ fn the_bar_follows_the_selected_row() {
     let grid = draw(&view, 187, 14);
     assert_eq!(
         grid[13],
-        "⏎ put main back to it  b new branch here  / find  J/esc close"
+        "⏎ put main back to it  b new branch here  / find  J/esc close  ? keys"
     );
     view.selected = 0;
     view.enter_words = None;
     view.branch_here = false;
     let grid = draw(&view, 187, 14);
-    assert_eq!(grid[13], "/ find  space command log  J/esc close");
+    assert_eq!(grid[13], "/ find  space command log  J/esc close  ? keys");
 }
 
 /// `b new branch here` is drawn from `branch_here` alone (m7/30o Minor 2):
@@ -357,7 +357,10 @@ fn the_bar_offers_b_only_where_b_names_a_commit() {
     view.selected = 2;
     view.enter_words = Some("put main back to it".to_owned());
     let grid = draw(&view, 187, 14);
-    assert_eq!(grid[13], "⏎ put main back to it  / find  J/esc close");
+    assert_eq!(
+        grid[13],
+        "⏎ put main back to it  / find  J/esc close  ? keys"
+    );
 }
 
 /// A box docked over J names the keys; J's bar is blank under it.
@@ -424,7 +427,7 @@ fn the_bar_offers_n_n_only_with_a_find_kept() {
     let grid = draw(&view, 187, 14);
     assert_eq!(
         grid[13],
-        "⏎ put main back to it  / find  n/N match  J/esc close"
+        "⏎ put main back to it  / find  n/N match  J/esc close  ? keys"
     );
 }
 
@@ -504,4 +507,107 @@ fn the_journal_spells_every_key_from_his_keymap() {
     );
     assert_spelled(&legend(&keys), &keys, &[&["app.undo"]]);
     assert_spelled(&empty(&keys), &keys, &[&["app.undo"]]);
+}
+
+/// J's bottom row at `width` under `keys`, trailing blanks trimmed.
+fn footer_row(view: &JournalView, width: u16, keys: &Keymap) -> String {
+    let theme = theme();
+    let mut terminal = Terminal::new(TestBackend::new(width, 14)).expect("the test backend starts");
+    terminal
+        .draw(|frame| {
+            frame.render_widget(
+                JournalScreen {
+                    view,
+                    theme: &theme,
+                    keys,
+                },
+                frame.area(),
+            );
+        })
+        .expect("the widget draws");
+    let buffer = terminal.backend().buffer();
+    (0..width)
+        .map(|x| buffer[(x, 13)].symbol())
+        .collect::<String>()
+        .trim_end()
+        .to_owned()
+}
+
+/// m8/11e F2, E3: J's own footer is the bar he sees, so it carries the
+/// doorway — on every row kind, and while the read is not ready
+/// (`close  ? keys`).
+#[test]
+fn footer_ends_with_the_keys_doorway() {
+    for (what, view, clauses) in &footer_cases() {
+        crate::test_support::assert_place_footer(what, clauses, &[], |width, keys| {
+            footer_row(view, width, keys)
+        });
+    }
+}
+
+/// Every row kind J draws a footer for, and not ready, each with the full
+/// clauses it draws under the shipped keymap.
+fn footer_cases() -> Vec<(&'static str, JournalView, Vec<&'static str>)> {
+    let mut cases: Vec<(&str, JournalView, Vec<&str>)> = Vec::new();
+    // A Graft row: `⏎` worded, its command log.
+    let mut graft = view(
+        vec![row("2m ago", "commit \"x\"", RowMark::NextUndo)],
+        JournalStatus::Ready,
+    );
+    graft.enter_words = Some("undo this".to_owned());
+    graft.branch_here = true;
+    cases.push((
+        "graft row",
+        graft,
+        vec![
+            "⏎ undo this",
+            "b new branch here",
+            "/ find",
+            "space command log",
+            "J/esc close",
+        ],
+    ));
+    // A row `⏎` cannot name (a fetch, a live step): no `⏎` clause.
+    cases.push((
+        "no ⏎ words",
+        view(mock_rows(), JournalStatus::Ready),
+        vec!["/ find", "space command log", "J/esc close"],
+    ));
+    // A shell step, and a lost commit with a find kept.
+    let mut shell = view(mock_rows(), JournalStatus::Ready);
+    shell.selected = 1;
+    shell.enter_words = Some("put main back to before this".to_owned());
+    cases.push((
+        "shell row",
+        shell,
+        vec!["⏎ put main back to before this", "/ find", "J/esc close"],
+    ));
+    let mut lost_row = view(mock_rows(), JournalStatus::Ready);
+    lost_row.selected = 2;
+    lost_row.enter_words = Some("put main back to it".to_owned());
+    lost_row.branch_here = true;
+    lost_row.find = Some(JournalFindView {
+        query: sanitize("main"),
+        at: Some(1),
+        of: 2,
+    });
+    cases.push((
+        "lost row, find kept",
+        lost_row,
+        vec![
+            "⏎ put main back to it",
+            "b new branch here",
+            "/ find",
+            "n/N match",
+            "J/esc close",
+        ],
+    ));
+    for status in [
+        JournalStatus::Loading,
+        JournalStatus::Empty,
+        JournalStatus::Failed(sanitize("bad journal")),
+    ] {
+        cases.push(("not ready", view(Vec::new(), status), vec!["J/esc close"]));
+    }
+    cases
 }

@@ -5,7 +5,8 @@
 # Here the cursor is on an evil merge that is the current branch's tip, marked by the
 # radar, the pane shut. Right (m8/11d R2): `. explain` leads, `u undo` is drawn, and
 # `? keys` is not — it ranks right after `u undo` and `/ search` and is drawn, last,
-# only once both are (a plain marked row needs 129 cells of bar); `?` still answers.
+# only once both are (a marked branch tip needs 137 cells of bar, m8/11e F1);
+# `?` still answers.
 
  ◆ api  ~/code/api · main                                                                                     4 commits
 

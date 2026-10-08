@@ -17,6 +17,7 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::detail::{FileListView, FileRowKind};
 use crate::fit::fit;
+use crate::graph_screen::hints::place_footer_text;
 use crate::keymap::{ActionId, Keymap};
 use crate::paint::foreground;
 use crate::text_input::{FieldView, FieldWidget};
@@ -185,8 +186,11 @@ impl StashScreen<'_> {
         format!("STASHES ({})", self.view.rows.len())
     }
 
-    /// The keys, spelled out. `⏎ apply` first: it is what the list is for.
-    fn footer(&self) -> String {
+    /// The keys, spelled out, fitted to `width`. `⏎ apply` first: it is
+    /// what the list is for. The list's own keys end with the `? keys`
+    /// doorway and shed by the journal's rule (m8/11e F2, E1); the save
+    /// prompt's line is the prompt's, with no doorway (`?` types there).
+    fn footer(&self, width: u16) -> String {
         // The box over the list holds every key and draws its own footer:
         // the list's bar would name keys it does not answer (review 86, M2).
         if self.view.box_open {
@@ -205,22 +209,27 @@ impl StashScreen<'_> {
             );
         }
         let keys = self.keys;
-        match self.view.status {
-            StashStatus::Ready => spelled(
-                keys,
-                &[
-                    ("stash.apply", "apply"),
-                    ("stash.pop", "pop"),
-                    ("stash.save", "save"),
-                    ("stash.drop", "drop"),
-                    ("stash.preview", "files"),
-                    ("app.back", "close"),
-                ],
-            ),
+        let parts: &[(&'static str, &str)] = match self.view.status {
+            StashStatus::Ready => &[
+                ("stash.apply", "apply"),
+                ("stash.pop", "pop"),
+                ("stash.save", "save"),
+                ("stash.drop", "drop"),
+                // A branch from the stash under the cursor (§2.9's order);
+                // Ready is the only status with one selected (m8/11e G1).
+                ("stash.branch", "branch"),
+                ("stash.preview", "files"),
+                ("app.back", "close"),
+            ],
             StashStatus::Loading | StashStatus::Empty | StashStatus::Failed(_) => {
-                spelled(keys, &[("stash.save", "save"), ("app.back", "close")])
+                &[("stash.save", "save"), ("app.back", "close")]
             }
-        }
+        };
+        let clauses: Vec<String> = parts
+            .iter()
+            .filter_map(|(id, verb)| keys.key_verb(&[ActionId(id)], verb))
+            .collect();
+        place_footer_text(&clauses, keys, usize::from(width))
     }
 
     /// One row of the list.
@@ -409,7 +418,7 @@ impl Widget for StashScreen<'_> {
             return;
         }
         let footer_y = area.bottom().saturating_sub(1);
-        set_text(buf, area.x, footer_y, area, &self.footer(), muted);
+        set_text(buf, area.x, footer_y, area, &self.footer(area.width), muted);
         if area.height == 2 {
             return;
         }
@@ -704,7 +713,7 @@ mod tests {
                 view,
                 theme: &theme,
             }
-            .footer()
+            .footer(400)
         };
         assert_spelled(
             &footer(&ready),
@@ -743,5 +752,114 @@ mod tests {
             &footer(&empty_list),
             &[&["app.open"], &["app.next_pane"], &["app.back"]],
         );
+    }
+
+    /// The bottom row of the stash list at `width` under `keys`.
+    fn footer_row(view: &StashView<'_>, width: u16, keys: &Keymap) -> String {
+        let theme = theme();
+        let mut terminal =
+            Terminal::new(TestBackend::new(width, 12)).expect("a test backend opens");
+        terminal
+            .draw(|frame| {
+                frame.render_widget(
+                    StashScreen {
+                        keys,
+                        view,
+                        theme: &theme,
+                    },
+                    frame.area(),
+                );
+            })
+            .expect("drawing into a test backend");
+        let buffer = terminal.backend().buffer();
+        (0..width)
+            .map(|x| buffer[(x, 11)].symbol())
+            .collect::<String>()
+            .trim_end()
+            .to_owned()
+    }
+
+    /// Every status the list draws its own keys in (m8/11e E3), with the
+    /// full clauses each draws under the shipped keymap.
+    fn footer_cases<'a>() -> Vec<(&'static str, StashView<'a>, Vec<&'static str>)> {
+        let rows = || vec![row("stash@{0}", "WIP on main: tidy", "2h", 3)];
+        let short = vec!["s save", "esc close"];
+        vec![
+            (
+                "rows",
+                view(rows(), StashStatus::Ready),
+                vec![
+                    "⏎ apply",
+                    "p pop",
+                    "s save",
+                    "d drop",
+                    "b branch",
+                    "space files",
+                    "esc close",
+                ],
+            ),
+            (
+                "loading",
+                view(Vec::new(), StashStatus::Loading),
+                short.clone(),
+            ),
+            ("empty", view(Vec::new(), StashStatus::Empty), short.clone()),
+            (
+                "failed",
+                view(Vec::new(), StashStatus::Failed(sanitize("no stash"))),
+                short,
+            ),
+        ]
+    }
+
+    /// m8/11e F2: the list's own footer is the bar he sees; it ends with
+    /// the doorway, in every status that draws its own keys.
+    #[test]
+    fn footer_ends_with_the_keys_doorway() {
+        for (what, view, _) in &footer_cases() {
+            crate::test_support::assert_footer_doorway(what, &[], &|width, keys| {
+                footer_row(view, width, keys)
+            });
+        }
+    }
+
+    /// m8/11e E1: at every width the footer draws whole clauses or none —
+    /// never a cut one — and the doorway whole, bare, or not at all.
+    #[test]
+    fn footer_never_draws_a_fragment() {
+        for (what, view, clauses) in &footer_cases() {
+            crate::test_support::assert_footer_whole(what, clauses, &[], &|width, keys| {
+                footer_row(view, width, keys)
+            });
+        }
+    }
+
+    /// m8/11e G1: `b` makes a branch from the stash under the cursor, so it
+    /// is drawn only when one is selected (Ready), between `drop` and
+    /// `files` (§2.9's order); never at Loading, Empty or Failed.
+    #[test]
+    fn the_branch_key_is_drawn_only_with_a_stash_selected() {
+        let keys = Keymap::shipped();
+        for (what, view, _) in &footer_cases() {
+            for width in [120, 200] {
+                let row = footer_row(view, width, keys);
+                if *what == "rows" {
+                    let drop = row.find("d drop").expect("drop is drawn");
+                    let branch = row
+                        .find("b branch")
+                        .unwrap_or_else(|| panic!("{what} at {width}: no `b branch` in `{row}`"));
+                    let files = row.find("space files").expect("files is drawn");
+                    assert!(
+                        drop < branch && branch < files,
+                        "{what} at {width}: `b branch` not between drop and files: `{row}`"
+                    );
+                } else {
+                    assert!(
+                        !row.contains("b branch"),
+                        "{what} at {width}: nothing is selected, yet `{row}`"
+                    );
+                }
+            }
+        }
     }
 }

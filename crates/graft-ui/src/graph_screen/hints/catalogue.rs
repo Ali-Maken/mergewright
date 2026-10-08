@@ -38,9 +38,6 @@ pub fn every_context() -> Vec<HintContext> {
     let mut plain = vec![
         HintContext::WorkingTreeRow,
         HintContext::Preview,
-        HintContext::Journal,
-        HintContext::Stash,
-        HintContext::Map,
         HintContext::Picker,
         HintContext::PaneOverOverlay { opens: false },
         HintContext::PaneOverOverlay { opens: true },
@@ -341,9 +338,6 @@ fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
         HintContext::ChangesPane { .. }
         | HintContext::Banner { .. }
         | HintContext::Preview
-        | HintContext::Journal
-        | HintContext::Stash
-        | HintContext::Map
         | HintContext::Picker
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
@@ -446,9 +440,6 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Banner { .. }
         | HintContext::Preview
         | HintContext::ChangesPane { .. }
-        | HintContext::Journal
-        | HintContext::Stash
-        | HintContext::Map
         | HintContext::Picker
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
@@ -520,9 +511,6 @@ fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::Banner { .. }
         | HintContext::Preview
         | HintContext::ChangesPane { .. }
-        | HintContext::Journal
-        | HintContext::Stash
-        | HintContext::Map
         | HintContext::Picker
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging

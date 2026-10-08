@@ -1,5 +1,5 @@
 # m8/doorway-blame-80x24.txt: 80x24, drawn by `view::view` from the AppState
-# `update::tests::states_for` builds for Blame { finding: false, ignore_file: false, lines: true }
+# `update::tests` builds for: blame, lines read
 # (crates/graft/src/update/tests.rs, capture_the_keys_doorway_for_docs_shots).
 # Not a pty capture: a character grid, no colour (CLAUDE.md rule 5 — colour
 # unverified).

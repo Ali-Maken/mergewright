@@ -312,4 +312,163 @@ mod tests {
         view.status = MapStatus::Failed(sanitize_line("git for-each-ref: not a repository"));
         insta::assert_snapshot!(draw(&view, 80, 24));
     }
+
+    /// The Map's bottom row at `columns` under `keys`, trailing blanks
+    /// trimmed, and that row's buffer for a caller reading its styles.
+    fn footer_row(view: &MapView, columns: u16, keys: &crate::keymap::Keymap) -> String {
+        footer_cells(view, columns, keys)
+            .iter()
+            .map(|(symbol, _)| symbol.as_str())
+            .collect::<String>()
+            .trim_end()
+            .to_owned()
+    }
+
+    fn footer_cells(
+        view: &MapView,
+        columns: u16,
+        keys: &crate::keymap::Keymap,
+    ) -> Vec<(String, ratatui::style::Style)> {
+        let mut terminal = Terminal::new(TestBackend::new(columns, 12))
+            .unwrap_or_else(|why| panic!("a test backend always opens: {why}"));
+        let capabilities = test_capabilities(ColorDepth::TrueColor, false);
+        let theme = Theme::new(ThemeKind::Dark, &capabilities);
+        terminal
+            .draw(|frame| {
+                frame.render_widget(
+                    MapScreen {
+                        view,
+                        theme: &theme,
+                        keys,
+                    },
+                    frame.area(),
+                );
+            })
+            .unwrap_or_else(|why| panic!("drawing into a test backend cannot fail: {why}"));
+        let buffer = terminal.backend().buffer();
+        (0..columns)
+            .map(|x| (buffer[(x, 11)].symbol().to_owned(), buffer[(x, 11)].style()))
+            .collect()
+    }
+
+    const KEYS: [&str; 3] = ["j/k select", "⏎ zoom to commits", "M/esc back"];
+    /// Empty and Failed have no row to select (m8/11e G2).
+    const ROWLESS_KEYS: [&str; 2] = ["⏎ zoom to commits", "M/esc back"];
+    const NOTES: [&str; 2] = [" · +3 more", " · partial"];
+
+    /// One status's footer: its name, view, key clauses and notes.
+    type FooterCase = (&'static str, MapView, Vec<&'static str>, Vec<&'static str>);
+
+    /// Ready (with and without its notes), Empty, Failed: every status that
+    /// draws its own keys (m8/11e E3), with the key clauses each draws.
+    fn footer_cases() -> Vec<FooterCase> {
+        let mut noted = sample_view(false);
+        noted.more = 3;
+        noted.complete = false;
+        let mut empty = sample_view(false);
+        empty.rows = Vec::new();
+        empty.status = MapStatus::Empty;
+        let mut failed = sample_view(false);
+        failed.status = MapStatus::Failed(sanitize_line("git for-each-ref: not a repository"));
+        vec![
+            ("ready", sample_view(false), KEYS.to_vec(), Vec::new()),
+            (
+                "ready, +3 more, partial",
+                noted,
+                KEYS.to_vec(),
+                NOTES.to_vec(),
+            ),
+            ("empty", empty, ROWLESS_KEYS.to_vec(), Vec::new()),
+            ("failed", failed, ROWLESS_KEYS.to_vec(), Vec::new()),
+        ]
+    }
+
+    /// m8/11e F2: the Map's own footer is the bar he sees; its keys end
+    /// with the doorway.
+    #[test]
+    fn footer_ends_with_the_keys_doorway() {
+        for (what, view, _, notes) in &footer_cases() {
+            crate::test_support::assert_footer_doorway(what, notes, &|columns, keys| {
+                footer_row(view, columns, keys)
+            });
+        }
+    }
+
+    /// m8/11e E1: whole clauses and whole notes at every width, never a cut.
+    #[test]
+    fn footer_never_draws_a_fragment() {
+        for (what, view, clauses, notes) in &footer_cases() {
+            crate::test_support::assert_footer_whole(what, clauses, notes, &|columns, keys| {
+                footer_row(view, columns, keys)
+            });
+        }
+    }
+
+    /// m8/11e G2: Empty and Failed have no row, so `j/k select` is not
+    /// drawn there (§2.1: a key whose verb is not valid is not drawn); the
+    /// way back and the doorway stay.
+    #[test]
+    fn empty_and_failed_draw_no_keys_that_do_nothing() {
+        let keys = crate::keymap::Keymap::shipped();
+        for (what, view, _, _) in &footer_cases() {
+            if !matches!(*what, "empty" | "failed") {
+                continue;
+            }
+            for columns in [48, 80, 120, 200] {
+                let row = footer_row(view, columns, keys);
+                assert!(!row.contains("j/k"), "{what} at {columns}: `{row}`");
+                assert!(row.contains("M/esc back"), "{what} at {columns}: `{row}`");
+                assert!(row.ends_with("? keys"), "{what} at {columns}: `{row}`");
+            }
+        }
+    }
+
+    /// m8/11e E2: keys, then `? keys`, then the notes; below the reserve
+    /// `+N more` goes first, then `partial`, then the doorway's ladder.
+    /// `partial` keeps its Warning ink (colour on screen unverified, rule 5).
+    #[test]
+    fn the_doorway_ends_the_keys_and_the_notes_follow() {
+        use crate::paint::foreground;
+        use crate::theme::Token;
+
+        let mut view = sample_view(false);
+        view.more = 3;
+        view.complete = false;
+        let keys = crate::keymap::Keymap::shipped();
+        for columns in [80u16, 120, 200] {
+            assert_eq!(
+                footer_row(&view, columns, keys),
+                "j/k select  ⏎ zoom to commits  M/esc back  ? keys · +3 more · partial",
+                "at {columns}"
+            );
+        }
+        // The reserve: `? keys · +3 more · partial` is 26 cells.
+        let reserve = "? keys · +3 more · partial".chars().count();
+        let at = |columns: usize| {
+            footer_row(&view, u16::try_from(columns).expect("a small width"), keys)
+        };
+        assert_eq!(at(reserve), "? keys · +3 more · partial");
+        assert_eq!(at(reserve - 1), "? keys · partial");
+        assert_eq!(at("? keys · partial".chars().count()), "? keys · partial");
+        assert_eq!(at("? keys · partial".chars().count() - 1), "? keys");
+        assert_eq!(at(6), "? keys");
+        assert_eq!(at(5), "?");
+        assert_eq!(at(1), "?");
+        // `partial` in Warning ink, the rest muted.
+        let capabilities = test_capabilities(ColorDepth::TrueColor, false);
+        let theme = Theme::new(ThemeKind::Dark, &capabilities);
+        let warning = foreground(&theme, Token::Warning);
+        let cells = footer_cells(&view, 120, keys);
+        let line: String = cells.iter().map(|(symbol, _)| symbol.as_str()).collect();
+        let at_partial = line
+            .find("partial")
+            .map(|byte| line[..byte].chars().count())
+            .expect("partial is drawn");
+        assert_eq!(cells[at_partial].1.fg, warning.fg, "partial's ink");
+        let at_door = line
+            .find("? keys")
+            .map(|byte| line[..byte].chars().count())
+            .expect("the doorway is drawn");
+        assert_ne!(cells[at_door].1.fg, warning.fg, "the doorway is muted");
+    }
 }

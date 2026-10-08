@@ -480,7 +480,7 @@ cursor line. `Esc` goes back (after `^`, to the newer blame). Amended
 | `Enter` | Open the **apply preview** for the selected stash (Ghost Preview frame, §2.3b): the files it writes (untracked ones included), whether it may clash with the tree now, `stash@{n} stays in the list`. `y` applies; `Enter` is the choice under the cursor (Cancel first, ADR-0038 §1); `Esc` back to the list. Refused in the box, nothing written, when unsaved, untracked or ignored files are in the way (Graft refuses them before git runs, ADR-0049); an ignored one reads `<path> (ignored) is in the way · move it aside first`, since `S` can't take it. A clash opens the resolver on the first clashed file; the stash is kept (ADR-0045) |
 | `p` | Open the **pop preview**: as `Enter`, with `stash@{n} is dropped · u brings it back`. `y` pops. A clash opens the resolver; the stash is kept until the last file is done, then dropped, `u` brings it back (ADR-0045) |
 | `d` | Drop (undoable) |
-| `b` | Create a branch from this stash — **planned, not yet built** (no milestone has claimed it yet; candidate for M5, which owns branch creation) |
+| `b` | Create a branch from this stash — built (m3/m5 name prompt, `update/stash.rs`) |
 | `Space` | Preview the diff |
 
 Amended 2026-09-26 (user: "86 yes"; usability walk 2 C): `Enter` and `p` open a preview, `y` goes ahead. Replaces: `Enter` applied and `p` popped at the keypress (m3 ticket 06; kept by `m6-stash-put-back.md` Journeys). See `docs/design-notes/m6-stash-preview.md`.
