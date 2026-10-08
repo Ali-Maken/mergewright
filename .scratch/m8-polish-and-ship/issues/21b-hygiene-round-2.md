@@ -221,22 +221,28 @@ const READ_TIMEOUT: Duration = Duration::from_secs(30);         // only if item 
 ```
 
 **Acceptance**
-- [ ] 1: new `run::tests::stop::the_next_read_waits_a_full_interval_after_a_slow_read` (a fake slow `pass`; records
+- [x] 1 (test `run::tests::stop::the_next_read_waits_a_full_interval_after_a_slow_read`; red on base in each loop
+      separately; `a_slow_read…` 6.377 s → 4.384 s): new `run::tests::stop::the_next_read_waits_a_full_interval_after_a_slow_read` (a fake slow `pass`; records
       each read's start and end; every gap end→next start ≥ `LIST_EVERY`, both loops). Seen red on base. NOTES:
       `a_slow_read…` measured before and after (`cargo nextest run -E 'test(a_slow_read)'`, its time line), ≤ 10 s.
-- [ ] 2: the test holds a `Reap` guard (NOTES: line). Seen once: a `panic!` put before the stop, run, then
+- [x] 2 (test `run::tests::stop::signals::a_slow_read_of_the_group_does_not_spend_gits_grace`, guard
+      `run/tests/stop/signals.rs:128`; panic run → `pgrep` 0): the test holds a `Reap` guard (NOTES: line). Seen once: a `panic!` put before the stop, run, then
       `pgrep -f 'sleep 600' | wc -l` → 0; panic removed. `rg -n 'sleep 600' crates/graft-git` — each hit's guard line in NOTES.
-- [ ] 3: move-only check; `stop.rs` ≤ 400.
-- [ ] 4: `http_remote_drop_ends_an_idle_client` bound 500 ms, green 20/20 in a loop (`for i in $(seq 20)`, output to
+- [x] 3 (`nextest list` diff + line-set check, NOTES; `stop.rs` 545 → 283): move-only check; `stop.rs` ≤ 400.
+- [x] 4 (test `remote::tests::http_remote_drop_ends_an_idle_client`, 20/20 at 500 ms): `http_remote_drop_ends_an_idle_client` bound 500 ms, green 20/20 in a loop (`for i in $(seq 20)`, output to
       a file, NOTES the pass count). Or the stop of item 5.
-- [ ] 5: if green: `READ_TIMEOUT` 30 s; `remote::tests` and graft's `credential_by_key`, `m4_walk` (nextest filter
+- [x] 5 (green → 30 s; filter `remote::tests | credential_by_key | m4_walk | m5_walk | m8_walk::clone |
+      jobs::clone::tests | remote_ops:: | ^clone::` 298/298; MAP graft-fixtures `:44`): if green: `READ_TIMEOUT` 30 s; `remote::tests` and graft's `credential_by_key`, `m4_walk` (nextest filter
       `HttpRemote` users from 13l A's Touches) green. MAP graft-fixtures `:44` line updated.
-- [ ] 6: new `snapshot_raw::a_lone_checkout_failure_without_a_filter_is_not_blamed_on_one` (no filter configured,
+- [x] 6 (test `snapshot_raw::a_lone_checkout_failure_without_a_filter_is_not_blamed_on_one`, red on base; filter test
+      `undo_bytes::a_failing_required_smudge_filter_refuses_the_operation_before_it_writes` green, asserts git's
+      `external filter 'false' failed`; grep empty): new `snapshot_raw::a_lone_checkout_failure_without_a_filter_is_not_blamed_on_one` (no filter configured,
       a checkout failure forced — e.g. an unwritable scratch dir — → `CheckOut`, text has no `filter`). Seen red on
       base. Existing filter test green with the new text if its git stderr names the filter.
       `rg -n 'its filter failed|SnapshotError::Filter' crates/` empty.
-- [ ] 7: the probe test, green (row closes, name it) **or** the stop in NOTES.
-- [ ] 8: `core_has_no_free_functions` green; seen red once by adding a `pub fn x() {}` to a graft-core file
+- [x] 7 — **STOP, probe red** (`aborted_fetch::a_fetch_that_moved_refs_before_one_remote_failed_is_in_force`, not
+      committed; fields in NOTES 21b-3 item 7). Row M8/aborted-refs-moved stays open: the probe test, green (row closes, name it) **or** the stop in NOTES.
+- [x] 8 (test `graft-core tests::core_has_no_free_functions`, 0.010 s; red seen with `pub fn x() {}` in `raster.rs:42`): `core_has_no_free_functions` green; seen red once by adding a `pub fn x() {}` to a graft-core file
       (removed); runs in the fast tier < 1 s.
 
 **Touches:** `run::stop` callers (`exec`, 13e–13k stop tests; heavy `--features heavy-tests` clippy clean, not
@@ -402,3 +408,75 @@ workspace-wide. 21b-3 and 21b-4 also clippy with `--features heavy-tests`.
   M8/look-file-sizes (refresh), M8/http-read-timeout, M8/blame-place-ends-with, M8/doorway-files-over-400,
   M8/keymap-file-sizes (named files; its "graft-ops/graft files held by 10f–10i" part names none → fold into the
   proposed row).
+
+## NOTES — 21b-3 (builder, Opus, 2026-10-08)
+
+Status: **done, with item 7 a stop**. No compaction. No scout (ticket: "21b-3 … need none: the rows name the lines").
+Commits on the branch: f56ae578 (move tests), 8a90725f (items 1–2), 1a103f9d (split), 4d46de60 (4–5), 452d77de (6),
+ef6d2dc0 (8), 8a059fe0 (revert of an over-wide sed in 4, test margin in 1). Gates workspace-wide: fmt, clippy
+`--all-targets` (+ `--features heavy-tests`) clean; nextest 6063/6063 (12 skipped); doctests ok.
+
+- **Lines found at HEAD.** Item 1: `stop.rs:233–234` (hooks_first), `:265–266` (after_git_ended) as the ticket said.
+  Test `:507`. Item 4: test `remote/tests.rs:520`, bound `:534–537`; `READ_TIMEOUT` `remote/http/mod.rs:46`. Item 6:
+  `raw.rs:220`, `snapshot.rs:139–140`. Item 7: `journal.rs:165` (`took_effect`). 20b A did not move any of them.
+- **1.** Now `next_read = Instant::now() + LIST_EVERY` after `pass` returns: `run/stop.rs:239`,
+  `run/stop/helpers.rs:40`. Test fakes `Members` (150 ms per read) and checks every gap ≥ `LIST_EVERY`: hooks_first
+  (3 reads + an unreadable 4th → fallback) and `after_git_ended` called directly (reads before `until`). Red on base
+  in each loop on its own (hooks_first fixed alone → after_git_ended still red, gap 99.9 ms). `a_slow_read…`
+  (`-E 'test(a_slow_read_of_the_group)'`, Summary line): **6.377 s → 4.384 s**. New test 2.6 s.
+  Cause, not symptom: the read cadence was timed from the read's start.
+- **2.** Guard `run/tests/stop/signals.rs:128` (`Reap::hook`; the shell writes `$!` to `$PIDFILE`). `panic!` after
+  the guard, run, `pgrep -f 'sleep 600' | wc -l` → 0 (0 before too); panic removed. Not seen: the same run without
+  the guard (would leak a `sleep 600` I'd have to `pkill`, which could hit the concurrent builder's). `rg -n
+  'sleep 600' crates/graft-git` hits and guards: `tests/stop.rs` :40,:50 → `stop_at_the_hook`'s `Reap`; :62 →
+  `_hook` :64; :81, :174 → `stop_at_the_hook`; :103, :158 → `stop_once_stopped`; :114 → `hook` :116; :131 → `job`
+  :134; :190 → `helper` :194; :215 `OwnSleep` (Drop kills+reaps); `signals.rs:118` → :128; `fixture.rs:97` is a
+  comment. **Unverified, not new:** `:131`'s guard is taken after `merge(&m).run(..).expect(..)` — a failed run
+  there would leave its `sleep 600`; out of scope, filed here.
+- **3.** Two move-only commits. (a) inline tests → `run/tests/stop/signals.rs`: `nextest list` 6059 = 6059; the 4
+  fn names identical, module path `run::stop::tests::` → `run::tests::stop::signals::` (unavoidable for a move
+  out of the file). Changed lines: `use`s, `super::super::group::members` → `crate::run::group::members`,
+  `group_stop`/`hooks_first` → `pub(super)`. (b) split on `after_git_ended` → `run/stop/helpers.rs`
+  (`after_git_ended`, `Helpers`, `kill_reaped_group`, `signal_one`): line-set diff = only visibility
+  (`pub(in crate::run)` / `pub(super)`), `use`, `mod`, `//!` lines; `nextest list` unchanged. `wc -l`: `stop.rs`
+  545 → 409 (after 1's edits, before split) → **283**; `stop/helpers.rs` 142; `tests/stop.rs` 247 → 365;
+  `tests/stop/signals.rs` 156. MAP graft-git file-layout lines added. `docs/shots` untouched; no `.snap.new`.
+- **4–5.** 20/20 green at 500 ms with `READ_TIMEOUT` still 1 s (`target/drop-loop.txt`, `grep -c '1 passed'` → 20)
+  → shutdown wakes the blocked read on macOS → `READ_TIMEOUT` 30 s. Users run green (298/298). Observed, not
+  caused: `m5_walk::every_scenario::merge_resolved_with_the_keys` takes 15.2 s at 1 s *and* 15.3 s at 30 s — over
+  the 10 s fast-tier bound before this ticket. → proposed row, unverified cause.
+  Slip caught and reverted (8a059fe0): my `sed` also set the wedged-hook drop test (`remote/tests.rs:392`) to
+  500 ms; back to 2 s, out of scope.
+- **6.** Forced failure = a worktree tree naming a missing blob (`mktree --missing`, a partial clone's shape) under
+  `core.autocrlf=true`; an unwritable scratch dir fails earlier (`TempIndex`), not at checkout. Red on base:
+  `a.txt: its filter failed: … unable to read sha1 file of a.txt (3333…)`. Now `a.txt: git could not check it
+  out: …`. The filter test's words carry git's first stderr line, `error: external filter 'false' failed 1` (the
+  filter's *command*, not its name `broken`), asserted. `rg 'its filter failed|SnapshotError::Filter' crates/`
+  empty; only `docs/reviews/m8-doorway-words.md` (history) still quotes it. `SnapshotError::` matchers outside
+  graft-ops: none. Seen in the words: they include the scratch path (`--prefix=/var/folders/…`) — a reader sees
+  a temp path; not changed (not in the ruling).
+- **7. STOP — probe red.** Probe: `LocalRemote` (Linear), `commit_on_remote`, second remote `gone` =
+  `file:///nonexistent/…`, `apply(Fetch { remote: None, prune: false })` → `Err`; `origin/main` **did** move to
+  the teammate's tip; the entry is `Aborted` and `in_force` is **false**. Recorded fields: `kind: Fetch`,
+  `status: Aborted { reason: "no repository at '/nonexistent/graft-21b-3.git', or no access to it" }`,
+  `touches: { refs: [], index: false, worktree: false }`, `head_before: Branch(refs/heads/main)`, `head_after:
+  Some(same)`, `refs_before: {}`, `refs_after: {}`, `index_*: None`, `worktree_before: None`, `worktree_after:
+  None`, `backup_ref: None`, `commands: ["git fetch --progress --all"]`, `merge_*: None`, `config_*: {}`. So
+  `took_effect` (`journal.rs:165`) fails on `worktree_before.is_some()` and would fail `changed_anything` too:
+  a fetch records no refs at all (a Committed one doesn't either, `remote_ops.rs:172`). `u` is unaffected
+  (`undoable_kind` skips Fetch). Reasoned, **not observed**: the journal screen would mark this row `refused ·
+  nothing written` (`graft-ui/src/journal_screen/view.rs:42`) though a ref moved. Fix is the planner's; probe not
+  committed (red); code is 50 lines, easy to re-create from the above.
+- **8.** Scan on base: no hit (`rg '^pub(\(crate\))? (const )?fn ' crates/graft-core/src` exit 1). Test
+  `crates/graft-core/src/tests.rs` (+ `mod tests;` in `lib.rs`): column-0 `pub`/`pub(..)` + `const|async|unsafe|
+  extern` + `fn`; plus `the_scan_reads_each_form_of_a_public_fn` pinning the matcher. Red seen: `pub fn x() {}`
+  appended to `raster.rs` → fails naming `raster.rs:42`; restored. 0.010 s.
+- **Touches:** `run::stop` callers — `exec`'s `stop`/`kill` unchanged signatures, all 17 `run::tests::stop*` +
+  `run::` 55 green, heavy clippy clean (not run); `HttpRemote` users — 298/298 above; `SnapshotError` — grep
+  above, graft shows it only through `ApplyError::explain` (no graft test pins the text: grep `its filter`
+  empty); journal/undo — nothing changed (item 7 stopped); MAP: graft-git (layout ×2), graft-fixtures `:44`,
+  graft-ops `:170`, graft-core (guards). KNOWN_GAPS not touched (builders don't).
+- **Proposed rows (conductor):** M8/aborted-fetch-not-in-force (**broken**, the probe above, planner's call);
+  M8/m5-walk-merge-keys-15s (**unverified** cause: over fast-tier bound, unrelated to 21b-3); M8/sleep-guard-after-run
+  (`tests/stop.rs:131`, **unverified** leak path); M8/checkout-words-carry-scratch-path (**unverified** whether a
+  user ever sees it).
