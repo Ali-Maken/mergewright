@@ -1,6 +1,6 @@
 # 18a — graft-ops::clone, and the remote runner narrowed to what it reads
 
-Status: ready (conductor 2026-10-08)
+Status: done (builder 2026-10-08; gates green: fmt, clippy, nextest 5912/5912, doc)
 Build with: **Opus** — a remote write outside any repo; the folder-cleanup and refusal-before-spawn rules are only
 provable by running git, and the runner change touches every remote operation's path.
 Blocked by: 08 (`init` / `GitInvocation::in_folder` in place)
@@ -57,19 +57,39 @@ pub fn clone(params: &CloneParams, hooks: Option<&RemoteHooks>, stop: &dyn graft
   last `/` or (scp form, no `://`) `:`; `None` when that is empty, `.`, `..`, or holds a control byte.
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] `name_from_url` table: `https://github.com/org/x.git`, `https://h/org/x/`, `https://h/org/x/.git`,
+- [x] `name_from_url` table: `https://github.com/org/x.git`, `https://h/org/x/`, `https://h/org/x/.git`,
       `git@github.com:org/x.git`, `ssh://git@h:22/org/x.git`, `file:///tmp/r/x.git`, `/tmp/x`, `h:x.git` → `x`;
       `https://h/`, `` , `h:` → `None`. (`clone::tests::name_from_url_table`)
-- [ ] `file://` bare → `Ok`, `into` is a repo whose HEAD equals the bare's. (`tests/it/clone.rs::clones_a_file_bare`)
-- [ ] HTTP Basic auth (`HttpRemote::serve`) with `askpass_test_helper` → asked, `Ok`, `askpass: None`.
+- [x] `file://` bare → `Ok`, `into` is a repo whose HEAD equals the bare's. (`tests/it/clone.rs::clones_a_file_bare`)
+- [x] HTTP Basic auth (`HttpRemote::serve`) with `askpass_test_helper` → asked, `Ok`, `askpass: None`.
       (`tests/it/clone.rs::asks_and_clones_over_http`)
-- [ ] Unreachable / missing bare → `Remote { left: None }`, no `into` on disk. (`…::a_failed_clone_leaves_no_folder`)
-- [ ] `HungRemote`: stop raised once `into` exists (bounded wait on that condition, deadline stated) → `Stopped
+- [x] Unreachable / missing bare → `Remote { left: None }`, no `into` on disk. (`…::a_failed_clone_leaves_no_folder`)
+- [x] `HungRemote`: stop raised once `into` exists (bounded wait on that condition, deadline stated) → `Stopped
       { left: None }`, `into` absent. Folder present → **stop, report** (R3). (`…::a_stopped_clone_leaves_no_folder`)
-- [ ] `into` non-empty → `TargetNotEmpty`, a counting `Stop` polled 0 times, `into`'s listing unchanged.
+- [x] `into` non-empty → `TargetNotEmpty`, a counting `Stop` polled 0 times, `into`'s listing unchanged.
       (`…::a_non_empty_target_is_refused_before_git_runs`)
-- [ ] URL `-uhttps://x` → `BadUrl`, counting stop 0. (`…::a_url_like_an_option_is_refused`)
-- [ ] Every existing remote op unchanged: `tests/it/remote_ops.rs` green **unedited**. (that file, in NOTES)
+- [x] URL `-uhttps://x` → `BadUrl`, counting stop 0. (`…::a_url_like_an_option_is_refused`)
+- [x] Every existing remote op unchanged: `tests/it/remote_ops.rs` green **unedited**. (that file, in NOTES)
+
+## NOTES (builder, 2026-10-08)
+- Scout used: `scouts/18-first-run.md` Q1 (no new scout; Q1 was exactly this seam). No compaction.
+- Red first: all 10 new tests ran against `todo!()` stubs and failed, then went green.
+- `remote::run`'s one caller: `apply/run.rs:149` (`run_plan`) → `ctx.remote_run()`. `RemoteRun` is `Copy`
+  (clippy `needless_pass_by_value`). `mod remote` in `apply.rs` became `pub(crate)` so `clone` can reach it.
+- `tests/it/remote_ops.rs` unedited (`git diff --quiet HEAD -- …` clean) and green in the full run.
+- HTTP test runs in a child of the test binary with `GIT_CONFIG_NOSYSTEM=1` + an empty `GIT_CONFIG_GLOBAL`:
+  this Mac's system gitconfig has `credential.helper=osxkeychain`, and a successful clone would otherwise store
+  the test password in the user's keychain (a clone has no repo config to blank first). The parent asserts the
+  child's `... ok` line, so a filter matching nothing cannot pass vacuously (checked by hand: `1 passed`).
+- Stop test: the `Stop` itself flips once `into` exists (deadline 30 s, `MADE_WITHIN`); asserted that it did.
+  git's own SIGTERM cleanup removed the folder — R3's "folder present" branch did not occur, no deletion added.
+- `explain`'s remote words are `remote::short` (the per-`RemoteFailure` words without an entry/branch, which
+  `remote::explain` needs and a clone has none of).
+- **Question (rule 3):** an askpass socket close failure on a *failed or stopped* clone is dropped — the
+  ticket's `CloneError` has no slot (commented at the drop in `clone.rs`). Add `askpass` to the error variants?
+- Extra tests beyond the list: `clones_into_an_existing_empty_folder`,
+  `a_failed_clone_into_an_empty_folder_leaves_it_empty`, `clone::tests::explain_words`; the BadUrl test also
+  covers `""` and `https://h/`; the failed-clone test covers a missing bare and a closed loopback port.
 
 ## Touches
 - `remote::run`'s callers (`rg -n 'remote::run\(' crates/graft-ops`) — each now passes `ctx.remote_run()`; list them.

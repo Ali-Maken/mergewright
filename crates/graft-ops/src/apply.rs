@@ -26,7 +26,7 @@ mod lost_edit;
 mod pull;
 mod record;
 mod recover;
-mod remote;
+pub(crate) mod remote;
 mod restart;
 mod resume;
 mod run;
