@@ -43,6 +43,7 @@ fn a_resume_git_fails_answers_failed() {
         config_before: std::collections::BTreeMap::new(),
         config_after: std::collections::BTreeMap::new(),
         put_back: None,
+        fetched_refs: None,
     };
     let answered = answer(Err(ApplyError::Git {
         entry: Box::new(entry),
@@ -93,6 +94,7 @@ fn failed_checkout(head_after: Option<HeadRef>) -> ApplyError {
             config_before: std::collections::BTreeMap::new(),
             config_after: std::collections::BTreeMap::new(),
             put_back: None,
+            fetched_refs: None,
         }),
         error: RunError::GitNotFound,
         recoverable: true,
@@ -238,6 +240,7 @@ fn answer_paused_lands_as_conflicted() {
         config_before: std::collections::BTreeMap::new(),
         config_after: std::collections::BTreeMap::new(),
         put_back: None,
+        fetched_refs: None,
     };
     let id = entry.id.clone();
     let paused = answer(Err(ApplyError::Paused {

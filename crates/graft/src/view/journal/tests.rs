@@ -40,6 +40,7 @@ fn entry(id: i64, kind: OperationKind, description: &str) -> JournalEntry {
         config_before: std::collections::BTreeMap::new(),
         config_after: std::collections::BTreeMap::new(),
         put_back: None,
+        fetched_refs: None,
     }
 }
 

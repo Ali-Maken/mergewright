@@ -83,10 +83,7 @@ pub(crate) fn begin(
     } = opening;
     let head_before = facts::head_ref(ctx.repo).map_err(PrepareError::Facts)?;
     let refs_before = facts::read_refs(ctx.repo, &touches.refs).map_err(PrepareError::Facts)?;
-    // On every entry, whatever it touches: git's merge files are state the
-    // inverse puts back where they changed (m6-conflicts/20).
-    let merge_before = read_merge_state(ctx.repo)
-        .map_err(|why| PrepareError::Facts(FactsError::MergeState(why)))?;
+    let merge_before = merge_before(ctx)?;
     let config_before = config_before(ctx, &touches.refs)?;
 
     let mut backup = None;
@@ -133,6 +130,7 @@ pub(crate) fn begin(
         config_before,
         config_after: BTreeMap::default(),
         put_back,
+        fetched_refs: None, // outcome line only, read around git's run (ADR-0062)
     };
     ctx.journal
         .append_pending(&entry)
@@ -141,6 +139,12 @@ pub(crate) fn begin(
         entry,
         before_commit: backup.map(|taken| taken.commit),
     })
+}
+
+/// Git's merge files, read on every entry whatever it touches: they are
+/// state the inverse puts back where they changed (m6-conflicts/20).
+fn merge_before(ctx: &Context<'_>) -> Result<Option<MergeState>, PrepareError> {
+    read_merge_state(ctx.repo).map_err(|why| PrepareError::Facts(FactsError::MergeState(why)))
 }
 
 /// The config of each branch the entry touches, so the inverse can put back

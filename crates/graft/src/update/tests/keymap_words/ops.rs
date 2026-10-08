@@ -57,6 +57,7 @@ fn entry(kind: OperationKind, description: &str) -> Box<JournalEntry> {
         config_before: std::collections::BTreeMap::new(),
         config_after: std::collections::BTreeMap::new(),
         put_back: None,
+        fetched_refs: None,
     })
 }
 
@@ -70,6 +71,7 @@ fn push_failed(failure: RemoteFailure) -> ApplyError {
             remote_side: "origin/main".to_owned(),
             remote: "origin".to_owned(),
         }),
+        moves_unread: None,
     }
 }
 

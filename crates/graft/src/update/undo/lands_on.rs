@@ -133,6 +133,7 @@ mod tests {
             config_before: BTreeMap::new(),
             config_after: BTreeMap::new(),
             put_back: None,
+            fetched_refs: None,
         }
     }
 

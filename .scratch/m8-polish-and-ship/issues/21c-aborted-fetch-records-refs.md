@@ -1,6 +1,8 @@
 # 21c — a fetch records the refs it moved; J stops saying "nothing written" when one moved
 
-Status: draft (planner spec-only pass, 2026-10-08; amended after scout `.scratch/m8-polish-and-ship/scouts/21c-fetch-refs.md`)
+Status: **partial** — Part A (record: boxes 1–8, 12) done 2026-10-08; Part B (show: boxes 9–11) open, handoff in NOTES.
+The builder compacted mid-ticket, so it split at Part A | Part B as Size says. (Planner spec-only pass 2026-10-08;
+amended after scout `.scratch/m8-polish-and-ship/scouts/21c-fetch-refs.md`.)
 Build with: **Opus (xhigh)** — `builder-opus-xhigh`, the undo area: it edits the journal line format and adds a
 predicate beside `in_force`, which drives `u`. **Not Fable**: the approach is decided here (ADR-0062), and correctness
 is judged by tests (the red test, the predicate table, `next_undo`/`revert_to` unchanged) — test 3 fails. Scout done
@@ -170,33 +172,51 @@ pub fn moved_heading(keys: &Keymap) -> String;  // "refs the fetch moved · u do
 - **Docs** — four MAP.md files; DESIGN §6.1/§6.2/§1.10; KNOWN_GAPS is the conductor's.
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] 1. **Red first — new test, new file** `crates/graft-ops/tests/it/aborted_fetch.rs` (+ its `mod` line in the
+- [x] 1. **Red first — new test, new file** `crates/graft-ops/tests/it/aborted_fetch.rs` (+ its `mod` line in the
       `tests/it` root). Test `a_fetch_that_moved_refs_before_one_remote_failed_records_them`, set up from the defect
       section: `origin/main` moved; entry `Aborted`; `fetched_refs == Some({"refs/remotes/origin/main": RefMove {
       before: old, after: teammate tip }})`; `wrote_anything` true; **`in_force` false**. It is written before Part A's
       code; NOTES quotes its red (compile or assert).
-- [ ] 2. `aborted_fetch::a_fetch_that_brought_nothing_records_an_empty_map` — Committed, `Some({})`.
-- [ ] 3. `aborted_fetch::a_fetch_records_new_moved_pruned_and_tag_refs` — one fetch with `prune: true`: a moved, a
+      — **ticked by `aborted_fetch::a_fetch_that_moved_refs_before_one_remote_failed_records_them`** (green; red quoted
+      in NOTES; also reads the entry back from the journal file and asserts the real error's `explain` ends
+      ` · origin/main moved before it stopped`).
+- [x] 2. `aborted_fetch::a_fetch_that_brought_nothing_records_an_empty_map` — Committed, `Some({})`.
+      — **ticked by `aborted_fetch::a_fetch_that_brought_nothing_records_an_empty_map`**.
+- [x] 3. `aborted_fetch::a_fetch_records_new_moved_pruned_and_tag_refs` — one fetch with `prune: true`: a moved, a
       new, a pruned (`after: None`) branch and an auto-followed tag, each exactly once; no `refs/graft/` key.
-- [ ] 4. `journal::tests::a_line_without_fetched_refs_re_renders_byte_identically`;
+      — **ticked by `aborted_fetch::a_fetch_records_new_moved_pruned_and_tag_refs`** (a `+refs/heads/*:refs/graft/fetched/*`
+      refspec makes git write under `refs/graft/`, and `origin/HEAD` is set; the map is compared whole. Mutation
+      check: with the symref and `refs/graft/` filters removed it fails with those two extra keys).
+- [x] 4. `journal::tests::a_line_without_fetched_refs_re_renders_byte_identically`;
       `journal::tests::fetched_refs_round_trip` (`Some({})` renders `"fetched_refs":{}`; a map round-trips).
-- [ ] 5. `journal::tests::wrote_anything_table`. Rows:
+      — **ticked by both** (the first was green before any format change and stays green; it now also asserts every
+      old entry reads `fetched_refs: None`. The second checks the pending line has no `fetched_refs`).
+- [x] 5. `journal::tests::wrote_anything_table`. Rows:
       - Aborted fetch, `Some({})` → false.
       - Aborted fetch, `Some(1 ref)` → true.
       - Aborted fetch, `None` → true.
       - Committed fetch, `Some({})` → true.
       - Aborted commit with no backup → false (today's rule untouched).
       - Aborted pull, `Some(1 ref)` → true **and** `in_force` false.
-- [ ] 6. `aborted_fetch::u_after_a_partial_fetch_takes_back_the_change_before_it` — commit, partial fetch, `next_undo`
+      — **ticked by `journal::tests::wrote_anything_table`** (all six rows).
+- [x] 6. `aborted_fetch::u_after_a_partial_fetch_takes_back_the_change_before_it` — commit, partial fetch, `next_undo`
       = the commit's entry; `plan_undo` steps hold no `refs/remotes/` ref.
-- [ ] 7. `aborted_fetch::a_pull_whose_fetch_failed_records_what_it_moved` (pull from a remote whose fetch moves one ref
+      — **ticked by `aborted_fetch::u_after_a_partial_fetch_takes_back_the_change_before_it`** (also `plan.touches.refs`).
+- [x] 7. `aborted_fetch::a_pull_whose_fetch_failed_records_what_it_moved` (pull from a remote whose fetch moves one ref
       then fails, e.g. a tag git refuses to clobber; **if no fixture can make a pull's fetch fail part-way, say so in
       NOTES and test the failing-fetch shape with `Some({})`**) and `aborted_fetch::a_diverged_pull_records_its_fetch_but_u_is_unchanged`
       (fetch ok, `merge --ff-only` refuses → Aborted): `fetched_refs` holds `origin/main` only (not the local
       branch); `next_undo` same as before the pull; `plan_revert_to` across it unchanged (plan compared before/after).
-- [ ] 8. The probe's `remote::explain` ends ` · origin/main moved before it stopped` (test beside `remote::explain`'s
+      — **ticked by `aborted_fetch::a_pull_whose_fetch_failed_records_what_it_moved`** (a real part-way failure: a
+      `refs/tags/*:refs/tags/*` refspec and a tag git refuses to clobber; no `Some({})` fallback needed) **and
+      `aborted_fetch::a_diverged_pull_records_its_fetch_but_u_is_unchanged`** (`plan_undo` and `plan_revert_to`
+      compared equal before/after).
+- [x] 8. The probe's `remote::explain` ends ` · origin/main moved before it stopped` (test beside `remote::explain`'s
       existing tests, name in NOTES). `journal::tests::moved_words_table`: 0 refs → None; 1; 2; 3+ with `+N more`;
       new; gone; tag. `moved_lines` caps at `at_most`, then `+N more`.
+      — **ticked by `apply::remote::tests::a_failed_fetch_that_moved_refs_ends_with_them`** (also: `Some({})` → today's
+      words; `moves_unread` → ` · which refs it moved could not be read: <error>`), **`journal::tests::moved_words_table`**
+      and **`journal::tests::moved_lines_cap_at_at_most`**.
 - [ ] 9. graft `view::journal::tests`:
       - `a_partial_fetch_row_names_what_moved_and_is_not_refused` — no `refused · nothing written`.
       - `a_fetch_that_moved_nothing_reads_as_today` — mark and text byte-equal to HEAD's.
@@ -218,8 +238,10 @@ pub fn moved_heading(keys: &Keymap) -> String;  // "refs the fetch moved · u do
       Expanded, `refs the fetch moved · u does not move them back` sits over `┆ origin/main  <7 hex> → <7 hex>`. The
       status line ends `· origin/main moved before it stopped`."* Colour unverified (rule 5); the user judges by eye
       (rule 6).
-- [ ] 12. `rg -n fetched_refs crates/graft-ops/src` output quoted in NOTES. No hit in `undo*`, `restore*`, `preview*`,
+- [x] 12. `rg -n fetched_refs crates/graft-ops/src` output quoted in NOTES. No hit in `undo*`, `restore*`, `preview*`,
       `clash*`, or in `in_force`/`took_effect`/`changed_anything`/`next_*`.
+      — **ticked by the grep quoted in NOTES** (no such hit) and by `journal::tests::next_undo_steps_past_a_push_and_a_fetch`
+      staying green in the workspace run.
 
 ## Gates
 Workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`,
@@ -233,3 +255,86 @@ and the field).
 ## NOTES — for the conductor
 - Proposed row `M8/pull-incoming-read-unjournaled` (broken by design): a pull whose fetch succeeded but whose incoming
   read failed opens no entry (`apply/pull.rs:54–57`), so its tracking-ref moves are recorded nowhere. Not fixed here.
+
+### Builder, Part A (2026-10-08) — **compacted once mid-ticket**; split at Part A | Part B per Size
+- **Scout:** used the existing `.scratch/m8-polish-and-ship/scouts/21c-fetch-refs.md`; no new one.
+- **Red (box 1),** written before any Part A code — compile errors:
+  `error[E0432]: unresolved import graft_core::journal::RefMove`;
+  `error[E0432]: unresolved import graft_ops::journal::wrote_anything`;
+  `error[E0609]: no field fetched_refs on type Box<JournalEntry>`.
+- **Deviations from Signatures (none change behaviour the spec names):**
+  - `ref_store(repo, stop)` not `ref_store(ctx)`: the after-read must run with no stop (`&()`, as `record::read_after`),
+    which `ctx` cannot express; the before-read passes `ctx.stop` (stop → `ApplyError::Stopped`).
+  - Format is `%(objectname)%00%(refname)%00%(symref)`: **symbolic refs are skipped** (`origin/HEAD` would repeat
+    `origin/main`'s move under a second name). Names are decoded lossily: display-only, and one non-UTF-8 branch must
+    not refuse a fetch (comment in `apply/fetched.rs:47`).
+  - New `FactsError::FetchedRefs(RunError)` for the listing's failure.
+  - **`ApplyError::Remote` gained a public field `moves_unread: Option<Box<RunError>>`** (Scope 6 needs the error text in
+    `explain`; `None` alone can't tell an old line from a failed read). Boxed: unboxed it tripped
+    `clippy::result_large_err` on every `Result<_, ApplyError>`. Literals updated in graft
+    (`update/tests/keymap_words/ops.rs`) and graft-ops tests.
+  - `wrote_anything`, `moved_words`, `moved_lines` live in `journal/fetched.rs`, re-exported from `journal` (pub
+    `graft_ops::journal::*` as specified); `wrote_anything` calls the private `took_effect` via `super::`.
+  - `record::begin` hit `too_many_lines` (61/60) with the new field: its merge-state read moved to a helper
+    `merge_before(ctx)` beside `config_before` (same behaviour, same error).
+- **Where moves are set:** plain fetch — `fetch_first` lists before (`Ahead::Fetch(before)`), `run_rest` lists after
+  and sets `entry.fetched_refs`. Pull — `fetch_first` lists around its fetch line and carries `moved` in
+  `Ahead::{Fetched, Failed}`; `open_after` sets it right after the entry opens, so every close path carries it.
+- **Box 12 grep** (`grep -rn fetched_refs crates/graft-ops/src`, test files left out):
+  ```
+  journal/lines.rs:106  pub fetched_refs: Option<BTreeMap<String, RefMove>>,
+  journal/lines.rs:187  fetched_refs: None,                       (PendingLine::into_entry)
+  journal/lines.rs:204  fetched_refs: entry.fetched_refs.clone(), (OutcomeLine::of)
+  journal/lines.rs:218  entry.fetched_refs = self.fetched_refs;   (apply_to)
+  journal/fetched.rs:5,29,32  doc + wrote_anything
+  apply/error.rs:119    doc comment on moves_unread
+  apply/pull.rs:127     pending.entry.fetched_refs = ahead.moved();
+  apply/pull.rs:151     entry.fetched_refs = fetched::after(ctx.repo, &before, &mut run);
+  apply/fetched.rs:4,141  doc + stopped_words (remote::explain's words)
+  apply/fold.rs:178     fetched_refs: None,   (fold's record literal)
+  apply/record.rs:133   fetched_refs: None,   (begin's literal)
+  ```
+  No hit in `undo*`, `restore*`, `preview*`, `clash*`, `in_force`, `took_effect`, `changed_anything`, `next_*`.
+  Beyond the ticket's expected list: `fold.rs`/`record.rs` (literals, `None`), `journal/fetched.rs` (the submodule).
+- **`JournalEntry {` grep lines:** base graft-ops 46, graft 45; now graft-ops 53 (+7, all tests: 4 literals, 3 fn
+  return types), graft 45. `fetched_refs: None` added to every existing literal (graft-ops 4, graft 25 sites).
+- **`mark_interrupted`** (`journal/file.rs:177`) clones the entry parsed from the pending line → `fetched_refs: None`
+  (unknown); `recover.rs` has no literal and no mention.
+- **Command Log:** both listings run through `GitInvocation` but are not added to `commands`; `remote_ops.rs:173` and
+  `pull_set_aside.rs:89` green and unedited.
+- **Status words — read, not observed:** graft `remote_failed` (`update/remote/in_flight.rs:166`) splits `explain` at
+  its first ` · ` (`split_reason_and_keys` :232), so the appended moves land in the keys part, kept whole. Two paths
+  will **not** show the moves (out of scope, say so to the user if asked): a diverged pull whose tracking tip is known
+  (graft builds its own reason), and a cancelled fetch (graft's `cancelled` :88). Part B's status capture verifies the
+  first claim.
+- **Gates (workspace-wide, own `CARGO_TARGET_DIR`):** fmt ok; clippy ok; nextest 6107/6108 — the one failure is
+  `graft::it published_repo::nothing_a_commit_would_carry_names_this_machine` on
+  `.scratch/m8-polish-and-ship/issues/19c-tour-remainder.md:227`, **pre-existing at this worktree's base a198c95d**
+  and fixed on main by 7e7fa9c3 ("fix: scratch path in 19c-c C+2"); not touched here. `cargo test --doc` ok.
+- **Docs done:** graft-core MAP (`RefMove`), graft-ops MAP (`OutcomeLine.fetched_refs`, `wrote_anything`,
+  `moved_words`/`moved_lines`, `FactsError::FetchedRefs`, apply's listing row, `ApplyError::Remote.moves_unread`),
+  DESIGN `06-undo-journal-design.md` §6.1 (field) and §6.2 step 4.
+
+### Handoff — Part B (boxes 9, 10, 11; graft + graft-ui; Part A's API is in place)
+1. **Mark** — `crates/graft/src/view/journal.rs:192–202`, inside `in_force == false`: keep `reversed || !Aborted` →
+   `Undone`; else `!graft_ops::journal::wrote_anything(entry)` → `RowMark::Refused`; else `RowMark::None` (the
+   enum's default, `graft-ui/src/journal_screen/view.rs:11`). Variant and label unchanged.
+2. **Summary** — `crates/graft/src/view/journal/summary.rs` fetch arm (pushes `remote-tracking refs`, `not undoable`,
+   then `with_failure`). `<moves>` = `moved_words(map)` (+ ` before it stopped` when Aborted) if non-empty;
+   `nothing new` if `Some({})` and Committed; `remote-tracking refs` if `None` or (`Some({})` and Aborted).
+   **Gotcha:** `with_failure` returns only `failed: <first_line(reason)>` for Aborted and drops the parts — the moves
+   clause must survive it (target row: `failed: no repository at '…' … · origin/main moved before it stopped · not
+   undoable`). Pull row: today's summary + ` · <moved_words>` (+ ` before it stopped` when Aborted), non-empty only.
+3. **graft-ui** — `JournalRowView.moved: Vec<SanitizedText>` (Default empty); `pub fn moved_heading(keys: &Keymap)
+   -> String` spelling `u` via `keys.spell_keys(&[ActionId("app.undo")])`, unbound → `refs the fetch moved`.
+   Draw in `journal_screen/pieces.rs` `under_pieces(row, selected, columns, width)` between the failure and
+   `COMMANDS_HEADING` as `┆ ` lines cut by `cut_at_word` (pub in `journal_screen.rs`). **Gotcha:** `under_pieces` has
+   no keymap — pass the heading (or keys) in. graft-ui does not depend on graft-ops: graft fills `moved` from
+   `moved_lines(map, 20)` (≤ 21 lines incl. `+N more`), graft-ui draws what it gets; box 10's "25 → 20 + `+5 more`"
+   is then a graft-ui test fed 21 lines plus a graft view test feeding 25 refs.
+4. **Tests** — the five box-9 names and box 10; update existing tests asserting `remote-tracking refs` row text
+   (`graft/src/view/journal/tests.rs`, `graft-ui/src/journal_screen/tests.rs`) and list each; check
+   `graft/tests/it/m4_walk/{hangs_and_undo,coverage}.rs` for fetch/pull row text. `/` find will now match ref names
+   in the summary — say so.
+5. **Captures** (box 11) per the contact-sheet line; **docs** — graft and graft-ui MAP rows; DESIGN §1.10 mockup row
+   → `fetch · origin/main moved`.

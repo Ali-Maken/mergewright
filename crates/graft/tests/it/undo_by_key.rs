@@ -243,6 +243,7 @@ fn tear_the_journal(repo: &std::path::Path, description: &str) {
         config_before: std::collections::BTreeMap::new(),
         config_after: std::collections::BTreeMap::new(),
         put_back: None,
+        fetched_refs: None,
     };
     journal
         .append_pending(&entry)
