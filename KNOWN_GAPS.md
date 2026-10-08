@@ -1258,6 +1258,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/13m-no-acceptance-boxes | 13m is Status: done with no Acceptance boxes — its test is named only in NOTES (m7) | **unverified** | M8 |
 | M8/13m-window-edge | Q1: `promoted` looks for the cursor's commit only in the answered window's rows — residual edge when it lies outside (review Q1) | **unverified** (question) | M8 |
 | M8/12e-continue-from-palette-graph | Q2: `Continue` from `?` with the graph focused goes `banner_press` → `continue_pressed(…)` — return focus unproven (review Q2) | **unverified** (question) | M8 |
+| M8/18e-tour-arrival-line | 18e A2: the tour's arrival with the first-launch line is covered only via the shared `repo_arrival` — no tour-specific test (builder) | **unverified** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` **429** lines at the split (12f's 407 was false — review m8-palette-landing-stop C1); `listing.rs` 424 also over → 21b-4 additions; seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |
