@@ -16,15 +16,18 @@
     reason = "a test fixture that cannot be built has nothing to test; the panic names why"
 )]
 
+use graft::history::Phase;
 use graft::session::Clock;
 use graft::update::Status;
+use graft_fixtures::Shape;
+use graft_fixtures::remote::LocalRemote;
 
 use crate::app_harness::{App, git};
 use crate::captures::{check_shot, frame_at, settled_frame};
 use crate::pull_over_edits::{
     BOTH, MINE, SHARED, TEN, his_lines, origin_ahead_over, pulled, selected,
 };
-use crate::remote_by_key::{local, ready, rev};
+use crate::remote_by_key::{local, ready, rev, run};
 use crate::stash_clash::stash_list;
 
 /// 03 "Decided": `p`, one key.
@@ -34,9 +37,34 @@ const NOTED_KEYS: usize = 1;
 /// the capture's ages never drift with real time.
 const PULL_NOW: i64 = 1_609_459_200 + 60 * 60;
 
+/// [`local`]'s remote and config over `Shape::Trivial`, a history the walk's
+/// first answer holds whole (m8/42-flake-pull-ff).
+///
+/// Over `Linear`'s 200 commits the capture's header was a race. The pull's
+/// reload asks for the first rows; the landing asks a `Find` for `HEAD` once
+/// the refs read answers. A `Find` sent after the worker has the first rows
+/// but before the screen has them is answered after the worker laid out
+/// ahead between requests (`history/serve.rs`, `next_request`), and the
+/// header takes that answer's count (`history/scroll/apply.rs`,
+/// `self.rows = window.laid_out`): `140 rows so far` in most runs, `146`…
+/// `202 commits` in the rest. A history that fits the first answer is
+/// `Complete` whichever comes first.
+fn whole_in_one_answer() -> LocalRemote {
+    let remote =
+        LocalRemote::new(Shape::Trivial).expect("the Trivial shape clones into a local remote");
+    for args in [
+        ["config", "core.hooksPath", ".git/hooks"],
+        ["config", "user.name", "Graft Test"],
+        ["config", "user.email", "test@example.invalid"],
+    ] {
+        run(&remote, remote.work(), &args);
+    }
+    remote
+}
+
 #[test]
 fn pull_ff_over_edits() {
-    let remote = local();
+    let remote = whole_in_one_answer();
     let work = remote.work();
     let theirs = origin_ahead_over(&remote, MINE);
     let mine = his_lines(work);
@@ -46,6 +74,12 @@ fn pull_ff_over_edits() {
 
     let route = ["p"];
     let state = pulled(&app, &state);
+    assert_eq!(
+        state.history.as_ref().map(|history| &history.phase),
+        Some(&Phase::Complete),
+        "the whole history fits the walk's first answer, so the header the \
+         capture holds cannot depend on when the landing's read answers"
+    );
     assert!(
         route.len() <= NOTED_KEYS,
         "pull_ff_over_edits took {} keys {route:?}, 03 allows {NOTED_KEYS}",

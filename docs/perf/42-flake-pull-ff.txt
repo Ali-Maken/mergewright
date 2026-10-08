@@ -1,0 +1,50 @@
+# M8/42-flake-pull-ff: m7_walk::pull::pull_ff_over_edits under load (debugger, 2026-10-08)
+# Loop: the `it` binary, this one test (--exact), 4 lanes in parallel, beside two builders (load 7-35 on 10 cores).
+# Script: session scratchpad loop.sh, not committed. Failure logs kept in the scratchpad, not committed.
+#
+# natural1      base code                                  8/200 failed
+# probe1        base + [DEBUG-42f] probes                  10/200 failed
+# probe2        base + probes incl. the landing's reads    18/200 failed
+# red-guard     Phase::Complete guard, Linear fixture      20/20 failed (19 at the guard, 1 at the capture)
+# fixed-probed  fix (Trivial fixture), probes still on     0/400 failed
+# fixed-natural fix, probes removed                         0/200 failed
+#
+# Every failure before the fix: docs/shots/m7/pull-over-edits-120x40.txt line 1, committed `140 rows so far`,
+# drawn `202 commits` (most), `146 rows so far`, `161 rows so far`, `170 rows so far` or `172 rows so far`.
+
+== natural1 2026-10-08 16:32:24 runs=50 lanes=4 load=11.90 10.80 11.98
+lane 4 pass 47 fail 3
+lane 2 pass 48 fail 2
+lane 1 pass 49 fail 1
+lane 3 pass 48 fail 2
+== end natural1 2026-10-08 16:33:22 load=15.33 11.89 12.30
+== probe1 2026-10-08 16:34:39 runs=50 lanes=4 load=10.11 11.00 11.92
+lane 3 pass 47 fail 3
+lane 1 pass 49 fail 1
+lane 2 pass 46 fail 4
+lane 4 pass 48 fail 2
+== end probe1 2026-10-08 16:35:34 load=11.61 11.39 12.02
+== probe2 2026-10-08 16:37:46 runs=50 lanes=4 load=7.04 9.24 11.03
+lane 4 pass 45 fail 5
+lane 2 pass 46 fail 4
+lane 1 pass 46 fail 4
+lane 3 pass 45 fail 5
+== end probe2 2026-10-08 16:39:00 load=18.35 11.93 11.89
+== red-guard 2026-10-08 16:40:12 runs=5 lanes=4 load=14.17 12.16 11.98
+lane 4 pass 0 fail 5
+lane 1 pass 0 fail 5
+lane 2 pass 0 fail 5
+lane 3 pass 0 fail 5
+== end red-guard 2026-10-08 16:40:19 load=14.72 12.30 12.04
+== fixed-probed 2026-10-08 16:41:06 runs=100 lanes=4 load=12.98 12.08 11.96
+lane 1 pass 100 fail 0
+lane 3 pass 100 fail 0
+lane 4 pass 100 fail 0
+lane 2 pass 100 fail 0
+== end fixed-probed 2026-10-08 16:43:21 load=34.98 19.94 15.04
+== fixed-natural 2026-10-08 16:58:41 runs=50 lanes=4 load=11.20 18.39 19.86
+lane 2 pass 50 fail 0
+lane 4 pass 50 fail 0
+lane 1 pass 50 fail 0
+lane 3 pass 50 fail 0
+== end fixed-natural 2026-10-08 16:59:22 load=9.16 16.83 19.21
