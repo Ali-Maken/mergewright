@@ -1278,6 +1278,11 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/21c-row-cuts-moves | Question for the stop (what he sees): at 120 and 80 cols a long fetch failure cuts `origin/main moved…` off the J row; full words only on the status row and expanded row. Accept, or moves first? | **unverified** | M8 |
 | M8/19d-clock-sweep | 19 capture producers still unpinned (m3/m4/m5 walk examples, gallery git-git/workspace/100k, 15 in-process tests; `App::open_with_clock` pins the runner, not the drawn frame); ~70 captures have no current producer. List in 19d ticket NOTES 19d-b. Ages in those can still roll. Needs a split ruling. | **broken** | M8 |
 | M8/19d-pin-future-commits | Under `GRAFT_NOW`, commits made in the app carry the real date and draw `future` (19d-b saw it in its own test). Hits 19d-c tour captures (tasks 2, 6, 7 make commits). Needs a ruling. | **unverified** | M8 |
+| M8/19d-b2-open-unguarded | 19d-b2: 6 producers stay on wall clock (in-process git commits need a production hook, §R5 stop); guard misses `App::open`; FROZEN.md list heuristic; 2 new tests not seen red; 3600 s age draws `60m` not `1h`. | **unverified** | M8 |
+| M8/pick-post-commit-hold | Pick post-commit hold (planner 19d R7 notes; not built in 19d). | **broken** | M8 |
+| M8/resume-git-stopped-words | Resume "git was stopped" wording for a residual stop (19d-a2 / R7). | **unverified** | M8 |
+| M8/clash-unknown-kind-reachable | Clash notice fallback for an unknown kind now names no kind (R7.1); whether the app can reach that arm is unverified. | **unverified** | M8 |
+| M8/landed-mark-lost-on-clash | Landed mark lost when a put-back clashes (`stopped.rs:248`, 19d-a2). → 19d-a3 R7.3. | **broken** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` **429** lines at the split (12f's 407 was false — review m8-palette-landing-stop C1); `listing.rs` 424 also over → 21b-4 additions; seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |

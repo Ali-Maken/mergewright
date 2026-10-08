@@ -3,24 +3,29 @@
 Status: draft (planner spec-only pass, 2026-10-08; rules on 19c-c NOTES :221-232 and :261-263). Amended 2026-10-08,
 planner follow-up on NOTES 19d-b: §R4, §R5 and part 19d-b2 added, and 19d-c gains C+3. Amended again 2026-10-08,
 planner follow-up on NOTES 19d-a (branch `worktree-agent-a9afa698c484ca6f4`, commit bebdddd5, not merged): §R6 and
-part 19d-a2 added.
-Build with: five parts. a/a2 and b/b2 have disjoint file sets and may run concurrently (two helpers max). a2
-continues a's branch. b2 comes after b. c comes last and needs all four.
+part 19d-a2 added. Amended a third time 2026-10-08, planner follow-up on NOTES 19d-a2 (branch
+`worktree-agent-a67f6d8f405f4ef37`, commit 47f5a389, not merged): §R7 and part 19d-a3 added.
+Build with: six parts. a/a2/a3 and b/b2 have disjoint file sets and may run concurrently (two helpers max). a2
+continues a's branch and a3 continues a2's. b2 comes after b. a3's re-shoot waits for b2. c comes last and needs all
+five.
 - **19d-a — Opus, xhigh.** Stash- and undo-adjacent: a wrong order or a missed resume path loses edits, and no diff shows
   it. Not Fable: no new structure. It is the third extension of a proven mechanism (11a cherry-pick, 03b ff-pull, both
   on the same `sets_aside` arm and the same table tests), and the round-trip tests below can show whether it is right.
 - **19d-a2 — Opus, xhigh.** D1 and D2 are in `apply/close.rs`, the close every set-aside kind shares. That path
   decides whether `u` and the stop words are right after a stop. Not Fable: both defects carry their lines and red
   tests, the fix is local to the close, and the tests can show whether it is right.
+- **19d-a3 — Opus, xhigh.** The stop-outcome path again (`apply/stopped.rs`), plus one field on a public error variant.
+  Not Fable: a single line names the defect, and a red test can prove the fix.
 - **19d-b — Sonnet.** A pure parse, one read at launch, one default in the pty harness. Every signature is fixed below.
 - **19d-b2 — Sonnet.** Mechanical: one constant moves, one test seam is fixed, and 19 producers and one pty default are
   pinned. No production API. The rulings are §R4 and §R5.
 - **19d-c — Opus.** The 19c-c walk, finished; pty and captures. **Last.**
 Needs: 19c-a, 19c-b (merged), 19c-c partial (merged, 706d988f). 19d-a2 needs 19d-a (bebdddd5; the two merge
-together). 19d-b2 needs 19d-b (merged, partial). 19d-c needs 19d-a, 19d-a2, 19d-b and 19d-b2.
+together). 19d-a3 needs 19d-a2 (47f5a389; a, a2 and a3 merge together); its capture re-shoot also needs 19d-b2 merged.
+19d-b2 needs 19d-b (merged, partial). 19d-c needs 19d-a, 19d-a2, 19d-a3, 19d-b and 19d-b2.
 Scout: 19d-a uses `.scratch/m8-polish-and-ship/scouts/merge-preview-dirty-index.md` (no second scout). 19d-a2: NOTES
-19d-a is its scout. 19d-b: none. MAP :91, :182 and :1116 are enough; the conductor decides. 19d-b2: the sweep in
-NOTES 19d-b is its scout.
+19d-a is its scout. 19d-a3: NOTES 19d-a2 is its scout. 19d-b: none. MAP :91, :182 and :1116 are enough; the conductor
+decides. 19d-b2: the sweep in NOTES 19d-b is its scout.
 ADR: **none new.** Nothing here is hard to reverse: the journal field (`put_back`) already exists and is additive
 (ADR-0045 §1), and `sets_aside` is one match arm. 19d-a appends an **ADR-0045 amendment** (text in §R1, last bullet),
 as 11a and 03b did. 19d-a2 corrects its spawn count (§R6).
@@ -196,11 +201,11 @@ as 11a and 03b did. 19d-a2 corrects its spawn count (§R6).
 - **The two captures** (`docs/shots/m8-hangup-relaunch-120x40.txt`,
   `docs/shots/m8-quit-stopped-merge-relaunch-80x24.txt`): re-shoot after reading the diff. Every changed cell must be
   the set-aside's own words (the ` · edits aside` stop rung, graft MAP :504). Any other change → stop. Captions say what
-  right looks like.
+  right looks like. (Superseded by §R7.2.)
 - **Clash notice (broken, `crates/graft/src/update/clash.rs` `undone_with_edits`, `_ => "rebase"`):** fix it in the same
   part, since it is the line this milestone touched. An exhaustive match with no `_` arm, worded from the entry's own
   kind name (the journal's `kind_name`, graft-ops MAP :241, `apply/record.rs`). No new vocabulary. A kind name that
-  reads oddly in `u undoes the <kind> too` is listed in NOTES, not reworded.
+  reads oddly in `u undoes the <kind> too` is listed in NOTES, not reworded. (Amended by §R7.1.)
 - **Spawns: accept the measured 5 (true merge) / 3 (fast-forward).** R1's "≤ 4" is amended to those numbers. The
   baseless `merge-tree` proposal is rejected. It would change the fixed `merge_landed` signature and reach into
   graft-git (`forecast_merge` returns no tree) to save one spawn, on a preview job that checks `stop` between spawns.
@@ -208,6 +213,40 @@ as 11a and 03b did. 19d-a2 corrects its spawn count (§R6).
   box draws a set-aside row, the cause is the plan. Fix it in graft-ops `preview::plan`: a merge with no ref move
   gets `set_aside: None` and `put_back: None`. If that box offers `y` (so `apply` would set aside for nothing),
   **stop and report**. That is a different rule.
+
+### R7. 19d-a2's three questions (NOTES 19d-a2, 47f5a389) (19d-a3)
+1. **Clash notice: accept the deviation.** Checkout and a switching branch-create keep `switch`. R6 said "kind name" to
+   forbid **new** vocabulary, and `switch` is shipped vocabulary. It is approved by eye in 4 m6 captures, 2 contact-sheet
+   entries and `TESTING.md:2598`, `:2724`. It is also the 10b rule's own word ("one rule for every switch",
+   ADR-0045 amendment 10b), so reading it from `kind_name` would reword a correct line and re-shoot m6 for nothing.
+   `recover` and `rewrite` stay as `kind_name` gives them, listed (as NOTES 19d-a2 did). **The unknown-kind fallback**
+   (`clash.rs`, `let Some(kind) = kind else { return "rebase" }`) words a guess as fact. Make it name no kind: drop the
+   `the <kind>` clause and keep the notice's other words. The shipped None test changes its expectation to match, and
+   NOTES says so. Whether the app can reach it stays **unverified**; the conductor files that row.
+2. **The two captures: the new cells are right.** They are true consequences of R6 for a paused merge with edits aside:
+   - The stash row (`stash@{0} … graft: your edits, set aside for merge main into feature`) is right: `S` is in the
+     stash list while paused (ADR-0045 §4 step 3) and the graph draws every stash.
+   - `1 unstaged` / `UNSTAGED (1) M base.txt` going away is right: his edit is in `S`, not the tree. The `2 staged`
+     that remain must be the paused merge's own staged paths. **Assert that**, don't assume it: the staged paths equal
+     the merge's changed paths.
+   - At 80×24 no ` · edits aside` rung shows. That is by design: the part drops first (graft MAP :504). The stash row is
+     what tells him there. The conductor puts it on the usability walk's list, and it isn't changed here.
+   - **The re-shoot waits for 19d-b2.** Its pty defaults (`GIT_AUTHOR_DATE` / `GIT_COMMITTER_DATE`, §R5) date
+     `git stash create`, so `S`'s id and age are fixed. After b2 merges: run each producer twice, and both runs are
+     byte-identical. No `future` (`futu…`) in either. If the fixture sets its own git dates for the app's child, they
+     win, and they must hold too. Unstable after b2 → stop and report. **No masking of the id.**
+   - Captions are rewritten for what is drawn now. The 80×24 caption loses "his edit unstaged (`M base.txt`)" and says
+     his edit is set aside (the stash row) and comes back on `c` or `a`.
+3. **Landed lost when the put-back clashes (broken, `apply/stopped.rs:248`, `Err(other) => Err(other)`): fix in a3.**
+   `ApplyError::Clashed` gains `stopped_at: Option<StoppedAt>`, set to `Some(Landed)` on that path and `None`
+   everywhere else. `ApplyError::stopped_at()` returns it. This is a signature change on a public variant, inside the
+   workspace only. Graft's matches take the field or use `..`. The app's landing is unchanged: a clash goes to the
+   resolver (ADR-0045 §2). Grep every graft caller of `stopped_at()`, and in NOTES say what each now shows for this
+   case. **No new words.** If a caller would need new words to show both the clash and Landed, stop and report.
+- **Filed by the conductor, not built here** (from NOTES 19d-a2 "Findings"): a pick stopped in post-commit with the hook
+  outside the group is held `Conflicted` with `HEAD` moved (`apply/stopped.rs:116`, `:125`; `close.rs:95`). It is
+  broken, and the fix belongs to 13c's pause rule. Resume's set-aside close words a residual stop `git was stopped`
+  (`apply/resume/close.rs:53` vs `:91`). That is unverified.
 
 ## Signatures
 ```rust
@@ -239,6 +278,15 @@ pub(crate) fn merge_landed(
 // 19d-a2: no signature changes. The fixes are inside `apply/close.rs` (crate-private): the set-aside close path
 // carries `stopped_at` into `stopped::mark` (D1) and `PlanFailure.before_pause` into its error (D2), as the plain
 // close path does. `Applied::stopped_at` and `ApplyError::stopped_at()` (graft-ops MAP :260-262) keep their shapes.
+
+// 19d-a3, graft-ops apply/error.rs — one field added to the existing variant (§R7.3):
+pub enum ApplyError {
+    // ...
+    Clashed { entry: Box<JournalEntry>, clash: Clash, stopped_at: Option<StoppedAt> },
+    // ...
+}
+// `ApplyError::stopped_at(&self) -> Option<StoppedAt>` (unchanged signature) returns the field for `Clashed`.
+// Keep the shipped field types of `entry`/`clash` if they differ from these; add only `stopped_at`.
 
 // 19d-b, graft (beside `Clock`, session; MAP :91)
 pub(crate) const NOW_VAR: &str = "GRAFT_NOW";
@@ -313,6 +361,8 @@ continue too). The conductor checks KNOWN_GAPS for a row.
 ## 19d-a2 — the shared set-aside close, 13c's expectations, the clash notice (Opus xhigh, ~45k)
 **Base:** branch `worktree-agent-a9afa698c484ca6f4` at bebdddd5 (19d-a, not merged). a and a2 merge together. Write the
 NOTES under `## NOTES 19d-a2` in this file on that branch.
+**State:** partial on branch `worktree-agent-a67f6d8f405f4ef37` at 47f5a389, with its ticks and NOTES there. Open
+boxes: the 2 captures and the gates. They move to 19d-a3.
 **Crate set:** `crates/graft-ops`: `apply/close.rs`, `apply/set_aside*` only if the close's caller needs it,
 `apply/stopped.rs` only if `mark` must take a new input, `preview` (merge plan, only if the up-to-date test is red),
 tests `tests/it/stop_hooks.rs` and `tests/it/cherry_pick.rs` (pick twins), MAP :263. `crates/graft`:
@@ -355,6 +405,50 @@ entry is `live`, left alone by `recover_interrupted`: one assertion in the relau
 set-aside entry (D1 test's `u`); the stop line rungs; the two captures and any contact sheet holding them (the
 conductor rebuilds); KNOWN_GAPS (the conductor closes the clash-notice row and files nothing for D1/D2 once green).
 
+## 19d-a3 — Landed through a clash, the clash notice's fallback, the two captures (Opus xhigh, ~35k)
+**Base:** branch `worktree-agent-a67f6d8f405f4ef37` at 47f5a389 (19d-a2, partial, not merged). a, a2 and a3 merge
+together. Write the NOTES under `## NOTES 19d-a3` in this file on that branch.
+**Order inside the part:** steps 1 and 2 now. Step 3 only after 19d-b2 has merged into the base. If b2 hasn't merged,
+commit steps 1-2, report `blocked: needs 19d-b2`, and stop. Don't wait in place.
+**Crate set:** `crates/graft-ops`: `apply/stopped.rs`, `apply/error.rs` (the `Clashed` field), the places that build
+`Clashed` (`apply/close.rs`, `apply/set_aside*`; grep `Clashed {`), tests `tests/it/stop_hooks.rs`, MAP (`Clashed`
+line :258, `stopped_at` :260). `crates/graft`: every match on `ApplyError::Clashed` (grep), `update/clash.rs` (the
+fallback only), `tests/it/quit_waits/{stuck,hangup}.rs` and the capture test, the two captures, graft MAP if a line
+names them. **Not** `tests/it/pty.rs` (19d-b2's).
+**Read first:** §R7; NOTES 19d-a2 on the branch ("Captures", "Clash notice", "Findings"); graft-ops MAP :257-263; graft
+MAP :504, :646.
+**Out:** the pick-post-commit hold and the resume residual wording (§R7, filed by the conductor); 13c's pause rule;
+any new words; masking a stash id.
+**Acceptance:**
+- [ ] Step 1, Landed through a clash, red before: a set-aside merge over an edit that overlaps a path the merge changes
+      cleanly, with its post-merge hook stopped, gives `ApplyError::Clashed { stopped_at: Some(StoppedAt::Landed), .. }`.
+      The entry is `Committed`, `S` is kept, and the clash is live:
+      `stop_hooks::a_merge_that_landed_before_the_stop_and_clashed_on_put_back_says_landed`. `u` is exact (same test).
+      Every other `Clashed` constructor gives `None` (`merge_set_aside::a_merge_put_back_that_clashes_stops_as_a_clash`
+      asserts it).
+- [ ] Step 1, callers: NOTES lists each graft caller of `stopped_at()` and what it shows for this case. No new words.
+      A caller that would need them → stopped and reported.
+- [ ] Step 2, the unknown-kind fallback names no kind (§R7.1). The shipped None test's expectation is changed and named
+      in NOTES. Test: `clash::tests::an_unknown_kind_names_no_kind`. Checkout and switch-create still read `switch`:
+      `clash::tests::the_clash_notice_names_each_set_aside_kind` unchanged.
+- [ ] Step 3 (after 19d-b2), relaunch capture: the paused merge's staged paths equal the merge's own changed paths
+      (asserted, §R7.2), and the stash row is drawn:
+      `quit_waits::capture_relaunch_after_a_stopped_merge`.
+- [ ] Step 3, hangup capture: the same assertions, plus the post-abort `S`-dropped check, now reached:
+      `quit_waits::hangup::a_hangup_then_a_second_hangup_leaves_the_merge_paused`.
+- [ ] Step 3, stability: each capture test run twice with `GRAFT_UPDATE_SHOTS=1`, both outputs byte-identical. No
+      `future` / `futu…`. The diff from HEAD is only the cells §R7.2 names (stash row; `1 unstaged` / `UNSTAGED (1)
+      M base.txt` gone; the ` · edits aside` rung at 120×40). Captions rewritten. Files:
+      `docs/shots/m8-hangup-relaunch-120x40.txt`, `docs/shots/m8-quit-stopped-merge-relaunch-80x24.txt`. Colour
+      **unverified**; ≤ 200 KB.
+- [ ] All four gates workspace-wide; 19d-a2's open gates box ticked here with the run's counts.
+**Touches (check each, say how):** every construction and match of `ApplyError::Clashed` (grep in both crates; the
+compiler's exhaustiveness is the check); `ApplyError::stopped_at` callers; the resolver landing on a clash
+(unchanged; `a_put_back_clash_lands_on_the_resolver_with_set_aside_names` green); the m6 `switch` captures and
+`TESTING.md:2598`, `:2724` (unchanged, by §R7.1); the two captures and any contact sheet holding them (the conductor
+rebuilds the M8 sheet); KNOWN_GAPS (the conductor closes the Landed-through-clash row once green, and files the
+fallback-reachability row as unverified).
+
 ## 19d-b — the session clock pinned for pty runs (Sonnet, ~25k)
 **Crate set:** `crates/graft` (`session` beside `Clock`; the launch path that builds the session clock and
 `JobRunner::with_clock`; `tests/it/pty.rs`), graft MAP :91/:1116.
@@ -383,9 +477,9 @@ closes it after 19d-b2, naming `graft_now_pins_the_drawn_age` and `no_capture_pr
 `examples/m3_walk.rs`, `examples/m4_walk.rs`, `examples/m5_walk.rs`, `examples/gallery.rs`, the `#[cfg(test)]` modules
 `src/view/tests.rs` and `src/update/tests.rs`); `docs/shots/FROZEN.md` (new); graft MAP (the `app_harness` and
 `pty` test entries). **No production file.** If one needs to change, stop and report.
-**Schedule:** after 19d-b. It shares the `crates/graft` tests with 19d-a and 19d-a2. Before running them concurrently,
-the conductor checks the file sets are disjoint. 19d-a's app test goes in a new file. `tour_tasks.rs` belongs to
-19d-a, and `quit_waits/*` to 19d-a2.
+**Schedule:** after 19d-b. It shares the `crates/graft` tests with 19d-a, 19d-a2 and 19d-a3. Before running them
+concurrently, the conductor checks the file sets are disjoint. 19d-a's app test goes in a new file. `tour_tasks.rs`
+belongs to 19d-a, and `quit_waits/*` to 19d-a2 and a3.
 **Read first:** this file §R3-§R5 and NOTES 19d-b; graft MAP :91, :182, :1116; graft-fixtures MAP :32 and the
 `capture` lines; ADR-0037 (contact sheets).
 **Acceptance:**
@@ -439,8 +533,8 @@ at 80×24; `~/code` under the header; card line 1 "top row" while the cursor is 
 workspace-wide, every part.
 
 ## Size
-a ~60k (done but blocked) · a2 ~45k · b ~25k · b2 ~45k · c ~35k. Each fits one context. If one compacts, say so in
-NOTES.
+a ~60k (done but blocked) · a2 ~45k (partial) · a3 ~35k · b ~25k · b2 ~45k · c ~35k. Each fits one context. If one
+compacts, say so in NOTES.
 
 ## 19d-c additions (conductor 2026-10-08, from 21c Part B hand-back — stale outputs, no new decision)
 - [ ] C+1: the M8 contact sheet gains `docs/shots/m8/21c-status-partial-fetch-120x40.txt`, `21c-journal-partial-fetch-120x40.txt`, `21c-journal-partial-fetch-80x24.txt` (ticket order, each under its "what right looks like" line).
