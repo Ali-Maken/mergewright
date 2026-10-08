@@ -438,7 +438,7 @@ fn esc_while_typing_closes_the_prompt_only() {
     assert_eq!(selected_row(&frame), selected_row(&before), "{body}");
     assert!(!title(&frame).contains("find"), "no find kept:\n{body}");
     assert!(
-        from_bottom(&frame, BAR).ends_with("J/esc close"),
+        from_bottom(&frame, BAR).ends_with("J/esc close  ? keys"),
         "the bar is back:\n{body}"
     );
     drop(state);

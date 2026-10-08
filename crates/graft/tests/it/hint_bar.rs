@@ -859,6 +859,30 @@ fn a_amend_is_hinted_on_heads_row() {
 /// in: the marker lives on the row, not in the state.
 #[test]
 fn capture_the_doorway_on_a_marked_row_for_docs_shots() {
+    capture_marked_rows(&MARKED_SHOTS);
+}
+
+/// Each marked-row capture: its size and what right looks like there.
+const MARKED_SHOTS: [(u16, u16, &str); 2] = [
+    (
+        120,
+        36,
+        "Right (m8/11d R2): `. explain` leads, `u undo` is drawn, and\n\
+             # `? keys` is not — it ranks right after `u undo` and `/ search` and is drawn, last,\n\
+             # only once both are (a marked branch tip needs 137 cells of bar, m8/11e F1);\n\
+             # `?` still answers.",
+    ),
+    (
+        140,
+        40,
+        "Right (m8/11e F1): at 140 columns, past the 137 a marked branch tip\n\
+             # needs, the bar ends `? keys`.",
+    ),
+];
+
+/// The marked-row captures, one per `shots` entry, from one evil-merge
+/// state drawn at each size.
+fn capture_marked_rows(shots: &[(u16, u16, &str)]) {
     use graft::update::detail::Loading;
 
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::EvilMerge);
@@ -880,34 +904,43 @@ fn capture_the_doorway_on_a_marked_row_for_docs_shots() {
     );
     let state = crate::captures::settled_frame(&app, state);
     let state = app.key(&state, KeyCode::Escape);
-    let drawn = crate::captures::frame_at(
-        &state,
-        120,
-        36,
-        Some(graft::session::Clock::Fixed(crate::preview::FORK_NOW)),
-    );
-    let bar = drawn.last().cloned().unwrap_or_default();
-    assert!(bar.starts_with(" . explain"), "a marked row's bar: {bar:?}");
-    assert!(bar.contains("u undo"), "{bar:?}");
-    let mut out = String::from(
-        "# m8/doorway-marked-120x36.txt: 120x36, drawn by `view::view` from a real AppState\n\
-         # (crates/graft/tests/it/hint_bar.rs, capture_the_doorway_on_a_marked_row_for_docs_shots).\n\
-         # Not a pty capture: a character grid, no colour (CLAUDE.md rule 5 — colour unverified).\n\
-         #\n\
-         # Here the cursor is on an evil merge that is the current branch's tip, marked by the\n\
-         # radar, the pane shut. Right (m8/11d R2): `. explain` leads, `u undo` is drawn, and\n\
-         # `? keys` is not — it ranks right after `u undo` and `/ search` and is drawn, last,\n\
-         # only once both are (a plain marked row needs 129 cells of bar); `?` still answers.\n\n",
-    );
-    for line in &drawn {
-        out.push_str(line);
-        out.push('\n');
+    let mut drifted = Vec::new();
+    for &(columns, rows, what) in shots {
+        let sized = app.resize(&state, columns, rows);
+        let drawn = crate::captures::frame_at(
+            &sized,
+            columns,
+            rows,
+            Some(graft::session::Clock::Fixed(crate::preview::FORK_NOW)),
+        );
+        let bar = drawn.last().cloned().unwrap_or_default();
+        assert!(bar.starts_with(" . explain"), "a marked row's bar: {bar:?}");
+        assert!(bar.contains("u undo"), "{bar:?}");
+        assert_eq!(
+            bar.contains("? keys"),
+            columns >= 137,
+            "the doorway on a marked branch tip at {columns}: {bar:?}"
+        );
+        let name = format!("doorway-marked-{columns}x{rows}.txt");
+        let mut out = format!(
+            "# m8/{name}: {columns}x{rows}, drawn by `view::view` from a real AppState\n\
+             # (crates/graft/tests/it/hint_bar.rs, capture_the_doorway_on_a_marked_row_for_docs_shots).\n\
+             # Not a pty capture: a character grid, no colour (CLAUDE.md rule 5 — colour unverified).\n\
+             #\n\
+             # Here the cursor is on an evil merge that is the current branch's tip, marked by the\n\
+             # radar, the pane shut. {what}\n\n"
+        );
+        for line in &drawn {
+            out.push_str(line);
+            out.push('\n');
+        }
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/shots/m8")
+            .join(&name);
+        if let Err(why) = graft_fixtures::check(&path, &out) {
+            drifted.push(why);
+        }
     }
-    let path =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/shots/m8/doorway-marked-120x36.txt");
-    let checked = graft_fixtures::check(&path, &out);
     app.close();
-    if let Err(why) = checked {
-        panic!("{why}");
-    }
+    assert!(drifted.is_empty(), "{}", drifted.join("\n\n"));
 }

@@ -51,7 +51,11 @@ fn journal_states() -> Vec<(String, AppState)> {
         subjects: vec![(oid(4), "D".to_owned())],
     }));
     crate::update::journal::rebuild(&mut base);
-    let list = base.journal.list.clone().expect("the journal list is built");
+    let list = base
+        .journal
+        .list
+        .clone()
+        .expect("the journal list is built");
     let mut states: Vec<(String, AppState)> = (0..list.rows.len())
         .map(|index| {
             let mut state = base.clone();
@@ -79,11 +83,17 @@ pub(super) fn place_footer_states() -> Vec<(String, AppState)> {
     reading.journal.entries = Loading::Pending(JobId::new(702));
     states.push(("journal, not read yet".to_owned(), reading));
 
-    states.push(("stash list".to_owned(), overlay_over(behind(), Shown::Stash)));
+    states.push((
+        "stash list".to_owned(),
+        overlay_over(behind(), Shown::Stash),
+    ));
     for (what, entries) in [
         ("stash, loading", Loading::Pending(JobId::new(703))),
         ("stash, empty", Loading::Ready(Arc::new(Vec::new()))),
-        ("stash, failed", Loading::Failed("git stash list failed".to_owned())),
+        (
+            "stash, failed",
+            Loading::Failed("git stash list failed".to_owned()),
+        ),
     ] {
         let mut state = overlay_over(behind(), Shown::Stash);
         state.stash.entries = entries;
@@ -233,9 +243,15 @@ fn the_map_loading_footer_draws_the_doorway_only_if_question_mark_answers() {
         .palette
         .is_some();
     if opened {
-        assert_eq!(row, "esc cancels  ? keys", "`?` opens the palette at Loading");
+        assert_eq!(
+            row, "esc cancels  ? keys",
+            "`?` opens the palette at Loading"
+        );
     } else {
-        assert!(!row.contains("keys"), "`?` does nothing at Loading: `{row}`");
+        assert!(
+            !row.contains("keys"),
+            "`?` does nothing at Loading: `{row}`"
+        );
     }
 }
 
@@ -244,7 +260,7 @@ fn the_map_loading_footer_draws_the_doorway_only_if_question_mark_answers() {
 /// footer is the box's, never `? keys`. The boxes are the ones the footers'
 /// own keys open.
 #[test]
-fn a_box_over_a_place_draws_no_keys_doorway() {
+fn a_preview_over_the_journal_draws_no_keys_doorway() {
     let mut boxed: Vec<String> = Vec::new();
     let mut drawn: Vec<String> = Vec::new();
     for (what, state) in place_footer_states() {

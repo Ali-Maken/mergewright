@@ -47,7 +47,7 @@ fn no_b_hint_on_a_step_that_names_no_commit() {
         !bar(&frame).contains("b new branch here"),
         "no b hint:\n{body}"
     );
-    assert!(bar(&frame).ends_with("J/esc close"), "{body}");
+    assert!(bar(&frame).ends_with("J/esc close  ? keys"), "{body}");
 }
 
 /// Minor 3: a `●` entry can move several refs or none, so `b` there says
