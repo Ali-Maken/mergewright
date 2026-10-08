@@ -2305,6 +2305,8 @@ fn an_open_search_prompt_keeps_a_handed_back_key_as_text() {
 
 mod pane_space;
 
+mod place_footers;
+
 mod keymap_edge;
 
 mod keymap_rules;
@@ -4117,10 +4119,7 @@ fn the_keys_doorway_opens_a_palette_he_can_see_everywhere_it_is_drawn() {
     for context in every_context() {
         let place = matches!(
             context,
-            HintContext::Map
-                | HintContext::Journal
-                | HintContext::Stash
-                | HintContext::PaneOverOverlay { .. }
+            HintContext::PaneOverOverlay { .. }
                 | HintContext::ChangesPane {
                     over_overlay: true,
                     ..
@@ -4150,6 +4149,21 @@ fn the_keys_doorway_opens_a_palette_he_can_see_everywhere_it_is_drawn() {
             if !frame.contains("keys here") {
                 unseen.push(format!("{context:?}"));
             }
+        }
+    }
+    // The journal, stash and Map draw their own footers (m8/11e): each
+    // state's drawn footer carries the doorway, and `?` opens the palette.
+    for (what, state) in place_footers::place_footer_states() {
+        let (state, frame) = place_footers::drawn_at(&state, COLUMNS, ROWS);
+        let footer = place_footers::footer_row(&frame);
+        assert!(
+            footer.contains("? keys"),
+            "{what}: the footer draws no doorway: {footer:?}"
+        );
+        let (after, _) = crate::update::update(&state, key(KeyCode::Char('?')));
+        checked += 1;
+        if !crate::view::tests::draw(&after, COLUMNS, ROWS).contains("keys here") {
+            unseen.push(what);
         }
     }
     assert!(checked >= 8, "only {checked} states swept");
@@ -4616,17 +4630,14 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
             tab_to_banner: *tab_to_banner,
             space_stages: *space_stages,
         }),
-        // The three overlays and the pane with one behind it **are**
-        // classified, since m5/42: `view::rows` reads
-        // `AppState::graph_overlay` and answers the overlay's own list with
-        // the graph focused, or `PaneOverOverlay` with the detail pane
-        // focused. Before that the overlays were `None` here — and that
-        // hole is exactly why a sweep carrying this invariant passed a bar
-        // of nine dead keys (the ticket's own finding).
-        HintContext::Journal
-        | HintContext::Stash
-        | HintContext::Map
-        | HintContext::Picker
+        // The pane with an overlay behind it **is** classified, since
+        // m5/42: `view::rows` reads `AppState::graph_overlay` and answers
+        // `PaneOverOverlay` with the detail pane focused. Before that the
+        // overlays were `None` here — and that hole is exactly why a sweep
+        // carrying this invariant passed a bar of nine dead keys (the
+        // ticket's own finding). With the graph focused an overlay draws its
+        // own footer (m8/11e), swept by `every_key_a_place_footer_draws_is_answered`.
+        HintContext::Picker
         | HintContext::PaneOverOverlay { .. }
         | HintContext::WorkingTreeRow
         | HintContext::Banner { .. }
@@ -5062,15 +5073,6 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
                 crate::update::keys::edit_stop::space_stages_here(state) == *space_stages
             })
             .collect(),
-        HintContext::Journal => vec![overlay_over(
-            merge_on_screen(walk, MERGE_ROW).0,
-            Shown::Journal,
-        )],
-        HintContext::Stash => vec![overlay_over(
-            merge_on_screen(walk, MERGE_ROW).0,
-            Shown::Stash,
-        )],
-        HintContext::Map => vec![overlay_over(merge_on_screen(walk, MERGE_ROW).0, Shown::Map)],
         HintContext::Picker => vec![picker_over(merge_on_screen(walk, MERGE_ROW).0)],
         // **The state ticket 31's sweep could not reach** (m5/42): the pane
         // has the keyboard and an overlay, not the graph, stands behind it.
@@ -5992,11 +5994,21 @@ fn every_bound_action_is_hinted_live_or_is_named_here() {
     let bound = super::keys::bound_actions();
     // `every_hint` is the union of every context's own list plus the tail
     // and the doorway hints `whole_bar` adds, so "live in here" is "live on
-    // some bar".
+    // some bar". The journal, stash and Map footers are no hint contexts
+    // since m8/11e: what they draw is read off the drawn frame and resolved
+    // by the keymap in the place's context.
+    let footers = place_footers::place_footer_states()
+        .into_iter()
+        .flat_map(|(_, state)| {
+            let (state, frame) =
+                place_footers::drawn_at(&state, place_footers::WIDE.0, place_footers::WIDE.1);
+            place_footers::footer_actions(&state, &place_footers::footer_row(&frame))
+        });
     let live: Vec<ActionId> = every_hint()
         .iter()
         .filter(|hint| hint.state == HintState::Live)
         .flat_map(actions_of)
+        .chain(footers)
         .collect();
     let exempt: Vec<ActionId> = NEVER_HINTED.iter().map(|(action, _)| *action).collect();
 
@@ -6639,46 +6651,28 @@ fn a_dirty_tree_arriving_keeps_a_shown_cursor_shown() {
     assert!(!cursor_drawn(&arrived), "still off screen");
 }
 
-/// **The keys doorway on a journal and a blame place** (m8/11d): two
-/// captures under `docs/shots/m8/`, each drawn by
-/// `view::view` from the state `states_for` builds for that bar's context.
-/// The bar row is the user's to judge (rule 6); colour unverified (rule 5).
-/// The marked row's is `tests/it/hint_bar.rs`: `states_for` cannot draw a
-/// radar marker, which lives on the row, not in the state.
+/// The place state `place_footers::place_footer_states` names `what`.
+fn place_state(what: &str) -> AppState {
+    place_footers::place_footer_states()
+        .into_iter()
+        .find(|(name, _)| name == what)
+        .map_or_else(|| panic!("no place state named {what}"), |(_, state)| state)
+}
+
+/// One doorway capture: file name, what built its state, the state, its
+/// size, and what right looks like there.
+type DoorwayShot = (&'static str, &'static str, AppState, u16, u16, &'static str);
+
+/// **The keys doorway on the places** (m8/11d, m8/11e): captures under
+/// `docs/shots/m8/`, each drawn by `view::view` from an `AppState` —
+/// the journal, stash and Map footers from `place_footers`, the blame bar
+/// from the state `states_for` builds for its context. The bar row is the
+/// user's to judge (rule 6); colour unverified (rule 5). The marked row's is
+/// `tests/it/hint_bar.rs`: a radar marker lives on the row, not the state.
 #[test]
 fn capture_the_keys_doorway_for_docs_shots() {
-    let blame_lines = HintContext::Blame {
-        finding: false,
-        ignore_file: false,
-        lines: true,
-    };
-    let shots: [(&str, HintContext, u16, u16, &str); 2] = [
-        (
-            "doorway-journal-120x36.txt",
-            HintContext::Journal,
-            120,
-            36,
-            "the journal (J) is open with the graph's keyboard, the detail pane shut. \
-             The bar drawn is the journal's own footer (graft-ui `journal_screen.rs` \
-             `footer`, :243), not `HintContext::Journal`'s, so it has **no** `? keys`: \
-             R1 reaches this screen only where that context is drawn (11d NOTES finding)",
-        ),
-        (
-            "doorway-blame-80x24.txt",
-            blame_lines,
-            80,
-            24,
-            "a blame place with its lines read, 80 columns. Right: the bar reads \
-             `⏎ that commit  ^ before it  L history of these lines  ? keys  /  space  w  esc` — \
-             `? keys` after the words, leading the bare keys (ADR-0039, m8/11d R1)",
-        ),
-    ];
     let mut drifted = Vec::new();
-    for (name, context, columns, rows, what) in shots {
-        let state = states_for(&context, Divider::Hidden, columns)
-            .into_iter()
-            .next()
-            .unwrap_or_else(|| panic!("no state for {context:?}"));
+    for (name, context, state, columns, rows, what) in doorway_shots() {
         let state = settled(AppState {
             size: Size { columns, rows },
             ..state
@@ -6695,7 +6689,7 @@ fn capture_the_keys_doorway_for_docs_shots() {
             .join("\n");
         let out = format!(
             "# m8/{name}: {columns}x{rows}, drawn by `view::view` from the AppState\n\
-             # `update::tests::states_for` builds for {context:?}\n\
+             # `update::tests` builds for: {context}\n\
              # (crates/graft/src/update/tests.rs, capture_the_keys_doorway_for_docs_shots).\n\
              # Not a pty capture: a character grid, no colour (CLAUDE.md rule 5 — colour\n\
              # unverified).\n#\n# Here {what}.\n\n{frame}\n"
@@ -6710,6 +6704,70 @@ fn capture_the_keys_doorway_for_docs_shots() {
     assert!(drifted.is_empty(), "{}", drifted.join("\n\n"));
 }
 
+/// The doorway captures: the journal, stash and Map footers (m8/11e) and
+/// the blame bar (m8/11d).
+fn doorway_shots() -> Vec<DoorwayShot> {
+    let blame_lines = HintContext::Blame {
+        finding: false,
+        ignore_file: false,
+        lines: true,
+    };
+    let blame = states_for(&blame_lines, Divider::Hidden, 80)
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| panic!("no state for {blame_lines:?}"));
+    vec![
+        (
+            "doorway-journal-120x36.txt",
+            "journal row 0",
+            place_state("journal row 0"),
+            120,
+            36,
+            "the journal (J) is open with the graph's keyboard, the detail pane shut. \
+             Right: its footer ends `J/esc close  ? keys` — the doorway last, after the \
+             journal's own keys (m8/11e F2)",
+        ),
+        (
+            "doorway-stash-120x36.txt",
+            "stash list",
+            place_state("stash list"),
+            120,
+            36,
+            "the stash list (Z) is open with one stash. Right: its footer ends \
+             `Z/esc close  ? keys` (m8/11e F2)",
+        ),
+        (
+            "doorway-stash-60x20.txt",
+            "stash list",
+            place_state("stash list"),
+            60,
+            20,
+            "the stash list at 60 columns. Right: the footer sheds whole clauses from \
+             the middle and keeps `? keys` last — never a cut word (m8/11e E1)",
+        ),
+        (
+            "doorway-map-120x36.txt",
+            "map, +3 more, partial",
+            place_state("map, +3 more, partial"),
+            120,
+            36,
+            "the Map (M) with three branches more than it shows and a row cut short. \
+             Right: the footer reads keys, then `? keys`, then ` · +3 more · partial` \
+             (m8/11e E2)",
+        ),
+        (
+            "doorway-blame-80x24.txt",
+            "blame, lines read",
+            blame,
+            80,
+            24,
+            "a blame place with its lines read, 80 columns. Right: the bar reads \
+             `⏎ that commit  ^ before it  L history of these lines  ? keys  /  space  w  esc` — \
+             `? keys` after the words, leading the bare keys (ADR-0039, m8/11d R1)",
+        ),
+    ]
+}
+
 /// **A text field inside a place draws no keys doorway** (m8/11d, the
 /// check before R1): journal find and blame find while typing, and the
 /// stash save prompt, are where `?` types (`palette::open_key` refuses
@@ -6717,17 +6775,30 @@ fn capture_the_keys_doorway_for_docs_shots() {
 /// with the detail pane shut and shown, at the widths the app draws at.
 #[test]
 fn a_text_field_inside_a_place_draws_no_keys_doorway() {
-    use graft_ui::graph_screen::every_context;
-
+    let blame_lines = HintContext::Blame {
+        finding: false,
+        ignore_file: false,
+        lines: true,
+    };
+    // The journal and stash footers are no hint contexts since m8/11e: their
+    // states come from `place_footers`.
+    let places: Vec<(&str, KeyCode, Vec<AppState>)> = vec![
+        (
+            "Journal",
+            KeyCode::Char('/'),
+            vec![place_state("journal row 0")],
+        ),
+        ("Stash", KeyCode::Char('s'), vec![place_state("stash list")]),
+        (
+            "Blame",
+            KeyCode::Char('/'),
+            states_for(&blame_lines, Divider::Hidden, 120),
+        ),
+    ];
     let mut drawn: Vec<String> = Vec::new();
     let mut reached: Vec<String> = Vec::new();
-    for context in every_context() {
-        let opener = match context {
-            HintContext::Journal | HintContext::Blame { lines: true, .. } => KeyCode::Char('/'),
-            HintContext::Stash => KeyCode::Char('s'),
-            _ => continue,
-        };
-        for state in states_for(&context, Divider::Hidden, 120) {
+    for (context, opener, states) in places {
+        for state in states {
             for (columns, rows) in [(120, 36), (80, 24), (60, 20)] {
                 for shown in [false, true] {
                     let mut state = settled(AppState {
@@ -6739,10 +6810,10 @@ fn a_text_field_inside_a_place_draws_no_keys_doorway() {
                     if !after.text_field_open() {
                         continue;
                     }
-                    reached.push(format!("{context:?}"));
+                    reached.push(context.to_owned());
                     let frame = crate::view::tests::draw(&after, columns, rows);
                     if frame.contains("? keys") || frame.contains("⌃P keys") {
-                        drawn.push(format!("{context:?} at {columns}x{rows}, pane {shown}"));
+                        drawn.push(format!("{context} at {columns}x{rows}, pane {shown}"));
                     }
                 }
             }

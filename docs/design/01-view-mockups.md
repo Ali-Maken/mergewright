@@ -373,7 +373,7 @@ branch at the row's commit, `/` finds, `n`/`N` step matches (or `✗` rows):
  │   ●  Graft          10:12   switch from main to spike                                                        │
  │  ● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds      │
  └──────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
- ⏎ put main back to it  b new branch here  / find  esc close          (bar is per row)
+ ⏎ put main back to it  b new branch here  / find  esc close  ? keys  (bar is per row; `? keys` last, m8/11e)
 ```
 
 An expanded `●` row lists `commands Graft ran`, each drawn `┆ git …`; `$`
@@ -389,8 +389,11 @@ means only "outside Graft".
 │ stash@{0}  src/auth/token.rs  +8 −2                                       │
 │  @@ -12,6 +12,12 @@ struct TokenCache                                    │
 │  +   retry_count: u8,                                                    │
-╰ ⏎ apply  p pop  d drop (undoable)  b branch from stash  space preview ────╯
+╰ ⏎ apply  p pop  d drop (undoable)  b branch from stash  space preview  ? keys ╯
 ```
+
+The footer ends with the keys doorway, `? keys` (m8/11e); short of room it
+sheds whole clauses from the middle, never cutting a word.
 
 ### 1.12 Blame view
 

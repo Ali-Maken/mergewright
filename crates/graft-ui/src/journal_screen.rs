@@ -17,6 +17,7 @@ use ratatui::style::{Modifier, Style};
 use ratatui::widgets::Widget;
 
 use crate::fit::fit;
+use crate::graph_screen::hints::place_footer_text;
 use crate::keymap::{ActionId, Keymap};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
@@ -238,14 +239,21 @@ impl JournalScreen<'_> {
 
     /// The keys, per row: what `⏎` does here first (the whole reason the
     /// browser is reachable), then `b` where the row names a commit, the log
-    /// where there is one, and how to close. Cut from the right, `close`
-    /// kept, when the width is short.
+    /// where there is one, how to close, and the `? keys` doorway (m8/11e
+    /// F2). Short of width the middle goes first and `close` stays: the one
+    /// rule the stash list and the Map share (`hints::fit_place_footer`).
     fn footer(&self, width: usize) -> String {
+        place_footer_text(&self.footer_clauses(), self.keys, width)
+    }
+
+    /// Every clause [`JournalScreen::footer`] can draw, in order, `close`
+    /// last; the doorway is the fitting rule's to add.
+    fn footer_clauses(&self) -> Vec<String> {
         let keys = self.keys;
         // `J` and `esc` both close: one hint, both keys (`J/esc close`).
         let close = keys.key_verb(&[ActionId("journal.close"), ActionId("app.back")], "close");
         let JournalStatus::Ready = self.view.status else {
-            return close.unwrap_or_default();
+            return close.into_iter().collect();
         };
         let row = self.view.rows.get(self.view.selected);
         let mut parts: Vec<String> = Vec::new();
@@ -267,18 +275,8 @@ impl JournalScreen<'_> {
         if row.is_some_and(|row| row.kind == RowKind::Graft) {
             parts.extend(keys.key_verb(&[ActionId("journal.expand")], "command log"));
         }
-        // The first part and `close` stay; the optional middle goes first.
-        let kept = usize::from(close.is_some());
         parts.extend(close);
-        while parts.len() > 1 && parts.join("  ").width() > width {
-            let drop = if parts.len() > kept + 1 {
-                parts.len() - 1 - kept
-            } else {
-                0
-            };
-            parts.remove(drop);
-        }
-        parts.join("  ")
+        parts
     }
 
     /// Every body line, in order: each row and what it opens under it, then
