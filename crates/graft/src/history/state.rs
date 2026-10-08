@@ -174,12 +174,12 @@ pub enum Promotion {
     /// The topological order is being worked out in the background.
     Sorting,
     /// The order has been handed to the walk, attached to every request until
-    /// an answer comes back in it. `anchor` is the selection it re-finds.
+    /// an answer comes back in it. The swap re-finds the commit the cursor is
+    /// on when the answer lands ([`History::selected`]), not one kept here: a
+    /// copy went stale under every move that asked for no rows (m8/13m).
     Swapping {
         /// Every commit, in topological order.
         order: Arc<[CommitHandle]>,
-        /// The selected commit and its place on screen when last known.
-        anchor: Option<Anchor>,
     },
     /// Given up — `Esc`, or the sort failed: the order on screen stays
     /// provisional.

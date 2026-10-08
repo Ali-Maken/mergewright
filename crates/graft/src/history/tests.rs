@@ -802,6 +802,16 @@ fn served<S: CommitSource>(views: &mut Views<'_, S>, history: &mut History, requ
 where
     S::Error: std::fmt::Debug,
 {
+    answered(views, history, request);
+    swapped_in(views, history);
+}
+
+/// `request`'s own answer through the worker's loop, applied — in the order
+/// on screen, if it began a promotion.
+fn answered<S: CommitSource>(views: &mut Views<'_, S>, history: &mut History, request: RowRequest)
+where
+    S::Error: std::fmt::Debug,
+{
     let (asks, requests) = mpsc::channel();
     asks.send(request).expect("the receiver is right here");
     drop(asks);
@@ -812,8 +822,18 @@ where
     })
     .expect("lays out");
     assert_eq!(ended, Ended::Cancelled, "nobody asks again");
-    // A promotion it began reaches its anchor between requests, and is
-    // swapped in there (m7-power-tools/12 Part C).
+    for update in reports {
+        history.apply(update, HEIGHT);
+    }
+}
+
+/// A promotion begun reaches its anchor between requests, and is swapped in
+/// there (m7-power-tools/12 Part C): its answer, applied.
+fn swapped_in<S: CommitSource>(views: &mut Views<'_, S>, history: &mut History)
+where
+    S::Error: std::fmt::Debug,
+{
+    let mut reports = Vec::new();
     while views.is_promoting() {
         views
             .idle_step(&never, &mut |update| {
@@ -1087,6 +1107,70 @@ fn page_down_past_the_rows_on_hand_while_promotion_swaps_keeps_its_place() {
         history.selected().map(|row| row.commit.id),
         Some(order[2 * HEIGHT])
     );
+}
+
+/// m8/13m: a promotion's request is answered twice — in the order on screen
+/// first, then, once the promoted layout reaches the anchor, in the new order
+/// (Part C). A `j` between the two moves the cursor over rows already on hand
+/// and asks for nothing. The swap must land on the commit the cursor is on
+/// when it lands, not the one it was on when the first answer came: that put
+/// `j j` back on the top row whenever the keys fell in the gap, which is what
+/// made `quit_waits::signal` fail under load.
+#[test]
+fn a_move_between_the_two_answers_of_a_promotion_is_kept() {
+    let shape = Shape::Linear;
+    let dir = graft_fixtures::borrow(shape);
+    let store = RepoStore::new(dir.clone(), None);
+    let order = topological_order(&store, &never)
+        .expect("sorts")
+        .expect("never stopped");
+    let handle = RepoHandle::open(&dir).expect("opens");
+    let refs = handle.references().expect("refs read");
+    let branches = Branches::resolve(&handle, None).expect("branches resolve");
+    let table = store.table().expect("table");
+    let ids: Vec<Oid> = order.iter().map(|&commit| table.id_of(commit)).collect();
+    let open = |promoted: Option<&Arc<[CommitHandle]>>| {
+        Ok(match promoted {
+            Some(order) => WalkSource::in_order(&handle, Arc::clone(&table), Arc::clone(order)),
+            None => WalkSource::new(
+                &handle,
+                Walk::all_refs(&handle, Order::CommitDate, Arc::clone(&table))?,
+            ),
+        })
+    };
+    let mut views = Views::new(seeds_for(&refs, &branches), SMALL, Box::new(open));
+    let mut history = History::started();
+    history.walk = Some(WalkFacts {
+        requested: Order::Topological,
+        order: Order::CommitDate,
+        default_branch: None,
+        integration: Vec::new().into(),
+    });
+    let first = history.show(HEIGHT).expect("asks for the first screen");
+    served(&mut views, &mut history, first);
+    assert_eq!(history.cursor, 0);
+
+    let request = history
+        .promote(Arc::clone(&order), HEIGHT)
+        .expect("a walk still going takes the order");
+    // The request's own answer, in the order on screen.
+    answered(&mut views, &mut history, request);
+    assert!(
+        matches!(history.promotion, Some(Promotion::Swapping { .. })),
+        "the swap has not landed yet"
+    );
+
+    // `j j`, over rows on hand: nothing is asked.
+    assert_eq!(history.move_cursor(Motion::Down(1), HEIGHT), None);
+    assert_eq!(history.move_cursor(Motion::Down(1), HEIGHT), None);
+    assert_eq!(history.selected().map(|row| row.commit.id), Some(ids[2]));
+
+    // The promoted layout reaches the anchor and swaps in.
+    swapped_in(&mut views, &mut history);
+    assert_eq!(history.promotion, None, "the promotion has landed");
+    // Linear history: the promoted order numbers every row as before.
+    assert_eq!(history.cursor, 2, "the moves are kept");
+    assert_eq!(history.selected().map(|row| row.commit.id), Some(ids[2]));
 }
 
 /// `count` rows of a straight line, as a window starting at `first`.

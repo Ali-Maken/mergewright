@@ -67,7 +67,6 @@ impl History {
                     self.top = self.rows.saturating_sub(height.max(1));
                 }
                 self.window = Some(window);
-                self.reaim_promotion();
             }
         }
     }
@@ -85,10 +84,7 @@ impl History {
             self.promotion = Some(Promotion::Kept);
             return None;
         }
-        self.promotion = Some(Promotion::Swapping {
-            order,
-            anchor: None,
-        });
+        self.promotion = Some(Promotion::Swapping { order });
         let height = height.max(1);
         // A `G` or a search jump not yet answered is superseded by this
         // request: ask it again, carrying the order, or it is lost (27c).
@@ -103,29 +99,24 @@ impl History {
         self.wanted(height, true)
     }
 
-    /// While a promotion swaps in, rows keep coming in the order on screen
-    /// (m7-power-tools/12 Part C), and one may land a `G` or a search jump:
-    /// the swap then re-finds the commit the cursor is on now, not the one
-    /// selected when the order was handed over.
-    fn reaim_promotion(&mut self) {
-        let selected = self.selected().map(|row| Anchor {
-            commit: row.commit.id,
-            offset: self.cursor.saturating_sub(self.top),
-        });
-        if let Some(Promotion::Swapping { anchor, .. }) = &mut self.promotion
-            && selected.is_some()
-        {
-            *anchor = selected;
-        }
-    }
-
     /// Takes in the first rows in the promoted order: the cursor goes back on
     /// the selected commit, at the same place on screen — unless the request
     /// was a `G` or a search jump, which the walk kept and answered in the new
     /// order: then it lands as it would have (m1-the-graph/27c).
+    ///
+    /// The selected commit is the one the cursor is on **now**, read from the
+    /// rows still on hand in the old order. While a promotion swaps in, rows
+    /// keep coming in that order (m7-power-tools/12 Part C) and the cursor
+    /// keeps moving — by keys that ask for no rows, too — so any commit noted
+    /// earlier may be one he has since moved off (m8/13m: `j j` between the
+    /// two answers put the cursor back on the top row).
     fn promoted(&mut self, window: Window, height: usize) {
+        let selected = self.selected().map(|row| Anchor {
+            commit: row.commit.id,
+            offset: self.cursor.saturating_sub(self.top),
+        });
         let anchor = match self.promotion.take() {
-            Some(Promotion::Swapping { anchor, .. }) => anchor,
+            Some(Promotion::Swapping { .. }) => selected,
             other => {
                 // Only a request made while swapping carries an order, and
                 // only the newest request's answer gets here.

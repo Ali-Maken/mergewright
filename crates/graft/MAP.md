@@ -1116,7 +1116,7 @@ The put-in's reads (m7-power-tools/09).
 - `View` (struct) — `follow` (every parent / first-parent) and `inclusion` (folded merges, hidden stashes).
 - `RowRequest` (struct) — `id` (increasing; only the newest answer is wanted), `wanted`, the `view` they are wanted in, and `promote` while a promotion swaps in.
 - `Promote` (struct) — a topological `order` (`Arc<[CommitHandle]>`) to swap to, the selection's `anchor` and the viewport `height`; the worker lays the new layout out to the anchor before swapping (ADR-0008).
-- `Promotion` (enum) — where promoting to topological order is: `Sorting`, `Swapping { order, anchor }`, `Kept` (stopped or failed; order stays provisional).
+- `Promotion` (enum) — where promoting to topological order is: `Sorting`, `Swapping { order }` (the swap re-finds the commit the cursor is on when it lands, 13m), `Kept` (stopped or failed; order stays provisional).
 - `topological_order` (fn) — the whole range in strict topological order, as handles sharing the store's `CommitTable` (a job's work); `Ok(None)` when stopped.
 - `Views` (struct) — one `StreamingLayout<Included<_>>` per `Follow`, opened on first ask; `Views::new`, `Views::layout` (opens or re-includes), `Views::promote` (synchronous: lay a promoted order out to the anchor, then swap; idempotent; kept for `examples/budgets`), `Views::begin_promotion` (the worker's non-blocking form, see above). `history/views/mod.rs`; promotion methods in `history/views/promotion.rs`.
 - `Open` (type) — boxed closure opening a fresh source over the same walk, or over a promoted order when given one.
