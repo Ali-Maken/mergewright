@@ -317,3 +317,75 @@ fn a_failed_raw_step_counts_only_the_files_it_tried() {
         "{unread:?}"
     );
 }
+
+/// m8-polish-and-ship/20 item 13: `ApplyError::Journal.kept` carries the
+/// words of a raw step that failed (`apply/close.rs`, the `finish` error
+/// arm), so the missing outcome line does not take them with it. A smudge
+/// filter, run by the put-back's `git restore` after the pending line is
+/// written, replaces the journal file with a directory; the raw step is
+/// blocked as above.
+#[test]
+fn a_journal_failure_after_a_failed_raw_step_keeps_its_words() {
+    let repo = committed(AUTOCRLF, &A_RS);
+    lose_an_edit(&repo, &A_RS);
+    let (op, _) = the_put_back(&repo, &A_RS);
+    let _in_the_way = repo.block_raw_writes_in("src");
+    repo.write(".gitattributes", b"src/a.rs filter=breaks-journal\n");
+    repo.git(&[
+        "config",
+        "filter.breaks-journal.smudge",
+        "j=$(git rev-parse --git-path graft/undo-journal.jsonl); \
+         if grep -q 'put back your edit' \"$j\" 2>/dev/null; then rm -f \"$j\" && mkdir \"$j\"; fi; cat",
+    ]);
+
+    let error = match try_run(&repo, &op, NOW + 2) {
+        Err(error @ ApplyError::Journal { .. }) => error,
+        other => panic!("the outcome line should fail: {other:?}"),
+    };
+    let ApplyError::Journal { kept, .. } = &error else {
+        unreachable!()
+    };
+    let kept = kept.as_deref().expect("the raw step's words are kept");
+    assert!(
+        kept.starts_with(&format!(
+            "your edits are back · {PATH} not written back as it was:"
+        )),
+        "{kept}"
+    );
+    let words = error.explain(&crate::support::Letters);
+    assert!(words.ends_with(kept), "the words carry it: {words}");
+}
+
+/// m8-polish-and-ship/20 item 14: after a raw step that could not land, the
+/// route the words point at — `u` the put-back, then `J`, the lost-edit row,
+/// `⏎`, `y` — brings his exact bytes back once the way is clear.
+#[test]
+fn after_a_failed_raw_step_u_then_the_put_back_again_restores_his_bytes() {
+    let repo = committed(AUTOCRLF, &A_RS);
+    lose_an_edit(&repo, &A_RS);
+    let (op, _) = the_put_back(&repo, &A_RS);
+    let in_the_way = repo.block_raw_writes_in("src");
+    let Err(ApplyError::AfterState { .. }) = try_run(&repo, &op, NOW + 2) else {
+        panic!("the raw step's failure was not reported");
+    };
+    // The undo's own raw write needs the way clear too; clearing it changes
+    // the tree, so `u` asks once more ("u again to go ahead").
+    for path in &in_the_way {
+        std::fs::remove_file(repo.path().join(path)).expect("the way is cleared");
+    }
+    run_undo(&repo, NOW + 3, true)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
+    let handle = repo.open();
+    let entries = journal_for(&handle).entries().to_vec();
+    let edits = lost_edits(&handle, &entries, &Never).expect("lost edits read");
+    assert_eq!(edits.len(), 1, "the row is still there for J: {edits:?}");
+    assert_eq!(repo.read(PATH), E1, "u put the tree back as it was");
+    let (op, _) = the_put_back(&repo, &A_RS);
+    run(&repo, &op, NOW + 4);
+
+    assert_eq!(
+        repo.read(PATH),
+        LOST,
+        "his exact bytes, LF as he wrote them"
+    );
+}

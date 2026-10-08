@@ -59,8 +59,8 @@ that names a key keeps it spelled from the table (graft: `state.keymap`, 10b W1;
 `AfterState::BackupUnread` (graft-ops, pub). Nothing else public.
 
 ## Acceptance
-- [ ] One test per item, named at tick (17 ticks). Item 3 is a TESTING.md line, quoted at tick. — **14 of 17 ticked
-  below; 13 (doc only), 14 (route untested) open; askpass addition open.**
+- [ ] One test per item, named at tick (17 ticks). Item 3 is a TESTING.md line, quoted at tick. — **15 of 17 ticked
+  below; 14 (words) open as a question; askpass addition open as a question.**
   - [x] 1 — already wired (`view/detail.rs:217-226`); `graft::it m7_walk::pr_contents::pr_contents` now asserts
     `3 commits · 2 files +2 −0` on the drawn frame. No code change (no red: it was already right).
   - [x] 2 — `graft-ui detail_pane::tests::a_hand_resolved_merge_says_not_checked_never_clean` (red → green).
@@ -80,10 +80,19 @@ that names a key keeps it spelled from the table (graft: `state.keymap`, 10b W1;
     capture drift (the capture check runs before the assertion).
   - [x] 11 — `graft view::journal::tests::a_refused_push_reads_refused_nothing_written_not_undone` (red → green).
   - [x] 12 — `graft-ops::it recover_bytes::a_failed_raw_step_counts_only_the_files_it_tried` (red: `files: 2`).
-  - [ ] 13 — doc comments fixed (`apply/error.rs` `Journal.kept`, `error/words.rs::journal_failed`); a doc
-    comment has no test. Use site: `apply/close.rs:133-137` (moved from `apply.rs:419`).
-  - [ ] 14 — NOT DONE. Words still `its exact bytes are in the backup` (`apply/error/words.rs:18-27`); the route
-    `u`, `J`, row, `⏎`, `y` was not tested.
+  - [x] 13 — the behaviour the doc describes is pinned at its use site (`apply/close.rs:133-137`):
+    `graft-ops::it recover_bytes::a_journal_failure_after_a_failed_raw_step_keeps_its_words` (a smudge filter breaks
+    the journal mid put-back, raw step blocked; `Journal.kept` holds `your edits are back · src/a.rs not written back
+    as it was: …` and the words end with it). Not red-first (already right); mutation `kept: None` at close.rs turns
+    it red (checked).
+  - [ ] 14 — route tested, words NOT changed (question for conductor). Route test:
+    `graft-ops::it recover_bytes::after_a_failed_raw_step_u_then_the_put_back_again_restores_his_bytes` — his LF
+    bytes come back, but only after the way is cleared *and* `u` is confirmed (`u` alone fails: the undo's own raw
+    write is blocked too, "every temporary name tried beside it is taken"; clearing changes the tree, so `u` asks
+    again). Words left as `its exact bytes are in the backup` (`apply/error/words.rs:18-31`) because: (a) `J` has
+    no `OpKey` (`keys.rs:14-45`); adding one is a new pub item + a graft-side keymap mapping, ruled out by
+    "Signatures: nothing else public"; (b) the same words serve the set-aside put-back (`set_aside/answer.rs:269`),
+    whose route is untested; (c) Ruling 2026-10-01 §1 says no `u` clause, while the route needs `u` first.
   - [x] 15 — no fix needed: `graft view::tests::bottom_row::esc_from_the_box_brings_the_rejection_back` at 80x24
     asserts `p pull, then m or r` and `P force with lease` whole.
   - [x] 16 — already fixed in ops (`apply/remote.rs:304-316`, `p pull, then m or r`); held by
@@ -153,3 +162,13 @@ One context, ~55k tokens.
 
 ## Conductor addition (from 21 review fix)
 - KNOWN_GAPS `M8/askpass-refusal-wording`: `apply/remote.rs:128` files an askpass refusal as `AfterState::AskPass` ("could not be cleaned up"); give a refusal its own words.
+  - [ ] Confirmed from code, words NOT written (not ruled): graft-git `run/askpass.rs:203` `note(self.shared.refusals())`
+    → `run/askpass/shared.rs:55-57` `Err(PermissionDenied, "<first>; <n> refused in all")` → graft-ops
+    `apply/remote.rs:149-152` pushes it as `AfterState::AskPass` → `apply/error.rs:248` "the credential prompt's
+    socket could not be cleaned up". "Refusal" here is a peer of another uid turned away by the socket, not his
+    `Esc` at the prompt (that is `Refusals`, `remote.rs:165-200`, which never reaches `close`). Question: which
+    words? e.g. `the credential prompt turned away another user's program: …`.
+
+## NOTES (builder 2, 2026-10-08) — status: partial
+No compaction. Scout used (`scouts/20-words-sweep.md`) plus the first builder's handoff. Only test code added
+(`crates/graft-ops/tests/it/recover_bytes.rs`); no source, capture or MAP change, so nothing to re-shoot.
