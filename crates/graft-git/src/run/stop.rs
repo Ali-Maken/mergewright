@@ -7,11 +7,13 @@ use std::process::{Child, ExitStatus};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use nix::errno::Errno;
 use nix::sys::signal::Signal;
 use nix::unistd::Pid;
 
 use super::RunError;
+
+mod helpers;
+pub(super) use helpers::{Helpers, after_git_ended};
 
 /// How long a child gets to clean up after `SIGTERM` before `SIGKILL`.
 pub(super) const TERM_GRACE: Duration = Duration::from_secs(2);
@@ -24,7 +26,7 @@ pub(super) const HOOKS_GRACE: Duration = Duration::from_secs(2);
 pub(super) const HELPER_TERM_GRACE: Duration = Duration::from_secs(1);
 
 /// How often a hook-first stop reads the group's members again.
-const LIST_EVERY: Duration = Duration::from_millis(250);
+pub(super) const LIST_EVERY: Duration = Duration::from_millis(250);
 
 /// How often the grace period looks to see whether the child has gone.
 const TERM_POLL: Duration = Duration::from_millis(2);
@@ -131,7 +133,7 @@ pub(super) fn kill(child: &mut Child) -> Result<(), RunError> {
 /// still listed (a hook that ignores `SIGTERM`): they get [`after_git_ended`]
 /// within the same `graces.term`, so a default stop still ends within
 /// `POLL + TERM_GRACE` (m8/13e, review Minor 2).
-fn group_stop(
+pub(super) fn group_stop(
     child: &mut Child,
     members: Members<'_>,
     graces: Graces,
@@ -202,7 +204,7 @@ fn group_stop(
 /// bounded by `graces.hooks + graces.term` from the first `SIGTERM` — so the
 /// whole stop stays within [`super::STOP_WITHIN`] plus that first read of
 /// the group.
-fn hooks_first(
+pub(super) fn hooks_first(
     child: &mut Child,
     members: Members<'_>,
     graces: Graces,
@@ -231,8 +233,11 @@ fn hooks_first(
             return group_stop(child, members, graces);
         }
         if now >= next_read {
-            next_read = now + LIST_EVERY;
-            match helpers.pass(members, graces.helper_term) {
+            let read = helpers.pass(members, graces.helper_term);
+            // From when the read came back: a slow `ps` must not make the
+            // next one follow at once (m8/21b-3).
+            next_read = Instant::now() + LIST_EVERY;
+            match read {
                 // Safe to fall back: see the doc comment's last bullet.
                 Err(_unreadable) => return group_stop(child, members, graces),
                 // Nothing but git in its group: no hook to end first.
@@ -243,93 +248,6 @@ fn hooks_first(
             }
         }
         thread::sleep(TERM_POLL);
-    }
-}
-
-/// git has ended and been reaped; its helpers may not have (a hook that
-/// ignores `SIGTERM`, one stopped by job control). The one helper path both
-/// stops take after git ends:
-///
-/// - read the group at once, then at most every [`LIST_EVERY`];
-/// - each helper gets `SIGTERM` + `SIGCONT`, and `SIGKILL` once still listed
-///   `graces.helper_term` after that;
-/// - none listed: done. Still listed at `until`: `SIGKILL` to each, so the
-///   stop's bound holds;
-/// - the group cannot be read: [`kill_reaped_group`] (review Minor 4).
-fn after_git_ended(helpers: &mut Helpers, members: Members<'_>, graces: Graces, until: Instant) {
-    let mut next_read = Instant::now();
-    loop {
-        let now = Instant::now();
-        let read = if now >= until {
-            helpers.end_all(members).map(|()| false)
-        } else if now >= next_read {
-            next_read = now + LIST_EVERY;
-            helpers.pass(members, graces.helper_term)
-        } else {
-            Ok(true)
-        };
-        match read {
-            Ok(true) => thread::sleep(TERM_POLL),
-            Ok(false) => return,
-            // Not dropped: the failed read is answered by ending the group.
-            Err(_unreadable) => return kill_reaped_group(helpers.git),
-        }
-    }
-}
-
-/// The helpers a hook-first stop has signalled, and when.
-struct Helpers {
-    git: Pid,
-    termed: Vec<(Pid, Instant)>,
-}
-
-impl Helpers {
-    fn of(git: Pid) -> Self {
-        Self {
-            git,
-            termed: Vec::new(),
-        }
-    }
-
-    /// Every helper still listed gets `SIGKILL`.
-    fn end_all(&self, members: Members<'_>) -> io::Result<()> {
-        let git = self.git;
-        for helper in members(git)?.into_iter().filter(|&pid| pid != git) {
-            signal_one(helper, Signal::SIGKILL);
-        }
-        Ok(())
-    }
-
-    /// When the first helper was sent `SIGTERM`: where git's grace starts.
-    fn first_asked(&self) -> Option<Instant> {
-        self.termed.first().map(|&(_, asked)| asked)
-    }
-
-    /// One read of the group: `SIGTERM` + `SIGCONT` to each helper not yet
-    /// asked, `SIGKILL` to each asked `grace` ago and still listed. `false`
-    /// when no helper is listed.
-    ///
-    /// Each signal is timed from when the read came back, not from when it
-    /// was asked for: a slow read must not count against a grace (m8/13k).
-    fn pass(&mut self, members: Members<'_>, grace: Duration) -> io::Result<bool> {
-        let git = self.git;
-        let listed: Vec<Pid> = members(git)?
-            .into_iter()
-            .filter(|&pid| pid != git)
-            .collect();
-        let now = Instant::now();
-        for &helper in &listed {
-            match self.termed.iter().find(|(pid, _)| *pid == helper) {
-                None => {
-                    signal_one(helper, Signal::SIGTERM);
-                    signal_one(helper, Signal::SIGCONT);
-                    self.termed.push((helper, now));
-                }
-                Some(&(_, asked)) if now >= asked + grace => signal_one(helper, Signal::SIGKILL),
-                Some(_) => {}
-            }
-        }
-        Ok(!listed.is_empty())
     }
 }
 
@@ -361,185 +279,5 @@ fn continue_group(group: Pid) {
         Ok(()) => {}
         // Safe to ignore: the doc comment above.
         Err(_refused) => {}
-    }
-}
-
-/// `killpg(SIGKILL)` to the group of a git already reaped, whose members
-/// could not be read (m8/13e, review Minor 4).
-///
-/// **Safe:** git's pid no longer reserves the group id, but a group id stays
-/// reserved while any member lives — so while a helper is left this number
-/// is still git's group, and once none is, the kill is `ESRCH` and reaches
-/// no one. (A new process taking the freed number as its group within
-/// milliseconds is review Minor 3, filed apart.)
-fn kill_reaped_group(group: Pid) {
-    match nix::sys::signal::killpg(group, Signal::SIGKILL) {
-        // Sent; or the group is empty (`ESRCH`): nothing of git's is left
-        // to end.
-        Ok(()) | Err(Errno::ESRCH) => {}
-        // Safe to ignore: `EPERM`, a member Graft may not signal (a setuid
-        // helper). git is reaped and the caller reads what it left on disk;
-        // there is no harder signal left to send.
-        Err(_refused) => {}
-    }
-}
-
-/// `kill` to one helper of git's group.
-///
-/// **Safe to ignore a failure:** the helper was listed in git's group a
-/// moment ago, so `ESRCH` means it ended in between — what the signal was
-/// for. Any other failure (`EPERM`: a setuid helper) leaves it to the group
-/// stop that follows if git does not end.
-fn signal_one(helper: Pid, signal: Signal) {
-    match nix::sys::signal::kill(helper, signal) {
-        Ok(()) => {}
-        // Safe to ignore: the doc comment above.
-        Err(_gone_or_refused) => {}
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::io::Read;
-    use std::os::unix::process::CommandExt;
-    use std::process::{Command, Stdio};
-
-    use super::*;
-
-    /// A shell that traps `SIGTERM`, records that it arrived, and exits. It
-    /// leads its own process group, as every child `spawn` starts does.
-    fn trapping_child(marker: &std::path::Path, trap: &str) -> Child {
-        Command::new("sh")
-            .arg("-c")
-            .arg(format!(
-                "trap '{trap}' TERM; echo ready; while :; do sleep 0.02; done"
-            ))
-            .env("MARKER", marker)
-            .process_group(0)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .expect("sh starts")
-    }
-
-    /// A group with nothing in it but the child itself.
-    #[expect(
-        clippy::unnecessary_wraps,
-        reason = "the shape of `Members`, which can fail"
-    )]
-    fn no_helpers(_: Pid) -> io::Result<Vec<Pid>> {
-        Ok(Vec::new())
-    }
-
-    /// The real graces with the `SIGTERM` grace set to `term`.
-    fn graces(term: Duration) -> Graces {
-        Graces {
-            term,
-            ..Graces::REAL
-        }
-    }
-
-    /// Waits for the child's first line, so the trap is certainly installed.
-    fn wait_until_ready(child: &mut Child) {
-        let mut out = child.stdout.take().expect("stdout is piped");
-        let mut byte = [0u8; 1];
-        loop {
-            let n = out.read(&mut byte).expect("the child writes a line");
-            assert_ne!(n, 0, "the child exited before saying it was ready");
-            if byte[0] == b'\n' {
-                return;
-            }
-        }
-    }
-
-    /// The property the lock-file argument rests on: git is *asked* to stop,
-    /// so its own handler runs, rather than being shot where it stands.
-    #[test]
-    fn a_stopped_child_is_asked_first_so_its_cleanup_can_run() {
-        let temp = tempfile::TempDir::with_prefix("graft-kill-").expect("a temp dir");
-        let marker = temp.path().join("caught-term");
-        let mut child = trapping_child(&marker, "touch \"$MARKER\"; exit 0");
-        wait_until_ready(&mut child);
-
-        group_stop(&mut child, &no_helpers, graces(Duration::from_secs(5)))
-            .expect("stopped and reaped");
-
-        assert!(
-            marker.exists(),
-            "the child's SIGTERM handler ran; SIGKILL would have left no marker"
-        );
-    }
-
-    /// And a child that sits through `SIGTERM` is still stopped, so a cancel
-    /// the user asked for cannot hang on a hook that ignores the signal.
-    #[test]
-    fn a_child_that_ignores_the_ask_is_killed_anyway() {
-        let temp = tempfile::TempDir::with_prefix("graft-kill-").expect("a temp dir");
-        let marker = temp.path().join("never-written");
-        let mut child = trapping_child(&marker, "");
-        wait_until_ready(&mut child);
-
-        let start = Instant::now();
-        group_stop(&mut child, &no_helpers, graces(Duration::from_millis(100)))
-            .expect("stopped and reaped");
-
-        assert!(!marker.exists(), "the trap was empty, so nothing ran");
-        assert!(
-            start.elapsed() < Duration::from_secs(2),
-            "the grace period bounded the wait, not the child"
-        );
-        assert!(
-            child.try_wait().expect("try_wait").is_some(),
-            "the child has been reaped"
-        );
-    }
-
-    /// m8/13k: git's grace begins when its helpers are ended, not before the
-    /// group is read. On a loaded Mac one `ps` took 1.9–2.3 s, the whole
-    /// `HOOKS_GRACE`; git, still writing its pause when the read came back,
-    /// was then shot (`SIGTERM` to the group) and the merge was not paused.
-    ///
-    /// The "git" here waits on its helper as git waits on a hook, then takes
-    /// 100 ms to end once the helper is gone, as git takes to write
-    /// `MERGE_HEAD` and exit 1. The read of the group takes longer than the
-    /// whole hooks grace.
-    #[test]
-    fn a_slow_read_of_the_group_does_not_spend_gits_grace() {
-        let mut child = Command::new("sh")
-            .arg("-c")
-            .arg("sleep 600 & echo ready; wait; sleep 0.1; exit 1")
-            .process_group(0)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .expect("sh starts");
-        wait_until_ready(&mut child);
-        // The real graces: git's 100 ms exit has the same 1.9 s margin it has
-        // in the app, so a loaded machine does not make this test flake.
-        let graces = Graces::REAL;
-        let slow = |group: Pid| {
-            thread::sleep(graces.hooks + Duration::from_millis(100));
-            super::super::group::members(group)
-        };
-
-        let end = hooks_first(&mut child, &slow, graces).expect("stopped and reaped");
-
-        assert!(
-            !end.git_signalled,
-            "git was left to end on its own: {end:?}"
-        );
-        assert_eq!(end.status.code(), Some(1), "{end:?}");
-    }
-
-    #[test]
-    fn a_child_that_already_exited_is_only_reaped() {
-        let mut child = Command::new("true")
-            .process_group(0)
-            .spawn()
-            .expect("true starts");
-        child.wait().expect("it exits");
-        let end = group_stop(&mut child, &no_helpers, graces(Duration::from_millis(0)))
-            .expect("reaping an exited child is fine");
-        assert!(!end.git_signalled, "an exited child is never signalled");
     }
 }

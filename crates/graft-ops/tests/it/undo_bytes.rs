@@ -293,6 +293,10 @@ fn a_failing_required_smudge_filter_refuses_the_operation_before_it_writes() {
     // filter failed.
     let words = error.explain(&crate::support::Letters);
     assert!(words.contains("nb.txt"), "{words}");
+    // m8/21b-3: the words no longer guess at a filter; git's own stderr
+    // names the one that failed.
+    assert!(words.contains("git could not check it out"), "{words}");
+    assert!(words.contains("external filter 'false' failed"), "{words}");
     assert_eq!(repo.read("src/a.rs"), WORKING, "his edit is untouched");
     assert_eq!(repo.read("nb.txt"), b"cell 2\n", "and so is nb.txt");
     assert!(

@@ -133,11 +133,13 @@ pub enum SnapshotError {
         /// The line as written, lossy.
         printed: String,
     },
-    /// git could not check out `path` through its filters while the raw
-    /// record compared bytes — a failing smudge filter, named by the file
-    /// (m8-polish-and-ship/20).
-    #[error("{path}: its filter failed: {error}")]
-    Filter {
+    /// git could not check out `path` while the raw record compared bytes,
+    /// named by the file (m8-polish-and-ship/20). The cause is git's own
+    /// words in `error`: a failing smudge filter names itself there, and so
+    /// does anything else — a missing blob, a full disk — so the words never
+    /// guess (m8/21b-3; was `Filter`, whose words blamed a filter always).
+    #[error("{path}: git could not check it out: {error}")]
+    CheckOut {
         /// The file, relative to the worktree root, lossy.
         path: String,
         /// git's own failure.

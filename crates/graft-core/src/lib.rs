@@ -19,3 +19,6 @@ pub mod mistake_radar;
 pub mod oid;
 pub mod raster;
 pub mod ref_name;
+
+#[cfg(test)]
+mod tests;

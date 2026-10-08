@@ -515,7 +515,9 @@ fn http_remote_answers_expect_100_continue() {
 }
 
 /// A client that connects and says nothing holds a handler blocked in its
-/// first read. Drop still ends it promptly and frees the port.
+/// first read. Drop still ends it promptly and frees the port. The bound is
+/// under the old 1 s `READ_TIMEOUT` (m8/21b-3), so the read's timeout cannot
+/// pass it alone: this pins `Drop`'s shutdown of the stream.
 #[test]
 fn http_remote_drop_ends_an_idle_client() {
     let remote = local();
@@ -532,7 +534,7 @@ fn http_remote_drop_ends_an_idle_client() {
     let dropped_in = started.elapsed();
 
     assert!(
-        dropped_in < Duration::from_secs(2),
+        dropped_in < Duration::from_millis(500),
         "drop took {dropped_in:?}"
     );
     assert!(port_is_closed(port), "port {port} still accepts after drop");

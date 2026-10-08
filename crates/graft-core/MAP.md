@@ -80,3 +80,6 @@ One line per public item. Update when a public item changes.
 ## ref_name
 - `RefName` (struct) — a git ref's full name; `new` / `as_bytes` / `shorthand` / `is_graft_internal` (fn).
 - `GRAFT_INTERNAL` (const) — `refs/graft/`, the namespace Graft writes its own refs under.
+
+## guards (tests only)
+- `src/tests.rs` (m8/21b-3) — `core_has_no_free_functions`: fails on any column-0 `pub` fn under `src/` (ADR-0007). Cannot see methods with logic, fns in inline `mod` blocks, macro-made fns.

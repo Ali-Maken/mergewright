@@ -40,10 +40,13 @@ use super::run_git;
 /// than return with a thread still running.
 const STOP_BOUND: Duration = Duration::from_secs(2);
 
-/// The longest one read from a client may block. A backstop only: `Drop`
-/// shuts every client's stream, which ends a blocked read at once. It bounds
-/// a handler whose client went silent (half-open) even without a `Drop`.
-const READ_TIMEOUT: Duration = Duration::from_secs(1);
+/// The longest one read from a client may block. It bounds only a handler
+/// whose client went silent (half-open) with no `Drop` coming; teardown is
+/// `Drop`'s, which shuts every client's stream and so ends a blocked read at
+/// once. Measured, not assumed (m8/21b-3): `http_remote_drop_ends_an_idle_client`
+/// drops within 500 ms, 20/20, while this was still 1 s — so the shutdown
+/// woke the read. Long, so a slow client under load is never cut off.
+const READ_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// The longest request line, header line or chunk-size line accepted.
 const MAX_LINE: u64 = 8 * 1024;
