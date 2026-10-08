@@ -212,6 +212,121 @@ fn hooks_first_ends_helpers_when_members_cannot_be_read_after_git_ended() {
     assert!(group_empty(helper.group()), "nothing of the group left");
 }
 
+/// Our own `sleep 600`, killed and reaped when the test ends, pass or panic.
+/// Until then it is unreaped, so its pid cannot pass to anyone else while a
+/// stop is signalling it.
+struct OwnSleep(std::process::Child);
+
+impl OwnSleep {
+    fn start() -> Self {
+        let child = std::process::Command::new("sleep")
+            .arg("600")
+            .process_group(0)
+            .spawn()
+            .expect("sleep starts");
+        Self(child)
+    }
+
+    fn pid(&self) -> Pid {
+        Pid::from_raw(i32::try_from(self.0.id()).expect("a pid fits"))
+    }
+}
+
+impl Drop for OwnSleep {
+    fn drop(&mut self) {
+        // Safe to ignore: the stop under test may already have ended it
+        // (`kill` on an exited child is an error); the `wait` reaps it
+        // either way, and a failed reap only leaves a zombie to the runner.
+        if let Err(_already_ended) = self.0.kill() {}
+        if let Err(_not_reaped) = self.0.wait() {}
+    }
+}
+
+/// When each read of the group began and came back.
+type Reads = std::cell::RefCell<Vec<(Instant, Instant)>>;
+
+/// A read of the group that takes `slow`, listing `helper`, recorded.
+fn slow_read(reads: &Reads, slow: Duration, helper: Pid) -> Vec<Pid> {
+    let began = Instant::now();
+    thread::sleep(slow);
+    reads.borrow_mut().push((began, Instant::now()));
+    vec![helper]
+}
+
+/// Every read starts at least [`stop::LIST_EVERY`] after the previous one
+/// came back.
+fn assert_spaced(reads: &[(Instant, Instant)], which: &str) {
+    assert!(reads.len() >= 3, "{which}: {} reads", reads.len());
+    for pair in reads.windows(2) {
+        let gap = pair[1].0.saturating_duration_since(pair[0].1);
+        assert!(
+            gap >= stop::LIST_EVERY,
+            "{which}: a read began {gap:?} after the last came back"
+        );
+    }
+}
+
+/// m8/21b-3 (review m1): the next read of the group is a full
+/// [`stop::LIST_EVERY`] after the last one came back, not after it began.
+/// Timed from the start, a read slower than the interval was followed by
+/// another at once, so a slow `ps` ran back to back — in both loops that
+/// read the group: `hooks_first`'s while git runs, `after_git_ended`'s after.
+#[test]
+fn the_next_read_waits_a_full_interval_after_a_slow_read() {
+    let slow = Duration::from_millis(150);
+    let helper = OwnSleep::start();
+
+    // hooks_first, while git runs: three slow reads list the helper, then
+    // the group cannot be read and the stop falls back to the group stop.
+    // The hooks grace is long enough that only the reads end the loop.
+    let mut git = std::process::Command::new("sh")
+        .arg("-c")
+        .arg("while :; do sleep 0.02; done")
+        .process_group(0)
+        .spawn()
+        .expect("sh starts");
+    let reads = Reads::default();
+    let three_then_unreadable = |_: Pid| {
+        if reads.borrow().len() < 3 {
+            Ok(slow_read(&reads, slow, helper.pid()))
+        } else {
+            let now = Instant::now();
+            reads.borrow_mut().push((now, now));
+            Err(io::Error::other("injected"))
+        }
+    };
+    let graces = Graces {
+        hooks: Duration::from_secs(10),
+        ..Graces::REAL
+    };
+    let end = stop::hooks_first(&mut git, &three_then_unreadable, graces).expect("stopped");
+    assert!(end.git_signalled, "the fallback stopped git: {end:?}");
+    // The first four are hooks_first's; a fifth is `after_git_ended`'s own
+    // first read once the fallback has ended git.
+    assert_spaced(&reads.borrow()[..4], "hooks_first");
+
+    // after_git_ended: the helper stays listed until `until`; the read at
+    // `until` is the bound, taken at once, so only the reads before it keep
+    // the interval. The "git" pid is only compared, never signalled.
+    let reads = Reads::default();
+    let listed = |_: Pid| io::Result::Ok(slow_read(&reads, slow, helper.pid()));
+    let not_signalled = OwnSleep::start();
+    let until = Instant::now() + Duration::from_millis(1200);
+    stop::after_git_ended(
+        &mut stop::Helpers::of(not_signalled.pid()),
+        &listed,
+        Graces::REAL,
+        until,
+    );
+    let before_until: Vec<_> = reads
+        .borrow()
+        .iter()
+        .copied()
+        .filter(|&(began, _)| began < until)
+        .collect();
+    assert_spaced(&before_until, "after_git_ended");
+}
+
 /// m8/13e (review Minor 8): the guard every sleeping hook's test holds.
 #[test]
 fn the_hook_guard_kills_its_pid_on_drop() {

@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 
 use nix::unistd::Pid;
 
+use super::fixture::Reap;
 use crate::run::stop::{Graces, group_stop, hooks_first};
 
 /// A shell that traps `SIGTERM`, records that it arrived, and exits. It
@@ -110,15 +111,21 @@ fn a_child_that_ignores_the_ask_is_killed_anyway() {
 /// whole hooks grace.
 #[test]
 fn a_slow_read_of_the_group_does_not_spend_gits_grace() {
+    let temp = tempfile::TempDir::with_prefix("graft-slow-read-").expect("a temp dir");
+    let pidfile = temp.path().join("pid");
     let mut child = Command::new("sh")
         .arg("-c")
-        .arg("sleep 600 & echo ready; wait; sleep 0.1; exit 1")
+        .arg(r#"sleep 600 & echo $! > "$PIDFILE"; echo ready; wait; sleep 0.1; exit 1"#)
+        .env("PIDFILE", &pidfile)
         .process_group(0)
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
         .expect("sh starts");
     wait_until_ready(&mut child);
+    // m8/21b-3 (13e Minor 8): the `sleep 600` ends with the test, pass or
+    // panic, as every sleeping helper's test holds it.
+    let _helper = Reap::hook(&pidfile);
     // The real graces: git's 100 ms exit has the same 1.9 s margin it has
     // in the app, so a loaded machine does not make this test flake.
     let graces = Graces::REAL;

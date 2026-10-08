@@ -24,7 +24,7 @@ pub(super) const HOOKS_GRACE: Duration = Duration::from_secs(2);
 pub(super) const HELPER_TERM_GRACE: Duration = Duration::from_secs(1);
 
 /// How often a hook-first stop reads the group's members again.
-const LIST_EVERY: Duration = Duration::from_millis(250);
+pub(super) const LIST_EVERY: Duration = Duration::from_millis(250);
 
 /// How often the grace period looks to see whether the child has gone.
 const TERM_POLL: Duration = Duration::from_millis(2);
@@ -231,8 +231,11 @@ pub(super) fn hooks_first(
             return group_stop(child, members, graces);
         }
         if now >= next_read {
-            next_read = now + LIST_EVERY;
-            match helpers.pass(members, graces.helper_term) {
+            let read = helpers.pass(members, graces.helper_term);
+            // From when the read came back: a slow `ps` must not make the
+            // next one follow at once (m8/21b-3).
+            next_read = Instant::now() + LIST_EVERY;
+            match read {
                 // Safe to fall back: see the doc comment's last bullet.
                 Err(_unreadable) => return group_stop(child, members, graces),
                 // Nothing but git in its group: no hook to end first.
@@ -256,15 +259,22 @@ pub(super) fn hooks_first(
 /// - none listed: done. Still listed at `until`: `SIGKILL` to each, so the
 ///   stop's bound holds;
 /// - the group cannot be read: [`kill_reaped_group`] (review Minor 4).
-fn after_git_ended(helpers: &mut Helpers, members: Members<'_>, graces: Graces, until: Instant) {
+pub(super) fn after_git_ended(
+    helpers: &mut Helpers,
+    members: Members<'_>,
+    graces: Graces,
+    until: Instant,
+) {
     let mut next_read = Instant::now();
     loop {
         let now = Instant::now();
         let read = if now >= until {
             helpers.end_all(members).map(|()| false)
         } else if now >= next_read {
-            next_read = now + LIST_EVERY;
-            helpers.pass(members, graces.helper_term)
+            let read = helpers.pass(members, graces.helper_term);
+            // From when the read came back, as in `hooks_first`.
+            next_read = Instant::now() + LIST_EVERY;
+            read
         } else {
             Ok(true)
         };
@@ -278,13 +288,13 @@ fn after_git_ended(helpers: &mut Helpers, members: Members<'_>, graces: Graces, 
 }
 
 /// The helpers a hook-first stop has signalled, and when.
-struct Helpers {
+pub(super) struct Helpers {
     git: Pid,
     termed: Vec<(Pid, Instant)>,
 }
 
 impl Helpers {
-    fn of(git: Pid) -> Self {
+    pub(super) fn of(git: Pid) -> Self {
         Self {
             git,
             termed: Vec::new(),
