@@ -21,7 +21,7 @@ what right looks like: Ticket 24-b (journey 13): `J` on the "lost work" fixture,
 ================================================================================
 
 JOURNAL · what happened in this repo, newest first
-  ●  Graft          now       fetch origin                                 remote-tracking refs · not undoable
+  ●  Graft          now       fetch origin                                 origin/main moved · not undoable
   $  outside Graft  4m ago    reset main 1 commit back                           git: "reset: moving to HEAD~1"
 ▸    └ ✗ lost       a65d7e4 "Add rate limiter" · was main's tip · no branch holds it
   $  outside Graft  8m ago    switch from spike to main                          git: "checkout: moving from spike to main"
@@ -77,7 +77,7 @@ what right looks like: Ticket 24-b: J at 140x40 (120–179), cursor moved to the
 ================================================================================
 
 JOURNAL · what happened in this repo, newest first
-  ●  Graft          now       fetch origin                                 remote-tracking refs · not undoable
+  ●  Graft          now       fetch origin                                 origin/main moved · not undoable
 ▸ $  outside Graft  4m ago    reset main 1 commit back
                               git: "reset: moving to HEAD~1"
      └ ✗ lost       a65d7e4 "Add rate limiter" · was main's tip · no branch holds it
@@ -123,7 +123,7 @@ what right looks like: Ticket 24-b: J at 100x30 (under 120): no source word (the
 ================================================================================
 
 JOURNAL · what happened in this repo, newest first
-  ●  now       fetch origin                               remote-tracking refs · not…
+  ●  now       fetch origin                               origin/main moved · not…
   $  4m ago    reset main 1 commit back
 ▸    └ ✗ lost  a65d7e4 "Add rate limiter" · was main's tip · no branch holds it
   $  8m ago    switch from spike to main
@@ -159,7 +159,7 @@ what right looks like: Ticket 24-b: J at 187x24: title, legend and bar kept; the
 ================================================================================
 
 JOURNAL · what happened in this repo, newest first
-  ●  Graft          now       fetch origin                                 remote-tracking refs · not undoable
+  ●  Graft          now       fetch origin                                 origin/main moved · not undoable
   $  outside Graft  4m ago    reset main 1 commit back                           git: "reset: moving to HEAD~1"
 ▸    └ ✗ lost       a65d7e4 "Add rate limiter" · was main's tip · no branch holds it
   $  outside Graft  8m ago    switch from spike to main                          git: "checkout: moving from spike to main"
@@ -302,7 +302,7 @@ what right looks like: Ticket 24-b (journey 14's start): `J` again after the put
 
 JOURNAL · what happened in this repo, newest first
 ▸ ●  Graft          now       put main back to a65d7e4 (the shell's reset) 2 refs · the index · the…                ← u
-  ●  Graft          now       fetch origin                                 remote-tracking refs · not…
+  ●  Graft          now       fetch origin                                 origin/main moved · not undoable
   $  outside Graft  4m ago    reset main 1 commit back
   $  outside Graft  8m ago    switch from spike to main
      └ ✗ lost       419e109 "Try redis cache" · was spike's tip · spike is gone
@@ -349,7 +349,7 @@ what right looks like: Ticket 30o-a (journey 15, `J n ⏎`, no shell step): `src
 JOURNAL · what happened in this repo, newest first
   ●  Graft          now       made spike again at 419e109 (the shell's…    1 ref                                                                                                       ← u
   ●  Graft          now       put main back to a65d7e4 (the shell's reset) 2 refs · the index · the working tree · backup saved
-  ●  Graft          now       fetch origin                                 remote-tracking refs · not undoable
+  ●  Graft          now       fetch origin                                 origin/main moved · not undoable
   $  outside Graft  4m ago    reset main 1 commit back                           git: "reset: moving to HEAD~1"
   $  outside Graft  8m ago    switch from spike to main                          git: "checkout: moving from spike to main"
   $  outside Graft  24m ago   committed "Try redis cache" on spike               git: "commit: Try redis cache"
@@ -461,7 +461,7 @@ what right looks like: Ticket 30p-a (journey 15, `J n ⏎`, over a staged file: 
 JOURNAL · what happened in this repo, newest first
   $  outside Graft  now       fast-forwarded main 1 commit                       git: "merge a65d7e4c502f351238cd52040d89363fa81d47f1: Fast-forward"
   $  outside Graft  now       made spike at 419e109                              git: "branch: Created from 419e10956a4446d8b5d1e8bee7d0663c004d3457"
-  ●  Graft          now       fetch origin                                 remote-tracking refs · not undoable
+  ●  Graft          now       fetch origin                                 origin/main moved · not undoable
   $  outside Graft  4m ago    reset main 1 commit back                           git: "reset: moving to HEAD~1"
   $  outside Graft  8m ago    switch from spike to main                          git: "checkout: moving from spike to main"
   $  outside Graft  24m ago   committed "Try redis cache" on spike               git: "commit: Try redis cache"
@@ -571,7 +571,7 @@ what right looks like: Ticket 24-b: `space` on the discard's `●` row: under it
 ================================================================================
 
 JOURNAL · what happened in this repo, newest first
-  ●  Graft          now       fetch origin                                 remote-tracking refs · not…
+  ●  Graft          now       fetch origin                                 origin/main moved · not undoable
   $  outside Graft  4m ago    reset main 1 commit back
      └ ✗ lost       a65d7e4 "Add rate limiter" · was main's tip · no branch holds it
   $  outside Graft  8m ago    switch from spike to main
@@ -617,7 +617,7 @@ what right looks like: Ticket 30o-c: `J` on the "lost work" fixture, then `/spik
 ================================================================================
 
 JOURNAL · what happened in this repo, newest first · find "spike" 1 of 4
-  ●  Graft          now       fetch origin                                 remote-tracking refs · not undoable
+  ●  Graft          now       fetch origin                                 origin/main moved · not undoable
   $  outside Graft  4m ago    reset main 1 commit back                           git: "reset: moving to HEAD~1"
      └ ✗ lost       a65d7e4 "Add rate limiter" · was main's tip · no branch holds it
 ▸ $  outside Graft  8m ago    switch from spike to main                          git: "checkout: moving from spike to main"
@@ -1464,44 +1464,44 @@ docs/shots/m7/pull-over-edits-120x40.txt
 what right looks like: Ticket 03b: `p` on the graph on `main`, origin one ahead changing line 1 of `shared.txt`, his unsaved edit to line 10. HEAD at origin's tip; `shared.txt` holds both changes, his diff lines byte-equal and still unstaged; no stash left; the cursor (`▏`) on the new HEAD's row; the line `pulled origin/main ✓ · your edits are back`. Colour unverified.
 ================================================================================
 
- ◆ api  ~/code/api · main                                                                               140 rows so far
+ ◆ api  ~/code/api · main                                                                                     5 commits
 
   ◌    Uncommitted changes (1 unstaged)
-▸ ◆    [◆ main ⇄ origin] their change                                                                   GF 60m  9110230
-  ●    add shared                                                                                       GF 60m  1fdae38
-  ●    Commit 200                                                                                       GF 1y   d5ae5fd
-  ●    Commit 199                                                                                       GF 1y   13e6ab1
-  ●    Commit 198                                                                                       GF 1y   f5055d9
-  ●    Commit 197                                                                                       GF 1y   2cce853
-  ●    Commit 196                                                                                       GF 1y   325da3f
-  ●    Commit 195                                                                                       GF 1y   0722297
-  ●    Commit 194                                                                                       GF 1y   b6a4a47
-  ●    Commit 193                                                                                       GF 1y   60af0eb
-  ●    Commit 192                                                                                       GF 1y   aceb8c5
-  ●    Commit 191                                                                                       GF 1y   11d68ff
-  ●    Commit 190                                                                                       GF 1y   91900bd
-  ●    Commit 189                                                                                       GF 1y   cec3e93
-  ●    Commit 188                                                                                       GF 1y   0a91ece
-  ●    Commit 187                                                                                       GF 1y   3121935
-  ●    Commit 186                                                                                       GF 1y   fab25df
-  ●    Commit 185                                                                                       GF 1y   09ae97c
-  ●    Commit 184                                                                                       GF 1y   49d7783
-  ●    Commit 183                                                                                       GF 1y   22d55c9
-  ●    Commit 182                                                                                       GF 1y   d212b3e
-  ●    Commit 181                                                                                       GF 1y   c8254c5
-  ●    Commit 180                                                                                       GF 1y   e95ccd4
-  ●    Commit 179                                                                                       GF 1y   97b58e5
-  ●    Commit 178                                                                                       GF 1y   1c9b7ed
-  ●    Commit 177                                                                                       GF 1y   f93340a
-  ●    Commit 176                                                                                       GF 1y   5aaeeba
-  ●    Commit 175                                                                                       GF 1y   6be5928
-  ●    Commit 174                                                                                       GF 1y   9b67be4
-  ●    Commit 173                                                                                       GF 1y   937d32b
-  ●    Commit 172                                                                                       GF 1y   81be718
-  ●    Commit 171                                                                                       GF 1y   57b8196
-  ●    Commit 170                                                                                       GF 1y   8ea98be
-  ●    Commit 169                                                                                       GF 1y   4926766
-  ●    Commit 168                                                                                       GF 1y   0d60d60
+▸ ◆    [◆ main ⇄ origin] their change                                                                   GF 60m  5a2be2d
+  ●    add shared                                                                                       GF 60m  d8ff368
+  ●    Correct the note                                                                                 GF 1y   a82960b
+  ●    Add the first note                                                                               GF 1y   fadcfb3
+  ◇    Add a readme                                                                                     GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  pulled origin/main ✓ · your edits are back
 
