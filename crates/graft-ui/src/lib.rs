@@ -39,6 +39,7 @@ pub mod syntax;
 pub mod text_input;
 pub mod theme;
 pub mod tour_card;
+pub mod whitespace_tail;
 
 #[cfg(test)]
 mod test_support;

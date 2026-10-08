@@ -348,7 +348,7 @@ fn whitespace_tail_width(view: &DetailView, area: Rect) -> u16 {
 /// The detail's tail: its default counts whitespace (`config/types.rs`), so
 /// only `w`'s ignored state is named.
 fn detail_whitespace_tail(view: &DetailView) -> Option<&'static str> {
-    crate::blame::whitespace_tail(view.options.ignore_whitespace, false)
+    crate::whitespace_tail::whitespace_tail(view.options.ignore_whitespace, false)
 }
 
 /// The narrowest title worth keeping beside the whitespace tail.

@@ -95,7 +95,39 @@ impl BlameState {
             heatmap: self.heatmap,
             now,
             whitespace_ignored: self.options.ignore_whitespace,
+            default_ignored: graft_git::blame::BlameOptions::default().ignore_whitespace,
         };
         draw(&view)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use graft_git::blame::{BlameOptions, Rev};
+    use graft_ui::blame::BlameRev;
+
+    use super::super::{BlameLoad, BlameState};
+
+    /// 21b-2 item 2: the view's default is graft-git's, so a change to
+    /// `BlameOptions::default` moves the title with it.
+    #[test]
+    fn the_view_carries_blames_own_default() {
+        let place = BlameState {
+            path: PathBuf::from("a.rs"),
+            rev: Rev::WorkingTree,
+            title: BlameRev::Now,
+            options: BlameOptions::default(),
+            body: BlameLoad::Failed("no".into()),
+            cursor: 0,
+            top: 0,
+            find: None,
+            find_prompt: None,
+            heatmap: false,
+            last_click: None,
+        };
+        let default_ignored = place.view("a.rs", 0, |view| view.default_ignored);
+        assert_eq!(default_ignored, BlameOptions::default().ignore_whitespace);
     }
 }

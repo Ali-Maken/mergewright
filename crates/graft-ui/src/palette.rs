@@ -342,23 +342,23 @@ fn draw_list_line(
         }
         Line::Row(flat, group, at) => {
             let row = &view.groups[group].1[at];
-            draw_row(buf, x, y, inner, row, flat == view.cursor, view.wide, theme);
+            let slot = Rect::new(x, y, inner, 1);
+            draw_row(buf, slot, row, flat == view.cursor, view.wide, theme);
         }
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+/// One row of the list into `slot` (one cell high, inside the borders).
 fn draw_row(
     buf: &mut Buffer,
-    x: u16,
-    y: u16,
-    inner: u16,
+    slot: Rect,
     row: &PaletteRow,
     chosen: bool,
     wide: bool,
     theme: &Theme,
 ) {
-    let inner = usize::from(inner);
+    let (x, y) = (slot.x, slot.y);
+    let inner = usize::from(slot.width);
     let accent = foreground(theme, Token::Accent);
     let text = foreground(theme, Token::Text);
     let muted = foreground(theme, Token::TextMuted);
