@@ -29,7 +29,7 @@ key's clause dropped).
 |---|---|---|---|---|
 | R1 | `M8/askpass-refusal-wording` | graft-git `run/askpass.rs:203` `note(self.shared.refusals())` → `run/askpass/shared.rs:55-57` `Err(PermissionDenied, "<first>; <n> refused in all")` → graft-ops `apply/remote.rs:149-152` pushes it as `AfterState::AskPass` → `apply/error.rs:248` "the credential prompt's socket could not be cleaned up". Fires when a process of **another uid** is turned away by the socket, not on his `Esc`. | **Change.** Today's words are untrue (H2, H9). A refusal gets its own words: `another user's program asked for your login and was turned away · nothing was sent: <detail>`. Typed, never by string or `ErrorKind` (a cleanup failure can be `PermissionDenied` too: rule 2): graft-git carries a `Refused` payload inside the `io::Error`; graft-ops reads it with `refused()`. Cleanup failure words unchanged. One words fn serves the remote ops and the clone notice. | A (+B6) |
 | R2 | `M8/20-item14-words` (and `M7/r30p-q1`, KNOWN_GAPS :1072, same question) | graft-ops `apply/error/words.rs:18-27` (`its exact bytes are in the backup`); route test `recover_bytes::after_a_failed_raw_step_u_then_the_put_back_again_restores_his_bytes` (bytes return only after the way is cleared **and** `u` confirmed, then the put-back again); `J` has no `OpKey` (`keys.rs:14-45`); same words serve the set-aside put-back (`set_aside/answer.rs:269`). | **Change, lost-edit put-back only.** The route is tested there; name it without `J`: he just used that put-back (H6, H9, §3.1). Clause after the backup words: `: fix that, then <u> and put it back again` (plural `them`). `<u>` = `OpKey::Undo` through `KeyNames`; unbound → today's words exactly (W3). **Set-aside put-back keeps today's words**: there `u` undoes the whole operation and does not rewrite the path (graft-ops MAP `NotAsTheyWere`; `M7/30s-raw-fail` stays open), so the clause would be untrue. Ruling 2026-10-01 §1's "no `u` clause" still holds for `u` alone; this clause is a route, not a claim that `u` restores. | A |
-| R3 | `M8/18c-file-url-remote-words` | 18c NOTES :94: a failed `file://` clone reads `no remote named '/nonexistent/…'`. `CloneError::explain` uses `remote::short` (18a NOTES). `RemoteFailure::NoSuchRemote { name }` (graft-git MAP `remote`) is what git's `'<x>' does not appear to be a git repository` classifies to. | **Change, in the shared words.** git prints the location, not a name, for a configured remote with a bad URL too, and Graft only fetches remotes it read from config; so `NoSuchRemote` is in practice "nothing there". `remote::short` for it: `no repository at '<name>', or no access to it` (git's own two causes, H2). Every remote op and clone get it (H4: one failure, one wording). Variant not renamed. | A |
+| R3 | `M8/18c-file-url-remote-words` | 18c NOTES :94: a failed `file://` clone reads `no remote named '/nonexistent/…'`. `CloneError::explain` uses `remote::short` (18a NOTES). `RemoteFailure::NoSuchRemote { name }` (graft-git MAP `remote`) is what git's `'<x>' does not appear to be a git repository` classifies to. | **Change, in the shared words.** git prints the location, not a name, for a configured remote with a bad URL too, and Graft only fetches remotes it read from config; so `NoSuchRemote` is in practice "nothing there". `remote::short` for it: `no repository at '<name>', or no access to it` (git's own two causes, H2). Every remote op and clone get it (H4: one failure, one wording). Variant not renamed. **See "R3 amendment" below (three producers).** | A |
 | R4 | 11f Part A NOTES :360-363, :397-399 (no KNOWN_GAPS row): `c` refused off a CONFLICTS row in the changes pane is the bare reason | `resolve_keys` → `None` off a CONFLICTS row (`update/banner/resolve_words.rs`; graft MAP :484); one `⇥` from the file list lands on the diff (`banner/stop/tab.rs:51-56`), `tabs_to_banner` = 2 (`tab.rs:72-74`). | **Change.** A refusal names the way on (H9). Off a CONFLICTS row in the changes pane (files or diff), append the banner clause spelled for the real count: `1 file still conflicted · ⇥ ⇥ banner` from the file list, `· ⇥ banner` from the diff. The changes bar says `⇥ diff` there (`TabWord`), so only the refusal can tell him. Graph stays reason-only (its bar already draws `⇥ banner`). | B |
 | R5 | 11f Part A NOTES :364-369 (no row): `u`/`U` refused from the changes pane say `⇥ banner` | `undo.rs:178`, `:453` (`banner_keys`, `undo.rs:184-186`, "pressed on the graph"); `in_progress_refusal` and `undone`'s `OperationLive` arm pass the literal `"⇥ banner"` (graft MAP :433, :440). | **Change.** The words name one `⇥` where one does not reach the banner: untrue (H9, §2.1 "a key displayed must work"). Every "go to the banner" clause comes from **one speller**, `tab_keys(refusal_tabs(state), keys)`, with `⇥` spelled from `app.next_pane` (W1; unbound → clause dropped, W3). §2.6a's words keep their shape; only the count becomes true. | B |
 | R6 | 11f Part A NOTES :381-383 (no row): `space` is `resolved` in the bar, `space marks resolved` in the refusal | graft-ui `graph_screen/hints/lists.rs:522` `hint(STAGE, "resolved")`; graft `resolve_words` (`space marks resolved`). | **Change.** One key, one label (H4). Both read **`space mark resolved`**: a hint label is a verb (`resolve`, `edit`, `stage`), and the refusal's other clauses are key+label (`⏎ resolve  M mergetool  e edit`). One const in graft-ui, used by both, so they cannot drift. | B |
@@ -76,7 +76,9 @@ in NOTES. `tab_keys` callers that pass `Keymap::shipped()` today (the commit edi
 
 **Check first** (record each with file:line in NOTES; any surprise → stop, report, no fix):
 1. Which error `close` returns when cleanup **and** a refusal both fail. If one hides the other: question (rule 3), not fixed.
+   **Superseded by the R3 amendment's second ruling (fix it here).**
 2. `rg -n 'no remote named' crates` — exactly one producer (`remote::short`). More → stop.
+   **Answered: three producers; see the R3 amendment.**
 3. `rg -n 'NotAsTheyWere' crates/graft crates/graft-ops`: every constructor and pattern. A graft pattern without `..`
    gets `..` (the only graft edit allowed; list the lines; none may be in 19b's files).
 
@@ -161,3 +163,27 @@ Acceptance:
 
 ## Size
 Part A ~45k tokens. Part B ~65k tokens. One context each.
+
+## R3 amendment (planner, 2026-10-08, after Part A's check first 2 and 1)
+
+**1. Three producers of `no remote named`** (builder's facts: graft-ops `apply/remote.rs:287` `short`,
+`apply/remote.rs:375`, `operation.rs:910`). **Builder's proposal taken.**
+- `remote.rs:287` and `remote.rs:375` both word `RemoteFailure::NoSuchRemote` (git ran and said `'<x>' does not appear
+  to be a git repository`): both read `no repository at '<name>', or no access to it`. **One formatter, both call it**,
+  so the two cannot drift again (H4). Test: one case per producer (each red first), in `remote::tests`.
+- `operation.rs:910` **keeps** `no remote named …`: it refuses before git runs, on a name Graft looked up in config and
+  did not find. There the words are true; a missing name and a missing repository are different facts (§3.6).
+  Test: its existing test stays green unedited (name it at tick).
+- Touches add: `tests/it/remote_ops.rs` and captures quoting the two changed producers only; list them.
+
+**2. `close` keeps only its first error, so a cleanup failure hides a refusal.** **Fix in 20b Part A**, not a gap.
+A refusal is a security event (another uid tried the prompt); losing it breaks rule 3, and the fix lives in the same
+two files Part A already changes.
+- `Refused` carries the cleanup failure when both happen: `impl Refused { pub fn cleanup(&self) -> Option<&io::Error>; }`.
+  When both occur, `close` returns the refusal error (it wins: the event he must hear about), cleanup inside it. A
+  cleanup failure alone: today's error, unchanged.
+- `askpass_words` for both: R1's refusal words, then ` · and the credential prompt's socket could not be cleaned up: <io>`.
+- Test: `askpass::tests::a_refusal_survives_a_failed_cleanup` (graft-git: both happen → `refused(&e)` is `Some`,
+  `cleanup()` is `Some`) + `error::tests::askpass_refusal_has_its_own_words` gains the both-arm. If cleanup cannot be
+  made to fail in a test without a seam, add the seam inside `run/askpass` only and say so; no sleeps, no retries.
+- Check first 1 is answered by this; record the line where the first error was kept.
