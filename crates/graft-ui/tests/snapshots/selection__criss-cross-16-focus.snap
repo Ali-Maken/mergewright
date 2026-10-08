@@ -27,7 +27,7 @@ shape: criss-cross-merge, 16, focus, 80x24, row 4 selected
 
 
 
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · ? keys
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · u undo · ? keys
 
 modifiers: graph | subject
 ..b.......| .

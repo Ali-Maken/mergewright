@@ -72,4 +72,4 @@
 
 
 
- ⏎ open · o take · b branch · r rebase · t tag · c commit · y sha · ? keys
+ ⏎ open · o take · b branch · r rebase · t tag · c commit · u undo · ? keys

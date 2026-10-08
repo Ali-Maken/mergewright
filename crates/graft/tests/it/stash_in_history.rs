@@ -303,7 +303,7 @@ fn h_hides_the_only_in_stash_rows_too() {
 /// base`, badged `[only in stash@{0}]`; the stash's own row, `On topic:
 /// wip`, still there with its `■` and `[stash@{0}]`. Colour (the dimmed row,
 /// the badge's colour) unverified (rule 5).
-fn capture_stash_in_history(columns: u16, rows: u16) {
+fn capture_stash_in_history(columns: u16, rows: u16, shot: &str) {
     let scratch = stashed_on_a_lost_base();
     let (app, state) = App::open(scratch.path());
     let state = app.resize(&state, columns, rows);
@@ -327,17 +327,31 @@ fn capture_stash_in_history(columns: u16, rows: u16) {
     assert!(marked_rows[0].contains("topic base"), "{body}");
     assert!(marked_rows[0].contains("only in stash@{0}"), "{body}");
     assert!(body.contains("On topic: wip"), "{body}");
-    crate::captures::check_shot(&format!("m7/stash-in-history-{columns}x{rows}.txt"), &body);
+    // The cursor stands on the stash's row: its bar (m8/15 A4).
+    let bar = frame.last().expect("a footer row");
+    assert!(bar.contains("⏎ open · S stash"), "{bar}");
+    for refused in ["m merge", "r rebase", "R rewrite", "o take"] {
+        assert!(!bar.contains(refused), "{bar}");
+    }
+    crate::captures::check_shot(&format!("{shot}-{columns}x{rows}.txt"), &body);
     drop(state);
     app.close();
 }
 
 #[test]
 fn capture_stash_in_history_120x40() {
-    capture_stash_in_history(120, 40);
+    capture_stash_in_history(120, 40, "m7/stash-in-history");
 }
 
 #[test]
 fn capture_stash_in_history_80x24() {
-    capture_stash_in_history(80, 24);
+    capture_stash_in_history(80, 24, "m7/stash-in-history");
+}
+
+/// `docs/shots/m8-bar-stash-row-120x36.txt` (m8/15 A4). What right looks
+/// like: the cursor on the stash's row, its bar `⏎ open · S stash · …` with
+/// no `m merge`, `r rebase`, `R rewrite` or `o take`.
+#[test]
+fn capture_m8_bar_stash_row_120x36() {
+    capture_stash_in_history(120, 36, "m8-bar-stash-row");
 }

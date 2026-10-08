@@ -21,4 +21,4 @@
 
 
 
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · ? keys
+ ⏎ open · S stash · b branch · t tag · c commit · y sha · u undo · ? keys

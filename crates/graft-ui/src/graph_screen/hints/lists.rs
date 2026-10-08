@@ -11,7 +11,8 @@ use super::keys::{
     REWRITE as REWRITE_KEY, REWRITE_CHANGES, REWRITE_EDIT, REWRITE_START, SKIP, SQUASH, STAGE,
     STAGE_ALL, STASH, STATUS, SWITCH, TAG, TAKE, TYPE, UNDO, WHITESPACE,
 };
-use super::{Hint, HintContext, LiveC, RowVerbs, TabWord, hint};
+use super::{Hint, HintContext, HintKey, LiveC, RowVerbs, TabWord, hint};
+use crate::keymap::ActionId;
 
 mod resolver;
 
@@ -56,6 +57,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
             verbs,
         } => with_verbs(current_branch_row_list(), *verbs),
         HintContext::PlainRow { verbs } => with_verbs(plain_row_list(), *verbs),
+        HintContext::StashRow => stash_row_list(),
         HintContext::Banner {
             skippable,
             conflicted,
@@ -382,6 +384,26 @@ fn plain_row_list() -> Vec<Hint> {
     ]
 }
 
+/// A stash's row (m8-polish-and-ship/15 A4): [`plain_row_list`] less
+/// `m merge`, `r rebase` (both refuse on a stash, `preview/history.rs:108`),
+/// with `S stash` right after `⏎ open` — the stash's own verbs (`p d b ⏎`,
+/// keymap §2.9) live in the `S` list, not on the graph row. `R rewrite` and
+/// `o take` are never added: `R` is not offered here (`Rewritable` never
+/// wraps a stash row) and `o` refuses on a stash (`can_take`). [`TAIL`]'s
+/// `S stash` is deduped by key, so it is drawn once, here.
+fn stash_row_list() -> Vec<Hint> {
+    let mut list: Vec<Hint> = plain_row_list()
+        .into_iter()
+        .filter(|hint| !hint.is(MERGE) && !hint.is(REBASE) && !hint.is(STASH))
+        .collect();
+    let at = list
+        .iter()
+        .position(|hint| hint.is(OPEN))
+        .map_or(0, |i| i + 1);
+    list.insert(at, hint(STASH, "stash"));
+    list
+}
+
 /// The banner's own keys (design note, "Banner focused"), every one of them
 /// answered by `graft::update::banner::banner_key` while the banner has
 /// focus.
@@ -509,7 +531,41 @@ pub(super) fn said_live_on_the_graph(list: Vec<Hint>, c: LiveC, space_stages: bo
         ranked.push(SPACE_STAGE);
     }
     ranked.extend(rest.filter(|hint| !(space_stages && hint.is(SPACE_STAGE.keys))));
+    ranked.retain(|hint| !refused_while_live(hint));
     ranked
+}
+
+/// The graph's write keys that refuse while an operation is live
+/// (m8-polish-and-ship/15 A1, keymap §2.1 mode rule: a key that can only
+/// say "no" is not offered). Each member's refusing line, in `graft`:
+/// - `app.undo` — `update::undo::start_undo` → `in_progress_refusal`
+///   (`update/undo.rs:344`, words from `live_refusal_words`). The one
+///   exception, a merge begun in the shell (keymap §2.6a), is not told
+///   apart by the bar's context, so `u` is not offered there either: a key
+///   left out is recoverable through `?`, a key that refuses is a lie.
+/// - `graph.merge`, `graph.rebase` — `preview::history_key` →
+///   `open_preview` → `preview_refusal` (`update/preview.rs:380`); on a
+///   detached `HEAD` (an `edit` stop) `m` refuses earlier
+///   (`update/preview/history.rs:112`).
+/// - `graph.take` — `preview::take_key` → `open_preview` → `preview_refusal`.
+/// - `graph.rewrite` — `rewrite_editor::open_rewrite` → `preview_refusal`
+///   (`update/rewrite_editor/open.rs:48`).
+///
+/// Held against the app by `graft`'s
+/// `no_key_a_live_operation_bar_draws_refuses_while_live`.
+const REFUSED_WHILE_LIVE: &[ActionId] = &[
+    ActionId("app.undo"),
+    ActionId("graph.merge"),
+    ActionId("graph.rebase"),
+    ActionId("graph.take"),
+    ActionId("graph.rewrite"),
+];
+
+/// Whether `hint` names a [`REFUSED_WHILE_LIVE`] key.
+fn refused_while_live(hint: &Hint) -> bool {
+    hint.keys.iter().any(|key| {
+        matches!(key, HintKey::Key(id) | HintKey::EveryChord(id) if REFUSED_WHILE_LIVE.contains(id))
+    })
 }
 
 fn changes_pane_table(unmerged: bool, tab: TabWord) -> Vec<Hint> {

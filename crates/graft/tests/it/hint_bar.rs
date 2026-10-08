@@ -364,6 +364,32 @@ fn a_failure_still_names_the_key_that_clears_it() {
     app.close();
 }
 
+/// `docs/shots/m8-bar-head-row-100x30.txt` (m8/15 A5). What right looks
+/// like: the cursor on `HEAD`'s row, its bar holding both `a amend` and
+/// `u undo` at 100 columns — `u` is fitted second, so `a` no longer pushes
+/// it off.
+#[test]
+fn capture_m8_bar_head_row_100x30() {
+    let scratch = repo();
+    let (app, state) = App::open(scratch.path());
+    let tip = opened(&app, state);
+    let sized = app.resize(&tip, 100, 30);
+    let drawn = crate::captures::frame_at(
+        &sized,
+        100,
+        30,
+        Some(graft::session::Clock::Fixed(HINTS_NOW)),
+    );
+    let bar = drawn.last().expect("a footer row");
+    assert!(bar.contains("a amend") && bar.contains("u undo"), "{bar}");
+    crate::captures::check_shot(
+        "m8-bar-head-row-100x30.txt",
+        &format!("{}\n", drawn.join("\n")),
+    );
+    drop(sized);
+    app.close();
+}
+
 /// The captures under `docs/shots/`, from this same real path — the user
 /// judges the bar by eye at 80 and 120 columns (CLAUDE.md rule 6).
 /// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it hint_bar::capture_hint_bar_for_docs_shots`.

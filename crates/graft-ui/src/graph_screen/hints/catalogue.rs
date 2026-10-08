@@ -49,6 +49,9 @@ pub fn every_context() -> Vec<HintContext> {
         // m7-power-tools/08: `R rewrite` on his commit rows, and the editor's
         // field.
         HintContext::RewriteMessage,
+        // m8-polish-and-ship/15 A4: a stash's row; `marked_form` and the
+        // live and pane wraps reach it like any row.
+        HintContext::StashRow,
     ];
     // Each commit-row shape once per `RowVerbs` (m7-power-tools/40), bare
     // and under `R rewrite`.
@@ -308,6 +311,7 @@ fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
         _ if has_row_verbs(context) => Vec::new(),
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
+        | HintContext::StashRow
         | HintContext::PlainRow { .. }
         | HintContext::Marked(_)
         | HintContext::PaneFocused { .. } => {
@@ -435,6 +439,7 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
     match context {
         HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
+        | HintContext::StashRow
         | HintContext::Rewritable(_) => Some(HintContext::Marked(Box::new(context.clone()))),
         HintContext::WorkingTreeRow
         | HintContext::Banner { .. }
@@ -480,7 +485,10 @@ fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
     match context {
         // `R` needs the graph's keyboard (08, ruling 10): never under a pane.
         HintContext::Marked(row) if matches!(**row, HintContext::Rewritable(_)) => Vec::new(),
-        HintContext::BranchRow { .. } | HintContext::PlainRow { .. } | HintContext::Marked(_) => {
+        HintContext::BranchRow { .. }
+        | HintContext::PlainRow { .. }
+        | HintContext::StashRow
+        | HintContext::Marked(_) => {
             // `(opens, blamable, folds)`: the files list on a file, on a
             // directory, on neither (the `✉ message` row); the diff on a
             // line or not. Never `folds` without `opens` (only the files

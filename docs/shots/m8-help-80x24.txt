@@ -21,7 +21,7 @@
 "                                                                                "
 "                                                                                "
 "                                                                                "
-" m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · ? keys    "
+" m merge · r rebase · ⏎ open · b branch · t tag · P push · u undo · ? keys      "
 
 "                                                                  2 rows so far "
 "╭─ keys here ─────────────────────────────────────────────────────── esc close ╮"

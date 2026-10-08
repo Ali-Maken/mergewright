@@ -1,6 +1,5 @@
 ---
 source: crates/graft-ui/tests/ascii_tier.rs
-assertion_line: 102
 expression: text
 ---
 shape: criss-cross-merge, truecolor, 80x24, cursor on row 2
@@ -28,4 +27,4 @@ shape: criss-cross-merge, truecolor, 80x24, cursor on row 2
 
 
 
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · ? keys
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · u undo · ? keys

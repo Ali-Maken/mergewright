@@ -44,7 +44,7 @@
 "                                                                               █"
 "                                                                                "
 "                                                                                "
-" ⏎ open · b branch · r rebase · t tag · c commit · a amend · y sha · ? keys     "
+" ⏎ open · b branch · r rebase · t tag · c commit · a amend · u undo · ? keys    "
 
 === ascii ===
 "                                                                      7 commits*"

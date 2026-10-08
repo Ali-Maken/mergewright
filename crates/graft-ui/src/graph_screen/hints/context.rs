@@ -60,6 +60,11 @@ pub enum HintContext {
         /// The row verbs that act on this row (`o take`, `a amend`).
         verbs: RowVerbs,
     },
+    /// The cursor is on a stash's row (m8-polish-and-ship/15 A4): a plain
+    /// row's keys less `m`, `r`, `R` and `o`, which refuse on a stash, with
+    /// `S stash` — the door to the stash's own verbs — after `⏎ open`.
+    /// Never under `Rewritable`; never carries row verbs.
+    StashRow,
     /// The cursor row carries a Mistake Radar marker: `. explain` leads,
     /// then the inner context's own list, `. more` omitted (`.` is already
     /// shown).

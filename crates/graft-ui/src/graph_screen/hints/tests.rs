@@ -262,16 +262,15 @@ fn marked_leads_with_explain_and_draws_no_actions() {
             },
             Divider::Hidden,
         );
-        // Key and verb only: the ladder varies the rung, not the order.
-        assert_eq!(
-            hints[1..]
+        // Key and verb only: the ladder varies the rung, not the order —
+        // the drawn hints are the plain row's, in its order, though not
+        // always a prefix: `u undo` is fitted second (m8/15 A5).
+        let drawn: Vec<_> = hints[1..].iter().map(|h| (h.key(), h.verb)).collect();
+        let mut plain_keys = plain.iter().map(|h| (h.key(), h.verb));
+        assert!(
+            drawn
                 .iter()
-                .map(|h| (h.key(), h.verb))
-                .collect::<Vec<_>>(),
-            plain[..hints.len() - 1]
-                .iter()
-                .map(|h| (h.key(), h.verb))
-                .collect::<Vec<_>>(),
+                .all(|want| plain_keys.any(|have| have == *want)),
             "{hints:?}"
         );
         assert!(
@@ -988,13 +987,19 @@ fn a_hint_is_dropped_only_when_its_words_will_not_fit() {
                     ..hint
                 };
                 let mut with_one_more = body.clone();
-                let next = whole[body.len()];
+                // The next hint *in fit order* (m8/15 A5: `u undo` is
+                // fitted second, so the drawn body need not be a prefix).
+                let next = super::fitting::fit_order(&whole)
+                    .into_iter()
+                    .map(|at| whole[at])
+                    .find(|hint| !body.iter().any(|drawn| drawn.is(hint.keys)))
+                    .expect("a hint the bar dropped");
                 with_one_more.push(words(next.at(next.floor_rung())));
                 with_one_more.push(words(DOORWAY));
                 assert!(
                     hints_text(&with_one_more).width() > usize::from(columns),
                     "{context:?} at {columns} columns dropped `{}` with room for its words: {:?}",
-                    whole[body.len()].key(),
+                    next.key(),
                     hints_text(&hints)
                 );
             }
@@ -1025,19 +1030,33 @@ fn no_hint_loses_ground_as_the_room_for_it_grows() {
                     wider.len() >= narrower.len(),
                     "{context:?} with {divider:?} at {columns} columns lost a hint"
                 );
-                for (index, before) in narrower.iter().enumerate() {
-                    assert_eq!(
-                        (wider[index].key(), wider[index].verb),
-                        (before.key(), before.verb),
+                // Matched by key, not index (m8/15 A5): `u undo` is fitted
+                // second but drawn in its list place, so a hint added at a
+                // wider bar may land before it. What must hold is that every
+                // hint stays, in the same relative order, at no worse a rung.
+                let mut last = None;
+                for before in &narrower {
+                    let at = wider
+                        .iter()
+                        .position(|hint| hint.is(before.keys) && hint.verb == before.verb);
+                    let Some(at) = at else {
+                        panic!(
+                            "{context:?} with {divider:?} at {columns} columns lost `{}`",
+                            before.key()
+                        );
+                    };
+                    assert!(
+                        last.is_none_or(|last| at > last),
                         "{context:?} with {divider:?} at {columns} columns reordered"
                     );
+                    last = Some(at);
                     assert!(
-                        wider[index].rung >= before.rung,
+                        wider[at].rung >= before.rung,
                         "{context:?} with {divider:?}: `{}` fell from {:?} to {:?} \
                          when the bar grew to {columns} columns",
                         before.key(),
                         before.rung,
-                        wider[index].rung
+                        wider[at].rung
                     );
                 }
                 narrower = wider;
@@ -1137,6 +1156,7 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
+        | HintContext::StashRow
         | HintContext::Rewritable(_)
         | HintContext::ChangesPane { .. }
         // Modal for keys, not for the bar (m8/11d R1).
@@ -1168,8 +1188,8 @@ fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
     let text = hints_text(&with_a_tail);
     assert_eq!(
         text,
-        " ⏎ open \u{b7} c commit \u{b7} P push \u{b7} p pull \u{b7} f fetch \u{b7} b branch \u{b7} t tag \u{b7} ? keys",
-        "a row context draws words only, and its doorway is last"
+        " ⏎ open \u{b7} c commit \u{b7} P push \u{b7} p pull \u{b7} f fetch \u{b7} b branch \u{b7} u undo \u{b7} ? keys",
+        "a row context draws words only, its doorway is last, and `u undo` outranks the tail (m8/15 A5)"
     );
 
     for context in [
@@ -2864,5 +2884,119 @@ fn shed_footer_drops_the_middle_first() {
             "{room}: {kept:?} lost one of {before:?}"
         );
         before = kept;
+    }
+}
+
+/// m8/15 A1: while an operation is live, no graph bar offers a key that
+/// refuses then — `u`, `m`, `r`, `R`, `o` (`lists::REFUSED_WHILE_LIVE`,
+/// each member's refusing line in its doc). Every `OperationLive` form the
+/// catalogue yields (each `LiveC` × `tab_to_banner` × `space_stages`, over
+/// every row form), at every width that draws a bar.
+#[test]
+fn no_live_operation_bar_offers_a_key_that_refuses_while_live() {
+    let refused = ["u", "m", "r", "R", "o"];
+    let mut checked = 0;
+    for context in all_contexts() {
+        if !matches!(context, HintContext::OperationLive { .. }) {
+            continue;
+        }
+        for columns in [80, 100, 120, 160, 200] {
+            for divider in [Divider::Shown, Divider::Hidden] {
+                checked += 1;
+                let hints = hints_for(&context, divider, columns);
+                let offered: Vec<&str> = hints
+                    .iter()
+                    .map(Spelled::key)
+                    .filter(|key| refused.contains(key))
+                    .collect();
+                assert!(
+                    offered.is_empty(),
+                    "{context:?} at {columns}: offers {offered:?} in {:?}",
+                    hints_text(&hints)
+                );
+            }
+        }
+    }
+    assert!(checked >= 40, "only {checked} live bars checked");
+}
+
+/// m8/15 A5: `u undo` is fitted second, so on every graph-row form ×
+/// `RowVerbs::ALL` — bare, `Marked`, `Rewritable` — whose whole bar holds
+/// `u`, it is drawn at 100 and at 80 columns. `o`/`a` inserted by
+/// `with_verbs` used to push it off at 100.
+#[test]
+fn undo_is_drawn_at_100_and_80_on_every_row_form_that_holds_it() {
+    let mut checked = 0;
+    for verbs in RowVerbs::ALL {
+        let rows = [
+            HintContext::BranchRow {
+                current: false,
+                verbs,
+            },
+            HintContext::BranchRow {
+                current: true,
+                verbs,
+            },
+            HintContext::PlainRow { verbs },
+            HintContext::WorkingTreeRow,
+            HintContext::StashRow,
+        ];
+        for row in rows {
+            let forms = [
+                row.clone(),
+                HintContext::Marked(Box::new(row.clone())),
+                HintContext::Rewritable(Box::new(row.clone())),
+                HintContext::Marked(Box::new(HintContext::Rewritable(Box::new(row.clone())))),
+            ];
+            for context in forms {
+                for divider in [Divider::Shown, Divider::Hidden] {
+                    let whole = hints_text(&hints_for(&context, divider, 1000));
+                    if !whole.contains("u undo") {
+                        continue;
+                    }
+                    for columns in [80, 100] {
+                        checked += 1;
+                        let bar = hints_text(&hints_for(&context, divider, columns));
+                        assert!(
+                            bar.contains("u undo"),
+                            "{context:?} {divider:?} at {columns}: {bar:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+    assert!(checked >= 100, "only {checked} bars checked");
+}
+
+/// m8/15 A4: a stash row's bar offers no `m`, `r`, `R`, `o` — each
+/// refuses on a stash — and leads `⏎ open` then `S stash`, bare and marked,
+/// at every width.
+#[test]
+fn a_stash_row_offers_open_then_stash_and_nothing_that_refuses_on_a_stash() {
+    let bare = HintContext::StashRow;
+    let marked = HintContext::Marked(Box::new(HintContext::StashRow));
+    assert!(all_contexts().contains(&bare) && all_contexts().contains(&marked));
+    for columns in [80, 100, 120, 160, 200] {
+        for divider in [Divider::Shown, Divider::Hidden] {
+            for context in [&bare, &marked] {
+                let hints = hints_for(context, divider, columns);
+                let keys: Vec<&str> = hints.iter().map(Spelled::key).collect();
+                for refused in ["m", "r", "R", "o"] {
+                    assert!(
+                        !keys.contains(&refused),
+                        "{context:?} at {columns} offers {refused}: {:?}",
+                        hints_text(&hints)
+                    );
+                }
+            }
+            let hints = hints_for(&bare, divider, columns);
+            assert_eq!(
+                hints_text(&hints[..2]).trim(),
+                "⏎ open · S stash",
+                "{columns}: {:?}",
+                hints_text(&hints)
+            );
+        }
     }
 }

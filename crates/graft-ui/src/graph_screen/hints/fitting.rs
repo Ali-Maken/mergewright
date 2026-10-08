@@ -6,7 +6,7 @@ use unicode_width::UnicodeWidthStr;
 
 use graft_term::SanitizedText;
 
-use super::{Hint, Rung, keys::MENU};
+use super::{Hint, Rung, keys::MENU, keys::UNDO};
 use crate::fit::fit;
 use crate::keymap::Keymap;
 
@@ -129,7 +129,10 @@ pub(super) fn fit_list(
         words_only: words == Words::Only,
         ..hint
     };
-    let list: Vec<Hint> = list.iter().copied().map(stamp).collect();
+    // Fitted in priority order, drawn in list order (m8/15 A5): `order[k]`
+    // is the list index of the k-th hint to be fitted.
+    let order = fit_order(list);
+    let list: Vec<Hint> = order.iter().map(|&at| stamp(list[at])).collect();
     let list = list.as_slice();
     let trailer = trailer.map(stamp);
     let room = usize::from(columns);
@@ -142,7 +145,18 @@ pub(super) fn fit_list(
         .enumerate()
         .map(|(index, hint)| (index < floor).then(|| hint.at(hint.floor_rung())))
         .collect();
+    // Width does not depend on order (every join is the same separator),
+    // so a candidate is measured in fit order and drawn in list order.
     let drawn = |slots: &[Option<Hint>]| slots.iter().flatten().copied().collect::<Vec<_>>();
+    let in_list_order = |slots: &[Option<Hint>]| {
+        let mut placed: Vec<(usize, Hint)> = order
+            .iter()
+            .zip(slots)
+            .filter_map(|(&at, slot)| slot.map(|hint| (at, hint)))
+            .collect();
+        placed.sort_by_key(|&(at, _)| at);
+        placed.into_iter().map(|(_, hint)| hint).collect::<Vec<_>>()
+    };
     if !fits(&drawn(&slots), trailer, room, keys) {
         return below_the_floor(list, trailer, room, words, keys);
     }
@@ -154,8 +168,23 @@ pub(super) fn fit_list(
         }
         slots = candidate;
     }
-    let drawn = drawn(&slots);
-    place_doorway(drawn, trailer)
+    place_doorway(in_list_order(&slots), trailer)
+}
+
+/// The order [`fit_list`] fits `list` in: list order, except that
+/// `u undo` is fitted **second** (m8/15 A5, keymap §2.1 "ranked
+/// selection"): it is the visible way back (M3's promise), so what gives
+/// way when room runs out is the lowest-ranked hint, never `u`. Survivors
+/// are still drawn in list order.
+pub(super) fn fit_order(list: &[Hint]) -> Vec<usize> {
+    let mut order: Vec<usize> = (0..list.len()).collect();
+    if let Some(undo) = list.iter().position(|hint| hint.is(UNDO))
+        && undo > 1
+    {
+        order.remove(undo);
+        order.insert(1, undo);
+    }
+    order
 }
 
 /// Does `drawn` plus `trailer` fit in `room`?
