@@ -365,7 +365,7 @@ branch at the row's commit, `/` finds, `n`/`N` step matches (or `✗` rows):
 
 ```
  ┌─ JOURNAL · what happened in this repo, newest first ─────────────────────────────────────────────────────────┐
- │   ●  Graft          10:44   fetch · origin/main moved 2 commits                                              │
+ │   ●  Graft          10:44   fetch · origin/main moved                                                        │
  │   $  outside Graft  10:41   reset main 1 commit back               git: "reset: moving to HEAD~1"            │
  │ ▸    └ ✗ lost       9a8b7c6 "Add rate limiter" · was main's tip · no branch holds it                          │
  │   $  outside Graft  10:37   switch from spike to main              git: "checkout: moving from spike to main"│

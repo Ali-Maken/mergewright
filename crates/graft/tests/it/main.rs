@@ -76,6 +76,7 @@ mod outside_repo;
 mod palette_find;
 mod palette_in_progress;
 mod pane_bar_space;
+mod partial_fetch;
 mod piped_stdout;
 mod preview;
 mod pty;

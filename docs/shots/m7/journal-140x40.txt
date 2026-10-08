@@ -1,5 +1,5 @@
 JOURNAL · what happened in this repo, newest first
-  ●  Graft          now       fetch origin                                 remote-tracking refs · not undoable
+  ●  Graft          now       fetch origin                                 origin/main moved · not undoable
 ▸ $  outside Graft  4m ago    reset main 1 commit back
                               git: "reset: moving to HEAD~1"
      └ ✗ lost       a65d7e4 "Add rate limiter" · was main's tip · no branch holds it

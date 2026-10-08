@@ -266,3 +266,36 @@ fn answer_paused_lands_as_conflicted() {
     );
     assert_eq!(paused, conflicted, "the same landing as a conflict");
 }
+
+/// ADR-0062, 21c B+1: a remote write a stop ended answers with its own
+/// account — `Outcome::Answered`, which the pool delivers although the job
+/// was cancelled — so the stop's words (what its fetch moved before it
+/// stopped) reach the line. Any other answer stays `Produced`, which a
+/// cancel still turns into `JobCancelled`.
+#[test]
+fn a_stopped_remote_write_answers_although_it_was_cancelled() {
+    let failed = |remote: Option<RemoteFailure>| Operated::Failed {
+        error: "fetch all remotes cancelled · origin/main moved before it stopped".to_owned(),
+        refresh: Some(Refresh::Everything),
+        remote,
+        refused: None,
+        edits: None,
+    };
+    let stopped = failed(Some(RemoteFailure::Cancelled));
+    assert_eq!(
+        outcome(stopped.clone()),
+        crate::jobs::Outcome::Answered(crate::update::Product::Operated(Box::new(stopped)))
+    );
+    let other = failed(Some(RemoteFailure::Other {
+        first_line: "fatal: boom".to_owned(),
+    }));
+    assert_eq!(
+        outcome(other.clone()),
+        crate::jobs::Outcome::Produced(crate::update::Product::Operated(Box::new(other)))
+    );
+    let local = failed(None);
+    assert_eq!(
+        outcome(local.clone()),
+        crate::jobs::Outcome::Produced(crate::update::Product::Operated(Box::new(local)))
+    );
+}

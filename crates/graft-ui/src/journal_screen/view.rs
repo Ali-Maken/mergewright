@@ -77,6 +77,11 @@ pub struct JournalRowView {
     /// Why an `Aborted` entry failed, in full, shown while the row is
     /// expanded; `None` for an entry that finished.
     pub failure: Option<SanitizedText>,
+    /// The refs a fetch (or a pull's fetch) moved, one line each
+    /// (`origin/main  a1b2c3d → e4f5a6b`, then `+N more`), drawn while the
+    /// row is expanded under [`super::moved_heading`] (ADR-0062). Empty →
+    /// nothing drawn.
+    pub moved: Vec<SanitizedText>,
     /// `Space` opened this row's log.
     pub expanded: bool,
     /// Whose row it is.
@@ -99,6 +104,7 @@ impl Default for JournalRowView {
             mark: RowMark::None,
             commands: Vec::new(),
             failure: None,
+            moved: Vec::new(),
             expanded: false,
             kind: RowKind::Graft,
             git_subject: None,

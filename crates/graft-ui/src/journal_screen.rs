@@ -78,6 +78,18 @@ pub const NO_TRACE: &str =
 /// Graft" and nothing else (UX §3.6), so the log's lines are `┆ git …`.
 pub const COMMANDS_HEADING: &str = "commands Graft ran";
 
+/// The heading over an expanded row's moved refs (ADR-0062): `refs the
+/// fetch moved · u does not move them back`, `app.undo`'s key spelled from
+/// `keys` — they mirror the remote, and `u` steps over a fetch. Unbound,
+/// the first clause alone: with no key to name, the second has no subject.
+#[must_use]
+pub fn moved_heading(keys: &Keymap) -> String {
+    match keys.spell_keys(&[ActionId("app.undo")]) {
+        Some(undo) => format!("refs the fetch moved · {undo} does not move them back"),
+        None => "refs the fetch moved".to_owned(),
+    }
+}
+
 /// The cursor's column: `▸ ` or two blanks.
 const CURSOR: usize = 2;
 /// The glyph's column: `●  ` / `$  `.
@@ -291,7 +303,7 @@ impl JournalScreen<'_> {
                 row: Some(index),
                 selected,
             });
-            for pieces in under_pieces(row, selected, columns, usize::from(width)) {
+            for pieces in under_pieces(row, selected, columns, usize::from(width), self.keys) {
                 lines.push(Line {
                     pieces,
                     row: Some(index),

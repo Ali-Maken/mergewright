@@ -1,6 +1,7 @@
 # 21c — a fetch records the refs it moved; J stops saying "nothing written" when one moved
 
-Status: **partial** — Part A (record: boxes 1–8, 12) done 2026-10-08; Part B (show: boxes 9–11) open, handoff in NOTES.
+Status: **done** — Part A (record: boxes 1–8, 12) done 2026-10-08; Part B (show: boxes 9–11, B+1) done 2026-10-08,
+one open question in NOTES "Builder, Part B" item 4.
 The builder compacted mid-ticket, so it split at Part A | Part B as Size says. (Planner spec-only pass 2026-10-08;
 amended after scout `.scratch/m8-polish-and-ship/scouts/21c-fetch-refs.md`.)
 Build with: **Opus (xhigh)** — `builder-opus-xhigh`, the undo area: it edits the journal line format and adds a
@@ -217,18 +218,28 @@ pub fn moved_heading(keys: &Keymap) -> String;  // "refs the fetch moved · u do
       — **ticked by `apply::remote::tests::a_failed_fetch_that_moved_refs_ends_with_them`** (also: `Some({})` → today's
       words; `moves_unread` → ` · which refs it moved could not be read: <error>`), **`journal::tests::moved_words_table`**
       and **`journal::tests::moved_lines_cap_at_at_most`**.
-- [ ] 9. graft `view::journal::tests`:
+- [x] 9. graft `view::journal::tests`:
       - `a_partial_fetch_row_names_what_moved_and_is_not_refused` — no `refused · nothing written`.
       - `a_fetch_that_moved_nothing_reads_as_today` — mark and text byte-equal to HEAD's.
       - `a_committed_fetch_reads_nothing_new_not_undoable`.
       - `an_old_aborted_fetch_line_is_not_refused` — `fetched_refs: None`; summary `remote-tracking refs`.
       - `a_pull_row_ends_with_its_moves`.
-- [ ] 10. graft-ui `journal_screen::tests::an_expanded_fetch_row_lists_its_moves`:
+      — **ticked by** the five tests of those names in `crates/graft/src/view/journal/tests.rs`, plus
+      `an_expanded_fetch_row_carries_at_most_twenty_moves` (25 refs → `moved` is 20 lines + `+5 more`, graft's half
+      of box 10). One deviation, see NOTES "Builder, Part B" item 3: an old **Aborted** line's summary is
+      `failed: <reason>` (HEAD's, byte-equal), not `remote-tracking refs`; an old **Committed** line's is
+      `remote-tracking refs · not undoable`. The test asserts both.
+- [x] 10. graft-ui `journal_screen::tests::an_expanded_fetch_row_lists_its_moves`:
       - the heading carries `u`;
       - with `app.undo` unbound, it is `refs the fetch moved` alone;
       - 25 moves → 20 lines + `+5 more`;
       - the collapsed row draws none.
-- [ ] 11. Captures, each ≤ 200 KB:
+      — **ticked by** `journal_screen::tests::an_expanded_fetch_row_lists_its_moves` (heading with `u`, 20 lines +
+      `+5 more` between the failure and `commands Graft ran`, collapsed draws none) and
+      `journal_screen::tests::the_moved_heading_names_no_unbound_undo_key` (the unbound case, split out of the first
+      for clippy `too_many_lines`); the 25 → 20 cap itself is graft's `an_expanded_fetch_row_carries_at_most_twenty_moves`
+      (graft-ui draws what it is given, per the handoff item 3).
+- [x] 11. Captures, each ≤ 200 KB:
       - `docs/shots/m8/21c-journal-partial-fetch-120x40.txt` and `…-80x24.txt`: J in the probe's state, collapsed,
         then the fetch row expanded.
       - `docs/shots/m8/21c-status-partial-fetch-120x40.txt`: the status line after `f`.
@@ -238,6 +249,12 @@ pub fn moved_heading(keys: &Keymap) -> String;  // "refs the fetch moved · u do
       Expanded, `refs the fetch moved · u does not move them back` sits over `┆ origin/main  <7 hex> → <7 hex>`. The
       status line ends `· origin/main moved before it stopped`."* Colour unverified (rule 5); the user judges by eye
       (rule 6).
+      — **ticked by** `graft::it partial_fetch::capture_a_partial_fetch` (asserts every clause below, then
+      `check_shot`); files 5.6 KB, 2.6 KB, 2.2 KB; no home-dir or OS scratch path (grep). **The contact-sheet line
+      does not hold whole at 120 or 80 columns** — the collapsed row is cut after the long failure, so
+      `origin/main moved before it stopped · not undoable` is not on the row itself; it is on J's status row and in
+      the expanded row (both asserted). Question for the conductor, NOTES "Builder, Part B" item 4. The captions say
+      so.
 - [x] 12. `rg -n fetched_refs crates/graft-ops/src` output quoted in NOTES. No hit in `undo*`, `restore*`, `preview*`,
       `clash*`, or in `in_force`/`took_effect`/`changed_anything`/`next_*`.
       — **ticked by the grep quoted in NOTES** (no such hit) and by `journal::tests::next_undo_steps_past_a_push_and_a_fetch`
@@ -340,4 +357,69 @@ and the field).
    → `fetch · origin/main moved`.
 
 ## Part B additions (conductor 2026-10-08)
-- [ ] B+1: a **cancelled** fetch (graft's `cancelled`, see NOTES :307-308) also shows its moves in the status words, ending ` · origin/main moved before it stopped`. The user approved exactly this case on 2026-10-08 ("if you stop a fetch … partway … the line reads … moved before it stopped"), so it is in scope, not a new decision. Test seen red first; name it at tick. The diverged-pull path (graft builds its own reason) stays as NOTES says; Part B's status capture shows it.
+- [x] B+1: a **cancelled** fetch (graft's `cancelled`, see NOTES :307-308) also shows its moves in the status words, ending ` · origin/main moved before it stopped`. The user approved exactly this case on 2026-10-08 ("if you stop a fetch … partway … the line reads … moved before it stopped"), so it is in scope, not a new decision. Test seen red first; name it at tick. The diverged-pull path (graft builds its own reason) stays as NOTES says; Part B's status capture shows it.
+      — **ticked by** `graft::it partial_fetch::esc_on_a_fetch_that_moved_a_ref_says_what_moved` (real git: origin
+      moved, then a `HungRemote`; `f`, wait for the connection, `Esc` → `Status::done("fetch all remotes cancelled ·
+      origin/main moved before it stopped")`, the journal holds the move). **Seen red** with the fix disabled:
+      `left: Done { what: "fetch all remotes cancelled" … }`. Unit halves: `jobs::operate::tests::a_stopped_remote_write_answers_although_it_was_cancelled`
+      (Cancelled → `Outcome::Answered`; `Other`/`None` → `Produced`) and
+      `update::remote::tests::a_stopped_fetch_that_moved_a_ref_says_what_moved` (`Done(explained)`, `operating`
+      and `cancelling` cleared, a `ReadRefs` issued). Cause fix, not symptom: see NOTES "Builder, Part B" item 2.
+
+### Builder, Part B (2026-10-08) — **compacted once mid-ticket** (after the code, before the gates)
+1. **Scout:** read the existing `scouts/21c-fetch-refs.md`; sent a new one for B+1 →
+   `.scratch/m8-polish-and-ship/scouts/21c-b1-cancelled-fetch.md` (committed here).
+2. **B+1 root cause:** the job pool turns a cancelled job's `Produced` answer into `Event::JobCancelled`, so
+   graft's `cancelled()` wrote a bare `<desc> cancelled` and never saw ops' `explain` words. Fix at the pool's
+   designed seam: `jobs::operate::outcome` answers `Outcome::Answered` for `Operated::Failed { remote:
+   Some(RemoteFailure::Cancelled) }` (delivered as `Produced` even when cancelled), and `remote_failed`'s Cancelled
+   arm (`update/remote/in_flight.rs`) is now `Status::done(explained)` — ops' line, `{desc} cancelled` plus
+   ` · <moves> before it stopped` when it moved any. Same words as before when nothing moved (ops' `desc` is
+   `op.describe()`). Cost to the user: none seen; a remote write stopped by `Esc` now refreshes refs through
+   `Produced` (`ReadRefs` issued — asserted).
+3. **Deviation (spec contradiction), box 9:** "old aborted line → summary `remote-tracking refs`" contradicts "a
+   fetch that moved nothing reads as today (byte-equal)": HEAD's `with_failure` returns only `failed: <first line>`
+   for any Aborted fetch. Kept byte-equal: an old Aborted line reads `failed: <reason>`, mark `None` (not refused,
+   since `wrote_anything` cannot tell); an old Committed line reads `remote-tracking refs · not undoable`.
+4. **Question (rule 7: a question, not a defect):** at 120 and 80 columns the collapsed fetch row is cut after the
+   long failure (`failed: no repository at '/nonexistent/graft-21c.git', or no access to it` — verdict first,
+   `crates/graft-ui/src/journal_screen/pieces.rs:142–153`), so `origin/main moved before it stopped` is **not on the
+   row** at these widths (fits at roughly 168+ columns). It is on J's status row and in the expanded row. Options:
+   (a) accept — the row no longer says `nothing written`, and the moves are one `Space` away; (b) put the moves
+   before the failure on a fetch row. Not decided by me.
+5. **Words that changed for existing rows:** a Committed fetch with `Some({})` reads `nothing new · not undoable`;
+   with moves, `origin/main moved, … · not undoable` (refs by name, replacing `remote-tracking refs`); a pull row
+   ends ` · <moves>` (+ ` before it stopped` when Aborted). **`/` find in J now matches ref names** in fetch and
+   pull summaries.
+6. **Tests updated:** graft-ui `journal_screen::tests::mock_rows` fetch summary `remote-tracking refs · not
+   undoable` → `origin/main moved · not undoable` (a mock; layout tests unchanged). graft `view::journal::tests::remote_rows`
+   unchanged (its Committed `None` line still reads `remote-tracking refs · not undoable`).
+7. **Captures for the contact sheet** (not edited by me — 19c-c owns it): `docs/shots/m8/21c-status-partial-fetch-120x40.txt`,
+   `docs/shots/m8/21c-journal-partial-fetch-120x40.txt`, `docs/shots/m8/21c-journal-partial-fetch-80x24.txt`.
+   Regenerate: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it partial_fetch::capture_a_partial_fetch`. Colour
+   unverified (rule 5).
+   **Nine m7 captures regenerated** (the workspace run caught them stale; each diff is one line, the M7 lost-work
+   fixture's `fetch origin` row `remote-tracking refs · not undoable` → `origin/main moved · not undoable`, read by
+   `git diff -U0`): `docs/shots/m7/journal-{100x30,140x40,187x24,187x50}.txt`, `journal-expanded-120x40.txt`,
+   `journal-find-187x50.txt`, `journal-after-put-back-120x40.txt`, `put-back-{edit,staged}-preview-187x50.txt` —
+   by `m7_walk::journal::*` and `journal_put_back::*` under `GRAFT_UPDATE_SHOTS=1`, then green without it.
+   **Left stale, not mine to regenerate (conductor):** `docs/shots/m7/m7-contact-sheet-1.txt` (9 lines still read
+   `remote-tracking refs`; `scripts/contact-sheet.sh m7` rebuilds it); M4's pty capture
+   `docs/shots/m4-07-journal-remote-rows-160x48.txt`, its sheet, and `TESTING.md:1769`'s observed-words column
+   (a pty walk not run here; that fetch now reads its moves or `nothing new`); `docs/design-notes/m4-remotes.md:166`
+   (history).
+8. **Touches:**
+   - `jobs/runner.rs` + `jobs/operate.rs` — **outside "J-screen and status files"**, in graft; needed for B+1's
+     cause fix (item 2). Other `job_cancelled` handlers (awaiting, status/refs reads, amend-into, rewrite editor,
+     leaves, `tour::job_ended`) key on read ids, not the write id — read. Quit/forced: `stopped_at` comes from the
+     token, not the event — read. `edits_at` is `None` for Remote — read.
+   - `remote_by_key::esc_cancels_hung_fetch` (nothing moved: bare `fetch all remotes cancelled`) green, unedited.
+   - `m4_walk/hangs_and_undo.rs` asserts `done_containing("fetch all remotes cancelled")` and summary contains
+     `not undoable` — both still hold (workspace run).
+   - Diverged-pull path (graft builds its own reason) unchanged, per the conductor.
+   - graft-ui `under_pieces` gained `keys: &Keymap` (one caller, `JournalScreen::lines`).
+   - Docs: graft MAP (`journal_view`, `cancelled`, `remote_done`/`remote_failed`, `Outcome`, `operate::outcome`),
+     graft-ui MAP (`JournalRowView.moved`, `moved_heading`, draw order), DESIGN §1.10
+     (`docs/design/01-view-mockups.md:368` → `fetch · origin/main moved`, box border kept aligned).
+9. **Gates (workspace-wide, own `CARGO_TARGET_DIR`):** fmt ok; clippy `--all-targets -D warnings` ok; nextest
+   **6120/6120** (13 skipped, heavy tier); `cargo test --doc` ok. Red evidence recorded for B+1 only (above).

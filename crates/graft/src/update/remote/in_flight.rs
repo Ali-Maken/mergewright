@@ -174,13 +174,12 @@ pub fn remote_failed(
         Status::Sticky { reason, keys }
     };
     match (failure, op) {
-        // Not reached through the job pool: `jobs::pool::run_job` turns any
-        // product returned after a cancel into `Event::JobCancelled`, which
-        // `cancelled` answers, so a cancelled remote write never arrives
-        // here. Kept because `RemoteFailure` can carry it from `ops` on any
-        // other route, and dropping the arm would make that a silent
-        // wrong-worded failure line (m4-remotes/05 review, Minor 4).
-        (RemoteFailure::Cancelled, _) => Status::done(format!("{} cancelled", op.describe())),
+        // A remote write a stop ended (21c B+1): `jobs::operate::outcome`
+        // answers it although it was cancelled, so its words arrive here
+        // rather than `cancelled`'s bare `<desc> cancelled`. `ops`' line is
+        // that same sentence, then what the fetch moved before it stopped
+        // (ADR-0062) — `Done`, as any cancel: he asked for it.
+        (RemoteFailure::Cancelled, _) => Status::done(explained),
         (RemoteFailure::NonFastForward, Operation::Push(params)) => {
             // The tip refused, only from refs that answer the last read: a
             // tip read from refs before a write would make the next `P`
