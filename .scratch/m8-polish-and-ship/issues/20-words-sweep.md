@@ -1,7 +1,7 @@
 # G-words — sixteen lines that say something untrue, unclear or cut
 
 Status: ready
-Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Sonnet**: every wording is decided below; each item
+Build with: **Sonnet** (conductor 2026-10-08 after scout `scouts/20-words-sweep.md`). Planner expected **Sonnet**: every wording is decided below; each item
 is a string and a test.
 Blocked by: 10, 10b, 10e, 10f, 10h, 14 (10b split 2026-10-07: 10e holds `apply/error.rs`, `apply/remote.rs` — items
 4, 12–16; 10f `operate/failure.rs` — item 17; 10h `update/undo.rs` — item 5)
