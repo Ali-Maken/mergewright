@@ -660,6 +660,69 @@ fn a_switching_create_clash_is_labelled_switch() {
     );
 }
 
+/// m8-polish-and-ship/19d: a merge sets edits aside too (ADR-0045 §4), so
+/// its clash says `u` undoes the merge — after `y` (the launched merge),
+/// after the `c` that finished a stopped one (nothing launched: the
+/// journal's entry is read), and in the resolver's answer to `u`.
+#[test]
+fn a_merge_put_back_clash_notice_names_the_merge() {
+    let merge = Operation::Merge(graft_ops::operation::MergeParams {
+        source: graft_ops::operation::Source::Branch("feature".to_owned()),
+        into: graft_ops::operation::Tip {
+            name: "refs/heads/main".to_owned(),
+            oid: oid(1),
+        },
+        source_tip: oid(3),
+        ff: graft_ops::operation::FastForward::Default,
+    });
+    let notice = |state: &AppState| {
+        state
+            .resolver
+            .as_ref()
+            .and_then(|open| open.notice.as_ref())
+            .map(|(words, _)| words.clone())
+    };
+
+    let mut launched = AppState {
+        refs: Some(Arc::new(refs_with_stash())),
+        ..AppState::default()
+    };
+    set_aside_clash(&mut launched, Some(&merge), 1);
+    assert_eq!(
+        notice(&launched).as_deref(),
+        Some("your edits clashed in 1 file \u{b7} esc, u undoes the merge too")
+    );
+
+    // A stopped merge finished with `c`: the entry the journal holds, still
+    // `Pending` from the stop, is the merge.
+    let mut resumed = AppState::default();
+    resumed.journal.entries = Loading::Ready(Arc::new(JournalRead {
+        entries: vec![JournalEntry {
+            kind: OperationKind::Merge,
+            description: "merge feature into main".to_owned(),
+            status: EntryStatus::Pending,
+            put_back: Some(PutBack {
+                stash: oid(STASH),
+                why: PutBackWhy::SetAside,
+            }),
+            ..pop_entry()
+        }],
+        unreadable: Vec::new(),
+        live: Vec::new(),
+        interrupted_edits: Vec::new(),
+    }));
+    set_aside_clash(&mut resumed, None, 2);
+    assert_eq!(
+        notice(&resumed).as_deref(),
+        Some("your edits clashed in 2 files \u{b7} esc, u undoes the merge too")
+    );
+    assert_eq!(
+        undo_clause(&resumed).as_deref(),
+        Some("esc, u undoes the merge too"),
+        "the resolver's answer to u says the same"
+    );
+}
+
 /// The stop line while a set-aside's clash is open and the resolver shut:
 /// `your edits clashed · 1 file conflicted`; the count goes, then all but
 /// `your edits clashed`. The stash is never named.

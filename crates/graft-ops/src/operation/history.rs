@@ -579,6 +579,9 @@ pub(super) fn new_ref(full: &str, short: &str, facts: &RepoFacts) -> Result<(), 
     Ok(())
 }
 
+/// No clean-tree rule: changed tracked files are set aside around the
+/// merge and put back after it, as around a rebase (ADR-0045 §4,
+/// m8-polish-and-ship/19d).
 pub(super) fn check_merge(params: &MergeParams, facts: &RepoFacts) -> Result<(), Refusal> {
     head_is(&params.into, facts)?;
     source_holds(&params.source, params.source_tip, facts)

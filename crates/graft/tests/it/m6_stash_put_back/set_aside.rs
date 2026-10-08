@@ -282,6 +282,59 @@ fn u_after_a_dirty_switch_puts_everything_back() {
     app.close();
 }
 
+/// m8-polish-and-ship/19d: `m y` on `fix`'s row over a staged change to a
+/// file `fix` doesn't touch — the case git refuses a true merge over. The
+/// preview draws the set-aside row and the conflict line with the put-back
+/// folded in, in the words a rebase's preview uses; `y` merges, the edit is
+/// back staged, the status says `your edits are back`.
+#[test]
+fn merge_over_staged_edits_previews_and_puts_back() {
+    let scratch = main_and_fix();
+    let path = scratch.path();
+    std::fs::write(path.join("base.txt"), EDIT).expect("the scratch repo is writable");
+    git(path, &["add", "--", "base.txt"]);
+    let main_before = rev(path, "main");
+    let fix = rev(path, "fix");
+    let (app, state) = App::open(path);
+    let state = cursor_to(&app, opened(&app, state), &fix);
+
+    let state = app.key(&state, KeyCode::Char('m'));
+    let state = planned(&app, state);
+
+    let drawn = frame_at(&state, 120, 40, Some(Clock::Fixed(FORK_NOW))).join("\n");
+    assert!(drawn.contains("Preview: merge"), "{drawn}");
+    for row in [
+        "your edits: 1 file set aside, put back after",
+        "no conflicts expected",
+    ] {
+        assert!(drawn.contains(row), "`{row}`:\n{drawn}");
+    }
+
+    let state = app.key(&state, KeyCode::Char('y'));
+    let state = app.settle_write(state, "the merge");
+
+    let parents = git(path, &["log", "-1", "--format=%P", "main"]);
+    assert_eq!(
+        parents.split_whitespace().collect::<Vec<_>>(),
+        [main_before.as_str(), fix.as_str()],
+        "a merge commit of main and fix"
+    );
+    assert_eq!(read(path, "base.txt"), EDIT, "the edit is back");
+    assert_eq!(
+        git(path, &["status", "--porcelain"]).trim_end(),
+        "M  base.txt",
+        "still staged"
+    );
+    assert!(stash_list(path).is_empty(), "no stash left behind");
+    assert!(
+        matches!(&state.status, Status::Done { also: Some(clause), .. } if clause == "your edits are back"),
+        "{:?}",
+        state.status
+    );
+    drop(state);
+    app.close();
+}
+
 /// `main_and_fix`, then `main` changes `base.txt` and `fix` is checked out
 /// with `base.txt` edited: switching to `main` sets the edit aside, and
 /// putting it back clashes in `base.txt`, one block.

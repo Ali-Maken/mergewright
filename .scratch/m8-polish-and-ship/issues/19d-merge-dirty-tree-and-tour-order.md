@@ -270,35 +270,36 @@ gating in `update/preview/plan_lines.rs` only if kind-gated; the `clashed` notic
 **State:** partial, blocked, on branch `worktree-agent-a9afa698c484ca6f4` at bebdddd5. Its ticks and NOTES are on
 that branch. The remainder is 19d-a2.
 **Acceptance** (`crates/graft-ops/tests/it/merge_set_aside.rs` unless named; real repos):
-- [ ] The tour's case, red before: `main` + a staged change to a file `feature` doesn't touch; `apply(Merge)` commits
+- [x] The tour's case, red before: `main` + a staged change to a file `feature` doesn't touch; `apply(Merge)` commits
       the merge, `notes.txt` is still `M ` staged, and the stash list equals the list before:
       `a_merge_over_a_staged_change_git_would_refuse_goes_through`.
-- [ ] Unstaged edits to a path the merge also changes, put back clean: `a_merge_puts_unstaged_edits_back_after`.
-- [ ] Clean tree, or only untracked files: `sets_aside` is `None`, no `stash` line in the entry's commands, `touches`
+- [x] Unstaged edits to a path the merge also changes, put back clean: `a_merge_puts_unstaged_edits_back_after`.
+- [x] Clean tree, or only untracked files: `sets_aside` is `None`, no `stash` line in the entry's commands, `touches`
       without `refs/stash`: `a_merge_over_a_clean_tree_sets_nothing_aside`, `untracked_files_alone_set_nothing_aside`.
-- [ ] Stops on a conflict: entry `Pending` with `put_back`, `S` listed. `resume(ContinueWith)` after the resolution
+- [x] Stops on a conflict: entry `Pending` with `put_back`, `S` listed. `resume(ContinueWith)` after the resolution
       → `Committed`, edits back with the split kept, `S` dropped: `a_stopped_merge_finished_puts_the_edits_back`. Same
       with `Continue`: `…_continued_puts_the_edits_back`. `Abort` → old tip, edits back, `S` dropped:
       `a_stopped_merge_aborted_puts_the_edits_back`.
-- [ ] Put-back clash (merge clean, edit overlaps): entry `Committed`, `ApplyError::Clashed { why: SetAside }`, `S`
+- [x] Put-back clash (merge clean, edit overlaps): entry `Committed`, `ApplyError::Clashed { why: SetAside }`, `S`
       kept: `a_merge_put_back_that_clashes_stops_as_a_clash`.
-- [ ] Undo/redo round trip on ADR-0045 §7's tree table (staged + unstaged + untracked, staged new file, deletion,
+- [x] Undo/redo round trip on ADR-0045 §7's tree table (staged + unstaged + untracked, staged new file, deletion,
       rename). After `u`: index tree, worktree tree and stash list equal to before. After `U`: equal to after:
       `undo_of_a_set_aside_merge_round_trips`, `redo_of_a_set_aside_merge_round_trips`.
-- [ ] A stop injected before each of steps 1-6 leaves the edits in the tree or in the stash list, never in neither
+- [x] A stop injected before each of steps 1-6 leaves the edits in the tree or in the stash list, never in neither
       (read both): `a_stop_anywhere_in_a_set_aside_merge_keeps_the_edits`.
-- [ ] Preview: `set_aside` `Some`, and `put_back` is `Clean` (ff and true merge), `Likely` (overlap), or
+- [x] Preview: `set_aside` `Some`, and `put_back` is `Clean` (ff and true merge), `Likely` (overlap), or
       `NotChecked("the merge may stop first")` (the merge forecast `Likely`). Clean tree → both `None`, and the
       preview's spawn count is unchanged from before: `the_merge_preview_forecasts_the_put_back` (graft-ops).
-- [ ] App: a merge preview over a staged change draws the set-aside row and the put-back row, in the words rebase
+      With edits: +5 spawns on a true merge, +3 on a fast-forward (R1 said ≤ 4; NOTES "Deviation — spawns").
+- [x] App: a merge preview over a staged change draws the set-aside row and the put-back row, in the words rebase
       uses; `y` lands with `your edits are back`: graft `merge_over_staged_edits_previews_and_puts_back` (harness,
       `Clock::Fixed`).
-- [ ] The `clashed` notice (graft MAP :646, `undoes the rebase/switch too`) names a merge when the entry is a merge.
+- [x] The `clashed` notice (graft MAP :646, `undoes the rebase/switch too`) names a merge when the entry is a merge.
       If it is a fixed string, it reads the kind. Test: `a_merge_put_back_clash_notice_names_the_merge`.
-- [ ] Pull probe: an ff pull over a staged change it doesn't touch goes through, staged kept:
+- [x] Pull probe: an ff pull over a staged change it doesn't touch goes through, staged kept:
       `pull_set_aside::an_ff_pull_over_an_untouched_staged_change_goes_through`. **Red → stop, report** (R1).
-- [ ] 19c-b per-task tests green (`tests/it/tour_tasks.rs`); every changed expectation is listed in NOTES with why.
-- [ ] ADR-0045 amendment appended, naming the tests above; MAP rows and keymap row `m` updated.
+- [x] 19c-b per-task tests green (`tests/it/tour_tasks.rs`); every changed expectation is listed in NOTES with why.
+- [x] ADR-0045 amendment appended, naming the tests above; MAP rows and keymap row `m` updated.
 **Touches (check each, say how):** journal/undo (`put_back` on Merge entries; `next_undo`; the StashDrop-on-undo
 rule, ADR-0045 §6; `tour_progress` reads Committed Merges, MAP :221, so the tick still fires for a set-aside merge,
 proven by 19d-c); recovery (`recover_interrupted`, `Recovered::set_aside`: generic, so grep that no kind list excludes
@@ -463,3 +464,57 @@ NOTES.
   - `App::open_with_clock` pins only the JobRunner, not the frame (`app_harness.rs:154`).
   - About 70 year-age captures map to no current producer: old numbered shots, 35-/38- tiers, older m1/m2, contact sheets.
   - The conductor decides the follow-up. Scout used: yes, for this sweep only.
+
+## NOTES — 19d-a (builder, 2026-10-08)
+**Status: partial — blocked on 9 red 13c stop-in-hook tests outside this crate set.** Every 19d-a box below the
+blocker is green. **Compacted twice** mid-ticket. Remaining: the blocker only (rule needed, below).
+Skills: `tdd` (Skill tool, confirmed). `implement` / `code-review`: can't confirm after the compactions. Scout used: `scouts/merge-preview-dirty-index.md`.
+
+**Blocker — the ruling meets 13c's fixtures (ticket and code disagree; stopped, not changed).** 13c's stop-in-hook
+fixture (`crates/graft-ops/tests/it/stop_hooks.rs`, `diverged()`) leaves an unstaged edit to `notes.txt` (`HIS_EDIT`)
+the merge doesn't touch. Under R1 that edit is now set aside. Nine tests go red; the Touches list didn't name 13c.
+- **Paused (7 tests: the edit waits in `S`, not the tree, until resume).** graft-ops `stop_hooks::`
+  `a_merge_stopped_in_its_prepare_commit_msg_hook_is_paused` (`stop_hooks.rs:243` "his edit is untouched"),
+  `…_pre_merge_commit_hook_is_paused`, `a_resume_stopped_in_its_hook_stays_paused` (`:718`); graft `quit_waits::`
+  `stuck::stop_now_mid_merge_leaves_it_paused`, `stuck::relaunch_after_a_stopped_merge_offers_continue_and_abort`
+  (`quit_waits/stuck.rs:319`, `:347`), `capture_relaunch_after_a_stopped_merge`,
+  `hangup::a_hangup_then_a_second_hangup_leaves_the_merge_paused`. Captures
+  `docs/shots/m8-hangup-relaunch-120x40.txt`, `docs/shots/m8-quit-stopped-merge-relaunch-80x24.txt` now differ (not
+  re-shot). Resume still puts it back: `a_paused_merge_aborted_by_resume_gives_his_edits_back` and
+  `a_paused_merge_continues_to_the_merge_git_would_have_made` stay green. This is the ruling working as built; the
+  expectations predate it.
+- **D1 — Landed loses `stopped_at` (defect, pre-existing for every set-aside kind).**
+  `a_merge_stopped_in_its_post_merge_hook_has_landed`: `stop_hooks.rs:322` expects
+  `Some(StoppedAt::Landed)`, gets `None`. Cause: `crates/graft-ops/src/apply/close.rs:100-101` returns
+  `closed_set_aside(...)` before `:150`'s `stopped::mark(stopped_at, …)` is reached. Probe: entry `Committed`, edits
+  back, `S` dropped — only the mark is lost.
+- **D2 — BeforePause loses its reason (defect, pre-existing for every set-aside kind).**
+  `a_merge_stopped_before_git_paused_it_is_aborted_and_u_puts_it_back`: `stop_hooks.rs:357` expects
+  the before-pause words, gets "git was stopped". Cause: `close.rs:176` `failure.map(|failed| failed.error)` drops
+  `PlanFailure.before_pause` (`apply/run.rs:37`). Probe: edits back, stash empty, `u` restores (rest of the test green).
+- **Options for the conductor:** (a) a follow-up in `apply/close.rs` + `apply/set_aside` fixing D1/D2 (cause), the
+  paused expectations rewritten to "the edit waits in `S`, back on resume", the two captures re-shot; or (b) narrow R1
+  (e.g. only files the merge touches) — contradicts R1 and the cherry-pick rule. I recommend (a).
+
+**Changed expectation:** `operation/history/tests.rs` `sets_aside_table`: `merge()` moved from the `None` row to the
+`Some` row. Why: R1 itself.
+
+**Deviation — spawns.** R1 says "≤ 4 extra spawns"; measured **5** on a true merge (`stash create`, `merge-base`,
+`merge-tree`, `commit-tree`, `merge-tree`) and **3** on a fast-forward (`stash create`, `merge-base`, `merge-tree`).
+The fixed `merge_landed` signature carries no base, so it spawns its own `merge-base` (the merge forecast's base is not
+reachable from it). Clean tree: spawn list unchanged (asserted). Proposal: baseless `merge-tree --write-tree HEAD
+<source>` (git picks the base) → 4. `merge_landed` returns `MayStop` when there is no merge base.
+
+**Defect (out of scope, "no new words"):** the clash notice still says "u undoes the rebase too" for cherry-pick and
+pull: `crates/graft/src/update/clash.rs` `undone_with_edits`, `_ => "rebase"` arm.
+**Question:** an up-to-date merge over edits may draw the set-aside row inside a nothing-to-do box
+(`update/preview/plan_lines.rs:50` vs `update/preview.rs:358`). Not run.
+
+**Touches (how checked):** journal/undo — one entry, `u`/`U` exact on the §7 table (`undo_/redo_of_a_set_aside_merge_
+round_trips`), StashDrop only when `refs/stash` ended at `S` (same); `touches` adds `refs/stash` (`a_merge_over_a_clean_
+tree_sets_nothing_aside` checks its absence). Recovery: `recover.rs` has no kind list (grep). Stop line ` · edits aside`:
+generic via `has_edits_aside`/`is_set_aside_entry` (`wording.rs:185-207`). `edits_back`: generic (`clash.rs:452`);
+`resumed_words` uses it (`resume.rs:369`). `tour_progress` reads Committed Merges (`tour.rs:271`); `tour_tasks` green,
+no expectation changed. `plan_lines.rs`: not kind-gated, unchanged. Merge-preview captures (`m5-02-preview-merge-*`,
+`m6/fix-preview-verb-120x40`, `m7/refused-box-single-close-120x40`, contact sheets): clean fixtures, their tests green,
+unchanged. Keymap row `m` amended; no key bound or freed. Never `--autostash`.

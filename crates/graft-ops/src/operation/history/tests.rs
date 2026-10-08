@@ -695,10 +695,12 @@ fn facts_over(entries: Vec<StatusEntry>) -> RepoFacts {
     f
 }
 
-/// ADR-0045 §4: `sets_aside` is `Some` for a rebase, a checkout or (m7/11a,
-/// "Where I'd differ" 4) a cherry-pick exactly when tracked files are changed, counting them; `staged` is 0 since every
-/// put-back keeps the index (amendment 2026-09-26 b, m7-power-tools/30).
-/// Untracked files never count; every other kind is `None`, dirty or not.
+/// ADR-0045 §4: `sets_aside` is `Some` for a rebase, a checkout, (m7/11a,
+/// "Where I'd differ" 4) a cherry-pick or (m8-polish-and-ship/19d) a merge
+/// exactly when tracked files are changed, counting them; `staged` is 0
+/// since every put-back keeps the index (amendment 2026-09-26 b,
+/// m7-power-tools/30). Untracked files never count; every other kind is
+/// `None`, dirty or not.
 #[test]
 fn sets_aside_table() {
     let clean = facts_over(vec![]);
@@ -712,7 +714,7 @@ fn sets_aside_table() {
         ..entry("junk")
     }]);
 
-    for op in [rebase(), checkout(), pick()] {
+    for op in [rebase(), checkout(), pick(), merge()] {
         let what = op.describe();
         assert_eq!(op.sets_aside(&clean), None, "{what}: clean");
         assert_eq!(
@@ -734,7 +736,7 @@ fn sets_aside_table() {
             "{what}: untracked only"
         );
     }
-    for op in [merge(), revert(), reset(ResetMode::Hard)] {
+    for op in [revert(), reset(ResetMode::Hard)] {
         for f in [&clean, &tracked_only, &staged_and_unstaged, &untracked_only] {
             assert_eq!(op.sets_aside(f), None, "{}", op.describe());
         }
