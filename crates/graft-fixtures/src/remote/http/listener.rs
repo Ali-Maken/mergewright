@@ -115,43 +115,74 @@ fn spawn_handler(
 }
 
 impl Drop for HttpRemote {
+    /// The teardown, in this order — each step relies on the ones before it.
     fn drop(&mut self) {
         let Some(thread) = self.thread.take() else {
             return;
         };
         let port = self.port();
-        // 1. Closed: from here on the listener registers no connection.
+        self.close_to_new_connections();
+        let killed = self.kill_backends();
+        self.shut_clients(port);
+        let wake = self.wake_listener();
+        if self.wait_for_threads(port, &killed, &wake) {
+            self.join_threads(thread, port);
+        }
+    }
+}
+
+/// `Drop`'s steps, numbered in the order it runs them.
+impl HttpRemote {
+    /// 1. Closed: from here on the listener registers no connection.
+    fn close_to_new_connections(&self) {
         lock(&self.shared.connections).closing = true;
-        // 2. A handler may be waiting on an `http-backend` that will never
-        //    finish (a hung hook, say). End it; no backend started from here
-        //    on survives either.
-        let killed: Vec<Result<(), String>> = {
-            let mut running = lock(&self.shared.running);
-            running.stopping = true;
-            running.groups.drain(..).map(kill_group).collect()
-        };
-        // 3. Every handler blocked on its client — idle, half-open, or not
-        //    reading its answer — wakes with its stream shut.
+    }
+
+    /// 2. A handler may be waiting on an `http-backend` that will never
+    ///    finish (a hung hook, say). End it; no backend started from here
+    ///    on survives either.
+    fn kill_backends(&self) -> Vec<Result<(), String>> {
+        let mut running = lock(&self.shared.running);
+        running.stopping = true;
+        running.groups.drain(..).map(kill_group).collect()
+    }
+
+    /// 3. Every handler blocked on its client — idle, half-open, or not
+    ///    reading its answer — wakes with its stream shut.
+    fn shut_clients(&self, port: u16) {
         for connection in &lock(&self.shared.connections).open {
             shut(&connection.stream, port);
         }
-        // 4. Wake the blocked `accept` while the listener is still open; the
-        //    listener sees `closing`, returns, and drops the listener.
-        //
-        //    A refused wake is not by itself a failure: a client queued
-        //    before step 1 (a test's "is the port open?" probe, say) can be
-        //    accepted after it, and then the listener has already seen
-        //    `closing`, returned and closed the socket — nothing is left to
-        //    wake. A listener that really is still in `accept` is caught by
-        //    step 5's bound, whose panic carries this error.
-        let wake = TcpStream::connect(self.address).map(drop);
-        // 5. Wait for the listener thread and every handler, within the bound.
+    }
+
+    /// 4. Wake the blocked `accept` while the listener is still open; the
+    ///    listener sees `closing`, returns, and drops the listener.
+    ///
+    ///    A refused wake is not by itself a failure: a client queued
+    ///    before step 1 (a test's "is the port open?" probe, say) can be
+    ///    accepted after it, and then the listener has already seen
+    ///    `closing`, returned and closed the socket — nothing is left to
+    ///    wake. A listener that really is still in `accept` is caught by
+    ///    step 5's bound, whose panic carries this error.
+    fn wake_listener(&self) -> io::Result<()> {
+        TcpStream::connect(self.address).map(drop)
+    }
+
+    /// 5. Wait for the listener thread and every handler, within the bound.
+    ///    `true` once all have ended; `false` only when the bound passed
+    ///    while the thread was already panicking (said on stderr instead).
+    fn wait_for_threads(
+        &mut self,
+        port: u16,
+        killed: &[Result<(), String>],
+        wake: &io::Result<()>,
+    ) -> bool {
         let stopped = self
             .stopped
             .get_mut()
             .unwrap_or_else(PoisonError::into_inner);
         match stopped.recv_timeout(STOP_BOUND) {
-            Err(RecvTimeoutError::Disconnected) => {}
+            Err(RecvTimeoutError::Disconnected) => true,
             Ok(()) => unreachable!("no thread sends; each only disconnects"),
             Err(RecvTimeoutError::Timeout) => {
                 // Stuck even with backends killed and clients shut: something
@@ -166,14 +197,17 @@ impl Drop for HttpRemote {
                 );
                 if thread::panicking() {
                     eprintln!("{message}");
-                    return;
+                    return false;
                 }
                 panic!("{message}");
             }
         }
-        // Every thread has ended (all senders are gone): these joins return
-        // at once. The listener thread dropped the listening socket before
-        // its sender, so the port is closed now.
+    }
+
+    /// 6. Every thread has ended (all senders are gone): these joins return
+    ///    at once. The listener thread dropped the listening socket before
+    ///    its sender, so the port is closed now.
+    fn join_threads(&self, thread: JoinHandle<()>, port: u16) {
         if thread.join().is_err() {
             eprintln!("HttpRemote on port {port}: listener thread panicked");
         }
