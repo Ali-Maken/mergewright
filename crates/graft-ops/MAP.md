@@ -205,6 +205,16 @@ Not an `Operation`: no journal, no undo (no repo before it), as `init`. `git clo
 - `name_from_url` (fn) — the folder name git would pick: trailing whitespace, `/`, `/.git`, `.git` dropped; last `/` part (after the host for `scheme://`), else after `:` in scp form; `None` for empty, `.`, `..`, control chars.
 - `clone` (fn) — `(params, hooks: Option<&RemoteHooks>, stop: &dyn Stop) -> Result<Cloned, CloneError>`; order `BadUrl` → `TargetNotEmpty` → git.
 
+## tour (m8-polish-and-ship/19a)
+- `PracticeRepo` (struct) — private fields, only `build_practice_repo` makes one; `root()` (canonical `<under>/tributary-practice-<pid>-<unix_ms>`), `work()` (`<root>/work`, what the app opens).
+- `PRACTICE_MARKER` (`.practice`), `PRACTICE_PREFIX` (`tributary-practice-`) (consts).
+- `TourError` (enum) — `TempDir`, `Git { words }`, `NotPractice(path)`, `Outside { path, root }`, `Remove`, `Journal(JournalError)`, `Left { cause, left, left_why }` (build failed and its half-built folder could not be removed); `explain` = the `<reason>` in `tour: <reason>`, not sanitised.
+- `build_practice_repo(under)` (fn) — `create_dir` (never `_all`, no retry), marker first, then git via `GitInvocation::in_folder`: bare `remote.git`, `work` with `main` ×5 (4 pushed, upstream set, 1 ahead), `feature` (merges clean), `clash` (conflicts on `menu.txt`), `notes.txt` two unstaged hunks, `scratch.txt` untracked; local config identity, no signing, `core.hooksPath` = empty `<root>/hooks` (both repos). Not an `Operation`: no journal entry anywhere. A failed build removes its folder (guarded).
+- Private `inside(root, rel)` — the one door for every write and git folder: refuses absolute, `..`, `.`, empty.
+- `remove_practice_repo` (fn) — refuses (`NotPractice`/`Outside`, nothing removed) unless root is no link, canonical == recorded, parent == canonical `under`, name has the prefix, `<root>/.practice` is a regular file; then `remove_dir_all`.
+- `TourTask` (enum, `ALL` in card order), `tasks_done(entries) -> [bool; 8]` (fn, pure) — Committed only: Stage; Commit; Undo whose `root_operation` is a Commit; StashPush then later StashApply/Pop; BranchCreate; Merge; Merge with a ResolveConflict after it and before the next Merge; Push.
+- `tour_progress(work)` (fn) — reads (never writes) the repo's journal file, then `tasks_done`; no file → all false.
+
 ## matcher
 - `fuzzy_score(query, text) -> Option<u32>` (fn, pure, m8-polish-and-ship/11; moved from graft-core by 12f, ADR-0007) — case-insensitive; every whitespace-separated word of `query` must occur in `text`; lower is better: a word at a segment start (the start, or after a non-alphanumeric) beats one inside (1024 per word that is inside), then the first word's offset. Empty query → `Some(0)`. Shared by the palette and `graft_ops::switch_list`.
 
