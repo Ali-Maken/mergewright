@@ -12,6 +12,7 @@ use ratatui::widgets::Widget;
 
 use super::{MapMarkView, MapRowView, MapScreen, MapStatus};
 use crate::fit::fit;
+use crate::graph_screen::hints::fit_place_footer;
 use crate::keymap::ActionId;
 use crate::paint::{color, foreground};
 use crate::theme::{Theme, Token};
@@ -123,7 +124,13 @@ impl MapScreen<'_> {
         Line::styled(text, foreground(self.theme, Token::Text))
     }
 
-    fn footer_line(&self) -> Line<'static> {
+    /// The footer at `width`: keys, the `? keys` doorway, then the notes
+    /// (` · +N more`, ` · partial`), which describe the view rather than
+    /// name a key (m8/11e E2). Fitted by the journal's rule
+    /// (`hints::fit_place_footer`): the doorway and notes are reserved, the
+    /// keys shed into the rest; below that, `+N more` goes, then `partial`,
+    /// then the doorway's ladder. Never a cut clause.
+    fn footer_line(&self, width: u16) -> Line<'static> {
         let muted = foreground(self.theme, Token::TextMuted);
         let keys = self.keys;
         if let MapStatus::Loading { .. } = self.view.status {
@@ -134,23 +141,42 @@ impl MapScreen<'_> {
         // `app.down`/`app.up` (`j/k`, the table's first chords — the Map
         // answers both, `update::map::shown_key`), `⏎` seeks, and `M` and
         // `esc` both close.
-        let parts = [
+        let clauses: Vec<String> = [
             keys.key_verb(&[ActionId("app.down"), ActionId("app.up")], "select"),
             keys.key_verb(&[ActionId("map.seek")], "zoom to commits"),
             keys.key_verb(&[ActionId("map.close"), ActionId("app.back")], "back"),
-        ];
-        let mut spans = vec![Span::styled(
-            parts.into_iter().flatten().collect::<Vec<_>>().join("  "),
-            muted,
-        )];
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        let warning = foreground(self.theme, Token::Warning);
+        let mut notes: Vec<(String, Style)> = Vec::new();
         if self.view.more > 0 {
-            spans.push(Span::styled(format!(" · +{} more", self.view.more), muted));
+            notes.push((format!(" · +{} more", self.view.more), muted));
         }
         if !self.view.complete {
-            spans.push(Span::styled(
-                " · partial".to_owned(),
-                foreground(self.theme, Token::Warning),
-            ));
+            notes.push((" · partial".to_owned(), warning));
+        }
+        let note_words: Vec<String> = notes.iter().map(|(words, _)| words.clone()).collect();
+        let fitted = fit_place_footer(&clauses, keys, &note_words, usize::from(width));
+        let keys_part = fitted
+            .clauses
+            .iter()
+            .map(|at| clauses[*at].as_str())
+            .chain(fitted.doorway.as_deref())
+            .collect::<Vec<_>>()
+            .join("  ");
+        let mut spans = vec![Span::styled(keys_part, muted)];
+        for at in fitted.notes {
+            let (words, style) = &notes[at];
+            // With nothing ahead of it (no key fits and no doorway is
+            // bound), a note drops its leading ` · `: no stray separator.
+            let words = if spans.iter().all(|span| span.content.is_empty()) {
+                words.trim_start_matches(" · ").to_owned()
+            } else {
+                words.clone()
+            };
+            spans.push(Span::styled(words, *style));
         }
         Line::from(spans)
     }
@@ -413,6 +439,6 @@ impl Widget for MapScreen<'_> {
             MapStatus::Ready => self.draw_rows(buf, body),
         }
 
-        buf.set_line(area.x, footer_y, &self.footer_line(), area.width);
+        buf.set_line(area.x, footer_y, &self.footer_line(area.width), area.width);
     }
 }

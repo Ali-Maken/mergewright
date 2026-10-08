@@ -1140,9 +1140,6 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         | HintContext::Rewritable(_)
         | HintContext::ChangesPane { .. }
         // Modal for keys, not for the bar (m8/11d R1).
-        | HintContext::Journal
-        | HintContext::Stash
-        | HintContext::Map
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Blame { .. }
         | HintContext::History { .. } => Some(DOORWAY),
@@ -1182,7 +1179,7 @@ fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
             tab: TabWord::Graph,
             over_overlay: false,
         },
-        HintContext::Journal,
+        HintContext::PaneOverOverlay { opens: true },
     ] {
         let hints = hints_for(&context, Divider::Hidden, 80);
         assert!(
@@ -1191,10 +1188,9 @@ fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
             hints_text(&hints)
         );
         let text = hints_text(&hints);
-        // The journal draws no doorway at all — `.` opens nothing over an
-        // overlay, which the key sweep found and ADR-0039's first amendment
-        // already covers (m5/31). Where there *is* one and no tail to lead,
-        // it stays last, where it always was.
+        // Where there is a doorway and no tail to lead, it stays last,
+        // where it always was (the pane over an overlay, m8/11c; the journal
+        // case this held until m8/11e is the journal footer's own test now).
         if doorway_of(&context).is_some() {
             assert!(
                 text.ends_with("? keys"),
@@ -2620,9 +2616,6 @@ fn the_doorway_falls_back_to_the_palette_key_then_to_nothing() {
 /// the bar (ADR-0058 §4), so `?` answers there and the bar says so.
 fn overlays_and_places() -> Vec<HintContext> {
     let mut contexts = vec![
-        HintContext::Journal,
-        HintContext::Stash,
-        HintContext::Map,
         HintContext::PaneOverOverlay { opens: true },
         HintContext::PaneOverOverlay { opens: false },
         HintContext::ChangesPane {
@@ -2789,21 +2782,87 @@ fn a_marked_row_keeps_undo_and_search_before_the_doorway() {
         }
     }
     // A branch tip's marked row: the doorway never displaces `u undo` or
-    // `/ search` — wherever it is drawn, both are too.
+    // `/ search` — wherever it is drawn, both are too. First drawn at 137,
+    // both dividers (m8/11e F1: the measured width is the spec).
     let tip = HintContext::Marked(Box::new(HintContext::BranchRow {
         current: false,
         verbs: RowVerbs::NONE,
     }));
-    let mut first = None;
-    for columns in 40..=240u16 {
-        let text = hints_text(&hints_for(&tip, Divider::Hidden, columns));
-        if text.contains("? keys") {
-            first.get_or_insert(columns);
-            assert!(
-                text.contains("u undo") && text.contains("/ search"),
-                "branch tip at {columns}: {text:?}"
-            );
+    for divider in [Divider::Hidden, Divider::Shown] {
+        let mut first = None;
+        for columns in 40..=240u16 {
+            let text = hints_text(&hints_for(&tip, divider, columns));
+            if text.contains("? keys") {
+                first.get_or_insert(columns);
+                assert!(
+                    text.contains("u undo") && text.contains("/ search"),
+                    "branch tip {divider:?} at {columns}: {text:?}"
+                );
+            }
         }
+        assert_eq!(first, Some(137), "branch tip {divider:?}");
     }
-    eprintln!("branch-tip marked row: `? keys` first drawn at {first:?}");
+}
+
+/// m8/11e F2: the doorway's words come from one function, which follows his
+/// keymap: `? keys`; `⌃P keys` with `help` unbound; nothing with both; his
+/// own `help` key when he moved it.
+#[test]
+fn doorway_words_follows_his_keymap() {
+    assert_eq!(
+        super::doorway_words(Keymap::shipped()).as_deref(),
+        Some("? keys")
+    );
+    assert_eq!(
+        super::doorway_words(&unbound(&["app.help"])).as_deref(),
+        Some("⌃P keys")
+    );
+    assert_eq!(
+        super::doorway_words(&unbound(&["app.help", "app.palette"])),
+        None
+    );
+    let (moved, warnings) = Keymap::with_overrides(
+        &[("app.help".to_owned(), vec!["F1".to_owned()])],
+        crate::keymap::KeySwitches::default(),
+    );
+    assert!(warnings.is_empty(), "{warnings:?}");
+    let label = crate::keymap::KeyChord::parse("F1")
+        .expect("F1 is a key")
+        .label();
+    assert_eq!(
+        super::doorway_words(&moved),
+        Some(format!("{} keys", label.0))
+    );
+}
+
+/// m8/11e E1: the place footers' one cut.
+#[test]
+fn shed_footer_drops_the_middle_first() {
+    use super::fitting::shed_footer;
+
+    // `⏎ undo this` (11), `/ find` (6), `space command log` (17), `J/esc close` (11).
+    let widths = [11, 6, 17, 11];
+    let all = 11 + 6 + 17 + 11 + 3 * 2;
+    assert_eq!(shed_footer(&widths, 2, all), vec![0, 1, 2, 3]);
+    assert_eq!(shed_footer(&widths, 2, 200), vec![0, 1, 2, 3]);
+    // The middle from its right: `space command log` first, then `/ find`.
+    assert_eq!(shed_footer(&widths, 2, all - 1), vec![0, 1, 3]);
+    assert_eq!(shed_footer(&widths, 2, 11 + 6 + 11 + 4 - 1), vec![0, 3]);
+    // First and last kept longest; below them, nothing — never a cut clause.
+    assert_eq!(shed_footer(&widths, 2, 24), vec![0, 3]);
+    assert_eq!(shed_footer(&widths, 2, 23), Vec::<usize>::new());
+    assert_eq!(shed_footer(&widths, 2, 0), Vec::<usize>::new());
+    assert_eq!(shed_footer(&[11], 2, 11), vec![0]);
+    assert_eq!(shed_footer(&[11], 2, 10), Vec::<usize>::new());
+    assert_eq!(shed_footer(&[], 2, 10), Vec::<usize>::new());
+    // Monotone: more room never keeps less.
+    let mut before: Vec<usize> = Vec::new();
+    for room in 0..=80 {
+        let kept = shed_footer(&widths, 2, room);
+        assert!(
+            before.iter().all(|at| kept.contains(at)),
+            "{room}: {kept:?} lost one of {before:?}"
+        );
+        before = kept;
+    }
 }

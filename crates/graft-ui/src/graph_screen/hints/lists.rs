@@ -5,12 +5,11 @@ use super::keys::{
     ABORT, AMEND, BACK, BANNER_EDIT, BANNER_MERGETOOL, BRANCH, COMMIT, COMPARE, CONFIRM_CHOOSE,
     CONFIRM_MOVE, CONFIRM_YES, CONTINUE, COPY_SHA, CREDENTIAL_SEND, DISCARD, DOWN_UP, DROP, EDIT,
     FETCH, FIELD_EDITOR, FIELD_ENTER, FIELD_ESC, FIELD_TAB, FIND, FIRST_PARENT, FIXUP, FOCUS, FOLD,
-    HEATMAP, HIDE_STASH, IGNORE_REVS, JOURNAL, JOURNAL_REVERT, LANES, LINE_HISTORY, MAP, MERGE,
-    MERGETOOL, MOVE_ROW, NEXT_PANE, NEXT_PREV_CHANGE, NEXT_PREV_MATCH, OPEN, OVERVIEW, PARENT,
-    PICK, PICKER_ROWS, PICKER_SHOW, PICKER_SWITCH, PULL, PUSH, QUIT, REBASE, RELEASE, RENDERER,
-    REWORD, REWRITE as REWRITE_KEY, REWRITE_CHANGES, REWRITE_EDIT, REWRITE_START, SEEK, SKIP,
-    SQUASH, STAGE, STAGE_ALL, STASH, STASH_APPLY, STASH_BRANCH, STASH_DROP, STASH_POP, STATUS,
-    SWITCH, TAG, TAKE, TYPE, UNDO, WHITESPACE,
+    HEATMAP, HIDE_STASH, IGNORE_REVS, JOURNAL, LANES, LINE_HISTORY, MAP, MERGE, MERGETOOL,
+    MOVE_ROW, NEXT_PANE, NEXT_PREV_CHANGE, NEXT_PREV_MATCH, OPEN, OVERVIEW, PARENT, PICK,
+    PICKER_ROWS, PICKER_SHOW, PICKER_SWITCH, PULL, PUSH, QUIT, REBASE, RELEASE, RENDERER, REWORD,
+    REWRITE as REWRITE_KEY, REWRITE_CHANGES, REWRITE_EDIT, REWRITE_START, SKIP, SQUASH, STAGE,
+    STAGE_ALL, STASH, STATUS, SWITCH, TAG, TAKE, TYPE, UNDO, WHITESPACE,
 };
 use super::{Hint, HintContext, LiveC, RowVerbs, TabWord, hint};
 
@@ -76,19 +75,6 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
             lines,
         } => blame_bar(*finding, *ignore_file, *lines),
         HintContext::History { rows, on_file } => history_place_list(*rows, *on_file),
-        // The hint catalogue's `Journal` slot. J draws its own bar
-        // (`journal_screen`), which also answers `b`, `/`, `n`, `N`, `u`,
-        // `U` and `space`.
-        HintContext::Journal => vec![hint(JOURNAL_REVERT, "revert"), hint(BACK, "close")],
-        HintContext::Stash => stash_list(),
-        // Keymap §2.3a: the Map view answers `Enter`, the movement keys and
-        // `M`/`Esc`. `M` is left out for the reason the journal leaves `J`
-        // out — one way of saying "close" is enough for a bar this short.
-        HintContext::Map => vec![
-            hint(SEEK, "seek"),
-            hint(DOWN_UP, "move"),
-            hint(BACK, "close"),
-        ],
         HintContext::Picker => picker_list(),
         // Only ever drawn in the sub-100-column `Tab` layout, which has no
         // divider to drag: everywhere else the overlay draws its own footer
@@ -393,18 +379,6 @@ fn plain_row_list() -> Vec<Hint> {
         hint(STASH, "stash"),
         hint(JOURNAL, "journal"),
         hint(FIND, "search"),
-    ]
-}
-
-/// The stash list's keys. Keymap §2.9: `b` (branch from this stash) is
-/// named there as planned, so it is listed and not drawn.
-fn stash_list() -> Vec<Hint> {
-    vec![
-        hint(STASH_APPLY, "apply"),
-        hint(STASH_POP, "pop"),
-        hint(STASH_DROP, "drop"),
-        hint(STASH_BRANCH, "branch"),
-        hint(BACK, "close"),
     ]
 }
 
