@@ -1,6 +1,6 @@
 # G-first-run — clone from the empty state; one first-launch line
 
-Status: ready
+Status: superseded by 18-rulings.md + 18a–18d (2026-10-08) — was ready
 Build with: **Opus** (conductor 2026-10-08 after scout `scouts/18-first-run.md`; plumbing rulings pending). Planner expected **Opus**: clone is a remote write outside any repo
 (askpass, progress, partial-folder cleanup); the line is small.
 Blocked by: 08, 11, 11b (11b edits the empty-state bar — same files, serial)
