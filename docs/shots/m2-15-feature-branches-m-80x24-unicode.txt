@@ -23,4 +23,4 @@ MAP · main · last 1 day
 
 
 
-↑↓ select  ⏎ zoom to commits  M/Esc back
+j/k select  ⏎ zoom to commits  M/esc back  ? keys

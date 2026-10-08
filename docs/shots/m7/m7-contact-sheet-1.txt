@@ -69,7 +69,7 @@ JOURNAL · what happened in this repo, newest first
 
 
 ● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds
-⏎ put main back to it  b new branch here  / find  J/esc close
+⏎ put main back to it  b new branch here  / find  J/esc close  ? keys
 
 ================================================================================
 docs/shots/m7/journal-140x40.txt
@@ -115,7 +115,7 @@ JOURNAL · what happened in this repo, newest first
 
 
 ● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds
-⏎ put main back to before this  b new branch here  / find  J/esc close
+⏎ put main back to before this  b new branch here  / find  J/esc close  ? keys
 
 ================================================================================
 docs/shots/m7/journal-100x30.txt
@@ -151,7 +151,7 @@ JOURNAL · what happened in this repo, newest first
 
 
 ● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch…
-⏎ put main back to it  b new branch here  / find  J/esc close
+⏎ put main back to it  b new branch here  / find  J/esc close  ? keys
 
 ================================================================================
 docs/shots/m7/journal-187x24.txt
@@ -181,7 +181,7 @@ JOURNAL · what happened in this repo, newest first
 
 
 ● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds
-⏎ put main back to it  b new branch here  / find  J/esc close
+⏎ put main back to it  b new branch here  / find  J/esc close  ? keys
 
 ================================================================================
 docs/shots/m7/put-back-preview-187x50.txt
@@ -339,7 +339,7 @@ JOURNAL · what happened in this repo, newest first
 
 
 ● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds
-⏎ undo this  / find  space command log  J/esc close
+⏎ undo this  / find  space command log  J/esc close  ? keys
 
 ================================================================================
 docs/shots/m7/put-back-edit-preview-187x50.txt
@@ -609,7 +609,7 @@ JOURNAL · what happened in this repo, newest first
 
 
 ● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds
-⏎ revert to before this  / find  space command log  J/esc close
+⏎ revert to before this  / find  space command log  J/esc close  ? keys
 
 ================================================================================
 docs/shots/m7/journal-find-187x50.txt
@@ -665,7 +665,7 @@ JOURNAL · what happened in this repo, newest first · find "spike" 1 of 4
 
 
 ● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds
-⏎ switch back to spike  b new branch here  / find  n/N match  J/esc close
+⏎ switch back to spike  b new branch here  / find  n/N match  J/esc close  ? keys
 
 ================================================================================
 docs/shots/m7/landed-after-merge-120x40.txt
@@ -788,8 +788,8 @@ what right looks like: Ticket 05b: `r` on `main`'s row with `feature-a` checked 
 ╭ Preview: rebase feature-a onto main ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 4 commits replayed                                                                                                                                                                      │
 │ branches: feature-a 15335d9 → 2 new commits                                                                                                                                             │
-│           feature-b 82392de → 3 new commits · built on yours · follows                                                                                                                  │
-│           feature-c 1966dda → 4 new commits · built on yours · follows                                                                                                                  │
+│           feature-b 82392de → 1 new commit · built on yours · follows                                                                                                                   │
+│           feature-c 1966dda → 1 new commit · built on yours · follows                                                                                                                   │
 │ working tree: 1 file updated                                                                                                                                                            │
 │ no conflicts expected                                                                                                                                                                   │
 │ undo: u takes this back                                                                                                                                                                 │
@@ -1309,7 +1309,7 @@ what right looks like: Ticket 09: `j a` on "Add OAuth callback" (one row below H
 │ 67fda4a  Add OAuth callback  gains  src/auth.rs +1 −1                                                                                                                                   │
 │ 3 commits replayed                                                                                                                                                                      │
 │ branches: feature-a 29033ed → 2 new commits                                                                                                                                             │
-│           feature-b 04fbed6 → 3 new commits · built on yours · follows                                                                                                                  │
+│           feature-b 04fbed6 → 1 new commit · built on yours · follows                                                                                                                   │
 │ HEAD → feature-a                                                                                                                                                                        │
 │ working tree: 1 file updated                                                                                                                                                            │
 │ your edits: 1 file set aside, put back after                                                                                                                                            │
@@ -1821,7 +1821,7 @@ select a file
 
 
 
- m merge · r rebase · ⏎ open · space fold · b branch · t tag · P push · ? keys
+ m merge · r rebase · ⏎ open · space fold · b branch · t tag · u undo · ? keys
 
 ================================================================================
 docs/shots/m7/stash-in-history-120x40.txt
@@ -1867,7 +1867,7 @@ what right looks like: No `index on` and no `untracked files on` rows; exactly o
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
+ ⏎ open · S stash · b branch · t tag · c commit · y sha · u undo · J journal · / search · q quit · F2 stat · ? keys
 
 ================================================================================
 docs/shots/m7/stash-in-history-80x24.txt
@@ -1897,7 +1897,7 @@ what right looks like: At 80: no `index on` and no `untracked files on` rows; ex
 
 
 
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · ? keys
+ ⏎ open · S stash · b branch · t tag · c commit · y sha · u undo · ? keys
 
 ================================================================================
 docs/shots/m7/restart-after-done-box-120x40.txt
@@ -1999,7 +1999,7 @@ what right looks like: Line 22 selected; `▸`, and `◂ Lina · 7 months ago ·
  │                                            │ 45      fn drop(&mut self) {
  │                                            │ 46          self.token.clear();
  │                                            │ 47          self.refresh.clear();
- ⏎ that commit  ^ before it  L history of these lines  / find  space ages  w whitespace  i ignore list  esc back
+ ⏎ that commit  ^ before it  L history of these lines  / find  space ages  w whitespace  i ignore list  esc back  ? keys
 
 ================================================================================
 docs/shots/m7/blame-140x40.txt
@@ -2045,7 +2045,7 @@ what right looks like: Gutter 22, no subject in the gutter; the trailer sheds it
  │                    │ 35      pub fn age(&self) -> Duration {
  │                    │ 36          self.issued.elapsed()
  │                    │ 37      }
- ⏎ that commit  ^ before it  L history of these lines  / find  space ages  w whitespace  i ignore list  esc back
+ ⏎ that commit  ^ before it  L history of these lines  / find  space ages  w whitespace  i ignore list  esc back  ? keys
 
 ================================================================================
 docs/shots/m7/blame-100x30.txt
@@ -2081,7 +2081,7 @@ what right looks like: Gutter 10 columns; the trailer as far as it fits: `◂ Li
  └        │ 25              }
  ─ GF  60m│ 26              self.token = resp.token().map_err(Expired::from)?;
  ┌ TO 10mo│ 27              return self.record_refresh(&resp, "refreshed after the server answered 4
- ⏎ that commit  ^ before it  L history of these lines  / find  space ages  w whitespace  i  esc
+ ⏎ that commit  ^ before it  L history of these lines  / find  space ages  ? keys  w  i  esc
 
 ================================================================================
 docs/shots/m7/blame-find-187x50.txt
@@ -2137,7 +2137,7 @@ what right looks like: After `/refresh⏎ n`: `▸` on line 47, title ends `· f
  │                                            │ 45      fn drop(&mut self) {
  │                                            │ 46          self.token.clear();
  ▸         Ana                                │ 47          self.refresh.clear();    ◂ Ana · 1 year ago · Add session · 3f6c311
- ⏎ that commit  ^ before it  L history of these lines  / find  n/N match  space ages  w whitespace  i ignore list  esc back
+ ⏎ that commit  ^ before it  L history of these lines  / find  n/N match  space ages  w whitespace  i ignore list  esc back  ? keys
 
 ================================================================================
 docs/shots/m7/blame-long-line-187x50.txt
@@ -2193,7 +2193,7 @@ what right looks like: Cursor on line 27; no trailer, the name in the gutter. Co
  │                                            │ 45      fn drop(&mut self) {
  │                                            │ 46          self.token.clear();
  │                                            │ 47          self.refresh.clear();
- ⏎ that commit  ^ before it  L history of these lines  / find  space ages  w whitespace  i ignore list  esc back
+ ⏎ that commit  ^ before it  L history of these lines  / find  space ages  w whitespace  i ignore list  esc back  ? keys
 
 ================================================================================
 docs/shots/m7/blame-shallow-187x50.txt
@@ -2249,7 +2249,7 @@ what right looks like: Shallow clone, cursor on line 18: row reads `▸ ^0a2762 
  │                                            │ 45      fn drop(&mut self) {
  │                                            │ 46          self.token.clear();
  │                                            │ 47          self.refresh.clear();
- ⏎ that commit  ^ before it  L history of these lines  / find  space ages  w whitespace  i ignore list  esc back
+ ⏎ that commit  ^ before it  L history of these lines  / find  space ages  w whitespace  i ignore list  esc back  ? keys
 
 ================================================================================
 docs/shots/m7/blame-then-commit-120x40.txt
@@ -2565,7 +2565,7 @@ Right: (b) one `Esc` — blame again, `▸` on line 22 `if resp.status() == 401 
  │                    │ 35      pub fn age(&self) -> Duration {
  │                    │ 36          self.issued.elapsed()
  │                    │ 37      }
- ⏎ that commit  ^ before it  L history of these lines  / find  space ages  w whitespace  i ignore list  esc back
+ ⏎ that commit  ^ before it  L history of these lines  / find  space ages  w whitespace  i ignore list  esc back  ? keys
 
 ================================================================================
 docs/shots/m7/blame-enter-partly-staged-120x40.txt
@@ -2619,7 +2619,7 @@ what right looks like: Ticket 21b: blame of `src/auth/session.rs`, cursor in `re
 ================================================================================
 
  HISTORY · src/auth/session.rs · fn refresh_token, lines 18–29 · 3 changes
-   74f9a9e Handle expired tokens      Graft…  60m +1 −1 │ 2f48ca3 · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −2
+   74f9a9e Handle expired tokens      Graft…  60m +1 −1 │ 2f48ca3 · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −2 · these lines +3 −2
  ▸ 2f48ca3 Retry refresh once on 401  Lina    7mo +3 −2 │    11
    47593a5 Add token refresh          Tom    10mo +11   │    12   impl Session {
    the file starts here (47593a5 added it)              │    13       pub fn new(token: String, refresh: String) -> Self {
@@ -2667,7 +2667,7 @@ what right looks like: Ticket 21b: blame of `src/auth/session.rs`, cursor in `re
                                                         │    53           assert!(!session.is_expired());
                                                         │    54       }
                                                         │    55   }
- j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back
+ j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back  ? keys
 
 ================================================================================
 docs/shots/m7/history-file-140x40.txt
@@ -2713,7 +2713,7 @@ what right looks like: Ticket 21b: `F` on the file, whole-file history. Row 1 `H
                                         │    34
                                         │    35       pub fn age(&self) -> Duration {
                                         │    36           self.issued.elapsed()
- j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back
+ j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back  ? keys
 
 ================================================================================
 docs/shots/m7/history-100x30.txt
@@ -2749,7 +2749,7 @@ what right looks like: Ticket 21b: the history place at 100x30: list only, no fi
 
 
 
- j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back
+ j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back  ? keys
 
 ================================================================================
 docs/shots/m7/history-binary-140x40.txt
@@ -2795,5 +2795,5 @@ what right looks like: `F` on `logo.bin`: file pane reads `binary · 600 B → 2
                                         │
                                         │
                                         │
- j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back
+ j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back  ? keys
 

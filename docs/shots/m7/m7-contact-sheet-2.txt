@@ -64,7 +64,7 @@ Retry refresh once on 401
 
 Right: (b) one `Esc` — the history place again, the same commit selected.
  HISTORY · src/auth/session.rs · fn refresh_token, lines 18–29 · 3 changes
-   74f9a9e Handle expire… GF  60m +1 −1 │ 2f48ca3 · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −2
+   74f9a9e Handle expire… GF  60m +1 −1 │ 2f48ca3 · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −2 ·
  ▸ 2f48ca3 Retry refresh… LI  7mo +3 −2 │    16       /// Refresh the token when the server says it expired.
    47593a5 Add token ref… TO 10mo +11   │ ┃  17       pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
    the file starts here (47593a5 added  │ ┃  18 +         let mut attempt = 0;
@@ -102,7 +102,7 @@ Right: (b) one `Esc` — the history place again, the same commit selected.
                                         │    48       use super::*;
                                         │    49
                                         │    50       #[test]
- j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back
+ j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back  ? keys
 
 ================================================================================
 docs/shots/m7/rewrite-chain-stop-187x50.txt
@@ -214,7 +214,7 @@ what right looks like: Ticket 07d: an `edit` stop on his a3 of 5, Sara's feature
 
 
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · r rebase · t tag · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · ? keys
+ ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · t tag · y sha · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · + lane · ? keys
 
 ================================================================================
 docs/shots/m7/rewrite-edit-stop-120x40.txt
@@ -260,7 +260,7 @@ what right looks like: Ticket 07b/07c/07d: the `edit` stop at 120x40: banner wit
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · r rebase · t tag · y sha · m merge · ? keys
+ ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · t tag · y sha · S stash · J journal · ? keys
 
 ================================================================================
 docs/shots/m7/rewrite-edit-stop-80x24.txt
