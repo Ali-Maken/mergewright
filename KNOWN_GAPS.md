@@ -1234,6 +1234,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/11f-b2-ready-join | 11f B2 open: Map footer's Ready arm keeps its own join (graft-ui `map_screen/render.rs:155`); `place_footer_text` can't take notes — needs a helper in `graph_screen/hints/fitting.rs`. Also `stash_screen.rs` production 463 lines (see M8/doorway-files-over-400) | **broken** | M8 → 21 |
 | M8/19a-tour-left-untested | 19a added `TourError::Left` (build failed and cleanup failed: both errors returned); that path has no test | **unverified** | M8 |
 | M8/19-task7-may-never-tick | Question (19a): graft-core `journal.rs:89-92` folds `ResolveConflict` into an open entry, so tour task 7 (Merge then a ResolveConflict entry) may never tick — 19b's walk checks it and stops if so (19 §A3) | **unverified** | M8 |
+| M8/11f-c2-proto-mocks | 11f C2 sweep still hits `docs/shots/m7-proto*`/`m8-proto*` prototype mocks (old footer words); classed "not app footers" by the builder but not on 22c's record list — add them or re-word | **unverified** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` 407 lines (~7 over); seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |
