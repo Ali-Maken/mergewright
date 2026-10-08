@@ -261,14 +261,14 @@ fn the_stash_list_spells_his_keys_and_its_prompt_the_shipped_ones() {
             &["stash.save"],
             &["stash.drop"],
             &["stash.preview"],
-            &["app.back"],
+            &["stash.close", "app.back"],
         ],
     );
     let mut empty_list = view(Vec::new(), StashStatus::Empty);
     assert_spelled(
         &footer(&empty_list),
         &keys,
-        &[&["stash.save"], &["app.back"]],
+        &[&["stash.save"], &["stash.close", "app.back"]],
     );
     assert_spelled(&empty(&keys), &keys, &[&["stash.save"]]);
     empty_list.prompt = Some(StashPromptView {
@@ -319,7 +319,7 @@ fn footer_row(view: &StashView<'_>, width: u16, keys: &Keymap) -> String {
 /// full clauses each draws under the shipped keymap.
 fn footer_cases<'a>() -> Vec<(&'static str, StashView<'a>, Vec<&'static str>)> {
     let rows = || vec![row("stash@{0}", "WIP on main: tidy", "2h", 3)];
-    let short = vec!["s save", "esc close"];
+    let short = vec!["s save", "S/esc close"];
     vec![
         (
             "rows",
@@ -331,7 +331,7 @@ fn footer_cases<'a>() -> Vec<(&'static str, StashView<'a>, Vec<&'static str>)> {
                 "d drop",
                 "b branch",
                 "space files",
-                "esc close",
+                "S/esc close",
             ],
         ),
         (
@@ -346,6 +346,30 @@ fn footer_cases<'a>() -> Vec<(&'static str, StashView<'a>, Vec<&'static str>)> {
             short,
         ),
     ]
+}
+
+/// M8/stash-footer-close-key: `S` and `esc` both close the list, so every
+/// status's footer names both (`S/esc close`); `stash.close` unbound →
+/// `esc close`; both unbound → no close clause.
+#[test]
+fn every_stash_footer_names_both_close_keys() {
+    let no_s = crate::test_support::unbound(&["stash.close"]);
+    let neither = crate::test_support::unbound(&["stash.close", "app.back"]);
+    for (what, view, _) in &footer_cases() {
+        let shipped = footer_row(view, 200, Keymap::shipped());
+        assert!(
+            shipped.contains("  S/esc close  ? keys"),
+            "{what}: {shipped:?}"
+        );
+        let esc_only = footer_row(view, 200, &no_s);
+        assert!(
+            esc_only.contains("  esc close  ? keys"),
+            "{what}: {esc_only:?}"
+        );
+        assert!(!esc_only.contains("S/"), "{what}: {esc_only:?}");
+        let none = footer_row(view, 200, &neither);
+        assert!(!none.contains("close"), "{what}: {none:?}");
+    }
 }
 
 /// m8/11e F2: the list's own footer is the bar he sees; it ends with

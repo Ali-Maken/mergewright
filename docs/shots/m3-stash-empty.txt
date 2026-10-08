@@ -39,4 +39,4 @@
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-"s save  esc close  ? keys                                                                                               "
+"s save  S/esc close  ? keys                                                                                             "

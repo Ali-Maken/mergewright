@@ -47,4 +47,4 @@ STASHES (2)
 
 
 
-⏎ apply  p pop  s save  d drop  b branch  space files  esc close  ? keys
+⏎ apply  p pop  s save  d drop  b branch  space files  S/esc close  ? keys

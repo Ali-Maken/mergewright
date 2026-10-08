@@ -77,7 +77,11 @@ const ALLOWED: &[(&str, &str, &str)] = &[
         "1 merge commit · nothing is committed {until}",
         "`1` is a count, not a tab key",
     ),
-    ("stash_screen.rs", "1 file", "`1` is a count, not a tab key"),
+    (
+        "stash_screen/view.rs",
+        "1 file",
+        "`1` is a count, not a tab key",
+    ),
     (
         "journal_screen.rs",
         "a branch deleted outside Graft and never checked out leaves no trace here",

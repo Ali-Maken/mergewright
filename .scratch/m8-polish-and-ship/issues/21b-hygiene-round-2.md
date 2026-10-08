@@ -83,17 +83,17 @@ fn marked_list(inner: &HintContext, divider: Divider, keys: &Keymap) -> Vec<Hint
 `map_screen/render.rs` private `ready_clauses`/`notes`/`footer_line` keep 11f's signatures.
 
 **Acceptance**
-- [ ] 1: `rg -n 'join\(' crates/graft-ui/src/map_screen/` shows no footer join (NOTES quotes the output). Pass
+- [x] 1 (`hints::fitting::tests::keys_text_is_place_footer_text`, `keys_text_joins_kept_clauses_then_the_doorway`; named Map/stash tests unedited, green): `rg -n 'join\(' crates/graft-ui/src/map_screen/` shows no footer join (NOTES quotes the output). Pass
       unedited: `footer_ends_with_the_keys_doorway` (Map), `footer_never_draws_a_fragment`,
       `the_doorway_ends_the_keys_and_the_notes_follow`; graft
       `the_map_loading_footer_draws_the_doorway_only_if_question_mark_answers`. New
       `hints::fitting::tests::keys_text_is_place_footer_text` (same clauses, keys, width → equal strings, at 3 widths
       incl. one that sheds). Captures: `git diff --stat <base> -- docs/shots` empty.
-- [ ] 2: new `hints::tests::a_marked_row_with_help_unbound_ends_ctrl_p_keys` (`help = "none"` → the bar holds
+- [x] 2 (`hints::tests::a_marked_row_with_help_unbound_ends_ctrl_p_keys`, red on base): new `hints::tests::a_marked_row_with_help_unbound_ends_ctrl_p_keys` (`help = "none"` → the bar holds
       `⌃P keys` where `? keys` sat; `help` and `palette` both unbound → no doorway, nothing else changes). **Seen red
       on base** by assertion (NOTES: the failing line). `a_marked_row_keeps_undo_and_search_before_the_doorway`
       passes unedited. Shipped-keymap captures byte-identical.
-- [ ] 3: `stash_screen::tests` expectations updated to `S/esc close` in every state; new
+- [x] 3 (`stash_screen::tests::every_stash_footer_names_both_close_keys`, red on base; captures re-shot — caption in graft stale, see NOTES): `stash_screen::tests` expectations updated to `S/esc close` in every state; new
       `stash_screen::tests::every_stash_footer_names_both_close_keys` (Ready, Loading, Empty, Failed; `stash.close`
       unbound → `esc close`; both unbound → no close clause). Seen red on base. Re-shoot, then a second clean pass
       with `GRAFT_UPDATE_SHOTS` unset: `docs/shots/m8/doorway-stash-120x36.txt`, `doorway-stash-60x20.txt`
@@ -101,7 +101,7 @@ fn marked_list(inner: &HintContext, divider: Divider, keys: &Keymap) -> Vec<Hint
       (`python3 .scratch/m3-working-tree-undo-and-stash/pty-walk-m3.py {80x24,160x48} stash-pop`); rebuild
       `scripts/contact-sheet.sh m3`. NOTES quotes each footer row. `git diff --stat` names only these + the sheet.
       Colour unverified (rule 5); the look is the user's (rule 6).
-- [ ] 4: move-only check per file (above); each of the four ≤ 400.
+- [x] 4 (`nextest list` diff empty, 6069 = 6069; line-set check, NOTES): move-only check per file (above); each of the four ≤ 400.
 
 **Touches:** `place_footer_text` callers (J `journal_screen.rs`, S, Map Loading) — via the named tests; every
 graft test asserting a stash footer string (`rg -n 'esc close  \? keys' crates/` — list each, fix or say why it
@@ -408,6 +408,16 @@ workspace-wide. 21b-3 and 21b-4 also clippy with `--features heavy-tests`.
   M8/look-file-sizes (refresh), M8/http-read-timeout, M8/blame-place-ends-with, M8/doorway-files-over-400,
   M8/keymap-file-sizes (named files; its "graft-ops/graft files held by 10f–10i" part names none → fold into the
   proposed row).
+
+## NOTES — 21b-1 (builder, Opus, 2026-10-08)
+
+Scout: none — the four files' seams were read directly (`grep` of item lines); MAP's named seams held.
+
+- **1** `rg -n 'join\(' crates/graft-ui/src/map_screen/` → no output. Map Ready arm: `let keys_part = fitted.keys_text(&clauses);` (`map_screen/render/footer.rs`). `place_footer_text` body = `fit_place_footer(..).keys_text(clauses)` (`fitting/place_footer.rs`). Captures for Map/journal: no diff.
+- **2** Red on base (fix reverted to `list.insert(at, DOORWAY)`): panicked `hints/tests.rs:2661` (`text.ends_with("⌃P keys")`), bar ended `… H hide · f fetch` (no doorway). To pass, `keys` threaded through private `whole_bar`/`searching_bar`/`led_by`/`pane_focused_bar` (`hints_for` already had it), and `doorway_last` also moves `DOORWAY_BY_PALETTE`. Width note: with no doorway, 240 cells admit one more hint (`f fetch`), so the "nothing else changes" check runs at 400. `a_marked_row_keeps_undo_and_search_before_the_doorway` passes unedited.
+- **3** Red on base (close group reverted to `["app.back"]`): panicked `stash_screen/tests.rs:360`, `rows: "⏎ apply  p pop  s save  d drop  b branch  space files  esc close  ? keys"`. Footer rows now: Ready `⏎ apply  p pop  s save  d drop  b branch  space files  S/esc close  ? keys` (60x20: `⏎ apply  p pop  s save  d drop  S/esc close  ? keys`); Loading/Empty/Failed `s save  S/esc close  ? keys`. Re-shot: `m8/doorway-stash-{120x36,60x20}`, `m3-06-stash-list-{80x24,160x48}` (pty walk, then a second clean pass: "settled"), **plus** `m3-stash-list.txt`, `m3-stash-empty.txt` (graft `view::tests::capture_m3_stash` — also stash footers, not in the ticket's list), `m3-contact-sheet.txt` (4 lines, footers only). Second clean nextest pass without `GRAFT_UPDATE_SHOTS`: green. **Stale captions, outside graft-ui (not edited):** `crates/graft/src/update/tests.rs:6964` still says `… space files  esc close  ? keys` (drawn into `doorway-stash-120x36.txt:7`); the m3 headers `m3-stash-list.txt:13`, `m3-stash-empty.txt:9` list `esc close` (written by graft `view/tests.rs`). Needs a graft builder. For 23: design `01-view-mockups.md:392` stash footer → `S/esc close`. Graft tests on `esc close  ? keys`: only journal (`J/esc close`) and the caption above — none assert a stash footer. Colour unverified (rule 5); look is the user's (rule 6).
+- **4** `cargo nextest list --workspace | sort` before/after: 6069 lines, `diff` empty. Line-set check (script: every non-blank new line in the old file, less `use`/`mod`/`//!`, `pub(super)` widened): exceptions only `use` re-wraps, `fmt` re-wraps (`whole_bar(` signature, `NEEDS_A_COMMIT`, a test call), and `super::` → `super::super::` in `fitting/stop.rs`, `fitting/place_footer.rs` (one module deeper). Methods on `Hint` widened to `pub(super)` (`at`, `labels`, `rungs`, `floor_rung`); `footer_line` to `pub(super)`. `tests/no_literal_keys.rs` allow entry path `stash_screen.rs` → `stash_screen/view.rs` (the `"1 file"` literal moved). One commit per split.
+  `wc -l` before → after: `hints.rs` 906 → 149 (+ `hint.rs` 323, `doorway.rs` 118, `filters.rs` 350); `fitting.rs` 723 → 316 (+ `stop.rs` 223, `place_footer.rs` 102, `tests.rs` 122); `map_screen/render.rs` 462 → 389 (+ `render/footer.rs` 84); `stash_screen.rs` 468 → 383 (+ `view.rs` 92). (Before = after items 1–3; at ticket HEAD 888/697/468/463.)
 
 ## NOTES — 21b-3 (builder, Opus, 2026-10-08)
 

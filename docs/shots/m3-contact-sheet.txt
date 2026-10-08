@@ -508,7 +508,7 @@ STASHES (2)
 
 
 
-⏎ apply  p pop  s save  d drop  b branch  space files  esc close  ? keys
+⏎ apply  p pop  s save  d drop  b branch  space files  S/esc close  ? keys
 
 ================================================================================
 docs/shots/m3-06-stash-list-80x24.txt
@@ -540,7 +540,7 @@ STASHES (2)
 
 
 
-⏎ apply  p pop  s save  d drop  b branch  space files  esc close  ? keys
+⏎ apply  p pop  s save  d drop  b branch  space files  S/esc close  ? keys
 
 ================================================================================
 docs/shots/m3-07-stash-prompt-160x48.txt
@@ -1662,7 +1662,7 @@ what right looks like: Capture header "Judge by eye": the header reads STASHES (
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-"s save  esc close  ? keys                                                                                               "
+"s save  S/esc close  ? keys                                                                                             "
 
 ================================================================================
 docs/shots/m3-stash-list.txt
@@ -1714,7 +1714,7 @@ what right looks like: Capture header "Judge by eye": the header counts them: ST
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-"⏎ apply  p pop  s save  d drop  b branch  space files  esc close  ? keys                                                "
+"⏎ apply  p pop  s save  d drop  b branch  space files  S/esc close  ? keys                                              "
 
 ================================================================================
 docs/shots/m3-stash-save.txt
