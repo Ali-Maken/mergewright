@@ -37,6 +37,16 @@ fn main() -> ExitCode {
         }
     };
 
+    // Before the terminal session, like the config: a bad clock pin is a
+    // plain line and exit 2, never a screen (m8/19d-b).
+    let clock = match graft::session::launch_clock() {
+        Ok(clock) => clock,
+        Err(words) => {
+            report(&words);
+            return ExitCode::from(2);
+        }
+    };
+
     // Before the terminal session: a config file that cannot be read is a
     // message, and a message is only readable on a terminal Graft has not
     // taken over yet.
@@ -48,7 +58,7 @@ fn main() -> ExitCode {
         }
     };
 
-    match start(repo_path, config) {
+    match start(repo_path, config, clock) {
         // The harness is the default, so `HandedBack` cannot happen; if it
         // did, the loop stopped where it was told to, which is a success.
         // `Open`, `Practise` and `LeaveTour` are handled by `drive` and never
@@ -90,13 +100,20 @@ fn main() -> ExitCode {
 /// a pipe gets an error, not a screen); otherwise the path is located — a
 /// broken repository is still a plain line — and the terminal opened once
 /// for every place that follows.
-fn start(repo_path: std::path::PathBuf, config: config::Loaded) -> std::io::Result<Exit> {
+fn start(
+    repo_path: std::path::PathBuf,
+    config: config::Loaded,
+    clock: graft::session::Clock,
+) -> std::io::Result<Exit> {
     use std::io::IsTerminal;
     if !io::stdout().is_terminal() {
         return event_loop::run(Startup {
             repo_path,
             config,
-            harness: Harness::default(),
+            harness: Harness {
+                clock,
+                ..Harness::default()
+            },
         });
     }
     let place = match event_loop::locate(&repo_path, &config) {
@@ -104,7 +121,7 @@ fn start(repo_path: std::path::PathBuf, config: config::Loaded) -> std::io::Resu
         Err(reason) => return Ok(Exit::Fatal(reason)),
     };
     let terminal = event_loop::Terminal::open()?;
-    event_loop::drive(terminal, place, &config)
+    event_loop::drive(terminal, place, &config, clock)
 }
 
 /// Say what went wrong on stderr, now that the terminal is the user's again.

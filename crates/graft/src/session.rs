@@ -110,6 +110,43 @@ impl Clock {
     }
 }
 
+/// Set to whole seconds since 1970, pins the session clock for the whole
+/// run — every drawn age and every journal stamp (m8/19d-b). For
+/// reproducible pty runs and captures; the pty harness sets it by default.
+pub(crate) const NOW_VAR: &str = "GRAFT_NOW";
+
+/// What [`NOW_VAR`]'s value asks for: unset → `Wall`; whole seconds →
+/// `Fixed`; anything else → the words of the refusal (unsanitised; the
+/// caller sanitises). Pure.
+pub(crate) fn clock_from(var: Option<&std::ffi::OsStr>) -> Result<Clock, String> {
+    let Some(raw) = var else {
+        return Ok(Clock::Wall);
+    };
+    let refuse = || {
+        format!(
+            "{NOW_VAR} must be whole seconds since 1970, got {}",
+            raw.to_string_lossy()
+        )
+    };
+    let text = raw.to_str().ok_or_else(refuse)?;
+    if text.is_empty() || !text.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(refuse());
+    }
+    let seconds = text.parse::<i64>().map_err(|_too_big| refuse())?;
+    Ok(Clock::Fixed(seconds))
+}
+
+/// The session clock this process runs on, read once at launch from
+/// [`NOW_VAR`] (`clock_from`). `Err` carries sanitised words for stderr;
+/// the binary refuses to launch on it (exit 2).
+///
+/// # Errors
+/// The variable is set to anything but whole seconds.
+pub fn launch_clock() -> Result<Clock, String> {
+    clock_from(std::env::var_os(NOW_VAR).as_deref())
+        .map_err(|words| sanitize_line(&words).as_str().to_owned())
+}
+
 /// What Graft is drawing with, for as long as this run lasts.
 pub struct Session {
     /// Everything detection found. Kept whole: the tier and theme below are
@@ -322,6 +359,25 @@ mod tests {
     use graft_core::capabilities::{
         CellSizeSource, RenderingTier, Rgb, Theme as TerminalTheme, ThemeHint,
     };
+
+    #[test]
+    fn clock_from_reads_whole_seconds_only() {
+        use std::ffi::OsStr;
+        assert_eq!(clock_from(None), Ok(Clock::Wall));
+        assert_eq!(
+            clock_from(Some(OsStr::new("1609459200"))),
+            Ok(Clock::Fixed(1_609_459_200))
+        );
+        for bad in ["x", "", "1.5", "-3", "99999999999999999999"] {
+            assert_eq!(
+                clock_from(Some(OsStr::new(bad))),
+                Err(format!(
+                    "GRAFT_NOW must be whole seconds since 1970, got {bad}"
+                )),
+                "{bad:?}"
+            );
+        }
+    }
 
     use super::*;
     use crate::config::{Config, Graph, RendererChoice, ThemeChoice, Ui};

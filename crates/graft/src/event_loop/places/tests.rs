@@ -222,6 +222,7 @@ fn carried() -> Carried {
         practice: false,
         tour_done: false,
         returning: false,
+        clock: crate::session::Clock::Wall,
     }
 }
 
