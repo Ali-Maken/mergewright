@@ -215,6 +215,9 @@ impl StashScreen<'_> {
                 ("stash.pop", "pop"),
                 ("stash.save", "save"),
                 ("stash.drop", "drop"),
+                // A branch from the stash under the cursor (§2.9's order);
+                // Ready is the only status with one selected (m8/11e G1).
+                ("stash.branch", "branch"),
                 ("stash.preview", "files"),
                 ("app.back", "close"),
             ],
@@ -790,6 +793,7 @@ mod tests {
                     "p pop",
                     "s save",
                     "d drop",
+                    "b branch",
                     "space files",
                     "esc close",
                 ],
@@ -827,6 +831,35 @@ mod tests {
             crate::test_support::assert_footer_whole(what, clauses, &[], &|width, keys| {
                 footer_row(view, width, keys)
             });
+        }
+    }
+
+    /// m8/11e G1: `b` makes a branch from the stash under the cursor, so it
+    /// is drawn only when one is selected (Ready), between `drop` and
+    /// `files` (§2.9's order); never at Loading, Empty or Failed.
+    #[test]
+    fn the_branch_key_is_drawn_only_with_a_stash_selected() {
+        let keys = Keymap::shipped();
+        for (what, view, _) in &footer_cases() {
+            for width in [120, 200] {
+                let row = footer_row(view, width, keys);
+                if *what == "rows" {
+                    let drop = row.find("d drop").expect("drop is drawn");
+                    let branch = row
+                        .find("b branch")
+                        .unwrap_or_else(|| panic!("{what} at {width}: no `b branch` in `{row}`"));
+                    let files = row.find("space files").expect("files is drawn");
+                    assert!(
+                        drop < branch && branch < files,
+                        "{what} at {width}: `b branch` not between drop and files: `{row}`"
+                    );
+                } else {
+                    assert!(
+                        !row.contains("b branch"),
+                        "{what} at {width}: nothing is selected, yet `{row}`"
+                    );
+                }
+            }
         }
     }
 }

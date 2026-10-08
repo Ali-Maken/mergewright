@@ -134,15 +134,32 @@ impl MapScreen<'_> {
         let muted = foreground(self.theme, Token::TextMuted);
         let keys = self.keys;
         if let MapStatus::Loading { .. } = self.view.status {
-            let cancel = keys.key_verb(&[ActionId("app.back")], "cancels");
-            return Line::styled(cancel.unwrap_or_default(), muted);
+            // A cancellable job, not a prompt: `?` opens the palette here
+            // (m8/11e G3), so the doorway follows `esc cancels`.
+            let cancel: Vec<String> = keys
+                .key_verb(&[ActionId("app.back")], "cancels")
+                .into_iter()
+                .collect();
+            let fitted = fit_place_footer(&cancel, keys, &[], usize::from(width));
+            let words = fitted
+                .clauses
+                .iter()
+                .map(|at| cancel[*at].as_str())
+                .chain(fitted.doorway.as_deref())
+                .collect::<Vec<_>>()
+                .join("  ");
+            return Line::styled(words, muted);
         }
         // Spelled from his keymap (ticket m8/10): the rows move by
         // `app.down`/`app.up` (`j/k`, the table's first chords — the Map
         // answers both, `update::map::shown_key`), `⏎` seeks, and `M` and
-        // `esc` both close.
+        // `esc` both close. Empty and Failed have no row to select, so no
+        // `j/k` there (m8/11e G2, §2.1 mode rule).
+        let has_rows = matches!(self.view.status, MapStatus::Ready);
         let clauses: Vec<String> = [
-            keys.key_verb(&[ActionId("app.down"), ActionId("app.up")], "select"),
+            has_rows
+                .then(|| keys.key_verb(&[ActionId("app.down"), ActionId("app.up")], "select"))
+                .flatten(),
             keys.key_verb(&[ActionId("map.seek")], "zoom to commits"),
             keys.key_verb(&[ActionId("map.close"), ActionId("app.back")], "back"),
         ]

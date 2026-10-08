@@ -100,10 +100,18 @@ pub(super) fn place_footer_states() -> Vec<(String, AppState)> {
         states.push((what.to_owned(), state));
     }
 
-    states.push(("map".to_owned(), overlay_over(behind(), Shown::Map)));
-    let mut noted = overlay_over(behind(), Shown::Map);
-    noted.map.data = Loading::Ready(Arc::new(map_with_more()));
-    states.push(("map, +3 more, partial".to_owned(), noted));
+    // The cursor on the middle of three rows, so both `j` and `k` have a
+    // row to move to (on row 0 `k` cannot move: a test-state artifact, not
+    // a dead key).
+    for (what, data) in [
+        ("map", three_branch_map()),
+        ("map, +3 more, partial", map_with_more()),
+    ] {
+        let mut map = overlay_over(behind(), Shown::Map);
+        map.map.data = Loading::Ready(Arc::new(data));
+        map.map.selected = 1;
+        states.push((what.to_owned(), map));
+    }
     let mut empty = overlay_over(behind(), Shown::Map);
     let mut none = two_branch_map();
     none.branches.clear();
@@ -115,14 +123,29 @@ pub(super) fn place_footer_states() -> Vec<(String, AppState)> {
     states
 }
 
-/// [`two_branch_map`] with three branches more than it shows and one row
+/// [`two_branch_map`] with a third row, `b2`.
+fn three_branch_map() -> crate::map::MapData {
+    let mut data = two_branch_map();
+    let mut third = data.branches[1].clone();
+    third.name =
+        graft_core::ref_name::RefName::new(b"refs/heads/b2".to_vec()).expect("a valid ref name");
+    third.identity = graft_graph::identity::BranchIdentity::of_name(b"b2");
+    third.tip = Oid::from_bytes(&[3; Oid::SHA1_BYTES]).expect("20 bytes is an oid");
+    data.branches.push(third);
+    data
+}
+
+/// [`three_branch_map`] with three branches more than it shows and one row
 /// whose walk was cut short: the Map's ` · +3 more · partial` notes.
 pub(super) fn map_with_more() -> crate::map::MapData {
-    let mut data = two_branch_map();
+    let mut data = three_branch_map();
     data.more = 3;
     if let Some(row) = data.branches.last_mut() {
         row.complete = false;
     }
+    // The footer's ` · partial` reads the build's own flag
+    // (`view/map.rs:84`), not a row's.
+    data.complete = false;
     data
 }
 
@@ -205,6 +228,7 @@ pub(super) fn footer_actions(state: &AppState, row: &str) -> Vec<ActionId> {
 fn every_key_a_place_footer_draws_is_answered() {
     let mut silent = Vec::new();
     let mut pressed = 0;
+    let mut pressed_branch = false;
     for (what, state) in place_footer_states() {
         let (state, frame) = drawn_at(&state, WIDE.0, WIDE.1);
         let row = footer_row(&frame);
@@ -215,6 +239,15 @@ fn every_key_a_place_footer_draws_is_answered() {
             for label in labels {
                 pressed += 1;
                 let answer = outcome(&state, Press::Key(press_of(&label)));
+                // 11e-rulings-2 G1: `b` on the stash list names the branch
+                // `git stash branch` makes — the prompt opens.
+                if what == "stash list" && label == "b" {
+                    pressed_branch = true;
+                    assert!(
+                        answer.0.name_prompt.is_some(),
+                        "stash list `b` opens no branch name prompt"
+                    );
+                }
                 if !did_something(&idle, &answer) {
                     silent.push(format!("{what}: `{label}` of `{clause}` in `{row}`"));
                 }
@@ -222,6 +255,7 @@ fn every_key_a_place_footer_draws_is_answered() {
         }
     }
     assert!(pressed > 0, "the sweep pressed nothing");
+    assert!(pressed_branch, "the stash list's footer draws no `b`");
     assert!(
         silent.is_empty(),
         "a place footer draws a key that does nothing:\n  {}",
@@ -238,14 +272,27 @@ fn the_map_loading_footer_draws_the_doorway_only_if_question_mark_answers() {
     loading.map.data = Loading::Pending(JobId::new(704));
     let (state, frame) = drawn_at(&loading, 120, 36);
     let row = footer_row(&frame);
-    let opened = outcome(&state, Press::Key(press_of("?")))
-        .0
-        .palette
-        .is_some();
+    let (asked, _) = outcome(&state, Press::Key(press_of("?")));
+    let opened = asked.palette.is_some();
     if opened {
         assert_eq!(
             row, "esc cancels  ? keys",
             "`?` opens the palette at Loading"
+        );
+        // 11e-rulings-2 G3: closing the palette must not cancel the load
+        // (ux H3: closing help is no trap).
+        let (closed, commands) = outcome(&asked, Press::Key(press_of("esc")));
+        assert!(closed.palette.is_none(), "`esc` closes the palette");
+        assert_eq!(
+            closed.map.data,
+            Loading::Pending(JobId::new(704)),
+            "`esc` on the palette left the Map loading"
+        );
+        assert!(
+            !commands
+                .iter()
+                .any(|command| matches!(command, Command::CancelJob(_))),
+            "`esc` on the palette cancelled a job: {commands:?}"
         );
     } else {
         assert!(
@@ -257,39 +304,48 @@ fn the_map_loading_footer_draws_the_doorway_only_if_question_mark_answers() {
 
 /// **A box over a place draws no keys doorway** (11e-rulings E3): while a
 /// journal or stash preview box is up the box owns the keyboard, so its
-/// footer is the box's, never `? keys`. The boxes are the ones the footers'
-/// own keys open.
+/// footer is the box's, never `? keys`.
+///
+/// The stash box is opened by its real key (`⏎`, the apply preview,
+/// §2.9). No journal footer key opens a box at once: J's box is the
+/// put-back preview `recover_answered` opens with J left shown
+/// (`update/journal/answers.rs:141`) when a recover read answers. So the J
+/// case drives the state J's view reads (`state.preview` → `box_open`,
+/// `view/journal.rs:63`), using the stash's real preview as the box
+/// (11e-rulings-2 G4).
 #[test]
-fn a_preview_over_the_journal_draws_no_keys_doorway() {
-    let mut boxed: Vec<String> = Vec::new();
-    let mut drawn: Vec<String> = Vec::new();
+fn a_box_over_a_place_draws_no_keys_doorway() {
+    let mut boxed: Vec<(String, AppState)> = Vec::new();
+    let mut stash_box = None;
     for (what, state) in place_footer_states() {
-        if !(what.starts_with("journal") || what == "stash list") {
+        if what != "stash list" {
             continue;
         }
-        let (state, frame) = drawn_at(&state, WIDE.0, WIDE.1);
-        for (_, labels) in footer_keys(&footer_row(&frame)) {
-            for label in labels {
-                let (after, _) = outcome(&state, Press::Key(press_of(&label)));
-                if after.preview.is_none() {
-                    continue;
-                }
-                boxed.push(format!("{what} `{label}`"));
-                for (columns, rows) in [(120, 36), (80, 24), (60, 20)] {
-                    let (_, frame) = drawn_at(&after, columns, rows);
-                    let row = footer_row(&frame);
-                    if row.contains("? keys") || row.contains("⌃P keys") {
-                        drawn.push(format!("{what} `{label}` at {columns}x{rows}: `{row}`"));
-                    }
-                }
+        let (state, _) = drawn_at(&state, WIDE.0, WIDE.1);
+        let (after, _) = outcome(&state, Press::Key(press_of("⏎")));
+        assert!(after.preview.is_some(), "stash `⏎` opens the apply preview");
+        stash_box.clone_from(&after.preview);
+        boxed.push(("stash list `⏎`".to_owned(), after));
+    }
+    let stash_box = stash_box.expect("the stash list is one of the place states");
+    for (what, mut state) in place_footer_states() {
+        if !what.starts_with("journal") {
+            continue;
+        }
+        state.preview = Some(stash_box.clone());
+        assert!(state.journal.shown, "{what}: J stays shown under its box");
+        boxed.push((format!("{what}, a box over it"), state));
+    }
+    assert!(boxed.len() > 1, "no journal state was boxed");
+    let mut drawn: Vec<String> = Vec::new();
+    for (what, state) in &boxed {
+        for (columns, rows) in [(200, 40), (120, 36), (80, 24), (60, 20)] {
+            let (_, frame) = drawn_at(state, columns, rows);
+            let row = footer_row(&frame);
+            if row.contains("? keys") || row.contains("⌃P keys") {
+                drawn.push(format!("{what} at {columns}x{rows}: `{row}`"));
             }
         }
-    }
-    for wanted in ["journal", "stash"] {
-        assert!(
-            boxed.iter().any(|opened| opened.starts_with(wanted)),
-            "no {wanted} key opened a box: {boxed:?}"
-        );
     }
     assert!(
         drawn.is_empty(),

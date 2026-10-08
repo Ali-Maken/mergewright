@@ -72,31 +72,31 @@ fn footer_line(&self, width: u16) -> Line<'static>;
 signatures and their callers (`rg`).
 
 ## Acceptance (adds to 11e's; each tick names its test, at tick time)
-- [ ] E1 one cut: `shed_footer` — keeps all when they fit; sheds right-of-middle first; first + last last; empty
+- [x] (`graft_ui::graph_screen::hints::tests::shed_footer_drops_the_middle_first`, green) E1 one cut: `shed_footer` — keeps all when they fit; sheds right-of-middle first; first + last last; empty
   below them; monotone in `room`. (`graft_ui::graph_screen::hints::tests::shed_footer_drops_the_middle_first`)
-- [ ] E1 no fragment, red first (fails on today's S and Map): S (rows, empty) and Map (ready) footers at every width
+- [x] (`graft_ui::stash_screen::tests::footer_never_draws_a_fragment`, `graft_ui::map_screen::tests::footer_never_draws_a_fragment`, green; red before per builder 1 NOTES) E1 no fragment, red first (fails on today's S and Map): S (rows, empty) and Map (ready) footers at every width
   20..=200 — every drawn clause is whole (each is one of the full clauses), the doorway is whole or bare `?` or absent,
   never cut. (`graft_ui::stash_screen::tests::footer_never_draws_a_fragment`,
   `graft_ui::map_screen::tests::footer_never_draws_a_fragment`)
-- [ ] E1 J unchanged: J's existing footer tests green, edited only for the doorway's cells; NOTES lists each edit.
+- [x] (J tests listed in ticket NOTES builder 1 "the_journal_screen exact-bar pins", green) E1 J unchanged: J's existing footer tests green, edited only for the doorway's cells; NOTES lists each edit.
   (those tests, by name in NOTES)
-- [ ] E2 order and drop: Map ready with `more > 0` and `partial`: footer reads keys, `? keys`, ` · +N more`,
+- [x] (`graft_ui::map_screen::tests::the_doorway_ends_the_keys_and_the_notes_follow`, green) E2 order and drop: Map ready with `more > 0` and `partial`: footer reads keys, `? keys`, ` · +N more`,
   ` · partial` in that order at 80, 120, 200; at widths below the reserve, `+N more` goes before `partial`, `partial`
   before the doorway. `partial` keeps Warning ink (span style asserted; colour on screen unverified, rule 5).
   (`graft_ui::map_screen::tests::the_doorway_ends_the_keys_and_the_notes_follow`)
-- [ ] E3 table: every "yes" row draws the doorway at 48, 80, 120, 200 (extends 11e's F2 footer tests to J not-ready,
+- [x] (`graft_ui::{journal_screen,stash_screen,map_screen}::tests::footer_ends_with_the_keys_doorway` at 48/80/120/200; `graft::update::tests::a_text_field_inside_a_place_draws_no_keys_doorway` setup-only edit per rulings-2 G5; `graft::update::tests::place_footers::a_box_over_a_place_draws_no_keys_doorway`, renamed) E3 table: every "yes" row draws the doorway at 48, 80, 120, 200 (extends 11e's F2 footer tests to J not-ready,
   S Loading/Empty/Failed, Map Empty/Failed); every "no" row draws none
   (`graft::update::tests::a_text_field_inside_a_place_draws_no_keys_doorway` green unedited;
   `…::a_preview_over_the_journal_draws_no_keys_doorway` gains the S `box_open` case — rename to
   `a_box_over_a_place_draws_no_keys_doorway` if it now covers both, NOTES says so).
-- [ ] E3 check-first, Map Loading: `?` pressed at Loading via `dispatch_key` — outcome and line in NOTES; footer
+- [x] (`graft::update::tests::place_footers::the_map_loading_footer_draws_the_doorway_only_if_question_mark_answers`: opens the palette, footer `esc cancels  ? keys`) E3 check-first, Map Loading: `?` pressed at Loading via `dispatch_key` — outcome and line in NOTES; footer
   follows it. (`graft::update::tests::the_map_loading_footer_draws_the_doorway_only_if_question_mark_answers`)
-- [ ] E3 every drawn doorway answers: `…::the_keys_doorway_opens_a_palette_he_can_see_everywhere_it_is_drawn` covers
+- [x] (`graft::update::tests::the_keys_doorway_opens_a_palette_he_can_see_everywhere_it_is_drawn` over `place_footer_states`; Loading by the test above) E3 every drawn doorway answers: `…::the_keys_doorway_opens_a_palette_he_can_see_everywhere_it_is_drawn` covers
   J not-ready, S Loading/Empty/Failed, Map Empty/Failed (and Loading if drawn). (that test)
-- [ ] E5: `graft::update::tests::every_key_a_place_footer_draws_is_answered` (11e F2) includes S Loading/Empty/Failed
+- [x] (`graft::update::tests::place_footers::every_key_a_place_footer_draws_is_answered`; stop raised by builder 1, ruled in rulings-2 G2) E5: `graft::update::tests::every_key_a_place_footer_draws_is_answered` (11e F2) includes S Loading/Empty/Failed
   and Map Empty/Failed; any no-op key → stop per E5.
-- [ ] E4: re-shoot diff lists no `m4-05-*`, `m4-remote-keys`, `m6/fix-box-owns-the-bar-*` change. (the diff, in NOTES)
-- [ ] Captures (adds to 11e's): `docs/shots/m8/doorway-map-120x36.txt` uses a fixture with `+N more` showing (E2's
+- [x] (the diff: `git status` after the re-shoot lists none of them; ticket NOTES builder 2) E4: re-shoot diff lists no `m4-05-*`, `m4-remote-keys`, `m6/fix-box-owns-the-bar-*` change. (the diff, in NOTES)
+- [x] (`graft::update::tests::capture_the_keys_doorway_for_docs_shots`: `doorway-map-120x36` shows `· +3 more · partial`; `doorway-stash-60x20`) Captures (adds to 11e's): `docs/shots/m8/doorway-map-120x36.txt` uses a fixture with `+N more` showing (E2's
   order visible); if none of the fixtures has one at 36 rows, shoot `doorway-map-more-120x24.txt` too. Narrow S:
   `docs/shots/m8/doorway-stash-60x20.txt` (E1's shed, no fragment). Bar rows his to judge (rule 6); colour unverified.
 

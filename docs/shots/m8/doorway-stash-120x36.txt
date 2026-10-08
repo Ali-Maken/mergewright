@@ -1,0 +1,44 @@
+# m8/doorway-stash-120x36.txt: 120x36, drawn by `view::view` from the AppState
+# `update::tests` builds for: stash list
+# (crates/graft/src/update/tests.rs, capture_the_keys_doorway_for_docs_shots).
+# Not a pty capture: a character grid, no colour (CLAUDE.md rule 5 — colour
+# unverified).
+#
+# Here the stash list (S) is open with one stash selected. Right: its footer reads `⏎ apply  p pop  s save  d drop  b branch  space files  esc close  ? keys` — `b branch` between drop and files, the doorway last (m8/11e F2, G1).
+
+STASHES (1)                                                                                                             
+▸ stash@{0}   "WIP on main"                                    3y ago   1 file                                          
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+⏎ apply  p pop  s save  d drop  b branch  space files  esc close  ? keys                                                

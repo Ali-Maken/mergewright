@@ -64,10 +64,6 @@
 [······························ 80 cells of bar ·······························]
  space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · ? keys
 
---- the undo journal browser has focus
-[······························ 80 cells of bar ·······························]
- ⏎ revert  esc close  ? keys
-
 === as built — 120 cells of bar ===
 
 --- the cursor is on the uncommitted-changes row
@@ -90,10 +86,6 @@
 [·················································· 120 cells of bar ··················································]
  space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . actions · ? keys
 
---- the undo journal browser has focus
-[·················································· 120 cells of bar ··················································]
- ⏎ revert  esc close  ? keys
-
 === as built — 160 cells of bar ===
 
 --- the cursor is on the uncommitted-changes row
@@ -115,40 +107,4 @@
 --- the changes pane has focus, the divider draggable
 [······································································ 160 cells of bar ······································································]
  space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . actions · ? keys
-
---- the undo journal browser has focus
-[······································································ 160 cells of bar ······································································]
- ⏎ revert  esc close  ? keys
-
-=== `rev` — revert's only home, the undo journal browser ===
-#
-# `revert` keeps its short form under the m5/27 rule — `rev` is a clean
-# prefix, not a squeeze or a substitution. But `rev` is also a git word
-# meaning *revision* (`rev-parse`, `rev-list`), and that clash is the
-# user's to judge, not the builder's — this section exists only to put it
-# in front of him.
-#
-# It cannot be shown at 80, 120 or 160 cells: the journal browser's whole
-# list is `⏎ revert  esc close`, two hints, and that fits whole (plus
-# `? keys`) from about 28 cells of bar — every width in the three-width
-# matrix above is past that, so the journal row there always reads
-# `⏎ revert  esc close  ? keys` in full, never `rev`. Below is the
-# narrowest room `rev` actually appears in, computed the same way as
-# every row above: `hints_for`, nothing hand-set.
-
---- the undo journal browser has focus, 16 cells
-[ 16 cells of bar ]
- ? keys
-
---- the undo journal browser has focus, 20 cells
-[ 20 cells of bar ·]
- ? keys
-
---- the undo journal browser has focus, 24 cells
-[·· 24 cells of bar ···]
- ? keys
-
---- the undo journal browser has focus, 27 cells
-[···· 27 cells of bar ····]
- ⏎ rev  esc close  ? keys
 

@@ -1,0 +1,28 @@
+# m8/doorway-stash-60x20.txt: 60x20, drawn by `view::view` from the AppState
+# `update::tests` builds for: stash list
+# (crates/graft/src/update/tests.rs, capture_the_keys_doorway_for_docs_shots).
+# Not a pty capture: a character grid, no colour (CLAUDE.md rule 5 — colour
+# unverified).
+#
+# Here the stash list at 60 columns. Right: the footer sheds whole clauses from the middle and keeps `? keys` last — never a cut word (m8/11e E1).
+
+STASHES (1)                                                 
+▸ stash@{0}   "WIP on main"               3y ago   1 file   
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+⏎ apply  p pop  s save  d drop  b branch  esc close  ? keys 

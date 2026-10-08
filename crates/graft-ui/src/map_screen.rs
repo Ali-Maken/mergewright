@@ -352,11 +352,16 @@ mod tests {
     }
 
     const KEYS: [&str; 3] = ["j/k select", "⏎ zoom to commits", "M/esc back"];
+    /// Empty and Failed have no row to select (m8/11e G2).
+    const ROWLESS_KEYS: [&str; 2] = ["⏎ zoom to commits", "M/esc back"];
     const NOTES: [&str; 2] = [" · +3 more", " · partial"];
 
+    /// One status's footer: its name, view, key clauses and notes.
+    type FooterCase = (&'static str, MapView, Vec<&'static str>, Vec<&'static str>);
+
     /// Ready (with and without its notes), Empty, Failed: every status that
-    /// draws the ready footer (m8/11e E3).
-    fn footer_cases() -> Vec<(&'static str, MapView, Vec<&'static str>)> {
+    /// draws its own keys (m8/11e E3), with the key clauses each draws.
+    fn footer_cases() -> Vec<FooterCase> {
         let mut noted = sample_view(false);
         noted.more = 3;
         noted.complete = false;
@@ -366,10 +371,15 @@ mod tests {
         let mut failed = sample_view(false);
         failed.status = MapStatus::Failed(sanitize_line("git for-each-ref: not a repository"));
         vec![
-            ("ready", sample_view(false), Vec::new()),
-            ("ready, +3 more, partial", noted, NOTES.to_vec()),
-            ("empty", empty, Vec::new()),
-            ("failed", failed, Vec::new()),
+            ("ready", sample_view(false), KEYS.to_vec(), Vec::new()),
+            (
+                "ready, +3 more, partial",
+                noted,
+                KEYS.to_vec(),
+                NOTES.to_vec(),
+            ),
+            ("empty", empty, ROWLESS_KEYS.to_vec(), Vec::new()),
+            ("failed", failed, ROWLESS_KEYS.to_vec(), Vec::new()),
         ]
     }
 
@@ -377,7 +387,7 @@ mod tests {
     /// with the doorway.
     #[test]
     fn footer_ends_with_the_keys_doorway() {
-        for (what, view, notes) in &footer_cases() {
+        for (what, view, _, notes) in &footer_cases() {
             crate::test_support::assert_footer_doorway(what, notes, &|columns, keys| {
                 footer_row(view, columns, keys)
             });
@@ -387,10 +397,29 @@ mod tests {
     /// m8/11e E1: whole clauses and whole notes at every width, never a cut.
     #[test]
     fn footer_never_draws_a_fragment() {
-        for (what, view, notes) in &footer_cases() {
-            crate::test_support::assert_footer_whole(what, &KEYS, notes, &|columns, keys| {
+        for (what, view, clauses, notes) in &footer_cases() {
+            crate::test_support::assert_footer_whole(what, clauses, notes, &|columns, keys| {
                 footer_row(view, columns, keys)
             });
+        }
+    }
+
+    /// m8/11e G2: Empty and Failed have no row, so `j/k select` is not
+    /// drawn there (§2.1: a key whose verb is not valid is not drawn); the
+    /// way back and the doorway stay.
+    #[test]
+    fn empty_and_failed_draw_no_keys_that_do_nothing() {
+        let keys = crate::keymap::Keymap::shipped();
+        for (what, view, _, _) in &footer_cases() {
+            if !matches!(*what, "empty" | "failed") {
+                continue;
+            }
+            for columns in [48, 80, 120, 200] {
+                let row = footer_row(view, columns, keys);
+                assert!(!row.contains("j/k"), "{what} at {columns}: `{row}`");
+                assert!(row.contains("M/esc back"), "{what} at {columns}: `{row}`");
+                assert!(row.ends_with("? keys"), "{what} at {columns}: `{row}`");
+            }
         }
     }
 

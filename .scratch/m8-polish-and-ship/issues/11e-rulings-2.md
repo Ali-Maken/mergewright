@@ -43,22 +43,22 @@ nothing deleted.
 the deleted variants or a changed signature. Any assertion changed, weakened or removed → revert it and stop.
 
 ## Acceptance (adds to 11e's; each tick names its test, at tick time)
-- [ ] G1 drawn: S Ready (stash selected) footer at 120 and 200 has the `b` clause between `drop` and `files`; absent at
+- [x] (`graft_ui::stash_screen::tests::the_branch_key_is_drawn_only_with_a_stash_selected`, green; red by mutation) G1 drawn: S Ready (stash selected) footer at 120 and 200 has the `b` clause between `drop` and `files`; absent at
   Loading/Empty/Failed. (`graft_ui::stash_screen::tests::the_branch_key_is_drawn_only_with_a_stash_selected`)
-- [ ] G1 answers: `every_key_a_place_footer_draws_is_answered` presses `b` at S Ready and the stash branch name prompt
+- [x] (`graft::update::tests::place_footers::every_key_a_place_footer_draws_is_answered`, green; asserts `name_prompt` opens and that `b` was pressed) G1 answers: `every_key_a_place_footer_draws_is_answered` presses `b` at S Ready and the stash branch name prompt
   opens. (that test)
-- [ ] G1 no exemption: `every_bound_action_is_hinted_live_or_is_named_here` green; `NEVER_HINTED` diff vs base empty
+- [x] (`graft::update::tests::every_bound_action_is_hinted_live_or_is_named_here`, green; changed-line grep → 0, ticket NOTES builder 2) G1 no exemption: `every_bound_action_is_hinted_live_or_is_named_here` green; `NEVER_HINTED` diff vs base empty
   (`git diff <base> -- crates/graft/src/update/tests.rs | grep -c NEVER_HINTED` → 0, in NOTES). (that test, the grep)
-- [ ] G2 red first: `every_key_a_place_footer_draws_is_answered` over Map Empty and Failed fails on base on `j` (quote
+- [x] (`graft::update::tests::place_footers::every_key_a_place_footer_draws_is_answered`; base failure quoted in ticket NOTES builder 2) G2 red first: `every_key_a_place_footer_draws_is_answered` over Map Empty and Failed fails on base on `j` (quote
   it), green after. (that test)
-- [ ] G2 drawn: Map Empty and Failed footers at 48, 80, 120, 200 contain no `j/k`; `M/esc back` and `? keys` present.
+- [x] (`graft_ui::map_screen::tests::empty_and_failed_draw_no_keys_that_do_nothing`, green) G2 drawn: Map Empty and Failed footers at 48, 80, 120, 200 contain no `j/k`; `M/esc back` and `? keys` present.
   (`graft_ui::map_screen::tests::empty_and_failed_draw_no_keys_that_do_nothing`)
-- [ ] G3: `?` at Loading opens the palette; footer ends `esc cancels  ? keys`; `?` then `esc` leaves the Map still
+- [x] (`graft::update::tests::place_footers::the_map_loading_footer_draws_the_doorway_only_if_question_mark_answers`, green) G3: `?` at Loading opens the palette; footer ends `esc cancels  ? keys`; `?` then `esc` leaves the Map still
   loading (job not cancelled). (`graft::update::tests::the_map_loading_footer_draws_the_doorway_only_if_question_mark_answers`)
-- [ ] G4: `a_box_over_a_place_draws_no_keys_doorway` — J via state, S via `⏎`; bottom row has no `? keys`. NOTES has
+- [x] (`graft::update::tests::place_footers::a_box_over_a_place_draws_no_keys_doorway`, green) G4: `a_box_over_a_place_draws_no_keys_doorway` — J via state, S via `⏎`; bottom row has no `? keys`. NOTES has
   the `rg` answer. (that test)
-- [ ] G5: NOTES quotes the test's diff hunk vs base and states "no assert line changed". (the diff)
-- [ ] Captures (adds to allowed diffs): S shots gaining the `b` clause (`m3-06-stash-list-*`, `m3-stash-list`,
+- [x] (the diff, described in ticket NOTES builder 2 G5; no assert line changed) G5: NOTES quotes the test's diff hunk vs base and states "no assert line changed". (the diff)
+- [x] (capture tests, unset run green; list in ticket NOTES builder 2) Captures (adds to allowed diffs): S shots gaining the `b` clause (`m3-06-stash-list-*`, `m3-stash-list`,
   new `m8/doorway-stash-*`); Map Empty/Failed shots losing `j/k select`, if any exist (NOTES lists). Bar rows his to judge
   (rule 6); colour unverified (rule 5).
 

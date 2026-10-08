@@ -6733,8 +6733,9 @@ fn doorway_shots() -> Vec<DoorwayShot> {
             place_state("stash list"),
             120,
             36,
-            "the stash list (Z) is open with one stash. Right: its footer ends \
-             `Z/esc close  ? keys` (m8/11e F2)",
+            "the stash list (S) is open with one stash selected. Right: its footer reads \
+             `⏎ apply  p pop  s save  d drop  b branch  space files  esc close  ? keys` — \
+             `b branch` between drop and files, the doorway last (m8/11e F2, G1)",
         ),
         (
             "doorway-stash-60x20.txt",
@@ -6775,13 +6776,16 @@ fn doorway_shots() -> Vec<DoorwayShot> {
 /// with the detail pane shut and shown, at the widths the app draws at.
 #[test]
 fn a_text_field_inside_a_place_draws_no_keys_doorway() {
-    let blame_lines = HintContext::Blame {
-        finding: false,
-        ignore_file: false,
-        lines: true,
-    };
-    // The journal and stash footers are no hint contexts since m8/11e: their
-    // states come from `place_footers`.
+    use graft_ui::graph_screen::every_context;
+
+    // Every blame context with its lines read, as at base (11e-rulings-2 G5:
+    // setup only); the journal and stash footers are no hint contexts since
+    // m8/11e, so their states come from `place_footers`.
+    let blame: Vec<AppState> = every_context()
+        .into_iter()
+        .filter(|context| matches!(context, HintContext::Blame { lines: true, .. }))
+        .flat_map(|context| states_for(&context, Divider::Hidden, 120))
+        .collect();
     let places: Vec<(&str, KeyCode, Vec<AppState>)> = vec![
         (
             "Journal",
@@ -6789,11 +6793,7 @@ fn a_text_field_inside_a_place_draws_no_keys_doorway() {
             vec![place_state("journal row 0")],
         ),
         ("Stash", KeyCode::Char('s'), vec![place_state("stash list")]),
-        (
-            "Blame",
-            KeyCode::Char('/'),
-            states_for(&blame_lines, Divider::Hidden, 120),
-        ),
+        ("Blame", KeyCode::Char('/'), blame),
     ];
     let mut drawn: Vec<String> = Vec::new();
     let mut reached: Vec<String> = Vec::new();

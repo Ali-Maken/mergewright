@@ -1,6 +1,6 @@
 # G-palette 1e — `? keys` on the journal, stash and Map footers (one bar per place); R2's measured widths become the spec
 
-Status: **partial — stopped on two stop rules (see NOTES, 2026-10-08)**. Was: ready (conductor 2026-10-08; rulings in 11e-rulings.md) — was draft (planner spec-only pass 2026-10-08; replaces 11d's open R2 box and its NOTES finding "R1 does not reach
+Status: **done (builder 2, 2026-10-08; rulings-2 G1–G5 applied — see "NOTES (builder 2)")**. Was: partial — stopped on two stop rules. Was: ready (conductor 2026-10-08; rulings in 11e-rulings.md) — was draft (planner spec-only pass 2026-10-08; replaces 11d's open R2 box and its NOTES finding "R1 does not reach
 the journal, stash or Map screens")
 Build with: **Opus** (conductor 2026-10-08 after scout `scouts/11e-footers.md`: three variants enumerated in 4 files, uneven footer rules). Planner expects **Opus**: deletes three
 `HintContext` variants every sweep enumerates, and moves bar coverage onto the footers he actually sees — a wrong cut
@@ -100,7 +100,7 @@ callers (`rg`). Deleted: `HintContext::Journal`, `HintContext::Stash`, `HintCont
 - [x] F1 (`graft_ui::graph_screen::hints::tests::a_marked_row_keeps_undo_and_search_before_the_doorway`, green): `graft_ui::graph_screen::hints::tests::a_marked_row_keeps_undo_and_search_before_the_doorway` pins first-drawn
   width 129 (plain, both dividers) and 137 (branch tip, both dividers) as exact values, monotone 40..=240, last when
   drawn. Amend only the pins; the rest unchanged.
-- [ ] F1 capture: `docs/shots/m8/doorway-marked-140x40.txt` (EvilMerge fixture as 11d's 120 shot; bar ends `? keys`).
+- [x] (`it::hint_bar::capture_the_doorway_on_a_marked_row_for_docs_shots`, green after re-shoot; bar ends `/ search · ? keys` at 140) F1 capture: `docs/shots/m8/doorway-marked-140x40.txt` (EvilMerge fixture as 11d's 120 shot; bar ends `? keys`).
   If the fixture row's first-drawn width is over 140, shoot at 160x48 and name it so. `doorway-marked-120x36.txt` stays:
   NOTES gives its contact-sheet caption "at 120 a marked row draws no `? keys` (R2's measured cost)".
   (`it::hint_bar::capture_the_doorway_on_a_marked_row_for_docs_shots`, extended)
@@ -112,25 +112,25 @@ callers (`rg`). Deleted: `HintContext::Journal`, `HintContext::Stash`, `HintCont
   unbound; nothing when both unbound — no fragment, no stray separator; once drawn, drawn at every wider width.
   (`graft_ui::journal_screen::tests::footer_ends_with_the_keys_doorway`, `…stash_screen::tests::…`,
   `…map_screen::tests::…` — or one table test in graft if the footers are built there; NOTES names it)
-- [ ] F2 no doorway in sub-states: J find, J `box_open`, S save prompt (and Map loading/failed per Q4).
+- [x] (`graft::update::tests::a_text_field_inside_a_place_draws_no_keys_doorway` — setup-only edit, G5; `graft::update::tests::place_footers::a_box_over_a_place_draws_no_keys_doorway`, renamed per E3; Map Loading draws the doorway per G3) F2 no doorway in sub-states: J find, J `box_open`, S save prompt (and Map loading/failed per Q4).
   `graft::update::tests::a_text_field_inside_a_place_draws_no_keys_doorway` green unedited, plus `box_open` case
   (`…::a_preview_over_the_journal_draws_no_keys_doorway`).
 - [x] F2 deletion (the `rg` is empty; `graft_ui::graph_screen::tests::every_context_reaches_every_shape` green, `COVERAGE_SLOTS` 113): `rg -n 'HintContext::(Journal|Stash|Map)\b' crates` empty; `every_context_reaches_every_shape`,
   `coverage_slot` exhaustive, green. (those tests; the `rg`)
-- [ ] F2 coverage moved, red first (a footer clause with no answering key fails it — show by mutation, revert):
+- [x] (`graft::update::tests::place_footers::every_key_a_place_footer_draws_is_answered`; red at the merged base on Map Empty/Failed `j`/`k` — quoted in NOTES builder 2 — and by mutation (`stash.branch` clause removed → red), green after) F2 coverage moved, red first (a footer clause with no answering key fails it — show by mutation, revert):
   every key each J / S / Map footer draws, pressed at that place via `dispatch_key`, acts (not a no-op, not a refusal
   for a reason the footer did not show). (`graft::update::tests::every_key_a_place_footer_draws_is_answered`)
 - [x] (`graft::update::tests::the_keys_doorway_opens_a_palette_he_can_see_everywhere_it_is_drawn`, green, loops `place_footers::place_footer_states`) `?` from each footer opens the palette: `graft::update::tests::the_keys_doorway_opens_a_palette_he_can_see_everywhere_it_is_drawn`
   green (its J/S/Map states now the footers').
-- [ ] `graft::update::tests::every_key_the_bar_draws_is_answered`, `…::every_bound_action_is_hinted_live_or_is_named_here`
+- [x] (`graft::update::tests::every_key_the_bar_draws_is_answered`, `graft::update::tests::every_bound_action_is_hinted_live_or_is_named_here`, both green; the S footer is a hint source and draws `b`, G1) `graft::update::tests::every_key_the_bar_draws_is_answered`, `…::every_bound_action_is_hinted_live_or_is_named_here`
   green. If the second fails because a J/S/Map key was hinted only by a deleted list: the footer draws it → add the
   footer as a hint source in that test; it does not → **stop** (a §2.1 spec change), report the key.
-- [ ] Captures: `GRAFT_UPDATE_SHOTS=1` once, unset, green. Allowed diffs: a J/S/Map footer gaining `? keys` and the
+- [x] (the capture tests listed in NOTES builder 2, green on the unset run; diff list there) Captures: `GRAFT_UPDATE_SHOTS=1` once, unset, green. Allowed diffs: a J/S/Map footer gaining `? keys` and the
   words its existing rule sheds for it; `m5-hints-ladder`'s Journal rows (generator loses the variant — NOTES says what
   replaces them). Each listed in NOTES. `docs/shots/m8/doorway-journal-120x36.txt` now shows `? keys`; new
   `doorway-stash-120x36.txt`, `doorway-map-120x36.txt`; `help-at-map-120x36.txt` re-shot. ≤200 KB each. Bar rows the
   user's to judge (rule 6); **colour unverified** (rule 5).
-- [ ] Docs: 01-view-mockups §1.10 :376 bar and §1.11's bar line (if it draws one) gain `? keys` last; graft-ui MAP
+- [x] (checked by reading: `git diff` of both MAP.md files and 01-view-mockups) Docs: 01-view-mockups §1.10 :376 bar and §1.11's bar line (if it draws one) gain `? keys` last; graft-ui MAP
   (:25 trailer sentence drops `Journal`/`Stash`/`Map`, `doorway_words`, the three screens' footer lines, new
   `COVERAGE_SLOTS`); graft MAP (`draw_journal`, `stash_view`, `map_view` footer source). (checked by reading)
 
@@ -208,3 +208,65 @@ m4-remote-keys, m6/fix-box-owns-the-bar unchanged); capture drifts seen so far, 
 `rg 'HintContext::(Journal|Stash|Map)\b' crates` empty; every_context sweeps (graft-ui green); `overlay_context`
 (rows.rs); doorway palette test (green); keymap/journal/undo: no diff (`git diff --stat` shows no keymap or
 journal-op files). Docs: 01-view-mockups §1.10 :376, §1.11 bar; both MAP.md files.
+
+## NOTES (builder 2, 2026-10-08)
+
+Merged `worktree-agent-aaabcad8cbbc98e96` cleanly (no conflicts with 10l/12f/20/18a). No scout: the previous
+builder's NOTES and scout file named every line; reads were the handlers below. Not compacted.
+
+### Rulings-2 applied
+- **G1** S Ready footer: `⏎ apply  p pop  s save  d drop  b branch  space files  esc close  ? keys`. Word `branch`:
+  `Keymap::key_verbs` takes the caller's verb (`keymap/spell.rs:53`); `branch` is the deleted `stash_list`'s word
+  (`hints/lists.rs` at base :406) — no new word. (Mockup §1.11 says `b branch from stash`; it also says `space
+  preview` where the code says `space files` — pre-existing drift, not touched.) Loading/Empty/Failed: `s save  esc
+  close  ? keys`. Tests: `graft_ui::stash_screen::tests::the_branch_key_is_drawn_only_with_a_stash_selected`;
+  `every_key_a_place_footer_draws_is_answered` asserts `b` opens `name_prompt`. Mutation (clause removed): those two +
+  `every_bound_action_is_hinted_live_or_is_named_here` red; restored green. `NEVER_HINTED`:
+  `git diff f800e8ce -- crates/graft/src/update/tests.rs | grep '^[+-]' | grep -c NEVER_HINTED` → 0.
+  02-keymap §2.9 `b` status cell → "built (m3/m5 name prompt, `update/stash.rs`)"; only edit there.
+- **G2** red at the merged base (quoted from the run): `map, empty: \`j\` of \`j/k select\` in \`j/k select  ⏎ zoom to
+  commits  M/esc back  ? keys\`` (and `k`, and both at `map, failed`). Fix: `map_screen/render.rs` `footer_line` draws
+  `j/k select` only at `MapStatus::Ready`. `⏎` kept: at Empty/Failed it is not a no-op — `seek_selected`
+  (`update/map.rs:191-193`) closes the Map when no row is selected; the sweep passes it. **Question (not a defect, no
+  ruling asked):** its words there say `zoom to commits` while it only closes. Test:
+  `graft_ui::map_screen::tests::empty_and_failed_draw_no_keys_that_do_nothing`. Snapshots `empty_snapshot`,
+  `failed_snapshot` re-accepted (footer loses `j/k select`). Sweep's Map Ready states now use three rows, cursor on
+  row 1 (`place_footers::three_branch_map`), so `k` is a real press.
+- **G3** Map Loading: `esc cancels  ? keys` (built through `fit_place_footer`). Test
+  `the_map_loading_footer_draws_the_doorway_only_if_question_mark_answers` now also presses `esc` after `?`: palette
+  closed, `map.data` still `Pending(704)`, no `CancelJob`. `loading_snapshot` re-accepted.
+- **G4** `a_preview_over_the_journal_draws_no_keys_doorway` renamed `a_box_over_a_place_draws_no_keys_doorway`. S via
+  `⏎` (apply preview); J via state (`state.preview` set to that same box; J stays shown). `rg` answer: J's box is
+  reachable — `update/journal/answers.rs:141` `recover_answered` opens the put-back preview with J left shown; so
+  `journal_screen.rs:389` is **not** a dead branch.
+- **G5** text-field test: setup-only. Diff vs base (`f800e8ce`): the `every_context()` loop with its
+  `match context { Journal|Blame{lines:true}→'/', Stash→'s' }` became a `places` list (J/S states from
+  `place_footers`, Blame = every `Blame{lines:true,..}` of `every_context()` as at base); `reached.push`/`drawn.push`
+  format the name, not `{context:?}`. **No assert line changed** (diffed the function body against base).
+
+### Other fixes this round
+- `place_footers::map_with_more` set only a row's `complete`; the footer reads `MapData::complete`
+  (`view/map.rs:84`), so `· partial` never showed. Now sets both; `doorway-map-120x36` shows `· +3 more · partial`.
+- `doorway-stash-120x36` caption said `(Z)` / `Z/esc close`; the drawn bar is `esc close` and the key is `S`. Fixed.
+- Floors (computed from `shed_footer`, shipped keymap, not separately measured): stash `⏎ apply  esc close  ? keys` 26
+  cells; Map ready first+last+doorway 30, plus notes 50; below, the doorway alone.
+
+### Captures (re-shot once with `GRAFT_UPDATE_SHOTS=1`, then unset)
+Changed, all J/S/Map footers gaining `? keys` (S list also `b branch`): `m2-map-view.txt`, `m2-map-view-loading.txt`
+(`esc cancels  ? keys`), `m3-journal-{80x24,160x48}`, `m3-journal-expanded`, `m3-stash-list`, `m3-stash-empty`,
+`m7/journal-187x50`, `m7/journal-after-squash-187x44`, `m7/journal-{100x30,140x40,187x24}`,
+`m7/journal-after-put-back-120x40` (the pinned-clock walk stops at its first drift, so these took four update runs
+of `the_three_lost_work_journeys`), `m7/journal-expanded-120x40`, `m7/journal-find-187x50`,
+`m5-hints-ladder` (Journal section removed — nothing replaces it: J is no hint context), `m8/doorway-journal-120x36`
+(fixture now the merged journal; ends `J/esc close  ? keys`), `m8/doorway-blame-80x24` (header comment only; bar row
+unchanged), `m8/doorway-marked-120x36` (caption only). New: `m8/doorway-stash-120x36`, `m8/doorway-stash-60x20`,
+`m8/doorway-map-120x36`, `m8/doorway-marked-140x40`. E4: no `m4-05-*`, `m4-remote-keys`, `m6/fix-box-owns-the-bar-*`
+change (git status). Raster PNGs regenerated byte-identical (no diff). No Map Empty/Failed capture exists. All ≤8 KB.
+Bar rows the user's to judge (rule 6); colour unverified (rule 5).
+
+### Touches (builder 2)
+`stash_screen.rs` footer (one caller, its `render`); `map_screen/render.rs` `footer_line` (one caller); graft-ui
+snapshots (3 Map); `update/tests.rs` (text-field setup, stash caption); `update/tests/place_footers.rs`; 02-keymap §2.9
+one cell; both MAP.md. Keymap table / `keymap_ids.txt`, journal/undo, palette, `edge::context_of`, graft-ops: no diff
+(`git diff --stat f800e8ce` over those paths lists only `update/journal/tests/minors.rs`, builder 1's exact-bar pin
+gaining `? keys`). Ticket 15: one fewer context to rank; `shed_footer` is not the graph ladder.
