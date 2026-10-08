@@ -289,7 +289,8 @@ fn empty_state_bar_keys_are_answered() {
     }
     assert_eq!(
         checked,
-        6 + 5 + 4 + 3 + 2 + 2 + 1 + 2 + 2,
+        // The three list forms each gained `t practice tour` (m8/19b).
+        7 + 6 + 5 + 3 + 2 + 2 + 1 + 2 + 2,
         "every form's keys were pressed"
     );
 }

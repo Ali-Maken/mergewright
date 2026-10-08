@@ -59,7 +59,7 @@ const DELETE: KeyChord = KeyChord::plain(KeyCode::Delete);
 
 use ContextId::{
     Banner, Blame, Changes, CommitEditor, Confirm, Credential, Diff, EmptyState, Finish, Global,
-    Graph, History, Journal, Map, Palette, Picker, Preview, Resolver, Rewrite, Stash,
+    Graph, History, Journal, Map, Palette, Picker, Preview, Resolver, Rewrite, Stash, Tour,
 };
 
 const DEFAULTS: &[Binding] = &[
@@ -492,6 +492,9 @@ const DEFAULTS: &[Binding] = &[
     b("empty_state.init", EmptyState, &[k('i')], "Init"),
     b("empty_state.clone", EmptyState, &[k('c')], "Clone…"),
     b("empty_state.tour", EmptyState, &[k('t')], "Practice tour"),
+    // §2.18 Practice tour: `Esc` leaves, only when nothing else on screen
+    // takes it (`graft::update::keys::escape::escape_key`, its last link).
+    b("tour.leave", Tour, &[ESC], "Leave the practice tour"),
     // §2.14 Credential prompt (a text field: fixed).
     b("credential.send", Credential, &[ENTER], "Submit the answer"),
     b(

@@ -259,19 +259,28 @@ pub(crate) fn lands_at_open(state: &mut AppState, at: Option<Oid>); // replaces 
 19b:
 - [ ] Each task ticks only by doing (8 pty walks in the practice repo); reading the card ticks nothing — **kept**;
       task 1 by any stage (§A1, "one hunk" **cut**, reason there).
-- [ ] J12 `start-tour` = 3, `start-tour-empty-state` = 1; J13 `leave-tour` = 1, his repo, cursor on the same oid —
-      key-counting walks — **kept**; cursor now real (§A4).
-- [ ] Gone commit → HEAD + status (test) — **new**.
-- [ ] `Esc` with a box/prompt/menu/search open closes that, not the tour (test per kind) — **kept**.
+- [x] J12 `start-tour` = 3, `start-tour-empty-state` = 1; J13 `leave-tour` = 1, his repo, cursor on the same oid —
+      key-counting walks — **kept**; cursor now real (§A4). Tests: `tests/it/tour.rs`
+      `the_palette_starts_the_tour_and_esc_returns_to_his_commit` (3 keys, Esc = 1, cursor back on the moved-to
+      commit), `t_on_the_empty_state_starts_the_tour_and_esc_comes_back` (1 key, Esc = 1).
+- [x] Gone commit → HEAD + status (test) — **new**. Test: `update/tour/tests.rs`
+      `a_return_whose_commit_is_gone_lands_on_head_and_says_so` (+ `a_return_whose_commit_is_under_the_cursor_says_nothing`).
+- [x] `Esc` with a box/prompt/menu/search open closes that, not the tour (test per kind) — **kept**. Tests:
+      `update/tour/tests.rs` `esc_over_a_box_closes_the_box_not_the_tour`, `esc_over_a_prompt_closes_the_prompt_not_the_tour`,
+      `esc_over_the_menu_closes_the_menu_not_the_tour`, `esc_over_a_search_closes_the_search_not_the_tour`; bare graph:
+      `esc_on_the_bare_graph_leaves_the_tour`; moved key: `a_leave_key_moved_off_esc_leaves_and_esc_then_does_not`.
 - [ ] His repo byte-for-byte untouched by a full tour: refs, journal file, index, worktree (`RepoTruth`) — **kept**.
 - [ ] State dir (recents, layout) byte-identical across a full tour (test) — **new**, was in Decisions only.
-- [ ] Unwritable temp (`TMPDIR` read-only) → his repo, his cursor, status `tour: <reason>` (test) — **kept**; mechanism
-      is re-locate from `from` (§A8), observably the same.
-- [ ] Remapped `[keys.graph] merge = "M"` → card says `M` (test) — **kept**.
+- [x] Unwritable temp (`TMPDIR` read-only) → his repo, his cursor, status `tour: <reason>` (test) — **kept**; mechanism
+      is re-locate from `from` (§A8), observably the same. Test: `tests/it/tour.rs`
+      `an_unwritable_temp_folder_stays_in_his_repo_and_says_why` (TMPDIR 0o555; header his, cursor same subject,
+      `tour: ` shown, nothing left in TMPDIR).
+- [x] Remapped `[keys.graph] merge = "M"` → card says `M` (test) — **kept**. Test: `view/tour/tests.rs`
+      `a_remapped_merge_is_the_key_the_card_says` (tasks 6 and 7).
 - [ ] Practice dir gone after `Esc`, after finish, after `q` (three tests) — **new** (was "removed on leave").
 - [ ] Full tour walked **in a pty** (18c's clone-walk harness; headless `run` treats `Exit::Open` as a broken promise),
       all 8 ticked, finish line shown — **kept**, "headless" → pty.
-- [ ] `a_launch_lands_on_head_and_a_tour_return_on_its_commit`; gap M8/lands-row-launch-in-repo closed naming it (builder names the test in NOTES; the conductor moves the row) — **new**.
+- [x] `a_launch_lands_on_head_and_a_tour_return_on_its_commit` (`update/banner/tests/arrival_landing.rs`); gap M8/lands-row-launch-in-repo closed naming it (builder names the test in NOTES; the conductor moves the row) — **new**.
 - [ ] Captures: `docs/shots/m8-tour-step1-120x36.txt`, `…-step7-conflict-120x36.txt`, `…-80x24.txt`,
       `…-finished-120x36.txt`, plus the 3 re-shot in §A8. **Colour unverified** — **kept**.
 
@@ -311,3 +320,39 @@ Status: **19a done**; 19b open. Scout used (`scouts/19-tour.md`); no second scou
   the `..` refusal fails `inside_refuses_any_dot_dot`; disabling the marker check fails
   `removal_refuses_a_folder_without_the_marker` and `removal_refuses_a_marker_that_is_a_link`.
 - Not compacted.
+
+## NOTES — 19b (builder, 2026-10-08)
+Status: **19b partial**. **Compacted twice.** Scout used (`scouts/19-tour.md`); no second scout. Skill: `implement`.
+- **Spec stop, §A3 (task 7), verified:** `graft-core/src/journal.rs:89-92` folds `ResolveConflict` into the open
+  `Merge` entry, so after a stopped merge no `ResolveConflict` entry is written and `tasks_done` never ticks task 7.
+  Checked by reading the code and by a run. That blocks: full pty tour (all 8 + finish line), dir gone after finish,
+  the finished capture. Needs a ruling: tick 7 from a `Merge` entry whose stop was resolved, or have graft-core write
+  the record. Not my crate set.
+- **Captures blocked on graft-ops (19a):** the practice repo's commits use the real clock, so oids and same-second row
+  order differ each build, and no capture compares. Needs fixed commit dates in `build_practice_repo`. The
+  `docs/shots/m8-tour-*` files are not written.
+- Unticked, still owed: the 8 per-task pty walks (task 1–6, 8 can be walked once captures/dates settle; 7 blocked);
+  "his repo untouched by a **full** tour" and "state dir byte-identical across a **full** tour". What exists is a
+  start→Esc walk: `the_palette_starts_the_tour_and_esc_returns_to_his_commit` compares `git_truth`, `.git/graft` bytes
+  and the isolated config dir byte-for-byte. "Dir gone" holds for Esc
+  (`t_on_the_empty_state_starts_the_tour_and_esc_comes_back`, the palette test) and q
+  (`q_inside_the_tour_removes_the_practice_folder`); finish is blocked.
+- Gap **M8/lands-row-launch-in-repo** closing test: `a_launch_lands_on_head_and_a_tour_return_on_its_commit`.
+- Card lines (with default keys; `view/tour/tests.rs` `every_task_has_a_line_naming_its_shipped_key`):
+  1 "⏎ on the top row opens your changes · space stages the change under the cursor"; 2 "c writes a commit from what
+  you staged"; 3 "u takes back the last thing you did — nothing is lost"; 4 "S opens the stashes · s sets your edits
+  aside · p brings them back"; 5 "b makes a branch at the cursor"; 6 "m on feature shows the merge before it happens ·
+  y does it"; 7 "m on clash stops on a conflict · ⏎ opens it · t takes theirs · c finishes"; 8 "P sends main to origin".
+- Keys: `t` on empty state (`empty_state.tour`, keymap §2.13); `tour.leave` = Esc (Tour context, scope [Tour, Global]).
+  Palette row "Practice tour" (App action). Nothing else bound. The empty-state header's action row still hardcodes
+  `o/i/c/t`, as before (not spelled from the keymap). The bar's `t practice tour` clause is the first shed when the bar
+  overflows (`the_tour_clause_is_shed_first_when_the_bar_overflows`).
+- **Cause fix:** leaving the tour left stale card/palette cells on his graph (the next place only draws cells that
+  differ from blank). `startup.rs::run_repo` now clears the backend on place-changing exits. Cost: one full redraw per
+  place change.
+- `Carried.returning`: a way back into his repo (leave, or a failed start) does not rewrite recents or re-land on HEAD.
+- `AppState.tour` is `Option<Box<TourState>>`: clippy `large_stack_arrays` fired as `AppState` grew.
+- Re-shot captures (unjudged, colour unverified): `m8-look-outside-repo-120x36`, `…-no-recent-80x24`,
+  `…-open-prompt-80x24`, `m8/clone-credential-120x36`, `m8/clone-failed-120x36`, `m8/clone-prompt-120x36`,
+  `m8/first-launch-empty-state-120x36` (all `.txt`) — the `t Practice tour` row/clause.
+- Literal-key guard: `prose.rs` row for "a throwaway repo" (article).

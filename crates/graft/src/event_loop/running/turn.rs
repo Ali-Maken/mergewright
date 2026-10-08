@@ -398,6 +398,21 @@ where
             Some(Quit::HandedBack(key)) => return Ok(Some(Exit::HandedBack(*key))),
             // Reported by the caller, once the terminal is the user's again.
             Some(Quit::Fatal(reason)) => return Ok(Some(Exit::Fatal(reason.clone()))),
+            // The tour (m8/19b): `drive` builds or removes the practice
+            // repository; this repository is where the tour comes back to.
+            Some(Quit::Practise { cursor }) => {
+                return Ok(Some(Exit::Practise {
+                    from: super::super::Open {
+                        path: self.state.repo_path.clone(),
+                        cursor: *cursor,
+                    },
+                }));
+            }
+            Some(Quit::LeaveTour { finished }) => {
+                return Ok(Some(Exit::LeaveTour {
+                    finished: *finished,
+                }));
+            }
             Some(Quit::StoppedHalfWay { job, what }) => {
                 // The stop box opens only after the offer, which only the
                 // clock makes, so a count is always there. Were it not, the

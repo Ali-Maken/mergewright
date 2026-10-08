@@ -80,11 +80,48 @@ pub enum Exit {
         /// How long Graft had waited on it.
         after: std::time::Duration,
     },
-    /// Open this path next, on the same terminal (m8-polish-and-ship/08).
+    /// Open this place next, on the same terminal (m8-polish-and-ship/08).
     /// [`places::drive`] handles it and never returns it; [`run`], which
-    /// runs one repository and gives the terminal back, never produces it
-    /// today (the tour and clone tickets will, from the graph).
-    Open(std::path::PathBuf),
+    /// runs one repository and gives the terminal back, never produces it.
+    Open(Open),
+    /// Build a practice repository and open it, coming back to `from` when
+    /// the tour ends (m8-polish-and-ship/19b): the palette's `Practice tour`
+    /// row, or `t` on the empty state. Handled by [`places::drive`].
+    Practise {
+        /// Where he was, and his cursor there.
+        from: Open,
+    },
+    /// Leave the practice repository for where the tour was started from:
+    /// `Esc` on the graph with nothing else to close, or every task done
+    /// (`finished`). Handled by [`places::drive`].
+    LeaveTour {
+        /// All eight tasks ticked: the next place says so.
+        finished: bool,
+    },
+}
+
+/// A place to open next: a folder, and the commit his cursor goes to there
+/// (ticket m8/19 Amendment §A4). `cursor: None` lands as every launch and
+/// open does — on `HEAD`; only the tour's way back sets it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Open {
+    /// The folder: a repository, or one `locate` turns into the empty state.
+    pub(crate) path: std::path::PathBuf,
+    /// The commit to land on there, if it can still be found.
+    pub(crate) cursor: Option<graft_core::oid::Oid>,
+}
+
+impl Open {
+    /// `path`, landing on `HEAD`.
+    pub(crate) fn at(path: std::path::PathBuf) -> Self {
+        Self { path, cursor: None }
+    }
+
+    /// The folder asked for (the walks name it when `run` refuses one).
+    #[must_use]
+    pub fn path(&self) -> &std::path::Path {
+        &self.path
+    }
 }
 
 /// Something that wakes the loop.

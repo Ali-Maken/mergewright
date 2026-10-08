@@ -194,6 +194,10 @@ pub enum Command {
     /// browser never shows an entry that is waiting for a process that is
     /// gone (m3-working-tree-undo-and-stash/06).
     ReadJournal(JobId),
+    /// The practice tour's ticks: the practice repository's journal read
+    /// and judged by `graft_ops::tour::tour_progress`, under an id `update`
+    /// chose (m8-polish-and-ship/19b). Only ever asked in the tour.
+    TourProgress(JobId),
     /// J's stage 2: git's reflog records of `HEAD` and every local branch,
     /// the `$` rows (`jobs::journal_list::read_outside`, m7-power-tools/24).
     /// Cancelled when J closes first.

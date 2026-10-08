@@ -46,7 +46,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
     let location = state
         .repository
         .as_ref()
-        .map(|facts| location(facts, home.as_deref()));
+        .map(|facts| practised(location(facts, home.as_deref()), state));
     // An open modal owns the bottom row: its own refusal is the only problem,
     // and the search, compare and stop rungs are blanked (`modal_blanked`).
     // `reveal` is not: under a box `draw_box_bars` writes the whole bar over
@@ -82,6 +82,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         rows,
         banner_op,
         pending: crate::update::banner::pending_view(state),
+        tour: super::tour::card(state),
         icons: state.icons,
         keys: &state.keymap,
         compaction,
@@ -231,9 +232,19 @@ fn location(facts: &RepositoryFacts, home: Option<&Path>) -> Location {
         repo,
         path: sanitize_path(&home_relative(&facts.path, home)),
         branch,
-        // The practice repository is G-tour's; nothing opens one yet.
+        // Set by `practised` when the tour is on (m8/19b).
         practice: false,
     }
+}
+
+/// The header in the practice repository (ADR-0056, mock-ups §1.0): `◇`,
+/// and `practice · <tmp> · a throwaway repo, not yours` for its path.
+fn practised(mut at: Location, state: &AppState) -> Location {
+    if state.tour.is_some() {
+        at.practice = true;
+        at.path = sanitize_line(&super::tour::practice_path(at.path.as_str()));
+    }
+    at
 }
 
 /// `path` with a leading `home` written `~`, the way a shell prompt shows
@@ -261,6 +272,7 @@ fn opening_view(
         rows: Vec::new(),
         banner_op: None,
         pending: None,
+        tour: super::tour::card(state),
         icons: state.icons,
         keys: &state.keymap,
         compaction: Compaction::at(max_lanes(state)),

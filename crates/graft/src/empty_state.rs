@@ -125,6 +125,8 @@ pub(crate) enum OutsideStep {
     Init(PathBuf),
     /// Leave Graft.
     Quit,
+    /// `t`: into the practice tour, coming back to this screen (m8/19b).
+    Practise,
     /// A palette theme row: draw in this theme for the rest of the run.
     Retheme(ThemeKind),
     /// Run this clone on the empty state's pool (started on the first).
@@ -396,6 +398,10 @@ fn palette_key(state: &mut OutsideState, keymap: &Keymap, key: KeyPress) -> Outs
                 act(state, keymap, chord.to_press())
             }),
         Edited::Run(PaletteTarget::App(AppAction::Theme(kind))) => OutsideStep::Retheme(kind),
+        // Listed only when no key row starts the tour; outside a
+        // repository `empty_state.tour` always is, but the row means the
+        // same wherever it runs.
+        Edited::Run(PaletteTarget::App(AppAction::Tour)) => OutsideStep::Practise,
     }
 }
 
@@ -559,6 +565,9 @@ pub(crate) fn outside_key(state: &mut OutsideState, key: KeyPress) -> OutsideSte
 fn list_key(state: &mut OutsideState, key: KeyPress) -> OutsideStep {
     match key.code {
         KeyCode::Char('q') => OutsideStep::Quit,
+        // `empty_state.tour` (§2.13): the practice tour. Not gated on a
+        // missing folder: the tour builds its own, and comes back here.
+        KeyCode::Char('t') => OutsideStep::Practise,
         KeyCode::Char('o') => {
             let shown = home_relative(&state.folder, state.home.as_deref());
             let mut text = shown.to_string_lossy().into_owned();

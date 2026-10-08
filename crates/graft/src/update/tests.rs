@@ -1346,6 +1346,12 @@ fn every_field_spelled_out() -> AppState {
         clash_index: crate::update::state::IndexRead::Unknown,
         land_on_head: false,
         head_landing: crate::update::HeadLanding::default(),
+        return_to: Some(Oid::from_bytes(&[7; Oid::SHA1_BYTES]).expect("an oid")),
+        tour: Some(Box::new(crate::update::tour::TourState {
+            done: [true, true, false, false, false, false, false, false],
+            asked: Some(JobId::new(11)),
+            wanted: false,
+        })),
         lands: None,
         line_landing: None,
         trail: super::place::Trail::default(),

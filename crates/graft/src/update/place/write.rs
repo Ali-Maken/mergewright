@@ -57,6 +57,7 @@ pub fn is_write(command: &Command) -> bool {
         | Command::BuildMap(..)
         | Command::PlanPreview(..)
         | Command::ReadJournal(..)
+        | Command::TourProgress(..)
         | Command::ReadOutside { .. }
         | Command::FindLost { .. }
         | Command::RecoverFor { .. }

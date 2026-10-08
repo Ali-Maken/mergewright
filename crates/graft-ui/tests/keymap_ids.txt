@@ -141,3 +141,4 @@ stash.drop
 stash.pop
 stash.preview
 stash.save
+tour.leave

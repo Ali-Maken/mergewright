@@ -37,7 +37,7 @@ fn noted_keys(id: &str) -> usize {
 /// A journey's inputs, counted as the note's fence counts them: each key
 /// one, and launching Graft one more where the row's keys start at `trib`
 /// (`open-*`); `init-here` starts on the empty state (`i y`).
-fn assert_within_the_note(id: &str, launch: bool, keys: &[&[u8]]) {
+pub(crate) fn assert_within_the_note(id: &str, launch: bool, keys: &[&[u8]]) {
     let taken = usize::from(launch) + keys.len();
     let noted = noted_keys(id);
     assert!(
@@ -111,7 +111,7 @@ fn on_the_graph_at_head(pty: &Pty, path: &Path, subject: &str) -> Screen {
     screen
 }
 
-fn quit_cleanly(mut pty: Pty) -> Vec<u8> {
+pub(crate) fn quit_cleanly(mut pty: Pty) -> Vec<u8> {
     pty.send(b"q");
     let (status, stderr, output) = pty.wait_exit();
     assert_eq!(status.code(), Some(0), "stderr: {stderr}");
@@ -478,10 +478,10 @@ fn outside_repo_captures() {
         &mut shots,
         "m8-look-outside-repo-120x36.txt",
         "started in `~/code`, which is no repository: the header says so, the folder line \
-         under it, `o Open… i Init c Clone…`, then RECENT newest first with `▸` on the newest \
-         (selection fill under it), name · `~` path · age; a `─` rule over the bar row \
-         `o open… · i init · c clone… · ⏎ open the selected · q quit · ? keys`. No tour \
-         (m8/18c added clone).",
+         under it, `o Open… i Init c Clone… t Practice tour`, then RECENT newest first with \
+         `▸` on the newest (selection fill under it), name · `~` path · age; a `─` rule over \
+         the bar row `o open… · i init · c clone… · t practice tour · ⏎ open the selected · \
+         q quit · ? keys` (m8/18c added clone, m8/19b the tour).",
         &screen,
     );
     quit_cleanly(pty);
@@ -510,7 +510,8 @@ fn outside_repo_captures() {
         &mut shots,
         "m8-look-outside-repo-no-recent-80x24.txt",
         "a first run, nothing remembered yet: no RECENT block and no `⏎` in the bar \
-         (`o open… · i init · c clone… · q quit · ? keys`); the rest as with recents.",
+         (`o open… · i init · c clone… · t practice tour · q quit · ? keys`); the rest as \
+         with recents.",
         &screen,
     );
     quit_cleanly(pty);

@@ -200,6 +200,10 @@ fn carried() -> Carried {
         first_launch: crate::first_launch::FirstLaunch::default(),
         warning: None,
         notice: None,
+        at: None,
+        practice: false,
+        tour_done: false,
+        returning: false,
     }
 }
 

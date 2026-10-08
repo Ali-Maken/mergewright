@@ -64,4 +64,7 @@ pub(super) fn escape_key(next: &mut AppState, commands: &mut Vec<Command>) {
         !super::super::place::esc_goes_back(next),
         "Esc with a hidden trail reached escape_key"
     );
+    // Last: in the practice tour, with nothing else left to back out of,
+    // `Esc` leaves it (`tour.leave`, m8/19b). Outside the tour, nothing.
+    super::super::tour::esc_leaves(next);
 }

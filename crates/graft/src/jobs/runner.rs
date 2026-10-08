@@ -1087,6 +1087,27 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
+    /// The practice tour's ticks (m8-polish-and-ship/19b): the practice
+    /// repository's journal, read without writing, judged by `graft-ops`.
+    fn tour_progress(&self, id: JobId) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::TourProgress), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                let done = match repos.workdir() {
+                    Ok(Some(work)) => {
+                        graft_ops::tour::tour_progress(&work).map_err(|error| error.explain())
+                    }
+                    Ok(None) => Err("the practice repository has no working tree".to_owned()),
+                    Err(error) => Err(error.to_string()),
+                };
+                Outcome::Produced(Product::TourProgress(done))
+            })
+        });
+    }
+
     /// J's stage 2 (m7-power-tools/24): git's reflog records.
     fn read_outside(&self, id: JobId) {
         let repos = Arc::clone(&self.repos);
@@ -1398,6 +1419,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::Undo(id, force, keys) => self.run_undo(id, false, force, keys),
             Command::Redo(id, force, keys) => self.run_undo(id, true, force, keys),
             Command::ReadJournal(id) => self.read_journal(id),
+            Command::TourProgress(id) => self.tour_progress(id),
             Command::ReadOutside { id } => self.read_outside(id),
             Command::FindLost { id, outside } => self.find_lost(id, outside),
             Command::RecoverFor {

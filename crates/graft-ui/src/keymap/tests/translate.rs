@@ -290,5 +290,5 @@ fn in_context_lists_a_place_own_rows_in_table_order() {
     let ids: Vec<&str> = rows.iter().map(|(b, _)| b.action.0).collect();
     assert_eq!(ids, ["map.close", "map.seek"]);
     assert_eq!(rows[1].1, [KeyChord::key('s')]);
-    assert!(map.in_context(ContextId::Tour).is_empty());
+    assert_eq!(map.in_context(ContextId::Tour).len(), 1, "tour.leave only");
 }

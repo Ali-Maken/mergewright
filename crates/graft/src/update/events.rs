@@ -187,6 +187,9 @@ pub enum Task {
     ReadJournal,
     /// J's stage 2, git's reflog records (m7-power-tools/24).
     ReadOutside,
+    /// The practice tour's ticks, from the practice repository's journal
+    /// (m8-polish-and-ship/19b).
+    TourProgress,
     /// J's stage 3, the lost commits and edits (m7-power-tools/24).
     FindLost,
     /// What `⏎` on a J row puts back (m7-power-tools/24).
@@ -461,6 +464,10 @@ pub enum Product {
     /// `Arc`: the journal browser holds it across frames, never copied per
     /// event (m3-working-tree-undo-and-stash/06).
     Journal(Result<std::sync::Arc<crate::jobs::undo::JournalRead>, String>),
+    /// The tour's ticks (`Command::TourProgress`), in
+    /// `graft_ops::tour::TourTask::ALL` order, or why the journal could not
+    /// be read (m8-polish-and-ship/19b).
+    TourProgress(Result<[bool; 8], String>),
     /// J's stage 2 answered (`Command::ReadOutside`): the reflog records, or
     /// why they could not be read. `Arc`: the list holds them across frames.
     Outside(Result<std::sync::Arc<Vec<graft_ops::journal_list::OutsideRecord>>, String>),

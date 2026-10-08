@@ -44,6 +44,7 @@ pub(super) fn run(
             }
         }
         PaletteTarget::App(AppAction::Theme(kind)) => commands.push(Command::Retheme(kind)),
+        PaletteTarget::App(AppAction::Tour) => crate::update::tour::start_from_palette(state),
         // Lands as the picker's `⇥` does: the graph focused, its cursor on
         // the commit, through the walk when it is not laid out (UX §3.1).
         PaletteTarget::Seek(tip) => {

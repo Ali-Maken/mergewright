@@ -38,6 +38,7 @@ pub mod still_to_apply;
 pub mod syntax;
 pub mod text_input;
 pub mod theme;
+pub mod tour_card;
 
 #[cfg(test)]
 mod test_support;

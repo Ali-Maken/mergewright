@@ -74,7 +74,7 @@ pub enum ContextId {
     Palette,
     /// The screen outside a repository (§2.13).
     EmptyState,
-    /// The practice tour (§2.18). It binds no key of its own.
+    /// The practice tour (§2.18): its one row, `tour.leave` (`Esc`).
     Tour,
     /// The credential prompt (§2.14), a text field.
     Credential,
@@ -175,7 +175,8 @@ impl ContextId {
             C::Credential => &[C::Credential, C::Global],
             C::Palette => &[C::Palette, C::Global],
             C::EmptyState => &[C::EmptyState, C::Global],
-            C::Tour | C::Global => &[C::Global],
+            C::Tour => &[C::Tour, C::Global],
+            C::Global => &[C::Global],
         }
     }
 

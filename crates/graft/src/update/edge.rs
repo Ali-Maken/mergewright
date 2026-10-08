@@ -28,6 +28,16 @@ pub(super) fn key(next: &mut AppState, commands: &mut Vec<Command>, pressed: Key
         return;
     };
     let context = context_of(next);
+    // `tour.leave` moved off `Esc` by his `[keys]` (m8/19b): pressed on the
+    // graph with nothing over it, and no graph row taking the chord, it
+    // leaves the tour. `Esc` itself goes down the graph's ladder, which
+    // leaves last (`keys::escape::escape_key`).
+    if context == ContextId::Graph
+        && chord != KeyChord::plain(graft_core::event::KeyCode::Escape)
+        && super::tour::moved_leave_key(next, chord)
+    {
+        return;
+    }
     match next.keymap.translate(context, chord) {
         Translated::Pass => super::dispatch_key(next, commands, pressed),
         Translated::Default(default) => {

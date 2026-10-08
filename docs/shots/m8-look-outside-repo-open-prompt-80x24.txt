@@ -3,7 +3,7 @@ m8-polish-and-ship/08: what right looks like — `o` opens the boxed `open ›` 
  graft · no repository here
  ~/code
 
-  o  Open…     i  Init     c  Clone…
+  o  Open…     i  Init     c  Clone…     t  Practice tour
 
   RECENT
   ▸ payments-service    ~/code/payments-service     yesterday

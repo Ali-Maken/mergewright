@@ -33,6 +33,7 @@ pub(super) fn rows_above_graph(state: &AppState) -> u16 {
     header_rows(state)
         .saturating_add(state.harness.banner_rows())
         .saturating_add(super::banner::tab_rows_above_graph(state))
+        .saturating_add(super::tour::card_rows(state))
         .saturating_add(super::banner::pending_rows_taken(state))
 }
 

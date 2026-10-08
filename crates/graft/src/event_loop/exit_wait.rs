@@ -158,7 +158,8 @@ pub(super) enum Ending {
     Signalled,
     /// Any other end of the process: `q`, the stop box, a failure.
     Exited,
-    /// Another place takes the screen next (`Exit::Open`): nothing may be
+    /// Another place takes the screen next (`Exit::Open`, `Exit::Practise`,
+    /// `Exit::LeaveTour`): nothing may be
     /// printed over it, so no waiting line.
     NextPlace,
 }

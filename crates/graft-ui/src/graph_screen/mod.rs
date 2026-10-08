@@ -243,6 +243,9 @@ pub struct GraphView<'a> {
     /// (DESIGN.md §1.13, ADR-0038 §3). `None` draws the header as it always
     /// has.
     pub banner_op: Option<BannerView>,
+    /// The practice tour's card (ADR-0056 §3, ticket m8/19b): three rows
+    /// under the banner, above the rows. `None` outside the tour.
+    pub tour: Option<crate::tour_card::TourCardView>,
     /// The still-to-apply block at a rewrite stop, drawn boxed between the
     /// banner and the rows (m7-power-tools/07c). `None`, or empty, draws
     /// nothing and costs no row.
