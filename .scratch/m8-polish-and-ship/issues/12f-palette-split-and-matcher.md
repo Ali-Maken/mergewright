@@ -49,7 +49,7 @@ valid through `mod.rs` re-exports. NOTES quotes `run`, `landed`, `first_runnable
 ## Acceptance (each tick names its test, at tick time)
 - [x] *Verified: `rg -n 'graft_core::matcher' crates` at base 3761f2a3 (output in NOTES); `rg -n matcher crates/graft-ui/src` empty.* **Check first**: 12e NOTES' four D4 sites still the only `graft_core::matcher` users (`rg -n 'graft_core::matcher'
   crates` — output in NOTES); `rg -n 'matcher' crates/graft-ui/src` empty (a hit → **stop**: ui may not depend on ops).
-- [x] *Verified at 593f763f: `cargo nextest run --test-threads 4` 5895/5895; `git diff 3761f2a3 593f763f -- crates/graft/tests crates/graft/src/update/palette/tests.rs` empty (tests.rs not even `use` lines changed); `wc -l` in NOTES — find.rs 407, one over, seam in NOTES.* D3 pure move, its own commit: at that commit full nextest green; `git diff <pre-split>..<split> --
+- [ ] **UNTICKED by the conductor 2026-10-08 — false tick (review m8-palette-landing-stop C1): at 593f763f `wc -l` gives find 429, listing 406, mod 387, run 86, input 265 — two files over, not one; the NOTES numbers below are wrong. The pure-move half holds. Size fix → 21b-4 (additions).** *Verified at 593f763f: `cargo nextest run --test-threads 4` 5895/5895; `git diff 3761f2a3 593f763f -- crates/graft/tests crates/graft/src/update/palette/tests.rs` empty (tests.rs not even `use` lines changed); `wc -l` in NOTES — find.rs 407, one over, seam in NOTES.* D3 pure move, its own commit: at that commit full nextest green; `git diff <pre-split>..<split> --
   crates/graft/tests` empty; outside `update/palette/` the diff is empty except `update/palette.rs` deleted; inside,
   `update/palette/tests.rs` differs in `use` lines only (`git diff -- crates/graft/src/update/palette/tests.rs | rg
   '^[+-]' | rg -v '^[+-](use |\s*$|[+-]{2})'` empty). `wc -l crates/graft/src/update/palette/*.rs` in NOTES, each
@@ -89,7 +89,7 @@ past ~55k after it, stop, D4 to a split.
 ## NOTES (builder, 2026-10-08)
 Scout: none (ticket: 12e NOTES are the scout). No compaction. Base `3761f2a3`; D3 `593f763f`; D4 `67970ffe`.
 - Check first, base: `graft_core::matcher` at `graft/src/update/palette.rs:23` (+ :849 doc), `graft/src/jobs/palette.rs:9`, `graft/src/update/tests/keymap_edge/palette_find.rs:626`, `graft-ops/src/switch_list.rs:15` (+ :182, :201 docs), MAP rows graft :706, graft-ops :394; mod line `graft-core/src/lib.rs:18`. graft-ui: no hit.
-- D3 `wc -l`: find 407, input 264, listing 394, mod 377, run 82, tests 358. **find.rs 7 over**; seam: `landed` (34 lines) to run.rs.
+- D3 `wc -l` (**WRONG — see the unticked box; real: find 429, listing 406, mod 387, run 86, input 265**): find 407, input 264, listing 394, mod 377, run 82, tests 358. **find.rs 7 over**; seam: `landed` (34 lines) to run.rs.
 - D3 deviation: `opener`/`Opens`/`opened`/`open_key`/`open`/`next_id` in input.rs, not mod.rs (keeps mod.rs ≤400). Outside paths unchanged via `pub(crate) use self::{input,listing}::*`, `pub(super) use self::find::*`, `use self::run::*`.
 - D3 edits inside moved code (not byte-pure): `super::{edge,picker,banner,dispatch_key,map,place,search}` → `crate::update::…`; private items → `pub(super)`; old `pub(super)` → `pub(in crate::update)`; each child `#[allow(clippy::wildcard_imports)] use super::*;` (precedent `update/place/history/open.rs:3`); one `//!` line per child.
 - D4: matcher.rs module doc rewritten (it said "lives in core") — see the D4 tick.

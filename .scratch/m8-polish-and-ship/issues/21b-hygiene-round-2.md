@@ -402,3 +402,10 @@ workspace-wide. 21b-3 and 21b-4 also clippy with `--features heavy-tests`.
   M8/look-file-sizes (refresh), M8/http-read-timeout, M8/blame-place-ends-with, M8/doorway-files-over-400,
   M8/keymap-file-sizes (named files; its "graft-ops/graft files held by 10f–10i" part names none → fold into the
   proposed row).
+
+## 21b-4 additions (conductor 2026-10-08, from `docs/reviews/m8-palette-landing-stop.md` C1, M1–M3 — fixes as the review states them, no new decision)
+
+- Item 5 correction: `update/palette/find.rs` was **429** lines at the split (not 407); at HEAD re-measure. Seam unchanged (move `landed` to `run.rs`).
+- [ ] 5b (M2): `update/palette/listing.rs` (424 at `c893abaa`) ≤ 400 — seam: the `IN PROGRESS`/`HERE`/`EVERYWHERE` assembly (`listing.rs:177-216`) apart from spelling and filter. Move-only check; `wc -l` of every `update/palette/*.rs` production file quoted at tick, measured with `wc -l` on the committed file.
+- [ ] 5c (M1): `ARCHITECTURE.md:160-165` drops the count: "the commands the loop carries out itself (the `not_a_job` arms in `jobs/runner.rs`): the six that hand the terminal over, plus `Retheme`, `CopyToClipboard`, `SaveLayout`, `FirstLaunchDone`"; `:194-197` says the six *hand over*, without "only". Check: `rg -n 'not_a_job' crates/graft/src/jobs/runner.rs` arm count quoted at tick equals the doc's list.
+- [ ] 5d (M3): `update/palette/mod.rs:7-10` module doc → "an `IN PROGRESS` row runs as the banner's key (`banner_press`), any other through `dispatch_key`"; `event_loop/startup.rs:248-249` `Arrival::on_head` doc → "every arrival on a terminal — launch, open, clone, init; off a tty (`run`) none". Doc only; quote both lines at tick.

@@ -1249,7 +1249,16 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/flake-single-close-box | `offer_and_blame::a_single_close_box_offers_only_esc` failed once in 20b A's full run (preview box; not in its diff), passed alone and on rerun | **unverified** (flaky?) | M8 |
 | M8/20b-map-tick-no-test | 20b A's MAP.md box ticked "doc, no test; rows checked by reading" — a doc box with no test (same pattern as 10f) | **unverified** | M8 |
 | M8/after-write-capture-race | Debugger (pull flake): header `N rows so far` depends on whether the landing `Find` (graft `update/banner/stop.rs:371`) arrives before the worker reads ahead (`history/serve.rs:141`, `history/scroll/apply.rs:37`). Other after-write captures (set-aside, fix-box, undo-after-push) may share it — not looped | **unverified** | M8 |
-| M8/12f-find-rs-407 | `update/palette/find.rs` 407 lines (~7 over); seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
+| M8/13m-test-blind-refind | 13m's regression test (Linear shape) can't tell "re-finds the commit" from "keeps the row number" (review m8-palette-landing-stop m1) | **broken** (test weakness) | M8 |
+| M8/12d-lands-row-missing | Design-note Lands row 12d asked for (12d NOTES :109) not added to `m8-polish-and-ship.md` (m2) | **broken** (textual) | M8 |
+| M8/gaps-pre-split-paths | KNOWN_GAPS rows cite pre-split paths, e.g. `update/palette.rs:589` (m3) — conductor's file | **broken** (textual) | M8 |
+| M8/palette-mod-bare-allow | `update/palette/mod.rs:47` bare `#[allow(clippy::wildcard_imports)]`, siblings give reasons (m4) → 21b-6 | **broken** | M8 |
+| M8/arrivalwatch-nested-tuple | `ArrivalWatch(Option<(bool, Option<Oid>)>)` (`update/banner/stop.rs:305`) nested anonymous tuple (m5) | **broken** (readability) | M8 |
+| M8/palette-next-id-dup | `palette/run.rs:33-40` duplicates the `next_id` plumbing (m6) | **broken** (readability) | M8 |
+| M8/13m-no-acceptance-boxes | 13m is Status: done with no Acceptance boxes — its test is named only in NOTES (m7) | **unverified** | M8 |
+| M8/13m-window-edge | Q1: `promoted` looks for the cursor's commit only in the answered window's rows — residual edge when it lies outside (review Q1) | **unverified** (question) | M8 |
+| M8/12e-continue-from-palette-graph | Q2: `Continue` from `?` with the graph focused goes `banner_press` → `continue_pressed(…)` — return focus unproven (review Q2) | **unverified** (question) | M8 |
+| M8/12f-find-rs-407 | `update/palette/find.rs` **429** lines at the split (12f's 407 was false — review m8-palette-landing-stop C1); `listing.rs` 424 also over → 21b-4 additions; seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |
 | M8/one-chord-idle | 12 ONE_CHORD_IDLE rows classed Defect: keys that do nothing at their place (09g, sweep_tables.rs) | **broken** | M8 |
