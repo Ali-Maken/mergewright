@@ -44,10 +44,27 @@ pub struct Isolated {
 }
 
 impl Isolated {
+    /// A scratch config home whose first-launch line is already `done`
+    /// (m8/18d): a walk sees the screen as he does after his first palette
+    /// open, so no existing screen changes.
     pub fn new() -> Self {
+        let isolated = Self::first_launch();
+        let file = isolated.launches_file();
+        std::fs::create_dir_all(file.parent().expect("a parent")).expect("config dir");
+        std::fs::write(file, "done\n").expect("seed launches");
+        isolated
+    }
+
+    /// A scratch config home as on his very first launch: no `launches`.
+    pub fn first_launch() -> Self {
         Self {
             root: tempfile::tempdir().expect("a scratch config home"),
         }
+    }
+
+    /// The first-launch count's file (m8/18d).
+    pub fn launches_file(&self) -> PathBuf {
+        self.config().join("graft").join("launches")
     }
 
     /// The root, canonical: on macOS the temp dir is under a `/var` that is

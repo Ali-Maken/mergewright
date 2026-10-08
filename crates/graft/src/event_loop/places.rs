@@ -18,6 +18,7 @@ use super::startup::{Arrival, Ran, Terminal, hand_back_input, run_repo};
 use super::{ChannelWakes, Exit, Wake, Wakes, input, signals};
 use crate::config::Loaded;
 use crate::empty_state::{OutsideState, OutsideStep, outside_edge, outside_paste, render};
+use crate::first_launch::{self, FirstLaunch};
 use crate::recent::{self, Recent};
 use crate::repos::RepoStore;
 use crate::session::Session;
@@ -108,18 +109,23 @@ pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Ex
         config_problems: mut problems,
         ..
     } = Arrival::first(config, term.capabilities.no_color);
+    // Counted once per process, here only (R7); a failure is said once, on
+    // the first place, and never stops the app.
+    let (first_launch, mut first_launch_warning) =
+        first_launch::for_this_launch(config_dir.as_deref());
     // Every place lands on `HEAD`: the first, where Graft was started, as
     // much as every later one opened from it (note Lands row "Open / init
     // succeeds"; m8-polish-and-ship/12d — a launch is an arrival too).
     loop {
         match place {
             Place::Repo { repos, path } => {
-                let status = remember_opened(config_dir.as_deref(), &repos, &path);
                 let arrival = Arrival {
-                    status,
+                    status: remember_opened(config_dir.as_deref(), &repos, &path)
+                        .or_else(|| first_launch_warning.take()),
                     on_head: true,
                     keymap: keymap.clone(),
                     config_problems: std::mem::take(&mut problems),
+                    first_launch: first_launch.clone(),
                 };
                 let ran = run_repo(&mut term, repos, &path, config, Harness::default(), arrival)?;
                 match ran.outcome {
@@ -148,6 +154,8 @@ pub fn drive(mut term: Terminal, first: Place, config: &Loaded) -> io::Result<Ex
                 let shown = Shown {
                     keymap: &keymap,
                     problems: &problems,
+                    first_launch: &first_launch,
+                    warning: first_launch_warning.take(),
                 };
                 match run_outside(&mut term, start, config, shown, config_dir.as_deref()) {
                     Ok(Outcome::Opened(next)) => {
@@ -188,10 +196,13 @@ fn remember_opened(config_dir: Option<&Path>, repos: &RepoStore, path: &Path) ->
 /// What the empty state shows besides its folder: the keys, and his
 /// config's problems (the palette's `YOUR CONFIG`; still said on the first
 /// repository screen after).
-#[derive(Clone, Copy)]
 struct Shown<'a> {
     keymap: &'a std::sync::Arc<graft_ui::keymap::Keymap>,
     problems: &'a [String],
+    /// The process's first-launch line.
+    first_launch: &'a FirstLaunch,
+    /// The count could not be read or written: said once, in the bar row.
+    warning: Option<String>,
 }
 
 /// How the empty state ended.
@@ -225,9 +236,10 @@ fn run_outside(
         recents,
         cursor,
         prompt: None,
-        problem: start.problem.or(said),
+        problem: start.problem.or(said).or(shown.warning),
         palette: None,
         config_problems: shown.problems.to_vec(),
+        first_launch: shown.first_launch.clone(),
     };
 
     let inputs = term.inputs();

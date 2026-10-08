@@ -23,6 +23,7 @@ Prints `check-sandbox: ok` and exits 0, else names each failure and exits 1.
 
 import ast
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -183,7 +184,15 @@ def guard_failures():
     env = sandbox_env()
     if not os.path.isdir(env["XDG_CONFIG_HOME"]):
         failures.append("sandbox_env gave no temp folder")
-    os.rmdir(env["XDG_CONFIG_HOME"])
+    # m8/18d: the folder is seeded with `graft/launches` = `done`.
+    seeded = os.path.join(env["XDG_CONFIG_HOME"], "graft", "launches")
+    if not os.path.isfile(seeded) or open(seeded).read() != "done\n":
+        failures.append("sandbox_env did not seed launches = done")
+    shutil.rmtree(env["XDG_CONFIG_HOME"])
+    first = sandbox_env(first_launch=True)["XDG_CONFIG_HOME"]
+    if os.listdir(first):
+        failures.append("sandbox_env(first_launch=True) seeded the config folder")
+    os.rmdir(first)
     # Review M1: a caller's config folder survives, and the override that used
     # to be silently replaced is refused.
     home = tempfile.mkdtemp(prefix="graft-check-sandbox-")
@@ -194,7 +203,7 @@ def guard_failures():
         failures.append("sandbox_env accepted XDG_CONFIG_HOME as an override")
     except ValueError:
         pass  # the refusal is the expected outcome
-    os.rmdir(home)
+    shutil.rmtree(home)
     return failures
 
 

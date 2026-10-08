@@ -1361,6 +1361,7 @@ fn every_field_spelled_out() -> AppState {
         keymap: std::sync::Arc::default(),
         config_problems: Vec::new(),
         config_notice: false,
+        first_launch: crate::first_launch::FirstLaunch::default(),
         preview: None,
         resolver: None,
         choices: std::collections::BTreeMap::new(),
@@ -2305,6 +2306,7 @@ fn an_open_search_prompt_keeps_a_handed_back_key_as_text() {
 
 mod pane_space;
 
+mod first_launch;
 mod place_footers;
 
 mod keymap_edge;

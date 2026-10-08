@@ -77,6 +77,10 @@ pub struct EmptyStateView {
     pub prompt: Option<EmptyPrompt>,
     /// Read in the bar row instead of the keys, until the next key.
     pub problem: Option<SanitizedText>,
+    /// His first launches, before he has opened the palette (m8/18d):
+    /// [`first_launch_words`] drawn muted on the row above the rule when
+    /// nothing else is there; else not drawn this launch.
+    pub first_launch: bool,
 }
 
 /// [`EmptyStateView`] drawn over a whole frame.
@@ -148,6 +152,33 @@ pub fn bar_keys(view: &EmptyStateView, keys: &Keymap) -> Vec<(String, &'static s
     }
 }
 
+/// The first-launch line fitted to `cells`: `first time? ? keys here ·
+/// ⌃P anything`, keys spelled from `keys`. Whole clauses drop from the
+/// right, never a fragment (ADR-0039); an unbound key's clause goes (the
+/// `first time?` lead rides on the first clause left); `None` when no
+/// clause is bound or none fits. Shared by the graph's status row
+/// (`graft::view`) and this screen. The tour clause joins when the palette
+/// has a tour row (G-tour).
+#[must_use]
+pub fn first_launch_words(keys: &Keymap, cells_wide: usize) -> Option<String> {
+    let clauses: Vec<String> = [("app.help", "keys here"), ("app.palette", "anything")]
+        .iter()
+        .filter_map(|(action, verb)| keys.key_verb(&[ActionId(action)], verb))
+        .collect();
+    let mut line: Option<String> = None;
+    for clause in clauses {
+        let next = match &line {
+            None => format!("first time? {clause}"),
+            Some(line) => format!("{line} · {clause}"),
+        };
+        if cells(&next) > cells_wide {
+            break;
+        }
+        line = Some(next);
+    }
+    line
+}
+
 /// How long ago, in the words the mock-up uses: `today`, `yesterday`,
 /// `3 days ago`, `last week`, `2 weeks ago`, `last month`, `5 months ago`,
 /// `last year`, `3 years ago`. A time ahead of `now` (a clock moved back)
@@ -175,6 +206,8 @@ struct Rows {
     recent_title: Option<u16>,
     first_recent: u16,
     prompt: Option<u16>,
+    /// The last row the head, the list or the prompt draws on.
+    last_used: u16,
     rule: u16,
     bar: u16,
 }
@@ -194,6 +227,8 @@ fn layout(view: &EmptyStateView, area: Rect) -> Rows {
     let rule = bottom.saturating_sub(2);
     // Header, folder, blank, actions, blank.
     let mut next = area.y + 5;
+    // The actions row.
+    let mut last_used = area.y + 3;
     let (recent_title, first_recent) = if view.recent.is_empty() {
         (None, next)
     } else {
@@ -205,16 +240,21 @@ fn layout(view: &EmptyStateView, area: Rect) -> Rows {
             .unwrap_or(u16::MAX)
             .min(room);
         next += shown + 1;
+        last_used = (first + shown).saturating_sub(1).max(title);
         (Some(title), first)
     };
     let prompt = view
         .prompt
         .as_ref()
         .map(|_| next.min(rule.saturating_sub(PROMPT_HEIGHT)));
+    if let Some(y) = prompt {
+        last_used = last_used.max(y + PROMPT_HEIGHT - 1);
+    }
     Rows {
         recent_title,
         first_recent,
         prompt,
+        last_used,
         rule,
         bar,
     }
@@ -234,6 +274,7 @@ impl Widget for &EmptyState<'_> {
         if let (Some(y), Some(prompt)) = (rows.prompt, &self.view.prompt) {
             self.draw_prompt(area, y, prompt, buf);
         }
+        self.draw_first_launch(area, &rows, buf);
         let rule = if self.ascii { "-" } else { "─" };
         buf.set_string(
             area.x,
@@ -252,6 +293,20 @@ impl EmptyState<'_> {
 
     fn key(&self) -> Style {
         foreground(self.theme, Token::Accent).add_modifier(Modifier::BOLD)
+    }
+
+    /// The first-launch line, on the row above the rule when free.
+    fn draw_first_launch(&self, area: Rect, rows: &Rows, buf: &mut Buffer) {
+        let Some(y) = rows.rule.checked_sub(1) else {
+            return;
+        };
+        if !self.view.first_launch || y <= rows.last_used {
+            return;
+        }
+        let room = usize::from(area.width.saturating_sub(HEAD_X + 1));
+        if let Some(words) = first_launch_words(self.keys, room) {
+            buf.set_string(area.x + HEAD_X, y, words, self.muted());
+        }
     }
 
     fn draw_head(&self, area: Rect, buf: &mut Buffer) {

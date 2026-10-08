@@ -426,6 +426,10 @@ pub struct AppState {
     /// first key or click acknowledges it, as a `Done` is
     /// (`keys::acknowledge`). Set at startup only when there are problems.
     pub(crate) config_notice: bool,
+    /// The first-launch line (m8/18d): the status row's fallback while
+    /// shown. Shared with every place `drive` runs this process; never
+    /// shown by default (headless `run`, the gallery, every `Harness`).
+    pub(crate) first_launch: crate::first_launch::FirstLaunch,
     /// The open Ghost Preview (`m`, `r`, a `.` menu verb, the journal's
     /// time machine): `None` while closed (m5-history-and-ghost-preview/08).
     ///

@@ -43,6 +43,7 @@ pub fn is_write(command: &Command) -> bool {
         | Command::Search(..)
         | Command::CopyToClipboard(..)
         | Command::SaveLayout(..)
+        | Command::FirstLaunchDone(..)
         | Command::WriteCommitGraph
         | Command::DeclineCommitGraph
         | Command::ListFiles(..)
