@@ -92,6 +92,7 @@ fn view(rows: &[BlameRowView], cursor: usize) -> BlameView<'_> {
         now: NOW,
         // Blame's default (graft-git `blame.rs`): the title says nothing.
         whitespace_ignored: true,
+        default_ignored: true,
     }
 }
 
@@ -653,4 +654,24 @@ fn blame_title_names_whitespace_only_when_counted() {
             .ends_with("as it is now \u{b7} whitespace counted"),
         "{title:?}"
     );
+}
+
+/// 21b-2 item 2: the title's tail follows the default the view is given,
+/// not a literal of blame's own (graft fills it from graft-git).
+#[test]
+fn the_title_tail_follows_the_default_it_is_given() {
+    let rows = mockup();
+    let mut v = view(&rows, ON_22);
+    v.default_ignored = false;
+    v.whitespace_ignored = true;
+    let title = draw(&v, 187, 20)[0].clone();
+    assert!(
+        title
+            .trim_end()
+            .ends_with("as it is now \u{b7} whitespace ignored"),
+        "{title:?}"
+    );
+    v.whitespace_ignored = false;
+    let title = draw(&v, 187, 20)[0].clone();
+    assert!(!title.contains("whitespace"), "{title:?}");
 }

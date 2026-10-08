@@ -2,21 +2,27 @@
 //! [`TAIL`], what the whole screen answers after them.
 
 use super::keys::{
-    ABORT, AMEND, BACK, BANNER_EDIT, BANNER_MERGETOOL, BRANCH, COMMIT, COMPARE, CONFIRM_CHOOSE,
-    CONFIRM_MOVE, CONFIRM_YES, CONTINUE, COPY_SHA, CREDENTIAL_SEND, DISCARD, DOWN_UP, DROP, EDIT,
-    FETCH, FIELD_EDITOR, FIELD_ENTER, FIELD_ESC, FIELD_TAB, FIND, FIRST_PARENT, FIXUP, FOCUS, FOLD,
-    HEATMAP, HIDE_STASH, IGNORE_REVS, JOURNAL, LANES, LINE_HISTORY, MAP, MERGE, MERGETOOL,
-    MOVE_ROW, NEXT_PANE, NEXT_PREV_CHANGE, NEXT_PREV_MATCH, OPEN, OVERVIEW, PARENT, PICK,
-    PICKER_ROWS, PICKER_SHOW, PICKER_SWITCH, PULL, PUSH, QUIT, REBASE, RELEASE, RENDERER, REWORD,
-    REWRITE as REWRITE_KEY, REWRITE_CHANGES, REWRITE_EDIT, REWRITE_START, SKIP, SQUASH, STAGE,
-    STAGE_ALL, STASH, STATUS, SWITCH, TAG, TAKE, TYPE, UNDO, WHITESPACE,
+    ABORT, AMEND, BACK, BANNER_EDIT, BANNER_MERGETOOL, COMMIT, COMPARE, CONFIRM_CHOOSE,
+    CONFIRM_MOVE, CONFIRM_YES, CONTINUE, COPY_SHA, CREDENTIAL_SEND, DISCARD, DOWN_UP, EDIT, FETCH,
+    FIELD_EDITOR, FIELD_ENTER, FIELD_ESC, FIELD_TAB, FIND, FIRST_PARENT, FOCUS, FOLD, HEATMAP,
+    HIDE_STASH, IGNORE_REVS, JOURNAL, LANES, LINE_HISTORY, MAP, MERGETOOL, NEXT_PANE,
+    NEXT_PREV_CHANGE, NEXT_PREV_MATCH, OPEN, OVERVIEW, PARENT, PULL, PUSH, QUIT, RELEASE, RENDERER,
+    REWRITE as REWRITE_KEY, SKIP, STAGE, STAGE_ALL, STASH, STATUS, SWITCH, TAKE, UNDO, WHITESPACE,
 };
-use super::{Hint, HintContext, HintKey, LiveC, RowVerbs, TabWord, hint};
-use crate::keymap::ActionId;
+use super::{Hint, HintContext, LiveC, RowVerbs, TabWord, hint};
 
+mod editors;
+mod live;
 mod resolver;
+mod rows;
 
+use editors::{picker_list, rewrite_editor_list};
+use live::said_live;
+pub(super) use live::said_live_on_the_graph;
 use resolver::{finish_list, resolver_context_list};
+use rows::{
+    branch_row_list, current_branch_row_list, plain_row_list, stash_row_list, working_tree_row_list,
+};
 
 /// A confirm box's bar: `y <acting label>` first when `y` takes a button.
 fn confirm_box_list(yes: Option<super::ConfirmYes>) -> Vec<Hint> {
@@ -156,50 +162,6 @@ fn with_rewrite(mut list: Vec<Hint>) -> Vec<Hint> {
     list
 }
 
-/// The rewrite editor's bar (note R1, keymap §2.7): `y rewrite` leads while
-/// it would start, then `tab after` below 120 (the one way to the AFTER
-/// side there), then the row keys in R1's order.
-fn rewrite_editor_list(narrow: bool, can_start: bool) -> Vec<Hint> {
-    let mut list = Vec::new();
-    if can_start {
-        list.push(hint(REWRITE_START, "rewrite"));
-    }
-    if narrow {
-        list.push(hint(NEXT_PANE, "after"));
-    }
-    list.extend([
-        hint(REWRITE_CHANGES, "changes"),
-        hint(PICK, "pick"),
-        hint(REWORD, "reword"),
-        hint(REWRITE_EDIT, "edit"),
-        hint(SQUASH, "squash"),
-        hint(FIXUP, "fixup"),
-        hint(DROP, "drop"),
-        hint(MOVE_ROW, "move"),
-        hint(BACK, "cancel"),
-    ]);
-    list
-}
-
-/// The branch picker's bar.
-/// Keymap §2.16: the branch picker is a text field, so every letter
-/// types; the bar names what the non-letter keys do
-/// (`graft::update::picker::shown_key`). `esc close` is third, not
-/// last as the ticket spelled it: the first three are the floor drawn
-/// at every width (ADR-0037 §4), none of these verbs has a short rung
-/// in the user's table, and with `⇥` third the floor is 52 cells — a
-/// 40-column bar would draw nothing. With `esc` third it is 39, and
-/// the way out stays in words (ADR-0044 §4's reason).
-fn picker_list() -> Vec<Hint> {
-    vec![
-        hint(TYPE, "to find"),
-        hint(PICKER_SWITCH, "switch to it"),
-        hint(FIELD_ESC, "close"),
-        hint(PICKER_SHOW, "show it on the graph"),
-        hint(PICKER_ROWS, "row"),
-    ]
-}
-
 /// The keys the graph screen answers wherever the cursor is, in the order
 /// the old fixed list dropped them (PROMPT.md principle 4: the hint bar
 /// teaches the tool). Appended after a row context's own keys, so a wide
@@ -321,90 +283,6 @@ fn pane_over_overlay_list(opens: bool) -> Vec<Hint> {
     list
 }
 
-fn working_tree_row_list() -> Vec<Hint> {
-    vec![
-        hint(OPEN, "changes"),
-        hint(COMMIT, "commit"),
-        hint(STASH, "stash"),
-        hint(PULL, "pull"),
-        hint(PUSH, "push"),
-        hint(FETCH, "fetch"),
-        hint(UNDO, "undo"),
-        hint(JOURNAL, "journal"),
-        hint(FIND, "search"),
-        hint(DOWN_UP, "move"),
-    ]
-}
-
-fn branch_row_list() -> Vec<Hint> {
-    vec![
-        hint(MERGE, "merge"),
-        hint(REBASE, "rebase"),
-        hint(OPEN, "open"),
-        hint(BRANCH, "branch"),
-        hint(TAG, "tag"),
-        hint(PUSH, "push"),
-        hint(COMMIT, "commit"),
-        hint(PULL, "pull"),
-        hint(FETCH, "fetch"),
-        hint(UNDO, "undo"),
-        hint(STASH, "stash"),
-        hint(FIND, "search"),
-    ]
-}
-
-fn current_branch_row_list() -> Vec<Hint> {
-    vec![
-        hint(OPEN, "open"),
-        hint(COMMIT, "commit"),
-        hint(PUSH, "push"),
-        hint(PULL, "pull"),
-        hint(FETCH, "fetch"),
-        hint(BRANCH, "branch"),
-        hint(TAG, "tag"),
-        hint(UNDO, "undo"),
-        hint(STASH, "stash"),
-        hint(JOURNAL, "journal"),
-        hint(FIND, "search"),
-    ]
-}
-
-fn plain_row_list() -> Vec<Hint> {
-    vec![
-        hint(OPEN, "open"),
-        hint(BRANCH, "branch"),
-        hint(REBASE, "rebase"),
-        hint(TAG, "tag"),
-        hint(COMMIT, "commit"),
-        hint(COPY_SHA, "sha"),
-        hint(MERGE, "merge"),
-        hint(UNDO, "undo"),
-        hint(STASH, "stash"),
-        hint(JOURNAL, "journal"),
-        hint(FIND, "search"),
-    ]
-}
-
-/// A stash's row (m8-polish-and-ship/15 A4): [`plain_row_list`] less
-/// `m merge`, `r rebase` (both refuse on a stash, `preview/history.rs:108`),
-/// with `S stash` right after `⏎ open` — the stash's own verbs (`p d b ⏎`,
-/// keymap §2.9) live in the `S` list, not on the graph row. `R rewrite` and
-/// `o take` are never added: `R` is not offered here (`Rewritable` never
-/// wraps a stash row) and `o` refuses on a stash (`can_take`). [`TAIL`]'s
-/// `S stash` is deduped by key, so it is drawn once, here.
-fn stash_row_list() -> Vec<Hint> {
-    let mut list: Vec<Hint> = plain_row_list()
-        .into_iter()
-        .filter(|hint| !hint.is(MERGE) && !hint.is(REBASE) && !hint.is(STASH))
-        .collect();
-    let at = list
-        .iter()
-        .position(|hint| hint.is(OPEN))
-        .map_or(0, |i| i + 1);
-    list.insert(at, hint(STASH, "stash"));
-    list
-}
-
 /// The banner's own keys (design note, "Banner focused"), every one of them
 /// answered by `graft::update::banner::banner_key` while the banner has
 /// focus.
@@ -473,100 +351,6 @@ fn changes_pane_over_overlay_list(unmerged: bool, tab: TabWord) -> Vec<Hint> {
         .into_iter()
         .filter(|hint| !hint.is(COMMIT))
         .collect()
-}
-
-/// `list` with its `c commit` said the way `c` acts while an operation is
-/// live (m6-conflicts/52), in the same place: `c finish`, `c continue`, or
-/// gone where `c` only refuses in words. Every other hint is untouched.
-pub(super) fn said_live(list: Vec<Hint>, c: LiveC) -> Vec<Hint> {
-    // At an `edit` stop `a` amends the stopped commit, and it leads: it is
-    // the step the stop is for (07b, note R4's bar).
-    let mut said = match c {
-        LiveC::ContinueAmends => vec![AMEND_IT],
-        LiveC::Finish | LiveC::Continue | LiveC::Refuses => Vec::new(),
-    };
-    said.extend(list.into_iter().filter_map(|hint| {
-        if hint.is(AMEND_IT.keys) && c == LiveC::ContinueAmends {
-            return None;
-        }
-        if !hint.is(COMMIT) {
-            return Some(hint);
-        }
-        match c {
-            LiveC::Finish => Some(Hint {
-                verb: "finish",
-                ..hint
-            }),
-            LiveC::Continue | LiveC::ContinueAmends => Some(Hint {
-                verb: "continue",
-                ..hint
-            }),
-            LiveC::Refuses => None,
-        }
-    }));
-    said
-}
-
-/// `a amend it`, at a rewrite's `edit` stop.
-const AMEND_IT: Hint = hint(AMEND, "amend it");
-
-/// `space stage`, at a rewrite's `edit` stop on the rows where `a` amends
-/// (m7-power-tools/07d D1).
-const SPACE_STAGE: Hint = hint(FOLD, "stage");
-
-/// A graph row's bar while an operation is live: [`said_live`]'s list with
-/// `c` ranked first after `a amend it` — above the graph's write keys,
-/// which a live operation refuses (review m7-10-to-07c Minor 7), so the
-/// width ladder drops them before the key that finishes — and, where
-/// `space_stages`, `space stage` right after it in place of `space fold`.
-pub(super) fn said_live_on_the_graph(list: Vec<Hint>, c: LiveC, space_stages: bool) -> Vec<Hint> {
-    let said = said_live(list, c);
-    let (c_hint, rest): (Vec<Hint>, Vec<Hint>) = said.into_iter().partition(|hint| hint.is(COMMIT));
-    let mut rest = rest.into_iter().peekable();
-    let mut ranked = Vec::new();
-    if c == LiveC::ContinueAmends {
-        ranked.extend(rest.next_if(|hint| hint.is(AMEND_IT.keys)));
-    }
-    ranked.extend(c_hint);
-    if space_stages {
-        ranked.push(SPACE_STAGE);
-    }
-    ranked.extend(rest.filter(|hint| !(space_stages && hint.is(SPACE_STAGE.keys))));
-    ranked.retain(|hint| !refused_while_live(hint));
-    ranked
-}
-
-/// The graph's write keys that refuse while an operation is live
-/// (m8-polish-and-ship/15 A1, keymap §2.1 mode rule: a key that can only
-/// say "no" is not offered). Each member's refusing line, in `graft`:
-/// - `app.undo` — `update::undo::start_undo` → `in_progress_refusal`
-///   (`update/undo.rs:344`, words from `live_refusal_words`). The one
-///   exception, a merge begun in the shell (keymap §2.6a), is not told
-///   apart by the bar's context, so `u` is not offered there either: a key
-///   left out is recoverable through `?`, a key that refuses is a lie.
-/// - `graph.merge`, `graph.rebase` — `preview::history_key` →
-///   `open_preview` → `preview_refusal` (`update/preview.rs:380`); on a
-///   detached `HEAD` (an `edit` stop) `m` refuses earlier
-///   (`update/preview/history.rs:112`).
-/// - `graph.take` — `preview::take_key` → `open_preview` → `preview_refusal`.
-/// - `graph.rewrite` — `rewrite_editor::open_rewrite` → `preview_refusal`
-///   (`update/rewrite_editor/open.rs:48`).
-///
-/// Held against the app by `graft`'s
-/// `no_key_a_live_operation_bar_draws_refuses_while_live`.
-const REFUSED_WHILE_LIVE: &[ActionId] = &[
-    ActionId("app.undo"),
-    ActionId("graph.merge"),
-    ActionId("graph.rebase"),
-    ActionId("graph.take"),
-    ActionId("graph.rewrite"),
-];
-
-/// Whether `hint` names a [`REFUSED_WHILE_LIVE`] key.
-fn refused_while_live(hint: &Hint) -> bool {
-    hint.keys.iter().any(|key| {
-        matches!(key, HintKey::Key(id) | HintKey::EveryChord(id) if REFUSED_WHILE_LIVE.contains(id))
-    })
 }
 
 fn changes_pane_table(unmerged: bool, tab: TabWord) -> Vec<Hint> {

@@ -145,15 +145,15 @@ pub struct BlameView<'a> { /* …existing… */ pub whitespace_ignored: bool, pu
 ```
 
 **Acceptance**
-- [ ] 1: `rg -n 'blame::(put_)?whitespace_tail' crates/` empty; the existing whitespace-tail tests (detail,
+- [x] 1 (`rg` empty; `history::tests::history_title_says_whitespace_ignored_while_w_is_on`, `detail_pane::tests::detail_title_says_whitespace_ignored_while_w_is_on`, `blame::tests::blame_title_names_whitespace_only_when_counted` unedited, green): `rg -n 'blame::(put_)?whitespace_tail' crates/` empty; the existing whitespace-tail tests (detail,
       history, blame) pass unedited but for their `use` lines; captures byte-identical.
-- [ ] 2: new `blame::tests::the_title_tail_follows_the_default_it_is_given` (`default_ignored: false` +
+- [x] 2 (`blame::tests::the_title_tail_follows_the_default_it_is_given`, red on base; `update::place::blame_state::tests::the_view_carries_blames_own_default`): new `blame::tests::the_title_tail_follows_the_default_it_is_given` (`default_ignored: false` +
       `whitespace_ignored: true` → `· whitespace ignored`; `false/false` → none). **Seen red by assertion** with the
       literal still in place (NOTES: the line). New graft `update::place::blame_state::tests::the_view_carries_blames_own_default`
       (`view.default_ignored == BlameOptions::default().ignore_whitespace`). `rg -n 'whitespace_tail\(.*true' crates/graft-ui/src/blame*` empty.
-- [ ] 3: `rg -n 'allow\(clippy::too_many_arguments\)' crates/graft-ui/src/palette*` shows none without a reason;
+- [x] 3 (`rg` empty; `palette::tests` green unedited): `rg -n 'allow\(clippy::too_many_arguments\)' crates/graft-ui/src/palette*` shows none without a reason;
       `palette` tests green unedited.
-- [ ] 4: move-only check per file; each ≤ 400.
+- [x] 4 (`nextest list` diff = only the 2 new tests, 6082 → 6084; line-set check, NOTES): move-only check per file; each ≤ 400.
 
 **Touches:** `BlameView` builders (graft `blame_state.rs`; graft-ui `blame/tests.rs`) — grep `BlameView {`;
 detail pane and history title tails (17/17b captures `docs/shots/m8/polish-blame-whitespace-counted-120x36.txt`,
@@ -418,6 +418,16 @@ Scout: none — the four files' seams were read directly (`grep` of item lines);
 - **3** Red on base (close group reverted to `["app.back"]`): panicked `stash_screen/tests.rs:360`, `rows: "⏎ apply  p pop  s save  d drop  b branch  space files  esc close  ? keys"`. Footer rows now: Ready `⏎ apply  p pop  s save  d drop  b branch  space files  S/esc close  ? keys` (60x20: `⏎ apply  p pop  s save  d drop  S/esc close  ? keys`); Loading/Empty/Failed `s save  S/esc close  ? keys`. Re-shot: `m8/doorway-stash-{120x36,60x20}`, `m3-06-stash-list-{80x24,160x48}` (pty walk, then a second clean pass: "settled"), **plus** `m3-stash-list.txt`, `m3-stash-empty.txt` (graft `view::tests::capture_m3_stash` — also stash footers, not in the ticket's list), `m3-contact-sheet.txt` (4 lines, footers only). Second clean nextest pass without `GRAFT_UPDATE_SHOTS`: green. **Stale captions, outside graft-ui (not edited):** `crates/graft/src/update/tests.rs:6964` still says `… space files  esc close  ? keys` (drawn into `doorway-stash-120x36.txt:7`); the m3 headers `m3-stash-list.txt:13`, `m3-stash-empty.txt:9` list `esc close` (written by graft `view/tests.rs`). Needs a graft builder. For 23: design `01-view-mockups.md:392` stash footer → `S/esc close`. Graft tests on `esc close  ? keys`: only journal (`J/esc close`) and the caption above — none assert a stash footer. Colour unverified (rule 5); look is the user's (rule 6).
 - **4** `cargo nextest list --workspace | sort` before/after: 6069 lines, `diff` empty. Line-set check (script: every non-blank new line in the old file, less `use`/`mod`/`//!`, `pub(super)` widened): exceptions only `use` re-wraps, `fmt` re-wraps (`whole_bar(` signature, `NEEDS_A_COMMIT`, a test call), and `super::` → `super::super::` in `fitting/stop.rs`, `fitting/place_footer.rs` (one module deeper). Methods on `Hint` widened to `pub(super)` (`at`, `labels`, `rungs`, `floor_rung`); `footer_line` to `pub(super)`. `tests/no_literal_keys.rs` allow entry path `stash_screen.rs` → `stash_screen/view.rs` (the `"1 file"` literal moved). One commit per split.
   `wc -l` before → after: `hints.rs` 906 → 149 (+ `hint.rs` 323, `doorway.rs` 118, `filters.rs` 350); `fitting.rs` 723 → 316 (+ `stop.rs` 223, `place_footer.rs` 102, `tests.rs` 122); `map_screen/render.rs` 462 → 389 (+ `render/footer.rs` 84); `stash_screen.rs` 468 → 383 (+ `view.rs` 92). (Before = after items 1–3; at ticket HEAD 888/697/468/463.)
+
+## NOTES — 21b-2 (builder, Opus, 2026-10-08)
+
+Scout: none — sites found by `grep` (the names the ticket quotes held); seams read from each file's item outline.
+
+- **1** Moved to `graft-ui/src/whitespace_tail.rs` (`pub mod` in lib.rs) with both constants and `put_whitespace_tail`; callers `blame.rs`, `history.rs:299`, `detail_pane/header.rs:351` import the new path; no re-export in `blame`. No direct unit test of the fn existed; the three title tests named in the tick cover it.
+- **2** Red with the literal in place: panicked `blame/tests.rs:668` (title lacked `· whitespace ignored`). Wired: `blame.rs:236` `whitespace_tail(view.whitespace_ignored, view.default_ignored)`; graft `blame_state.rs:98` from `BlameOptions::default().ignore_whitespace`. The graft test is an inline `mod tests` in `blame_state.rs` (builds a `Failed` place itself; `place/tests.rs::ready_place` is private and outside the crate set). It cannot go red while the default is `true` — it pins the wiring, not the value.
+- **3** Grouped, no reason needed: `draw_row(buf, slot: Rect, row, chosen, wide, theme)` — `x`, `y`, `inner` were one concept (the row's one-cell slot).
+- **4** `wc -l` before → after: `blame.rs` 563 (after item 1) → 314 + `blame/line.rs` 262; `graph_column/mod.rs` 444 → 340 + `kinds.rs` 114 (`NodeKind`, `RowPaint`, `pub use`d); `palette.rs` 430 → 326 + `palette/row.rs` 120; `hints/lists.rs` 593 → 377 + `lists/live.rs` 100, `rows.rs` 92, `editors.rs` 51; `context_menu.rs` 870 → 387 + `context_menu/draw.rs` 53, `context_menu/tests.rs` 441 (inline tests moved, dedented). Line-set exceptions: `use` re-wraps only, plus one doc link in `kinds.rs:98` gained a path (`(super::GraphLine::ghost_lanes)`); `#[cfg(test)] use` lines in `blame.rs` (`trailer`) and `graph_column/mod.rs` (`Modifier`) so tests compile unedited; `context_menu/tests.rs` gained `use` lines. Widened: `line.rs` items `pub(super)`, `said_live_on_the_graph` `pub(crate)` (re-exported `pub(super)` from `lists`). One commit per split. Captures: `docs/shots` untouched (status clean after the gates).
+- **Touches:** `BlameView {` builders — graft `blame_state.rs`, graft-ui `blame/tests.rs` (grep: only two); history/detail title tails via their tests; `detail_pane/header.rs` call line only; MAP.md graft-ui (lib list, `## blame`, HistoryView, layout line).
 
 ## NOTES — 21b-3 (builder, Opus, 2026-10-08)
 
