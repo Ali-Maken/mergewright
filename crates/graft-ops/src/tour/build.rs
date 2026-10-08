@@ -1,4 +1,5 @@
 //! Building the practice repo: `<under>/tributary-practice-<pid>-<unix_ms>/`
+//! (or `-<first_unix_secs>/` for a fixed instant, `PracticeAt::Fixed`)
 //! holding `.practice`, an empty `hooks/`, a bare `remote.git` and `work/`.
 //!
 //! `work/` when done (ticket 19 Decisions, §A7):
@@ -21,7 +22,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use graft_git::run::{GitArg, GitInvocation};
 
 use super::{
-    PRACTICE_MARKER, PRACTICE_PREFIX, PracticeRepo, TourError, inside, remove_practice_repo,
+    PRACTICE_MARKER, PRACTICE_PREFIX, PracticeAt, PracticeRepo, TourError, inside,
+    remove_practice_repo,
 };
 
 const WORK: &str = "work";
@@ -44,9 +46,19 @@ const MENU: &str = "starter: bread\nsoup: tomato\nmain: pasta\ndessert: cake\ndr
 /// path is not UTF-8, which git config needs); [`TourError::Git`] when a git
 /// step fails; [`TourError::Left`] when that failure's half-built folder
 /// could not be removed either.
-pub fn build_practice_repo(under: &Path) -> Result<PracticeRepo, TourError> {
+pub fn build_practice_repo(under: &Path, at: PracticeAt) -> Result<PracticeRepo, TourError> {
     let under = under.canonicalize().map_err(TourError::TempDir)?;
-    let name = format!("{PRACTICE_PREFIX}{}-{}", std::process::id(), unix_ms());
+    let (name, first) = match at {
+        PracticeAt::Now { now_unix_secs } => (
+            format!("{PRACTICE_PREFIX}{}-{}", std::process::id(), unix_ms()),
+            // The last of `COMMITS` minutes ends one minute before now.
+            now_unix_secs.saturating_sub(COMMITS * 60),
+        ),
+        PracticeAt::Fixed { first_unix_secs } => (
+            format!("{PRACTICE_PREFIX}{first_unix_secs}"),
+            first_unix_secs,
+        ),
+    };
     let root = inside(&under, Path::new(&name))?;
     std::fs::create_dir(&root).map_err(TourError::TempDir)?;
     // `under` is canonical and `name` a plain part, so `root` is canonical.
@@ -62,7 +74,24 @@ pub fn build_practice_repo(under: &Path) -> Result<PracticeRepo, TourError> {
         PRACTICE_MARKER,
         "Graft practice tour. Safe to delete.\n",
     )?;
-    finish_or_clean(repo, populate)
+    let mut dates = Dates { next: first };
+    finish_or_clean(repo, |repo| populate(repo, &mut dates))
+}
+
+/// How many commits `populate` makes; each gets its own minute.
+const COMMITS: i64 = 7;
+
+/// The next commit's date: one minute after the last, in build order.
+struct Dates {
+    next: i64,
+}
+
+impl Dates {
+    fn take(&mut self) -> String {
+        let at = self.next;
+        self.next = self.next.saturating_add(60);
+        format!("@{at} +0000")
+    }
 }
 
 /// Run `fill` on a freshly made practice folder; when it fails, remove the
@@ -93,7 +122,7 @@ fn unix_ms() -> u128 {
         .map_or(0, |elapsed| elapsed.as_millis())
 }
 
-fn populate(repo: &PracticeRepo) -> Result<(), TourError> {
+fn populate(repo: &PracticeRepo, dates: &mut Dates) -> Result<(), TourError> {
     let root = &repo.root;
     let hooks = inside(root, Path::new(HOOKS))?;
     std::fs::create_dir(&hooks).map_err(TourError::TempDir)?;
@@ -120,14 +149,14 @@ fn populate(repo: &PracticeRepo) -> Result<(), TourError> {
 
     write(root, "work/menu.txt", MENU)?;
     write(root, "work/notes.txt", &notes(&[]))?;
-    commit(root, "Start the menu")?;
+    commit(root, dates, "Start the menu")?;
 
     write(root, "work/menu.txt", &format!("{MENU}side: salad\n"))?;
-    commit(root, "Add a side dish")?;
+    commit(root, dates, "Add a side dish")?;
 
     git(root, WORK, &["switch", "--quiet", "-c", "feature"])?;
     write(root, "work/hours.txt", "open 9 to 5\n")?;
-    commit(root, "Add opening hours")?;
+    commit(root, dates, "Add opening hours")?;
 
     git(root, WORK, &["switch", "--quiet", "-c", "clash", "main"])?;
     write(
@@ -138,7 +167,7 @@ fn populate(repo: &PracticeRepo) -> Result<(), TourError> {
             MENU.replace("dessert: cake", "dessert: ice cream")
         ),
     )?;
-    commit(root, "Ice cream for dessert")?;
+    commit(root, dates, "Ice cream for dessert")?;
 
     git(root, WORK, &["switch", "--quiet", "main"])?;
     write(
@@ -149,15 +178,15 @@ fn populate(repo: &PracticeRepo) -> Result<(), TourError> {
             MENU.replace("dessert: cake", "dessert: pie")
         ),
     )?;
-    commit(root, "Pie for dessert")?;
+    commit(root, dates, "Pie for dessert")?;
 
     write(root, "work/chef.txt", "chef: Ana\n")?;
-    commit(root, "Name the chef")?;
+    commit(root, dates, "Name the chef")?;
 
     git(root, WORK, &["push", "--quiet", "-u", "origin", "main"])?;
 
     write(root, "work/specials.txt", "today: lentil soup\n")?;
-    commit(root, "Add today's specials")?;
+    commit(root, dates, "Add today's specials")?;
 
     write(root, "work/notes.txt", &notes(&[2, 19]))?;
     write(root, "work/scratch.txt", "an idea, not saved yet\n")?;
@@ -178,9 +207,23 @@ fn notes(changed: &[usize]) -> String {
         .collect()
 }
 
-fn commit(root: &Path, message: &str) -> Result<(), TourError> {
+fn commit(root: &Path, dates: &mut Dates, message: &str) -> Result<(), TourError> {
     git(root, WORK, &["add", "--all"])?;
-    git(root, WORK, &["commit", "--quiet", "-m", message])
+    let date = dates.take();
+    let folder = inside(root, Path::new(WORK))?;
+    GitInvocation::in_folder(&folder)
+        .env("GIT_AUTHOR_DATE", &date)
+        .env("GIT_COMMITTER_DATE", &date)
+        .args(
+            ["commit", "--quiet", "-m", message]
+                .iter()
+                .map(|word| GitArg::Word((*word).to_owned())),
+        )
+        .run(&())
+        .map(|_output| ())
+        .map_err(|error| TourError::Git {
+            words: error.to_string(),
+        })
 }
 
 /// Write `contents` to `<root>/<rel>`, through the guard.

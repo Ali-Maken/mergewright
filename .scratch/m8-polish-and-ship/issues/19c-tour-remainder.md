@@ -93,23 +93,32 @@ demands a `Stop`, pass the crate's existing never-stop and name it.
 **In:** R1, R2, R3. Rewrite 19a's `resolve_conflict_needs_a_resolution_inside_a_committed_merge` for R1. **Out:** any
 app walk; captures.
 **Acceptance** (graft-ops tests in `crates/graft-ops/src/tour/tests.rs`; graft unit tests beside `practice_at`):
-- [ ] Same `Fixed` instant, two `under`s → identical oids for `main`, `feature`, `clash`, `origin/main`:
+- [x] Same `Fixed` instant, two `under`s → identical oids for `main`, `feature`, `clash`, `origin/main`:
       `a_fixed_instant_builds_the_same_commits`.
-- [ ] Commit dates strictly increasing, 60 s apart, in build order; `Now` ends one minute before `now`:
+- [x] Commit dates strictly increasing, 60 s apart, in build order; `Now` ends one minute before `now`:
       `every_built_commit_has_its_own_minute`, `now_dates_end_a_minute_before_now`.
-- [ ] `Fixed` names the folder `tributary-practice-<secs>`; a second build at the same instant under the same `under`
+- [x] `Fixed` names the folder `tributary-practice-<secs>`; a second build at the same instant under the same `under`
       is `TempDir`, nothing removed: `a_fixed_instant_names_the_folder_and_never_reuses_one`.
-- [ ] Pure: 7 ticks only for a Committed Merge in `conflicted`; Pending/Aborted in `conflicted` never; a Committed
+- [x] Pure: 7 ticks only for a Committed Merge in `conflicted`; Pending/Aborted in `conflicted` never; a Committed
       Merge outside it ticks 6 only; a `ResolveConflict` entry alone ticks nothing:
       `resolve_ticks_on_a_committed_merge_git_could_not_make`, `a_conflicted_merge_not_committed_never_ticks_7`,
       `a_clean_merge_ticks_6_only`, `a_resolve_conflict_entry_alone_ticks_nothing`.
-- [ ] Real repo: in a built practice repo, `git merge feature` and `git merge clash` (resolved, committed by git),
+- [x] Real repo: in a built practice repo, `git merge feature` and `git merge clash` (resolved, committed by git),
       then synthetic Committed `Merge` entries naming each result → `tour_progress` gives 7 for clash only; a
       one-parent result never: `tour_progress_ticks_7_for_the_clash_merge_and_not_for_feature`,
       `a_fast_forward_result_is_not_a_resolved_conflict`.
-- [ ] `practice_at`: unset → `Now`; `"1700000000"` → `Fixed`; `"x"`, `"-1"`, `"1.5"` → `Err` with the words in R2:
+- [x] `practice_at`: unset → `Now`; `"1700000000"` → `Fixed`; `"x"`, `"-1"`, `"1.5"` → `Err` with the words in R2:
       `practice_at_reads_whole_seconds_and_refuses_the_rest`.
-- [ ] MAP.md graft-ops `## tour` (lines 212, 215, 216: dates, task 7, the odb write); graft MAP (`practice_at`, var).
+- [x] MAP.md graft-ops `## tour` (lines 212, 215, 216: dates, task 7, the odb write); graft MAP (`practice_at`, var).
+      (doc box: no test; checked by reading the diff.)
+
+**NOTES 19c-a (builder, 2026-10-08)** — done, no compaction.
+- Confirmed by test `the_built_clash_forecasts_conflicts_and_feature_clean`: `forecast_merge(repo, &GitVersion, base: Option<Oid>, ours, theirs, stop)`; clash → `Conflicts{[menu.txt]}`, feature → `Clean`.
+- Parents: no public graft-git parents read found → `rev-list --parents -n 1` via `GitInvocation::new`. Version: `graft_git::version::system_git()` (one spawn, only when a Committed Merge exists). Stop: `&()`.
+- Commit-date env: grep `GIT_COMMITTER_DATE|GIT_AUTHOR_DATE` over graft-git/graft-ops/graft `src` → only test code (`graft-git/src/fixture.rs`, `state/tests.rs`, testdata scripts) and this build. No production commit/merge invocation overrides them.
+- `Now` takes `Clock::Wall.now_seconds()` in `places::practise` (drive holds no harness clock; shipped binary is Wall).
+- G-rename 27's grep test does not exist yet; `GRAFT_PRACTICE_EPOCH` is a literal in `places.rs` for it to find.
+- graft-core untouched: `git diff --stat crates/graft-core` empty.
 **Touches:** `tasks_done` callers (grep), every `build_practice_repo(` caller, 19a tests, graft-ops/graft MAP, G-rename
 27's var list (grep test covers it; say so), ticket 19 §A3 text (conductor marks superseded). graft-core untouched —
 no journal format change (say how checked: `git diff --stat crates/graft-core` empty).

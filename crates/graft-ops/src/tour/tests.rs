@@ -8,19 +8,28 @@
     reason = "a scratch folder or a git read that fails leaves nothing to test"
 )]
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use graft_core::journal::{EntryStatus, JournalEntry, OperationKind};
+use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind};
+use graft_core::oid::Oid;
+use graft_git::history_reads::{Forecast, forecast_merge};
+use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation};
+use graft_git::version::system_git;
 
 use super::build::finish_or_clean;
 use super::{
-    PRACTICE_MARKER, PRACTICE_PREFIX, PracticeRepo, TourError, TourTask, build_practice_repo,
-    inside, remove_practice_repo, tasks_done, tour_progress,
+    PRACTICE_MARKER, PRACTICE_PREFIX, PracticeAt, PracticeRepo, TourError, TourTask,
+    build_practice_repo, inside, remove_practice_repo, tasks_done, tour_progress,
 };
 use crate::journal::tests::{committed, reversal};
 use crate::journal::{render_outcome, render_pending};
+
+/// The app's clock for tests that don't care about dates.
+const NOW: PracticeAt = PracticeAt::Now {
+    now_unix_secs: 1_800_000_000,
+};
 
 // ---- helpers ----
 
@@ -132,7 +141,7 @@ fn building_writes_nothing_outside_its_root() {
     let before_top = names(top.path());
     assert_eq!(names(&under), BTreeSet::new());
 
-    let repo = build_practice_repo(&under).expect("builds");
+    let repo = build_practice_repo(&under, NOW).expect("builds");
 
     assert_eq!(
         names(top.path()),
@@ -155,7 +164,7 @@ fn building_writes_nothing_outside_its_root() {
 #[test]
 fn the_built_repo_has_the_tours_shape() {
     let (_top, under) = scratch();
-    let repo = build_practice_repo(&under).expect("builds");
+    let repo = build_practice_repo(&under, NOW).expect("builds");
     let work = repo.work();
 
     let branches = ok(work, &["branch", "--format=%(refname:short)"]);
@@ -217,7 +226,7 @@ fn the_built_repo_has_the_tours_shape() {
 #[test]
 fn the_built_repos_own_config_keeps_his_hooks_and_signing_out() {
     let (_top, under) = scratch();
-    let repo = build_practice_repo(&under).expect("builds");
+    let repo = build_practice_repo(&under, NOW).expect("builds");
     let hooks = repo.root().join("hooks");
     let hooks_text = hooks.to_str().unwrap();
     let work = repo.work();
@@ -250,7 +259,7 @@ fn the_built_repos_own_config_keeps_his_hooks_and_signing_out() {
 fn building_under_a_missing_folder_fails_and_makes_nothing() {
     let (top, under) = scratch();
     let missing = under.join("nope");
-    let answer = build_practice_repo(&missing);
+    let answer = build_practice_repo(&missing, NOW);
     assert!(matches!(answer, Err(TourError::TempDir(_))), "{answer:?}");
     assert!(!missing.exists());
     assert_eq!(names(top.path()), BTreeSet::from(["under".to_owned()]));
@@ -262,7 +271,7 @@ fn building_under_a_read_only_folder_fails_and_makes_nothing() {
     use std::os::unix::fs::PermissionsExt;
     let (_top, under) = scratch();
     std::fs::set_permissions(&under, std::fs::Permissions::from_mode(0o555)).unwrap();
-    let answer = build_practice_repo(&under);
+    let answer = build_practice_repo(&under, NOW);
     std::fs::set_permissions(&under, std::fs::Permissions::from_mode(0o755)).unwrap();
     let error = answer.expect_err("a read-only temp folder");
     assert!(matches!(error, TourError::TempDir(_)), "{error:?}");
@@ -299,7 +308,7 @@ fn a_build_that_fails_part_way_removes_its_folder() {
 fn removing_a_built_repo_removes_its_folder_and_nothing_else() {
     let (top, under) = scratch();
     std::fs::write(under.join("neighbour.txt"), "another program's").unwrap();
-    let repo = build_practice_repo(&under).expect("builds");
+    let repo = build_practice_repo(&under, NOW).expect("builds");
 
     remove_practice_repo(&repo).expect("removes");
 
@@ -311,7 +320,7 @@ fn removing_a_built_repo_removes_its_folder_and_nothing_else() {
 #[test]
 fn removal_refuses_a_folder_without_the_marker() {
     let (_top, under) = scratch();
-    let repo = build_practice_repo(&under).expect("builds");
+    let repo = build_practice_repo(&under, NOW).expect("builds");
     std::fs::remove_file(repo.root().join(PRACTICE_MARKER)).unwrap();
 
     let answer = remove_practice_repo(&repo);
@@ -434,12 +443,12 @@ fn aborted(entry: JournalEntry) -> JournalEntry {
 
 fn done(entries: &[JournalEntry], task: TourTask) -> bool {
     let index = TourTask::ALL.iter().position(|t| *t == task).unwrap();
-    tasks_done(entries)[index]
+    tasks_done(entries, &BTreeSet::new())[index]
 }
 
 #[test]
 fn nothing_is_done_in_an_empty_journal() {
-    assert_eq!(tasks_done(&[]), [false; 8]);
+    assert_eq!(tasks_done(&[], &BTreeSet::new()), [false; 8]);
 }
 
 #[test]
@@ -452,7 +461,7 @@ fn each_simple_task_ticks_on_its_committed_kind() {
         (OperationKind::Push, TourTask::Push),
     ] {
         let entries = [committed(1, kind, 1, 2)];
-        let flags = tasks_done(&entries);
+        let flags = tasks_done(&entries, &BTreeSet::new());
         let expected = TourTask::ALL.map(|t| t == task);
         assert_eq!(flags, expected, "{kind:?}");
     }
@@ -469,9 +478,17 @@ fn aborted_and_pending_entries_never_tick() {
     ];
     for kind in kinds {
         let entries = [aborted(committed(1, kind, 1, 2))];
-        assert_eq!(tasks_done(&entries), [false; 8], "aborted {kind:?}");
+        assert_eq!(
+            tasks_done(&entries, &BTreeSet::new()),
+            [false; 8],
+            "aborted {kind:?}"
+        );
         let entries = [with_status(committed(1, kind, 1, 2), EntryStatus::Pending)];
-        assert_eq!(tasks_done(&entries), [false; 8], "pending {kind:?}");
+        assert_eq!(
+            tasks_done(&entries, &BTreeSet::new()),
+            [false; 8],
+            "pending {kind:?}"
+        );
     }
 }
 
@@ -531,52 +548,246 @@ fn stash_and_back_needs_a_push_then_a_later_apply_or_pop() {
     assert!(!done(&[push], TourTask::StashAndBack), "a push alone");
 }
 
+fn only(merge: &JournalEntry) -> BTreeSet<EntryId> {
+    BTreeSet::from([merge.id.clone()])
+}
+
 #[test]
-fn resolve_conflict_needs_a_resolution_inside_a_committed_merge() {
+fn resolve_ticks_on_a_committed_merge_git_could_not_make() {
     let merge = committed(1, OperationKind::Merge, 1, 2);
-    let resolve = committed(2, OperationKind::ResolveConflict, 2, 2);
+    let flags = tasks_done(std::slice::from_ref(&merge), &only(&merge));
+    assert_eq!(
+        flags,
+        TourTask::ALL.map(|t| matches!(t, TourTask::MergeWithPreview | TourTask::ResolveConflict))
+    );
+}
 
-    let flags = tasks_done(&[merge.clone(), resolve.clone()]);
-    assert!(flags[5] && flags[6], "{flags:?}");
+#[test]
+fn a_conflicted_merge_not_committed_never_ticks_7() {
+    let merge = committed(1, OperationKind::Merge, 1, 2);
+    for entry in [
+        with_status(merge.clone(), EntryStatus::Pending),
+        aborted(merge.clone()),
+    ] {
+        let flags = tasks_done(std::slice::from_ref(&entry), &only(&merge));
+        assert_eq!(flags, [false; 8], "{:?}", entry.status);
+    }
+}
 
+#[test]
+fn a_clean_merge_ticks_6_only() {
+    let merge = committed(1, OperationKind::Merge, 1, 2);
+    let other = committed(2, OperationKind::Merge, 2, 3);
+    let flags = tasks_done(std::slice::from_ref(&merge), &only(&other));
+    assert_eq!(
+        flags,
+        TourTask::ALL.map(|t| t == TourTask::MergeWithPreview)
+    );
+}
+
+#[test]
+fn a_resolve_conflict_entry_alone_ticks_nothing() {
+    let resolve = committed(1, OperationKind::ResolveConflict, 1, 1);
+    let flags = tasks_done(std::slice::from_ref(&resolve), &only(&resolve));
+    assert_eq!(flags, [false; 8]);
+}
+
+// ---- dates and the folder name ----
+
+const AT: PracticeAt = PracticeAt::Fixed {
+    first_unix_secs: 1_700_000_000,
+};
+
+fn tip(work: &Path, rev: &str) -> String {
+    ok(work, &["rev-parse", rev]).trim().to_owned()
+}
+
+#[test]
+fn a_fixed_instant_builds_the_same_commits() {
+    let (_one, first) = scratch();
+    let (_two, second) = scratch();
+    let a = build_practice_repo(&first, AT).expect("builds");
+    let b = build_practice_repo(&second, AT).expect("builds");
+    for rev in ["main", "feature", "clash", "origin/main"] {
+        assert_eq!(tip(a.work(), rev), tip(b.work(), rev), "{rev}");
+    }
+}
+
+/// `(author, committer, subject)` of every built commit, oldest first.
+fn dated(work: &Path) -> Vec<(i64, i64, String)> {
+    let mut rows: Vec<(i64, i64, String)> = ok(work, &["log", "--all", "--format=%at %ct %s"])
+        .lines()
+        .map(|line| {
+            let mut parts = line.splitn(3, ' ');
+            let author = parts.next().unwrap().parse().unwrap();
+            let committer = parts.next().unwrap().parse().unwrap();
+            (author, committer, parts.next().unwrap().to_owned())
+        })
+        .collect();
+    rows.sort();
+    rows
+}
+
+#[test]
+fn every_built_commit_has_its_own_minute() {
+    let (_top, under) = scratch();
+    let repo = build_practice_repo(&under, AT).expect("builds");
+    let rows = dated(repo.work());
+    let subjects: Vec<&str> = rows.iter().map(|row| row.2.as_str()).collect();
+    assert_eq!(
+        subjects,
+        [
+            "Start the menu",
+            "Add a side dish",
+            "Add opening hours",
+            "Ice cream for dessert",
+            "Pie for dessert",
+            "Name the chef",
+            "Add today's specials",
+        ],
+        "build order"
+    );
+    for (k, (author, committer, subject)) in rows.iter().enumerate() {
+        let want = 1_700_000_000 + 60 * i64::try_from(k).unwrap();
+        assert_eq!((*author, *committer), (want, want), "{subject}");
+    }
+}
+
+#[test]
+fn now_dates_end_a_minute_before_now() {
+    let (_top, under) = scratch();
+    let now = 1_800_000_000;
+    let repo = build_practice_repo(&under, PracticeAt::Now { now_unix_secs: now }).expect("builds");
+    let rows = dated(repo.work());
+    assert_eq!(rows.last().unwrap().0, now - 60);
+    assert_eq!(rows.last().unwrap().1, now - 60);
+    assert_eq!(rows.first().unwrap().0, now - 60 * 7);
+    let name = repo.root().file_name().unwrap().to_str().unwrap();
+    let rest = name.strip_prefix(PRACTICE_PREFIX).unwrap();
     assert!(
-        !done(std::slice::from_ref(&merge), TourTask::ResolveConflict),
-        "a clean merge alone"
+        rest.starts_with(&format!("{}-", std::process::id())),
+        "{name}"
+    );
+}
+
+#[test]
+fn a_fixed_instant_names_the_folder_and_never_reuses_one() {
+    let (_top, under) = scratch();
+    let repo = build_practice_repo(&under, AT).expect("builds");
+    assert_eq!(
+        repo.root().file_name().unwrap(),
+        "tributary-practice-1700000000"
+    );
+    let main_before = tip(repo.work(), "main");
+
+    let again = build_practice_repo(&under, AT);
+
+    assert!(matches!(again, Err(TourError::TempDir(_))), "{again:?}");
+    assert_eq!(
+        names(&under),
+        BTreeSet::from(["tributary-practice-1700000000".to_owned()])
     );
     assert!(
-        !done(
-            &[
-                with_status(merge.clone(), EntryStatus::Pending),
-                resolve.clone()
-            ],
-            TourTask::ResolveConflict
-        ),
-        "a merge still stopped"
+        repo.root().join(PRACTICE_MARKER).is_file(),
+        "nothing removed"
     );
-    assert!(
-        !done(
-            &[aborted(merge.clone()), resolve.clone()],
-            TourTask::ResolveConflict
-        ),
-        "an aborted merge"
+    assert_eq!(tip(repo.work(), "main"), main_before);
+}
+
+// ---- task 7 against git's own answer ----
+
+fn oid_of(work: &Path, rev: &str) -> Oid {
+    Oid::from_hex(&tip(work, rev)).unwrap()
+}
+
+/// A Committed `Merge` entry whose recorded result is `result` on `main`.
+fn merge_entry(at: i64, result: Oid) -> JournalEntry {
+    let mut entry = committed(at, OperationKind::Merge, 1, 2);
+    entry.refs_after = BTreeMap::from([("refs/heads/main".to_owned(), Some(result))]);
+    entry.head_after = Some(HeadRef::Branch("refs/heads/main".to_owned()));
+    entry
+}
+
+fn write_journal(work: &Path, entries: &[JournalEntry]) {
+    let journal = work.join(".git/graft/undo-journal.jsonl");
+    std::fs::create_dir_all(journal.parent().unwrap()).unwrap();
+    let mut bytes = Vec::new();
+    for entry in entries {
+        bytes.extend(render_pending(entry).unwrap());
+        bytes.extend(render_outcome(entry).unwrap());
+    }
+    std::fs::write(&journal, bytes).unwrap();
+}
+
+#[test]
+fn the_built_clash_forecasts_conflicts_and_feature_clean() {
+    let (_top, under) = scratch();
+    let repo = build_practice_repo(&under, AT).expect("builds");
+    let handle = RepoHandle::open(repo.work()).unwrap();
+    let git = system_git().unwrap().version();
+    let main = oid_of(repo.work(), "main");
+    let clash = forecast_merge(&handle, &git, None, main, oid_of(repo.work(), "clash"), &());
+    assert_eq!(
+        clash.unwrap(),
+        Forecast::Conflicts {
+            paths: vec![PathBuf::from("menu.txt")]
+        }
     );
-    let before = committed(0, OperationKind::ResolveConflict, 2, 2);
-    assert!(
-        !done(&[before, merge.clone()], TourTask::ResolveConflict),
-        "a resolution before the merge"
+    let feature = forecast_merge(
+        &handle,
+        &git,
+        None,
+        main,
+        oid_of(repo.work(), "feature"),
+        &(),
     );
-    // A resolution after a later merge belongs to that one, not the first.
-    let pending_later = with_status(
-        committed(3, OperationKind::Merge, 2, 3),
-        EntryStatus::Pending,
+    assert_eq!(feature.unwrap(), Forecast::Clean);
+}
+
+#[test]
+fn tour_progress_ticks_7_for_the_clash_merge_and_not_for_feature() {
+    let (_top, under) = scratch();
+    let repo = build_practice_repo(&under, AT).expect("builds");
+    let work = repo.work();
+    ok(work, &["merge", "--no-edit", "feature"]);
+    let feature_result = oid_of(work, "main");
+    let (code, _out) = read(work, &["merge", "--no-edit", "clash"]);
+    assert_eq!(code, Some(1), "the clash merge stops");
+    std::fs::write(work.join("menu.txt"), "dessert: pie and ice cream\n").unwrap();
+    ok(work, &["add", "menu.txt"]);
+    ok(work, &["commit", "--no-edit"]);
+    let clash_result = oid_of(work, "main");
+
+    write_journal(work, &[merge_entry(1, feature_result)]);
+    let flags = tour_progress(work).expect("reads");
+    assert_eq!(
+        flags,
+        TourTask::ALL.map(|t| t == TourTask::MergeWithPreview),
+        "feature"
     );
-    let late_resolve = committed(4, OperationKind::ResolveConflict, 3, 3);
-    assert!(
-        !done(
-            &[merge, pending_later, late_resolve],
-            TourTask::ResolveConflict
-        ),
-        "a resolution belonging to a later, unfinished merge"
+
+    write_journal(
+        work,
+        &[merge_entry(1, feature_result), merge_entry(2, clash_result)],
+    );
+    let flags = tour_progress(work).expect("reads");
+    assert_eq!(
+        flags,
+        TourTask::ALL.map(|t| matches!(t, TourTask::MergeWithPreview | TourTask::ResolveConflict)),
+        "clash"
+    );
+}
+
+#[test]
+fn a_fast_forward_result_is_not_a_resolved_conflict() {
+    let (_top, under) = scratch();
+    let repo = build_practice_repo(&under, AT).expect("builds");
+    // `main`'s tip has one parent: what a fast-forward would record.
+    write_journal(repo.work(), &[merge_entry(1, oid_of(repo.work(), "main"))]);
+    let flags = tour_progress(repo.work()).expect("reads");
+    assert_eq!(
+        flags,
+        TourTask::ALL.map(|t| t == TourTask::MergeWithPreview)
     );
 }
 
@@ -585,14 +796,14 @@ fn resolve_conflict_needs_a_resolution_inside_a_committed_merge() {
 #[test]
 fn a_fresh_practice_repo_has_nothing_done() {
     let (_top, under) = scratch();
-    let repo = build_practice_repo(&under).expect("builds");
+    let repo = build_practice_repo(&under, NOW).expect("builds");
     assert_eq!(tour_progress(repo.work()).expect("reads"), [false; 8]);
 }
 
 #[test]
 fn progress_reads_the_practice_repos_journal() {
     let (_top, under) = scratch();
-    let repo = build_practice_repo(&under).expect("builds");
+    let repo = build_practice_repo(&under, NOW).expect("builds");
     let journal = repo.work().join(".git/graft/undo-journal.jsonl");
     std::fs::create_dir_all(journal.parent().unwrap()).unwrap();
     let push = committed(1, OperationKind::Push, 1, 2);

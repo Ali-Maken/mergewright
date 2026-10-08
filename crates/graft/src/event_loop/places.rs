@@ -5,6 +5,7 @@
 //! after another on that terminal: the empty state, then the repository it
 //! opened. The alternate screen is entered once and left once.
 
+use std::ffi::OsStr;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -15,6 +16,7 @@ use graft_core::capabilities::RenderingTier;
 use graft_core::event::Event;
 use graft_core::job::JobId;
 use graft_git::run::askpass::Secret;
+use graft_ops::tour::PracticeAt;
 use ratatui::backend::CrosstermBackend;
 
 use super::exit_wait::Pool;
@@ -28,7 +30,7 @@ use crate::first_launch::{self, FirstLaunch};
 use crate::jobs::JobRunner;
 use crate::recent::{self, Recent};
 use crate::repos::RepoStore;
-use crate::session::Session;
+use crate::session::{Clock, Session};
 use crate::update::credential::Answer;
 use crate::update::{AppEvent, Harness};
 use crate::view::rows::home_relative;
@@ -219,6 +221,31 @@ fn moved(
     }
 }
 
+/// Set to whole seconds since 1970, dates the practice repo from that
+/// instant (`PracticeAt::Fixed`), for reproducible runs and captures.
+pub(crate) const PRACTICE_EPOCH_VAR: &str = "GRAFT_PRACTICE_EPOCH";
+
+/// What [`PRACTICE_EPOCH_VAR`]'s value asks for: unset → `Now` at
+/// `now_unix_secs`; whole seconds → `Fixed`; anything else → the words of
+/// the refusal (unsanitised; the caller's `say` sanitises). Pure.
+pub(crate) fn practice_at(var: Option<&OsStr>, now_unix_secs: i64) -> Result<PracticeAt, String> {
+    let Some(raw) = var else {
+        return Ok(PracticeAt::Now { now_unix_secs });
+    };
+    let refuse = || {
+        format!(
+            "{PRACTICE_EPOCH_VAR} must be whole seconds since 1970, got {}",
+            raw.to_string_lossy()
+        )
+    };
+    let text = raw.to_str().ok_or_else(refuse)?;
+    if text.is_empty() || !text.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(refuse());
+    }
+    let first_unix_secs = text.parse::<i64>().map_err(|_too_big| refuse())?;
+    Ok(PracticeAt::Fixed { first_unix_secs })
+}
+
 /// Build the practice repository under the temp folder and go into it;
 /// on any failure, say why and go back to `from`, cursor and all (§A5).
 fn practise(
@@ -230,7 +257,18 @@ fn practise(
     // Never two: a tour started from inside one (the palette refuses that
     // first, `update::tour::start_from_palette`) ends the first.
     let _left: Option<Open> = leave_practice(practice, carried);
-    match graft_ops::tour::build_practice_repo(&std::env::temp_dir()) {
+    // Read at the tour's start, not at launch (m8/19c R2). The shipped
+    // binary's session clock is `Clock::Wall`.
+    let var = std::env::var_os(PRACTICE_EPOCH_VAR);
+    let at = match practice_at(var.as_deref(), Clock::Wall.now_seconds()) {
+        Ok(at) => at,
+        Err(words) => {
+            say(carried, &format!("tour: {words}"));
+            carried.returning = true;
+            return go_to(&from, carried, config);
+        }
+    };
+    match graft_ops::tour::build_practice_repo(&std::env::temp_dir(), at) {
         Ok(repo) => match locate(repo.work(), config) {
             Ok(place @ Place::Repo { .. }) => {
                 carried.at = None;
