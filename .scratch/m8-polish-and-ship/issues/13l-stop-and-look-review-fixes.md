@@ -108,9 +108,9 @@ pub(crate) fn session_command(program: &Path, args: &[OsString], slave: OwnedFd)
 - No keymap, journal, undo or product code. `git diff --stat` names only the crate-set paths.
 
 ## Acceptance (each tick names its test or check inline)
-- [ ] A1: `git diff -M --stat` of the move commit shows moves only. Nextest total N before = N after (both in
+- [x] A1 (verified: line-set check on move commit `d1448534` + `cargo nextest run` 5919 = 5919; NOTES Part A): `git diff -M --stat` of the move commit shows moves only. Nextest total N before = N after (both in
       NOTES). Each `remote/http/*.rs` is ≤ 400 production lines (`wc -l` up to `#[cfg(test)]`, in NOTES).
-- [ ] A2: `Drop` ≤ 60 lines (count in NOTES). These pass unchanged: `remote::tests` drop-waits (:419), chunked
+- [x] A2 (verified: `Drop` 15 lines; workspace `cargo nextest run` passes `remote::tests::http_remote_drop_waits_for_the_listener_to_close`, `http_remote_reads_a_chunked_body`, `http_remote_answers_expect_100_continue`, `http_remote_drop_ends_an_idle_client`; `remote/tests.rs` untouched): `Drop` ≤ 60 lines (count in NOTES). These pass unchanged: `remote::tests` drop-waits (:419), chunked
       (:457), 100-continue (:484), idle client (:520).
 - [ ] B1: `hangup.rs` ≤ 400 lines, `pty_session.rs` ≤ 400. Every `quit_waits::hangup::*` test name is unchanged
       (`cargo nextest list` before and after, in NOTES).
@@ -183,3 +183,25 @@ do A first and commit at the seam.
 - 28's coverage test must read both `docs/shots/m8-*.txt` and `docs/shots/m8/*.txt`.
 - New M8 captures from here on go flat, as `docs/shots/m8-*.txt`.
 - 17's tick naming the `m8/` path stands.
+
+## NOTES — Part A (builder, 2026-10-08)
+- Scout: none, per the ticket (review names the cuts). No compaction. Parts B, C untouched.
+- A1 commit `d1448534`: `git diff -M --stat` shows `http.rs` deleted + 4 new files (git can't pair a 4-way split
+  as a rename). Move proven by a line-set check instead: every non-blank line in the new files exists in old
+  `http.rs` except module `//!` docs, `use`/`mod` lines, and `pub(super)` on items/fields now crossing sibling
+  modules. Placement: `mod.rs` struct + state + `serve` + accessors + `base64` (+ its test); `listener.rs`
+  `kill_group`, `shut`, accept loop, handlers, `Drop`; `request.rs` framing; `cgi.rs` `Backend`, bridge,
+  `parse_cgi` (+ its test). Small deviation: `kill_group`/`shut` live in listener (Drop's helpers).
+- Production lines (to first top-level `#[cfg(test)]`): mod.rs 310, listener.rs 219 (after A2), request.rs 256,
+  cgi.rs 229. All ≤ 400.
+- Nextest `--test-threads 4`: before 5919 passed / 11 skipped; after A2 5919 passed / 11 skipped. An earlier
+  after-run failed `quit_waits::signal::stop_now_after_the_real_offer_restores_then_says_where_git_stopped`
+  (20.7 s) while 11e built beside; it passed alone (12.3 s) and on full rerun; it doesn't use `HttpRemote`.
+  Unverified load flake — not investigated (out of scope).
+- A2: `Drop` 15 lines; steps 1–6 are methods `close_to_new_connections`, `kill_backends`, `shut_clients`,
+  `wake_listener`, `wait_for_threads`, `join_threads`, same order as the MAP row. Longest: `wait_for_threads` 35.
+- Touches: `HttpRemote` callers (API unchanged; workspace nextest green): graft-ops `tests/it/{remote_ops,clone}.rs`;
+  graft `tests/it/{credential_by_key.rs, m4_walk/{mod,truth,fixture}.rs, m5_walk/fixture.rs}`; fixtures
+  `remote/tests.rs` (`super::http::base64` path kept). 13j heavy loop: heavy clippy clean, not run. No
+  Cargo.lock, capture or product-code change. MAP: graft-fixtures `remote/http/` layout line added.
+- Gates: fmt, clippy (plain + heavy-tests), nextest, `cargo test --doc` all pass, workspace-wide.
