@@ -1,23 +1,29 @@
 # Merge over unsaved edits sets them aside; the tour's ages stop following the calendar; the whole-tour walk
 
 Status: draft (planner spec-only pass, 2026-10-08; rules on 19c-c NOTES :221-232 and :261-263). Amended 2026-10-08,
-planner follow-up on NOTES 19d-b: §R4, §R5 and part 19d-b2 added, and 19d-c gains C+3.
-Build with: four parts. a and b have disjoint file sets and may run concurrently (two helpers max). b2 comes after b.
-c comes last and needs all three.
+planner follow-up on NOTES 19d-b: §R4, §R5 and part 19d-b2 added, and 19d-c gains C+3. Amended again 2026-10-08,
+planner follow-up on NOTES 19d-a (branch `worktree-agent-a9afa698c484ca6f4`, commit bebdddd5, not merged): §R6 and
+part 19d-a2 added.
+Build with: five parts. a/a2 and b/b2 have disjoint file sets and may run concurrently (two helpers max). a2
+continues a's branch. b2 comes after b. c comes last and needs all four.
 - **19d-a — Opus, xhigh.** Stash- and undo-adjacent: a wrong order or a missed resume path loses edits, and no diff shows
   it. Not Fable: no new structure. It is the third extension of a proven mechanism (11a cherry-pick, 03b ff-pull, both
   on the same `sets_aside` arm and the same table tests), and the round-trip tests below can show whether it is right.
+- **19d-a2 — Opus, xhigh.** D1 and D2 are in `apply/close.rs`, the close every set-aside kind shares. That path
+  decides whether `u` and the stop words are right after a stop. Not Fable: both defects carry their lines and red
+  tests, the fix is local to the close, and the tests can show whether it is right.
 - **19d-b — Sonnet.** A pure parse, one read at launch, one default in the pty harness. Every signature is fixed below.
 - **19d-b2 — Sonnet.** Mechanical: one constant moves, one test seam is fixed, and 19 producers and one pty default are
   pinned. No production API. The rulings are §R4 and §R5.
 - **19d-c — Opus.** The 19c-c walk, finished; pty and captures. **Last.**
-Needs: 19c-a, 19c-b (merged), 19c-c partial (merged, 706d988f). 19d-b2 needs 19d-b (merged, partial). 19d-c needs
-19d-a, 19d-b and 19d-b2.
-Scout: 19d-a uses `.scratch/m8-polish-and-ship/scouts/merge-preview-dirty-index.md` (no second scout). 19d-b: none.
-MAP :91, :182 and :1116 are enough; the conductor decides. 19d-b2: the sweep in NOTES 19d-b is its scout.
+Needs: 19c-a, 19c-b (merged), 19c-c partial (merged, 706d988f). 19d-a2 needs 19d-a (bebdddd5; the two merge
+together). 19d-b2 needs 19d-b (merged, partial). 19d-c needs 19d-a, 19d-a2, 19d-b and 19d-b2.
+Scout: 19d-a uses `.scratch/m8-polish-and-ship/scouts/merge-preview-dirty-index.md` (no second scout). 19d-a2: NOTES
+19d-a is its scout. 19d-b: none. MAP :91, :182 and :1116 are enough; the conductor decides. 19d-b2: the sweep in
+NOTES 19d-b is its scout.
 ADR: **none new.** Nothing here is hard to reverse: the journal field (`put_back`) already exists and is additive
 (ADR-0045 §1), and `sets_aside` is one match arm. 19d-a appends an **ADR-0045 amendment** (text in §R1, last bullet),
-as 11a and 03b did.
+as 11a and 03b did. 19d-a2 corrects its spawn count (§R6).
 
 ## Need
 - He merges colleagues' branches into his own while work is in progress. He works in a team on dependent branches
@@ -66,6 +72,9 @@ as 11a and 03b did.
    set-aside side names (ADR-0045 §2-3); finishing drops the copy, and `u` brings it back. Same as rebase.
 4. **Today** (for the record): `m y` → git's refusal in the status line → he leaves to the shell, or goes through
    `S s ⏎ Esc m y S p y` (9).
+5. **A merge stopped in a git hook while his edits are aside** (13c): he lands where 13c lands him, paused, with `c`
+   and `a` offered. His edits wait in the set-aside copy until he chooses, as for a stopped rebase. `c` or `a` puts them
+   back. No extra step.
 
 ## Rulings
 ### R1. Merge over changed tracked files: preview shows the set-aside, `y` sets aside and puts back (19d-a)
@@ -81,7 +90,8 @@ as 11a and 03b did.
   fast-forward. For a true merge it is `merge-tree --write-tree --merge-base=<base> HEAD <source>` (`merge_tree_step`,
   graft-git MAP :202), made a scratch commit as the rebase path does. When the merge forecast is not `Clean`, the
   put-back is `NotChecked("the merge may stop first")`. Then comes the §8 step 3 merge of `S'`. That is ≤ 4 extra
-  spawns, only when `set_aside` is `Some`. A clean tree spawns none.
+  spawns, only when `set_aside` is `Some`. A clean tree spawns none. (Amended by §R6: ≤ 5 on a true merge, ≤ 3 on a
+  fast-forward.)
 - The app draws the set-aside row and the put-back row that rebase and cherry-pick draw today, **with no new words**.
   If `plan_lines.rs` gates those rows by kind, add `Merge` there. Never fork the wording.
 - A preview change the user sees (one or two rows on a merge preview with edits) that **follows precedent**: the
@@ -167,6 +177,38 @@ as 11a and 03b did.
   `grep -l future docs/shots` finds it. Pin it by giving that test's git child the dates. If that needs an env hook in
   production code (the job runner), **stop and report**. Don't add one.
 
+### R6. 19d-a's blocker (NOTES 19d-a, bebdddd5): option (a), fix the cause (19d-a2)
+- **(b) rejected.** Setting aside only the files the merge touches would leave git refusing a merge over an untouched
+  staged change. That is the tour's case (19c-c NOTES :225-228), which is what R1 exists for. It would also break the
+  cherry-pick rule.
+- **13c: keep the fixture, change the expectations.** `diverged()`'s unstaged `HIS_EDIT`
+  (`crates/graft-ops/tests/it/stop_hooks.rs`) is his daily case: a merge stopped in a hook while he has edits. It now
+  exercises set-aside together with the stop, which is exactly where D1 and D2 live. A clean fixture would hide them.
+  The 7 paused tests change their claim from "his edit is untouched" to: while paused, `S` is listed (found by commit)
+  and the tree holds `HEAD`'s copy; after `resume` (`Continue` or `Abort`), the edit is back with its split and `S` is
+  dropped. That is ADR-0045 §4's rule for a stopped rebase, as built. **Plus one clean-tree twin per hook stop**
+  (prepare-commit-msg, pre-merge-commit), so 13c's pause is still proven with nothing set aside.
+- **D1** (`apply/close.rs:100-101` returns `closed_set_aside` before `:150`'s `stopped::mark`) and **D2**
+  (`close.rs:176` drops `PlanFailure.before_pause`, `apply/run.rs:37`) are defects in the close **every** set-aside kind
+  shares. Fix them there, never with a merge-only branch, so a cherry-pick gets the same marks. graft-ops MAP :263
+  already records D2's effect ("Not reached: … a set-aside's close (reason stays `git was stopped`)"). That clause is
+  withdrawn, because the reason now carries through.
+- **The two captures** (`docs/shots/m8-hangup-relaunch-120x40.txt`,
+  `docs/shots/m8-quit-stopped-merge-relaunch-80x24.txt`): re-shoot after reading the diff. Every changed cell must be
+  the set-aside's own words (the ` · edits aside` stop rung, graft MAP :504). Any other change → stop. Captions say what
+  right looks like.
+- **Clash notice (broken, `crates/graft/src/update/clash.rs` `undone_with_edits`, `_ => "rebase"`):** fix it in the same
+  part, since it is the line this milestone touched. An exhaustive match with no `_` arm, worded from the entry's own
+  kind name (the journal's `kind_name`, graft-ops MAP :241, `apply/record.rs`). No new vocabulary. A kind name that
+  reads oddly in `u undoes the <kind> too` is listed in NOTES, not reworded.
+- **Spawns: accept the measured 5 (true merge) / 3 (fast-forward).** R1's "≤ 4" is amended to those numbers. The
+  baseless `merge-tree` proposal is rejected. It would change the fixed `merge_landed` signature and reach into
+  graft-git (`forecast_merge` returns no tree) to save one spawn, on a preview job that checks `stop` between spawns.
+- **Up-to-date merge over edits (question, NOTES 19d-a :303-304): verify first.** Write a test. If the nothing-to-do
+  box draws a set-aside row, the cause is the plan. Fix it in graft-ops `preview::plan`: a merge with no ref move
+  gets `set_aside: None` and `put_back: None`. If that box offers `y` (so `apply` would set aside for nothing),
+  **stop and report**. That is a different rule.
+
 ## Signatures
 ```rust
 // 19d-a, graft-ops — public signatures unchanged; behaviour per R1.
@@ -193,6 +235,10 @@ pub(crate) fn merge_landed(
 ) -> Result<MergeLanded, RunError>;
 // Use the crate's own types of these names as `merge_tree_step` and the rebase landing take them. If one differs,
 // keep the shipped type and name it in NOTES. Do not add a parallel type.
+
+// 19d-a2: no signature changes. The fixes are inside `apply/close.rs` (crate-private): the set-aside close path
+// carries `stopped_at` into `stopped::mark` (D1) and `PlanFailure.before_pause` into its error (D2), as the plain
+// close path does. `Applied::stopped_at` and `ApplyError::stopped_at()` (graft-ops MAP :260-262) keep their shapes.
 
 // 19d-b, graft (beside `Clock`, session; MAP :91)
 pub(crate) const NOW_VAR: &str = "GRAFT_NOW";
@@ -221,6 +267,8 @@ gating in `update/preview/plan_lines.rs` only if kind-gated; the `clashed` notic
 :246, :249, :303, :319-320; graft-git MAP :200-202; graft MAP :504, :645-646; the 11a tests
 (`crates/graft-ops/tests/it/cherry_pick.rs`, set-aside rows) and `tests/it/set_aside.rs` round trips. Mirror them.
 **Out:** pull (except the probe), refusal wording, any new words, the tour walk.
+**State:** partial, blocked, on branch `worktree-agent-a9afa698c484ca6f4` at bebdddd5. Its ticks and NOTES are on
+that branch. The remainder is 19d-a2.
 **Acceptance** (`crates/graft-ops/tests/it/merge_set_aside.rs` unless named; real repos):
 - [ ] The tour's case, red before: `main` + a staged change to a file `feature` doesn't touch; `apply(Merge)` commits
       the merge, `notes.txt` is still `M ` staged, and the stash list equals the list before:
@@ -262,6 +310,51 @@ fixture's tree must be clean, so no change; list any that changed); keymap row `
 **Known residual, not this ticket:** the finish screen doesn't forecast the put-back (true of rebase and pick
 continue too). The conductor checks KNOWN_GAPS for a row.
 
+## 19d-a2 — the shared set-aside close, 13c's expectations, the clash notice (Opus xhigh, ~45k)
+**Base:** branch `worktree-agent-a9afa698c484ca6f4` at bebdddd5 (19d-a, not merged). a and a2 merge together. Write the
+NOTES under `## NOTES 19d-a2` in this file on that branch.
+**Crate set:** `crates/graft-ops`: `apply/close.rs`, `apply/set_aside*` only if the close's caller needs it,
+`apply/stopped.rs` only if `mark` must take a new input, `preview` (merge plan, only if the up-to-date test is red),
+tests `tests/it/stop_hooks.rs` and `tests/it/cherry_pick.rs` (pick twins), MAP :263. `crates/graft`:
+`update/clash.rs`, `tests/it/quit_waits/{stuck,hangup}.rs` and the relaunch capture test, the two captures above, MAP
+(the `undone_with_edits` line, if listed). Also ADR-0045's 19d amendment (spawn numbers, plus one sentence: the
+set-aside close keeps the stop's mark and reason).
+**Read first:** §R1 and §R6; NOTES 19d-a on the branch; graft-ops MAP :249, :257, :259-263; the 13c tests named in
+NOTES 19d-a (do not read 13c's whole ticket); graft MAP :504, :646.
+**Out:** narrowing R1; any change to 13c's pause rule; graft-git; new words.
+**Acceptance:**
+- [ ] D1: `stop_hooks::a_merge_stopped_in_its_post_merge_hook_has_landed` green with the edit set aside:
+      `stopped_at == Some(StoppedAt::Landed)`, entry `Committed`, edit back, `S` dropped. Pick twin:
+      `cherry_pick::a_pick_over_edits_stopped_after_it_committed_has_landed`. Both red before.
+- [ ] D2: `stop_hooks::a_merge_stopped_before_git_paused_it_is_aborted_and_u_puts_it_back` green: the reason is
+      `stopped::BEFORE_PAUSE`'s words, edit back, stash empty, `u` restores. Pick twin:
+      `cherry_pick::a_pick_over_edits_stopped_before_git_paused_it_says_so`. Both red before.
+- [ ] The 7 paused tests (NOTES 19d-a "Paused") assert R6's claim, names unchanged. While paused: `S` listed by
+      commit, the tree at `HEAD`'s copy. After resume: back, split kept, `S` dropped.
+      `a_paused_merge_aborted_by_resume_gives_his_edits_back` and
+      `a_paused_merge_continues_to_the_merge_git_would_have_made` stay green.
+- [ ] Clean-tree twins: `stop_hooks::a_clean_merge_stopped_in_its_prepare_commit_msg_hook_is_paused`,
+      `stop_hooks::a_clean_merge_stopped_in_its_pre_merge_commit_hook_is_paused`. They carry 13c's old "untouched"
+      claim with nothing set aside.
+- [ ] Relaunch after a stopped merge with edits aside offers `c`/`a`. Its stop line is drawn as the screen holds it,
+      and NOTES names the rung: `quit_waits::stuck::relaunch_after_a_stopped_merge_offers_continue_and_abort`.
+- [ ] Captures re-shot, diff read, only set-aside words changed, captions updated:
+      `capture_relaunch_after_a_stopped_merge` and the hangup capture's test.
+- [ ] Clash notice: a table over every kind that sets aside (rebase, rewrite, cherry-pick, checkout, switching
+      branch-create, pull, recover, merge), each worded from its kind name, no `_` arm. Red before for pick and pull:
+      graft `clash::tests::the_clash_notice_names_each_set_aside_kind`.
+- [ ] Up-to-date merge over edits: `merge_set_aside::an_up_to_date_merge_over_edits_sets_nothing_aside`. Green as
+      found → say so. Red → fixed per R6. `y` offered → stopped and reported.
+- [ ] Spawn box re-ticked against 5 / 3: `the_merge_preview_forecasts_the_put_back`. The ADR-0045 19d amendment says
+      5 / 3 and names D1/D2's tests. MAP :263's "Not reached: … a set-aside's close" is removed.
+- [ ] All four gates workspace-wide, including every test NOTES 19d-a lists red.
+**Touches (check each, say how):** every set-aside kind's close (run `set_aside.rs`, `cherry_pick.rs`,
+`pull_set_aside.rs`, `absorb_staged.rs`, `merge_set_aside.rs`: green, no expectation changed except those named);
+`ApplyError::stopped_at` callers in graft (the stop words the app shows after a stop); recovery (a paused set-aside
+entry is `live`, left alone by `recover_interrupted`: one assertion in the relaunch test); undo of a `Landed`
+set-aside entry (D1 test's `u`); the stop line rungs; the two captures and any contact sheet holding them (the
+conductor rebuilds); KNOWN_GAPS (the conductor closes the clash-notice row and files nothing for D1/D2 once green).
+
 ## 19d-b — the session clock pinned for pty runs (Sonnet, ~25k)
 **Crate set:** `crates/graft` (`session` beside `Clock`; the launch path that builds the session clock and
 `JobRunner::with_clock`; `tests/it/pty.rs`), graft MAP :91/:1116.
@@ -290,8 +383,9 @@ closes it after 19d-b2, naming `graft_now_pins_the_drawn_age` and `no_capture_pr
 `examples/m3_walk.rs`, `examples/m4_walk.rs`, `examples/m5_walk.rs`, `examples/gallery.rs`, the `#[cfg(test)]` modules
 `src/view/tests.rs` and `src/update/tests.rs`); `docs/shots/FROZEN.md` (new); graft MAP (the `app_harness` and
 `pty` test entries). **No production file.** If one needs to change, stop and report.
-**Schedule:** after 19d-b. It shares the `crates/graft` tests with 19d-a. Before running them concurrently, the
-conductor checks the file sets are disjoint (19d-a's app test goes in a new file; `tour_tasks.rs` is 19d-a's).
+**Schedule:** after 19d-b. It shares the `crates/graft` tests with 19d-a and 19d-a2. Before running them concurrently,
+the conductor checks the file sets are disjoint. 19d-a's app test goes in a new file. `tour_tasks.rs` belongs to
+19d-a, and `quit_waits/*` to 19d-a2.
 **Read first:** this file §R3-§R5 and NOTES 19d-b; graft MAP :91, :182, :1116; graft-fixtures MAP :32 and the
 `capture` lines; ADR-0037 (contact sheets).
 **Acceptance:**
@@ -345,7 +439,8 @@ at 80×24; `~/code` under the header; card line 1 "top row" while the cursor is 
 workspace-wide, every part.
 
 ## Size
-a ~60k · b ~25k · b2 ~45k · c ~35k. Each fits one context. If one compacts, say so in NOTES.
+a ~60k (done but blocked) · a2 ~45k · b ~25k · b2 ~45k · c ~35k. Each fits one context. If one compacts, say so in
+NOTES.
 
 ## 19d-c additions (conductor 2026-10-08, from 21c Part B hand-back — stale outputs, no new decision)
 - [ ] C+1: the M8 contact sheet gains `docs/shots/m8/21c-status-partial-fetch-120x40.txt`, `21c-journal-partial-fetch-120x40.txt`, `21c-journal-partial-fetch-80x24.txt` (ticket order, each under its "what right looks like" line).
