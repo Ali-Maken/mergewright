@@ -1226,6 +1226,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/18c-secret-events-level | 18c `no_secret_leaked` checks pty output, stderr and .git files only — not the event stream | **unverified** | M8 |
 | M8/18c-file-url-remote-words | Question (18c): a failed file:// clone says "no remote named '/nonexistent/…'" — wording for a path URL | **unverified** | M8 |
 | M8/18c-captures-unjudged | 18c clone prompt / credential box captures and 4 re-shot empty-state captures: not judged by eye; colour unverified | **unverified** | M8 |
+| M8/tour-leftover-after-kill | Practice-repo temp dirs from a killed process are not swept — sweeping temp by name could delete another Graft's live tour; the OS reaps temp (19 amendment) | **unverified** | past v1 |
+| M8/19-one-hunk-cut | Tour task 1 ticks on any Committed `Stage`, not "one hunk": the journal's `Touches` has no hunk count (graft-core/src/journal.rs:161); needs a journal-format field (19 amendment) | **unverified** | past v1 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` 407 lines (~7 over); seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |
