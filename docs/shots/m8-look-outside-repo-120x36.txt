@@ -1,9 +1,9 @@
-m8-polish-and-ship/08: what right looks like — started in `~/code`, which is no repository: the header says so, the folder line under it, `o Open… i Init`, then RECENT newest first with `▸` on the newest (selection fill under it), name · `~` path · age; a `─` rule over the bar row `o open… · i init · ⏎ open the selected · q quit`. No clone, no tour. Colour unverified (rule 5).
+m8-polish-and-ship/08: what right looks like — started in `~/code`, which is no repository: the header says so, the folder line under it, `o Open… i Init c Clone…`, then RECENT newest first with `▸` on the newest (selection fill under it), name · `~` path · age; a `─` rule over the bar row `o open… · i init · c clone… · ⏎ open the selected · q quit · ? keys`. No tour (m8/18c added clone). Colour unverified (rule 5).
 
  graft · no repository here
  ~/code
 
-  o  Open…     i  Init
+  o  Open…     i  Init     c  Clone…
 
   RECENT
   ▸ payments-service    ~/code/payments-service     yesterday
@@ -35,4 +35,4 @@ m8-polish-and-ship/08: what right looks like — started in `~/code`, which is n
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- o open… · i init · ⏎ open the selected · q quit · ? keys
+ o open… · i init · c clone… · ⏎ open the selected · q quit · ? keys

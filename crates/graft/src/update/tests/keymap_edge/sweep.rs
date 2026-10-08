@@ -19,10 +19,7 @@ use super::sweep_swallowed::SWALLOWED_BY_DESIGN;
 use super::sweep_tables::{IdleWhy, NO_EFFECT_IN_FIXTURE, ONE_CHORD_IDLE, SHADOWED};
 
 /// In the table, answered by a later ticket; each deletes its own.
-const NOT_YET_ANSWERED: &[(&str, &str)] = &[
-    ("empty_state.clone", "ticket 18: clone"),
-    ("empty_state.tour", "ticket 19: the practice tour"),
-];
+const NOT_YET_ANSWERED: &[(&str, &str)] = &[("empty_state.tour", "ticket 19: the practice tour")];
 
 /// Cases that act (396 when this sweep landed, 2026-10-07; 444 after
 /// m8/09e the same day, which made `R`/`C`/`O` act from Changes and Diff;

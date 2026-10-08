@@ -1,0 +1,38 @@
+m8-polish-and-ship/18c: what right looks like — the clone failed: the URL kept in the field, `→ ~/code/payments-service` under it, and under that git's reason after `clone failed:` (Problem ink); the bar row offers `⏎ retry · esc cancel`. Colour unverified (rule 5).
+
+ graft · no repository here
+ ~/code
+
+  o  Open…     i  Init     c  Clone…
+
+  ╭ clone ─────────────────────────────────────────────────────────────────────────────────╮
+  │  clone › file:///nonexistent/payments-service.git▏                                     │
+  │  → ~/code/payments-service                                                             │
+  │  clone failed: no remote named '/nonexistent/payments-service.git'                     │
+  ╰────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ retry · esc cancel

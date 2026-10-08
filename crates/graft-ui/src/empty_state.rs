@@ -5,21 +5,21 @@
 //!  graft · no repository here
 //!  ~/code
 //!
-//!   o  Open…     i  Init
+//!   o  Open…     i  Init     c  Clone…
 //!
 //!   RECENT
 //!   ▸ payments-service    ~/code/payments-service     yesterday
 //!     web-dashboard       ~/code/web-dashboard        3 days ago
 //! ───────────────────────────────────────────────────────────────
-//!  o open… · i init · ⏎ open the selected · q quit
+//!  o open… · i init · c clone… · ⏎ open the selected · q quit · ? keys
 //! ```
 //!
-//! Only keys the screen answers are drawn (§1.15's last rule): `c` clone and
-//! `t` tour belong to later tickets and are not here yet. A missing folder
-//! draws no `i` either — a typo must not become a repository. RECENT is not
+//! Only keys the screen answers are drawn (§1.15's last rule): `t` tour
+//! belongs to a later ticket and is not here yet. A missing folder draws no
+//! `i` and no `c` — a typo must not become a repository. RECENT is not
 //! drawn when the list is empty, and neither is the `⏎` hint.
 //!
-//! A prompt (`o`'s path, `i`'s confirm) sits in a box under the list, where
+//! A prompt (`o`'s path, `i`'s confirm, `c`'s URL) sits in a box under the list, where
 //! the clone prompt of the prototype sits, and the bar row offers that
 //! prompt's keys only. A `problem` (an open or init that failed) replaces the
 //! bar row until the next key.
@@ -60,6 +60,41 @@ pub enum EmptyPrompt {
     },
     /// `i`: `Make <folder> a Git repository?`.
     ConfirmInit,
+    /// `c`: `clone › <url>`, and under it where it goes and how it went.
+    Clone(CloneView),
+}
+
+/// The clone prompt as drawn (m8/18c, rulings R6).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CloneView {
+    /// The URL typed (kept after a failure or a stop, for a retry).
+    pub url: SanitizedText,
+    /// The cursor's character index into `url`.
+    pub cursor: usize,
+    /// The folder it goes into, `~`-abbreviated: `~/code/x`, or `~/code/…`
+    /// while no name can be read from the URL.
+    pub into: SanitizedText,
+    /// Typing, running, or ended.
+    pub shown: CloneShown,
+}
+
+/// Where the clone prompt's clone is, as drawn.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CloneShown {
+    /// Nothing has run yet.
+    Typing,
+    /// The clone runs and the field is read-only.
+    Running {
+        /// git's last progress line, shortened; `None` before its first
+        /// (drawn `connecting…`).
+        progress: Option<SanitizedText>,
+    },
+    /// It failed, was stopped, or could not start.
+    Ended {
+        /// What happened, in R6's words: Problem ink, on the row under the
+        /// `→` line.
+        reason: SanitizedText,
+    },
 }
 
 /// Everything the empty state draws.
@@ -81,6 +116,10 @@ pub struct EmptyStateView {
     /// [`first_launch_words`] drawn muted on the row above the rule when
     /// nothing else is there; else not drawn this launch.
     pub first_launch: bool,
+    /// git's credential question is open over the screen (m8/18c): the bar
+    /// carries the box's keys. The box is the app's to draw over this
+    /// widget (`graft::empty_state::render`), as on a repository screen.
+    pub credential: bool,
 }
 
 /// [`EmptyStateView`] drawn over a whole frame.
@@ -117,7 +156,15 @@ pub fn bar_keys(view: &EmptyStateView, keys: &Keymap) -> Vec<(String, &'static s
             })
             .collect()
     };
-    match view.prompt {
+    if view.credential {
+        // The question keeps the shipped keys whatever his `[keys]` say,
+        // as on a repository screen (`graft::empty_state::outside_edge`).
+        return spelled(
+            Keymap::shipped(),
+            &[("credential.send", "send"), ("app.back", "cancel")],
+        );
+    }
+    match &view.prompt {
         Some(EmptyPrompt::Open { .. }) => spelled(
             Keymap::shipped(),
             &[
@@ -129,10 +176,21 @@ pub fn bar_keys(view: &EmptyStateView, keys: &Keymap) -> Vec<(String, &'static s
         Some(EmptyPrompt::ConfirmInit) => {
             spelled(keys, &[("confirm.yes", "init"), ("app.back", "keep it")])
         }
+        // A text field, as the open prompt: its keys spell from the shipped
+        // table (rulings R6's three bars).
+        Some(EmptyPrompt::Clone(clone)) => spelled(
+            Keymap::shipped(),
+            match clone.shown {
+                CloneShown::Typing => &[("app.open", "clone"), ("app.back", "cancel")],
+                CloneShown::Running { .. } => &[("app.back", "cancels")],
+                CloneShown::Ended { .. } => &[("app.open", "retry"), ("app.back", "cancel")],
+            },
+        ),
         None => {
             let mut parts = vec![("empty_state.open", "open…")];
             if !view.missing {
                 parts.push(("empty_state.init", "init"));
+                parts.push(("empty_state.clone", "clone…"));
             }
             if !view.recent.is_empty() {
                 parts.push(("app.open", "open the selected"));
@@ -218,8 +276,20 @@ const HEAD_X: u16 = 1;
 const BODY_X: u16 = 2;
 /// Said after a folder that does not exist.
 const MISSING: &str = " · no such folder";
-/// The prompt box's height: border, field, a spare row, border.
+/// The prompt box's height: border, field, a spare row (the clone's `→`
+/// line), border.
 const PROMPT_HEIGHT: u16 = 4;
+
+/// `prompt`'s box height: an ended clone has its reason on one more row.
+fn prompt_height(prompt: &EmptyPrompt) -> u16 {
+    match prompt {
+        EmptyPrompt::Clone(CloneView {
+            shown: CloneShown::Ended { .. },
+            ..
+        }) => PROMPT_HEIGHT + 1,
+        _ => PROMPT_HEIGHT,
+    }
+}
 
 fn layout(view: &EmptyStateView, area: Rect) -> Rows {
     let bottom = area.y + area.height;
@@ -243,13 +313,12 @@ fn layout(view: &EmptyStateView, area: Rect) -> Rows {
         last_used = (first + shown).saturating_sub(1).max(title);
         (Some(title), first)
     };
-    let prompt = view
-        .prompt
-        .as_ref()
-        .map(|_| next.min(rule.saturating_sub(PROMPT_HEIGHT)));
-    if let Some(y) = prompt {
-        last_used = last_used.max(y + PROMPT_HEIGHT - 1);
-    }
+    let prompt = view.prompt.as_ref().map(|prompt| {
+        let height = prompt_height(prompt);
+        let y = next.min(rule.saturating_sub(height));
+        last_used = last_used.max(y + height - 1);
+        y
+    });
     Rows {
         recent_title,
         first_recent,
@@ -349,6 +418,7 @@ impl EmptyState<'_> {
         let mut actions = vec![("o", "Open…")];
         if !self.view.missing {
             actions.push(("i", "Init"));
+            actions.push(("c", "Clone…"));
         }
         let y = area.y + 3;
         let mut x = area.x + BODY_X;
@@ -434,8 +504,10 @@ impl EmptyState<'_> {
         }
         let border = foreground(self.theme, Token::Accent);
         let inner = usize::from(width.saturating_sub(5));
+        let height = prompt_height(prompt);
         let (title, line) = match prompt {
             EmptyPrompt::Open { text, .. } => ("open", format!("open › {}", text.as_str())),
+            EmptyPrompt::Clone(clone) => ("clone", format!("clone › {}", clone.url.as_str())),
             EmptyPrompt::ConfirmInit => {
                 // A long folder loses its start, never the question `y`
                 // answers; its end (the folder's own name) stays.
@@ -444,39 +516,95 @@ impl EmptyState<'_> {
                 ("init", format!("Make {folder} a Git repository?"))
             }
         };
-        let w = usize::from(width);
-        buf.set_string(x, y, border_row('╭', '╮', title, w), border);
-        buf.set_string(
-            x,
-            y + PROMPT_HEIGHT - 1,
-            border_row('╰', '╯', "", w),
-            border,
-        );
-        for row in 1..PROMPT_HEIGHT - 1 {
-            buf.set_string(x, y + row, "│", border);
-            buf.set_string(x + width - 1, y + row, "│", border);
-        }
+        draw_box(buf, Rect::new(x, y, width, height), title, border);
         let inner_x = x + 3;
-        let shown = fit(&line, inner);
-        buf.set_string(inner_x, y + 1, &shown, foreground(self.theme, Token::Text));
-        if let EmptyPrompt::Open { text, cursor } = prompt {
-            // The cursor: `▏` past the end, the character under it reversed
-            // inside the text.
-            let before = cells("open › ")
-                + text
-                    .as_str()
-                    .chars()
-                    .take(*cursor)
-                    .map(|c| cells(&c.to_string()))
-                    .sum::<usize>();
-            if before < inner {
-                let cx = inner_x + u16::try_from(before).unwrap_or(u16::MAX);
-                if *cursor >= text.as_str().chars().count() {
-                    buf.set_string(cx, y + 1, "▏", self.key());
-                } else {
-                    buf[(cx, y + 1)].modifier.insert(Modifier::REVERSED);
-                }
+        // A URL longer than the row scrolls so the cursor stays in view —
+        // its end is what he just typed or pasted. The open prompt keeps
+        // its own drawing (its start is the folder he checks).
+        let (shown, cursor_at) = match prompt {
+            EmptyPrompt::Clone(clone) => {
+                const LEAD: &str = "clone › ";
+                let (text, before) = window(
+                    clone.url.as_str(),
+                    clone.cursor,
+                    inner.saturating_sub(cells(LEAD)),
+                );
+                (format!("{LEAD}{text}"), Some(cells(LEAD) + before))
             }
+            _ => (fit(&line, inner), None),
+        };
+        buf.set_string(inner_x, y + 1, &shown, foreground(self.theme, Token::Text));
+        if let EmptyPrompt::Clone(clone) = prompt {
+            self.draw_clone_rows(inner_x, y, inner, clone, buf);
+        }
+        let field = match prompt {
+            EmptyPrompt::Open { text, cursor } => Some(("open › ", text, cursor)),
+            // Read-only while it runs: no cursor.
+            EmptyPrompt::Clone(CloneView {
+                url,
+                cursor,
+                shown: CloneShown::Typing | CloneShown::Ended { .. },
+                ..
+            }) => Some(("clone › ", url, cursor)),
+            EmptyPrompt::ConfirmInit | EmptyPrompt::Clone(_) => None,
+        };
+        if let Some((lead, text, cursor)) = field {
+            let before = cursor_at.unwrap_or_else(|| {
+                cells(lead)
+                    + text
+                        .as_str()
+                        .chars()
+                        .take(*cursor)
+                        .map(|c| cells(&c.to_string()))
+                        .sum::<usize>()
+            });
+            let at_end = *cursor >= text.as_str().chars().count();
+            self.draw_cursor((inner_x, y + 1), before, inner, at_end, buf);
+        }
+    }
+
+    /// The field's cursor `before` cells in: `▏` past the end, the
+    /// character under it reversed inside the text.
+    fn draw_cursor(
+        &self,
+        (x, y): (u16, u16),
+        before: usize,
+        inner: usize,
+        at_end: bool,
+        buf: &mut Buffer,
+    ) {
+        if before >= inner {
+            return;
+        }
+        let cx = x + u16::try_from(before).unwrap_or(u16::MAX);
+        if at_end {
+            buf.set_string(cx, y, "▏", self.key());
+        } else {
+            buf[(cx, y)].modifier.insert(Modifier::REVERSED);
+        }
+    }
+
+    /// The clone prompt's `→ <into>[ · <progress>]` row, and an ended
+    /// clone's reason on the row under it, in Problem ink.
+    fn draw_clone_rows(&self, x: u16, y: u16, inner: usize, clone: &CloneView, buf: &mut Buffer) {
+        let progress = match &clone.shown {
+            CloneShown::Running { progress } => Some(
+                progress
+                    .as_ref()
+                    .map_or("connecting…", SanitizedText::as_str),
+            ),
+            CloneShown::Typing | CloneShown::Ended { .. } => None,
+        };
+        let line = into_line(clone.into.as_str(), progress, inner);
+        buf.set_stringn(x, y + 2, &line, inner, self.muted());
+        if let CloneShown::Ended { reason } = &clone.shown {
+            buf.set_stringn(
+                x,
+                y + 3,
+                fit(reason.as_str(), inner),
+                inner,
+                foreground(self.theme, Token::Warning),
+            );
         }
     }
 
@@ -539,6 +667,75 @@ fn column_widths(recent: &[RecentRow]) -> (usize, usize) {
             .unwrap_or(0)
     };
     (widest(|row| &row.name), widest(|row| &row.path))
+}
+
+/// A rounded box's border around `at`, `title` in its top edge.
+fn draw_box(buf: &mut Buffer, at: Rect, title: &str, border: Style) {
+    let w = usize::from(at.width);
+    buf.set_string(at.x, at.y, border_row('╭', '╮', title, w), border);
+    buf.set_string(
+        at.x,
+        at.y + at.height - 1,
+        border_row('╰', '╯', "", w),
+        border,
+    );
+    for row in 1..at.height - 1 {
+        buf.set_string(at.x, at.y + row, "│", border);
+        buf.set_string(at.x + at.width - 1, at.y + row, "│", border);
+    }
+}
+
+/// `text` in `room` cells with its cursor (character index `cursor`) in
+/// view and one cell spare for the `▏` past the end: whole when it fits;
+/// else cut at the start behind `…` so the cursor is the last thing shown,
+/// and cut at the end when what follows the cursor overruns. Returns the
+/// shown text and the cells before the cursor in it.
+fn window(text: &str, cursor: usize, room: usize) -> (String, usize) {
+    let chars: Vec<char> = text.chars().collect();
+    let cursor = cursor.min(chars.len());
+    let wide = |part: &[char]| part.iter().map(|c| cells(&c.to_string())).sum::<usize>();
+    if wide(&chars) < room {
+        return (text.to_owned(), wide(&chars[..cursor]));
+    }
+    // Drop from the start until `…`, the text up to the cursor and the
+    // cursor's own cell fit.
+    let mut start = 0;
+    while start < cursor && cells("…") + wide(&chars[start..cursor]) + 1 > room {
+        start += 1;
+    }
+    let (lead, before) = if start == 0 {
+        (String::new(), wide(&chars[..cursor]))
+    } else {
+        ("…".to_owned(), cells("…") + wide(&chars[start..cursor]))
+    };
+    let rest: String = chars[start..].iter().collect();
+    let shown = fit(&format!("{lead}{rest}"), room);
+    (shown, before)
+}
+
+/// `→ <into>[ · <progress>]` in `width` cells. The path is the part he
+/// checks, its tail most of all: it keeps at least half the row and is cut
+/// at the start (`…/code/x`); the progress takes what is left, cut from the
+/// right.
+fn into_line(into: &str, progress: Option<&str>, width: usize) -> String {
+    const ARROW: &str = "→ ";
+    let room = width.saturating_sub(cells(ARROW));
+    let tail = progress.map_or(0, |p| cells(" · ") + cells(p));
+    let path_room = room.saturating_sub(tail).max(room / 2);
+    let mut path = keep_end(into, path_room);
+    // A cut path starts at a folder boundary when one is in what is kept:
+    // `…/code/x`, never `…de/x`.
+    if let Some(rest) = path.strip_prefix('…')
+        && !rest.starts_with('/')
+        && let Some(at) = rest.find('/')
+    {
+        path = format!("…{}", &rest[at..]);
+    }
+    let line = match progress {
+        Some(progress) => format!("{ARROW}{path} · {progress}"),
+        None => format!("{ARROW}{path}"),
+    };
+    fit(&line, width)
 }
 
 /// `text` in at most `width` cells, cut at the start with `…` when longer.

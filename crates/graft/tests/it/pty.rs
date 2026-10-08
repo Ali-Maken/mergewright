@@ -124,12 +124,50 @@ impl Pty {
         Self::spawn_with(isolated, arg, ceiling, size, true)
     }
 
+    /// As [`Pty::spawn`], with git's system and global config switched off
+    /// (m8/18c): a clone has no repository whose `credential.helper` could
+    /// be blanked first, so the machine's keychain helper must neither
+    /// answer git's question for the test nor keep its password. The global
+    /// file is an empty one under the isolated home.
+    pub fn spawn_without_git_config(
+        isolated: &Isolated,
+        arg: &Path,
+        ceiling: &Path,
+        size: (u16, u16),
+    ) -> Self {
+        let global = isolated.home().join("empty.gitconfig");
+        std::fs::create_dir_all(isolated.home()).expect("home");
+        std::fs::write(&global, "").expect("an empty global git config");
+        Self::spawn_env(
+            isolated,
+            arg,
+            ceiling,
+            size,
+            false,
+            &[
+                ("GIT_CONFIG_NOSYSTEM", "1".into()),
+                ("GIT_CONFIG_GLOBAL", global.into_os_string()),
+            ],
+        )
+    }
+
     fn spawn_with(
+        isolated: &Isolated,
+        arg: &Path,
+        ceiling: &Path,
+        size: (u16, u16),
+        stderr_on_pty: bool,
+    ) -> Self {
+        Self::spawn_env(isolated, arg, ceiling, size, stderr_on_pty, &[])
+    }
+
+    fn spawn_env(
         isolated: &Isolated,
         arg: &Path,
         ceiling: &Path,
         (columns, rows): (u16, u16),
         stderr_on_pty: bool,
+        env: &[(&str, std::ffi::OsString)],
     ) -> Self {
         std::fs::create_dir_all(isolated.config()).expect("config home");
         std::fs::create_dir_all(isolated.home()).expect("home");
@@ -156,25 +194,14 @@ impl Pty {
             .env_remove("GIT_WORK_TREE")
             .env_remove("NO_COLOR")
             .env_remove("GRAFT_TRACE")
+            .envs(env.iter().map(|(name, value)| (*name, value)))
             .stdin(Stdio::from(slave.try_clone().expect("slave fd")))
             .stdout(Stdio::from(slave))
             .stderr(stderr)
             .spawn()
             .expect("graft starts");
         let master = File::from(pty.master);
-        let output = Arc::new(Mutex::new(Vec::new()));
-        let mut reader = master.try_clone().expect("master fd");
-        let sink = Arc::clone(&output);
-        std::thread::spawn(move || {
-            let mut buffer = [0_u8; 8192];
-            // Ends at EOF or EIO, which is how a pty says its last slave
-            // closed: the child has gone.
-            while let Ok(read @ 1..) = reader.read(&mut buffer) {
-                sink.lock()
-                    .expect("output")
-                    .extend_from_slice(&buffer[..read]);
-            }
-        });
+        let output = drain(master.try_clone().expect("master fd"));
         let stderr = Arc::new(Mutex::new(Vec::new()));
         // On the pty, stderr is in `output`; piped, it is gathered apart.
         if let Some(mut child_err) = child.stderr.take() {
@@ -476,4 +503,21 @@ fn a_frame_not_yet_ended_is_not_on_the_screen() {
     bytes.extend_from_slice(graft_term::SYNC_END);
     let screen = Screen::replay(&bytes, 20, 2);
     assert_eq!(screen.lines()[0], "second, half", "{}", screen.text());
+}
+
+/// Gathers everything the pty's master reads, on its own thread.
+fn drain(mut reader: File) -> Arc<Mutex<Vec<u8>>> {
+    let output = Arc::new(Mutex::new(Vec::new()));
+    let sink = Arc::clone(&output);
+    std::thread::spawn(move || {
+        let mut buffer = [0_u8; 8192];
+        // Ends at EOF or EIO, which is how a pty says its last slave
+        // closed: the child has gone.
+        while let Ok(read @ 1..) = reader.read(&mut buffer) {
+            sink.lock()
+                .expect("output")
+                .extend_from_slice(&buffer[..read]);
+        }
+    });
+    output
 }

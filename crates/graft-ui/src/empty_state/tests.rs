@@ -9,7 +9,8 @@ use ratatui::layout::Rect;
 use ratatui::widgets::Widget;
 
 use super::{
-    EmptyPrompt, EmptyState, EmptyStateView, RecentRow, bar_keys, first_launch_words, recent_age,
+    CloneShown, CloneView, EmptyPrompt, EmptyState, EmptyStateView, RecentRow, bar_keys,
+    first_launch_words, recent_age,
 };
 use crate::theme::{Theme, ThemeKind};
 
@@ -41,6 +42,7 @@ fn with_recents() -> EmptyStateView {
         prompt: None,
         problem: None,
         first_launch: false,
+        credential: false,
     }
 }
 
@@ -82,7 +84,7 @@ fn rows_are_as_the_mockup_at_both_sizes() {
         assert_eq!(lines[0], " graft · no repository here", "{text}");
         assert_eq!(lines[1], " ~/code", "{text}");
         assert_eq!(lines[2], "", "{text}");
-        assert_eq!(lines[3], "  o  Open…     i  Init", "{text}");
+        assert_eq!(lines[3], "  o  Open…     i  Init     c  Clone…", "{text}");
         assert_eq!(lines[5], "  RECENT", "{text}");
         assert_eq!(
             lines[6], "  ▸ payments-service    ~/code/payments-service     yesterday",
@@ -100,13 +102,10 @@ fn rows_are_as_the_mockup_at_both_sizes() {
         assert!(lines[rows - 2].chars().all(|c| c == '─'), "{text}");
         assert_eq!(
             lines[rows - 1],
-            " o open… · i init · ⏎ open the selected · q quit · ? keys",
+            " o open… · i init · c clone… · ⏎ open the selected · q quit · ? keys",
             "{text}"
         );
-        assert!(
-            !text.contains("Clone") && !text.contains("tour"),
-            "c/t drawn: {text}"
-        );
+        assert!(!text.contains("tour"), "t drawn: {text}");
     }
 }
 
@@ -115,7 +114,10 @@ fn an_empty_list_draws_no_recent_block_and_no_enter_hint() {
     let (_, lines) = draw(&no_recents(), 80, 24);
     let text = lines.join("\n");
     assert!(!text.contains("RECENT"), "{text}");
-    assert_eq!(lines[23], " o open… · i init · q quit · ? keys", "{text}");
+    assert_eq!(
+        lines[23], " o open… · i init · c clone… · q quit · ? keys",
+        "{text}"
+    );
 }
 
 #[test]
@@ -131,6 +133,7 @@ fn a_missing_folder_says_so_and_offers_no_init() {
     assert_eq!(lines[3], "  o  Open…", "{text}");
     assert_eq!(lines[23], " o open… · q quit · ? keys", "{text}");
     assert!(!text.contains("init") && !text.contains("Init"), "{text}");
+    assert!(!text.contains("clone") && !text.contains("Clone"), "{text}");
 }
 
 #[test]
@@ -236,8 +239,177 @@ fn bar_keys_follow_the_form() {
             .map(|(key, _)| key)
             .collect()
     };
-    assert_eq!(keys(&with_recents()), ["o", "i", "⏎", "q", "?"]);
-    assert_eq!(keys(&no_recents()), ["o", "i", "q", "?"]);
+    assert_eq!(keys(&with_recents()), ["o", "i", "c", "⏎", "q", "?"]);
+    assert_eq!(keys(&no_recents()), ["o", "i", "c", "q", "?"]);
+}
+
+fn clone_view(url: &str, into: &str, shown: CloneShown) -> EmptyStateView {
+    EmptyStateView {
+        prompt: Some(EmptyPrompt::Clone(CloneView {
+            url: sanitize_line(url),
+            cursor: url.chars().count(),
+            into: sanitize_line(into),
+            shown,
+        })),
+        ..with_recents()
+    }
+}
+
+fn bar_line(view: &EmptyStateView) -> String {
+    bar_keys(view, crate::keymap::Keymap::shipped())
+        .into_iter()
+        .map(|(key, label)| format!("{key} {label}"))
+        .collect::<Vec<_>>()
+        .join(" · ")
+}
+
+/// Rulings R6: the clone prompt in the open prompt's slot, `→ <into>` muted
+/// under the URL, and each sub-state's bar.
+#[test]
+fn the_clone_prompt_draws_each_state_and_its_bar() {
+    let typing = clone_view("file:///srv/x.git", "~/code/x", CloneShown::Typing);
+    let (_, lines) = draw(&typing, 80, 24);
+    let text = lines.join("\n");
+    assert!(lines[10].starts_with("  ╭ clone ─"), "{text}");
+    assert_eq!(
+        lines[11].trim_end_matches(['│', ' ']),
+        "  │  clone › file:///srv/x.git▏",
+        "{text}"
+    );
+    assert_eq!(
+        lines[12].trim_end_matches(['│', ' ']),
+        "  │  → ~/code/x",
+        "{text}"
+    );
+    assert!(lines[13].starts_with("  ╰─"), "{text}");
+    assert_eq!(lines[23], " ⏎ clone · esc cancel", "{text}");
+    assert_eq!(bar_line(&typing), "⏎ clone · esc cancel");
+
+    let connecting = clone_view(
+        "file:///srv/x.git",
+        "~/code/x",
+        CloneShown::Running { progress: None },
+    );
+    let (_, lines) = draw(&connecting, 80, 24);
+    assert!(lines[12].contains("→ ~/code/x · connecting…"), "{lines:#?}");
+    assert!(!lines[11].contains('▏'), "read-only: no cursor");
+    assert_eq!(bar_line(&connecting), "esc cancels");
+    let running = clone_view(
+        "file:///srv/x.git",
+        "~/code/x",
+        CloneShown::Running {
+            progress: Some(sanitize_line("Receiving objects 40%")),
+        },
+    );
+    let (_, lines) = draw(&running, 80, 24);
+    assert!(
+        lines[12].contains("→ ~/code/x · Receiving objects 40%"),
+        "{lines:#?}"
+    );
+
+    let ended = clone_view(
+        "file:///srv/x.git",
+        "~/code/x",
+        CloneShown::Ended {
+            reason: sanitize_line("clone failed: repository not found"),
+        },
+    );
+    let (_, lines) = draw(&ended, 80, 24);
+    assert!(
+        lines[13].contains("│  clone failed: repository not found"),
+        "{lines:#?}"
+    );
+    assert!(lines[14].starts_with("  ╰─"), "{lines:#?}");
+    assert_eq!(bar_line(&ended), "⏎ retry · esc cancel");
+}
+
+/// Widths 60, 80, 120 (and a short screen): the prompt's rows never reach
+/// the rule, and a long `→` path loses its start at a folder boundary,
+/// keeping its tail.
+#[test]
+fn clone_prompt_fits_every_width() {
+    let into = "~/work/clients/acme/platform/services/payments/billing-gateway-v2";
+    for shown in [
+        CloneShown::Typing,
+        CloneShown::Running {
+            progress: Some(sanitize_line("Receiving objects  40% (400/1000)")),
+        },
+        CloneShown::Ended {
+            reason: sanitize_line("clone failed: could not resolve host"),
+        },
+    ] {
+        for (columns, rows) in [(60, 24), (80, 24), (120, 36), (60, 12)] {
+            let view = EmptyStateView {
+                recent: (0..9)
+                    .map(|i| row(&format!("r{i}"), "~/r", "today"))
+                    .collect(),
+                ..clone_view(
+                    "https://example.com/acme/billing-gateway-v2.git",
+                    into,
+                    shown.clone(),
+                )
+            };
+            let (_, lines) = draw(&view, columns, rows);
+            let text = lines.join("\n");
+            let rule = usize::from(rows) - 2;
+            assert!(
+                lines[rule].chars().all(|c| c == '─'),
+                "{columns}x{rows}: {text}"
+            );
+            let bottom = lines
+                .iter()
+                .rposition(|line| line.starts_with("  ╰"))
+                .unwrap_or_else(|| panic!("{columns}x{rows}: no box bottom\n{text}"));
+            assert!(bottom < rule, "{columns}x{rows}: box over the rule\n{text}");
+            let arrow = lines
+                .iter()
+                .find(|line| line.contains('→'))
+                .unwrap_or_else(|| panic!("{columns}x{rows}: no → row\n{text}"));
+            assert!(
+                arrow.contains("billing-gateway-v2"),
+                "{columns}x{rows}: {arrow:?}"
+            );
+            // Whole when it fits; else cut at the start, at a `/`.
+            let whole = arrow.contains(into);
+            assert!(
+                whole || (arrow.contains("→ …/") && !arrow.contains("~/work")),
+                "{columns}x{rows}: {arrow:?}"
+            );
+            if columns == 60 {
+                assert!(!whole, "60 columns cannot hold it whole: {arrow:?}");
+            }
+        }
+    }
+}
+
+/// A URL longer than the field scrolls: its end (what he just typed or
+/// pasted) and the cursor after it stay in view, the start behind `…`.
+#[test]
+fn a_long_url_keeps_its_end_and_the_cursor_in_view() {
+    let url = "file:///var/folders/z4/tqdvc9557mv3f1pqcnw0/T/graft-remote-o3U7fu/remote.git";
+    let (_, lines) = draw(
+        &clone_view(url, "~/code/remote", CloneShown::Typing),
+        60,
+        24,
+    );
+    let field = lines[11].trim_end_matches(['│', ' ']);
+    assert!(field.starts_with("  │  clone › …"), "{field:?}");
+    assert!(field.ends_with("/remote.git▏"), "{field:?}");
+}
+
+/// While git's question is open, the bar is the question's (`⏎ send · esc
+/// cancel`), whatever the prompt under it.
+#[test]
+fn the_credential_bar_replaces_the_clone_bar() {
+    let view = EmptyStateView {
+        credential: true,
+        ..clone_view(
+            "http://h/x.git",
+            "~/code/x",
+            CloneShown::Running { progress: None },
+        )
+    };
+    assert_eq!(bar_line(&view), "⏎ send · esc cancel");
 }
 
 #[test]
@@ -275,6 +447,7 @@ fn the_bar_spells_his_keys_and_the_open_prompt_the_shipped_ones() {
         &[
             &["empty_state.open"],
             &["empty_state.init"],
+            &["empty_state.clone"],
             &["app.open"],
             &["app.quit"],
         ],

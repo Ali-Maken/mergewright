@@ -1,0 +1,38 @@
+m8-polish-and-ship/18c: what right looks like — `c` then a URL typed: the boxed `clone ›` prompt under the list with the cursor `▏` after the URL, and under it, muted, `→ ~/code/payments-service` — where it will land; the header line now offers `c Clone…`; the bar row holds only the prompt's keys `⏎ clone · esc cancel`. Colour unverified (rule 5).
+
+ graft · no repository here
+ ~/code
+
+  o  Open…     i  Init     c  Clone…
+
+  ╭ clone ─────────────────────────────────────────────────────────────────────────────────╮
+  │  clone › file:///nonexistent/payments-service.git▏                                     │
+  │  → ~/code/payments-service                                                             │
+  ╰────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ clone · esc cancel

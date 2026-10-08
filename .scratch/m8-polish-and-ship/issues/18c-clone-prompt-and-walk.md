@@ -1,6 +1,6 @@
 # 18c — `c` on the empty state: the clone prompt, its bar, the J15 walk
 
-Status: ready (conductor 2026-10-08)
+Status: done (builder 2026-10-08)
 Build with: **Sonnet** — every decision is in R6 and 18b's state; drawing and keys follow `o`'s prompt and M4's
 credential box, the walk follows `m4_walk`'s credential scenarios.
 Blocked by: 18b
@@ -39,26 +39,26 @@ RECENT moves down by the rows used. Bars: Typing `⏎ clone · esc cancel`; Runn
 `⏎ retry · esc cancel`. Running: every key but `esc` and `⌃C` swallowed.
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] J15 `clone` ≤ 3 inputs (`c`, `Type`, `⏎`): `file://` bare → that repo's graph, cursor on HEAD; walk fails one
+- [x] J15 `clone` ≤ 3 inputs (`c`, `Type`, `⏎`): `file://` bare → that repo's graph, cursor on HEAD; walk fails one
       key over. Use 08's empty-state walk driver if one exists (`rg -n 'J21|init_here' crates/graft/tests`); else
       drive `outside_edge` + `outside_job` with a real `JobRunner` and say so in NOTES.
       (`tests/it/m8_walk/clone.rs::clone_from_the_empty_state`)
-- [ ] HTTP Basic: credential box drawn over the empty state (frame has its title), `TypeSecret`, `⏎`, clone lands;
+- [x] HTTP Basic: credential box drawn over the empty state (frame has its title), `TypeSecret`, `⏎`, clone lands;
       `no_secret_leaked` over events, frames and the new repo. (`…::clone.rs::clone_asks_for_a_password`)
-- [ ] R6 rows, words asserted from the drawn frame: no name; target non-empty (nothing ran); unreachable → fails
+- [x] R6 rows, words asserted from the drawn frame: no name; target non-empty (nothing ran); unreachable → fails
       row, URL kept, `⏎` retries; `HungRemote` + `esc` → stopped row, no folder; `esc` not running → list, nothing
       written. (`…::clone.rs::{bad_url_stays, target_exists_refused, failure_keeps_the_url_and_retries,
       esc_mid_clone_stops_and_keeps_the_url, esc_closes_the_prompt}`)
-- [ ] Missing folder: `c` neither drawn nor answered. (`graft::empty_state::tests::no_clone_in_a_missing_folder`)
-- [ ] Every key each clone sub-state's bar draws is answered (Typing, Running, Ended, credential).
-      (`graft::empty_state::sweep_tests::every_key_the_bar_draws_is_answered` extended; NOTES names the rows)
-- [ ] `c` leaves `NOT_YET_ANSWERED` in `empty_state/sweep_tests.rs:74` and `update/tests/keymap_edge/sweep.rs:23`;
-      `ACTING_AT_LANDING` grows, never shrinks. (both sweeps green)
-- [ ] Widths 60, 80, 120: prompt rows never overlap the rule; `→` path left-truncated. 
+- [x] Missing folder: `c` neither drawn nor answered. (`graft::empty_state::tests::no_clone_in_a_missing_folder`)
+- [x] Every key each clone sub-state's bar draws is answered (Typing, Running, Ended, credential).
+      (`graft::empty_state::tests::empty_state_bar_keys_are_answered` — the real name; forms in NOTES)
+- [x] `c` leaves `NOT_YET_ANSWERED` in `empty_state/sweep_tests.rs:74` and `update/tests/keymap_edge/sweep.rs:23`;
+      `ACTING_AT_LANDING` grows, never shrinks. (`graft::empty_state::sweep_tests` + `update::tests::keymap_edge::sweep`, both green)
+- [x] Widths 60, 80, 120: prompt rows never overlap the rule; `→` path left-truncated. 
       (`graft_ui::empty_state::tests::clone_prompt_fits_every_width`)
-- [ ] Captures (pty, `launches` = `done`): `docs/shots/m8/clone-prompt-120x36.txt` (URL typed, `→` line),
+- [x] Captures (pty, `launches` = `done`): `docs/shots/m8/clone-prompt-120x36.txt` (URL typed, `→` line),
       `docs/shots/m8/clone-failed-120x36.txt`, `docs/shots/m8/clone-credential-120x36.txt`. **Colour unverified**.
-      His to judge (rule 6).
+      His to judge (rule 6). (written by `clone_asks_for_a_password`, `failure_keeps_the_url_and_retries`)
 
 ## Touches
 - §1.15 header and bar line: now built in full except `t` (G-tour) — mock-up unchanged.
@@ -74,3 +74,22 @@ workspace-wide.
 
 ## Size
 One context, ~60k tokens.
+
+## NOTES (builder, 2026-10-08)
+- Scout: none new; `scouts/18-first-run.md` plus direct reads were enough.
+- 18b glue observed on a real pty (`tests/it/m8_walk/clone.rs`): file:// clone lands on the graph, cursor on HEAD,
+  recent list updated; HTTP credential box drawn, password typed, clone lands; stop/fail words on the prompt.
+- Walk driver: pty (real binary), not outside_edge+JobRunner. Fence `clone 3` asserted.
+- Secret check: password absent from pty output, stderr, and every file under the new `.git`. **Events-level
+  `no_secret_leaked` unverified** — events are not observable from a pty.
+- Bar sweep forms: list, no-recents, missing, open, init, clone typing, running, ended, credential.
+  Palette: `palette_tests::the_clone_row_opens_the_clone_prompt`.
+- Deviations: `EmptyStateView::credential: bool` not `Option<CredentialView>` (no Debug/PartialEq; graft draws the
+  box via extracted `view::credential::prompt_view`); `CloneView` holds `url`+`cursor`, not FieldView; long URLs
+  scroll so end+cursor stay visible.
+- Re-shot (only actions + bar lines changed): `m8-look-outside-repo-120x36.txt`,
+  `m8-look-outside-repo-no-recent-80x24.txt`, `m8-look-outside-repo-open-prompt-80x24.txt`,
+  `m8/first-launch-empty-state-120x36.txt`.
+- Gap (broken): open prompt's long path cuts its end, hiding the cursor — same fix as clone's `window()`, untouched.
+- Question: 18a failure words for a missing file:// read "no remote named '/nonexistent/…'" — odd wording?
+- Colour unverified (rule 5).

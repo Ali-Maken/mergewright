@@ -17,7 +17,10 @@ use graft_core::event::{Event, KeyCode, KeyPress};
 use graft_core::job::JobId;
 use graft_ops::clone::{CloneError, name_from_url};
 use graft_term::{sanitize_line, sanitize_path};
-use graft_ui::empty_state::{EmptyPrompt, EmptyState, EmptyStateView, RecentRow, recent_age};
+use graft_ui::credential_prompt::{CredentialPrompt as CredentialBox, credential_area};
+use graft_ui::empty_state::{
+    CloneShown, CloneView, EmptyPrompt, EmptyState, EmptyStateView, RecentRow, recent_age,
+};
 use graft_ui::keymap::{ContextId, KeyChord, Keymap, Translated};
 use graft_ui::paint::foreground;
 use graft_ui::palette::{Palette, WIDE_FROM, palette_area};
@@ -62,10 +65,6 @@ pub(crate) struct CloneState {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum CloneRun {
     /// Nothing has run yet: the URL is being typed.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "18c's `c` opens the prompt typing")
-    )]
     Typing,
     /// The clone job is running.
     Running {
@@ -129,16 +128,8 @@ pub(crate) enum OutsideStep {
     /// A palette theme row: draw in this theme for the rest of the run.
     Retheme(ThemeKind),
     /// Run this clone on the empty state's pool (started on the first).
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "18c's clone prompt `⏎` asks for it")
-    )]
     StartClone(CloneRequest),
     /// Stop the clone job (`JobRunner::cancel`).
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "18c's `esc` while running asks for it")
-    )]
     StopClone(JobId),
     /// The credential prompt's answer for this job; `None` is `esc`: stop
     /// the job, then refuse its ask.
@@ -156,14 +147,8 @@ pub(crate) enum OutsideStep {
 /// The reason, in rulings R6's words, when no folder can be named from the
 /// URL or that folder is already there with something in it. Nothing has
 /// run either way.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "18c's clone prompt `⏎` calls it")
-)]
 pub(crate) fn clone_request(folder: &Path, url: &str) -> Result<CloneRequest, String> {
-    let name = name_from_url(url)
-        .filter(|_| !url.starts_with('-'))
-        .ok_or_else(|| CloneError::BadUrl.explain())?;
+    let name = folder_name(url).ok_or_else(|| CloneError::BadUrl.explain())?;
     let into = folder.join(name);
     // As `graft_ops::clone` refuses (it checks again when it runs): an
     // empty folder is filled, anything else there is his.
@@ -177,6 +162,12 @@ pub(crate) fn clone_request(folder: &Path, url: &str) -> Result<CloneRequest, St
         url: url.to_owned(),
         into,
     })
+}
+
+/// The folder a clone of `url` makes, as `⏎` would name it: none for a URL
+/// git would read as an option.
+fn folder_name(url: &str) -> Option<String> {
+    name_from_url(url).filter(|_| !url.starts_with('-'))
 }
 
 /// The clone job `job` is running into `into`: the prompt goes read-only
@@ -295,8 +286,8 @@ fn credential_key(state: &mut OutsideState, key: KeyPress) -> OutsideStep {
 /// typed there goes on as typed; otherwise the press is translated in
 /// `empty_state` — a moved action's chord becomes its default, and a
 /// default whose action moved does what a key nobody answers does: clears
-/// the problem line, and nothing else. (The clone prompt, ticket 18, joins
-/// the "prompt open" check.) The init box is a confirm box (§2.13, §2.3c):
+/// the problem line, and nothing else. The clone prompt is a text field
+/// too (m8/18c). The init box is a confirm box (§2.13, §2.3c):
 /// while it is open the press translates in `Confirm`, whose own row is
 /// `confirm.yes`, so the start screen's rows behind it (`c` clone, …) are
 /// not live there (m8/09d D6).
@@ -314,7 +305,8 @@ pub(crate) fn outside_edge(
     if state.palette.is_some() {
         return palette_key(state, keymap, key);
     }
-    if matches!(state.prompt, Some(Prompt::Open(_))) {
+    // Both prompts are text fields: what is typed goes on as typed.
+    if matches!(state.prompt, Some(Prompt::Open(_) | Prompt::Clone(_))) {
         return outside_key(state, key);
     }
     let Some(chord) = KeyChord::from_press(&key) else {
@@ -422,6 +414,12 @@ pub(crate) fn outside_paste(state: &mut OutsideState, keymap: &Keymap, text: &st
             .unwrap_or(0);
     } else if let Some(Prompt::Open(field)) = &mut state.prompt {
         field.insert_str(text);
+    } else if let Some(Prompt::Clone(clone)) = &mut state.prompt
+        && !matches!(clone.run, CloneRun::Running { .. })
+    {
+        // A URL pasted with its newline is still one line.
+        clone.url.insert_str(text.trim());
+        clone.run = CloneRun::Typing;
     }
 }
 
@@ -444,6 +442,65 @@ pub(crate) fn render(
         keys: keymap,
     }
     .render(area, buf);
+    render_palette(state, keymap, theme, area, buf);
+    render_credential(state, theme, ascii, area, buf);
+}
+
+/// git's question for the clone, last, over everything (it is modal): the
+/// box's band cleared full width, as a repository screen clears it
+/// (`view::frame::boxes::draw_credential`, ADR-0040). The bar row under it
+/// already carries the box's keys (`EmptyStateView::credential`).
+fn render_credential(
+    state: &OutsideState,
+    theme: &Theme,
+    ascii: bool,
+    area: Rect,
+    buf: &mut Buffer,
+) {
+    let Some(prompt) = &state.credential else {
+        return;
+    };
+    let footer = format!("{} the clone", crate::view::credential::footer_keys());
+    let view = crate::view::credential::prompt_view(prompt, &footer);
+    // Over the whole screen bar the rule and the bar row.
+    let over = Rect {
+        height: area.height.saturating_sub(2),
+        ..area
+    };
+    let rect = credential_area(over).intersection(over);
+    if rect.is_empty() {
+        return;
+    }
+    let band = Rect {
+        x: area.x,
+        width: area.width,
+        ..rect
+    };
+    for y in band.y..band.y + band.height {
+        for x in band.x..band.x + band.width {
+            buf[(x, y)].reset();
+        }
+    }
+    buf.set_style(
+        rect,
+        ratatui::style::Style::new().bg(graft_ui::paint::color(theme.token(Token::SurfaceRaised))),
+    );
+    CredentialBox {
+        view: &view,
+        theme,
+        ascii,
+    }
+    .render(rect, buf);
+}
+
+/// The palette over the list, its keys on the bar row, while it is up.
+fn render_palette(
+    state: &OutsideState,
+    keymap: &Keymap,
+    theme: &Theme,
+    area: Rect,
+    buf: &mut Buffer,
+) {
     let Some(open) = &state.palette else {
         return;
     };
@@ -494,11 +551,7 @@ pub(crate) fn outside_key(state: &mut OutsideState, key: KeyPress) -> OutsideSte
                 OutsideStep::Stay
             }
         },
-        // Its keys are 18c's; until then it keeps every key.
-        Some(clone @ Prompt::Clone(_)) => {
-            state.prompt = Some(clone);
-            OutsideStep::Stay
-        }
+        Some(Prompt::Clone(clone)) => clone_prompt_key(state, clone, key),
         None => list_key(state, key),
     }
 }
@@ -520,6 +573,14 @@ fn list_key(state: &mut OutsideState, key: KeyPress) -> OutsideStep {
         // place to change if the user says yes.
         KeyCode::Char('i') if !state.missing => {
             state.prompt = Some(Prompt::ConfirmInit);
+            OutsideStep::Stay
+        }
+        // Gated as `i` (rulings R6): a missing folder offers neither.
+        KeyCode::Char('c') if !state.missing => {
+            state.prompt = Some(Prompt::Clone(CloneState {
+                url: TextField::new(""),
+                run: CloneRun::Typing,
+            }));
             OutsideStep::Stay
         }
         KeyCode::Enter => state
@@ -571,6 +632,72 @@ fn open_prompt_key(state: &mut OutsideState, mut field: TextField, key: KeyPress
         _ => {}
     }
     state.prompt = Some(Prompt::Open(field));
+    OutsideStep::Stay
+}
+
+/// A key in the clone prompt (rulings R6). While it runs, `esc` stops it
+/// and every other key is swallowed (`⌃C` quits before this). Otherwise a
+/// text field: `esc` closes it, nothing written; `⏎` asks for the clone, or
+/// puts the reason it cannot run on the prompt, URL kept; an edit after an
+/// end goes back to typing. `⇥` completes nothing.
+fn clone_prompt_key(state: &mut OutsideState, mut clone: CloneState, key: KeyPress) -> OutsideStep {
+    if let CloneRun::Running { job, .. } = clone.run {
+        state.prompt = Some(Prompt::Clone(clone));
+        return if key.code == KeyCode::Escape {
+            OutsideStep::StopClone(job)
+        } else {
+            OutsideStep::Stay
+        };
+    }
+    let edited = match key.code {
+        KeyCode::Escape => return OutsideStep::Stay,
+        KeyCode::Enter => {
+            let step = match clone_request(&state.folder, clone.url.text().trim()) {
+                // The loop marks it running (`clone_started`) once the pool
+                // has it.
+                Ok(request) => OutsideStep::StartClone(request),
+                Err(reason) => {
+                    clone.run = CloneRun::Ended { words: reason };
+                    OutsideStep::Stay
+                }
+            };
+            state.prompt = Some(Prompt::Clone(clone));
+            return step;
+        }
+        KeyCode::Backspace => {
+            clone.url.backspace();
+            true
+        }
+        KeyCode::Delete => {
+            clone.url.delete();
+            true
+        }
+        KeyCode::Left => {
+            clone.url.left();
+            false
+        }
+        KeyCode::Right => {
+            clone.url.right();
+            false
+        }
+        KeyCode::Home => {
+            clone.url.home();
+            false
+        }
+        KeyCode::End => {
+            clone.url.end();
+            false
+        }
+        KeyCode::Char(c) if !key.modifiers.control && !key.modifiers.alt => {
+            clone.url.insert(c);
+            true
+        }
+        _ => false,
+    };
+    if edited {
+        clone.run = CloneRun::Typing;
+    }
+    state.prompt = Some(Prompt::Clone(clone));
     OutsideStep::Stay
 }
 
@@ -655,17 +782,51 @@ pub(crate) fn view(state: &OutsideState, now: SystemTime) -> EmptyStateView {
             })
             .collect(),
         cursor: state.cursor,
-        prompt: state.prompt.as_ref().and_then(|prompt| match prompt {
-            Prompt::Open(field) => Some(EmptyPrompt::Open {
+        prompt: state.prompt.as_ref().map(|prompt| match prompt {
+            Prompt::Open(field) => EmptyPrompt::Open {
                 text: sanitize_line(field.text()),
                 cursor: field.cursor(),
-            }),
-            Prompt::ConfirmInit => Some(EmptyPrompt::ConfirmInit),
-            // Drawn by 18c (graft-ui has no clone prompt yet).
-            Prompt::Clone(_) => None,
+            },
+            Prompt::ConfirmInit => EmptyPrompt::ConfirmInit,
+            Prompt::Clone(clone) => EmptyPrompt::Clone(clone_view(state, clone)),
         }),
         problem: state.problem.as_deref().map(sanitize_line),
         first_launch: state.first_launch.is_shown(),
+        credential: state.credential.is_some(),
+    }
+}
+
+/// The clone prompt as drawn: `into` is where the running clone goes, or
+/// where `⏎` would put it — `<folder>/…` while no name can be read.
+fn clone_view(state: &OutsideState, clone: &CloneState) -> CloneView {
+    let home = state.home.as_deref();
+    let shown_path = |path: &Path| sanitize_path(&home_relative(path, home));
+    let named = || {
+        folder_name(clone.url.text().trim()).map_or_else(
+            || sanitize_line(&format!("{}/\u{2026}", shown_path(&state.folder).as_str())),
+            |name| shown_path(&state.folder.join(name)),
+        )
+    };
+    let (into, shown) = match &clone.run {
+        CloneRun::Typing => (named(), CloneShown::Typing),
+        CloneRun::Running { into, progress, .. } => (
+            shown_path(into),
+            CloneShown::Running {
+                progress: progress.as_deref().map(sanitize_line),
+            },
+        ),
+        CloneRun::Ended { words } => (
+            named(),
+            CloneShown::Ended {
+                reason: sanitize_line(words),
+            },
+        ),
+    };
+    CloneView {
+        url: sanitize_line(clone.url.text()),
+        cursor: clone.url.cursor(),
+        into,
+        shown,
     }
 }
 
