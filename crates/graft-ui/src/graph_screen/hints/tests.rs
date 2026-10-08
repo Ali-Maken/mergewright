@@ -1150,9 +1150,10 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         // A filter keeps the doorway of the context it filters: `? keys`
         // still leads to everything, the dropped `⏎` included. So does the
         // way back: it leads the row's list, and changes nothing else.
-        HintContext::PaneFocused { row, .. } | HintContext::OperationLive { row, .. } => {
-            doorway_of(row)
-        }
+        // A search's `n N` lead the row's list and change nothing else.
+        HintContext::PaneFocused { row, .. }
+        | HintContext::OperationLive { row, .. }
+        | HintContext::Searching(row) => doorway_of(row),
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
@@ -2998,5 +2999,94 @@ fn a_stash_row_offers_open_then_stash_and_nothing_that_refuses_on_a_stash() {
                 hints_text(&hints)
             );
         }
+    }
+}
+
+/// m8/15b (15 A2): a search left open after `⏎` leads the graph row's bar
+/// with `n next  N prev`, then the row's own keys — bare, marked, under
+/// `R`, and on a stash's row — at every width.
+#[test]
+fn a_search_after_enter_leads_the_row_bar_with_next_and_prev() {
+    let rows = [
+        HintContext::WorkingTreeRow,
+        HintContext::PlainRow {
+            verbs: RowVerbs::NONE,
+        },
+        HintContext::BranchRow {
+            current: true,
+            verbs: RowVerbs::NONE,
+        },
+        HintContext::StashRow,
+        HintContext::Marked(Box::new(HintContext::PlainRow {
+            verbs: RowVerbs::NONE,
+        })),
+        HintContext::Rewritable(Box::new(HintContext::PlainRow {
+            verbs: RowVerbs::NONE,
+        })),
+    ];
+    for row in rows {
+        let searching = HintContext::Searching(Box::new(row.clone()));
+        assert!(
+            all_contexts().contains(&searching),
+            "every_context sweeps {searching:?}"
+        );
+        for columns in [80, 100, 120, 160] {
+            for divider in [Divider::Shown, Divider::Hidden] {
+                let hints = hints_for(&searching, divider, columns);
+                assert_eq!(
+                    hints_text(&hints[..2]).trim(),
+                    "n next · N prev",
+                    "{searching:?} at {columns}: {:?}",
+                    hints_text(&hints)
+                );
+                // The row's own lead follows.
+                let own = hints_for(&row, divider, 200);
+                assert!(
+                    hints.iter().any(|hint| *hint == own[0]),
+                    "{searching:?} at {columns} keeps the row's lead: {:?}",
+                    hints_text(&hints)
+                );
+            }
+        }
+    }
+}
+
+/// m8/15b (15 A2): at a stop the stop's own keys still lead; `n N` follow
+/// them, ahead of the row's keys.
+#[test]
+fn at_a_stop_a_search_puts_next_and_prev_after_the_stops_keys() {
+    let row = HintContext::PlainRow {
+        verbs: RowVerbs::NONE,
+    };
+    for c in [LiveC::Finish, LiveC::Continue, LiveC::ContinueAmends] {
+        let plain = HintContext::OperationLive {
+            row: Box::new(row.clone()),
+            c,
+            tab_to_banner: true,
+            space_stages: false,
+        };
+        let searching = HintContext::OperationLive {
+            row: Box::new(HintContext::Searching(Box::new(row.clone()))),
+            c,
+            tab_to_banner: true,
+            space_stages: false,
+        };
+        assert!(all_contexts().contains(&searching), "{searching:?} swept");
+        let stop = hints_for(&plain, Divider::Hidden, 200);
+        let bar = hints_for(&searching, Divider::Hidden, 200);
+        let next = bar
+            .iter()
+            .position(|hint| hint.key() == "n")
+            .unwrap_or_else(|| panic!("{c:?}: no n: {:?}", hints_text(&bar)));
+        assert_eq!(bar[next + 1].key(), "N", "{c:?}: {:?}", hints_text(&bar));
+        // Everything before `n` is the stop's own lead, in its order.
+        let lead = &bar[..next];
+        assert!(!lead.is_empty(), "{c:?}: the stop's keys lead");
+        assert_eq!(lead, &stop[..next], "{c:?}: {:?}", hints_text(&bar));
+        assert!(
+            lead.iter().any(|hint| hint.key() == "c"),
+            "{c:?}: {:?}",
+            hints_text(&bar)
+        );
     }
 }

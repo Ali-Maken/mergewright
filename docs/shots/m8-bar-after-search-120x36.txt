@@ -1,0 +1,87 @@
+# m8-bar-after-search-120x36: drawn by `view::view` from a real AppState
+# (crates/graft/tests/it/search_hint.rs). Not a pty capture: a character grid,
+# no colour (CLAUDE.md rule 5 — colour unverified; a failed search's warning
+# style in the header is unverified too).
+#
+# The corpus octopus, shipped keymap, `/topic ⏎` (m8/15b, ticket 15 A2). Right:
+# after Enter — the header's tail leads with the search's line
+# (`/topic  … (1/N)  n/N next/prev  esc close`), the bottom row is the row's
+# keys led by `n next · N prev`; after Esc — the search is gone from both.
+
+## after Enter
+
+ ◆ api  ~/code/api · main                                  /topic  4 matches (1/4)  n/N next/prev  esc close  5 commits
+
+▸ ◆─┬─┬─╮    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'                                 GF 2d   e385b54
+  │ │ │ ●    [topic-3] topic 3                                                                          GF 2d   c95dba0
+  │ │ ● │    [topic-2] topic 2                                                                          GF 2d   3d625a5
+  │ ● │ │    [topic-1] topic 1                                                                          GF 2d   04bb363
+  ◇─┴─┴─╯    Add the base                                                                               GF 2d   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ n next · N prev · ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · ? keys
+
+## after Esc
+
+ ◆ api  ~/code/api · main                                                                                     5 commits
+
+▸ ◆─┬─┬─╮    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'                                 GF 2d   e385b54
+  │ │ │ ●    [topic-3] topic 3                                                                          GF 2d   c95dba0
+  │ │ ● │    [topic-2] topic 2                                                                          GF 2d   3d625a5
+  │ ● │ │    [topic-1] topic 1                                                                          GF 2d   04bb363
+  ◇─┴─┴─╯    Add the base                                                                               GF 2d   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · ? keys

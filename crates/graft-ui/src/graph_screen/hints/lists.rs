@@ -110,6 +110,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         // `RowContext` sub-enum would say so in the type, at the cost of
         // wrapping every row context at every call site.
         HintContext::Marked(_)
+        | HintContext::Searching(_)
         | HintContext::PaneFocused { .. }
         | HintContext::BackToBlame(_)
         | HintContext::BackToHistory(_)

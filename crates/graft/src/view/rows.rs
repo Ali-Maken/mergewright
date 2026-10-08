@@ -9,7 +9,8 @@ use graft_ui::graph_column::{NodeKind, RowPaint};
 use graft_ui::graph_screen::hints::RowVerbs;
 use graft_ui::graph_screen::{
     Badge, BadgeKind, Compaction, Filters, GraphEntry, GraphView, HintContext, LiveC, Location,
-    OrderNotice, ProblemLine, SHA_WIDTH, SearchLine, TabWord, WalkView, short_sha, spaced,
+    OrderNotice, ProblemLine, SHA_WIDTH, SearchLine, SearchTail, TabWord, WalkView, short_sha,
+    spaced,
 };
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -92,6 +93,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         graphics: None,
         notice: None,
         search: modal_blanked(state, search_line),
+        search_tail: modal_blanked(state, search_tail),
         compare_footer: modal_blanked(state, compare_footer_line),
         stopped: modal_blanked(state, stopped_line),
         // Its `B`/`X` are swallowed by every modal, or typed into a
@@ -270,6 +272,7 @@ fn opening_view(
         graphics: None,
         notice: None,
         search: modal_blanked(state, search_line),
+        search_tail: modal_blanked(state, search_tail),
         compare_footer: modal_blanked(state, compare_footer_line),
         stopped: modal_blanked(state, stopped_line),
         commit_graph: modal_blanked(state, AppState::commit_graph_line),
@@ -319,18 +322,57 @@ fn walk_view(state: &AppState, history: &History) -> WalkView {
     }
 }
 
-/// The footer's search line: the prompt while it is open, else the search's
-/// state. The query came from the keyboard and the line is drawn, so it is
-/// sanitised like repository text.
+/// The footer's search line: the prompt while it is open, and nothing once
+/// `⏎` closes it — the search then stands in the header
+/// ([`search_tail`], m8/15b). The query came from the keyboard and the
+/// line is drawn, so it is sanitised like repository text.
 fn search_line(state: &AppState) -> Option<SearchLine> {
-    if let Some(typed) = &state.search_prompt {
-        return Some(SearchLine::Prompt(sanitize_line(typed)));
+    state
+        .search_prompt
+        .as_ref()
+        .map(|typed| SearchLine::Prompt(sanitize_line(typed)))
+}
+
+/// The header's search item: the standing search's line, worded as the
+/// footer drew it before 15b, while its prompt is closed. `Esc` ends the
+/// search (`update::keys::escape`), and with it this.
+pub(crate) fn search_tail(state: &AppState) -> Option<SearchTail> {
+    if state.search_prompt.is_some() {
+        return None;
     }
     let search = state.search.as_ref()?;
-    Some(SearchLine::Status {
+    Some(SearchTail {
         text: sanitize_line(&search.line(&state.keymap)),
         failed: matches!(search.state, crate::search::SearchState::Failed(_)),
     })
+}
+
+/// `row` led by `n next  N prev` while [`search_tail`] stands (m8/15b,
+/// ticket 15 A2): a graph row's bar only — a row, marked or under `R`.
+/// Applied before [`live_wrapped`], so at a stop the stop's keys lead and
+/// `n N` follow them.
+///
+/// Only while the search has a hit: with none, `n`/`N` step nowhere
+/// (`update::search::step_search` returns at `search.step`), so the bar
+/// would offer a key that does nothing — the search's own line drops its
+/// `n/N` clause there for the same reason (`search::keys_words`).
+fn search_wrapped(state: &AppState, row: HintContext) -> HintContext {
+    let has_hits = state
+        .search
+        .as_ref()
+        .is_some_and(|search| search.hits() > 0);
+    if search_tail(state).is_none() || !has_hits {
+        return row;
+    }
+    match row {
+        HintContext::WorkingTreeRow
+        | HintContext::BranchRow { .. }
+        | HintContext::PlainRow { .. }
+        | HintContext::StashRow
+        | HintContext::Rewritable(_)
+        | HintContext::Marked(_) => HintContext::Searching(Box::new(row)),
+        other => other,
+    }
 }
 
 /// The footer's compare-pin line, worded exactly as the design note's
@@ -509,7 +551,10 @@ pub(crate) fn footer_context(
         // The finish summary likewise, over the resolver too (m6-conflicts/19).
         _ if state.resolver.is_some() || state.finish.is_some() => hint_context(state, rows),
         Some(banner) if banner.focused => banner_context(state, banner),
-        _ => back_to_place(state, live_wrapped(state, hint_context(state, rows))),
+        _ => back_to_place(
+            state,
+            live_wrapped(state, search_wrapped(state, hint_context(state, rows))),
+        ),
     }
 }
 
@@ -535,6 +580,7 @@ fn live_wrapped(state: &AppState, row: HintContext) -> HintContext {
             | HintContext::PlainRow { .. }
             | HintContext::StashRow
             | HintContext::Marked(_)
+            | HintContext::Searching(_)
             | HintContext::PaneFocused { .. }
     ) {
         return row;
@@ -634,6 +680,7 @@ pub(crate) fn back_to_place(state: &AppState, context: HintContext) -> HintConte
         | HintContext::StashRow
         | HintContext::Rewritable(_)
         | HintContext::Marked(_)
+        | HintContext::Searching(_)
         | HintContext::PaneFocused { .. }
         | HintContext::ChangesPane { .. }
         | HintContext::OperationLive { .. } => {

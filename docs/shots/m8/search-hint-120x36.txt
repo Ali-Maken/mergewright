@@ -6,10 +6,12 @@
 # running — `… matches so far …  n/N next/prev  esc cancel` (the running frame
 # is the settled AppState with its search state set back to Running);
 # settled — `… (1/N)  n/N next/prev  esc close`; no match — `no matches  esc close`.
+# Since m8/15b the line is the header's tail and the bar is the row's keys, led by
+# `n next · N prev` while the search has a hit.
 
 ## running
 
- ◆ api  ~/code/api · main                                                                                     5 commits
+ ◆ api  ~/code/api · main                          /topic  4 matches so far (1/4)  n/N next/prev  esc cancel  5 commits
 
 ▸ ◆─┬─┬─╮    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'                                 GF 2d   e385b54
   │ │ │ ●    [topic-3] topic 3                                                                          GF 2d   c95dba0
@@ -44,11 +46,11 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- /topic  4 matches so far (1/4)  n/N next/prev  esc cancel
+ n next · N prev · ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · ? keys
 
 ## settled with matches
 
- ◆ api  ~/code/api · main                                                                                     5 commits
+ ◆ api  ~/code/api · main                                  /topic  4 matches (1/4)  n/N next/prev  esc close  5 commits
 
 ▸ ◆─┬─┬─╮    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'                                 GF 2d   e385b54
   │ │ │ ●    [topic-3] topic 3                                                                          GF 2d   c95dba0
@@ -83,11 +85,11 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- /topic  4 matches (1/4)  n/N next/prev  esc close
+ n next · N prev · ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · ? keys
 
 ## no match
 
- ◆ api  ~/code/api · main                                                                                     5 commits
+ ◆ api  ~/code/api · main                                                       /zzqx  no matches  esc close  5 commits
 
 ▸ ◆─┬─┬─╮    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'                                 GF 2d   e385b54
   │ │ │ ●    [topic-3] topic 3                                                                          GF 2d   c95dba0
@@ -122,4 +124,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- /zzqx  no matches  esc close
+ ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · ? keys

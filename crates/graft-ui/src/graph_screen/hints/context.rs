@@ -69,6 +69,13 @@ pub enum HintContext {
     /// then the inner context's own list, `. more` omitted (`.` is already
     /// shown).
     Marked(Box<HintContext>),
+    /// A search stands and its `/` prompt is closed (m8-polish-and-ship/15b,
+    /// 15 A2): the inner graph row's own list led by `n next  N prev`. The
+    /// search's own line has moved to the header's tail. `graft` wraps the
+    /// graph-row forms — a row, marked or under `R` — and puts this
+    /// **inside** [`HintContext::OperationLive`], so at a stop the stop's
+    /// keys still lead. Never a pane's, an overlay's or a box's bar.
+    Searching(Box<HintContext>),
     /// The operation banner has focus (a conflict just landed, or the user
     /// tabbed to it); `skippable` is false for a plain merge, which has no
     /// `s` skip.
