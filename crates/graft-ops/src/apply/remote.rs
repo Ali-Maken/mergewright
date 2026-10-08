@@ -311,8 +311,26 @@ fn with_target(what: &str, target: &str) -> String {
 }
 
 /// The status line for a failed remote operation, in the design note's
-/// words ("Failure line"), naming the operation's own branch and remote.
+/// words ("Failure line"), naming the operation's own branch and remote —
+/// then what its fetch moved before it stopped, or that that could not be
+/// read (ADR-0062).
 pub(crate) fn explain(
+    entry: &JournalEntry,
+    failure: &RemoteFailure,
+    stderr_tail: &[String],
+    names: &RemoteNames,
+    moves_unread: Option<&RunError>,
+    keys: &dyn KeyNames,
+) -> String {
+    let line = failure_line(entry, failure, stderr_tail, names, keys);
+    match super::fetched::stopped_words(entry, moves_unread) {
+        Some(moved) => format!("{line} \u{b7} {moved}"),
+        None => line,
+    }
+}
+
+/// [`explain`]'s failure itself.
+fn failure_line(
     entry: &JournalEntry,
     failure: &RemoteFailure,
     stderr_tail: &[String],

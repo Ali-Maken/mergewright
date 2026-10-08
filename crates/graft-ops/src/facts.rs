@@ -104,6 +104,11 @@ pub enum FactsError {
     /// the diff between `HEAD` and the tracking tip (m7-power-tools/03b).
     #[error("reading what the pull brings: {0}")]
     Incoming(RunError),
+    /// The ref store could not be listed around a fetch, so what it moved
+    /// could not be told (ADR-0062): before it, the fetch does not run;
+    /// after it, the entry records nothing moved as unknown.
+    #[error("listing the refs a fetch moves: {0}")]
+    FetchedRefs(RunError),
     /// A touched branch's `branch.<name>.*` config could not be read, so
     /// the journal could not record what undo must put back (review
     /// m7-16b..21b, Major 1).

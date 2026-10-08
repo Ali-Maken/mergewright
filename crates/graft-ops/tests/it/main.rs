@@ -1,6 +1,7 @@
 //! `graft-ops`'s integration tests, one binary (PROMPT.md §7.1).
 
 mod abort_merge;
+mod aborted_fetch;
 mod absorb;
 mod absorb_config;
 mod absorb_oracle;

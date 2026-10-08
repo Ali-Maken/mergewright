@@ -1027,6 +1027,7 @@ mod tests {
                 config_before: std::collections::BTreeMap::new(),
                 config_after: std::collections::BTreeMap::new(),
                 put_back: None,
+                fetched_refs: None,
             },
             refresh,
             step_backup: None,
@@ -1737,6 +1738,7 @@ mod tests {
             config_before: std::collections::BTreeMap::new(),
             config_after: std::collections::BTreeMap::new(),
             put_back: None,
+            fetched_refs: None,
         }
     }
 

@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 
 use graft_core::journal::{
     EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, MergeState, OperationKind, PutBack,
-    Touches,
+    RefMove, Touches,
 };
 use graft_core::oid::Oid;
 use serde::{Deserialize, Serialize};
@@ -98,6 +98,12 @@ pub struct OutcomeLine {
     /// The same config keys after, the same way.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub config_after: BTreeMap<String, Vec<String>>,
+    /// The refs a fetch moved (ADR-0062), read around git's run, so known
+    /// only now. Left out when not recorded — every other kind, every line
+    /// written before the field existed — so such a line reads as before.
+    /// `{}` is written: read, nothing moved.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fetched_refs: Option<BTreeMap<String, RefMove>>,
 }
 
 /// Just enough of any line to know which record it is.
@@ -178,6 +184,7 @@ impl PendingLine {
             config_before: self.config_before,
             config_after: BTreeMap::new(),
             put_back: self.put_back,
+            fetched_refs: None,
         }
     }
 }
@@ -194,6 +201,7 @@ impl OutcomeLine {
             commands: entry.commands.clone(),
             merge_after: entry.merge_after.clone(),
             config_after: entry.config_after.clone(),
+            fetched_refs: entry.fetched_refs.clone(),
         }
     }
 
@@ -207,5 +215,6 @@ impl OutcomeLine {
         entry.commands = self.commands;
         entry.merge_after = self.merge_after;
         entry.config_after = self.config_after;
+        entry.fetched_refs = self.fetched_refs;
     }
 }

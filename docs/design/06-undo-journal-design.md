@@ -58,6 +58,9 @@ JournalEntry {
     backup_ref: Option<RefName>,     // refs/graft/backup/<worktree>/<ulid>, set for any op
                                      //  that touched the working tree (§6.3)
     reverses: Option<Ulid>,          // set on an undo/redo entry: which entry it reverses
+    fetched_refs: Option<Map<RefName, { before: Option<Oid>, after: Option<Oid> }>>,
+                                     // a fetch's (or a pull's fetch line's) moved refs, on the
+                                     //  outcome line; outside the undo record (ADR-0062)
 }
 ```
 
@@ -78,8 +81,9 @@ JournalEntry {
    treats an unmatched `Pending` entry the same way it treats a stray
    `rebase-merge/` directory (PROMPT.md §6): surfaced explicitly, offered for
    inspection, never silently dropped or silently assumed to have succeeded.
-4. **On failure/abort:** append an `Aborted` record. Nothing needs undoing,
-   but it stays in the log for the Command Log / troubleshooting view.
+4. **On failure/abort:** append an `Aborted` record. Nothing needs undoing;
+   a fetch's moved refs are recorded (ADR-0062), and it stays in the log for
+   the Command Log / troubleshooting view.
 
 ### 6.3 Working-tree snapshot (the untracked-file fix)
 

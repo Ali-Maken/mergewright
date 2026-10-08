@@ -66,6 +66,7 @@ pub(crate) fn pop_entry() -> JournalEntry {
             stash: oid(STASH),
             why: PutBackWhy::Pop,
         }),
+        fetched_refs: None,
     }
 }
 

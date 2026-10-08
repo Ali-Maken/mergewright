@@ -46,6 +46,7 @@ pub(super) fn applied(description: &str) -> graft_ops::apply::Applied {
             config_before: std::collections::BTreeMap::new(),
             config_after: std::collections::BTreeMap::new(),
             put_back: None,
+            fetched_refs: None,
         },
         refresh: graft_ops::apply::Refresh::WorkingTree,
         step_backup: None,

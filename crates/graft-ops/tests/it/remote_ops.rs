@@ -865,6 +865,7 @@ fn cancel_mid_fetch_is_clean() {
             failure,
             stderr_tail: vec![],
             names: Box::new(fetch_all().remote_names().expect("a fetch has names")),
+            moves_unread: None,
         }
         .explain(&crate::support::Letters)
         .ends_with("fetch all remotes cancelled")

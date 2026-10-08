@@ -992,6 +992,7 @@ fn killed_mid_rebase() -> graft_fixtures::Scratch {
             config_before: std::collections::BTreeMap::new(),
             config_after: std::collections::BTreeMap::new(),
             put_back: None,
+            fetched_refs: None,
         })
         .expect("the pending line is written");
     scratch

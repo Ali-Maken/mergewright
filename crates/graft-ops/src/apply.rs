@@ -19,6 +19,7 @@
 mod close;
 mod engine;
 mod error;
+mod fetched;
 mod finish_merge;
 mod fold;
 mod guard;
@@ -251,7 +252,8 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     let engine = engine::prepare(ctx, op, &facts)?;
     let plan = op.plan(&facts);
     // A pull's fetch runs here, before `touches` and the set-aside, which
-    // read what it brought (m7-power-tools/03b).
+    // read what it brought (m7-power-tools/03b); a fetch's refs are listed
+    // here, before anything is written (ADR-0062).
     let ahead = pull::fetch_first(ctx, op, &mut facts, &plan)?;
     let touches = touches_of(op, &facts, engine.as_ref());
 
@@ -260,11 +262,11 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     let mut commands = Vec::new();
     // The fetch has run: its line goes first, as it ran first.
     let to_run = match &ahead {
-        Ahead::Fetched(_) => {
+        Ahead::Fetched { .. } => {
             commands.extend(plan.first().map(Invocation::command_line));
             plan.get(1..).unwrap_or_default()
         }
-        Ahead::Nothing | Ahead::Failed(_) => &plan[..],
+        Ahead::Nothing | Ahead::Fetch(_) | Ahead::Failed { .. } => &plan[..],
     };
     let aside_words = set_aside::words(&description);
     let aside = set_aside::create(ctx, op, &facts, &aside_words, &mut commands)?;
@@ -304,7 +306,7 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
         engine.run(ctx, &mut commands)?
     } else {
         commands.extend(to_run.iter().map(Invocation::command_line));
-        pull::run_rest(ctx, op, ahead, to_run)
+        pull::run_rest(ctx, op, ahead, to_run, &mut pending.entry)
     };
     closed(ctx, op, pending, commands, run)
 }

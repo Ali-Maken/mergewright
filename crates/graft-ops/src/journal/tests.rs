@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 
 use graft_core::journal::{
-    EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, OperationKind, Touches,
+    EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, OperationKind, RefMove, Touches,
 };
 use graft_core::oid::Oid;
 
@@ -55,6 +55,7 @@ pub(crate) fn committed(at: i64, kind: OperationKind, before: u8, after: u8) -> 
         config_before: std::collections::BTreeMap::new(),
         config_after: std::collections::BTreeMap::new(),
         put_back: None,
+        fetched_refs: None,
     }
 }
 
@@ -86,6 +87,7 @@ pub(crate) fn reversal(at: i64, kind: OperationKind, target: &JournalEntry) -> J
         config_before: std::collections::BTreeMap::new(),
         config_after: std::collections::BTreeMap::new(),
         put_back: None,
+        fetched_refs: None,
     }
 }
 
@@ -523,4 +525,254 @@ fn pending_is_not_in_force() {
     assert_eq!(in_force_all(&entries), vec![true, false]);
     // And it does not shadow the operation before it.
     assert_eq!(next_undo(&entries), Some(&done));
+}
+
+// ---- fetched refs (ADR-0062, m8-polish-and-ship/21c) -----------------------
+
+/// A fetch's two lines as the renderer wrote them before `fetched_refs`
+/// existed: an `Aborted` one (the 21b-3 probe's) and a `Committed` one.
+const FETCH_LINES_BEFORE_21C: &str = concat!(
+    r#"{"id":"01HF7YAT030000000000000000","status":"pending","at_unix_ms":1700000000003,"kind":"fetch","description":"fetch all remotes","touches":{"refs":[],"index":false,"worktree":false},"head_before":{"branch":"refs/heads/main"},"refs_before":{},"index_before":null,"worktree_before":null,"backup_ref":null,"pins":[],"reverses":null}"#,
+    "\n",
+    r#"{"id":"01HF7YAT030000000000000000","status":{"aborted":{"reason":"no repository at '/nonexistent/graft-21b-3.git', or no access to it"}},"head_after":{"branch":"refs/heads/main"},"refs_after":{},"index_after":null,"worktree_after":null,"commands":["git fetch --progress --all"]}"#,
+    "\n",
+    r#"{"id":"01HF7YAT040000000000000000","status":"pending","at_unix_ms":1700000000004,"kind":"fetch","description":"fetch origin","touches":{"refs":[],"index":false,"worktree":false},"head_before":{"branch":"refs/heads/main"},"refs_before":{},"index_before":null,"worktree_before":null,"backup_ref":null,"pins":[],"reverses":null}"#,
+    "\n",
+    r#"{"id":"01HF7YAT040000000000000000","status":"committed","head_after":{"branch":"refs/heads/main"},"refs_after":{},"index_after":null,"worktree_after":null,"commands":["git fetch --progress origin"]}"#,
+    "\n",
+);
+
+/// Every line written before 21c — the M5 golden and two fetch entries —
+/// parses with no `fetched_refs` and renders back byte for byte.
+#[test]
+fn a_line_without_fetched_refs_re_renders_byte_identically() {
+    let golden = include_str!("../../tests/it/goldens/m5-journal.jsonl");
+    let old = format!("{golden}{FETCH_LINES_BEFORE_21C}");
+    let parsed = parse(old.as_bytes()).unwrap();
+    assert_eq!(parsed.entries.len(), 5, "three M5 entries and two fetches");
+    assert_eq!(parsed.torn_tail, None);
+    assert!(
+        parsed
+            .entries
+            .iter()
+            .all(|entry| entry.fetched_refs.is_none()),
+        "an old line records nothing about a fetch's refs"
+    );
+    assert_eq!(
+        String::from_utf8(file(&parsed.entries)).unwrap(),
+        old,
+        "an old journal renders back exactly as it was written"
+    );
+}
+
+/// A fetch entry: `Committed`, nothing touched, `fetched_refs` as given.
+fn fetch(at: i64, fetched_refs: Option<BTreeMap<String, RefMove>>) -> JournalEntry {
+    JournalEntry {
+        touches: Touches {
+            refs: vec![],
+            index: false,
+            worktree: false,
+        },
+        refs_before: BTreeMap::new(),
+        refs_after: BTreeMap::new(),
+        index_before: None,
+        index_after: None,
+        worktree_before: None,
+        worktree_after: None,
+        backup_ref: None,
+        fetched_refs,
+        ..committed(at, OperationKind::Fetch, 1, 1)
+    }
+}
+
+fn failed(entry: JournalEntry) -> JournalEntry {
+    JournalEntry {
+        status: EntryStatus::Aborted {
+            reason: "no repository at 'x', or no access to it".to_owned(),
+        },
+        ..entry
+    }
+}
+
+/// `origin/main` moved from `oid(1)` to `oid(2)`.
+fn one_move() -> BTreeMap<String, RefMove> {
+    BTreeMap::from([(
+        "refs/remotes/origin/main".to_owned(),
+        RefMove {
+            before: Some(oid(1)),
+            after: Some(oid(2)),
+        },
+    )])
+}
+
+/// `fetched_refs` goes on the outcome line only; `{}` is written (read,
+/// nothing moved) and reads back as `Some({})`, not `None`; a map
+/// round-trips with its nulls.
+#[test]
+fn fetched_refs_round_trip() {
+    let empty = fetch(10, Some(BTreeMap::new()));
+    let text = String::from_utf8(file(std::slice::from_ref(&empty))).unwrap();
+    let lines: Vec<&str> = text.lines().collect();
+    assert!(!lines[0].contains("fetched_refs"), "{}", lines[0]);
+    assert!(lines[1].ends_with(r#","fetched_refs":{}}"#), "{}", lines[1]);
+    assert_eq!(parse(text.as_bytes()).unwrap().entries, vec![empty]);
+
+    let mut moved = one_move();
+    moved.insert(
+        "refs/remotes/origin/old".to_owned(),
+        RefMove {
+            before: Some(oid(3)),
+            after: None,
+        },
+    );
+    moved.insert(
+        "refs/tags/v1.2".to_owned(),
+        RefMove {
+            before: None,
+            after: Some(oid(4)),
+        },
+    );
+    let full = failed(fetch(20, Some(moved)));
+    let bytes = file(std::slice::from_ref(&full));
+    let text = String::from_utf8(bytes.clone()).unwrap();
+    let gone = format!(
+        r#""refs/remotes/origin/old":{{"before":"{}","after":null}}"#,
+        oid(3)
+    );
+    assert!(text.contains(&gone), "{text}");
+    assert_eq!(parse(&bytes).unwrap().entries, vec![full]);
+}
+
+/// J's `nothing written` mark asks `wrote_anything`, not `in_force`: a ref
+/// a fetch moved is written, and unknown is not unchanged (ADR-0062 §3).
+#[test]
+fn wrote_anything_table() {
+    use super::wrote_anything;
+    let rows: [(&str, JournalEntry, bool); 5] = [
+        (
+            "aborted fetch, read, nothing moved",
+            failed(fetch(10, Some(BTreeMap::new()))),
+            false,
+        ),
+        (
+            "aborted fetch, one ref moved",
+            failed(fetch(10, Some(one_move()))),
+            true,
+        ),
+        ("aborted fetch, not recorded", failed(fetch(10, None)), true),
+        (
+            "committed fetch, nothing moved",
+            fetch(10, Some(BTreeMap::new())),
+            true,
+        ),
+        (
+            "aborted commit with no backup (today's rule)",
+            JournalEntry {
+                worktree_before: None,
+                ..aborted_no_op(10, OperationKind::Commit)
+            },
+            false,
+        ),
+    ];
+    for (name, entry, expected) in rows {
+        assert_eq!(wrote_anything(&entry), expected, "{name}");
+    }
+
+    // An aborted pull whose fetch moved a ref wrote something, and is still
+    // not in force: `u` would otherwise land on it with nothing to invert.
+    let pull = JournalEntry {
+        fetched_refs: Some(one_move()),
+        ..aborted_no_op(10, OperationKind::Pull)
+    };
+    assert!(wrote_anything(&pull), "aborted pull, one ref moved");
+    assert!(!in_force(std::slice::from_ref(&pull), &pull.id));
+}
+
+/// Up to two refs by short name, then `+N more`; a tag says so.
+#[test]
+fn moved_words_table() {
+    use super::moved_words;
+    /// The refs a fetch moved, and the words they read as.
+    type Row<'a> = (&'a [(&'a str, RefMove)], Option<&'a str>);
+    let change = |before: Option<u8>, after: Option<u8>| RefMove {
+        before: before.map(oid),
+        after: after.map(oid),
+    };
+    let of = |rows: &[(&str, RefMove)]| -> BTreeMap<String, RefMove> {
+        rows.iter()
+            .map(|(name, change)| ((*name).to_owned(), *change))
+            .collect()
+    };
+    let main = ("refs/remotes/origin/main", change(Some(1), Some(2)));
+    let feat = ("refs/remotes/origin/feat", change(None, Some(2)));
+    let old = ("refs/remotes/origin/old", change(Some(1), None));
+    let tag = ("refs/tags/v1.2", change(None, Some(2)));
+    let rows: [Row<'_>; 7] = [
+        (&[], None),
+        (&[main], Some("origin/main moved")),
+        (&[main, feat], Some("origin/feat new, origin/main moved")),
+        (
+            &[
+                main,
+                feat,
+                old,
+                tag,
+                ("refs/remotes/origin/x", change(Some(1), Some(3))),
+            ],
+            Some("origin/feat new, origin/main moved +3 more"),
+        ),
+        (&[feat], Some("origin/feat new")),
+        (&[old], Some("origin/old gone")),
+        (&[tag], Some("tag v1.2 new")),
+    ];
+    for (moved, expected) in rows {
+        assert_eq!(moved_words(&of(moved)).as_deref(), expected, "{moved:?}");
+    }
+}
+
+/// One line per ref, at most `at_most`, then `+N more`.
+#[test]
+fn moved_lines_cap_at_at_most() {
+    use super::moved_lines;
+    let hex = |byte: u8| oid(byte).to_string()[..7].to_owned();
+    let mut moved = one_move();
+    moved.insert(
+        "refs/remotes/origin/feat".to_owned(),
+        RefMove {
+            before: None,
+            after: Some(oid(2)),
+        },
+    );
+    moved.insert(
+        "refs/remotes/origin/old".to_owned(),
+        RefMove {
+            before: Some(oid(1)),
+            after: None,
+        },
+    );
+    moved.insert(
+        "refs/tags/v1.2".to_owned(),
+        RefMove {
+            before: None,
+            after: Some(oid(2)),
+        },
+    );
+    assert_eq!(
+        moved_lines(&moved, 20),
+        vec![
+            format!("origin/feat  new at {}", hex(2)),
+            format!("origin/main  {} → {}", hex(1), hex(2)),
+            format!("origin/old  gone, was {}", hex(1)),
+            format!("tag v1.2  new at {}", hex(2)),
+        ]
+    );
+    assert_eq!(
+        moved_lines(&moved, 2),
+        vec![
+            format!("origin/feat  new at {}", hex(2)),
+            format!("origin/main  {} → {}", hex(1), hex(2)),
+            "+2 more".to_owned(),
+        ]
+    );
+    assert!(moved_lines(&BTreeMap::new(), 20).is_empty());
 }

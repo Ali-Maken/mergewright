@@ -378,6 +378,7 @@ fn applied(kind: OperationKind, set_aside: bool) -> Applied {
                 stash: oid(9),
                 why: PutBackWhy::SetAside,
             }),
+            fetched_refs: None,
         },
         refresh: Refresh::Everything,
         step_backup: None,

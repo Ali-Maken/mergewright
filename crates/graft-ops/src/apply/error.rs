@@ -104,7 +104,7 @@ pub enum ApplyError {
     /// A fetch, pull or push failed. The entry is journaled `Aborted` with
     /// the failure's short text; `failure` is what the whole of git's stderr
     /// said (a stop is `Cancelled`).
-    #[error("{}", remote::explain(.entry, .failure, .stderr_tail, .names, &NoKeys))]
+    #[error("{}", remote::explain(.entry, .failure, .stderr_tail, .names, .moves_unread.as_deref(), &NoKeys))]
     Remote {
         /// The entry, with whatever after-state could be read.
         entry: Box<JournalEntry>,
@@ -115,6 +115,11 @@ pub enum ApplyError {
         /// The branch and remote the failure line names, from the
         /// operation's params (`Operation::remote_names`).
         names: Box<RemoteNames>,
+        /// Why the refs the fetch moved could not be listed after it
+        /// (ADR-0062): the entry's `fetched_refs` is `None` then, and the
+        /// failure line says so. `None` when they were read. Boxed: rare,
+        /// and every `Result<_, ApplyError>` would carry its size.
+        moves_unread: Option<Box<RunError>>,
     },
     /// A history operation stopped on a conflict: git exited non-zero and
     /// left its own in-progress state behind (`MERGE_HEAD`, `rebase-merge/`
@@ -450,7 +455,15 @@ impl ApplyError {
                 failure,
                 stderr_tail,
                 names,
-            } => remote::explain(entry, failure, stderr_tail, names, keys),
+                moves_unread,
+            } => remote::explain(
+                entry,
+                failure,
+                stderr_tail,
+                names,
+                moves_unread.as_deref(),
+                keys,
+            ),
             other => other.to_string(),
         }
     }

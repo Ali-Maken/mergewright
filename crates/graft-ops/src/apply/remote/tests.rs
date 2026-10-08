@@ -1,7 +1,9 @@
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use graft_core::journal::{JournalEntry, OperationKind};
+use graft_core::journal::{JournalEntry, OperationKind, RefMove};
+use graft_core::oid::Oid;
 use graft_git::remote::{RemoteFailure, TrackedUpstream};
 use graft_git::run::askpass::{AskPass, Secret};
 
@@ -149,7 +151,7 @@ fn would_overwrite_names_the_paths_and_no_keys() {
     let failure = RemoteFailure::WouldOverwrite {
         paths: vec!["notes.md".to_owned(), "src/a.rs".to_owned()],
     };
-    let line = explain(&entry, &failure, &[], &names, &crate::keys::Letters);
+    let line = explain(&entry, &failure, &[], &names, None, &crate::keys::Letters);
     assert_eq!(
         line,
         "pull refused: your edits to notes.md, src/a.rs would be overwritten"
@@ -168,6 +170,7 @@ fn not_fast_forward_says_no_plan_shorthand() {
         &RemoteFailure::NotFastForward,
         &[],
         &names,
+        None,
         &crate::keys::Letters,
     );
     assert_eq!(
@@ -190,6 +193,7 @@ fn explain_names_each_failure() {
             failure: failure.clone(),
             stderr_tail: tail.clone(),
             names: Box::new(names.clone()),
+            moves_unread: None,
         };
         let line = error.explain(&crate::keys::Letters);
         for word in words {
@@ -198,7 +202,7 @@ fn explain_names_each_failure() {
         // `Display` is `explain` with no keys.
         assert_eq!(error.to_string(), error.explain(&crate::keys::NoKeys));
         assert_eq!(
-            explain(&entry, &failure, &tail, &names, &crate::keys::Letters),
+            explain(&entry, &failure, &tail, &names, None, &crate::keys::Letters),
             line
         );
         assert!(
@@ -206,6 +210,55 @@ fn explain_names_each_failure() {
             "{failure:?} has a short reason"
         );
     }
+}
+
+/// 21c (ADR-0062): the probe — `fetch --all`, one remote gone, `origin/main`
+/// moved first. The failure line ends with what the fetch moved; a fetch
+/// that moved nothing reads as before; one whose refs could not be listed
+/// says so instead.
+#[test]
+fn a_failed_fetch_that_moved_refs_ends_with_them() {
+    let op = Operation::Fetch(FetchParams {
+        remote: None,
+        prune: false,
+    });
+    let (mut entry, names) = journaled(&op);
+    let failure = RemoteFailure::NoSuchRemote {
+        name: "/nonexistent/graft-21c.git".to_owned(),
+    };
+    let today = explain(&entry, &failure, &[], &names, None, &crate::keys::Letters);
+    let oid = |byte: u8| Oid::from_bytes(&[byte; 20]).unwrap();
+
+    entry.fetched_refs = Some(BTreeMap::from([(
+        "refs/remotes/origin/main".to_owned(),
+        RefMove {
+            before: Some(oid(1)),
+            after: Some(oid(2)),
+        },
+    )]));
+    let line = explain(&entry, &failure, &[], &names, None, &crate::keys::Letters);
+    assert_eq!(
+        line,
+        format!("{today} \u{b7} origin/main moved before it stopped")
+    );
+
+    entry.fetched_refs = Some(BTreeMap::new());
+    let line = explain(&entry, &failure, &[], &names, None, &crate::keys::Letters);
+    assert_eq!(line, today, "nothing moved: today's words");
+
+    let unread = RunError::Unparsable("for-each-ref line \"x\"".to_owned());
+    let line = explain(
+        &entry,
+        &failure,
+        &[],
+        &names,
+        Some(&unread),
+        &crate::keys::Letters,
+    );
+    assert_eq!(
+        line,
+        format!("{today} \u{b7} which refs it moved could not be read: {unread}")
+    );
 }
 
 /// m7-power-tools/15 (:774): a rejected push names the whole way back — pull,
@@ -218,6 +271,7 @@ fn rejected_push_names_pull_then_m_or_r() {
         &RemoteFailure::NonFastForward,
         &[],
         &names,
+        None,
         &crate::keys::Letters,
     );
     assert_eq!(
@@ -255,6 +309,7 @@ fn names_survive_arrows_and_slashes() {
         &RemoteFailure::NonFastForward,
         &[],
         &names,
+        None,
         &crate::keys::Letters,
     );
     assert!(
@@ -268,6 +323,7 @@ fn names_survive_arrows_and_slashes() {
         &RemoteFailure::NotFastForward,
         &[],
         &names,
+        None,
         &crate::keys::Letters,
     );
     assert!(
@@ -283,6 +339,7 @@ fn names_survive_arrows_and_slashes() {
         },
         &[],
         &names,
+        None,
         &crate::keys::Letters,
     );
     assert_eq!(line, "team/origin unreachable: h");

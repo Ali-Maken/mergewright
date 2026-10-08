@@ -9,6 +9,7 @@
 //! newest in-force operation, `next_redo` the newest in-force undo that no
 //! newer operation has moved past.
 
+mod fetched;
 mod file;
 mod lines;
 
@@ -17,6 +18,7 @@ use std::collections::{BTreeMap, BTreeSet, HashSet};
 use graft_core::journal::{EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, OperationKind};
 use graft_core::oid::Oid;
 
+pub use fetched::{moved_lines, moved_words, wrote_anything};
 pub use file::{Journal, journal_path};
 pub use lines::{Line, OutcomeLine, PendingLine};
 

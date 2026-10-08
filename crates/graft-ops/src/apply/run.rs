@@ -47,6 +47,8 @@ struct RemoteFailed {
     failure: RemoteFailure,
     stderr_tail: Vec<String>,
     names: Box<RemoteNames>,
+    /// The refs a fetch moved could not be listed after it (ADR-0062).
+    moves_unread: Option<RunError>,
 }
 
 impl PlanFailure {
@@ -84,6 +86,19 @@ impl PlanFailure {
         }
     }
 
+    /// A remote failure carries why the refs its fetch moved could not be
+    /// listed, so its status line says so (ADR-0062). A local failure has
+    /// no such line: the error is handed back.
+    pub(super) fn carry_moves_unread(&mut self, error: RunError) -> Option<RunError> {
+        match self.remote.as_mut() {
+            Some(failed) => {
+                failed.moves_unread = Some(error);
+                None
+            }
+            None => Some(error),
+        }
+    }
+
     /// The entry's `Aborted` reason.
     pub(super) fn reason(&self) -> String {
         match &self.remote {
@@ -99,6 +114,7 @@ impl PlanFailure {
             failure,
             stderr_tail,
             names,
+            moves_unread,
         }) = self.remote
         {
             return ApplyError::Remote {
@@ -106,6 +122,7 @@ impl PlanFailure {
                 failure,
                 stderr_tail,
                 names,
+                moves_unread: moves_unread.map(Box::new),
             };
         }
         let recoverable = entry.worktree_before.is_some();
@@ -153,6 +170,7 @@ pub(super) fn run_plan(
                         failure: remote::failure_of(&failed.error, &failed.segments),
                         stderr_tail: remote::tail(&failed.segments),
                         names: Box::new(names.clone()),
+                        moves_unread: None,
                     }),
                     error: failed.error,
                     before_pause: false,

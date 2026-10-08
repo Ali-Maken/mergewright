@@ -336,6 +336,28 @@ pub struct JournalEntry {
     /// to tell a stash clash from any other unmerged index.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub put_back: Option<PutBack>,
+    /// Every ref under `refs/` (Graft's own `refs/graft/` aside) whose value
+    /// a fetch changed — a fetch's, or a pull's fetch line — read before git
+    /// ran and again after it exited, success, failure or stop (ADR-0062).
+    /// Written on the outcome line. **Outside the undo record**: nothing `u`
+    /// reads looks at it, and `u` never moves these refs back.
+    ///
+    /// `Some(empty)` = read, nothing moved. `None` = not recorded: every
+    /// other kind, a line written before the field existed, an interrupted
+    /// entry, an after-read that failed. Absent from the JSON then, so old
+    /// lines re-render byte-identically.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fetched_refs: Option<BTreeMap<String, RefMove>>,
+}
+
+/// One ref a fetch moved (ADR-0062): its value before and after. `None` is
+/// absent — `before: None` a new ref, `after: None` one the fetch pruned.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RefMove {
+    /// The ref's value before the fetch ran.
+    pub before: Option<Oid>,
+    /// Its value after git exited.
+    pub after: Option<Oid>,
 }
 
 /// A stash Graft put back into the working tree (ADR-0045 §1).

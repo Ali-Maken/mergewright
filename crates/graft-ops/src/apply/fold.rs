@@ -175,6 +175,7 @@ fn inside_live_operation(
         config_before: BTreeMap::default(),
         config_after: BTreeMap::default(),
         put_back: None,
+        fetched_refs: None,
     };
     match failure {
         None => Ok(Applied {
