@@ -33,7 +33,7 @@
 ╭ Preview: rebase feature-a onto main ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 4 commits replayed                                                                                                                                                                      │
 │ branches: feature-a cb31bb2 → 3 new commits                                                                                                                                             │
-│           feature-b 884b0c4 → 4 new commits · built on yours · follows                                                                                                                  │
+│           feature-b 884b0c4 → 1 new commit · built on yours · follows                                                                                                                   │
 │ working tree: 1 file updated                                                                                                                                                            │
 │ no conflicts expected                                                                                                                                                                   │
 │ undo: u takes this back                                                                                                                                                                 │

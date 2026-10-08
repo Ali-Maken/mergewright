@@ -228,7 +228,7 @@ fn a_lost_edit_put_back_whose_raw_step_cannot_land_says_so() {
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     let [
         AfterState::NotAsTheyWere {
-            error: RestoreError::WriteRaw { path, source },
+            error: RestoreError::WriteRaw { path, source, .. },
             files: 1,
         },
     ] = unread.as_slice()
@@ -264,4 +264,56 @@ fn a_lost_edit_lost_before_autocrlf_was_set_comes_back_as_git_checks_it_out_now(
     run(&repo, &op, NOW + 2);
 
     assert_eq!(repo.read(PATH), LOST_CRLF, "git's checkout of today");
+}
+
+/// m8-polish-and-ship/20 item 12: the raw step's count is the files it
+/// tried — the ones `raw/` holds — not every put-back path. `docs/b.txt` is
+/// CRLF on disk, which `core.autocrlf=true` gives back, so it is not kept
+/// raw and never tried: one file, not two.
+#[test]
+fn a_failed_raw_step_counts_only_the_files_it_tried() {
+    const B: &str = "docs/b.txt";
+    let repo = committed(AUTOCRLF, &A_RS);
+    repo.write(B, b"one\r\n");
+    repo.commit_all("two");
+    repo.write(PATH, E1);
+    repo.write(B, b"two\r\n");
+    run(
+        &repo,
+        &Operation::Discard(Target::Paths(vec![PathBuf::from(PATH), PathBuf::from(B)])),
+        NOW,
+    );
+    repo.write(PATH, LOST);
+    repo.write(B, b"three\r\n");
+    run_undo(&repo, NOW + 1, true)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
+
+    let handle = repo.open();
+    let entries = journal_for(&handle).entries().to_vec();
+    let edits = lost_edits(&handle, &entries, &Never).expect("lost edits read");
+    assert_eq!(edits.len(), 1, "{edits:?}");
+    assert_eq!(edits[0].paths.len(), 2, "{edits:?}");
+    let op = Operation::Recover(RecoverParams {
+        target: RecoverTarget::Files {
+            entry: edits[0].entry.clone(),
+            backup_tree: edits[0].backup_tree,
+            paths: edits[0].paths.clone(),
+        },
+        because: "undo of \"discard\"".to_owned(),
+    });
+    let _in_the_way = repo.block_raw_writes_in("src");
+
+    let Err(ApplyError::AfterState { unread, .. }) = try_run(&repo, &op, NOW + 2) else {
+        panic!("the raw step's failure was not reported");
+    };
+    assert!(
+        matches!(
+            unread.as_slice(),
+            [AfterState::NotAsTheyWere {
+                error: RestoreError::WriteRaw { .. },
+                files: 1,
+            }]
+        ),
+        "{unread:?}"
+    );
 }

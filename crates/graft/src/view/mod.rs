@@ -55,6 +55,19 @@ pub(crate) use rows::max_lanes;
 pub use status::status_view;
 pub use strip::strip_marks;
 
+/// `2m ago`, from the same cascade the graph's date column uses, so two
+/// views of the same moment never disagree. The one age formatter for the
+/// stash list and the journal (m8-polish-and-ship/20): "future" and "now"
+/// are whole answers — "now ago" is not English.
+pub(crate) fn ago(at_seconds: i64, now_seconds: i64) -> String {
+    let relative = graft_ui::graph_screen::columns::relative_date(at_seconds, now_seconds);
+    if relative == "future" || relative == "now" {
+        relative
+    } else {
+        format!("{relative} ago")
+    }
+}
+
 // Only `update::tests` calls these outside `rows` itself.
 #[cfg(test)]
 pub(crate) use rows::divider_shown;

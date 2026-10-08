@@ -120,6 +120,11 @@ fn pr_contents() {
         screen.contains("changes on feature-a since it left main \u{b7} 3 commits"),
         "{screen}"
     );
+    // m8-polish-and-ship/20 item 1: the tally is wired from the file list.
+    assert!(
+        screen.contains("3 commits \u{b7} 2 files +2 \u{2212}0"),
+        "{screen}"
+    );
     app.close();
 }
 

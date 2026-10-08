@@ -10,7 +10,6 @@
 use graft_core::journal::{EntryStatus, JournalEntry, OperationKind};
 use graft_ops::journal_list::{HeldBy, JournalList, ListRow, LostCommit, LostEdit, LostScan};
 use graft_term::sanitize::{sanitize, sanitize_line};
-use graft_ui::graph_screen::columns::relative_date;
 use graft_ui::journal_screen::{
     JournalFindView, JournalRowView, JournalStatus, JournalView, RowKind, RowMark,
 };
@@ -191,7 +190,16 @@ fn graft_row(
     } else if entry.is_interrupted() {
         RowMark::Interrupted
     } else if marks.in_force.get(index) == Some(&false) {
-        RowMark::Undone
+        // Not in force because it never wrote anything (a refused pull, a
+        // rejected push), not because something took it back.
+        let reversed = entries[index + 1..]
+            .iter()
+            .any(|later| later.reverses.as_ref() == Some(&entry.id));
+        if !reversed && matches!(entry.status, EntryStatus::Aborted { .. }) {
+            RowMark::Refused
+        } else {
+            RowMark::Undone
+        }
     } else {
         RowMark::None
     };
@@ -330,19 +338,9 @@ fn switched_from(subject: &str) -> Option<String> {
     }
 }
 
-/// `2m ago`, from the same cascade the graph's date column uses, so two
-/// views of the same moment never disagree.
+/// [`super::ago`] of a journal time, which is in milliseconds.
 fn age(at_unix_ms: i64, now_seconds: i64) -> String {
-    let then = at_unix_ms.div_euclid(MILLIS);
-    let relative = relative_date(then, now_seconds);
-    // "future" and "now" are already whole answers; "now ago" is not English,
-    // and the journal browser opened straight after a write is full of
-    // entries less than a minute old.
-    if relative == "future" || relative == "now" {
-        relative
-    } else {
-        format!("{relative} ago")
-    }
+    super::ago(at_unix_ms.div_euclid(MILLIS), now_seconds)
 }
 
 #[cfg(test)]

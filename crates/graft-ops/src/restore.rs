@@ -177,6 +177,9 @@ pub enum RestoreError {
         path: std::path::PathBuf,
         /// What the filesystem said.
         source: std::io::Error,
+        /// How many files the raw step tried to write: the paths `raw/`
+        /// held, not every path it was asked about (m8-polish-and-ship/20).
+        tried: usize,
     },
 }
 

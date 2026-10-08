@@ -4,6 +4,7 @@ fn denied(path: &str) -> RestoreError {
     RestoreError::WriteRaw {
         path: PathBuf::from(path),
         source: std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied"),
+        tried: 1,
     }
 }
 

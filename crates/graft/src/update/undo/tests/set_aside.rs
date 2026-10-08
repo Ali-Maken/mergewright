@@ -405,3 +405,32 @@ fn a_hostile_description_is_measured_as_drawn() {
         assert!(cells_of(&line) <= cells, "{line:?} at {cells}");
     }
 }
+
+/// m8-polish-and-ship/20 item 5: with a set-aside clause and the
+/// unreadable-journal warning, 80 columns never cuts `J to inspect`: the
+/// set-aside clause sheds its detail first.
+#[test]
+fn at_80_the_notice_keeps_j_to_inspect_whole() {
+    let entry = torn_entry(0, "rebase feature/payments-retry onto main");
+    let id = entry.id.clone();
+    let state = AppState {
+        journal: JournalState {
+            entries: Loading::Ready(Arc::new(JournalRead {
+                entries: vec![entry],
+                unreadable: Vec::new(),
+                live: Vec::new(),
+                interrupted_edits: Vec::new(),
+            })),
+            unreadable: vec!["torn".to_owned()],
+            ..JournalState::default()
+        },
+        interrupted_edits: vec![(id, graft_ops::EditsAt::Stash { n: 0 })],
+        ..AppState::default()
+    };
+    let wide = interrupted_notice_in(&state, usize::MAX).expect("a notice");
+    assert!(wide.contains("puts them back"), "{wide}");
+    let line = interrupted_notice_in(&state, 79).expect("a notice");
+    assert!(cells_of(&line) <= 79, "{line}");
+    assert!(line.ends_with("J to inspect"), "{line}");
+    assert!(line.contains("its state could not be read"), "{line}");
+}

@@ -468,7 +468,7 @@ fn a_rebase_onto_the_top_row_shows_after_rebase() {
         "{screen}"
     );
     assert!(
-        screen.contains("\u{2192} 4 new commits \u{b7} built on yours \u{b7} follows"),
+        screen.contains("\u{2192} 1 new commit \u{b7} built on yours \u{b7} follows"),
         "{screen}"
     );
     drop(state);

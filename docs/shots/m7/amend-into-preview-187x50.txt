@@ -37,7 +37,7 @@
 │ 67fda4a  Add OAuth callback  gains  src/auth.rs +1 −1                                                                                                                                   │
 │ 3 commits replayed                                                                                                                                                                      │
 │ branches: feature-a 29033ed → 2 new commits                                                                                                                                             │
-│           feature-b 04fbed6 → 3 new commits · built on yours · follows                                                                                                                  │
+│           feature-b 04fbed6 → 1 new commit · built on yours · follows                                                                                                                   │
 │ HEAD → feature-a                                                                                                                                                                        │
 │ working tree: 1 file updated                                                                                                                                                            │
 │ your edits: 1 file set aside, put back after                                                                                                                                            │

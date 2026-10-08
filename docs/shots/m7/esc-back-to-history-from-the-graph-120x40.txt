@@ -42,7 +42,7 @@ Retry refresh once on 401
 
 Right: (b) one `Esc` — the history place again, the same commit selected.
  HISTORY · src/auth/session.rs · fn refresh_token, lines 18–29 · 3 changes
-   74f9a9e Handle expire… GF  60m +1 −1 │ 2f48ca3 · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −2
+   74f9a9e Handle expire… GF  60m +1 −1 │ 2f48ca3 · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −2 ·
  ▸ 2f48ca3 Retry refresh… LI  7mo +3 −2 │    16       /// Refresh the token when the server says it expired.
    47593a5 Add token ref… TO 10mo +11   │ ┃  17       pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
    the file starts here (47593a5 added  │ ┃  18 +         let mut attempt = 0;

@@ -9,7 +9,6 @@
 
 use graft_git::stash::StashEntry;
 use graft_term::sanitize::{sanitize, sanitize_line};
-use graft_ui::graph_screen::columns::relative_date;
 use graft_ui::stash_screen::{StashPromptView, StashRowView, StashStatus, StashView};
 use graft_ui::text_input::FieldView;
 
@@ -59,7 +58,7 @@ fn row(entry: &StashEntry, now_seconds: i64) -> StashRowView {
         // Quoted, as §1.11 draws it: the message is the user's text and the
         // quotes are what say where it starts and stops.
         message: sanitize_line(&format!("\"{}\"", first_line(&entry.message))),
-        age: sanitize(&age(entry.at.seconds, now_seconds)),
+        age: sanitize(&super::ago(entry.at.seconds, now_seconds)),
         files: entry.paths.len(),
     }
 }
@@ -69,17 +68,6 @@ fn row(entry: &StashEntry, now_seconds: i64) -> StashRowView {
 /// subject and nothing else either).
 fn first_line(message: &str) -> &str {
     message.lines().next().unwrap_or(message)
-}
-
-/// `2h ago`, from the same cascade the graph's date column uses, so two
-/// views of the same moment never disagree.
-fn age(at_seconds: i64, now_seconds: i64) -> String {
-    let relative = relative_date(at_seconds, now_seconds);
-    if relative == "future" {
-        relative
-    } else {
-        format!("{relative} ago")
-    }
 }
 
 /// The save prompt, while it is open.

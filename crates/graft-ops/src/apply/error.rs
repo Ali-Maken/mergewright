@@ -40,16 +40,17 @@ pub enum ApplyError {
     /// it did not run: a write Graft cannot record is a write it must not
     /// make. After it ran, the outcome line is missing — and `after` carries
     /// git's own failure, which would otherwise be lost behind this one
-    /// (m3/03 review, Minor 1). `kept` says where a set-aside's edits are
-    /// when the put-back left them in the stash list (kept, or clashed), so
-    /// the missing outcome line does not take that with it (m6-conflicts/83).
+    /// (m3/03 review, Minor 1). `kept` carries the words of a lost edit's
+    /// raw step that failed (`close.rs`, `lost_edit::after_put_back`), so the
+    /// missing outcome line does not take them with it (m8-polish-and-ship/20).
     #[error("{}", journal_failed(.error, .after.as_ref(), .kept.as_deref()))]
     Journal {
         /// What the journal said.
         error: JournalError,
         /// What git said, when the operation had already failed.
         after: Option<RunError>,
-        /// Where the set-aside edits are, when not simply back in the tree.
+        /// A failed raw step's words ("not written back as it was …"),
+        /// when the put-back's raw step failed before the journal did.
         kept: Option<String>,
     },
     /// The operation ran and is journaled, but part of what it left behind
@@ -226,6 +227,10 @@ pub enum AfterState {
     /// The refs the operation touched could not be read after it.
     #[error("the refs after the operation: {0}")]
     Refs(FactsError),
+    /// The entry's backup ref could not be read when sealing the
+    /// after-state onto it, so nothing is sealed (m8-polish-and-ship/20).
+    #[error("the backup couldn't be read: {0}")]
+    BackupUnread(FactsError),
     /// The index could not be written as a tree after the operation.
     #[error("the index after the operation: {0}")]
     Index(SnapshotError),

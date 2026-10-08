@@ -161,6 +161,21 @@ impl HistoryState {
                 .filter(|line| line.kind == LineKindView::Removed)
                 .count();
             header.push_str(&format!(" \u{b7} this file +{added} \u{2212}{removed}"));
+            // A line history's list row counts the traced lines only; say
+            // which is which so the two numbers never read as one
+            // (m8-polish-and-ship/20 item 9). Same shape as the row's.
+            if self.range.is_some() {
+                let mut lines = Vec::new();
+                if row.added > 0 {
+                    lines.push(format!("+{}", row.added));
+                }
+                if row.removed > 0 {
+                    lines.push(format!("\u{2212}{}", row.removed));
+                }
+                if !lines.is_empty() {
+                    header.push_str(&format!(" \u{b7} these lines {}", lines.join(" ")));
+                }
+            }
         }
         header
     }

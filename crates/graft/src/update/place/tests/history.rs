@@ -726,7 +726,7 @@ fn tab_swaps_below_120() {
         let panes = columns(100, view.focus);
         assert_eq!((panes.list.is_some(), panes.file.is_some()), (false, true));
         assert!(
-            matches!(view.file, FilePane::Lines { header, .. } if header.ends_with("this file +2 \u{2212}1")),
+            matches!(view.file, FilePane::Lines { header, .. } if header.ends_with("this file +2 \u{2212}1 \u{b7} these lines +2 \u{2212}1")),
             "{:?}",
             view.file
         );

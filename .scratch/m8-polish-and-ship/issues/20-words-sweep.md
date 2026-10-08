@@ -59,8 +59,82 @@ that names a key keeps it spelled from the table (graft: `state.keymap`, 10b W1;
 `AfterState::BackupUnread` (graft-ops, pub). Nothing else public.
 
 ## Acceptance
-- [ ] One test per item, named at tick (17 ticks). Item 3 is a TESTING.md line, quoted at tick.
-- [ ] Captures whose text changes re-shot, listed in NOTES (grep the old strings across `docs/shots/`).
+- [ ] One test per item, named at tick (17 ticks). Item 3 is a TESTING.md line, quoted at tick. — **14 of 17 ticked
+  below; 13 (doc only), 14 (route untested) open; askpass addition open.**
+  - [x] 1 — already wired (`view/detail.rs:217-226`); `graft::it m7_walk::pr_contents::pr_contents` now asserts
+    `3 commits · 2 files +2 −0` on the drawn frame. No code change (no red: it was already right).
+  - [x] 2 — `graft-ui detail_pane::tests::a_hand_resolved_merge_says_not_checked_never_clean` (red → green).
+  - [x] 3 — TESTING.md radar stop 10: "**Blind spot:** an edit to a file *both* sides touched is not checked — it
+    reads `evil merge: not checked · N files hand-resolved`, never `clean`."
+  - [x] 4 — `graft-ops::it error_rows::a_failed_read_refs_in_seal_after_is_reported` (expects
+    `AfterState::BackupUnread`, words `the backup couldn't be read: …`; red → green).
+  - [x] 5 — `graft update::undo::tests::set_aside::at_80_the_notice_keeps_j_to_inspect_whole` (red → green).
+  - [x] 6 — `graft-ops::it undo_bytes::a_failing_required_smudge_filter_refuses_the_operation_before_it_writes`
+    (now asserts the refusal names `nb.txt`; red → green).
+  - [x] 7 — `graft view::tests::a_moment_ago_reads_now_in_the_stash_list_and_the_journal` (red: no shared fn).
+  - [x] 8 — `graft-ui detail_pane::tests::contained_in_with_no_names_is_not_drawn` (red → green).
+  - [x] 9 — `graft update::place::tests::history::tab_swaps_below_120` (header ends
+    `this file +2 −1 · these lines +2 −1`; red → green).
+  - [x] 10 — `graft::it m7_walk::rebase_line::a_rebase_onto_the_top_row_shows_after_rebase` (feature-b now
+    `→ 1 new commit · built on yours`, feature-a `3 new commits`, total `4 commits replayed`). Red shown only as
+    capture drift (the capture check runs before the assertion).
+  - [x] 11 — `graft view::journal::tests::a_refused_push_reads_refused_nothing_written_not_undone` (red → green).
+  - [x] 12 — `graft-ops::it recover_bytes::a_failed_raw_step_counts_only_the_files_it_tried` (red: `files: 2`).
+  - [ ] 13 — doc comments fixed (`apply/error.rs` `Journal.kept`, `error/words.rs::journal_failed`); a doc
+    comment has no test. Use site: `apply/close.rs:133-137` (moved from `apply.rs:419`).
+  - [ ] 14 — NOT DONE. Words still `its exact bytes are in the backup` (`apply/error/words.rs:18-27`); the route
+    `u`, `J`, row, `⏎`, `y` was not tested.
+  - [x] 15 — no fix needed: `graft view::tests::bottom_row::esc_from_the_box_brings_the_rejection_back` at 80x24
+    asserts `p pull, then m or r` and `P force with lease` whole.
+  - [x] 16 — already fixed in ops (`apply/remote.rs:304-316`, `p pull, then m or r`); held by
+    `graft::it remote_by_key::rejected_then_lease_push`. Stale doc comments fixed (`update/remote/in_flight.rs:228`,
+    `graft/MAP.md` Status row). `p fetch and choose` not used: the shipped words already route correctly.
+  - [x] 17 — `graft update::tests::keymap_words::stops::an_in_the_way_rung_is_measured_as_drawn` (30 U+200B in a
+    path; red → green).
+- [x] Captures whose text changes re-shot, listed in NOTES — `GRAFT_UPDATE_SHOTS=1` workspace run, then the 8
+  capture tests re-run green without it (66/66).
+
+## NOTES (builder, 2026-10-08) — status: partial
+No compaction. Scout used (`scouts/20-words-sweep.md`).
+
+**Captures re-shot (user to judge by eye):** `docs/shots/m6/fix-finish-shell-merge-120x40.txt` (evil-merge line),
+`m7/rebase-preview-target-top-187x44.txt`, `m7/rebase-line-preview-187x50.txt`, `m7/amend-into-preview-187x50.txt`,
+`m8/reword-preview-120x40.txt` (dependants now `→ 1 new commit`), `m7/history-lines-187x50.txt` (`· these lines +3 −2`),
+`m7/esc-back-to-history-from-the-graph-120x40.txt` — **at 120 the header hard-cuts to a dangling `… this file +3 −2 ·`**:
+the history header is cut without `…`; not fixed here (header fitting is out of scope). Contact sheets
+(`m6-contact-sheet-1.txt`, m7 sheet) not reassembled.
+
+**Item 5 behaviour:** at 80 cols the order of shedding is: set-aside clause's keys (`· S p puts them back`), then the
+set-aside clause, then the warning's `, so u restores the whole tree`. With the warning on, 79 cells lands on
+`interrupted · its state could not be read · J to inspect` — `u`'s clause is dropped whole, never cut.
+
+**Item 6:** on `checkout-index -a` failure only, each file is checked out alone to find the one whose filter fails →
+new `SnapshotError::Filter { path, error }` (`<path>: its filter failed: <git>`). Costs one spawn per file on the
+failure path only.
+
+**Item 10:** `own_commits_at` (`update/preview/plan_lines.rs`) — ref lines only; `HEAD detaches at the newest of N`
+still counts the whole chain.
+
+**Item 11:** new `graft_ui::journal_screen::RowMark::Refused`. Any `Aborted` entry not in force and not reversed by a
+later entry reads `refused · nothing written` — this includes a git failure that wrote nothing, not only refusals.
+
+**Item 12:** new field `RestoreError::WriteRaw.tried` (graft-ops pub); set-aside put-back (`set_aside/put_back.rs`)
+uses it too.
+
+**Open:**
+- 13: doc-only, no test exists for a doc comment.
+- 14: not started. Next step: an `it` test in `graft-ops/tests/it/recover_bytes.rs` after
+  `a_lost_edit_put_back_whose_raw_step_cannot_land_says_so`: `u` the put-back, then `lost_edits` + put-back again with
+  writes unblocked; if bytes come back, words → `J puts it back` (`apply/error/words.rs:18-31`, keys via `KeyNames`).
+- Askpass addition (`apply/remote.rs:131`): not done — a question, not a defect: I could not confirm from code that
+  `server.close()` errors on a user's refusal (refusal is tracked by `Refusals::refused`, `:133`); needs the
+  KNOWN_GAPS row's evidence, which builders do not read.
+
+Touches: graft-ui `RowMark` (journal_screen tests green), header ladder; graft `view::ago` (stash + journal),
+undo notice (`/undo/` 293 green), preview ref lines (`/preview/|/rebase_line/|/rewrite/` green), failure.rs
+(`keymap_words` 36 green), history header; graft-ops `AfterState::BackupUnread`, `SnapshotError::Filter`,
+`WriteRaw.tried` (all constructors grepped and updated); MAP.md graft-ui (RadarLine), graft-ops (WriteRaw, lost-edit
+row), graft (Status keys example), plus `BackupUnread`, `SnapshotError::Filter`, `RowMark::Refused`; TESTING.md radar stop 10.
 
 ## Touches
 - Every capture and test asserting the old strings (grep each); J rows (11); preview line rows (10); MAP.md graft-ops
