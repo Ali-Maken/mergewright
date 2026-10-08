@@ -1,0 +1,14 @@
+header tier=unicode columns=165 rows=31 history_rows=3494 refs=291 term=zed headers=20
+frames=599 span_ms=22655.3 frames_per_s=26.4
+wakes n=599 p50=1 p95=3 p99=4 max=8
+motions n=599 p50=1 p95=3 p99=4 max=4
+queued n=599 p50=0 p95=1 p99=3 max=3
+update_us n=599 p50=60 p95=105 p99=164 max=330
+commands n=599 p50=0 p95=1 p99=1 max=4
+draw_us n=599 p50=798 p95=991 p99=1060 max=1880
+bytes n=599 p50=4148 p95=10555 p99=14199 max=16320
+write_us n=599 p50=46 p95=117 p99=177 max=324
+fence_us n=598 p50=7054 p95=12866 p99=13743 max=20315
+input_age_us n=541 p50=1118 p95=7306 p99=7879 max=9416
+tail_ms=96.2
+power Now drawing from 'AC Power'
