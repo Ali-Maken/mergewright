@@ -123,3 +123,10 @@ on the graph (true, not a false promise). Test `the_graph_bar_names_the_way_to_t
 **Gates:** fmt ok, clippy -D warnings ok, nextest workspace 6196 green except that env-only shot writer, test --doc ok.
 
 **Red first.** Only the cycle test was seen red before the fix; the other new tests were written after it (red not observed).
+
+## 20d-b additions (conductor, as found, no new decision)
+
+Part A stopped at the graph-bar box (blocked: needs graft-ui). Continue in graft-ui (+ graft wiring, docs):
+
+- [ ] B+1 — the box above: graph `OperationLive` bar, graph focused, pane open, draws `⇧⇥ banner` via `way_keys`/`BannerWay`, not the fixed `WAY_BACK` (`filters.rs:264`). Remaps respected as in the R5' row. Test: name it. Re-shoot affected captures.
+- [ ] B+2 — `docs/design/02-keymap.md` §2.2: one line saying `⇧⇥` runs the pane cycle in reverse, banner included. Doc, checked by reading.

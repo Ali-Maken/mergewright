@@ -1288,9 +1288,10 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/pinned-clock-debounce | Question: under `GRAFT_NOW` the drawn clock is fixed, so focus debounce and double-click timing may break (19e). Test-only var, but a stray export would hit it. | **unverified** | M8 |
 | M8/hangup-shot-unsorted | Question: `quit_waits/hangup.rs:320` may shoot before sorting settles (19e audit). | **unverified** | M8 |
 | M8/20b-r5-three-tabs | R5 premise "from the graph unchanged": with the detail pane open the banner is three Tabs away; words now `⇥ ⇥ ⇥ banner`. Journey step count — planner to judge. | **unverified** | M8 |
-| M8/20c-backtab-not-reverse | Question: BackTab does not reverse the Tab cycle; with the banner up the graph is unreachable by ⇧⇥ (`focus_keys.rs:31-35`, `:73`). Defect, or keep `⇥ ⇥ ⇥ banner`? R5' open → planner ruling. | **unverified** | M8 |
 | M8/20c-mark-resolved-not-seen-red | `a_conflict_row_says_mark_resolved` written with the code, never seen failing. | **unverified** | M8 |
-| M8/20c-write-shots-flake | `raster::write_shots` failed once during shot update, passed twice after; not investigated. | **unverified** | M8 |
+| M8/write-shots-update-fails | `raster::write_shots` (graft-graph `raster.rs:894`) fails under `GRAFT_UPDATE_SHOTS=1`, passes without: seen in 20c (once) and 20d. Not investigated → debugger. | **broken** | M8 |
+| M8/20d-graph-bar-banner-hint | Graph `OperationLive` bar still draws fixed `WAY_BACK` hint (graft-ui `filters.rs:264`), not `⇧⇥ banner`; needs graft-ui → 20d-b. Keymap doc §2.2 line for back = reverse not written. | **broken** | M8 |
+| M8/20d-tests-not-seen-red | 20d: only the cycle test seen red; other new tests written after the fix. | **unverified** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` **429** lines at the split (12f's 407 was false — review m8-palette-landing-stop C1); `listing.rs` 424 also over → 21b-4 additions; seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |
