@@ -202,7 +202,7 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
 |---|---|
 | `Ctrl+P`, `:` | Command palette, on everything (§2.12) |
 | `?` | Help for the focused place: the palette opened on its keys, an operation's keys first while one is live (§2.12; M8, ADR-0056). Every screen, the empty state included |
-| `Tab` / `Shift+Tab` | Next / previous pane |
+| `Tab` / `Shift+Tab` | Next / previous pane. `Shift+Tab` runs the `Tab` cycle in reverse, the operation banner included: graph → banner → diff → file list → graph with the pane open (M8/20d) |
 | `Esc` | Back out / close overlay / cancel. A failure held while a box was open (drawn with `esc dismiss` once the box closes) is dismissed first; that `Esc` cancels nothing, the next one cancels (ticket 78 Decided 1). After `⏎` from blame or history: back to it (M7, ADR-0048) |
 | `Ctrl+Z`, `u` | Undo (ADR-0002) |
 | `Ctrl+Shift+Z`, `U` | Redo |

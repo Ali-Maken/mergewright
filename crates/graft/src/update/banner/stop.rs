@@ -17,8 +17,8 @@ use crate::update::state::{AppState, Status};
 mod tab;
 mod wording;
 pub use tab::BannerWay;
-pub use tab::one_tab_to_banner;
 pub(crate) use tab::{TabTarget, banner_way, next_of, pane_place, prev_of, tab_target, way_keys};
+pub use tab::{one_press_to_banner, one_tab_to_banner};
 pub use wording::{StopLadder, stop_line, stop_line_wordings, stop_reason, stop_wordings};
 
 /// Where a stopped rewrite is (m7-power-tools/07b): the step and rows

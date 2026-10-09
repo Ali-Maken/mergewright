@@ -435,30 +435,37 @@ const PLAIN: HintContext = HintContext::PlainRow {
 
 /// Find-and-pin 2, after decision B: no graph-row bar is left bare while an
 /// operation is live — bisect, frame 2 and the plain one-`⇥` frame are all
-/// wrapped, each with its own `tab_to_banner` — and none is wrapped with
+/// wrapped, each with its own `way_to_banner` — and none is wrapped with
 /// nothing live.
 #[test]
 fn no_graph_row_context_is_unwrapped_while_live() {
+    use graft_ui::graph_screen::WayToBanner;
     let wrapped = |state: &AppState| match bar(state).0 {
         HintContext::OperationLive {
             row,
             c,
-            tab_to_banner,
+            way_to_banner,
             ..
-        } => Some((*row, c, tab_to_banner)),
+        } => Some((*row, c, way_to_banner)),
         _ => None,
     };
     let bisect = live(InProgress::Bisect, Begun::InShell, &[], Frame::Graph);
-    assert_eq!(wrapped(&bisect), Some((PLAIN, LiveC::Refuses, false)));
+    assert_eq!(wrapped(&bisect), Some((PLAIN, LiveC::Refuses, None)));
     let details = live(
         InProgress::Merge,
         Begun::InGraft,
         &[],
         Frame::GraphWithDetails,
     );
-    assert_eq!(wrapped(&details), Some((PLAIN, LiveC::Finish, false)));
+    assert_eq!(
+        wrapped(&details),
+        Some((PLAIN, LiveC::Finish, Some(WayToBanner::Back)))
+    );
     let plain = live(InProgress::Merge, Begun::InGraft, &[], Frame::Graph);
-    assert_eq!(wrapped(&plain), Some((PLAIN, LiveC::Finish, true)));
+    assert_eq!(
+        wrapped(&plain),
+        Some((PLAIN, LiveC::Finish, Some(WayToBanner::Forward)))
+    );
     // The opening view, before any history lands: wrapped too.
     assert!(plain.history.is_none());
     assert!(matches!(

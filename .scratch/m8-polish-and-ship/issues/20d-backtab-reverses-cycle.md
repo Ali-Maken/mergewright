@@ -1,6 +1,6 @@
 # 20d — `⇧⇥` runs the pane cycle backwards; R5' words take the shorter way
 
-Status: partial (all but the graph bar box: blocked, needs graft-ui — see NOTES)
+Status: done (20d-b closed the graph bar box)
 Build with: **Sonnet**. A focus-order fix with one invariant that a test states outright (back undoes forward), then
 20c's already-specified `BannerWay`/`way_keys`. Nothing structural, no signature another ticket builds on. Not Fable.
 Scout: none — 20c NOTES check 2 is the scout (driven, lines cited). Say so in the report.
@@ -64,8 +64,8 @@ order. If that isn't possible without restructuring `take_focus` → stop, repor
   `p banner` (**deviation**: `p` collides with `graph.pull`, `rewrite.pick`, `stash.pop` — `with_overrides` reports it; test uses `f6` → `F6 banner`). Test: `keymap_words::undo_journal::the_way_is_spelled_from_his_keymap` (three cases).
 - [x] Every banner clause goes through `way_keys` (the `c` refusal, commit-editor `operation_refusal`, `undone`'s
   `OperationLive` arm). Test: `keymap_words::stops` sweep green; `commit_editor_writes.rs:475` unchanged (it is the P16 step-count comment, no banner way). Also updated: `resolver::editor_words::every_way_to_open_the_editor_refuses_mid_operation` graph case `"⇥ ⇥ ⇥ banner, then c finishes it"` → `"⇧⇥ banner, then c finishes it"`; `keymap_words::resolve::the_banner_clause_is_spelled_from_his_keymap` "unbound" case now unbinds both `next_pane` and `prev_pane` (one unbound → the other way, per ruling).
-- [ ] Graph `OperationLive` bar: graph focused, pane open → draws `⇧⇥ banner` (one press works, §2.1). Test:
-  `keymap_words::stops::the_graph_bar_names_the_way_to_the_banner_with_the_pane_open` (red first). **OPEN — blocked: needs graft-ui** (see NOTES). Pushes a pinned
+- [x] Graph `OperationLive` bar: graph focused, pane open → draws `⇧⇥ banner` (one press works, §2.1). Test:
+  `keymap_words::stops::the_graph_bar_names_the_way_to_the_banner_with_the_pane_open` (red first). **Closed by 20d-b B+1** (test written, seen red). Pushes a pinned
   narrow capture over width → stop, report line and widths; no rank change.
 - [x] Sweeps green unedited: `every_bound_action_is_hinted_live_or_is_named_here`,
   `no_key_a_live_operation_bar_draws_refuses_while_live`, `no_literal_keys::no_user_facing_literal_spells_a_default_key` (full workspace nextest run, see NOTES).
@@ -128,5 +128,26 @@ on the graph (true, not a false promise). Test `the_graph_bar_names_the_way_to_t
 
 Part A stopped at the graph-bar box (blocked: needs graft-ui). Continue in graft-ui (+ graft wiring, docs):
 
-- [ ] B+1 — the box above: graph `OperationLive` bar, graph focused, pane open, draws `⇧⇥ banner` via `way_keys`/`BannerWay`, not the fixed `WAY_BACK` (`filters.rs:264`). Remaps respected as in the R5' row. Test: name it. Re-shoot affected captures.
-- [ ] B+2 — `docs/design/02-keymap.md` §2.2: one line saying `⇧⇥` runs the pane cycle in reverse, banner included. Doc, checked by reading.
+- [x] B+1 — the box above: graph `OperationLive` bar, graph focused, pane open, draws `⇧⇥ banner` via `way_keys`/`BannerWay`, not the fixed `WAY_BACK` (`filters.rs:264`). Remaps respected as in the R5' row. Test: `keymap_words::stops::the_graph_bar_names_the_way_to_the_banner_with_the_pane_open` (red seen: bar without the fix read `c continue · ⏎ changes · …`, no banner hint; green after; covers `f6` → `F6 banner`, `prev_pane = none` → no hint, file list → no hint). Re-shot: `docs/shots/m6/fix-c-live-frames-187x50.txt:115` gains leading `⇧⇥ banner ·` (drops `j/k move` to fit); `m6-contact-sheet-3.txt` re-assembled by script (168 595 B).
+- [x] B+2 — `docs/design/02-keymap.md` §2.2: one line saying `⇧⇥` runs the pane cycle in reverse, banner included. Doc, checked by reading.
+
+## NOTES 20d-b (builder, 2026-10-09)
+
+No scout: Part A NOTES named the code (conductor's instruction). No compaction.
+
+**Shape.** graft-ui: `OperationLive.tab_to_banner: bool` → `way_to_banner: Option<WayToBanner>` (`Forward | Back`, exported from
+`graph_screen`); `WAY_BACK_PREV = hint(PREV_PANE, "banner")` (`filters.rs`), new hint key `PREV_PANE` (`app.prev_pane`).
+`every_context` yields each `LiveC` × {Forward, Back, None}; coverage slots 115–118 (`COVERAGE_SLOTS` 115 → 119).
+graft: `banner::one_press_to_banner(state) -> Option<WayToBanner>` (`stop/tab.rs`): Forward where `one_tab_to_banner`, else Back
+where `banner_way(..).back == Some(1)` and `app.prev_pane` is bound; `view/rows.rs` feeds it. `bound.rs` gains `app.prev_pane`
+(the bar now draws it live; the sweeps demand it).
+
+**Tests changed (expected by the feature):** `live_c_tests::no_graph_row_context_is_unwrapped_while_live` (pane-open graph form
+`false` → `Some(Back)`); `it::resolver::shell_begun::capture_fix_c_live_frames` (`!bar.contains("⇥ banner")` → bar has
+`⇧⇥ banner` and no forward `⇥ banner`); sweeps in `update/tests.rs` now filter states by `one_press_to_banner`.
+
+**Gap found (not fixed, out of scope — question for conductor):** focus cycling matches raw `KeyCode::Tab`/`BackTab`
+(`banner/focus_keys.rs:29-30`, `detail/keys.rs:163`), not `app.next_pane`/`app.prev_pane`. So a remapped `prev_pane = "f6"`
+is *spelled* `F6 banner` (words, bar) but F6 does not move focus. Pre-existing since Part A's `way_keys` and before for `Tab`.
+
+`raster::write_shots` fails under `GRAFT_UPDATE_SHOTS=1` (known, filed, not touched).

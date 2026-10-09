@@ -1845,7 +1845,7 @@ fn operation_live_leads_with_the_way_back() {
         let context = HintContext::OperationLive {
             row: Box::new(row.clone()),
             c: LiveC::Finish,
-            tab_to_banner: true,
+            way_to_banner: Some(WayToBanner::Forward),
             space_stages: false,
         };
         // 80 is the narrowest the app lays out for; 187 is the user's.
@@ -1883,7 +1883,7 @@ fn live_c_is_ranked_ahead_of_the_rows_write_keys() {
                 verbs: RowVerbs::NONE,
             }),
             c,
-            tab_to_banner: true,
+            way_to_banner: Some(WayToBanner::Forward),
             space_stages: false,
         };
         for columns in [120, 187] {
@@ -2950,7 +2950,7 @@ fn shed_footer_drops_the_middle_first() {
 /// m8/15 A1: while an operation is live, no graph bar offers a key that
 /// refuses then — `u`, `m`, `r`, `R`, `o` (`lists::REFUSED_WHILE_LIVE`,
 /// each member's refusing line in its doc). Every `OperationLive` form the
-/// catalogue yields (each `LiveC` × `tab_to_banner` × `space_stages`, over
+/// catalogue yields (each `LiveC` × `way_to_banner` × `space_stages`, over
 /// every row form), at every width that draws a bar.
 #[test]
 fn no_live_operation_bar_offers_a_key_that_refuses_while_live() {
@@ -3121,13 +3121,13 @@ fn at_a_stop_a_search_puts_next_and_prev_after_the_stops_keys() {
         let plain = HintContext::OperationLive {
             row: Box::new(row.clone()),
             c,
-            tab_to_banner: true,
+            way_to_banner: Some(WayToBanner::Forward),
             space_stages: false,
         };
         let searching = HintContext::OperationLive {
             row: Box::new(HintContext::Searching(Box::new(row.clone()))),
             c,
-            tab_to_banner: true,
+            way_to_banner: Some(WayToBanner::Forward),
             space_stages: false,
         };
         assert!(all_contexts().contains(&searching), "{searching:?} swept");

@@ -4768,12 +4768,12 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         HintContext::OperationLive {
             row,
             c,
-            tab_to_banner,
+            way_to_banner,
             space_stages,
         } => classified_form(row).map(|row| HintContext::OperationLive {
             row: Box::new(row),
             c: *c,
-            tab_to_banner: *tab_to_banner,
+            way_to_banner: *way_to_banner,
             space_stages: *space_stages,
         }),
         // The pane with an overlay behind it **is** classified, since
@@ -5014,10 +5014,11 @@ fn states_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<AppS
         // With the pane open and the graph (or its file list) focused,
         // `Tab` goes to the pane, not the banner, so the bar leads with
         // `⇥ banner` only where one `Tab` lands there
-        // (`banner::one_tab_to_banner`): each state is the form it claims.
+        // (`banner::one_press_to_banner`, `⇧⇥` too since m8/20d-b): each
+        // state is the form it claims.
         .filter(|state| match context {
-            HintContext::OperationLive { tab_to_banner, .. } => {
-                crate::update::banner::one_tab_to_banner(state) == *tab_to_banner
+            HintContext::OperationLive { way_to_banner, .. } => {
+                crate::update::banner::one_press_to_banner(state) == *way_to_banner
             }
             // `tab after` is the narrow editor's alone (R1's breakpoints).
             HintContext::RewriteEditor { narrow, .. } => {
@@ -5218,12 +5219,12 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         HintContext::OperationLive {
             row,
             c,
-            tab_to_banner,
+            way_to_banner,
             space_stages,
         } => screen_for(row)
             .into_iter()
             .map(|mut state| {
-                operation_live_as(&mut state, *c, *tab_to_banner);
+                operation_live_as(&mut state, *c, way_to_banner.is_some());
                 state
             })
             // Each state is the `space` form it claims (07d D1).

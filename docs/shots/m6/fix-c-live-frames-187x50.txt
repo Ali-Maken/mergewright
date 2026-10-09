@@ -112,4 +112,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
- c finish · ⏎ changes · S stash · p pull · P push · f fetch · J journal · / search · j/k move · ? keys
+ ⇧⇥ banner · c finish · ⏎ changes · S stash · p pull · P push · f fetch · J journal · / search · ? keys

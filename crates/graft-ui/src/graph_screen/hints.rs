@@ -44,7 +44,7 @@ use crate::keymap::{ActionId, Keymap};
 use keys as hint_keys;
 
 pub use catalogue::{every_context, every_hint};
-pub use context::{ConfirmYes, HintContext, LiveC, RowVerbs, TabWord};
+pub use context::{ConfirmYes, HintContext, LiveC, RowVerbs, TabWord, WayToBanner};
 pub(crate) use doorway::doorway_key;
 pub use doorway::doorway_words;
 use doorway::{doorway_hint, doorway_last, spelled, spelled_bar, words_for};
@@ -52,7 +52,7 @@ use doorway::{doorway_hint, doorway_last, spelled, spelled_bar, words_for};
 use filters::drawable;
 use filters::{
     BACK_TO_BLAME, BACK_TO_HISTORY, BLAME, F_HISTORY, FOLD, SEARCH_NEXT, SEARCH_PREV, WAY_BACK,
-    whole_bar,
+    WAY_BACK_PREV, whole_bar,
 };
 pub use fitting::{
     HINT_SEPARATOR, StopWording, fit_status_line, hints_text, stopped_row, stopped_row_before_keys,

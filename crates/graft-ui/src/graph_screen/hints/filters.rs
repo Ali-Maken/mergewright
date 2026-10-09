@@ -2,7 +2,7 @@
 
 use super::{
     ACTIONS, DOORWAY, Divider, EXPLAIN, Hint, HintContext, HintKey, HintState, Keymap, RESIZE,
-    TAIL, context_list, doorway_hint, hint, hint_keys, lists,
+    TAIL, WayToBanner, context_list, doorway_hint, hint, hint_keys, lists,
 };
 
 /// The bar `context` would draw on a row with no end to it, and the doorway
@@ -80,20 +80,23 @@ pub(super) fn whole_bar(
         // while one `⇥` reaches the banner — the way back leading, so the
         // ladder's floor always holds it. Then the row's own `⇥` goes: one
         // key, one meaning, and there `Tab` lands on the banner. Without
-        // `tab_to_banner` the row's `⇥` (if any) stays as the row says it.
+        // a one-press way the row's `⇥` (if any) stays as the row says it.
+        // One `⇧⇥` back (graph, pane open, m8/20d) leads with `⇧⇥ banner`.
         HintContext::OperationLive {
             row,
             c,
-            tab_to_banner,
+            way_to_banner,
             space_stages,
         } => {
             let (list, trailer) = whole_bar(row, divider, keys);
             let list = lists::said_live_on_the_graph(list, *c, *space_stages);
-            if !*tab_to_banner {
-                return (list, trailer);
-            }
-            let mut led = vec![WAY_BACK];
-            led.extend(list.into_iter().filter(|hint| !hint.is(WAY_BACK.keys)));
+            let way = match way_to_banner {
+                None => return (list, trailer),
+                Some(WayToBanner::Forward) => WAY_BACK,
+                Some(WayToBanner::Back) => WAY_BACK_PREV,
+            };
+            let mut led = vec![way];
+            led.extend(list.into_iter().filter(|hint| !hint.is(way.keys)));
             (led, trailer)
         }
     }
@@ -262,6 +265,10 @@ pub(super) const SEARCH_PREV: Hint = hint(hint_keys::PREV_MATCH, "prev");
 /// `⇥ banner`: the way back to a live operation's banner
 /// ([`HintContext::OperationLive`]).
 pub(super) const WAY_BACK: Hint = hint(hint_keys::NEXT_PANE, "banner");
+
+/// `⇧⇥ banner`: the way to the banner one `⇧⇥` away — the graph with the
+/// detail pane open (m8/20d), where `⇥` takes three.
+pub(super) const WAY_BACK_PREV: Hint = hint(hint_keys::PREV_PANE, "banner");
 
 /// The keys only the graph screen answers: each opens something that stands
 /// *where the graph stands*, and each is guarded on the graph having the

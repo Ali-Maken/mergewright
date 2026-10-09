@@ -6,7 +6,7 @@ use super::lists::{TAIL, context_list};
 use super::{
     ACTIONS, BACK_TO_BLAME, BACK_TO_HISTORY, BLAME, ConfirmYes, DOORWAY, DOORWAY_BY_PALETTE,
     EXPLAIN, F_HISTORY, FOLD, Hint, HintContext, LiveC, RESIZE, RowVerbs, SEARCH_NEXT, SEARCH_PREV,
-    TabWord, WAY_BACK,
+    TabWord, WAY_BACK, WAY_BACK_PREV, WayToBanner,
 };
 use crate::conflict_resolver::SideRoles;
 
@@ -335,14 +335,14 @@ fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
                         &[false]
                     };
                     stages.iter().flat_map(move |&space_stages| {
-                        [true, false].into_iter().map(move |tab_to_banner| {
-                            HintContext::OperationLive {
+                        [Some(WayToBanner::Forward), Some(WayToBanner::Back), None]
+                            .into_iter()
+                            .map(move |way_to_banner| HintContext::OperationLive {
                                 row: Box::new(context.clone()),
                                 c,
-                                tab_to_banner,
+                                way_to_banner,
                                 space_stages,
-                            }
-                        })
+                            })
                     })
                 })
                 .collect()
@@ -612,6 +612,7 @@ pub fn every_hint() -> Vec<Hint> {
     all.push(EXPLAIN);
     all.push(RESIZE);
     all.push(WAY_BACK);
+    all.push(WAY_BACK_PREV);
     all.push(SEARCH_NEXT);
     all.push(SEARCH_PREV);
     all.push(BLAME);
