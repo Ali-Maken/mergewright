@@ -546,7 +546,7 @@ fn wind_down(
     // except after a hang-up, where stderr is the dead terminal: the process
     // dies of the `SIGHUP` either way, and the words have nowhere to go.
     finish(outcome, restored).and_then(|exit| match stalled_report {
-        Err(_nowhere_to_go) if exit == Exit::Signal(SIGHUP) => Ok(exit),
+        Err(nowhere_to_go) if excused_by_hangup(&exit, &nowhere_to_go) => Ok(exit),
         report => report.map(|()| exit),
     })
 }
@@ -577,6 +577,13 @@ pub(super) fn hand_back_input<T>(
     outcome
 }
 
+/// A hang-up excuses a failed restore, or a line it can't print, only when
+/// the failure is the dead terminal's (m8/21b-4, rule 3): any other error
+/// is still the exit's.
+fn excused_by_hangup(exit: &Exit, error: &io::Error) -> bool {
+    matches!(exit, Exit::Signal(SIGHUP)) && input::hung_up(error)
+}
+
 /// The loop's outcome, unless putting the terminal back failed: a terminal
 /// left in raw mode is never reported silently.
 fn finish(outcome: io::Result<Exit>, restored: io::Result<()>) -> io::Result<Exit> {
@@ -595,7 +602,11 @@ fn finish_to(
         // The terminal hung up (m8/13g): there is nothing left to restore,
         // and nobody to tell that the restore was refused. The process dies
         // of the `SIGHUP` as a `kill -HUP` makes it die, never exit 1.
-        (Ok(Exit::Signal(SIGHUP)), Err(_nothing_left_to_restore)) => Ok(Exit::Signal(SIGHUP)),
+        (Ok(exit), Err(nothing_left_to_restore))
+            if excused_by_hangup(&exit, &nothing_left_to_restore) =>
+        {
+            Ok(exit)
+        }
         (Ok(_), Err(restore_error)) => Err(restore_error),
         (Err(loop_error), Ok(())) => Err(loop_error),
         (Err(loop_error), Err(restore_error)) => {
@@ -718,7 +729,10 @@ mod tests {
 
     use graft_core::mistake_radar::MistakeRadarKind;
 
-    use super::{AppState, Exit, SIGHUP, Shutdown, finish_to, report_stalled_jobs_to, seed_config};
+    use super::{
+        AppState, Exit, SIGHUP, Shutdown, excused_by_hangup, finish_to, report_stalled_jobs_to,
+        seed_config,
+    };
     use crate::config::{Radar, RadarSetting};
 
     /// A writer whose every write fails, standing in for a closed stderr.
@@ -854,6 +868,44 @@ mod tests {
         let result = finish_to(&mut FailingWriter, Ok(Exit::Signal(SIGHUP)), Err(refused));
 
         assert_eq!(result.expect("a hang-up exits"), Exit::Signal(SIGHUP));
+    }
+
+    /// m8/21b-4: a hang-up excuses only the dead terminal's own failure.
+    /// A restore refused for any other reason is still the exit's error.
+    #[test]
+    fn finish_after_a_hangup_still_reports_a_restore_the_terminal_did_not_refuse() {
+        let refused = io::Error::from(io::ErrorKind::PermissionDenied);
+
+        let result = finish_to(&mut FailingWriter, Ok(Exit::Signal(SIGHUP)), Err(refused));
+
+        let err = result.expect_err("not the dead terminal's failure");
+        assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+    }
+
+    #[test]
+    fn a_hangup_excuses_only_the_dead_terminals_failure() {
+        let eio = || io::Error::from_raw_os_error(5);
+        let cases = [
+            (Exit::Signal(SIGHUP), eio(), true),
+            (
+                Exit::Signal(SIGHUP),
+                io::Error::from(io::ErrorKind::UnexpectedEof),
+                true,
+            ),
+            (
+                Exit::Signal(SIGHUP),
+                io::Error::from(io::ErrorKind::PermissionDenied),
+                false,
+            ),
+            (Exit::Quit, eio(), false),
+        ];
+        for (exit, error, excused) in cases {
+            assert_eq!(
+                excused_by_hangup(&exit, &error),
+                excused,
+                "{exit:?} with {error:?}"
+            );
+        }
     }
 
     #[test]
