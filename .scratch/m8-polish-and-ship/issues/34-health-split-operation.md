@@ -59,7 +59,7 @@ Workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 About 55k tokens.
 
 ## NOTES (builder, 2026-10-09)
-Status: **partial — blocked: needs graft-ui** (one allow-list path, see below). Scout used: `scouts/34-health-split-operation.md`. No compaction.
+Status: **done** — graft-ui allow list fixed after conductor unblock (prose.rs:155,160 → `operation/explain.rs`; both strings confirmed in explain.rs by grep). Full gates rerun: nextest 6222/6222 passed, 14 skipped; fmt, clippy, doc ok. Scout used: `scouts/34-health-split-operation.md`. No compaction.
 
 Split (commit 13858647, then `merge main` for ticket 33): `operation.rs` 183, `operation/types.rs` 247, `operation/refusal.rs` **422 (stop: one item, the `Refusal` enum; would need splitting the enum itself)**, `operation/explain.rs` 341, `operation/words.rs` 183, `operation/queries.rs` 317, `operation/check.rs` 277 (`wc -l`). Inline tests were already in `operation/tests.rs`.
 

@@ -152,12 +152,12 @@ pub const ROWS: &[(&str, &str, &str)] = &[
     ),
     ("graft-ops:journal_list/words.rs", "1 commit", "count"),
     (
-        "graft-ops:operation.rs",
+        "graft-ops:operation/explain.rs",
         "that's the newest commit · a plain amend puts the changes in",
         "article",
     ),
     (
-        "graft-ops:operation.rs",
+        "graft-ops:operation/explain.rs",
         "a switch moves no branch · switch back to {back_to} instead",
         "article",
     ),
