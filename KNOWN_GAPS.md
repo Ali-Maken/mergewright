@@ -1284,14 +1284,13 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/m4-07-future-rows | m4-07 re-shoot draws `future`: frame pinned (`m4_walk.rs:197`) but journal rows wall-dated; re-shoot reverted, m4 sheet stale. Stamp line unverified. | **broken** | M8 |
 | M8/tour-step7-capture-bare | `m8-tour-step7-conflict-120x36.txt` has no header, card or stop line (caption says so) — whether the resolver screen should show the tour card is unverified. | **unverified** | M8 |
 | M8/m8-contact-sheet-21c | The 21c captures go on the M8 contact sheet when 28 builds it (19d-c C+1). | **broken** | M8 |
-| M8/graft-now-shipped | Shipped binary honours `GRAFT_NOW` and writes false persistent journal stamps into real repos (`startup.rs:355`, `session.rs:145`); documented only in MAP. Review m8-tour-setaside-fetch M1. → 19e. | **broken** | M8 |
-| M8/tour-walk-unsettled | Whole-tour walk shoots without `settled()` (`tour_walk.rs:645-656, 393-407`); failed nextest once (`sorting…` drawn). Review M2. → 19e. | **broken** | M8 |
-| M8/kept-putback-landed | Question: does a landed set-aside whose put-back is `Kept` without a clash lose `Landed`? Review m1. | **unverified** | M8 |
-| M8/weak-pinned-undo-test | `u_under_a_pinned_clock_undoes_the_newest` is weak (review m2). | **broken** | M8 |
 | M8/fast-tier-over-budget | Fast suite far over PROMPT 7.1 budget; 4 graft-ui hints tests 81–94 s; no per-test ceiling. Review m3. → 19e ruling. | **broken** | M8 |
 | M8/heavy-tier-reds | Heavy tier (review run, busy machine): 6 red outside this group — ghostty png, 5 held_key. Rerun on a quiet machine at milestone close. | **unverified** | M8 |
 | M8/setaside-fetch-prior-art | Question: prior art for merge set-aside and 21c J wording not in the design note (review m5). | **unverified** | M8 |
 | M8/23-readme-deferred-unchecked | README "nothing deferred shown as present" checked by reading only; the man page awaits the user's own read (J17). | **unverified** | M8 |
+| M8/landed-refused-putback-aborted | Question: a landed merge whose put-back is refused is logged Aborted (`apply/set_aside/answer.rs:34`) — 19e. | **unverified** | M8 |
+| M8/pinned-clock-debounce | Question: under `GRAFT_NOW` the drawn clock is fixed, so focus debounce and double-click timing may break (19e). Test-only var, but a stray export would hit it. | **unverified** | M8 |
+| M8/hangup-shot-unsorted | Question: `quit_waits/hangup.rs:320` may shoot before sorting settles (19e audit). | **unverified** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` **429** lines at the split (12f's 407 was false — review m8-palette-landing-stop C1); `listing.rs` 424 also over → 21b-4 additions; seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |

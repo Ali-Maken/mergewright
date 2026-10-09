@@ -321,3 +321,7 @@ Rows whose expiry was M6, closed with the evidence named inline. Re-expired and 
 | M8/19c-tour-task6-refused | Whole tour passes in card order (19d-c `tour_walk`). Closed 2026-10-08. |
 | M8/19c-capture-age-roll | Pinned clock + pty git dates; tour captures stable over 2 runs. Closed 2026-10-08 by 19d-b/b2/c. |
 | M8/19d-pin-future-commits | pty harness dates in-app commits (R5); tour captures carry no `future`. Closed 2026-10-08 by 19d-b2/c. |
+| M8/graft-now-shipped | Binary stamps the journal from the wall clock; GRAFT_NOW pins only the drawn clock. Closed 2026-10-09 by 19e (clock_pin no-false-stamp test). |
+| M8/tour-walk-unsettled | Walk shoots on `ready_to_shoot`; 10/10 beside full run. Closed 2026-10-09 by 19e. |
+| M8/weak-pinned-undo-test | Replaced by hand-built tie test (graft-ops it/journal_tie.rs). Closed 2026-10-09 by 19e. |
+| M8/kept-putback-landed | Stop after landing reports Landed (merge_set_aside test); premise of R4 was wrong — a stopped merge still puts edits back. Closed 2026-10-09 by 19e. |
