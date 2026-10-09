@@ -219,7 +219,7 @@ fn the_banner_clause_is_spelled_from_his_keymap() {
 }
 
 /// The shipped keymap with `id` bound to `chord` alone.
-fn with(id: &str, chord: &str) -> Keymap {
+pub(super) fn with(id: &str, chord: &str) -> Keymap {
     let (map, problems) = Keymap::with_overrides(
         &[(id.to_owned(), vec![chord.to_owned()])],
         graft_ui::keymap::KeySwitches::default(),

@@ -1,6 +1,6 @@
 # 32 — a remapped pane key moves focus wherever `⇥` / `⇧⇥` did
 
-Status: draft
+Status: done — not a defect (V0 green on HEAD 8b184308); rest of ticket not built
 Build with: **Sonnet** (provisional; conductor confirms after the scout). ADR-0055 already decided the mechanism
 (translate at the edge, dispatchers keep matching defaults); this finds where the pane keys miss the edge and routes
 them through it. Driven tests judge it. **Opus** instead if the scout puts the cause in `Keymap::translate`'s own
@@ -122,5 +122,7 @@ None new. Calls `Keymap::translate` as ADR-0055 §3 defines it; `banner_way`, `w
 
 Scout `scouts/32-pane-focus.md`: the remap step (`edge::key`, `edge.rs:41`) runs before every dispatcher, so the defect ("F6 does not move focus") could not be confirmed from code. Nothing was run.
 
-- [ ] V0 — first, before any other box: a test with `app.prev_pane = "f6"` (and one with `app.next_pane`) presses the remapped key from the graph with the pane open and from the banner, and asserts focus moves as §2.2 says. Name it. **If it is green on HEAD, the defect does not exist: stop, report, do not build the rest** (the conductor closes the gap row). If red, it is the red-first test for the boxes above.
-- [ ] V1 — the sweep gap the scout found: `sweep_tables.rs:29-30` skips Graph `app.*_pane` as "pane closed". Cover it with the pane open. Test: name it.
+- [x] **Green on HEAD, never red** — `keymap_words::focus::the_remapped_way_to_the_banner_is_the_key_that_takes_it` (f6: graph→banner→diff; moved ⇧⇥ unbound) and `keymap_words::focus::the_remapped_next_pane_runs_the_tab_cycle` (f5 lands where ⇥ does, from graph-with-pane-open and banner; asserts focus moved). Edge translates before every dispatcher (`edge.rs:41`); the 20d-b "Gap found" claim was wrong.
+  V0 — first, before any other box: a test with `app.prev_pane = "f6"` (and one with `app.next_pane`) presses the remapped key from the graph with the pane open and from the banner, and asserts focus moves as §2.2 says. Name it. **If it is green on HEAD, the defect does not exist: stop, report, do not build the rest** (the conductor closes the gap row). If red, it is the red-first test for the boxes above.
+- [x] `keymap_edge::sweep::pane_keys_on_the_graph_with_the_pane_open_act_and_follow_their_remap` (default acts, swept chord does the same, moved default does nothing). Green on HEAD: the gap was coverage only.
+  V1 — the sweep gap the scout found: `sweep_tables.rs:29-30` skips Graph `app.*_pane` as "pane closed". Cover it with the pane open. Test: name it.

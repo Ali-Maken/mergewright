@@ -206,6 +206,44 @@ fn every_reachable_row_acts_or_is_listed_and_follows_its_remap() {
     }
 }
 
+/// The graph fixture has its pane closed, so the sweep lists
+/// `app.next_pane` / `app.prev_pane` there (`sweep_tables.rs`). With the
+/// pane open and the graph focused they act (m8/32 V1): the default moves
+/// focus, the swept chord does the same, and the moved default does what
+/// a key nobody answers does.
+#[test]
+fn pane_keys_on_the_graph_with_the_pane_open_act_and_follow_their_remap() {
+    let (swept, moved) = swept();
+    let keys = Keys {
+        both: both(&moved),
+        swept,
+        moved,
+    };
+    let mut fixture = sized_to_draw(commit_pane(walk(), false));
+    fixture.detail.focus = graft_ui::detail::DetailFocus::Graph;
+    assert_eq!(context_of(&fixture), ContextId::Graph);
+    let remapped = AppState {
+        keymap: keys.swept.clone(),
+        ..fixture.clone()
+    };
+    let base = AppState {
+        keymap: keys.both.clone(),
+        ..fixture
+    };
+    let nothing = seen_as(&base, unanswered(), &keys.swept);
+    for (id, default) in [
+        ("app.next_pane", KeyCode::Tab),
+        ("app.prev_pane", KeyCode::BackTab),
+    ] {
+        let did = seen_as(&base, KeyChord::plain(default).to_press(), &keys.swept);
+        assert_ne!(did, nothing, "{id}'s default acts with the pane open");
+        let to = keys.new_chord(id).expect("swept");
+        assert_eq!(seen(&remapped, to.to_press()), did, "{id}'s new chord");
+        let old = seen(&remapped, KeyChord::plain(default).to_press());
+        assert_eq!(old, nothing, "{id}'s moved default is unbound");
+    }
+}
+
 /// Every [`IdleWhy::ActsGivenState`] row of [`ONE_CHORD_IDLE`] acts once
 /// its place has something to change (m8/09h R1′): built as the sweep
 /// builds the place, `given` applied, the idle chord pressed — `then`
