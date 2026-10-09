@@ -46,3 +46,8 @@ TESTING.md commands, man page file, captures that print the name (re-shot). Out:
 
 ## Size
 One context, ~50k tokens.
+
+## Conductor addition (from 25 architecture pass, docs/reviews/m8-architecture.md M4 — as found, no new decision)
+
+- On-disk names are format contracts. Two the pass named for 26/27: the `Graft-Link:` backup trailer — readers accept the old and new spelling, or 27's grep test allow-lists it, with a reason; and the rewrite's `plan.json` directory — migrated before a relaunch reads it. Each gets a box with a test in whichever of 26/27 owns it.
+- Order (conductor): health 33–38 merge before 26; 39–42 need 27's final names, so they run after 27 (they are the exception to "G-health merged" above). 05 is deferred to last by the user (2026-10), so it is not a blocker here.
