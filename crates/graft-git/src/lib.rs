@@ -28,5 +28,6 @@ pub mod stash;
 pub mod state;
 pub mod status;
 pub mod switch_refs;
+pub mod testing;
 pub mod trace;
 pub mod version;

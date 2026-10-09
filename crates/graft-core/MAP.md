@@ -56,8 +56,7 @@ May depend on: nothing internal (ARCHITECTURE.md crate table). One line per publ
 ## journal
 - `EntryId` (struct) — a journal entry's id, a ULID ordered by time; also the backup ref's last segment; serde as text.
 - `EntryId::new` (fn) — `(unix_ms: i64, random: [u8; 10]) -> Self`; `parse` and `as_str` read and write the text.
-- `OperationKind` (enum) — every journaled operation kind (stage … push, merge, rebase, rewrite, conflicts, undo, redo); serde snake_case.
-- `OperationKind::Recover` (variant) — a ref moved back, a branch recreated, or files restored from an entry's backup.
+- `OperationKind` (enum) — every journaled operation kind (stage … push, merge, rebase, rewrite, conflicts, undo, redo; `Recover`: a ref moved back, a branch recreated, or files restored from a backup); serde snake_case.
 - `EntryStatus` (enum) — `Pending`, `Committed`, `Aborted { reason }`.
 - `INTERRUPTED` (const) — `&str` reason recovery records on an entry a dead process left open.
 - `Touches` (struct) — what an operation changes: `refs`, `index`, `worktree`.

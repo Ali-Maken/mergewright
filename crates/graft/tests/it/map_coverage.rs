@@ -2,17 +2,21 @@
 //!
 //! A builder reads MAP.md before source, so it has to be short, current and
 //! complete. For every crate in [`CHECKED`]:
-//! - every `pub` item declared under `src/` (outside test modules) is named
-//!   in the MAP;
+//! - every item in the crate's public set (`public_items`: what a caller
+//!   outside the crate can name) is named in the MAP;
 //! - every MAP line is at most 240 characters and carries no ticket id;
-//! - every item the MAP lists still resolves to a declaration, so stale
-//!   entries fail.
+//! - every item the MAP lists is in the public set, so stale and
+//!   crate-private entries fail.
 //!
 //! Later MAP tickets add their crates to [`CHECKED`].
+
+mod public_set;
 
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+use public_set::public_items;
 
 /// The crates whose MAP.md this guard holds to the format.
 const CHECKED: &[&str] = &[
@@ -38,90 +42,6 @@ fn read(path: &Path) -> String {
     fs::read_to_string(path).unwrap_or_else(|e| panic!("reading {}: {e}", path.display()))
 }
 
-/// Names declared as `#[cfg(test)] mod name;` by any file in `dir`.
-fn test_only_mods(dir: &Path) -> BTreeSet<String> {
-    let mut out = BTreeSet::new();
-    let entries = fs::read_dir(dir).unwrap_or_else(|e| panic!("listing {}: {e}", dir.display()));
-    for entry in entries {
-        let path = entry
-            .unwrap_or_else(|e| panic!("listing {}: {e}", dir.display()))
-            .path();
-        if path.extension().is_none_or(|x| x != "rs") {
-            continue;
-        }
-        let src = read(&path);
-        let mut after_cfg_test = false;
-        for line in src.lines().map(str::trim) {
-            if line == "#[cfg(test)]" {
-                after_cfg_test = true;
-                continue;
-            }
-            if after_cfg_test
-                && let Some(rest) = line.strip_prefix("mod ")
-                && rest.ends_with(';')
-            {
-                out.insert(ident_prefix(rest).to_owned());
-            }
-            if !line.starts_with("#[") {
-                after_cfg_test = false;
-            }
-        }
-    }
-    out
-}
-
-fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
-    let test_mods = test_only_mods(dir);
-    let entries = fs::read_dir(dir).unwrap_or_else(|e| panic!("listing {}: {e}", dir.display()));
-    for entry in entries {
-        let path = entry
-            .unwrap_or_else(|e| panic!("listing {}: {e}", dir.display()))
-            .path();
-        let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-        // `#[cfg(test)] mod x;` files and folders (and any named `tests`)
-        // are test scaffolding, not the crate's surface.
-        if stem == "tests" || test_mods.contains(stem) {
-            continue;
-        }
-        if path.is_dir() {
-            rust_files(&path, out);
-        } else if path.extension().is_some_and(|x| x == "rs") {
-            out.push(path);
-        }
-    }
-}
-
-/// Source lines with every `#[cfg(test)]` inline module removed.
-fn non_test_lines(src: &str) -> Vec<&str> {
-    let mut out = Vec::new();
-    let mut lines = src.lines();
-    let mut pending_cfg_test = false;
-    while let Some(line) = lines.next() {
-        let t = line.trim();
-        if t == "#[cfg(test)]" {
-            pending_cfg_test = true;
-            continue;
-        }
-        if pending_cfg_test && t.starts_with("mod ") && t.ends_with('{') {
-            let (mut opens, mut closes) = (1usize, 0usize);
-            for inner in lines.by_ref() {
-                opens += inner.matches('{').count();
-                closes += inner.matches('}').count();
-                if closes >= opens {
-                    break;
-                }
-            }
-            pending_cfg_test = false;
-            continue;
-        }
-        if !t.starts_with("#[") {
-            pending_cfg_test = false;
-        }
-        out.push(line);
-    }
-    out
-}
-
 fn ident_prefix(s: &str) -> &str {
     let end = s
         .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
@@ -145,48 +65,6 @@ fn pub_item(line: &str) -> Option<String> {
     }
     let name = ident_prefix(words.next()?);
     (!name.is_empty()).then(|| name.to_owned())
-}
-
-/// What a MAP may name besides `pub` items: pub fields, trait methods and
-/// enum variants, i.e. any identifier declared in the source.
-fn declared(line: &str) -> Vec<String> {
-    let t = line.trim_start();
-    let t = t.strip_prefix("pub ").unwrap_or(t);
-    let mut out = Vec::new();
-    if let Some(rest) = t.strip_prefix("fn ") {
-        out.push(ident_prefix(rest).to_owned());
-    }
-    let head = ident_prefix(t);
-    if !head.is_empty() {
-        out.push(head.to_owned());
-    }
-    out
-}
-
-struct Surface {
-    pub_items: BTreeSet<String>,
-    declared: BTreeSet<String>,
-}
-
-fn surface(krate: &str) -> Surface {
-    let mut files = Vec::new();
-    rust_files(&crate_dir(krate).join("src"), &mut files);
-    let mut pub_items = BTreeSet::new();
-    let mut declared_names = BTreeSet::new();
-    for file in files {
-        let src = read(&file);
-        for line in non_test_lines(&src) {
-            if let Some(name) = pub_item(line) {
-                pub_items.insert(name.clone());
-                declared_names.insert(name);
-            }
-            declared_names.extend(declared(line));
-        }
-    }
-    Surface {
-        pub_items,
-        declared: declared_names,
-    }
 }
 
 fn map_text(krate: &str) -> String {
@@ -233,10 +111,17 @@ fn every_pub_item_is_in_its_map() {
     let mut missing = Vec::new();
     for krate in CHECKED {
         let named = backticked_idents(&map_text(krate));
-        for item in surface(krate).pub_items {
-            if !named.contains(&item) {
-                missing.push(format!("{krate}: `{item}`"));
-            }
+        let absent: Vec<String> = public_items(&crate_dir(krate).join("src"))
+            .into_iter()
+            .filter(|item| !named.contains(item))
+            .map(|item| format!("`{item}`"))
+            .collect();
+        if !absent.is_empty() {
+            missing.push(format!(
+                "{krate}: {} missing: {}",
+                absent.len(),
+                absent.join(", ")
+            ));
         }
     }
     assert!(
@@ -302,7 +187,7 @@ fn map_lines_are_short_and_carry_no_ticket_ids() {
 fn every_map_item_still_exists() {
     let mut stale = Vec::new();
     for krate in CHECKED {
-        let known = surface(krate).declared;
+        let known = public_items(&crate_dir(krate).join("src"));
         for (n, line) in map_text(krate).lines().enumerate() {
             if let Some(item) = listed_item(line)
                 && !known.contains(&item)
@@ -313,7 +198,7 @@ fn every_map_item_still_exists() {
     }
     assert!(
         stale.is_empty(),
-        "MAP.md lists items no longer declared:\n{}",
+        "MAP.md lists items outside the crate's public set:\n{}",
         stale.join("\n")
     );
 }
@@ -324,4 +209,63 @@ fn ticket_id_pattern_matches_ids_and_nothing_else() {
     assert!(has_ticket_id("m6/03 rule"));
     assert!(!has_ticket_id("a 1m/2 ratio"));
     assert!(!has_ticket_id("item/3 plain"));
+}
+
+/// Writes `files` (path relative to `src/`, contents) into a temp `src/`.
+fn src_tree(files: &[(&str, &str)]) -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap_or_else(|e| panic!("a temp dir: {e}"));
+    for (path, text) in files {
+        let path = dir.path().join("src").join(path);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)
+                .unwrap_or_else(|e| panic!("creating {}: {e}", parent.display()));
+        }
+        fs::write(&path, text).unwrap_or_else(|e| panic!("writing {}: {e}", path.display()));
+    }
+    dir
+}
+
+#[test]
+fn public_set_skips_private_module_items() {
+    let dir = src_tree(&[
+        ("lib.rs", "mod hidden;\npub mod shown;\n"),
+        ("hidden.rs", "pub struct H;\n"),
+        ("shown.rs", "pub struct S;\n"),
+    ]);
+    let set = public_items(&dir.path().join("src"));
+    assert!(set.contains("S"), "{set:?}");
+    assert!(!set.contains("H"), "{set:?}");
+}
+
+#[test]
+fn public_set_keeps_reexports_and_their_methods() {
+    let dir = src_tree(&[
+        (
+            "lib.rs",
+            "mod hidden;\npub use hidden::H;\npub use hidden::K as Renamed;\n",
+        ),
+        (
+            "hidden.rs",
+            "pub struct H;\npub struct K;\nimpl H {\n    pub fn go() {}\n}\n",
+        ),
+    ]);
+    let set = public_items(&dir.path().join("src"));
+    for name in ["H", "go", "Renamed"] {
+        assert!(set.contains(name), "{name} missing: {set:?}");
+    }
+    assert!(!set.contains("K"), "{set:?}");
+}
+
+#[test]
+fn public_set_skips_cfg_test_items() {
+    let dir = src_tree(&[
+        ("lib.rs", "pub mod shown;\n"),
+        (
+            "shown.rs",
+            "pub fn kept() {}\n#[cfg(test)]\npub fn only_tests() {}\n",
+        ),
+    ]);
+    let set = public_items(&dir.path().join("src"));
+    assert!(set.contains("kept"), "{set:?}");
+    assert!(!set.contains("only_tests"), "{set:?}");
 }
