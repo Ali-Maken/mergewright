@@ -1,4 +1,4 @@
-//! Find anything (m8-polish-and-ship/12, J26–J28): the real binary on a
+//! Find anything (m8-polish-and-ship/12, J26–J31): the real binary on a
 //! pty, walking the design note's journeys `seek-branch`, `seek-tag`,
 //! `rerun-recent` and (12b) `seek-commit-sha`, `seek-commit-words`,
 //! `file-history`, counting keys against its `journey-counts` fence. The
@@ -166,7 +166,7 @@ fn walk_seek_tag() {
     quit(pty);
 }
 
-/// J28 `rerun-recent` = 2: after one palette run (`Undo journal`), `⌃P ⏎`
+/// J31 `rerun-recent` = 2: after one palette run (`Undo journal`), `⌃P ⏎`
 /// runs it again — the recent row is first, under the cursor.
 #[test]
 fn walk_rerun_recent() {
@@ -258,7 +258,7 @@ fn cursor_in_group(pty: &Pty, group: &str, needle: &str) {
     });
 }
 
-/// J29 `seek-commit-sha` = 3: `⌃P <sha prefix> ⏎` puts the graph's cursor
+/// J28 `seek-commit-sha` = 3: `⌃P <sha prefix> ⏎` puts the graph's cursor
 /// on that commit, found in all of history, not only the rows loaded.
 #[test]
 fn walk_seek_commit_sha() {
@@ -282,7 +282,7 @@ fn walk_seek_commit_sha() {
     quit(pty);
 }
 
-/// J30 `seek-commit-words` = 3: `⌃P quokka ledger ⏎`, on the fence's
+/// J29 `seek-commit-words` = 3: `⌃P quokka ledger ⏎`, on the fence's
 /// fixture (the words match one commit and nothing else).
 #[test]
 fn walk_seek_commit_words() {
@@ -300,7 +300,7 @@ fn walk_seek_commit_words() {
     quit(pty);
 }
 
-/// J31 `file-history` = 3: `⌃P harmonica ⏎` ends on the history place for
+/// J30 `file-history` = 3: `⌃P harmonica ⏎` ends on the history place for
 /// `tools/harmonica.txt`. `Esc` (not part of the journey) lands back on
 /// the graph, its cursor on HEAD where it was.
 #[test]

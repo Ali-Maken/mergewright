@@ -57,6 +57,14 @@ fn a_counted_fold_is_not_recounted_on_refresh() {
         &state,
         core(Event::Key(KeyPress::control(KeyCode::Char('r')))),
     );
+    // The refresh ran (its walk was asked), so the missing count is its
+    // choice, not a key that did nothing (21b-4 item 7).
+    assert!(
+        commands
+            .iter()
+            .any(|command| matches!(command, Command::ReadHistory(..))),
+        "Ctrl+R re-reads history: {commands:?}"
+    );
     assert_eq!(counts_asked(&commands), [] as [Oid; 0], "{commands:?}");
     assert_eq!(state.fold_counts.get(&merge), Some(&FoldCount::Counted(3)));
 
