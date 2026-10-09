@@ -1180,7 +1180,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/blame-ws-default-twice | m6: graft-ui `blame.rs:232` literal `true` vs graft-git `blame.rs:77` `BlameOptions::default` | broken | 21, before the blame split |
 | M8/whitespace-tail-home | m7: `whitespace_tail` and `put_whitespace_tail` live in `blame.rs` but are used by `detail_pane/header.rs:350-351` and `history.rs:299-300`. Move them to `graft-ui/src/whitespace_tail.rs` | broken (placement) | 21, before the blame split |
 | M8/captures-two-places | m8 **ruling**, below | decided | 28 |
-| M8/adr-0060-wording | m11: ADR-0060 decision 1 and §1.7 say "with ghost rows", but the built condition is any landed preview (`view/rows.rs:177-182`). Decision 2 says `tier()`, but the code reads `tier_in_force` (`view/frame.rs:110,224`) | broken (textual) | 23 docs pass |
+| M8/adr-0060-wording | m11: ADR-0060 decision 1 and §1.7 say "with ghost rows", but the built condition is any landed preview (`view/rows.rs:177-182`). Decision 2 says `tier()`, but the code reads `tier_in_force` (`view/frame.rs:110,224`) | broken (textual) | 23 docs pass  Re-routed → 28 (not in 23; review m8-hygiene-release m4).|
 | M8/look-sizes-2 | graft-ui `blame.rs` 601, `graph_column/mod.rs` 443 (PROMPT 6.2). Split after the M1 follow-ups and m6/m7 | broken | 21 |
 | M8/13g-double-sighup (update) | Q1 now has its lines: `signals.rs:98-99` (`at = max(seen,1)`) and `:106`; `exit_wait.rs:92`. Whether his shells forward `SIGHUP` on window close is not verified | unverified (question) | keep |
 | M8/map-enter-words-at-empty | At Map Empty/Failed `⏎` only closes the Map (`update/map.rs:191`) but its words say "zoom to commits" (11e question) | **broken** | M8 |
