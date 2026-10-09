@@ -1,6 +1,6 @@
 # 21b-7 — 21b-5's remainder: update/tests parent, consequence.rs, 5+1
 
-Status: 21b-7a done (builder, Opus, 2026-10-09); 21b-7b open. Was: draft (planner spec-only pass 2026-10-09; from 21b-5 NOTES "Open, not decided" / "Not decided" and box 5+1)
+Status: 21b-7a done (builder, Opus, 2026-10-09); 21b-7b done (builder, 2026-10-09). Was: draft (planner spec-only pass 2026-10-09; from 21b-5 NOTES "Open, not decided" / "Not decided" and box 5+1)
 Build with: per part, below. No Fable: no public signature another ticket builds on; every item is judged by a test,
 `nextest list` or `wc -l`.
 Needs: 21b-5 merged (`472e433e`). Runs **before 21b-6** (see Order).
@@ -215,18 +215,40 @@ files, `catalogue.rs`), `:57`, `:199` (`searching_form`, `pane_focused_form`); t
 **Signatures:** none change. Public paths re-exported from their old module.
 
 **Acceptance**
-- [ ] 1 `wc -l` committed: `header_tail.rs`, `layout/tests.rs` ≤ 400; `layout.rs` before → after. The
+- [x] 1 `wc -l` committed: `header_tail.rs`, `layout/tests.rs` ≤ 400; `layout.rs` before → after. The
       `graph_screen::layout` tests pass unedited but for `use` lines (count in NOTES).
-- [ ] 2 `wc -l` committed: `footer.rs`, `footer/tests.rs` ≤ 400. The `graph_screen::footer` tests pass, same count.
-- [ ] 3 `wc -l` committed: `catalogue.rs`, `catalogue/forms.rs` ≤ 400. `every_hint`/`every_context` users pass
+- [x] 2 `wc -l` committed: `footer.rs`, `footer/tests.rs` ≤ 400. The `graph_screen::footer` tests pass, same count.
+- [x] 3 `wc -l` committed: `catalogue.rs`, `catalogue/forms.rs` ≤ 400. `every_hint`/`every_context` users pass
       unedited: graft `update::tests::hint_coverage::*` and graft-ui `hints::tests` (counts in NOTES).
-- [ ] 4 Move-only check per file (steps 1–6). `nextest list --workspace | sort`: count unchanged and names
+- [x] 4 Move-only check per file (steps 1–6). `nextest list --workspace | sort`: count unchanged and names
       identical. Only the moved inline tests change path: list them. `git diff --stat <base> -- docs/shots` is
       empty, with no `.snap.new`. Insta snapshots move beside their tests.
 
 **Touches:** header captures (any `docs/shots/m8/*` with a search tail; the check is byte-identical through the
 shots diff); `tests/no_literal_keys.rs` allow-list paths for `catalogue.rs`, `layout.rs`, `footer.rs`; MAP graft-ui
 `:22` and the layout lines; keymap: none. For the conductor: `layout.rs` (after) → `M8/files-over-400-unrowed`.
+
+**Ticked (21b-7b):**
+- 1 `wc -l`: `header_tail.rs` **71**; `layout.rs` 828 → **765** (stays over, ruling 3 → `M8/files-over-400-unrowed`).
+  **`layout.rs` had no inline `mod tests`** (`grep -n "mod " layout.rs`: none; `:609 #[cfg(test)]` guards only the
+  `walk_text` helper), so no `layout/tests.rs`. Layout tests live in `graph_screen/tests*`, unedited; nextest green.
+- 2 `wc -l`: `footer.rs` 430 → **285**; `footer/tests.rs` **144**. `graph_screen::footer::tests`: 4 listed before
+  and after (`nextest list` diff empty); green in the workspace run.
+- 3 `wc -l`: `catalogue.rs` 635 → **396**; `catalogue/forms.rs` **247**. Moved: the four named + `over_rewritable`,
+  `has_row_verbs` (only forms call them) **and `marked_form`** (a row-form wrapper per `every_context`'s doc;
+  without it `catalogue.rs` stays ~432). `LIVE_C`/`ALL_ROLES` stay (other callers). Users green in workspace nextest.
+- 4 `nextest list --workspace | sort` before/after: 6205 = 6205, `diff` empty (inline `mod tests {}` → `tests.rs`
+  is the same module path). Line-set check (multiset of non-blank trimmed lines, old vs new pair): differences are
+  only `use`/`mod`/`//!` lines, `pub(super)` on moved items (`TAIL_SEPARATOR`, `Drop`, `TailItem` + 3 fields,
+  `fitted_tail`, four form fns), the `WayToBanner` import moving, footer `mod tests {`/`}` → `mod tests;`.
+  `git status docs/shots` clean; no `.snap.new`; footer tests have no insta snapshots.
+
+## NOTES — 21b-7b (builder, 2026-10-09)
+No compaction. Scout: `scouts/21b-5.md` not opened; grep fn lists sufficed for a move-only part. Touches:
+`no_literal_keys*` allow-lists — grep for `catalogue.rs|layout.rs|footer.rs` in `crates/graft-ui/tests`: no hits;
+MAP graft-ui `:22`, `:57`, `:163`, `:199` re-pointed + a 21b-7b layout line; captures: shots unchanged; keymap none.
+Moved doc links in `catalogue/forms.rs` (`[every_context]`, `[changes_pane_live_forms]`) don't resolve from the
+child under private rustdoc; not a gate, left verbatim.
 
 ---
 

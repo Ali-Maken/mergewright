@@ -20,6 +20,7 @@ mod banner;
 pub mod columns;
 mod footer;
 mod header;
+mod header_tail;
 pub mod hints;
 mod layout;
 mod render;
