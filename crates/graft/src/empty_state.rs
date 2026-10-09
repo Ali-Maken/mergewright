@@ -13,14 +13,11 @@
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use graft_core::event::{Event, KeyCode, KeyPress};
+use graft_core::event::{KeyCode, KeyPress};
 use graft_core::job::JobId;
-use graft_ops::clone::{CloneError, name_from_url};
 use graft_term::{sanitize_line, sanitize_path};
 use graft_ui::credential_prompt::{CredentialPrompt as CredentialBox, credential_area};
-use graft_ui::empty_state::{
-    CloneShown, CloneView, EmptyPrompt, EmptyState, EmptyStateView, RecentRow, recent_age,
-};
+use graft_ui::empty_state::{EmptyPrompt, EmptyState, EmptyStateView, RecentRow, recent_age};
 use graft_ui::keymap::{ContextId, KeyChord, Keymap, Translated};
 use graft_ui::paint::foreground;
 use graft_ui::palette::{Palette, WIDE_FROM, palette_area};
@@ -30,15 +27,25 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::widgets::Widget;
 
-use crate::event_loop::Wake;
-use crate::jobs::clone::{CloneAnswer, CloneRequest};
+use crate::jobs::clone::CloneRequest;
 use crate::recent::Recent;
 use crate::update::credential::{self, Answer, CredentialPrompt, PromptKey};
 use crate::update::palette::{
     self as palette, AppAction, Edited, Group, PaletteState, PaletteTarget, Source,
 };
-use crate::update::{AppEvent, Product, Progress};
 use crate::view::rows::home_relative;
+
+mod clone;
+mod open_prompt;
+
+pub(crate) use clone::{CloneRun, CloneState, clone_started, outside_job};
+use clone::{clone_prompt_key, clone_view};
+use open_prompt::open_prompt_key;
+// Only the tests reach these through `empty_state`; the children use them.
+#[cfg(test)]
+use clone::clone_request;
+#[cfg(test)]
+use open_prompt::{complete, resolve};
 
 /// The prompt open over the list.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -51,37 +58,6 @@ pub(crate) enum Prompt {
     /// its keys and its drawing are 18c's).
     Clone(CloneState),
 }
-
-/// The clone prompt: what was typed, and where its clone is.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct CloneState {
-    /// The URL. Kept after a failure or a stop, for a retry (rulings R6).
-    pub url: TextField,
-    pub run: CloneRun,
-}
-
-/// Where the clone prompt's clone is.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum CloneRun {
-    /// Nothing has run yet: the URL is being typed.
-    Typing,
-    /// The clone job is running.
-    Running {
-        job: JobId,
-        /// The folder git is making.
-        into: PathBuf,
-        /// git's last progress line, shortened (`RemoteProgress::brief`, as
-        /// the job's `Progress::RemoteProgress` carries it). `None` before
-        /// git's first line.
-        progress: Option<String>,
-    },
-    /// It failed or was stopped: `CloneError::explain`, sanitised.
-    Ended { words: String },
-}
-
-/// What a stop says when the clone was stopped before it began: nothing ran,
-/// so nothing can be left (`CloneError::Stopped { left: None }`'s words).
-const STOPPED_BEFORE_IT_RAN: &str = "clone stopped \u{b7} nothing kept";
 
 /// Everything the empty state holds between keys.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -146,135 +122,6 @@ pub(crate) enum OutsideStep {
     /// shell's switch and write `done` under this config folder; a failure
     /// is said in the bar row (m8/18e).
     FirstLaunchDone(PathBuf),
-}
-
-/// The clone `⏎` asks for: `url` into `folder`/<the name git would pick>.
-///
-/// # Errors
-/// The reason, in rulings R6's words, when no folder can be named from the
-/// URL or that folder is already there with something in it. Nothing has
-/// run either way.
-pub(crate) fn clone_request(folder: &Path, url: &str) -> Result<CloneRequest, String> {
-    let name = folder_name(url).ok_or_else(|| CloneError::BadUrl.explain())?;
-    let into = folder.join(name);
-    // As `graft_ops::clone` refuses (it checks again when it runs): an
-    // empty folder is filled, anything else there is his.
-    let empty = std::fs::read_dir(&into).is_ok_and(|mut entries| entries.next().is_none());
-    if into.exists() && !empty {
-        return Err(sanitize_line(&CloneError::TargetNotEmpty(into).explain())
-            .as_str()
-            .to_owned());
-    }
-    Ok(CloneRequest {
-        url: url.to_owned(),
-        into,
-    })
-}
-
-/// The folder a clone of `url` makes, as `⏎` would name it: none for a URL
-/// git would read as an option.
-fn folder_name(url: &str) -> Option<String> {
-    name_from_url(url).filter(|_| !url.starts_with('-'))
-}
-
-/// The clone job `job` is running into `into`: the prompt goes read-only
-/// on it, `connecting…` until git's first progress line.
-pub(crate) fn clone_started(state: &mut OutsideState, job: JobId, into: PathBuf) {
-    let run = CloneRun::Running {
-        job,
-        into,
-        progress: None,
-    };
-    match &mut state.prompt {
-        Some(Prompt::Clone(clone)) => clone.run = run,
-        // Only the clone prompt asks for a clone; were it gone, the job
-        // still has a place on screen, so its answer is never dropped.
-        _ => {
-            state.prompt = Some(Prompt::Clone(CloneState {
-                url: TextField::new(""),
-                run,
-            }));
-        }
-    }
-}
-
-/// The running clone's job, if one is.
-fn running_clone(state: &OutsideState) -> Option<JobId> {
-    match &state.prompt {
-        Some(Prompt::Clone(CloneState {
-            run: CloneRun::Running { job, .. },
-            ..
-        })) => Some(*job),
-        _ => None,
-    }
-}
-
-/// A job said something: what it means for the running clone. Progress
-/// updates its line; git's question opens the credential prompt; an end
-/// puts its words on the prompt and closes the question; a landed clone is
-/// [`OutsideStep::Cloned`]. Anything about another job is not this
-/// screen's: [`OutsideStep::Stay`].
-pub(crate) fn outside_job(state: &mut OutsideState, wake: &Wake) -> OutsideStep {
-    let Some(running) = running_clone(state) else {
-        return OutsideStep::Stay;
-    };
-    let Wake::Event(event) = wake else {
-        return OutsideStep::Stay;
-    };
-    let ended = match event {
-        AppEvent::Progress(id, Progress::RemoteProgress { brief }) if *id == running => {
-            if let Some(Prompt::Clone(CloneState {
-                run: CloneRun::Running { progress, .. },
-                ..
-            })) = &mut state.prompt
-            {
-                *progress = Some(brief.clone());
-            }
-            return OutsideStep::Stay;
-        }
-        AppEvent::Progress(id, Progress::CredentialNeeded { prompt, pulse_seed }) => {
-            // Nothing here marks a clone as stopping: after `esc` the job's
-            // own cancel refuses its asks before they are sent
-            // (`ChannelAskPass`), so none reaches this.
-            credential::open_prompt(
-                &mut state.credential,
-                Some(running),
-                false,
-                *id,
-                prompt,
-                *pulse_seed,
-            );
-            return OutsideStep::Stay;
-        }
-        AppEvent::Produced(id, Product::Cloned(CloneAnswer::Done { path, notice }))
-            if *id == running =>
-        {
-            state.credential = None;
-            return OutsideStep::Cloned {
-                path: path.clone(),
-                notice: notice.clone(),
-            };
-        }
-        AppEvent::Produced(id, Product::Cloned(CloneAnswer::Ended { words })) if *id == running => {
-            words.clone()
-        }
-        // Stopped while still queued: nothing ran.
-        AppEvent::Core(Event::JobCancelled(id)) if *id == running => {
-            STOPPED_BEFORE_IT_RAN.to_owned()
-        }
-        AppEvent::Core(Event::JobFailed(id, failure)) if *id == running => {
-            sanitize_line(&format!("clone failed: {failure}"))
-                .as_str()
-                .to_owned()
-        }
-        _ => return OutsideStep::Stay,
-    };
-    if let Some(Prompt::Clone(clone)) = &mut state.prompt {
-        clone.run = CloneRun::Ended { words: ended };
-    }
-    let still = running_clone(state);
-    credential::close_orphaned(&mut state.credential, still);
-    OutsideStep::Stay
 }
 
 /// A key while git's question is open: the prompt's own (modal), carried
@@ -617,160 +464,6 @@ fn list_key(state: &mut OutsideState, key: KeyPress) -> OutsideStep {
     }
 }
 
-fn open_prompt_key(state: &mut OutsideState, mut field: TextField, key: KeyPress) -> OutsideStep {
-    match key.code {
-        KeyCode::Escape => return OutsideStep::Stay,
-        KeyCode::Enter => {
-            if field.text().trim().is_empty() {
-                state.prompt = Some(Prompt::Open(field));
-                return OutsideStep::Stay;
-            }
-            let path = resolve(field.text(), &state.folder, state.home.as_deref());
-            // The prompt closes. If the open fails, the driver comes back
-            // here with the reason as `problem` and the cursor kept.
-            return OutsideStep::Open(path);
-        }
-        KeyCode::Tab => {
-            if let Some(completed) = complete(field.text(), &state.folder, state.home.as_deref()) {
-                field = TextField::new(&completed);
-            }
-        }
-        KeyCode::Backspace => field.backspace(),
-        KeyCode::Delete => field.delete(),
-        KeyCode::Left => field.left(),
-        KeyCode::Right => field.right(),
-        KeyCode::Home => field.home(),
-        KeyCode::End => field.end(),
-        KeyCode::Char(c) if !key.modifiers.control && !key.modifiers.alt => field.insert(c),
-        _ => {}
-    }
-    state.prompt = Some(Prompt::Open(field));
-    OutsideStep::Stay
-}
-
-/// A key in the clone prompt (rulings R6). While it runs, `esc` stops it
-/// and every other key is swallowed (`⌃C` quits before this). Otherwise a
-/// text field: `esc` closes it, nothing written; `⏎` asks for the clone, or
-/// puts the reason it cannot run on the prompt, URL kept; an edit after an
-/// end goes back to typing. `⇥` completes nothing.
-fn clone_prompt_key(state: &mut OutsideState, mut clone: CloneState, key: KeyPress) -> OutsideStep {
-    if let CloneRun::Running { job, .. } = clone.run {
-        state.prompt = Some(Prompt::Clone(clone));
-        return if key.code == KeyCode::Escape {
-            OutsideStep::StopClone(job)
-        } else {
-            OutsideStep::Stay
-        };
-    }
-    let edited = match key.code {
-        KeyCode::Escape => return OutsideStep::Stay,
-        KeyCode::Enter => {
-            let step = match clone_request(&state.folder, clone.url.text().trim()) {
-                // The loop marks it running (`clone_started`) once the pool
-                // has it.
-                Ok(request) => OutsideStep::StartClone(request),
-                Err(reason) => {
-                    clone.run = CloneRun::Ended { words: reason };
-                    OutsideStep::Stay
-                }
-            };
-            state.prompt = Some(Prompt::Clone(clone));
-            return step;
-        }
-        KeyCode::Backspace => {
-            clone.url.backspace();
-            true
-        }
-        KeyCode::Delete => {
-            clone.url.delete();
-            true
-        }
-        KeyCode::Left => {
-            clone.url.left();
-            false
-        }
-        KeyCode::Right => {
-            clone.url.right();
-            false
-        }
-        KeyCode::Home => {
-            clone.url.home();
-            false
-        }
-        KeyCode::End => {
-            clone.url.end();
-            false
-        }
-        KeyCode::Char(c) if !key.modifiers.control && !key.modifiers.alt => {
-            clone.url.insert(c);
-            true
-        }
-        _ => false,
-    };
-    if edited {
-        clone.run = CloneRun::Typing;
-    }
-    state.prompt = Some(Prompt::Clone(clone));
-    OutsideStep::Stay
-}
-
-/// A typed path as a real one: `~` is `home`, a relative path is against
-/// the shown `folder`.
-pub(crate) fn resolve(typed: &str, folder: &Path, home: Option<&Path>) -> PathBuf {
-    let typed = typed.trim();
-    let expanded = match (typed.strip_prefix('~'), home) {
-        (Some(rest), Some(home)) if rest.is_empty() || rest.starts_with('/') => {
-            home.join(rest.trim_start_matches('/'))
-        }
-        _ => PathBuf::from(typed),
-    };
-    if expanded.is_absolute() {
-        expanded
-    } else {
-        folder.join(expanded)
-    }
-}
-
-/// `⇥`: complete the last part of `typed` to a directory. One match: the
-/// whole name and a `/`. Several: their longest common start. None: `None`.
-/// Hidden folders only when the typed part starts with `.`.
-pub(crate) fn complete(typed: &str, folder: &Path, home: Option<&Path>) -> Option<String> {
-    let (head, part) = match typed.rfind('/') {
-        Some(at) => (&typed[..=at], &typed[at + 1..]),
-        None => ("", typed),
-    };
-    let dir = if head.is_empty() {
-        folder.to_path_buf()
-    } else {
-        resolve(head, folder, home)
-    };
-    // A folder that cannot be listed, an entry that cannot be read, a name
-    // that is not UTF-8 (the field holds text): nothing to complete to,
-    // which `⇥` shows by leaving the field as it is. Never an error to say:
-    // completion is a convenience over typing the name.
-    let entries = std::fs::read_dir(&dir).ok()?;
-    let mut names: Vec<String> = entries
-        .filter_map(Result::ok)
-        .filter(|entry| entry.path().is_dir())
-        .filter_map(|entry| entry.file_name().into_string().ok())
-        .filter(|name| name.starts_with(part) && (part.starts_with('.') || !name.starts_with('.')))
-        .collect();
-    names.sort();
-    let first = names.first()?;
-    if names.len() == 1 {
-        return Some(format!("{head}{first}/"));
-    }
-    let common = names.iter().skip(1).fold(first.clone(), |common, name| {
-        common
-            .chars()
-            .zip(name.chars())
-            .take_while(|(a, b)| a == b)
-            .map(|(a, _)| a)
-            .collect()
-    });
-    (common.len() > part.len()).then(|| format!("{head}{common}"))
-}
-
 /// The view model the widget draws, ages read against `now`.
 pub(crate) fn view(state: &OutsideState, now: SystemTime) -> EmptyStateView {
     let secs = |time: SystemTime| {
@@ -806,40 +499,6 @@ pub(crate) fn view(state: &OutsideState, now: SystemTime) -> EmptyStateView {
         problem: state.problem.as_deref().map(sanitize_line),
         first_launch: state.first_launch.is_some(),
         credential: state.credential.is_some(),
-    }
-}
-
-/// The clone prompt as drawn: `into` is where the running clone goes, or
-/// where `⏎` would put it — `<folder>/…` while no name can be read.
-fn clone_view(state: &OutsideState, clone: &CloneState) -> CloneView {
-    let home = state.home.as_deref();
-    let shown_path = |path: &Path| sanitize_path(&home_relative(path, home));
-    let named = || {
-        folder_name(clone.url.text().trim()).map_or_else(
-            || sanitize_line(&format!("{}/\u{2026}", shown_path(&state.folder).as_str())),
-            |name| shown_path(&state.folder.join(name)),
-        )
-    };
-    let (into, shown) = match &clone.run {
-        CloneRun::Typing => (named(), CloneShown::Typing),
-        CloneRun::Running { into, progress, .. } => (
-            shown_path(into),
-            CloneShown::Running {
-                progress: progress.as_deref().map(sanitize_line),
-            },
-        ),
-        CloneRun::Ended { words } => (
-            named(),
-            CloneShown::Ended {
-                reason: sanitize_line(words),
-            },
-        ),
-    };
-    CloneView {
-        url: sanitize_line(clone.url.text()),
-        cursor: clone.url.cursor(),
-        into,
-        shown,
     }
 }
 
