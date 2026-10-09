@@ -1,12 +1,13 @@
 use std::io;
 
 use graft_core::mistake_radar::MistakeRadarKind;
+use signal_hook::consts::SIGHUP;
 
-use super::{
-    AppState, Exit, SIGHUP, Shutdown, excused_by_hangup, finish_to, report_stalled_jobs_to,
-    seed_config,
-};
+use super::super::Exit;
+use super::{excused_by_hangup, finish_to, report_stalled_jobs_to, seed_config};
 use crate::config::{Radar, RadarSetting};
+use crate::jobs::Shutdown;
+use crate::update::AppState;
 
 /// A writer whose every write fails, standing in for a closed stderr.
 struct FailingWriter;
