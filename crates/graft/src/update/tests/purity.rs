@@ -1,6 +1,12 @@
 //! `update`'s purity guard (m8/21b-7: moved out of `update/tests.rs`, which
 //! it no longer has to stay in — the scan now skips every test module, not
 //! only files named `tests.rs`).
+//!
+//! What the scan skips, and why: test-module files (`tests.rs`, anything
+//! under a `tests/` dir), because tests may touch the world; and in each
+//! `mod.rs`, the text from its last `mod tests` declaration to the end, for
+//! the same reason. Nothing else — a mid-file `#[cfg(test)]` item does not
+//! hide what follows it.
 
 use std::path::{Path, PathBuf};
 
@@ -74,16 +80,48 @@ fn update_sources(dir: &Path) -> Vec<String> {
             // kept whole — stripping used to happen only after joining every
             // file, which threw away everything past `mod.rs`'s own marker.
             if path.file_name().is_some_and(|name| name == "mod.rs") {
-                contents
-                    .split_once("#[cfg(test)]")
-                    .expect("mod.rs declares the test module")
-                    .0
-                    .to_owned()
+                without_tests_module(&contents).to_owned()
             } else {
                 contents
             }
         })
         .collect()
+}
+
+/// `contents` cut at the line declaring its **last** `mod tests` (found by
+/// [`declares_tests`]), so only the test module and what follows it are
+/// skipped. A `#[cfg(test)]` item earlier in the file (a test-only `use`)
+/// no longer ends the scan: cutting at the first `#[cfg(test)]` once dropped
+/// `pub fn update` itself (review m8-health-1 M1). The `#[cfg(test)]` left
+/// on the line above is not a forbidden word, so keeping it is harmless.
+fn without_tests_module(contents: &str) -> &str {
+    let mut start = 0;
+    let mut cut = None;
+    for line in contents.split_inclusive('\n') {
+        if declares_tests(line).is_some() {
+            cut = Some(start);
+        }
+        start += line.len();
+    }
+    &contents[..cut.expect("mod.rs declares the test module")]
+}
+
+/// A `#[cfg(test)]` item mid-file (review m8-health-1 M1: `update/mod.rs`'s
+/// test-only `use`) must not end the scan: what follows it is still scanned.
+#[test]
+fn a_mid_file_cfg_test_item_does_not_end_the_scan() {
+    let planted = "use a::b;\n#[cfg(test)]\nuse c::D;\n\n\
+                   pub fn update() { std::time::Instant::now(); }\n\n\
+                   #[cfg(test)]\nmod tests;\n";
+    let kept = without_tests_module(planted);
+    assert!(
+        kept.contains("std::time"),
+        "the scan dropped `update`'s body: {kept:?}"
+    );
+    assert!(
+        !kept.contains("mod tests"),
+        "the test module was kept: {kept:?}"
+    );
 }
 
 #[test]

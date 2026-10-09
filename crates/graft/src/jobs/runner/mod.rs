@@ -7,12 +7,6 @@ mod operations;
 mod queue;
 mod reads;
 
-// The `jobs` modules and constants the children name as `super::<name>`.
-use super::{
-    clone, commit_message, conflict, detail, finish, fold_count, journal_list, map, operate,
-    palette, preview, radar, remote, rewrite, rewrite_open, stash, stash_only, switch_list, undo,
-};
-
 use std::collections::HashMap;
 use std::io;
 use std::sync::atomic::AtomicU64;
