@@ -1268,7 +1268,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/24-no-version-flag | `--version`/`-V` built (24-b, 7b738c16); cargo-install box still open: install into temp CARGO_HOME not re-run. | **unverified** | M8 |
 | M8/24-linux-56-red | Linux fast tier after 30: 6204/6207. Still red: partial_fetch (reflog path; capture-seam design call), cherry_pick (git 2.47 dies on SIGTERM; Apple git surviving unverified), outside_repo launch/open (one-row offset, not investigated). See ticket 30. | **broken** | M8 |
 | M8/24-git-floor | Question for the stop: git 2.38 fails 10/26 matrix tests (2.40 forecast gate, `chain.rs:31`); 2.40/2.56 pass 26/26. Raise floor to 2.40, or keep? | **unverified** | M8 |
-| M8/pane-focus-ignores-remap | Tab/BackTab focus matches raw keys (`focus_keys.rs:29-30`, `detail/keys.rs:163`): remapped `app.prev_pane = "f6"` is spelled `F6 banner` but F6 does not move focus — hint lies under remap. | **broken** | M8 |
 | M8/21b7a-leftovers | graft: leftover `eprintln!("DBG")` in the shift_click test (moved as-is); stale comments naming the old purity path in 4 files (21b-7 NOTES). | **broken** | M8 |
 | M8/30-captures-changed | 30 re-shot 16 captures (header, initials, radar ⓘ) after pty walks stopped inheriting host tier hints; judge by eye at the stop; m7 contact sheet not re-assembled. | **unverified** | M8 |
 | M8/20e-m9-tour-gap | Question: m8-tour caption promises a gap after `◇ work`; picture has none. Caption or header code wrong? (20e NOTES) | **unverified** | M8 |
