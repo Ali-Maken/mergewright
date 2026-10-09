@@ -2,7 +2,7 @@
 
 Status: draft (planner, from `docs/reviews/m8-architecture.md` Major M1)
 
-Build with: _(blank: brownfield, ADR-0035.)_ The planner expects **Sonnet**. The `map_coverage` tests judge the work.
+Build with: **Sonnet** (conductor, after scout `scouts/38-health-map-ui.md`). The planner expects **Sonnet**. The `map_coverage` tests judge the work.
 
 Needs:
 Blocked by: 37 (conductor, from Needs)

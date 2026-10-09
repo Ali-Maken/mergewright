@@ -2,7 +2,7 @@
 
 Status: draft (planner, from `docs/reviews/m8-architecture.md` Major M1)
 
-Build with: _(blank: brownfield, ADR-0035.)_ The planner expects **Sonnet**. A grep-style test checks the work, and each MAP line is judged against the item it names.
+Build with: **Sonnet** (conductor, after scout `scouts/37-health-map-libraries.md`). The planner expects **Sonnet**. A grep-style test checks the work, and each MAP line is judged against the item it names.
 
 Needs:
 Blocked by: none (conductor, from Needs)

@@ -2,7 +2,7 @@
 
 Status: draft (planner, from `docs/reviews/m8-architecture.md` § KNOWN_GAPS disposition)
 
-Build with: _(blank: brownfield, ADR-0035.)_ The planner expects **Sonnet**. The work is move-only, and `nextest list`, the line-set check and the purity guard judge it.
+Build with: **Sonnet** (conductor, after scout `scouts/36-health-split-update-hub.md`). The planner expects **Sonnet**. The work is move-only, and `nextest list`, the line-set check and the purity guard judge it.
 
 Needs:
 Blocked by: none (conductor, from Needs)
