@@ -201,6 +201,8 @@ impl<S: JobEvents> JobRunner<S> {
     /// For a capture whose repository the app writes **during** the
     /// capture: the entry it then draws would otherwise carry a different
     /// instant on every run. See [`crate::session::Clock`] for the rule.
+    /// In-process tests and examples only: the shipped binary never calls
+    /// it, so no env var reaches the journal's stamps (m8/19e §R1).
     #[must_use]
     pub fn with_clock(mut self, clock: crate::session::Clock) -> Self {
         self.clock = clock;

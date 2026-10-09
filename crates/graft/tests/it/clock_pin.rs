@@ -1,6 +1,8 @@
-//! `GRAFT_NOW` pins the binary's session clock (m8-polish-and-ship/19d-b):
-//! the drawn ages and the journal's stamps, for the whole run. A value that
-//! is not whole seconds refuses to launch.
+//! `GRAFT_NOW` pins the binary's drawn clock (m8-polish-and-ship/19d-b):
+//! the ages on screen, for the whole run. It never reaches the journal: the
+//! binary stamps every entry from the wall clock (19e §R1), so a stray pin
+//! in his shell writes no false history. A value that is not whole seconds
+//! refuses to launch.
 #![allow(
     clippy::expect_used,
     reason = "a fixture that cannot be built leaves nothing to test; the panic names why"
@@ -78,55 +80,118 @@ fn a_bad_graft_now_refuses_to_launch() {
     );
 }
 
-/// Every entry stamped in the same pinned second, and `u` still takes the
-/// newest: two commits, then `u` undoes the second, not the first.
+/// One round on the graph: `k` to the changes row, `⏎`, `space` stages the
+/// top file of `left` unstaged, `Esc`, then `c`, `message`, `⏎` commits it
+/// (as the tour's tasks 1-2 do). Back on the graph with the commit on top.
+fn stage_and_commit(pty: &mut Pty, left: usize, message: &str) {
+    pty.send(b"k");
+    pty.wait_for("the cursor on the changes row", |s| {
+        s.lines()
+            .iter()
+            .any(|l| l.contains('\u{25b8}') && l.contains("Uncommitted changes"))
+    });
+    pty.send(b"\r");
+    let unstaged = format!("UNSTAGED ({left})");
+    pty.wait_for("the changes pane", |s| {
+        s.has("space stage") && s.has(&unstaged)
+    });
+    pty.send(b" ");
+    pty.wait_for("one staged", |s| s.has("STAGED (1)") && !s.has(&unstaged));
+    pty.send(b"\x1b");
+    pty.wait_for("the graph's own keys", |s| {
+        s.has("\u{23ce} changes \u{b7} c commit")
+    });
+    pty.send(b"c");
+    pty.wait_for("the commit editor", |s| s.has("\u{23ce} commit"));
+    pty.send(message.as_bytes());
+    pty.send(b"\r");
+    let tip = format!("main] {message}");
+    pty.wait_for(&format!("{message} the tip of main"), |s| s.has(&tip));
+}
+
+/// This process's wall clock in milliseconds: the bounds a run's journal
+/// stamps must fall within.
+fn wall_ms() -> i64 {
+    let since = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("the test machine's clock reads after 1970");
+    i64::try_from(since.as_millis()).expect("milliseconds fit an i64")
+}
+
+/// Every entry stamped by the wall clock while the run lasted, none at the
+/// pin: `GRAFT_NOW` drew the ages and wrote nothing (19e §R1).
+fn stamped_by_the_wall(entries: &[graft_core::journal::JournalEntry], run: (i64, i64), pin: i64) {
+    let (from, to) = run;
+    for entry in entries {
+        assert!(
+            (from..=to).contains(&entry.at_unix_ms),
+            "{} not within the run's wall clock {from}..={to}: {entry:?}",
+            entry.at_unix_ms
+        );
+        assert_ne!(
+            entry.at_unix_ms,
+            pin * 1_000,
+            "stamped at the pin: {entry:?}"
+        );
+    }
+}
+
+/// m8/19e §R1: under the default pin, one in-app commit, then quit. Every
+/// journal entry the run wrote is stamped from the wall clock between the
+/// launch and the exit; none at `PINNED_NOW`.
+#[test]
+fn graft_now_never_stamps_the_journal() {
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+    let repo = scratch.path();
+    let isolated = Isolated::new();
+    let handle = graft_git::repo::RepoHandle::open(repo).expect("repo opens");
+    let path = graft_ops::journal::journal_path(&handle).expect("journal path");
+    assert!(
+        !path.exists(),
+        "a fresh copy has no journal: every entry is new"
+    );
+    std::fs::write(repo.join("README.md"), "edited\n").expect("the scratch repo is writable");
+
+    let from = wall_ms();
+    let mut pty = launch(&isolated, repo, &graft_fixtures::PINNED_NOW.to_string());
+    pty.wait_for("the graph", |s| s.has("Uncommitted changes"));
+    stage_and_commit(&mut pty, 1, "Made under the pin");
+    pty.send(b"q");
+    let (status, stderr, _) = pty.wait_exit();
+    let to = wall_ms();
+    assert_eq!(status.code(), Some(0), "stderr: {stderr}");
+
+    let entries = journal(repo);
+    // Stage, commit.
+    assert_eq!(entries.len(), 2, "{entries:?}");
+    stamped_by_the_wall(&entries, (from, to), graft_fixtures::PINNED_NOW);
+}
+
+/// Two commits under a pinned drawn clock, and `u` takes the newest: it
+/// undoes the second, not the first. The pin draws the ages only; the
+/// entries are stamped from the wall clock (19e §R1).
 #[test]
 fn u_under_a_pinned_clock_undoes_the_newest() {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
     let repo = scratch.path();
     let isolated = Isolated::new();
-    // Both files before launch: the app reads them at start. Each round
-    // stages one in the changes pane (`⏎` on the top row, `space`) and
-    // commits it (`c`, a message, `⏎`), as the tour's tasks 1-2 do.
+    // Both files before launch: the app reads them at start.
     std::fs::write(repo.join("README.md"), "edited\n").expect("the scratch repo is writable");
     std::fs::write(repo.join("notes.txt"), "edited\n").expect("the scratch repo is writable");
+    let from = wall_ms();
     let mut pty = launch(&isolated, repo, &EARLIER.to_string());
     pty.wait_for("the graph", |s| {
         draws_age(s, "4y") && s.has("Uncommitted changes")
     });
 
     for (left, message) in [(2, "First pinned"), (1, "Second pinned")] {
-        pty.send(b"k");
-        pty.wait_for("the cursor on the changes row", |s| {
-            s.lines()
-                .iter()
-                .any(|l| l.contains('\u{25b8}') && l.contains("Uncommitted changes"))
-        });
-        pty.send(b"\r");
-        let unstaged = format!("UNSTAGED ({left})");
-        pty.wait_for("the changes pane", |s| {
-            s.has("space stage") && s.has(&unstaged)
-        });
-        pty.send(b" ");
-        pty.wait_for("one staged", |s| s.has("STAGED (1)") && !s.has(&unstaged));
-        pty.send(b"\x1b");
-        pty.wait_for("the graph's own keys", |s| {
-            s.has("\u{23ce} changes \u{b7} c commit")
-        });
-        pty.send(b"c");
-        pty.wait_for("the commit editor", |s| s.has("\u{23ce} commit"));
-        pty.send(message.as_bytes());
-        pty.send(b"\r");
-        let tip = format!("main] {message}");
-        pty.wait_for(&format!("{message} the tip of main"), |s| s.has(&tip));
+        stage_and_commit(&mut pty, left, message);
     }
 
     let entries = journal(repo);
-    // Stage, commit, stage, commit: four entries in one pinned second.
+    // Stage, commit, stage, commit: four entries, each on the wall clock.
     assert_eq!(entries.len(), 4, "{entries:?}");
-    for entry in &entries {
-        assert_eq!(entry.at_unix_ms, EARLIER * 1_000, "{entry:?}");
-    }
+    stamped_by_the_wall(&entries, (from, wall_ms()), EARLIER);
 
     pty.send(b"u");
     pty.wait_for("the second commit undone", |s| {

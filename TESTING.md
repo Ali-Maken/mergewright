@@ -99,6 +99,31 @@ binary). The current search hint is `m8/search-hint-120x36.txt`
 sheets (`*-contact-sheet.txt`) come from `scripts/contact-sheet.sh`, not a test.
 This list is not an audit of every file under `docs/shots/`.
 
+## Switches the binary reads for tests
+
+Two environment variables reach the shipped binary. Both are for reproducible
+pty runs and captures, not settings. Each takes whole seconds since 1970;
+anything else refuses (`GRAFT_NOW` at launch, exit 2; `GRAFT_PRACTICE_EPOCH`
+when the tour starts, which then does not start).
+
+- **`GRAFT_NOW` draws only and writes nothing** (m8/19e §R1). It pins the
+  clock every age on screen is drawn against, and the practice repo's `now`.
+  The journal's stamps come from the wall clock, always: `u`, J and the time
+  machine order entries by stamp, so a pin left exported in a shell would
+  otherwise write false, permanent history into any repository opened under
+  it. The trade-off: a stray pin draws wrong ages for that session, with no
+  marker on screen (a marker would change every pty capture); unset, they are
+  right again and nothing persisted. The pty harness sets it to
+  `graft_fixtures::PINNED_NOW` unless the test names it. So no pty test may
+  assert a journal stamp's value, and no capture may draw a journal entry's
+  age. Test: `clock_pin::graft_now_never_stamps_the_journal`.
+- **`GRAFT_PRACTICE_EPOCH` dates the practice repo**, the tour's temp
+  repository (removed on every ending), so its commits and their ids are the
+  same every run.
+
+In-process tests pin stamps through `App::open_with_clock` and
+`JobRunner::with_clock`, which no env var reaches.
+
 ## Times I left
 
 Every time you leave Graft for the shell, one line here. **This is the only

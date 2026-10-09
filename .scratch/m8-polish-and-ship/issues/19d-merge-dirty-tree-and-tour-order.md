@@ -135,6 +135,11 @@ as 11a and 03b did. 19d-a2 corrects its spawn count (§R6).
   `JobRunner::with_clock` (journal stamps), as the in-process `Harness` does (m5/25). Unset → `Wall`. Unparsable → no
   launch: stderr `graft: GRAFT_NOW must be whole seconds since 1970, got <v>` (sanitised), exit 2. Never ignored
   (rule 3). G-rename 27's grep finds it, like `GRAFT_PRACTICE_EPOCH`.
+- **Amended 2026-10-09 (19e, review m8-tour-setaside-fetch M1):** GRAFT_NOW pins the drawn clock only (the frame and
+  the practice repo's dates). The binary stamps the journal from the wall clock, always: a shipped env var must never
+  write false history into a real repo, and J, the switch window and state_at order by the stamp. In-process tests
+  still pin stamps through App::open_with_clock / JobRunner::with_clock, which no env var reaches. Pty tests rely on
+  the drawn pin, fixture dates and §R5's git dates; the tour relies on journal order.
 
 ### R4. The sweep's split (NOTES 19d-b :269-275): pin every producer, freeze the orphans (19d-b2)
 - **One constant.** `PINNED_NOW` moves from `tests/it/pty.rs` to `graft_fixtures::PINNED_NOW` (same value,

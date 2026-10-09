@@ -59,7 +59,8 @@ pub enum TerminalChange {
 /// through a `Clock`.** Timing that never reaches the screen (a debounce
 /// window, a deadline) is not covered and does not need to be.
 ///
-/// `Wall` is what the shipped binary passes. `Fixed` is what a caller that
+/// `Wall` is what the shipped binary passes (its drawn clock may be pinned
+/// by [`launch_clock`]; its journal stamps never are). `Fixed` is what a caller that
 /// cannot tolerate drift asks for instead: a snapshot test, the gallery
 /// viewing a corpus stop at `graft_fixtures::CORPUS_NOW` so its capture
 /// never ages, or a capture that writes to the repository it is
@@ -111,8 +112,11 @@ impl Clock {
 }
 
 /// Set to whole seconds since 1970, pins the session clock for the whole
-/// run — every drawn age and every journal stamp (m8/19d-b). For
-/// reproducible pty runs and captures; the pty harness sets it by default.
+/// run — the **drawn clock only**: every age on screen and the practice
+/// repo's dates (m8/19d-b). Journal stamps stay on the wall clock: a test
+/// variable must never write false history into a real repository
+/// (m8/19e §R1). For reproducible pty runs and captures; the pty harness
+/// sets it by default.
 pub(crate) const NOW_VAR: &str = "GRAFT_NOW";
 
 /// What [`NOW_VAR`]'s value asks for: unset → `Wall`; whole seconds →
@@ -137,8 +141,9 @@ pub(crate) fn clock_from(var: Option<&std::ffi::OsStr>) -> Result<Clock, String>
 }
 
 /// The session clock this process runs on, read once at launch from
-/// [`NOW_VAR`] (`clock_from`). `Err` carries sanitised words for stderr;
-/// the binary refuses to launch on it (exit 2).
+/// [`NOW_VAR`] (`clock_from`): the drawn clock only, never the journal's
+/// stamps (m8/19e §R1). `Err` carries sanitised words for stderr; the
+/// binary refuses to launch on it (exit 2).
 ///
 /// # Errors
 /// The variable is set to anything but whole seconds.
