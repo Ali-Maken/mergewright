@@ -695,8 +695,9 @@ fn reports_render_time_for_a_32_row_strip() {
 /// It used only to write them, from an `#[ignore]`d test — which is how 42
 /// captures drifted across four milestones with nothing going red
 /// (m5-history-and-ghost-preview/40). Regenerate on purpose with
-/// `GRAFT_UPDATE_SHOTS=1`; that run is red too, so a rewritten file cannot
-/// pass unnoticed.
+/// `GRAFT_UPDATE_SHOTS=1`; a run that rewrites a drifted file is red too, so
+/// the change cannot pass unnoticed — and a run in which nothing drifted is
+/// green, as every other capture's is (`graft_fixtures::capture`).
 ///
 /// The comparison is on **pixels**, not on the PNG bytes: the encoder is
 /// `tiny-skia`'s, and its output could change with a version bump without one
@@ -705,20 +706,20 @@ fn reports_render_time_for_a_32_row_strip() {
 #[test]
 fn write_shots() {
     let shots = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/shots");
-    let mut regenerated = Regenerated::default();
+    let mut drifted = Drifted::default();
     for name in SHAPES {
         let frame = render(&rows_of(name), USER_CELL);
         save(
             &frame,
             &shots.join(format!("22-raster-{name}.png")),
             None,
-            &mut regenerated,
+            &mut drifted,
         );
         save(
             &frame,
             &shots.join(format!("22-raster-{name}-on-dark.png")),
             Some((0x1E, 0x1E, 0x2E)),
-            &mut regenerated,
+            &mut drifted,
         );
     }
     let row = lone(&rows_of("octopus-merge"));
@@ -746,30 +747,30 @@ fn write_shots() {
         &frame,
         &shots.join("22-raster-rings-on-dark.png"),
         Some((0x1E, 0x1E, 0x2E)),
-        &mut regenerated,
+        &mut drifted,
     );
     // 42: the same ring shapes, at 42's stroke width (ADR-0024).
     save(
         &frame,
         &shots.join("42-raster-rings-on-dark.png"),
         Some((0x1E, 0x1E, 0x2E)),
-        &mut regenerated,
+        &mut drifted,
     );
-    write_thread_shot(&shots, &mut regenerated);
+    write_thread_shot(&shots, &mut drifted);
     // 40: folded edges as fading tails beside the dotted rail (ADR-0022).
     let rows = folded_rows();
     save(
         &folded_frame(&rows, None, true, USER_CELL),
         &shots.join("40-raster-folded-on-dark.png"),
         Some((0x1E, 0x1E, 0x2E)),
-        &mut regenerated,
+        &mut drifted,
     );
-    regenerated.finish();
+    drifted.finish();
 }
 
 /// 42: lane 0 on the selection's thread among four others — a line to
 /// follow, brighter than the rest, never a slab (ADR-0024).
-fn write_thread_shot(shots: &std::path::Path, regenerated: &mut Regenerated) {
+fn write_thread_shot(shots: &std::path::Path, drifted: &mut Drifted) {
     let thread_rows = super::raster_pixels::synthetic(20, 5);
     let lit: BTreeSet<usize> = [0].into_iter().collect();
     let raster_rows = plain(&thread_rows[4..16]);
@@ -798,7 +799,7 @@ fn write_thread_shot(shots: &std::path::Path, regenerated: &mut Regenerated) {
         &thread_frame,
         &shots.join("42-raster-thread-on-dark.png"),
         Some((0x1E, 0x1E, 0x2E)),
-        regenerated,
+        drifted,
     );
 }
 
@@ -806,7 +807,7 @@ fn save(
     frame: &RasterFrame,
     path: &std::path::Path,
     backdrop: Option<(u8, u8, u8)>,
-    regenerated: &mut Regenerated,
+    drifted: &mut Drifted,
 ) {
     use tiny_skia::{Color, IntSize, Pixmap, PixmapPaint, Transform};
     let size = IntSize::from_wh(frame.width, frame.height)
@@ -830,73 +831,165 @@ fn save(
             canvas
         }
     };
-    check_png(&out, path, regenerated);
+    check_png(&out, path, graft_fixtures::updating(), drifted);
 }
 
-/// One rendered pixmap against the PNG committed at `path` — or, when
-/// regenerating, the file rewritten first and the run failed anyway.
+/// One rendered pixmap against the PNG committed at `path`, rewritten after
+/// the comparison when this run is a regeneration.
+///
+/// The committed file is read **before** it is rewritten, so the comparison is
+/// against what was committed, not against the picture just written. It used
+/// to write first and then record every file as regenerated whatever the
+/// comparison said, so `GRAFT_UPDATE_SHOTS=1` was red with not one pixel
+/// changed (m8-polish-and-ship/29). Same contract as
+/// `graft_fixtures::capture::check_bytes`: drift is red whether or not the
+/// file was rewritten, and no drift is green either way.
 ///
 /// Decoding the committed file and comparing pixel buffers keeps the check
 /// about the picture rather than about the encoder. The size is compared
 /// first, so a resized strip says so instead of reporting a mismatch at pixel
 /// zero.
-fn check_png(out: &tiny_skia::Pixmap, path: &std::path::Path, regenerated: &mut Regenerated) {
-    let updating = graft_fixtures::updating();
+///
+/// Drift is recorded, not asserted: one PNG's drift must not stop the next
+/// from being written (m8-polish-and-ship/22 — it used to panic on the
+/// first, so `GRAFT_UPDATE_SHOTS=1` rewrote one file per run). The caller
+/// fails once, after every file, through [`Drifted::finish`].
+fn check_png(
+    out: &tiny_skia::Pixmap,
+    path: &std::path::Path,
+    updating: bool,
+    drifted: &mut Drifted,
+) {
+    let committed = tiny_skia::Pixmap::load_png(path);
     if updating {
         out.save_png(path)
             .unwrap_or_else(|why| panic!("writing {}: {why}", path.display()));
     }
-    let committed = tiny_skia::Pixmap::load_png(path).unwrap_or_else(|why| {
-        panic!(
-            "{}: the committed capture could not be read ({why}). If it is simply \
-             missing, create it with GRAFT_UPDATE_SHOTS=1.",
-            path.display()
-        )
-    });
-    assert_eq!(
-        (committed.width(), committed.height()),
-        (out.width(), out.height()),
-        "{}: the committed capture is a different size from what the rasteriser draws. \
-         Regenerate on purpose with GRAFT_UPDATE_SHOTS=1 and read the diff.",
-        path.display()
-    );
-    let differing = committed
-        .data()
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .zip(out.data().as_chunks::<4>().0)
-        .filter(|(left, right)| left != right)
-        .count();
-    assert_eq!(
-        differing,
-        0,
-        "{}: {differing} pixels differ from what the rasteriser draws. A capture is the \
-         evidence the user judges by eye (CLAUDE.md rule 6), so it must match. If the new \
-         drawing is the right one, regenerate with GRAFT_UPDATE_SHOTS=1 and read the diff.",
-        path.display()
-    );
-    // Not asserted here: one PNG's regeneration must not stop the next from
-    // being written (m8-polish-and-ship/22 — it used to panic on the first,
-    // so `GRAFT_UPDATE_SHOTS=1` rewrote one file per run). The caller fails
-    // once, after every file, through `Regenerated::finish`.
-    if updating {
-        regenerated.0.push(path.display().to_string());
+    let next = if updating {
+        "It has been rewritten: read the diff under docs/shots/ and commit it if it is right."
+    } else {
+        "A capture is the evidence the user judges by eye (CLAUDE.md rule 6), so it must \
+         match. If the new drawing is the right one, regenerate with GRAFT_UPDATE_SHOTS=1 \
+         and read the diff."
+    };
+    let complaint = match committed {
+        Err(why) => Some(format!(
+            "the committed capture could not be read ({why}); if it is simply missing, \
+             create it with GRAFT_UPDATE_SHOTS=1"
+        )),
+        Ok(committed) if (committed.width(), committed.height()) != (out.width(), out.height()) => {
+            Some(format!(
+                "the committed capture is {}x{}, the rasteriser draws {}x{}",
+                committed.width(),
+                committed.height(),
+                out.width(),
+                out.height()
+            ))
+        }
+        Ok(committed) => {
+            let differing = committed
+                .data()
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .zip(out.data().as_chunks::<4>().0)
+                .filter(|(left, right)| left != right)
+                .count();
+            (differing > 0)
+                .then(|| format!("{differing} pixels differ from what the rasteriser draws"))
+        }
+    };
+    if let Some(complaint) = complaint {
+        drifted
+            .0
+            .push(format!("{}: {complaint}. {next}", path.display()));
     }
 }
 
-/// The PNGs one regeneration pass rewrote; red at the end if any were.
+/// The PNGs that differed from what the rasteriser draws; red at the end if
+/// any did, whether or not this run rewrote them.
 #[derive(Default)]
-struct Regenerated(Vec<String>);
+struct Drifted(Vec<String>);
 
-impl Regenerated {
+impl Drifted {
     fn finish(self) {
         assert!(
             self.0.is_empty(),
-            "regenerated {} capture(s): {}. This run is red so the change cannot pass \
-             unnoticed — read the diff under docs/shots/ and commit it if it is right.",
+            "{} capture(s) drifted:\n{}",
             self.0.len(),
-            self.0.join(", ")
+            self.0.join("\n")
         );
     }
+}
+
+/// A scratch PNG path under cargo's per-target temp dir, unique per test.
+fn scratch_png(test: &str) -> std::path::PathBuf {
+    let dir = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("raster-check-png");
+    std::fs::create_dir_all(&dir).unwrap_or_else(|why| panic!("{}: {why}", dir.display()));
+    dir.join(format!("{test}.png"))
+}
+
+fn solid(red: u8) -> tiny_skia::Pixmap {
+    let mut pixmap = tiny_skia::Pixmap::new(4, 3).unwrap_or_else(|| panic!("a 4x3 pixmap"));
+    pixmap.fill(tiny_skia::Color::from_rgba8(red, 0x22, 0x33, 255));
+    pixmap
+}
+
+/// m8-polish-and-ship/29: a regeneration pass in which nothing drifted is
+/// green. It used to write first and then record every file as
+/// "regenerated", so `GRAFT_UPDATE_SHOTS=1` was red with no picture changed.
+#[test]
+fn check_png_regenerating_an_unchanged_capture_is_green() {
+    let path = scratch_png("unchanged");
+    solid(0x11)
+        .save_png(&path)
+        .unwrap_or_else(|why| panic!("{}: {why}", path.display()));
+    let mut drifted = Drifted::default();
+    check_png(&solid(0x11), &path, true, &mut drifted);
+    drifted.finish();
+}
+
+/// A regeneration that rewrites a drifted capture stays red, and the file on
+/// disk is the new picture afterwards.
+#[test]
+fn check_png_regenerating_a_drifted_capture_rewrites_it_and_is_red() {
+    let path = scratch_png("drifted-updating");
+    solid(0x11)
+        .save_png(&path)
+        .unwrap_or_else(|why| panic!("{}: {why}", path.display()));
+    let mut drifted = Drifted::default();
+    check_png(&solid(0x99), &path, true, &mut drifted);
+    assert_eq!(drifted.0.len(), 1, "{:?}", drifted.0);
+    assert!(drifted.0[0].contains("12 pixels differ"), "{:?}", drifted.0);
+    let written = tiny_skia::Pixmap::load_png(&path)
+        .unwrap_or_else(|why| panic!("{}: {why}", path.display()));
+    assert_eq!(written.data(), solid(0x99).data());
+}
+
+/// Without regenerating, drift is red and the committed file is left alone.
+#[test]
+fn check_png_drift_without_regenerating_is_red_and_writes_nothing() {
+    let path = scratch_png("drifted-checking");
+    solid(0x11)
+        .save_png(&path)
+        .unwrap_or_else(|why| panic!("{}: {why}", path.display()));
+    let mut drifted = Drifted::default();
+    check_png(&solid(0x99), &path, false, &mut drifted);
+    assert_eq!(drifted.0.len(), 1, "{:?}", drifted.0);
+    let kept = tiny_skia::Pixmap::load_png(&path)
+        .unwrap_or_else(|why| panic!("{}: {why}", path.display()));
+    assert_eq!(kept.data(), solid(0x11).data());
+}
+
+/// A missing capture is red even when the run creates it.
+#[test]
+fn check_png_missing_capture_is_red_even_when_created() {
+    let path = scratch_png("missing");
+    if path.exists() {
+        std::fs::remove_file(&path).unwrap_or_else(|why| panic!("{}: {why}", path.display()));
+    }
+    let mut drifted = Drifted::default();
+    check_png(&solid(0x11), &path, true, &mut drifted);
+    assert_eq!(drifted.0.len(), 1, "{:?}", drifted.0);
+    assert!(path.exists(), "regenerating creates the missing capture");
 }
