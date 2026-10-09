@@ -111,7 +111,11 @@ set -e
     # failed wake): every test in a module that drives a HungRemote, counted.
     # Modules found by `grep -rl HungRemote crates`.
     hung='(m4_walk::|m8_walk::clone|partial_fetch::|remote_by_key::|clone::|remote::)'
-    echo "HungRemote/teardown modules $hung: $(grep -cE "^ *PASS .*$hung" "$log" || true) passed, $(grep -cE "^ *(FAIL|SIGABRT|SIGSEGV|TIMEOUT) .*$hung" "$log" || true) failed"
+    # nextest prints a failure twice (as it happens and in the closing list),
+    # so failures are counted by distinct test name.
+    passed="$(grep -E "^ *PASS .*$hung" "$log" | awk '{print $NF}' | sort -u | wc -l | tr -d ' ')"
+    failed="$(grep -E "^ *(FAIL|SIGABRT|SIGSEGV|TIMEOUT) .*$hung" "$log" | awk '{print $NF}' | sort -u | wc -l | tr -d ' ')"
+    echo "HungRemote/teardown modules $hung: $passed passed, $failed failed"
 } >"$out"
 
 cat "$out"
