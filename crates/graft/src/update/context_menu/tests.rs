@@ -875,7 +875,7 @@ fn staged_tree() -> std::sync::Arc<graft_git::status::WorkingTreeStatus> {
 }
 
 /// A stash row keeps the order it had: the row's own actions first, then
-/// Checkout, then Cherry-pick after the merge/rebase items (none here).
+/// Checkout, then Cherry-pick — no merge/rebase items (21b-4 5f).
 #[test]
 fn a_stash_row_menu_is_unchanged() {
     let name = |full: &str| {
@@ -912,7 +912,7 @@ fn a_stash_row_menu_is_unchanged() {
     );
     let open = state.context_menu.as_ref().expect("menu opened");
     let labels: Vec<&str> = open.verbs.iter().map(|verb| verb.label.as_str()).collect();
-    // Today's order: Checkout, then `m`/`r`'s items, then Cherry-pick.
+    // The order: Checkout, then Cherry-pick.
     let at = |wanted: &str| {
         labels
             .iter()
@@ -920,10 +920,8 @@ fn a_stash_row_menu_is_unchanged() {
             .unwrap_or_else(|| panic!("{wanted:?} missing from {labels:?}"))
     };
     assert_eq!(at("Checkout 0303030, detached"), 0, "{labels:?}");
-    assert!(
-        at("Merge 0303030 into main (m)") < at("Cherry-pick 0303030"),
-        "{labels:?}"
-    );
+    // No Merge/Rebase on a stash row (21b-4 5f): Cherry-pick follows Checkout.
+    assert_eq!(at("Cherry-pick 0303030"), 1, "{labels:?}");
     assert!(open.menu.items.iter().all(|item| item.disabled.is_none()));
 }
 
@@ -1214,6 +1212,23 @@ fn o_on_a_stash_row_is_refused_in_words() {
         state.status,
         sticky("o takes a commit \u{b7} this row isn't one")
     );
+}
+
+/// 21b-4 5f (review m8-bars-hygiene m1): a stash row's `.` menu offers no
+/// Merge or Rebase.
+#[test]
+fn a_stash_row_menu_has_no_merge_or_rebase() {
+    let mut state = stash_on_row_0();
+    open_for_history_row(&mut state, 0);
+    let open = state.context_menu.as_ref().expect("menu opened");
+    let labels: Vec<&str> = open.verbs.iter().map(|verb| verb.label.as_str()).collect();
+    assert!(
+        labels
+            .iter()
+            .all(|label| !label.starts_with("Merge") && !label.starts_with("Rebase")),
+        "{labels:?}"
+    );
+    assert!(labels.contains(&"Cherry-pick 0303030"), "{labels:?}");
 }
 
 /// `a_stash_row_menu_is_unchanged`'s state: `refs/stash` on row 0.

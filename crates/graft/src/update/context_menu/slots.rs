@@ -97,8 +97,8 @@ pub(crate) fn history_slots(
     let mut dimmed = None;
     let (leading, dim_first) = if is_stash_row(on) {
         verbs.extend(checkouts);
-        merge_and_rebase_verbs(&mut verbs, id, refs, current.as_ref(), &here, keys);
-        // No `(o)`: `o` refuses on a stash row.
+        // No Merge/Rebase: a stash commit is not a branch to merge or
+        // rebase on (21b-4 5f). No `(o)`: `o` refuses on a stash row.
         verbs.push(pick_verb(id, subject, &head, &here));
         (0, None)
     } else {

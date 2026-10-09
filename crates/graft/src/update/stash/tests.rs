@@ -81,6 +81,41 @@ fn capital_s_opens_the_overlay_and_asks_for_the_list() {
     assert!(matches!(commands.as_slice(), [Command::ReadStashes(_)]));
 }
 
+/// 21b-4 5g (review m2): `S` on `stash@{2}`'s row opens the list with that
+/// stash selected, and the list's arrival keeps it there.
+#[test]
+fn capital_s_on_a_stash_row_selects_that_stash() {
+    let name = |full: &str| {
+        graft_core::ref_name::RefName::new(full.as_bytes().to_vec()).expect("a valid ref name")
+    };
+    let refs = crate::refs::badges(
+        &[(name("refs/heads/main"), oid(2))],
+        &graft_git::repo::HeadState::Branch(name("refs/heads/main")),
+        &std::collections::HashMap::new(),
+        &[(oid(3), 2)],
+        |_, _| {
+            Ok(graft_git::history::AheadBehind {
+                ahead: 0,
+                behind: 0,
+            })
+        },
+    )
+    .expect("no ahead/behind walk can fail here");
+    let mut state = AppState {
+        history: Some(crate::view::tests::history_of(3, 0)),
+        refs: Some(Arc::new(refs)),
+        ..AppState::default()
+    };
+    let (_, commands) = press(&mut state, KeyCode::Char('S'));
+    assert_eq!(state.stash.selected, 2);
+    let [Command::ReadStashes(id)] = commands.as_slice() else {
+        panic!("the list is read: {commands:?}");
+    };
+    let list = Arc::new(vec![entry(0, "a", 1), entry(1, "b", 1), entry(2, "c", 1)]);
+    stash_event(&mut state, *id, &Product::Stashes(Ok(list)));
+    assert_eq!(state.stash.selected_entry().map(|e| e.index), Some(2));
+}
+
 #[test]
 fn escape_closes_it_and_cancels_a_read_still_in_flight() {
     let mut state = AppState::default();

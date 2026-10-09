@@ -444,8 +444,18 @@ pub(super) fn resumed_done(
     state.status = resumed_words(how, applied);
     let commands = crate::update::operate::refresh_scope(state, applied.refresh, next_id);
     finished_lands_on_head(state, &commands);
+    // The summary's words replace `what` only: `your edits are back` in
+    // `also` is still true of a merge that set edits aside (21b-4 5h).
     if let Some(crate::update::finish::FinishAnswer::Merged(Some(words))) = finish {
-        state.status = Status::done(words);
+        let also = match &state.status {
+            Status::Done { also, .. } => also.clone(),
+            _ => None,
+        };
+        state.status = Status::Done {
+            what: words,
+            also,
+            keys: None,
+        };
     }
     commands
 }

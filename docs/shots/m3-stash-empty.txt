@@ -6,7 +6,7 @@
 # - The header reads STASHES (0) and the body says
 #   `no stashes — s stashes the working tree`: the empty state is also the
 #   instruction for leaving it.
-# - The footer offers only what works here: s save, esc close.
+# - The footer offers only what works here: s save, S/esc close.
 === 120x32 ===
 "STASHES (0)                                                                                                             "
 "                                                                                                                        "

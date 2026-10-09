@@ -3195,7 +3195,7 @@ const STASH_LIST_HEADER: &str = "\
 # - The cursor row is marked with ▸ and painted to the right edge.
 # - Under the list, the selected stash's files with +/− counts. This is a
 #   file list, not a diff: the diff of a stash is the detail pane's view.
-# - The footer offers ⏎ apply, p pop, s save, d drop, space files, esc close.
+# - The footer offers ⏎ apply, p pop, s save, d drop, space files, S/esc close.
 ";
 
 const STASH_SAVE_HEADER: &str = "\
@@ -3222,7 +3222,7 @@ const STASH_EMPTY_HEADER: &str = "\
 # - The header reads STASHES (0) and the body says
 #   `no stashes — s stashes the working tree`: the empty state is also the
 #   instruction for leaving it.
-# - The footer offers only what works here: s save, esc close.
+# - The footer offers only what works here: s save, S/esc close.
 ";
 
 /// Regenerates the stash overlay's captures

@@ -10,7 +10,7 @@
 # - The cursor row is marked with ▸ and painted to the right edge.
 # - Under the list, the selected stash's files with +/− counts. This is a
 #   file list, not a diff: the diff of a stash is the detail pane's view.
-# - The footer offers ⏎ apply, p pop, s save, d drop, space files, esc close.
+# - The footer offers ⏎ apply, p pop, s save, d drop, space files, S/esc close.
 === 120x32 ===
 "STASHES (2)                                                                                                             "
 "▸ stash@{0}   "WIP on main: token refresh"                     2h ago   3 files                                         "

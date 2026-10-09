@@ -5,9 +5,10 @@
 //! The listing reads the live key table (ADR-0055), so a row's key is what
 //! pressing it does **in the place it was opened from** (decision 3): after
 //! `merge = "j"`, `?` on the graph spells merge `j` and move `↓`. `⏎` runs a
-//! row the way its key would — the default chord, straight to
-//! [`super::dispatch_key`], so an action he unbound still runs and a
-//! refusal reads exactly as the key's (decision 5).
+//! row the way its key would: an `IN PROGRESS` row runs as the banner's
+//! key (`banner_press`), any other through [`super::dispatch_key`], so an
+//! action he unbound still runs and a refusal reads exactly as the key's
+//! (decision 5).
 //!
 //! The palette is a text field (§2.1): every key but `Ctrl+C` is its own
 //! while it is up, and the edge passes them untranslated
@@ -37,11 +38,14 @@ use crate::search::CommitHit;
 use graft_git::status::TrackedPaths;
 
 mod find;
+mod groups;
 mod input;
 mod listing;
 mod run;
 
 pub(super) use self::find::*;
+#[allow(clippy::wildcard_imports)]
+use self::groups::*;
 pub(crate) use self::input::*;
 pub(crate) use self::listing::*;
 pub(crate) use self::run::first_runnable;

@@ -157,14 +157,13 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 - **Changing pull's fetch-first path** → `graft-ops/src/apply/pull.rs`.
 - **Adding a new kind of `Command` or wiring a new job** → `app`. It's the
   only crate allowed to see every other crate, and `update` and the job
-  runner both live there. **Seven commands are the exception: they are
-  carried out by the frame loop itself, never by a job** — the six that
-  hand the terminal over (see the hand-over rule below) and `Retheme`, the
-  palette's `Theme: …` rows, because "the theme is the loop's, so the loop
-  carries them out here" (`app/src/event_loop/running/turn.rs:298–299`).
-  The full list is the `not_a_job` arms in `app/src/jobs/runner.rs`.
+  runner both live there. **The exception is the commands the loop carries
+  out itself** (the `not_a_job` arms in `jobs/runner.rs`): the six that
+  hand the terminal over (see the hand-over rule below), plus `Retheme`,
+  `CopyToClipboard`, `SaveLayout`, `FirstLaunchDone`.
 - **Changing the palette** (`?`, `⌃P`) → `app/src/update/palette/`:
-  `mod.rs` (state, `palette_key`, view), `listing.rs` (rows, filter),
+  `mod.rs` (state, `palette_key`, view), `listing.rs` (rows, spelling, filter), `groups.rs` (the groups before
+  the query),
   `find.rs` (BRANCHES/TAGS/FILES/COMMITS and their jobs' answers),
   `run.rs` (`⏎`), `input.rs` (opening, edits, paste, mouse);
   `graft-ui/src/palette.rs` for how it draws; `app::jobs::palette` for the
@@ -192,8 +191,8 @@ shell they suspended to — inside the terminal Graft is drawing on. The
 six commands that do this (`EditCommitMessage`, `OpenExternalEditor`,
 `OpenMergetool`, `OpenConflictEditor`, `ContinueInGit`, `Suspend`;
 `hands_over` in `crates/graft/src/event_loop/running/carry.rs`) **hand the
-terminal over**; with `Retheme` they are the only commands **carried out by
-the frame loop rather than queued as jobs** (the full list: `not_a_job` in
+terminal over**, so they are **carried out by the frame loop rather than
+queued as jobs** (the full list of such commands: `not_a_job` in
 `crates/graft/src/jobs/runner.rs`), and
 that is not a shortcut: the job pool's threads do not own the session or the
 input mux, and only the thread that owns both can give the terminal up. A job
