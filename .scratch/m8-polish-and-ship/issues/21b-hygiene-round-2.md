@@ -341,7 +341,7 @@ the scout's file. Don't read whole files: list `fn`/`mod`/`impl` lines and secti
 **Signatures:** none change. `pub(super)` widening only where a sibling needs it.
 
 **Acceptance**
-- [ ] 1–4: the move-only check, per file, one commit each; NOTES the before/after `wc -l` table and the
+- [~] 1–4 (partial: items 1, 2, 4 hold by `wc -l` + `nextest list`; item 3's parent is 687, over 400, see NOTES 21b-5) — the move-only check, per file, one commit each; NOTES the before/after `wc -l` table and the
       `nextest list` diff (empty). A topic that can't get under 400 without splitting a test: its size in NOTES.
 
 **Touches:** every test path under `update::tests::*` is renamed by a move → `nextest list` is the check (paths
@@ -570,3 +570,16 @@ Gates workspace-wide: fmt; clippy `--all-targets` and `--all-targets --features 
 ## 21b-5 additions (conductor 2026-10-08, from docs/reviews/m8-bars-hygiene.md M1 — fixes as the review states them; adds graft-ui files to 21b-5's crate set)
 - [ ] 5+1: move-only, each ≤400 by `wc -l` on the committed file: graph_screen `layout.rs` header tail (:263–303 + its three types) → `graph_screen/header_tail.rs`; graft-ui `footer.rs` inline tests → `footer/tests.rs`; `view/rows.rs` hint-context classification (`cursor_row_context`, `cursor_is_stash`, `search_wrapped`, `live_wrapped`, `back_to_place`) → a `view/rows/` child; `catalogue.rs` (634) by its own seam. Re-locate; quote before/after `wc -l` at tick.
 - [x] 5h (19d-c hand-back): finishing a paused merge keeps `your edits are back` in the words — `update/banner/resume.rs:447-449` `resumed_done` overwrites `also`; keep both. New test seen red first. **Ticked:** `update::banner::tests::resume_words::finishing_a_merge_keeps_your_edits_are_back` (seen red: `also: None`, then green). Summary words replace `what` only.
+
+## NOTES — 21b-5 (builder, Opus, 2026-10-09)
+Scout used (`scouts/21b-5.md`). Base 7787774e (includes 29). Gates on dbdc1d6e: fmt ok, clippy -D warnings ok, nextest 6201/6201 pass (14 skipped), test --doc ok.
+**Check:** `cargo nextest list --workspace | sort` before/after every commit: count 6201 = 6201, test-fn names (binary + last segment) identical; item 1, 2, 5j, 5k paths byte-identical; items 3, 4 paths move by design. `git diff --stat 7787774e -- docs/shots` empty.
+**Commits / wc -l (before -> after):**
+- item 1 c49b3341 `undo.rs` 2055 -> 271; `undo/answers.rs` 274, `revert.rs` 207, `notice.rs` 277. Tests: `undo/tests.rs` 375, `tests/{answers 344, notice 188, landing 186}`. Pre-existing `set_aside.rs` 436 untouched.
+- item 2 a9077747 `banner/resume.rs` 503 -> 196; `resume/answers.rs` 321.
+- item 3 6ae5d16a + dbdc1d6e `update/tests.rs` 7076 -> **687 (over 400)**; 32 topic children, largest 382. Parent holds the use block, the 17 `pub(super)`/`pub(crate)` fixtures other modules name by path (`crate::update::tests::{key, core, resolver_on_screen, ...}`), re-imports of helpers shared between children, plus `update_cannot_reach_the_world`/`update_sources` and `shift_click_on_a_second_row_opens_the_compare`: the purity test scans every file under `update/` except files named `tests.rs` (`update/tests.rs` `update_sources`), so a child that prints (`eprintln!`) or names `std::time`/`ratatui` fails it (seen red: `purity.rs` and then the parent run). `use std::time::Duration` (was `commit_graph_offer`'s) and fn-local `use ratatui::layout::Rect` (`the_mirror_agrees_at`) hoisted to the parent. **Open, not decided:** let the purity scan skip `update/tests/`, or move the fixtures to `tests/fixtures.rs` with re-exports; either gets the parent <=400.
+- item 4 7282ba3c `stops.rs` 1102 -> 384; `stops/places.rs` 356, `inline.rs` 321, `graph_bar.rs` 55.
+**Line-set check** (non-blank new lines absent from the old file): only `use`/`mod`/`//!`, visibility widening, fmt re-wraps, and path fixes for the extra module level (`super::X` -> `super::super::X`: `abort_key` in resume/answers; `operate/remote/banner/detail/preview/quit/lands_on` in undo children; `confirm` in undo tests/answers; `resolve` in stops/graph_bar; every `super::` in the update/tests topics, incl. one doc link in `hint_coverage`); comment lines saying why a re-export or kept test sits in a parent.
+**Visibility:** undo children `pub(super)` -> `pub(in crate::update)` (same reach); `launch`, `drift_box`, `UNREADABLE` -> `pub(super)`; resume/answers `pub(in crate::update::banner)`; shared test helpers -> `pub(super)` + parent `use`.
+**Touches:** `rg 'update::tests::'`: doc comments and TESTING.md:3166 (records, left); code paths to kept fixtures compile unedited; no scripts hit. Undo/journal: moves only, 6201 green. MAP rows: graft 4, graft-ui 1.
+**Not decided (ticket silent):** `undo/consequence.rs` 419 left; `undo/tests/set_aside.rs` 436 and `tests/keymap_rules.rs` 435 pre-existing.
