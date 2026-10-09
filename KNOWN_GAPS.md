@@ -1289,7 +1289,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/hangup-shot-unsorted | Question: `quit_waits/hangup.rs:320` may shoot before sorting settles (19e audit). | **unverified** | M8 |
 | M8/20b-r5-three-tabs | R5 premise "from the graph unchanged": with the detail pane open the banner is three Tabs away; words now `⇥ ⇥ ⇥ banner`. Journey step count — planner to judge. | **unverified** | M8 |
 | M8/20c-mark-resolved-not-seen-red | `a_conflict_row_says_mark_resolved` written with the code, never seen failing. | **unverified** | M8 |
-| M8/write-shots-update-fails | `raster::write_shots` (graft-graph `raster.rs:894`) fails under `GRAFT_UPDATE_SHOTS=1`, passes without: seen in 20c (once) and 20d. Not investigated → debugger. | **broken** | M8 |
 | M8/20d-tests-not-seen-red | 20d: only the cycle test seen red; other new tests written after the fix. | **unverified** | M8 |
 | M8/24-brew-style | Generated formula: `brew style` 3 offences from dist template; man page lands in pkgshare, not man1. | **broken** | M8 |
 | M8/24-no-version-flag | `graft --version` missing; cargo-install check box open (needs graft `cli.rs`) → 24-b. | **broken** | M8 |
