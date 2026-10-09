@@ -57,3 +57,14 @@ Workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 
 ## Size
 About 55k tokens.
+
+## NOTES (builder, 2026-10-09)
+Status: **done** — graft-ui allow list fixed after conductor unblock (prose.rs:155,160 → `operation/explain.rs`; both strings confirmed in explain.rs by grep). Full gates rerun: nextest 6222/6222 passed, 14 skipped; fmt, clippy, doc ok. Scout used: `scouts/34-health-split-operation.md`. No compaction.
+
+Split (commit 13858647, then `merge main` for ticket 33): `operation.rs` 183, `operation/types.rs` 247, `operation/refusal.rs` **422 (stop: one item, the `Refusal` enum; would need splitting the enum itself)**, `operation/explain.rs` 341, `operation/words.rs` 183, `operation/queries.rs` 317, `operation/check.rs` 277 (`wc -l`). Inline tests were already in `operation/tests.rs`.
+
+- [x] Move-only line-set check (multiset of trimmed lines, orig vs all seven files): only diffs are 6 `mod` lines, `pub use refusal::Refusal; pub use types::*; pub use words::RefusalWords; pub(crate) use words::{opens_in_progress, runs_in_progress};`, private `use types::amends_at_edit_stop; use words::{commits_them, dashed, in_the_way_rungs, in_the_way_words, name_paths, ref_words};`, each child's `//!` line + `use super::{…}` list, the closing/opening `impl Operation {`/`}` around the queries/check halves, and fmt reflowing `and_stash_if_set_aside`'s signature.
+- Forced visibility (private → `pub(super)`): `Invocation::new`, `Invocation::with_stdin`, `amends_at_edit_stop`, `in_the_way_rungs`, `in_the_way_words`, `commits_them`, `dashed`, `ref_words`, `name_paths`, `Operation::stash_ref_if_set_aside`, `Operation::and_stash_if_set_aside`.
+- [x] `nextest list --workspace`: 6219 before (pre-merge) / 6222 after; sorted diff = only ticket 33's three `file_size::*` tests.
+- [x] `over_400.txt`: `operation.rs` row removed, `422 …/operation/refusal.rs` added; `file_size::every_file_over_400_lines_is_listed_with_its_count` passed in the nextest run.
+- Gates: fmt ok, clippy -D warnings ok, test --doc ok, nextest 6221/6222 — **fails `graft-ui::no_literal_keys no_user_facing_literal_spells_a_default_key`**: its allow list `crates/graft-ui/tests/no_literal_keys/prose.rs:155,160` keys two `Refusal::explain` strings by `"graft-ops:operation.rs"`; they now live in `operation/explain.rs`. Fix: change both to `"graft-ops:operation/explain.rs"`. Outside my crate set, not edited.

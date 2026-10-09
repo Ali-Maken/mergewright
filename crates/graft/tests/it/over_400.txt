@@ -46,9 +46,9 @@
 778 crates/graft-ops/src/journal/tests.rs
 1078 crates/graft-ops/src/mistake_radar/probes.rs
 709 crates/graft-ops/src/mistake_radar/rules.rs
-1917 crates/graft-ops/src/operation.rs
 1016 crates/graft-ops/src/operation/history.rs
 1281 crates/graft-ops/src/operation/history/tests.rs
+422 crates/graft-ops/src/operation/refusal.rs
 547 crates/graft-ops/src/operation/remote/tests.rs
 2006 crates/graft-ops/src/operation/tests.rs
 434 crates/graft-ops/src/preview/effects.rs
