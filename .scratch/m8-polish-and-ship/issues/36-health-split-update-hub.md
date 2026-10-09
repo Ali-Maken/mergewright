@@ -61,3 +61,7 @@ Workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 
 ## Size
 About 55k tokens.
+
+## Conductor addition (as found, no new decision)
+
+- [ ] `ARCHITECTURE.md` still names `jobs/runner.rs`; since 35 it is `jobs/runner/` (`not_a_job` lives in `runner/dispatch.rs`). Fix that line with this ticket's own ARCHITECTURE edits. Check: `rg -n 'jobs/runner\.rs' ARCHITECTURE.md` → no hits.
