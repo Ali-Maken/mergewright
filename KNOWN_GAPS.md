@@ -1291,6 +1291,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/fast-tier-over-budget | Fast suite far over PROMPT 7.1 budget; 4 graft-ui hints tests 81–94 s; no per-test ceiling. Review m3. → 19e ruling. | **broken** | M8 |
 | M8/heavy-tier-reds | Heavy tier (review run, busy machine): 6 red outside this group — ghostty png, 5 held_key. Rerun on a quiet machine at milestone close. | **unverified** | M8 |
 | M8/setaside-fetch-prior-art | Question: prior art for merge set-aside and 21c J wording not in the design note (review m5). | **unverified** | M8 |
+| M8/23-readme-deferred-unchecked | README "nothing deferred shown as present" checked by reading only; the man page awaits the user's own read (J17). | **unverified** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` **429** lines at the split (12f's 407 was false — review m8-palette-landing-stop C1); `listing.rs` 424 also over → 21b-4 additions; seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |
