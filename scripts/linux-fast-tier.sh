@@ -13,7 +13,8 @@
 # As a plain user, not root: several tests make a file unreadable and expect
 # git to fail, which root would not.
 #
-# The image is the official `rust` image (Debian bookworm, its own git). The
+# The image is the official `rust` image: Debian trixie, git 2.47 (the fast
+# tier needs git 2.40+; bookworm has 2.39, see TESTING.md). The
 # container is started with --rm and leaves nothing behind; the image stays
 # in Docker's cache until `docker image rm` removes it.
 #
@@ -21,13 +22,13 @@
 #   full log:      ${XDG_CACHE_HOME:-~/.cache}/graft-linux/fast-tier.log
 #   summary lines: docs/release/linux.txt (committed)
 #
-# Usage: scripts/linux-fast-tier.sh [image]     # default rust:1-bookworm
+# Usage: scripts/linux-fast-tier.sh [image]     # default rust:1-trixie
 set -eu
 cd "$(dirname "$0")/.." || exit 1
 
 # The newest stable at the time of writing, not the MSRV: the lock file and
 # the fast tier are what is under test here, not the MSRV promise.
-image="${1:-rust:1-bookworm}"
+image="${1:-rust:1-trixie}"
 cache="${XDG_CACHE_HOME:-$HOME/.cache}/graft-linux"
 log="$cache/fast-tier.log"
 out="docs/release/linux.txt"
@@ -55,6 +56,11 @@ mkdir -p /home/tester/.cargo/bin
 # \"Author identity unknown\"; m8-polish-and-ship/24 NOTES).
 git config --global user.name Tester
 git config --global user.email tester@example.invalid
+# A UTF-8 locale and a terminal type, as a developer shell has: the pty
+# tests inherit both, and without them the app picks the ASCII tier while
+# the tests wait for Unicode glyphs (a run without them: 60+ pty waits
+# timed out on an ASCII graph; m8-polish-and-ship/24 NOTES).
+export LANG=C.UTF-8 TERM=xterm-256color
 case \$(uname -m) in aarch64) arch=linux-arm ;; *) arch=linux ;; esac
 curl -fsSL https://get.nexte.st/latest/\$arch | tar -xzf - -C /home/tester/.cargo/bin
 cd /work
