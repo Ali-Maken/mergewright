@@ -49,11 +49,11 @@ seam: that is another spec question.
 ## Acceptance (each tick names its check inline)
 - [ ] 5i: graft `empty_state.rs` and `empty_state/palette.rs` are each ≤ 400 by `wc -l` on the committed file (quote
       both). `cargo nextest list --workspace | sort` before and after the commit: `diff` empty (quote the count).
-- [ ] 5j: graft `places/outside.rs` and `places/outside/carry.rs` are each ≤ 400 by `wc -l` on the committed file
+- [x] 5j (31fc7d49; `wc -l` outside.rs 281, outside/carry.rs 223; nextest list diff empty, 6201; the commit's stat lists no places/tests.rs; `try_open` moved: `rg -n try_open crates/graft/src` callers only :349/:372/:386, all in `carry_out`/`init_and_open`): graft `places/outside.rs` and `places/outside/carry.rs` are each ≤ 400 by `wc -l` on the committed file
       (quote both). The `nextest list` diff is empty. `git diff --stat` of the commit doesn't list `places/tests.rs`.
-- [ ] 5k: graft-ui `empty_state.rs` and `empty_state/draw.rs` are each ≤ 400 by `wc -l` on the committed file (quote
+- [x] 5k (2991ed03; `wc -l` graft-ui empty_state.rs 333, empty_state/draw.rs 248; nextest list diff empty; `keep_end` stays in parent: `rg keep_end` shows clone_prompt.rs:8,84): graft-ui `empty_state.rs` and `empty_state/draw.rs` are each ≤ 400 by `wc -l` on the committed file (quote
       both). The `nextest list` diff is empty.
-- [ ] 5l, for every move above:
+- [x] 5l (one commit each 31fc7d49/2991ed03; line-set check: only use lines, `pub(in crate::event_loop::places)`/`pub(super)` widening, fmt re-wraps, one comment line; docs/shots diff empty; MAP greps hit graft MAP.md:109, graft-ui MAP.md:7; gap rows: `carry_out` now `places/outside/carry.rs:74`, `draw_prompt` graft-ui `empty_state/draw.rs:147`), for every move above:
       - One commit per file.
       - Line-set check, as in 13l A1: only `use`/`mod`/`//!` lines, the visibility widening and `fmt` re-wraps
         differ. List them in NOTES.
