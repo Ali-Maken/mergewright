@@ -38,11 +38,12 @@ permissions:
 #
 # If there's a prerelease-style suffix to the version, then the release(s)
 # will be marked as a prerelease.
+# Disarmed: armed by the rename ticket (27/G-rename); the codename is never
+# published (CLAUDE.md). dist generated `on: pull_request` and a version-tag
+# push trigger here; regenerating this file with `dist` re-arms it, so after
+# any `dist generate` put this block back until the rename has landed.
 on:
-  pull_request:
-  push:
-    tags:
-      - '**[0-9]+.[0-9]+.[0-9]+*'
+  workflow_dispatch:
 
 jobs:
   # Run 'dist plan' (or host) to determine what tasks we need to do

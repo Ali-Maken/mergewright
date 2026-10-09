@@ -3,7 +3,7 @@
 
 /// The whole frame as `view` draws it at `state.size`, one string per row
 /// — for `update`'s tests, which must not name the terminal library
-/// themselves (`update::tests::update_cannot_reach_the_world`).
+/// themselves (`update::tests::purity::update_cannot_reach_the_world`).
 pub(crate) fn drawn_for_tests(state: &AppState) -> Vec<String> {
     let (columns, rows) = (state.size.columns, state.size.rows);
     let mut terminal = ratatui::Terminal::new(ratatui::backend::TestBackend::new(columns, rows))

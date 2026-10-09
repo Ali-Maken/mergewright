@@ -66,7 +66,18 @@ graft ../api       # or any other
 - The first few launches say where help is on the status row, until you
   first open the palette.
 
-`graft --help` prints the command line, which is one optional path.
+## Command line
+
+`graft --help` prints it:
+
+```text
+usage: graft [<path>]
+
+  <path>    the repository to open (default: the current directory)
+
+  -h, --help       print the usage and exit
+  -V, --version    print the version and exit
+```
 
 ## Daily keys
 

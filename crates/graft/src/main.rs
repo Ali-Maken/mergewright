@@ -28,17 +28,16 @@ fn main() -> ExitCode {
         Ok(Invocation::Askpass { socket, prompt }) => return askpass(&socket, &prompt),
         Ok(Invocation::Open(path)) => path,
         Ok(Invocation::Usage(usage) | Invocation::Version(usage)) => {
-            println!("{usage}");
-            return ExitCode::SUCCESS;
+            return print_to_stdout(&format!("{usage}\n"));
         }
         // For packagers and `docs/man/graft.1`: the page from the live
         // tables, nothing else on stdout.
         Ok(Invocation::GenerateMan) => {
-            print!(
-                "{}",
-                cli::man_page(cli::FLAGS, graft_ui::keymap::defaults(), cli::CONFIG_KEYS)
-            );
-            return ExitCode::SUCCESS;
+            return print_to_stdout(&cli::man_page(
+                cli::FLAGS,
+                graft_ui::keymap::defaults(),
+                cli::CONFIG_KEYS,
+            ));
         }
         Err(error) => {
             report(&error.to_string());
@@ -131,6 +130,26 @@ fn start(
     };
     let terminal = event_loop::Terminal::open()?;
     event_loop::drive(terminal, place, &config, clock)
+}
+
+/// Write `text` to stdout for `--help`, `--version` or `--generate-man`.
+/// A reader that closed early (`graft --generate-man | head`) is a clean
+/// exit: it asked for no more, and Rust ignores SIGPIPE so the write would
+/// otherwise panic. Safe to treat as success because nothing else is lost —
+/// this text is all the process does. Any other write failure is exit 1.
+fn print_to_stdout(text: &str) -> ExitCode {
+    let mut stdout = io::stdout().lock();
+    match stdout
+        .write_all(text.as_bytes())
+        .and_then(|()| stdout.flush())
+    {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) if error.kind() == io::ErrorKind::BrokenPipe => ExitCode::SUCCESS,
+        Err(error) => {
+            report(&format!("cannot write to stdout: {error}"));
+            ExitCode::FAILURE
+        }
+    }
 }
 
 /// Say what went wrong on stderr, now that the terminal is the user's again.

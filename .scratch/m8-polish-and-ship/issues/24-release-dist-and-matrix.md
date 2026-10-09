@@ -54,7 +54,7 @@ None (config and scripts). How tests find git (an env override or `PATH`) is the
       `Style/MutableConstant`, `Style/TrailingCommaInHashLiteral`); ours (`desc` starting with an article) fixed.
       And the formula does **not** put `graft.1` in `man1`: dist's template has no man-page support and puts
       leftovers in `pkgshare` (install block quoted in `build.txt`). See NOTES.
-- [ ] `cargo install --locked --path crates/graft` into a temp `CARGO_HOME` succeeds; binary prints `--version`.
+- [x] `cargo install --locked --path crates/graft` into a temp `CARGO_HOME` succeeds; binary prints `--version`. **Ticked by 31** (`scripts/cargo-install-check.sh` re-run at `1837a68b`: install ok in 165s, `graft --version: graft 0.1.0`; `docs/release/cargo-install.txt`).
       **Half met**: install from a fresh clone into an empty `CARGO_HOME` ok in 163 s, binary runs
       (`scripts/cargo-install-check.sh` → `docs/release/cargo-install.txt`). **Graft has no `--version` flag**
       (`graft: unknown option '--version'`); adding one is a `crates/graft/src/cli.rs` change → blocked (another

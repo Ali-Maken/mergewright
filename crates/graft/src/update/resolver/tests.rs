@@ -664,8 +664,9 @@ fn bar(state: &AppState) -> Vec<String> {
     .collect()
 }
 
-// Kept here, not in `file_list.rs`: `update_cannot_reach_the_world` skips
-// only files named `tests.rs`, and this one draws through ratatui.
+// Kept here, not in `file_list.rs`: `update_cannot_reach_the_world` reads
+// production files only, and `file_list.rs` is one; this one draws through
+// ratatui.
 /// Every row `state` draws at its own size, joined by newlines.
 fn frame_text(state: &AppState) -> String {
     use ratatui::Terminal;

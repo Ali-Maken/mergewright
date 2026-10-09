@@ -47,7 +47,7 @@ seam 1 below, and box 5i ticks by naming 21b-4's commit.
 seam: that is another spec question.
 
 ## Acceptance (each tick names its check inline)
-- [ ] 5i: graft `empty_state.rs` and `empty_state/palette.rs` are each ≤ 400 by `wc -l` on the committed file (quote
+- [x] 5i (843be1d8, done by 21b-4, NOTES `21b-hygiene-round-2.md:537–538`; `wc -l` at the hash: `empty_state.rs` 373, `empty_state/palette.rs` 149; ticked by 31): graft `empty_state.rs` and `empty_state/palette.rs` are each ≤ 400 by `wc -l` on the committed file (quote
       both). `cargo nextest list --workspace | sort` before and after the commit: `diff` empty (quote the count).
 - [x] 5j (31fc7d49; `wc -l` outside.rs 281, outside/carry.rs 223; nextest list diff empty, 6201; the commit's stat lists no places/tests.rs; `try_open` moved: `rg -n try_open crates/graft/src` callers only :349/:372/:386, all in `carry_out`/`init_and_open`): graft `places/outside.rs` and `places/outside/carry.rs` are each ≤ 400 by `wc -l` on the committed file
       (quote both). The `nextest list` diff is empty. `git diff --stat` of the commit doesn't list `places/tests.rs`.
