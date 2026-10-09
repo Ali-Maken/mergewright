@@ -35,6 +35,7 @@ mod dependency_edges;
 mod diff_cursor;
 mod drain_sink;
 mod esc_and_the_walk;
+mod file_size;
 mod finish;
 mod first_launch;
 mod frame_trace;
