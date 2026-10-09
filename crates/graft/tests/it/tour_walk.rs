@@ -107,6 +107,39 @@ fn settled(screen: &Screen) -> bool {
         && screen.has("\u{24d8}")
 }
 
+/// What the graph's header draws while its walk or its sort is still
+/// running (`graft-ui` `graph_screen/layout.rs`: `walk_text_within`, the
+/// order notice).
+const IN_FLIGHT: [&str; 5] = [
+    "opening\u{2026}",
+    "reading history\u{2026}",
+    "reading\u{2026} ",
+    "laying out\u{2026}",
+    "sorting\u{2026}",
+];
+
+/// A screen a capture may hold (19e §R2): nothing on it still in flight,
+/// so two runs shoot the same frame. The graph: its header **ends** on the
+/// finished walk (`N commits`), so nothing after it is still sorting (an
+/// order notice cut short by the width ends in `…`, not `commits`), and
+/// nothing on it is still reading. The resolver (task 7) draws no graph
+/// header: its loaded marker is the open conflict's block, drawn once the
+/// file's hunks are read. [`settled`] is not it: it names the practice
+/// repo's own rows, which his repository at home and the resolver never
+/// draw. Pure.
+fn ready_to_shoot(screen: &str) -> bool {
+    if IN_FLIGHT.iter().any(|word| screen.contains(word)) {
+        return false;
+    }
+    let header = screen.lines().next().unwrap_or_default();
+    let walked = header
+        .split_whitespace()
+        .last()
+        .is_some_and(|word| word == "commits" || word == "commit");
+    let resolver = header.trim() == "MERGING" && screen.contains("\u{2500}\u{2500} conflict ");
+    walked || resolver
+}
+
 /// The child's environment: practice dates, his own commits' dates, and
 /// where the practice repository (and git's askpass socket) is made.
 fn env(tmp: &OsString) -> Vec<(&'static str, OsString)> {
@@ -133,16 +166,31 @@ fn steady(screen: &Screen, root: &Path) -> String {
     screen.text().replace(suffix, &"X".repeat(suffix.len()))
 }
 
-fn shot(shots: &mut graft_fixtures::Captures, name: &str, right: &str, text: &str) {
+/// The one way this file writes a capture (19e §R2): wait until the screen
+/// is [`ready_to_shoot`], then compare (or, regenerating, write) that
+/// screen, steadied for `root`. Every capture is gated by construction.
+/// Hands back the screen it shot, for the caller's checks.
+fn shot(
+    shots: &mut graft_fixtures::Captures,
+    pty: &Pty,
+    root: &Path,
+    name: &str,
+    right: &str,
+) -> Screen {
+    let screen = pty.wait_for(&format!("a screen settled enough to shoot {name}"), |s| {
+        ready_to_shoot(&s.text())
+    });
     shots.check(
         Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../docs/shots")
             .join(name),
         format!(
             "m8-polish-and-ship/19c-c: what right looks like — {right} Colour unverified \
-             (rule 5).\n\n{text}\n"
+             (rule 5).\n\n{}\n",
+            steady(&screen, root)
         ),
     );
+    screen
 }
 
 /// His repository: the feature-branch corpus copied into `root/his`.
@@ -392,10 +440,11 @@ impl Walk {
     /// finished; `notes.txt` staged again after.
     fn task_seven(&mut self, shots: &mut graft_fixtures::Captures, root: &Path) {
         self.on_task(6);
-        let conflict = self.merge_clash_to_the_stop();
-        no_future(&conflict);
-        shot(
+        self.merge_clash_to_the_stop();
+        let conflict = shot(
             shots,
+            &self.pty,
+            root,
             "m8-tour-step7-conflict-120x36.txt",
             "task 7 after `m y` on clash: the resolver over the whole screen, `MERGING` on top, \
              `menu.txt · 1 conflict · 1 open`, conflict 1 of 1 with `yours · main` `4 dessert: \
@@ -403,8 +452,8 @@ impl Walk {
              resolver's keys at the foot. Drawn as it is, not as hoped: no practice header, no \
              card and no stop line here, so nothing on this screen says his staged `notes.txt` \
              waits set aside until the merge ends (19d-c NOTES). No age is drawn.",
-            &steady(&conflict, root),
         );
+        no_future(&conflict);
         self.resolve_and_finish();
         the_split_survives_both_merges(&self.work, "task 7's finish");
     }
@@ -492,8 +541,8 @@ impl Walk {
     }
 
     /// 7 to the stop: `m` on clash, `y` — the resolver on `menu.txt`, his
-    /// edits aside until the merge ends.
-    fn merge_clash_to_the_stop(&mut self) -> Screen {
+    /// edits aside until the merge ends; its hunks read (19e §R2).
+    fn merge_clash_to_the_stop(&mut self) {
         self.cursor_to("[clash]");
         self.send(b"m");
         self.wait("the merge preview, set-aside row and forecast read", |s| {
@@ -502,12 +551,13 @@ impl Walk {
                 && s.has("may conflict: menu.txt")
         });
         self.send(b"y");
-        self.wait("the resolver on menu.txt", |s| {
+        self.wait("the resolver on menu.txt, settled", |s| {
             s.has("MERGING")
                 && s.has("menu.txt \u{b7} 1 conflict")
                 && s.has("pie")
                 && s.has("ice cream")
-        })
+                && ready_to_shoot(&s.text())
+        });
     }
 
     /// 7 from the stop: `t`, `⏎` (the finish preview), `y`; the put-back
@@ -643,23 +693,26 @@ fn the_whole_tour_in_a_pty_ticks_all_eight_and_comes_home() {
     );
     walk.push();
 
-    let home = walk.wait("home, finished", |s| {
+    let home = walk.wait("home, finished, settled", |s| {
         s.lines()[0].contains("his")
             && s.has("practice done \u{2713} \u{b7} \u{2303}P tour goes again")
+            && ready_to_shoot(&s.text())
     });
     assert!(!home.has("practice 8 of 8"), "no card:\n{}", home.text());
-    let home = walk.wait(&format!("the cursor back on {was_on:?}"), |s| {
+    walk.wait(&format!("the cursor back on {was_on:?}, settled"), |s| {
         cursor_subject(s, &subjects).as_deref() == Some(was_on.as_str())
+            && ready_to_shoot(&s.text())
     });
-    no_future(&home);
-    shot(
+    let home = shot(
         &mut shots,
+        &walk.pty,
+        &root,
         "m8-tour-finished-120x36.txt",
         "the eighth task done: back in his repo (header `◆ his`), no card, the cursor on the \
          commit he left (two rows under where he landed), the status `practice done ✓ · ⌃P tour \
          goes again`. Every age on his graph in years.",
-        &steady(&home, &root),
     );
+    no_future(&home);
     let Walk { pty, .. } = walk;
     quit_cleanly(pty);
 
@@ -700,9 +753,11 @@ fn step1_from_his_repo(shots: &mut graft_fixtures::Captures) {
     pty.wait_for("the tour row", |s| s.has("Practice tour"));
     pty.send(b"\r");
     on_task(&pty, &work_under(&tmp), 0, with(&[]));
-    let step1 = pty.wait_for("the practice graph settled", settled);
+    pty.wait_for("the practice graph settled", settled);
     shot(
         shots,
+        &pty,
+        &root,
         "m8-tour-step1-120x36.txt",
         "`⌃P tour ⏎` from his repo: the header `◇ work`, then the practice path cut from the \
          left (`…-step1-XXXXXX/practice-tmp/tributary-practice-1609459200/work`, the run's random \
@@ -712,7 +767,6 @@ fn step1_from_his_repo(shots: &mut graft_fixtures::Captures) {
          the ticks row does not fit beside that line, so it is dropped, never cut); the practice \
          graph under it: `Uncommitted changes` on top, `main ↑1` one ahead of `origin/main`, \
          `feature` and `clash` beside it, the cursor on `main`.",
-        &steady(&step1, &root),
     );
     pty.send(b"\x1b");
     pty.wait_for("his graph again", |s| {
@@ -737,20 +791,21 @@ fn step1_at_80x24(shots: &mut graft_fixtures::Captures) {
     );
     pty.wait_for("the empty state", |s| s.has("no repository here"));
     pty.send(b"t");
-    let screen = pty.wait_for("the card at 80 columns", |s| {
+    pty.wait_for("the card at 80 columns", |s| {
         s.has("practice 1 of 8 \u{b7} stage a change") && s.has("esc leave") && settled(s)
     });
-    assert_eq!(drawn_ticks(&screen), None, "no ticks under 100 columns");
-    shot(
+    let screen = shot(
         shots,
+        &pty,
+        &root,
         "m8-tour-80x24.txt",
         "`t` from the empty state at 80×24: the card's top border still holds `practice 1 of 8 · \
          stage a change` and `esc leave`; its line is cut to the width with `…` and no ticks row \
          is drawn (under 100 columns the ticks go); the header `◇ work` with a gap before the \
          path cut from the left (`…ctice-1609459200/work · a throwaway repo, not yours`); the \
          practice graph under the card, `Uncommitted changes` on top, the cursor on `main`.",
-        &steady(&screen, &root),
     );
+    assert_eq!(drawn_ticks(&screen), None, "no ticks under 100 columns");
     pty.send(b"\x1b");
     pty.wait_for("back on the empty state", |s| s.has("no repository here"));
     quit_cleanly(pty);
@@ -803,6 +858,41 @@ fn push_in_the_tour_fits_the_askpass_socket_under_a_default_length_tmpdir() {
     );
     quit_cleanly(pty);
     practice_folder_is_gone(&tmp);
+}
+
+/// A committed capture's drawn body: what follows its "what right looks
+/// like" line, as [`shot`] wrote it.
+fn committed_body(name: &str) -> String {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/shots")
+        .join(name);
+    let file = std::fs::read_to_string(&path).expect("the capture is committed");
+    let (_, body) = file
+        .split_once("\n\n")
+        .expect("a capture's right line, then its body");
+    body.strip_suffix('\n').unwrap_or(body).to_owned()
+}
+
+/// 19e §R2: the review's failing frame (the header still `date order,
+/// sorting…`) and a walk still reading are not shot; both committed tour
+/// captures, the graph home and the resolver, are.
+#[test]
+fn a_screen_still_sorting_is_not_ready_to_shoot() {
+    let finished = committed_body("m8-tour-finished-120x36.txt");
+    let conflict = committed_body("m8-tour-step7-conflict-120x36.txt");
+    assert!(ready_to_shoot(&finished), "{finished}");
+    assert!(ready_to_shoot(&conflict), "{conflict}");
+
+    // The walk done (`10 commits`) but the sort not: still not ready.
+    let (header, rest) = finished.split_once('\n').expect("a header and a body");
+    assert!(header.ends_with("  10 commits"), "{header}");
+    let sorting = format!("{header}  date order, sorting\u{2026}\n{rest}");
+    assert!(!ready_to_shoot(&sorting), "{sorting}");
+    let reading = format!(
+        "{}reading\u{2026} 5 rows\n{rest}",
+        header.trim_end_matches("10 commits")
+    );
+    assert!(!ready_to_shoot(&reading), "{reading}");
 }
 
 #[test]
