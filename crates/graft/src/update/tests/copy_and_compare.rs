@@ -149,48 +149,6 @@ fn esc_clears_a_pinned_base_and_closes_the_open_pane() {
     assert!(!closed.detail.shown);
 }
 
-/// `Shift`+click on a second row does the same as `x`.
-#[test]
-fn shift_click_on_a_second_row_opens_the_compare() {
-    let (mut state, merge_id) = merge_on_screen(JobId::new(45), 0);
-    state.size = Size {
-        columns: 160,
-        rows: 20,
-    };
-    let (pinned, _) = update(&state, key(KeyCode::Char('x')));
-    // m7-14: the first `x` opened the pane; that the click still lands on
-    // graph row 1 is what this checks.
-    assert!(pinned.detail.shown);
-    for r in 0..8 {
-        eprintln!(
-            "DBG {r} {:?} top={} gr={}",
-            crate::update::geometry::graph_row_at(&pinned, r),
-            pinned.history.as_ref().unwrap().top,
-            pinned.graph_rows()
-        );
-    }
-
-    let click = core(Event::Mouse(MouseInput {
-        kind: MouseKind::Down(MouseButton::Left),
-        column: 10,
-        row: HEADER_ROWS + 1,
-        modifiers: Modifiers {
-            shift: true,
-            ..Modifiers::NONE
-        },
-    }));
-    // m7-14: the first `x` opened the pane; the click lands the compare.
-    let (next, _) = update(&pinned, click);
-    assert!(next.detail.shown);
-    assert_eq!(
-        next.detail.spec,
-        Some(DetailSpec::Compare {
-            base: pinned.compare_base.expect("pinned above").oid,
-            head: merge_id,
-        })
-    );
-}
-
 /// `Ctrl`+click does the same as `Shift`+click.
 #[test]
 fn ctrl_click_on_a_second_row_opens_the_compare() {

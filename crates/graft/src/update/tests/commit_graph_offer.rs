@@ -2,7 +2,6 @@ use super::*;
 use crate::repository::CommitGraphFact;
 use graft_git::commit_graph::Written;
 use graft_git::version::GitVersion;
-use std::time::Duration;
 
 fn opened(fact: CommitGraphFact, git: GitCheck, harness: Harness) -> AppState {
     let state = AppState {
