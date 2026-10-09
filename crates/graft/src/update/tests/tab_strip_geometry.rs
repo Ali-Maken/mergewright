@@ -151,6 +151,8 @@ fn the_mirror_agrees_at(
     focus: graft_ui::detail::DetailFocus,
     banner_focus: bool,
 ) {
+    use ratatui::layout::Rect;
+
     let bounds = |rect: Rect| geometry::Bounds {
         x: rect.x,
         y: rect.y,
