@@ -1281,10 +1281,11 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/20d-tests-not-seen-red | 20d: only the cycle test seen red; other new tests written after the fix. | **unverified** | M8 |
 | M8/24-brew-style | Generated formula: `brew style` 3 offences; man page → pkgshare not man1. dist 0.33 templates compiled in (`templates.rs:11`). Question for the stop: patch formula after dist, custom publish job, or fork dist? | **broken** | M8 |
 | M8/24-no-version-flag | `--version`/`-V` built (24-b, 7b738c16); cargo-install box still open: install into temp CARGO_HOME not re-run. | **unverified** | M8 |
-| M8/24-linux-56-red | Linux (trixie, git 2.47) fast tier 56/6183 red, mostly pty walks drawing the ASCII tier; cause unfound (question) → debugger. One intermittent. Needs `--init` for teardown tests. | **broken** | M8 |
+| M8/24-linux-56-red | Linux fast tier after 30: 6204/6207. Still red: partial_fetch (reflog path; capture-seam design call), cherry_pick (git 2.47 dies on SIGTERM; Apple git surviving unverified), outside_repo launch/open (one-row offset, not investigated). See ticket 30. | **broken** | M8 |
 | M8/24-git-floor | Question for the stop: git 2.38 fails 10/26 matrix tests (2.40 forecast gate, `chain.rs:31`); 2.40/2.56 pass 26/26. Raise floor to 2.40, or keep? | **unverified** | M8 |
 | M8/pane-focus-ignores-remap | Tab/BackTab focus matches raw keys (`focus_keys.rs:29-30`, `detail/keys.rs:163`): remapped `app.prev_pane = "f6"` is spelled `F6 banner` but F6 does not move focus — hint lies under remap. | **broken** | M8 |
 | M8/21b7a-leftovers | graft: leftover `eprintln!("DBG")` in the shift_click test (moved as-is); stale comments naming the old purity path in 4 files (21b-7 NOTES). | **broken** | M8 |
+| M8/30-captures-changed | 30 re-shot 16 captures (header, initials, radar ⓘ) after pty walks stopped inheriting host tier hints; judge by eye at the stop; m7 contact sheet not re-assembled. | **unverified** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` **429** lines at the split (12f's 407 was false — review m8-palette-landing-stop C1); `listing.rs` 424 also over → 21b-4 additions; seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |
