@@ -26,6 +26,7 @@ mod fork_pushed;
 mod history_ops;
 mod in_the_way;
 mod journal_list_oracle;
+mod journal_tie;
 mod lost_work;
 #[cfg(unix)]
 mod merge_set_aside;
