@@ -5273,3 +5273,22 @@ fn a_moment_ago_reads_now_in_the_stash_list_and_the_journal() {
     assert_eq!(super::ago(1_000, 1_000 + 7_200), "2h ago");
     assert_eq!(super::ago(2_000, 1_000), "future");
 }
+
+/// m8-polish-and-ship/21b-4 item 6: the stash list's own row, not the
+/// formatter alone — a stash made ten seconds ago reads `now` there.
+#[test]
+fn a_stash_ten_seconds_old_reads_now() {
+    let mut state = stash_state(120, 32);
+    state.stash.entries =
+        crate::update::detail::Loading::Ready(std::sync::Arc::new(vec![stash_entry(
+            0,
+            "WIP on main: just now",
+            10,
+            &["README.md"],
+        )]));
+
+    let view = super::stash::stash_view(&state, JOURNAL_NOW);
+
+    assert_eq!(view.rows.len(), 1);
+    assert_eq!(view.rows[0].age.as_str(), "now");
+}

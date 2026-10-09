@@ -4,7 +4,7 @@
 use super::*;
 
 /// The first row `⏎` can run (not a `YOUR CONFIG` note); 0 when none.
-pub(super) fn first_runnable(groups: &[Group]) -> usize {
+pub(crate) fn first_runnable(groups: &[Group]) -> usize {
     groups
         .iter()
         .flat_map(|(_, rows)| rows)
@@ -84,4 +84,38 @@ pub(super) fn bytes_to_pathbuf(bytes: &[u8]) -> std::path::PathBuf {
 #[cfg(not(unix))]
 pub(super) fn bytes_to_pathbuf(bytes: &[u8]) -> std::path::PathBuf {
     std::path::PathBuf::from(String::from_utf8_lossy(bytes).into_owned())
+}
+
+/// Apply `change` to the open palette, keeping the cursor on its row (its
+/// group's header and what it runs). A cursor on a placeholder moves to
+/// the first real row once one lands (design note :177): its own group's
+/// first runnable row, else the first runnable row in any group, in display
+/// order (m8/12e, review Major 2); with none anywhere it stays on the
+/// placeholder. Failing all, the index, clamped.
+pub(super) fn landed(state: &mut AppState, change: impl FnOnce(&mut AppState, &mut PaletteState)) {
+    let Some(mut palette) = state.palette.take() else {
+        return;
+    };
+    let anchor = flat(rows(state, &palette)).into_iter().nth(palette.cursor);
+    change(state, &mut palette);
+    let after = flat(rows(state, &palette));
+    let found = anchor.and_then(|(header, row, target)| {
+        let in_group = |(h, _, _): &&Flat| *h == header;
+        if is_placeholder(&row, target) {
+            let runnable = |f: &&Flat| f.2 != PaletteTarget::Note;
+            after
+                .iter()
+                .position(|f| in_group(&f) && runnable(&f))
+                .or_else(|| after.iter().position(|f| runnable(&f)))
+                .or_else(|| {
+                    after
+                        .iter()
+                        .position(|f| in_group(&f) && f.1.label == row.label)
+                })
+        } else {
+            after.iter().position(|f| in_group(&f) && f.2 == target)
+        }
+    });
+    palette.cursor = found.unwrap_or_else(|| palette.cursor.min(after.len().saturating_sub(1)));
+    state.palette = Some(palette);
 }
