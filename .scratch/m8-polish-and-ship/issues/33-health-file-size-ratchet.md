@@ -1,6 +1,6 @@
 # health — file-size ratchet: every .rs over 400 lines listed, with its count
 
-Status: draft (planner, from `docs/reviews/m8-architecture.md` "KNOWN_GAPS … disposition")
+Status: done (was: draft (planner, from `docs/reviews/m8-architecture.md` "KNOWN_GAPS … disposition")
 
 Build with: Sonnet. It writes a new test file and adds one `mod` line, and touches no behaviour. The planner sees no need for a scout; ADR-0035 is the conductor's call.
 
@@ -45,11 +45,20 @@ None public. Test fns:
 - `fn the_size_list_has_no_stale_rows()`
 
 ## Acceptance
-- [ ] With the list as generated, both tests pass (test: the two named above).
-- [ ] Rule 1. Adding 401 blank lines to a scratch `.rs` file makes `every_file_over_400_lines_is_listed_with_its_count` fail with that path. Done by hand and reverted, and the failure line is quoted in NOTES.
-- [ ] Rule 2. Raising one listed file by a line fails with "grew". Done by hand and reverted, and the line is quoted in NOTES.
-- [ ] Rule 4. Deleting a row's file fails `the_size_list_has_no_stale_rows`, checked with a temp copy of the list. Quoted in NOTES.
-- [ ] NOTES gives the summary line's two numbers. The conductor puts them in the KNOWN_GAPS row.
+- [x] With the list as generated, both tests pass (test: `file_size::every_file_over_400_lines_is_listed_with_its_count`, `file_size::the_size_list_has_no_stale_rows`; rules 1-4 on synthetic input: `file_size::the_rules_fire_on_a_made_up_tree`).
+- [x] (`every_file_over_400_lines_is_listed_with_its_count`) Rule 1. Adding 401 blank lines to a scratch `.rs` file makes `every_file_over_400_lines_is_listed_with_its_count` fail with that path. Done by hand and reverted, and the failure line is quoted in NOTES.
+- [x] (`every_file_over_400_lines_is_listed_with_its_count`) Rule 2. Raising one listed file by a line fails with "grew". Done by hand and reverted, and the line is quoted in NOTES.
+- [x] (`the_size_list_has_no_stale_rows`) Rule 4. Deleting a row's file fails `the_size_list_has_no_stale_rows`, checked with a temp copy of the list. Quoted in NOTES.
+- [x] (`every_file_over_400_lines_is_listed_with_its_count` stderr) NOTES gives the summary line's two numbers. The conductor puts them in the KNOWN_GAPS row.
+
+## NOTES
+- Red first: empty list failed rule 1, e.g. `crates/graft-ops/src/apply/error.rs: 554 lines, over 400 and not in over_400.txt`. List generated from the test's own failure lines: 288 rows.
+- Summary: `over_400: 89 production, 199 test files`. "Test" = any path segment `tests` (incl. `src/**/tests/*.rs`) or `tests.rs`.
+- Rule 1 by hand (401-line scratch `crates/graft-core/src/scratch_big.rs`, removed): `crates/graft-core/src/scratch_big.rs: 401 lines, over 400 and not in over_400.txt`.
+- Rule 2 by hand (one line appended to journal.rs, reverted): `crates/graft-core/src/journal.rs: grew from 527 to 528`.
+- Rule 4 by hand (row `999 crates/graft-core/src/gone.rs` added to the list, restored from a copy): `crates/graft-core/src/gone.rs: no longer exists: remove the row`.
+- Lint prelude: `expect_used`, `naive_bytecount` allowed with reasons (21b-6).
+- No compaction.
 
 ## Touches
 - `crates/graft/tests/it/main.rs`: one `mod` line.
