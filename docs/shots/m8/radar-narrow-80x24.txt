@@ -1,0 +1,35 @@
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_radar_beside_a_long_subject_80x24 in
+# crates/graft-ui/src/detail_pane/tests.rs (review m8 words-focus M1).
+#
+# Judge by eye: the detail pane under 100 columns, on a merge whose two
+# hand-resolved files the evil-merge probe could not check. The row
+# `subject · radar` ends `evil merge: none found · 2 not checked`: the
+# subject gives up cells (cut with `…`) so `not checked` is never cut.
+# Colour is unverified (CLAUDE.md rule 5).
+#
+=== 80x24 ===
+COMMIT a1b2c3d
+Rui Mehdi · 2026-09-13 14:02 +0500 · 2 min ago · parents 9f8e7d6, 4c3b2a1 · di…
+Merge branch 'feature/token-refresh' i… · evil merge: none found · 2 not checked
+M src/auth/token.rs                                                       +12 −4
+A src/auth/session.rs                                                      +3 −0
+M assets/logo.png                                                            bin
+@@ -40,7 +40,15 @@ fn refresh()
+ 40  40   let token = self.cache;
+ 41     - if token.is_expired() {
+     41 + if token.is_expired()
+     42 +     && !refreshing {
+
+
+
+
+
+
+
+
+
+
+
+
+

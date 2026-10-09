@@ -252,11 +252,9 @@ pub const MARK_RESOLVED_SHORT: &str = "mark";
 /// drawn. All five keep their full form: the table is the user's, and a
 /// label it does not name is reported, not replaced.
 pub(super) fn short_form(verb: &str) -> Option<&'static str> {
-    // m8/20c R6': the 80-col conflict-row bar is 82 cells whole, 73 with it.
-    if verb == MARK_RESOLVED {
-        return Some(MARK_RESOLVED_SHORT);
-    }
     Some(match verb {
+        // m8/20c R6': the 80-col conflict-row bar is 82 cells whole, 73 with it.
+        MARK_RESOLVED => MARK_RESOLVED_SHORT,
         "first-parent" => "first",
         "continue" => "cont",
         "discard" => "disc",

@@ -1179,8 +1179,10 @@ fn the_banner_always_teaches_continue_and_abort() {
 /// silent modal arm, so the doc said one thing for both focus states and
 /// the code said it in one: a key pressed on purpose drew nothing at all.
 ///
-/// The words are `undo::in_progress_refusal`'s own, not a copy, so the two
-/// focus states cannot drift apart again.
+/// The reason is `undo::in_progress_refusal`'s own, not a copy, so the two
+/// focus states cannot drift apart again. The way clause is not: on the
+/// focused banner it names none, since `⇥` there would take him off it
+/// (review m8 words-focus M2).
 #[test]
 fn a_focused_banner_answers_u_instead_of_swallowing_it() {
     for kind in [
@@ -1203,16 +1205,18 @@ fn a_focused_banner_answers_u_instead_of_swallowing_it() {
                 banner_focus: false,
                 ..stopped(kind, &["src/auth.rs"])
             };
-            assert_eq!(
-                Some(state.status.clone()),
-                crate::update::undo::in_progress_refusal(&unfocused),
-                "{code:?} says what the unfocused banner says"
-            );
-            assert!(
-                matches!(state.status, Status::Sticky { .. }),
-                "{code:?} drew nothing: {:?}",
-                state.status
-            );
+            let Some(Status::Sticky {
+                reason: unfocused_reason,
+                ..
+            }) = crate::update::undo::in_progress_refusal(&unfocused)
+            else {
+                panic!("the unfocused banner refuses {code:?} in words");
+            };
+            let Status::Sticky { reason, keys } = &state.status else {
+                panic!("{code:?} drew nothing: {:?}", state.status);
+            };
+            assert_eq!(reason, &unfocused_reason, "{code:?} says the same reason");
+            assert_eq!(keys, &None, "{code:?} names no way to the banner it is on");
         }
     }
 }

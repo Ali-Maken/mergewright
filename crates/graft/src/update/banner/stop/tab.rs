@@ -180,8 +180,15 @@ pub(crate) fn tab_keys(tabs: u8, keys: &graft_ui::keymap::Keymap) -> Option<Stri
     if tabs == 0 {
         return None;
     }
-    let key = keys.spell_keys(&[graft_ui::keymap::ActionId("app.next_pane")])?;
-    let mut words = format!("{key} ").repeat(usize::from(tabs));
+    spell_way("app.next_pane", tabs, keys)
+}
+
+/// `n` presses of `action`'s key, then `banner`: `⇥ ⇥ banner`. The one
+/// speller [`tab_keys`] and [`way_keys`] share. `None` when `action` is
+/// unbound.
+fn spell_way(action: &'static str, n: u8, keys: &graft_ui::keymap::Keymap) -> Option<String> {
+    let key = keys.spell_keys(&[graft_ui::keymap::ActionId(action)])?;
+    let mut words = format!("{key} ").repeat(usize::from(n));
     words.push_str("banner");
     Some(words)
 }
@@ -193,12 +200,10 @@ pub(crate) fn tab_keys(tabs: u8, keys: &graft_ui::keymap::Keymap) -> Option<Stri
 #[must_use]
 pub(crate) fn way_keys(way: BannerWay, keys: &graft_ui::keymap::Keymap) -> Option<String> {
     let forward = tab_keys(way.forward, keys).map(|words| (way.forward, words));
-    let back = way.back.filter(|&n| n > 0).and_then(|n| {
-        let key = keys.spell_keys(&[graft_ui::keymap::ActionId("app.prev_pane")])?;
-        let mut words = format!("{key} ").repeat(usize::from(n));
-        words.push_str("banner");
-        Some((n, words))
-    });
+    let back = way
+        .back
+        .filter(|&n| n > 0)
+        .and_then(|n| spell_way("app.prev_pane", n, keys).map(|words| (n, words)));
     match (forward, back) {
         (Some((f, words)), Some((b, _))) if f <= b => Some(words),
         (_, Some((_, words))) | (Some((_, words)), None) => Some(words),

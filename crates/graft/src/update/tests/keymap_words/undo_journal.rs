@@ -531,6 +531,23 @@ fn u_refused_from_the_changes_pane_names_two_tabs() {
     }
 }
 
+/// Review words-focus M2: on the focused banner `u`/`U` name no way to
+/// the banner — he is on it, and `⇥` there would take him off it. The
+/// reason stands alone.
+#[test]
+fn u_refused_on_the_focused_banner_names_no_way_to_it() {
+    use super::resolve::{Spot, key, sticky, stopped_at};
+    use graft_core::event::KeyCode as CoreKey;
+    for press in ['u', 'U'] {
+        let (refused, _) = key(&stopped_at(Spot::Banner), CoreKey::Char(press));
+        assert_eq!(
+            sticky(&refused),
+            ("finish or abort the rebase first".to_owned(), None),
+            "{press}"
+        );
+    }
+}
+
 /// The rebase stopped, the changes pane open, the keyboard on the graph.
 fn graph_with_the_pane_open() -> crate::update::AppState {
     let mut state = super::resolve::stopped_at(super::resolve::Spot::ConflictRow);

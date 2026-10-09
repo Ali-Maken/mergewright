@@ -92,8 +92,8 @@ pub(super) fn whole_bar(
             let list = lists::said_live_on_the_graph(list, *c, *space_stages);
             let way = match way_to_banner {
                 None => return (list, trailer),
-                Some(WayToBanner::Forward) => WAY_BACK,
-                Some(WayToBanner::Back) => WAY_BACK_PREV,
+                Some(WayToBanner::Forward) => WAY_TO_BANNER_FORWARD,
+                Some(WayToBanner::Back) => WAY_TO_BANNER_BACK,
             };
             let mut led = vec![way];
             led.extend(list.into_iter().filter(|hint| !hint.is(way.keys)));
@@ -262,13 +262,13 @@ pub(super) const SEARCH_NEXT: Hint = hint(hint_keys::NEXT_MATCH, "next");
 /// `N prev`: the search's previous match ([`HintContext::Searching`], 15b).
 pub(super) const SEARCH_PREV: Hint = hint(hint_keys::PREV_MATCH, "prev");
 
-/// `⇥ banner`: the way back to a live operation's banner
+/// `⇥ banner`: the way forward to a live operation's banner
 /// ([`HintContext::OperationLive`]).
-pub(super) const WAY_BACK: Hint = hint(hint_keys::NEXT_PANE, "banner");
+pub(super) const WAY_TO_BANNER_FORWARD: Hint = hint(hint_keys::NEXT_PANE, "banner");
 
 /// `⇧⇥ banner`: the way to the banner one `⇧⇥` away — the graph with the
 /// detail pane open (m8/20d), where `⇥` takes three.
-pub(super) const WAY_BACK_PREV: Hint = hint(hint_keys::PREV_PANE, "banner");
+pub(super) const WAY_TO_BANNER_BACK: Hint = hint(hint_keys::PREV_PANE, "banner");
 
 /// The keys only the graph screen answers: each opens something that stands
 /// *where the graph stands*, and each is guarded on the graph having the

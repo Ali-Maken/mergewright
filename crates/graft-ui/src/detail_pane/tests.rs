@@ -1979,6 +1979,64 @@ fn a_hand_resolved_merge_says_not_checked_never_clean() {
     assert_eq!(radar_text(&RadarLine::EvilClean), "evil merge: clean");
 }
 
+/// Review M1 (m8 words-focus): in `Below` and `Tab` the radar shares its
+/// row with the subject, so the narrow rung is chosen against the cells left
+/// after `subject · `, not the whole pane. At 80 columns with a long merge
+/// subject, `not checked` is still drawn.
+#[test]
+fn the_radar_beside_a_long_subject_keeps_not_checked_at_80_columns() {
+    let mut view = commit_view();
+    view.header.summary = sanitize_line("Merge branch 'feature/token-refresh' into main");
+    view.header.radar = vec![RadarLine::EvilResolved { files: 2 }];
+    for layout in [
+        DetailLayout::Below { rows: 12 },
+        DetailLayout::Tab { shown: true },
+    ] {
+        let rows = text(&draw(&view, layout, 80, 24));
+        let row = rows
+            .iter()
+            .find(|row| row.contains("evil merge"))
+            .unwrap_or_else(|| panic!("{layout:?}: {rows:#?}"));
+        assert!(
+            row.contains("evil merge: none found \u{b7} 2 not checked"),
+            "{layout:?}: {row:?}"
+        );
+    }
+}
+
+/// Review M1's capture: a hand-resolved merge with a long subject, the
+/// pane drawn as the `Tab` layout at 80×24 (under 100 columns).
+#[test]
+fn capture_radar_beside_a_long_subject_80x24() {
+    let mut view = commit_view();
+    view.header.summary = sanitize_line("Merge branch 'feature/token-refresh' into main");
+    view.header.radar = vec![RadarLine::EvilResolved { files: 2 }];
+    view.header.parents = vec![sanitize_line("9f8e7d6"), sanitize_line("4c3b2a1")];
+    let drawn = text(&draw(&view, DetailLayout::Tab { shown: true }, 80, 24))
+        .iter()
+        .map(|row| row.trim_end().to_owned())
+        .collect::<Vec<_>>()
+        .join("\n");
+    let header = "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_radar_beside_a_long_subject_80x24 in
+# crates/graft-ui/src/detail_pane/tests.rs (review m8 words-focus M1).
+#
+# Judge by eye: the detail pane under 100 columns, on a merge whose two
+# hand-resolved files the evil-merge probe could not check. The row
+# `subject · radar` ends `evil merge: none found · 2 not checked`: the
+# subject gives up cells (cut with `…`) so `not checked` is never cut.
+# Colour is unverified (CLAUDE.md rule 5).
+#
+=== 80x24 ===
+";
+    graft_fixtures::capture(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/shots/m8/radar-narrow-80x24.txt"),
+        format!("{header}{drawn}\n"),
+    );
+}
+
 /// Item 8: `Contained in:` with nothing after it is not drawn.
 #[test]
 fn contained_in_with_no_names_is_not_drawn() {

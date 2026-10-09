@@ -171,7 +171,7 @@ fn graft_now_never_stamps_the_journal() {
 /// undoes the second, not the first. The pin draws the ages only; the
 /// entries are stamped from the wall clock (19e §R1).
 #[test]
-fn u_under_a_pinned_clock_undoes_the_newest() {
+fn u_undoes_the_newest_under_a_pinned_drawn_clock() {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
     let repo = scratch.path();
     let isolated = Isolated::new();
