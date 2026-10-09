@@ -103,6 +103,7 @@ fn a_dirty_pull_rebase_is_three_keys() {
     let mut keys = counted(&app);
     let state = pull_refused(&mut keys, state);
     let state = rebase_preview(&mut keys, state);
+    let state = crate::captures::at_rest(&app, state);
     preview_shots(&app, &state);
     let state = keys.press(&state, KeyCode::Char('r'));
     let state = app.settle_write(state, "the rebase");
@@ -944,6 +945,9 @@ fn twenty_lines(changed: &[(usize, &str)]) -> String {
 fn staging_that_cannot_come_back() -> graft_fixtures::Scratch {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
     let path = scratch.path();
+    // The stash the app makes (here and in the killed child, which inherits
+    // the test's HOME) is signed by the repo's identity, not his.
+    crate::app_harness::pin_identity(path);
     dated_commit(path, "f.txt", &twenty_lines(&[]), "add f", 1);
     git(path, &["branch", "fix"]);
     git(path, &["switch", "-q", "fix"]);

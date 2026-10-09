@@ -14,7 +14,7 @@
  ◆ api  ~/code/api · feature                                                                                  8 commits
 
       │    after merge
-    ◎┈╮    [◆ feature] Merge branch 'main' into feature                                                 MA —    —
+    ◎┈╮    [◆ feature] Merge branch 'main' into feature                                                 GT —    —
     ● │    finish the feature                                                                           GF now  8d6cd28
     ● │    start the feature                                                                            GF 2m   52f3b96
 ▸ ●─│─╯    [main] main moves again                                                                      GF 3m   45fa51d

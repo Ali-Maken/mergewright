@@ -28,6 +28,30 @@ use nix::pty::{Winsize, openpty};
 /// How long a wait may take before the test fails, naming what it waited for.
 const PATIENCE: Duration = Duration::from_secs(20);
 
+/// The terminal every pty walk runs in, whatever terminal ran the tests: an
+/// `xterm-256color` that says `COLORTERM=truecolor`, outside tmux, not over
+/// ssh, and naming no emulator.
+///
+/// Detection picks the Unicode tier only on a truecolor hint or `$TMUX`
+/// (`graft-term/src/detect/tier.rs`, DESIGN.md §4.2), and those hints come
+/// from the environment. Inherited, they made every walk's tier the
+/// developer's: Ghostty's `TERM_PROGRAM=ghostty` gave Unicode on the Mac,
+/// and a shell without them (a Linux container, Terminal.app) drew the ASCII
+/// tier and failed 40 walks waiting for `▸` (m8-polish-and-ship/30). A test
+/// that wants another terminal sets these again after this.
+pub(crate) fn as_the_test_terminal(command: &mut Command) -> &mut Command {
+    command
+        .env("TERM", "xterm-256color")
+        .env("COLORTERM", "truecolor")
+        .env_remove("TERM_PROGRAM")
+        .env_remove("TERM_PROGRAM_VERSION")
+        .env_remove("KITTY_WINDOW_ID")
+        .env_remove("TMUX")
+        .env_remove("SSH_TTY")
+        .env_remove("SSH_CONNECTION")
+        .env_remove("NO_COLOR")
+}
+
 /// A running `graft` on a pty.
 pub struct Pty {
     master: File,
@@ -202,15 +226,14 @@ impl Pty {
             Stdio::piped()
         };
         let pinned_git_date = format!("{} +0000", PINNED_NOW - 3_600);
-        let mut child = Command::new(env!("CARGO_BIN_EXE_graft"))
+        let mut command = Command::new(env!("CARGO_BIN_EXE_graft"));
+        let mut child = as_the_test_terminal(&mut command)
             .arg(arg)
             .env("XDG_CONFIG_HOME", isolated.config())
             .env("HOME", isolated.home())
             .env("GIT_CEILING_DIRECTORIES", ceiling)
-            .env("TERM", "xterm-256color")
             .env_remove("GIT_DIR")
             .env_remove("GIT_WORK_TREE")
-            .env_remove("NO_COLOR")
             .env_remove("GRAFT_TRACE")
             // Set before `env`, so a caller naming `GRAFT_NOW` wins.
             .env("GRAFT_NOW", PINNED_NOW.to_string())
@@ -529,6 +552,47 @@ fn a_frame_not_yet_ended_is_not_on_the_screen() {
     bytes.extend_from_slice(graft_term::SYNC_END);
     let screen = Screen::replay(&bytes, 20, 2);
     assert_eq!(screen.lines()[0], "second, half", "{}", screen.text());
+}
+
+/// m8-polish-and-ship/30: whatever terminal ran the tests, a walk's graft
+/// sees the same one: the truecolor hint detection gives Unicode on, and
+/// none of the hints that would make it some other terminal.
+#[test]
+fn a_walk_runs_in_the_test_terminal_whatever_ran_the_tests() {
+    let mut command = Command::new("env");
+    command
+        .env("TERM", "dumb")
+        .env_remove("COLORTERM")
+        .env("TERM_PROGRAM", "Apple_Terminal")
+        .env("TERM_PROGRAM_VERSION", "455")
+        .env("KITTY_WINDOW_ID", "1")
+        .env("TMUX", "/tmp/tmux-501/default,1,0")
+        .env("SSH_TTY", "/dev/ttys001")
+        .env("SSH_CONNECTION", "10.0.0.1 22 10.0.0.2 22")
+        .env("NO_COLOR", "1");
+    let out = as_the_test_terminal(&mut command)
+        .output()
+        .expect("env runs");
+    let seen = String::from_utf8(out.stdout).expect("env prints text");
+    let mut vars: Vec<&str> = seen
+        .lines()
+        .filter(|line| {
+            [
+                "TERM=",
+                "COLORTERM=",
+                "TERM_PROGRAM",
+                "KITTY_WINDOW_ID=",
+                "TMUX=",
+                "SSH_TTY=",
+                "SSH_CONNECTION=",
+                "NO_COLOR=",
+            ]
+            .iter()
+            .any(|name| line.starts_with(name))
+        })
+        .collect();
+    vars.sort_unstable();
+    assert_eq!(vars, ["COLORTERM=truecolor", "TERM=xterm-256color"]);
 }
 
 /// Gathers everything the pty's master reads, on its own thread.

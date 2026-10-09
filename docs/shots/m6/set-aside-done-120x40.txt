@@ -14,10 +14,10 @@
 #    `rebase main onto origin/main ✓ · your edits are back` (the op's own
 #    done line, as a clean-tree rebase words it, then the clause).
 
- ◆ api  ~/code/api · main                                                                               140 rows so far
+ ◆ api  ~/code/api · main                                                                                   202 commits
 
   ◌    Uncommitted changes (1 staged, 2 unstaged)
-▸ ◆    [◆ main ↑1] ours                                                                                 GF futu…0000000
+▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF futu…0000000
   ●    [origin/main] theirs                                                                             GF 6m   7be74b5
   ●    Commit 200                                                                                       GF 1y   d5ae5fd
   ●    Commit 199                                                                                       GF 1y   13e6ab1

@@ -120,6 +120,7 @@ fn a_pull_rebase_marks_no_duplicates() {
     let state = ready(&app, state);
     let state = crate::context_menu::settled(&app, state);
     let state = duplicates_landed(&app, state);
+    let state = crate::captures::at_rest(&app, state);
     assert!(
         state.radar.duplicate_findings.is_empty(),
         "no duplicate findings after a pull-rebase: {:?}",

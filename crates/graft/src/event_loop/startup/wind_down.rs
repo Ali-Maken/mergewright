@@ -77,8 +77,17 @@ pub(super) fn wind_down(
 /// the failure is the dead terminal's (m8/21b-4, rule 3): any other error
 /// is still the exit's.
 pub(super) fn excused_by_hangup(exit: &Exit, error: &io::Error) -> bool {
-    matches!(exit, Exit::Signal(SIGHUP)) && input::hung_up(error)
+    matches!(exit, Exit::Signal(SIGHUP))
+        && (input::hung_up(error) || error.raw_os_error() == Some(ENXIO))
 }
+
+/// `ENXIO`: what the restore fails with on Linux once the terminal has hung
+/// up (m8/30). `isatty(stdin)` is false on the dead pty, so crossterm's
+/// `disable_raw_mode` opens `/dev/tty` instead, and with no controlling
+/// terminal left that open fails `ENXIO` — raw mode is the restore's first
+/// failure, before the escape sequences' `EIO` at the flush. The same
+/// number on macOS and Linux; `graft` has no `libc` to name it.
+const ENXIO: i32 = 6;
 
 /// The loop's outcome, unless putting the terminal back failed: a terminal
 /// left in raw mode is never reported silently.
