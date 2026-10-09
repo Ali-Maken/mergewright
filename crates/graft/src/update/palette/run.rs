@@ -4,7 +4,7 @@
 use super::*;
 
 /// The first row `⏎` can run (not a `YOUR CONFIG` note); 0 when none.
-pub(super) fn first_runnable(groups: &[Group]) -> usize {
+pub(crate) fn first_runnable(groups: &[Group]) -> usize {
     groups
         .iter()
         .flat_map(|(_, rows)| rows)

@@ -44,6 +44,7 @@ mod run;
 pub(super) use self::find::*;
 pub(crate) use self::input::*;
 pub(crate) use self::listing::*;
+pub(crate) use self::run::first_runnable;
 #[allow(clippy::wildcard_imports)]
 use self::run::*;
 

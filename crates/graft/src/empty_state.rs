@@ -264,11 +264,7 @@ pub(crate) fn outside_paste(state: &mut OutsideState, keymap: &Keymap, text: &st
     if let Some(open) = &mut state.palette {
         open.query.insert_str(text);
         let groups = palette::listing(&source_of(&state.config_problems, keymap), open);
-        open.cursor = groups
-            .iter()
-            .flat_map(|(_, rows)| rows)
-            .position(|(_, target)| *target != PaletteTarget::Note)
-            .unwrap_or(0);
+        open.cursor = palette::first_runnable(&groups);
     } else if let Some(Prompt::Open(field)) = &mut state.prompt {
         field.insert_str(text);
     } else if let Some(Prompt::Clone(clone)) = &mut state.prompt
