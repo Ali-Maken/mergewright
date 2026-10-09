@@ -1,66 +1,12 @@
-# Linux fast tier — scripts/linux-fast-tier.sh, 2026-10-09T08:35Z, commit ecdfd742, image rust:1-trixie
+# Linux fast tier — scripts/linux-fast-tier.sh, 2026-10-09T12:03Z, commit 16c55231, image rust:1-trixie
 uname: Linux 7.0.12-linuxkit aarch64
 git: git version 2.47.3
 rustc: rustc 1.99.0 (b940084d7 2026-09-28)
 exit: 1
-nextest: Summary [ 514.953s] 6183 tests run: 6127 passed (4 slow), 56 failed, 14 skipped
+nextest: Summary [ 371.489s] 6207 tests run: 6204 passed (6 slow), 3 failed, 14 skipped
 doctests: 3 passed, 0 failed (9 crates)
 failing tests:
-    FAIL [   0.088s] (4801/6183) graft-ops::it put_back_forecast::a_rebase_with_drops_measures_the_put_back_from_where_it_lands
-    FAIL [   0.117s] (2879/6183) graft::it preview::capture_fix_preview_verb_for_docs_shots
-    FAIL [   0.174s] (4462/6183) graft-ops::it cherry_pick::a_pick_over_edits_stopped_before_git_paused_it_says_so
-    FAIL [   0.203s] (2748/6183) graft::it m6_stash_put_back::set_aside::a_relaunch_after_a_kill_before_the_drop_says_the_edits_are_back
-    FAIL [   0.210s] (2576/6183) graft::it m3_walk::every_scenario::stage_file
-    FAIL [   0.214s] (2927/6183) graft::it remote_by_key::capture_fix_box_takes_y
-    FAIL [   0.237s] (2929/6183) graft::it remote_by_key::capture_undo_after_push_for_docs_shots
-    FAIL [   0.275s] (2873/6183) graft::it partial_fetch::capture_a_partial_fetch
-    FAIL [   0.308s] (2839/6183) graft::it m8_walk::clone::failure_keeps_the_url_and_retries
-    FAIL [   0.326s] (2772/6183) graft::it m7_walk::amend_into::capture_amend_into
-    FAIL [   0.347s] (2857/6183) graft::it outside_repo::open_recent_outside_opens_the_newest_at_head_on_one_terminal
-    FAIL [   0.352s] (6159/6183) graft-ui::graph_column every_shape_draws_as_snapshotted_and_the_same_in_dark_and_light
-    FAIL [   0.403s] (2743/6183) graft::it m6_stash_put_back::set_aside::a_dirty_pull_rebase_is_three_keys
-    FAIL [   0.405s] (2836/6183) graft::it m8_walk::clone::clone_asks_for_a_password
-    FAIL [   0.419s] (2367/6183) graft::it box_owns_the_bar::capture_fix_box_owns_the_bar
-    FAIL [   0.419s] (2928/6183) graft::it remote_by_key::capture_fix_plain_box_after_rebase
-    FAIL [   0.486s] (2837/6183) graft::it m8_walk::clone::clone_from_the_empty_state
-    FAIL [   0.486s] (2918/6183) graft::it radar_bookkeeping::a_pull_rebase_marks_no_duplicates
-    FAIL [   0.642s] (3946/6183) graft-graph::it corpus::every_shape_lays_out_as_snapshotted
-    FAIL [   0.779s] (2486/6183) graft::it first_launch::first_launch_captures
-    FAIL [   1.401s] (2863/6183) graft::it outside_repo::outside_repo_captures
-    FAIL [  20.037s] (3091/6183) graft::it tour::the_palette_starts_the_tour_and_esc_returns_to_his_commit
-    FAIL [  20.045s] (2907/6183) graft::it palette_find::walk_seek_tag
-    FAIL [  20.057s] (3090/6183) graft::it tour::an_unwritable_temp_folder_stays_in_his_repo_and_says_why
-    FAIL [  20.069s] (2878/6183) graft::it palette_find::walk_seek_commit_words
-    FAIL [  20.070s] (3496/6183) graft::it tour_walk::the_tour_captures_match
-    FAIL [  20.070s] (3561/6183) graft::it tour_walk::the_whole_tour_in_a_pty_ticks_all_eight_and_comes_home
-    FAIL [  20.073s] (2874/6183) graft::it palette_find::walk_seek_commit_sha
-    FAIL [  20.079s] (2868/6183) graft::it palette_find::walk_rerun_recent
-    FAIL [  20.097s] (2869/6183) graft::it palette_find::walk_seek_branch
-    FAIL [  20.129s] (2865/6183) graft::it outside_repo::starting_inside_a_repository_lands_on_head
-    FAIL [  20.230s] (2866/6183) graft::it palette_find::walk_file_history
-    FAIL [  20.248s] (3093/6183) graft::it tour_tasks::reading_the_card_ticks_nothing
-    FAIL [  20.254s] (3095/6183) graft::it tour_tasks::task_2_ticks_by_committing
-    FAIL [  20.259s] (2859/6183) graft::it outside_repo::launch_and_open_land_alike
-    FAIL [  20.263s] (3103/6183) graft::it tour_tasks::task_7_ticks_by_resolving_clash_and_finishing
-    FAIL [  20.263s] (3514/6183) graft::it tour_walk::push_in_the_tour_fits_the_askpass_socket_under_a_default_length_tmpdir
-    FAIL [  20.266s] (3092/6183) graft::it tour_tasks::an_aborted_clash_merge_ticks_neither_6_nor_7
-    FAIL [  20.266s] (3096/6183) graft::it tour_tasks::task_3_ticks_by_undoing_that_commit
-    FAIL [  20.266s] (3097/6183) graft::it tour_tasks::task_4_ticks_by_setting_aside_and_bringing_back
-    FAIL [  20.268s] (3104/6183) graft::it tour_tasks::task_8_ticks_by_pushing
-    FAIL [  20.271s] (3101/6183) graft::it tour_tasks::task_6_ticks_by_merging_feature_and_not_7
-    FAIL [  20.272s] (3094/6183) graft::it tour_tasks::task_1_ticks_by_staging_a_hunk
-    FAIL [  20.302s] (2422/6183) graft::it clock_pin::u_under_a_pinned_clock_undoes_the_newest
-    FAIL [  20.317s] (2968/6183) graft::it quit_waits::signal::a_signal_restores_then_waits_and_a_second_stops_git
-    FAIL [  20.329s] (2405/6183) graft::it clock_pin::graft_now_never_stamps_the_journal
-    FAIL [  20.332s] (2912/6183) graft::it quit_waits::hangup::a_hangup_mid_merge_lets_a_quick_hook_land
-    FAIL [  20.334s] (3098/6183) graft::it tour_tasks::task_5_ticks_by_making_a_branch
-    FAIL [  20.335s] (2913/6183) graft::it quit_waits::hangup::a_hangup_mid_write_never_exits_101
-    FAIL [  20.347s] (3025/6183) graft::it quit_waits::signal::stop_now_after_the_real_offer_restores_then_says_where_git_stopped
-    FAIL [  20.383s] (2406/6183) graft::it clock_pin::an_in_app_commit_under_the_default_pin_draws_an_age
-    FAIL [  20.391s] (2861/6183) graft::it outside_repo::opening_a_folder_that_is_not_a_repository_stays_and_says_why
-    FAIL [  20.394s] (2860/6183) graft::it outside_repo::open_second_recent_is_j_then_enter
-    FAIL [  20.395s] (2933/6183) graft::it quit_waits::hangup::a_hangup_then_a_second_hangup_leaves_the_merge_paused
-    FAIL [  20.582s] (2867/6183) graft::it outside_repo::the_empty_state_draws_each_frame_as_one_synchronized_update
-    FAIL [  40.813s] (2864/6183) graft::it m6_stash_put_back::kill::edits_survive_a_kill_at_every_step
-    FAIL stage-file: the undo did not succeed: Ready; confirm box: true
-HungRemote/teardown modules (m4_walk::|m8_walk::clone|partial_fetch::|remote_by_key::|clone::|remote::): 188 passed, 7 failed
+    FAIL [   0.162s] (4483/6207) graft-ops::it cherry_pick::a_pick_over_edits_stopped_before_git_paused_it_says_so
+    FAIL [   0.441s] (2895/6207) graft::it partial_fetch::capture_a_partial_fetch
+    FAIL [   0.934s] (2876/6207) graft::it outside_repo::launch_and_open_land_alike
+HungRemote/teardown modules (m4_walk::|m8_walk::clone|partial_fetch::|remote_by_key::|clone::|remote::): 196 passed, 1 failed

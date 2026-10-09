@@ -1,6 +1,6 @@
 # 30 — Linux fast tier: 56 of 6183 red
 
-Status: 53 of 56 fixed, 3 filed (debugger, 2026-10-09). Gap row `M8/24-linux-56-red`.
+Status: 54 of 56 fixed, 2 filed, 1 newly unmasked (debugger, 2026-10-09). Gap row `M8/24-linux-56-red`.
 Build with: debugger (diagnosing-bugs). Scout: none. The evidence was `docs/release/linux.txt` and ticket 24's
 NOTES, and each cause was found by running it in a Debian trixie container (git 2.47.3), the same image
 `scripts/linux-fast-tier.sh` uses.
@@ -162,7 +162,7 @@ Colour unverified (rule 5).
   Mac.
 - [x] Container subset of the 56: `56 tests run: 51 passed, 5 failed`. Of those 5, the insta pair and the kill test
   were fixed after that run; `partial_fetch` and `cherry_pick` are filed above.
-- [ ] Linux fast tier after the commit: see the summary line under NOTES.
+- [x] Linux fast tier after the commit: `6207 tests run: 6204 passed (6 slow), 3 failed` (NOTES).
 
 ## Touches
 
@@ -180,4 +180,20 @@ Colour unverified (rule 5).
 
 ## NOTES
 
-(The Linux fast tier summary goes here after the run.)
+Linux fast tier at `16c55231` (`docs/release/linux.txt`):
+
+```
+nextest: Summary [ 371.489s] 6207 tests run: 6204 passed (6 slow), 3 failed, 14 skipped
+doctests: 3 passed, 0 failed (9 crates)
+HungRemote/teardown modules (...): 196 passed, 1 failed
+```
+
+The 3 failures:
+
+- `cherry_pick` (filed above).
+- `partial_fetch` (filed above).
+- **`outside_repo::launch_and_open_land_alike`: new and unverified.** It used to fail on the ASCII-tier wait, which
+  hid this. Now `outside_repo.rs:411` fails: the launch lands `HEAD` on row 19 with `side 14` at the top, and the
+  open lands it on row 18 with `side 13` at the top. That is one row of scroll apart. It passes on the Mac. Seen
+  once. Not investigated: whether it repeats, or whether the cause is the product (12d Decision 2, launch and open
+  should land alike) or timing in the test.
