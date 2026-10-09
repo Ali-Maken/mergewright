@@ -1,0 +1,14 @@
+# 19e-tour-walk-repeat (m8-polish-and-ship/19e R2): tour_walk::the_whole_tour_in_a_pty_ticks_all_eight_and_comes_home, 10 runs in a row
+# HEAD 6b0bb632
+# load at start: 7.18 9.05 14.73
+run 1: pass 7s load 6.93 8.97 14.66
+run 2: pass 6s load 7.43 9.00 14.61
+run 3: pass 6s load 7.63 9.02 14.58
+run 4: pass 7s load 7.74 9.02 14.55
+run 5: pass 7s load 8.31 9.10 14.51
+run 6: pass 6s load 8.36 9.10 14.48
+run 7: pass 6s load 8.50 9.11 14.45
+run 8: pass 7s load 8.78 9.16 14.44
+run 9: pass 5s load 9.19 9.24 14.40
+run 10: pass 7s load 9.33 9.27 14.38
+pass=10/10
