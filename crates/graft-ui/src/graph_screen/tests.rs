@@ -2333,8 +2333,8 @@ fn row_at_is_none_off_the_body() {
 /// boolean field combination (54 → 63 in m6-conflicts/50: the confirm box
 /// once per `ConfirmYes`; 111 → 112 in m8-polish-and-ship/13: `Quit`, whose
 /// place after `Redo` (63) was already the changes pane's; 116 → 113 in
-/// m8/11e: `Journal`, `Stash` and `Map` deleted, their slots refilled; 113 → 114 in m8/15 A4: `StashRow`; 114 → 115 in m8/15b: `Searching`).
-const COVERAGE_SLOTS: usize = 115;
+/// m8/11e: `Journal`, `Stash` and `Map` deleted, their slots refilled; 113 → 114 in m8/15 A4: `StashRow`; 114 → 115 in m8/15b: `Searching`; 115 → 119 in m8/20d-b: one `⇧⇥` to the banner).
+const COVERAGE_SLOTS: usize = 119;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2354,14 +2354,25 @@ fn operation_live_slot(context: &HintContext) -> usize {
         // form every live bar had before 52 keeps its slot, 29; the other
         // five are 49–53.
         // m7-power-tools/07b: an `edit` stop's `a amend it` (90–91).
+        // m8/20d-b: one `⇧⇥` back — each `c` (115–117), `a amend it` (118).
         HintContext::OperationLive {
             c: super::LiveC::ContinueAmends,
-            tab_to_banner,
+            way_to_banner: Some(super::WayToBanner::Back),
             ..
-        } => 90 + usize::from(!*tab_to_banner),
+        } => 118,
         HintContext::OperationLive {
-            c, tab_to_banner, ..
-        } => match 2 * live_c_slot(*c) + usize::from(!*tab_to_banner) {
+            c,
+            way_to_banner: Some(super::WayToBanner::Back),
+            ..
+        } => 115 + live_c_slot(*c),
+        HintContext::OperationLive {
+            c: super::LiveC::ContinueAmends,
+            way_to_banner,
+            ..
+        } => 90 + usize::from(way_to_banner.is_none()),
+        HintContext::OperationLive {
+            c, way_to_banner, ..
+        } => match 2 * live_c_slot(*c) + usize::from(way_to_banner.is_none()) {
             0 => 29,
             other => 48 + other,
         },

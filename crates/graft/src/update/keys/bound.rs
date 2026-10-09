@@ -66,6 +66,10 @@ const BOUND_ACTIONS: &[ActionId] = &[
     // place's panes, the finish summary's focus, the name prompt's toggle,
     // the rewrite editor's `after` below 120 columns.
     id("app.next_pane"),
+    // `Shift+Tab`: `banner::take_focus` / `hand_the_keyboard_back` (the
+    // cycle run backwards, m8/20d), `detail::keys`; the graph bar's
+    // `⇧⇥ banner` (20d-b). Like `Tab`, matched as the raw key, not by action.
+    id("app.prev_pane"),
     // The graph (`graph_key`, keymap §2.3).
     id("graph.status"),       // `is_screen_toggle`
     id("graph.renderer"),     // `is_tier_cycle`

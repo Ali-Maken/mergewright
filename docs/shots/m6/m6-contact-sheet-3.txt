@@ -1689,7 +1689,7 @@ what right looks like: (ticket 52) The two frames that drew `c commit` mid-opera
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
- c finish · ⏎ changes · S stash · p pull · P push · f fetch · J journal · / search · j/k move · ? keys
+ ⇧⇥ banner · c finish · ⏎ changes · S stash · p pull · P push · f fetch · J journal · / search · ? keys
 
 ================================================================================
 docs/shots/m6/fix-box-takes-y-120x40.txt

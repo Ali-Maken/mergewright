@@ -366,7 +366,7 @@ mod tests {
                 verbs: RowVerbs::NONE,
             }))),
             c: LiveC::Finish,
-            tab_to_banner: false,
+            way_to_banner: None,
             space_stages: false,
         };
         let drawn = text(&draw(&shown, 120, 8));

@@ -23,6 +23,7 @@ const fn fixed(id: &'static str) -> HintKey {
 pub(super) const OPEN: &[HintKey] = &[key("app.open")];
 pub(super) const BACK: &[HintKey] = &[key("app.back")];
 pub(super) const NEXT_PANE: &[HintKey] = &[key("app.next_pane")];
+pub(super) const PREV_PANE: &[HintKey] = &[key("app.prev_pane")];
 pub(super) const QUIT: &[HintKey] = &[key("app.quit")];
 pub(super) const UNDO: &[HintKey] = &[key("app.undo")];
 pub(super) const FIND: &[HintKey] = &[key("app.find")];

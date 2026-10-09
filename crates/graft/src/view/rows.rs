@@ -600,7 +600,7 @@ fn live_wrapped(state: &AppState, row: HintContext) -> HintContext {
     HintContext::OperationLive {
         row: Box::new(row),
         c,
-        tab_to_banner: crate::update::banner::one_tab_to_banner(state),
+        way_to_banner: crate::update::banner::one_press_to_banner(state),
         // The one predicate `graph_key`'s `space` asks too (07d D1).
         space_stages: crate::update::keys::edit_stop::space_stages_here(state),
     }

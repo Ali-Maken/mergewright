@@ -1385,7 +1385,10 @@ fn details_open_frame() -> String {
         .iter()
         .find(|row| row.contains("c finish"))
         .unwrap_or_else(|| panic!("no row offers `c finish`:\n{second}"));
-    assert!(!bar.contains("⇥ banner"), "{bar}");
+    // m8/20d-b: one `⇧⇥` reaches the banner from here, and the bar says so;
+    // a forward `⇥ banner` (three presses away) is never named.
+    assert!(bar.contains("⇧⇥ banner"), "{bar}");
+    assert!(!bar.replace("⇧⇥ banner", "").contains("⇥ banner"), "{bar}");
     assert!(!second.contains("c commit"), "{second}");
     app.close();
     drop(scratch);

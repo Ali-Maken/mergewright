@@ -38,8 +38,8 @@ pub use columns::{absolute_date, initials, relative_date, relative_date_long, sh
 pub use header::{APP_NAME, HeaderView, header_line, tail_room};
 pub use hints::{
     ConfirmYes, Divider, Hint, HintContext, HintKey, HintState, LiveC, NOT_A_BINDING, Rung,
-    StopWording, TabWord, blame_place_list, every_context, every_hint, fit_status_line, hints_for,
-    hints_text, stopped_row, stopped_row_before_keys,
+    StopWording, TabWord, WayToBanner, blame_place_list, every_context, every_hint,
+    fit_status_line, hints_for, hints_text, stopped_row, stopped_row_before_keys,
 };
 pub use layout::{
     Columns, RowLayout, ScreenRows, lanes_that_fit, max_lanes_for, row_at, row_layout, screen_rows,

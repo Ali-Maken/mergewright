@@ -15,6 +15,25 @@ pub fn one_tab_to_banner(state: &AppState) -> bool {
     !state.modal_owns_keys() && tabs_to_banner(state) == Some(1)
 }
 
+/// **The one press that reaches the banner** for the graph bar
+/// (`HintContext::OperationLive`, m8/20d-b): one `⇥` where
+/// [`one_tab_to_banner`] holds, else one `⇧⇥` where [`banner_way`] counts
+/// one back and `app.prev_pane` is bound (the graph with the pane open).
+/// `None`: no single bound press gets there, so the bar names none.
+#[must_use]
+pub fn one_press_to_banner(state: &AppState) -> Option<graft_ui::graph_screen::WayToBanner> {
+    use graft_ui::graph_screen::WayToBanner;
+    if one_tab_to_banner(state) {
+        return Some(WayToBanner::Forward);
+    }
+    let back_bound = state
+        .keymap
+        .spell_keys(&[graft_ui::keymap::ActionId("app.prev_pane")])
+        .is_some();
+    (!state.modal_owns_keys() && back_bound && banner_way(state)?.back == Some(1))
+        .then_some(WayToBanner::Back)
+}
+
 /// Where one `Tab` lands (m6-conflicts/70), as [`tab_target`] names it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum TabTarget {

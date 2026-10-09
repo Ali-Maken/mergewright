@@ -332,8 +332,10 @@ pub enum HintContext {
         row: Box<HintContext>,
         /// What `c` does here.
         c: LiveC,
-        /// One `⇥` lands on the banner, so `⇥ banner` leads.
-        tab_to_banner: bool,
+        /// One press lands on the banner — `⇥` forward or `⇧⇥` back
+        /// (m8/20d) — so `⇥ banner` or `⇧⇥ banner` leads. `None`: no one
+        /// press reaches it, no banner hint.
+        way_to_banner: Option<WayToBanner>,
         /// `space` stages every change here, not the fold: an `edit` stop,
         /// the graph with the keyboard, the cursor on the stopped commit or
         /// the Uncommitted row (`graft::update::keys::edit_stop::
@@ -360,6 +362,17 @@ pub enum HintContext {
     },
     /// The rewrite editor's `r` message field: every key is typed.
     RewriteMessage,
+}
+
+/// Which one press reaches the banner from the graph
+/// ([`HintContext::OperationLive`], m8/20d): the pane cycle forward
+/// (`app.next_pane`) or backward (`app.prev_pane`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WayToBanner {
+    /// One `⇥`.
+    Forward,
+    /// One `⇧⇥`.
+    Back,
 }
 
 /// What `c` does in the graph or the changes pane while an operation is
