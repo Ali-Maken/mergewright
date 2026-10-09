@@ -22,7 +22,7 @@ CONFLICTS (13)
 
 
 
- ⏎ resolve · M mergetool · e edit · space resolved · c cont · ⇥ diff · ? keys
+ ⏎ resolve · M mergetool · e edit · space mark · c cont · ⇥ diff · ? keys
 --- frame 2: `a`: the bottom row names `⇥ ⇥ banner, then c continue  a abort`
 REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 Graph  [Detail]

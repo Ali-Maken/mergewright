@@ -61,7 +61,7 @@ use fitting::{Words, fit_list};
 pub(crate) use fitting::{fit_place_footer, place_footer_text};
 pub(crate) use hint::{ACTIONS, DOORWAY, DOORWAY_BY_PALETTE};
 use hint::{EXPLAIN, RESIZE, hint};
-pub use hint::{Hint, HintKey, HintState, NOT_A_BINDING, Rung};
+pub use hint::{Hint, HintKey, HintState, MARK_RESOLVED, MARK_RESOLVED_SHORT, NOT_A_BINDING, Rung};
 #[cfg(test)]
 use hint::{planned, short_form};
 use lists::{TAIL, context_list};

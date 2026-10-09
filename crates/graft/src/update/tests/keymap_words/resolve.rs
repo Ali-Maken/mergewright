@@ -17,7 +17,7 @@ use crate::update::state::Status;
 use crate::update::{AppEvent, AppState, Command, update};
 
 const BANNER: &str = "⏎ resolve  M mergetool  e edit";
-const CONFLICT_ROW: &str = "⏎ resolve  M mergetool  e edit  space marks resolved";
+const CONFLICT_ROW: &str = "⏎ resolve  M mergetool  e edit  space mark resolved";
 
 /// A rebase stopped on `a.rs`, his keyboard where `spot` says, the banner
 /// unfocused unless the spot is the banner. The changes pane holds a
@@ -98,7 +98,7 @@ fn acts_as_said(state: &AppState, clause: &str) -> bool {
                 .iter()
                 .any(|c| matches!(c, Command::OpenConflictEditor { path } if *path == a))
         }
-        "space marks resolved" => {
+        "space mark resolved" => {
             let (_, commands) = key(state, CoreKey::Char(' '));
             commands.iter().any(|c| {
                 matches!(c, Command::Operate(_, op, ..)
@@ -253,7 +253,7 @@ fn the_resolve_keys_spell_his_keys() {
         ("app.open", "resolve"),
         ("changes.mergetool", "mergetool"),
         ("changes.edit", "edit"),
-        ("changes.stage", "marks resolved"),
+        ("changes.stage", "mark resolved"),
     ];
     let swept = swept();
     assert_eq!(
@@ -314,4 +314,28 @@ fn unbinding_all(ids: &[&str]) -> Keymap {
         Keymap::with_overrides(&overrides, graft_ui::keymap::KeySwitches::default());
     assert_eq!(problems, [], "{ids:?} = none reads cleanly");
     map
+}
+
+/// m8/20c B4: `space` remapped, the CONFLICTS row's bar and `c`'s refusal
+/// both read his key before the one label, `mark resolved`.
+#[test]
+fn the_mark_resolved_clause_is_spelled_from_his_keymap() {
+    let mut state = stopped_at(Spot::ConflictRow);
+    state.keymap = Arc::new(with("changes.stage", "x"));
+    let want = format!("x {}", graft_ui::graph_screen::hints::MARK_RESOLVED);
+    let banner = crate::update::banner::banner_view(&state);
+    let context = crate::view::rows::footer_context(&state, &[], banner.as_ref());
+    let bar: Vec<String> = graft_ui::graph_screen::hints_for(
+        &context,
+        graft_ui::graph_screen::Divider::Shown,
+        state.size.columns,
+        &state.keymap,
+    )
+    .iter()
+    .filter_map(|hint| hint.text(&state.keymap))
+    .collect();
+    assert!(bar.contains(&want), "bar: {bar:?}");
+    let (refused, _) = key(&state, CoreKey::Char('c'));
+    let keys = sticky(&refused).1.expect("refusal keys");
+    assert!(keys.ends_with(&want), "refusal: {keys}");
 }

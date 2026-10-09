@@ -290,7 +290,7 @@ fn queued_patch(commands: &[Command]) -> (&PathBuf, &Vec<u8>, PatchSide) {
 
 /// `Space` on a conflicted row **marks it resolved**: staging an
 /// unmerged path is exactly how git records a resolution, and that is
-/// the key the design note gives it ("`space` marks resolved",
+/// the key the design note gives it ("`space mark resolved`",
 /// m5-history-and-ghost-preview/09).
 ///
 /// Group 04 left this refusing, because the operation that makes it safe

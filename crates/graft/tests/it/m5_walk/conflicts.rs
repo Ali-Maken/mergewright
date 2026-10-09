@@ -215,7 +215,7 @@ fn conflict_survives_relaunch() -> Scenario {
 
 /// What a person does to a conflicted `shared.txt`: write the resolution
 /// with an editor, then `space` on it in the changes pane, which is where
-/// `space` marks resolved (§2.6a).
+/// `space mark resolved` (§2.6a).
 ///
 /// The banner is modal while focused, so `Esc` hands the keyboard back
 /// before the pane opens and `⇥` takes it again afterwards; without that

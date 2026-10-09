@@ -37,7 +37,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- stash@{0} clashed · 1 file conflicted · ⏎ resolve · M mergetool · e edit · space resolved · c commit · ⇥ diff · ? keys
+ stash@{0} clashed · 1 file conflicted · ⏎ resolve · M mergetool · e edit · space mark · c commit · ⇥ diff · ? keys
 UNCOMMITTED
 diff vs HEAD f3742ab
 CONFLICTS (1)

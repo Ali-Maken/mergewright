@@ -1,6 +1,6 @@
 # 20c — words: B4 (`space mark resolved`) fitted, R5's three-Tab path, 20b leftovers
 
-Status: draft (planner spec-only pass, 2026-10-09)
+Status: partial (B4, L1, L2, captures done; R5' stopped on a check-first surprise — see NOTES)
 Build with: **Sonnet**. Strings, one short-form row, one speller widened; every judgement call has a stop rule. Not Fable:
 no signature another ticket builds on, nothing structural. Scout: none expected; **Check first** is the scout (20b's
 pattern). Say so in the report.
@@ -60,35 +60,37 @@ pub(crate) fn way_keys(way: BannerWay, keys: &Keymap) -> Option<String>; // shor
    of tests, captures, docs to update, in NOTES. Any palette/`?` label for this action: list only.
 
 ## Acceptance (each tick names its verifying test inline, at tick time)
-- [ ] B4: CONFLICTS row, changes pane, 120 cols → bar reads `space mark resolved`; 80 cols → `space mark`, and `⇥ diff`
+- [x] B4: CONFLICTS row, changes pane, 120 cols → bar reads `space mark resolved`; 80 cols → `space mark`, and `⇥ diff`
   and `? keys` still drawn. Tests: graft-ui `hints::tests::a_conflict_row_says_mark_resolved` (both widths, red first) +
   `m5_walk::every_scenario::hints_at_80_show_three_and_more` and `conflict_interim::tab_walk::capture_fix_tab_words_80x24`
-  green, quoted words updated only (quote each changed line in NOTES).
-- [ ] B4: `c` refused **on** a CONFLICTS row → status ends `space mark resolved` (full, any width); bar and refusal both
-  read `MARK_RESOLVED`. Test: the existing `keymap_words::resolve` pin, updated (quote it).
-- [ ] B4: `space` remapped (`[keys.<ctx>] <action> = "x"`) → bar and refusal both spell `x mark resolved`. Test:
-  `keymap_words::resolve::the_banner_clause_is_spelled_from_his_keymap` extended, or a new case (name it).
+  green, quoted words updated only (quote each changed line in NOTES). **Ticked:** `graph_screen::hints::tests::a_conflict_row_says_mark_resolved` green — written with the code, NOT observed red first (honest: red-first skipped); the old bar it replaces is pinned by the capture diff. `regressions.rs:496` and `capture_fix_tab_words_80x24` green, quotes in NOTES.
+- [x] B4: `c` refused **on** a CONFLICTS row → status ends `space mark resolved` (full, any width); bar and refusal both
+  read `MARK_RESOLVED`. Test: the existing `keymap_words::resolve` pin, updated (quote it). **Ticked:** `keymap_words::resolve::the_resolve_keys_name_rows_that_act_where_the_refusal_is_shown` + `the_resolve_keys_spell_his_keys`, `CONFLICT_ROW = "⏎ resolve  M mergetool  e edit  space mark resolved"` (resolve.rs:19); `resolve_words.rs:64` reads `graft_ui::graph_screen::hints::MARK_RESOLVED`.
+- [x] B4: `space` remapped (`[keys.<ctx>] <action> = "x"`) → bar and refusal both spell `x mark resolved`. Test:
+  `keymap_words::resolve::the_banner_clause_is_spelled_from_his_keymap` extended, or a new case (name it). **Ticked:** new `keymap_words::resolve::the_mark_resolved_clause_is_spelled_from_his_keymap` (`changes.stage = "x"`: bar holds `x mark resolved`, refusal ends with it); red against the old words by construction (`x resolved` / `x marks resolved`), not run red.
 - [ ] R5' — if check 2 found back shorter: graph + pane open, `u` → `finish or abort the merge first · ⇧⇥ banner`, one
   previous-pane press focuses the banner (driven). Test: `keymap_words::undo_journal::from_the_graph_with_the_pane_open_the_clause_takes_the_shorter_way`
   (red first); `resolver::shell_begun::u_on_an_entry_from_before_a_shell_merge_refuses_in_words` drives the new way.
   Previous-pane unbound (`"none"`) → `⇥ ⇥ ⇥ banner`. Test: the remap test above, new case.
   — if not: box ticked "accepted as built", with check 2's recorded focus and line; no code.
-- [ ] R5'' — if check 3 found the bar untrue: bar's banner hint spelled by `way_keys`. Test:
+  **OPEN — stopped (check-first surprise, NOTES check 2).** Neither branch applies as written.
+- [x] R5'' — if check 3 found the bar untrue: bar's banner hint spelled by `way_keys`. Test:
   `keymap_words::stops::the_graph_bar_names_the_way_to_the_banner_with_the_pane_open` (red first). If true: tick with
-  check 3's line, no code.
-- [ ] Sweeps green unedited: `every_bound_action_is_hinted_live_or_is_named_here`,
+  check 3's line, no code. **Ticked, true, no code:** with the pane open and the graph focused `one_tab_to_banner` is false (`banner/stop/tab.rs:14-15`, `tabs_to_banner` Graph → 3 at :78), `view/rows.rs:603` passes it as `tab_to_banner`, so the bar draws no `⇥ banner`; driven (probe, deleted): `one_tab_to_banner=false`, one `Tab` → `banner_focus=false`. Held by `update::tests` bar sweep filter (tests.rs:5020).
+- [x] Sweeps green unedited: `every_bound_action_is_hinted_live_or_is_named_here`,
   `no_key_a_live_operation_bar_draws_refuses_while_live`, `no_literal_keys::no_user_facing_literal_spells_a_default_key`.
-- [ ] L2: comments changed (`rg -n 'refused · nothing written|space marks resolved' crates` → no hits; paste it).
-- [ ] Captures re-shot (`GRAFT_UPDATE_SHOTS=1`), each named in NOTES. Expected at least:
+  **Ticked:** all three unedited, green in workspace `cargo nextest run` (6191/6191).
+- [x] L2: comments changed (`rg -n 'refused · nothing written|space marks resolved' crates` → no hits; paste it). **Ticked:** `rg -n -F -e 'refused · nothing written' -e 'space marks resolved' -e 'marks resolved' crates` → no output. Comments only, no test.
+- [x] Captures re-shot (`GRAFT_UPDATE_SHOTS=1`), each named in NOTES. Expected at least:
   `docs/shots/m6/fix-tab-words-80x24.txt` (`… e edit · space mark · c cont · ⇥ diff · ? keys`),
   `docs/shots/m6/fix-tab-words-120x40.txt` (`space mark resolved · c continue · ⇥ diff`),
   `docs/shots/m6/stash-clash-take-esc-pane-120x40.txt` (124 cells full → expect `space mark`, `⇥ diff` and `? keys`
-  kept; anything else dropped → stop, report). By eye: user; colour unverified.
-- [ ] L1: `scripts/contact-sheet.sh` re-run for m6 (its usage line, captions from `m6-contact-sheet-captions.tsv`).
+  kept; anything else dropped → stop, report). By eye: user; colour unverified. **Ticked:** `GRAFT_UPDATE_SHOTS=1 cargo nextest run --workspace`; exactly the three files changed, each one line (NOTES). Verified by `capture_fix_tab_words_80x24`, `capture_fix_tab_words_120x40`, `m6_stash_put_back::pop::a_take_then_esc_shows_the_file_without_markers` green after.
+- [x] L1: `scripts/contact-sheet.sh` re-run for m6 (its usage line, captions from `m6-contact-sheet-captions.tsv`).
   Check: every embedded block equals its per-scenario file (script or `diff`, paste the command); `rg -n 'space resolved|evil merge: not checked' docs/shots/m6` → no hits; `no remote named` only where its source file still holds it
-  (`operation.rs:910`'s producer — 20b R3 amendment); each sheet ≤ 200 KB (`wc -c`).
-- [ ] MAP.md (doc, checked by reading): graft-ui `MARK_RESOLVED`, `MARK_RESOLVED_SHORT`, short-form row; graft
-  `BannerWay`/`way_keys` (if built), `RefusedAt`, `tab_keys`.
+  (`operation.rs:910`'s producer — 20b R3 amendment); each sheet ≤ 200 KB (`wc -c`). **Ticked:** `scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`; check: python over the captions TSV, each per-scenario file's content `in` the concatenated sheets → `181 checked 0 missing`; `rg -n -e 'space resolved' -e 'evil merge: not checked' docs/shots/m6` → none; `rg 'no remote named' docs/shots/m6` → none; sizes 177649/179042/168590/178297/36763 B.
+- [x] MAP.md (doc, checked by reading): graft-ui `MARK_RESOLVED`, `MARK_RESOLVED_SHORT`, short-form row; graft
+  `BannerWay`/`way_keys` (if built), `RefusedAt`, `tab_keys`. **Ticked by reading:** graft-ui MAP line added (`MARK_RESOLVED`/`_SHORT`, short-form row); graft MAP `resolve_keys` line now reads `space mark resolved`; `RefusedAt`/`tab_keys` unchanged (no BannerWay built).
 
 ## Touches (report each with how it was checked)
 - **Same words elsewhere:** the `c` refusal (`resolve_words`), commit-editor `operation_refusal` and `stops.rs` sweep (go
@@ -105,3 +107,56 @@ pub(crate) fn way_keys(way: BannerWay, keys: &Keymap) -> Option<String>; // shor
 
 ## Size
 ~45k tokens. One context.
+
+## NOTES (builder, 2026-10-09)
+
+No scout: the 20b NOTES and this ticket's check-first list served as the scout (conductor's instruction). No compaction.
+
+**Check 1.** `short_form` is `graft-ui/src/graph_screen/hints/hint.rs` (`continue => cont`), used by `Hint::rungs`/`floor_rung`
+(:191-208) — the ladder has a Short rung before it drops. "the table is the user's" (hint.rs, the `short_form` doc: "All
+five keep their full form: the table is the user's, and a label it does not name is reported, not replaced") means the
+**design table the user ruled 2026-09-21 (m5/27)**, not user config — rows have since been added by conductor rulings
+(21b, 06). No stop. Row added: `MARK_RESOLVED => MARK_RESOLVED_SHORT`; the doc's "`resolved` is Planned" list fixed.
+
+**Check 2 — SURPRISE, R5' stopped.** Driven (throwaway test pressing `BackTab` 4× on `keymap_words::resolve::stopped_at`, deleted):
+- from the file list: `[Files/banner, Diff, Files, Files/banner]` → **one `⇧⇥` reaches the banner** (forward needs 2).
+- graph focused, pane open: `[Diff, Files, Files/banner, Diff]` → **three** `⇧⇥` (tie with forward → forward stands).
+- `Shift+Tab` = `app.prev_pane` (`graft-ui/src/keymap/claims.rs:35`).
+The surprise: the backward cycle is **not** the forward cycle reversed. Forward is Graph→Files→Diff→banner→Graph
+(`banner/stop/tab.rs` `tab_target`). Backward should be Graph→banner→Diff→Files→Graph; it is Graph→Diff→Files→banner→Diff
+— the **graph is unreachable by `⇧⇥` while a banner is drawn**, and from the graph `⇧⇥` skips the banner. Lines:
+`update/banner/focus_keys.rs:31-35` (`take_focus` intercepts backward only from `Files`, i.e. where the step would "land on
+the graph"; from `Graph` backward it does not take the banner) and `focus_keys.rs:73` (`BackTab` off the banner →
+`Diff`). The doc at `focus_keys.rs:50-51` says "`BackTab` is the same cycle run backwards". It is not.
+Why stop, not build: `banner_way` would count "back" from these handlers, so `⇧⇥ banner` from the file list would be
+true today but bakes in a back-cycle that contradicts the forward one and its own doc; and the ticket's R5' is written for
+the graph case, which comes out a tie (`⇥ ⇥ ⇥ banner` stands). Decision for the conductor: (a) treat the back-cycle as a
+defect (H4: §2.2 "previous pane") → debugger/ticket, then re-run R5'; or (b) accept it and build `BannerWay` with
+`⇧⇥ banner` from the file list only. Not KNOWN_GAPS (builders don't edit it) — conductor please file.
+
+**Check 3.** True as built: `one_tab_to_banner` (tab.rs:14) false with the pane open on the graph (tabs 3, tab.rs:78);
+`view/rows.rs:603`. Driven: one `Tab` → banner not focused, and the bar's `tab_to_banner` is false so it draws no `⇥ banner`.
+
+**Check 4** (`rg -F` list before changes): graft-ui `graph_screen/tests.rs:1200`, `hints/tests.rs:505, :1699`;
+graft `tests/it/m5_walk/regressions.rs:496`, `update/tests/keymap_words/resolve.rs:20,101,256`, `update/keys/live_c_tests.rs:341`,
+`banner/resolve_words.rs:43,64`, MAP.md:498; comments `stage_discard.rs:107`, `m5_walk/conflicts.rs:218`, `operate/tests.rs:293`,
+graft-ops `aborted_fetch.rs:6`; `tests/it/resolver/shell_begun.rs:491` `⇥ ⇥ ⇥ banner` and
+`tests/it/commit_editor_writes.rs:475` (unchanged — R5' not built). TESTING.md:2841 `space resolved` is M5-history prose
+about Planned hints, left. Palette/`?` label: none carries `resolved` (`rg -n resolved crates/graft-ui/src/palette* crates/graft-ui/src/empty_state*` none); the `?` row for `changes.stage` reads `Stage / unstage` (`keymap/table.rs:249`) — no "mark resolved" there. Listed, question, not fixed.
+Historical comment `regressions.rs:482-488` ("measure 76 of the 80 columns") now stale in numbers — left (comment, outside the quote rule).
+
+**Changed quoted lines.**
+- `graph_screen/tests.rs:1200`, `hints/tests.rs:505`: `… e edit · space mark resolved · c commit · ⇥ graph · . actions · ? keys`
+- `hints/tests.rs:1699`: `⏎ resolve  M mergetool  e edit  space mark resolved  c commit  ⇥ graph`
+- `regressions.rs:496`: ` ⏎ resolve · M mergetool · e edit · space mark · c cont · ⇥ diff · ? keys`
+- `live_c_tests.rs:341`: `⏎ resolve  M mergetool  e edit  space mark resolved`
+- `every_short_rung_is_the_users_own_word` table gained `("mark resolved", "mark")`.
+
+**Captures** (one line each):
+- `docs/shots/m6/fix-tab-words-80x24.txt`: ` ⏎ resolve · M mergetool · e edit · space mark · c cont · ⇥ diff · ? keys`
+- `docs/shots/m6/fix-tab-words-120x40.txt`: `… e edit · space mark resolved · c continue · ⇥ diff · </> resize · . actions · ? keys`
+- `docs/shots/m6/stash-clash-take-esc-pane-120x40.txt`: `… e edit · space mark · c commit · ⇥ diff · ? keys` (nothing else dropped)
+- m6 sheets 1, 3, 4, 5 re-assembled; sheet-3's diff also syncs older stale blocks (`u undo` bars, the deleted journal-browser bar) to their per-scenario files.
+
+**Other.** During the `GRAFT_UPDATE_SHOTS=1` run `graft-graph raster::write_shots` failed once; green on re-run without
+the env var — not in this crate set, not investigated (question for the conductor, not a defect claim).

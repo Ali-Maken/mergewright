@@ -338,7 +338,7 @@ fn on_a_conflicts_row_the_pane_names_space_and_off_it_nothing() {
     for (cursor, want) in [
         (
             1,
-            Some("⏎ resolve  M mergetool  e edit  space marks resolved"),
+            Some("⏎ resolve  M mergetool  e edit  space mark resolved"),
         ),
         (3, Some("⇥ ⇥ banner")),
     ] {
