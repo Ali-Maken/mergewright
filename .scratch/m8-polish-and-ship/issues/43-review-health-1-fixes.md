@@ -27,3 +27,4 @@ Touches:
 - `crates/graft/MAP.md` purity line — checked by `map_coverage`.
 - No other callers: the deleted `use` was private to `runner` (build proves it).
 Scout: none (review citations re-read at HEAD). No compaction.
+- Follow-up (main clippy red, `too_many_lines` 64/60 at `runner/queue.rs:104` `dispatch_detail`: the long `crate::jobs::X::` paths plus the fmt rewrap): each child now imports the `jobs` modules it calls (`use crate::jobs::{…};`), so call sites read `X::` again. No `allow`. Gates run in order fmt, clippy, nextest: fmt clean, clippy clean, nextest 6230/6230. One first-run failure was `outside_repo::open_recent_outside_opens_the_newest_at_head_on_one_terminal`. It passed alone and on a full rerun. I did not diagnose it, so the cause is unknown.

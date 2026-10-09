@@ -8,6 +8,7 @@ use graft_core::job::JobId;
 use super::JobRunner;
 use crate::jobs::kinds::read_history;
 use crate::jobs::types::{Cancel, JobEvents, Outcome};
+use crate::jobs::{clone, journal_list, operate, preview, undo};
 use crate::update::{AppEvent, Product, Progress, Task};
 
 impl<S: JobEvents> JobRunner<S> {
@@ -49,9 +50,9 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::Resumed(Box::new(
-                    crate::jobs::operate::run_resume(&repos, what, clock, cancel, &keys),
-                )))
+                Outcome::Produced(Product::Resumed(Box::new(operate::run_resume(
+                    &repos, what, clock, cancel, &keys,
+                ))))
             })
         });
     }
@@ -67,7 +68,7 @@ impl<S: JobEvents> JobRunner<S> {
         let clock = self.clock;
         let description = op.describe();
         let waiting = self.waiting.clone();
-        let helper = crate::jobs::operate::askpass_helper(self.askpass_helper.as_ref());
+        let helper = operate::askpass_helper(self.askpass_helper.as_ref());
         self.queue_as(id, Some(Task::Operate), move |id| {
             Box::new(move |cancel: &Cancel| {
                 sink.deliver(AppEvent::Progress(id, Progress::Operating { description }));
@@ -76,8 +77,8 @@ impl<S: JobEvents> JobRunner<S> {
                 }
                 // A fetch, pull or push streams git's progress lines to the
                 // status line (m4-remotes/05) and asks through the prompt.
-                let hooks = crate::jobs::operate::job_hooks(sink, id, waiting, cancel, helper);
-                crate::jobs::operate::outcome(crate::jobs::operate::run_operation(
+                let hooks = operate::job_hooks(sink, id, waiting, cancel, helper);
+                operate::outcome(operate::run_operation(
                     &repos, &op, clock, cancel, hooks, &keys,
                 ))
             })
@@ -89,12 +90,12 @@ impl<S: JobEvents> JobRunner<S> {
     /// questions as `Progress::CredentialNeeded` under the returned id.
     /// Stoppable: [`Self::cancel`] stops git and the answer still comes,
     /// saying what the stop left.
-    pub(crate) fn clone_repo(&self, request: crate::jobs::clone::CloneRequest) -> JobId {
+    pub(crate) fn clone_repo(&self, request: clone::CloneRequest) -> JobId {
         let sink = self.sink.clone();
         let waiting = self.waiting.clone();
-        let helper = crate::jobs::operate::askpass_helper(self.askpass_helper.as_ref());
+        let helper = operate::askpass_helper(self.askpass_helper.as_ref());
         self.queue_job(None, move |id| {
-            Box::new(crate::jobs::clone::work(sink, id, waiting, helper, request))
+            Box::new(clone::work(sink, id, waiting, helper, request))
         })
     }
 
@@ -155,7 +156,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::Undone(Box::new(crate::jobs::undo::run_undo(
+                Outcome::Produced(Product::Undone(Box::new(undo::run_undo(
                     &repos, redo, force, clock, cancel, &keys,
                 ))))
             })
@@ -179,7 +180,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::Preview(crate::jobs::preview::run_preview(
+                Outcome::Produced(Product::Preview(preview::run_preview(
                     &repos, &request, clock, cancel,
                 )))
             })
@@ -211,9 +212,9 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::RevertedTo(Box::new(
-                    crate::jobs::undo::run_revert_to(&repos, &target, force, clock, cancel, &keys),
-                )))
+                Outcome::Produced(Product::RevertedTo(Box::new(undo::run_revert_to(
+                    &repos, &target, force, clock, cancel, &keys,
+                ))))
             })
         });
     }
@@ -228,9 +229,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::Journal(crate::jobs::undo::read_journal(
-                    &repos, clock, cancel,
-                )))
+                Outcome::Produced(Product::Journal(undo::read_journal(&repos, clock, cancel)))
             })
         });
     }
@@ -264,9 +263,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::Outside(crate::jobs::journal_list::read_outside(
-                    &repos, cancel,
-                )))
+                Outcome::Produced(Product::Outside(journal_list::read_outside(&repos, cancel)))
             })
         });
     }
@@ -285,7 +282,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::LostFound(crate::jobs::journal_list::find_lost(
+                Outcome::Produced(Product::LostFound(journal_list::find_lost(
                     &repos, clock, &outside, cancel,
                 )))
             })
@@ -307,7 +304,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::RecoverFor(crate::jobs::journal_list::recover_for(
+                Outcome::Produced(Product::RecoverFor(journal_list::recover_for(
                     &repos, clock, &list, row, cancel, &keys,
                 )))
             })

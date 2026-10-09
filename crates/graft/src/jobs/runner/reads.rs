@@ -9,6 +9,7 @@ use super::JobRunner;
 use crate::history;
 use crate::jobs::kinds::{decline_commit_graph, open_repository, write_commit_graph};
 use crate::jobs::types::{Cancel, JobEvents, Outcome};
+use crate::jobs::{commit_message, conflict, finish, rewrite, rewrite_open};
 use crate::update::{Product, Task};
 
 impl<S: JobEvents> JobRunner<S> {
@@ -126,7 +127,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                let opened = crate::jobs::conflict::open(&repos, &path, cancel);
+                let opened = conflict::open(&repos, &path, cancel);
                 Outcome::Produced(Product::ConflictOpened(opened))
             })
         });
@@ -152,8 +153,7 @@ impl<S: JobEvents> JobRunner<S> {
                     at,
                     take,
                 } = request;
-                let taken =
-                    crate::jobs::conflict::take(&repos, &path, &file, at, take).map(Arc::new);
+                let taken = conflict::take(&repos, &path, &file, at, take).map(Arc::new);
                 Outcome::Produced(Product::Taken(taken))
             })
         });
@@ -173,8 +173,8 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                let loaded = crate::jobs::conflict::load_base(&repos, &path, file)
-                    .map(|(file, n)| (Arc::new(file), n));
+                let loaded =
+                    conflict::load_base(&repos, &path, file).map(|(file, n)| (Arc::new(file), n));
                 Outcome::Produced(Product::BaseLoaded(loaded))
             })
         });
@@ -190,7 +190,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                let set = crate::jobs::conflict::conflict_set(&repos, cancel).map(Arc::new);
+                let set = conflict::conflict_set(&repos, cancel).map(Arc::new);
                 Outcome::Produced(Product::ConflictSet(set))
             })
         });
@@ -205,7 +205,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::FinishSummary(crate::jobs::finish::summary(&repos)))
+                Outcome::Produced(Product::FinishSummary(finish::summary(&repos)))
             })
         });
     }
@@ -219,7 +219,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                let diff = crate::jobs::finish::staged_diff(&repos, &path, cancel);
+                let diff = finish::staged_diff(&repos, &path, cancel);
                 Outcome::Produced(Product::FinishDiff(diff))
             })
         });
@@ -234,9 +234,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::CommitTemplate(
-                    crate::jobs::commit_message::template(&repos),
-                ))
+                Outcome::Produced(Product::CommitTemplate(commit_message::template(&repos)))
             })
         });
     }
@@ -250,9 +248,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::HeadMessage(
-                    crate::jobs::commit_message::head_message(&repos),
-                ))
+                Outcome::Produced(Product::HeadMessage(commit_message::head_message(&repos)))
             })
         });
     }
@@ -271,7 +267,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                let planned = crate::jobs::rewrite::plan(&repos, &request, head.as_ref(), cancel);
+                let planned = rewrite::plan(&repos, &request, head.as_ref(), cancel);
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
@@ -289,7 +285,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                let opened = crate::jobs::rewrite_open::open(&repos, &req, cancel);
+                let opened = rewrite_open::open(&repos, &req, cancel);
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
@@ -307,9 +303,9 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::RowTagsResolved(
-                    crate::jobs::rewrite::resolve_row_tags(&repos, &offsets, cancel),
-                ))
+                Outcome::Produced(Product::RowTagsResolved(rewrite::resolve_row_tags(
+                    &repos, &offsets, cancel,
+                )))
             })
         });
     }
