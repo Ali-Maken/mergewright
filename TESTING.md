@@ -1710,8 +1710,8 @@ at the next refresh.
    contains `detached`, the bare unchanged.
 10. **push-rejected-then-lease** — the tip is amended locally (a commit
     origin already has, rewritten; the bare has not moved, so `origin/main`
-    is current); `P` `→` `⏎` (or `P` `y`): sticky `push rejected: origin/main has moved
-    · p pull first · P force with lease`, the bare unchanged. `P` again: a box titled `Force-push main →
+    is current); `P` `→` `⏎` (or `P` `y`): sticky `push rejected: origin/main has commits you don't
+    · p pull, then m or r · P force with lease`, the bare unchanged. `P` again: a box titled `Force-push main →
     origin/main?`, `origin/main <old> → <amended> · refused if origin moved
     since…`, `rewrites history for everyone who has <old>`, command `git
     push --progress --force-with-lease=refs/heads/main:<old sha>…`,
@@ -1790,7 +1790,7 @@ What each capture shows; 120x40 is `not run` (the script takes two sizes).
 | Credential prompt, masked (`m4-03-credential-masked`) | `Credentials — 127.0.0.1:<port>`, `Password for 'http://tester@127.0.0.1:<port>':`, a field of `•` only (28 of them), `typed here only · never stored by Graft`, `⏎ send  ⌃U clear  esc cancel push main → origin/main` in the border (m6-conflicts/78; `esc cancel the push` only when that does not fit), `⏎ send  esc cancel` on the bottom row (m6-conflicts/69); pty capture re-taken 2026-10-01 (m7-power-tools/30u) | not run | same |
 | Credential prompt, username (`m4-04-credential-username`) | `Username for 'http://127.0.0.1:<port>':`, `▏tester` in clear | not run | same |
 | Progress footer (`m4-05-progress-footer`) | `fetch all remotes · enumerating objects · esc cancels` on the status line | not run | same; taken the instant it appeared, the frame is not settled |
-| Rejected sticky (`m4-06-rejected-sticky`) | `push rejected: origin/main has moved · p pull first · P force with lease` — the whole line, both keys on it (68 columns; a remote branch name up to 22 characters still fits) | not run | the same line |
+| Rejected sticky (`m4-06-rejected-sticky`) | `push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease` — both keys on it; at 80 columns the reason is cut with `…` and both keys stay (`m4-06-rejected-sticky-80x24.txt:26`) | not run | the same line |
 | Journal (`m4-07-journal-remote-rows`) | three rows; the push row reads `not undoable — origin has it · <a> → …` (the verdict first, the ref pair is what 80 columns cuts); the pull row `1 ref · the index · the…  ← u`; summaries in one column, the push row's description cut to `push main →…` so its verdict fits (24-b) | not run | push `not undoable — origin has it · <a> → <b>`; pull `1 ref · the index · the working tree · backup saved  ← u`; fetch `origin/main moved · not undoable` (the refs it moved, m8/21c; `nothing new` when none moved, per 21c's NOTES, not seen here). The committed capture still reads `remote-tracking refs`: its re-shoot draws every Graft row's age as `future` (frame pinned, journal rows stamped by the wall clock; m8/19d-c NOTES), so it is not re-taken yet |
 | `u` after a push (`m4-08-undo-after-push`) | `undo: commit "ours" · origin/main still has it ✓` | not run | same; the footer ends `S stash  H hide stash  f fetch  p pull  P push` (the remote hints need 156 columns) |
 

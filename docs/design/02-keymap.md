@@ -367,7 +367,7 @@ replaces it in M6, keeping the same letters for the same verbs.
 `Ctrl+C` excepted. A stop with anything unmerged opens the resolver (§2.6)
 on the first conflicted file, and `Esc` there lands on the banner. A stop
 with nothing unmerged focuses the banner, except an `edit` stop, which gives
-the keyboard to the graph (banner drawn; `⇥` focuses it): `a` amends the
+the keyboard to the graph (banner drawn; `⇥` focuses it with the pane closed, one `⇧⇥` with it open): `a` amends the
 stopped commit, `space` stages — on the stopped commit or the Uncommitted-changes row, every change, as §2.4's Ctrl+A; on any other row §2.3's fold (conductor, 2026-09-28, 07d D1) — `c` continues (Amended 2026-09-26 (M7, user "all yes")). Either way the first key after a
 stop goes to the thing that stopped, not to the graph underneath (P5,
 approved 2026-09-23). A launch mid-operation keeps the banner. So does an undo that puts an operation back (ticket 41).
@@ -381,14 +381,14 @@ approved 2026-09-23). A launch mid-operation keeps the banner. So does an undo t
 | `M` | Launch the configured mergetool on the first conflicted file (§2.6) |
 | `e` | Open the first conflicted file in `$EDITOR` at its first marker (§2.4) |
 | `q` | Quit, the same `q` as §2.2, answered from the focused banner too (M8/13 Major 1). A write running (a `c` continue, say): §2.2's "`q` while a write runs" box — a write that can't stop is waited for, then Graft quits. Git stopped, nothing running: quits at once, no box; git's stopped state stays on disk and the next launch keeps the banner, which offers continue or abort (design note 2b). The banner's hint bar draws `q quit` **last**, and drops it first when the row is narrow, as the graph bar's tail does: `q` is bound and is not a navigation global, so it is a slot candidate (§2.1), and a stop is where he lands (P5), so the way out is shown there (heuristic 6). Planner 2026-10-02; approved 2026-10-02 (field notes :89) |
-| `Tab` / `Esc` | Give the keyboard back to the panes; the banner stays drawn. `Esc` never aborts (KNOWN_GAPS :549; Amended 2026-09-26 (M7, user "all yes")) |
+| `Tab` / `Shift+Tab` / `Esc` | Give the keyboard back to the panes; the banner stays drawn. `Tab` lands on the graph, `Shift+Tab` on the diff (the cycle reversed, m8/20d). `Esc` never aborts (KNOWN_GAPS :549; Amended 2026-09-26 (M7, user "all yes")) |
 
 With focus given back, `M` and `e` keep working on the file under the
 cursor in the detail pane (§2.4), and `Space` marks it resolved by staging
 it. Nothing else here is bound outside the banner.
 
 **`u` and `U` are refused while an operation is live**, focused or not:
-`finish or abort the <kind> first · ⇥ banner`. Undo is otherwise global
+`finish or abort the <kind> first · ⇥ banner`, where the clause names `⇥` per pane between him and the banner, or `⇧⇥` per pane the other way, whichever is fewer; ties forward (m8/20d). On the focused banner the reason stands alone: he is there, and `⇥` would take him off it (review m8 words-focus M2). Undo is otherwise global
 (§2.2), but an undo on top of an unfinished operation is a second history
 write over the first, and the banner is where the first one ends either way.
 **One exception** (approved 2026-09-24): in a merge **begun in the shell**,

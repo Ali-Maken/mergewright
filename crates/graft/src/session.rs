@@ -59,8 +59,9 @@ pub enum TerminalChange {
 /// through a `Clock`.** Timing that never reaches the screen (a debounce
 /// window, a deadline) is not covered and does not need to be.
 ///
-/// `Wall` is what the shipped binary passes (its drawn clock may be pinned
-/// by [`launch_clock`]; its journal stamps never are). `Fixed` is what a caller that
+/// The shipped binary passes two clocks: the drawn clock is `Wall`, or
+/// `Fixed` when `GRAFT_NOW` pins it ([`launch_clock`]); the journal's stamps
+/// are always `Wall`. `Fixed` is also what a caller that
 /// cannot tolerate drift asks for instead: a snapshot test, the gallery
 /// viewing a corpus stop at `graft_fixtures::CORPUS_NOW` so its capture
 /// never ages, or a capture that writes to the repository it is

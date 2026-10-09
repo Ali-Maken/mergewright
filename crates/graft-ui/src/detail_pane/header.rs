@@ -9,6 +9,7 @@ use crate::detail::{
     CompareHeader, CompareState, ContainedIn, DetailFocus, DetailHeader, DetailView, RadarLine,
     Subject,
 };
+use crate::fit::fit;
 use crate::keymap::{ActionId, Keymap};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
@@ -279,7 +280,7 @@ pub(crate) fn render_header(
         lines[0] = compare_title(compare, usize::from(area.width), keys);
     }
     lines[4] = radar_lines_fit(&view.header.radar, usize::from(area.width));
-    let displayed = displayed_lines(view, layout, &lines);
+    let displayed = displayed_lines(view, layout, &lines, usize::from(area.width));
 
     let title_style = title_style(view, theme);
     let text_style = foreground(theme, Token::Text);
@@ -315,7 +316,12 @@ pub(crate) fn render_header(
 }
 
 /// The header's rows for this breakpoint, from the five canonical lines.
-fn displayed_lines(view: &DetailView, layout: DetailLayout, lines: &[String; 5]) -> Vec<String> {
+fn displayed_lines(
+    view: &DetailView,
+    layout: DetailLayout,
+    lines: &[String; 5],
+    width: usize,
+) -> Vec<String> {
     let is_working_tree = matches!(view.header.subject, Subject::WorkingTree { .. });
     let meta = [&lines[1], &lines[2], &lines[3]]
         .into_iter()
@@ -323,11 +329,7 @@ fn displayed_lines(view: &DetailView, layout: DetailLayout, lines: &[String; 5])
         .cloned()
         .collect::<Vec<_>>()
         .join(" \u{b7} ");
-    let mut subject_radar = view.header.summary.as_str().to_string();
-    if !lines[4].is_empty() {
-        subject_radar.push_str(" \u{b7} ");
-        subject_radar.push_str(&lines[4]);
-    }
+    let subject_radar = subject_radar(view, width);
 
     match layout {
         DetailLayout::Right { .. } => lines.to_vec(),
@@ -351,6 +353,28 @@ fn displayed_lines(view: &DetailView, layout: DetailLayout, lines: &[String; 5])
             }
         }
     }
+}
+
+/// `subject · radar` for the `Below` and `Tab` rows, fitted to `width`.
+/// The radar's rung is chosen against the cells left after `subject · `, and
+/// when even the narrow rung does not fit, the subject is cut with `…`
+/// instead: the radar's `not checked` is the fact the row must keep
+/// (m8/20b R7, review words-focus M1).
+fn subject_radar(view: &DetailView, width: usize) -> String {
+    let summary = view.header.summary.as_str();
+    if view.header.radar.is_empty() {
+        return summary.to_string();
+    }
+    let separator = " \u{b7} ";
+    let room = width.saturating_sub(summary.width() + separator.width());
+    let radar = radar_lines_fit(&view.header.radar, room);
+    let subject_room = width.saturating_sub(radar.width() + separator.width());
+    let subject = if summary.width() > subject_room && subject_room > 0 {
+        fit(summary, subject_room).trim_end().to_string()
+    } else {
+        summary.to_string()
+    };
+    format!("{subject}{separator}{radar}")
 }
 
 /// The cells the title row keeps for `· whitespace ignored`: none with `w`

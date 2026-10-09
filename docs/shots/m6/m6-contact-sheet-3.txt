@@ -1572,7 +1572,7 @@ MERGING
 
 ================================================================================
 docs/shots/m6/fix-c-live-frames-187x50.txt
-what right looks like: (ticket 52) The two frames that drew `c commit` mid-operation. Frame 1, `bisect start` in the shell, a graph row focused: the bar has no `c commit`, `c finish` or `c continue`, and no `⇥ banner`. After `--- frame 2 ---`, a resolved shell merge with the detail pane open and the graph focused: the bar offers `c finish`, not `c commit`, and no `⇥ banner`. Colour unverified.
+what right looks like: (ticket 52) The two frames that drew `c commit` mid-operation. Frame 1, `bisect start` in the shell, a graph row focused: the bar has no `c commit`, `c finish` or `c continue`, and no `⇥ banner`. After `--- frame 2 ---`, a resolved shell merge with the detail pane open and the graph focused: the bar offers `c finish`, not `c commit`, and leads with `⇧⇥ banner` (one press back reaches it), no forward `⇥ banner`. Colour unverified.
 ================================================================================
 
 # TestBackend capture (not a pty), no colour recorded. Fixture:
@@ -1584,7 +1584,8 @@ what right looks like: (ticket 52) The two frames that drew `c commit` mid-opera
 # - Frame 1 (`bisect start` in the shell, a graph row focused): the bar
 #   has no `c commit`, `c finish` or `c continue`, and no `⇥ banner`.
 # - Frame 2 (a merge begun in the shell, resolved; the detail pane open,
-#   the graph focused): the bar offers `c finish`, not `c commit`, and no
+#   the graph focused): the bar offers `c finish`, not `c commit`, and
+#   leads with `⇧⇥ banner` (one press back reaches it), no forward
 #   `⇥ banner`.
 # - Colour is unverified (CLAUDE.md rule 5).
 #

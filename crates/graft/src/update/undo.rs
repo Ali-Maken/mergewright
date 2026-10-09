@@ -196,8 +196,13 @@ pub(super) fn in_progress_refusal(state: &AppState) -> Option<Status> {
 /// with the pane open, `⇥ ⇥ banner` from the changes pane's file list
 /// (m8/20b R5, 20d) — [`super::banner::way_keys`] over
 /// [`super::commit_editor::refusal_way`]; `None` when neither
-/// `app.next_pane` nor `app.prev_pane` is bound.
+/// `app.next_pane` nor `app.prev_pane` is bound, and `None` on the focused
+/// banner itself: he is there, and `⇥` would take him off it (review
+/// words-focus M2).
 fn banner_keys(state: &AppState) -> Option<String> {
+    if state.banner_focus {
+        return None;
+    }
     super::banner::way_keys(super::commit_editor::refusal_way(state), &state.keymap)
 }
 

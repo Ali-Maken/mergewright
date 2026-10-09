@@ -6,7 +6,7 @@ use super::lists::{TAIL, context_list};
 use super::{
     ACTIONS, BACK_TO_BLAME, BACK_TO_HISTORY, BLAME, ConfirmYes, DOORWAY, DOORWAY_BY_PALETTE,
     EXPLAIN, F_HISTORY, FOLD, Hint, HintContext, LiveC, RESIZE, RowVerbs, SEARCH_NEXT, SEARCH_PREV,
-    TabWord, WAY_BACK, WAY_BACK_PREV,
+    TabWord, WAY_TO_BANNER_BACK, WAY_TO_BANNER_FORWARD,
 };
 use crate::conflict_resolver::SideRoles;
 
@@ -372,8 +372,8 @@ pub fn every_hint() -> Vec<Hint> {
     all.push(ACTIONS);
     all.push(EXPLAIN);
     all.push(RESIZE);
-    all.push(WAY_BACK);
-    all.push(WAY_BACK_PREV);
+    all.push(WAY_TO_BANNER_FORWARD);
+    all.push(WAY_TO_BANNER_BACK);
     all.push(SEARCH_NEXT);
     all.push(SEARCH_PREV);
     all.push(BLAME);

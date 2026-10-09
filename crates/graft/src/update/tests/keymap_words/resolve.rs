@@ -188,8 +188,7 @@ fn off_a_conflict_row_the_refusal_names_the_tabs_that_reach_the_banner() {
 }
 
 /// m8/20b B3 (R5): the banner clause is spelled from his keymap —
-/// `app.next_pane = "ctrl+n"` reads `⌃N ⌃N banner` (and `⌃N` presses
-/// reach it); unbound, the reason stands alone. Both `c` and `u`.
+/// `app.next_pane = "ctrl+n"` reads `⌃N ⌃N banner`; unbound, the reason stands alone. Both `c` and `u`.
 #[test]
 fn the_banner_clause_is_spelled_from_his_keymap() {
     let ctrl_n = with("app.next_pane", "ctrl+n");

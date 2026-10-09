@@ -7,7 +7,8 @@
 # - Frame 1 (`bisect start` in the shell, a graph row focused): the bar
 #   has no `c commit`, `c finish` or `c continue`, and no `⇥ banner`.
 # - Frame 2 (a merge begun in the shell, resolved; the detail pane open,
-#   the graph focused): the bar offers `c finish`, not `c commit`, and no
+#   the graph focused): the bar offers `c finish`, not `c commit`, and
+#   leads with `⇧⇥ banner` (one press back reaches it), no forward
 #   `⇥ banner`.
 # - Colour is unverified (CLAUDE.md rule 5).
 #

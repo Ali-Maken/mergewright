@@ -51,8 +51,8 @@ use doorway::{doorway_hint, doorway_last, spelled, spelled_bar, words_for};
 #[cfg(test)]
 use filters::drawable;
 use filters::{
-    BACK_TO_BLAME, BACK_TO_HISTORY, BLAME, F_HISTORY, FOLD, SEARCH_NEXT, SEARCH_PREV, WAY_BACK,
-    WAY_BACK_PREV, whole_bar,
+    BACK_TO_BLAME, BACK_TO_HISTORY, BLAME, F_HISTORY, FOLD, SEARCH_NEXT, SEARCH_PREV,
+    WAY_TO_BANNER_BACK, WAY_TO_BANNER_FORWARD, whole_bar,
 };
 pub use fitting::{
     HINT_SEPARATOR, StopWording, fit_status_line, hints_text, stopped_row, stopped_row_before_keys,
