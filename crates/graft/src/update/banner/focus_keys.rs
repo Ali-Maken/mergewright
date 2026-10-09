@@ -12,6 +12,8 @@ use graft_ui::keymap::{ActionId, KeyChord, Keymap};
 /// drawn but unfocused, the step that would land back on the graph lands on
 /// the banner instead, so the cycle reads Graph → Files → Diff → banner →
 /// Graph — and with the detail pane hidden, one `Tab` from the graph.
+/// `Shift+Tab` runs the same cycle backwards (keymap §2.2, m8/20d): one
+/// press from the graph. Both steps are `stop::next_of` / `prev_of`.
 ///
 /// A mode you can leave and never re-enter is worse than no mode at all:
 /// `Tab` out of a conflict would otherwise strand `c`, `s` and `a` behind a
@@ -28,13 +30,13 @@ pub fn take_focus(state: &mut AppState, key: KeyPress) -> bool {
         KeyCode::BackTab => false,
         _ => return false,
     };
-    let lands_on_the_graph = !state.detail.shown
-        || matches!(
-            (state.detail.focus, forward),
-            (graft_ui::detail::DetailFocus::Diff, true)
-                | (graft_ui::detail::DetailFocus::Files, false)
-        );
-    if !lands_on_the_graph {
+    let (at, shown) = super::stop::pane_place(state);
+    let step = if forward {
+        super::stop::next_of
+    } else {
+        super::stop::prev_of
+    };
+    if step(at, shown, true) != Some(super::stop::TabTarget::Banner) {
         return false;
     }
     state.banner_focus = true;
@@ -68,10 +70,18 @@ pub(super) fn hand_the_keyboard_back(state: &mut AppState, key: KeyPress) {
     }
     state.banner_focus = false;
     if state.detail.shown {
-        match key.code {
-            KeyCode::Tab => state.detail.focus = graft_ui::detail::DetailFocus::Graph,
-            KeyCode::BackTab => state.detail.focus = graft_ui::detail::DetailFocus::Diff,
-            _ => {}
+        use super::stop::{TabTarget, next_of, prev_of};
+        use graft_ui::detail::DetailFocus;
+        let to = match key.code {
+            KeyCode::Tab => next_of(TabTarget::Banner, true, true),
+            KeyCode::BackTab => prev_of(TabTarget::Banner, true, true),
+            _ => None,
+        };
+        match to {
+            Some(TabTarget::Graph) => state.detail.focus = DetailFocus::Graph,
+            Some(TabTarget::Files) => state.detail.focus = DetailFocus::Files,
+            Some(TabTarget::Diff) => state.detail.focus = DetailFocus::Diff,
+            Some(TabTarget::Banner) | None => {}
         }
     }
     // `Tab`/`⇧Tab` leave the status line alone (m6-conflicts/12). They used
@@ -257,4 +267,113 @@ pub(crate) fn continue_abort(keys: &graft_ui::keymap::Keymap) -> Option<String> 
 /// `a abort` alone, spelled from his keymap; `None` when unbound.
 pub(crate) fn abort_key(keys: &graft_ui::keymap::Keymap) -> Option<String> {
     keys.key_verb(&[graft_ui::keymap::ActionId("operation.abort")], "abort")
+}
+
+#[cfg(test)]
+mod tests {
+    use graft_core::event::{Event, KeyCode as CoreKey, KeyPress as CorePress};
+    use graft_git::state::InProgress;
+    use graft_ui::detail::DetailFocus;
+
+    use crate::update::{AppEvent, AppState, update};
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    enum Place {
+        Graph,
+        Files,
+        Diff,
+        Banner,
+    }
+
+    fn place(state: &AppState) -> Place {
+        if state.banner_focus {
+            return Place::Banner;
+        }
+        if !state.detail.shown {
+            return Place::Graph;
+        }
+        match state.detail.focus {
+            DetailFocus::Graph => Place::Graph,
+            DetailFocus::Files => Place::Files,
+            DetailFocus::Diff => Place::Diff,
+        }
+    }
+
+    fn put(state: &mut AppState, at: Place) {
+        state.banner_focus = at == Place::Banner;
+        state.detail.focus = match at {
+            Place::Files => DetailFocus::Files,
+            Place::Diff => DetailFocus::Diff,
+            Place::Graph | Place::Banner => DetailFocus::Graph,
+        };
+    }
+
+    fn press(state: &AppState, code: CoreKey) -> AppState {
+        update(state, AppEvent::Core(Event::Key(CorePress::plain(code)))).0
+    }
+
+    /// Every state a banner is drawn in where `Tab` moves focus (check 1):
+    /// a conflict stop and an `edit` stop, each with the pane closed and
+    /// open. The resolver owns its keys (`modal_owns_keys`), so it has no
+    /// cycle to reverse.
+    fn banner_states() -> Vec<(&'static str, AppState, &'static [Place])> {
+        let mut out = Vec::new();
+        for (name, base) in [
+            (
+                "conflict stop",
+                crate::update::banner::tests::stopped(InProgress::Rebase, &["a.rs"]),
+            ),
+            (
+                "edit stop",
+                crate::update::banner::rewrite_stop_tests::edit_stop(),
+            ),
+        ] {
+            assert!(
+                crate::update::banner::banner_view(&base).is_some(),
+                "{name}: a banner is drawn"
+            );
+            let mut closed = base.clone();
+            closed.detail.shown = false;
+            out.push((name, closed, &[Place::Graph, Place::Banner][..]));
+            let mut open = base;
+            open.detail.shown = true;
+            out.push((
+                name,
+                open,
+                &[Place::Graph, Place::Files, Place::Diff, Place::Banner][..],
+            ));
+        }
+        out
+    }
+
+    /// Keymap §2.2: `Shift+Tab` is the previous pane, so from every place
+    /// `Tab` then `⇧⇥` comes home, and `⇧⇥` then `Tab` does too.
+    #[test]
+    fn back_tab_is_the_tab_cycle_reversed_in_every_banner_state() {
+        for (name, state, places) in banner_states() {
+            let shown = state.detail.shown;
+            for &at in places {
+                let mut start = state.clone();
+                put(&mut start, at);
+                for (first, second) in [
+                    (CoreKey::Tab, CoreKey::BackTab),
+                    (CoreKey::BackTab, CoreKey::Tab),
+                ] {
+                    let moved = press(&start, first);
+                    assert_ne!(
+                        place(&moved),
+                        at,
+                        "{name}, pane shown {shown}: {first:?} from {at:?} moves"
+                    );
+                    let back = press(&moved, second);
+                    assert_eq!(
+                        place(&back),
+                        at,
+                        "{name}, pane shown {shown}: {first:?} from {at:?} → {:?}, then {second:?}",
+                        place(&moved)
+                    );
+                }
+            }
+        }
+    }
 }

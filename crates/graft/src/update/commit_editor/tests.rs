@@ -531,13 +531,21 @@ fn a_graft_begun_operation_names_the_banner() {
         InProgress::Revert,
     ] {
         let refusal = editor
-            .refusal(None, Some((kind, Begun::InGraft)), 1)
+            .refusal(
+                None,
+                Some((kind, Begun::InGraft)),
+                crate::update::banner::BannerWay::tabs(1),
+            )
             .expect("a refusal");
         assert!(refusal.contains("esc, ⇥ banner, then "), "{refusal}");
         assert!(!refusal.contains("esc, then c"), "{refusal}");
     }
     assert_eq!(
-        editor.refusal(None, Some((InProgress::Merge, Begun::InGraft)), 1),
+        editor.refusal(
+            None,
+            Some((InProgress::Merge, Begun::InGraft)),
+            crate::update::banner::BannerWay::tabs(1)
+        ),
         Some("merge in progress — esc, ⇥ banner, then c finish  a abort".to_owned())
     );
 }
@@ -1046,12 +1054,24 @@ fn every_refusal_fits_80_columns() {
         InProgress::Bisect,
     ] {
         for begun in [Begun::InGraft, Begun::InShell] {
-            arms.extend(editor.refusal(Some(&empty), Some((kind, begun)), 1));
+            arms.extend(editor.refusal(
+                Some(&empty),
+                Some((kind, begun)),
+                crate::update::banner::BannerWay::tabs(1),
+            ));
         }
     }
-    arms.extend(editor.refusal(None, None, 1)); // working tree not read yet
-    arms.extend(editor.refusal(Some(&empty), None, 1)); // nothing staged
-    arms.extend(editor.refusal(Some(&with_staged), None, 1)); // subject empty
+    arms.extend(editor.refusal(None, None, crate::update::banner::BannerWay::tabs(1))); // working tree not read yet
+    arms.extend(editor.refusal(
+        Some(&empty),
+        None,
+        crate::update::banner::BannerWay::tabs(1),
+    )); // nothing staged
+    arms.extend(editor.refusal(
+        Some(&with_staged),
+        None,
+        crate::update::banner::BannerWay::tabs(1),
+    )); // subject empty
     assert_eq!(arms.len(), 13, "every arm answered: {arms:#?}");
     let widest = arms.iter().max_by_key(|words| words.width()).expect("arms");
     for words in &arms {
@@ -1157,12 +1177,19 @@ fn the_editor_words_are_unchanged() {
     let editor = CommitEditor::new();
     for (live, words, _, _) in EVERY_LIVE_OPERATION {
         assert_eq!(
-            editor.refusal(None, Some(live), 1).as_deref(),
+            editor
+                .refusal(None, Some(live), crate::update::banner::BannerWay::tabs(1))
+                .as_deref(),
             Some(words),
             "{live:?}"
         );
         assert_eq!(
-            operation_refusal(live, 1, graft_ui::keymap::Keymap::shipped()).editor_words(),
+            operation_refusal(
+                live,
+                crate::update::banner::BannerWay::tabs(1),
+                graft_ui::keymap::Keymap::shipped()
+            )
+            .editor_words(),
             words,
             "{live:?}"
         );
@@ -1175,7 +1202,12 @@ fn the_editor_words_are_unchanged() {
 fn the_pane_status_is_the_editor_words_split() {
     for (live, _, reason, keys) in EVERY_LIVE_OPERATION {
         assert_eq!(
-            operation_refusal(live, 1, graft_ui::keymap::Keymap::shipped()).status(),
+            operation_refusal(
+                live,
+                crate::update::banner::BannerWay::tabs(1),
+                graft_ui::keymap::Keymap::shipped()
+            )
+            .status(),
             Status::Sticky {
                 reason: reason.to_owned(),
                 keys: keys.map(str::to_owned)

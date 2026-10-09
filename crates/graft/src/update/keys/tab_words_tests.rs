@@ -207,7 +207,7 @@ fn a_graft_merge_refusal_says_c_finish() {
     assert_eq!(refusal_keys(&refused), "⇥ ⇥ banner, then c finish  a abort");
     let words = operation_refusal(
         (InProgress::Merge, Begun::InGraft),
-        1,
+        crate::update::banner::BannerWay::tabs(1),
         graft_ui::keymap::Keymap::shipped(),
     )
     .editor_words();

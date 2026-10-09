@@ -42,7 +42,11 @@ fn keys_of(status: Status) -> String {
 }
 
 fn refusal(kind: InProgress, begun: Begun, keys: &Keymap) -> String {
-    let refusal = operation_refusal((kind, begun), 1, keys);
+    let refusal = operation_refusal(
+        (kind, begun),
+        crate::update::banner::BannerWay::tabs(1),
+        keys,
+    );
     format!("{} | {}", refusal.reason, refusal.keys.unwrap_or_default())
 }
 
@@ -311,7 +315,12 @@ fn an_unbound_key_drops_its_clause() {
         "rebase begun in the shell | "
     );
     assert_eq!(
-        operation_refusal((InProgress::Merge, Begun::InShell), 1, &no_continue).keys,
+        operation_refusal(
+            (InProgress::Merge, Begun::InShell),
+            crate::update::banner::BannerWay::tabs(1),
+            &no_continue
+        )
+        .keys,
         None
     );
 }

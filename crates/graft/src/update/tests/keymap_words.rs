@@ -13,6 +13,7 @@ use graft_ui::keymap::{KeySwitches, Keymap};
 
 use crate::update::op_keys::OpKeys;
 
+mod focus;
 mod ops;
 mod preview_remote;
 mod resolve;

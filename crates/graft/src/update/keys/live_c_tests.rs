@@ -149,7 +149,12 @@ fn refuses_in_words_and_sends_nothing(kind: InProgress, begun: Begun, frame: Fra
     assert!(commands.is_empty(), "{frame:?}: {commands:?}");
     assert!(after.commit_editor.is_none());
     assert!(after.finish.is_none());
-    let words = operation_refusal((kind, begun), 1, graft_ui::keymap::Keymap::shipped()).status();
+    let words = operation_refusal(
+        (kind, begun),
+        crate::update::banner::BannerWay::tabs(1),
+        graft_ui::keymap::Keymap::shipped(),
+    )
+    .status();
     assert!(
         matches!(&words, Status::Sticky { reason, .. } if !reason.is_empty()),
         "{words:?}"
@@ -481,7 +486,7 @@ fn a_mid_operation_still_refuses_in_words_on_plain_data() {
             assert!(commands.is_empty(), "{kind:?} {frame:?}: {commands:?}");
             assert!(after.confirm.is_none(), "no abort box");
             // The count is the state's own (m6-conflicts/70).
-            let tabs = crate::update::commit_editor::refusal_tabs(&state);
+            let tabs = crate::update::commit_editor::refusal_way(&state);
             assert_eq!(
                 after.status,
                 operation_refusal((kind, begun), tabs, graft_ui::keymap::Keymap::shipped())

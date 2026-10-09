@@ -206,7 +206,7 @@ fn the_banner_clause_is_spelled_from_his_keymap() {
         )
     );
 
-    state.keymap = Arc::new(unbinding_all(&["app.next_pane"]));
+    state.keymap = Arc::new(unbinding_all(&["app.next_pane", "app.prev_pane"]));
     let (refused, _) = key(&state, CoreKey::Char('c'));
     assert_eq!(
         sticky(&refused),
@@ -295,12 +295,19 @@ fn the_resolve_keys_spell_his_keys() {
 }
 
 fn refused(ctx: ContextId, on_conflict_row: bool) -> RefusedAt {
-    // The changes pane's file list: two `⇥` to the banner.
-    let tabs = if ctx == ContextId::Changes { 2 } else { 1 };
+    // The changes pane's file list: two `⇥` (or two `⇧⇥`) to the banner.
+    let (forward, back) = if ctx == ContextId::Changes {
+        (2, 2)
+    } else {
+        (1, 3)
+    };
     RefusedAt {
         ctx,
         on_conflict_row,
-        tabs,
+        way: crate::update::banner::BannerWay {
+            forward,
+            back: Some(back),
+        },
     }
 }
 

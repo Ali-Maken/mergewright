@@ -26,9 +26,14 @@ fn some(words: Option<String>) -> String {
 
 const SITES: &[Site] = &[
     Site {
-        name: "banner::tab_keys (live refusal, OperationLive)",
+        name: "banner::way_keys (live refusal, OperationLive)",
         keys: &["app.next_pane"],
-        words: |k| some(crate::update::banner::tab_keys(2, k)),
+        words: |k| {
+            some(crate::update::banner::way_keys(
+                crate::update::banner::BannerWay::tabs(2),
+                k,
+            ))
+        },
         expected: |k| format!("{0} {0} banner", k("app.next_pane")),
     },
     Site {
@@ -524,4 +529,83 @@ fn u_refused_from_the_changes_pane_names_two_tabs() {
             );
         }
     }
+}
+
+/// The rebase stopped, the changes pane open, the keyboard on the graph.
+fn graph_with_the_pane_open() -> crate::update::AppState {
+    let mut state = super::resolve::stopped_at(super::resolve::Spot::ConflictRow);
+    state.detail.focus = graft_ui::detail::DetailFocus::Graph;
+    assert!(state.detail.shown && !state.banner_focus);
+    state
+}
+
+fn u_keys(state: &crate::update::AppState) -> Option<String> {
+    use graft_core::event::KeyCode as CoreKey;
+    let (refused, _) = super::resolve::key(state, CoreKey::Char('u'));
+    let (reason, keys) = super::resolve::sticky(&refused);
+    assert_eq!(reason, "finish or abort the rebase first");
+    keys
+}
+
+/// m8/20d R5': graph focused, pane open, `u` names the shorter way —
+/// one `⇧⇥` (driven: one press focuses the banner), not three `⇥`.
+#[test]
+fn from_the_graph_with_the_pane_open_the_clause_takes_the_shorter_way() {
+    use graft_core::event::KeyCode as CoreKey;
+    let state = graph_with_the_pane_open();
+    assert_eq!(u_keys(&state).as_deref(), Some("⇧⇥ banner"));
+    assert!(super::resolve::reaches_banner_in(
+        &state,
+        CoreKey::BackTab,
+        1
+    ));
+}
+
+/// m8/20d: from the file list both ways take two presses; a tie goes
+/// forward.
+#[test]
+fn from_the_file_list_a_tie_goes_forward() {
+    use graft_core::event::KeyCode as CoreKey;
+    let state = super::resolve::stopped_at(super::resolve::Spot::OtherRow);
+    assert_eq!(u_keys(&state).as_deref(), Some("⇥ ⇥ banner"));
+    assert!(super::resolve::reaches_banner_in(
+        &state,
+        CoreKey::BackTab,
+        2
+    ));
+    assert!(super::resolve::reaches_banner_in(&state, CoreKey::Tab, 2));
+}
+
+/// m8/20d: the way is spelled from his keymap. `prev_pane` unbound → the
+/// forward way, however long; `next_pane` unbound → the back way; a moved (`f6`; `p` collides with pull, rewrite pick and stash pop)
+/// `prev_pane` is named by its own key.
+#[test]
+fn the_way_is_spelled_from_his_keymap() {
+    use graft_ui::keymap::KeySwitches;
+    let graph = graph_with_the_pane_open();
+    let with = |overrides: &[(&str, &str)]| {
+        let (map, problems) = Keymap::with_overrides(
+            &overrides
+                .iter()
+                .map(|(id, key)| ((*id).to_owned(), vec![(*key).to_owned()]))
+                .collect::<Vec<_>>(),
+            KeySwitches::default(),
+        );
+        assert_eq!(problems, [], "{overrides:?} reads cleanly");
+        let mut state = graph.clone();
+        state.keymap = std::sync::Arc::new(map);
+        state
+    };
+    assert_eq!(
+        u_keys(&with(&[("app.prev_pane", "none")])).as_deref(),
+        Some("⇥ ⇥ ⇥ banner")
+    );
+    assert_eq!(
+        u_keys(&with(&[("app.next_pane", "none")])).as_deref(),
+        Some("⇧⇥ banner")
+    );
+    assert_eq!(
+        u_keys(&with(&[("app.prev_pane", "f6")])).as_deref(),
+        Some("F6 banner")
+    );
 }

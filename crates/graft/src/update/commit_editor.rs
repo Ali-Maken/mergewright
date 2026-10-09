@@ -36,7 +36,7 @@ mod returned;
 pub(crate) use edit_stop::{amend_at_edit_stop, at_edit_stop};
 pub use keys::{committed, editor_key, paste};
 pub(crate) use refusal::pane_c_acts;
-pub use refusal::{Begun, OperationRefusal, live_operation, operation_refusal, refusal_tabs};
+pub use refusal::{Begun, OperationRefusal, live_operation, operation_refusal, refusal_way};
 pub use returned::{editor_returned, template_arrived};
 
 /// The trailer `Ctrl+Shift+C` starts; the user types the name and address.
@@ -178,9 +178,9 @@ impl CommitEditor {
         &self,
         status: Option<&WorkingTreeStatus>,
         in_progress: Option<(InProgress, Begun)>,
-        tabs: u8,
+        way: crate::update::banner::BannerWay,
     ) -> Option<String> {
-        self.refusal_before_subject(status, in_progress, tabs)
+        self.refusal_before_subject(status, in_progress, way)
             .or_else(|| self.subject_refusal())
     }
 
@@ -200,9 +200,9 @@ impl CommitEditor {
         &self,
         status: Option<&WorkingTreeStatus>,
         in_progress: Option<(InProgress, Begun)>,
-        tabs: u8,
+        way: crate::update::banner::BannerWay,
     ) -> Option<String> {
-        self.refusal_before_subject(status, in_progress, tabs)
+        self.refusal_before_subject(status, in_progress, way)
             .or_else(|| {
                 self.subject_refused
                     .then(|| self.subject_refusal())
@@ -215,14 +215,14 @@ impl CommitEditor {
         &self,
         status: Option<&WorkingTreeStatus>,
         in_progress: Option<(InProgress, Begun)>,
-        tabs: u8,
+        way: crate::update::banner::BannerWay,
     ) -> Option<String> {
         // Finishing an operation is the banner's (m6-conflicts/39, 48);
         // the words are `operation_refusal`'s, shared with the pane.
         if let Some(live) = in_progress {
             // Drawn while the editor's field is open: shipped keys (10b W4).
             return Some(
-                operation_refusal(live, tabs, graft_ui::keymap::Keymap::shipped()).editor_words(),
+                operation_refusal(live, way, graft_ui::keymap::Keymap::shipped()).editor_words(),
             );
         }
         // An amend with nothing staged is a reword, which is allowed
@@ -292,7 +292,7 @@ pub fn open(
     // pane answers in words instead (m6-conflicts/48). Nothing is read and
     // the draft stays where `Esc` left it.
     if let Some(live) = live_operation(state) {
-        state.status = operation_refusal(live, refusal_tabs(state), &state.keymap).status();
+        state.status = operation_refusal(live, refusal_way(state), &state.keymap).status();
         return Vec::new();
     }
     if amend {
@@ -353,7 +353,7 @@ pub fn head_message_arrived(
     // An operation became live while the read was in flight: refuse as
     // `open` would have, whatever the read said.
     if let Some(live) = live_operation(state) {
-        state.status = operation_refusal(live, refusal_tabs(state), &state.keymap).status();
+        state.status = operation_refusal(live, refusal_way(state), &state.keymap).status();
         return;
     }
     match message {
