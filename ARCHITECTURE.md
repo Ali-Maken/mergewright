@@ -158,7 +158,7 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 - **Adding a new kind of `Command` or wiring a new job** → `app`. It's the
   only crate allowed to see every other crate, and `update` and the job
   runner both live there. **The exception is the commands the loop carries
-  out itself** (the `not_a_job` arms in `jobs/runner.rs`): the six that
+  out itself** (the `not_a_job` arms in `jobs/runner/dispatch.rs`): the six that
   hand the terminal over (see the hand-over rule below), plus `Retheme`,
   `CopyToClipboard`, `SaveLayout`, `FirstLaunchDone`.
 - **Changing the palette** (`?`, `⌃P`) → `app/src/update/palette/`:
@@ -193,7 +193,7 @@ six commands that do this (`EditCommitMessage`, `OpenExternalEditor`,
 `hands_over` in `crates/graft/src/event_loop/running/carry.rs`) **hand the
 terminal over**, so they are **carried out by the frame loop rather than
 queued as jobs** (the full list of such commands: `not_a_job` in
-`crates/graft/src/jobs/runner.rs`), and
+`crates/graft/src/jobs/runner/dispatch.rs`), and
 that is not a shortcut: the job pool's threads do not own the session or the
 input mux, and only the thread that owns both can give the terminal up. A job
 that tried would leave two readers on one file descriptor and the user's
