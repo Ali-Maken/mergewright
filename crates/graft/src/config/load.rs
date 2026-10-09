@@ -227,7 +227,7 @@ fn parse(path: &Path, text: &str) -> Result<Loaded, ConfigError> {
 /// the types above are the authority on what they mean. Adding a key means
 /// adding it here too, or the user gets told their new setting is unknown —
 /// which is the safe direction for the mistake to go.
-const SCHEMA: &[(&str, &[&str])] = &[
+pub(crate) const SCHEMA: &[(&str, &[&str])] = &[
     ("diff", &["context", "ignore_whitespace", "word_tint"]),
     ("graph", &["default_branch", "max_lanes", "renderer"]),
     (

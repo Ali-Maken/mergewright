@@ -916,9 +916,14 @@ re-exported from `mod.rs`.
 
 ## cli
 - askpass mode — with `GRAFT_ASKPASS_SOCKET` set and exactly one argument (git's prompt), the binary answers git's credential question through `run::askpass::respond` and exits, never loading config and never starting the TUI: 0 answered, 1 the user cancelled (nothing on stdout, so git gives up), 2 anything else, with one `graft: …` line on stderr (m4-remotes/05, wired here in m4-remotes/06).
-- `Invocation` (enum) — what the user asked for; `Askpass { socket, prompt }` is the mode above.
-- `CliError` (enum) — what the arguments could not be made sense of.
-- `USAGE` (const) — what `--help` prints.
+- `Invocation` (enum) — what the user asked for; `Askpass { socket, prompt }` is the mode above; `Usage(String)` (`--help`, `usage(FLAGS)`); `GenerateMan` (`--generate-man`, main prints `man_page`; m8/23).
+- `CliError` (enum) — what the arguments could not be made sense of; `UnknownOption`/`TooManyPaths` end with `usage(FLAGS)` (words pinned by `cli::tests::refusals_keep_their_words_and_carry_the_usage`).
+- `Flag` (struct, m8/23, `cli/flags.rs`) — one flag: `long`, `short`, `value`, `help`, `hidden` (out of `--help`, still in the man page).
+- `FLAGS` (const) — every flag `parse` accepts; `parse` finds a row, then acts on it, so a flag with no row is `UnknownOption` (both ways: `cli::docs_tests::every_flag_row_parses_in_each_spelling_and_every_action_has_a_row`).
+- `usage` (fn) — `&[Flag] -> String`, what `--help` prints (replaced the `USAGE` const; same words).
+- `man_page` (fn, m8/23, `cli/man.rs`) — `(&[Flag], &[Binding], &[ConfigKeyDoc]) -> String`: the roff page, ASCII only (non-ASCII as `\[uXXXX]`), lines ≤ 80; KEYS per `ContextId` with chords as `[keys]` spells them. Committed as `docs/man/graft.1`, kept equal by `cli::docs_tests::committed_man_page_is_the_generated_one`.
+- `ConfigKeyDoc` (struct, m8/23, `cli/config_keys.rs`) — one config key: `section`, `key`, `values`, `default` (TOML literal or `(words)`), `help`.
+- `CONFIG_KEYS` (const) — every key the loader reads plus the `keys.<context>` and `theme.<kind>` patterns; equal to `config::load::SCHEMA` + `[keys] suspend_on_ctrl_z` (`cli::docs_tests`), each literal default loads to `Config::default()`.
 - `ASKPASS_SOCKET_VAR` (const) — `GRAFT_ASKPASS_SOCKET`, the env var git's askpass child is given.
 - `from_process` (fn) — parse the real process's arguments; askpass mode is decided first.
 - `askpass` (fn) — `(Option<OsString>, &[OsString]) -> Option<Invocation>`; the mode's rule on its own, so it is testable without a process.

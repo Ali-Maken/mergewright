@@ -12,7 +12,7 @@ use graft_ui::keymap::{KeySwitches, Keymap};
 use super::load::{ConfigWarning, Loaded};
 
 /// The one key straight under `[keys]` that is not a sub-table.
-const SUSPEND: &str = "suspend_on_ctrl_z";
+pub(crate) const SUSPEND: &str = "suspend_on_ctrl_z";
 
 /// What `[keys]` held besides `suspend_on_ctrl_z`: the remap lines, as
 /// `("<ctx>.<verb>", chords)`, and a warning per entry it could not read.
