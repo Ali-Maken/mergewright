@@ -161,15 +161,6 @@ fn shift_click_on_a_second_row_opens_the_compare() {
     // m7-14: the first `x` opened the pane; that the click still lands on
     // graph row 1 is what this checks.
     assert!(pinned.detail.shown);
-    for r in 0..8 {
-        eprintln!(
-            "DBG {r} {:?} top={} gr={}",
-            crate::update::geometry::graph_row_at(&pinned, r),
-            pinned.history.as_ref().unwrap().top,
-            pinned.graph_rows()
-        );
-    }
-
     let click = core(Event::Mouse(MouseInput {
         kind: MouseKind::Down(MouseButton::Left),
         column: 10,

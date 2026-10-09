@@ -31,8 +31,9 @@ pub fn preview_box_rect(state: &AppState, view: &PreviewBox) -> Option<BoxRect> 
         return None;
     }
     // `graft_ui::preview_box::preview_box_area`'s arithmetic, in plain
-    // numbers: `update` never names a drawing type (`update::tests::    // update_cannot_reach_the_world`), so the two are kept in step by
-    // `tests::a_click_lands_on_the_button_the_widget_drew`, which renders
+    // numbers: `update` never names a drawing type
+    // (`update::tests::purity::update_cannot_reach_the_world`), so the two
+    // are kept in step by `tests::a_click_lands_on_the_button_the_widget_drew`, which renders
     // the real widget and reads the buttons back off the buffer.
     let footer_row = u16::from(height > 1);
     // From 30 rows the rule above the bar is not the box's either.

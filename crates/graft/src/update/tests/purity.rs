@@ -8,8 +8,11 @@ use std::path::{Path, PathBuf};
 /// below `src/update/`.
 ///
 /// Sound only with [`every_tests_module_is_cfg_test`]: that makes each such
-/// file reachable only through a `#[cfg(test)] mod tests`. It can't see a
-/// `#[path]` mod pointing into a `tests/` dir.
+/// file reachable only through a `#[cfg(test)] mod tests`, found anywhere on
+/// a non-comment line, with `#[cfg(test)]` on the same line or directly
+/// above. The same skip rule and the same guard apply to `empty_state.rs`
+/// and `empty_state/`. It can't see a `#[path]` mod pointing into a
+/// `tests/` dir.
 fn is_test_module(relative_to_update: &Path) -> bool {
     let mut parts = relative_to_update.components().rev();
     let named_tests = parts
@@ -165,51 +168,109 @@ fn the_scan_skips_test_modules_only() {
     assert!(wrong.is_empty(), "the scan's filter is wrong on: {wrong:?}");
 }
 
-/// Whether `line` declares a module named `tests` (`;` or `{`), at any
-/// visibility.
-fn declares_tests(line: &str) -> bool {
-    let line = line.trim_start();
-    let line = match line.strip_prefix("pub") {
-        Some(rest) => match rest.strip_prefix('(') {
-            Some(scoped) => scoped.split_once(')').map_or(rest, |(_, after)| after),
-            None => rest,
-        }
-        .trim_start(),
-        None => line,
-    };
-    line.strip_prefix("mod tests")
-        .is_some_and(|rest| rest.trim_start().starts_with([';', '{']))
+/// Where `line` declares a module named `tests` (`;` or `{`), as the byte
+/// offset of `mod`: anywhere on a non-comment line, so a one-line
+/// `#[cfg(feature = "x")] mod tests;` is seen too (review m8-hygiene-release m5).
+fn declares_tests(line: &str) -> Option<usize> {
+    if line.trim_start().starts_with("//") {
+        return None;
+    }
+    line.match_indices("mod tests")
+        .map(|(at, _)| at)
+        .find(|&at| {
+            let starts_word =
+                line[..at].ends_with(|c: char| c.is_whitespace() || c == ']') || at == 0;
+            starts_word
+                && line[at + "mod tests".len()..]
+                    .trim_start()
+                    .starts_with([';', '{'])
+        })
 }
 
-/// The other half of [`is_test_module`]'s soundness: every `mod tests` a
-/// scanned file declares sits directly under `#[cfg(test)]` (comments and
-/// blank lines between are allowed, no other attribute), so every file the
-/// scan skips is compiled only into tests.
-#[test]
-fn every_tests_module_is_cfg_test() {
-    let dir = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/src/update"));
+/// The 1-based lines of `contents` that declare `mod tests` without
+/// `#[cfg(test)]`: on the same line before it (only a visibility between), or
+/// as the nearest line above that is not blank or a comment.
+fn unguarded_tests_modules(contents: &str) -> (usize, Vec<usize>) {
+    let lines: Vec<&str> = contents.lines().collect();
     let mut declared = 0;
-    for (path, contents) in scanned_files(dir) {
-        let lines: Vec<&str> = contents.lines().collect();
-        for (at, line) in lines.iter().enumerate() {
-            if !declares_tests(line) {
-                continue;
+    let mut unguarded = Vec::new();
+    for (at, line) in lines.iter().enumerate() {
+        let Some(column) = declares_tests(line) else {
+            continue;
+        };
+        declared += 1;
+        let before = line[..column].trim_end();
+        let before = match before.strip_suffix(')') {
+            Some(scoped) if scoped.contains("pub(") => {
+                scoped[..scoped.rfind("pub(").unwrap_or(0)].trim_end()
             }
-            declared += 1;
-            let above = lines[..at]
+            _ => before.strip_suffix("pub").unwrap_or(before).trim_end(),
+        }
+        .trim_start();
+        let guarded = if before.is_empty() {
+            lines[..at]
                 .iter()
                 .rev()
                 .map(|line| line.trim())
-                .find(|line| !line.is_empty() && !line.starts_with("//"));
-            assert_eq!(
-                above,
-                Some("#[cfg(test)]"),
-                "{}:{} declares `mod tests` without `#[cfg(test)]` directly above it: \
-                 the purity scan skips test modules, so each must compile only into tests",
-                path.strip_prefix(dir).unwrap_or(&path).display(),
-                at + 1
-            );
+                .find(|line| !line.is_empty() && !line.starts_with("//"))
+                == Some("#[cfg(test)]")
+        } else {
+            before == "#[cfg(test)]"
+        };
+        if !guarded {
+            unguarded.push(at + 1);
         }
+    }
+    (declared, unguarded)
+}
+
+/// The guard's line match on planted sources, so a blind spot shows red here
+/// before it hides a real file (review m8-hygiene-release m5).
+#[test]
+fn the_tests_module_match_sees_every_spelling() {
+    let table = [
+        ("#[cfg(test)]\nmod tests;", 1, vec![]),
+        ("#[cfg(test)]\n// why\n\npub(crate) mod tests {", 1, vec![]),
+        ("#[cfg(test)] mod tests;", 1, vec![]),
+        ("#[cfg(test)] pub(super) mod tests;", 1, vec![]),
+        ("#[cfg(feature = \"x\")] mod tests;", 1, vec![1]),
+        ("mod tests;", 1, vec![1]),
+        ("#[cfg(test)]\n#[path = \"t.rs\"]\nmod tests;", 1, vec![3]),
+        ("// mod tests;", 0, vec![]),
+        ("mod tests_of_x;", 0, vec![]),
+    ];
+    for (source, declared, unguarded) in table {
+        assert_eq!(
+            unguarded_tests_modules(source),
+            (declared, unguarded),
+            "on {source:?}"
+        );
+    }
+}
+
+/// The other half of [`is_test_module`]'s soundness: every `mod tests` a
+/// scanned file declares — under `update/`, and in `empty_state.rs` and
+/// `empty_state/`, which the scan also reads with the same skip rule — carries
+/// `#[cfg(test)]` (see [`unguarded_tests_modules`]), so every file the scan
+/// skips is compiled only into tests.
+#[test]
+fn every_tests_module_is_cfg_test() {
+    let src = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/src"));
+    let mut files = scanned_files(&src.join("update"));
+    files.extend(scanned_files(&src.join("empty_state")));
+    let top = src.join("empty_state.rs");
+    let top_contents = std::fs::read_to_string(&top).expect("empty_state.rs");
+    files.push((top, top_contents));
+    let mut declared = 0;
+    for (path, contents) in files {
+        let (found, unguarded) = unguarded_tests_modules(&contents);
+        declared += found;
+        assert!(
+            unguarded.is_empty(),
+            "{}:{unguarded:?} declares `mod tests` without `#[cfg(test)]`: \
+             the purity scan skips test modules, so each must compile only into tests",
+            path.strip_prefix(src).unwrap_or(&path).display(),
+        );
     }
     assert!(
         declared >= 20,
