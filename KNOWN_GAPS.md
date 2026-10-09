@@ -1259,12 +1259,9 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/13m-window-edge | Q1: `promoted` looks for the cursor's commit only in the answered window's rows — residual edge when it lies outside (review Q1) | **unverified** (question) | M8 |
 | M8/12e-continue-from-palette-graph | Q2: `Continue` from `?` with the graph focused goes `banner_press` → `continue_pressed(…)` — return focus unproven (review Q2) | **unverified** (question) | M8 |
 | M8/18e-tour-arrival-line | 18e A2: the tour's arrival with the first-launch line is covered only via the shared `repo_arrival` — no tour-specific test (builder) | **unverified** | M8 |
-| M8/21b1-stash-caption-stale | Stash footer now reads `S/esc close` (21b-1) but the graft caption `crates/graft/src/update/tests.rs:6964` and the m3 stash capture caption headers still say `esc close`. Routed to 21b-4 additions 5e. | **broken** | M8 |
 | M8/19c-card-line-7-keys | Tour card task 7 reads `⏎ opens it … c finishes`; the keys that work are `m y t ⏎ y` (19c-b found, `crates/graft/src/view/tour.rs`). Routed to 19c-c addition. | **broken** | M8 |
 | M8/19c-askpass-long-tmpdir | Tour `P` (and maybe any askpass push) may fail when TMPDIR is long — askpass socket path over SUN_LEN. 19c-b tests used a short /tmp. Probe at the macOS default TMPDIR in 19c-c. | **unverified** | M8 |
 | M8/bars-m1-files-grew | 15/15b grew over-400 files: graph_screen `layout.rs` 710→828, `view/rows.rs` 1133→1215, `catalogue.rs` 567→634; `footer.rs` 387→430. Review m8-bars-hygiene M1. Routed → 21b-5 additions 5+1. | **broken** | M8 |
-| M8/stash-row-menu-m-r | Stash row `.` menu offers Merge `(m)`/Rebase `(r)` and opens their preview (`graft/src/update/context_menu/slots.rs:98–101`; code-read, not run). Review m8-bars-hygiene m1. → 21b-4 additions 5f. | **broken** | M8 |
-| M8/stash-S-opens-at-0 | `S` on a stash row opens the list at `stash@{0}`, not that stash (`graft/src/update/stash.rs:175–178`; code-read). Review m2. → 21b-4 additions 5g. | **broken** | M8 |
 | M8/map-seek-in-empty | Map footer offers `⏎ zoom to commits` in Empty/Failed where `⏎` only closes (`graft-ui/src/map_screen/render/footer.rs:61`). Review m3. | **broken** | M8 |
 | M8/stash-sweep-doc-claim | Doc at `graft/src/update/tests.rs:4187–4198` claims a live-wrap classification the test never asserts. Review m4. | **broken** | M8 |
 | M8/blame-pin-blind | 21b-2 graft pin `blame_state.rs:116–132` checks wiring, can't go red while default is `true` — not a guard against the literal. Review m5. | **unverified** | M8 |
@@ -1280,7 +1277,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/clash-unknown-kind-reachable | Clash notice fallback for an unknown kind now names no kind (R7.1); whether the app can reach that arm is unverified. | **unverified** | M8 |
 | M8/19d-a3-80x24-no-stash-row | At 80x24 the paused-merge relaunch capture lands on the Detail tab, no stash row — R7.2 premise fails there; box left open. Whether the graph tab draws the stash row at 80x24 unverified. | **unverified** | M8 |
 | M8/landed-clash-exit-line | Question: Landed + a put-back clash — the exit line says Landed and doesn't name the clash (19d-a3). | **unverified** | M8 |
-| M8/merge-finish-drops-edits-back | Finishing a paused merge drops the `your edits are back` words: `crates/graft/src/update/banner/resume.rs:447-449` (`resumed_done` overwrites `also`). The edits do come back (walk reads git). → 21b-4 additions 5h. | **broken** | M8 |
 | M8/m4-07-future-rows | m4-07 re-shoot draws `future`: frame pinned (`m4_walk.rs:197`) but journal rows wall-dated; re-shoot reverted, m4 sheet stale. Stamp line unverified. | **broken** | M8 |
 | M8/tour-step7-capture-bare | `m8-tour-step7-conflict-120x36.txt` has no header, card or stop line (caption says so) — whether the resolver screen should show the tour card is unverified. | **unverified** | M8 |
 | M8/m8-contact-sheet-21c | The 21c captures go on the M8 contact sheet when 28 builds it (19d-c C+1). | **broken** | M8 |

@@ -325,3 +325,7 @@ Rows whose expiry was M6, closed with the evidence named inline. Re-expired and 
 | M8/tour-walk-unsettled | Walk shoots on `ready_to_shoot`; 10/10 beside full run. Closed 2026-10-09 by 19e. |
 | M8/weak-pinned-undo-test | Replaced by hand-built tie test (graft-ops it/journal_tie.rs). Closed 2026-10-09 by 19e. |
 | M8/kept-putback-landed | Stop after landing reports Landed (merge_set_aside test); premise of R4 was wrong — a stopped merge still puts edits back. Closed 2026-10-09 by 19e. |
+| M8/21b1-stash-caption-stale | Closed 2026-10-09 by 21b-4 additions (efab202c); tests a_stash_row_menu_has_no_merge_or_rebase, capital_s_on_a_stash_row_selects_that_stash, finishing_a_merge_keeps_your_edits_are_back; captions re-shot. |
+| M8/stash-row-menu-m-r | Closed 2026-10-09 by 21b-4 additions (efab202c); tests a_stash_row_menu_has_no_merge_or_rebase, capital_s_on_a_stash_row_selects_that_stash, finishing_a_merge_keeps_your_edits_are_back; captions re-shot. |
+| M8/stash-S-opens-at-0 | Closed 2026-10-09 by 21b-4 additions (efab202c); tests a_stash_row_menu_has_no_merge_or_rebase, capital_s_on_a_stash_row_selects_that_stash, finishing_a_merge_keeps_your_edits_are_back; captions re-shot. |
+| M8/merge-finish-drops-edits-back | Closed 2026-10-09 by 21b-4 additions (efab202c); tests a_stash_row_menu_has_no_merge_or_rebase, capital_s_on_a_stash_row_selects_that_stash, finishing_a_merge_keeps_your_edits_are_back; captions re-shot. |
