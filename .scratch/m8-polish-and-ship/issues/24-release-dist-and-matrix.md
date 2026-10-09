@@ -151,3 +151,9 @@ Not met / for the user at the stop:
 G-rename list additions: dist package/formula/archives (`graft`, `graft.rb`, `graft-installer.sh`,
 `graft-<target>.tar.xz`), `repository`/`homepage` URLs, `include` path of the man page, `~/.cache/graft-git-matrix`,
 `~/.cache/graft-linux`, script names in TESTING.md.
+
+## 24-b additions (conductor, as found, no new decision)
+
+- [ ] B+1 — `graft --version` prints the crate version (graft `cli.rs`); closes the cargo-install box above. Test: name it.
+- [ ] B+2 — formula installs the man page to man1, and `brew style` on the generated formula is clean (dist config/template override; read-only, never `brew install`). Quote the result.
+- Linux 56 red: goes to the debugger separately, not this part. Git floor: user's call at the stop.
