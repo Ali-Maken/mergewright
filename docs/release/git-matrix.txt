@@ -1,14 +1,15 @@
-# git matrix — scripts/git-matrix.sh, 2026-10-09T06:39Z
+# git matrix — scripts/git-matrix.sh, 2026-10-09T06:48Z
 # host: Darwin arm64; filter: test(/^rewrite_preview::/) | test(=cherry_pick::git_alone_stops_on_a_pick_of_an_ancestor)
-git 2.38.0 (git version 2.38.0 on PATH): FAILED — Summary [   4.660s] 26 tests run: 16 passed, 10 failed, 6172 skipped
-    FAIL [   0.300s] (20/26) graft-ops::it rewrite_preview::the_forecast_chains_through_earlier_picks
-    FAIL [   0.416s] (21/26) graft-ops::it rewrite_preview::the_forecast_stops_at_the_first_conflict
-    FAIL [   0.418s] (17/26) graft-ops::it rewrite_preview::r_plans_every_branch_of_its_line
-    FAIL [   0.439s] (19/26) graft-ops::it rewrite_preview::the_chained_forecast_skips_drops
-    FAIL [   0.462s] ( 8/26) graft-ops::it rewrite_preview::left_behind_names_a_branch_forked_mid_chain
-    FAIL [   0.475s] ( 5/26) graft-ops::it rewrite_preview::a_three_branch_line_moves_three_refs
-    FAIL [   0.498s] ( 9/26) graft-ops::it rewrite_preview::left_behind_names_a_branch_parked_on_a_replaced_commit
-    FAIL [   0.592s] ( 7/26) graft-ops::it rewrite_preview::left_behind_caps_at_eight
-    FAIL [   1.055s] (23/26) graft-ops::it rewrite_preview::the_chained_forecast_agrees_with_git
-    FAIL [   1.607s] (26/26) graft-ops::it rewrite_preview::the_preview_honours_stop
-git 2.56.0: BUILD FAILED (log: graft-git-matrix/build-2.56.0.log)
+git 2.38.0 (git version 2.38.0 on PATH): FAILED — Summary [   5.142s] 26 tests run: 16 passed, 10 failed, 6172 skipped
+    FAIL [   0.355s] (20/26) graft-ops::it rewrite_preview::the_forecast_chains_through_earlier_picks
+    FAIL [   0.430s] (22/26) graft-ops::it rewrite_preview::the_forecast_stops_at_the_first_conflict
+    FAIL [   0.492s] ( 8/26) graft-ops::it rewrite_preview::left_behind_names_a_branch_forked_mid_chain
+    FAIL [   0.507s] ( 9/26) graft-ops::it rewrite_preview::left_behind_names_a_branch_parked_on_a_replaced_commit
+    FAIL [   0.523s] (19/26) graft-ops::it rewrite_preview::the_chained_forecast_skips_drops
+    FAIL [   0.525s] (17/26) graft-ops::it rewrite_preview::r_plans_every_branch_of_its_line
+    FAIL [   0.701s] ( 4/26) graft-ops::it rewrite_preview::a_three_branch_line_moves_three_refs
+    FAIL [   0.768s] ( 7/26) graft-ops::it rewrite_preview::left_behind_caps_at_eight
+    FAIL [   1.176s] (23/26) graft-ops::it rewrite_preview::the_chained_forecast_agrees_with_git
+    FAIL [   1.564s] (26/26) graft-ops::it rewrite_preview::the_preview_honours_stop
+git 2.40.0 (git version 2.40.0 on PATH): ok — Summary [   9.537s] 26 tests run: 26 passed, 6172 skipped
+git 2.56.0 (git version 2.56.0 on PATH): ok — Summary [  11.033s] 26 tests run: 26 passed, 6172 skipped

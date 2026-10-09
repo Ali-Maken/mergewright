@@ -77,7 +77,12 @@ set -e
     echo "# Linux fast tier — scripts/linux-fast-tier.sh, $(date -u +%Y-%m-%dT%H:%MZ), commit $commit, image $image"
     grep -E '^== ' "$log" | sed 's/^== //'
     echo "exit: $status"
-    grep -E '^ *Summary' "$log" | sed 's/^ */nextest: /'
+    if grep -qE '^ *Summary' "$log"; then
+        grep -E '^ *Summary' "$log" | sed 's/^ */nextest: /'
+    else
+        echo "nextest: NO SUMMARY — the tests did not run; first error in the log:"
+        grep -m1 -A2 '^error' "$log" | sed 's/^/    /'
+    fi
     # Doc tests: one `test result:` line per crate; the totals say enough.
     grep -E '^test result:' "$log" |
         awk '{p+=$4; f+=$6} END {print "doctests: " p " passed, " f " failed (" NR " crates)"}'

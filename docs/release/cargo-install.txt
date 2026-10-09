@@ -1,0 +1,8 @@
+# cargo install --locked --path crates/graft — scripts/cargo-install-check.sh, 2026-10-09, commit b085c14c
+fresh clone, empty CARGO_HOME, cargo 1.98.1 (797e8a9bc 2026-08-05)
+install: ok in 133s
+    Installing graft v0.1.0 (/privateclone/crates/graft)
+    Installing cargo-home/bin/graft
+    Installed package `graft v0.1.0 (/privateclone/crates/graft)` (executable `graft`)
+installed: graft 
+graft --help: usage: graft [<path>]
