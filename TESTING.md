@@ -3245,6 +3245,13 @@ What can run today runs from scripts, writing summary lines to `docs/release/`:
 A failure on the floor in `git-matrix.txt` raises the floor (`GitVersion::MINIMUM`, `graft-git/src/version.rs`) to the
 oldest passing version, with a line here; it is never answered by skipping a test.
 
+**2026-10-09 (m8/24): the floor fails, by design, and is not raised yet — the user decides at the M8 stop.** git 2.38.0:
+16 of 26 passed; all 10 failures are the rebase preview's conflict forecast, which `graft-ops/src/preview/chain.rs:31`
+(`MERGE_BASE_MIN`, used at :78) turns off below git 2.40 ("conflicts: not checked"); 2.40.0 and 2.56.0: 26 of 26. The
+fast tier as a whole assumes 2.40+: on Debian bookworm's git 2.39.5 (an early run, before `--init`) 146 failed, 50 of
+them printing "git 2.40+ needed" (`docs/release/linux-git-2.39.txt`). Either the floor rises to 2.40, or 2.38–2.39 stay supported with a forecast that
+says "not checked" and the fast tier is documented as needing 2.40.
+
 `cargo install --locked --path crates/graft` from a clean tree into an empty `CARGO_HOME`: `docs/release/cargo-install.txt`.
 
 A person's steps, after publishing, **on a clean macOS account** (one that never had Graft; Homebrew installed). Two

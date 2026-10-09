@@ -49,8 +49,8 @@ useradd -m tester
 cp -a /src /work && chown -R tester /work
 runuser -u tester -- bash -c "
 set -eu
-export CARGO_HOME=/home/tester/.cargo PATH=/home/tester/.cargo/bin:\$PATH
-mkdir -p /home/tester/.cargo/bin
+export CARGO_HOME=\$HOME/.cargo PATH=\$HOME/.cargo/bin:\$PATH
+mkdir -p \$HOME/.cargo/bin
 # A git identity, as every developer machine has: tests that commit through
 # the app read the global one (a first run without it failed on
 # \"Author identity unknown\"; m8-polish-and-ship/24 NOTES).
@@ -62,7 +62,7 @@ git config --global user.email tester@example.invalid
 # no further from a laptop than it must be.
 export LANG=C.UTF-8 TERM=xterm-256color
 case \$(uname -m) in aarch64) arch=linux-arm ;; *) arch=linux ;; esac
-curl -fsSL https://get.nexte.st/latest/\$arch | tar -xzf - -C /home/tester/.cargo/bin
+curl -fsSL https://get.nexte.st/latest/\$arch | tar -xzf - -C \$HOME/.cargo/bin
 cd /work
 echo \"== uname: \$(uname -srm)\"
 echo \"== git: \$(git --version)\"
