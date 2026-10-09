@@ -1,50 +1,120 @@
-# graft-fixtures MAP
+# graft-fixtures — map
+Test infrastructure: the named fixture corpus, generated histories, real remotes and the capture mechanism. It shells out to real `git` and owns nothing a production code path would want.
+Depends on no Graft crate; any crate may take it as a dev-dependency only (ARCHITECTURE.md).
+One line per public item. History lives in `docs/log/` and the ADRs.
 
-Public items, one line each.
+## lib.rs
+- `CORPUS_NOW` (const) — `i64` Unix seconds every relative-date corpus commit is dated against.
+- `PINNED_NOW` (const) — `i64` Unix seconds, the "now" every capture producer draws ages against.
+- `borrow` (fn) — `borrow(Shape) -> PathBuf`; one corpus fixture, read-only; panics if unavailable.
+- `copy_into_temp` (fn) — `copy_into_temp(Shape) -> Scratch`; a writable copy deleted on drop; panics if unavailable.
 
-- `Shape` (enum) — one hand-written corpus repository per history shape; `Shape::ALL`, `name()`. `SkewedDates` has a commit a day ahead of its children, so date order is not topological. `RelativeDates` is timed off `CORPUS_NOW`, the corpus's fixed clock, not the wall clock (m1-the-graph/53) — like every other shape, its object ids are byte-identical run to run, and `corpus::identity` (tests) no longer exempts it.
-- `Shape::StoppedRebase` / `Shape::StoppedMerge` — a repository left at a conflict: `.git/rebase-merge/` present for the rebase, `MERGE_HEAD` for the merge, stages 1–3 in the index either way (m6-conflicts/01). One root commit; `main` ("ours") and `feature` ("theirs") each change every file, so rebasing `feature` onto `main` and merging `feature` into `main` both stop with the same **thirteen** unmerged paths (the ticket said eleven: a `DD` needs rename/rename, which brings an `AU` and a `UA` with it). Built through `git::run` only, deterministic. In `Shape::STOPPED`, **not** `Shape::ALL` — `ALL` feeds the gallery, graph-snapshot and mistake-radar tests, which assume a clean working tree; `Shape::every()` = `ALL` ∪ `STOPPED` is what the corpus builds and `from_name` searches. File by file: `both.txt` UU, one block; `three.txt` UU, three blocks four unchanged lines apart (git's default style joins conflicts closer than that), every base differs from both sides; `crlf.txt` UU, CRLF throughout, so git's markers are CRLF too; `nofinal.txt` UU, no final newline in any version, so the file ends in a partial line; `md.md` UU, a `=======` setext underline inside theirs' side, as content; `zdiff3.txt` UU, re-checked-out with `merge.conflictStyle=zdiff3`, so its block carries a base; `pic.bin` UU, binary (NUL in the first bytes); `theirs-deleted.txt` UD; `ours-deleted.txt` DU; `both-added.txt` AA; `both-deleted.txt` DD, renamed to a different name by each side; `added-by-us.txt` AU and `added-by-them.txt` UA, the two names it was given.
-- `Shape::TwoStopRebase` / `Shape::STEPPED` — `git rebase main` on `feature` over two commits, stopping at step 1 on `a.txt` alone and (once continued) at step 2 on `b.txt` alone; left at step 1 (m6-conflicts/22). In `STEPPED`, not `STOPPED`: every `STOPPED` consumer expects the thirteen-path corpus. `every()` = `ALL` ∪ `STOPPED` ∪ `STEPPED`.
-- `Shape::Session` / `Shape::TRACED` — the blame and trace fixture (m7-power-tools/18), name `session`: `src/session.rs` written by Ana, Tom, Lina, reformatted by a `rustfmt` commit (listed in the `.git-blame-ignore-revs` the last commit adds), renamed to `src/auth/session.rs` by Priya, then changed by the fixture identity an hour before `CORPUS_NOW`. `refresh_token` is a method inside `impl Session` that moves (17–27, 17–28, 18–29). Also `assets/pic.bin` (binary), `tools/rotate.py` (a `def`), an untracked `src/new.rs`. Line-by-line ownership in `src/shapes/trace.rs`'s module doc. In `TRACED`, not `ALL` (the untracked file); `every()` = `ALL` ∪ `STOPPED` ∪ `STEPPED` ∪ `TRACED`.
-- `Shape::ManyLanes` / `Shape::WIDE` — compaction's corpus shape (m8-polish-and-ship/22), name `many-lanes`: 14 `main` commits, `lane-00`…`lane-13` each forked off a different one with two commits made after all of `main`, the top two merged back; 15 columns, more than a window draws. In `WIDE`, not `ALL` (every `ALL` consumer owes it a decision); `every()` = `ALL` ∪ `STOPPED` ∪ `STEPPED` ∪ `TRACED` ∪ `WIDE`. Layout snapshot: `graft-graph` `it::corpus::many_lanes_lays_out_as_snapshotted`.
-- `lost_work` (mod, m7-power-tools/22b) — the journal list's "lost work" repository, built fresh per test (not in the corpus: three steps are Graft's, and this crate depends on no Graft crate). `LostWork::build(&mut dyn Graft) -> Result<LostWork, LostWorkError>`; `LostWork::build_with(graft, config: &[(&str, &str)])` (m7/30w) — the same, each `(key, value)` set by `git config` after the fixture's own settings and before the first commit (the walk's `core.autocrlf=true`); `build` = `build_with(graft, &[])`; `work()` (`main` at C, checked out), `origin()` (bare), `commits() -> &Commits` (`a`…`e`, `s`, `fetched`: 40-hex). `Graft` (trait) — the caller's `fetch`, `discard(path)`, `undo_forced`, each given the journal time in ms. Shell steps at fixed seconds of 2024-03-12 10:12–10:44 UTC (`START`, `END`): A–D on `main`; at 10:16 Graft discards an edit to `EDITED` (`DISCARDED_EDIT`), he re-edits it (`LOST_EDIT`), Graft's forced undo replaces that (a lost edit) — before the spike steps, per 22c; `spike` off C with E (`LOST_ON_SPIKE`, its own file only), switched away and deleted; `reset --keep HEAD~1` loses D (`LOST_ON_MAIN`); a pathspec stash S of `src/metrics.rs` (parent C, not lost; no HEAD record); the undone file stays on disk; Graft fetches at 10:44, `origin/main` 2 past C. The undo reverses a discard, not a switch: a Graft step moving `HEAD` writes wall-clock reflog records, which the list pairs by time. Timeline table in the module doc. `LostWorkError` — `Io`, `Git`, `Graft { step, why }`.
-- `CORPUS_NOW` (const) — the instant every `RelativeDates` commit is dated against (m1-the-graph/53); past the corpus's latest fixed-clock commit, so ages never go negative.
-- `PINNED_NOW` (const) — 2026-10-08 00:00 UTC, the "now" every capture producer draws ages against: pty runs get it as `GRAFT_NOW` (drawn clock only: the binary's journal stamps stay on the wall clock, m8/19e; git dates an hour before), in-process ones as `Clock::Fixed` (m8-polish-and-ship/19d-b2).
-- `borrow` (fn) — the directory of one corpus fixture, read-only; panics if unavailable.
-- `try_borrow` (fn) — `borrow` that returns why a shape is unavailable.
-- `copy_into_temp` (fn) — a writable copy of one fixture, deleted on drop; panics if unavailable.
-- `try_copy_into_temp` (fn) — `copy_into_temp` that returns the error.
-- `ensure` (fn) — build the corpus cache if missing, reporting what was built.
-- `build_into` (fn) — build the corpus into a given directory.
-- `Report` (struct) — what `ensure`/`build_into` did.
+## shape (re-exported)
+- `Shape` (enum) — one hand-written corpus repository per history or ref shape.
+- `Shape::ALL` / `STOPPED` / `STEPPED` / `TRACED` / `WIDE` (const) — all shapes; and the conflict, two-stop, blame and many-lane subsets.
+- `Shape::name` / `from_name` / `every` (fn) — the shape's directory name, its inverse, and an iterator over `ALL`.
+
+## corpus (re-exported)
+- `ensure` (fn) — `ensure() -> Result<Report, CorpusError>`; build the corpus cache if missing.
+- `build_into` (fn) — `build_into(&Path) -> Result<Report, CorpusError>`; build the corpus into a directory.
+- `try_borrow` / `try_copy_into_temp` (fn) — `borrow` / `copy_into_temp` returning why a shape is unavailable.
+- `Report` (struct) — what `ensure` / `build_into` did: bytes written and the `unavailable` shapes.
+- `Unavailable` (struct) — `shape`, `reason`: a shape this machine cannot hold.
 - `CorpusError` (enum) — why the corpus could not be built.
-- `Unavailable` (enum) — why one shape cannot be had on this machine.
+
+## cache (re-exported)
 - `CacheError` (enum) — why the fixture cache could not be used.
-- `Scratch` (struct) — a temp copy deleted on drop; `path()`.
-- `FIXED_ROOT_VAR` (const, `GRAFT_SCRATCH_ROOT`) — when set, every `Scratch` is `<root>/graft-<prefix>-<n>` (n counts this process's scratches) instead of a random temp dir; the pty walks set it to `/tmp/graft-capture/<scenario>` so captures reproduce across machines (m8-polish-and-ship/22).
-- `measure` (fn) — run work and report its peak memory rise.
-- `peak_rss` (fn) — this process's peak resident set size.
-- `Measured` (struct) — a measurement; `rise()`.
-- `footprint` (fn) — this process's physical footprint, current and lifetime peak (`ri_phys_footprint`/`ri_lifetime_max_phys_footprint`); macOS only, `Err(MemoryError::Unsupported)` elsewhere (m1-the-graph/57).
+
+## scratch (re-exported)
+- `Scratch` (struct) — a temp directory deleted on drop; `path`.
+- `FIXED_ROOT_VAR` (const) — `GRAFT_SCRATCH_ROOT`: when set, scratches get stable names under that root.
+
+## memory (re-exported)
+- `measure` (fn) — `measure(work) -> Result<(T, Measured), MemoryError>`; run work and report its peak memory rise.
+- `peak_rss` (fn) — `peak_rss() -> Result<u64, MemoryError>`; this process's peak resident set size.
+- `Measured` (struct) — one measurement; `rise`.
+- `footprint` (fn) — `footprint() -> Result<Footprint, MemoryError>`; physical footprint, macOS only.
 - `Footprint` (struct) — `current`, `peak`, in bytes.
-- `MemoryError` (enum) — why memory could not be read.
-- `fifo` (mod, unix) — `Fifo`: a named pipe in a temp dir with a thread already blocked on reading it, for a shell hook that must announce it is running. `create`, `path` (put it in the script: `echo x > "$PATH"`), `wait(within) -> bool` (the blocking read; `within` is a deadline for the writer that never comes). The pipe is held open read-write, so the script's write never blocks and a write before the wait is not missed. Drop wakes the reader and joins it.
-- `proptest_cases` (fn) — property-test case count for the tier in force.
-- `git` (mod) — running system git with the machine's config switched off; `GitError`. `run` / `run_with_stdin_file` (fixed identity and clock too, for reproducible objects), `run_isolated` (config off, clock and identity the caller's — for a test whose commits must be dated now), `run_at` (hermetic, but stamped a date the caller picks — for a test that builds its own history and needs the commits in a **fixed order**: git dates to the second, ties break on the commit id per DESIGN.md §3.2, and a wall clock changes that id every run), `isolated` (the unspawned `Command`, for a caller that needs its own pipes), `IDENTITY_NAME` / `IDENTITY_EMAIL` / `FIXED_DATE`.
-- `synthetic` (mod, `heavy-tests`) — large generated histories: `Scale` (`of`, `HEAVY`, `with_commit_graph`, `with_realistic_commits`, `with_refs` (50k-ref variant: packed branches + upstreams + `[branch]` sections), `commits`, `name`), `CommitGraph`, `CommitSize` (`Small` default, `Realistic` sized after git/git), `ensure`, `borrow`. `with_reflog(scale) -> Reflogged` (m7-power-tools/19): a private repository borrowing the scale's objects (alternates) and refs (`packed-refs`), plus `RECORDS` (1 000) scripted reflog records on `HEAD` and three branches, `LOST` (20) of whose old values nothing holds; `Reflogged { scratch, logs, lost }`. `with_reflog_of(scale, records, lost) -> Reflogged` (m7-power-tools/30p-b): the same with the counts given, split `HEAD` 2 : branches 1 each, a lost commit every tenth `HEAD` record or closer; `with_reflog(scale) == with_reflog_of(scale, RECORDS, LOST)`. `SyntheticError::TooManyLost` when `lost` exceeds `HEAD`'s share.
-- `team` (mod, m7-power-tools/41, not feature-gated) — a team-monorepo-shaped history via one `fast-import`: `main` advances by two-parent merges of 1–`max_branch_len`-commit feature branches, ~`open` open at once, forks ≤200 main rows back, one branch in five merges `main` into itself; packed refs; optional split commit-graph. Deterministic ids.
-- `team::TeamSpec` (struct) — `commits`, `open`, `max_branch_len`, `refs`, `split_commit_graph`; `MONOREPO` (17 700 commits, heavy tier), `SMALL` (400, fast tier).
-- `team::RefMix` (struct) — `local` (`refs/heads/feature/*`), `remote` (`refs/remotes/origin/feature/*`), `tags` (`refs/tags/v*`), `annotated` (of the tags).
-- `team::TeamStats` (struct) — `commits`, `merges`, `refs` (all but `main`), read back with git; `most_open` from the generator's plan.
-- `team::TeamError` (enum) — `Io`, `Git`, `Cache`, `Spec`.
-- `team::build` (fn) — build a spec into an empty directory.
-- `team::borrow` (fn) — read-only cached copy, `target/fixtures/team-<commits>-<hex>/`, built if missing.
-- `team::stats` (fn) — `TeamStats` counted back from a built repository.
-- `remote` (mod) — real remotes for M4's tests; no TLS, no SSH. Every `git` hermetic: fixed identity/clock, no system/global config, `HOME` in the scratch, `GIT_TERMINAL_PROMPT=0`.
-- `remote::LocalRemote` (struct) — bare clone of a shape + a working clone with real `origin`/upstream, `file` transport. `new(Shape) -> Result<_, CorpusError>`, `bare`, `work`, `url` (file://), `default_branch`, `commit_on_remote` (teammate clone pushes; work falls behind), `commit_locally` (work goes ahead), `git(dir, args)` (hermetic, stdout trimmed). Oids are 40-hex `String`s.
-- `remote::HttpRemote` (struct) — a bare repo over smart HTTP (own listener → minimal HTTP/1.1, one handler thread per connection, `Connection: close` → `git http-backend` CGI) on `127.0.0.1:<ephemeral>`, Basic auth (`401` + `WWW-Authenticate` otherwise). `serve(bare, user, password)`, `url` (user in it), `url_anonymous`, `port`, `requests() -> (authorised, rejected)`. Each `http-backend` runs in its own process group. Drop, in order: closes to new connections; kills every running group (hooks included); shuts every client stream; wakes `accept` by one self-connect (refused = listener already gone, not a failure); waits ≤ 2 s for the listener thread and every handler, then joins them. The listener thread owns the socket, so the port refuses once Drop returns. Panics (fails the test) if a thread still runs; never leaves it behind silently. A client's read blocks ≤ 30 s (`READ_TIMEOUT`: only a half-open client with no Drop coming); Drop's shutdown wakes a blocked read at once — pinned < 500 ms by `http_remote_drop_ends_an_idle_client`, 20/20 at the old 1 s timeout (m8/21b-3).
-  Layout `remote/http/`: `mod.rs` (the struct, `serve`, accessors), `listener.rs` (accept loop, handler threads, `Drop` and its named steps), `request.rs` (HTTP/1.1 framing: `read_request`, `read_chunked`, `write_response`), `cgi.rs` (the `http-backend` bridge).
-- `remote::HungRemote` (struct) — loopback port that accepts and never answers. `listen`, `url`, `connections`, `wait_for_connection(within) -> bool` (blocks on the listener's `Condvar` until a client connects; `within` is a deadline, not a poll interval). Drop wakes the blocking listener by connecting, joins it, then closes held streams; panics if the wake fails (thread would be stranded).
-- `capture` (mod) — the one mechanism behind every capture under `docs/shots/` (m5-history-and-ghost-preview/40). A capture is **asserted on every run and written only on request**: it used to be written unconditionally from an `#[ignore]`d test nobody re-ran, and 42 of them drifted across four milestones with no test ever going red. `capture(path, drawn)` / `capture_bytes` — assert one, panicking with the first differing line, its 1-based column and both texts; `check(path, drawn) -> Result<(), String>` / `check_bytes` — the same as a value, for a generator that writes several and must not abort at the first; `Captures` (`new`, `check`, `finish`) — collects those and fails once at the end, so **one** regeneration pass rewrites every file a generator owns; `updating()` — is `GRAFT_UPDATE_SHOTS` set to `1`; `UPDATE_VAR` — its name. A regeneration is **always a red run**: the file is rewritten and the test fails anyway, naming the file, so a change cannot reach a commit unlooked-at. Never made tolerant — the captures are what the user judges by eye (CLAUDE.md rule 6). What the code drew is redacted first, at this one seam, so no capture can carry the machine that drew it (m5-history-and-ghost-preview/41).
-- `capture::machine` (mod) — the three classes a file a commit would carry may never hold and the placeholders that stand in for them: a home directory, a path under the OS scratch directory, a port in the IANA dynamic range. `found(bytes) -> Vec<Found>` — every run of one, as byte ranges, for the repository-wide guard `nothing_a_commit_would_carry_names_this_machine`; `redacted(text)` / `redacted_bytes(bytes)` — the same runs replaced by a placeholder of **exactly the same width** (`<home____>`, `<scratch__>`, `00000`), because a capture is a grid and a narrower stand-in slides every column after it. `Machine` (enum) with `why()`; `Found` (struct) — `machine`, `at`, `len`. Same width is not the same as portable: a longer home gives a longer placeholder, so cross-machine identity comes from the writer not drawing a real path (`captures::CAPTURE_REPO_PATH`) and this is the backstop under it.
-- `main` (bin) — `graft-fixtures` with no arguments builds the corpus. `capture <path>` asserts one capture whose drawn body is on stdin, on `capture`'s exact terms, so a writer that is not a Rust test (`pty-walk-*.py`) uses the one mechanism rather than a second convention. `redact <path>...` rewrites files that predate the rule with the writers' own function (m5-history-and-ghost-preview/41).
+- `MemoryError` (enum) — why memory could not be read, `Unsupported` off macOS.
+
+## tier (re-exported)
+- `proptest_cases` (fn) — `proptest_cases() -> u32`; property-test case count for the tier in force.
+
+## capture
+- `machine` (mod) — what a committed capture may never hold and the placeholders standing in.
+- `UPDATE_VAR` (const) — `GRAFT_UPDATE_SHOTS`: set it to rewrite captures instead of asserting them.
+- `updating_shots` / `updating` (fn) — whether a given value / the environment asks for captures to be rewritten.
+- `check` / `check_bytes` (fn) — `check(&Path, drawn) -> Result<(), String>`; compare one capture, or write it when updating.
+- `capture` / `capture_bytes` (fn) — `check` that panics with the difference.
+- `Captures` (struct) — collects several capture checks and fails once at `finish`; `new`, `check`, `finish`.
+
+## capture::machine
+- `Machine` (enum) — the machine-specific classes a capture may not carry; `why`.
+- `Found` (struct) — one machine-specific span found in a capture.
+- `found` (fn) — `found(&[u8]) -> Vec<Found>`; every machine-specific span in the bytes.
+- `redacted` / `redacted_bytes` (fn) — the text with each such span replaced by its placeholder.
+
+## fifo
+- `Fifo` (struct) — a named pipe with a thread already blocked reading it, for a hook announcing it runs; `create`, `path`, `wait`.
+
+## git
+- `GitError` (enum) — why a system `git` run failed.
+- `run` / `run_with_stdin_file` / `run_at` (fn) — run git with fixed identity and clock, machine config off; `run_at` sets the date.
+- `run_isolated` (fn) — `run_isolated(cwd, args, stdin) -> Result<Vec<u8>, GitError>`; git with no system or global config.
+- `isolated` (fn) — `isolated(cwd, args) -> Command`; the isolated command, unrun.
+- `IDENTITY_NAME` / `IDENTITY_EMAIL` / `FIXED_DATE` (const) — the fixture identity and clock.
+- `init_repo` (fn) — `init_repo(&Path) -> Result<(), GitError>`; an empty repository with fixture config.
+- `version` (fn) — `version() -> Result<String, GitError>`; the system git's version.
+
+## lost_work
+- `START` / `END` (const) — Unix seconds bracketing the fixture's story.
+- `LOST_ON_MAIN` / `LOST_ON_SPIKE` (const) — subjects of the two lost commits.
+- `EDITED` / `DISCARDED_EDIT` / `LOST_EDIT` (const) — the edited file, the discarded edit, the lost edit.
+- `Graft` (trait) — Graft's own operations the fixture calls: `fetch`, `discard`, `undo_forced`.
+- `Commits` (struct) — the fixture's commit ids: `a`, `b`, `c`, `d`, `e`, `s`, `fetched`.
+- `LostWorkError` (enum) — why the fixture could not be built.
+- `LostWork` (struct) — the "lost work" repository built fresh per test; `build`, `build_with`, `work`, `origin`, `commits`.
+
+## remote
+- `LocalRemote` (struct) — bare clone of a shape plus a working clone over `file://`; `new`, `bare`, `work`, `url`.
+- `LocalRemote::default_branch` / `commit_on_remote` / `commit_locally` / `git` (fn) — the branch and helpers moving either side.
+- `HttpRemote` (struct) — a bare repo over smart HTTP on loopback with basic auth; `serve`, `url`, `port`, `requests`.
+- `HttpRemote::url_anonymous` (fn) — the URL without credentials.
+- `HungRemote` (struct) — a loopback port that accepts and never answers; `listen`, `url`, `connections`.
+- `HungRemote::wait_for_connection` (fn) — `wait_for_connection(within) -> bool`; block until a client connects.
+
+## synthetic (feature `heavy-tests`)
+- `Scale` (struct) — size and options of a generated history; `HEAVY`, `of`, `commits`, `name`.
+- `Scale::with_commit_graph` / `with_realistic_commits` / `with_refs` (fn) — variants of a scale.
+- `CommitGraph` (enum) — whether the generated repo carries a commit-graph file.
+- `CommitSize` (enum) — tiny or realistic commit contents.
+- `Report` (struct) — what `ensure` built for a scale.
+- `SyntheticError` (enum) — why a generated history could not be built.
+- `ensure` / `borrow` (fn) — build a scale's history if missing; its read-only cached path.
+- `RECORDS` / `LOST` (const) — reflog entries written and how many name otherwise-lost commits.
+- `Reflogged` (struct) — a generated history with a long reflog.
+- `with_reflog` / `with_reflog_of` (fn) — build such a history for a scale.
+
+## team
+- `TeamSpec` (struct) — a team-monorepo history's shape; `MONOREPO` (heavy tier), `SMALL` (fast tier).
+- `RefMix` (struct) — `local`, `remote`, `tags`, `annotated` ref counts.
+- `TeamStats` (struct) — `commits`, `merges`, `refs`, `most_open`, read back from a built repository.
+- `TeamError` (enum) — `Io`, `Git`, `Cache`, `Spec`.
+- `build` (fn) — `build(&TeamSpec, into) -> Result<TeamStats, TeamError>`; build into an empty directory.
+- `borrow` (fn) — `borrow(&TeamSpec) -> Result<PathBuf, TeamError>`; a cached read-only copy.
+- `stats` (fn) — `stats(&Path) -> Result<TeamStats, TeamError>`; counts read back from a repository.
+
+## crate-internal (`pub` inside private modules; not reachable from outside)
+- `corpus_key` / `synthetic_key` (fn) — cache keys hashing the corpus or a scale's builder.
+- `Support` (enum) — whether the filesystem holds non-UTF-8 names; `non_utf8_names` (fn) probes it.
+- `seal` / `unseal` (fn) — make a cached directory read-only, and writable again.
+- `Stream` (struct) — a `git fast-import` stream builder; `new`, `commit`, `commit_ahead`, `commit_by`, `commit_at_time`.
+- `Stream::commit_full` / `point` / `annotated_tag` (fn) — a commit with every field; a ref; an annotated tag.
+- `Stream::finish` / `drain_into` / `finish_into` (fn) — the stream as bytes or written out.
+- `Mark` (struct) — a fast-import mark naming a commit in a `Stream`.
+- `FileContent` (type) — `(&[u8], &[u8])`: a path and its bytes.
+- `IDENTITY` (const) — the fixture author line in streams.
+- `BuildError` (enum) — why one shape could not be built.
+- `Site` (struct) — one shape being built; `init`, `git`, `git_at`, `import`, `checkout_main`.
+- `Site::write` / `write_bytes` / `remove` (fn) — change files in the shape's working tree.
+- `build` (fn) — `build(Shape, dir, streams) -> Result<(), BuildError>`; build one shape.

@@ -1,87 +1,107 @@
 # graft-term — map
-One line per public item. Update when a public item changes.
+Terminal capability detection, image-protocol encoding, escape-sequence sanitising.
+May depend on: `core` (ARCHITECTURE.md crate table). One line per public item.
 
 ## lib.rs
-- `clipboard` (mod) — OSC 52 clipboard requests (ADR-0023).
+- `clipboard` (mod) — OSC 52 clipboard requests.
 - `detect` (mod) — terminal capability detection and the rendering tier.
 - `input` (mod) — the one reader of stdin: keys to events, replies to waiters.
-- `iterm2` (mod) — iTerm2 inline images (OSC 1337): bands re-sent per frame, PNG encoded once per (strip, crop, cells).
-- `kitty` (mod) — Kitty graphics protocol: strips to bytes, error replies back (ADR-0012 rules).
-- `pace` (mod) — the frame's bracket and fence (ADR-0054, m8 G-pace). Re-exported: `SYNC_BEGIN`/`SYNC_END` (DEC 2026 begin/end bytes), `write_fence` (writes `CSI 5 n`, no flush), `fence_answers` (count of `CSI 0 n` in reply bytes).
-- `sanitize` (mod) — repo-derived text made safe to draw.
-- `tmux` (mod) — getting image sequences through tmux: the DCS passthrough wrapper.
-- `Transport`, `tmux_passthrough` (re-exports) — see `tmux`.
-- `SanitizedText`, `sanitize`, `sanitize_line`, `sanitize_path`, `sanitize_path_bytes` (re-exports) — see `sanitize`.
+- `iterm2` (mod) — iTerm2 inline images (OSC 1337).
+- `kitty` (mod) — Kitty graphics protocol: strips to bytes, error replies back.
+- `pace` (mod) — the frame's synchronized-output bracket and DSR fence; re-exported at the root.
+- `sanitize` (mod) — repo-derived text made safe to draw; re-exported at the root.
+- `tmux` (mod) — DCS passthrough for image sequences inside tmux; re-exported at the root.
+
+## clipboard
+- `osc52_copy` (fn) — `(&str) -> Vec<u8>`: `ESC ] 52 ; c ; <base64> ESC \`; write it through `Transport::write`.
 
 ## detect
-- `LOCAL_PROBE_BUDGET` (const) — probe deadline on a local terminal, 200 ms.
-- `SSH_PROBE_BUDGET` (const) — probe deadline over SSH, 500 ms.
-- `ASSUMED_CELL_SIZE` (const) — 8×16 px, used when nothing reports a cell size.
+- `LOCAL_PROBE_BUDGET` (const) — `Duration`, probe deadline on a local terminal.
+- `SSH_PROBE_BUDGET` (const) — `Duration`, probe deadline over SSH.
+- `ASSUMED_CELL_SIZE` (const) — `(u32, u32)`, cell pixels used when nothing reports one.
 - `WindowPixels` (struct) — `TIOCGWINSZ`'s answer: `columns`, `rows`, `width`, `height`.
-- `TerminalHost` (trait) — the terminal detection talks to: `write_probe`, `read` (until a deadline), `window_pixels`, `tmux_version`.
-- `TtyHost` (struct) — the real terminal: writes to stdout, reads replies through a `ReplyWaiter`.
-- `TtyHost::new` (fn) — a host reading replies from the input mux's waiter.
-- `TtyHost::unread` (fn) — a host that is never read (stdout not a tty, so no mux); reads report nothing.
-- `Environment` (struct) — environment hints; `Environment::from_process`.
-- `Environment::is_probeable` (fn) — whether queries may be written at all (a tty, not `TERM=dumb`).
-- `Environment::probe_budget` (fn) — the probe deadline for this terminal (local or SSH).
-- `detect` (fn) — probe the terminal and return `Capabilities`; never reads stdin itself. Fills `kitty_deflate` from an `o=z` query (`i=32`) in the same write; replies matched by id. Fills `answers_dsr` from a `CSI 5 n` in the first round, before the DA1 fence (m8 G-pace); no new round.
-- `remeasure_cell_size` (fn) — after a resize: `CSI 16 t`, then `TIOCGWINSZ`, else the previous size marked `Assumed`.
-- `requery_theme` (fn) — on focus regain: `OSC 11`; silence returns the previous hint unchanged.
+- `TerminalHost` (trait) — what detection talks to: `write_probe`, `read` until a deadline, `window_pixels`, `tmux_version`.
+- `detect` (fn) — `(&Environment, &mut dyn TerminalHost) -> Capabilities`: probe the terminal; never reads stdin itself.
+- `remeasure_cell_size` (fn) — after a resize: `CSI 16 t`, then `TIOCGWINSZ`, else the previous size marked assumed.
+- `requery_theme` (fn) — on focus regain: `OSC 11`; silence keeps the previous hint.
+- `TtyHost` (struct) — the real terminal: writes stdout, reads replies through a `ReplyWaiter`.
+- `TtyHost::new` (fn) — `(ReplyWaiter) -> Self`: a host reading replies from the input mux.
+- `TtyHost::unread` (fn) — a host that is never read (stdout not a tty); reads report nothing.
+- `Environment` (struct) — environment hints for detection.
+- `Environment::from_process` (fn) — read the hints from this process's environment.
+- `Environment::probe_budget` (fn) — `-> Duration`: the probe deadline, local or SSH.
+- `Environment::is_probeable` (fn) — `-> bool`: whether queries may be written at all (a tty, not `TERM=dumb`).
 
 ## input
-- `InputMux` (struct) — owns stdin for the process's life; decodes bytes on its own thread; events go to the current `Inputs`, or are kept for the next one while there is none.
-- `InputMux::on_stdin` (fn) — first call starts the process's one stdin reader; every call returns that mux and a fresh `Inputs` (the previous one ends). Never a second reader.
-- `InputMux::start` (fn) — start reading any fd (tests use a socket pair).
-- `InputMux::inputs` (fn) — open a fresh `Inputs` that takes over; events held while nobody listened come first.
-- `InputMux::hold` (fn) — end the current `Inputs`; keep every event for the next `inputs()`. `event_loop::run` calls it when its loop is done.
-- `InputMux::pause` (fn) — stop the reader thread touching the fd at all, and return only once it has stopped, so another program (`$EDITOR`, or the shell after a `SIGTSTP`) gets every byte the user types. `hold` is not enough: it only detaches the listener, and the thread keeps reading stdin. Implemented with a self-pipe the reader polls beside the input fd (m3-working-tree-undo-and-stash/05). **Errs** if the reader neither parks nor ends within 250 ms — the caller must then keep the terminal, because a reader still on it would share the user's keystrokes with the editor. It used to answer `Ok` on that timeout, which was right for a reader that had exited and wrong for one that was merely slow (m3/05 review M6).
-- `InputMux::resume` (fn) — let the reader go back to the fd. Input typed while paused was never read by Graft, so it is still in the kernel's buffer for whoever owned the terminal.
-- `InputMux::waiter` (fn) — open a `ReplyWaiter`; every open waiter gets a copy of each reply.
+- `InputMux` (struct) — owns stdin for the process's life; decodes on its own thread, routes events and replies.
+- `InputMux::on_stdin` (fn) — `-> io::Result<(Self, Inputs)>`: the process's one stdin reader and a fresh `Inputs`.
+- `InputMux::start` (fn) — `(OwnedFd) -> io::Result<(Self, Inputs)>`: read any fd.
+- `InputMux::pause` (fn) — `-> io::Result<()>`: stop the reader touching the fd before handing the terminal away; errs if it does not park.
+- `InputMux::resume` (fn) — let the reader go back to the fd.
+- `InputMux::inputs` (fn) — `-> Inputs`: a fresh receiver that takes over; held events come first.
+- `InputMux::hold` (fn) — end the current `Inputs`; keep events for the next one.
+- `InputMux::give_back` (fn) — `(impl IntoIterator<Item = Event>)`: put events back at the front for the next reader.
+- `InputMux::waiter` (fn) — `-> ReplyWaiter`: every open waiter gets a copy of each reply.
+- `InputMux::answer_fences` (fn) — `(FenceListener) -> FenceAnswers`: fence answers go to the listener, not to waiters.
 - `ReplyWaiter` (struct) — terminal replies for one asker, as raw bytes.
-- `ReplyWaiter::read` (fn) — copy reply bytes into a buffer, waiting until a deadline; `Ok(0)` when none came.
-- `Inputs` (type) — `Receiver<io::Result<Event>>`: key/mouse/paste/focus events in arrival order; an `Err` is the last item.
-- `InputMux::answer_fences` (fn) — `(FenceListener) -> FenceAnswers`: replies holding a fence answer (`CSI 0 n`) go to the listener (called on the reader thread with the count), not to waiters; a listener returning `false` is removed (m8 G-pace).
-- `FenceListener` (type) — `Box<dyn FnMut(usize) -> bool + Send>`.
-- `FenceAnswers` (struct, `#[must_use]`) — the listener's lease: dropping it removes that listener, and fence answers are ordinary replies again. `FenceListener`, `FenceAnswers` and the routing that hands a reply to the listener live in `input/mux/fence.rs` (review m8-02 Major 3), re-exported unchanged.
-- `SEQUENCE_TIMEOUT` (const) — 50 ms an unfinished escape sequence waits before it is read as keys (lone `Esc`).
-
-## kitty
-- `KittyImages` (struct) — uploads held by the terminal; emits transmit-once, `p=1` replace, `q=1` commands.
-- `KittyImages::new` (fn) — track uploads, at most `capacity` unplaced images kept.
-- `KittyImages::with_transport` (fn) — send commands over a `Transport`; inside tmux each command and upload chunk is wrapped alone.
-- `KittyImages::frame` (fn) — append commands so the screen shows exactly these `Place`s.
-- `KittyImages::hide` (fn) — remove every placement, keep data (tier dropped away from pixels).
-- `KittyImages::free_all` (fn) — delete every upload with its data; call on exit.
-- `KittyImages::forget_uploads` (fn) — after a clear or resize: retransmit everything next frame.
-- `KittyImages::answer` (fn) — take in a reply; `ENOENT` forgets that upload so it retransmits; any other error on a deflated upload turns deflating off for good and retransmits it raw.
-- `KittyImages::deflating` (fn) — builder: transmit with `o=z` (zlib RGBA). Off by default.
-- `KittyImages::is_deflating` (fn) — still deflating; false once an error reply turned it off.
-- `KittyImages::uploaded` (fn) — images the terminal holds, as far as Graft knows.
-- `Place` (struct) — one image this frame: `first_row`, `key` (`UploadKey`), `frame` (`&RasterFrame`), `rows` crop, `cells`, `layer`.
-- `UploadKey` (struct) — what an upload is known by, from the strip cache key (m8 04): the same key is the same picture, so no retransmit; an upload holds the key, never the pixels. Transmit buffers (straight alpha, deflate, base64) and the compressor are kept between uploads.
-- `Place::layer` (field) — `Layer::Strip` or `Layer::Emphasis`; each layer of a slot is its own upload.
-- `Layer` (enum) — `Strip` (no `z=`, default) or `Emphasis` (`z=1`, emitted after every strip, id has `EMPHASIS_ID_BIT`).
-- `EMPHASIS_ID_BIT` (const) — `1 << 31`; set in every emphasis image id, in no strip id.
-- `CellRect` (struct) — zero-based cell rectangle: `column`, `row`, `columns`, `rows` (0 = crop's rows).
-- `GraphicsReply` (struct) — `image`, `placement`, `message` (controls replaced); `is_error`, `is_missing_image`.
-- `replies` (fn) — every APC graphics reply in a byte buffer; other replies skipped.
+- `ReplyWaiter::read` (fn) — `(&mut [u8], Instant) -> io::Result<usize>`: reply bytes until a deadline; `Ok(0)` when none came.
+- `Inputs` (type) — `Receiver<io::Result<Event>>`: events in arrival order; an `Err` is the last item.
+- `FenceListener` (type) — `Box<dyn FnMut(usize) -> bool + Send>`; returning `false` removes it.
+- `FenceAnswers` (struct) — the listener's lease; dropping it removes the listener.
+- `SEQUENCE_TIMEOUT` (const) — `Duration` an unfinished escape sequence waits before it is read as keys.
+- `Decoded` (enum) — `Event(Event)` or `Reply(Vec<u8>)`: one thing the terminal sent (private module).
+- `Decoder` (struct) — bytes in, `Decoded` out, holding back an unfinished sequence (private module).
+- `Decoder::new` (fn) — an empty decoder.
+- `Decoder::is_holding` (fn) — `-> bool`: an unfinished sequence is held.
+- `Decoder::feed` (fn) — `(&[u8], &mut Vec<Decoded>)`: decode what is complete.
+- `Decoder::flush` (fn) — `(&mut Vec<Decoded>)`: read whatever is held as keys.
 
 ## iterm2
-- `ItermImages` (struct) — encoded bands kept for re-sending; erases last frame's cells (`ECH`) before writing.
-- `ItermImages::new` (fn) — keep at most `capacity` encoded bands (current frame's always kept).
-- `ItermImages::with_transport` (fn) — send each band's OSC 1337 over a `Transport`; cursor moves and erases stay unwrapped.
-- `ItermImages::frame` (fn) — erase covered cells, write each `Place` at its cell (`doNotMoveCursor=1`); `io::Error` on a bad crop.
-- `ItermImages::hide` (fn) — erase every cell the last frame covered; bands stay encoded.
-- `ItermImages::encoded` (fn) — PNG encodes so far (an unchanged re-send does not count).
+- `ItermImages` (struct) — encoded bands kept for re-sending; erases last frame's cells before writing.
+- `ItermImages::new` (fn) — `(capacity: usize)`: keep at most that many encoded bands.
+- `ItermImages::with_transport` (fn) — builder: send each band over a `Transport`.
+- `ItermImages::encoded` (fn) — `-> u64`: PNG encodes so far.
+- `ItermImages::frame` (fn) — `(&[Place], &mut Vec<u8>) -> io::Result<()>`: erase covered cells, write each place.
+- `ItermImages::hide` (fn) — erase every cell the last frame covered.
 
-## tmux
-- `tmux_passthrough` (fn) — append one sequence as `ESC P tmux;` + sequence with every `ESC` doubled + `ESC \`.
-- `Transport` (enum) — `Direct` or `TmuxPassthrough`; `Transport::for_tmux` (anything but `TmuxStatus::Outside` wraps), `Transport::write`.
+## kitty
+- `EMPHASIS_ID_BIT` (const) — `u32` bit set in every emphasis image id, in no strip id.
+- `Layer` (enum) — `Strip` or `Emphasis` (`z=1`, drawn over strips).
+- `CellRect` (struct) — zero-based cell rectangle: `column`, `row`, `columns`, `rows`.
+- `UploadKey` (struct) — `(pub u64)`: what an upload is known by; same key, same picture, no retransmit.
+- `Place` (struct) — one image this frame: `first_row`, `key`, `frame`, `rows`, `cells`, `layer`.
+- `GraphicsReply` (struct) — one APC graphics reply: `image`, `placement`, `message`.
+- `GraphicsReply::is_error` (fn) — `-> bool`: the reply is not `OK`.
+- `GraphicsReply::is_missing_image` (fn) — `-> bool`: the terminal lost the image (`ENOENT`).
+- `replies` (fn) — `(&[u8]) -> Vec<GraphicsReply>`: every graphics reply in a byte buffer.
+- `KittyImages` (struct) — uploads the terminal holds; emits transmit-once, replace and quiet commands.
+- `KittyImages::new` (fn) — `(capacity: usize)`: at most that many unplaced images kept.
+- `KittyImages::deflating` (fn) — builder `(bool)`: transmit zlib-compressed RGBA.
+- `KittyImages::is_deflating` (fn) — `-> bool`: still deflating; false once an error turned it off.
+- `KittyImages::with_transport` (fn) — builder: send commands over a `Transport`.
+- `KittyImages::uploaded` (fn) — `-> usize`: images the terminal holds, as far as Graft knows.
+- `KittyImages::frame` (fn) — `(&[Place], &mut Vec<u8>)`: commands so the screen shows exactly these places.
+- `KittyImages::hide` (fn) — remove every placement, keep data.
+- `KittyImages::free_all` (fn) — delete every upload with its data; call on exit.
+- `KittyImages::forget_uploads` (fn) — after a clear or resize: retransmit everything next frame.
+- `KittyImages::answer` (fn) — `(&GraphicsReply)`: a missing image retransmits; an error on a deflated upload turns deflating off.
+
+## pace
+- `SYNC_BEGIN` (const) — `&[u8]`: DEC 2026 synchronized-output begin.
+- `SYNC_END` (const) — `&[u8]`: DEC 2026 synchronized-output end.
+- `write_fence` (fn) — `(&mut impl Write) -> io::Result<()>`: write `CSI 5 n`, no flush.
+- `fence_answers` (fn) — `(&[u8]) -> usize`: count of `CSI 0 n` in reply bytes.
 
 ## sanitize
 - `SanitizedText` (struct) — text proven free of escape and control sequences.
-- `sanitize` / `sanitize_line` / `sanitize_path` / `sanitize_path_bytes` (fn) — make untrusted text safe to draw.
+- `SanitizedText::as_str` (fn) — `-> &str`.
+- `sanitize` (fn) — `(&str) -> SanitizedText`: multi-line text made safe to draw.
+- `sanitize_line` (fn) — `(&str) -> SanitizedText`: one line; newlines made visible.
+- `sanitize_path` (fn) — `(&Path) -> SanitizedText`: a path made safe to draw.
+- `sanitize_path_bytes` (fn) — `(&[u8]) -> SanitizedText`: raw path bytes made safe to draw.
 
-## clipboard
-- `osc52_copy` (fn) — `ESC ] 52 ; c ; <base64(text)> ESC \`; write it through `Transport::write` so tmux wraps it (m1-the-graph/45).
+## tmux
+- `Transport` (enum) — `Direct` or `TmuxPassthrough`: how a sequence reaches the outer terminal.
+- `Transport::for_tmux` (fn) — `(&TmuxStatus) -> Self`: wrap unless outside tmux.
+- `Transport::write` (fn) — `(self, &[u8], &mut Vec<u8>)`: append the sequence, wrapped if needed.
+- `tmux_passthrough` (fn) — `(&[u8], &mut Vec<u8>)`: `ESC P tmux;` + sequence with `ESC` doubled + `ESC \`.

@@ -1,6 +1,6 @@
 # health — MAP.md as a map: guard test, plus core, term, graph, git, fixtures and a new capabilities MAP
 
-Status: draft (planner, from `docs/reviews/m8-architecture.md` Major M1)
+Status: done (planner, from `docs/reviews/m8-architecture.md` Major M1)
 
 Build with: **Sonnet** (conductor, after scout `scouts/37-health-map-libraries.md`). The planner expects **Sonnet**. A grep-style test checks the work, and each MAP line is judged against the item it names.
 
@@ -55,11 +55,30 @@ None public. Test fns:
 - `fn every_map_item_still_exists()`
 
 ## Acceptance
-- [ ] The three tests pass over `CHECKED` (tests named).
-- [ ] Removing one item line from the git MAP fails `every_pub_item_is_in_its_map` with that name. Done by hand and reverted, with the line quoted in NOTES.
-- [ ] Adding `m8-polish-and-ship/25` to a MAP line fails the ticket-id check. Done by hand and reverted, and quoted.
-- [ ] NOTES gives the line count before and after for each MAP.
-- [ ] `graft-capabilities/MAP.md` exists, and the crate is in `CHECKED`.
+- [x] The three tests pass over `CHECKED` — `map_coverage::every_pub_item_is_in_its_map`, `map_coverage::map_lines_are_short_and_carry_no_ticket_ids`, `map_coverage::every_map_item_still_exists`.
+- [x] Removing one item line from the git MAP fails `every_pub_item_is_in_its_map` with that name. Done by hand and reverted, with the line quoted in NOTES (`map_coverage::every_pub_item_is_in_its_map`).
+- [x] Adding `m8-polish-and-ship/25` to a MAP line fails the ticket-id check. Done by hand and reverted, and quoted (`map_coverage::map_lines_are_short_and_carry_no_ticket_ids`, plus `map_coverage::ticket_id_pattern_matches_ids_and_nothing_else`).
+- [x] NOTES gives the line count before and after for each MAP (see NOTES; counted with `wc -l`).
+- [x] `graft-capabilities/MAP.md` exists, and the crate is in `CHECKED` (`map_coverage::every_pub_item_is_in_its_map`).
+
+## NOTES (builder)
+- Red first: all three guard tests failed on the old MAPs.
+- Mutation 1: removed the git line `` - `CHUNK` (const) — commits per chunk a walk hands back. `` → `every_pub_item_is_in_its_map` failed: ``graft-git: `CHUNK` ``. Reverted.
+- Mutation 2: appended `m8-polish-and-ship/25` to `` - `Order` (enum) — the order a walk emits rows in. `` → failed with `graft-git/MAP.md:129: ticket id: …`. Reverted.
+- Lines before → after: core 86→95, term 87→107, graph 160→141, git 358→314, fixtures 50→120, capabilities none→26.
+- How the guard reads things:
+  - A module counts as named when its `## heading` names it.
+  - It skips `#[cfg(test)] mod x;` files and anything named `tests`, so git's `fixture` module isn't listed.
+  - A listed name resolves if it is declared anywhere in src.
+- Guard vs format point 4: `pub` items in private modules are listed, because check (a) as specified demands it:
+  - fixtures: stream, shapes, digest, filesystem, permissions
+  - graph: `Ring`, `RasterPool`
+  - term: `Decoded`, `Decoder`
+  
+  Conductor: should the guard skip them?
+- `pub` but used only by tests, listed as is: git `Mailmap::from_bytes`, `TipStats`, `GitInvocation::stops_hooks_first`.
+- grep `MAP.md` in CLAUDE.md/ARCHITECTURE.md: only CLAUDE.md:65, and it doesn't misdescribe the format.
+- Spot-checked 4 MAP lines against source (`git_editor`, `InputMux::give_back`, `Decoder::feed`, `Unavailable`): 4 held. The rest were drafted per crate by forks reading source and weren't judged one by one here.
 
 ## Touches
 - the five MAPs plus the new one

@@ -1,358 +1,314 @@
 # graft-git — map
-One line per public item. Update when a public item changes.
+Repository reads (`gix`; `git2` only per named gap, ADR-0011), the typed git command runner, output and diff parsers.
+May depend on: `core`. Never the terminal or the UI.
+One line per public item; history lives in `docs/log/` and the ADRs.
 
-## lib.rs
-- `blame` (mod) — `git blame --porcelain` read into lines and commits, with `.git-blame-ignore-revs` found and counted (m7-power-tools/18).
-- `trace` (mod) — line and file histories (`git log -L`, `git log --follow`), the function around a line by git's funcname rules, one commit's change as the whole file, working-tree lines mapped to `HEAD` (m7-power-tools/18).
-- `branches` (mod) — choosing the default/integration branch among a repository's refs.
-- `contained` (mod) — which branches, remotes and tags contain a commit, via `git for-each-ref --contains` (m2/01).
-- `diff` (mod) — pure parsers for git's diff output: unified patches, `--raw`/`--numstat` file lists, hunk pairing (m2/02).
-- `commit_graph` (mod) — the commit-graph file: status, building it with system git, the offer's remembered decline (m1-the-graph/54).
-- `conflict` (mod) — a conflicted file as data: markers parsed byte-exactly, a side taken per block, written back without clobbering, the three stages read, git's `diff3` output reproduced for a block's base (m6-conflicts/01).
-- `history` (mod) — rev-walks: chunked, ordered, resumable.
-- `history_reads` (mod) — the read layer M5's history operations and Ghost Preview plan against: divergence, commit ranges, a `merge-tree` conflict forecast, changed paths, conflict markers (m5-history-and-ghost-preview/02).
-- `mailmap` (mod) — `.mailmap` resolution, via gix's own parser.
-- `editor` (mod) — `git_editor(directory) -> Result<String, EditorError>`: `git var GIT_EDITOR` through `run`, so the app's terminal hand-over does not need a bare `git` spawn of its own (m3/05 review M8). `EditorError` is `Run(RunError)` or `NoEditor`. The answer is a shell command, not a program name.
-- `run` (mod) — the typed runner for system `git`: typed args, byte paths, stdin, kill-on-stop, output cap (m2/01); streaming stderr segments and askpass routing (m4/02).
-- `remote` (mod) — configured remotes and a branch's upstream (gix config, no spawn), plus the pure readers of a remote command's stderr: failure classification and progress parsing (m4/02).
-- `repo` (mod) — opening a repository and reading `HEAD`, refs and tips from it.
-- `stash` (mod) — the stash list, from `refs/stash`'s own reflog (m3/01).
-- `state` (mod) — whether a merge, rebase, cherry-pick, revert or bisect is in progress (m3/01).
-- `switch_refs` (mod, `switch_refs.rs`) — every local and remote branch with tip, subject, author, date, upstream, and `@{-1}`: what the branch picker lists (m7-power-tools/10a).
-- `shallow` (mod, `shallow.rs`) — a shallow clone's cut: `<common_dir>/shallow` read once, the one reader walks, blame and trace share (m7-power-tools/32).
-- `snapshot_reads` (mod, `snapshot_reads.rs`) — the before-snapshot's in-process reads, no `git` spawn: the regular files a tree changes against `HEAD`, and `core.autocrlf` re-read from disk (m7-power-tools/30r, ADR-0052).
-- `status` (mod) — counting staged, unstaged and untracked working-tree changes.
-- `version` (mod) — running and classifying the system `git` binary's version.
+## lib
+- `blame` (mod) — `git blame --porcelain` read into lines and commits, honouring `.git-blame-ignore-revs`.
+- `branches` (mod) — choosing the default and integration branches among a repository's refs.
+- `commit_graph` (mod) — the commit-graph file: status, building it with system git, the offer's remembered decline.
+- `conflict` (mod) — a conflicted file as data: markers parsed byte-exactly, sides taken per block, written back safely.
+- `contained` (mod) — which branches, remotes and tags contain a commit.
+- `diff` (mod) — diff reads and pure parsers: unified patches, file lists, hunk pairing, partial patches.
+- `editor` (mod) — the user's editor as git resolves it.
+- `history` (mod) — rev-walks: chunked, ordered, resumable; the commit id table; reflog-based reads.
+- `history_reads` (mod) — reads history operations plan against: ranges, merge bases, merge forecasts, changed paths.
+- `mailmap` (mod) — `.mailmap` resolution via gix's parser.
+- `reflog` (mod) — reflog records of `HEAD` and local branches.
+- `remote` (mod) — configured remotes, a branch's upstream, and readers of a remote command's stderr.
+- `repo` (mod) — opening a repository and reading `HEAD`, refs and tips.
+- `run` (mod) — the typed runner for system `git`: typed args, stdin, stop, output cap, stderr streaming, askpass.
+- `shallow` (mod) — a shallow clone's cut, read once and shared by walks, blame and trace.
+- `snapshot_reads` (mod) — in-process reads for the before-snapshot: changed files, autocrlf.
+- `stash` (mod) — the stash list from `refs/stash`'s reflog.
+- `state` (mod) — whether a merge, rebase, cherry-pick, revert or bisect is in progress.
+- `status` (mod) — the working tree's staged, unstaged and untracked changes.
+- `switch_refs` (mod) — every local and remote branch with tip, subject, author, date and upstream, plus `@{-1}`.
+- `trace` (mod) — line and file histories, the function around a line, a commit's change as the whole file.
+- `version` (mod) — running and classifying the system `git` version.
 
 ## blame
-Files (m7-power-tools/18b, pure moves; paths unchanged): `blame.rs` the types, `blame` and `blame_with`; `blame/porcelain.rs` `parse_porcelain` (paths unquoted by `diff`'s own `unquote`); `blame/ignore_revs.rs` finding and counting `.git-blame-ignore-revs`; `blame/marks.rs` (18e) the human-format marks reader. 18f: `blame/marks_pass.rs` the second pass (predicate, `configured_list`, the human-format spawn, `merge_marks`, the version cache); `blame/invocation.rs` the `git blame` command both passes build; `blame/knobs.rs` everything a test may set; `blame/refusal.rs` the binary/untracked check.
-- `Rev` (enum) — `Commit(Oid)` or `WorkingTree` (the file on disk; blamed with no rev, uncommitted lines get `commit: None`).
-- `BlameOptions` (struct) — `ignore_whitespace` (`-w`), `ignore_revs` (the repo's ignore file); both on by default. `ignore_revs: false` also clears a configured `blame.ignoreRevsFile`.
-- `BlameCommit` (struct) — one commit's porcelain headers: `id`, `author`, `author_time`, `summary`, `path` (the file's path in this commit, from `filename`; differs from the blamed path across a rename), `previous` (parent id and path there), `boundary`, `shallow` (id is in `<common_dir>/shallow`; set by `blame` after git exits, never by the parser; 20d).
-- `LineMark` (enum) — `Plain`, `Skipped` (passed over by the ignore list), `Unblamable`; both marks on one line read as `Unblamable` in both readers (18e).
-- `BlameLine` (struct) — `commit` (`None`: not committed yet), `orig_line`, `final_line`, `text`, `mark`.
-- `IgnoreRevs` (struct) — `file`, `revisions` (count of listed ids), `applied`.
-- `Blame` (struct) — `path`, `rev`, `lines`, `commits` (by id), `ignore_revs` (`Some` only for a readable list of ≥1 id).
-- `BlameError` (enum) — `Run`, `Parse` (`diff::ParseError`), `Binary`, `Untracked`, `Stopped`, `Shallow { path, source }` (`<common_dir>/shallow` unreadable; 20d), `TooLarge { cap }` (output past the runner's cap: "this file's blame is over <MiB> MiB, too large to show"), `Changed { first, second }` (the passes' line counts; the two passes disagree on the lines: a different count, or equal counts with a line whose commit differs (18f): "the file changed while blame read it; open blame again"; 18e); refusals come from a `diff-tree --numstat` check before blame spawns.
-- `IGNORE_REVS_FILE` (const) — `.git-blame-ignore-revs`, the conventional name looked for when `blame.ignoreRevsFile` is unset.
-- `blame` (fn) — `git -c blame.markIgnoredLines=true -c blame.markUnblamableLines=true blame --porcelain -M [-w] [--ignore-revs-file=…|--no-ignore-revs-file] [<rev>] -- <path>`, parsed. Output cut at the runner's 64 MiB cap is `Err(TooLarge)`, never a shorter blame (18b, 18e). **Second pass** (18e), only when `needs_marks_pass` holds: the same options with `-c blame.blankBoundary=false -c blame.coloring=none -c color.ui=never blame -l -s` instead of `--porcelain`; its `?`/`*` replace each line's mark by position, only once every line's porcelain commit starts with the id prefix git printed after the marks (all zeros ↔ `commit: None`); else `Changed` (18f). Inputs read lazily: with no root file, one `git config --get blame.ignoreRevsFile` spawn per blame learns whether a list is configured (when the porcelain carried no mark). The version is one `git --version` per process, cached (`OnceLock`; an unreadable one is not cached and takes the pass; the first read is bounded by `version.rs`'s deadline, not the caller's stop).
-- `parse_porcelain` (fn) — pure `--porcelain` reader → `(Vec<BlameLine>, BTreeMap<Oid, BlameCommit>)`; fuzz target `blame_porcelain`.
-- `MarkedLine` (struct) — one `blame -l -s` line: `mark` (`LineMark`), `id_prefix` (the hex git printed after the marks, one digit shorter per mark; 18f).
-- `parse_marks` (fn) — pure `blame -l -s` reader → one `MarkedLine` per output line, from each line's leading run of `^`/`*`/`?` only (the id after it is hex); `ParseError` when no id follows (18e). No fuzz target yet (the fuzz crate is at the repo root, outside graft-git).
-- `needs_marks_pass` (fn, crate) — `ignore_revs && !porcelain_has_marks && list_in_effect && (git < BLAME_PORCELAIN_MARKS || version unknown)`.
-- `configured_list` / `merge_marks` (fn, crate) — `git config --get blame.ignoreRevsFile` → set (exit 0) / unset (1) / `Err` (other; 128 for a broken config on 2.38.5 and 2.54); the marks merge above.
-- `blame_with` / `Knobs::real()` (crate) — `blame` with its inputs set by a test; `blame` passes `Knobs::real()`. `Knobs` fields: `cap` (porcelain pass output cap), `marks_cap` (second pass output cap), `marks: MarksFrom { Auto, HumanFormat }`, `git: GitFrom { System, Given(GitVersion) }` (the version condition 4 sees), `porcelain_marks: PorcelainMarks { Read, Dropped }` (`Dropped`: every porcelain mark read `Plain`, as git < 2.50 leaves them). `Given(MINIMUM)` + `Dropped` runs the whole git < 2.50 path on any git (18f).
-
-## trace
-Files: `shallow.rs` turns [`shallow::ShallowList`](#shallow) into trace's boundary set and error (the reader moved there in 32); `log.rs` runs both logs and parses `-L`; `follow.rs` parses `--follow` (moved in 18b); `function.rs` `enclosing_function`, `map_to_head`; `whole.rs` `whole_file`; `sizes.rs` `blob_sizes`.
-- `LineRange` (enum) — `Function { name, start, end }` or `Block { start, end }`, 1-indexed inclusive; `lines()` → `(start, end)` either way.
-- `TraceCommit` (struct) — one trace row: `id`, `author`, `when`, `subject`, `path`, `renamed_from`, `added`/`removed` (the range's for `-L`, the file's for `--follow`), `range_at` (`-L` only).
-- `TraceEnd` (enum) — `Start { added_by }`, `GitStops(reason)`, `Capped { shown }`, `Stopped`.
-- `TraceError` (enum) — `Run(RunError)`, `Parse(diff::ParseError)`, `Shallow { path, source }` (`<common_dir>/shallow` present but unreadable or not ids; `couldn't read <path>: <source>`), `TooLarge { cap }` ("too large to trace: git's output is over <MiB> MiB"; 18e). When git itself exited non-zero its reason (`GitStops`) wins over an unreadable `shallow` (18e).
-- `SHALLOW_END` (const) — `GitStops` reason when a trace hits a shallow clone's boundary. Boundary rule (18c, `shallow.rs`): ids from `<common_dir>/shallow` (missing = not shallow), read once after git exits; boundary rows dropped (git diffed them against nothing); any dropped → `GitStops(SHALLOW_END)`, unless `Capped` (more rows past the cap) wins. A log ending on a change with no boundary → `GitStops("history ends here without the commit that added these lines")`.
-- `enclosing_function` (fn) — the function around a line by git's own funcname headers (a `diff --no-index` of the blob against itself with a marker per line); a built-in driver picked by extension through a temp `core.attributesFile` unless the user set one; `None` when no header governs or it spans over 400 lines. Returns `TraceError` (was `RunError`, 18e). The blob or marked diff cut at the output cap is `TooLarge`, not `Stopped` (18b, 18e); `enclosing_function_with` (crate) takes the cap.
-- `map_to_head` (fn) — a working-tree line number → its `HEAD` line through worktree-vs-HEAD hunks; `None` for an added line.
-- `line_history` (fn) — `git log -L<s>,<e>:<path>`, capped, rows to a sink in one batch at exit (the runner does not stream stdout).
-- `file_history` (fn) — `git log --follow --raw --numstat -z`, capped, the same way.
-- `parse_line_log` / `parse_follow_log` (fn) — the pure readers behind them; fuzz targets `line_log`, `follow_log`.
-- `whole_file` (fn) — one commit's change to a file as a single hunk over every line (first parent for a merge, all adds for a root, all context if unchanged), cut at `max_lines` with `truncated` set; `ignore_whitespace` adds git's `-w` (a whitespace-only change is then all context; 21c).
-- `BlobSizes` (struct) / `blob_sizes` (fn, `sizes.rs`) — a file's byte size at `commit^1` (old path for a rename) and at `commit`, `None` for an absent side; one `cat-file --batch-check` (21c).
+- `IGNORE_REVS_FILE` (const) — `.git-blame-ignore-revs`; the conventional ignore list name.
+- `Rev` (enum) — `Commit(Oid)` or `WorkingTree`; which version of the file to blame.
+- `BlameOptions` (struct) — `ignore_whitespace`, `ignore_revs`; blame knobs, both on by default.
+- `BlameCommit` (struct) — `id`, `author`, `author_time`, `summary`, `path`; one commit's porcelain headers.
+- `LineMark` (enum) — `Plain`, `Skipped`, `Unblamable`; how the ignore list treated a line.
+- `BlameLine` (struct) — `commit` (`None`: uncommitted), `orig_line`, `final_line`, `text`, `mark`.
+- `IgnoreRevs` (struct) — `file`, `revisions`, `applied`; the ignore list in effect.
+- `Blame` (struct) — `path`, `rev`, `lines`, `commits`, `ignore_revs`; a whole file's blame.
+- `BlameError` (enum) — `Run`, `Parse`, `Binary`, `Untracked`, `Stopped`, `Shallow`; why blame failed.
+- `blame` (fn) — `(repo, path, rev, options, stop) -> Result<Blame, BlameError>`; runs `git blame --porcelain` and parses it.
+- `parse_porcelain` (fn) — `&[u8] -> (Vec<BlameLine>, BTreeMap<Oid, BlameCommit>)`; pure porcelain reader.
+- `MarkedLine` (struct) — `mark`, `id_prefix`; one `blame -l -s` line.
+- `parse_marks` (fn) — `&[u8] -> Result<Vec<MarkedLine>, ParseError>`; pure reader of `blame -l -s` marks.
 
 ## branches
-- `Chosen` (enum) — how the default branch was chosen (ADR-0001's fallback chain).
-- `Branches` (struct) — a repository's refs, resolved into a default and an integration set.
-- `Branches::resolve` (fn) — work out the default branch and integration refs from a repo's refs.
-- `Branches::resolve_from` (fn) — `resolve` over refs the caller already read (no second ref-store read).
-- `Branches::default_branch` (fn) — the chosen default branch, if any.
-- `Branches::chosen_by` (fn) — which rule in ADR-0001's chain chose the default branch.
-- `Branches::integration` (fn) — the refs treated as integration branches.
+- `Chosen` (enum) — which rule of ADR-0001's chain chose the default branch.
+- `Branches` (struct) — a repository's refs resolved into a default and an integration set.
+- `Branches::resolve` (fn) — work out the default branch and integration refs from a repo.
+- `Branches::resolve_from` (fn) — `resolve` over refs the caller already read.
+- `Branches::default_branch` (fn) — `-> Option<&RefName>`; the chosen default branch.
+- `Branches::chosen_by` (fn) — `-> Option<Chosen>`; which rule chose it.
+- `Branches::integration` (fn) — `-> &[RefName]`; refs treated as integration branches.
 - `BranchError` (enum) — why branch resolution failed.
 
 ## commit_graph
-- `CommitGraphStatus` (enum) — `Present { commits }` or `Absent` (as the walk sees it: `core.commitGraph` respected).
-- `status` (fn) — read through gix; a corrupt file is `Err(Graph)`, never `Absent`. `Absent` in a shallow repository whatever is on disk (git's `commit_graph_compatible`); an unreadable `shallow` file is `Err(Shallow)` (32).
-- `CommitGraphError::Shallow` (variant) — `<common_dir>/shallow` unreadable, so graph use is unknown (32).
-- `Written` (struct) — `commits` in the new file, `elapsed`.
-- `write` (fn) — blocking; runs `git -C <common_dir> commit-graph write --reachable --no-progress` through `run` with `&()` (never kills it, m3/01), reads the file back.
-- `CommitGraphError` (enum) — `GitNotFound`, `Exited { status, stderr_first_line }` (raw), `Signalled`, `Io`, `Graph`; `Display` is the problem line.
-- `Offer` (enum) — `Undecided` or `Declined`.
-- `offer_state` (fn) — `<common_dir>/graft/commit-graph-offer` present = `Declined`.
-- `remember_declined` (fn) — write `declined\n` there, creating `graft/`.
+- `CommitGraphStatus` (enum) — `Present { commits }` or `Absent`, as the walk sees it.
+- `status` (fn) — `(repo) -> Result<CommitGraphStatus, CommitGraphError>`; reads the graph through gix.
+- `Written` (struct) — `commits`, `elapsed`; result of building the file.
+- `write` (fn) — `(repo) -> Result<Written, CommitGraphError>`; runs `git commit-graph write --reachable`, blocking.
+- `CommitGraphError` (enum) — `GitNotFound`, `Exited`, `Signalled`, `Io`, `Graph`, `Shallow`; why status or write failed.
+- `Offer` (enum) — `Undecided` or `Declined`; the build offer's remembered answer.
+- `offer_state` (fn) — `(repo) -> Result<Offer, io::Error>`; reads the remembered decline.
+- `remember_declined` (fn) — `(repo) -> Result<(), io::Error>`; records a decline under `graft/`.
 
 ## conflict
-The conflict file as data (m6-conflicts/01). The marker rules are decided in the module doc: exactly seven marker chars at column 0, then **either** a space and a label (`<<<<<<< HEAD`) **or** nothing (`<<<<<<<`, the bare form `rerere` writes and `xdl_merge` writes for a NULL label — measured), so a label is `Option`; `=======` alone is the separator. A run of **eight or more** `<` at column 0 outside a block is `ParseErrorKind::MarkerSize`, not plain text (fix round M3): that opener always comes first in a file git wrote with a bigger `conflict-marker-size`, and calling such a file plain let its markers stage and commit unseen. `=`, `|` and `>` runs stay content — a Markdown setext underline is `========`, and marker sizes **below** seven (reachable: `=3` gives `<<< HEAD`) are still read as plain. The first `=======` after `<<<<<<<` is the separator and a later one, or a second `|||||||`, is theirs' content (checked against `git merge-file`, 2026-09-22) — a `=======` in *ours'* content is read as the separator, the one shape that cannot be told apart; `zdiff3` parses as `diff3`.
-Files (m6-conflicts/23, pure moves; every item below is re-exported from `conflict`, paths unchanged): `conflict.rs` the data types and `blob_id`; `conflict/parser.rs` `parse`; `conflict/document.rs` `ConflictFile`'s methods (`render`, `take`, `blocks`, `first_lines`, `open`); `conflict/disk.rs` `read`, `write_back`, `stage_bytes`, `diff3_file` and their errors; `conflict/base.rs` `attach_base`, `BaseMismatch`.
-- `Line` (struct) — one line, terminator included when it has one.
-- `Terminator` (enum) — `None`, `Lf`, `CrLf`; `as_bytes`.
-- `MarkerEnds` (struct) — how each marker line of a block ended (`start`, `base`, `separator`, `end`); `MarkerEnds::LF`. Why `render` is byte-exact under CRLF, mixed endings and a newline-less last line.
-- `Base` (struct) — a block's base section: `label: Option<Vec<u8>>` (`None` for the bare `|||||||`), `lines`.
-- `Reproduced` (struct) — a base `attach_base` worked out from the stages: `base`, `shared` (the lines are a whole region's, covering several blocks, not this block's alone). **Never rendered, never counted into a line number.**
-- `Block` (struct) — `ours_label: Option<Vec<u8>>` (`None` = bare marker; `Some(b"")` = `<<<<<<< `, byte-distinct), `ours`, `base: Option<Base>` (what the file on disk carries, so it renders), `theirs_label: Option<Vec<u8>>`, `theirs`, `ends`, `reproduced: Option<Reproduced>`; `shown_base() -> Option<(&Base, bool)>` — the file's base if it has one, else the reproduced one and whether it is shared; `taken(take)` — the lines a take leaves.
-- `Take` (enum) — `Ours`, `Theirs`, `Both` (ours then theirs).
-- `Region` (enum) — `Plain(lines)`, `Conflict(Block)`, `Resolved { block, take }`.
-- `ConflictFile` (struct) — `regions`, `fingerprint` (blob id of the bytes parsed); `render`, `take(block, take) -> Result<(), NoSuchBlock>` (the index counts `Conflict` and `Resolved` regions in order; re-taking replaces), `blocks() -> Vec<BlockAt>`, `open()` (blocks still `Conflict`), `first_lines(Projection) -> Vec<usize>` (one per region, its 1-based first line in that projection; each numbers 1..=n with no gap — m6-conflicts/10).
-- `ConflictFile::take_all(take) -> usize` (m6-conflicts/16) — every `Conflict` region becomes `Resolved { take }`; `Resolved` ones keep their take and index. Returns how many changed; renders byte-identical to `take(i)` over every open `i`.
-- `Projection` (enum) — `Ours` (plain + every block's ours lines), `Theirs` (plain + theirs lines), `Result` (plain, taken lines, an open block's ours lines).
-- `BlockAt` (struct) — `index`, `state`, `first_line` (1-based, in `render()`); `BlockState` (enum) — `Open`, `Took(Take)`.
-- `ParseError` (struct) — `line` (1-based), `what: ParseErrorKind`: `Unterminated` (a block still open at EOF, at its `<<<<<<<` line), `StrayMarker` (`<<<<<<<` inside a block; `=======`, `|||||||` or `>>>>>>>` outside one, bare or labelled; `>>>>>>>` before the separator), `MarkerSize` (a conflict opened with markers longer than seven characters).
-- `NoSuchBlock` (struct) — the index `take` was given.
-- `parse` (fn) — bytes → `ConflictFile`; `render(parse(b)) == b` for every `Ok` (fuzz target `conflict_parse`; 1 000-case soup test in nextest).
-- `blob_id` (fn) — git's blob id of the bytes, `sha1("blob <len>\0" + bytes)`, computed locally (`sha1` crate); what `write_back` and git's index compare.
-- `ReadError` (enum) — `Io`, `Binary` (a NUL in the first 8 KiB, git's rule), `TooLarge { bytes }` (over 8 MiB), `Parse`.
-- `read` (fn) — path → `ConflictFile`.
-- `WriteError` (enum) — `Io`, `Changed { now }`.
-- `write_back` (fn) — a `.graft-*` temp file in the same directory, `sync_all`, the path's mode bits, renamed over the path; `Changed { now }` when the file's current blob id is not `expected`, bytes untouched. Returns the new fingerprint.
-- `stage_bytes` (fn) — one stage's **raw** bytes, `git show :N:<path>` in effect (`--literal-pathspecs ls-files -u -z` then `cat-file blob`), with no `.gitattributes` conversion — the committed bytes, which a whole-file view wants and which are *not* the working tree's under `eol=crlf`/`autocrlf`/a smudge filter. `Ok(None)` when the stage is missing (a whole-file shape); a stage outside 1..=3 is `RunError::Unparsable`.
-- `Diff3Error` (enum) — `Run`, `Io` (the scratch copies), `MergeFile { status, stderr_first_line }` (an exit past the conflict count, cap 127, or killed), `Parse`.
-- `diff3_file` (fn) — the three stages written to a `tempfile` scratch directory **in their working-tree form** (`cat-file --filters --path=<path>`, not raw: under `eol=crlf` the stages are LF and the file on disk is CRLF, so raw copies reproduce sides matching no line of it — measured, fix round M2). The directory is never under `.git/`: nothing left behind if the process dies, and a read-only checkout works. Merged with `git merge-file -p --diff3 -L ours -L base -L theirs`, parsed; `Ok(None)` when a stage is missing. The ticket's `diff3_blocks`, renamed: `attach_base` needs the plain runs between the blocks too.
-- `BaseMismatch` (struct) — `block`: the first file block no run of reproduced regions equals. Its `Display` never says "after edits" — a pristine file can reach it too.
-- `attach_base` (fn) — gives each file block the base of git's own `--diff3` output as `Block::reproduced`, matching **runs** to **runs**: the shortest run of reproduced regions (conflicts plus the plain lines between) that some run of file regions is byte-equal to on both sides. Both directions are needed because `xdl_merge` at its default level **joins** conflicts fewer than four unchanged lines apart *and* **splits** a conflict whose sides share interior lines, while `--diff3` does neither (measured, git 2.54, 2026-09-22). Where git split, every file block in the run gets the whole run's base with `Reproduced::shared` — git itself cannot attribute those lines, so claiming otherwise would be a guess. Nothing it writes is rendered: `render`, `write_back` and `blocks().first_line` are unchanged by it, and a block the file itself gave a base keeps it, label included. Reproduced conflicts the file no longer has are skipped (a take written to disk); a block matching nothing fails the whole call and attaches nothing. Returns how many blocks got a base.
+- `Line` (struct) — one line's bytes, terminator included.
+- `Terminator` (enum) — `None`, `Lf`, `CrLf`; `as_bytes` (fn) gives the bytes.
+- `MarkerEnds` (struct) — how each marker line of a block ended; `MarkerEnds::LF` (const) the plain case.
+- `Base` (struct) — `label`, `lines`; a block's base section.
+- `Reproduced` (struct) — `base`, `shared`; a base worked out from the stages by `attach_base`.
+- `Block` (struct) — labels, `ours`, `base`, `theirs`, ends; `shown_base` (fn) the base to show and whether it is reproduced.
+- `Projection` (enum) — `Ours`, `Theirs`, `Result`; which view of the file to project.
+- `Take` (enum) — `Ours`, `Theirs`, `Both`; how a block is resolved.
+- `Region` (enum) — `Plain`, `Conflict(Block)`, `Resolved { block, take }`.
+- `ConflictFile` (struct) — `regions`, `fingerprint`; the parsed file with its blob id.
+- `ConflictFile::render` / `take` / `take_all` / `blocks` / `first_lines` / `open` (fn) — bytes back; resolve one or all blocks; block list; line starts per projection; open count.
+- `BlockAt` (struct) — `index`, `state`, `first_line`; a block's place in the rendered file.
+- `BlockState` (enum) — `Open` or `Took(Take)`.
+- `ParseError` (struct) — `line`, `what: ParseErrorKind`; why markers did not parse.
+- `ParseErrorKind` (enum) — the kinds of marker parse failure.
+- `NoSuchBlock` (struct) — the out-of-range index `take` was given.
+- `blob_id` (fn) — `&[u8] -> Oid`; git's blob id computed locally.
+- `parse` (fn) — `&[u8] -> Result<ConflictFile, ParseError>`; render of the result equals the input.
+- `ReadError` (enum) — `Io`, `Binary`, `TooLarge`, `Parse`; why a conflicted file could not be read.
+- `read` (fn) — `&Path -> Result<ConflictFile, ReadError>`.
+- `WriteError` (enum) — `Io`, `Changed { now }`; why write-back refused or failed.
+- `write_back` (fn) — `(path, file, expected: Oid) -> Result<Oid, WriteError>`; atomic rename, refuses if the file changed.
+- `stage_bytes` (fn) — `(repo, path, stage) -> Result<Option<Vec<u8>>, RunError>`; one index stage's raw bytes.
+- `Diff3Error` (enum) — `Run`, `Io`, `MergeFile`, …; why the diff3 reproduction failed.
+- `diff3_file` (fn) — `(repo, path) -> Result<Option<ConflictFile>, Diff3Error>`; git's own `--diff3` merge of the stages.
+- `BaseMismatch` (struct) — `block`; the first block no reproduced region matched.
+- `attach_base` (fn) — `(&mut ConflictFile, diff3: &ConflictFile) -> Result<usize, BaseMismatch>`; gives blocks their base.
 
 ## contained
-- `Contained` (struct) — `branches`, `remotes`, `tags` (short names as bytes: `main`, `origin/main`, `v1.0`), capped 200 per class; `more` counts the rest. Symrefs (`origin/HEAD`) left out.
-- `contained_in` (fn) — one `for-each-ref --contains <oid>` over heads/remotes/tags through `run`; an id naming no commit is git's `Exited`.
-
-## switch_refs
-- `RefListing` (struct) — `name` (full `RefName`, bytes, never lossy), `tip`, `subject`/`author` (lossy, display only), `when` (committer date, unix), `upstream` (`%(upstream)` full; `None` unset; local rows only).
-- `SwitchRefs` (struct) — `refs` (git's ref order, symrefs like `origin/HEAD` left out), `previous`.
-- `switch_refs` (fn) — up to three commands through `run`, `Stop` honoured (`Err(Stopped)`):
-  `for-each-ref --format=%(refname)%00%(objectname)%00%(symref)%00%(upstream)%00%(subject)%00%(authorname)%00%(committerdate:unix) refs/heads refs/remotes`,
-  then `rev-parse --verify --quiet @{-1}` (`run_raw`; only the exit code is read, 18e) for whether there is a previous checkout: exit 1, empty → `None`; exit 0 → there is one; any other exit → `Err(Exited)`.
-  Then `check-ref-format --branch @{-1}` for its name, as `git switch -` reads it; `Some(refs/heads/<name>)` only when the listing has that branch (a detached previous names a commit id; a deleted one is not listed).
-  `rev-parse`'s own name is not used: with a same-named tag it prints nothing, and with only the tag left it names the tag (both measured on 2.38.5 and 2.54, m7-power-tools/18b).
+- `Contained` (struct) — `branches`, `remotes`, `tags`, capped, with `more` counts.
+- `contained_in` (fn) — one `for-each-ref --contains <oid>` through `run`.
 
 ## diff
-- `FileStatus` (enum) — `Added`, `Deleted`, `Modified`, `Renamed { similarity }`, `Copied { similarity }`, `TypeChanged`, `Unmerged`, `Untracked`.
-- `FileEntry` (struct) — `path`, `old_path` (renames/copies only), `status`, `added`/`removed` line counts (`None` for binary).
-- `tracked_paths(repo, stop) -> Result<TrackedPaths, StatusError>` (fn, m8/12b) — every tracked path, index order, one `ls-files -z` (bare: empty, no spawn; an unmerged path once; past `TRACKED_CAP` 64 MiB → `TooLarge`). `TrackedPaths` (struct) — packed bytes: `len`, `is_empty`, `get(ix)`, `iter`, `from_nul_separated`.
-- `FileList` (struct) — `files`, plus the total `added`/`removed` across them.
+- `FileStatus` (enum) — `Added`, `Deleted`, `Modified`, `Renamed`, `Copied`, `TypeChanged`, `Unmerged`, `Untracked`, ….
+- `FileEntry` (struct) — `path`, `old_path`, `status`, `added`/`removed`.
+- `FileList` (struct) — `files` plus total `added`/`removed`.
 - `LineKind` (enum) — `Context`, `Added`, `Removed`.
 - `DiffLine` (struct) — `kind`, `text`, `old_no`/`new_no`, `no_newline_at_eof`.
-- `Hunk` (struct) — `old_start`/`old_lines`/`new_start`/`new_lines`, `heading`, `lines`.
-- `BinaryNote` (enum) — `Differ` (`Binary files ... differ`) or `Patch` (`GIT binary patch`, body skipped).
-- `Truncated` (struct) — `shown_lines`/`total_lines`, set by a caller that cut a diff short (never by `parse_unified` itself).
-- `FileDiff` (struct) — `entry`, `hunks`, `binary`, `truncated`, `old_mode`/`new_mode`.
-- `ParseError` (struct) — `line` (1-indexed where known), `what`.
-- `parse_unified` (fn) — parses `git diff-tree -p -M -C --no-color --no-ext-diff` output (one or many files); pure, no `git` spawn, a `cargo-fuzz` target. Outside a `diff --git` section it skips only a bare object id (`diff-tree`'s commit id) and errors on anything else; a combined diff (`diff --cc`/`@@@`) is a named error, never an empty success (m5-history-and-ghost-preview/22).
-- `parse_file_list` (fn) — joins `diff-tree --raw -z` with `--numstat -z` (same trailing args, `--no-commit-id`) into one `FileList`; pure, a `cargo-fuzz` target.
-- `parse_worktree_file_list` (fn) — the same join for `diff-index` against the working tree: drops the `--raw` records `--numstat` has no record for (`M`, one mode, all-zero new id) — the index's stat cache lying. Pure.
-- `Pair` (struct) — `removed`/`added` index ranges into one hunk's `lines`.
-- `pairs` (fn) — splits a hunk's removed/added runs into side-by-side `Pair`s, index-wise, `min(len)` per run.
-- `DiffSpec` (enum) — what two sides to diff: `Commit { commit, against }` (first parent when `against` is `None`, `--root` when there is none), `Range { base, head }`, `WorkingTreeVsHead`, `Staged` (index vs `HEAD`, empty tree if unborn; no untracked files), `Unstaged` (worktree vs index, plus untracked files).
-- `DiffOptions` (struct) — `context` (default 3), `ignore_whitespace` (default `false`).
-- `DiffError` (enum) — `Run(RunError)`, `Parse(ParseError)`, `TooLarge { bytes }` (64 MiB output cap), `NoHead`; `Display` is one line.
-- `list_files` (fn) — one `diff-tree`/`diff-index`/`diff-files --raw --numstat -z` spawn (plus `ls-files --others` for untracked, working tree and `Unstaged` only) split and joined via `parse_file_list`/`parse_worktree_file_list`. `WorkingTreeVsHead`/`Unstaged` use plumbing `diff-index`/`diff-files`: porcelain `git diff` rewrites `.git/index`, which a read must not do (M2 review round 2). `Staged` uses `diff-index --cached` (content-only, no stat-cache lie, `parse_file_list`). A touched-but-unchanged file is filtered out in the join instead.
-- `file_diff` (fn) — one file's patch via `diff-tree`/`diff-index`/`diff-files -p -U<context>`, parsed with `parse_unified`; truncates to whole hunks at `max_lines` (`usize::MAX`: no cap); an `Untracked` entry is read as all added lines via `git diff --no-index /dev/null <path>` (exit 0/1 judged here; never touches the index), same parse, output cap and truncation (m6-conflicts/81).
-- `Selection` (enum) — `WholeHunk`, or `Lines(Vec<usize>)` (indices into `Hunk::lines`, `Added`/`Removed` only) (m3/01).
-- `PatchDirection` (enum) — `Forward` (`git apply`/`--cached`) or `Reverse` (`git apply -R`): which side a `Lines` patch's preimage must match (m3/01).
-- `PatchError` (enum) — why `hunk_patch` could not build a patch: `NoSuchHunk`, `NoSuchLine`, `NotAChangedLine`, `Binary`, `NothingSelected`, `NoNewlineBoundary` (m3/01).
-- `hunk_patch` (fn) — `(diff, hunk, selection, direction)`: a complete one-file unified patch (`diff --git`; `new file mode`/`deleted file mode` for added/deleted files, since without it git reads `/dev/null` as a path — mode unknown: no `diff --git` line, a traditional patch; otherwise mode lines when `old_mode != new_mode`; `--- `/`+++ ` with `/dev/null` for added/deleted files; one hunk; m7-power-tools/31) for `git apply`/`--cached`/`-R`; pure, no spawn. `WholeHunk` reproduces the hunk's own bytes either way; `Lines` follows the `PatchDirection` (Forward drops unselected `Added` and contextualises unselected `Removed`; Reverse does the opposite) and recomputes the `@@` header's counts. Refuses with `NoNewlineBoundary` when the selection would strand a `\ No newline at end of file` marker mid-side (m3/01).
-- Split into files, public items unchanged (m2 review M8): `unified.rs`'s byte-level primitives (numbers, percentages, quoted-path unquoting) moved to `unified/primitives.rs`; `read.rs`'s revision-resolution and raw/numstat splitting (`Sides`, `resolve_sides`, `first_parent`, `split_raw_and_numstat`) moved to `read/raw.rs`.
+- `Hunk` (struct) — ranges, `heading`, `lines`.
+- `BinaryNote` (enum) — `Differ` or `Patch`; how git reported a binary change.
+- `Truncated` (struct) — `shown_lines`/`total_lines`; set by a caller that cut a diff short.
+- `FileDiff` (struct) — `entry`, `hunks`, `binary`, `truncated`, modes.
+- `ParseError` (struct) — `line`, `what`; why diff output did not parse.
+- `parse_unified` (fn) — `&[u8] -> Result<Vec<FileDiff>, ParseError>`; pure unified-diff reader.
+- `parse_file_list` (fn) — `(raw_z, numstat_z) -> Result<FileList, ParseError>`; joins `--raw` and `--numstat` output.
+- `parse_worktree_file_list` (fn) — the same join for the working tree, dropping records numstat lacks.
+- `Pair` (struct) — `removed`/`added` index ranges into one hunk.
+- `pairs` (fn) — `&Hunk -> Vec<Pair>`; side-by-side pairing of removed/added runs.
+- `DiffSpec` (enum) — which two sides to diff: a commit, the index, the working tree.
+- `DiffOptions` (struct) — `context`, `ignore_whitespace`.
+- `DiffError` (enum) — `Run`, `Parse`, `TooLarge`, `NoHead`.
+- `list_files` (fn) — `(repo, spec, options, stop) -> Result<FileList, DiffError>`; the changed files of a spec.
+- `file_diff` (fn) — one file's parsed patch for a spec, truncated past a line budget.
+- `Selection` (enum) — `WholeHunk` or `Lines(Vec<usize>)`; what part of a hunk to apply.
+- `PatchDirection` (enum) — `Forward` or `Reverse`; which way the patch will be applied.
+- `PatchError` (enum) — why `hunk_patch` could not build a patch.
+- `hunk_patch` (fn) — `(diff, hunk, selection, direction) -> Result<Vec<u8>, PatchError>`; a one-file patch for `git apply`.
+
+## editor
+- `EditorError` (enum) — why the editor could not be resolved.
+- `git_editor` (fn) — `(directory) -> Result<String, EditorError>`; `git var GIT_EDITOR` through `run`.
 
 ## history
-- `CHUNK` (const) — commits per chunk a walk hands back at a time.
+- `CHUNK` (const) — commits per chunk a walk hands back.
 - `Order` (enum) — the order a walk emits rows in.
-- `Chunk` (struct) — one batch of rows a walk hands back, and whether more remain.
-- `LinkChunk` (struct) — one batch of `Link`s (commit + parents as handles, no commits read whole): `links`, `done`, `stopped`, as `Chunk`.
-- `Walk` (struct) — a rev-walk in progress; holds its position across chunks. Reads: with a commit-graph, parents/date/generation straight from the graph by position (no object read); a commit outside it, header-parsed from its object (generation infinity). Shallow rule (32): a commit `<common_dir>/shallow` lists has no parents — applied in `RepoNodes::node` after either source and in row hydration, so links and rows agree; its cut parent is never interned. The list is read once per walk (constructor) or per call (`read_commit`, `first_parent_*`, `ahead_behind`), never held in `CommitTable`. Without a commit-graph, date walks parse each commit once; `full_topological` reads the whole range into dense per-handle arrays, then emits. State is per handle (bitsets, `u32` in-degree), never keyed by id.
-- `Walk::all_refs` (fn) — walk from every ref, in the given order; takes the repository's `Arc<CommitTable>`.
-- `Walk::from_tips` (fn) — walk from an explicit set of tip commits; takes the `Arc<CommitTable>`.
-- `Walk::full_topological` (fn) — walk every commit reachable from the given tips, topologically; takes the `Arc<CommitTable>`.
-- `Walk::table` (fn) — the id table the walk's handles come from.
-- `Walk::requested_order` (fn) — the order the caller asked for.
-- `Walk::order_in_force` (fn) — the order actually being walked in (may fall back from the request).
-- `Walk::is_provisional` (fn) — the order in force is not the one requested, and may still change.
-- `Walk::has_commit_graph` (fn) — the repository has a commit-graph file backing this walk.
-- `Walk::explorations` (fn) — how many commits the walk has visited so far.
-- `Walk::next_chunk` (fn) — advance the walk and return its next `Chunk`.
-- `Walk::next_links` (fn) — advance the walk and return its next `LinkChunk`: same commits and limit/stop semantics as `next_chunk`, parents as walked, interned (promotion).
-- `CommitTable` (struct) — one repository's id table: commit-graph positions, then an overflow interner (ADR-0026); `Send + Sync`.
-- `CommitTable::open` (fn) — bind the commit-graph if the repository has one `gix` will use; none in a shallow repository (git's rule, 32).
-- `CommitTable::without_a_commit_graph` (fn) — a table with no graph behind it, for ids of the given hash length: for callers holding ids and no repository.
-- `CommitTable::has_commit_graph` / `graph_count` (fn) — whether a graph backs the low handles; how many.
-- `CommitTable::intern` / `handle_of` / `id_of` (fn) — handle for an id (appending once) / without appending / id for a handle (panics on a foreign one).
-- `CommitTable::len` / `is_empty` / `overflow_len` / `approximate_bytes` (fn) — entries; entries outside the graph; heap bytes (graph not counted).
-- `TableError` (enum) — why the table could not open: `CommitGraph` (the commit-graph directory and gix's error) or `Shallow(ShallowError)` (32).
-- `read_commit` (fn) — read one commit whole, by id; a shallow boundary's `parents` is empty (32).
+- `Chunk` (struct) — one batch of rows and whether more remain.
+- `LinkChunk` (struct) — `links`, `done`, `stopped`; a batch of commits as handles with parents.
+- `Walk` (struct) — a rev-walk in progress, holding its position across chunks.
+- `Walk::all_refs` / `from_tips` / `full_topological` (fn) — start a walk from every ref, given tips, or fully topological.
+- `Walk::requested_order` / `order_in_force` / `is_provisional` (fn) — the asked order, the actual one, whether it may still change.
+- `Walk::has_commit_graph` / `table` / `explorations` (fn) — graph backing, the id table, commits visited.
+- `Walk::next_chunk` / `next_links` (fn) — advance and return the next `Chunk` or `LinkChunk`.
+- `CommitTable` (struct) — one repository's id table: commit-graph positions then an overflow interner; `Send + Sync`.
+- `CommitTable::open` / `without_a_commit_graph` (fn) — bind the graph if usable; a table with no graph.
+- `CommitTable::has_commit_graph` / `graph_count` (fn) — whether a graph backs low handles; how many.
+- `CommitTable::intern` / `handle_of` / `id_of` (fn) — id to handle (appending), without appending, handle to id.
+- `CommitTable::len` / `is_empty` / `overflow_len` / `approximate_bytes` (fn) — sizes.
+- `TableError` (enum) — `CommitGraph` or `Shallow`; why the table could not open.
+- `NodeError` (enum) — why one commit node could not be read during a walk.
+- `read_commit` (fn) — `(handle, id) -> Result<Commit, WalkError>`; one commit whole.
 - `first_parent_merges` (fn) — how many merges lie on a commit's first-parent chain.
-- `first_parent_chain` (fn) — a tip's first-parent commits, root last, honouring `Stop` (m2-details-and-diffs/13, Mistake Radar's default-branch chain).
-- `previous_tips` (fn) — a ref's own reflog, old values newest-first, deduped and capped; `Ok(vec![])` when the ref has no reflog (m2-details-and-diffs/13).
-- `ReflogError` (enum) — why `previous_tips`, `records` or `first_parent_distance` could not read: `Unreadable(String)` (gix), `Shallow(ShallowError)` (m7/32b; `<common_dir>/shallow` unreadable, Display is `ShallowError`'s).
-- `AheadBehind` (struct) — commits only a branch has (`ahead`) and only its upstream has (`behind`).
+- `first_parent_chain` (fn) — a tip's first-parent commits, root last, honouring `Stop`.
+- `previous_tips` (fn) — a ref's reflog old values, newest first, deduped and capped.
+- `ReflogError` (enum) — `Unreadable`, `Shallow`; why a reflog read failed.
+- `WalkError` (enum) — `Tips`, `Commit`, `CommitGraph`, `Shallow`; why a rev-walk failed.
+- `AheadBehind` (struct) — `ahead`, `behind`; drift between a branch and its upstream.
 - `AheadBehind::in_sync` (fn) — neither side has a commit the other lacks.
-- `ahead_behind` (fn) — count how far a branch tip and its upstream tip have drifted apart. Counted from the settled marks after the walk, which runs on past `unshared == 0` while a queued commit is as new as the oldest one-sided pop: commits sharing one committer date are ordered only by id (m8-polish-and-ship/14; `tests/it/equal_dates.rs` against `rev-list --left-right --count`).
-- `WalkError` (enum) — why a rev-walk failed: `Tips`, `Commit(NodeError)`, `CommitGraph`, `Shallow(ShallowError)` (`<common_dir>/shallow` unreadable; never a walk that ignores it; 32).
-
-## shallow (m7-power-tools/32)
-Rule: a commit listed in `<common_dir>/shallow` has no parents — git's (`rev-list --parents`, `log --graph`). Every reader in the crate goes through this one list.
-- `ShallowList` (struct) — the listed ids. `read(&RepoHandle)`: no file = empty; unreadable file or a non-id line = `ShallowError`, never "not shallow". `is_empty`, `contains`. No other reader (`read_in` folded into `read`, 32b).
-- `ShallowError` (struct) — `path`, `source: io::Error`; `couldn't read <path>: <source>`.
+- `ahead_behind` (fn) — count how far two tips have drifted apart.
 
 ## history_reads
-- `merge_base` (fn) — `git merge-base <a> <b>`; `None` on its exit 1 (no common ancestor), never an error.
-- `CommitSummary` (struct) — `id`, `parents` (first parent first), `subject`, `author`.
+- `merge_base` (fn) — `(repo, a, b) -> Result<Option<Oid>, RunError>`; `None` when there is no common ancestor.
+- `CommitSummary` (struct) — `id`, `parents`, `subject`, `author`.
 - `Range` (struct) — `commits` (oldest first), `capped`.
-- `commits_between` (fn) — `git rev-list --reverse --date=raw --format=%H%x00%P%x00%an%x00%ae%x00%ad%x00%s <include> ^<exclude>`, capped at `cap`; when capped, the entries kept are the ones nearest `include`, oldest of the fetched batch dropped.
-- `replayed_commits` (fn) — the commits `git rebase <onto>` will actually replay from `branch`: the same rev-list plus `--topo-order --no-merges --cherry-pick --right-only <onto>...<branch>`, which is git's own todo-list walk. **Not** `commits_between`: git drops merges (no `--rebase-merges`) and changes already on `onto` under another id (no `--reapply-cherry-picks`), so the Ghost Preview would otherwise promise commits git never writes (m5/43).
-- `parse_rev_list` (fn) — pure parser for the format above (`commit <id>` header line, then the NUL-joined fields); a `cargo-fuzz` target.
-- `ParseError` (struct) — `line` (1-indexed), `what`.
-- `Forecast` (enum) — `Clean`, `Conflicts { paths }`, `NotCheckable(String)` (an old git, or an answer this reader does not recognise — never an error).
-- `forecast_merge` (fn) — `git merge-tree --write-tree --name-only --no-messages -z [--merge-base=<base>] <ours> <theirs>` through `GitInvocation::run_raw` (needs the real exit code and stdout even on exit 1, which `run`'s `RunError::Exited` discards); per commit, not chained (design note Hard choice 5) — a rebase/cherry-pick forecast is one call per replayed commit against its own predecessor, never through temporary commits. `--merge-base` needs git ≥ 2.40, the plain form ≥ 2.38; older is `NotCheckable`, not refused. `-z` gives raw bytes for `Conflicts.paths` (git C-quotes non-ASCII/quote/backslash paths without it). **Writes**: `--write-tree` writes the merged/conflicted tree and its blobs into the repository's object database (measured: one forecast on a one-file conflict took `git count-objects` 9→11) — the only writer in this module; every other function here is a plain read (M5/02 fix round M3; no cleanup of those objects yet, see the ticket's NOTES).
-- `MergeStep` (enum, m7-power-tools/05) — `Clean { tree }` (the merged tree's id, so a chain can go on from it), `Conflicts { paths }`, `NotCheckable(String)`.
-- `merge_tree_step` (fn, m7-power-tools/05) — `(repo, git, base, ours, theirs, stop)`: `merge-tree --write-tree --name-only --no-messages -z --merge-base=<base>`, one step of a chained replay forecast; git < 2.40 is `NotCheckable`. Writes objects as `forecast_merge` does. `forecast_merge` itself is unchanged and still accepts a scratch (commit-tree) commit as `ours` (`forecast_merge_accepts_a_commit_tree_result_as_ours`).
-- `changed_paths` (fn) — `git diff-tree -r --name-only -z <from> <to>`, capped.
-- `LostRun` (struct) — `tip` (the newest lost commit of a run), `under` (its lost first-parent ancestors, capped at 999) (m7-power-tools/19).
-- `Unreached` (struct) — `lost: Vec<LostRun>` (in candidate order), `checked`, `capped`.
-- `unreached(repo, candidates: &[Oid], cap, stop: &dyn Stop) -> Result<Unreached, RunError>` (fn) — which of the first `cap` candidates (newest first) nothing holds: held = `refs/heads/*`, `refs/tags/*` (peeled), `refs/remotes/*`, every stash entry (`refs/stash` and its reflog), `HEAD`; **never** `refs/graft/**`. Method (a): `rev-list -g --ignore-missing refs/stash`, then one `rev-list --parents --ignore-missing --stdin --not --branches --tags --remotes` fed candidates, then `^HEAD` and `^<stash entry>` lines (a `--not` line on stdin is refused before git 2.42; checked on 2.38.5 and 2.54, m7-power-tools/18b). A lost candidate on another's first-parent chain folds into that run, whatever the order. A pruned candidate is passed over. Measured p95 **190 ms** for 500 candidates on 100k commits / 50 652 refs, no commit-graph (`docs/perf/lost-commit-cost.txt`; in-process walk 218 ms, per-candidate `--contains` ≈ 97 min extrapolated).
-- `CompareSpan` (enum) / `compare_span(repo, base, tip, stop) -> Result<CompareSpan, RunError>` (fn) — `Since { split, ahead }` (merge base, `count_between(split, tip)`) or `NoSharedHistory` (`merge-base` exit 1); `tip` an ancestor of or equal to `base` → `split == tip`, `ahead == 0` (m7-power-tools/14a).
-- `count_between(repo, exclude, include, stop) -> Result<usize, RunError>` (fn) — `git rev-list --count <include> ^<exclude>`; uncapped; a non-integer answer is `Unparsable` (14a).
-- `StashOnly` (struct) / `only_in_stash(repo, stashes, cap, stop) -> Result<StashOnly, RunError>` (fn) — commits a stash entry's **first parent** reaches that no branch, tag, remote or `HEAD` does (never 2nd/3rd parents; `refs/graft/**` holds nothing), each paired with the newest entry reaching it, newest entry first; `capped`, `skipped` (unreadable `^1`). One `cat-file --batch-check` + one `rev-list --parents --ignore-missing --stdin` walk; an unborn `HEAD` holds nothing (`--ignore-missing`, 14b); p95 219 ms (1 entry) / 195 ms (10) on 100k commits / 50 652 refs (`docs/perf/stash-only-cost.txt`) (14a).
-- `first_marker_line` (fn) — the first line that opens a conflict block in a file, 1-indexed; plain fs read. **Seven or more** `<` at column 0, then a space and a label or nothing: the everyday form, `rerere`'s bare `<<<<<<<`, and a path whose `conflict-marker-size` is larger (which `conflict::parse` refuses by name). This guards a stage, so it errs towards seeing a marker (m6-conflicts/01 fix round M3/M5).
-
-## reflog (m7/22, ADR-0046)
-- `ReflogRecord` (struct) — `refname` (full: `HEAD`, `refs/heads/<b>`), `old`/`new: Option<Oid>` (`None` for git's all-zero id), `at` (unix seconds, committer time of the record), `subject` (git's message, as written).
-- `records(repo, cap) -> Result<Vec<ReflogRecord>, ReflogError>` (fn) — the newest `cap` records of **each** of `HEAD`'s and every local branch's logs, through gix (no spawn), merged newest first; a tie in time keeps each log's own order and puts `HEAD` first, then branches by name. A missing log is empty. Remote-tracking logs and `refs/stash` are not read.
-- `first_parent_distance(repo, from, to, limit) -> Result<Option<usize>, ReflogError>` (fn) — how many first-parent steps back from `from` `to` is, within `limit`; `None` past it, off the chain, or when a commit is gone (pruned). Stops at a shallow boundary (a listed commit has no parents; `None` if `to` is below it). Reads `ShallowList` once per call.
+- `commits_between` (fn) — `rev-list <include> ^<exclude>`, capped, as a `Range`.
+- `replayed_commits` (fn) — the commits `git rebase <onto>` will actually replay from a branch.
+- `parse_rev_list` (fn) — `&[u8] -> Result<Vec<CommitSummary>, ParseError>`; pure rev-list reader.
+- `ParseError` (struct) — `line`, `what`.
+- `changed_paths` (fn) — `diff-tree -r --name-only` between two commits, capped.
+- `first_marker_line` (fn) — `&Path -> io::Result<Option<usize>>`; first line opening a conflict block.
+- `CompareSpan` (enum) — how a tip relates to a base: since a split point, or unrelated.
+- `compare_span` (fn) — `(repo, base, tip, stop) -> Result<CompareSpan, RunError>`.
+- `count_between` (fn) — `rev-list --count <include> ^<exclude>`, uncapped.
+- `StashOnly` (struct) — commits reachable only from stash entries.
+- `only_in_stash` (fn) — `(repo, stashes, cap, stop) -> Result<StashOnly, RunError>`.
+- `Forecast` (enum) — `Clean`, `Conflicts { paths }`, `NotCheckable`; a merge's predicted outcome.
+- `forecast_merge` (fn) — `git merge-tree --write-tree` for two tips, as a `Forecast`.
+- `MergeStep` (enum) — `Clean { tree }`, `Conflicts`, `NotCheckable`; one chained merge-tree step.
+- `merge_tree_step` (fn) — `(repo, git, base, ours, theirs, stop)`; one merge-tree step a chain can continue from.
+- `LostRun` (struct) — `tip`, `under`; a run of commits no ref reaches.
+- `Unreached` (struct) — `lost`, `checked`, `capped`.
+- `unreached` (fn) — `(repo, candidates, cap, stop) -> Result<Unreached, RunError>`; which candidates no ref reaches.
 
 ## mailmap
-- `Mailmap` (struct) — a repository's resolved `.mailmap`, wrapping gix's own snapshot.
-- `Mailmap::from_bytes` (fn) — parse a mailmap from raw bytes (tests; real callers use `RepoHandle::mailmap`).
-- `Mailmap::resolve` (fn) — canonical `(name, email)` for an identity, or itself if the mailmap says nothing.
+- `Mailmap` (struct) — a repository's resolved `.mailmap`, wrapping gix's snapshot.
+- `Mailmap::from_bytes` (fn) — parse a mailmap from raw bytes; used only by tests.
+- `Mailmap::resolve` (fn) — canonical `(name, email)` for an identity.
 
-## repo
-- `RepoHandle` (struct) — an open repository; cheap to hold and clone within a process.
-- `RepoHandle::open` (fn) — open the repository at `path`.
-- `RepoHandle::git_dir` (fn) — the `.git` directory.
-- `RepoHandle::common_dir` (fn) — the common directory (shared across worktrees).
-- `RepoHandle::workdir` (fn) — the working tree root, if any.
-- `RepoHandle::is_bare` (fn) — no working tree.
-- `RepoHandle::mailmap` (fn) — the repository's resolved `.mailmap`.
-- `RepoHandle::head` (fn) — where `HEAD` points.
-- `RepoHandle::references` (fn) — every ref in the repository, Graft's own `refs/graft/**` included; not for anything drawn.
-- `RepoHandle::reference` (fn) — one ref by full name, unpeeled and unfollowed; `None` when absent. For a caller that asks about one or two names rather than the whole store (m3/03 review, M6).
-- `RepoHandle::commit_tips` (fn, takes `&dyn KnownCommits`) — every branch/tag tip commit; a tip the table already knows is a commit is never header-read (m1-the-graph/58).
-- `RepoHandle::ref_snapshot` (fn, takes `&dyn KnownCommits`) — `references` and `commit_tips` from one pass over the ref store, minus Graft's own refs: the repository as Graft draws it.
-- `RepoHandle::peeled_references` (fn, takes `&dyn KnownCommits`) — every ref that reaches a commit, with that commit (tags peeled).
-- `KnownCommits` (trait) — `is_known_commit(&self, id: Oid) -> bool`, a free check a tip can be skipped past without reading its object; provided `covers_the_graph(&self) -> bool` (default `false`): when true an unknown tip is read whole at once, no header first (m1-the-graph/58b). `()` answers `false` to both (header-first path); `graft_git::history::CommitTable` answers from its handle table and covers the graph when it has a commit-graph.
-- `RepoHandle::upstream` (fn) — the remote-tracking ref a branch pulls from, per its config.
-- `RepoHandle::git_path` (fn) — `git rev-parse --git-path <relative>`, resolved to an absolute path (main worktree: joined against `workdir`/`git_dir`; linked worktree: already absolute) (m3/01).
-- `RepoHandle::worktree_name` (fn) — `"main"` when `git_dir == common_dir`, else the last component of `git_dir` (m3/01).
-- `SharedRepo` (struct) — the `Send`, expensive-to-open half of a repository; hands out `RepoHandle`s.
-- `SharedRepo::OBJECT_CACHE_BYTES` (const) — object cache size a `SharedRepo` opens with.
-- `SharedRepo::open` (fn) — open the repository at `path`.
-- `SharedRepo::handle` (fn) — a cheap per-thread `RepoHandle` onto this repository.
-- `SharedRepo::handle_with_object_cache` (fn) — the same, with an object cache of the given bytes (`0`: none), for jobs whose reads do not repeat.
-- `SharedRepo::git_dir` (fn) — the `.git` directory.
-- `TipsError` (enum) — why reading commit tips failed.
-- `RefEntry` (struct) — one ref: its name and target.
-- `RefSnapshot` (struct) — every ref (`refs`), every commit they reach (`tips`) and each ref that reaches a commit with it (`peeled`), read in one pass. `stats` says how the pass learned its tips (m1-the-graph/58b): a packed tag resolves from its `packed-refs` peeled line with no read; any other unknown object is read once, whole (header first only when the table does not cover the graph).
-- `TipStats` (struct) — `refs`, `known`, `tags`, `peeled_packed`, `objects_read`, `find_header` for one ref-store pass; for `budgets --phases` and the corpus tests, never a decision input.
-- `RefTarget` (enum) — what a ref points at.
-- `RefsError` (enum) — why reading references failed.
-- `HeadState` (enum) — where `HEAD` points: a branch, detached, or unborn.
-- `OpenError` (enum) — why opening a repository failed.
-- `OpenError::path` (fn) — the path that failed to open.
-- `HeadError` (enum) — why reading `HEAD` failed.
-
-## run
-- `GitInvocation` (struct) — `git -C <workdir or git_dir> --no-pager <args>`; env adds `GIT_TERMINAL_PROMPT=0`, `LC_ALL=C`, `GIT_OPTIONAL_LOCKS=0`, user config kept.
-- `GitInvocation::new` / `arg` / `args` (fn) — build from typed args; the first `Path` gets a `--` before it if none was added.
-- `GitInvocation::in_folder` (fn) — m8-polish-and-ship/08: like `in_directory`, but the child's `REPO_LOCATING_ENV` variables are removed, so a stray `GIT_DIR` cannot redirect a repo-less command (`git init`).
-- `REPO_LOCATING_ENV` (const) — `GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_INDEX_FILE`, `GIT_OBJECT_DIRECTORY`: what `in_folder` scrubs.
-- `GitInvocation::env` (fn) — adds one variable to the child's environment, after the fixed ones (`GIT_INDEX_FILE`, `GIT_AUTHOR_*`, …); a later call for the same key overrides an earlier one (m3/01).
-- `GitInvocation::stdin` (fn) — bytes fed from their own thread; without it stdin is null.
-- `GitInvocation::output_cap` (fn) — max bytes kept per stream (default 64 MiB); past it the child is killed, output cut to the cap, `truncated`, still `Ok`.
-- `GitInvocation::run` (fn) — spawn, drain stdout/stderr concurrently, poll `Stop` every ≤ 50 ms; on stop stop + reap, `Err(Stopped)`. **Every child leads its own process group** (`process_group(0)`, m8/13c), and the default stop signals the group: `killpg(SIGTERM)` + `killpg(SIGCONT)` (SIGCONT since m8/13e: a member held by `SIGSTOP`/`SIGTTIN` acts on the TERM), `killpg(SIGKILL)` after a 2 s grace, group signals only before git is reaped; when git dies of the TERM with helpers still listed (a hook that ignores TERM), the same helper pass the hook-first stop runs after git ends (`after_git_ended`: TERM + CONT each, SIGKILL 1 s later, SIGKILL to any still listed at the grace's end; members unreadable → `killpg(SIGKILL)`, `ESRCH` = empty group) runs inside the same 2 s grace (m8/13e); a run that ends without a stop signals nothing (a hook's background job is left alone). Signals through `nix` (before 13c: `kill(1)` for SIGTERM, git's pid only). Stopping is **`SIGTERM`, then `SIGKILL` only after a 2 s grace** (m3/05 review fix): git removes `index.lock`/`HEAD.lock`/`refs/heads/*.lock` from a signal handler and from `atexit`, and neither runs on `SIGKILL`, so the old `Child::kill` could strand a lock a cancelled commit had open — measured 43 stranded locks in 267 mid-flight `SIGKILL`s on git 2.54, 6 in 288 with `SIGTERM`.
-- `STOP_WITHIN` (const) — the longest `run` takes to return once `Stop` says stop, child reaped, worst case: one 50 ms poll + `HOOKS_GRACE` + the 2 s `SIGTERM` grace (4.05 s; a default stop still ends within 2.05 s); a hook-first stop adds its first read of the group, which Graft does not bound (one `ps` on macOS, 1.9–2.3 s seen under load, m8/13k). The app's shutdown waits at least this long so it never abandons a git child (m8/13b, 13c).
-- `GitInvocation::stop_hooks_first` (fn) — m8/13c: on a stop, end git's **helpers** (every group member but git: hooks, their children, filters, gpg) first — `SIGTERM` + `SIGCONT` each, later ones too (members read ≤ every 250 ms), `SIGKILL` to one still listed 1 s (`HELPER_TERM_GRACE`) after its `SIGTERM` — and leave git alone for `HOOKS_GRACE`, so git ends the way it ends when a hook fails (a merge: `MERGE_HEAD`/`MERGE_MSG`/`MERGE_MODE` written, exit 1 — paused). git still running then → the default group stop. No helpers, or members unreadable → the default group stop at once.
-- `GitInvocation::stops_hooks_first` (fn, m8/13c) — whether `stop_hooks_first` was called: graft-ops' tests read which of its lines are marked.
-- `HOOKS_GRACE` (const) — 2 s: how long a hook-first stop leaves git alone, counted from the first helper's `SIGTERM`, not from the stop's call (m8/13k: a slow `ps` had spent it before git's hook was even ended).
-- `group::members` (fn, crate-private, `run/group.rs`) — m8/13c: every pid whose process group is `pgid`: Linux `/proc/*/stat` field 5, macOS `/bin/ps -A -o pid= -o pgid=`, other targets / a failed read `Err`.
-- `GitInvocation::command_line` (fn) — `git <args>` shell-quoted, lossy UTF-8, without `-C`/`--no-pager`; display only.
-- `command_line` (fn) — the same text for a bare `&[GitArg]` not yet bound to a repository (an operation's plan, the Command Log) (m3/02).
-- `GitArg` (enum) — `Flag`, `Count` (`-U3`), `Oid` (full hex), `Ref`/`Path` (raw bytes), `Glued` (a fixed flag with raw bytes glued on: `--path=<bytes>`, for an option whose value is a pathname and cannot wait for the `--`), `Separator`, `Word` (caller-built, never a path or ref).
-- `Stop` (trait) — `should_stop(&self) -> bool`, `Sync`; impls for `AtomicBool` (Relaxed load) and `()` (never). The walk's stop is a `&dyn Fn() -> bool`, no type of its own, so no impl.
-- `GitOutput` (struct) — `stdout`, `stderr`, `truncated`.
-- `RawOutput` (struct) — `output` (`GitOutput`), `code` (`Option<i32>`: `None` only when the runner itself killed the child).
-- `GitInvocation::run_raw` (fn) — like `run`, but never turns a non-zero exit into an error and never discards stdout: the caller reads `RawOutput::code` and decides what it means (m5-history-and-ghost-preview/02, for `merge-tree`'s clean/conflicts/error three-way, which `run`'s `judge` would collapse to a `stderr_first_line` on any non-zero code).
-- `RunError` (enum) — `GitNotFound`, `Spawn(io)`, `Sink(io)` (a stderr sink poisoned by an earlier panic on a cloned invocation — was mislabelled `Spawn`, M4/02 review / KNOWN_GAPS row 455, m5-history-and-ghost-preview/02), `Unparsable(String)` (git ran and exited zero but the output did not match the shape the caller parses — also used to be folded into `Spawn`, whose `Display` falsely reads "could not run git"; m5-history-and-ghost-preview/02 fix round M4), `Stopped`, `Exited { status, stderr_first_line, command }`, `Signalled { command }`; `Display` is one line.
-- Split into files, public items unchanged (m2 review M8): `exec.rs` is the child-process machinery `GitInvocation::spawn`/`supervise` are built on — pipe draining on their own threads, kill/reap, `GitArg` → `OsString`/shell-quoted text; this file keeps the types and `GitInvocation`'s own methods.
-- `GitInvocation::on_stderr_line` (fn, takes `Box<dyn FnMut(&[u8]) + Send>`) — each `\r`/`\n`-separated stderr segment handed over as it arrives (separators dropped, empties skipped, partials carried across reads, tail flushed at EOF), **on the drain thread**; `GitOutput.stderr` still whole and capped; clones share the sink (m4/02).
-- `GitInvocation::askpass` (fn, takes `&AskPassServer`) — sets `GIT_ASKPASS`/`SSH_ASKPASS` = the server's helper, `SSH_ASKPASS_REQUIRE=force`, `GRAFT_ASKPASS_SOCKET` = its socket; `GIT_TERMINAL_PROMPT=0` stays; no credential in env or argv (m4/02).
-
-## run/askpass
-- `AskPass` (trait) — `ask(&self, prompt: &str) -> Option<Secret>`, `Send + Sync`; runs on a server-owned thread, may block; `None` = cancelled.
-- `Secret` (struct) — credential bytes; `new(Vec<u8>)`, `expose(&self) -> &[u8]`; `Debug` prints `Secret(…)`; no `Display`/`Clone`; `Drop` zeroes the whole allocation (safe code + `black_box`: the crate forbids `unsafe`).
-- `AskPassServer` (struct) — `spawn(helper: PathBuf, handler: Arc<dyn AskPass>) -> io::Result<Self>` makes `temp_dir()/graft-askpass-<pid>-<n>` (0700) with `ask.sock`, one listener thread; `socket_path()`, `helper()`; `close(self) -> io::Result<()>` stops, joins, unlinks, rmdirs (a waiting helper gets EOF); order is stop, wake-connect, join, then unlink; a failed wake is an `Err` saying the listener still runs, socket left in place; prompt read and reply write each time out at 5 s; a helper accepted after stop is closed unanswered; the listener waits on its handler with one blocking `recv`, ended by the answer, by shutdown (which wakes it through a shared slot), or by the handler thread unwinding — no poll (m4/04 review fix); `Drop` does the same, ignoring errors; `Debug` shows socket and helper only. Peer check (m8/21): each accepted connection's peer uid (`getpeereid` on macOS/BSD, `SO_PEERCRED` on Linux, through `nix`) must equal our effective uid; otherwise — or when the uid cannot be read — the connection is closed unread and unanswered, the handler is never asked; nothing is written to the terminal — `close` returns `Err(PermissionDenied)` carrying a typed `Refused` payload, "refused … ; N refused in all" (no `askpass: ` prefix, 20b R1) (first refusal + count, bounded) after its cleanup (m8/21 review fix).
-- `Refused` (struct) — the payload of `close`'s refusal `io::Error`: `count()`, `cleanup()` (the cleanup failure when both happened: the refusal wins, `with_cleanup(io::Error)` sets it; R3 amendment 2), `Display` "<first>; <n> refused in all", `Error`; `new(first, count)` for callers' tests (20b R1).
-- `refused` (fn) — `refused(&io::Error) -> Option<&Refused>`: the typed payload, never by `ErrorKind` (20b R1).
-- `respond` (fn) — `respond(socket: &Path, prompt: &str, out: &mut dyn Write) -> Result<(), RespondError>`: the helper half (Graft's binary in askpass mode) — writes the answer + `\n` to `out`, nothing else.
-- `RespondError` (enum) — `Io(io::Error)`, `Cancelled` (exit non-zero), `Protocol(&'static str)`; `Display` one line.
-- Wire: helper sends `u32 BE len` + prompt (≤ 4 KiB, else closed); server replies `u8` status (0 answer, 1 cancelled) + `u32 BE len` + answer (helper accepts ≤ 64 KiB).
+## reflog
+- `ReflogRecord` (struct) — `refname`, `old`/`new`, `at`, message; one reflog entry.
+- `records` (fn) — `(repo, cap) -> Result<Vec<ReflogRecord>, ReflogError>`; newest records of `HEAD` and each local branch.
+- `first_parent_distance` (fn) — `(repo, from, to, limit) -> Result<Option<usize>, ReflogError>`; first-parent steps between two commits.
 
 ## remote
-- `Remote` (struct) — `name`, `fetch_url` (`remote.<n>.url` as written), `push_url` (`pushurl`, if set).
-- `list` (fn) — `list(&RepoHandle) -> Result<Vec<Remote>, RemoteError>`: gix config, `origin` first then by name; a remote with no `url` is left out.
-- `TrackedUpstream` (struct) — `remote`, `remote_branch` (`refs/heads/x`), `tracking_ref` (through the fetch refspec, via `RepoHandle::upstream`), `tracking_tip: Option<Oid>` (`None` before the first fetch).
-- `upstream_of` (fn) — `upstream_of(&RepoHandle, branch: &str /* full */) -> Result<Option<TrackedUpstream>, RemoteError>`; `None` without `branch.<n>.remote`/`.merge` or when the refspec does not map the branch.
-- `RemoteError` (enum) — `Config(String)`, `Refs(RefsError)`; `Display` one line.
-- `RemoteFailure` (enum) — `AuthFailed { target }`, `NonFastForward`, `StaleInfo`, `RemoteRejected { reason }`, `NoSuchRemote { name }`, `Unreachable { target }`, `NotFastForward`, `WouldOverwrite { paths }`, `Cancelled` (caller sets it from `RunError::Stopped`), `Other { first_line }`.
-- `classify_failure` (fn) — `classify_failure(stderr: &[u8]) -> RemoteFailure`: pure, reads every line (`LC_ALL=C` English), rules in the order above, first match wins; unmatched → `Other` with the first `fatal:`/`error:` line (else first non-progress line) verbatim. Tests hold real git 2.54 stderr.
-- `RemoteProgress` (struct) — `phase` (lower-case, no colon), `percent`, `done`, `total`, `rate` (git's text); `brief()` → `<phase> <pct>%` / `<phase> <done>/<total>` / `<phase>`, ≤ 32 chars.
-- `parse_progress` (fn) — `parse_progress(segment: &[u8]) -> Option<RemoteProgress>`: one stderr segment; `remote: ` and its padding stripped; `None` for ref updates, `hint:`/`error:`/`fatal:`, anything else.
+- `Remote` (struct) — `name`, `fetch_url`, `push_url`.
+- `list` (fn) — `(repo) -> Result<Vec<Remote>, RemoteError>`; configured remotes, `origin` first.
+- `TrackedUpstream` (struct) — `remote`, `remote_branch`, `tracking_ref`.
+- `upstream_of` (fn) — `(repo, branch) -> Result<Option<TrackedUpstream>, RemoteError>`.
+- `RemoteError` (enum) — `Config`, `Refs`.
+- `RemoteFailure` (enum) — `AuthFailed`, `NonFastForward`, `StaleInfo`, `RemoteRejected`, `NoSuchRemote`, …; a classified failure.
+- `classify_failure` (fn) — `&[u8] -> RemoteFailure`; pure reader of a remote command's stderr.
+- `RemoteProgress` (struct) — `phase`, `percent`, `done`, `total`, `rate`; `brief` (fn) a short label.
+- `parse_progress` (fn) — `&[u8] -> Option<RemoteProgress>`; one stderr progress segment.
 
-## snapshot_reads (m7-power-tools/30r, ADR-0052)
-`raw_record`'s questions 1 and 2a in process, each giving git's own answer (a wrong "no" loses his bytes). `check-attr` stays a spawn in graft-ops.
-- `ChangedFile` (struct) — `path` (repo-relative, `/`-separated, raw bytes), `executable` (`100755`), `blob`.
-- `changed_files` (fn) — `(repo, head: Option<Oid>, to_tree, stop) -> Result<Vec<ChangedFile>, ReadError>`: the regular files `to_tree` holds apart from `head`'s tree (peeled), the set `diff-tree -r -z --no-renames` gives kept to regular files on the new side (added, modified, mode-only, type-changed into a file; never a symlink, gitlink or deletion); `None` = every regular file. Identical subtree ids skipped unread; modes canonicalised as git does. Sorted by path bytes. Tested against real `diff-tree` (`tests/it/snapshot_reads.rs`).
-- `autocrlf_converts` (fn) — `(repo) -> Result<bool, ReadError>`: `core.autocrlf` as git reads it now — the repository re-opened (`gix::open_opts`, the handle's own options plus `git_binary`, so the git installation's config is read) on every call, never the handle's launch-time config. Unset or git-false → `false`; `input`, a bare key, any true or non-boolean value → `true`. gix's installation-config lookup spawns `git config` once per process. Config sources (m8/21, tested in `tests/it/snapshot_reads.rs` in an isolated child process): the repository's own files and includes, worktree config, the global file (`GIT_CONFIG_GLOBAL`/`HOME`/XDG), the system file (`GIT_CONFIG_SYSTEM`, off under `GIT_CONFIG_NOSYSTEM`), the git installation's file, `GIT_CONFIG_COUNT`/`_KEY_n`/`_VALUE_n` (read by gix), and `GIT_CONFIG_PARAMETERS` (gix does not read it: parsed here as git does and passed as a `-c` override, so it wins over `GIT_CONFIG_COUNT` as in git; malformed → `ReadError::Config`).
-- `ReadError` (enum) — `Object { oid, message }` (not found, unreadable, not a tree), `Config(String)` (the re-open failed), `Stopped`. Display one line.
+## repo
+- `KnownCommits` (trait) — `is_known_commit(id) -> bool`; lets tip reads skip objects already known as commits.
+- `RepoHandle` (struct) — an open repository, cheap to hold within a thread.
+- `RepoHandle::open` (fn) — open the repository at `path`.
+- `RepoHandle::git_dir` / `common_dir` / `workdir` / `is_bare` (fn) — repository locations and bareness.
+- `RepoHandle::mailmap` / `head` (fn) — the resolved `.mailmap`; where `HEAD` points.
+- `RepoHandle::git_path` (fn) — `git rev-parse --git-path`, made absolute.
+- `RepoHandle::worktree_name` (fn) — `"main"` or the linked worktree's name.
+- `RepoHandle::references` / `reference` (fn) — every ref; one ref by full name.
+- `RepoHandle::commit_tips` / `ref_snapshot` / `peeled_references` (fn) — tip commits; refs and tips in one pass; refs with their commits.
+- `RepoHandle::upstream` (fn) — the remote-tracking ref a branch pulls from.
+- `HeadState` (enum) — a branch, detached, or unborn.
+- `OpenError` (enum) — why opening failed; `path` (fn) the path that failed.
+- `HeadError` (enum) — why reading `HEAD` failed.
+- `SharedRepo` (struct) — the `Send` expensive half of a repository; hands out `RepoHandle`s.
+- `SharedRepo::OBJECT_CACHE_BYTES` (const) — object cache size handles open with.
+- `SharedRepo::open` / `handle` / `handle_with_object_cache` / `git_dir` (fn) — open; per-thread handles; the `.git` dir.
+- `TipsError` (enum) — why reading commit tips failed.
+- `RefSnapshot` (struct) — `refs`, `tips`, `peeled`; one consistent read of the ref store.
+- `TipStats` (struct) — counters for one ref-store pass; read only by tests and budgets.
+- `RefEntry` (struct) — one ref: name and target.
+- `RefTarget` (enum) — what a ref points at.
+- `RefsError` (enum) — why reading references failed.
+
+## run
+- `askpass` (mod) — credential prompts routed from git's helper to the app.
+- `HOOKS_GRACE` (const) — how long a hook-first stop leaves git alone.
+- `STOP_WITHIN` (const) — the longest `run` takes to return after `Stop`.
+- `GitArg` (enum) — `Flag`, `Count`, `Oid`, `Ref`, `Path`, `Glued`, …; a typed argument, never a shell string.
+- `Stop` (trait) — `should_stop() -> bool`, `Sync`; polled by long runs.
+- `GitOutput` (struct) — `stdout`, `stderr`, `truncated`.
+- `RawOutput` (struct) — `output`, `code`; output with the exit code kept.
+- `RunError` (enum) — `GitNotFound`, `Spawn`, `Sink`, `Exited`, `Stopped`, …; why a git run failed.
+- `GitInvocation` (struct) — one `git` command bound to a repository, with fixed env.
+- `REPO_LOCATING_ENV` (const) — the `GIT_DIR`-style variables `in_folder` removes.
+- `command_line` (fn) — `&[GitArg] -> String`; display text for unbound args.
+- `GitInvocation::new` / `in_folder` (fn) — bind to a repository; bind to a plain folder.
+- `GitInvocation::arg` / `args` / `env` / `stdin` / `output_cap` (fn) — builders.
+- `GitInvocation::on_stderr_line` / `askpass` (fn) — stream stderr segments; route credential prompts.
+- `GitInvocation::stop_hooks_first` / `stops_hooks_first` (fn) — end helpers before git on stop; whether set (tests only).
+- `GitInvocation::run` / `run_raw` / `command_line` (fn) — run, erroring on non-zero; run keeping the code; display text.
+
+## run/askpass
+- `AskPass` (trait) — `ask(prompt) -> Option<Secret>`; answers a credential prompt, `None` cancels.
+- `Secret` (struct) — credential bytes, zeroed on drop; `new`, `expose` (fn).
+- `AskPassServer` (struct) — the socket server git's helper talks to; `spawn` / `socket_path` / `helper` / `close` (fn).
+- `Refused` (struct) — payload of `close`'s refusal error; `new` / `with_cleanup` / `cleanup` / `count` (fn).
+- `refused` (fn) — `&io::Error -> Option<&Refused>`; the typed payload.
+- `respond` (fn) — `(socket, prompt, out) -> Result<(), RespondError>`; the helper half.
+- `RespondError` (enum) — `Io`, `Cancelled`, `Protocol`.
+
+## shallow
+- `ShallowList` (struct) — ids in `<common_dir>/shallow`; `read` / `is_empty` / `contains` (fn).
+- `ShallowError` (struct) — `path`, `source`; the file exists but could not be read.
+
+## snapshot_reads
+- `ChangedFile` (struct) — `path`, `executable`, `blob`.
+- `changed_files` (fn) — `(repo, head, to_tree, stop) -> Result<Vec<ChangedFile>, ReadError>`; regular files a tree changes.
+- `autocrlf_converts` (fn) — `(repo) -> Result<bool, ReadError>`; `core.autocrlf` as git reads it now.
+- `ReadError` (enum) — `Object`, `Config`, `Stopped`.
 
 ## stash
-- `StashEntry` (struct) — `index` (`0` newest), `commit`, `message` (git's own reflog message), `at`, `paths` (tracked changes plus, for `-u`/`-a`, the untracked-files commit's own paths) (m3/01).
-- `StashError` (enum) — `Stopped`, `Reflog` (the reflog itself could not be read), `Run` (a `diff-tree` spawn failed), `Object` (a stash commit could not be read) (m3/01).
-- `list` (fn) — every stash entry, newest first, capped at 50; reads `refs/stash`'s reflog through `gix` (no `git stash list` spawn), one `diff-tree --name-only -r -z <stash>^ <stash>` spawn per entry plus a second (`--root <stash>^3`) when `gix` finds a third parent (the untracked-files commit); `Ok(vec![])` on a repository with no stashes (m3/01).
-- `commits` (fn) — every entry's `(commit, index)`, newest first, same cap; the reflog only, with no `diff-tree` spawn at all, so the ref badges can be read on the startup/refresh path that `list` is too slow for (m3-working-tree-undo-and-stash/06).
+- `StashEntry` (struct) — `index`, `commit`, `message`, `at`, `paths`.
+- `StashError` (enum) — `Stopped`, `Reflog`, `Run`, `Object`.
+- `list` (fn) — `(repo, stop) -> Result<Vec<StashEntry>, StashError>`; entries newest first, capped.
+- `commits` (fn) — `(repo, stop) -> Result<Vec<(Oid, usize)>, StashError>`; entry commits from the reflog only.
 
 ## state
-- `InProgress` (enum) — `Merge`, `Rebase`, `CherryPick`, `Revert`, `Bisect`; `name`/`continue_command`/`abort_command` (m3/01).
-- `in_progress` (fn) — a plain fs check under `RepoHandle::git_dir` for `MERGE_HEAD`, `rebase-merge/`, `rebase-apply/`, `CHERRY_PICK_HEAD`, `REVERT_HEAD`, `BISECT_LOG`; no `git` spawn (m3/01).
-- `InProgressDetail` (struct) — `kind`, `step` (`(current, total)`), `head_name`, `onto` (these three only ever set for `Rebase`, m5-history-and-ghost-preview/02), `theirs: Result<Option<CommitSummary>, IncomingError>` — the incoming commit from `MERGE_HEAD` line 1 / `CHERRY_PICK_HEAD` / `REVERT_HEAD` / `REBASE_HEAD` (either backend), `Ok(None)` for bisect or a missing file (m6-conflicts/10). A head file naming a commit git cannot list is `Err` **on this field only** (m6-conflicts/23, review m6-amend-10-22 Minor 2): it used to fail the whole read, which hid the banner and its `--abort`.
-- `IncomingError` (struct, `Clone`/`Eq`) — `file: &'static str` (the head file), `reason: String`; `Display` `could not read <file>: <reason>`. Drawn as theirs' name by `graft`'s `side_names` (m6-conflicts/23).
-- `StateError` (enum) — `Io(io::Error)`, from `in_progress` itself; a rebase detail file that is missing or unparsable is never an error, just `None` on that field (m5-history-and-ghost-preview/02).
-- `in_progress_detail` (fn) — `in_progress`, plus for a rebase: `rebase-merge/{msgnum,end,head-name,onto}` or `rebase-apply/{next,last,head-name,onto}`, whichever backend is in use; plain fs reads (m5-history-and-ghost-preview/02), plus one `rev-list` for `theirs` that cannot be stopped — `in_progress_detail_with_stop` with `&()`.
-- `in_progress_detail_with_stop` (fn) — `(repo, &dyn Stop)`: the same read, `Stop` able to end theirs' `rev-list`; a stopped run lands on `theirs` as `Err` (m6-conflicts/23). `graft::working_tree::read` uses it.
-- `mergetool` (fn) — `git config --get merge.tool` through `run`; `None` on its exit 1 (unset), never an error (m5-history-and-ghost-preview/02).
+- `InProgress` (enum) — `Merge`, `Rebase`, `CherryPick`, `Revert`, `Bisect`; `name` / `continue_command` / `abort_command` (fn).
+- `in_progress` (fn) — `(repo) -> Result<Option<InProgress>, io::Error>`; plain fs check of the git dir.
+- `InProgressDetail` (struct) — `kind`, rebase step, head name, onto, incoming commit.
+- `IncomingError` (struct) — `file`, `reason`; why the incoming commit could not be read.
+- `StateError` (enum) — `Io`.
+- `in_progress_detail` / `in_progress_detail_with_stop` (fn) — `in_progress` plus rebase detail; with a `Stop`.
+- `mergetool` (fn) — `git config --get merge.tool`; `None` when unset.
 
 ## status
-- `WorkingTreeCounts` (struct) — how many files are staged, unstaged and untracked.
-- `WorkingTreeCounts::is_clean` (fn) — no staged, unstaged or untracked changes.
-- `StatusError` (enum) — why counting or reading the working tree's changes failed (`Run`/`Malformed`/`TooLarge` added m3/01).
-- `Change` (enum) — one side's per-file state: `Added`, `Modified`, `Deleted`, `Renamed`, `Copied`, `TypeChanged` (m3/01).
-- `StatusEntry` (struct) — one path's status: `path`, `original_path` (renames/copies), `staged`/`unstaged` (`Option<Change>`), `untracked`, `unmerged`, `unmerged_how` (`Some` exactly when `unmerged`; m6-conflicts/01), `submodule: Option<SubmoduleStatus>` (`None` for `N...` and untracked records; was a `bool`, m7-power-tools/13); `is_staged`/`is_unstaged` (m3/01).
-- `SubmoduleStatus` (struct) — porcelain v2 `S<c><m><u>`: `pointer_moved` (C), `changed_inside` (M), `untracked_inside` (U); each against the index, so a staged pointer move reads `M. S...` (measured, git 2.54). Any other `sub` field is `Malformed` (m7-power-tools/13).
-- `UnmergedHow` (enum) — a porcelain v2 `u` record's XY pair: `BothModified` (UU), `BothAdded` (AA), `BothDeleted` (DD), `AddedByUs` (AU), `AddedByThem` (UA), `DeletedByUs` (DU), `DeletedByThem` (UD); any other pair on a `u` record is `StatusError::Malformed`. `words()` — git's own phrase (`both modified`, …); `has_markers()` — UU or AA, the shapes with a working-tree file to parse (m6-conflicts/01).
-- `WorkingTreeStatus` (struct) — `entries: Vec<StatusEntry>`; `staged`/`unstaged`/`untracked` (iterators), `is_clean`, `counts` (→ `WorkingTreeCounts`), `entry(path)` (m3/01).
-- `parse_porcelain_v2` (fn) — pure parser for `git status --porcelain=v2 -z` output; a `cargo-fuzz` target (m3/01).
-- `read` (fn) — one `git -c core.quotepath=off status --porcelain=v2 -z --untracked-files=all --renames` spawn through `run` (`GIT_OPTIONAL_LOCKS=0` from the runner itself); bare repos report empty (m3/01).
-- `submodules_not_set_up(repo, stop) -> Result<Vec<PathBuf>, StatusError>` (fn) — gitlinks (`160000`) in the index whose directory has no `.git`; `git status` is silent about them. No `.gitmodules` → no spawn; else one `ls-files --stage -z` (m7-power-tools/13).
+- `WorkingTreeCounts` (struct) — staged, unstaged, untracked counts; `is_clean` (fn).
+- `StatusError` (enum) — `Run`, `Malformed`, `TooLarge`, …; why reading status failed.
+- `Change` (enum) — `Added`, `Modified`, `Deleted`, `Renamed`, `Copied`, `TypeChanged`.
+- `StatusEntry` (struct) — one path: `path`, `original_path`, `staged`, `unstaged`, `untracked`, …; `is_staged` / `is_unstaged` (fn).
+- `SubmoduleStatus` (struct) — `pointer_moved`, `changed_inside`, `untracked_inside`.
+- `UnmergedHow` (enum) — a `u` record's XY pair; `words` / `has_markers` (fn).
+- `WorkingTreeStatus` (struct) — `entries`; `staged` / `unstaged` / `untracked` / `is_clean` / `counts` / `entry` (fn).
+- `read` (fn) — `(repo, stop) -> Result<WorkingTreeStatus, StatusError>`; one `git status --porcelain=v2` spawn.
+- `parse_porcelain_v2` (fn) — `&[u8] -> Result<WorkingTreeStatus, StatusError>`; pure reader.
+- `submodules_not_set_up` (fn) — `(repo, stop) -> Result<Vec<PathBuf>, StatusError>`; gitlinks with no checkout.
+- `TrackedPaths` (struct) — every tracked path; `len` / `is_empty` / `get` / `iter` / `from_nul_separated` (fn).
+- `TRACKED_CAP` (const) — byte cap on the `ls-files` output.
+- `tracked_paths` (fn) — `(repo, stop) -> Result<TrackedPaths, StatusError>`; one `ls-files -z`.
+
+## switch_refs
+- `RefListing` (struct) — `name`, `tip`, `subject`, `author`, `when`, `upstream`.
+- `SwitchRefs` (struct) — `refs`, `previous`; the switch list and `@{-1}`.
+- `switch_refs` (fn) — `(repo, stop) -> Result<SwitchRefs, RunError>`.
+
+## trace
+- `SHALLOW_END` (const) — the stop reason when a trace hits a shallow boundary.
+- `LineRange` (enum) — `Function { name, start, end }` or `Block { start, end }`; `lines` (fn).
+- `TraceCommit` (struct) — `id`, `author`, `when`, `subject`, `path`, `renamed_from`, counts.
+- `TraceEnd` (enum) — `Start`, `GitStops`, `Capped`, `Stopped`; why a trace ended.
+- `TraceError` (enum) — `Run`, `Parse`, `Shallow`.
+- `enclosing_function` (fn) — the function around a line by git's funcname rules.
+- `map_to_head` (fn) — `(hunks, line) -> Option<u32>`; a working-tree line to its `HEAD` line.
+- `line_history` / `file_history` (fn) — `git log -L` / `git log --follow`, capped.
+- `parse_line_log` / `parse_follow_log` (fn) — pure readers behind them.
+- `whole_file` (fn) — one commit's change to a file as a single whole-file hunk.
+- `BlobSizes` (struct) — a file's byte size before and at a commit.
+- `blob_sizes` (fn) — reads `BlobSizes` for a commit and path.
 
 ## version
-- `GitVersion` (struct) — a parsed `major.minor.patch` git version.
-- `GitVersion::MINIMUM` (const) — the oldest git version Graft supports.
-- `GitVersion::BLAME_PORCELAIN_MARKS` (const) — 2.50.0, the first git whose `blame --porcelain` writes `ignored`/`unblamable` (`builtin/blame.c` at v2.50.0:362-364; absent at v2.49.1); older git takes blame's second pass (18e).
-- `SystemGit` (enum) — the system git, classified against `GitVersion::MINIMUM`.
-- `SystemGit::for_version` (fn) — classify a found version against the minimum.
-- `SystemGit::version` (fn) — the version found.
-- `system_git` (fn) — run `git --version` through `run` (its own deadline `Stop`, since `run` has no built-in timeout) and classify what it printed (m3/01).
+- `GitVersion` (struct) — a parsed `major.minor.patch`.
+- `GitVersion::MINIMUM` / `BLAME_PORCELAIN_MARKS` (const) — oldest supported git; first git with porcelain blame marks.
+- `SystemGit` (enum) — the system git classified against the minimum; `for_version` / `version` (fn).
+- `system_git` (fn) — `-> Result<SystemGit, VersionError>`; runs `git --version`.
 - `VersionError` (enum) — why finding the system git failed.
-
-## File layout (m7-power-tools/30h: pure moves, public paths unchanged)
-
-- `status.rs` → children `status/parse.rs` (`parse_porcelain_v2` and its record parsers) and `status/submodule.rs` (`submodule_status`, `submodules_not_set_up`); both public fns re-exported at `status::`.
-- `history_reads.rs` → child `history_reads/forecast.rs` (`Forecast`, `forecast_merge`, `MergeStep`, `merge_tree_step`, the merge-tree version floors); re-exported at `history_reads::`.
-
-## File layout (m8/13e: pure moves, public paths unchanged)
-
-- `run/exec.rs` → `run/stop.rs` (`StopOrder`, `Graces`, `StopEnd`, `stop`, `kill`, `group_stop`, `hooks_first`, `after_git_ended`, `Helpers`, `signal_*`, the grace constants), and `run/tests.rs`'s `stop` module → `run/tests/stop.rs`. Private moves; `HOOKS_GRACE`/`STOP_WITHIN` unchanged at `run::`.
-- m8/21b-3: `run/stop.rs`'s inline tests → `run/tests/stop/signals.rs` (`group_stop`/`hooks_first` widened to `pub(super)` for it); `stop.rs` is production only. Then `stop.rs` → child `run/stop/helpers.rs` (`after_git_ended`, `Helpers`, `kill_reaped_group`, `signal_one`), re-exported at `run::stop::` (`pub(in crate::run)` for the tests in `run/tests/stop.rs`).
