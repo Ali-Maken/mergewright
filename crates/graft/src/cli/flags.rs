@@ -25,7 +25,7 @@ pub const FLAGS: &[Flag] = &[
         long: "help",
         short: Some('h'),
         value: None,
-        help: "print this and exit",
+        help: "print the usage and exit",
         hidden: false,
     },
     Flag {

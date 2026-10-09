@@ -1,6 +1,6 @@
 # 30 — Linux fast tier: 56 of 6183 red
 
-Status: 54 of 56 fixed, 2 filed, 1 newly unmasked (debugger, 2026-10-09). Gap row `M8/24-linux-56-red`.
+Status: 53 of 56 fixed, 2 filed, 1 newly unmasked (debugger, 2026-10-09). Gap row `M8/24-linux-56-red`.
 Build with: debugger (diagnosing-bugs). Scout: none. The evidence was `docs/release/linux.txt` and ticket 24's
 NOTES, and each cause was found by running it in a Debian trixie container (git 2.47.3), the same image
 `scripts/linux-fast-tier.sh` uses.

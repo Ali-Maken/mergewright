@@ -341,7 +341,7 @@ the scout's file. Don't read whole files: list `fn`/`mod`/`impl` lines and secti
 **Signatures:** none change. `pub(super)` widening only where a sibling needs it.
 
 **Acceptance**
-- [~] 1–4 (partial: items 1, 2, 4 hold by `wc -l` + `nextest list`; item 3's parent is 687, over 400, see NOTES 21b-5) — the move-only check, per file, one commit each; NOTES the before/after `wc -l` table and the
+- [x] 1–4 (items 1, 2, 4 by `wc -l` + `nextest list` at 21b-5; item 3 closed by 21b-7a `2bc836bc`: `update/tests.rs` 128 by `git show 2bc836bc:… | wc -l`; ticked by 31) — the move-only check, per file, one commit each; NOTES the before/after `wc -l` table and the
       `nextest list` diff (empty). A topic that can't get under 400 without splitting a test: its size in NOTES.
 
 **Touches:** every test path under `update::tests::*` is renamed by a move → `nextest list` is the check (paths
@@ -568,7 +568,7 @@ Gates workspace-wide: fmt; clippy `--all-targets` and `--all-targets --features 
 - [x] 5g (review m2): `S` on a stash row opens the stash list with that stash selected (`update/stash.rs:175–178` sets 0). New test on `stash@{2}`, seen red first. **Ticked:** `update::stash::tests::capital_s_on_a_stash_row_selects_that_stash` (stash@{2}; seen red 0≠2, then green; the list's arrival keeps it). Fix: `stash.rs` `cursor_stash`.
 
 ## 21b-5 additions (conductor 2026-10-08, from docs/reviews/m8-bars-hygiene.md M1 — fixes as the review states them; adds graft-ui files to 21b-5's crate set)
-- [ ] 5+1: move-only, each ≤400 by `wc -l` on the committed file: graph_screen `layout.rs` header tail (:263–303 + its three types) → `graph_screen/header_tail.rs`; graft-ui `footer.rs` inline tests → `footer/tests.rs`; `view/rows.rs` hint-context classification (`cursor_row_context`, `cursor_is_stash`, `search_wrapped`, `live_wrapped`, `back_to_place`) → a `view/rows/` child; `catalogue.rs` (634) by its own seam. Re-locate; quote before/after `wc -l` at tick.
+- [x] 5+1 (21b-7b `0c865a9a` + 21b-7a for `view/rows/`; `wc -l` per `21b-7-moves-remainder.md:231–244`: header_tail 71, footer.rs 285, footer/tests.rs 144, catalogue.rs 396, forms.rs 247; `layout.rs` 765 and `view/rows.rs` 893 (HEAD `wc -l`) stay over by ruling 3 → `M8/files-over-400-unrowed`; ticked by 31): move-only, each ≤400 by `wc -l` on the committed file: graph_screen `layout.rs` header tail (:263–303 + its three types) → `graph_screen/header_tail.rs`; graft-ui `footer.rs` inline tests → `footer/tests.rs`; `view/rows.rs` hint-context classification (`cursor_row_context`, `cursor_is_stash`, `search_wrapped`, `live_wrapped`, `back_to_place`) → a `view/rows/` child; `catalogue.rs` (634) by its own seam. Re-locate; quote before/after `wc -l` at tick.
 - [x] 5h (19d-c hand-back): finishing a paused merge keeps `your edits are back` in the words — `update/banner/resume.rs:447-449` `resumed_done` overwrites `also`; keep both. New test seen red first. **Ticked:** `update::banner::tests::resume_words::finishing_a_merge_keeps_your_edits_are_back` (seen red: `also: None`, then green). Summary words replace `what` only.
 
 ## NOTES — 21b-5 (builder, Opus, 2026-10-09)

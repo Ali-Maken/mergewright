@@ -229,13 +229,14 @@ mod tests {
 
     /// `--help`'s words as they were when `USAGE` was a hand-written const
     /// (m8/23), plus the `--version` row (m8/24-b): generating it from
-    /// `FLAGS` changed nothing else he sees.
+    /// `FLAGS` changed nothing else he sees. `--help`'s row reads "print the
+    /// usage" since review m8-hygiene-release m7: "this" read as the man page.
     const USAGE_BEFORE_FLAGS: &str = "\
 usage: graft [<path>]
 
   <path>    the repository to open (default: the current directory)
 
-  -h, --help       print this and exit
+  -h, --help       print the usage and exit
   -V, --version    print the version and exit";
 
     #[test]

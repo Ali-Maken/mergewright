@@ -250,6 +250,17 @@ fn readme_backticked_names_exist() {
     }
 }
 
+/// The README's command-line block is `usage(FLAGS)` byte for byte, so a new
+/// flag cannot drift past it (review m8-hygiene-release m2).
+#[test]
+fn readme_command_line_is_the_usage_of_flags() {
+    let block = format!("```text\n{}\n```", usage(FLAGS));
+    assert!(
+        readme_section("## Command line").contains(&block),
+        "README `## Command line` must hold:\n{block}"
+    );
+}
+
 fn readme_section(heading: &str) -> &'static str {
     let start = README
         .find(heading)

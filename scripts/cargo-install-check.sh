@@ -39,9 +39,7 @@ took=$(($(date +%s) - start))
     grep -E '^ *(Installed|Installing|error)' "$tmp/install.log" | sed "s|/private$tmp/||g; s|$tmp/||g; s/^ */    /"
     if [ "$verdict" = ok ]; then
         echo "installed: $(cd "$tmp/cargo-home/bin" && ls -1 | tr '\n' ' ')"
-        # Graft has no `--version` flag (cli.rs: a path, -h, --generate-man);
-        # its usage line shows the installed binary runs.
-        echo "graft --help: $("$tmp/cargo-home/bin/graft" --help | grep -m1 usage)"
+        echo "graft --version: $("$tmp/cargo-home/bin/graft" --version)"
     else
         tail -20 "$tmp/install.log" | sed "s|$tmp/||g; s/^/    /"
     fi
