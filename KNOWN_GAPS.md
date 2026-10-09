@@ -1286,6 +1286,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/pane-focus-ignores-remap | Tab/BackTab focus matches raw keys (`focus_keys.rs:29-30`, `detail/keys.rs:163`): remapped `app.prev_pane = "f6"` is spelled `F6 banner` but F6 does not move focus — hint lies under remap. | **broken** | M8 |
 | M8/21b7a-leftovers | graft: leftover `eprintln!("DBG")` in the shift_click test (moved as-is); stale comments naming the old purity path in 4 files (21b-7 NOTES). | **broken** | M8 |
 | M8/30-captures-changed | 30 re-shot 16 captures (header, initials, radar ⓘ) after pty walks stopped inheriting host tier hints; judge by eye at the stop; m7 contact sheet not re-assembled. | **unverified** | M8 |
+| M8/20e-m9-tour-gap | Question: m8-tour caption promises a gap after `◇ work`; picture has none. Caption or header code wrong? (20e NOTES) | **unverified** | M8 |
+| M8/20e-radar-narrow-eye | 20e M1 cuts long subject with `…` so `not checked` stays at 80 cols (beyond review text); new capture `docs/shots/m8/radar-narrow-80x24.txt` — judge by eye at the stop. | **unverified** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` **429** lines at the split (12f's 407 was false — review m8-palette-landing-stop C1); `listing.rs` 424 also over → 21b-4 additions; seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |
