@@ -117,3 +117,10 @@ None new. Calls `Keymap::translate` as ADR-0055 §3 defines it; `banner_way`, `w
 
 ## Size
 ~40k tokens. One context.
+
+## Conductor addition (scout contradiction, rule 7 — verify before building)
+
+Scout `scouts/32-pane-focus.md`: the remap step (`edge::key`, `edge.rs:41`) runs before every dispatcher, so the defect ("F6 does not move focus") could not be confirmed from code. Nothing was run.
+
+- [ ] V0 — first, before any other box: a test with `app.prev_pane = "f6"` (and one with `app.next_pane`) presses the remapped key from the graph with the pane open and from the banner, and asserts focus moves as §2.2 says. Name it. **If it is green on HEAD, the defect does not exist: stop, report, do not build the rest** (the conductor closes the gap row). If red, it is the red-first test for the boxes above.
+- [ ] V1 — the sweep gap the scout found: `sweep_tables.rs:29-30` skips Graph `app.*_pane` as "pane closed". Cover it with the pane open. Test: name it.
