@@ -29,6 +29,13 @@ pub const FLAGS: &[Flag] = &[
         hidden: false,
     },
     Flag {
+        long: "version",
+        short: Some('V'),
+        value: None,
+        help: "print the version and exit",
+        hidden: false,
+    },
+    Flag {
         long: "generate-man",
         short: None,
         value: None,
@@ -44,13 +51,19 @@ pub(crate) enum FlagAction {
     Usage,
     /// `--generate-man`.
     GenerateMan,
+    /// `--version`.
+    Version,
 }
 
 impl FlagAction {
     /// Every action `parse` can take on a flag; the test that pairs these
     /// with [`FLAGS`] rows both ways reads this.
     #[cfg(test)]
-    pub(crate) const ALL: &'static [FlagAction] = &[FlagAction::Usage, FlagAction::GenerateMan];
+    pub(crate) const ALL: &'static [FlagAction] = &[
+        FlagAction::Usage,
+        FlagAction::GenerateMan,
+        FlagAction::Version,
+    ];
 
     /// The action a row's long name selects; `None` for a row `parse` has no
     /// action for, which the both-ways test refuses.
@@ -58,6 +71,7 @@ impl FlagAction {
         match long {
             "help" => Some(FlagAction::Usage),
             "generate-man" => Some(FlagAction::GenerateMan),
+            "version" => Some(FlagAction::Version),
             _ => None,
         }
     }

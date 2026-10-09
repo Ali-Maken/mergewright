@@ -53,9 +53,7 @@ installer="$distrib/graft-installer.sh"
     tar tf "$archive" | sed 's/^/    /'
     tar -xOf "$archive" "graft-$host/graft" >"$logs/graft"
     chmod +x "$logs/graft"
-    # Graft has no `--version` flag yet (cli.rs takes a path, -h and
-    # --generate-man); its usage line is the proof the binary runs.
-    echo "the archive's binary, --help: $("$logs/graft" --help | grep -m1 'usage')"
+    echo "the archive's binary, --version: $("$logs/graft" --version)"
     # Homebrew refuses `--formula` on a file outside a tap, and making a tap
     # would change this machine's Homebrew. So the file goes in a temporary
     # `Formula/` folder and `brew style` lints it as a path, with Homebrew's

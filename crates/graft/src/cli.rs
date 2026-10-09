@@ -31,6 +31,8 @@ pub enum Invocation {
     Usage(String),
     /// Print the man page and exit successfully: `--generate-man`.
     GenerateMan,
+    /// Print this and exit successfully: `--version`, [`version`].
+    Version(String),
     /// Askpass mode: git (or ssh) ran Graft as its credential helper. Pass
     /// `prompt` to the running Graft listening on `socket`, print its answer
     /// for git, exit — never touching the terminal the running Graft owns.
@@ -93,6 +95,13 @@ pub fn askpass(socket: Option<OsString>, arguments: &[OsString]) -> Option<Invoc
     }
 }
 
+/// What `--version` prints: `graft <crate version>`, the version the
+/// release archive and the formula carry.
+#[must_use]
+pub fn version() -> String {
+    format!("graft {}", env!("CARGO_PKG_VERSION"))
+}
+
 /// Parse arguments that have already had the program name removed.
 ///
 /// # Errors
@@ -116,6 +125,7 @@ pub fn parse(arguments: impl IntoIterator<Item = OsString>) -> Result<Invocation
                 match action {
                     Some(FlagAction::Usage) => return Ok(Invocation::Usage(usage(FLAGS))),
                     Some(FlagAction::GenerateMan) => return Ok(Invocation::GenerateMan),
+                    Some(FlagAction::Version) => return Ok(Invocation::Version(version())),
                     None => return Err(CliError::UnknownOption(option.to_owned())),
                 }
             }
@@ -218,13 +228,15 @@ mod tests {
     }
 
     /// `--help`'s words as they were when `USAGE` was a hand-written const
-    /// (m8/23): generating it from `FLAGS` changed nothing he sees.
+    /// (m8/23), plus the `--version` row (m8/24-b): generating it from
+    /// `FLAGS` changed nothing else he sees.
     const USAGE_BEFORE_FLAGS: &str = "\
 usage: graft [<path>]
 
   <path>    the repository to open (default: the current directory)
 
-  -h, --help    print this and exit";
+  -h, --help       print this and exit
+  -V, --version    print the version and exit";
 
     #[test]
     fn help_prints_the_words_it_always_did() {
@@ -267,5 +279,22 @@ usage: graft [<path>]
         let parsed = parse_words(&["-"]).expect("a directory may be called -");
 
         assert_eq!(parsed, Invocation::Open(PathBuf::from("-")));
+    }
+
+    #[test]
+    fn version_is_asked_for_in_both_spellings_and_names_the_crate_version() {
+        for spelling in ["-V", "--version"] {
+            let parsed = parse_words(&[spelling]).expect("a flag in FLAGS");
+            assert_eq!(
+                parsed,
+                Invocation::Version(format!("graft {}", env!("CARGO_PKG_VERSION")))
+            );
+        }
+    }
+
+    #[test]
+    fn version_wins_over_a_path_it_was_given_with() {
+        let parsed = parse_words(&["/code/api", "--version"]).expect("a flag in FLAGS");
+        assert!(matches!(parsed, Invocation::Version(_)));
     }
 }

@@ -27,7 +27,7 @@ fn main() -> ExitCode {
     let repo_path = match cli::from_process() {
         Ok(Invocation::Askpass { socket, prompt }) => return askpass(&socket, &prompt),
         Ok(Invocation::Open(path)) => path,
-        Ok(Invocation::Usage(usage)) => {
+        Ok(Invocation::Usage(usage) | Invocation::Version(usage)) => {
             println!("{usage}");
             return ExitCode::SUCCESS;
         }
