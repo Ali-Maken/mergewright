@@ -88,27 +88,25 @@ fn on_the_empty_state(pty: &Pty) -> Screen {
     pty.wait_for("the empty state", |s| s.has("no repository here"))
 }
 
-/// The graph of the repository at `path`, its cursor on HEAD's row.
+/// The graph of the repository at `path`, its cursor on HEAD's row. Waits
+/// for the cursor, not the subject anywhere: rows draw a frame before the
+/// landing moves the cursor to `HEAD` ([`landed`]); under load that frame
+/// failed on the top row (`M8/open-recent-outside-flake`).
 fn on_the_graph_at_head(pty: &Pty, path: &Path, subject: &str) -> Screen {
     let name = path
         .file_name()
         .expect("named")
         .to_string_lossy()
         .into_owned();
-    let screen = pty.wait_for("the repository's graph", |s| {
-        s.lines()[0].contains(&name) && s.has(subject)
-    });
-    let cursor = screen
-        .lines()
-        .into_iter()
-        .find(|line| line.contains('\u{25b8}'))
-        .unwrap_or_else(|| panic!("no cursor row:\n{}", screen.text()));
-    assert!(
-        cursor.contains(subject),
-        "cursor not on HEAD ({subject}): {cursor:?}\n{}",
-        screen.text()
-    );
-    screen
+    pty.wait_for(
+        &format!("the repository's graph, the cursor on {subject:?}"),
+        |s| {
+            s.lines()[0].contains(&name)
+                && s.lines()
+                    .iter()
+                    .any(|line| line.contains('\u{25b8}') && line.contains(subject))
+        },
+    )
 }
 
 pub(crate) fn quit_cleanly(mut pty: Pty) -> Vec<u8> {

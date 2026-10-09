@@ -83,6 +83,21 @@ fn in_the_tour(pty: &Pty) -> Screen {
     })
 }
 
+/// The practice graph settled: its walk complete (`N commits`) and no
+/// topological sort still out (`sorting…`). Only then is `Esc` the tour's:
+/// the graph's `Esc` ladder backs out of a running sort or a reading walk
+/// first (`update/keys/escape.rs`, `tour::esc_leaves` is its last rung), so
+/// an `Esc` sent while the card is drawn but the reads are out gives up the
+/// sort — `order stays provisional (date)` — and the tour stays. Under load
+/// the reads outlast the card's first frame; that ate 7 of 8 `Esc`s in a
+/// loaded loop (`M8/tour-esc-load-flake`).
+fn nothing_else_takes_esc(pty: &Pty) {
+    pty.wait_for("the practice graph settled", |s| {
+        let header = &s.lines()[0];
+        header.contains(" commits") && !header.contains("sorting\u{2026}")
+    });
+}
+
 /// The screen line the cursor is on; `usize::MAX` while none is drawn.
 fn cursor_row(screen: &Screen) -> usize {
     screen
@@ -105,6 +120,24 @@ fn cursor_subject(screen: &Screen, subjects: &[String]) -> String {
         .max_by_key(|subject| subject.len())
         .unwrap_or_else(|| panic!("no subject on the cursor row {row:?}"))
         .clone()
+}
+
+/// His graph with the cursor landed on `HEAD`'s row; that row. The rows can
+/// be drawn a frame before the refs read answers and the landing moves the
+/// cursor from the top row to `HEAD` (as `outside_repo::landed` says), so a
+/// wait for any `▸` could take the top row: keys sent then counted from the
+/// wrong row, and under load the walk waited 20 s for a row the cursor never
+/// reached, or remembered a commit it never left from.
+fn on_head(pty: &Pty, repo: &Path, name: &str) -> usize {
+    let head = git(repo, &["log", "-1", "--format=%s"]).trim().to_owned();
+    cursor_row(
+        &pty.wait_for(&format!("his graph, the cursor on {head:?}"), |s| {
+            s.lines()[0].contains(name)
+                && s.lines()
+                    .iter()
+                    .any(|line| line.contains('\u{25b8}') && line.contains(head.as_str()))
+        }),
+    )
 }
 
 /// His repository: a copy of the feature-branch corpus; its path and every
@@ -139,6 +172,7 @@ fn t_on_the_empty_state_starts_the_tour_and_esc_comes_back() {
     assert!(made[0].starts_with("tributary-practice-"), "{made:?}");
     assert!(screen.has("stage a change"), "{}", screen.text());
 
+    nothing_else_takes_esc(&pty);
     pty.send(b"\x1b");
     pty.wait_for("back on the empty state", |s| s.has("no repository here"));
     assert_within_the_note("leave-tour", false, &[b"\x1b"]);
@@ -161,9 +195,7 @@ fn the_palette_starts_the_tour_and_esc_returns_to_his_commit() {
         .expect("named")
         .to_string_lossy()
         .into_owned();
-    let landed = cursor_row(&pty.wait_for("his graph", |s| {
-        s.lines()[0].contains(&name) && s.has("\u{25b8}")
-    }));
+    let landed = on_head(&pty, &repo, &name);
     pty.send(b"j");
     pty.send(b"j");
     let moved = pty.wait_for("the cursor two rows down", |s| cursor_row(s) == landed + 2);
@@ -180,6 +212,7 @@ fn the_palette_starts_the_tour_and_esc_returns_to_his_commit() {
     assert_within_the_note("start-tour", false, &[b"\x10", b"tour", b"\r"]);
     assert_eq!(left_in(&tmp).len(), 1);
 
+    nothing_else_takes_esc(&pty);
     pty.send(b"\x1b");
     pty.wait_for("his graph again", |s| {
         s.lines()[0].contains(&name) && !s.has(CARD)
@@ -239,9 +272,7 @@ fn an_unwritable_temp_folder_stays_in_his_repo_and_says_why() {
         .expect("named")
         .to_string_lossy()
         .into_owned();
-    let landed = cursor_row(&pty.wait_for("his graph", |s| {
-        s.lines()[0].contains(&name) && s.has("\u{25b8}")
-    }));
+    let landed = on_head(&pty, &repo, &name);
     pty.send(b"j");
     let moved = pty.wait_for("the cursor down a row", |s| cursor_row(s) == landed + 1);
     let was_on = cursor_subject(&moved, &subjects);
