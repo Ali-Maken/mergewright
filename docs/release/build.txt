@@ -1,0 +1,43 @@
+# dist build --artifacts=all --target aarch64-apple-darwin, scripts/release-local.sh, 2026-10-09
+artefacts in <target>/distrib:
+    graft-aarch64-apple-darwin
+    graft-aarch64-apple-darwin.tar.xz
+    graft-aarch64-apple-darwin.tar.xz.sha256
+    graft-installer.sh
+    graft.rb
+    sha256.sum
+    source.tar.gz
+    source.tar.gz.sha256
+tar tf graft-aarch64-apple-darwin.tar.xz:
+    graft-aarch64-apple-darwin/
+    graft-aarch64-apple-darwin/README.md
+    graft-aarch64-apple-darwin/CHANGELOG.md
+    graft-aarch64-apple-darwin/graft.1
+    graft-aarch64-apple-darwin/graft
+the archive's binary, --help: usage: graft [<path>]
+brew style graft.rb: FAILED
+    Formula/graft.rb:6:5: C: [Correctable] Style/SoleNestedConditional: Consider merging nested conditions into outer if conditions.
+        if Hardware::CPU.arm?
+    Formula/graft.rb:13:20: C: [Correctable] Style/MutableConstant: Freeze mutable objects assigned to constants.
+      BINARY_ALIASES = { ...
+    Formula/graft.rb:14:5: C: [Correctable] Style/TrailingCommaInHashLiteral: Put a comma after the last item of a multiline hash.
+        "aarch64-apple-darwin": {}
+    
+    1 file inspected, 3 offenses detected, 3 offenses autocorrectable
+shellcheck -S warning graft-installer.sh: clean
+where the formula puts each file (its install block):
+      def install
+        if OS.mac? && Hardware::CPU.arm?
+          bin.install "graft"
+        end
+    
+        install_binary_aliases!
+    
+        # Homebrew will automatically install these, so we don't need to do that
+        doc_files = Dir["README.*", "readme.*", "LICENSE", "LICENSE.*", "CHANGELOG.*"]
+        leftover_contents = Dir["*"] - doc_files
+    
+        # Install any leftover files in pkgshare; these are probably config or
+        # sample files.
+        pkgshare.install(*leftover_contents) unless leftover_contents.empty?
+      end

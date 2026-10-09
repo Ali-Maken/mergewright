@@ -1,0 +1,55 @@
+# Linux fast tier — scripts/linux-fast-tier.sh, 2026-10-09T06:47Z, commit d0b3450d, image rust:1-bookworm
+uname: Linux 7.0.12-linuxkit aarch64
+git: git version 2.39.5
+rustc: rustc 1.99.0 (b940084d7 2026-09-28)
+exit: 137
+doctests:  passed,  failed (0 crates)
+failing tests:
+    FAIL [   0.005s] ( 419/6183) graft jobs::tests::opening_a_repository_reports_what_it_found
+    FAIL [   0.008s] ( 418/6183) graft jobs::tests::no_git_child_outlives_shutdown
+    FAIL [   0.010s] ( 431/6183) graft jobs::tests::two_jobs_share_one_open_repository
+    FAIL [   0.016s] (2512/6183) graft::it journal_put_back::a_put_back_runs_with_its_own_esc_words
+    FAIL [   0.016s] (2516/6183) graft::it journal_put_back::u_in_j_undoes_the_next_entry_from_any_row
+    FAIL [   0.017s] (2511/6183) graft::it journal_put_back::a_put_back_refused_at_launch_stays_on_j
+    FAIL [   0.017s] (2514/6183) graft::it journal_put_back::j_again_shows_a_graft_row_and_no_lost_row
+    FAIL [   0.017s] (2515/6183) graft::it journal_put_back::put_back_and_was_here_tags_draw
+    FAIL [   0.017s] (2517/6183) graft::it journal_put_back::u_never_acts_on_outside_rows
+    FAIL [   0.017s] (2518/6183) graft::it journal_put_back::u_undoes_the_put_back
+    FAIL [   0.036s] ( 159/6183) graft event_loop::places::tests::a_line_ended_in_one_place_stays_gone_in_the_next
+    FAIL [   0.040s] (2441/6183) graft::it daily_landing::j20_u_and_capital_u_land_on_the_result
+    FAIL [   0.065s] (2416/6183) graft::it conflict_interim::the_landing_puts_both_cursors_on_the_first_conflicted_file
+    FAIL [   0.098s] (2522/6183) graft::it journal_screen::capture_journal_after_squash
+    FAIL [   0.530s] (2364/6183) graft::it box_owns_the_bar::capture_fix_box_owns_the_bar
+    FAIL [   0.706s] (2464/6183) graft::it first_launch::first_launch_captures
+    FAIL [  20.306s] (2381/6183) graft::it clock_pin::u_under_a_pinned_clock_undoes_the_newest
+    FAIL [  20.308s] (2380/6183) graft::it clock_pin::graft_now_never_stamps_the_journal
+    FAIL [  20.318s] (2379/6183) graft::it clock_pin::an_in_app_commit_under_the_default_pin_draws_an_age
+    FAIL [ 120.065s] (2414/6183) graft::it conflict_interim::the_banner_and_its_keys_draw_once_on_the_graph_tab
+    FAIL [ 120.066s] (2418/6183) graft::it conflict_interim::the_footer_does_not_call_a_live_merge_interrupted
+    FAIL [ 120.067s] (2419/6183) graft::it conflict_interim::the_hint_bar_fills_the_row_it_has_at_a_hundred_and_sixty_columns
+    FAIL [ 120.067s] (2425/6183) graft::it conflict_interim::the_tab_layout_banner_costs_one_row_drawn_and_two_focused
+    FAIL [ 120.070s] (2413/6183) graft::it conflict_interim::the_banner_and_its_keys_are_on_the_frame_at_every_width
+    FAIL [ 120.071s] (2415/6183) graft::it conflict_interim::the_banner_reads_the_same_at_every_width
+    FAIL [ 120.080s] (2411/6183) graft::it conflict_interim::skip_on_a_merge_says_nothing_to_skip
+    FAIL [ 120.094s] (2400/6183) graft::it conflict_interim::landing_shots::esc_from_the_landing_shows_the_banner_row_on_a_real_merge
+    FAIL [ 120.097s] (2410/6183) graft::it conflict_interim::relaunch_into_a_live_conflict
+    FAIL [ 120.101s] (2406/6183) graft::it conflict_interim::mergetool_present_asks_the_loop_for_the_first_conflict
+    FAIL [ 120.105s] (2417/6183) graft::it conflict_interim::the_doorway_survives_everywhere_the_banner_does_not_own_the_keyboard
+    FAIL [ 120.107s] (2382/6183) graft::it conflict_interim::a_click_below_a_hundred_columns_picks_the_row_it_landed_on
+    FAIL [ 120.107s] (2412/6183) graft::it conflict_interim::space_on_a_conflicted_row_refuses_while_markers_remain
+    FAIL [ 120.108s] (2395/6183) graft::it conflict_interim::interrupted_entry_without_live_state_is_still_closed
+    FAIL [ 120.109s] (2398/6183) graft::it conflict_interim::landing_shots::capture_after_esc_on_the_banner
+    FAIL [ 120.121s] (2384/6183) graft::it conflict_interim::abort_always_offered_and_restores
+    FAIL [ 120.121s] (2385/6183) graft::it conflict_interim::an_unmerged_file_draws_its_conflict_in_the_body
+    FAIL [ 120.129s] (2387/6183) graft::it conflict_interim::below_a_hundred_columns_the_banner_draws_above_the_tab_line
+    FAIL [ 120.129s] (2388/6183) graft::it conflict_interim::capture_banner_bar_with_q
+    FAIL [ 120.139s] (2383/6183) graft::it conflict_interim::a_click_on_the_detail_tab_does_not_move_the_hidden_graph
+    FAIL [ 120.146s] (2405/6183) graft::it conflict_interim::mergetool_absent_refuses_in_words
+    FAIL [ 120.157s] (2391/6183) graft::it conflict_interim::esc_from_the_landing_shows_the_banner_and_lists_the_files
+    FAIL [ 120.170s] (2386/6183) graft::it conflict_interim::banner_is_modal_when_focused
+    FAIL [ 120.174s] (2392/6183) graft::it conflict_interim::e_opens_the_editor_at_the_first_marker
+    FAIL [ 120.217s] (2396/6183) graft::it conflict_interim::journal_row_for_live_entry_says_in_progress
+    FAIL [ 120.236s] (2397/6183) graft::it conflict_interim::landing_shots::capture_a_merge_that_stops
+    FAIL [ 120.257s] (2390/6183) graft::it conflict_interim::continue_refuses_while_unmerged_then_finishes
+    FAIL [ 120.363s] (2389/6183) graft::it conflict_interim::capture_banner_for_docs_shots
+HungRemote/teardown modules (m4_walk::|m8_walk::clone|partial_fetch::|remote_by_key::|clone::|remote::): 0 passed, 0 failed
