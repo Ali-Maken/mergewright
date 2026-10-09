@@ -1287,9 +1287,10 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/landed-refused-putback-aborted | Question: a landed merge whose put-back is refused is logged Aborted (`apply/set_aside/answer.rs:34`) — 19e. | **unverified** | M8 |
 | M8/pinned-clock-debounce | Question: under `GRAFT_NOW` the drawn clock is fixed, so focus debounce and double-click timing may break (19e). Test-only var, but a stray export would hit it. | **unverified** | M8 |
 | M8/hangup-shot-unsorted | Question: `quit_waits/hangup.rs:320` may shoot before sorting settles (19e audit). | **unverified** | M8 |
-| M8/20b-b4-r6-fit | 20b B4 (R6): `space mark resolved` at 80 cols drops `⇥ diff` from the changes bar (two pinned tests). Needs short form or fitting ruling → planner. | **broken** | M8 |
 | M8/20b-r5-three-tabs | R5 premise "from the graph unchanged": with the detail pane open the banner is three Tabs away; words now `⇥ ⇥ ⇥ banner`. Journey step count — planner to judge. | **unverified** | M8 |
-| M8/m6-sheets-stale-20b | m6 contact sheets not re-assembled after 20b B re-shot m6/fix-finish-shell-merge-120x40; graft-ops `aborted_fetch.rs:6` comment has old words. | **broken** | M8 |
+| M8/20c-backtab-not-reverse | Question: BackTab does not reverse the Tab cycle; with the banner up the graph is unreachable by ⇧⇥ (`focus_keys.rs:31-35`, `:73`). Defect, or keep `⇥ ⇥ ⇥ banner`? R5' open → planner ruling. | **unverified** | M8 |
+| M8/20c-mark-resolved-not-seen-red | `a_conflict_row_says_mark_resolved` written with the code, never seen failing. | **unverified** | M8 |
+| M8/20c-write-shots-flake | `raster::write_shots` failed once during shot update, passed twice after; not investigated. | **unverified** | M8 |
 | M8/12f-find-rs-407 | `update/palette/find.rs` **429** lines at the split (12f's 407 was false — review m8-palette-landing-stop C1); `listing.rs` 424 also over → 21b-4 additions; seam: move `landed` to `run.rs` (12f NOTES) → 21 | **broken** | M8 |
 | M8/stage-discard-literal-u | `stage_discard.rs:132` spells literal "`u` can undo" (seen by 10k; not swept) | **unverified** | M8 |
 | M8/resolve-keys-const-literal | Const gone (10l). Open question only: the literal-key scanner reads no `const` | **unverified** | M8 |
