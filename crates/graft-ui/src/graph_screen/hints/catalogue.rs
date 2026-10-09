@@ -6,9 +6,13 @@ use super::lists::{TAIL, context_list};
 use super::{
     ACTIONS, BACK_TO_BLAME, BACK_TO_HISTORY, BLAME, ConfirmYes, DOORWAY, DOORWAY_BY_PALETTE,
     EXPLAIN, F_HISTORY, FOLD, Hint, HintContext, LiveC, RESIZE, RowVerbs, SEARCH_NEXT, SEARCH_PREV,
-    TabWord, WAY_BACK, WAY_BACK_PREV, WayToBanner,
+    TabWord, WAY_BACK, WAY_BACK_PREV,
 };
 use crate::conflict_resolver::SideRoles;
+
+mod forms;
+
+use forms::{marked_form, operation_live_form, pane_focused_form, searching_form};
 
 /// **Every context the footer can be put in**, every field combination, each
 /// row context also wrapped in [`HintContext::Marked`]. The one enumeration
@@ -299,76 +303,6 @@ fn finish_forms() -> Vec<HintContext> {
     ]
 }
 
-/// `context` wrapped in [`HintContext::OperationLive`] every way `graft`
-/// can wrap it — each [`LiveC`], one `⇥` from the banner or not — for the
-/// contexts `graft::view::rows::footer_context` wraps: a graph row, marked
-/// or not, and a pane focused on a commit (its `c` passes through to the
-/// graph's). Not the changes pane: it carries its own `live`
-/// ([`changes_pane_live_forms`]).
-///
-/// Exhaustive on purpose: see [`every_context`].
-fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
-    match context {
-        // `R rewrite` is drawn only while nothing is live (08, ruling 10).
-        HintContext::Marked(row) if matches!(**row, HintContext::Rewritable(_)) => Vec::new(),
-        // A live operation hides `o` and `a` (graft `view::rows::live_wrapped`
-        // passes `RowVerbs::NONE`): a row with either never reaches the bar.
-        _ if has_row_verbs(context) => Vec::new(),
-        // `R` is never live, so neither is a search over it.
-        HintContext::Searching(row) if over_rewritable(row) => Vec::new(),
-        HintContext::WorkingTreeRow
-        | HintContext::BranchRow { .. }
-        | HintContext::StashRow
-        | HintContext::PlainRow { .. }
-        | HintContext::Marked(_)
-        | HintContext::Searching(_)
-        | HintContext::PaneFocused { .. } => {
-            // `space stage` only at an `edit` stop with the graph focused
-            // (07d D1): never for a pane with the keyboard.
-            let pane = matches!(context, HintContext::PaneFocused { .. });
-            LIVE_C
-                .into_iter()
-                .flat_map(|c| {
-                    let stages: &[bool] = if c == LiveC::ContinueAmends && !pane {
-                        &[false, true]
-                    } else {
-                        &[false]
-                    };
-                    stages.iter().flat_map(move |&space_stages| {
-                        [Some(WayToBanner::Forward), Some(WayToBanner::Back), None]
-                            .into_iter()
-                            .map(move |way_to_banner| HintContext::OperationLive {
-                                row: Box::new(context.clone()),
-                                c,
-                                way_to_banner,
-                                space_stages,
-                            })
-                    })
-                })
-                .collect()
-        }
-        HintContext::ChangesPane { .. }
-        | HintContext::Banner { .. }
-        | HintContext::Preview
-        | HintContext::Picker
-        | HintContext::PaneOverOverlay { .. }
-        | HintContext::Dragging
-        | HintContext::ConfirmBox { .. }
-        | HintContext::NamePrompt { .. }
-        | HintContext::Credential
-        | HintContext::Resolver { .. }
-        | HintContext::Finish { .. }
-        | HintContext::Blame { .. }
-        | HintContext::BackToBlame(_)
-        | HintContext::History { .. }
-        | HintContext::BackToHistory(_)
-        | HintContext::Rewritable(_)
-        | HintContext::RewriteEditor { .. }
-        | HintContext::RewriteMessage
-        | HintContext::OperationLive { .. } => Vec::new(),
-    }
-}
-
 /// Every [`HintContext::Resolver`] form [`every_context`] names: the four
 /// `base`/`restart` combinations of a document, a whole-file card and a done
 /// file (whose lists read neither flag, so one form covers each) — each under
@@ -422,179 +356,6 @@ const ALL_ROLES: [SideRoles; 6] = [
     SideRoles::StashPop,
     SideRoles::SetAside,
 ];
-
-/// `context` is `R rewrite`'s row, marked or not.
-fn over_rewritable(context: &HintContext) -> bool {
-    match context {
-        HintContext::Rewritable(_) => true,
-        HintContext::Marked(row) => over_rewritable(row),
-        _ => false,
-    }
-}
-
-/// The cursor row inside `context` carries `o take` or `a amend`.
-fn has_row_verbs(context: &HintContext) -> bool {
-    match context {
-        HintContext::BranchRow { verbs, .. } | HintContext::PlainRow { verbs } => {
-            *verbs != RowVerbs::NONE
-        }
-        HintContext::Marked(row)
-        | HintContext::Rewritable(row)
-        | HintContext::Searching(row)
-        | HintContext::PaneFocused { row, .. } => has_row_verbs(row),
-        _ => false,
-    }
-}
-
-/// `context` wrapped in [`HintContext::Marked`], for the contexts a Mistake
-/// Radar marker can actually reach — the cursor's own row, once
-/// `graft::view::rows::hint_context` has ruled out the working tree, the
-/// changes pane and a drag in the air. Everything else has no cursor row to
-/// carry a marker.
-///
-/// Exhaustive on purpose: see [`every_context`].
-fn marked_form(context: &HintContext) -> Option<HintContext> {
-    match context {
-        HintContext::BranchRow { .. }
-        | HintContext::PlainRow { .. }
-        | HintContext::StashRow
-        | HintContext::Rewritable(_) => Some(HintContext::Marked(Box::new(context.clone()))),
-        HintContext::WorkingTreeRow
-        | HintContext::Banner { .. }
-        | HintContext::Preview
-        | HintContext::ChangesPane { .. }
-        | HintContext::Picker
-        | HintContext::PaneOverOverlay { .. }
-        | HintContext::Dragging
-        | HintContext::ConfirmBox { .. }
-        | HintContext::NamePrompt { .. }
-        | HintContext::Credential
-        | HintContext::Resolver { .. }
-        | HintContext::Finish { .. }
-        | HintContext::Marked(_)
-        | HintContext::Searching(_)
-        | HintContext::PaneFocused { .. }
-        | HintContext::Blame { .. }
-        | HintContext::BackToBlame(_)
-        | HintContext::History { .. }
-        | HintContext::BackToHistory(_)
-        | HintContext::RewriteEditor { .. }
-        | HintContext::RewriteMessage
-        | HintContext::OperationLive { .. } => None,
-    }
-}
-
-/// `context` wrapped in [`HintContext::Searching`] (m8/15b), for the
-/// graph-row forms `graft::view::rows::footer_context` wraps while a search
-/// stands with its prompt closed: a row, marked or under `R`. Not a pane's
-/// bar, an overlay's or a box's: the search's keys are the graph's.
-///
-/// Exhaustive on purpose: see [`every_context`].
-fn searching_form(context: &HintContext) -> Option<HintContext> {
-    match context {
-        HintContext::WorkingTreeRow
-        | HintContext::BranchRow { .. }
-        | HintContext::PlainRow { .. }
-        | HintContext::StashRow
-        | HintContext::Rewritable(_)
-        | HintContext::Marked(_) => Some(HintContext::Searching(Box::new(context.clone()))),
-        HintContext::Banner { .. }
-        | HintContext::Preview
-        | HintContext::ChangesPane { .. }
-        | HintContext::Picker
-        | HintContext::PaneOverOverlay { .. }
-        | HintContext::Dragging
-        | HintContext::ConfirmBox { .. }
-        | HintContext::NamePrompt { .. }
-        | HintContext::Credential
-        | HintContext::Resolver { .. }
-        | HintContext::Finish { .. }
-        | HintContext::Searching(_)
-        | HintContext::PaneFocused { .. }
-        | HintContext::Blame { .. }
-        | HintContext::BackToBlame(_)
-        | HintContext::History { .. }
-        | HintContext::BackToHistory(_)
-        | HintContext::RewriteEditor { .. }
-        | HintContext::RewriteMessage
-        | HintContext::OperationLive { .. } => None,
-    }
-}
-
-/// `context` wrapped in [`HintContext::PaneFocused`], for the contexts
-/// `graft::view::rows::hint_context` can reach with the pane focused and
-/// `⏎` spent — a cursor row, marked or not.
-///
-/// Not the working-tree row: a pane open on *it* is the changes pane, so
-/// the classifier answers `ChangesPane` long before it looks at the cursor
-/// row. Not the changes pane or the banner either — neither list has an
-/// `⏎` this could take, and wrapping a list to change nothing would be a
-/// context nobody can tell from the one inside it.
-///
-/// Not the overlays: a pane focused with one of them behind it draws
-/// neither the overlay's list nor a row's, because the graph is not there
-/// to answer the row's keys. That is [`HintContext::PaneOverOverlay`],
-/// which [`every_context`] names in its own right.
-///
-/// Exhaustive on purpose: see [`every_context`].
-fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
-    match context {
-        // `R` needs the graph's keyboard (08, ruling 10): never under a pane.
-        HintContext::Marked(row) if matches!(**row, HintContext::Rewritable(_)) => Vec::new(),
-        HintContext::BranchRow { .. }
-        | HintContext::PlainRow { .. }
-        | HintContext::StashRow
-        | HintContext::Marked(_) => {
-            // `(opens, blamable, folds)`: the files list on a file, on a
-            // directory, on neither (the `✉ message` row); the diff on a
-            // line or not. Never `folds` without `opens` (only the files
-            // list folds), nor with `blamable` (a directory has no file to
-            // blame): neither shape exists in the app.
-            // The last: the Detail tab, graph hidden (m8/11b decision 3).
-            [
-                (true, true, false, false),
-                (true, false, true, false),
-                (true, false, false, false),
-                (false, true, false, false),
-                (false, false, false, false),
-                (false, false, false, true),
-            ]
-            .into_iter()
-            .map(
-                |(opens, blamable, folds, graph_hidden)| HintContext::PaneFocused {
-                    row: Box::new(context.clone()),
-                    opens,
-                    blamable,
-                    folds,
-                    graph_hidden,
-                },
-            )
-            .collect()
-        }
-        HintContext::WorkingTreeRow
-        | HintContext::Banner { .. }
-        | HintContext::Preview
-        | HintContext::ChangesPane { .. }
-        | HintContext::Picker
-        | HintContext::PaneOverOverlay { .. }
-        | HintContext::Dragging
-        | HintContext::ConfirmBox { .. }
-        | HintContext::NamePrompt { .. }
-        | HintContext::Credential
-        | HintContext::Resolver { .. }
-        | HintContext::Finish { .. }
-        | HintContext::PaneFocused { .. }
-        | HintContext::Searching(_)
-        | HintContext::Blame { .. }
-        | HintContext::BackToBlame(_)
-        | HintContext::History { .. }
-        | HintContext::BackToHistory(_)
-        | HintContext::Rewritable(_)
-        | HintContext::RewriteEditor { .. }
-        | HintContext::RewriteMessage
-        | HintContext::OperationLive { .. } => Vec::new(),
-    }
-}
 
 /// Every hint in every context's table, planned ones included, deduped by
 /// `(keys, verb, state)` — what `graft`'s guard tests walk so that neither
