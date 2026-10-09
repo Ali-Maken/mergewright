@@ -100,8 +100,8 @@ impl OperationRefusal {
 
 /// The refusal for a live operation. Finishing a merge, rebase, cherry-pick
 /// or revert Graft began is the operation banner's (keymap §2.6a); `⇥` leads
-/// there from the panes, and the keys name as many `⇥` as it takes from
-/// where the keyboard is (`tabs`, [`refusal_tabs`]; m6-conflicts/70).
+/// there from the panes, and the keys name the shorter way from where the
+/// keyboard is (`way`, [`refusal_way`]; m6-conflicts/70, m8/20d).
 ///
 /// The banner's keys are spelled from `keys` (m8/10f): his keymap for the
 /// pane's status, `Keymap::shipped()` for the editor's row, which is drawn
@@ -110,12 +110,12 @@ impl OperationRefusal {
 #[must_use]
 pub fn operation_refusal(
     (kind, begun): (InProgress, Begun),
-    tabs: u8,
+    way: crate::update::banner::BannerWay,
     keys: &Keymap,
 ) -> OperationRefusal {
-    // No key reaches the banner (`app.next_pane` unbound): its keys name
+    // No key reaches the banner (`app.next_pane` and `app.prev_pane` unbound): its keys name
     // nothing he can press from here, so the reason stands alone (W3).
-    let to_banner = crate::update::banner::tab_keys(tabs, keys);
+    let to_banner = crate::update::banner::way_keys(way, keys);
     let then = |parts: &[(&'static str, &str)]| {
         let words = keys.key_verbs(parts);
         let to_banner = to_banner.as_deref()?;
@@ -178,15 +178,18 @@ pub fn operation_refusal(
     OperationRefusal { reason, keys }
 }
 
-/// How many `⇥` a refusal names from where the keyboard is: the one
-/// reading of the cycle ([`crate::update::banner::tabs_to_banner`]). With
-/// the editor open it is the count from the pane under it, which `esc`
-/// hands the keyboard back to.
+/// The way a refusal names from where the keyboard is: the one reading of
+/// the cycle ([`crate::update::banner::banner_way`]). With the editor open
+/// it is the way from the pane under it, which `esc` hands the keyboard
+/// back to.
 ///
 /// `None` there means no banner is drawn — a bisect, or a non-merge begun
 /// in the shell — and those arms of [`operation_refusal`] name no keys, so
-/// the `1` it falls back to is never drawn.
+/// the one `⇥` it falls back to is never drawn.
 #[must_use]
-pub fn refusal_tabs(state: &AppState) -> u8 {
-    crate::update::banner::tabs_to_banner(state).unwrap_or(1)
+pub fn refusal_way(state: &AppState) -> crate::update::banner::BannerWay {
+    crate::update::banner::banner_way(state).unwrap_or(crate::update::banner::BannerWay {
+        forward: 1,
+        back: None,
+    })
 }

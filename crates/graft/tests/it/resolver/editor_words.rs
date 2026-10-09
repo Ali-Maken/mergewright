@@ -212,10 +212,19 @@ fn every_way_to_open_the_editor_refuses_mid_operation() {
         guard += 1;
     }
     let pane = pane_focused(&app, graph.clone());
-    // Graph → Files → Diff → banner is three `⇥`; the pane's files, two.
-    for (where_, state, count) in [("graph", &graph, 3), ("changes pane", &pane, 2)] {
+    // Graph → Files → Diff → banner is three `⇥`, but one `⇧⇥`: the
+    // shorter way is named (m8/20d). The pane's files: two either way, so
+    // forward.
+    let from_the_graph = Status::Sticky {
+        reason: "merge begun in the shell".to_owned(),
+        keys: Some("⇧⇥ banner, then c finishes it".to_owned()),
+    };
+    for (where_, state, refusal) in [
+        ("graph", &graph, from_the_graph),
+        ("changes pane", &pane, shell_merge_refusal(2)),
+    ] {
         eprintln!("{where_}");
-        answers_in_words(state, 'a', &shell_merge_refusal(count));
+        answers_in_words(state, 'a', &refusal);
         c_opens_the_summary(state);
     }
     app.close();
@@ -356,7 +365,7 @@ pub(super) fn editor_words(state: &AppState) -> String {
         .refusal(
             state.working_tree.as_deref(),
             live_operation(state),
-            graft::update::commit_editor::refusal_tabs(state),
+            graft::update::commit_editor::refusal_way(state),
         )
         .expect("a refusal")
 }

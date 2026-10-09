@@ -45,6 +45,7 @@ use super::state::{AppState, Status};
 
 mod stop;
 
+pub use stop::BannerWay;
 pub(super) use stop::land_in_resolver;
 use stop::stopped_again;
 pub(super) use stop::{ArrivalWatch, finished_lands_on, finished_lands_on_head, lands_on_changes};
@@ -52,7 +53,7 @@ pub use stop::{
     RewriteStop, StopLadder, one_tab_to_banner, stop_line, stop_line_wordings, stop_reason,
     stop_wordings,
 };
-pub(crate) use stop::{TabTarget, tab_keys, tab_target, tabs_to_banner};
+pub(crate) use stop::{TabTarget, banner_way, tab_target, way_keys};
 pub(super) use stop::{
     edit_stop_lands_on_head, refs_answered, relaunch_lands_on_head, walk_started,
 };

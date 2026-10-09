@@ -821,12 +821,14 @@ fn tab_out_of_the_banner_reaches_the_graph() {
 }
 
 /// `BackTab` is the same cycle backwards, so it lands on the pane the
-/// forward step came from rather than on the graph.
+/// forward step came from rather than on the graph. `BackTab` into it is
+/// from the graph, the step after it going forward (m8/20d; it was from the
+/// file list, which ran the cycle in a different order).
 #[test]
 fn backtab_out_of_the_banner_reaches_the_diff_pane() {
     let mut state = stopped(InProgress::Rebase, &["a.rs"]);
     state.detail.shown = true;
-    state.detail.focus = graft_ui::detail::DetailFocus::Files;
+    state.detail.focus = graft_ui::detail::DetailFocus::Graph;
     state.banner_focus = false;
     assert!(take_focus(&mut state, key(KeyCode::BackTab)));
 

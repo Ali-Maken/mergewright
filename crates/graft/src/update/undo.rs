@@ -179,12 +179,13 @@ pub(super) fn in_progress_refusal(state: &AppState) -> Option<Status> {
 }
 
 /// The keys that reach the banner from where he is, as every "finish or
-/// abort" line names them: `⇥ banner` from the graph, `⇥ ⇥ banner` from
-/// the changes pane's file list (m8/20b R5) — [`super::banner::tab_keys`]
-/// over [`super::commit_editor::refusal_tabs`]; `None` when
-/// `app.next_pane` is unbound.
+/// abort" line names them, the shorter way: `⇧⇥ banner` from the graph
+/// with the pane open, `⇥ ⇥ banner` from the changes pane's file list
+/// (m8/20b R5, 20d) — [`super::banner::way_keys`] over
+/// [`super::commit_editor::refusal_way`]; `None` when neither
+/// `app.next_pane` nor `app.prev_pane` is bound.
 fn banner_keys(state: &AppState) -> Option<String> {
-    super::banner::tab_keys(super::commit_editor::refusal_tabs(state), &state.keymap)
+    super::banner::way_keys(super::commit_editor::refusal_way(state), &state.keymap)
 }
 
 /// `U redoes <waiting>` after a `nothing to undo`; `None` when redo is

@@ -2,7 +2,7 @@
 
 use super::{
     AppState, CO_AUTHOR, Command, CommitEditor, Field, JobId, KeyCode, KeyPress, Status,
-    live_operation, refusal_tabs,
+    live_operation, refusal_way,
 };
 
 /// The editor's keys while it is open. `None` means "not the editor's" — and
@@ -304,7 +304,7 @@ pub(super) fn button_key(
 pub(super) fn commit(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
     let status = state.working_tree.as_deref();
     let in_progress = live_operation(state);
-    let tabs = refusal_tabs(state);
+    let tabs = refusal_way(state);
     let Some(editor) = state.commit_editor.as_mut() else {
         return Vec::new();
     };
