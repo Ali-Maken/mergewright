@@ -5,7 +5,11 @@
 //! on disk — before `y` (the forced run), after it, and in the reversed
 //! entry's recorded after-state — never from the value the run returned.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;

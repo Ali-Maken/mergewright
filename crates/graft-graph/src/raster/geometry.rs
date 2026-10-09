@@ -96,13 +96,20 @@ pub(super) fn eraser() -> Paint<'static> {
 }
 
 /// A pixel dimension as a coordinate.
-#[allow(clippy::cast_precision_loss)] // Cell sizes are far below f32's 2^24 exact-integer range.
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "Cell sizes are far below f32's 2^24 exact-integer range."
+)]
 pub(super) fn pixels(value: u32) -> f32 {
     value as f32
 }
 
 /// A whole, non-negative coordinate as a pixel index.
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // Callers pass whole pixels inside the pixmap.
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "Callers pass whole pixels inside the pixmap."
+)]
 pub(super) fn whole(value: f32) -> usize {
     value as usize
 }
@@ -113,7 +120,10 @@ pub(super) fn pixels_len(width: u32) -> usize {
 }
 
 /// A row or column index as a coordinate multiplier.
-#[allow(clippy::cast_precision_loss)] // Strip rows and lanes are far below f32's 2^24 exact-integer range.
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "Strip rows and lanes are far below f32's 2^24 exact-integer range."
+)]
 pub(super) fn count(value: usize) -> f32 {
     value as f32
 }

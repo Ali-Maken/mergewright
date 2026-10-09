@@ -3,7 +3,11 @@
 //! m6-conflicts/72). Every fact is read back from git or the journal file,
 //! never from a returned value alone.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::PathBuf;
 

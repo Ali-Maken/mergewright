@@ -8,7 +8,11 @@
 //! from that row, as `⏎` on it does. Every expectation is read off the disk,
 //! byte for byte.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::PathBuf;
 

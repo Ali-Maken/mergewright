@@ -6,7 +6,11 @@
 //! hand-written record. What each asserts is the rows' kinds, words and
 //! placement.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::time::{SystemTime, UNIX_EPOCH};
 

@@ -4,7 +4,11 @@
 //! stopped on an `edit` row, with the plan Graft saves on disk as a relaunch
 //! reads it.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use graft_core::oid::Oid;
 use graft_ops::rewrite::{Follower, progress};

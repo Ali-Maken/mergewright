@@ -7,7 +7,11 @@
 //! `no conflicts expected` and git then refused at `y`. Every claim here is
 //! read back from git, the files on disk or the journal file.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};

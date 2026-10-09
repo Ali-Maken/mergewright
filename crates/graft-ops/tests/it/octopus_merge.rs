@@ -18,7 +18,11 @@
 //! the key never reaches the restore; these tests drive the restore
 //! directly, which is where `begin` reads git's merge state.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::{Path, PathBuf};
 

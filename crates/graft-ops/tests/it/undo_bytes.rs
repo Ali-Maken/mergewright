@@ -9,7 +9,11 @@
 //! the file back with CRLF endings. The snapshot keeps the bytes (30q-a) and
 //! `RestoreWorktree` writes them (30q-b).
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};

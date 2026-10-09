@@ -8,7 +8,11 @@
 // tests" does not reach them. It is fine here for the same reason: a
 // scaffold that cannot build the repository has to stop the test loudly,
 // and there is no caller to hand an error to.
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 // Every helper here is used; no blanket `dead_code` allowance (m3/03 review, M3).
 
 use std::path::{Path, PathBuf};

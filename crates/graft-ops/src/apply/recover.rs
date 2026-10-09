@@ -230,7 +230,7 @@ fn seal_recovered(
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::unwrap_used, reason = "a failing test should panic")]
 
     use super::*;
 

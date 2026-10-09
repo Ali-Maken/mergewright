@@ -3,7 +3,11 @@
 //! the reason. The oracle, which plans, applies and judges the result by the
 //! trees git holds afterwards, is `absorb_oracle.rs`.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::{Path, PathBuf};
 

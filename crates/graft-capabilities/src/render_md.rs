@@ -63,7 +63,10 @@ fn distribution(out: &mut String, capabilities: &[Capability]) {
         Status::Broken,
     ] {
         let n = counts.get(&status).copied().unwrap_or(0);
-        #[allow(clippy::cast_precision_loss)]
+        #[allow(
+            clippy::cast_precision_loss,
+            reason = "display only: a count or size far below f64's exact-integer range"
+        )]
         let pct = if total == 0 {
             0.0
         } else {

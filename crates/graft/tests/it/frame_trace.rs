@@ -12,7 +12,10 @@
 
 // Only the heavy-tier `frames` writes a trace; the fast tier compiles this
 // module for its two tests alone.
-#![cfg_attr(not(feature = "heavy-tests"), allow(dead_code))]
+#![cfg_attr(
+    not(feature = "heavy-tests"),
+    allow(dead_code, reason = "only the heavy tier writes a trace")
+)]
 
 use std::ffi::OsString;
 use std::fs::OpenOptions;

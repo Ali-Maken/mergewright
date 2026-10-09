@@ -6,7 +6,11 @@
 //! `ls-files -s`, the staged and unstaged diffs, each file's bytes
 //! (`support::state_of`), the stash list, and `branch.<b>.*` in the config.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use graft_core::journal::HeadRef;
 use graft_core::oid::Oid;

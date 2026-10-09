@@ -2,7 +2,11 @@
 //! is read from `git stash list` after each step, never from a returned value
 //! (m6-conflicts/07, F2).
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use graft_core::oid::Oid;
 use graft_ops::apply::ApplyError;

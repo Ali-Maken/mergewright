@@ -151,7 +151,10 @@ impl MapScreen<'_> {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "each argument is the caller's to say; a struct for one caller would only rename them"
+    )]
     fn draw_row(
         &self,
         buf: &mut Buffer,
@@ -227,7 +230,10 @@ impl MapScreen<'_> {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "each argument is the caller's to say; a struct for one caller would only rename them"
+    )]
     fn draw_bar(
         &self,
         buf: &mut Buffer,

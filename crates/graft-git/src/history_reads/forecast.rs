@@ -1,6 +1,9 @@
 //! Conflict forecasts from `git merge-tree`: one merge, or one replayed step.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// The oldest git that can run `merge-tree --write-tree` at all.

@@ -9,7 +9,11 @@
 //! child is this test binary running [`child_runs_the_switch`], so the
 //! parent's own environment is never changed.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::process::ExitStatusExt;

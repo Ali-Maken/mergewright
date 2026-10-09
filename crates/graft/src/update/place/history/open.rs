@@ -1,6 +1,9 @@
 //! Opening the history place: from blame's lines or a file, and the `F` key.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// Open a history place for `from` on the trail and start its trace.

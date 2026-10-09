@@ -7,7 +7,11 @@
 //! tree (`GRAFT_M728_FILES` tracked files, default 20 000, where `ls-files`
 //! lists them all).
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::Path;
 use std::time::{Duration, Instant};

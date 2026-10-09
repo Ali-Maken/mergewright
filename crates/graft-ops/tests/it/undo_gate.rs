@@ -6,7 +6,11 @@
 //! steps Graft journaled inside it (a whole-file choice, the abort put back)
 //! are `u`'s to walk. Ops owns the rule; the app only words it.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use graft_git::state::InProgress;
 use graft_ops::operation::{BranchCreateParams, CommitParams, Operation};

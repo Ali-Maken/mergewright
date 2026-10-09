@@ -1918,7 +1918,10 @@ fn strip_narrows_the_graph_column_without_moving_the_trailing_columns() {
 /// Asserted on every run; regenerate on purpose with
 /// `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --lib capture_m2_map_view`.
 #[test]
-#[allow(clippy::too_many_lines)] // one hand-built fixture plus its capture header, not logic
+#[allow(
+    clippy::too_many_lines,
+    reason = "one hand-built fixture plus its capture header, not logic"
+)]
 fn capture_m2_map_view() {
     use crate::map::{MapBranch, MapData, MapMark};
     use crate::update::detail::Loading;

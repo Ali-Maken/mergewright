@@ -1,7 +1,11 @@
 //! Absorb's oracle: plan and apply, and judge the result by the trees git
 //! holds afterwards.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::collections::BTreeMap;
 use std::path::Path;

@@ -5,7 +5,11 @@
 //! past what was staged comes back without conflict markers. Each run is
 //! undone after, and the repository must be exactly as it was.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use graft_core::journal::EntryStatus;
 use graft_ops::absorb::{StaysWhy, absorb_map};

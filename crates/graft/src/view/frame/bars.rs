@@ -4,7 +4,10 @@
 
 // One file of `frame`, split for size (m6-07 review, Major 4): it shares
 // the parent's imports and siblings rather than restating them.
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// A bottom row that stands in for the graph screen's footer: what went

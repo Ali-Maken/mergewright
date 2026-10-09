@@ -4,7 +4,10 @@
 //! end offset of each path, not a `Vec<PathBuf>`: a 100 000-path index is one
 //! allocation and 400 KB of offsets, and the palette's matcher walks bytes.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// The paths `git ls-files` lists, in index order, each once.

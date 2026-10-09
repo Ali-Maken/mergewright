@@ -7,7 +7,11 @@
 //! the repository, index, tree and stash list exactly as before the pick,
 //! redo exactly as after.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::PathBuf;
 

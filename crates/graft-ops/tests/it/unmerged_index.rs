@@ -4,7 +4,11 @@
 //! by `git ls-files --stage`, never by a value a function handed back
 //! (PROMPT.md §7.2 item 4).
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::{Path, PathBuf};
 

@@ -5,7 +5,11 @@
 //! Every expectation is read back out of the repository with `git` and the
 //! files on disk, never from the value the run returned.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::{Path, PathBuf};
 

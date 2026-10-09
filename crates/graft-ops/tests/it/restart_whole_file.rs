@@ -6,7 +6,11 @@
 //! This writes the user's index and working tree, so every case checks what
 //! lands, byte for byte, and the stale-gate case checks nothing moved.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::PathBuf;
 

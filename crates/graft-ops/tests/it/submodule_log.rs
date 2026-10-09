@@ -2,7 +2,11 @@
 //! a pointer move pulled in or rewound, judged by git's own
 //! `git diff --submodule=log` on the same move.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::Path;
 use std::sync::atomic::AtomicBool;

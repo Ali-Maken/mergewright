@@ -1,6 +1,9 @@
 //! The history place's file pane: one version of the file, its changed lines marked, or a binary's sizes.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 pub(super) fn draw_file(buf: &mut Buffer, area: Rect, view: &HistoryView) {

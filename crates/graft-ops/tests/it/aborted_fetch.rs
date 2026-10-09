@@ -8,7 +8,11 @@
 //! (`for-each-ref`) and from the journal file, never from a return value
 //! alone.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

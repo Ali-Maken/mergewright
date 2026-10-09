@@ -6,7 +6,11 @@
 //! for byte (`support::state_of`). The one promise under test is that the
 //! edits are always in the tree or in the stash list, never in neither.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};

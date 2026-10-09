@@ -6,7 +6,11 @@
 //! Every process a hook here starts records its pid under `.git/test-hooks/`,
 //! and [`Hooked`]'s drop signals exactly those pids — never a pattern.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};

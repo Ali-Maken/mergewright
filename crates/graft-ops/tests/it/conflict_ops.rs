@@ -5,7 +5,11 @@
 //! --ours|--theirs` + `add`/`rm` would leave, so the test runs both and
 //! compares.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::{Path, PathBuf};
 

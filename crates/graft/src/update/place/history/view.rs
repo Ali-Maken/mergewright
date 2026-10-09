@@ -1,6 +1,9 @@
 //! The history place drawn: the view handed to the picture, its title and header.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 impl HistoryState {

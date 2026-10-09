@@ -5,7 +5,11 @@
 //! Every test reads the repository back with `git` rather than trusting a
 //! returned value, as the rest of this binary does.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 

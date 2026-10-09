@@ -5,7 +5,11 @@
 //! `the_stash_forecast_agrees_with_git` runs the put-back on a copy and
 //! compares what git did with what the preview said.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};

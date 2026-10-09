@@ -5,7 +5,11 @@
 //! - (b) a remote-tracking ref of the branch's own name counts, `-u` or not;
 //! - a local upstream (`--track feature-a`) is not a push.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use graft_ops::preview::{ForkFate, PreviewPlan, WhyStays};
 

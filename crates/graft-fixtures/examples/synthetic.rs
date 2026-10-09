@@ -63,7 +63,7 @@ fn main() -> ExitCode {
     match synthetic::ensure(scale) {
         Ok(report) => {
             // Display only: a fixture's size in MiB to one decimal place.
-            #[allow(clippy::cast_precision_loss)]
+            #[allow(clippy::cast_precision_loss, reason = "display only, one decimal")]
             let mib = report.bytes as f64 / (1024.0 * 1024.0);
             println!(
                 "{}\t{mib:.1}\t{:.1}\t{}",

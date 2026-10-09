@@ -1,6 +1,9 @@
 //! Kinds that only move refs: checkout, branch, tag, delete, a branch from a stash, and the guided re-push.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 pub(in crate::preview) fn checkout(

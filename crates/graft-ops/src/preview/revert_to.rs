@@ -1,6 +1,9 @@
 //! The time machine: what reverting to just before an entry would do (§6.6).
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// What reverting to just before `target` would do (§6.6).

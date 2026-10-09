@@ -41,7 +41,11 @@ impl<'a> Pen<'a> {
         let rgb = identity.map_or(self.look.muted, |identity| {
             self.look.palette[identity.slot(self.look.palette.len())]
         });
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // alpha is 0.0..=1.0.
+        #[allow(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "alpha is 0.0..=1.0."
+        )]
         let alpha = (alpha.clamp(0.0, 1.0) * 255.0).round() as u8;
         Ink {
             rgb,

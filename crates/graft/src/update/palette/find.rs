@@ -1,7 +1,10 @@
 //! Finding under `⌃P`: the BRANCHES, TAGS, FILES and COMMITS groups, the
 //! reads and jobs that answer them, and the cursor as answers land.
 
-#[allow(clippy::wildcard_imports)] // a split of one module: its parent is its prelude
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// BRANCHES, TAGS, FILES and COMMITS for `query` (tickets 12, 12b). A group

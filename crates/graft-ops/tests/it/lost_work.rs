@@ -6,7 +6,11 @@
 //! his edit — and asserts every row the list draws, as journal-screen and
 //! the acceptance walk will see it.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::{Path, PathBuf};
 

@@ -12,7 +12,11 @@
 //!
 //! Every fixture here is a merge run with plain `git`, never through Graft.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::PathBuf;
 

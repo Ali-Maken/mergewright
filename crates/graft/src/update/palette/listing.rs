@@ -1,6 +1,9 @@
 //! The listing: the rows a palette shows, filtered by its query.
 
-#[allow(clippy::wildcard_imports)] // a split of one module: its parent is its prelude
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 pub(super) fn source_of(state: &AppState) -> Source<'_> {

@@ -1,7 +1,11 @@
 //! The empty state's clone host (m8/18b): its pool's quit, and a clone's
 //! notice carried to the repository it opens. Real git, loopback remotes.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

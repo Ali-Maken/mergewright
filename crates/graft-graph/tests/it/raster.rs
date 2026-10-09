@@ -339,7 +339,11 @@ fn emphasis_fades_without_thickening_the_strokes() {
             .count()
     };
     let (normal, dimmed) = (draw(Emphasis::Normal), draw(Emphasis::Dimmed));
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // FADED_ALPHA is 0.0..=1.0.
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "FADED_ALPHA is 0.0..=1.0."
+    )]
     let max_dimmed_alpha = (graft_graph::raster::FADED_ALPHA * 255.0).round() as u8;
     assert!(
         dimmed
@@ -602,7 +606,11 @@ fn a_folded_edge_is_a_tail_that_fades_out_before_the_next_column() {
 }
 
 #[test]
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // Sample rows inside a 37 px band.
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "Sample rows inside a 37 px band."
+)]
 fn the_rail_is_a_grey_dotted_line_whose_dashes_never_jump() {
     let rows = folded_rows();
     let (_, cell_height) = USER_CELL;

@@ -9,7 +9,11 @@
 //! clone: a keychain helper must neither answer for the test nor store its
 //! password.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

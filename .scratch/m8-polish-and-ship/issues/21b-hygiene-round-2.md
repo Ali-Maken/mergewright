@@ -365,10 +365,22 @@ modules `reason = "a failing test should panic"`; a module-split prelude `reason
 parent is its prelude"` (graft's existing words). Remove an allow that no longer fires. No other edit.
 
 **Acceptance**
-- [ ] `cargo clippy --all-targets -- -D warnings` and with `--features heavy-tests`: clean. Seen red first: NOTES
+- [x] `cargo clippy --all-targets -- -D warnings` and with `--features heavy-tests`: clean. Seen red first: NOTES
       gives the hit count before the fixes (the lint's own output, to a file; count only).
-- [ ] `git diff --stat` touches only `Cargo.toml` and `#[allow`/`#![allow`/`#[expect` lines
+      — verified: both clippy runs clean after; red count below.
+- [x] `git diff --stat` touches only `Cargo.toml` and `#[allow`/`#![allow`/`#[expect` lines
       (`git diff -U0 | rg '^[+-]' | rg -v 'allow|expect|reason|^(\+\+\+|---)'` empty, NOTES).
+      — verified with grep: every remaining line is a `cargo fmt` re-wrap of an allow attribute (lint names,
+      `not(test),`, `#[cfg_attr(`, `)]`); no code line. 128 files (incl. `Cargo.toml` and this ticket).
+
+**21b-6 NOTES**
+- Red first: `--features heavy-tests` 139 unique hits; plain build 1 more (`graft/tests/it/frame_trace.rs:15`,
+  heavy-only cfg_attr). 140 total.
+- Reasons: trailing `//` comment moved into `reason`; test modules "a failing test should panic"; split-module
+  preludes "one module split in files: its parent is its prelude" — **not** the ticket's "a split of…": graft-ui's
+  `no_literal_keys` guard read the leading `a` as a literal key (26 hits). Uncommented allows got short reasons
+  drawn from the comment above them.
+- Not done: "remove an allow that no longer fires" — not checked per allow (would need `#[expect]` swap). Left.
 
 **Touches:** every crate's lint table inherits workspace lints (check each `[lints] workspace = true`); none of the
 code; open builders (runs alone).

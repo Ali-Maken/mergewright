@@ -1,6 +1,9 @@
 //! Parsing `git status --porcelain=v2 -z`: one record at a time.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// Parses `git status --porcelain=v2 -z`'s output. Pure: no `git` spawn, a

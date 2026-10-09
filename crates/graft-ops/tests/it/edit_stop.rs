@@ -2,7 +2,11 @@
 //! stop, how `rewrite::edit_stop` and `read_facts` read it, and P14's one
 //! exception — an amend at an edit stop, on the commit git stopped on.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use graft_core::oid::Oid;
 use graft_git::state::InProgress;

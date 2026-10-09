@@ -34,7 +34,10 @@ pub(crate) struct RowContext<'a> {
 /// One branch's row: its walk, its `merged_into` elbow, and (for the default
 /// row only) the set of commits its walk visited, which the caller keeps as
 /// `default_visited` for every later row's `merged_into` check.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "each argument is the caller's to say; a struct for one caller would only rename them"
+)]
 fn build_row(
     ctx: &RowContext<'_>,
     name: &RefName,
@@ -94,7 +97,10 @@ fn build_row(
 /// Every row, in order: [`build_row`] once per local branch, feeding
 /// `default_visited` forward from the default row (which always sorts
 /// before any row that could be merged into it) to every row after it.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "each argument is the caller's to say; a struct for one caller would only rename them"
+)]
 pub(crate) fn build_rows(
     rows: &RowContext<'_>,
     locals: &[(RefName, Oid)],

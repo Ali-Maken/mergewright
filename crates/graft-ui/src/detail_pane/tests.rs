@@ -56,7 +56,10 @@ fn text(terminal: &Terminal<TestBackend>) -> Vec<String> {
         .collect()
 }
 
-#[allow(clippy::too_many_lines)] // one hand-built view-model fixture, not logic
+#[allow(
+    clippy::too_many_lines,
+    reason = "one hand-built view-model fixture, not logic"
+)]
 fn commit_view() -> DetailView {
     DetailView {
         header: DetailHeader {
@@ -557,7 +560,10 @@ fn word_tint_is_a_stronger_background_than_the_soft_row_background() {
         panic!("expected a diff body");
     };
     let diff = std::sync::Arc::make_mut(diff);
-    #[allow(clippy::single_range_in_vec_init)] // one word range is the point of the test
+    #[allow(
+        clippy::single_range_in_vec_init,
+        reason = "one word range is the point of the test"
+    )]
     let words = vec![0..2]; // "if" on the added line
     diff.hunks[0].lines[2].words = words;
     let theme = theme(ColorDepth::TrueColor);
@@ -593,7 +599,10 @@ fn word_tint_false_leaves_the_word_at_the_plain_row_background() {
         panic!("expected a diff body");
     };
     let diff = std::sync::Arc::make_mut(diff);
-    #[allow(clippy::single_range_in_vec_init)]
+    #[allow(
+        clippy::single_range_in_vec_init,
+        reason = "one word range is the point of the test"
+    )]
     let words = vec![0..2]; // "if" on the added line
     diff.hunks[0].lines[2].words = words;
     let theme = theme(ColorDepth::TrueColor);
@@ -1025,7 +1034,10 @@ fn word_tint_syntax_and_palette16_match_diff_bodys_look() {
         panic!("expected a diff body");
     };
     let diff = std::sync::Arc::make_mut(diff);
-    #[allow(clippy::single_range_in_vec_init)]
+    #[allow(
+        clippy::single_range_in_vec_init,
+        reason = "one word range is the point of the test"
+    )]
     let words = vec![0..2]; // "if" on the added line, same fixture as diff_body's test
     diff.hunks[0].lines[2].words = words;
     diff.hunks[0].lines[0].syntax = vec![SyntaxSpan {

@@ -3,7 +3,11 @@
 
 // Helpers, not `#[test]` functions: see `support.rs` for why `expect` is
 // fine here.
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::PathBuf;
 

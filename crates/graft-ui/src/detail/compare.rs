@@ -1,6 +1,9 @@
 //! The compare view's types: which two points, how far apart, and what changed.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// A compare's header (m7-14): the two sides by name and what the read
