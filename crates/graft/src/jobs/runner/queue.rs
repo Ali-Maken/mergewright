@@ -14,6 +14,7 @@ use super::JobRunner;
 use crate::jobs::pool::Assignment;
 use crate::jobs::radar::RadarContext;
 use crate::jobs::types::{Cancel, JobEvents, Outcome, Work};
+use crate::jobs::{detail, radar, stash_only};
 use crate::repos::RepoStore;
 use crate::update::{AppEvent, Command, Product, Task};
 use graft_ops::mistake_radar::probes::{Duplicates, EvilVerdict, ForcePushVerdict};
@@ -30,7 +31,7 @@ fn radar_context(
     let repo = repos.shared().map_err(|error| error.to_string())?;
     let handle = repo.handle();
     let table = repos.table().map_err(|error| error.to_string())?;
-    crate::jobs::radar::run_radar_context(&handle, &table, default_tip, default_ref, stop)
+    radar::run_radar_context(&handle, &table, default_tip, default_ref, stop)
 }
 
 /// The evil-merge probe: opens the repository the probe needs and reports an
@@ -41,7 +42,7 @@ fn evil_probe(repos: &RepoStore, merge: Oid, stop: &Cancel) -> EvilVerdict {
         Ok(repo) => repo,
         Err(error) => return EvilVerdict::NotCheckable(error.to_string()),
     };
-    crate::jobs::radar::run_evil_probe(&repo.handle(), merge, stop)
+    radar::run_evil_probe(&repo.handle(), merge, stop)
 }
 
 /// The force-push probe, with the same open-failure rule as [`evil_probe`].
@@ -55,7 +56,7 @@ fn force_push_probe(
         Ok(repo) => repo,
         Err(error) => return ForcePushVerdict::NotCheckable(error.to_string()),
     };
-    crate::jobs::radar::run_force_push_probe(&repo.handle(), branch, current, stop)
+    radar::run_force_push_probe(&repo.handle(), branch, current, stop)
 }
 
 /// The duplicates probe, with the same open-failure rule as [`evil_probe`],
@@ -67,7 +68,7 @@ fn duplicates_probe(
     stop: &Cancel,
 ) -> Result<Arc<Duplicates>, String> {
     let repo = repos.shared().map_err(|error| error.to_string())?;
-    crate::jobs::radar::run_duplicates_probe(&repo.handle(), window, stop)
+    radar::run_duplicates_probe(&repo.handle(), window, stop)
 }
 impl<S: JobEvents> JobRunner<S> {
     /// Queue some work, and return the id its result will carry.
@@ -106,15 +107,13 @@ impl<S: JobEvents> JobRunner<S> {
             Command::ListFiles(id, spec, options) => {
                 let repos = Arc::clone(&self.repos);
                 self.detail_job(id, Task::ListFiles { spec }, move |cancel| {
-                    Product::Files(crate::jobs::detail::read_files(
-                        &repos, spec, options, cancel,
-                    ))
+                    Product::Files(detail::read_files(&repos, spec, options, cancel))
                 });
             }
             Command::ReadFileDiff(id, key, entry) => {
                 let repos = Arc::clone(&self.repos);
                 self.detail_job(id, Task::FileDiff { key }, move |cancel| {
-                    let result = crate::jobs::detail::read_file_diff(&repos, &key, &entry, cancel);
+                    let result = detail::read_file_diff(&repos, &key, &entry, cancel);
                     Product::FileDiff(key, result)
                 });
             }
@@ -125,10 +124,7 @@ impl<S: JobEvents> JobRunner<S> {
             Command::ContainedIn(id, oid) => {
                 let repos = Arc::clone(&self.repos);
                 self.detail_job(id, Task::ContainedIn { oid }, move |cancel| {
-                    Product::ContainedIn(
-                        oid,
-                        crate::jobs::detail::read_contained(&repos, oid, cancel),
-                    )
+                    Product::ContainedIn(oid, detail::read_contained(&repos, oid, cancel))
                 });
             }
             Command::EvilProbe(id, merge) => {
@@ -176,7 +172,7 @@ impl<S: JobEvents> JobRunner<S> {
         match command {
             Command::TraceHistory { id, request } => {
                 self.detail_job(id, Task::Trace, move |cancel| {
-                    Product::Trace(crate::jobs::detail::read_trace(&repos, &request, cancel))
+                    Product::Trace(detail::read_trace(&repos, &request, cancel))
                 });
             }
             Command::ReadWholeFile {
@@ -188,7 +184,7 @@ impl<S: JobEvents> JobRunner<S> {
                 ignore_whitespace,
             } => {
                 self.detail_job(id, Task::WholeFile, move |cancel| {
-                    let read = crate::jobs::detail::read_whole_file(
+                    let read = detail::read_whole_file(
                         &repos,
                         commit,
                         &path,
@@ -210,9 +206,7 @@ impl<S: JobEvents> JobRunner<S> {
     pub(super) fn read_stash_only(&self, id: JobId, stashes: Vec<Oid>) {
         let repos = Arc::clone(&self.repos);
         self.detail_job(id, Task::StashOnly, move |cancel| {
-            Product::StashOnly(crate::jobs::stash_only::read_stash_only(
-                &repos, &stashes, cancel,
-            ))
+            Product::StashOnly(stash_only::read_stash_only(&repos, &stashes, cancel))
         });
     }
 
@@ -221,7 +215,7 @@ impl<S: JobEvents> JobRunner<S> {
     fn blame_job(&self, id: JobId, request: crate::update::place::BlameRequest) {
         let repos = Arc::clone(&self.repos);
         self.detail_job(id, Task::Blame, move |cancel| {
-            Product::Blame(crate::jobs::detail::read_blame(&repos, &request, cancel))
+            Product::Blame(detail::read_blame(&repos, &request, cancel))
         });
     }
 

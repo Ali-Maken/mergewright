@@ -11,6 +11,7 @@ use super::JobRunner;
 use crate::history::RowRequest;
 use crate::jobs::kinds::search;
 use crate::jobs::types::{Cancel, JobEvents, Outcome};
+use crate::jobs::{fold_count, map, palette, remote, stash, switch_list};
 use crate::update::{AppEvent, Product, Progress, Task};
 
 impl<S: JobEvents> JobRunner<S> {
@@ -23,9 +24,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::Stashes(crate::jobs::stash::read_stashes(
-                    &repos, cancel,
-                )))
+                Outcome::Produced(Product::Stashes(stash::read_stashes(&repos, cancel)))
             })
         });
     }
@@ -39,9 +38,9 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::SwitchList(
-                    crate::jobs::switch_list::read_switch_list(&repos, cancel),
-                ))
+                Outcome::Produced(Product::SwitchList(switch_list::read_switch_list(
+                    &repos, cancel,
+                )))
             })
         });
     }
@@ -55,19 +54,19 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::PaletteBranches(
-                    crate::jobs::palette::read_branches(&repos, cancel),
-                ))
+                Outcome::Produced(Product::PaletteBranches(palette::read_branches(
+                    &repos, cancel,
+                )))
             })
         });
     }
 
     /// Matches the palette's query against branch and tag names, under an
     /// id `update` already chose; cancelled by the next keystroke.
-    pub(super) fn palette_names(&self, id: JobId, request: crate::jobs::palette::NamesRequest) {
+    pub(super) fn palette_names(&self, id: JobId, request: palette::NamesRequest) {
         self.queue_as(id, Some(Task::PaletteNames), move |_| {
             Box::new(move |cancel: &Cancel| {
-                match crate::jobs::palette::match_names(&request, &|| cancel.is_cancelled()) {
+                match palette::match_names(&request, &|| cancel.is_cancelled()) {
                     Some(hits) => Outcome::Produced(Product::PaletteNames(Arc::new(hits))),
                     None => Outcome::Cancelled,
                 }
@@ -84,9 +83,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::TrackedPaths(crate::jobs::palette::read_tracked(
-                    &repos, cancel,
-                )))
+                Outcome::Produced(Product::TrackedPaths(palette::read_tracked(&repos, cancel)))
             })
         });
     }
@@ -122,9 +119,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::IndexState(crate::jobs::stash::read_index_state(
-                    &repos, cancel,
-                )))
+                Outcome::Produced(Product::IndexState(stash::read_index_state(&repos, cancel)))
             })
         });
     }
@@ -146,9 +141,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::Remotes(crate::jobs::remote::read_remotes(
-                    &repos, cancel,
-                )))
+                Outcome::Produced(Product::Remotes(remote::read_remotes(&repos, cancel)))
             })
         });
     }
@@ -160,7 +153,7 @@ impl<S: JobEvents> JobRunner<S> {
         let repos = Arc::clone(&self.repos);
         self.queue_as(id, None, move |_| {
             Box::new(move |cancel: &Cancel| {
-                let result = crate::jobs::remote::read_leaves(&repos, sent, expected, cancel);
+                let result = remote::read_leaves(&repos, sent, expected, cancel);
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
@@ -179,7 +172,7 @@ impl<S: JobEvents> JobRunner<S> {
         let repos = Arc::clone(&self.repos);
         self.queue_as(id, None, move |_| {
             Box::new(move |cancel: &Cancel| {
-                let count = crate::jobs::fold_count::count_folded(&repos, merge, cancel);
+                let count = fold_count::count_folded(&repos, merge, cancel);
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
@@ -199,7 +192,7 @@ impl<S: JobEvents> JobRunner<S> {
                 let mut report = |done, total| {
                     sink.deliver(AppEvent::Progress(id, Progress::Map { done, total }));
                 };
-                let product = crate::jobs::map::build_map(&repos, &req, &mut report, cancel);
+                let product = map::build_map(&repos, &req, &mut report, cancel);
                 Outcome::Produced(Product::Map(product))
             })
         });
