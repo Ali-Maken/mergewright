@@ -876,7 +876,7 @@ what right looks like: (ticket 78) A status that arrives under a box is held, an
   ●    Commit 166                                                                                       GF 7y   953abf3
   ●    Commit 165                                                                                       GF 7y   49912f3
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- fetch all remotes failed: no remote named '/graft-no-such-remote' · esc dismiss
+ fetch all remotes failed: no repository at '/graft-no-such-remote', or no access to it · esc dismiss
 
 === frame 3: `esc`, the create's line ===
  ◆ api  ~/code/api · main                                                                                   200 commits
@@ -1125,7 +1125,7 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
   ●    Commit 181                                                  7y   c8254c5
   ●    Commit 180                                                  7y   e95ccd4
   ●    Commit 179                                                  7y   97b58e5
- fetch all remotes failed: no remote named '/graft-no-such-remot… · esc dismiss
+ fetch all remotes failed: no repository at '/graft-no-such-remo… · esc dismiss
 
 === frame 3: `esc`, the create's line ===
  ◆ api  ~/code/api · main                                           200 commits
@@ -1260,7 +1260,7 @@ what right looks like: Re-taken 2026-10-02 (m8-13b: `q quit` joins the banner's 
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ resolve · M mergetool · e edit · space resolved · c continue · ⇥ diff · </> resize · . actions · ? keys
+ ⏎ resolve · M mergetool · e edit · space mark resolved · c continue · ⇥ diff · </> resize · . actions · ? keys
 UNCOMMITTED
 diff vs HEAD 274c7d4
 CONFLICTS (13)                ▎
@@ -1512,7 +1512,7 @@ CONFLICTS (13)
 
 
 
- ⏎ resolve · M mergetool · e edit · space resolved · c cont · ⇥ diff · ? keys
+ ⏎ resolve · M mergetool · e edit · space mark · c cont · ⇥ diff · ? keys
 --- frame 2: `a`: the bottom row names `⇥ ⇥ banner, then c continue  a abort`
 REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 Graph  [Detail]
@@ -2053,7 +2053,7 @@ what right looks like: (ticket 82) `S p y` clashed in notes.md, then `esc` shut 
 
 
 
- stash@{0} clashed · 1 conflicted · ⏎ changes · c commit · S stash · ? keys
+ stash@{0} clashed · 1 conflicted · ⏎ changes · c commit · u undo · ? keys
 
 ================================================================================
 docs/shots/m6/m6-20-stash-clash-landing-120x40.txt

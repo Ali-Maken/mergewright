@@ -22,7 +22,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ resolve · M mergetool · e edit · space resolved · c continue · ⇥ diff · </> resize · . actions · ? keys
+ ⏎ resolve · M mergetool · e edit · space mark resolved · c continue · ⇥ diff · </> resize · . actions · ? keys
 UNCOMMITTED
 diff vs HEAD 274c7d4
 CONFLICTS (13)                ▎

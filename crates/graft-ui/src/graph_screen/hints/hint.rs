@@ -208,6 +208,14 @@ impl Hint {
     }
 }
 
+/// `space` on a CONFLICTS row (m8/20c R6'): a verb, so it does not read as
+/// `⏎ resolve` one letter off. The bar and `c`'s refusal both draw it.
+pub const MARK_RESOLVED: &str = "mark resolved";
+
+/// [`MARK_RESOLVED`]'s short form: a prefix, so at 80 columns the bar keeps
+/// `⇥ diff` and `? keys` (its row is in [`short_form`]).
+pub const MARK_RESOLVED_SHORT: &str = "mark";
+
 /// The user's short-form table, restated 2026-09-21 (m5/27, correcting
 /// m5/24): **the short form is a prefix of the full label, or there is no
 /// short form.**
@@ -240,10 +248,14 @@ impl Hint {
 ///
 /// `stash`, `merge` and `rebase` are live and absent because a squeeze was
 /// the only short form that ever fit them and the user ruled squeezes out;
-/// `branch`, `tag` and `resolved` are [`HintState::Planned`] and never
-/// drawn. All six keep their full form: the table is the user's, and a
+/// `branch` and `tag` are [`HintState::Planned`] and never
+/// drawn. All five keep their full form: the table is the user's, and a
 /// label it does not name is reported, not replaced.
 pub(super) fn short_form(verb: &str) -> Option<&'static str> {
+    // m8/20c R6': the 80-col conflict-row bar is 82 cells whole, 73 with it.
+    if verb == MARK_RESOLVED {
+        return Some(MARK_RESOLVED_SHORT);
+    }
     Some(match verb {
         "first-parent" => "first",
         "continue" => "cont",

@@ -1197,7 +1197,7 @@ fn the_changes_pane_hints_replace_the_row_context() {
         .to_owned();
     assert_eq!(
         unmerged_footer,
-        " ⏎ resolve · M mergetool · e edit · space resolved · c commit · ⇥ graph · . actions · ? keys"
+        " ⏎ resolve · M mergetool · e edit · space mark resolved · c commit · ⇥ graph · . actions · ? keys"
     );
     assert!(
         !unmerged_footer.contains("space stage"),

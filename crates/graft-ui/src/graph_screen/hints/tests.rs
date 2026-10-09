@@ -502,7 +502,7 @@ fn a_pane_hints_only_its_own_keys() {
     ));
     assert_eq!(
         unmerged,
-        " ⏎ resolve · M mergetool · e edit · space resolved · c commit · ⇥ graph · . actions · ? keys"
+        " ⏎ resolve · M mergetool · e edit · space mark resolved · c commit · ⇥ graph · . actions · ? keys"
     );
 }
 
@@ -696,6 +696,8 @@ fn every_short_rung_is_the_users_own_word() {
         // Proposed by the builder, for the conductor's ruling (ticket NOTES).
         ("back to blame", "back"),
         ("back to history", "back"),
+        // m8/20c R6' (B4): the conflict row's `space` at 80 columns.
+        ("mark resolved", "mark"),
     ];
     for (verb, want) in table {
         assert_eq!(short_form(verb), Some(want), "`{verb}`'s short rung");
@@ -1696,7 +1698,7 @@ fn unmerged_rows_lead_with_resolve() {
     });
     assert_eq!(
         hints_text(&unmerged),
-        " ⏎ resolve  M mergetool  e edit  space resolved  c commit  ⇥ graph"
+        " ⏎ resolve  M mergetool  e edit  space mark resolved  c commit  ⇥ graph"
     );
 
     let banner_plain = context_list(&HintContext::Banner {
@@ -3146,4 +3148,29 @@ fn at_a_stop_a_search_puts_next_and_prev_after_the_stops_keys() {
             hints_text(&bar)
         );
     }
+}
+
+/// m8/20c R6' (B4): `space` on a CONFLICTS row reads `mark resolved` — a
+/// verb, not `resolved` one letter off `⏎ resolve` — and at 80 columns its
+/// short form `mark`, so `⇥ diff` and `? keys` are still drawn.
+#[test]
+fn a_conflict_row_says_mark_resolved() {
+    let pane = HintContext::ChangesPane {
+        unmerged: true,
+        live: Some(LiveC::Continue),
+        tab: TabWord::Diff,
+        over_overlay: false,
+    };
+    let wide = hints_text(&hints_for(&pane, Divider::Hidden, 120));
+    assert!(
+        wide.contains("space mark resolved · c continue · ⇥ diff"),
+        "{wide}"
+    );
+    let narrow = hints_text(&hints_for(&pane, Divider::Hidden, 80));
+    assert_eq!(
+        narrow,
+        " ⏎ resolve · M mergetool · e edit · space mark · c cont · ⇥ diff · ? keys"
+    );
+    assert_eq!(super::MARK_RESOLVED, "mark resolved");
+    assert_eq!(super::MARK_RESOLVED_SHORT, "mark");
 }

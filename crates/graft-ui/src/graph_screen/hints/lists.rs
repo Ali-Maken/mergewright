@@ -360,7 +360,7 @@ fn changes_pane_table(unmerged: bool, tab: TabWord) -> Vec<Hint> {
             hint(OPEN, "resolve"),
             hint(MERGETOOL, "mergetool"),
             hint(EDIT, "edit"),
-            hint(STAGE, "resolved"),
+            hint(STAGE, super::MARK_RESOLVED),
             hint(COMMIT, "commit"),
             hint(NEXT_PANE, tab.word()),
         ]

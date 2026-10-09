@@ -40,7 +40,7 @@ pub(crate) fn refused_at(state: &AppState) -> RefusedAt {
 /// - Banner: `⏎ resolve  M mergetool  e edit` (`⏎` is `app.open`, which
 ///   opens the resolver on the first conflicted file).
 /// - Changes pane on a CONFLICTS row: the same on that file, then `space
-///   marks resolved` — last, since it stages the file as it stands.
+///   mark resolved` — last, since it stages the file as it stands.
 /// - Changes pane on any other row: `space`, `M` and `e` would act on a
 ///   different file there, so the words name the way on instead: the `⇥`s
 ///   that reach the banner, `⇥ ⇥ banner` from the file list, `⇥ banner`
@@ -61,6 +61,6 @@ pub(crate) fn resolve_keys(at: RefusedAt, keys: &Keymap) -> Option<String> {
         row_at(place, 'M', &MERGETOOL_ROWS).and_then(|row| keys.key_verb(&[row], "mergetool"));
     let edit = edit_row(place).and_then(|row| keys.key_verb(&[row], "edit"));
     let mark = row_at(place, ' ', &["changes.stage"])
-        .and_then(|row| keys.key_verb(&[row], "marks resolved"));
+        .and_then(|row| keys.key_verb(&[row], graft_ui::graph_screen::hints::MARK_RESOLVED));
     joined(joined(joined(resolve, tool), edit), mark)
 }

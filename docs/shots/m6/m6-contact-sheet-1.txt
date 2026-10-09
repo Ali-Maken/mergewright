@@ -974,7 +974,7 @@ what right looks like: (ticket 12) After `Esc` from the resolver a stop lands in
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⇥ banner · c finish · m merge · r rebase · ⏎ open · b branch · t tag · P push · p pull · f fetch · u undo · ? keys
+ ⇥ banner · c finish · ⏎ open · b branch · t tag · P push · p pull · f fetch · S stash · / search · q quit · ? keys
 
 ================================================================================
 docs/shots/m6/fix-landing-after-esc-187x50.txt
@@ -1030,7 +1030,7 @@ what right looks like: (ticket 12) The same at 187x50: the last row lists `⇥ b
 
 
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⇥ banner · c finish · m merge · r rebase · ⏎ open · b branch · t tag · P push · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · F3 rend · x compare · + lane · ? keys
+ ⇥ banner · c finish · ⏎ open · b branch · t tag · P push · p pull · f fetch · S stash · / search · q quit · F2 stat · F3 rend · x compare · + lane · j/k move · space fold · ? keys
 
 ================================================================================
 docs/shots/m6/fix-landing-b-launch-120x40.txt
@@ -2212,7 +2212,7 @@ what right looks like: (ticket 20) The frame after `⏎` finishing a merge begun
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  merged feature into main ✓
 COMMIT 0000000 · Graft Fixture <fixture@example.invalid> · 0000-00-00 00:00 +0000 · future · parents ddeed32, f43f326 ·…
-Merge branch 'feature' · evil merge: clean (2 files hand-resolved)
+Merge branch 'feature' · evil merge: none found · 2 hand-resolved files not checked
 M notes.md              +1 −1 ▎
 M shared.rs             +1 −1   1     - our plan
                                     1 + the agreed plan

@@ -3,7 +3,7 @@
 //!
 //! `git fetch --all` updates one remote's tracking refs and then fails on
 //! another: the entry is `Aborted`, and before 21c it said nothing moved —
-//! J marked it `refused · nothing written` while `origin/main` stood at the
+//! J marked it `nothing written` while `origin/main` stood at the
 //! teammate's tip. Every claim here is read back from the repository
 //! (`for-each-ref`) and from the journal file, never from a return value
 //! alone.

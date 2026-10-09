@@ -104,7 +104,7 @@ pub fn request_discard(next: &mut AppState) -> bool {
     };
     // A conflicted path has no "before" to discard to. Its entry is both
     // staged and unstaged, so the box below would offer a reset to HEAD and
-    // throw away the resolution in progress; `M`/`e`/`space resolved` are
+    // throw away the resolution in progress; `M`/`e`/`space mark resolved` are
     // the conflict keys (design note). Refused in words, like `space` and
     // hunk-`d` above — never silently.
     if next.detail.selected_section() == Some(WorkingTreeSection::Unmerged) {
