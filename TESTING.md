@@ -3229,3 +3229,39 @@ A person's step: the pty cannot judge whether a man page reads well. One step, a
   committed copy is stale. `mandoc -T lint docs/man/graft.1`: 0 errors, one warning (no date in `.TH`, on purpose: a
   date would make the committed copy stale every day, or carry a false one).
 - [ ] **His read** (the user): step 1, at his usual width.
+
+## M8: install it (J16, m8-polish-and-ship/24)
+
+**Nothing here can run until the release exists.** ADR-0057 §1: no tag, no release, no tap until a person has run the
+trademark search and the rename has landed. The commands then carry the new name (`<owner>/tap/tributary`, `trib`).
+What can run today runs from scripts, writing summary lines to `docs/release/`:
+
+| Script | What it proves | Output |
+|---|---|---|
+| `scripts/release-local.sh` (needs `dist` 0.33 on `PATH` or `DIST=`) | `dist plan` (4 targets, installer, formula, `graft.1` in each archive); `dist build` of this Mac's archive, its `tar tf`, the binary runs; `brew style` on the formula (no tap, no install); shellcheck on the installer | `plan.txt`, `build.txt` |
+| `scripts/linux-fast-tier.sh` (needs Docker) | the fast tier on Linux, in a throwaway official `rust` container, as a plain user | `linux.txt` |
+| `scripts/git-matrix.sh` | the git-sensitive tests against git built from source: the floor (2.38.0) and the newest release | `git-matrix.txt` |
+
+A failure on the floor in `git-matrix.txt` raises the floor (`GitVersion::MINIMUM`, `graft-git/src/version.rs`) to the
+oldest passing version, with a line here; it is never answered by skipping a test.
+
+**2026-10-09 (m8/24): the floor fails, by design, and is not raised yet — the user decides at the M8 stop.** git 2.38.0:
+16 of 26 passed; all 10 failures are the rebase preview's conflict forecast, which `graft-ops/src/preview/chain.rs:31`
+(`MERGE_BASE_MIN`, used at :78) turns off below git 2.40 ("conflicts: not checked"); 2.40.0 and 2.56.0: 26 of 26. The
+fast tier as a whole assumes 2.40+: on Debian bookworm's git 2.39.5 (an early run, before `--init`) 146 failed, 50 of
+them printing "git 2.40+ needed" (`docs/release/linux-git-2.39.txt`). Either the floor rises to 2.40, or 2.38–2.39 stay supported with a forecast that
+says "not checked" and the fast tier is documented as needing 2.40.
+
+`cargo install --locked --path crates/graft` from a clean tree into an empty `CARGO_HOME`: `docs/release/cargo-install.txt`.
+
+A person's steps, after publishing, **on a clean macOS account** (one that never had Graft; Homebrew installed). Two
+steps, as homebrew-core's tools (design note J16):
+
+| Step | Command | Right looks like |
+|---|---|---|
+| 1 | `brew install <owner>/tap/<name>` | taps and installs with no Gatekeeper prompt (no notarisation, ADR-0057 §3; Homebrew does not quarantine) |
+| 2 | `<command>` in a repository | the graph opens |
+| + | `man <command>` | the manual opens. **Today it would not**: dist's formula puts the man page in `share/<name>/`, not `man1` (see `build.txt`, the install block) |
+
+- [ ] **His install** (the user): steps 1–2 on a clean account, after publishing.
+- [ ] The curl installer, same account: `curl -LsSf https://github.com/<owner>/<name>/releases/latest/download/<name>-installer.sh | sh`, new shell, run. Three steps.

@@ -7,3 +7,6 @@ Claude outputs/
 .claude/worktrees/
 target-g*/
 .worktrees/
+
+# Release tools installed per worktree (m8-polish-and-ship/24: `dist`).
+.tools/

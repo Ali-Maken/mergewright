@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+#
+# Runs the fast tier on Linux, in a throwaway Docker container
+# (m8-polish-and-ship/24). The answer to "does it pass on Linux?" (ADR-0005)
+# without pushing anything to a CI service.
+#
+# What runs: exactly TESTING.md's fast tier, `cargo nextest run` and
+# `cargo test --doc`, workspace-wide, on a clone of the committed tree
+# (uncommitted edits are not in it). A clone, not an export: some tests open
+# the checkout itself as a repository. Linux arch is the host's: arm64 on
+# Apple silicon, so this is `aarch64-unknown-linux-gnu`, not x86_64.
+#
+# As a plain user, not root: several tests make a file unreadable and expect
+# git to fail, which root would not.
+#
+# The image is the official `rust` image: Debian trixie, git 2.47 (the fast
+# tier needs git 2.40+; bookworm has 2.39, see TESTING.md). The
+# container is started with --rm and leaves nothing behind; the image stays
+# in Docker's cache until `docker image rm` removes it.
+#
+# Where it goes:
+#   full log:      ${XDG_CACHE_HOME:-~/.cache}/graft-linux/fast-tier.log
+#   summary lines: docs/release/linux.txt (committed)
+#
+# Usage: scripts/linux-fast-tier.sh [image]     # default rust:1-trixie
+set -eu
+cd "$(dirname "$0")/.." || exit 1
+
+# The newest stable at the time of writing, not the MSRV: the lock file and
+# the fast tier are what is under test here, not the MSRV promise.
+image="${1:-rust:1-trixie}"
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/graft-linux"
+log="$cache/fast-tier.log"
+out="docs/release/linux.txt"
+mkdir -p "$cache" docs/release
+
+src="$(mktemp -d)"
+trap 'rm -rf "$src"' EXIT
+commit="$(git rev-parse --short HEAD)"
+git clone -q --no-checkout . "$src/tree"
+git -C "$src/tree" checkout -q --detach "$commit"
+# The crates come from the host, vendored, not from crates.io inside the
+# container: three of six early runs died on a download from inside Docker
+# ("transfer too slow"), while the host fetched the same crates fine.
+cargo vendor --locked --manifest-path "$src/tree/Cargo.toml" "$src/vendor" >/dev/null
+printf '[source.crates-io]\nreplace-with = "vendored"\n[source.vendored]\ndirectory = "/vendor"\n' >"$src/cargo-config.toml"
+
+# Inside: a user `tester` owns a copy of the tree; nextest comes from its
+# project's own prebuilt download (get.nexte.st), as its install docs say.
+inner='
+set -eu
+apt-get -qq update >/dev/null && apt-get -qq install -y tmux >/dev/null
+useradd -m tester
+cp -a /src /work && chown -R tester /work
+runuser -u tester -- bash -c "
+set -eu
+export CARGO_HOME=\$HOME/.cargo PATH=\$HOME/.cargo/bin:\$PATH
+mkdir -p \$HOME/.cargo/bin
+cp /cargo-config.toml \$HOME/.cargo/config.toml
+# A git identity, as every developer machine has: tests that commit through
+# the app read the global one (a first run without it failed on
+# \"Author identity unknown\"; m8-polish-and-ship/24 NOTES).
+git config --global user.name Tester
+git config --global user.email tester@example.invalid
+# A UTF-8 locale and a terminal type, as a developer shell has. Setting them
+# did not change the pty walks that draw an ASCII graph here (77 failures
+# with, 80 without; m8-polish-and-ship/24 NOTES): kept so the container is
+# no further from a laptop than it must be.
+export LANG=C.UTF-8 TERM=xterm-256color
+case \$(uname -m) in aarch64) arch=linux-arm ;; *) arch=linux ;; esac
+curl -fsSL https://get.nexte.st/latest/\$arch | tar -xzf - -C \$HOME/.cargo/bin
+cd /work
+echo \"== uname: \$(uname -srm)\"
+echo \"== git: \$(git --version)\"
+echo \"== rustc: \$(rustc --version)\"
+status=0
+cargo nextest run --workspace --no-fail-fast --status-level pass || status=1
+cargo test --doc --workspace || status=1
+exit \$status
+"
+'
+
+set +e
+# --init: a real init as PID 1, as any Linux machine has, to reap orphans.
+# Without it `bash` is PID 1, the hook processes a stop orphans stay
+# zombies, and the tests that check "every process is gone" (`kill -0`
+# finds a zombie) fail for the container's sake (m8-polish-and-ship/24).
+docker run --rm --init -v "$src/tree:/src:ro" -v "$src/vendor:/vendor:ro" \
+    -v "$src/cargo-config.toml:/cargo-config.toml:ro" "$image" bash -c "$inner" >"$log" 2>&1
+status=$?
+set -e
+
+{
+    echo "# Linux fast tier — scripts/linux-fast-tier.sh, $(date -u +%Y-%m-%dT%H:%MZ), commit $commit, image $image"
+    grep -E '^== ' "$log" | sed 's/^== //'
+    echo "exit: $status"
+    if grep -qE '^ *Summary' "$log"; then
+        grep -E '^ *Summary' "$log" | sed 's/^ */nextest: /'
+    else
+        echo "nextest: NO SUMMARY — the tests did not run; first error in the log:"
+        grep -m1 -A2 '^error' "$log" | sed 's/^/    /'
+    fi
+    # Doc tests: one `test result:` line per crate; the totals say enough.
+    grep -E '^test result:' "$log" |
+        awk '{p+=$4; f+=$6} END {print "doctests: " p " passed, " f " failed (" NR " crates)"}'
+    echo "failing tests:"
+    # `|| true`: grep exits 1 when nothing failed, the good case; the exit
+    # line above carries the run's real status.
+    grep -E '^ *(FAIL|SIGABRT|SIGSEGV|TIMEOUT) ' "$log" | sed 's/^ */    /' | sort -u || true
+    # The paths unverified on Linux since M4 (thread teardown, HungRemote's
+    # failed wake): every test in a module that drives a HungRemote, counted.
+    # Modules found by `grep -rl HungRemote crates`.
+    hung='(m4_walk::|m8_walk::clone|partial_fetch::|remote_by_key::|clone::|remote::)'
+    # nextest prints a failure twice (as it happens and in the closing list),
+    # so failures are counted by distinct test name.
+    passed="$(grep -E "^ *PASS .*$hung" "$log" | awk '{print $NF}' | sort -u | wc -l | tr -d ' ')"
+    failed="$(grep -E "^ *(FAIL|SIGABRT|SIGSEGV|TIMEOUT) .*$hung" "$log" | awk '{print $NF}' | sort -u | wc -l | tr -d ' ')"
+    echo "HungRemote/teardown modules $hung: $passed passed, $failed failed"
+} >"$out"
+
+cat "$out"
+exit "$status"
