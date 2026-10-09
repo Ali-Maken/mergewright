@@ -1,8 +1,9 @@
 # graft-core — map
-One line per public item. Update when a public item changes.
+Plain data only — no behaviour, no algorithms: commit and ref identity, events, the record shapes other crates read and write, errors for its own parsing.
+May depend on: nothing internal (ARCHITECTURE.md crate table). One line per public item.
 
 ## capabilities
-- `RenderingTier` (enum) — how Graft draws the commit graph.
+- `RenderingTier` (enum) — how Graft draws the commit graph: pixel, Unicode or ASCII.
 - `PixelProtocol` (enum) — the image protocol the pixel tier would use.
 - `Supported` (enum) — answer to one yes/no capability query, silence kept distinct.
 - `CellSize` (struct) — one character cell in pixels, and where the number came from.
@@ -14,73 +15,81 @@ One line per public item. Update when a public item changes.
 - `ColorDepth` (enum) — how much colour the terminal has: true colour down to none.
 - `TmuxStatus` (enum) — whether Graft is inside tmux and the outer terminal is reachable.
 - `ProbeOutcome` (enum) — what became of the probe round: answered, timed out, skipped.
-- `Capabilities` (struct) — everything detection established about the terminal.
-- `Capabilities::answers_dsr` (field) — the terminal answered the startup device-status request (`CSI 5 n` → `CSI 0 n`), so frames may be fenced (ADR-0054); `false` wherever not probed. Inside tmux it is tmux answering.
-- `Capabilities::kitty_deflate` (field) — the terminal answered `OK` to an `o=z` query (fenced, Kitty graphics on); `false` wherever not probed.
+- `Capabilities` (struct) — everything detection established about the terminal, incl. `answers_dsr` and `kitty_deflate`.
 
 ## commit
 - `Timestamp` (struct) — when something happened, as git stores it.
 - `Identity` (struct) — a name, an email and a moment.
 - `Commit` (struct) — one commit: id, parents, author, committer, message.
-- `Commit::date` / `subject` (fn) — committer date; first message line.
+- `Commit::date` (fn) — `-> Timestamp`: committer date.
+- `Commit::subject` (fn) — `-> &[u8]`: first message line.
 
 ## commit_handle
-- `CommitHandle` (struct) — a commit as a dense `u32` from its repository's id table; `index` (fn).
-- `Parents` (enum) — parents by handle, inline for ≤ 2; `iter` / `len` / `is_empty` / `first` (fn), `FromIterator`, `Default` (`None`).
+- `CommitHandle` (struct) — `(pub u32)`: a commit as a dense index into its repository's id table.
+- `CommitHandle::index` (fn) — `-> usize`.
+- `Parents` (enum) — parents by handle, inline for up to two; `FromIterator`, `Default`.
+- `Parents::iter` (fn) — `-> impl Iterator<Item = CommitHandle>`; also `len`, `is_empty`, `first`.
 - `Link` (struct) — `commit` and its `parents`, by handle.
-- `HandleSet` (struct) — bitset of handles; `new` / `insert` / `contains` / `remove` / `len` / `is_empty` / `approximate_bytes` (fn). `PartialEq`/`Eq` by member, not by representation (`remove` leaves its word behind).
+- `HandleSet` (struct) — bitset of handles; `Eq` by member, not representation.
+- `HandleSet::new` (fn) — empty set; also `insert`, `contains`, `remove`, `len`, `is_empty`, `approximate_bytes`.
 
 ## error
-- `Error` (enum) — a value a core constructor cannot represent (`OidLength`, `OidHex`, `RefName`, `EntryId` (m3/02)).
+- `Error` (enum) — a value a core constructor cannot represent: oid length/hex, ref name, entry id.
 - `RefNameRule` (enum) — the `check-ref-format` rule a rejected ref broke.
 
 ## event
 - `Event` (enum) — something that happened and that update must answer.
-- `KeyPress` (struct) — a key going down, with modifiers; `plain` / `control` (fn) build one.
+- `KeyPress` (struct) — a key going down, with modifiers.
+- `KeyPress::plain` (fn) — `const (KeyCode) -> Self`; `control` builds one with Ctrl.
 - `KeyCode` (enum) — the keys the keymap can name.
-- `Modifiers` (struct) — control, alt, shift, command; `NONE` / `CONTROL` (const).
+- `Modifiers` (struct) — control, alt, shift, command.
+- `Modifiers::NONE` (const) — no modifier; `CONTROL` is Ctrl alone.
 - `MouseInput` (struct) — a mouse event positioned in cells.
 - `MouseKind` (enum) — down, up, drag, move, scroll.
 - `MouseButton` (enum) — left, middle, right.
 
 ## job
-- `JobId` (struct) — names one background job; `new` / `raw` (fn).
+- `JobId` (struct) — names one background job.
+- `JobId::new` (fn) — `const (u64) -> Self`; `raw` reads it back.
 - `JobFailure` (enum) — why a job produced no result: failed or panicked.
 
 ## journal
-- `EntryId` (struct) — a journal entry's id, a ULID (26 Crockford base32 chars, time then random), `Ord` by string = by time; also the backup ref's last segment (ADR-0010); lives in `journal/entry_id.rs`, re-exported (m6-conflicts/41); `new(unix_ms, random)` / `parse` / `as_str` (fn); serde as its text (m3/02).
-- `OperationKind` (enum) — `Stage`, `Unstage`, `Discard`, `Commit`, `Amend`, `StashPush`, `StashApply`, `StashPop`, `StashDrop`, `Fetch`, `Pull`, `Push` (m4/04; serde `fetch`/`pull`/`push`), `Merge`, `Rebase`, `Rewrite` (m7/02, serde `rewrite`; ADR-0047: a `rebase -i` rewrite, undo has no per-kind arm, so it restores the recorded refs as for a rebase — unverified until rewrite-engine-b's undo test), `CherryPick`, `Revert`, `Reset`, `Checkout`, `BranchCreate`, `BranchDelete`, `TagCreate`, `TagDelete`, `BranchFromStash`, `RevertTo` (m5/07; serde snake_case like the rest: `cherry_pick`, `branch_from_stash`, `revert_to`), `ResolveConflict`, `RestartConflict` (m6-conflicts/03; serde `resolve_conflict`, `restart_conflict`), `FinishMerge` (m6-conflicts/20; serde `finish_merge`: a merge begun in the shell, finished from Graft), `AbortMerge` (m6-conflicts/57; serde `abort_merge`: a merge begun in the shell, aborted from Graft), `Undo`, `Redo` (m3/02). **`RevertTo` is never written**: §6.6 journals the time machine as one `Undo` entry per step, so a summary entry would be the thing that decision rejected — see the variant's own doc (m5/07 job 2).
-- `OperationKind::Recover` (m7/22, ADR-0046 hard choice 5; serde `recover`) — `⏎` on a journal-list row: a ref moved back, a branch recreated, or files restored from an entry's backup. Undoable like any other entry.
-- `EntryStatus` (enum) — `Pending`, `Committed`, `Aborted { reason }` (m3/02).
-- `INTERRUPTED` (const `&str`) — `"interrupted"`: the reason recovery records on an entry a dead process left open. One definition, because `ops` writes it and the journal browser matches on it (m3/06 review, Major 2).
-- `JournalEntry::is_interrupted` (fn) — `(&self) -> bool`: `Pending` (what the file holds) or `Aborted` with `INTERRUPTED` (what a reader is handed, recovery having closed it first). Keying on `Pending` alone looks right and never fires.
-- `Touches` (struct) — what an operation changes: `refs` (full names, or `HEAD` when detached), `index`, `worktree`; the snapshot scope and the generic inverse's steps (m3/02).
-- `HeadRef` (enum) — `Branch(full name)`, `Detached(Oid)`, `Unborn(full name)` (m3/02).
-- `JournalEntry` (struct) — one journaled operation, state-based (ADR-0031): `id`, `at_unix_ms`, `kind`, `description`, `status`, `touches`, `head_before`/`head_after`, `refs_before`/`refs_after` (`BTreeMap<String, Option<Oid>>`), `index_before`/`index_after` (`Option<IndexState>`), `worktree_before`/`worktree_after` (tree ids), `worktree_raw_before` (`Option<Oid>`, m7-power-tools/30q-a, ADR-0052: the backup's `raw/` tree, the bytes on disk git's checkout would not give back; serde like `merge_before`, absent = `None`, a line with none renders as before), `backup_ref`, `pins`, `commands`, `reverses`, `config_before`/`config_after` (`BTreeMap<String, Vec<String>>`, review m7-16b..21b Major 1: every `branch.<name>.*` key of each touched branch, before and after; absent key = not set; `serde(default, skip_serializing_if = is_empty)`, so an old line parses and a line with none renders as before), `merge_before`/`merge_after` (`Option<MergeState>`, m6-conflicts/20: git's merge state on **every** entry; absent on an old line = `None`, and `skip_serializing_if` keeps a line with none byte-identical to before; also the bound KNOWN_GAPS M6/25's fix needs). Serde derives; the JSONL lines are `graft-ops::journal`'s (m3/02).
-- `MergeState` (struct) — lives in `journal/merge_state.rs` with its private `text_bytes` serde module, re-exported so `graft_core::journal::MergeState` is unchanged (m6-conflicts/41). git's merge in progress, as files (m6-conflicts/20): `merge_head: Oid` (`MERGE_HEAD`'s first line), `other_heads: Vec<Oid>` (an octopus merge's further lines in order; empty otherwise, and then absent from the JSON so older lines read and write back unchanged — m6-conflicts/38), `merge_msg: Vec<u8>` and `merge_mode: Option<Vec<u8>>` (exact bytes; an empty `MERGE_MODE` is `Some(vec![])`). Bytes serialise as a JSON string when UTF-8, else `{"hex":"…"}` — exact both ways. `AUTO_MERGE` is left out (a tree; anchoring it would change the backup layout) — see its doc. `heads()` (every commit, `merge_head` first) and `merge_head_bytes()` (`MERGE_HEAD` as git writes it: one full hex id + `\n` per head; byte-exact for a git-written file, a hand-edited one comes back in git's form) (m6-conflicts/38).
-- `PutBack` (struct) / `PutBackWhy` (enum) — m6-conflicts/72, ADR-0045 §1: `PutBack { stash: Oid, why }`, the stash an operation put back into the working tree; `PutBackWhy::{Pop, Apply, SetAside}` (serde snake_case). `JournalEntry.put_back: Option<PutBack>`, `serde(default, skip_serializing_if = None)` like `merge_before`: an old line reads `None` and re-renders byte-identically (`journal::tests::a_journal_line_without_put_back_re_renders_byte_identically`). Written on the `Pending` line by a pop or apply (the entry's own stash commit); `graft_ops::clash::live_clash` reads it.
-- `RefMove` (struct) — m8-polish-and-ship/21c, ADR-0062: `RefMove { before: Option<Oid>, after: Option<Oid> }`, one ref a fetch moved (`None` = absent: new / gone). `JournalEntry.fetched_refs: Option<BTreeMap<String, RefMove>>` by full ref name, **outside the undo record** (nothing in undo reads it); `Some({})` = read, nothing moved; `None` = not recorded (old lines, a listing that failed). Outcome line only, `serde(default, skip_serializing_if = None)`: an old line re-renders byte-identically (`graft_ops` `journal::tests::a_line_without_fetched_refs_re_renders_byte_identically`).
-- `IndexState` (enum) — what an index was, as one tree id plus its shape: `Merged(Oid)` (the plain `write-tree` tree; serde is the **bare oid string**, so every line M3-M5 wrote parses and re-renders byte-identically) or `Unmerged { unmerged: Oid }` (the stage tree `{ 0/<path>, 1/<path>, 2/<path>, 3/<path> }`, every entry at stage 0 so the tree is writable at all; serde `{"unmerged":"<oid>"}`). `#[serde(untagged)]`, `Merged` first. `tree()`, `is_unmerged()`. An unmerged index is a **state**, not an absence: `None` on the fields above means only *never recorded* (m6-conflicts/08).
+- `EntryId` (struct) — a journal entry's id, a ULID ordered by time; also the backup ref's last segment; serde as text.
+- `EntryId::new` (fn) — `(unix_ms: i64, random: [u8; 10]) -> Self`; `parse` and `as_str` read and write the text.
+- `OperationKind` (enum) — every journaled operation kind (stage … push, merge, rebase, rewrite, conflicts, undo, redo); serde snake_case.
+- `OperationKind::Recover` (variant) — a ref moved back, a branch recreated, or files restored from an entry's backup.
+- `EntryStatus` (enum) — `Pending`, `Committed`, `Aborted { reason }`.
+- `INTERRUPTED` (const) — `&str` reason recovery records on an entry a dead process left open.
+- `Touches` (struct) — what an operation changes: `refs`, `index`, `worktree`.
+- `HeadRef` (enum) — `Branch(name)`, `Detached(Oid)`, `Unborn(name)`.
+- `IndexState` (enum) — `Merged(Oid)` or `Unmerged { unmerged }`: an index as one tree id plus its shape.
+- `IndexState::tree` (fn) — `-> Oid`; `is_unmerged` tells the shape.
+- `JournalEntry` (struct) — one journaled operation, state-based: before/after of refs, head, index, worktree, config, merge state.
+- `JournalEntry::is_interrupted` (fn) — `-> bool`: pending, or aborted with `INTERRUPTED`.
+- `RefMove` (struct) — `{ before, after: Option<Oid> }`: one ref a fetch moved, outside the undo record.
+- `PutBack` (struct) — `{ stash: Oid, why }`: the stash an operation put back into the working tree.
+- `PutBackWhy` (enum) — `Pop`, `Apply`, `SetAside`.
+- `MergeState` (struct) — git's merge in progress as files: `merge_head`, `other_heads`, `merge_msg`, `merge_mode`; byte-exact serde.
+- `MergeState::heads` (fn) — every merge head, `merge_head` first.
+- `MergeState::merge_head_bytes` (fn) — `-> Vec<u8>`: `MERGE_HEAD` as git writes it.
 
 ## mistake_radar
-- `MistakeRadarKind` (enum) — the seven PROMPT §1.4 kinds: `BackwardMerge`, `FoxtrotMerge`, `AccidentalPullMerge`, `EvilMerge`, `DuplicateCommit`, `ForcePushedRemote`, `RiskyState`.
-- `MistakeRadarKind::ALL` (const) — every kind, in declaration order (`graft-ops::mistake_radar::Policy` indexes by it).
-- `MistakeRadarKind::default_severity` / `name` (fn) — PROMPT §1.4's severity table; the kebab-case config/CLI name.
 - `Severity` (enum) — `Info` < `Warning`; how loudly a finding is shown.
+- `MistakeRadarKind` (enum) — the seven mistake kinds: backward, foxtrot, accidental pull merge, evil merge, duplicate, force-pushed, risky state.
+- `MistakeRadarKind::ALL` (const) — every kind, in declaration order.
+- `MistakeRadarKind::default_severity` (fn) — `-> Severity`; `name` is the kebab-case config name.
 
 ## oid
-- `Oid` (struct) — a git object id, 20 or 32 bytes inline; `SHA1_BYTES` / `MAX_BYTES` (const).
-- `Oid::from_bytes` / `from_hex` / `as_bytes` (fn) — build, parse, read.
-- `Oid::from_sha1` (fn) — wrap a 20-byte SHA-1 digest; infallible where `from_bytes` cannot be, because a caller that hashed something itself has 20 bytes by construction (m5/07, Ghost Preview's synthetic ids).
-- `Oid` serde — as lowercase hex text (m3/02).
+- `Oid` (struct) — a git object id, 20 or 32 bytes inline; serde as lowercase hex.
+- `Oid::SHA1_BYTES` (const) — 20; `MAX_BYTES` is 32.
+- `Oid::from_bytes` (fn) — `(&[u8]) -> Result<Self, Error>`; `from_hex` parses, `as_bytes` reads.
+- `Oid::from_sha1` (fn) — `([u8; 20]) -> Self`: infallible wrap of a SHA-1 digest.
 
 ## raster
-- `RasterFrame` (struct) — the pixel renderer's strip: `width`, `height`, `rows`, `columns`, premultiplied RGBA `pixels`, never a painted background.
-- `RasterFrame::pixel` (fn) — the premultiplied RGBA at one pixel, `None` outside.
+- `RasterFrame` (struct) — the pixel renderer's strip: size in pixels and cells, premultiplied RGBA `pixels`.
+- `RasterFrame::pixel` (fn) — `(x, y) -> Option<[u8; 4]>`: one pixel, `None` outside.
 
 ## ref_name
-- `RefName` (struct) — a git ref's full name; `new` / `as_bytes` / `shorthand` / `is_graft_internal` (fn).
+- `RefName` (struct) — a git ref's full name, validated.
+- `RefName::new` (fn) — `(impl Into<Vec<u8>>) -> Result<Self, Error>`; also `as_bytes`, `shorthand`, `is_graft_internal`.
 - `GRAFT_INTERNAL` (const) — `refs/graft/`, the namespace Graft writes its own refs under.
-
-## guards (tests only)
-- `src/tests.rs` (m8/21b-3) — `core_has_no_free_functions`: fails on any column-0 `pub` fn under `src/` (ADR-0007). Cannot see methods with logic, fns in inline `mod` blocks, macro-made fns.
