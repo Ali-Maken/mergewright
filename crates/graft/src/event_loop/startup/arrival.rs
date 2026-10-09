@@ -14,8 +14,9 @@ pub(in crate::event_loop) struct Arrival {
     /// clone's askpass close failure (m8/18b). `None` from every other
     /// arrival.
     pub notice: Option<String>,
-    /// Opened from the empty state: the cursor lands on `HEAD`'s row
-    /// (`update::lands_at_open`), not the top row.
+    /// The cursor lands on `HEAD`'s row (`update::lands_at_open`), not the
+    /// top row: every arrival on a terminal — launch, open, clone, init;
+    /// off a tty (`run`) none.
     pub on_head: bool,
     /// The tour's way back (m8/19b): the commit to land on instead of
     /// `HEAD`. Read only with `on_head`.

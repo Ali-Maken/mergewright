@@ -175,13 +175,33 @@ pub(super) fn stash_key(
     if key.code == KeyCode::Char('S') {
         next.detail.focus = graft_ui::detail::DetailFocus::Graph;
         next.stash.shown = true;
-        next.stash.selected = 0;
+        next.stash.selected = cursor_stash(next).unwrap_or(0);
         next.stash.preview = Loading::Idle;
         next.stash.prompt = None;
         commands.extend(next.stash.read(next_id));
         return true;
     }
     false
+}
+
+/// The stash the graph cursor stands on — `n` for `stash@{n}`'s row — so
+/// `S` there opens the list on it (21b-4 5g). `None` on any other row, on
+/// the uncommitted row, or before the history and refs are read. The list
+/// is in index order, so `n` is also its row; its arrival clamps it.
+fn cursor_stash(state: &AppState) -> Option<usize> {
+    if state.on_working_tree {
+        return None;
+    }
+    let commit = state.history.as_ref()?.selected()?.commit.id;
+    state
+        .refs
+        .as_deref()?
+        .on(commit)
+        .iter()
+        .find_map(|label| match label {
+            crate::refs::RefLabel::Stash(n) => Some(*n),
+            _ => None,
+        })
 }
 
 /// The overlay's own keys, with the prompt shut. While the prompt is open

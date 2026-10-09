@@ -6965,7 +6965,7 @@ fn doorway_shots() -> Vec<DoorwayShot> {
             120,
             36,
             "the stash list (S) is open with one stash selected. Right: its footer reads \
-             `⏎ apply  p pop  s save  d drop  b branch  space files  esc close  ? keys` — \
+             `⏎ apply  p pop  s save  d drop  b branch  space files  S/esc close  ? keys` — \
              `b branch` between drop and files, the doorway last (m8/11e F2, G1)",
         ),
         (
