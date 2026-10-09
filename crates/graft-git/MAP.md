@@ -177,7 +177,6 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 
 ## mailmap
 - `Mailmap` (struct) — a repository's resolved `.mailmap`, wrapping gix's snapshot.
-- `Mailmap::from_bytes` (fn) — parse a mailmap from raw bytes; used only by tests.
 - `Mailmap::resolve` (fn) — canonical `(name, email)` for an identity.
 
 ## reflog
@@ -235,7 +234,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `GitInvocation::new` / `in_folder` (fn) — bind to a repository; bind to a plain folder.
 - `GitInvocation::arg` / `args` / `env` / `stdin` / `output_cap` (fn) — builders.
 - `GitInvocation::on_stderr_line` / `askpass` (fn) — stream stderr segments; route credential prompts.
-- `GitInvocation::stop_hooks_first` / `stops_hooks_first` (fn) — end helpers before git on stop; whether set (tests only).
+- `GitInvocation::stop_hooks_first` (fn) — builder: on stop, end helpers before git; read back through `testing`.
 - `GitInvocation::run` / `run_raw` / `command_line` (fn) — run, erroring on non-zero; run keeping the code; display text.
 
 ## run/askpass
@@ -291,6 +290,10 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `RefListing` (struct) — `name`, `tip`, `subject`, `author`, `when`, `upstream`.
 - `SwitchRefs` (struct) — `refs`, `previous`; the switch list and `@{-1}`.
 - `switch_refs` (fn) — `(repo, stop) -> Result<SwitchRefs, RunError>`.
+
+## testing
+Test support; no production caller.
+- `GitInvocation::stops_hooks_first` (fn) — `-> bool`: whether `stop_hooks_first` marked this invocation; graft-ops' tests check which lines it marks.
 
 ## trace
 - `SHALLOW_END` (const) — the stop reason when a trace hits a shallow boundary.

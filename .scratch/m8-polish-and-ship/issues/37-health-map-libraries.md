@@ -96,7 +96,7 @@ About 70k tokens.
 
 ## Addition (planner, 2026-10-09): private-module `pub` and test-only `pub`
 
-Status: open. Build with: **Sonnet**. It tightens a test, deletes MAP lines and makes three visibility moves; the tests below judge it. Brownfield: the conductor decides on a scout.
+Status: done (2 of 3 git items moved; `TipStats` left, production caller — see Addition NOTES). Build with: **Sonnet**. It tightens a test, deletes MAP lines and makes three visibility moves; the tests below judge it. Brownfield: the conductor decides on a scout.
 Needs: none. **Must merge before 38**; 38, 41 and 42 build on `public_items`.
 
 ### Ruling
@@ -131,14 +131,14 @@ Out: any other visibility change, and the ui, ops and graft MAPs.
 - Each one builds a small `src/` tree in a temp dir, the way the `it` suite already makes temp trees. Add no new dependency.
 
 ### Acceptance
-- [ ] `lib.rs` = `mod hidden; pub mod shown;`, with `pub struct H` in hidden and `pub struct S` in shown → the set has `S` and not `H` (`map_coverage::public_set_skips_private_module_items`).
-- [ ] `mod hidden; pub use hidden::H; pub use hidden::K as Renamed;`, with `impl H { pub fn go() }` → the set has `H`, `go` and `Renamed`, and not `K` (`map_coverage::public_set_keeps_reexports_and_their_methods`).
-- [ ] `#[cfg(test)] pub fn only_tests()` in a public module → absent from the set (`map_coverage::public_set_skips_cfg_test_items`).
-- [ ] The three existing guard tests pass over `CHECKED`, with (a) and (d) on the public set (`map_coverage::every_pub_item_is_in_its_map`, `map_coverage::every_map_item_still_exists`, `map_coverage::map_lines_are_short_and_carry_no_ticket_ids`).
-- [ ] Mutation: put back one deleted private-module line (for example graph's `Ring`) → `every_map_item_still_exists` fails and names it. Reverted, with the failure quoted in NOTES (`map_coverage::every_map_item_still_exists`).
+- [x] `lib.rs` = `mod hidden; pub mod shown;`, with `pub struct H` in hidden and `pub struct S` in shown → the set has `S` and not `H` (`map_coverage::public_set_skips_private_module_items`).
+- [x] `mod hidden; pub use hidden::H; pub use hidden::K as Renamed;`, with `impl H { pub fn go() }` → the set has `H`, `go` and `Renamed`, and not `K` (`map_coverage::public_set_keeps_reexports_and_their_methods`).
+- [x] `#[cfg(test)] pub fn only_tests()` in a public module → absent from the set (`map_coverage::public_set_skips_cfg_test_items`).
+- [x] The three existing guard tests pass over `CHECKED`, with (a) and (d) on the public set (`map_coverage::every_pub_item_is_in_its_map`, `map_coverage::every_map_item_still_exists`, `map_coverage::map_lines_are_short_and_carry_no_ticket_ids`).
+- [x] Mutation: put back one deleted private-module line (for example graph's `Ring`) → `every_map_item_still_exists` fails and names it. Reverted, with the failure quoted in NOTES (`map_coverage::every_map_item_still_exists`).
 - [ ] Each of the three git items is either `#[cfg(test)]` or in graft-git's `testing` module. NOTES quotes the `rg` of its callers that decided which. Verified by the workspace gates compiling those callers, plus `map_coverage::every_pub_item_is_in_its_map`.
-- [ ] NOTES gives graft-ui's public-set size. Measure it by adding graft-ui to `CHECKED` for one run, quoting the `graft-ui: <N> missing` line, then reverting (`map_coverage::every_pub_item_is_in_its_map`). 38 plans its passes on this number.
-- [ ] NOTES gives the line count before → after for each MAP changed (`wc -l`).
+- [x] NOTES gives graft-ui's public-set size. Measure it by adding graft-ui to `CHECKED` for one run, quoting the `graft-ui: <N> missing` line, then reverting (`map_coverage::every_pub_item_is_in_its_map`). 38 plans its passes on this number.
+- [x] NOTES gives the line count before → after for each MAP changed (`wc -l`).
 
 ### Touches
 - `crates/graft/tests/it/map_coverage.rs`.
@@ -152,3 +152,16 @@ Workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 
 ### Size
 About 40k tokens.
+
+### NOTES (builder, Addition)
+- Red first: the three `public_set_*` tests ran against a stub `public_items` returning an empty set and failed; then (d) on the real set failed with 19 entries (capabilities `render` ×2, core `Recover`, fixtures' crate-internal section ×12, term `Decoded`/`Decoder`/`is_holding`/`feed`/`flush`).
+- Guard reading, beyond the ruling: `pub const` in an inherent impl counts like `pub fn` (callers name `Oid::SHA1_BYTES`); a multi-line `impl … where … {` header is followed to its `{`; `#[path]` modules are not supported (none in `CHECKED`). The set is of names, so `new` in two types counts once.
+- Deleted by tightened (d): fixtures' whole "crate-internal" section; term's `Decoder`/`Decoded` lines (6); capabilities' `render_md`/`render_html` headings → `render_markdown`/`render_html` under one `## lib` root heading; core `OperationKind::Recover` (a variant, not an item) folded into the `OperationKind` line.
+- graph `Ring` and `RasterPool` stay: `raster.rs:51-52` re-exports them from `pub mod raster`. So the mutation used term's `Decoded` instead: put back → `every_map_item_still_exists` failed with ``graft-term/MAP.md:52: `Decoded` ``. Reverted.
+- Callers (`grep -rn "from_bytes\|TipStats\|stops_hooks_first" crates --include='*.rs'`):
+  - `Mailmap::from_bytes`: only `crates/graft-git/src/mailmap/tests.rs:18,34` (own unit tests) → `#[cfg(test)]`.
+  - `stops_hooks_first`: only `crates/graft-ops/src/apply/tests/stop_hooks.rs:30-51` (another crate's tests) → moved to new `graft_git::testing` as an inherent `impl GitInvocation` there; `run.rs` keeps a `pub(crate) marked_hooks_first`. graft-ops needed no edit (method syntax unchanged).
+  - `TipStats`: **production caller, left as is.** It is the type of the public field `RefSnapshot::stats` (`repo/types.rs:43`), built in `repo/refs.rs:170`, and read by `crates/graft/examples/budgets/phases.rs:69` (the `budgets --phases` memory record). So box 6 stays unticked: 2 of 3 moved, by the ruling's own third branch.
+- graft-ui, CHECKED for one run, reverted: ``graft-ui: 8 missing: `BodyRow`, `FOCUS`, `body_len`, `body_row`, `section_at`, `section_entries`, `selected_section`, `ticks_text` ``. Public-set size (distinct names, one-off measuring test, removed): **graft-ui 548**; also ops 363, graft 658, core 96, term 73, graph 155, git 318, fixtures 121, capabilities 13.
+- `wc -l` before → after: core 95→94, term 107→101, graph 141→141, git 314→317, fixtures 120→105, capabilities 26→18.
+- Scout: none for the Addition; the 37 scout and the 37 NOTES named every item, and the grep above decided the rest.

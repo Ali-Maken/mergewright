@@ -32,8 +32,9 @@ impl Mailmap {
 
     /// Parses `.mailmap` text directly, with no repository involved.
     ///
-    /// For tests: building a [`Mailmap`] this way needs no temporary
-    /// repository, just the file's own bytes.
+    /// For this crate's unit tests: building a [`Mailmap`] this way needs no
+    /// temporary repository, just the file's own bytes.
+    #[cfg(test)]
     #[must_use]
     pub fn from_bytes(text: &[u8]) -> Self {
         Mailmap(gix::mailmap::Snapshot::from_bytes(text))

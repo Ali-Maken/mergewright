@@ -49,12 +49,6 @@ May depend on: `core` (ARCHITECTURE.md crate table). One line per public item.
 - `FenceListener` (type) — `Box<dyn FnMut(usize) -> bool + Send>`; returning `false` removes it.
 - `FenceAnswers` (struct) — the listener's lease; dropping it removes the listener.
 - `SEQUENCE_TIMEOUT` (const) — `Duration` an unfinished escape sequence waits before it is read as keys.
-- `Decoded` (enum) — `Event(Event)` or `Reply(Vec<u8>)`: one thing the terminal sent (private module).
-- `Decoder` (struct) — bytes in, `Decoded` out, holding back an unfinished sequence (private module).
-- `Decoder::new` (fn) — an empty decoder.
-- `Decoder::is_holding` (fn) — `-> bool`: an unfinished sequence is held.
-- `Decoder::feed` (fn) — `(&[u8], &mut Vec<Decoded>)`: decode what is complete.
-- `Decoder::flush` (fn) — `(&mut Vec<Decoded>)`: read whatever is held as keys.
 
 ## iterm2
 - `ItermImages` (struct) — encoded bands kept for re-sending; erases last frame's cells before writing.
