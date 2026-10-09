@@ -4,7 +4,11 @@
 //! Every repository here is real. The "writes nothing" test reads the index
 //! bytes, the refs, the stash list and the status before and after `plan`.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};

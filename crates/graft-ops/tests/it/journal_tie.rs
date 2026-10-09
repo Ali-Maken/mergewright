@@ -5,7 +5,11 @@
 //! file holds its entries in, never the ids'. Built, not looped: the tie
 //! and the disagreement are asserted before `u` runs.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use graft_core::journal::{EntryStatus, JournalEntry};
 use graft_ops::apply::{Context, apply};

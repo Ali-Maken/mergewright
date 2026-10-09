@@ -22,7 +22,11 @@
 //! finished or changed nothing.** Whether the cancel landed between two steps
 //! or inside one does not matter, and deliberately so: both have to hold.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};

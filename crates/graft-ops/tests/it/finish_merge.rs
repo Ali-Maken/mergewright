@@ -6,7 +6,11 @@
 //! Every merge here is started with plain `git`, never through Graft, and
 //! every assertion is read back out of git.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};

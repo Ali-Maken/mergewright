@@ -8,7 +8,11 @@
 //! line per conflicted file, the path unquoted even with a space in it. A
 //! conflicted `stash pop` writes no `MERGE_MSG` at all.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use graft_ops::apply::{ApplyError, Resume};
 use graft_ops::operation::{Operation, Refusal, RestartKind, RestartParams};

@@ -7,7 +7,11 @@
 //! Commit ids are not compared: the two routes commit at different moments,
 //! so the committer dates differ. A row where they disagree is a failure.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::process::Command;
 

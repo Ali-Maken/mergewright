@@ -629,7 +629,11 @@ fn as_restore_error(why: RunError) -> RestoreError {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::expect_used, clippy::unwrap_used)]
+    #![allow(
+        clippy::expect_used,
+        clippy::unwrap_used,
+        reason = "a failing test should panic"
+    )]
 
     use super::*;
 

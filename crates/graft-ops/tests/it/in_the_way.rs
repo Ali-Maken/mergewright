@@ -6,7 +6,11 @@
 //! ignored through `.git/info/exclude`, then reads the outcome back from
 //! the disk and the journal, never from the value the run returned alone.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 mod one_shot;
 #[cfg(feature = "heavy-tests")]

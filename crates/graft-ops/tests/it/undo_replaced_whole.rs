@@ -15,7 +15,11 @@
 //! flag alone now, `whole_index` the index's; the app names each by what it
 //! is (`update::undo::consequence`).
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::PathBuf;
 

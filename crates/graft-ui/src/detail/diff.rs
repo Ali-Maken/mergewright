@@ -1,6 +1,9 @@
 //! The diff body's view types: lines, hunks, options, and the rows the pane draws.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// What kind of line a diff line is.

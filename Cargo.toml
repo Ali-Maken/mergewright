@@ -58,6 +58,8 @@ pedantic = { level = "warn", priority = -1 }
 # thresholds are in `clippy.toml`.
 cognitive_complexity = "warn"
 too_many_lines = "warn"
+# Every `#[allow]` carries `reason = "…"` (PROMPT.md 6.2).
+allow_attributes_without_reason = "warn"
 
 # The pedantic members that are allowed, each with its reason (PROMPT.md 6.2
 # permits exactly this, in one place).

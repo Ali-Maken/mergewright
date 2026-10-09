@@ -494,7 +494,7 @@ fn div255(value: u32) -> u8 {
     let rounded = (value + 128 + ((value + 128) >> 8)) >> 8;
     // Premultiplied: a channel is at most its alpha, so `channel × (255 −
     // alpha) / 255` is at most `255 − alpha` and the sum stays in a byte.
-    #[allow(clippy::cast_possible_truncation)] // At most 255, shown above.
+    #[allow(clippy::cast_possible_truncation, reason = "At most 255, shown above.")]
     let rounded = rounded as u8;
     rounded
 }

@@ -1,6 +1,9 @@
 //! The working tree: where an operation leaves it, and whether git may stop on a conflict.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// Where an operation leaves the working tree, named so that [`worktree`]

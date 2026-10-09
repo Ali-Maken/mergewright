@@ -5,7 +5,11 @@
 //! Each test builds that on real git and reads the raw tree back with
 //! `ls-tree` and `cat-file`, never from a returned value alone.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};

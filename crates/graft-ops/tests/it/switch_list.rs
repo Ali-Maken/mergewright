@@ -3,7 +3,11 @@
 //! remote-tracking refs are written with `update-ref` under a remote added
 //! with `git remote add` (no fetch needed: the rows read refs, not remotes).
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;

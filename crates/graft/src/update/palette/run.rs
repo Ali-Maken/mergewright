@@ -1,6 +1,9 @@
 //! Running a row: `⏎` as its key would.
 
-#[allow(clippy::wildcard_imports)] // a split of one module: its parent is its prelude
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// The first row `⏎` can run (not a `YOUR CONFIG` note); 0 when none.

@@ -9,7 +9,11 @@
 //! closed for undo; `graft::jobs::operate::refresh_after_failure` is the
 //! other site).
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::os::unix::fs::PermissionsExt;
 

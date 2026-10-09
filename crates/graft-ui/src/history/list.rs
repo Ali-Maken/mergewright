@@ -1,6 +1,9 @@
 //! The history place's list of commits that changed the file.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 pub(super) fn draw_list(buf: &mut Buffer, area: Rect, view: &HistoryView) {

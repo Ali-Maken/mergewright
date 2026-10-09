@@ -1,6 +1,10 @@
 //! Replays (28b): rebase, rewrite, `a` into, pick, revert.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use graft_ops::facts::read_facts;
 use graft_ops::operation::{

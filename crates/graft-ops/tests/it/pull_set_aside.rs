@@ -7,7 +7,11 @@
 //! teammate's commit is made there and only the pull's own fetch brings it
 //! — unless a test fetches first on purpose, and says why.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;

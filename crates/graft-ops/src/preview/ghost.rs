@@ -1,6 +1,9 @@
 //! A ghost's synthetic id: SHA-1 over a domain-separated subject.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// A ghost's synthetic id: SHA-1 over `"graft-ghost\0"`, the **subject** git

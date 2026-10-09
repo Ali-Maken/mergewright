@@ -2,7 +2,11 @@
 //! bare, smart HTTP on loopback with Basic auth (`HttpRemote`), and a remote
 //! that never answers (`HungRemote`). Never the network.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

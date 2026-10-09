@@ -1,6 +1,9 @@
 //! Submodules in the status: each one's own state, and those never set up.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// The `sub` field: `N...` (not a submodule) or `S<c><m><u>`, where each

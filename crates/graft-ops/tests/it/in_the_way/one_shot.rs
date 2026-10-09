@@ -1,6 +1,10 @@
 //! One-shot writes: switch, merge, hard reset, put-back, branch-from-stash.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use graft_core::journal::HeadRef;
 use graft_ops::operation::{

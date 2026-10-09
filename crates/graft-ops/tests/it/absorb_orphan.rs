@@ -3,7 +3,11 @@
 //! so the walk falls back exactly as on the default branch; "no commits of
 //! its own" is kept for a base that *is* `HEAD`.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use graft_ops::absorb::StaysWhy;
 use graft_ops::operation::Refusal;

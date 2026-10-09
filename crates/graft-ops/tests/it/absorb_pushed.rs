@@ -4,7 +4,11 @@
 //! only on the default or only branch with no base below `HEAD`, the last
 //! 10. Absorb places only into them; `a` accepts only them, `HEAD` aside.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use graft_ops::absorb::StaysWhy;
 use graft_ops::operation::Refusal;

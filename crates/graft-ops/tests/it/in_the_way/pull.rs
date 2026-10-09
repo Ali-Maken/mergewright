@@ -1,6 +1,10 @@
 //! Pull: the tracking tip as last fetched, and what the fetch brings.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::Path;
 

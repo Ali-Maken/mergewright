@@ -2,7 +2,11 @@
 //! path over?", asked before any box, with the same rules the act runs —
 //! and without writing anything, the journal file included.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::{Path, PathBuf};
 

@@ -40,7 +40,10 @@ const MELDS: &str = "melds into the row below";
 
 /// R1's mock, plus a reword, an edit and a drop so every glyph is on
 /// screen, and a moved row.
-#[allow(clippy::too_many_lines)] // one hand-built view fixture, not logic
+#[allow(
+    clippy::too_many_lines,
+    reason = "one hand-built view fixture, not logic"
+)]
 fn view() -> RewriteEditorView {
     let mut fixup = row(
         RowMark::Fixup,

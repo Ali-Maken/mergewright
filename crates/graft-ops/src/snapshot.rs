@@ -251,7 +251,10 @@ pub fn worktree_tree(
 // Eight: the backup's name (`id`, `worktree`), its message (`label`), what it
 // keeps alive (`parents`) and what counts as uncommitted (`head`) are each the
 // caller's to say, and a struct for one caller would only rename them.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "each argument is the caller's to say; a struct for one caller would only rename them"
+)]
 pub fn take(
     repo: &RepoHandle,
     scratch: &Path,

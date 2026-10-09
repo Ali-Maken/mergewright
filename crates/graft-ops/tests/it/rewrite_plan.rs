@@ -8,7 +8,7 @@
 // The scaffold helpers are not `#[test]` functions, so `clippy.toml`'s
 // "expect is fine in tests" does not reach them; a scaffold that cannot build
 // its repository has to stop the test loudly (as `support` does).
-#![allow(clippy::expect_used)]
+#![allow(clippy::expect_used, reason = "a failing test should panic")]
 
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;

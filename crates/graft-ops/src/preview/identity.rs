@@ -1,6 +1,9 @@
 //! Who would author a ghost: the repository's own identity, as git would stamp it now.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// The repository's own user, as git would stamp a commit it makes now:

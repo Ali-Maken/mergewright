@@ -7,7 +7,11 @@
 //! `git show :<path>` and `git status --porcelain`, the stash list by commit
 //! id, the Command Log from the journal entry.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;

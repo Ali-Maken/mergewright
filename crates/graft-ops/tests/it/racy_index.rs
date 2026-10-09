@@ -14,7 +14,11 @@
 //! all carry one instant, and `core.trustctime` is off so the ctime the edit
 //! moved does not give it away.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};

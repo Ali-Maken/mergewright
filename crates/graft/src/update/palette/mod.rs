@@ -44,12 +44,18 @@ mod listing;
 mod run;
 
 pub(super) use self::find::*;
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "the palette's parts read as one module"
+)]
 use self::groups::*;
 pub(crate) use self::input::*;
 pub(crate) use self::listing::*;
 pub(crate) use self::run::first_runnable;
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "the palette's parts read as one module"
+)]
 use self::run::*;
 
 /// The most distinct commands COMMANDS RUN RECENTLY keeps (ADR-0061).

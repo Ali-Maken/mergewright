@@ -2,7 +2,11 @@
 //! `blame.ignoreRevsFile`, `apply.whitespace` and a staged submodule bump
 //! must not change where a hunk goes, or fail the map.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use graft_ops::absorb::StaysWhy;
 use graft_ops::operation::Operation;

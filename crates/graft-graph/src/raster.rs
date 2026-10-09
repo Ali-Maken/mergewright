@@ -66,7 +66,10 @@ pub const FADED_ALPHA: f32 = 0.3;
 /// curves and node rings alike (ADR-0024). Emphasis is never a wider
 /// stroke, only alpha, so a lane reads as a line to follow at any size.
 pub(crate) fn stroke_width(cell_width: u32) -> f32 {
-    #[allow(clippy::cast_precision_loss)] // Cell widths are far below f32's exact range.
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "Cell widths are far below f32's exact range."
+    )]
     let cell_width = cell_width as f32;
     (cell_width / 8.0).clamp(1.5, 2.5)
 }
@@ -281,7 +284,10 @@ mod tests {
     use super::stroke_width;
 
     #[test]
-    #[allow(clippy::float_cmp)] // Exact clamp bounds and an exact division; no rounding involved.
+    #[allow(
+        clippy::float_cmp,
+        reason = "Exact clamp bounds and an exact division; no rounding involved."
+    )]
     fn stroke_width_clamps_by_cell_width() {
         assert_eq!(stroke_width(8), 1.5);
         assert_eq!(stroke_width(24), 2.5);

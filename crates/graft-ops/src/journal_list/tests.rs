@@ -2,7 +2,11 @@
 //! entries written by hand. What real git writes is proven by the oracle
 //! (`tests/it/journal_list_oracle.rs`); the shapes here are copied from it.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 mod build;
 mod recover;

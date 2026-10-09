@@ -2,7 +2,10 @@
 //! `?`; `ACTIONS` and recent runs under `⌃P`. Spelling and filter are
 //! `listing.rs`'s.
 
-#[allow(clippy::wildcard_imports)] // a split of one module: its parent is its prelude
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// Every group before the query: `YOUR CONFIG` first when there are

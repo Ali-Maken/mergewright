@@ -6,7 +6,11 @@
 //! The forecast's truth is git's own: `the_chained_forecast_agrees_with_git`
 //! runs the same operation in a copy and compares where git stops.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};

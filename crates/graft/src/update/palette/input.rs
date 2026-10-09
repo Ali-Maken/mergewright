@@ -1,6 +1,9 @@
 //! Opening the palette and what it does with keys, pastes and the mouse.
 
-#[allow(clippy::wildcard_imports)] // a split of one module: its parent is its prelude
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// Which way `key` (a default chord, after the edge) opens the palette:

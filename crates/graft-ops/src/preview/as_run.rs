@@ -1,6 +1,9 @@
 //! The operation as `y` will run it: a rebase completed once, then planned.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// The operation as `y` will run it, and its picture: the preview job's one

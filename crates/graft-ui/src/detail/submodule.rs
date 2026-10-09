@@ -1,6 +1,9 @@
 //! A submodule's own view in the detail pane.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// What is true of one submodule, in the changes pane's row and the diff

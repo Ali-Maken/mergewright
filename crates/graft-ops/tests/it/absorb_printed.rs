@@ -2,7 +2,11 @@
 //! `git diff` prints them, and each hunk's target by `git log -L` — never
 //! the code under test's plumbing diff or blame (review m7-06 M8).
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::Path;
 

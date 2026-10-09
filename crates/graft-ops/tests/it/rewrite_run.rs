@@ -6,7 +6,11 @@
 //! Whether a rewrite does what a hand-run `git rebase -i` does is
 //! `rewrite_oracle`'s; here it is what Graft records around it.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::PathBuf;
 

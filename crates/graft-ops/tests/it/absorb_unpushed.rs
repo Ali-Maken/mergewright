@@ -3,7 +3,11 @@
 //! last 10, above any merge and the first commit (06c planner rulings,
 //! Question 2 and `a`-into). Absorb and `a` share the one range.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::collections::BTreeSet;
 

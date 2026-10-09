@@ -1,6 +1,9 @@
 //! How a restore's steps ended, and the words its failures and stops take.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// A roll-back failure in the words of a roll-back.

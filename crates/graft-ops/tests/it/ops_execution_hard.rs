@@ -7,7 +7,7 @@
 // so `clippy.toml`'s "expect is fine in tests" does not reach it. It is fine
 // here for the same reason: a scaffold that cannot set the repository up has
 // to stop the test loudly, and has no caller to hand an error to.
-#![allow(clippy::expect_used)]
+#![allow(clippy::expect_used, reason = "a failing test should panic")]
 
 use std::path::PathBuf;
 use std::process::{Command, Stdio};

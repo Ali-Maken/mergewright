@@ -1795,7 +1795,10 @@ fn unmerged_sections_heading_word_is_conflicts() {
 // exemption `capture_hint_bar_for_docs_shots` below carries for the same
 // reason. The caption grew when it stopped describing behaviour the code no
 // longer has (m5/24).
-#[allow(clippy::too_many_lines)]
+#[allow(
+    clippy::too_many_lines,
+    reason = "one hand-built fixture plus its capture header, not logic"
+)]
 fn capture_for_docs_shots() {
     let mut shots = graft_fixtures::Captures::new();
     let rows = linear(2);
@@ -1881,7 +1884,10 @@ fn capture_for_docs_shots() {
 ///
 /// Run by hand to regenerate: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui graph_screen::tests::capture_hint_bar_for_docs_shots`.
 #[test]
-#[allow(clippy::too_many_lines)] // one hand-built fixture plus its capture header, not logic
+#[allow(
+    clippy::too_many_lines,
+    reason = "one hand-built fixture plus its capture header, not logic"
+)]
 fn capture_hint_bar_for_docs_shots() {
     let mut shots = graft_fixtures::Captures::new();
     // A corpus shape with a branch, a marked merge and a dirty tree

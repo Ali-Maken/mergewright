@@ -18,7 +18,13 @@ pub(crate) enum MarksFrom {
     Auto,
     /// Always the human-format pass: the oracle test on a git whose
     /// porcelain has marks of its own.
-    #[cfg_attr(not(test), allow(dead_code))]
+    #[cfg_attr(
+        not(test),
+        allow(
+            dead_code,
+            reason = "read only by tests; production always takes the other variant"
+        )
+    )]
     HumanFormat,
 }
 
@@ -28,7 +34,13 @@ pub(crate) enum GitFrom {
     /// The system git's, read once per process.
     System,
     /// This one, whatever git actually runs.
-    #[cfg_attr(not(test), allow(dead_code))]
+    #[cfg_attr(
+        not(test),
+        allow(
+            dead_code,
+            reason = "read only by tests; production always takes the other variant"
+        )
+    )]
     Given(GitVersion),
 }
 
@@ -39,7 +51,13 @@ pub(crate) enum PorcelainMarks {
     Read,
     /// As git before 2.50 leaves them: every line `Plain`. On such a git
     /// this changes nothing (18e's `the_2_38_porcelain_leaves_the_skipped_lines_plain`).
-    #[cfg_attr(not(test), allow(dead_code))]
+    #[cfg_attr(
+        not(test),
+        allow(
+            dead_code,
+            reason = "read only by tests; production always takes the other variant"
+        )
+    )]
     Dropped,
 }
 

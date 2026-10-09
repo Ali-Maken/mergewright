@@ -126,7 +126,10 @@ mod text_bytes {
 
         // `serde(with)` hands over `&Option<Vec<u8>>`; the signature is
         // serde's, not a choice.
-        #[allow(clippy::ref_option)]
+        #[allow(
+            clippy::ref_option,
+            reason = "serde(with) hands over &Option<Vec<u8>>; the signature is serde's"
+        )]
         pub(in super::super) fn serialize<S: Serializer>(
             bytes: &Option<Vec<u8>>,
             to: S,

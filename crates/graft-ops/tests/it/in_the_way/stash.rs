@@ -1,6 +1,10 @@
 //! Stash put-backs over a file git doesn't keep.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use graft_ops::operation::Operation;
 

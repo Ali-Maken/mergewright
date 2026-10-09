@@ -209,7 +209,10 @@ impl RowAccum<'_> {
 /// Walk one branch's tip into buckets. `is_default` counts every commit in
 /// the span; every other row skips commits on `default_chain` (a merged
 /// branch keeps the bars it had before its merge).
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "each argument is the caller's to say; a struct for one caller would only rename them"
+)]
 pub(crate) fn walk_branch(
     store_repo: &graft_git::repo::RepoHandle,
     table: &Arc<CommitTable>,

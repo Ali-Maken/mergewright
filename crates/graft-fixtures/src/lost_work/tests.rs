@@ -1,7 +1,11 @@
 //! The git side of "lost work", with a stand-in for Graft's three steps
 //! (graft-ops' `tests/it/lost_work.rs` runs the real ones).
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a failing test should panic"
+)]
 
 use std::path::Path;
 

@@ -1,6 +1,9 @@
 //! Every ref name a plan would write, checked before any step runs.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// Every ref name the plan writes, checked before anything is written (gap

@@ -1,6 +1,9 @@
 //! A rebase's picture: its line of branches replayed, one ghost per commit, and the branches that follow.
 
-#[allow(clippy::wildcard_imports)]
+#[allow(
+    clippy::wildcard_imports,
+    reason = "one module split in files: its parent is its prelude"
+)]
 use super::*;
 
 /// `r`: his branch and each branch of `params.line` built on it, replayed
