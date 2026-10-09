@@ -392,7 +392,7 @@ fn a_partial_fetch_row_names_what_moved_and_is_not_refused() {
 
 /// A fetch whose remotes all failed before any ref moved (`Some({})`) wrote
 /// nothing: its row, mark and words are exactly what they were before
-/// ADR-0062 — `failed: <git's first line>`, `refused · nothing written`.
+/// ADR-0062 — `failed: <git's first line>`, `nothing written` (m8/20b R8).
 #[test]
 fn a_fetch_that_moved_nothing_reads_as_today() {
     let state = state_with(vec![fetch_entry(
@@ -402,7 +402,7 @@ fn a_fetch_that_moved_nothing_reads_as_today() {
     )]);
     let view = journal_view(&state, 10);
     let row = &view.rows[0];
-    assert_eq!(row.mark, RowMark::Refused);
+    assert_eq!(row.mark, RowMark::NothingWritten);
     assert_eq!(row.summary.as_str(), format!("failed: {GONE}"));
     assert_eq!(
         row.failure.as_ref().map(SanitizedText::as_str),
@@ -445,7 +445,7 @@ fn a_committed_fetch_reads_nothing_new_not_undoable() {
 
 /// A line written before ADR-0062 has no `fetched_refs`: what its fetch
 /// moved is unknown, and unknown is not "nothing", so an `Aborted` one is
-/// no longer `refused · nothing written`. Its words are today's: `failed:
+/// no longer `nothing written`. Its words are today's: `failed:
 /// …` alone when it failed (`with_failure` keeps only the failure), and
 /// `remote-tracking refs · not undoable` when it finished.
 #[test]
@@ -541,10 +541,11 @@ fn an_expanded_fetch_row_carries_at_most_twenty_moves() {
     assert_eq!(moved[20], "+5 more");
 }
 
-/// m8-polish-and-ship/20 item 11: a refused pull or rejected push wrote
-/// nothing, so its row reads `refused · nothing written`, never `undone`.
+/// m8-polish-and-ship/20 item 11, m8/20b R8: a refused pull or rejected
+/// push wrote nothing, so its row reads `nothing written`, never `undone`
+/// and never `refused` — the entry does not record why it stopped.
 #[test]
-fn a_refused_push_reads_refused_nothing_written_not_undone() {
+fn a_refused_push_reads_nothing_written_not_undone() {
     let mut push = entry(2, OperationKind::Push, "push main to origin");
     push.status = EntryStatus::Aborted {
         reason: "rejected".to_owned(),
@@ -552,9 +553,23 @@ fn a_refused_push_reads_refused_nothing_written_not_undone() {
     push.index_after = push.index_before;
     let state = state_with(vec![entry(1, OperationKind::Stage, "stage src/a.rs"), push]);
     let view = journal_view(&state, 10);
-    assert_eq!(view.rows[0].mark, RowMark::Refused);
-    assert_eq!(
-        view.rows[0].mark.label(&state.keymap),
-        "refused \u{b7} nothing written"
-    );
+    assert_eq!(view.rows[0].mark, RowMark::NothingWritten);
+    assert_eq!(view.rows[0].mark.label(&state.keymap), "nothing written");
+}
+
+/// m8/20b R8: a git failure that wrote nothing (not a refusal) reads the
+/// same `nothing written`: the one fact both rows share.
+#[test]
+fn a_git_failure_that_wrote_nothing_reads_nothing_written() {
+    let mut push = entry(2, OperationKind::Push, "push main to origin");
+    push.status = EntryStatus::Aborted {
+        reason: "fatal: unable to access 'https://h/r.git/': could not resolve host".to_owned(),
+    };
+    push.index_after = push.index_before;
+    let state = state_with(vec![entry(1, OperationKind::Stage, "stage src/a.rs"), push]);
+    let view = journal_view(&state, 10);
+    assert_eq!(view.rows[0].mark, RowMark::NothingWritten);
+    let label = view.rows[0].mark.label(&state.keymap);
+    assert_eq!(label, "nothing written");
+    assert!(!label.contains("refused"), "{label}");
 }

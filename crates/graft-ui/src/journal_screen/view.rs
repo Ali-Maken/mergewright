@@ -19,8 +19,9 @@ pub enum RowMark {
     /// A later entry has already reversed this one.
     Undone,
     /// It stopped before writing anything — a refused pull, a rejected
-    /// push: `refused · nothing written` (m8-polish-and-ship/20).
-    Refused,
+    /// push, a git failure: `nothing written`, the one fact they share; the
+    /// entry does not record why it stopped (m8/20b R8).
+    NothingWritten,
 }
 
 impl RowMark {
@@ -39,7 +40,7 @@ impl RowMark {
             RowMark::NextRedo => next("app.redo", "redo"),
             RowMark::Interrupted => "interrupted".to_owned(),
             RowMark::Undone => "undone".to_owned(),
-            RowMark::Refused => "refused \u{b7} nothing written".to_owned(),
+            RowMark::NothingWritten => "nothing written".to_owned(),
         }
     }
 }

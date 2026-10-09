@@ -207,7 +207,7 @@ fn graft_row(
         } else if graft_ops::journal::wrote_anything(entry) {
             RowMark::None
         } else {
-            RowMark::Refused
+            RowMark::NothingWritten
         }
     } else {
         RowMark::None

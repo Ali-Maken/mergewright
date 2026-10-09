@@ -78,11 +78,18 @@ pub(crate) fn tabs_to_banner(state: &AppState) -> Option<u8> {
     })
 }
 
-/// The keys a refusal names to reach the banner: `"⇥ banner"`,
-/// `"⇥ ⇥ banner"` — one `⇥` per [`tabs_to_banner`].
+/// The keys a refusal names to reach the banner: `⇥ banner`, `⇥ ⇥ banner`
+/// — one `app.next_pane` key per `tabs` (`refusal_tabs`), spelled from
+/// `keys` (10b W1; m8/20b R5). The one speller of every "go to the banner"
+/// clause. `None` when `tabs` is 0 or `app.next_pane` is unbound: the
+/// clause drops (W3).
 #[must_use]
-pub(crate) fn tab_keys(tabs: u8) -> String {
-    let mut keys = "⇥ ".repeat(usize::from(tabs.max(1)));
-    keys.push_str("banner");
-    keys
+pub(crate) fn tab_keys(tabs: u8, keys: &graft_ui::keymap::Keymap) -> Option<String> {
+    if tabs == 0 {
+        return None;
+    }
+    let key = keys.spell_keys(&[graft_ui::keymap::ActionId("app.next_pane")])?;
+    let mut words = format!("{key} ").repeat(usize::from(tabs));
+    words.push_str("banner");
+    Some(words)
 }

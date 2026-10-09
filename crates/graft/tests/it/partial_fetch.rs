@@ -284,7 +284,7 @@ fn journal_header(columns: u16, rows: u16) -> String {
 # TestBackend, no colour recorded \u{2014} colour is unverified (CLAUDE.md rule 5).
 #
 # What right looks like: the \u{25cf} fetch row leads with `failed: no repository at
-# '/nonexistent/graft-21c.git' \u{2026}` and has no `refused \u{b7} nothing written` and no
+# '/nonexistent/graft-21c.git' \u{2026}` and has no `nothing written` mark and no
 # `\u{2190} u`. Its summary goes on `\u{b7} origin/main moved before it stopped \u{b7} not
 # undoable`, but this failure is long: at this width the row is cut after it
 # (verdict first), so the moves show on J's status row above the legend (the

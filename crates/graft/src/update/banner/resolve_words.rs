@@ -15,6 +15,8 @@ pub(crate) struct RefusedAt {
     /// Read only at the changes pane; [`refused_at`] sets it `false`
     /// everywhere else.
     pub on_conflict_row: bool,
+    /// How many `⇥` reach the banner from here (`refusal_tabs`).
+    pub tabs: u8,
 }
 
 /// `edge::context_of(state)` plus the changes cursor's section. The one
@@ -26,6 +28,7 @@ pub(crate) fn refused_at(state: &AppState) -> RefusedAt {
     RefusedAt {
         ctx,
         on_conflict_row,
+        tabs: crate::update::commit_editor::refusal_tabs(state),
     }
 }
 
@@ -38,17 +41,16 @@ pub(crate) fn refused_at(state: &AppState) -> RefusedAt {
 ///   opens the resolver on the first conflicted file).
 /// - Changes pane on a CONFLICTS row: the same on that file, then `space
 ///   marks resolved` — last, since it stages the file as it stands.
-/// - Changes pane on any other row: the reason alone. `space`, `M` and `e`
-///   would act on a different file there, and `⇥` does not reach the
-///   banner: from the file list it goes to the diff first
-///   (`stop/tab.rs` `tab_target`; `tabs_to_banner` is 2), so the ruling's
-///   `⇥ banner` clause drops by its own place rule (m8/11f check-first 4).
+/// - Changes pane on any other row: `space`, `M` and `e` would act on a
+///   different file there, so the words name the way on instead: the `⇥`s
+///   that reach the banner, `⇥ ⇥ banner` from the file list, `⇥ banner`
+///   from the diff ([`super::tab_keys`], m8/20b R4).
 /// - Elsewhere: `M`, `e` where their rows act (the resolver); the graph
 ///   gets the reason alone.
 pub(crate) fn resolve_keys(at: RefusedAt, keys: &Keymap) -> Option<String> {
     let place = at.ctx;
     if place == ContextId::Changes && !at.on_conflict_row {
-        return None;
+        return super::tab_keys(at.tabs, keys);
     }
     let resolve = matches!(place, ContextId::Banner | ContextId::Changes)
         .then(|| Keymap::shipped().acting(place, KeyChord::plain(KeyCode::Enter)))

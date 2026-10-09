@@ -65,13 +65,7 @@ pub(super) fn work<S: JobEvents>(
         let answer = match clone(&params, hooks.as_ref(), cancel) {
             Ok(cloned) => CloneAnswer::Done {
                 path: cloned.path,
-                notice: cloned.askpass.map(|error| {
-                    sanitize_line(&format!(
-                        "cloned \u{b7} the credential prompt's socket could not be cleaned up: {error}"
-                    ))
-                    .as_str()
-                    .to_owned()
-                }),
+                notice: cloned.askpass.as_ref().map(askpass_notice),
             },
             Err(error) => CloneAnswer::Ended {
                 words: sanitize_line(&error.explain()).as_str().to_owned(),
@@ -79,6 +73,19 @@ pub(super) fn work<S: JobEvents>(
         };
         Outcome::Answered(Product::Cloned(answer))
     }
+}
+
+/// The notice a finished clone carries when its askpass helper ended
+/// badly: `cloned · ` and the remote ops' own words for it
+/// (`graft_ops::apply::askpass_words`, m8/20b R1) — a refusal by another
+/// user's program, a cleanup failure, or both.
+fn askpass_notice(error: &std::io::Error) -> String {
+    sanitize_line(&format!(
+        "cloned \u{b7} {}",
+        graft_ops::apply::askpass_words(error)
+    ))
+    .as_str()
+    .to_owned()
 }
 
 #[cfg(test)]

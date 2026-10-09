@@ -137,33 +137,67 @@ Touches: graft/graft-ui — no `NotAsTheyWere` pattern, no quoted old words exce
    → the full list of tests, captures and docs to update, in NOTES.
 
 Acceptance:
-- [ ] B1 R4: live merge, 1 conflicted file, changes pane, cursor off the CONFLICTS rows: `c` → status `1 file still
+- [x] B1 R4 (test `keymap_words::resolve::off_a_conflict_row_the_refusal_names_the_tabs_that_reach_the_banner`, driven by Tab presses; red: `⇥ ⇥ banner` vs `None`. Fixture is the existing rebase stop, not a merge — same `c` refusal path): live merge, 1 conflicted file, changes pane, cursor off the CONFLICTS rows: `c` → status `1 file still
   conflicted · ⇥ ⇥ banner`; pressing `next_pane` twice focuses the banner (driven, not asserted by count). From the diff:
   `· ⇥ banner`, one press. On a CONFLICTS row: unchanged. Test: `keymap_words::resolve::off_a_conflict_row_the_refusal_names_the_tabs_that_reach_the_banner`.
-- [ ] B2 R5: same fixture, `u` from the file list → `finish or abort the merge first · ⇥ ⇥ banner`; from the graph →
+- [x] B2 R5 (test `keymap_words::undo_journal::u_refused_from_the_changes_pane_names_two_tabs` (u and U, file list 2, graph-pane-closed 1); `undone` arm: `resolver::shell_begun::u_on_an_entry_from_before_a_shell_merge_refuses_in_words` now `⇥ ⇥ ⇥ banner`, 3 Tab presses driven — see NOTES): same fixture, `u` from the file list → `finish or abort the merge first · ⇥ ⇥ banner`; from the graph →
   `· ⇥ banner` (unchanged); `U` likewise; the `undone` `OperationLive` arm likewise. Test:
   `keymap_words::undo_journal::u_refused_from_the_changes_pane_names_two_tabs`.
-- [ ] B3 R5 remap: `[keys.app] next_pane = "ctrl+n"` → the clauses read `⌃N ⌃N banner`; `next_pane = "none"` → reason
+- [x] B3 R5 remap (test `keymap_words::resolve::the_banner_clause_is_spelled_from_his_keymap`, `c` and `u`): `[keys.app] next_pane = "ctrl+n"` → the clauses read `⌃N ⌃N banner`; `next_pane = "none"` → reason
   alone. Test: `keymap_words::resolve::the_banner_clause_is_spelled_from_his_keymap`.
-- [ ] B4 R6: CONFLICTS row bar draws `space mark resolved`; the `c` refusal there ends `space mark resolved`; both
+- [ ] **B4 R6 — STOPPED, not built (see NOTES).** CONFLICTS row bar draws `space mark resolved`; the `c` refusal there ends `space mark resolved`; both
   read `MARK_RESOLVED`. Tests: graft-ui `hints::tests::a_conflict_row_says_mark_resolved` + the existing
   `keymap_words::resolve` pin updated (quote the line).
-- [ ] B5 R7: hand-resolved merge with no finding → `evil merge: none found · 2 hand-resolved files not checked`;
+- [x] B5 R7 (test `detail_pane::tests::a_hand_resolved_merge_says_not_checked_never_clean`, red E0432 on `radar_lines_fit` first; TESTING.md :1281 updated): hand-resolved merge with no finding → `evil merge: none found · 2 hand-resolved files not checked`;
   1 file singular; narrow → `evil merge: none found · 2 not checked`; all checked clean → `evil merge: clean`.
   Test: `detail_pane::tests::a_hand_resolved_merge_says_not_checked_never_clean` (renamed/extended; red first).
   TESTING.md radar stop 10's quote updated to the new words.
-- [ ] B6 R1 (after A merged): the clone's askpass notice uses `graft_ops::apply::askpass_words`. Test:
+- [x] B6 R1 (test `jobs::clone::tests::a_refused_askpass_notice_uses_the_ops_words`, red E0425 first; seam `jobs/clone.rs` `askpass_notice`) (after A merged): the clone's askpass notice uses `graft_ops::apply::askpass_words`. Test:
   `jobs::clone::tests::a_refused_askpass_notice_uses_the_ops_words` (or NOTES: the notice has no test seam, with the line).
-- [ ] B7 R8: a refused push and a git failure that wrote nothing both read `nothing written`; no row reads `refused`.
+- [x] B7 R8 (tests `view::journal::tests::a_refused_push_reads_nothing_written_not_undone` + `a_git_failure_that_wrote_nothing_reads_nothing_written`; not observed red — the variant rename landed with them. LEGEND has no `refused` word, checked by grep): a refused push and a git failure that wrote nothing both read `nothing written`; no row reads `refused`.
   Test: `view::journal::tests::a_refused_push_reads_refused_nothing_written_not_undone` renamed
   `…_reads_nothing_written_not_undone`, plus a git-failure case. J's legend checked (`LEGEND`).
-- [ ] Sweeps green unedited: `every_bound_action_is_hinted_live_or_is_named_here`,
+- [x] Sweeps green unedited (workspace nextest run; no `⇥` row in `graft-ui/tests/no_literal_keys.rs` to delete): `every_bound_action_is_hinted_live_or_is_named_here`,
   `no_key_a_live_operation_bar_draws_refuses_while_live`, `no_literal_keys::no_user_facing_literal_spells_a_default_key`
   (delete any row for the old `⇥` literal; say which).
-- [ ] Captures whose text changed re-shot (from check first 4's list), listed in NOTES; each `docs/shots/` file named.
+- [x] Captures whose text changed (re-shot, see NOTES) re-shot (from check first 4's list), listed in NOTES; each `docs/shots/` file named.
   Known: `docs/shots/m6/fix-finish-shell-merge-120x40.txt` (evil-merge line). By eye: user; colour unverified.
-- [ ] MAP.md: graft `resolve_keys`, `RefusedAt`, `tab_keys`, `in_progress_refusal`, `undone`; graft-ui `RadarLine`,
+- [x] MAP.md (doc, checked by reading; `MARK_RESOLVED` not added — B4 stopped): graft `resolve_keys`, `RefusedAt`, `tab_keys`, `in_progress_refusal`, `undone`; graft-ui `RadarLine`,
   `journal_screen` `RowMark`, `MARK_RESOLVED`.
+
+### NOTES — Part B (builder, 2026-10-09)
+
+Status: **partial** — all of Part B but B4 (R6). No scout: the check-first is the scout. No compaction.
+
+Check first:
+1. Holds: `graft-ops/src/mistake_radar/probes.rs:197-204` `split_remerge_files` — `Resolved` only when `invented` is empty.
+   No narrow rung existed (`detail_pane/header.rs` `radar_lines_text` took no width); added `radar_lines_fit(lines, width)`,
+   called from `render_header`.
+2. Literal banner clauses: `banner/stop/tab.rs` `tab_keys` (literal `⇥`, no keymap) was already the one producer;
+   `undo::banner_keys` spelled `⇥ banner` from the keymap with a fixed count of one. Both now `tab_keys(tabs, keys)`.
+   `operation_refusal` (commit_editor/refusal.rs) unbound `app.next_pane` → reason alone (was a literal `⇥`).
+3. Resolver `u` notice: not touched (modal; out of scope per ruling).
+4. Old words found: TESTING.md :1281; captures below; `operate/stage_discard.rs:107`, `m5_walk/conflicts.rs:218`,
+   `operate/tests.rs:293` (comments, `space marks resolved` — R6, left); `graft-ops/tests/it/aborted_fetch.rs:6`
+   (graft-ops, outside B's set: comment only, still says `refused · nothing written` — conductor).
+
+**B4 / R6 stopped.** `space mark resolved` is 5 cells longer: at 80 columns the changes pane's bar on a CONFLICTS row
+drops `⇥ diff` (`m5_walk::every_scenario::hints_at_80_show_three_and_more` and
+`conflict_interim::tab_walk::capture_fix_tab_words_80x24` assert it). Fixing needs a short form (`hints/hint.rs`
+`short_form`, whose comment says the table is the user's) or a fitting change — a spec decision. R6 edits reverted.
+
+**R5 surprise (built, flagged):** the ruling says "from the graph → `⇥ banner` (unchanged)". True only with the
+pane closed. With the detail pane open, Tab from the graph goes Files → Diff → Banner (`tab.rs` `tabs_to_banner`,
+`DetailFocus::Graph => 3`), so the words now say `⇥ ⇥ ⇥ banner`; `shell_begun.rs` test now drives three presses.
+On the focused banner, `refusal_tabs` falls back to 1: `u` there still says `⇥ banner` (as before).
+
+Captures re-shot (GRAFT_UPDATE_SHOTS=1): `docs/shots/m6/fix-finish-shell-merge-120x40.txt` (evil-merge line),
+`docs/shots/m8/21c-journal-partial-fetch-{120x40,80x24}.txt` (caption only). Not re-assembled:
+`docs/shots/m6/m6-contact-sheet-*.txt` (shipped sheets — conductor). By eye: user; colour unverified.
+
+Touches: commit-editor refusal (`stops.rs` sweep now spells `app.next_pane`), `live_c_tests` (off-row `⇥ ⇥ banner`),
+`conflict_interim.rs` relaunch test (panes: `⇥ ⇥ banner`), graph `OperationLive` bar untouched (`one_tab_to_banner`),
+J legend (grep), clone notice. Conductor: keymap §2.6a :391 per spec.
 
 ## Touches (both parts list each with how it was checked)
 - **Other screens using the same words:** graph `OperationLive` bar `⇥ banner` (unchanged, `TabWord`/`tab_to_banner`);

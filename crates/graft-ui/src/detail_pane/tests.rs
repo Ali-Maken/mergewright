@@ -7,7 +7,9 @@ use ratatui::backend::TestBackend;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 
-use super::header::{compare_title, radar_lines_text, radar_text, title_style, title_text};
+use super::header::{
+    compare_title, radar_lines_fit, radar_lines_text, radar_text, title_style, title_text,
+};
 use super::layout::percent;
 use super::unified::gutter_width;
 use super::*;
@@ -1954,17 +1956,27 @@ fn the_compare_line_and_the_load_all_footer_spell_his_keys() {
 // --- words sweep (m8-polish-and-ship/20) ---
 
 /// Item 2: files both sides touched are the probe's blind spot — it did
-/// not check them, so the line never calls them clean.
+/// not check them, so the line never calls them clean; every other file
+/// was checked and none found (m8/20b R7). Narrow: the short rung.
 #[test]
 fn a_hand_resolved_merge_says_not_checked_never_clean() {
     assert_eq!(
         radar_text(&RadarLine::EvilResolved { files: 2 }),
-        "evil merge: not checked \u{b7} 2 files hand-resolved"
+        "evil merge: none found \u{b7} 2 hand-resolved files not checked"
     );
     assert_eq!(
         radar_text(&RadarLine::EvilResolved { files: 1 }),
-        "evil merge: not checked \u{b7} 1 file hand-resolved"
+        "evil merge: none found \u{b7} 1 hand-resolved file not checked"
     );
+    assert_eq!(
+        radar_lines_fit(&[RadarLine::EvilResolved { files: 2 }], 40),
+        "evil merge: none found \u{b7} 2 not checked"
+    );
+    assert_eq!(
+        radar_lines_fit(&[RadarLine::EvilResolved { files: 2 }], 120),
+        "evil merge: none found \u{b7} 2 hand-resolved files not checked"
+    );
+    assert_eq!(radar_text(&RadarLine::EvilClean), "evil merge: clean");
 }
 
 /// Item 8: `Contained in:` with nothing after it is not drawn.

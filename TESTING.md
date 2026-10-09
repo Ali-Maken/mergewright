@@ -1278,7 +1278,7 @@ ASCII: `! i + * o # :`.
     `unchecked` and `checking…` first; the capture holds the last state.
     `alpha: work` carries `ⓘ` (no upstream).
     **Blind spot:** an edit to a file *both* sides touched is not checked —
-    it reads `evil merge: not checked · N files hand-resolved`, never `clean`.
+    it reads `evil merge: none found · N hand-resolved files not checked`, never `clean`.
 11. **cherry-pick-duplicates** — `ⓘ` on both `Fix the greeting` (`[◆ main]`)
     and `Fix the greeting (cherry picked)`; `topic: unrelated work` also
     carries `ⓘ`, for no upstream, not for the duplicate. `Add the greeting`
