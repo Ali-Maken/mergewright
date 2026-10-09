@@ -1,391 +1,176 @@
 # Graft
 
-A terminal Git client, aimed at the daily work: read history, stage, commit,
-fetch, push, merge, stash, undo. The plan is in [`PROMPT.md`](PROMPT.md), the
-design in [`DESIGN.md`](DESIGN.md), the milestone order in
-[`PROGRESS.md`](PROGRESS.md).
-
 > **"Graft" is a working codename, not the name.** It is taken by another Git
-> GUI. The real name is chosen in M8; nothing is published, registered or
-> tagged under this one.
+> GUI. The release name is decided (ADR-0057) and the rename lands before
+> anything is published; nothing is published, registered or tagged under
+> this one.
 
-**macOS and Linux only** (ADR-0005). No Windows support is planned for v1.
+A terminal Git client for the daily work: read history as a graph, stage,
+commit, branch, merge, rebase, stash, fetch, pull and push, all from the
+keyboard. Before a merge or a rebase it shows you the result, and what it
+changes in the repository goes into an undo journal, so `u` takes the last
+change back. A bar at the bottom always names the keys that work where you
+are. macOS and Linux (ADR-0005).
 
-## Where this is
+A rebase stopped half-way, in the Unicode tier (from
+[`docs/shots/m8/fork-follows-banner-187x44.txt`](docs/shots/m8/fork-follows-banner-187x44.txt),
+cut to 110 columns; a character grid, so it carries no colour):
 
-**M0 Foundations and M1 The graph are built.** Graft opens a repository and
-draws its commit graph — lanes, merges, refs, relative dates — across three
-rendering tiers, with a fixture corpus and a heavy tier proving it holds up
-at 1M commits. It still does not show a diff or a file list, and it never
-writes to a repository. **M1's manual checkpoint (`TESTING.md`, `scripts/
-m1-checkpoint.sh`) has not been run by the user yet** — see "What has
-actually been watched" below before trusting any of this by eye.
+```text
+ ◆ api  ~/code/api · detached c9b786e             REBASING  step 2 of 4 · edit c9b786e b1 · feature-b, forked
 
-### What M1 actually does
+╭ still to apply · not commits yet ───────────────────────────────────────────────────────────────────────────
+│ pick bb8335d feature a: part 3
+│ pick 86eea6e feature a: part 2
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    ●        [feature-c] c1
+▸   │ ◆      [HEAD] [feature-b] b1  HEAD · stopped here
+    │ │ ●    [feature-a] feature a: part 3
+    ●─│─╯    feature a: part 2
+    ●─╯      feature a: part 1
+  ◇─╯        [main] m1
+```
 
-- Draws the commit graph for the current branch and its ancestry: lanes,
-  merge curves, refs (branches, tags, `HEAD`), relative commit dates, and the
-  commit's first line — across three rendering tiers (pixel/Kitty, Unicode,
-  ASCII), auto-selected from M0's capability probe or forced by
-  `graph.renderer`.
-- Lane assignment keeps a branch in one column end to end; the lane cap
-  follows terminal width (8/10/12 lanes under 100/100–159/160+ columns) and
-  is a priority-ordered budget, not a hard veto (ADR-0022, ADR-0025) — lanes
-  beyond the cap fold behind a `⋮` rail, with the exact count in the header
-  (`+N lanes`).
-- `j`/`k` scroll, `1` toggles first-parent-only view, `Enter` reveals a
-  truncated row's full subject in the footer (no tooltip — ADR-0023), `y`
-  copies the selected commit's SHA.
-- Pixel tier: ancestry-path emphasis under focus is alpha only, never a
-  stroke-width change (ADR-0024), so lane geometry never shifts as you move
-  the cursor.
-- Holds a 1M-commit fixture inside PROMPT.md §7.1's frame and memory budgets
-  (`docs/reviews/`, `KNOWN_GAPS.md`'s 56d/64 entries have the numbers); first
-  paint is measured warm, with one cold check (`sudo purge`) left for the
-  user (ADR-0027, TESTING.md).
-- `cargo run -p graft --example gallery` walks 24 named fixture shapes with a
-  banner per stop; `scripts/m1-checkpoint.sh <scenario>` opens one scenario
-  (`git-git`, `criss-cross`, `foxtrot`, `octopus`, or `list`) directly,
-  cloning `git/git` or building the fixture corpus as needed and exiting
-  non-zero with a clear message if it can't.
+## Install
 
-### What M2 actually does
-
-- `Enter` on a graph row opens the detail pane: a file tree and a unified
-  diff. `v` switches to side-by-side, `W` tints changed words, `w` ignores
-  whitespace, `[`/`]` shrink/grow diff context (0–20), `Tab`/`Shift+Tab`
-  cycle focus Graph → Files → Diff, `Esc` closes the pane.
-- `x` on a row marks it as a compare base; the pane then follows the cursor
-  showing that commit against the base instead of the commit alone.
-- `.` (or right-click) opens a context-actions menu on the row: `Explain`
-  (marked rows only), `Copy SHA`, `Compare with this`, `Open details`.
-- `M` opens the Map view — one bar per local branch, bucketed by date, with
-  tag and Mistake Radar marks. `O` toggles an overview strip along the
-  graph's edge showing merges, radar findings, search hits and the viewport.
-- Mistake Radar flags a marked row with `⚠` (warning) or `ⓘ` (info) in a
-  dedicated column; `.` → `Explain` on a marked row shows why, with the
-  relevant commits highlighted and the rest of the graph faded.
-- `[radar]` config: `foxtrot`, `backward`, `accidental-pull`, `evil`,
-  `duplicate`, `force-pushed`, `risky-state`, each left at its PROMPT.md
-  §1.4 default or forced to `"off"`/`"info"`/`"warning"`. `[diff]` config:
-  `context` (integer), `ignore_whitespace`, `word_tint` (booleans) — the
-  same options `w`/`[`/`]`/`W` change for the running session.
-
-### What M3 actually does
-
-M3 promises that **you cannot lose work**: every write is journaled with a
-backup and `u` takes it back byte for byte.
-
-- **The changes pane**: `k` from the top row selects `Uncommitted changes`,
-  `Enter` opens it — `STAGED`, `UNSTAGED`, `UNTRACKED` sections with the
-  files under each. `Space` (or `s`) stages or unstages the file under the
-  cursor (its section decides which); `Enter` moves into the diff, where
-  `Space` on a hunk heading stages that hunk and on a `+`/`-` line that one
-  line; `Ctrl+A` stages everything; `d` discards a file, hunk or line after a
-  confirm box that opens on the safe answer.
-- **Commit and amend**: `c` opens the editor, `a` opens it prefilled from
-  `HEAD`. `Tab` moves Subject → Body → options → `[ Commit ]`; `Enter` on the
-  button commits (`Ctrl+Enter` too, where the terminal can tell it apart).
-  Refusals (`nothing staged`, `subject empty`) show on the title row.
-- **Stash**: `S` lists the stashes; `s` saves (message, `Tab` toggles
-  `all incl. untracked` / `staged only`), `Enter` applies, `p` pops, `d`
-  drops after a confirm.
-- **Undo and redo**: `u` undoes the last write, `U` redoes it — for stage,
-  unstage, discard, commit, amend, stash save/apply/pop/drop alike. If the
-  repository changed since (an edit, a stash from the shell), a box says
-  what drifted and asks before undoing. `J` opens the journal: every write,
-  its backup, `← u` on the entry `u` would take back. An operation a killed
-  process left half done is announced in the footer on the next launch, and
-  `u` restores it.
-- **Refresh on focus**: the working-tree status is re-read when the
-  terminal regains focus. No file watcher yet.
-- **Not in M3**: hunk staging inside untracked files, `i` (.gitignore),
-  message history, stashing selected files, branch-from-stash, a file
-  watcher, clearing old backups, committing during a merge/rebase (refused,
-  names the command). All in `KNOWN_GAPS.md`.
-
-**From today, use it and keep score.** `TESTING.md`'s "Times I left" takes
-one line per reach for the shell; `docs/field-notes.md` takes what real use
-turned up. Those two lists, not the test suite, measure the promise.
-
-### What M5 actually does
-
-M5 promises that **you see the result before you confirm**.
-
-- **Ghost Preview**: `m` merges the row's branch into yours, `r` rebases
-  yours onto it, `.` opens a menu with cherry-pick, revert, reset (mixed or
-  hard), checkout (branch or detached) and delete; dragging a branch badge
-  onto a row opens the same verbs as a drop menu. Every one opens a box
-  first, and above it the graph draws **ghost rows** — the commits the
-  operation would create, hollow, with `—` for their SHA — where they would
-  land. The box says what moves (`feature 8d6cd28 → 2 new commits`), what
-  the working tree gets (`4 files updated`, or `LOSES base.txt (backup
-  saved)` for a hard reset), whether a conflict is expected (`no conflicts
-  expected` / `may conflict: shared.txt`), that `u` takes it back, and the
-  exact git command. `Enter` on `[ Confirm ]` runs it; the cursor starts on
-  `[ Cancel ]`; `Esc` runs nothing.
-- **The ghost is what git does.** The acceptance walk confirms each
-  preview and then reads the repository back with git: the refs land where
-  the box said, the new commits have the ghost's parents, subjects and
-  patches. Where they do not, `TESTING.md` "History" says so.
-- **A stale preview is refused**: if `main` moved while the box was open
-  (a teammate's push, an editor's git), `Enter` says `main moved since the
-  preview · r again` and runs nothing. A rebase or a switch on a dirty tree
-  sets your edits aside and puts them back after: the box says so under
-  `working tree:` (`your edits: 3 files set aside, put back after`), and the
-  done line ends `· your edits are back`. Your staging comes back as you left
-  it; if git can't keep your staging, the line names the files and `u`
-  restores it.
-- **Conflicts stop honestly.** A merge or rebase that conflicts leaves git
-  mid-operation: the header says `MERGING`, the changes pane lists the
-  files under `CONFLICTS (n)`, and the footer offers `c continue`,
-  `a abort` (through a box whose default is Cancel), `M mergetool`, `e edit`.
-  The stop survives closing and reopening Graft. **M5 does not resolve
-  conflicts** — that is M6's promise; today you resolve in your editor and
-  press `c`.
-- **The time machine**: in the journal (`J`), `Enter` on an older entry
-  previews `revert to before "<entry>" (N steps)` — the index and working
-  tree restored from the backups — and `u` after it steps forward again.
-- **A diverged pull** (`p`) no longer sends you to the shell: the line
-  offers `m merge it  r rebase onto it`, each a preview.
-- **Not in M5**: resolving conflicts in the app, interactive rebase,
-  pushing a rewritten branch. All in `KNOWN_GAPS.md`.
-
-### What M4 actually does
-
-M4 promises that **you never leave Graft to fetch, pull or push — not for a
-password, a rejection or a hang**.
-
-- **Fetch**: `f` fetches every remote with prune. Progress from git's own
-  `--progress` output runs in the footer (`fetch all remotes · receiving
-  objects 45% · esc cancels`); `fetched` when it lands. Fetches are
-  journaled but `u` passes over them — nothing of yours moved.
-- **Pull**: `p` fast-forwards the current branch from its upstream. Undoable:
-  `u` puts the branch and the working tree back, and leaves the tracking ref
-  where the fetch put it; `U` pulls again. A diverged branch is refused in
-  words that name the keys that settle it (`pull stopped: main and origin/main
-  diverged`, with `m merge it` and `r rebase onto it`); an
-  uncommitted edit to a file the pull would change is refused before
-  anything moves (`pull refused: your edits to <file> would be overwritten ·
-  S s stashes them first`). No
-  upstream: `main has no upstream — P pushes and sets one`.
-- **Push**: `P` opens a box first — `Push main → origin/main?`, the commit
-  count, `sets upstream` when it will, `can't be undone from here — origin
-  keeps what you send`, and the exact `git push` line. `Enter` on `[ Push ]`
-  runs it. A push is journaled but not undoable: `u` afterwards undoes your
-  commit **locally** and says `· origin/main still has it`; the remote is
-  only ever moved by `P`.
-- **A rejected push** stays on the footer until `Esc`: `push rejected:
-  origin/main has moved · p pull first · P force with lease` (short enough
-  that both keys are on screen at 80 columns). The next `P` offers the lease box — `Force-push main →
-  origin/main?`, the tip it expects on the remote, `rewrites history for
-  everyone who has …`, `--force-with-lease=…` in the command. If the remote
-  moved again since your fetch it is refused: `push refused: origin/main
-  moved since your last fetch (stale lease) · f to fetch, then look`. A plain
-  `--force` never runs; a lease push to any branch but the upstream of `HEAD`
-  is refused.
-- **Credentials are asked in the app**: git's password question opens a
-  masked field (`•`), a username question an unmasked one; `Enter` answers,
-  `Esc` cancels the whole operation. Graft never stores what you type and
-  never puts it in a log, the journal or a capture; your own credential
-  helpers keep working. A wrong password is a line, not a hang:
-  `authentication failed for http://… · P to try again`.
-- **`Esc` cancels** a running fetch, pull or push (`… · cancelling`, then
-  `… cancelled`, the journal entry says so). It does **not** cancel `u`/`U`:
-  `undo cannot be stopped part-way — finishing…`.
-- **Not in M4**: clone, adding/renaming/removing remotes, pull with merge or
-  rebase, fetching one remote, a stall notice, SSH (the askpass wiring is
-  set but unverified). All in `KNOWN_GAPS.md`.
-
-### What M0 actually does
-
-- Opens a repository from a path or the current directory — including from a
-  subdirectory, a bare repository, a linked worktree or a submodule's
-  working directory.
-- Shows one status screen: the repository's working directory, `HEAD` (branch
-  name, detached id, or "unborn"), the rendering tier and cell size that
-  capability detection settled on, and the theme and colour depth.
-- Reports rather than hides problems: a system `git` older than 2.38, an
-  unknown key in the config file, and a `HEAD` that could not be read each
-  get their own line on that screen.
-- Quits on `q` with the terminal exactly as it was — alternate screen left,
-  every mode popped, cursor back. Same after `SIGINT`, `SIGTERM` or `SIGHUP`,
-  and same after a panic, which also writes a crash report.
-- Exits 1 with one plain line when the path is not inside a repository.
-- Honours `NO_COLOR`.
-- Reads `${XDG_CONFIG_HOME:-~/.config}/graft/config.toml`. A bad value is an
-  error with file, line and column — never a silent default.
-
-### What M0 does not do
-
-Everything else — no graph, no diffs, no file list, no staging, no writes.
-[`KNOWN_GAPS.md`](KNOWN_GAPS.md) is the full list.
-
-### What has actually been watched, and what has not
-
-Every behaviour above has been driven under a **bare pty** — a pseudo-terminal
-with no emulator behind it — and covered by unit, snapshot and property tests.
-That proves the bytes Graft writes and the decisions it makes from scripted
-replies. It does not prove a pixel.
-
-**No real terminal emulator has ever answered Graft's capability probe, and
-nobody has looked at the status screen in one.** Every run so far reports the
-silent-terminal fallback, so the tier, cell size, theme and colour depth on
-that screen are what Graft assumes when nothing answers — not what your
-terminal said. Running the steps below, and the probe example, in a terminal
-you actually use is the check that has not been done.
-
-**The same is true of the graph.** Everything above about lanes, merges,
-folding and tier behaviour is proven by unit, snapshot and bare-pty tests
-against scripted replies — never by a human looking at a real Ghostty, Kitty,
-WezTerm, iTerm2, Terminal.app, Alacritty, Zed or VS Code terminal, with or
-without tmux or SSH in the way. `TESTING.md`'s manual matrix and
-`scripts/m1-checkpoint.sh` exist to make that check quick; neither has been
-run yet. Every "reads well" and by-eye result in `TESTING.md` reads **not
-run** until you run it.
-
-## Build and run
-
-Needs a stable Rust toolchain (edition 2024, MSRV **1.88**) and `git` **2.38**
-or newer on `PATH`.
+**None of these work yet: they are for after the first release**, which waits
+for the rename (ADR-0057). The commands will carry the release name; `<owner>`
+is the account the release is published from.
 
 ```sh
-git clone <this repo> graft && cd graft
-cargo build
+brew install <owner>/tap/graft                     # Homebrew tap
+curl -LsSf https://github.com/<owner>/graft/releases/latest/download/graft-installer.sh | sh
 ```
 
-## Demo: two minutes
-
-Run it on any repository you have:
+From a checkout of this repository, today (needs stable Rust, MSRV 1.88, and
+`git` 2.38 or newer on `PATH`):
 
 ```sh
-cargo run -- ~/code/some-repo
+cargo install --locked --path crates/graft
 ```
 
-(`cargo run` alone is enough: the workspace has four binaries and `graft` is
-the one it runs. `cargo run -p graft -- <repo>`, which the rest of the docs
-use, is the same thing spelled out.)
+Then `man ./docs/man/graft.1` reads the manual: every flag, every key in every
+place, every config key, the environment and the files Graft writes.
 
-You should get a screen like this, and nothing else:
-
-```
-Graft
-
-Repository  /code/some-repo
-HEAD        main
-Rendering   unicode, detected, cell 9x18 (reported)
-Theme       dark, from the terminal background, truecolor
-
-q  quit
-```
-
-- `Rendering` and `Theme` say where each answer came from. The cell size and
-  the theme carry their real provenance: `reported` means the terminal said
-  so, `assumed` or `terminal background unknown` means it did not and Graft
-  fell back. In a bare pty — which is the only place Graft has run so far —
-  those two read `cell 8x16 (assumed)` and `dark, terminal background
-  unknown`.
-- Careful with the word `detected` on the `Rendering` line: today it only
-  means "not overridden in the config file", and it is printed even when the
-  capability probe timed out with no answer at all. That is a known wart, on
-  the list in [`KNOWN_GAPS.md`](KNOWN_GAPS.md).
-- Press **`q`**. You are back at your shell prompt, colours and cursor
-  unchanged, exit status `0`.
-
-Then try the two other paths:
+## First run
 
 ```sh
-cargo run -p graft -- /tmp        # graft: /tmp is not inside a git repository   (exit 1)
-cargo run -p graft -- --help      # usage, exit 0
-NO_COLOR=1 cargo run -p graft -- .   # same screen, no colour; the theme line says so
+graft              # the repository the current directory is in
+graft ../api       # or any other
 ```
 
-With no path, Graft opens the current directory.
+- Outside a repository, Graft shows where you can go: a recent repository,
+  open, init, clone, or `t` for a practice tour in a throwaway repository.
+- `?` shows the keys for the place you are in.
+- `⌃P` opens the command palette: every action, found by name.
+- The first few launches say where help is on the status row, until you
+  first open the palette.
 
-### Asking the terminal what it can do
+`graft --help` prints the command line, which is one optional path.
 
-Capability detection has its own runnable report, outside the alternate
-screen:
+## Daily keys
 
-```sh
-cargo run -p graft --example capability_probe
-```
+The first key of each; the man page lists them all, and `[keys]` rebinds
+any of them by the name in the last column.
 
-It prints every answer the terminal gave — graphics protocols, cell size,
-background colour, colour depth, tmux status — and which tier that adds up to.
-Running it in your terminals is the most useful thing you can do with M0:
-until a real emulator has answered, the tier Graft picks is a guess made from
-scripted test fixtures.
+| Key | What it does | Name |
+|---|---|---|
+| `?` | Help for this place | `app.help` |
+| `⌃P` | Command palette | `app.palette` |
+| `j` | Move down (`k` up) | `app.down` |
+| `⏎` | Open / drill in | `app.open` |
+| `space` | Stage / unstage, in the changes | `changes.stage` |
+| `c` | Commit | `graph.commit` |
+| `C` | Switch branch (branch picker) | `graph.switch` |
+| `b` | New branch from the selected commit | `graph.branch` |
+| `m` | Merge the selected branch into yours | `graph.merge` |
+| `r` | Rebase yours onto the selection | `graph.rebase` |
+| `S` | Stash | `graph.stash` |
+| `f` | Fetch | `graph.fetch` |
+| `p` | Pull | `graph.pull` |
+| `P` | Push | `graph.push` |
+| `u` | Undo | `app.undo` |
+| `.` | Context actions for the row | `app.menu` |
+| `q` | Quit | `app.quit` |
 
-## Configuring it
+## Configuration
 
-`${XDG_CONFIG_HOME:-~/.config}/graft/config.toml`. No file at all is the normal
-case. Every key M0 knows:
+`$XDG_CONFIG_HOME/graft/config.toml`, or `$HOME/.config/graft/config.toml`.
+No file is the normal case, and every key is optional. An unknown key is a
+warning, so a file written for a later version still starts this one; a value
+a key does not take stops Graft with the line and column. Every key, its
+values and its default are in the man page's CONFIGURATION section.
 
 ```toml
 [ui]
-theme = "auto"      # auto | dark | light | high-contrast
-icons = "plain"     # plain | nerd        (nothing reads this until M1)
-overview = false    # true: the overview strip starts shown (`O` still toggles)
+theme = "auto"          # auto | dark | light | high-contrast
+icons = "plain"         # plain | nerd (needs a Nerd Font)
+overview = false        # start with the overview strip shown
 
 [graph]
-renderer = "auto"   # auto | pixel | unicode | ascii
-# max_lanes = 10     # unset (default): the cap follows the terminal's width —
-                      # 8 lanes under 100 columns, 10 at 100–159, 12 at 160+.
-                      # A number larger than the screen can hold is reduced to
-                      # what fits; 1 or 0 is refused, there being no room left
-                      # for the `+N` marker.
+renderer = "auto"       # auto | pixel | unicode | ascii
+default_branch = "main" # unset: detected
+max_lanes = 10          # unset: 8, 10 or 12 by terminal width
+
+[diff]
+context = 3
+ignore_whitespace = false
+word_tint = true
+
+[radar]                 # Mistake Radar, per kind: default | off | info | warning
+foxtrot = "warning"
+
+[keys]
+suspend_on_ctrl_z = false   # true: ⌃Z suspends, and undo keeps u
+
+[keys.app]                  # rebind by name: a key, a list of keys, or "none"
+refresh = ["ctrl+r", "f5"]
+
+[theme.dark]                # one colour over a built-in theme; lanes are fixed
+accent = "#7aa2f7"
 ```
 
-An unknown key is a warning on the status screen, not an error, so a file
-written for a later version still starts today's binary. An unknown *value* is
-a fatal error naming the line and column.
+## What it does not do
 
-## Repository map
+Not in this version, and not hinted at anywhere in it:
 
-| Path | What it is |
-|---|---|
-| `crates/` | The workspace: `graft-core`, `graft-graph`, `graft-git`, `graft-ops`, `graft-term`, `graft-ui`, `graft` (the binary), and `graft-fixtures` (test-only) |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | The crate map and the allowed dependency edges, enforced by a test |
-| [`TESTING.md`](TESTING.md) | The three test tiers, the fixtures, and the manual terminal checklist |
-| [`DESIGN.md`](DESIGN.md) | The approved design |
-| [`CONTEXT.md`](CONTEXT.md) | The domain glossary; these terms are used everywhere |
-| [`docs/adr/`](docs/adr/) | Decision records |
-| [`KNOWN_GAPS.md`](KNOWN_GAPS.md) | Everything unfinished, stubbed or deferred |
-| [`CHANGELOG.md`](CHANGELOG.md) | What changed, per milestone |
-| `prototypes/` | Throwaway spikes, outside the workspace and outside the gates |
+- Visual bisect.
+- A worktree switcher (opening a worktree directly works: it is a repository).
+- LFS awareness beyond what your own git filters already do.
+- Sparse-checkout awareness.
+- Several repositories open at once, in tabs.
+- Submodule update and sync (submodules are listed and can be opened).
+- Image diffs in the pixel tier.
+- Mouse use and remote branch rows in the Map view.
+- Pruning old undo backups.
+- Windows.
+
+## Terminals
+
+- **Used daily by its user:** Zed's integrated terminal (Unicode tier) and
+  Ghostty (pixel tier), on macOS.
+- **Tested on every change:** a pseudo-terminal harness drives the real
+  binary and records the screen as text. It records no colour, so colour is
+  checked by eye only.
+- **Not yet run by hand:** Kitty, WezTerm and iTerm2 (the matrix in
+  [`TESTING.md`](TESTING.md)).
 
 ## Working on it
 
-Three gates, and code is not done until all three pass:
+The plan is [`PROMPT.md`](PROMPT.md), the design [`DESIGN.md`](DESIGN.md),
+the crate map [`ARCHITECTURE.md`](ARCHITECTURE.md), the test tiers and the
+manual checklists [`TESTING.md`](TESTING.md), what is unfinished
+[`KNOWN_GAPS.md`](KNOWN_GAPS.md). Code is done when these pass:
 
 ```sh
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
-cargo test
+cargo nextest run
+cargo test --doc
 ```
 
-`cargo test` is the **fast tier** only — it must stay under three minutes and
-must not melt a laptop (PROMPT.md §7.1). It is 307 tests and about 4 seconds
-warm. Build parallelism is pinned in `.cargo/config.toml`.
-
-The **heavy tier** exists and runs only at milestone reviews. It builds a
-100,000-commit repository (2 s, 35 MB in `target/fixtures/`) and raises
-`proptest` from 64 cases to 1,000. Two commands, because `--ignored` runs only
-the ignored tests:
-
-```sh
-cargo test --features heavy-tests -- --ignored --test-threads=2
-cargo test --features heavy-tests -- --test-threads=2
-```
-
-For a real, merge-heavy history to look at, `scripts/clone-git-git.sh` caches
-`git/git` outside the repository — 85,649 commits for 42 MB, because
-`--filter=tree:0` leaves the trees on the server. It is run by hand; no test
-ever touches it.
-
-[`TESTING.md`](TESTING.md) has all three tiers, what each one costs, how to
-delete the fixtures, and the manual terminal checklist.
+`docs/man/graft.1` is generated; a test fails when it is stale. Regenerate it
+with `cargo run -q -p graft -- --generate-man > docs/man/graft.1`.
 
 ## Licence
 

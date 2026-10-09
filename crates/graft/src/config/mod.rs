@@ -56,3 +56,9 @@ pub use types::{
 
 #[cfg(test)]
 use load::{load_at, path_in_environment};
+// The loader's own key lists, for `cli::docs_tests` to pair with
+// `cli::CONFIG_KEYS` both ways.
+#[cfg(test)]
+pub(crate) use keys::SUSPEND as KEYS_SUSPEND;
+#[cfg(test)]
+pub(crate) use load::SCHEMA;

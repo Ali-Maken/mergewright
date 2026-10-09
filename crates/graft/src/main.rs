@@ -31,6 +31,15 @@ fn main() -> ExitCode {
             println!("{usage}");
             return ExitCode::SUCCESS;
         }
+        // For packagers and `docs/man/graft.1`: the page from the live
+        // tables, nothing else on stdout.
+        Ok(Invocation::GenerateMan) => {
+            print!(
+                "{}",
+                cli::man_page(cli::FLAGS, graft_ui::keymap::defaults(), cli::CONFIG_KEYS)
+            );
+            return ExitCode::SUCCESS;
+        }
         Err(error) => {
             report(&error.to_string());
             return ExitCode::FAILURE;

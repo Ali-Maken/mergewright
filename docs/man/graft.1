@@ -1,0 +1,653 @@
+.TH GRAFT 1 "" "graft" "User Commands"
+.SH NAME
+graft \- a terminal Git client for the daily work
+.SH SYNOPSIS
+.B graft
+.RB [ "\-h, \-\-help" ]
+.RB [ "\-\-generate\-man" ]
+.RI [ path ]
+.SH DESCRIPTION
+graft opens the Git repository at path, or the one the current directory is in,
+and draws its history as a graph. Staging, committing, branching, merging,
+rebasing, stashing, fetching, pulling and pushing are done from the keyboard.
+What it changes in the repository is written to an undo journal, and u undoes
+the last change.
+.PP
+A bar at the bottom of the screen names the keys that work where you are. Press
+? for help on the place you are in, and ctrl+p for the command palette, which
+finds every action by name.
+.PP
+With no repository, graft shows where you can go instead: a recent repository, a
+clone, or a practice repository with a short tour.
+.SH OPTIONS
+.TP
+.I path
+The repository to open. Default: the current directory. After --, every argument
+is a path, even one that starts with a dash.
+.TP
+.B \-h, \-\-help
+Print this and exit.
+.TP
+.B \-\-generate\-man
+Print the man page (roff) to stdout and exit.
+.SH KEYS
+Every action, by the place it works in. Keys are written the way the [keys]
+tables of the config file take them; the name after each label is the action's
+name there. An action listed with no key has none until you give it one.
+.SS Everywhere ([keys.app])
+.TP
+.B ctrl+p, :
+Command palette (app.palette)
+.TP
+.B ?
+Help for this place (app.help)
+.TP
+.B tab
+Next pane (app.next_pane)
+.TP
+.B backtab
+Previous pane (app.prev_pane)
+.TP
+.B esc
+Back out / close / cancel (app.back)
+.TP
+.B u, ctrl+z
+Undo (app.undo)
+.TP
+.B (none)
+Suspend (app.suspend)
+.TP
+.B U
+Redo (app.redo)
+.TP
+.B ctrl+r
+Refresh (app.refresh)
+.TP
+.B q
+Quit (app.quit)
+.TP
+.B ctrl+c
+Quit at once (app.quit_now)
+.TP
+.B j, down
+Move down (app.down)
+.TP
+.B k, up
+Move up (app.up)
+.TP
+.B g, home
+Jump to the top (app.top)
+.TP
+.B G, end
+Jump to the bottom (app.bottom)
+.TP
+.B pgdn
+Page down (app.page_down)
+.TP
+.B pgup
+Page up (app.page_up)
+.TP
+.B /
+Find in the focused list (app.find)
+.TP
+.B n
+Next match (app.next_match)
+.TP
+.B N
+Previous match (app.prev_match)
+.TP
+.B enter
+Open / drill in (app.open)
+.TP
+.B .
+Context actions (app.menu)
+.SS Graph ([keys.graph])
+.TP
+.B c
+Commit (graph.commit)
+.TP
+.B a
+Amend (graph.amend)
+.TP
+.B R
+Open the rewrite editor (graph.rewrite)
+.TP
+.B C
+Switch branch (branch picker) (graph.switch)
+.TP
+.B o
+Take this commit onto your branch (cherry-pick) (graph.take)
+.TP
+.B m
+Merge selected branch into current (graph.merge)
+.TP
+.B r
+Rebase current onto selection (graph.rebase)
+.TP
+.B b
+New branch from selected commit (graph.branch)
+.TP
+.B t
+New tag at selected commit (graph.tag)
+.TP
+.B x
+Compare against a marked base (graph.compare)
+.TP
+.B +
+Expand / collapse folded lanes (graph.lanes)
+.TP
+.B S
+Stash\[u2026] (graph.stash)
+.TP
+.B f
+Fetch (graph.fetch)
+.TP
+.B p
+Pull (graph.pull)
+.TP
+.B P
+Push (graph.push)
+.TP
+.B M
+Map view (graph.map)
+.TP
+.B F
+Focus mode (graph.focus)
+.TP
+.B O
+Overview strip (graph.overview)
+.TP
+.B space
+Fold a merged branch into its merge (graph.fold)
+.TP
+.B 1
+First-parent view (graph.first_parent)
+.TP
+.B H
+Hide / show the stash (graph.hide_stash)
+.TP
+.B y
+Copy the commit's SHA (graph.copy_sha)
+.TP
+.B J
+Undo journal (graph.journal)
+.TP
+.B f2
+Status screen (graph.status)
+.TP
+.B f3
+Cycle the graph renderer (graph.renderer)
+.TP
+.B B
+Write the commit-graph file (when offered) (graph.write_commit_graph)
+.TP
+.B X
+Decline the commit-graph offer (graph.decline_commit_graph)
+.SS Map view ([keys.map])
+.TP
+.B M
+Close the Map view (map.close)
+.TP
+.B enter
+Seek the graph to this branch (map.seek)
+.SS Preview box ([keys.preview])
+.TP
+.B m
+Confirm the merge (its opening key again) (preview.confirm_merge)
+.TP
+.B r
+Confirm the rebase (its opening key again) (preview.confirm_rebase)
+.TP
+.B R
+Open the rewrite editor on this rebase (preview.rewrite)
+.TP
+.B enter
+The choice under the cursor (preview.choose)
+.TP
+.B left
+Choice to the left (preview.left)
+.TP
+.B right
+Choice to the right (preview.right)
+.TP
+.B tab, backtab
+Next choice (preview.cycle)
+.SS Confirm box ([keys.confirm])
+.TP
+.B y
+Confirm (confirm.yes)
+.TP
+.B enter
+The choice under the cursor (confirm.choose)
+.TP
+.B left
+Choice to the left (confirm.left)
+.TP
+.B right
+Choice to the right (confirm.right)
+.TP
+.B tab, backtab
+Next choice (confirm.cycle)
+.SS Working-tree changes ([keys.changes])
+.TP
+.B space, s
+Stage / unstage (changes.stage)
+.TP
+.B ctrl+a
+Stage all (changes.stage_all)
+.TP
+.B d
+Discard (changes.discard)
+.TP
+.B e
+Open in $EDITOR (changes.edit)
+.TP
+.B M
+Launch the mergetool on this file (changes.mergetool)
+.SS Diff ([keys.diff])
+.TP
+.B w
+Ignore whitespace (diff.ignore_whitespace)
+.TP
+.B W
+Word-diff granularity (diff.word_diff)
+.TP
+.B v
+Unified / side-by-side (diff.side_by_side)
+.TP
+.B [
+Fewer context lines (diff.less_context)
+.TP
+.B ]
+More context lines (diff.more_context)
+.TP
+.B <
+Shrink the detail pane (diff.shrink)
+.TP
+.B >
+Grow the detail pane (diff.grow)
+.TP
+.B L
+Load the full file (diff.load_all)
+.TP
+.B B
+Blame this file at this line (diff.blame)
+.TP
+.B F
+This file's history (diff.file_history)
+.TP
+.B space
+Fold / unfold a directory (diff.fold_dir)
+.SS Conflict resolver ([keys.resolver])
+.TP
+.B o
+Take ours (resolver.take_ours)
+.TP
+.B t
+Take theirs (resolver.take_theirs)
+.TP
+.B b
+Take both (resolver.take_both)
+.TP
+.B ctrl+o
+Ours in every block (resolver.all_ours)
+.TP
+.B ctrl+t
+Theirs in every block (resolver.all_theirs)
+.TP
+.B O
+Ours for the whole file, done (resolver.file_ours)
+.TP
+.B T
+Theirs for the whole file, done (resolver.file_theirs)
+.TP
+.B B
+Show / hide BASE (resolver.base)
+.TP
+.B d
+Start this file over (resolver.start_over)
+.TP
+.B n
+Next block (resolver.next_block)
+.TP
+.B N
+Previous block (resolver.prev_block)
+.TP
+.B c
+Finish (resolver.finish)
+.TP
+.B enter
+Mark this file done (resolver.mark_done)
+.TP
+.B e
+Open $EDITOR at this block (resolver.edit)
+.TP
+.B M
+Launch the mergetool (resolver.mergetool)
+.SS Operation banner ([keys.operation])
+.TP
+.B c
+Continue (operation.continue)
+.TP
+.B s
+Skip this commit (operation.skip)
+.TP
+.B a
+Abort (operation.abort)
+.TP
+.B M
+Launch the mergetool on the first conflicted file (operation.mergetool)
+.TP
+.B e
+Open the first conflicted file in $EDITOR (operation.edit)
+.SS Finish summary ([keys.finish])
+.TP
+.B enter, space
+Show / hide the file's diff (finish.toggle_diff)
+.TP
+.B ctrl+e
+Open the message in $EDITOR (finish.edit_outside)
+.SS Rewrite editor ([keys.rewrite])
+.TP
+.B p
+Pick (rewrite.pick)
+.TP
+.B e
+Edit (rewrite.edit)
+.TP
+.B s
+Squash (rewrite.squash)
+.TP
+.B f
+Fixup (rewrite.fixup)
+.TP
+.B d
+Drop (rewrite.drop)
+.TP
+.B r
+Reword (rewrite.reword)
+.TP
+.B alt+up
+Move the row up (rewrite.move_up)
+.TP
+.B alt+down
+Move the row down (rewrite.move_down)
+.TP
+.B enter
+Show / hide the row's changes (rewrite.toggle_changes)
+.SS Branch picker ([keys.picker])
+.TP
+.B enter
+Switch to it (picker.switch)
+.TP
+.B tab
+Show it on the graph (picker.show)
+.SS Blame ([keys.blame])
+.TP
+.B ^
+Blame the parent revision (blame.parent)
+.TP
+.B L
+History of these lines (blame.line_history)
+.TP
+.B space
+Age heatmap (blame.heatmap)
+.TP
+.B i
+The repo's ignore-revisions file (blame.ignore_revs)
+.SS Stash list ([keys.stash])
+.TP
+.B s
+Save a new stash (stash.save)
+.TP
+.B enter
+Apply (preview) (stash.apply)
+.TP
+.B p
+Pop (preview) (stash.pop)
+.TP
+.B d
+Drop (stash.drop)
+.TP
+.B b
+New branch from this stash (stash.branch)
+.TP
+.B space
+Preview the diff (stash.preview)
+.TP
+.B S
+Close the stash list (stash.close)
+.SS Commit message editor ([keys.commit])
+.TP
+.B ctrl+enter
+Commit (commit.commit)
+.TP
+.B tab
+Next field (commit.next_field)
+.TP
+.B backtab
+Previous field (commit.prev_field)
+.TP
+.B ctrl+e
+Open $EDITOR instead (commit.edit_outside)
+.TP
+.B ctrl+s
+Insert a sign-off trailer (commit.sign_off)
+.TP
+.B ctrl+C
+Insert a co-author trailer (commit.co_author)
+.SS Undo journal ([keys.journal])
+.TP
+.B enter
+Revert / put back (preview) (journal.revert)
+.TP
+.B b
+New branch at this row's commit (journal.branch)
+.TP
+.B space
+Expand / collapse the row (journal.expand)
+.TP
+.B J
+Close the journal (journal.close)
+.SS File history ([keys.history])
+.TP
+.B n
+Next change (history.next_change)
+.TP
+.B N
+Previous change (history.prev_change)
+.SS Command palette ([keys.palette])
+.TP
+.B enter
+Run the row's action (palette.run)
+.SS Outside a repository ([keys.empty_state])
+.TP
+.B o
+Open\[u2026] (empty_state.open)
+.TP
+.B i
+Init (empty_state.init)
+.TP
+.B c
+Clone\[u2026] (empty_state.clone)
+.TP
+.B t
+Practice tour (empty_state.tour)
+.SS Practice tour ([keys.tour])
+.TP
+.B esc
+Leave the practice tour (tour.leave)
+.SS Credential prompt ([keys.credential])
+.TP
+.B enter
+Submit the answer (credential.send)
+.TP
+.B ctrl+u
+Clear the field (credential.clear)
+.TP
+.B backspace, delete, left, right, home, end
+Edit the typed text (credential.edit_text)
+.SH CONFIGURATION
+$XDG_CONFIG_HOME/graft/config.toml, in TOML. Every key is optional. An unknown
+key is a warning, not an error; a value a key does not take stops graft with the
+line and column.
+.SS [ui]
+.TP
+.B theme
+The colour theme. auto follows the terminal's background, dark if it does not
+say.
+.br
+Values: auto | dark | light | high-contrast. Default: "auto".
+.TP
+.B icons
+Glyphs: plain works in every font; nerd needs a Nerd Font.
+.br
+Values: plain | nerd. Default: "plain".
+.TP
+.B overview
+Start with the overview strip shown. O still toggles it.
+.br
+Values: true | false. Default: false.
+.SS [graph]
+.TP
+.B renderer
+How the graph is drawn. auto uses what the terminal says it can do.
+.br
+Values: auto | pixel | unicode | ascii. Default: "auto".
+.TP
+.B default_branch
+The branch that owns the leftmost lane. Unset: detected.
+.br
+Values: any branch name. Default: (unset).
+.TP
+.B max_lanes
+Lanes drawn before the rest fold behind +N. Unset: 8, 10 or 12 by terminal
+width.
+.br
+Values: any number from 2 up. Default: (unset).
+.SS [diff]
+.TP
+.B context
+Lines of context around each change.
+.br
+Values: any number of lines. Default: 3.
+.TP
+.B ignore_whitespace
+Hide whitespace-only changes.
+.br
+Values: true | false. Default: false.
+.TP
+.B word_tint
+Tint the changed words inside a changed line.
+.br
+Values: true | false. Default: true.
+.SS [radar]
+.TP
+.B foxtrot
+Mistake Radar: a merge on the default branch that rewrote its first-parent
+history.
+.br
+Values: default | off | info | warning. Default: "default".
+.TP
+.B backward
+Mistake Radar: the default branch merged into a feature branch.
+.br
+Values: default | off | info | warning. Default: "default".
+.TP
+.B accidental-pull
+Mistake Radar: a branch merged with its own remote copy, as git pull leaves.
+.br
+Values: default | off | info | warning. Default: "default".
+.TP
+.B evil
+Mistake Radar: a merge carrying changes neither parent had.
+.br
+Values: default | off | info | warning. Default: "default".
+.TP
+.B duplicate
+Mistake Radar: the same patch on several branches.
+.br
+Values: default | off | info | warning. Default: "default".
+.TP
+.B force-pushed
+Mistake Radar: a remote-tracking branch that was force-pushed.
+.br
+Values: default | off | info | warning. Default: "default".
+.TP
+.B risky-state
+Mistake Radar: a detached HEAD, or unpushed commits on the default branch.
+.br
+Values: default | off | info | warning. Default: "default".
+.SS [keys]
+.TP
+.B suspend_on_ctrl_z
+ctrl+z suspends Graft like any terminal program; undo keeps u.
+.br
+Values: true | false. Default: false.
+.SS [keys.<context>]
+.TP
+.B <action>
+Rebind an action. The context and action names are in KEYS.
+.br
+Values: one key, a list of keys, or "none". Default: (the KEYS table).
+.SS [theme.<kind>]
+.TP
+.B <token>
+Override one colour of the dark, light or high-contrast theme. Lane colours are
+fixed.
+.br
+Values: "#RRGGBB". Default: (the built-in theme).
+.br
+Kinds: dark, light, high-contrast. Tokens: bg, surface, surface-raised,
+selection, border, text, text-muted, accent, added, removed, warning, info,
+ours, theirs, open, ours-tint, theirs-tint, open-tint.
+.SH ENVIRONMENT
+.TP
+.B XDG_CONFIG_HOME
+Where the config folder is: $XDG_CONFIG_HOME/graft. Ignored unless absolute;
+unset, $HOME/.config is used.
+.TP
+.B XDG_STATE_HOME
+Where crash reports go: $XDG_STATE_HOME/graft. Unset or empty,
+$HOME/.local/state is used.
+.TP
+.B HOME
+The fallback for both of the above. With neither it nor XDG_CONFIG_HOME set, no
+config file is read, and graft says so.
+.TP
+.B NO_COLOR
+Set to anything non-empty: no colour is drawn. Shape, weight and glyphs still
+tell things apart.
+.TP
+.B TERM, COLORTERM, TERM_PROGRAM
+Read, with TERM_PROGRAM_VERSION, KITTY_WINDOW_ID, TMUX, SSH_TTY, SSH_CONNECTION
+and the terminal's own answers, to choose the rendering tier and colour depth.
+graph.renderer overrides the tier.
+.TP
+.B GRAFT_PERF_TRACE
+A file name: every drawn frame appends one line to it, for a performance report.
+.TP
+.B GRAFT_ASKPASS_SOCKET
+Set by graft for the git it runs, so that git can ask graft for a password. Not
+for setting by hand.
+.SH FILES
+.TP
+.B $XDG_CONFIG_HOME/graft/config.toml
+The config file; see CONFIGURATION. No file is the normal case.
+.TP
+.B $XDG_CONFIG_HOME/graft/recent
+The repositories opened recently, offered when graft starts outside one.
+.TP
+.B $XDG_CONFIG_HOME/graft/launches
+Launches counted, so the line saying where help is shows on the first five, or
+until you first open the command palette.
+.TP
+.B $XDG_STATE_HOME/graft/
+Crash reports.
+.TP
+.B <git directory>/graft/
+Per repository: the undo journal (undo-journal.jsonl), the pane layout, a paused
+rewrite's plan, the message file ctrl+e opens in your editor, and whether you
+declined the commit-graph offer.
+.SH SEE ALSO
+.BR git (1)
