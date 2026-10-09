@@ -299,21 +299,21 @@ fn excused_by_hangup(exit: &Exit, error: &io::Error) -> bool; // matches!(exit, 
 Everything else: no signature change.
 
 **Acceptance**
-- [ ] 1: new `excused_by_hangup` table test — (SIGHUP, EIO) true, (SIGHUP, UnexpectedEof) true, (SIGHUP,
+- [x] 1 (`event_loop::startup::tests::a_hangup_excuses_only_the_dead_terminals_failure`, `…::finish_after_a_hangup_still_reports_a_restore_the_terminal_did_not_refuse`; both red with the predicate stubbed to the base `matches!(exit, Signal(SIGHUP))`; `quit_waits::hangup::*` 3/3 fast, 4/4 `--features heavy-tests`, serial): new `excused_by_hangup` table test — (SIGHUP, EIO) true, (SIGHUP, UnexpectedEof) true, (SIGHUP,
       PermissionDenied) false, (Quit, EIO) false. New `finish_to` test: SIGHUP + a non-EIO restore error → `Err`.
       Seen red on base. The `:803` test keeps an EIO `refused` (edit only its error kind if it was another; NOTES).
       `quit_waits::hangup::*` green, fast and `--features heavy-tests` run alone (13l B's commands; times in NOTES).
-- [ ] 2, 3: move-only check per file; `startup.rs`, its children, `session.rs`, `empty_state.rs` and children ≤ 400.
-- [ ] 4: `outside_paste` calls `first_runnable` once (NOTES quotes the call); the start-screen paste tests
+- [x] 2, 3 (`cargo nextest list --workspace | sort` diff empty at each split, 6158 lines; `wc -l` committed: `startup.rs` 363, `startup/{arrival 82, listen 106, state 78, wind_down 158, tests 193}`, `session.rs` 358 + `session/tests.rs` 207, `empty_state.rs` 373 + `empty_state/palette.rs` 149): move-only check per file; `startup.rs`, its children, `session.rs`, `empty_state.rs` and children ≤ 400.
+- [x] 4 (`empty_state::tests`, `empty_state::palette_tests`, `outside_repo::*` green unedited — 70/70 after the change): `outside_paste` calls `first_runnable` once (NOTES quotes the call); the start-screen paste tests
       (`empty_state::tests`, `outside_repo::*`) green unedited.
-- [ ] 5: move-only check; `find.rs`, `run.rs` ≤ 400.
-- [ ] 6: new `view::tests::a_stash_ten_seconds_old_reads_now` through `view::stash`. **Seen red** by reverting the
+- [x] 5 (`nextest list` diff empty, 6158; `wc -l` committed: `find.rs` 395, `run.rs` 121; palette tests 117/117): move-only check; `find.rs`, `run.rs` ≤ 400.
+- [x] 6 (`view::tests::a_stash_ten_seconds_old_reads_now`; red: `left: "now ago"`, `right: "now"` at `view/tests.rs:5289` with the row's age = `format!("{} ago", relative_date(..))`; restored): new `view::tests::a_stash_ten_seconds_old_reads_now` through `view::stash`. **Seen red** by reverting the
       stash row to a private formatter (NOTES: the failing line), restored.
-- [ ] 7: the test asserts the refresh's command (name it in NOTES). Seen red with `Ctrl+R`'s handler stubbed to do
+- [x] 7 (`update::fold_count::tests::a_counted_fold_is_not_recounted_on_refresh` asserts `Command::ReadHistory(..)`; red with the `refresh_key` call at `update/keys.rs:349` commented out — `Ctrl+R re-reads history: []` at `fold_count/tests.rs:62`; restored): the test asserts the refresh's command (name it in NOTES). Seen red with `Ctrl+R`'s handler stubbed to do
       nothing, restored.
-- [ ] 8: `blame_place.rs:160` uses `ends_with`; green. Or the stop.
-- [ ] 9: `rg -n 'J2[6-9]|J3[01]' crates/graft/tests/it/palette_find.rs` matches the note's numbers (NOTES quotes it).
-- [ ] 10: `wc -l` in NOTES.
+- [x] 8 (`blame_place::*` green with `ends_with`; drawn title `BLAME · src/auth/session.rs · as of 74f9a9e · find "refresh" 8 of 8`): `blame_place.rs:160` uses `ends_with`; green. Or the stop.
+- [x] 9 (`grep -nE 'J2[6-9]|J3[01]'` output quoted in NOTES; `palette_find::*` green): `rg -n 'J2[6-9]|J3[01]' crates/graft/tests/it/palette_find.rs` matches the note's numbers (NOTES quotes it).
+- [x] 10 (`wc -l crates/graft/tests/it/palette_find.rs` → 331): `wc -l` in NOTES.
 
 **Touches:** hang-up path (`main` re-raise, `wind_down`, `exit_wait`, 13g capture `docs/shots/m8-hangup-relaunch-120x40.txt`
 unchanged with `GRAFT_UPDATE_SHOTS` unset); 19b's tour launch in `startup`/`empty_state` (merged first — re-read
@@ -500,6 +500,62 @@ ef6d2dc0 (8), 8a059fe0 (revert of an over-wide sed in 4, test margin in 1). Gate
   M8/m5-walk-merge-keys-15s (**unverified** cause: over fast-tier bound, unrelated to 21b-3); M8/sleep-guard-after-run
   (`tests/stop.rs:131`, **unverified** leak path); M8/checkout-words-carry-scratch-path (**unverified** whether a
   user ever sees it).
+
+## NOTES — 21b-4 items 1–10 (builder, Opus, 2026-10-09)
+
+Status: **done** for items 1–10. Additions 5b–5g were not taken, per the conductor. No compaction. Scout: my own,
+`.scratch/m8-polish-and-ship/scouts/21b-4.md`. Base 185e141c. Commits: f084c68d (1 + scout), 11d2854b (4), 3cdf9e77 (5),
+f87d44cd (3 session), 843be1d8 (3 empty_state), 1a18b890 (2 tests out), ecc6403e (2 split), 106306ce (6–9), then MAP + this.
+Gates workspace-wide: fmt; clippy `--all-targets` and `--all-targets --features heavy-tests` clean; nextest 6159/6159
+(14 skipped); doctests ok. `git diff --stat 185e141c -- docs/shots` empty; no `.snap.new`.
+
+- **Lines found.** 1: `startup.rs:549` (`wind_down`), `:598` (`finish_to`); `input::hung_up` `input.rs:77`. 4: `outside_paste`
+  `empty_state.rs:269–273`. 5: `landed` `find.rs:397–429` with its doc (33 lines) → `find.rs` 395; no second fn needed.
+  6: `view/tests.rs:5271`. 7: `fold_count/tests.rs:56–60`. 8: `blame_place.rs:160`. 9: `palette_find.rs` `:1, :169, :261, :285, :303`.
+- **1.** `wind_down::excused_by_hangup(exit, error) = matches!(exit, Signal(SIGHUP)) && input::hung_up(error)`; both
+  guards call it. The `:803` test (`finish_after_a_hangup_dies_of_it…`) already used `from_raw_os_error(5)` (EIO): unedited.
+  Real hang-up tests green, serial: fast run — quick hook 4.8 s, never-exits-101 3.8 s, second hang-up 2.9 s; heavy run —
+  5.1 s, 4.0 s, 3.3 s, stuck hook 61.8 s. Capture `m8-hangup-relaunch-120x40.txt` unchanged (`GRAFT_UPDATE_SHOTS` unset).
+  **Unverified:** which errno the dead pty's restore gave in those runs. Green says only that it was `EIO`/EOF or that
+  there was no error; I did not log it. Cause, not symptom: the exemption was wider than the dead terminal.
+- **2.** Seams: `startup/wind_down.rs` (`put_away`, `wind_down`, `excused_by_hangup`, `finish`, `finish_to`,
+  `report_stalled_jobs(_to)`), `startup/listen.rs` (`outside`, `Listening`, `listen`, `answer_fences`, `hand_back_input`),
+  `startup/state.rs` (`terminal_and_state`, `seed_config`), and `startup/arrival.rs` (`Arrival`, `impl Arrival`,
+  `arrive`). The arrival seam is mine: the MAP's four seams alone left ~430. `startup.rs` 868 → 727 (tests out) →
+  **363**. Re-exports: `pub(super) use arrival::{Arrival, arrive}`, `pub(super) use listen::hand_back_input`;
+  `#[cfg(test)]` re-imports for the tests. Line-set exceptions: `use`/`mod`/`//!` lines; widened visibility
+  (`pub(super)` on the moved fns and on `Listening`'s fields; `pub(in crate::event_loop)` on `Arrival`, `Arrival::first`,
+  `arrive`, `hand_back_input`); one `fmt` re-wrap (`report_stalled_jobs_to` signature); one path
+  `super::places::joined` → `super::super::places::joined` (one module deeper); one comment line `// Only the tests reach
+  these…` (18e's wording). `startup/tests.rs` `use` lines re-pointed: `Exit`, `SIGHUP`, `Shutdown` and `AppState` now come
+  from their homes, not through `startup`.
+- **3.** `session.rs` 566 → **358**: inline tests → `session/tests.rs` 207 (dedented, no other change). `empty_state.rs`
+  510 → **373** per 21b-5 ruling 1: `act`, `source_of`, `palette_rows`, `palette_key`, `outside_paste` and `render_palette`
+  → `empty_state/palette.rs` 149. The parent's `crate::update::palette::{self as palette, …}` import became
+  `…::PaletteState`, because the child module now owns the name `palette`. `outside_paste` is re-exported `pub(crate)`.
+  `palette_rows` is a `#[cfg(test)]` re-import (only `palette_tests` reach it through `empty_state`). Widened: `act`,
+  `palette_key`, `render_palette` → `pub(super)`. Test files not edited. **For 21b-5 box 5i:** done here in commit 843be1d8
+  (`empty_state.rs` 373, `empty_state/palette.rs` 149, `nextest list` diff empty, 6158).
+- **4.** `empty_state/palette.rs:100` `open.cursor = palette::first_runnable(&groups);`. `first_runnable` is widened to
+  `pub(crate)` in `update/palette/run.rs` and re-exported (`pub(crate) use self::run::first_runnable`) in `palette/mod.rs`.
+- **9.** `grep -nE 'J2[6-9]|J3[01]' crates/graft/tests/it/palette_find.rs` → `1: J26–J31`, `109: J26 seek-branch`,
+  `142: J27 seek-tag`, `169: J31 rerun-recent`, `261: J28 seek-commit-sha`, `285: J29 seek-commit-words`,
+  `303: J30 file-history`. This matches the note `:145–150`.
+- **10.** `wc -l crates/graft/tests/it/palette_find.rs` → 331. The row closes.
+- **Touches:**
+  - Hang-up path: the callers of `wind_down`/`finish_to` are unchanged (`Terminal::close`); `quit_waits::hangup::*` as
+    above; `main` untouched.
+  - Startup users (`places.rs:14`, `places/tests.rs:17`, `places/outside.rs:18`, `tests/theme_problems.rs:8`, `mod.rs:53`)
+    compile unedited through the re-exports.
+  - 19b tour launch: `arrive`'s `practice`/`tour_done` moved verbatim; `places::tests` green.
+  - Empty state: paste, clone and first-launch tests 129/129.
+  - Palette: the `landed` callers in `find.rs` are unchanged.
+  - `view::stash`: unchanged (only a test added).
+  - Fold-count refresh: only the test changed; `docs/shots/m8/polish-fold-*` unchanged.
+  - MAP.md graft: the `## event_loop` `Exit` row, the `lib.rs` `empty_state` row, and a new
+    `## File layout (m8-polish-and-ship/21b-4)` section.
+  - Not touched: keymap, journal/undo, other crates. `git diff --stat 185e141c` lists only graft files, the scout and
+    this ticket.
 
 ## 21b-4 additions (conductor 2026-10-08, from `docs/reviews/m8-palette-landing-stop.md` C1, M1–M3 — fixes as the review states them, no new decision)
 
