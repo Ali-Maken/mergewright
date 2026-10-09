@@ -270,7 +270,7 @@
 420 crates/graft/tests/it/m7_walk/switch.rs
 403 crates/graft/tests/it/m8_walk/clone.rs
 685 crates/graft/tests/it/name_and_drag.rs
-560 crates/graft/tests/it/outside_repo.rs
+558 crates/graft/tests/it/outside_repo.rs
 1142 crates/graft/tests/it/preview.rs
 613 crates/graft/tests/it/pty.rs
 401 crates/graft/tests/it/quit_waits/hangup.rs
