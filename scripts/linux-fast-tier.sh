@@ -39,6 +39,11 @@ trap 'rm -rf "$src"' EXIT
 commit="$(git rev-parse --short HEAD)"
 git clone -q --no-checkout . "$src/tree"
 git -C "$src/tree" checkout -q --detach "$commit"
+# The crates come from the host, vendored, not from crates.io inside the
+# container: three of six early runs died on a download from inside Docker
+# ("transfer too slow"), while the host fetched the same crates fine.
+cargo vendor --locked --manifest-path "$src/tree/Cargo.toml" "$src/vendor" >/dev/null
+printf '[source.crates-io]\nreplace-with = "vendored"\n[source.vendored]\ndirectory = "/vendor"\n' >"$src/cargo-config.toml"
 
 # Inside: a user `tester` owns a copy of the tree; nextest comes from its
 # project's own prebuilt download (get.nexte.st), as its install docs say.
@@ -51,6 +56,7 @@ runuser -u tester -- bash -c "
 set -eu
 export CARGO_HOME=\$HOME/.cargo PATH=\$HOME/.cargo/bin:\$PATH
 mkdir -p \$HOME/.cargo/bin
+cp /cargo-config.toml \$HOME/.cargo/config.toml
 # A git identity, as every developer machine has: tests that commit through
 # the app read the global one (a first run without it failed on
 # \"Author identity unknown\"; m8-polish-and-ship/24 NOTES).
@@ -79,7 +85,8 @@ set +e
 # Without it `bash` is PID 1, the hook processes a stop orphans stay
 # zombies, and the tests that check "every process is gone" (`kill -0`
 # finds a zombie) fail for the container's sake (m8-polish-and-ship/24).
-docker run --rm --init -v "$src/tree:/src:ro" "$image" bash -c "$inner" >"$log" 2>&1
+docker run --rm --init -v "$src/tree:/src:ro" -v "$src/vendor:/vendor:ro" \
+    -v "$src/cargo-config.toml:/cargo-config.toml:ro" "$image" bash -c "$inner" >"$log" 2>&1
 status=$?
 set -e
 
