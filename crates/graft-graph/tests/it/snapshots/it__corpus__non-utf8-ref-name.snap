@@ -1,0 +1,12 @@
+---
+source: crates/graft-graph/tests/it/corpus.rs
+expression: text
+---
+shape: non-utf8-ref-name
+order: requested Topological, in force CommitDate (provisional)
+default: main
+integration: []
+commits: 2, columns: 2
+
+| *  1a27b1f  caf�               Work under a Latin-1 branch name
+* /  1cb6810  main               Add a readme

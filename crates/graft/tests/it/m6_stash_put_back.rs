@@ -30,6 +30,7 @@ use crate::preview::{FORK_NOW, dated_commit, opened};
 pub(crate) fn main_and_fix() -> graft_fixtures::Scratch {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
     let path = scratch.path();
+    crate::app_harness::pin_identity(path);
     dated_commit(path, "base.txt", "base\n", "add the base", 1);
     git(path, &["branch", "fix"]);
     dated_commit(path, "main-one.txt", "one\n", "main moves on", 2);

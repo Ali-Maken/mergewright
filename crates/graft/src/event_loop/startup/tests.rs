@@ -156,6 +156,24 @@ fn finish_after_a_hangup_still_reports_a_restore_the_terminal_did_not_refuse() {
     assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
 }
 
+/// m8/30: on Linux the restore's first error after a hang-up is `ENXIO`,
+/// not `EIO`. `isatty(stdin)` is false on the hung-up pty, so crossterm's
+/// `disable_raw_mode` opens `/dev/tty`, and with the controlling terminal
+/// gone that open fails `ENXIO` (observed in the Debian container: the
+/// process exited 1 on "No such device or address (os error 6)").
+#[test]
+fn finish_after_a_hangup_dies_of_it_when_the_controlling_terminal_is_gone() {
+    let no_terminal = io::Error::from_raw_os_error(6);
+
+    let result = finish_to(
+        &mut FailingWriter,
+        Ok(Exit::Signal(SIGHUP)),
+        Err(no_terminal),
+    );
+
+    assert_eq!(result.expect("a hang-up exits"), Exit::Signal(SIGHUP));
+}
+
 #[test]
 fn a_hangup_excuses_only_the_dead_terminals_failure() {
     let eio = || io::Error::from_raw_os_error(5);
@@ -171,7 +189,9 @@ fn a_hangup_excuses_only_the_dead_terminals_failure() {
             io::Error::from(io::ErrorKind::PermissionDenied),
             false,
         ),
+        (Exit::Signal(SIGHUP), io::Error::from_raw_os_error(6), true),
         (Exit::Quit, eio(), false),
+        (Exit::Quit, io::Error::from_raw_os_error(6), false),
     ];
     for (exit, error, excused) in cases {
         assert_eq!(

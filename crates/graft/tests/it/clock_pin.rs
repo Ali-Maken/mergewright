@@ -143,6 +143,9 @@ fn stamped_by_the_wall(entries: &[graft_core::journal::JournalEntry], run: (i64,
 fn graft_now_never_stamps_the_journal() {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
     let repo = scratch.path();
+    // The app commits: under the isolated `HOME` only the repo can name
+    // who (a Linux host's implicit identity is refused; m8/30).
+    crate::app_harness::pin_identity(repo);
     let isolated = Isolated::new();
     let handle = graft_git::repo::RepoHandle::open(repo).expect("repo opens");
     let path = graft_ops::journal::journal_path(&handle).expect("journal path");
@@ -174,6 +177,7 @@ fn graft_now_never_stamps_the_journal() {
 fn u_under_a_pinned_clock_undoes_the_newest() {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
     let repo = scratch.path();
+    crate::app_harness::pin_identity(repo);
     let isolated = Isolated::new();
     // Both files before launch: the app reads them at start.
     std::fs::write(repo.join("README.md"), "edited\n").expect("the scratch repo is writable");
@@ -264,6 +268,7 @@ fn open_with_clock_pins_the_drawn_frame() {
 fn an_in_app_commit_under_the_default_pin_draws_an_age() {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
     let repo = scratch.path();
+    crate::app_harness::pin_identity(repo);
     let isolated = Isolated::new();
     std::fs::write(repo.join("README.md"), "edited\n").expect("the scratch repo is writable");
     let mut pty = Pty::spawn(

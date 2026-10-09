@@ -18,7 +18,7 @@
 
 == 1. After `p r r` and `P`: no ⓘ on any row ==
 
- ◆ api  ~/code/api · main                                                                               144 rows so far
+ ◆ api  ~/code/api · main                                                                                   204 commits
 
 ▸ ◆      [◆ main ⇄ origin] ours                                                                         GF now  0000000
   ●      theirs                                                                                         GF 6y   7be74b5
@@ -61,7 +61,7 @@
 
 == 2. Cursor on stash@{0}: no ⚠ ==
 
- ◆ api  ~/code/api · main                                                                               144 rows so far
+ ◆ api  ~/code/api · main                                                                                   204 commits
 
   ◆      [◆ main ⇄ origin] ours                                                                         GF now  0000000
   ●      theirs                                                                                         GF 6y   7be74b5
@@ -104,7 +104,7 @@
 
 == 3. `.` on main's tip: the menu does not lead with Explain ==
 
- ◆ api  ~/code/api · main                                                                               144 rows so far
+ ◆ api  ~/code/api · main                                                                                   204 commits
 
 ▸ ◆      [◆ main ⇄ origin] ours                                                                         GF now  0000000
  Checkout — already on main

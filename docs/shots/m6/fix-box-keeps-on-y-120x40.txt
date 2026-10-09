@@ -10,7 +10,7 @@
 # rejection's sticky line waits under the box (m6-conflicts/69).
 
 === after `y` (identical to before it) ===
- ◆ api  ~/code/api · main                                                                               144 rows so far
+ ◆ api  ~/code/api · main                                                                                   201 commits
 
 ▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd

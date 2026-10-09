@@ -106,16 +106,14 @@ impl Session {
         // `S`'s id and age are the same every run (19d-a3, ticket §R7.2).
         // The wall clock gave a new id per run, drawn `future`.
         let git_date = format!("@{} +0000", crate::preview::FORK_NOW);
-        command
+        crate::pty::as_the_test_terminal(&mut command)
             .env("XDG_CONFIG_HOME", isolated.config())
             .env("HOME", isolated.home())
             .env("GIT_CEILING_DIRECTORIES", repo)
             .env("GIT_AUTHOR_DATE", &git_date)
             .env("GIT_COMMITTER_DATE", &git_date)
-            .env("TERM", "xterm-256color")
             .env_remove("GIT_DIR")
             .env_remove("GIT_WORK_TREE")
-            .env_remove("NO_COLOR")
             .env_remove("GRAFT_TRACE");
         if let Stderr::File(path) = stderr {
             command

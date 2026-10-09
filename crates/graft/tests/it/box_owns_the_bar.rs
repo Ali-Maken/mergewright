@@ -73,6 +73,7 @@ fn over_a_rejection() -> [Vec<Vec<String>>; 3] {
         state.status
     );
     let state = ready(&app, state);
+    let state = crate::captures::at_rest(&app, state);
     let lease = app.press(&state, plain('P'));
     assert!(lease.confirm.is_some(), "P opened the lease box");
     let escaped = app.key(&lease, KeyCode::Escape);

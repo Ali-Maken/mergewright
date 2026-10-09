@@ -179,19 +179,47 @@ fn run_and_kill(path: &Path, op: &Operation, step: usize) {
 /// a real `kill -9`. Waits for it to end, so the relaunch reads one state and
 /// not a race. A poll on the condition, bounded: nothing here is a fix for a
 /// race in the app.
+///
+/// Running, not merely a child: the unwind that stands in for the kill drops
+/// git's `Child` unwaited, and an exited git stays this process's zombie
+/// until it ends — a real kill takes the parent with it. Linux's `pgrep -P`
+/// listed that zombie, so the wait ran out with no git running (seen in the
+/// Debian container: `Z [git] <defunct>`, m8-polish-and-ship/30); macOS's
+/// did not.
 fn wait_for_the_orphans() {
-    let me = std::process::id().to_string();
     for _ in 0..3_000 {
-        let children = Shell::new("pgrep")
-            .args(["-P", &me])
-            .output()
-            .expect("pgrep runs");
-        if children.stdout.is_empty() {
+        if running_children().is_empty() {
             return;
         }
         std::thread::sleep(Duration::from_millis(10));
     }
-    panic!("a git the killed operation started still runs after 30 s");
+    panic!(
+        "a git the killed operation started still runs after 30 s: {:?}",
+        running_children()
+    );
+}
+
+/// This process's children that have not exited (`ps` state not `Z`), as
+/// `pid state command` lines, the `ps` asked leaving itself out.
+fn running_children() -> Vec<String> {
+    let me = std::process::id().to_string();
+    let ps = Shell::new("ps")
+        .args(["-A", "-o", "ppid=,pid=,stat=,comm="])
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .expect("ps runs");
+    let asking = ps.id().to_string();
+    let listed = ps.wait_with_output().expect("ps answers");
+    assert!(listed.status.success(), "ps failed: {listed:?}");
+    String::from_utf8_lossy(&listed.stdout)
+        .lines()
+        .filter_map(|line| {
+            let mut fields = line.split_whitespace();
+            let (parent, pid, state) = (fields.next()?, fields.next()?, fields.next()?);
+            (parent == me && pid != asking && !state.starts_with('Z'))
+                .then(|| line.trim().to_owned())
+        })
+        .collect()
 }
 
 /// The stash entry, by position, whose `base.txt` holds the edit.

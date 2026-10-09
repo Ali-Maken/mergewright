@@ -54,6 +54,7 @@ const LEFT_BEHIND_NOW: i64 = FORK_EPOCH + 70 * 60;
 pub fn forked() -> graft_fixtures::Scratch {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
     let path = scratch.path();
+    crate::app_harness::pin_identity(path);
     dated_commit(path, "base.txt", "base\n", "add the base", 1);
     git(path, &["branch", "feature"]);
     dated_commit(path, "main-one.txt", "one\n", "main moves on", 2);

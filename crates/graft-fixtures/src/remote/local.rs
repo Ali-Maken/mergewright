@@ -89,6 +89,22 @@ impl LocalRemote {
                 &[],
             )?;
         }
+        // No commit-graph appears behind a test's back. Git 2.54's auto
+        // maintenance (after a commit, fetch or push) writes one once 100
+        // commits are outside it, and this shape has 200; 2.47's does not.
+        // Graft walks a repository with a commit-graph in topological order
+        // and one without in provisional date order (ADR-0008), so the same
+        // test drew a different header on each (m8-polish-and-ship/30). Set
+        // in each repository, not per command: Graft's own git under test
+        // reads it too.
+        for repository in [&bare, &work, &teammate] {
+            run_git(
+                &home,
+                repository,
+                &["config", "maintenance.auto", "false"],
+                &[],
+            )?;
+        }
 
         Ok(LocalRemote {
             _scratch: scratch,

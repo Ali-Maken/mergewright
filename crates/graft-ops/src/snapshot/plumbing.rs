@@ -26,24 +26,40 @@ impl TempIndex {
     /// A missing index is not an error: a repository with no `.git/index`
     /// yet (a fresh `git init`) has an empty index, and `write-tree` over a
     /// missing `GIT_INDEX_FILE` prints the empty tree — verified on git 2.54.
+    ///
+    /// The copy keeps the index's **modification time**. git reads an entry
+    /// as unchanged when its stat matches the file, unless the entry is as
+    /// new as the index file — "racily clean" — when it reads the content
+    /// instead. A copy dated now made every entry look older than its index,
+    /// so an edit made in the same clock tick as git's last write, at the
+    /// same size, was trusted away: the snapshot and the put-back forecast
+    /// missed it. Linux's coarse file clock hit it 8 runs in 200; macOS's
+    /// `fs::copy` happens to keep the time (m8-polish-and-ship/30).
     pub(super) fn copied_from(
         repo: &RepoHandle,
         scratch: &Path,
     ) -> Result<TempIndex, SnapshotError> {
         let path = scratch.join(Self::unique_name("tmp-index"));
-        let source = repo.git_dir().join("index");
-        match std::fs::copy(&source, &path) {
-            Ok(_) => {}
+        let mut source = match std::fs::File::open(repo.git_dir().join("index")) {
+            Ok(source) => source,
             Err(why) if why.kind() == std::io::ErrorKind::NotFound => {
                 // No index file: the empty index. `write-tree` and `add -A`
                 // both accept a `GIT_INDEX_FILE` that does not exist yet.
                 if path.exists() {
                     std::fs::remove_file(&path)?;
                 }
+                return Ok(TempIndex { path });
             }
             Err(why) => return Err(why.into()),
-        }
-        Ok(TempIndex { path })
+        };
+        // From the open file, so the time and the bytes are one index's even
+        // if git replaces `.git/index` meanwhile (it renames a new one in).
+        let modified = source.metadata()?.modified()?;
+        let temp = TempIndex { path };
+        let mut copy = std::fs::File::create(&temp.path)?;
+        std::io::copy(&mut source, &mut copy)?;
+        copy.set_modified(modified)?;
+        Ok(temp)
     }
 
     /// A name no index file exists at yet: `update-index` creates it. The

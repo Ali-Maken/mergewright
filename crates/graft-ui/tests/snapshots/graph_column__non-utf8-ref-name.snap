@@ -1,0 +1,8 @@
+---
+source: crates/graft-ui/tests/graph_column.rs
+expression: text
+---
+shape: non-utf8-ref-name (dark = light, asserted), truecolor
+
+  ●   ..g.  1a27b1f  Work under a Latin-1 branch name
+◆─╯   cgg.  1cb6810  Add a readme

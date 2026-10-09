@@ -78,6 +78,28 @@ fn local_remote_clone_has_origin_and_upstream() {
     assert!(remote.url().starts_with("file:///"), "{}", remote.url());
 }
 
+/// m8-polish-and-ship/30: a commit, a push and a fetch leave no
+/// commit-graph behind, whatever the git version. Git 2.54's auto
+/// maintenance wrote one here (Graft then walks in topological order), 2.47's
+/// did not (provisional date order), and the same capture drew two headers.
+#[test]
+fn a_local_remote_never_grows_a_commit_graph() {
+    let remote = local();
+    remote.commit_on_remote("theirs").unwrap();
+    remote.commit_locally("ours").unwrap();
+    remote.git(remote.work(), &["fetch", "-q"]).unwrap();
+
+    for objects in [
+        remote.work().join(".git/objects"),
+        remote.bare().join("objects"),
+    ] {
+        for graph in ["info/commit-graph", "info/commit-graphs"] {
+            let path = objects.join(graph);
+            assert!(!path.exists(), "{} was written", path.display());
+        }
+    }
+}
+
 #[test]
 fn commit_on_remote_leaves_work_behind() {
     let remote = local();

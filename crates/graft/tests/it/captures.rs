@@ -206,6 +206,31 @@ pub fn settled_frame(app: &crate::app_harness::App, state: AppState) -> AppState
     })
 }
 
+/// Pumps until nothing a frame draws is still moving: the walk complete,
+/// its promotion done, and the radar answered.
+///
+/// `remote_by_key::ready` holds once the first rows land, which is what
+/// `f`/`p`/`P` decide from, not what a frame shows. With no commit-graph
+/// the order is provisional (ADR-0008) and the header reads `N rows so far
+/// date order, sorting…` or `N commits`, whichever the job pool reached
+/// first; the radar's `ⓘ` on an unpushed `main` is there or not the same
+/// way (m8-polish-and-ship/30, both seen in one capture across two runs).
+/// [`settled_frame`] waits out only the `sorting…`.
+pub fn at_rest(app: &crate::app_harness::App, state: AppState) -> AppState {
+    app.pump(state, "a complete walk and the radar's answer", |state| {
+        walk_has_settled(state) && radar_has_answered(state)
+    })
+}
+
+/// The walk has stopped moving: complete, its promotion done.
+pub fn walk_has_settled(state: &AppState) -> bool {
+    use graft::history::Phase;
+    state
+        .history
+        .as_ref()
+        .is_some_and(|history| history.phase == Phase::Complete && history.promotion.is_none())
+}
+
 /// Pumps until the Mistake Radar has answered: its default-branch context
 /// has landed (`state.radar.context` is `Ready`, which is what builds the
 /// ref findings the rows' `ⓘ` draws from), and neither probe it asks for

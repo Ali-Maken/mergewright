@@ -101,6 +101,19 @@ pub fn git_as_graft(repo: &Path, args: &[&str]) -> String {
     git(repo, &full)
 }
 
+/// Give `repo` the identity [`git_as_graft`] uses, in its own config, so
+/// what **the app** writes there (a stash, a merge, a ghost's author) is
+/// stamped the same on every machine.
+///
+/// The in-process app runs git with the test process's `HOME`, so without
+/// this its commits carry the developer's global identity: captures drew
+/// `MA` on the Mac and `TE` in the Linux container, and the ids changed
+/// with them (m8-polish-and-ship/30).
+pub fn pin_identity(repo: &Path) {
+    git(repo, &["config", "user.name", "Graft Test"]);
+    git(repo, &["config", "user.email", "test@example.invalid"]);
+}
+
 pub struct App {
     pub jobs: JobRunner<Sender<AppEvent>>,
     pub events: Receiver<AppEvent>,

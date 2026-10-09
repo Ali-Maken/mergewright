@@ -492,6 +492,9 @@ fn capture_amend_into_git_clock_pinned() {
     }
     let dir = oauth_repo(true);
     let repo = dir.path();
+    // The rewrite's commits carry a committer, and the capture draws their
+    // ids: the developer's own identity there made the ids per machine.
+    crate::app_harness::pin_identity(repo);
     stage_auth_fix(repo);
     write(
         repo,

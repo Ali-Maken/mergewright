@@ -905,6 +905,7 @@ fn capture_undo_after_push_for_docs_shots() {
 
     let (app, state) = App::open(work);
     let state = pushed_one_commit(&app, state);
+    let state = crate::captures::at_rest(&app, state);
 
     // The one thing in this capture the run invents: `to push` is committed
     // moments before the frame is drawn, so its id is new every run. The
@@ -1108,6 +1109,7 @@ fn plain_box_takes_y(
     branch: &str,
 ) -> (AppState, Vec<(&'static str, Vec<String>)>) {
     let state = ready(app, state);
+    let state = crate::captures::at_rest(app, state);
     let plain_box = app.press(&state, plain('P'));
     let pending = plain_box.confirm.as_ref().expect("P opened a box");
     assert_eq!(pending.view.selected(), 0, "the box opens on Cancel");
@@ -1134,6 +1136,7 @@ fn plain_box_takes_y(
 /// equal to after).
 fn lease_box_keeps_on_y(app: &App, state: AppState) -> Vec<Vec<String>> {
     let state = ready(app, state);
+    let state = crate::captures::at_rest(app, state);
     let lease_box = app.press(&state, plain('P'));
     let pending = lease_box.confirm.as_ref().expect("P opened the lease box");
     assert!(
@@ -1222,6 +1225,7 @@ fn capture_fix_plain_box_after_rebase() {
     let state = app.press(&state, plain('r'));
     let state = app.settle_write(state, "the rebase");
     let state = ready(&app, state);
+    let state = crate::captures::at_rest(&app, state);
     let rebased = rev(work, "HEAD");
 
     let state = app.press(&state, plain('P'));
