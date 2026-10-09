@@ -11,7 +11,7 @@ use graft_ui::theme::Token;
 use super::config_keys::is_pattern;
 use super::flags::FlagAction;
 use super::man::chord_text;
-use super::{CONFIG_KEYS, FLAGS, Invocation, man_page, parse, usage};
+use super::{CONFIG_KEYS, FLAGS, Invocation, man_page, parse, usage, version};
 use crate::config::{self, Config, KEYS_SUSPEND, SCHEMA};
 
 const MAN_PAGE: &str = include_str!("../../../../docs/man/graft.1");
@@ -25,6 +25,7 @@ fn invocation_of(action: FlagAction) -> Invocation {
     match action {
         FlagAction::Usage => Invocation::Usage(usage(FLAGS)),
         FlagAction::GenerateMan => Invocation::GenerateMan,
+        FlagAction::Version => Invocation::Version(version()),
     }
 }
 

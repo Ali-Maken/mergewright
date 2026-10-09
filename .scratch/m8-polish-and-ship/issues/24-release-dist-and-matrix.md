@@ -154,6 +154,23 @@ G-rename list additions: dist package/formula/archives (`graft`, `graft.rb`, `gr
 
 ## 24-b additions (conductor, as found, no new decision)
 
-- [ ] B+1 — `graft --version` prints the crate version (graft `cli.rs`); closes the cargo-install box above. Test: name it.
+- [x] B+1 — `graft --version` prints the crate version (graft `cli.rs`); closes the cargo-install box above. **Verified by**
+      `cli::tests::version_is_asked_for_in_both_spellings_and_names_the_crate_version` (`-V` and `--version` →
+      `Invocation::Version("graft <CARGO_PKG_VERSION>")`; seen failing to compile first), `version_wins_over_a_path_it_was_given_with`,
+      `cli::docs_tests::every_flag_row_parses_in_each_spelling_and_every_action_has_a_row`; and the debug binary run by
+      hand: `graft --version` → `graft 0.1.0`, `graft -V` → `graft 0.1.0`. `--help` now lists `-V, --version    print the
+      version and exit`; `docs/man/graft.1` regenerated (`committed_man_page_is_the_generated_one`). The cargo-install
+      box above: the flag exists; the 163 s install was **not re-run** after it, so that box stays open on a re-run of
+      `scripts/cargo-install-check.sh`.
 - [ ] B+2 — formula installs the man page to man1, and `brew style` on the generated formula is clean (dist config/template override; read-only, never `brew install`). Quote the result.
+      **Not done — blocked, two causes.** (1) dist 0.33.0 has **no template override**: templates are compiled into
+      the binary (`cargo-dist/src/backend/templates.rs:11`, `include_dir!("$CARGO_MANIFEST_DIR/templates")`), and the
+      homebrew config takes only `tap`/`formula` (`cargo-dist/src/config/v1/installers/homebrew.rs:19-25`); its
+      `install` block puts every non-doc leftover in `pkgshare` (`templates/installer/homebrew.rb.j2`). So no config
+      reaches `man1`. Choices: a post-processing script on dist's formula (`man1.install "graft.1"` + `brew style --fix`,
+      as dist's own tap job already runs `--fix`) — patches generated output, needs the user's OK (rule 2); a custom
+      publish job doing the same at publishing; or a forked dist. (2) The `.tools/` dist binary is gone with the old
+      worktree; rebuilding dist from its tag here was **denied by the permission classifier**, so no formula could be
+      regenerated or styled. Style gems: already present in `/opt/homebrew/Library/Homebrew/vendor/bundle`
+      (`bundler`, `ruby`); `brew style` was not run, nothing installed.
 - Linux 56 red: goes to the debugger separately, not this part. Git floor: user's call at the stop.
