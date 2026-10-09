@@ -1,6 +1,6 @@
 # The clock pin draws only; the whole-tour walk shoots a settled screen; two set-aside questions answered
 
-Status: draft (planner spec-only pass, 2026-10-09; rules on review `docs/reviews/m8-tour-setaside-fetch.md` M1, M2,
+Status: done (builder 2026-10-09; see NOTES 19e) — was draft (planner spec-only pass, 2026-10-09; rules on review `docs/reviews/m8-tour-setaside-fetch.md` M1, M2,
 m1, m2, m3 and its "Proposed changes").
 Build with: **Opus, xhigh.** Part D is the stop-outcome path in graft-ops (`apply/set_aside/answer.rs`,
 `apply/stopped.rs`), the path 19d-a3 fixed for `Clashed`: a wrong mark tells him a merge that is in has failed, and no
@@ -146,70 +146,105 @@ fn ready_to_shoot(screen: &str) -> bool; // = settled(screen), or the resolver's
 
 ## Acceptance
 **A. The pin draws only (M1, R1).** Order: the sweep before any code.
-- [ ] **Sweep.** Every place in `crates/graft/src` that hands the session clock (`launch_clock`'s result,
+- [x] **Sweep.** Every place in `crates/graft/src` that hands the session clock (`launch_clock`'s result,
       `harness.clock`, `Carried::clock`) to something that **writes** is listed in a NOTES table: site · writes what ·
       into where. Expected: `startup::run_repo`'s `with_clock` (journal) and the practice repo's `now` (temp). Any
       other writer into a real repo or the state dir is moved to the wall clock in this box. Test: the grep command,
       named in NOTES, and `clock_pin::graft_now_never_stamps_the_journal` below.
-- [ ] **No false stamp.** Pty, `GRAFT_NOW` = `PINNED_NOW`, one in-app commit, quit. Every new journal entry's
+      **Done:** two writers, as expected; the journal one moved to the wall clock (`startup.rs:286-290`). Table and
+      grep in NOTES 19e. Test: that grep plus `clock_pin::graft_now_never_stamps_the_journal`.
+- [x] **No false stamp.** Pty, `GRAFT_NOW` = `PINNED_NOW`, one in-app commit, quit. Every new journal entry's
       `at_unix_ms` lies between the wall ms read before spawn and after exit, and none equals `PINNED_NOW * 1000`.
       **Red before.** Test: `clock_pin::graft_now_never_stamps_the_journal`.
-- [ ] **The drawn pin still holds.** These stay green with expectations unchanged: `graft_now_pins_the_drawn_age`,
+      **Done:** seen red first (stamps 1791417600000 = the pin, against a wall range near 1791524127577), green after
+      the fix. Test: `clock_pin::graft_now_never_stamps_the_journal`.
+- [x] **The drawn pin still holds.** These stay green with expectations unchanged: `graft_now_pins_the_drawn_age`,
       `a_bad_graft_now_refuses_to_launch`, `an_in_app_commit_under_the_default_pin_draws_an_age`,
       `open_with_clock_pins_the_drawn_frame`, `no_capture_producer_runs_on_the_wall_clock`. Test: those, in the full
       run.
-- [ ] **The old test's claim is updated.** `u_under_a_pinned_clock_undoes_the_newest` still undoes the second commit.
+      **Done:** all five unedited and green in the full nextest run (6164/6164). Test: those five, in the full run.
+- [x] **The old test's claim is updated.** `u_under_a_pinned_clock_undoes_the_newest` still undoes the second commit.
       Its "every `at_unix_ms` = pin" assertion becomes the wall-range check above. NOTES names the changed
       expectation. Test: that test.
-- [ ] **No pty capture drew a stamp.** Full nextest green. `git status --short docs/shots` is empty.
+      **Done:** still undoes "Second pinned"; the pin-equality assertion became `stamped_by_the_wall` (NOTES 19e).
+      Test: `clock_pin::u_under_a_pinned_clock_undoes_the_newest`.
+- [x] **No pty capture drew a stamp.** Full nextest green. `git status --short docs/shots` is empty.
       `grep -rl future docs/shots` gives the same 6 prose hits NOTES 19d-b2 lists. Any capture that changed → stop and
       report, naming it and its producer. Test: the full run plus those two commands, outputs in NOTES.
-- [ ] **No production caller of the stamp seam.** `grep -rn "with_clock(" crates/graft/src` shows only `JobRunner`'s
+      **Done:** full run 6164/6164; `git status --short docs/shots` empty; `grep -rl future docs/shots` gives 6 files,
+      the count 19d-b2 recorded. Test: the full run plus those two commands (NOTES 19e).
+- [x] **No production caller of the stamp seam.** `grep -rn "with_clock(" crates/graft/src` shows only `JobRunner`'s
       definition and its own `#[cfg(test)]` uses. Test: that grep, in NOTES.
-- [ ] **Docs say it.** graft MAP :91 ("the journal's `at_unix_ms` comes through it too": in-process only), :92 and
+      **Done:** one hit, the definition (`jobs/runner.rs:207`). Test: that grep (NOTES 19e).
+- [x] **Docs say it.** graft MAP :91 ("the journal's `at_unix_ms` comes through it too": in-process only), :92 and
       :1118 ("the shipped binary passes the session clock" removed); graft-fixtures MAP :12; TESTING.md gains "Switches
       the binary reads for tests": `GRAFT_NOW` draws only and writes nothing, `GRAFT_PRACTICE_EPOCH` dates the temp
       practice repo; the §R3 amendment is appended to 19d. Test: `grep -n GRAFT_NOW TESTING.md crates/*/MAP.md`, output
       in NOTES.
+      **Done:** all six places edited; 19d §R3 amended. Test: `grep -n GRAFT_NOW TESTING.md crates/*/MAP.md` (NOTES 19e).
 
 **B. The walk shoots settled (M2, R2).**
-- [ ] **The pure predicate.** `ready_to_shoot` is false on a frame whose line 3 reads `date order, sorting…` (the
+- [x] **The pure predicate.** `ready_to_shoot` is false on a frame whose line 3 reads `date order, sorting…` (the
       review's failing frame), and true on the bodies of the committed `m8-tour-finished-120x36.txt` and
       `m8-tour-step7-conflict-120x36.txt`. Test: `tour_walk::a_screen_still_sorting_is_not_ready_to_shoot`.
-- [ ] **Gated by construction.** `shot` waits on `ready_to_shoot` before `Captures::check`. The waits at `:393-407`
+      **Done:** also false with a walk count still `reading… 5 rows`. Test:
+      `tour_walk::a_screen_still_sorting_is_not_ready_to_shoot`.
+- [x] **Gated by construction.** `shot` waits on `ready_to_shoot` before `Captures::check`. The waits at `:393-407`
       and `:645-656` include `settled`. `grep -n "Captures::check\|\.check(" tests/it/tour_walk.rs` shows one call,
       inside `shot`. Test: that grep, plus `the_whole_tour_in_a_pty_ticks_all_eight_and_comes_home` and
       `the_tour_captures_match` green.
-- [ ] **Holds under repeats.** The whole-tour walk runs 10× in a row from a script writing to
+      **Done, one deviation:** those waits include `ready_to_shoot`, not `settled` (`settled` needs practice-only text
+      that the home screen and the resolver never draw; NOTES 19e). The grep shows one `.check(`, at `:183` inside
+      `shot`. Test: that grep plus both tests, green in the full run.
+- [x] **Holds under repeats.** The whole-tour walk runs 10× in a row from a script writing to
       `docs/perf/19e-tour-walk-repeat.txt`, with one summary line `pass=<n>/10`. Expected 10/10. The builder reads only
       that line. Red-before is not claimed: the race can't be forced. Test:
       `the_whole_tour_in_a_pty_ticks_all_eight_and_comes_home`, via the script named in NOTES.
-- [ ] **Captures unchanged.** `git status --short docs/shots` is empty, and `grep -c sorting` on both tour captures is
+      **Done:** `pass=10/10`, run beside the full workspace nextest run. Test:
+      `the_whole_tour_in_a_pty_ticks_all_eight_and_comes_home`, via `scripts/m8-19e-tour-walk-repeat.sh`.
+- [x] **Captures unchanged.** `git status --short docs/shots` is empty, and `grep -c sorting` on both tour captures is
       0. Test: those commands, in NOTES.
-- [ ] **Audit.** Every other pty capture producer under `crates/graft/tests/it` that shoots without a settled wait is
+      **Done:** empty; 0 and 0. Test: those commands (NOTES 19e).
+- [x] **Audit.** Every other pty capture producer under `crates/graft/tests/it` that shoots without a settled wait is
       listed in NOTES with file:line, or NOTES says "none" with the grep. Test: the grep, in NOTES.
+      **Done:** listed in NOTES 19e. None draws a graph mid-sort except a possible in-process one at
+      `quit_waits/hangup.rs:320`, which is unverified and filed as a question. Test: the grep, in NOTES.
 
 **C. `u` under a one-millisecond tie (m2, R3).**
-- [ ] A hand-built journal (two Committed entries, equal `at_unix_ms`, the later-appended with the smaller id) → the
+- [x] A hand-built journal (two Committed entries, equal `at_unix_ms`, the later-appended with the smaller id) → the
       newest-undoable read returns the later-appended. Red → stop and report with the line. Test:
       `journal_tie::u_on_a_one_millisecond_tie_takes_the_last_appended` (graft-ops).
+      **Done, green as found:** the tie and the id/file disagreement are asserted before `u`; `run_undo` reverses the
+      entry appended last. Test: `journal_tie::u_on_a_one_millisecond_tie_takes_the_last_appended`.
 
 **D. A landed set-aside stopped before its put-back (m1, R4).**
-- [ ] Through the stop-injection seam, a set-aside merge is stopped after the merge lands and before `stash apply
+- [x] Through the stop-injection seam, a set-aside merge is stopped after the merge lands and before `stash apply
       --index`. The entry is `Committed`, `HEAD` is the merge, the edits are in `S` (listed) or in the tree (never
       neither), and `stopped_at() == Some(StoppedAt::Landed)`. Red before → fixed per R4. Green as found → say so.
       Test: `merge_set_aside::a_stop_after_the_merge_landed_before_the_put_back_says_landed`.
-- [ ] If fixed: the cherry-pick twin holds the same mark.
+      **Done, green as found**, for both shapes (true merge and fast-forward). The stop is `stop_before(repo, 6)`: the
+      merge is held in `post-merge` and the process is killed there. The put-back still runs, so the edits are back
+      and S is dropped. NOTES 19e says why R4's premise differs. Test:
+      `merge_set_aside::a_stop_after_the_merge_landed_before_the_put_back_says_landed`.
+- [n/a] If fixed: the cherry-pick twin holds the same mark.
       Test: `cherry_pick::a_pick_over_edits_stopped_before_its_put_back_says_landed`.
       Also, NOTES lists each graft caller of `stopped_at()` and what it shows now, with no new words. The full run
       covers `update::quit::tests` (exit-line table unchanged).
-- [ ] A put-back failure with no stop and no clash: a test exists only if an existing seam reaches it
+      **Not applicable:** nothing was fixed (D was green as found), so no twin test was written and no `stopped_at()`
+      caller changed.
+- [x] A put-back failure with no stop and no clash: a test exists only if an existing seam reaches it
       (`merge_set_aside::a_put_back_that_fails_without_a_clash_keeps_the_merge_and_the_edits`). Otherwise NOTES says
       "unreachable by any seam; unverified" and names the seams tried. Test: that test, or the NOTES line.
+      **Done:** reached through an existing seam, a one-shot `post-merge` hook on `core.hooksPath` that puts an
+      untracked file where the staged one goes back. The result is `ApplyError::Git`, the merge is in, S is kept,
+      `edits_at() == Stash{n:0}`, `stopped_at() == None`, and `u` restores the tree exactly. Both shapes. The entry
+      is `Aborted`: this is a question in NOTES 19e, not a defect. Test:
+      `merge_set_aside::a_put_back_that_fails_without_a_clash_keeps_the_merge_and_the_edits`.
 
 **Gates.**
-- [ ] `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all
+- [x] `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all
       workspace-wide. Counts in NOTES.
+      **Done:** fmt clean; clippy clean; nextest 6164/6164 (14 skipped); doc 3/3. Test: those four commands (NOTES 19e).
 
 ## Touches (check each, say how)
 - **The binary's session clock:**
@@ -241,3 +276,97 @@ fn ready_to_shoot(screen: &str) -> bool; // = settled(screen), or the resolver's
 ## Size
 About 50k: A ~15k, B ~10k, C ~5k, D ~20k. One context. If D's fix grows past the shared mark (a new public type, or a
 caller needing words), stop at D, commit A-C, and report. If you compact, say so in NOTES.
+
+## NOTES 19e (builder, 2026-10-09)
+
+**Compacted: yes, once**, after A-D were committed and before the repeat run, the gates and these NOTES. Nothing remains.
+Scout: none (the ticket says none; the sweep below is the builder's). Commits: 06057ec2 (A), a9391f16 (B), a820c953
+(C), 6b0bb632 (D), then this one (ticks, NOTES, the repeat script).
+
+**A. The sweep.** Grep: `grep -rn 'launch_clock()\|harness\.clock\|carried\.clock\|clock\.now\|now_millis(' crates/graft/src`
+(test files left out), each hit read.
+
+| Site | Writes what | Into where |
+|---|---|---|
+| `event_loop/startup.rs:290` (`run_repo`), before the fix | journal stamps (`JobRunner::with_clock(harness.clock)`) | his repo's journal. **Moved to the wall clock** (the runner's default) |
+| `event_loop/places/practice.rs:92` | the practice repo's commit dates | a temp repo. Kept, as R1 says |
+
+- **Reads only, drawn:** `view/*` ages; `map.rs:241` and `update/map.rs:123` (the map's time span);
+  `update/geometry.rs:468` (badge hit-test).
+- **Reads only, input timing:** `update/mod.rs:1290` (focus debounce); `update/picker.rs:293`,
+  `update/palette/input.rs:227`, `update/place/keys.rs:422`, `update/place/history_keys.rs:276` (double-click).
+- **Already on the wall clock:** `event_loop/places.rs:312` (recents) and `places/outside.rs:280` (the drawn now there).
+- `jobs/operate.rs:409` and `jobs/undo.rs:359` stamp from the runner's clock, which the binary now leaves at `Wall`.
+- No state-dir writer takes the session clock.
+
+**A. The changed expectation.** `u_under_a_pinned_clock_undoes_the_newest` asserted every `at_unix_ms == EARLIER * 1000`.
+It now asserts each stamp lies between the wall ms read before spawn and after exit, and none equals the pin
+(`clock_pin.rs:123`, `stamped_by_the_wall`). It still undoes "Second pinned".
+
+**A. Commands.**
+- `grep -rn "with_clock(" crates/graft/src` → `jobs/runner.rs:207` only (the definition; no `#[cfg(test)]` use in src).
+- `grep -n GRAFT_NOW TESTING.md crates/*/MAP.md` → `TESTING.md:106,109`, graft-fixtures `MAP.md:12`, graft
+  `MAP.md:92,1118`. Graft MAP `:91` ("in-process only") has no `GRAFT_NOW` in it, so the grep doesn't show it; it was
+  read by eye.
+- `git status --short docs/shots` → empty.
+- `grep -rl future docs/shots` → 6, the count 19d-b2 recorded: m6/fix-finish-shell-merge-120x40,
+  m6/m6-contact-sheet-1, m7/m7-contact-sheet-captions.tsv, m7/put-back-preview-187x50, m7/landed-after-merge-120x40,
+  m7/m7-contact-sheet-1.
+
+**B. Deviation from R2:** the walk waits on `ready_to_shoot` (`tour_walk.rs:130`), not `settled` (`:104`).
+- `settled` asks for practice-only text, which the home capture and the step-7 resolver never draw. R2 allows "the
+  resolver's own loaded marker".
+- `ready_to_shoot` is screen-generic. It is false while any in-flight word shows (`opening…`, `reading history…`,
+  `reading… `, `laying out…`, `sorting…`). Otherwise it is true only if the header ends on the walk count
+  (`N commits`), or the header is `MERGING` with the resolver's `── conflict ` block.
+- `shot` (`:173`) waits on it, then `Captures::check` (`:183`, the only `.check(` in the file). The home waits and the
+  resolver wait add it too.
+
+**B. Repeats:** `scripts/m8-19e-tour-walk-repeat.sh` → `docs/perf/19e-tour-walk-repeat.txt`. Summary line read:
+`pass=10/10`.
+- It builds the test binaries once with `cargo test --no-run`. It then runs graft's `it` binary directly, so the full
+  workspace `cargo nextest run` could run beside it without two cargo commands at once.
+- That nextest run took 565 s, against roughly 70 s unloaded.
+
+**B. Audit** (pty capture producers: `grep -rl "Pty::\|use crate::pty" crates/graft/tests/it | xargs grep -l
+"Captures\|docs/shots\|GRAFT_UPDATE_SHOTS"`, tour_walk left out):
+- `first_launch.rs:114`: gated by `:111-113` (`commits` shown and no `…`). Settled.
+- `first_launch.rs:145`, `m8_walk/clone.rs:211,302,316`, `outside_repo.rs:477,493,509`: the empty state. No graph,
+  so no sort to race.
+- `clock_pin.rs`: scans the sources, shoots nothing.
+- **Question, unverified:** `quit_waits/hangup.rs:320` is in-process and doesn't use `settled_frame`. Its pump at
+  `:300-309` doesn't wait for the date-order sort, so the same shape may be possible there. It is not observed, and
+  no line proves it wrong.
+
+**C.** Green as found, so nothing changed in production. J's merge and `state_at` under a tie were not read (R3).
+
+**D. Deviation from R4's premise: a stop before the put-back does not skip the put-back.**
+- With `stop_before(repo, 6)`, git is held in `post-merge` and killed there, after `HEAD` moved. The run then still
+  puts the edits back: `Ok`, S dropped, the entry `Committed`, `stopped_at == Some(Landed)`.
+- So "landed, the put-back never ran" isn't what that seam reaches, and the mark is right on what it does reach.
+- A refused put-back with no clash **is** reached, through a one-shot `post-merge` hook that puts an untracked
+  `n.txt` in the way of the staged one.
+
+**D. Question (no defect claimed, no line proves wrong logic):** a landed merge whose put-back is refused gets the
+entry `Aborted`.
+- The source is `apply/set_aside/answer.rs:34`: `status_for`'s `(Outcome::Kept{..}, None)` arm.
+- Its words are "merge feature into main: error: The following untracked working tree files would be overwritten by
+  merge: · your edits are in stash@{0} · u restores the backup". They don't say the merge is in, and git's
+  multi-line file list is cut.
+- Checkout ships the same shape: `set_aside::a_put_back_that_fails_without_conflict_keeps_the_stash` asserts
+  `Aborted`.
+- `u` restores the tree exactly, as the test shows.
+- Should a landed op with a kept S be `Committed` with a "your edits are in S" line? The conductor's call.
+
+**Question (A's sweep, outside scope):** under a pinned clock (`GRAFT_NOW`, or `Clock::Fixed` in-process), the input
+timing above runs on a clock that never moves.
+- The focus debounce (`update/mod.rs:1290`) never re-fires.
+- Any two clicks count as a double-click (the four sites listed above).
+- This is pty-test-only behaviour, but a pty test that clicks twice under the pin reads a double-click.
+
+**Gates (workspace-wide):**
+- `cargo fmt --check`: clean.
+- `cargo clippy --all-targets -- -D warnings`: clean.
+- `cargo nextest run`: 6164/6164 passed, 14 skipped.
+- `cargo test --doc`: 3/3.
+- `shellcheck` on the new script: clean.

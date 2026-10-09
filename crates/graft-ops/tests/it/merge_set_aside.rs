@@ -17,9 +17,10 @@ use graft_core::journal::{EntryStatus, JournalEntry, PutBackWhy};
 use graft_core::oid::Oid;
 use graft_git::repo::RepoHandle;
 use graft_git::state::InProgress;
-use graft_ops::apply::{ApplyError, Resume};
+use graft_ops::EditsAt;
+use graft_ops::apply::{ApplyError, Resume, StoppedAt};
 use graft_ops::facts::read_facts;
-use graft_ops::journal::journal_path;
+use graft_ops::journal::{in_force, journal_path};
 use graft_ops::operation::{FastForward, MergeParams, Operation, SetAside, Source, Tip};
 use graft_ops::preview::{self, ConflictForecast, PreviewPlan};
 
@@ -617,6 +618,116 @@ fn a_stop_anywhere_in_a_set_aside_merge_keeps_the_edits() {
                 );
             }
         }
+    }
+}
+
+/// 19e §R4 (review m8-tour-setaside-fetch m1): a stop once the merge has
+/// moved `HEAD` — git held in its `post-merge` hook until killed — so
+/// before `stash apply --index` puts his edits back. The merge is in: the
+/// entry `Committed`, `HEAD` the merge, every edit in `S` (still listed) or
+/// back in the tree, and the answer says `Landed`, never "nothing changed".
+#[test]
+fn a_stop_after_the_merge_landed_before_the_put_back_says_landed() {
+    for main_moves in [true, false] {
+        let repo = two_branches(main_moves);
+        repo.write("base.txt", b"edited\n");
+        repo.write("n.txt", b"new\n");
+        repo.git(&["add", "n.txt"]);
+        let op = merge_feature(&repo);
+        let feature = id(&repo, "refs/heads/feature");
+        let stop = stop_before(&repo, 6);
+
+        let result = run_with_stop(&repo, &op, NOW, &stop);
+
+        let what = format!("{}: {:?}", shape(main_moves), result.as_ref().err());
+        assert!(stop.latched.load(Ordering::Relaxed), "{what}: never fired");
+        let stopped_at = match &result {
+            Ok(applied) => applied.stopped_at,
+            Err(error) => error.stopped_at(),
+        };
+        assert_eq!(stopped_at, Some(StoppedAt::Landed), "{what}");
+
+        let entry = last_entry(&repo);
+        assert_eq!(entry.status, EntryStatus::Committed, "{what}: {entry:?}");
+        if main_moves {
+            assert!(is_a_merge_commit(&repo), "{what}: HEAD is the merge");
+            assert_eq!(id(&repo, "HEAD^2"), feature, "{what}: merged feature");
+        } else {
+            assert_eq!(id(&repo, "HEAD"), feature, "{what}: fast-forwarded");
+        }
+        let stash = set_aside_of(&entry);
+        let listed = stash_commits(&repo).contains(&stash);
+        let edits: [(&str, &[u8]); 2] = [("base.txt", b"edited\n"), ("n.txt", b"new\n")];
+        for (path, bytes) in edits {
+            let in_tree = repo.exists(path) && repo.read(path) == bytes;
+            assert!(
+                listed || in_tree,
+                "{what}: {path} in neither S nor the tree"
+            );
+            assert!(edit_is_somewhere(&repo, path, bytes), "{what}: {path}");
+        }
+    }
+}
+
+/// Install `script` as a one-shot `post-merge` hook (as
+/// `set_aside::post_checkout` does for a checkout): it runs once the merge
+/// has moved `HEAD`, before the put-back, then deletes itself.
+fn post_merge(repo: &TempRepo, script: &str) {
+    let hooks = repo.path().join(".git/test-hooks");
+    std::fs::create_dir_all(&hooks).expect("the hooks dir is made");
+    let hook = hooks.join("post-merge");
+    std::fs::write(&hook, format!("#!/bin/sh\nrm -f \"$0\"\n{script}\n"))
+        .expect("the hook is written");
+    std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755))
+        .expect("the hook is executable");
+    repo.git(&["config", "core.hooksPath", hooks.to_str().expect("utf-8")]);
+}
+
+/// 19e §R4, the review's m1 without a stop: the merge lands, then git
+/// refuses the put-back with nothing unmerged (an untracked `n.txt` the
+/// `post-merge` hook drops where his staged new `n.txt` comes back, the
+/// seam `set_aside::put_back_refused` uses for a checkout). The merge
+/// stays in, his edit waits in `S` (listed), nothing is unmerged, and `u`
+/// takes it all back.
+#[test]
+fn a_put_back_that_fails_without_a_clash_keeps_the_merge_and_the_edits() {
+    for main_moves in [true, false] {
+        let repo = two_branches(main_moves);
+        repo.write("n.txt", b"new\n");
+        repo.git(&["add", "n.txt"]);
+        post_merge(&repo, "echo in the way > n.txt");
+        let op = merge_feature(&repo);
+        let feature = id(&repo, "refs/heads/feature");
+        let before = whole(&repo);
+
+        let error = try_run(&repo, &op, NOW).expect_err("the put-back is refused");
+
+        let what = format!("{}: {error:?}", shape(main_moves));
+        let ApplyError::Git { entry, .. } = &error else {
+            panic!("{what}: today's variant for a kept S");
+        };
+        if main_moves {
+            assert!(is_a_merge_commit(&repo), "{what}: HEAD is the merge");
+            assert_eq!(id(&repo, "HEAD^2"), feature, "{what}: merged feature");
+        } else {
+            assert_eq!(id(&repo, "HEAD"), feature, "{what}: fast-forwarded");
+        }
+        let stash = set_aside_of(entry);
+        assert_eq!(stash_commits(&repo), vec![stash], "{what}: S kept");
+        assert_eq!(error.edits_at(), Some(EditsAt::Stash { n: 0 }), "{what}");
+        assert!(
+            repo.git(&["ls-files", "-u"]).is_empty(),
+            "{what}: nothing unmerged"
+        );
+        assert!(edit_is_somewhere(&repo, "n.txt", b"new\n"), "{what}: n.txt");
+        assert_eq!(error.stopped_at(), None, "{what}: no stop, no mark");
+        let entries = journal_entries(&repo);
+        assert!(in_force(&entries, &entry.id), "{what}: u reaches the merge");
+
+        run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| {
+            panic!("{what}: undo: {}", why.explain(&crate::support::Letters))
+        });
+        assert_eq!(whole(&repo), before, "{what}: u put it back exactly");
     }
 }
 
