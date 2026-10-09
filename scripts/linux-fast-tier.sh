@@ -56,10 +56,10 @@ mkdir -p /home/tester/.cargo/bin
 # \"Author identity unknown\"; m8-polish-and-ship/24 NOTES).
 git config --global user.name Tester
 git config --global user.email tester@example.invalid
-# A UTF-8 locale and a terminal type, as a developer shell has: the pty
-# tests inherit both, and without them the app picks the ASCII tier while
-# the tests wait for Unicode glyphs (a run without them: 60+ pty waits
-# timed out on an ASCII graph; m8-polish-and-ship/24 NOTES).
+# A UTF-8 locale and a terminal type, as a developer shell has. Setting them
+# did not change the pty walks that draw an ASCII graph here (77 failures
+# with, 80 without; m8-polish-and-ship/24 NOTES): kept so the container is
+# no further from a laptop than it must be.
 export LANG=C.UTF-8 TERM=xterm-256color
 case \$(uname -m) in aarch64) arch=linux-arm ;; *) arch=linux ;; esac
 curl -fsSL https://get.nexte.st/latest/\$arch | tar -xzf - -C /home/tester/.cargo/bin
@@ -75,7 +75,11 @@ exit \$status
 '
 
 set +e
-docker run --rm -v "$src/tree:/src:ro" "$image" bash -c "$inner" >"$log" 2>&1
+# --init: a real init as PID 1, as any Linux machine has, to reap orphans.
+# Without it `bash` is PID 1, the hook processes a stop orphans stay
+# zombies, and the tests that check "every process is gone" (`kill -0`
+# finds a zombie) fail for the container's sake (m8-polish-and-ship/24).
+docker run --rm --init -v "$src/tree:/src:ro" "$image" bash -c "$inner" >"$log" 2>&1
 status=$?
 set -e
 
