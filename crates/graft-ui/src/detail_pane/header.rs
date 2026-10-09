@@ -123,8 +123,9 @@ pub(crate) fn radar_text(line: &RadarLine) -> String {
         RadarLine::EvilClean => "evil merge: clean".to_string(),
         RadarLine::EvilResolved { files } => {
             let plural = if *files == 1 { "" } else { "s" };
-            // Files both sides touched are the probe's blind spot: not checked.
-            format!("evil merge: not checked \u{b7} {files} file{plural} hand-resolved")
+            // Every other file was checked and none found; files both sides
+            // touched are the probe's blind spot: not checked (m8/20b R7).
+            format!("evil merge: none found \u{b7} {files} hand-resolved file{plural} not checked")
         }
         RadarLine::EvilNotCheckable(reason) => {
             format!("evil merge: not checkable \u{2014} {}", reason.as_str())
@@ -146,6 +147,26 @@ pub(crate) fn radar_lines_text(lines: &[RadarLine]) -> String {
     lines
         .iter()
         .map(radar_text)
+        .collect::<Vec<_>>()
+        .join(" \u{b7} ")
+}
+
+/// [`radar_lines_text`] if it fits `width`; else with each hand-resolved
+/// line on its narrow rung, `evil merge: none found · N not checked`
+/// (m8/20b R7). Longer still is left to the row's own cut.
+pub(crate) fn radar_lines_fit(lines: &[RadarLine], width: usize) -> String {
+    let whole = radar_lines_text(lines);
+    if whole.width() <= width {
+        return whole;
+    }
+    lines
+        .iter()
+        .map(|line| match line {
+            RadarLine::EvilResolved { files } => {
+                format!("evil merge: none found \u{b7} {files} not checked")
+            }
+            other => radar_text(other),
+        })
         .collect::<Vec<_>>()
         .join(" \u{b7} ")
 }
@@ -257,6 +278,7 @@ pub(crate) fn render_header(
     if let Subject::Compare(compare) = &view.header.subject {
         lines[0] = compare_title(compare, usize::from(area.width), keys);
     }
+    lines[4] = radar_lines_fit(&view.header.radar, usize::from(area.width));
     let displayed = displayed_lines(view, layout, &lines);
 
     let title_style = title_style(view, theme);

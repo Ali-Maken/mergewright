@@ -175,14 +175,16 @@ pub(super) fn in_progress_refusal(state: &AppState) -> Option<Status> {
     if shell_merge_known(state) {
         return None;
     }
-    Some(live_refusal(kind, banner_keys(&state.keymap)))
+    Some(live_refusal(kind, banner_keys(state)))
 }
 
-/// The key that reaches the banner, as every "finish or abort" line names
-/// it: `⇥ banner`, spelled from his keymap (`app.next_pane`, pressed on the
-/// graph); `None` when unbound.
-pub(crate) fn banner_keys(keys: &Keymap) -> Option<String> {
-    keys.key_verb(&[ActionId("app.next_pane")], "banner")
+/// The keys that reach the banner from where he is, as every "finish or
+/// abort" line names them: `⇥ banner` from the graph, `⇥ ⇥ banner` from
+/// the changes pane's file list (m8/20b R5) — [`super::banner::tab_keys`]
+/// over [`super::commit_editor::refusal_tabs`]; `None` when
+/// `app.next_pane` is unbound.
+fn banner_keys(state: &AppState) -> Option<String> {
+    super::banner::tab_keys(super::commit_editor::refusal_tabs(state), &state.keymap)
 }
 
 /// `U redoes <waiting>` after a `nothing to undo`; `None` when redo is
@@ -450,7 +452,7 @@ pub fn undone(
         // the banner is named only where there is one (a bisect has none).
         Undone::OperationLive { kind } => {
             let keys = super::banner::banner_focusable(kind)
-                .then(|| banner_keys(&state.keymap))
+                .then(|| banner_keys(state))
                 .flatten();
             state.status = live_refusal(kind, keys);
             Vec::new()

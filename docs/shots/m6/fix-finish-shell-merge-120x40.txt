@@ -23,7 +23,7 @@
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  merged feature into main ✓
 COMMIT 0000000 · Graft Fixture <fixture@example.invalid> · 0000-00-00 00:00 +0000 · future · parents ddeed32, f43f326 ·…
-Merge branch 'feature' · evil merge: not checked · 2 files hand-resolved
+Merge branch 'feature' · evil merge: none found · 2 hand-resolved files not checked
 M notes.md              +1 −1 ▎
 M shared.rs             +1 −1   1     - our plan
                                     1 + the agreed plan

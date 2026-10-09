@@ -261,3 +261,33 @@ fn child_asks_through_the_pool_and_clones() {
     );
     assert_eq!(head(&remote, &into), head(&remote, remote.bare()));
 }
+
+/// m8/20b B6 (R1): the clone's askpass notice is `graft_ops`'s words, so a
+/// refusal by another user's program never reads as a cleanup failure;
+/// a cleanup failure alone keeps the old words.
+#[test]
+fn a_refused_askpass_notice_uses_the_ops_words() {
+    let refused = std::io::Error::new(
+        std::io::ErrorKind::PermissionDenied,
+        graft_git::run::askpass::Refused::new("uid 502 turned away", 1),
+    );
+    let notice = super::askpass_notice(&refused);
+    assert_eq!(
+        notice,
+        format!(
+            "cloned \u{b7} {}",
+            graft_ops::apply::askpass_words(&refused)
+        )
+    );
+    assert!(
+        notice.contains("another user's program asked for your login"),
+        "{notice}"
+    );
+    assert!(!notice.contains("could not be cleaned up"), "{notice}");
+
+    let cleanup = std::io::Error::other("busy");
+    assert_eq!(
+        super::askpass_notice(&cleanup),
+        "cloned \u{b7} the credential prompt's socket could not be cleaned up: busy"
+    );
+}

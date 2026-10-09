@@ -22,13 +22,17 @@ const CONFLICT_ROW: &str = "⏎ resolve  M mergetool  e edit  space marks resolv
 /// A rebase stopped on `a.rs`, his keyboard where `spot` says, the banner
 /// unfocused unless the spot is the banner. The changes pane holds a
 /// CONFLICTS section (`a.rs`, row 1) and an unstaged one (`b.rs`, row 3).
-fn stopped_at(spot: Spot) -> AppState {
+pub(super) fn stopped_at(spot: Spot) -> AppState {
     use crate::update::operate::tests::{state_with, unmerged_entry, unstaged_entry};
     let rows = [
         ("a.rs".to_owned(), WorkingTreeSection::Unmerged),
         ("b.rs".to_owned(), WorkingTreeSection::Unstaged),
     ];
-    let cursor = if spot == Spot::OtherRow { 3 } else { 1 };
+    let cursor = if matches!(spot, Spot::OtherRow | Spot::DiffOtherRow) {
+        3
+    } else {
+        1
+    };
     let mut state = state_with(
         &rows,
         vec![unmerged_entry("a.rs"), unstaged_entry("b.rs")],
@@ -46,24 +50,27 @@ fn stopped_at(spot: Spot) -> AppState {
     match spot {
         Spot::Banner => state.banner_focus = true,
         Spot::Graph => state.detail.shown = false,
+        Spot::DiffOtherRow => state.detail.focus = graft_ui::detail::DetailFocus::Diff,
         Spot::ConflictRow | Spot::OtherRow => {}
     }
     state
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Spot {
+pub(super) enum Spot {
     Banner,
     ConflictRow,
     OtherRow,
+    /// The changes pane's diff, its file list's cursor off the CONFLICTS rows.
+    DiffOtherRow,
     Graph,
 }
 
-fn key(state: &AppState, code: CoreKey) -> (AppState, Vec<Command>) {
+pub(super) fn key(state: &AppState, code: CoreKey) -> (AppState, Vec<Command>) {
     update(state, AppEvent::Core(Event::Key(KeyPress::plain(code))))
 }
 
-fn sticky(state: &AppState) -> (String, Option<String>) {
+pub(super) fn sticky(state: &AppState) -> (String, Option<String>) {
     match &state.status {
         Status::Sticky { reason, keys } => (reason.clone(), keys.clone()),
         other => panic!("a sticky line: {other:?}"),
@@ -98,20 +105,39 @@ fn acts_as_said(state: &AppState, clause: &str) -> bool {
                     if matches!(&**op, Operation::Stage(Target::Paths(p)) if p == std::slice::from_ref(&a)))
             })
         }
+        banner if banner.ends_with(" banner") => {
+            let tabs = banner.split(' ').count() - 1;
+            reaches_banner_in(state, CoreKey::Tab, tabs)
+        }
         other => panic!("a clause nobody checks: {other}"),
     }
+}
+
+/// `presses` of `code` from `state` focus the banner, and one fewer does
+/// not: the count is the true one, driven, not read off a counter.
+pub(super) fn reaches_banner_in(state: &AppState, code: CoreKey, presses: usize) -> bool {
+    let mut now = state.clone();
+    for press in 1..=presses {
+        now = key(&now, code).0;
+        if now.banner_focus != (press == presses) {
+            return false;
+        }
+    }
+    true
 }
 
 /// Part A pin (10l, 11f): where `c`'s refusal leaves him, and that every
 /// key its words name, pressed there from the same state, does what its
 /// clause says. On a CONFLICTS row `space` marks the file resolved; on any
-/// other row no key acts on the conflict, so the reason stands alone.
+/// other row no key acts on the conflict, so the words name the `⇥`s that
+/// reach the banner (m8/20b R4).
 #[test]
 fn the_resolve_keys_name_rows_that_act_where_the_refusal_is_shown() {
     for (spot, place, want) in [
         (Spot::Banner, ContextId::Banner, Some(BANNER)),
         (Spot::ConflictRow, ContextId::Changes, Some(CONFLICT_ROW)),
-        (Spot::OtherRow, ContextId::Changes, None),
+        (Spot::OtherRow, ContextId::Changes, Some("⇥ ⇥ banner")),
+        (Spot::DiffOtherRow, ContextId::Changes, Some("⇥ banner")),
         (Spot::Graph, ContextId::Graph, None),
     ] {
         let state = stopped_at(spot);
@@ -134,10 +160,73 @@ fn the_resolve_keys_name_rows_that_act_where_the_refusal_is_shown() {
             );
         }
     }
-    // Off a CONFLICTS row no `⇥ banner`: one `⇥` from the file list goes to
-    // the diff, not the banner (`banner/stop/tab.rs` `tab_target`).
-    let (refused, _) = key(&stopped_at(Spot::OtherRow), CoreKey::Char('c'));
-    assert!(!key(&refused, CoreKey::Tab).0.banner_focus);
+}
+
+/// m8/20b B1 (R4): off a CONFLICTS row the refusal names the way on — as
+/// many `⇥` as it takes: two from the file list (the diff, then the
+/// banner), one from the diff. Each count is driven: that many presses
+/// focus the banner, one fewer does not. On a CONFLICTS row: unchanged.
+#[test]
+fn off_a_conflict_row_the_refusal_names_the_tabs_that_reach_the_banner() {
+    for (spot, want, presses) in [
+        (Spot::OtherRow, "⇥ ⇥ banner", 2),
+        (Spot::DiffOtherRow, "⇥ banner", 1),
+    ] {
+        let (refused, _) = key(&stopped_at(spot), CoreKey::Char('c'));
+        assert_eq!(
+            sticky(&refused),
+            ("1 file still conflicted".to_owned(), Some(want.to_owned())),
+            "{spot:?}"
+        );
+        assert!(
+            reaches_banner_in(&refused, CoreKey::Tab, presses),
+            "{spot:?}"
+        );
+    }
+    let (refused, _) = key(&stopped_at(Spot::ConflictRow), CoreKey::Char('c'));
+    assert_eq!(sticky(&refused).1.as_deref(), Some(CONFLICT_ROW));
+}
+
+/// m8/20b B3 (R5): the banner clause is spelled from his keymap —
+/// `app.next_pane = "ctrl+n"` reads `⌃N ⌃N banner` (and `⌃N` presses
+/// reach it); unbound, the reason stands alone. Both `c` and `u`.
+#[test]
+fn the_banner_clause_is_spelled_from_his_keymap() {
+    let ctrl_n = with("app.next_pane", "ctrl+n");
+    let mut state = stopped_at(Spot::OtherRow);
+    state.keymap = Arc::new(ctrl_n);
+    let (refused, _) = key(&state, CoreKey::Char('c'));
+    assert_eq!(sticky(&refused).1.as_deref(), Some("⌃N ⌃N banner"));
+    let (refused, _) = key(&state, CoreKey::Char('u'));
+    assert_eq!(
+        sticky(&refused),
+        (
+            "finish or abort the rebase first".to_owned(),
+            Some("⌃N ⌃N banner".to_owned())
+        )
+    );
+
+    state.keymap = Arc::new(unbinding_all(&["app.next_pane"]));
+    let (refused, _) = key(&state, CoreKey::Char('c'));
+    assert_eq!(
+        sticky(&refused),
+        ("1 file still conflicted".to_owned(), None)
+    );
+    let (refused, _) = key(&state, CoreKey::Char('u'));
+    assert_eq!(
+        sticky(&refused),
+        ("finish or abort the rebase first".to_owned(), None)
+    );
+}
+
+/// The shipped keymap with `id` bound to `chord` alone.
+fn with(id: &str, chord: &str) -> Keymap {
+    let (map, problems) = Keymap::with_overrides(
+        &[(id.to_owned(), vec![chord.to_owned()])],
+        graft_ui::keymap::KeySwitches::default(),
+    );
+    assert_eq!(problems, [], "{id} = {chord} reads cleanly");
+    map
 }
 
 /// The refusal's keys spelled from his keymap (10l, 11f): a remap moves
@@ -152,7 +241,7 @@ fn the_resolve_keys_spell_his_keys() {
     let shipped = Keymap::shipped();
     assert_eq!(resolve_keys(banner, shipped).as_deref(), Some(BANNER));
     assert_eq!(resolve_keys(row, shipped).as_deref(), Some(CONFLICT_ROW));
-    assert_eq!(resolve_keys(other, shipped), None);
+    assert_eq!(resolve_keys(other, shipped).as_deref(), Some("⇥ ⇥ banner"));
     assert_eq!(resolve_keys(graph, shipped), None);
 
     let banner_rows = [
@@ -167,7 +256,13 @@ fn the_resolve_keys_spell_his_keys() {
         ("changes.stage", "marks resolved"),
     ];
     let swept = swept();
-    assert_eq!(resolve_keys(other, &swept), None);
+    assert_eq!(
+        resolve_keys(other, &swept),
+        Some(format!(
+            "{0} {0} banner",
+            swept.spell(&ActionId("app.next_pane")).0
+        ))
+    );
     for (at, rows) in [(banner, &banner_rows[..]), (row, &row_rows[..])] {
         let line = resolve_keys(at, &swept).expect("swept keys");
         for (id, verb) in rows {
@@ -200,9 +295,12 @@ fn the_resolve_keys_spell_his_keys() {
 }
 
 fn refused(ctx: ContextId, on_conflict_row: bool) -> RefusedAt {
+    // The changes pane's file list: two `⇥` to the banner.
+    let tabs = if ctx == ContextId::Changes { 2 } else { 1 };
     RefusedAt {
         ctx,
         on_conflict_row,
+        tabs,
     }
 }
 

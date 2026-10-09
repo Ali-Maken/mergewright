@@ -71,11 +71,12 @@ const SITES: &[Site] = &[
     },
     Site {
         name: "operation_refusal merge in Graft",
-        keys: &["operation.continue", "operation.abort"],
+        keys: &["app.next_pane", "operation.continue", "operation.abort"],
         words: |keys| refusal(InProgress::Merge, Begun::InGraft, keys),
         expected: |k| {
             format!(
-                "merge in progress | ⇥ banner, then {} finish  {} abort",
+                "merge in progress | {} banner, then {} finish  {} abort",
+                k("app.next_pane"),
                 k("operation.continue"),
                 k("operation.abort")
             )
@@ -83,11 +84,12 @@ const SITES: &[Site] = &[
     },
     Site {
         name: "operation_refusal rebase in Graft",
-        keys: &["operation.continue", "operation.abort"],
+        keys: &["app.next_pane", "operation.continue", "operation.abort"],
         words: |keys| refusal(InProgress::Rebase, Begun::InGraft, keys),
         expected: |k| {
             format!(
-                "rebase in progress | ⇥ banner, then {} continue  {} abort",
+                "rebase in progress | {} banner, then {} continue  {} abort",
+                k("app.next_pane"),
                 k("operation.continue"),
                 k("operation.abort")
             )
@@ -95,11 +97,12 @@ const SITES: &[Site] = &[
     },
     Site {
         name: "operation_refusal merge in shell",
-        keys: &["operation.continue"],
+        keys: &["app.next_pane", "operation.continue"],
         words: |keys| refusal(InProgress::Merge, Begun::InShell, keys),
         expected: |k| {
             format!(
-                "merge begun in the shell | ⇥ banner, then {} finishes it",
+                "merge begun in the shell | {} banner, then {} finishes it",
+                k("app.next_pane"),
                 k("operation.continue")
             )
         },

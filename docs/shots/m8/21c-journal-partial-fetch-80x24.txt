@@ -5,7 +5,7 @@
 # TestBackend, no colour recorded — colour is unverified (CLAUDE.md rule 5).
 #
 # What right looks like: the ● fetch row leads with `failed: no repository at
-# '/nonexistent/graft-21c.git' …` and has no `refused · nothing written` and no
+# '/nonexistent/graft-21c.git' …` and has no `nothing written` mark and no
 # `← u`. Its summary goes on `· origin/main moved before it stopped · not
 # undoable`, but this failure is long: at this width the row is cut after it
 # (verdict first), so the moves show on J's status row above the legend (the

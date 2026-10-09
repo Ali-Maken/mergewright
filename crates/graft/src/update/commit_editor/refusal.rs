@@ -113,9 +113,12 @@ pub fn operation_refusal(
     tabs: u8,
     keys: &Keymap,
 ) -> OperationRefusal {
-    let to_banner = crate::update::banner::tab_keys(tabs);
+    // No key reaches the banner (`app.next_pane` unbound): its keys name
+    // nothing he can press from here, so the reason stands alone (W3).
+    let to_banner = crate::update::banner::tab_keys(tabs, keys);
     let then = |parts: &[(&'static str, &str)]| {
         let words = keys.key_verbs(parts);
+        let to_banner = to_banner.as_deref()?;
         (!words.is_empty()).then(|| format!("{to_banner}, then {words}"))
     };
     let (reason, keys) = match (kind, begun) {

@@ -927,16 +927,21 @@ fn u_still_refuses_after_relaunch_into_a_merge_begun_in_graft() {
     let state = launched(&app, state);
     assert_eq!(state.live_entries.len(), 1, "the merge's entry is live");
     assert!(state.banner_focus, "the banner has the keyboard");
-    let refusal = Status::Sticky {
+    // m8/20b R5: the keys name as many `⇥` as reach the banner from where
+    // he is — off it, Esc leaves him on the file list: two.
+    let refusal = |keys: &str| Status::Sticky {
         reason: "finish or abort the merge first".to_owned(),
-        keys: Some("\u{21e5} banner".to_owned()),
+        keys: Some(keys.to_owned()),
     };
     let off_the_banner = app.key(&state, KeyCode::Escape);
     assert!(
         !off_the_banner.banner_focus,
         "Esc gives the panes the keyboard"
     );
-    for (place, state) in [("banner", &state), ("panes", &off_the_banner)] {
+    for (place, state, keys) in [
+        ("banner", &state, "\u{21e5} banner"),
+        ("panes", &off_the_banner, "\u{21e5} \u{21e5} banner"),
+    ] {
         for letter in ['u', 'U'] {
             let (after, commands) = crate::app_harness::press_for_commands(
                 state,
@@ -948,7 +953,7 @@ fn u_still_refuses_after_relaunch_into_a_merge_begun_in_graft() {
                     .any(|command| matches!(command, Command::Undo(..) | Command::Redo(..))),
                 "{letter} on the {place}: {commands:?}"
             );
-            assert_eq!(after.status, refusal, "{letter} on the {place}");
+            assert_eq!(after.status, refusal(keys), "{letter} on the {place}");
         }
     }
     drop(state);

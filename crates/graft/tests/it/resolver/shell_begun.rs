@@ -488,9 +488,16 @@ fn u_on_an_entry_from_before_a_shell_merge_refuses_in_words() {
         state.status,
         Status::Sticky {
             reason: "finish or abort the merge first".to_owned(),
-            keys: Some("⇥ banner".to_owned()),
+            keys: Some("⇥ ⇥ ⇥ banner".to_owned()),
         }
     );
+    // m8/20b R5: the graph with the pane open is three `⇥` from the banner
+    // (files, diff, banner) — driven, not counted.
+    let mut tabbed = state.clone();
+    for press in 1..=3 {
+        tabbed = app.key(&tabbed, KeyCode::Tab);
+        assert_eq!(tabbed.banner_focus, press == 3, "after {press} tab(s)");
+    }
     assert_eq!(journal_entries(&repo), before, "nothing written");
     assert!(
         repo.join(".git/MERGE_HEAD").exists(),

@@ -306,9 +306,10 @@ fn c_from_the_pane_and_from_the_banner_emit_the_same() {
                     );
                 }
                 // The fixture's pane draws no file row, so the cursor is
-                // off any CONFLICTS row: the reason alone (m8/11f). On a
-                // CONFLICTS row: `on_a_conflicts_row_…` below.
-                assert_eq!(pk.as_deref(), None, "{what:?}");
+                // off any CONFLICTS row: the `⇥`s to the banner from the
+                // file list (m8/20b R4). On a CONFLICTS row:
+                // `on_a_conflicts_row_…` below.
+                assert_eq!(pk.as_deref(), Some("⇥ ⇥ banner"), "{what:?}");
                 assert_eq!(
                     bk.as_deref(),
                     Some("⏎ resolve  M mergetool  e edit"),
@@ -324,7 +325,8 @@ fn c_from_the_pane_and_from_the_banner_emit_the_same() {
 
 /// m8/11f: from the pane with the cursor on a CONFLICTS row, the same
 /// reason as the banner's, and the banner's keys plus `space marks
-/// resolved`; on the row below it (another section), the reason alone.
+/// resolved`; on the row below it (another section), the
+/// `⇥`s that reach the banner (m8/20b R4).
 #[test]
 fn on_a_conflicts_row_the_pane_names_space_and_off_it_nothing() {
     use crate::update::operate::tests::{state_with, unstaged_entry};
@@ -338,7 +340,7 @@ fn on_a_conflicts_row_the_pane_names_space_and_off_it_nothing() {
             1,
             Some("⏎ resolve  M mergetool  e edit  space marks resolved"),
         ),
-        (3, None),
+        (3, Some("⇥ ⇥ banner")),
     ] {
         let mut state = state_with(
             &rows,

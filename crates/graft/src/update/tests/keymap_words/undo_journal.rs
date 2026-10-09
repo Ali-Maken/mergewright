@@ -5,7 +5,8 @@
 //! Sites reached through one helper stand for all their callers:
 //! `recover::undoes` (`recover::done_status`, `amend_into::landing`),
 //! `clash::brings_back` (`clash::dropped_status`, the stash pop box),
-//! `undo::banner_keys` (`in_progress_refusal`, the `OperationLive` answer).
+//! `banner::tab_keys` (`in_progress_refusal`, the `OperationLive` answer,
+//! `c`'s refusal off a CONFLICTS row, `operation_refusal`).
 
 use graft_ui::keymap::{ActionId, ContextId, KeyChord, KeyCode, Keymap};
 
@@ -25,10 +26,10 @@ fn some(words: Option<String>) -> String {
 
 const SITES: &[Site] = &[
     Site {
-        name: "undo::banner_keys (live refusal, OperationLive)",
+        name: "banner::tab_keys (live refusal, OperationLive)",
         keys: &["app.next_pane"],
-        words: |k| some(crate::update::undo::banner_keys(k)),
-        expected: |k| format!("{} banner", k("app.next_pane")),
+        words: |k| some(crate::update::banner::tab_keys(2, k)),
+        expected: |k| format!("{0} {0} banner", k("app.next_pane")),
     },
     Site {
         name: "undo::redo_clause (nothing to undo)",
@@ -492,6 +493,35 @@ fn no_unbound_key_draws_a_dash() {
             if let Ok(line) = std::panic::catch_unwind(|| (site.words)(map)) {
                 assert!(!line.contains('\u{2014}'), "{}: {line}", site.name);
             }
+        }
+    }
+}
+
+/// m8/20b B2 (R5): `u`/`U` refused while a rebase stands, from the changes
+/// pane's file list, name the two `⇥` that reach the banner (driven: two
+/// presses focus it, one does not); from the graph, one.
+#[test]
+fn u_refused_from_the_changes_pane_names_two_tabs() {
+    use super::resolve::{Spot, key, reaches_banner_in, sticky, stopped_at};
+    use graft_core::event::KeyCode as CoreKey;
+    for (spot, want, presses) in [
+        (Spot::OtherRow, "⇥ ⇥ banner", 2),
+        (Spot::Graph, "⇥ banner", 1),
+    ] {
+        for press in ['u', 'U'] {
+            let (refused, _) = key(&stopped_at(spot), CoreKey::Char(press));
+            assert_eq!(
+                sticky(&refused),
+                (
+                    "finish or abort the rebase first".to_owned(),
+                    Some(want.to_owned())
+                ),
+                "{spot:?} {press}"
+            );
+            assert!(
+                reaches_banner_in(&refused, CoreKey::Tab, presses),
+                "{spot:?} {press}"
+            );
         }
     }
 }
