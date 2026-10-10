@@ -263,7 +263,7 @@ fn a_hangup_then_a_second_hangup_leaves_the_merge_paused() {
     assert_staged_are_the_merges_own(&repo);
     let text = std::fs::read_to_string(&said).expect("stderr");
     assert!(
-        text.contains("the merge is paused \u{b7} graft here offers continue or abort"),
+        text.contains("the merge is paused \u{b7} trib here offers continue or abort"),
         "{text}"
     );
     assert_no_crash(&isolated);

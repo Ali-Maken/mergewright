@@ -210,7 +210,7 @@ fn reap(pid: u32) {
 /// prints it: the binary's name, a fixed wait (the harness has no loop
 /// clock; the offer is injected), and undo as the default keymap spells it.
 pub(super) fn exit_line_for(forced: &Forced) -> String {
-    graft::update::quit::exit_line("graft", &forced.what, OFFERED, forced.at, "u")
+    graft::update::quit::exit_line(graft::cli::COMMAND, &forced.what, OFFERED, forced.at, "u")
 }
 
 /// The wait the exit lines here are worded with: the offer's 10 s.
@@ -299,8 +299,8 @@ fn stop_now_mid_merge_leaves_it_paused() {
     assert_eq!(forced.at, Some(StoppedAt::Paused(InProgress::Merge)));
     assert_eq!(
         exit_line_for(forced),
-        "graft: stopped merge main into feature after 10 s \u{b7} the merge is paused \u{b7} \
-         graft here offers continue or abort"
+        "trib: stopped merge main into feature after 10 s \u{b7} the merge is paused \u{b7} \
+         trib here offers continue or abort"
     );
 
     let merge_head = std::fs::read_to_string(repo.join(".git/MERGE_HEAD"))
@@ -496,7 +496,7 @@ fn stop_now_mid_rebase_with_edits_set_aside() {
     assert_eq!(
         exit_line_for(forced),
         format!(
-            "graft: stopped {} after 10 s \u{b7} the rebase is paused \u{b7} graft here offers \
+            "trib: stopped {} after 10 s \u{b7} the rebase is paused \u{b7} trib here offers \
              continue or abort",
             forced.what
         )

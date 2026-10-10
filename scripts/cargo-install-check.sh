@@ -39,7 +39,7 @@ took=$(($(date +%s) - start))
     grep -E '^ *(Installed|Installing|error)' "$tmp/install.log" | sed "s|/private$tmp/||g; s|$tmp/||g; s/^ */    /"
     if [ "$verdict" = ok ]; then
         echo "installed: $(cd "$tmp/cargo-home/bin" && ls -1 | tr '\n' ' ')"
-        echo "graft --version: $("$tmp/cargo-home/bin/graft" --version)"
+        echo "trib --version: $("$tmp/cargo-home/bin/trib" --version)"
     else
         tail -20 "$tmp/install.log" | sed "s|$tmp/||g; s/^/    /"
     fi

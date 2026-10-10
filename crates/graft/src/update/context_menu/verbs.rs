@@ -214,7 +214,7 @@ fn pick_dim_reason(refusal: &Refusal) -> Option<SanitizedText> {
             Some(sanitize_line(&format!("already on {branch}")))
         }
         Refusal::PickMerge { .. } => Some(sanitize_line(
-            "a merge \u{b7} taking a merge isn't in Graft yet",
+            "a merge \u{b7} taking a merge isn't in Tributary yet",
         )),
         _ => None,
     }

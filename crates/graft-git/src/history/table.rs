@@ -167,7 +167,7 @@ impl CommitTable {
             return match Oid::from_bytes(id.as_bytes()) {
                 Ok(id) => id,
                 // gix reads ids at the repository's hash length, 20 or 32.
-                Err(error) => panic!("the commit-graph holds an id Graft cannot: {error}"),
+                Err(error) => panic!("the commit-graph holds an id Tributary cannot: {error}"),
             };
         }
         let overflow = self.overflow.read().unwrap_or_else(PoisonError::into_inner);

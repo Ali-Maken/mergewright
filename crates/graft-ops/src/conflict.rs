@@ -136,7 +136,7 @@ pub enum TakeError {
 /// compares them itself and refuses with [`TakeError::Changed`], leaving the
 /// bytes exactly as they are. This is the whole reason a take writes at once
 /// rather than buffering (design note hard choice 2): the file on screen and
-/// the file on disk are the same file, and an edit made outside Graft is
+/// the file on disk are the same file, and an edit made outside Tributary is
 /// never silently undone.
 ///
 /// The document is what carries the takes, not the file on disk. A block

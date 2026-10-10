@@ -4,7 +4,7 @@
 # unverified).
 #
 # Right: `o` on a merge commit — the status line `<sha7> is a merge ·
-# taking a merge isn't in Graft yet`; no preview box.
+# taking a merge isn't in Tributary yet`; no preview box.
  ◆ api  ~/code/api · main                                                                                     7 commits
 
 ▸   ◉─╮    [merged] merge login-page                                                                    GF now  5c42e39
@@ -44,4 +44,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- 5c42e39 is a merge · taking a merge isn't in Graft yet · esc dismiss
+ 5c42e39 is a merge · taking a merge isn't in Tributary yet · esc dismiss

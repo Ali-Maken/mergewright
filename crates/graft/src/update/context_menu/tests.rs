@@ -1143,7 +1143,7 @@ fn o_on_a_merge_is_refused_without_a_preview() {
     assert!(state.preview.is_none());
     assert_eq!(
         state.status,
-        sticky("0303030 is a merge \u{b7} taking a merge isn't in Graft yet")
+        sticky("0303030 is a merge \u{b7} taking a merge isn't in Tributary yet")
     );
 }
 
@@ -1289,7 +1289,7 @@ fn slot_two_dims_on_head_and_on_a_merge() {
         (
             ContextAction::Unavailable,
             "Cherry-pick (o)".to_owned(),
-            Some("a merge \u{b7} taking a merge isn't in Graft yet".to_owned())
+            Some("a merge \u{b7} taking a merge isn't in Tributary yet".to_owned())
         )
     );
 }

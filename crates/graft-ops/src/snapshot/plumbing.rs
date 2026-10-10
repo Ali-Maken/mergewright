@@ -95,7 +95,7 @@ impl Drop for TempIndex {
         if let Err(why) = std::fs::remove_file(&self.path)
             && why.kind() != std::io::ErrorKind::NotFound
         {
-            eprintln!("graft: temp index {} survived: {why}", self.path.display());
+            eprintln!("trib: temp index {} survived: {why}", self.path.display());
         }
     }
 }
@@ -286,6 +286,13 @@ pub(super) fn mktree(
 /// The identity is set explicitly rather than left to the user's config: a
 /// backup commit is Graft's, not theirs, and a repository configured with
 /// `user.useConfigOnly` would otherwise refuse to make one.
+/// The author and committer every backup commit carries: the app, not the
+/// user, so a backup never passes for the user's own work. Nothing reads it
+/// back; it is only what `git log` shows on a backup ref.
+pub const BACKUP_AUTHOR_NAME: &str = "tributary";
+/// See [`BACKUP_AUTHOR_NAME`].
+pub const BACKUP_AUTHOR_EMAIL: &str = "tributary@backup";
+
 pub(super) fn commit_tree(
     repo: &RepoHandle,
     tree: Oid,
@@ -294,10 +301,10 @@ pub(super) fn commit_tree(
     stop: &dyn Stop,
 ) -> Result<Oid, SnapshotError> {
     let mut invocation = GitInvocation::new(repo)
-        .env("GIT_AUTHOR_NAME", "graft")
-        .env("GIT_AUTHOR_EMAIL", "graft@backup")
-        .env("GIT_COMMITTER_NAME", "graft")
-        .env("GIT_COMMITTER_EMAIL", "graft@backup")
+        .env("GIT_AUTHOR_NAME", BACKUP_AUTHOR_NAME)
+        .env("GIT_AUTHOR_EMAIL", BACKUP_AUTHOR_EMAIL)
+        .env("GIT_COMMITTER_NAME", BACKUP_AUTHOR_NAME)
+        .env("GIT_COMMITTER_EMAIL", BACKUP_AUTHOR_EMAIL)
         .arg(GitArg::Flag("commit-tree"))
         .arg(GitArg::Oid(tree));
     for parent in parents {

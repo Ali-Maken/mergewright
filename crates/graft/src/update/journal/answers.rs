@@ -1,4 +1,4 @@
-//! The journal's answers: an event, a landing outside Graft, lost commits, a recover.
+//! The journal's answers: an event, a landing outside Tributary, lost commits, a recover.
 
 use super::{
     AppState, Arc, Command, JobId, Loading, LostFound, Operation, OutsideRecord, Product, Recover,

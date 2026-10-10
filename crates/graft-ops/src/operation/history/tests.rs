@@ -1251,7 +1251,7 @@ fn picking_a_merge_is_refused() {
     assert_eq!(
         refused.map_err(|why| why.explain(&crate::keys::Letters)),
         Err(format!(
-            "{} is a merge · taking a merge isn't in Graft yet",
+            "{} is a merge · taking a merge isn't in Tributary yet",
             sha7(0x0c)
         ))
     );

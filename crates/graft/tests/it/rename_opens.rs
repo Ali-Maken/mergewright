@@ -1,13 +1,13 @@
 //! Source greps that keep the one-time rename (ticket 26 Part B) whole:
 //! every repository the app opens is settled first, and no code names the
-//! old folder but `graft_core::on_disk` and the spots handed to ticket 27.
+//! old folder but `graft_core::on_disk` and the spots ticket 27 has not reached.
 
 #![allow(clippy::expect_used, reason = "a failing test should panic")]
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
-fn crates_dir() -> PathBuf {
+pub(crate) fn crates_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("crates/graft has a parent")
@@ -16,7 +16,7 @@ fn crates_dir() -> PathBuf {
 
 /// Every production `.rs` file under `root`: no `tests.rs`, `*_tests.rs`
 /// or file under a `tests` folder.
-fn production_files(root: &Path, out: &mut Vec<PathBuf>) {
+pub(crate) fn production_files(root: &Path, out: &mut Vec<PathBuf>) {
     let mut entries: Vec<_> = fs::read_dir(root)
         .unwrap_or_else(|why| panic!("{}: {why}", root.display()))
         .map(|entry| entry.expect("a dir entry").path())
@@ -42,7 +42,7 @@ fn production_files(root: &Path, out: &mut Vec<PathBuf>) {
 
 /// The code lines of a production file, numbered from 1: comments and the
 /// inline `#[cfg(test)]` module at its end left out.
-fn code_lines(path: &Path) -> Vec<(usize, String)> {
+pub(crate) fn code_lines(path: &Path) -> Vec<(usize, String)> {
     let text = fs::read_to_string(path).unwrap_or_else(|why| panic!("{}: {why}", path.display()));
     let lines: Vec<&str> = text.lines().collect();
     let mut code = Vec::new();
@@ -61,7 +61,7 @@ fn code_lines(path: &Path) -> Vec<(usize, String)> {
 
 /// Each `(file, line)` in `files` whose code contains one of `needles`,
 /// as `crate/src/path:line: code`.
-fn hits(files: &[PathBuf], needles: &[&str]) -> Vec<String> {
+pub(crate) fn hits(files: &[PathBuf], needles: &[&str]) -> Vec<String> {
     let crates = crates_dir();
     let mut found = Vec::new();
     for file in files {
@@ -111,28 +111,10 @@ fn every_open_settles_first() {
 }
 
 /// Where the old name may still be spelled in code, and why.
-const ALLOWED: &[(&str, &str)] = &[
-    (
-        "graft-core/src/on_disk.rs",
-        "the one place both names live (`OnDiskNames::Old`)",
-    ),
-    (
-        "graft/src/crash.rs",
-        "the crash folder under the state home: handed to 27",
-    ),
-    (
-        "graft-ops/src/snapshot/plumbing.rs",
-        "the backup commits' author name: handed to 27",
-    ),
-    (
-        "graft-ui/src/graph_screen/header.rs",
-        "the app's displayed name: handed to 27",
-    ),
-    (
-        "graft/src/cli/man.rs",
-        "the man page's path text: handed to 27",
-    ),
-];
+const ALLOWED: &[(&str, &str)] = &[(
+    "graft-core/src/on_disk.rs",
+    "the one place both names live (`OnDiskNames::Old`)",
+)];
 
 /// No production code spells an old on-disk path but the allowed files:
 /// every path goes through `OnDiskNames` (or `config_names`), so the move

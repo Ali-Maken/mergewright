@@ -226,7 +226,7 @@ impl Pty {
             Stdio::piped()
         };
         let pinned_git_date = format!("{} +0000", PINNED_NOW - 3_600);
-        let mut command = Command::new(env!("CARGO_BIN_EXE_graft"));
+        let mut command = Command::new(env!("CARGO_BIN_EXE_trib"));
         let mut child = as_the_test_terminal(&mut command)
             .arg(arg)
             .env("XDG_CONFIG_HOME", isolated.config())

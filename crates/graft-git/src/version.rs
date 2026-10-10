@@ -111,7 +111,7 @@ pub enum SystemGit {
     TooOld {
         /// What is installed.
         found: GitVersion,
-        /// What Graft needs.
+        /// What Tributary needs.
         minimum: GitVersion,
     },
 }

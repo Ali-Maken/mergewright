@@ -82,7 +82,7 @@ fn enter_on_a_fetch_row_says_graft_doesnt_undo_it() {
     assert!(state.journal.shown, "J stays");
     assert_eq!(
         state.status,
-        Status::sticky("Graft doesn't undo a fetch · nothing to go back to on this row")
+        Status::sticky("Tributary doesn't undo a fetch · nothing to go back to on this row")
     );
 }
 

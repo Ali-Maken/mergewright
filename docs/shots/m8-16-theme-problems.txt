@@ -15,7 +15,7 @@
 "                                                                                                    "
 " config: 2 problems · ? shows them                                                                  "
 
-"Graft                                                                                               "
+"Tributary                                                                                           "
 "                                                                                                    "
 "Repository  opening                                                                                 "
 "History     complete, 5 rows laid out                                                               "

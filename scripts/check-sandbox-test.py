@@ -31,7 +31,7 @@ BAD = {
     "subprocess-run": "subprocess.run([BIN, '.'])",
     "subprocess-popen-env": "subprocess.Popen([BIN], env=os.environ)",
     "subprocess-check-output": "subprocess.check_output([BIN])",
-    "subprocess-literal-graft": "subprocess.run(['target/debug/graft', '.'])",
+    "subprocess-literal-graft": "subprocess.run(['target/debug/trib', '.'])",
     "from-import-alias": "from subprocess import run as go\ngo([BIN])",
     "module-alias": "import subprocess as sp\nsp.call([BIN])",
     "empty-waiver": "subprocess.run([BIN])  # sandbox-ok:",

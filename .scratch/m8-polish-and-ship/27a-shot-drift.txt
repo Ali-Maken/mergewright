@@ -1,0 +1,20 @@
+docs/shots/m3-confirm-delete-untracked.txt:24
+docs/shots/m3-confirm-delete-untracked.txt:25
+docs/shots/m3-confirm-delete-untracked.txt:26
+docs/shots/m3-confirm-delete-untracked.txt:27
+docs/shots/m3-confirm-delete-untracked.txt:28
+docs/shots/m3-confirm-delete-untracked.txt:29
+docs/shots/m3-confirm-delete-untracked.txt:30
+docs/shots/m3-confirm-delete-untracked.txt:31
+docs/shots/m3-confirm-delete-untracked.txt:39
+docs/shots/m3-confirm-discard.txt:24
+docs/shots/m3-confirm-discard.txt:25
+docs/shots/m3-confirm-discard.txt:26
+docs/shots/m3-confirm-discard.txt:27
+docs/shots/m3-confirm-discard.txt:28
+docs/shots/m3-confirm-discard.txt:29
+docs/shots/m3-confirm-discard.txt:30
+docs/shots/m3-confirm-discard.txt:31
+docs/shots/m3-confirm-discard.txt:39
+docs/shots/m8-tour-80x24.txt:3
+changed 38 · name-only 46 · drift-files 3 · png 0

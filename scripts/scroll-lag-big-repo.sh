@@ -31,7 +31,7 @@ trap 'rm -rf "$WORK"' EXIT
 machine_state_begin "$OUT"
 ROOT=$PWD
 
-cargo build --release --quiet --bin graft 2>"$WORK/build.err" || { tail -20 "$WORK/build.err" >&2; exit 1; }
+cargo build --release --quiet --bin trib 2>"$WORK/build.err" || { tail -20 "$WORK/build.err" >&2; exit 1; }
 cargo test --release --features heavy-tests --no-run --quiet 2>"$WORK/build.err" || { tail -20 "$WORK/build.err" >&2; exit 1; }
 
 {
@@ -81,7 +81,7 @@ for tier in unicode pixel; do
 done
 
 pty() { # profile cols rows wait [rate]
-  PROFILE=$1 RATE=${5:-} python3 scripts/scroll-lag-pty.py "$ROOT/target/release/graft" "$REPO" "$2" "$3" "$4" 0.033 3 pty >>"$OUT"
+  PROFILE=$1 RATE=${5:-} python3 scripts/scroll-lag-pty.py "$ROOT/target/release/trib" "$REPO" "$2" "$3" "$4" 0.033 3 pty >>"$OUT"
 }
 for profile in text kitty; do
   for size in "120 40" "200 50"; do

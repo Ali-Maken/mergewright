@@ -157,7 +157,7 @@ fn report(message: &str) {
     let mut stderr = io::stderr();
     // If even stderr has gone there is nowhere left to complain to, and the
     // exit code still carries the failure.
-    writeln!(stderr, "graft: {message}")
+    writeln!(stderr, "{}: {message}", cli::COMMAND)
         .and_then(|()| stderr.flush())
         .unwrap_or(());
 }

@@ -129,7 +129,7 @@ pub fn request_discard(next: &mut AppState) -> bool {
         (format!("Discard changes to {shown}?"), "Discard")
     };
     let mut consequence = discard_consequence(&entry, counts);
-    consequence.push("Graft keeps a backup first, so `u` can undo it afterwards.".to_string());
+    consequence.push("Tributary keeps a backup first, so `u` can undo it afterwards.".to_string());
     let view = graft_ui::confirm::ConfirmView::new(
         sanitize_line(&question),
         consequence.iter().map(|line| sanitize_line(line)).collect(),

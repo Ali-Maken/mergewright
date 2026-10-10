@@ -49,6 +49,12 @@ pub enum Invocation {
 /// note m4, choice 2: an argument cannot ride in `GIT_ASKPASS` reliably).
 pub const ASKPASS_SOCKET_VAR: &str = "GRAFT_ASKPASS_SOCKET";
 
+/// The command the user types, and the word every message that means the
+/// command uses: usage, `--version`, the stderr prefix, the crash text, the
+/// man page's NAME. Where prose means the app, the name is `Tributary`
+/// (`graft_ui`'s `APP_NAME`); this is the binary's name.
+pub const COMMAND: &str = "trib";
+
 /// What the arguments could not be made sense of.
 #[derive(Debug, thiserror::Error)]
 pub enum CliError {
@@ -57,11 +63,11 @@ pub enum CliError {
     #[error("unknown option `{0}`\n\n{usage}", usage = usage(FLAGS))]
     UnknownOption(String),
     /// More than one path. Graft opens one repository.
-    #[error("Graft opens one repository\n\n{usage}", usage = usage(FLAGS))]
+    #[error("Tributary opens one repository\n\n{usage}", usage = usage(FLAGS))]
     TooManyPaths,
     /// No path was given and the current directory could not be read — it has
     /// been deleted, or its permissions changed, under the running shell.
-    #[error("cannot tell which directory Graft was started in: {0}")]
+    #[error("cannot tell which directory Tributary was started in: {0}")]
     NoWorkingDirectory(#[source] io::Error),
 }
 
@@ -95,11 +101,11 @@ pub fn askpass(socket: Option<OsString>, arguments: &[OsString]) -> Option<Invoc
     }
 }
 
-/// What `--version` prints: `graft <crate version>`, the version the
+/// What `--version` prints: `trib <crate version>`, the version the
 /// release archive and the formula carry.
 #[must_use]
 pub fn version() -> String {
-    format!("graft {}", env!("CARGO_PKG_VERSION"))
+    format!("{COMMAND} {}", env!("CARGO_PKG_VERSION"))
 }
 
 /// Parse arguments that have already had the program name removed.
@@ -191,7 +197,7 @@ mod tests {
         let error = parse_words(&["--theme=dark"]).expect_err("Graft has no --theme");
 
         assert!(matches!(error, CliError::UnknownOption(ref option) if option == "--theme=dark"));
-        assert!(error.to_string().contains("usage: graft"));
+        assert!(error.to_string().contains("usage: trib"));
     }
 
     #[test]
@@ -232,7 +238,7 @@ mod tests {
     /// `FLAGS` changed nothing else he sees. `--help`'s row reads "print the
     /// usage" since review m8-hygiene-release m7: "this" read as the man page.
     const USAGE_BEFORE_FLAGS: &str = "\
-usage: graft [<path>]
+usage: trib [<path>]
 
   <path>    the repository to open (default: the current directory)
 
@@ -255,7 +261,7 @@ usage: graft [<path>]
         let two = parse_words(&["/a", "/b"]).expect_err("one repository");
         assert_eq!(
             two.to_string(),
-            format!("Graft opens one repository\n\n{USAGE_BEFORE_FLAGS}")
+            format!("Tributary opens one repository\n\n{USAGE_BEFORE_FLAGS}")
         );
     }
 
@@ -288,7 +294,7 @@ usage: graft [<path>]
             let parsed = parse_words(&[spelling]).expect("a flag in FLAGS");
             assert_eq!(
                 parsed,
-                Invocation::Version(format!("graft {}", env!("CARGO_PKG_VERSION")))
+                Invocation::Version(format!("{COMMAND} {}", env!("CARGO_PKG_VERSION")))
             );
         }
     }
@@ -297,5 +303,12 @@ usage: graft [<path>]
     fn version_wins_over_a_path_it_was_given_with() {
         let parsed = parse_words(&["/code/api", "--version"]).expect("a flag in FLAGS");
         assert!(matches!(parsed, Invocation::Version(_)));
+    }
+
+    #[test]
+    fn version_and_usage_lines_start_with_the_command() {
+        assert_eq!(COMMAND, "trib");
+        assert!(version().starts_with("trib "), "{}", version());
+        assert!(usage(FLAGS).starts_with("usage: trib "), "{}", usage(FLAGS));
     }
 }

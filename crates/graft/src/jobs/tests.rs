@@ -1171,13 +1171,13 @@ fn a_forced_job_is_waited_for_its_answer_up_to_its_bound() {
     );
     assert_eq!(
         crate::update::quit::exit_line(
-            "graft",
+            crate::cli::COMMAND,
             &unanswered.what,
             Duration::from_secs(60),
             unanswered.at,
             "u"
         ),
-        "graft: stopped rebase onto main after 60 s \u{b7} graft here shows where git left it"
+        "trib: stopped rebase onto main after 60 s \u{b7} trib here shows where git left it"
     );
 }
 

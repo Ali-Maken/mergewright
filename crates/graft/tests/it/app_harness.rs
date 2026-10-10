@@ -130,7 +130,7 @@ impl App {
     ///
     /// The runner defaults to `current_exe`, which under `cargo test` is the
     /// test binary and has no askpass mode; a test that means to answer a
-    /// credential question names `CARGO_BIN_EXE_graft` here.
+    /// credential question names `CARGO_BIN_EXE_trib` here.
     pub fn open_with_askpass(repo: &Path, helper: std::path::PathBuf) -> (Self, AppState) {
         Self::open_with(repo, Some(helper))
     }

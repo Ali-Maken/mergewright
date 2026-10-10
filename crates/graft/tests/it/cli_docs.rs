@@ -10,7 +10,7 @@ use std::process::Command;
 use graft::cli::{CONFIG_KEYS, FLAGS, man_page, usage};
 
 fn stdout_of(flag: &str) -> String {
-    let output = Command::new(env!("CARGO_BIN_EXE_graft"))
+    let output = Command::new(env!("CARGO_BIN_EXE_trib"))
         .arg(flag)
         .output()
         .expect("graft runs");
@@ -41,7 +41,7 @@ fn generate_man_prints_the_man_page_and_nothing_else() {
 fn into_closed_pipe(flag: &str) -> std::process::Output {
     let (reader, writer) = std::io::pipe().expect("pipe");
     drop(reader);
-    Command::new(env!("CARGO_BIN_EXE_graft"))
+    Command::new(env!("CARGO_BIN_EXE_trib"))
         .arg(flag)
         .stdout(writer)
         .stderr(std::process::Stdio::piped())

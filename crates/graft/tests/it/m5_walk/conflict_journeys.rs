@@ -377,7 +377,7 @@ fn a_stop_to_first_conflict() -> Scenario {
 }
 
 /// J3's launch landing: the banner, the pane on `CONFLICTS`, the stop
-/// recorded as begun outside Graft. The footer draws the fullest rung of
+/// recorded as begun outside Tributary. The footer draws the fullest rung of
 /// `stop_wordings` that fits beside the bar (`update/banner/stop.rs`), so
 /// at 120 columns it reads the short origin, `merge in progress · from the
 /// shell · 2 conflicted` (m6-conflicts/61), and drops it where the room is
@@ -390,11 +390,11 @@ fn on_the_banner_begun_outside() -> Vec<Step> {
                 "the launch did not land on the banner".to_owned()
             })
         }),
-        Step::See("the stop says begun outside Graft", |state| {
+        Step::See("the stop says begun outside Tributary", |state| {
             let stop = state.stopped.as_ref().ok_or("no stop recorded")?;
             let reason = graft::update::banner::stop_reason(stop, None);
             check(
-                reason.starts_with("merge in progress · begun outside Graft · "),
+                reason.starts_with("merge in progress · begun outside Tributary · "),
                 || format!("the stop reads {reason:?}"),
             )
         }),

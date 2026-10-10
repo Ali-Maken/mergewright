@@ -416,7 +416,7 @@ fn picking_a_merge_is_refused_in_the_preview_and_in_apply() {
     let repo = with_a_merge_on_side();
     let op = take(&repo, "side");
     let words = format!(
-        "{} is a merge · taking a merge isn't in Graft yet",
+        "{} is a merge · taking a merge isn't in Tributary yet",
         sha7(&repo, "side")
     );
     assert_eq!(

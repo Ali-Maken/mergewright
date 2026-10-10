@@ -10,6 +10,7 @@ use signal_hook::consts::SIGHUP;
 use super::super::exit_wait::{Boxed, Ending, Pool};
 use super::super::row_clear::RowClear;
 use super::super::{Exit, input};
+use crate::cli::COMMAND;
 use crate::jobs::Shutdown;
 use crate::terminal::TerminalSession;
 use crate::trace::TerminalOut;
@@ -119,7 +120,7 @@ pub(super) fn finish_to(
             // but a terminal left in raw mode must never be silent.
             match writeln!(
                 stderr,
-                "graft: could not restore the terminal: {restore_error}"
+                "{COMMAND}: could not restore the terminal: {restore_error}"
             )
             .and_then(|()| stderr.flush())
             {
@@ -161,7 +162,7 @@ pub(super) fn report_stalled_jobs_to(
 
     writeln!(
         stderr,
-        "graft: {workers} background job(s) did not stop in time and were abandoned"
+        "{COMMAND}: {workers} background job(s) did not stop in time and were abandoned"
     )
     .and_then(|()| stderr.flush())
 }

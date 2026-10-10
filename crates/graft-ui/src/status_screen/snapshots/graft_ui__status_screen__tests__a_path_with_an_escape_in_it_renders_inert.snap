@@ -2,7 +2,7 @@
 source: crates/graft-ui/src/status_screen/tests.rs
 expression: screen
 ---
-"Graft                                                       "
+"Tributary                                                   "
 "                                                            "
 "Repository  /tmp/␛]0;pwned␛/api                             "
 "HEAD        main                                            "

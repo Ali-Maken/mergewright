@@ -16,6 +16,7 @@ use std::fmt;
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, TryLockError};
 
+use crate::cli::COMMAND;
 use crossterm::QueueableCommand;
 use crossterm::cursor::{Hide, Show};
 use crossterm::event::{
@@ -376,7 +377,7 @@ fn report_to_stderr(error: &io::Error) {
     // failing to write to it leaves nothing to fall back on.
     let _ = writeln!(
         io::stderr(),
-        "graft: could not restore the terminal: {error}"
+        "{COMMAND}: could not restore the terminal: {error}"
     );
 }
 

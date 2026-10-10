@@ -154,7 +154,7 @@ fn a_signal_restores_then_waits_and_a_second_stops_git() {
     let text = String::from_utf8_lossy(&transcript).into_owned();
     let stopped = find(
         &transcript,
-        b"graft: stopped merge main into feature after ",
+        b"trib: stopped merge main into feature after ",
         restored,
     )
     .unwrap_or_else(|| panic!("the stopped line: {text}"));
@@ -169,7 +169,7 @@ fn a_signal_restores_then_waits_and_a_second_stops_git() {
 
 /// The end of the line a merge stopped in its hook leaves (13d's exit
 /// lines, `Paused(Merge)`).
-const PAUSED: &str = " s \u{b7} the merge is paused \u{b7} graft here offers continue or abort";
+const PAUSED: &str = " s \u{b7} the merge is paused \u{b7} trib here offers continue or abort";
 
 #[test]
 fn stop_now_after_the_real_offer_restores_then_says_where_git_stopped() {
@@ -193,7 +193,7 @@ fn stop_now_after_the_real_offer_restores_then_says_where_git_stopped() {
     let restored = find(&transcript, RESTORED, 0).expect("the terminal restored");
     let stopped = find(
         &transcript,
-        b"graft: stopped merge main into feature after ",
+        b"trib: stopped merge main into feature after ",
         0,
     )
     .unwrap_or_else(|| panic!("the stopped line: {text}"));

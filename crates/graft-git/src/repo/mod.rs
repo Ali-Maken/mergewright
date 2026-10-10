@@ -304,7 +304,7 @@ pub enum OpenError {
     },
     /// The path itself is unusable as a starting point: it does not exist, is
     /// not a directory, or reaches above the root of the filesystem.
-    #[error("{} is not a directory Graft can read", path.display())]
+    #[error("{} is not a directory Tributary can read", path.display())]
     Inaccessible {
         /// The path Graft was asked to open.
         path: PathBuf,

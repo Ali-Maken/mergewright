@@ -189,7 +189,7 @@ fn notes(session: &Session, state: &AppState) -> Vec<SanitizedText> {
         // Still running, or fine. Either way there is nothing to say.
         None | Some(GitCheck::Ran(SystemGit::Supported(_))) => {}
         Some(GitCheck::Ran(SystemGit::TooOld { found, minimum })) => notes.push(sanitize_line(
-            &format!("git {found} is older than the {minimum} Graft needs"),
+            &format!("git {found} is older than the {minimum} Tributary needs"),
         )),
         Some(GitCheck::Unavailable(why)) => {
             notes.push(sanitize_line(&format!("git could not be run: {why}")));

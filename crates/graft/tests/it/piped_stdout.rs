@@ -10,7 +10,7 @@ use std::process::Command;
 fn piped_stdout_never_contains_an_escape_byte() {
     let dir = graft_fixtures::borrow(graft_fixtures::Shape::Linear);
 
-    let output = Command::new(env!("CARGO_BIN_EXE_graft"))
+    let output = Command::new(env!("CARGO_BIN_EXE_trib"))
         .arg(&dir)
         .output()
         .expect("graft runs");
@@ -53,7 +53,7 @@ fn a_repository_that_fails_to_open_exits_with_its_error_never_hangs() {
     let dir = std::env::temp_dir().join(format!("graft-piped-not-a-repo-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
 
-    let output = Command::new(env!("CARGO_BIN_EXE_graft"))
+    let output = Command::new(env!("CARGO_BIN_EXE_trib"))
         .arg(&dir)
         .env(
             "GIT_CEILING_DIRECTORIES",
@@ -66,7 +66,7 @@ fn a_repository_that_fails_to_open_exits_with_its_error_never_hangs() {
     assert_eq!(output.status.code(), Some(1));
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stderr.starts_with("graft: ") && stderr.contains("not inside a git repository"),
+        stderr.starts_with("trib: ") && stderr.contains("not inside a git repository"),
         "{stderr}"
     );
     assert!(output.stdout.is_empty(), "expected no frame at all");

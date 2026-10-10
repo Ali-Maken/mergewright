@@ -5,7 +5,7 @@ use super::{AppState, InProgressDetail, unmerged_paths};
 /// Why the live operation stopped, in the footer's words
 /// (m6-conflicts/12, scope item 2): `merge stopped · 1 file conflicted`,
 /// `rebase stopped again at step 4 of 7 · 2 files conflicted`,
-/// `merge in progress · begun outside Graft · 1 file conflicted`.
+/// `merge in progress · begun outside Tributary · 1 file conflicted`.
 ///
 /// `live` is the working-tree read's detail and its unmerged count. It is
 /// used **only** when its kind is the stop's: then the step and the count
@@ -58,7 +58,7 @@ pub fn stop_wordings(
 /// How much of who began the stop a wording says.
 #[derive(Clone, Copy)]
 pub(super) enum Origin {
-    /// `begun outside Graft`, `from a previous run`.
+    /// `begun outside Tributary`, `from a previous run`.
     Full,
     /// `from the shell`, `from last run`.
     Short,
@@ -123,7 +123,9 @@ impl Wording {
                         format!("{name} in progress \u{b7} from last run")
                     }
                     (LiveOrigin::PreviousRun, Origin::Gone) => format!("{name} still in progress"),
-                    (_, Origin::Full) => format!("{name} in progress \u{b7} begun outside Graft"),
+                    (_, Origin::Full) => {
+                        format!("{name} in progress \u{b7} begun outside Tributary")
+                    }
                     (_, Origin::Short) => format!("{name} in progress \u{b7} from the shell"),
                     (_, Origin::Gone) => format!("{name} in progress"),
                 };

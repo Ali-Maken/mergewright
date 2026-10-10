@@ -1,14 +1,14 @@
-.TH GRAFT 1 "" "graft" "User Commands"
+.TH TRIB 1 "" "trib" "User Commands"
 .SH NAME
-graft \- a terminal Git client for the daily work
+trib \- a terminal Git client for the daily work
 .SH SYNOPSIS
-.B graft
+.B trib
 .RB [ "\-h, \-\-help" ]
 .RB [ "\-V, \-\-version" ]
 .RB [ "\-\-generate\-man" ]
 .RI [ path ]
 .SH DESCRIPTION
-graft opens the Git repository at path, or the one the current directory is in,
+trib opens the Git repository at path, or the one the current directory is in,
 and draws its history as a graph. Staging, committing, branching, merging,
 rebasing, stashing, fetching, pulling and pushing are done from the keyboard.
 What it changes in the repository is written to an undo journal, and u undoes
@@ -18,7 +18,7 @@ A bar at the bottom of the screen names the keys that work where you are. Press
 ? for help on the place you are in, and ctrl+p for the command palette, which
 finds every action by name.
 .PP
-With no repository, graft shows where you can go instead: a recent repository, a
+With no repository, trib shows where you can go instead: a recent repository, a
 clone, or a practice repository with a short tour.
 .SH OPTIONS
 .TP
@@ -492,9 +492,9 @@ Clear the field (credential.clear)
 .B backspace, delete, left, right, home, end
 Edit the typed text (credential.edit_text)
 .SH CONFIGURATION
-$XDG_CONFIG_HOME/graft/config.toml, in TOML. Every key is optional. An unknown
-key is a warning, not an error; a value a key does not take stops graft with the
-line and column.
+$XDG_CONFIG_HOME/tributary/config.toml, in TOML. Every key is optional. An
+unknown key is a warning, not an error; a value a key does not take stops trib
+with the line and column.
 .SS [ui]
 .TP
 .B theme
@@ -585,7 +585,7 @@ Values: default | off | info | warning. Default: "default".
 .SS [keys]
 .TP
 .B suspend_on_ctrl_z
-ctrl+z suspends Graft like any terminal program; undo keeps u.
+ctrl+z suspends Tributary like any terminal program; undo keeps u.
 .br
 Values: true | false. Default: false.
 .SS [keys.<context>]
@@ -608,16 +608,16 @@ ours, theirs, open, ours-tint, theirs-tint, open-tint.
 .SH ENVIRONMENT
 .TP
 .B XDG_CONFIG_HOME
-Where the config folder is: $XDG_CONFIG_HOME/graft. Ignored unless absolute;
+Where the config folder is: $XDG_CONFIG_HOME/tributary. Ignored unless absolute;
 unset, $HOME/.config is used.
 .TP
 .B XDG_STATE_HOME
-Where crash reports go: $XDG_STATE_HOME/graft. Unset or empty,
+Where crash reports go: $XDG_STATE_HOME/tributary. Unset or empty,
 $HOME/.local/state is used.
 .TP
 .B HOME
 The fallback for both of the above. With neither it nor XDG_CONFIG_HOME set, no
-config file is read, and graft says so.
+config file is read, and trib says so.
 .TP
 .B NO_COLOR
 Set to anything non-empty: no colour is drawn. Shape, weight and glyphs still
@@ -632,24 +632,24 @@ graph.renderer overrides the tier.
 A file name: every drawn frame appends one line to it, for a performance report.
 .TP
 .B GRAFT_ASKPASS_SOCKET
-Set by graft for the git it runs, so that git can ask graft for a password. Not
+Set by trib for the git it runs, so that git can ask trib for a password. Not
 for setting by hand.
 .SH FILES
 .TP
-.B $XDG_CONFIG_HOME/graft/config.toml
+.B $XDG_CONFIG_HOME/tributary/config.toml
 The config file; see CONFIGURATION. No file is the normal case.
 .TP
-.B $XDG_CONFIG_HOME/graft/recent
-The repositories opened recently, offered when graft starts outside one.
+.B $XDG_CONFIG_HOME/tributary/recent
+The repositories opened recently, offered when trib starts outside one.
 .TP
-.B $XDG_CONFIG_HOME/graft/launches
+.B $XDG_CONFIG_HOME/tributary/launches
 Launches counted, so the line saying where help is shows on the first five, or
 until you first open the command palette.
 .TP
-.B $XDG_STATE_HOME/graft/
+.B $XDG_STATE_HOME/tributary/
 Crash reports.
 .TP
-.B <git directory>/graft/
+.B <git directory>/tributary/
 Per repository: the undo journal (undo-journal.jsonl), the pane layout, a paused
 rewrite's plan, the message file ctrl+e opens in your editor, and whether you
 declined the commit-graph offer.

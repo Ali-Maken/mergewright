@@ -71,7 +71,7 @@ graft ../api       # or any other
 `graft --help` prints it:
 
 ```text
-usage: graft [<path>]
+usage: trib [<path>]
 
   <path>    the repository to open (default: the current directory)
 

@@ -41,9 +41,9 @@ git -C "$ROOT" archive "$REV" | tar -x -C "$SRC" || exit 1
 ( cd "$SRC" && patch -s -p1 <"$ROOT/scripts/scroll-pixel-memory.patch" ) || {
   echo "SUMMARY mem rev=$HASH patch=FAILED" | tee -a "$OUT"; exit 1; }
 export CARGO_TARGET_DIR="$WORK/target"
-( cd "$SRC" && cargo build --release -q -p graft --bin graft ) >"$WORK/build.log" 2>&1 || {
+( cd "$SRC" && cargo build --release -q -p graft --bin trib ) >"$WORK/build.log" 2>&1 || {
   echo "SUMMARY mem rev=$HASH build=FAILED (target/mem-instr/build.log)" | tee -a "$OUT"; exit 1; }
-BIN="$CARGO_TARGET_DIR/release/graft"
+BIN="$CARGO_TARGET_DIR/release/trib"
 FIXTURE=$(ls -dt "$ROOT"/target/fixtures/team-17700-* 2>/dev/null | head -1)
 [ -n "$FIXTURE" ] || { echo "no MONOREPO fixture under target/fixtures" >&2; exit 1; }
 REPO="$WORK/repo"

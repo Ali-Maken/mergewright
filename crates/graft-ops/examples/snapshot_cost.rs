@@ -111,10 +111,10 @@ fn git(dir: &Path, args: &[&str]) -> Result<String, String> {
         .args(args)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
-        .env("GIT_AUTHOR_NAME", "graft")
-        .env("GIT_AUTHOR_EMAIL", "graft@perf")
-        .env("GIT_COMMITTER_NAME", "graft")
-        .env("GIT_COMMITTER_EMAIL", "graft@perf")
+        .env("GIT_AUTHOR_NAME", snapshot::BACKUP_AUTHOR_NAME)
+        .env("GIT_AUTHOR_EMAIL", snapshot::BACKUP_AUTHOR_EMAIL)
+        .env("GIT_COMMITTER_NAME", snapshot::BACKUP_AUTHOR_NAME)
+        .env("GIT_COMMITTER_EMAIL", snapshot::BACKUP_AUTHOR_EMAIL)
         .output()
         .map_err(|why| format!("git {args:?}: {why}"))?;
     if !out.status.success() {

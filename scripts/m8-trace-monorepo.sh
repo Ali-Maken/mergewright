@@ -19,7 +19,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 TARGET=${CARGO_TARGET_DIR:-$ROOT/target}
 FIXTURE=$(ls -dt "$TARGET"/fixtures/team-17700-* 2>/dev/null | head -1)
 [ -n "$FIXTURE" ] || { echo "no MONOREPO fixture under $TARGET/fixtures" >&2; exit 1; }
-BIN=$TARGET/release/graft
+BIN=$TARGET/release/trib
 [ -x "$BIN" ] || { echo "no release binary at $BIN" >&2; exit 1; }
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT

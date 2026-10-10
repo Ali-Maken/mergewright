@@ -483,7 +483,7 @@ fn journal_expanded_capture() {
     let body = text(&frame);
     let heading = frame
         .iter()
-        .position(|row| row.contains("commands Graft ran"))
+        .position(|row| row.contains("commands Tributary ran"))
         .unwrap_or_else(|| panic!("the command log's heading:\n{body}"));
     assert!(
         frame

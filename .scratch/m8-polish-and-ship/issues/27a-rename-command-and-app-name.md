@@ -1,6 +1,6 @@
 # G-rename 2a — the command is `trib`, the app says Tributary
 
-Status: ready (split from 27, spec-only pass 2026-10-10)
+Status: partial (built 2026-10-10; plan.txt box open: dist not installed)
 Blocked by: 26
 Build with: **Sonnet** — mechanical renames held by grep tests; no judgement the diff can't show.
 Needs: 26 merged (`graft_core::on_disk::OnDiskNames::New.dir()`). First of 27a → 27b → (27c ∥ 27d).
@@ -66,31 +66,31 @@ pair changed lines (difflib, equal-size `replace` blocks by index); a pair is *n
 apart. Last line: `changed <n> · name-only <m> · drift-files <k> · png <p>`.
 
 ## Acceptance (each box: the test named at tick time)
-- [ ] `cargo metadata --no-deps --format-version 1`: package `graft` has exactly one bin target, `trib` (quoted in
+- [x] `cargo metadata --no-deps --format-version 1`: package `graft` has exactly one bin target, `trib` (quoted in — `rename_names::the_binary_file_is_the_command`
       NOTES); `rename_names::the_binary_file_is_the_command` — `env!("CARGO_BIN_EXE_trib")` file name == `cli::COMMAND`.
-- [ ] `trib --version`, `trib --help` (usage line), `trib --generate-man | head -5` output quoted in NOTES; pinned by
+- [x] `trib --version`, `trib --help` (usage line), `trib --generate-man | head -5` output quoted in NOTES; pinned by — `cli::tests::version_and_usage_lines_start_with_the_command`
       `cli::tests` (version line, usage line start with `COMMAND`).
-- [ ] `cli::docs_tests::committed_man_page_is_the_generated_one` reads `docs/man/trib.1`; new
+- [x] `cli::docs_tests::committed_man_page_is_the_generated_one` reads `docs/man/trib.1`; new — `cli::docs_tests::committed_man_page_is_the_generated_one`, `man_page_names_the_config_folder_in_force`
       `cli::docs_tests::man_page_names_the_config_folder_in_force` (paths contain `New.dir()`, none `/graft/`).
-- [ ] Crash: test that the report dir ends in `tributary` and the first line reads `trib <version> panicked`; reader
+- [x] Crash: test that the report dir ends in `tributary` and the first line reads `trib <version> panicked`; reader — `crash::tests::reports_go_to_the_tributary_folder_and_name_the_command`
       grep quoted (none).
-- [ ] Backup identity: test that a new backup commit's author is the consts; reader grep quoted (none);
+- [x] Backup identity: test that a new backup commit's author is the consts; reader grep quoted (none); — `graft-ops tests/it/snapshot_raw.rs::a_backup_commit_carries_the_app_identity`
       `snapshot_cost` uses the consts (grep quoted).
-- [ ] `crates/graft/tests/it/rename_names.rs::no_old_name_in_user_visible_strings` — string literals in non-test
+- [x] `crates/graft/tests/it/rename_names.rs::no_old_name_in_user_visible_strings` — string literals in non-test — `rename_names::no_old_name_in_user_visible_strings` (+ `the_word_test_reads_words_only`); `rename_opens::no_old_dir_literal` lost the 4 handed-to-27 entries
       source of every crate matching `(?i)\bgraft\b`, allow-list each with its reason (`on_disk` Old values, config
       folder migration, `Graft-Link:` reader, `include_str!`/`env!` crate paths, …). 26's `no_old_dir_literal`
       allow-list loses the entries this ticket fixes (crash, identity, man, `APP_NAME`).
-- [ ] `rename_names::scripts_run_the_command` — `scripts/**` and `.scratch/*/pty-walk*.py`: no `target/[^/]+/graft\b`,
+- [x] `rename_names::scripts_run_the_command` — `scripts/**` and `.scratch/*/pty-walk*.py`: no `target/[^/]+/graft\b`, — `rename_names::scripts_run_the_command`
       no `--bin graft`.
 - [ ] `docs/release/plan.txt` regenerated: archive and formula `tributary`, `[bin] trib`, `trib.1` (lines quoted), or
       the stop above.
-- [ ] Captures: one run with `GRAFT_UPDATE_SHOTS=1`, a second without — green. `scripts/shot-drift.py` summary line
+- [x] Captures: one run with `GRAFT_UPDATE_SHOTS=1`, a second without — green. `scripts/shot-drift.py` summary line — full `cargo nextest run --workspace` green after update runs (6279/6281 then the 2 sequential-capture tests re-run green)
       quoted; its file at `.scratch/m8-polish-and-ship/27a-shot-drift.txt`. Every drift file listed in NOTES (they are
       the longer name moving layout; the user judges by eye).
-- [ ] Visual (rule 6): NOTES names the regenerated empty-state captures at 80×24 and ≥120 columns, Unicode tier (his
+- [x] Visual (rule 6): NOTES names the regenerated empty-state captures at 80×24 and ≥120 columns, Unicode tier (his — NOTES
       daily view), showing `Tributary`. If none exist at both sizes, add them as TestBackend captures under
       `docs/shots/m8/`. Colour unverified (rule 5).
-- [ ] Hand-off file `.scratch/m8-polish-and-ship/27-shots-left.txt`: every `docs/shots/` file still matching
+- [x] Hand-off file `.scratch/m8-polish-and-ship/27-shots-left.txt`: every `docs/shots/` file still matching — NOTES (count)
       `(?i)graft` after the regeneration (paths only; count in NOTES) — 27d's input.
 
 ## Touches
@@ -106,3 +106,35 @@ workspace-wide. Capture runs write to files; read summary lines only.
 
 ## Size
 One context, ~50k tokens.
+
+
+## NOTES (builder, 2026-10-10)
+
+Scout: used `scouts/27-rename-sweep.md`; no new scout. No compaction.
+
+**Quoted output**
+- `cargo metadata`: package `graft` bin targets `[('trib', ['bin'])]` — exactly one.
+- `trib --version` → `trib 0.1.0`; `trib --help` line 1 → `usage: trib [<path>]`.
+- `trib --generate-man | head -5`: `.TH TRIB 1 "" "trib" "User Commands"` / `.SH NAME` / `trib \- a terminal Git client for the daily work` / `.SH SYNOPSIS` / `.B trib`.
+- Crash-dir reader grep (`report_dir|crash-[0-9]|"crash-` outside crash.rs): only doc/test sample strings in `graft-core/src/job.rs`, `update/tests/jobs_and_refresh.rs` — no reader.
+- Identity reader grep (`"graft@`, `%an`): `history_reads.rs` reads `%an` generically; nothing compares to the name — no reader.
+- `snapshot_cost.rs:114-117` uses `snapshot::BACKUP_AUTHOR_NAME/EMAIL`.
+- Drift: `changed 38 · name-only 46 · drift-files 3 · png 0` (`.scratch/m8-polish-and-ship/27a-shot-drift.txt`).
+
+**Drift files (user judges by eye)**
+- `docs/shots/m3-confirm-discard.txt`, `docs/shots/m3-confirm-delete-untracked.txt` — the confirm box is drawn 8 rows higher than before; only its text changed (`Graft keeps…` → `Tributary keeps…`). Cause not traced — question, not a defect (rule 7).
+- `docs/shots/m8-tour-80x24.txt` line 3 — the header path cut moved 2 cells (`work· …` → `workar…`). Cause not traced.
+
+**Visual (rule 6)** — empty state showing `Tributary · no repository here`, TestBackend, Unicode tier: `docs/shots/m8-look-outside-repo-no-recent-80x24.txt`, `docs/shots/m8-look-outside-repo-open-prompt-80x24.txt`, `docs/shots/m8-look-outside-repo-120x36.txt`, `docs/shots/m8/first-launch-empty-state-120x36.txt`. Colour unverified (rule 5).
+
+**Hand-off** `.scratch/m8-polish-and-ship/27-shots-left.txt`: 443 files still match `(?i)graft` (27d input).
+
+**Open — plan.txt (box unticked):** `dist` is not on PATH here, so `docs/release/plan.txt` was not regenerated and the stop condition (archive/formula named by package) could not be checked. `Cargo.toml` repository/homepage → `tributary`, include → `docs/man/trib.1`, done. `scripts/release-local.sh` now extracts `graft-$host/trib` (the bin inside); archive/formula/installer names left `graft-*` until dist says what it emits. Next step: install dist 0.33, run `scripts/release-local.sh` (or `dist plan`), read the archive names; if they are `graft-*` → `blocked: dist names by package`.
+
+**Scope decisions to check**
+- `no_old_name_in_user_visible_strings` forced renaming user prose beyond the scope list: error/refusal words (`… Tributary cannot …`, `Tributary keeps a backup first`, `done in Tributary · revert…`, journal `commands Tributary ran`, status screen title, tour README) and stderr prefixes (`trib:`; in `graft` via `cli::COMMAND`, other crates literal `trib:`). Exit line `<bin>: stopped …` now from `cli::COMMAND` (`exit_wait.rs` BIN was `CARGO_PKG_NAME`).
+- **Kept `Graft`, allow-listed:** journal source column (`●  Graft`, `$  outside Graft`) and its legend — the column is 14 cells; `outside Tributary` was cut to `outside Tributa`. Needs a word/width decision (design, not mine).
+- **Kept, allow-listed:** messages written into git (`graft {id} {label}` backup commits, `graft: your edits…` stash, `graft: index`, `graft: absorb…`, `graft: put-back forecast`) — rename needs a reader audit; thread names, temp prefixes, fixture identities, graft-fixtures and graft-capabilities crates.
+- README usage block line 74 → `usage: trib` (pinned by `cli::docs_tests::readme_command_line_is_the_usage_of_flags`; rest of README is 27c).
+- `docs/release/build.txt:17` still says `usage: graft` (a dated log of an earlier build; left).
+- File-size ratchet raised: snapshot_raw.rs 619, crash.rs 535, outside.rs 625, terminal.rs 726.
