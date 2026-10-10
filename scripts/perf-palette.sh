@@ -104,7 +104,7 @@ p95_of() { # field trace -> that frame field's p95, or nothing
 
 load() { uptime | sed 's/.*load average[s]*: //'; }
 
-# A writable copy per run: Graft writes .git/graft/ in what it opens.
+# A writable copy per run: Tributary writes .git/tributary/ in what it opens.
 copy_of() { # fixture dest
   cp -R "$1" "$2"
   chmod -R u+w "$2"

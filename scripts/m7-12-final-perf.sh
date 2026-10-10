@@ -31,7 +31,7 @@ OUT=${1:-docs/perf/m7-12-idle-advance.txt}
 case $OUT in /*) ;; *) OUT=$ROOT/$OUT ;; esac
 TMP=${TMPDIR:-/tmp}
 TMP=${TMP%/}
-WT=$TMP/graft-12e-before
+WT=$TMP/trib-12e-before
 WORK=$(mktemp -d)
 GITGIT=$(scripts/clone-git-git.sh --where)
 # Each tree builds in its own target/: heap-slope.sh reads target/release.

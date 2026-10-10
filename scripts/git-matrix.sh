@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# Runs Graft's git-version-sensitive tests against other gits than the one on
+# Runs Tributary's git-version-sensitive tests against other gits than the one on
 # this machine (m8-polish-and-ship/24).
 #
-# Graft finds git on PATH and nowhere else: every spawn is `Command::new("git")`
+# Tributary finds git on PATH and nowhere else: every spawn is `Command::new("git")`
 # (graft-git/src/run.rs, the fixtures, the tests). So this script builds each
 # git from its release tarball into a cache folder and puts that folder's
 # `bin` first on PATH for the test run. Nothing else changes.
@@ -13,7 +13,7 @@
 #     does when it runs, checked by running git in a copy. Until this script,
 #     checked on the machine's git only.
 #   * `cherry_pick::git_alone_stops_on_a_pick_of_an_ancestor`: what plain git
-#     does with an ancestor pick, the case Graft refuses.
+#     does with an ancestor pick, the case Tributary refuses.
 #
 # Versions: the floor (`GitVersion::MINIMUM`, graft-git/src/version.rs), 2.40.0
 # (below it the rebase preview's conflict forecast says "not checked" by

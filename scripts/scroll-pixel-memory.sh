@@ -21,7 +21,7 @@
 #   end, and rasterisations during the hold; Kitty uploads and the KiB of
 #   frames they keep alive; iTerm2 bands; large allocations (> 127 KiB, macOS
 #   malloc's large class) per held second; vmmap `Malloc Large (empty)`
-#   resident; Graft RSS. Raw stats under target/mem-instr/runs/.
+#   resident; Tributary RSS. Raw stats under target/mem-instr/runs/.
 #
 # Needs the fixture under target/fixtures (any heavy `held_key::` test builds it).
 set -uo pipefail
@@ -51,7 +51,7 @@ WAIT=5
 HOLD=3
 
 CONFIG="$WORK/config"
-mkdir -p "$CONFIG/graft" && printf '[graph]\nrenderer = "pixel"\n' >"$CONFIG/graft/config.toml"
+mkdir -p "$CONFIG/tributary" && printf '[graph]\nrenderer = "pixel"\n' >"$CONFIG/tributary/config.toml"
 
 run() { # label profile deflate cell [config dir]
   local label=$1 profile=$2 deflate=$3 cell=$4 xdg=${5:-$WORK/no-config} cols=187

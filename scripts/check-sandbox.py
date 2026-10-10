@@ -1,4 +1,4 @@
-"""m8/22, m8/22b: no script may launch Graft against the user's real config folder.
+"""m8/22, m8/22b: no script may launch Tributary against the user's real config folder.
 
 Usage: check-sandbox.py            every tracked *.py (git ls-files)
        check-sandbox.py FILE...    just those files (used by check-sandbox-test.py)
@@ -6,12 +6,12 @@ Usage: check-sandbox.py            every tracked *.py (git ls-files)
 1. Static (AST): every call that starts a program -- os.exec*, os.spawn*,
    os.posix_spawn*, os.system, os.popen, pty.spawn, subprocess.*,
    asyncio.create_subprocess_* -- must either
-   - start a known non-Graft tool named by a literal (`git`, `ps`, ...) or
+   - start a known non-Tributary tool named by a literal (`git`, `ps`, ...) or
      `sys.executable`, or
    - pass an env that is a `sandbox_env(...)` / `check_sandboxed(...)` call, or
      a name assigned from one in the same function, or
    - carry `# sandbox-ok: <reason>` on one of the call's lines (a program that
-     is not Graft, or a Graft binary that opens no repo; the reason says which).
+     is not Tributary, or a Tributary binary that opens no repo; the reason says which).
    Calls that inherit the caller's environment (execv, pty.spawn, os.system,
    subprocess without env=) can only pass the first or third way.
 2. The guard itself (whole-repo run only): `check_sandboxed` refuses an env
@@ -30,9 +30,9 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
-from graft_sandbox import check_sandboxed, sandbox_env  # noqa: E402
+from trib_sandbox import check_sandboxed, sandbox_env  # noqa: E402
 
-# Programs that are not Graft and never open a Graft config.
+# Programs that are not Tributary and never open a Tributary config.
 SAFE_PROGRAMS = {"git", "ps", "vmmap", "shellcheck", "python3", "python", "kill", "true"}
 SANCTIONED = {"sandbox_env", "check_sandboxed"}
 WAIVER = "# sandbox-ok:"
@@ -88,7 +88,7 @@ def qualified(func, names):
 
 
 def program_is_safe(expr):
-    """True when `expr` (the program argument) names a known non-Graft tool."""
+    """True when `expr` (the program argument) names a known non-Tributary tool."""
     while isinstance(expr, ast.BinOp) and isinstance(expr.op, ast.Add):
         expr = expr.left  # `[prog, ...] + args`
     if isinstance(expr, (ast.List, ast.Tuple)) and expr.elts:
@@ -132,7 +132,7 @@ def scopes(tree):
 
 
 def violations(path, text):
-    """Each launch in `text` that could start Graft with the caller's config."""
+    """Each launch in `text` that could start Tributary with the caller's config."""
     try:
         tree = ast.parse(text, filename=path)
     except SyntaxError as err:
@@ -184,8 +184,8 @@ def guard_failures():
     env = sandbox_env()
     if not os.path.isdir(env["XDG_CONFIG_HOME"]):
         failures.append("sandbox_env gave no temp folder")
-    # m8/18d: the folder is seeded with `graft/launches` = `done`.
-    seeded = os.path.join(env["XDG_CONFIG_HOME"], "graft", "launches")
+    # m8/18d: the folder is seeded with `tributary/launches` = `done`.
+    seeded = os.path.join(env["XDG_CONFIG_HOME"], "tributary", "launches")
     if not os.path.isfile(seeded) or open(seeded).read() != "done\n":
         failures.append("sandbox_env did not seed launches = done")
     shutil.rmtree(env["XDG_CONFIG_HOME"])

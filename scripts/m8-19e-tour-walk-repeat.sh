@@ -4,7 +4,7 @@
 # showed under load, so this is meant to run beside a full `cargo nextest run`
 # in the same worktree. To keep that to one cargo command at a time, it builds
 # the workspace's test binaries once (`cargo test --no-run`, the same build
-# the gate makes, so the gate rebuilds nothing under it), then runs graft's
+# the gate makes, so the gate rebuilds nothing under it), then runs the graft package's
 # `it` binary directly, without cargo.
 #
 # Writes docs/perf/19e-tour-walk-repeat.txt (or $1): HEAD, the load, one line
@@ -25,7 +25,7 @@ cargo test --no-run --message-format=json >"$WORK/build.json" 2>"$WORK/build.err
   tail -20 "$WORK/build.err" >&2
   exit 1
 }
-# graft's integration-test binary: the `it` target of the package at
+# The integration-test binary of the graft package: the `it` target of the package at
 # crates/graft (graft-ops has an `it` too).
 BIN=$(python3 -c '
 import json, sys
@@ -35,7 +35,7 @@ for line in open(sys.argv[1]):
             and m["target"]["name"] == "it" and "/crates/graft#" in m["package_id"]):
         print(m["executable"])
 ' "$WORK/build.json")
-[ -x "$BIN" ] || { echo "no graft it binary in the build" >&2; exit 1; }
+[ -x "$BIN" ] || { echo "no it binary of package graft in the build" >&2; exit 1; }
 
 {
   echo "# 19e-tour-walk-repeat (m8-polish-and-ship/19e R2): $TEST, $RUNS runs in a row"

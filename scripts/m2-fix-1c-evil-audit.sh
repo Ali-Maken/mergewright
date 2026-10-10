@@ -17,7 +17,7 @@
 # which is safe for git/git's own paths (no tabs, no newlines).
 #
 # This walks real merges in the git/git clone (scripts/clone-git-git.sh) with
-# plain git, independently of Graft's Rust, and writes the counts to
+# plain git, independently of Tributary's Rust, and writes the counts to
 # docs/perf/m2-review-fix-1c.txt. Never run from an agent's context: it
 # spawns four git processes per merge.
 #

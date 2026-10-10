@@ -15,7 +15,7 @@
 # `--filter=tree:0` asks the server for commits and nothing else. Trees and
 # blobs arrive only if something asks for them, which for reading history is
 # never. That turns a ~250 MB clone into a small fraction of it, and it is
-# also the honest shape to test against: Graft reads history, so a history-only
+# also the honest shape to test against: Tributary reads history, so a history-only
 # clone is the working set.
 #
 # Usage:
@@ -23,7 +23,7 @@
 #   scripts/clone-git-git.sh --where    # print the path and exit
 #
 # Where it goes:
-#   $TRIB_GIT_GIT_DIR, or ${XDG_CACHE_HOME:-$HOME/.cache}/graft/git-git.git
+#   $TRIB_GIT_GIT_DIR, or ${XDG_CACHE_HOME:-$HOME/.cache}/tributary/git-git.git
 #
 # To delete it:
 #   rm -rf "$(scripts/clone-git-git.sh --where)"
@@ -35,7 +35,7 @@
 set -euo pipefail
 
 UPSTREAM="https://github.com/git/git.git"
-CACHE="${TRIB_GIT_GIT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/graft/git-git.git}"
+CACHE="${TRIB_GIT_GIT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/tributary/git-git.git}"
 
 if [ "${1:-}" = "--where" ]; then
 	printf '%s\n' "$CACHE"

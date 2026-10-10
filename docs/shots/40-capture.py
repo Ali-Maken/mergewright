@@ -11,7 +11,7 @@ place them, which is what the pixel tier's look is judged on.
 import base64, fcntl, os, pty, re, select, struct, sys, tempfile, termios, time, zlib
 # Every Graft launch goes through sandbox_env (m8/22b): temp XDG_CONFIG_HOME, checked.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
-from graft_sandbox import sandbox_env  # noqa: E402
+from trib_sandbox import sandbox_env  # noqa: E402
 
 repo, cols, rows, keys, out = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4], sys.argv[5]
 CELL_W, CELL_H = 17, 37

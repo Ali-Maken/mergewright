@@ -17,7 +17,7 @@ import fcntl, os, pty, re, select, struct, sys, termios, time
 import pyte
 # Every Graft launch goes through sandbox_env (m8/22b): temp XDG_CONFIG_HOME, checked.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
-from graft_sandbox import sandbox_env  # noqa: E402
+from trib_sandbox import sandbox_env  # noqa: E402
 
 BIN, REPO, MODE = sys.argv[1], sys.argv[2], sys.argv[3]
 ARG = sys.argv[4] if len(sys.argv) > 4 else ""

@@ -1,0 +1,37 @@
+# 27c: lines in CLAUDE.md, PROMPT.md, .claude/** that would change (not edited). file:line → new text
+# GRAFT_ env names in these files: none (27b grep).
+CLAUDE.md:1 → # Tributary: rules for Claude
+CLAUDE.md:5 → "Tributary" is a **codename**. The name is taken by another Git GUI; the real one is chosen in M8. Never publish, register or tag anything public under it.
+PROMPT.md:1 → # Build Prompt: "Tributary", a graphical terminal Git client
+PROMPT.md:3 → > **Note for humans:** this is the product spec. The working process lives in `PROGRESS.md` and `CLAUDE.md`: open this folder in Claude Code and run `/conduct`. "Tributary" is a codename; the real nam
+PROMPT.md:13 → Build **Tributary**, a terminal Git client that works with both keyboard and mouse. Its centrepiece is a **real graphical commit graph**: the kind of visual history Sublime Merge shows, running inside
+PROMPT.md:23 → Terminal clients such as lazygit, tig and gitui draw history as a thin line of ASCII characters, or leave it out. That hides the most useful thing a Git GUI shows: the *shape* of history. In Sublime M
+PROMPT.md:27 → This is inspiration only. Don't use Sublime Merge's name, logo, icons or copy. Give Tributary its own identity.
+PROMPT.md:60 → - **Config:** TOML via `serde` at `~/.config/tributary/config.toml`.
+PROMPT.md:69 → Tributary detects which tier to use automatically. The user can override it with `graph.renderer = "auto" | "pixel" | "unicode" | "ascii"`.
+PROMPT.md:163 → Before a merge, rebase, reset, cherry-pick, revert or branch move, draw the predicted result in the graph with dashed or dimmed "ghost" nodes. The user confirms against that picture. This is the main 
+PROMPT.md:216 → - **Never send `XTSHIFTESCAPE` with `n=1`.** Terminals reserve `Shift`+drag to bypass mouse capture and do native text selection; requesting that `Shift` be delivered to the application instead would 
+PROMPT.md:242 → This is Tributary's headline safety feature, not plumbing. The tools it competes with cannot undo a discard, cannot undo a pull, and leave users unable to tell what is undoable at all. Tributary's ans
+PROMPT.md:244 → `Ctrl+Z` is `SIGTSTP` (suspend) in a terminal. Tributary captures it for undo by default, because undo is where every user reaches for that key. Restore suspend with `keys.suspend_on_ctrl_z = true`.
+PROMPT.md:246 → - Undo reverses the last Tributary operation: commit, amend, merge, rebase, reset, branch delete, discard, stash drop and so on.
+PROMPT.md:247 → - Before each operation, Tributary records ref states in an operation journal.
+PROMPT.md:248 → - Before any operation that destroys working-tree content, it also saves a snapshot under `refs/tributary/backup/<timestamp>`.
+PROMPT.md:273 → Sublime Merge is the **floor**, not the target. Match its core workflows and beat it on safety and discoverability — the undo journal, Ghost Preview, Mistake Radar and the always-visible hint bar are 
+PROMPT.md:277 → - Open from the current directory or with `trib [path]`; init; clone with progress; recent repos.
+PROMPT.md:608 → - Every write operation can be undone. Killing Tributary with `kill -9` mid-rebase leaves a state that git recognises, and on relaunch Tributary offers Continue or Abort.
+.claude/agents/builder-fable.md:3 → description: Builds one Tributary ticket (or one PROGRESS.md step) end to end on opus, high effort (the project's former Fable tier). The conductor uses it for signature tickets (`Build with: Fable (s
+.claude/agents/builder-fable.md:8 → You build exactly **one** ticket or step for Tributary, then stop.
+.claude/agents/builder-opus-xhigh.md:8 → You build exactly **one** ticket or step for Tributary, then stop.
+.claude/agents/builder-opus.md:3 → description: Builds one Tributary ticket (or one PROGRESS.md step) end to end on opus. The conductor uses it for concurrency, terminal protocols, git writes, undo and conflicts.
+.claude/agents/builder-opus.md:8 → You build exactly **one** ticket or step for Tributary, then stop.
+.claude/agents/builder-sonnet.md:3 → description: Builds one Tributary ticket (or one PROGRESS.md step) end to end on opus, low effort (the project's former Sonnet tier). The conductor uses it for mechanical tickets: wiring, config, docs
+.claude/agents/builder-sonnet.md:8 → You build exactly **one** ticket or step for Tributary, then stop.
+.claude/agents/debugger.md:3 → description: Finds and fixes the root cause of a Tributary bug or failure that a builder couldn't fix, using the diagnosing-bugs skill.
+.claude/agents/planner-fable.md:9 → You make the design decisions for **one** Tributary milestone and write its ticket specs, then stop. The conductor (Opus) only numbers and sequences your specs; it doesn't change them. Builders follow
+.claude/agents/researcher.md:3 → description: Research, standalone docs and summarising for Tributary on opus, low effort. Reads the repo's docs and logs or primary web sources, writes one file the dispatcher names. Never edits sourc
+.claude/agents/researcher.md:9 → You do one research, summarising or standalone-docs job for Tributary, then stop.
+.claude/agents/reviewer.md:3 → description: Reviews a finished Tributary milestone against PROMPT.md and DESIGN.md and writes a findings file. Never changes source code.
+.claude/agents/scout.md:3 → description: Read-only scout for Tributary brownfield work (ADR-0035) on opus, low effort. Reports what the existing code does — what exists, what state it holds, what it draws, which keys it claims —
+.claude/agents/scout.md:9 → You scout existing code for one Tributary ticket or question, then stop.
+.claude/skills/conduct/SKILL.md:3 → description: Run the Tributary build as the conductor. Hand each step or ticket to a fresh helper agent and stop at checkpoints. Only when the user types /conduct or says "continue".
+# CLAUDE.md:5 needs a rewrite, not a swap: "Tributary"/`trib` is a placeholder (user 2026-10-10); final name still to be discussed.
