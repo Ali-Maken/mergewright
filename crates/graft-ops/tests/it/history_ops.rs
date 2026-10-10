@@ -1155,7 +1155,7 @@ fn conflict_of(error: ApplyError) -> (JournalEntry, InProgress, Vec<PathBuf>) {
 /// How many lines the journal file holds: two per finished entry, one for
 /// an operation that stopped and has not finished yet (§6.1).
 fn journal_lines(repo: &TempRepo) -> usize {
-    std::fs::read_to_string(repo.path().join(".git/graft/undo-journal.jsonl"))
+    std::fs::read_to_string(repo.path().join(".git/tributary/undo-journal.jsonl"))
         .expect("the journal reads")
         .lines()
         .count()

@@ -14,6 +14,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use graft_core::journal::{EntryId, EntryStatus, JournalEntry};
+use graft_core::on_disk::OnDiskNames;
 use graft_git::repo::RepoHandle;
 use graft_git::run::RunError;
 
@@ -80,6 +81,18 @@ impl Journal {
             entries: parsed.entries,
             torn_tail: parsed.torn_tail,
         })
+    }
+
+    /// [`open`](Journal::open), with every entry's ref names read as
+    /// `names` spells them (`crate::rename::map_entry`): a journal written
+    /// before the rename names its backups under the old prefix, and the
+    /// refs are now under the new one. The file's bytes are never rewritten.
+    /// Every production reader opens through here, with the repository's
+    /// names in force.
+    pub fn open_as(path: &Path, names: OnDiskNames) -> Result<Journal, JournalError> {
+        let mut journal = Journal::open(path)?;
+        crate::rename::map_entries(&mut journal.entries, names);
+        Ok(journal)
     }
 
     /// The journal file's path.
@@ -233,6 +246,13 @@ impl Journal {
 /// `<dir>` is the repository's names in force, `graft` or `tributary`
 /// (ADR-0057, Amendment §4).
 pub fn journal_path(repo: &RepoHandle) -> Result<PathBuf, RunError> {
-    let dir = repo.on_disk_names().dir();
+    journal_path_in(repo, repo.on_disk_names())
+}
+
+/// [`journal_path`] under `names` rather than the handle's: the rename
+/// writes its entry into the new journal while its handle still reads the
+/// old names (`crate::rename`).
+pub fn journal_path_in(repo: &RepoHandle, names: OnDiskNames) -> Result<PathBuf, RunError> {
+    let dir = names.dir();
     repo.git_path(Path::new(&format!("{dir}/{FILE_NAME}")))
 }

@@ -121,7 +121,7 @@ pub(super) fn locks(dir: &Path) -> Vec<PathBuf> {
 }
 
 pub(super) fn entries(repo: &Path) -> Vec<JournalEntry> {
-    graft_ops::journal::Journal::open(&repo.join(".git/graft/undo-journal.jsonl"))
+    graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
         .expect("the journal is readable")
         .entries()
         .to_vec()

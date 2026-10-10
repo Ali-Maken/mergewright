@@ -34,10 +34,11 @@ fn skip_to_the_end(app: &App, state: &AppState, repo: &Path) -> (AppState, Journ
             && state.in_progress.is_none()
             && matches!(state.status, Status::Done { .. })
     });
-    let entries = graft_ops::journal::Journal::open(&repo.join(".git/graft/undo-journal.jsonl"))
-        .expect("the journal the rebase wrote is readable")
-        .entries()
-        .to_vec();
+    let entries =
+        graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
+            .expect("the journal the rebase wrote is readable")
+            .entries()
+            .to_vec();
     let rebase = entries
         .iter()
         .rev()

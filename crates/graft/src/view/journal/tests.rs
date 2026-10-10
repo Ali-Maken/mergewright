@@ -573,3 +573,30 @@ fn a_git_failure_that_wrote_nothing_reads_nothing_written() {
     assert_eq!(label, "nothing written");
     assert!(!label.contains("refused"), "{label}");
 }
+
+/// The one-time move to the new names (ticket 26) is a row of its own,
+/// worded by what moved, and `u` passes over it to the stage before.
+#[test]
+fn migrate_row_words() {
+    let mut migrate = entry(
+        2,
+        OperationKind::Migrate,
+        &graft_ops::rename::description(3, 12),
+    );
+    migrate.touches.index = false;
+    migrate.index_before = None;
+    migrate.index_after = None;
+    migrate.backup_ref = None;
+    let state = state_with(vec![
+        entry(1, OperationKind::Stage, "stage src/a.rs"),
+        migrate,
+    ]);
+    let view = journal_view(&state, 10);
+    assert_eq!(
+        view.rows[0].description.as_str(),
+        "rename to Tributary (3 refs, 12 files)"
+    );
+    assert_eq!(view.rows[0].mark, RowMark::None, "not the next undo");
+    assert_eq!(view.rows[1].mark, RowMark::NextUndo, "the stage before is");
+    assert_eq!(view.rows[0].summary.as_str(), "", "the words are the row");
+}

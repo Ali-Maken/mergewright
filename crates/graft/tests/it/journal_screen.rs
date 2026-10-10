@@ -647,7 +647,7 @@ fn r_s_s_y(app: &App, state: &AppState, repo: &std::path::Path, before: &str) ->
             "--format=%(refname)",
             "--contains",
             before,
-            "refs/graft/backup/",
+            "refs/tributary/backup/",
         ],
         0,
     );

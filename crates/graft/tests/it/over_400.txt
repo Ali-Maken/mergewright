@@ -41,9 +41,10 @@
 512 crates/graft-ops/src/apply/record.rs
 412 crates/graft-ops/src/apply/remote.rs
 431 crates/graft-ops/src/apply/remote/tests.rs
-403 crates/graft-ops/src/apply/restart.rs
+407 crates/graft-ops/src/apply/restart.rs
+404 crates/graft-ops/src/journal.rs
 414 crates/graft-ops/src/journal_list/steps.rs
-778 crates/graft-ops/src/journal/tests.rs
+807 crates/graft-ops/src/journal/tests.rs
 1078 crates/graft-ops/src/mistake_radar/probes.rs
 709 crates/graft-ops/src/mistake_radar/rules.rs
 1016 crates/graft-ops/src/operation/history.rs
@@ -69,7 +70,7 @@
 2701 crates/graft-ops/tests/it/history_ops.rs
 640 crates/graft-ops/tests/it/journal_list_oracle.rs
 978 crates/graft-ops/tests/it/merge_set_aside.rs
-1132 crates/graft-ops/tests/it/ops_execution_hard.rs
+1135 crates/graft-ops/tests/it/ops_execution_hard.rs
 450 crates/graft-ops/tests/it/ops_execution.rs
 551 crates/graft-ops/tests/it/pull_set_aside.rs
 687 crates/graft-ops/tests/it/put_back_index.rs
@@ -78,15 +79,15 @@
 950 crates/graft-ops/tests/it/remote_ops.rs
 537 crates/graft-ops/tests/it/restart_whole_file.rs
 601 crates/graft-ops/tests/it/rewrite_oracle.rs
-680 crates/graft-ops/tests/it/rewrite_plan.rs
+682 crates/graft-ops/tests/it/rewrite_plan.rs
 1087 crates/graft-ops/tests/it/rewrite_preview.rs
 743 crates/graft-ops/tests/it/rewrite_run.rs
 1347 crates/graft-ops/tests/it/set_aside.rs
-594 crates/graft-ops/tests/it/snapshot_raw.rs
+597 crates/graft-ops/tests/it/snapshot_raw.rs
 430 crates/graft-ops/tests/it/stash_clash.rs
 592 crates/graft-ops/tests/it/stash_preview.rs
 916 crates/graft-ops/tests/it/stop_hooks.rs
-438 crates/graft-ops/tests/it/support.rs
+459 crates/graft-ops/tests/it/support.rs
 762 crates/graft-ops/tests/it/undo_bytes.rs
 942 crates/graft-ops/tests/it/undo_cancel.rs
 492 crates/graft-ops/tests/it/undo_replaced.rs
@@ -125,7 +126,7 @@
 410 crates/graft-ui/src/theme/mod.rs
 829 crates/graft-ui/src/theme/tests.rs
 883 crates/graft-ui/tests/pane_boundaries.rs
-547 crates/graft/src/config/tests.rs
+550 crates/graft/src/config/tests.rs
 515 crates/graft/src/crash.rs
 1012 crates/graft/src/empty_state/tests.rs
 443 crates/graft/src/event_loop/graphics.rs
@@ -143,7 +144,7 @@
 1285 crates/graft/src/jobs/tests.rs
 813 crates/graft/src/jobs/undo.rs
 420 crates/graft/src/map.rs
-527 crates/graft/src/repos.rs
+549 crates/graft/src/repos.rs
 634 crates/graft/src/search.rs
 725 crates/graft/src/terminal.rs
 537 crates/graft/src/trace.rs
@@ -216,7 +217,7 @@
 413 crates/graft/src/view/frame/bars.rs
 466 crates/graft/src/view/frame/boxes.rs
 694 crates/graft/src/view/frame/tests.rs
-575 crates/graft/src/view/journal/tests.rs
+602 crates/graft/src/view/journal/tests.rs
 731 crates/graft/src/view/radar.rs
 893 crates/graft/src/view/rows.rs
 429 crates/graft/src/view/strips.rs
@@ -245,7 +246,7 @@
 502 crates/graft/tests/it/journal_put_back.rs
 758 crates/graft/tests/it/journal_screen.rs
 514 crates/graft/tests/it/land_on_result.rs
-1808 crates/graft/tests/it/m3_walk.rs
+1812 crates/graft/tests/it/m3_walk.rs
 434 crates/graft/tests/it/m4_walk/push.rs
 1355 crates/graft/tests/it/m5_walk/conflict_journeys.rs
 672 crates/graft/tests/it/m5_walk/conflicts.rs
@@ -262,10 +263,10 @@
 1399 crates/graft/tests/it/m6_stash_put_back/set_aside.rs
 846 crates/graft/tests/it/m7_walk/amend_into.rs
 447 crates/graft/tests/it/m7_walk/blame.rs
-526 crates/graft/tests/it/m7_walk/journal.rs
+535 crates/graft/tests/it/m7_walk/journal.rs
 730 crates/graft/tests/it/m7_walk/picker.rs
 660 crates/graft/tests/it/m7_walk/rebase_line.rs
-506 crates/graft/tests/it/m7_walk/rewrite_editor.rs
+507 crates/graft/tests/it/m7_walk/rewrite_editor.rs
 434 crates/graft/tests/it/m7_walk/rewrite_stops.rs
 420 crates/graft/tests/it/m7_walk/switch.rs
 403 crates/graft/tests/it/m8_walk/clone.rs
@@ -285,4 +286,4 @@
 548 crates/graft/tests/it/tour_tasks.rs
 903 crates/graft/tests/it/tour_walk.rs
 438 crates/graft/tests/it/two_boxes_over_content.rs
-636 crates/graft/tests/it/undo_over_drift.rs
+637 crates/graft/tests/it/undo_over_drift.rs

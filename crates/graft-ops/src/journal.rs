@@ -19,7 +19,7 @@ use graft_core::journal::{EntryId, EntryStatus, HeadRef, IndexState, JournalEntr
 use graft_core::oid::Oid;
 
 pub use fetched::{moved_lines, moved_words, wrote_anything};
-pub use file::{Journal, journal_path};
+pub use file::{Journal, journal_path, journal_path_in};
 pub use lines::{Line, OutcomeLine, PendingLine};
 
 /// Why the journal's bytes could not be read as entries.
@@ -222,10 +222,17 @@ pub(crate) fn is_operation(entry: &JournalEntry) -> bool {
 /// journaled — the Command Log and the browser show them — but transparent
 /// to undo: `u` never talks to a remote, so it steps past them to the local
 /// operation before (M4 design note, hard choice 1). Pull is undoable: it
-/// moved only the local branch and tree.
+/// moved only the local branch and tree. The rename's `Migrate` entry
+/// (ticket 26) is a record of a one-time move the user ruled can never be
+/// moved back, so it is transparent the same way.
+///
+/// A negative list: a kind added later is undoable unless named here.
 #[must_use]
 pub fn undoable_kind(kind: OperationKind) -> bool {
-    !matches!(kind, OperationKind::Fetch | OperationKind::Push)
+    !matches!(
+        kind,
+        OperationKind::Fetch | OperationKind::Push | OperationKind::Migrate
+    )
 }
 
 /// Whether `u` and `U` can see this entry: its kind is undoable, and it is

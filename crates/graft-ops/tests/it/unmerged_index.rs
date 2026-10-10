@@ -66,7 +66,7 @@ fn stage_listing(repo: &TempRepo) -> String {
 
 fn take_backup(repo: &TempRepo) -> snapshot::Snapshot {
     let handle = repo.open();
-    let scratch = repo.path().join(".git/graft");
+    let scratch = repo.path().join(".git/tributary");
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let id = EntryId::new(NOW, [3; 10]);
     let head = Some(Oid::from_hex(&repo.git(&["rev-parse", "HEAD"])).expect("HEAD is an id"));
@@ -223,7 +223,7 @@ fn conflicted_pop_undo_is_clean_without_force() {
     // Nothing has been touched since, so §6.7's comparison must come up
     // clean — the whole point of recording the shape rather than a gap.
     let handle = repo.open();
-    let scratch = repo.path().join(".git/graft");
+    let scratch = repo.path().join(".git/tributary");
     let refs: Vec<String> = entry.refs_after.keys().cloned().collect();
     let now = graft_ops::facts::read_state_now(&handle, &scratch, &refs, &Never)
         .expect("the state reads");

@@ -52,7 +52,9 @@ fn three_branch_line() -> TempRepo {
 
 /// The plan a Graft rewrite of the line saves before its Pending line.
 fn save_plan(repo: &TempRepo) {
-    let dir = repo.path().join(".git/graft/rewrite/1700000000000-0000");
+    let dir = repo
+        .path()
+        .join(".git/tributary/rewrite/1700000000000-0000");
     std::fs::create_dir_all(&dir).expect("the plan dir is made");
     let plan_json = format!(
         r#"{{"home":"refs/heads/feature-a","line":[["refs/heads/feature-a","{}"],["refs/heads/feature-b","{}"],["refs/heads/feature-c","{}"]],"onto":"{}"}}"#,

@@ -507,6 +507,35 @@ fn a_fetch_or_push_after_an_undo_keeps_redo() {
     assert_eq!(next_undo(&entries), None);
 }
 
+/// The rename's one journal entry (ticket 26) is a record, not an operation
+/// of the user's: `u` steps past it, it does not end a redo branch, and the
+/// time machine reverting across it leaves it alone. Undoing it would mean
+/// moving the refs back under the old names, which the user ruled out.
+#[test]
+fn migrate_is_transparent_to_undo() {
+    use super::undoable_kind;
+    assert!(!undoable_kind(OperationKind::Migrate));
+
+    let commit = committed(10, OperationKind::Commit, 1, 2);
+    let migrate = committed(20, OperationKind::Migrate, 2, 2);
+    let entries = vec![commit.clone(), migrate.clone()];
+    assert_eq!(next_undo(&entries), Some(&commit), "u steps past it");
+
+    let undo_commit = reversal(30, OperationKind::Undo, &commit);
+    let later = committed(40, OperationKind::Migrate, 1, 1);
+    let entries = vec![commit.clone(), undo_commit.clone(), later];
+    assert_eq!(next_redo(&entries), Some(&undo_commit), "redo survives it");
+
+    let entries = vec![commit.clone(), migrate];
+    let plans = crate::undo::plan_revert_to(&entries, &commit.id).unwrap();
+    assert_eq!(plans.len(), 1, "only the commit is inverted: {plans:?}");
+    let only_migrate = vec![committed(50, OperationKind::Migrate, 1, 1)];
+    assert_eq!(
+        crate::undo::plan_revert_to(&only_migrate, &only_migrate[0].id),
+        Err(crate::undo::NotInvertible::NothingToUndo)
+    );
+}
+
 #[test]
 fn pending_is_not_in_force() {
     // A merge stopped on a conflict: the entry stays `Pending` until

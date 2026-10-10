@@ -1,6 +1,6 @@
 # G-rename 1 — his refs, journal and config move to the new name, once, safely
 
-Status: Part A done (commit 1); Part B open. Was: ready (amended after scout `scouts/26-rename-on-disk.md`, spec-only pass 2026-10-09)
+Status: done (Part A commit 1, Part B commit 2). Was: ready (amended after scout `scouts/26-rename-on-disk.md`, spec-only pass 2026-10-09)
 Build with: Part A **Opus** (`builder-opus`); Part B **Fable** (`builder-fable`): lock-and-switch order can't be judged from the diff (conductor, 2026-10-09). Planner expects **Opus, alone**, in **two commits at the Part A / Part B seam**
 (recommended: dispatch as two contexts — A ~35k, B ~60k; together they exceed one). Part B's lock-and-switch order is
 the one place correctness can't be read from the diff; if the milestone's Fable budget has room, B is the candidate.
@@ -109,27 +109,27 @@ graft-ops test fixtures created migrated (marker `clean`) so the suite exercises
 updated; golden `m5-journal.jsonl` **kept byte-identical** — it now proves the read mapping.
 
 ## Acceptance (each box: the test the builder writes, named)
-- [ ] 3 backup refs + 20-entry journal, old names (M7 walk fixtures): after open, refs under `refs/tributary/`, none
+- [x] 3 backup refs + 20-entry journal, old names (M7 walk fixtures): after open, refs under `refs/tributary/`, none
       under `refs/graft/`; journal reads the 20 + `Migrate`; `u` undoes the newest real operation byte-exactly —
       `graft-ops/tests/it/rename.rs::old_repo_moves_and_undo_still_restores` (truth by git).
-- [ ] Kill after the create transaction (test hook): relaunch completes; no ref lost or duplicated — `rename.rs::killed_after_create_completes_next_open`.
-- [ ] Read-back mismatch injected → `KeptOld`, nothing old deleted, status line words — `rename.rs::read_back_mismatch_keeps_old`; words: `graft/tests/it/rename_status.rs::kept_old_words`.
-- [ ] Marker `switched` with old refs left → next open deletes them, creates none — `rename.rs::switched_marker_cleans_leftovers`.
-- [ ] Second open: zero git spawns from `settle_names` — `rename.rs::clean_marker_spawns_nothing` (spawn counter).
-- [ ] Shared hold blocks migration (`Busy`, `Old`); hold dropped → next settle migrates — `rename.rs::old_names_hold_blocks_migration`.
-- [ ] Linked worktrees: one settle moves every worktree's journal, including one never opened; refs once — `rename.rs::every_worktree_moves_in_one_pass`.
-- [ ] `<git_dir>/graft` and `git-path graft` resolve to the same dir in main and linked worktrees, or both are moved — `rename.rs::git_dir_and_git_path_dirs_both_move`.
-- [ ] An unknown file under each old tree arrives byte-equal — `rename.rs::unknown_files_travel`.
-- [ ] Saved rewrite plan listed and resumable after migration — `rename.rs::saved_rewrite_plan_survives`.
-- [ ] Commit-graph decline survives (`offer_state` = `Declined`) — `graft-git/tests/it/commit_graph.rs::decline_read_from_new_dir`.
+- [x] Kill after the create transaction (test hook): relaunch completes; no ref lost or duplicated — `rename.rs::killed_after_create_completes_next_open`.
+- [x] Read-back mismatch injected → `KeptOld`, nothing old deleted, status line words — `rename.rs::read_back_mismatch_keeps_old`; words: `graft/tests/it/rename_status.rs::kept_old_words`.
+- [x] Marker `switched` with old refs left → next open deletes them, creates none — `rename.rs::switched_marker_cleans_leftovers`.
+- [x] Second open: zero git spawns from `settle_names` — `rename.rs::clean_marker_spawns_nothing` (spawn counter).
+- [x] Shared hold blocks migration (`Busy`, `Old`); hold dropped → next settle migrates — `rename.rs::old_names_hold_blocks_migration`.
+- [x] Linked worktrees: one settle moves every worktree's journal, including one never opened; refs once — `rename.rs::every_worktree_moves_in_one_pass`.
+- [x] `<git_dir>/graft` and `git-path graft` resolve to the same dir in main and linked worktrees, or both are moved — `rename.rs::git_dir_and_git_path_dirs_both_move`.
+- [x] An unknown file under each old tree arrives byte-equal — `rename.rs::unknown_files_travel`.
+- [x] Saved rewrite plan listed and resumable after migration — `rename.rs::saved_rewrite_plan_survives`.
+- [x] Commit-graph decline survives (`offer_state` = `Declined`) — **`graft-ops/tests/it/rename.rs::decline_read_from_new_dir`** (moved from graft-git: the move is graft-ops', which graft-git cannot call).
 - [x] A chain written with `Graft-Link: resume` reads as `Resume`; new links write `Tributary-Link:` — `graft-ops snapshot/tests::old_link_trailer_reads`. (Part A; also `conflict_set.rs::a_link_without_a_kind_reads_as_step` reads the written line back by git.)
 - [x] `is_graft_internal` true for both prefixes; a leftover old ref is not counted as fetched — `graft-core ref_name tests::both_prefixes_internal`, `graft-ops/tests/it/aborted_fetch.rs::old_prefix_ref_not_fetched`. (Part A.)
-- [ ] `undoable_kind(Migrate)` false; `next_undo` skips it; `next_redo` not emptied by it; `plan_revert_to` steps over — `graft-ops journal/tests::migrate_is_transparent_to_undo`.
-- [ ] J row reads `rename to Tributary (3 refs, M files)` — `graft view/journal/tests::migrate_row_words`.
-- [ ] Config dir copied, read back, old removed; both present → new kept, warned once; env-path override untouched; first `config::load` reads the new path — `graft config tests::config_dir_moves_before_first_load` (+ `_both_present`, `_env_override_untouched`).
-- [ ] No production repo open in `graft` bypasses `RepoStore` (allow-list with reasons) — `graft/tests/it/rename_opens.rs::every_open_settles_first` (source grep).
-- [ ] No `"graft"` path segment outside `on_disk` and the 27 hand-off — `graft/tests/it/rename_opens.rs::no_old_dir_literal` (source grep).
-- [ ] `git fsck` clean after migration — `rename.rs::fsck_clean_after`.
+- [x] `undoable_kind(Migrate)` false; `next_undo` skips it; `next_redo` not emptied by it; `plan_revert_to` steps over — `graft-ops journal/tests::migrate_is_transparent_to_undo`.
+- [x] J row reads `rename to Tributary (3 refs, M files)` — `graft view/journal/tests::migrate_row_words`.
+- [x] Config dir copied, read back, old removed; both present → new kept, warned once; env-path override untouched; first `config::load` reads the new path — `graft config::folder::tests::config_dir_moves_before_first_load` (+ `config_dir_moves_both_present`, `config_dir_moves_env_override_untouched`; a failed move: `a_move_that_fails_keeps_the_old_folder_and_says_so`).
+- [x] No production repo open in `graft` bypasses `RepoStore` (allow-list with reasons) — `graft/tests/it/rename_opens.rs::every_open_settles_first` (source grep).
+- [x] No `"graft"` path segment outside `on_disk` and the 27 hand-off — `graft/tests/it/rename_opens.rs::no_old_dir_literal` (source grep).
+- [x] `git fsck` clean after migration — `rename.rs::fsck_clean_after`.
 
 ## Handed to 27 (copy into NOTES' G-rename list)
 Crash dir `<state_home>/graft` → `tributary`, old reports untouched (27 greps that nothing reads the dir back; if
@@ -222,3 +222,60 @@ Not touched: TESTING.md's 3 mentions, tests asserting `refs/graft` (still true u
   (git's own names pass the same rules, so expected never).
 - **Gates (workspace-wide, after the last reformat).** fmt --check pass; clippy --all-targets -D warnings pass; nextest 6245/6245 passed, 14 skipped; test --doc pass.
 - **Compacted.** The builder context compacted once mid-ticket. Part A is complete; what remains is Part B only.
+
+### Part B (commit 2) — builder-opus, 2026-10-10
+- **Scout used:** yes, the ticket's (`scouts/26-rename-on-disk.md`) plus Part A's handoff; no new scout.
+- **Built:** graft-ops `rename` (+ `marker`, `refs`, `trees`, `record`): the order in the module doc, lock
+  `<common>/tributary/lock` (graft-git `file_lock`, nix `flock`). Journal read mapping (`map_entries`) in
+  `Journal::open_as` and the three raw readers (`apply/restart.rs`, `conflict/set.rs`, `tour.rs`); bytes never
+  rewritten (golden `m5-journal.jsonl` byte-identical, `rename/tests::the_m5_golden_reads_its_backups_under_the_new_prefix`).
+  `undoable_kind` excludes `Migrate`. graft: `rename::open_settled` inside `RepoStore::shared` (reopen counted as one
+  open); `rename::words` → first frame's status row via `places::drive`; config folder move in `config::load`
+  (`config/folder.rs`), `config_names()` replaces the `CONFIG_NAMES` const.
+- **Decisions (judgement, reviewer please check):**
+  - Nothing old at all → marker `clean`, `Done`, **no J row** (a fresh repo gets `.git/tributary/{lock,migrated}`
+    and one `for-each-ref` on its first open, nothing after).
+  - A new ref left at a *different* value (read-back mismatch, then relaunch) is refused, never overwritten: the
+    repo stays `KeptOld` with words until someone removes it. Safe, but sticky.
+  - A crash between the `Migrate` entry's pending and outcome lines leaves a pending `Migrate` (recovered as
+    interrupted by the usual path). Tiny window; not tested.
+  - "Env override untouched" read as: only the config home in force is moved; "warned once" as one warning per
+    launch while both folders exist (the old one is never removed for him).
+  - A failed config move keeps `graft/` for the run (`ConfigWarning::ConfigFolder`), next launch retries.
+  - The `Migrate` row's summary is empty and it carries no mark: `u` passes it silently. A fetch row says
+    `not undoable`; the rename row does not. **Question** for the usability walk, not changed.
+  - The `Migrate` entry's time is the wall clock, not the session clock (`GRAFT_NOW`): under a pinned capture clock
+    it reads `future`. Only a capture that migrates would show it; none does now.
+- **Fixtures (cause fix, beyond the ticket's letter):** the graft-fixtures corpus is now built with the marker
+  (`corpus.rs::names_settled`). Without it the first test to open a *borrowed* corpus repo wrote the marker and lock
+  into the shared corpus (seen: `target/fixtures/<key>/linear/.git/tributary/` appeared mid-run) while other tests
+  copied it — nondeterministic copies and a copy-vs-write race. The literal is pinned to `on_disk` by
+  `rename_status::kept_old_words`. Corpus key changes → one rebuild per target dir. Part A's two "Old with no
+  marker" tests (`graft-git commit_graph::the_decline_lives_under_the_names_in_force`, `graft-ops
+  rewrite::saved::tests::plans_live_under_the_names_in_force`) now remove the fixture's marker first.
+  `m7_walk/journal.rs::with_context` settles before driving ops, as the app would (else the fixture's history was
+  written under old names and the app's first open added a `rename` J row to the M7 captures).
+- **Captures:** none changed (`docs/shots/` untouched); the M7 J captures pass unchanged.
+- **Proposed change:** MSRV 1.88 → 1.89 would let `file_lock` use std `File::lock` and drop nix's `fs` feature.
+  The bump was refused by the permission classifier (shared root `Cargo.toml`); not worked around.
+- **Touches:** graft-core none (Part A). graft-git `file_lock` (new) + nix `fs` + MAP. graft-ops `rename` (new),
+  `journal.rs` (`undoable_kind`, `journal_path_in`), `journal/file.rs` (`open_as`), raw readers ×3, `rename/refs`
+  clippy fix, `rewrite/saved.rs` test, MAP; 26 test files' literals → new names (`support::init` creates repos
+  migrated; `init_old_names` for the old). graft `repos.rs`, `rename.rs` (new), `places.rs`, `config/{load,mod,
+  folder}`, `recent.rs`, `first_launch.rs`, MAP; 27 integration test files' literals; `over_400.txt` (rows raised:
+  restart.rs 407, journal.rs 404 new, journal/tests 807, snapshot_raw 597, support 459, repos.rs 549,
+  ops_execution_hard 1135, rewrite_plan 682, config/tests 550, view/journal/tests 602, m3_walk 1812,
+  m7_walk/journal 535, rewrite_editor 507, undo_over_drift 637 — literal rewraps and new tests). graft-fixtures
+  `corpus.rs`. TESTING.md lines 1381, 1437, 1518–1520. Checked by: the full suite, `rename_opens` greps,
+  `map_coverage`, `file_size`.
+- **Handed to 27 (G-rename list):** crash dir `<state_home>/graft` → `tributary`, old reports untouched (27 greps
+  that nothing reads the dir back; if something does, stop); backup identity `graft` → `tributary` (27 confirms
+  nothing reads it); `cli/man.rs` path text — **now wrong** for config/recent/launches (they live in
+  `tributary/`); `graph_screen/header.rs` `APP_NAME`; `is_graft_internal`/`GRAFT_*` identifiers are code names,
+  27's choice. All five sit on `rename_opens::no_old_dir_literal`'s allow-list, each with its reason.
+- **Not verified:** a real second window racing the move (only the in-process lock test); kill points other than
+  after the create transaction; the status row drawn on a real first frame (tested at `RepoStore::rename_words`,
+  which `places::drive` joins in — not captured).
+- **Compacted.** The builder context compacted once during Part B. Nothing remains open from the ticket.
+- **Gates (workspace-wide, after the last reformat).** fmt --check pass; clippy --all-targets -D warnings pass;
+  nextest 6273/6273 passed, 15 skipped; test --doc pass.

@@ -84,7 +84,13 @@ tempfile = "3.27.0"
 # process group and a stop signals it — `killpg`, `kill` — so a hung hook
 # ends with git. Before 13c the stop shelled out to `kill(1)` for SIGTERM and
 # reached git's pid only. It also pulls nix's `process` (`Pid`, `getpgid`).
-nix = { version = "0.29", default-features = false, features = ["socket", "user", "signal"] }
+#
+# `fs` (m8-polish-and-ship/26): `file_lock`'s advisory `flock`, shared and
+# exclusive, which the one-time rename takes on `<common_dir>/tributary/lock`
+# so two windows never move the names under each other. std's
+# `File::lock`/`try_lock` would do it but need Rust 1.89 and the workspace
+# MSRV is 1.88; `fs` compiles no new crate (an empty feature in nix).
+nix = { version = "0.29", default-features = false, features = ["socket", "user", "signal", "fs"] }
 
 [features]
 # Turns the heavy tier on for this crate's tests, per TESTING.md. A crate

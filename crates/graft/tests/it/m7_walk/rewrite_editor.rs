@@ -81,7 +81,7 @@ pub(super) fn subjects(repo: &Path, range: &str) -> Vec<String> {
 }
 
 /// Every branch and where it points. The engine's own safety refs
-/// (`refs/graft/backup/…`, written by each rewrite) are not his refs.
+/// (`refs/tributary/backup/…`, written by each rewrite) are not his refs.
 pub(super) fn every_ref(repo: &Path) -> String {
     git(
         repo,
@@ -308,8 +308,9 @@ fn rewrite_look_and_leave_writes_nothing() {
     );
     // The app makes the journal file at some point after opening (empty);
     // what counts is that no entry was written.
-    let journal = graft_ops::journal::Journal::open(&repo.join(".git/graft/undo-journal.jsonl"))
-        .unwrap_or_else(|why| panic!("the journal is readable: {why}"));
+    let journal =
+        graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
+            .unwrap_or_else(|why| panic!("the journal is readable: {why}"));
     assert!(
         journal.entries().is_empty(),
         "journal: {:?}",

@@ -593,7 +593,7 @@ fn a_clash_with_staging_is_the_same_clash() {
     );
 
     let handle = repo.open();
-    let scratch = repo.path().join(".git/graft");
+    let scratch = repo.path().join(".git/tributary");
     let index_now =
         graft_ops::snapshot::index_state(&handle, &scratch, &Never).expect("the index reads");
     let found = live_clash(&journal_entries(&repo), None, &index_now, &[(stash, 0)])

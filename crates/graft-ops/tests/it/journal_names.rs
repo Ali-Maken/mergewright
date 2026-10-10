@@ -21,8 +21,7 @@ fn stage_a(repo: &TempRepo) -> graft_core::journal::JournalEntry {
     )
 }
 
-fn edited() -> TempRepo {
-    let repo = TempRepo::init();
+fn edited(repo: TempRepo) -> TempRepo {
     repo.write("a.rs", b"fn a() {}\n");
     repo.commit_all("one");
     repo.write("a.rs", b"fn a() { changed }\n");
@@ -31,7 +30,7 @@ fn edited() -> TempRepo {
 
 #[test]
 fn no_marker_writes_the_old_names() {
-    let repo = edited();
+    let repo = edited(TempRepo::init_old_names());
     let entry = stage_a(&repo);
 
     let backup = entry.backup_ref.expect("a stage takes a backup");
@@ -51,7 +50,7 @@ fn no_marker_writes_the_old_names() {
 
 #[test]
 fn the_marker_writes_the_new_names_and_u_still_restores() {
-    let repo = edited();
+    let repo = edited(TempRepo::init_old_names());
     let marker_dir = repo.path().join(".git").join(OnDiskNames::New.dir());
     std::fs::create_dir_all(&marker_dir).expect("makes the dir");
     std::fs::write(marker_dir.join(MIGRATED_MARKER), "clean\n").expect("writes");

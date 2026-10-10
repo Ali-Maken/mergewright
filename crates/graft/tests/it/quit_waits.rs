@@ -71,10 +71,11 @@ fn assert_merged_and_journaled(repo: &std::path::Path) {
         3,
         "a whole merge: {parents}"
     );
-    let entries = graft_ops::journal::Journal::open(&repo.join(".git/graft/undo-journal.jsonl"))
-        .expect("the journal the merge wrote is readable")
-        .entries()
-        .to_vec();
+    let entries =
+        graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
+            .expect("the journal the merge wrote is readable")
+            .entries()
+            .to_vec();
     let merges: Vec<_> = entries
         .iter()
         .filter(|entry| entry.kind == OperationKind::Merge)

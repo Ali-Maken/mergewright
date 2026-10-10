@@ -41,7 +41,7 @@ fn the_journal_lands_under_the_git_dir_and_holds_two_lines_per_entry() {
     let repo = mixed();
     run(&repo, &Operation::Stage(paths(&["a.rs"])), NOW);
 
-    let path = repo.path().join(".git/graft/undo-journal.jsonl");
+    let path = repo.path().join(".git/tributary/undo-journal.jsonl");
     let text =
         String::from_utf8(std::fs::read(&path).expect("the journal is there")).expect("it is text");
     let lines: Vec<&str> = text.lines().collect();
@@ -59,7 +59,7 @@ fn the_journal_lands_under_the_git_dir_and_holds_two_lines_per_entry() {
 fn a_torn_last_line_is_cut_off_so_the_next_append_is_not_spliced_onto_it() {
     let repo = mixed();
     run(&repo, &Operation::Stage(paths(&["a.rs"])), NOW);
-    let path = repo.path().join(".git/graft/undo-journal.jsonl");
+    let path = repo.path().join(".git/tributary/undo-journal.jsonl");
     let mut bytes = std::fs::read(&path).expect("the journal reads");
     bytes.extend_from_slice(br#"{"id":"01","stat"#);
     std::fs::write(&path, &bytes).expect("the torn tail is written");
@@ -80,7 +80,7 @@ fn a_pending_entry_with_no_outcome_is_found_and_closed_as_interrupted() {
     let repo = mixed();
     // A crash between the two lines: keep only the pending line.
     run(&repo, &Operation::Discard(paths(&["a.rs"])), NOW);
-    let path = repo.path().join(".git/graft/undo-journal.jsonl");
+    let path = repo.path().join(".git/tributary/undo-journal.jsonl");
     let text = std::fs::read_to_string(&path).expect("the journal reads");
     let pending = text.lines().next().expect("there is a pending line");
     std::fs::write(&path, format!("{pending}\n")).expect("the truncated journal is written");
@@ -118,7 +118,7 @@ fn the_backup_commit_holds_exactly_an_index_tree_and_a_worktree_tree() {
     let repo = mixed();
     let entry = run(&repo, &Operation::Stage(paths(&["a.rs"])), NOW);
     let name = entry.backup_ref.expect("a staging operation is backed up");
-    assert_eq!(name, format!("refs/graft/backup/main/{}", entry.id));
+    assert_eq!(name, format!("refs/tributary/backup/main/{}", entry.id));
 
     let listing = repo.git(&["ls-tree", "--name-only", &name]);
     assert_eq!(listing, "index\nworktree");
@@ -176,7 +176,7 @@ fn reading_the_repository_never_rewrites_the_real_index() {
 
     let handle = repo.open();
     let never = Never;
-    let scratch = repo.path().join(".git/graft");
+    let scratch = repo.path().join(".git/tributary");
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     snapshot::index_state(&handle, &scratch, &never).expect("the index state is read");
     snapshot::worktree_tree(&handle, &scratch, &never).expect("the worktree tree is written");
@@ -377,7 +377,7 @@ fn a_refused_operation_writes_nothing_at_all() {
     assert!(matches!(refused, Err(ApplyError::Refused(_))));
     assert!(journal.entries().is_empty(), "nothing was journaled");
     assert_eq!(
-        repo.git(&["for-each-ref", "--format=%(refname)", "refs/graft"]),
+        repo.git(&["for-each-ref", "--format=%(refname)", "refs/tributary"]),
         "",
         "no backup ref was made"
     );

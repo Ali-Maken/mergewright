@@ -297,13 +297,13 @@ fn a_stash_held_commit_is_not_lost() {
     );
 }
 
-/// Graft's own backup refs (`refs/graft/**`) keep the reset's before-state,
+/// Graft's own backup refs (`refs/tributary/**`) keep the reset's before-state,
 /// but hold nothing for this list: D is lost, under the Graft row.
 #[test]
 fn a_graft_backup_ref_does_not_hold() {
     let repo = a_to_d();
     let reset = graft_reset(&repo);
-    let graft_refs = repo.git(&["for-each-ref", "--format=%(refname)", "refs/graft/"]);
+    let graft_refs = repo.git(&["for-each-ref", "--format=%(refname)", "refs/tributary/"]);
     assert!(!graft_refs.is_empty(), "the reset made a backup ref");
 
     let list = the_list(&repo);

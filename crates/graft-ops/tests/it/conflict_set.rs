@@ -309,7 +309,11 @@ fn a_merge_set_is_unchanged() {
 
 /// The one backup ref Graft's merge left.
 fn backup_ref(repo: &TempRepo) -> String {
-    let name = repo.git(&["for-each-ref", "--format=%(refname)", "refs/graft/backup/"]);
+    let name = repo.git(&[
+        "for-each-ref",
+        "--format=%(refname)",
+        "refs/tributary/backup/",
+    ]);
     assert_eq!(name.lines().count(), 1, "one backup ref: {name}");
     name
 }

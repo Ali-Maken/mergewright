@@ -220,10 +220,11 @@ fn undo_over_drift_then_undo_again() {
     assert_eq!(read(path, "fix.txt"), None);
 
     // Where the edit went: the undo entry's own backup holds its blob.
-    let entries = graft_ops::journal::Journal::open(&path.join(".git/graft/undo-journal.jsonl"))
-        .expect("the journal the writes just made is readable")
-        .entries()
-        .to_vec();
+    let entries =
+        graft_ops::journal::Journal::open(&path.join(".git/tributary/undo-journal.jsonl"))
+            .expect("the journal the writes just made is readable")
+            .entries()
+            .to_vec();
     let backup = entries
         .last()
         .and_then(|entry| entry.backup_ref.clone())

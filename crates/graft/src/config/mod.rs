@@ -1,4 +1,4 @@
-//! The config file: `${XDG_CONFIG_HOME:-~/.config}/graft/config.toml`.
+//! The config file: `${XDG_CONFIG_HOME:-~/.config}/tributary/config.toml`.
 //!
 //! One call — [`load`] — turns whatever is (or isn't) on disk into a typed
 //! [`Config`] plus the warnings worth telling the user about. Config lives in
@@ -36,6 +36,7 @@
 //! DESIGN.md §2.2) is the next one due, and until it exists it loads as a
 //! warning rather than an error.
 
+mod folder;
 mod keys;
 mod load;
 #[cfg(test)]
@@ -54,9 +55,9 @@ pub use types::{
     ThemeChoice, Ui,
 };
 
-pub(crate) use load::CONFIG_NAMES;
+pub(crate) use folder::config_names;
 #[cfg(test)]
-use load::{load_at, path_in_environment};
+use load::{load_at, load_settling, path_in_environment};
 // The loader's own key lists, for `cli::docs_tests` to pair with
 // `cli::CONFIG_KEYS` both ways.
 #[cfg(test)]

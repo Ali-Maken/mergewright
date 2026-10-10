@@ -119,7 +119,7 @@ What a merge will commit, for the finish summary (m6-conflicts/09). Reads only.
 - `in_force` (fn) — the entry took effect and no later in-force entry has `reverses == Some(id)`. `Committed` always took effect; `Aborted` only with a backup (`worktree_before`) **and** a recorded after-field that differs from before, or a touched field never recorded after (unknown ≠ unchanged). A failure that changed nothing — hook-rejected commit, an undo whose CAS refused — is not in force, so it never shadows `next_undo` and never marks its target reversed (m3/02 review fix, C1).
 - `in_force` (m5/07) — a `Pending` entry is **not** in force: a conflicted operation is one entry, `Pending` from the stop until it finishes or aborts, and while it is open it never shadows `next_undo` (design note hard choice 2).
 - `in_force_all` (fn) — one flag per entry, in journal order: what `in_force` answers for every entry in one walk, for the journal browser's row marks (m3-working-tree-undo-and-stash/06).
-- `undoable_kind` (fn) — false for `Fetch`, `Push` (and `Undo`/`Redo`): kinds `u` passes over (m4/04, design note choice 1).
+- `undoable_kind` (fn) — false for `Fetch`, `Push`, `Migrate` (m8/26; a negative list) (and `Undo`/`Redo`): kinds `u` passes over (m4/04, design note choice 1).
 - `undoable` (fn) — `undoable_kind` **and** not a `Committed` pull whose after equals its before on every field (git's "Already up to date."): such a pull stays journaled (its fetch ran) but is transparent to `u`/`U`, like a fetch (m4/04 review M3).
 - `next_undo` (fn) — newest in-force entry that is `undoable` (m3/02; fetch/push skipped m4/04; no-op pull skipped, review M3).
 - `next_redo` (fn) — newest in-force `Undo` with no in-force **undoable** operation newer than it (a new operation after an undo empties redo, §6.5; a fetch, push or no-op pull does not) (m3/02, m4/04, review M3).
@@ -150,6 +150,19 @@ What a merge will commit, for the finish summary (m6-conflicts/09). Reads only.
 - `Journal` (struct) — the open journal file and the entries read from it; `open` (creates `<git-path graft>/` and the file, parses, and **cuts off a torn last line** so the next append is not spliced onto it), `path`, `entries`, `torn_tail` (the cut line's number, nothing lost by it), `append_pending`/`append_outcome` (one `O_APPEND` write plus `fsync`; file first, held copy second), `unresolved`, `mark_interrupted(id, after)` (m3/03). Note `open` **writes** (the torn-tail cut), so it is not a read-only call; two Graft processes on one worktree are not supported.
 - `Journal::hold_commands` (fn) — keep a stopped operation's command lines on the held entry. Only the outcome line records `commands`, and a conflicted operation has not written one yet, so the lines live in memory until it finishes; a relaunch loses them and the entry is closed by `recover_interrupted` with none (m5/07).
 - `journal_path` (fn) — `git rev-parse --git-path <dir>/undo-journal.jsonl`, `<dir>` = `repo.on_disk_names().dir()`: per-worktree by git's own layout (ADR-0010) (m3/03).
+- `journal_path_in` (fn) — `journal_path` under names given rather than the handle's (m8/26: the move writes its entry under the new names before the handle knows them).
+- `Journal::open_as` (fn) — `open`, then every entry's ref names read under `names` (`rename::map_entries`); the bytes are never rewritten (m8/26). Every journal reader goes through it or `map_entries`.
+
+## rename (m8-polish-and-ship/26 Part B)
+One-time move from the old on-disk names to the new (`refs/graft/` → `refs/tributary/`, `<git-dir>/graft/` → `tributary/`, every worktree's). Order: lock alone → create new refs in one `update-ref --stdin` → read back → copy trees, read each file back → marker `switched` → `Migrate` journal entry → delete old refs (each at its old oid) → remove old trees → marker `clean`. Fails before the switch → old names kept, nothing deleted; after → leftovers cleaned on the next open.
+- `settle_names` (fn) — `(&RepoHandle) -> Settled`; the one entry point, called on every open before any job. Marker `clean` → nothing spawned.
+- `Settled` (struct) — `names` in force, `outcome`, `hold: Option<OldNamesHold>`.
+- `SettleOutcome` (enum) — `Done`, `Migrated { refs, files, not_journaled }`, `CleanedUp { refs, files }`, `KeptOld(MigrateError)`, `LeftOld(MigrateError)`.
+- `OldNamesHold` (struct) — a shared lock on `<common>/tributary/lock` a run on the old names keeps for its life, so no other process moves them under it.
+- `MigrateError` (enum) — `Busy`, `Refs`, `Files`, `ReadBack`; `Display` is the status row's words.
+- `LOCK_FILE` (const) — `"lock"`.
+- `map_ref` / `map_entry` / `map_entries` (fn) — a journal's `refs/graft/…` names read as `refs/tributary/…` under the new names; nothing under the old.
+- `description` (fn) — the `Migrate` entry's words, `rename to Tributary (N refs, M files)`.
 
 ## snapshot
 `snapshot.rs` takes the snapshot; `snapshot/stage_tree.rs` is the stage-tree codec, `snapshot/chain.rs` the backup chain, `snapshot/index_paths.rs` the path diffing, `snapshot/raw.rs` the bytes git would not give back (ADR-0052; `snapshot/raw/converted.rs` its question 2, which files git would convert; m7/39), `snapshot/commit.rs` the commit writers (`commit_trees`, `commit_joined`, `stash_create_on_copy`, `scratch_commit`, `move_backup_ref`; m7/39), `snapshot/plumbing.rs` the temporary index and the `git` they share. Every public item is re-exported from `snapshot`, so no path below moved (m6 g04/g08 review, M3: 976 lines split).

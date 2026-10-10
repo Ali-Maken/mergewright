@@ -13,7 +13,7 @@ fn a_keys_table_in_the_config_file_reaches_the_first_screen() {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::FeatureBranches);
     let repo = scratch.path().canonicalize().expect("canonical");
     let isolated = Isolated::new();
-    let dir = isolated.config().join("graft");
+    let dir = isolated.config().join("tributary");
     std::fs::create_dir_all(&dir).expect("config dir");
     std::fs::write(
         dir.join("config.toml"),

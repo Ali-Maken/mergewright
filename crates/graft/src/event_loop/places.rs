@@ -137,7 +137,8 @@ pub fn drive(
                 } else {
                     remember_opened(config_dir.as_deref(), &repos, &path)
                 };
-                let arrival = carried.repo_arrival(remembered);
+                // What the rename could not finish (ticket 26) is said first.
+                let arrival = carried.repo_arrival(joined(repos.rename_words(), remembered));
                 let ran = run_repo(
                     &mut term,
                     repos,

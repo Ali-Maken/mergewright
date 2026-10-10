@@ -13,6 +13,7 @@ pub mod conflict;
 pub mod contained;
 pub mod diff;
 pub mod editor;
+pub mod file_lock;
 #[cfg(test)]
 mod fixture;
 pub mod history;

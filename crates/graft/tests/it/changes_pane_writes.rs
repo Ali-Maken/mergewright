@@ -282,14 +282,18 @@ fn discarding_an_untracked_file_asks_first_and_leaves_a_way_back() {
     );
     let backups = git(
         repo,
-        &["for-each-ref", "--format=%(refname)", "refs/graft/backup"],
+        &[
+            "for-each-ref",
+            "--format=%(refname)",
+            "refs/tributary/backup",
+        ],
     );
     assert_eq!(
         backups.lines().count(),
         1,
         "one backup ref holds what was discarded: {backups:?}"
     );
-    let journal = std::fs::read_to_string(repo.join(".git/graft/undo-journal.jsonl"))
+    let journal = std::fs::read_to_string(repo.join(".git/tributary/undo-journal.jsonl"))
         .expect("the journal was written");
     assert_eq!(
         journal.lines().count(),

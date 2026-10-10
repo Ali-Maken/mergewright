@@ -242,7 +242,11 @@ pub fn restart_gate(
 fn journal_entries(repo: &RepoHandle) -> Result<Vec<JournalEntry>, RestartReadError> {
     let path = journal_path(repo)?;
     match std::fs::read(path) {
-        Ok(bytes) => Ok(parse(&bytes)?.entries),
+        Ok(bytes) => {
+            let mut entries = parse(&bytes)?.entries;
+            crate::rename::map_entries(&mut entries, repo.on_disk_names());
+            Ok(entries)
+        }
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(Vec::new()),
         Err(error) => Err(error.into()),
     }

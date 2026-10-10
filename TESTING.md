@@ -1378,7 +1378,7 @@ exit 1 on any failure. The same list runs in the fast tier as one test per
 scenario (`tests/it/m3_walk.rs`, `m3_walk::every_scenario::*`; slowest 1.4 s;
 the 22 alone take 4.6 s under nextest, and add 2–4 s to the whole tier). Every scenario
 ends with `git fsck --no-dangling` saying nothing but notices, exactly one
-`refs/graft/backup/<worktree>/<id>` ref per journal entry that took a backup,
+`refs/tributary/backup/<worktree>/<id>` ref per journal entry that took a backup,
 and **no backup commit drawn in the history window** — every row's subject is
 the user's, never a `graft <ulid> …` (m3-07 review, C1; the check is
 `no_bookkeeping_in_the_graph`, run after every scenario).
@@ -1434,7 +1434,7 @@ The scratch starts from `Shape::Trivial` unless said otherwise;
 line 1 to `ONE` and line 16 to `SIXTEEN` (two hunks under three lines of
 context). "Back" means `diff_truth` finds **nothing** different between the
 truth taken after setup and the truth now: `HEAD`, every ref outside
-`refs/graft/`, every `ls-files -s` line, every file's bytes (untracked
+`refs/tributary/`, every `ls-files -s` line, every file's bytes (untracked
 included) and every `stash list` line.
 
 ### The scenarios
@@ -1515,9 +1515,9 @@ included) and every `stash list` line.
     the footer notice reads `an operation was interrupted: discard
     sample.txt · J to inspect`; `u`: the discarded edit is back on disk.
 20. **linked-worktree** — `git worktree add linked`, the edit staged from
-    inside it: `.git/worktrees/linked/graft/undo-journal.jsonl` has the one
-    entry, `.git/graft/undo-journal.jsonl` does not exist, the only backup
-    ref is under `refs/graft/backup/linked/`.
+    inside it: `.git/worktrees/linked/tributary/undo-journal.jsonl` has the one
+    entry, `.git/tributary/undo-journal.jsonl` does not exist, the only backup
+    ref is under `refs/tributary/backup/linked/`.
 21. **refresh-on-focus** — pane open (`1 unstaged, 0 untracked`), `extra.txt`
     written out of band, `FocusGained`: the status re-reads (`ReadWorkingTree`
     dispatched, `ReadHistory` not) and the counts read `1 unstaged,

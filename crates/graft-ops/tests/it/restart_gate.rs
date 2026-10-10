@@ -82,7 +82,7 @@ fn untouched(repo: &TempRepo) -> Untouched {
     let path = journal_path(&repo.open()).expect("the journal path resolves");
     Untouched {
         journal: std::fs::read(path).ok(),
-        backups: repo.git(&["for-each-ref", "refs/graft/backup/"]),
+        backups: repo.git(&["for-each-ref", "refs/tributary/backup/"]),
         status: repo.git(&["status", "--porcelain=v1"]),
     }
 }

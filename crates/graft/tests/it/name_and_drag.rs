@@ -43,7 +43,7 @@ fn head_ref(repo: &Path) -> String {
 /// that journals twice, or not at all, breaks `u` — and neither shows up in
 /// `for-each-ref`.
 fn journal(repo: &Path) -> Vec<graft_core::journal::JournalEntry> {
-    let path = repo.join(".git/graft/undo-journal.jsonl");
+    let path = repo.join(".git/tributary/undo-journal.jsonl");
     if !path.exists() {
         return Vec::new();
     }

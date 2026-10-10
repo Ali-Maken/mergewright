@@ -226,6 +226,10 @@ mod tests {
         use graft_core::on_disk::{MIGRATED_MARKER, OnDiskNames};
 
         let copy = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Linear);
+        // The corpus is built moved; without its marker it is a repository
+        // no build of the app has opened.
+        let marker = copy.path().join(".git").join(OnDiskNames::New.dir());
+        std::fs::remove_file(marker.join(MIGRATED_MARKER)).expect("the fixture's marker goes");
         let repo = RepoHandle::open(copy.path()).expect("opens");
         assert_eq!(root(&repo), repo.git_dir().join("graft").join("rewrite"));
 

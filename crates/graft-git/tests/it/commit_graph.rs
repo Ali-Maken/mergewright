@@ -93,6 +93,15 @@ fn the_decline_lives_under_the_names_in_force() {
 
     // Old names: the decline sits where every earlier build wrote it.
     let copy = graft_fixtures::copy_into_temp(Shape::Linear);
+    // The corpus is built moved; without its marker it is a repository no
+    // build of the app has opened.
+    std::fs::remove_file(
+        copy.path()
+            .join(".git")
+            .join(OnDiskNames::New.dir())
+            .join(MIGRATED_MARKER),
+    )
+    .expect("the fixture's marker goes");
     let repo = open(copy.path());
     assert_eq!(repo.on_disk_names(), OnDiskNames::Old);
     commit_graph::remember_declined(&repo).expect("the decline writes");

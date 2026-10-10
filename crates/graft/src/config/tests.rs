@@ -287,7 +287,10 @@ fn xdg_config_home_wins_over_home() {
         _ => None,
     });
 
-    assert_eq!(path.as_deref(), Some(Path::new("/xdg/graft/config.toml")));
+    assert_eq!(
+        path.as_deref(),
+        Some(Path::new("/xdg/tributary/config.toml"))
+    );
 }
 
 #[test]
@@ -296,7 +299,7 @@ fn home_supplies_dot_config_when_xdg_is_unset() {
 
     assert_eq!(
         path.as_deref(),
-        Some(Path::new("/code/.config/graft/config.toml"))
+        Some(Path::new("/code/.config/tributary/config.toml"))
     );
 }
 
@@ -311,7 +314,7 @@ fn a_relative_xdg_config_home_is_ignored() {
 
     assert_eq!(
         path.as_deref(),
-        Some(Path::new("/code/.config/graft/config.toml"))
+        Some(Path::new("/code/.config/tributary/config.toml"))
     );
 }
 

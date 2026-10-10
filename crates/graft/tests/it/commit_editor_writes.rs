@@ -224,7 +224,7 @@ fn make_the_commit(app: &App, repo: &Path, state: &AppState) -> AppState {
     // The journal is `graft_ops`', and the undo group's business; what
     // matters here is that the write went through it, and that the entry
     // records the branch actually moving — which is what an undo will read.
-    let journal = repo.join(".git/graft/undo-journal.jsonl");
+    let journal = repo.join(".git/tributary/undo-journal.jsonl");
     let entries = std::fs::read_to_string(&journal).expect("the commit was journalled");
     assert!(entries.contains(r#""kind":"commit""#), "{entries}");
     assert!(entries.contains(r#""status":"committed""#), "{entries}");

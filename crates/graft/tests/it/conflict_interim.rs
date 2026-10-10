@@ -275,7 +275,7 @@ fn merge_stopped(app: &App, state: AppState) -> AppState {
 
 /// The journal on disk, as the app's own reader sees it.
 fn journal_entries(repo: &Path) -> Vec<graft_core::journal::JournalEntry> {
-    graft_ops::journal::Journal::open(&repo.join(".git/graft/undo-journal.jsonl"))
+    graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
         .expect("the journal the merge just wrote is readable")
         .entries()
         .to_vec()
@@ -970,7 +970,7 @@ fn killed_mid_rebase() -> graft_fixtures::Scratch {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::StoppedRebase);
     let path = scratch.path();
     let mut journal =
-        graft_ops::journal::Journal::open(&path.join(".git/graft/undo-journal.jsonl"))
+        graft_ops::journal::Journal::open(&path.join(".git/tributary/undo-journal.jsonl"))
             .expect("the journal file can be created");
     journal
         .append_pending(&JournalEntry {

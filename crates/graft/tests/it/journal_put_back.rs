@@ -135,8 +135,8 @@ fn u_never_acts_on_outside_rows() {
     app.close();
     assert_eq!(main_tip(repo), left, "the shell's reset stands");
     assert!(
-        !repo.join(".git/graft/undo-journal.jsonl").exists()
-            || graft_ops::journal::Journal::open(&repo.join(".git/graft/undo-journal.jsonl"))
+        !repo.join(".git/tributary/undo-journal.jsonl").exists()
+            || graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
                 .expect("the journal is readable")
                 .entries()
                 .is_empty(),

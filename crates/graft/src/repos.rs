@@ -52,6 +52,9 @@ pub struct RepoStore {
     /// signature can promise — only a count can — and a test asserts it stays
     /// at one across two jobs.
     opens: AtomicUsize,
+    /// What settling the on-disk names did at open (ticket 26), and the
+    /// lock a run on the old names keeps for the store's life.
+    settled: Mutex<Option<crate::rename::Settlement>>,
 }
 
 impl RepoStore {
@@ -69,7 +72,17 @@ impl RepoStore {
             generation: AtomicU64::new(0),
             table: Mutex::new(None),
             opens: AtomicUsize::new(0),
+            settled: Mutex::new(None),
         }
+    }
+
+    /// The status row's words for what settling the names at open could
+    /// not finish; `None` before the first open and when all is well.
+    #[must_use]
+    pub fn rename_words(&self) -> Option<String> {
+        lock(&self.settled)
+            .as_ref()
+            .and_then(|settled| crate::rename::words(&settled.outcome))
     }
 
     /// The path Graft was pointed at.
@@ -80,6 +93,11 @@ impl RepoStore {
 
     /// The open repository, opening it if this is the first time.
     ///
+    /// Opening settles the repository's on-disk names first
+    /// (`crate::rename::open_settled`): no job gets a handle before the
+    /// one-time move has run or been ruled out. A reopen the move needs is
+    /// part of the one open, not counted twice.
+    ///
     /// # Errors
     /// [`OpenError`] if the path is not a repository, or is one that cannot be
     /// used. A failure is not remembered: the directory may be a repository by
@@ -89,7 +107,9 @@ impl RepoStore {
         if let Some(repo) = open.as_ref() {
             return Ok(Arc::clone(repo));
         }
-        let repo = Arc::new(SharedRepo::open(&self.path)?);
+        let (repo, settled) = crate::rename::open_settled(&self.path)?;
+        let repo = Arc::new(repo);
+        *lock(&self.settled) = Some(settled);
         self.opens.fetch_add(1, Ordering::Release);
         *open = Some(Arc::clone(&repo));
         Ok(repo)
@@ -506,22 +526,24 @@ mod tests {
     }
 
     /// The app's own dir is the names in force under the common dir
-    /// (ADR-0057, Amendment §4): `graft` with no marker, `tributary` with.
+    /// (ADR-0057, Amendment §4) — and the store settles them on its first
+    /// open (ticket 26 Part B): a repository with nothing under the old
+    /// names is marked moved and opened on `tributary`, counted as one open.
     #[test]
     fn the_app_dir_follows_the_names_in_force() {
-        use graft_core::on_disk::{MIGRATED_MARKER, OnDiskNames};
+        use graft_core::on_disk::MIGRATED_MARKER;
 
         let copy = graft_fixtures::copy_into_temp(Shape::Linear);
-        let common = RepoStore::new(copy.path().to_path_buf(), None)
-            .common_dir()
-            .expect("opens");
-        let old = RepoStore::new(copy.path().to_path_buf(), None);
-        assert_eq!(old.app_dir().expect("opens"), common.join("graft"));
-
-        let new_dir = common.join(OnDiskNames::New.dir());
-        std::fs::create_dir_all(&new_dir).expect("makes the dir");
-        std::fs::write(new_dir.join(MIGRATED_MARKER), "clean\n").expect("writes");
-        let new = RepoStore::new(copy.path().to_path_buf(), None);
-        assert_eq!(new.app_dir().expect("opens"), common.join("tributary"));
+        let store = RepoStore::new(copy.path().to_path_buf(), None);
+        let common = store.common_dir().expect("opens");
+        assert_eq!(store.app_dir().expect("opens"), common.join("tributary"));
+        assert_eq!(store.opens(), 1, "the settle's reopen is not a second open");
+        assert_eq!(store.rename_words(), None, "nothing to say");
+        assert_eq!(
+            std::fs::read_to_string(common.join("tributary").join(MIGRATED_MARKER))
+                .expect("the marker is written"),
+            "clean\n"
+        );
+        assert!(!common.join("graft").exists());
     }
 }

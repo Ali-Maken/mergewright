@@ -26,6 +26,7 @@ pub mod mistake_radar;
 mod objects;
 pub mod operation;
 pub mod preview;
+pub mod rename;
 pub mod restore;
 pub mod rewrite;
 pub mod snapshot;
