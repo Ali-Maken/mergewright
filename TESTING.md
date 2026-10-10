@@ -3216,7 +3216,7 @@ it on `scripts/testdata/m8-trace-sample.trace`.
   over a real pty, 50 `j`; checks `lines`, `presses` (1–50 frames drew them, motions = keys sent), `names` (no subject
   word, author, ref or path in the file). **Right:** three `ok`.
 - [ ] **His run** (the user): the two commands above; the summaries go to `docs/perf/` and feed G-trace follow-up.
-- [ ] **His run after emphasis pieces** (the user; m8 05 Part 2): in Ghostty full screen, the release build, his repo
+- [x] (user, 2026-10-11, charms reports repo: "now it felt solid"; docs/field-notes.md) **His run after emphasis pieces** (the user; m8 05 Part 2): in Ghostty full screen, the release build, his repo
   (first command above) — hold `j` 3 s, let go; hold `k` back; `F`, then hold `j` again; quit with `q`, then
   `scripts/m8-trace-summary.sh <file>`. **Right:** it stops on the row he let go at, the thread lit at every step,
   never half-drawn; where a lit line meets a dot, the dot is on top, as in `docs/shots/m8-05-emphasis-pieces.png`
