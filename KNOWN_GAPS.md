@@ -1324,3 +1324,14 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/27-crate-names-codename | Crate names carry the codename `graft`; rename before the source is published (27's decided row, never filed). | **broken** | M8 |
 | M8/26r-man-older-version | Man page doesn't name `older-version/`, yet the status row says "kept in .git/tributary/older-version/1" (26r hand-off to 27, dropped). | **broken** | M8 |
 | M8/05-draw-tail-quiet-run | 05 amendment 1: draw_us p50/p99 targets (≤3,172 / ≤19,965 µs) met on run 2, missed on run 1 (load avg 7.3); under the same load the after binary beats the before binary on every draw percentile (docs/perf/m8-trace-followup.txt:163-170). Byte targets met every run. Re-run scripts/m8-trace-followup.sh on a quiet machine at the M8 release perf run; ticket box :435 stays open until then. | **unverified** | M8 close |
+| M8/usab-m1-o-take-ancestor | Bar offers `o take` on every ancestor of HEAD and `o` refuses (docs/reviews/m8-usability.md:110). | **broken** | post-M8 |
+| M8/usab-m2-help-dup-keys | `?` in the resolver lists `c`, `e`, `M` twice with different meanings (docs/reviews/m8-usability.md:117). | **broken** (textual) | post-M8 |
+| M8/usab-m3-rebase-ancestor-forecast | Rebase preview onto an ancestor forecasts work that won't happen (docs/reviews/m8-usability.md:121). | **broken** | post-M8 |
+| M8/usab-m4-detached-push-wording | At a rebase stop, `P`/`p` say "HEAD is detached — check out a branch first" (docs/reviews/m8-usability.md:127). | **broken** (textual) | post-M8 |
+| M8/usab-m5-journal-mark-overlap | Journal mark overlaps the summary; row says the same thing twice (docs/reviews/m8-usability.md:133). | **broken** | post-M8 |
+| M8/usab-m6-help-dead-keys | `?` lists keys that do nothing where it was opened (docs/reviews/m8-usability.md:139). | **broken** (textual) | post-M8 |
+| M8/usab-m7-init-box-pattern | Init box breaks the box pattern: `esc keep it`, no button row (docs/reviews/m8-usability.md:143). | **broken** (textual) | post-M8 |
+| M8/usab-m8-tour-step1-bar | Tour step 1: bar leads with `. explain`, card says `⏎ on the top row` (docs/reviews/m8-usability.md:145). | **broken** (textual) | post-M8 |
+| M8/usab-m9-context-menu-cursor | `.` menu has no `▸` cursor and no frame (docs/reviews/m8-usability.md:149). | **broken** | post-M8 |
+| M8/usab-q1-lost-after-rebase | Question for the user: every rebase lists the old tip as "✗ lost … no branch holds it" though `u` restores it (docs/reviews/m8-usability.md:155). | **question** | M8 stop |
+| M8/usab-q2-picker-enter-current | Question for the user: `⏎` on the current branch in the picker keeps it open while the bar offers "switch to it" (docs/reviews/m8-usability.md:159). | **question** | M8 stop |
