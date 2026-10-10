@@ -71,7 +71,9 @@ impl fmt::Display for RecentError {
 /// The file the list lives in, under `config_dir` (`$XDG_CONFIG_HOME` or
 /// `~/.config`).
 pub(crate) fn recent_file(config_dir: &Path) -> PathBuf {
-    config_dir.join("graft").join("recent")
+    config_dir
+        .join(crate::config::CONFIG_NAMES.dir())
+        .join("recent")
 }
 
 /// The config directory recents live under, from the environment the config

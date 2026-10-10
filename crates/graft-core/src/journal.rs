@@ -134,6 +134,10 @@ pub enum OperationKind {
     Undo,
     /// The inverse of an `Undo` entry.
     Redo,
+    /// The one-time move of the app's refs and files from the old names to
+    /// the new (ADR-0057, Amendment 2026-10-09). Journaled so the record says
+    /// it happened; never undone, and transparent to `u`/`U` like a fetch.
+    Migrate,
 }
 
 /// Where an entry is in the recording protocol (DESIGN.md §6.2).

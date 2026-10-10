@@ -56,7 +56,7 @@ May depend on: nothing internal (ARCHITECTURE.md crate table). One line per publ
 ## journal
 - `EntryId` (struct) — a journal entry's id, a ULID ordered by time; also the backup ref's last segment; serde as text.
 - `EntryId::new` (fn) — `(unix_ms: i64, random: [u8; 10]) -> Self`; `parse` and `as_str` read and write the text.
-- `OperationKind` (enum) — every journaled operation kind (stage … push, merge, rebase, rewrite, conflicts, undo, redo; `Recover`: a ref moved back, a branch recreated, or files restored from a backup); serde snake_case.
+- `OperationKind` (enum) — every journaled operation kind (stage … push, merge, rebase, rewrite, conflicts, undo, redo; `Recover`: refs or files put back; `Migrate`: the one-time rename move, never undone); serde snake_case.
 - `EntryStatus` (enum) — `Pending`, `Committed`, `Aborted { reason }`.
 - `INTERRUPTED` (const) — `&str` reason recovery records on an entry a dead process left open.
 - `Touches` (struct) — what an operation changes: `refs`, `index`, `worktree`.
@@ -84,11 +84,15 @@ May depend on: nothing internal (ARCHITECTURE.md crate table). One line per publ
 - `Oid::from_bytes` (fn) — `(&[u8]) -> Result<Self, Error>`; `from_hex` parses, `as_bytes` reads.
 - `Oid::from_sha1` (fn) — `([u8; 20]) -> Self`: infallible wrap of a SHA-1 digest.
 
+## on_disk
+- `OnDiskNames` (enum) — `New` / `Old`: which on-disk names a repository uses (ADR-0057, Amendment). `ALL` (const) both, new first.
+- `OnDiskNames::ref_prefix` / `dir` / `link_trailer` (fn) — `refs/tributary/`|`refs/graft/`; `tributary`|`graft`; `Tributary-Link:`|`Graft-Link:`.
+- `MIGRATED_MARKER` (const) — `migrated`, in `<common_dir>/tributary/`: its existence puts `New` in force.
+
 ## raster
 - `RasterFrame` (struct) — the pixel renderer's strip: size in pixels and cells, premultiplied RGBA `pixels`.
 - `RasterFrame::pixel` (fn) — `(x, y) -> Option<[u8; 4]>`: one pixel, `None` outside.
 
 ## ref_name
 - `RefName` (struct) — a git ref's full name, validated.
-- `RefName::new` (fn) — `(impl Into<Vec<u8>>) -> Result<Self, Error>`; also `as_bytes`, `shorthand`, `is_graft_internal`.
-- `GRAFT_INTERNAL` (const) — `refs/graft/`, the namespace Graft writes its own refs under.
+- `RefName::new` (fn) — `(impl Into<Vec<u8>>) -> Result<Self, Error>`; also `as_bytes`, `shorthand`, `is_graft_internal` (true under either `OnDiskNames::ref_prefix`, `refs/graft/` or `refs/tributary/`, always).

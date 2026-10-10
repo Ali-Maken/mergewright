@@ -106,7 +106,7 @@ pub(crate) fn begin(
     }
 
     let entry = JournalEntry {
-        backup_ref: backup.map(|_| snapshot::backup_ref_name(&ctx.worktree, &id)),
+        backup_ref: backup.map(|_| backup_name(ctx, &id)),
         id,
         at_unix_ms: ctx.now_unix_ms,
         kind,
@@ -463,6 +463,12 @@ pub(super) fn put_back_for(op: &Operation) -> Option<PutBack> {
     Some(PutBack { stash, why })
 }
 
+/// The backup ref this context's entry `id` is kept under, in the
+/// repository's names in force — the same name `snapshot::take` writes.
+fn backup_name(ctx: &Context<'_>, id: &EntryId) -> String {
+    snapshot::backup_ref_name(ctx.repo.on_disk_names(), &ctx.worktree, id)
+}
+
 /// The kind as it reads in a backup commit's message — and, in the app,
 /// what a set-aside's `u` takes back with the edits (graft
 /// `update::clash::undone_with_edits`, m8-polish-and-ship/19d-a2).
@@ -501,5 +507,6 @@ pub fn kind_name(kind: OperationKind) -> &'static str {
         OperationKind::RevertTo => "revert to",
         OperationKind::Undo => "undo",
         OperationKind::Redo => "redo",
+        OperationKind::Migrate => "rename",
     }
 }

@@ -7,6 +7,7 @@
 use std::fmt;
 
 use crate::error::{Error, RefNameRule};
+use crate::on_disk::OnDiskNames;
 
 /// A git ref's **full** name — `refs/heads/main`, `refs/tags/v1.0`,
 /// `refs/remotes/origin/main`, or a root ref such as `HEAD`.
@@ -70,9 +71,10 @@ impl RefName {
 
     /// Graft's own bookkeeping, not the user's history.
     ///
-    /// Everything under [`GRAFT_INTERNAL`] is written by Graft for Graft:
-    /// today the undo journal's backup chains,
-    /// `refs/graft/backup/<worktree>/<ulid>` (ADR-0009, ADR-0010), kept
+    /// Everything under either [`OnDiskNames::ref_prefix`] — the old
+    /// `refs/graft/` or the new `refs/tributary/` (ADR-0057, Amendment) — is
+    /// written by Graft for Graft: today the undo journal's backup chains,
+    /// `<prefix>backup/<worktree>/<ulid>` (ADR-0009, ADR-0010), kept
     /// indefinitely so that a write can always be put back. The user never
     /// made them and must never be shown them — a backup is two commits
     /// above `HEAD`, so a day of staging would bury the branch the graph is
@@ -85,16 +87,13 @@ impl RefName {
     /// knows about it, and Graft draws stash entries on purpose.
     #[must_use]
     pub fn is_graft_internal(&self) -> bool {
-        self.0.starts_with(GRAFT_INTERNAL)
+        // Both prefixes, whichever is in force: a repository half-way through
+        // the rename must never show either namespace in the graph.
+        OnDiskNames::ALL
+            .iter()
+            .any(|names| self.0.starts_with(names.ref_prefix().as_bytes()))
     }
 }
-
-/// The namespace Graft writes its own refs under: `refs/graft/`.
-///
-/// One spelling, so that the rule about what is Graft's and what is the
-/// user's has a single home. [`RefName::is_graft_internal`] is the question
-/// to ask; this is the answer's prefix.
-pub const GRAFT_INTERNAL: &[u8] = b"refs/graft/";
 
 /// Git's `check-ref-format` rules for a full ref name, in git's own order.
 ///

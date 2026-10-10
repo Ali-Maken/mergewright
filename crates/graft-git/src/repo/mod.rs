@@ -19,6 +19,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use graft_core::oid::Oid;
+use graft_core::on_disk::{MIGRATED_MARKER, OnDiskNames};
 use graft_core::ref_name::RefName;
 
 use crate::run::{GitArg, GitInvocation, RunError};
@@ -67,6 +68,32 @@ impl KnownCommits for () {
 /// repository's configuration, so open it once and keep it.
 pub struct RepoHandle {
     repo: gix::Repository,
+    /// Which on-disk names this repository uses, read once at open.
+    names: OnDiskNames,
+}
+
+/// Which on-disk names the repository whose common dir is `common_dir` is
+/// using: [`OnDiskNames::New`] once the rename's marker exists, else
+/// [`OnDiskNames::Old`] (ADR-0057, Amendment §4). One `stat`, no spawn.
+///
+/// The marker lives in the common dir, never a worktree's own: the refs are
+/// shared, so the names are one state per repository.
+///
+/// # Errors
+/// [`OpenError::Io`] when the marker's existence cannot be told — guessing
+/// would risk reading one set of names while the repository uses the other.
+fn names_in(common_dir: &Path, opened_from: &Path) -> Result<OnDiskNames, OpenError> {
+    let marker = common_dir
+        .join(OnDiskNames::New.dir())
+        .join(MIGRATED_MARKER);
+    match marker.try_exists() {
+        Ok(true) => Ok(OnDiskNames::New),
+        Ok(false) => Ok(OnDiskNames::Old),
+        Err(source) => Err(OpenError::Io {
+            path: opened_from.to_path_buf(),
+            source,
+        }),
+    }
 }
 
 impl RepoHandle {
@@ -86,11 +113,26 @@ impl RepoHandle {
     /// cannot be read ([`Inaccessible`](OpenError::Inaccessible),
     /// [`Io`](OpenError::Io)), or a repository git itself would refuse
     /// ([`Unusable`](OpenError::Unusable)).
+    ///
+    /// Also [`OpenError::Io`] when whether the rename's marker exists cannot
+    /// be told (see [`on_disk_names`](Self::on_disk_names)).
     pub fn open(path: &Path) -> Result<Self, OpenError> {
         match gix::discover(path) {
-            Ok(repo) => Ok(RepoHandle { repo }),
+            Ok(repo) => {
+                let names = names_in(repo.common_dir(), path)?;
+                Ok(RepoHandle { repo, names })
+            }
             Err(error) => Err(OpenError::classify(path, error)),
         }
+    }
+
+    /// Which on-disk names this repository uses — the ref prefix, the dir
+    /// under `.git`, the backup trailer (ADR-0057, Amendment §4). Read once
+    /// at open from the marker in the common dir; every reader and writer of
+    /// those names takes them from here.
+    #[must_use]
+    pub fn on_disk_names(&self) -> OnDiskNames {
+        self.names
     }
 
     /// The repository's own directory: `<worktree>/.git` for an ordinary

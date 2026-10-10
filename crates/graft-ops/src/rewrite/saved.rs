@@ -90,9 +90,12 @@ impl SavedPlan {
     }
 }
 
-/// Where every rewrite's plan lives.
+/// Where every rewrite's plan lives: `<git_dir>/<dir>/rewrite`, `<dir>` the
+/// repository's names in force (ADR-0057, Amendment §4).
 pub(crate) fn root(repo: &RepoHandle) -> PathBuf {
-    repo.git_dir().join("graft").join("rewrite")
+    repo.git_dir()
+        .join(repo.on_disk_names().dir())
+        .join("rewrite")
 }
 
 /// This entry's plan directory.
@@ -214,6 +217,26 @@ mod tests {
         let json = br#"{"home":"refs/heads/f","line":[["refs/heads/f","0000000000000000000000000000000000000002"]],"onto":"0000000000000000000000000000000000000001","index_base":null}"#;
         let plan: SavedPlan = serde_json::from_slice(json).expect("it reads");
         assert_eq!(plan.forks, Vec::<(String, String)>::new());
+    }
+
+    /// Plans live under `<git_dir>/<dir>/rewrite`, `<dir>` the repository's
+    /// names in force (ADR-0057, Amendment): the marker switches them.
+    #[test]
+    fn plans_live_under_the_names_in_force() {
+        use graft_core::on_disk::{MIGRATED_MARKER, OnDiskNames};
+
+        let copy = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Linear);
+        let repo = RepoHandle::open(copy.path()).expect("opens");
+        assert_eq!(root(&repo), repo.git_dir().join("graft").join("rewrite"));
+
+        let marker_dir = repo.common_dir().join(OnDiskNames::New.dir());
+        std::fs::create_dir_all(&marker_dir).expect("makes the dir");
+        std::fs::write(marker_dir.join(MIGRATED_MARKER), "clean\n").expect("writes");
+        let repo = RepoHandle::open(copy.path()).expect("opens");
+        assert_eq!(
+            root(&repo),
+            repo.git_dir().join("tributary").join("rewrite")
+        );
     }
 
     #[test]

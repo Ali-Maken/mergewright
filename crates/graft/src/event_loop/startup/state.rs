@@ -19,7 +19,7 @@ use crate::update::{AppState, Size};
 /// first resize), plus the harness banner, the tier the probe settled on, and
 /// `[diff]`'s startup values into the pane's live options — same fields the
 /// `w`/`[`/`]`/`W` keys change afterwards, just seeded once instead of left
-/// at `DetailState::default()`'s. `common_dir` seeds the detail pane's saved
+/// at `DetailState::default()`'s. `app_dir` seeds the detail pane's saved
 /// split (ADR-0028, `crate::layout::load_split`); `None` when the repository
 /// could not be opened for it, in which case the pane starts at its
 /// percentage default like a first run would. `[radar]`'s startup values seed
@@ -33,7 +33,7 @@ pub(super) fn terminal_and_state(
     settled: &Session,
     harness: crate::update::Harness,
     config: &crate::config::Config,
-    common_dir: Option<&std::path::Path>,
+    app_dir: Option<&std::path::Path>,
 ) -> io::Result<(Frames<RowClear<CrosstermBackend<TerminalOut>>>, AppState)> {
     let terminal = Frames::new(RowClear::new(CrosstermBackend::new(out)))?;
     let size = terminal.size()?;
@@ -45,8 +45,8 @@ pub(super) fn terminal_and_state(
     state.settled_tier = Some(settled.rendering.tier);
     state.harness = harness;
     seed_config(&mut state, config);
-    if let Some(common_dir) = common_dir
-        && let Some(pane_size) = crate::layout::load_split(common_dir)
+    if let Some(app_dir) = app_dir
+        && let Some(pane_size) = crate::layout::load_split(app_dir)
     {
         state.detail.pane_size = pane_size;
     }

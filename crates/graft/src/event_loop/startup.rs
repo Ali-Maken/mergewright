@@ -276,10 +276,11 @@ pub(super) fn run_repo(
 
     let (mut wakes, sender) = ChannelWakes::new();
     let signals = signals::watch(sender.clone())?;
-    // Cloned before `repos` moves into the pool: the common directory (the
-    // detail-pane split lives under it, `crate::layout`) is wanted once more
-    // below, at startup and on every resize.
-    let common_dir = repos.common_dir().ok();
+    // Read before `repos` moves into the pool: the app's own dir in the
+    // common directory (`RepoStore::app_dir`), where the split and `Ctrl+E`'s
+    // file live, wanted at startup and on every resize. Its parent is the
+    // common directory `git var GIT_EDITOR` is asked in (`listen::outside`).
+    let app_dir = repos.app_dir().ok();
     // The worktree root, for the directory `$EDITOR` is started in and the
     // root a porcelain path is joined onto (m3/05 review, Major 2).
     let workdir = repos.workdir().ok().flatten();
@@ -304,7 +305,7 @@ pub(super) fn run_repo(
         &settled,
         harness,
         &config.config,
-        common_dir.as_deref(),
+        app_dir.as_deref(),
     )?;
     let undo = arrival.keymap.spell(&UNDO).0;
     arrive(&mut state, arrival);
@@ -322,7 +323,7 @@ pub(super) fn run_repo(
         outside(
             &term.session,
             mux,
-            common_dir.as_deref(),
+            app_dir.as_deref(),
             workdir.as_deref(),
             first_launch,
         ),

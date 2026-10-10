@@ -46,7 +46,9 @@ impl FirstRunError {
 
 /// The file the count lives in.
 pub(crate) fn launches_file(config_dir: &Path) -> PathBuf {
-    config_dir.join("graft").join("launches")
+    config_dir
+        .join(crate::config::CONFIG_NAMES.dir())
+        .join("launches")
 }
 
 /// What the file holds.

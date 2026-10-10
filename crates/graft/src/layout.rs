@@ -3,7 +3,8 @@
 //! column count means nothing as a row count once the window narrows into
 //! the other orientation.
 //!
-//! Lives in the repository's common directory, like the commit-graph offer
+//! Lives in the app's own dir in the repository's common directory
+//! (`crate::repos::RepoStore::app_dir`), like the commit-graph offer
 //! (`graft_git::commit_graph`'s module doc): the split is a per-repository
 //! preference, not a per-worktree one, and every worktree shares it.
 //!
@@ -18,17 +19,18 @@ use std::path::Path;
 
 use crate::update::detail::PaneSize;
 
-/// The file the split lives in, under `common_dir`.
-fn layout_path(common_dir: &Path) -> std::path::PathBuf {
-    common_dir.join("graft").join("layout")
+/// The file the split lives in, under `app_dir` — the app's own dir in the
+/// common directory, `<common_dir>/<names in force>`.
+fn layout_path(app_dir: &Path) -> std::path::PathBuf {
+    app_dir.join("layout")
 }
 
 /// The saved split, if a file is there and at least one line of it parses.
 /// `None` when the file is missing or unreadable — the caller falls back to
 /// the percentage default, no error surfaced.
 #[must_use]
-pub fn load_split(common_dir: &Path) -> Option<PaneSize> {
-    let text = std::fs::read_to_string(layout_path(common_dir)).ok()?;
+pub fn load_split(app_dir: &Path) -> Option<PaneSize> {
+    let text = std::fs::read_to_string(layout_path(app_dir)).ok()?;
     let mut split = PaneSize::default();
     let mut found = false;
     for line in text.lines() {
@@ -47,15 +49,15 @@ pub fn load_split(common_dir: &Path) -> Option<PaneSize> {
     found.then_some(split)
 }
 
-/// Write `split` to `<common_dir>/graft/layout`, two lines, one per
+/// Write `split` to `<app_dir>/layout`, two lines, one per
 /// orientation — a line omitted when its value is `None`.
 ///
 /// # Errors
-/// [`io::Error`] if the `graft` directory cannot be created or the file
+/// [`io::Error`] if the app's directory cannot be created or the file
 /// cannot be written. The caller (`event_loop::running`) treats this as
 /// expected and non-fatal, per the module doc.
-pub fn save_split(common_dir: &Path, split: &PaneSize) -> io::Result<()> {
-    let path = layout_path(common_dir);
+pub fn save_split(app_dir: &Path, split: &PaneSize) -> io::Result<()> {
+    let path = layout_path(app_dir);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
@@ -97,12 +99,7 @@ mod tests {
     #[test]
     fn a_line_that_does_not_parse_leaves_that_orientation_none() {
         let dir = tempfile::tempdir().expect("tempdir");
-        std::fs::create_dir_all(dir.path().join("graft")).expect("mkdir");
-        std::fs::write(
-            dir.path().join("graft").join("layout"),
-            "right=72\nbelow=nope\n",
-        )
-        .expect("write");
+        std::fs::write(dir.path().join("layout"), "right=72\nbelow=nope\n").expect("write");
 
         let loaded = load_split(dir.path());
 

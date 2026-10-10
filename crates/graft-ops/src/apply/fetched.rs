@@ -13,6 +13,7 @@ use std::collections::BTreeMap;
 
 use graft_core::journal::{JournalEntry, RefMove};
 use graft_core::oid::Oid;
+use graft_core::ref_name::RefName;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 
@@ -22,14 +23,12 @@ use crate::journal::moved_words;
 use super::run::PlanRun;
 use super::{AfterState, ApplyError};
 
-/// Every ref under `refs/` by full name, Graft's own `refs/graft/` aside.
+/// Every ref under `refs/` by full name, the app's own refs aside (either
+/// prefix, `RefName::is_graft_internal`).
 pub(crate) type RefStore = BTreeMap<String, Oid>;
 
 /// What a fetch moved, by full ref name.
 pub(crate) type Moved = BTreeMap<String, RefMove>;
-
-/// Graft's own refs (backups): never a fetch's doing.
-const GRAFT_REFS: &str = "refs/graft/";
 
 /// List every ref under `refs/` — one `for-each-ref`.
 ///
@@ -55,7 +54,15 @@ pub(crate) fn ref_store(repo: &RepoHandle, stop: &dyn Stop) -> Result<RefStore, 
         else {
             return Err(RunError::Unparsable(format!("for-each-ref line {line:?}")));
         };
-        if !symref.is_empty() || name.starts_with(GRAFT_REFS) {
+        if !symref.is_empty() {
+            continue;
+        }
+        // The app's own refs (backups), under either prefix: never a
+        // fetch's doing. One rule, graft-core's (ADR-0057, Amendment).
+        let internal = RefName::new(name)
+            .map_err(|why| RunError::Unparsable(format!("for-each-ref ref name: {why}")))?
+            .is_graft_internal();
+        if internal {
             continue;
         }
         let oid = Oid::from_hex(hex)
