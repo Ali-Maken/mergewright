@@ -2,10 +2,10 @@
 //! drawn in its ring style. Styles differ in *shape*, never only in colour,
 //! so they read with any palette — the Unicode tier's rule for its glyphs.
 
-use tiny_skia::{FillRule, PathBuilder, Pixmap, Rect, Stroke, StrokeDash, Transform};
+use tiny_skia::{PathBuilder, Pixmap, Rect, Stroke, StrokeDash, Transform};
 
 use super::Ink;
-use super::geometry::{eraser, paint};
+use super::geometry::{eraser, fill_placed, paint, snap, stroke_placed};
 use crate::row::Row;
 
 /// How a commit's node is drawn.
@@ -78,22 +78,35 @@ pub(super) fn draw(
     centre: (f32, f32),
     size: NodeSize,
     ink: Option<Ink>,
+    shift: Transform,
 ) {
-    let NodeSize {
-        radius,
-        ring: thickness,
-        gap,
-    } = size;
+    let NodeSize { radius, gap, .. } = size;
     let reach = match ring {
         Ring::Head => radius * 1.4,
         _ => radius,
     };
-    fill_circle(pixmap, centre, reach + gap, None);
-    let Some(ink) = ink else {
-        return;
-    };
+    fill_circle(pixmap, centre, reach + gap, None, shift);
+    if let Some(ink) = ink {
+        draw_ring(pixmap, ring, centre, size, ink, shift);
+    }
+}
+
+/// The node itself in `ink`, its disc already punched.
+fn draw_ring(
+    pixmap: &mut Pixmap,
+    ring: Ring,
+    centre: (f32, f32),
+    size: NodeSize,
+    ink: Ink,
+    shift: Transform,
+) {
+    let NodeSize {
+        radius,
+        ring: thickness,
+        ..
+    } = size;
     match ring {
-        Ring::Commit => fill_circle(pixmap, centre, radius, Some(ink)),
+        Ring::Commit => fill_circle(pixmap, centre, radius, Some(ink), shift),
         Ring::Merge => {
             stroke_circle(
                 pixmap,
@@ -102,8 +115,9 @@ pub(super) fn draw(
                 thickness,
                 ink,
                 false,
+                shift,
             );
-            fill_circle(pixmap, centre, radius * 0.4, Some(ink));
+            fill_circle(pixmap, centre, radius * 0.4, Some(ink), shift);
         }
         Ring::Root => stroke_circle(
             pixmap,
@@ -112,13 +126,22 @@ pub(super) fn draw(
             thickness,
             ink,
             false,
+            shift,
         ),
         Ring::Head => {
-            fill_circle(pixmap, centre, radius, Some(ink));
+            fill_circle(pixmap, centre, radius, Some(ink), shift);
             let halo = thickness * 0.6;
-            stroke_circle(pixmap, centre, radius * 1.4 - halo / 2.0, halo, ink, false);
+            stroke_circle(
+                pixmap,
+                centre,
+                radius * 1.4 - halo / 2.0,
+                halo,
+                ink,
+                false,
+                shift,
+            );
         }
-        Ring::Stash => fill_square(pixmap, centre, radius * 0.85, ink),
+        Ring::Stash => fill_square(pixmap, centre, radius * 0.85, ink, shift),
         Ring::Uncommitted => {
             stroke_circle(
                 pixmap,
@@ -127,25 +150,26 @@ pub(super) fn draw(
                 thickness,
                 ink,
                 true,
+                shift,
             );
         }
     }
 }
 
 /// Fill a disc in `ink`, or erase it to transparent when `ink` is `None`.
-fn fill_circle(pixmap: &mut Pixmap, (x, y): (f32, f32), radius: f32, ink: Option<Ink>) {
+fn fill_circle(
+    pixmap: &mut Pixmap,
+    (x, y): (f32, f32),
+    radius: f32,
+    ink: Option<Ink>,
+    shift: Transform,
+) {
     // `from_circle` is `None` only for a non-positive radius: nothing to draw.
     let Some(path) = PathBuilder::from_circle(x, y, radius) else {
         return;
     };
     let paint = ink.map_or_else(eraser, paint);
-    pixmap.fill_path(
-        &path,
-        &paint,
-        FillRule::Winding,
-        Transform::identity(),
-        None,
-    );
+    fill_placed(pixmap, &path, &paint, shift);
 }
 
 fn stroke_circle(
@@ -155,6 +179,7 @@ fn stroke_circle(
     width: f32,
     ink: Ink,
     dashed: bool,
+    shift: Transform,
 ) {
     let Some(path) = PathBuilder::from_circle(x, y, radius) else {
         return;
@@ -171,12 +196,18 @@ fn stroke_circle(
         dash,
         ..Stroke::default()
     };
-    pixmap.stroke_path(&path, &paint(ink), &stroke, Transform::identity(), None);
+    stroke_placed(pixmap, &path, &paint(ink), &stroke, shift);
 }
 
-fn fill_square(pixmap: &mut Pixmap, (x, y): (f32, f32), half: f32, ink: Ink) {
+fn fill_square(pixmap: &mut Pixmap, (x, y): (f32, f32), half: f32, ink: Ink, shift: Transform) {
+    // Moved by hand, after the strip-pixel edges are found: `fill_rect`
+    // under a transform is a path fill, which anti-aliases differently.
+    // Snapped first, as every outline is (`stroke_placed`), so the move is
+    // exact wherever the square lands.
+    let (left, right) = (snap(x - half) + shift.tx, snap(x + half) + shift.tx);
+    let (top, bottom) = (snap(y - half) + shift.ty, snap(y + half) + shift.ty);
     // `from_ltrb` is `None` only for an empty or non-finite rectangle.
-    let Some(rect) = Rect::from_ltrb(x - half, y - half, x + half, y + half) else {
+    let Some(rect) = Rect::from_ltrb(left, top, right, bottom) else {
         return;
     };
     pixmap.fill_rect(rect, &paint(ink), Transform::identity(), None);

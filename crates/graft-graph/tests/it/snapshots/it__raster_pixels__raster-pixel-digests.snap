@@ -2,19 +2,19 @@
 source: crates/graft-graph/tests/it/raster_pixels.rs
 expression: out
 ---
-foxtrot-merge @17x37: 68x148 d5d7ca6f025b93d4
-criss-cross-merge @17x37: 170x259 918d05b18c14791d
-octopus-merge @17x37: 136x185 6f0e74b9d12d22f1
-chain @17x37: 68x1184 446ef9038413474a
-parallel-mid @17x37: 238x1184 35522b49fd874597
-wide-mid @17x37: 986x1184 d302166ef81f25ca
-wide-thread @17x37: 986x1184 ffd717bbd078880f
-wide-marker @17x37: 408x1184 4700fbfc735c0701
-foxtrot-merge @8x16: 32x64 a4253efdef831be8
-criss-cross-merge @8x16: 80x112 a1f635011d2cd37f
-octopus-merge @8x16: 64x80 dc1b4704ccd9aa79
-chain @8x16: 32x512 d932dc0f6ea9d120
-parallel-mid @8x16: 112x512 fe4f0db33bfb7b73
-wide-mid @8x16: 464x512 f79d7c7f9968a79a
-wide-thread @8x16: 464x512 af7f05118deb9021
+foxtrot-merge @17x37: 68x148 d3501c47fe1a6290
+criss-cross-merge @17x37: 170x259 cd817d42486d8bef
+octopus-merge @17x37: 136x185 9847c80c11f325d0
+chain @17x37: 68x1184 c115a2af2cde8a66
+parallel-mid @17x37: 238x1184 1fa490e4f0afa73a
+wide-mid @17x37: 986x1184 35c0ab2f5b7364c7
+wide-thread @17x37: 986x1184 2fed1de244ac05ba
+wide-marker @17x37: 408x1184 365e999962eb1487
+foxtrot-merge @8x16: 32x64 0dcb43eb4008330f
+criss-cross-merge @8x16: 80x112 80ce14492e58b51d
+octopus-merge @8x16: 64x80 c632f30598650f9d
+chain @8x16: 32x512 8b8e0dfd545d01ee
+parallel-mid @8x16: 112x512 4e883a7de1220d20
+wide-mid @8x16: 464x512 d03b04775d1adb6e
+wide-thread @8x16: 464x512 3f0dbffb14d0b4c4
 wide-marker @8x16: 192x512 21a9672a011b0213
