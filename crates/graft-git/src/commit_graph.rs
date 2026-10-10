@@ -16,8 +16,8 @@
 //! **Outside the undo journal, by name** (ADR-0008, "Landed"): a commit-graph
 //! is a cache, not history; there is nothing to undo.
 //!
-//! **The decline lives in the common directory**, `<common_dir>/graft/
-//! commit-graph-offer`, not under `git rev-parse --git-path` (which is per
+//! **The decline lives in the common directory**, `<common_dir>/<dir>/
+//! commit-graph-offer` (`<dir>` from `RepoHandle::on_disk_names`), not under `git rev-parse --git-path` (which is per
 //! worktree): the commit-graph belongs to the shared object store, so one
 //! decline covers every worktree.
 
@@ -214,9 +214,13 @@ pub enum Offer {
     Declined,
 }
 
-/// Where the decline is remembered: `<common_dir>/graft/commit-graph-offer`.
+/// Where the decline is remembered: `<common_dir>/<dir>/commit-graph-offer`,
+/// `<dir>` being the repository's on-disk names in force (ADR-0057,
+/// Amendment §4).
 fn offer_file(repo: &RepoHandle) -> PathBuf {
-    repo.common_dir().join("graft").join("commit-graph-offer")
+    repo.common_dir()
+        .join(repo.on_disk_names().dir())
+        .join("commit-graph-offer")
 }
 
 /// Whether the user declined the offer for this repository (any worktree).
@@ -232,7 +236,7 @@ pub fn offer_state(repo: &RepoHandle) -> Result<Offer, io::Error> {
 }
 
 /// Remembers "never for this repository": writes `declined\n`, creating
-/// `graft/` in the common directory.
+/// the names-in-force dir in the common directory.
 ///
 /// # Errors
 /// The directory or the file could not be written.

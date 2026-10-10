@@ -54,6 +54,7 @@ pub use types::{
     ThemeChoice, Ui,
 };
 
+pub(crate) use load::CONFIG_NAMES;
 #[cfg(test)]
 use load::{load_at, path_in_environment};
 // The loader's own key lists, for `cli::docs_tests` to pair with

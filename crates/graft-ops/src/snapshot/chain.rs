@@ -4,6 +4,7 @@
 
 use graft_core::journal::{IndexState, JournalEntry};
 use graft_core::oid::Oid;
+use graft_core::on_disk::OnDiskNames;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, Stop};
 
@@ -14,8 +15,9 @@ use super::stage_tree::ls_tree_entry;
 use super::{SnapshotError, both_trees, commit_trees, move_backup_ref};
 
 /// Why a link of the backup chain was written (m6-conflicts/22). Recorded in
-/// the backup commit's message as its last line, `Graft-Link: step` or
-/// `Graft-Link: resume`, so the chain is readable without the journal.
+/// the backup commit's message as its last line, `Tributary-Link: step` or
+/// `Tributary-Link: resume` (`Graft-Link:` before the rename, still read), so
+/// the chain is readable without the journal.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LinkKind {
     /// Before a step folded into the live operation (a resolver write).
@@ -29,10 +31,14 @@ pub enum LinkKind {
 }
 
 impl LinkKind {
-    fn trailer(self) -> &'static str {
+    /// The line a new link is written with. Always the new key, whatever
+    /// names the repository is using: the reader takes both, forever, so
+    /// nothing depends on which one a commit carries (ADR-0057, Amendment).
+    pub(super) fn trailer(self) -> String {
+        let key = OnDiskNames::New.link_trailer();
         match self {
-            LinkKind::Step => "Graft-Link: step",
-            LinkKind::Resume => "Graft-Link: resume",
+            LinkKind::Step => format!("{key} step"),
+            LinkKind::Resume => format!("{key} resume"),
         }
     }
 }
@@ -243,12 +249,18 @@ fn parent_and_link(
 }
 
 /// The kind a backup commit's message records: its last non-empty line, when
-/// that is a `Graft-Link:` line; [`LinkKind::Step`] when there is none (a
-/// link written before the kind was, or the pre-operation snapshot).
-fn link_of(commit: Oid, message: &str) -> Result<LinkKind, SnapshotError> {
+/// that is a `Tributary-Link:` or `Graft-Link:` line (either key, whatever
+/// names are in force: backup commits are immutable); [`LinkKind::Step`]
+/// when there is none (a link written before the kind was, or the
+/// pre-operation snapshot).
+pub(super) fn link_of(commit: Oid, message: &str) -> Result<LinkKind, SnapshotError> {
     let last = message.lines().rev().find(|line| !line.trim().is_empty());
-    let Some((line, value)) = last.and_then(|line| Some((line, line.strip_prefix("Graft-Link:")?)))
-    else {
+    let Some((line, value)) = last.and_then(|line| {
+        OnDiskNames::ALL
+            .iter()
+            .find_map(|names| line.strip_prefix(names.link_trailer()))
+            .map(|value| (line, value))
+    }) else {
         return Ok(LinkKind::Step);
     };
     match value.trim() {

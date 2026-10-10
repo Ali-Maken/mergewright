@@ -392,7 +392,8 @@ fn undone_with_edits(kind: Option<OperationKind>) -> Option<&'static str> {
         | OperationKind::AbortMerge
         | OperationKind::RevertTo
         | OperationKind::Undo
-        | OperationKind::Redo => graft_ops::apply::kind_name(kind),
+        | OperationKind::Redo
+        | OperationKind::Migrate => graft_ops::apply::kind_name(kind),
     })
 }
 

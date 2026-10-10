@@ -333,7 +333,7 @@ fn a_link_without_a_kind_reads_as_step() {
     let written = repo.git(&["log", "-1", "--format=%B", &name]);
     assert_eq!(
         written.lines().last(),
-        Some("Graft-Link: step"),
+        Some("Tributary-Link: step"),
         "{written}"
     );
 

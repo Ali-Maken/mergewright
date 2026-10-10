@@ -138,3 +138,25 @@ fn debug_escapes_what_it_prints() {
         r#"RefName("refs/heads/\u{202e}gpj.exe")"#
     );
 }
+
+#[test]
+fn both_prefixes_internal() {
+    // Both namespaces are the app's own: a repository mid-way through the
+    // rename (ADR-0057, Amendment) must show neither in the graph.
+    for name in [
+        "refs/graft/backup/main/01J0",
+        "refs/tributary/backup/main/01J0",
+    ] {
+        let name = RefName::new(name).expect("valid");
+        assert!(name.is_graft_internal(), "{name:?} is the app's own");
+    }
+    for name in [
+        "refs/heads/graft",
+        "refs/heads/tributary/x",
+        "refs/graftx/y",
+        "refs/stash",
+    ] {
+        let name = RefName::new(name).expect("valid");
+        assert!(!name.is_graft_internal(), "{name:?} is the user's");
+    }
+}

@@ -45,11 +45,11 @@ where
             // write ends the loop like any other.
             Command::CopyToClipboard(text) => write_clipboard(terminal, session, &text)?,
             Command::SaveLayout(split) => {
-                if let Some(common_dir) = outside.common_dir {
+                if let Some(app_dir) = outside.app_dir {
                     // Best-effort (`crate::layout`'s module doc): a missing or
-                    // unwritable `graft` directory is the expected case here,
+                    // unwritable app directory is the expected case here,
                     // not a failure worth surfacing.
-                    drop(crate::layout::save_split(common_dir, &split));
+                    drop(crate::layout::save_split(app_dir, &split));
                 }
             }
             Command::FirstLaunchDone(config_dir) => {

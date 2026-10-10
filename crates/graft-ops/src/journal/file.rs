@@ -20,7 +20,8 @@ use graft_git::run::RunError;
 use super::{JournalError, parse, render_outcome, render_pending};
 use crate::undo::RepoStateNow;
 
-/// The journal file's name under the per-worktree `graft/` directory.
+/// The journal file's name under the per-worktree names-in-force directory
+/// ([`journal_path`]).
 const FILE_NAME: &str = "undo-journal.jsonl";
 
 // The reason recorded for an entry whose process died before it could write
@@ -226,9 +227,12 @@ impl Journal {
     }
 }
 
-/// The journal's path for a repository: `graft/undo-journal.jsonl` resolved
-/// through `git rev-parse --git-path`, which is `.git/graft/…` in the main
-/// worktree and `.git/worktrees/<name>/graft/…` in a linked one (ADR-0010).
+/// The journal's path for a repository: `<dir>/undo-journal.jsonl` resolved
+/// through `git rev-parse --git-path`, which is `.git/<dir>/…` in the main
+/// worktree and `.git/worktrees/<name>/<dir>/…` in a linked one (ADR-0010).
+/// `<dir>` is the repository's names in force, `graft` or `tributary`
+/// (ADR-0057, Amendment §4).
 pub fn journal_path(repo: &RepoHandle) -> Result<PathBuf, RunError> {
-    repo.git_path(Path::new(&format!("graft/{FILE_NAME}")))
+    let dir = repo.on_disk_names().dir();
+    repo.git_path(Path::new(&format!("{dir}/{FILE_NAME}")))
 }

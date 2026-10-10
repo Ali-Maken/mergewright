@@ -88,6 +88,36 @@ fn a_decline_is_remembered_and_seen_from_a_linked_worktree() {
 }
 
 #[test]
+fn the_decline_lives_under_the_names_in_force() {
+    use graft_core::on_disk::{MIGRATED_MARKER, OnDiskNames};
+
+    // Old names: the decline sits where every earlier build wrote it.
+    let copy = graft_fixtures::copy_into_temp(Shape::Linear);
+    let repo = open(copy.path());
+    assert_eq!(repo.on_disk_names(), OnDiskNames::Old);
+    commit_graph::remember_declined(&repo).expect("the decline writes");
+    let common = repo.common_dir().to_path_buf();
+    assert!(common.join("graft").join("commit-graph-offer").is_file());
+
+    // New names: the marker switches the dir; the old file is not read.
+    let new_dir = common.join(OnDiskNames::New.dir());
+    std::fs::create_dir_all(&new_dir).expect("makes the dir");
+    std::fs::write(new_dir.join(MIGRATED_MARKER), "clean\n").expect("writes the marker");
+    let repo = open(copy.path());
+    assert_eq!(repo.on_disk_names(), OnDiskNames::New);
+    assert_eq!(
+        commit_graph::offer_state(&repo).expect("reads"),
+        Offer::Undecided
+    );
+    commit_graph::remember_declined(&repo).expect("the decline writes");
+    assert!(new_dir.join("commit-graph-offer").is_file());
+    assert_eq!(
+        commit_graph::offer_state(&repo).expect("reads"),
+        Offer::Declined
+    );
+}
+
+#[test]
 fn an_unwritable_object_store_is_git_s_own_failure_not_a_panic() {
     let whoami = Command::new("id")
         .arg("-u")

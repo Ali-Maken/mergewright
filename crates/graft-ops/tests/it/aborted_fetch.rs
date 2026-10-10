@@ -231,6 +231,54 @@ fn a_fetch_records_new_moved_pruned_and_tag_refs() {
     assert_eq!(entries(&remote).last(), Some(&applied.entry));
 }
 
+/// Both of the app's namespaces are its own, whichever names are in force
+/// (ADR-0057, Amendment): a leftover `refs/graft/` ref, or a
+/// `refs/tributary/` one, is never counted as fetched, even when a refspec
+/// makes the fetch write there.
+#[test]
+fn old_prefix_ref_not_fetched() {
+    let remote = local();
+    git(&remote, remote.work(), &["fetch", "-q", "origin"]);
+    for spec in [
+        "+refs/heads/*:refs/graft/fetched/*",
+        "+refs/heads/*:refs/tributary/fetched/*",
+    ] {
+        git(
+            &remote,
+            remote.work(),
+            &["config", "--add", "remote.origin.fetch", spec],
+        );
+    }
+    let tip = oid(&remote.commit_on_remote("from a teammate").unwrap());
+    git(
+        &remote,
+        remote.bare(),
+        &["branch", "feat", &tip.to_string()],
+    );
+
+    let applied = run_in(&remote, &fetch_all(false), NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
+
+    // git wrote under both namespaces...
+    assert_eq!(ref_value(&remote, "refs/graft/fetched/feat"), Some(tip));
+    assert_eq!(ref_value(&remote, "refs/tributary/fetched/feat"), Some(tip));
+    // ...and neither is a fetch's doing to the journal.
+    let fetched = applied
+        .entry
+        .fetched_refs
+        .expect("a fetch records its moves");
+    assert!(
+        fetched
+            .keys()
+            .all(|name| !name.starts_with("refs/graft/") && !name.starts_with("refs/tributary/")),
+        "{fetched:?}"
+    );
+    assert!(
+        fetched.contains_key("refs/remotes/origin/feat"),
+        "{fetched:?}"
+    );
+}
+
 /// `u` is unchanged by a fetch that moved refs before it failed: it still
 /// takes back the local change before it, and its plan touches no tracking
 /// ref (ADR-0037 §3, ADR-0062 decision 2).

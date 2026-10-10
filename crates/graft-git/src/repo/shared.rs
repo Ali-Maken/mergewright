@@ -4,7 +4,9 @@
 use std::fmt;
 use std::path::Path;
 
-use super::{OpenError, RepoHandle};
+use graft_core::on_disk::OnDiskNames;
+
+use super::{OpenError, RepoHandle, names_in};
 
 /// A repository handle that can be sent between threads, and the thing that
 /// keeps it open.
@@ -24,6 +26,9 @@ pub struct SharedRepo {
     /// How much decompressed object data a handle may keep. Applied per
     /// handle, because the cache lives in the thread-local half.
     object_cache_bytes: usize,
+    /// Which on-disk names the repository uses, read once at open and
+    /// handed to every handle (ADR-0057, Amendment §4).
+    names: OnDiskNames,
 }
 
 impl SharedRepo {
@@ -42,15 +47,28 @@ impl SharedRepo {
     /// [`RepoHandle::open`] does, and keeps it open.
     ///
     /// # Errors
-    /// The same four cases as [`RepoHandle::open`].
+    /// The same cases as [`RepoHandle::open`].
     pub fn open(path: &Path) -> Result<Self, OpenError> {
         match gix::ThreadSafeRepository::discover(path) {
-            Ok(repo) => Ok(SharedRepo {
-                repo,
-                object_cache_bytes: Self::OBJECT_CACHE_BYTES,
-            }),
+            Ok(repo) => {
+                // `ThreadSafeRepository` has no `common_dir`; a thread-local
+                // view of it is a clone of what was just loaded.
+                let names = names_in(repo.to_thread_local().common_dir(), path)?;
+                Ok(SharedRepo {
+                    repo,
+                    object_cache_bytes: Self::OBJECT_CACHE_BYTES,
+                    names,
+                })
+            }
             Err(error) => Err(OpenError::classify(path, error)),
         }
+    }
+
+    /// Which on-disk names the repository uses. See
+    /// [`RepoHandle::on_disk_names`].
+    #[must_use]
+    pub fn on_disk_names(&self) -> OnDiskNames {
+        self.names
     }
 
     /// A handle for the calling thread.
@@ -62,7 +80,10 @@ impl SharedRepo {
     pub fn handle(&self) -> RepoHandle {
         let mut repo = self.repo.to_thread_local();
         repo.object_cache_size_if_unset(self.object_cache_bytes);
-        RepoHandle { repo }
+        RepoHandle {
+            repo,
+            names: self.names,
+        }
     }
 
     /// A handle for the calling thread with an object cache of at most
@@ -75,7 +96,10 @@ impl SharedRepo {
     pub fn handle_with_object_cache(&self, bytes: usize) -> RepoHandle {
         let mut repo = self.repo.to_thread_local();
         repo.object_cache_size(bytes);
-        RepoHandle { repo }
+        RepoHandle {
+            repo,
+            names: self.names,
+        }
     }
 
     /// The repository's own directory. See [`RepoHandle::git_dir`].

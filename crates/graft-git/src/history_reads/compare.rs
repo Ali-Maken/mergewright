@@ -101,7 +101,7 @@ pub struct StashOnly {
 /// The commits a stash entry's **first parent** reaches that no branch,
 /// tag, remote or `HEAD` does: the base a stash was made on after that base
 /// was rebased away. Never an entry's index or untracked commits (its 2nd
-/// and 3rd parents). `refs/graft/**` holds nothing, as in `unreached`.
+/// and 3rd parents). The app's own refs hold nothing, as in `unreached`.
 ///
 /// `stashes` is newest first (`stash@{0}` first). Each commit is paired
 /// with the newest entry reaching it; the answer is ordered newest entry

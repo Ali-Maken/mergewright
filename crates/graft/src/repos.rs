@@ -191,6 +191,19 @@ impl RepoStore {
         Ok(self.shared()?.handle().common_dir().to_path_buf())
     }
 
+    /// The app's own directory in the common directory:
+    /// `<common_dir>/<dir>`, `<dir>` the repository's on-disk names in force
+    /// (ADR-0057, Amendment §4). Where `crate::layout`'s split and `Ctrl+E`'s
+    /// message file live. Not created here; a writer makes it.
+    ///
+    /// # Errors
+    /// As [`common_dir`](Self::common_dir).
+    pub fn app_dir(&self) -> Result<PathBuf, OpenError> {
+        let repo = self.shared()?;
+        let handle = repo.handle();
+        Ok(handle.common_dir().join(repo.on_disk_names().dir()))
+    }
+
     /// The root of the working tree, or `None` for a bare repository.
     ///
     /// Every path git's porcelain names is relative to this, so anything
@@ -490,5 +503,25 @@ mod tests {
         assert_eq!(store.opens(), 1, "no rebuild happened");
         let after = store.table().expect("the table opens");
         assert!(Arc::ptr_eq(&before, &after), "the same table is kept");
+    }
+
+    /// The app's own dir is the names in force under the common dir
+    /// (ADR-0057, Amendment §4): `graft` with no marker, `tributary` with.
+    #[test]
+    fn the_app_dir_follows_the_names_in_force() {
+        use graft_core::on_disk::{MIGRATED_MARKER, OnDiskNames};
+
+        let copy = graft_fixtures::copy_into_temp(Shape::Linear);
+        let common = RepoStore::new(copy.path().to_path_buf(), None)
+            .common_dir()
+            .expect("opens");
+        let old = RepoStore::new(copy.path().to_path_buf(), None);
+        assert_eq!(old.app_dir().expect("opens"), common.join("graft"));
+
+        let new_dir = common.join(OnDiskNames::New.dir());
+        std::fs::create_dir_all(&new_dir).expect("makes the dir");
+        std::fs::write(new_dir.join(MIGRATED_MARKER), "clean\n").expect("writes");
+        let new = RepoStore::new(copy.path().to_path_buf(), None);
+        assert_eq!(new.app_dir().expect("opens"), common.join("tributary"));
     }
 }

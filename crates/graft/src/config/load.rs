@@ -11,6 +11,8 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use graft_core::on_disk::OnDiskNames;
+
 use super::types::Config;
 
 /// What [`load`] found.
@@ -187,8 +189,14 @@ pub(super) fn path_in_environment(read: impl Fn(&str) -> Option<OsString>) -> Op
                 .map(|home| home.join(".config"))
         })?;
 
-    Some(config_home.join("graft").join("config.toml"))
+    Some(config_home.join(CONFIG_NAMES.dir()).join("config.toml"))
 }
+
+/// The on-disk names the config root uses: the app's folder under
+/// `$XDG_CONFIG_HOME` (or `~/.config`), holding `config.toml`, `recent` and
+/// `launches`. One seam for all three (ADR-0057, Amendment): still the old
+/// folder until the config-dir move (m8-polish-and-ship/26 Part B) lands.
+pub(crate) const CONFIG_NAMES: OnDiskNames = OnDiskNames::Old;
 
 /// The whole file, in two passes over the same text.
 ///

@@ -48,6 +48,7 @@ use std::path::{Path, PathBuf};
 
 use graft_core::journal::{EntryId, IndexState, Touches};
 use graft_core::oid::Oid;
+use graft_core::on_disk::OnDiskNames;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{RunError, Stop};
 
@@ -165,10 +166,11 @@ pub fn scope(touches: &Touches) -> SnapshotScope {
     }
 }
 
-/// `refs/graft/backup/<worktree>/<ulid>` — shared across worktrees by git,
-/// namespaced per worktree by us (ADR-0010).
-pub fn backup_ref_name(worktree: &str, id: &EntryId) -> String {
-    format!("refs/graft/backup/{worktree}/{id}")
+/// `<prefix>backup/<worktree>/<ulid>` — shared across worktrees by git,
+/// namespaced per worktree by us (ADR-0010). `<prefix>` is the repository's
+/// names in force: `refs/graft/` or `refs/tributary/` (ADR-0057, Amendment).
+pub fn backup_ref_name(names: OnDiskNames, worktree: &str, id: &EntryId) -> String {
+    format!("{}backup/{worktree}/{id}", names.ref_prefix())
 }
 
 /// The staged state, read without touching the real index.
@@ -272,7 +274,7 @@ pub fn take(
     let worktree_raw = raw_record(repo, scratch, stop, head, worktree_tree, &mut commands)?;
     let joined = mktree(repo, Some(index), Some(worktree_tree), worktree_raw, stop)?;
     let commit = commit_joined(repo, joined, id, label, parents, stop)?;
-    let name = backup_ref_name(worktree, id);
+    let name = backup_ref_name(repo.on_disk_names(), worktree, id);
     update_ref(repo, &name, commit, stop)?;
     Ok(Snapshot {
         index,

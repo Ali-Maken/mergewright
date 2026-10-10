@@ -34,9 +34,10 @@ use crate::terminal::{Suspended, TerminalSession};
 /// files are there in the headless path too, and the terminal is not.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Outside<'a> {
-    /// The repository's common git directory, where `crate::layout` keeps the
-    /// detail pane's split and where `Ctrl+E`'s message file goes.
-    pub common_dir: Option<&'a Path>,
+    /// The app's own dir in the repository's common git directory
+    /// (`crate::repos::RepoStore::app_dir`), where `crate::layout` keeps the
+    /// detail pane's split.
+    pub app_dir: Option<&'a Path>,
     /// The terminal, when there is one to hand over.
     pub handover: Option<Handover<'a>>,
     /// The process's first-launch switch, lent by `places::drive`
@@ -59,9 +60,13 @@ pub struct Handover<'a> {
     pub session: &'a TerminalSession,
     /// The reader to take off the terminal's input.
     pub mux: &'a InputMux,
-    /// The repository's git directory: where `Ctrl+E`'s message file goes,
-    /// and the directory `git var GIT_EDITOR` is asked in.
+    /// The repository's git directory: the directory `git var GIT_EDITOR`
+    /// is asked in.
     pub git_dir: Option<&'a Path>,
+    /// The app's own dir in the common directory
+    /// (`crate::repos::RepoStore::app_dir`): where `Ctrl+E`'s message file
+    /// goes.
+    pub app_dir: Option<&'a Path>,
     /// The root of the working tree, or `None` for a bare repository.
     ///
     /// Two jobs, both about `e`. It is the directory the editor is started
@@ -81,26 +86,26 @@ impl std::fmt::Debug for Handover<'_> {
     }
 }
 
-/// Where `Ctrl+E`'s message file goes, relative to the git directory.
+/// Where `Ctrl+E`'s message file goes, relative to the app's own dir.
 ///
-/// Under `graft/` rather than beside git's own `COMMIT_EDITMSG`, which git
+/// In the app's dir rather than beside git's own `COMMIT_EDITMSG`, which git
 /// rewrites on every commit and which a concurrent `git commit` in another
 /// terminal owns.
-const MESSAGE_FILE: &str = "graft/COMMIT_EDITMSG";
+const MESSAGE_FILE: &str = "COMMIT_EDITMSG";
 
 /// [`Handover::edit_message`] without the terminal: `message` written to
-/// the message file under `git_dir`, `open` run on that file, and what it
+/// the message file under `app_dir`, `open` run on that file, and what it
 /// left read back — exactly, nothing stripped. `open` is the editor; the
 /// loop passes one that hands the terminal over, a test one that does not.
 ///
 /// # Errors
 /// The file could not be written or read, or as `open`.
 pub fn edit_message_in(
-    git_dir: &Path,
+    app_dir: &Path,
     message: &str,
     open: impl FnOnce(&Path) -> Result<(), String>,
 ) -> Result<String, String> {
-    let path = git_dir.join(MESSAGE_FILE);
+    let path = app_dir.join(MESSAGE_FILE);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|error| format!("{}: {error}", parent.display()))?;
@@ -122,7 +127,10 @@ impl Handover<'_> {
     /// There is no repository, the file could not be written or read, the
     /// editor could not be found or started, or it exited non-zero.
     pub fn edit_message(&self, message: &str) -> Result<String, String> {
-        edit_message_in(self.repository()?, message, |path| self.open(path, None))
+        let app_dir = self
+            .app_dir
+            .ok_or_else(|| "no repository is open".to_owned())?;
+        edit_message_in(app_dir, message, |path| self.open(path, None))
     }
 
     /// `e` on the changes pane: the file under the cursor, at its line.

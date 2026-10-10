@@ -19,20 +19,24 @@ use crate::trace::{self, TerminalOut, Tracer};
 pub(super) fn outside<'a>(
     session: &'a TerminalSession,
     mux: &'a InputMux,
-    common_dir: Option<&'a std::path::Path>,
+    app_dir: Option<&'a std::path::Path>,
     workdir: Option<&'a std::path::Path>,
     first_launch: Option<&'a crate::first_launch::FirstLaunch>,
 ) -> Outside<'a> {
     Outside {
-        common_dir,
+        app_dir,
         first_launch,
         handover: Some(Handover {
             session,
             mux,
-            // The common directory, not the worktree's own: `crate::layout`
-            // already keeps Graft's files there, and the message file is
-            // written and read back within one key press.
-            git_dir: common_dir,
+            // The common directory — `app_dir`'s parent by construction
+            // (`RepoStore::app_dir`), not the worktree's own: `git var
+            // GIT_EDITOR` is asked there, as it always was.
+            git_dir: app_dir.and_then(std::path::Path::parent),
+            // The app's dir in the common directory: `crate::layout` already
+            // keeps the app's files there, and the message file is written
+            // and read back within one key press.
+            app_dir,
             workdir,
         }),
     }

@@ -15,6 +15,21 @@ use super::*;
 use crate::terminal::SessionOptions;
 use crate::terminal::tests::{KITTY, Transcript, raw_mode};
 
+/// `Ctrl+E`'s message file sits directly in the app's own dir — whichever
+/// names are in force decided that dir (ADR-0057, Amendment §4) — and what
+/// the editor left is read back exactly.
+#[test]
+fn the_message_file_lives_in_the_app_dir() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let app_dir = dir.path().join("tributary");
+    let back = edit_message_in(&app_dir, "subject\n", |file| {
+        assert_eq!(file, app_dir.join("COMMIT_EDITMSG"));
+        std::fs::write(file, "edited\n").map_err(|error| error.to_string())
+    })
+    .expect("the round trip runs");
+    assert_eq!(back, "edited\n");
+}
+
 /// The command's program and arguments as plain strings, which is all these
 /// tests care about.
 fn spelled(command: &Command) -> Vec<String> {
@@ -373,6 +388,7 @@ fn a_mergetool_that_exits_non_zero_still_puts_the_terminal_back() {
         session: &session,
         mux: &mux,
         git_dir: None,
+        app_dir: None,
         workdir: Some(workdir),
     };
     let failed = handover
@@ -404,6 +420,7 @@ fn a_mergetool_that_cannot_start_still_puts_the_terminal_back() {
         session: &session,
         mux: &mux,
         git_dir: None,
+        app_dir: None,
         workdir: Some(workdir),
     };
     let failed = handover
@@ -440,6 +457,7 @@ fn the_reader_is_reading_again_after_a_failed_mergetool() {
         session: &session,
         mux: &mux,
         git_dir: None,
+        app_dir: None,
         workdir: Some(workdir),
     };
     let _failed = handover.mergetool(Path::new("a.txt"));
@@ -471,6 +489,7 @@ fn a_mergetool_without_a_working_tree_refuses_before_handing_over() {
         session: &session,
         mux: &mux,
         git_dir: None,
+        app_dir: None,
         workdir: None,
     };
     let failed = handover

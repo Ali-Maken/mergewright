@@ -169,7 +169,10 @@ fn run_the_fixture_editor(repo: &Path, message: &str) -> String {
         .expect("git var runs");
     assert!(asked.status.success(), "git names an editor");
     let editor = String::from_utf8_lossy(&asked.stdout).trim().to_owned();
-    graft::event_loop::outside::edit_message_in(&repo.join(".git"), message, |file| {
+    let app_dir = repo
+        .join(".git")
+        .join(graft_core::on_disk::OnDiskNames::Old.dir());
+    graft::event_loop::outside::edit_message_in(&app_dir, message, |file| {
         let status =
             graft::event_loop::outside::editor_command(&editor, file, None, Some(repo)).status();
         match status {
