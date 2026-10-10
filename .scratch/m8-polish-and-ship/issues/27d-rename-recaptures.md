@@ -1,6 +1,6 @@
 # G-rename 2d — pty captures that print the name, re-shot
 
-Status: ready (split from 27, spec-only pass 2026-10-10)
+Status: parked — name not final (user 2026-10-10); resume after the naming discussion. Classify pass done: 244 re-shoot, 199 code-name only, 209 writers unknown (scout per dir).
 Blocked by: 27a, 27b
 Build with: **Sonnet** — runs existing capture scripts; judgement bounded by the drift script and two stop rules.
 Needs: 27a (`trib` binary, `scripts/shot-drift.py`, `27-shots-left.txt`), 27b (`TRIB_*` in the pty scripts, list
