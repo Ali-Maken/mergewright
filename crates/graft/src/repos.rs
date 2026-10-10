@@ -82,7 +82,7 @@ impl RepoStore {
     pub fn rename_words(&self) -> Option<String> {
         lock(&self.settled)
             .as_ref()
-            .and_then(|settled| crate::rename::words(&settled.outcome))
+            .and_then(|settled| crate::rename::words(&settled.outcome, &settled.root))
     }
 
     /// The path Graft was pointed at.

@@ -13,22 +13,28 @@
 //! The order, which is the whole of this module's correctness:
 //!
 //! 1. lock `<common_dir>/tributary/lock` alone (`try`, never wait);
-//! 2. create every new ref in one `update-ref --stdin` (a new ref already at
-//!    the old value is skipped; at another value, refuse);
+//! 2. make the new refs an exact copy of the old in one `update-ref
+//!    --stdin` — before the switch the new names are the move's own
+//!    scratch, so a stale one is overwritten and an extra one deleted;
 //! 3. read the new refs back;
-//! 4. copy every old folder, file by file, and read each copy back (a
-//!    journal is also parsed and compared entry by entry);
+//! 4. make every new folder an exact copy of its old one, file by file,
+//!    each copy read back, a copied journal's backups checked, every folder
+//!    touched synced;
 //! 5. write the marker `switched` — **the switch**: from here the new names
 //!    are in force for every opener;
 //! 6. append the `Migrate` entry to the opening worktree's new journal;
-//! 7. delete the old refs (each expected at its old value);
-//! 8. remove the old folders;
+//! 7. and 8. together, the stray pass (`strays`): each old ref and file
+//!    deleted when its new copy holds the same, carried when it has none,
+//!    and kept aside in `older-version/<n>/` when it differs — an older
+//!    build wrote it after step 4;
 //! 9. write the marker `clean`.
 //!
 //! A failure before 5 leaves the old names in force with nothing old
-//! deleted. A failure after 5 leaves the new names in force; the leftovers
-//! are removed on the next open, which finds the marker still `switched`.
-//! Nothing here touches the working tree or the index.
+//! deleted, and the next attempt starts from the old names again. A
+//! failure after 5 leaves the new names in force; the stray pass runs again
+//! on the next open, which finds the marker still `switched`. A `clean`
+//! open that finds old names on disk again (`stat`, no spawn) runs the
+//! stray pass too. Nothing here touches the working tree or the index.
 //!
 //! **Two windows.** A run that stays on the old names holds the lock shared
 //! for its life ([`OldNamesHold`]), so a second window can never move the
@@ -36,24 +42,32 @@
 //! lock taken alone waits for it (the kernel's wait, not a poll) and reads
 //! the marker again.
 
-use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
-use graft_core::journal::JournalEntry;
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::{MIGRATED_MARKER, OnDiskNames};
 use graft_git::file_lock::FileLock;
 use graft_git::repo::RepoHandle;
 
+mod journals;
+mod map;
 mod marker;
 mod record;
 mod refs;
+mod strays;
 mod trees;
 
+pub use map::{map_entries, map_entry, map_ref};
 use marker::Marker;
 pub use record::description;
+use strays::{Strays, old_names_present, settle_strays};
 
 /// The lock file, in `<common_dir>/<OnDiskNames::New.dir()>/`.
 pub const LOCK_FILE: &str = "lock";
+
+/// Where the stray pass keeps what an older build wrote under the old
+/// names after its copy was taken: `<common>/<New.dir()>/older-version/<n>/`
+/// for files, `refs/<New.dir()>/older-version/<n>/` for refs.
+pub const KEPT_ASIDE_DIR: &str = "older-version";
 
 /// What [`settle_names`] found and did.
 #[derive(Debug)]
@@ -83,20 +97,35 @@ pub enum SettleOutcome {
         files: usize,
         /// Why the journal has no entry for the move.
         not_journaled: Option<String>,
+        /// Where what an older build wrote during the move was kept.
+        kept_aside: Option<PathBuf>,
     },
     /// An earlier move was switched over but not finished; this open
-    /// removed what it left.
+    /// carried or removed what it left.
     CleanedUp {
-        /// Old refs deleted.
+        /// Old refs handled.
         refs: usize,
-        /// Old files removed.
+        /// Old files handled.
         files: usize,
+        /// Where what differed from its new copy was kept.
+        kept_aside: Option<PathBuf>,
+    },
+    /// Already moved, yet an older build — still open on the repository —
+    /// wrote under the old names again; this open carried or kept it.
+    OlderWrote {
+        /// Old refs handled.
+        refs: usize,
+        /// Old files handled.
+        files: usize,
+        /// Where what differed from its new copy was kept.
+        kept_aside: Option<PathBuf>,
     },
     /// The move did not happen; the old names stay in force, nothing old was
     /// deleted, and the next open tries again.
     KeptOld(MigrateError),
     /// The new names are in force, but some of the old ones are still on
-    /// disk; the next open removes them.
+    /// disk; the next open passes over them again. A stray pass that fails
+    /// or finds the lock taken lands here too.
     LeftOld(MigrateError),
 }
 
@@ -146,13 +175,21 @@ impl MigrateError {
 
 /// Settle which names `repo` uses, moving the old ones to the new if they
 /// are still there. Called once per open, before any job sees the
-/// repository. With the marker reading `clean` it reads that one file and
-/// spawns nothing.
+/// repository. With the marker reading `clean` and nothing under the old
+/// names, it reads that file and three folders and spawns nothing.
 #[must_use]
 pub fn settle_names(repo: &RepoHandle) -> Settled {
     let common = repo.common_dir();
     match marker::read(common) {
-        Ok(Some(Marker::Clean)) => new_names(SettleOutcome::Done),
+        Ok(Some(Marker::Clean)) => match old_names_present(repo) {
+            Ok(false) => new_names(SettleOutcome::Done),
+            Ok(true) => match lock_alone(common) {
+                Ok(Some(alone)) => older_wrote(repo, &alone),
+                Ok(None) => new_names(SettleOutcome::LeftOld(MigrateError::Busy)),
+                Err(error) => new_names(SettleOutcome::LeftOld(error)),
+            },
+            Err(error) => new_names(SettleOutcome::LeftOld(error)),
+        },
         Ok(Some(Marker::Switched)) => match lock_alone(common) {
             Ok(Some(alone)) => clean_up(repo, &alone),
             Ok(None) => new_names(SettleOutcome::LeftOld(MigrateError::Busy)),
@@ -166,56 +203,6 @@ pub fn settle_names(repo: &RepoHandle) -> Settled {
             Ok(None) => stay_old(common, MigrateError::Busy),
             Err(error) => stay_old(common, error),
         },
-    }
-}
-
-/// `name` as the names in force spell it: under the new names, a ref the
-/// journal recorded under the old prefix is now under the new one. The
-/// journal's bytes are never rewritten; every reader maps at read.
-#[must_use]
-pub fn map_ref(name: &str, names: OnDiskNames) -> Cow<'_, str> {
-    let (old, new) = (OnDiskNames::Old.ref_prefix(), OnDiskNames::New.ref_prefix());
-    match (names, name.strip_prefix(old)) {
-        (OnDiskNames::New, Some(rest)) => Cow::Owned(format!("{new}{rest}")),
-        _ => Cow::Borrowed(name),
-    }
-}
-
-/// Every ref name an entry holds, through [`map_ref`]: the backup ref, the
-/// touched refs, the before/after maps and a fetch's moved refs.
-pub fn map_entry(entry: &mut JournalEntry, names: OnDiskNames) {
-    if names == OnDiskNames::Old {
-        return;
-    }
-    let map = |name: &String| map_ref(name, names).into_owned();
-    if let Some(backup) = entry.backup_ref.as_mut() {
-        *backup = map(backup);
-    }
-    for name in &mut entry.touches.refs {
-        *name = map(name);
-    }
-    entry.refs_before = std::mem::take(&mut entry.refs_before)
-        .into_iter()
-        .map(|(name, oid)| (map(&name), oid))
-        .collect();
-    entry.refs_after = std::mem::take(&mut entry.refs_after)
-        .into_iter()
-        .map(|(name, oid)| (map(&name), oid))
-        .collect();
-    if let Some(fetched) = entry.fetched_refs.take() {
-        entry.fetched_refs = Some(
-            fetched
-                .into_iter()
-                .map(|(name, moved)| (map(&name), moved))
-                .collect(),
-        );
-    }
-}
-
-/// [`map_entry`] over a whole journal.
-pub fn map_entries(entries: &mut [JournalEntry], names: OnDiskNames) {
-    for entry in entries {
-        map_entry(entry, names);
     }
 }
 
@@ -285,7 +272,7 @@ fn migrate(repo: &RepoHandle, alone: FileLock) -> Settled {
             return stay_old(common, why);
         }
     };
-    if copied.refs.is_empty() && copied.trees.is_empty() {
+    if copied.refs == 0 && copied.trees == 0 {
         // Never used under the old names: nothing to move, nothing to
         // journal. The marker alone puts the new names in force.
         return match marker::write(common, Marker::Clean) {
@@ -301,97 +288,105 @@ fn migrate(repo: &RepoHandle, alone: FileLock) -> Settled {
         return stay_old(common, why);
     }
     // Switched: the new names are in force from here, whatever follows.
-    let not_journaled =
-        record::append(repo, copied.refs.len(), copied.files, &copied.command).err();
-    if let Err(why) = remove_old(repo, &copied.refs, &copied.trees) {
-        return new_names(SettleOutcome::LeftOld(why));
-    }
+    let not_journaled = record::append(repo, copied.refs, copied.files, &copied.command).err();
+    // Steps 7–8: the stray pass deletes each old copy that reads back the
+    // same and keeps aside what an older build wrote since step 4.
+    let strays = match settle_strays(repo) {
+        Ok(strays) => strays,
+        Err(why) => return new_names(SettleOutcome::LeftOld(why)),
+    };
     if let Err(why) = marker::write(common, Marker::Clean) {
         return new_names(SettleOutcome::LeftOld(why));
     }
     new_names(SettleOutcome::Migrated {
-        refs: copied.refs.len(),
+        refs: copied.refs,
         files: copied.files,
         not_journaled,
+        kept_aside: strays.kept_aside,
     })
 }
 
 /// What steps 2–4 made.
 struct Copied {
-    /// Every old ref and its value, each now also under the new prefix.
-    refs: refs::Listed,
-    /// Every old folder, each now also under the new name.
-    trees: Vec<trees::Tree>,
+    /// Old refs, each now also under the new prefix.
+    refs: usize,
+    /// Old folders, each now also under the new name.
+    trees: usize,
     /// Files copied, across every folder.
     files: usize,
-    /// The create transaction's command line, for the journal entry.
+    /// The mirror transaction's command line, for the journal entry.
     command: String,
 }
 
-/// Steps 2–4: every new ref created and read back, every old folder copied
-/// and read back. Deletes nothing.
+/// Steps 2–4: the new refs and folders made exact copies of the old, read
+/// back, and every folder touched synced. Deletes nothing old; deletes
+/// what an earlier, failed attempt left under the new names.
 fn copy_everything(repo: &RepoHandle) -> Result<Copied, MigrateError> {
+    let common = repo.common_dir();
     let old = refs::list(repo, OnDiskNames::Old)?;
-    let command = refs::create_and_read_back(repo, &old)?;
-    let trees = trees::old_trees(repo.common_dir())?;
+    let (command, new_refs) = refs::mirror_and_read_back(repo, &old)?;
+    let new_dir = common.join(OnDiskNames::New.dir());
+    let keep = [new_dir.join(LOCK_FILE), new_dir.join(MIGRATED_MARKER)];
+    let trees = trees::old_trees(common)?;
     let mut files = 0;
     for tree in &trees {
-        files += trees::copy(tree)?;
+        let copied = trees::mirror(tree, &keep)?;
+        journals::check_journals(&copied, &new_refs)?;
+        files += copied.len();
+    }
+    for scratch in trees::new_without_old(common)? {
+        trees::mirror(&scratch, &keep)?;
     }
     Ok(Copied {
-        refs: old,
-        trees,
+        refs: old.len(),
+        trees: trees.len(),
         files,
         command,
     })
 }
 
-/// Steps 7–8.
-fn remove_old(
-    repo: &RepoHandle,
-    old: &refs::Listed,
-    old_trees: &[trees::Tree],
-) -> Result<(), MigrateError> {
-    refs::delete(repo, old)?;
-    for tree in old_trees {
-        trees::remove(tree)?;
-    }
-    Ok(())
-}
-
-/// The marker reads `switched`: remove what the switched move left — each
-/// old ref whose new copy holds the same value, every old folder — and
-/// write `clean`. Creates nothing.
-fn clean_up(repo: &RepoHandle, _alone: &FileLock) -> Settled {
-    let cleaned = (|| {
-        let old = refs::list(repo, OnDiskNames::Old)?;
-        let new = refs::list(repo, OnDiskNames::New)?;
-        let copied: refs::Listed = old
-            .iter()
-            .filter(|(name, oid)| new.get(&*map_ref(name, OnDiskNames::New)) == Some(oid))
-            .map(|(name, oid)| (name.clone(), *oid))
-            .collect();
-        let trees = trees::old_trees(repo.common_dir())?;
-        let mut files = 0;
-        for tree in &trees {
-            files += trees::count(tree)?;
-        }
-        remove_old(repo, &copied, &trees)?;
-        if copied.len() != old.len() {
-            return Err(MigrateError::ReadBack {
-                what: format!(
-                    "{} old ref(s) without the same new one",
-                    old.len() - copied.len()
-                ),
-            });
-        }
-        marker::write(repo.common_dir(), Marker::Clean)?;
-        Ok((copied.len(), files))
-    })();
-    match cleaned {
-        Ok((refs, files)) => new_names(SettleOutcome::CleanedUp { refs, files }),
+/// The marker reads `clean`, yet something is under the old names again:
+/// an older build wrote it. The stray pass carries or keeps it.
+fn older_wrote(repo: &RepoHandle, _alone: &FileLock) -> Settled {
+    match settle_strays(repo) {
+        Ok(Strays {
+            refs: 0, files: 0, ..
+        }) => new_names(SettleOutcome::Done),
+        Ok(Strays {
+            refs,
+            files,
+            kept_aside,
+        }) => new_names(SettleOutcome::OlderWrote {
+            refs,
+            files,
+            kept_aside,
+        }),
         Err(why) => new_names(SettleOutcome::LeftOld(why)),
     }
+}
+
+/// The marker reads `switched`: the stray pass over what the switched move
+/// left, then `clean`.
+fn clean_up(repo: &RepoHandle, _alone: &FileLock) -> Settled {
+    match clean_up_steps(repo) {
+        Ok(Strays {
+            refs,
+            files,
+            kept_aside,
+        }) => new_names(SettleOutcome::CleanedUp {
+            refs,
+            files,
+            kept_aside,
+        }),
+        Err(why) => new_names(SettleOutcome::LeftOld(why)),
+    }
+}
+
+/// [`clean_up`]'s steps.
+fn clean_up_steps(repo: &RepoHandle) -> Result<Strays, MigrateError> {
+    let strays = settle_strays(repo)?;
+    marker::write(repo.common_dir(), Marker::Clean)?;
+    Ok(strays)
 }
 
 #[cfg(test)]

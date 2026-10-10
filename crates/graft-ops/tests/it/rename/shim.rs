@@ -3,7 +3,9 @@
 //! `merge_set_aside`'s spawn count and `set_aside_kill`). The shim logs every
 //! argv, and on the first `update-ref --stdin` — the create transaction —
 //! runs it and then either kills the child or moves one of the refs it just
-//! made, so the read-back sees something else.
+//! made, so the read-back sees something else. Or, on the first argv
+//! holding a given pattern, runs it and then a shell script: an older build
+//! writing at that step.
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -16,7 +18,7 @@ use crate::support::TempRepo;
 const SHIM: &str = r#"#!/bin/sh
 printf '%s\n' "$*" >> "$RENAME_LOG"
 case " $* " in
-*" update-ref --stdin "*)
+*" $RENAME_ON "*)
     if [ -n "$RENAME_AFTER" ] && [ ! -e "$RENAME_LOG.hit" ]; then
         : > "$RENAME_LOG.hit"
         "$RENAME_REAL_GIT" "$@" || exit $?
@@ -27,6 +29,10 @@ case " $* " in
             ;;
         move)
             "$RENAME_REAL_GIT" -C "$RENAME_CHILD_REPO" update-ref "$RENAME_MOVE_REF" "$RENAME_MOVE_TO"
+            exit $?
+            ;;
+        run)
+            sh -c "$RENAME_RUN"
             exit $?
             ;;
         esac
@@ -47,6 +53,14 @@ pub(super) enum After<'a> {
     Kill,
     /// Point this ref at this value.
     Move(&'a str, &'a str),
+    /// On the first git argv holding `on` (instead of the create), run
+    /// it, then this shell script.
+    Run {
+        /// A run of words the argv holds.
+        on: &'a str,
+        /// What the older build does there.
+        script: &'a str,
+    },
 }
 
 /// The real git, found on this process's `PATH` as `Command` would.
@@ -88,8 +102,30 @@ fn run_child(repo: &TempRepo, after: &After<'_>, settles: usize) -> (Vec<String>
         .env("RENAME_OUT", &out)
         .env("RENAME_SETTLES", settles.to_string())
         .env("RENAME_CHILD_REPO", repo.path())
+        .env("RENAME_ON", "update-ref --stdin")
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null());
+    tell_the_shim(&mut child, after);
+    let status = child.status().expect("the child runs");
+    let killed = matches!(after, After::Kill);
+    assert_eq!(status.success(), !killed, "the child: {status:?}");
+    let outcomes = match std::fs::read_to_string(&out) {
+        Ok(text) => text.lines().map(str::to_owned).collect(),
+        Err(why) if why.kind() == std::io::ErrorKind::NotFound => Vec::new(),
+        Err(why) => panic!("the outcomes read: {why}"),
+    };
+    // The shim writes the log on its first run: none when nothing spawned.
+    let logged = match std::fs::read_to_string(&log) {
+        Ok(text) => text,
+        Err(why) if why.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(why) => panic!("the log reads: {why}"),
+    };
+    std::fs::remove_dir_all(&bin).expect("the shim goes");
+    (outcomes, logged)
+}
+
+/// What the shim does, and on which argv, as the child's environment.
+fn tell_the_shim(child: &mut std::process::Command, after: &After<'_>) {
     match after {
         After::Nothing => {}
         After::Kill => {
@@ -101,18 +137,13 @@ fn run_child(repo: &TempRepo, after: &After<'_>, settles: usize) -> (Vec<String>
                 .env("RENAME_MOVE_REF", name)
                 .env("RENAME_MOVE_TO", oid);
         }
+        After::Run { on, script } => {
+            child
+                .env("RENAME_AFTER", "run")
+                .env("RENAME_ON", on)
+                .env("RENAME_RUN", script);
+        }
     }
-    let status = child.status().expect("the child runs");
-    let killed = matches!(after, After::Kill);
-    assert_eq!(status.success(), !killed, "the child: {status:?}");
-    let outcomes = match std::fs::read_to_string(&out) {
-        Ok(text) => text.lines().map(str::to_owned).collect(),
-        Err(why) if why.kind() == std::io::ErrorKind::NotFound => Vec::new(),
-        Err(why) => panic!("the outcomes read: {why}"),
-    };
-    let logged = std::fs::read_to_string(&log).expect("the log reads");
-    std::fs::remove_dir_all(&bin).expect("the shim goes");
-    (outcomes, logged)
 }
 
 /// Settle `repo` in a child, `after` done by the shim on the create.
@@ -129,6 +160,17 @@ pub(super) fn settle_twice_counting(repo: &TempRepo) -> (Vec<String>, Vec<String
         .expect("the child marked the second open");
     assert!(!first.trim().is_empty(), "the first open spawned git");
     let spawned = second
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(str::to_owned)
+        .collect();
+    (outcomes, spawned)
+}
+
+/// Settle once in a child: its outcome, and every git argv it spawned.
+pub(super) fn settle_once_counting(repo: &TempRepo) -> (Vec<String>, Vec<String>) {
+    let (outcomes, logged) = run_child(repo, &After::Nothing, 1);
+    let spawned = logged
         .lines()
         .filter(|line| !line.is_empty())
         .map(str::to_owned)

@@ -1,6 +1,6 @@
 # 26r — rename review fixes: a failed move retries cleanly, an older build's writes are never deleted unread
 
-Status: ready
+Status: Part A done (builder-opus, 2026-10-10); Part B open
 Blocked by: 26
 Build with: Part A **Opus**: the order is fully set out below, and every window gets a test that injects a writer at
 that step, so correctness can be judged by the tests. Fable only if the conductor's budget has room. Part B **Sonnet**:
@@ -97,35 +97,49 @@ pub(crate) enum ConfigDirMoved { /* existing variants */ OlderWrote { kept_aside
 - Config: `config: an older version wrote <old folder> · close it; kept in <p>` (or without `; kept in`).
 
 ## Part A: graft-ops `rename`, graft `rename::words`
-Acceptance (each box names its test, all in `graft-ops/tests/it/rename.rs` unless stated):
-- [ ] Copy fails part-way (test hook), then the old journal grows by one entry and an old `rewrite/<id>/plan.json` is
+Acceptance (each box names its test, all in `graft-ops/tests/it/rename.rs` unless stated). Ticked by the Part A
+builder, 2026-10-10. The new tests live in the submodule file `graft-ops/tests/it/rename/review.rs`, so their full
+names are `rename::review::<name>`.
+- [x] Copy fails part-way (test hook), then the old journal grows by one entry and an old `rewrite/<id>/plan.json` is
       removed. The next settle gives `Migrated`. The new journal is byte-equal to the grown old one, there is no
-      plan for `<id>` under the new names, and `git fsck` is clean — `a_failed_copy_retries_cleanly`.
-- [ ] Before the switch, a new ref at another oid is updated, and a new ref with no old counterpart is deleted —
-      `a_stale_new_ref_before_the_switch_is_overwritten`.
-- [ ] A hook between copy and step 8 appends to an old journal. The new journal equals the copy, and
+      plan for `<id>` under the new names, and `git fsck` is clean — `rename::review::a_failed_copy_retries_cleanly`.
+      Caveats: the part-way failure is a symlink in a linked worktree's old folder, not a hook. The common dir's
+      folder is copied first, and the test asserts those copies exist. The new journal is the grown old one
+      **followed by the move's own `Migrate` entry**, which step 6 appends. The test asserts the byte prefix and
+      exactly one `Migrate` entry after it.
+- [x] Before the switch, a new ref at another oid is updated, and a new ref with no old counterpart is deleted —
+      `rename::review::a_stale_new_ref_before_the_switch_is_overwritten`.
+- [x] A hook between copy and step 8 appends to an old journal. The new journal equals the copy, and
       `older-version/1/<path>` is byte-equal to the appended file. The outcome is `Migrated { kept_aside: Some }` and
-      the old tree is gone — `an_old_file_written_after_its_copy_is_kept_aside`.
-- [ ] A hook right after the rename into `P` writes the old path again. The next settle finds it (`OlderWrote`), and
-      its bytes are in `older-version/2/` — `a_write_after_the_rename_is_found_next_open`.
-- [ ] With the marker `clean`, an older build's `<common>/graft/layout` (differs), a new `refs/graft/x` and a linked
+      the old tree is gone — `rename::review::an_old_file_written_after_its_copy_is_kept_aside`. The hook is the git
+      shim on the stray pass's first spawn: the one `for-each-ref` naming both prefixes, after `switched` and the
+      `Migrate` entry. The new journal is asserted to start with the copy, because the `Migrate` entry follows.
+- [x] A hook right after the rename into `P` writes the old path again. The next settle finds it (`OlderWrote`), and
+      its bytes are in `older-version/2/` — `rename::review::a_write_after_the_rename_is_found_next_open`. The hook
+      fires at the pass's ref transaction, which comes after every old file has been renamed into `P` and compared.
+      No spawn falls between one file's rename and its compare.
+- [x] With the marker `clean`, an older build's `<common>/graft/layout` (differs), a new `refs/graft/x` and a linked
       worktree's old journal give `OlderWrote { refs: 1, .. }`. The ref is under `refs/tributary/`, the layout is kept
       aside, no old name is left, and a second settle is `Done` with zero spawns —
-      `an_older_build_writing_after_clean_is_carried_or_kept`.
-- [ ] An empty `<common>/refs/graft/` with the marker `clean` gives `Done` and zero spawns —
-      `an_empty_old_refs_dir_spawns_nothing`. `clean_marker_spawns_nothing` stays green.
-- [ ] A ref already under `refs/tributary/` at another oid goes to `refs/tributary/older-version/1/…`. Nothing is
-      deleted unread — `a_differing_stray_ref_is_kept_aside`.
-- [ ] Minor 5: the copied journal is parsed with `map_entries(New)`. A `backup_ref` it names that is missing under
-      `refs/tributary/` gives `KeptOld(ReadBack)` — `a_copied_journal_naming_a_missing_backup_is_refused`. The
-      tautological check is deleted.
-- [ ] Minor 2: each created dir and its parent is synced before `switched` —
+      `rename::review::an_older_build_writing_after_clean_is_carried_or_kept`.
+- [x] An empty `<common>/refs/graft/` with the marker `clean` gives `Done` and zero spawns —
+      `rename::review::an_empty_old_refs_dir_spawns_nothing`. `clean_marker_spawns_nothing` stays green.
+- [x] A ref already under `refs/tributary/` at another oid goes to `refs/tributary/older-version/1/…`. Nothing is
+      deleted unread — `rename::review::a_differing_stray_ref_is_kept_aside`.
+- [x] Minor 5: the copied journal is parsed with `map_entries(New)`. A `backup_ref` it names that is missing under
+      `refs/tributary/` gives `KeptOld(ReadBack)` —
+      `rename::review::a_copied_journal_naming_a_missing_backup_is_refused`. The tautological check is deleted.
+      This ruling is questioned in NOTES.
+- [x] Minor 2: each created dir and its parent is synced before `switched` —
       `rename::trees::tests::every_created_dir_is_synced` (a pure function that lists the dirs to sync).
-- [ ] M3: no closure is left in `clean_up`. `switched_marker_cleans_leftovers` stays green.
-- [ ] Words for every outcome, the new ones included — `graft/tests/it/rename_status.rs::every_outcome_has_its_words_or_none`
-      (extended).
-- [ ] Every existing 26 test stays green. `read_back_mismatch_keeps_old` still gives `KeptOld` on **that** attempt,
-      and its relaunch now migrates (assert added).
+- [x] M3: no closure is left in `clean_up`. `switched_marker_cleans_leftovers` stays green. Its `CleanedUp` literal
+      gained `kept_aside: None`. Its `layout` now has no new copy, so it is carried forward rather than deleted, and
+      the counts are unchanged.
+- [x] Words for every outcome, the new ones included — `graft/tests/it/rename_status.rs::every_outcome_has_its_words_or_none`
+      (extended, plus its helper `older_version_words`).
+- [x] Every existing 26 test stays green. `read_back_mismatch_keeps_old` still gives `KeptOld` on **that** attempt,
+      and its relaunch now migrates (assert added) — `rename::read_back_mismatch_keeps_old`, together with the
+      workspace nextest run (see NOTES).
 
 ## Part B: graft config folder, graft-fixtures
 - [ ] Both folders present: equal → deleted; absent → carried forward; differs → `older-version/1/`, warned on that
@@ -158,3 +172,42 @@ Acceptance (each box names its test, all in `graft-ops/tests/it/rename.rs` unles
 
 ## Size
 A ~50k, B ~25k. Two contexts.
+
+## NOTES — Part A (builder-opus, 2026-10-10)
+No compaction. Scout: ticket 26's scout plus the review's file:line refs; no new scout (I read the rename sources directly, since every one of them is edited).
+
+**Built.**
+- Pre-switch mirror: `refs::mirror_and_read_back` and `trees::mirror`, plus `trees::new_without_old` for a new folder whose old one is gone.
+- Stray pass: new `rename/strays.rs`, holding `settle_strays` and `old_names_present`.
+- `clean_up_steps` replaces the closure.
+- Backup check: `rename/journals.rs`.
+- `dirs_to_sync` and the folder fsyncs.
+- `words(outcome, root)`.
+- `map_ref`/`map_entry`/`map_entries` moved to `rename/map.rs` and re-exported unchanged, to keep `rename.rs` under the file-size ratchet's 400 lines.
+
+**Deviations, for the conductor:**
+- **Journal compare rule.** In the stray pass, an old journal counts as "equal" when its bytes are a **prefix** of the new one. The literal byte rule kept every migrated journal aside: step 6 appends the `Migrate` entry before step 8, so old ≠ new, and every move warned "an older version wrote". The journal is append-only, so a prefix means the old file holds nothing the new one lacks. An older build's append after the copy still differs and is still kept. `trees::holds_the_same`.
+- `clean_up_steps` returns `Strays`, not `(usize, usize)`. `CleanedUp` needs `kept_aside`.
+- `old_names_present` returns `Result<bool, MigrateError>`, not `io::Result`, so the error carries its path.
+- `kept_aside` when only refs were set aside holds the ref prefix as a path: `refs/tributary/older-version/<n>/`. The words print it as is.
+- Status words: `Migrated` with both `kept_aside` and `not_journaled` joins the two: `<older words> · not in the journal: <why>`.
+
+**Question (ruling Minor 5):** refusing on a journal `backup_ref` that is missing under `refs/tributary/` also refuses when the **user deleted that backup ref** under the old names (`apply/error.rs:277` treats that as a real state). The move then fails on every open, for good. That is M1's stuck state again, on the status row every launch. It is built as ruled. A parse error in the copy is skipped, with a comment saying why it is safe. The proposed alternative is to refuse only when the old ref exists and the mapped new one does not, which makes the check near-tautological. Conductor's call.
+
+**Residuals (unverified; for KNOWN_GAPS):**
+- The two from the ruling.
+- A `switched` clean-up after a `LeftOld` run that rewrote `tributary/layout` keeps the old `layout` aside, and shows a false "older version wrote" once. Only append-only journals get the prefix rule.
+- Refs that exist only in `packed-refs` are not detected on `clean`.
+
+**Touches:**
+- `SettleOutcome` matches: grep `SettleOutcome::` finds only `graft/src/rename.rs` and tests. `repos.rs` and `places::drive` don't match on it. `repos.rs` passes `settled.root`.
+- `rename_opens::no_old_dir_literal`: green.
+- The journal and undo tests and `migrate_is_transparent_to_undo`: green in the workspace run. `record.rs` is unchanged.
+- No captures, keys or journal kinds touched.
+- MAPs updated: graft-ops `## rename`, and the graft `rename` line.
+- For the G-rename list (27): `cli/man.rs` should name `older-version/`.
+
+**Verified:**
+- Each ticked test passed.
+- Workspace nextest: 6281/6282 on the first run. The one red was the `file_size` ratchet, fixed by the file split. The second run: 6282/6282, doctests 9/9 ok.
+- Not observed: power loss, and a real older binary running concurrently. The shim hooks emulate its writes.

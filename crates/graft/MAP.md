@@ -17,7 +17,7 @@ One line per public item. Update when a public item changes.
 - `layout` (mod) — the detail pane's saved split, `<app_dir>/layout` (`RepoStore::app_dir`) (m2-details-and-diffs/10b, ADR-0028).
 - `map` (mod) — the Map view's per-branch bucket counts: pure data, no drawing (m2-details-and-diffs/18).
 - `repos` (mod) — repository store, opened once and cached.
-- `rename` (mod, m8/26) — every open settled first: `open_settled(path)` (`pub(crate)`; reopens when the names changed), `Settlement` (`pub(crate)`; the outcome and the old-names hold, kept for the store's life), `words(&SettleOutcome) -> Option<String>` (`rename: still using the old names · …`, `rename: old names left behind · …`, `rename: done · not in the journal: …`; `None` on a clean move).
+- `rename` (mod, m8/26) — every open settled first: `open_settled(path)` (`pub(crate)`; reopens when the names changed), `Settlement` (`pub(crate)`; the outcome, the repository root and the old-names hold, kept for the store's life), `words(&SettleOutcome, root: &Path) -> Option<String>` (`rename: still using the old names · …`, `rename: old names left behind · …`, `rename: done · not in the journal: …`, and for `OlderWrote` or any `kept_aside: Some(p)` `rename: an older version wrote under the old names · close it[; kept in <p relative to root>]` (26r); `None` on a clean move).
 - `repository` (mod) — facts about one open repository.
 - `session` (mod) — startup and per-run session state.
 - `terminal` (mod) — raw mode and terminal session setup/restore.
