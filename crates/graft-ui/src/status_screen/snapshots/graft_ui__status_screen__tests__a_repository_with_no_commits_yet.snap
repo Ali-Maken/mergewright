@@ -2,7 +2,7 @@
 source: crates/graft-ui/src/status_screen/tests.rs
 expression: "draw(&view, 60, 10)"
 ---
-"Graft                                                       "
+"Tributary                                                   "
 "                                                            "
 "Repository  /code/fresh                                     "
 "HEAD        main (no commits yet)                           "

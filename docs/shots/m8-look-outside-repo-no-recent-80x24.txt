@@ -1,6 +1,6 @@
 m8-polish-and-ship/08: what right looks like — a first run, nothing remembered yet: no RECENT block and no `⏎` in the bar (`o open… · i init · c clone… · t practice tour · q quit · ? keys`); the rest as with recents. Colour unverified (rule 5).
 
- graft · no repository here
+ Tributary · no repository here
  ~/code
 
   o  Open…     i  Init     c  Clone…     t  Practice tour

@@ -4,7 +4,7 @@
 //! all-or-nothing. Every reversal is built from the *entry's own*
 //! before-fields and its own backup ref — both read by `begin` before the
 //! first step — and every ref goes back by compare-and-swap against the value
-//! this plan's own step wrote, so a refusal means something outside Graft
+//! this plan's own step wrote, so a refusal means something outside Tributary
 //! moved it and is reported rather than clobbered. Where the repository will
 //! not say what happened, nothing is written at all and the entry says so.
 
@@ -179,7 +179,7 @@ fn uncancellable<T>(ctx: &mut Context<'_>, work: impl FnOnce(&mut Context<'_>) -
 ///
 /// Newest first is what makes the compare-and-swaps meaningful: each ref is
 /// swapped against the value this plan's own step wrote, so a refusal means
-/// something outside Graft moved it in between — which is reported, never
+/// something outside Tributary moved it in between — which is reported, never
 /// clobbered.
 fn roll_back(
     ctx: &mut Context<'_>,

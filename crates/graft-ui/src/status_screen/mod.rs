@@ -169,7 +169,10 @@ impl<'a> StatusScreen<'a> {
     /// Every line of the screen, in order.
     fn lines(&self) -> Vec<Line<'static>> {
         let mut lines = vec![
-            Line::from(Span::styled("Graft", foreground(self.theme, Token::Accent))),
+            Line::from(Span::styled(
+                "Tributary",
+                foreground(self.theme, Token::Accent),
+            )),
             Line::default(),
         ];
 

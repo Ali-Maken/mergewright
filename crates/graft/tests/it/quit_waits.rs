@@ -247,8 +247,8 @@ fn capture_quit_stop_now() {
 
 /// What right looks like (`m8-quit-stopped-merge-relaunch-80x24.txt`, 13c–
 /// 13d): the caption is the one line the shell got when the stop box's `y`
-/// stopped a merge stuck in its `pre-merge-commit` hook — `graft: stopped
-/// merge main into feature after 10 s · the merge is paused · graft here
+/// stopped a merge stuck in its `pre-merge-commit` hook — `trib: stopped
+/// merge main into feature after 10 s · the merge is paused · trib here
 /// offers continue or abort` (the 10 s is the injected offer's). Below it,
 /// the next launch at 80x24, as drawn today (graft-ui untouched): `MERGING`
 /// at the top, the `Detail` tab of the narrow layout on the uncommitted

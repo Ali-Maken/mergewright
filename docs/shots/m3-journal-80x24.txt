@@ -30,7 +30,7 @@
 "  ●  40m ago   commit "WIP on…        interrupted · 1 ref · the…    interrupted "
 "  ●  3h ago    discard…     failed: error: unable to unlink…                    "
 "  ●  26h ago   stage…                 the index · backup saved                  "
-"  a branch deleted outside Graft and never checked out leaves no trace here     "
+"  a branch deleted outside Tributary and never checked out leaves no trace here "
 "                                                                                "
 "                                                                                "
 "                                                                                "

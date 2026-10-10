@@ -32,7 +32,7 @@ impl AskPass for Scripted {
 }
 
 fn graft() -> PathBuf {
-    PathBuf::from(env!("CARGO_BIN_EXE_graft"))
+    PathBuf::from(env!("CARGO_BIN_EXE_trib"))
 }
 
 /// Runs the binary the way git would: the prompt as its one argument, the
@@ -100,7 +100,7 @@ fn binary_exits_2_naming_the_error_when_graft_is_gone() {
     assert!(out.stdout.is_empty(), "no answer printed: {:?}", out.stdout);
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert_eq!(stderr.lines().count(), 1, "one line naming it: {stderr:?}");
-    assert!(stderr.starts_with("graft: askpass:"), "{stderr:?}");
+    assert!(stderr.starts_with("trib: askpass:"), "{stderr:?}");
     // No terminal escape: the helper never took the terminal over.
     assert!(!stderr.contains('\u{1b}'), "{stderr:?}");
 }

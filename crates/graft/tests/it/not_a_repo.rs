@@ -15,7 +15,7 @@ fn off_a_terminal_a_path_that_is_not_a_repository_is_one_plain_line() {
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let isolated = Isolated::new();
 
-    let output = Command::new(env!("CARGO_BIN_EXE_graft"))
+    let output = Command::new(env!("CARGO_BIN_EXE_trib"))
         .arg(&dir)
         // A git repository above the temp dir must not count.
         .env(
@@ -31,7 +31,7 @@ fn off_a_terminal_a_path_that_is_not_a_repository_is_one_plain_line() {
     assert_eq!(output.status.code(), Some(1));
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stderr.starts_with("graft: ") && stderr.contains("not inside a git repository"),
+        stderr.starts_with("trib: ") && stderr.contains("not inside a git repository"),
         "{stderr}"
     );
     let stdout = String::from_utf8_lossy(&output.stdout);

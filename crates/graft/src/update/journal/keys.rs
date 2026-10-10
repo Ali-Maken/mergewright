@@ -319,12 +319,12 @@ pub(super) fn enter_graft(
         return;
     };
     let kind = entry.kind;
-    // A step Graft doesn't undo (a fetch, a push): the time machine skips
+    // A step Tributary doesn't undo (a fetch, a push): the time machine skips
     // it, so "before this" is "before" the next newer `●` row, which keeps
     // its own `⏎`. Nothing to go back to here (m7/30o Minor 4).
     if let Some(word) = not_undone_kind(entry) {
         next.status = Status::sticky(format!(
-            "Graft doesn't undo a {word} · nothing to go back to on this row"
+            "Tributary doesn't undo a {word} · nothing to go back to on this row"
         ));
         return;
     }
@@ -369,7 +369,7 @@ pub(super) fn enter_graft(
     undo_from_j(next, commands, redo, next_id);
 }
 
-/// The word J draws for a step Graft doesn't undo, or `None` for one it
+/// The word J draws for a step Tributary doesn't undo, or `None` for one it
 /// does. The predicate is `graft_ops::journal::undoable`, the one
 /// `plan_revert_to` skips by, so J's `⏎` and its bar cannot disagree with
 /// what the time machine would do.

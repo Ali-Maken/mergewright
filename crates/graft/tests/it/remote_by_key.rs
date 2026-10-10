@@ -672,7 +672,7 @@ fn stale_lease_refused() {
 }
 
 /// **m6-06, `KNOWN_GAPS` 550, clause (iii).** The push box is opened on
-/// `main`; `HEAD` then moves to `feature` outside Graft, with no re-read —
+/// `main`; `HEAD` then moves to `feature` outside Tributary, with no re-read —
 /// the stale-facts state of the `Ctrl+R` race, made deterministic. `Enter`
 /// launches the box's push unchanged (the app holds no check of its own);
 /// `graft_ops::apply` re-reads `HEAD` and refuses it with

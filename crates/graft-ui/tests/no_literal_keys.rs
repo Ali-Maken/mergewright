@@ -84,7 +84,7 @@ const ALLOWED: &[(&str, &str, &str)] = &[
     ),
     (
         "journal_screen.rs",
-        "a branch deleted outside Graft and never checked out leaves no trace here",
+        "a branch deleted outside Tributary and never checked out leaves no trace here",
         "`a` is the article",
     ),
     (

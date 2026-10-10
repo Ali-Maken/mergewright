@@ -58,7 +58,7 @@ impl LinkKind {
 /// ([`LinkKind`]).
 ///
 /// `Ok(None)` when the entry names no backup ref: there is nothing to chain
-/// onto, which is exactly the case of an operation begun outside Graft.
+/// onto, which is exactly the case of an operation begun outside Tributary.
 ///
 /// # Errors
 /// [`SnapshotError`] — the stop, or a `git` that would not run. Nothing is

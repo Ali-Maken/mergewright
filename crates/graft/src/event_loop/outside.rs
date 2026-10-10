@@ -26,6 +26,7 @@ use std::process::Command;
 
 use graft_term::input::InputMux;
 
+use crate::cli::COMMAND;
 use crate::terminal::{Suspended, TerminalSession};
 
 /// What the frame loop can reach outside itself.
@@ -417,7 +418,7 @@ impl Drop for Reenter<'_> {
         // failing to is not swallowed, it is printed, because a terminal
         // left half-restored is the one thing the user must know about.
         if let Err(error) = self.reenter() {
-            eprintln!("graft: could not re-enter the terminal after a panic: {error}");
+            eprintln!("{COMMAND}: could not re-enter the terminal after a panic: {error}");
         }
     }
 }

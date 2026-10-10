@@ -17,6 +17,9 @@ use std::panic::{self, AssertUnwindSafe, PanicHookInfo};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use graft_core::on_disk::OnDiskNames;
+
+use crate::cli::COMMAND;
 use crate::terminal::TerminalRestorer;
 
 /// Install the panic hook for the rest of the process.
@@ -143,12 +146,14 @@ fn announce(
 ) {
     let mut lines = String::new();
     if let Some(error) = restore_error {
-        lines.push_str(&format!("graft: could not restore the terminal: {error}\n"));
+        lines.push_str(&format!(
+            "{COMMAND}: could not restore the terminal: {error}\n"
+        ));
     }
     match saved {
-        Ok(path) => lines.push_str(&format!("graft crashed. Report: {}\n", path.display())),
+        Ok(path) => lines.push_str(&format!("{COMMAND} crashed. Report: {}\n", path.display())),
         Err(error) => lines.push_str(&format!(
-            "graft crashed, and the report could not be written ({error}):\n\n{report}\n"
+            "{COMMAND} crashed, and the report could not be written ({error}):\n\n{report}\n"
         )),
     }
     // Ignoring this write is deliberate: stderr is the last channel there is,
@@ -156,12 +161,19 @@ fn announce(
     let _ = out.write_all(lines.as_bytes());
 }
 
-/// `${XDG_STATE_HOME:-~/.local/state}/graft`.
+/// `${XDG_STATE_HOME:-~/.local/state}/tributary`.
 fn report_dir() -> Option<PathBuf> {
     let state_home = non_empty("XDG_STATE_HOME")
         .map(PathBuf::from)
         .or_else(|| non_empty("HOME").map(|home| Path::new(&home).join(".local").join("state")))?;
-    Some(state_home.join("graft"))
+    Some(report_dir_under(&state_home))
+}
+
+/// The reports' folder inside a state home: the app's folder in force, one
+/// source with the config folder (`OnDiskNames::New`). Reports written under
+/// the old name before the rename are left where they are.
+fn report_dir_under(state_home: &Path) -> PathBuf {
+    state_home.join(OnDiskNames::New.dir())
 }
 
 fn non_empty(variable: &str) -> Option<String> {
@@ -203,7 +215,7 @@ const MAX_REPORTS_PER_SECOND: u32 = 64;
 /// The report itself: what panicked, where, and how it got there.
 fn report(message: &str, location: &str, backtrace: &str, timestamp: &Timestamp) -> String {
     format!(
-        "graft {version} panicked\n\
+        "{COMMAND} {version} panicked\n\
          time:     {time}\n\
          location: {location}\n\
          message:  {message}\n\
@@ -384,6 +396,14 @@ mod tests {
     }
 
     #[test]
+    fn reports_go_to_the_tributary_folder_and_name_the_command() {
+        assert!(report_dir_under(Path::new("/state")).ends_with("tributary"));
+        let first = report("m", "l", "b", &Timestamp::from_unix_seconds(0));
+        let expected = format!("trib {} panicked\n", env!("CARGO_PKG_VERSION"));
+        assert!(first.starts_with(&expected), "{first}");
+    }
+
+    #[test]
     fn a_formatted_panic_message_survives() {
         let panicked = panic::catch_unwind(|| panic!("{} lanes, expected {}", 3, 4));
         let payload = panicked.unwrap_err();
@@ -439,7 +459,7 @@ mod tests {
 
         assert_eq!(
             String::from_utf8(out).unwrap(),
-            "graft crashed. Report: /state/crash.log\n"
+            "trib crashed. Report: /state/crash.log\n"
         );
     }
 

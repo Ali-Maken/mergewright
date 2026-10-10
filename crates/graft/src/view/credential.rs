@@ -16,7 +16,7 @@ use crate::update::credential::{CredentialPrompt, PromptField};
 
 /// What the note under the field says, always: Graft answers git's question
 /// and keeps nothing (design note m4, choice 2).
-const NOTE: &str = "typed here only · never stored by Graft";
+const NOTE: &str = "typed here only · never stored by Tributary";
 
 /// The prompt as it draws now, or `None` when git is asking nothing.
 #[must_use]

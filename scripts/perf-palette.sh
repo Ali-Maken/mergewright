@@ -36,7 +36,7 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 TARGET=${CARGO_TARGET_DIR:-$ROOT/target}
 SCRATCH=${SCRATCH:-$TARGET/perf-palette}
-BIN=$TARGET/release/graft
+BIN=$TARGET/release/trib
 [ -x "$BIN" ] || { echo "no release binary at $BIN" >&2; exit 1; }
 WHICH=${1:-all}
 case "$WHICH" in

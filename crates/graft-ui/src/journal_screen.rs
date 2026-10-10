@@ -72,11 +72,11 @@ pub fn legend(keys: &Keymap) -> String {
 /// The list's last line, muted: what the list cannot show (`reflog.md`
 /// takeaway 12).
 pub const NO_TRACE: &str =
-    "a branch deleted outside Graft and never checked out leaves no trace here";
+    "a branch deleted outside Tributary and never checked out leaves no trace here";
 
 /// The heading over an expanded row's Command Log. `$` means "outside
 /// Graft" and nothing else (UX §3.6), so the log's lines are `┆ git …`.
-pub const COMMANDS_HEADING: &str = "commands Graft ran";
+pub const COMMANDS_HEADING: &str = "commands Tributary ran";
 
 /// The heading over an expanded row's moved refs (ADR-0062): `refs the
 /// fetch moved · u does not move them back`, `app.undo`'s key spelled from
@@ -94,7 +94,7 @@ pub fn moved_heading(keys: &Keymap) -> String {
 const CURSOR: usize = 2;
 /// The glyph's column: `●  ` / `$  `.
 const GLYPH: usize = 3;
-/// The source word's column: `Graft` / `outside Graft`, padded.
+/// The source word's column: `Graft` / `outside Tributary`, padded.
 const SOURCE: usize = 15;
 /// The age's column: `2m ago`, padded.
 const AGE: usize = 10;
@@ -107,7 +107,7 @@ const WORDS_BEFORE_GIT: usize = 50;
 /// Which columns the width has room for (J1's breakpoints).
 #[derive(Clone, Copy, Debug)]
 struct Columns {
-    /// The source word (`Graft` / `outside Graft`): 120 and wider.
+    /// The source word (`Graft` / `outside Tributary`): 120 and wider.
     source: bool,
     /// The `git: "…"` column on `$` rows: 180 and wider.
     git: bool,

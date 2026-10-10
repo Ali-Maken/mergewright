@@ -2,7 +2,7 @@
 source: crates/graft-ui/src/status_screen/tests.rs
 expression: "draw(&view, 60, 10)"
 ---
-"Graft                                                       "
+"Tributary                                                   "
 "                                                            "
 "Repository  opening                                         "
 "Rendering   unicode, detected, cell 9x18 (reported)         "

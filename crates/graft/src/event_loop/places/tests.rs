@@ -417,14 +417,14 @@ impl crate::jobs::Dispatch for NoJobs {
 
 /// Graft's own binary, which git runs as the askpass helper: beside this
 /// test binary's `deps/` (as `jobs::clone::tests::graft_binary`; a unit test
-/// has no `CARGO_BIN_EXE_graft`).
+/// has no `CARGO_BIN_EXE_trib`).
 fn graft_binary() -> PathBuf {
     let test_binary = std::env::current_exe().unwrap();
     let profile = test_binary
         .parent()
         .and_then(Path::parent)
         .expect("a test binary lives in <target>/<profile>/deps");
-    let graft = profile.join(env!("CARGO_PKG_NAME"));
+    let graft = profile.join(crate::cli::COMMAND);
     assert!(
         graft.is_file(),
         "{} is not built: run the workspace's tests (cargo nextest run), which build it",

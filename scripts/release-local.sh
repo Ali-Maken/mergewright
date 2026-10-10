@@ -51,9 +51,9 @@ installer="$distrib/graft-installer.sh"
     (cd "$distrib" && ls -1 | sed 's/^/    /')
     echo "tar tf graft-$host.tar.xz:"
     tar tf "$archive" | sed 's/^/    /'
-    tar -xOf "$archive" "graft-$host/graft" >"$logs/graft"
-    chmod +x "$logs/graft"
-    echo "the archive's binary, --version: $("$logs/graft" --version)"
+    tar -xOf "$archive" "graft-$host/trib" >"$logs/trib"
+    chmod +x "$logs/trib"
+    echo "the archive's binary, --version: $("$logs/trib" --version)"
     # Homebrew refuses `--formula` on a file outside a tap, and making a tap
     # would change this machine's Homebrew. So the file goes in a temporary
     # `Formula/` folder and `brew style` lints it as a path, with Homebrew's

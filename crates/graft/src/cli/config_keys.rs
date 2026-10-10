@@ -158,7 +158,7 @@ pub const CONFIG_KEYS: &[ConfigKeyDoc] = &[
         "suspend_on_ctrl_z",
         "true | false",
         "false",
-        "ctrl+z suspends Graft like any terminal program; undo keeps u.",
+        "ctrl+z suspends Tributary like any terminal program; undo keeps u.",
     ),
     row(
         "keys.<context>",

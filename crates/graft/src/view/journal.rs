@@ -292,7 +292,7 @@ fn enter_words(list: &JournalList, state: &AppState, index: usize) -> Option<Str
             if state.live_entries.contains(id) {
                 return None;
             }
-            // A step Graft doesn't undo (a fetch, a push): `⏎` has nothing
+            // A step Tributary doesn't undo (a fetch, a push): `⏎` has nothing
             // to go back to there, so no promise (m7/30o Minor 4).
             if crate::update::journal::not_undone_kind(entry).is_some() {
                 return None;

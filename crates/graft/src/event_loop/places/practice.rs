@@ -10,6 +10,7 @@ use graft_ops::tour::PracticeAt;
 use super::super::startup::{Ran, Terminal};
 use super::super::{Exit, Open};
 use super::{Carried, Place, joined, locate};
+use crate::cli::COMMAND;
 use crate::config::Loaded;
 use crate::view::rows::home_relative;
 
@@ -46,7 +47,7 @@ pub(super) fn moved(
             go_to(&open, carried, config)
         }
         // `drive` hands only the three above to `moved`.
-        other => Err(format!("graft: {other:?} is not a place to go")),
+        other => Err(format!("{COMMAND}: {other:?} is not a place to go")),
     }
 }
 

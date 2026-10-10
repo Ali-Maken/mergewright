@@ -24,7 +24,7 @@ use crate::jobs::{EXIT_WRITE_WAIT, JobRunner, SHUTDOWN_GRACE, Shutdown};
 use crate::update::quit::{exit_line, not_started_line};
 
 /// The binary's own name, as the man page and the shell know it.
-const BIN: &str = env!("CARGO_PKG_NAME");
+const BIN: &str = crate::cli::COMMAND;
 
 /// What a repository's run leaves running once its loop is over: the job
 /// pool and the watchers, stopped by [`Pool::stop`] once the terminal is

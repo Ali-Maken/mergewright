@@ -41,6 +41,7 @@ pub use commit::{commit_trees, move_backup_ref};
 pub(crate) use commit::{scratch_commit, stash_create_on_copy};
 pub use index_paths::index_paths_changed;
 pub(crate) use index_paths::{index_paths, tracked_paths_now};
+pub use plumbing::{BACKUP_AUTHOR_EMAIL, BACKUP_AUTHOR_NAME};
 pub use raw::raw_record;
 
 use std::collections::BTreeMap;

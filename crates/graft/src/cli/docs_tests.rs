@@ -14,7 +14,7 @@ use super::man::chord_text;
 use super::{CONFIG_KEYS, FLAGS, Invocation, man_page, parse, usage, version};
 use crate::config::{self, Config, KEYS_SUSPEND, SCHEMA};
 
-const MAN_PAGE: &str = include_str!("../../../../docs/man/graft.1");
+const MAN_PAGE: &str = include_str!("../../../../docs/man/trib.1");
 const README: &str = include_str!("../../../../README.md");
 
 fn parsed(word: &str) -> Invocation {
@@ -57,14 +57,33 @@ fn help_is_usage_of_flags() {
     }
 }
 
-/// The committed `docs/man/graft.1` is what `--generate-man` prints today.
+/// The committed `docs/man/trib.1` is what `--generate-man` prints today.
 #[test]
 fn committed_man_page_is_the_generated_one() {
     let generated = man_page(FLAGS, defaults(), CONFIG_KEYS);
     assert!(
         MAN_PAGE == generated,
-        "docs/man/graft.1 is stale: run `cargo run -q -p graft -- --generate-man > docs/man/graft.1`"
+        "docs/man/trib.1 is stale: run `cargo run -q -p graft -- --generate-man > docs/man/trib.1`"
     );
+}
+
+/// The FILES and ENVIRONMENT paths name the folder the app uses today
+/// (`OnDiskNames::New`), never the old `graft/` one.
+#[test]
+fn man_page_names_the_config_folder_in_force() {
+    let page = man_page(FLAGS, defaults(), CONFIG_KEYS);
+    let dir = graft_core::on_disk::OnDiskNames::New.dir();
+    for path in [
+        format!("$XDG_CONFIG_HOME/{dir}/config.toml"),
+        format!("$XDG_CONFIG_HOME/{dir}/recent"),
+        format!("$XDG_CONFIG_HOME/{dir}/launches"),
+        format!("$XDG_STATE_HOME/{dir}/"),
+    ] {
+        assert!(page.contains(&path), "missing {path}");
+    }
+    assert!(!page.contains("/graft/"), "old folder named");
+    assert!(!page.contains("/graft\n") && !page.contains("/graft."));
+    assert!(page.starts_with(".TH TRIB 1"));
 }
 
 #[test]

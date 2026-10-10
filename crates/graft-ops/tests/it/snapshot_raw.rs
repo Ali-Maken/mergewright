@@ -182,6 +182,28 @@ fn a_snapshot_with_nothing_to_convert_keeps_nothing_raw() {
     assert!(!pending.contains("worktree_raw_before"), "{pending}");
 }
 
+/// A backup commit is authored and committed by the app, under the names
+/// `snapshot` exports, never the user's.
+#[test]
+fn a_backup_commit_carries_the_app_identity() {
+    let repo = TempRepo::init();
+    repo.write("a.rs", b"a\n");
+    repo.commit_all("first");
+    repo.write("a.rs", b"a changed\n");
+
+    let snapshot = taken(&repo);
+    let who = repo.git(&[
+        "log",
+        "-1",
+        "--format=%an <%ae> %cn <%ce>",
+        &snapshot.commit.to_string(),
+    ]);
+    let name = snapshot::BACKUP_AUTHOR_NAME;
+    let email = snapshot::BACKUP_AUTHOR_EMAIL;
+    assert_eq!(who.trim(), format!("{name} <{email}> {name} <{email}>"));
+    assert_eq!((name, email), ("tributary", "tributary@backup"));
+}
+
 /// `core.autocrlf=true`: only the changed LF files are kept. The CRLF file
 /// comes back from git's checkout as it is, the unchanged file is in
 /// history, and a symlink is never filtered.

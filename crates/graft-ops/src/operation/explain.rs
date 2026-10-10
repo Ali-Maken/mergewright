@@ -135,7 +135,7 @@ impl Refusal {
                 path.display()
             ),
             Self::NotInProgress => {
-                "nothing Graft started is in progress; an operation begun in the shell is \
+                "nothing Tributary started is in progress; an operation begun in the shell is \
                  finished there"
                     .to_owned()
             }
@@ -155,7 +155,7 @@ impl Refusal {
                 format!("{} is already on {branch}", history::short(*commit))
             }
             Self::PickMerge { commit } => format!(
-                "{} is a merge · taking a merge isn't in Graft yet",
+                "{} is a merge · taking a merge isn't in Tributary yet",
                 history::short(*commit)
             ),
             Self::NoSuchRef { name } => format!("{} does not exist", history::short_ref(name)),
@@ -221,7 +221,7 @@ impl Refusal {
                 format!("can't rewrite past a merge ({})", short(*merge))
             }
             Self::ForkedDependents { a, b } => format!(
-                "{} and {} are both built on yours · Graft moves one line",
+                "{} and {} are both built on yours · Tributary moves one line",
                 ref_words(a),
                 ref_words(b)
             ),
@@ -294,7 +294,7 @@ impl Refusal {
                 format!("{} is on {by} again · nothing to put back", short(*commit))
             }
             Self::NoPutBack(NoPutBack::Graft) => {
-                "done in Graft · revert to before it instead".to_owned()
+                "done in Tributary · revert to before it instead".to_owned()
             }
             Self::NoPutBack(NoPutBack::Switch { back_to }) => {
                 format!("a switch moves no branch · switch back to {back_to} instead")

@@ -1,8 +1,8 @@
-//! `graft --generate-man`: the man page, in roff, written from the same
+//! `trib --generate-man`: the man page, in roff, written from the same
 //! tables the program runs on (m8-polish-and-ship/23) — the flags from
 //! [`FLAGS`](super::FLAGS), the keys from `graft_ui::keymap::defaults()`,
 //! the config from [`CONFIG_KEYS`](super::CONFIG_KEYS). The committed copy,
-//! `docs/man/graft.1`, is compared with this output by a test.
+//! `docs/man/trib.1`, is compared with this output by a test.
 //!
 //! The output is plain ASCII: every other character is written as a roff
 //! `\[uXXXX]` escape, which mandoc and groff both read.
@@ -10,6 +10,9 @@
 use graft_ui::keymap::{Binding, ContextId, KeyChord, KeyCode};
 use graft_ui::theme::Token;
 
+use graft_core::on_disk::OnDiskNames;
+
+use super::COMMAND;
 use super::config_keys::{ConfigKeyDoc, is_pattern};
 use super::flags::{Flag, spelled};
 
@@ -17,9 +20,14 @@ use super::flags::{Flag, spelled};
 #[must_use]
 pub fn man_page(flags: &[Flag], keys: &[Binding], config: &[ConfigKeyDoc]) -> String {
     let mut out = String::new();
-    out.push_str(".TH GRAFT 1 \"\" \"graft\" \"User Commands\"\n");
+    let upper = COMMAND.to_ascii_uppercase();
+    out.push_str(&format!(
+        ".TH {upper} 1 \"\" \"{COMMAND}\" \"User Commands\"\n"
+    ));
     section(&mut out, "NAME");
-    out.push_str("graft \\- a terminal Git client for the daily work\n");
+    out.push_str(&format!(
+        "{COMMAND} \\- a terminal Git client for the daily work\n"
+    ));
     synopsis(&mut out, flags);
     section(&mut out, "DESCRIPTION");
     for (at, paragraph) in DESCRIPTION.iter().enumerate() {
@@ -27,7 +35,7 @@ pub fn man_page(flags: &[Flag], keys: &[Binding], config: &[ConfigKeyDoc]) -> St
         if at > 0 {
             out.push_str(".PP\n");
         }
-        text(&mut out, paragraph);
+        text(&mut out, &fill(paragraph));
     }
     options(&mut out, flags);
     key_tables(&mut out, keys);
@@ -42,7 +50,7 @@ pub fn man_page(flags: &[Flag], keys: &[Binding], config: &[ConfigKeyDoc]) -> St
 }
 
 const DESCRIPTION: &[&str] = &[
-    "graft opens the Git repository at path, or the one the current directory is in, \
+    "{cmd} opens the Git repository at path, or the one the current directory is in, \
      and draws its history as a graph. Staging, committing, branching, merging, \
      rebasing, stashing, fetching, pulling and pushing are done from the keyboard. \
      What it changes in the repository is written to an undo journal, and u undoes \
@@ -50,25 +58,25 @@ const DESCRIPTION: &[&str] = &[
     "A bar at the bottom of the screen names the keys that work where you are. \
      Press ? for help on the place you are in, and ctrl+p for the command palette, \
      which finds every action by name.",
-    "With no repository, graft shows where you can go instead: a recent repository, \
+    "With no repository, {cmd} shows where you can go instead: a recent repository, \
      a clone, or a practice repository with a short tour.",
 ];
 
 const ENVIRONMENT: &[(&str, &str)] = &[
     (
         "XDG_CONFIG_HOME",
-        "Where the config folder is: $XDG_CONFIG_HOME/graft. Ignored unless absolute; \
+        "Where the config folder is: $XDG_CONFIG_HOME/{dir}. Ignored unless absolute; \
          unset, $HOME/.config is used.",
     ),
     (
         "XDG_STATE_HOME",
-        "Where crash reports go: $XDG_STATE_HOME/graft. Unset or empty, \
+        "Where crash reports go: $XDG_STATE_HOME/{dir}. Unset or empty, \
          $HOME/.local/state is used.",
     ),
     (
         "HOME",
         "The fallback for both of the above. With neither it nor XDG_CONFIG_HOME set, \
-         no config file is read, and graft says so.",
+         no config file is read, and {cmd} says so.",
     ),
     (
         "NO_COLOR",
@@ -87,33 +95,41 @@ const ENVIRONMENT: &[(&str, &str)] = &[
     ),
     (
         "GRAFT_ASKPASS_SOCKET",
-        "Set by graft for the git it runs, so that git can ask graft for a password. \
+        "Set by {cmd} for the git it runs, so that git can ask {cmd} for a password. \
          Not for setting by hand.",
     ),
 ];
 
 const FILES: &[(&str, &str)] = &[
     (
-        "$XDG_CONFIG_HOME/graft/config.toml",
+        "$XDG_CONFIG_HOME/{dir}/config.toml",
         "The config file; see CONFIGURATION. No file is the normal case.",
     ),
     (
-        "$XDG_CONFIG_HOME/graft/recent",
-        "The repositories opened recently, offered when graft starts outside one.",
+        "$XDG_CONFIG_HOME/{dir}/recent",
+        "The repositories opened recently, offered when {cmd} starts outside one.",
     ),
     (
-        "$XDG_CONFIG_HOME/graft/launches",
+        "$XDG_CONFIG_HOME/{dir}/launches",
         "Launches counted, so the line saying where help is shows on the first five, \
          or until you first open the command palette.",
     ),
-    ("$XDG_STATE_HOME/graft/", "Crash reports."),
+    ("$XDG_STATE_HOME/{dir}/", "Crash reports."),
     (
-        "<git directory>/graft/",
+        "<git directory>/{dir}/",
         "Per repository: the undo journal (undo-journal.jsonl), the pane layout, a \
          paused rewrite's plan, the message file ctrl+e opens in your editor, and \
          whether you declined the commit-graph offer.",
     ),
 ];
+
+/// The tables' `{cmd}` and `{dir}` filled in: the command's name and the
+/// config/state folder in force (one source with the code that uses them).
+fn fill(words: &str) -> String {
+    words
+        .replace("{cmd}", COMMAND)
+        .replace("{dir}", OnDiskNames::New.dir())
+}
 
 fn section(out: &mut String, name: &str) {
     out.push_str(".SH ");
@@ -123,7 +139,7 @@ fn section(out: &mut String, name: &str) {
 
 fn synopsis(out: &mut String, flags: &[Flag]) {
     section(out, "SYNOPSIS");
-    out.push_str(".B graft\n");
+    out.push_str(&format!(".B {COMMAND}\n"));
     for flag in flags {
         // Quoted, or `.RB` would close the gap after the comma.
         out.push_str(&format!(".RB [ \"{}\" ]\n", option_words(flag)));
@@ -196,9 +212,11 @@ fn configuration(out: &mut String, config: &[ConfigKeyDoc]) {
     section(out, "CONFIGURATION");
     text(
         out,
-        "$XDG_CONFIG_HOME/graft/config.toml, in TOML. Every key is optional. An unknown \
-         key is a warning, not an error; a value a key does not take stops graft with \
-         the line and column.",
+        &fill(
+            "$XDG_CONFIG_HOME/{dir}/config.toml, in TOML. Every key is optional. An unknown \
+             key is a warning, not an error; a value a key does not take stops {cmd} with \
+             the line and column.",
+        ),
     );
     let mut current = "";
     for doc in config {
@@ -232,9 +250,9 @@ fn configuration(out: &mut String, config: &[ConfigKeyDoc]) {
 fn tagged(out: &mut String, rows: &[(&str, &str)]) {
     for (tag, words) in rows {
         out.push_str(".TP\n.B ");
-        out.push_str(&escape(tag));
+        out.push_str(&escape(&fill(tag)));
         out.push('\n');
-        text(out, words);
+        text(out, &fill(words));
     }
 }
 

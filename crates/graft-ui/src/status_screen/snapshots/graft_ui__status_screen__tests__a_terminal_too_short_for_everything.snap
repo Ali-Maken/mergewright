@@ -2,6 +2,6 @@
 source: crates/graft-ui/src/status_screen/tests.rs
 expression: "draw(&healthy(), 60, 3)"
 ---
-"Graft                                                       "
+"Tributary                                                   "
 "                                                            "
 "Repository  /code/api                                       "

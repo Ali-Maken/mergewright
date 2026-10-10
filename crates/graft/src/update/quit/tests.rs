@@ -903,35 +903,35 @@ fn exit_line_says_where_git_left_it() {
 
     let line = |at| {
         exit_line(
-            "graft",
+            "trib",
             "merge feature into main",
             Duration::from_millis(12_900),
             at,
             "z",
         )
     };
-    let stopped = "graft: stopped merge feature into main after 12 s";
+    let stopped = "trib: stopped merge feature into main after 12 s";
     assert_eq!(
         line(Some(StoppedAt::Paused(InProgress::Merge))),
-        format!("{stopped} \u{b7} the merge is paused \u{b7} graft here offers continue or abort")
+        format!("{stopped} \u{b7} the merge is paused \u{b7} trib here offers continue or abort")
     );
     assert_eq!(
         line(Some(StoppedAt::Paused(InProgress::CherryPick))),
         format!(
-            "{stopped} \u{b7} the cherry-pick is paused \u{b7} graft here offers continue or abort"
+            "{stopped} \u{b7} the cherry-pick is paused \u{b7} trib here offers continue or abort"
         )
     );
     assert_eq!(
         line(Some(StoppedAt::Landed)),
-        "graft: merge feature into main finished \u{b7} a git hook after it was stopped after 12 s"
+        "trib: merge feature into main finished \u{b7} a git hook after it was stopped after 12 s"
     );
     assert_eq!(
         line(Some(StoppedAt::BeforePause { changed: true })),
-        format!("{stopped}, before git could pause it \u{b7} z in graft puts your files back")
+        format!("{stopped}, before git could pause it \u{b7} z in trib puts your files back")
     );
     assert_eq!(
         line(Some(StoppedAt::Stopped { changed: true })),
-        format!("{stopped} \u{b7} z in graft puts your files back")
+        format!("{stopped} \u{b7} z in trib puts your files back")
     );
     for nothing in [
         StoppedAt::BeforePause { changed: false },
@@ -945,9 +945,9 @@ fn exit_line_says_where_git_left_it() {
     }
     assert_eq!(
         line(None),
-        format!("{stopped} \u{b7} graft here shows where git left it")
+        format!("{stopped} \u{b7} trib here shows where git left it")
     );
-    let hostile = exit_line("graft", "merge \u{1b}[2Jx", Duration::ZERO, None, "u");
+    let hostile = exit_line("trib", "merge \u{1b}[2Jx", Duration::ZERO, None, "u");
     assert!(
         !hostile.contains('\u{1b}'),
         "a description from the repository is sanitised: {hostile:?}"
@@ -961,8 +961,8 @@ fn exit_line_says_a_write_that_never_started_did_not_start() {
     use crate::update::quit::not_started_line;
 
     assert_eq!(
-        not_started_line("graft", "merge feature into main"),
-        "graft: merge feature into main did not start \u{b7} nothing changed"
+        not_started_line("trib", "merge feature into main"),
+        "trib: merge feature into main did not start \u{b7} nothing changed"
     );
 }
 

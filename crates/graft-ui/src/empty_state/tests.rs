@@ -81,7 +81,7 @@ fn rows_are_as_the_mockup_at_both_sizes() {
     for (columns, rows) in [(80, 24), (120, 36)] {
         let (_, lines) = draw(&with_recents(), columns, rows);
         let text = lines.join("\n");
-        assert_eq!(lines[0], " graft · no repository here", "{text}");
+        assert_eq!(lines[0], " Tributary · no repository here", "{text}");
         assert_eq!(lines[1], " ~/code", "{text}");
         assert_eq!(lines[2], "", "{text}");
         assert_eq!(

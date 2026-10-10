@@ -24,7 +24,7 @@ show colour**. The user judges these by eye.
 
 Usage: python3 .scratch/m6-conflicts/pty-walk-m6.py <COLSxROWS> [<scenario> ...]
 Build first, and point GRAFT_TARGET at the directory holding the binaries:
-    cargo build -q -p graft --example m5_walk --bin graft
+    cargo build -q -p graft --example m5_walk --bin trib
     cargo build -q -p graft-fixtures --bin graft-fixtures
     GRAFT_TARGET=target python3 .scratch/m6-conflicts/pty-walk-m6.py 120x40
 The ticket's sizes: 120x40 and 80x24.
@@ -37,7 +37,7 @@ SIZE = sys.argv[1]
 COLS, ROWS = (int(n) for n in SIZE.split("x"))
 TARGET = os.environ.get("GRAFT_TARGET", "target")
 BIN = f"{TARGET}/debug/examples/m5_walk"
-GRAFT = f"{TARGET}/debug/graft"
+GRAFT = f"{TARGET}/debug/trib"
 FIXTURES = os.environ.get("GRAFT_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures")
 CAPTURES = [line.split("\t") for line in
             subprocess.run([BIN, "--stems"], capture_output=True, text=True,  # sandbox-ok: --stems prints names, opens no repo

@@ -213,7 +213,7 @@ fn clone_asks_for_a_password() {
         "clone-credential-120x36.txt",
         "git asked for a password while cloning: the M4 credential box over the empty state, \
          its band cleared full width, title `Credentials — 127.0.0.1:<port>`, git's question, \
-         the masked field, `typed here only · never stored by Graft`, footer `⏎ send ⌃U clear \
+         the masked field, `typed here only · never stored by Tributary`, footer `⏎ send ⌃U clear \
          esc cancel the clone`; the bar row reads the box's keys `⏎ send · esc cancel`. Port \
          zeroed, pulse glyph drawn •.",
         &steady(&asked, Some(http.port())),

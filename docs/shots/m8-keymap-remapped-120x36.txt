@@ -40,7 +40,7 @@
 "  ◆    [◆ main] a commit                                                                                TE 57y  0101010 "
 "▸ ◉    [feature] a commit                                                                               TE 57y  0202020 "
 " Checkout feature                                                                                                       "
-" Cherry-pick (o) — a merge · taking a merge isn't in Graft yet                                                          "
+" Cherry-pick (o) — a merge · taking a merge isn't in Tributary yet                                                      "
 " Copy SHA (y)                                                                                                           "
 " Compare with this (x)                                                                                                  "
 " Open details (⏎)                                                                                                       "

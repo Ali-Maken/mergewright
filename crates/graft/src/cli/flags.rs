@@ -119,8 +119,9 @@ pub fn usage(flags: &[Flag]) -> String {
         .collect();
     let width = shown.iter().map(|(left, _)| left.len()).max().unwrap_or(0);
 
-    let mut out = String::from(
-        "usage: graft [<path>]\n\n  <path>    the repository to open (default: the current directory)",
+    let mut out = format!(
+        "usage: {} [<path>]\n\n  <path>    the repository to open (default: the current directory)",
+        super::COMMAND
     );
     if !shown.is_empty() {
         out.push('\n');

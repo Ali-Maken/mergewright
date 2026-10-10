@@ -1991,7 +1991,7 @@ fn stopped_row_keeps_the_count_whole_at_108_cells() {
         108,
     );
     let why = StopWording::new(
-        reason("merge in progress · begun outside Graft · 13 files conflicted"),
+        reason("merge in progress · begun outside Tributary · 13 files conflicted"),
         vec![
             reason("merge in progress · 13 files conflicted"),
             reason("merge in progress"),

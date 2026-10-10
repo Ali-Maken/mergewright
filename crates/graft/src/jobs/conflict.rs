@@ -315,7 +315,7 @@ fn start_over(handle: &RepoHandle, path: &Path, stop: &dyn Stop) -> StartOver {
 /// # Errors
 /// [`TakeFailure`], carrying `graft_ops::conflict::TakeError`'s own
 /// `Display`. `Changed` is the one the resolver acts on: it re-reads rather
-/// than writing over an edit made outside Graft.
+/// than writing over an edit made outside Tributary.
 pub fn take(
     store: &RepoStore,
     path: &Path,

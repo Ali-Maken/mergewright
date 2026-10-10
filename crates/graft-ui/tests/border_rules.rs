@@ -158,7 +158,7 @@ fn the_confirm_box_and_the_credential_prompt_keep_their_rules_off_their_text() {
         title: sanitize_line("Credentials — 127.0.0.1:8443"),
         prompt: sanitize_line("Password for 'http://user@127.0.0.1:8443':"),
         field: blank_field("Password"),
-        note: sanitize_line("typed here only · never stored by Graft"),
+        note: sanitize_line("typed here only · never stored by Tributary"),
         footer: sanitize_line("⏎ send  ⌃U clear  esc cancel the push"),
     };
     check("the credential prompt", &theme, |area, buf, theme| {
