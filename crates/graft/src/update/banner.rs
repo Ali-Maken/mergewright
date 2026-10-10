@@ -318,7 +318,7 @@ pub fn pending_view(state: &AppState) -> Option<graft_ui::PendingView> {
 /// `preview_rows_taken` is.
 #[must_use]
 pub fn pending_rows_taken(state: &AppState) -> u16 {
-    super::geometry::graph_carve(state).pending.3
+    super::geometry::graph_carve(state).pending.height
 }
 
 /// Why `c` will not run yet, or `None` when it would.

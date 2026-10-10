@@ -670,90 +670,71 @@ fn an_open_preview_takes_its_rows_out_of_the_graph_viewport() {
 
 // ── the mouse ───────────────────────────────────────────────────────────
 
-/// The click targets agree with what the widget actually draws: the test
-/// renders the real widget and reads the buttons back off the buffer. At
-/// 40 (the box's narrowest), 80 and 120 columns.
+/// The click targets agree with what the frame actually draws: the test
+/// draws the whole frame with the box open, finds `[ Cancel ]` and
+/// `[ Confirm ]` in the drawn grid, and clicks those cells through
+/// `update`. At 40 (the box's narrowest), 80 and 120 columns.
+///
+/// The frame docks the box (`view/frame/boxes.rs`); `update` docks its own
+/// copy for the hit test (`preview/rect.rs`). Reading the buttons off the
+/// frame, not off `update`'s rect, is what lets this see the two disagree.
+///
+/// **Mutation:** dock `update`'s box one row off (`height - 1` in
+/// `preview_box_rect`) and both clicks miss.
 #[test]
-fn a_click_lands_on_the_button_the_widget_drew() {
+fn a_click_lands_on_the_button_the_frame_drew() {
     for columns in [40, 80, 120] {
-        let opened = || {
-            let (mut state, _) = opened_with(a_plan());
-            state.size.columns = columns;
-            state
-        };
-        let (row, cancel, confirm) = buttons_drawn(&opened());
+        let (mut state, _) = opened_with(a_plan());
+        state.size.columns = columns;
+        let grid = crate::view::tests::draw_cells(&state, columns, state.size.rows);
+        let (row, cancel) = drawn_at(&grid, "[ Cancel ]");
+        let (confirm_row, confirm) = drawn_at(&grid, "[ Confirm ]");
+        assert_eq!(row, confirm_row, "{columns} columns: one buttons row");
 
-        let mut state = opened();
-        let mut commands = Vec::new();
-        assert!(preview_click(
-            &mut state,
-            &mut commands,
-            confirm,
-            row,
-            &mut ids()
-        ));
+        let (next, commands) = clicked(&state, confirm, row);
         assert!(
             commands
                 .iter()
                 .any(|command| matches!(command, Command::Operate(..))),
             "{columns} columns: a click on Confirm runs it: {commands:?}"
         );
+        assert!(next.preview.is_none(), "{columns} columns: Confirm closes");
 
-        let mut state = opened();
-        let mut commands = Vec::new();
-        assert!(preview_click(
-            &mut state,
-            &mut commands,
-            cancel,
-            row,
-            &mut ids()
-        ));
+        let (next, commands) = clicked(&state, cancel, row);
         assert!(
-            state.preview.is_none(),
+            next.preview.is_none(),
             "{columns} columns: a click on Cancel closes"
         );
-        assert!(commands.is_empty(), "{commands:?}");
+        assert!(
+            !commands
+                .iter()
+                .any(|command| matches!(command, Command::Operate(..))),
+            "{columns} columns: Cancel runs nothing: {commands:?}"
+        );
     }
 }
 
-/// The buttons row, and a cell inside `Cancel` and inside `Confirm`, as the
-/// real widget draws them into the rect `update` worked out — the one place
-/// the pure geometry and the widget meet.
-fn buttons_drawn(state: &AppState) -> (u16, u16, u16) {
-    use ratatui::buffer::Buffer;
-    use ratatui::widgets::Widget;
+/// A left click at `(column, row)`, through `update`.
+fn clicked(state: &AppState, column: u16, row: u16) -> (AppState, Vec<Command>) {
+    use graft_core::event::{Event, Modifiers, MouseButton, MouseInput, MouseKind};
+    crate::update::update(
+        state,
+        AppEvent::Core(Event::Mouse(MouseInput {
+            kind: MouseKind::Down(MouseButton::Left),
+            column,
+            row,
+            modifiers: Modifiers::NONE,
+        })),
+    )
+}
 
-    let view = preview_box(state).expect("a box");
-    let area = preview_box_rect(state, &view).expect("somewhere to draw");
-    let rect = ratatui::layout::Rect {
-        x: area.x,
-        y: area.y,
-        width: area.width,
-        height: area.height,
-    };
-    let mut buffer = Buffer::empty(rect);
-    let theme = graft_ui::theme::Theme::new(
-        graft_ui::theme::ThemeKind::Dark,
-        &crate::session::for_tests::capabilities(),
-    );
-    Widget::render(
-        &graft_ui::preview_box::PreviewBoxWidget {
-            keys: graft_ui::keymap::Keymap::shipped(),
-            view: &view,
-            theme: &theme,
-        },
-        rect,
-        &mut buffer,
-    );
-    let row = area.bottom() - 2;
-    // Cells, not bytes: the border and the cursor's `▸` are wider than one
-    // byte, so a byte offset would land right of the word it found.
-    let drawn: Vec<String> = (rect.x..rect.right())
-        .map(|x| buffer[(x, row)].symbol().to_owned())
-        .collect();
-    let inside = |word: &str| {
-        let letters: Vec<char> = word.chars().collect();
-        let at = drawn
+/// The row `label` is drawn on, and a cell inside its word (past the
+/// bracket and the space). Cells, not bytes: the border and the cursor's `▸`
+/// are wider than one byte, so a byte offset would land right of the word.
+fn drawn_at(grid: &[Vec<String>], label: &str) -> (u16, u16) {
+    let letters: Vec<char> = label.chars().collect();
+    let found = grid.iter().enumerate().find_map(|(y, cells)| {
+        cells
             .windows(letters.len())
             .position(|window| {
                 window
@@ -761,10 +742,14 @@ fn buttons_drawn(state: &AppState) -> (u16, u16, u16) {
                     .zip(&letters)
                     .all(|(cell, letter)| cell.chars().eq(std::iter::once(*letter)))
             })
-            .unwrap_or_else(|| panic!("{word} is drawn: {drawn:?}"));
-        area.x + u16::try_from(at + 1).expect("a small screen")
-    };
-    (row, inside("Cancel"), inside("Confirm"))
+            .map(|x| (y, x))
+    });
+    let (y, x) = found.unwrap_or_else(|| {
+        let drawn: Vec<String> = grid.iter().map(|cells| cells.concat()).collect();
+        panic!("{label} is drawn:\n{}", drawn.join("\n"))
+    });
+    let small = |n: usize| u16::try_from(n).expect("a small screen");
+    (small(y), small(x + 2))
 }
 
 /// A click anywhere else is swallowed: the rows behind a modal picture are

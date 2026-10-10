@@ -46,23 +46,45 @@ mod test_support;
 
 pub use still_to_apply::{PendingRowView, PendingView, draw_still_to_apply};
 
-/// A screen rectangle as four plain numbers: `(x, y, width, height)`.
+/// A screen rectangle in plain numbers, by name: column, row, width and
+/// height in cells.
 ///
 /// The shape geometry is handed out in to a caller that must not name the
 /// rendering library: `graft::update` hit-tests clicks against the very
 /// carve the widgets draw from ([`graph_screen::row_carve`],
 /// [`preview_box::dock_cells`], [`picker::picker_box`]) rather than a copy
-/// of it.
-pub type Cells = (u16, u16, u16, u16);
+/// of it. Named fields, not a tuple, so a height is never read as `.3` and
+/// a width and a height cannot be swapped unseen.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Cells {
+    /// Leftmost column.
+    pub x: u16,
+    /// Top row.
+    pub y: u16,
+    /// Columns across.
+    pub width: u16,
+    /// Rows down.
+    pub height: u16,
+}
 
 /// `rect` as [`Cells`].
-pub(crate) const fn cells_of(rect: ratatui::layout::Rect) -> Cells {
-    (rect.x, rect.y, rect.width, rect.height)
+pub const fn cells_of(rect: ratatui::layout::Rect) -> Cells {
+    Cells {
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+    }
 }
 
 /// `cells` as a `Rect`.
-pub(crate) const fn rect_of(cells: Cells) -> ratatui::layout::Rect {
-    let (x, y, width, height) = cells;
+pub const fn rect_of(cells: Cells) -> ratatui::layout::Rect {
+    let Cells {
+        x,
+        y,
+        width,
+        height,
+    } = cells;
     ratatui::layout::Rect {
         x,
         y,

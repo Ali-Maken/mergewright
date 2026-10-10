@@ -146,14 +146,8 @@ pub(super) fn draw_over_graph(
 fn draw_picker(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) -> Option<Rect> {
     let view = crate::view::picker::picker_view(state)?;
     let pane = super::layout::primary_pane_area(state, area)?;
-    let (x, y, width, height) =
-        crate::update::picker::picker_box_in(state, (pane.x, pane.y, pane.width, pane.height));
-    let rect = Rect {
-        x,
-        y,
-        width,
-        height,
-    };
+    let at = graft_ui::cells_of(pane);
+    let rect = graft_ui::rect_of(crate::update::picker::picker_box_in(state, at));
     if rect.is_empty() {
         return None;
     }

@@ -186,6 +186,32 @@ fn map_lines_are_short_and_carry_no_ticket_ids() {
     assert!(bad.is_empty(), "MAP.md format broken:\n{}", bad.join("\n"));
 }
 
+/// `line` with its backtick code spans removed: what is left is prose.
+fn prose(line: &str) -> String {
+    line.split('`').step_by(2).collect()
+}
+
+/// A clause cut mid-sentence, or one whose ticket id was stripped with the
+/// `(` before it, leaves its parentheses unbalanced once code spans are
+/// gone (review m8-health-rename-2 M3: 19 such lines in graft-ui).
+#[test]
+fn map_prose_parentheses_balance() {
+    let mut bad = Vec::new();
+    for krate in CHECKED.iter().chain(modules::MODULES_CHECKED) {
+        for (n, line) in map_text(krate).lines().enumerate() {
+            let text = prose(line);
+            if text.matches('(').count() != text.matches(')').count() {
+                bad.push(format!("{krate}/MAP.md:{}: {line}", n + 1));
+            }
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "MAP.md clauses cut or garbled (unbalanced parentheses outside code):\n{}",
+        bad.join("\n")
+    );
+}
+
 #[test]
 fn every_map_item_still_exists() {
     let mut stale = Vec::new();

@@ -128,32 +128,31 @@ pub struct PickerView {
 /// view.
 #[must_use]
 pub fn picker_area(graph: Rect) -> Rect {
-    let (x, y, width, height) = picker_box((graph.x, graph.y, graph.width, graph.height));
-    Rect {
-        x,
-        y,
-        width,
-        height,
-    }
+    crate::rect_of(picker_box(crate::cells_of(graph)))
 }
 
-/// [`picker_area`] in plain numbers, `(x, y, width, height)`, for a caller
+/// [`picker_area`] in plain numbers, for a caller
 /// that must not name the rendering library (`graft::update::geometry`
 /// mirrors the frame so a click can find the row it landed on).
 #[must_use]
-pub fn picker_box(graph: (u16, u16, u16, u16)) -> (u16, u16, u16, u16) {
-    let (x, y, graph_width, graph_height) = graph;
+pub fn picker_box(graph: crate::Cells) -> crate::Cells {
+    let crate::Cells {
+        x,
+        y,
+        width: graph_width,
+        height: graph_height,
+    } = graph;
     let width = graph_width.saturating_sub(4).min(MAX_WIDTH);
     let height = u16::try_from(u32::from(graph_height) * 3 / 5)
         .unwrap_or(graph_height)
         .max(CHROME_ROWS + 1)
         .min(graph_height);
-    (
-        x + graph_width.saturating_sub(width) / 2,
-        (y + graph_height).saturating_sub(height),
+    crate::Cells {
+        x: x + graph_width.saturating_sub(width) / 2,
+        y: (y + graph_height).saturating_sub(height),
         width,
         height,
-    )
+    }
 }
 
 /// The first row drawn in a box `height` rows tall with `selected` under

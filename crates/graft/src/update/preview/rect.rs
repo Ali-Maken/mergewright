@@ -33,11 +33,28 @@ pub fn preview_box_rect(state: &AppState, view: &PreviewBox) -> Option<BoxRect> 
     // function `preview_box_area` draws from — since `update` never names a
     // drawing type (`update::tests::purity::update_cannot_reach_the_world`).
     let wanted = preview_rows(view, width);
-    Some(graft_ui::preview_box::dock_cells((0, 0, width, height), wanted).into())
+    Some(
+        graft_ui::preview_box::dock_cells(
+            graft_ui::Cells {
+                x: 0,
+                y: 0,
+                width,
+                height,
+            },
+            wanted,
+        )
+        .into(),
+    )
 }
 
 impl From<graft_ui::Cells> for BoxRect {
-    fn from((x, y, width, height): graft_ui::Cells) -> Self {
+    fn from(cells: graft_ui::Cells) -> Self {
+        let graft_ui::Cells {
+            x,
+            y,
+            width,
+            height,
+        } = cells;
         Self {
             x,
             y,
@@ -52,9 +69,9 @@ impl From<graft_ui::Cells> for BoxRect {
 /// Mirrors `graft_ui`'s `buttons_row` layout — every choice bracketed, the
 /// cursor's prefixed `▸` and the rest a space, two cells between them, the
 /// whole row inset by the border and a space. `graft_ui` keeps that
-/// arithmetic private, so
-/// `the_click_targets_match_what_the_widget_draws` renders the real widget
-/// and checks the two agree rather than trusting this copy.
+/// arithmetic private, so `a_click_lands_on_the_button_the_frame_drew`
+/// draws the whole frame, reads the buttons off it and clicks them through
+/// `update`, rather than trusting this copy (or this file's dock).
 pub(super) fn choice_at(view: &PreviewBox, area: BoxRect, column: u16, row: u16) -> Option<usize> {
     if area.height < 2 || row.saturating_add(2) != area.bottom() {
         return None;

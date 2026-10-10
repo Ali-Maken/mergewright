@@ -169,7 +169,7 @@
 588 crates/graft/src/update/events.rs
 481 crates/graft/src/update/events/command.rs
 823 crates/graft/src/update/finish/tests.rs
-518 crates/graft/src/update/geometry.rs
+511 crates/graft/src/update/geometry.rs
 423 crates/graft/src/update/journal/keys.rs
 1205 crates/graft/src/update/journal/tests.rs
 483 crates/graft/src/update/keys.rs
@@ -188,7 +188,7 @@
 464 crates/graft/src/update/preview.rs
 431 crates/graft/src/update/preview/slice.rs
 448 crates/graft/src/update/preview/slice/tests.rs
-2141 crates/graft/src/update/preview/tests.rs
+2126 crates/graft/src/update/preview/tests.rs
 970 crates/graft/src/update/quit/tests.rs
 1147 crates/graft/src/update/radar.rs
 577 crates/graft/src/update/remote.rs
@@ -215,7 +215,7 @@
 403 crates/graft/src/view/detail.rs
 446 crates/graft/src/view/entries.rs
 413 crates/graft/src/view/frame/bars.rs
-466 crates/graft/src/view/frame/boxes.rs
+460 crates/graft/src/view/frame/boxes.rs
 694 crates/graft/src/view/frame/tests.rs
 602 crates/graft/src/view/journal/tests.rs
 731 crates/graft/src/view/radar.rs

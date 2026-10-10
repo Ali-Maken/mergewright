@@ -37,7 +37,9 @@ One line per public item. Update when a public item changes.
 - `theme` (mod) — theme kinds, tokens and colour resolution.
 - `tour_card` (mod) — the practice tour's card.
 - `whitespace_tail` (mod) — the title tail saying whitespace is ignored, for blame, detail and history.
-- `Cells` (type) — `(u16, u16, u16, u16)` as `(x, y, width, height)`: a rectangle for a caller that must not name the rendering library.
+- `Cells` (struct) — `x`, `y`, `width`, `height` (`u16` each): a rectangle by name, for a caller that must not name the rendering library.
+- `cells_of` (fn) — a `Rect` as [`Cells`]; with `rect_of`, the only conversions.
+- `rect_of` (fn) — [`Cells`] as a `Rect`.
 - `PendingRowView`, `PendingView`, `draw_still_to_apply` (re-exports from `still_to_apply`) — the still-to-apply block's view and draw.
 
 ## blame
@@ -228,18 +230,18 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `next` (fn) — The next region `Tab` moves to: subject → body → options → button → subject.
 - `previous` (fn) — The previous region, for `Shift+Tab`.
 - `sibling_option` (fn) — The option one step left or right of this one, staying inside the row.
-- `CommitEditorView` (struct) — `title`, `subject`/`body` (the `FieldView`/`AreaView` halves), `focus`, `amend`/`sign_off`/`no_verify`/`allow_empty`, `refusal` (the reason, drawn dimmed on its own row above the options row, indented 2
-- `CommitEditorScreen` (struct) — `view`, `theme`; `Widget`: title row, subject row, body block, the refusal row (only when refused
+- `CommitEditorView` (struct) — `title`, `subject`/`body` (`FieldView`/`AreaView`), `options` (four toggles, on or off), `focus`, `refusal` (why `[ Commit ]` would do nothing), `status` (why the last write failed), `busy`.
+- `CommitEditorScreen` (struct) — `view`, `theme`; `Widget`: title row, subject row, body block, the refusal row (only when refused), the options row and the footer, drawn into the graph's area with the detail pane left alone.
 - `footer_subject` (fn) — The key hints under the editor while the subject has focus: `⏎` commits from there and `⇥` is the way to the body (m6 usability P16, pick 14).
 - `footer_other` (fn) — The key hints under the editor anywhere else (design note, "Commit editor"): in the body `⏎` is a newline, so only `⌃⏎` and the button commit.
-- `fits` (fn) — whether an area has the rows (`CHROME_ROWS` = 6, plus `REFUSAL_ROWS` = 1 budgeted always, plus a body line: 8 rows) and columns the screen needs. The caller shows a "too small" message instead.
+- `fits` (fn) — Whether an area is tall enough for a body line (`CHROME_ROWS` = 6 plus `REFUSAL_ROWS` = 1, budgeted always). Below it the editor still draws title, subject, options and footer; the body is off screen.
 
 ## confirm
 - `ConfirmView` (struct) — Everything the confirm box draws: what is about to happen, in plain words, and the exact command that will run.
 - `new` (fn) — A confirm box, cursor on `Cancel`, choices `Cancel`/`Confirm`.
 - `with_max_lines` (fn) — Wrapped message rows this box may draw; `new` sets [`MAX_MESSAGE_LINES`] (4).
 - `with_choices` (fn) — The same box with its own choices — `labels[0]` is always the safe one and is where the cursor starts (ADR-0038 §1): the undo-after-push box asks `Cancel` / `Undo locally` / `Re-push old tip`
-- `with_labels` (fn) — A shim over the two-choice case: `[ safe ]  [ confirm ]`, where "Discard" (the old default) would name the opposite of what the button does for some callers's `[ Stop ]` / `[ Undo ]`).
+- `with_labels` (fn) — A shim over the two-choice case: `[ safe ]  [ confirm ]`, where "Discard" (the old default) would name the opposite of what the button does for some callers (the `[ Stop ]` / `[ Undo ]` box).
 - `left` (fn) — Moves the cursor one choice left, clamped at the first (no wrap: the safe choice is never one key-repeat away from "one past the end, wrapped onto the dangerous one").
 - `right` (fn) — Moves the cursor one choice right, clamped at the last.
 - `toggle` (fn) — Cycles the cursor to the next choice, wrapping past the last back to the first — the two-choice case's `Tab`.
@@ -296,7 +298,7 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `ContextMenu` (struct) — The popup itself: its items, an optional heading, and which item the cursor is on.
 - `with_key` (fn) — `label (key)`, the key spelled from `keys` so the menu teaches the key his keymap gives `action`.
 - `for_row` (fn) — A commit row's menu.
-- `for_working_tree` (fn) — The uncommitted-changes row's menu: absorb first — the row's only verb with no key of its own, so it leads as Checkout leads a commit row (keymap §2.1, 09b) — then `Open details` (design note
+- `for_working_tree` (fn) — The uncommitted-changes row's menu: absorb first (its only verb with no key of its own), then `Open details`, then the dropped keys every menu has. Nothing `staged`: absorb stays, dim, reading `nothing staged`.
 - `for_drop` (fn) — The menu a dropped branch badge opens over the row it was dropped on (`docs/design/02-keymap.md` §2.15).
 - `rows` (fn) — rows the popup draws: its items, plus the title row when it has one.
 - `item_at` (fn) — The item `offset` rows down from the popup's top edge, or `None` when that row is the title (which is not selectable) or past the end.
@@ -321,7 +323,7 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `recent_age` (fn) — How long ago, in the words the mock-up uses: `today`, `yesterday`, `3 days ago`, `last week`, `2 weeks ago`, `last month`, `5 months ago`, `last year`, `3 years ago`.
 - `bar_keys` (fn) — The bar row's hints for `view`, as `(key, label)` pairs — the keys the screen answers in its current form, and only those.
 - `bar_fitted` (fn) — [`bar_keys`] as drawn in `width` cells: the tour clause is the first shed when the whole bar does not fit (it is opt-in, and the actions row still names `t`); past that, the bar is cut at the edge as before.
-- `CloneView` (struct) — The clone prompt as drawn, rulings R6).
+- `CloneView` (struct) — The clone prompt as drawn (rulings R6): `url`, `cursor` (character index into `url`), `into` (the `~`-abbreviated folder), `shown` (typing, running or ended).
 - `CloneShown` (enum) — Where the clone prompt's clone is, as drawn.
 
 ## finish_summary
@@ -343,7 +345,7 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `ListLine` (enum) — One line of the scrolled file list.
 - `Section` (enum) — Which section heading a [`ListLine::Section`] is.
 - `FinishLayout` (struct) — Where each part of the summary goes in an area.
-- `fits` (fn) — whether an area has the rows (`CHROME_ROWS` = 6, plus `REFUSAL_ROWS` = 1 budgeted always, plus a body line: 8 rows) and columns the screen needs. The caller shows a "too small" message instead.
+- `fits` (fn) — Whether `area` is big enough for the summary ([`FINISH_MIN`]).
 - `list_lines` (fn) — The file list, line by line, from the top: section headings, rows, and the diff under the expanded row.
 - `layout` (fn) — Where each part goes in `area`, or `None` below [`FINISH_MIN`].
 - `FinishHit` (enum) — What a click at `(column, row)` landed on.
@@ -353,13 +355,13 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `top_for_cursor` (fn) — The `top` that puts the cursor row — and the diff under it, as much as fits — on screen, moving `view.top` as little as it must.
 
 ## journal_screen
-- `JournalScreen` (struct) — `view`, `theme`, `keys: &Keymap`: footer, legend, empty state, row marks spelled from it)
-- `legend` (fn) — the legend line; the list's muted last line (`a branch deleted outside Tributary and never checked out leaves no trace here`); `commands Tributary ran`; source column and legend keep `Graft`, 27a NOTES).
+- `JournalScreen` (struct) — The browser itself: `view`, `theme`, `keys: &Keymap` (footer, legend, empty state and row marks are spelled from it). The caller paints the surface underneath.
+- `legend` (fn) — What each glyph means, on screen for as long as the rows are (J1), with `app.undo`'s key spelled from `keys` (its first chord); unbound, the legend says it in words.
 - `NO_TRACE` (const) — The list's last line, muted: what the list cannot show (`reflog.md` takeaway 12).
 - `COMMANDS_HEADING` (const) — The heading over an expanded row's Command Log.
 - `moved_heading` (fn) — the heading over an expanded row's `moved` lines: `refs the fetch moved · u does not move them back`, `app.undo` spelled from `keys`; unbound, `refs the fetch moved` alone.
 - `cut_at_word` (fn) — `(text, width) -> String`: cut at the last whole word that fits, then `…`; a hard cut only when no word fits. Keeps the text's own spacing.
-- `RowMark` (enum) — `None`, `NextUndo`, `NextRedo`, `Interrupted`, `Undone`; `label(keys) -> String` draws them as `← u`, `← U` (`app.undo`/`app.redo` spelled from `keys`
+- `RowMark` (enum) — What a row is to `u` and `U`, in words rather than colour: `None` (default), `NextUndo`, `NextRedo`, `Interrupted`, `Undone`, `NothingWritten`; `label(keys)` draws them as `← u`, `← U` (spelled from `keys`).
 - `label` (fn) — The mark as it is drawn, at the right of the row: `← u`, `← U`, the keys spelled from `keys` (`← next undo` when he left it unbound).
 - `RowKind` (enum) — `Graft` (`●`), `Outside` (`$`), `Lost` (`└ ✗ lost`, a commit), `LostEdit` (`└ ✗ lost`, an edit in an undo's backup).
 - `JournalRowView` (struct) — `age`, `description`, `summary`, `mark`, `commands` (the Command Log, drawn while expanded), `failure` (the whole reason, same), `moved`, ADR-0062: the refs a fetch or a pull's fetch moved, one line each
@@ -371,11 +373,11 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 ## keymap
 Decides, never draws: which action a chord means in which place (`ContextId` scope), and how a key is spelled. Hint bars and menus draw what it spells.
 - `KeyCode` (re-export) — `graft_core::event::KeyCode`, so callers name keys without `core`.
-- `ContextId` (enum) — 22 places (`Global` … `Menu`); `ALL`, `config_name()` (`app`, `graph`, `operation` for `Banner`, `commit` for `CommitEditor`, …), `scope()` (innermost first, `Global` last; never under-include
-- `ALL` (const) — every token, in PROMPT.md §5's order.
+- `ContextId` (enum) — A place keys are bound in, 22 (`Global` … `Menu`); `ALL`, `config_name()` (`app`, `graph`, `operation` for `Banner`, …), `scope()` (innermost first, `Global` last), `borrows()`, `stands_down()`, `is_text_field()`.
+- `ALL` (const) — Every place, `Global` first.
 - `config_name` (fn) — The `[keys.<name>]` table his config writes for this place, and the prefix of every action id in it.
 - `scope` (fn) — Where a key pressed in this place may still land, innermost first, `Global` last.
-- `borrows` (fn) — the rows of other places a place answers itself (movement in panes and the `.` menu
+- `borrows` (fn) — The rows of other places this place answers itself, ahead of anything it falls through to: a key resolves in its own rows, then these, then the rest of `scope()`. Empty for `Graph`, `Global` and text fields.
 - `stands_down` (fn) — In-scope rows this place answers with nothing: the `Global` rows a modal overlay swallows.
 - `is_text_field` (fn) — A text field: typed keys stay as they are.
 - `KeySwitches` (struct) — `suspend_on_ctrl_z`; on, `⌃Z` is `app.suspend` and undo keeps `u`.
@@ -395,14 +397,14 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `from_press` (fn) — The chord a press is, or `None` when Command / Super is held: no binding uses it, and the terminal or the OS owns those keys.
 - `to_press` (fn) — The press a dispatcher matches for this chord: the shape the input decoder delivers it in, so a translated default acts exactly as pressing that default does.
 - `Translated` (enum) — `Default(KeyChord)` / `Unbound` / `Pass`.
-- `Keymap` (struct) — `Default` (no overrides, switches off), `Clone + Debug + PartialEq + Eq`; `with_overrides(lines, KeySwitches) -> (Keymap, Vec<KeyWarning>)` (an override replaces the whole list; `none` alone unbinds
-- `with_overrides` (fn) — the constructor: `kind`'s built-in table with `[theme.<kind>]` colours written over it (kept privately as `rgb`), each token reduced from that table.
+- `Keymap` (struct) — [`defaults()`] with his overrides applied, resolved per context. `Default` is the table as shipped (no overrides, switches off); `with_overrides` builds the rest. `Clone + Debug + PartialEq + Eq`.
+- `with_overrides` (fn) — Apply his `[keys.<context>]` lines in his file's order; an override replaces the action's whole default list. A bad line is not applied and says why (a `KeyWarning`). `switches` apply first.
 - `translate` (fn) — What the app hands the panes for `pressed` in `ctx` (module docs of [`Translated`]).
 - `shipped` (fn) — The table as shipped, built once: what a text field spells (its keys pass untranslated, so they do what their defaults do) and what tests spell against.
 - `chords` (fn) — The action's chords as he has them; empty when unbound or unknown.
 - `reachable` (fn) — Every row a key pressed in `ctx` may land on, in the order a chord resolves there: its own rows, then [`ContextId::borrows`], then the rest of its scope (D1).
 - `in_context` (fn) — The context's own rows, in table order, with their chords as he has them.
-- `acting` (fn) — The action `chord` acts as when pressed in `ctx`, his lines applied: the palette's per-place spelling decision 3 — after `merge = "j"`, `j` on the graph is merge, not move).
+- `acting` (fn) — The action `chord` acts as when pressed in `ctx`, his lines applied: the palette's per-place spelling (after `merge = "j"`, `j` on the graph is merge, not move). `None` when no row a key there reaches holds it.
 - `spell` (fn) — The action's key as `?` prints it: its first live chord, or `—` when he unbound it (or it is not an action, or every chord it had was taken by another in a collision).
 - `spell_keys` (fn) — The hint bar's and the footers' spelling of several actions: each one's first live chord, joined with `/`, an unbound action left out (`j/k` for `app.down`, `app.up`).
 - `spell_every` (fn) — Every live chord of one action, joined with `/` (`⏎/space` for `finish.toggle_diff`); `None` when it has none.
@@ -411,7 +413,7 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `after` (fn) — `words` with ` · <key> <verb>` after it (`finish needs 60x20 · esc back`), or `words` alone when the key is unbound.
 - `live_labels` (fn) — The action's live chords, spelled: every chord it holds, less any another action of its own context took in a collision, and less any a collision anywhere names it as losing D7: after `merge = "j"`
 - `defaults` (fn) — the table, grouped by context in `ContextId::ALL` order. Adding a row edits `tests/keymap_ids.txt`.
-- `KeyWarning` (enum) — `UnknownAction`, `BadKey`, `Collision { line, places: Vec<Clash> }`: one per config line, every place it changes), `Reserved { action, key }`, `Fixed`, `SwitchOff { action
+- `KeyWarning` (enum) — One problem with one override line: `UnknownAction`, `BadKey`, `Collision { line, places: Vec<Clash> }` (every place a key changed hands), `Reserved`, `Fixed`, `SwitchOff`, `Follows { action, leader }`.
 - `Clash` (struct) — `key`, `context`, `kept`, `lost`, `keeps: Option<KeyChord>` (the loser's key left there, for the words).
 - `words` (fn) — The problem in one lowercase line, keys spelled as the app spells them.
 
@@ -420,7 +422,7 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `MapRowView` (struct) — one branch's row: `name`, `identity`, `counts`, `is_current`, `merged_into`, `marks`, `active`, `complete`.
 - `MapStatus` (enum) — `Loading { done, total }`, `Empty`, `Failed(SanitizedText)`, `Ready`: what draws instead of, or with, the rows.
 - `MapView` (struct) — everything the screen draws: `title_branch`, `span_days`, `rows`, `max_count`, `buckets`, `selected`, `more`, `complete`, `status`, `ascii`.
-- `MapScreen` (struct) — `view`, `theme`, `keys: &Keymap`: footer `j/k select  ⏎ zoom to commits  M/esc back`, loading `esc cancels`, spelled from it)
+- `MapScreen` (struct) — `view`, `theme`, `keys: &Keymap`: the footer (`j/k select  ⏎ zoom to commits  M/esc back`, loading `esc cancels`) is spelled from it.
 
 ## name_prompt
 - `MIN_COLUMNS` (const) — Narrower than this and the box does not fit — draw one line instead.
@@ -448,7 +450,7 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `WIDE_FROM` (const) — Below this many frame columns the box takes the frame's full width and rows drop their config id (§1.16).
 - `NOTHING_MATCHES` (const) — The one line drawn when the query keeps no row; the key that closes is spelled after it (`nothing matches · esc close`).
 - `PaletteMode` (enum) — Which way the palette was opened.
-- `RowKind` (enum) — `Graft` (`●`), `Outside` (`$`), `Lost` (`└ ✗ lost`, a commit), `LostEdit` (`└ ✗ lost`, an edit in an undo's backup).
+- `RowKind` (enum) — What a row stands for: `Action`, `App`, `Branch`, `Tag`, `File`, `Commit`, `Recent` (drawn as an action row), `More` (a find group's muted `+N more` / `reading…` line).
 - `PaletteRow` (struct) — One row, worded.
 - `PaletteView` (struct) — Everything the box draws.
 - `row_count` (fn) — How many rows there are, groups flattened.
@@ -465,7 +467,7 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `PickerBody` (enum) — What stands under the query.
 - `PickerView` (struct) — Everything the box draws.
 - `picker_area` (fn) — Where the box goes over `graph`: as wide as `graph` less 4, at most [`MAX_WIDTH`], centred; the lower 60% of it, so the graph above stays in view.
-- `picker_box` (fn) — [`picker_area`] in plain numbers, `(x, y, width, height)`, for a caller that must not name the rendering library (`graft::update::geometry` mirrors the frame so a click can find the row it landed on).
+- `picker_box` (fn) — [`picker_area`] in plain numbers ([`Cells`]), for a caller that must not name the rendering library (`graft::update::geometry` mirrors the frame so a click can find the row it landed on).
 - `first_drawn` (fn) — The first row drawn in a box `height` rows tall with `selected` under the cursor: the list scrolls only as far as keeps the cursor in view.
 - `row_at` (fn) — The row a click `line` rows below the box's top border landed on, in a box `height` rows tall showing `count` rows with `selected` under the cursor.
 - `draw_picker` (fn) — Draws `view` into `area` (from [`picker_area`]), clearing it first.
@@ -485,10 +487,10 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `preview_box_area` (fn) — Where the box goes in `frame`: docked to the bottom, at its own height ([`preview_rows`]), with the frame's last row left to the screen footer — and, from 30 rows
 - `dock_cells` (fn) — [`preview_box_area`] in plain numbers, for a caller that must not name the rendering library (`graft::update` hit-tests the box's buttons against it).
 - `PreviewBoxWidget` (struct) — [`PreviewBox`] drawn into whatever `Rect` the caller docks it to — bottom of the graph area, never over the footer row.
-- `set_aside_row` (fn) — The set-aside row a rebase or checkout over a dirty tree adds under `working tree:`; ADR-0045 §4, amended 2026-09-26 b): `files` tracked files set aside.
+- `set_aside_row` (fn) — The set-aside row a rebase or checkout over a dirty tree adds under `working tree:` (ADR-0045 §4, amended 2026-09-26 b): `files` tracked files set aside, wordings longest first for [`fitting_line`].
 - `fitting_line` (fn) — The longest of `wordings` (longest first) that fits the box's text column at `width` columns — the borders and their one-cell gutters taken off.
 - `Again` (struct) — The footer's verb slot: which key confirms, and the word after it.
-- `confirm` (fn) — the confirm box, N choices now, ADR-0038 §1): `ConfirmView` (`title`, `message: Vec<SanitizedText>`, `command`, `choices: Vec<SanitizedText>`, `cursor: usize`) — `new(title, message, command)` opens two choices
+- `confirm` (fn) — `Again`'s confirm slot: `confirm.yes`'s first live chord, then `verb` (`y apply`).
 - `opening` (fn) — The opening key again: `action` is `preview.confirm_merge` or `preview.confirm_rebase` (`m merge`).
 - `text` (fn) — `<key> <verb>` spelled from `keys`; `None` when the action has no live chord.
 
@@ -502,9 +504,9 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `RewriteEditorWidget` (struct) — The editor as a widget, for [`draw_rewrite_editor`] and tests.
 - `rewrite_row_at` (fn) — The row (index into `view.rows`) drawn at `(column, row)`, as [`draw_rewrite_editor`] laid it out in `area`; `None` off the rows (the field's line included).
 - `RewriteEditorView` (struct) — Everything the editor draws.
-- `RowMark` (enum) — `None`, `NextUndo`, `NextRedo`, `Interrupted`, `Undone`; `label(keys) -> String` draws them as `← u`, `← U` (`app.undo`/`app.redo` spelled from `keys`
+- `RowMark` (enum) — A row's action, which picks its word and glyph: `Pick`, `Reword` (`✎`), `Edit` (`⏸`), `Squash` (`↓`), `Fixup` (`↓`), `Drop` (`✗`, subject muted), `Base { label }` (the row under his, not editable).
 - `EditorRow` (struct) — One row on the left.
-- `FieldView` (struct) — `label`, `text`, `cursor` (character index), `guide_at`, `counter` (`(typed, limit)`; drawn in `Warning` past the limit), `focused`.
+- `FieldView` (struct) — `r`'s one-line field: `row` (the row it edits; the field is the line under it), `text`, `caret` (character index).
 - `MessageBlock` (struct) — The message block.
 - `RightSide` (enum) — What the right-hand side shows.
 - `AfterView` (enum) — The AFTER plan's state.
@@ -520,7 +522,7 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `StashPromptView` (struct) — the save prompt: `title`, `message` (a `text_input::FieldView`), `staged_only`, `refusal` (what `s` would refuse, shown before `⏎` is pressed).
 - `StashStatus` (enum) — `Loading`, `Empty` (`no stashes — s stashes the working tree`), `Failed(SanitizedText)`, `Ready`.
 - `StashView` (struct) — `rows` (newest first), `selected`, `preview` (the selected stash's `detail::FileListView`, drawn under the list), `prompt`, `status`, `notice`/`notice_is_failure` — the overlay covers the graph footer
-- `StashScreen` (struct) — `view`, `theme`, `keys`: footer and empty line spelled from his keymap; the save prompt, a text field, from `Keymap::shipped()`: `⏎ save  ⇥ scope  esc back`)
+- `StashScreen` (struct) — `view`, `theme`, `keys`: footer and empty line spelled from his keymap; the save prompt, a text field, spells from `Keymap::shipped()` (`⏎ save  ⇥ scope  esc back`).
 - `files_label` (fn) — `1 file` / `3 files`: the count with the noun it agrees with.
 
 ## status_screen
@@ -555,7 +557,7 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 ## text_input
 - `GUIDE` (const) — `┊`, the length-guide glyph (column 50 for a subject, 72 for a body).
 - `FOCUS` (const) — The glyph marking whatever has focus.
-- `TextField` (struct) — one editable line. `new`, `text`, `cursor`, `len`, `is_empty`, `insert`, `insert_str` (a bracketed paste
+- `TextField` (struct) — One line of editable text (the commit subject, and later the stash message): `new`, `text`, `cursor`, `len`, `is_empty`, `insert`, `insert_str` (a bracketed paste), and cursor moves.
 - `new` (fn) — A field holding `text`, with the cursor at its end — where someone prefilled a message would carry on typing.
 - `text` (fn) — What has been typed.
 - `cursor` (fn) — The cursor's character index.

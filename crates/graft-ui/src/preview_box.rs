@@ -182,7 +182,12 @@ pub fn preview_box_area(frame: Rect, view: &PreviewBox) -> Rect {
 /// view at `frame`'s width; it is not read below [`PREVIEW_MIN`].
 #[must_use]
 pub fn dock_cells(frame: crate::Cells, wanted: u16) -> crate::Cells {
-    let (x, y, width, height) = frame;
+    let crate::Cells {
+        x,
+        y,
+        width,
+        height,
+    } = frame;
     let footer_row = u16::from(height > 1);
     let rule_row = u16::from(crate::graph_screen::spaced(height));
     let usable = height.saturating_sub(footer_row + rule_row);
@@ -191,7 +196,12 @@ pub fn dock_cells(frame: crate::Cells, wanted: u16) -> crate::Cells {
     } else {
         wanted.max(MIN_BOX_ROWS).min(usable)
     };
-    (x, y + usable.saturating_sub(rows), width, rows)
+    crate::Cells {
+        x,
+        y: y + usable.saturating_sub(rows),
+        width,
+        height: rows,
+    }
 }
 
 /// [`PreviewBox`] drawn into whatever `Rect` the caller docks it to —
