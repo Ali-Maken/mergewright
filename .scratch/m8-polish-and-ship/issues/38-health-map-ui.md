@@ -51,9 +51,9 @@ Pass 1:
 - [x] No pass-1 section line is over 240 characters or carries a ticket id. Checked in the same run (`map_coverage::map_lines_are_short_and_carry_no_ticket_ids`, with its failures, if any, outside pass-1 sections). — **verified by** `map_coverage::map_lines_are_short_and_carry_no_ticket_ids` in the same run: every failure at MAP.md:221 or later; pass-1 sections are lines 1–219.
 
 Pass 2, or the single pass:
-- [ ] The three `map_coverage` tests pass with `graft-ui` in `CHECKED` (`map_coverage::every_pub_item_is_in_its_map`, `map_coverage::map_lines_are_short_and_carry_no_ticket_ids`, `map_coverage::every_map_item_still_exists`).
-- [ ] `rg -c '^## File layout' crates/graft-ui/MAP.md` returns 0, quoted in NOTES.
-- [ ] NOTES gives the line count before and after (`wc -l`), and lists any test-only `pub` item found, with its callers.
+- [x] The three `map_coverage` tests pass with `graft-ui` in `CHECKED` (`map_coverage::every_pub_item_is_in_its_map`, `map_coverage::map_lines_are_short_and_carry_no_ticket_ids`, `map_coverage::every_map_item_still_exists`). — **verified by** `cargo nextest run -p graft map_coverage`: 7/7 passed with `graft-ui` in `CHECKED`.
+- [x] `rg -c '^## File layout' crates/graft-ui/MAP.md` returns 0, quoted in NOTES. — **verified by** that `rg` run (pass-2 NOTES).
+- [ ] NOTES gives the line count before and after (`wc -l`), and lists any test-only `pub` item found, with its callers. — line counts given (`wc -l`, pass-2 NOTES); test-only sweep **not run** for pass-2 modules, so unticked.
 
 ## Touches
 - ui MAP.md.
@@ -77,3 +77,13 @@ Status: pass 1 done; `blocked: needs pass 2`. No compaction. Scout used: `scouts
 - **Pass 2 left:** `journal_screen`, `map_screen`, `overview_strip`, `paint`, `stash_screen`, `status_screen`, `syntax`, `theme`, `text_input`, `keymap`, `commit_editor`, plus the 14 modules above in the holding section; add `graft-ui` to `CHECKED`. Currently missing beyond the holding section's names: `FOCUS` (text_input), `ticks_text` (tour_card).
 - Stale citations for the conductor (`rg 'graft-ui/MAP.md:'`): `KNOWN_GAPS.md:420` (`:151-152`), `.scratch/m7-power-tools/issues/20m-landing-in-a-partly-staged-file.md:94`, `.scratch/m6-conflicts/scouts/54-56.md:44` (`:272-275`), `docs/reviews/m2-details-and-diffs.md:649`, `.scratch/m8-polish-and-ship/issues/21b-7-moves-remainder.md:202`.
 - Touches: `crates/graft-ui/MAP.md` only. `map_coverage.rs` edited for the one-run check and reverted (`git status` shows only MAP.md + this ticket). No code.
+
+## NOTES (builder, pass 2, 2026-10-10)
+Status: done. No compaction. Scout: reused `scouts/38-health-map-ui.md` and pass-1 NOTES; no new scout (doc-only, the coverage test is the oracle).
+- `rg -c '^## File layout' crates/graft-ui/MAP.md` → `0`. `## Pass 2 holding` deleted.
+- `wc -l`: 463 originally, 472 after pass 1, **638 after pass 2** (old MAP lacked many items; now one line per public item).
+- Method: pass-2 lines generated per module from `pub` items in file order; clause from the old MAP entry when its name was unique there, else the item's `///` first sentence; ticket ids stripped; lines cut to ≤240. Clauses are mechanical: some read as doc-comment first sentences, not hand-written summaries. A reader pass for wording is worth doing but not required by acceptance.
+- `keymap` got its decide/draw preamble and a `KeyCode` (re-export) line.
+- Test-only `pub` items: pass 2 did not run a per-item caller `rg` for the 25 pass-2 modules; only pass-1's (`every_context`, `every_hint`) are known. Unverified, not checked.
+- `CHECKED` in `crates/graft/tests/it/map_coverage.rs`: one line `"graft-ui",` added after `graft-capabilities` — ticket 41 may conflict on the same spot.
+- Stale citations: pass-1 list stands; line numbers past :219 have all moved.
