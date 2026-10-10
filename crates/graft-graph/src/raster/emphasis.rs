@@ -23,6 +23,13 @@ use super::{
 };
 use crate::row::Row;
 
+mod cells;
+mod pieces;
+
+use cells::{crop, painted_cells, painted_cells_in};
+
+pub use pieces::{Piece, emphasis_pieces, rasterise_piece};
+
 /// The one alpha a strip draws every element at: the lowest in play for the
 /// frame. It changes only when Focus toggles or a thread comes or goes,
 /// never on a cursor move.
@@ -286,7 +293,7 @@ pub(super) fn rasterise_emphasis_in(
             lit: *lit,
         })
         .collect();
-    let Some(reach) = lit_reach(&rows, strip.marker, backdrop) else {
+    let Some(reach) = lit_reach(&rows, strip.marker, backdrop, None) else {
         return Ok(None);
     };
     let frame = paint(&strip.look(), &rows, Some(backdrop), pool)?;
@@ -310,8 +317,15 @@ pub(super) fn rasterise_emphasis_in(
 /// `None` when it draws nothing: a bound for [`painted_cells`]' scan, so a
 /// thread a few lanes wide does not cost a scan of the whole strip. It
 /// mirrors which elements [`super::Pen`] draws above the backdrop; a column
-/// it missed would lose lit pixels.
-fn lit_reach(rows: &[Inked<'_>], marker: Option<Marker>, backdrop: f32) -> Option<(usize, usize)> {
+/// it missed would lose lit pixels. With `only`, the elements that lane
+/// column owns alone (an emphasis piece, [`pieces`]).
+fn lit_reach(
+    rows: &[Inked<'_>],
+    marker: Option<Marker>,
+    backdrop: f32,
+    only: Option<usize>,
+) -> Option<(usize, usize)> {
+    let owns = |column: usize| only.is_none_or(|only| only == column);
     let mut reach: Option<(usize, usize)> = None;
     let mut take = |from: usize, to: usize| {
         let (low, high) = (from.min(to), from.max(to));
@@ -322,7 +336,11 @@ fn lit_reach(rows: &[Inked<'_>], marker: Option<Marker>, backdrop: f32) -> Optio
     for inked in rows {
         let row = inked.row;
         for (column, identity) in row.lanes.iter().enumerate() {
-            if identity.is_some() && column != row.lane && inked.lit.alpha_at(column) > backdrop {
+            if identity.is_some()
+                && column != row.lane
+                && owns(column)
+                && inked.lit.alpha_at(column) > backdrop
+            {
                 // An arc runs from its column to the node; a straight line
                 // stays in its column.
                 let ends_here = row.incoming.contains(&column)
@@ -330,98 +348,18 @@ fn lit_reach(rows: &[Inked<'_>], marker: Option<Marker>, backdrop: f32) -> Optio
                 take(column, if ends_here { row.lane } else { column });
             }
         }
-        if inked.lit.alpha_at(row.lane) > backdrop {
+        if owns(row.lane) && inked.lit.alpha_at(row.lane) > backdrop {
             // Stubs and the node; a tail reaches toward the next column.
             take(row.lane, row.lane + usize::from(!inked.stubs.is_empty()));
         }
         if let Some(marker) = marker
+            && owns(marker.column)
             && inked.lit.rail_alpha() > backdrop
         {
             take(marker.column, marker.column);
         }
     }
     reach
-}
-
-/// The first and last cell columns holding a painted pixel, or `None` when
-/// none does. Premultiplied: a clear pixel is four zero bytes. Only the
-/// pixels around lane columns `reach` are scanned: a node reaches less than
-/// a cell either side of its lane's centre (`NodeSize::for_cell`), every
-/// stroke less than that.
-fn painted_cells(
-    frame: &RasterFrame,
-    cell_width: u32,
-    reach: (usize, usize),
-) -> Option<(u32, u32)> {
-    let width = usize::try_from(frame.width).ok()?;
-    let cell = usize::try_from(cell_width).ok()?;
-    let lane = cell * usize::try_from(super::CELLS_PER_LANE).ok()?;
-    if width == 0 || cell == 0 {
-        return None;
-    }
-    // From a cell left of the first lane's own cell to the end of the cell
-    // right of the last lane's own cell.
-    let from = (reach.0 * lane).saturating_sub(cell).min(width);
-    let to = (reach.1 * lane + 2 * cell).min(width);
-    let painted = |byte: &u8| *byte != 0;
-    // Both on cell edges, as `from` and `to` are.
-    let start = |pixel: usize| pixel / cell * cell;
-    let end = |pixel: usize| (pixel / cell + 1) * cell;
-    // The painted cells found so far, as a pixel range `[left, right)`:
-    // only pixels outside it can widen it, so a line scans those alone.
-    let mut span: Option<(usize, usize)> = None;
-    for line in frame.pixels.chunks_exact(width * 4) {
-        let pixels = |range: std::ops::Range<usize>| &line[range.start * 4..range.end * 4];
-        span = match span {
-            None => {
-                let Some(byte) = pixels(from..to).iter().position(painted) else {
-                    continue;
-                };
-                let first = from + byte / 4;
-                let after = end(first);
-                let last = pixels(after..to)
-                    .iter()
-                    .rposition(painted)
-                    .map_or(first, |byte| after + byte / 4);
-                Some((start(first), end(last)))
-            }
-            Some((left, right)) => {
-                let first = pixels(from..left).iter().position(painted);
-                let last = pixels(right..to).iter().rposition(painted);
-                Some((
-                    first.map_or(left, |byte| start(from + byte / 4)),
-                    last.map_or(right, |byte| end(right + byte / 4)),
-                ))
-            }
-        };
-    }
-    let (left, right) = span?;
-    let cell_of = |pixel: usize| u32::try_from(pixel / cell).ok();
-    Some((cell_of(left)?, cell_of(right - 1)?))
-}
-
-/// Cell columns `first..=last` of `frame`, in its own buffer: each line
-/// moves left to where the cropped image's line goes, which is never right
-/// of where it was, then the buffer is cut to the cropped size.
-fn crop(frame: RasterFrame, cell_width: u32, first: u32, last: u32) -> RasterFrame {
-    let columns = last - first + 1;
-    let width = columns * cell_width;
-    let bytes = |pixels: u32| pixels as usize * 4;
-    let (stride, left, span) = (bytes(frame.width), bytes(first * cell_width), bytes(width));
-    let mut pixels = frame.pixels;
-    let lines = frame.height as usize;
-    for line in 0..lines {
-        let from = line * stride + left;
-        pixels.copy_within(from..from + span, line * span);
-    }
-    pixels.truncate(span * lines);
-    RasterFrame {
-        width,
-        height: frame.height,
-        rows: frame.rows,
-        columns,
-        pixels,
-    }
 }
 
 /// `top` drawn over `base` at its column offset, premultiplied "over"

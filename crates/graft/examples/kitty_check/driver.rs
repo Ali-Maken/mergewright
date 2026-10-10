@@ -22,7 +22,7 @@ pub(crate) fn check() -> io::Result<(String, Vec<u8>)> {
     let input = spawn_stdin();
     let mut stdout = io::stdout().lock();
     let mut capture = Vec::new();
-    let mut images = KittyImages::new(16);
+    let mut images = KittyImages::new(64 << 20);
     let strips = [Arc::new(stripes(0)), Arc::new(stripes(1))];
     let mut steps = Vec::new();
 
@@ -166,7 +166,7 @@ fn frame(images: &mut KittyImages, strips: &[Arc<RasterFrame>; 2], scroll: usize
                 first_row: index * ROWS,
                 // Two fixed strips: the slot is what each picture is.
                 key: graft_term::kitty::UploadKey(index as u64),
-                frame: strip,
+                frame: Some(strip),
                 cells: CellRect {
                     column: 2,
                     row: u16::try_from(row).unwrap_or(u16::MAX),

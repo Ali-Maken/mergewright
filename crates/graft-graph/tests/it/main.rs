@@ -6,6 +6,7 @@
 mod corpus;
 mod emphasis_layer;
 mod raster;
+mod raster_pieces;
 mod raster_pixels;
 mod streaming;
 mod strip_cache;
