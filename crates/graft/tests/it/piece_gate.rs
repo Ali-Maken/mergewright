@@ -28,7 +28,9 @@ use graft_core::capabilities::RenderingTier;
 use graft_core::event::{Event, KeyCode, KeyPress};
 use graft_fixtures::team::{self, TeamSpec};
 use graft_graph::raster::cache::{ByteBudget, STRIP_ROWS, StripCache};
-use graft_graph::raster::{emphasis_pieces, rasterise_emphasis, rasterise_piece};
+use graft_graph::raster::{
+    PlainStrip, Selection, emphasis_pieces, rasterise_emphasis, rasterise_piece,
+};
 
 use crate::frame_trace::{Post, Posted};
 use crate::frames::Refs;
@@ -58,8 +60,7 @@ fn pieces_localise_on_his_walk() {
     let session = Session::settle(&Loaded::default(), capabilities(RenderingTier::Pixel));
     let paint = StripPaint::of(&session);
     let cache = StripCache::with_budget(ByteBudget(usize::MAX), 64);
-    let mut slots: HashMap<usize, u64> = HashMap::new();
-    let mut held: HashSet<u64> = HashSet::new();
+    let mut seen = Seen::default();
     let (mut today, mut pieces, mut piece_count, mut strips_changed) = (0u64, 0u64, 0usize, 0usize);
     for key in 0..=KEYS {
         let pixels = pixel_rows(&state, max_lanes(&state), STRIP_ROWS);
@@ -69,35 +70,11 @@ fn pieces_localise_on_his_walk() {
             if strip.first_row >= top + height || strip.first_row + strip.row_count() <= top {
                 continue;
             }
+            let got = strip.with_layers(&pixels, &paint, |plain, selection| {
+                areas(&cache, &mut seen, strip.first_row, plain, selection)
+            });
             let (area_today, area_pieces, sent, changed) =
-                strip.with_layers(&pixels, &paint, |plain, selection| {
-                    let first = strip.first_row;
-                    let paint_key = cache.paint_key(first, plain, selection).expect("paint key");
-                    let changed = slots.insert(first, paint_key) != Some(paint_key);
-                    let area = |frame: &graft_core::raster::RasterFrame| {
-                        u64::from(frame.width) * u64::from(frame.height)
-                    };
-                    let today = if changed {
-                        rasterise_emphasis(plain, selection)
-                            .expect("emphasis")
-                            .map_or(0, |top| area(&top.frame))
-                    } else {
-                        0
-                    };
-                    let strip_key = cache
-                        .backdrop_key(first, plain, selection.backdrop)
-                        .expect("backdrop key");
-                    let (mut sent_area, mut sent) = (0, 0);
-                    for piece in emphasis_pieces(plain, selection, strip_key) {
-                        if held.insert(piece.key) {
-                            sent += 1;
-                            sent_area += rasterise_piece(plain, selection, piece)
-                                .expect("piece")
-                                .map_or(0, |top| area(&top.frame));
-                        }
-                    }
-                    (today, sent_area, sent, changed)
-                });
+                got.unwrap_or_else(|why| panic!("{why}"));
             // The first frame sends everything either way: per key only.
             if key > 0 {
                 today += area_today;
@@ -107,7 +84,7 @@ fn pieces_localise_on_his_walk() {
             }
         }
         if key < KEYS {
-            state = press(&jobs, state, &events, KeyCode::Char('j'));
+            state = press(&jobs, &state, &events, KeyCode::Char('j'));
         }
     }
     let percent = (pieces * 100).checked_div(today).unwrap_or(0);
@@ -125,14 +102,59 @@ fn pieces_localise_on_his_walk() {
     );
 }
 
+/// What the terminal holds so far: today's emphasis key per strip slot, and
+/// every piece key sent.
+#[derive(Default)]
+struct Seen {
+    slots: HashMap<usize, u64>,
+    held: HashSet<u64>,
+}
+
+/// One strip this key: (today's area sent, the pieces' area sent, pieces
+/// sent, whether today's emphasis key changed).
+fn areas(
+    cache: &StripCache,
+    seen: &mut Seen,
+    first: usize,
+    plain: &PlainStrip<'_>,
+    selection: &Selection<'_>,
+) -> Result<(u64, u64, usize, bool), String> {
+    let paint_key = cache
+        .paint_key(first, plain, selection)
+        .map_err(|why| format!("paint key: {why:?}"))?;
+    let changed = seen.slots.insert(first, paint_key) != Some(paint_key);
+    let area =
+        |frame: &graft_core::raster::RasterFrame| u64::from(frame.width) * u64::from(frame.height);
+    let today = if changed {
+        rasterise_emphasis(plain, selection)
+            .map_err(|why| format!("emphasis: {why:?}"))?
+            .map_or(0, |top| area(&top.frame))
+    } else {
+        0
+    };
+    let strip_key = cache
+        .backdrop_key(first, plain, selection.backdrop)
+        .map_err(|why| format!("backdrop key: {why:?}"))?;
+    let (mut sent_area, mut sent) = (0, 0);
+    for piece in emphasis_pieces(plain, selection, strip_key) {
+        if seen.held.insert(piece.key) {
+            sent += 1;
+            sent_area += rasterise_piece(plain, selection, piece)
+                .map_err(|why| format!("piece: {why:?}"))?
+                .map_or(0, |top| area(&top.frame));
+        }
+    }
+    Ok((today, sent_area, sent, changed))
+}
+
 /// One key through `update`, its commands dispatched, then quiet.
 fn press(
     jobs: &JobRunner<Post>,
-    state: AppState,
+    state: &AppState,
     events: &Receiver<Posted>,
     code: KeyCode,
 ) -> AppState {
-    let (next, commands) = update(&state, AppEvent::Core(Event::Key(KeyPress::plain(code))));
+    let (next, commands) = update(state, AppEvent::Core(Event::Key(KeyPress::plain(code))));
     for command in commands {
         jobs.dispatch(command);
     }

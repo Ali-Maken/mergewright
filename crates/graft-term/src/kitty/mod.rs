@@ -31,7 +31,7 @@ use crate::tmux::Transport;
 mod encode;
 mod reply;
 
-pub use reply::replies;
+pub use reply::{GraphicsReply, replies};
 
 pub(crate) use encode::{base64, straight_alpha};
 
@@ -85,41 +85,21 @@ pub struct Place<'a> {
     /// What the pixels are. A different key for the same slot means the
     /// pixels changed and the strip is transmitted again.
     pub key: UploadKey,
-    /// The rasterised strip; read only to transmit it.
-    pub frame: &'a RasterFrame,
+    /// The pixels; read only to transmit them. `None` only when the caller
+    /// asked [`KittyImages::holds`] this frame and the terminal does: placed
+    /// by key, never rasterised (an emphasis piece, ADR-0053 amendment
+    /// 2026-10-10). A `None` the terminal turns out not to hold is left
+    /// unplaced this frame, and `holds` says no on the next, so it is sent
+    /// then — never placed blank.
+    pub frame: Option<&'a RasterFrame>,
     /// Rows of the strip to show, counted from the strip's own first row.
     pub rows: Range<usize>,
     /// Where on screen those rows go.
     pub cells: CellRect,
-    /// The strip itself, or the emphasis above it. Each layer of a slot is
-    /// its own upload.
+    /// The strip itself, or an emphasis piece above it. A strip is one
+    /// upload per slot; emphasis uploads are known by their key alone, any
+    /// number per strip.
     pub layer: Layer,
-}
-
-/// One APC graphics reply: `ESC _ G i=…,p=…;message ESC \`.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GraphicsReply {
-    /// The image id the reply is about, if it named one.
-    pub image: Option<u32>,
-    /// The placement id, if it named one.
-    pub placement: Option<u32>,
-    /// `OK`, or an error such as `ENOENT:image not found`. Control
-    /// characters are already replaced with U+FFFD.
-    pub message: String,
-}
-
-impl GraphicsReply {
-    /// True unless the terminal said `OK`.
-    #[must_use]
-    pub fn is_error(&self) -> bool {
-        self.message != "OK"
-    }
-
-    /// True for `ENOENT`: the terminal no longer has the image.
-    #[must_use]
-    pub fn is_missing_image(&self) -> bool {
-        self.message.starts_with("ENOENT")
-    }
 }
 
 /// An image the terminal holds for us. Its pixels are the terminal's; Graft
@@ -135,6 +115,11 @@ struct Upload {
     /// Sent with `o=z`: an error reply about it may mean the terminal
     /// cannot inflate.
     deflated: bool,
+    /// What a placement needs of the pixels, kept so a held image is placed
+    /// without them.
+    shape: encode::Shape,
+    /// Decoded bytes the terminal stores for it (RGBA, 4 per pixel).
+    bytes: usize,
 }
 
 /// What Graft has uploaded to a Kitty-protocol terminal, and the commands
@@ -142,7 +127,8 @@ struct Upload {
 #[derive(Debug)]
 pub struct KittyImages {
     uploads: Vec<Upload>,
-    capacity: usize,
+    /// Decoded bytes unplaced uploads may hold in the terminal.
+    unplaced_bytes: usize,
     next_id: u32,
     next_emphasis_id: u32,
     clock: u64,
@@ -153,14 +139,18 @@ pub struct KittyImages {
 }
 
 impl KittyImages {
-    /// Track uploads, keeping at most `capacity` images in the terminal.
-    /// Placed strips are never evicted, so a frame showing more strips than
-    /// that keeps them all.
+    /// Track uploads, letting images no frame places hold at most
+    /// `unplaced_bytes` decoded bytes in the terminal; past that the least
+    /// recently placed go first. A placed image is never freed, so a frame
+    /// showing more than that keeps it all. The terminal's own quota is far
+    /// larger (kitty: "the quota in kitty is 320MB per buffer",
+    /// sw.kovidgoyal.net/kitty/graphics-protocol, "Image persistence and
+    /// storage quotas").
     #[must_use]
-    pub fn new(capacity: usize) -> Self {
+    pub fn new(unplaced_bytes: usize) -> Self {
         Self {
             uploads: Vec::new(),
-            capacity: capacity.max(1),
+            unplaced_bytes,
             next_id: FIRST_IMAGE_ID,
             next_emphasis_id: FIRST_IMAGE_ID | EMPHASIS_ID_BIT,
             clock: 0,
@@ -200,6 +190,24 @@ impl KittyImages {
         self.uploads.len()
     }
 
+    /// Whether the terminal holds an image of `key`, as far as Graft knows:
+    /// a look, nothing sent. Yes means a [`Place`] of it may come with no
+    /// pixels this frame. An `ENOENT` reply about it makes this no.
+    #[must_use]
+    pub fn holds(&self, key: UploadKey) -> bool {
+        self.uploads.iter().any(|upload| upload.key == key)
+    }
+
+    /// Decoded bytes of the uploads no frame places now.
+    #[must_use]
+    pub fn unplaced(&self) -> usize {
+        self.uploads
+            .iter()
+            .filter(|upload| !upload.placed)
+            .map(|upload| upload.bytes)
+            .sum()
+    }
+
     /// Append the commands that make the screen show exactly `places`:
     /// transmit what the terminal lacks, replace each strip's placement,
     /// remove placements of strips no longer shown, evict old uploads.
@@ -214,9 +222,13 @@ impl KittyImages {
         let strips = places.iter().filter(|place| place.layer == Layer::Strip);
         let emphasis = places.iter().filter(|place| place.layer == Layer::Emphasis);
         for place in strips.chain(emphasis) {
-            let id = self.ensure_uploaded(place, out);
+            let Some(index) = self.ensure_uploaded(place, out) else {
+                // Not held and no pixels: unplaced now, sent next frame.
+                continue;
+            };
+            let Upload { id, shape, .. } = self.uploads[index];
             shown.push(id);
-            encode::put_placement(self.transport, id, place, out);
+            encode::put_placement(self.transport, id, shape, place, out);
         }
         for upload in &mut self.uploads {
             if upload.placed && !shown.contains(&upload.id) {
@@ -274,27 +286,34 @@ impl KittyImages {
         }
     }
 
-    /// The id holding `place`'s pixels, transmitting them first if needed.
-    fn ensure_uploaded(&mut self, place: &Place<'_>, out: &mut Vec<u8>) -> u32 {
+    /// The upload holding `place`'s pixels, transmitting them first if
+    /// needed; `None` when it is not held and `place` has no pixels.
+    ///
+    /// A strip is found by its slot (`first_row`), and new pixels there free
+    /// the old image. An emphasis piece is found by its key alone: a piece
+    /// the cursor moved away from stays in the terminal, unplaced, so moving
+    /// back places it again for nothing (`evict` bounds what that keeps).
+    fn ensure_uploaded(&mut self, place: &Place<'_>, out: &mut Vec<u8>) -> Option<usize> {
         let clock = self.clock;
-        if let Some(index) = self
-            .uploads
-            .iter()
-            .position(|u| u.first_row == place.first_row && u.layer == place.layer)
-        {
+        let found = self.uploads.iter().position(|u| match place.layer {
+            Layer::Strip => u.layer == Layer::Strip && u.first_row == place.first_row,
+            Layer::Emphasis => u.layer == Layer::Emphasis && u.key == place.key,
+        });
+        if let Some(index) = found {
             if self.uploads[index].key == place.key {
                 self.uploads[index].last_used = clock;
-                return self.uploads[index].id;
+                return Some(index);
             }
             // Same slot, new pixels: a fresh id, so a late reply about the
             // old image can never be mistaken for one about the new.
             encode::free(self.transport, self.uploads.remove(index).id, out);
         }
+        let frame = place.frame?;
         let id = self.allocate(place.layer);
         let deflated = encode::transmit(
             self.transport,
             id,
-            place.frame,
+            frame,
             self.deflate,
             &mut self.scratch,
             out,
@@ -307,8 +326,10 @@ impl KittyImages {
             placed: false,
             last_used: clock,
             deflated,
+            shape: encode::Shape::of(frame),
+            bytes: frame.pixels.len(),
         });
-        id
+        Some(self.uploads.len() - 1)
     }
 
     /// A fresh id for `layer`: strips count up below [`EMPHASIS_ID_BIT`],
@@ -333,9 +354,11 @@ impl KittyImages {
         id
     }
 
-    /// Free least-recently-used unplaced uploads past capacity.
+    /// Free the least recently placed unplaced uploads until what is left
+    /// unplaced fits `unplaced_bytes`.
     fn evict(&mut self, out: &mut Vec<u8>) {
-        while self.uploads.len() > self.capacity {
+        let mut unplaced = self.unplaced();
+        while unplaced > self.unplaced_bytes {
             let Some(index) = self
                 .uploads
                 .iter()
@@ -346,7 +369,9 @@ impl KittyImages {
             else {
                 return;
             };
-            encode::free(self.transport, self.uploads.remove(index).id, out);
+            let upload = self.uploads.remove(index);
+            unplaced -= upload.bytes;
+            encode::free(self.transport, upload.id, out);
         }
     }
 }

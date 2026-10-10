@@ -84,6 +84,9 @@ mod partial_fetch;
 /// m8 05 Part 2: the gate before wiring emphasis pieces.
 #[cfg(feature = "heavy-tests")]
 mod piece_gate;
+/// m8 05 Part 2: `docs/shots/m8-05-emphasis-pieces.png`, on the team fixture.
+#[cfg(feature = "heavy-tests")]
+mod pieces_shot;
 mod piped_stdout;
 mod preview;
 mod pty;

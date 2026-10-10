@@ -63,13 +63,15 @@ May depend on: `core` (ARCHITECTURE.md crate table). One line per public item.
 - `Layer` (enum) — `Strip` or `Emphasis` (`z=1`, drawn over strips).
 - `CellRect` (struct) — zero-based cell rectangle: `column`, `row`, `columns`, `rows`.
 - `UploadKey` (struct) — `(pub u64)`: what an upload is known by; same key, same picture, no retransmit.
-- `Place` (struct) — one image this frame: `first_row`, `key`, `frame`, `rows`, `cells`, `layer`.
+- `Place` (struct) — one image this frame: `first_row`, `key`, `frame` (`None` only for a key `holds` said yes to), `rows`, `cells`, `layer`.
 - `GraphicsReply` (struct) — one APC graphics reply: `image`, `placement`, `message`.
 - `GraphicsReply::is_error` (fn) — `-> bool`: the reply is not `OK`.
 - `GraphicsReply::is_missing_image` (fn) — `-> bool`: the terminal lost the image (`ENOENT`).
 - `replies` (fn) — `(&[u8]) -> Vec<GraphicsReply>`: every graphics reply in a byte buffer.
 - `KittyImages` (struct) — uploads the terminal holds; emits transmit-once, replace and quiet commands.
-- `KittyImages::new` (fn) — `(capacity: usize)`: at most that many unplaced images kept.
+- `KittyImages::new` (fn) — `(unplaced_bytes: usize)`: decoded bytes unplaced images may hold; least recently placed freed first.
+- `KittyImages::holds` (fn) — `(UploadKey) -> bool`: the terminal holds that image, so a place may come without pixels.
+- `KittyImages::unplaced` (fn) — `-> usize`: decoded bytes of the uploads no frame places now.
 - `KittyImages::deflating` (fn) — builder `(bool)`: transmit zlib-compressed RGBA.
 - `KittyImages::is_deflating` (fn) — `-> bool`: still deflating; false once an error turned it off.
 - `KittyImages::with_transport` (fn) — builder: send commands over a `Transport`.

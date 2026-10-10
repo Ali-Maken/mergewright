@@ -144,7 +144,7 @@ impl ItermImages {
         }) {
             return Ok(index);
         }
-        let png = band_png(place.frame, &place.rows)?;
+        let png = band_png(place.frame.ok_or(io::ErrorKind::InvalidInput)?, &place.rows)?;
         self.encoded += 1;
         let mut sequence = Vec::with_capacity(png.len().div_ceil(3) * 4 + 96);
         // `write!` into a `Vec` cannot fail.
@@ -251,7 +251,7 @@ mod tests {
         Place {
             first_row: 0,
             key: UploadKey(Arc::as_ptr(frame) as u64),
-            frame,
+            frame: Some(&**frame),
             cells: CellRect {
                 column: 2,
                 row,

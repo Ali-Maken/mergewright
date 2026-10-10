@@ -1,7 +1,13 @@
-// Emphasis in per-column pieces (ADR-0053 amendment 2026-10-10, m8 05
-// Part 2). `include!`d at the end of `raster.rs`, so the tests are
-// `raster::…` as the ticket names them; the window and its threads are
-// `emphasis_layer`'s.
+//! Emphasis in per-column pieces (ADR-0053 amendment 2026-10-10, m8 05
+//! Part 2). The window and its threads are `emphasis_layer`'s.
+
+use std::collections::BTreeSet;
+
+use graft_core::raster::RasterFrame;
+use graft_graph::raster::{
+    Backdrop, Lit, PlainStrip, Selection, composite, emphasis_pieces, rasterise_backdrop,
+    rasterise_emphasis, rasterise_piece,
+};
 
 /// Every (strip, cursor, backdrop) of the branchy window this samples: a
 /// cursor every few rows, both backdrops (`Faded` is Focus).
@@ -163,25 +169,12 @@ impl Tally {
 #[test]
 fn piece_key_moves_only_with_its_column() {
     use super::emphasis_layer::{CELL, branchy, lits};
-    use std::collections::BTreeMap;
     let window = branchy();
     let threads = window.threads();
     let range = 32..64;
     let plain = window.plain(range.clone());
     let strip = window.strip(&plain, &range, CELL);
-    let keys = |lit: &[Lit<'_>]| -> BTreeMap<usize, u64> {
-        emphasis_pieces(
-            &strip,
-            &Selection {
-                rows: lit,
-                backdrop: Backdrop::OffThread,
-            },
-            7,
-        )
-        .into_iter()
-        .map(|piece| (piece.column, piece.key))
-        .collect()
-    };
+    let keys = |lit: &[Lit<'_>]| piece_keys(&strip, lit);
     let mut moved = 0;
     for cursor in [33, 40, 47, 58] {
         let base = lits(&threads[cursor], range.clone(), Backdrop::OffThread);
@@ -202,19 +195,43 @@ fn piece_key_moves_only_with_its_column() {
                 let case = format!("cursor {cursor} row {row} column {column}");
                 for other in before.keys().chain(after.keys()) {
                     if *other != column {
-                        assert_eq!(before.get(other), after.get(other), "{case}: column {other} moved");
+                        assert_eq!(
+                            before.get(other),
+                            after.get(other),
+                            "{case}: column {other} moved"
+                        );
                     }
                 }
                 if draws_here {
-                    assert_ne!(before.get(&column), after.get(&column), "{case}: its own key stayed");
+                    assert_ne!(
+                        before.get(&column),
+                        after.get(&column),
+                        "{case}: its own key stayed"
+                    );
                     moved += 1;
                 } else {
-                    assert_eq!(before.get(&column), after.get(&column), "{case}: nothing drawn, key moved");
+                    assert_eq!(
+                        before.get(&column),
+                        after.get(&column),
+                        "{case}: nothing drawn, key moved"
+                    );
                 }
             }
         }
     }
     assert!(moved > 0, "no column drew anything");
+}
+
+/// Each piece's key by its column, off-thread backdrop, strip key 7.
+fn piece_keys(strip: &PlainStrip<'_>, lit: &[Lit<'_>]) -> std::collections::BTreeMap<usize, u64> {
+    let selection = Selection {
+        rows: lit,
+        backdrop: Backdrop::OffThread,
+    };
+    emphasis_pieces(strip, &selection, 7)
+        .into_iter()
+        .map(|piece| (piece.column, piece.key))
+        .collect()
 }
 
 /// A different strip key is a different piece, whatever the alphas.
@@ -244,5 +261,8 @@ fn piece_key_carries_the_strip_key() {
         rows: &lit,
         backdrop: Backdrop::Full,
     };
-    assert!(emphasis_pieces(&strip, &full, 1).is_empty(), "Full: no emphasis");
+    assert!(
+        emphasis_pieces(&strip, &full, 1).is_empty(),
+        "Full: no emphasis"
+    );
 }

@@ -16,7 +16,10 @@ use graft_term::kitty::EMPHASIS_ID_BIT;
 use super::*;
 use crate::view::strips::pixel_rows;
 use crate::view::strips::tests::{capped, fan, fold_plan};
+use emphasis_pieces::{emphasis_placed, placed};
 use graft_graph::fold::Keep;
+
+mod emphasis_pieces;
 
 /// The spec's terminal for these runs (`120×40`).
 const COLUMNS: u16 = 120;
@@ -57,15 +60,6 @@ fn transmits(stream: &str) -> Vec<Transmit> {
                 deflated: keys.contains(&"o=z"),
             })
         })
-        .collect()
-}
-
-/// Image ids placed in `stream`.
-fn placed(stream: &str) -> Vec<u32> {
-    stream
-        .split("a=p,i=")
-        .skip(1)
-        .filter_map(|rest| rest.split(',').next()?.parse().ok())
         .collect()
 }
 
@@ -343,7 +337,7 @@ fn capped_at_pixel_tier() -> (Session, AppState) {
 /// layout, not paint. What ADR-0053 promises, and this guards: a backdrop is
 /// re-sent only on a frame whose fold plan or strip window changed (a), the
 /// fixture really does change the fold (b), and a changed selection paint
-/// always goes as an emphasis layer (c).
+/// always changes the emphasis placed (c).
 ///
 /// Step 0 (46c), the old bound "no backdrop on any j" run red first: 16 red
 /// frames (1–16), every one a plan change, `preferred` the only class that
@@ -384,10 +378,12 @@ fn a_capped_graph_resends_strips_only_when_the_fold_changes() {
             changed || backdrop == 0,
             "frame {k}: {backdrop} backdrops sent with the fold and strip window unchanged"
         );
-        // (c) A changed selection paint goes as an emphasis layer.
+        // (c) A changed selection paint changes the emphasis placed: pieces
+        // sent, or held ones placed anew (ADR-0053 amendment 2026-10-10).
+        let lit = |frame: &String| emphasis_placed(frame);
         assert!(
-            !lit_changed || emphasis >= 1,
-            "frame {k}: the selection's paint changed and no emphasis went"
+            !lit_changed || emphasis >= 1 || lit(&run.frames[k]) != lit(&run.frames[k - 1]),
+            "frame {k}: the selection's paint changed and its emphasis did not"
         );
         if changed {
             fold_changes += 1;

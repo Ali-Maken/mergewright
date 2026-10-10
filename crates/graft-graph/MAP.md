@@ -109,6 +109,11 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 - `rasterise_backdrop` (fn) — `PlainStrip` → premultiplied `RasterFrame`, every element at one backdrop alpha.
 - `rasterise_emphasis` (fn) — what draws above the backdrop, cropped; `None` when nothing does.
 - `composite` (fn) — `composite(&RasterFrame, &Emphasised) -> RasterFrame`; premultiplied "over".
+- `Piece` (struct) — one drawn column's share of a strip's emphasis: `column`, `key` (ADR-0053 amendment 2026-10-10).
+- `emphasis_pieces` (fn) — `(&PlainStrip, &Selection, strip_key) -> Vec<Piece>`: the pieces drawing above the backdrop; no rasterising.
+  Ownership: an edge (straight or arc) is its drawn column's; a row's node, lane stubs and tail are its lane's; the rail is the marker column's.
+  Key = hash(strip key, column, (row, element, alpha) of each element it owns): a `j` that leaves a column's alphas leaves its key.
+- `rasterise_piece` (fn) — one piece's pixels at `(a − b)/(1 − b)`, cropped to whole cells; `None` when it draws nothing.
 - `RasterPool` (struct) — strip-sized pixel buffers lent to the rasteriser; `new`, `take`, `give`, `flush`, `allocated`.
 
 ## raster::cache

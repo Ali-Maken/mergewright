@@ -1,7 +1,7 @@
 # m8-polish-and-ship/05 trace follow-up. Builder run: scripts/m8-trace-followup.sh (Pixel tier, pty answering
 # like Ghostty with Kitty graphics + deflate, his Ghostty shape 222x70 at 17x37, 50 j at 33 ms, MONOREPO fixture).
-# BEFORE only. No product change landed: the cause is designed (ADR-0053 emphasis layer), see ticket 05 NOTES.
-# AFTER: none yet.
+# BEFORE: HEAD ad7a435f, one emphasis image per strip. AFTER: 05 Part 2, emphasis in per-column pieces (ADR-0053
+# amendment 2026-10-10), same script, same shape, two runs (both on battery; before was on AC).
 #
 # His Ghostty run, side by side (docs/perf/m8-trace-2026-10-08-ghostty.txt:1,8-13):
 #   header tier=pixel columns=222 rows=70 history_rows=3494 refs=291 term=ghostty
@@ -30,3 +30,54 @@ power Now drawing from 'AC Power'
 after_last_motion frames=0
 uploads strip=7/805016B(15%) emphasis=148/4315003B(82%) placements=330 stream=5228343B
 upload_shapes emphasis:17x1184=46 emphasis:1173x1221=41 emphasis:51x1184=27 emphasis:952x1184=12 emphasis:1173x1184=11 strip:1020x1184=2
+
+# after, pieces, MONOREPO: 2026-10-10T17:24Z Darwin arm64 f30acc26
+pty label=m8-trace-followup profile=kitty rate=- size=222x70 wait_s=5.0 period_ms=33 hold_s=1.65 keys=50 frames_before_keys=6 frames_while_held=48 frames_after_release=1 bytes_per_key=25802 bytes_after_release=14033 tail_ms=4 rss_mb=145 first_byte_ms=584 deflate_answer=yes transmits=132 deflated=132 deflate=yes broken=no
+header tier=pixel columns=222 rows=70 history_rows=17700 refs=1331 term=vscode headers=4
+frames=55 span_ms=6036.3 frames_per_s=8.9
+wakes n=55 p50=1 p95=3 p99=11 max=11
+motions n=55 p50=1 p95=1 p99=2 max=2
+queued n=55 p50=0 p95=0 p99=0 max=0
+update_us n=55 p50=114 p95=279 p99=405 max=405
+commands n=55 p50=0 p95=1 p99=5 max=5
+draw_us n=55 p50=2504 p95=26526 p99=46723 max=46723
+bytes n=55 p50=4861 p95=448816 p99=573577 max=573577
+write_us n=55 p50=112 p95=4646 p99=6419 max=6419
+fence_us n=0
+input_age_us n=48 p50=2927 p95=40215 p99=51616 max=51616
+tail_ms=0.0
+power Now drawing from 'Battery Power'
+after_last_motion frames=0
+uploads strip=7/805016B(39%) emphasis=125/1107238B(54%) placements=625 stream=2049944B
+upload_shapes emphasis:17x1184=27 emphasis:51x1184=25 emphasis:51x1221=13 emphasis:17x259=9 emphasis:34x1184=8 emphasis:34x1221=7
+
+# after, pieces, MONOREPO, run 2: 2026-10-10T17:25Z Darwin arm64 f30acc26
+pty label=m8-trace-followup profile=kitty rate=- size=222x70 wait_s=5.0 period_ms=33 hold_s=1.65 keys=50 frames_before_keys=6 frames_while_held=48 frames_after_release=1 bytes_per_key=25802 bytes_after_release=14033 tail_ms=3 rss_mb=145 first_byte_ms=6 deflate_answer=yes transmits=132 deflated=132 deflate=yes broken=no
+header tier=pixel columns=222 rows=70 history_rows=17700 refs=1331 term=vscode headers=4
+frames=55 span_ms=6619.7 frames_per_s=8.2
+wakes n=55 p50=1 p95=2 p99=15 max=15
+motions n=55 p50=1 p95=1 p99=2 max=2
+queued n=55 p50=0 p95=0 p99=0 max=0
+update_us n=55 p50=112 p95=205 p99=349 max=349
+commands n=55 p50=0 p95=1 p99=6 max=6
+draw_us n=55 p50=2854 p95=28713 p99=46951 max=46951
+bytes n=55 p50=4861 p95=448816 p99=573577 max=573577
+write_us n=55 p50=107 p95=4526 p99=6609 max=6609
+fence_us n=0
+input_age_us n=48 p50=4093 p95=37552 p99=51654 max=51654
+tail_ms=0.0
+power Now drawing from 'Battery Power'
+after_last_motion frames=0
+uploads strip=7/805016B(39%) emphasis=125/1107238B(54%) placements=625 stream=2049944B
+upload_shapes emphasis:17x1184=27 emphasis:51x1184=25 emphasis:51x1221=13 emphasis:17x259=9 emphasis:34x1184=8 emphasis:34x1221=7
+
+# before -> after (run 1 / run 2) against the ruling's targets:
+#   emphasis upload bytes 4,315,003 -> 1,107,238 / 1,107,238   target <= 1,078,750   MISSED by 28,488 (2.6 %)
+#   bytes_per_key         92,108    -> 25,802 / 25,802         target <= 46,054      met
+#   draw_us p50           6,345     -> 2,504 / 2,854           target <= 3,172       met
+#   after_last_motion frames=0, deflate=yes, broken=no                               met
+#   layer split: piece uploads read as emphasis (id bit 31): emphasis=125 uploads     met
+# Worse, not a target: draw_us p95 15,459 -> 26,526 / 28,713, p99 19,965 -> 46,723 / 46,951;
+#   bytes p95 288,075 -> 448,816, p99 486,064 -> 573,577 (bytes identical both runs). A few frames now
+#   cost more than before; which frames and why is not measured here (see ticket 05 NOTES).
+#   write_us p99 5,277 -> 6,419 / 6,609.

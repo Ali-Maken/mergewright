@@ -18,7 +18,7 @@ use graft_graph::identity::BranchIdentity;
 use graft_graph::layout::layout;
 use graft_graph::raster::{
     Backdrop, Emphasis, Lit, Marker, PlainRow, PlainStrip, RasterError, Ring, Selection, Stub,
-    composite, emphasis_pieces, rasterise_backdrop, rasterise_emphasis, rasterise_piece,
+    composite, rasterise_backdrop, rasterise_emphasis,
 };
 use graft_graph::row::Row;
 
@@ -1001,5 +1001,3 @@ fn check_png_missing_capture_is_red_even_when_created() {
     assert_eq!(drifted.0.len(), 1, "{:?}", drifted.0);
     assert!(path.exists(), "regenerating creates the missing capture");
 }
-
-include!("raster_pieces.rs");

@@ -37,11 +37,19 @@ use crate::drain_sink::DrainSink;
 use crate::frame_trace::{KeyFeed, Post, Posted};
 use crate::frames::Refs;
 use crate::frames::paced::{Handed, Kind, Paced, Watching};
-use crate::frames::run::{capabilities, in_memory, ready_to_scroll_at};
+use crate::frames::run::{in_memory, ready_to_scroll_at};
 use crate::frames::sink::Sink;
 
-use graft_core::capabilities::PixelProtocol;
 use graft_term::kitty::EMPHASIS_ID_BIT;
+
+mod encoding;
+
+use encoding::Encoding;
+
+/// `emphasis_cells_per_key` of `held_j_stops_on_release_pixel_deflate_free`
+/// at 61b643d5, before emphasis went in pieces (m8 05 Part 2): 74 (369
+/// emphasis transmits held, release, 2026-10-10).
+const EMPHASIS_CELLS_PER_KEY_BEFORE: u64 = 74;
 
 /// His terminal (`docs/field-notes.md:57`), `(columns, rows)`.
 const SIZE: (u16, u16) = (187, 50);
@@ -153,32 +161,6 @@ fn j_then_journal_opens_at_once_pixel_deflate() {
     held(RenderingTier::Pixel, true, Encoding::Deflate);
 }
 
-impl Encoding {
-    /// The harness's terminal at `tier`, sending images this way: a field
-    /// set on the value, never a `Capabilities` literal (42 Decided 4).
-    fn capabilities(self, tier: RenderingTier) -> graft_core::capabilities::Capabilities {
-        let mut caps = capabilities(tier);
-        match self {
-            Encoding::Raw => {}
-            Encoding::Deflate => caps.kitty_deflate = true,
-            Encoding::Iterm2 => caps.pixel_protocol = Some(PixelProtocol::Iterm2),
-        }
-        caps
-    }
-}
-
-/// How the pixel tier's images go out (46 Decided 7): set on the
-/// capabilities value by parameter, never by env (42 Decided 3).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Encoding {
-    /// Kitty, raw RGBA: `kitty_deflate` off.
-    Raw,
-    /// Kitty, zlib (`o=z`): `kitty_deflate` on.
-    Deflate,
-    /// iTerm2 inline images: one composited band per strip.
-    Iterm2,
-}
-
 fn keys(journal: bool) -> Vec<(KeyCode, Duration)> {
     let mut keys = vec![(KeyCode::Char('j'), REPEAT); HELD];
     if journal {
@@ -211,6 +193,9 @@ struct Reading {
     /// Emphasis images' width in cells, 99th percentile over the run
     /// (`s=` / cell width); `None` with none sent.
     emphasis_cells_p99: Option<u32>,
+    /// Emphasis images' width in cells summed over the run, per held `j`:
+    /// their decoded upload bytes over a constant (each is one strip tall).
+    emphasis_cells_per_key: u64,
     deflated_transmits: usize,
     peak_rss_mb: u64,
     /// Premises: frames judged, frames with ≥ 12 lanes, frames whose lit
@@ -259,7 +244,7 @@ fn held_in(tier: RenderingTier, journal: bool, encoding: Encoding, rate: u64, pa
             && reading.lit_changed * 2 >= reading.premise_frames,
         "PREMISE failed (the fixture is not his shape): {line}"
     );
-    let failed = verdict(tier, scenario, &reading);
+    let failed = verdict(tier, scenario, rate, &reading);
     assert!(
         failed.is_empty(),
         "held_key verdict failed {failed:?}: {line}"
@@ -293,8 +278,9 @@ fn summary(tier: RenderingTier, scenario: &str, rate: u64, reading: &Reading) ->
         // Frames whose fold differs from the frame before's: not readable
         // through this harness (see `verdict`).
         line += &format!(
-            " fold_changes_held=unread bytes_per_key={} emphasis_cells_p99={} deflated_transmits={}",
+            " fold_changes_held=unread bytes_per_key={} emphasis_cells_per_key={} emphasis_cells_p99={} deflated_transmits={}",
             reading.bytes_per_key,
+            reading.emphasis_cells_per_key,
             reading
                 .emphasis_cells_p99
                 .map_or_else(|| "none".to_owned(), |cells| cells.to_string()),
@@ -314,7 +300,7 @@ fn summary(tier: RenderingTier, scenario: &str, rate: u64, reading: &Reading) ->
 
 /// Prints one `VERDICT held_key` line per item; returns the failed ones.
 /// Counts in every build, times in release only (ADR-0021).
-fn verdict(tier: RenderingTier, scenario: &str, reading: &Reading) -> Vec<String> {
+fn verdict(tier: RenderingTier, scenario: &str, rate: u64, reading: &Reading) -> Vec<String> {
     let mut failed = Vec::new();
     let mut check = |name: &str, holds: bool| {
         println!(
@@ -339,14 +325,23 @@ fn verdict(tier: RenderingTier, scenario: &str, reading: &Reading) -> Vec<String
         // lane cap the fold keeps the selection's thread lanes (ADR-0025
         // Decision 2), so a `j` may change the layout and re-send every
         // strip. This harness cannot read the drawn fold — `Paced` hands
-        // out events and offsets, `PixelRows` has no kept-column set and
-        // the cap (`view::max_lanes`) is crate-private — so the count is
-        // printed, not judged. The invariant is guarded in the fast tier:
+        // out events and offsets, `PixelRows` has no kept-column set — so
+        // the count is printed, not judged. The invariant is guarded in the fast tier:
         // `pixel_scroll::a_capped_graph_resends_strips_only_when_the_fold_changes`.
         println!(
             "VERDICT held_key tier={tier:?} scenario={scenario} strip_transmits_held={}: unjudged (fold_changes_held unread)",
             reading.strip_transmits_held
         );
+        // Emphasis in pieces (m8 05 Part 2): what goes per `j` is the
+        // columns whose paint changed. Same run at 61b643d5, one emphasis
+        // image per strip: EMPHASIS_CELLS_PER_KEY_BEFORE cells per key.
+        if scenario == "A-deflate" && rate == FREE_RATE {
+            let cells = reading.emphasis_cells_per_key;
+            check(
+                "emphasis_cells_per_key<=25%",
+                cells * 4 <= EMPHASIS_CELLS_PER_KEY_BEFORE,
+            );
+        }
     }
     if cfg!(debug_assertions) {
         println!("held_key: debug build, times printed not asserted (ADR-0021)");
@@ -657,6 +652,8 @@ fn count_transmits(drain: &DrainSink, held_end: u64, total: u64, reading: &mut R
         .map(|px| px / CELL_WIDTH)
         .collect();
     widths.sort_unstable();
+    reading.emphasis_cells_per_key =
+        widths.iter().map(|&w| u64::from(w)).sum::<u64>() / HELD as u64;
     reading.emphasis_cells_p99 =
         (!widths.is_empty()).then(|| widths[(widths.len() * 99 / 100).min(widths.len() - 1)]);
 }
