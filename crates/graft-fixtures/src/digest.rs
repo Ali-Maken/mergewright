@@ -25,6 +25,7 @@ const GENERATOR: &[&str] = &[
     include_str!("shape.rs"),
     include_str!("git.rs"),
     include_str!("corpus.rs"),
+    include_str!("settled.rs"),
     // Decides where the corpus is cached and how it is published.
     include_str!("cache.rs"),
     // Decides whether the non-UTF-8 ref-name shape is built or skipped here.
@@ -54,6 +55,7 @@ pub fn corpus_key() -> Result<String, GitError> {
 #[cfg(feature = "heavy-tests")]
 const SYNTHETIC: &[&str] = &[
     include_str!("synthetic.rs"),
+    include_str!("settled.rs"),
     include_str!("stream.rs"),
     include_str!("git.rs"),
     include_str!("cache.rs"),
@@ -78,6 +80,7 @@ pub fn synthetic_key(scale: &str) -> Result<String, GitError> {
 /// (m7-power-tools/41). Not heavy-gated: the fast tier borrows `SMALL`.
 const TEAM: &[&str] = &[
     include_str!("team.rs"),
+    include_str!("settled.rs"),
     include_str!("stream.rs"),
     include_str!("git.rs"),
     include_str!("cache.rs"),

@@ -1,6 +1,6 @@
 # 26r — rename review fixes: a failed move retries cleanly, an older build's writes are never deleted unread
 
-Status: Part A done (builder-opus, 2026-10-10); Part B open
+Status: done — Part A (builder-opus, 2026-10-10); Part B (builder-sonnet, 2026-10-10)
 Blocked by: 26
 Build with: Part A **Opus**: the order is fully set out below, and every window gets a test that injects a writer at
 that step, so correctness can be judged by the tests. Fable only if the conductor's budget has room. Part B **Sonnet**:
@@ -142,16 +142,20 @@ names are `rename::review::<name>`.
       workspace nextest run (see NOTES).
 
 ## Part B: graft config folder, graft-fixtures
-- [ ] Both folders present: equal → deleted; absent → carried forward; differs → `older-version/1/`, warned on that
+Ticked by the Part B builder, 2026-10-10.
+- [x] Both folders present: equal → deleted; absent → carried forward; differs → `older-version/1/`, warned on that
       launch only. A second launch with no new old files gives no warning —
-      `graft config::folder::tests::both_present_files_carry_or_go_aside`.
-- [ ] Two moves at once (two threads, two fds) move once, with no `tributary.moving` cut short —
-      `config::folder::tests::two_launches_move_the_config_once`.
-- [ ] A failed old-folder removal says why (the `io::Error` words) —
+      `graft config::folder::tests::both_present_files_carry_or_go_aside` (also: a third launch after a new old
+      write lands in `older-version/2/`).
+- [x] Two moves at once (two threads, two fds) move once, with no `tributary.moving` cut short —
+      `config::folder::tests::two_launches_move_the_config_once` (20 rounds).
+- [x] A failed old-folder removal says why (the `io::Error` words) —
       `config::folder::tests::a_failed_old_folder_removal_says_why`.
-- [ ] Minor 9: synthetic and team fixtures are built with the marker. The cache key rebuilds once —
-      `graft-fixtures synthetic::tests::built_with_the_marker`, `team::tests::built_with_the_marker`.
-- [ ] Replace `config_dir_moves_both_present`, which asserted the old warn-every-launch behaviour (say so in NOTES).
+- [x] Minor 9: synthetic and team fixtures are built with the marker. The cache key rebuilds once —
+      `graft-fixtures synthetic::tests::built_with_the_marker` (heavy-tests feature only; run and passed),
+      `settled::tests::team_built_with_the_marker` (moved out of `team.rs`: the file-size ratchet holds it at 525).
+- [x] Replace `config_dir_moves_both_present`, which asserted the old warn-every-launch behaviour (say so in NOTES) —
+      replaced by `both_present_files_carry_or_go_aside`.
 
 ## Touches
 - graft-ops `rename{,/trees,/refs,/marker}`: `SettleOutcome` gains fields and a variant. Every match on it must be
@@ -211,3 +215,32 @@ No compaction. Scout: ticket 26's scout plus the review's file:line refs; no new
 - Each ticked test passed.
 - Workspace nextest: 6281/6282 on the first run. The one red was the `file_size` ratchet, fixed by the file split. The second run: 6282/6282, doctests 9/9 ok.
 - Not observed: power loss, and a real older binary running concurrently. The shim hooks emulate its writes.
+
+## NOTES — Part B (builder-sonnet, 2026-10-10)
+No compaction. Scout: none new; ticket 26's scout + review lines, and `folder.rs` read directly (it is rewritten).
+
+**Built.**
+- `config/folder.rs`: flock on `<config_root>/tributary.lock` (graft-git `FileLock`: `try_exclusive`, else wait on
+  `shared` and retry — a kernel wait, no poll; no new dependency or nix feature in graft). Taken only when the old
+  folder exists; old re-checked after the lock.
+- Both present: per-file byte rule, kept aside under `<config_root>/tributary/older-version/<n>/` (`KEPT_ASIDE_DIR`
+  from graft-ops). `ConfigDirMoved::BothPresent` replaced by `OlderWrote { old, kept_aside }` and
+  `OldLeft { old, why }`.
+- graft-fixtures: `settled.rs` holds the one marker writer (moved from `corpus.rs`), now called by synthetic `build`
+  and team `borrow`; added to all three digests, so corpus, synthetic and team each rebuild once per target dir.
+- `config_dir_moves_both_present` replaced: it pinned "old folder left, warned every launch".
+
+**Deviations.**
+- Words print as `config folder: an older version wrote <old> · close it; kept in <p>` — the existing Display prefix
+  `config folder:` kept, not the ticket's `config:` (the prefix is shared with the move-failed warning).
+- Old folder holding only files equal to the new ones → `Nothing`, silent (nothing an older build wrote is lost).
+- A symlink/non-file under the old folder is left in place; the old folder's removal then fails → `OldLeft` with
+  the io::Error words.
+- `kept_aside` paths are absolute (config root is outside any repo).
+
+**Not verified:** a real older binary racing; two processes (threads with separate fds stand in — flock is per open
+file); power loss (dirs for `older-version/` are not fsynced, unlike Part A's tree).
+
+**Touches:** `config/load.rs` `settle_folder` (only match on `ConfigDirMoved`, grep); graft MAP config line;
+graft-fixtures MAP; `corpus.rs`, `digest.rs`, `lib.rs`, `synthetic.rs`, `team.rs`; `file_size` ratchet green.
+No keys, captures, journal or undo touched.

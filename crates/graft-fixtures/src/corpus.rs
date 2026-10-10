@@ -20,6 +20,7 @@ use crate::filesystem::{self, Support};
 use crate::git::{self, GitError};
 use crate::permissions;
 use crate::scratch::Scratch;
+use crate::settled;
 use crate::shape::Shape;
 use crate::shapes::{self, BuildError};
 
@@ -167,7 +168,8 @@ fn build_staging(base: &Path) -> Result<PathBuf, CorpusError> {
             skip(&dir, reason)?;
         } else {
             shapes::build(shape, &dir, streams.path())?;
-            names_settled(&dir)?;
+            settled::names_settled(&dir)
+                .map_err(io_error(format!("marking {} settled", dir.display())))?;
         }
     }
 
@@ -175,20 +177,6 @@ fn build_staging(base: &Path) -> Result<PathBuf, CorpusError> {
     fs::write(&marker, format!("{}\n", git::version()?))
         .map_err(io_error(format!("writing {}", marker.display())))?;
     Ok(staging.keep())
-}
-
-/// The app's one-time move to its new on-disk names (m8/26) marked done in
-/// the fixture, as the app leaves every repository it has opened:
-/// `<git dir>/tributary/migrated` = `clean` (`graft_core::on_disk`, which
-/// this crate may not depend on; `graft/tests/it/rename_status.rs` pins the
-/// two together). Without it the first test to open a borrowed fixture
-/// would write the marker and its lock into the shared corpus while other
-/// tests copy it.
-fn names_settled(dir: &Path) -> Result<(), CorpusError> {
-    let folder = dir.join(".git").join("tributary");
-    fs::create_dir_all(&folder).map_err(io_error(format!("creating {}", folder.display())))?;
-    let marker = folder.join("migrated");
-    fs::write(&marker, "clean\n").map_err(io_error(format!("writing {}", marker.display())))
 }
 
 /// Records that a shape could not be built here, in a form a later run can

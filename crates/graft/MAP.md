@@ -906,7 +906,7 @@ re-exported from `mod.rs`.
 - `load_from` (fn) — load config from an explicit path (tests, future `--config`).
 - `default_path` (fn) — where `load` looks: XDG or `~/.config` path.
 - `config_names` (fn, `pub(crate)`) — the `OnDiskNames` the config root uses for `config.toml`, `recent`, `launches`: decided once by `load` (`New`; `Old` when the folder move failed this run); `New` when nothing decided (tests).
-- `load` moves the folder first (m8/26, `config/folder.rs`: `migrate_config_dir(root) -> Result<ConfigDirMoved, io::Error>` — staged copy, read back, rename into place, old removed; `ConfigDirMoved::{Nothing, Moved, BothPresent}`). `ConfigWarning::ConfigFolder { words }`: both folders present (new kept) or the move failed. Test seam `load_settling(env)`.
+- `load` moves the folder first (m8/26, `config/folder.rs`: `migrate_config_dir(root) -> Result<ConfigDirMoved, io::Error>` — under an flock on `<root>/tributary.lock`; staged copy, read back, rename into place, old removed; both present (26r) → byte rule per old file: equal deleted, absent carried forward, differs kept in `tributary/older-version/<n>/`; `ConfigDirMoved::{Nothing, Moved, OlderWrote { old, kept_aside }, OldLeft { old, why }}`). `ConfigWarning::ConfigFolder { words }`: an older version wrote the old folder (that launch only), the old folder could not be removed (io::Error words), or the move failed. Test seam `load_settling(env)`.
 
 ## repos
 - `RepoStore` (struct) — the open repository, and what has been worked out once.

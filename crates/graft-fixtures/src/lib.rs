@@ -74,6 +74,7 @@ mod memory;
 mod permissions;
 pub mod remote;
 mod scratch;
+mod settled;
 mod shape;
 mod shapes;
 mod stream;
