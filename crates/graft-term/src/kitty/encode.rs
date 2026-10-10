@@ -155,12 +155,13 @@ impl Shape {
 }
 
 /// `a=p`: move to the cell, place the crop into the cell rectangle,
-/// replacing placement `p=1`, and leave the cursor where it was. Each image
-/// has one placement, so `p=1` is unique per place: an emphasis piece is an
-/// image of its own.
+/// replacing placement `p` (the place's count among this frame's places of
+/// the image, from 1: a strip has one, an emphasis piece one per spot its
+/// key turns up), and leave the cursor where it was.
 pub(super) fn put_placement(
     transport: Transport,
     id: u32,
+    placement: u32,
     shape: Shape,
     place: &Place<'_>,
     out: &mut Vec<u8>,
@@ -192,15 +193,16 @@ pub(super) fn put_placement(
         transport,
         out,
         format_args!(
-            "a=p,i={id},p=1,x=0,y={},w={},h={},c={columns},r={rows},C=1,{z}q=1",
+            "a=p,i={id},p={placement},x=0,y={},w={},h={},c={columns},r={rows},C=1,{z}q=1",
             start.saturating_mul(cell_height),
             width,
             count.saturating_mul(cell_height),
             // Strips send no `z` at all (protocol default 0), so their bytes
-            // are what they were before layers existed.
+            // are what they were before layers existed. Emphasis stacks by
+            // `z` alone: rank 0 at `z=1`, each rank one higher.
             z = match place.layer {
-                Layer::Strip => "",
-                Layer::Emphasis => "z=1,",
+                Layer::Strip => String::new(),
+                Layer::Emphasis => format!("z={},", 1 + u32::from(place.stack)),
             },
         ),
         b"",
@@ -208,9 +210,14 @@ pub(super) fn put_placement(
     out.extend_from_slice(b"\x1b8");
 }
 
-/// `a=d,d=i`: remove a strip's placement, keep its data.
-pub(super) fn delete_placement(transport: Transport, id: u32, out: &mut Vec<u8>) {
-    write_command(transport, out, format_args!("a=d,d=i,i={id},p=1,q=1"), b"");
+/// `a=d,d=i`: remove one placement of an image, keep its data.
+pub(super) fn delete_placement(transport: Transport, id: u32, placement: u32, out: &mut Vec<u8>) {
+    write_command(
+        transport,
+        out,
+        format_args!("a=d,d=i,i={id},p={placement},q=1"),
+        b"",
+    );
 }
 
 /// `a=d,d=I`: delete an image and free its data.

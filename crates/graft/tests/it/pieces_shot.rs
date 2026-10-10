@@ -5,12 +5,13 @@
 //! cursor moved down with `j` onto the first merge row past the start, then
 //! the same with Focus on (`F`). Each panel is what Kitty is sent: every
 //! strip's backdrop with each of its emphasis pieces composited over it in
-//! column order (`emphasis_pieces` + `rasterise_piece`, ADR-0053 amendment
-//! 2026-10-10), cropped to the cursor's row ±10, over a stand-in dark
-//! background. Top: Focus off. Bottom: Focus on.
+//! stacking order (`emphasis_pieces` order, sent as `z = 1 + rank`;
+//! `rasterise_piece`, ADR-0053 amendment 2026-10-10), cropped to the
+//! cursor's row ±10, over a stand-in dark background. Top: Focus off.
+//! Bottom: Focus on.
 //!
-//! Colour is **unverified** (CLAUDE.md rule 5), and so is how a terminal
-//! stacks pieces placed at one z (here: column order). Compares against the
+//! Colour is **unverified** (CLAUDE.md rule 5), and so is whether his
+//! terminal stacks the pieces by `z` as the Kitty protocol says. Compares against the
 //! committed file; rewrites it only under `TRIB_UPDATE_SHOTS=1`.
 
 use std::path::Path;

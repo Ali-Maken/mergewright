@@ -2,6 +2,8 @@
 
 use std::sync::Arc;
 
+use graft_core::raster::RasterFrame;
+
 use super::super::*;
 use super::{FIRST_EMPHASIS, commands, emphasis, place, strip};
 
@@ -97,4 +99,157 @@ fn a_piece_moved_away_from_and_back_is_not_sent_again() {
     let sent = commands(&out);
     assert!(sent.iter().all(|c| !c.starts_with("a=t")), "{sent:?}");
     assert_eq!(sent.iter().filter(|c| c.starts_with("a=p")).count(), 2);
+}
+
+/// m8 05 amendment 1: one content key turns up twice in a frame (the same
+/// arc on two rows). It is sent once and placed twice, each place its own
+/// placement id, so the second does not replace the first; a frame that
+/// shows it once again removes the second placement only.
+#[test]
+fn one_upload_two_places() {
+    let mut images = KittyImages::new(ROOMY);
+    let glow = strip(4, [9, 9, 9, 9]);
+    let id = FIRST_EMPHASIS;
+    let mut out = Vec::new();
+    images.frame(
+        &[piece(&glow, 7, 0, true), piece(&glow, 7, 2, true)],
+        &mut out,
+    );
+    let sent = commands(&out);
+    let transmits = sent.iter().filter(|c| c.starts_with("a=t")).count();
+    assert_eq!(transmits, 1, "one upload: {sent:?}");
+    let placed: Vec<&String> = sent.iter().filter(|c| c.starts_with("a=p")).collect();
+    assert_eq!(placed.len(), 2, "two placements: {sent:?}");
+    assert!(
+        placed[0].starts_with(&format!("a=p,i={id},p=1,")),
+        "{sent:?}"
+    );
+    assert!(
+        placed[1].starts_with(&format!("a=p,i={id},p=2,")),
+        "{sent:?}"
+    );
+
+    // Held now: both places come without pixels; nothing sent or removed.
+    let mut out = Vec::new();
+    images.frame(
+        &[piece(&glow, 7, 0, false), piece(&glow, 7, 2, false)],
+        &mut out,
+    );
+    let sent = commands(&out);
+    assert_eq!(sent.iter().filter(|c| c.starts_with("a=p")).count(), 2);
+    assert!(
+        sent.iter()
+            .all(|c| !c.starts_with("a=t") && !c.starts_with("a=d")),
+        "{sent:?}"
+    );
+
+    // Once: placement 1 replaced, placement 2 removed, data kept.
+    let mut out = Vec::new();
+    images.frame(&[piece(&glow, 7, 0, false)], &mut out);
+    let sent = commands(&out);
+    assert!(
+        sent.contains(&format!("a=d,d=i,i={id},p=2,q=1")),
+        "{sent:?}"
+    );
+    assert!(
+        !sent.contains(&format!("a=d,d=i,i={id},p=1,q=1")),
+        "{sent:?}"
+    );
+    assert!(images.holds(UploadKey(7)));
+
+    // Twice again, then hidden: both placements go.
+    images.frame(
+        &[piece(&glow, 7, 0, false), piece(&glow, 7, 2, false)],
+        &mut Vec::new(),
+    );
+    let mut out = Vec::new();
+    images.hide(&mut out);
+    let sent = commands(&out);
+    assert!(
+        sent.contains(&format!("a=d,d=i,i={id},p=1,q=1")),
+        "{sent:?}"
+    );
+    assert!(
+        sent.contains(&format!("a=d,d=i,i={id},p=2,q=1")),
+        "{sent:?}"
+    );
+}
+
+/// m8 05 amendment 1: `stack` is a piece's rank, and it reaches the
+/// terminal as `z`, the field the protocol stacks by: "If two images with
+/// the same z-index overlap then the image with the lower id is considered
+/// to have the lower z-index" (sw.kovidgoyal.net/kitty/graphics-protocol,
+/// "Controlling displayed image layout"). Every rank sits above the strip
+/// (`z` 0), and the screen order depends neither on the order the commands
+/// are written in nor on which id an older upload happened to get.
+#[test]
+fn stack_reaches_the_command() {
+    let mut images = KittyImages::new(ROOMY);
+    let glow = strip(4, [9, 9, 9, 9]);
+    // Key 8 is uploaded first, so it has the lower id, but ranks above 7.
+    images.frame(&[piece(&glow, 8, 0, true)], &mut Vec::new());
+    let places = [
+        Place {
+            stack: 5,
+            ..piece(&glow, 8, 0, false)
+        },
+        Place {
+            stack: 2,
+            ..piece(&glow, 7, 0, true)
+        },
+    ];
+    let mut out = Vec::new();
+    images.frame(&places, &mut out);
+    let sent = commands(&out);
+    let z_of = |id: u32| {
+        sent.iter()
+            .find(|c| c.starts_with(&format!("a=p,i={id},")))
+            .and_then(|c| c.split(',').find_map(|field| field.strip_prefix("z=")))
+            .map(|z| z.parse::<u32>().unwrap())
+    };
+    assert_eq!(z_of(FIRST_EMPHASIS), Some(6), "key 8, stack 5: {sent:?}");
+    assert_eq!(
+        z_of(FIRST_EMPHASIS + 1),
+        Some(3),
+        "key 7, stack 2: {sent:?}"
+    );
+    // A strip's place carries no `z` (protocol default 0), whatever its stack.
+    let base = strip(4, [0, 0, 0, 0]);
+    let mut out = Vec::new();
+    images.frame(
+        &[Place {
+            stack: 3,
+            ..place(&base, 0, 0..4, 0)
+        }],
+        &mut out,
+    );
+    let sent = commands(&out);
+    let strip_place = sent.iter().find(|c| c.starts_with("a=p")).unwrap();
+    assert!(!strip_place.contains("z="), "{sent:?}");
+}
+
+/// The same key in a new allocation is the same picture: the strip cache
+/// evicted it and drew it again, and the terminal still holds it. No
+/// transmit; a different key in the same slot is a new upload.
+#[test]
+fn an_upload_is_matched_by_its_key() {
+    let mut images = KittyImages::new(usize::MAX);
+    let (first, again) = (strip(4, [1, 2, 3, 255]), strip(4, [1, 2, 3, 255]));
+    let keyed = |frame, key| Place {
+        key: UploadKey(key),
+        ..place(frame, 0, 0..4, 1)
+    };
+    let mut out = Vec::new();
+    images.frame(&[keyed(&first, 7)], &mut out);
+    let mut out = Vec::new();
+    images.frame(&[keyed(&again, 7)], &mut out);
+    assert!(
+        commands(&out).iter().all(|c| !c.contains("a=t")),
+        "same key, no transmit: {:?}",
+        commands(&out)
+    );
+    let mut out = Vec::new();
+    images.frame(&[keyed(&again, 8)], &mut out);
+    assert!(commands(&out).iter().any(|c| c.contains("a=t")));
+    assert_eq!(images.uploaded(), 1, "the old one was freed");
 }

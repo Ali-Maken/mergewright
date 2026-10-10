@@ -3219,7 +3219,8 @@ it on `scripts/testdata/m8-trace-sample.trace`.
 - [ ] **His run after emphasis pieces** (the user; m8 05 Part 2): in Ghostty full screen, the release build, his repo
   (first command above) — hold `j` 3 s, let go; hold `k` back; `F`, then hold `j` again; quit with `q`, then
   `scripts/m8-trace-summary.sh <file>`. **Right:** it stops on the row he let go at, the thread lit at every step,
-  never half-drawn. Expected from the builder's after-run (a finding, not a fail if missed): `write_us` p99 ≤ 7,000
+  never half-drawn; where a lit line meets a dot, the dot is on top, as in `docs/shots/m8-05-emphasis-pieces.png`
+  (pieces stack by Kitty `z`, m8 05 amendment 1: unverified until he looks). Expected from the builder's after-run (a finding, not a fail if missed): `write_us` p99 ≤ 7,000
   (was 14,064), `bytes` p95 ≤ 30,700 (was 76,751). `tail_ms` is not a judge (ticket 05 NOTES).
 
 ## M8: read the manual (J17, m8-polish-and-ship/23)

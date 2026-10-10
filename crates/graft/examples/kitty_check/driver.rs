@@ -175,6 +175,7 @@ fn frame(images: &mut KittyImages, strips: &[Arc<RasterFrame>; 2], scroll: usize
                 },
                 rows,
                 layer: graft_term::kitty::Layer::Strip,
+                stack: 0,
             }
         })
         .collect();

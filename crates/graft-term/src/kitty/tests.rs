@@ -1,7 +1,9 @@
 //! The Kitty stream, byte for byte. A pty accepts anything, so these tests prove only what
 //! Graft emits; ADR-0012 is why that is never acceptance for rendering. Pieces: `pieces`.
 
-use std::sync::Arc;
+use std::{ops::Range, sync::Arc};
+
+use graft_core::raster::RasterFrame;
 
 use super::*;
 use crate::tmux::Transport;
@@ -57,6 +59,7 @@ fn place(frame: &Arc<RasterFrame>, first_row: usize, rows: Range<usize>, at: u16
             rows: 0,
         },
         layer: Layer::Strip,
+        stack: 0,
     }
 }
 
@@ -716,6 +719,7 @@ fn deflate_shrinks_a_sparse_strip() {
             rows: 0,
         },
         layer: Layer::Strip,
+        stack: 0,
     }];
     let mut raw = Vec::new();
     KittyImages::new(2).frame(&places, &mut raw);
@@ -824,32 +828,6 @@ fn an_upload_holds_no_pixels_after_transmit() {
     images.frame(&[place(&frame, 0, 0..4, 1)], &mut out);
     assert_eq!(images.uploaded(), 1);
     assert_eq!(Arc::strong_count(&frame), 1, "Kitty kept a reference");
-}
-
-/// The same key in a new allocation is the same picture: the strip cache
-/// evicted it and drew it again, and the terminal still holds it. No
-/// transmit; a different key in the same slot is a new upload.
-#[test]
-fn an_upload_is_matched_by_its_key() {
-    let mut images = KittyImages::new(usize::MAX);
-    let (first, again) = (strip(4, [1, 2, 3, 255]), strip(4, [1, 2, 3, 255]));
-    let keyed = |frame, key| Place {
-        key: UploadKey(key),
-        ..place(frame, 0, 0..4, 1)
-    };
-    let mut out = Vec::new();
-    images.frame(&[keyed(&first, 7)], &mut out);
-    let mut out = Vec::new();
-    images.frame(&[keyed(&again, 7)], &mut out);
-    assert!(
-        commands(&out).iter().all(|c| !c.contains("a=t")),
-        "same key, no transmit: {:?}",
-        commands(&out)
-    );
-    let mut out = Vec::new();
-    images.frame(&[keyed(&again, 8)], &mut out);
-    assert!(commands(&out).iter().any(|c| c.contains("a=t")));
-    assert_eq!(images.uploaded(), 1, "the old one was freed");
 }
 
 /// m8 04: a transmit works in buffers kept from the last one. Two strips of

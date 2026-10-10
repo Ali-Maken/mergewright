@@ -231,9 +231,8 @@ fn band_png(frame: &RasterFrame, rows: &Range<usize>) -> io::Result<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use super::*;
+    use std::sync::Arc;
 
     /// A strip of `rows` rows, 3 columns of 2×4 px cells, one colour.
     fn strip(rows: usize) -> Arc<RasterFrame> {
@@ -260,6 +259,7 @@ mod tests {
             },
             rows,
             layer: crate::kitty::Layer::Strip,
+            stack: 0,
         }
     }
 

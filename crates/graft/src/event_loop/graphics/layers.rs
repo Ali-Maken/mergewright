@@ -63,7 +63,12 @@ pub(super) fn layers(
     let strip_key = cache.backdrop_key(first_row, plain, selection.backdrop)?;
     let base = cache.backdrop(first_row, plain, selection.backdrop)?;
     let mut pieces = Vec::new();
-    for piece in emphasis_pieces(plain, selection) {
+    // `emphasis_pieces` lists bottom first, in the whole pass's order; the
+    // index is the piece's rank, so the terminal stacks it by that rank.
+    // Past 65,535 pieces in one strip (3 kinds × lanes × 32 rows can't
+    // reach it) ranks would tie at the top, not reorder.
+    for (rank, piece) in emphasis_pieces(plain, selection).into_iter().enumerate() {
+        let stack = u16::try_from(rank).unwrap_or(u16::MAX);
         let key = UploadKey(piece.key);
         let (cell, row) = anchor(piece.column, piece.kind);
         if held.images.holds(key)
@@ -79,6 +84,7 @@ pub(super) fn layers(
                 columns: crop.columns,
                 rows: first_row..first_row + crop.rows,
                 key,
+                stack,
             });
             continue;
         }
@@ -102,6 +108,7 @@ pub(super) fn layers(
             rows: first_row..first_row + top.frame.rows,
             frame: Some(top.frame),
             key,
+            stack,
         });
     }
     Ok(((base, UploadKey(strip_key)), pieces))
@@ -112,13 +119,14 @@ pub(super) type Layers = ((Arc<RasterFrame>, UploadKey), Vec<Piece>);
 
 /// One emphasis piece this frame places: its pixels when the terminal
 /// lacks them, the strip cell column it starts on, its width in cells, the
-/// strip rows it covers, and its key.
+/// strip rows it covers, its key, and its rank in the strip's stack.
 pub(super) struct Piece {
     frame: Option<Arc<RasterFrame>>,
     column: u16,
     columns: u32,
     rows: Range<usize>,
     key: UploadKey,
+    stack: u16,
 }
 
 /// One strip this frame draws: its backdrop (or iTerm2's composited band),
@@ -152,6 +160,7 @@ pub(super) fn places(drawn: &[Drawn], graph: Rect) -> Vec<Place<'_>> {
             rows: strip.rows.clone(),
             cells: cells(0, strip.frame.columns),
             layer: Layer::Strip,
+            stack: 0,
         });
         // Starting right of the graph column, none of it would show.
         for piece in strip
@@ -176,6 +185,7 @@ pub(super) fn places(drawn: &[Drawn], graph: Rect) -> Vec<Place<'_>> {
                 rows: shown.start - piece.rows.start..shown.end - piece.rows.start,
                 cells: rect,
                 layer: Layer::Emphasis,
+                stack: piece.stack,
             });
         }
     }

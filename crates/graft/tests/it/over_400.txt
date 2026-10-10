@@ -95,7 +95,7 @@
 566 crates/graft-term/src/detect/reply.rs
 999 crates/graft-term/src/detect/tests.rs
 406 crates/graft-term/src/iterm2.rs
-903 crates/graft-term/src/kitty/tests.rs
+881 crates/graft-term/src/kitty/tests.rs
 677 crates/graft-ui/src/blame/tests.rs
 667 crates/graft-ui/src/confirm.rs
 540 crates/graft-ui/src/conflict_resolver/files/tests.rs
@@ -231,7 +231,7 @@
 1992 crates/graft/tests/it/conflict_interim.rs
 875 crates/graft/tests/it/context_menu.rs
 418 crates/graft/tests/it/credential_by_key.rs
-565 crates/graft/tests/it/drain_sink.rs
+405 crates/graft/tests/it/drain_sink.rs
 430 crates/graft/tests/it/finish/choices.rs
 419 crates/graft/tests/it/frame_trace.rs
 487 crates/graft/tests/it/frames/journal_find.rs
@@ -240,7 +240,7 @@
 406 crates/graft/tests/it/frames/run.rs
 1298 crates/graft/tests/it/gallery.rs
 640 crates/graft/tests/it/heavy.rs
-774 crates/graft/tests/it/held_key.rs
+754 crates/graft/tests/it/held_key.rs
 972 crates/graft/tests/it/hint_bar.rs
 502 crates/graft/tests/it/journal_put_back.rs
 758 crates/graft/tests/it/journal_screen.rs
