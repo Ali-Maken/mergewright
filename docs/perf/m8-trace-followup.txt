@@ -1,0 +1,32 @@
+# m8-polish-and-ship/05 trace follow-up. Builder run: scripts/m8-trace-followup.sh (Pixel tier, pty answering
+# like Ghostty with Kitty graphics + deflate, his Ghostty shape 222x70 at 17x37, 50 j at 33 ms, MONOREPO fixture).
+# BEFORE only. No product change landed: the cause is designed (ADR-0053 emphasis layer), see ticket 05 NOTES.
+# AFTER: none yet.
+#
+# His Ghostty run, side by side (docs/perf/m8-trace-2026-10-08-ghostty.txt:1,8-13):
+#   header tier=pixel columns=222 rows=70 history_rows=3494 refs=291 term=ghostty
+#   draw_us  p50=1689 p95=4020  p99=6569   max=12487
+#   bytes    p50=479  p95=76751 p99=127189 max=269375
+#   write_us p50=17   p95=4428  p99=14064  max=21597
+#   fence_us p50=348  p95=1881  p99=5968   max=11670
+#   tail_ms=1748.7   (last frame of the trace minus the last frame with motions>0; one number per run)
+
+# before, HEAD, MONOREPO: 2026-10-10T16:08Z Darwin arm64 ad7a435f
+pty label=m8-trace-followup profile=kitty rate=- size=222x70 wait_s=5.0 period_ms=33 hold_s=1.65 keys=50 frames_before_keys=5 frames_while_held=50 frames_after_release=1 bytes_per_key=92108 bytes_after_release=53292 tail_ms=7 rss_mb=107 first_byte_ms=58 deflate_answer=yes transmits=155 deflated=155 deflate=yes broken=no
+header tier=pixel columns=222 rows=70 history_rows=17700 refs=1331 term=vscode headers=3
+frames=56 span_ms=6565.9 frames_per_s=8.4
+wakes n=56 p50=1 p95=1 p99=18 max=18
+motions n=56 p50=1 p95=1 p99=1 max=1
+queued n=56 p50=0 p95=0 p99=0 max=0
+update_us n=56 p50=64 p95=123 p99=673 max=673
+commands n=56 p50=0 p95=0 p99=7 max=7
+draw_us n=56 p50=6345 p95=15459 p99=19965 max=19965
+bytes n=56 p50=52739 p95=288075 p99=486064 max=486064
+write_us n=56 p50=574 p95=2448 p99=5277 max=5277
+fence_us n=0
+input_age_us n=50 p50=7251 p95=17564 p99=25198 max=25198
+tail_ms=0.0
+power Now drawing from 'AC Power'
+after_last_motion frames=0
+uploads strip=7/805016B(15%) emphasis=148/4315003B(82%) placements=330 stream=5228343B
+upload_shapes emphasis:17x1184=46 emphasis:1173x1221=41 emphasis:51x1184=27 emphasis:952x1184=12 emphasis:1173x1184=11 strip:1020x1184=2
