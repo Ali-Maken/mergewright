@@ -1308,3 +1308,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/long-tmpdir-socket | 6+ graft tests fail when `$TMPDIR` is a long path (unix-socket path limit); Paperclip runs set one. Gates pass with `TMPDIR=/tmp`. Tests should not depend on `$TMPDIR` length — cause not fixed. | **broken** | M8 |
 | M8/startup-rs-564 | `startup.rs` 564 lines, over the readability limit; outside 02's file set, not split. | **broken** | M8 |
 | M8/14c-fork-wording | A fork that follows reads "built on yours", same as a dependent — 14c to decide (question). `docs/shots/m7/*-left-behind-*` now show a follow; names stale. | **unverified** | M8 |
+| M8/27a-plan-txt | `docs/release/plan.txt` not regenerated for `tributary`/`trib`/`trib.1`: `dist` not installed; the 27a stop rule (dist names the archive `tributary` without renaming the package) unchecked. Name itself still open (user 2026-10-10). | **unverified** | M8 |
